@@ -846,9 +846,15 @@ static fn read_startup_configuration(const command_line &line,
       has_elevated_identity || line.is_rescue_mode || FLAG_CLEAN.is_enabled() ||
       FLAG_NO_CONFIG.is_enabled() || FLAG_LINT.is_enabled() ||
       FLAG_FORMAT.is_enabled() || FLAG_LANGUAGE_SERVER.is_enabled() ||
-      is_debug_driver_run() || !inherited.bootstrap.payload.is_empty();
+      is_debug_driver_run();
   if (should_skip) {
     LOG(Info, "skipping the configuration files");
+    return reading;
+  }
+  if (!inherited.bootstrap.payload.is_empty()) {
+    LOG(Info, "a fresh evaluator applies only the inherited KOSHCONF");
+    if (encoded.has_value())
+      unused(read_koshconf_blob(encoded->view(), reading));
     return reading;
   }
 

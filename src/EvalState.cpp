@@ -2289,6 +2289,22 @@ fn EvalContext::make_subshell_bootstrap() const throws -> os::subshell_bootstrap
     }
   }
 
+  variable_store().exported_names().for_each(
+      [&](StringView key, const auto &display_name) throws -> void {
+        let name = key;
+        if constexpr (!os::ENVIRONMENT_IS_CASE_SENSITIVE) {
+          if (!display_name.is_empty()) name = display_name.view();
+        } else {
+          unused(display_name);
+        }
+        if (!lexer::word_is_variable_name(name) || names.find(name).has_value())
+          return;
+
+        source += "export ";
+        source.append(name);
+        source.push('\n');
+      });
+
   for (let const &name : function_store().sorted_names()) {
     let const *function_source = function_store().find_source(name.view());
     if (function_source == nullptr || function_source->is_empty()) {
