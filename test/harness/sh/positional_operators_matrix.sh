@@ -4,9 +4,11 @@
 # parameters, spaces, glob characters, quotes, and newlines, under several
 # IFS values. A case listed in the warnings file reports its output and
 # status but not whether it wrote to stderr, because Kosh warns there about
-# an unset variable where dash is silent. The for loop over two empty
-# parameters under an empty IFS is left out: dash 0.5.13 loops once there,
-# while dash 0.5.12, bash, yash, and busybox loop zero times.
+# an unset variable where dash is silent. Under an empty or colon IFS the
+# matrix leaves out an unquoted $@ or $* as printf arguments and as for loop
+# words: dash 0.5.13 keeps an emptied parameter there as a field, and makes
+# one field of two empty parameters, where dash 0.5.12 and busybox remove
+# them.
 LC_ALL=C
 export LC_ALL
 . "${0%/*}/positional_operators_matrix_warnings.sh"
@@ -84,9 +86,10 @@ for extra in default empty colon; do
       for target in '@' '*' '1' 's'; do
         expression="\${$target$operator}"
         for context in $contexts; do
-          if [ "$extra $values $context" = "empty two_empty 4" ]; then
-            continue
-          fi
+          case "$extra $target $context" in
+            "default "*) ;;
+            *" @ 0" | *" @ 4" | *" * 0" | *" * 4") continue ;;
+          esac
           set_body "$context" "$expression"
           run_case "$body"
         done

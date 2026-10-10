@@ -116,6 +116,8 @@ def run_pty(binary, command, keys=()):
         "scroll_moved": len(small_frames) > 1
         and small_frames[0][0] != small_frames[-1][0],
         "steady_rows": len({len(rows) for rows in small_frames}) == 1,
+        "tree_row_counts": [len(rows) for rows in tree_frames],
+        "small_first_rows": [rows[0] for rows in small_frames if rows],
     }
 
 
