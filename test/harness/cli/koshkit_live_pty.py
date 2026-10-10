@@ -222,7 +222,8 @@ def main():
                                    "cursor_hide": True,
                                    "cursor_show": True})
 
-    result = run_pty(binary, "koshkit --color never evilps --live=0.5",
+    result = run_pty(binary,
+                     "koshkit --color never evilps --show-pids --live=0.5",
                      ((b"j", None), (b"j", None)))
     scroll_requirements = {"status": 130, "debug_trap": False}
     if result["scroll_room"]:
