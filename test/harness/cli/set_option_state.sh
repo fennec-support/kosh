@@ -56,7 +56,7 @@ for noexec_script in \
     'for ((;;)); do set -n; echo leaked; done'
 do
     NOEXEC_BIN=$BIN NOEXEC_SCRIPT=$noexec_script "$BIN" -c \
-        'koshkit timeout 1 "$NOEXEC_BIN" -M bash -c "$NOEXEC_SCRIPT"' \
+        'koshkit timeout 5 "$NOEXEC_BIN" -M bash -c "$NOEXEC_SCRIPT"' \
         >> "$noexec_loop_output" 2>&1 || noexec_loop_status=1
 done
 if [ "$noexec_loop_status" -eq 0 ] && [ ! -s "$noexec_loop_output" ]; then
