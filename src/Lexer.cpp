@@ -614,6 +614,7 @@ hot alwaysinline fn Lexer::has_character(usize offset) const wontthrow -> bool
 flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
 {
   let word = Word{};
+  word.segments = ArrayList<WordSegment>{bump_allocator(arena())};
 
   usize byte_count = 0;
   usize relative_last_quote_position = 0;

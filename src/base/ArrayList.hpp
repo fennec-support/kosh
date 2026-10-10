@@ -346,6 +346,8 @@ public:
 
   cold fn move_to_allocator(Allocator allocator) throws -> void
   {
+    if (m_allocator == allocator) return;
+
     if (m_length == 0) {
       if (m_data != nullptr) m_allocator.free_array(m_data, m_capacity);
       m_data = nullptr;
