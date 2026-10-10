@@ -173,7 +173,7 @@ esac
 printf 'evilnet-live-sort=%s\n' "$evilnet_live_sort_update"
 
 evilio_cumulative_heading=$(
-  "$BIN" -c 'koshkit --color never evilio --ps --cumulative=0.2 -1'
+  "$BIN" -c 'koshkit --color never evilio --cumulative=0.2 -p $$'
 )
 case $evilio_cumulative_heading in
   *'READ/0.2s'*'WRITE/0.2s'*) evilio_cumulative_heading_status=matched ;;
