@@ -292,6 +292,12 @@ fn Od::execute(const ExecContext &ec, EvalContext &cxt,
       });
   if (visit == source_visit_result::Interrupted) return 130;
 
+  if (skip_count > input_bytes.length()) {
+    report_soft_koshkit_util_error(ec, cxt, args[0].view(),
+                                   "cannot skip past end of combined input");
+    return 1;
+  }
+
   let const first = skip_count < input_bytes.length()
                         ? static_cast<usize>(skip_count)
                         : input_bytes.length();

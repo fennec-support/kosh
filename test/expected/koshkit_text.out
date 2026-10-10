@@ -45,8 +45,7 @@ source-09
 --- transformed sources preserve boundaries ---
 abc    x
 abc	x
-abc
-def
+abcdef
 --- transformed utilities batch source windows ---
 531297043 180
 531297043 180

@@ -30,7 +30,8 @@ enum class fold_break_mode : u8
 };
 
 static fn append_folded_line(String &output, StringView line, usize width,
-                             fold_break_mode break_mode) throws -> void
+                             fold_break_mode break_mode,
+                             bool has_newline) throws -> void
 {
   usize start = 0;
 
@@ -50,7 +51,7 @@ static fn append_folded_line(String &output, StringView line, usize width,
   }
 
   output += line.substring(start);
-  output += '\n';
+  if (has_newline) output += '\n';
 }
 
 fn Fold::execute(const ExecContext &ec, EvalContext &cxt,
@@ -89,7 +90,8 @@ fn Fold::execute(const ExecContext &ec, EvalContext &cxt,
           output,
           content.substring_of_length(line_start, line_end - line_start), width,
           FLAG_FOLD_SPACES.is_enabled() ? fold_break_mode::Blank
-                                        : fold_break_mode::Width);
+                                        : fold_break_mode::Width,
+          line_end < content.length);
       line_start = line_end < content.length ? line_end + 1 : line_end;
     }
   };

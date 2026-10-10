@@ -7,6 +7,8 @@ cd "$dir" || exit 1
 # [c*] and [c*n] repeats, paste deals stdin lines across repeated -, sed puts
 # appended text on its own line after a last line without a newline, and a
 # huge sort or uniq field count ends at the line end instead of spinning.
+# fold keeps a missing final newline missing, and od refuses to skip past
+# the end of its input.
 
 kk() { "$BIN_DIR/invoke-koshkit" "$@"; }
 
@@ -38,3 +40,7 @@ printf 'x\ny' | kk sed 'a\each'
 printf 'b x\na y\n' > fields
 kk sort -k 9223372036854775807 fields
 kk uniq -f 99999999999 fields
+
+printf 'a1\nb2' | kk fold | kk od -c
+printf 'abc' | kk od -j 4 2> /dev/null
+printf 'od-past-end=%s\n' "$?"
