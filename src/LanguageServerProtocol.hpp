@@ -760,12 +760,19 @@ public:
 
     usize units = 0;
     usize position = start;
+    if (m_cached_unit_line == line && m_cached_unit_byte <= byte_position) {
+      units = m_cached_units;
+      position = m_cached_unit_byte;
+    }
     while (position < byte_position) {
       let const decoded =
           utils::decode_utf8(normalized_source.view(), position, 0xfffd);
       units += decoded.value > 0xffff ? 2 : 1;
       position += decoded.length;
     }
+    m_cached_unit_line = line;
+    m_cached_unit_byte = position;
+    m_cached_units = units;
 
     return {line, units};
   }
@@ -833,8 +840,13 @@ public:
   }
 
 private:
+  mutable usize m_cached_unit_line{static_cast<usize>(-1)};
+  mutable usize m_cached_unit_byte{0};
+  mutable usize m_cached_units{0};
+
   fn rebuild_lines() throws -> void
   {
+    m_cached_unit_line = static_cast<usize>(-1);
     line_starts.clear();
     line_starts.push(0);
 

@@ -101,6 +101,7 @@ public:
 
 private:
   static constexpr usize MAX_COMMAND_DEPTH = 512;
+  static constexpr usize MAX_RECOVERED_STATEMENT_COUNT = 100;
 
   Lexer m_lexer;
 

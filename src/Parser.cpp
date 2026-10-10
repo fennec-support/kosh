@@ -479,6 +479,7 @@ cold fn Parser::construct_ast(
 {
   Expression *first_piece = nullptr;
   let last_location = SourceLocation{};
+  usize failed_statement_count = 0;
 
   loop
   {
@@ -499,6 +500,9 @@ cold fn Parser::construct_ast(
       did_parse_fail = true;
     }
     if (!did_parse_fail) continue;
+
+    failed_statement_count++;
+    if (failed_statement_count >= MAX_RECOVERED_STATEMENT_COUNT) break;
 
     let did_recovery_fail = false;
     try {
