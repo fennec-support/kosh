@@ -369,7 +369,12 @@ cold fn Parser::record_detailed_parse_error(
 {
   LOG(Debug, "recording a detailed parse error and recovering: %s",
       error.message().c_str());
-  if (m_error_collection != nullptr) m_error_collection->push(error);
+  if (m_error_collection != nullptr) {
+    m_error_collection->push(error);
+
+    return;
+  }
+
   errors.push(error.to_string(m_lexer.source(), context));
   errors.push(error.details_to_string(m_lexer.source(), context));
   if (diagnostic_sink == nullptr) return;
@@ -397,7 +402,10 @@ cold fn Parser::record_parse_error(
   if (m_error_collection != nullptr) {
     m_error_collection->push(ErrorWithLocationAndDetails{
         error.location(), error.message().view(), error.detail_message()});
+
+    return;
   }
+
   errors.push(error.to_string(m_lexer.source(), context));
   if (diagnostic_sink == nullptr) return;
 

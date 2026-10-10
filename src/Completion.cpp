@@ -1055,7 +1055,7 @@ static fn complete_variable(StringView token, EvalContext &context,
 
   let seen = HashSet{completion_allocator()};
 
-  let const do_add_name = [&](StringView name) throws -> void {
+  let do_add_name = [&](StringView name) throws -> void {
     if (!name.starts_with(prefix)) return;
     if (!seen.add(name)) return;
 
@@ -1084,8 +1084,9 @@ static fn complete_variable(StringView token, EvalContext &context,
     assigned_names.for_each([&](StringView name) { do_add_name(name); });
   }
 
-  for (let const &name : os::environment_names())
-    do_add_name(name.view());
+  os::for_each_environment_name(&do_add_name, [](opaque *adder, StringView name) {
+    (*static_cast<decltype(do_add_name) *>(adder))(name);
+  });
 
   let dynamic_names = ArrayList<StringView>{completion_allocator()};
   context.append_dynamic_variable_names(dynamic_names);

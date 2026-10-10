@@ -79,6 +79,8 @@ public:
   StringMap<ArrayList<help_entry>> option_entries{heap_allocator()};
   StringMap<cached_subcommand_list> subcommand_index{heap_allocator()};
   StringMap<String> page_file_paths{heap_allocator()};
+  sorted_subcommand_array sorted_page_names{heap_allocator(),
+                                            sort_order::ascending};
   StringMap<bool> subcommand_page_validity{heap_allocator()};
   StringMap<String> text{heap_allocator()};
   StringMap<String> synopses{heap_allocator()};
@@ -401,6 +403,12 @@ fn ManpageCache::scan_next_subcommand_directory(EvalContext &context) throws
 fn ManpageCache::finish_subcommand_index() throws -> void
 {
   subcommand_index.clear();
+  let page_names = ArrayList<String>{heap_allocator()};
+  page_names.reserve(page_file_paths.count());
+  page_file_paths.for_each(
+      [&](StringView name, const String &) { page_names.push(String{name}); });
+  sorted_page_names = steal(page_names).make_sorted(sort_order::ascending);
+
   page_file_paths.for_each([&](StringView name, const String &) {
     let const dash = name.find_character('-');
     if (!dash.has_value() || *dash == 0) return;
@@ -664,11 +672,13 @@ fn internal::complete_from_man_subcommands(StringView line, StringView token,
 
   if (is_koshkit_man || command == "man" || command == "mandoc") {
     let matches = ArrayList<String>{heap_allocator()};
-    MANPAGE_CACHE.page_file_paths.for_each(
-        [&](StringView page_name, const String &) throws {
-          if (page_name.starts_with(token))
-            matches.push(String{page_name});
-        });
+    let const &page_names = MANPAGE_CACHE.sorted_page_names;
+
+    for (usize i = page_names.lower_bound(token); i < page_names.count(); i++) {
+      if (!page_names[i].view().starts_with(token)) break;
+
+      matches.push(String{page_names[i].view()});
+    }
     LOG(Debug, "%zu man pages match token '%.*s'", matches.count(),
         static_cast<int>(token.length), token.data);
     if (matches.is_empty()) return None;

@@ -169,6 +169,11 @@ struct completion_session
   fn hint(const char *buffer, size_t cursor) -> const char *;
   fn idle(const char *buffer, size_t cursor) -> int;
   koshka::String hint_row{koshka::heap_allocator()};
+  koshka::String syntax_checked_line{koshka::heap_allocator()};
+  koshka::String syntax_problem{koshka::heap_allocator()};
+  koshka::mimic_mood syntax_checked_mood{koshka::mimic_mood::Default};
+  bool has_syntax_checked_line{false};
+  bool was_syntax_checked_at_line_end{false};
   koshka::String analyzed_line{koshka::heap_allocator()};
   koshka::String analysis_finding{koshka::heap_allocator()};
   bool has_analyzed_line{false};
@@ -1052,11 +1057,23 @@ fn completion_session::hint(const char *buffer, size_t cursor) -> const char *
     let const byte_length = std::strlen(buffer);
     let const line = koshka::StringView{buffer, byte_length};
     if (should_show_diagnostics) {
-      if (koshka::completion::describe_syntax_problem(
-              line, cursor, context->runtime_state().get_mood(), hint_row))
+      let const mood = context->runtime_state().get_mood();
+      let const is_cursor_at_line_end = cursor == byte_length;
+      if (!has_syntax_checked_line || syntax_checked_line.view() != line ||
+          syntax_checked_mood != mood ||
+          was_syntax_checked_at_line_end != is_cursor_at_line_end)
       {
-        return hint_row.c_str();
+        has_syntax_checked_line = false;
+        unused(koshka::completion::describe_syntax_problem(line, cursor, mood,
+                                                           syntax_problem));
+        syntax_checked_line.clear();
+        syntax_checked_line.append(line);
+        syntax_checked_mood = mood;
+        was_syntax_checked_at_line_end = is_cursor_at_line_end;
+        has_syntax_checked_line = true;
       }
+
+      if (!syntax_problem.is_empty()) return syntax_problem.c_str();
 
       if (has_analyzed_line && !analysis_finding.is_empty() &&
           analyzed_line.view() == line)

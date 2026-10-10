@@ -677,7 +677,7 @@ static fn push_variable_name_candidates(StringView token, EvalContext &context,
     -> void
 {
   let seen = HashSet{heap_allocator()};
-  let const do_add_name = [&](StringView name) throws {
+  let do_add_name = [&](StringView name) throws {
     if (!name.starts_with(token)) return;
     if (!seen.add(name)) return;
     candidates.push(String{name});
@@ -686,8 +686,9 @@ static fn push_variable_name_candidates(StringView token, EvalContext &context,
   context.variable_names().for_each(
       [&](StringView name) { do_add_name(name); });
 
-  for (let const &name : os::environment_names())
-    do_add_name(name.view());
+  os::for_each_environment_name(&do_add_name, [](opaque *adder, StringView name) {
+    (*static_cast<decltype(do_add_name) *>(adder))(name);
+  });
 
   let dynamic_names = ArrayList<StringView>{heap_allocator()};
   context.append_dynamic_variable_names(dynamic_names);
