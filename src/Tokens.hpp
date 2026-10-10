@@ -532,7 +532,8 @@ public:
 
   pure fn runs_substitution() const wontthrow -> bool;
 
-  fn get_assignment_split() const throws -> Maybe<word_assignment_split>;
+  fn get_assignment_split(Allocator allocator = heap_allocator()) const throws
+      -> Maybe<word_assignment_split>;
 
   cold fn get_quoted_assignment_split() const throws
       -> Maybe<word_assignment_split>;

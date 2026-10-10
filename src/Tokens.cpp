@@ -497,7 +497,8 @@ static fn find_assignment_equals(StringView text) wontthrow -> Maybe<usize>
   return text.find_character('=');
 }
 
-hot fn Word::get_assignment_split() const throws -> Maybe<word_assignment_split>
+hot fn Word::get_assignment_split(Allocator allocator) const throws
+    -> Maybe<word_assignment_split>
 {
   if (segments.is_empty()) return koshka::None;
 
@@ -540,13 +541,14 @@ hot fn Word::get_assignment_split() const throws -> Maybe<word_assignment_split>
   if (name_cursor != name_length) return koshka::None;
 
   let const name_view = first.text.substring_of_length(0, name_length);
-  let name = String{name_view};
+  let name = String{allocator, name_view};
 
   let value = Word{};
+  value.segments = ArrayList<WordSegment>{allocator};
   value.has_locale_translation_quote = has_locale_translation_quote;
   value.segments.push(WordSegment{
       WordSegment::Kind::UnquotedText,
-      SegmentText{heap_allocator(), first.text.substring(*equals_position + 1)},
+      SegmentText{allocator, first.text.substring(*equals_position + 1)},
       false
   });
   for (usize i = 1; i < segments.count(); i++)

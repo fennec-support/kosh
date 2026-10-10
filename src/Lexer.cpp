@@ -1336,7 +1336,7 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
 
   Token *token{};
 
-  if (let assignment_split = word.get_assignment_split();
+  if (let assignment_split = word.get_assignment_split(bump_allocator(arena));
       assignment_split.has_value())
   {
     let const arena_allocator = bump_allocator(arena);
