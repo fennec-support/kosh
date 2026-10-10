@@ -60,6 +60,10 @@ then
   if [ "$STDERR_MATCH" -ne 1 ]
   then
     printf 'stderr presence differs\n' >&2
+    printf 'reference stderr:\n' >&2
+    "$BIN_DIR/invoke-koshkit" head -n 5 "$REFERENCE_ERROR" >&2
+    printf 'candidate stderr:\n' >&2
+    "$BIN_DIR/invoke-koshkit" head -n 5 "$CANDIDATE_ERROR" >&2
   fi
   if [ "$REFERENCE_STATUS" -ne "$KOSH_STATUS" ]
   then

@@ -180,6 +180,9 @@ case $evilio_cumulative_heading in
   *)
     evilio_cumulative_heading_status=wrong
     printf '%s\n' "$evilio_cumulative_heading" >&2
+    "$BIN" -c 'koshkit --color never evilio -p $$; echo "instant=$?"
+      koshkit --color never evilio --ps -3; echo "all=$?"
+      koshkit --color never evilps -p $$; echo "evilps=$?"' >&2 2>&1
     ;;
 esac
 printf 'evilio-cumulative-heading=%s\n' "$evilio_cumulative_heading_status"
