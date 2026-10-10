@@ -4,7 +4,9 @@
 # ampersand, all in the columns bash uses. The long form adds the process id.
 # A wait for a job that a signal ended still reports 128 plus the signal. Only
 # SIGTERM ends the jobs here, since bash reports most other signals on its
-# error stream whenever it reaps the job before jobs runs.
+# error stream whenever it reaps the job before jobs runs. The settled listings
+# leave out the current-job marker, which Bash gives a finished job or not
+# depending on when it reaped the job.
 listing=$(mktemp)
 settle() {
   for _ in {1..500}; do
@@ -12,7 +14,7 @@ settle() {
     [[ $(<"$listing") == *Running* ]] || break
     sleep 0.01
   done
-  cat "$listing"
+  sed -e 's/^\(\[[0-9]*\]\)[+-]/\1 /' "$listing"
 }
 
 sleep 30 & kill %1
