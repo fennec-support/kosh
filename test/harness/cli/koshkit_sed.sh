@@ -46,3 +46,10 @@ printf 'a\n' | "$BIN" -c 'koshkit sed -f "$1" -f "$2"' \
 
 echo "--- empty explicit script ---"
 printf 'unchanged\n' | "$BIN" -c "koshkit sed -e ''"
+
+echo "--- a substitution reaches past a NUL byte ---"
+printf 'a\0b\n' | "$BIN" -c 'koshkit sed s/b/X/' | "$BIN_DIR/invoke-koshkit" od -c
+
+echo "--- a global substitution over a long line ---"
+"$BIN_DIR/invoke-koshkit" head -c 200000 /dev/zero | "$BIN_DIR/invoke-koshkit" tr '\0' a \
+  | "$BIN" -c 'koshkit sed s/a/b/g' | "$BIN_DIR/invoke-koshkit" tr -d b | "$BIN_DIR/invoke-koshkit" wc -c

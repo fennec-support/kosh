@@ -440,18 +440,34 @@ fn execute_regex(compiled_regex &compiled,
     -> regex_execution_report
 {
   let report = regex_execution_report{options.scratch};
-  let const subject_text = String{options.scratch, options.subject};
   let const group_count = compiled.re.re_nsub + 1;
   let matches = ArrayList<regmatch_t>{options.scratch};
   matches.reserve(group_count);
   for (usize i = 0; i < group_count; i++)
     matches.push(regmatch_t{});
 
-  let const execute_flags =
+  int execute_flags =
       options.start_position == regex_start_position::NotBeginning ? REG_NOTBOL
                                                                    : 0;
+#if defined REG_STARTEND && !defined KOSH_HAS_ADDRESS_SANITIZER
+  matches[0].rm_so = 0;
+  matches[0].rm_eo = static_cast<regoff_t>(options.subject.length);
+  execute_flags |= REG_STARTEND;
+  const int match_result =
+      regexec(&compiled.re, options.subject.data, group_count, matches.begin(),
+              execute_flags);
+#elif defined REG_STARTEND
+  let const subject_text = String{options.scratch, options.subject};
+  matches[0].rm_so = 0;
+  matches[0].rm_eo = static_cast<regoff_t>(options.subject.length);
+  execute_flags |= REG_STARTEND;
   const int match_result = regexec(&compiled.re, subject_text.c_str(),
                                    group_count, matches.begin(), execute_flags);
+#else
+  let const subject_text = String{options.scratch, options.subject};
+  const int match_result = regexec(&compiled.re, subject_text.c_str(),
+                                   group_count, matches.begin(), execute_flags);
+#endif
 
   if (match_result == REG_NOMATCH) return report;
 

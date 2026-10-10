@@ -22,3 +22,8 @@ B
 A
 --- empty explicit script ---
 unchanged
+--- a substitution reaches past a NUL byte ---
+0000000   a nul   X  \n
+0000004
+--- a global substitution over a long line ---
+0
