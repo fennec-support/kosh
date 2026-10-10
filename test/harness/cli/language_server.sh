@@ -33,6 +33,7 @@ check_contains()
 
 printf 'echo $disk_only\n[ x == y ]\n' > "$directory/open-source.sh"
 printf 'echo $disk_aux\n[ x == y ]\n' > "$directory/disk-source.sh"
+printf 'sourced_value=1\n' > "$directory/sourced-variable.sh"
 mkdir "$directory/bin"
 mkdir -p "$directory/man/man1"
 program_suffix=
@@ -289,6 +290,11 @@ chmod +x "$act_program" "$man_program" \
   frame '{"jsonrpc":"2.0","id":147,"method":"textDocument/completion","params":{"textDocument":{"uri":"file:///tmp/make-shell-completion.mk"},"position":{"line":0,"character":34}}}'
   frame '{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"file:///tmp/document-function.sh","languageId":"sh","version":1,"text":"document_before() { :; }\ndocument_\ndocument_after() { :; }\n"}}}'
   frame '{"jsonrpc":"2.0","id":141,"method":"textDocument/completion","params":{"textDocument":{"uri":"file:///tmp/document-function.sh"},"position":{"line":1,"character":9}}}'
+  frame '{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"file:///tmp/document-variable.sh","languageId":"sh","version":1,"text":"document_value=1\necho \"$document_va\"\necho ${document_va\n"}}}'
+  frame '{"jsonrpc":"2.0","id":205,"method":"textDocument/completion","params":{"textDocument":{"uri":"file:///tmp/document-variable.sh"},"position":{"line":1,"character":18}}}'
+  frame '{"jsonrpc":"2.0","id":206,"method":"textDocument/completion","params":{"textDocument":{"uri":"file:///tmp/document-variable.sh"},"position":{"line":2,"character":18}}}'
+  frame '{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"file://'"$directory"'/sourcing-variable.sh","languageId":"sh","version":1,"text":". '"$directory"'/sourced-variable.sh\necho \"$sourced_va\"\n"}}}'
+  frame '{"jsonrpc":"2.0","id":207,"method":"textDocument/completion","params":{"textDocument":{"uri":"file://'"$directory"'/sourcing-variable.sh"},"position":{"line":1,"character":17}}}'
   frame '{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"file:///tmp/bare-koshkit.shit","languageId":"shit","version":1,"text":"good\n"}}}'
   frame '{"jsonrpc":"2.0","id":142,"method":"textDocument/completion","params":{"textDocument":{"uri":"file:///tmp/bare-koshkit.shit"},"position":{"line":0,"character":4}}}'
   frame '{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"file:///tmp/rename-target.sh","languageId":"sh","version":1,"text":"name=first\nalias gs=\"git status\"\ngreet() { echo \"$name\"; }\ngs\ngreet\n"}}}'
@@ -335,6 +341,9 @@ check_contains completion-man-subcommand-flag '"id":146,"result":[{"label":"--fo
 check_contains completion-make-shell '"id":147,"result":[{"label":"path-only","kind":17,"data":{"command":"path-only"}'
 check_contains completion-document-function-after '"id":141,"result":[{"label":"document_after","kind":3,"data":{"command":"document_after"}'
 check_contains completion-document-function-before '"label":"document_before","kind":3,"data":{"command":"document_before"}'
+check_contains completion-document-variable '"id":205,"result":[{"label":"$document_value"'
+check_contains completion-document-variable-unparsed '"id":206,"result":[{"label":"${document_value}"'
+check_contains completion-sourced-variable '"id":207,"result":[{"label":"$sourced_value"'
 check_contains completion-bare-koshkit '"label":"goodnode","kind":3,"data":{"command":"goodnode"}'
 check_contains document-formatting '"id":137,"result":[{"range":{"start":{"line":0,"character":0},"end":{"line":1,"character":0}},"newText":"if true\nthen\n  echo dash\nfi\n"}]'
 check_contains unchanged-formatting '"id":138,"result":[]'

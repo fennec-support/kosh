@@ -689,13 +689,13 @@ fn Server::publish_diagnostics(Document &document) throws -> bool
   let diagnostics = ArrayList<source_diagnostic>{heap_allocator()};
   let followed_paths = HashSet{heap_allocator()};
   let symbol_records = analysis_symbol_records{};
+  let source_effects = StringMap<followed_source_effects>{heap_allocator()};
   let const ast =
       parser.construct_ast(rendered_errors, &m_context, &diagnostics);
   if (rendered_errors.is_empty()) {
     let const directives = parser.take_analysis_directives();
     let const functions = m_context.function_store().names();
     let const aliases = m_context.scope_store().alias_names();
-    let source_effects = StringMap<followed_source_effects>{heap_allocator()};
     if (document.canonical_path.has_value())
       followed_paths.add(document.canonical_path->text().view());
     let const is_mixed_command_context =
@@ -742,6 +742,23 @@ fn Server::publish_diagnostics(Document &document) throws -> bool
   document.diagnostics = steal(root_diagnostics);
   document.auxiliary_diagnostics = steal(auxiliary_diagnostics);
   document.followed_paths = steal(followed_paths);
+  if (rendered_errors.is_empty()) {
+    document.completion_variable_names.clear();
+    for (let const &assignment : symbol_records.assignments)
+      document.completion_variable_names.push(String{assignment.name.view()});
+    document.completion_function_names.clear();
+    for (let const &function : symbol_records.functions)
+      document.completion_function_names.push(String{function.name.view()});
+    source_effects.for_each(
+        [&](StringView, const followed_source_effects &effects) throws {
+          effects.assigned_names.for_each([&](StringView name) {
+            document.completion_variable_names.push(String{name});
+          });
+          effects.defined_functions.for_each([&](StringView name) {
+            document.completion_function_names.push(String{name});
+          });
+        });
+  }
   document.symbol_records = steal(symbol_records);
 
   return did_send;
@@ -842,16 +859,21 @@ fn Server::complete(const JsonValue *id, const JsonValue *params) throws -> bool
   let base_directory = m_workspace_root;
   if (document->path.has_value()) base_directory = document->path->parent();
   let document_function_names = ArrayList<StringView>{heap_allocator()};
-  document_function_names.reserve(document->symbol_records.functions.count());
-  for (let const &function : document->symbol_records.functions)
-    document_function_names.push(function.name.view());
+  document_function_names.reserve(document->completion_function_names.count());
+  for (let const &name : document->completion_function_names)
+    document_function_names.push(name.view());
+  let document_variable_names = ArrayList<StringView>{heap_allocator()};
+  document_variable_names.reserve(document->completion_variable_names.count());
+  for (let const &name : document->completion_variable_names)
+    document_variable_names.push(name.view());
 
   let &resolver = m_context.program_resolver();
   resolver.begin_explicit_completion(ProgramResolver::CompletionRefresh::Fresh);
   defer { resolver.end_explicit_completion(); };
   let result = completion::complete(
       document->shell_source(), *cursor, m_context, base_directory,
-      &document_function_names, true, completion::completion_mode::Listing);
+      &document_function_names, true, completion::completion_mode::Listing,
+      &document_variable_names);
   let sorted_function_names =
       steal(document_function_names).make_sorted(sort_order::ascending);
   let response = String{"["};

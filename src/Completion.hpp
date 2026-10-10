@@ -96,7 +96,8 @@ fn complete(StringView line, usize cursor, EvalContext &context,
             const Path &base_directory,
             const ArrayList<StringView> *extra_command_names = nullptr,
             bool should_complete_external_arguments_in_posix = false,
-            completion_mode mode = completion_mode::Ghost) throws
+            completion_mode mode = completion_mode::Ghost,
+            const ArrayList<StringView> *extra_variable_names = nullptr) throws
     -> completion_result;
 
 fn complete_command_names(StringView token, EvalContext &context,

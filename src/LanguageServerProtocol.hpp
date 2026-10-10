@@ -792,6 +792,8 @@ public:
   ArrayList<source_diagnostic> auxiliary_diagnostics;
   HashSet followed_paths;
   analysis_symbol_records symbol_records;
+  ArrayList<String> completion_variable_names{heap_allocator()};
+  ArrayList<String> completion_function_names{heap_allocator()};
 
   fn rebuild_format() throws -> void
   {

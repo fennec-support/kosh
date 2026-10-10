@@ -1038,7 +1038,9 @@ static pure fn token_is_variable(StringView token) wontthrow -> bool
          !os::has_directory_separator(token);
 }
 
-static fn complete_variable(StringView token, EvalContext &context) throws
+static fn complete_variable(StringView token, EvalContext &context,
+                            const ArrayList<StringView> *extra_variable_names,
+                            StringView text_before_token) throws
     -> ArrayList<String>
 {
   let candidates = ArrayList<String>{completion_allocator()};
@@ -1066,6 +1068,21 @@ static fn complete_variable(StringView token, EvalContext &context) throws
 
   context.variable_names().for_each(
       [&](StringView name) { do_add_name(name); });
+
+  if (extra_variable_names != nullptr) {
+    for (let const name : *extra_variable_names)
+      do_add_name(name);
+  }
+
+  if (!text_before_token.is_empty()) {
+    let spans = ArrayList<highlight_span>{completion_allocator()};
+    let assigned_names = HashSet{completion_allocator()};
+    unused(scan_highlight_range(text_before_token, 0, text_before_token.length,
+                                context, spans, assigned_names, nullptr));
+    LOG(Debug, "the text before the variable assigns %zu names",
+        assigned_names.count());
+    assigned_names.for_each([&](StringView name) { do_add_name(name); });
+  }
 
   for (let const &name : os::environment_names())
     do_add_name(name.view());
@@ -1207,7 +1224,9 @@ fn complete(StringView line, usize cursor, EvalContext &context,
             const Path &base_directory,
             const ArrayList<StringView> *extra_command_names,
             bool should_complete_external_arguments_in_posix,
-            completion_mode mode) throws -> completion_result
+            completion_mode mode,
+            const ArrayList<StringView> *extra_variable_names) throws
+    -> completion_result
 {
   let const for_listing = mode == completion_mode::Listing;
   COMPLETION_ARENA.reset();
@@ -1215,6 +1234,7 @@ fn complete(StringView line, usize cursor, EvalContext &context,
 
   if (cursor > line.length) cursor = line.length;
   let const is_line_empty = line.is_empty();
+  let const whole_line = line;
 
   let const command_range = command_substitution_range(line, cursor);
   let completion_offset = command_range.start;
@@ -1333,7 +1353,10 @@ fn complete(StringView line, usize cursor, EvalContext &context,
 
   if (token_is_variable(open_quote_content_token) && is_leading_variable_active)
   {
-    candidates = complete_variable(open_quote_content_token, context);
+    candidates = complete_variable(open_quote_content_token, context,
+                                   extra_variable_names,
+                                   whole_line.substring_of_length(
+                                       0, completion_offset + token_start));
     if (has_open_quote) {
       token_start += decoded_token.open_quote_content_start;
     }

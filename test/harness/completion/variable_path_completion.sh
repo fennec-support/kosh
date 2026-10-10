@@ -18,3 +18,9 @@ echo "== bash argument arrays complete in bash mood:"
 "$BIN" -M bash --debug-complete-at 'echo $BASH_ARG' </dev/null
 echo "== POSIX mood completes its dynamic variables:"
 "$BIN" -M sh --debug-complete-at 'echo $LINE' </dev/null
+echo "== a name assigned earlier on the line completes:"
+"$BIN" --debug-complete-at 'line_assigned_value=1; echo "$line_assigned_v' \
+  </dev/null
+echo "== a for loop name completes inside its body:"
+"$BIN" --debug-complete-at 'for loop_name_zq in a; do echo $loop_name_z' \
+  </dev/null

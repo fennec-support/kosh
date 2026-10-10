@@ -14,3 +14,7 @@ $BASH_ARGV
 $BASH_ARGV0
 == POSIX mood completes its dynamic variables:
 $LINENO
+== a name assigned earlier on the line completes:
+$line_assigned_value"
+== a for loop name completes inside its body:
+$loop_name_zq
