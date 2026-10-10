@@ -54,6 +54,7 @@ struct decoded_shell_word
   usize last_quote_decoded_start{0};
   char quote_character{0};
   char last_quote_character{0};
+  bool is_last_quote_ansi_c{false};
   bool has_shell_syntax{false};
 
   explicit decoded_shell_word(Allocator allocator)

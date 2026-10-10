@@ -385,6 +385,7 @@ hot fn decode_shell_word(StringView word, Allocator allocator,
       }
       is_scanning_leading_variable = false;
       decoded.last_quote_character = '\'';
+      decoded.is_last_quote_ansi_c = true;
       decoded.last_quote_content_start = body_start;
       decoded.last_quote_decoded_start = decoded.text.length();
       if (!is_terminated) {
@@ -430,6 +431,7 @@ hot fn decode_shell_word(StringView word, Allocator allocator,
       decoded.last_quote_content_start = position + 1;
       decoded.last_quote_decoded_start = decoded.text.length();
       decoded.last_quote_character = byte;
+      decoded.is_last_quote_ansi_c = false;
       if (should_map_source) decoded.raw_positions.back() = position + 1;
       if (!decoded.text.is_empty() &&
           os::is_directory_separator(decoded.text.back()))

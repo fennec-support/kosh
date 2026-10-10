@@ -193,7 +193,8 @@ fn internal::append_with_quoted_controls(String &candidate,
 }
 
 static fn append_open_quote_candidate(String &candidate, StringView text,
-                                      char quote_character) throws -> void
+                                      char quote_character,
+                                      bool is_ansi_c_quote) throws -> void
 {
   for (usize position = 0; position < text.length; position++) {
     let const byte = text[position];
@@ -202,8 +203,14 @@ static fn append_open_quote_candidate(String &candidate, StringView text,
       candidate.push(quote_character);
       append_ansi_c_quoted(candidate,
                            text.substring_of_length(position, sequence_length));
+      if (is_ansi_c_quote) candidate.push('$');
       candidate.push(quote_character);
       position += sequence_length - 1;
+      continue;
+    }
+    if (is_ansi_c_quote && (byte == '\'' || byte == '\\')) {
+      candidate.push('\\');
+      candidate.push(byte);
       continue;
     }
     if (quote_character == '\'' && byte == '\'') {
@@ -291,6 +298,8 @@ fn internal::rebuild_shell_syntax_candidate(
     StringView decoded_candidate, bool should_quote_words) throws -> String
 {
   let candidate = String{completion_allocator()};
+  let const content_start = decoded_word.last_quote_content_start;
+  let const is_last_quote_ansi_c = decoded_word.is_last_quote_ansi_c;
   if (decoded_candidate.starts_with(decoded_word.text.view())) {
     let const suffix = decoded_candidate.substring(decoded_word.text.length());
     let const can_extend_closed_quote =
@@ -300,12 +309,14 @@ fn internal::rebuild_shell_syntax_candidate(
     if (can_extend_closed_quote) {
       candidate.append(raw_token.substring_of_length(0, raw_token.length - 1));
       append_open_quote_candidate(candidate, suffix,
-                                  decoded_word.last_quote_character);
+                                  decoded_word.last_quote_character,
+                                  is_last_quote_ansi_c);
       candidate.push(decoded_word.last_quote_character);
     } else if (decoded_word.quote_character != 0) {
       candidate.append(raw_token);
       append_open_quote_candidate(candidate, suffix,
-                                  decoded_word.quote_character);
+                                  decoded_word.quote_character,
+                                  is_last_quote_ansi_c);
     } else {
       candidate.append(raw_token);
       append_candidate_suffix(candidate, suffix, should_quote_words);
@@ -335,6 +346,13 @@ fn internal::rebuild_shell_syntax_candidate(
       return candidate;
     }
 
+    if (should_quote_words && decoded_candidate.starts_with("~")) {
+      candidate += "\\~";
+      append_candidate_suffix(candidate, decoded_candidate.substring(1),
+                              should_quote_words);
+      return candidate;
+    }
+
     append_candidate_suffix(candidate, decoded_candidate, should_quote_words);
     return candidate;
   }
@@ -346,16 +364,18 @@ fn internal::rebuild_shell_syntax_candidate(
       0, decoded_word.last_quote_decoded_start);
   let const candidate_prefix =
       decoded_candidate.substring_of_length(0, candidate_boundary);
+  let is_ansi_c_quote = false;
   if (decoded_prefix == candidate_prefix) {
-    candidate.append(raw_token.substring_of_length(
-        0, decoded_word.last_quote_content_start));
+    is_ansi_c_quote = is_last_quote_ansi_c;
+    candidate.append(raw_token.substring_of_length(0, content_start));
   } else {
     append_candidate_suffix(candidate, candidate_prefix, should_quote_words);
     candidate.push(decoded_word.last_quote_character);
   }
   append_open_quote_candidate(candidate,
                               decoded_candidate.substring(candidate_boundary),
-                              decoded_word.last_quote_character);
+                              decoded_word.last_quote_character,
+                              is_ansi_c_quote);
   if (decoded_word.quote_character == 0)
     candidate.push(decoded_word.last_quote_character);
   return candidate;

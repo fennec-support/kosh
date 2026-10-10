@@ -647,8 +647,13 @@ build_filesystem_candidate(StringView directory_part,
       entry_name = quote_path_candidate(entry_name.view());
     candidate += entry_name;
   } else {
-    if (!inside_quote && path_candidate_needs_quoting(entry_name.view()))
+    if (!inside_quote && path_candidate_needs_quoting(entry_name.view())) {
       entry_name = quote_path_candidate(entry_name.view());
+    } else if (!inside_quote && candidate.is_empty() &&
+               entry_name.view().starts_with("~"))
+    {
+      candidate.push('\\');
+    }
     candidate += entry_name;
   }
 
