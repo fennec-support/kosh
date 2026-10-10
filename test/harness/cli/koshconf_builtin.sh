@@ -1,4 +1,5 @@
 unset KOSH_FLAGS KOSHCONF
+export MSYS2_ENV_CONV_EXCL=KOSH_HISTORY_FILE
 # koshconf lists the option registry, writes presets whose values match a fresh
 # session, changes one option for the session or also in the file, suggests a
 # close name for an unknown one, and loads an encoded form while skipping an
@@ -30,7 +31,7 @@ echo "rc=$?"
 cat "$conf"
 do_compare_preset kosh
 echo "== create refuses an existing file without --force:"
-"$BIN" -c 'koshconf create bash' 2>&1 | sed "s|$config|CONFIG|"
+"$BIN" -c 'koshconf create bash' 2>&1 | sed "s|$config|CONFIG|; s|\\\\|/|g"
 echo "rc=${PIPESTATUS[0]}"
 "$BIN" -c 'koshconf create --force bash'
 echo "rc=$?"

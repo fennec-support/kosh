@@ -1,4 +1,5 @@
 unset KOSH_FLAGS KOSHCONF
+export MSYS2_ENV_CONV_EXCL=KOSH_HISTORY_FILE
 # A restricted shell refuses every koshconf form that changes a setting or
 # writes a file, keeps get and list, and ignores an inherited KOSHCONF blob.
 config=$(mktemp -d)

@@ -6,10 +6,18 @@ unset KOSH_FLAGS KOSHCONF
 # removed. A command-line flag and -Q win over the file, and the kosh mood
 # sources no rc file.
 home=$(mktemp -d)
-trap '[ -n "$home" ] && "$BIN_DIR/invoke-koshkit" rm -rf -- "$home"' EXIT
+trap 'cd / && [ -n "$home" ] && "$BIN_DIR/invoke-koshkit" rm -rf -- "$home"' EXIT
 export HOME="$home"
 unset XDG_CONFIG_HOME
 conf="$home/.config/kosh/kosh.conf"
+native_home=$home
+if command -v cygpath >/dev/null 2>&1; then
+  native_home=$(cygpath -w "$home" | sed 's/[\\.]/\\&/g')
+fi
+mask_home() {
+  sed -e "s|$home|HOME|g" -e "s|$native_home|HOME|g" \
+    -e ':again' -e "s|\\(HOME[^:' ]*\\)\\\\|\\1/|" -e 't again' "$@"
+}
 mkdir -p "$home/.config/kosh"
 
 cat >"$conf" <<'EOF'
@@ -31,7 +39,7 @@ echo "== the file applies with a warning per malformed line:"
   printf "%s=%s\n" "$name" "$(koshconf get "$name")"
 done' >"$home/out" 2>&1
 status=$?
-sed "s|$home|HOME|" "$home/out"
+mask_home "$home/out"
 echo "rc=$status"
 
 echo "== a byte order mark is skipped, and raw bytes are escaped in warnings:"
@@ -40,8 +48,8 @@ printf 'editor.history.file_path=a\377b\nbad\033[1mname=on\n' >>"$conf"
 "$BIN" -c 'koshconf get editor.auto_close_brackets_and_quotes; koshconf get editor.history.max_entries' \
   >"$home/out" 2>&1
 status=$?
-sed "s|$home|HOME|" "$home/out" | od -An -c | grep -c '033'
-sed "s|$home|HOME|" "$home/out"
+mask_home "$home/out" | od -An -c | grep -c '033'
+mask_home "$home/out"
 echo "rc=$status"
 
 printf 'mood=bash\neditor.auto_close_brackets_and_quotes=on\ninterpreter.resolve_koshkit_applets_as_commands=off\noptimizer.warning_level=2\n' >"$conf"
@@ -69,7 +77,7 @@ printf 'mood=kosh\n' >"$conf"
 "$BIN" -i <"$TEST_NULL_DEVICE" 2>/dev/null | grep -c koshrc-ran
 echo "== an interactive kosh mood warns once about a retired koshrc:"
 printf 'set -L kosh\nset -L kosh\n' | "$BIN" -i 2>&1 |
-  grep 'no longer read' | sed -e "s|$home|HOME|" -e "s|' and '/etc/koshrc'|'|"
+  grep 'no longer read' | mask_home -e "s|' and '/etc/koshrc'|'|"
 echo "== -Q and a non-interactive shell do not warn:"
 "$BIN" -Q -i <"$TEST_NULL_DEVICE" 2>&1 | grep -c 'no longer read'
 "$BIN" -c : 2>&1 | grep -c 'no longer read'
@@ -108,10 +116,10 @@ echo "rc=$?"
 echo "== a kosh mood value that conflicts with a fixed option is skipped:"
 printf 'interpreter.unset_variable_is_error=off\ninterpreter.glob_no_match_expands_to_nothing=off\n' >"$conf"
 "$BIN" -c 'koshconf get interpreter.unset_variable_is_error' 2>&1 |
-  sed "s|$home|HOME|"
+  mask_home
 echo "== an unknown name in the file suggests a close one:"
 printf 'editor.history.max_entry=3\n' >"$conf"
-"$BIN" -c 'koshconf get editor.history.max_entries' 2>&1 | sed "s|$home|HOME|"
+"$BIN" -c 'koshconf get editor.history.max_entries' 2>&1 | mask_home
 echo "== a command-line flag wins over a semantic option from the file:"
 printf 'mood=bash\ninterpreter.unset_variable_is_error=off\n' >"$conf"
 "$BIN" -u -c 'koshconf get interpreter.unset_variable_is_error'
@@ -146,7 +154,7 @@ echo "== -L wins over the file:"
 "$BIN" -L sh,bash -c 'koshconf get init_moods'
 echo "== an unknown mood in the list is a warning:"
 printf 'init_moods=bash,zsh\n' >"$conf"
-"$BIN" -c 'koshconf get init_moods' 2>&1 | sed "s|$home|HOME|"
+"$BIN" -c 'koshconf get init_moods' 2>&1 | mask_home
 echo "== koshconf set validates the list:"
 : >"$conf"
 "$BIN" -c 'koshconf set init_moods sh,bash-posix; koshconf get init_moods

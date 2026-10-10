@@ -1,4 +1,5 @@
 unset KOSH_FLAGS KOSHCONF ENV BASH_ENV
+export MSYS2_ENV_CONV_EXCL=SHELL
 export SHELL=/kept/shell
 # A restricted shell refuses every write that reaches a restricted variable
 # through a name reference, and refuses to make a restricted name a reference.
