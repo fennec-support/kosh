@@ -694,6 +694,11 @@ fn Sed::execute(const ExecContext &ec, EvalContext &cxt,
     if (!should_delete && !FLAG_SED_QUIET.is_enabled()) {
       append_sed_pattern_space(output, line.view(), has_terminating_newline);
     }
+    if (!appended_text.is_empty() && !output.is_empty() &&
+        output[output.length() - 1] != '\n')
+    {
+      output += '\n';
+    }
     output += appended_text.view();
   }
 

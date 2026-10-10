@@ -62,7 +62,9 @@ static fn get_uniq_key(StringView line, usize skipped_fields,
 {
   usize position = 0;
 
-  for (usize field = 0; field < skipped_fields; field++) {
+  for (usize field = 0; field < skipped_fields && position < line.length;
+       field++)
+  {
     while (position < line.length &&
            (line[position] == ' ' || line[position] == '\t'))
     {

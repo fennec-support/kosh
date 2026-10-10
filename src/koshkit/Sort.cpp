@@ -204,6 +204,8 @@ pure static fn find_sort_field_start(StringView line, usize field,
   usize position = 0;
 
   for (usize skipped = 1; skipped < field; skipped++) {
+    if (position >= line.length) return line.length;
+
     if (settings.has_separator) {
       let const found =
           line.substring(position).find_character(settings.separator);

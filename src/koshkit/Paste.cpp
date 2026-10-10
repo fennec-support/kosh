@@ -102,6 +102,18 @@ fn Paste::execute(const ExecContext &ec, EvalContext &cxt,
     lines.push(steal(source_lines));
   }
 
+  let stdin_indices = ArrayList<usize>{cxt.scratch_allocator()};
+  for (usize source_index = 0; source_index < sources.count(); source_index++)
+    if (sources[source_index] == "-") stdin_indices.push(source_index);
+  if (!FLAG_PASTE_SERIAL.is_enabled() && stdin_indices.count() > 1) {
+    let const stdin_lines = steal(lines[stdin_indices[0]]);
+    for (let const index : stdin_indices)
+      lines[index] = ArrayList<StringView>{cxt.scratch_allocator()};
+    for (usize line_index = 0; line_index < stdin_lines.count(); line_index++)
+      lines[stdin_indices[line_index % stdin_indices.count()]].push(
+          stdin_lines[line_index]);
+  }
+
   let output = String{cxt.scratch_allocator()};
   if (FLAG_PASTE_SERIAL.is_enabled()) {
     for (let const &source_lines : lines) {

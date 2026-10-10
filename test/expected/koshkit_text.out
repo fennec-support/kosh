@@ -167,8 +167,7 @@ zulu,,middle
 alpha,,beta
 status=1
 --- paste repeated standard input ---
-left,
-right,
+left,right
 --- pr merge with a missing operand ---
 -c:1:1: error: koshkit pr: cannot read 'missing.txt': No such file or directory.
      1 |  koshkit pr -t -m -s , sort-a.txt missing.txt sort-b.txt; printf "status=%s\n" "$?"

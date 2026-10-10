@@ -11,6 +11,7 @@
 #include "../Errors.hpp"
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
+#include "../Utils.hpp"
 
 KOSHKIT_UTIL_DECL(
     "[-cCds] set1 [set2]",
@@ -119,10 +120,13 @@ static fn expand_posix_class(StringView set, usize position,
   return scan + 2 - position;
 }
 
-static fn expand_set(StringView set, Allocator allocator) throws
+static fn expand_set(StringView set, Allocator allocator,
+                     Maybe<usize> repeat_target_length = None) throws
     -> Maybe<String>
 {
   String expanded{allocator};
+  Maybe<usize> fill_position;
+  Maybe<char> fill_byte;
   usize i = 0;
   while (i < set.length) {
     if (let const class_width = expand_posix_class(set, i, expanded);
@@ -130,6 +134,44 @@ static fn expand_set(StringView set, Allocator allocator) throws
     {
       i += class_width;
       continue;
+    }
+
+    if (repeat_target_length.has_value() && set[i] == '[' &&
+        i + 1 < set.length)
+    {
+      let const repeated = decode_escaped_char(set, i + 1);
+      let star = i + 1 + repeated.width_count;
+      if (star < set.length && set[star] == '*') {
+        usize close = star + 1;
+        while (close < set.length && set[close] >= '0' && set[close] <= '9')
+          close++;
+        if (close < set.length && set[close] == ']') {
+          let const digits = set.substring_of_length(star + 1, close - star - 1);
+          let const base = !digits.is_empty() && digits[0] == '0'
+                               ? int_base::octal
+                               : int_base::decimal;
+          let count = usize{0};
+          if (!digits.is_empty()) {
+            let const parsed = utils::parse_integer_in_base_u64(digits, base);
+            count = parsed.is_error() ? *repeat_target_length
+                                      : static_cast<usize>(parsed.value());
+          }
+          if (count == 0) {
+            if (fill_position.has_value()) return None;
+
+            fill_position = expanded.count();
+            fill_byte = static_cast<char>(repeated.byte);
+          } else {
+            let const capped = count < *repeat_target_length
+                                   ? count
+                                   : *repeat_target_length;
+            for (usize n = 0; n < capped; n++)
+              expanded.push(static_cast<char>(repeated.byte));
+          }
+          i = close + 1;
+          continue;
+        }
+      }
     }
 
     let const first = decode_escaped_char(set, i);
@@ -151,6 +193,16 @@ static fn expand_set(StringView set, Allocator allocator) throws
     expanded.push(static_cast<char>(first.byte));
     i = after;
   }
+
+  if (fill_position.has_value() && *repeat_target_length > expanded.count()) {
+    let filled = String{allocator};
+    filled.append(expanded.view().substring_of_length(0, *fill_position));
+    for (usize n = expanded.count(); n < *repeat_target_length; n++)
+      filled.push(*fill_byte);
+    filled.append(expanded.view().substring(*fill_position));
+    expanded = steal(filled);
+  }
+
   return expanded;
 }
 
@@ -206,7 +258,8 @@ fn Tr::execute(const ExecContext &ec, EvalContext &cxt,
 
   let set2 = String{cxt.scratch_allocator()};
   if (operands.count() >= 2) {
-    let expanded_set2 = expand_set(operands[1].view(), cxt.scratch_allocator());
+    let expanded_set2 = expand_set(operands[1].view(), cxt.scratch_allocator(),
+                                   set1->count() > 0 ? set1->count() : 1);
     if (!expanded_set2.has_value()) {
       KOSHKIT_REPORT_ERROR_AT(
           operand_locations[1], "reverse range in set '" + operands[1] + "'",

@@ -57,6 +57,24 @@ fn Ln::execute(const ExecContext &ec, EvalContext &cxt,
       link = link_path.text();
     }
 
+    let target_status = os::file_status{};
+    let link_status = os::file_status{};
+    let const is_same_file =
+        os::stat_path(target, target_status) &&
+        os::stat_path(link.view(), link_status) &&
+        target_status.has_file_identity && link_status.has_file_identity &&
+        target_status.device_id == link_status.device_id &&
+        target_status.file_id == link_status.file_id;
+    if (is_same_file) {
+      report_soft_koshkit_util_error(ec, cxt, args[0].view(),
+                                     "'" + String{cxt.scratch_allocator(),
+                                                  target} +
+                                         "' and '" + link +
+                                         "' are the same file");
+      status = 1;
+      continue;
+    }
+
     if (FLAG_LN_FORCE.is_enabled()) os::remove_file(link.view());
 
     let link_target = target;

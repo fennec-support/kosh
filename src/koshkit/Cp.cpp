@@ -217,9 +217,28 @@ static fn copy_path(const ExecContext &ec, EvalContext &cxt,
         Path{destination, allocator}.to_absolute().normalized();
     let source_prefix = source_absolute.text().clone();
     source_prefix.push(os::DIRECTORY_SEPARATOR);
-    if (destination_absolute.view() == source_absolute.view() ||
-        destination_absolute.view().starts_with(source_prefix.view()))
-    {
+    let is_destination_inside_source =
+        destination_absolute.view() == source_absolute.view() ||
+        destination_absolute.view().starts_with(source_prefix.view());
+    if (!is_destination_inside_source) {
+      let const resolved_source = os::canonical_path(source_absolute);
+      let resolved_destination = os::canonical_path(destination_absolute);
+      if (!resolved_destination.has_value()) {
+        if (let const parent = os::canonical_path(destination_absolute.parent()))
+        {
+          resolved_destination = parent->clone();
+          resolved_destination->append(destination_absolute.filename());
+        }
+      }
+      if (resolved_source.has_value() && resolved_destination.has_value()) {
+        let resolved_prefix = resolved_source->text().clone();
+        resolved_prefix.push(os::DIRECTORY_SEPARATOR);
+        is_destination_inside_source =
+            resolved_destination->view() == resolved_source->view() ||
+            resolved_destination->view().starts_with(resolved_prefix.view());
+      }
+    }
+    if (is_destination_inside_source) {
       throw ErrorWithDetails{
           "cannot copy '" + String{allocator, source}
             + "' into itself",

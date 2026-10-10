@@ -1,0 +1,20 @@
+ln-same=1 content=data
+ln-alias=1 content=data
+ln-replace=0 content=data
+cp-through-link=1 directories=1
+HAAAA, WAAAA
+xyyzww
+xxx
+1,2,3
+4,5,6
+7,,
+x
+y
+appended
+x
+each
+y
+each
+a y
+b x
+b x
