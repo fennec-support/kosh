@@ -464,7 +464,12 @@ fn execute_regex(compiled_regex &compiled,
   const int match_result = regexec(&compiled.re, subject_text.c_str(),
                                    group_count, matches.begin(), execute_flags);
 #else
-  let const subject_text = String{options.scratch, options.subject};
+  let subject_text = String{options.scratch};
+  subject_text.reserve(options.subject.length);
+  for (usize position = 0; position < options.subject.length; position++) {
+    let const byte = options.subject[position];
+    subject_text.push(byte == '\0' ? '\n' : byte);
+  }
   const int match_result = regexec(&compiled.re, subject_text.c_str(),
                                    group_count, matches.begin(), execute_flags);
 #endif

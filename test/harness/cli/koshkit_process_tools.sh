@@ -150,7 +150,7 @@ done
 printf 'evilio-sort-keys=%s\n' "$evilio_sort_keys"
 
 process_report=$("$BIN" -c \
-  'koshkit --color never evilio --cumulative=0.05 -p $$' 2>&1)
+  "koshkit --color never evilio --cumulative=0.05 -p $$" 2>&1)
 case $process_report in
   *PID*READ/0.05s*WRITE/0.05s*"READ OPS/0.05s"*"WRITE OPS/0.05s"*COMMAND*)
     process_shape=matched
@@ -174,6 +174,7 @@ printf '%s\n' "$process_report" > "$process_report_path"
 process_idle=excluded
 while read -r process_pid process_read process_write process_read_iops \
   process_write_iops process_command; do
+  [ "$process_pid" = "$$" ] && continue
   case "$process_pid:$process_read:$process_write:$process_read_iops:$process_write_iops" in
     [0-9]*:0:0:0:0) process_idle=present ;;
     [0-9]*:0:0:-:-) process_idle=present ;;
