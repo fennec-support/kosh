@@ -73,7 +73,9 @@ fn Read::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let read_fd = ec.in_fd.value_or(KOSH_STDIN);
   if (FLAG_READ_FD.is_set()) {
     let const parsed = FLAG_READ_FD.value().to<i64>();
-    if (parsed.is_error() || parsed.value() < 0) {
+    if (parsed.is_error() || parsed.value() < 0 ||
+        parsed.value() > INT32_MAX)
+    {
       report_soft_builtin_error(ec, cxt, FLAG_READ_FD.value_location(),
                                 FLAG_READ_FD.value() +
                                     ": invalid file descriptor");
@@ -163,6 +165,13 @@ fn Read::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   }
 
   let const has_operands = names.count() > 1;
+  for (usize index = 1; index < names.count(); index++) {
+    if (name_is_valid_assignment_target(names[index].view())) continue;
+
+    report_invalid_identifier(ec, cxt, ec.arg_location_at(index),
+                              names[index].view());
+    return 1;
+  }
   LOG(Debug, "read reading into '%s'",
       has_operands ? names[1].c_str() : "REPLY");
   const usize first_operand = 1;

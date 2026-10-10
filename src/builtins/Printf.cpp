@@ -70,7 +70,8 @@ fn decode_utf8_code_point(const String &arg, usize start) throws -> i64
   return code_point;
 }
 
-fn parse_printf_number(const String &arg) throws -> printf_number
+fn parse_printf_number(const String &arg, bool is_unsigned_conversion = false)
+    throws -> printf_number
 {
   if (!arg.is_empty() && (arg[0] == '\'' || arg[0] == '"')) {
     return {arg.count() > 1 ? decode_utf8_code_point(arg, 1) : 0, true, false,
@@ -112,8 +113,23 @@ fn parse_printf_number(const String &arg) throws -> printf_number
                                                 int_base::octal)
                  : utils::parse_decimal_i64(number_text, &is_out_of_range);
   let const has_digits = number_end > digit_start;
-  return {parsed.is_error() ? 0 : parsed.value(),
-          has_digits && number_end == arg.count(), is_hexadecimal,
+  let value = parsed.is_error() ? i64{0} : parsed.value();
+  if (is_out_of_range && is_unsigned_conversion && arg[number_start] != '-') {
+    let const digits =
+        arg.view().substring_of_length(digit_start, number_end - digit_start);
+    let const unsigned_value =
+        is_hexadecimal ? utils::parse_integer_in_base_u64(digits, int_base::hex)
+        : is_octal
+            ? utils::parse_integer_in_base_u64(digits, int_base::octal)
+            : utils::parse_decimal_u64(digits);
+    if (!unsigned_value.is_error()) {
+      value = static_cast<i64>(unsigned_value.value());
+      is_out_of_range = false;
+    } else {
+      value = static_cast<i64>(UINT64_MAX);
+    }
+  }
+  return {value, has_digits && number_end == arg.count(), is_hexadecimal,
           is_out_of_range};
 }
 
@@ -489,7 +505,7 @@ fn append_conversion(String &out, String &spec, char conv,
   case 'X':
   case 'o':
   case 'u': {
-    let const number = parse_printf_number(arg);
+    let const number = parse_printf_number(arg, true);
     if (!number.is_valid && !is_missing_argument)
       report_invalid_number(ec, cxt, arg, number.is_hex, exit_status,
                             allocator);
@@ -561,6 +577,12 @@ fn Printf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     if (ec.args().count() < 3) {
       report_soft_builtin_error(ec, cxt, ec.arg_location_at(1),
                                 "The option -v requires a variable name");
+      return USAGE_STATUS;
+    }
+
+    if (!name_is_valid_assignment_target(ec.args()[2].view())) {
+      report_invalid_identifier(ec, cxt, ec.arg_location_at(2),
+                                ec.args()[2].view());
       return USAGE_STATUS;
     }
 

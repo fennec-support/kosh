@@ -229,6 +229,14 @@ fn Z::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   if (FLAG_HELP.is_enabled()) SHOW_BUILTIN_HELP_AND_RETURN(ec);
 
+  let const do_change_directory = [&](StringView directory) throws -> i32 {
+    let const status = run_cd_to_directory(cxt, ec, directory);
+    if (status == 0 && !cxt.execution_store().shell_is_interactive())
+      record_directory_access(directory, cxt.scratch_allocator());
+
+    return status;
+  };
+
   if (operands.count() == 1) {
     let const home_directory = os::get_home_directory();
     if (!home_directory.has_value()) {
@@ -237,7 +245,7 @@ fn Z::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
           "Set `HOME` to a valid path"};
     }
 
-    return run_cd_to_directory(cxt, ec, home_directory->text());
+    return do_change_directory(home_directory->text());
   }
 
   let query = String{cxt.scratch_allocator()};
@@ -249,7 +257,7 @@ fn Z::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   if (operands.count() == 2) {
     let const literal_directory = Path{query.view()}.to_absolute().normalized();
     if (literal_directory.is_directory()) {
-      let const status = run_cd_to_directory(cxt, ec, literal_directory.text());
+      let const status = do_change_directory(literal_directory.text());
       if (status != 0) return status;
 
       ec.print_to_stdout(literal_directory.text() + "\n");
@@ -297,7 +305,7 @@ fn Z::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   LOG(Info, "z changing directory to '%s'", target.c_str());
 
-  let const status = run_cd_to_directory(cxt, ec, target.text());
+  let const status = do_change_directory(target.text());
   if (status != 0) return status;
 
   ec.print_to_stdout(target.text() + "\n");

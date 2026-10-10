@@ -913,6 +913,11 @@ fn EvalContext::has_exit_trap() const wontthrow -> bool
 
 fn EvalContext::clear_inherited_exit_trap() throws -> void
 {
+  if (runtime_state().is_bash_compatible()) {
+    trap_store().hold_exit_trap_for_listing();
+    return;
+  }
+
   trap_store().reset(StringView{"EXIT", 4});
 }
 

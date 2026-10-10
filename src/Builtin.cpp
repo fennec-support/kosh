@@ -792,6 +792,15 @@ pure fn name_is_valid_identifier(StringView name) wontthrow -> bool
   return lexer::word_is_variable_name(name);
 }
 
+pure fn name_is_valid_assignment_target(StringView name) wontthrow -> bool
+{
+  let const bracket = name.find_character('[');
+  if (!bracket.has_value()) return lexer::word_is_variable_name(name);
+
+  return *bracket > 0 && name[name.length - 1] == ']' &&
+         lexer::word_is_variable_name(name.substring_of_length(0, *bracket));
+}
+
 fn run_cd_to_directory(EvalContext &cxt, const ExecContext &ec,
                        StringView target) throws -> i32
 {

@@ -509,7 +509,11 @@ fn EvalContext::unset_shell_variable(StringView name) throws -> void
   if (is_bash_argument_array(name))
     throw Error{String{name} + ": cannot unset"};
 
-  if (peel_caller_local_binding(name)) return;
+  if (!runtime_state().is_shopt_enabled(shopt_option_id::LocalvarUnset) &&
+      peel_caller_local_binding(name))
+  {
+    return;
+  }
 
   let const should_disable_bash_aliases =
       name == BASH_ALIASES_VARIABLE &&
@@ -581,6 +585,36 @@ fn EvalContext::assign_caller_binding_of_circular_nameref(
     binding.previous_value = String{heap_allocator(), value};
 
     return true;
+  }
+
+  return false;
+}
+
+fn EvalContext::assign_global_beneath_locals(StringView name, StringView value,
+                                              bool should_append) throws -> bool
+{
+  for (usize frame_index = 0; frame_index < scope_store().local_scope_depth();
+       frame_index++)
+  {
+    ArrayList<local_binding> &frame = scope_store().local_scopes()[frame_index];
+    for (let &binding : frame) {
+      if (binding.name.view() != name || binding.is_self_reference) continue;
+
+      if (binding.previous_attributes != 0 ||
+          binding.previous_indexed_array.has_value() ||
+          binding.previous_was_associative)
+      {
+        return false;
+      }
+
+      let next_value = String{heap_allocator()};
+      if (should_append && binding.previous_value.has_value())
+        next_value.append(binding.previous_value->view());
+      next_value.append(value);
+      binding.previous_value = steal(next_value);
+
+      return true;
+    }
   }
 
   return false;

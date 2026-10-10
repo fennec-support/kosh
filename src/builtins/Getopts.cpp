@@ -34,6 +34,10 @@ fn Getopts::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   let const &optstring = args[1];
   let const &name = args[2];
+  if (!name_is_valid_assignment_target(name.view())) {
+    report_invalid_identifier(ec, cxt, ec.arg_location_at(2), name.view());
+    return 1;
+  }
   let const is_silent = !optstring.is_empty() && optstring[0] == ':';
 
   bool should_print_diagnostic = !is_silent;

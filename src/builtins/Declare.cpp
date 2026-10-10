@@ -384,6 +384,21 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                                   cxt.runtime_state().is_shopt_enabled(
                                       shopt_option_id::LocalvarInherit));
 
+    let const is_plain_global_assignment =
+        should_be_global && equals.has_value() && !has_subscript &&
+        !has_attribute_filter && !should_unexport &&
+        !should_unmark_integer_attribute &&
+        !should_unmark_lowercase_attribute &&
+        !should_unmark_uppercase_attribute && !should_unmark_nameref &&
+        !ec.has_stripped_array_operands &&
+        cxt.scope_store().local_scope_depth() > 0;
+    if (is_plain_global_assignment &&
+        cxt.assign_global_beneath_locals(
+            name, value, update_mode == assignment_update_mode::Append))
+    {
+      continue;
+    }
+
     let attribute_name = name;
     let resolved_attribute_name = Maybe<String>{};
     if (!should_mark_nameref && !should_unmark_nameref &&

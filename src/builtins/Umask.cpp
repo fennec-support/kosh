@@ -163,7 +163,7 @@ cold i32 Umask::execute(ExecContext &ec, EvalContext &cxt) const throws
   if (!requested.is_empty() && requested[0] >= '0' && requested[0] <= '7') {
     let const parsed =
         utils::parse_integer_in_base(requested, nullptr, int_base::octal);
-    if (parsed.is_error())
+    if (parsed.is_error() || parsed.value() > 0777)
       throw make_error_for_arg(
           ec, 1,
           "Unable to set the file creation mask because '" + requested +

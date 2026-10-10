@@ -1389,6 +1389,8 @@ pure fn shopt_option_index(shopt_option_id option) wontthrow -> u8
     return compact_shopt_option_index(SSK("lastpipe"));
   case shopt_option_id::LocalvarInherit:
     return compact_shopt_option_index(SSK("localvar_inherit"));
+  case shopt_option_id::LocalvarUnset:
+    return compact_shopt_option_index(SSK("localvar_unset"));
   case shopt_option_id::Nullglob:
     return compact_shopt_option_index(SSK("nullglob"));
   case shopt_option_id::PatsubReplacement:

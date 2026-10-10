@@ -939,6 +939,8 @@ fn descriptors_refer_to_same_file(os::descriptor first,
 
 fn descriptor_from_fd_number(i64 fd_number) wontthrow -> os::descriptor
 {
+  if (fd_number < 0 || fd_number > INT32_MAX) return KOSH_INVALID_FD;
+
   return static_cast<os::descriptor>(fd_number);
 }
 

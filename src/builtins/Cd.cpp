@@ -283,7 +283,8 @@ fn Cd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     if (!old_directory.is_empty())
       cxt.set_shell_variable("OLDPWD", old_directory.text());
     cxt.set_shell_variable("PWD", target.text());
-    record_directory_access(target.view(), cxt.scratch_allocator());
+    if (cxt.execution_store().shell_is_interactive())
+      record_directory_access(target.view(), cxt.scratch_allocator());
     if (should_print_target) {
       ec.print_to_stdout(target.text() + "\n");
     }

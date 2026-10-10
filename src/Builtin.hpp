@@ -357,6 +357,7 @@ fn make_error_for_arg(const ExecContext &ec, usize index, StringView message,
                       StringView note) throws -> ErrorWithLocationAndDetails;
 
 pure fn name_is_valid_identifier(StringView name) wontthrow -> bool;
+pure fn name_is_valid_assignment_target(StringView name) wontthrow -> bool;
 
 fn run_cd_to_directory(EvalContext &cxt, const ExecContext &ec,
                        StringView target) throws -> i32;

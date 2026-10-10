@@ -1142,11 +1142,18 @@ mustuse fn Parser::try_parse_descriptor_prefixed_redirection(
   Token *next = m_lexer.peek_shell_token();
   ASSERT(next != nullptr);
   let const nk = next->kind();
+  let const is_descriptor_in_range = [&]() throws -> bool {
+    if (word_token->word().fd_allocation_name().has_value()) return true;
+
+    let const parsed = word_token->word().to_literal_string().to<i64>();
+    return !parsed.is_error() && parsed.value() <= INT32_MAX;
+  };
   if ((nk == Token::Kind::Greater || nk == Token::Kind::DoubleGreater ||
        nk == Token::Kind::Less || nk == Token::Kind::DoubleLess ||
        nk == Token::Kind::TripleLess) &&
       next->source_location().position ==
-          word_location.position + word_location.length)
+          word_location.position + word_location.length &&
+      is_descriptor_in_range())
   {
     let const op_location = next->source_location();
     m_lexer.advance_past_last_peek();

@@ -1413,6 +1413,7 @@ enum class shopt_option_id : u8
   InheritErrexit,
   Lastpipe,
   LocalvarInherit,
+  LocalvarUnset,
   Nullglob,
   PatsubReplacement,
   Progcomp,
@@ -2140,6 +2141,7 @@ public:
   fn set(StringView condition, trap_definition definition) throws -> void
   {
     m_traps.set(condition, steal(definition));
+    m_held_exit_action = None;
     refresh_flags();
   }
   fn set_action(StringView condition, StringView action) throws -> void
@@ -2154,7 +2156,22 @@ public:
   fn reset(StringView condition) throws -> void
   {
     m_traps.erase(condition);
+    m_held_exit_action = None;
     refresh_flags();
+  }
+  fn hold_exit_trap_for_listing() throws -> void
+  {
+    let const found = m_traps.find(StringView{"EXIT", 4});
+    if (!found.has_value()) return;
+
+    let held = String{heap_allocator(), found.value()->action_text.view()};
+    m_traps.erase(StringView{"EXIT", 4});
+    refresh_flags();
+    m_held_exit_action = steal(held);
+  }
+  pure fn held_exit_action() const wontthrow -> const Maybe<String> &
+  {
+    return m_held_exit_action;
   }
   pure fn find(StringView condition) const wontthrow
       -> Maybe<const trap_definition *>
@@ -2203,6 +2220,7 @@ public:
     for (let const &condition : discarded)
       m_traps.erase(condition.view());
 
+    m_held_exit_action = None;
     refresh_flags();
   }
   fn snapshot() const throws -> trap_snapshot
@@ -2213,6 +2231,7 @@ public:
   {
     m_traps = steal(snapshot.traps);
     m_install_state = snapshot.install;
+    m_held_exit_action = None;
     refresh_flags();
   }
   fn append_wire(String &output) const throws -> void;
@@ -2376,6 +2395,7 @@ private:
   i32 m_last_trap_action_status{0};
   i32 m_status_before_return{0};
   StringMap<trap_definition> m_traps{heap_allocator()};
+  Maybe<String> m_held_exit_action;
   StringMap<FunctionBodyHandle> m_cached_bodies{heap_allocator()};
 };
 
@@ -3441,6 +3461,8 @@ public:
   fn unbind_circular_nameref(StringView name) throws -> bool;
   fn assign_caller_binding_of_circular_nameref(StringView name,
                                                StringView value) throws -> bool;
+  fn assign_global_beneath_locals(StringView name, StringView value,
+                                  bool should_append) throws -> bool;
   fn resolve_nameref_for_write(StringView name) throws -> String;
   fn resolve_nameref_base_for_write(StringView name) throws -> String;
   fn resolve_nameref_whole_variable_for_write(StringView name,

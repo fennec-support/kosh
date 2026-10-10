@@ -81,7 +81,9 @@ fn Mapfile::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let read_fd = ec.in_fd.value_or(KOSH_STDIN);
   if (FLAG_MAPFILE_FD.is_set()) {
     let const parsed_fd = FLAG_MAPFILE_FD.value().to<i64>();
-    if (parsed_fd.is_error() || parsed_fd.value() < 0) {
+    if (parsed_fd.is_error() || parsed_fd.value() < 0 ||
+        parsed_fd.value() > INT32_MAX)
+    {
       report_soft_builtin_error(ec, cxt, FLAG_MAPFILE_FD.value_location(),
                                 FLAG_MAPFILE_FD.value() +
                                     ": invalid file descriptor");
@@ -92,6 +94,10 @@ fn Mapfile::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   let const array_name =
       args.count() > 1 ? args[1].view() : StringView{"MAPFILE"};
+  if (!name_is_valid_identifier(array_name)) {
+    report_invalid_identifier(ec, cxt, ec.arg_location_at(1), array_name);
+    return 1;
+  }
   let const should_strip_newline = FLAG_MAPFILE_TRIM.is_enabled();
   let const has_origin = FLAG_MAPFILE_ORIGIN.is_set();
   let const has_callback = FLAG_MAPFILE_CALLBACK.is_set();

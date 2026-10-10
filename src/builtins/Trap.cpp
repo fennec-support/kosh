@@ -43,7 +43,7 @@ fn normalize_condition(StringView raw, Allocator allocator) throws -> String
 
   if (name.view().is_all_decimal_digits()) {
     let const parsed = name.view().to<i64>();
-    if (!parsed.is_error()) {
+    if (!parsed.is_error() && parsed.value() <= INT32_MAX) {
       if (let const signal_name =
               os::signal_name_from_number(static_cast<i32>(parsed.value())))
         return *signal_name;
@@ -245,8 +245,12 @@ fn Trap::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         }
 
         let const trap = cxt.trap_store().find(condition->view());
-        if (trap.has_value())
+        let const &held_exit = cxt.trap_store().held_exit_action();
+        if (trap.has_value()) {
           do_append_listing(condition->view(), trap->action_text.view());
+        } else if (held_exit.has_value() && condition->view() == "EXIT") {
+          do_append_listing(condition->view(), held_exit->view());
+        }
       }
 
       ec.print_to_stdout(out);
@@ -259,6 +263,12 @@ fn Trap::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
           collected.push(listed_trap{trap_listing_order(condition), condition,
                                      trap.action_text.view()});
         });
+    if (let const &held_exit = cxt.trap_store().held_exit_action();
+        held_exit.has_value())
+    {
+      collected.push(listed_trap{trap_listing_order("EXIT"), "EXIT",
+                                 held_exit->view()});
+    }
 
     let const ignored_signals = cxt.runtime_state().is_bash_compatible()
                                     ? cxt.trap_store().startup_ignored_signals()

@@ -238,13 +238,15 @@ cold fn Ulimit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
           "The limit must be a non-negative whole number");
       return is_posix ? 2 : 1;
     }
-    let const does_scaled_value_saturate_to_unlimited =
-        units != 0 && parsed.value() > os::RESOURCE_UNLIMITED / units;
-    if (does_scaled_value_saturate_to_unlimited) {
-      value = os::RESOURCE_UNLIMITED;
-    } else {
-      value = parsed.value() * units;
+    let const is_out_of_range =
+        units != 0 && parsed.value() >= os::RESOURCE_UNLIMITED / units;
+    if (is_out_of_range) {
+      report_soft_builtin_error(ec, cxt, ec.arg_location_at(1),
+                                requested + ": limit out of range",
+                                "Pass a smaller limit or `unlimited`");
+      return 1;
     }
+    value = parsed.value() * units;
   }
 
   if (FLAG_HARD.is_enabled() || !FLAG_SOFT.is_enabled()) {
