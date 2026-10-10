@@ -2860,13 +2860,77 @@ static fn find_replacement_separator(StringView body) wontthrow -> usize
   return body.length;
 }
 
+pure static fn longest_possible_pattern_match(StringView pattern,
+                                              const Bitset &pattern_active,
+                                              extglob_mode mode,
+                                              glob_charset charset) wontthrow
+    -> Maybe<usize>
+{
+  let const character_width = charset == glob_charset::Utf8 ? usize{4} : 1;
+  let const do_is_active = [&](usize index) wontthrow -> bool {
+    return index < pattern_active.count() && pattern_active[index];
+  };
+  usize length = 0;
+  for (usize i = 0; i < pattern.length; i++) {
+    let const byte = pattern[i];
+    if (!do_is_active(i)) {
+      length++;
+      continue;
+    }
+
+    if (byte == '*') return None;
+
+    let const is_extglob_open =
+        mode == extglob_mode::Enabled && i + 1 < pattern.length &&
+        pattern[i + 1] == '(' &&
+        (byte == '?' || byte == '+' || byte == '@' || byte == '!');
+    if (is_extglob_open) return None;
+
+    if (byte == '?') {
+      length += character_width;
+      continue;
+    }
+
+    if (byte == '[') {
+      usize close = i + 1;
+      if (close < pattern.length &&
+          (pattern[close] == '!' || pattern[close] == '^'))
+        close++;
+      if (close < pattern.length && pattern[close] == ']') close++;
+      while (close < pattern.length && pattern[close] != ']') {
+        if (pattern[close] == '[' && close + 1 < pattern.length &&
+            (pattern[close + 1] == ':' || pattern[close + 1] == '.' ||
+             pattern[close + 1] == '='))
+        {
+          return None;
+        }
+        close++;
+      }
+      if (close < pattern.length) {
+        length += character_width;
+        i = close;
+        continue;
+      }
+    }
+
+    length++;
+  }
+
+  return length;
+}
+
 alwaysinline static fn
 longest_pattern_match_at(StringView pattern, const Bitset &pattern_active,
                          StringView value, usize start, extglob_mode mode,
-                         glob_charset charset) throws -> Maybe<usize>
+                         glob_charset charset,
+                         Maybe<usize> longest_possible = None) throws
+    -> Maybe<usize>
 {
   let const is_utf8 = charset == glob_charset::Utf8;
-  for (usize end = value.length; end >= start; end--) {
+  let first_end = value.length;
+  if (longest_possible.has_value() && start + *longest_possible < first_end)
+    first_end = start + *longest_possible;
+  for (usize end = first_end; end >= start; end--) {
     if ((!is_utf8 || !splits_character(value, end, charset)) &&
         utils::glob_matches(pattern,
                             value.substring_of_length(start, end - start),
@@ -3022,13 +3086,15 @@ fn EvalContext::pattern_replace_value(
     return out;
   }
 
+  let const longest_possible = longest_possible_pattern_match(
+      pattern.view(), pattern_active, extglob, charset);
   bool has_replaced = false;
   usize i = 0;
   while (i < value.length) {
     Maybe<usize> matched;
     if (!has_replaced || should_replace_all) {
       matched = longest_pattern_match_at(pattern.view(), pattern_active, value,
-                                         i, extglob, charset);
+                                         i, extglob, charset, longest_possible);
     }
     let const do_copy_character = [&]() throws -> void {
       let const step = utils::charset_character_length(value, i, charset);
@@ -3141,25 +3207,9 @@ fn EvalContext::apply_parameter_transform_to_value(StringView text, char op,
   let out = String{scratch_allocator()};
   out.reserve(text.length);
   switch (op) {
-  case 'U':
-    for (usize i = 0; i < text.length; i++)
-      out.push(
-          static_cast<char>(std::toupper(static_cast<unsigned char>(text[i]))));
-    return out;
-  case 'L':
-    for (usize i = 0; i < text.length; i++)
-      out.push(
-          static_cast<char>(std::tolower(static_cast<unsigned char>(text[i]))));
-    return out;
-  case 'u':
-    for (usize i = 0; i < text.length; i++) {
-      char character = text[i];
-      if (i == 0)
-        character = static_cast<char>(
-            std::toupper(static_cast<unsigned char>(character)));
-      out.push(character);
-    }
-    return out;
+  case 'U': return apply_case_modification_to_value(text, "^^", nullptr);
+  case 'L': return apply_case_modification_to_value(text, ",,", nullptr);
+  case 'u': return apply_case_modification_to_value(text, "^", nullptr);
   case 'Q':
   case 'K':
   case 'k':
