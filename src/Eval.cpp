@@ -386,9 +386,10 @@ hot fn EvalContext::set_shell_variable(StringView name, StringView value) throws
   }
   if (is_bash_directory_stack_special(name)) return;
 
-  if ((variable_store().indexed_arrays().count() != 0 &&
-       variable_store().indexed_arrays().find(name).has_value()) ||
-      variable_store().associative_arrays().has(name))
+  if (!variable_store().shell_variables().find(name).has_value() &&
+      ((variable_store().indexed_arrays().count() != 0 &&
+        variable_store().indexed_arrays().find(name).has_value()) ||
+       variable_store().associative_arrays().has(name)))
   {
     assign_array_element(name, "0", value, assignment_update_mode::Replace);
     return;
