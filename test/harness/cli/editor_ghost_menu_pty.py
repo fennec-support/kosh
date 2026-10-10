@@ -922,7 +922,8 @@ def run_checks(binary, directory, command_directory, report):
 
         session.send(b"cat menu/menu-")
         session.send(b"\t")
-        names = ["menu-apple", "menu-apricot", "menu-avocado", "menu-banana"]
+        names = ["menu/menu-apple", "menu/menu-apricot", "menu/menu-avocado",
+                 "menu/menu-banana"]
         report.record("menu-opens-with-all-candidates", session,
                       is_menu(names, lambda total: total in (None, 4)))
         session.send(b"a")
@@ -1432,7 +1433,7 @@ def get_help_rows(screen):
         return None
     rows = []
     for line in screen.get_lines()[row + 1:]:
-        if line.strip().startswith("menu-"):
+        if line.strip().startswith(("menu-", "menu/")):
             return rows
         rows.append(line)
     return None
