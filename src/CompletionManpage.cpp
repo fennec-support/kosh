@@ -209,7 +209,7 @@ static fn manpath_argv_for(EvalContext &context) throws
     argv.push(String{man_paths[0].view()});
   } else {
     argv.push(String{manbin_paths[0].view()});
-    argv.push(String{"--path"});
+    argv.push(String{"-w"});
   }
   return argv;
 }
