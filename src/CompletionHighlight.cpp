@@ -445,6 +445,49 @@ static fn color_arithmetic(StringView line, usize begin, usize end,
                            const HashSet *known_function_names,
                            bool is_bracket_form) throws -> usize;
 
+enum class listed_path_state : u8
+{
+  Missing,
+  Directory,
+  NonDirectory,
+  Unlisted,
+};
+
+static fn find_listed_path_state(StringView directory, StringView name) throws
+    -> listed_path_state
+{
+  let const listing_directory = Path{directory};
+  let const entries = utils::read_directory_cached(
+      listing_directory, utils::directory_validation::Cached,
+      utils::directory_listing_order::FoldedName);
+  if (entries == nullptr) return listed_path_state::Unlisted;
+
+  let entry_position = utils::directory_entry_name_lower_bound(*entries, name);
+  for (; entry_position < entries->count(); entry_position++) {
+    let const &entry = (*entries)[entry_position];
+    if (entry.name.length() != name.length ||
+        !utils::directory_entry_name_has_casefold_prefix(entry.name.view(),
+                                                         name))
+    {
+      return listed_path_state::Missing;
+    }
+
+    if (os::FILESYSTEM_IS_CASE_SENSITIVE && entry.name.view() != name) {
+      continue;
+    }
+
+    switch (entry.kind) {
+    case Path::entry_kind::Directory: return listed_path_state::Directory;
+    case Path::entry_kind::Regular:
+    case Path::entry_kind::Other: return listed_path_state::NonDirectory;
+    case Path::entry_kind::Symlink:
+    case Path::entry_kind::Unknown: return listed_path_state::Unlisted;
+    }
+  }
+
+  return listed_path_state::Missing;
+}
+
 static fn word_names_existing_path(StringView word) throws -> bool
 {
   if (word.is_empty()) return false;
@@ -458,27 +501,11 @@ static fn word_names_existing_path(StringView word) throws -> bool
     return true;
   }
 
-  let const listing_directory = Path{"."};
-  let const entries = utils::read_directory_cached(
-      listing_directory, utils::directory_validation::Cached,
-      utils::directory_listing_order::FoldedName);
-  if (entries == nullptr) return Path{word}.exists();
-
-  let entry_position = utils::directory_entry_name_lower_bound(*entries, word);
-  for (; entry_position < entries->count(); entry_position++) {
-    let const &entry = (*entries)[entry_position];
-    if (entry.name.length() != word.length ||
-        !utils::directory_entry_name_has_casefold_prefix(entry.name.view(),
-                                                         word))
-    {
-      return false;
-    }
-
-    if (os::FILESYSTEM_IS_CASE_SENSITIVE && entry.name.view() != word) {
-      continue;
-    }
-    if (entry.kind == Path::entry_kind::Symlink) return Path{word}.exists();
-    return true;
+  switch (find_listed_path_state(".", word)) {
+  case listed_path_state::Missing: return false;
+  case listed_path_state::Directory:
+  case listed_path_state::NonDirectory: return true;
+  case listed_path_state::Unlisted: return Path{word}.exists();
   }
 
   return false;
@@ -636,9 +663,36 @@ static fn color_path_argument(usize word_start, StringView word,
           0, expanded_tilde_prefix.count() + prefix_end - tilde_prefix_length);
     }
 
-    let status = os::file_status{};
-    if (!os::stat_path_following(target, status)) return false;
-    is_prefix_non_directory = os::file_type_letter(status.mode) != 'd';
+    let const root_length = os::path_root_length(target);
+    usize name_end = target.length;
+    while (name_end > root_length &&
+           os::is_directory_separator(target[name_end - 1]))
+      name_end--;
+    usize name_start = name_end;
+    while (name_start > root_length &&
+           !os::is_directory_separator(target[name_start - 1]))
+      name_start--;
+    let const name =
+        target.substring_of_length(name_start, name_end - name_start);
+    let const directory = name_start > 0
+                              ? target.substring_of_length(0, name_start)
+                              : StringView{"."};
+
+    let state = listed_path_state::Unlisted;
+    if (!name.is_empty() && name != "." && name != "..") {
+      state = find_listed_path_state(directory, name);
+    }
+
+    if (state == listed_path_state::Missing) return false;
+
+    if (state == listed_path_state::Unlisted) {
+      let status = os::file_status{};
+      if (!os::stat_path_following(target, status)) return false;
+      is_prefix_non_directory = os::file_type_letter(status.mode) != 'd';
+    } else {
+      is_prefix_non_directory = state == listed_path_state::NonDirectory;
+    }
+
     return !should_be_directory || !is_prefix_non_directory;
   };
 
