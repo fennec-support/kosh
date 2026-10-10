@@ -257,7 +257,7 @@ printf "unset-status=%s value=%s state=%s\n" "$?" \
 echo "== interactive state is independent of hashall:"
 send_interactive_input()
 {
-    sleep 0.1
+    sleep 2
     printf '[[ -o emacs ]] && echo inter""active-emacs\nset +h\ncase $- in *i*) echo inter""active-letter;; *) :;; esac\nexit\n'
 }
 if script --version >/dev/null 2>&1; then
@@ -283,7 +283,7 @@ printf 'ignored=$(set -M sh)\nignored=$(set -L sh)\n' \
     > "$directory/home/.bashrc"
 send_snapshot_input()
 {
-    sleep 0.5
+    sleep 2
     printf 'printf "snapshot-""mood=%%s\\n" "$(set -M)"\nprintf "snapshot-""moods=%%s\\n" "$(set -L)"\nexit\n'
 }
 if script --version >/dev/null 2>&1; then

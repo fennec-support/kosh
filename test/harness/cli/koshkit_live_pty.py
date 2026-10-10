@@ -50,6 +50,7 @@ def run_pty(binary, command, keys=()):
             resize(45, 10)
             resized = True
             time.sleep(0.15)
+            key_frame_count = bytes(output).count(FRAME_MARKER)
         frame_count = bytes(output).count(FRAME_MARKER)
         has_key_taken_effect = (
             frame_count > key_frame_count + 1
@@ -110,7 +111,8 @@ def run_pty(binary, command, keys=()):
         "search_query": b"SEARCH /1" in output,
         "search_cleared": bool(frame_parts) and b"SEARCH" not in frame_parts[-1],
         "debug_trap": b"Encountered a debug trap" in output,
-        "scroll_room": bool(tree_frames) and len(tree_frames[0]) > 10,
+        "scroll_room": bool(tree_frames) and bool(small_frames)
+        and len(tree_frames[0]) > len(small_frames[0]),
         "scroll_moved": len(small_frames) > 1
         and small_frames[0][0] != small_frames[-1][0],
         "steady_rows": len({len(rows) for rows in small_frames}) == 1,

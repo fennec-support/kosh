@@ -37,12 +37,12 @@ koshconf_help
 echo "== --persist skips a byte order mark:"
 printf '\357\273\277interpreter.glob_includes_dotfiles=off\n' >"$conf"
 "$BIN" -c 'koshconf set interpreter.glob_includes_dotfiles on --persist'
-od -An -c "$conf" | tr -s ' '
+od -An -c "$conf" | tr -s ' ' | sed 's/ *$//' | grep -v '^$'
 echo "== --persist keeps CRLF line ends:"
 printf 'mood=bash\r\neditor.auto_close_brackets_and_quotes=off\r\n' >"$conf"
 "$BIN" -c 'koshconf set editor.auto_close_brackets_and_quotes on --persist
 koshconf set editor.history.max_entries 9 --persist'
-od -An -c "$conf" | tr -s ' '
+od -An -c "$conf" | tr -s ' ' | sed 's/ *$//' | grep -v '^$'
 echo "== --persist fills a commented placeholder in place:"
 printf '# Store history here.\n# editor.history.file_path=\nmood=bash\n' >"$conf"
 "$BIN" -c 'koshconf set editor.history.file_path /tmp/h --persist'

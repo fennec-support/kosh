@@ -117,8 +117,9 @@ def run_checks(binary, directory, report):
             return
         check_line(session, report, "startup-chain-path",
                    "echo \"<path-${PATH##*/}>\"", ["<path-bin>"])
+        prompt_sign = "#" if os.geteuid() == 0 else "$"
         report.check("startup-chain-prompt", session,
-                     session.has_text("[chain]$ "))
+                     session.has_text("[chain]%s " % prompt_sign))
         check_line(session, report, "startup-chain-precmd-status", "false",
                    ["<precmd-1>"])
         check_line(session, report, "startup-chain-preexec-reads-history",

@@ -225,7 +225,9 @@ def main():
         print("BIN is required", file=sys.stderr)
         return 2
     binary = os.path.abspath(binary)
-    sleep = os.path.realpath(shutil.which("sleep", path="/usr/bin:/bin"))
+    found_sleep = shutil.which("sleep", path="/usr/bin:/bin")
+    sleep = os.path.join(os.path.realpath(os.path.dirname(found_sleep)),
+                         os.path.basename(found_sleep))
 
     directory = tempfile.mkdtemp(prefix="kosh-background-terminal-pty-")
     report = Report()

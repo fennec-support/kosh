@@ -88,7 +88,7 @@ printf 'editor.history.file_path=/from-file\neditor.history.max_entries=88\n' >"
 env | grep -c "^KOSH_HISTORY_" || :'
   KOSH_HISTORY_FILE=/inherited KOSH_HISTORY_SIZE=5 "$BIN" -c '
 echo "$(koshconf get editor.history.file_path) $(koshconf get editor.history.max_entries)"
-env | grep "^KOSH_HISTORY_"'
+env | grep "^KOSH_HISTORY_" | sort'
 )
 echo "== an inherited KOSH is replaced and no longer exported:"
 KOSH=/elsewhere KOSH_VERSION=0 "$BIN" -c '[ "$KOSH" != /elsewhere ] && echo replaced

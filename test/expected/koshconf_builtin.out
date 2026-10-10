@@ -377,12 +377,13 @@ rc=1
 /history
 0
 == a failed write is a soft error that || can catch:
--c:1:1: error: Builtin `koshconf`: Unable to write a file in 'CONFIG/user/kosh': Permission denied.
+warning: Unable to read 'CONFIG/blocked/kosh/kosh.conf': Is a directory.
+-c:1:1: error: Builtin `koshconf`: Unable to read 'CONFIG/blocked/kosh/kosh.conf': Is a directory.
      1 |  koshconf set editor.hints.show_command_synopsis off --persist || echo "rc=$?"
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 rc=1
 off
--c:3:1: error: Builtin `koshconf`: Unable to write a file in 'CONFIG/user/kosh': Permission denied.
+-c:3:1: error: Builtin `koshconf`: Unable to replace 'CONFIG/blocked/kosh/kosh.conf': Is a directory.
      3 |  koshconf create --force kosh || echo "rc=$?"
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
 rc=1

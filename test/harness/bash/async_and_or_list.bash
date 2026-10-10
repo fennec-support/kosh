@@ -41,6 +41,7 @@ echo "subshell=$?"
 true && exit 5 &
 wait $!
 echo "exit=$?"
+jobs >/dev/null
 sleep 5 && echo never &
 jobs
 kill %1

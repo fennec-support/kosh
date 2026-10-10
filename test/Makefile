@@ -54,7 +54,7 @@ SKIPPED_TESTS := \
 	completion_glob_quoting path_quoting control_byte_quoting koshkit_mknod \
 	koshkit_live_pty koshkit_live_sanitizers koshkit_live_deltas \
 	editor_ghost_menu_pty editor_kill_yank_pty editor_prompt_pty \
-	shell_integration_marks_pty background_terminal_pty \
+	editor_pending_tab_pty shell_integration_marks_pty background_terminal_pty \
 	prompt_function_substitution_pty prompt_hooks_pty startup_chain_pty \
 	procsub_contexts_matrix \
 	shell_executable_path \
@@ -63,7 +63,8 @@ SKIPPED_TESTS := \
 else ifneq ($(TARGET), Linux)
 SKIPPED_TESTS := koshkit_mknod koshkit_live_pty koshkit_live_sanitizers \
 	koshkit_live_deltas editor_ghost_menu_pty editor_kill_yank_pty \
-	editor_prompt_pty background_terminal_pty koshkit_evilfiles_parity \
+	editor_prompt_pty editor_pending_tab_pty background_terminal_pty \
+	koshkit_evilfiles_parity \
 	prompt_hooks_pty startup_chain_pty trap_during_blocking_open \
 	koshconf_system_file process_substitution_release
 else
@@ -110,10 +111,16 @@ SKIPPED_TESTS += alias_unalias arith_decimal ast_process_substitution \
 	redirect_dynamic_fd redirection_truncate_append_input \
 	rerr_redirect_to_directory subshell_isolates_state test_builtin trap
 endif
+ifeq ($(TARGET), Linux)
+ifneq ($(shell unshare -rm true 2>/dev/null && echo available),available)
+SKIPPED_TESTS += koshconf_system_file
+endif
+endif
 ifeq ($(shell command -v python3),)
 SKIPPED_TESTS += koshkit_live_pty koshkit_live_deltas editor_ghost_menu_pty \
-	editor_kill_yank_pty editor_prompt_pty shell_integration_marks_pty \
-	background_terminal_pty prompt_function_substitution_pty \
+	editor_kill_yank_pty editor_prompt_pty editor_pending_tab_pty \
+	shell_integration_marks_pty background_terminal_pty \
+	prompt_function_substitution_pty \
 	prompt_hooks_pty startup_chain_pty
 endif
 

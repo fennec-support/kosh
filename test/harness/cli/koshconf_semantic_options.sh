@@ -21,7 +21,7 @@ printf 'mood=bash\n' >config/kosh/kosh.conf
 "$BIN_DIR/invoke-koshkit" rm -- .bashrc config/kosh/kosh.conf
 
 echo "== KOSHCONF carries no semantic option:"
-printf '#!/usr/bin/bash\necho "${KOSH_VERSION:-another shell}"\n' >shebang.sh
+printf '#!/bin/sh\necho "${KOSH_VERSION:-another shell}"\n' >shebang.sh
 chmod +x shebang.sh
 "$BIN" -c 'for name in interpreter.mimic_shebang \
   debug.report_every_exit_code interpreter.resolve_koshkit_applets_as_commands \
