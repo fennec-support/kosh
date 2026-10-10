@@ -2,7 +2,7 @@ unset KOSH_FLAGS KOSHCONF
 # A Bash spelling is a second spelling of one registry entry: legacy.posix.*
 # for the set options POSIX specifies and legacy.bash.* for the rest.
 work=$(mktemp -d)
-trap '[ -n "$work" ] && "$BIN_DIR/invoke-koshkit" rm -rf -- "$work"' EXIT
+trap 'cd / && [ -n "$work" ] && "$BIN_DIR/invoke-koshkit" rm -rf -- "$work"' EXIT
 mkdir -p "$work/config/kosh"
 cd "$work" || exit 1
 export HOME="$work" XDG_CONFIG_HOME="$work/config"

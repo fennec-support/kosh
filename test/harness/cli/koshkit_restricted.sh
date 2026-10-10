@@ -3,7 +3,7 @@ unset KOSH_FLAGS KOSHCONF
 # bundled utility for a bare name, so no bundled utility runs a program or
 # writes a file, and type, command -v, and hash do not offer one.
 work=$(mktemp -d)
-trap '[ -n "$work" ] && "$BIN_DIR/invoke-koshkit" rm -rf -- "$work"' EXIT
+trap 'cd / && [ -n "$work" ] && "$BIN_DIR/invoke-koshkit" rm -rf -- "$work"' EXIT
 mkdir "$work/empty" "$work/run"
 cd "$work/run" || exit 1
 

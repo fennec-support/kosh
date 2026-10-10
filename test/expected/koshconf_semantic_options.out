@@ -3,9 +3,9 @@ script.sh:1:1: error: The command 'sub' was not found.
 status=127
 -c:1:1: error: The command 'sub' was not found.
 status=127
-WORK
+not-in-sub
 == an interactive shell does:
-WORK/sub
+in-sub
 == KOSHCONF carries no semantic option:
 debug.report_every_exit_code=off
 debug.report_nonzero_exit_codes=off
