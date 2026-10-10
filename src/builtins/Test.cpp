@@ -314,6 +314,15 @@ public:
       let const count = end - pos;
       if (count < 1) return !should_negate;
 
+      if (count == 2 && args[pos] == "-o" &&
+          cxt.runtime_state().is_bash_compatible())
+      {
+        let const result =
+            query_shell_option(cxt, args[pos + 1].view()).value_or(false);
+        pos = end;
+        return should_negate ? !result : result;
+      }
+
       if (count == 3 && is_binary_operator(args[pos + 1])) {
         let const result =
             evaluate_binary(args[pos], args[pos + 1], args[pos + 2]);

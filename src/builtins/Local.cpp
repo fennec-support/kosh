@@ -81,6 +81,14 @@ fn Local::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   bool should_mark_nameref = false;
   bool should_print_declaration = false;
   usize first_name = 1;
+  let const do_save_shell_options = [&]() wontthrow {
+    let &saved_options =
+        cxt.scope_store()
+            .saved_scope_shell_options()[cxt.scope_store().local_scope_depth() -
+                                         1];
+    if (!saved_options.has_value())
+      saved_options = cxt.runtime_state().get_shell_options();
+  };
   for (; first_name < args.count(); first_name++) {
     let const arg = args[first_name].view();
     if (arg.length < 1 || arg[0] != '-') {
@@ -89,6 +97,10 @@ fn Local::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     if (arg == "--") {
       first_name++;
       break;
+    }
+    if (arg == "-") {
+      do_save_shell_options();
+      continue;
     }
     for (usize c = 1; c < arg.length; c++) {
       switch (arg[c]) {
@@ -132,6 +144,11 @@ fn Local::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   i32 status = 0;
   for (usize i = first_name; i < args.count(); i++) {
     let const &arg = args[i];
+    if (arg == "-") {
+      do_save_shell_options();
+      continue;
+    }
+
     let const equals_position = arg.find_character('=');
 
     let name = equals_position.has_value()

@@ -750,6 +750,10 @@ public:
   {
     return m_local_scopes;
   }
+  fn saved_scope_shell_options() wontthrow -> ArrayList<Maybe<u64>> &
+  {
+    return m_saved_scope_shell_options;
+  }
   fn local_scope_depth() wontthrow -> usize & { return m_local_scope_depth; }
   pure fn local_scope_depth() const wontthrow -> usize
   {
@@ -892,6 +896,7 @@ public:
 private:
   StringMap<String> m_aliases{heap_allocator()};
   ArrayList<ArrayList<local_binding>> m_local_scopes{heap_allocator()};
+  ArrayList<Maybe<u64>> m_saved_scope_shell_options{heap_allocator()};
   usize m_local_scope_depth{0};
 };
 

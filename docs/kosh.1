@@ -2537,7 +2537,12 @@ and
 .B \-x
 attributes have the same meanings as for declare, so
 .B "local \-n"
-passes a caller's variable by reference.
+passes a caller's variable by reference. A
+.B \-
+operand saves the
+.B set
+options, and the function return restores them; the restricted option stays
+as the function left it.
 .TP
 .B readonly
 Each named variable is marked read-only. The

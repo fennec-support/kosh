@@ -1358,6 +1358,10 @@ fn EvalContext::enter_function_scope() throws -> void
   ASSERT(scope_store()
              .local_scopes()[scope_store().local_scope_depth()]
              .is_empty());
+  let &saved_options = scope_store().saved_scope_shell_options();
+  while (saved_options.count() <= scope_store().local_scope_depth())
+    saved_options.push(None);
+  saved_options[scope_store().local_scope_depth()] = None;
   scope_store().local_scope_depth()++;
   LOG(Debug, "entered function scope, local scope depth now %zu",
       scope_store().local_scope_depth());
@@ -1377,6 +1381,18 @@ fn EvalContext::leave_function_scope() throws -> void
     if (!scope[i - 1].is_self_reference) restore_local_binding(scope[i - 1]);
   }
   scope.clear();
+  let &saved_options =
+      scope_store()
+          .saved_scope_shell_options()[scope_store().local_scope_depth() - 1];
+  if (saved_options.has_value()) {
+    let const restricted_mask =
+        RuntimeState::option_mask(shell_option_id::Restricted);
+    let const current_options = runtime_state().get_shell_options();
+    runtime_state().set_shell_options(
+        (*saved_options & ~restricted_mask) |
+        (current_options & restricted_mask));
+    saved_options = None;
+  }
   scope_store().local_scope_depth()--;
   constexpr usize RETAINED_LOCAL_SCOPE_COUNT = 16;
   if (scope_store().local_scopes().count() > RETAINED_LOCAL_SCOPE_COUNT &&
