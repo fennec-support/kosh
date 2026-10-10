@@ -429,7 +429,7 @@ static fn run_compgen_generators(EvalContext &cxt, u32 action_mask,
         static_cast<int>(emitter.word.length), emitter.word.data);
 
     for (let const &match : cxt.expand_glob_lenient(*glob_pattern))
-      emitter.push_prefixed(match.view());
+      emitter.push_filtered(match.view());
   }
 }
 
