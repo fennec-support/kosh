@@ -240,12 +240,20 @@ hot fn execute_program(ExecContext &ec,
   posix_spawn_file_actions_init(&file_actions);
   defer { posix_spawn_file_actions_destroy(&file_actions); };
 
+  let const do_keep_across_exec = [](descriptor fd) {
+    let const flags = fcntl(fd, F_GETFD);
+    if (flags != -1 && (flags & FD_CLOEXEC) != 0)
+      fcntl(fd, F_SETFD, flags & ~FD_CLOEXEC);
+  };
+  if (ec.in_fd && *ec.in_fd == STDIN_FILENO) do_keep_across_exec(STDIN_FILENO);
   if (ec.in_fd && *ec.in_fd != STDIN_FILENO) {
     posix_spawn_file_actions_adddup2(&file_actions, *ec.in_fd, STDIN_FILENO);
     posix_spawn_file_actions_addclose(&file_actions, *ec.in_fd);
   }
   ec.apply_output_routing(
       [&]() {
+        if (ec.out_fd && *ec.out_fd == STDOUT_FILENO)
+          do_keep_across_exec(STDOUT_FILENO);
         if (ec.out_fd && *ec.out_fd != STDOUT_FILENO) {
           posix_spawn_file_actions_adddup2(&file_actions, *ec.out_fd,
                                            STDOUT_FILENO);
@@ -253,6 +261,8 @@ hot fn execute_program(ExecContext &ec,
         }
       },
       [&]() {
+        if (ec.err_fd && *ec.err_fd == STDERR_FILENO)
+          do_keep_across_exec(STDERR_FILENO);
         if (ec.err_fd && *ec.err_fd != STDERR_FILENO) {
           posix_spawn_file_actions_adddup2(&file_actions, *ec.err_fd,
                                            STDERR_FILENO);
@@ -561,18 +571,28 @@ static fn fork_compound_stage(
         IS_TERMINAL_OWNER = false;
       }
 
-      if (in_fd) {
-        check_syscall(dup2(*in_fd, STDIN_FILENO));
-        check_syscall(close(*in_fd));
-      }
-      if (out_fd) {
-        check_syscall(dup2(*out_fd, STDOUT_FILENO));
-        check_syscall(close(*out_fd));
-      }
-      if (err_fd) {
-        check_syscall(dup2(*err_fd, STDERR_FILENO));
-        check_syscall(close(*err_fd));
-      }
+      let const do_lift_above_standard = [](Maybe<descriptor> &fd,
+                                            descriptor target) {
+        if (!fd || *fd > STDERR_FILENO || *fd == target) return;
+
+        let const lifted = fcntl(*fd, F_DUPFD, STDERR_FILENO + 1);
+        check_syscall(lifted);
+        check_syscall(close(*fd));
+        fd = lifted;
+      };
+      do_lift_above_standard(in_fd, STDIN_FILENO);
+      do_lift_above_standard(out_fd, STDOUT_FILENO);
+      do_lift_above_standard(err_fd, STDERR_FILENO);
+
+      let const do_install = [](Maybe<descriptor> fd, descriptor target) {
+        if (!fd || *fd == target) return;
+
+        check_syscall(dup2(*fd, target));
+        check_syscall(close(*fd));
+      };
+      do_install(in_fd, STDIN_FILENO);
+      do_install(out_fd, STDOUT_FILENO);
+      do_install(err_fd, STDERR_FILENO);
 
       reset_signal_handlers();
 
@@ -743,22 +763,24 @@ fn replace_process(ExecContext &&ec) throws -> void
 
   let const child_args = make_os_args(ec.args());
 
-  if (ec.in_fd) {
-    check_syscall(dup2(*ec.in_fd, STDIN_FILENO));
-    if (*ec.in_fd != STDIN_FILENO) check_syscall(close(*ec.in_fd));
-  }
+  let const do_install_for_exec = [](descriptor fd, descriptor target) {
+    if (fd != target) {
+      check_syscall(dup2(fd, target));
+      check_syscall(close(fd));
+      return;
+    }
+
+    let const flags = fcntl(fd, F_GETFD);
+    if (flags != -1 && (flags & FD_CLOEXEC) != 0)
+      fcntl(fd, F_SETFD, flags & ~FD_CLOEXEC);
+  };
+  if (ec.in_fd) do_install_for_exec(*ec.in_fd, STDIN_FILENO);
   ec.apply_output_routing(
       [&]() {
-        if (ec.out_fd) {
-          check_syscall(dup2(*ec.out_fd, STDOUT_FILENO));
-          if (*ec.out_fd != STDOUT_FILENO) check_syscall(close(*ec.out_fd));
-        }
+        if (ec.out_fd) do_install_for_exec(*ec.out_fd, STDOUT_FILENO);
       },
       [&]() {
-        if (ec.err_fd) {
-          check_syscall(dup2(*ec.err_fd, STDERR_FILENO));
-          if (*ec.err_fd != STDERR_FILENO) check_syscall(close(*ec.err_fd));
-        }
+        if (ec.err_fd) do_install_for_exec(*ec.err_fd, STDERR_FILENO);
       },
       [&]() { check_syscall(dup2(STDOUT_FILENO, STDERR_FILENO)); },
       [&]() { check_syscall(dup2(STDERR_FILENO, STDOUT_FILENO)); });
@@ -839,6 +861,19 @@ fn make_pipe() wontthrow -> Maybe<Pipe>
     if (flags != -1) fcntl(end, F_SETFD, flags | FD_CLOEXEC);
   }
 #endif
+
+  for (descriptor &end : p) {
+    if (end > STDERR_FILENO) continue;
+
+    let const lifted = fcntl(end, F_DUPFD_CLOEXEC, STDERR_FILENO + 1);
+    if (lifted == -1) {
+      close(p[0]);
+      close(p[1]);
+      return koshka::None;
+    }
+    close(end);
+    end = lifted;
+  }
 
   return Pipe{p[0], p[1]};
 }

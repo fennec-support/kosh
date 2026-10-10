@@ -431,6 +431,10 @@ fn EvalContext::setup_process_substitution(
   let launch = do_launch();
   if (launch.should_evaluate_child) {
     if (launch.child_close_fd.has_value()) os::close_fd(*launch.child_close_fd);
+    for (let &pending : expansion_store().pending_process_substitutions()) {
+      if (pending.shell_fd != KOSH_INVALID_FD) os::close_fd(pending.shell_fd);
+      pending.shell_fd = KOSH_INVALID_FD;
+    }
     enter_subshell();
     hide_coprocess_descriptors();
     job_table_store().inherit_parent_jobs(false);
@@ -600,6 +604,14 @@ fn EvalContext::cleanup_process_substitutions(
         expansion_store().pending_process_substitutions()[i];
     os::finish_process_substitution(sub.platform_cleanup);
     if (sub.shell_fd != KOSH_INVALID_FD) os::close_fd(sub.shell_fd);
+    sub.shell_fd = KOSH_INVALID_FD;
+  }
+
+  for (usize i = mark.pending;
+       i < expansion_store().pending_process_substitutions().count(); i++)
+  {
+    process_substitution &sub =
+        expansion_store().pending_process_substitutions()[i];
     if (sub.child == KOSH_INVALID_PROCESS) continue;
 
     try {

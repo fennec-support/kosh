@@ -189,6 +189,18 @@ public:
 
   usize depth{0};
   static constexpr usize MAX_DEPTH = 128;
+  usize chain_depth{0};
+  static constexpr usize MAX_CHAIN_DEPTH = 4096;
+
+  fn enter_chain() throws -> void
+  {
+    chain_depth++;
+    if (chain_depth > MAX_CHAIN_DEPTH) {
+      chain_depth = 0;
+      fail("Expression nested too deeply",
+           "Split a long chain of unary operators or assignments");
+    }
+  }
 
   bool m_is_skipping{false};
   bool should_error_unset{false};
@@ -441,6 +453,8 @@ public:
 
   fn parse_assignment() throws -> ArithmeticValue
   {
+    enter_chain();
+    defer { chain_depth = chain_depth > 0 ? chain_depth - 1 : 0; };
     let const save = pos;
     skip_spaces();
     if (pos < source.length && lexer::is_variable_name_start(source[pos])) {
@@ -656,6 +670,8 @@ public:
 
   fn parse_unary() throws -> ArithmeticValue
   {
+    enter_chain();
+    defer { chain_depth = chain_depth > 0 ? chain_depth - 1 : 0; };
     skip_spaces();
     let const first = pos < source.length ? source[pos] : '\0';
     if (first == '+') {
