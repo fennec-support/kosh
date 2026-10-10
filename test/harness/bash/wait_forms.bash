@@ -113,12 +113,21 @@ wait -fn
 echo "forced-next=$?"
 
 echo bare-wait-forgets
-(exit 3) &
+( /bin/sleep 0.2; exit 3 ) &
 forgotten=$!
 wait
 echo "bare=$?"
 wait "$forgotten"
 echo "forgotten=$?"
+
+echo bare-wait-keeps-a-finished-job
+(exit 5) &
+finished=$!
+/bin/sleep 0.2
+wait
+echo "bare=$?"
+wait "$finished"
+echo "finished=$?"
 
 echo trapped-next
 trap 'echo action-next' USR1

@@ -277,6 +277,15 @@ static fn wait_for_operands(ExecContext &ec, EvalContext &cxt) throws -> i32
 
     do_store_pid(None);
 
+    let finished_before_ids = ArrayList<i32>{heap_allocator()};
+    if (should_keep_waited_statuses) {
+      table.update_jobs();
+      for (let const &job : table.jobs())
+        if (job.state == job::State::Done && !job.is_inherited) {
+          finished_before_ids.push(job.id);
+        }
+    }
+
     for (job &job : table.jobs()) {
       if (job.is_inherited) continue;
 
@@ -301,7 +310,11 @@ static fn wait_for_operands(ExecContext &ec, EvalContext &cxt) throws -> i32
       return 0;
     }
 
-    table.forget_done_jobs();
+    for (let const &waited : table.jobs())
+      if (!finished_before_ids.find(waited.id).has_value()) {
+        table.mark_job_waited(waited.id, false);
+      }
+    table.forget_waited_jobs();
     table.forget_finished_statuses();
 
     return 0;

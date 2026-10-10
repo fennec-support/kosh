@@ -4949,7 +4949,13 @@ status of its process. A later
 with that process returns the status again. The shell remembers the 1024 most
 recent statuses, and
 .B wait
-without an operand forgets all of them. A job number is one more than the
+without an operand forgets all of them along with the jobs it waits for.
+Outside the sh mood, a job that had already finished when such a
+.B wait
+began stays in the table, so a later
+.B wait
+with its process still returns its status, as in Bash. A job number is one
+more than the
 highest number in use.
 .B wait
 reports 127 and a diagnostic for a process that is not a child of the shell or
