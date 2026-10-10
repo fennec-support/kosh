@@ -848,6 +848,18 @@ for the analysis stage and its reports.
 .B koshconf list
 shows the current value of each.
 .PP
+The canonical name of an option inherited from POSIX
+.B set \-o
+carries a posix segment before its last part, and one inherited from any other
+Bash
+.B set \-o
+or
+.B shopt
+option carries a bash segment there, as in
+interpreter.posix.exit_on_command_failure for errexit and
+interpreter.bash.glob_extended_patterns for extglob. A name without either
+segment belongs to kosh alone.
+.PP
 Every option that has a Bash spelling is also accepted under an alias. The
 alias is legacy.posix.NAME when POSIX
 .B set \-o
@@ -874,11 +886,11 @@ error messages, and KOSHCONF use only the canonical name, except that
 adds each alias on a line of its own.
 .PP
 A configuration file may set every option except the ones fixed by how the
-shell started and the ones that depend on the session. interpreter.login_shell and
-interpreter.restricted_shell are read-only. interpreter.privileged_mode,
-interpreter.parse_without_executing, and interpreter.exit_after_one_command come from the
-command line. interpreter.job_control, editor.history.records_commands,
-editor.history.bang_expansion, and interpreter.posixly_correct follow the session and
+shell started and the ones that depend on the session. interpreter.bash.login_shell and
+interpreter.bash.restricted_shell are read-only. interpreter.bash.privileged_mode,
+interpreter.posix.parse_without_executing, and interpreter.bash.exit_after_one_command come from the
+command line. interpreter.posix.job_control, editor.history.bash.records_commands,
+editor.history.bash.bang_expansion, and interpreter.bash.posixly_correct follow the session and
 the mood. editor.history.file_path may appear in a file, but
 .B KOSHCONF
 leaves it out.
@@ -966,143 +978,143 @@ retired.
        interactive
  27  init_moods
        semantic
- 64  interpreter.export_every_assigned_variable
+ 64  interpreter.posix.export_every_assigned_variable
        set -o allexport, letter a, semantic
- 65  editor.jobs_report_status_immediately
+ 65  editor.posix.jobs_report_status_immediately
        set -o notify, letter b, interactive
- 66  interpreter.exit_on_command_failure
+ 66  interpreter.posix.exit_on_command_failure
        set -o errexit, letter e, semantic
- 67  interpreter.glob_disabled
+ 67  interpreter.posix.glob_disabled
        set -o noglob, letter f, semantic
- 69  interpreter.assignments_anywhere_in_command
+ 69  interpreter.bash.assignments_anywhere_in_command
        set -o keyword, letter k, semantic
- 70  interpreter.job_control
+ 70  interpreter.posix.job_control
        set -o monitor, letter m, interactive
- 71  interpreter.parse_without_executing
+ 71  interpreter.posix.parse_without_executing
        set -o noexec, letter n, semantic
- 72  interpreter.exit_after_one_command
+ 72  interpreter.bash.exit_after_one_command
        set -o onecmd, letter t, semantic
- 73  interpreter.privileged_mode
+ 73  interpreter.bash.privileged_mode
        set -o privileged, letter p, semantic
- 74  interpreter.unset_variable_is_error
+ 74  interpreter.posix.unset_variable_is_error
        set -o nounset, letter u, semantic
- 75  debug.trace_input_lines
+ 75  debug.posix.trace_input_lines
        set -o verbose, letter v, semantic
- 76  debug.trace_expanded_commands
+ 76  debug.posix.trace_expanded_commands
        set -o xtrace, letter x, semantic
- 77  interpreter.brace_expansion
+ 77  interpreter.bash.brace_expansion
        set -o braceexpand, letter B, semantic
- 78  interpreter.redirect_refuses_to_overwrite_files
+ 78  interpreter.posix.redirect_refuses_to_overwrite_files
        set -o noclobber, letter C, semantic
- 79  interpreter.trap_err_inherited_by_functions
+ 79  interpreter.bash.trap_err_inherited_by_functions
        set -o errtrace, letter E, semantic
- 80  editor.history.bang_expansion
+ 80  editor.history.bash.bang_expansion
        set -o histexpand, letter H, interactive
- 81  interpreter.cd_resolves_symlinks
+ 81  interpreter.bash.cd_resolves_symlinks
        set -o physical, letter P, semantic
- 82  interpreter.trap_debug_and_return_inherited_by_functions
+ 82  interpreter.bash.trap_debug_and_return_inherited_by_functions
        set -o functrace, letter T, semantic
- 83  interpreter.pipeline_fails_on_any_stage
+ 83  interpreter.posix.pipeline_fails_on_any_stage
        set -o pipefail, semantic
- 84  editor.history.records_commands
+ 84  editor.history.bash.records_commands
        set -o history, interactive
- 85  editor.ctrl_d_does_not_exit
+ 85  editor.posix.ctrl_d_does_not_exit
        set -o ignoreeof, interactive
  87  editor.base_mode
        set -o emacs and set -o vi, interactive
- 89  interpreter.posixly_correct
+ 89  interpreter.bash.posixly_correct
        set -o posix, semantic
-128  editor.cd_by_typing_directory_name
+128  editor.bash.cd_by_typing_directory_name
        shopt autocd, interactive
-129  interpreter.array_subscripts_expand_once
+129  interpreter.bash.array_subscripts_expand_once
        shopt assoc_expand_once, semantic
-130  interpreter.cd_to_variable_value
+130  interpreter.bash.cd_to_variable_value
        shopt cdable_vars, semantic
-131  editor.cd_fix_typos
+131  editor.bash.cd_fix_typos
        shopt cdspell, interactive
-132  interpreter.verify_remembered_command_paths
+132  interpreter.bash.verify_remembered_command_paths
        shopt checkhash, semantic
-133  editor.jobs_check_before_exit
+133  editor.bash.jobs_check_before_exit
        shopt checkjobs, interactive
-134  editor.update_columns_and_lines
+134  editor.bash.update_columns_and_lines
        shopt checkwinsize, interactive
-135  completion.quote_all_special_characters
+135  completion.bash.quote_all_special_characters
        shopt complete_fullquote, interactive
-136  completion.expand_directory_names
+136  completion.bash.expand_directory_names
        shopt direxpand, interactive
-137  completion.fix_directory_typos
+137  completion.bash.fix_directory_typos
        shopt dirspell, interactive
-138  interpreter.glob_includes_dotfiles
+138  interpreter.bash.glob_includes_dotfiles
        shopt dotglob, semantic
-139  interpreter.exec_failure_keeps_shell
+139  interpreter.bash.exec_failure_keeps_shell
        shopt execfail, semantic
-140  interpreter.aliases_expand
+140  interpreter.bash.aliases_expand
        shopt expand_aliases, semantic
-141  debug.debugger_support
+141  debug.bash.debugger_support
        shopt extdebug, semantic
-142  interpreter.glob_extended_patterns
+142  interpreter.bash.glob_extended_patterns
        shopt extglob, semantic
-143  interpreter.quote_dollar_strings_in_parameter_expansion
+143  interpreter.bash.quote_dollar_strings_in_parameter_expansion
        shopt extquote, semantic
-144  interpreter.glob_no_match_is_error
+144  interpreter.bash.glob_no_match_is_error
        shopt failglob, semantic
-145  completion.always_apply_fignore
+145  completion.bash.always_apply_fignore
        shopt force_fignore, interactive
-146  interpreter.glob_ranges_use_ascii_order
+146  interpreter.bash.glob_ranges_use_ascii_order
        shopt globasciiranges, semantic
-147  interpreter.glob_never_matches_dot_and_dotdot
+147  interpreter.bash.glob_never_matches_dot_and_dotdot
        shopt globskipdots, semantic
-148  interpreter.glob_double_star_recurses
+148  interpreter.bash.glob_double_star_recurses
        shopt globstar, semantic
-149  optimizer.errors_use_gnu_format
+149  optimizer.bash.errors_use_gnu_format
        shopt gnu_errfmt, interactive
-150  editor.history.reedit_failed_substitution
+150  editor.history.bash.reedit_failed_substitution
        shopt histreedit, interactive
-151  editor.history.verify_expansion_before_running
+151  editor.history.bash.verify_expansion_before_running
        shopt histverify, interactive
-152  completion.hostnames_after_at
+152  completion.bash.hostnames_after_at
        shopt hostcomplete, interactive
-153  editor.jobs_hangup_on_exit
+153  editor.bash.jobs_hangup_on_exit
        shopt huponexit, interactive
-154  interpreter.command_substitution_inherits_exit_on_failure
+154  interpreter.bash.command_substitution_inherits_exit_on_failure
        shopt inherit_errexit, semantic
-155  editor.interactive_comments
+155  editor.bash.interactive_comments
        shopt interactive_comments, interactive
-156  interpreter.pipeline_last_stage_runs_in_shell
+156  interpreter.bash.pipeline_last_stage_runs_in_shell
        shopt lastpipe, semantic
-157  interpreter.local_inherits_outer_value
+157  interpreter.bash.local_inherits_outer_value
        shopt localvar_inherit, semantic
-158  interpreter.local_unset_hides_outer
+158  interpreter.bash.local_unset_hides_outer
        shopt localvar_unset, semantic
-159  interpreter.login_shell
+159  interpreter.bash.login_shell
        shopt login_shell, interactive
-160  editor.mail_warn_when_read
+160  editor.bash.mail_warn_when_read
        shopt mailwarn, interactive
-161  completion.skip_empty_line
+161  completion.bash.skip_empty_line
        shopt no_empty_cmd_completion, interactive
-162  interpreter.glob_ignores_case
+162  interpreter.bash.glob_ignores_case
        shopt nocaseglob, semantic
-163  interpreter.match_ignores_case
+163  interpreter.bash.match_ignores_case
        shopt nocasematch, semantic
-164  interpreter.glob_no_match_expands_to_nothing
+164  interpreter.bash.glob_no_match_expands_to_nothing
        shopt nullglob, semantic
-165  interpreter.pattern_substitution_ampersand_is_match
+165  interpreter.bash.pattern_substitution_ampersand_is_match
        shopt patsub_replacement, semantic
-166  completion.programmable
+166  completion.bash.programmable
        shopt progcomp, interactive
-167  completion.programmable_follows_aliases
+167  completion.bash.programmable_follows_aliases
        shopt progcomp_alias, interactive
-168  editor.prompt_expands_parameters
+168  editor.bash.prompt_expands_parameters
        shopt promptvars, interactive
-169  interpreter.restricted_shell
+169  interpreter.bash.restricted_shell
        shopt restricted_shell, semantic
-170  interpreter.shift_reports_overflow
+170  interpreter.bash.shift_reports_overflow
        shopt shift_verbose, semantic
-171  interpreter.source_searches_path
+171  interpreter.bash.source_searches_path
        shopt sourcepath, semantic
-172  interpreter.redirect_variable_fd_closed_after_command
+172  interpreter.bash.redirect_variable_fd_closed_after_command
        shopt varredir_close, semantic
-173  interpreter.echo_interprets_backslash_escapes
+173  interpreter.bash.echo_interprets_backslash_escapes
        shopt xpg_echo, semantic
 .ft R
 .fi

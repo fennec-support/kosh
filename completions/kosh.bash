@@ -154,80 +154,100 @@ _kosh_koshconf_complete ()
   done
   local \
     option_names="completion.add_space_after_completed_word \
-completion.always_apply_fignore \
-completion.expand_directory_names \
-completion.fix_directory_typos \
-completion.hostnames_after_at completion.menu_style \
-completion.on_tab completion.programmable \
-completion.programmable_follows_aliases \
-completion.quote_all_special_characters \
-completion.skip_empty_line \
-debug.debugger_support debug.print_evaluation_statistics \
-debug.print_lexed_word_escapes debug.print_memory_report_at_exit \
-debug.print_syntax_tree debug.report_every_exit_code \
-debug.report_nonzero_exit_codes debug.trace_expanded_commands \
-debug.trace_input_lines \
-editor.auto_close_brackets_and_quotes editor.base_mode \
-editor.cd_by_typing_directory_name editor.cd_fix_typos \
-editor.ctrl_d_does_not_exit \
+completion.bash.always_apply_fignore \
+completion.bash.expand_directory_names \
+completion.bash.fix_directory_typos \
+completion.bash.hostnames_after_at \
+completion.bash.programmable \
+completion.bash.programmable_follows_aliases \
+completion.bash.quote_all_special_characters \
+completion.bash.skip_empty_line \
+completion.menu_style \
+completion.on_tab \
+debug.bash.debugger_support \
+debug.posix.trace_expanded_commands \
+debug.posix.trace_input_lines \
+debug.print_evaluation_statistics \
+debug.print_lexed_word_escapes \
+debug.print_memory_report_at_exit \
+debug.print_syntax_tree \
+debug.report_every_exit_code \
+debug.report_nonzero_exit_codes \
+editor.auto_close_brackets_and_quotes \
+editor.base_mode \
+editor.bash.cd_by_typing_directory_name \
+editor.bash.cd_fix_typos \
+editor.bash.interactive_comments \
+editor.bash.jobs_check_before_exit \
+editor.bash.jobs_hangup_on_exit \
+editor.bash.mail_warn_when_read \
+editor.bash.prompt_expands_parameters \
+editor.bash.update_columns_and_lines \
 editor.highlight_syntax_and_show_ghost_text \
 editor.hints.show_command_synopsis \
 editor.hints.show_live_diagnostics \
 editor.history.arrow_keys_search_by_typed_prefix \
-editor.history.bang_expansion editor.history.file_path \
-editor.history.max_entries editor.history.records_commands \
-editor.history.reedit_failed_substitution \
-editor.history.skips_function_definitions \
-editor.history.verify_expansion_before_running \
-editor.interactive_comments editor.jobs_check_before_exit \
-editor.jobs_hangup_on_exit \
-editor.jobs_report_status_immediately \
-editor.mail_warn_when_read editor.prompt_expands_parameters \
+editor.history.bash.bang_expansion \
+editor.history.bash.records_commands \
+editor.history.bash.reedit_failed_substitution \
+editor.history.bash.verify_expansion_before_running \
+editor.history.file_path \
+editor.history.max_entries \
+editor.posix.ctrl_d_does_not_exit \
+editor.posix.jobs_report_status_immediately \
 editor.request_extended_key_reports \
 editor.transient_prompt_after_submit \
-editor.update_columns_and_lines \
 init_moods \
-interpreter.aliases_expand \
 interpreter.arithmetic_uses_big_numbers \
-interpreter.array_subscripts_expand_once \
-interpreter.assignments_anywhere_in_command \
-interpreter.brace_expansion interpreter.cd_resolves_symlinks \
-interpreter.cd_to_variable_value \
-interpreter.command_substitution_inherits_exit_on_failure \
-interpreter.echo_interprets_backslash_escapes \
-interpreter.exec_failure_keeps_shell \
-interpreter.exit_after_one_command \
-interpreter.exit_on_command_failure \
-interpreter.export_every_assigned_variable \
-interpreter.glob_disabled interpreter.glob_double_star_recurses \
-interpreter.glob_extended_patterns interpreter.glob_ignores_case \
-interpreter.glob_includes_dotfiles \
-interpreter.glob_never_matches_dot_and_dotdot \
-interpreter.glob_no_match_expands_to_nothing \
-interpreter.glob_no_match_is_error \
-interpreter.glob_ranges_use_ascii_order interpreter.job_control \
-interpreter.local_inherits_outer_value \
-interpreter.local_unset_hides_outer interpreter.login_shell \
-interpreter.match_ignores_case interpreter.mimic_shebang \
-interpreter.parse_without_executing \
-interpreter.pattern_substitution_ampersand_is_match \
-interpreter.pipeline_fails_on_any_stage \
-interpreter.pipeline_last_stage_runs_in_shell \
-interpreter.posixly_correct interpreter.privileged_mode \
-interpreter.quote_dollar_strings_in_parameter_expansion \
-interpreter.redirect_refuses_to_overwrite_files \
-interpreter.redirect_variable_fd_closed_after_command \
-interpreter.remember_command_paths \
+interpreter.bash.aliases_expand \
+interpreter.bash.array_subscripts_expand_once \
+interpreter.bash.assignments_anywhere_in_command \
+interpreter.bash.brace_expansion \
+interpreter.bash.cd_resolves_symlinks \
+interpreter.bash.cd_to_variable_value \
+interpreter.bash.command_substitution_inherits_exit_on_failure \
+interpreter.bash.echo_interprets_backslash_escapes \
+interpreter.bash.exec_failure_keeps_shell \
+interpreter.bash.exit_after_one_command \
+interpreter.bash.glob_double_star_recurses \
+interpreter.bash.glob_extended_patterns \
+interpreter.bash.glob_ignores_case \
+interpreter.bash.glob_includes_dotfiles \
+interpreter.bash.glob_never_matches_dot_and_dotdot \
+interpreter.bash.glob_no_match_expands_to_nothing \
+interpreter.bash.glob_no_match_is_error \
+interpreter.bash.glob_ranges_use_ascii_order \
+interpreter.bash.local_inherits_outer_value \
+interpreter.bash.local_unset_hides_outer \
+interpreter.bash.login_shell \
+interpreter.bash.match_ignores_case \
+interpreter.bash.pattern_substitution_ampersand_is_match \
+interpreter.bash.pipeline_last_stage_runs_in_shell \
+interpreter.bash.posixly_correct \
+interpreter.bash.privileged_mode \
+interpreter.bash.quote_dollar_strings_in_parameter_expansion \
+interpreter.bash.redirect_variable_fd_closed_after_command \
+interpreter.bash.restricted_shell \
+interpreter.bash.shift_reports_overflow \
+interpreter.bash.source_searches_path \
+interpreter.bash.trap_debug_and_return_inherited_by_functions \
+interpreter.bash.trap_err_inherited_by_functions \
+interpreter.bash.verify_remembered_command_paths \
+interpreter.mimic_shebang \
+interpreter.posix.exit_on_command_failure \
+interpreter.posix.export_every_assigned_variable \
+interpreter.posix.glob_disabled \
+interpreter.posix.job_control \
+interpreter.posix.parse_without_executing \
+interpreter.posix.pipeline_fails_on_any_stage \
+interpreter.posix.redirect_refuses_to_overwrite_files \
+interpreter.posix.unset_variable_is_error \
 interpreter.resolve_koshkit_applets_as_commands \
-interpreter.restricted_shell interpreter.shift_reports_overflow \
-interpreter.source_searches_path \
-interpreter.trap_debug_and_return_inherited_by_functions \
-interpreter.trap_err_inherited_by_functions \
-interpreter.unset_variable_is_error \
-interpreter.verify_remembered_command_paths \
 mood \
-optimizer.analyze_before_running optimizer.errors_use_gnu_format \
-optimizer.show_annoying_tier optimizer.show_source_traces \
+optimizer.analyze_before_running \
+optimizer.bash.errors_use_gnu_format \
+optimizer.show_annoying_tier \
+optimizer.show_source_traces \
 optimizer.warning_level"
 
   if [[ $current_word == -* ]]

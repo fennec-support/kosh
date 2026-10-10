@@ -76,7 +76,7 @@ off
 warning: A restricted shell ignores 'mood' from the configuration files.
 warning: A restricted shell ignores 'interpreter.resolve_koshkit_applets_as_commands' from the configuration files.
 warning: A restricted shell ignores 'editor.history.file_path' from the configuration files.
-warning: A restricted shell ignores 'interpreter.glob_includes_dotfiles' from the configuration files.
+warning: A restricted shell ignores 'interpreter.bash.glob_includes_dotfiles' from the configuration files.
 warning: A restricted shell ignores 'init_moods' from the configuration files.
 kosh
 off

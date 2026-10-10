@@ -110,8 +110,11 @@ same encoding that every spawned process receives."
   SHELLOPTS, BASHOPTS, and `$-` read and write through it. `set` and `shopt`
   accept only Bash names; Koshka settings without a letter belong to
   `koshconf`. A koshconf name is full English words with the topic first, and
-  a boolean is a statement true when on. Each option with a Bash spelling is
-  also accepted as `legacy.posix.<set -o name>` for a POSIX `set` option or
+  a boolean is a statement true when on. A name inherited from a POSIX `set`
+  option carries `.posix.` before its last part, and one inherited from any
+  other Bash `set` or `shopt` option carries `.bash.` there. Each option with
+  a Bash spelling is also accepted as `legacy.posix.<set -o name>` for a
+  POSIX `set` option or
   `legacy.bash.<Bash spelling>`, resolved to the same registry entry at
   lookup; only canonical names are written. `editor.base_mode` is
   one enumeration behind the set-only alias entries `emacs` and `vi`, which

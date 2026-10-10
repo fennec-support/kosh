@@ -16,7 +16,7 @@ echo "== list has no class column:"
 "$BIN" -c 'koshconf list' | grep -c -E ' +(interactive|semantic|class)$'
 "$BIN" -c 'koshconf list' | head -4
 echo "== list -a adds the alias after each canonical line:"
-"$BIN" -c 'koshconf list -a' | grep -A1 -E '^interpreter.(exit_on_command_failure|glob_extended_patterns)='
+"$BIN" -c 'koshconf list -a' | grep -A1 -E '^interpreter.(posix.exit_on_command_failure|bash.glob_extended_patterns)='
 "$BIN" -c 'koshconf list --all' | grep -c '^legacy\.'
 echo "== every alias reads the value of its option:"
 "$BIN" -c 'koshconf list -a' >"$config/all.txt"

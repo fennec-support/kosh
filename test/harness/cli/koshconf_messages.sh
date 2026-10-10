@@ -35,8 +35,8 @@ koshconf_help() {
 koshconf_help
 
 echo "== --persist skips a byte order mark:"
-printf '\357\273\277interpreter.glob_includes_dotfiles=off\n' >"$conf"
-"$BIN" -c 'koshconf set interpreter.glob_includes_dotfiles on --persist'
+printf '\357\273\277interpreter.bash.glob_includes_dotfiles=off\n' >"$conf"
+"$BIN" -c 'koshconf set interpreter.bash.glob_includes_dotfiles on --persist'
 od -An -c "$conf" | tr -s ' ' | sed 's/ *$//' | grep -v '^$'
 echo "== --persist keeps CRLF line ends:"
 printf 'mood=bash\r\neditor.auto_close_brackets_and_quotes=off\r\n' >"$conf"

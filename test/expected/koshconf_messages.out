@@ -9,9 +9,9 @@ warning: The KOSHCONF environment variable is ignored because its option ids are
 -c:1:15: error: Builtin `koshconf`: The value is not a valid KOSHCONF encoding: its option ids are out of order.
 == a Bash name points at its koshconf name:
 -c:1:14: error: Builtin `koshconf`: Unknown option 'pipefail'.
-note: 'pipefail' is the Bash name of 'interpreter.pipeline_fails_on_any_stage'.
+note: 'pipefail' is the Bash name of 'interpreter.posix.pipeline_fails_on_any_stage'.
 -c:1:37: error: Builtin `koshconf`: Unknown option 'extglob'.
-note: 'extglob' is the Bash name of 'interpreter.glob_extended_patterns'.
+note: 'extglob' is the Bash name of 'interpreter.bash.glob_extended_patterns'.
 == a retired set -o name points at its replacement:
 -c:1:8: error: Builtin `set`: Unknown -o option 'koshkit'.
 note: The option was retired; use `koshconf set interpreter.resolve_koshkit_applets_as_commands on` instead.
@@ -32,9 +32,9 @@ note: The option was retired; use `shopt -u failglob` instead.
 # Color the input by syntax and suggest the rest of the word in ghost text. Both
 # also need completion.on_tab on.
 == --persist skips a byte order mark:
- 357 273 277 i n t e r p r e t e r . g
- l o b _ i n c l u d e s _ d o t
- f i l e s = o n \n
+ 357 273 277 i n t e r p r e t e r . b
+ a s h . g l o b _ i n c l u d e
+ s _ d o t f i l e s = o n \n
 == --persist keeps CRLF line ends:
  m o o d = b a s h \r \n e d i t o
  r . a u t o _ c l o s e _ b r a

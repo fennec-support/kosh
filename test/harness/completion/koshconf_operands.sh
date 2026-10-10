@@ -8,7 +8,7 @@ echo "== koshconf create preset:"
 echo "== koshconf get option prefix:"
 "$BIN" --debug-complete-at 'koshconf get editor.' </dev/null
 echo "== koshconf set option prefix after a flag:"
-"$BIN" --debug-complete-at 'koshconf --persist set interpreter.glob_no_' \
+"$BIN" --debug-complete-at 'koshconf --persist set interpreter.bash.glob_no_' \
   </dev/null
 echo "== koshconf set editor mode value:"
 "$BIN" --debug-complete-at 'koshconf set editor.base_mode ' \

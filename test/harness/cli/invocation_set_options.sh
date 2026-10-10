@@ -6,8 +6,8 @@ work=$(mktemp -d)
 trap '[ -n "$work" ] && "$BIN_DIR/invoke-koshkit" rm -rf -- "$work"' EXIT
 mkdir -p "$work/config/kosh"
 export XDG_CONFIG_HOME="$work/config"
-printf '%s\n' mood=bash interpreter.exit_on_command_failure=on \
-  interpreter.pipeline_fails_on_any_stage=on interpreter.glob_extended_patterns=on \
+printf '%s\n' mood=bash interpreter.posix.exit_on_command_failure=on \
+  interpreter.posix.pipeline_fails_on_any_stage=on interpreter.bash.glob_extended_patterns=on \
   editor.base_mode=vi >"$work/config/kosh/kosh.conf"
 
 do_show() {

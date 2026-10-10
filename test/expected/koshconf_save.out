@@ -26,14 +26,14 @@ OPTIONS
 0
 # name=value
 completion.add_space_after_completed_word=off
-completion.always_apply_fignore=on
-completion.expand_directory_names=off
+completion.bash.always_apply_fignore=on
+completion.bash.expand_directory_names=off
 == list -a adds the alias after each canonical line:
-interpreter.exit_on_command_failure=off
-legacy.posix.errexit=off
---
-interpreter.glob_extended_patterns=on
+interpreter.bash.glob_extended_patterns=on
 legacy.bash.extglob=on
+--
+interpreter.posix.exit_on_command_failure=off
+legacy.posix.errexit=off
 70
 == every alias reads the value of its option:
 == set-only options appear as posix aliases:

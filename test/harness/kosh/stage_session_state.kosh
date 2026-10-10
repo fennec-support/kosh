@@ -7,7 +7,7 @@ shell_flags=$-
 do_report() {
   local flags=same
   [[ $- == "$shell_flags" ]] || flags="differs: $-"
-  echo "$1: $flags $(koshconf get init_moods) $(koshconf get optimizer.show_source_traces) $(koshconf get interpreter.login_shell)"
+  echo "$1: $flags $(koshconf get init_moods) $(koshconf get optimizer.show_source_traces) $(koshconf get interpreter.bash.login_shell)"
 }
 do_report shell
 do_report stage | koshkit cat

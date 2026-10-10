@@ -39,20 +39,20 @@ grep '^mood=' "$conf"
 echo "== the bash preset matches a fresh bash session:"
 do_compare_preset bash
 echo "== the bash preset leaves the alias default to the session:"
-grep -B2 '^# interpreter.aliases_expand=$' "$conf"
+grep -B2 '^# interpreter.bash.aliases_expand=$' "$conf"
 "$BIN" -c 'shopt -p expand_aliases'
 echo "== the sh preset matches a fresh sh session:"
 "$BIN" -c 'koshconf create --force sh'
 do_compare_preset sh
 echo "== create writes every file option with its help and Bash name:"
-grep -c '^interpreter\.glob' "$conf"
-grep -B2 '^interpreter.glob_includes_dotfiles=' "$conf"
+grep -c -E '^interpreter\.((bash|posix)\.)?glob' "$conf"
+grep -B2 '^interpreter.bash.glob_includes_dotfiles=' "$conf"
 grep -c '^# editor.history.file_path=$' "$conf"
-grep -c '^interpreter.privileged_mode=' "$conf"
+grep -c '^interpreter.bash.privileged_mode=' "$conf"
 echo "== a Bash spelling stays on one comment line:"
 grep -c -E '\((set -o|shopt) [a-z_]*$' "$conf"
 grep -c -E '^# [a-z_]+\)$' "$conf"
-grep -B1 '^interpreter.assignments_anywhere_in_command=' "$conf"
+grep -B1 '^interpreter.bash.assignments_anywhere_in_command=' "$conf"
 
 echo "== set changes the session, and --persist rewrites one line:"
 "$BIN" -c 'koshconf set editor.auto_close_brackets_and_quotes true; koshconf get editor.auto_close_brackets_and_quotes'
@@ -70,11 +70,11 @@ echo "== --persist creates the file and its directory:"
 "$BIN" -c 'koshconf set completion.add_space_after_completed_word on --persist'
 cat "$conf"
 echo "== --persist writes an option that changes evaluation:"
-"$BIN" -c 'koshconf set interpreter.glob_includes_dotfiles on --persist'
+"$BIN" -c 'koshconf set interpreter.bash.glob_includes_dotfiles on --persist'
 echo "rc=$?"
-grep '^interpreter.glob_includes_dotfiles=' "$conf"
+grep '^interpreter.bash.glob_includes_dotfiles=' "$conf"
 echo "== --persist rejects an option fixed by how the shell started:"
-"$BIN" -c 'koshconf set interpreter.privileged_mode off --persist'
+"$BIN" -c 'koshconf set interpreter.bash.privileged_mode off --persist'
 echo "rc=$?"
 echo "== a value the file cannot hold changes neither the session nor the file:"
 KOSH_HISTORY_FILE=/history "$BIN" -c 'koshconf set editor.history.file_path $'"'"'a\nb'"'"' --persist
@@ -117,7 +117,7 @@ echo "== enumerations and booleans:"
 koshconf get completion.menu_style
 koshconf set optimizer.warning_level 2
 echo "$-"
-koshconf set interpreter.exit_on_command_failure on
+koshconf set interpreter.posix.exit_on_command_failure on
 set -o | grep errexit
 koshconf set editor.base_mode vi
 koshconf get editor.base_mode
@@ -170,13 +170,13 @@ echo "== KOSHCONF carries the mood and interactive options to another shell:"
 encoded=$("$BIN" -c 'koshconf set mood bash
 koshconf set completion.menu_style external
 koshconf set editor.history.max_entries 77
-koshconf set interpreter.exit_on_command_failure on
+koshconf set interpreter.posix.exit_on_command_failure on
 printf %s "$KOSHCONF"')
 printf '%s\n' "$encoded"
 KOSHCONF=$encoded "$BIN" -c 'koshconf get mood
 koshconf get completion.menu_style
 koshconf get editor.history.max_entries
-koshconf get interpreter.exit_on_command_failure'
+koshconf get interpreter.posix.exit_on_command_failure'
 "$BIN" -c "koshconf load '$encoded'; koshconf get completion.menu_style"
 echo "== KOSHCONF is never exported and a subshell sees the same value:"
 "$BIN" -c 'env | grep -c "^KOSHCONF="

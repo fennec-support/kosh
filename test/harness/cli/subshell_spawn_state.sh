@@ -34,18 +34,18 @@ koshconf set interpreter.arithmetic_uses_big_numbers on
 printf "runtime-marks-process="
 koshkit cat < <(
   set -M sh
-  [ "$(koshconf get interpreter.unset_variable_is_error)" = on ] && printf u
-  [ "$(koshconf get interpreter.pipeline_fails_on_any_stage)" = on ] && printf p
-  [ "$(koshconf get interpreter.glob_no_match_is_error)" = on ] && printf f
+  [ "$(koshconf get interpreter.posix.unset_variable_is_error)" = on ] && printf u
+  [ "$(koshconf get interpreter.posix.pipeline_fails_on_any_stage)" = on ] && printf p
+  [ "$(koshconf get interpreter.bash.glob_no_match_is_error)" = on ] && printf f
   [ "$(koshconf get interpreter.arithmetic_uses_big_numbers)" = on ] && printf a
 )
 printf "\n"
 printf "" | {
   set -M sh
   printf "runtime-marks-compound="
-  [ "$(koshconf get interpreter.unset_variable_is_error)" = on ] && printf u
-  [ "$(koshconf get interpreter.pipeline_fails_on_any_stage)" = on ] && printf p
-  [ "$(koshconf get interpreter.glob_no_match_is_error)" = on ] && printf f
+  [ "$(koshconf get interpreter.posix.unset_variable_is_error)" = on ] && printf u
+  [ "$(koshconf get interpreter.posix.pipeline_fails_on_any_stage)" = on ] && printf p
+  [ "$(koshconf get interpreter.bash.glob_no_match_is_error)" = on ] && printf f
   [ "$(koshconf get interpreter.arithmetic_uses_big_numbers)" = on ] && printf a
   printf "\n"
 }

@@ -14,9 +14,9 @@ HOME/.config/kosh/kosh.conf:11:26: warning: The quoted value has no closing quot
 HOME/.config/kosh/kosh.conf:12:13: warning: Unexpected text after the closing quote, skipping the line.
     12 |  mood='bash' trailing
        |              ^~~~~~~~
-HOME/.config/kosh/kosh.conf:10:37: warning: The kosh mood keeps 'interpreter.unset_variable_is_error' on, so the configured value is skipped; set mood=bash or run `koshconf set mood bash` to change it.
-    10 |  interpreter.unset_variable_is_error=off
-       |                                      ^~~
+HOME/.config/kosh/kosh.conf:10:43: warning: The kosh mood keeps 'interpreter.posix.unset_variable_is_error' on, so the configured value is skipped; set mood=bash or run `koshconf set mood bash` to change it.
+    10 |  interpreter.posix.unset_variable_is_error=off
+       |                                            ^~~
 editor.auto_close_brackets_and_quotes=on
 interpreter.resolve_koshkit_applets_as_commands=on
 editor.history.max_entries=128
@@ -88,9 +88,9 @@ rc=1
 dotglob             	on
 bash
 == a kosh mood value that conflicts with a fixed option is skipped:
-HOME/.config/kosh/kosh.conf:1:37: warning: The kosh mood keeps 'interpreter.unset_variable_is_error' on, so the configured value is skipped; set mood=bash or run `koshconf set mood bash` to change it.
-     1 |  interpreter.unset_variable_is_error=off
-       |                                      ^~~
+HOME/.config/kosh/kosh.conf:1:43: warning: The kosh mood keeps 'interpreter.posix.unset_variable_is_error' on, so the configured value is skipped; set mood=bash or run `koshconf set mood bash` to change it.
+     1 |  interpreter.posix.unset_variable_is_error=off
+       |                                            ^~~
 on
 == an unknown name in the file suggests a close one:
 HOME/.config/kosh/kosh.conf:1:1: warning: Unknown option 'editor.history.max_entry', skipping it.

@@ -31,7 +31,7 @@ optimizer.warning_level=1
 no equals sign
 unknown.option=on
 editor.hints.show_command_synopsis=maybe
-interpreter.unset_variable_is_error=off
+interpreter.posix.unset_variable_is_error=off
 editor.history.file_path="unterminated
 mood='bash' trailing
 EOF
@@ -109,21 +109,21 @@ KOSHCONF=BQEA "$BIN" -p -c 'koshconf get editor.auto_close_brackets_and_quotes
 env | grep -c "^KOSHCONF="'
 KOSHCONF=BQEA "$BIN" -c 'koshconf get editor.auto_close_brackets_and_quotes'
 echo "== semantic options from the file apply to scripts, after the mood:"
-printf 'interpreter.exit_on_command_failure=on\ninterpreter.glob_includes_dotfiles=on\nmood=bash\n' >"$conf"
+printf 'interpreter.posix.exit_on_command_failure=on\ninterpreter.bash.glob_includes_dotfiles=on\nmood=bash\n' >"$conf"
 printf 'false\necho unreached\n' >"$home/script.sh"
 "$BIN" "$home/script.sh"
 echo "rc=$?"
 "$BIN" -c 'shopt dotglob; set -M'
 echo "== a kosh mood value that conflicts with a fixed option is skipped:"
-printf 'interpreter.unset_variable_is_error=off\ninterpreter.glob_no_match_expands_to_nothing=off\n' >"$conf"
-"$BIN" -c 'koshconf get interpreter.unset_variable_is_error' 2>&1 |
+printf 'interpreter.posix.unset_variable_is_error=off\ninterpreter.bash.glob_no_match_expands_to_nothing=off\n' >"$conf"
+"$BIN" -c 'koshconf get interpreter.posix.unset_variable_is_error' 2>&1 |
   mask_home
 echo "== an unknown name in the file suggests a close one:"
 printf 'editor.history.max_entry=3\n' >"$conf"
 "$BIN" -c 'koshconf get editor.history.max_entries' 2>&1 | mask_home
 echo "== a command-line flag wins over a semantic option from the file:"
-printf 'mood=bash\ninterpreter.unset_variable_is_error=off\n' >"$conf"
-"$BIN" -u -c 'koshconf get interpreter.unset_variable_is_error'
+printf 'mood=bash\ninterpreter.posix.unset_variable_is_error=off\n' >"$conf"
+"$BIN" -u -c 'koshconf get interpreter.posix.unset_variable_is_error'
 
 echo "== the editor and trace options apply from the file:"
 printf 'completion.on_tab=off\neditor.highlight_syntax_and_show_ghost_text=off\noptimizer.show_source_traces=off\n' >"$conf"

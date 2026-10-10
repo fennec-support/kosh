@@ -165,18 +165,18 @@ such a value, and any value with a control byte or invalid UTF-8, in the
 form of the shell.
 .PP
 A file may set every option except the ones fixed by how the shell started,
-such as interpreter.login_shell, interpreter.restricted_shell, interpreter.privileged_mode,
-interpreter.parse_without_executing, and interpreter.exit_after_one_command, and the ones
-that follow the session, interpreter.job_control, editor.history.records_commands,
-editor.history.bang_expansion, and interpreter.posixly_correct. The OPTION REGISTRY
+such as interpreter.bash.login_shell, interpreter.bash.restricted_shell, interpreter.bash.privileged_mode,
+interpreter.posix.parse_without_executing, and interpreter.bash.exit_after_one_command, and the ones
+that follow the session, interpreter.posix.job_control, editor.history.bash.records_commands,
+editor.history.bash.bang_expansion, and interpreter.bash.posixly_correct. The OPTION REGISTRY
 section of
 .BR kosh (1)
 lists them.
 .PP
 .B A semantic option in a file changes every shell that loads it. This includes
 .B the interactive session and every script that kosh runs.
-For example, interpreter.exit_on_command_failure=on makes every script exit on its
-first failing command, and interpreter.glob_includes_dotfiles=on changes what every
+For example, interpreter.posix.exit_on_command_failure=on makes every script exit on its
+first failing command, and interpreter.bash.glob_includes_dotfiles=on changes what every
 glob matches. Put such a setting in a file only when every script should run
 with it; otherwise set it for a session with
 .BR set ,
@@ -187,9 +187,9 @@ or
 The mood is applied first, wherever it appears in the file, so the other lines
 are read under it. In the
 .B kosh
-mood, interpreter.unset_variable_is_error, interpreter.pipeline_fails_on_any_stage,
-interpreter.glob_no_match_is_error, and interpreter.arithmetic_uses_big_numbers stay
-on and interpreter.glob_no_match_expands_to_nothing stays off; a file that sets
+mood, interpreter.posix.unset_variable_is_error, interpreter.posix.pipeline_fails_on_any_stage,
+interpreter.bash.glob_no_match_is_error, and interpreter.arithmetic_uses_big_numbers stay
+on and interpreter.bash.glob_no_match_expands_to_nothing stays off; a file that sets
 another value gets a warning that identifies the file, the line, the option,
 and
 .BR "koshconf set mood bash" ,
@@ -212,6 +212,18 @@ settings file at all, start the shell with
 .BR \-\-no\-config .
 A later line replaces an earlier one, and the
 user file and KOSHCONF replace the system file.
+.PP
+The canonical name of an option inherited from POSIX
+.B set \-o
+carries a posix segment before its last part, and one inherited from any other
+Bash
+.B set \-o
+or
+.B shopt
+option carries a bash segment there, as in
+interpreter.posix.exit_on_command_failure for errexit and
+interpreter.bash.glob_extended_patterns for extglob. A name without either
+segment belongs to kosh alone.
 .PP
 Every option that has a Bash spelling is also accepted under an alias. The
 alias is legacy.posix.NAME when POSIX
@@ -252,7 +264,7 @@ or
 spelling. A string option without a default, such as editor.history.file_path,
 is written commented out. The
 .B bash
-preset also writes interpreter.aliases_expand commented out, because bash expands
+preset also writes interpreter.bash.aliases_expand commented out, because bash expands
 aliases in an interactive shell and not in a script, and a written value would
 apply to both. The
 .B kosh
@@ -342,7 +354,7 @@ and never change meaning. Only the mood and the interactive options are
 written. An interactive option affects only the interactive editor, the
 history, or how diagnostics are presented, never how a script runs. A child
 shell loads the settings files itself. Passing semantic options such as
-interpreter.exit_on_command_failure, interpreter.mimic_shebang, or the debug
+interpreter.posix.exit_on_command_failure, interpreter.mimic_shebang, or the debug
 reports through the environment would change how every script below the shell
 runs. Bash exports SHELLOPTS only on request.
 .PP
@@ -408,7 +420,7 @@ editor.history.max_entries=20000
 
 editor.base_mode=vi
 
-interpreter.glob_includes_dotfiles=on
+interpreter.bash.glob_includes_dotfiles=on
 .EE
 .RE
 .PP

@@ -9,16 +9,16 @@ export HOME="$work" XDG_CONFIG_HOME="$work/config"
 
 echo "== a shopt alias and its canonical name are one option:"
 "$BIN" --mood bash -c 'koshconf set legacy.bash.failglob off
-koshconf get interpreter.glob_no_match_is_error
+koshconf get interpreter.bash.glob_no_match_is_error
 koshconf get legacy.bash.failglob
 shopt failglob
-koshconf set interpreter.glob_no_match_is_error on
+koshconf set interpreter.bash.glob_no_match_is_error on
 koshconf get legacy.bash.failglob
 shopt failglob' 2>&1
 
 echo "== a set -o alias reaches set -o, \$- and SHELLOPTS:"
 "$BIN" --mood bash -c 'koshconf set legacy.posix.errexit on
-koshconf get interpreter.exit_on_command_failure
+koshconf get interpreter.posix.exit_on_command_failure
 set -o | grep errexit
 case $- in *e*) echo flag-e-set ;; esac
 case :$SHELLOPTS: in *:errexit:*) echo shellopts-errexit ;; esac' 2>&1
@@ -34,13 +34,13 @@ printf 'mood=bash\nlegacy.bash.extglob=off\nlegacy.posix.noclobber=on\n' \
 "$BIN" -c 'shopt extglob; set -o | grep noclobber' 2>&1
 
 echo "== both spellings in one file follow the later-line rule:"
-printf 'mood=bash\ninterpreter.glob_extended_patterns=off\nlegacy.bash.extglob=on\n' \
+printf 'mood=bash\ninterpreter.bash.glob_extended_patterns=off\nlegacy.bash.extglob=on\n' \
   >config/kosh/kosh.conf
 "$BIN" -c 'shopt extglob' 2>&1
 
 echo "== list shows canonical names only:"
 "$BIN" -c 'koshconf list | grep -c legacy' 2>&1
-"$BIN" -c 'koshconf list | grep -c "^interpreter.glob_extended_patterns="' 2>&1
+"$BIN" -c 'koshconf list | grep -c "^interpreter.bash.glob_extended_patterns="' 2>&1
 
 echo "== an unknown alias and the retired names are errors:"
 "$BIN" -c 'koshconf get legacy.bash.foo' 2>&1 | grep -v '^ '

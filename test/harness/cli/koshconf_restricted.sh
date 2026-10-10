@@ -42,10 +42,10 @@ mkdir -p "$home" "$config/kosh"
 printf 'echo bashrc-ran\n' >"$home/.bashrc"
 printf 'mood=bash\ninterpreter.resolve_koshkit_applets_as_commands=on\neditor.history.file_path=/elsewhere\neditor.auto_close_brackets_and_quotes=on\n' \
   >"$config/kosh/kosh.conf"
-printf 'interpreter.glob_includes_dotfiles=on\ninit_moods=bash\n' >>"$config/kosh/kosh.conf"
+printf 'interpreter.bash.glob_includes_dotfiles=on\ninit_moods=bash\n' >>"$config/kosh/kosh.conf"
 HOME="$home" KOSH_HISTORY_FILE=/history "$BIN" -r -c 'koshconf get mood
 koshconf get interpreter.resolve_koshkit_applets_as_commands
-koshconf get interpreter.glob_includes_dotfiles
+koshconf get interpreter.bash.glob_includes_dotfiles
 koshconf get editor.history.file_path
 koshconf get editor.auto_close_brackets_and_quotes
 koshconf get init_moods'
