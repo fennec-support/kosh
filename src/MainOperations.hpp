@@ -668,6 +668,8 @@ static fn evaluate_script(const script_run_input &input,
   let const is_whole_line =
       plan.is_whole_line ||
       evaluation_mode == root_evaluation_mode::ContainedSubstitution;
+  if (evaluation_mode == root_evaluation_mode::ContainedSubstitution)
+    evaluation_mode = root_evaluation_mode::Normal;
   let const do_set_line_discard_root = [&](const Expression *root)
                                            wontthrow -> void {
     context.execution_store().line_discard_root() = root;

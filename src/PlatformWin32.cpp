@@ -1650,9 +1650,9 @@ fn set_environment_variable(StringView key, StringView value) -> void
 
   if (!is_environment_value_storable(value)) {
     usize kept_unit_count = ENVIRONMENT_VALUE_MAX_UNIT_COUNT;
-    let const last_kept = (*wide_value)[kept_unit_count - 1];
+    let const last_kept = wide_value->begin()[kept_unit_count - 1];
     if (last_kept >= 0xD800 && last_kept <= 0xDBFF) kept_unit_count--;
-    (*wide_value)[kept_unit_count] = L'\0';
+    wide_value->begin()[kept_unit_count] = L'\0';
   }
 
   let const existing_spelling = find_environment_spelling(wide_key->begin());
