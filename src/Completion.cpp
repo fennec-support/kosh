@@ -1541,14 +1541,14 @@ fn complete(StringView line, usize cursor, EvalContext &context,
 
           for (usize i = 0; i < candidates.count(); i++) {
             let const candidate = candidates[i].view();
-            let const marker_length =
-                !candidate.is_empty() &&
-                        os::is_directory_separator(
-                            candidate[candidate.length - 1])
-                    ? 1
-                    : 0;
-            if (os::has_directory_separator(candidate.substring_of_length(
-                    0, candidate.length - marker_length)))
+            let const dot_count = candidate.starts_with("..")  ? usize{2}
+                                  : candidate.starts_with(".") ? usize{1}
+                                                               : usize{0};
+            if ((!candidate.is_empty() &&
+                 (os::is_directory_separator(candidate[0]) ||
+                  candidate[0] == '~')) ||
+                (dot_count > 0 && candidate.length > dot_count &&
+                 os::is_directory_separator(candidate[dot_count])))
             {
               paths.push(steal(candidates[i]));
               continue;

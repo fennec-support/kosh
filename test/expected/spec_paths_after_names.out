@@ -2,8 +2,16 @@
 ls
 lsblk
 zcat
+../up
 ./assets/
 ./docs/
+/abs
+~/home
+== a name with a slash stays among the names:
+feature/x
+main
+origin/main
+tag1
 == nosort keeps the reply order:
 ./docs/
 zcat
