@@ -24,8 +24,8 @@ class mustuse Maybe
 public:
   static_assert(std::is_nothrow_destructible_v<T>);
 
-  Maybe() noexcept : m_has_value(false), m_storage{} {}
-  Maybe(Nothing) noexcept : m_has_value(false), m_storage{} {}
+  Maybe() noexcept : m_has_value(false) {}
+  Maybe(Nothing) noexcept : m_has_value(false) {}
   Maybe(T value) : m_has_value(true) { new (&m_storage) T(steal(value)); }
 
   Maybe(const Maybe &other) : m_has_value(other.m_has_value)
