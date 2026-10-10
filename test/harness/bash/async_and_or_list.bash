@@ -45,11 +45,11 @@ jobs >/dev/null
 sleep 5 && echo never &
 jobs
 kill %1
-wait 2>/dev/null
+wait %1 2>/dev/null
 sleep 5 || echo never &
 jobs
 kill %1
-wait 2>/dev/null
+wait %1 2>/dev/null
 ( set -e; false && true; echo "errexit-left" & wait )
 ( set -e; true && false & wait $! || echo "errexit-job=$?" )
 f() { sleep 0.2 && echo "in-function" & }
