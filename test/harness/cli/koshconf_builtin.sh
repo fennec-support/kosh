@@ -83,9 +83,15 @@ koshconf get editor.history.file_path'
 grep -c '^editor.history.file_path=' "$conf"
 echo "== a failed write is a soft error that || can catch:"
 mkdir -p "$config/blocked/kosh/kosh.conf"
+native_config=$config
+if command -v cygpath >/dev/null 2>&1; then
+  native_config=$(cygpath -w "$config" | sed 's/[\\.]/\\&/g')
+fi
 XDG_CONFIG_HOME="$config/blocked" "$BIN" -c 'koshconf set editor.hints.show_command_synopsis off --persist || echo "rc=$?"
 koshconf get editor.hints.show_command_synopsis
-koshconf create --force kosh || echo "rc=$?"' 2>&1 | sed "s|$config|CONFIG|"
+koshconf create --force kosh || echo "rc=$?"' 2>&1 |
+  sed -e "s|$config|CONFIG|" -e "s|$native_config|CONFIG|" \
+    -e '/CONFIG/s|\\|/|g' -e 's/: Access is denied\./: Is a directory./'
 echo "== string values are validated:"
 "$BIN" -c 'koshconf set editor.history.max_entries 12x
 echo "rc=$?"

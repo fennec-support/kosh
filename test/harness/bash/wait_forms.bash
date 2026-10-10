@@ -108,6 +108,7 @@ echo force
 ten=$!
 wait -f "$ten"
 echo "forced=$?"
+wait
 wait -fn
 echo "forced-next=$?"
 

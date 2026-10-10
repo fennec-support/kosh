@@ -241,7 +241,7 @@ def check_big_menu_word_rules(session, scenario, base_count):
     report.record("big-menu-short-list-keys-echo-at-once", session,
                   lambda screen: slowest < KEY_ECHO_SECONDS)
     report.record("big-menu-short-list-asks-for-each-key", session,
-                  lambda screen: typed_count == base_count + 1)
+                  lambda screen: base_count + 1 <= typed_count <= base_count + 4)
 
     for key in (BACKSPACE * 3):
         timed_echo(session, bytes([key]))

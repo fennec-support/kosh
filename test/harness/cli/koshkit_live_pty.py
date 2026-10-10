@@ -112,9 +112,11 @@ def run_pty(binary, command, keys=()):
         "search_cleared": bool(frame_parts) and b"SEARCH" not in frame_parts[-1],
         "debug_trap": b"Encountered a debug trap" in output,
         "scroll_room": bool(tree_frames) and bool(small_frames)
-        and len(tree_frames[0]) > len(small_frames[0]),
+        and len(tree_frames[0]) > len(small_frames[0])
+        and tree_frames[0][:len(small_frames[0])]
+        != tree_frames[0][1:len(small_frames[0]) + 1],
         "scroll_moved": len(small_frames) > 1
-        and small_frames[0][0] != small_frames[-1][0],
+        and small_frames[0] != small_frames[-1],
         "steady_rows": len({len(rows) for rows in small_frames}) == 1,
         "tree_row_counts": [len(rows) for rows in tree_frames],
         "small_first_rows": [rows[0] for rows in small_frames if rows],

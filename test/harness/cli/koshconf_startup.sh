@@ -1,4 +1,5 @@
 unset KOSH_FLAGS KOSHCONF
+export MSYS2_ENV_CONV_EXCL=KOSH_HISTORY_FILE
 # The user configuration file applies before the session runs, in interactive
 # and non-interactive shells. Blanks around a value are ignored. A malformed
 # line, an unknown name with its suggestion, and a value the kosh mood holds

@@ -8,7 +8,7 @@ probe=/tmp/kosh-tmp-everywhere-$$
 echo hello >"$probe.txt" && echo "wrote"
 read -r line <"$probe.txt" && echo "read=$line"
 [ -f "$probe.txt" ] && echo "file exists"
-mkdir -p "$probe-dir/inner" && [ -d "$probe-dir/inner" ] && echo "made a directory"
+koshkit mkdir -p "$probe-dir/inner" && [ -d "$probe-dir/inner" ] && echo "made a directory"
 (cd /tmp && echo "changed into it")
 koshkit rm -r -- "$probe.txt" "$probe-dir" && echo "removed"
 [ -e "$probe.txt" ] || echo "gone"
