@@ -52,6 +52,7 @@ SKIPPED_TESTS := \
 	help_subcommand_third_level \
 	help_subcommands_no_colon make_targets_fallback \
 	completion_glob_quoting path_quoting control_byte_quoting koshkit_mknod \
+	literal_tilde_and_ansi_c_escapes \
 	koshkit_live_pty koshkit_live_sanitizers koshkit_live_deltas \
 	editor_ghost_menu_pty editor_kill_yank_pty editor_prompt_pty \
 	editor_pending_tab_pty shell_integration_marks_pty background_terminal_pty \

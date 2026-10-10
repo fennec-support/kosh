@@ -10,7 +10,7 @@ $'zq\'quote'
 == a quote after an escaped dollar sign stays a plain single quote:
 \$'zq'"'"'; echo injected; '"'"''
 == the completed words name the files:
-$zq'; echo injected; '
-zq'quote
-zq\back
 ~
+zq\back
+zq'quote
+$zq'; echo injected; '

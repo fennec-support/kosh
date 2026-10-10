@@ -21,4 +21,4 @@ echo "== a quote after an escaped dollar sign stays a plain single quote:"
 : > "$dir/\$zq'; echo injected; '"
 "$BIN" --debug-complete-at "cat \\\$'zq" </dev/null
 echo "== the completed words name the files:"
-"$BIN" -c "ls \\~ \$'zq\\\\back' \$'zq\\'quote' \\\$'zq'\"'\"'; echo injected; '\"'\"''"
+"$BIN" -c "for name in \\~ \$'zq\\\\back' \$'zq\\'quote' \\\$'zq'\"'\"'; echo injected; '\"'\"''; do [ -e \"\$name\" ] && printf '%s\\n' \"\$name\"; done"
