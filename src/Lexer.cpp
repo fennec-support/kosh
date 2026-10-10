@@ -696,6 +696,28 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
 
   usize extglob_depth = 0;
 
+  usize element_subscript_end = 0;
+  if (m_is_lexing_array_literal && chop_character(0) == '[') {
+    let const remaining = m_source.substring(m_cursor_position);
+    usize depth = 0;
+    for (usize offset = 0; offset < remaining.length; offset++) {
+      let const c = remaining[offset];
+      if (c == '\n') break;
+
+      if (c == '[') {
+        depth++;
+      } else if (c == ']') {
+        depth--;
+        if (depth == 0) {
+          element_subscript_end = offset;
+          break;
+        }
+      } else {
+        offset = lexer::skip_quoted_run(remaining, offset);
+      }
+    }
+  }
+
   loop
   {
     let const ch = chop_character(byte_count);
@@ -703,6 +725,15 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
 
     let const is_inside_quote_or_escape =
         quote_char.has_value() || should_escape;
+    if (!is_inside_quote_or_escape && byte_count < element_subscript_end &&
+        lexer::is_whitespace(ch))
+    {
+      do_append_unquoted_run(
+          m_source.substring_of_length(m_cursor_position + byte_count, 1));
+      byte_count++;
+      continue;
+    }
+
     if (is_at_end ||
         (!is_inside_quote_or_escape && !lexer::is_part_of_identifier(ch)))
     {

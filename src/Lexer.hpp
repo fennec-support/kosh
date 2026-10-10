@@ -320,6 +320,10 @@ public:
                ParseSession::AllocationKind allocation_kind) wontthrow -> void;
   fn drop_peek_cache() wontthrow -> void;
   fn advance_past_last_peek() throws -> usize;
+  fn set_is_lexing_array_literal(bool is_lexing) wontthrow -> void
+  {
+    m_is_lexing_array_literal = is_lexing;
+  }
 
   fn set_shellcheck_directive_collection_mode(
       shellcheck_directive_collection_mode mode) wontthrow -> void
@@ -398,6 +402,7 @@ protected:
   usize m_last_collected_word_position{static_cast<usize>(-1)};
 
   bool m_last_shell_token_was_newline{false};
+  bool m_is_lexing_array_literal{false};
   ArrayList<shellcheck_directive_span> m_pending_shellcheck_directives{
       heap_allocator()};
   ArrayList<shellcheck_directive_span> m_shellcheck_directive_spans{

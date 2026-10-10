@@ -1638,6 +1638,22 @@ fn Parser::consume_bash_array_assignment() throws -> ArrayList<const Token *>
   ASSERT(open->kind() == Token::Kind::LeftParen);
 
   ArrayList<const Token *> elements{heap_allocator()};
+  m_lexer.set_is_lexing_array_literal(true);
+  try {
+    consume_bash_array_elements(open, elements);
+  } catch (...) {
+    m_lexer.set_is_lexing_array_literal(false);
+    throw;
+  }
+  m_lexer.set_is_lexing_array_literal(false);
+
+  return elements;
+}
+
+fn Parser::consume_bash_array_elements(const Token *open,
+                                       ArrayList<const Token *> &elements)
+    throws -> void
+{
   loop
   {
     Token *t = m_lexer.next_shell_token();
@@ -1646,7 +1662,7 @@ fn Parser::consume_bash_array_assignment() throws -> ArrayList<const Token *>
     case Token::Kind::EndOfFile:
       throw ErrorWithLocation{open->source_location(),
                               "Unterminated array assignment, expected ')'"};
-    case Token::Kind::RightParen: return elements;
+    case Token::Kind::RightParen: return;
     case Token::Kind::Newline: break;
     case Token::Kind::LeftParen:
     case Token::Kind::Semicolon:

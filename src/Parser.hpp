@@ -231,6 +231,9 @@ private:
                                   StringView name) throws -> Command *;
 
   fn consume_bash_array_assignment() throws -> ArrayList<const Token *>;
+  fn consume_bash_array_elements(const Token *open,
+                                 ArrayList<const Token *> &elements) throws
+      -> void;
 };
 
 } /* namespace koshka */
