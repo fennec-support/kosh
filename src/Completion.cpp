@@ -1538,7 +1538,16 @@ fn complete(StringView line, usize cursor, EvalContext &context,
           let paths = ArrayList<String>{arena};
           usize kept_count = 0;
           for (usize i = 0; i < candidates.count(); i++) {
-            if (os::has_directory_separator(candidates[i].view())) {
+            let const candidate = candidates[i].view();
+            let const marker_length =
+                !candidate.is_empty() &&
+                        os::is_directory_separator(
+                            candidate[candidate.length - 1])
+                    ? 1
+                    : 0;
+            if (os::has_directory_separator(candidate.substring_of_length(
+                    0, candidate.length - marker_length)))
+            {
               paths.push(steal(candidates[i]));
               continue;
             }
