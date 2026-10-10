@@ -816,6 +816,16 @@ static fn color_dollar(StringView line, usize i, usize end,
                        HashSet &line_variable_names,
                        const HashSet *known_function_names) throws -> usize
 {
+  static usize nesting_depth = 0;
+  constexpr usize MAX_NESTING_DEPTH = 256;
+  if (nesting_depth >= MAX_NESTING_DEPTH) return end;
+
+  struct nesting_scope
+  {
+    nesting_scope() { nesting_depth++; }
+    ~nesting_scope() { nesting_depth--; }
+  } const scope;
+
   if (i + 2 < end && line[i + 1] == '(' && line[i + 2] == '(') {
     let const inner_begin = i + 3 < end ? i + 3 : end;
     return color_arithmetic(line, inner_begin, end, context, spans,

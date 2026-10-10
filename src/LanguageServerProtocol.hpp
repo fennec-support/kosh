@@ -125,8 +125,17 @@ private:
     case 't': return parse_literal("true", json_kind::Boolean, true);
     case 'f': return parse_literal("false", json_kind::Boolean, false);
     case '"': return parse_string_value();
-    case '[': return parse_array();
-    case '{': return parse_object();
+    case '[':
+    case '{': {
+      if (m_nesting_depth >= MAX_NESTING_DEPTH) return nullptr;
+
+      m_nesting_depth++;
+      let *const value =
+          m_source[m_position] == '[' ? parse_array() : parse_object();
+      m_nesting_depth--;
+
+      return value;
+    }
     default: return parse_number();
     }
   }
@@ -324,6 +333,8 @@ private:
 
   StringView m_source;
   usize m_position{0};
+  static constexpr usize MAX_NESTING_DEPTH = 256;
+  usize m_nesting_depth{0};
   BumpArena m_arena;
 };
 
