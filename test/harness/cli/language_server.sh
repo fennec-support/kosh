@@ -293,7 +293,7 @@ chmod +x "$act_program" "$man_program" \
   frame '{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"file:///tmp/document-variable.sh","languageId":"sh","version":1,"text":"document_value=1\necho \"$document_va\"\necho ${document_va\n"}}}'
   frame '{"jsonrpc":"2.0","id":205,"method":"textDocument/completion","params":{"textDocument":{"uri":"file:///tmp/document-variable.sh"},"position":{"line":1,"character":18}}}'
   frame '{"jsonrpc":"2.0","id":206,"method":"textDocument/completion","params":{"textDocument":{"uri":"file:///tmp/document-variable.sh"},"position":{"line":2,"character":18}}}'
-  frame '{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"file://'"$directory"'/sourcing-variable.sh","languageId":"sh","version":1,"text":". '"$directory"'/sourced-variable.sh\necho \"$sourced_va\"\n"}}}'
+  frame '{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"file://'"$directory"'/sourcing-variable.sh","languageId":"sh","version":1,"text":". ./sourced-variable.sh\necho \"$sourced_va\"\n"}}}'
   frame '{"jsonrpc":"2.0","id":207,"method":"textDocument/completion","params":{"textDocument":{"uri":"file://'"$directory"'/sourcing-variable.sh"},"position":{"line":1,"character":17}}}'
   frame '{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"file:///tmp/bare-koshkit.shit","languageId":"shit","version":1,"text":"good\n"}}}'
   frame '{"jsonrpc":"2.0","id":142,"method":"textDocument/completion","params":{"textDocument":{"uri":"file:///tmp/bare-koshkit.shit"},"position":{"line":0,"character":4}}}'

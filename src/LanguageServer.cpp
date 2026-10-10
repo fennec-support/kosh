@@ -710,6 +710,10 @@ fn Server::publish_diagnostics(Document &document) throws -> bool
         document.path.has_value() && !document.format.is_host_format
             ? missing_shebang_policy::Report
             : missing_shebang_policy::Suppress;
+    let const document_directory = document.path.has_value()
+                                       ? document.path->parent()
+                                       : Path{};
+    options.source_base_directory = document_directory.view();
     analyze_ast(ast, document.shell_source(), functions, aliases, &m_context,
                 options, directives, {&followed_paths, &source_effects}, {},
                 {nullptr, &diagnostics, &symbol_records}, this, nullptr,

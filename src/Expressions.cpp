@@ -1664,6 +1664,13 @@ fn expressions::internal::analyze_followed_source(
   let resolved_path =
       actx.eval_context->resolve_source_path(*literal_path, tilde_expansion);
   if (!resolved_path.has_value()) return do_give_up_on_source();
+  if (!resolved_path->is_absolute() &&
+      !actx.options.source_base_directory.is_empty())
+  {
+    let based_path = Path{actx.options.source_base_directory};
+    based_path.append(resolved_path->view());
+    resolved_path = steal(based_path);
+  }
 
   let canonical_path = os::canonical_path(*resolved_path);
   if (!canonical_path.has_value()) return do_give_up_on_source();

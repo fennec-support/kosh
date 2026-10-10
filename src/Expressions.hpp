@@ -484,6 +484,7 @@ struct analysis_options
   bool should_silence_unresolved_commands{false};
   bool should_report_optimizer_diagnostics{false};
   missing_shebang_policy shebang_policy{missing_shebang_policy::Suppress};
+  StringView source_base_directory{};
 
   static fn from_runtime(const RuntimeState &runtime) wontthrow
       -> analysis_options
