@@ -950,6 +950,11 @@ public:
   {
     m_current_command = steal(command);
   }
+  fn set_current_command(StringView command) throws -> void
+  {
+    m_current_command.clear();
+    m_current_command += command;
+  }
   pure fn get_current_command() const wontthrow -> StringView
   {
     return m_current_command.view();

@@ -1117,6 +1117,8 @@ protected:
   fn evaluate_assignment(EvalContext &cxt) const throws -> i64;
 
   const Assignment *m_assignment;
+  mutable Maybe<String> m_published_command_text{};
+  mutable bool m_was_published_text_rendered_with_bash_additions{false};
 };
 
 class Redirection
@@ -1206,6 +1208,8 @@ public:
   pure fn args() const wontthrow -> const ArrayList<const Token *> &;
   pure fn redirections() const wontthrow -> const SparseList<Redirection> &;
 
+  fn get_published_command_text(EvalContext &cxt) const throws -> StringView;
+
   fn to_string() const throws -> String override;
 
   fn analyze(AnalysisContext &actx, bool is_unconditional) const throws
@@ -1245,6 +1249,8 @@ protected:
     bool is_special{false};
   };
   mutable Maybe<literal_command_lookup> m_literal_command_lookup{};
+  mutable Maybe<String> m_published_command_text{};
+  mutable bool m_was_published_text_rendered_with_bash_additions{false};
 
   fn get_literal_command_lookup(const ArrayList<String> &program_args)
       const throws -> const literal_command_lookup *;

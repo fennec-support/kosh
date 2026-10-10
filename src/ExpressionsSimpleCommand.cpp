@@ -272,12 +272,24 @@ hot fn AssignCommand::evaluate_impl(EvalContext &cxt) const throws -> i64
   cxt.source_store().set_current_location(source_location());
 
   let const should_run_assignment =
-      publish_command_and_run_debug_trap(cxt, [&] {
-        return source_command_text(
-            cxt, source_location(), source_end_position(), [&] {
-              return String{heap_allocator(),
-                            m_assignment->raw_string().view()};
-            });
+      publish_command_and_run_debug_trap(cxt, [&] throws -> StringView {
+        let const has_bash_additions =
+            cxt.runtime_state().bash_additions_enabled();
+        if (!m_published_command_text.has_value() ||
+            m_was_published_text_rendered_with_bash_additions !=
+                has_bash_additions)
+        {
+          let text = source_command_text(
+              cxt, source_location(), source_end_position(), [&] {
+                return String{heap_allocator(),
+                              m_assignment->raw_string().view()};
+              });
+          m_published_command_text = String{heap_allocator(), text.view()};
+          m_was_published_text_rendered_with_bash_additions =
+              has_bash_additions;
+        }
+
+        return m_published_command_text->view();
       });
   if (!should_run_assignment) return cxt.execution_store().last_exit_status();
 
@@ -1705,27 +1717,39 @@ fn internal::append_redirections_text(
   }
 }
 
+fn SimpleCommand::get_published_command_text(EvalContext &cxt) const throws
+    -> StringView
+{
+  let const has_bash_additions = cxt.runtime_state().bash_additions_enabled();
+  if (m_published_command_text.has_value() &&
+      m_was_published_text_rendered_with_bash_additions == has_bash_additions)
+  {
+    return m_published_command_text->view();
+  }
+
+  let location = source_location();
+  let const start_position = static_cast<u32>(full_source_start_position());
+  if (start_position < location.position) {
+    location.length += location.position - start_position;
+    location.position = start_position;
+  }
+
+  let text = source_command_text(
+      cxt, location, assignments_source_end_position(),
+      [&] { return utils::merge_tokens_to_string(m_args); });
+  append_redirections_text(cxt, text, m_redirections);
+  m_published_command_text = String{heap_allocator(), text.view()};
+  m_was_published_text_rendered_with_bash_additions = has_bash_additions;
+
+  return m_published_command_text->view();
+}
+
 fn internal::publish_simple_command(EvalContext &cxt,
                                     const SimpleCommand &command,
                                     root_evaluation_mode mode) throws -> bool
 {
   return publish_command_and_run_debug_trap(
-      cxt,
-      [&] throws {
-        let location = command.source_location();
-        let const start_position =
-            static_cast<u32>(command.full_source_start_position());
-        if (start_position < location.position) {
-          location.length += location.position - start_position;
-          location.position = start_position;
-        }
-
-        let text = source_command_text(
-            cxt, location, command.assignments_source_end_position(),
-            [&] { return utils::merge_tokens_to_string(command.args()); });
-        append_redirections_text(cxt, text, command.redirections());
-        return text;
-      },
+      cxt, [&] throws { return command.get_published_command_text(cxt); },
       mode);
 }
 
