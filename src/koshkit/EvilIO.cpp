@@ -322,8 +322,8 @@ fn read_process_io_rows(Allocator allocator, Maybe<i64> selected_pid,
 
 fn sample_process_io_rows(const ArrayList<io_row> &before_rows,
                           const ArrayList<io_row> &after_rows,
-                          Allocator allocator,
-                          Maybe<evilio_sort_key> sort_key) throws
+                          Allocator allocator, Maybe<evilio_sort_key> sort_key,
+                          evilio_idle_mode idle_mode) throws
     -> SortedArrayList<io_row, process_row_comparator>
 {
   let sampled_rows = ArrayList<io_row>{allocator};
@@ -364,7 +364,9 @@ fn sample_process_io_rows(const ArrayList<io_row> &before_rows,
         status.has_operation_counts = true;
       }
     }
-    if (is_idle_process_io(status)) continue;
+    if (idle_mode == evilio_idle_mode::Omit && is_idle_process_io(status)) {
+      continue;
+    }
 
     sampled_rows.push(io_row{
         String{allocator, after.name.view()},
@@ -1364,8 +1366,10 @@ fn EvilIO::execute(const ExecContext &ec, EvalContext &cxt,
     if (take_interrupt_request()) return 130;
     let const after_rows = read_process_io_rows(allocator, selected_pid,
                                                 evilio_idle_mode::Include);
-    let const sampled_rows =
-        sample_process_io_rows(before_rows, after_rows, allocator, sort_key);
+    let const sampled_rows = sample_process_io_rows(
+        before_rows, after_rows, allocator, sort_key,
+        selected_pid.has_value() ? evilio_idle_mode::Include
+                                 : evilio_idle_mode::Omit);
     let output = String{allocator};
     append_process_io_rate_report(output, sampled_rows, row_limit, allocator,
                                   sample_duration_label.view(), should_color);
@@ -1374,8 +1378,10 @@ fn EvilIO::execute(const ExecContext &ec, EvalContext &cxt,
   }
 
   if (should_show_processes) {
-    let rows =
-        read_process_io_rows(allocator, selected_pid, evilio_idle_mode::Omit);
+    let rows = read_process_io_rows(allocator, selected_pid,
+                                    selected_pid.has_value()
+                                        ? evilio_idle_mode::Include
+                                        : evilio_idle_mode::Omit);
     process_io_totals totals;
     for (let const &row : rows)
       totals.add(row);

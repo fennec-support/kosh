@@ -326,6 +326,26 @@ static fn copy_path(const ExecContext &ec, EvalContext &cxt,
     return did_succeed;
   }
 
+  let const source_type_letter =
+      source_status.has_value() ? os::file_type_letter(source_status->mode)
+                                : '-';
+  if (options.recursive_mode == cp_recursive_mode::Recursive &&
+      source_type_letter != '-')
+  {
+    if (source_type_letter != 'p') {
+      throw Error{"'" + String{allocator, source} +
+                  "' is a special file, skipping it"};
+    }
+
+    if (!os::make_fifo(destination, source_status->mode & 0777)) {
+      throw Error{"unable to create the FIFO '" +
+                  String{allocator, destination} +
+                  "': " + os::last_system_error_message()};
+    }
+
+    return true;
+  }
+
   let const is_destination_link_to_unlink_before_copy =
       destination_path.is_symbolic_link();
   if (is_destination_link_to_unlink_before_copy &&

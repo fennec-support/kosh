@@ -579,10 +579,12 @@ fn parse_directive(StringView format, usize &position,
   }
 
 flags_done:
+  static constexpr usize MAXIMUM_FIELD_WIDTH = 65535;
   while (position < format.length && format[position] >= '0' &&
          format[position] <= '9')
   {
     spec.width = (spec.width * 10) + static_cast<usize>(format[position] - '0');
+    if (spec.width > MAXIMUM_FIELD_WIDTH) spec.width = MAXIMUM_FIELD_WIDTH;
     position++;
   }
 
@@ -594,6 +596,8 @@ flags_done:
     {
       spec.precision =
           (spec.precision * 10) + static_cast<usize>(format[position] - '0');
+      if (spec.precision > MAXIMUM_FIELD_WIDTH)
+        spec.precision = MAXIMUM_FIELD_WIDTH;
       position++;
     }
   }

@@ -154,6 +154,34 @@ remove_path_with_prompt(const removal_request &request, StringView path,
                                               root_device_id))
       return false;
 
+    let directory_identity = os::file_status{};
+    if (known_status != nullptr) {
+      directory_identity = *known_status;
+    } else if (!os::stat_path(path, directory_identity)) {
+      report_soft_koshkit_util_error(request.ec, cxt, request.utility_name,
+                                     "cannot remove '" + String{path} + "': " +
+                                         os::last_system_error_message());
+      return false;
+    }
+    let const do_is_same_directory = [&]() wontthrow -> bool {
+      let current = os::file_status{};
+      return os::stat_path(path, current) &&
+             os::file_type_letter(current.mode) == 'd' &&
+             current.device_id == directory_identity.device_id &&
+             current.file_id == directory_identity.file_id;
+    };
+    let const do_report_replaced_directory = [&]() throws {
+      report_soft_koshkit_util_error(
+          request.ec, cxt, request.utility_name,
+          "cannot remove '" + String{path} +
+              "': the directory was replaced while it was removed");
+    };
+
+    if (!do_is_same_directory()) {
+      do_report_replaced_directory();
+      return false;
+    }
+
     bool did_succeed = true;
     let const directory_scratch = cxt.expansion_store().scratch_arena().mark();
     defer { cxt.expansion_store().scratch_arena().release(directory_scratch); };
@@ -161,6 +189,10 @@ remove_path_with_prompt(const removal_request &request, StringView path,
     if (names.has_value()) {
       for (let const &entry : *names) {
         if (os::INTERRUPT_REQUESTED) return false;
+        if (!do_is_same_directory()) {
+          do_report_replaced_directory();
+          return false;
+        }
         let const child_scratch = cxt.expansion_store().scratch_arena().mark();
         defer { cxt.expansion_store().scratch_arena().release(child_scratch); };
         let child = Path{path, request.allocator};
