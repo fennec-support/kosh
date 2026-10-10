@@ -190,8 +190,11 @@ static fn get_history_import_state() -> history_import_state &
 static fn write_history_contents(const Path &target, os::file_open_mode mode,
                                  StringView contents) throws -> ErrorOr<Ok>
 {
+  let const did_exist = target.exists();
   let const opened = os::open_file_descriptor(target.view(), mode);
   if (!opened.has_value()) return Error{os::last_system_error_message()};
+
+  if (!did_exist) unused(os::set_file_mode(target.view(), 0600));
 
   let const fd = opened.value();
   if (!contents.is_empty() &&

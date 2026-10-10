@@ -304,7 +304,8 @@ fn EvalContext::guard_restricted_path(StringView path,
                                       restricted_path_use use) const throws
     -> void
 {
-  if (!runtime_state().option_is_enabled(shell_option_id::Restricted) ||
+  if (!runtime_state().option_is_enabled(shell_option_id::Restricted)) return;
+  if (use != restricted_path_use::History &&
       !os::has_directory_separator(path))
   {
     return;
@@ -323,9 +324,7 @@ fn EvalContext::guard_restricted_path(StringView path,
         "restricted shell"};
   case restricted_path_use::History:
     throw ErrorWithLocation{
-        location,
-        "History paths containing a directory separator are forbidden in a "
-        "restricted shell"};
+        location, "History file operands are forbidden in a restricted shell"};
   case restricted_path_use::Hash:
     throw ErrorWithLocation{
         location,
@@ -670,6 +669,10 @@ fn EvalContext::set_indexed_array(StringView name,
     for (let &value : values)
       value = evaluate_arithmetic_text(value.view());
   variable_store().shell_variables().erase(name);
+  if (is_exported(name)) {
+    record_environment_change(name);
+    os::unset_environment_variable(name);
+  }
   clear_sparse_array(name);
   variable_store().indexed_arrays().set(name, steal(values));
 }

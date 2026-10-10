@@ -326,13 +326,11 @@ fn EvalContext::set_array_element(StringView name, usize index,
   let dense = variable_store().indexed_arrays().find(name);
   if (!dense.has_value()) {
     let elements = ArrayList<String>{heap_allocator()};
-    if (let const scalar = variable_store().shell_variables().find(name);
-        scalar.has_value())
-      elements.push(String{heap_allocator(), scalar->view()});
+    if (let scalar = get_variable_value(name); scalar.has_value())
+      elements.push(scalar.take());
     set_indexed_array(name, steal(elements));
     dense = variable_store().indexed_arrays().find(name);
   }
-  variable_store().shell_variables().erase(name);
   ASSERT(dense.has_value());
 
   let const dense_count = dense->count();
@@ -547,12 +545,13 @@ fn EvalContext::declare_associative_array(StringView name) throws -> void
 
   LOG(Debug, "declaring '%.*s' as an associative array",
       static_cast<int>(name.length), name.data);
-  let scalar = Maybe<String>{};
-  if (let const stored = variable_store().shell_variables().find(name);
-      stored.has_value())
-    scalar = *stored.value();
+  let scalar = get_variable_value(name);
   variable_store().associative_arrays().declare(name);
   variable_store().shell_variables().erase(name);
+  if (is_exported(name)) {
+    record_environment_change(name);
+    os::unset_environment_variable(name);
+  }
   if (scalar.has_value()) set_associative_element(name, "0", scalar->view());
 }
 
@@ -589,6 +588,10 @@ fn EvalContext::set_associative_element(StringView name, StringView key,
   if (!is_associative_array(name)) {
     variable_store().associative_arrays().declare(name);
     variable_store().shell_variables().erase(name);
+    if (is_exported(name)) {
+      record_environment_change(name);
+      os::unset_environment_variable(name);
+    }
   }
   variable_store().associative_arrays().put_ordered(
       associative_composite_key(name, key, scratch_allocator()).view(), value);

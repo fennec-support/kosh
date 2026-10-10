@@ -1195,7 +1195,7 @@ static fn resolve_history_path(StringView env_name, StringView default_file)
   {
     return koshka::Path{override_path->view()};
   }
-  let home = koshka::os::get_home_directory();
+  static let const home = koshka::os::get_home_directory();
   if (!home.has_value()) return koshka::None;
   let path = home->clone();
   path.append(default_file);

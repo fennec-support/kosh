@@ -206,7 +206,8 @@ Each command is printed after expansion.
 Each later assignment is marked for export.
 .TP
 .BR \-C ", " \-\-no\-clobber
-An existing file is not overwritten by a plain output redirection.
+An existing regular file is not overwritten by a plain output redirection; a
+device or FIFO still takes the output.
 .TP
 .BR \-n ", " \-\-no\-exec
 Commands are parsed and analyzed without being run. The analysis stage runs in
@@ -1301,9 +1302,12 @@ for the startup file format.
 .SH RESTRICTED SHELL
 A restricted shell rejects directory changes and changes to SHELL, PATH, ENV,
 and BASH_ENV. A directory separator is rejected in a command name, a source
-operand, a history path, and a
+operand, and a
 .B hash \-p
-path.
+path, and every file operand of
+.B history
+is rejected. The history files keep the paths derived from HOME at startup, so a
+later HOME assignment does not move them.
 .PP
 The redirections >, >|, <>, >>, &>, &>>, and >& are rejected. Numeric
 descriptor duplication remains available. The
@@ -3711,7 +3715,10 @@ options request that representation explicitly. The
 option waits for the specified number of seconds, M, and prints the counter
 change over that window; the default window is one second. With
 .BR \-\-ps ,
-each mode prints per-process data. The
+each mode prints per-process data and leaves out a process without I/O; a
+process selected with
+.B \-p
+is printed even without I/O. The
 .BR \-l " and " \-\-live
 options print the report again and again until interrupted. Their optional
 value, N, is the number of seconds between samples and between refreshes; it

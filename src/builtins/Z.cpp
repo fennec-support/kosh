@@ -11,6 +11,7 @@
 #include "../Errors.hpp"
 #include "../Eval.hpp"
 #include "../Platform.hpp"
+#include "../ToiletlineHistory.hpp"
 #include "../Utils.hpp"
 #include "../base/Path.hpp"
 #include "../base/Trace.hpp"
@@ -48,9 +49,9 @@ static fn frecency_store_path() throws -> Maybe<Path>
   {
     return Path{override_path->view()};
   }
-  let home = os::get_home_directory();
-  if (!home) return None;
-  let path = *home;
+  static let const home = os::get_home_directory();
+  if (!home.has_value()) return None;
+  let path = home->clone();
   path.append(".kosh_directory_history");
   return path;
 }
@@ -125,19 +126,8 @@ static fn write_frecency_store(const ArrayList<frecency_entry> &entries,
     out += '\n';
   }
 
-  let const fd = os::open_file_descriptor(path->text().view(),
-                                          os::file_open_mode::Truncate);
-  if (!fd) return;
-  usize total_written = 0;
-  while (total_written < out.count()) {
-    let const written = os::write_fd(*fd, out.c_str() + total_written,
-                                     out.count() - total_written);
-    if (!written || *written == 0) {
-      break;
-    }
-    total_written += *written;
-  }
-  os::close_fd(*fd);
+  unused(toiletline::write_history_file_atomically(
+      *path, ".kosh_directory_history_write", out.view()));
 }
 
 static fn contains_ignore_case(StringView haystack, StringView needle) wontthrow
