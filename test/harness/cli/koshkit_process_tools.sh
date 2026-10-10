@@ -150,7 +150,7 @@ done
 printf 'evilio-sort-keys=%s\n' "$evilio_sort_keys"
 
 process_report=$("$BIN" -c \
-  'koshkit --color never evilio --cumulative=0.05 --ps --count 1')
+  'koshkit --color never evilio --cumulative=0.05 -p $$')
 case $process_report in
   *PID*READ/0.05s*WRITE/0.05s*"READ OPS/0.05s"*"WRITE OPS/0.05s"*COMMAND*)
     process_shape=matched
