@@ -899,6 +899,7 @@ fn completion_session::highlight(const char *buffer, tl_highlight *out) -> int
       highlighted_line.clear();
       highlighted_line.append(line);
       highlighted_spans.clear();
+      highlighted_spans.reserve(result.count());
       for (let const &span : result)
         highlighted_spans.push(span);
       has_highlighted_spans = true;

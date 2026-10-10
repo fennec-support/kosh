@@ -332,6 +332,27 @@ fn find_matching_bracket(StringView line,
 {
   if (cursor > line.length) return None;
 
+  usize candidates[2];
+  usize candidate_count = 0;
+  if (cursor < line.length) {
+    let const is_dollar_opener =
+        line[cursor] == '$' && cursor + 1 < line.length &&
+        (line[cursor + 1] == '(' || line[cursor + 1] == '{');
+    candidates[candidate_count++] = is_dollar_opener ? cursor + 1 : cursor;
+  }
+  if (cursor > 0) candidates[candidate_count++] = cursor - 1;
+
+  let has_bracket_candidate = false;
+  for (usize candidate_index = 0; candidate_index < candidate_count;
+       candidate_index++)
+  {
+    if (classify_bracket(line[candidates[candidate_index]]).has_value()) {
+      has_bracket_candidate = true;
+    }
+  }
+
+  if (!has_bracket_candidate) return None;
+
   let case_pattern_ends = ArrayList<usize>{heap_allocator()};
   if (line.find_substring("case").has_value())
     collect_case_pattern_ends(line, case_pattern_ends);
@@ -363,16 +384,6 @@ fn find_matching_bracket(StringView line,
         find_bracket_partner(line, spans, case_pattern_ends, open);
     return partner.has_value() && *partner == close;
   };
-
-  usize candidates[2];
-  usize candidate_count = 0;
-  if (cursor < line.length) {
-    let const is_dollar_opener =
-        line[cursor] == '$' && cursor + 1 < line.length &&
-        (line[cursor + 1] == '(' || line[cursor + 1] == '{');
-    candidates[candidate_count++] = is_dollar_opener ? cursor + 1 : cursor;
-  }
-  if (cursor > 0) candidates[candidate_count++] = cursor - 1;
 
   for (usize candidate_index = 0; candidate_index < candidate_count;
        candidate_index++)
