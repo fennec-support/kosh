@@ -282,6 +282,7 @@ constexpr usize GLOBSTAR_MAX_DEPTH = 256;
 
 fn collect_globstar_paths(const Path &dir, StringView relative,
                           bool directories_only, bool should_match_dotfiles,
+                          bool should_list_symlinked_directories,
                           bool include_base, usize depth, Allocator allocator,
                           ArrayList<String> &out) throws -> void
 {
@@ -408,13 +409,16 @@ fn collect_globstar_paths(const Path &dir, StringView relative,
     }
     child_relative.append(name);
 
-    if (!directories_only || is_directory[index]) {
-      out.push(String{allocator, child_relative.view()});
-    }
+    let const is_listed =
+        !directories_only ||
+        (is_directory[index] &&
+         (should_list_symlinked_directories || !is_symbolic_link[index]));
+    if (is_listed) out.push(String{allocator, child_relative.view()});
     if (is_directory[index] && !is_symbolic_link[index]) {
       collect_globstar_paths(child_dir, child_relative.view(), directories_only,
-                             should_match_dotfiles, false, depth + 1, allocator,
-                             out);
+                             should_match_dotfiles,
+                             should_list_symlinked_directories, false,
+                             depth + 1, allocator, out);
     }
   }
 }
@@ -504,10 +508,15 @@ fn EvalContext::expand_path_recurse(ArrayList<glob_field> fields) throws
         base = Path{text.substring_of_length(0, component_start - 1)};
 
       let const directory_position = slash_after.has_value();
+      let const has_pattern_after =
+          directory_position && *slash_after + 1 < text.length;
+      let const should_list_symlinked_directories =
+          !has_pattern_after || component_start != 0;
       let relatives = ArrayList<String>{scratch};
       collect_globstar_paths(base, StringView{""}, directory_position,
-                             is_shopt_enabled("dotglob"), true, 0, scratch,
-                             relatives);
+                             is_shopt_enabled("dotglob"),
+                             should_list_symlinked_directories, true, 0,
+                             scratch, relatives);
 
       if (!directory_position) {
         if (!prefix.is_empty()) {
