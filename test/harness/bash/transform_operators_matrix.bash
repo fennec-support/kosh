@@ -44,7 +44,7 @@ load_values() {
       set_positional $'\033' $'\x7f'
       ;;
     prompt)
-      s='\\ \[x\] \e \a \n \041 \v \V \! \# \l' arr=('\\' 'x\]y') map=([p]='\\')
+      s='\\ \[x\] \e \a \n \041 \v \! \# \l' arr=('\\' 'x\]y') map=([p]='\\')
       set_positional '\\'
       ;;
     sparse)

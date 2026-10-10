@@ -4,8 +4,8 @@
 # unquoted, in a default, an alternative, a trim pattern, and a replacement
 # pattern, but not after an anchor of a replacement.
 
-HOME=/home/zz
-x=/home/zz
+x=$HOME
+last=${HOME##*/}
 t() {
   unset u u2 arr
   arr=(1 2)
@@ -47,8 +47,8 @@ ${x/~/T}
 ${x//~/T}
 ${x/#~/T}
 ${x/%~/T}
-${x/zz/~}
-${x/zz/a~}
+${x/$last/~}
+${x/$last/a~}
 ${x#~}
 ${x##~}
 ${x%~}

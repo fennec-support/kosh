@@ -19,8 +19,15 @@ if [[ $(expand '\s') != "${0##*/}" || ${0##*/} == "${BASH##*/}" ]]; then
 fi
 
 echo "== version"
-echo "v=[$(expand '\v')] V=[$(expand '\V')]"
-echo "info=${BASH_VERSINFO[0]}.${BASH_VERSINFO[1]}.${BASH_VERSINFO[2]}"
+short_version=$(expand '\v')
+long_version=$(expand '\V')
+echo "v=[$short_version]"
+if [[ $long_version == "$short_version".[0-9]* ]]; then
+  echo "V extends v with a patch level"
+fi
+if [[ $long_version == "${BASH_VERSINFO[0]}.${BASH_VERSINFO[1]}.${BASH_VERSINFO[2]}" ]]; then
+  echo "V matches BASH_VERSINFO"
+fi
 
 echo "== history number"
 echo "history=[$(expand '\!')]"
