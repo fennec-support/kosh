@@ -53,7 +53,7 @@ def run_pty(binary, command, keys=()):
             key_frame_count = bytes(output).count(FRAME_MARKER)
         frame_count = bytes(output).count(FRAME_MARKER)
         has_key_taken_effect = (
-            frame_count > key_frame_count + 1
+            frame_count > key_frame_count + 2
             if key_marker is None
             else bytes(output).count(key_marker) > key_marker_count)
         if (resized and key_index < len(keys) and has_key_taken_effect):
