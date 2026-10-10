@@ -774,6 +774,15 @@ fn kosh_identity(StringView fallback_path) throws -> Maybe<StringView>
 {
   static kosh_identity_cache cache;
 
+  if (cache.is_initialized && cache.identity.has_value()) {
+    let cached_status = os::file_status{};
+    if (os::stat_path_following(cache.path.text(), cached_status) &&
+        os::file_status_matches(cache.status, cached_status))
+    {
+      return cache.identity->view();
+    }
+  }
+
   let path = Path{fallback_path};
   let status = os::file_status{};
   bool has_status = false;
