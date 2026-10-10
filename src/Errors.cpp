@@ -313,14 +313,20 @@ cold static fn get_context_pointing_to(
   bool has_left_ellipsis = false;
   bool has_right_ellipsis = false;
 
+  static constexpr usize UNBOUNDED_STREAM_LINE_WIDTH = 240;
+  let const is_stderr_a_terminal = colors::stderr_is_a_terminal();
   let const terminal_dimensions = os::get_terminal_dimensions(KOSH_STDERR);
-  if (display_cells > 24 && colors::stderr_is_a_terminal() &&
+  let const should_window_for_terminal =
+      display_cells > 24 && is_stderr_a_terminal &&
       terminal_dimensions.has_value() &&
       terminal_dimensions->columns > gutter_width + 24 &&
-      display_cells > terminal_dimensions->columns - gutter_width)
-  {
+      display_cells > terminal_dimensions->columns - gutter_width;
+  let const should_window_for_stream =
+      !is_stderr_a_terminal && display_cells > UNBOUNDED_STREAM_LINE_WIDTH;
+  if (should_window_for_terminal || should_window_for_stream) {
     let const available_line_width =
-        terminal_dimensions->columns - gutter_width;
+        should_window_for_terminal ? terminal_dimensions->columns - gutter_width
+                                   : UNBOUNDED_STREAM_LINE_WIDTH;
     let const caret_display_width = caret_width < 1 ? 1 : caret_width;
     let const half_window_width = available_line_width / 2;
     let const caret_center = caret_column + caret_display_width / 2;
