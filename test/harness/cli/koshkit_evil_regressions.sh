@@ -177,7 +177,10 @@ evilio_cumulative_heading=$(
 )
 case $evilio_cumulative_heading in
   *'READ/0.2s'*'WRITE/0.2s'*) evilio_cumulative_heading_status=matched ;;
-  *) evilio_cumulative_heading_status=wrong ;;
+  *)
+    evilio_cumulative_heading_status=wrong
+    printf '%s\n' "$evilio_cumulative_heading" >&2
+    ;;
 esac
 printf 'evilio-cumulative-heading=%s\n' "$evilio_cumulative_heading_status"
 

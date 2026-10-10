@@ -568,14 +568,29 @@ fn enumerate_processes(process_detail detail) throws -> ArrayList<process_entry>
   let const include_resource_stats = detail == process_detail::ResourceStats;
   ArrayList<process_entry> processes{heap_allocator()};
   int name_mib[4] = {CTL_KERN, KERN_PROC, KERN_PROC_ALL, 0};
-  usize byte_length = 0;
-  if (::sysctl(name_mib, 4, nullptr, &byte_length, nullptr, 0) != 0)
-    return processes;
-
+  constexpr usize LIST_ATTEMPT_COUNT = 8;
   ArrayList<struct kinfo_proc> records{heap_allocator()};
-  records.reserve(byte_length / sizeof(struct kinfo_proc) + 1);
-  if (::sysctl(name_mib, 4, records.begin(), &byte_length, nullptr, 0) != 0)
-    return processes;
+  usize byte_length = 0;
+  bool did_list = false;
+  for (usize attempt_count = 0; attempt_count < LIST_ATTEMPT_COUNT;
+       attempt_count++)
+  {
+    if (::sysctl(name_mib, 4, nullptr, &byte_length, nullptr, 0) != 0)
+      return processes;
+
+    let const record_count = byte_length / sizeof(struct kinfo_proc);
+    records.reserve(record_count + record_count / 2 + 16);
+    byte_length = records.capacity() * sizeof(struct kinfo_proc);
+    if (::sysctl(name_mib, 4, records.begin(), &byte_length, nullptr, 0) == 0)
+    {
+      did_list = true;
+      break;
+    }
+
+    if (errno != ENOMEM) return processes;
+  }
+
+  if (!did_list) return processes;
 
   let const entry_count = byte_length / sizeof(struct kinfo_proc);
   for (usize entry_index = 0; entry_index < entry_count; entry_index++) {

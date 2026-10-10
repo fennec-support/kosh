@@ -155,7 +155,10 @@ case $process_report in
   *PID*READ/0.05s*WRITE/0.05s*"READ OPS/0.05s"*"WRITE OPS/0.05s"*COMMAND*)
     process_shape=matched
     ;;
-  *) process_shape=wrong ;;
+  *)
+    process_shape=wrong
+    printf '%s\n' "$process_report" >&2
+    ;;
 esac
 case $process_report in
   *DISKS*|*MEMORY*|*PAGING*|*SCHEDULER*|*STALLS*|*SWAP*)
