@@ -616,11 +616,29 @@ fn internal::complete_from_man_subcommands(StringView line, StringView token,
   if (!token.is_empty() && token[0] == '-') return None;
   if (os::has_directory_separator(token)) return None;
   if (!for_listing && token.is_empty()) return None;
-  if (!is_first_argument_token(line, token_start)) return None;
   let const surface_command = command_word_of(line);
   if (surface_command.is_empty() ||
       os::has_directory_separator(surface_command))
     return None;
+
+  let const second_word = second_word_of(line);
+  let const is_koshkit_man = surface_command == "koshkit" &&
+                             second_word.has_value() &&
+                             *second_word == "man";
+  let is_koshkit_man_argument = false;
+  if (is_koshkit_man) {
+    let const second_word_end =
+        static_cast<usize>(second_word->data - line.data) + second_word->length;
+    is_koshkit_man_argument = token_start > second_word_end;
+    for (usize position = second_word_end; position < token_start; position++)
+      if (line[position] != ' ' && line[position] != '\t')
+        is_koshkit_man_argument = false;
+  }
+  if (!is_first_argument_token(line, token_start) &&
+      !is_koshkit_man_argument)
+    return None;
+
+  let const command_name = is_koshkit_man ? StringView{"man"} : surface_command;
 
   if (!MANPAGE_CACHE.is_subcommand_index_built) {
     if (!for_listing) return None;
@@ -640,9 +658,25 @@ fn internal::complete_from_man_subcommands(StringView line, StringView token,
   }
 
   let const resolved_name =
-      for_listing ? resolve_completion_command(surface_command, context)
-                  : resolve_completion_alias(surface_command, context);
+      for_listing ? resolve_completion_command(command_name, context)
+                  : resolve_completion_alias(command_name, context);
   let const command = resolved_name.view();
+
+  let is_man_utility = false;
+  if (let const utility = koshkit::find_util(command);
+      utility.has_value())
+  {
+    is_man_utility = *utility == koshkit::Utility::Kind::Man;
+  }
+  if (is_man_utility) {
+    let matches = ArrayList<String>{heap_allocator()};
+    MANPAGE_CACHE.page_file_paths.for_each(
+        [&](StringView page_name, const String &) throws {
+          if (page_name.starts_with(token))
+            matches.push(String{page_name});
+        });
+    return matches;
+  }
 
   let const subcommands = MANPAGE_CACHE.subcommand_index.find(command);
   if (!subcommands.has_value() || subcommands->values.is_empty()) return None;
