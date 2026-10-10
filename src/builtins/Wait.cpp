@@ -304,10 +304,17 @@ static fn wait_for_operands(ExecContext &ec, EvalContext &cxt) throws -> i32
     if (last_background_pid.has_value())
       unused(cxt.wait_for_process_substitution(*last_background_pid));
 
-    for (let const &waited : table.jobs())
-      if (!finished_before_ids.find(waited.id).has_value()) {
-        table.mark_job_waited(waited.id, false);
+    usize finished_before_position = 0;
+    for (job &waited : table.jobs()) {
+      if (finished_before_position < finished_before_ids.count() &&
+          finished_before_ids[finished_before_position] == waited.id)
+      {
+        finished_before_position++;
+        continue;
       }
+
+      table.mark_job_waited(waited, false);
+    }
 
     if (!should_keep_waited_statuses) return 0;
 

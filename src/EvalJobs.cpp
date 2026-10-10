@@ -553,17 +553,21 @@ fn JobTable::mark_job_waited(i32 id, bool should_remember_status) wontthrow
   for (job &entry : m_jobs) {
     if (entry.id != id) continue;
 
-    if (entry.state != job::State::Done || entry.was_waited) {
-      return;
-    }
-
-    if (should_remember_status)
-      remember_finished_status(entry.process_id, entry.last_status);
-    entry.was_waited = true;
-    m_has_waited_jobs = true;
+    mark_job_waited(entry, should_remember_status);
 
     return;
   }
+}
+
+fn JobTable::mark_job_waited(job &entry, bool should_remember_status) wontthrow
+    -> void
+{
+  if (entry.state != job::State::Done || entry.was_waited) return;
+
+  if (should_remember_status)
+    remember_finished_status(entry.process_id, entry.last_status);
+  entry.was_waited = true;
+  m_has_waited_jobs = true;
 }
 
 fn JobTable::forget_marked_waited_jobs() throws -> void

@@ -508,6 +508,8 @@ public:
   fn forget_done_jobs() throws -> void;
   fn forget_done_job(i32 id) throws -> void;
   fn mark_job_waited(i32 id, bool should_remember_status) wontthrow -> void;
+  fn mark_job_waited(job &entry, bool should_remember_status) wontthrow
+      -> void;
   fn forget_waited_jobs() throws -> void
   {
     if (m_has_waited_jobs) forget_marked_waited_jobs();
