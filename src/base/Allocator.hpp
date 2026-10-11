@@ -18,11 +18,12 @@ namespace koshka {
 
 class BumpArena;
 fn
-bump_arena_allocate(BumpArena *arena, usize length, usize alignment) throws
-    -> opaque *;
+bump_arena_allocate(BumpArena *arena,
+                    usize      length,
+                    usize      alignment) throws -> opaque *;
 fn
-bump_arena_owns(const BumpArena *arena, const opaque *pointer) wontthrow
-    -> bool;
+bump_arena_owns(const BumpArena *arena, const opaque *pointer)
+    wontthrow -> bool;
 
 namespace os {
 fn
@@ -38,6 +39,7 @@ uncached_heap_alloc(usize length, usize alignment) wontthrow -> opaque *
 {
   if (alignment > alignof(max_align_t)) {
     if (length > SIZE_MAX - (alignment - 1)) return nullptr;
+
     let const rounded_length = (length + alignment - 1) & ~(alignment - 1);
 
     return os::allocate_aligned(rounded_length, alignment);
@@ -65,11 +67,14 @@ public:
   take(usize length) wontthrow -> opaque *
   {
     let const shift = class_shift_for(length);
+
     if (shift > MAX_CLASS_SHIFT) return std::malloc(length);
 
     let const class_index = shift - MIN_CLASS_SHIFT;
+
     if (m_bins[class_index] != nullptr) {
-      let const reused    = m_bins[class_index];
+      let const reused = m_bins[class_index];
+
       m_bins[class_index] = reused->next;
       m_counts[class_index]--;
 
@@ -102,6 +107,7 @@ public:
     if (pointer == nullptr) return;
 
     let const shift = class_shift_for(length);
+
     if (shift > MAX_CLASS_SHIFT) {
       std::free(pointer);
 
@@ -113,13 +119,15 @@ public:
     let const byte_limit   = MAX_RETAINED_BYTES_PER_CLASS / class_length;
     let const class_limit =
         byte_limit < MAX_BLOCKS_PER_CLASS ? byte_limit : MAX_BLOCKS_PER_CLASS;
+
     if (m_counts[class_index] >= class_limit) {
       std::free(pointer);
 
       return;
     }
 
-    let const recycled  = static_cast<Node *>(pointer);
+    let const recycled = static_cast<Node *>(pointer);
+
     recycled->next      = m_bins[class_index];
     m_bins[class_index] = recycled;
     m_counts[class_index]++;
@@ -164,6 +172,7 @@ heap_alloc(usize length, usize alignment) wontthrow -> opaque *
 {
   if (alignment > alignof(max_align_t)) {
     if (length > SIZE_MAX - (alignment - 1)) return nullptr;
+
     let const rounded_length = (length + alignment - 1) & ~(alignment - 1);
 
     return os::allocate_aligned(rounded_length, alignment);
@@ -176,6 +185,7 @@ heap_alloc(usize length, usize alignment) wontthrow -> opaque *
   return heap_pool_instance().take(length);
 #endif
 }
+
 hot inline fn
 heap_realloc(opaque *pointer, usize old_length, usize new_length) wontthrow
     -> opaque *
@@ -230,7 +240,7 @@ public:
   }
 
   pure fn
-  operator==(Allocator other) const wontthrow->bool
+  operator==(Allocator other) const wontthrow -> bool
   {
     return tagged == other.tagged;
   }
@@ -271,20 +281,24 @@ public:
   {
     if (pointer == nullptr) {
       let const replacement = raw_alloc(new_length, alignment);
+
       if (replacement == nullptr && new_length != 0) {
         throw std::bad_alloc{};
       }
 
       return replacement;
     }
+
     if (new_length == 0) {
       raw_free(pointer, old_length, alignment);
 
       return nullptr;
     }
+
     if (alignment <= alignof(max_align_t)) {
       if (get_kind() == Kind::UncachedHeap) {
         let const replacement = std::realloc(pointer, new_length);
+
         if (replacement == nullptr) throw std::bad_alloc{};
 
         return replacement;
@@ -293,6 +307,7 @@ public:
       if (get_kind() == Kind::Heap) {
         let const replacement =
             allocators::heap_realloc(pointer, old_length, new_length);
+
         if (replacement == nullptr) throw std::bad_alloc{};
 
         return replacement;
@@ -300,6 +315,7 @@ public:
     }
 
     let const replacement = raw_alloc(new_length, alignment);
+
     if (replacement == nullptr) throw std::bad_alloc{};
     std::memcpy(replacement, pointer,
                 old_length < new_length ? old_length : new_length);
@@ -309,8 +325,7 @@ public:
   }
 
   flatten fn
-  raw_free(opaque *pointer, usize length, usize alignment) const wontthrow
-      -> void
+  raw_free(opaque *pointer, usize length, usize alignment) const wontthrow -> void
   {
     switch (get_kind()) {
     case Kind::Heap: allocators::heap_free(pointer, length, alignment); return;
@@ -329,18 +344,21 @@ public:
   {
     let const is_count_overflowing_usize =
         sizeof(T) != 0 && count > (static_cast<usize>(-1) / sizeof(T));
-    if (is_count_overflowing_usize) rarely
-      {
-        throw std::bad_alloc{};
-      }
+
+    if (is_count_overflowing_usize) rarely {
+      throw std::bad_alloc{};
+    }
+
     let const result =
         static_cast<T *>(raw_alloc(count * sizeof(T), alignof(T)));
+
     if (result == nullptr && count != 0) {
       throw std::bad_alloc{};
     }
 
     return result;
   }
+
   template <class T>
   flatten fn
   free_array(T *pointer, usize count) const wontthrow -> void
@@ -362,6 +380,7 @@ inline fn
 bump_allocator(BumpArena &arena) wontthrow -> Allocator
 {
   let const address = reinterpret_cast<uintptr>(&arena);
+
   ASSERT((address & Allocator::KIND_MASK) == 0,
          "an arena address must leave the two tag bits clear");
 

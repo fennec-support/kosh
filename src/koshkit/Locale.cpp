@@ -70,8 +70,7 @@ fn
 Locale::execute(const ExecContext               &ec,
                 EvalContext                     &cxt,
                 const ArrayList<String>         &args,
-                const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+                const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
@@ -79,11 +78,13 @@ Locale::execute(const ExecContext               &ec,
   {
     return report_usage_error(ec, cxt, args[0].view());
   }
+
   if (FLAG_LOCALE_ALL_LOCALES.is_enabled()) {
     ec.print_to_stdout("C\nPOSIX\n");
 
     return 0;
   }
+
   if (FLAG_LOCALE_CHARMAPS.is_enabled()) {
     ec.print_to_stdout("ANSI_X3.4-1968\nUTF-8\n");
 
@@ -92,6 +93,7 @@ Locale::execute(const ExecContext               &ec,
 
   if (operands.is_empty()) {
     let output = String{cxt.scratch_allocator()};
+
     output += "LANG=";
     output += locale_environment_value("LANG");
     output += "\nLC_CTYPE=";
@@ -122,6 +124,7 @@ Locale::execute(const ExecContext               &ec,
   {
     let const &operand = operands[operand_position];
     let const  keyword = LOCALE_KEYWORDS.find(operand.view());
+
     if (!keyword.has_value()) {
       report_soft_koshkit_util_error(
           ec, cxt, operand_locations[operand_position], args[0].view(),
@@ -129,25 +132,30 @@ Locale::execute(const ExecContext               &ec,
 
       return 1;
     }
+
     if ((keyword->value_kind == locale_value_kind::CharacterMap) &&
         (active_locale == nullptr))
     {
       active_locale = setlocale(LC_ALL, nullptr);
     }
+
     if ((keyword->value_kind != locale_value_kind::CharacterMap) &&
         (locale_values == nullptr))
     {
       locale_values = localeconv();
     }
+
     if (FLAG_LOCALE_CATEGORY.is_enabled()) {
       ec.print_to_stdout(keyword->category);
       ec.print_to_stdout("\n");
     }
 
     StringView value;
+
     switch (keyword->value_kind) {
     case locale_value_kind::CharacterMap: {
       let lowered = String{cxt.scratch_allocator(), StringView{active_locale}};
+
       lowered.lowercase_ascii();
       value = std::strstr(lowered.c_str(), "utf") != nullptr
                   ? StringView{"UTF-8"}
@@ -157,13 +165,16 @@ Locale::execute(const ExecContext               &ec,
     case locale_value_kind::CurrencySymbol:
       value = StringView{locale_values->currency_symbol};
       break;
+
     case locale_value_kind::DecimalPoint:
       value = StringView{locale_values->decimal_point};
       break;
+
     case locale_value_kind::ThousandsSeparator:
       value = StringView{locale_values->thousands_sep};
       break;
     }
+
     if (FLAG_LOCALE_KEYWORD.is_enabled()) {
       ec.print_to_stdout(operand.view());
       ec.print_to_stdout("=\"");

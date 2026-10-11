@@ -35,12 +35,13 @@ fn
 find_substring_length_separator(StringView body) wontthrow -> usize;
 
 wontreturn fn
-throw_script_fatal(StringView message, StringView note = {}) throws -> void;
+throw_script_fatal(StringView message, StringView note = {}) throws
+    -> void;
 
 fn
 source_init_moods(EvalContext                 &context,
                   const ArrayList<mimic_mood> &moods,
                   bool                         is_login_shell,
-                  bool should_be_interactive) throws -> void;
+                  bool                         should_be_interactive) throws -> void;
 
 } /* namespace koshka */

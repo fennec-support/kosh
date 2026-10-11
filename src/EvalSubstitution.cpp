@@ -33,12 +33,13 @@ mark_substitution_frames_printed(SourceStore &store) wontthrow -> void
 }
 
 static fn
-finish_captured_output(String &captured, const RuntimeState &runtime) throws
-    -> void
+finish_captured_output(String             &captured,
+                       const RuntimeState &runtime) throws -> void
 {
   let const should_drop_nul_bytes =
       (runtime.is_bash_compatible() || runtime.is_posix_mode()) &&
       captured.view().find_character('\0').has_value();
+
   if (!should_drop_nul_bytes) {
     captured.strip_trailing_newlines();
 
@@ -46,7 +47,9 @@ finish_captured_output(String &captured, const RuntimeState &runtime) throws
   }
 
   let kept = String{heap_allocator()};
+
   kept.reserve(captured.count());
+
   let remaining = captured.view();
 
   while (let const nul = remaining.find_character('\0')) {
@@ -77,7 +80,7 @@ is_script_fatal_error(const std::exception_ptr &error) wontthrow -> bool
 
 static fn
 contained_substitution_status(const std::exception_ptr &error,
-                              bool is_posix_mode) wontthrow -> i32
+                              bool                      is_posix_mode) wontthrow -> i32
 {
   try {
     std::rethrow_exception(error);
@@ -123,6 +126,7 @@ EvalContext::register_embedded_source(StringView            inner,
   let const    span         = parent != nullptr && parent_location.length != 0
                                   ? source_text_in_span(parent_location, 0)
                                   : StringView{};
+
   if (!span.is_empty() && !inner.is_empty()) {
     static constexpr usize PREFIX_LENGTHS[] = {2, 1, 0};
 
@@ -135,6 +139,7 @@ EvalContext::register_embedded_source(StringView            inner,
       }
     }
   }
+
   if (!inner_offset.has_value() && body == nullptr) {
     return false;
   }
@@ -172,7 +177,7 @@ SubstitutionFrame::push_source_frame(const WordSegment &segment,
 
 fn
 SubstitutionFrame::push_source_frame(const SourceLocation &location,
-                                     StringView origin) throws -> void
+                                     StringView            origin) throws -> void
 {
   ASSERT(!m_did_push_source_frame);
   m_did_push_source_frame =
@@ -213,6 +218,7 @@ EvalContext::map_embedded_site(StringView     &rendered_source,
          index--)
     {
       let const &candidate = source_store().embedded_sources()[index - 1];
+
       if (candidate.is_mapped && candidate.text.data == rendered_source.data &&
           candidate.text.length == rendered_source.length)
       {
@@ -281,8 +287,7 @@ drain_command_substitution_pipe(opaque *raw_context) wontthrow -> void
 {
   let drain = static_cast<command_substitution_drain_context *>(raw_context);
 
-  loop
-  {
+  loop {
     if (drain->length + DRAIN_CHUNK_LENGTH > drain->capacity) {
       usize grown_capacity =
           drain->capacity == 0 ? DRAIN_CHUNK_LENGTH * 2 : drain->capacity * 2;
@@ -291,20 +296,24 @@ drain_command_substitution_pipe(opaque *raw_context) wontthrow -> void
         grown_capacity *= 2;
 
       let const allocator = uncached_heap_allocator();
+
       try {
         drain->data = static_cast<char *>(allocator.raw_realloc(
             drain->data, drain->capacity, grown_capacity, alignof(char)));
       } catch (...) {
         break;
       }
+
       drain->capacity = grown_capacity;
     }
 
     let const bytes_read = os::read_fd(
         drain->read_fd, drain->data + drain->length, DRAIN_CHUNK_LENGTH);
+
     if (!bytes_read.has_value() || *bytes_read == 0) {
       break;
     }
+
     drain->length += static_cast<usize>(*bytes_read);
   }
 }
@@ -324,19 +333,26 @@ EvalContext::read_redirect_substitution(StringView source) throws
   if (i >= source.length || source[i] != '<') {
     return None;
   }
+
   i++;
 
   if (arena_store().parse_arena() == nullptr) return None;
+
   let const ast_mark = arena_store().parse_arena()->mark();
+
   defer { arena_store().parse_arena()->release(ast_mark); };
+
   let lexer =
       Lexer{source.substring_of_length(i, source.length - i),
             *arena_store().parse_arena(), None, runtime_state().get_mood()};
   Token *name = lexer.next_shell_token();
+
   if (name == nullptr || name->kind() != Token::Kind::Word) {
     return None;
   }
+
   Token *after = lexer.next_shell_token();
+
   if (after != nullptr && after->kind() != Token::Kind::EndOfFile &&
       after->kind() != Token::Kind::Newline)
   {
@@ -345,15 +361,20 @@ EvalContext::read_redirect_substitution(StringView source) throws
 
   let const filename = expand_word_for_assignment(
       static_cast<const tokens::WordToken *>(name)->word());
+
   LOG(Debug, "the substitution is a bare file read of '%s'", filename.c_str());
+
   let content = Path{filename.view()}.read_entire_file();
+
   if (!content.has_value()) {
     LOG(Debug, "the file read substitution of '%s' failed, expanding to empty",
         filename.c_str());
 
     return String{heap_allocator()};
   }
+
   let result = steal(*content);
+
   finish_captured_output(result, runtime_state());
 
   return result;
@@ -372,25 +393,31 @@ EvalContext::capture_command_substitution(
 
   if (arena_store().parse_arena() == nullptr)
     throw Error{"Command substitution outside of a parse"};
+
   let const ast_mark = arena_store().parse_arena()->mark();
+
   defer { arena_store().parse_arena()->release(ast_mark); };
 
   enter_substitution();
   defer { leave_substitution(); };
 
   let normalized_source = source.clone();
+
   normalized_source.normalize_crlf_line_endings();
 
   let frame = SubstitutionFrame{*this};
+
   if (call_site != nullptr) {
     frame.push_source_frame(*call_site, StringView{"command substitution"});
     frame.register_embedded(normalized_source.view(), *call_site);
   }
+
   let parser = Parser{
       Lexer{normalized_source.view(), *arena_store().parse_arena(),
             steal(filename), runtime_state().get_mood()}
   };
   const Expression *ast;
+
   try {
     ast = parser.construct_ast();
   } catch (ErrorWithLocation &error) {
@@ -407,6 +434,7 @@ EvalContext::capture_command_substitution(
                                         normalized_source.view());
     throw;
   }
+
   ASSERT(ast != nullptr);
 
   return run_captured_substitution(ast, normalized_source,
@@ -416,8 +444,8 @@ EvalContext::capture_command_substitution(
 }
 
 fn
-EvalContext::setup_process_substitution(const WordSegment &segment) throws
-    -> String
+EvalContext::setup_process_substitution(const WordSegment &segment)
+    throws -> String
 {
   return setup_process_substitution(
       segment.text.view(),
@@ -427,7 +455,8 @@ EvalContext::setup_process_substitution(const WordSegment &segment) throws
 
 fn
 EvalContext::setup_process_substitution(
-    StringView text, Maybe<SourceLocation> segment_location) throws -> String
+    StringView text, Maybe<SourceLocation> segment_location) throws
+    -> String
 {
   if (arena_store().parse_arena() == nullptr)
     throw Error{"Process substitution outside of a parse"};
@@ -435,24 +464,30 @@ EvalContext::setup_process_substitution(
 
   let const direction              = text[0];
   let const is_command_pipe_writer = direction == '<';
+
   LOG(Debug, "setting up a process substitution where the command %s the pipe",
       is_command_pipe_writer ? "writes" : "reads");
 
   let const ast_mark = arena_store().parse_arena()->mark();
+
   defer { arena_store().parse_arena()->release(ast_mark); };
+
   let const substitution_source = String{heap_allocator(), text.substring(1)};
   let       frame               = SubstitutionFrame{*this};
+
   if (segment_location.has_value()) {
     frame.push_source_frame(*segment_location,
                             StringView{"process substitution"});
     frame.register_embedded(substitution_source.view(), *segment_location,
                             &substitution_source);
   }
+
   let parser = Parser{
       Lexer{substitution_source.view(), *arena_store().parse_arena(), None,
             runtime_state().get_mood()}
   };
   const Expression *ast;
+
   try {
     ast = parser.construct_ast();
   } catch (...) {
@@ -460,12 +495,16 @@ EvalContext::setup_process_substitution(
                                         substitution_source.view());
     throw;
   }
+
   ASSERT(ast != nullptr);
 
-  let       bootstrap = os::subshell_bootstrap{};
-  let const do_launch = [&]() throws -> os::process_substitution_launch {
+  let bootstrap = os::subshell_bootstrap{};
+
+  let const do_launch =
+      [&]() throws -> os::process_substitution_launch {
     try {
-      let const evaluator       = make_child_evaluator_state(bootstrap);
+      let const evaluator = make_child_evaluator_state(bootstrap);
+
       bootstrap.evaluation_mode = root_evaluation_mode::ContainedSubstitution;
       set_child_source_origin(bootstrap, substitution_source.view(),
                               SourceLocation{});
@@ -495,6 +534,7 @@ EvalContext::setup_process_substitution(
   };
 
   let launch = do_launch();
+
   if (launch.should_evaluate_child) {
     if (launch.child_close_fd.has_value()) os::close_fd(*launch.child_close_fd);
 
@@ -506,9 +546,11 @@ EvalContext::setup_process_substitution(
     enter_subshell();
     hide_coprocess_descriptors();
     job_table_store().inherit_parent_jobs(false);
+
     i32       status       = 0;
     let const source_scope = enter_source_scope(&substitution_source,
                                                 String{"process substitution"});
+
     try {
       ast->evaluate(*this);
       status = execution_store().last_exit_status();
@@ -520,16 +562,19 @@ EvalContext::setup_process_substitution(
                                           substitution_source.view());
       status = 1;
     }
+
     os::exit_process_immediately(status);
   }
 
   ASSERT(launch.retained_fd.has_value());
   ASSERT(launch.child != KOSH_INVALID_PROCESS);
+
   let const location   = source_store().current_location();
   let const source     = source_store().current_source() != nullptr
                              ? source_store().current_source()->view()
                              : StringView{};
   let const process_id = os::process_id_of(launch.child);
+
   expansion_store().pending_process_substitutions().push(
       process_substitution{*launch.retained_fd, launch.child, process_id,
                            launch.cleanup, location, source});
@@ -549,20 +594,23 @@ EvalContext::mark_process_substitutions() const wontthrow
 }
 
 fn
-EvalContext::hold_process_substitutions(
-    process_substitution_mark mark) wontthrow -> void
+EvalContext::hold_process_substitutions(process_substitution_mark mark)
+    wontthrow
+    -> void
 {
   let &pending = expansion_store().pending_process_substitutions();
   let &held    = expansion_store().held_process_substitutions();
 
   for (usize i = mark.pending; i < pending.count(); i++) {
     process_substitution &sub = pending[i];
+
     if (sub.shell_fd != KOSH_INVALID_FD) os::close_fd(sub.shell_fd);
     sub.shell_fd = KOSH_INVALID_FD;
     os::finish_process_substitution(sub.platform_cleanup);
     sub.platform_cleanup = nullptr;
     sub.source           = StringView{};
     sub.location         = SourceLocation{};
+
     try {
       held.push(sub);
     } catch (...) {
@@ -581,8 +629,10 @@ EvalContext::release_finished_held_process_substitutions() wontthrow -> void
 
   for (usize i = held.count(); i > 0; i--) {
     process_substitution &sub = held[i - 1];
+
     if (sub.child != KOSH_INVALID_PROCESS) {
       i32 status = 0;
+
       if (os::poll_process(sub.child, status) != os::process_state::Exited)
         continue;
       sub.child = KOSH_INVALID_PROCESS;
@@ -608,6 +658,7 @@ EvalContext::wait_for_process_substitution(i64  process_id,
     }
 
     i32 status = 127;
+
     if (!should_block) {
       if (os::poll_process(sub.child, status) != os::process_state::Exited)
         return false;
@@ -618,6 +669,7 @@ EvalContext::wait_for_process_substitution(i64  process_id,
         LOG(Debug, "waiting for a process substitution failed");
       }
     }
+
     sub.child = KOSH_INVALID_PROCESS;
     job_table_store().remember_finished_status(process_id, status);
 
@@ -682,6 +734,7 @@ EvalContext::cleanup_process_substitutions(
   {
     process_substitution &sub =
         expansion_store().pending_process_substitutions()[i];
+
     os::finish_process_substitution(sub.platform_cleanup);
     if (sub.shell_fd != KOSH_INVALID_FD) os::close_fd(sub.shell_fd);
     sub.shell_fd = KOSH_INVALID_FD;
@@ -692,6 +745,7 @@ EvalContext::cleanup_process_substitutions(
   {
     process_substitution &sub =
         expansion_store().pending_process_substitutions()[i];
+
     if (sub.child == KOSH_INVALID_PROCESS) continue;
 
     try {
@@ -705,6 +759,7 @@ EvalContext::cleanup_process_substitutions(
           let const text =
               "A process substitution child could not be reaped. " +
               e.message();
+
           show_message(sub.source.is_empty()
                            ? Warning{text}.to_string()
                            : WarningWithLocation{sub.location, text}.to_string(
@@ -720,6 +775,7 @@ EvalContext::cleanup_process_substitutions(
         try {
           let const text =
               StringView{"A process substitution child could not be reaped."};
+
           show_message(sub.source.is_empty()
                            ? Warning{text}.to_string()
                            : WarningWithLocation{sub.location, text}.to_string(
@@ -739,8 +795,8 @@ EvalContext::cleanup_process_substitutions(
 }
 
 fn
-EvalContext::capture_command_substitution(const WordSegment &segment) throws
-    -> String
+EvalContext::capture_command_substitution(const WordSegment &segment)
+    throws -> String
 {
   if (Maybe<String> file = read_redirect_substitution(segment.text.view());
       file.has_value())
@@ -756,19 +812,27 @@ EvalContext::capture_command_substitution(const WordSegment &segment) throws
   let cache_arena = segment.is_substitution_cache_in_function_arena
                         ? arena_store().function_arena()
                         : arena_store().parse_arena();
+
   ASSERT(cache_arena != nullptr);
+
   let frame = SubstitutionFrame{*this};
+
   frame.push_source_frame(segment, StringView{"command substitution"});
+
   let &cache = segment.get_eval_cache(cache_arena);
+
   if (cache.substitution_ast == nullptr ||
       !cache_arena->is_lifetime_valid(cache.substitution_lifetime))
   {
     LOG(Debug, "command substitution ast cache miss, reparsing");
+
     let const segment_location = segment.get_source_location(
         source_store().current_location().source_name_index);
     let reparse_frame = SubstitutionFrame{*this};
+
     if (segment_location.has_value())
       reparse_frame.register_embedded(segment.text.view(), *segment_location);
+
     let const allocation_kind = segment.is_substitution_cache_in_function_arena
                                     ? ParseSession::AllocationKind::FunctionBody
                                     : ParseSession::AllocationKind::Syntax;
@@ -776,6 +840,7 @@ EvalContext::capture_command_substitution(const WordSegment &segment) throws
         Lexer{segment.text.view(), *cache_arena, None,
               runtime_state().get_mood(), allocation_kind}
     };
+
     try {
       cache.substitution_ast = parser.construct_ast();
     } catch (ErrorWithLocation &error) {
@@ -792,8 +857,10 @@ EvalContext::capture_command_substitution(const WordSegment &segment) throws
                                           segment.text.view());
       throw;
     }
+
     cache.substitution_lifetime = cache_arena->register_lifetime();
   }
+
   ASSERT(cache.substitution_ast != nullptr);
 
   return run_captured_substitution(
@@ -804,10 +871,12 @@ EvalContext::capture_command_substitution(const WordSegment &segment) throws
 
 fn
 EvalContext::push_substitution_source_frame(const WordSegment &segment,
-                                            StringView origin) throws -> bool
+                                            StringView         origin) throws
+    -> bool
 {
   let const location = segment.get_source_location(
       source_store().current_location().source_name_index);
+
   if (!location.has_value()) return false;
 
   return push_substitution_source_frame(*location, origin);
@@ -815,7 +884,8 @@ EvalContext::push_substitution_source_frame(const WordSegment &segment,
 
 fn
 EvalContext::push_substitution_source_frame(const SourceLocation &location,
-                                            StringView origin) throws -> bool
+                                            StringView            origin) throws
+    -> bool
 {
   if (!diagnostics_store().source_traces_enabled() ||
       source_store().current_source() == nullptr || location.length == 0)
@@ -839,23 +909,32 @@ EvalContext::push_substitution_source_frame(const SourceLocation &location,
 }
 
 fn
-EvalContext::run_captured_substitution(const Expression     *ast,
-                                       const String         &source,
-                                       Maybe<SourceLocation> call_site) throws
-    -> String
+EvalContext::run_captured_substitution(
+    const Expression     *ast,
+    const String         &source,
+    Maybe<SourceLocation> call_site) throws -> String
 {
   ASSERT(ast != nullptr);
   LOG(Debug, "running a captured substitution body of %zu bytes",
       source.count());
 
   let const substitution_mark = expansion_store().scratch_arena().mark();
-  defer { expansion_store().scratch_arena().release(substitution_mark); };
+
+  defer {
+    expansion_store().scratch_arena().release(substitution_mark);
+  };
+
   let const saved_command = execution_store().save_current_command();
-  defer { execution_store().restore_current_command(saved_command); };
+
+  defer {
+    execution_store().restore_current_command(saved_command);
+  };
 
   let frame = SubstitutionFrame{*this};
+
   if (call_site.has_value())
     frame.register_embedded(source.view(), *call_site, &source);
+
   let const source_scope =
       enter_source_scope(&source, String{source_store().current_origin()});
   let const previous_source   = source_scope.get_source();
@@ -870,6 +949,7 @@ EvalContext::run_captured_substitution(const Expression     *ast,
       expansion_store().substitution_depth() <= 16 &&
       trap_store().count() == 0 &&
       ast->can_evaluate_in_process_substitution(*this, active_functions);
+
   if (should_evaluate_in_process) {
     try {
       in_process_snapshot = snapshot_state();
@@ -877,20 +957,25 @@ EvalContext::run_captured_substitution(const Expression     *ast,
       should_evaluate_in_process = false;
     }
   }
+
   if (!should_evaluate_in_process && !os::can_fork_evaluator()) {
     in_process_snapshot        = snapshot_state();
     should_evaluate_in_process = true;
   }
+
   if (!should_evaluate_in_process) {
     LOG(Debug, "running the captured substitution in a child process");
     prepare_child_environment();
+
     let const pipe = os::make_pipe();
+
     if (!pipe)
       throw ErrorWithLocation{previous_location,
                               "Could not open a pipe for command substitution"};
+
     bool was_pipe_handed_off = false;
-    defer
-    {
+
+    defer {
       if (!was_pipe_handed_off) {
         os::close_fd(pipe->in);
         os::close_fd(pipe->out);
@@ -899,6 +984,7 @@ EvalContext::run_captured_substitution(const Expression     *ast,
 
     if (!job_table_store().jobs().is_empty()) job_table_store().update_jobs();
     koshka::flush();
+
     let const forked_child =
         os::try_fork_compound_stage(os::fork_compound_stage_options{
             .out_fd            = pipe->out,
@@ -913,8 +999,10 @@ EvalContext::run_captured_substitution(const Expression     *ast,
       was_pipe_handed_off = true;
       in_process_snapshot = snapshot_state();
     } else {
-      let const child     = *forked_child;
+      let const child = *forked_child;
+
       was_pipe_handed_off = true;
+
       if (child == 0) {
         os::close_fd(pipe->in);
         execution_store().set_shell_is_interactive(false);
@@ -926,21 +1014,26 @@ EvalContext::run_captured_substitution(const Expression     *ast,
         {
           runtime_state().set_error_exit(false);
         }
+
         clear_inherited_exit_trap();
         reset_inherited_signal_traps();
         execution_store().allow_terminal_exec_at_current_depth();
+
         std::exception_ptr error;
+
         try {
           ast->evaluate(*this);
         } catch (...) {
           error = std::current_exception();
         }
+
         if (control_flow_store().has_pending()) {
           if (control_flow_store().pending().kind == control_flow::Kind::Exit)
             execution_store().set_last_exit_status(
                 static_cast<i32>(control_flow_store().pending().value));
           control_flow_store().clear();
         }
+
         if (!error) {
           try {
             unused(run_subshell_exit_trap());
@@ -948,20 +1041,23 @@ EvalContext::run_captured_substitution(const Expression     *ast,
             error = std::current_exception();
           }
         }
+
         if (error) {
           render_contained_substitution_error(error, source.view());
           execution_store().set_last_exit_status(contained_substitution_status(
               error, runtime_state().is_posix_mode()));
         }
+
         koshka::flush();
         os::exit_process_immediately(execution_store().last_exit_status());
       }
 
       os::close_fd(pipe->out);
+
       bool is_input_open    = true;
       bool has_reaped_child = false;
-      defer
-      {
+
+      defer {
         if (is_input_open) os::close_fd(pipe->in);
         if (!has_reaped_child) {
           unused(os::signal_process(child, 9));
@@ -972,8 +1068,10 @@ EvalContext::run_captured_substitution(const Expression     *ast,
       let       captured = os::read_fd_to_string(pipe->in, heap_allocator());
       let const was_read_interrupted =
           !captured.has_value() && os::INTERRUPT_REQUESTED;
+
       os::close_fd(pipe->in);
       is_input_open = false;
+
       if (was_read_interrupted) {
         unused(os::signal_process(child, 2));
         os::reap_process_quietly(child);
@@ -984,16 +1082,20 @@ EvalContext::run_captured_substitution(const Expression     *ast,
 
       let       was_stopped = false;
       let const status      = os::wait_and_monitor_process(child, &was_stopped);
-      has_reaped_child      = true;
+
+      has_reaped_child = true;
       unused(was_stopped);
+
       if (os::INTERRUPT_REQUESTED) {
         os::INTERRUPT_REQUESTED = 0;
         throw InterruptErrorWithLocation{previous_location};
       }
+
       execution_store().set_last_exit_status(status);
       if (!captured.has_value())
         throw ErrorWithLocation{previous_location,
                                 "Could not read command substitution output"};
+
       finish_captured_output(*captured, runtime_state());
 
       return steal(*captured);
@@ -1002,15 +1104,19 @@ EvalContext::run_captured_substitution(const Expression     *ast,
 
   LOG(Debug, "running the captured substitution in process");
   ASSERT(in_process_snapshot.has_value());
-  let       snapshot               = steal(*in_process_snapshot);
-  bool      did_begin_restoration  = false;
+
+  let  snapshot              = steal(*in_process_snapshot);
+  bool did_begin_restoration = false;
+
   let const do_evaluate_in_process = [&]() throws -> String {
     let const pipe = os::make_pipe();
+
     if (!pipe) throw Error{"Could not open a pipe for command substitution"};
+
     bool is_pipe_input_open  = true;
     bool is_pipe_output_open = true;
-    defer
-    {
+
+    defer {
       if (is_pipe_output_open) os::close_fd(pipe->out);
       if (is_pipe_input_open) os::close_fd(pipe->in);
     };
@@ -1020,6 +1126,7 @@ EvalContext::run_captured_substitution(const Expression     *ast,
         command_substitution_drain_context{nullptr, 0, 0, pipe->in};
     let const reader =
         os::start_thread(drain_command_substitution_pipe, &drain_context);
+
     if (!reader) {
       os::close_fd(pipe->in);
       is_pipe_input_open = false;
@@ -1034,35 +1141,41 @@ EvalContext::run_captured_substitution(const Expression     *ast,
     bool           did_enter_subshell           = false;
     os::descriptor saved_stdout                 = KOSH_INVALID_FD;
     let const      was_interactive = execution_store().shell_is_interactive();
-    let const      do_cleanup      = [&]() wontthrow -> void {
+
+    let const do_cleanup = [&]() wontthrow -> void {
       if (did_enter_subshell) {
         leave_subshell();
         did_enter_subshell = false;
       }
+
       if (did_change_interactive_state) {
         execution_store().set_shell_is_interactive(was_interactive);
         did_change_interactive_state = false;
       }
+
       if (is_stdout_redirected) {
         koshka::flush();
         os::restore_stdout(saved_stdout);
         is_stdout_redirected = false;
       }
+
       if (is_pipe_output_open) {
         os::close_fd(pipe->out);
         is_pipe_output_open = false;
       }
+
       if (is_reader_running) {
         os::join_thread(*reader);
         is_reader_running = false;
       }
+
       if (is_pipe_input_open) {
         os::close_fd(pipe->in);
         is_pipe_input_open = false;
       }
     };
-    defer
-    {
+
+    defer {
       do_cleanup();
       uncached_heap_allocator().free_array(drain_context.data,
                                            drain_context.capacity);
@@ -1083,20 +1196,25 @@ EvalContext::run_captured_substitution(const Expression     *ast,
     {
       runtime_state().set_error_exit(false);
     }
+
     clear_inherited_exit_trap();
     reset_inherited_signal_traps();
+
     std::exception_ptr error;
+
     try {
       ast->evaluate(*this);
     } catch (...) {
       error = std::current_exception();
     }
+
     if (control_flow_store().has_pending()) {
       if (control_flow_store().pending().kind == control_flow::Kind::Exit)
         execution_store().set_last_exit_status(
             static_cast<i32>(control_flow_store().pending().value));
       control_flow_store().clear();
     }
+
     if (!error) {
       try {
         unused(run_subshell_exit_trap());
@@ -1104,6 +1222,7 @@ EvalContext::run_captured_substitution(const Expression     *ast,
         error = std::current_exception();
       }
     }
+
     if (error) render_contained_substitution_error(error, source.view());
     do_cleanup();
 
@@ -1134,21 +1253,24 @@ EvalContext::run_captured_substitution(const Expression     *ast,
   } catch (...) {
     if (!did_begin_restoration) {
       let const error = std::current_exception();
+
       try {
         restore_state(steal(snapshot));
         note_subshell_child_exit();
       } catch (...) {
         LOG(Debug, "restoring an interrupted command substitution failed");
       }
+
       std::rethrow_exception(error);
     }
+
     throw;
   }
 }
 
 fn
-EvalContext::capture_function_substitution(const WordSegment &segment) throws
-    -> String
+EvalContext::capture_function_substitution(const WordSegment &segment)
+    throws -> String
 {
   if (arena_store().parse_arena() == nullptr)
     throw Error{"Function substitution outside of a parse"};
@@ -1156,17 +1278,23 @@ EvalContext::capture_function_substitution(const WordSegment &segment) throws
   let cache_arena = segment.is_substitution_cache_in_function_arena
                         ? arena_store().function_arena()
                         : arena_store().parse_arena();
+
   ASSERT(cache_arena != nullptr);
+
   let frame = SubstitutionFrame{*this};
+
   frame.push_source_frame(segment, StringView{"function substitution"});
+
   let const text                  = segment.text.view();
   let const is_value_substitution = !text.is_empty() && text[0] == '|';
   let const body  = is_value_substitution ? text.substring(1) : text;
   let      &cache = segment.get_eval_cache(cache_arena);
+
   if (cache.substitution_ast == nullptr ||
       !cache_arena->is_lifetime_valid(cache.substitution_lifetime))
   {
     LOG(Debug, "function substitution ast cache miss, reparsing");
+
     let const allocation_kind = segment.is_substitution_cache_in_function_arena
                                     ? ParseSession::AllocationKind::FunctionBody
                                     : ParseSession::AllocationKind::Syntax;
@@ -1174,14 +1302,17 @@ EvalContext::capture_function_substitution(const WordSegment &segment) throws
         Lexer{body, *cache_arena, None, runtime_state().get_mood(),
               allocation_kind}
     };
+
     try {
       cache.substitution_ast = parser.construct_ast();
     } catch (...) {
       render_contained_substitution_error(std::current_exception(), body);
       throw;
     }
+
     cache.substitution_lifetime = cache_arena->register_lifetime();
   }
+
   ASSERT(cache.substitution_ast != nullptr);
 
   let const source = String{heap_allocator(), body};
@@ -1196,24 +1327,30 @@ EvalContext::capture_function_substitution(
 {
   if (arena_store().parse_arena() == nullptr)
     throw Error{"Function substitution outside of a parse"};
+
   let const ast_mark = arena_store().parse_arena()->mark();
+
   defer { arena_store().parse_arena()->release(ast_mark); };
 
   let const is_value_substitution = !text.is_empty() && text[0] == '|';
   let       source                = String{heap_allocator(),
                       is_value_substitution ? text.substring(1) : text};
+
   source.normalize_crlf_line_endings();
 
   let frame = SubstitutionFrame{*this};
+
   if (call_site != nullptr) {
     frame.push_source_frame(*call_site, StringView{"function substitution"});
     frame.register_embedded(source.view(), *call_site);
   }
+
   let parser = Parser{
       Lexer{source.view(), *arena_store().parse_arena(), None,
             runtime_state().get_mood()}
   };
   const Expression *ast;
+
   try {
     ast = parser.construct_ast();
   } catch (ErrorWithLocation &error) {
@@ -1230,16 +1367,17 @@ EvalContext::capture_function_substitution(
                                         source.view());
     throw;
   }
+
   ASSERT(ast != nullptr);
 
   return run_function_substitution(ast, source, is_value_substitution);
 }
 
 fn
-EvalContext::run_function_substitution(const Expression *ast,
-                                       const String     &source,
-                                       bool is_value_substitution) throws
-    -> String
+EvalContext::run_function_substitution(
+    const Expression *ast,
+    const String     &source,
+    bool              is_value_substitution) throws -> String
 {
   LOG(Debug, "running a function substitution body of %zu bytes",
       source.count());
@@ -1248,21 +1386,24 @@ EvalContext::run_function_substitution(const Expression *ast,
 
   let const do_evaluate_body = [&]() throws -> std::exception_ptr {
     let const was_interactive = execution_store().shell_is_interactive();
+
     execution_store().set_shell_is_interactive(false);
     source_store().set_function_substitution_depth(
         source_store().function_substitution_depth() + 1);
-    defer
-    {
+
+    defer {
       source_store().set_function_substitution_depth(
           source_store().function_substitution_depth() - 1);
     };
 
     std::exception_ptr body_error;
+
     try {
       ast->evaluate(*this);
     } catch (...) {
       body_error = std::current_exception();
     }
+
     if (control_flow_store().has_pending() &&
         control_flow_store().pending().kind != control_flow::Kind::Exit)
     {
@@ -1273,6 +1414,7 @@ EvalContext::run_function_substitution(const Expression *ast,
 
     return body_error;
   };
+
   let const do_contain_error = [&](const std::exception_ptr
                                        &body_error) throws {
     if (!body_error) return;
@@ -1286,20 +1428,26 @@ EvalContext::run_function_substitution(const Expression *ast,
 
   if (is_value_substitution) {
     let const outer_reply = get_variable_value(StringView{"REPLY"});
+
     unset_shell_variable(StringView{"REPLY"});
+
     let const body_error = do_evaluate_body();
     let       reply      = get_variable_value(StringView{"REPLY"})
                     .value_or(String{heap_allocator()});
+
     unset_shell_variable(StringView{"REPLY"});
+
     if (outer_reply.has_value()) {
       set_shell_variable(StringView{"REPLY"}, outer_reply->view());
     }
+
     do_contain_error(body_error);
 
     return reply;
   }
 
   let const pipe = os::make_pipe();
+
   if (!pipe) throw Error{"Could not open a pipe for function substitution"};
 
   let captured = String{heap_allocator()};
@@ -1307,6 +1455,7 @@ EvalContext::run_function_substitution(const Expression *ast,
       command_substitution_drain_context{nullptr, 0, 0, pipe->in};
   let const reader =
       os::start_thread(drain_command_substitution_pipe, &drain_context);
+
   if (!reader) {
     os::close_fd(pipe->in);
     os::close_fd(pipe->out);
@@ -1314,6 +1463,7 @@ EvalContext::run_function_substitution(const Expression *ast,
   }
 
   koshka::flush();
+
   let const saved = os::redirect_stdout(pipe->out);
   let const error = do_evaluate_body();
 

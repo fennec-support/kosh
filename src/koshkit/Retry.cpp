@@ -60,6 +60,7 @@ parse_backoff_factor(StringView text, f64 &out_factor) throws -> bool
 {
   let const digits = String{heap_allocator(), text};
   let const parsed = digits.to<f64>();
+
   if (parsed.is_error()) return false;
 
   if (parsed.value() < MINIMUM_BACKOFF_FACTOR ||
@@ -84,6 +85,7 @@ sleep_interruptibly(f64 seconds) wontthrow -> bool
     let const slice = remaining_seconds < SLEEP_SLICE_SECONDS
                           ? remaining_seconds
                           : SLEEP_SLICE_SECONDS;
+
     os::sleep_for_seconds(slice);
     remaining_seconds -= slice;
   }
@@ -112,8 +114,7 @@ fn
 Retry::execute(const ExecContext               &ec,
                EvalContext                     &cxt,
                const ArrayList<String>         &args,
-               const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+               const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
@@ -124,9 +125,11 @@ Retry::execute(const ExecContext               &ec,
   }
 
   i64 attempt_limit = DEFAULT_ATTEMPT_COUNT;
+
   if (FLAG_RETRY_ATTEMPTS.is_set()) {
     let const parsed = utils::parse_integer_in_base(FLAG_RETRY_ATTEMPTS.value(),
                                                     nullptr, int_base::decimal);
+
     if (parsed.is_error() || parsed.value() < 1 ||
         parsed.value() > MAXIMUM_ATTEMPT_COUNT)
     {
@@ -143,12 +146,14 @@ Retry::execute(const ExecContext               &ec,
   }
 
   f64 delay_seconds = DEFAULT_DELAY_SECONDS;
+
   if (FLAG_RETRY_DELAY.is_set()) {
     delay_seconds = parse_koshkit_duration_seconds(
         FLAG_RETRY_DELAY.value(), FLAG_RETRY_DELAY.value_location(), allocator);
   }
 
   f64 maximum_delay_seconds = 0.0;
+
   if (FLAG_RETRY_MAX_DELAY.is_set()) {
     maximum_delay_seconds = parse_koshkit_duration_seconds(
         FLAG_RETRY_MAX_DELAY.value(), FLAG_RETRY_MAX_DELAY.value_location(),
@@ -156,6 +161,7 @@ Retry::execute(const ExecContext               &ec,
   }
 
   f64 backoff_factor = DEFAULT_BACKOFF_FACTOR;
+
   if (FLAG_RETRY_BACKOFF.is_set()) {
     if (!parse_backoff_factor(FLAG_RETRY_BACKOFF.value(), backoff_factor)) {
       report_soft_koshkit_util_error(
@@ -172,9 +178,9 @@ Retry::execute(const ExecContext               &ec,
   i32       status = 0;
 
   let const saved_terminal_exec = cxt.execution_store().terminal_exec_allowed();
+
   cxt.execution_store().terminal_exec_allowed() = false;
-  defer
-  {
+  defer {
     cxt.execution_store().terminal_exec_allowed() = saved_terminal_exec;
   };
 
@@ -190,6 +196,7 @@ Retry::execute(const ExecContext               &ec,
 
     if (!FLAG_RETRY_QUIET.is_enabled()) {
       let line = String{allocator};
+
       line += "retry attempt ";
       line += String::from(attempt, allocator).view();
       line += " of ";

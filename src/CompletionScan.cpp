@@ -61,8 +61,8 @@ static constexpr StringView EVILPS_SORT_CANDIDATES[] = {
 };
 
 static fn
-previous_settled_word(StringView line, usize token_start) wontthrow
-    -> StringView
+previous_settled_word(StringView line, usize token_start)
+    wontthrow -> StringView
 {
   let end = token_start;
 
@@ -77,6 +77,7 @@ previous_settled_word(StringView line, usize token_start) wontthrow
   }
 
   let const word = line.substring_of_length(start, end - start);
+
   if (word.length > 1 && word[0] == '-' && word[word.length - 1] == '=') {
     return word.substring_of_length(0, word.length - 1);
   }
@@ -94,16 +95,19 @@ struct cached_target_list
 static StringMap<cached_target_list> BUILD_TARGET_CACHE{heap_allocator()};
 
 static fn
-settled_option_value(StringView line, StringView option) throws -> Maybe<String>
+settled_option_value(StringView line, StringView option) throws
+    -> Maybe<String>
 {
   usize     cword = 0;
   let const words = split_completion_words(line, line.length, cword);
 
   for (usize i = 1; i < words.count(); i++) {
     let const word = words[i].view();
+
     if (word == option && i + 1 < words.count() && i + 1 != cword) {
       return String{words[i + 1].view()};
     }
+
     if (word.length > option.length && word.starts_with(option)) {
       return String{word.substring(option.length)};
     }
@@ -113,9 +117,11 @@ settled_option_value(StringView line, StringView option) throws -> Maybe<String>
 }
 
 static fn
-make_target_is_artifact(StringView name, const Path &directory) throws -> bool
+make_target_is_artifact(StringView name, const Path &directory) throws
+    -> bool
 {
   if (os::has_directory_separator(name)) return true;
+
   static constexpr PackedStringKey MAKEFILE_NAME_KEYS[] = {
       SSK("GNUmakefile"),
       SSK("Makefile"),
@@ -126,13 +132,15 @@ make_target_is_artifact(StringView name, const Path &directory) throws -> bool
   if (MAKEFILE_NAMES.contains(name)) return true;
 
   let candidate = directory.clone();
+
   candidate.append(name);
 
   return candidate.exists();
 }
 
 static fn
-parse_make_database_targets(StringView database, const Path &directory) throws
+parse_make_database_targets(StringView  database,
+                            const Path &directory) throws
     -> ArrayList<String>
 {
   let   targets          = ArrayList<String>{heap_allocator()};
@@ -147,27 +155,34 @@ parse_make_database_targets(StringView database, const Path &directory) throws
       in_files_section = true;
       continue;
     }
+
     if (text.starts_with(StringView{"# Finished Make data base"})) break;
     if (!in_files_section) continue;
     if (text.starts_with(StringView{"# Not a target"})) {
       skip_next_rule = true;
       continue;
     }
+
     if (text.is_empty() || text[0] == '#') {
       continue;
     }
+
     if (skip_next_rule) {
       skip_next_rule = false;
       continue;
     }
+
     if (text[0] == '.' || text[0] == '\t') {
       continue;
     }
+
     let const colon = text.find_character(':');
     if (!colon.has_value() || *colon == 0) {
       continue;
     }
+
     let const name = text.substring_of_length(0, *colon);
+
     if (make_target_is_artifact(name, directory)) continue;
     targets.push(String{name});
   }
@@ -184,10 +199,13 @@ parse_colon_led_names(StringView listing) throws -> ArrayList<String>
   while (i < listing.length) {
     let const text  = listing.next_line(i);
     let const colon = text.find_character(':');
+
     if (!colon.has_value() || *colon == 0) {
       continue;
     }
+
     let const name = text.substring_of_length(0, *colon);
+
     if (name.find_character(' ').has_value()) continue;
     names.push(String{name});
   }
@@ -209,6 +227,7 @@ parse_tsh_node_names(StringView listing) throws -> ArrayList<String>
       if (!row.is_empty() && row[0] == '-') {
         has_passed_rule = true;
       }
+
       continue;
     }
 
@@ -240,11 +259,13 @@ parse_package_json_scripts(StringView text) throws -> ArrayList<String>
       i++;
       continue;
     }
+
     if (text[i] == '}') {
       if (object_depth > 0) object_depth--;
       i++;
       continue;
     }
+
     if (text[i] != '"') {
       i++;
       continue;
@@ -262,6 +283,7 @@ parse_package_json_scripts(StringView text) throws -> ArrayList<String>
     if (i >= text.length) return scripts;
 
     let const key_end = i++;
+
     if (object_depth != 1 ||
         text.substring_of_length(key_start, key_end - key_start) != "scripts")
     {
@@ -299,6 +321,7 @@ parse_package_json_scripts(StringView text) throws -> ArrayList<String>
 
   while (i < text.length && depth > 0) {
     let const byte = text[i];
+
     if (byte == '"') {
       let const start = ++i;
 
@@ -314,6 +337,7 @@ parse_package_json_scripts(StringView text) throws -> ArrayList<String>
       i++;
       continue;
     }
+
     if (byte == ':') expecting_key = false;
     if (byte == ',') expecting_key = true;
     if (byte == '{') depth++;
@@ -329,9 +353,11 @@ collect_ssh_hosts() throws -> ArrayList<String>
 {
   let       hosts = ArrayList<String>{heap_allocator()};
   let const home  = os::get_home_directory();
+
   if (!home.has_value()) return hosts;
 
-  let       seen           = HashSet{heap_allocator()};
+  let seen = HashSet{heap_allocator()};
+
   let const do_push_unique = [&](StringView host) throws {
     if (host.is_empty() || !seen.add(host)) {
       return;
@@ -340,6 +366,7 @@ collect_ssh_hosts() throws -> ArrayList<String>
   };
 
   let config_path = home->clone();
+
   config_path.append(".ssh/config");
   if (Maybe<String> config = config_path.read_entire_file(); config.has_value())
   {
@@ -358,6 +385,7 @@ collect_ssh_hosts() throws -> ArrayList<String>
       {
         continue;
       }
+
       row     = row.substring(5);
       usize k = 0;
 
@@ -374,6 +402,7 @@ collect_ssh_hosts() throws -> ArrayList<String>
 
         for (usize position = 0; position < name.length; position++) {
           let const byte = name[position];
+
           if (byte == '*' || byte == '?' || byte == '!') {
             is_pattern_host = true;
             break;
@@ -386,6 +415,7 @@ collect_ssh_hosts() throws -> ArrayList<String>
   }
 
   let known_hosts_path = home->clone();
+
   known_hosts_path.append(".ssh/known_hosts");
   if (Maybe<String> known = known_hosts_path.read_entire_file();
       known.has_value())
@@ -395,9 +425,11 @@ collect_ssh_hosts() throws -> ArrayList<String>
 
     while (i < text.length) {
       let const row = text.next_line(i);
+
       if (row.is_empty() || row[0] == '#' || row[0] == '|') {
         continue;
       }
+
       usize field_end = 0;
 
       while (field_end < row.length && row[field_end] != ' ' &&
@@ -412,11 +444,15 @@ collect_ssh_hosts() throws -> ArrayList<String>
         let const comma = field.find_character(',');
         let       host =
             comma.has_value() ? field.substring_of_length(0, *comma) : field;
+
         field = comma.has_value() ? field.substring(*comma + 1) : StringView{};
+
         if (host.length > 2 && host[0] == '[') {
           let const close = host.find_character(']');
+
           if (close.has_value()) host = host.substring_of_length(1, *close - 1);
         }
+
         do_push_unique(host);
       }
     }
@@ -432,13 +468,17 @@ cached_targets_for(const Path &source_file, Collector collect) throws
 {
   let const absolute_source_file = source_file.to_absolute();
   let const mtime                = absolute_source_file.modification_time();
+
   if (!mtime.has_value()) return None;
+
   let const key = absolute_source_file.view();
+
   if (let const cached = BUILD_TARGET_CACHE.find(key);
       cached.has_value() && cached->mtime == *mtime)
   {
     return &cached->targets;
   }
+
   let targets = collect();
 
   return &BUILD_TARGET_CACHE
@@ -455,6 +495,7 @@ internal::complete_from_process_arguments(StringView      line,
     -> Maybe<ArrayList<String>>
 {
   let const is_for_listing = mode == completion_mode::Listing;
+
   if (!is_for_listing) return None;
 
   let const                                  command = command_word_of(line);
@@ -470,9 +511,11 @@ internal::complete_from_process_arguments(StringView      line,
   static constexpr StaticStringSet SIGNAL_FLAGS{SIGNAL_FLAG_KEYS};
 
   let const process_command = PROCESS_COMMANDS.find(command);
+
   if (!process_command.has_value()) {
     return None;
   }
+
   let const is_by_name = !*process_command;
 
   if (!token.is_empty() && token[0] == '-') {
@@ -480,6 +523,7 @@ internal::complete_from_process_arguments(StringView      line,
   }
 
   let const previous_word = previous_settled_word(line, token_start);
+
   if (SIGNAL_FLAGS.contains(previous_word)) {
     return None;
   }
@@ -491,12 +535,15 @@ internal::complete_from_process_arguments(StringView      line,
   for (let const &process : processes) {
     if (is_by_name) {
       let const name = process.name.view();
+
       if (name.is_empty() || !name.starts_with(token) || !seen.add(name)) {
         continue;
       }
+
       candidates.push(String{completion_allocator(), name});
     } else {
       let pid_text = String::from(process.pid, completion_allocator());
+
       if (!pid_text.view().starts_with(token)) continue;
       candidates.push(steal(pid_text));
     }
@@ -516,26 +563,35 @@ internal::complete_from_tools_with_targets(StringView      line,
     -> Maybe<ArrayList<String>>
 {
   let const is_for_listing = mode == completion_mode::Listing;
+
   if (!is_for_listing) return None;
+
   if (!token.is_empty() && token[0] == '-') {
     return None;
   }
+
   let const command = command_word_of(line);
+
   if (command.is_empty()) return None;
 
   let const tool =
       (command == "koshkit") ? second_word_of(line).value_or(command) : command;
 
   let const probe_timeout_nanos = 2'000'000'000ULL;
-  let const do_resolve_probe    = [&](const ArrayList<String> &probe_argv)
+
+  let const do_resolve_probe = [&](const ArrayList<String> &probe_argv)
                                    throws -> Maybe<ArrayList<String>> {
     if (probe_argv.is_empty()) return None;
+
     let const resolved = context.program_resolver().search(
         probe_argv[0].view(), ProgramResolver::SearchMode::First,
         ProgramResolver::Requirement::Runnable,
         ProgramResolver::CachePolicy::Bypass);
+
     if (resolved.is_empty()) return None;
+
     let argv = ArrayList<String>{heap_allocator()};
+
     argv.push(String{resolved[0].view()});
 
     for (usize i = 1; i < probe_argv.count(); i++)
@@ -543,16 +599,19 @@ internal::complete_from_tools_with_targets(StringView      line,
 
     return argv;
   };
-  let const do_capture = [&](const ArrayList<String> &probe_argv)
-                             throws -> String {
+
+  let const do_capture =
+      [&](const ArrayList<String> &probe_argv) throws -> String {
     let const argv = do_resolve_probe(probe_argv);
+
     if (!argv.has_value()) return String{heap_allocator()};
 
     return os::capture_program_output(*argv, probe_timeout_nanos)
         .value_or(String{heap_allocator()});
   };
-  let const do_probe_succeeds = [&](const ArrayList<String> &probe_argv)
-                                    throws -> bool {
+
+  let const do_probe_succeeds =
+      [&](const ArrayList<String> &probe_argv) throws -> bool {
     let const argv = do_resolve_probe(probe_argv);
 
     return argv.has_value() &&
@@ -562,15 +621,17 @@ internal::complete_from_tools_with_targets(StringView      line,
   let                      owned_targets = ArrayList<String>{heap_allocator()};
   const ArrayList<String> *targets       = &owned_targets;
   Maybe<const sorted_target_list *> cached_targets;
-  let                               target_prefix  = StringView{};
-  let const                         do_split_login = [&]() wontthrow {
+  let                               target_prefix = StringView{};
+
+  let const do_split_login = [&]() wontthrow {
     if (let const at = token.find_character('@'); at.has_value()) {
       target_prefix = token.substring_of_length(0, *at + 1);
-      token = token.substring(*at + 1);
+      token         = token.substring(*at + 1);
     }
   };
 
   Maybe<tool_with_targets_kind> tool_kind = TOOLS_WITH_TARGETS.find(tool);
+
   if (!tool_kind.has_value()) return None;
 
   switch (tool_kind.value()) {
@@ -578,12 +639,14 @@ internal::complete_from_tools_with_targets(StringView      line,
     let const directory =
         settled_option_value(line, "-C").value_or(String{"."});
     let makefile_name = settled_option_value(line, "-f");
+
     if (!makefile_name.has_value()) {
       for (let const candidate :
            {StringView{"GNUmakefile"}, StringView{"makefile"},
             StringView{"Makefile"}})
       {
         let probe = Path{directory.view()};
+
         probe.append(candidate);
         if (probe.exists()) {
           makefile_name = String{candidate};
@@ -593,12 +656,18 @@ internal::complete_from_tools_with_targets(StringView      line,
 
       if (!makefile_name.has_value()) return None;
     }
+
     let makefile_path = Path{directory.view()};
+
     makefile_path.append(makefile_name->view());
+
     if (!makefile_path.exists()) return None;
+
     let const make_directory = Path{directory.view()};
-    cached_targets           = cached_targets_for(makefile_path, [&]() throws {
+
+    cached_targets = cached_targets_for(makefile_path, [&]() throws {
       let probe = ArrayList<String>{heap_allocator()};
+
       probe.push(String{"make"});
       probe.push(String{"-C"});
       probe.push(String{directory.view()});
@@ -606,9 +675,12 @@ internal::complete_from_tools_with_targets(StringView      line,
       probe.push(String{makefile_name->view()});
       probe.push(String{"-pRrq"});
       probe.push(String{":"});
+
       let database_targets =
           parse_make_database_targets(do_capture(probe).view(), make_directory);
+
       if (!database_targets.is_empty()) return database_targets;
+
       let const intrinsic_targets =
           koshkit::collect_makefile_targets(context, makefile_path);
       let filtered = ArrayList<String>{heap_allocator()};
@@ -620,6 +692,7 @@ internal::complete_from_tools_with_targets(StringView      line,
         {
           continue;
         }
+
         filtered.push(name.clone());
       }
 
@@ -631,11 +704,13 @@ internal::complete_from_tools_with_targets(StringView      line,
     let const directory =
         settled_option_value(line, "-C").value_or(String{"."});
     let build_file = Path{directory.view()};
+
     build_file.append(settled_option_value(line, "-f")
                           .value_or(String{"build.ninja"})
                           .view());
     cached_targets = cached_targets_for(build_file, [&]() throws {
       let probe = ArrayList<String>{heap_allocator()};
+
       probe.push(String{"ninja"});
       probe.push(String{"-C"});
       probe.push(String{directory.view()});
@@ -648,17 +723,23 @@ internal::complete_from_tools_with_targets(StringView      line,
   }
   case tool_with_targets_kind::cmake: {
     if (previous_settled_word(line, token_start) != "--target") return None;
+
     let const build_directory = settled_option_value(line, "--build");
+
     if (!build_directory.has_value()) return None;
+
     let cache_file = Path{build_directory->view()};
+
     cache_file.append("CMakeCache.txt");
     cached_targets = cached_targets_for(cache_file, [&]() throws {
       let probe = ArrayList<String>{heap_allocator()};
+
       probe.push(String{"cmake"});
       probe.push(String{"--build"});
       probe.push(String{build_directory->view()});
       probe.push(String{"--target"});
       probe.push(String{"help"});
+
       let       names = ArrayList<String>{heap_allocator()};
       let const help  = do_capture(probe);
       let const text  = help.view();
@@ -666,8 +747,10 @@ internal::complete_from_tools_with_targets(StringView      line,
 
       while (i < text.length) {
         let const row = text.next_line(i);
+
         if (!row.starts_with(StringView{"... "})) continue;
         let name = row.substring(4);
+
         if (let const space = name.find_character(' '); space.has_value())
           name = name.substring_of_length(0, *space);
         if (!name.is_empty()) names.push(String{name});
@@ -679,12 +762,14 @@ internal::complete_from_tools_with_targets(StringView      line,
   }
   case tool_with_targets_kind::node_runner: {
     if (second_word_of(line) != "run") return None;
+
     let const package_path = Path{StringView{"package.json"}};
-    cached_targets         = cached_targets_for(package_path, [&]() throws {
+
+    cached_targets = cached_targets_for(package_path, [&]() throws {
       let const contents = package_path.read_entire_file();
 
       return contents.has_value() ? parse_package_json_scripts(contents->view())
-                                          : ArrayList<String>{heap_allocator()};
+                                  : ArrayList<String>{heap_allocator()};
     });
     break;
   }
@@ -694,19 +779,24 @@ internal::complete_from_tools_with_targets(StringView      line,
     {
       return None;
     }
+
     do_split_login();
+
     owned_targets = collect_ssh_hosts();
     break;
   }
   case tool_with_targets_kind::teleport: {
     if (second_word_of(line) != "ssh") return None;
     do_split_login();
+
     let status_probe = ArrayList<String>{heap_allocator()};
+
     status_probe.push(String{"tsh"});
     status_probe.push(String{"status"});
     if (!do_probe_succeeds(status_probe)) return None;
 
     let probe = ArrayList<String>{heap_allocator()};
+
     probe.push(String{"tsh"});
     probe.push(String{"ls"});
     owned_targets = parse_tsh_node_names(do_capture(probe).view());
@@ -714,18 +804,22 @@ internal::complete_from_tools_with_targets(StringView      line,
   }
   }
 
-  let       candidates     = ArrayList<String>{heap_allocator()};
+  let candidates = ArrayList<String>{heap_allocator()};
+
   let const do_push_target = [&](StringView target) throws {
     let candidate = String{heap_allocator(), target_prefix};
+
     candidate += target;
     candidates.push(steal(candidate));
   };
+
   if (cached_targets.has_value()) {
     let const &sorted_targets = *cached_targets.value();
     let const  first          = sorted_targets.lower_bound(token);
 
     for (usize i = first; i < sorted_targets.count(); i++) {
       let const &target = sorted_targets[i];
+
       if (!target.view().starts_with(token)) break;
       do_push_target(target.view());
     }
@@ -733,6 +827,7 @@ internal::complete_from_tools_with_targets(StringView      line,
     for (let const &target : *targets)
       if (target.view().starts_with(token)) do_push_target(target.view());
   }
+
   if (candidates.is_empty()) return None;
 
   return candidates;
@@ -746,13 +841,16 @@ append_flag_forms(const FlagList    &flags,
   for (let const *flag : flags) {
     if (flag->short_name() != '\0') {
       let form = String{"-"};
+
       form.push(flag->short_name());
       if (token_filter.is_empty() || form.view().starts_with(token_filter)) {
         out.push(steal(form));
       }
     }
+
     if (!flag->long_name().is_empty()) {
       let form = String{"--"};
+
       form += flag->long_name();
       if (token_filter.is_empty() || form.view().starts_with(token_filter)) {
         out.push(steal(form));
@@ -781,16 +879,19 @@ dash_candidates_for(Maybe<Builtin::Kind> builtin_kind) throws
   }
 
   let const index = static_cast<usize>(*builtin_kind);
+
   if (!was_per_kind_built[index]) {
     per_kind_candidates[index] = ArrayList<String>{heap_allocator()};
     if (*builtin_kind == Builtin::Kind::Kill) {
       for (let const name : os::signal_names()) {
         let with_dash = String{"-"};
+
         with_dash += name;
         per_kind_candidates[index]->push(steal(with_dash));
       }
     } else {
       let const flags = builtin_flag_list(*builtin_kind);
+
       if (flags == nullptr) return nullptr;
       append_flag_forms(*flags, StringView{}, *per_kind_candidates[index]);
       if (*builtin_kind == Builtin::Kind::Set) {
@@ -798,6 +899,7 @@ dash_candidates_for(Maybe<Builtin::Kind> builtin_kind) throws
 
         for (usize i = 0; i < letters.count(); i++) {
           let switch_form = String{"-"};
+
           switch_form.push(letters[i]);
           per_kind_candidates[index]->push(steal(switch_form));
         }
@@ -805,6 +907,7 @@ dash_candidates_for(Maybe<Builtin::Kind> builtin_kind) throws
         per_kind_candidates[index]->push(String{"-o"});
       }
     }
+
     was_per_kind_built[index] = true;
   }
 
@@ -814,9 +917,11 @@ dash_candidates_for(Maybe<Builtin::Kind> builtin_kind) throws
 static fn
 push_variable_name_candidates(StringView         token,
                               EvalContext       &context,
-                              ArrayList<String> &candidates) throws -> void
+                              ArrayList<String> &candidates) throws
+    -> void
 {
-  let seen        = HashSet{heap_allocator()};
+  let seen = HashSet{heap_allocator()};
+
   let do_add_name = [&](StringView name) throws {
     if (!name.starts_with(token)) return;
     if (!seen.add(name)) return;
@@ -832,6 +937,7 @@ push_variable_name_candidates(StringView         token,
       });
 
   let dynamic_names = ArrayList<StringView>{heap_allocator()};
+
   context.append_dynamic_variable_names(dynamic_names);
 
   for (let const name : dynamic_names)
@@ -839,8 +945,8 @@ push_variable_name_candidates(StringView         token,
 }
 
 static fn
-declaration_flags_select_functions(StringView line, usize token_start) throws
-    -> bool
+declaration_flags_select_functions(StringView line,
+                                   usize      token_start) throws -> bool
 {
   usize     cword = 0;
   let const words = split_completion_words(
@@ -848,9 +954,11 @@ declaration_flags_select_functions(StringView line, usize token_start) throws
 
   for (usize i = 1; i < words.count(); i++) {
     let const word = words[i].view();
+
     if (word.length < 2 || word[0] != '-' || word[1] == '-') {
       continue;
     }
+
     if (word.find_character('f').has_value() ||
         word.find_character('F').has_value())
     {
@@ -871,6 +979,7 @@ internal::complete_from_builtin_flags(StringView      line,
     -> Maybe<ArrayList<String>>
 {
   let const command = command_word_of(line);
+
   if (command.is_empty()) return None;
 
   let const builtin_kind      = search_builtin(command);
@@ -888,10 +997,12 @@ internal::complete_from_builtin_flags(StringView      line,
   let const previous_word     = previous_settled_word(line, token_start);
   let const is_operand_wanted = token.is_empty() || token[0] != '-';
 
-  let       candidates       = ArrayList<String>{heap_allocator()};
+  let candidates = ArrayList<String>{heap_allocator()};
+
   let const do_push_matching = [&](StringView candidate) throws {
     if (candidate.starts_with(token)) candidates.push(String{candidate});
   };
+
   let const do_push_signal_names = [&]() throws {
     for (let const name : os::signal_names())
       do_push_matching(name);
@@ -903,6 +1014,7 @@ internal::complete_from_builtin_flags(StringView      line,
         !context.runtime_state().option_is_enabled(shell_option_id::Restricted);
     Maybe<koshkit::Utility::Kind> util_for_flags;
     bool                          should_offer_util_names = false;
+
     if (is_koshkit_builtin) {
       if (previous_word == command) {
         if (is_operand_wanted) {
@@ -944,6 +1056,7 @@ internal::complete_from_builtin_flags(StringView      line,
 
         let names = complete_command_names(token, context, nullptr,
                                            command_match_mode::Prefix);
+
         if (!names.is_empty()) return names;
 
         return None;
@@ -953,6 +1066,7 @@ internal::complete_from_builtin_flags(StringView      line,
           *util_for_flags == koshkit::Utility::Kind::Timeout ||
           *util_for_flags == koshkit::Utility::Kind::Pkill ||
           *util_for_flags == koshkit::Utility::Kind::Killall;
+
       if (is_signal_name_operand &&
           (previous_word == "-s" || previous_word == "--signal"))
       {
@@ -992,6 +1106,7 @@ internal::complete_from_builtin_flags(StringView      line,
           for (let const candidate : EVILPS_SORT_CANDIDATES)
             do_push_matching(candidate);
         }
+
         if (!candidates.is_empty()) return candidates;
         if (*util_for_flags == koshkit::Utility::Kind::EvilIO ||
             *util_for_flags == koshkit::Utility::Kind::EvilPS)
@@ -1001,9 +1116,13 @@ internal::complete_from_builtin_flags(StringView      line,
       }
 
       if (is_operand_wanted) return None;
+
       let const flags = koshkit::koshkit_util_flag_list(*util_for_flags);
+
       if (flags == nullptr) return None;
+
       let forms = ArrayList<String>{heap_allocator()};
+
       append_flag_forms(*flags, token, forms);
       if (forms.is_empty()) return None;
 
@@ -1037,6 +1156,7 @@ internal::complete_from_builtin_flags(StringView      line,
     let const is_mood_flag =
         MOOD_FLAGS.contains(previous_word) &&
         (is_shell_binary_completion || !previous_word.starts_with("--"));
+
     if (is_mood_flag) {
       for (mimic_mood mood : {mimic_mood::Default, mimic_mood::Bash,
                               mimic_mood::Posix, mimic_mood::BashPosix})
@@ -1081,6 +1201,7 @@ internal::complete_from_builtin_flags(StringView      line,
     for (usize i = 1; i < words.count(); i++) {
       let const word          = words[i].view();
       let const is_value_word = operands.count() == 2 && operands[0] == "set";
+
       if (!word.is_empty() && (is_value_word || word[0] != '-')) {
         operands.push(word);
       }
@@ -1088,17 +1209,21 @@ internal::complete_from_builtin_flags(StringView      line,
 
     let const form         = operands.is_empty() ? StringView{} : operands[0];
     let const is_set_value = operands.count() == 2 && form == "set";
+
     if (!is_operand_wanted && !is_set_value) {
       do_push_matching("--help");
       if (form.is_empty() || form == "create") {
         do_push_matching("--force");
       }
+
       if (form.is_empty() || form == "list") {
         do_push_matching("--all");
       }
+
       if (form.is_empty() || form == "set" || form == "save") {
         do_push_matching("--persist");
       }
+
       if (!candidates.is_empty()) return candidates;
 
       return None;
@@ -1143,6 +1268,7 @@ internal::complete_from_builtin_flags(StringView      line,
       }
     } else if (is_set_value) {
       let const *option = find_option_by_koshconf_name(operands[1]);
+
       if (option == nullptr) {
         return None;
       }
@@ -1155,11 +1281,13 @@ internal::complete_from_builtin_flags(StringView      line,
 
         for (let const mood_value : {"kosh", "sh", "bash", "bash-posix"}) {
           let const mood_text = StringView{mood_value};
+
           if (!mood_text.starts_with(typed)) {
             continue;
           }
 
           let candidate = String{listed};
+
           candidate.append(mood_text);
           candidates.push(steal(candidate));
         }
@@ -1206,10 +1334,12 @@ internal::complete_from_builtin_flags(StringView      line,
   {
     let const is_value_after_equals =
         token_start > 0 && line[token_start - 1] == '=';
+
     if (!is_value_after_equals &&
         !declaration_flags_select_functions(line, token_start))
     {
       let names = ArrayList<String>{heap_allocator()};
+
       push_variable_name_candidates(token, context, names);
       if (!names.is_empty()) return names;
     }
@@ -1228,6 +1358,7 @@ internal::complete_from_builtin_flags(StringView      line,
     if (is_operand_wanted) {
       for (let const &background_job : context.job_table_store().jobs()) {
         let job_id = String{"%"};
+
         job_id += String::from(background_job.id, heap_allocator());
         do_push_matching(job_id.view());
       }
@@ -1270,6 +1401,7 @@ internal::complete_from_builtin_flags(StringView      line,
 
     let names = complete_command_names(token, context, nullptr,
                                        command_match_mode::Prefix);
+
     if (!names.is_empty()) return names;
 
     return None;
@@ -1279,6 +1411,7 @@ internal::complete_from_builtin_flags(StringView      line,
       is_operand_wanted)
   {
     let z_candidates = z_completion_candidates(token, heap_allocator());
+
     if (!z_candidates.is_empty()) return z_candidates;
 
     return None;
@@ -1296,6 +1429,7 @@ internal::complete_from_builtin_flags(StringView      line,
 
     for (usize index = 1; index < settled_words.count(); index++) {
       let const word = settled_words[index].view();
+
       if (!has_command_operand && word.starts_with("-")) {
         for (usize byte_index = 1; byte_index < word.length; byte_index++) {
           if (word[byte_index] == 'v' || word[byte_index] == 'V') {
@@ -1323,6 +1457,7 @@ internal::complete_from_builtin_flags(StringView      line,
 
       let names = complete_command_names(token, context, nullptr,
                                          command_match_mode::Prefix);
+
       if (!names.is_empty()) return names;
     }
 
@@ -1336,6 +1471,7 @@ internal::complete_from_builtin_flags(StringView      line,
         previous_word == "-o") ||
        (*builtin_kind == Builtin::Kind::Compopt &&
         (previous_word == "-o" || previous_word == "+o")));
+
   if (is_option_name_word) {
     for (let const &entry : COMPLETION_OPTION_ENTRIES)
       do_push_matching(entry.key.to_string().view());
@@ -1384,6 +1520,7 @@ internal::complete_from_builtin_flags(StringView      line,
 
       let const arg =
           prefix.substring_of_length(word_begin, scan_position - word_begin);
+
       if (arg.length >= 2 && arg[0] == '-' && arg[1] != '-' &&
           arg.find_character('f').has_value())
       {
@@ -1393,11 +1530,12 @@ internal::complete_from_builtin_flags(StringView      line,
 
     if (unsets_function) {
       let seen = HashSet{heap_allocator()};
-      context.function_store().for_each_name([&](StringView name) throws {
-        if (!name.starts_with(token)) return;
-        if (!seen.add(name)) return;
-        candidates.push(String{name});
-      });
+      context.function_store().for_each_name(
+          [&](StringView name) throws {
+            if (!name.starts_with(token)) return;
+            if (!seen.add(name)) return;
+            candidates.push(String{name});
+          });
     } else {
       push_variable_name_candidates(token, context, candidates);
     }
@@ -1411,6 +1549,7 @@ internal::complete_from_builtin_flags(StringView      line,
 
   const ArrayList<String> *dash_candidates = dash_candidates_for(
       is_shell_binary_completion ? Maybe<Builtin::Kind>{None} : builtin_kind);
+
   if (dash_candidates == nullptr) return None;
 
   for (let const &candidate : *dash_candidates)
@@ -1423,7 +1562,7 @@ internal::complete_from_builtin_flags(StringView      line,
 
 static pure fn
 entry_is_unrequested_dash_word(StringView entry,
-                               bool should_offer_dash_entries) wontthrow -> bool
+                               bool       should_offer_dash_entries) wontthrow -> bool
 {
   return !should_offer_dash_entries && !entry.is_empty() && entry[0] == '-';
 }
@@ -1440,6 +1579,7 @@ push_spec_candidate(StringView         entry,
   if (entry.is_empty()) return;
 
   let const paren = entry.find_character('(');
+
   if (paren.has_value() && *paren > 0 && entry[*paren - 1] == ' ' &&
       entry[entry.length - 1] == ')')
   {
@@ -1451,6 +1591,7 @@ push_spec_candidate(StringView         entry,
 
     let const description =
         entry.substring_of_length(*paren + 1, entry.length - *paren - 2);
+
     if (!name.is_empty()) {
       candidates.push(String{completion_allocator(), name});
       if (!description.is_empty()) descriptions.set(name, description);
@@ -1458,6 +1599,7 @@ push_spec_candidate(StringView         entry,
       return;
     }
   }
+
   candidates.push(String{completion_allocator(), entry});
 }
 
@@ -1520,17 +1662,21 @@ generate_spec_candidates(completion_spec   &active_spec,
                          EvalContext       &context,
                          StringMap<String> &descriptions,
                          bool               is_for_listing,
-                         i32 *out_function_status) throws -> ArrayList<String>
+                         i32               *out_function_status) throws
+    -> ArrayList<String>
 {
   Maybe<ArrayList<String>> completion_words = None;
   usize                    completion_cword = 0;
-  let const do_completion_words = [&]() throws -> const ArrayList<String> & {
+
+  let const do_completion_words =
+      [&]() throws -> const ArrayList<String> & {
     if (!completion_words.has_value()) {
       completion_words = split_completion_words(line, cursor, completion_cword);
     }
 
     return *completion_words;
   };
+
   let const do_command_name = [&]() throws -> StringView {
     if (slot_command_name.has_value()) return *slot_command_name;
 
@@ -1543,20 +1689,23 @@ generate_spec_candidates(completion_spec   &active_spec,
 
   let const should_offer_dash_words = !token.is_empty() && token[0] == '-';
 
-  let const do_push_generated = [&](u32               action_mask,
-                                    Maybe<StringView> glob_pattern) throws {
-    context.program_resolver().begin_explicit_completion(
-        ProgramResolver::CompletionRefresh::Cached);
-    defer { context.program_resolver().end_explicit_completion(); };
+  let const do_push_generated =
+      [&](u32 action_mask, Maybe<StringView> glob_pattern) throws {
+        context.program_resolver().begin_explicit_completion(
+            ProgramResolver::CompletionRefresh::Cached);
+        defer {
+          context.program_resolver().end_explicit_completion();
+        };
 
-    for (let const &entry :
-         collect_compgen_candidates(context, action_mask, glob_pattern, token))
-    {
-      if (entry_is_unrequested_dash_word(entry.view(), should_offer_dash_words))
-        continue;
-      candidates.push(String{completion_allocator(), entry.view()});
-    }
-  };
+        for (let const &entry : collect_compgen_candidates(context, action_mask,
+                                                           glob_pattern, token))
+        {
+          if (entry_is_unrequested_dash_word(entry.view(),
+                                             should_offer_dash_words))
+            continue;
+          candidates.push(String{completion_allocator(), entry.view()});
+        }
+      };
 
   let const glob_pattern =
       !is_for_listing || active_spec.glob_pattern.is_empty()
@@ -1565,6 +1714,7 @@ generate_spec_candidates(completion_spec   &active_spec,
   let const action_mask = is_for_listing
                               ? active_spec.action_mask
                               : active_spec.action_mask & GHOST_ACTION_MASK;
+
   if (action_mask != 0 || glob_pattern.has_value()) {
     do_push_generated(action_mask, glob_pattern);
   }
@@ -1590,13 +1740,14 @@ generate_spec_candidates(completion_spec   &active_spec,
       glob_pattern.has_value() ||
       active_spec.has_action(compgen_action::Directory) ||
       active_spec.has_action(compgen_action::File);
+
   context.execution_store().should_mark_completion_directories() =
       should_mark_file_names;
   if (is_for_listing && !active_spec.function_name.is_empty()) {
     let const saved_columns = context.get_variable_value("COLUMNS");
+
     context.set_shell_variable("COLUMNS", "100000");
-    defer
-    {
+    defer {
       if (saved_columns.has_value())
         context.set_shell_variable("COLUMNS", saved_columns->view());
       else
@@ -1604,9 +1755,11 @@ generate_spec_candidates(completion_spec   &active_spec,
     };
 
     let const &words = do_completion_words();
+
     context.execution_store().set_completion_option_mask(
         active_spec.option_mask);
     notice_slow_gather();
+
     let const reply = context.run_completion_function(
         active_spec.function_name.view(), do_command_name(), words,
         completion_cword, line, cursor, out_function_status,
@@ -1630,6 +1783,7 @@ generate_spec_candidates(completion_spec   &active_spec,
     let const  previous_word  = previous_index < words.count()
                                     ? words[previous_index].view()
                                     : StringView{};
+
     notice_slow_gather();
 
     for (let const &entry : context.run_completion_command(
@@ -1650,6 +1804,7 @@ generate_spec_candidates(completion_spec   &active_spec,
   if (!active_spec.prefix.is_empty() || !active_spec.suffix.is_empty()) {
     for (let &candidate : candidates) {
       let affixed = String{completion_allocator()};
+
       affixed.reserve(active_spec.prefix.length() + candidate.length() +
                       active_spec.suffix.length());
       affixed.append(active_spec.prefix.view());
@@ -1657,9 +1812,11 @@ generate_spec_candidates(completion_spec   &active_spec,
       affixed.append(active_spec.suffix.view());
 
       let const description = descriptions.find(candidate.view());
+
       if (description.has_value()) {
         let const description_text =
             String{completion_allocator(), description.value()->view()};
+
         descriptions.set(affixed.view(), description_text.view());
       }
 
@@ -1671,6 +1828,7 @@ generate_spec_candidates(completion_spec   &active_spec,
       glob_pattern.has_value() ||
       active_spec.has_action(compgen_action::Directory) ||
       active_spec.has_action(compgen_action::File);
+
   if (should_generate_file_names) {
     active_spec.option_mask |=
         completion_option_bit(completion_option::FileNames);
@@ -1682,8 +1840,10 @@ generate_spec_candidates(completion_spec   &active_spec,
       (active_spec.has_option(completion_option::DirNames) &&
        candidates.is_empty()) ||
       active_spec.has_option(completion_option::PlusDirs);
+
   if (should_add_directories) {
     let const reply_count = candidates.count();
+
     do_push_generated(compgen_action_bit(compgen_action::Directory), None);
     context.execution_store().should_mark_completion_directories() = true;
     if (candidates.count() != reply_count) {
@@ -1731,10 +1891,12 @@ internal::complete_from_spec(StringView         line,
 
   let const is_for_listing = mode == completion_mode::Listing;
   let const command = command_word_of(line.substring_of_length(0, cursor));
+
   if (command.is_empty()) return None;
 
   const completion_spec *spec = context.completion_store().lookup_spec(command);
   String                 resolved_command{completion_allocator()};
+
   if (spec == nullptr &&
       context.runtime_state().is_shopt_enabled(shopt_option_id::ProgcompAlias))
   {
@@ -1746,6 +1908,7 @@ internal::complete_from_spec(StringView         line,
   }
 
   let const is_default_spec = spec == nullptr;
+
   if (is_default_spec) {
     spec =
         context.completion_store().get_slot_spec(completion_spec_slot::Default);
@@ -1768,6 +1931,7 @@ internal::complete_from_spec(StringView         line,
   let candidates =
       generate_spec_candidates(active_spec, None, line, token, cursor, context,
                                descriptions, is_for_listing, &function_status);
+
   if (is_default_spec && function_status == 124) {
     spec = context.completion_store().lookup_spec(command);
     if (spec == nullptr) return None;
@@ -1777,6 +1941,7 @@ internal::complete_from_spec(StringView         line,
                                            cursor, context, descriptions,
                                            is_for_listing, nullptr);
   }
+
   option_mask = active_spec.option_mask;
 
   let const is_bashdefault_result_empty =
@@ -1784,6 +1949,7 @@ internal::complete_from_spec(StringView         line,
       active_spec.has_option(completion_option::BashDefault) &&
       !active_spec.has_option(completion_option::Default) &&
       !token_reaches_bash_default_completion(token);
+
   if (is_bashdefault_result_empty) {
     return candidates;
   }
@@ -1809,6 +1975,7 @@ internal::complete_from_initial_word_spec(StringView         line,
 
   const completion_spec *spec         = nullptr;
   let                    command_name = StringView{};
+
   if (is_line_empty) {
     spec =
         context.completion_store().get_slot_spec(completion_spec_slot::Empty);
@@ -1824,16 +1991,19 @@ internal::complete_from_initial_word_spec(StringView         line,
   if (spec == nullptr) return None;
 
   let const is_for_listing = mode == completion_mode::Listing;
+
   if (!is_for_listing && !spec_has_ghost_generators(*spec)) {
     return None;
   }
 
   LOG(Debug, "completing the command word from the %.*s spec",
       static_cast<int>(command_name.length), command_name.data);
+
   let active_spec = spec->clone(completion_allocator());
   let candidates =
       generate_spec_candidates(active_spec, command_name, line, token, cursor,
                                context, descriptions, is_for_listing, nullptr);
+
   option_mask = active_spec.option_mask;
   if (candidates.is_empty() &&
       (active_spec.has_option(completion_option::BashDefault) ||
@@ -1849,8 +2019,8 @@ static fn
 consider_shell_lexical_frame(const shell_lexical_frame &frame,
                              usize                      body_end,
                              usize                      depth,
-                             shell_lexical_scan_target *target) wontthrow
-    -> void
+                             shell_lexical_scan_target *target)
+    wontthrow -> void
 {
   if (target == nullptr) return;
   if (frame.kind != shell_lexical_frame_kind::command &&
@@ -1858,17 +2028,19 @@ consider_shell_lexical_frame(const shell_lexical_frame &frame,
   {
     return;
   }
+
   if (target->cursor < frame.body_start || target->cursor > body_end) {
     return;
   }
+
   if (depth < target->frame_depth) return;
   target->range       = completion_command_range{frame.body_start, body_end};
   target->frame_depth = depth;
 }
 
 static pure fn
-frame_is_at_case_pattern_level(const shell_lexical_frame &frame) wontthrow
-    -> bool
+frame_is_at_case_pattern_level(const shell_lexical_frame &frame)
+    wontthrow -> bool
 {
   return frame.case_depth > 0 && frame.is_case_pattern_expected &&
          frame.group_depth <= frame.case_pattern_group_depth;
@@ -1882,6 +2054,7 @@ collect_shell_heredoc(StringView           source,
 {
   position += 2;
   let should_strip_tabs = false;
+
   if (position < end && source[position] == '-') {
     should_strip_tabs = true;
     position++;
@@ -1898,48 +2071,55 @@ collect_shell_heredoc(StringView           source,
 
   while (position < end) {
     let const delimiter_byte = source[position];
+
     if (delimiter_byte == '\\' && delimiter_quote != '\'') {
       position = position + 2 < end ? position + 2 : end;
       continue;
     }
+
     if (delimiter_quote != 0) {
       if (delimiter_byte == delimiter_quote) delimiter_quote = 0;
       position++;
       continue;
     }
+
     if (delimiter_byte == '\'' || delimiter_byte == '"') {
       delimiter_quote = delimiter_byte;
       position++;
       continue;
     }
+
     if (lexer::is_whitespace(delimiter_byte) ||
         lexer::is_shell_sentinel(delimiter_byte))
     {
       break;
     }
+
     position++;
   }
 
   let delimiter = lexer::unquote_heredoc_delimiter(
       source.substring_of_length(word_start, position - word_start),
       state.pending_heredocs.allocator());
+
   if (!delimiter.is_empty())
     state.pending_heredocs.push(
         lexer::pending_heredoc{steal(delimiter), should_strip_tabs});
 }
 
 fn
-internal::advance_shell_lexical_state(StringView                 source,
-                                      usize                      end,
-                                      shell_lexical_state       &state,
-                                      shell_lexical_scan_target *target) throws
-    -> void
+internal::advance_shell_lexical_state(
+    StringView                 source,
+    usize                      end,
+    shell_lexical_state       &state,
+    shell_lexical_scan_target *target) throws -> void
 {
   if (end > source.length) end = source.length;
   let i = state.source_position;
 #if !defined NDEBUG
   let const scan_start = i;
 #endif
+
   let const do_pop_frame = [&]() wontthrow -> shell_lexical_frame {
     let const frame_depth = state.frames.count();
     let const frame       = state.frames.back();
@@ -1955,6 +2135,7 @@ internal::advance_shell_lexical_state(StringView                 source,
 
     return frame;
   };
+
   let const do_close_group = [](shell_lexical_frame &frame) wontthrow -> void {
     if (frame.group_depth == 0) return;
 
@@ -1965,15 +2146,17 @@ internal::advance_shell_lexical_state(StringView                 source,
       frame.is_in_array_value = false;
     }
   };
-  let const do_expect_case_pattern = [](shell_lexical_frame &frame)
-                                         wontthrow -> void {
+
+  let const do_expect_case_pattern =
+      [](shell_lexical_frame &frame) wontthrow -> void {
     frame.is_case_pattern_expected      = true;
     frame.is_case_pattern_parenthesized = false;
     frame.case_pattern_group_depth =
         frame.group_depth < 0xFF ? static_cast<u8>(frame.group_depth) : 0xFF;
   };
-  let const do_end_case_pattern = [](shell_lexical_frame &frame)
-                                      wontthrow -> void {
+
+  let const do_end_case_pattern =
+      [](shell_lexical_frame &frame) wontthrow -> void {
     frame.is_case_pattern_expected      = false;
     frame.is_case_pattern_parenthesized = false;
     frame.is_command_position           = true;
@@ -1994,6 +2177,7 @@ internal::advance_shell_lexical_state(StringView                 source,
       let const  heredoc_newline =
           source.substring_of_length(i, end - i).find_character('\n');
       let line_end = heredoc_newline.has_value() ? i + *heredoc_newline : end;
+
       if (line_end == end && end < source.length) {
         i = end;
         break;
@@ -2010,6 +2194,7 @@ internal::advance_shell_lexical_state(StringView                 source,
           state.is_in_heredoc        = false;
         }
       }
+
       i = line_end < end ? line_end + 1 : line_end;
       continue;
     }
@@ -2019,14 +2204,17 @@ internal::advance_shell_lexical_state(StringView                 source,
     if (state.is_in_comment) {
       if (c == '\n') {
         state.is_in_comment = false;
+
         let &comment_frame =
             state.frames.is_empty() ? state.root_frame : state.frames.back();
+
         comment_frame.is_command_position = true;
         i++;
         if (!state.pending_heredocs.is_empty()) state.is_in_heredoc = true;
       } else {
         i++;
       }
+
       continue;
     }
 
@@ -2035,10 +2223,12 @@ internal::advance_shell_lexical_state(StringView                 source,
         i += 2;
         continue;
       }
+
       if (c == '\'') {
         state.quote              = 0;
         state.is_in_ansi_c_quote = false;
       }
+
       i++;
       continue;
     }
@@ -2084,12 +2274,14 @@ internal::advance_shell_lexical_state(StringView                 source,
           state.frames.back().kind == shell_lexical_frame_kind::backtick)
       {
         let const frame = do_pop_frame();
+
         consider_shell_lexical_frame(frame, i, state.frames.count(), target);
       } else {
         state.frames.push(shell_lexical_frame{
             i + 1, 0, 0, 0, shell_lexical_frame_kind::backtick, state.quote});
         state.quote = 0;
       }
+
       i++;
       continue;
     }
@@ -2147,6 +2339,7 @@ internal::advance_shell_lexical_state(StringView                 source,
                                     source[i + 1] == '<' &&
                                     !(i + 2 < end && source[i + 2] == '<') &&
                                     !(i > 0 && source[i - 1] == '<');
+
     if (is_command_code && is_heredoc_operator) {
       collect_shell_heredoc(source, i, end, state);
       continue;
@@ -2158,6 +2351,7 @@ internal::advance_shell_lexical_state(StringView                 source,
       if (c == '}') {
         do_pop_frame();
       }
+
       i++;
       continue;
     }
@@ -2167,6 +2361,7 @@ internal::advance_shell_lexical_state(StringView                 source,
             shell_lexical_frame_kind::bracket_arithmetic)
     {
       let &bracket_frame = state.frames.back();
+
       if (c == '[') {
         bracket_frame.group_depth++;
       } else if (c == ']' && bracket_frame.group_depth == 0) {
@@ -2174,12 +2369,14 @@ internal::advance_shell_lexical_state(StringView                 source,
       } else if (c == ']') {
         bracket_frame.group_depth--;
       }
+
       i++;
       continue;
     }
 
     let &frame =
         state.frames.is_empty() ? state.root_frame : state.frames.back();
+
     let const do_is_word_boundary = [&]() wontthrow -> bool {
       if (i == frame.body_start) return true;
 
@@ -2195,6 +2392,7 @@ internal::advance_shell_lexical_state(StringView                 source,
       default:   return false;
       }
     };
+
     if (c == '#' && is_command_code && do_is_word_boundary()) {
       state.is_in_comment = true;
       i++;
@@ -2229,6 +2427,7 @@ internal::advance_shell_lexical_state(StringView                 source,
       default:   return false;
       }
     };
+
     if (!frame.is_in_array_value && lexer::is_part_of_identifier(c) &&
         do_is_word_start())
     {
@@ -2243,13 +2442,16 @@ internal::advance_shell_lexical_state(StringView                 source,
       }
 
       let const word = source.substring_of_length(i, word_end - i);
+
       LOG(All, "scanning word '%.*s' at command position %d",
           static_cast<int>(word.length), word.data, frame.is_command_position);
+
       let active_construct =
           state.constructs.is_empty() ? nullptr : &state.constructs.back();
       let const is_active_construct_in_frame =
           active_construct != nullptr &&
           active_construct->frame_depth == state.frames.count();
+
       if (is_active_construct_in_frame &&
           active_construct->kind == highlight_construct::conditional &&
           word == "]]")
@@ -2352,6 +2554,7 @@ internal::advance_shell_lexical_state(StringView                 source,
     }
 
     let const is_case_pattern_level = frame_is_at_case_pattern_level(frame);
+
     if (c == '(' && is_case_pattern_level &&
         !frame.is_case_pattern_parenthesized && do_is_word_start())
     {
@@ -2404,6 +2607,7 @@ internal::advance_shell_lexical_state(StringView                 source,
       }
 
       let const closed_frame = do_pop_frame();
+
       consider_shell_lexical_frame(closed_frame, i, state.frames.count(),
                                    target);
       i++;
@@ -2428,7 +2632,8 @@ debug_shell_lexical_scan_byte_count() wontthrow -> usize
 #endif
 
 fn
-internal::command_substitution_range(StringView line, usize cursor) throws
+internal::command_substitution_range(StringView line,
+                                     usize      cursor) throws
     -> completion_command_range
 {
   let state  = shell_lexical_state{completion_allocator()};
@@ -2450,7 +2655,8 @@ internal::command_substitution_range(StringView line, usize cursor) throws
 
 fn
 internal::collect_case_pattern_ends(StringView        line,
-                                    ArrayList<usize> &positions) throws -> void
+                                    ArrayList<usize> &positions) throws
+    -> void
 {
   let state = shell_lexical_state{heap_allocator()};
 
@@ -2466,6 +2672,7 @@ internal::collect_case_pattern_ends(StringView        line,
 
     let const &frame =
         state.frames.is_empty() ? state.root_frame : state.frames.back();
+
     if (frame_is_at_case_pattern_level(frame) &&
         !frame.is_case_pattern_parenthesized)
     {
@@ -2475,14 +2682,17 @@ internal::collect_case_pattern_ends(StringView        line,
 }
 
 fn
-classify_typed_pair_byte(StringView line, usize cursor, char byte) throws
-    -> typed_pair_role
+classify_typed_pair_byte(StringView line,
+                         usize      cursor,
+                         char       byte) throws -> typed_pair_role
 {
   if (cursor > line.length) return typed_pair_role::none;
 
   let const scratch = ScopedCompletionScratch{};
   let       state   = shell_lexical_state{completion_allocator()};
+
   advance_shell_lexical_state(line, cursor, state);
+
   if (state.is_in_heredoc || state.is_in_comment) {
     return typed_pair_role::none;
   }
@@ -2509,6 +2719,7 @@ classify_typed_pair_byte(StringView line, usize cursor, char byte) throws
   case ')':  {
     let const &frame =
         state.frames.is_empty() ? state.root_frame : state.frames.back();
+
     if (frame_is_at_case_pattern_level(frame) &&
         !frame.is_case_pattern_parenthesized)
     {
@@ -2531,13 +2742,16 @@ append_sentence_tail(String &out, StringView sentence) throws -> void
   if (sentence.length > 0 && sentence[sentence.length - 1] == '.') {
     sentence = sentence.substring_of_length(0, sentence.length - 1);
   }
+
   if (sentence.is_empty()) return;
 
   out.append(StringView{", "});
+
   let const first = sentence[0];
   let const is_capitalized_word =
       first >= 'A' && first <= 'Z' &&
       (sentence.length == 1 || sentence[1] < 'A' || sentence[1] > 'Z');
+
   out.push(is_capitalized_word ? static_cast<char>(first - 'A' + 'a') : first);
   out.append(sentence.substring_of_length(1, sentence.length - 1));
 }
@@ -2555,21 +2769,26 @@ describe_syntax_problem(StringView line,
 
   let const is_continued_on_enter =
       cursor == line.length && line.length > 0 && line[line.length - 1] == '\\';
+
   if (is_continued_on_enter) return false;
 
   let const scratch = ScopedCompletionScratch{};
   let       parser  = Parser{
       Lexer{line, COMPLETION_ARENA, None, mood}
   };
+
   parser.set_substitution_validation_mode(
       substitution_validation_mode::Enabled);
+
   let errors   = ArrayList<ErrorWithLocationAndDetails>{heap_allocator()};
   let messages = ArrayList<String>{heap_allocator()};
+
   parser.set_error_collection(&errors);
   unused(parser.construct_ast(messages, nullptr, nullptr));
   if (errors.is_empty()) return false;
 
   let const &error = errors[0];
+
   out.append(StringView{"syntax error\n"});
   out.append(error.message().view());
   append_sentence_tail(out, error.details_message().is_empty()
@@ -2593,26 +2812,31 @@ describe_analysis_finding(StringView   line,
        !(state.is_bash_compatible() || state.is_posix_mode()) ||
        state.get_warning_level() > 0) &&
       !state.is_diagnostics_disabled();
+
   if (!is_analyzed_on_submit) return false;
 
   let const scratch = ScopedCompletionScratch{};
   let       parser  = Parser{
       Lexer{line, COMPLETION_ARENA, None, state.get_mood()}
   };
+
   parser.set_analysis_metadata_collection_mode(
       analysis_metadata_collection_mode::Enabled);
   parser.set_substitution_validation_mode(
       substitution_validation_mode::Enabled);
+
   let        rendered_errors = ArrayList<String>{heap_allocator()};
   let        diagnostics     = ArrayList<source_diagnostic>{heap_allocator()};
   let const *ast =
       parser.construct_ast(rendered_errors, &context, &diagnostics);
+
   if (!rendered_errors.is_empty() || ast == nullptr) {
     return false;
   }
 
   let const directives = parser.take_analysis_directives();
   let       options    = analysis_options::from_runtime(state);
+
   options.should_silence_unresolved_commands = true;
   analyze_ast(ast, line, context.function_store().names(),
               context.scope_store().alias_names(), &context, options,

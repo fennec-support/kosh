@@ -48,9 +48,11 @@ fn
 evaluate_one(const ExecContext    &ec,
              EvalContext          &cxt,
              StringView            expression,
-             const SourceLocation *expression_base = nullptr) throws -> i32
+             const SourceLocation *expression_base = nullptr) throws
+    -> i32
 {
   let render_source = expression;
+
   if (expression_base != nullptr &&
       cxt.source_store().current_source() != nullptr)
   {
@@ -61,20 +63,24 @@ evaluate_one(const ExecContext    &ec,
           obvious_xor_power_operator_position(expression))
   {
     let warning_location = SourceLocation{*operator_position, 1};
+
     if (expression_base != nullptr) {
       warning_location.position += expression_base->position;
       warning_location.source_name_index = expression_base->source_name_index;
     }
+
     let const warning = WarningWithLocationAndDetails{
         warning_location,
         "The `^` operator performs bitwise XOR in Bash arithmetic",
         "Use `**`, the Bash power operator, if you meant exponentiation"};
+
     show_message(warning.to_string(render_source, &cxt));
   }
 
   try {
     let result =
         cxt.evaluate_calculator_arithmetic_text(expression, expression_base);
+
     result += '\n';
     ec.print_to_stdout(result);
 
@@ -91,8 +97,8 @@ evaluate_one(const ExecContext    &ec,
 }
 
 fn
-try_define_unevaluated_assignment(EvalContext &cxt, StringView line) throws
-    -> bool
+try_define_unevaluated_assignment(EvalContext &cxt,
+                                  StringView   line) throws -> bool
 {
   usize i = 0;
 
@@ -119,6 +125,7 @@ try_define_unevaluated_assignment(EvalContext &cxt, StringView line) throws
   if (i >= line.length || line[i] != '=') {
     return false;
   }
+
   if (i + 1 < line.length && line[i + 1] == '=') {
     return false;
   }
@@ -155,6 +162,7 @@ run_repl(const ExecContext   &ec,
                           os::is_fd_a_tty(input_fd);
 
   let const did_initialize_editor = is_terminal && !toiletline::is_active();
+
   if (did_initialize_editor) {
     try {
       toiletline::initialize();
@@ -167,14 +175,14 @@ run_repl(const ExecContext   &ec,
 
   let const was_completion_enabled =
       should_use_editor && toiletline::is_completion_enabled();
+
   if (should_use_editor) {
     toiletline::enter_raw_mode();
     toiletline::disable_completion();
     toiletline::enter_calc_history();
   }
 
-  defer
-  {
+  defer {
     if (should_use_editor) {
       toiletline::leave_calc_history();
       if (was_completion_enabled) toiletline::enable_completion(cxt);
@@ -195,11 +203,12 @@ run_repl(const ExecContext   &ec,
     }
   };
 
-  loop
-  {
+  loop {
     Maybe<String> line;
+
     if (should_use_editor) {
       toiletline::input_result result{};
+
       try {
         result = toiletline::get_input(String{"calc> "});
       } catch (const Error &error) {
@@ -217,12 +226,14 @@ run_repl(const ExecContext   &ec,
 
           return 0;
         }
+
         toiletline::set_input(result.text);
         continue;
       case TL_PRESSED_INTERRUPT:
         koshka::print("^C");
         koshka::flush();
         break;
+
       default:;
       }
 
@@ -235,8 +246,10 @@ run_repl(const ExecContext   &ec,
       line = steal(result.text);
     } else {
       if (is_terminal) koshka::print_error("calc> ");
+
       let line_result = utils::read_line_from_fd(input_fd);
-      line            = steal(line_result.line);
+
+      line = steal(line_result.line);
       if (!line.has_value() || os::INTERRUPT_REQUESTED) {
         break;
       }
@@ -273,12 +286,12 @@ fn
 Calc::execute(const ExecContext               &ec,
               EvalContext                     &cxt,
               const ArrayList<String>         &args,
-              const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+              const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   let const runtime_scope = RuntimeStateScope{cxt};
+
   cxt.runtime_state().set_diagnostics_disabled(true);
 
   let const has_expression = !operands.is_empty();
@@ -287,6 +300,7 @@ Calc::execute(const ExecContext               &ec,
       !should_pipe &&
       (FLAG_CALC_INTERACTIVE.is_enabled() ||
        (!has_expression && os::is_stdin_a_tty() && os::is_stdout_a_tty()));
+
   if (should_pipe || is_interactive) {
     let const input_mode = should_pipe ? calc_repl_input_mode::Pipe
                                        : calc_repl_input_mode::DetectTerminal;
@@ -311,6 +325,7 @@ Calc::execute(const ExecContext               &ec,
   }
 
   Maybe<SourceLocation> expression_base;
+
   if (!operand_locations.is_empty() &&
       operand_locations.count() == operands.count() &&
       cxt.source_store().current_source() != nullptr)
@@ -330,6 +345,7 @@ Calc::execute(const ExecContext               &ec,
                                          expression_end -
                                              first_location.position)
             : StringView{};
+
     if (let const expression_offset =
             operand_source.find_substring(expression.view());
         expression_offset.has_value())

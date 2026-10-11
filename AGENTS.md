@@ -22,7 +22,8 @@ same encoding that every spawned process receives."
 ## Code
 
 - Use `let` and `let const` for deduced locals. Literal counters keep an integer
-  type. Functions use `fn name(...) throws -> ret`.
+  type. Functions use `fn name(...) throws -> ret`, and a pure virtual
+  function ends with `abstract` instead of `= 0`.
 - Compare pointers with `nullptr`. Do not use pointer truthiness.
 - Boolean names start with `is_`, `should_`, `was_`, `did_`, or `has_`. Counts
   end with `_count`, and a number of bytes ends with `_byte_count`.
@@ -44,6 +45,12 @@ same encoding that every spawned process receives."
 - Search for an existing owner, helper, parser, container, and dependency first.
   New abstractions, file splits, file merges, and dependency upgrades require
   approval. Per-executor state passes through `EvalContext` and constructors.
+- `.clang-format` expands `fn`, `throws`, `wontthrow`, `loop`, `defer`, and
+  `targetisa` as macros, expands `abstract` as `override` so it keeps its
+  space after `&` and `*`, and lists the attribute macros. `let` and `steal` stay
+  unexpanded, because the formatter then shifts declaration alignment and
+  call spacing. A function type is spelled `bool(...) throws`, never with
+  `fn`, which hangs clang-format 21.
 
 ## Architecture
 
@@ -242,9 +249,11 @@ same encoding that every spawned process receives."
 - Recheck mutable runtime state after any startup file that can change it.
 - `src/koshkit` holds only utility sources. Code shared by utilities lives in
   `src`, such as `src/CliLive` and the file-mode parser in `src/UtilsIO.cpp`.
-- `src/CliLive` owns every Evil live view and the retained live rows. It holds
-  the alternate screen, raw key input, sample and refresh interval, the styled
-  header, and one write per frame. Redirected frames carry no escape sequences.
+- `src/CliLive` owns every Evil live view, the meow screensaver, and the
+  retained live rows. It holds the alternate screen, raw key input, sample and
+  refresh interval, the styled header, and one write per frame. The
+  screensaver turns the header off. Redirected frames carry no escape
+  sequences.
 
 ## Platform
 

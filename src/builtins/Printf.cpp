@@ -39,10 +39,12 @@ fn
 decode_utf8_code_point(const String &arg, usize start) throws -> i64
 {
   let const first = static_cast<unsigned char>(arg[start]);
+
   if (first < 0x80) return first;
 
   usize continuation_count;
   i64   code_point;
+
   if ((first & 0xE0) == 0xC0) {
     continuation_count = 1;
     code_point         = first & 0x1F;
@@ -63,6 +65,7 @@ decode_utf8_code_point(const String &arg, usize start) throws -> i64
 
     let const continuation_byte =
         static_cast<unsigned char>(arg[start + continuation_index]);
+
     if ((continuation_byte & 0xC0) != 0x80) return first;
 
     code_point = (code_point << 6) | (continuation_byte & 0x3F);
@@ -73,7 +76,8 @@ decode_utf8_code_point(const String &arg, usize start) throws -> i64
 
 fn
 parse_printf_number(const String &arg,
-                    bool is_unsigned_conversion = false) throws -> printf_number
+                    bool          is_unsigned_conversion = false) throws
+    -> printf_number
 {
   if (!arg.is_empty() && (arg[0] == '\'' || arg[0] == '"')) {
     return {arg.count() > 1 ? decode_utf8_code_point(arg, 1) : 0, true, false,
@@ -87,6 +91,7 @@ parse_printf_number(const String &arg,
   }
 
   let const number_start = i;
+
   if (i < arg.count() && (arg[i] == '+' || arg[i] == '-')) {
     i++;
   }
@@ -96,6 +101,7 @@ parse_printf_number(const String &arg,
   let const is_octal = !is_hexadecimal && i < arg.count() && arg[i] == '0' &&
                        i + 1 < arg.count();
   usize digit_start = i;
+
   if (is_hexadecimal) {
     i += 2;
     digit_start = i;
@@ -112,6 +118,7 @@ parse_printf_number(const String &arg,
       i++;
     }
   }
+
   let const number_end = i;
 
   let const number_text =
@@ -125,6 +132,7 @@ parse_printf_number(const String &arg,
                  : utils::parse_decimal_i64(number_text, &is_out_of_range);
   let const has_digits = number_end > digit_start;
   let       value      = parsed.is_error() ? i64{0} : parsed.value();
+
   if (is_out_of_range && is_unsigned_conversion && arg[number_start] != '-') {
     let const digits =
         arg.view().substring_of_length(digit_start, number_end - digit_start);
@@ -132,6 +140,7 @@ parse_printf_number(const String &arg,
         is_hexadecimal ? utils::parse_integer_in_base_u64(digits, int_base::hex)
         : is_octal ? utils::parse_integer_in_base_u64(digits, int_base::octal)
                    : utils::parse_decimal_u64(digits);
+
     if (!unsigned_value.is_error()) {
       value           = static_cast<i64>(unsigned_value.value());
       is_out_of_range = false;
@@ -192,11 +201,13 @@ struct printf_numeric_locale
 };
 
 fn
-get_numeric_locale_environment() throws -> const numeric_locale_environment &
+get_numeric_locale_environment() throws
+    -> const numeric_locale_environment &
 {
   static thread_local numeric_locale_environment environment{};
 
   let const epoch = os::get_environment_epoch();
+
   if (!environment.is_filled || environment.epoch != epoch) {
     environment.inherited_name = {};
 
@@ -206,6 +217,7 @@ get_numeric_locale_environment() throws -> const numeric_locale_environment &
       let const value = os::get_environment_variable(
           NUMERIC_LOCALE_VARIABLE_NAMES[name_index]);
       let text = StringView{};
+
       if (value.has_value()) {
         text = value->count() < sizeof(environment.values[0]) ? value->view()
                                                               : StringView{"C"};
@@ -231,12 +243,14 @@ find_numeric_locale_name(const EvalContext &cxt) throws -> StringView
 {
   let const &environment = get_numeric_locale_environment();
   let const &store       = cxt.variable_store();
+
   if (!store.is_locale_scalar_possible()) return environment.inherited_name;
 
   for (usize name_index = 0;
        name_index < countof(NUMERIC_LOCALE_VARIABLE_NAMES); name_index++)
   {
     let const name = NUMERIC_LOCALE_VARIABLE_NAMES[name_index];
+
     if (let const stored = store.shell_variables().find(name);
         stored.has_value())
     {
@@ -276,6 +290,7 @@ complete_numeric_format(String    &spec,
 {
   if (is_grouped) {
     let grouped = String{allocator, "%'"};
+
     grouped.append(spec.view().substring(1));
     spec = steal(grouped);
   }
@@ -284,17 +299,25 @@ complete_numeric_format(String    &spec,
 }
 
 fn
-append_simple_escape(String &out, char e, bool should_use_bash_escapes) throws
-    -> void
+append_simple_escape(String &out,
+                     char    e,
+                     bool    should_use_bash_escapes) throws -> void
 {
   switch (e) {
   case 'n': out += '\n'; break;
+
   case 't': out += '\t'; break;
+
   case 'r': out += '\r'; break;
+
   case 'a': out += '\a'; break;
+
   case 'b': out += '\b'; break;
+
   case 'f': out += '\f'; break;
+
   case 'v': out += '\v'; break;
+
   case 'e':
   case 'E':
     if (should_use_bash_escapes) {
@@ -303,8 +326,11 @@ append_simple_escape(String &out, char e, bool should_use_bash_escapes) throws
       out += '\\';
       out += e;
     }
+
     break;
+
   case '\\': out += '\\'; break;
+
   default:
     out += '\\';
     out += e;
@@ -391,7 +417,9 @@ append_b_argument(String       &out,
       out += arg[i];
       continue;
     }
+
     let const e = arg[i + 1];
+
     if (e == 'c') return true;
     if (e == 'x' && i + 2 < arg.length() &&
         utils::hex_digit_value(arg[i + 2]).has_value())
@@ -412,17 +440,22 @@ append_b_argument(String       &out,
       i = digit_index - 1;
       continue;
     }
+
     if (should_use_bash_escapes && (e == 'u' || e == 'U') &&
         i + 2 < arg.length() && utils::hex_digit_value(arg[i + 2]).has_value())
     {
       usize escape_end = i + 1;
+
       append_escape(out, arg, escape_end, should_use_bash_escapes);
       i = escape_end;
       continue;
     }
+
     if (e == '0' || (e >= '1' && e <= '7')) {
       usize digit_index = i + 1;
+
       if (arg[digit_index] == '0') digit_index++;
+
       i32   value       = 0;
       usize digit_count = 0;
 
@@ -438,6 +471,7 @@ append_b_argument(String       &out,
       i = digit_index - 1;
       continue;
     }
+
     i++;
     append_simple_escape(out, e, should_use_bash_escapes);
   }
@@ -454,17 +488,20 @@ is_q_safe_byte(char c) throws -> bool
 }
 
 fn
-append_q_argument(String &out, const String &arg, bool is_utf8_locale) throws
-    -> void
+append_q_argument(String       &out,
+                  const String &arg,
+                  bool          is_utf8_locale) throws -> void
 {
   if (utils::append_ansi_c_quote_if_needed(out, arg.view(), is_utf8_locale))
     return;
 
   for (usize i = 0; i < arg.count(); i++) {
     let const c = arg[i];
+
     if (!is_q_safe_byte(c) && static_cast<unsigned char>(c) < 0x80) {
       out += '\\';
     }
+
     out += c;
   }
 }
@@ -478,6 +515,7 @@ report_invalid_number(ExecContext  &ec,
                       Allocator     allocator) throws -> void
 {
   let message = String{allocator, arg.view()};
+
   message += is_hex ? ": invalid hex number" : ": invalid number";
   report_soft_builtin_error(ec, cxt, message.view());
   exit_status = 1;
@@ -491,6 +529,7 @@ report_out_of_range(ExecContext  &ec,
                     Allocator     allocator) throws -> void
 {
   let message = String{allocator, arg.view()};
+
   message += ": Numerical result out of range";
   report_soft_builtin_error(ec, cxt, message.view());
   exit_status = 1;
@@ -511,15 +550,19 @@ append_conversion(String                &out,
 {
   char buffer[256];
 
-  let const do_append_formatted = [&](const char *format, auto value) throws {
+  let const do_append_formatted = [&](const char *format,
+                                      auto        value) throws {
     const int needed = std::snprintf(buffer, sizeof(buffer), format, value);
+
     if (needed >= 0 && static_cast<usize>(needed) < sizeof(buffer)) {
       out += buffer;
     } else if (needed > 0) {
       let const   size        = static_cast<usize>(needed) + 1;
       char *const heap_buffer = allocator.alloc_array<char>(size);
+
       if (heap_buffer != nullptr) {
         defer { allocator.free_array(heap_buffer, size); };
+
         std::snprintf(heap_buffer, size, format, value);
         out += StringView{heap_buffer, static_cast<usize>(needed)};
       }
@@ -531,16 +574,19 @@ append_conversion(String                &out,
     append_q_argument(out, arg,
                       cxt.get_glob_charset_for(arg) == glob_charset::Utf8);
     break;
+
   case 's': {
     if (spec == "%") {
       let const value   = arg.view();
       let const printed = value.find_character('\0').value_or(value.length);
+
       out.append(value.substring_of_length(0, printed));
     } else {
       spec.push('s');
       do_append_formatted(spec.c_str(), arg.c_str());
     }
   } break;
+
   case 'c': {
     if (spec == "%") {
       out += arg.is_empty() ? '\0' : arg[0];
@@ -549,45 +595,54 @@ append_conversion(String                &out,
       do_append_formatted(spec.c_str(), arg.is_empty() ? '\0' : arg[0]);
     }
   } break;
+
   case 'd':
   case 'i': {
     let const number = parse_printf_number(arg);
+
     if (!number.is_valid && !is_missing_argument) {
       report_invalid_number(ec, cxt, arg, number.is_hex, exit_status,
                             allocator);
     } else if (number.is_out_of_range && !is_missing_argument) {
       report_out_of_range(ec, cxt, arg, exit_status, allocator);
     }
+
     let const scope = os::NumericLocaleScope{
         has_grouping_flag ? get_numeric_locale_name(numeric_locale, cxt)
                           : StringView{},
         true};
+
     complete_numeric_format(spec, scope.is_active(), "lld", allocator);
     do_append_formatted(spec.c_str(), static_cast<long long>(number.value));
   } break;
+
   case 'x':
   case 'X':
   case 'o':
   case 'u': {
     let const number = parse_printf_number(arg, true);
+
     if (!number.is_valid && !is_missing_argument) {
       report_invalid_number(ec, cxt, arg, number.is_hex, exit_status,
                             allocator);
     } else if (number.is_out_of_range && !is_missing_argument) {
       report_out_of_range(ec, cxt, arg, exit_status, allocator);
     }
+
     let const should_group = has_grouping_flag && conv == 'u';
     let const scope        = os::NumericLocaleScope{
         should_group ? get_numeric_locale_name(numeric_locale, cxt)
                             : StringView{},
         true};
     const char conversion[] = {'l', 'l', conv};
+
     complete_numeric_format(spec, scope.is_active(),
                             StringView{conversion, sizeof(conversion)},
                             allocator);
     do_append_formatted(spec.c_str(),
                         static_cast<unsigned long long>(number.value));
   } break;
+
   case 'f':
   case 'F':
   case 'e':
@@ -595,12 +650,14 @@ append_conversion(String                &out,
   case 'g':
   case 'G': {
     let is_valid = true;
+
     {
       let const should_group = has_grouping_flag && conv != 'e' && conv != 'E';
       let const scope        = os::NumericLocaleScope{
           get_numeric_locale_name(numeric_locale, cxt), should_group};
       let const number = parse_printf_float(arg);
-      is_valid         = number.is_valid;
+
+      is_valid = number.is_valid;
       complete_numeric_format(spec, should_group && scope.is_active(),
                               StringView{&conv, 1}, allocator);
       do_append_formatted(spec.c_str(), number.value);
@@ -610,6 +667,7 @@ append_conversion(String                &out,
       report_invalid_number(ec, cxt, arg, false, exit_status, allocator);
     }
   } break;
+
   default:
     out += spec;
     out += conv;
@@ -624,8 +682,9 @@ Printf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   ASSERT(!ec.args().is_empty());
 
-  constexpr i32 USAGE_STATUS             = 2;
-  let const     do_report_missing_format = [&]() throws -> i32 {
+  constexpr i32 USAGE_STATUS = 2;
+
+  let const do_report_missing_format = [&]() throws -> i32 {
     report_soft_builtin_error(
         ec, cxt, "A format operand is required",
         "The usage is printf [-v var] format [arguments]");
@@ -640,6 +699,7 @@ Printf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   usize         format_index = 1;
   Maybe<String> store_variable;
   let const    &first_arg = ec.args()[1];
+
   if (cxt.runtime_state().bash_additions_enabled() && first_arg == "-v") {
     if (ec.args().count() < 3) {
       report_soft_builtin_error(ec, cxt, ec.arg_location_at(1),
@@ -677,7 +737,8 @@ Printf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let const  operand_base  = format_index + 1;
   let const  operand_count = args.count() - operand_base;
   let const  empty_operand = String{cxt.scratch_allocator()};
-  let const  do_operand_at = [&](usize index) wontthrow -> const String  &{
+
+  let const do_operand_at = [&](usize index) wontthrow -> const String & {
     return index < operand_count ? args[operand_base + index] : empty_operand;
   };
 
@@ -689,6 +750,7 @@ Printf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   let const do_consume_star = [&](String &spec) throws {
     char number_text[24];
+
     spec.append(utils::int_to_text_into(
         parse_printf_integer(do_operand_at(operand_index)), number_text,
         sizeof(number_text)));
@@ -708,12 +770,14 @@ Printf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         append_escape(out, fmt, i, should_use_bash_escapes);
         continue;
       }
+
       if (fmt[i] != '%') {
         out += fmt[i];
         continue;
       }
 
       String spec{cxt.scratch_allocator(), "%"};
+
       i++;
 
       bool has_grouping_flag = false;
@@ -740,6 +804,7 @@ Printf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
           spec.push(fmt[i++]);
         }
       };
+
       do_push_field_size();
       if (i < fmt.length() && fmt[i] == '.') {
         spec.push(fmt[i++]);
@@ -762,12 +827,15 @@ Printf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
           let       epoch       = has_operand
                                       ? parse_printf_integer(do_operand_at(operand_index))
                                       : -1;
+
           if (epoch == -1) {
             epoch = os::current_unix_seconds();
           } else if (epoch == -2) {
             epoch = cxt.dynamic_runtime_store().shell_start_time();
           }
+
           let const formatted = os::format_local_time(date_format, epoch);
+
           if (spec == "%")
             out += formatted;
           else
@@ -780,16 +848,19 @@ Printf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
           continue;
         }
       }
+
       if (i >= fmt.length()) {
         out += spec;
         break;
       }
 
       let const conv = fmt[i];
+
       if (conv == '%') {
         out += '%';
         continue;
       }
+
       if (conv == '(') {
         out += spec;
         out += '(';
@@ -798,6 +869,7 @@ Printf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
       let const  is_missing_argument = operand_index >= operand_count;
       let const &arg                 = do_operand_at(operand_index);
+
       if (conv == 'b') {
         should_stop = append_b_argument(out, arg, should_use_bash_escapes);
         operand_index++;
@@ -805,6 +877,7 @@ Printf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         if (should_stop) break;
         continue;
       }
+
       append_conversion(out, spec, conv, has_grouping_flag, arg,
                         is_missing_argument, numeric_locale, ec, cxt,
                         exit_status, cxt.scratch_allocator());
@@ -817,17 +890,20 @@ Printf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   if (store_variable.has_value()) {
     let const target       = store_variable->view();
     let const open_bracket = target.find_character('[');
+
     if (open_bracket.has_value() && *open_bracket > 0 &&
         target.length >= *open_bracket + 2 && target[target.length - 1] == ']')
     {
       let const array_name = target.substring_of_length(0, *open_bracket);
       let const subscript  = target.substring_of_length(
           *open_bracket + 1, target.length - *open_bracket - 2);
+
       cxt.assign_array_element(array_name, subscript, out.view(),
                                assignment_update_mode::Replace);
 
       return exit_status;
     }
+
     cxt.set_shell_variable(target, out.view());
 
     return exit_status;

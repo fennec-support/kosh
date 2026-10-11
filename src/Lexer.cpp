@@ -160,6 +160,7 @@ word_looks_like_assignment(StringView word) wontthrow -> bool
   if (word.is_empty() || !is_variable_name_start(word[0])) {
     return false;
   }
+
   usize position = 1;
 
   while (position < word.length && is_variable_name(word[position])) {
@@ -169,20 +170,24 @@ word_looks_like_assignment(StringView word) wontthrow -> bool
   if (position < word.length && word[position] == '=') {
     return true;
   }
+
   if (position + 1 < word.length && word[position] == '+' &&
       word[position + 1] == '=')
   {
     return true;
   }
+
   if (position >= word.length || word[position] != '[') {
     return false;
   }
 
   usize bracket_depth = 1;
+
   position++;
 
   while (position < word.length && bracket_depth > 0) {
     let const byte = word[position];
+
     if (byte == '[') {
       bracket_depth++;
     } else if (byte == ']') {
@@ -190,6 +195,7 @@ word_looks_like_assignment(StringView word) wontthrow -> bool
     } else {
       position = skip_quoted_run(word, position);
     }
+
     position++;
   }
 
@@ -268,8 +274,10 @@ Lexer::peek_shell_token() throws -> Token *
   if (peek_cache_is_live()) return m_peek_cache;
 
   skip_whitespace();
+
   Token *const token = lex_shell_token();
-  m_peek_cache       = token;
+
+  m_peek_cache = token;
 #if !defined NDEBUG
   m_peek_cache_generation = m_parse_session.get_arena().reset_generation();
 #endif
@@ -281,9 +289,11 @@ hot fn
 Lexer::next_shell_token() throws -> Token *
 {
   let const is_peek_cache_live = peek_cache_is_live();
+
   if (!is_peek_cache_live) skip_whitespace();
 
   Token *const token = is_peek_cache_live ? m_peek_cache : lex_shell_token();
+
   ASSERT(token != nullptr);
 
   advance_past_last_peek();
@@ -314,6 +324,7 @@ Lexer::take_shellcheck_directives() throws
     -> ArrayList<shellcheck_directive_span>
 {
   let directives = steal(m_pending_shellcheck_directives);
+
   m_pending_shellcheck_directives =
       ArrayList<shellcheck_directive_span>{heap_allocator()};
 
@@ -325,6 +336,7 @@ Lexer::take_shellcheck_directive_spans() throws
     -> ArrayList<shellcheck_directive_span>
 {
   let spans = steal(m_shellcheck_directive_spans);
+
   m_shellcheck_directive_spans =
       ArrayList<shellcheck_directive_span>{heap_allocator()};
 
@@ -336,6 +348,7 @@ Lexer::take_heredoc_terminator_misses() throws
     -> ArrayList<heredoc_terminator_miss>
 {
   let misses = steal(m_heredoc_terminator_misses);
+
   m_heredoc_terminator_misses =
       ArrayList<heredoc_terminator_miss>{heap_allocator()};
 
@@ -395,8 +408,9 @@ Lexer::advance_past_last_peek() throws -> usize
   ASSERT(m_cursor_position + m_cached_offset <= m_source.length);
 
   let const result = advance_forward(m_cached_offset);
-  m_cached_offset  = 0;
-  m_peek_cache     = nullptr;
+
+  m_cached_offset = 0;
+  m_peek_cache    = nullptr;
 
   if (m_was_last_shell_token_newline && !m_pending_heredocs.is_empty()) {
     m_was_last_shell_token_newline = false;
@@ -409,13 +423,15 @@ Lexer::advance_past_last_peek() throws -> usize
 cold fn
 Lexer::register_heredoc(StringView         delimiter,
                         heredoc_tab_policy tab_policy,
-                        bool should_expand) throws -> const heredoc_contents *
+                        bool               should_expand) throws
+    -> const heredoc_contents *
 {
   let &arena    = m_parse_session.get_arena();
   let  contents = arena.create<heredoc_contents>(
       bump_allocator(arena), tab_policy == heredoc_tab_policy::Preserve
                                   ? heredoc_source_mapping::Contiguous
                                   : heredoc_source_mapping::Transformed);
+
   ASSERT(contents != nullptr);
 
   LOG(Debug, "registering a pending heredoc with delimiter '%.*s'",
@@ -440,21 +456,23 @@ Lexer::walk_heredoc_body(usize              start,
   heredoc_terminator_miss near_miss{0, 0,
                                     heredoc_miss_kind::IndentedTerminator};
 
-  loop
-  {
+  loop {
     if (position >= m_source.length) break;
+
     let const line_start     = position;
     let const line_remaining = m_source.substring(line_start);
     let const line_newline   = line_remaining.find_character('\n');
     let const line_end_position =
         line_start + line_newline.value_or(line_remaining.length);
     let const has_newline = line_end_position < m_source.length;
+
     position = has_newline ? line_end_position + 1 : line_end_position;
 
     let const line_offset     = line_start;
     let const line_length     = line_end_position - line_start;
     usize     stripped_offset = line_offset;
     usize     stripped_length = line_length;
+
     if (tab_policy == heredoc_tab_policy::Strip) {
       while (stripped_length > 0 && m_source[stripped_offset] == '\t') {
         stripped_offset++;
@@ -465,7 +483,8 @@ Lexer::walk_heredoc_body(usize              start,
     let const stripped =
         m_source.substring_of_length(stripped_offset, stripped_length);
     let const is_delimiter = (delimiter == stripped);
-    did_find_delimiter     = did_find_delimiter || is_delimiter;
+
+    did_find_delimiter = did_find_delimiter || is_delimiter;
 
     if (m_parse_session.should_collect_analysis_metadata() && !is_delimiter &&
         !has_near_miss && line_length > delimiter.length)
@@ -507,6 +526,7 @@ Lexer::walk_heredoc_body(usize              start,
     }
 
     let const raw = m_source.substring_of_length(line_offset, line_length);
+
     if (!emit_line(raw, has_newline, is_delimiter)) break;
     if (!has_newline) break;
   }
@@ -526,9 +546,11 @@ Lexer::collect_pending_heredocs() throws -> void
 
   for (let &pending : m_pending_heredocs) {
     let collected = String{heap_allocator()};
+
     ASSERT(pending.contents != nullptr);
     pending.contents->source_position = m_cursor_position;
-    let const do_append_body_line     = [&](StringView line, bool,
+
+    let const do_append_body_line = [&](StringView line, bool,
                                         bool       is_delimiter) -> bool {
       if (is_delimiter) return false;
       if (pending.tab_policy == heredoc_tab_policy::Strip) {
@@ -540,11 +562,13 @@ Lexer::collect_pending_heredocs() throws -> void
 
         line = line.substring_of_length(offset, line.length - offset);
       }
+
       collected.append(line);
       collected += '\n';
 
       return true;
     };
+
     m_cursor_position =
         walk_heredoc_body(m_cursor_position, pending.delimiter.view(),
                           pending.tab_policy, do_append_body_line);
@@ -555,6 +579,7 @@ Lexer::collect_pending_heredocs() throws -> void
   }
 
   defer { m_pending_heredocs.clear(); };
+
   if (!should_validate_substitutions()) return;
 
   for (let const &pending : m_pending_heredocs) {
@@ -572,6 +597,7 @@ Lexer::lex_shell_token() throws -> Token *
 {
   Token    *token{};
   let const ch = chop_character();
+
   if (!has_character()) {
     token = m_parse_session.get_arena().create<tokens::EndOfFile>(
         here(m_cursor_position, 1));
@@ -585,12 +611,14 @@ Lexer::lex_shell_token() throws -> Token *
   case '>':
     token = chop_character(1) == '(' ? lex_identifier() : lex_sentinel();
     break;
+
   case '\n':
   case '|':
   case '(':
   case ')':
   case '&':
   case ';':  token = lex_sentinel(); break;
+
   case ' ':
   case '\t':
     throw ErrorWithLocationAndDetails{
@@ -611,8 +639,7 @@ Lexer::skip_whitespace() throws -> void
 {
   usize i = 0;
 
-  loop
-  {
+  loop {
     while (lexer::is_whitespace(chop_character(i)))
       i++;
 
@@ -624,10 +651,13 @@ Lexer::skip_whitespace() throws -> void
         i += 2;
         continue;
       }
+
       break;
+
     case '#': {
       let const comment_start     = i;
       let const comment_remaining = m_source.substring(m_cursor_position + i);
+
       i += comment_remaining.find_character('\n').value_or(
           comment_remaining.length);
       if (m_parse_session.should_collect_analysis_metadata()) {
@@ -643,6 +673,7 @@ Lexer::skip_whitespace() throws -> void
         }
 
         let const directive_text = comment.substring(content_position);
+
         if (directive_text.starts_with(StringView{"shellcheck", 10}) &&
             (directive_text.length == 10 || directive_text[10] == ' ' ||
              directive_text[10] == '\t'))
@@ -656,6 +687,7 @@ Lexer::skip_whitespace() throws -> void
           m_shellcheck_directive_spans.push(span);
         }
       }
+
       continue;
     }
     default: break;
@@ -693,7 +725,8 @@ Lexer::has_character(usize offset) const wontthrow -> bool
 flatten hot alwaysinline fn
 Lexer::lex_identifier() throws -> Token *
 {
-  let word      = Word{};
+  let word = Word{};
+
   word.segments = ArrayList<WordSegment>{bump_allocator(arena())};
 
   usize byte_count                   = 0;
@@ -738,7 +771,9 @@ Lexer::lex_identifier() throws -> Token *
 
   let const do_word_is_plain_array_name = [&word]() -> bool {
     if (word.segments.count() != 1) return false;
+
     let const &segment = word.segments[0];
+
     if (segment.kind != WordSegment::Kind::UnquotedText ||
         segment.text.is_empty())
     {
@@ -757,6 +792,7 @@ Lexer::lex_identifier() throws -> Token *
       if (!has_character(offset)) return None;
 
       let const c = chop_character(offset);
+
       offset++;
       if (c == '[') {
         depth++;
@@ -765,6 +801,7 @@ Lexer::lex_identifier() throws -> Token *
       } else {
         let const skipped = lexer::skip_quoted_run(
             m_source.substring(m_cursor_position), offset - 1);
+
         if (skipped == offset - 1 && (c == '\'' || c == '"')) {
           return None;
         }
@@ -774,6 +811,7 @@ Lexer::lex_identifier() throws -> Token *
     }
 
     let const after = chop_character(offset);
+
     if (after == '=' || (after == '+' && chop_character(offset + 1) == '=')) {
       return offset;
     }
@@ -784,12 +822,14 @@ Lexer::lex_identifier() throws -> Token *
   usize extglob_depth = 0;
 
   usize element_subscript_end = 0;
+
   if (m_is_lexing_array_literal && chop_character(0) == '[') {
     let const remaining = m_source.substring(m_cursor_position);
     usize     depth     = 0;
 
     for (usize offset = 0; offset < remaining.length; offset++) {
       let const c = remaining[offset];
+
       if (c == '\n') break;
 
       if (c == '[') {
@@ -806,13 +846,13 @@ Lexer::lex_identifier() throws -> Token *
     }
   }
 
-  loop
-  {
+  loop {
     let const ch        = chop_character(byte_count);
     let const is_at_end = !has_character(byte_count);
 
     let const is_inside_quote_or_escape =
         quote_char.has_value() || should_escape;
+
     if (!is_inside_quote_or_escape && byte_count < element_subscript_end &&
         lexer::is_whitespace(ch))
     {
@@ -853,13 +893,15 @@ Lexer::lex_identifier() throws -> Token *
           close.has_value())
       {
         let const subscript_start = byte_count;
-        byte_count                = *close;
+
+        byte_count = *close;
         do_append_unquoted_run(m_source.substring_of_length(
             m_cursor_position + subscript_start, byte_count - subscript_start));
         if (should_validate_substitutions()) {
           validate_nested_expansions(m_cursor_position + subscript_start,
                                      byte_count - subscript_start, false);
         }
+
         continue;
       }
     }
@@ -877,10 +919,11 @@ Lexer::lex_identifier() throws -> Token *
     if (!is_inside_quote_or_escape && lexer::is_plain_unquoted_run_byte(ch)) {
       let const run_start = byte_count;
 
-      loop
-      {
+      loop {
         byte_count++;
+
         let const next = chop_character(byte_count);
+
         if (!has_character(byte_count) || next == '[' ||
             !lexer::is_plain_unquoted_run_byte(next))
         {
@@ -915,6 +958,7 @@ Lexer::lex_identifier() throws -> Token *
         let const run_start = byte_count;
         let const quote_remaining =
             m_source.substring(m_cursor_position + byte_count);
+
         byte_count += quote_remaining.find_character('\'').value_or(
             quote_remaining.length);
         do_append_run(
@@ -924,6 +968,7 @@ Lexer::lex_identifier() throws -> Token *
         did_quote_enclose_content = true;
         continue;
       }
+
       byte_count++;
       continue;
     }
@@ -932,19 +977,23 @@ Lexer::lex_identifier() throws -> Token *
       if (quote_char == '"') {
         did_quote_enclose_content = true;
         let const escaped_next    = chop_character(byte_count + 1);
+
         switch (escaped_next) {
         case '$':
         case '`':
         case '"':
         case '\\':
         case '\n': should_escape = true; break;
+
         default:
           do_append_char(WordSegment::Kind::DoubleQuotedText, '\\');
           break;
         }
+
         byte_count++;
         continue;
       }
+
       should_escape = true;
       byte_count++;
       continue;
@@ -997,10 +1046,10 @@ Lexer::lex_identifier() throws -> Token *
 
       if (next == '\'' && bash_additions_enabled() && !is_in_double_quotes) {
         byte_count++;
+
         let const ansi_body_start = byte_count;
 
-        loop
-        {
+        loop {
           if (!has_character(byte_count)) {
             throw ErrorWithLocationAndDetails{
                 here(m_cursor_position, byte_count),
@@ -1009,6 +1058,7 @@ Lexer::lex_identifier() throws -> Token *
           }
 
           let const c = chop_character(byte_count);
+
           byte_count++;
           if (c == '\'') break;
           if (c == '\\' && has_character(byte_count)) {
@@ -1017,6 +1067,7 @@ Lexer::lex_identifier() throws -> Token *
         }
 
         let decoded = String{heap_allocator()};
+
         utils::decode_ansi_c_escapes(
             decoded,
             m_source.substring_of_length(m_cursor_position + ansi_body_start,
@@ -1041,31 +1092,32 @@ Lexer::lex_identifier() throws -> Token *
       }
 
       let const is_bracket_arithmetic = next == '[' && bash_additions_enabled();
+
       if (is_bracket_arithmetic ||
           (next == '(' && chop_character(byte_count + 1) == '('))
       {
         byte_count += is_bracket_arithmetic ? 1 : 2;
+
         let   arithmetic_start = byte_count;
         let   closing_length   = is_bracket_arithmetic ? usize{1} : usize{2};
         usize group_depth      = 0;
 
-        loop
-        {
+        loop {
           let const c = chop_character(byte_count);
+
           if (is_bracket_arithmetic && is_in_double_quotes && c == '"') {
             arithmetic_start--;
             closing_length = 0;
             break;
           }
-          if (!has_character(byte_count)) rarely
-            {
-              throw ErrorWithLocationAndDetails{
-                  here(m_cursor_position, byte_count),
-                  "Unterminated arithmetic expansion",
-                  here(m_cursor_position + byte_count, 1),
-                  is_bracket_arithmetic ? "expected ] here"
-                                        : "expected )) here"};
-            }
+          if (!has_character(byte_count)) rarely {
+            throw ErrorWithLocationAndDetails{
+                here(m_cursor_position, byte_count),
+                "Unterminated arithmetic expansion",
+                here(m_cursor_position + byte_count, 1),
+                is_bracket_arithmetic ? "expected ] here" : "expected )) here"};
+          }
+
           if (c == '\\') {
             byte_count++;
             if (has_character(byte_count)) {
@@ -1073,15 +1125,16 @@ Lexer::lex_identifier() throws -> Token *
             }
           } else if (c == '\'' || c == '"') {
             let const quote = c;
+
             byte_count++;
 
-            loop
-            {
+            loop {
               if (!has_character(byte_count)) {
                 break;
               }
 
               let const q = chop_character(byte_count);
+
               byte_count++;
               if (quote == '"' && q == '\\') {
                 if (has_character(byte_count)) {
@@ -1089,6 +1142,7 @@ Lexer::lex_identifier() throws -> Token *
                 }
                 continue;
               }
+
               if (q == quote) {
                 break;
               }
@@ -1096,13 +1150,13 @@ Lexer::lex_identifier() throws -> Token *
           } else if (c == '`') {
             byte_count++;
 
-            loop
-            {
+            loop {
               if (!has_character(byte_count)) {
                 break;
               }
 
               let const b = chop_character(byte_count);
+
               byte_count++;
               if (b == '\\') {
                 if (has_character(byte_count)) {
@@ -1110,6 +1164,7 @@ Lexer::lex_identifier() throws -> Token *
                 }
                 continue;
               }
+
               if (b == '`') {
                 break;
               }
@@ -1117,16 +1172,17 @@ Lexer::lex_identifier() throws -> Token *
           } else if (c == '$' && chop_character(byte_count + 1) == '(') {
             byte_count++;
             byte_count++;
+
             usize paren_depth  = 1;
             char  nested_quote = 0;
 
-            loop
-            {
+            loop {
               if (!has_character(byte_count)) {
                 break;
               }
 
               let const p = chop_character(byte_count);
+
               byte_count++;
               if (nested_quote != 0) {
                 if (nested_quote == '"' && p == '\\') {
@@ -1140,12 +1196,14 @@ Lexer::lex_identifier() throws -> Token *
                 }
                 continue;
               }
+
               if (p == '\\') {
                 if (has_character(byte_count)) {
                   byte_count++;
                 }
                 continue;
               }
+
               if (p == '\'' || p == '"') {
                 nested_quote = p;
               } else if (p == '(') {
@@ -1183,6 +1241,7 @@ Lexer::lex_identifier() throws -> Token *
         }
 
         let const body_length = byte_count - arithmetic_start - closing_length;
+
         word.segments.push(WordSegment{
             WordSegment::Kind::ArithmeticExpansion,
             SegmentText{bump_allocator(arena()),
@@ -1197,6 +1256,7 @@ Lexer::lex_identifier() throws -> Token *
           validate_nested_expansions(m_cursor_position + arithmetic_start,
                                      body_length, false);
         }
+
         continue;
       }
 
@@ -1206,19 +1266,21 @@ Lexer::lex_identifier() throws -> Token *
         let const inner_start = m_cursor_position + byte_count;
         let const substitution_end =
             lexer::scan_balanced_shell_region(m_source, inner_start, ')');
+
         if (!substitution_end.has_value()) {
-          rarely
-          {
+          rarely {
             throw ErrorWithLocationAndDetails{
                 here(m_cursor_position, m_source.count() - m_cursor_position),
                 "Unterminated command substitution", here(m_source.count(), 1),
                 "expected ) here"};
           }
         }
+
         let inner =
             SegmentText{bump_allocator(arena()),
                         m_source.substring_of_length(
                             inner_start, *substitution_end - inner_start - 1)};
+
         byte_count = *substitution_end - m_cursor_position;
         word.segments.push(WordSegment{WordSegment::Kind::CommandSubstitution,
                                        steal(inner), is_in_double_quotes});
@@ -1234,8 +1296,10 @@ Lexer::lex_identifier() throws -> Token *
         }
       } else if (next == '{') {
         byte_count++;
+
         bool is_function_substitution = false;
         bool is_value_substitution    = false;
+
         if (bash_additions_enabled()) {
           let probe = chop_character(byte_count);
 
@@ -1250,18 +1314,19 @@ Lexer::lex_identifier() throws -> Token *
             is_value_substitution    = true;
           }
         }
+
         let const name_start = byte_count;
+
         if (is_value_substitution) {
           byte_count++;
         }
+
         usize brace_depth = 1;
         char  quote       = 0;
 
-        loop
-        {
+        loop {
           if (!has_character(byte_count)) {
-            rarely
-            {
+            rarely {
               throw ErrorWithLocationAndDetails{
                   here(m_cursor_position + byte_count, 1),
                   "Unterminated variable expansion",
@@ -1270,6 +1335,7 @@ Lexer::lex_identifier() throws -> Token *
           }
 
           let const c = chop_character(byte_count);
+
           byte_count++;
 
           if (quote == '\'') {
@@ -1278,33 +1344,38 @@ Lexer::lex_identifier() throws -> Token *
             }
             continue;
           }
+
           if (c == '\\') {
             if (has_character(byte_count)) {
               byte_count++;
             }
             continue;
           }
+
           if (quote == '"') {
             if (c == '"') {
               quote = 0;
             }
             continue;
           }
+
           if (c == '\'' && is_in_double_quotes && is_posix_option_on()) {
             continue;
           }
+
           if (c == '\'' || c == '"') {
             quote = c;
             continue;
           }
+
           if (c == '`') {
-            loop
-            {
+            loop {
               if (!has_character(byte_count)) {
                 break;
               }
 
               let const b = chop_character(byte_count);
+
               byte_count++;
               if (b == '\\') {
                 if (has_character(byte_count)) {
@@ -1312,32 +1383,38 @@ Lexer::lex_identifier() throws -> Token *
                 }
                 continue;
               }
+
               if (b == '`') {
                 break;
               }
             }
 
-            continue;
+                   continue;
           }
 
           if (c == '$' && chop_character(byte_count) == '(') {
             byte_count++;
+
             let const nested_end = lexer::scan_balanced_shell_region(
                 m_source, m_cursor_position + byte_count, ')');
+
             byte_count = nested_end.has_value()
-                             ? *nested_end - m_cursor_position
-                             : m_source.count() - m_cursor_position;
+                                    ? *nested_end - m_cursor_position
+                                    : m_source.count() - m_cursor_position;
             continue;
           }
+
           if (c == '$' && chop_character(byte_count) == '{') {
             brace_depth++;
             byte_count++;
             continue;
           }
+
           if (c == '{' && is_function_substitution) {
             brace_depth++;
             continue;
           }
+
           if (c == '}') {
             brace_depth--;
             if (brace_depth == 0) {
@@ -1349,6 +1426,7 @@ Lexer::lex_identifier() throws -> Token *
 
         let const name = m_source.substring_of_length(
             m_cursor_position + name_start, byte_count - name_start - 1);
+
         word.segments.push(WordSegment{
             is_function_substitution ? WordSegment::Kind::FunctionSubstitution
                                      : WordSegment::Kind::VariableReference,
@@ -1356,6 +1434,7 @@ Lexer::lex_identifier() throws -> Token *
             is_in_double_quotes
         });
         let &expansion_segment = word.segments.back();
+
         if (is_function_substitution) {
           expansion_segment.set_source_span(m_cursor_position + expansion_start,
                                             byte_count - expansion_start);
@@ -1364,9 +1443,11 @@ Lexer::lex_identifier() throws -> Token *
                                                 expansion_start + 2,
                                             expansion_segment.text.count());
         }
+
         if (should_validate_substitutions()) {
           if (is_function_substitution) {
             let const body_offset = is_value_substitution ? usize{1} : 0;
+
             validate_substitution_body(m_cursor_position + name_start +
                                            body_offset,
                                        name.substring(body_offset),
@@ -1388,6 +1469,7 @@ Lexer::lex_identifier() throws -> Token *
 
         let const name = m_source.substring_of_length(
             m_cursor_position + name_start, byte_count - name_start);
+
         word.segments.push(WordSegment{
             WordSegment::Kind::VariableReference,
             SegmentText{bump_allocator(arena()), name},
@@ -1413,33 +1495,36 @@ Lexer::lex_identifier() throws -> Token *
                                            : WordSegment::Kind::UnquotedText,
                        '$');
       }
+
       continue;
     }
 
     if (ch == '`') {
       let const relative_open_backtick_pos = byte_count;
+
       byte_count++;
+
       let const body_start          = m_cursor_position + byte_count;
       let       inner               = String{heap_allocator()};
       bool      has_stripped_escape = false;
 
-      loop
-      {
-        if (!has_character(byte_count)) rarely
-          {
-            throw ErrorWithLocationAndDetails{
-                here(m_cursor_position + relative_open_backtick_pos, 1),
-                "Unterminated command substitution",
-                here(m_cursor_position + byte_count, 1), "expected ` here"};
-          }
+      loop {
+        if (!has_character(byte_count)) rarely {
+          throw ErrorWithLocationAndDetails{
+              here(m_cursor_position + relative_open_backtick_pos, 1),
+              "Unterminated command substitution",
+              here(m_cursor_position + byte_count, 1), "expected ` here"};
+        }
 
         let const c = chop_character(byte_count);
+
         if (c == '`') {
           byte_count++;
           break;
         }
         if (c == '\\') {
           let const escaped = chop_character(byte_count + 1);
+
           if (lexer::is_backtick_escape_stripped(escaped, is_in_double_quotes))
           {
             if (!has_stripped_escape) {
@@ -1452,6 +1537,7 @@ Lexer::lex_identifier() throws -> Token *
             continue;
           }
         }
+
         if (has_stripped_escape) inner += c;
         byte_count++;
       }
@@ -1461,6 +1547,7 @@ Lexer::lex_identifier() throws -> Token *
                            : m_source.substring_of_length(
                                  body_start, m_cursor_position + byte_count -
                                                  1 - body_start);
+
       word.segments.push(WordSegment{
           WordSegment::Kind::CommandSubstitution,
           SegmentText{bump_allocator(arena()), body},
@@ -1474,11 +1561,13 @@ Lexer::lex_identifier() throws -> Token *
             m_cursor_position + relative_open_backtick_pos + 1;
         let const raw_body = m_source.substring_of_length(
             raw_body_position, byte_count - relative_open_backtick_pos - 2);
+
         validate_substitution_body(
             raw_body_position, raw_body.length == body.length ? raw_body : body,
             here(m_cursor_position + relative_open_backtick_pos,
                  byte_count - relative_open_backtick_pos));
       }
+
       continue;
     }
 
@@ -1488,18 +1577,17 @@ Lexer::lex_identifier() throws -> Token *
     byte_count++;
   }
 
-  if (quote_char.has_value()) rarely
-    {
-      let expected_quote = String{heap_allocator()};
-      expected_quote += "expected ";
-      expected_quote += *quote_char;
-      expected_quote += " here";
-      throw ErrorWithLocationAndDetails{
-          here(m_cursor_position + relative_last_quote_position,
-               sub_sat(byte_count, relative_last_quote_position)),
-          "Unterminated string literal",
-          here(m_cursor_position + byte_count, 1), expected_quote};
-    }
+  if (quote_char.has_value()) rarely {
+    let expected_quote = String{heap_allocator()};
+    expected_quote += "expected ";
+    expected_quote += *quote_char;
+    expected_quote += " here";
+    throw ErrorWithLocationAndDetails{
+        here(m_cursor_position + relative_last_quote_position,
+             sub_sat(byte_count, relative_last_quote_position)),
+        "Unterminated string literal", here(m_cursor_position + byte_count, 1),
+        expected_quote};
+  }
 
   if (should_escape && !quote_char.has_value() &&
       m_cursor_position + byte_count >= m_source.length &&
@@ -1509,15 +1597,16 @@ Lexer::lex_identifier() throws -> Token *
     should_escape = false;
   }
 
-  if (should_escape) rarely
-    {
-      throw ErrorWithLocationAndDetails{
-          here(m_cursor_position + byte_count - 1, 1), "Nothing to escape",
-          here(m_cursor_position + byte_count, 1), "expected a character here"};
-    }
+  if (should_escape) rarely {
+    throw ErrorWithLocationAndDetails{
+        here(m_cursor_position + byte_count - 1, 1), "Nothing to escape",
+        here(m_cursor_position + byte_count, 1), "expected a character here"};
+  }
 
   let const actual_cursor_position = m_cursor_position;
+
   ASSERT(actual_cursor_position <= m_source.length);
+
   let &arena = m_parse_session.get_arena();
 
   if (m_parse_session.is_allocating_function_body()) {
@@ -1538,6 +1627,7 @@ Lexer::lex_identifier() throws -> Token *
       assignment_split.has_value())
   {
     let const arena_allocator = bump_allocator(arena);
+
     assignment_split->name.move_to_allocator(arena_allocator);
     assignment_split->value.move_resources_to_arena(arena);
     token = arena.create<tokens::Assignment>(
@@ -1549,6 +1639,7 @@ Lexer::lex_identifier() throws -> Token *
     let const &word_text = word.segments[0].text;
     let const  keyword =
         KEYWORDS.find(StringView{word_text.data(), word_text.count()});
+
     if (keyword.has_value() &&
         !(*keyword == Token::Kind::Time && is_posix_mode()))
     {
@@ -1573,6 +1664,7 @@ hot alwaysinline fn
 Lexer::lex_sentinel() throws -> Token *
 {
   ASSERT(has_character());
+
   let const ch    = chop_character();
   let      &arena = m_parse_session.get_arena();
 
@@ -1707,20 +1799,22 @@ Lexer::lex_sentinel() throws -> Token *
 }
 
 hot alwaysinline fn
-Lexer::lex_process_substitution(Word &word, usize offset) throws -> usize
+Lexer::lex_process_substitution(Word &word, usize offset) throws
+    -> usize
 {
   let const open_position = m_cursor_position + offset;
   let const direction     = m_source[open_position];
   let const inner_start   = open_position + 2;
   let const substitution_end =
       lexer::scan_balanced_shell_region(m_source, inner_start, ')');
-  if (!substitution_end.has_value()) rarely
-    {
-      throw ErrorWithLocationAndDetails{
-          here(open_position, m_source.count() - open_position),
-          "Unterminated process substitution", here(m_source.count(), 1),
-          "expected ) here"};
-    }
+
+  if (!substitution_end.has_value()) rarely {
+    throw ErrorWithLocationAndDetails{
+        here(open_position, m_source.count() - open_position),
+        "Unterminated process substitution", here(m_source.count(), 1),
+        "expected ) here"};
+  }
+
   let const byte_count = *substitution_end - open_position;
   let const body       = m_source.substring_of_length(
       inner_start, *substitution_end - inner_start - 1);
@@ -1749,6 +1843,7 @@ Lexer::record_substitution_error(
       (static_cast<u64>(error.location().position) << 32) |
           static_cast<u64>(error.location().length),
       hash_bytes(error.message().view())};
+
   if (m_reported_substitution_error_keys.find(key).has_value()) return;
 
   m_reported_substitution_error_keys.push(key);
@@ -1756,10 +1851,10 @@ Lexer::record_substitution_error(
 }
 
 cold fn
-Lexer::validate_substitution_body(usize                 body_position,
-                                  StringView            body,
-                                  const SourceLocation &outer_location) throws
-    -> void
+Lexer::validate_substitution_body(
+    usize                 body_position,
+    StringView            body,
+    const SourceLocation &outer_location) throws -> void
 {
   if (m_substitution_nesting_depth >= lexer::MAX_SUBSTITUTION_NESTING_DEPTH) {
     record_substitution_error(ErrorWithLocationAndDetails{
@@ -1779,6 +1874,7 @@ Lexer::validate_substitution_body(usize                 body_position,
                      : body,
       arena, source_name_at(m_parse_session.source_name_index()), mood(),
       m_parse_session.get_allocation_kind()};
+
   if (is_exact) nested_lexer.set_start_position(body_position);
   nested_lexer.set_substitution_validation_mode(
       substitution_validation_mode::Enabled, m_substitution_nesting_depth + 1);
@@ -1786,6 +1882,7 @@ Lexer::validate_substitution_body(usize                 body_position,
   let nested_parser = Parser{steal(nested_lexer)};
   let nested_errors = ArrayList<ErrorWithLocationAndDetails>{heap_allocator()};
   let nested_messages = ArrayList<String>{heap_allocator()};
+
   nested_parser.set_error_collection(&nested_errors);
   unused(nested_parser.construct_ast(nested_messages, nullptr, nullptr));
 
@@ -1801,11 +1898,11 @@ Lexer::validate_substitution_body(usize                 body_position,
 }
 
 cold fn
-Lexer::validate_nested_expansions(usize region_position,
-                                  usize region_length,
-                                  bool  is_heredoc,
-                                  bool  is_region_in_double_quotes) throws
-    -> void
+Lexer::validate_nested_expansions(
+    usize region_position,
+    usize region_length,
+    bool  is_heredoc,
+    bool  is_region_in_double_quotes) throws -> void
 {
   let const found =
       lexer::find_nested_substitutions(m_source, region_position, region_length,
@@ -1813,6 +1910,7 @@ Lexer::validate_nested_expansions(usize region_position,
 
   for (let const &entry : found) {
     let const outer_location = here(entry.outer_position, entry.outer_length);
+
     if (entry.is_exact) {
       validate_substitution_body(
           entry.body_position,
@@ -1835,6 +1933,7 @@ lexer::find_nested_substitutions(StringView source,
 {
   let       found  = ArrayList<nested_substitution>{heap_allocator()};
   let const region = source.substring_of_length(region_position, region_length);
+
   if (!region.find_character('`').has_value() &&
       !region.find_character('$').has_value())
   {
@@ -1847,6 +1946,7 @@ lexer::find_nested_substitutions(StringView source,
 
   while (offset < region.length) {
     let const c = region[offset];
+
     if (c == '\\') {
       offset += 2;
       continue;
@@ -1888,13 +1988,15 @@ lexer::find_nested_substitutions(StringView source,
           }
           end++;
         }
+
         end++;
       }
 
       if (end >= region.length) return found;
 
       let const body = region.substring_of_length(body_start, end - body_start);
-      let       entry      = nested_substitution{};
+      let       entry = nested_substitution{};
+
       entry.body_position  = region_position + body_start;
       entry.body_length    = body.length;
       entry.outer_position = region_position + offset;
@@ -1911,6 +2013,7 @@ lexer::find_nested_substitutions(StringView source,
           entry.unescaped_body += body[index];
         }
       }
+
       found.push(steal(entry));
       offset = end + 1;
       continue;
@@ -1929,9 +2032,11 @@ lexer::find_nested_substitutions(StringView source,
     let const body_start = region_position + offset + 2;
     let const body_end =
         lexer::scan_balanced_shell_region(source, body_start, ')');
+
     if (!body_end.has_value()) return found;
 
-    let entry            = nested_substitution{};
+    let entry = nested_substitution{};
+
     entry.body_position  = body_start;
     entry.body_length    = *body_end - body_start - 1;
     entry.outer_position = region_position + offset;
@@ -1950,17 +2055,21 @@ lexer::find_segment_substitution(StringView         source,
 {
   let const position = static_cast<usize>(segment.source_position);
   let const length   = static_cast<usize>(segment.source_length);
+
   if (length == 0 || position > source.length ||
       length > source.length - position)
   {
     return None;
   }
 
-  let const text       = segment.text.view();
-  let       entry      = nested_substitution{};
+  let const text  = segment.text.view();
+  let       entry = nested_substitution{};
+
   entry.outer_position = position;
   entry.outer_length   = length;
-  let body_text        = text;
+
+  let body_text = text;
+
   switch (segment.kind) {
   case WordSegment::Kind::CommandSubstitution:
     if (source[position] == '`') {
@@ -1974,6 +2083,7 @@ lexer::find_segment_substitution(StringView         source,
       entry.body_position = position + 2;
       entry.body_length   = length - 3;
     }
+
     break;
 
   case WordSegment::Kind::ProcessSubstitution:
@@ -1991,11 +2101,13 @@ lexer::find_segment_substitution(StringView         source,
 
     entry.body_position = position + length - 1 - text.length;
     entry.body_length   = text.length;
+
     if (!text.is_empty() && text[0] == '|') {
       entry.body_position++;
       entry.body_length--;
       body_text = text.substring(1);
     }
+
     break;
 
   default: return None;

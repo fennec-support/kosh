@@ -70,13 +70,17 @@ public:
     assign_copy(allocator, initial);
   }
 
-  SegmentText(Allocator allocator, char prefix, StringView suffix) throws
+  SegmentText(Allocator  allocator,
+              char       prefix,
+              StringView suffix) throws
   {
-    if (suffix.length >= MAXIMUM_TEXT_LENGTH) rarely throw std::bad_alloc{};
+    if (suffix.length >= MAXIMUM_TEXT_LENGTH) rarely
+      throw std::bad_alloc{};
 
     let const length = suffix.length + 1;
     let const bytes  = allocator.alloc_array<char>(length);
-    bytes[0]         = prefix;
+
+    bytes[0] = prefix;
     if (suffix.length > 0) std::memcpy(bytes + 1, suffix.data, suffix.length);
     m_data     = bytes;
     m_length   = static_cast<u32>(length);
@@ -91,9 +95,9 @@ public:
     assign_copy(heap_allocator(), other.view());
   }
 
-  SegmentText(SegmentText &&other) wontthrow : m_data{other.m_data},
-                                               m_length{other.m_length},
-                                               m_capacity{other.m_capacity}
+  SegmentText(SegmentText &&other) wontthrow
+      : m_data{other.m_data}, m_length{other.m_length},
+        m_capacity{other.m_capacity}
   {
     other.m_data     = nullptr;
     other.m_length   = 0;
@@ -103,7 +107,7 @@ public:
   ~SegmentText() { release(); }
 
   cold fn
-  operator=(const SegmentText &other) throws->SegmentText &
+  operator=(const SegmentText &other) throws -> SegmentText &
   {
     if (this == &other) return *this;
 
@@ -113,7 +117,7 @@ public:
   }
 
   fn
-  operator=(SegmentText &&other) wontthrow->SegmentText &
+  operator=(SegmentText &&other) wontthrow -> SegmentText &
   {
     if (this == &other) return *this;
 
@@ -136,9 +140,12 @@ public:
 
       return;
     }
-    if (source.length > MAXIMUM_TEXT_LENGTH) rarely throw std::bad_alloc{};
+
+    if (source.length > MAXIMUM_TEXT_LENGTH) rarely
+      throw std::bad_alloc{};
 
     let const bytes = allocator.alloc_array<char>(source.length);
+
     std::memcpy(bytes, source.data, source.length);
     release();
     m_data     = bytes;
@@ -153,6 +160,7 @@ public:
   {
     return StringView{m_data, m_length};
   }
+
   operator StringView() const wontthrow { return view(); }
 
   hot mustuse pure fn
@@ -160,16 +168,19 @@ public:
   {
     return m_length;
   }
+
   mustuse pure fn
   length() const wontthrow -> usize
   {
     return m_length;
   }
+
   hot mustuse pure fn
   is_empty() const wontthrow -> bool
   {
     return m_length == 0;
   }
+
   mustuse pure fn
   data() const wontthrow -> const char *
   {
@@ -177,12 +188,13 @@ public:
   }
 
   hot mustuse pure fn
-  operator[](usize index) const wontthrow->char
+  operator[](usize index) const wontthrow -> char
   {
     ASSERT(index < m_length, "segment text index is past the end");
 
     return m_data[index];
   }
+
   mustuse pure fn
   back() const wontthrow -> char
   {
@@ -190,6 +202,7 @@ public:
 
     return m_data[m_length - 1];
   }
+
   mustuse pure fn
   first_character() const wontthrow -> char
   {
@@ -203,21 +216,25 @@ public:
   {
     return view().substring(start);
   }
+
   flatten mustuse pure fn
   substring_of_length(usize start, usize count) const wontthrow -> StringView
   {
     return view().substring_of_length(start, count);
   }
+
   flatten mustuse pure fn
   starts_with(StringView prefix) const wontthrow -> bool
   {
     return view().starts_with(prefix);
   }
+
   flatten mustuse pure fn
   find_character(char wanted) const wontthrow -> Maybe<usize>
   {
     return view().find_character(wanted);
   }
+
   mustuse pure fn
   find_last_character(char wanted) const wontthrow -> Maybe<usize>
   {
@@ -227,6 +244,7 @@ public:
 
     return None;
   }
+
   mustuse pure fn
   find_substring(StringView needle, usize from = 0) const wontthrow
       -> Maybe<usize>
@@ -241,6 +259,7 @@ public:
 
     return None;
   }
+
   flatten mustuse pure fn
   is_all_decimal_digits() const wontthrow -> bool
   {
@@ -248,12 +267,13 @@ public:
   }
 
   hot mustuse pure fn
-  operator==(StringView other) const wontthrow->bool
+  operator==(StringView other) const wontthrow -> bool
   {
     return view() == other;
   }
+
   hot mustuse pure fn
-  operator!=(StringView other) const wontthrow->bool
+  operator!=(StringView other) const wontthrow -> bool
   {
     return !(view() == other);
   }
@@ -271,6 +291,7 @@ public:
   {
     append(StringView{&byte, 1});
   }
+
   fn
   push(char byte) throws -> void
   {
@@ -287,6 +308,7 @@ public:
     }
 
     let const bytes = allocator.alloc_array<char>(m_length);
+
     std::memcpy(bytes, m_data, m_length);
     if (m_capacity != 0)
       heap_allocator().free_array(const_cast<char *>(m_data), m_capacity);
@@ -348,8 +370,7 @@ public:
   cold
   WordSegment(const WordSegment &other) throws
       : source_position{other.source_position},
-        source_length{other.source_length},
-        kind{other.kind},
+        source_length{other.source_length}, kind{other.kind},
         is_in_double_quotes{other.is_in_double_quotes},
         is_greedy_name{other.is_greedy_name},
         was_ansi_c_quoted{other.was_ansi_c_quoted},
@@ -359,7 +380,8 @@ public:
   {
     if (other.m_eval_cache != nullptr) {
       let const block = heap_allocator().alloc_array<segment_eval_cache>(1);
-      m_eval_cache    = new (block) segment_eval_cache{*other.m_eval_cache};
+
+      m_eval_cache = new (block) segment_eval_cache{*other.m_eval_cache};
       m_eval_cache->substitution_ast      = nullptr;
       m_eval_cache->arith                 = nullptr;
       m_eval_cache->substitution_lifetime = {};
@@ -369,34 +391,33 @@ public:
 
   WordSegment(WordSegment &&other) wontthrow
       : source_position{other.source_position},
-        source_length{other.source_length},
-        kind{other.kind},
+        source_length{other.source_length}, kind{other.kind},
         is_in_double_quotes{other.is_in_double_quotes},
         is_greedy_name{other.is_greedy_name},
         was_ansi_c_quoted{other.was_ansi_c_quoted},
         is_substitution_cache_in_function_arena{
             other.is_substitution_cache_in_function_arena},
         is_eval_cache_in_arena{other.is_eval_cache_in_arena},
-        text{steal(other.text)},
-        m_eval_cache{other.m_eval_cache}
+        text{steal(other.text)}, m_eval_cache{other.m_eval_cache}
   {
     other.m_eval_cache           = nullptr;
     other.is_eval_cache_in_arena = false;
   }
 
   cold fn
-  operator=(const WordSegment &other) throws->WordSegment &
+  operator=(const WordSegment &other) throws -> WordSegment &
   {
     if (this == &other) return *this;
 
     let copy = WordSegment{other};
-    *this    = steal(copy);
+
+    *this = steal(copy);
 
     return *this;
   }
 
   fn
-  operator=(WordSegment &&other) wontthrow->WordSegment &
+  operator=(WordSegment &&other) wontthrow -> WordSegment &
   {
     if (this == &other) return *this;
 
@@ -431,7 +452,8 @@ public:
   SegmentText text;
 
   fn
-  get_eval_cache(BumpArena *cache_arena) const throws -> segment_eval_cache &;
+  get_eval_cache(BumpArena *cache_arena) const throws
+      -> segment_eval_cache &;
 
   pure fn
   is_split_eligible() const wontthrow -> bool;
@@ -445,12 +467,14 @@ public:
   {
     let copy = WordSegment(kind, SegmentText{allocator, text.view()},
                            is_in_double_quotes != 0, is_greedy_name != 0);
+
     copy.was_ansi_c_quoted = was_ansi_c_quoted;
     copy.is_substitution_cache_in_function_arena =
         is_substitution_cache_in_function_arena;
     if (source_length > 0) copy.set_source_span(source_position, source_length);
     if (m_eval_cache != nullptr) {
-      let const block   = allocator.alloc_array<segment_eval_cache>(1);
+      let const block = allocator.alloc_array<segment_eval_cache>(1);
+
       copy.m_eval_cache = new (block) segment_eval_cache{*m_eval_cache};
       copy.m_eval_cache->substitution_ast      = nullptr;
       copy.m_eval_cache->arith                 = nullptr;
@@ -472,9 +496,11 @@ public:
 
   fn
   set_optimizer_arithmetic_result(StringView exact_text,
-                                  BumpArena *cache_arena) const throws -> void
+                                  BumpArena *cache_arena) const throws
+      -> void
   {
-    let &cache                            = get_eval_cache(cache_arena);
+    let &cache = get_eval_cache(cache_arena);
+
     cache.has_optimizer_arithmetic_result = true;
     if (!exact_text.is_empty())
       set_exact_constant_arithmetic_text(exact_text, cache_arena);
@@ -488,6 +514,7 @@ public:
   {
     constexpr usize MAXIMUM_SOURCE_POSITION = ~static_cast<u32>(0);
     constexpr usize MAXIMUM_SOURCE_LENGTH   = (usize{1} << 24) - 1;
+
     if (position > MAXIMUM_SOURCE_POSITION || length > MAXIMUM_SOURCE_LENGTH) {
       source_position = 0;
       source_length   = 0;
@@ -514,8 +541,7 @@ public:
 private:
   fn
   set_exact_constant_arithmetic_text(StringView text,
-                                     BumpArena *cache_arena) const throws
-      -> void;
+                                     BumpArena *cache_arena) const throws -> void;
   fn
   release_eval_cache() wontthrow -> void;
 
@@ -556,7 +582,7 @@ public:
   }
 
   cold fn
-  operator=(const Word &other) throws->Word &
+  operator=(const Word &other) throws -> Word &
   {
     if (this == &other) return *this;
 
@@ -570,7 +596,7 @@ public:
   }
 
   fn
-  operator=(Word &&other) wontthrow->Word &
+  operator=(Word &&other) wontthrow -> Word &
   {
     if (this == &other) return *this;
 
@@ -607,11 +633,11 @@ public:
   runs_substitution() const wontthrow -> bool;
 
   fn
-  get_assignment_split(Allocator allocator = heap_allocator()) const throws
-      -> Maybe<word_assignment_split>;
+  get_assignment_split(Allocator allocator = heap_allocator()) const throws -> Maybe<word_assignment_split>;
 
   cold fn
-  get_quoted_assignment_split() const throws -> Maybe<word_assignment_split>;
+  get_quoted_assignment_split() const throws
+      -> Maybe<word_assignment_split>;
 
   enum class PlainLiteral : u8
   {
@@ -745,8 +771,9 @@ public:
   {
     return m_kind;
   }
+
   virtual fn
-  raw_string() const throws -> String = 0;
+  raw_string() const throws -> String abstract;
 
   virtual fn
   raw_view() const wontthrow -> Maybe<StringView>;
@@ -758,7 +785,7 @@ public:
   source_location() const wontthrow -> SourceLocation;
 
   static fn
-  operator delete(opaque *pointer) wontthrow->void;
+  operator delete(opaque *pointer) wontthrow -> void;
 
 protected:
   Token(SourceLocation location, Kind kind);
@@ -949,8 +976,9 @@ protected:
 static_assert(sizeof(usize) != 8 || sizeof(ExpandedWordToken) == 80);
 
 fn
-create_word_token(BumpArena &arena, SourceLocation location, Word word) throws
-    -> WordToken *;
+create_word_token(BumpArena     &arena,
+                  SourceLocation location,
+                  Word           word) throws -> WordToken *;
 
 TOKEN_STRUCT(Plus);
 TOKEN_STRUCT(Minus);

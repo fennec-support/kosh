@@ -50,6 +50,7 @@ parse_markdown_format(const parser_format_input &input,
     {
       continue;
     }
+
     let const fence_byte   = line[fence_start];
     usize     fence_length = 0;
 
@@ -60,7 +61,9 @@ parse_markdown_format(const parser_format_input &input,
     }
 
     if (fence_length < 3) continue;
+
     let const mood = markdown_mood(line.substring(fence_start + fence_length));
+
     if (!mood.has_value()) continue;
 
     let const shell_start = position;

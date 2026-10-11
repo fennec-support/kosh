@@ -32,15 +32,17 @@ fn
 Nice::execute(const ExecContext               &ec,
               EvalContext                     &cxt,
               const ArrayList<String>         &args,
-              const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+              const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (operands.is_empty()) return report_usage_error(ec, cxt, args[0].view());
+
   i64 increment = 10;
+
   if (FLAG_NICE_INCREMENT.is_set()) {
     let const parsed = utils::parse_decimal_i64(FLAG_NICE_INCREMENT.value());
+
     if (parsed.is_error() || parsed.value() < INT32_MIN ||
         parsed.value() > INT32_MAX)
     {
@@ -51,6 +53,7 @@ Nice::execute(const ExecContext               &ec,
 
       return 2;
     }
+
     increment = parsed.value();
   }
 
@@ -60,7 +63,9 @@ Nice::execute(const ExecContext               &ec,
     command.push(operand.clone());
 
   cxt.prepare_child_environment();
+
   let const result = os::run_nice(command, static_cast<i32>(increment));
+
   if (!result.has_value()) {
     KOSHKIT_REPORT_PATH_ERROR_AT(operand_locations[0], "run", operands[0]);
 

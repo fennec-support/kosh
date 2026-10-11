@@ -48,8 +48,9 @@ id_user_text(u32 id, Allocator allocator, id_name_mode name_mode) throws
 }
 
 static fn
-id_group_text(u32 id, Allocator allocator, id_name_mode name_mode) throws
-    -> String
+id_group_text(u32          id,
+              Allocator    allocator,
+              id_name_mode name_mode) throws -> String
 {
   if (name_mode == id_name_mode::Name)
     if (let const name = os::gid_to_groupname(id); name.has_value())
@@ -62,11 +63,13 @@ fn
 Id::execute(const ExecContext               &ec,
             EvalContext                     &cxt,
             const ArrayList<String>         &args,
-            const ArrayList<SourceLocation> &arg_locations) const throws -> i32
+            const ArrayList<SourceLocation> &arg_locations) const throws
+    -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (operands.count() > 1) return report_usage_error(ec, cxt, args[0].view());
+
   let const selector_count = static_cast<usize>(FLAG_ID_GROUPS.is_enabled()) +
                              static_cast<usize>(FLAG_ID_GROUP.is_enabled()) +
                              static_cast<usize>(FLAG_ID_USER.is_enabled());
@@ -81,8 +84,10 @@ Id::execute(const ExecContext               &ec,
   u32 group_id = static_cast<u32>(FLAG_ID_REAL.is_enabled()
                                       ? os::get_real_group_id()
                                       : os::get_effective_group_id());
+
   if (!operands.is_empty()) {
     let const resolved = utils::resolve_user_id(operands[0].view());
+
     if (!resolved.has_value()) {
       report_soft_koshkit_util_error(ec, cxt, operand_locations[0],
                                      args[0].view(),
@@ -90,6 +95,7 @@ Id::execute(const ExecContext               &ec,
 
       return 1;
     }
+
     user_id = *resolved;
   }
 
@@ -102,6 +108,7 @@ Id::execute(const ExecContext               &ec,
 
     return 0;
   }
+
   if (FLAG_ID_GROUP.is_enabled()) {
     ec.print_to_stdout(id_group_text(group_id, cxt.scratch_allocator(),
                                      FLAG_ID_NAME.is_enabled()
@@ -113,6 +120,7 @@ Id::execute(const ExecContext               &ec,
   }
 
   let groups = os::get_supplementary_group_ids(cxt.scratch_allocator());
+
   if (FLAG_ID_GROUPS.is_enabled()) {
     let output = String{cxt.scratch_allocator()};
 
@@ -131,6 +139,7 @@ Id::execute(const ExecContext               &ec,
   }
 
   let output = String{cxt.scratch_allocator()};
+
   output += "uid=";
   output += String::from(user_id, cxt.scratch_allocator());
   if (let const name = os::uid_to_username(user_id); name.has_value()) {
@@ -138,6 +147,7 @@ Id::execute(const ExecContext               &ec,
     output += name->view();
     output += ')';
   }
+
   output += " gid=";
   output += String::from(group_id, cxt.scratch_allocator());
   if (let const name = os::gid_to_groupname(group_id); name.has_value()) {
@@ -145,6 +155,7 @@ Id::execute(const ExecContext               &ec,
     output += name->view();
     output += ')';
   }
+
   output += " groups=";
 
   for (usize index = 0; index < groups.count(); index++) {

@@ -52,6 +52,7 @@ internal::expand_command_aliases(
     if (already_expanded.contains(word.view())) break;
 
     let const body = cxt.scope_store().get_alias(word);
+
     if (!body.has_value()) break;
     already_expanded.add(word.view());
     LOG(Debug, "expanding the alias '%s'", word.c_str());
@@ -65,6 +66,7 @@ internal::expand_command_aliases(
 
     for (usize i = 0; i < body_value.count(); i++) {
       let const c = body_value[i];
+
       if (c == ' ' || c == '\t') {
         if (!current.is_empty()) {
           rebuilt.push(String{
@@ -110,9 +112,11 @@ command_word_is_glob(const Word &word) wontthrow -> bool
 
     for (usize i = 0; i < segment.text.count(); i++) {
       let const c = segment.text[i];
+
       if (c == '*' || c == '?') {
         return true;
       }
+
       if (c == '[') has_open_bracket = true;
       if (c == ']' && has_open_bracket) {
         return true;
@@ -134,6 +138,7 @@ command_runs_program(const ArrayList<String>    &args,
 
   let builtin = literal_builtin != nullptr ? *literal_builtin
                                            : search_builtin(args[0].view());
+
   if (builtin.has_value() && *builtin == Builtin::Kind::CommandBuiltin) {
     usize operand_index = 1;
 
@@ -166,6 +171,7 @@ SimpleCommand::get_literal_command_lookup(const ArrayList<String> &program_args)
   const Word &command_word =
       static_cast<const tokens::WordToken *>(m_args[0])->word();
   StringView literal_name;
+
   if (command_word.plain_literal_kind() != Word::PlainLiteral::NotPlain) {
     literal_name = command_word.constant_value();
   } else if (command_word.segments.count() == 1 &&
@@ -187,9 +193,7 @@ SimpleCommand::get_literal_command_lookup(const ArrayList<String> &program_args)
 }
 
 hot fn
-SimpleCommand::evaluate_impl(EvalContext         &cxt,
-                             root_evaluation_mode mode) const throws
-    -> status_result
+SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws -> status_result
 {
   ASSERT(m_args.count() > 0 || !m_redirections.is_empty() ||
          m_local_vars.count() > 0 || !m_array_args.is_empty());
@@ -197,14 +201,16 @@ SimpleCommand::evaluate_impl(EvalContext         &cxt,
   cxt.source_store().set_current_location(source_location());
 
   let const should_run_command = publish_simple_command(cxt, *this, mode);
+
   if (!should_run_command) return cxt.execution_store().last_exit_status();
 
   let const is_async_command =
       is_async() && mode != root_evaluation_mode::PreparedAsyncCommand;
+
   if (is_async_command && cxt.runtime_state().get_mood() != mimic_mood::Default)
   {
-    let const do_run_in_child = [](void *context, EvalContext &child_cxt)
-                                    throws -> i64 {
+    let const do_run_in_child =
+        [](void *context, EvalContext &child_cxt) throws -> i64 {
       return static_cast<const SimpleCommand *>(context)
           ->evaluate_impl(child_cxt, root_evaluation_mode::PreparedAsyncCommand)
           .status;
@@ -213,6 +219,7 @@ SimpleCommand::evaluate_impl(EvalContext         &cxt,
     let       full_location = source_location();
     let const full_start_position =
         static_cast<u32>(full_source_start_position());
+
     if (full_start_position < full_location.position) {
       full_location.length += full_location.position - full_start_position;
       full_location.position = full_start_position;
@@ -227,6 +234,7 @@ SimpleCommand::evaluate_impl(EvalContext         &cxt,
   if (!m_args.is_empty() && m_args[0]->kind() == Token::Kind::Word) {
     const Word &command_word =
         static_cast<const tokens::WordToken *>(m_args[0])->word();
+
     if (!m_command_word_is_glob.has_value())
       m_command_word_is_glob = command_word_is_glob(command_word);
 
@@ -238,6 +246,7 @@ SimpleCommand::evaluate_impl(EvalContext         &cxt,
       let const note =
           StringView{"Quote it to run a literal name, or list the matches with "
                      "compgen -G"};
+
       if (cxt.runtime_state().get_mood() == mimic_mood::Default)
         throw ErrorWithLocationAndDetails{location, message, note};
       cxt.show_runtime_warning_at(location, message, note);
@@ -250,7 +259,11 @@ SimpleCommand::evaluate_impl(EvalContext         &cxt,
   }
 
   let const args_mark = cxt.expansion_store().scratch_arena().mark();
-  defer { cxt.expansion_store().scratch_arena().release(args_mark); };
+
+  defer {
+    cxt.expansion_store().scratch_arena().release(args_mark);
+  };
+
   let const substitution_mark = cxt.mark_process_substitutions();
   let       program_arg_locations =
       ArrayList<SourceLocation>{cxt.scratch_allocator()};
@@ -259,6 +272,7 @@ SimpleCommand::evaluate_impl(EvalContext         &cxt,
   const ArrayList<const Token *> *argument_tokens = &m_args;
   let                             filtered_argument_tokens =
       ArrayList<const Token *>{cxt.scratch_allocator()};
+
   if (cxt.runtime_state().option_is_enabled(shell_option_id::Keyword)) {
     for (let const token : m_args)
       if (token->kind() == Token::Kind::Assignment)
@@ -276,10 +290,13 @@ SimpleCommand::evaluate_impl(EvalContext         &cxt,
       argument_tokens = &filtered_argument_tokens;
     }
   }
+
   let program_args =
       cxt.process_args(*argument_tokens, &program_arg_locations,
                        argument_lifetime::Transient, argument_context::Command);
+
   defer { cxt.cleanup_process_substitutions(substitution_mark); };
+
   expand_command_aliases(cxt, program_args, program_arg_locations);
 
   if (!is_async_command && !cxt.job_table_store().is_in_pipeline_stage()) {
@@ -298,6 +315,7 @@ SimpleCommand::evaluate_impl(EvalContext         &cxt,
       program_args.count());
 
   FunctionBodyHandle command_function_storage{};
+
   if (!program_args.is_empty() && cxt.function_store().has_functions()) {
     if (let const *storage =
             cxt.function_store().find_storage(program_args[0].view());
@@ -306,6 +324,7 @@ SimpleCommand::evaluate_impl(EvalContext         &cxt,
       command_function_storage = *storage;
     }
   }
+
   const Expression *command_word_function =
       command_function_storage.has_value() ? command_function_storage.get_body()
                                            : nullptr;
@@ -332,17 +351,18 @@ SimpleCommand::evaluate_impl(EvalContext         &cxt,
   Maybe<os::descriptor>           redirect_in_fd;
   ArrayList<os::saved_descriptor> dup_saved_descriptors{
       cxt.scratch_allocator()};
-  defer
-  {
+
+  defer {
     for (usize i = dup_saved_descriptors.count(); i > 0; i--)
       os::restore_descriptor(dup_saved_descriptors[i - 1]);
   };
-  defer
-  {
+
+  defer {
     if (redirect_in_fd) os::close_fd(*redirect_in_fd);
   };
 
   Maybe<eval_state_snapshot> redirection_snapshot;
+
   if (!m_redirections.is_empty() && cxt.runtime_state().is_bash_compatible() &&
       command_word_function == nullptr &&
       redirections_can_change_state(m_redirections))
@@ -353,9 +373,13 @@ SimpleCommand::evaluate_impl(EvalContext         &cxt,
             cxt.runtime_state().get_mood()))
       redirection_snapshot = snapshot_child_redirection_state(cxt);
   }
-  defer { discard_child_redirection_state(cxt, redirection_snapshot); };
+
+  defer {
+    discard_child_redirection_state(cxt, redirection_snapshot);
+  };
 
   bool did_redirection_open_fail = false;
+
   try {
     for (let const &original_redir : m_redirections) {
       let       redir = original_redir;
@@ -370,6 +394,7 @@ SimpleCommand::evaluate_impl(EvalContext         &cxt,
       switch (r.kind) {
       case redirection_outcome::Heredoc: {
         let const body_fd = r.opened_fd;
+
         if (is_bare_exec) {
           cxt.snapshot_subshell_descriptor(redir.fd);
           koshka::flush();
@@ -387,12 +412,15 @@ SimpleCommand::evaluate_impl(EvalContext         &cxt,
 
         const bool is_body_target_fd =
             os::descriptor_is_shell_fd(body_fd, redir.fd);
+
         if (is_body_target_fd) {
           dup_saved_descriptors.push(
               os::saved_descriptor{.shell_fd = redir.fd, .was_open = false});
           break;
         }
+
         let const saved = os::save_and_replace_descriptor(redir.fd, body_fd);
+
         dup_saved_descriptors.push(saved);
         os::close_fd(body_fd);
         if (!saved.is_dup2_ok) {
@@ -400,30 +428,40 @@ SimpleCommand::evaluate_impl(EvalContext         &cxt,
           throw ErrorWithLocation{redir.target->source_location(),
                                   "Bad file descriptor"};
         }
+
         break;
       }
 
       case redirection_outcome::BothStreams: {
         let const file_fd = r.opened_fd;
+
         koshka::flush();
+
         if (is_bare_exec) {
           cxt.snapshot_subshell_descriptor(1);
           cxt.snapshot_subshell_descriptor(2);
+
           let const did_replace_out = os::replace_descriptor(1, file_fd);
           let const did_replace_err = os::replace_descriptor(2, file_fd);
+
           os::close_fd(file_fd);
           if (!did_replace_out || !did_replace_err) {
             did_redirection_open_fail = true;
             throw ErrorWithLocation{redir.target->source_location(),
                                     "Bad file descriptor"};
           }
+
           break;
         }
+
         const os::saved_descriptor saved_out =
             os::save_and_replace_descriptor(1, file_fd);
+
         dup_saved_descriptors.push(saved_out);
+
         const os::saved_descriptor saved_err =
             os::save_and_replace_descriptor(2, file_fd);
+
         dup_saved_descriptors.push(saved_err);
         os::close_fd(file_fd);
         if (!saved_out.is_dup2_ok || !saved_err.is_dup2_ok) {
@@ -431,6 +469,7 @@ SimpleCommand::evaluate_impl(EvalContext         &cxt,
           throw ErrorWithLocation{redir.target->source_location(),
                                   "Bad file descriptor"};
         }
+
         break;
       }
 
@@ -450,14 +489,16 @@ SimpleCommand::evaluate_impl(EvalContext         &cxt,
           if (!os::replace_descriptor(redir.fd,
                                       os::descriptor_for_shell_fd(from_fd)))
           {
-            let const location        = redir.target != nullptr
-                                            ? redir.target->source_location()
-                                            : source_location();
+            let const location = redir.target != nullptr
+                                     ? redir.target->source_location()
+                                     : source_location();
+
             did_redirection_open_fail = true;
             throw ErrorWithLocation{location,
                                     String::from(from_fd, heap_allocator()) +
                                         ": Bad file descriptor"};
           }
+
           break;
         }
 
@@ -470,6 +511,7 @@ SimpleCommand::evaluate_impl(EvalContext         &cxt,
         if (from_fd == Redirection::DUP_FD_CLOSE) {
           let const saved = os::save_and_replace_descriptor(
               redir.fd, os::descriptor_for_shell_fd(redir.fd));
+
           dup_saved_descriptors.push(saved);
 
           if (!saved.was_open) break;
@@ -485,25 +527,31 @@ SimpleCommand::evaluate_impl(EvalContext         &cxt,
 
         let const saved = os::save_and_replace_descriptor(
             redir.fd, os::descriptor_for_shell_fd(from_fd));
+
         dup_saved_descriptors.push(saved);
         if (!saved.is_dup2_ok) {
-          let const location        = redir.target != nullptr
-                                          ? redir.target->source_location()
-                                          : source_location();
+          let const location = redir.target != nullptr
+                                   ? redir.target->source_location()
+                                   : source_location();
+
           did_redirection_open_fail = true;
           throw ErrorWithLocation{location,
                                   String::from(from_fd, heap_allocator()) +
                                       ": Bad file descriptor"};
         }
+
         break;
       }
 
       case redirection_outcome::OpenedFile: {
         let const file_fd = r.opened_fd;
+
         if (is_bare_exec) {
           cxt.snapshot_subshell_descriptor(redir.fd);
           koshka::flush();
+
           let const was_replaced = os::replace_descriptor(redir.fd, file_fd);
+
           if (!os::descriptor_is_shell_fd(file_fd, redir.fd))
             os::close_fd(file_fd);
           if (!was_replaced) {
@@ -512,19 +560,23 @@ SimpleCommand::evaluate_impl(EvalContext         &cxt,
                                     String::from(redir.fd, heap_allocator()) +
                                         ": Bad file descriptor"};
           }
+
           break;
         }
 
         if (redir.fd == 1 || redir.fd == 2) {
           koshka::flush();
         }
+
         const bool is_file_target_fd =
             os::descriptor_is_shell_fd(file_fd, redir.fd);
+
         if (is_file_target_fd) {
           dup_saved_descriptors.push(
               os::saved_descriptor{.shell_fd = redir.fd, .was_open = false});
         } else {
           let const saved = os::save_and_replace_descriptor(redir.fd, file_fd);
+
           dup_saved_descriptors.push(saved);
           if (!r.is_cached) os::close_fd(file_fd);
           if (!saved.is_dup2_ok) {
@@ -533,6 +585,7 @@ SimpleCommand::evaluate_impl(EvalContext         &cxt,
                                     "Bad file descriptor"};
           }
         }
+
         break;
       }
       }
@@ -556,8 +609,10 @@ SimpleCommand::evaluate_impl(EvalContext         &cxt,
 
     show_message(redirection_error.to_string(
         cxt.source_store().current_source_view(), &cxt));
+
     let const redirection_status =
         cxt.runtime_state().is_bash_compatible() ? 1 : 2;
+
     cxt.execution_store().set_last_exit_status(redirection_status);
     cxt.publish_single_pipe_status(redirection_status);
 
@@ -566,16 +621,20 @@ SimpleCommand::evaluate_impl(EvalContext         &cxt,
 
   if (is_bare_exec) cxt.hold_process_substitutions(substitution_mark);
 
-  let const do_apply_append = [&](StringView name, String &value_ref) throws {
+  let const do_apply_append = [&](StringView name,
+                                  String    &value_ref) throws {
     let appended = String{cxt.scratch_allocator()};
+
     if (let const existing = cxt.get_variable_value(name))
       appended.append(existing->view());
+
     let resolved_name = Maybe<String>{};
-    if (cxt.variable_store().attributes().is_nameref(name)) rarely
-      {
-        resolved_name = cxt.resolve_nameref_base_for_write(name);
-        name          = resolved_name->view();
-      }
+
+    if (cxt.variable_store().attributes().is_nameref(name)) rarely {
+      resolved_name = cxt.resolve_nameref_base_for_write(name);
+      name          = resolved_name->view();
+    }
+
     if (cxt.is_integer_variable(name)) {
       cxt.append_integer_expression(appended, value_ref.view());
       value_ref = cxt.evaluate_arithmetic_text(appended.view());
@@ -584,20 +643,26 @@ SimpleCommand::evaluate_impl(EvalContext         &cxt,
       value_ref = steal(appended);
     }
   };
-  let const do_trace_assignment =
-      [&](StringView name, assignment_update_mode update_mode, StringView value)
-          throws -> void {
+
+  let const do_trace_assignment = [&](StringView             name,
+                                      assignment_update_mode update_mode,
+                                      StringView             value) throws -> void {
     if (!cxt.runtime_state().should_echo_expanded()) return;
+
     let trace = String{cxt.scratch_allocator(), name};
+
     trace += update_mode == assignment_update_mode::Append ? "+=" : "=";
     append_shell_quoted_arg(trace, value);
     cxt.write_xtrace(trace.view());
   };
+
   let const do_trace_array_assignment =
       [&](const array_builtin_assignment &assignment,
           const ArrayList<String>        &values) throws -> void {
     if (!cxt.runtime_state().should_echo_expanded()) return;
+
     let trace = String{cxt.scratch_allocator(), assignment.name.view()};
+
     trace +=
         assignment.update_mode == assignment_update_mode::Append ? "+=(" : "=(";
 
@@ -615,22 +680,26 @@ SimpleCommand::evaluate_impl(EvalContext         &cxt,
     let error =
         ErrorWithLocation{source_location(), "Unable to assign '" + name +
                                                  "' because it is read only"};
+
     cxt.mark_expansion_error(error, reach);
     throw steal(error);
   };
+
   let const do_reject_readonly_target = [&](StringView name) throws {
     let resolved_name = Maybe<String>{};
-    if (cxt.variable_store().attributes().is_nameref(name)) rarely
-      {
-        try {
-          resolved_name = cxt.resolve_nameref_base_for_write(name);
-        } catch (ErrorBase &error) {
-          cxt.mark_expansion_error(error,
-                                   expansion_error_reach::LineOrPosixScript);
-          throw;
-        }
-        name = resolved_name->view();
+
+    if (cxt.variable_store().attributes().is_nameref(name)) rarely {
+      try {
+        resolved_name = cxt.resolve_nameref_base_for_write(name);
+      } catch (ErrorBase &error) {
+        cxt.mark_expansion_error(error,
+                                 expansion_error_reach::LineOrPosixScript);
+        throw;
       }
+
+      name = resolved_name->view();
+    }
+
     if (cxt.is_readonly(name)) {
       do_reject_readonly_assignment(name,
                                     expansion_error_reach::LineOrPosixScript);
@@ -642,12 +711,14 @@ SimpleCommand::evaluate_impl(EvalContext         &cxt,
         let const name = assignment.key().view();
         let       value =
             cxt.expand_word_for_assignment(assignment.value_word(), true);
+
         if (let const bracket = name.find_character('[');
             bracket.has_value() && name[name.length - 1] == ']')
         {
           let const array_name = name.substring_of_length(0, *bracket);
           let const subscript  = name.substring_of_length(
               *bracket + 1, name.length - *bracket - 2);
+
           do_trace_assignment(name, assignment.get_update_mode(), value.view());
           if (!cxt.is_circular_nameref(array_name))
             do_reject_readonly_target(array_name);
@@ -683,6 +754,7 @@ SimpleCommand::evaluate_impl(EvalContext         &cxt,
     for (let const &assignment : m_array_args) {
       if (!cxt.is_circular_nameref(assignment.name))
         do_reject_readonly_target(assignment.name);
+
       let               subscript_flags = Bitset{heap_allocator()};
       ArrayList<String> values          = cxt.process_args(
           assignment.elements, nullptr, argument_lifetime::Persistent,
@@ -690,7 +762,9 @@ SimpleCommand::evaluate_impl(EvalContext         &cxt,
                        ? argument_context::AssociativeLiteral
                        : argument_context::ArrayLiteral,
           &subscript_flags);
+
       do_trace_array_assignment(assignment, values);
+
       cxt.assign_indexed_array_elements(
           assignment.name, values, assignment.update_mode, &subscript_flags);
     }
@@ -708,6 +782,7 @@ SimpleCommand::evaluate_impl(EvalContext         &cxt,
 
       return false;
     };
+
     let ran_substitution = false;
 
     for (let const token : m_args)
@@ -736,27 +811,31 @@ SimpleCommand::evaluate_impl(EvalContext         &cxt,
     bool                  did_overlay_shell_value;
     bool                  did_clear_circular_reference;
   };
+
   ArrayList<saved_env_var> saved_env{cxt.scratch_allocator()};
+
   saved_env.reserve(m_local_vars.count() + keyword_assignments.count());
+
   bool                   was_ifs_assigned = false;
   String                 saved_ifs_separators{cxt.scratch_allocator()};
   Maybe<ProgramResolver> saved_program_resolver{};
   Maybe<bool>            previous_ignoreeof_state{};
-  defer
-  {
+
+  defer {
     for (usize i = saved_env.count(); i > 0; i--) {
       const saved_env_var &restore = saved_env[i - 1];
+
       if (restore.did_overlay_shell_value)
         cxt.restore_temporary_shell_variable(
             restore.name.view(), restore.previous_shell_value,
             restore.previous_special_definition_location);
       if (restore.previous_value)
         os::set_environment_variable(restore.name.view(),
-                                     restore.previous_value->view());
+                                                restore.previous_value->view());
       else
         os::unset_environment_variable(restore.name.view());
       cxt.sync_exported_after_restore(restore.name.view(),
-                                      restore.previous_value.has_value());
+                                                 restore.previous_value.has_value());
       if (restore.did_clear_circular_reference) {
         cxt.variable_store().attributes().set(
             restore.name.view(), variable_attribute::Nameref, true);
@@ -769,15 +848,18 @@ SimpleCommand::evaluate_impl(EvalContext         &cxt,
       cxt.variable_store().set_field_separators(saved_ifs_separators.view());
     if (previous_ignoreeof_state.has_value())
       cxt.runtime_state().set_option(shell_option_id::Ignoreeof,
-                                     *previous_ignoreeof_state);
+                                                *previous_ignoreeof_state);
   };
+
   let const has_prefix_assignments =
       !m_local_vars.is_empty() || !keyword_assignments.is_empty();
+
   let const do_is_source_evaluating_name = [&]() throws -> bool {
     let const kind = search_builtin(program_args[0].view());
 
     return kind == Builtin::Kind::Eval || kind == Builtin::Kind::Source;
   };
+
   let const is_source_evaluating_builtin =
       has_prefix_assignments && !program_args.is_empty() &&
       command_word_function == nullptr && do_is_source_evaluating_name();
@@ -788,25 +870,27 @@ SimpleCommand::evaluate_impl(EvalContext         &cxt,
                  cxt.runtime_state().is_posix_option_on()
            : is_source_evaluating_builtin &&
                  cxt.runtime_state().is_posix_option_on());
+
   let const do_apply_environment_assignment =
       [&](const tokens::Assignment &assignment) throws {
         let name                         = assignment.key().view();
         let resolved_name                = Maybe<String>{};
         let did_clear_circular_reference = false;
-        if (cxt.variable_store().attributes().is_nameref(name)) rarely
-          {
-            if (cxt.is_circular_nameref(name)) {
-              cxt.warn_circular_nameref(name);
-              if (is_prefix_assignment_persistent || name == "IFS") {
-                return;
-              }
 
-              did_clear_circular_reference = true;
-            } else {
-              resolved_name = cxt.resolve_nameref_for_write(name);
-              name          = resolved_name->view();
+        if (cxt.variable_store().attributes().is_nameref(name)) rarely {
+          if (cxt.is_circular_nameref(name)) {
+            cxt.warn_circular_nameref(name);
+            if (is_prefix_assignment_persistent || name == "IFS") {
+              return;
             }
+
+            did_clear_circular_reference = true;
+          } else {
+            resolved_name = cxt.resolve_nameref_for_write(name);
+            name          = resolved_name->view();
           }
+        }
+
         if (cxt.is_readonly(name)) {
           if (cxt.runtime_state().is_bash_compatible() &&
               !cxt.runtime_state().is_posix_option_on())
@@ -823,19 +907,24 @@ SimpleCommand::evaluate_impl(EvalContext         &cxt,
                         ? expansion_error_reach::LineOrPosixScript
                         : expansion_error_reach::Line);
         }
+
         const bool is_read_field_separator =
             name == "IFS" && command_word_function == nullptr &&
             !program_args.is_empty() && program_args[0] == "read";
         Maybe<String> previous;
+
         if (!is_read_field_separator)
           previous = os::get_environment_variable(name);
+
         let expanded_value = String{cxt.scratch_allocator()};
+
         try {
           expanded_value =
               cxt.expand_word_for_assignment(assignment.value_word(), true);
         } catch (const Error &e) {
           relocate_if_unlocated(e, source_location());
         }
+
         do_trace_assignment(name, assignment.get_update_mode(),
                             expanded_value.view());
         if (assignment.get_update_mode() == assignment_update_mode::Append)
@@ -859,6 +948,7 @@ SimpleCommand::evaluate_impl(EvalContext         &cxt,
         }
 
         let const is_path_name = utils::environment_name_is_path(name);
+
         if (is_path_name && !saved_program_resolver.has_value()) {
           saved_program_resolver =
               Maybe<ProgramResolver>{cxt.program_resolver()};
@@ -876,6 +966,7 @@ SimpleCommand::evaluate_impl(EvalContext         &cxt,
           let const did_overlay_shell_value =
               command_word_function != nullptr ||
               is_source_evaluating_builtin || is_locale_name;
+
           if (did_overlay_shell_value) {
             if (let const stored =
                     cxt.variable_store().shell_variables().find(name);
@@ -884,14 +975,17 @@ SimpleCommand::evaluate_impl(EvalContext         &cxt,
               previous_shell_value =
                   String{cxt.scratch_allocator(), stored->view()};
             }
+
             previous_special_definition_location =
                 cxt.special_variable_definition_location(name);
             if (name == "IGNOREEOF" && !previous_ignoreeof_state.has_value()) {
               previous_ignoreeof_state = cxt.runtime_state().option_is_enabled(
                   shell_option_id::Ignoreeof);
             }
+
             cxt.set_shell_variable(name, expanded_value.view());
           }
+
           saved_env.push(saved_env_var{
               String{cxt.scratch_allocator(), name},
               steal(previous),
@@ -901,6 +995,7 @@ SimpleCommand::evaluate_impl(EvalContext         &cxt,
           os::set_environment_variable(name, expanded_value.view());
           cxt.mark_exported(name);
         }
+
         if (is_path_name)
           cxt.program_resolver().assign_path(String{expanded_value.view()});
         if (name == "IFS")
@@ -916,12 +1011,14 @@ SimpleCommand::evaluate_impl(EvalContext         &cxt,
   cxt.write_xtrace(program_args);
 
   ASSERT(!program_args.is_empty());
+
   let const &program_name  = program_args[0];
   let const  last_argument = program_args.is_empty()
                                  ? String{cxt.scratch_allocator()}
                                  : program_args.back();
 
   let array_command_kind = assignment_builtin::None;
+
   if (!m_array_args.is_empty())
     array_command_kind = classify_assignment_builtin(program_args[0].view());
 
@@ -930,6 +1027,7 @@ SimpleCommand::evaluate_impl(EvalContext         &cxt,
   {
     if (redirect_in_fd) {
       let const saved = os::save_and_replace_descriptor(0, *redirect_in_fd);
+
       dup_saved_descriptors.push(saved);
       os::close_fd(*redirect_in_fd);
       redirect_in_fd = koshka::None;
@@ -939,18 +1037,26 @@ SimpleCommand::evaluate_impl(EvalContext         &cxt,
 
     let const do_call_function = [&]() throws -> i64 {
       let call_params = ArrayList<String>{heap_allocator()};
+
       call_params.reserve(program_args.count() - 1);
 
       for (usize i = 1; i < program_args.count(); i++)
         call_params.push_managed(program_args[i]);
 
       let bash_argument_frame_context = EvalContext::BashArgumentFrameContext{};
+
       cxt.enter_bash_function_argument_frame(bash_argument_frame_context,
                                              call_params);
-      defer { cxt.leave_bash_argument_frame(bash_argument_frame_context); };
+      defer {
+        cxt.leave_bash_argument_frame(bash_argument_frame_context);
+      };
+
       let saved_params = steal(cxt.variable_store().positional_params());
+
       cxt.variable_store().positional_params() = steal(call_params);
-      defer { cxt.variable_store().positional_params() = steal(saved_params); };
+      defer {
+        cxt.variable_store().positional_params() = steal(saved_params);
+      };
 
       let const untraced_debug_scope =
           UntracedTrapScope{cxt, UntracedTrapScope::Kind::Debug};
@@ -962,27 +1068,32 @@ SimpleCommand::evaluate_impl(EvalContext         &cxt,
       cxt.enter_function_call(source_location());
       defer { cxt.leave_function_call(); };
 
-      let const saved_loop_depth         = cxt.execution_store().loop_depth();
+      let const saved_loop_depth = cxt.execution_store().loop_depth();
+
       cxt.execution_store().loop_depth() = 0;
-      defer { cxt.execution_store().loop_depth() = saved_loop_depth; };
+      defer {
+        cxt.execution_store().loop_depth() = saved_loop_depth;
+      };
 
       let const call_mark = cxt.expansion_store().scratch_arena().mark();
-      defer { cxt.expansion_store().scratch_arena().release(call_mark); };
+
+      defer {
+        cxt.expansion_store().scratch_arena().release(call_mark);
+      };
 
       cxt.enter_function_scope();
       cxt.push_function_call_name(program_name.view(),
                                   command_function_storage);
-      defer
-      {
+      defer {
         cxt.pop_function_call_name();
         cxt.leave_function_scope();
       };
 
       let const saved_terminal_exec =
           cxt.execution_store().terminal_exec_allowed();
+
       cxt.execution_store().terminal_exec_allowed() = false;
-      defer
-      {
+      defer {
         cxt.execution_store().terminal_exec_allowed() = saved_terminal_exec;
       };
 
@@ -1015,6 +1126,7 @@ SimpleCommand::evaluate_impl(EvalContext         &cxt,
       }
 
       i64 function_ret = 0;
+
       try {
         function_ret = function_body->evaluate(cxt);
         if (cxt.should_run_return_trap()) {
@@ -1035,11 +1147,13 @@ SimpleCommand::evaluate_impl(EvalContext         &cxt,
           let const rendered_source =
               windowed.has_value() ? *windowed
                                    : cxt.source_store().current_source_view();
+
           show_message(error.to_string(rendered_source, &cxt));
           show_message(error.details_to_string(rendered_source, &cxt));
           cxt.print_source_backtrace(trace_location);
           error.set_rendered();
         }
+
         throw;
       } catch (ErrorWithLocation &error) {
         if (!error.was_rendered()) {
@@ -1048,15 +1162,18 @@ SimpleCommand::evaluate_impl(EvalContext         &cxt,
           let const rendered_source =
               windowed.has_value() ? *windowed
                                    : cxt.source_store().current_source_view();
+
           show_message(error.to_string(rendered_source, &cxt));
           cxt.print_source_backtrace(trace_location);
           error.set_rendered();
         }
+
         throw;
       }
 
       if (cxt.control_flow_store().has_pending()) {
         let const kind = cxt.control_flow_store().pending().kind;
+
         if (kind == control_flow::Kind::Return) {
           function_ret = cxt.control_flow_store().pending().value;
           cxt.control_flow_store().clear();
@@ -1079,6 +1196,7 @@ SimpleCommand::evaluate_impl(EvalContext         &cxt,
     };
 
     let expanded_child_source = String{cxt.scratch_allocator()};
+
     if (!os::can_fork_evaluator()) {
       for (usize i = 0; i < program_args.count(); i++) {
         if (i > 0) expanded_child_source.push(' ');
@@ -1098,6 +1216,7 @@ SimpleCommand::evaluate_impl(EvalContext         &cxt,
   let const is_program_word_a_path =
       !program_args.is_empty() &&
       program_args[0].view().find_character('/').has_value();
+
   let const do_resolve_context = [&]() throws -> ExecContext {
     if (literal_lookup != nullptr && literal_lookup->builtin.has_value() &&
         !builtin_is_hidden_by_mood(*literal_lookup->builtin,
@@ -1131,33 +1250,41 @@ SimpleCommand::evaluate_impl(EvalContext         &cxt,
   };
 
   let ec = do_resolve_context();
+
   if (did_resolution_fail) {
     if (is_program_word_a_path ||
         cxt.runtime_state().get_mood() != mimic_mood::Posix)
     {
       cxt.job_table_store().forget_waited_jobs();
     }
+
     cxt.execution_store().set_last_exit_status(
         static_cast<i32>(resolution_failure_status));
     cxt.publish_single_pipe_status(static_cast<i32>(resolution_failure_status));
 
     return resolution_failure_status;
   }
+
   ec.has_stripped_array_operands = !m_array_args.is_empty();
 
   if (redirect_in_fd) ec.in_fd = redirect_in_fd.take();
 
   let const was_in_pipeline_stage =
       cxt.job_table_store().is_in_pipeline_stage();
+
   if (mode == root_evaluation_mode::PreparedAsyncCommand && ec.is_builtin()) {
     cxt.job_table_store().set_in_pipeline_stage(true);
   }
-  defer { cxt.job_table_store().set_in_pipeline_stage(was_in_pipeline_stage); };
+
+  defer {
+    cxt.job_table_store().set_in_pipeline_stage(was_in_pipeline_stage);
+  };
 
   let const is_posix_regular_builtin =
       cxt.runtime_state().is_posix_mode() && ec.is_builtin() &&
       !is_command_special_builtin && ec.builtin_kind() != Builtin::Kind::Local;
   i32 ret = 0;
+
   try {
     ret = utils::execute_context(steal(ec), cxt,
                                  is_async_command ? execution_mode::Background
@@ -1167,6 +1294,7 @@ SimpleCommand::evaluate_impl(EvalContext         &cxt,
   } catch (ErrorWithLocation &error) {
     let const is_soft_posix_error =
         is_posix_regular_builtin && !error.is_line_discarding();
+
     if (error.is_script_fatal()) throw;
     if (!cxt.runtime_state().is_bash_compatible() && !is_soft_posix_error) {
       throw;
@@ -1174,6 +1302,7 @@ SimpleCommand::evaluate_impl(EvalContext         &cxt,
 
     if (!error.was_rendered()) {
       let const trace_location = error.location();
+
       if (let const windowed = window_function_body_error(cxt, error);
           windowed.has_value())
       {
@@ -1182,6 +1311,7 @@ SimpleCommand::evaluate_impl(EvalContext         &cxt,
         show_message(
             error.to_string(cxt.source_store().current_source_view(), &cxt));
       }
+
       cxt.print_source_backtrace(trace_location, false);
       error.set_rendered();
     }
@@ -1190,6 +1320,7 @@ SimpleCommand::evaluate_impl(EvalContext         &cxt,
 
     ret = 2;
   }
+
   cxt.execution_store().set_last_argument(String{last_argument.view()});
 
   if (!m_array_args.is_empty()) {
@@ -1212,14 +1343,17 @@ SimpleCommand::evaluate_impl(EvalContext         &cxt,
     let should_unmark_lowercase   = false;
     let should_mark_uppercase     = false;
     let should_unmark_uppercase   = false;
+
     if (is_declare || is_local || is_readonly_kind) {
       let text_storage = String{heap_allocator()};
 
       for (let const arg : m_args) {
         let const text = borrowed_token_text(arg, text_storage);
+
         if (text.length < 2) continue;
 
         let const lead = text[0];
+
         if (lead != '-' && lead != '+') {
           continue;
         }
@@ -1236,6 +1370,7 @@ SimpleCommand::evaluate_impl(EvalContext         &cxt,
             if (is_set_request && !is_readonly_kind) {
               should_print_declaration = true;
             }
+
             break;
 
           case 'A':
@@ -1270,6 +1405,7 @@ SimpleCommand::evaluate_impl(EvalContext         &cxt,
         }
       }
     }
+
     if (should_mark_lowercase && should_mark_uppercase) {
       should_mark_lowercase   = false;
       should_mark_uppercase   = false;
@@ -1285,6 +1421,7 @@ SimpleCommand::evaluate_impl(EvalContext         &cxt,
       if (is_local || (is_function_local && !is_global_request)) {
         cxt.declare_local(assignment.name, true);
       }
+
       if (should_mark_integer)
         cxt.variable_store().attributes().mark_integer(assignment.name);
       if (should_unmark_integer)
@@ -1297,6 +1434,7 @@ SimpleCommand::evaluate_impl(EvalContext         &cxt,
         cxt.variable_store().attributes().mark_lowercase(assignment.name);
       if (should_mark_uppercase)
         cxt.variable_store().attributes().mark_uppercase(assignment.name);
+
       let               subscript_flags = Bitset{heap_allocator()};
       ArrayList<String> values          = cxt.process_args(
           assignment.elements, nullptr, argument_lifetime::Persistent,
@@ -1304,7 +1442,9 @@ SimpleCommand::evaluate_impl(EvalContext         &cxt,
                        ? argument_context::AssociativeLiteral
                        : argument_context::ArrayLiteral,
           &subscript_flags);
+
       do_trace_array_assignment(assignment, values);
+
       if (is_associative_request)
         cxt.declare_associative_array(assignment.name);
       cxt.assign_indexed_array_elements(
@@ -1315,6 +1455,7 @@ SimpleCommand::evaluate_impl(EvalContext         &cxt,
 
       if (should_print_declaration) {
         let line = String{cxt.scratch_allocator()};
+
         if (append_variable_declaration(cxt, assignment.name, line)) {
           if (!os::write_all(KOSH_STDOUT, line.data(), line.count()))
             throw Error{"Unable to write to stdout: " +

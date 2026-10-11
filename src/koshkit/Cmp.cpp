@@ -58,6 +58,7 @@ refill_readers(buffered_byte_reader        &left,
   let const do_has_bytes = [](const buffered_byte_reader &reader) -> bool {
     return reader.position != reader.length || reader.has_ended;
   };
+
   if (do_has_bytes(left) && do_has_bytes(right)) {
     return true;
   }
@@ -65,6 +66,7 @@ refill_readers(buffered_byte_reader        &left,
   buffered_byte_reader *readers[] = {&left, &right};
   buffered_byte_reader *batched_readers[2]{};
   usize                 operation_count = 0;
+
   batch.clear();
 
   for (let *reader : readers) {
@@ -75,6 +77,7 @@ refill_readers(buffered_byte_reader        &left,
     if (!reader->is_seekable) {
       let const read_count = os::read_fd(reader->descriptor, reader->buffer,
                                          sizeof(reader->buffer));
+
       if (!read_count.has_value()) return false;
       reader->position  = 0;
       reader->length    = *read_count;
@@ -98,7 +101,8 @@ refill_readers(buffered_byte_reader        &left,
       return false;
     }
 
-    let &reader     = *batched_readers[index];
+    let &reader = *batched_readers[index];
+
     reader.position = 0;
     reader.length   = results[index].transferred_byte_count;
     reader.byte_offset += results[index].transferred_byte_count;
@@ -138,27 +142,29 @@ Cmp::execute(const ExecContext               &ec,
   }
 
   let const left_input = open_named_or_stdin(ec, operands[0].view());
+
   if (!left_input.has_value()) {
     if (!FLAG_CMP_SILENT.is_enabled())
       KOSHKIT_REPORT_PATH_ERROR("read", operands[0]);
 
     return 2;
   }
-  defer
-  {
+
+  defer {
     if (left_input->mode == input_descriptor_mode::Owned)
       os::close_fd(left_input->descriptor);
   };
 
   let const right_input = open_named_or_stdin(ec, operands[1].view());
+
   if (!right_input.has_value()) {
     if (!FLAG_CMP_SILENT.is_enabled())
       KOSHKIT_REPORT_PATH_ERROR("read", operands[1]);
 
     return 2;
   }
-  defer
-  {
+
+  defer {
     if (right_input->mode == input_descriptor_mode::Owned)
       os::close_fd(right_input->descriptor);
   };
@@ -178,6 +184,7 @@ Cmp::execute(const ExecContext               &ec,
       os::descriptor_is_seekable(right_input->descriptor),
       false,
       {}};
+
   u64       byte_position  = 1;
   u64       line_number    = 1;
   bool      has_difference = false;
@@ -185,11 +192,11 @@ Cmp::execute(const ExecContext               &ec,
   let       output         = String{allocator};
   let       batch          = os::Batch{allocator};
   let       results        = ArrayList<os::batch_result>{allocator};
+
   batch.reserve(2);
   results.reserve(2);
 
-  loop
-  {
+  loop {
     if (!refill_readers(left, right, batch, results)) {
       if (os::INTERRUPT_REQUESTED) return 130;
       if (!FLAG_CMP_SILENT.is_enabled())
@@ -203,10 +210,12 @@ Cmp::execute(const ExecContext               &ec,
     let const right_available = right.length - right.position;
     let const common_length =
         left_available < right_available ? left_available : right_available;
+
     if (common_length > 0) {
       let const *left_bytes   = left.buffer + left.position;
       let const *right_bytes  = right.buffer + right.position;
       usize      equal_length = common_length;
+
       if (std::memcmp(left_bytes, right_bytes, common_length) != 0) {
         equal_length = 0;
 

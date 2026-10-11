@@ -49,6 +49,7 @@ opens_dollar_quote(StringView line, usize position) wontthrow -> bool
   if (position == 0 || line[position] != '\'') {
     return false;
   }
+
   if (line[position - 1] != '$') return false;
 
   usize backslash_count = 0;
@@ -66,6 +67,7 @@ pure fn
 internal::quoted_run_end(StringView line, usize position) wontthrow -> usize
 {
   let const opener = line[position];
+
   if (opener == '\\')
     return position + 1 < line.length ? position + 1 : position;
   if (opener != '\'' && opener != '"') {
@@ -81,6 +83,7 @@ internal::quoted_run_end(StringView line, usize position) wontthrow -> usize
     if (is_escaped_body && line[k] == '\\' && k + 1 < line.length) {
       k++;
     }
+
     k++;
   }
 
@@ -92,6 +95,7 @@ internal::token_has_glob_metacharacter(StringView token) wontthrow -> bool
 {
   for (usize i = 0; i < token.length; i++) {
     let const c = token[i];
+
     if (c == '*' || c == '?' || c == '[') {
       return true;
     }
@@ -111,6 +115,7 @@ internal::is_active_token_boundary(StringView line, usize position) wontthrow
     -> bool
 {
   let const c = line[position];
+
   if (!is_token_boundary(c)) return false;
 
   if ((c == '(' || c == ')') && position > 0 &&
@@ -131,6 +136,7 @@ internal::find_token_bounds(StringView line, usize cursor) wontthrow
 
   while (i < cursor && i < line.length) {
     let const c = line[i];
+
     if (c == '\\' || c == '\'' || c == '"') {
       i = quoted_run_end(line, i) + 1;
       continue;
@@ -144,6 +150,7 @@ internal::find_token_bounds(StringView line, usize cursor) wontthrow
 
   while (end < line.length) {
     let const c = line[end];
+
     if (c == '\\' || c == '\'' || c == '"') {
       end = quoted_run_end(line, end) + 1;
       continue;
@@ -195,17 +202,19 @@ next_completion_prefix_word(StringView line, usize &position) wontthrow
 }
 
 static fn
-timeout_flag_takes_value(char short_name, StringView long_name) wontthrow
-    -> bool
+timeout_flag_takes_value(char short_name, StringView long_name)
+    wontthrow -> bool
 {
   let const flags =
       koshkit::koshkit_util_flag_list(koshkit::Utility::Kind::Timeout);
+
   if (flags == nullptr) return false;
 
   for (let const flag : *flags) {
     if (short_name != '\0' && flag->short_name() != short_name) {
       continue;
     }
+
     if (!long_name.is_empty() && flag->long_name() != long_name) {
       continue;
     }
@@ -266,9 +275,9 @@ timeout_managed_command_start(StringView line, usize position) wontthrow
 {
   let should_skip_value = false;
 
-  loop
-  {
+  loop {
     let const word = next_completion_prefix_word(line, position);
+
     if (!word.has_value()) return None;
 
     let const is_plain_word = word_decodes_to_itself(*word);
@@ -286,6 +295,7 @@ timeout_managed_command_start(StringView line, usize position) wontthrow
 
     if (word_text == "--") {
       let const duration = next_completion_prefix_word(line, position);
+
       if (!duration.has_value()) return None;
 
       return skip_blanks(line, position);
@@ -305,9 +315,9 @@ timeout_command_start(StringView line) wontthrow -> Maybe<usize>
 {
   usize position = 0;
 
-  loop
-  {
+  loop {
     let const word = next_completion_prefix_word(line, position);
+
     if (!word.has_value()) return None;
 
     let const is_plain_word = word_decodes_to_itself(*word);
@@ -321,6 +331,7 @@ timeout_command_start(StringView line) wontthrow -> Maybe<usize>
 
     if (word_text == "koshkit") {
       let const utility = next_completion_prefix_word(line, position);
+
       if (!utility.has_value()) return None;
 
       let const is_plain_utility = word_decodes_to_itself(*utility);
@@ -364,16 +375,17 @@ internal::is_in_command_position(StringView line, usize token_start) wontthrow
     if (line[k] == '(') position = k + 1;
   }
 
-  loop
-  {
+  loop {
     position = skip_blanks(line, position);
     if (position >= token_start) return true;
 
     let const word = next_completion_prefix_word(line, position);
+
     if (!word.has_value()) return true;
     if (is_active_option && *word == "time") {
       return false;
     }
+
     if (!is_transparent_command_prefix(*word)) return false;
   }
 }
@@ -393,9 +405,9 @@ internal::command_word_of(StringView line) wontthrow -> StringView
   usize position     = command_segment_start(line, line.length);
   let   time_command = StringView{};
 
-  loop
-  {
+  loop {
     let const word = next_completion_prefix_word(line, position);
+
     if (!word.has_value()) return time_command;
 
     if (*word == "time") {
@@ -407,8 +419,8 @@ internal::command_word_of(StringView line) wontthrow -> StringView
 }
 
 pure fn
-internal::command_segment_start(StringView line, usize cursor) wontthrow
-    -> usize
+internal::command_segment_start(StringView line, usize cursor)
+    wontthrow -> usize
 {
   usize     start            = 0;
   usize     open_paren_depth = 0;
@@ -416,6 +428,7 @@ internal::command_segment_start(StringView line, usize cursor) wontthrow
 
   for (usize k = 0; k < limit; k++) {
     let const c = line[k];
+
     if (c == '\'' || c == '"' || c == '\\') {
       k = quoted_run_end(line, k);
       continue;
@@ -439,13 +452,16 @@ internal::command_segment_start(StringView line, usize cursor) wontthrow
 
 fn
 internal::resolve_completion_alias(StringView   command,
-                                   EvalContext &context) throws -> String
+                                   EvalContext &context) throws
+    -> String
 {
   let name = String{command};
 
   for (usize depth = 0; depth < 8; depth++) {
     let const expansion = context.scope_store().find_alias(name.view());
+
     if (!expansion.has_value()) break;
+
     let const expanded = *expansion;
     usize     i        = 0;
     i                  = skip_blanks(expanded, i);
@@ -456,9 +472,11 @@ internal::resolve_completion_alias(StringView   command,
     }
 
     let const first = expanded.substring_of_length(start, i - start);
+
     if (first.is_empty() || first == name.view()) {
       break;
     }
+
     name = String{first};
   }
 
@@ -467,13 +485,15 @@ internal::resolve_completion_alias(StringView   command,
 
 fn
 internal::resolve_completion_command(StringView   command,
-                                     EvalContext &context) throws -> String
+                                     EvalContext &context) throws
+    -> String
 {
   let       name    = resolve_completion_alias(command, context);
   let const located = context.program_resolver().search(
       name.view(), ProgramResolver::SearchMode::First,
       ProgramResolver::Requirement::Runnable,
       ProgramResolver::CachePolicy::Bypass);
+
   if (!located.is_empty()) {
     if (let const canonical = os::canonical_path(located.front());
         canonical.has_value())
@@ -492,7 +512,8 @@ internal::resolve_completion_command(StringView   command,
 fn
 internal::split_completion_words(StringView line,
                                  usize      cursor,
-                                 usize     &cword) throws -> ArrayList<String>
+                                 usize     &cword) throws
+    -> ArrayList<String>
 {
   let   words    = ArrayList<String>{completion_allocator()};
   usize i        = 0;
@@ -501,6 +522,7 @@ internal::split_completion_words(StringView line,
   while (i < line.length) {
     i = skip_blanks(line, i);
     if (i >= line.length) break;
+
     let const start = i;
 
     while (i < line.length && line[i] != ' ' && line[i] != '\t') {
@@ -511,6 +533,7 @@ internal::split_completion_words(StringView line,
       cword    = words.count();
       is_found = true;
     }
+
     words.push(String{completion_allocator(),
                       line.substring_of_length(start, i - start)});
   }

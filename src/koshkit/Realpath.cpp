@@ -43,9 +43,11 @@ enum class realpath_mode : u8
 static fn
 resolve_with_missing_components(StringView    operand,
                                 realpath_mode mode,
-                                Allocator     allocator) throws -> Maybe<Path>
+                                Allocator     allocator) throws
+    -> Maybe<Path>
 {
   let absolute = Path{operand, allocator};
+
   if (!absolute.is_absolute()) {
     absolute = Path{os::read_current_directory().text().view(), allocator};
     absolute.append(operand);
@@ -61,8 +63,7 @@ resolve_with_missing_components(StringView    operand,
   usize link_count = 0;
   usize position   = 0;
 
-  loop
-  {
+  loop {
     let const text = remaining.view();
 
     while (position < text.length && os::is_directory_separator(text[position]))
@@ -81,9 +82,11 @@ resolve_with_missing_components(StringView    operand,
     }
 
     let const component = text.substring_of_length(start, position - start);
+
     if (is_missing && mode != realpath_mode::Missing) {
       return None;
     }
+
     if (component == ".") continue;
 
     if (component == "..") {
@@ -92,7 +95,9 @@ resolve_with_missing_components(StringView    operand,
     }
 
     let candidate = Path{resolved.text().view(), allocator};
+
     candidate.append(component);
+
     if (!is_missing) {
       if (let canonical = os::canonical_path(candidate); canonical.has_value())
       {
@@ -102,13 +107,16 @@ resolve_with_missing_components(StringView    operand,
 
       let const link_target =
           link_count < MAXIMUM_LINK_COUNT && candidate.is_symbolic_link()
-              ? os::read_symlink(candidate.view(), allocator)
-              : Maybe<String>{};
+                ? os::read_symlink(candidate.view(), allocator)
+                : Maybe<String>{};
+
       if (link_target.has_value()) {
         link_count++;
+
         let const target             = link_target->view();
         let const target_root_length = os::path_root_length(target);
         let spliced = String{allocator, target.substring(target_root_length)};
+
         spliced.push(os::DIRECTORY_SEPARATOR);
         spliced.append(text.substring(position));
         if (target_root_length > 0) {
@@ -116,6 +124,7 @@ resolve_with_missing_components(StringView    operand,
                           allocator};
           root_length = target_root_length;
         }
+
         remaining = steal(spliced);
         position  = 0;
         continue;
@@ -138,8 +147,7 @@ cold fn
 Realpath::execute(const ExecContext               &ec,
                   EvalContext                     &cxt,
                   const ArrayList<String>         &args,
-                  const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+                  const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
@@ -157,6 +165,7 @@ Realpath::execute(const ExecContext               &ec,
        operand_index++)
   {
     let const &operand = operands[operand_index];
+
     if (operand.is_empty()) {
       KOSHKIT_REPORT_ERROR_AT(operand_locations[operand_index],
                               "'': No such file or directory");
@@ -165,6 +174,7 @@ Realpath::execute(const ExecContext               &ec,
     }
 
     let resolved = os::canonical_path(Path{operand.view(), allocator});
+
     if (!resolved.has_value() && (mode == realpath_mode::Missing ||
                                   (mode == realpath_mode::AllButLast &&
                                    os::last_system_error_is_missing_file())))
@@ -172,6 +182,7 @@ Realpath::execute(const ExecContext               &ec,
       resolved =
           resolve_with_missing_components(operand.view(), mode, allocator);
     }
+
     if (!resolved) {
       KOSHKIT_REPORT_ERROR_AT(operand_locations[operand_index],
                               "'" + operand +

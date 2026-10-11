@@ -378,12 +378,14 @@ constexpr StringView REMOTE_PREFLIGHT{REMOTE_PREFLIGHT_TEXT,
                                       sizeof(REMOTE_PREFLIGHT_TEXT) - 1};
 
 fn
-trace_stage(const ExecContext &ec, trace_output trace, StringView stage) throws
-    -> void
+trace_stage(const ExecContext &ec,
+            trace_output       trace,
+            StringView         stage) throws -> void
 {
   if (trace != trace_output::Enabled) return;
 
   let message = String{heap_allocator(), "+ assimilate: "};
+
   message += stage;
   message += '\n';
   ec.print_to_stderr(message.view());
@@ -396,20 +398,24 @@ run_program(const ArrayList<String> &arguments,
             StringView               stage) throws -> i32
 {
   trace_stage(ec, trace, stage);
+
   let const result =
       os::run_measured(arguments, {}, os::measured_output::Inherit);
+
   if (!result.has_value()) return 126;
 
   return static_cast<i32>(result->exit_status);
 }
 
 fn
-resolve_transfer_program(StringView name, ProgramResolver &resolver) throws
+resolve_transfer_program(StringView       name,
+                         ProgramResolver &resolver) throws
     -> Maybe<Path>
 {
   let const matches = resolver.search(name, ProgramResolver::SearchMode::First,
                                       ProgramResolver::Requirement::Runnable,
                                       ProgramResolver::CachePolicy::Bypass);
+
   if (matches.is_empty()) return None;
 
   return matches[0].clone();
@@ -418,7 +424,8 @@ resolve_transfer_program(StringView name, ProgramResolver &resolver) throws
 fn
 parse_transport_command(StringView       spelling,
                         ProgramResolver &resolver,
-                        Allocator allocator) throws -> Maybe<ArrayList<String>>
+                        Allocator        allocator) throws
+    -> Maybe<ArrayList<String>>
 {
   let   arguments = ArrayList<String>{allocator};
   usize position  = 0;
@@ -443,6 +450,7 @@ parse_transport_command(StringView       spelling,
   if (arguments.is_empty()) return None;
 
   let const program = resolve_transfer_program(arguments[0].view(), resolver);
+
   if (!program.has_value()) return None;
   arguments[0] = program->text();
 
@@ -467,12 +475,16 @@ remote_command(StringView   upload_name,
 {
   let const should_trace = trace == trace_output::Enabled;
   let       command      = String{allocator};
+
   command += "exec ";
-  let const upload_path        = String{allocator, "./"} + upload_name;
+
+  let const upload_path = String{allocator, "./"} + upload_name;
+
   let const do_append_argument = [&](StringView argument) throws {
     append_shell_quoted_arg(command, argument);
     command += ' ';
   };
+
   do_append_argument(upload_path.view());
   do_append_argument("-p");
   do_append_argument("--mood");
@@ -505,6 +517,7 @@ preflight_command(StringView   executable_system,
                   Allocator    allocator) throws -> String
 {
   let command = String{allocator, "set -- "};
+
   append_shell_quoted_arg(command, trace == trace_output::Enabled
                                        ? StringView{"1"}
                                        : StringView{"0"});
@@ -521,25 +534,30 @@ preflight_command(StringView   executable_system,
 } /* namespace */
 
 fn
-Assimilate::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
+Assimilate::execute(ExecContext &ec, EvalContext &cxt) const throws
+    -> i32
 {
   let const arguments = PARSE_BUILTIN_ARGS(ec);
+
   if (FLAG_HELP.is_enabled()) SHOW_BUILTIN_HELP_AND_RETURN(ec);
 
   bool  has_invalid_target_character = false;
   bool  is_inside_host_literal       = false;
   bool  has_host_literal             = false;
   usize host_literal_start           = 0;
+
   if (arguments.count() == 2) {
     for (usize character_position = 0;
          character_position < arguments[1].count(); character_position++)
     {
       let const character = arguments[1][character_position];
+
       switch (character) {
       case ' ':
       case '\t':
       case '\r':
       case '\n': has_invalid_target_character = true; break;
+
       case '[':
         if (has_host_literal || is_inside_host_literal ||
             (character_position != 0 &&
@@ -547,10 +565,12 @@ Assimilate::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         {
           has_invalid_target_character = true;
         }
+
         has_host_literal       = true;
         is_inside_host_literal = true;
         host_literal_start     = character_position;
         break;
+
       case ']':
         if (!is_inside_host_literal ||
             character_position == host_literal_start + 1 ||
@@ -558,15 +578,19 @@ Assimilate::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         {
           has_invalid_target_character = true;
         }
+
         is_inside_host_literal = false;
         break;
+
       case ':':
         if (!is_inside_host_literal) has_invalid_target_character = true;
         break;
+
       default: break;
       }
     }
   }
+
   if (is_inside_host_literal) has_invalid_target_character = true;
 
   if (arguments.count() != 2 || arguments[1].is_empty() ||
@@ -576,6 +600,7 @@ Assimilate::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   }
 
   let const executable = os::current_executable_path();
+
   if (!executable.has_value()) {
     report_soft_builtin_error(ec, cxt,
                               "Cannot resolve this shell's executable path");
@@ -592,6 +617,7 @@ Assimilate::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let const ssh_command = parse_transport_command(
       FLAG_SSH_COMMAND.is_set() ? FLAG_SSH_COMMAND.value() : StringView{"ssh"},
       cxt.program_resolver(), allocator);
+
   if (!scp_command.has_value() || !ssh_command.has_value()) {
     report_soft_builtin_error(ec, cxt, "Cannot find both scp and ssh in PATH");
 
@@ -618,9 +644,11 @@ Assimilate::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       let const mood_length =
           comma.has_value() ? *comma : spelling.count() - mood_start;
       let const mood = spelling.substring_of_length(mood_start, mood_length);
+
       if (mood.is_empty() || !LINK_MOODS.find(mood).has_value()) {
         return report_usage_error(ec, cxt, ec.program());
       }
+
       if (!link_moods.is_empty()) link_moods += ',';
       link_moods += mood;
       if (!comma.has_value()) break;
@@ -629,6 +657,7 @@ Assimilate::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   }
 
   let const expected_identity = cxt.materialize_kosh_identity();
+
   if (!expected_identity.has_value()) {
     report_soft_builtin_error(ec, cxt,
                               "Cannot identify this shell's executable");
@@ -639,12 +668,15 @@ Assimilate::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let const executable_system   = os::executable_system_name();
   let const executable_machine  = os::executable_machine_name();
   let       preflight_arguments = ArrayList<String>{allocator};
+
   append_arguments(preflight_arguments, *ssh_command);
   preflight_arguments.push(String{"--"});
   preflight_arguments.push(arguments[1].clone());
   preflight_arguments.push(preflight_command(
       executable_system.view(), executable_machine.view(), trace, allocator));
+
   let status = run_program(preflight_arguments, ec, trace, "preflight");
+
   if (status != 0) return status;
 
   let const transaction_id =
@@ -655,6 +687,7 @@ Assimilate::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let const destination = arguments[1].view() + ":" + upload_name;
 
   let scp_arguments = ArrayList<String>{allocator};
+
   append_arguments(scp_arguments, *scp_command);
   scp_arguments.push(String{"-p"});
   scp_arguments.push(String{"--"});
@@ -664,6 +697,7 @@ Assimilate::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   if (status != 0) return status;
 
   let ssh_arguments = ArrayList<String>{allocator};
+
   append_arguments(ssh_arguments, *ssh_command);
   ssh_arguments.push(String{"--"});
   ssh_arguments.push(arguments[1].clone());

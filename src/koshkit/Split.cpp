@@ -39,9 +39,9 @@ split_output_name(StringView prefix,
   if (suffix_length > 64) throw Error{"suffix length is too large"};
 
   usize widened_count = 0;
+
   if (is_suffix_widened) {
-    loop
-    {
+    loop {
       u64 block_count = 25;
 
       for (usize position = 1; position < suffix_length && block_count != 0;
@@ -78,6 +78,7 @@ split_output_name(StringView prefix,
   if (index != 0) throw Error{"output file suffixes are exhausted"};
 
   String name{allocator, prefix};
+
   name += StringView{suffix, total_length};
 
   return name;
@@ -87,8 +88,7 @@ fn
 Split::execute(const ExecContext               &ec,
                EvalContext                     &cxt,
                const ArrayList<String>         &args,
-               const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+               const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
@@ -101,10 +101,12 @@ Split::execute(const ExecContext               &ec,
   let const source = operands.is_empty() ? StringView{"-"} : operands[0].view();
   let const prefix =
       operands.count() < 2 ? StringView{"x"} : operands[1].view();
+
   let const do_parse_count = [&](const FlagString &flag, StringView name,
-                                 u64 maximum, StringView note, u64 &value)
-                                 throws -> bool {
+                                 u64 maximum, StringView note,
+                                 u64 &value) throws -> bool {
     let const parsed = utils::parse_decimal_u64(flag.value());
+
     if (parsed.is_error() || parsed.value() == 0 || parsed.value() > maximum) {
       KOSHKIT_REPORT_ERROR_AT(
           flag.value_location(),
@@ -119,6 +121,7 @@ Split::execute(const ExecContext               &ec,
   };
 
   u64 suffix_length = 2;
+
   if (FLAG_SPLIT_SUFFIX_LENGTH.is_set() &&
       !do_parse_count(FLAG_SPLIT_SUFFIX_LENGTH, "suffix length", 64,
                       "use a decimal integer from 1 through 64", suffix_length))
@@ -128,12 +131,14 @@ Split::execute(const ExecContext               &ec,
 
   let const is_byte_mode = FLAG_SPLIT_BYTES.is_set();
   u64       unit_limit   = 1000;
+
   if (is_byte_mode &&
       !do_parse_count(FLAG_SPLIT_BYTES, "byte count", UINT64_MAX,
                       "use a positive decimal integer", unit_limit))
   {
     return 1;
   }
+
   if (FLAG_SPLIT_LINES.is_set() &&
       !do_parse_count(FLAG_SPLIT_LINES, "line count", UINT64_MAX,
                       "use a positive decimal integer", unit_limit))
@@ -142,36 +147,42 @@ Split::execute(const ExecContext               &ec,
   }
 
   let const input = open_named_or_stdin(ec, source);
+
   if (!input.has_value()) {
     KOSHKIT_REPORT_PATH_ERROR("read", source);
 
     return 1;
   }
-  defer
-  {
+
+  defer {
     if (input->mode == input_descriptor_mode::Owned)
       os::close_fd(input->descriptor);
   };
+
   os::descriptor output_descriptor = KOSH_INVALID_FD;
-  defer
-  {
+
+  defer {
     if (output_descriptor != KOSH_INVALID_FD) os::close_fd(output_descriptor);
   };
+
   u64 output_index      = 0;
   u64 output_unit_count = 0;
 
   let const do_open_output = [&]() throws -> bool {
     if (output_descriptor != KOSH_INVALID_FD) return true;
+
     let const name =
         split_output_name(prefix, static_cast<usize>(suffix_length),
                           !FLAG_SPLIT_SUFFIX_LENGTH.is_set(), output_index++,
                           cxt.scratch_allocator());
+
     if (let const existing = os::open_file_descriptor(
             name.view(), os::file_open_mode::ReadNonblocking);
         existing.has_value())
     {
       let const is_input =
           os::descriptors_refer_to_same_file(*existing, input->descriptor);
+
       os::close_fd(*existing);
       if (is_input) {
         report_soft_koshkit_util_error(
@@ -181,18 +192,22 @@ Split::execute(const ExecContext               &ec,
         return false;
       }
     }
+
     let const descriptor =
         os::open_file_descriptor(name.view(), os::file_open_mode::Truncate);
+
     if (!descriptor.has_value()) {
       KOSHKIT_REPORT_PATH_ERROR("create", name);
 
       return false;
     }
+
     output_descriptor = *descriptor;
     output_unit_count = 0;
 
     return true;
   };
+
   let const do_rotate_output = [&]() wontthrow -> void {
     if (output_descriptor != KOSH_INVALID_FD) os::close_fd(output_descriptor);
     output_descriptor = KOSH_INVALID_FD;
@@ -200,10 +215,10 @@ Split::execute(const ExecContext               &ec,
 
   char buffer[65536];
 
-  loop
-  {
+  loop {
     let const read_count =
         os::read_fd(input->descriptor, buffer, sizeof(buffer));
+
     if (!read_count.has_value()) {
       if (os::INTERRUPT_REQUESTED) return 130;
       report_soft_koshkit_util_error(ec, cxt, args[0].view(),
@@ -211,6 +226,7 @@ Split::execute(const ExecContext               &ec,
 
       return 1;
     }
+
     if (*read_count == 0) break;
 
     if (is_byte_mode) {
@@ -218,16 +234,19 @@ Split::execute(const ExecContext               &ec,
 
       while (position < *read_count) {
         if (!do_open_output()) return 1;
+
         let const remaining   = unit_limit - output_unit_count;
         let const write_count = remaining < *read_count - position
                                     ? static_cast<usize>(remaining)
                                     : *read_count - position;
+
         if (!os::write_all(output_descriptor, buffer + position, write_count)) {
           report_soft_koshkit_util_error(ec, cxt, args[0].view(),
                                          os::last_system_error_message());
 
           return 1;
         }
+
         position += write_count;
         output_unit_count += write_count;
         if (output_unit_count == unit_limit) do_rotate_output();
@@ -260,6 +279,7 @@ Split::execute(const ExecContext               &ec,
 
           return 1;
         }
+
         segment_start = segment_end;
         output_unit_count += line_count;
         if (output_unit_count == unit_limit) do_rotate_output();

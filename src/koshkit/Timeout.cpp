@@ -45,9 +45,11 @@ duration_to_nanos(f64 seconds) wontthrow -> u64
 
   constexpr f64 NANOS_PER_SECOND = 1000000000.0;
   constexpr f64 MAX_SECONDS = static_cast<f64>(UINT64_MAX) / NANOS_PER_SECOND;
+
   if (seconds >= MAX_SECONDS) return UINT64_MAX;
 
   let const nanos = seconds * NANOS_PER_SECOND;
+
   if (nanos < 1.0) return 1;
 
   return static_cast<u64>(nanos);
@@ -80,14 +82,14 @@ wait_for_process_until(os::process     child,
   let const has_deadline = timeout_nanos != 0 && timeout_nanos != UINT64_MAX;
   let const started_at_nanos = os::monotonic_nanos();
 
-  loop
-  {
+  loop {
     if (os::INTERRUPT_REQUESTED) return supervision_wait_result::Interrupted;
 
     if (!has_child_exited) {
       let const state  = os::poll_process(child, status);
       has_child_exited = state == os::process_state::Exited;
     }
+
     if (has_child_exited && (!should_wait_for_process_group ||
                              !os::process_group_has_members(process_group)))
     {
@@ -95,15 +97,19 @@ wait_for_process_until(os::process     child,
     }
 
     u64 sleep_nanos = 10000000;
+
     if (has_deadline) {
       let const elapsed_nanos = os::monotonic_nanos() - started_at_nanos;
+
       if (elapsed_nanos >= timeout_nanos)
         return supervision_wait_result::TimedOut;
 
       let const remaining_nanos = timeout_nanos - elapsed_nanos;
       let const poll_nanos = has_child_exited ? u64{10000000} : u64{1000000};
+
       sleep_nanos = remaining_nanos < poll_nanos ? remaining_nanos : poll_nanos;
     }
+
     os::sleep_for_seconds(static_cast<f64>(sleep_nanos) / 1000000000.0);
   }
 }
@@ -121,8 +127,8 @@ signal_supervised_process(os::process child,
 }
 
 static fn
-timeout_expiration_status(i32 command_status, i32 timeout_signal) wontthrow
-    -> i32
+timeout_expiration_status(i32 command_status, i32 timeout_signal)
+    wontthrow -> i32
 {
   if (timeout_signal == 9) return 137;
   if (FLAG_TIMEOUT_PRESERVE_STATUS.is_enabled()) return command_status;
@@ -153,13 +159,15 @@ finish_interrupted_supervision(os::process child,
 }
 
 static fn
-resolve_timeout_program(StringView program_name, EvalContext &cxt) throws
-    -> Maybe<Path>
+resolve_timeout_program(StringView   program_name,
+                        EvalContext &cxt) throws -> Maybe<Path>
 {
   if (os::has_directory_separator(program_name)) {
     let const typed_program_path = Path{program_name};
+
     if (typed_program_path.has_trailing_separator()) {
       let const normalized_program_path = typed_program_path.normalized();
+
       if (!normalized_program_path.exists()) return None;
 
       return normalized_program_path;
@@ -172,6 +180,7 @@ resolve_timeout_program(StringView program_name, EvalContext &cxt) throws
       program_name, ProgramResolver::SearchMode::First,
       ProgramResolver::Requirement::Runnable,
       ProgramResolver::CachePolicy::Bypass);
+
   if (matches.is_empty()) return None;
 
   return matches[0];
@@ -184,6 +193,7 @@ checked_timeout_program(StringView            program_name,
 {
   let const typed_program_path = Path{program_name, cxt.scratch_allocator()};
   let       program_path       = resolve_timeout_program(program_name, cxt);
+
   if (!program_path.has_value()) return None;
 
   if (typed_program_path.has_trailing_separator() &&
@@ -191,12 +201,15 @@ checked_timeout_program(StringView            program_name,
   {
     let error =
         ErrorWithLocation{program_location, "This file is not a directory"};
+
     error.set_command_status(126);
     throw error;
   }
+
   if (program_path->is_directory()) {
     let error =
         ErrorWithLocation{program_location, "The command is a directory"};
+
     error.set_command_status(126);
     throw error;
   }
@@ -213,6 +226,7 @@ preflight_timeout_stage(const ExecContext &ec,
 {
   let args          = ArrayList<String>{cxt.scratch_allocator()};
   let arg_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};
+
   args.reserve(ec.args().count() - name_index);
   arg_locations.reserve(ec.args().count() - name_index);
 
@@ -224,13 +238,16 @@ preflight_timeout_stage(const ExecContext &ec,
   }
 
   defer { reset_flags(FLAG_LIST); };
+
   try {
     let[operands, operand_locations] = parse_util_operands(
         FLAG_LIST, args, cxt.scratch_allocator(), &arg_locations,
         {.should_accept_negative_number_operand = true});
+
     if (FLAG_HELP.is_enabled() || operands.count() < 2) {
       return None;
     }
+
     if (!Path{operands[1].view(), cxt.scratch_allocator()}
              .has_trailing_separator())
       return None;
@@ -242,10 +259,12 @@ preflight_timeout_stage(const ExecContext &ec,
         unused(parse_koshkit_duration_seconds(
             FLAG_TIMEOUT_KILL_AFTER.value(),
             FLAG_TIMEOUT_KILL_AFTER.value_location(), cxt.scratch_allocator()));
+
       let const timeout_signal = resolve_koshkit_signal(
           FLAG_TIMEOUT_SIGNAL.is_set() ? FLAG_TIMEOUT_SIGNAL.value()
                                        : StringView{"TERM"},
           FLAG_TIMEOUT_SIGNAL.value_location(), cxt.scratch_allocator());
+
       if (!os::is_process_signal_supported(timeout_signal)) return None;
     } catch (const ErrorBase &) {
       return None;
@@ -271,8 +290,7 @@ fn
 Timeout::execute(const ExecContext               &ec,
                  EvalContext                     &cxt,
                  const ArrayList<String>         &args,
-                 const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+                 const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(
       args, arg_locations, {.should_accept_negative_number_operand = true});
@@ -284,10 +302,12 @@ Timeout::execute(const ExecContext               &ec,
   let const timeout_nanos = duration_to_nanos(timeout_seconds);
 
   u64 kill_after_nanos = 0;
+
   if (FLAG_TIMEOUT_KILL_AFTER.is_set()) {
     let const kill_after_seconds = parse_koshkit_duration_seconds(
         FLAG_TIMEOUT_KILL_AFTER.value(),
         FLAG_TIMEOUT_KILL_AFTER.value_location(), cxt.scratch_allocator());
+
     kill_after_nanos = duration_to_nanos(kill_after_seconds);
   }
 
@@ -295,6 +315,7 @@ Timeout::execute(const ExecContext               &ec,
       FLAG_TIMEOUT_SIGNAL.is_set() ? FLAG_TIMEOUT_SIGNAL.value()
                                    : StringView{"TERM"},
       FLAG_TIMEOUT_SIGNAL.value_location(), cxt.scratch_allocator());
+
   if (!os::is_process_signal_supported(timeout_signal))
     throw ErrorWithLocation{
         FLAG_TIMEOUT_SIGNAL.value_location(),
@@ -304,6 +325,7 @@ Timeout::execute(const ExecContext               &ec,
 
   let const program_path =
       checked_timeout_program(operands[1].view(), operand_locations[1], cxt);
+
   if (!program_path.has_value()) {
     report_soft_koshkit_util_error(ec, cxt, operand_locations[1], "timeout",
                                    "command '" + operands[1] +
@@ -314,6 +336,7 @@ Timeout::execute(const ExecContext               &ec,
 
   let command_args      = ArrayList<String>{cxt.scratch_allocator()};
   let command_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};
+
   command_args.reserve(operands.count() - 1);
   command_locations.reserve(operands.count() - 1);
 
@@ -331,9 +354,9 @@ Timeout::execute(const ExecContext               &ec,
   let const has_controlling_terminal =
       cxt.execution_store().shell_is_interactive() &&
       os::shell_has_controlling_terminal();
+
   cxt.prepare_child_environment();
-  defer
-  {
+  defer {
     if (has_controlling_terminal) os::reclaim_controlling_terminal();
   };
 
@@ -345,13 +368,16 @@ Timeout::execute(const ExecContext               &ec,
                                         ? os::terminal_handoff::BeforeStart
                                         : os::terminal_handoff::Keep,
                    .process_group = os::process_group_mode::New});
+
   if (child == KOSH_INVALID_PROCESS) {
     let const shell_path = os::current_executable_path();
+
     if (!shell_path.has_value())
       throw Error{"Could not locate the shell for script fallback"};
 
     let fallback_args      = ArrayList<String>{cxt.scratch_allocator()};
     let fallback_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};
+
     fallback_args.reserve(operands.count());
     fallback_locations.reserve(operands.count());
     fallback_args.push(String{cxt.scratch_allocator(), shell_path->view()});
@@ -368,6 +394,7 @@ Timeout::execute(const ExecContext               &ec,
         ec.source_location(),
         ResolvedCommand::from_program(Path{shell_path->view()}),
         steal(fallback_args), steal(fallback_locations));
+
     child = os::execute_program(
         fallback, os::program_execution_options{
                       .source        = source_view,
@@ -379,6 +406,7 @@ Timeout::execute(const ExecContext               &ec,
   }
 
   os::process process_group = KOSH_INVALID_PROCESS;
+
   try {
     process_group = os::process_group_of(child);
   } catch (...) {
@@ -386,8 +414,10 @@ Timeout::execute(const ExecContext               &ec,
     try {
       os::reap_process_quietly(child);
     } catch (...) {}
+
     throw;
   }
+
   defer { os::close_process_reference(process_group); };
 
   i32 status           = 0;
@@ -395,6 +425,7 @@ Timeout::execute(const ExecContext               &ec,
   let wait_result = wait_for_process_until(child, process_group, timeout_nanos,
                                            status, has_child_exited,
                                            wait_completion::ProcessGroupEmpty);
+
   if (wait_result == supervision_wait_result::Exited) return status;
   if (wait_result == supervision_wait_result::Interrupted)
     return finish_interrupted_supervision(child, process_group,
@@ -408,6 +439,7 @@ Timeout::execute(const ExecContext               &ec,
     {
       return status;
     }
+
     signal_supervised_process(child, process_group, has_child_exited, 9);
     if (!has_child_exited) os::reap_process_quietly(child);
 
@@ -442,6 +474,7 @@ Timeout::execute(const ExecContext               &ec,
 
       return 125;
     }
+
     if (!has_child_exited) os::reap_process_quietly(child);
 
     return 137;

@@ -47,6 +47,7 @@ Pwd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let const should_use_physical = FLAG_PWD_PHYSICAL.is_enabled();
   let const directory = should_use_physical ? Path::current_directory()
                                             : logical_working_directory(cxt);
+
   output.append(directory.text());
   output += '\n';
   ec.print_to_stdout(output);

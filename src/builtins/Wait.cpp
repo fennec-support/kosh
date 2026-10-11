@@ -67,6 +67,7 @@ fn
 Wait::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let const status = wait_for_operands(ec, cxt);
+
   cxt.release_finished_coprocess();
 
   return status;
@@ -142,6 +143,7 @@ wait_for_operands(ExecContext &ec, EvalContext &cxt) throws -> i32
     let const &target = args[i];
 
     job *matched = nullptr;
+
     if (!target.is_empty() && target[0] == '%') {
       matched = table.find_job_by_spec(target);
     } else if (let const parsed = target.to<i64>(); !parsed.is_error()) {
@@ -155,7 +157,8 @@ wait_for_operands(ExecContext &ec, EvalContext &cxt) throws -> i32
     return matched;
   };
 
-  let const do_finish_next_wait = [&](next_job_wait outcome) throws -> i32 {
+  let const do_finish_next_wait =
+      [&](next_job_wait outcome) throws -> i32 {
     if (outcome.was_interrupted) return outcome.status;
 
     if (!outcome.job_id.has_value()) {
@@ -196,6 +199,7 @@ wait_for_operands(ExecContext &ec, EvalContext &cxt) throws -> i32
       }
 
       let const parsed = args[i].to<i64>();
+
       if (args[i].is_empty() || args[i][0] == '%' || parsed.is_error()) {
         unknown_targets.push(i);
 
@@ -219,6 +223,7 @@ wait_for_operands(ExecContext &ec, EvalContext &cxt) throws -> i32
 
     for (let const i : unknown_targets) {
       let const &target = args[i];
+
       if (!target.is_empty() && target[0] == '%') {
         unused(do_report_unknown_target(i));
       } else {
@@ -293,6 +298,7 @@ wait_for_operands(ExecContext &ec, EvalContext &cxt) throws -> i32
     do_store_pid(None);
 
     let finished_before_ids = ArrayList<i32>{heap_allocator()};
+
     if (should_keep_waited_statuses) {
       table.update_jobs();
 
@@ -316,6 +322,7 @@ wait_for_operands(ExecContext &ec, EvalContext &cxt) throws -> i32
     }
 
     let const &last_background_pid = table.last_background_pid();
+
     if (last_background_pid.has_value())
       unused(cxt.wait_for_process_substitution(*last_background_pid));
 

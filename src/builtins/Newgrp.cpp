@@ -31,12 +31,14 @@ fn
 Newgrp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let const &args = ec.args();
+
   ASSERT(!args.is_empty());
 
   let const found = cxt.program_resolver().search(
       "newgrp", ProgramResolver::SearchMode::First,
       ProgramResolver::Requirement::Runnable,
       ProgramResolver::CachePolicy::Bypass);
+
   if (found.count() == 0) {
     report_soft_builtin_error(
         ec, cxt, "Unable to run newgrp because its program was not found");
@@ -45,8 +47,11 @@ Newgrp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   }
 
   let command_args = ArrayList<String>{heap_allocator()};
+
   command_args.push_managed("newgrp");
+
   let command_arg_locations = ArrayList<SourceLocation>{heap_allocator()};
+
   command_arg_locations.push(ec.source_location());
 
   for (usize i = 1; i < args.count(); i++) {

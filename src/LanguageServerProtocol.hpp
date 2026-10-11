@@ -97,7 +97,9 @@ public:
   parse() throws -> JsonValue *
   {
     skip_blanks();
+
     let *value = parse_value();
+
     skip_blanks();
     if (value == nullptr || m_position != m_source.length) {
       return nullptr;
@@ -118,9 +120,11 @@ private:
   {
     while (m_position < m_source.length) {
       let const byte = m_source[m_position];
+
       if (byte != ' ' && byte != '\t' && byte != '\r' && byte != '\n') {
         break;
       }
+
       m_position++;
     }
   }
@@ -140,8 +144,10 @@ private:
       if (m_nesting_depth >= MAX_NESTING_DEPTH) return nullptr;
 
       m_nesting_depth++;
+
       let *const value =
           m_source[m_position] == '[' ? parse_array() : parse_object();
+
       m_nesting_depth--;
 
       return value;
@@ -160,8 +166,11 @@ private:
     {
       return nullptr;
     }
+
     m_position += spelling.length;
-    let *value     = create(kind);
+
+    let *value = create(kind);
+
     value->is_true = is_true;
 
     return value;
@@ -173,19 +182,25 @@ private:
     if (m_position >= m_source.length || m_source[m_position] != '"') {
       return None;
     }
+
     m_position++;
+
     let result = String{bump_allocator(m_arena)};
 
     while (m_position < m_source.length) {
       let const byte = m_source[m_position++];
+
       if (byte == '"') return result;
       if (static_cast<u8>(byte) < 0x20) return None;
       if (byte != '\\') {
         result.push(byte);
         continue;
       }
+
       if (m_position >= m_source.length) return None;
+
       let const escaped = m_source[m_position++];
+
       switch (escaped) {
       case '"':  result.push('"'); break;
       case '\\': result.push('\\'); break;
@@ -197,10 +212,12 @@ private:
       case 't':  result.push('\t'); break;
       case 'u':  {
         if (m_position + 4 > m_source.length) return None;
+
         u32 codepoint = 0;
 
         for (usize digit_index = 0; digit_index < 4; digit_index++) {
           let const digit = utils::hex_digit_value(m_source[m_position++]);
+
           if (!digit.has_value()) return None;
           codepoint = (codepoint << 4) | *digit;
         }
@@ -211,24 +228,30 @@ private:
           {
             return None;
           }
+
           m_position += 2;
+
           u32 low = 0;
 
           for (usize digit_index = 0; digit_index < 4; digit_index++) {
             let const digit = utils::hex_digit_value(m_source[m_position++]);
+
             if (!digit.has_value()) {
               return None;
             }
+
             low = (low << 4) | *digit;
           }
 
           if (low < 0xdc00 || low > 0xdfff) {
             return None;
           }
+
           codepoint = 0x10000 + ((codepoint - 0xd800) << 10) + (low - 0xdc00);
         } else if (codepoint >= 0xdc00 && codepoint <= 0xdfff) {
           return None;
         }
+
         utils::append_utf8(result, codepoint);
         break;
       }
@@ -243,8 +266,11 @@ private:
   parse_string_value() throws -> JsonValue *
   {
     let parsed = parse_string();
+
     if (!parsed.has_value()) return nullptr;
-    let *value  = create(json_kind::String);
+
+    let *value = create(json_kind::String);
+
     value->text = parsed.take();
 
     return value;
@@ -254,10 +280,13 @@ private:
   parse_number() throws -> JsonValue *
   {
     let const start = m_position;
+
     if (m_position < m_source.length && m_source[m_position] == '-') {
       m_position++;
     }
+
     if (m_position >= m_source.length) return nullptr;
+
     if (m_source[m_position] == '0') {
       m_position++;
     } else {
@@ -271,6 +300,7 @@ private:
         m_position++;
       }
     }
+
     if (m_position < m_source.length && m_source[m_position] == '.') {
       m_position++;
       if (m_position >= m_source.length || m_source[m_position] < '0' ||
@@ -285,6 +315,7 @@ private:
         m_position++;
       }
     }
+
     if (m_position < m_source.length &&
         (m_source[m_position] == 'e' || m_source[m_position] == 'E'))
     {
@@ -294,6 +325,7 @@ private:
       {
         m_position++;
       }
+
       if (m_position >= m_source.length || m_source[m_position] < '0' ||
           m_source[m_position] > '9')
       {
@@ -306,7 +338,9 @@ private:
         m_position++;
       }
     }
+
     let *value = create(json_kind::Number);
+
     value->text =
         String{bump_allocator(m_arena),
                m_source.substring_of_length(start, m_position - start)};
@@ -318,7 +352,9 @@ private:
   parse_array() throws -> JsonValue *
   {
     m_position++;
+
     let *value = create(json_kind::Array);
+
     skip_blanks();
     if (m_position < m_source.length && m_source[m_position] == ']') {
       m_position++;
@@ -326,10 +362,11 @@ private:
       return value;
     }
 
-    loop
-    {
+    loop {
       skip_blanks();
+
       let *element = parse_value();
+
       if (element == nullptr) return nullptr;
       value->array.push(element);
       skip_blanks();
@@ -339,6 +376,7 @@ private:
 
         return value;
       }
+
       if (m_source[m_position++] != ',') return nullptr;
     }
   }
@@ -347,7 +385,9 @@ private:
   parse_object() throws -> JsonValue *
   {
     m_position++;
+
     let *value = create(json_kind::Object);
+
     skip_blanks();
     if (m_position < m_source.length && m_source[m_position] == '}') {
       m_position++;
@@ -355,17 +395,21 @@ private:
       return value;
     }
 
-    loop
-    {
+    loop {
       skip_blanks();
+
       let name = parse_string();
+
       if (!name.has_value()) return nullptr;
       skip_blanks();
       if (m_position >= m_source.length || m_source[m_position++] != ':') {
         return nullptr;
       }
+
       skip_blanks();
+
       let *member_value = parse_value();
+
       if (member_value == nullptr) return nullptr;
       value->object.push(json_member{name.take(), member_value});
       skip_blanks();
@@ -375,6 +419,7 @@ private:
 
         return value;
       }
+
       if (m_source[m_position++] != ',') return nullptr;
     }
   }
@@ -390,10 +435,12 @@ fn
 append_json_string(String &output, StringView value) throws -> void
 {
   output.push('"');
+
   static constexpr char HEX[] = "0123456789abcdef";
 
   for (usize position = 0; position < value.length; position++) {
     let const byte = static_cast<u8>(value[position]);
+
     switch (byte) {
     case '"':  output.append("\\\""); break;
     case '\\': output.append("\\\\"); break;
@@ -420,6 +467,7 @@ fn
 append_json_integer(String &output, i64 value) throws -> void
 {
   char buffer[21];
+
   output.append(utils::int_to_text_into(value, buffer, sizeof(buffer)));
 }
 
@@ -427,6 +475,7 @@ fn
 append_json_integer(String &output, u64 value) throws -> void
 {
   char buffer[20];
+
   output.append(utils::uint_to_text_into(value, buffer, sizeof(buffer)));
 }
 
@@ -438,6 +487,7 @@ append_json_value(String &output, const JsonValue &value) throws -> void
   case json_kind::Boolean:
     output.append(value.is_true ? "true" : "false");
     break;
+
   case json_kind::Number: output.append(value.text.view()); break;
   case json_kind::String: append_json_string(output, value.text.view()); break;
   case json_kind::Array:
@@ -450,6 +500,7 @@ append_json_value(String &output, const JsonValue &value) throws -> void
 
     output.push(']');
     break;
+
   case json_kind::Object:
     output.push('{');
 
@@ -489,6 +540,7 @@ send_payload(StringView payload) wontthrow -> bool
       utils::uint_to_text_into(payload.length, digits, sizeof(digits));
   char  header[64];
   usize header_length = 0;
+
   __builtin_memcpy(header + header_length, PREFIX.data, PREFIX.length);
   header_length += PREFIX.length;
   __builtin_memcpy(header + header_length, length.data, length.length);
@@ -504,6 +556,7 @@ fn
 send_result(const JsonValue *id, StringView result) throws -> bool
 {
   let payload = String{"{\"jsonrpc\":\"2.0\",\"id\":"};
+
   append_request_id(payload, id);
   payload.append(",\"result\":");
   payload.append(result);
@@ -513,9 +566,11 @@ send_result(const JsonValue *id, StringView result) throws -> bool
 }
 
 fn
-send_error(const JsonValue *id, i64 code, StringView message) throws -> bool
+send_error(const JsonValue *id, i64 code, StringView message) throws
+    -> bool
 {
   let payload = String{"{\"jsonrpc\":\"2.0\",\"id\":"};
+
   append_request_id(payload, id);
   payload.append(",\"error\":{\"code\":");
   append_json_integer(payload, code);
@@ -532,14 +587,13 @@ public:
   fn
   read_message() throws -> Maybe<StringView>
   {
-    loop
-    {
+    loop {
       compact();
       m_header_scan_position = m_offset;
-      usize header_end       = 0;
 
-      loop
-      {
+      usize header_end = 0;
+
+      loop {
         header_end = find_header_end();
         if (header_end != static_cast<usize>(-1)) break;
         if (!read_more()) return None;
@@ -549,9 +603,11 @@ public:
       let const headers =
           m_buffer.substring_of_length(m_offset, header_end - m_offset);
       let content_length = parse_content_length(headers);
+
       if (!content_length.has_value()) return None;
 
       let const body_start = header_end + 4;
+
       if (*content_length > MAX_MESSAGE_LENGTH) {
         LOG(Info, "skipping a %zu byte message above the %zu byte limit",
             *content_length, MAX_MESSAGE_LENGTH);
@@ -606,6 +662,7 @@ private:
 
       let const line =
           headers.substring_of_length(line_start, line_end - line_start);
+
       if (line.starts_with(PREFIX)) {
         usize position = PREFIX.length;
 
@@ -616,13 +673,16 @@ private:
         }
 
         if (position == line.length) return None;
+
         let const parsed = utils::parse_decimal_u64(line.substring(position));
+
         if (parsed.is_error() || parsed.value() > SIZE_MAX) {
           return None;
         }
 
         return static_cast<usize>(parsed.value());
       }
+
       if (line_end == headers.length) break;
       line_start = line_end + 2;
     }
@@ -634,6 +694,7 @@ private:
   skip_body(usize body_start, usize length) throws -> bool
   {
     let const buffered_length = m_buffer.count() - body_start;
+
     if (buffered_length >= length) {
       m_offset = body_start + length;
 
@@ -641,16 +702,20 @@ private:
     }
 
     let remaining_length = length - buffered_length;
-    m_offset             = m_buffer.count();
+
+    m_offset = m_buffer.count();
+
     char bytes[8192];
 
     while (remaining_length > 0) {
       let const wanted_length =
           remaining_length < sizeof(bytes) ? remaining_length : sizeof(bytes);
       let const count = os::read_fd(KOSH_STDIN, bytes, wanted_length);
+
       if (!count.has_value() || *count == 0) {
         return false;
       }
+
       remaining_length -= *count;
     }
 
@@ -662,9 +727,11 @@ private:
   {
     char      bytes[8192];
     let const count = os::read_fd(KOSH_STDIN, bytes, sizeof(bytes));
+
     if (!count.has_value() || *count == 0) {
       return false;
     }
+
     m_buffer.append(StringView{bytes, *count});
 
     return true;
@@ -680,6 +747,7 @@ private:
 
       return;
     }
+
     if (m_offset < 64 * 1024) return;
     m_buffer = String{
         m_buffer.substring_of_length(m_offset, m_buffer.count() - m_offset)};
@@ -733,7 +801,9 @@ string_field(const JsonValue *object, StringView name) wontthrow
   if (object == nullptr || object->kind != json_kind::Object) {
     return None;
   }
+
   let const *value = object->get(name);
+
   if (value == nullptr || value->kind != json_kind::String) {
     return None;
   }
@@ -742,18 +812,23 @@ string_field(const JsonValue *object, StringView name) wontthrow
 }
 
 fn
-integer_field(const JsonValue *object, StringView name) throws -> Maybe<i64>
+integer_field(const JsonValue *object, StringView name) throws
+    -> Maybe<i64>
 {
   if (object == nullptr || object->kind != json_kind::Object) {
     return None;
   }
+
   let const *value = object->get(name);
+
   if (value == nullptr || value->kind != json_kind::Number ||
       value->text.is_empty())
   {
     return None;
   }
+
   let const parsed = utils::parse_decimal_i64(value->text.view());
+
   if (parsed.is_error()) return None;
 
   return parsed.value();
@@ -800,14 +875,10 @@ public:
            StringView  source,
            i64         document_version,
            Maybe<Path> document_path = None) throws
-      : uri(document_uri),
-        language_id(document_language),
-        normalized_source(source),
-        version(document_version),
-        analysis_source(heap_allocator()),
-        path(steal(document_path)),
-        line_starts(heap_allocator()),
-        diagnostics(heap_allocator()),
+      : uri(document_uri), language_id(document_language),
+        normalized_source(source), version(document_version),
+        analysis_source(heap_allocator()), path(steal(document_path)),
+        line_starts(heap_allocator()), diagnostics(heap_allocator()),
         auxiliary_diagnostics(heap_allocator()),
         followed_paths(heap_allocator())
   {
@@ -823,6 +894,7 @@ public:
     if (source == normalized_source.view()) return false;
 
     let replacement = String{source};
+
     replacement.normalize_crlf_line_endings();
     if (replacement.view() == normalized_source.view()) return false;
 
@@ -839,6 +911,7 @@ public:
   {
     let const start = line_starts[line];
     let       end   = normalized_source.count();
+
     if (line + 1 < line_starts.count()) end = line_starts[line + 1] - 1;
 
     return {start, end};
@@ -850,10 +923,14 @@ public:
                 position_encoding encoding) const wontthrow -> Maybe<usize>
   {
     if (line >= line_starts.count()) return None;
+
     let const[start, end] = get_line_bounds(line);
+
     if (encoding == position_encoding::Utf8 || normalized_source.is_ascii()) {
       if (character > end - start) return None;
+
       let const position = start + character;
+
       if (position < end &&
           (static_cast<u8>(normalized_source[position]) & 0xc0) == 0x80)
       {
@@ -870,6 +947,7 @@ public:
       let const decoded =
           utils::decode_utf8(normalized_source.view(), position, 0xfffd);
       let const codepoint_units = decoded.value > 0xffff ? 2u : 1u;
+
       if (units + codepoint_units > character) return None;
       units += codepoint_units;
       position += decoded.length;
@@ -887,11 +965,13 @@ public:
   {
     if (byte_position > normalized_source.count())
       byte_position = normalized_source.count();
+
     usize lower = 0;
     usize upper = line_starts.count();
 
     while (lower + 1 < upper) {
       let const middle = lower + (upper - lower) / 2;
+
       if (line_starts[middle] <= byte_position)
         lower = middle;
       else
@@ -900,12 +980,14 @@ public:
 
     let const line  = lower;
     let const start = line_starts[line];
+
     if (encoding == position_encoding::Utf8 || normalized_source.is_ascii()) {
       return {line, byte_position - start};
     }
 
     usize units    = 0;
     usize position = start;
+
     if (m_cached_unit_line == line && m_cached_unit_byte <= byte_position) {
       units    = m_cached_units;
       position = m_cached_unit_byte;
@@ -914,6 +996,7 @@ public:
     while (position < byte_position) {
       let const decoded =
           utils::decode_utf8(normalized_source.view(), position, 0xfffd);
+
       units += decoded.value > 0xffff ? 2 : 1;
       position += decoded.length;
     }
@@ -935,11 +1018,13 @@ public:
     if (encoding == position_encoding::Utf8 || normalized_source.is_ascii()) {
       return end - start;
     }
+
     usize units = 0;
 
     while (start < end) {
       let const decoded =
           utils::decode_utf8(normalized_source.view(), start, 0xfffd);
+
       units += decoded.value > 0xffff ? 2 : 1;
       start += decoded.length;
     }
@@ -947,28 +1032,33 @@ public:
     return units;
   }
 
-  String                       uri;
-  String                       language_id;
-  String                       normalized_source;
-  i64                          version;
-  parsed_format_document       format;
-  String                       analysis_source;
-  mimic_mood                   mood{mimic_mood::Default};
-  u64                          diagnostic_revision{0};
-  Maybe<Path>                  path;
-  Maybe<Path>                  canonical_path;
+  String                 uri;
+  String                 language_id;
+  String                 normalized_source;
+  i64                    version;
+  parsed_format_document format;
+  String                 analysis_source;
+
+  mimic_mood mood{mimic_mood::Default};
+  u64        diagnostic_revision{0};
+
+  Maybe<Path> path;
+  Maybe<Path> canonical_path;
+
   ArrayList<usize>             line_starts;
   ArrayList<source_diagnostic> diagnostics;
   ArrayList<source_diagnostic> auxiliary_diagnostics;
   HashSet                      followed_paths;
-  analysis_symbol_records      symbol_records;
-  ArrayList<String>            completion_variable_names{heap_allocator()};
-  ArrayList<String>            completion_function_names{heap_allocator()};
+
+  analysis_symbol_records symbol_records;
+  ArrayList<String>       completion_variable_names{heap_allocator()};
+  ArrayList<String>       completion_function_names{heap_allocator()};
 
   fn
   rebuild_format() throws -> void
   {
     let path_view = Maybe<StringView>{};
+
     if (path.has_value()) path_view = path->text().view();
     format = parse_format_document(parser_format_input{
         normalized_source.view(), path_view, language_id.view()});
@@ -977,6 +1067,7 @@ public:
 
       return;
     }
+
     analysis_source =
         parser_format_analysis_source(format, normalized_source.view());
   }
@@ -1017,9 +1108,13 @@ fn
 decode_file_uri(StringView uri) throws -> Maybe<Path>
 {
   static const StringView PREFIX{"file://"};
+
   if (!uri.starts_with(PREFIX)) return None;
+
   let path_text = uri.substring(PREFIX.length);
+
   if (path_text.starts_with("localhost/")) path_text = path_text.substring(9);
+
   let decoded = String{heap_allocator()};
 
   for (usize position = 0; position < path_text.length; position++) {
@@ -1027,12 +1122,16 @@ decode_file_uri(StringView uri) throws -> Maybe<Path>
       decoded.push(path_text[position]);
       continue;
     }
+
     if (position + 2 >= path_text.length) return None;
+
     let const high = utils::hex_digit_value(path_text[position + 1]);
     let const low  = utils::hex_digit_value(path_text[position + 2]);
+
     if (!high.has_value() || !low.has_value()) {
       return None;
     }
+
     decoded.push(static_cast<char>((*high << 4) | *low));
     position += 2;
   }
@@ -1048,6 +1147,7 @@ file_uri_for_path(const Path &path) throws -> String
 
   for (usize position = 0; position < path.count(); position++) {
     let const byte = path.text()[position];
+
     if (os::is_directory_separator(byte)) {
       uri.push('/');
     } else if ((byte >= 'a' && byte <= 'z') || (byte >= 'A' && byte <= 'Z') ||
@@ -1057,6 +1157,7 @@ file_uri_for_path(const Path &path) throws -> String
       uri.push(byte);
     } else {
       let const unsigned_byte = static_cast<u8>(byte);
+
       uri.push('%');
       uri.push(HEX[unsigned_byte >> 4]);
       uri.push(HEX[unsigned_byte & 0xf]);
@@ -1067,8 +1168,8 @@ file_uri_for_path(const Path &path) throws -> String
 }
 
 fn
-append_protocol_position(String &output, protocol_position position) throws
-    -> void
+append_protocol_position(String           &output,
+                         protocol_position position) throws -> void
 {
   output.append("{\"line\":");
   append_json_integer(output, static_cast<u64>(position.line));
@@ -1117,10 +1218,12 @@ mood_for(const Document &document) throws -> mimic_mood
 }
 
 fn
-document_position(const JsonValue *position) throws -> Maybe<protocol_position>
+document_position(const JsonValue *position) throws
+    -> Maybe<protocol_position>
 {
   let const line      = integer_field(position, "line");
   let const character = integer_field(position, "character");
+
   if (!line.has_value() || !character.has_value() || *line < 0 ||
       *character < 0)
   {

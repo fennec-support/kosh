@@ -31,8 +31,8 @@ simple_command_static_verdict(const ArrayList<const Token *> &args,
     -> Maybe<bool>;
 
 pure fn
-word_segment_has_glob_metacharacter(const WordSegment &segment) wontthrow
-    -> bool;
+word_segment_has_glob_metacharacter(const WordSegment &segment)
+    wontthrow -> bool;
 
 pure fn
 classify_plain_literal(const Word &word) wontthrow -> Word::PlainLiteral;
@@ -43,8 +43,8 @@ fn
 literal_word_value(const Token *token) throws -> Maybe<String>;
 
 fn
-plain_variable_reference_name(const Token *token) wontthrow
-    -> Maybe<StringView>;
+plain_variable_reference_name(const Token *token)
+    wontthrow -> Maybe<StringView>;
 
 fn
 propagated_literal_word_value(const Token           *token,
@@ -57,7 +57,8 @@ try_fold_arithmetic_with_constants(StringView             expression,
     -> Maybe<String>;
 
 fn
-optimize_node(const Expression *node, AnalysisContext &actx) throws -> void;
+optimize_node(const Expression *node, AnalysisContext &actx) throws
+    -> void;
 
 } /* namespace optimizer */
 

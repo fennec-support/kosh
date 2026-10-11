@@ -68,6 +68,7 @@ fn
 Local::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let const &args = ec.args();
+
   ASSERT(!args.is_empty());
 
   if (ec.is_called_through_command &&
@@ -79,6 +80,7 @@ Local::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       let const name            = equals_position.has_value()
                                       ? arg.substring_of_length(0, *equals_position)
                                       : arg;
+
       if (name == "-" || name_is_valid_identifier(name)) {
         continue;
       }
@@ -96,34 +98,39 @@ Local::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         "Unable to declare a local variable outside a function",
         "`local` only works inside a function body"};
 
-  bool      should_make_indexed      = false;
-  bool      should_make_associative  = false;
-  bool      should_mark_integer      = false;
-  bool      should_mark_lowercase    = false;
-  bool      should_mark_readonly     = false;
-  bool      should_mark_uppercase    = false;
-  bool      should_mark_export       = false;
-  bool      should_mark_nameref      = false;
-  bool      should_print_declaration = false;
-  usize     first_name               = 1;
-  let const do_save_shell_options    = [&]() wontthrow {
+  bool  should_make_indexed      = false;
+  bool  should_make_associative  = false;
+  bool  should_mark_integer      = false;
+  bool  should_mark_lowercase    = false;
+  bool  should_mark_readonly     = false;
+  bool  should_mark_uppercase    = false;
+  bool  should_mark_export       = false;
+  bool  should_mark_nameref      = false;
+  bool  should_print_declaration = false;
+  usize first_name               = 1;
+
+  let const do_save_shell_options = [&]() wontthrow {
     let &saved_options =
         cxt.scope_store()
             .saved_scope_shell_options()[cxt.scope_store().local_scope_depth() -
                                          1];
+
     if (!saved_options.has_value())
       saved_options = cxt.runtime_state().get_shell_options();
   };
 
   for (; first_name < args.count(); first_name++) {
     let const arg = args[first_name].view();
+
     if (arg.length < 1 || arg[0] != '-') {
       break;
     }
+
     if (arg == "--") {
       first_name++;
       break;
     }
+
     if (arg == "-") {
       do_save_shell_options();
       continue;
@@ -132,19 +139,31 @@ Local::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     for (usize c = 1; c < arg.length; c++) {
       switch (arg[c]) {
       case 'a': should_make_indexed = true; break;
+
       case 'A': should_make_associative = true; break;
+
       case 'i': should_mark_integer = true; break;
+
       case 'l': should_mark_lowercase = true; break;
+
       case 'p': should_print_declaration = true; break;
+
       case 'r': should_mark_readonly = true; break;
+
       case 'u': should_mark_uppercase = true; break;
+
       case 'x': should_mark_export = true; break;
+
       case 'n': should_mark_nameref = true; break;
-      default:  {
+
+      default: {
         let invalid = String{heap_allocator()};
+
         invalid += arg[c];
+
         let bad_option = make_error_for_arg(
             ec, first_name, "'-" + invalid + "' is not a valid local option");
+
         bad_option.set_command_status(2);
         throw bad_option;
       }
@@ -173,6 +192,7 @@ Local::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   for (usize i = first_name; i < args.count(); i++) {
     let const &arg = args[i];
+
     if (arg == "-") {
       do_save_shell_options();
       continue;
@@ -186,20 +206,24 @@ Local::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     let const update_mode = !name.is_empty() && name[name.count() - 1] == '+'
                                 ? assignment_update_mode::Append
                                 : assignment_update_mode::Replace;
+
     if (update_mode == assignment_update_mode::Append)
       name = name.substring_of_length(0, name.count() - 1);
 
     let identifier = name;
+
     if (let const bracket = identifier.find_character('[');
         bracket.has_value() && identifier[identifier.count() - 1] == ']')
     {
       identifier = identifier.substring_of_length(0, *bracket);
     }
+
     if (!name_is_valid_identifier(identifier)) {
       report_invalid_identifier(ec, cxt, ec.arg_location_at(i), arg);
       status = 1;
       continue;
     }
+
     if (cxt.is_bash_argument_array(identifier)) {
       report_soft_builtin_error(ec, cxt, ec.arg_location_at(i),
                                 String{identifier} +
@@ -210,6 +234,7 @@ Local::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
     if (should_print_declaration) {
       let line = String{cxt.scratch_allocator()};
+
       if ((!cxt.scope_store().has_current_local(identifier) &&
            !cxt.scope_store().is_current_self_reference(identifier)) ||
           !append_variable_declaration(cxt, identifier, line))
@@ -236,6 +261,7 @@ Local::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     let const was_already_local =
         update_mode == assignment_update_mode::Append &&
         cxt.scope_store().has_current_local(name);
+
     LOG(All, "local declaring '%.*s' in the function scope",
         static_cast<int>(name.length), name.data);
     cxt.declare_local(name, !cxt.runtime_state().is_bash_compatible() ||
@@ -258,6 +284,7 @@ Local::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       {
         status = 1;
       }
+
       continue;
     }
 
@@ -277,8 +304,10 @@ Local::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       }
     } else if (equals_position.has_value()) {
       let const value = arg.substring(*equals_position + 1);
+
       if (update_mode == assignment_update_mode::Append) {
         let appended = String{cxt.scratch_allocator()};
+
         if (was_already_local)
           if (let const existing = cxt.get_variable_value(name))
             appended.append(existing->view());

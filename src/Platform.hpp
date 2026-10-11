@@ -332,10 +332,9 @@ public:
   TerminalEchoGuard(descriptor input, terminal_echo_mode mode) wontthrow;
   ~TerminalEchoGuard();
 
-  TerminalEchoGuard(const TerminalEchoGuard &) = delete;
+  TerminalEchoGuard(const TerminalEchoGuard &)                = delete;
   fn
-  operator=(const TerminalEchoGuard &)
-      ->TerminalEchoGuard & = delete;
+  operator=(const TerminalEchoGuard &) -> TerminalEchoGuard & = delete;
 
   mustuse fn
   did_succeed() const wontthrow -> bool;
@@ -357,10 +356,9 @@ public:
   explicit TerminalRawInputGuard(descriptor input) wontthrow;
   ~TerminalRawInputGuard();
 
-  TerminalRawInputGuard(const TerminalRawInputGuard &) = delete;
+  TerminalRawInputGuard(const TerminalRawInputGuard &)                = delete;
   fn
-  operator=(const TerminalRawInputGuard &)
-      ->TerminalRawInputGuard & = delete;
+  operator=(const TerminalRawInputGuard &) -> TerminalRawInputGuard & = delete;
 
   mustuse fn
   is_active() const wontthrow -> bool;
@@ -432,7 +430,7 @@ public:
   }
 
   pure constexpr fn
-  operator[](usize position) const wontthrow->const program_suffix &
+  operator[](usize position) const wontthrow -> const program_suffix &
   {
     return m_data[position];
   }
@@ -455,11 +453,14 @@ private:
 };
 
 inline fn
-normalize_windows_program_name(String &program_name) throws -> program_name_info
+normalize_windows_program_name(String &program_name) throws
+    -> program_name_info
 {
   program_name.lowercase_ascii();
+
   let const         length    = program_name.length();
   program_extension extension = program_extension::None;
+
   if (length >= 4 && program_name[length - 4] == '.') {
     let const packed_suffix = static_cast<u32>(program_name[length - 3]) << 16 |
                               static_cast<u32>(program_name[length - 2]) << 8 |
@@ -496,8 +497,8 @@ struct thread
 };
 
 fn
-start_thread(void (*entry)(opaque *), opaque *context) wontthrow
-    -> Maybe<thread>;
+start_thread(void (*entry)(opaque *), opaque *context)
+    wontthrow -> Maybe<thread>;
 
 fn
 join_thread(thread t) wontthrow -> void;
@@ -557,7 +558,8 @@ fn
 set_last_system_error(i32 error_number) wontthrow -> void;
 
 fn
-wait_and_monitor_process(process p, bool *was_stopped = nullptr) throws -> i32;
+wait_and_monitor_process(process p, bool *was_stopped = nullptr) throws
+    -> i32;
 fn
 wait_for_child_state_change() wontthrow -> void;
 
@@ -625,8 +627,8 @@ struct process_entry
 static_assert(sizeof(usize) != 8 || sizeof(process_entry) == 168);
 
 fn
-enumerate_processes(process_detail detail = process_detail::Basic) throws
-    -> ArrayList<process_entry>;
+enumerate_processes(process_detail detail = process_detail::Basic)
+    throws -> ArrayList<process_entry>;
 
 fn
 describe_processes(const ArrayList<u32> &pids) throws
@@ -690,10 +692,10 @@ enum class process_open_file_detail : u8
 fn
 has_process_open_file_listing() wontthrow -> bool;
 fn
-list_process_open_files(
-    i64                      pid,
-    Allocator                allocator,
-    process_open_file_detail detail = process_open_file_detail::Basic) throws
+list_process_open_files(i64                      pid,
+                        Allocator                allocator,
+                        process_open_file_detail detail =
+                            process_open_file_detail::Basic) throws
     -> ArrayList<process_open_file>;
 
 fn
@@ -721,6 +723,7 @@ make_device_node(StringView path,
                  u32        minor_number) wontthrow -> bool;
 fn
 touch_file_times(StringView path) wontthrow -> bool;
+
 struct file_time_values
 {
   i64 access_time{0};
@@ -730,8 +733,8 @@ struct file_time_values
 };
 
 fn
-set_file_times(StringView path, const file_time_values &times) wontthrow
-    -> bool;
+set_file_times(StringView path, const file_time_values &times)
+    wontthrow -> bool;
 fn
 remove_directory(StringView path) wontthrow -> bool;
 fn
@@ -857,7 +860,8 @@ enum class filesystem_verification_result : u8
 };
 
 fn
-verify_filesystem_integrity(StringView path, u64 timeout_nanoseconds) throws
+verify_filesystem_integrity(StringView path,
+                            u64        timeout_nanoseconds) throws
     -> filesystem_verification_result;
 
 fn
@@ -951,7 +955,7 @@ read_process_io_status(i64 pid, process_io_status &status) wontthrow -> bool;
 fn
 read_process_io_statuses(const ArrayList<i64>         &process_ids,
                          ArrayList<process_io_status> &statuses,
-                         ArrayList<u8> &availability) throws -> void;
+                         ArrayList<u8>                &availability) throws -> void;
 
 enum class system_activity_field : u32
 {
@@ -1173,8 +1177,8 @@ enum class process_file_match_scope : u8
 
 fn
 process_file_query_is_supported(const file_status       &status,
-                                process_file_match_scope scope) wontthrow
-    -> bool;
+                                process_file_match_scope scope)
+    wontthrow -> bool;
 
 fn
 format_mode_string(u32 mode) throws -> String;
@@ -1437,6 +1441,7 @@ write_all(os::descriptor fd, const opaque *buf, usize size) wontthrow -> bool
     let const result =
         write_fd(fd, static_cast<const u8 *>(buf) + written_byte_count,
                  size - written_byte_count);
+
     if (!result.has_value() || *result == 0) {
       return false;
     }
@@ -1446,6 +1451,7 @@ write_all(os::descriptor fd, const opaque *buf, usize size) wontthrow -> bool
 
   return true;
 }
+
 fn
 write_to_numbered_fd(i64 fd_number, const opaque *buf, usize size) wontthrow
     -> Maybe<usize>;
@@ -1458,8 +1464,8 @@ regular_descriptor_file_size(os::descriptor fd) wontthrow -> Maybe<u64>;
 fn
 rewind_descriptor(os::descriptor fd, usize byte_count) wontthrow -> bool;
 fn
-seek_descriptor_from_start(os::descriptor fd, u64 byte_offset) wontthrow
-    -> bool;
+seek_descriptor_from_start(os::descriptor fd, u64 byte_offset)
+    wontthrow -> bool;
 fn
 read_fd_to_string(os::descriptor fd, Allocator allocator) throws
     -> Maybe<String>;
@@ -1482,6 +1488,7 @@ public:
   DirectoryReference(DirectoryReference &&other) wontthrow
       : m_descriptor(other.take())
   {}
+
   DirectoryReference &
   operator=(DirectoryReference &&other) wontthrow
   {
@@ -1491,6 +1498,7 @@ public:
 
     return *this;
   }
+
   ~DirectoryReference()
   {
     if (is_valid()) close_fd(m_descriptor);
@@ -1501,11 +1509,13 @@ public:
   {
     return m_descriptor != KOSH_INVALID_FD;
   }
+
   pure fn
   get() const wontthrow -> descriptor
   {
     return m_descriptor;
   }
+
   fn
   take() wontthrow -> descriptor
   {
@@ -1601,10 +1611,9 @@ public:
   explicit RegexUtf8Scope(bool is_enabled) wontthrow;
   ~RegexUtf8Scope();
 
-  RegexUtf8Scope(const RegexUtf8Scope &) = delete;
+  RegexUtf8Scope(const RegexUtf8Scope &)                = delete;
   fn
-  operator=(const RegexUtf8Scope &)
-      ->RegexUtf8Scope & = delete;
+  operator=(const RegexUtf8Scope &) -> RegexUtf8Scope & = delete;
 
 private:
   maybeunused opaque *m_previous{nullptr};
@@ -1631,15 +1640,15 @@ public:
 
     activate(locale_name, is_grouping);
   }
+
   ~NumericLocaleScope()
   {
     if (m_is_active) deactivate();
   }
 
-  NumericLocaleScope(const NumericLocaleScope &) = delete;
+  NumericLocaleScope(const NumericLocaleScope &)                = delete;
   fn
-  operator=(const NumericLocaleScope &)
-      ->NumericLocaleScope & = delete;
+  operator=(const NumericLocaleScope &) -> NumericLocaleScope & = delete;
 
   pure fn
   is_active() const wontthrow -> bool
@@ -1705,7 +1714,8 @@ fn
 compile_regex(StringView pattern, case_sensitivity sensitivity) throws
     -> Maybe<compiled_regex>;
 fn
-compile_basic_regex(StringView pattern, case_sensitivity sensitivity) throws
+compile_basic_regex(StringView       pattern,
+                    case_sensitivity sensitivity) throws
     -> Maybe<compiled_regex>;
 
 fn
@@ -1717,7 +1727,8 @@ fn
 free_regex(compiled_regex &compiled) wontthrow -> void;
 
 fn
-regex_matches(compiled_regex &compiled, StringView subject) throws -> bool;
+regex_matches(compiled_regex &compiled, StringView subject) throws
+    -> bool;
 fn
 regex_matches_null_terminated(compiled_regex &compiled,
                               StringView      subject) throws -> bool;
@@ -1785,8 +1796,8 @@ change_current_directory(StringView path) throws -> ErrorOr<Ok>;
 fn
 reference_current_directory() wontthrow -> DirectoryReference;
 fn
-restore_current_directory(const DirectoryReference &reference) wontthrow
-    -> bool;
+restore_current_directory(const DirectoryReference &reference)
+    wontthrow -> bool;
 cold fn
 list_directory(StringView dir) throws -> Maybe<ArrayList<String>>;
 cold fn
@@ -1868,7 +1879,8 @@ has_environment_variable(StringView key) throws -> bool;
 fn
 get_environment_variable(StringView key) throws -> Maybe<String>;
 fn
-set_environment_variable(StringView key, StringView value) throws -> void;
+set_environment_variable(StringView key, StringView value) throws
+    -> void;
 fn
 unset_environment_variable(StringView key) throws -> void;
 pure fn
@@ -1883,6 +1895,7 @@ is_environment_value_storable(StringView value) wontthrow -> bool
 
   for (usize index = 0; index < value.length; index++) {
     let const byte = static_cast<u8>(value[index]);
+
     if ((byte & 0xC0) != 0x80) unit_count++;
     if (byte >= 0xF0) unit_count++;
   }
@@ -1898,7 +1911,8 @@ signal_internal_diagnostic() wontthrow -> void;
 using environment_name_callback = void (*)(opaque *, StringView);
 fn
 for_each_environment_name(opaque                   *context,
-                          environment_name_callback callback) throws -> void;
+                          environment_name_callback callback) throws
+    -> void;
 fn
 environment_names() throws -> ArrayList<String>;
 
@@ -1927,7 +1941,8 @@ get_real_group_id() wontthrow -> i64;
 fn
 get_effective_group_id() wontthrow -> i64;
 fn
-get_supplementary_group_ids(Allocator allocator) throws -> ArrayList<u32>;
+get_supplementary_group_ids(Allocator allocator) throws
+    -> ArrayList<u32>;
 
 fn
 machine_type() throws -> String;
@@ -1993,7 +2008,8 @@ pure fn
 path_root_length(StringView path) wontthrow -> usize;
 
 fn
-normalize_program_name(String &program_name) throws -> program_name_info;
+normalize_program_name(String &program_name) throws
+    -> program_name_info;
 
 fn
 get_current_user() throws -> Maybe<String>;
@@ -2018,7 +2034,8 @@ struct network_interface_address
 };
 
 fn
-network_interface_addresses() throws -> ArrayList<network_interface_address>;
+network_interface_addresses() throws
+    -> ArrayList<network_interface_address>;
 fn
 default_network_interface(Allocator allocator) throws -> Maybe<String>;
 
@@ -2325,6 +2342,7 @@ struct terminal_dimensions
 fn
 get_terminal_dimensions(descriptor output = KOSH_STDOUT) wontthrow
     -> Maybe<terminal_dimensions>;
+
 enum class terminal_settings_output_mode : u8
 {
   Normal,
@@ -2335,7 +2353,8 @@ enum class terminal_settings_output_mode : u8
 fn
 terminal_settings(descriptor                    terminal,
                   Allocator                     allocator,
-                  terminal_settings_output_mode mode) throws -> Maybe<String>;
+                  terminal_settings_output_mode mode) throws
+    -> Maybe<String>;
 
 enum class terminal_settings_apply_kind : u8
 {
@@ -2438,7 +2457,9 @@ get_priority(i64 id, priority_target target) wontthrow -> Maybe<i32>;
 fn
 set_priority(i64 id, i32 priority, priority_target target) wontthrow -> bool;
 fn
-run_nice(const ArrayList<String> &argv, i32 increment) throws -> Maybe<i32>;
+run_nice(const ArrayList<String> &argv, i32 increment) throws
+    -> Maybe<i32>;
+
 struct nohup_options
 {
   descriptor input{KOSH_INVALID_FD};
@@ -2448,8 +2469,8 @@ struct nohup_options
 };
 
 fn
-run_nohup(const ArrayList<String> &argv, const nohup_options &options) throws
-    -> Maybe<i32>;
+run_nohup(const ArrayList<String> &argv,
+          const nohup_options     &options) throws -> Maybe<i32>;
 
 struct system_log_options
 {
@@ -2494,8 +2515,9 @@ fn
 directory_is_trusted_for_exec(const Path &directory) wontthrow -> bool;
 
 fn
-capture_program_output(const ArrayList<String> &argv,
-                       u64 timeout_nanos) wontthrow -> Maybe<String>;
+capture_program_output(const ArrayList<String> &argv, u64 timeout_nanos)
+    wontthrow
+    -> Maybe<String>;
 
 class ProgramCapture
 {
@@ -2514,10 +2536,9 @@ public:
   ProgramCapture(ProgramCapture &&other) noexcept;
   fn
   operator=(ProgramCapture &&other) noexcept -> ProgramCapture &;
-  ProgramCapture(const ProgramCapture &) = delete;
+  ProgramCapture(const ProgramCapture &)                = delete;
   fn
-  operator=(const ProgramCapture &)
-      ->ProgramCapture & = delete;
+  operator=(const ProgramCapture &) -> ProgramCapture & = delete;
   ~ProgramCapture();
 
   fn
@@ -2526,6 +2547,7 @@ public:
   wait(u64 wait_nanos) const wontthrow -> void;
   fn
   take_output() wontthrow -> String;
+
   pure fn
   exit_status() const wontthrow -> Maybe<i32>
   {
@@ -2534,6 +2556,7 @@ public:
 
 private:
   ProgramCapture() = default;
+
   fn
   abandon() wontthrow -> void;
 
@@ -2546,7 +2569,7 @@ private:
 
 fn
 program_exits_successfully(const ArrayList<String> &argv,
-                           u64 timeout_nanos) wontthrow -> bool;
+                           u64                      timeout_nanos) wontthrow -> bool;
 
 fn
 give_controlling_terminal_to(process p) wontthrow -> void;
@@ -2580,10 +2603,9 @@ struct subshell_bootstrap
 
   fn
   operator=(subshell_bootstrap &&other) noexcept -> subshell_bootstrap &;
-  subshell_bootstrap(const subshell_bootstrap &) = delete;
+  subshell_bootstrap(const subshell_bootstrap &)                = delete;
   fn
-  operator=(const subshell_bootstrap &)
-      ->subshell_bootstrap & = delete;
+  operator=(const subshell_bootstrap &) -> subshell_bootstrap & = delete;
 
   fn
   release_process_ownership() wontthrow -> void;
@@ -2604,11 +2626,10 @@ private:
 class ScopedEnvironment
 {
 public:
-  ScopedEnvironment()                          = default;
-  ScopedEnvironment(const ScopedEnvironment &) = delete;
+  ScopedEnvironment()                                         = default;
+  ScopedEnvironment(const ScopedEnvironment &)                = delete;
   fn
-  operator=(const ScopedEnvironment &)
-      ->ScopedEnvironment & = delete;
+  operator=(const ScopedEnvironment &) -> ScopedEnvironment & = delete;
   ~ScopedEnvironment();
 
   fn
@@ -2658,7 +2679,8 @@ struct process_substitution_options
 };
 
 fn
-launch_process_substitution(const process_substitution_options &options) throws
+launch_process_substitution(
+    const process_substitution_options &options) throws
     -> process_substitution_launch;
 fn
 finish_process_substitution(opaque *cleanup) wontthrow -> void;
@@ -2677,8 +2699,8 @@ struct fork_compound_stage_options
 };
 
 fn
-try_fork_compound_stage(const fork_compound_stage_options &options) throws
-    -> Maybe<process>;
+try_fork_compound_stage(const fork_compound_stage_options &options)
+    throws -> Maybe<process>;
 
 fn
 try_fork_job_process() throws -> Maybe<process>;

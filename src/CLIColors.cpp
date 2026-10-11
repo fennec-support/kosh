@@ -19,7 +19,8 @@ namespace colors {
 static fn
 make_shell_highlight_theme() wontthrow -> highlight_theme
 {
-  let theme   = highlight_theme{};
+  let theme = highlight_theme{};
+
   theme.reset = ansi::RESET;
   theme.set_style(highlight_role::comment, ansi::DIM);
   theme.set_style(highlight_role::operator_, ansi::BOLD_MAGENTA);
@@ -55,6 +56,7 @@ static fn
 make_noninteractive_highlight_theme() wontthrow -> highlight_theme
 {
   let theme = make_shell_highlight_theme();
+
   theme.set_style(highlight_role::unset_variable, ansi::BRIGHT_RED);
   theme.set_style(highlight_role::invalid_syntax, ansi::BOLD_BRIGHT_RED);
   theme.set_style(highlight_role::unknown_command, ansi::BRIGHT_RED);
@@ -67,6 +69,7 @@ static fn
 make_printed_source_highlight_theme() wontthrow -> highlight_theme
 {
   let theme = make_noninteractive_highlight_theme();
+
   theme.set_style(highlight_role::unset_variable,
                   theme.style_for(highlight_role::variable));
   theme.set_style(highlight_role::unknown_command,
@@ -81,6 +84,7 @@ static fn
 make_diagnostic_highlight_theme() wontthrow -> highlight_theme
 {
   let theme = make_printed_source_highlight_theme();
+
   theme.set_style(highlight_role::partial_path, ansi::BRIGHT_RED);
 
   return theme;
@@ -126,6 +130,7 @@ struct cached_terminal_answer
   get(Probe probe) wontthrow -> bool
   {
     let const current_epoch = os::get_descriptor_epoch();
+
     if (epoch != current_epoch) {
       epoch         = current_epoch;
       is_a_terminal = probe();

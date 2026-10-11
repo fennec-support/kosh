@@ -43,15 +43,18 @@ Let::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   for (usize i = 1; i < ec.args().count(); i++) {
     let expression_base = ec.arg_location_at(i);
+
     if (let const source = cxt.source_store().current_source();
         source != nullptr)
     {
       let const raw_expression =
           expression_base.get_source_text(source->view());
+
       if (raw_expression.has_value()) {
         let const decoded_expression =
             utils::decode_shell_word(*raw_expression, cxt.scratch_allocator(),
                                      utils::shell_word_source_mapping::Record);
+
         if (decoded_expression.text == ec.args()[i] &&
             !decoded_expression.raw_positions.is_empty())
         {
@@ -67,6 +70,7 @@ Let::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       if (error.is_line_discarding()) throw;
 
       let const message = builtin_error_message(ec.program(), error.message());
+
       if (cxt.runtime_state().is_bash_compatible()) {
         if (error.detail_message().is_empty())
           report_soft_builtin_error(ec, cxt, error.location(),

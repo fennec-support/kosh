@@ -126,6 +126,7 @@ append_padded(String               &output,
   let const  is_numeric = value_kind == stat_value_kind::Numeric;
   StringView body       = text;
   String     padded_body{output.allocator()};
+
   if (spec.has_precision && !is_numeric && body.length > spec.precision) {
     body = body.substring_of_length(0, spec.precision);
   }
@@ -145,6 +146,7 @@ append_padded(String               &output,
   }
 
   let const pad_length = spec.width - body.length;
+
   if (spec.is_left_aligned) {
     output += body;
 
@@ -175,13 +177,16 @@ hex_of(u64 value, Allocator allocator) throws -> String
 }
 
 fn
-octal_of(u64 value, Allocator allocator, octal_prefix_mode prefix_mode) throws
-    -> String
+octal_of(u64               value,
+         Allocator         allocator,
+         octal_prefix_mode prefix_mode) throws -> String
 {
   let text = String::from_in_base(value, false, int_base::octal, allocator);
+
   if (prefix_mode == octal_prefix_mode::Bare) return text;
 
   let prefixed = String{allocator, "0"};
+
   prefixed += text.view();
 
   return prefixed;
@@ -193,11 +198,13 @@ quote_name(StringView             name,
            Allocator              allocator) throws -> String
 {
   let text = String{allocator, "'"};
+
   text += name;
   text += "'";
   if (os::file_type_letter(status.mode) != 'l') return text;
 
   let const target = os::read_symlink(name, allocator);
+
   if (!target.has_value()) return text;
 
   text += " -> '";
@@ -211,9 +218,11 @@ fn
 find_mount_point(StringView path, Allocator allocator) throws -> String
 {
   os::file_status start{};
+
   if (!os::stat_path_following(path, start)) return String{allocator, "?"};
 
   let absolute = String{allocator};
+
   if (path.length == 0 || path[0] != '/') {
     absolute += os::read_current_directory().view();
     absolute += "/";
@@ -223,8 +232,7 @@ find_mount_point(StringView path, Allocator allocator) throws -> String
 
   let best = String{allocator, absolute.view()};
 
-  loop
-  {
+  loop {
     usize slash_position = best.length();
 
     while (slash_position > 0 && best.view()[slash_position - 1] != '/') {
@@ -237,6 +245,7 @@ find_mount_point(StringView path, Allocator allocator) throws -> String
     let       parent =
         String{allocator, best.view().substring_of_length(0, parent_length)};
     os::file_status parent_status{};
+
     if (!os::stat_path_following(parent.view(), parent_status)) break;
 
     if (parent_status.device_id != start.device_id) break;
@@ -337,6 +346,7 @@ render_file_directive(String               &output,
 
   case 'G': {
     let const name = os::gid_to_groupname(status.group_id);
+
     append_padded(output,
                   name.has_value()
                       ? name->view()
@@ -387,6 +397,7 @@ render_file_directive(String               &output,
   case 'o':
     if (!subject.has_optimal_block_size) {
       os::filesystem_status filesystem{};
+
       if (os::stat_filesystem(subject.display_name, filesystem)) {
         subject.optimal_block_byte_count = filesystem.block_byte_count;
       }
@@ -463,6 +474,7 @@ render_file_directive(String               &output,
 
   case 'U': {
     let const name = os::uid_to_username(status.owner_id);
+
     append_padded(output,
                   name.has_value()
                       ? name->view()
@@ -610,6 +622,7 @@ render_filesystem_directive(String                      &output,
 
   case 'T': {
     let const name = StringView{filesystem.type_name};
+
     if (!name.is_empty()) {
       append_padded(output, name, spec, stat_value_kind::Text);
 
@@ -637,17 +650,20 @@ parse_directive(StringView      format,
 {
   spec = directive_spec{};
 
-  loop
-  {
+  loop {
     if (position >= format.length) return false;
 
     switch (format[position]) {
     case '-': spec.is_left_aligned = true; break;
+
     case '0': spec.is_zero_padded = true; break;
+
     case '#': spec.is_alternate = true; break;
+
     case '+':
     case ' ': break;
-    default:  goto flags_done;
+
+    default: goto flags_done;
     }
 
     position++;
@@ -708,16 +724,25 @@ append_escapes(String &output, StringView text) throws -> void
 
     position++;
     switch (text[position]) {
-    case 'n':  output += "\n"; break;
-    case 't':  output += "\t"; break;
-    case 'r':  output += "\r"; break;
-    case 'a':  output += "\a"; break;
-    case 'b':  output += "\b"; break;
-    case 'f':  output += "\f"; break;
-    case 'v':  output += "\v"; break;
+    case 'n': output += "\n"; break;
+
+    case 't': output += "\t"; break;
+
+    case 'r': output += "\r"; break;
+
+    case 'a': output += "\a"; break;
+
+    case 'b': output += "\b"; break;
+
+    case 'f': output += "\f"; break;
+
+    case 'v': output += "\v"; break;
+
     case '\\': output += "\\"; break;
-    case '"':  output += "\""; break;
-    default:   output += "\\"; output += text.substring_of_length(position, 1);
+
+    case '"': output += "\""; break;
+
+    default: output += "\\"; output += text.substring_of_length(position, 1);
     }
 
     position++;
@@ -762,6 +787,7 @@ render_format(String                      &output,
     }
 
     directive_spec spec{};
+
     if (!parse_directive(format, position, spec)) {
       output += "%";
 
@@ -817,8 +843,7 @@ fn
 Stat::execute(const ExecContext               &ec,
               EvalContext                     &cxt,
               const ArrayList<String>         &args,
-              const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+              const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
@@ -834,12 +859,14 @@ Stat::execute(const ExecContext               &ec,
 
   let  selected_format       = String{allocator};
   bool should_append_newline = false;
+
   resolve_format(selected_format, should_append_newline, allocator, target);
 
   let operand_paths = ArrayList<Path>{allocator};
   let file_statuses = ArrayList<os::file_status>{allocator};
   let batch         = os::Batch{allocator};
   let results       = ArrayList<os::batch_result>{allocator};
+
   if (target == stat_target::File) {
     operand_paths.reserve(operands.count());
     file_statuses.reserve(operands.count());
@@ -866,6 +893,7 @@ Stat::execute(const ExecContext               &ec,
   i32             status             = 0;
   constexpr usize OUTPUT_BATCH_BYTES = 64 * 1024;
   let             output             = String{allocator};
+
   if (operands.count() > 16) output.reserve(OUTPUT_BATCH_BYTES);
 
   for (usize index = 0; index < operands.count(); index++) {
@@ -873,6 +901,7 @@ Stat::execute(const ExecContext               &ec,
 
     if (target == stat_target::Filesystem) {
       os::filesystem_status filesystem{};
+
       if (!os::stat_filesystem(operand.view(), filesystem)) {
         if (!output.is_empty()) {
           ec.print_to_stdout(output);
@@ -890,6 +919,7 @@ Stat::execute(const ExecContext               &ec,
     } else {
       file_subject subject{file_statuses[index], operand.view(),
                            String{allocator}, String{allocator}};
+
       if (results[index].error_number != 0) {
         if (!output.is_empty()) {
           ec.print_to_stdout(output);
@@ -903,9 +933,11 @@ Stat::execute(const ExecContext               &ec,
       }
 
       let active_format = selected_format.view();
+
       if (active_format.is_empty()) {
         let const type_letter = os::file_type_letter(subject.status.mode);
         let const is_device   = type_letter == 'b' || type_letter == 'c';
+
         active_format = is_device ? DEVICE_FILE_FORMAT : DEFAULT_FILE_FORMAT;
       }
 

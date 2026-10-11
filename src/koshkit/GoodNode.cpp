@@ -42,7 +42,8 @@ enum class goodnode_verification_mode : u8
 };
 
 fn
-filesystem_features(StringView filesystem_type) throws -> Maybe<StringView>
+filesystem_features(StringView filesystem_type) throws
+    -> Maybe<StringView>
 {
   static constexpr static_string_entry<StringView> FEATURE_ENTRIES[] = {
       {SSK("NTFS"),           "transaction log, encryption, quotas, compression" },
@@ -66,10 +67,13 @@ append_node_report(String                    &output,
                    goodnode_verification_mode verification,
                    bool                       should_color) throws -> void
 {
-  let       table           = ReportTable{allocator};
-  let const do_append_field = [&](StringView name, StringView value) throws {
+  let table = ReportTable{allocator};
+
+  let const do_append_field = [&](StringView name,
+                                  StringView value) throws {
     table.add_field_row(name, value, colors::ansi::BOLD_CYAN);
   };
+
   do_append_field("Type", file_type_name(status));
   do_append_field("Inode", String::from(status.file_id, allocator));
   do_append_field("Device", String::from(status.device_id, allocator));
@@ -80,15 +84,19 @@ append_node_report(String                    &output,
                                                  allocator));
 
   os::filesystem_status filesystem{};
+
   if (os::stat_filesystem(path, filesystem)) {
     let const filesystem_type = StringView{filesystem.type_name};
+
     do_append_field("Filesystem", filesystem_type.is_empty()
                                       ? StringView{"unknown"}
                                       : filesystem_type);
     do_append_field("Filesystem ID",
                     String::from(filesystem.filesystem_id, allocator));
     do_append_field("Name limit", String::from(filesystem.name_max, allocator));
+
     let const features = filesystem_features(filesystem_type);
+
     if (features.has_value()) do_append_field("Features", *features);
   } else {
     do_append_field("Filesystem", "unavailable");
@@ -104,12 +112,14 @@ append_node_report(String                    &output,
           errors.read_count != 0 || errors.write_count != 0 ||
           errors.flush_count != 0 || errors.corruption_count != 0 ||
           errors.generation_count != 0;
+
       do_append_field("Integrity",
                       has_errors ? StringView{"device errors recorded"}
                                  : StringView{"no device errors recorded"});
       if (!has_errors) break;
 
       let error_text = String{allocator, "read "};
+
       error_text += String::from(errors.read_count, allocator).view();
       error_text += ", write ";
       error_text += String::from(errors.write_count, allocator).view();
@@ -129,6 +139,7 @@ append_node_report(String                    &output,
               (evidence->recorded_error_count == 1 ? " recorded error"
                                                    : " recorded errors"));
       break;
+
     case os::filesystem_integrity_kind::NtfsDirtyFlag:
       do_append_field("Integrity", evidence->is_dirty
                                        ? StringView{"dirty bit set"}
@@ -142,32 +153,41 @@ append_node_report(String                    &output,
   if (verification == goodnode_verification_mode::Verify) {
     constexpr u64 VERIFICATION_TIMEOUT_NANOSECONDS = 300'000'000'000;
     let           verification                     = StringView{"unavailable"};
+
     switch (
         os::verify_filesystem_integrity(path, VERIFICATION_TIMEOUT_NANOSECONDS))
     {
     case os::filesystem_verification_result::Passed:
       verification = "passed";
       break;
+
     case os::filesystem_verification_result::Failed:
       verification = "failed";
       break;
+
     case os::filesystem_verification_result::Interrupted:
       verification = "interrupted";
       break;
+
     case os::filesystem_verification_result::TimedOut:
       verification = "timed out";
       break;
+
     case os::filesystem_verification_result::Unsupported:
       verification = "not supported";
       break;
+
     case os::filesystem_verification_result::Unavailable: break;
     }
+
     do_append_field("Verification", verification);
   }
+
   if (status.link_count == 0) do_append_field("Link state", "unlinked");
 
   if (os::file_type_letter(status.mode) == '-') {
     let const digest = file_crc32c(ec, path, allocator);
+
     if (digest.has_value()) do_append_field("CRC32C", digest->view());
   }
 
@@ -186,9 +206,11 @@ find_inode(const Path            &path,
 
     return true;
   }
+
   if (os::file_type_letter(status.mode) != 'd') return false;
 
   let children = os::list_directory_status(path.view(), allocator);
+
   if (!children.has_value()) return false;
 
   for (let const &child : *children) {
@@ -196,6 +218,7 @@ find_inode(const Path            &path,
     if (!child.has_status) continue;
 
     let child_path = path.clone();
+
     child_path.append(child.child.name.view());
 
     if (find_inode(child_path, child.status, inode, found_path, allocator))
@@ -210,6 +233,7 @@ path_is_beneath(const Path &root, const Path &candidate) wontthrow -> bool
 {
   let const root_text      = root.view();
   let const candidate_text = candidate.view();
+
   if (candidate_text == root_text) return true;
   if (root_text.is_empty() || !candidate_text.starts_with(root_text)) {
     return false;
@@ -226,8 +250,7 @@ fn
 GoodNode::execute(const ExecContext               &ec,
                   EvalContext                     &cxt,
                   const ArrayList<String>         &args,
-                  const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+                  const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
@@ -248,6 +271,7 @@ GoodNode::execute(const ExecContext               &ec,
   if (FLAG_GOODNODE_INODE.is_set()) {
     let const parsed = utils::parse_integer_in_base(FLAG_GOODNODE_INODE.value(),
                                                     nullptr, int_base::decimal);
+
     if (parsed.is_error() || parsed.value() < 0) {
       KOSHKIT_REPORT_ERROR_AT(FLAG_GOODNODE_INODE.value_location(),
                               "invalid inode",
@@ -261,16 +285,19 @@ GoodNode::execute(const ExecContext               &ec,
                                                   : StringView{"."};
     let const root_path = Path{root, allocator};
     let const inode     = static_cast<u64>(parsed.value());
+
     if (let canonical_root = os::canonical_path(root_path);
         canonical_root.has_value() &&
         canonical_root->view() == root_path.view())
     {
       let const direct_path =
           os::path_from_file_id(canonical_root->text().view(), inode);
+
       if (direct_path.has_value() &&
           path_is_beneath(*canonical_root, *direct_path))
       {
         os::file_status direct_status{};
+
         if (os::stat_path(direct_path->text().view(), direct_status) &&
             direct_status.has_file_identity && direct_status.file_id == inode)
         {
@@ -281,6 +308,7 @@ GoodNode::execute(const ExecContext               &ec,
 
     if (found.is_empty()) {
       os::file_status root_status{};
+
       if (os::stat_path(root_path.view(), root_status))
         unused(find_inode(root_path, root_status, inode, found, allocator));
     }
@@ -293,6 +321,7 @@ GoodNode::execute(const ExecContext               &ec,
 
       return 1;
     }
+
     paths.push(steal(found));
   }
 
@@ -310,6 +339,7 @@ GoodNode::execute(const ExecContext               &ec,
   let report_paths    = ArrayList<Path>{allocator};
   let report_statuses = ArrayList<os::file_status>{allocator};
   let report_batch    = os::Batch{allocator};
+
   report_paths.reserve(paths.count());
   report_statuses.reserve(paths.count());
   report_batch.reserve(paths.count());
@@ -327,6 +357,7 @@ GoodNode::execute(const ExecContext               &ec,
 
   for (usize index = 0; index < paths.count(); index++) {
     let const &path = paths[index];
+
     if (report_results[index].error_number != 0) {
       os::set_last_system_error(report_results[index].error_number);
       report_soft_koshkit_error(ec, cxt,

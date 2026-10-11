@@ -136,11 +136,13 @@ class ParserFormat
 {
 public:
   pure virtual parser_format_kind
-  kind() const wontthrow = 0;
+  kind() const wontthrow abstract;
+
   virtual fn
   parse(const parser_format_input &input,
-        parsed_format_document    &document) const throws -> void = 0;
-  virtual ~ParserFormat()                                      = default;
+        parsed_format_document    &document) const throws -> void abstract;
+
+  virtual ~ParserFormat() = default;
 
 protected:
   ParserFormat();
@@ -227,7 +229,8 @@ parser_format_encode(const parser_format_fragment &fragment,
                      StringView replacement) throws -> Maybe<String>;
 fn
 parser_format_apply_replacements(
-    StringView source, ArrayList<parser_format_replacement> replacements) throws
+    StringView                           source,
+    ArrayList<parser_format_replacement> replacements) throws
     -> Maybe<String>;
 fn
 parser_format_analysis_source(const parsed_format_document &document,
@@ -250,10 +253,12 @@ parser_format_find_ascii_folded(const StaticStringMap<Value, Count> &map,
                                 StringView text) throws -> Maybe<Value>
 {
   char folded[32];
+
   if (text.length > sizeof(folded)) return None;
 
   for (usize position = 0; position < text.length; position++) {
-    let const byte   = text[position];
+    let const byte = text[position];
+
     folded[position] = byte >= 'A' && byte <= 'Z'
                            ? static_cast<char>(byte + ('a' - 'A'))
                            : byte;
@@ -261,6 +266,7 @@ parser_format_find_ascii_folded(const StaticStringMap<Value, Count> &map,
 
   return map.find(StringView{folded, text.length});
 }
+
 fn
 parser_format_add_fragment(
     parsed_format_document &document,
@@ -277,15 +283,15 @@ parser_format_add_indented_fragment(parsed_format_document &document,
                                     usize                   host_start,
                                     usize                   host_end,
                                     usize                   indent_length,
-                                    mimic_mood mood) throws -> void;
+                                    mimic_mood              mood) throws -> void;
 fn
-parser_format_extract_yaml_keys(
-    parsed_format_document &document,
-    StringView              source,
-    const StringView       *keys,
-    usize                   key_count,
-    mimic_mood              default_mood = mimic_mood::Posix,
-    yaml_shell_selection    selection    = yaml_shell_selection::Nearby) throws
+parser_format_extract_yaml_keys(parsed_format_document &document,
+                                StringView              source,
+                                const StringView       *keys,
+                                usize                   key_count,
+                                mimic_mood default_mood = mimic_mood::Posix,
+                                yaml_shell_selection selection =
+                                    yaml_shell_selection::Nearby) throws
     -> void;
 fn
 parser_format_extract_json_keys(parsed_format_document       &document,
@@ -302,13 +308,16 @@ parser_format_add_json_fragment(parsed_format_document &document,
 
 fn
 parse_github_actions_format(const parser_format_input &input,
-                            parsed_format_document    &document) throws -> void;
+                            parsed_format_document    &document) throws
+    -> void;
 fn
 parse_gitea_actions_format(const parser_format_input &input,
-                           parsed_format_document    &document) throws -> void;
+                           parsed_format_document    &document) throws
+    -> void;
 fn
 parse_forgejo_actions_format(const parser_format_input &input,
-                             parsed_format_document &document) throws -> void;
+                             parsed_format_document    &document) throws
+    -> void;
 fn
 parse_gitlab_ci_format(const parser_format_input &input,
                        parsed_format_document    &document) throws -> void;
@@ -317,7 +326,8 @@ parse_ansible_format(const parser_format_input &input,
                      parsed_format_document    &document) throws -> void;
 fn
 parse_dockerfile_format(const parser_format_input &input,
-                        parsed_format_document    &document) throws -> void;
+                        parsed_format_document    &document) throws
+    -> void;
 fn
 parse_compose_format(const parser_format_input &input,
                      parsed_format_document    &document) throws -> void;
@@ -329,17 +339,19 @@ parse_makefile_format(const parser_format_input &input,
                       parsed_format_document    &document) throws -> void;
 fn
 parse_cloud_build_format(const parser_format_input &input,
-                         parsed_format_document    &document) throws -> void;
+                         parsed_format_document    &document) throws
+    -> void;
 fn
 parse_circle_ci_format(const parser_format_input &input,
                        parsed_format_document    &document) throws -> void;
 fn
 parse_azure_pipelines_format(const parser_format_input &input,
-                             parsed_format_document &document) throws -> void;
-fn
-parse_bitbucket_pipelines_format(const parser_format_input &input,
-                                 parsed_format_document    &document) throws
+                             parsed_format_document    &document) throws
     -> void;
+fn
+parse_bitbucket_pipelines_format(
+    const parser_format_input &input,
+    parsed_format_document    &document) throws -> void;
 fn
 parse_buildkite_format(const parser_format_input &input,
                        parsed_format_document    &document) throws -> void;
@@ -348,16 +360,19 @@ parse_travis_ci_format(const parser_format_input &input,
                        parsed_format_document    &document) throws -> void;
 fn
 parse_kubernetes_format(const parser_format_input &input,
-                        parsed_format_document    &document) throws -> void;
+                        parsed_format_document    &document) throws
+    -> void;
 fn
 parse_package_json_format(const parser_format_input &input,
-                          parsed_format_document    &document) throws -> void;
+                          parsed_format_document    &document) throws
+    -> void;
 fn
 parse_drone_format(const parser_format_input &input,
                    parsed_format_document    &document) throws -> void;
 fn
 parse_woodpecker_format(const parser_format_input &input,
-                        parsed_format_document    &document) throws -> void;
+                        parsed_format_document    &document) throws
+    -> void;
 fn
 parse_taskfile_format(const parser_format_input &input,
                       parsed_format_document    &document) throws -> void;
@@ -369,9 +384,11 @@ parse_rpm_spec_format(const parser_format_input &input,
                       parsed_format_document    &document) throws -> void;
 fn
 parse_vscode_tasks_format(const parser_format_input &input,
-                          parsed_format_document    &document) throws -> void;
+                          parsed_format_document    &document) throws
+    -> void;
 fn
 parse_dev_container_format(const parser_format_input &input,
-                           parsed_format_document    &document) throws -> void;
+                           parsed_format_document    &document) throws
+    -> void;
 
 } /* namespace koshka */

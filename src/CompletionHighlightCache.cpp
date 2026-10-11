@@ -40,9 +40,11 @@ scan_highlight_source(StringView                 source,
 #if !defined NDEBUG
   DEBUG_HIGHLIGHT_INPUT_BYTE_COUNT += source.length;
 #endif
+
   let const arena               = bump_allocator(HIGHLIGHT_ARENA);
   let       line_variable_names = HashSet{arena};
   let       function_names      = HashSet{arena};
+
   scan_highlight_range(source, 0, source.length, context, spans,
                        line_variable_names, function_names);
 }
@@ -52,7 +54,9 @@ highlight_line(StringView line, EvalContext &context) throws
     -> ArrayList<highlight_span>
 {
   HIGHLIGHT_ARENA.reset();
+
   let spans = ArrayList<highlight_span>{bump_allocator(HIGHLIGHT_ARENA)};
+
   scan_highlight_source(line, context, spans);
 
   return spans;
@@ -108,14 +112,17 @@ static fn
 find_bracket_partner(StringView                       line,
                      const ArrayList<highlight_span> &spans,
                      const ArrayList<usize>          &case_pattern_ends,
-                     usize position) throws -> Maybe<usize>
+                     usize                            position) throws -> Maybe<usize>
 {
   let const origin = classify_bracket(line[position]);
+
   if (!origin.has_value()) return None;
 
-  usize     depths[3]             = {0, 0, 0};
-  let const do_is_closing_partner = [&](usize scan, bracket_byte bracket,
-                                        bool is_literal) throws -> bool {
+  usize depths[3] = {0, 0, 0};
+
+  let const do_is_closing_partner =
+      [&](usize scan, bracket_byte bracket,
+          bool is_literal) throws -> bool {
     if (is_literal || byte_is_escaped(line, scan) ||
         case_pattern_ends.find(scan).has_value())
     {
@@ -142,6 +149,7 @@ find_bracket_partner(StringView                       line,
 
     for (usize scan = position + 1; scan < line.length; scan++) {
       let const bracket = classify_bracket(line[scan]);
+
       if (!bracket.has_value()) continue;
 
       while (span_index < spans.count() && spans[span_index].end <= scan) {
@@ -151,6 +159,7 @@ find_bracket_partner(StringView                       line,
       let const is_literal = span_index < spans.count() &&
                              spans[span_index].start <= scan &&
                              role_is_literal(spans[span_index].role);
+
       if (do_is_closing_partner(scan, *bracket, is_literal)) return scan;
     }
 
@@ -162,6 +171,7 @@ find_bracket_partner(StringView                       line,
   for (usize scan = position; scan > 0; scan--) {
     let const at      = scan - 1;
     let const bracket = classify_bracket(line[at]);
+
     if (!bracket.has_value()) continue;
 
     while (span_index > 0 && spans[span_index - 1].start > at) {
@@ -170,6 +180,7 @@ find_bracket_partner(StringView                       line,
 
     let const is_literal = span_index > 0 && spans[span_index - 1].end > at &&
                            role_is_literal(spans[span_index - 1].role);
+
     if (do_is_closing_partner(at, *bracket, is_literal)) return at;
   }
 
@@ -185,12 +196,15 @@ find_matching_bracket(StringView                       line,
 
   usize candidates[2];
   usize candidate_count = 0;
+
   if (cursor < line.length) {
     let const is_dollar_opener =
         line[cursor] == '$' && cursor + 1 < line.length &&
         (line[cursor + 1] == '(' || line[cursor + 1] == '{');
+
     candidates[candidate_count++] = is_dollar_opener ? cursor + 1 : cursor;
   }
+
   if (cursor > 0) candidates[candidate_count++] = cursor - 1;
 
   let has_bracket_candidate = false;
@@ -206,6 +220,7 @@ find_matching_bracket(StringView                       line,
   if (!has_bracket_candidate) return None;
 
   let case_pattern_ends = ArrayList<usize>{heap_allocator()};
+
   if (line.find_substring("case").has_value())
     collect_case_pattern_ends(line, case_pattern_ends);
 
@@ -229,7 +244,9 @@ find_matching_bracket(StringView                       line,
 
     return true;
   };
-  let const do_pairs_with = [&](usize open, usize close) throws -> bool {
+
+  let const do_pairs_with = [&](usize open,
+                                usize close) throws -> bool {
     if (!do_is_code_bracket(open)) return false;
 
     let const partner =
@@ -242,15 +259,18 @@ find_matching_bracket(StringView                       line,
        candidate_index++)
   {
     let const position = candidates[candidate_index];
+
     if (!do_is_code_bracket(position)) continue;
 
     let const partner =
         find_bracket_partner(line, spans, case_pattern_ends, position);
+
     if (!partner.has_value()) continue;
 
     let const open            = position < *partner ? position : *partner;
     let const close           = position < *partner ? *partner : position;
     let const is_doubled_form = line[open] != '{';
+
     if (is_doubled_form && open + 2 < close && line[open + 1] == line[open] &&
         line[close - 1] == line[close] && do_pairs_with(open + 1, close - 1))
     {
@@ -290,11 +310,13 @@ append_highlighted_range(String                          &output,
     let const span_start =
         span.start < rendered_position ? rendered_position : span.start;
     let const span_end = span.end > range_end ? range_end : span.end;
+
     if (rendered_position < span_start)
       output += text.substring_of_length(rendered_position,
                                          span_start - rendered_position);
 
     let const style = theme.style_for(span.role);
+
     if (!style.is_empty()) output += style;
     output += text.substring_of_length(span_start, span_end - span_start);
     if (!style.is_empty()) output += theme.reset;
@@ -327,14 +349,15 @@ append_highlighted_source(String                &output,
     let const *spans = cache.spans_for(source, line_start, line_end, context);
     let const  line =
         source.substring_of_length(line_start, line_end - line_start);
+
     append_highlighted_range(output, line, *spans, 0, line.length, theme);
     line_start = line_end;
   }
 }
 
 static fn
-split_spans_at_lines(StringView source, ArrayList<highlight_span> &spans) throws
-    -> void
+split_spans_at_lines(StringView                 source,
+                     ArrayList<highlight_span> &spans) throws -> void
 {
   let const do_next_piece_end = [&](usize start, usize end) wontthrow -> usize {
     let const newline =
@@ -350,6 +373,7 @@ split_spans_at_lines(StringView source, ArrayList<highlight_span> &spans) throws
 
   for (usize index = 0; index < spans.count(); index++) {
     let const &span = spans[index];
+
     if (index > 0 && spans[index - 1].start > span.start) is_sorted = false;
 
     for (usize start             = do_next_piece_end(span.start, span.end);
@@ -360,6 +384,7 @@ split_spans_at_lines(StringView source, ArrayList<highlight_span> &spans) throws
   }
 
   let const span_count = spans.count();
+
   spans.reserve(span_count + extra_piece_count);
 
   for (usize index = 0; index < extra_piece_count; index++) {
@@ -379,10 +404,12 @@ split_spans_at_lines(StringView source, ArrayList<highlight_span> &spans) throws
     }
 
     write_position -= piece_count;
+
     usize start = span.start;
 
     for (usize piece = 0; piece < piece_count; piece++) {
       let const piece_end = do_next_piece_end(start, span.end);
+
       spans[write_position + piece] =
           highlight_span{start, piece_end, span.role};
       start = piece_end;
@@ -405,6 +432,7 @@ ShellHighlightCache::spans_for(StringView   source,
 {
   let const has_source_changed =
       source.data != m_source.data || source.length != m_source.length;
+
   if (has_source_changed) {
     m_source = source;
     m_pieces = ArrayList<highlight_span>{m_allocator};
@@ -419,6 +447,7 @@ ShellHighlightCache::spans_for(StringView   source,
 
   while (first_piece < piece_limit) {
     let const middle = first_piece + (piece_limit - first_piece) / 2;
+
     if (m_pieces[middle].start < line_start) {
       first_piece = middle + 1;
     } else {
@@ -438,6 +467,7 @@ ShellHighlightCache::spans_for(StringView   source,
     let const &piece = m_pieces[index];
     let const  start = piece.start > line_start ? piece.start : line_start;
     let const  end   = piece.end < line_end ? piece.end : line_end;
+
     if (start < end) {
       m_line_spans.push(
           highlight_span{start - line_start, end - line_start, piece.role});
@@ -498,14 +528,17 @@ debug_diagnostic_cache_is_stable(EvalContext &context) throws -> bool
   let const *first =
       cache.spans_for(source.view(), line_start, source.count(), context);
   let expected = ArrayList<highlight_span>{heap_allocator()};
+
   expected.reserve(first->count());
 
   for (let const &span : *first)
     expected.push(span);
 
   unused(highlight_line("printf reset", context));
+
   let const *repeated =
       cache.spans_for(source.view(), line_start, source.count(), context);
+
   if (repeated->count() != expected.count()) return false;
 
   for (usize index = 0; index < expected.count(); index++) {
@@ -520,7 +553,9 @@ debug_diagnostic_cache_is_stable(EvalContext &context) throws -> bool
   let       function_cache      = ShellHighlightCache{heap_allocator()};
   let const function_source     = String{"finish() { :; }\nfinish"};
   let const function_call_start = function_source.view().find_character('\n');
+
   if (!function_call_start.has_value()) return false;
+
   let const *function_spans =
       function_cache.spans_for(function_source.view(), *function_call_start + 1,
                                function_source.count(), context);
@@ -538,6 +573,7 @@ debug_diagnostic_cache_is_stable(EvalContext &context) throws -> bool
   let const  other_source = String{"echo ok"};
   let const *invalidated =
       cache.spans_for(other_source.view(), 0, other_source.count(), context);
+
   if (invalidated->count() != expected.count()) return true;
 
   for (usize index = 0; index < expected.count(); index++) {

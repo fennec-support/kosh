@@ -92,15 +92,18 @@ compile_filter(StringView   raw_filter,
                extglob_mode extglob,
                glob_charset charset) throws -> compgen_filter
 {
-  let compiled     = compgen_filter{allocator};
+  let compiled = compgen_filter{allocator};
+
   compiled.extglob = extglob;
   compiled.charset = charset;
 
   let const upper_bound = raw_filter.length + word.length;
+
   compiled.pattern.reserve(upper_bound);
   compiled.active.reserve(upper_bound);
 
   usize position = 0;
+
   if (!raw_filter.is_empty() && raw_filter[0] == '!') {
     compiled.is_negated = true;
     position++;
@@ -108,11 +111,13 @@ compile_filter(StringView   raw_filter,
 
   while (position < raw_filter.length) {
     let const character = raw_filter[position++];
+
     if (character == '\\' && position < raw_filter.length) {
       compiled.pattern.push(raw_filter[position++]);
       compiled.active.push(false);
       continue;
     }
+
     if (character == '&') {
       compiled.pattern.append(word);
 
@@ -121,6 +126,7 @@ compile_filter(StringView   raw_filter,
 
       continue;
     }
+
     compiled.pattern.push(character);
     compiled.active.push(character != '\\');
   }
@@ -129,8 +135,8 @@ compile_filter(StringView   raw_filter,
 }
 
 static fn
-candidate_is_excluded(StringView candidate, const compgen_filter &filter) throws
-    -> bool
+candidate_is_excluded(StringView            candidate,
+                      const compgen_filter &filter) throws -> bool
 {
   let const matches =
       utils::glob_matches(filter.pattern.view(), candidate, filter.active, 0,
@@ -162,6 +168,7 @@ struct compgen_sink
 
     if (mode == compgen_sink_mode::Collect) {
       let value = String{heap_allocator()};
+
       value.reserve(prefix.length + candidate.length + suffix.length);
       value.append(prefix);
       value.append(candidate);
@@ -225,6 +232,7 @@ push_table_file_names(compgen_emitter &emitter,
                       Allocator        allocator) throws -> void
 {
   let const contents = Path{path}.read_entire_file();
+
   if (!contents.has_value()) return;
 
   for (let const &line : utils::split_lines(contents->view(), allocator)) {
@@ -254,6 +262,7 @@ push_table_file_names(compgen_emitter &emitter,
       let const is_wanted = mode == table_field_mode::FirstField
                                 ? field_index == 0
                                 : field_index > 0;
+
       if (is_wanted) emitter.push_prefixed(field);
 
       field_index++;
@@ -270,8 +279,10 @@ run_compgen_actions(EvalContext     &cxt,
   let const do_wants = [&](compgen_action action) wontthrow -> bool {
     return (action_mask & compgen_action_bit(action)) != 0;
   };
-  let const do_push_name = [&](StringView name)
-                               throws -> void { emitter.push_prefixed(name); };
+
+  let const do_push_name = [&](StringView name) throws -> void {
+    emitter.push_prefixed(name);
+  };
 
   if (do_wants(compgen_action::Alias))
     cxt.scope_store().for_each_alias_name(do_push_name);
@@ -288,7 +299,8 @@ run_compgen_actions(EvalContext     &cxt,
                                     : ArrayList<String>{heap_allocator()};
 
   if (do_wants(compgen_action::ArrayVar)) {
-    shell_variable_names.for_each([&](StringView name) throws {
+    shell_variable_names.for_each([&](StringView name)
+                                      throws {
       if (!cxt.variable_store().indexed_arrays().find(name).has_value() &&
           !cxt.is_associative_array(name))
       {
@@ -310,6 +322,7 @@ run_compgen_actions(EvalContext     &cxt,
     cxt.program_resolver().begin_explicit_completion(
         ProgramResolver::CompletionRefresh::Fresh);
     defer { cxt.program_resolver().end_explicit_completion(); };
+
     let const scratch = completion::ScopedCompletionScratch{};
 
     for (let const &candidate :
@@ -378,6 +391,7 @@ run_compgen_actions(EvalContext     &cxt,
                              entry.state == job::State::Running) ||
                             (do_wants(compgen_action::Stopped) &&
                              entry.state == job::State::Stopped);
+
       if (!is_wanted) continue;
 
       emitter.push_prefixed(entry.command.view());
@@ -474,27 +488,34 @@ completion::collect_compgen_candidates(EvalContext      &context,
     -> ArrayList<String>
 {
   let const scratch = context.expansion_store().scratch_arena().mark();
-  defer { context.expansion_store().scratch_arena().release(scratch); };
+
+  defer {
+    context.expansion_store().scratch_arena().release(scratch);
+  };
 
   let const no_filter = Maybe<compgen_filter>{None};
   let       sink =
       compgen_sink{context.scratch_allocator(), compgen_sink_mode::Collect,
                    StringView{}, StringView{}};
   let emitter = compgen_emitter{sink, word, no_filter};
+
   run_compgen_generators(context, action_mask, glob_pattern, emitter);
 
   return steal(sink.values);
 }
 
 fn
-completion::remove_compgen_filtered(EvalContext       &context,
-                                    StringView         filter_pattern,
-                                    StringView         word,
-                                    ArrayList<String> &candidates) throws
-    -> void
+completion::remove_compgen_filtered(
+    EvalContext       &context,
+    StringView         filter_pattern,
+    StringView         word,
+    ArrayList<String> &candidates) throws -> void
 {
   let const scratch = context.expansion_store().scratch_arena().mark();
-  defer { context.expansion_store().scratch_arena().release(scratch); };
+
+  defer {
+    context.expansion_store().scratch_arena().release(scratch);
+  };
 
   let const filter =
       compile_filter(filter_pattern, word, context.scratch_allocator(),
@@ -523,6 +544,7 @@ Compgen::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       FLAG_COMPGEN_VARIABLE_NAME.is_set()
           ? Maybe<StringView>{FLAG_COMPGEN_VARIABLE_NAME.value()}
           : None;
+
   if (variable_name.has_value()) {
     let const target_location = FLAG_COMPGEN_VARIABLE_NAME.value_location();
 
@@ -560,6 +582,7 @@ Compgen::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   if (FLAG_COMPGEN_ACTION.is_set()) {
     let const name     = FLAG_COMPGEN_ACTION.value();
     let const resolved = COMPGEN_ACTIONS.find(name);
+
     if (!resolved.has_value()) {
       report_soft_builtin_error(ec, cxt, FLAG_COMPGEN_ACTION.value_location(),
                                 StringView{"'"} + name +
@@ -584,9 +607,13 @@ Compgen::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let const word = args.count() > 1 ? args[1].view() : StringView{};
 
   let const scratch = cxt.expansion_store().scratch_arena().mark();
-  defer { cxt.expansion_store().scratch_arena().release(scratch); };
+
+  defer {
+    cxt.expansion_store().scratch_arena().release(scratch);
+  };
 
   Maybe<compgen_filter> filter = None;
+
   if (filter_pattern.has_value()) {
     filter = compile_filter(*filter_pattern, word, cxt.scratch_allocator(),
                             cxt.get_extglob_mode(), cxt.get_glob_charset());

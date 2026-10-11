@@ -46,6 +46,7 @@ docker_instruction(StringView line, usize &content_position) wontthrow
   let const instruction =
       line.substring_of_length(instruction_start, position - instruction_start);
   let kind = docker_instruction_kind::None;
+
   if (!instruction.is_empty()) {
     switch (instruction[0]) {
     case 'C':
@@ -53,29 +54,35 @@ docker_instruction(StringView line, usize &content_position) wontthrow
       if (parser_format_ascii_equal(instruction, "CMD"))
         kind = docker_instruction_kind::Command;
       break;
+
     case 'E':
     case 'e':
       if (parser_format_ascii_equal(instruction, "ENTRYPOINT"))
         kind = docker_instruction_kind::Entrypoint;
       break;
+
     case 'H':
     case 'h':
       if (parser_format_ascii_equal(instruction, "HEALTHCHECK"))
         kind = docker_instruction_kind::Healthcheck;
       break;
+
     case 'R':
     case 'r':
       if (parser_format_ascii_equal(instruction, "RUN"))
         kind = docker_instruction_kind::Run;
       break;
+
     case 'S':
     case 's':
       if (parser_format_ascii_equal(instruction, "SHELL"))
         kind = docker_instruction_kind::Shell;
       break;
+
     default: break;
     }
   }
+
   if (kind == docker_instruction_kind::None) return kind;
 
   while (position < line.length &&
@@ -103,9 +110,11 @@ read_docker_heredoc(StringView command) wontthrow -> Maybe<docker_heredoc>
   }
 
   usize position = 2;
+
   if (command[position] == '-') position++;
 
   char quote = '\0';
+
   if (position < command.length &&
       (command[position] == '\'' || command[position] == '"'))
   {
@@ -125,6 +134,7 @@ read_docker_heredoc(StringView command) wontthrow -> Maybe<docker_heredoc>
 
   let const delimiter =
       command.substring_of_length(delimiter_start, position - delimiter_start);
+
   if (quote != '\0') {
     if (position >= command.length || command[position] != quote) {
       return None;
@@ -154,8 +164,10 @@ parse_dockerfile_format(const parser_format_input &input,
     let const line             = input.source.next_line(position);
     usize     content_position = 0;
     let const instruction      = docker_instruction(line, content_position);
+
     if (instruction == docker_instruction_kind::Shell) {
       let const shell = line.substring(content_position);
+
       if (parser_format_has_substring(shell, "bash"))
         mood = mimic_mood::Bash;
       else if (parser_format_has_substring(shell, "kosh"))
@@ -169,9 +181,11 @@ parse_dockerfile_format(const parser_format_input &input,
         instruction == docker_instruction_kind::Run ||
         instruction == docker_instruction_kind::Command ||
         instruction == docker_instruction_kind::Entrypoint;
+
     if (instruction == docker_instruction_kind::Healthcheck) {
       let const remainder        = line.substring(content_position);
       usize     command_position = 0;
+
       if (docker_instruction(remainder, command_position) ==
           docker_instruction_kind::Command)
       {
@@ -179,6 +193,7 @@ parse_dockerfile_format(const parser_format_input &input,
         is_shell_instruction = true;
       }
     }
+
     if (!is_shell_instruction || content_position >= line.length ||
         line[content_position] == '[')
     {
@@ -189,6 +204,7 @@ parse_dockerfile_format(const parser_format_input &input,
         instruction == docker_instruction_kind::Run
             ? read_docker_heredoc(line.substring(content_position))
             : None;
+
     if (heredoc.has_value()) {
       let const body_start = position;
       usize     body_end   = position;
@@ -196,9 +212,11 @@ parse_dockerfile_format(const parser_format_input &input,
       while (position < input.source.length) {
         let const body_line_start = position;
         let       body_line       = input.source.next_line(position);
+
         if (!body_line.is_empty() && body_line[body_line.length - 1] == '\r') {
           body_line = body_line.substring_of_length(0, body_line.length - 1);
         }
+
         if (body_line == heredoc->delimiter) break;
 
         body_end = body_line_start + body_line.length;
@@ -208,6 +226,7 @@ parse_dockerfile_format(const parser_format_input &input,
         parser_format_add_fragment(document, input.source, body_start, body_end,
                                    0, None, parser_format_codec::Direct, mood);
       }
+
       continue;
     }
 
@@ -217,12 +236,14 @@ parse_dockerfile_format(const parser_format_input &input,
     while (is_continued && position < input.source.length) {
       let const continuation_start = position;
       let const continuation       = input.source.next_line(position);
-      shell_end                    = continuation_start + continuation.length;
-      is_continued                 = !continuation.is_empty() &&
+
+      shell_end    = continuation_start + continuation.length;
+      is_continued = !continuation.is_empty() &&
                      continuation[continuation.length - 1] == '\\';
     }
 
     let const fragment_count = document.fragments.count();
+
     parser_format_add_fragment(document, input.source,
                                line_start + content_position, shell_end, 4,
                                None, parser_format_codec::Continued, mood);

@@ -30,7 +30,8 @@ builtin_error_context(StringView program) throws -> String
 }
 
 fn
-builtin_error_message(StringView program, StringView message) throws -> String
+builtin_error_message(StringView program, StringView message) throws
+    -> String
 {
   return builtin_error_context(program) + ": " + message;
 }
@@ -45,20 +46,25 @@ show_builtin_help_impl(const ExecContext  &ec,
   ASSERT(!ec.args().is_empty());
 
   let help_text = String{heap_allocator()};
+
   if (!description.is_empty()) {
     help_text += "DESCRIPTION\n";
     help_text += wrap_text(description, HELP_INDENT, HELP_WRAP_WIDTH);
     help_text += "\n\n";
   }
+
   help_text += make_synopsis(ec.args()[0].view(), synopsis_lines);
   help_text += '\n';
+
   let const should_color = colors::stdout_wants_color();
+
   help_text += make_flag_help(flags, should_color);
   help_text += '\n';
   if (!extra_sections.is_empty()) {
     help_text += extra_sections;
     help_text += '\n';
   }
+
   ec.print_to_stdout(format_cli_help(help_text.view(), should_color));
 }
 
@@ -82,6 +88,7 @@ name_is_keyword_in_mood(StringView name, mimic_mood mood) wontthrow -> bool
   if (utils::is_posix_reserved_word(name)) return true;
 
   let const is_posix = mood == mimic_mood::Posix;
+
   if (let const keyword = KEYWORDS.find(name); keyword.has_value()) {
     return !is_posix ||
            (*keyword != Token::Kind::Time && *keyword != Token::Kind::Function);
@@ -100,7 +107,8 @@ register_builtin_help(Builtin::Kind       kind,
                       const StringView   *description,
                       const SynopsisList *synopsis) wontthrow -> void
 {
-  let const index                  = static_cast<usize>(kind);
+  let const index = static_cast<usize>(kind);
+
   BUILTIN_FLAG_LISTS[index]        = flags;
   BUILTIN_HELP_DESCRIPTIONS[index] = description;
   BUILTIN_HELP_SYNOPSES[index]     = synopsis;
@@ -192,6 +200,7 @@ execute_builtin(ExecContext &&ec, EvalContext &cxt) throws -> i32
                               ec.should_duplicate_output_to_error;
 
   let saved_descriptors = ArrayList<os::saved_descriptor>{heap_allocator()};
+
   if (has_pipe_descriptors || has_dup_routing) {
     if (ec.in_fd)
       saved_descriptors.push(os::save_and_replace_descriptor(0, *ec.in_fd));
@@ -230,8 +239,8 @@ execute_builtin(ExecContext &&ec, EvalContext &cxt) throws -> i32
           os::close_fd(os::descriptor_for_shell_fd(target_fd));
         });
   }
-  defer
-  {
+
+  defer {
     for (usize i = saved_descriptors.count(); i > 0; i--)
       os::restore_descriptor(saved_descriptors[i - 1]);
   };
@@ -260,6 +269,7 @@ execute_builtin(ExecContext &&ec, EvalContext &cxt) throws -> i32
         (pipe_trap.has_value() && pipe_trap.value()->action_text.is_empty()) ||
         (!pipe_trap.has_value() &&
          cxt.is_signal_ignored_at_startup(StringView{"PIPE"}));
+
     if (!is_pipe_signal_ignored) return KOSH_BROKEN_PIPE_EXIT_STATUS;
 
     report_soft_builtin_error(ec, cxt, "write error: Broken pipe");
@@ -282,6 +292,7 @@ execute_builtin(ExecContext &&ec, EvalContext &cxt) throws -> i32
     }
 
     let const prefixed = builtin_error_message(ec.program(), e.message());
+
     if (!e.detail_message().is_empty()) {
       let relocated = ErrorWithLocationAndDetails{
           ec.source_location(), prefixed.view(), e.detail_message()};
@@ -289,11 +300,14 @@ execute_builtin(ExecContext &&ec, EvalContext &cxt) throws -> i32
       relocated.set_command_status(e.command_status());
       throw relocated;
     }
+
     let relocated = ErrorWithLocation{ec.source_location(), prefixed.view()};
+
     relocated.take_line_discard_marks(e);
     relocated.set_command_status(e.command_status());
     throw relocated;
   }
+
   unreachable("execute_builtin reached the end without dispatching");
 }
 
@@ -334,6 +348,7 @@ report_soft_builtin_error(const ExecContext &ec,
 {
   ErrorWithLocation located{location,
                             builtin_error_message(ec.program(), message)};
+
   if (builtin_error_ends_posix_script(ec, cxt)) {
     located.set_command_status(2);
     throw located;
@@ -360,8 +375,8 @@ report_soft_builtin_error(const ExecContext &ec,
 }
 
 fn
-report_loop_control_without_loop(const ExecContext &ec, EvalContext &cxt) throws
-    -> void
+report_loop_control_without_loop(const ExecContext &ec,
+                                 EvalContext       &cxt) throws -> void
 {
   if (!cxt.runtime_state().is_bash_compatible() ||
       cxt.runtime_state().is_posix_option_on())
@@ -388,6 +403,7 @@ report_usage_error(EvalContext   &cxt,
 {
   const ErrorWithLocation located{
       steal(location), String{program_name} + ": Not enough arguments"};
+
   if (const String *source = cxt.source_store().current_source();
       source != nullptr)
     show_message(located.to_string(source->view(), &cxt));
@@ -454,9 +470,12 @@ fn
 continue_job(job &job) throws -> void
 {
   let const cont = os::signal_number_from_name("CONT");
+
   if (!cont.has_value())
     throw Error{"This platform does not support continuing stopped jobs"};
+
   bool did_resume = true;
+
   if (job.is_primary_process_active)
     did_resume = os::signal_process(job.pid, *cont);
 
@@ -481,6 +500,7 @@ finish_exit_builtin(const ExecContext &ec,
     if (parsed_status.is_error()) {
       let const message =
           StringView{"'"} + ec.args()[1] + "' is not a numeric exit status";
+
       if (invalid_status_note.is_empty()) {
         report_soft_builtin_error(ec, cxt, ec.arg_location_at(1), message);
       } else {
@@ -508,6 +528,7 @@ finish_exit_builtin(const ExecContext &ec,
 
   if (cxt.in_subshell()) {
     let const masked_status = status & 0xFF;
+
     cxt.request_exit(masked_status, ec.source_location());
 
     return static_cast<i32>(masked_status);
@@ -531,7 +552,7 @@ report_invalid_identifier(const ExecContext &ec,
 pure fn
 get_operand_location(const ExecContext               &ec,
                      const ArrayList<SourceLocation> &operand_locations,
-                     usize index) wontthrow -> SourceLocation
+                     usize                            index) wontthrow -> SourceLocation
 {
   return index < operand_locations.count() ? operand_locations[index]
                                            : ec.source_location();
@@ -551,7 +572,8 @@ fn
 make_error_for_arg(const ExecContext &ec,
                    usize              index,
                    StringView         message,
-                   StringView note) throws -> ErrorWithLocationAndDetails
+                   StringView         note) throws
+    -> ErrorWithLocationAndDetails
 {
   let const prefixed = builtin_error_message(ec.program(), message);
 
@@ -566,9 +588,11 @@ quote_for_declare(StringView value) throws -> String
 
   for (usize i = 0; i < value.length; i++) {
     const char c = value[i];
+
     if (c == '"' || c == '\\' || c == '$' || c == '`') {
       quoted += '\\';
     }
+
     quoted += c;
   }
 
@@ -609,8 +633,9 @@ is_declare_key_meta(char c) wontthrow -> bool
 }
 
 fn
-append_declare_value(String &out, StringView value, bool is_utf8_locale) throws
-    -> void
+append_declare_value(String    &out,
+                     StringView value,
+                     bool       is_utf8_locale) throws -> void
 {
   if (utils::should_ansi_c_quote(value, is_utf8_locale)) {
     utils::append_ansi_c_quoted(out, value, is_utf8_locale);
@@ -624,8 +649,9 @@ append_declare_value(String &out, StringView value, bool is_utf8_locale) throws
 }
 
 fn
-append_declare_key(String &out, StringView key, bool is_utf8_locale) throws
-    -> void
+append_declare_key(String    &out,
+                   StringView key,
+                   bool       is_utf8_locale) throws -> void
 {
   if (utils::should_ansi_c_quote(key, is_utf8_locale)) {
     utils::append_ansi_c_quoted(out, key, is_utf8_locale);
@@ -688,34 +714,32 @@ append_variable_declaration(EvalContext &cxt,
                             StringView   name,
                             String      &out) throws -> bool
 {
-  if (cxt.scope_store().is_self_reference(name)) rarely
+  if (cxt.scope_store().is_self_reference(name)) rarely {
+    out += "declare -n ";
+    out.append(name);
+    out += "=\"";
+    out.append(name);
+    out += "\"\n";
+
+    return true;
+  }
+
+  if (cxt.variable_store().attributes().is_nameref(name)) rarely {
+    out += "declare -n";
+    if (cxt.is_readonly(name)) out += 'r';
+    out += ' ';
+    out.append(name);
+    if (let const target = cxt.variable_store().shell_variables().find(name);
+        target.has_value())
     {
-      out += "declare -n ";
-      out.append(name);
       out += "=\"";
-      out.append(name);
-      out += "\"\n";
-
-      return true;
+      out += quote_for_declare(target->view());
+      out += '"';
     }
+    out += '\n';
 
-  if (cxt.variable_store().attributes().is_nameref(name)) rarely
-    {
-      out += "declare -n";
-      if (cxt.is_readonly(name)) out += 'r';
-      out += ' ';
-      out.append(name);
-      if (let const target = cxt.variable_store().shell_variables().find(name);
-          target.has_value())
-      {
-        out += "=\"";
-        out += quote_for_declare(target->view());
-        out += '"';
-      }
-      out += '\n';
-
-      return true;
-    }
+    return true;
+  }
 
   let const is_utf8_locale     = cxt.get_glob_charset() == glob_charset::Utf8;
   let const is_directory_stack = cxt.is_bash_directory_stack_special(name);
@@ -732,6 +756,7 @@ append_variable_declaration(EvalContext &cxt,
 
   if (elements.has_value() || is_directory_stack || is_argument_array) {
     let line = String{cxt.scratch_allocator(), "declare -a"};
+
     append_array_attribute_letters(cxt, name, line);
     line += ' ';
     line.append(name);
@@ -740,12 +765,14 @@ append_variable_declaration(EvalContext &cxt,
     let subscripts    = ArrayList<String>{cxt.scratch_allocator()};
     let values        = ArrayList<String>{cxt.scratch_allocator()};
     let element_count = usize{0};
+
     if (elements.has_value()) {
       subscripts = cxt.collect_array_subscripts(name);
       values     = cxt.collect_array_elements(name);
       ASSERT(subscripts.count() == values.count());
       element_count = subscripts.count();
     }
+
     if (is_directory_stack) {
       element_count = cxt.variable_store().directory_stack().count() + 1;
     } else if (is_argument_array) {
@@ -758,18 +785,22 @@ append_variable_declaration(EvalContext &cxt,
     for (usize e = 0; e < element_count; e++) {
       if (e > 0) line += ' ';
       line += '[';
+
       char index_text[24];
+
       if (is_directory_stack || is_argument_array) {
         line.append(utils::int_to_text_into(static_cast<i64>(e), index_text,
                                             sizeof(index_text)));
       } else {
         line.append(subscripts[e].view());
       }
+
       line += "]=";
 
       let directory_stack_element = Maybe<String>{};
       let argument_array_element  = String{cxt.scratch_allocator()};
       let element                 = StringView{};
+
       if (is_directory_stack) {
         directory_stack_element =
             cxt.get_bash_directory_stack_element(e, cxt.scratch_allocator());
@@ -804,6 +835,7 @@ append_variable_declaration(EvalContext &cxt,
     let const keys   = cxt.associative_keys(name);
     let const values = cxt.associative_values(name);
     let       line   = String{cxt.scratch_allocator(), "declare -A"};
+
     append_array_attribute_letters(cxt, name, line);
     line += ' ';
     line.append(name);
@@ -827,11 +859,13 @@ append_variable_declaration(EvalContext &cxt,
 
   if (const Maybe<String> value = cxt.get_variable_value(name)) {
     let attribute = String{cxt.scratch_allocator(), "-"};
+
     append_value_attribute_letters(cxt, name, attribute);
     if (os::get_environment_variable(name).has_value()) attribute += 'x';
     if (attribute.count() == 1) attribute += '-';
 
     let line = String{cxt.scratch_allocator(), "declare "};
+
     line.append(attribute.view());
     line += ' ';
     line.append(name);
@@ -851,11 +885,13 @@ append_variable_declaration(EvalContext &cxt,
       cxt.scope_store().has_current_local(name))
   {
     let attribute = String{cxt.scratch_allocator(), "-"};
+
     append_value_attribute_letters(cxt, name, attribute);
     if (cxt.is_exported(name)) attribute += 'x';
     if (attribute.count() == 1) attribute += '-';
 
     let line = String{cxt.scratch_allocator(), "declare "};
+
     line.append(attribute.view());
     line += ' ';
     line.append(name);
@@ -867,6 +903,7 @@ append_variable_declaration(EvalContext &cxt,
 
   if (cxt.is_exported(name)) {
     let line = String{cxt.scratch_allocator(), "declare -x "};
+
     line.append(name);
     line += '\n';
     out.append(line.view());
@@ -878,11 +915,13 @@ append_variable_declaration(EvalContext &cxt,
 }
 
 fn
-parse_optional_integer_arg(const ExecContext &ec, i64 default_value) throws
-    -> i64
+parse_optional_integer_arg(const ExecContext &ec,
+                           i64                default_value) throws -> i64
 {
   if (ec.args().count() <= 1) return default_value;
+
   let const parsed_value = ec.args()[1].to<i64>();
+
   if (parsed_value.is_error()) throw parsed_value.error();
 
   return parsed_value.value();
@@ -898,6 +937,7 @@ pure fn
 name_is_valid_assignment_target(StringView name) wontthrow -> bool
 {
   let const bracket = name.find_character('[');
+
   if (!bracket.has_value()) return lexer::word_is_variable_name(name);
 
   return *bracket > 0 && name[name.length - 1] == ']' &&
@@ -910,8 +950,10 @@ run_cd_to_directory(EvalContext       &cxt,
                     StringView         target) throws -> i32
 {
   ArrayList<String> cd_args{heap_allocator()};
+
   cd_args.push(String{"cd"});
   cd_args.push(String{target});
+
   let cd_arg_locations = ArrayList<SourceLocation>{heap_allocator()};
   let routed           = ExecContext::make_from_resolved(
       ec.source_location(), ResolvedCommand::from_builtin(Builtin::Kind::Cd),
@@ -921,22 +963,27 @@ run_cd_to_directory(EvalContext       &cxt,
 }
 
 static fn
-abbreviate_home_directory(StringView path, Allocator allocator) throws -> String
+abbreviate_home_directory(StringView path, Allocator allocator) throws
+    -> String
 {
   let const home = os::get_home_directory();
+
   if (home.has_value()) {
     let const home_view = home->text().view();
+
     if (path == home_view) return String{allocator, "~"};
     if (path.length > home_view.length && path.starts_with(home_view) &&
         os::is_directory_separator(path[home_view.length]))
     {
       let result = String{allocator, "~"};
+
       result.append(path.substring(home_view.length));
 
       return result;
     }
 
     let const path_value = Path{path};
+
     if (path_value.is_same_file_as(*home)) return String{allocator, "~"};
 
     for (usize position = os::path_root_length(path); position < path.length;
@@ -945,9 +992,11 @@ abbreviate_home_directory(StringView path, Allocator allocator) throws -> String
       if (!os::is_directory_separator(path[position])) continue;
 
       let const prefix = Path{path.substring_of_length(0, position)};
+
       if (!prefix.is_same_file_as(*home)) continue;
 
       let result = String{allocator, "~"};
+
       result.append(path.substring(position));
 
       return result;
@@ -966,12 +1015,17 @@ parse_directory_stack_rotation(StringView     arg,
   if (arg.length < 2 || (arg[0] != '+' && arg[0] != '-')) {
     return false;
   }
+
   let const digits = arg.substring(1);
+
   if (!digits.is_all_decimal_digits()) return false;
 
   let const parsed = digits.to<i64>();
+
   if (parsed.is_error()) return false;
+
   let const number = static_cast<usize>(parsed.value());
+
   if (number >= ring_count) {
     throw ErrorWithLocationAndDetails{
         location,
@@ -990,10 +1044,12 @@ logical_working_directory(const EvalContext &cxt) throws -> Path
 {
   let       physical_directory = Path::current_directory();
   let const logical_pwd        = cxt.get_variable_value("PWD");
+
   if (logical_pwd.has_value() && !logical_pwd->is_empty() &&
       os::path_is_absolute(logical_pwd->view()))
   {
     let logical_directory = Path{logical_pwd->view()};
+
     if (logical_directory.is_same_file_as(physical_directory))
       return logical_directory;
   }
@@ -1020,10 +1076,12 @@ print_directory_stack(EvalContext       &cxt,
 
   for (usize i = first_index; i < end_index; i++) {
     let const entry = i == 0 ? pwd.view() : stack[stack.count() - i].view();
+
     if (should_print_numbers) {
       out += String::from(i, cxt.scratch_allocator());
       out += "  ";
     }
+
     if (should_print_full_paths)
       out.append(entry);
     else

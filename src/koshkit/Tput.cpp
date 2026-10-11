@@ -28,12 +28,12 @@ fn
 Tput::execute(const ExecContext               &ec,
               EvalContext                     &cxt,
               const ArrayList<String>         &args,
-              const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+              const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (operands.is_empty()) return report_usage_error(ec, cxt, args[0].view());
+
   let const capability = operands[0].view();
   static constexpr static_string_entry<StringView> STRING_ENTRIES[] = {
       {SSK("bel"),   "\a"           },
@@ -64,28 +64,34 @@ Tput::execute(const ExecContext               &ec,
       {SSK("smul"),  "\033[4m"      },
   };
   static constexpr StaticStringMap STRING_CAPABILITIES{STRING_ENTRIES};
+
   if (let const value = STRING_CAPABILITIES.find(capability); value.has_value())
   {
     ec.print_to_stdout(*value);
 
     return 0;
   }
+
   if (capability == "longname") {
     let const configured    = cxt.get_variable_value("TERM");
     let const terminal_type = FLAG_TPUT_TERMINAL.is_set()
                                   ? FLAG_TPUT_TERMINAL.value()
                               : configured.has_value() ? configured->view()
                                                        : StringView{"unknown"};
+
     ec.print_to_stdout(terminal_type);
     ec.print_to_stdout(" terminal\n");
 
     return 0;
   }
+
   if (capability == "cup") {
     if (operands.count() != 3)
       return report_usage_error(ec, cxt, args[0].view());
+
     let const row    = utils::parse_decimal_u64(operands[1].view());
     let const column = utils::parse_decimal_u64(operands[2].view());
+
     if (row.is_error() || row.value() == UINT64_MAX) {
       KOSHKIT_REPORT_ERROR_AT(
           operand_locations[1], "invalid row '" + operands[1] + "'",
@@ -93,6 +99,7 @@ Tput::execute(const ExecContext               &ec,
 
       return 1;
     }
+
     if (column.is_error() || column.value() == UINT64_MAX) {
       KOSHKIT_REPORT_ERROR_AT(
           operand_locations[2], "invalid column '" + operands[2] + "'",
@@ -102,6 +109,7 @@ Tput::execute(const ExecContext               &ec,
     }
 
     let output = String{cxt.scratch_allocator(), "\033["};
+
     output += String::from(row.value() + 1, cxt.scratch_allocator());
     output += ';';
     output += String::from(column.value() + 1, cxt.scratch_allocator());
@@ -110,13 +118,17 @@ Tput::execute(const ExecContext               &ec,
 
     return 0;
   }
+
   if (capability == "cols" || capability == "lines") {
     let const dimensions =
         os::get_terminal_dimensions(ec.out_fd.value_or(KOSH_STDOUT));
+
     if (!dimensions.has_value()) return 1;
+
     let output = String::from(capability == "cols" ? dimensions->columns
                                                    : dimensions->rows,
                               cxt.scratch_allocator());
+
     output += '\n';
     ec.print_to_stdout(output);
 

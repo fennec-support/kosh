@@ -44,6 +44,7 @@ Caller::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   if (has_frame_operand) {
     let const parsed = args[1].to<i64>();
+
     if (parsed.is_error()) {
       report_soft_builtin_error(
           ec, cxt, operand_locations[1],
@@ -61,6 +62,7 @@ Caller::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   }
 
   let out = String{cxt.scratch_allocator()};
+
   out +=
       String::from(cxt.funcname_line_at(frame_index), cxt.scratch_allocator());
   out += ' ';

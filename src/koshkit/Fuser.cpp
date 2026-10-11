@@ -44,8 +44,7 @@ fn
 Fuser::execute(const ExecContext               &ec,
                EvalContext                     &cxt,
                const ArrayList<String>         &args,
-               const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+               const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
@@ -55,6 +54,7 @@ Fuser::execute(const ExecContext               &ec,
         FLAG_FUSER_FILESYSTEM.position() > FLAG_FUSER_FILE.position()
             ? FLAG_FUSER_FILESYSTEM.value_location()
             : FLAG_FUSER_FILE.value_location();
+
     report_soft_koshkit_util_error(ec, cxt, conflict_location, args[0].view(),
                                    "-c and -f cannot be used together");
 
@@ -65,6 +65,7 @@ Fuser::execute(const ExecContext               &ec,
   let       operand_paths = ArrayList<Path>{allocator};
   let       file_statuses = ArrayList<os::file_status>{allocator};
   let       batch         = os::Batch{allocator};
+
   operand_paths.reserve(operands.count());
   file_statuses.reserve(operands.count());
   batch.reserve(operands.count());
@@ -103,6 +104,7 @@ Fuser::execute(const ExecContext               &ec,
     }
 
     let const &file_status = file_statuses[operand_position];
+
     if (!os::process_file_query_is_supported(file_status, match_scope)) {
       report_soft_koshkit_util_error(
           ec, cxt, operand_locations[operand_position], args[0].view(),
@@ -115,6 +117,7 @@ Fuser::execute(const ExecContext               &ec,
     let const should_match_device =
         FLAG_FUSER_FILESYSTEM.is_enabled() ||
         (is_block_device && !FLAG_FUSER_FILE.is_enabled());
+
     queries.push(os::process_file_query{
         operands[operand_position].view(),
         should_match_device && is_block_device ? file_status.special_device_id
@@ -125,11 +128,13 @@ Fuser::execute(const ExecContext               &ec,
 
   let users = ArrayList<os::process_file_user>{cxt.scratch_allocator()};
   let failed_query_position = Maybe<u32>{};
+
   if (!queries.is_empty())
     failed_query_position =
         os::scan_process_file_users(queries, users, cxt.scratch_allocator());
   if (failed_query_position.has_value()) {
     let const operand_position = static_cast<usize>(*failed_query_position);
+
     report_soft_koshkit_util_error(ec, cxt, operand_locations[operand_position],
                                    args[0].view(),
                                    "unable to inspect running processes: " +
@@ -137,9 +142,11 @@ Fuser::execute(const ExecContext               &ec,
 
     return 1;
   }
+
   if (users.is_empty() && status == 0) {
     status = 1;
   }
+
   let const sorted_users =
       steal(users).make_sorted([](const os::process_file_user &left,
                                   const os::process_file_user &right) {
@@ -166,7 +173,9 @@ Fuser::execute(const ExecContext               &ec,
     {
       continue;
     }
+
     let &metadata_output = is_combined ? combined_output : standard_error;
+
     metadata_output += operands[operand_position].view();
     metadata_output.push(':');
 
@@ -175,12 +184,14 @@ Fuser::execute(const ExecContext               &ec,
     {
       let const &user = sorted_users[user_position];
       let        pid  = String::from(user.pid, cxt.scratch_allocator());
+
       if (is_combined) {
         metadata_output += pid.view();
       } else {
         standard_output += pid.view();
         standard_output.push(' ');
       }
+
       append_use_letters(metadata_output, user.use_mask);
       if (FLAG_FUSER_USER.is_enabled()) {
         metadata_output.push('(');
@@ -192,6 +203,7 @@ Fuser::execute(const ExecContext               &ec,
               String::from(user.owner_id, cxt.scratch_allocator());
         metadata_output.push(')');
       }
+
       user_position++;
     }
 

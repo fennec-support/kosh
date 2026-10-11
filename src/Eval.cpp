@@ -88,6 +88,7 @@ EvalContext::get_or_create_diagnostic_highlight_cache() throws
   if (diagnostics_store().runtime_diagnostic_highlight_cache() == nullptr) {
     let const cache =
         heap_allocator().alloc_array<completion::ShellHighlightCache>(1);
+
     if (cache == nullptr) throw std::bad_alloc{};
     try {
       diagnostics_store().runtime_diagnostic_highlight_cache() =
@@ -129,9 +130,8 @@ RuntimeStateScope::~RuntimeStateScope() { m_saved.restore(m_context); }
 DefinitionStateScope::DefinitionStateScope(EvalContext            &context,
                                            const definition_state &state,
                                            definition_state_exit   exit,
-                                           bool should_enter) wontthrow
-    : m_context(context),
-      m_exit(exit)
+                                           bool                    should_enter) wontthrow
+    : m_context(context), m_exit(exit)
 {
   if (should_enter) m_saved = context.enter_definition_state(state);
 }
@@ -147,6 +147,7 @@ EvalContext::end_command() wontthrow -> void
   let const used = arena_store().parse_arena() != nullptr
                        ? arena_store().parse_arena()->bytes_used()
                        : 0;
+
   evaluation_metrics_store().end_command(used);
 }
 
@@ -168,10 +169,12 @@ EvalContext::record_history_event(StringView command) throws -> bool
 hot fn
 EvalContext::assign_variable(StringView              name,
                              StringView              value,
-                             Maybe<variable_entry *> entry) throws -> void
+                             Maybe<variable_entry *> entry) throws
+    -> void
 {
   LOG(All, "assigning variable '%.*s' to a value of %zu bytes",
       static_cast<int>(name.length), name.data, value.length);
+
   let const first_byte              = name.is_empty() ? '\0' : name[0];
   let       is_field_separator_name = false;
   let       is_ignoreeof_name       = false;
@@ -180,31 +183,37 @@ EvalContext::assign_variable(StringView              name,
 
   switch (first_byte) {
   case 'G': is_glob_ignore_name = name == "GLOBIGNORE"; break;
+
   case 'I':
     is_field_separator_name = name == "IFS";
     is_ignoreeof_name       = name == "IGNOREEOF";
     break;
+
   case 'P':
   case 'p': is_path_name = utils::environment_name_is_path(name); break;
+
   case 'L':
     if (name.starts_with("LC_") || name == "LANG") {
       variable_store().set_locale_scalar_possible();
     }
+
     break;
+
   default: break;
   }
+
   let const is_pipestatus_name = first_byte == 'P' && name == "PIPESTATUS";
 
-  if (environment_store().confined_write_depth() > 0) rarely
-    {
-      let const previous = variable_store().shell_variables().find(name);
-      let       saved    = Maybe<String>{};
-      if (previous.has_value()) saved = String{previous->view()};
-      let const saved_definition = special_variable_definition_location(name);
+  if (environment_store().confined_write_depth() > 0) rarely {
+    let const previous = variable_store().shell_variables().find(name);
+    let       saved    = Maybe<String>{};
+    if (previous.has_value()) saved = String{previous->view()};
 
-      environment_store().confined_write_log().push(
-          environment_undo_entry{String{name}, steal(saved), saved_definition});
-    }
+    let const saved_definition = special_variable_definition_location(name);
+
+    environment_store().confined_write_log().push(
+        environment_undo_entry{String{name}, steal(saved), saved_definition});
+  }
 
   if (is_field_separator_name) variable_store().set_field_separators(value);
   if (write_dynamic_variable(name, value)) return;
@@ -217,12 +226,14 @@ EvalContext::assign_variable(StringView              name,
   let &target = entry.has_value()
                     ? **entry
                     : variable_store().variables().get_or_create(name);
+
   variable_store().variables().assign_value(target, value);
   if (is_pipestatus_name) variable_store().set_pipestatus_scalar_possible(true);
   if (is_glob_ignore_name) {
     runtime_state().set_glob_ignore_assigned(true);
     if (!value.is_empty()) set_shopt_option("dotglob", true);
   }
+
   if (is_prompt_special_variable(name))
     variable_store().special_variable_definition_locations().set(
         name, source_store().current_location());
@@ -245,6 +256,7 @@ EvalContext::restore_temporary_shell_variable(
     variable_store().set_pipestatus_scalar_possible(true);
   } else
     variable_store().shell_variables().erase(name);
+
   if (is_prompt_special_variable(name)) {
     if (previous_definition_location.has_value())
       variable_store().special_variable_definition_locations().set(
@@ -283,9 +295,11 @@ EvalContext::rollback_confined_variable_writes(usize mark) wontthrow -> void
     try {
       let const &entry = environment_store().confined_write_log().back();
       let const  name  = entry.name.view();
+
       restore_temporary_shell_variable(
           name, entry.previous_value,
           entry.previous_special_definition_location);
+
       let const restored = entry.previous_value.has_value()
                                ? entry.previous_value->view()
                                : StringView{};
@@ -294,11 +308,13 @@ EvalContext::rollback_confined_variable_writes(usize mark) wontthrow -> void
         variable_store().set_field_separators(
             entry.previous_value.has_value() ? restored : " \t\n");
       }
+
       if (utils::environment_name_is_path(name)) {
         program_resolver().assign_path(entry.previous_value.has_value()
                                            ? Maybe<String>{String{restored}}
                                            : Maybe<String>{});
       }
+
       if (is_exported(name)) {
         if (entry.previous_value.has_value())
           os::set_environment_variable(name, restored);
@@ -323,7 +339,8 @@ EvalContext::rollback_confined_variable_writes(usize mark) wontthrow -> void
 fn
 EvalContext::guard_restricted_path(StringView            path,
                                    const SourceLocation &location,
-                                   restricted_path_use use) const throws -> void
+                                   restricted_path_use   use) const throws
+    -> void
 {
   if (!runtime_state().option_is_enabled(shell_option_id::Restricted)) return;
   if (use != restricted_path_use::History && !os::has_directory_separator(path))
@@ -351,50 +368,52 @@ EvalContext::guard_restricted_path(StringView            path,
         "hash -p paths containing a directory separator are forbidden in a "
         "restricted shell"};
   }
+
   unreachable("Unhandled restricted path use");
 }
 
 hot fn
-EvalContext::set_shell_variable(StringView name, StringView value) throws
-    -> void
+EvalContext::set_shell_variable(StringView name,
+                                StringView value) throws -> void
 {
   let const entry = variable_store().find_variable_for_write(name);
   let const attribute_bits =
       entry.has_value() ? (*entry)->attribute_bits : u8{0};
   let const has_scalar = entry.has_value() && (*entry)->has_value;
+
   if ((attribute_bits & static_cast<u8>(variable_attribute::Nameref)) != 0)
-    rarely
-    {
-      let const target = resolve_nameref_for_write(name);
-      if (target.view() == name) {
-        try {
-          if (value == name)
-            bind_self_nameref(name, scope_store().has_current_local(name));
-          else
-            bind_nameref(name, value);
-        } catch (ErrorBase &error) {
-          mark_expansion_error(error, expansion_error_reach::LineOrPosixScript);
-          throw;
-        }
-
-        return;
+      rarely
+  {
+    let const target = resolve_nameref_for_write(name);
+    if (target.view() == name) {
+      try {
+        if (value == name)
+          bind_self_nameref(name, scope_store().has_current_local(name));
+        else
+          bind_nameref(name, value);
+      } catch (ErrorBase &error) {
+        mark_expansion_error(error, expansion_error_reach::LineOrPosixScript);
+        throw;
       }
-
-      if (let const bracket = target.view().find_character('[');
-          bracket.has_value())
-      {
-        assign_array_element(target.view().substring_of_length(0, *bracket),
-                             target.view().substring_of_length(
-                                 *bracket + 1, target.count() - *bracket - 2),
-                             value, assignment_update_mode::Replace);
-
-        return;
-      }
-
-      set_shell_variable(target.view(), value);
 
       return;
     }
+
+    if (let const bracket = target.view().find_character('[');
+        bracket.has_value())
+    {
+      assign_array_element(target.view().substring_of_length(0, *bracket),
+                           target.view().substring_of_length(
+                               *bracket + 1, target.count() - *bracket - 2),
+                           value, assignment_update_mode::Replace);
+
+      return;
+    }
+
+    set_shell_variable(target.view(), value);
+
+    return;
+  }
 
   if (is_implicitly_readonly(name) ||
       (attribute_bits & static_cast<u8>(variable_attribute::Readonly)) != 0)
@@ -411,6 +430,7 @@ EvalContext::set_shell_variable(StringView name, StringView value) throws
 
     return;
   }
+
   if (is_bash_directory_stack_special(name)) return;
 
   if (!has_scalar && ((entry.has_value() && (*entry)->is_indexed_array) ||
@@ -424,8 +444,7 @@ EvalContext::set_shell_variable(StringView name, StringView value) throws
   if (is_implicitly_integer(name) ||
       (attribute_bits & static_cast<u8>(variable_attribute::Integer)) != 0)
   {
-    rarely
-    {
+    rarely {
       let result = String{scratch_allocator(), "0"};
       if (value.length != 0) {
         try {
@@ -441,6 +460,7 @@ EvalContext::set_shell_variable(StringView name, StringView value) throws
           throw;
         }
       }
+
       assign_variable(name, result.view());
 
       return;
@@ -450,8 +470,7 @@ EvalContext::set_shell_variable(StringView name, StringView value) throws
   if ((attribute_bits & (static_cast<u8>(variable_attribute::Lowercase) |
                          static_cast<u8>(variable_attribute::Uppercase))) != 0)
   {
-    rarely
-    {
+    rarely {
       let adjusted = String{scratch_allocator(), value};
       variable_store().attributes().apply_case(name, adjusted);
       assign_variable(name, adjusted.view());
@@ -472,6 +491,7 @@ EvalContext::seed_shell_identity_variables(
     LOG(Info, "seeding the bash identity variables");
     set_shell_variable("BASH_VERSION", "5.3.0(1)-kosh");
     let versinfo = ArrayList<String>{heap_allocator()};
+
     versinfo.push(String{"5"});
     versinfo.push(String{"3"});
     versinfo.push(String{"0"});
@@ -487,12 +507,14 @@ EvalContext::seed_shell_identity_variables(
   }
   case shell_identity_mode::Native: break;
   }
+
   LOG(Info, "clearing the bash identity variables for a non-bash mood");
   if (variable_store().shell_variables().find("BASH_VERSION").has_value() ||
       os::has_environment_variable("BASH_VERSION"))
   {
     force_unset_shell_variable("BASH_VERSION");
   }
+
   if (variable_store().shell_variables().find("BASH").has_value() ||
       os::has_environment_variable("BASH"))
   {
@@ -505,6 +527,7 @@ EvalContext::materialize_kosh_identity() const throws -> Maybe<String>
 {
   let const identity =
       utils::kosh_identity(execution_store().get_shell_executable_path());
+
   if (identity.has_value()) return String{heap_allocator(), *identity};
 
   return None;
@@ -528,8 +551,7 @@ EvalContext::unset_shell_variable(StringView name) throws -> void
   if (variable_store().attributes().is_nameref(name) &&
       !unbind_circular_nameref(name))
   {
-    rarely
-    {
+    rarely {
       let const target = resolve_nameref_for_write(name);
       if (let const bracket = target.view().find_character('[');
           bracket.has_value())
@@ -540,6 +562,7 @@ EvalContext::unset_shell_variable(StringView name) throws -> void
 
         return;
       }
+
       if (target.view() != name) {
         unset_shell_variable(target.view());
 
@@ -566,6 +589,7 @@ EvalContext::unset_shell_variable(StringView name) throws -> void
       is_bash_special_array_active(bash_special_array_id::Aliases);
   let const should_disable_bash_directory_stack =
       is_bash_directory_stack_special(name);
+
   force_unset_shell_variable(name);
   variable_store().indexed_arrays().erase(name);
   clear_sparse_array(name);
@@ -600,6 +624,7 @@ EvalContext::peel_caller_local_binding(StringView name) throws -> bool
       if (binding.name.view() != name || binding.is_self_reference) {
         continue;
       }
+
       LOG(Debug, "peeling the local binding of '%.*s' from caller frame %zu",
           static_cast<int>(name.length), name.data, frame_index);
 
@@ -615,9 +640,8 @@ EvalContext::peel_caller_local_binding(StringView name) throws -> bool
 }
 
 fn
-EvalContext::assign_caller_binding_of_circular_nameref(StringView name,
-                                                       StringView value) throws
-    -> bool
+EvalContext::assign_caller_binding_of_circular_nameref(
+    StringView name, StringView value) throws -> bool
 {
   if (scope_store().local_scope_depth() == 0) return false;
   if (!variable_store().attributes().is_nameref(name)) return false;
@@ -627,11 +651,13 @@ EvalContext::assign_caller_binding_of_circular_nameref(StringView name,
 
   for (usize i = frame.count(); i-- > 0;) {
     let &binding = frame[i];
+
     if (binding.name.view() != name || binding.is_self_reference) {
       continue;
     }
 
     let const nameref_bit = static_cast<u8>(variable_attribute::Nameref);
+
     if ((binding.previous_attributes & nameref_bit) != 0 ||
         binding.previous_indexed_array.has_value() ||
         binding.was_previously_associative)
@@ -651,7 +677,8 @@ EvalContext::assign_caller_binding_of_circular_nameref(StringView name,
 fn
 EvalContext::assign_global_beneath_locals(StringView name,
                                           StringView value,
-                                          bool should_append) throws -> bool
+                                          bool       should_append) throws
+    -> bool
 {
   for (usize frame_index = 0; frame_index < scope_store().local_scope_depth();
        frame_index++)
@@ -671,9 +698,11 @@ EvalContext::assign_global_beneath_locals(StringView name,
       }
 
       let next_value = String{heap_allocator()};
+
       if (should_append && binding.previous_value.has_value()) {
         next_value.append(binding.previous_value->view());
       }
+
       next_value.append(value);
       binding.previous_value = steal(next_value);
 
@@ -685,7 +714,8 @@ EvalContext::assign_global_beneath_locals(StringView name,
 }
 
 fn
-EvalContext::restore_local_binding(local_binding &binding) throws -> void
+EvalContext::restore_local_binding(local_binding &binding) throws
+    -> void
 {
   if (binding.previous_value.has_value())
     assign_variable(binding.name, *binding.previous_value);
@@ -699,17 +729,19 @@ EvalContext::restore_local_binding(local_binding &binding) throws -> void
       variable_store().special_variable_definition_locations().erase(
           binding.name.view());
   }
+
   if (binding.previous_indexed_array.has_value())
     variable_store().indexed_arrays().set(
         binding.name.view(), steal(*binding.previous_indexed_array));
   else
     variable_store().indexed_arrays().erase(binding.name.view());
+
   let const was_restricted =
       runtime_state().option_is_enabled(shell_option_id::Restricted);
+
   runtime_state().set_option(shell_option_id::Restricted, false);
   variable_store().attributes().erase(binding.name.view());
-  defer
-  {
+  defer {
     runtime_state().set_option(shell_option_id::Restricted, was_restricted);
     if (binding.previous_attributes != 0)
       variable_store().attributes().set_bits(binding.name.view(),
@@ -717,6 +749,7 @@ EvalContext::restore_local_binding(local_binding &binding) throws -> void
     else
       variable_store().attributes().erase(binding.name.view());
   };
+
   clear_sparse_array(binding.name.view());
 
   for (usize i = 0; i < binding.previous_sparse_indices.count(); i++)
@@ -741,17 +774,18 @@ EvalContext::restore_local_binding(local_binding &binding) throws -> void
 }
 
 fn
-EvalContext::set_indexed_array(StringView name, ArrayList<String> values) throws
-    -> void
+EvalContext::set_indexed_array(StringView        name,
+                               ArrayList<String> values) throws -> void
 {
   LOG(All, "storing indexed array '%.*s' with %zu elements",
       static_cast<int>(name.length), name.data, values.count());
   let resolved_name = Maybe<String>{};
-  if (variable_store().attributes().is_nameref(name)) rarely
-    {
-      resolved_name = resolve_nameref_whole_variable_for_write(name, false);
-      name          = resolved_name->view();
-    }
+
+  if (variable_store().attributes().is_nameref(name)) rarely {
+    resolved_name = resolve_nameref_whole_variable_for_write(name, false);
+    name          = resolved_name->view();
+  }
+
   if (is_readonly(name))
     throw Error{"Unable to assign '" + name + "' because it is read only"};
   if (is_write_discarded_dynamic_variable(name)) return;
@@ -761,14 +795,16 @@ EvalContext::set_indexed_array(StringView name, ArrayList<String> values) throws
 
     return;
   }
+
   variable_store().attributes().unmark_declared(name);
-  if (variable_store().attributes().has_case(name))
-    rarely for (let &value : values) variable_store().attributes().apply_case(
-        name, value);
+  if (variable_store().attributes().has_case(name)) rarely
+    for (let &value : values)
+      variable_store().attributes().apply_case(name, value);
   if (variable_store().associative_arrays().has(name)) {
     throw Error{"Unable to convert the associative array '" + name +
                 "' to an indexed array"};
   }
+
   if (is_integer_variable(name))
     for (let &value : values)
       value = evaluate_arithmetic_text(value.view());
@@ -778,12 +814,14 @@ EvalContext::set_indexed_array(StringView name, ArrayList<String> values) throws
     record_environment_change(name);
     os::unset_environment_variable(name);
   }
+
   clear_sparse_array(name);
   variable_store().indexed_arrays().set(name, steal(values));
 }
 
 fn
-EvalContext::publish_pipe_statuses(ArrayList<String> values) throws -> void
+EvalContext::publish_pipe_statuses(ArrayList<String> values) throws
+    -> void
 {
   if (is_readonly("PIPESTATUS")) {
     if (let current =
@@ -804,6 +842,7 @@ EvalContext::publish_single_pipe_status(i32 status) throws -> void
   let       existing = entry.has_value() && (*entry)->is_indexed_array
                            ? Maybe<const ArrayList<String> *>{&(*entry)->elements}
                            : Maybe<const ArrayList<String> *>{None};
+
   if (!existing.has_value() && is_readonly("PIPESTATUS")) {
     return;
   }
@@ -816,9 +855,11 @@ EvalContext::publish_single_pipe_status(i32 status) throws -> void
       variable_store().shell_variables().erase("PIPESTATUS");
       variable_store().set_pipestatus_scalar_possible(false);
     }
+
     char      status_text_buffer[32];
     let const status_text = utils::int_to_text_into(status, status_text_buffer,
                                                     sizeof(status_text_buffer));
+
     if ((*existing.value())[0] != status_text) {
       let &elements =
           (*variable_store().variables().find_pipestatus_for_write())->elements;
@@ -832,6 +873,7 @@ EvalContext::publish_single_pipe_status(i32 status) throws -> void
   clear_sparse_array("PIPESTATUS");
   let &values = variable_store().indexed_arrays().get_or_create(
       "PIPESTATUS", ArrayList<String>{heap_allocator()});
+
   values.clear();
   values.push(String::from(status, values.allocator()));
 }
@@ -854,17 +896,20 @@ cold fn
 EvalContext::show_runtime_warning_at(SourceLocation location,
                                      StringView     message,
                                      StringView     note,
-                                     bool should_ignore_disabled) wontthrow
+                                     bool           should_ignore_disabled) wontthrow
     -> void
 {
   if (runtime_state().is_diagnostics_disabled() && !should_ignore_disabled) {
     return;
   }
+
   let const trace_location = location;
+
   try {
     let const resolved_source = resolve_render_source(location);
     let const line_offset =
         resolved_source.is_windowed ? resolved_source.line_offset : isize{0};
+
     location = resolved_source.rebase(location);
     if (resolved_source.text == nullptr ||
         location.position > resolved_source.text->count())
@@ -873,7 +918,9 @@ EvalContext::show_runtime_warning_at(SourceLocation location,
 
       return;
     }
+
     let warning = WarningWithLocationAndDetails{location, message, note};
+
     if (resolved_source.is_windowed) warning.set_line_offset(line_offset);
     show_message(warning.to_string(resolved_source.text->view(), this));
     print_source_backtrace(trace_location);
@@ -887,10 +934,12 @@ EvalContext::show_runtime_error_at(SourceLocation location,
                                    StringView     message) wontthrow -> void
 {
   let const trace_location = location;
+
   try {
     let const resolved_source = resolve_render_source(location);
     let const line_offset =
         resolved_source.is_windowed ? resolved_source.line_offset : isize{0};
+
     location = resolved_source.rebase(location);
     if (resolved_source.text == nullptr ||
         location.position > resolved_source.text->count())
@@ -899,7 +948,9 @@ EvalContext::show_runtime_error_at(SourceLocation location,
 
       return;
     }
+
     let error = ErrorWithLocation{location, message};
+
     if (resolved_source.is_windowed) error.set_line_offset(line_offset);
     show_message(error.to_string(resolved_source.text->view(), this));
     print_source_backtrace(trace_location);
@@ -913,13 +964,18 @@ EvalContext::locate_variable_reference(StringView name) const wontthrow
     -> SourceLocation
 {
   let fallback = source_store().current_location();
+
   if (name.is_empty()) return fallback;
+
   let const resolved_source = resolve_render_source(fallback);
+
   if (resolved_source.text == nullptr) return fallback;
+
   let const source = resolved_source.text->view();
 
   usize scan_start     = fallback.position;
   usize absolute_shift = 0;
+
   if (resolved_source.is_windowed) {
     scan_start = resolved_source.to_render_position(fallback.position);
     absolute_shift =
@@ -928,28 +984,34 @@ EvalContext::locate_variable_reference(StringView name) const wontthrow
                   resolved_source.header_length
             : 0;
   }
+
   if (scan_start >= source.length) return fallback;
 
   usize i = scan_start;
 
   while (i < source.length) {
     let const byte = source[i];
+
     if (byte == '\n' && (i == 0 || source[i - 1] != '\\')) {
       break;
     }
+
     if (byte != '$' || i + 1 >= source.length) {
       i++;
       continue;
     }
+
     usize     name_start = i + 1;
     let const is_braced  = source[name_start] == '{';
     if (is_braced) name_start++;
+
     if (name_start + name.length <= source.length &&
         source.substring_of_length(name_start, name.length) == name &&
         (name_start + name.length == source.length ||
          !lexer::is_variable_name(source[name_start + name.length])))
     {
       usize reference_end = name_start + name.length;
+
       if (is_braced && reference_end < source.length &&
           source[reference_end] == '}')
       {
@@ -959,6 +1021,7 @@ EvalContext::locate_variable_reference(StringView name) const wontthrow
       return SourceLocation{i + absolute_shift, reference_end - i,
                             fallback.source_name_index};
     }
+
     i++;
   }
 
@@ -966,9 +1029,11 @@ EvalContext::locate_variable_reference(StringView name) const wontthrow
 
   while (k + name.length <= source.length) {
     let const byte = source[k];
+
     if (byte == '\n' && (k == 0 || source[k - 1] != '\\')) {
       break;
     }
+
     if (source.substring_of_length(k, name.length) == name &&
         (k == 0 || !lexer::is_variable_name(source[k - 1])) &&
         (k + name.length == source.length ||
@@ -977,6 +1042,7 @@ EvalContext::locate_variable_reference(StringView name) const wontthrow
       return SourceLocation{k + absolute_shift, name.length,
                             fallback.source_name_index};
     }
+
     k++;
   }
 
@@ -991,6 +1057,7 @@ EvalContext::mark_expansion_error(ErrorBase            &error,
   if (error.is_script_fatal() || error.is_line_discarding()) {
     return;
   }
+
   if (expansion_store().is_expanding_here_document()) return;
 
   if (reach != expansion_error_reach::Line &&
@@ -1030,6 +1097,7 @@ EvalContext::report_unset_reference(StringView name) throws -> void
   }
 
   let const should_demote = strict_diagnostics_are_warnings();
+
   if (runtime_state().error_unset() &&
       (runtime_state().was_error_unset_set_explicitly() || !should_demote) &&
       !runtime_control_store().is_warning_suppressed(
@@ -1039,6 +1107,7 @@ EvalContext::report_unset_reference(StringView name) throws -> void
                         "' because the parameter is not set";
 
     let const reference = locate_variable_reference(name);
+
     if (reference.position == source_store().current_location().position &&
         reference.length == source_store().current_location().length)
     {
@@ -1047,9 +1116,11 @@ EvalContext::report_unset_reference(StringView name) throws -> void
 
     ErrorWithLocationAndDetails error{reference, message,
                                       empty_expansion_note.view()};
+
     error.set_script_fatal();
     throw steal(error);
   }
+
   if (execution_store().completion_function_running()) return;
   if (runtime_control_store().is_warning_suppressed(
           suppressible_warning::UnsetTestOperand))
@@ -1071,10 +1142,12 @@ EvalContext::warn_or_throw(bool                  is_fatal,
                            StringView            note) throws -> void
 {
   let const should_demote = strict_diagnostics_are_warnings();
+
   if (is_fatal && (was_explicitly_requested || !should_demote)) {
     if (note.is_empty()) throw ErrorWithLocation{location, message};
     throw ErrorWithLocationAndDetails{location, message, note};
   }
+
   if (execution_store().completion_function_running()) return;
   if ((is_fatal || should_demote) &&
       !runtime_state().is_diagnostics_disabled() &&
@@ -1082,6 +1155,7 @@ EvalContext::warn_or_throw(bool                  is_fatal,
   {
     try {
       let warning = WarningWithLocationAndDetails{location, message, note};
+
       show_message(
           warning.to_string(source_store().current_source()->view(), this));
       print_source_backtrace(location);
@@ -1104,33 +1178,39 @@ EvalContext::force_unset_shell_variable(StringView name) throws -> void
     os::unset_environment_variable(name);
     unmark_exported(name);
   }
+
   switch (name.is_empty() ? '\0' : name[0]) {
   case 'I':
     if (name == "IFS") variable_store().set_field_separators(" \t\n");
     if (name == "IGNOREEOF")
       runtime_state().set_option(shell_option_id::Ignoreeof, false);
     break;
+
   case 'G':
     if (name == "GLOBIGNORE") {
       runtime_state().set_glob_ignore_assigned(false);
       set_shopt_option("dotglob", false);
     }
+
     break;
+
   case 'P':
   case 'p':
     if (utils::environment_name_is_path(name))
       program_resolver().assign_path(os::get_environment_variable("PATH"));
     break;
+
   default: break;
   }
 }
 
 pure fn
-EvalContext::special_variable_definition_location(
-    StringView name) const wontthrow -> Maybe<SourceLocation>
+EvalContext::special_variable_definition_location(StringView name) const wontthrow
+    -> Maybe<SourceLocation>
 {
   let const location =
       variable_store().special_variable_definition_locations().find(name);
+
   if (!location.has_value()) return None;
 
   return *location.value();
@@ -1176,6 +1256,7 @@ store_exported_name(StringMap<Value> &names,
   } else {
     let const previous_count = names.count();
     let      &display_name = names.get_or_create(key, String{heap_allocator()});
+
     if (names.count() != previous_count && key != spelling) {
       display_name.append(spelling);
     }
@@ -1195,6 +1276,7 @@ EvalContext::mark_exported(StringView name) throws -> void
 
   char folded[EXPORTED_NAME_FOLD_BYTES];
   let  spill = String{heap_allocator()};
+
   store_exported_name(variable_store().exported_names(),
                       fold_exported_name(name, folded, spill), name);
 }
@@ -1210,6 +1292,7 @@ EvalContext::unmark_exported(StringView name) throws -> void
 
   char folded[EXPORTED_NAME_FOLD_BYTES];
   let  spill = String{heap_allocator()};
+
   variable_store().exported_names().erase(
       fold_exported_name(name, folded, spill));
 }
@@ -1255,19 +1338,23 @@ inheritable_analysis_state::decode(StringView text) throws
                               ? token.substring_of_length(0, *separator)
                               : token;
     let const word      = ANALYSIS_WORDS.find(name);
+
     if (!word.has_value()) return;
 
     switch (*word) {
     case analysis_word::Mimicry:
       if (!separator.has_value()) result.is_mimicry_enabled = true;
       break;
+
     case analysis_word::NoAnnoying:
       if (!separator.has_value()) result.reporting.is_annoying_disabled = true;
       break;
+
     case analysis_word::NoDiagnostics:
       if (!separator.has_value())
         result.reporting.is_diagnostics_disabled = true;
       break;
+
     case analysis_word::Warnings:
       if (separator.has_value() && token.length == *separator + 2 &&
           token[*separator + 1] >= '1' && token[*separator + 1] <= '3')
@@ -1275,6 +1362,7 @@ inheritable_analysis_state::decode(StringView text) throws
         result.reporting.warning_level =
             static_cast<u8>(token[*separator + 1] - '0');
       }
+
       break;
     }
   });
@@ -1287,6 +1375,7 @@ inheritable_analysis_state::from_environment() throws
     -> inheritable_analysis_state
 {
   let const text = os::get_environment_variable(ENVIRONMENT_NAME);
+
   if (!text.has_value()) return inheritable_analysis_state{};
 
   return decode(text->view());
@@ -1299,16 +1388,19 @@ inheritable_analysis_state::encode(String &text) const throws -> void
     text += analysis_word_name(analysis_word::Mimicry);
     text += " ";
   }
+
   if (reporting.warning_level > 0) {
     text += analysis_word_name(analysis_word::Warnings);
     text += "=";
     text += static_cast<char>('0' + reporting.warning_level);
     text += " ";
   }
+
   if (reporting.is_annoying_disabled) {
     text += analysis_word_name(analysis_word::NoAnnoying);
     text += " ";
   }
+
   if (reporting.is_diagnostics_disabled) {
     text += analysis_word_name(analysis_word::NoDiagnostics);
     text += " ";
@@ -1323,9 +1415,11 @@ EvalContext::sync_analysis_environment() throws -> void
   static constexpr StringView NAME =
       inheritable_analysis_state::ENVIRONMENT_NAME;
   let text = String{scratch_allocator()};
+
   runtime_state().get_inheritable_analysis_state().encode(text);
 
   let const current = os::get_environment_variable(NAME);
+
   if (current.has_value() ? current->view() == text.view() : text.is_empty()) {
     return;
   }
@@ -1352,6 +1446,7 @@ EvalContext::unexport_shell_variable(StringView name) throws -> void
       variable_requires_dynamic_lookup(name);
   let const environment_value =
       has_shell_binding ? Maybe<String>{} : os::get_environment_variable(name);
+
   record_environment_change(name);
   os::unset_environment_variable(name);
   unmark_exported(name);
@@ -1375,8 +1470,8 @@ EvalContext::is_exported(StringView name) const throws -> bool
 }
 
 fn
-EvalContext::sync_exported_after_restore(StringView name, bool has_value) throws
-    -> void
+EvalContext::sync_exported_after_restore(StringView name,
+                                         bool       has_value) throws -> void
 {
   if (has_value)
     mark_exported(name);
@@ -1401,6 +1496,7 @@ EvalContext::initialize_bash_argument_arrays(
   let const context      = variable_store().bash_arguments().get_context();
   let       values       = ArrayList<String>{heap_allocator()};
   let       frame_counts = ArrayList<u32>{heap_allocator()};
+
   if (should_include_current_frame) {
     let const is_source_frame =
         context != nullptr &&
@@ -1412,6 +1508,7 @@ EvalContext::initialize_bash_argument_arrays(
     let const argument_count =
         should_use_source_path ? usize{1}
                                : variable_store().positional_params().count();
+
     values.reserve(argument_count);
     frame_counts.reserve(1);
     if (should_use_source_path) {
@@ -1420,6 +1517,7 @@ EvalContext::initialize_bash_argument_arrays(
       for (let const &argument : variable_store().positional_params())
         values.push_managed(argument.view());
     }
+
     frame_counts.push(static_cast<u32>(argument_count));
   }
 
@@ -1431,11 +1529,14 @@ fn
 EvalContext::append_current_bash_argument_frame() const throws -> void
 {
   let const context = variable_store().bash_arguments().get_context();
+
   ASSERT(context != nullptr);
+
   let const is_source_frame =
       context->has_flag(BashArgumentFrameFlag::IsSource);
   let const has_source_arguments =
       context->has_flag(BashArgumentFrameFlag::HasSourceArguments);
+
   if (is_source_frame && !has_source_arguments) {
     variable_store().bash_arguments().push_frame(context->source_path);
   } else {
@@ -1449,7 +1550,8 @@ EvalContext::enter_bash_function_argument_frame(
     BashArgumentFrameContext &frame_context,
     const ArrayList<String>  &arguments) throws -> void
 {
-  let &stack                = variable_store().bash_arguments();
+  let &stack = variable_store().bash_arguments();
+
   frame_context.previous    = stack.get_context();
   frame_context.source_path = {};
   frame_context.flags       = 0;
@@ -1471,7 +1573,8 @@ EvalContext::enter_bash_source_argument_frame(
     const ArrayList<String>  *arguments,
     StringView                source_path) throws -> void
 {
-  let &stack                = variable_store().bash_arguments();
+  let &stack = variable_store().bash_arguments();
+
   frame_context.previous    = stack.get_context();
   frame_context.source_path = source_path;
   frame_context.flags       = 0;
@@ -1505,6 +1608,7 @@ EvalContext::leave_bash_argument_frame(
     BashArgumentFrameContext &frame_context) wontthrow -> void
 {
   let &stack = variable_store().bash_arguments();
+
   ASSERT(stack.get_context() == &frame_context);
   stack.set_context(frame_context.previous);
   if (!frame_context.has_flag(BashArgumentFrameFlag::DidEnter)) return;
@@ -1521,6 +1625,7 @@ EvalContext::enter_function_scope() throws -> void
   ASSERT(scope_store()
              .local_scopes()[scope_store().local_scope_depth()]
              .is_empty());
+
   let &saved_options = scope_store().saved_scope_shell_options();
 
   while (saved_options.count() <= scope_store().local_scope_depth())
@@ -1540,6 +1645,7 @@ EvalContext::leave_function_scope() throws -> void
   ASSERT(scope_store().local_scope_depth() <=
          scope_store().local_scopes().count());
   let &scope = scope_store().current_local_scope();
+
   LOG(Debug, "leaving function scope, restoring %zu shadowed locals",
       scope.count());
 
@@ -1549,18 +1655,23 @@ EvalContext::leave_function_scope() throws -> void
   }
 
   scope.clear();
+
   let &saved_options =
       scope_store()
           .saved_scope_shell_options()[scope_store().local_scope_depth() - 1];
+
   if (saved_options.has_value()) {
     let const restricted_mask =
         RuntimeState::option_mask(shell_option_id::Restricted);
     let const current_options = runtime_state().get_shell_options();
+
     runtime_state().set_shell_options((*saved_options & ~restricted_mask) |
                                       (current_options & restricted_mask));
     saved_options = None;
   }
+
   scope_store().local_scope_depth()--;
+
   constexpr usize RETAINED_LOCAL_SCOPE_COUNT = 16;
   if (scope_store().local_scopes().count() > RETAINED_LOCAL_SCOPE_COUNT &&
       scope_store().local_scopes().count() > scope_store().local_scope_depth())
@@ -1572,7 +1683,8 @@ EvalContext::leave_function_scope() throws -> void
 
 fn
 EvalContext::push_function_call_name(
-    StringView name, const FunctionBodyHandle &body_storage) throws -> void
+    StringView name, const FunctionBodyHandle &body_storage) throws
+    -> void
 {
   function_store().call_frames().push(function_call_frame{
       String{heap_allocator(), name},
@@ -1595,6 +1707,7 @@ EvalContext::script_source_frame_index() const wontthrow -> Maybe<usize>
 
   for (usize i = 0; i < source_store().source_frames().count(); i++) {
     let const &frame = source_store().source_frames()[i];
+
     if (!frame.has_bash_source_row()) continue;
 
     if (frame.source_path.view() == execution_store().get_shell_name())
@@ -1626,8 +1739,7 @@ EvalContext::merged_frame_at(usize        index,
   usize     function_index = 0;
   usize     source_index   = 0;
 
-  loop
-  {
+  loop {
     while (source_index < source_store().source_frames().count() &&
            !source_store().source_frames()[source_index].has_bash_source_row())
     {
@@ -1637,6 +1749,7 @@ EvalContext::merged_frame_at(usize        index,
     let const has_source =
         source_index < source_store().source_frames().count();
     let const has_function = function_index < function_count;
+
     if (!has_source && !has_function) {
       break;
     }
@@ -1691,6 +1804,7 @@ fn
 EvalContext::funcname_frame_at(usize index) const wontthrow -> StringView
 {
   let const frame = merged_frame_at(index);
+
   switch (frame.kind) {
   case MergedFrame::Kind::Function:
     return function_store().call_frames()[frame.storage_index].name.view();
@@ -1702,10 +1816,9 @@ EvalContext::funcname_frame_at(usize index) const wontthrow -> StringView
 }
 
 fn
-EvalContext::line_number_at_location(
-    const SourceLocation &location,
-    const String         *fallback_source,
-    Maybe<usize>          fallback_call_depth) const throws -> usize
+EvalContext::line_number_at_location(const SourceLocation &location,
+                                     const String         *fallback_source,
+                                     Maybe<usize> fallback_call_depth) const throws -> usize
 {
   let const   &line_bases           = source_store().embedded_sources();
   let          site                 = location;
@@ -1735,6 +1848,7 @@ EvalContext::line_number_at_location(
     if (found == search_limit) break;
 
     let const &base = line_bases[found];
+
     preceding_line_count +=
         utils::line_number_at(site_source->view(), site.position) - 1 +
         source_store().preceding_line_count_of(site_source);
@@ -1766,11 +1880,13 @@ EvalContext::line_number_at_location(
                                   *site_depth_floor)
           : resolve_render_source(site, site_source);
   usize line = 1;
+
   if (resolved_source.text != nullptr) {
     const usize render_position =
         resolved_source.to_render_position(site.position);
     let const render_line = static_cast<isize>(
         utils::line_number_at(resolved_source.text->view(), render_position));
+
     line = static_cast<usize>(render_line + resolved_source.line_offset) +
            resolved_source.enclosing_line_count;
   }
@@ -1782,6 +1898,7 @@ fn
 EvalContext::funcname_line_at(usize index) const throws -> usize
 {
   let const frame = merged_frame_at(index);
+
   switch (frame.kind) {
   case MergedFrame::Kind::Function: {
     let const &call_frame = function_store().call_frames()[frame.storage_index];
@@ -1807,14 +1924,17 @@ EvalContext::bash_source_frame_at(usize index) const wontthrow -> StringView
 {
   let const script_source_index = script_source_frame_index();
   let const total               = bash_source_frame_count(script_source_index);
+
   if (index >= total) return StringView{};
 
   let const frame = merged_frame_at(index, total, script_source_index);
+
   switch (frame.kind) {
   case MergedFrame::Kind::Function: {
     let const *info = function_store()
                           .call_frames()[frame.storage_index]
                           .storage.get_definition_info();
+
     if (info != nullptr) {
       if (let const name = source_name_at(info->source_name_index);
           name.has_value() &&
@@ -1861,8 +1981,7 @@ EvalContext::bash_source_frame_count() const wontthrow -> usize
 }
 
 fn
-EvalContext::dynamic_array_element_count(DynamicArray which) const throws
-    -> usize
+EvalContext::dynamic_array_element_count(DynamicArray which) const throws -> usize
 {
   switch (which) {
   case DynamicArray::ArgumentCount:
@@ -1871,6 +1990,7 @@ EvalContext::dynamic_array_element_count(DynamicArray which) const throws
     let const should_include_current_frame =
         context != nullptr ? context->has_flag(BashArgumentFrameFlag::IsSource)
                            : function_store().call_frames().is_empty();
+
     initialize_bash_argument_arrays(should_include_current_frame);
     ASSERT(variable_store().bash_arguments().is_active());
 
@@ -1889,15 +2009,17 @@ EvalContext::dynamic_array_element_count(DynamicArray which) const throws
 fn
 EvalContext::dynamic_array_element_text(DynamicArray which,
                                         usize        index,
-                                        Allocator result_allocator) const throws
-    -> String
+                                        Allocator result_allocator) const throws -> String
 {
   switch (which) {
   case DynamicArray::ArgumentCount: {
     unused(dynamic_array_element_count(which));
     ASSERT(variable_store().bash_arguments().is_active());
+
     let const &frame_counts = variable_store().bash_arguments().frame_counts();
+
     ASSERT(index < frame_counts.count());
+
     let const storage_index = frame_counts.count() - 1 - index;
 
     return String::from(frame_counts[storage_index], result_allocator);
@@ -1906,6 +2028,7 @@ EvalContext::dynamic_array_element_text(DynamicArray which,
     unused(dynamic_array_element_count(which));
     ASSERT(variable_store().bash_arguments().is_active());
     let const &values = variable_store().bash_arguments().values();
+
     ASSERT(index < values.count());
 
     return String{result_allocator, values[values.count() - 1 - index].view()};
@@ -1950,8 +2073,7 @@ ExecContext::args() const wontthrow -> const ArrayList<String> &
 }
 
 pure fn
-ExecContext::arg_locations() const wontthrow
-    -> const ArrayList<SourceLocation> &
+ExecContext::arg_locations() const wontthrow -> const ArrayList<SourceLocation> &
 {
   return m_arg_locations;
 }
@@ -2015,11 +2137,13 @@ ExecContext::close_fds() throws -> void
     in_fd.reset();
     is_in_fd_borrowed = false;
   }
+
   if (out_fd.has_value()) {
     if (!is_out_fd_borrowed) os::close_fd(*out_fd);
     out_fd.reset();
     is_out_fd_borrowed = false;
   }
+
   if (err_fd.has_value()) {
     if (!is_err_fd_borrowed) os::close_fd(*err_fd);
     err_fd.reset();
@@ -2048,6 +2172,7 @@ ExecContext::print_to_stdout(StringView s) const throws -> void
 {
   if (!os::write_all(out_fd.value_or(KOSH_STDOUT), s.data, s.length)) {
     let const saved_errno = errno;
+
     if (saved_errno == EPIPE) throw BrokenPipeExit{};
     throw Error{"Unable to write to stdout: " +
                 os::last_system_error_message()};
@@ -2059,6 +2184,7 @@ ExecContext::print_to_stderr(StringView s) const throws -> void
 {
   if (!os::write_all(err_fd.value_or(KOSH_STDERR), s.data, s.length)) {
     let const saved_errno = errno;
+
     if (saved_errno == EPIPE) throw BrokenPipeExit{};
     throw Error{"Unable to write to stderr: " +
                 os::last_system_error_message()};
@@ -2085,7 +2211,7 @@ ExecContext::make_from(const SourceLocation       &location,
                        ProgramResolver            &program_resolver,
                        ArrayList<SourceLocation> &&arg_locations,
                        mimic_mood                  mood,
-                       bool should_autocd) throws -> ExecContext
+                       bool                        should_autocd) throws -> ExecContext
 {
   ASSERT(args.count() > 0);
 
@@ -2114,18 +2240,22 @@ ExecContext::make_from(const SourceLocation       &location,
           ProgramResolver::Requirement::Execution,
           should_check_hash ? ProgramResolver::CachePolicy::Remember
                             : ProgramResolver::CachePolicy::RememberUnchecked);
+
       if (program_search_paths.count() > 0)
         resolved_program_path = steal(program_search_paths[0]);
     }
   } else {
     let const typed_program_path = Path{program.view()};
+
     if (typed_program_path.has_trailing_separator()) {
       let const raw_program_path =
           typed_program_path.to_absolute_without_normalizing();
+
       resolved_program_path = os::canonical_path(raw_program_path);
     } else {
       resolved_program_path = Path::canonicalize(program.view());
     }
+
     if (resolved_program_path.has_value() &&
         typed_program_path.has_trailing_separator() &&
         !resolved_program_path->is_directory())
@@ -2133,11 +2263,15 @@ ExecContext::make_from(const SourceLocation       &location,
       throw CommandResolutionErrorWithLocation{
           resolution_location, "This file is not a directory", 126};
     }
+
     if (!resolved_program_path.has_value()) {
       let raw_program = program.view();
+
       if (let source_text = resolution_location.get_source_text(source))
         raw_program = *source_text;
+
       let const target = typed_program_path.to_absolute_without_normalizing();
+
       unavailable_component = utils::locate_first_unavailable_path_component(
           target, program.view(), raw_program, resolution_location,
           heap_allocator());
@@ -2198,6 +2332,7 @@ ExecContext::make_from(const SourceLocation       &location,
   }
 
   ResolvedCommand kind;
+
   if (!resolved_builtin) {
     if (resolved_program_path.has_value()) {
       LOG(Debug, "resolved '%s' to the program '%s'", program.c_str(),
@@ -2214,20 +2349,24 @@ ExecContext::make_from(const SourceLocation       &location,
       if (is_missing_directory) {
         let const directory_message = StringView{"The directory '"} +
                                       resolution_program + "' does not exist";
+
         throw CommandResolutionErrorWithLocation{resolution_location,
                                                  directory_message.view()};
       }
 
       let const message =
           "The command '" + resolution_program + "' was not found";
+
       if (Maybe<String> suggestion = utils::suggest_command(
               program.view(), ArrayList<String>{heap_allocator()},
               &program_resolver))
       {
         let const hint = "Did you mean '" + *suggestion + "'?";
+
         throw CommandResolutionErrorWithLocationAndDetails{
             resolution_location, message.view(), hint.view()};
       }
+
       throw CommandResolutionErrorWithLocation{resolution_location,
                                                message.view()};
     }
@@ -2254,23 +2393,29 @@ ExecContext::make_from_resolved(
 fn
 ExecContext::make_from_unresolved(const SourceLocation &location,
                                   i32                   resolution_status,
-                                  StringView diagnostic) throws -> ExecContext
+                                  StringView            diagnostic) throws
+    -> ExecContext
 {
   let args = ArrayList<String>{heap_allocator()};
+
   args.push(String{heap_allocator()});
+
   let arg_locations = ArrayList<SourceLocation>{heap_allocator()};
+
   arg_locations.push(location);
+
   let context =
       ExecContext{location, ResolvedCommand::from_unresolved(resolution_status),
                   steal(args), steal(arg_locations)};
+
   context.m_unresolved_diagnostic = diagnostic;
 
   return context;
 }
 
 fn
-ExecContext::set_unresolved(i32 resolution_status, StringView diagnostic) throws
-    -> void
+ExecContext::set_unresolved(i32        resolution_status,
+                            StringView diagnostic) throws -> void
 {
   m_kind                  = ResolvedCommand::from_unresolved(resolution_status);
   m_unresolved_diagnostic = diagnostic;

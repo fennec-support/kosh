@@ -344,6 +344,7 @@ append_numeric_configuration_row(String                                 &output,
 
     return;
   }
+
   append_configuration_row(output, name, String::from(result.value, allocator));
 }
 
@@ -355,6 +356,7 @@ report_configuration_query_error(const ExecContext &ec,
                                  StringView         variable_name) throws -> i32
 {
   let const reason = os::last_system_error_message();
+
   report_soft_koshkit_util_error(ec, cxt, location, utility_name,
                                  "Cannot query variable '" + variable_name +
                                      "': " + reason);
@@ -366,8 +368,7 @@ fn
 Getconf::execute(const ExecContext               &ec,
                  EvalContext                     &cxt,
                  const ArrayList<String>         &args,
-                 const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+                 const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
@@ -378,6 +379,7 @@ Getconf::execute(const ExecContext               &ec,
   } else if (operands.is_empty() || operands.count() > 2) {
     return report_usage_error(ec, cxt, args[0].view());
   }
+
   if (FLAG_GETCONF_SPECIFICATION.is_set() &&
       FLAG_GETCONF_SPECIFICATION.value() != "POSIX_V7_LP64_OFF64" &&
       FLAG_GETCONF_SPECIFICATION.value() != "POSIX_V7_ILP32_OFFBIG")
@@ -397,12 +399,14 @@ Getconf::execute(const ExecContext               &ec,
     for (let const &entry : SYSTEM_CONFIGURATION_ENTRIES) {
       let const name   = entry.key.to_string();
       let const result = os::query_system_configuration(entry.value);
+
       if (result.status == os::configuration_query_status::Error) {
         if (!output.is_empty()) ec.print_to_stdout(output);
 
         return report_configuration_query_error(ec, cxt, error_location,
                                                 args[0].view(), name.view());
       }
+
       append_numeric_configuration_row(output, name.view(), result,
                                        cxt.scratch_allocator());
     }
@@ -411,12 +415,14 @@ Getconf::execute(const ExecContext               &ec,
       let const name = entry.key.to_string();
       let       result =
           os::query_string_configuration(entry.value, cxt.scratch_allocator());
+
       if (result.status == os::configuration_query_status::Error) {
         if (!output.is_empty()) ec.print_to_stdout(output);
 
         return report_configuration_query_error(ec, cxt, error_location,
                                                 args[0].view(), name.view());
       }
+
       append_configuration_row(output, name.view(),
                                result.status ==
                                        os::configuration_query_status::Value
@@ -429,12 +435,14 @@ Getconf::execute(const ExecContext               &ec,
     for (let const &entry : PATH_CONFIGURATION_ENTRIES) {
       let const name   = entry.key.to_string();
       let const result = os::query_path_configuration(path, entry.value);
+
       if (result.status == os::configuration_query_status::Error) {
         if (!output.is_empty()) ec.print_to_stdout(output);
 
         return report_configuration_query_error(ec, cxt, error_location,
                                                 args[0].view(), name.view());
       }
+
       append_numeric_configuration_row(output, name.view(), result,
                                        cxt.scratch_allocator());
     }
@@ -452,10 +460,12 @@ Getconf::execute(const ExecContext               &ec,
 
     let value =
         os::query_string_configuration(*string_key, cxt.scratch_allocator());
+
     if (value.status == os::configuration_query_status::Error) {
       return report_configuration_query_error(
           ec, cxt, operand_locations[0], args[0].view(), operands[0].view());
     }
+
     if (value.status == os::configuration_query_status::Undefined) {
       ec.print_to_stdout("undefined\n");
     } else {
@@ -467,6 +477,7 @@ Getconf::execute(const ExecContext               &ec,
   }
 
   let result = os::numeric_configuration_result{};
+
   if (let const system_key = SYSTEM_CONFIGURATIONS.find(operands[0].view());
       system_key.has_value())
   {
@@ -491,6 +502,7 @@ Getconf::execute(const ExecContext               &ec,
     return report_configuration_query_error(ec, cxt, operand_locations[0],
                                             args[0].view(), operands[0].view());
   }
+
   if (result.status == os::configuration_query_status::Undefined)
     ec.print_to_stdout("undefined\n");
   else

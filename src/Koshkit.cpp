@@ -42,11 +42,13 @@ take_interrupt_request() wontthrow -> bool
 }
 
 fn
-path_error_message(StringView verb, StringView path, Allocator allocator) throws
-    -> String
+path_error_message(StringView verb,
+                   StringView path,
+                   Allocator  allocator) throws -> String
 {
   let const reason  = os::last_system_error_message();
   let       message = String{allocator, "cannot "};
+
   message += verb;
   message += " '";
   message += path;
@@ -75,6 +77,7 @@ report_unresolved_sort_key(const ExecContext &ec,
   }
 
   let note = String{cxt.scratch_allocator(), "matches "};
+
   note += matches;
   note += "; use a longer prefix";
   report_soft_koshkit_util_error(ec, cxt, location, utility_name,
@@ -181,12 +184,14 @@ sorted_util_names() throws -> const ArrayList<String> &
 }
 
 fn
-resolve_util_program(EvalContext &cxt, StringView name) throws -> Maybe<Path>
+resolve_util_program(EvalContext &cxt, StringView name) throws
+    -> Maybe<Path>
 {
   let const matches =
       cxt.program_resolver().search(name, ProgramResolver::SearchMode::First,
                                     ProgramResolver::Requirement::Runnable,
                                     ProgramResolver::CachePolicy::Bypass);
+
   if (matches.is_empty()) return None;
 
   return matches[0];
@@ -195,9 +200,11 @@ resolve_util_program(EvalContext &cxt, StringView name) throws -> Maybe<Path>
 fn
 capture_util_program_output(const Path       &program,
                             ArrayList<String> arguments,
-                            u64 timeout_nanoseconds) throws -> Maybe<String>
+                            u64               timeout_nanoseconds) throws
+    -> Maybe<String>
 {
   let command = ArrayList<String>{heap_allocator()};
+
   command.reserve(arguments.count() + 1);
   command.push(program.text().clone());
 
@@ -211,9 +218,11 @@ fn
 capture_util_program_output(EvalContext      &cxt,
                             StringView        name,
                             ArrayList<String> arguments,
-                            u64 timeout_nanoseconds) throws -> Maybe<String>
+                            u64               timeout_nanoseconds) throws
+    -> Maybe<String>
 {
   let const program = resolve_util_program(cxt, name);
+
   if (!program.has_value()) return None;
 
   return capture_util_program_output(*program, steal(arguments),
@@ -235,21 +244,26 @@ get_exported_spelling(const Value &value, StringView environment_name) wontthrow
 }
 
 fn
-print_environment(const ExecContext &ec, EvalContext &cxt) throws -> void
+print_environment(const ExecContext &ec, EvalContext &cxt) throws
+    -> void
 {
   cxt.prepare_child_environment();
+
   let output        = String{cxt.scratch_allocator()};
   let printed_names = HashSet{cxt.scratch_allocator()};
 
   for (let const &name : os::environment_names()) {
     let display_name = name.view();
+
     if constexpr (!os::ENVIRONMENT_IS_CASE_SENSITIVE) {
       let const folded_name =
           name.view().to_lower_ascii(cxt.scratch_allocator());
+
       if (!printed_names.add(folded_name.view())) continue;
 
       let const exported_spelling =
           cxt.variable_store().exported_names().find(folded_name.view());
+
       if (exported_spelling.has_value()) {
         display_name =
             get_exported_spelling(*exported_spelling.value(), display_name);
@@ -257,6 +271,7 @@ print_environment(const ExecContext &ec, EvalContext &cxt) throws -> void
     }
 
     let const value = os::get_environment_variable(name.view());
+
     output += display_name;
     output += '=';
     if (value.has_value()) output += value->view();
@@ -278,17 +293,20 @@ run_util(Utility::Kind                    chosen,
   switch (chosen) {
     UTILITY_SWITCH_CASES();
   }
+
   unreachable("unhandled koshkit utility of kind %d", ENUM(chosen));
 }
 
 wontreturn fn
-rethrow_with_prefix(const ErrorWithLocation &error, StringView prefix) throws
-    -> void
+rethrow_with_prefix(const ErrorWithLocation &error,
+                    StringView               prefix) throws -> void
 {
   let const message = prefix + ": " + error.message();
+
   if (!error.detail_message().is_empty()) {
     let rewrapped = ErrorWithLocationAndDetails{
         error.location(), message.view(), error.detail_message()};
+
     if (error.is_script_fatal()) rewrapped.set_script_fatal();
     rewrapped.take_line_discard_marks(error);
     rewrapped.set_command_status(error.command_status());
@@ -296,6 +314,7 @@ rethrow_with_prefix(const ErrorWithLocation &error, StringView prefix) throws
   }
 
   let rewrapped = ErrorWithLocation{error.location(), message.view()};
+
   if (error.is_script_fatal()) rewrapped.set_script_fatal();
   rewrapped.take_line_discard_marks(error);
   rewrapped.set_command_status(error.command_status());
@@ -309,15 +328,20 @@ dispatch(const ExecContext   &ec,
          Maybe<Utility::Kind> chosen) throws -> i32
 {
   ASSERT(name_index < ec.args().count());
+
   let const name = ec.args()[name_index].view();
+
   if (!chosen.has_value())
     throw ErrorWithLocation{ec.arg_location_at(name_index),
                             "koshkit has no utility named '" + String{name} +
                                 "'"};
 
   ArrayList<String> shifted{cxt.scratch_allocator()};
+
   shifted.reserve(ec.args().count() - name_index);
+
   let shifted_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};
+
   shifted_locations.reserve(ec.args().count() - name_index);
 
   for (usize i = name_index; i < ec.args().count(); i++) {
@@ -332,6 +356,7 @@ dispatch(const ExecContext   &ec,
   } catch (const ErrorWithLocation &e) {
     let const invocation_name = ec.is_multicall ? String{heap_allocator(), name}
                                                 : String{"koshkit "} + name;
+
     rethrow_with_prefix(e, invocation_name);
   } catch (const Error &error) {
     relocate_error(error, ec.source_location());
@@ -361,10 +386,14 @@ print_util_help(const ExecContext &ec,
     help_text += wrap_text(description, HELP_INDENT, HELP_WRAP_WIDTH);
     help_text += "\n\n";
   }
+
   SynopsisList synopsis_lines{synopsis};
+
   help_text += make_synopsis(name, synopsis_lines);
   help_text += '\n';
+
   let const should_color = colors::stdout_wants_color();
+
   help_text += make_flag_help(flags, should_color);
   help_text += '\n';
 
@@ -380,31 +409,35 @@ read_fd_to_string(os::descriptor fd) throws -> Maybe<String>
 fn
 copy_file_contents(StringView      source,
                    StringView      destination,
-                   copy_force_mode force_mode) throws -> copy_file_result
+                   copy_force_mode force_mode) throws
+    -> copy_file_result
 {
   let const source_descriptor =
       os::open_file_descriptor(source, os::file_open_mode::Read);
+
   if (!source_descriptor.has_value()) return copy_file_result::SourceOpenFailed;
   defer { unused(os::close_fd(*source_descriptor)); };
 
   let destination_descriptor =
       os::open_file_descriptor(destination, os::file_open_mode::Truncate);
+
   if (!destination_descriptor.has_value() &&
       force_mode == copy_force_mode::Force && os::remove_file(destination))
   {
     destination_descriptor =
         os::open_file_descriptor(destination, os::file_open_mode::Truncate);
   }
+
   if (!destination_descriptor.has_value())
     return copy_file_result::DestinationOpenFailed;
   defer { unused(os::close_fd(*destination_descriptor)); };
 
   char buffer[64 * 1024];
 
-  loop
-  {
+  loop {
     let const read_count =
         os::read_fd(*source_descriptor, buffer, sizeof(buffer));
+
     if (!read_count.has_value()) return copy_file_result::ReadFailed;
     if (*read_count == 0) return copy_file_result::Success;
 
@@ -449,24 +482,27 @@ copy_file_or_throw(StringView      source,
 }
 
 fn
-confirm_koshkit_action(const ExecContext &ec, StringView prompt) throws -> bool
+confirm_koshkit_action(const ExecContext &ec, StringView prompt) throws
+    -> bool
 {
   ec.print_to_stderr(prompt);
 
   char first_byte    = '\0';
   bool is_first_byte = true;
 
-  loop
-  {
+  loop {
     char      byte       = '\0';
     let const read_count = os::read_fd(ec.in_fd.value_or(KOSH_STDIN), &byte, 1);
+
     if (!read_count.has_value() || *read_count == 0) {
       break;
     }
+
     if (is_first_byte) {
       first_byte    = byte;
       is_first_byte = false;
     }
+
     if (byte == '\n') break;
   }
 
@@ -480,6 +516,7 @@ read_named_or_stdin(const ExecContext &ec, StringView path) throws
   if (path == "-") return read_fd_to_string(ec.in_fd.value_or(KOSH_STDIN));
 
   let const fd = os::open_file_descriptor(path, os::file_open_mode::Read);
+
   if (!fd.has_value()) return None;
   defer { os::close_fd(*fd); };
 
@@ -493,20 +530,14 @@ SourceBatchReader::SourceBatchReader(const ExecContext           &ec,
                                      SourceDashMode dash_mode,
                                      SourceKindMode kind_mode,
                                      SourceReadMode read_mode) throws
-    : m_ec(ec),
-      m_sources(sources),
-      m_readers(allocator),
-      m_batch(allocator),
-      m_results(allocator),
-      m_reader_positions(allocator),
-      m_metadata_paths(allocator),
-      m_metadata_statuses(allocator),
-      m_read_byte_count(read_byte_count),
-      m_dash_mode(dash_mode),
-      m_kind_mode(kind_mode),
-      m_read_mode(read_mode)
+    : m_ec(ec), m_sources(sources), m_readers(allocator), m_batch(allocator),
+      m_results(allocator), m_reader_positions(allocator),
+      m_metadata_paths(allocator), m_metadata_statuses(allocator),
+      m_read_byte_count(read_byte_count), m_dash_mode(dash_mode),
+      m_kind_mode(kind_mode), m_read_mode(read_mode)
 {
   constexpr usize READER_COUNT = 16;
+
   m_readers.reserve(READER_COUNT);
   m_batch.reserve(READER_COUNT);
   m_results.reserve(READER_COUNT);
@@ -558,8 +589,8 @@ SourceBatchReader::finish_source(usize source_index) wontthrow -> void
 
 fn
 SourceBatchReader::set_source_read_byte_count(usize source_index,
-                                              usize byte_count) wontthrow
-    -> void
+                                              usize byte_count)
+    wontthrow -> void
 {
   let const bounded_count =
       byte_count < m_read_byte_count ? byte_count : m_read_byte_count;
@@ -587,6 +618,7 @@ SourceBatchReader::retire_completed_readers() throws -> void
   {
     let const  reader_index = remaining_count - 1;
     let const &reader       = m_readers[reader_index];
+
     if (reader.state == ReaderState::Complete &&
         reader.chunk_state == ReaderChunkState::Empty)
     {
@@ -619,8 +651,10 @@ SourceBatchReader::fill_readers() throws -> void
   {
     let const source_index = m_source_index;
     let const source       = m_sources[source_index];
+
     if (m_dash_mode == SourceDashMode::TreatAsStdin && source == "-") {
       Reader reader;
+
       reader.buffer.reserve(m_read_byte_count);
       reader.source_index    = source_index;
       reader.read_byte_count = m_read_byte_count;
@@ -634,6 +668,7 @@ SourceBatchReader::fill_readers() throws -> void
         !m_readers.is_empty() && m_kind_mode != SourceKindMode::KnownRegular
             ? SourceProbeMode::Nonblocking
             : SourceProbeMode::Blocking;
+
     if (probe_mode == SourceProbeMode::Nonblocking) {
       if (m_defer_mode == SourceDeferMode::Deferred) break;
 
@@ -641,6 +676,7 @@ SourceBatchReader::fill_readers() throws -> void
         m_batch.clear();
         m_metadata_paths.clear();
         m_metadata_statuses.clear();
+
         let const candidate_count = READER_COUNT - m_readers.count();
 
         for (usize candidate_index = m_source_index;
@@ -649,6 +685,7 @@ SourceBatchReader::fill_readers() throws -> void
              candidate_index++)
         {
           let const candidate = m_sources[candidate_index];
+
           if (m_dash_mode == SourceDashMode::TreatAsStdin && candidate == "-") {
             break;
           }
@@ -674,6 +711,7 @@ SourceBatchReader::fill_readers() throws -> void
         m_defer_mode = SourceDeferMode::Deferred;
         break;
       }
+
       metadata_index++;
     }
 
@@ -681,6 +719,7 @@ SourceBatchReader::fill_readers() throws -> void
         source, probe_mode == SourceProbeMode::Nonblocking
                     ? os::file_open_mode::ReadNonblocking
                     : os::file_open_mode::Read);
+
     if (!descriptor.has_value()) {
       if (os::last_system_error_is_descriptor_quota() && !m_readers.is_empty())
       {
@@ -689,6 +728,7 @@ SourceBatchReader::fill_readers() throws -> void
       }
 
       Reader reader;
+
       reader.source_index         = source_index;
       reader.pending_error_number = os::get_last_system_error_number();
       reader.state                = ReaderState::Complete;
@@ -703,6 +743,7 @@ SourceBatchReader::fill_readers() throws -> void
                                   os::descriptor_is_seekable(*descriptor)
                               ? SourceSeekMode::Seekable
                               : SourceSeekMode::Sequential;
+
     if (probe_mode == SourceProbeMode::Nonblocking &&
         seek_mode == SourceSeekMode::Sequential)
     {
@@ -715,6 +756,7 @@ SourceBatchReader::fill_readers() throws -> void
         os::regular_descriptor_file_size(*descriptor);
 
     Reader reader;
+
     reader.buffer.reserve(m_read_byte_count);
     reader.source_index    = source_index;
     reader.read_byte_count = m_read_byte_count;
@@ -747,6 +789,7 @@ SourceBatchReader::read_seekable() throws -> ReadResult
   for (usize reader_index = 0; reader_index < m_readers.count(); reader_index++)
   {
     let &reader = m_readers[reader_index];
+
     if (reader.chunk_state == ReaderChunkState::Pending ||
         reader.state == ReaderState::Complete)
     {
@@ -774,12 +817,14 @@ SourceBatchReader::read_seekable() throws -> ReadResult
     let const  reader_index = m_reader_positions[result_index];
     let       &reader       = m_readers[reader_index];
     let const &result       = m_results[result_index];
+
     if (result.error_number != 0) {
       close_reader(reader);
       reader.pending_error_number = result.error_number;
       reader.chunk_state          = ReaderChunkState::Pending;
       continue;
     }
+
     if (result.transferred_byte_count == 0) {
       close_reader(reader);
       reader.chunk_state = ReaderChunkState::Pending;
@@ -803,6 +848,7 @@ fn
 SourceBatchReader::read_sequential() throws -> ReadResult
 {
   let &reader = *m_sequential_reader;
+
   if (reader.chunk_state == ReaderChunkState::Pending ||
       reader.state == ReaderState::Complete)
   {
@@ -817,16 +863,19 @@ SourceBatchReader::read_sequential() throws -> ReadResult
 
   let const read_count = os::read_fd(reader.descriptor, reader.buffer.begin(),
                                      reader.read_byte_count);
+
   if (!read_count.has_value()) {
     if (os::INTERRUPT_REQUESTED) return ReadResult::Interrupted;
 
     let const error_number = os::get_last_system_error_number();
+
     close_reader(reader);
     reader.pending_error_number = error_number;
     reader.chunk_state          = ReaderChunkState::Pending;
 
     return ReadResult::Chunks;
   }
+
   if (*read_count == 0) {
     close_reader(reader);
     reader.chunk_state = ReaderChunkState::Pending;
@@ -845,7 +894,8 @@ SourceBatchReader::read_sequential() throws -> ReadResult
 
 fn
 SourceBatchReader::append_pending_chunks(ArrayList<Chunk> &chunks,
-                                         ChunkEmitMode emit_mode) throws -> void
+                                         ChunkEmitMode     emit_mode) throws
+    -> void
 {
   let const emit_capacity =
       emit_mode == ChunkEmitMode::One
@@ -853,6 +903,7 @@ SourceBatchReader::append_pending_chunks(ArrayList<Chunk> &chunks,
           : m_readers.count() +
                 static_cast<usize>(m_readers.is_empty() &&
                                    m_sequential_reader.has_value());
+
   chunks.reserve(emit_capacity);
 
   let const do_append = [&](Reader &reader) throws -> bool {
@@ -897,9 +948,11 @@ SourceBatchReader::read_next_internal(ArrayList<Chunk> &chunks,
 
   if (!m_readers.is_empty()) {
     let const result = read_seekable();
+
     if (result == ReadResult::Interrupted) return result;
   } else if (m_sequential_reader.has_value()) {
     let const result = read_sequential();
+
     if (result == ReadResult::Interrupted) return result;
   }
 
@@ -915,7 +968,8 @@ SourceBatchReader::read_next_internal(ArrayList<Chunk> &chunks,
 }
 
 fn
-SourceBatchReader::read_next(ArrayList<Chunk> &chunks) throws -> ReadResult
+SourceBatchReader::read_next(ArrayList<Chunk> &chunks) throws
+    -> ReadResult
 {
   return read_next_internal(chunks, ChunkEmitMode::All);
 }
@@ -934,6 +988,7 @@ read_named_or_stdin_batch(const ExecContext           &ec,
     -> ArrayList<source_read_result>
 {
   let results = ArrayList<source_read_result>{allocator};
+
   results.reserve(sources.count());
 
   for (usize source_index = 0; source_index < sources.count(); source_index++)
@@ -942,30 +997,36 @@ read_named_or_stdin_batch(const ExecContext           &ec,
   let reader = SourceBatchReader{ec, sources, allocator};
   let chunks = ArrayList<SourceBatchReader::Chunk>{allocator};
 
-  loop
-  {
+  loop {
     let const read_result = reader.read_next(chunks);
+
     switch (read_result) {
-    case SourceBatchReader::ReadResult::Chunks:      break;
+    case SourceBatchReader::ReadResult::Chunks: break;
+
     case SourceBatchReader::ReadResult::Complete:
     case SourceBatchReader::ReadResult::Interrupted: return results;
     }
 
     for (let const &chunk : chunks) {
-      let &result       = results[chunk.source_index];
+      let &result = results[chunk.source_index];
+
       result.completion = chunk.completion;
       if (chunk.error_number != 0) {
         result.content.reset();
         result.error_number = chunk.error_number;
         continue;
       }
+
       if (!result.content.has_value()) {
-        result.content   = String{allocator};
+        result.content = String{allocator};
+
         let const source = sources[chunk.source_index];
+
         if (chunk.completion == source_completion_state::Pending &&
             source != "-")
         {
           let const file_byte_count = Path{source}.file_size();
+
           if (file_byte_count.has_value())
             result.content->reserve(*file_byte_count);
         }
@@ -988,6 +1049,7 @@ open_named_or_stdin(const ExecContext &ec, StringView path) wontthrow
 
   let const descriptor =
       os::open_file_descriptor(path, os::file_open_mode::Read);
+
   if (!descriptor.has_value()) return None;
 
   return input_descriptor{*descriptor, input_descriptor_mode::Owned};
@@ -1002,18 +1064,18 @@ visit_source_lines_with(const ExecContext  &ec,
     -> source_line_outcome
 {
   let const input = open_named_or_stdin(ec, source);
+
   if (!input.has_value()) return source_line_outcome::Failed;
-  defer
-  {
+  defer {
     if (input->mode == input_descriptor_mode::Owned)
       unused(os::close_fd(input->descriptor));
   };
 
   let reader = utils::BufferedLineReader{input->descriptor, allocator};
 
-  loop
-  {
+  loop {
     let const result = reader.next();
+
     if (result == utils::BufferedLineReader::Result::End)
       return source_line_outcome::Complete;
     if (result == utils::BufferedLineReader::Result::Error) {
@@ -1026,13 +1088,14 @@ visit_source_lines_with(const ExecContext  &ec,
 }
 
 fn
-file_crc32c(const ExecContext &ec, StringView path, Allocator allocator) throws
-    -> Maybe<String>
+file_crc32c(const ExecContext &ec,
+            StringView         path,
+            Allocator          allocator) throws -> Maybe<String>
 {
   let const input = open_named_or_stdin(ec, path);
+
   if (!input.has_value()) return None;
-  defer
-  {
+  defer {
     if (input->mode == input_descriptor_mode::Owned)
       unused(os::close_fd(input->descriptor));
   };
@@ -1040,10 +1103,10 @@ file_crc32c(const ExecContext &ec, StringView path, Allocator allocator) throws
   u32  crc = 0xffffffffu;
   char buffer[65536];
 
-  loop
-  {
+  loop {
     let const read_count =
         os::read_fd(input->descriptor, buffer, sizeof(buffer));
+
     if (!read_count.has_value()) return None;
     if (*read_count == 0) break;
 
@@ -1052,8 +1115,10 @@ file_crc32c(const ExecContext &ec, StringView path, Allocator allocator) throws
   }
 
   let digest = String::from_in_base(~crc, false, int_base::hex, allocator);
+
   if (digest.length() < 8) {
     let padded = String{allocator};
+
     padded.append_repeated('0', 8 - digest.length());
     padded += digest.view();
 
@@ -1070,6 +1135,7 @@ source_list_from_operands(const ArrayList<String> &operands,
     -> ArrayList<StringView>
 {
   let sources = ArrayList<StringView>{allocator};
+
   if (first_operand_index >= operands.count()) {
     sources.push(StringView{"-"});
   } else {
@@ -1096,6 +1162,7 @@ parse_strict_count(StringView text) throws -> ErrorOr<u64>
   }
 
   let const digits = text.substring(start);
+
   if (!digits.is_all_decimal_digits()) return Error{"invalid count"};
 
   return utils::parse_decimal_u64(digits);
@@ -1153,14 +1220,17 @@ parse_makefile_shell_sources(StringView, Allocator allocator) throws
 
 fn
 makefile_shell_analysis_source(StringView,
-                               const make_shell_source_range &) throws -> String
+                               const make_shell_source_range &) throws
+    -> String
 {
   return String{heap_allocator()};
 }
 
 fn
-dispatch(const ExecContext &, EvalContext &, usize, Maybe<Utility::Kind>) throws
-    -> i32
+dispatch(const ExecContext &,
+         EvalContext &,
+         usize,
+         Maybe<Utility::Kind>) throws -> i32
 {
   return 127;
 }
@@ -1219,10 +1289,15 @@ run_as_multicall(StringView           util_name,
   }
 
   ArrayList<String> args{heap_allocator()};
+
   args.reserve(operands.count() + 1);
+
   let arg_locations = ArrayList<SourceLocation>{heap_allocator()};
+
   arg_locations.reserve(operands.count() + 1);
+
   usize source_length = util_name.length;
+
   args.push(String{util_name});
   arg_locations.push(SourceLocation{0, util_name.length});
 
@@ -1237,6 +1312,7 @@ run_as_multicall(StringView           util_name,
       SourceLocation{0, source_length},
       ResolvedCommand::from_builtin(Builtin::Kind::Koshkit), steal(args),
       steal(arg_locations));
+
   ec.is_multicall = true;
 
   try {
@@ -1251,6 +1327,7 @@ run_as_multicall(StringView           util_name,
     return 141;
   } catch (const ErrorWithLocation &e) {
     let const source = utils::merge_args_to_string(ec.args());
+
     if (!chosen.has_value()) {
       show_message(
           render_multicall_error(e, e.message().view(), source.view(), cxt));
@@ -1259,6 +1336,7 @@ run_as_multicall(StringView           util_name,
     }
 
     let const message = util_name + ": " + e.message();
+
     show_message(render_multicall_error(e, message.view(), source.view(), cxt));
 
     return 1;
@@ -1289,9 +1367,11 @@ make_directories(const Path &directory, u32 mode) wontthrow -> bool
     }
 
     let const prefix = text.substring_of_length(0, position);
+
     if (prefix.is_empty() || Path{prefix}.is_directory()) {
       continue;
     }
+
     if (!os::make_directory(prefix, mode)) return false;
   }
 
@@ -1302,7 +1382,7 @@ struct signal_number_comparator
 {
   pure fn
   operator()(const utils::signal_pair &left,
-             const utils::signal_pair &right) const wontthrow->bool
+             const utils::signal_pair &right) const wontthrow -> bool
   {
     return left.number < right.number;
   }
@@ -1348,8 +1428,8 @@ format_signal_list() throws -> String
 #if !defined KOSH_NO_KOSHKIT
 
 pure fn
-network_socket_state_name(os::network_socket_state state) wontthrow
-    -> StringView
+network_socket_state_name(os::network_socket_state state)
+    wontthrow -> StringView
 {
   switch (state) {
   case os::network_socket_state::Unconnected: return "UNCONN";
@@ -1378,6 +1458,7 @@ format_socket_endpoint(StringView                 address,
 {
   let const is_bracketed = family == os::network_address_family::IPv6;
   let       result       = String{allocator};
+
   if (is_bracketed) result += "[";
   result += address.is_empty() ? StringView{"*"} : address;
   if (is_bracketed) result += "]";
@@ -1409,6 +1490,7 @@ format_human_size(u64 bytes, Allocator allocator, u64 unit_step) throws
   }
 
   let const should_round_to_next_unit = value >= step - 0.5;
+
   if (should_round_to_next_unit && unit < sizeof(units)) {
     value /= step;
     unit++;
@@ -1417,6 +1499,7 @@ format_human_size(u64 bytes, Allocator allocator, u64 unit_step) throws
   String    out{allocator};
   let const tenths                  = static_cast<u64>(value * 10.0 + 0.5);
   let const should_keep_one_decimal = value < 10.0 && tenths < 100;
+
   if (should_keep_one_decimal) {
     out += String::from(tenths / 10, allocator);
     out += '.';
@@ -1424,6 +1507,7 @@ format_human_size(u64 bytes, Allocator allocator, u64 unit_step) throws
   } else {
     out += String::from(static_cast<u64>(value + 0.5), allocator);
   }
+
   out.push(unit == 1 && unit_step == 1000 ? 'k' : units[unit - 1]);
 
   return out;
@@ -1439,6 +1523,7 @@ scaled_filesystem_blocks(u64 block_count,
   let const byte_count = static_cast<u128>(block_count) * block_byte_count;
   let const rounded_byte_count = byte_count + output_unit - 1;
   let const high               = static_cast<u64>(rounded_byte_count >> 64u);
+
   if (high >= output_unit) return UINT64_MAX;
 
   return os::divide_u128_by_u64(high, static_cast<u64>(rounded_byte_count),
@@ -1450,6 +1535,7 @@ fn
 filesystem_usage_percent(u64 used, u64 available) wontthrow -> u64
 {
   let const capacity_base = static_cast<u128>(used) + available;
+
   if (capacity_base == 0) return 0;
 
   let const numerator = static_cast<u128>(used) * 100 + capacity_base - 1;
@@ -1477,12 +1563,14 @@ file_type_name(const os::file_status &status) wontthrow -> StringView
 }
 
 fn
-format_file_timestamp(i64 seconds, u32 nanoseconds, Allocator allocator) throws
-    -> String
+format_file_timestamp(i64       seconds,
+                      u32       nanoseconds,
+                      Allocator allocator) throws -> String
 {
   let text =
       String{allocator,
              utils::format_unix_timestamp(seconds, "%Y-%m-%d %H:%M:%S").view()};
+
   text += ".";
 
   let const digits = String::from(nanoseconds, allocator);
@@ -1532,6 +1620,7 @@ get_init_system_name(Allocator allocator) throws -> String
   if (os::path_exists("/run/runit")) return String{allocator, "runit"};
 
   let const body = Path{"/proc/1/comm"}.read_entire_file();
+
   if (body.has_value()) {
     let command = body->view();
 
@@ -1543,6 +1632,7 @@ get_init_system_name(Allocator allocator) throws -> String
 
     if (!command.is_empty()) {
       let const named = INIT_COMMAND_NAMES.find(command);
+
       if (named.has_value()) return String{allocator, *named};
 
       return String{allocator, command};
@@ -1555,6 +1645,7 @@ get_init_system_name(Allocator allocator) throws -> String
     if (process.pid != 1) continue;
 
     let const named = INIT_COMMAND_NAMES.find(process.name.view());
+
     if (named.has_value()) return String{allocator, *named};
 
     return String{allocator, process.name.view()};
@@ -1570,6 +1661,7 @@ parse_koshkit_duration_seconds(StringView     text,
 {
   let const do_throw_invalid = [&]() throws -> void {
     let const invalid_value = String{allocator, text};
+
     throw ErrorWithLocationAndDetails{
         location, "invalid duration '" + invalid_value + "'",
         "Use a non-negative number with an optional `s`, `m`, `h`, or `d` "
@@ -1578,14 +1670,20 @@ parse_koshkit_duration_seconds(StringView     text,
 
   f64   multiplier    = 1.0;
   usize number_length = text.length;
+
   if (number_length != 0) {
     switch (text[number_length - 1]) {
     case 's': multiplier = 1.0; break;
+
     case 'm': multiplier = 60.0; break;
+
     case 'h': multiplier = 60.0 * 60.0; break;
+
     case 'd': multiplier = 60.0 * 60.0 * 24.0; break;
-    default:  break;
+
+    default: break;
     }
+
     if (multiplier != 1.0 || text[number_length - 1] == 's') {
       number_length--;
     }
@@ -1594,9 +1692,11 @@ parse_koshkit_duration_seconds(StringView     text,
   let const number =
       String{allocator, text.substring_of_length(0, number_length)};
   let const parsed_value = number.to<f64>();
+
   if (parsed_value.is_error()) do_throw_invalid();
 
   let const value = parsed_value.value();
+
   if (__builtin_isnan(value) || value < 0.0) {
     do_throw_invalid();
   }
@@ -1613,6 +1713,7 @@ show_soft_koshkit_error(const ExecContext &ec,
   if (os::INTERRUPT_REQUESTED) return;
 
   const ErrorWithLocation located{steal(location), message};
+
   if (const String *source = cxt.source_store().current_source();
       source != nullptr)
   {
@@ -1620,8 +1721,10 @@ show_soft_koshkit_error(const ExecContext &ec,
 
     return;
   }
+
   if (ec.is_multicall) {
     let const source = utils::merge_args_to_string(ec.args());
+
     show_message(located.to_string(source.view(), &cxt));
 
     return;
@@ -1631,15 +1734,17 @@ show_soft_koshkit_error(const ExecContext &ec,
 }
 
 static fn
-koshkit_invocation_name(const ExecContext &ec, Allocator allocator) throws
-    -> String
+koshkit_invocation_name(const ExecContext &ec,
+                        Allocator          allocator) throws -> String
 {
   if (ec.is_multicall && !ec.args().is_empty()) {
     return String{allocator, ec.args()[0].view()};
   }
+
   if (ec.program() == "koshkit" && ec.args().count() > 1) {
     return String{allocator, "koshkit "} + ec.args()[1].view();
   }
+
   if (!ec.args().is_empty())
     return String{allocator, "koshkit "} + ec.args()[0].view();
 
@@ -1652,6 +1757,7 @@ report_soft_koshkit_error(const ExecContext &ec,
                           StringView         message) throws -> void
 {
   let const prefix = koshkit_invocation_name(ec, cxt.scratch_allocator());
+
   show_soft_koshkit_error(ec, cxt, ec.source_location(),
                           prefix.view() + ": " + message);
 }
@@ -1699,7 +1805,9 @@ report_soft_koshkit_util_error(const ExecContext &ec,
                                StringView         message) throws -> void
 {
   unused(utility_name);
+
   let const prefix = koshkit_invocation_name(ec, cxt.scratch_allocator());
+
   show_soft_koshkit_error(ec, cxt, steal(location),
                           prefix.view() + ": " + message);
 }

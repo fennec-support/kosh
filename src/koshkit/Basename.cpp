@@ -51,8 +51,7 @@ cold fn
 Basename::execute(const ExecContext               &ec,
                   EvalContext                     &cxt,
                   const ArrayList<String>         &args,
-                  const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+                  const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
@@ -66,8 +65,10 @@ Basename::execute(const ExecContext               &ec,
   }
 
   let name = basename_component(operands[0].view());
+
   if (operands.count() > 1) {
     let const suffix = operands[1].view();
+
     if (suffix.length < name.length &&
         name.substring_of_length(name.length - suffix.length, suffix.length) ==
             suffix)

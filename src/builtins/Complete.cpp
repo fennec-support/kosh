@@ -167,7 +167,8 @@ append_quoted_spec_argument(String                &output,
 static fn
 append_completion_specification_line(String                &output,
                                      StringView             command,
-                                     const completion_spec &spec) throws -> void
+                                     const completion_spec &spec) throws
+    -> void
 {
   output += "complete ";
 
@@ -181,6 +182,7 @@ append_completion_specification_line(String                &output,
 
   for (let const &entry : COMPGEN_ACTION_ENTRIES) {
     let const short_flag = action_short_flag(entry.value);
+
     if (short_flag == '\0' || !spec.has_action(entry.value)) {
       continue;
     }
@@ -218,6 +220,7 @@ append_completion_specification_line(String                &output,
     output += spec.function_name.view();
     output += ' ';
   }
+
   append_shell_quoted_arg(output, command);
   output += '\n';
 }
@@ -236,18 +239,22 @@ static constexpr completion_slot_name COMPLETION_SLOT_NAMES[] = {
 };
 
 static fn
-completion_specification_reusable_lines(const EvalContext &cxt) throws -> String
+completion_specification_reusable_lines(const EvalContext &cxt) throws
+    -> String
 {
   let lines           = String{heap_allocator()};
   let collected_names = ArrayList<String>{heap_allocator()};
+
   cxt.completion_store().specs().for_each(
       [&](StringView command, const completion_spec &) -> void {
         collected_names.push_managed(command);
       });
+
   let const names = steal(collected_names).make_sorted(sort_order::ascending);
 
   for (let const &name : names) {
     let const *spec = cxt.completion_store().lookup_spec(name.view());
+
     ASSERT(spec != nullptr);
     append_completion_specification_line(lines, name.view(), *spec);
   }
@@ -305,6 +312,7 @@ Complete::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   for (usize i = 0; i < FLAG_COMPLETE_OPTION.count(); i++) {
     let const name   = FLAG_COMPLETE_OPTION.get(i);
     let const option = COMPLETION_OPTIONS.find(name);
+
     if (!option.has_value()) {
       report_soft_builtin_error(ec, cxt, FLAG_COMPLETE_OPTION.value_location(),
                                 StringView{"'"} + name +
@@ -328,6 +336,7 @@ Complete::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   for (usize i = 0; i < FLAG_COMPLETE_ACTION.count(); i++) {
     let const name   = FLAG_COMPLETE_ACTION.get(i);
     let const action = COMPGEN_ACTIONS.find(name);
+
     if (!action.has_value()) {
       report_soft_builtin_error(ec, cxt, FLAG_COMPLETE_ACTION.value_location(),
                                 StringView{"'"} + name +
@@ -342,11 +351,13 @@ Complete::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let const do_flag_text = [](const auto &flag) wontthrow -> StringView {
     return flag.is_set() ? flag.value() : StringView{};
   };
+
   let const glob_pattern   = do_flag_text(FLAG_COMPLETE_GLOB);
   let const filter_pattern = do_flag_text(FLAG_COMPLETE_FILTER);
   let const prefix         = do_flag_text(FLAG_COMPLETE_PREFIX);
   let const suffix         = do_flag_text(FLAG_COMPLETE_SUFFIX);
   let       slot           = Maybe<completion_spec_slot>{None};
+
   if (FLAG_COMPLETE_DEFAULT.is_enabled()) {
     slot = completion_spec_slot::Default;
   } else if (FLAG_COMPLETE_EMPTY.is_enabled()) {
@@ -365,11 +376,13 @@ Complete::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     if (slot.has_value()) {
       let        output = String{cxt.scratch_allocator()};
       let const *spec   = cxt.completion_store().get_slot_spec(*slot);
+
       if (spec == nullptr) {
         report_missing_slot_spec(ec, cxt, *slot);
 
         return 1;
       }
+
       append_completion_specification_line(
           output, find_completion_slot_name(*slot).flag, *spec);
       ec.print_to_stdout(output.view());
@@ -388,6 +401,7 @@ Complete::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
     for (let const &command : commands) {
       let const *spec = cxt.completion_store().lookup_spec(command.view());
+
       if (spec == nullptr) {
         report_soft_builtin_error(ec, cxt,
                                   "The command '" + command +
@@ -395,6 +409,7 @@ Complete::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         print_status = 1;
         continue;
       }
+
       append_completion_specification_line(output, command.view(), *spec);
     }
 
@@ -433,11 +448,13 @@ Complete::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return remove_status;
   }
 
-  u32       argument_mask = 0;
+  u32 argument_mask = 0;
+
   let const do_add_argument_if =
       [&](const auto &flag, completion_argument argument) wontthrow -> void {
     if (flag.is_set()) argument_mask |= completion_argument_bit(argument);
   };
+
   do_add_argument_if(FLAG_COMPLETE_GLOB, completion_argument::Glob);
   do_add_argument_if(FLAG_COMPLETE_WORDLIST, completion_argument::WordList);
   do_add_argument_if(FLAG_COMPLETE_PREFIX, completion_argument::Prefix);
@@ -447,7 +464,8 @@ Complete::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   do_add_argument_if(FLAG_COMPLETE_FUNCTION, completion_argument::Function);
 
   let const do_make_spec = [&]() throws -> completion_spec {
-    let spec            = completion_spec{};
+    let spec = completion_spec{};
+
     spec.function_name  = String{heap_allocator(), function_name};
     spec.word_list      = String{heap_allocator(), word_list};
     spec.glob_pattern   = String{heap_allocator(), glob_pattern};

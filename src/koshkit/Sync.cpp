@@ -32,13 +32,13 @@ fn
 Sync::execute(const ExecContext               &ec,
               EvalContext                     &cxt,
               const ArrayList<String>         &args,
-              const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+              const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (FLAG_SYNC_DATA.is_enabled() && FLAG_SYNC_FILESYSTEM.is_enabled()) {
     let conflict_location = FLAG_SYNC_DATA.value_location();
+
     if (FLAG_SYNC_FILESYSTEM.position() > FLAG_SYNC_DATA.position())
       conflict_location = FLAG_SYNC_FILESYSTEM.value_location();
     KOSHKIT_REPORT_ERROR_AT(conflict_location, "cannot combine -d with -f",
@@ -71,6 +71,7 @@ Sync::execute(const ExecContext               &ec,
        operand_index++)
   {
     let const &operand = operands[operand_index];
+
     if (!os::sync_path(operand.view(), mode)) {
       KOSHKIT_REPORT_PATH_ERROR_AT(operand_locations[operand_index], "flush",
                                    operand);

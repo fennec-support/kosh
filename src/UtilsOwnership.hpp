@@ -55,7 +55,8 @@ change_operands_ownership(const ExecContext       &ec,
                           EvalContext             &cxt,
                           StringView               utility_name,
                           const ArrayList<String> &operands,
-                          const ownership_request &request) throws -> i32;
+                          const ownership_request &request) throws
+    -> i32;
 
 } /* namespace utils */
 

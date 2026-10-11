@@ -42,19 +42,21 @@ Unset::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   let const should_unset_function = FLAG_UNSET_FUNCTION.is_enabled();
   let       has_error             = false;
-  let const do_try_unset          = [&](usize index, auto &&attempt) -> void {
+
+  let const do_try_unset = [&](usize index, auto &&attempt) -> void {
     try {
       attempt();
     } catch (const Error &error) {
       LOG(All, "unset swallowed an error: %s", error.message().c_str());
       report_soft_builtin_error(ec, cxt, ec.arg_location_at(index),
-                                         error.message().view());
+                                error.message().view());
       has_error = true;
     }
   };
 
   for (usize i = 1; i < names.count(); i++) {
     let const &name = names[i];
+
     if (!should_unset_function && cxt.runtime_state().is_posix_mode() &&
         !name_is_valid_identifier(name.view()))
     {
@@ -81,10 +83,12 @@ Unset::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       LOG(All, "unset removing the name reference '%s'", name.c_str());
       do_try_unset(i, [&] {
         let const was_generated = cxt.is_generated_nameref(name.view());
+
         if (!cxt.is_readonly(name.view())) {
           cxt.variable_store().attributes().set(
               name.view(), variable_attribute::Nameref, false);
         }
+
         cxt.unset_shell_variable(name);
         if (was_generated) {
           cxt.unset_dynamic_reader(name.view());
@@ -96,6 +100,7 @@ Unset::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       let const array_name = name.view().substring_of_length(0, *bracket);
       let const subscript  = name.view().substring_of_length(
           *bracket + 1, name.count() - *bracket - 2);
+
       try {
         cxt.unset_array_element(array_name, subscript);
       } catch (const ErrorWithLocation &) {

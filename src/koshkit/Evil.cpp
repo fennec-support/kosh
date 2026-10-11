@@ -34,9 +34,11 @@ namespace koshka::koshkit {
 namespace {
 
 fn
-read_first_line(StringView path, Allocator allocator) throws -> Maybe<String>
+read_first_line(StringView path, Allocator allocator) throws
+    -> Maybe<String>
 {
   let const body = Path{path, allocator}.read_entire_file();
+
   if (!body.has_value()) return None;
 
   let const view     = body->view();
@@ -55,6 +57,7 @@ detect_container(Allocator allocator) throws -> Maybe<String>
   if (os::path_exists("/.dockerenv")) return String{allocator, "docker"};
 
   let const named = os::get_environment_variable("container");
+
   if (named.has_value() && !named->is_empty()) {
     return String{allocator, named->view()};
   }
@@ -122,9 +125,11 @@ append_resource_limit(field_section    &section,
                       os::resource_kind kind) throws -> void
 {
   let const limit = os::get_resource_limit(kind);
+
   if (!limit.has_value()) return;
 
   let value = format_limit_value(limit->soft, section.allocator);
+
   value += " soft, ";
   value += format_limit_value(limit->hard, section.allocator).view();
   value += " hard";
@@ -134,9 +139,11 @@ append_resource_limit(field_section    &section,
 fn
 append_system_configuration(field_section               &section,
                             StringView                   name,
-                            os::system_configuration_key key) throws -> void
+                            os::system_configuration_key key) throws
+    -> void
 {
   let const value = os::system_configuration(key);
+
   if (!value.has_value()) return;
 
   section.add(name, String::from(*value, section.allocator).view());
@@ -150,15 +157,19 @@ struct mapped_library_family
 };
 
 fn
-append_anomaly_report(field_section &section, EvalContext &cxt) throws -> void
+append_anomaly_report(field_section &section, EvalContext &cxt) throws
+    -> void
 {
-  let const allocator             = cxt.scratch_allocator();
-  let const do_append_unavailable = [&](StringView cost) throws -> void {
+  let const allocator = cxt.scratch_allocator();
+
+  let const do_append_unavailable =
+      [&](StringView cost) throws -> void {
     section.add("Mixed library ABIs", "unavailable");
     section.add("Deleted code mappings", "unavailable");
     section.add("Finding confidence", "unavailable");
     section.add("Cost", cost);
   };
+
   if (!os::has_process_open_file_listing()) {
     do_append_unavailable("not probed");
 
@@ -175,6 +186,7 @@ append_anomaly_report(field_section &section, EvalContext &cxt) throws -> void
     if (file.use == os::process_file_use::Executable && !file.is_inaccessible) {
       executable_path = file.path.view();
     }
+
     if (file.use == os::process_file_use::Mapped && file.is_inaccessible) {
       is_mapping_evidence_available = false;
     }
@@ -197,11 +209,13 @@ append_anomaly_report(field_section &section, EvalContext &cxt) throws -> void
     let const filename             = path.filename();
     let const shared_object_marker = filename.find_substring(".so");
     let const marker               = filename.find_substring(".so.");
+
     if (file.is_deleted && (shared_object_marker.has_value() ||
                             file.path.view() == executable_path))
     {
       deleted_mapping_count++;
     }
+
     if (!marker.has_value()) continue;
 
     let version_end = *marker + 4;
@@ -216,9 +230,11 @@ append_anomaly_report(field_section &section, EvalContext &cxt) throws -> void
     if (version_end < filename.length && filename[version_end] != '.') {
       continue;
     }
+
     let const abi_version =
         filename.substring_of_length(*marker + 4, version_end - (*marker + 4))
             .to<u64>();
+
     if (abi_version.is_error()) continue;
 
     let const family       = filename.substring_of_length(0, *marker);
@@ -256,6 +272,7 @@ append_procfs_report(field_section &section) throws -> void
 {
   let const                  allocator = section.allocator;
   os::system_activity_status activity{};
+
   if (os::read_system_activity_status(activity)) {
     struct activity_metric
     {
@@ -334,6 +351,7 @@ append_procfs_report(field_section &section) throws -> void
   } else {
     section.add("Activity", "unavailable");
   }
+
   if (activity.has_isolation_probes) {
     if (!activity.has_field(os::system_activity_field::NamespaceCount)) {
       section.add("Current-process namespaces", "unavailable");
@@ -344,21 +362,26 @@ append_procfs_report(field_section &section) throws -> void
   }
 
   os::memory_status memory{};
+
   if (os::read_memory_status(memory) &&
       memory.has_field(os::memory_status_field::Total))
   {
     let memory_line = String{allocator};
+
     if (memory.has_field(os::memory_status_field::Available) ||
         memory.has_field(os::memory_status_field::Free))
     {
       memory_line = String::from(memory.available_kib, allocator);
       memory_line += " KiB available of ";
     }
+
     memory_line += String::from(memory.total_kib, allocator).view();
     memory_line += " KiB";
     section.add("Memory", memory_line.view());
   }
+
   let const processors = os::get_processor_counts();
+
   section.add("Processors",
               String::from(processors.online_count, allocator).view());
 }
@@ -385,8 +408,7 @@ fn
 Evil::execute(const ExecContext               &ec,
               EvalContext                     &cxt,
               const ArrayList<String>         &args,
-              const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+              const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
@@ -410,10 +432,12 @@ Evil::execute(const ExecContext               &ec,
   let       anomalies = field_section{allocator};
 
   let const host = os::get_hostname();
+
   identity.add("Host", host.has_value() ? host->view() : "unknown");
 
   let system_line   = String{allocator, os::executable_system_name().view()};
   let const release = os::system_release_name();
+
   if (!release.is_empty()) {
     system_line += " ";
     system_line += release.view();
@@ -428,36 +452,44 @@ Evil::execute(const ExecContext               &ec,
   }
 
   let const distribution = read_first_line("/etc/os-release", allocator);
+
   if (distribution.has_value() && distribution->view().starts_with("NAME=")) {
     let const named =
         distribution->view().substring_of_length(5, distribution->length() - 5);
     let const unquoted = named.length >= 2 && named[0] == '"'
                              ? named.substring_of_length(1, named.length - 2)
                              : named;
+
     identity.add("Distribution", unquoted);
   }
 
   identity.add("Init", get_init_system_name(allocator).view());
 
   let const container = detect_container(allocator);
+
   if (container.has_value()) identity.add("Container", container->view());
 
   let const shell = os::get_environment_variable("SHELL");
+
   if (shell.has_value()) identity.add("Shell", shell->view());
 
   let const user = os::get_current_user();
+
   if (user.has_value()) identity.add("User", user->view());
 
   if (FLAG_EVIL_ALL.is_enabled()) {
     let const login_user = os::get_login_user();
+
     if (login_user.has_value()) identity.add("Login user", login_user->view());
   }
 
   identity.add("Kosh", short_version_string(allocator).view());
   if (FLAG_EVIL_ALL.is_enabled()) {
     let const executable = os::current_executable_path();
+
     if (executable.has_value()) identity.add("Executable", executable->view());
   }
+
   identity.add("Directory", os::read_current_directory().view());
   if (FLAG_EVIL_ALL.is_enabled()) {
     session.add("Time", os::format_local_time("%Y-%m-%d %H:%M:%S %z",
@@ -469,12 +501,14 @@ Evil::execute(const ExecContext               &ec,
                 String::from(os::get_parent_process_id(), allocator).view());
 
     let user_ids = String::from(os::get_real_user_id(), allocator);
+
     user_ids += " real, ";
     user_ids += String::from(os::get_effective_user_id(), allocator).view();
     user_ids += " effective";
     session.add("User IDs", user_ids.view());
 
     let group_ids = String::from(os::get_real_group_id(), allocator);
+
     group_ids += " real, ";
     group_ids += String::from(os::get_effective_group_id(), allocator).view();
     group_ids += " effective";
@@ -491,14 +525,17 @@ Evil::execute(const ExecContext               &ec,
     session.add("Supplementary groups", group_list.view());
 
     let const groups = names_text(os::enumerate_groups(), allocator);
+
     if (groups.has_value()) session.add("Groups", groups->view());
 
     let const terminal = os::terminal_name(KOSH_STDIN);
+
     if (terminal.has_value()) session.add("Terminal", terminal->view());
   }
 
   if (FLAG_EVIL_USERS.is_enabled()) {
     let const users = names_text(os::enumerate_users(), allocator);
+
     if (users.has_value()) accounts.add("Users", users->view());
   }
 
@@ -525,12 +562,14 @@ Evil::execute(const ExecContext               &ec,
   }
 
   let const uptime = os::system_uptime_seconds();
+
   if (uptime.has_value())
     resources.add("Uptime", format_uptime(*uptime, allocator).view());
 
   let const processors     = os::get_processor_counts();
   let       processor_line = String{allocator};
   let const model          = os::processor_model_name(allocator);
+
   if (model.has_value() && !model->is_empty()) {
     processor_line += model->view();
     processor_line += ", ";
@@ -543,25 +582,29 @@ Evil::execute(const ExecContext               &ec,
   resources.add("Processor", processor_line.view());
 
   os::memory_status memory{};
+
   if (os::read_memory_status(memory) &&
       memory.has_field(os::memory_status_field::Total) && memory.total_kib > 0)
   {
     let memory_line = String{allocator};
+
     if (memory.has_field(os::memory_status_field::Available) ||
         memory.has_field(os::memory_status_field::Free))
     {
       let const used_kib = memory.total_kib > memory.available_kib
                                ? memory.total_kib - memory.available_kib
                                : 0;
-      memory_line        = format_human_size(used_kib * 1024, allocator);
+
+      memory_line = format_human_size(used_kib * 1024, allocator);
       memory_line += " used of ";
     }
+
     memory_line += format_human_size(memory.total_kib * 1024, allocator).view();
     resources.add("Memory", memory_line.view());
     if (FLAG_EVIL_ALL.is_enabled()) {
       let const do_append_memory_size =
-          [&](StringView name, os::memory_status_field field, u64 value_kib)
-              throws -> void {
+          [&](StringView name, os::memory_status_field field,
+              u64 value_kib) throws -> void {
         if (!memory.has_field(field)) return;
 
         let const value_byte_count =
@@ -575,6 +618,7 @@ Evil::execute(const ExecContext               &ec,
             "Memory available",
             format_human_size(memory.available_kib * 1024, allocator).view());
       }
+
       if (memory.has_field(os::memory_status_field::Free)) {
         resources.add(
             "Memory free",
@@ -608,6 +652,7 @@ Evil::execute(const ExecContext               &ec,
             "Huge pages total",
             String::from(memory.huge_page_total_count, allocator).view());
       }
+
       if (memory.has_field(os::memory_status_field::HugePagesFree)) {
         resources.add(
             "Huge pages free",
@@ -624,6 +669,7 @@ Evil::execute(const ExecContext               &ec,
               ? memory.swap_total_kib - memory.swap_free_kib
               : 0;
       let swap_line = format_human_size(swap_used_kib * 1024, allocator);
+
       swap_line += " used of ";
       swap_line +=
           format_human_size(memory.swap_total_kib * 1024, allocator).view();
@@ -632,10 +678,12 @@ Evil::execute(const ExecContext               &ec,
   }
 
   os::filesystem_status root{};
+
   if (os::stat_filesystem("/", root) && root.total_blocks > 0) {
     let const unit        = root.fundamental_block_byte_count;
     let const used_blocks = root.total_blocks - root.free_blocks;
     let       root_line   = format_human_size(used_blocks * unit, allocator);
+
     root_line += " used of ";
     root_line += format_human_size(root.total_blocks * unit, allocator).view();
     root_line += " on ";
@@ -651,28 +699,34 @@ Evil::execute(const ExecContext               &ec,
   }
 
   let const load = read_first_line("/proc/loadavg", allocator);
+
   if (load.has_value() && !load->is_empty()) {
     resources.add("Load", load->view());
   }
 
   let const processes = os::enumerate_processes();
+
   resources.add("Processes", String::from(processes.count(), allocator).view());
 
   if (FLAG_EVIL_ALL.is_enabled()) {
     let const sessions = os::logged_in_users();
+
     resources.add("Login sessions",
                   String::from(sessions.count(), allocator).view());
 
     let const environment = os::environment_names();
+
     resources.add("Environment variables",
                   String::from(environment.count(), allocator).view());
   }
 
   let const mounts = os::mounted_filesystems();
+
   resources.add("Filesystems", String::from(mounts.count(), allocator).view());
 
   let const addresses                = os::network_interface_addresses();
   let       interface_names_unsorted = ArrayList<StringView>{allocator};
+
   interface_names_unsorted.reserve(addresses.count());
 
   for (let const &address : addresses)
@@ -688,10 +742,12 @@ Evil::execute(const ExecContext               &ec,
     if (interface_count == 0 || name != previous_interface) {
       interface_count++;
     }
+
     previous_interface = name;
   }
 
   let network_line = String::from(interface_count, allocator);
+
   network_line += interface_count == 1 ? " interface, " : " interfaces, ";
   network_line += String::from(addresses.count(), allocator).view();
   network_line += addresses.count() == 1 ? " address" : " addresses";

@@ -29,8 +29,8 @@ enum class shell_variable_fact : u8
 };
 
 constexpr fn
-operator|(shell_variable_fact left,
-          shell_variable_fact right) wontthrow->shell_variable_fact
+operator|(shell_variable_fact left, shell_variable_fact right) wontthrow
+    -> shell_variable_fact
 {
   return static_cast<shell_variable_fact>(static_cast<u8>(left) |
                                           static_cast<u8>(right));

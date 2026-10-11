@@ -81,6 +81,7 @@ get_utility_section(koshkit::Utility::Kind kind) wontthrow -> utility_section
   case koshkit::Utility::Kind::EvilIO:
   case koshkit::Utility::Kind::EvilLogs:
   case koshkit::Utility::Kind::EvilIso:
+  case koshkit::Utility::Kind::Meow:
   case koshkit::Utility::Kind::GoodCore:
   case koshkit::Utility::Kind::EvilSS:
   case koshkit::Utility::Kind::GoodFSW:   return utility_section::Koshka;
@@ -107,24 +108,29 @@ Koshkit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
           ? parse_until_subcommand(FLAG_LIST, ec.args(), &ec.arg_locations(),
                                    nullptr, ec.program())
           : usize{0};
+
   defer { reset_flags(FLAG_LIST); };
 
   if (FLAG_KOSHKIT_COLOR.is_set()) {
     let const selected = parse_cli_color_mode(FLAG_KOSHKIT_COLOR.value());
+
     if (!selected.has_value()) {
       let error =
           ErrorWithLocation{FLAG_KOSHKIT_COLOR.value_location(),
                             "koshkit: invalid color mode '" +
                                 String{FLAG_KOSHKIT_COLOR.value()} + "'"};
+
       error.set_command_status(2);
       throw error;
     }
+
     koshkit::set_koshkit_color_mode(*selected);
   }
 
   let const chosen = utility_index < ec.args().count()
                          ? koshkit::find_util(ec.args()[utility_index].view())
                          : Maybe<koshkit::Utility::Kind>{};
+
   if (chosen.has_value())
     return koshkit::dispatch(ec, cxt, utility_index, chosen);
 
@@ -148,6 +154,7 @@ Koshkit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       return report_usage_error(ec, cxt, ec.program());
 
     let const target = os::current_executable_path();
+
     if (!target.has_value()) {
       report_soft_builtin_error(
           ec, cxt, "Cannot resolve this binary's path to assimilate");
@@ -169,6 +176,7 @@ Koshkit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
     for (let const &name : sorted_names) {
       let link = Path{FLAG_KOSHKIT_ASSIMILATE.value()};
+
       link.append(name.view());
       if (link.is_symbolic_link()) os::remove_file(link.view());
       if (!os::create_symlink(target->view(), link.view())) {
@@ -184,6 +192,7 @@ Koshkit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   if (FLAG_HELP.is_enabled() || utility_index == ec.args().count()) {
     let listing = String{cxt.scratch_allocator()};
+
     listing += "DESCRIPTION\n";
     listing += wrap_text(HELP_DESCRIPTION, HELP_INDENT, HELP_WRAP_WIDTH);
     listing += "\n\nSYNOPSIS\n";
@@ -198,14 +207,17 @@ Koshkit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
     for (let const &name : sorted_names) {
       let const kind = koshkit::find_util(name.view());
+
       ASSERT(kind.has_value());
       switch (get_utility_section(*kind)) {
-      case utility_section::Posix:  posix_names.push(name.view()); break;
+      case utility_section::Posix: posix_names.push(name.view()); break;
+
       case utility_section::Koshka: koshka_names.push(name.view()); break;
       }
     }
 
     let const should_color = koshkit::koshkit_should_color();
+
     append_report_name_section(listing, "POSIX", posix_names, should_color,
                                "  ");
     append_report_name_section(listing, "Koshka", koshka_names, should_color,

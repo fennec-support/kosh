@@ -58,6 +58,7 @@ Dirs::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   }
 
   let selected_index = Maybe<usize>{};
+
   if (args.count() > 1) {
     if (args.count() > 2) {
       throw ErrorWithLocationAndDetails{operand_locations[2],
@@ -66,6 +67,7 @@ Dirs::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     }
 
     usize index = 0;
+
     if (!parse_directory_stack_rotation(
             args[1].view(), cxt.variable_store().directory_stack().count() + 1,
             operand_locations[1], index))
@@ -76,6 +78,7 @@ Dirs::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
               "'",
           "Pass a +N or -N stack index, or no argument to print every entry"};
     }
+
     selected_index = index;
   }
 

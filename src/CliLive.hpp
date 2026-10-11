@@ -66,6 +66,7 @@ struct live_view_options
   u64        started_at_nanoseconds{0};
   bool       should_color{false};
   bool       should_render_first_frame_immediately{false};
+  bool       should_show_header{true};
 };
 
 struct live_view_input
@@ -81,10 +82,9 @@ public:
   LiveView(const ExecContext &ec, const live_view_options &options) wontthrow;
   ~LiveView();
 
-  LiveView(const LiveView &) = delete;
+  LiveView(const LiveView &)                = delete;
   fn
-  operator=(const LiveView &)
-      ->LiveView & = delete;
+  operator=(const LiveView &) -> LiveView & = delete;
 
   mustuse fn
   get_started_at_nanoseconds() const wontthrow -> u64;
@@ -103,15 +103,15 @@ public:
       -> live_view_key_action;
 
   mustuse fn
-  wait_for_input(u64 wait_nanoseconds, live_view_input &input) wontthrow
-      -> bool;
+  wait_for_input(u64 wait_nanoseconds, live_view_input &input)
+      wontthrow -> bool;
+
   fn
   append_frame_start(String                     &frame,
                      const live_view_dimensions &dimensions,
-                     Allocator allocator) const throws -> void;
+                     Allocator                   allocator) const throws -> void;
   fn
-  write_frame(String                     &frame,
-              const live_view_dimensions &dimensions) const throws -> void;
+  write_frame(String &frame, const live_view_dimensions &dimensions) const throws -> void;
 
 private:
   const ExecContext        &m_ec;
@@ -140,7 +140,7 @@ struct live_report_options
         StringView               utility_name,
         const FlagOptionalValue &live_flag,
         const FlagOptionalValue &cumulative_flag,
-        Allocator allocator) throws -> Maybe<live_report_options>;
+        Allocator                allocator) throws -> Maybe<live_report_options>;
   static fn
   parse_with_window(const ExecContext       &ec,
                     EvalContext             &cxt,
@@ -148,7 +148,8 @@ struct live_report_options
                     const FlagOptionalValue &live_flag,
                     bool                     is_cumulative,
                     f64                      window_seconds,
-                    Allocator allocator) throws -> Maybe<live_report_options>;
+                    Allocator                allocator) throws
+      -> Maybe<live_report_options>;
   static fn
   parse_window_seconds(const ExecContext &ec,
                        EvalContext       &cxt,
@@ -170,6 +171,7 @@ struct live_report_options
       -> live_view_options
   {
     live_view_options options{};
+
     options.title                    = title;
     options.refresh_interval_seconds = interval_seconds;
     options.should_color             = should_color;
@@ -183,8 +185,9 @@ struct live_report_options
                     u64        started_at_nanoseconds) const wontthrow
       -> live_view_options
   {
-    let options            = make_refresh_view_options(title, should_color);
-    options.window_seconds = window_seconds;
+    let options = make_refresh_view_options(title, should_color);
+
+    options.window_seconds          = window_seconds;
     options.sample_interval_seconds = interval_seconds;
     options.started_at_nanoseconds  = started_at_nanoseconds;
 
@@ -208,17 +211,20 @@ run_live_view(const ExecContext       &ec,
       view.get_refresh_interval_nanoseconds();
   u64 last_sample_nanoseconds  = view.get_started_at_nanoseconds();
   u64 last_refresh_nanoseconds = last_sample_nanoseconds;
+
   if (options.should_render_first_frame_immediately &&
       last_refresh_nanoseconds > refresh_interval_nanoseconds)
   {
     last_refresh_nanoseconds -= refresh_interval_nanoseconds;
   }
+
   bool should_force_refresh = false;
 
-  loop
-  {
+  loop {
     let const frame_mark = frame_arena.mark();
+
     defer { frame_arena.release(frame_mark); };
+
     let const frame_allocator = bump_allocator(frame_arena);
 
     let const wait_nanoseconds =
@@ -228,6 +234,7 @@ run_live_view(const ExecContext       &ec,
                                         last_sample_nanoseconds,
                                         last_refresh_nanoseconds);
     live_view_input input{};
+
     if (!view.wait_for_input(wait_nanoseconds, input)) {
       os::INTERRUPT_REQUESTED = 0;
 
@@ -244,6 +251,7 @@ run_live_view(const ExecContext       &ec,
     }
 
     let const now_nanoseconds = os::monotonic_nanos();
+
     if (sample_interval_nanoseconds != 0 &&
         now_nanoseconds - last_sample_nanoseconds >=
             sample_interval_nanoseconds)
@@ -253,6 +261,7 @@ run_live_view(const ExecContext       &ec,
       {
         return *status;
       }
+
       last_sample_nanoseconds = now_nanoseconds;
     }
 
@@ -261,17 +270,20 @@ run_live_view(const ExecContext       &ec,
     {
       continue;
     }
+
     should_force_refresh     = false;
     last_refresh_nanoseconds = now_nanoseconds;
 
     let const dimensions = view.get_dimensions();
     let       frame      = String{frame_allocator};
+
     view.append_frame_start(frame, dimensions, frame_allocator);
     if (let const status = do_render(frame, dimensions, frame_allocator);
         status.has_value())
     {
       return *status;
     }
+
     view.write_frame(frame, dimensions);
   }
 }
@@ -294,7 +306,7 @@ struct live_process_identity
   u64 start_token{0};
 
   pure fn
-  operator<(const live_process_identity &other) const wontthrow->bool
+  operator<(const live_process_identity &other) const wontthrow -> bool
   {
     return pid != other.pid ? pid < other.pid : start_token < other.start_token;
   }
@@ -304,7 +316,7 @@ struct no_retained_update
 {
   template <class Item, class Row>
   fn
-  operator()(Item &, Row &) const wontthrow->void
+  operator()(Item &, Row &) const wontthrow -> void
   {}
 };
 
@@ -335,7 +347,9 @@ update_retained_rows(ArrayList<Row> &retained,
   };
 
   retained.reserve(retained.count() + observed.count());
+
   let index = ArrayList<index_entry>{index_allocator};
+
   index.reserve(retained.count());
 
   for (usize position = 0; position < retained.count(); position++)
@@ -351,6 +365,7 @@ update_retained_rows(ArrayList<Row> &retained,
 
     while (low < high) {
       let const middle = low + (high - low) / 2;
+
       if (index[middle].key < key)
         low = middle + 1;
       else
@@ -367,9 +382,11 @@ update_retained_rows(ArrayList<Row> &retained,
   for (let &item : observed) {
     let const &value = do_get_value(item);
     let const  found = do_find(do_get_key(item));
+
     if (!found.has_value()) retained.push(do_make_row(item));
 
     let &row = found.has_value() ? retained[*found] : retained.back();
+
     if (found.has_value() && do_is_reset(row.history.get_newest(), value)) {
       row.history.clear();
     }
@@ -385,6 +402,7 @@ update_retained_rows(ArrayList<Row> &retained,
   for (usize remaining = retained.count(); remaining > 0; remaining--) {
     let const position = remaining - 1;
     let      &row      = retained[position];
+
     if (now_nanoseconds - row.history.last_seen_nanoseconds >=
         window_nanoseconds)
     {

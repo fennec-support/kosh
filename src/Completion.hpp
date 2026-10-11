@@ -35,7 +35,8 @@ enum class tab_selector_mode : u8
 };
 
 inline pure fn
-parse_tab_selector_name(StringView name) throws -> Maybe<tab_selector_mode>
+parse_tab_selector_name(StringView name) throws
+    -> Maybe<tab_selector_mode>
 {
   static constexpr static_string_entry<tab_selector_mode>
       TAB_SELECTOR_ENTRIES[] = {
@@ -103,8 +104,8 @@ complete(StringView                   line,
          const ArrayList<StringView> *extra_command_names            = nullptr,
          bool            should_complete_external_arguments_in_posix = false,
          completion_mode mode = completion_mode::Ghost,
-         const ArrayList<StringView> *extra_variable_names = nullptr) throws
-    -> completion_result;
+         const ArrayList<StringView> *extra_variable_names =
+             nullptr) throws -> completion_result;
 
 fn
 complete_command_names(StringView                   token,
@@ -117,21 +118,24 @@ fn
 warm_cdpath_indexes(EvalContext &context) throws -> void;
 
 fn
-complete_command_names_by_prefix(StringView token, EvalContext &context) throws
+complete_command_names_by_prefix(StringView   token,
+                                 EvalContext &context) throws
     -> ArrayList<String>;
+
 fn
 complete_filesystem_names_by_prefix(
     StringView                 token,
     EvalContext               &context,
     const Path                &base_directory,
-    completion_filesystem_mode mode = completion_filesystem_mode::Files) throws
-    -> ArrayList<String>;
+    completion_filesystem_mode mode =
+        completion_filesystem_mode::Files) throws -> ArrayList<String>;
 
 fn
 collect_compgen_candidates(EvalContext      &context,
                            u32               action_mask,
                            Maybe<StringView> glob_pattern,
                            StringView        word) throws -> ArrayList<String>;
+
 fn
 remove_compgen_filtered(EvalContext       &context,
                         StringView         filter_pattern,
@@ -229,16 +233,15 @@ class ShellHighlightCache
 {
 public:
   explicit ShellHighlightCache(Allocator allocator) wontthrow
-      : m_pieces{allocator},
-        m_line_spans{allocator},
-        m_allocator{allocator}
+      : m_pieces{allocator}, m_line_spans{allocator}, m_allocator{allocator}
   {}
 
   fn
   spans_for(StringView   source,
             usize        line_start,
             usize        line_end,
-            EvalContext &context) throws -> const ArrayList<highlight_span> *;
+            EvalContext &context) throws
+      -> const ArrayList<highlight_span> *;
 
 private:
   StringView                m_source{};
@@ -259,8 +262,9 @@ enum class typed_pair_role : u8
 };
 
 fn
-classify_typed_pair_byte(StringView line, usize cursor, char byte) throws
-    -> typed_pair_role;
+classify_typed_pair_byte(StringView line,
+                         usize      cursor,
+                         char       byte) throws -> typed_pair_role;
 
 fn
 find_matching_bracket(StringView                       line,
@@ -274,6 +278,7 @@ append_highlighted_range(String                          &output,
                          usize                            range_start,
                          usize                            range_end,
                          const highlight_theme           &theme) throws -> void;
+
 fn
 append_highlighted_source(String                &output,
                           StringView             source,
@@ -290,7 +295,8 @@ debug_diagnostic_cache_is_stable(EvalContext &context) throws -> bool;
 #endif
 
 fn
-command_word_resolves(StringView line, EvalContext &context) throws -> bool;
+command_word_resolves(StringView line, EvalContext &context) throws
+    -> bool;
 
 fn
 compose_command_hint(StringView   line,

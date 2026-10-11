@@ -128,17 +128,21 @@ find_entry_matches(char                type_letter,
   case 'f':
     if (type_letter != '-') return false;
     break;
+
   case 'd':
     if (type_letter != 'd') return false;
     break;
+
   case 'l':
     if (type_letter != 'l') return false;
     break;
+
   default: break;
   }
 
   let const original_filename = filename;
   String    locale_independent_folded_filename{allocator};
+
   if (options.has_case_insensitive_name_pattern) {
     locale_independent_folded_filename.reserve(filename.length);
     locale_independent_folded_filename.assign_lowercase_ascii(filename);
@@ -154,6 +158,7 @@ find_entry_matches(char                type_letter,
       let const candidate = should_ignore_case
                                 ? locale_independent_folded_filename.view()
                                 : original_filename;
+
       if (!utils::glob_matches(pattern, candidate,
                                (*options.name_pattern_masks)[index], 0,
                                extglob_mode::Disabled, options.name_charset))
@@ -210,8 +215,9 @@ public:
        usize      depth,
        char       type_letter) throws -> void
   {
-    let      &scratch_arena     = m_cxt.expansion_store().scratch_arena();
+    let &scratch_arena = m_cxt.expansion_store().scratch_arena();
     let const directory_scratch = scratch_arena.mark();
+
     defer { scratch_arena.release(directory_scratch); };
 
     if (find_entry_matches(type_letter, get_filename(path_text), depth,
@@ -222,6 +228,7 @@ public:
 
     let const should_descend = m_options.max_depth < 0 ||
                                static_cast<i64>(depth) < m_options.max_depth;
+
     if (!should_descend || type_letter != 'd') {
       return;
     }
@@ -233,6 +240,7 @@ public:
 
     let children =
         Path::read_directory_typed(Path{path_text, m_allocator}, m_allocator);
+
     if (!children.has_value()) {
       if (!os::path_is_readable(path_text)) {
         report_soft_koshkit_util_error(m_ec, m_cxt, "find",
@@ -248,6 +256,7 @@ public:
     let const is_terminal_depth =
         m_options.max_depth >= 0 &&
         static_cast<i64>(child_depth) == m_options.max_depth;
+
     if (is_terminal_depth &&
         (m_options.name_patterns != nullptr || m_options.type_filter != 0 ||
          static_cast<i64>(child_depth) < m_options.min_depth))
@@ -275,13 +284,16 @@ public:
       if (os::INTERRUPT_REQUESTED) return;
 
       let const child_scratch = scratch_arena.mark();
+
       defer { scratch_arena.release(child_scratch); };
+
       let const &child_entry       = (*children)[index];
       let const  child_type_letter = get_find_type_letter(child_entry.kind);
       let const  should_descend_child =
           child_type_letter == 'd' &&
           (m_options.max_depth < 0 ||
            static_cast<i64>(child_depth) < m_options.max_depth);
+
       if (should_descend_child) {
         walk_child(path_text, display, child_entry, child_depth,
                    child_type_letter);
@@ -304,6 +316,7 @@ private:
   is_on_root_device(StringView path_text, usize depth) wontthrow -> bool
   {
     os::file_status status{};
+
     if (!os::stat_path(path_text, status)) return true;
 
     if (depth == 0) m_root_device_id = status.device_id;
@@ -363,8 +376,10 @@ private:
         if (!display.is_empty() && display[display.length - 1] != '/') {
           m_output += '/';
         }
+
         m_output += child_name;
       }
+
       m_output += '\n';
       flush_full_output();
 
@@ -372,10 +387,12 @@ private:
     }
 
     String path{m_allocator, display};
+
     if (!child_name.is_empty()) {
       if (!display.is_empty() && display[display.length - 1] != '/') {
         path += '/';
       }
+
       path += child_name;
     }
 
@@ -386,11 +403,13 @@ private:
         m_output += '\n';
         flush_full_output();
         break;
+
       case find_action_kind::PrintNull:
         m_output += path.view();
         m_output += '\0';
         flush_full_output();
         break;
+
       case find_action_kind::Execute: {
         let command = ArrayList<String>{m_allocator};
 
@@ -449,6 +468,7 @@ private:
                                  : m_ec.source_location());
 
     Maybe<ExecContext> sub;
+
     try {
       sub = ExecContext::make_from(
           m_ec.source_location(), m_cxt.source_store().current_source_view(),
@@ -463,8 +483,11 @@ private:
     }
 
     let snapshot = m_cxt.snapshot_state();
+
     m_cxt.enter_subshell();
+
     i32 command_status = 0;
+
     try {
       command_status = utils::execute_context(steal(*sub), m_cxt,
                                               execution_mode::Foreground);
@@ -473,11 +496,13 @@ private:
       m_cxt.restore_state(steal(snapshot));
       throw;
     }
+
     if (m_cxt.control_flow_store().has_pending()) {
       command_status =
           static_cast<i32>(m_cxt.control_flow_store().pending().value);
       m_cxt.control_flow_store().clear();
     }
+
     m_cxt.leave_subshell();
     m_cxt.restore_state(steal(snapshot));
 
@@ -496,17 +521,22 @@ private:
     let const has_separator =
         !child_display.is_empty() && child_display.back() != '/';
     let const separator_length = has_separator ? usize{1} : usize{0};
+
     if (display.length <= SIZE_MAX - separator_length &&
         display.length + separator_length <= SIZE_MAX - child_name.length)
     {
       child_display.reserve(display.length + separator_length +
                             child_name.length);
     }
+
     if (has_separator) {
       child_display += '/';
     }
+
     child_display += child_name;
+
     let child_path = Path{path_text, m_allocator};
+
     child_path.append(child_name);
     walk(child_path.view(), child_display.view(), child_depth,
          child_type_letter);
@@ -520,8 +550,13 @@ private:
 
     for (usize index = 0; index < children.count(); index++) {
       let const child_scratch = m_cxt.expansion_store().scratch_arena().mark();
-      defer { m_cxt.expansion_store().scratch_arena().release(child_scratch); };
+
+      defer {
+        m_cxt.expansion_store().scratch_arena().release(child_scratch);
+      };
+
       let const &child = children[index];
+
       if (child.kind != Path::EntryKind::Unknown &&
           !find_entry_matches(get_find_type_letter(child.kind),
                               child.name.view(), child_depth, m_options,
@@ -545,6 +580,7 @@ private:
     let const wave_count = unknown_count < FIND_UNKNOWN_BATCH_COUNT
                                ? unknown_count
                                : FIND_UNKNOWN_BATCH_COUNT;
+
     m_unknown_paths.reserve(wave_count);
     m_unknown_statuses.reserve(wave_count);
     m_unknown_indices.reserve(wave_count);
@@ -555,6 +591,7 @@ private:
       if (children[index].kind != Path::EntryKind::Unknown) continue;
 
       let child_path = Path{path_text, heap_allocator()};
+
       child_path.append(children[index].name.view());
       m_unknown_paths.push(steal(child_path));
       m_unknown_statuses.push({});
@@ -567,7 +604,8 @@ private:
   }
 
   fn
-  resolve_unknown_wave(ArrayList<Path::DirectoryChild> &children) throws -> void
+  resolve_unknown_wave(ArrayList<Path::DirectoryChild> &children) throws
+      -> void
   {
     if (m_unknown_indices.is_empty()) return;
 
@@ -582,6 +620,7 @@ private:
 
     for (usize index = 0; index < m_unknown_indices.count(); index++) {
       let &kind = children[m_unknown_indices[index]].kind;
+
       if (m_unknown_results[index].error_number != 0) {
         os::set_last_system_error(m_unknown_results[index].error_number);
         report_soft_koshkit_util_error(
@@ -595,9 +634,12 @@ private:
 
       switch (os::file_type_letter(m_unknown_statuses[index].mode)) {
       case 'd': kind = Path::EntryKind::Directory; break;
+
       case '-': kind = Path::EntryKind::Regular; break;
+
       case 'l': kind = Path::EntryKind::Symlink; break;
-      default:  kind = Path::EntryKind::Other; break;
+
+      default: kind = Path::EntryKind::Other; break;
       }
     }
 
@@ -626,8 +668,7 @@ fn
 Find::execute(const ExecContext               &ec,
               EvalContext                     &cxt,
               const ArrayList<String>         &args,
-              const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+              const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   ArrayList<StringView>  roots{cxt.scratch_allocator()};
   ArrayList<StringView>  name_patterns{cxt.scratch_allocator()};
@@ -642,6 +683,7 @@ Find::execute(const ExecContext               &ec,
 
   while (index < args.count()) {
     let const start_argument = args[index].view();
+
     if (!start_argument.is_empty() && start_argument[0] == '-') {
       break;
     }
@@ -653,6 +695,7 @@ Find::execute(const ExecContext               &ec,
   for (; index < args.count(); index++) {
     let const predicate      = args[index].view();
     let const predicate_kind = FIND_PREDICATES.find(predicate);
+
     if (!predicate_kind.has_value()) {
       KOSHKIT_REPORT_ERROR_AT(arg_locations[index],
                               "unknown predicate '" +
@@ -696,6 +739,7 @@ Find::execute(const ExecContext               &ec,
       }
 
       actions.push(find_action{});
+
       let &action = actions.back();
 
       for (usize part_index = index + 1; part_index < end_index; part_index++) {
@@ -711,10 +755,12 @@ Find::execute(const ExecContext               &ec,
 
           return 1;
         }
+
         action.kind = find_action_kind::ExecuteBatch;
       } else {
         action.kind = find_action_kind::Execute;
       }
+
       index = end_index;
       break;
     }
@@ -730,9 +776,12 @@ Find::execute(const ExecContext               &ec,
 
         return 1;
       }
+
       name_patterns.push(args[index + 1].view());
+
       let const is_case_insensitive =
           *predicate_kind == find_predicate_kind::Iname;
+
       name_pattern_ignore_case.push(is_case_insensitive);
       options.has_case_insensitive_name_pattern =
           options.has_case_insensitive_name_pattern || is_case_insensitive;
@@ -747,7 +796,9 @@ Find::execute(const ExecContext               &ec,
 
         return 1;
       }
+
       let const type = args[index + 1].view();
+
       if (type.length != 1 ||
           (type[0] != 'f' && type[0] != 'd' && type[0] != 'l'))
       {
@@ -757,6 +808,7 @@ Find::execute(const ExecContext               &ec,
 
         return 1;
       }
+
       options.type_filter = type[0];
       index++;
       break;
@@ -771,9 +823,11 @@ Find::execute(const ExecContext               &ec,
 
         return 1;
       }
+
       bool      is_depth_out_of_range = false;
       let const parsed_depth = utils::parse_decimal_i64(args[index + 1].view(),
                                                         &is_depth_out_of_range);
+
       if (parsed_depth.is_error() || is_depth_out_of_range ||
           parsed_depth.value() < 0)
       {
@@ -785,11 +839,13 @@ Find::execute(const ExecContext               &ec,
 
         return 1;
       }
+
       if (*predicate_kind == find_predicate_kind::MaximumDepth) {
         options.max_depth = parsed_depth.value();
       } else {
         options.min_depth = parsed_depth.value();
       }
+
       index++;
       break;
     }
@@ -809,14 +865,17 @@ Find::execute(const ExecContext               &ec,
     {
       let decoded = utils::decode_shell_word(name_patterns[pattern_index],
                                              cxt.scratch_allocator());
+
       if (name_pattern_ignore_case[pattern_index]) {
         String folded{cxt.scratch_allocator()};
+
         folded.reserve(decoded.text.length());
         folded.assign_lowercase_ascii(decoded.text.view());
         matcher_name_storage.push(steal(folded));
       } else {
         matcher_name_storage.push(steal(decoded.text));
       }
+
       matcher_name_patterns.push(matcher_name_storage.back().view());
       matcher_name_masks.push(steal(decoded.glob_active));
     }
@@ -833,6 +892,7 @@ Find::execute(const ExecContext               &ec,
   let       root_paths    = ArrayList<Path>{allocator};
   let       root_statuses = ArrayList<os::file_status>{allocator};
   let       batch         = os::Batch{allocator};
+
   root_paths.reserve(roots.count());
   root_statuses.reserve(roots.count());
   batch.reserve(roots.count());
@@ -862,6 +922,7 @@ Find::execute(const ExecContext               &ec,
 
   for (usize root_index = 0; root_index < roots.count(); root_index++) {
     let const root = roots[root_index];
+
     if (results[root_index].error_number != 0) {
       os::set_last_system_error(results[root_index].error_number);
       report_soft_koshkit_util_error(ec, cxt, args[0].view(),
@@ -870,6 +931,7 @@ Find::execute(const ExecContext               &ec,
       status = 1;
       continue;
     }
+
     walker.walk(root, root, 0,
                 os::file_type_letter(root_statuses[root_index].mode));
     if (os::INTERRUPT_REQUESTED) {

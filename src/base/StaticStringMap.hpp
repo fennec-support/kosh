@@ -32,10 +32,12 @@ struct static_string_prefilter
   record(const PackedStringKey &key) wontthrow -> void
   {
     let const key_length = key.packed_length();
+
     if (key_length < shortest_key_length) shortest_key_length = key_length;
     if (key_length > longest_key_length) longest_key_length = key_length;
 
     let const leading = key.leading_byte();
+
     leading_byte_mask[leading >> 6] |= 1ull << (leading & 63);
   }
 
@@ -86,6 +88,7 @@ public:
   find(StringView text) const throws -> Maybe<Value>
   {
     if (!prefilter.might_contain(text)) return None;
+
     let const wanted = PackedStringKey::from_view(text);
 
     usize low  = 0;
@@ -93,6 +96,7 @@ public:
 
     while (low < high) {
       let const middle = low + ((high - low) / 2);
+
       if (entries[middle].key < wanted)
         low = middle + 1;
       else
@@ -144,6 +148,7 @@ public:
   find_index(StringView text) const wontthrow -> Maybe<usize>
   {
     if (!prefilter.might_contain(text)) return None;
+
     let const wanted = PackedStringKey::from_view(text);
 
     usize low  = 0;
@@ -151,6 +156,7 @@ public:
 
     while (low < high) {
       let const middle = low + ((high - low) / 2);
+
       if (keys[middle] < wanted)
         low = middle + 1;
       else

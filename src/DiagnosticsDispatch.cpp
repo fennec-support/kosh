@@ -131,7 +131,8 @@ constexpr StaticStringMap ANALYSIS_COMMANDS{ANALYSIS_COMMAND_ENTRIES};
 } /* namespace */
 
 fn
-get_analysis_command_info(StringView name) throws -> analysis_command_info
+get_analysis_command_info(StringView name) throws
+    -> analysis_command_info
 {
   if (let const found = ANALYSIS_COMMANDS.find(name); found.has_value())
     return *found;

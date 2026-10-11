@@ -18,6 +18,7 @@ batch_operation::read(descriptor fd,
                       u64        byte_offset) wontthrow -> batch_operation
 {
   batch_operation operation{Kind::Read};
+
   operation.m_secondary.fd          = fd;
   operation.m_primary.output_buffer = buffer;
   operation.byte_count              = byte_count;
@@ -33,6 +34,7 @@ batch_operation::write(descriptor  fd,
                        u64         byte_offset) wontthrow -> batch_operation
 {
   batch_operation operation{Kind::Write};
+
   operation.m_secondary.fd         = fd;
   operation.m_primary.input_buffer = buffer;
   operation.byte_count             = byte_count;
@@ -44,9 +46,10 @@ batch_operation::write(descriptor  fd,
 fn
 batch_operation::write_current(descriptor  fd,
                                const char *buffer,
-                               usize byte_count) wontthrow -> batch_operation
+                               usize       byte_count) wontthrow -> batch_operation
 {
   batch_operation operation{Kind::WriteCurrent};
+
   operation.m_secondary.fd         = fd;
   operation.m_primary.input_buffer = buffer;
   operation.byte_count             = byte_count;
@@ -59,6 +62,7 @@ batch_operation::lstat(const Path &path, file_status &status) wontthrow
     -> batch_operation
 {
   batch_operation operation{Kind::Lstat};
+
   operation.m_primary.path     = &path;
   operation.m_secondary.status = &status;
 
@@ -70,6 +74,7 @@ batch_operation::stat(const Path &path, file_status &status) wontthrow
     -> batch_operation
 {
   batch_operation operation{Kind::Stat};
+
   operation.m_primary.path     = &path;
   operation.m_secondary.status = &status;
 
@@ -80,6 +85,7 @@ fn
 batch_operation::exists(const Path &path) wontthrow -> batch_operation
 {
   batch_operation operation{Kind::Exists};
+
   operation.m_primary.path = &path;
 
   return operation;
@@ -91,6 +97,7 @@ batch_operation::lstat_at(descriptor   directory,
                           file_status &status) wontthrow -> batch_operation
 {
   batch_operation operation{Kind::LstatAt};
+
   operation.m_primary.input_buffer = name;
   operation.m_secondary.status     = &status;
   operation.byte_offset =
@@ -118,12 +125,14 @@ Batch::add(batch_operation operation) throws -> void
   case batch_operation::Kind::Stat:
   case batch_operation::Kind::Exists:
   case batch_operation::Kind::LstatAt:
-  case batch_operation::Kind::StatAt:       m_has_metadata_operations = true; break;
+  case batch_operation::Kind::StatAt:  m_has_metadata_operations = true; break;
+
   case batch_operation::Kind::Read:
   case batch_operation::Kind::Write:
   case batch_operation::Kind::WriteCurrent:
   case batch_operation::Kind::Invalid:      break;
   }
+
   operation.request_id = m_operations.count();
   m_operations.push(steal(operation));
 }
@@ -141,19 +150,23 @@ is_same_metadata_request(const batch_internal::batched_syscall &left,
     -> bool
 {
   let const left_kind = batch_internal::batch_operation_access::get_kind(left);
+
   if (left_kind != batch_internal::batch_operation_access::get_kind(right))
     return false;
   switch (left_kind) {
   case batch_operation::Kind::Lstat:
   case batch_operation::Kind::Stat:
-  case batch_operation::Kind::Exists:  break;
+  case batch_operation::Kind::Exists: break;
+
   case batch_operation::Kind::LstatAt:
   case batch_operation::Kind::StatAt:  {
     let const left_directory =
         batch_internal::batch_operation_access::get_directory_descriptor(left);
     let const right_directory =
         batch_internal::batch_operation_access::get_directory_descriptor(right);
+
     if (left_directory != right_directory) return false;
+
     let const *left_name =
         batch_internal::batch_operation_access::get_relative_name(left);
     let const *right_name =
@@ -167,9 +180,11 @@ is_same_metadata_request(const batch_internal::batched_syscall &left,
   case batch_operation::Kind::WriteCurrent:
   case batch_operation::Kind::Invalid:      return false;
   }
+
   let const *left_path = batch_internal::batch_operation_access::get_path(left);
   let const *right_path =
       batch_internal::batch_operation_access::get_path(right);
+
   if (left_path == nullptr || right_path == nullptr) {
     return false;
   }
@@ -261,6 +276,7 @@ find_canonical_operation_positions(
 
   for (usize index = 0; index < operations.count(); index++) {
     let const &operation = operations[index];
+
     if (!is_metadata_request(operation)) continue;
 
     let const kind_hash =
@@ -270,6 +286,7 @@ find_canonical_operation_positions(
     let const *path =
         batch_internal::batch_operation_access::get_path(operation);
     u64 request_hash = kind_hash;
+
     if (path != nullptr) {
       request_hash ^= hash_bytes(path->text().view());
     } else {
@@ -278,20 +295,23 @@ find_canonical_operation_positions(
       let const directory =
           batch_internal::batch_operation_access::get_directory_descriptor(
               operation);
+
       if (name == nullptr) continue;
       request_hash ^= hash_bytes(StringView{name});
       request_hash ^= batch_internal::encode_directory_descriptor(directory);
     }
+
     usize bucket = static_cast<usize>(request_hash) & (bucket_count - 1);
 
-    loop
-    {
+    loop {
       let const existing_position = buckets[bucket];
+
       if (existing_position == SIZE_MAX) {
         buckets[bucket] = index;
         unique_operation_count++;
         break;
       }
+
       if (is_same_metadata_request(operations[existing_position], operation)) {
         canonical_positions[index] = existing_position;
         has_repeated_request       = true;
@@ -331,6 +351,7 @@ Batch::execute(ArrayList<batch_result> &results,
 
   let const unique_operation_count = find_canonical_operation_positions(
       m_operations, m_canonical_positions, m_buckets);
+
   if (unique_operation_count == 0) {
     results.clear();
     results.reserve(m_operations.count());
@@ -348,6 +369,7 @@ Batch::execute(ArrayList<batch_result> &results,
 
   for (usize index = 0; index < m_operations.count(); index++) {
     let const canonical_position = m_canonical_positions[index];
+
     if (canonical_position != index) {
       m_canonical_positions[index] = m_canonical_positions[canonical_position];
       continue;
@@ -376,14 +398,16 @@ Batch::execute(ArrayList<batch_result> &results,
     let const index              = remaining_count - 1;
     let const optimized_position = m_canonical_positions[index];
     let       result             = results[optimized_position];
-    result.request_id            = index;
-    results[index]               = result;
+
+    result.request_id = index;
+    results[index]    = result;
 
     let const &operation           = m_operations[index];
     let const &optimized_operation = m_optimized_operations[optimized_position];
     let *status = batch_internal::batch_operation_access::get_status(operation);
     let *optimized_status =
         batch_internal::batch_operation_access::get_status(optimized_operation);
+
     if (result.error_number == 0 && status != nullptr &&
         optimized_status != nullptr && status != optimized_status)
     {
@@ -397,6 +421,7 @@ Batch::execute(batch_deduplication deduplication) throws
     -> ArrayList<batch_result>
 {
   let results = ArrayList<batch_result>{m_operations.allocator()};
+
   execute(results, deduplication);
 
   return results;

@@ -19,6 +19,7 @@ static fn
 unrecognized_format_message(Maybe<StringView> filename) throws -> String
 {
   let message = String{filename.has_value() ? *filename : StringView{"input"}};
+
   message.append(": error: The file format is not recognized.\n");
   message.append("note: Recognized formats include ");
 
@@ -29,6 +30,7 @@ unrecognized_format_message(Maybe<StringView> filename) throws -> String
   {
     let const name =
         parser_format_kind_name(static_cast<parser_format_kind>(kind_index));
+
     if (!name.is_empty()) supported_format_count++;
   }
 
@@ -39,6 +41,7 @@ unrecognized_format_message(Maybe<StringView> filename) throws -> String
   {
     let const name =
         parser_format_kind_name(static_cast<parser_format_kind>(kind_index));
+
     if (name.is_empty()) continue;
     if (appended_format_count != 0)
       message.append(appended_format_count + 1 == supported_format_count
@@ -61,10 +64,11 @@ kosh_binary_flag_list() wontthrow -> const FlagList &
 
 #if !defined NDEBUG
 static fn
-run_debug_completion_driver(StringView driver_line, EvalContext &context) throws
-    -> i32
+run_debug_completion_driver(StringView   driver_line,
+                            EvalContext &context) throws -> i32
 {
   context.program_resolver().initialize_path_map();
+
   let const driver_result = completion::complete(
       driver_line, driver_line.length, context, Path::current_directory(),
       nullptr, false, completion::completion_mode::Listing);
@@ -82,17 +86,19 @@ run_debug_completion_driver(StringView driver_line, EvalContext &context) throws
 }
 
 static fn
-run_debug_highlight_driver(StringView driver_line, EvalContext &context) throws
-    -> i32
+run_debug_highlight_driver(StringView   driver_line,
+                           EvalContext &context) throws -> i32
 {
   let const variable_name_visit_count_before =
       context.dynamic_runtime_store().debug_variable_name_enumeration_count();
   let const directory_read_count_before = utils::debug_directory_read_count();
+
   if (context.program_resolver().has_valid_command_names())
     context.program_resolver().revalidate_for_prompt();
   context.program_resolver().begin_explicit_completion(
       ProgramResolver::CompletionRefresh::Fresh);
   defer { context.program_resolver().end_explicit_completion(); };
+
   let const spans   = completion::highlight_line(driver_line, context);
   let       listing = String{heap_allocator()};
 
@@ -119,12 +125,14 @@ run_debug_highlight_driver(StringView driver_line, EvalContext &context) throws
 }
 
 static fn
-run_debug_bracket_driver(StringView driver_line, EvalContext &context) throws
-    -> i32
+run_debug_bracket_driver(StringView   driver_line,
+                         EvalContext &context) throws -> i32
 {
-  let const spans           = completion::highlight_line(driver_line, context);
-  let       listing         = String{heap_allocator()};
-  let const do_append_range = [&](usize start, usize end) throws -> void {
+  let const spans   = completion::highlight_line(driver_line, context);
+  let       listing = String{heap_allocator()};
+
+  let const do_append_range = [&](usize start,
+                                  usize end) throws -> void {
     listing += driver_line.substring_of_length(start, end - start);
     listing += '@';
     listing += String::from(start, heap_allocator());
@@ -133,6 +141,7 @@ run_debug_bracket_driver(StringView driver_line, EvalContext &context) throws
   for (usize cursor = 0; cursor <= driver_line.length; cursor++) {
     let const pair =
         completion::find_matching_bracket(driver_line, spans, cursor);
+
     if (!pair.has_value()) continue;
 
     listing += String::from(cursor, heap_allocator());
@@ -150,10 +159,11 @@ run_debug_bracket_driver(StringView driver_line, EvalContext &context) throws
 }
 
 static fn
-run_debug_hint_driver(StringView driver_line, EvalContext &context) throws
-    -> i32
+run_debug_hint_driver(StringView   driver_line,
+                      EvalContext &context) throws -> i32
 {
   let row = String{heap_allocator()};
+
   if (!completion::describe_syntax_problem(driver_line, driver_line.length,
                                            context.runtime_state().get_mood(),
                                            row) &&
@@ -167,6 +177,7 @@ run_debug_hint_driver(StringView driver_line, EvalContext &context) throws
   }
 
   let printed = String{heap_allocator()};
+
   if (let const line_break = row.view().find_character('\n');
       line_break.has_value())
   {
@@ -177,6 +188,7 @@ run_debug_hint_driver(StringView driver_line, EvalContext &context) throws
   } else {
     printed.append(row.view());
   }
+
   printed += '\n';
   print(printed);
   flush();
@@ -185,15 +197,18 @@ run_debug_hint_driver(StringView driver_line, EvalContext &context) throws
 }
 
 static fn
-run_debug_ghost_driver(StringView driver_line, EvalContext &context) throws
-    -> i32
+run_debug_ghost_driver(StringView   driver_line,
+                       EvalContext &context) throws -> i32
 {
   let const directory_stat_count_before = utils::debug_directory_stat_count();
   let const directory_read_count_before = utils::debug_directory_read_count();
+
   context.program_resolver().initialize_path_map();
+
   let const result = completion::complete(
       driver_line, driver_line.length, context, Path::current_directory(),
       nullptr, false, completion::completion_mode::Ghost);
+
   print("count=" + String::from(result.candidate_count, heap_allocator()) +
         "\nprefix=" + result.longest_common_prefix.view() + "\nsource-scans=" +
         String::from(result.source_candidate_scan_count, heap_allocator()) +
@@ -226,6 +241,7 @@ resolve_session_mood(mimic_mood invocation_mood) wontthrow -> mimic_mood
 
     return mimic_mood::Default;
   }
+
   if (FLAG_DUMB.is_enabled()) return mimic_mood::Posix;
   if (FLAG_POSIX_COMPAT.is_enabled()) return mimic_mood::BashPosix;
 
@@ -245,6 +261,7 @@ resolve_session_tab_selector() wontthrow -> tab_selector_mode
 
     return tab_selector_mode::Interactive;
   }
+
   if (FLAG_DUMB.is_enabled()) return tab_selector_mode::Plain;
 
   return tab_selector_mode::Interactive;
@@ -252,9 +269,11 @@ resolve_session_tab_selector() wontthrow -> tab_selector_mode
 
 static fn
 append_listed_diagnostic(String                      &listing,
-                         const diagnostic_definition &definition) throws -> void
+                         const diagnostic_definition &definition) throws
+    -> void
 {
   let row = String{heap_allocator()};
+
   if (definition.shellcheck_code.has_value()) {
     char code_text[32];
     row += "SC";
@@ -262,6 +281,7 @@ append_listed_diagnostic(String                      &listing,
                                    sizeof(code_text));
     row += ": ";
   }
+
   row += definition.slug;
   row += " (";
   row += get_diagnostic_tier_name(definition.tier);
@@ -281,6 +301,7 @@ append_listed_diagnostic(String                      &listing,
     row += static_cast<char>(summary[capital_position] - 'a' + 'A');
     capital_position++;
   }
+
   row += summary.substring_of_length(capital_position,
                                      summary.length - capital_position);
   listing +=
@@ -293,6 +314,7 @@ print_help_or_version_status(const String &program_path) -> Maybe<int>
 {
   if (FLAG_HELP.is_enabled()) {
     let h = String{heap_allocator()};
+
     h += "KOSHKA";
     h += "\n";
     h += wrap_text("Koshka is a fast and pedantic Bash-compatible command line "
@@ -305,7 +327,9 @@ print_help_or_version_status(const String &program_path) -> Maybe<int>
                    "variable. A flag "
                    "on the command line overrides one set there.\n\n",
                    HELP_INDENT, HELP_WRAP_WIDTH);
+
     let const should_color = colors::stderr_wants_color();
+
     h += make_flag_help(FLAG_LIST, should_color);
     h += '\n';
     h += '\n';
@@ -316,11 +340,13 @@ print_help_or_version_status(const String &program_path) -> Maybe<int>
 
     return EXIT_SUCCESS;
   }
+
   if (FLAG_LIST_CHECKS.is_enabled()) {
     let l = String{"SHELLCHECK DIAGNOSTICS\n"};
 
     for (usize index = 0; index < get_diagnostic_count(); index++) {
       let const &definition = DIAGNOSTIC_DEFINITIONS[index];
+
       if (!definition.shellcheck_code.has_value()) continue;
 
       append_listed_diagnostic(l, definition);
@@ -330,6 +356,7 @@ print_help_or_version_status(const String &program_path) -> Maybe<int>
 
     for (usize index = 0; index < get_diagnostic_count(); index++) {
       let const &definition = DIAGNOSTIC_DEFINITIONS[index];
+
       if (definition.shellcheck_code.has_value()) continue;
 
       append_listed_diagnostic(l, definition);
@@ -339,11 +366,13 @@ print_help_or_version_status(const String &program_path) -> Maybe<int>
 
     return EXIT_SUCCESS;
   }
+
   if (FLAG_VERSION.is_enabled()) {
     show_version();
 
     return EXIT_SUCCESS;
   }
+
   if (FLAG_SHORT_VERSION.is_enabled()) {
     show_short_version();
 
@@ -361,20 +390,25 @@ report_escaped_control_flow(EvalContext &context, const String &fallback_source)
 
   const control_flow &control = context.control_flow_store().pending();
   let                 what    = String{heap_allocator()};
+
   switch (control.kind) {
   case control_flow::Kind::Break:
     what = "'break' used outside of a loop";
     break;
+
   case control_flow::Kind::Continue:
     what = "'continue' used outside of a loop";
     break;
+
   case control_flow::Kind::Return: {
     if (!context.execution_store().shell_is_interactive()) {
       i32 return_status = static_cast<i32>(control.value);
+
       context.control_flow_store().clear();
       context.run_exit_trap();
       utils::quit(return_status, utils::farewell_policy::Goodbye);
     }
+
     what = "'return' used outside of a function or a sourced script";
     break;
   }
@@ -385,6 +419,7 @@ report_escaped_control_flow(EvalContext &context, const String &fallback_source)
   const String *source =
       control.source != nullptr ? control.source : &fallback_source;
   let const located = ErrorWithLocation{control.location, what};
+
   show_message(located.to_string(*source, &context));
 
   context.control_flow_store().clear();
@@ -505,7 +540,8 @@ make_script_run_plan(EvalContext              &context,
 
 static fn
 report_parse_errors(const script_run_input  &input,
-                    const ArrayList<String> &parse_errors) throws -> bool
+                    const ArrayList<String> &parse_errors) throws
+    -> bool
 {
   if (parse_errors.is_empty()) return false;
 
@@ -530,6 +566,7 @@ scan_analysis_metadata(const script_run_input &input,
       Lexer{input.contents.view(), input.arena, input.filename,
             input.context.runtime_state().get_mood()}
   };
+
   scan_parser.set_analysis_metadata_collection_mode(
       analysis_metadata_collection_mode::Enabled);
   scan_parser.set_substitution_validation_mode(
@@ -537,11 +574,11 @@ scan_analysis_metadata(const script_run_input &input,
 
   let const scan_mark = input.arena.mark();
 
-  loop
-  {
+  loop {
     let const  unit_mark = input.arena.mark();
     let const *unit      = scan_parser.construct_next_top_level_ast(
         parse_errors, &input.context, input.diagnostic_sink);
+
     if (unit == nullptr) break;
 
     scan_parser.drop_lexer_peek_cache();
@@ -566,14 +603,15 @@ preflight_syntax(const script_run_input &input,
       Lexer{input.contents.view(), input.arena, input.filename,
             input.context.runtime_state().get_mood()}
   };
+
   preflight_parser.set_substitution_validation_mode(
       substitution_validation_mode::Enabled);
 
-  loop
-  {
+  loop {
     let const  unit_mark = input.arena.mark();
     let const *unit      = preflight_parser.construct_next_top_level_ast(
         parse_errors, &input.context, input.diagnostic_sink);
+
     if (unit == nullptr) {
       input.arena.release(unit_mark);
       break;
@@ -595,6 +633,7 @@ parse_whole_script(const script_run_input &input,
                    Expression            *&ast) throws -> bool
 {
   EvalContext &context = input.context;
+
   LOG(Debug, "parsing a chunk of %zu bytes", input.contents.count());
 
   let p = Parser{
@@ -605,6 +644,7 @@ parse_whole_script(const script_run_input &input,
                 ? debug_word_collection_mode::Enabled
                 : debug_word_collection_mode::Disabled}
   };
+
   p.set_analysis_metadata_collection_mode(
       plan.should_analyze ? analysis_metadata_collection_mode::Enabled
                           : analysis_metadata_collection_mode::Disabled);
@@ -625,6 +665,7 @@ parse_whole_script(const script_run_input &input,
       print("\n");
     }
   }
+
   directives = p.take_analysis_directives();
 
   return false;
@@ -643,6 +684,7 @@ analyze_script(const script_run_input    &input,
   let          followed_source_paths = HashSet{heap_allocator()};
   let          source_effects_cache =
       StringMap<followed_source_effects>{heap_allocator()};
+
   if (input.filename.has_value()) {
     if (let canonical_root = os::canonical_path(Path{*input.filename});
         canonical_root.has_value())
@@ -650,11 +692,17 @@ analyze_script(const script_run_input    &input,
       followed_source_paths.add(canonical_root->text().view());
     }
   }
+
   let  highlight_cache = completion::ShellHighlightCache{heap_allocator()};
   let *previous_highlight_cache =
       context.set_diagnostic_highlight_cache(&highlight_cache);
-  defer { context.set_diagnostic_highlight_cache(previous_highlight_cache); };
+
+  defer {
+    context.set_diagnostic_highlight_cache(previous_highlight_cache);
+  };
+
   let options = analysis_options::from_runtime(context.runtime_state());
+
   options.should_silence_unresolved_commands =
       run_options.should_silence_unresolved_commands ||
       (options.warning_level > 0 &&
@@ -665,6 +713,7 @@ analyze_script(const script_run_input    &input,
       run_options.should_require_shebang && input.filename.has_value()
           ? missing_shebang_policy::Report
           : missing_shebang_policy::Suppress;
+
   let const do_analyze = [&](AnalysisUnitStream *units) throws -> bool {
     return analyze_ast(ast, input.contents, context.function_store().names(),
                        context.scope_store().alias_names(), &context, options,
@@ -679,6 +728,7 @@ analyze_script(const script_run_input    &input,
       Lexer{input.contents.view(), input.arena, input.filename,
             context.runtime_state().get_mood()}
   };
+
   unit_parser.set_analysis_scope_collection_mode(
       analysis_metadata_collection_mode::Enabled);
 
@@ -700,15 +750,18 @@ evaluate_script(const script_run_input &input,
   i32          exit_code = EXIT_SUCCESS;
 
   LOG(Debug, "evaluating the chunk");
+
   let previous_history_event_number =
       context.history_recorder().get_event_number();
+
   context.history_recorder().set_event_number(steal(history_event_number));
-  defer
-  {
+  defer {
     context.history_recorder().set_event_number(
         steal(previous_history_event_number));
   };
+
   context.set_current_source(&input.contents, "the script");
+
   let const previous_line_discard_root =
       context.execution_store().line_discard_root();
   let const previous_top_level_line_discard_root =
@@ -717,22 +770,26 @@ evaluate_script(const script_run_input &input,
       context.execution_store().line_discard_source();
   let const previous_line_discard_subshell_depth =
       context.execution_store().line_discard_subshell_depth();
+
   context.execution_store().line_discard_source() = input.contents.view();
   context.execution_store().line_discard_subshell_depth() =
       context.execution_store().subshell_depth();
+
   let const is_whole_line =
       plan.is_whole_line ||
       evaluation_mode == root_evaluation_mode::ContainedSubstitution;
+
   if (evaluation_mode == root_evaluation_mode::ContainedSubstitution)
     evaluation_mode = root_evaluation_mode::Normal;
-  let const do_set_line_discard_root = [&](const Expression *root)
-                                           wontthrow -> void {
+
+  let const do_set_line_discard_root =
+      [&](const Expression *root) wontthrow -> void {
     context.execution_store().line_discard_root() = root;
     context.execution_store().top_level_line_discard_root() =
         is_whole_line ? nullptr : root;
   };
-  defer
-  {
+
+  defer {
     context.execution_store().line_discard_root() = previous_line_discard_root;
     context.execution_store().top_level_line_discard_root() =
         previous_top_level_line_discard_root;
@@ -741,17 +798,20 @@ evaluate_script(const script_run_input &input,
     context.execution_store().line_discard_subshell_depth() =
         previous_line_discard_subshell_depth;
   };
+
   let const command_start_nanos = koshka::os::monotonic_nanos();
+
   if (plan.should_stream_execution) {
     input.arena.release(preflight_mark);
+
     let execution_parser = Parser{
         Lexer{input.contents.view(), input.arena, input.filename,
               context.runtime_state().get_mood()}
     };
     let const was_terminal_exec_allowed =
         context.execution_store().terminal_exec_allowed();
-    defer
-    {
+
+    defer {
       context.execution_store().terminal_exec_allowed() =
           was_terminal_exec_allowed;
     };
@@ -759,18 +819,19 @@ evaluate_script(const script_run_input &input,
     let const is_command_counted =
         !context.execution_store().has_execution_string();
 
-    loop
-    {
+    loop {
       let const  unit_mark = input.arena.mark();
       let const *unit      = execution_parser.construct_next_top_level_ast();
+
       if (unit == nullptr) {
         input.arena.release(unit_mark);
         break;
       }
+
       if (is_command_counted)
         context.execution_store().advance_command_number();
-      defer
-      {
+
+      defer {
         context.clear_retained_sources();
         context.set_current_source(&input.contents, "the script");
         execution_parser.drop_lexer_peek_cache();
@@ -794,6 +855,7 @@ evaluate_script(const script_run_input &input,
     do_set_line_discard_root(ast);
     exit_code = static_cast<int>(ast->evaluate_root(context, evaluation_mode));
   }
+
   context.execution_store().set_last_command_duration_nanos(
       koshka::os::monotonic_nanos() - command_start_nanos);
   LOG(Debug, "the chunk finished with exit code %d", exit_code);
@@ -828,7 +890,9 @@ run_script_contents(
 
   try {
     defer { context.end_command(); };
-    defer { utils::invalidate_line_number_cache_for(script_contents.view()); };
+    defer {
+      utils::invalidate_line_number_cache_for(script_contents.view());
+    };
 
     context.clear_retained_sources();
     ast_arena.reset();
@@ -843,6 +907,7 @@ run_script_contents(
 
     let const   preflight_mark = ast_arena.mark();
     Expression *ast            = precompiled_ast;
+
     if (plan.should_stream_units) {
       if (scan_analysis_metadata(input, parse_errors, directives))
         return SYNTAX_ERROR_STATUS;
@@ -856,6 +921,7 @@ run_script_contents(
 
     LOG(Debug, "the analysis stage %s for this chunk",
         plan.should_analyze ? "runs" : "is skipped");
+
     bool did_analysis_fail = false;
 #if !defined NDEBUG
     let const diagnostic_highlight_bytes_before =
@@ -863,6 +929,7 @@ run_script_contents(
     let const diagnostic_lexical_scan_bytes_before =
         completion::debug_shell_lexical_scan_byte_count();
 #endif
+
     if (plan.should_analyze) {
       did_analysis_fail = !analyze_script(input, plan, ast, parse_errors,
                                           directives, diagnostics, run_options);
@@ -875,6 +942,7 @@ run_script_contents(
         completion::debug_shell_lexical_scan_byte_count() -
             diagnostic_lexical_scan_bytes_before);
 #endif
+
     if (!did_analysis_fail && out_ast != nullptr) {
       *out_ast = ast;
     }
@@ -887,6 +955,7 @@ run_script_contents(
       exit_code = evaluate_script(input, plan, ast, preflight_mark,
                                   steal(history_event_number), evaluation_mode);
     }
+
     context.execution_store().set_last_exit_status(static_cast<i32>(exit_code));
 
     if (context.runtime_state().stats_enabled()) {
@@ -900,6 +969,7 @@ run_script_contents(
       if (is_contained_substitution)
         context.print_source_backtrace(e.location());
     }
+
     exit_code = exit_status_for(e, context, is_command_string);
   } catch (const ErrorWithLocation &e) {
     if (!e.was_rendered()) {
@@ -907,6 +977,7 @@ run_script_contents(
       if (is_contained_substitution)
         context.print_source_backtrace(e.location());
     }
+
     exit_code = exit_status_for(e, context, is_command_string);
   } catch (const Error &e) {
     if (!e.was_rendered()) show_message(e.to_string());
@@ -944,14 +1015,17 @@ run_lint_document_contents(
 {
   let const document =
       parse_format_document(parser_format_input{source.view(), filename, None});
+
   if (is_format_recognized != nullptr)
     *is_format_recognized = document.kind != parser_format_kind::UnknownHost;
   if (document.kind == parser_format_kind::UnknownHost) {
     let const message = unrecognized_format_message(filename);
+
     show_message(message.view());
 
     return EXIT_FAILURE;
   }
+
   if (!document.is_host_format) {
     let const has_shell_source_name = shell_source_name.has_value();
 
@@ -964,8 +1038,8 @@ run_lint_document_contents(
 
   let const saved_mood          = context.runtime_state().get_mood();
   let const saved_warning_level = context.runtime_state().get_warning_level();
-  defer
-  {
+
+  defer {
     context.runtime_state().set_mood(saved_mood);
     context.runtime_state().set_warning_level(saved_warning_level);
   };
@@ -976,10 +1050,12 @@ run_lint_document_contents(
     context.runtime_state().set_mood(fragment.mood);
     context.runtime_state().set_warning_level(
         warning_level_for_mood(fragment.mood));
+
     let const fragment_status = run_script_contents(
         fragment.analysis_source, context, ast_arena, filename, nullptr,
         nullptr, None, {diagnostic_totals, diagnostic_sink, nullptr},
         {false, fragment.should_silence_unresolved_commands, should_print_ast});
+
     if (fragment_status != EXIT_SUCCESS) status = fragment_status;
   }
 
@@ -993,16 +1069,18 @@ format_document_source(StringView         source,
                        ArrayList<String> &errors,
                        String            *ast_output     = nullptr,
                        BumpArena         *function_arena = nullptr,
-                       mimic_mood         mood = mimic_mood::Posix) throws
+                       mimic_mood         mood           = mimic_mood::Posix) throws
     -> Maybe<String>
 {
   let const document =
       parse_format_document(parser_format_input{source, filename, None});
+
   if (document.kind == parser_format_kind::UnknownHost) {
     errors.push(unrecognized_format_message(filename));
 
     return None;
   }
+
   if (!document.is_host_format)
     return format_shell_source(source, ast_arena, errors, ast_output,
                                function_arena, mood, filename);
@@ -1015,12 +1093,15 @@ format_document_source(StringView         source,
         format_shell_source(fragment.shell_source.view(), ast_arena, errors,
                             ast_output != nullptr ? &fragment_ast : nullptr,
                             function_arena, fragment.mood);
+
     if (!formatted.has_value()) return None;
     if (ast_output != nullptr) {
       if (!ast_output->is_empty()) ast_output->push('\n');
       ast_output->append(fragment_ast.view());
     }
+
     let encoded = parser_format_encode(fragment, formatted->view());
+
     if (!encoded.has_value()) return None;
     replacements.push(parser_format_replacement{
         fragment.host_start, fragment.host_end, encoded.take()});
@@ -1049,7 +1130,8 @@ run_prompt_command(EvalContext &context, BumpArena &ast_arena) -> void
   let const saved_exit_status = execution.last_exit_status();
   let const saved_command_duration_nanos =
       execution.last_command_duration_nanos();
-  let const saved_last_argument      = execution.get_last_argument().clone();
+  let const saved_last_argument = execution.get_last_argument().clone();
+
   execution.prompt_command_running() = true;
   defer { execution.prompt_command_running() = false; };
 
@@ -1058,9 +1140,11 @@ run_prompt_command(EvalContext &context, BumpArena &ast_arena) -> void
 
     LOG(Info, "running a PROMPT_COMMAND hook, %zu bytes", command.count());
     execution.set_last_exit_status(saved_exit_status);
+
     let      &cached_text = prompt_store.get_cached_text();
     let const cached_ast  = prompt_store.get_cached_ast();
     i32       status      = EXIT_SUCCESS;
+
     if (command_count == 1 && cached_ast != nullptr &&
         cached_text.view() == command.view())
     {
@@ -1069,8 +1153,10 @@ run_prompt_command(EvalContext &context, BumpArena &ast_arena) -> void
                                    nullptr, None, {}, {false});
     } else {
       prompt_store.set_cached_ast(nullptr);
-      cached_text            = steal(command);
+      cached_text = steal(command);
+
       Expression *parsed_ast = nullptr;
+
       status =
           run_script_contents(cached_text, context, prompt_store.get_arena(),
                               StringView{"$PROMPT_COMMAND"}, nullptr,
@@ -1092,8 +1178,9 @@ run_prompt_command(EvalContext &context, BumpArena &ast_arena) -> void
 }
 
 static fn
-history_control_operator_byte_length(StringView source,
-                                     usize      position) wontthrow -> usize
+history_control_operator_byte_length(StringView source, usize position)
+    wontthrow
+    -> usize
 {
   let const byte      = source[position];
   let const next_byte = position + 1 < source.length ? source[position + 1] : 0;
@@ -1139,6 +1226,7 @@ next_history_word(StringView source, usize &position) throws
   let const is_process_substitution =
       (first_byte == '<' || first_byte == '>') &&
       position + 1 < source.length && source[position + 1] == '(';
+
   if (lexer::is_shell_sentinel(first_byte) && !is_process_substitution) {
     position += history_control_operator_byte_length(source, position);
   } else {
@@ -1146,15 +1234,18 @@ next_history_word(StringView source, usize &position) throws
 
     while (position < source.length) {
       let const byte = source[position];
+
       if (byte == '\\' && quote_byte != '\'' && position + 1 < source.length) {
         position += 2;
         continue;
       }
+
       if (quote_byte != 0) {
         position++;
         if (byte == quote_byte) quote_byte = 0;
         continue;
       }
+
       if (byte == '\'' || byte == '"' || byte == '`') {
         quote_byte = byte;
         position++;
@@ -1162,6 +1253,7 @@ next_history_word(StringView source, usize &position) throws
       }
 
       char closing_byte = 0;
+
       if (byte == '$' && position + 1 < source.length &&
           (source[position + 1] == '(' || source[position + 1] == '{'))
       {
@@ -1172,15 +1264,19 @@ next_history_word(StringView source, usize &position) throws
       {
         closing_byte = ')';
       }
+
       if (closing_byte != 0) {
         let const end_position = lexer::scan_balanced_shell_region(
             source, position + 2, closing_byte);
+
         position = end_position.value_or(source.length);
         continue;
       }
+
       if (is_ascii_whitespace(byte) || lexer::is_shell_sentinel(byte)) {
         break;
       }
+
       position++;
     }
   }
@@ -1196,6 +1292,7 @@ find_history_search_word(StringView command, StringView needle) throws
 
   while (position < command.length) {
     let const word = next_history_word(command, position);
+
     if (!word.has_value()) break;
     if (word->find_substring(needle).has_value()) return word;
   }
@@ -1207,6 +1304,7 @@ cold wontreturn static fn
 throw_bad_history_word_specifier(StringView spelling) throws -> void
 {
   let message = String{spelling};
+
   message += ": bad word specifier";
   throw Error{message.view()};
 }
@@ -1247,6 +1345,7 @@ select_history_words(StringView        command,
   } else {
     usize     separator_position  = 0;
     let const is_zero_based_range = designator[0] == '-';
+
     if (is_zero_based_range) {
       separator_position = 0;
     } else {
@@ -1258,15 +1357,18 @@ select_history_words(StringView        command,
 
       let const parsed =
           designator.substring_of_length(0, separator_position).to<u64>();
+
       if (parsed.is_error() || parsed.value() > static_cast<u64>(SIZE_MAX)) {
         throw_bad_history_word_specifier(spelling);
       }
+
       first_word_index = static_cast<usize>(parsed.value());
       end_word_index   = first_word_index + 1;
     }
 
     if (separator_position < designator.length) {
       let const separator_byte = designator[separator_position++];
+
       if (separator_byte == '*') {
         end_word_index = word_count;
       } else if (separator_byte == '-') {
@@ -1278,10 +1380,12 @@ select_history_words(StringView        command,
           end_word_index = word_count;
         } else {
           let const parsed = designator.substring(separator_position).to<u64>();
+
           if (parsed.is_error() || parsed.value() >= static_cast<u64>(SIZE_MAX))
           {
             throw_bad_history_word_specifier(spelling);
           }
+
           end_word_index = static_cast<usize>(parsed.value()) + 1;
         }
       } else {
@@ -1294,11 +1398,14 @@ select_history_words(StringView        command,
     throw_bad_history_word_specifier(spelling);
   }
 
-  scan_position    = 0;
+  scan_position = 0;
+
   usize word_index = 0;
+
   if (end_word_index == first_word_index + 1) {
     while (scan_position < command.length) {
       let const word = next_history_word(command, scan_position);
+
       if (!word.has_value()) break;
       if (word_index == first_word_index) return *word;
       word_index++;
@@ -1308,16 +1415,19 @@ select_history_words(StringView        command,
   }
 
   usize selected_byte_length = 0;
-  scan_position              = 0;
-  word_index                 = 0;
+
+  scan_position = 0;
+  word_index    = 0;
 
   while (scan_position < command.length) {
     let const word = next_history_word(command, scan_position);
+
     if (!word.has_value()) break;
     if (word_index >= first_word_index && word_index < end_word_index) {
       if (selected_byte_length > 0) selected_byte_length++;
       selected_byte_length += word->length;
     }
+
     word_index++;
   }
 
@@ -1327,11 +1437,13 @@ select_history_words(StringView        command,
 
   while (scan_position < command.length) {
     let const word = next_history_word(command, scan_position);
+
     if (!word.has_value()) break;
     if (word_index >= first_word_index && word_index < end_word_index) {
       if (!selected.is_empty()) selected.push(' ');
       selected.append(*word);
     }
+
     word_index++;
   }
 
@@ -1358,10 +1470,11 @@ enum class history_substitution_scope : u8
 };
 
 cold wontreturn static fn
-throw_history_modifier_error(StringView spelling, StringView reason) throws
-    -> void
+throw_history_modifier_error(StringView spelling,
+                             StringView reason) throws -> void
 {
   let message = String{spelling};
+
   message += ": ";
   message += reason;
   throw Error{message.view()};
@@ -1374,7 +1487,9 @@ apply_history_path_modifier(StringView text, char modifier) wontthrow
   if (modifier == 'h' || modifier == 't') {
     for (usize position = text.length; position > 0; position--) {
       if (text[position - 1] != '/') continue;
+
       let const separator_position = position - 1;
+
       if (modifier == 't') return text.substring(position);
       if (separator_position == 0) return text.substring_of_length(0, 1);
 
@@ -1397,6 +1512,7 @@ apply_history_path_modifier(StringView text, char modifier) wontthrow
        position--)
   {
     if (text[position - 1] != '.') continue;
+
     let const extension_position = position - 1;
 
     return modifier == 'r' ? text.substring_of_length(0, extension_position)
@@ -1411,23 +1527,28 @@ parse_history_substitution_field(StringView source,
                                  usize     &position,
                                  char       delimiter,
                                  Allocator  allocator,
-                                 bool      *did_find_delimiter) throws -> String
+                                 bool      *did_find_delimiter) throws
+    -> String
 {
   let field = String{allocator};
+
   if (did_find_delimiter != nullptr) *did_find_delimiter = false;
 
   while (position < source.length) {
     let const byte = source[position++];
+
     if (byte == delimiter) {
       if (did_find_delimiter != nullptr) *did_find_delimiter = true;
       break;
     }
+
     if (byte == '\\' && position < source.length &&
         source[position] == delimiter)
     {
       field.push(source[position++]);
       continue;
     }
+
     field.push(byte);
   }
 
@@ -1437,10 +1558,12 @@ parse_history_substitution_field(StringView source,
 static fn
 append_history_substitution_replacement(String    &output,
                                         StringView replacement,
-                                        StringView matched) throws -> void
+                                        StringView matched) throws
+    -> void
 {
   for (usize position = 0; position < replacement.length; position++) {
     let const byte = replacement[position];
+
     if (byte == '\\' && position + 1 < replacement.length &&
         replacement[position + 1] == '&')
     {
@@ -1465,6 +1588,7 @@ apply_history_substitution(StringView                 text,
 
   output.clear();
   output.reserve(text.length);
+
   bool  did_replace     = false;
   usize copied_position = 0;
 
@@ -1473,11 +1597,16 @@ apply_history_substitution(StringView                 text,
 
     while (word_scan_position < text.length) {
       let const word = next_history_word(text, word_scan_position);
+
       if (!word.has_value()) break;
+
       let const match_position = word->find_substring(old_text);
+
       if (!match_position.has_value()) continue;
+
       let const absolute_match_position =
           static_cast<usize>(word->data - text.data) + *match_position;
+
       output.append(text.substring_of_length(
           copied_position, absolute_match_position - copied_position));
       append_history_substitution_replacement(output, replacement, old_text);
@@ -1489,6 +1618,7 @@ apply_history_substitution(StringView                 text,
 
     while (search_position <= text.length) {
       let const match_position = text.find_substring(old_text, search_position);
+
       if (!match_position.has_value()) break;
       output.append(text.substring_of_length(
           copied_position, *match_position - copied_position));
@@ -1507,8 +1637,9 @@ apply_history_substitution(StringView                 text,
 }
 
 static fn
-quote_history_words(StringView text, bool should_split, String &output) throws
-    -> void
+quote_history_words(StringView text,
+                    bool       should_split,
+                    String    &output) throws -> void
 {
   output.clear();
   if (!should_split) {
@@ -1521,6 +1652,7 @@ quote_history_words(StringView text, bool should_split, String &output) throws
 
   while (position < text.length) {
     let const word = text.next_ascii_whitespace_word(position);
+
     if (word.is_empty()) break;
     if (!output.is_empty()) output.push(' ');
     append_shell_quoted_arg(output, word, true);
@@ -1548,17 +1680,19 @@ apply_history_modifiers(StringView               source,
                         Allocator                allocator,
                         String                  &first_buffer,
                         String                  &second_buffer,
-                        bool &should_execute) throws -> StringView
+                        bool                    &should_execute) throws -> StringView
 {
   bool should_use_first_buffer = true;
 
   while (position < source.length && source[position] == ':') {
     let const modifier_start_position = position++;
+
     if (position >= source.length)
       throw_history_modifier_error(":", "unrecognized history modifier");
 
     let  scope                  = history_substitution_scope::First;
     bool has_substitution_scope = false;
+
     if (source[position] == 'g' || source[position] == 'a' ||
         source[position] == 'G')
     {
@@ -1573,25 +1707,30 @@ apply_history_modifiers(StringView               source,
     }
 
     let const modifier = source[position++];
+
     if (has_substitution_scope && modifier != 's' && modifier != '&') {
       throw_history_modifier_error(
           source.substring_of_length(modifier_start_position + 1,
                                      position - modifier_start_position - 1),
           "unrecognized history modifier");
     }
+
     if (modifier == 'h' || modifier == 't' || modifier == 'r' ||
         modifier == 'e')
     {
       selected = apply_history_path_modifier(selected, modifier);
       continue;
     }
+
     if (modifier == 'p') {
       should_execute = false;
       continue;
     }
 
     let &output = should_use_first_buffer ? first_buffer : second_buffer;
+
     should_use_first_buffer = !should_use_first_buffer;
+
     if (modifier == 'q' || modifier == 'x') {
       quote_history_words(selected, modifier == 'x', output);
       selected = output.view();
@@ -1602,18 +1741,22 @@ apply_history_modifiers(StringView               source,
     StringView replacement{};
     let        parsed_old_text    = String{allocator};
     let        parsed_replacement = String{allocator};
+
     if (modifier == 's') {
       if (position >= source.length)
         throw_history_modifier_error("s", "unrecognized history modifier");
+
       let const delimiter         = source[position++];
       bool      has_old_delimiter = false;
-      parsed_old_text             = parse_history_substitution_field(
+
+      parsed_old_text = parse_history_substitution_field(
           source, position, delimiter, allocator, &has_old_delimiter);
       if (!has_old_delimiter)
         throw_history_modifier_error(
             source.substring_of_length(modifier_start_position,
                                        position - modifier_start_position),
             "substitution failed");
+
       parsed_replacement = parse_history_substitution_field(
           source, position, delimiter, allocator, nullptr);
       old_text =
@@ -1640,12 +1783,15 @@ apply_history_modifiers(StringView               source,
                                      position - modifier_start_position),
           "substitution failed");
     }
+
     selected = output.view();
+
     if (modifier == 's') {
       let next_substitution = history_substitution{
           String{heap_allocator(), old_text   },
           String{heap_allocator(), replacement}
       };
+
       state.last_substitution = steal(next_substitution);
     }
   }
@@ -1664,6 +1810,7 @@ is_history_expansion_inhibited(StringView source, usize position) wontthrow
     -> bool
 {
   let const rest = source.substring(position + 1);
+
   if (position > 0 && source[position - 1] == '[' &&
       rest.find_character(']').has_value())
   {
@@ -1687,7 +1834,10 @@ expand_interactive_history(StringView               source,
     -> Maybe<interactive_history_expansion>
 {
   let const scratch_mark = context.expansion_store().scratch_arena().mark();
-  defer { context.expansion_store().scratch_arena().release(scratch_mark); };
+
+  defer {
+    context.expansion_store().scratch_arena().release(scratch_mark);
+  };
 
   bool  is_single_quoted = false;
   bool  is_double_quoted = false;
@@ -1700,6 +1850,7 @@ expand_interactive_history(StringView               source,
   if (!source.is_empty() && source[0] == '^') {
     let const selected_event = toiletline::get_relative_history_event(
         context.scratch_allocator(), 1, accepted_event_number);
+
     if (!selected_event.has_value()) throw Error{"!!: event not found"};
 
     usize     substitution_position = 1;
@@ -1713,12 +1864,14 @@ expand_interactive_history(StringView               source,
     let const effective_old_text =
         resolve_history_substitution_old_text(old_text.view(), state);
     let quick_spelling = String{context.scratch_allocator(), ":s"};
+
     quick_spelling.append(source);
     if (!has_old_delimiter)
       throw_history_modifier_error(quick_spelling.view(),
                                    "substitution failed");
 
     let substituted = String{context.scratch_allocator()};
+
     if (!apply_history_substitution(
             selected_event->command.view(), effective_old_text,
             replacement.view(), history_substitution_scope::First, substituted))
@@ -1726,15 +1879,18 @@ expand_interactive_history(StringView               source,
       throw_history_modifier_error(quick_spelling.view(),
                                    "substitution failed");
     }
+
     let next_substitution = history_substitution{
         String{heap_allocator(), effective_old_text},
         String{heap_allocator(), replacement.view()}
     };
+
     state.last_substitution = steal(next_substitution);
 
     let first_modifier_buffer  = String{context.scratch_allocator()};
     let second_modifier_buffer = String{context.scratch_allocator()};
     let selected               = substituted.view();
+
     if (substitution_position < source.length &&
         source[substitution_position] == ':')
     {
@@ -1743,6 +1899,7 @@ expand_interactive_history(StringView               source,
           context.scratch_allocator(), first_modifier_buffer,
           second_modifier_buffer, should_execute);
     }
+
     expanded.append(selected);
     expanded.append(source.substring(substitution_position));
 
@@ -1758,36 +1915,43 @@ expand_interactive_history(StringView               source,
 
   for (usize position = 0; position < source.length; position++) {
     let const byte = source[position];
+
     if (!is_single_quoted && !is_double_quoted && byte == '#' &&
         is_at_word_start)
     {
       break;
     }
+
     if (byte == '\'' && !is_double_quoted) {
       is_single_quoted = !is_single_quoted;
       is_at_word_start = false;
       continue;
     }
+
     if (byte == '"' && !is_single_quoted) {
       is_double_quoted = !is_double_quoted;
       is_at_word_start = false;
       continue;
     }
+
     if (byte == '\\' && !is_single_quoted && position + 1 < source.length) {
       is_at_word_start = false;
       position++;
       continue;
     }
+
     if (!is_single_quoted && !is_double_quoted) {
       is_at_word_start = is_ascii_whitespace(byte) || byte == ';' ||
                          byte == '&' || byte == '|' || byte == '(' ||
                          byte == ')' || byte == '<' || byte == '>';
     }
+
     if (byte != '!' || is_single_quoted || position + 1 >= source.length) {
       continue;
     }
 
     let const next_byte = source[position + 1];
+
     if (is_ascii_whitespace(next_byte) || next_byte == '=' ||
         next_byte == '"' || next_byte == '\'' || next_byte == '(' ||
         is_history_expansion_inhibited(source, position))
@@ -1809,9 +1973,12 @@ expand_interactive_history(StringView               source,
       replacement = current_line.view();
     } else {
       let search_word = Maybe<StringView>{};
+
       if (state.last_search_word.has_value())
         search_word = state.last_search_word->view();
+
       bool has_implicit_word_designator = false;
+
       if (next_byte == '!' || next_byte == ':' || next_byte == '^' ||
           next_byte == '$' || next_byte == '*' || next_byte == '%')
       {
@@ -1823,11 +1990,14 @@ expand_interactive_history(StringView               source,
         }
       } else if (next_byte == '?') {
         let close_position = source.find_substring("?", reference_end_position);
+
         if (!close_position.has_value()) {
           close_position = source.length;
         }
+
         let const needle = source.substring_of_length(
             reference_end_position, *close_position - reference_end_position);
+
         reference_end_position = *close_position < source.length
                                      ? *close_position + 1
                                      : *close_position;
@@ -1836,6 +2006,7 @@ expand_interactive_history(StringView               source,
         if (selected_event.has_value()) {
           let const matched_word =
               find_history_search_word(selected_event->command.view(), needle);
+
           if (matched_word.has_value()) {
             state.last_search_word =
                 String{heap_allocator(), matched_word.value()};
@@ -1862,12 +2033,15 @@ expand_interactive_history(StringView               source,
             reference_end_position++;
           }
         }
+
         let const designator = source.substring_of_length(
             position + 1, reference_end_position - position - 1);
+
         if (designator.length > 1 && designator[0] == '-' &&
             designator.substring(1).is_all_decimal_digits())
         {
           let const parsed = designator.substring(1).to<u64>();
+
           if (!parsed.is_error() && parsed.value() > 0 &&
               parsed.value() <= static_cast<u64>(static_cast<usize>(-1)))
           {
@@ -1877,6 +2051,7 @@ expand_interactive_history(StringView               source,
           }
         } else if (designator.is_all_decimal_digits()) {
           let const parsed = designator.to<u64>();
+
           if (!parsed.is_error() &&
               parsed.value() <= static_cast<u64>(static_cast<usize>(-1)))
           {
@@ -1891,14 +2066,17 @@ expand_interactive_history(StringView               source,
       }
 
       if (selected_event.has_value()) {
-        replacement                       = selected_event->command.view();
+        replacement = selected_event->command.view();
+
         let const selector_start_position = reference_end_position;
         usize     selector_end_position   = selector_start_position;
+
         if (selector_end_position < source.length &&
             source[selector_end_position] == ':')
         {
           selector_end_position++;
         }
+
         if (selector_end_position < source.length &&
             (lexer::is_number(source[selector_end_position]) ||
              source[selector_end_position] == '^' ||
@@ -1942,10 +2120,12 @@ expand_interactive_history(StringView               source,
               }
             }
           }
+
           let const designator_start_position =
               source[selector_start_position] == ':'
                   ? selector_start_position + 1
                   : selector_start_position;
+
           replacement = select_history_words(
               replacement,
               source.substring_of_length(designator_start_position,
@@ -1960,6 +2140,7 @@ expand_interactive_history(StringView               source,
           throw_bad_history_word_specifier(
               source.substring_of_length(position + 1, 1));
         }
+
         replacement = apply_history_modifiers(
             source, reference_end_position, replacement, state,
             context.scratch_allocator(), first_modifier_buffer,
@@ -1967,6 +2148,7 @@ expand_interactive_history(StringView               source,
       } else {
         let message = String{source.substring_of_length(
             position, reference_end_position - position)};
+
         message += ": event not found";
         throw Error{steal(message)};
       }
@@ -2000,14 +2182,17 @@ source_file(const Path              &path,
                 startup_file_requirement::Optional) -> bool
 {
   Maybe<String> contents = path.read_entire_file();
+
   if (!contents) {
     let const is_missing = os::last_system_error_is_missing_file();
     let const reason     = os::last_system_error_message();
+
     if (requirement == startup_file_requirement::Explicit && !is_missing) {
       show_message(
           Error{"Unable to read startup file '" + path.text() + "': " + reason}
               .to_string());
     }
+
     LOG(Info, "skipping '%s' because the file is missing or unreadable",
         path.c_str());
 
@@ -2028,6 +2213,7 @@ selected_rcfile() wontthrow -> Maybe<StringView>
   if (!FLAG_RCFILE.is_set() && !FLAG_INIT_FILE.is_set()) {
     return None;
   }
+
   if (!FLAG_RCFILE.is_set() ||
       (FLAG_INIT_FILE.is_set() &&
        FLAG_INIT_FILE.position() > FLAG_RCFILE.position()))
@@ -2039,29 +2225,35 @@ selected_rcfile() wontthrow -> Maybe<StringView>
 }
 
 static fn
-source_custom_rcfile(StringView name, EvalContext &context) throws -> void
+source_custom_rcfile(StringView name, EvalContext &context) throws
+    -> void
 {
   let path = String{context.scratch_allocator(), name};
+
   if (let home_expanded = utils::expand_leading_tilde_path(path.view());
       home_expanded.has_value())
     path = home_expanded.take();
+
   source_file(Path{path.view()}, context, startup_file_requirement::Explicit);
 }
 
 static fn
-source_environment_file(StringView variable_name, EvalContext &context) throws
-    -> void
+source_environment_file(StringView   variable_name,
+                        EvalContext &context) throws -> void
 {
   let const value = context.get_variable_value(variable_name);
+
   if (!value.has_value() || value->is_empty()) {
     return;
   }
 
   let expanded = context.expand_modifier_word(value->view(), false);
+
   if (expanded.is_empty()) return;
   if (let home_expanded = utils::expand_leading_tilde_path(expanded.view());
       home_expanded.has_value())
     expanded = home_expanded.take();
+
   source_file(Path{expanded.view()}, context,
               startup_file_requirement::Explicit);
 }
@@ -2071,6 +2263,7 @@ source_home_file(StringView name, EvalContext &context) throws -> void
 {
   if (Maybe<Path> home = os::get_home_directory(); home.has_value()) {
     Path path = home->clone();
+
     path.append(name);
     source_file(path, context);
   }
@@ -2079,16 +2272,19 @@ source_home_file(StringView name, EvalContext &context) throws -> void
 static fn
 warn_about_retired_koshrc() throws -> void
 {
-  let       names   = String{heap_allocator()};
+  let names = String{heap_allocator()};
+
   let const do_note = [&](const Path &path) throws {
     if (!os::path_exists(path.view())) return;
     if (!names.is_empty()) names += "' and '";
     names += path.view();
   };
+
   if (let home = os::get_home_directory(); home.has_value()) {
     home->append(".koshrc");
     do_note(*home);
   }
+
   do_note(Path{"/etc/koshrc"});
   if (names.is_empty()) return;
 
@@ -2114,6 +2310,7 @@ source_bash_login_files(EvalContext &context) throws -> void
   if (Maybe<Path> home = os::get_home_directory(); home.has_value()) {
     for (let const name : {".bash_profile", ".bash_login", ".profile"}) {
       Path candidate = home->clone();
+
       candidate.append(name);
       if (source_file(candidate, context)) break;
     }
@@ -2140,17 +2337,23 @@ ensure_bash_completion_loaded(EvalContext &context) throws -> void
 
     return;
   }
+
   if (context.get_variable_value("BASH_COMPLETION_VERSINFO").has_value()) {
     LOG(Info, "skipping the bash-completion bootstrap because the "
               "rc chain already loaded the script");
 
     return;
   }
+
   LOG(Info, "sourcing the stock bash-completion script");
-  let bash_completion_state  = definition_state::from(context.runtime_state());
+
+  let bash_completion_state = definition_state::from(context.runtime_state());
+
   bash_completion_state.mood = mimic_mood::Bash;
+
   let const definition_scope = DefinitionStateScope{
       context, bash_completion_state, definition_state_exit::RestoreCaller};
+
   source_file(Path{"/usr/share/bash-completion/bash_completion"}, context);
 }
 
@@ -2158,7 +2361,7 @@ fn
 source_init_moods(EvalContext                 &context,
                   const ArrayList<mimic_mood> &moods,
                   bool                         is_login_shell,
-                  bool should_be_interactive) throws -> void
+                  bool                         should_be_interactive) throws -> void
 {
   bool did_source_bash_rc  = false;
   bool did_source_bash_env = false;
@@ -2169,6 +2372,7 @@ source_init_moods(EvalContext                 &context,
         !context.runtime_state().option_is_enabled(
             shell_option_id::Privileged) &&
         !context.startup_store().startup_finished() && !did_source_bash_env;
+
     if (!is_login_shell && !should_be_interactive && !should_consider_bash_env)
     {
       continue;
@@ -2182,11 +2386,12 @@ source_init_moods(EvalContext                 &context,
                                             : "kosh");
       continue;
     }
+
     context.runtime_control_store().set_init_mood_sourcing(flavor, true);
-    defer
-    {
+    defer {
       context.runtime_control_store().set_init_mood_sourcing(flavor, false);
     };
+
     context.runtime_state().set_mood(flavor);
     LOG(Info, "sourcing the startup files for the %s mood",
         flavor == mimic_mood::Bash        ? "bash"
@@ -2201,7 +2406,9 @@ source_init_moods(EvalContext                 &context,
       {
         warn_about_retired_koshrc();
       }
+
       break;
+
     case mimic_mood::Posix:
       if (is_login_shell) source_posix_login_files(context);
       if (should_be_interactive && !context.runtime_state().option_is_enabled(
@@ -2213,7 +2420,9 @@ source_init_moods(EvalContext                 &context,
           source_file(Path{env->view()}, context);
         }
       }
+
       break;
+
     case mimic_mood::Bash:
     case mimic_mood::BashPosix:
       if (is_login_shell) source_bash_login_files(context);
@@ -2226,6 +2435,7 @@ source_init_moods(EvalContext                 &context,
         source_environment_file("BASH_ENV", context);
         did_source_bash_env = true;
       }
+
       if (should_be_interactive && !is_login_shell && !FLAG_NORC.is_enabled()) {
         did_source_bash_rc = true;
         source_bash_system_rc(context);
@@ -2234,8 +2444,10 @@ source_init_moods(EvalContext                 &context,
         else
           source_home_file(".bashrc", context);
       }
+
       break;
     }
+
     if (is_login_shell || should_be_interactive) {
       context.runtime_control_store().mark_mood_initialized(flavor);
     }
@@ -2274,30 +2486,37 @@ struct apply_file_snapshot
 };
 
 static fn
-read_apply_file(const Path &operand_path) throws -> Maybe<apply_file_snapshot>
+read_apply_file(const Path &operand_path) throws
+    -> Maybe<apply_file_snapshot>
 {
   let target_path = os::canonical_path(operand_path);
+
   if (!target_path.has_value()) {
     show_message("Unable to resolve '" + operand_path.text() +
                  "': " + os::last_system_error_message());
 
     return None;
   }
+
   let status = os::file_status{};
+
   if (!os::stat_path_following(target_path->text().view(), status)) {
     show_message("Unable to inspect '" + operand_path.text() +
                  "': " + os::last_system_error_message());
 
     return None;
   }
+
   if (os::file_type_letter(status.mode) != '-') {
     show_message("The '--apply' option requires a regular file: '" +
                  operand_path.text() + "'.");
 
     return None;
   }
+
   let contents        = target_path->read_entire_file();
   let verified_status = os::file_status{};
+
   if (!contents.has_value() ||
       !os::stat_path_following(target_path->text().view(), verified_status) ||
       !os::file_status_matches(status, verified_status))
@@ -2318,6 +2537,7 @@ replace_file_contents(const apply_file_snapshot &snapshot,
 {
   let replacement_path = os::write_to_named_temp_file(
       snapshot.target_path.parent(), ".kosh_apply", replacement);
+
   if (!replacement_path.has_value()) {
     show_message("Unable to create a replacement for '" +
                  snapshot.operand_path.text() +
@@ -2325,7 +2545,11 @@ replace_file_contents(const apply_file_snapshot &snapshot,
 
     return false;
   }
-  defer { unused(os::remove_file(replacement_path->text().view())); };
+
+  defer {
+    unused(os::remove_file(replacement_path->text().view()));
+  };
+
   if (!os::set_file_mode(replacement_path->text().view(), snapshot.status.mode))
   {
     show_message("Unable to preserve the mode of '" +
@@ -2338,6 +2562,7 @@ replace_file_contents(const apply_file_snapshot &snapshot,
   let       resolved_operand = os::canonical_path(snapshot.operand_path);
   let       current_status   = os::file_status{};
   let const current_contents = snapshot.target_path.read_entire_file();
+
   if (!resolved_operand.has_value() ||
       resolved_operand->text() != snapshot.target_path.text() ||
       !current_contents.has_value() ||
@@ -2350,6 +2575,7 @@ replace_file_contents(const apply_file_snapshot &snapshot,
 
     return false;
   }
+
   if (!os::rename_path(replacement_path->text().view(),
                        snapshot.target_path.view()))
   {
@@ -2378,6 +2604,7 @@ record_applied_fix(ArrayList<applied_fix_tally> &tallies,
     if (tally.id != id || tally.severity != severity) {
       continue;
     }
+
     tally.count++;
 
     return;
@@ -2390,6 +2617,7 @@ static fn
 append_applied_fix_label(String &label, diagnostic_id id) throws -> void
 {
   let const &definition = get_diagnostic_definition(id);
+
   label.append(definition.slug);
 
   if (!definition.shellcheck_code.has_value()) return;
@@ -2426,6 +2654,7 @@ print_applied_fix_summary(
       error_count += tally.count;
 
     let label = String{heap_allocator()};
+
     append_applied_fix_label(label, tally.id);
     if (label.count() > label_width) label_width = label.count();
     labels.push(steal(label));
@@ -2465,6 +2694,7 @@ print_applied_fix_summary(
     let const  is_warning = tally.severity == error_severity::warning;
 
     let line = String{"  "};
+
     line.append(labels[tally_index].view());
 
     for (usize padding = labels[tally_index].count(); padding < label_width;
@@ -2494,6 +2724,7 @@ run_format_operation(const ArrayList<String> &file_names,
 {
   bool  did_fail    = false;
   usize input_count = file_names.count();
+
   if (!should_apply && input_count == 0) {
     input_count = 1;
   }
@@ -2503,6 +2734,7 @@ run_format_operation(const ArrayList<String> &file_names,
         file_names.is_empty() || file_names[input_index] == "-";
     Maybe<apply_file_snapshot> snapshot;
     let                        source = String{heap_allocator()};
+
     if (is_standard_input) {
       source = utils::read_entire_standard_input();
     } else if (should_apply) {
@@ -2511,27 +2743,33 @@ run_format_operation(const ArrayList<String> &file_names,
         did_fail = true;
         continue;
       }
+
       source = snapshot->contents.clone();
     } else {
       let const path     = Path{file_names[input_index].view()};
       let       contents = path.read_entire_file();
+
       if (!contents.has_value()) {
         show_message("Could not open '" + path.text() +
                      "': " + os::last_system_error_message());
         did_fail = true;
         continue;
       }
+
       source = contents.take();
     }
 
     if (should_apply_lint_fixes) {
       let normalized_source = source.clone();
+
       normalized_source.normalize_crlf_line_endings();
+
       let       diagnostics = ArrayList<source_diagnostic>{heap_allocator()};
       let const source_name = is_standard_input
                                   ? Maybe<StringView>{}
                                   : Maybe<StringView>{file_names[input_index]};
       bool      is_format_recognized = true;
+
       unused(run_lint_document_contents(normalized_source, context, ast_arena,
                                         source_name, nullptr, &diagnostics,
                                         &is_format_recognized, false));
@@ -2539,6 +2777,7 @@ run_format_operation(const ArrayList<String> &file_names,
         did_fail = true;
         continue;
       }
+
       let normalized_fixes = ArrayList<source_fix>{heap_allocator()};
 
       for (let const &diagnostic : diagnostics) {
@@ -2566,11 +2805,13 @@ run_format_operation(const ArrayList<String> &file_names,
       let const fixes = source_fixes_for_original_line_endings(
           source.view(), normalized_fixes);
       let fixed = apply_source_fixes(source.view(), fixes);
+
       if (!fixed.has_value()) {
         show_message("Unable to apply non-conflicting fixes to the input.");
         did_fail = true;
         continue;
       }
+
       source = fixed.take();
     }
 
@@ -2583,6 +2824,7 @@ run_format_operation(const ArrayList<String> &file_names,
         source.view(), source_name, ast_arena, errors,
         context.runtime_state().show_ast() ? &ast_output : nullptr,
         context.arena_store().function_arena(), mood);
+
     if (!formatted.has_value()) {
       for (let const &error : errors)
         show_message(error.view());
@@ -2598,6 +2840,7 @@ run_format_operation(const ArrayList<String> &file_names,
       print(ast_output.view());
       print("\n");
     }
+
     if (should_apply) {
       ASSERT(snapshot.has_value());
       if (formatted->view() != source.view() &&
@@ -2607,6 +2850,7 @@ run_format_operation(const ArrayList<String> &file_names,
       }
     } else if (colors::stdout_wants_color()) {
       let highlighted = String{heap_allocator()};
+
       completion::append_highlighted_source(
           highlighted, formatted->view(), context,
           colors::PRINTED_SOURCE_HIGHLIGHT_THEME);
@@ -2632,14 +2876,19 @@ run_lint_apply_operation(const ArrayList<String> &file_names,
   for (let const &file_name : file_names) {
     let const path     = Path{file_name.view()};
     let       snapshot = read_apply_file(path);
+
     if (!snapshot.has_value()) {
       did_fail = true;
       continue;
     }
+
     let source = snapshot->contents.clone();
+
     source.normalize_crlf_line_endings();
+
     let  diagnostics          = ArrayList<source_diagnostic>{heap_allocator()};
     bool is_format_recognized = true;
+
     unused(run_lint_document_contents(source, context, ast_arena,
                                       file_name.view(), nullptr, &diagnostics,
                                       &is_format_recognized, false));
@@ -2647,6 +2896,7 @@ run_lint_apply_operation(const ArrayList<String> &file_names,
       did_fail = true;
       continue;
     }
+
     let normalized_fixes    = ArrayList<source_fix>{heap_allocator()};
     let reported_severities = ArrayList<applied_fix_tally>{heap_allocator()};
 
@@ -2656,6 +2906,7 @@ run_lint_apply_operation(const ArrayList<String> &file_names,
       {
         continue;
       }
+
       if (diagnostic.id.has_value()) {
         record_applied_fix(reported_severities, *diagnostic.id,
                            diagnostic.severity);
@@ -2681,19 +2932,23 @@ run_lint_apply_operation(const ArrayList<String> &file_names,
     let applied_origins = ArrayList<diagnostic_id>{heap_allocator()};
     let fixed =
         apply_source_fixes(snapshot->contents.view(), fixes, &applied_origins);
+
     if (!fixed.has_value()) {
       show_message("Unable to apply non-conflicting fixes to '" + path.text() +
                    "'.");
       did_fail = true;
       continue;
     }
+
     let final_source = fixed.take();
+
     if (should_format) {
       let errors    = ArrayList<String>{heap_allocator()};
       let formatted = format_document_source(
           final_source.view(), file_name.view(), ast_arena, errors, nullptr,
           context.arena_store().function_arena(),
           context.runtime_state().get_mood());
+
       if (!formatted.has_value()) {
         for (let const &error : errors)
           show_message(error.view());
@@ -2701,14 +2956,20 @@ run_lint_apply_operation(const ArrayList<String> &file_names,
         did_fail = true;
         continue;
       }
+
       final_source = formatted.take();
     }
+
     let validation_source = final_source.clone();
+
     validation_source.normalize_crlf_line_endings();
+
     let validation_diagnostics = ArrayList<source_diagnostic>{heap_allocator()};
+
     unused(run_lint_document_contents(validation_source, context, ast_arena,
                                       file_name.view(), nullptr,
                                       &validation_diagnostics, nullptr, false));
+
     bool has_parse_error = false;
 
     for (let const &diagnostic : validation_diagnostics) {
@@ -2721,6 +2982,7 @@ run_lint_apply_operation(const ArrayList<String> &file_names,
       did_fail = true;
       continue;
     }
+
     if (final_source.view() != snapshot->contents.view() &&
         !replace_file_contents(*snapshot, final_source.view()))
     {
@@ -2742,9 +3004,12 @@ run_lint_apply_operation(const ArrayList<String> &file_names,
     }
 
     let analyzed_source = final_source.clone();
+
     analyzed_source.normalize_crlf_line_endings();
+
     let const final_status = run_lint_document_contents(
         analyzed_source, context, ast_arena, file_name.view(), &final_totals);
+
     if (final_status != EXIT_SUCCESS) did_fail = true;
   }
 

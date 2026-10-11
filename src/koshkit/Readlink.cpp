@@ -28,8 +28,7 @@ fn
 Readlink::execute(const ExecContext               &ec,
                   EvalContext                     &cxt,
                   const ArrayList<String>         &args,
-                  const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+                  const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
@@ -41,6 +40,7 @@ Readlink::execute(const ExecContext               &ec,
 
   for (usize i = 0; i < operands.count(); i++) {
     let target = os::read_symlink(operands[i].view(), cxt.scratch_allocator());
+
     if (!target.has_value()) {
       report_soft_koshkit_util_error(
           ec, cxt, operand_locations[i], args[0].view(),

@@ -281,7 +281,7 @@ struct substitution_error_key
   u64 message_hash{0};
 
   pure fn
-  operator==(const substitution_error_key &other) const wontthrow->bool
+  operator==(const substitution_error_key &other) const wontthrow -> bool
   {
     return span == other.span && message_hash == other.message_hash;
   }
@@ -296,7 +296,8 @@ find_nested_substitutions(StringView source,
     -> ArrayList<nested_substitution>;
 
 fn
-find_segment_substitution(StringView source, const WordSegment &segment) throws
+find_segment_substitution(StringView         source,
+                          const WordSegment &segment) throws
     -> Maybe<nested_substitution>;
 
 fn
@@ -383,6 +384,7 @@ public:
   {
     return m_parse_session.get_allocation_kind();
   }
+
   fn
   set_arena(BumpArena                   &arena,
             ParseSession::AllocationKind allocation_kind) wontthrow -> void;
@@ -390,6 +392,7 @@ public:
   drop_peek_cache() wontthrow -> void;
   fn
   advance_past_last_peek() throws -> usize;
+
   fn
   set_is_lexing_array_literal(bool is_lexing) wontthrow -> void
   {
@@ -402,17 +405,20 @@ public:
   {
     m_parse_session.set_shellcheck_directive_collection_mode(mode);
   }
+
   fn
   set_analysis_metadata_collection_mode(
       analysis_metadata_collection_mode mode) wontthrow -> void
   {
     m_parse_session.set_analysis_metadata_collection_mode(mode);
   }
+
   pure fn
   should_validate_substitutions() const wontthrow -> bool
   {
     return m_parse_session.should_validate_substitutions();
   }
+
   fn
   set_substitution_validation_mode(substitution_validation_mode mode,
                                    usize nesting_depth = 0) wontthrow -> void
@@ -420,39 +426,48 @@ public:
     m_parse_session.set_substitution_validation_mode(mode);
     m_substitution_nesting_depth = nesting_depth;
   }
+
   fn
   set_start_position(usize position) wontthrow -> void
   {
     ASSERT(position <= m_source.length);
     m_cursor_position = position;
   }
+
   pure fn
   has_substitution_errors() const wontthrow -> bool
   {
     return !m_substitution_errors.is_empty();
   }
+
   fn
   take_substitution_errors() wontthrow -> ArrayList<ErrorWithLocationAndDetails>
   {
     return steal(m_substitution_errors);
   }
+
   fn
-  take_shellcheck_directives() throws -> ArrayList<shellcheck_directive_span>;
+  take_shellcheck_directives() throws
+      -> ArrayList<shellcheck_directive_span>;
   fn
   take_shellcheck_directive_spans() throws
       -> ArrayList<shellcheck_directive_span>;
   fn
-  take_heredoc_terminator_misses() throws -> ArrayList<heredoc_terminator_miss>;
+  take_heredoc_terminator_misses() throws
+      -> ArrayList<heredoc_terminator_miss>;
 
   fn
   register_heredoc(StringView         delimiter,
                    heredoc_tab_policy tab_policy,
-                   bool should_expand) throws -> const heredoc_contents *;
+                   bool               should_expand) throws
+      -> const heredoc_contents *;
+
   pure fn
   get_pending_heredoc_count() const wontthrow -> usize
   {
     return m_pending_heredocs.count();
   }
+
   fn
   drop_pending_heredocs_after(usize count) wontthrow -> void
   {
@@ -493,6 +508,7 @@ protected:
   ArrayList<heredoc_terminator_miss> m_heredoc_terminator_misses{
       heap_allocator()};
   ArrayList<heredoc_pending> m_pending_heredocs{heap_allocator()};
+
   fn
   collect_pending_heredocs() throws -> void;
 
@@ -529,19 +545,19 @@ protected:
       heap_allocator()};
 
   fn
-  record_substitution_error(const ErrorWithLocationAndDetails &error) throws
-      -> void;
+  record_substitution_error(const ErrorWithLocationAndDetails &error)
+      throws -> void;
   fn
-  validate_substitution_body(usize                 body_position,
-                             StringView            body,
-                             const SourceLocation &outer_location) throws
-      -> void;
+  validate_substitution_body(
+      usize                 body_position,
+      StringView            body,
+      const SourceLocation &outer_location) throws -> void;
   fn
-  validate_nested_expansions(usize region_position,
-                             usize region_length,
-                             bool  is_heredoc,
-                             bool  is_region_in_double_quotes = false) throws
-      -> void;
+  validate_nested_expansions(
+      usize region_position,
+      usize region_length,
+      bool  is_heredoc,
+      bool  is_region_in_double_quotes = false) throws -> void;
 };
 
 } /* namespace koshka */

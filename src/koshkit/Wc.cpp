@@ -45,8 +45,8 @@ enum class wc_scan_mode : u8
 };
 
 constexpr fn
-operator|(wc_count_selection left,
-          wc_count_selection right) wontthrow->wc_count_selection
+operator|(wc_count_selection left, wc_count_selection right) wontthrow
+    -> wc_count_selection
 {
   return static_cast<wc_count_selection>(static_cast<u8>(left) |
                                          static_cast<u8>(right));
@@ -162,17 +162,20 @@ count_newlines(StringView content) wontthrow -> u64
          round_count++)
     {
       byte_vector bytes;
+
       __builtin_memcpy(&bytes, content.data + byte_position, sizeof(bytes));
       lane_counts -= static_cast<byte_vector>(bytes == newlines);
       byte_position += LANE_COUNT;
     }
 
     u64 lane_words[2];
+
     __builtin_memcpy(lane_words, &lane_counts, sizeof(lane_words));
 
     for (let const lane_word : lane_words) {
       let const pair_sums =
           (lane_word & PAIR_LOW_BYTES) + ((lane_word >> 8) & PAIR_LOW_BYTES);
+
       newline_count += (pair_sums * PAIR_SUM_MULTIPLIER) >> 48;
     }
   }
@@ -194,6 +197,7 @@ count_words(wc_source_state &state, StringView content) wontthrow -> void
     let const entry = static_cast<u32>(
         WORD_BYTE_TABLE.values[static_cast<u8>(content.data[byte_position])]);
     let const does_start_word = entry & 1;
+
     word_count += does_start_word & (is_in_word ^ 1);
     is_in_word = (((is_in_word << 1) & entry) >> 1) | does_start_word;
   }
@@ -214,6 +218,7 @@ update_wc_source(wc_source_state   &state,
       : has_wc_count(selection, wc_count_selection::Lines) ? wc_scan_mode::Lines
       : has_wc_count(selection, wc_count_selection::Words) ? wc_scan_mode::Words
                                                            : wc_scan_mode::None;
+
   if (has_wc_count(selection, wc_count_selection::Bytes))
     state.counts.byte_count += content.length;
 
@@ -228,10 +233,13 @@ update_wc_source(wc_source_state   &state,
 
   switch (scan_mode) {
   case wc_scan_mode::None: break;
+
   case wc_scan_mode::Lines:
     state.counts.line_count += count_newlines(content);
     break;
+
   case wc_scan_mode::Words: count_words(state, content); break;
+
   case wc_scan_mode::LinesWords:
     state.counts.line_count += count_newlines(content);
     count_words(state, content);
@@ -261,11 +269,12 @@ append_counts(String            &line,
 {
   bool has_field = false;
 
-  let const do_emit_field = [&line, &has_field, field_width](u64 value)
-                                throws -> void {
+  let const do_emit_field = [&line, &has_field,
+                             field_width](u64 value) throws -> void {
     if (has_field) line += ' ';
 
     let const digits = String::from(value, line.allocator());
+
     if (digits.count() < field_width)
       line.append_repeated(' ', field_width - digits.count());
 
@@ -294,7 +303,8 @@ fn
 Wc::execute(const ExecContext               &ec,
             EvalContext                     &cxt,
             const ArrayList<String>         &args,
-            const ArrayList<SourceLocation> &arg_locations) const throws -> i32
+            const ArrayList<SourceLocation> &arg_locations) const throws
+    -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
@@ -318,6 +328,7 @@ Wc::execute(const ExecContext               &ec,
   let const sources =
       source_list_from_operands(operands, cxt.scratch_allocator());
   let source_states = ArrayList<wc_source_state>{cxt.scratch_allocator()};
+
   source_states.reserve(sources.count());
 
   for (usize source_index = 0; source_index < sources.count(); source_index++)
@@ -325,6 +336,7 @@ Wc::execute(const ExecContext               &ec,
 
   let read_sources        = ArrayList<StringView>{cxt.scratch_allocator()};
   let read_source_indices = ArrayList<usize>{cxt.scratch_allocator()};
+
   if (selection == wc_count_selection::Bytes) {
     read_sources.reserve(sources.count());
     read_source_indices.reserve(sources.count());
@@ -334,14 +346,17 @@ Wc::execute(const ExecContext               &ec,
       if (os::INTERRUPT_REQUESTED) return 130;
 
       let const source = sources[source_index];
+
       if (source != "-" && os::path_is_regular_file(source)) {
         let const descriptor =
             os::open_file_descriptor(source, os::file_open_mode::Read);
+
         if (descriptor.has_value()) {
           let const file_byte_count =
               os::regular_descriptor_file_size(*descriptor);
           let const is_seekable = file_byte_count.has_value() &&
                                   os::descriptor_is_seekable(*descriptor);
+
           unused(os::close_fd(*descriptor));
 
           if (is_seekable) {
@@ -358,13 +373,14 @@ Wc::execute(const ExecContext               &ec,
 
   let const &stream_sources =
       selection == wc_count_selection::Bytes ? read_sources : sources;
+
   if (!stream_sources.is_empty()) {
     let reader = SourceBatchReader{ec, stream_sources, cxt.scratch_allocator()};
     let chunks = ArrayList<SourceBatchReader::Chunk>{cxt.scratch_allocator()};
 
-    loop
-    {
+    loop {
       let const read_result = reader.read_next(chunks);
+
       if (read_result == SourceBatchReader::ReadResult::Interrupted) return 130;
       if (read_result == SourceBatchReader::ReadResult::Complete) break;
 
@@ -373,10 +389,12 @@ Wc::execute(const ExecContext               &ec,
                                      ? read_source_indices[chunk.source_index]
                                      : chunk.source_index;
         let      &state        = source_states[source_index];
+
         if (chunk.error_number != 0) {
           state.error_number = chunk.error_number;
           continue;
         }
+
         update_wc_source(state, chunk.content, selection);
       }
     }
@@ -388,6 +406,7 @@ Wc::execute(const ExecContext               &ec,
 
   for (usize source_index = 0; source_index < sources.count(); source_index++) {
     let const &state = source_states[source_index];
+
     if (state.error_number != 0) {
       os::set_last_system_error(state.error_number);
       report_soft_koshkit_util_error(
@@ -401,6 +420,7 @@ Wc::execute(const ExecContext               &ec,
     totals.add(state.counts);
 
     let const name = operands.is_empty() ? StringView{} : sources[source_index];
+
     rows.push(wc_row{name, state.counts});
   }
 

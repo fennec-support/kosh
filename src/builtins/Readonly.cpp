@@ -73,6 +73,7 @@ Readonly::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
     for (usize i = 1; i < args.count(); i++) {
       let const name = args[i].view();
+
       if (!cxt.function_store().find_function(name).has_value()) {
         report_soft_builtin_error(
             ec, cxt, get_operand_location(ec, operand_locations, i),
@@ -105,6 +106,7 @@ Readonly::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
           append_shell_quoted_arg(out, value->view(), true);
         }
       }
+
       out += "\n";
     }
 
@@ -132,12 +134,10 @@ Readonly::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     if (parts.get_value().has_value())
       cxt.set_shell_variable(parts.get_name(), *parts.get_value());
 
-    if (cxt.variable_store().attributes().is_nameref(parts.get_name())) rarely
-      {
-        cxt.variable_store().attributes().mark_readonly(
-            cxt.resolve_nameref_base_for_write(parts.get_name()));
-      }
-    else
+    if (cxt.variable_store().attributes().is_nameref(parts.get_name())) rarely {
+      cxt.variable_store().attributes().mark_readonly(
+          cxt.resolve_nameref_base_for_write(parts.get_name()));
+    } else
       cxt.variable_store().attributes().mark_readonly(parts.get_name());
   }
 

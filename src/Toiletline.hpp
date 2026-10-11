@@ -82,6 +82,7 @@ fn
 is_history_contents_valid(StringView contents) -> bool;
 fn
 encode_history_record(String &output, StringView command) -> void;
+
 fn
 write_history() -> koshka::ErrorOr<koshka::Ok>;
 fn
@@ -94,6 +95,7 @@ fn
 import_history(StringView contents) -> koshka::ErrorOr<koshka::Ok>;
 fn
 append_unwritten_history() -> koshka::ErrorOr<koshka::Ok>;
+
 fn
 set_history_persistent(bool should_persist) -> void;
 fn
@@ -113,6 +115,7 @@ get_history_events(koshka::Allocator    allocator,
     -> koshka::ErrorOr<koshka::ArrayList<history_event>>;
 fn
 get_newest_history_event_number() -> koshka::ErrorOr<koshka::Maybe<usize>>;
+
 fn
 get_relative_history_event(koshka::Allocator    allocator,
                            usize                distance,
@@ -133,6 +136,7 @@ get_containing_history_event(koshka::Allocator    allocator,
                              StringView           text,
                              koshka::Maybe<usize> before_event_number =
                                  koshka::None) -> koshka::Maybe<history_event>;
+
 fn
 append_history_event(StringView command) -> koshka::Maybe<usize>;
 fn

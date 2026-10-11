@@ -45,7 +45,7 @@ struct frecency_rank_comparator
 {
   pure fn
   operator()(const frecency_entry &left,
-             const frecency_entry &right) const wontthrow->bool
+             const frecency_entry &right) const wontthrow -> bool
   {
     return left.rank > right.rank;
   }
@@ -60,9 +60,13 @@ frecency_store_path() throws -> Maybe<Path>
   {
     return Path{override_path->view()};
   }
+
   static let const home = os::get_home_directory();
+
   if (!home.has_value()) return None;
+
   let path = home->clone();
+
   path.append(".kosh_directory_history");
 
   return path;
@@ -85,12 +89,16 @@ recency_weight(i64 age_seconds) wontthrow -> double
 }
 
 static fn
-read_frecency_store(Allocator allocator) throws -> ArrayList<frecency_entry>
+read_frecency_store(Allocator allocator) throws
+    -> ArrayList<frecency_entry>
 {
   let entries = ArrayList<frecency_entry>{allocator};
   let path    = frecency_store_path();
+
   if (!path) return entries;
+
   let content = path->read_entire_file();
+
   if (!content) return entries;
 
   let const text       = content->view();
@@ -100,14 +108,19 @@ read_frecency_store(Allocator allocator) throws -> ArrayList<frecency_entry>
     if (i != text.length && text[i] != '\n') {
       continue;
     }
+
     let const line = text.substring_of_length(line_start, i - line_start);
-    line_start     = i + 1;
+
+    line_start = i + 1;
     if (line.is_empty()) continue;
 
     let const first_tab = line.find_character('\t');
+
     if (!first_tab) continue;
+
     let const after_path = line.substring(*first_tab + 1);
     let const second_tab = after_path.find_character('\t');
+
     if (!second_tab) continue;
 
     let const path_field = line.substring_of_length(0, *first_tab);
@@ -115,9 +128,11 @@ read_frecency_store(Allocator allocator) throws -> ArrayList<frecency_entry>
     let const time_field = after_path.substring(*second_tab + 1);
     let const rank       = rank_field.to<i64>();
     let const last       = time_field.to<i64>();
+
     if (rank.is_error() || last.is_error()) {
       continue;
     }
+
     entries.push(frecency_entry{
         String{allocator, path_field},
         rank.value(), last.value()
@@ -132,6 +147,7 @@ write_frecency_store(const ArrayList<frecency_entry> &entries,
                      Allocator                        allocator) throws -> void
 {
   let path = frecency_store_path();
+
   if (!path) return;
 
   let out = String{allocator};
@@ -154,6 +170,7 @@ contains_ignore_case(StringView haystack, StringView needle) wontthrow -> bool
 {
   if (needle.is_empty()) return true;
   if (needle.length > haystack.length) return false;
+
   let const do_lower = [](char c) wontthrow -> char {
     return c >= 'A' && c <= 'Z' ? static_cast<char>(c + 32) : c;
   };
@@ -194,6 +211,7 @@ z_completion_candidates(StringView query, Allocator allocator) throws
         static_cast<double>(left.rank) * recency_weight(now - left.last_access);
     let const right_score = static_cast<double>(right.rank) *
                             recency_weight(now - right.last_access);
+
     if (left_score != right_score) return left_score > right_score;
     if (left.last_access != right.last_access)
       return left.last_access > right.last_access;
@@ -209,6 +227,7 @@ z_completion_candidates(StringView query, Allocator allocator) throws
     }
 
     let const directory = Path{entry.path.view()}.to_absolute().normalized();
+
     if (!directory.is_directory()) continue;
     candidates.push(String{allocator, directory.c_str()});
   }
@@ -217,8 +236,8 @@ z_completion_candidates(StringView query, Allocator allocator) throws
 }
 
 fn
-record_directory_access(StringView directory, Allocator allocator) throws
-    -> void
+record_directory_access(StringView directory,
+                        Allocator  allocator) throws -> void
 {
   if (directory.is_empty()) return;
 
@@ -246,6 +265,7 @@ record_directory_access(StringView directory, Allocator allocator) throws
   if (entries.count() >= Z_FRECENCY_MAX) {
     let const strongest =
         steal(entries).make_sorted(frecency_rank_comparator{});
+
     entries = ArrayList<frecency_entry>{allocator};
     entries.reserve(Z_FRECENCY_MAX);
 
@@ -256,6 +276,7 @@ record_directory_access(StringView directory, Allocator allocator) throws
           strongest[i].last_access
       });
   }
+
   entries.push(steal(*visited));
   write_frecency_store(entries, allocator);
 }
@@ -267,8 +288,10 @@ Z::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   if (FLAG_HELP.is_enabled()) SHOW_BUILTIN_HELP_AND_RETURN(ec);
 
-  let const do_change_directory = [&](StringView directory) throws -> i32 {
+  let const do_change_directory =
+      [&](StringView directory) throws -> i32 {
     let const status = run_cd_to_directory(cxt, ec, directory);
+
     if (status == 0 && !cxt.execution_store().shell_is_interactive()) {
       record_directory_access(directory, cxt.scratch_allocator());
     }
@@ -278,6 +301,7 @@ Z::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   if (operands.count() == 1) {
     let const home_directory = os::get_home_directory();
+
     if (!home_directory.has_value()) {
       throw ErrorWithLocationAndDetails{
           ec.source_location(), "Unable to determine the home directory",
@@ -296,8 +320,10 @@ Z::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   if (operands.count() == 2) {
     let const literal_directory = Path{query.view()}.to_absolute().normalized();
+
     if (literal_directory.is_directory()) {
       let const status = do_change_directory(literal_directory.text());
+
       if (status != 0) return status;
 
       ec.print_to_stdout(literal_directory.text() + "\n");
@@ -328,11 +354,14 @@ Z::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     {
       continue;
     }
+
     if (!Path{entry.path.view()}.to_absolute().normalized().is_directory())
       continue;
+
     let const tier  = do_match_tier(entry.path.view());
     let const score = static_cast<double>(entry.rank) *
                       recency_weight(now - entry.last_access);
+
     if (tier > best_tier || (tier == best_tier && score > best_score)) {
       best_tier  = tier;
       best_score = score;
@@ -349,6 +378,7 @@ Z::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   LOG(Info, "z changing directory to '%s'", target.c_str());
 
   let const status = do_change_directory(target.text());
+
   if (status != 0) return status;
 
   ec.print_to_stdout(target.text() + "\n");

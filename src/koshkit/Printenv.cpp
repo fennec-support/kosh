@@ -22,8 +22,7 @@ fn
 Printenv::execute(const ExecContext               &ec,
                   EvalContext                     &cxt,
                   const ArrayList<String>         &args,
-                  const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+                  const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
@@ -34,11 +33,13 @@ Printenv::execute(const ExecContext               &ec,
   }
 
   cxt.prepare_child_environment();
+
   let output = String{cxt.scratch_allocator()};
   i32 status = 0;
 
   for (let const &name : operands) {
     let const value = os::get_environment_variable(name.view());
+
     if (!value.has_value()) {
       status = 1;
       continue;

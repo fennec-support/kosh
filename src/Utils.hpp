@@ -70,10 +70,10 @@ enum class shell_word_source_mapping : u8
 };
 
 fn
-decode_shell_word(
-    StringView                word,
-    Allocator                 allocator,
-    shell_word_source_mapping mapping = shell_word_source_mapping::Omit) throws
+decode_shell_word(StringView                word,
+                  Allocator                 allocator,
+                  shell_word_source_mapping mapping =
+                      shell_word_source_mapping::Omit) throws
     -> decoded_shell_word;
 
 struct unavailable_path_source_component
@@ -97,7 +97,8 @@ locate_first_unavailable_path_component(const Path    &target,
     -> Maybe<unavailable_path_source_component>;
 
 fn
-merge_tokens_to_string(const ArrayList<const Token *> &tokens) throws -> String;
+merge_tokens_to_string(const ArrayList<const Token *> &tokens) throws
+    -> String;
 
 inline fn
 merge_args_to_string(const ArrayList<String> &args) throws -> String
@@ -124,6 +125,7 @@ append_name_columns(String &output,
 
   for (usize index = 0; index < name_count; index++) {
     let const name = do_get_name(index);
+
     if (name.length > longest_length) longest_length = name.length;
   }
 
@@ -132,10 +134,13 @@ append_name_columns(String &output,
 
   for (usize index = 0; index < name_count; index++) {
     let const name = do_get_name(index);
+
     if (index % column_count == 0) output += "  ";
     output += name;
+
     let const is_last_in_row =
         index % column_count == column_count - 1 || index + 1 == name_count;
+
     if (is_last_in_row) {
       output += "\n";
     } else {
@@ -149,11 +154,13 @@ fn
 expand_leading_tilde_path(StringView name) throws -> Maybe<String>;
 
 fn
-should_ansi_c_quote(StringView text, bool is_utf8_locale) throws -> bool;
+should_ansi_c_quote(StringView text, bool is_utf8_locale) throws
+    -> bool;
 
 fn
-append_ansi_c_quoted(String &out, StringView text, bool is_utf8_locale) throws
-    -> void;
+append_ansi_c_quoted(String    &out,
+                     StringView text,
+                     bool       is_utf8_locale) throws -> void;
 
 fn
 append_ansi_c_quote_if_needed(String    &out,
@@ -161,8 +168,9 @@ append_ansi_c_quote_if_needed(String    &out,
                               bool       is_utf8_locale) throws -> bool;
 
 fn
-append_shell_quoted(String &out, StringView arg, bool is_utf8_locale) throws
-    -> void;
+append_shell_quoted(String    &out,
+                    StringView arg,
+                    bool       is_utf8_locale) throws -> void;
 
 fn
 decode_ansi_c_escapes(String &out, StringView body) throws -> void;
@@ -172,17 +180,19 @@ set_foreground_program_title(const ArrayList<String> &arguments,
                              EvalContext             &cxt) throws -> void;
 
 fn
-execute_context(ExecContext &&ec, EvalContext &cxt, execution_mode mode) throws
-    -> i32;
+execute_context(ExecContext  &&ec,
+                EvalContext   &cxt,
+                execution_mode mode) throws -> i32;
 
 fn
 execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs,
                             EvalContext             &cxt,
                             execution_mode           mode) throws -> i32;
+
 fn
 terminate_and_reap_processes(const ArrayList<os::process> &processes,
-                             usize first_process_position = 0) wontthrow
-    -> void;
+                             usize first_process_position = 0)
+    wontthrow -> void;
 
 pure fn
 strip_sig_prefix(StringView name) wontthrow -> StringView;
@@ -198,8 +208,9 @@ find_signal_number(const signal_pair *pairs,
                    usize              pair_count,
                    StringView         name) throws -> Maybe<i32>;
 fn
-find_signal_name(const signal_pair *pairs, usize pair_count, i32 number) throws
-    -> Maybe<String>;
+find_signal_name(const signal_pair *pairs,
+                 usize              pair_count,
+                 i32                number) throws -> Maybe<String>;
 fn
 collect_signal_names(const signal_pair *pairs, usize pair_count) throws
     -> ArrayList<StringView>;
@@ -224,7 +235,7 @@ struct text_position_range
   usize last;
 
   pure fn
-  operator<(const text_position_range &other) const wontthrow->bool
+  operator<(const text_position_range &other) const wontthrow -> bool
   {
     if (first != other.first) return first < other.first;
 
@@ -240,8 +251,8 @@ pure fn
 text_position_is_selected(
     usize one_based_position,
     const SortedArrayList<text_position_range,
-                          order_comparator<text_position_range>> &ranges)
-    wontthrow -> bool;
+                          order_comparator<text_position_range>>
+        &ranges) wontthrow -> bool;
 
 fn
 parse_tab_stop_list(StringView text, Allocator allocator) throws
@@ -281,7 +292,7 @@ token_has_uppercase(StringView token) wontthrow -> bool;
 pure fn
 smart_case_prefix_matches(StringView candidate,
                           StringView prefix,
-                          bool is_prefix_case_sensitive) wontthrow -> bool;
+                          bool       is_prefix_case_sensitive) wontthrow -> bool;
 pure fn
 smart_case_prefix_matches(StringView candidate, StringView prefix) wontthrow
     -> bool;
@@ -308,7 +319,8 @@ fn
 split_lines(StringView           text,
             Allocator            allocator = heap_allocator(),
             line_terminator_mode terminators =
-                line_terminator_mode::Discard) throws -> ArrayList<StringView>;
+                line_terminator_mode::Discard) throws
+    -> ArrayList<StringView>;
 
 fn
 encode_base64(StringView bytes) throws -> String;
@@ -316,7 +328,8 @@ fn
 decode_base64(StringView text) throws -> Maybe<String>;
 
 fn
-format_unix_timestamp(i64 unix_time, const char *format) throws -> String;
+format_unix_timestamp(i64 unix_time, const char *format) throws
+    -> String;
 
 pure fn
 is_posix_reserved_word(StringView word) wontthrow -> bool;
@@ -344,7 +357,8 @@ uint_to_text_into(u64 value, char *buffer, usize buffer_byte_count) wontthrow
     -> StringView;
 
 fn
-format_minutes_seconds(double seconds, i32 decimal_count = 3) throws -> String;
+format_minutes_seconds(double seconds, i32 decimal_count = 3) throws
+    -> String;
 fn
 format_duration_nanoseconds(u64 nanoseconds, Allocator allocator) throws
     -> String;
@@ -386,9 +400,11 @@ line_number_at(StringView source, usize position) throws -> usize;
 
 fn
 invalidate_line_number_cache_for(StringView source) wontthrow -> void;
+
 fn
-parse_integer_in_base(StringView text, bool *out_of_range, int_base base) throws
-    -> ErrorOr<i64>;
+parse_integer_in_base(StringView text,
+                      bool      *out_of_range,
+                      int_base   base) throws -> ErrorOr<i64>;
 fn
 parse_integer_in_base_u64(StringView text, int_base base) throws
     -> ErrorOr<u64>;
@@ -424,10 +440,12 @@ public:
 
     const usize distance =
         bounded_osa_distance(m_name, candidate, m_max_distance);
+
     if (distance > m_best_distance) return;
     if (!is_correction(distance, m_name.length)) return;
 
     const bool is_candidate_anagram = is_anagram(m_name, candidate);
+
     if (distance < m_best_distance ||
         (is_candidate_anagram && !m_is_best_anagram))
     {
@@ -487,10 +505,12 @@ fn
 resolve_git_directory(StringView ceiling_directories) throws -> Path;
 
 fn
-read_git_ref_sha(const Path &git_dir, StringView ref_name) throws -> String;
+read_git_ref_sha(const Path &git_dir, StringView ref_name) throws
+    -> String;
 
 fn
-git_upstream_ref(const Path &git_dir, StringView branch_name) throws -> String;
+git_upstream_ref(const Path &git_dir, StringView branch_name) throws
+    -> String;
 
 struct git_status_result
 {
@@ -503,7 +523,8 @@ struct git_status_result
 
 fn
 git_status(StringView ceiling_directories,
-           Allocator  allocator = heap_allocator()) throws -> git_status_result;
+           Allocator  allocator = heap_allocator()) throws
+    -> git_status_result;
 
 fn
 read_entire_standard_input() throws -> String;
@@ -572,7 +593,8 @@ fn
 read_directory_cached(
     const Path             &directory,
     directory_validation    validation = directory_validation::Validate,
-    directory_listing_order order = directory_listing_order::Unsorted) throws
+    directory_listing_order order =
+        directory_listing_order::Unsorted) throws
     -> const ArrayList<Path::DirectoryChild> *;
 fn
 warm_directory_index(const Path &directory) throws -> void;
@@ -649,8 +671,8 @@ enum class farewell_policy : u8
 };
 
 wontreturn fn
-quit(i32 code, farewell_policy farewell = farewell_policy::Silent) throws
-    -> void;
+quit(i32             code,
+     farewell_policy farewell = farewell_policy::Silent) throws -> void;
 
 enum class file_kind_mode : u8
 {

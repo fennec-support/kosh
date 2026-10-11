@@ -32,14 +32,16 @@ Seq::execute(const ExecContext               &ec,
 
   if (operands.is_empty()) return report_usage_error(ec, cxt, args[0].view());
 
-  i64       first            = 1;
-  i64       increment        = 1;
-  i64       last             = 0;
-  let const do_parse_integer = [&](usize operand_position, i64 &value)
-                                   throws -> bool {
+  i64 first     = 1;
+  i64 increment = 1;
+  i64 last      = 0;
+
+  let const do_parse_integer = [&](usize operand_position,
+                                   i64  &value) throws -> bool {
     bool      is_out_of_range = false;
     let const parsed          = utils::parse_decimal_i64(
         operands[operand_position].view(), &is_out_of_range);
+
     if (parsed.is_error() || is_out_of_range) {
       KOSHKIT_REPORT_ERROR_AT(
           operand_locations[operand_position],
@@ -85,8 +87,11 @@ Seq::execute(const ExecContext               &ec,
 
   let                    output               = String{cxt.scratch_allocator()};
   static constexpr usize OUTPUT_BUFFER_LENGTH = 64 * 1024;
+
   output.reserve(OUTPUT_BUFFER_LENGTH);
+
   char value_text[21];
+
   if (increment > 0)
     for (i64 value = first; value <= last; value += increment) {
       output += utils::int_to_text_into(value, value_text, sizeof(value_text));
@@ -95,7 +100,9 @@ Seq::execute(const ExecContext               &ec,
         ec.print_to_stdout(output);
         output.clear();
       }
+
       let const is_step_overflow = value > INT64_MAX - increment;
+
       if (is_step_overflow) break;
     }
   else
@@ -106,7 +113,9 @@ Seq::execute(const ExecContext               &ec,
         ec.print_to_stdout(output);
         output.clear();
       }
+
       let const is_step_underflow = value < INT64_MIN - increment;
+
       if (is_step_underflow) break;
     }
 

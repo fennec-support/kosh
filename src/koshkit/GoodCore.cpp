@@ -54,9 +54,11 @@ print_progress(const ExecContext     &ec,
                goodcore_progress_mode mode) throws -> void
 {
   if (mode == goodcore_progress_mode::Hidden) return;
+
   let const is_terminal  = colors::stderr_is_a_terminal();
   let const should_color = colors::stderr_wants_color();
   let       output       = String{heap_allocator()};
+
   if (is_terminal) output += "\r\x1b[2K";
   append_report_text(output, "goodcore: ", colors::ansi::BOLD_CYAN,
                      should_color);
@@ -71,6 +73,7 @@ run_tool(const Path         &tool,
          os::measured_output output) throws -> bool
 {
   let command = ArrayList<String>{heap_allocator()};
+
   command.reserve(arguments.count() + 1);
   command.push(tool.text().clone());
 
@@ -87,6 +90,7 @@ write_text_file(StringView path, StringView text) throws -> bool
 {
   let const descriptor =
       os::open_file_descriptor(path, os::file_open_mode::Truncate);
+
   if (!descriptor.has_value()) return false;
   defer { unused(os::close_fd(*descriptor)); };
 
@@ -108,15 +112,18 @@ stripped_root(StringView path) wontthrow -> StringView
 }
 
 fn
-copy_into_root(const Path &stage, StringView source, Allocator allocator) throws
-    -> bool
+copy_into_root(const Path &stage,
+               StringView  source,
+               Allocator   allocator) throws -> bool
 {
   if (!Path{source, allocator}.is_regular_file()) return false;
 
   let const relative = stripped_root(source);
+
   if (relative.is_empty()) return false;
 
   let destination = stage.clone();
+
   destination.append("root");
   destination.append(relative);
   if (!make_directories(destination.parent(), 0700)) return false;
@@ -151,8 +158,10 @@ collect_paths_from_output(StringView         output,
   for (let view : utils::split_lines(output, allocator,
                                      utils::line_terminator_mode::Discard))
   {
-    view            = view.trim_blanks();
+    view = view.trim_blanks();
+
     let const start = view.find_character('/');
+
     if (!start.has_value()) continue;
 
     usize end_position = *start;
@@ -171,31 +180,39 @@ collect_paths_from_output(StringView         output,
 }
 
 fn
-infer_binary(EvalContext &cxt, StringView core, Allocator allocator) throws
-    -> Maybe<String>
+infer_binary(EvalContext &cxt,
+             StringView   core,
+             Allocator    allocator) throws -> Maybe<String>
 {
   let const file = resolve_util_program(cxt, "file");
+
   if (!file.has_value()) return None;
 
   let arguments = ArrayList<String>{heap_allocator()};
+
   arguments.push(String{core});
+
   let const output =
       capture_util_program_output(*file, steal(arguments), 30'000'000'000);
+
   if (!output.has_value()) return None;
 
   constexpr StringView markers[] = {"execfn: '", "from '"};
 
   for (let const marker : markers) {
     let const marker_position = output->view().find_substring(marker);
+
     if (!marker_position.has_value()) continue;
 
     let const start_position = *marker_position + marker.length;
     let const remainder      = output->view().substring_of_length(
         start_position, output->length() - start_position);
     let const end_position = remainder.find_character('\'');
+
     if (!end_position.has_value()) continue;
 
     let const candidate = remainder.substring_of_length(0, *end_position);
+
     if (Path{candidate, allocator}.is_regular_file())
       return String{allocator, candidate};
 
@@ -204,6 +221,7 @@ infer_binary(EvalContext &cxt, StringView core, Allocator allocator) throws
                                       ProgramResolver::SearchMode::First,
                                       ProgramResolver::Requirement::Runnable,
                                       ProgramResolver::CachePolicy::Bypass);
+
     if (!matches.is_empty()) return matches[0].text().clone();
   }
 
@@ -219,6 +237,7 @@ collect_core_libraries(EvalContext       &cxt,
 {
   if (let const gdb = resolve_util_program(cxt, "gdb")) {
     let arguments = ArrayList<String>{heap_allocator()};
+
     arguments.push(String{"--batch"});
     arguments.push(String{"--nx"});
     arguments.push(String{"--eval-command=info sharedlibrary"});
@@ -231,10 +250,12 @@ collect_core_libraries(EvalContext       &cxt,
   }
 
   let const platform_tools = os::goodcore_tools();
+
   if (let const dependency_tool =
           resolve_util_program(cxt, platform_tools.dependency_program))
   {
     let arguments = ArrayList<String>{heap_allocator()};
+
     if (platform_tools.is_library_flag_dependency) arguments.push(String{"-L"});
     arguments.push(String{binary});
     if (let const output = capture_util_program_output(
@@ -255,8 +276,7 @@ fn
 GoodCore::execute(const ExecContext               &ec,
                   EvalContext                     &cxt,
                   const ArrayList<String>         &args,
-                  const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+                  const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
@@ -265,20 +285,22 @@ GoodCore::execute(const ExecContext               &ec,
   let const progress_mode = FLAG_GOODCORE_QUIET.is_enabled()
                                 ? goodcore_progress_mode::Hidden
                                 : goodcore_progress_mode::Visible;
-  defer
-  {
+
+  defer {
     if (progress_mode == goodcore_progress_mode::Visible &&
         colors::stderr_is_a_terminal())
     {
       ec.print_to_stderr("\r\x1b[2K\n");
     }
   };
+
   if (!has_pid && operands.is_empty()) {
     return report_usage_error(ec, cxt, args[0].view());
   }
 
   if (has_pid && !operands.is_empty()) {
     let conflict_location = FLAG_GOODCORE_PID.value_location();
+
     if (operand_locations[0].position > conflict_location.position)
       conflict_location = operand_locations[0];
     KOSHKIT_REPORT_ERROR_AT(conflict_location, "conflicting input",
@@ -286,6 +308,7 @@ GoodCore::execute(const ExecContext               &ec,
 
     return 2;
   }
+
   if (operands.count() > 1) {
     KOSHKIT_REPORT_ERROR_AT(operand_locations[1],
                             "extra operand '" + operands[1] + "'",
@@ -296,11 +319,13 @@ GoodCore::execute(const ExecContext               &ec,
 
   if (has_pid && FLAG_GOODCORE_BINARY.is_set()) {
     let conflict_location = FLAG_GOODCORE_PID.value_location();
+
     if (FLAG_GOODCORE_BINARY.value_location().position >
         conflict_location.position)
     {
       conflict_location = FLAG_GOODCORE_BINARY.value_location();
     }
+
     KOSHKIT_REPORT_ERROR_AT(
         conflict_location, "conflicting flags",
         "--binary applies only when packaging an existing core file");
@@ -309,9 +334,11 @@ GoodCore::execute(const ExecContext               &ec,
   }
 
   i64 process_id = 0;
+
   if (has_pid) {
     let const parsed = utils::parse_integer_in_base(FLAG_GOODCORE_PID.value(),
                                                     nullptr, int_base::decimal);
+
     if (parsed.is_error() || parsed.value() <= 0) {
       KOSHKIT_REPORT_ERROR_AT(FLAG_GOODCORE_PID.value_location(),
                               "invalid process id",
@@ -319,11 +346,13 @@ GoodCore::execute(const ExecContext               &ec,
 
       return 1;
     }
+
     process_id = parsed.value();
   }
 
   let binary = Maybe<String>{};
   let paths  = ArrayList<String>{allocator};
+
   if (has_pid) {
     for (let const &file : os::list_process_open_files(
              process_id, allocator, os::process_open_file_detail::PathsOnly))
@@ -331,6 +360,7 @@ GoodCore::execute(const ExecContext               &ec,
       if (file.use == os::process_file_use::Executable) {
         binary = file.path.clone();
       }
+
       if (file.use == os::process_file_use::Executable ||
           file.use == os::process_file_use::Mapped)
       {
@@ -352,6 +382,7 @@ GoodCore::execute(const ExecContext               &ec,
                                    ? FLAG_GOODCORE_BINARY.value_location()
                                : has_pid ? FLAG_GOODCORE_PID.value_location()
                                          : operand_locations[0];
+
     report_soft_koshkit_util_error(ec, cxt, error_location, args[0].view(),
                                    "executable not found",
                                    "pass its path with --binary");
@@ -361,16 +392,20 @@ GoodCore::execute(const ExecContext               &ec,
 
   let const stage_directory =
       os::make_temp_directory(Path::temp_directory(), "goodcore");
+
   if (!stage_directory.has_value()) {
     report_soft_koshkit_error(ec, cxt, "cannot create staging directory",
                               os::last_system_error_message());
 
     return 1;
   }
+
   let const stage = *stage_directory;
+
   defer { remove_stage(stage, allocator); };
 
   let dump_directory = stage.clone();
+
   dump_directory.append("dump");
   if (!os::make_directory(dump_directory.view(), 0700)) {
     report_soft_koshkit_error(ec, cxt, "cannot create dump directory",
@@ -380,14 +415,19 @@ GoodCore::execute(const ExecContext               &ec,
   }
 
   let core = dump_directory.clone();
+
   core.append("core");
   if (has_pid) {
     print_progress(ec, "capturing process core", progress_mode);
+
     let const platform_tools = os::goodcore_tools();
     let       debugger       = Maybe<Path>{};
+
     if (!platform_tools.debugger_program.is_empty())
       debugger = resolve_util_program(cxt, platform_tools.debugger_program);
+
     let capture_arguments = ArrayList<String>{heap_allocator()};
+
     switch (platform_tools.capture_mode) {
     case os::goodcore_capture_mode::Lldb:
       capture_arguments.push(String{"--batch"});
@@ -398,13 +438,16 @@ GoodCore::execute(const ExecContext               &ec,
       capture_arguments.push(String{"-o"});
       capture_arguments.push(String{"process detach"});
       break;
+
     case os::goodcore_capture_mode::Gcore:
       capture_arguments.push(String{"-o"});
       capture_arguments.push(core.text().clone());
       capture_arguments.push(String::from(process_id, heap_allocator()));
       break;
+
     case os::goodcore_capture_mode::Unsupported: break;
     }
+
     if (!debugger.has_value() || !run_tool(*debugger, steal(capture_arguments),
                                            os::measured_output::Inherit))
     {
@@ -414,9 +457,11 @@ GoodCore::execute(const ExecContext               &ec,
 
       return 1;
     }
+
     if (platform_tools.capture_mode == os::goodcore_capture_mode::Gcore) {
       let const captured_core = Path{
           core.text() + "." + String::from(process_id, allocator), allocator};
+
       if (!os::rename_path(captured_core.view(), core.view())) {
         report_soft_koshkit_error(ec, cxt, "capture failed",
                                   "the debugger produced no usable core file");
@@ -426,7 +471,9 @@ GoodCore::execute(const ExecContext               &ec,
     }
   } else {
     print_progress(ec, "copying existing core", progress_mode);
+
     let const source = Path{operands[0].view(), allocator}.to_absolute();
+
     if (!source.is_regular_file()) {
       report_soft_koshkit_error(ec, cxt, "core file not found",
                                 "the operand must refer to a regular file");
@@ -446,6 +493,7 @@ GoodCore::execute(const ExecContext               &ec,
   }
 
   os::file_status core_status{};
+
   if (!os::stat_path_following(core.view(), core_status) ||
       core_status.size == 0)
   {
@@ -463,6 +511,7 @@ GoodCore::execute(const ExecContext               &ec,
                  progress_mode);
 
   append_unique_path(paths, binary->view(), allocator);
+
   usize copied_path_count = 0;
 
   for (let const &path : paths) {
@@ -477,6 +526,7 @@ GoodCore::execute(const ExecContext               &ec,
   }
 
   let metadata = String{allocator};
+
   metadata += "Core: ";
   metadata += "dump/core";
   metadata += "\nExecutable: ";
@@ -486,6 +536,7 @@ GoodCore::execute(const ExecContext               &ec,
   metadata += "\n";
   if (let const uname = resolve_util_program(cxt, "uname")) {
     let uname_arguments = ArrayList<String>{heap_allocator()};
+
     uname_arguments.push(String{"-a"});
     if (let const output = capture_util_program_output(
             *uname, steal(uname_arguments), 30'000'000'000))
@@ -497,7 +548,9 @@ GoodCore::execute(const ExecContext               &ec,
       }
     }
   }
+
   let metadata_path = stage.clone();
+
   metadata_path.append("INFO.txt");
   if (!write_text_file(metadata_path.view(), metadata.view())) {
     report_soft_koshkit_error(ec, cxt, "cannot write metadata",
@@ -517,6 +570,7 @@ GoodCore::execute(const ExecContext               &ec,
                         : zstd.has_value() ? StringView{".tar.zst"}
                                            : StringView{".tar.gz"})}
                 .to_absolute();
+
   if (output.is_same_file_as(Path{binary->view(), allocator}) ||
       (!has_pid && output.is_same_file_as(Path{operands[0].view(), allocator})))
   {
@@ -527,6 +581,7 @@ GoodCore::execute(const ExecContext               &ec,
   }
 
   let const tar = resolve_util_program(cxt, "tar");
+
   if (!tar.has_value()) {
     report_soft_koshkit_error(ec, cxt, "tar is unavailable",
                               "install tar or place it on PATH");
@@ -536,21 +591,28 @@ GoodCore::execute(const ExecContext               &ec,
 
   let const temporary_output =
       os::write_to_named_temp_file(output.parent(), ".goodcore", StringView{});
+
   if (!temporary_output.has_value()) {
     report_soft_koshkit_error(ec, cxt, "cannot create temporary archive",
                               os::last_system_error_message());
 
     return 1;
   }
-  defer { unused(os::remove_file(temporary_output->text().view())); };
+
+  defer {
+    unused(os::remove_file(temporary_output->text().view()));
+  };
 
   let archive_arguments = ArrayList<String>{heap_allocator()};
+
   archive_arguments.push(String{"-cf"});
   archive_arguments.push(temporary_output->text().clone());
   archive_arguments.push(String{"-C"});
   archive_arguments.push(stage.text().clone());
   archive_arguments.push(String{"."});
+
   bool did_archive = false;
+
   if (FLAG_GOODCORE_NO_COMPRESS.is_enabled()) {
     print_progress(ec, "creating tar archive", progress_mode);
     did_archive =
@@ -558,21 +620,27 @@ GoodCore::execute(const ExecContext               &ec,
   } else if (zstd.has_value()) {
     print_progress(ec, "creating tar archive and compressing with zstd",
                    progress_mode);
+
     let const temporary_tar = os::write_to_named_temp_file(
         output.parent(), ".goodcore-tar", StringView{});
+
     if (!temporary_tar.has_value()) {
       report_soft_koshkit_error(ec, cxt, "cannot create temporary archive",
                                 os::last_system_error_message());
 
       return 1;
     }
-    defer { unused(os::remove_file(temporary_tar->text().view())); };
+
+    defer {
+      unused(os::remove_file(temporary_tar->text().view()));
+    };
 
     archive_arguments[1] = temporary_tar->text().clone();
     did_archive =
         run_tool(*tar, steal(archive_arguments), os::measured_output::Suppress);
     if (did_archive) {
       let compression_arguments = ArrayList<String>{heap_allocator()};
+
       compression_arguments.push(String{"-q"});
       compression_arguments.push(String{"-f"});
       compression_arguments.push(temporary_tar->text().clone());
@@ -607,6 +675,7 @@ GoodCore::execute(const ExecContext               &ec,
     let const should_color = koshkit_should_color();
     let       table        = ReportTable{allocator};
     let       cells        = ArrayList<report_table_cell_view>{allocator};
+
     cells.reserve(2);
     cells.push({"Archive", colors::ansi::BOLD_CYAN});
     cells.push({output.view(), colors::ansi::GREEN});
@@ -616,12 +685,15 @@ GoodCore::execute(const ExecContext               &ec,
     cells.push({binary->view(), colors::ansi::GREEN});
     table.add_row(cells);
     cells.clear();
+
     let const file_count = String::from(copied_path_count, allocator);
+
     cells.push({"Files", colors::ansi::BOLD_CYAN});
     cells.push({file_count.view(), colors::ansi::GREEN});
     table.add_row(cells);
 
     let result = String{allocator};
+
     result += table.to_string(should_color, "").view();
     ec.print_to_stdout(result);
   }

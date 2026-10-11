@@ -35,6 +35,7 @@ parse_integer(StringView text) throws -> Maybe<i64>
 {
   bool      is_out_of_range = false;
   let const parsed          = utils::parse_decimal_i64(text, &is_out_of_range);
+
   if (parsed.is_error() || is_out_of_range) {
     return None;
   }
@@ -96,6 +97,7 @@ public:
 
     return args[pos];
   }
+
   pure bool
   at_end() const wontthrow
   {
@@ -106,6 +108,7 @@ public:
   fail(StringView message) throws
   {
     let error = make_error_for_arg(ec, pos, message);
+
     error.set_command_status(2);
     throw error;
   }
@@ -124,6 +127,7 @@ public:
 
       return size.has_value() && size.value() > 0;
     }
+
     using file_predicate = bool (Path::*)() const;
     static constexpr static_string_entry<file_predicate> ENTRIES[] = {
         {SSK("-e"), &Path::exists                     },
@@ -151,10 +155,12 @@ public:
 
     if (op == "-t") {
       let const file_descriptor = parse_integer(operand.view());
+
       if (!file_descriptor.has_value()) return false;
 
       return os::shell_fd_is_a_tty(static_cast<int>(*file_descriptor));
     }
+
     fail(
         StringView{"'"} + op +
         "' is not a known unary operator, expected one of -z -n -e -f -d -s -r "
@@ -169,6 +175,7 @@ public:
                   const String &right) throws
   {
     let const found = BINARY_OPERATORS.find(op.view());
+
     if (!found.has_value()) {
       fail(StringView{"'"} + op +
            "' is not a known binary operator, expected one of = != < > -eq "
@@ -201,8 +208,10 @@ public:
 
     let const left_number  = parse_integer(left);
     let const right_number = parse_integer(right);
+
     if (!left_number.has_value() || !right_number.has_value()) {
       let const &not_a_number = left_number.has_value() ? right : left;
+
       fail(StringView{"Cannot compare with '"} + op + "', '" + not_a_number +
            "' is not an integer");
 
@@ -230,6 +239,7 @@ public:
         SSK("-O"), SSK("-G"), SSK("-t"),
     };
     static constexpr StaticStringSet UNARY_OPS{KEYS};
+
     if (has_name_reference_test && s == "-R") {
       return true;
     }
@@ -273,19 +283,24 @@ public:
 
       return false;
     }
+
     if (current() == "!") {
       if (pos + 1 >= end) {
         pos++;
 
         return true;
       }
+
       pos++;
 
       return !parse_factor();
     }
+
     if (is_open_paren_token(pos)) {
       pos++;
+
       let const result = parse_expression();
+
       if (at_end() || current() != ")") {
         fail("A ')' is expected");
       } else {
@@ -294,13 +309,16 @@ public:
 
       return result;
     }
+
     if (is_unary_operator_token(pos)) {
       let const &op      = args[pos];
       let const &operand = args[pos + 1];
+
       pos += 2;
 
       return evaluate_unary(op, operand);
     }
+
     if (pos + 1 < end && is_binary_operator(args[pos + 1])) {
       if (pos + 2 >= end) {
         fail(StringView{"An argument is expected after '"} + args[pos + 1] +
@@ -309,14 +327,18 @@ public:
 
         return false;
       }
+
       let const &left  = args[pos];
       let const &op    = args[pos + 1];
       let const &right = args[pos + 2];
+
       pos += 3;
 
       return evaluate_binary(left, op, right);
     }
+
     let const result = !current().is_empty();
+
     pos++;
 
     return result;
@@ -329,8 +351,10 @@ public:
 
     while (!at_end() && current() == "-a") {
       pos++;
+
       let const right = parse_factor();
-      is_true         = is_true && right;
+
+      is_true = is_true && right;
     }
 
     return is_true;
@@ -343,8 +367,10 @@ public:
 
     while (!at_end() && current() == "-o") {
       pos++;
+
       let const right = parse_term();
-      is_true         = is_true || right;
+
+      is_true = is_true || right;
     }
 
     return is_true;
@@ -355,9 +381,9 @@ public:
   {
     let should_negate = false;
 
-    loop
-    {
+    loop {
       let const count = end - pos;
+
       if (count < 1) return !should_negate;
 
       if (count == 2 && args[pos] == "-o" &&
@@ -365,6 +391,7 @@ public:
       {
         let const result =
             query_shell_option(cxt, args[pos + 1].view()).value_or(false);
+
         pos = end;
 
         return should_negate ? !result : result;
@@ -373,6 +400,7 @@ public:
       if (count == 3 && is_binary_operator(args[pos + 1])) {
         let const result =
             evaluate_binary(args[pos], args[pos + 1], args[pos + 2]);
+
         pos = end;
 
         return should_negate ? !result : result;
@@ -384,12 +412,14 @@ public:
           end--;
           continue;
         }
+
         if (args[pos] == "!") {
           should_negate = !should_negate;
           pos++;
           continue;
         }
       }
+
       break;
     }
 
@@ -405,6 +435,7 @@ fn
 Test::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let const &arguments = ec.args();
+
   ASSERT(!arguments.is_empty());
 
   if (arguments.count() == 2 && arguments[1] == "--help" &&
@@ -415,12 +446,15 @@ Test::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   }
 
   usize expression_end = arguments.count();
+
   if (ec.program() == "[") {
     if (arguments.count() < 2 || arguments[arguments.count() - 1] != "]") {
       let error = Error{"The closing ']' is missing"};
+
       error.set_command_status(2);
       throw error;
     }
+
     expression_end = arguments.count() - 1;
   }
 
@@ -436,13 +470,16 @@ Test::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                                 cxt.runtime_state().is_bash_compatible(),
                                 cxt.runtime_state().bash_additions_enabled()};
   let const result    = evaluator.evaluate_with_posix_argument_count_rules();
+
   if (evaluator.pos != evaluator.end) {
     ASSERT(evaluator.pos < evaluator.end);
+
     let error = make_error_for_arg(
         ec, evaluator.pos,
         StringView{"'"} + arguments[evaluator.pos] +
             "' is an unexpected argument",
         "A test takes an operator or an operand at this position");
+
     error.set_command_status(2);
     throw error;
   }

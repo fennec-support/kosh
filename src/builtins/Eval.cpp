@@ -31,17 +31,21 @@ Eval::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   ASSERT(!ec.args().is_empty());
 
   usize first = 1;
+
   if (ec.args().count() > 1) {
     let const &lead = ec.args()[1];
+
     if (lead == "--") {
       first = 2;
     } else if (lead.length() >= 2 && lead[0] == '-') {
       let invalid_option = String{cxt.scratch_allocator()};
+
       invalid_option += lead[0];
       invalid_option.append(lead.view().substring_of_length(
           1, utils::decode_utf8(lead.view(), 1, 0).length));
 
       let note = String{cxt.scratch_allocator()};
+
       note += "Try `";
       note.append(ec.program().view());
       note += " --help` for more info";
@@ -67,7 +71,10 @@ Eval::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       joined.length());
 
   let const saved_command = cxt.execution_store().save_current_command();
-  defer { cxt.execution_store().restore_current_command(saved_command); };
+
+  defer {
+    cxt.execution_store().restore_current_command(saved_command);
+  };
 
   return cxt.run_source(
       joined, "eval", ec.source_location(), StringView{"eval"}, nullptr,

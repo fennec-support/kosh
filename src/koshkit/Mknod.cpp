@@ -59,6 +59,7 @@ fn
 parse_device_number(StringView text) throws -> Maybe<u64>
 {
   let const parsed = utils::parse_decimal_u64(text);
+
   if (parsed.is_error()) return None;
 
   return parsed.value();
@@ -76,12 +77,12 @@ fn
 Mknod::execute(const ExecContext               &ec,
                EvalContext                     &cxt,
                const ArrayList<String>         &args,
-               const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+               const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (operands.is_empty()) return report_usage_error(ec, cxt, args[0].view());
+
   let const allocator     = cxt.scratch_allocator();
   let       type_text     = StringView{};
   let       type_location = operand_locations[0];
@@ -90,6 +91,7 @@ Mknod::execute(const ExecContext               &ec,
       static_cast<usize>(FLAG_MKNOD_FIFO.is_enabled()) +
       static_cast<usize>(FLAG_MKNOD_CHARACTER.is_enabled()) +
       static_cast<usize>(FLAG_MKNOD_BLOCK.is_enabled());
+
   if (named_type_count > 1) {
     KOSHKIT_REPORT_ERROR_AT(
         FLAG_MKNOD_TYPE.is_set()       ? FLAG_MKNOD_TYPE.value_location()
@@ -102,6 +104,7 @@ Mknod::execute(const ExecContext               &ec,
 
     return 1;
   }
+
   if (FLAG_MKNOD_TYPE.is_set()) {
     type_text     = FLAG_MKNOD_TYPE.value();
     type_location = FLAG_MKNOD_TYPE.value_location();
@@ -125,6 +128,7 @@ Mknod::execute(const ExecContext               &ec,
   }
 
   let const type = node_type(type_text);
+
   if (!type.has_value()) {
     KOSHKIT_REPORT_ERROR_AT(type_location,
                             "Invalid node type '" +
@@ -135,6 +139,7 @@ Mknod::execute(const ExecContext               &ec,
   }
 
   let const is_fifo = *type == FIFO_TYPE;
+
   if (is_fifo && (FLAG_MKNOD_MAJOR.is_set() || FLAG_MKNOD_MINOR.is_set())) {
     KOSHKIT_REPORT_ERROR_AT(
         FLAG_MKNOD_MAJOR.is_set() ? FLAG_MKNOD_MAJOR.value_location()
@@ -156,16 +161,19 @@ Mknod::execute(const ExecContext               &ec,
   bool           has_minor_text = false;
   Maybe<u64>     major_number;
   Maybe<u64>     minor_number;
+
   if (FLAG_MKNOD_MAJOR.is_set()) {
     major_text     = FLAG_MKNOD_MAJOR.value();
     major_location = FLAG_MKNOD_MAJOR.value_location();
     has_major_text = true;
   }
+
   if (FLAG_MKNOD_MINOR.is_set()) {
     minor_text     = FLAG_MKNOD_MINOR.value();
     minor_location = FLAG_MKNOD_MINOR.value_location();
     has_minor_text = true;
   }
+
   if (has_named_type && !is_fifo && !operands.is_empty() &&
       parse_device_number(operands[0].view()).has_value())
   {
@@ -176,6 +184,7 @@ Mknod::execute(const ExecContext               &ec,
       major_location = operand_locations[next_operand_index++];
       has_major_text = true;
     }
+
     if (!has_minor_text && next_operand_index < operands.count() &&
         parse_device_number(operands[next_operand_index].view()).has_value())
     {
@@ -183,21 +192,25 @@ Mknod::execute(const ExecContext               &ec,
       minor_location = operand_locations[next_operand_index++];
       has_minor_text = true;
     }
+
     if (next_operand_index < operands.count())
       name_operand_index = next_operand_index++;
   }
+
   if (!is_fifo) {
     if (!has_major_text && operands.count() > next_operand_index) {
       major_text     = operands[next_operand_index].view();
       major_location = operand_locations[next_operand_index++];
       has_major_text = true;
     }
+
     if (!has_major_text) {
       KOSHKIT_REPORT_ERROR_AT(type_location, "Missing major device number",
                               "provide a major device number");
 
       return 1;
     }
+
     major_number = parse_device_number(major_text);
     if (!major_number.has_value()) {
       KOSHKIT_REPORT_ERROR_AT(major_location,
@@ -207,17 +220,20 @@ Mknod::execute(const ExecContext               &ec,
 
       return 1;
     }
+
     if (!has_minor_text && operands.count() > next_operand_index) {
       minor_text     = operands[next_operand_index].view();
       minor_location = operand_locations[next_operand_index++];
       has_minor_text = true;
     }
+
     if (!has_minor_text) {
       KOSHKIT_REPORT_ERROR_AT(type_location, "Missing minor device number",
                               "provide a minor device number");
 
       return 1;
     }
+
     minor_number = parse_device_number(minor_text);
     if (!minor_number.has_value()) {
       KOSHKIT_REPORT_ERROR_AT(minor_location,
@@ -227,6 +243,7 @@ Mknod::execute(const ExecContext               &ec,
 
       return 1;
     }
+
     if (*major_number > 0xfffu) {
       KOSHKIT_REPORT_ERROR_AT(major_location,
                               "Major device number '" +
@@ -236,6 +253,7 @@ Mknod::execute(const ExecContext               &ec,
 
       return 1;
     }
+
     if (*minor_number > 0xfffffu) {
       KOSHKIT_REPORT_ERROR_AT(minor_location,
                               "Minor device number '" +
@@ -254,22 +272,27 @@ Mknod::execute(const ExecContext               &ec,
 
     return 1;
   }
+
   if (name_operand_index == SIZE_MAX) {
     KOSHKIT_REPORT_ERROR_AT(type_location, "Missing node name",
                             "provide the path to create");
 
     return 1;
   }
+
   u32 mode = 0666;
+
   if (FLAG_MKNOD_MODE.is_set()) {
     let const parsed = utils::parse_file_mode(FLAG_MKNOD_MODE.value(), mode, 0,
                                               utils::file_kind_mode::Regular);
+
     if (!parsed.has_value()) {
       KOSHKIT_REPORT_ERROR_AT(FLAG_MKNOD_MODE.value_location(), "Invalid mode",
                               "use an octal or symbolic permission mode");
 
       return 1;
     }
+
     mode = *parsed;
   }
 
@@ -280,6 +303,7 @@ Mknod::execute(const ExecContext               &ec,
                : os::make_device_node(name.view(), mode | *type,
                                       static_cast<u32>(*major_number),
                                       static_cast<u32>(*minor_number));
+
   if (!did_create) {
     report_soft_koshkit_util_error(ec, cxt, args[0].view(),
                                    "Cannot create '" + name +

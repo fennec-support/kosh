@@ -44,6 +44,7 @@ owner_name_for_uid(u32                              uid,
   let const looked_up = os::uid_to_username(uid);
   let       name = looked_up.has_value() ? String{allocator, looked_up->view()}
                                          : String::from(uid, allocator);
+
   cache.push(uid_name_cache_entry{uid, name.clone()});
 
   return name;
@@ -57,7 +58,8 @@ append_left(String &output, StringView text, usize width) throws -> void
 }
 
 static fn
-append_right(String &output, StringView text, usize width) throws -> void
+append_right(String &output, StringView text, usize width) throws
+    -> void
 {
   output.append_repeated(' ', width - text.length);
   output += text;
@@ -71,6 +73,7 @@ render_aux_without_sampled_columns(
 {
   ArrayList<uid_name_cache_entry> uid_cache{allocator};
   ArrayList<String>               owners{allocator};
+
   owners.reserve(processes.count());
 
   usize user_width = 4;
@@ -80,13 +83,21 @@ render_aux_without_sampled_columns(
 
   for (let const &process : processes) {
     let owner = owner_name_for_uid(process.owner_id, uid_cache, allocator);
+
     if (owner.count() > user_width) user_width = owner.count();
+
     let const pid_text = String::from(process.pid, allocator);
+
     if (pid_text.count() > pid_width) pid_width = pid_text.count();
+
     let const vsz_text = String::from(process.virtual_kib, allocator);
+
     if (vsz_text.count() > vsz_width) vsz_width = vsz_text.count();
+
     let const rss_text = String::from(process.resident_kib, allocator);
+
     if (rss_text.count() > rss_width) rss_width = rss_text.count();
+
     owners.push(steal(owner));
   }
 
@@ -101,6 +112,7 @@ render_aux_without_sampled_columns(
 
   for (usize i = 0; i < processes.count(); i++) {
     const os::process_entry &process = processes[i];
+
     append_left(output, owners[i].view(), user_width);
     output += ' ';
     append_right(output, String::from(process.pid, allocator).view(),
@@ -124,7 +136,8 @@ fn
 Ps::execute(const ExecContext               &ec,
             EvalContext                     &cxt,
             const ArrayList<String>         &args,
-            const ArrayList<SourceLocation> &arg_locations) const throws -> i32
+            const ArrayList<SourceLocation> &arg_locations) const throws
+    -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
@@ -140,6 +153,7 @@ Ps::execute(const ExecContext               &ec,
                       : os::process_detail::Basic);
 
   let output = String{cxt.scratch_allocator()};
+
   if (should_show_aux) {
     render_aux_without_sampled_columns(processes, output,
                                        cxt.scratch_allocator());
@@ -152,6 +166,7 @@ Ps::execute(const ExecContext               &ec,
 
   for (let const &process : processes) {
     let const pid = String::from(process.pid, cxt.scratch_allocator());
+
     output.append_repeated(' ', pid.count() < 5 ? 5 - pid.count() : 0);
     output += pid.view();
     output += ' ';

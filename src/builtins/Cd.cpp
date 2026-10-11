@@ -46,14 +46,17 @@ cdpath_search_applies(const String &operand) throws -> bool
   {
     return false;
   }
+
   if (operand == "." || operand == "..") {
     return false;
   }
+
   if (operand.length() >= 2 && operand[0] == '.' &&
       os::is_directory_separator(operand[1]))
   {
     return false;
   }
+
   if (operand.length() >= 3 && operand[0] == '.' && operand[1] == '.' &&
       os::is_directory_separator(operand[2]))
   {
@@ -79,6 +82,7 @@ Cd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   while (operand_index < ec.args().count()) {
     let const option = ec.args()[operand_index].view();
+
     if (option == "--") {
       operand_index++;
       break;
@@ -87,6 +91,7 @@ Cd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     if (option.length < 2 || option[0] != '-') {
       break;
     }
+
     let is_options = true;
 
     for (usize k = 1; k < option.length; k++)
@@ -107,6 +112,7 @@ Cd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     let too_many = ErrorWithLocationAndDetails{
         ec.source_location(), "cd accepts only a single directory operand",
         "Quote a path that contains spaces"};
+
     too_many.set_command_status(2);
     throw too_many;
   }
@@ -118,6 +124,7 @@ Cd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   if (is_to_previous) {
     let const old_directory = cxt.get_variable_value("OLDPWD");
+
     if (!old_directory.has_value() || old_directory->is_empty()) {
       throw ErrorWithLocationAndDetails{
           ec.source_location(),
@@ -125,6 +132,7 @@ Cd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
           "set",
           "Change directory at least once before `cd -`"};
     }
+
     arg_path.append(old_directory->view());
   } else if (operand_count > 0) {
     if (ec.args()[operand_index].is_empty() &&
@@ -135,9 +143,11 @@ Cd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
       return 1;
     }
+
     arg_path.append(ec.args()[operand_index]);
   } else {
     let const home_directory = os::get_home_directory();
+
     if (!home_directory.has_value())
       throw ErrorWithLocationAndDetails{
           ec.source_location(), "Unable to determine the home directory",
@@ -147,10 +157,11 @@ Cd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   LOG(Info, "cd changing directory to '%s'", arg_path.c_str());
 
-  let       target                      = Path{arg_path};
-  let       old_directory               = Path{};
-  let       is_logical_target_available = true;
-  let const do_resolve_logical_target   = [](const Path &raw_target,
+  let target                      = Path{arg_path};
+  let old_directory               = Path{};
+  let is_logical_target_available = true;
+
+  let const do_resolve_logical_target = [](const Path &raw_target,
                                            bool       &did_fail_before_dotdot) {
     let   logical_candidate  = Path{raw_target.view().substring_of_length(
         0, os::path_root_length(raw_target.view()))};
@@ -164,6 +175,7 @@ Cd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       }
 
       if (component_position >= raw_target.count()) break;
+
       let const component_start = component_position;
 
       while (component_position < raw_target.count() &&
@@ -174,6 +186,7 @@ Cd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
       let const component = raw_target.view().substring_of_length(
           component_start, component_position - component_start);
+
       if (component == StringView{"."}) continue;
       if (component == StringView{".."}) {
         if (!logical_candidate.is_directory()) {
@@ -185,6 +198,7 @@ Cd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         logical_candidate = logical_candidate.normalized();
         continue;
       }
+
       logical_candidate.append(component);
     }
 
@@ -192,6 +206,7 @@ Cd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   };
 
   let should_print_target = is_to_previous;
+
   if (!is_to_previous && operand_count > 0 && cdpath_search_applies(arg_path)) {
     if (let const cdpath = cxt.get_variable_value("CDPATH")) {
       let const entries = cdpath->view();
@@ -210,12 +225,15 @@ Cd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                                                : Path{entry}.append(arg_path.view());
         let       resolved  = candidate;
         let       is_candidate_available = true;
+
         if (is_physical) {
           if (resolved.is_relative()) {
             let current_directory = Path::current_directory();
+
             if (current_directory.is_empty()) break;
             resolved = current_directory.append(resolved.view());
           }
+
           if (let canonical = os::canonical_path(resolved)) {
             resolved = canonical.take();
           } else {
@@ -223,11 +241,14 @@ Cd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
           }
         } else {
           resolved = resolved.to_absolute_without_normalizing();
+
           let did_fail_before_dotdot = false;
+
           resolved =
               do_resolve_logical_target(resolved, did_fail_before_dotdot);
           is_candidate_available = !did_fail_before_dotdot;
         }
+
         if (is_candidate_available && resolved.is_directory()) {
           LOG(Info, "cd resolved '%s' through CDPATH entry '%.*s'",
               arg_path.c_str(), static_cast<int>(entry.length), entry.data);
@@ -235,6 +256,7 @@ Cd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
           should_print_target = !entry.is_empty();
           break;
         }
+
         if (end >= entries.length) break;
         start = end + 1;
       }
@@ -253,6 +275,7 @@ Cd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   }
 
   let is_physical_target_available = true;
+
   if (is_physical) {
     if (target.is_relative()) {
       target = target.to_absolute_without_normalizing();
@@ -271,6 +294,7 @@ Cd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   } else {
     let raw_logical_target = Path{};
     let logical_operand    = target.view();
+
     if (target.is_absolute() || os::path_is_drive_relative(target.view())) {
       raw_logical_target = target.to_absolute_without_normalizing();
     } else {
@@ -288,6 +312,7 @@ Cd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     let did_fail_before_dotdot = false;
     let logical_candidate =
         do_resolve_logical_target(raw_logical_target, did_fail_before_dotdot);
+
     is_logical_target_available =
         !did_fail_before_dotdot && logical_candidate.is_directory();
     target = is_logical_target_available ? logical_candidate.normalized()
@@ -313,6 +338,7 @@ Cd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
           StringView{"Unable to change to the directory '"} + arg_path +
               "': " + os::last_system_error_message()};
     }
+
     cxt.program_resolver().working_directory_changed();
     if (!old_directory.is_empty())
       cxt.set_shell_variable("OLDPWD", old_directory.text());
@@ -328,6 +354,7 @@ Cd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   let operand_location = ec.arg_location_at(operand_index);
   let raw_operand      = arg_path.view();
+
   if (operand_index < ec.arg_locations().count()) {
     if (let const source = cxt.source_store().current_source();
         source != nullptr)
@@ -338,6 +365,7 @@ Cd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let const unavailable = utils::locate_first_unavailable_path_component(
       target, arg_path.view(), raw_operand, operand_location,
       cxt.scratch_allocator());
+
   if (!unavailable.has_value() || is_to_previous || operand_count == 0) {
     throw ErrorWithLocationAndDetails{
         ec.source_location(),
@@ -354,16 +382,19 @@ Cd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   let details = String{cxt.scratch_allocator(),
                        "Check the spelling or create it with `mkdir -p`"};
+
   if (unavailable->has_single_raw_component) {
     if (let const suggested_name = utils::suggest_directory_entry(
             unavailable->prefix.parent(), unavailable->prefix.filename()))
     {
       let suggested_path = String{cxt.scratch_allocator()};
+
       suggested_path.append(
           unavailable->typed_prefix.view().substring_of_length(
               0, unavailable->typed_component_start));
       suggested_path.append(suggested_name->view());
       let quoted_path = String{cxt.scratch_allocator()};
+
       append_shell_quoted_arg(quoted_path, suggested_path.view());
       details = "Did you mean `" + quoted_path + "`?";
     }

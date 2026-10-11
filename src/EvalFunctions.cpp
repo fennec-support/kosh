@@ -70,12 +70,12 @@ running_trap_bit(StringView condition) wontthrow -> u8
 } /* namespace */
 
 fn
-EvalContext::register_function(StringView                name,
-                               const FunctionBodyHandle &body_storage,
-                               StringView                definition_text,
-                               usize                     body_start_position,
-                               SourceLocation definition_location) throws
-    -> void
+EvalContext::register_function(
+    StringView                name,
+    const FunctionBodyHandle &body_storage,
+    StringView                definition_text,
+    usize                     body_start_position,
+    SourceLocation            definition_location) throws -> void
 {
   ASSERT(body_storage.has_value());
   ASSERT(body_storage.get_body() != nullptr);
@@ -85,7 +85,8 @@ EvalContext::register_function(StringView                name,
                 "' because it is a read only function"};
   }
 
-  let info                 = function_definition_info{};
+  let info = function_definition_info{};
+
   info.body_start_position = body_start_position;
   info.header_length       = name.length + StringView{" () \n"}.length;
   info.source_name_index   = definition_location.source_name_index;
@@ -102,13 +103,16 @@ EvalContext::register_function(StringView                name,
         body_site.line_offset;
     let const counted_body_line =
         static_cast<isize>(line_number_at_location(body_location));
+
     info.line_offset = rendered_body_line - 1;
     info.enclosing_line_count =
         counted_body_line > rendered_body_line
             ? static_cast<usize>(counted_body_line - rendered_body_line)
             : usize{0};
+
     let const in_place_body_line = static_cast<isize>(
         utils::line_number_at(defining_view, body_start_position));
+
     info.is_numbered_apart = info.enclosing_line_count != 0 ||
                              in_place_body_line != rendered_body_line;
     if (body_site.location.source_name_index != 0)
@@ -116,6 +120,7 @@ EvalContext::register_function(StringView                name,
 
     let const body_end_position =
         body_start_position + definition_text.length - info.header_length;
+
     if (body_start_position <= defining_view.length &&
         body_end_position >= body_start_position &&
         body_end_position <= defining_view.length)
@@ -128,6 +133,7 @@ EvalContext::register_function(StringView                name,
       let const after_body = defining_view.substring(body_end_position);
       let const line_length =
           after_body.find_character('\n').value_or(after_body.length);
+
       info.line_prefix =
           String{heap_allocator(), before_body.substring(line_start)};
       info.line_suffix = String{heap_allocator(),
@@ -164,6 +170,7 @@ EvalContext::source_depth_floor(usize frame_limit) const wontthrow -> usize
 {
   for (usize index = frame_limit; index > 0; index--) {
     let const &candidate = source_store().source_frames()[index - 1];
+
     if (candidate.is_source_changing) return candidate.function_call_depth;
   }
 
@@ -174,10 +181,11 @@ pure fn
 EvalContext::resolve_render_source(const SourceLocation &location,
                                    const String         *fallback_source,
                                    usize                 call_depth_limit,
-                                   usize call_depth_floor) const wontthrow
+                                   usize                 call_depth_floor) const wontthrow
     -> ResolvedRenderSource
 {
-  let resolved_source         = ResolvedRenderSource{};
+  let resolved_source = ResolvedRenderSource{};
+
   resolved_source.text        = fallback_source != nullptr
                                     ? fallback_source
                                     : source_store().current_source();
@@ -198,9 +206,11 @@ EvalContext::resolve_render_source(const SourceLocation &location,
   for (usize depth = first_depth; depth > lowest_depth; depth--) {
     let const &storage = function_store().call_frames()[depth - 1].storage;
     let const *info    = storage.get_definition_info();
+
     if (info == nullptr) continue;
 
     let const *copy = storage.get_source();
+
     if (copy == nullptr || copy->count() <= info->header_length) {
       continue;
     }
@@ -208,6 +218,7 @@ EvalContext::resolve_render_source(const SourceLocation &location,
     if (location.source_name_index != info->body_name_index) continue;
 
     let const body_length = copy->count() - info->header_length;
+
     if (location.position < info->body_start_position ||
         location.position >= info->body_start_position + body_length)
     {
@@ -215,6 +226,7 @@ EvalContext::resolve_render_source(const SourceLocation &location,
     }
 
     let const *rendered_source = resolved_source.text;
+
     if (!info->is_numbered_apart && rendered_source != nullptr &&
         rendered_source->count() >= info->body_start_position + body_length &&
         rendered_source->view().substring_of_length(info->body_start_position,
@@ -251,6 +263,7 @@ EvalContext::resolve_current_function_window(
     -> ResolvedRenderSource
 {
   let const *current = source_store().current_source();
+
   if (current == nullptr || rendered_source.data != current->view().data ||
       rendered_source.length != current->view().length)
   {
@@ -258,6 +271,7 @@ EvalContext::resolve_current_function_window(
   }
 
   let resolved_source = resolve_render_source(location);
+
   if (!resolved_source.is_windowed) return ResolvedRenderSource{};
 
   return resolved_source;
@@ -265,10 +279,10 @@ EvalContext::resolve_current_function_window(
 
 pure fn
 EvalContext::source_text_in_span(const SourceLocation &location,
-                                 usize end_position) const wontthrow
-    -> StringView
+                                 usize end_position) const wontthrow -> StringView
 {
   let const resolved_source = resolve_render_source(location);
+
   if (resolved_source.text == nullptr) return {};
 
   let const view         = resolved_source.text->view();
@@ -276,6 +290,7 @@ EvalContext::source_text_in_span(const SourceLocation &location,
   let const start = resolved_source.to_render_position(location.position);
   let const stop  = resolved_source.to_render_position(
       end_position > location_end ? end_position : location_end);
+
   if (start >= stop || stop > view.length) {
     return {};
   }
@@ -311,9 +326,11 @@ EvalContext::mark_function_readonly(StringView name) throws -> void
 }
 
 fn
-EvalContext::variable_names(Allocator result_allocator) const throws -> HashSet
+EvalContext::variable_names(Allocator result_allocator) const throws
+    -> HashSet
 {
   let names = HashSet{result_allocator};
+
   variable_store().shell_variables().for_each(
       [&](StringView name, const String &value) {
         unused(value);
@@ -343,13 +360,15 @@ EvalContext::variable_names(Allocator result_allocator) const throws -> HashSet
 }
 
 fn
-EvalContext::cached_trap_body(StringView condition, StringView action) throws
+EvalContext::cached_trap_body(StringView condition,
+                              StringView action) throws
     -> FunctionBodyHandle
 {
   if (let const cached = trap_store().cached_bodies().find(condition);
       cached.has_value())
   {
     let const *cached_source = cached->get_source();
+
     if (cached->get_body() != nullptr && cached_source != nullptr &&
         cached_source->view() == action)
     {
@@ -363,9 +382,11 @@ EvalContext::cached_trap_body(StringView condition, StringView action) throws
       static_cast<int>(condition.length), condition.data, action.length);
 
   let body_storage = FunctionBodyHandle::create(action.length);
+
   body_storage.set_definition(action, function_definition_info{});
 
   let const *stored_action = body_storage.get_source();
+
   ASSERT(stored_action != nullptr);
 
   let parser = Parser{
@@ -374,6 +395,7 @@ EvalContext::cached_trap_body(StringView condition, StringView action) throws
             ParseSession::AllocationKind::FunctionBody}
   };
   let const parsed_action = parser.construct_ast();
+
   if (parsed_action == nullptr) return FunctionBodyHandle{};
 
   body_storage.set_body(parsed_action);
@@ -383,24 +405,27 @@ EvalContext::cached_trap_body(StringView condition, StringView action) throws
 }
 
 fn
-EvalContext::run_named_trap(StringView            condition,
-                            const SourceLocation *trigger_location) throws
+EvalContext::run_named_trap(
+    StringView condition, const SourceLocation *trigger_location) throws
     -> void
 {
   trap_store().last_trap_action_status() = 0;
 
   let const condition_bit = running_trap_bit(condition);
+
   if (trap_store().is_condition_running(condition_bit)) return;
+
   let const trap = trap_store().find_active(condition);
+
   if (!trap.has_value()) return;
 
   let const action = trap->action_text.view();
 
   let const was_terminal_exec_allowed =
       execution_store().terminal_exec_allowed();
+
   execution_store().terminal_exec_allowed() = false;
-  defer
-  {
+  defer {
     execution_store().terminal_exec_allowed() = was_terminal_exec_allowed;
   };
 
@@ -417,12 +442,13 @@ EvalContext::run_named_trap(StringView            condition,
       variable_store().indexed_arrays().find("PIPESTATUS");
   let const         has_saved_pipe_statuses = current_pipe_statuses.has_value();
   ArrayList<String> saved_pipe_statuses{heap_allocator()};
+
   if (has_saved_pipe_statuses)
     saved_pipe_statuses = current_pipe_statuses->clone();
 
   let was_pipe_status_restored = false;
-  defer
-  {
+
+  defer {
     trap_store().last_trap_action_status() =
         execution_store().last_exit_status();
     execution_store().last_exit_status() = saved_exit_status;
@@ -450,8 +476,9 @@ EvalContext::run_named_trap(StringView            condition,
 
 fn
 EvalContext::restore_trap_pipe_statuses(
-    bool              has_saved_pipe_statuses,
-    ArrayList<String> saved_pipe_statuses) wontthrow -> void
+    bool has_saved_pipe_statuses, ArrayList<String> saved_pipe_statuses)
+    wontthrow
+    -> void
 {
   try {
     if (!has_saved_pipe_statuses) {
@@ -460,8 +487,8 @@ EvalContext::restore_trap_pipe_statuses(
       return;
     }
 
-    let const do_is_unchanged = [&](const ArrayList<String> &current)
-                                    wontthrow -> bool {
+    let const do_is_unchanged =
+        [&](const ArrayList<String> &current) wontthrow -> bool {
       if (current.count() != saved_pipe_statuses.count()) return false;
 
       for (usize index = 0; index < current.count(); index++) {
@@ -470,6 +497,7 @@ EvalContext::restore_trap_pipe_statuses(
 
       return true;
     };
+
     if (let const current =
             variable_store().indexed_arrays().find("PIPESTATUS");
         current.has_value() && do_is_unchanged(**current))
@@ -496,11 +524,15 @@ EvalContext::restore_trap_pipe_statuses(
 fn
 EvalContext::run_return_trap(i32 status_before_return) throws -> void
 {
-  let const saved_exit_status          = execution_store().last_exit_status();
+  let const saved_exit_status = execution_store().last_exit_status();
+
   execution_store().last_exit_status() = status_before_return;
-  defer { execution_store().last_exit_status() = saved_exit_status; };
+  defer {
+    execution_store().last_exit_status() = saved_exit_status;
+  };
 
   let frame_control_flow = steal(control_flow_store().pending());
+
   control_flow_store().clear();
 
   let action_control_flow = control_flow{};
@@ -564,9 +596,11 @@ EvalContext::is_signal_ignored_at_startup(StringView condition) const wontthrow
   let const ignored = runtime_state().is_bash_compatible()
                           ? trap_store().startup_ignored_signals()
                           : 0;
+
   if (ignored == 0) return false;
 
   let const number = os::signal_number_from_name(condition);
+
   if (!number.has_value()) return false;
   if (*number < 1 || *number > os::ENTRY_IGNORED_SIGNAL_LIMIT) {
     return false;
@@ -587,10 +621,12 @@ EvalContext::capture_trap_definition(const SourceLocation &location,
       true
   };
   let const resolved_source = resolve_render_source(location);
+
   if (resolved_source.text == nullptr) return definition;
 
   let const source   = resolved_source.text->view();
   let const position = resolved_source.to_render_position(location.position);
+
   if (position >= source.length) return definition;
 
   let const line_position = utils::source_line_position_at(source, position);
@@ -615,7 +651,8 @@ EvalContext::capture_trap_definition(const SourceLocation &location,
 fn
 EvalContext::set_trap(StringView            condition,
                       StringView            action,
-                      Maybe<SourceLocation> definition_location) throws -> void
+                      Maybe<SourceLocation> definition_location) throws
+    -> void
 {
   if (is_signal_ignored_at_startup(condition)) {
     LOG(Info, "keeping '%.*s' ignored because the shell inherited it ignored",
@@ -646,18 +683,22 @@ EvalContext::set_trap(StringView            condition,
       {SSK("EXIT"),  pseudo_condition::Exit },
   };
   static constexpr StaticStringMap PSEUDO_CONDITIONS{PSEUDO_ENTRIES};
+
   if (let const pseudo = PSEUDO_CONDITIONS.find(condition); pseudo.has_value())
   {
     switch (*pseudo) {
     case pseudo_condition::Debug:
       trap_store().debug_trap_active_depth() = nesting_depth();
       break;
+
     case pseudo_condition::Error:
       trap_store().err_trap_active_depth() = nesting_depth();
       break;
+
     case pseudo_condition::Exit: return;
     }
   }
+
   if (let const number = os::signal_number_from_name(condition)) {
     if (action.is_empty())
       os::set_trap_ignore(*number);
@@ -688,14 +729,17 @@ EvalContext::remove_trap(StringView condition) throws -> void
 fn
 EvalContext::save_untraced_trap(StringView      condition,
                                 shell_option_id trace_option,
-                                usize *active_depth) throws -> saved_frame_trap
+                                usize          *active_depth) throws
+    -> saved_frame_trap
 {
   saved_frame_trap saved{};
+
   if (active_depth != nullptr) saved.active_depth = *active_depth;
 
   if (runtime_state().option_is_enabled(trace_option)) return saved;
 
   let const trap = trap_store().find(condition);
+
   if (!trap.has_value()) return saved;
 
   LOG(Info, "taking a %zu byte '%.*s' action away from an untraced body",
@@ -710,7 +754,7 @@ EvalContext::save_untraced_trap(StringView      condition,
 fn
 EvalContext::restore_untraced_trap(StringView         condition,
                                    saved_frame_trap &&saved,
-                                   usize *active_depth) wontthrow -> void
+                                   usize             *active_depth) wontthrow -> void
 {
   if (!saved.definition.has_value()) return;
   if (trap_store().find(condition).has_value()) return;
@@ -732,8 +776,7 @@ EvalContext::restore_untraced_trap(StringView         condition,
 UntracedTrapScope::UntracedTrapScope(EvalContext &context,
                                      Kind         kind,
                                      bool         should_apply) throws
-    : m_context(context),
-      m_kind(kind)
+    : m_context(context), m_kind(kind)
 {
   if (!should_apply) return;
 
@@ -743,16 +786,19 @@ UntracedTrapScope::UntracedTrapScope(EvalContext &context,
         StringView{"DEBUG", 5}, shell_option_id::Functrace,
         &context.trap_store().debug_trap_active_depth());
     break;
+
   case Kind::Err:
     m_saved = context.save_untraced_trap(
         StringView{"ERR", 3}, shell_option_id::Errtrace,
         &context.trap_store().err_trap_active_depth());
     break;
+
   case Kind::Return:
     if (context.runtime_state().is_bash_compatible()) {
       m_saved = context.save_untraced_trap(StringView{"RETURN", 6},
                                            shell_option_id::Functrace, nullptr);
     }
+
     break;
   }
 }
@@ -765,11 +811,13 @@ UntracedTrapScope::~UntracedTrapScope()
         StringView{"DEBUG", 5}, steal(m_saved),
         &m_context.trap_store().debug_trap_active_depth());
     break;
+
   case Kind::Err:
     m_context.restore_untraced_trap(
         StringView{"ERR", 3}, steal(m_saved),
         &m_context.trap_store().err_trap_active_depth());
     break;
+
   case Kind::Return:
     m_context.restore_untraced_trap(StringView{"RETURN", 6}, steal(m_saved),
                                     nullptr);
@@ -801,9 +849,9 @@ EvalContext::run_pending_traps() throws -> void
 
   let const was_terminal_exec_allowed =
       execution_store().terminal_exec_allowed();
+
   execution_store().terminal_exec_allowed() = false;
-  defer
-  {
+  defer {
     execution_store().terminal_exec_allowed() = was_terminal_exec_allowed;
   };
 
@@ -811,6 +859,7 @@ EvalContext::run_pending_traps() throws -> void
 
   let const child_condition    = StringView{"CHLD", 4};
   let const reaped_child_count = os::take_reaped_child_count();
+
   if (trap_store().did_reset_inherited_signal_traps()) {
     os::clear_reaped_child_arrival();
   } else if (trap_store().find_active(child_condition).has_value()) {
@@ -823,12 +872,13 @@ EvalContext::run_pending_traps() throws -> void
       variable_store().indexed_arrays().find("PIPESTATUS");
   let const         has_saved_pipe_statuses = current_pipe_statuses.has_value();
   ArrayList<String> saved_pipe_statuses{heap_allocator()};
+
   if (has_saved_pipe_statuses)
     saved_pipe_statuses = current_pipe_statuses->clone();
 
   let was_pipe_status_restored = false;
-  defer
-  {
+
+  defer {
     execution_store().last_exit_status() = saved_exit_status;
 
     if (!was_pipe_status_restored) {
@@ -841,6 +891,7 @@ EvalContext::run_pending_traps() throws -> void
        number     = os::take_pending_signal())
   {
     let const name = os::signal_name_from_number(number);
+
     if (!name.has_value()) continue;
     if (name->view() == "CHLD") continue;
     if (trap_store().did_reset_inherited_signal_traps()) continue;
@@ -866,6 +917,7 @@ EvalContext::run_pending_traps() throws -> void
   }
 
   let const child_bit = running_trap_bit(child_condition);
+
   if (trap_store().pending_child_trap_count() > 0 &&
       !trap_store().did_reset_inherited_signal_traps() &&
       !trap_store().is_condition_running(child_bit) &&
@@ -888,8 +940,8 @@ EvalContext::run_pending_traps() throws -> void
           child_body.has_value() ? &child_body : nullptr;
 
       u32 fired_count = 0;
-      defer
-      {
+
+      defer {
         if (fired_count > trap_store().pending_child_trap_count())
           trap_store().pending_child_trap_count() = 0;
         else
@@ -935,12 +987,13 @@ EvalContext::run_exit_trap(Maybe<i32> final_status) throws -> void
       variable_store().indexed_arrays().find("PIPESTATUS");
   let const         has_saved_pipe_statuses = current_pipe_statuses.has_value();
   ArrayList<String> saved_pipe_statuses{heap_allocator()};
+
   if (has_saved_pipe_statuses)
     saved_pipe_statuses = current_pipe_statuses->clone();
 
   let was_pipe_status_restored = false;
-  defer
-  {
+
+  defer {
     execution_store().last_exit_status() = saved_exit_status;
 
     if (!was_pipe_status_restored) {
@@ -995,13 +1048,14 @@ EvalContext::run_subshell_exit_trap() throws -> Maybe<i32>
       variable_store().indexed_arrays().find("PIPESTATUS");
   let const         has_saved_pipe_statuses = current_pipe_statuses.has_value();
   ArrayList<String> saved_pipe_statuses{heap_allocator()};
+
   if (has_saved_pipe_statuses)
     saved_pipe_statuses = current_pipe_statuses->clone();
 
   let requested_status         = Maybe<i32>{None};
   let was_pipe_status_restored = false;
-  defer
-  {
+
+  defer {
     execution_store().last_exit_status() =
         requested_status.has_value() ? *requested_status : saved_exit_status;
 
@@ -1067,6 +1121,7 @@ EvalContext::readonly_names() const throws
     -> SortedArrayList<String, order_comparator<String>>
 {
   let out = ArrayList<String>{heap_allocator()};
+
   out.reserve(countof(RESTRICTED_READONLY_KEYS) +
               countof(BASH_IMPLICIT_READONLY_KEYS));
   variable_store().attributes().for_each_marked(
@@ -1108,13 +1163,13 @@ EvalContext::is_integer_variable(StringView name) const wontthrow -> bool
 
 fn
 EvalContext::append_integer_expression(String    &joined,
-                                       StringView expression) const throws
-    -> void
+                                       StringView expression) const throws -> void
 {
   joined += '+';
 
   for (usize i = 0; i < expression.length; i++) {
     let const character = expression[i];
+
     if (character != ' ' && character != '\t' && character != '\n' &&
         character != '\r')
     {

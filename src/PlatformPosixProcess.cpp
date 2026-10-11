@@ -52,9 +52,9 @@ template <typename Call>
 alwaysinline static fn
 retry_interrupted(Call do_call) wontthrow -> decltype(do_call())
 {
-  loop
-  {
+  loop {
     let const result = do_call();
+
     if (result != -1 || errno != EINTR) {
       return result;
     }
@@ -107,16 +107,19 @@ process_id_of(process p) wontthrow -> i64
 {
   return static_cast<i64>(p);
 }
+
 fn
 process_group_of(process p) throws -> process
 {
   return -p;
 }
+
 fn
 close_process_reference(process p) wontthrow -> void
 {
   unused(p);
 }
+
 fn
 process_has_id(process p, i64 id) wontthrow -> bool
 {
@@ -141,12 +144,16 @@ spawn_failure_child(SourceLocation     location,
       let const target_group = process_group == process_group_mode::Join
                                    ? static_cast<pid_t>(process_group_id)
                                    : 0;
+
       (void) setpgid(0, target_group);
     }
-    errno     = spawn_error;
+
+    errno = spawn_error;
+
     let error = ErrorWithLocation{steal(location),
                                   "Unable to execute `" + program_path.text() +
                                       "`: " + last_system_error_message()};
+
     koshka::show_message(error.to_string(source));
     koshka::flush();
     _exit(spawn_error == ENOENT ? 127 : 126);
@@ -156,6 +163,7 @@ spawn_failure_child(SourceLocation     location,
     let const target_group = process_group == process_group_mode::Join
                                  ? static_cast<pid_t>(process_group_id)
                                  : child_pid;
+
     (void) setpgid(child_pid, target_group);
   }
 
@@ -164,7 +172,8 @@ spawn_failure_child(SourceLocation     location,
 
 hot fn
 execute_program(ExecContext                     &ec,
-                const program_execution_options &options) throws -> process
+                const program_execution_options &options) throws
+    -> process
 {
   let const should_allow_script_fallback =
       options.fallback == script_fallback_policy::Allow;
@@ -172,20 +181,22 @@ execute_program(ExecContext                     &ec,
       options.process_group != process_group_mode::Inherit;
   let const should_hand_off_controlling_terminal_before_start =
       options.handoff == terminal_handoff::BeforeStart;
+
   ASSERT(ec.args().count() > 0, "a program needs at least argv[0]");
 
   LOG(Debug, "spawning '%s' with %zu arguments", ec.program_path().c_str(),
       ec.args().count());
 
   bool was_fds_handed_to_fallback = false;
-  defer
-  {
+
+  defer {
     if (!was_fds_handed_to_fallback) ec.close_fds();
   };
 
   if (should_hand_off_controlling_terminal_before_start) {
     let const start_pipe   = os::make_pipe();
     let const outcome_pipe = os::make_pipe();
+
     if (!start_pipe.has_value() || !outcome_pipe.has_value()) {
       if (start_pipe.has_value()) {
         os::close_fd(start_pipe->in);
@@ -200,6 +211,7 @@ execute_program(ExecContext                     &ec,
     }
 
     process child;
+
     try {
       koshka::flush();
       child = fork_job_process();
@@ -210,11 +222,14 @@ execute_program(ExecContext                     &ec,
       os::close_fd(outcome_pipe->out);
       throw;
     }
+
     if (child == 0) {
       os::close_fd(start_pipe->out);
       os::close_fd(outcome_pipe->in);
+
       char      start_byte = 0;
       let const start_read = os::read_fd(start_pipe->in, &start_byte, 1);
+
       os::close_fd(start_pipe->in);
       if (!start_read.has_value() || *start_read == 0) {
         os::exit_process_immediately(1);
@@ -237,7 +252,9 @@ execute_program(ExecContext                     &ec,
     os::close_fd(start_pipe->in);
     os::close_fd(outcome_pipe->out);
     os::give_controlling_terminal_to(child);
+
     let const start_write = os::write_fd(start_pipe->out, "x", 1);
+
     os::close_fd(start_pipe->out);
     if (!start_write.has_value()) {
       unused(os::signal_process(child, 9));
@@ -249,6 +266,7 @@ execute_program(ExecContext                     &ec,
 
     char      outcome      = 0;
     let const outcome_read = os::read_fd(outcome_pipe->in, &outcome, 1);
+
     os::close_fd(outcome_pipe->in);
     if (!outcome_read.has_value()) {
       unused(os::signal_process(child, 9));
@@ -256,6 +274,7 @@ execute_program(ExecContext                     &ec,
       throw ErrorWithLocation{ec.source_location(),
                               "Could not read the program start outcome"};
     }
+
     if (*outcome_read == 1 && outcome == 'f' && should_allow_script_fallback) {
       os::reap_process_quietly(child);
       was_fds_handed_to_fallback = true;
@@ -271,6 +290,7 @@ execute_program(ExecContext                     &ec,
   let const child_args = make_os_args(ec.args());
 
   posix_spawn_file_actions_t file_actions;
+
   posix_spawn_file_actions_init(&file_actions);
   defer { posix_spawn_file_actions_destroy(&file_actions); };
 
@@ -280,13 +300,16 @@ execute_program(ExecContext                     &ec,
       fcntl(fd, F_SETFD, flags & ~FD_CLOEXEC);
     }
   };
+
   if (ec.in_fd && *ec.in_fd == STDIN_FILENO) {
     do_keep_across_exec(STDIN_FILENO);
   }
+
   if (ec.in_fd && *ec.in_fd != STDIN_FILENO) {
     posix_spawn_file_actions_adddup2(&file_actions, *ec.in_fd, STDIN_FILENO);
     posix_spawn_file_actions_addclose(&file_actions, *ec.in_fd);
   }
+
   ec.apply_output_routing(
       [&]() {
         if (ec.out_fd && *ec.out_fd == STDOUT_FILENO) {
@@ -316,6 +339,7 @@ execute_program(ExecContext                     &ec,
         posix_spawn_file_actions_adddup2(&file_actions, STDERR_FILENO,
                                          STDOUT_FILENO);
       });
+
   ec.apply_nonstandard_routing(
       [&](os::descriptor file_fd, i32 target_fd) {
         posix_spawn_file_actions_adddup2(&file_actions, file_fd, target_fd);
@@ -340,14 +364,17 @@ execute_program(ExecContext                     &ec,
       });
 
   posix_spawnattr_t attr;
+
   posix_spawnattr_init(&attr);
   defer { posix_spawnattr_destroy(&attr); };
 
   sigset_t empty_mask;
+
   sigemptyset(&empty_mask);
   posix_spawnattr_setsigmask(&attr, &empty_mask);
 
   sigset_t default_signals;
+
   sigemptyset(&default_signals);
   sigaddset(&default_signals, SIGINT);
   sigaddset(&default_signals, SIGCHLD);
@@ -357,6 +384,7 @@ execute_program(ExecContext                     &ec,
   posix_spawnattr_setsigdefault(&attr, &default_signals);
 
   short spawn_flags = POSIX_SPAWN_SETSIGMASK | POSIX_SPAWN_SETSIGDEF;
+
   if (should_create_process_group) {
     ASSERT(options.process_group != process_group_mode::Join ||
            options.process_group_id > 0);
@@ -366,11 +394,14 @@ execute_program(ExecContext                     &ec,
                                   : 0);
     spawn_flags |= POSIX_SPAWN_SETPGROUP;
   }
+
   posix_spawnattr_setflags(&attr, spawn_flags);
 
   pid_t       child_pid           = 0;
   char *const empty_environment[] = {nullptr};
+
   note_spawn_launch();
+
   const int spawn_error =
       posix_spawn(&child_pid, ec.program_path().c_str(), &file_actions, &attr,
                   const_cast<char *const *>(child_args.begin()),
@@ -407,18 +438,23 @@ is_terminal_foreground_group() wontthrow -> bool
 }
 
 fn
-ProgramCapture::start(const ArrayList<String> &argv,
-                      u64 timeout_nanos) wontthrow -> Maybe<ProgramCapture>
+ProgramCapture::start(const ArrayList<String> &argv, u64 timeout_nanos)
+    wontthrow
+    -> Maybe<ProgramCapture>
 {
   if (argv.is_empty()) return None;
 
   int pipe_fds[2];
+
   if (pipe(pipe_fds) != 0) return None;
+
   const int read_end  = pipe_fds[0];
   const int write_end = pipe_fds[1];
+
   fcntl(read_end, F_SETFD, FD_CLOEXEC);
 
   const int devnull_fd = open("/dev/null", O_RDONLY);
+
   if (devnull_fd < 0) {
     close(read_end);
     close(write_end);
@@ -427,6 +463,7 @@ ProgramCapture::start(const ArrayList<String> &argv,
   }
 
   posix_spawn_file_actions_t file_actions;
+
   posix_spawn_file_actions_init(&file_actions);
   posix_spawn_file_actions_adddup2(&file_actions, devnull_fd, STDIN_FILENO);
   posix_spawn_file_actions_adddup2(&file_actions, write_end, STDOUT_FILENO);
@@ -438,18 +475,24 @@ ProgramCapture::start(const ArrayList<String> &argv,
   let const raw_args = make_os_args(argv);
 
   posix_spawnattr_t attr;
+
   posix_spawnattr_init(&attr);
+
   sigset_t default_signals;
+
   sigemptyset(&default_signals);
   sigaddset(&default_signals, SIGPIPE);
   posix_spawnattr_setsigdefault(&attr, &default_signals);
   posix_spawnattr_setflags(&attr, POSIX_SPAWN_SETSIGDEF);
 
   pid_t child_pid = 0;
+
   note_spawn_launch();
+
   const int spawn_result =
       posix_spawn(&child_pid, raw_args[0], &file_actions, &attr,
                   const_cast<char *const *>(raw_args.begin()), environ);
+
   posix_spawnattr_destroy(&attr);
   posix_spawn_file_actions_destroy(&file_actions);
   close(write_end);
@@ -460,7 +503,8 @@ ProgramCapture::start(const ArrayList<String> &argv,
     return None;
   }
 
-  let capture              = ProgramCapture{};
+  let capture = ProgramCapture{};
+
   capture.m_child          = child_pid;
   capture.m_output         = read_end;
   capture.m_deadline_nanos = monotonic_nanos() + timeout_nanos;
@@ -477,35 +521,44 @@ ProgramCapture::step() wontthrow -> State
        m_output != KOSH_INVALID_FD && step_read_count < 16; step_read_count++)
   {
     struct pollfd watch;
-    watch.fd        = m_output;
-    watch.events    = POLLIN;
-    watch.revents   = 0;
+
+    watch.fd      = m_output;
+    watch.events  = POLLIN;
+    watch.revents = 0;
+
     const int ready = poll(&watch, 1, 0);
+
     if (ready < 0 && errno == EINTR) {
       continue;
     }
+
     if (ready < 0) {
       abandon();
 
       return State::Failed;
     }
+
     if (ready == 0) break;
 
     char          buffer[4096];
     const ssize_t read_count = read(m_output, buffer, sizeof(buffer));
+
     if (read_count < 0 && errno == EINTR) {
       continue;
     }
+
     if (read_count < 0) {
       abandon();
 
       return State::Failed;
     }
+
     if (read_count == 0) {
       close(m_output);
       m_output = KOSH_INVALID_FD;
       break;
     }
+
     m_captured.append(StringView{buffer, static_cast<usize>(read_count)});
   }
 
@@ -513,12 +566,14 @@ ProgramCapture::step() wontthrow -> State
     int       wait_status = 0;
     let const waited_pid  = retry_interrupted(
         [&] { return waitpid(m_child, &wait_status, WNOHANG); });
+
     if (waited_pid == m_child) {
       m_child = KOSH_INVALID_PROCESS;
       if (WIFEXITED(wait_status)) m_exit_status = WEXITSTATUS(wait_status);
 
       return State::Finished;
     }
+
     if (waited_pid < 0) {
       m_child = KOSH_INVALID_PROCESS;
 
@@ -541,8 +596,11 @@ ProgramCapture::wait(u64 wait_nanos) const wontthrow -> void
   let const now_nanos = monotonic_nanos();
   let       limit_nanos =
       m_deadline_nanos > now_nanos ? m_deadline_nanos - now_nanos : u64{0};
+
   if (wait_nanos < limit_nanos) limit_nanos = wait_nanos;
+
   int wait_millis = static_cast<int>(limit_nanos / 1'000'000);
+
   if (wait_millis <= 0) wait_millis = 1;
 
   if (m_output == KOSH_INVALID_FD) {
@@ -552,6 +610,7 @@ ProgramCapture::wait(u64 wait_nanos) const wontthrow -> void
   }
 
   struct pollfd watch;
+
   watch.fd      = m_output;
   watch.events  = POLLIN;
   watch.revents = 0;
@@ -565,6 +624,7 @@ ProgramCapture::abandon() wontthrow -> void
     close(m_output);
     m_output = KOSH_INVALID_FD;
   }
+
   if (m_child == KOSH_INVALID_PROCESS) return;
 
   kill_and_reap(m_child);
@@ -579,13 +639,14 @@ give_controlling_terminal_to(process p) wontthrow -> void
   }
 
   void (*const previous)(int) = signal(SIGTTOU, SIG_IGN);
+
   tcsetpgrp(STDIN_FILENO, p);
   signal(SIGTTOU, previous);
 }
 
 fn
-give_controlling_terminal_to_process_group(i64 process_group_id) wontthrow
-    -> void
+give_controlling_terminal_to_process_group(i64 process_group_id)
+    wontthrow -> void
 {
   if (!shell_has_controlling_terminal() || process_group_id <= 0 ||
       !is_terminal_foreground_group())
@@ -594,6 +655,7 @@ give_controlling_terminal_to_process_group(i64 process_group_id) wontthrow
   }
 
   void (*const previous)(int) = signal(SIGTTOU, SIG_IGN);
+
   tcsetpgrp(STDIN_FILENO, static_cast<pid_t>(process_group_id));
   signal(SIGTTOU, previous);
 }
@@ -602,7 +664,9 @@ fn
 reclaim_controlling_terminal() wontthrow -> void
 {
   if (!shell_has_controlling_terminal()) return;
+
   void (*const previous)(int) = signal(SIGTTOU, SIG_IGN);
+
   tcsetpgrp(STDIN_FILENO, getpgrp());
   signal(SIGTTOU, previous);
 }
@@ -620,6 +684,7 @@ fork_compound_stage(Maybe<descriptor>  in_fd,
   LOG(Debug, "forking a compound pipeline stage");
 
   note_fork_launch();
+
   const pid_t child_pid = check_syscall(fork());
 
   if (child_pid == 0) {
@@ -627,9 +692,11 @@ fork_compound_stage(Maybe<descriptor>  in_fd,
       if (process_group != process_group_mode::Inherit) {
         ASSERT(process_group != process_group_mode::Join ||
                process_group_id > 0);
+
         let const target_group = process_group == process_group_mode::Join
                                      ? static_cast<pid_t>(process_group_id)
                                      : 0;
+
         check_syscall(setpgid(0, target_group));
       }
 
@@ -650,6 +717,7 @@ fork_compound_stage(Maybe<descriptor>  in_fd,
         check_syscall(close(*fd));
         fd = lifted;
       };
+
       do_lift_above_standard(in_fd, STDIN_FILENO);
       do_lift_above_standard(out_fd, STDOUT_FILENO);
       do_lift_above_standard(err_fd, STDERR_FILENO);
@@ -662,6 +730,7 @@ fork_compound_stage(Maybe<descriptor>  in_fd,
         check_syscall(dup2(*fd, target));
         check_syscall(close(*fd));
       };
+
       do_install(in_fd, STDIN_FILENO);
       do_install(out_fd, STDOUT_FILENO);
       do_install(err_fd, STDERR_FILENO);
@@ -687,6 +756,7 @@ fork_compound_stage(Maybe<descriptor>  in_fd,
     let const target_group = process_group == process_group_mode::Join
                                  ? static_cast<pid_t>(process_group_id)
                                  : child_pid;
+
     (void) setpgid(child_pid, target_group);
   }
 
@@ -699,6 +769,7 @@ fork_job_process() throws -> process
   LOG(Debug, "forking a mimicked job into its own process group");
 
   note_fork_launch();
+
   const pid_t child_pid = check_syscall(fork());
 
   if (child_pid == 0) {
@@ -722,8 +793,8 @@ fork_job_process() throws -> process
 }
 
 fn
-try_fork_compound_stage(const fork_compound_stage_options &options) throws
-    -> Maybe<process>
+try_fork_compound_stage(const fork_compound_stage_options &options)
+    throws -> Maybe<process>
 {
   return fork_compound_stage(options.in_fd, options.out_fd, options.err_fd,
                              options.location, options.diagnostic_source,
@@ -745,7 +816,8 @@ can_fork_evaluator() wontthrow -> bool
 static constexpr i32 PROCESS_SUBSTITUTION_FD_FLOOR = 63;
 
 fn
-launch_process_substitution(const process_substitution_options &options) throws
+launch_process_substitution(
+    const process_substitution_options &options) throws
     -> process_substitution_launch
 {
   unused(options.source);
@@ -756,13 +828,14 @@ launch_process_substitution(const process_substitution_options &options) throws
       options.direction == process_substitution_direction::CommandWrites;
 
   let const pipe = make_pipe();
+
   if (!pipe.has_value())
     throw Error{"Could not open a pipe for the process substitution: " +
                 last_system_error_message()};
 
   bool was_pipe_handed_off = false;
-  defer
-  {
+
+  defer {
     if (!was_pipe_handed_off) {
       close_fd(pipe->in);
       close_fd(pipe->out);
@@ -772,6 +845,7 @@ launch_process_substitution(const process_substitution_options &options) throws
   const process child = is_command_pipe_writer
                             ? fork_compound_stage(None, pipe->out, None)
                             : fork_compound_stage(pipe->in, None, None);
+
   was_pipe_handed_off = true;
 
   if (child == 0) {
@@ -784,6 +858,7 @@ launch_process_substitution(const process_substitution_options &options) throws
   }
 
   descriptor retained_fd = is_command_pipe_writer ? pipe->in : pipe->out;
+
   close_fd(is_command_pipe_writer ? pipe->out : pipe->in);
   if (let const moved_fd = move_descriptor_to_free_shell_fd(
           retained_fd, PROCESS_SUBSTITUTION_FD_FLOOR);
@@ -791,9 +866,11 @@ launch_process_substitution(const process_substitution_options &options) throws
   {
     retained_fd = moved_fd;
   }
+
   make_fd_inheritable(retained_fd);
 
   let path = String{"/dev/fd/"};
+
   path += String::from(static_cast<i64>(retained_fd), heap_allocator());
 
   return process_substitution_launch{
@@ -867,6 +944,7 @@ replace_process(ExecContext &&ec) throws -> void
       fcntl(fd, F_SETFD, flags & ~FD_CLOEXEC);
     }
   };
+
   if (ec.in_fd) do_install_for_exec(*ec.in_fd, STDIN_FILENO);
   ec.apply_output_routing(
       [&]() {
@@ -877,6 +955,7 @@ replace_process(ExecContext &&ec) throws -> void
       },
       [&]() { check_syscall(dup2(STDOUT_FILENO, STDERR_FILENO)); },
       [&]() { check_syscall(dup2(STDERR_FILENO, STDOUT_FILENO)); });
+
   ec.apply_nonstandard_routing(
       [&](os::descriptor file_fd, i32 target_fd) {
         check_syscall(dup2(file_fd, target_fd));
@@ -892,12 +971,12 @@ replace_process(ExecContext &&ec) throws -> void
   struct sigaction saved_sigint_action       = {};
   struct sigaction saved_sigpipe_action      = {};
   let const        saved_interrupt_requested = INTERRUPT_REQUESTED;
+
   check_syscall(sigprocmask(SIG_SETMASK, nullptr, &saved_signal_mask));
   check_syscall(sigaction(SIGCHLD, nullptr, &saved_sigchild_action));
   check_syscall(sigaction(SIGINT, nullptr, &saved_sigint_action));
   check_syscall(sigaction(SIGPIPE, nullptr, &saved_sigpipe_action));
-  defer
-  {
+  defer {
     sigaction(SIGCHLD, &saved_sigchild_action, nullptr);
     sigaction(SIGINT, &saved_sigint_action, nullptr);
     sigaction(SIGPIPE, &saved_sigpipe_action, nullptr);
@@ -908,6 +987,7 @@ replace_process(ExecContext &&ec) throws -> void
   reset_signal_handlers();
 
   char *const empty_environment[] = {nullptr};
+
   note_exec_launch();
   execve(ec.program_path().c_str(),
          const_cast<char *const *>(child_args.begin()),
@@ -916,12 +996,15 @@ replace_process(ExecContext &&ec) throws -> void
              : environ);
 
   let const exec_error = errno;
+
   if (exec_error == ENOEXEC) return;
-  errno            = exec_error;
+  errno = exec_error;
+
   let const reason = last_system_error_message();
   let       error  = koshka::ErrorWithLocation{
       ec.source_location(),
       "Unable to execute `" + ec.program_path().text() + "`: " + reason};
+
   error.set_command_status(exec_error == ENOENT ? 127 : 126);
   throw error;
 }
@@ -953,6 +1036,7 @@ make_pipe() wontthrow -> Maybe<pipe_ends>
 
   for (descriptor end : p) {
     const int flags = fcntl(end, F_GETFD);
+
     if (flags != -1) fcntl(end, F_SETFD, flags | FD_CLOEXEC);
   }
 #endif
@@ -961,12 +1045,14 @@ make_pipe() wontthrow -> Maybe<pipe_ends>
     if (end > STDERR_FILENO) continue;
 
     let const lifted = fcntl(end, F_DUPFD_CLOEXEC, STDERR_FILENO + 1);
+
     if (lifted == -1) {
       close(p[0]);
       close(p[1]);
 
       return koshka::None;
     }
+
     close(end);
     end = lifted;
   }
@@ -1002,6 +1088,7 @@ pooled_worker_main(opaque *raw_worker) wontthrow -> opaque *
   let const worker = static_cast<pooled_worker *>(raw_worker);
 
   sigset_t blocked_signals;
+
   sigfillset(&blocked_signals);
   sigdelset(&blocked_signals, SIGSEGV);
   sigdelset(&blocked_signals, SIGBUS);
@@ -1011,13 +1098,13 @@ pooled_worker_main(opaque *raw_worker) wontthrow -> opaque *
 
   pthread_mutex_lock(&worker->mutex);
 
-  loop
-  {
+  loop {
     while (!worker->has_job)
       pthread_cond_wait(&worker->changed, &worker->mutex);
 
     let const entry   = worker->entry;
     let const context = worker->context;
+
     pthread_mutex_unlock(&worker->mutex);
     entry(context);
     pthread_mutex_lock(&worker->mutex);
@@ -1034,7 +1121,9 @@ static fn
 take_idle_worker() wontthrow -> pooled_worker *
 {
   pthread_mutex_lock(&IDLE_WORKERS_MUTEX);
+
   let const worker = IDLE_WORKERS;
+
   if (worker != nullptr) IDLE_WORKERS = worker->next_idle;
   pthread_mutex_unlock(&IDLE_WORKERS_MUTEX);
 
@@ -1045,6 +1134,7 @@ static fn
 create_worker() wontthrow -> pooled_worker *
 {
   static bool did_register_fork_handler = false;
+
   if (!did_register_fork_handler) {
     pthread_atfork(nullptr, nullptr, forget_idle_workers_in_child);
     did_register_fork_handler = true;
@@ -1052,8 +1142,11 @@ create_worker() wontthrow -> pooled_worker *
 
   let const storage =
       os::allocate_aligned(sizeof(pooled_worker), alignof(pooled_worker));
+
   if (storage == nullptr) return nullptr;
+
   let const worker = new (storage) pooled_worker{};
+
   if (pthread_create(&worker->thread_id, nullptr, pooled_worker_main, worker) !=
       0)
   {
@@ -1068,10 +1161,11 @@ create_worker() wontthrow -> pooled_worker *
 }
 
 fn
-start_thread(void (*entry)(opaque *), opaque *context) wontthrow
-    -> Maybe<thread>
+start_thread(void (*entry)(opaque *), opaque *context)
+    wontthrow -> Maybe<thread>
 {
   let worker = take_idle_worker();
+
   if (worker == nullptr) worker = create_worker();
   if (worker == nullptr) return koshka::None;
 
@@ -1116,6 +1210,7 @@ wait_and_monitor_process(process pid, bool *was_stopped) throws -> i32
   const int wait_flags = was_stopped != nullptr ? WUNTRACED : 0;
   let const changed_pid =
       retry_interrupted([&] { return waitpid(pid, &status, wait_flags); });
+
   check_syscall(changed_pid);
 
   if (!WIFCONTINUED(status)) note_child_reaped();
@@ -1155,14 +1250,17 @@ fn
 wait_for_child_state_change() wontthrow -> void
 {
   sigset_t blocked_signals;
+
   sigemptyset(&blocked_signals);
   sigaddset(&blocked_signals, SIGCHLD);
 
   sigset_t previous_mask;
+
   if (sigprocmask(SIG_BLOCK, &blocked_signals, &previous_mask) != 0) return;
 
   while (CHILD_STATE_CHANGED == 0 && peek_pending_signal_besides_child() == 0) {
     let wait_mask = previous_mask;
+
     sigdelset(&wait_mask, SIGCHLD);
     sigsuspend(&wait_mask);
   }
@@ -1180,12 +1278,13 @@ reap_process_quietly(process pid) throws -> i32
 
   i32 status{};
 
-  loop
-  {
+  loop {
     const pid_t w = retry_interrupted([&] { return waitpid(pid, &status, 0); });
+
     if (w == -1 && errno == ECHILD) {
       return 0;
     }
+
     if (check_syscall(w) == pid) break;
   }
 
@@ -1219,6 +1318,7 @@ poll_process(process              p,
 
     return process_state::Stopped;
   }
+
   if (WIFCONTINUED(status)) return process_state::Running;
 
   note_child_reaped();
@@ -1232,6 +1332,7 @@ poll_process(process              p,
 
     return process_state::Exited;
   }
+
   status_out = WEXITSTATUS(status);
 
   return process_state::Exited;
@@ -1251,11 +1352,15 @@ read_process_stat_after_command(i64 process_id,
                                 usize      &position) wontthrow -> bool
 {
   char stat_path[64];
+
   if (!format_proc_pid_path(stat_path, process_id, "/stat")) return false;
 
   let const stat_length = read_small_file(stat_path, buffer, sizeof(buffer));
-  text                  = StringView{buffer, stat_length};
+
+  text = StringView{buffer, stat_length};
+
   let const command_end = text.find_last_character(')');
+
   if (!command_end.has_value()) return false;
 
   position = *command_end + 1;
@@ -1269,6 +1374,7 @@ is_zombie_process(pid_t process_id) wontthrow -> bool
   char       stat_buffer[512];
   StringView stat_text;
   usize      position = 0;
+
   if (!read_process_stat_after_command(process_id, stat_buffer, stat_text,
                                        position))
   {
@@ -1307,6 +1413,7 @@ is_running_group_member(i64 process_id, pid_t group_id) wontthrow -> bool
   char       stat_buffer[512];
   StringView stat_text;
   usize      position = 0;
+
   if (!read_process_stat_after_command(process_id, stat_buffer, stat_text,
                                        position))
   {
@@ -1314,14 +1421,18 @@ is_running_group_member(i64 process_id, pid_t group_id) wontthrow -> bool
   }
 
   let const state = stat_text.next_ascii_whitespace_word(position);
+
   unused(stat_text.next_ascii_whitespace_word(position));
+
   let const member_group_id =
       stat_text.next_ascii_whitespace_word(position).to<i64>();
+
   if (state.is_empty() || member_group_id.is_error() ||
       member_group_id.value() != group_id)
   {
     return false;
   }
+
   if (state[0] != 'Z') return true;
 
   for (usize field_number = 6; field_number < 20; field_number++)
@@ -1343,6 +1454,7 @@ process_group_has_running_member(pid_t group_id) wontthrow -> bool
   }
 
   DIR *proc_directory = ::opendir("/proc");
+
   if (proc_directory == nullptr) return true;
   defer { ::closedir(proc_directory); };
 
@@ -1350,11 +1462,13 @@ process_group_has_running_member(pid_t group_id) wontthrow -> bool
        entry                = ::readdir(proc_directory))
   {
     let const name = StringView{entry->d_name};
+
     if (name.is_empty() || !name.is_all_decimal_digits()) {
       continue;
     }
 
     let const process_id = name.to<i64>();
+
     if (process_id.is_error()) continue;
 
     if (is_running_group_member(process_id.value(), group_id)) {
@@ -1480,6 +1594,7 @@ build_signal_pairs(ArrayList<String> &names) throws
 
     let name = String{heap_allocator(), is_near_lowest ? StringView{"RTMIN"}
                                                        : StringView{"RTMAX"}};
+
     if (offset > 0) {
       name.push(is_near_lowest ? '+' : '-');
       name.append(String::from(offset, heap_allocator()).view());
@@ -1522,6 +1637,7 @@ fn
 signal_description_from_number(i32 number) throws -> String
 {
   let const description = strsignal(number);
+
   if (description == nullptr) {
     return "Unknown signal " + String::from(number, heap_allocator());
   }
@@ -1545,6 +1661,7 @@ make_os_args(const ArrayList<String> &args) throws -> os_args
   ASSERT(args.count() > 0, "argv must carry at least the program name");
 
   os_args result{heap_allocator()};
+
   result.reserve(args.count() + 1);
 
   for (let const &arg : args)
@@ -1559,6 +1676,7 @@ fn
 monotonic_nanos() wontthrow -> u64
 {
   struct timespec now{};
+
   if (clock_gettime(CLOCK_MONOTONIC, &now) != 0) return 0;
 
   return static_cast<u64>(now.tv_sec) * 1000000000ULL +
@@ -1596,25 +1714,30 @@ get_effective_group_id() wontthrow -> i64
 }
 
 fn
-get_supplementary_group_ids(Allocator allocator) throws -> ArrayList<u32>
+get_supplementary_group_ids(Allocator allocator) throws
+    -> ArrayList<u32>
 {
   let       groups      = ArrayList<u32>{allocator};
   let const group_count = getgroups(0, nullptr);
+
   if (group_count < 0) return groups;
 
   let native_groups = ArrayList<gid_t>{allocator};
+
   native_groups.reserve(static_cast<usize>(group_count));
 
   for (int index = 0; index < group_count; index++)
     native_groups.push(0);
 
   let const read_count = getgroups(group_count, native_groups.begin());
+
   if (read_count < 0) return groups;
 
   for (int index = 0; index < read_count; index++)
     groups.push(static_cast<u32>(native_groups[static_cast<usize>(index)]));
 
   let const effective_group = static_cast<u32>(getegid());
+
   if (!groups.find(effective_group).has_value()) groups.push(effective_group);
 
   return groups;
@@ -1625,6 +1748,7 @@ machine_type() throws -> String
 {
   static const String cached = []() -> String {
     struct utsname info{};
+
     if (uname(&info) != 0) return String{"unknown"};
     let const machine = StringView{info.machine, std::strlen(info.machine)};
 #if defined __APPLE__
@@ -1651,6 +1775,7 @@ executable_system_name() throws -> String
   return String{"Linux"};
 #else
   struct utsname info{};
+
   if (uname(&info) != 0) return String{"unknown"};
 
   return String{
@@ -1663,6 +1788,7 @@ fn
 system_release_name() throws -> String
 {
   struct utsname info{};
+
   if (uname(&info) != 0) return String{"unknown"};
 
   return String{info.release};
@@ -1672,6 +1798,7 @@ fn
 system_version_name() throws -> String
 {
   struct utsname info{};
+
   if (uname(&info) != 0) return String{"unknown"};
 
   return String{info.version};
@@ -1726,6 +1853,7 @@ fn
 realtime_microseconds() wontthrow -> u64
 {
   struct timespec now{};
+
   if (clock_gettime(CLOCK_REALTIME, &now) != 0) return 0;
 
   return static_cast<u64>(now.tv_sec) * 1000000ULL +
@@ -1737,8 +1865,10 @@ format_local_time(StringView format, i64 epoch) throws -> String
 {
   const time_t when = static_cast<time_t>(epoch);
   struct tm    broken_down{};
+
   if (localtime_r(&when, &broken_down) == nullptr)
     return String{heap_allocator()};
+
   let const format_string = String{format};
   char      buffer[512];
   let const written =
@@ -1754,6 +1884,7 @@ read_child_cpu_times() wontthrow -> child_cpu_times
 {
   child_cpu_times result{};
   struct rusage   usage{};
+
   if (getrusage(RUSAGE_CHILDREN, &usage) != 0) return result;
   result.user_seconds = static_cast<double>(usage.ru_utime.tv_sec) +
                         static_cast<double>(usage.ru_utime.tv_usec) / 1000000.0;
@@ -1768,6 +1899,7 @@ fn
 children_peak_rss_bytes() wontthrow -> u64
 {
   struct rusage usage{};
+
   if (getrusage(RUSAGE_CHILDREN, &usage) != 0) return 0;
 
   return platform_peak_rss_bytes(usage.ru_maxrss);
@@ -1809,9 +1941,11 @@ spawn_measured_child(const ArrayList<String> &argv,
   let const raw_argv = make_os_args(argv);
 
   int ready_descriptors[2];
+
   if (pipe(ready_descriptors) != 0) return false;
 
   int start_descriptors[2];
+
   if (pipe(start_descriptors) != 0) {
     close(ready_descriptors[0]);
     close(ready_descriptors[1]);
@@ -1820,7 +1954,9 @@ spawn_measured_child(const ArrayList<String> &argv,
   }
 
   note_spawn_launch();
+
   const pid_t child_pid = fork();
+
   if (child_pid == -1) {
     close(ready_descriptors[0]);
     close(ready_descriptors[1]);
@@ -1836,6 +1972,7 @@ spawn_measured_child(const ArrayList<String> &argv,
     signal(SIGPIPE, SIG_DFL);
     if (output == measured_output::Suppress) {
       const int null_fd = open("/dev/null", O_WRONLY);
+
       if (null_fd != -1) {
         dup2(null_fd, STDOUT_FILENO);
         dup2(null_fd, STDERR_FILENO);
@@ -1847,9 +1984,12 @@ spawn_measured_child(const ArrayList<String> &argv,
 
     let const is_ready = transfer_barrier_byte(
         ready_descriptors[1], barrier_transfer_direction::Write);
+
     close(ready_descriptors[1]);
+
     let const should_start = transfer_barrier_byte(
         start_descriptors[0], barrier_transfer_direction::Read);
+
     close(start_descriptors[0]);
     if (!is_ready || !should_start) {
       _exit(127);
@@ -1861,8 +2001,10 @@ spawn_measured_child(const ArrayList<String> &argv,
 
   close(ready_descriptors[1]);
   close(start_descriptors[0]);
+
   let const is_ready = transfer_barrier_byte(ready_descriptors[0],
                                              barrier_transfer_direction::Read);
+
   close(ready_descriptors[0]);
   if (!is_ready) {
     close(start_descriptors[1]);
@@ -1904,6 +2046,7 @@ fn
 open_proc_io_descriptor(pid_t pid) wontthrow -> int
 {
   char path[64];
+
   unused(format_proc_pid_path(path, pid, "/io"));
 
   return ::open(path, O_RDONLY | O_CLOEXEC);
@@ -1964,6 +2107,7 @@ wait_for_measured_child(pid_t                   child_pid,
       return waitid(P_PID, static_cast<id_t>(child_pid), &info,
                     WEXITED | WNOWAIT);
     });
+
     if (wait_result == 0) fill_usage_from_proc_io(io_descriptor, *resources);
   }
 #else
@@ -2003,10 +2147,12 @@ read_own_resource_usage() wontthrow -> process_resource_usage
 {
   process_resource_usage resources{};
   struct rusage          usage{};
+
   if (getrusage(RUSAGE_SELF, &usage) == 0)
     fill_usage_from_rusage(usage, resources);
 #if defined __linux__
   let const io_descriptor = open_proc_io_descriptor(getpid());
+
   fill_usage_from_proc_io(io_descriptor, resources);
   if (io_descriptor >= 0) ::close(io_descriptor);
 #endif
@@ -2018,13 +2164,15 @@ fn
 run_measured(const ArrayList<String> &argv,
              const Maybe<descriptor> &,
              measured_output output,
-             bool should_collect_resources) throws -> Maybe<measured_result>
+             bool            should_collect_resources) throws
+    -> Maybe<measured_result>
 {
   if (argv.is_empty()) return None;
 
   measured_result result{};
 
   measured_child child{};
+
   if (!spawn_measured_child(argv, output, child)) return None;
 
   int io_descriptor = -1;
@@ -2032,19 +2180,20 @@ run_measured(const ArrayList<String> &argv,
   if (should_collect_resources)
     io_descriptor = open_proc_io_descriptor(child.pid);
 #endif
-  defer
-  {
+  defer {
     if (io_descriptor >= 0) ::close(io_descriptor);
   };
 
   PlatformPerfSession perf_session;
   bool                has_perf = perf_session.prepare(child.pid);
+
   if (has_perf) has_perf = perf_session.start();
   if (!has_perf) perf_session.cancel();
 
   const u64 start_nanos = monotonic_nanos();
   let const did_release = transfer_barrier_byte(
       child.start_descriptor, barrier_transfer_direction::Write);
+
   close(child.start_descriptor);
   if (!did_release) {
     kill_and_reap(child.pid);
@@ -2076,6 +2225,7 @@ native_priority_target(priority_target target) wontthrow -> int
   case priority_target::ProcessGroup: return PRIO_PGRP;
   case priority_target::User:         return PRIO_USER;
   }
+
   unreachable();
 }
 
@@ -2083,8 +2233,10 @@ fn
 get_priority(i64 id, priority_target target) wontthrow -> Maybe<i32>
 {
   errno = 0;
+
   let const priority =
       getpriority(native_priority_target(target), static_cast<id_t>(id));
+
   if (priority == -1 && errno != 0) {
     return None;
   }
@@ -2105,9 +2257,11 @@ run_through_error_pipe(const auto  &raw_argv,
                        PrepareChild do_prepare_child) wontthrow -> Maybe<i32>
 {
   int exec_error_pipe[2];
+
   if (pipe(exec_error_pipe) != 0) return None;
   if (fcntl(exec_error_pipe[1], F_SETFD, FD_CLOEXEC) != 0) {
     let const saved_errno = errno;
+
     close(exec_error_pipe[0]);
     close(exec_error_pipe[1]);
     errno = saved_errno;
@@ -2116,46 +2270,58 @@ run_through_error_pipe(const auto  &raw_argv,
   }
 
   note_spawn_launch();
+
   let const child = fork();
+
   if (child == -1) {
     let const saved_errno = errno;
+
     close(exec_error_pipe[0]);
     close(exec_error_pipe[1]);
     errno = saved_errno;
 
     return None;
   }
+
   if (child == 0) {
     close(exec_error_pipe[0]);
     do_prepare_child(exec_error_pipe[1]);
     execvp(raw_argv[0], const_cast<char *const *>(raw_argv.begin()));
+
     let const child_errno = errno;
+
     unused(
         os::write_all(exec_error_pipe[1], &child_errno, sizeof(child_errno)));
     _exit(child_errno == ENOENT ? 127 : 126);
   }
 
   close(exec_error_pipe[1]);
+
   int       child_errno  = 0;
   let const error_length = retry_interrupted([&] {
     return read(exec_error_pipe[0], &child_errno, sizeof(child_errno));
   });
   let const read_errno   = errno;
+
   close(exec_error_pipe[0]);
+
   int       status = 0;
   let const waited =
       retry_interrupted([&] { return waitpid(child, &status, 0); });
+
   if (waited != child) return None;
   if (error_length == -1) {
     errno = read_errno;
 
     return None;
   }
+
   if (error_length == static_cast<ssize_t>(sizeof(child_errno))) {
     errno = child_errno;
 
     return None;
   }
+
   if (WIFEXITED(status)) return WEXITSTATUS(status);
   if (WIFSIGNALED(status)) return 128 + WTERMSIG(status);
 
@@ -2163,18 +2329,24 @@ run_through_error_pipe(const auto  &raw_argv,
 }
 
 fn
-run_nice(const ArrayList<String> &argv, i32 increment) throws -> Maybe<i32>
+run_nice(const ArrayList<String> &argv, i32 increment) throws
+    -> Maybe<i32>
 {
   if (argv.is_empty()) return None;
+
   let const raw_argv = make_os_args(argv);
 
   return run_through_error_pipe(raw_argv, [increment](int) {
-    errno       = 0;
+    errno = 0;
+
     let current = getpriority(PRIO_PROCESS, 0);
+
     if (current == -1 && errno != 0) {
       current = 0;
     }
+
     let target = static_cast<i64>(current) + increment;
+
     if (target < -20) target = -20;
     if (target > 19) target = 19;
     unused(setpriority(PRIO_PROCESS, 0, static_cast<int>(target)));
@@ -2182,42 +2354,52 @@ run_nice(const ArrayList<String> &argv, i32 increment) throws -> Maybe<i32>
 }
 
 fn
-run_nohup(const ArrayList<String> &argv, const nohup_options &options) throws
-    -> Maybe<i32>
+run_nohup(const ArrayList<String> &argv,
+          const nohup_options     &options) throws -> Maybe<i32>
 {
   if (argv.is_empty()) return None;
+
   let const raw_argv    = make_os_args(argv);
   let       home_output = String{heap_allocator(), options.home};
+
   if (!home_output.is_empty() && home_output.back() != '/') {
     home_output += '/';
   }
+
   home_output += "nohup.out";
 
   return run_through_error_pipe(raw_argv, [&](int error_descriptor) {
     signal(SIGHUP, SIG_IGN);
+
     let child_input  = options.input;
     let child_output = options.output;
     let child_error  = options.error;
     int null_input   = -1;
     int nohup_output = -1;
+
     if (isatty(child_input)) {
       null_input = open("/dev/null", O_RDONLY);
       if (null_input != -1) child_input = null_input;
     }
+
     if (isatty(child_output)) {
       nohup_output = open("nohup.out", O_WRONLY | O_APPEND | O_CREAT, 0600);
       if (nohup_output == -1 && !options.home.is_empty()) {
         nohup_output =
             open(home_output.c_str(), O_WRONLY | O_APPEND | O_CREAT, 0600);
       }
+
       if (nohup_output == -1) {
         let const child_errno = errno;
+
         unused(
             os::write_all(error_descriptor, &child_errno, sizeof(child_errno)));
         _exit(127);
       }
+
       child_output = nohup_output;
     }
+
     if (isatty(child_error)) child_error = child_output;
     if (child_input != STDIN_FILENO) dup2(child_input, STDIN_FILENO);
     if (child_output != STDOUT_FILENO) dup2(child_output, STDOUT_FILENO);

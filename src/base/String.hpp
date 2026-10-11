@@ -34,9 +34,9 @@ public:
   String(String &&other) wontthrow;
 
   fn
-  operator=(const String &other) throws->String &;
+  operator=(const String &other) throws -> String &;
   fn
-  operator=(String &&other) wontthrow->String &;
+  operator=(String &&other) wontthrow -> String &;
 
   mustuse fn
   clone() const throws -> String
@@ -58,7 +58,8 @@ public:
     let const radix    = static_cast<u64>(base);
 
     do {
-      let const digit    = static_cast<u32>(magnitude % radix);
+      let const digit = static_cast<u32>(magnitude % radix);
+
       buffer[--position] = digit < 10 ? static_cast<char>('0' + digit)
                                       : static_cast<char>('a' + digit - 10);
       magnitude /= radix;
@@ -86,8 +87,9 @@ public:
 
   template <class U>
   mustuse static fn
-  from_signed_or_unsigned(U value, int_base base, Allocator allocator) throws
-      -> String
+  from_signed_or_unsigned(U         value,
+                          int_base  base,
+                          Allocator allocator) throws -> String
   {
     if constexpr (std::is_signed_v<U>) {
       let const is_negative = value < 0;
@@ -120,38 +122,45 @@ public:
   {
     return m_length;
   }
+
   hot mustuse pure fn
   is_empty() const wontthrow -> bool
   {
     return m_length == 0;
   }
+
   hot mustuse pure fn
-  operator[](usize i) const wontthrow->char
+  operator[](usize i) const wontthrow -> char
   {
     ASSERT(i < m_length, "string index is past the end");
 
     return m_data[i];
   }
+
   hot fn
   lowercase_ascii() wontthrow -> void
   {
     for (usize position = 0; position < m_length; position++) {
       let &byte = m_data[position];
+
       if (byte >= 'A' && byte <= 'Z') {
         byte = static_cast<char>(byte - 'A' + 'a');
       }
     }
   }
+
   hot fn
   uppercase_ascii() wontthrow -> void
   {
     for (usize position = 0; position < m_length; position++) {
       let &byte = m_data[position];
+
       if (byte >= 'a' && byte <= 'z') {
         byte = static_cast<char>(byte - 'a' + 'A');
       }
     }
   }
+
   hot fn
   assign_lowercase_ascii(StringView text) throws -> void
   {
@@ -159,6 +168,7 @@ public:
     append(text);
     lowercase_ascii();
   }
+
   hot fn
   normalize_crlf_line_endings() wontthrow -> void
   {
@@ -178,12 +188,15 @@ public:
     m_length         = output_position;
     m_data[m_length] = '\0';
   }
+
   hot mustuse pure fn
   view() const wontthrow -> StringView
   {
     return StringView{m_data, m_length};
   }
+
   operator StringView() const wontthrow { return StringView{m_data, m_length}; }
+
   hot mustuse pure fn
   c_str() const wontthrow -> const char *
   {
@@ -196,39 +209,46 @@ public:
   hot fn
   push(char c) throws -> void
   {
-    m_ascii_state        = AsciiState::Unknown;
-    let const new_length = m_length + 1;
-    if (new_length < m_capacity) usually
-      {
-        m_data[m_length++] = c;
-        m_data[m_length]   = '\0';
+    m_ascii_state = AsciiState::Unknown;
 
-        return;
-      }
+    let const new_length = m_length + 1;
+
+    if (new_length < m_capacity) usually {
+      m_data[m_length++] = c;
+      m_data[m_length]   = '\0';
+
+      return;
+    }
+
     reserve(new_length);
     m_data[m_length++] = c;
     m_data[m_length]   = '\0';
   }
+
   hot fn
   append(StringView other) throws -> void
   {
     if (other.length == 0) return;
-    if (other.length > SIZE_MAX - m_length) rarely throw std::bad_alloc{};
-    m_ascii_state        = AsciiState::Unknown;
-    let const new_length = m_length + other.length;
-    if (new_length < m_capacity) usually
-      {
-        std::memcpy(m_data + m_length, other.data, other.length);
-        m_length         = new_length;
-        m_data[m_length] = '\0';
+    if (other.length > SIZE_MAX - m_length) rarely
+      throw std::bad_alloc{};
+    m_ascii_state = AsciiState::Unknown;
 
-        return;
-      }
+    let const new_length = m_length + other.length;
+
+    if (new_length < m_capacity) usually {
+      std::memcpy(m_data + m_length, other.data, other.length);
+      m_length         = new_length;
+      m_data[m_length] = '\0';
+
+      return;
+    }
+
     let const source_address  = reinterpret_cast<uintptr>(other.data);
     let const storage_address = reinterpret_cast<uintptr>(m_data);
     let const is_aliased      = source_address >= storage_address &&
                            source_address - storage_address < m_length;
     usize source_offset = 0;
+
     if (is_aliased) source_offset = source_address - storage_address;
     reserve(new_length);
     if (is_aliased) other.data = m_data + source_offset;
@@ -241,9 +261,12 @@ public:
   append_repeated(char byte, usize repeat_count) throws -> void
   {
     if (repeat_count == 0) return;
-    if (repeat_count > SIZE_MAX - m_length) rarely throw std::bad_alloc{};
-    m_ascii_state        = AsciiState::Unknown;
+    if (repeat_count > SIZE_MAX - m_length) rarely
+      throw std::bad_alloc{};
+    m_ascii_state = AsciiState::Unknown;
+
     let const new_length = m_length + repeat_count;
+
     if (new_length >= m_capacity) reserve(new_length);
     std::memset(m_data + m_length, static_cast<unsigned char>(byte),
                 repeat_count);
@@ -259,11 +282,13 @@ public:
   {
     return c_str();
   }
+
   mustuse pure fn
   length() const wontthrow -> usize
   {
     return m_length;
   }
+
   hot mustuse pure fn
   back() const wontthrow -> char
   {
@@ -295,25 +320,28 @@ public:
     push(c);
   }
   fn
-  operator+=(StringView other) throws->String &;
+  operator+=(StringView other) throws -> String &;
   fn
-  operator+=(char c) throws->String &;
+  operator+=(char c) throws -> String &;
 
   hot flatten mustuse pure fn
   find_character(char wanted) const wontthrow -> Maybe<usize>
   {
     return view().find_character(wanted);
   }
+
   flatten mustuse pure fn
   substring(usize start) const wontthrow -> StringView
   {
     return view().substring(start);
   }
+
   flatten mustuse pure fn
   substring_of_length(usize start, usize count) const wontthrow -> StringView
   {
     return view().substring_of_length(start, count);
   }
+
   flatten mustuse pure fn
   starts_with(StringView prefix) const wontthrow -> bool
   {
@@ -321,18 +349,19 @@ public:
   }
 
   hot flatten mustuse pure fn
-  operator==(StringView other) const wontthrow->bool
+  operator==(StringView other) const wontthrow -> bool
   {
     return view() == other;
   }
+
   hot flatten mustuse pure fn
-  operator!=(StringView other) const wontthrow->bool
+  operator!=(StringView other) const wontthrow -> bool
   {
     return !(view() == other);
   }
 
   hot mustuse pure fn
-  operator<(const String &other) const wontthrow->bool;
+  operator<(const String &other) const wontthrow -> bool;
 
   mustuse pure fn
   first_character() const wontthrow -> char
@@ -352,7 +381,8 @@ public:
   hot mustuse fn
   is_ascii() const wontthrow -> bool
   {
-    if (m_ascii_state == AsciiState::Unknown) rarely classify_ascii();
+    if (m_ascii_state == AsciiState::Unknown) rarely
+      classify_ascii();
 
     return m_ascii_state == AsciiState::Ascii;
   }
@@ -370,6 +400,7 @@ private:
 
   template <class Value>
   friend class StringMap;
+
   String() : m_allocator(heap_allocator()) { reset_to_inline(); }
 
   cold fn
@@ -413,6 +444,6 @@ fn
 String::to<f64>() const throws -> ErrorOr<f64>;
 
 fn
-operator+(StringView left, StringView right) throws->String;
+operator+(StringView left, StringView right) throws -> String;
 
 } /* namespace koshka */

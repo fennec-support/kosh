@@ -31,11 +31,13 @@ fn
 Fg::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let const &args = ec.args();
+
   ASSERT(!args.is_empty());
 
   cxt.job_table_store().forget_waited_jobs();
 
   job *job = nullptr;
+
   if (args.count() > 1 && !args[1].is_empty()) {
     job = cxt.job_table_store().find_job_by_spec(args[1]);
     if (job == nullptr)
@@ -52,12 +54,14 @@ Fg::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   if (job->state == job::State::Done) {
     let const done_status = job->last_status;
+
     cxt.job_table_store().forget_done_jobs();
 
     return done_status;
   }
 
   let const command = job->command.view();
+
   ec.print_to_stdout(command + "\n");
   if (cxt.execution_store().shell_is_interactive())
     toiletline::set_title(command);
@@ -66,12 +70,14 @@ Fg::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                              os::shell_has_controlling_terminal();
   let const should_reclaim_after_wait =
       should_reclaim && job->process_group_id > 0;
+
   let const do_resume_job = [&]() throws {
     if (job->state == job::State::Stopped) continue_job(*job);
   };
 
   let was_stopped = false;
   i32 status;
+
   if (should_reclaim_after_wait) {
     LOG(Debug,
         "fg will give the terminal to process group %lld before it resumes job "
@@ -79,6 +85,7 @@ Fg::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         static_cast<long long>(job->process_group_id), job->id);
     os::give_controlling_terminal_to_process_group(job->process_group_id);
     defer { os::reclaim_controlling_terminal(); };
+
     do_resume_job();
     status = cxt.job_table_store().wait_for_job_processes(*job, &was_stopped);
   } else {

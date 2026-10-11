@@ -148,6 +148,7 @@ test_inequality_left_operand(const ArrayList<const Token *> &args,
   }
 
   let const op = args[operator_index]->raw_view();
+
   if (!op.has_value() || *op != StringView{"!="}) {
     return None;
   }
@@ -171,11 +172,13 @@ cold fn
 view_has_decimal_fraction(StringView view) wontthrow -> bool
 {
   usize position = 0;
+
   if (position < view.length) {
     switch (view[position]) {
     case '-':
     case '+': position++; break;
-    default:  break;
+
+    default: break;
     }
   }
 
@@ -224,7 +227,8 @@ view_has_arithmetic_operator(StringView view) wontthrow -> bool
     case '*':
     case '/':
     case '%': break;
-    default:  continue;
+
+    default: continue;
     }
 
     if (!is_arithmetic_operand_byte(view[position - 1])) continue;
@@ -245,17 +249,22 @@ view_repeats_a_letter(StringView view) wontthrow -> bool
 
   for (usize position = 0; position < view.length; position++) {
     let const byte = view[position];
+
     if (byte >= 'a' && byte <= 'z') {
       let const letter_bit = 1u << static_cast<u32>(byte - 'a');
+
       if ((seen_lowercase & letter_bit) != 0) {
         return true;
       }
+
       seen_lowercase |= letter_bit;
     } else if (byte >= 'A' && byte <= 'Z') {
       let const letter_bit = 1u << static_cast<u32>(byte - 'A');
+
       if ((seen_uppercase & letter_bit) != 0) {
         return true;
       }
+
       seen_uppercase |= letter_bit;
     }
   }
@@ -274,6 +283,7 @@ view_is_glob_shaped_pattern(StringView view) wontthrow -> bool
       if (position == 0) return false;
       has_repetition = true;
       break;
+
     case '.':
     case '^':
     case '$':
@@ -302,6 +312,7 @@ view_is_plain_substitution_script(StringView view) wontthrow -> bool
   }
 
   let const delimiter = view[1];
+
   if (lexer::is_variable_name(delimiter) || delimiter == '\\') {
     return false;
   }
@@ -310,6 +321,7 @@ view_is_plain_substitution_script(StringView view) wontthrow -> bool
 
   for (usize position = 2; position < view.length; position++) {
     let const byte = view[position];
+
     if (byte == delimiter) {
       field_count++;
       continue;
@@ -385,19 +397,22 @@ find_echo_escape_sequence_outside_substitutions(StringView   operand_text,
     case WordSegment::Kind::CommandSubstitution:
     case WordSegment::Kind::ProcessSubstitution:
     case WordSegment::Kind::FunctionSubstitution: break;
-    default:                                      continue;
+
+    default: continue;
     }
 
     if (segment.source_position < base) continue;
 
     let const start = segment.source_position - base;
     let const end   = start + segment.source_length;
+
     if (start < cursor || end > operand_text.length) {
       continue;
     }
 
     let const found = find_echo_escape_sequence(
         operand_text.substring_of_length(cursor, start - cursor));
+
     if (!found.is_empty()) return found;
 
     cursor = end;
@@ -419,8 +434,10 @@ view_settles_echo_escapes(StringView view) wontthrow -> bool
     switch (view[position]) {
     case 'e':
     case 'E': has_escape_letter = true; break;
+
     case 'n': break;
-    default:  return false;
+
+    default: return false;
     }
   }
 
@@ -436,6 +453,7 @@ substitution_runs_pattern_matcher(StringView body) throws -> bool
     if (body[scan_position] == '|') position = scan_position + 1;
 
   let const command = body.next_ascii_whitespace_word(position);
+
   if (command.is_empty()) return false;
 
   return get_analysis_command_info(command).is_in_group(
@@ -482,7 +500,7 @@ token_has_ansi_c_quote(const Token *token) wontthrow -> bool
 
 cold fn
 printf_consumed_argument_count(StringView format,
-                               bool &has_quote_conversion) wontthrow -> usize
+                               bool      &has_quote_conversion) wontthrow -> usize
 {
   usize count = 0;
 
@@ -490,6 +508,7 @@ printf_consumed_argument_count(StringView format,
     if (format[i] != '%' || i + 1 >= format.length) {
       continue;
     }
+
     i++;
     if (format[i] == '%') continue;
 
@@ -509,6 +528,7 @@ printf_consumed_argument_count(StringView format,
         i++;
       }
     }
+
     if (i < format.length && format[i] == '.') {
       i++;
       if (i < format.length && format[i] == '*') {
@@ -535,6 +555,7 @@ printf_consumed_argument_count(StringView format,
 
       if (i + 1 < format.length) i++;
     }
+
     if (i < format.length && format[i] == 'q') {
       has_quote_conversion = true;
     }
@@ -554,15 +575,17 @@ view_is_integer_literal(StringView view) wontthrow -> bool
 }
 
 cold fn
-args_have_short_flag(const ArrayList<const Token *> &args, char letter) throws
-    -> bool
+args_have_short_flag(const ArrayList<const Token *> &args,
+                     char                            letter) throws -> bool
 {
   for (usize i = 1; i < args.count(); i++) {
     if (args[i]->kind() != Token::Kind::Word) continue;
+
     let const literal = static_cast<const tokens::WordToken *>(args[i])
                             ->word()
                             .to_literal_string();
     let const view = literal.view();
+
     if (view.length >= 2 && view[0] == '-' && view[1] != '-' &&
         view.find_character(letter).has_value())
     {
@@ -583,10 +606,12 @@ single_literal_file_operand(const ArrayList<const Token *> &args) throws
     if (args[i]->kind() != Token::Kind::Word) return None;
 
     let const &word = static_cast<const tokens::WordToken *>(args[i])->word();
+
     if (!word_is_fully_literal(word)) return None;
 
     let const literal = word.to_literal_string();
     let const view    = literal.view();
+
     if (view.is_empty()) return None;
 
     if (view[0] == '-') {
@@ -732,6 +757,7 @@ is_shell_maintained_variable(StringView name) wontthrow -> bool
       SSK("KOSH_WELCOME"),
   };
   static constexpr StaticStringSet KOSH_VARIABLES{KOSH_KEYS};
+
   if (KOSH_VARIABLES.contains(name)) return true;
 
   return SHELL_MAINTAINED_VARIABLES.contains(name);
@@ -801,7 +827,8 @@ fn
 check_posix_parameter_expansion(AnalysisContext   &actx,
                                 const WordSegment &segment,
                                 StringView         text,
-                                SourceLocation fallback_location) throws -> void
+                                SourceLocation     fallback_location) throws
+    -> void
 {
   if (text.is_empty()) return;
 
@@ -821,6 +848,7 @@ check_posix_parameter_expansion(AnalysisContext   &actx,
     }
 
     let const last = text[text.length - 1];
+
     if (last == '*' || last == '@') {
       actx.report_diagnostic(diagnostic_id::sc3056, do_get_location(), {text});
 
@@ -842,6 +870,7 @@ check_posix_parameter_expansion(AnalysisContext   &actx,
   if (position == name_start) return;
 
   let const name = text.substring_of_length(name_start, position - name_start);
+
   if (BASH_ONLY_VARIABLES.contains(name) ||
       is_bash_only_dynamic_variable_name(name))
   {
@@ -863,11 +892,13 @@ check_posix_parameter_expansion(AnalysisContext   &actx,
 
   case ':': {
     let const modifier = position + 1 < text.length ? text[position + 1] : '\0';
+
     if (modifier == '-' || modifier == '=' || modifier == '?' ||
         modifier == '+')
     {
       break;
     }
+
     actx.report_diagnostic(diagnostic_id::sc3057, do_get_location(), {text});
     break;
   }
@@ -898,6 +929,7 @@ arithmetic_assignment_target(StringView expression,
     if (at < 2 || expression[at - 2] != expression[at - 1]) {
       return {};
     }
+
     at -= 2;
     break;
 

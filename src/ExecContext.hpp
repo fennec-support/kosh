@@ -46,7 +46,7 @@ public:
             ProgramResolver            &program_resolver,
             ArrayList<SourceLocation> &&arg_locations,
             mimic_mood                  mood,
-            bool should_autocd = false) throws -> ExecContext;
+            bool                        should_autocd = false) throws -> ExecContext;
 
   static fn
   make_from_resolved(SourceLocation              location,
@@ -61,7 +61,8 @@ public:
                        StringView            diagnostic) throws -> ExecContext;
 
   fn
-  set_unresolved(i32 resolution_status, StringView diagnostic) throws -> void;
+  set_unresolved(i32 resolution_status, StringView diagnostic) throws
+      -> void;
 
   Maybe<os::descriptor> in_fd{};
   Maybe<os::descriptor> out_fd{};

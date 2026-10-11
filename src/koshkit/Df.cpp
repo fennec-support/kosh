@@ -37,7 +37,8 @@ fn
 Df::execute(const ExecContext               &ec,
             EvalContext                     &cxt,
             const ArrayList<String>         &args,
-            const ArrayList<SourceLocation> &arg_locations) const throws -> i32
+            const ArrayList<SourceLocation> &arg_locations) const throws
+    -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
@@ -46,14 +47,17 @@ Df::execute(const ExecContext               &ec,
   let const output_unit = is_human                         ? 1u
                           : FLAG_DF_KIBIBYTES.is_enabled() ? 1024u
                                                            : 512u;
+
   ec.print_to_stdout(
       is_human ? "Filesystem Size Used Avail Use% Mounted on\n"
       : FLAG_DF_KIBIBYTES.is_enabled()
           ? "Filesystem 1024-blocks Used Available Capacity Mounted on\n"
           : "Filesystem 512-blocks Used Available Capacity Mounted on\n");
+
   i32 status = 0;
 
   let filesystems = ArrayList<os::mounted_filesystem>{cxt.scratch_allocator()};
+
   if (operands.is_empty()) {
     let mounted = os::mounted_filesystems();
 
@@ -68,6 +72,7 @@ Df::execute(const ExecContext               &ec,
 
   for (let const &mounted : filesystems) {
     os::filesystem_status filesystem{};
+
     if (!os::stat_filesystem(mounted.target.view(), filesystem)) {
       KOSHKIT_REPORT_PATH_ERROR("read", mounted.target);
       status = 1;
@@ -83,13 +88,15 @@ Df::execute(const ExecContext               &ec,
     let const available = scaled_filesystem_blocks(
         filesystem.available_blocks, filesystem.fundamental_block_byte_count,
         output_unit);
-    let const used      = total > free ? total - free : 0;
-    let const capacity  = filesystem_usage_percent(used, available);
+    let const used     = total > free ? total - free : 0;
+    let const capacity = filesystem_usage_percent(used, available);
+
     let const do_format = [&](u64 value) throws -> String {
       return is_human
                  ? format_human_size(value, cxt.scratch_allocator(), human_step)
                  : String::from(value, cxt.scratch_allocator());
     };
+
     ec.print_to_stdout(mounted.source + " " + do_format(total) + " " +
                        do_format(used) + " " + do_format(available) + " " +
                        String::from(capacity, cxt.scratch_allocator()) + "% " +

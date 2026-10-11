@@ -154,6 +154,7 @@ public:
 
 private:
   T m_lambda;
+
   t__exit_scope &
   operator=(const t__exit_scope &);
 };
@@ -201,6 +202,7 @@ public:
 
 #define wontthrow noexcept
 #define throws    noexcept(false)
+#define abstract  = 0
 
 #define donteliminate t__used
 #define alwaysinline  t__forceinline

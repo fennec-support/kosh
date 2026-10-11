@@ -58,7 +58,8 @@ get_builtin_section(Builtin::Kind kind, StringView name) wontthrow
 }
 
 static fn
-print_builtin_columns(ExecContext &ec, Allocator allocator) throws -> void
+print_builtin_columns(ExecContext &ec, Allocator allocator) throws
+    -> void
 {
   let const &sorted       = sorted_builtin_names();
   let        posix_names  = ArrayList<StringView>{allocator};
@@ -67,19 +68,25 @@ print_builtin_columns(ExecContext &ec, Allocator allocator) throws -> void
 
   for (let const &name : sorted) {
     let const kind = search_builtin(name.view());
+
     ASSERT(kind.has_value());
     switch (get_builtin_section(*kind, name.view())) {
-    case builtin_section::Posix:  posix_names.push(name.view()); break;
-    case builtin_section::Bash:   bash_names.push(name.view()); break;
+    case builtin_section::Posix: posix_names.push(name.view()); break;
+
+    case builtin_section::Bash: bash_names.push(name.view()); break;
+
     case builtin_section::Koshka: koshka_names.push(name.view()); break;
     }
   }
 
   let out = String{allocator};
+
   out += "Koshka has ";
   out += String::from(static_cast<i64>(sorted.count()), allocator);
   out += " builtins:\n\n";
+
   let const should_color = colors::stdout_wants_color();
+
   append_report_name_section(out, "POSIX", posix_names, should_color);
   append_report_name_section(out, "BASH", bash_names, should_color);
   append_report_name_section(out, "Koshka", koshka_names, should_color);
@@ -87,7 +94,8 @@ print_builtin_columns(ExecContext &ec, Allocator allocator) throws -> void
 }
 
 fn
-BuiltinBuiltin::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
+BuiltinBuiltin::execute(ExecContext &ec, EvalContext &cxt) const throws
+    -> i32
 {
   if (ec.args().count() < 2) {
     if (cxt.runtime_state().get_mood() == mimic_mood::Default)
@@ -97,6 +105,7 @@ BuiltinBuiltin::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   }
 
   let const &name = ec.args()[1];
+
   if (name == "--list") {
     let const &sorted = sorted_builtin_names();
     let        out    = String{cxt.scratch_allocator()};
@@ -115,6 +124,7 @@ BuiltinBuiltin::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       name.c_str());
 
   let const target = search_builtin(name.view());
+
   if (!target.has_value()) {
     report_soft_builtin_error(ec, cxt, ec.arg_location_at(1),
                               StringView{"'"} + name +

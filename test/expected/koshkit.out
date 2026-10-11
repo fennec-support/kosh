@@ -1,6 +1,7 @@
 == koshkit utilities by prefix:
 make
 man
+meow
 mkdir
 mkfifo
 mknod

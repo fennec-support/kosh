@@ -55,6 +55,7 @@ make_one(StringView                path,
   let const should_set_exact_mode = application == mode_application::Exact;
   let const should_ignore_existing =
       existing_policy == existing_directory_policy::Accept;
+
   if (os::make_directory(path, mode)) {
     if (should_set_exact_mode && !os::set_file_mode(path, mode)) {
       return false;
@@ -74,8 +75,7 @@ fn
 Mkdir::execute(const ExecContext               &ec,
                EvalContext                     &cxt,
                const ArrayList<String>         &args,
-               const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+               const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
@@ -84,10 +84,12 @@ Mkdir::execute(const ExecContext               &ec,
   let const should_make_parents = FLAG_MKDIR_PARENTS.is_enabled();
 
   u32 named_mode = 0777;
+
   if (FLAG_MKDIR_MODE.is_set()) {
     let const parsed = utils::parse_file_mode(FLAG_MKDIR_MODE.value(), 0777,
                                               os::get_file_creation_mask(),
                                               utils::file_kind_mode::Directory);
+
     if (!parsed.has_value()) {
       throw ErrorWithDetails{
           "invalid mode '" +
@@ -117,6 +119,7 @@ Mkdir::execute(const ExecContext               &ec,
           KOSHKIT_REPORT_PATH_ERROR("create directory", operand);
           status = 1;
         }
+
         continue;
       }
 
@@ -124,12 +127,16 @@ Mkdir::execute(const ExecContext               &ec,
         if (i < text.length && text[i] != '/') {
           continue;
         }
+
         let const prefix = text.substring_of_length(0, i);
+
         if (prefix.is_empty()) continue;
+
         let const is_named_directory = (i == text.length);
         let const mode = is_named_directory ? named_mode : intermediate_mode;
         let const should_set_exact_mode =
             !is_named_directory || FLAG_MKDIR_MODE.is_set();
+
         if (!make_one(prefix, mode,
                       should_set_exact_mode ? mode_application::Exact
                                             : mode_application::RespectUmask,

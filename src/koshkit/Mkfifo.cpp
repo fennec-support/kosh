@@ -27,16 +27,18 @@ fn
 Mkfifo::execute(const ExecContext               &ec,
                 EvalContext                     &cxt,
                 const ArrayList<String>         &args,
-                const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+                const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (operands.is_empty()) return report_usage_error(ec, cxt, args[0].view());
+
   u32 mode = 0666;
+
   if (FLAG_MKFIFO_MODE.is_set()) {
     let const parsed = utils::parse_file_mode(FLAG_MKFIFO_MODE.value(), mode, 0,
                                               utils::file_kind_mode::Regular);
+
     if (!parsed.has_value())
       throw Error{
           "invalid mode '" +
@@ -54,6 +56,7 @@ Mkfifo::execute(const ExecContext               &ec,
       status = 1;
       continue;
     }
+
     if (FLAG_MKFIFO_MODE.is_set() && !os::set_file_mode(operand.view(), mode)) {
       KOSHKIT_REPORT_PATH_ERROR("set mode of", operand);
       status = 1;

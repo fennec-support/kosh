@@ -30,7 +30,8 @@ fn
 Ln::execute(const ExecContext               &ec,
             EvalContext                     &cxt,
             const ArrayList<String>         &args,
-            const ArrayList<SourceLocation> &arg_locations) const throws -> i32
+            const ArrayList<SourceLocation> &arg_locations) const throws
+    -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
@@ -53,8 +54,10 @@ Ln::execute(const ExecContext               &ec,
   for (usize i = 0; i + 1 < operands.count(); i++) {
     let const target = operands[i].view();
     let       link   = String{cxt.scratch_allocator(), destination};
+
     if (is_destination_directory) {
       let link_path = Path{destination, cxt.scratch_allocator()};
+
       link_path.append(Path{target, cxt.scratch_allocator()}.filename());
       link = link_path.text();
     }
@@ -67,6 +70,7 @@ Ln::execute(const ExecContext               &ec,
                              link_status.has_file_identity &&
                              target_status.device_id == link_status.device_id &&
                              target_status.file_id == link_status.file_id;
+
     if (is_same_file) {
       report_soft_koshkit_util_error(
           ec, cxt, args[0].view(),
@@ -80,6 +84,7 @@ Ln::execute(const ExecContext               &ec,
 
     let         link_target = target;
     Maybe<Path> resolved_target;
+
     if (!FLAG_LN_SYMBOLIC.is_enabled() &&
         FLAG_LN_LOGICAL.position() > FLAG_LN_PHYSICAL.position())
     {
@@ -87,14 +92,17 @@ Ln::execute(const ExecContext               &ec,
       if (resolved_target.has_value())
         link_target = resolved_target->text().view();
     }
+
     let const did_create = FLAG_LN_SYMBOLIC.is_enabled()
                                ? os::create_symlink(link_target, link.view())
                                : os::create_hard_link(link_target, link.view());
+
     if (!did_create) {
       let const reason =
           os::last_system_error_is_missing_file()
               ? String{cxt.scratch_allocator(), "No such file or directory"}
               : os::last_system_error_message();
+
       report_soft_koshkit_util_error(ec, cxt, args[0].view(),
                                      "cannot create link '" + link +
                                          "': " + reason);

@@ -32,7 +32,8 @@ namespace koshka {
 namespace {
 
 fn
-normalize_condition(StringView raw, Allocator allocator) throws -> String
+normalize_condition(StringView raw, Allocator allocator) throws
+    -> String
 {
   let name = String{allocator};
 
@@ -42,10 +43,12 @@ normalize_condition(StringView raw, Allocator allocator) throws -> String
   if (name.starts_with("SIG") && name.count() > 3) {
     name = String{allocator, name.substring(3)};
   }
+
   if (name == "0") return String{allocator, "EXIT"};
 
   if (name.view().is_all_decimal_digits()) {
     let const parsed = name.view().to<i64>();
+
     if (!parsed.is_error() && parsed.value() <= INT32_MAX) {
       if (let const signal_name =
               os::signal_name_from_number(static_cast<i32>(parsed.value())))
@@ -57,7 +60,8 @@ normalize_condition(StringView raw, Allocator allocator) throws -> String
 }
 
 fn
-is_valid_trap_condition(StringView condition, mimic_mood mood) throws -> bool
+is_valid_trap_condition(StringView condition, mimic_mood mood) throws
+    -> bool
 {
   static constexpr PackedStringKey SPECIAL_CONDITION_KEYS[] = {
       SSK("EXIT"),
@@ -86,8 +90,8 @@ struct listed_trap
 struct listed_trap_comparator
 {
   pure fn
-  operator()(const listed_trap &left,
-             const listed_trap &right) const wontthrow->bool
+  operator()(const listed_trap &left, const listed_trap &right) const wontthrow
+      -> bool
   {
     return left.order < right.order;
   }
@@ -144,17 +148,20 @@ fn
 Trap::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let const &args = ec.args();
+
   ASSERT(!args.is_empty());
 
   if (cxt.runtime_state().is_posix_mode() && args.count() > 1 &&
       args[1].count() > 1 && args[1].starts_with("-") && args[1] != "--")
   {
     let option = String{cxt.scratch_allocator()};
+
     option += args[1][1];
 
     let bad_option = make_error_for_arg(
         ec, 1, "'-" + option + "' is not a valid trap option",
         "Use `--` before an operand that begins with a dash");
+
     bad_option.set_command_status(2);
     throw bad_option;
   }
@@ -195,6 +202,7 @@ Trap::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       }
 
       let option = String{cxt.scratch_allocator()};
+
       option += word[i];
 
       report_soft_builtin_error(
@@ -214,8 +222,10 @@ Trap::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return 0;
   }
 
-  let const do_read_condition = [&](usize index) throws -> Maybe<String> {
+  let const do_read_condition =
+      [&](usize index) throws -> Maybe<String> {
     let condition = normalize_condition(args[index], cxt.scratch_allocator());
+
     if (is_valid_trap_condition(condition.view(),
                                 cxt.runtime_state().get_mood()))
     {
@@ -230,14 +240,16 @@ Trap::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   };
 
   let const has_filter = should_print_listing && operand_index < args.count();
+
   if (operand_index >= args.count() || has_filter) {
     let const condition_format = cxt.runtime_state().is_bash_compatible()
                                      ? trap_condition_format::SignalPrefixed
                                      : trap_condition_format::Plain;
 
-    let       out               = String{cxt.scratch_allocator()};
-    let const do_append_listing = [&](StringView condition, StringView action)
-                                      throws -> void {
+    let out = String{cxt.scratch_allocator()};
+
+    let const do_append_listing =
+        [&](StringView condition, StringView action) throws -> void {
       out += "trap -- ";
       append_shell_quoted_arg(out, action, true);
       out += ' ';
@@ -251,6 +263,7 @@ Trap::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
       for (usize i = operand_index; i < args.count(); i++) {
         let const condition = do_read_condition(i);
+
         if (!condition.has_value()) {
           has_invalid_operand = true;
           continue;
@@ -263,6 +276,7 @@ Trap::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
         let const  trap      = cxt.trap_store().find(condition->view());
         let const &held_exit = cxt.trap_store().held_exit_action();
+
         if (trap.has_value()) {
           do_append_listing(condition->view(), trap->action_text.view());
         } else if (held_exit.has_value() && condition->view() == "EXIT") {
@@ -276,11 +290,13 @@ Trap::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     }
 
     let collected = ArrayList<listed_trap>{cxt.scratch_allocator()};
+
     cxt.trap_store().list(
         [&](StringView condition, const trap_definition &trap) {
           collected.push(listed_trap{trap_listing_order(condition), condition,
                                      trap.action_text.view()});
         });
+
     if (let const &held_exit = cxt.trap_store().held_exit_action();
         held_exit.has_value())
     {
@@ -292,6 +308,7 @@ Trap::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                                     ? cxt.trap_store().startup_ignored_signals()
                                     : 0;
     let       ignored_names   = ArrayList<String>{cxt.scratch_allocator()};
+
     if (ignored_signals != 0) {
       ignored_names.reserve(os::ENTRY_IGNORED_SIGNAL_LIMIT);
 
@@ -299,6 +316,7 @@ Trap::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         if ((ignored_signals & (u64{1} << (number - 1))) == 0) continue;
 
         let name = os::signal_name_from_number(number);
+
         if (!name.has_value()) continue;
         if (cxt.trap_store().find(name->view()).has_value()) continue;
 
@@ -324,6 +342,7 @@ Trap::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   if (action_index + 1 == args.count()) {
     let const condition = do_read_condition(action_index);
+
     if (!condition.has_value()) {
       return cxt.runtime_state().is_posix_mode() ? 1 : 2;
     }
@@ -342,6 +361,7 @@ Trap::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   for (usize i = action_index + 1; i < args.count(); i++) {
     let const condition = do_read_condition(i);
+
     if (!condition.has_value()) {
       status = 1;
       continue;

@@ -55,7 +55,9 @@ cal_weekday(i64 year, usize month, usize day) wontthrow -> usize
 {
   static constexpr usize MONTH_OFFSETS[12] = {0, 3, 2, 5, 0, 3,
                                               5, 1, 4, 6, 2, 4};
+
   if (month < 3) year--;
+
   let const adjusted_year = static_cast<u64>(year);
 
   return static_cast<usize>((adjusted_year % 7 + adjusted_year / 4 % 7 + 7 -
@@ -74,8 +76,10 @@ append_calendar_month(String        &output,
                       bool           should_color) throws -> void
 {
   let title = String{allocator, CAL_MONTH_NAMES[month - 1]};
+
   title += ' ';
   title += String::from(year, allocator);
+
   let const left_padding = title.length() < 20 ? (20 - title.length()) / 2 : 0;
 
   for (usize position = 0; position < left_padding; position++)
@@ -94,6 +98,7 @@ append_calendar_month(String        &output,
   let const first_column =
       first_day == week_start::Monday ? (first_weekday + 6) % 7 : first_weekday;
   let day_count = CAL_MONTH_LENGTHS[month - 1];
+
   if (month == 2 && is_cal_leap_year(year)) {
     day_count++;
   }
@@ -103,6 +108,7 @@ append_calendar_month(String        &output,
 
   for (usize day = 1; day <= day_count; day++) {
     if (day < 10) output += ' ';
+
     let const weekday = (first_weekday + day - 1) % 7;
     let const is_current_day =
         year == current_date.tm_year + 1900 &&
@@ -115,9 +121,12 @@ append_calendar_month(String        &output,
                            : is_weekend     ? colors::ansi::RED
                                             : StringView{};
     let const day_text   = String::from(day, allocator);
+
     append_report_text(output, day_text.view(), style, should_color);
+
     let const column =
         first_day == week_start::Monday ? (weekday + 6) % 7 : weekday;
+
     if (column == 6 || day == day_count) {
       output += '\n';
     } else {
@@ -144,17 +153,21 @@ Cal::execute(const ExecContext               &ec,
 
   let const  now   = std::time(nullptr);
   let const *local = std::localtime(&now);
+
   if (local == nullptr) throw Error{"cannot read the current date"};
+
   let const current_date = *local;
 
   usize month = 0;
   i64   year  = 0;
+
   if (operands.is_empty()) {
     month = static_cast<usize>(current_date.tm_mon + 1);
     year  = current_date.tm_year + 1900;
   } else if (operands.count() == 2) {
     let const parsed_month = utils::parse_decimal_u64(operands[0].view());
     let const parsed_year  = utils::parse_decimal_u64(operands[1].view());
+
     if (parsed_month.is_error() || parsed_month.value() < 1 ||
         parsed_month.value() > 12)
     {
@@ -164,6 +177,7 @@ Cal::execute(const ExecContext               &ec,
 
       return 1;
     }
+
     if (parsed_year.is_error() || parsed_year.value() < 1 ||
         parsed_year.value() > INT64_MAX)
     {
@@ -173,10 +187,12 @@ Cal::execute(const ExecContext               &ec,
 
       return 1;
     }
+
     month = static_cast<usize>(parsed_month.value());
     year  = static_cast<i64>(parsed_year.value());
   } else {
     let const parsed_year = utils::parse_decimal_u64(operands[0].view());
+
     if (parsed_year.is_error() || parsed_year.value() < 1 ||
         parsed_year.value() > INT64_MAX)
     {
@@ -186,6 +202,7 @@ Cal::execute(const ExecContext               &ec,
 
       return 1;
     }
+
     year = static_cast<i64>(parsed_year.value());
   }
 
@@ -193,6 +210,7 @@ Cal::execute(const ExecContext               &ec,
   let const should_color = koshkit_should_color();
   let const first_day =
       FLAG_CAL_TODAY.is_enabled() ? week_start::Monday : week_start::Sunday;
+
   if (month != 0) {
     append_calendar_month(output, month, year, current_date,
                           cxt.scratch_allocator(), first_day, should_color);

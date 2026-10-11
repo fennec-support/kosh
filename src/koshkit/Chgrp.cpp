@@ -55,13 +55,14 @@ fn
 Chgrp::execute(const ExecContext               &ec,
                EvalContext                     &cxt,
                const ArrayList<String>         &args,
-               const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+               const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (operands.count() < 2) return report_usage_error(ec, cxt, args[0].view());
+
   let const group_id = utils::resolve_group_id(operands[0].view());
+
   if (!group_id.has_value()) {
     KOSHKIT_REPORT_ERROR_AT(operand_locations[0],
                             "invalid group '" + operands[0] + "'",

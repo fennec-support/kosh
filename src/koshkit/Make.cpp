@@ -90,6 +90,7 @@ is_make_job_count(koshka::StringView value) wontthrow -> bool
 {
   return !value.is_empty() && value.is_all_decimal_digits();
 }
+
 FLAG_OPTIONAL(
     MAKE_JOBS,
     'j',
@@ -296,6 +297,7 @@ struct make_variable
                 make_variable_flavor flavor)
       : name(steal(name)), value(steal(value)), origin(origin), flavor(flavor)
   {}
+
   String               name;
   String               value;
   make_variable_origin origin;
@@ -307,6 +309,7 @@ struct make_pattern
   explicit make_pattern(Allocator allocator)
       : prefix(allocator), suffix(allocator)
   {}
+
   String prefix;
   String suffix;
   bool   has_wildcard{false};
@@ -318,6 +321,7 @@ struct make_rule
       : target(allocator), prerequisites(allocator), recipe_lines(allocator),
         variable_assignments(allocator)
   {}
+
   String            target;
   ArrayList<String> prerequisites;
   ArrayList<String> recipe_lines;
@@ -329,6 +333,7 @@ struct make_pattern_rule
   explicit make_pattern_rule(Allocator allocator)
       : rule(allocator), pattern(allocator)
   {}
+
   make_rule    rule;
   make_pattern pattern;
 };
@@ -350,6 +355,7 @@ struct makefile
         phony_targets(allocator), precious_targets(allocator),
         ignored_targets(allocator), silent_targets(allocator)
   {}
+
   ArrayList<make_variable>         variables;
   ArrayList<make_rule>             rules;
   ArrayList<make_pattern_rule>     pattern_rules;
@@ -383,7 +389,8 @@ struct makefile
   }
 
   fn
-  find_variable_record(StringView name) const throws -> const make_variable *
+  find_variable_record(StringView name) const throws
+      -> const make_variable *
   {
     if (let const index = variable_index.find(name); index.has_value())
       return &variables[*index.value()];
@@ -429,6 +436,7 @@ struct makefile
       variables[index] = steal(variables[last_index]);
       variable_index.set(variables[index].name.view(), index);
     }
+
     variables.pop_back();
   }
 };
@@ -469,6 +477,7 @@ automatic_path_part(StringView text,
         separator_position = word_position;
         has_separator      = true;
       }
+
       word_position++;
     }
 
@@ -478,6 +487,7 @@ automatic_path_part(StringView text,
     if (is_filename) {
       let const filename_start =
           has_separator ? separator_position + 1 : word_start;
+
       out += text.substring_of_length(filename_start,
                                       word_position - filename_start);
     } else if (!has_separator) {
@@ -511,7 +521,8 @@ substitute_automatic(StringView text,
                      StringView stem,
                      Allocator  allocator) throws -> String
 {
-  String    out{allocator};
+  String out{allocator};
+
   let const do_value_for = [&](char name) -> StringView {
     switch (name) {
     case '@': return target;
@@ -524,16 +535,19 @@ substitute_automatic(StringView text,
     default:  return StringView{};
     }
   };
+
   usize i = 0;
 
   while (i < text.length) {
     if (text[i] == '$' && i + 1 < text.length) {
       let const next = text[i + 1];
+
       if (next == '$') {
         out += "$$";
         i += 2;
         continue;
       }
+
       if ((next == '(' || next == '{') && i + 3 < text.length) {
         let const close          = next == '(' ? ')' : '}';
         usize     close_position = i + 2;
@@ -545,11 +559,13 @@ substitute_automatic(StringView text,
         if (close_position < text.length) {
           let const contents =
               text.substring_of_length(i + 2, close_position - (i + 2));
+
           if (!contents.is_empty() &&
               StringView{"@%<^+?*"}.find_character(contents[0]).has_value())
           {
             usize contents_position = 1;
             let   value = String{allocator, do_value_for(contents[0])};
+
             if (contents_position < contents.length &&
                 (contents[contents_position] == 'D' ||
                  contents[contents_position] == 'F'))
@@ -558,14 +574,17 @@ substitute_automatic(StringView text,
                   value.view(), contents[contents_position] == 'F', allocator);
               contents_position++;
             }
+
             if (contents_position == contents.length) {
               out += value.view();
               i = close_position + 1;
               continue;
             }
+
             if (contents[contents_position] == ':') {
               let const substitution =
                   contents.substring(contents_position + 1);
+
               if (let const equals = substitution.find_character('=');
                   equals.has_value())
               {
@@ -581,12 +600,14 @@ substitute_automatic(StringView text,
           }
         }
       }
+
       if (StringView{"@%<^+?*"}.find_character(next).has_value()) {
         out += do_value_for(next);
         i += 2;
         continue;
       }
     }
+
     out.push(text[i]);
     i++;
   }
@@ -618,7 +639,8 @@ trim(StringView text) wontthrow -> StringView
 }
 
 static fn
-split_words(StringView text, Allocator allocator) throws -> ArrayList<String>
+split_words(StringView text, Allocator allocator) throws
+    -> ArrayList<String>
 {
   ArrayList<String> words{allocator};
   usize             text_position = 0;
@@ -651,6 +673,7 @@ split_makeflags_words(StringView text, Allocator allocator) throws
       if (text[text_position] == '\\' && text_position + 1 < text.length) {
         text_position++;
       }
+
       word.push(text[text_position++]);
     }
 
@@ -686,7 +709,9 @@ apply_makeflags(StringView          text,
     if (word.is_empty() || is_command_line_assignment(word.view())) {
       continue;
     }
+
     let letters = word.view();
+
     if (letters == "--") break;
     if (letters[0] == '-') letters = letters.substring(1);
     if (letters.is_empty() || letters[0] == '-') {
@@ -697,19 +722,31 @@ apply_makeflags(StringView          text,
          letter_position++)
     {
       let const letter = letters[letter_position];
+
       switch (letter) {
       case 'B': flags.should_always_make = true; break;
+
       case 'e': flags.is_environment_overriding = true; break;
+
       case 'i': flags.should_ignore_errors = true; break;
+
       case 'k': flags.should_keep_going = true; break;
+
       case 'S': flags.should_keep_going = false; break;
+
       case 'n': flags.is_dry_run = true; break;
+
       case 'p': flags.is_print_database = true; break;
+
       case 'q': flags.is_query = true; break;
+
       case 'r': flags.should_disable_builtin_rules = true; break;
+
       case 's': flags.is_silent = true; break;
+
       case 't': flags.should_touch = true; break;
-      default:  break;
+
+      default: break;
       }
     }
   }
@@ -717,13 +754,15 @@ apply_makeflags(StringView          text,
 
 static fn
 archive_member_modification_time(const Path &archive,
-                                 StringView  wanted_member) throws -> Maybe<i64>
+                                 StringView  wanted_member) throws
+    -> Maybe<i64>
 {
   enum class archive_special_member : u8
   {
     LongNames,
     SymbolTable,
   };
+
   static constexpr static_string_entry<archive_special_member>
       SPECIAL_MEMBER_ENTRIES[] = {
           {SSK("//"),      archive_special_member::LongNames  },
@@ -733,6 +772,7 @@ archive_member_modification_time(const Path &archive,
   static constexpr StaticStringMap SPECIAL_MEMBERS{SPECIAL_MEMBER_ENTRIES};
 
   let const contents = archive.read_entire_file();
+
   if (!contents.has_value() || contents->view().length < 8 ||
       contents->view().substring_of_length(0, 8) != StringView{"!<arch>\n"})
   {
@@ -747,6 +787,7 @@ archive_member_modification_time(const Path &archive,
   {
     let const header =
         contents->view().substring_of_length(header_position, 60);
+
     if (header[58] != '`' || header[59] != '\n') {
       return None;
     }
@@ -756,23 +797,28 @@ archive_member_modification_time(const Path &archive,
         header.substring_of_length(16, 12).trim_blanks());
     let const member_byte_count = utils::parse_decimal_u64(
         header.substring_of_length(48, 10).trim_blanks());
+
     if (timestamp.is_error() || member_byte_count.is_error()) {
       return None;
     }
 
     let const content_position = header_position + 60;
+
     if (member_byte_count.value() > contents->view().length - content_position)
       return None;
 
     u64 extended_name_length = 0;
+
     if (member_name.starts_with(StringView{"#1/"})) {
       let const parsed_name_length =
           utils::parse_decimal_u64(member_name.substring(3));
+
       if (parsed_name_length.is_error() ||
           parsed_name_length.value() > member_byte_count.value())
       {
         return None;
       }
+
       extended_name_length = parsed_name_length.value();
       member_name          = contents->view().substring_of_length(
           content_position, static_cast<usize>(extended_name_length));
@@ -788,11 +834,13 @@ archive_member_modification_time(const Path &archive,
     } else if (member_name.length > 1 && member_name[0] == '/') {
       let const parsed_offset =
           utils::parse_decimal_u64(member_name.substring(1));
+
       if (parsed_offset.is_error() ||
           parsed_offset.value() >= long_names.length)
       {
         return None;
       }
+
       let const name_start = static_cast<usize>(parsed_offset.value());
       usize     name_end   = name_start;
 
@@ -817,6 +865,7 @@ archive_member_modification_time(const Path &archive,
 
     let const padded_byte_count =
         member_byte_count.value() + (member_byte_count.value() & 1u);
+
     if (padded_byte_count > contents->view().length - content_position)
       return None;
     header_position = content_position + static_cast<usize>(padded_byte_count);
@@ -826,12 +875,15 @@ archive_member_modification_time(const Path &archive,
 }
 
 static fn
-expand(EvalContext &cxt, makefile &mk, StringView text, usize depth) throws
-    -> String;
+expand(EvalContext &cxt,
+       makefile    &mk,
+       StringView   text,
+       usize        depth) throws -> String;
 
 struct make_variable_lookup
 {
   explicit make_variable_lookup(Allocator allocator) : owned_value(allocator) {}
+
   String               owned_value;
   StringView           value;
   make_variable_origin origin{make_variable_origin::Undefined};
@@ -866,7 +918,8 @@ lookup_make_variable(EvalContext    &cxt,
                      StringView      name) throws -> make_variable_lookup
 {
   make_variable_lookup lookup{cxt.scratch_allocator()};
-  let const            do_use_stored = [&](const make_variable &variable) {
+
+  let const do_use_stored = [&](const make_variable &variable) {
     lookup.set_borrowed_value(variable.value.view());
     lookup.origin = variable.origin;
     lookup.flavor = variable.flavor;
@@ -885,6 +938,7 @@ lookup_make_variable(EvalContext    &cxt,
       StringView{"@%<^+?*"}.find_character(name[0]).has_value())
   {
     let const base_name = name.substring_of_length(0, 1);
+
     if (const make_variable *variable = mk.find_variable_record(base_name);
         variable != nullptr &&
         variable->origin == make_variable_origin::Automatic)
@@ -914,6 +968,7 @@ lookup_make_variable(EvalContext    &cxt,
 
       return lookup;
     }
+
     lookup.set_borrowed_value(
         cxt.execution_store().get_shell_executable_path());
     lookup.origin = make_variable_origin::Default;
@@ -969,10 +1024,12 @@ expand_variable(EvalContext &cxt,
                 usize        depth) throws -> String
 {
   let lookup = lookup_make_variable(cxt, mk, name);
+
   if (lookup.flavor == make_variable_flavor::Simple)
     return lookup.into_string(cxt.scratch_allocator());
   if (lookup.flavor == make_variable_flavor::Undefined)
     return String{cxt.scratch_allocator()};
+
   let recursive_value = lookup.into_string(cxt.scratch_allocator());
 
   return expand(cxt, mk, recursive_value.view(), depth + 1);
@@ -989,6 +1046,7 @@ make_variable_origin_text(make_variable_origin origin) wontthrow -> const char *
   case make_variable_origin::File:        return "file";
   case make_variable_origin::Undefined:   return "undefined";
   }
+
   unreachable();
 }
 
@@ -1000,6 +1058,7 @@ make_variable_flavor_text(make_variable_flavor flavor) wontthrow -> const char *
   case make_variable_flavor::Simple:    return "simple";
   case make_variable_flavor::Undefined: return "undefined";
   }
+
   unreachable();
 }
 
@@ -1019,7 +1078,8 @@ split_word_views(StringView text, Allocator allocator) throws
 }
 
 static fn
-append_make_word(String &result, StringView word, bool &has_word) throws -> void
+append_make_word(String &result, StringView word, bool &has_word) throws
+    -> void
 {
   if (has_word) result += ' ';
   result += word;
@@ -1056,6 +1116,7 @@ decode_make_percent_text(StringView source, Allocator allocator) throws
       source_position++;
       continue;
     }
+
     if (source[source_position] != '\\') {
       decoded.text.push(source[source_position++]);
       continue;
@@ -1068,6 +1129,7 @@ decode_make_percent_text(StringView source, Allocator allocator) throws
     }
 
     let const backslash_count = source_position - backslash_start;
+
     if (source_position == source.length || source[source_position] != '%') {
       for (usize backslash_position = 0; backslash_position < backslash_count;
            backslash_position++)
@@ -1098,6 +1160,7 @@ parse_make_pattern(StringView pattern, Allocator allocator) throws
 {
   make_pattern parsed{allocator};
   let          decoded = decode_make_percent_text(pattern, allocator);
+
   if (decoded.wildcard_position.has_value()) {
     parsed.has_wildcard = true;
     parsed.prefix = String{allocator, decoded.text.view().substring_of_length(
@@ -1137,6 +1200,7 @@ append_make_replacement(String    &result,
                         bool       has_wildcard) throws -> void
 {
   let decoded = decode_make_percent_text(replacement, result.allocator());
+
   if (has_wildcard && decoded.wildcard_position.has_value()) {
     result +=
         decoded.text.view().substring_of_length(0, *decoded.wildcard_position);
@@ -1180,6 +1244,7 @@ substitute_make_words(StringView source,
     } else {
       result += word;
     }
+
     has_word = true;
   }
 
@@ -1191,6 +1256,7 @@ struct make_variable_snapshot
   explicit make_variable_snapshot(Allocator allocator)
       : name(allocator), value(allocator)
   {}
+
   String               name;
   String               value;
   make_variable_origin origin{make_variable_origin::Undefined};
@@ -1204,6 +1270,7 @@ save_make_variable(const makefile &mk,
                    Allocator       allocator) throws -> make_variable_snapshot
 {
   make_variable_snapshot snapshot{allocator};
+
   snapshot.name = String{allocator, name};
   if (const make_variable *variable = mk.find_variable_record(name);
       variable != nullptr)
@@ -1225,9 +1292,10 @@ set_scoped_make_variable(makefile  &mk,
 {
   if (let const index = mk.variable_index.find(name); index.has_value()) {
     make_variable &variable = mk.variables[*index.value()];
-    variable.value          = String{allocator, value};
-    variable.origin         = make_variable_origin::Automatic;
-    variable.flavor         = make_variable_flavor::Simple;
+
+    variable.value  = String{allocator, value};
+    variable.origin = make_variable_origin::Automatic;
+    variable.flavor = make_variable_flavor::Simple;
 
     return;
   }
@@ -1252,11 +1320,14 @@ restore_make_variable(makefile                     &mk,
   }
 
   let const index = mk.variable_index.find(snapshot.name.view());
+
   ASSERT(index.has_value());
+
   make_variable &variable = mk.variables[*index.value()];
-  variable.value          = String{allocator, snapshot.value.view()};
-  variable.origin         = snapshot.origin;
-  variable.flavor         = snapshot.flavor;
+
+  variable.value  = String{allocator, snapshot.value.view()};
+  variable.origin = snapshot.origin;
+  variable.flavor = snapshot.flavor;
 }
 
 static fn
@@ -1282,10 +1353,12 @@ run_make_shell_function(EvalContext &cxt,
                         StringView   command) throws -> String
 {
   let source = String{cxt.scratch_allocator(), command};
+
   if (const String *shell_value = mk.find_variable("SHELL");
       shell_value != nullptr)
   {
     let const shell = expand(cxt, mk, shell_value->view(), 0);
+
     if (!shell.is_empty()) {
       source = String{cxt.scratch_allocator()};
       append_shell_quoted_arg(source, shell.view());
@@ -1295,6 +1368,7 @@ run_make_shell_function(EvalContext &cxt,
   }
 
   let source_name = StringView{"make"};
+
   if (let const active_name = source_name_at(mk.active_source_name_index);
       active_name.has_value())
     source_name = *active_name;
@@ -1312,6 +1386,7 @@ run_make_shell_function(EvalContext &cxt,
     {
       continue;
     }
+
     folded.push(captured[byte_position] == '\n' ? ' '
                                                 : captured[byte_position]);
   }
@@ -1326,11 +1401,13 @@ try_substitution_reference(EvalContext &cxt,
                            usize        depth) throws -> Maybe<String>
 {
   let const colon = name.find_character(':');
+
   if (!colon.has_value() || *colon == 0) {
     return None;
   }
 
   let const variable_name = name.substring_of_length(0, *colon);
+
   if (variable_name.find_character(' ').has_value() ||
       variable_name.find_character('\t').has_value())
   {
@@ -1339,6 +1416,7 @@ try_substitution_reference(EvalContext &cxt,
 
   let const rest   = name.substring(*colon + 1);
   let const equals = rest.find_character('=');
+
   if (!equals.has_value()) return None;
 
   let const pattern =
@@ -1359,6 +1437,7 @@ split_make_function_arguments(StringView text,
     -> ArrayList<StringView>
 {
   ArrayList<StringView> arguments{allocator};
+
   if (text.is_empty()) return arguments;
   if (maximum_argument_count == 1) {
     arguments.push(text);
@@ -1394,24 +1473,27 @@ split_make_function_arguments(StringView text,
 }
 
 static fn
-require_make_function_arguments(StringView                   function_name,
-                                const make_function_spec    &spec,
-                                const ArrayList<StringView> &arguments) throws
-    -> void
+require_make_function_arguments(
+    StringView                   function_name,
+    const make_function_spec    &spec,
+    const ArrayList<StringView> &arguments) throws -> void
 {
   if (arguments.count() >= spec.minimum_argument_count &&
       arguments.count() <= spec.maximum_argument_count)
   {
     return;
   }
+
   throw Error{"The make function '" + String{function_name} +
               "' received an invalid number of arguments"};
 }
 
 static fn
-make_word_number(StringView text, StringView function_name) throws -> usize
+make_word_number(StringView text, StringView function_name) throws
+    -> usize
 {
   let const parsed = utils::parse_decimal_u64(trim(text));
+
   if (parsed.is_error() || parsed.value() == 0 ||
       static_cast<u64>(static_cast<usize>(parsed.value())) != parsed.value())
   {
@@ -1453,10 +1535,13 @@ evaluate_make_function(EvalContext                 &cxt,
                        const make_function_spec    &spec,
                        const ArrayList<StringView> &arguments,
                        usize                        depth,
-                       bool has_expanded_arguments = false) throws -> String
+                       bool has_expanded_arguments = false) throws
+    -> String
 {
   require_make_function_arguments(function_name, spec, arguments);
+
   let const allocator = cxt.scratch_allocator();
+
   let const do_expand = [&](usize argument_index) -> String {
     if (argument_index >= arguments.count()) return String{allocator};
     if (has_expanded_arguments)
@@ -1471,6 +1556,7 @@ evaluate_make_function(EvalContext                 &cxt,
     let const to     = do_expand(1);
     let const source = do_expand(2);
     let       result = String{allocator};
+
     if (from.is_empty()) {
       result = source.clone();
       result += to.view();
@@ -1483,10 +1569,12 @@ evaluate_make_function(EvalContext                 &cxt,
     while (source_position < source.count()) {
       let const match =
           source.view().substring(source_position).find_substring(from.view());
+
       if (!match.has_value()) {
         result += source.view().substring(source_position);
         break;
       }
+
       result += source.view().substring_of_length(source_position, *match);
       result += to.view();
       source_position += *match + from.count();
@@ -1531,6 +1619,7 @@ evaluate_make_function(EvalContext                 &cxt,
          split_word_views(pattern_text.view(), allocator))
     {
       let pattern = parse_make_pattern(pattern_text_value, allocator);
+
       if (pattern.has_wildcard)
         wildcard_patterns.push(steal(pattern));
       else
@@ -1542,6 +1631,7 @@ evaluate_make_function(EvalContext                 &cxt,
 
     for (StringView word : split_word_views(source.view(), allocator)) {
       bool is_matched = literal_patterns.find(word).has_value();
+
       if (!is_matched)
         for (let const &pattern : wildcard_patterns)
           if (match_make_pattern(pattern, word).has_value()) {
@@ -1568,6 +1658,7 @@ evaluate_make_function(EvalContext                 &cxt,
       if (word_index > 0 && words[word_index] == words[word_index - 1]) {
         continue;
       }
+
       append_make_word(result, words[word_index], has_word);
     }
 
@@ -1583,9 +1674,11 @@ evaluate_make_function(EvalContext                 &cxt,
     if (spec.kind == make_function_kind::Wordlist) source_argument_index = 2;
     let const source = do_expand(source_argument_index);
     let const words  = split_word_views(source.view(), allocator);
+
     if (spec.kind == make_function_kind::Words) {
       return String::from(words.count(), allocator);
     }
+
     if (words.is_empty()) return String{allocator};
     if (spec.kind == make_function_kind::Firstword)
       return String{allocator, words[0]};
@@ -1593,17 +1686,20 @@ evaluate_make_function(EvalContext                 &cxt,
       return String{allocator, words[words.count() - 1]};
     let const first_word_number =
         make_word_number(do_expand(0).view(), function_name);
+
     if (spec.kind == make_function_kind::Word)
       return first_word_number <= words.count()
                  ? String{allocator, words[first_word_number - 1]}
                  : String{allocator};
     let const last_word_number =
         make_word_number(do_expand(1).view(), function_name);
+
     if (first_word_number > last_word_number ||
         first_word_number > words.count())
     {
       return String{allocator};
     }
+
     let       result   = String{allocator};
     bool      has_word = false;
     let const last_index =
@@ -1626,6 +1722,7 @@ evaluate_make_function(EvalContext                 &cxt,
     for (StringView word : split_word_views(source.view(), allocator)) {
       if (spec.kind == make_function_kind::Dir) {
         let const separator = last_path_separator(word);
+
         append_make_word(result,
                          separator.has_value()
                              ? word.substring_of_length(0, *separator + 1)
@@ -1633,6 +1730,7 @@ evaluate_make_function(EvalContext                 &cxt,
                          has_word);
       } else if (spec.kind == make_function_kind::Notdir) {
         let const separator = last_path_separator(word);
+
         append_make_word(result,
                          separator.has_value() ? word.substring(*separator + 1)
                                                : word,
@@ -1642,6 +1740,7 @@ evaluate_make_function(EvalContext                 &cxt,
           append_make_word(result, word.substring(*suffix), has_word);
       } else {
         let const suffix = last_suffix_position(word);
+
         append_make_word(
             result,
             suffix.has_value() ? word.substring_of_length(0, *suffix) : word,
@@ -1660,6 +1759,7 @@ evaluate_make_function(EvalContext                 &cxt,
 
     for (StringView word : split_word_views(source.view(), allocator)) {
       let combined = String{allocator};
+
       if (spec.kind == make_function_kind::Addprefix) combined += affix.view();
       combined += word;
       if (spec.kind == make_function_kind::Addsuffix) combined += affix.view();
@@ -1680,6 +1780,7 @@ evaluate_make_function(EvalContext                 &cxt,
 
     for (usize word_index = 0; word_index < joined_count; word_index++) {
       let joined = String{allocator};
+
       if (word_index < left.count()) joined += left[word_index];
       if (word_index < right.count()) joined += right[word_index];
       append_make_word(result, joined.view(), has_word);
@@ -1689,6 +1790,7 @@ evaluate_make_function(EvalContext                 &cxt,
   }
   case make_function_kind::If: {
     let const condition = do_expand(0);
+
     if (!condition.is_empty()) return do_expand(1);
 
     return arguments.count() == 3 ? do_expand(2) : String{allocator};
@@ -1720,7 +1822,9 @@ evaluate_make_function(EvalContext                 &cxt,
     let const variable_name      = trim(variable_name_text.view());
     let const values             = do_expand(1);
     let const snapshot = save_make_variable(mk, variable_name, allocator);
+
     defer { restore_make_variable(mk, snapshot, allocator); };
+
     let  result    = String{allocator};
     bool has_value = false;
 
@@ -1735,6 +1839,7 @@ evaluate_make_function(EvalContext                 &cxt,
     let const called_name_text   = do_expand(0);
     let const called_name        = trim(called_name_text.view());
     let       expanded_arguments = ArrayList<String>{allocator};
+
     expanded_arguments.reserve(arguments.count());
     expanded_arguments.push(String{allocator, called_name});
 
@@ -1747,6 +1852,7 @@ evaluate_make_function(EvalContext                 &cxt,
                                   ? arguments.count()
                                   : mk.call_max_argument_count;
     let       snapshots     = ArrayList<make_variable_snapshot>{allocator};
+
     snapshots.reserve(binding_count);
 
     for (usize argument_index = 0; argument_index < binding_count;
@@ -1754,16 +1860,17 @@ evaluate_make_function(EvalContext                 &cxt,
     {
       let const numeric_name = String::from(argument_index, allocator);
       let const name         = numeric_name.view();
+
       snapshots.push(save_make_variable(mk, name, allocator));
       let const value = argument_index < expanded_arguments.count()
                             ? expanded_arguments[argument_index].view()
                             : StringView{};
+
       set_scoped_make_variable(mk, name, value, allocator);
     }
 
     mk.call_max_argument_count = binding_count;
-    defer
-    {
+    defer {
       mk.call_max_argument_count = saved_call_max_argument_count;
 
       for (usize snapshot_index = snapshots.count(); snapshot_index-- > 0;)
@@ -1791,6 +1898,7 @@ evaluate_make_function(EvalContext                 &cxt,
     let const variable_name_text = do_expand(0);
     let const variable_name      = trim(variable_name_text.view());
     let       lookup             = lookup_make_variable(cxt, mk, variable_name);
+
     if (spec.kind == make_function_kind::Value)
       return lookup.into_string(allocator);
     if (spec.kind == make_function_kind::Origin)
@@ -1807,6 +1915,7 @@ evaluate_make_function(EvalContext                 &cxt,
     for (StringView word : split_word_views(source.view(), allocator)) {
       if (spec.kind == make_function_kind::Abspath) {
         let const path = Path{word, allocator}.to_absolute();
+
         append_make_word(result, path.view(), has_word);
       } else if (let path = Path::canonicalize(word); path.has_value()) {
         append_make_word(result, path->text().view(), has_word);
@@ -1817,6 +1926,7 @@ evaluate_make_function(EvalContext                 &cxt,
   }
   case make_function_kind::Shell: {
     if (cxt.execution_store().make_shell_suppressed()) return String{allocator};
+
     let const command = do_expand(0);
 
     return run_make_shell_function(cxt, mk, command.view());
@@ -1834,6 +1944,7 @@ evaluate_make_function(EvalContext                 &cxt,
 
     let evaluated_source = do_expand(0);
     let source_name      = String{allocator};
+
     if (let const active_name = source_name_at(mk.active_source_name_index);
         active_name.has_value())
       source_name = String{allocator, *active_name};
@@ -1842,12 +1953,15 @@ evaluate_make_function(EvalContext                 &cxt,
     source_name += ".eval.";
     source_name +=
         String::from(mk.source_documents->count() + 1, allocator).view();
+
     let const first_source_position = mk.source_documents->count();
+
     mk.source_documents->push(make_source_document{
         steal(evaluated_source), intern_source_name(source_name.view())});
 
     mk.eval_depth++;
     defer { mk.eval_depth--; };
+
     parse_makefile_into(cxt, mk, *mk.source_documents, first_source_position);
 
     return String{allocator};
@@ -1860,12 +1974,15 @@ evaluate_make_function(EvalContext                 &cxt,
 
     return String{allocator};
   }
+
   unreachable();
 }
 
 static fn
-expand(EvalContext &cxt, makefile &mk, StringView text, usize depth) throws
-    -> String
+expand(EvalContext &cxt,
+       makefile    &mk,
+       StringView   text,
+       usize        depth) throws -> String
 {
   if (depth >= 128)
     throw Error{"Make variable expansion exceeds the supported depth"};
@@ -1880,9 +1997,11 @@ expand(EvalContext &cxt, makefile &mk, StringView text, usize depth) throws
     {
       let const expansion_end =
           make_expansion_end(text, text_position, close_stack);
+
       if (!expansion_end.has_value()) {
         throw Error{"The make variable reference is unterminated"};
       }
+
       let const close_position = *expansion_end;
 
       let const expression = text.substring_of_length(
@@ -1899,6 +2018,7 @@ expand(EvalContext &cxt, makefile &mk, StringView text, usize depth) throws
       let const function_name =
           expression.substring_of_length(0, function_name_length);
       let const function_spec = MAKE_FUNCTIONS.find(function_name);
+
       if (function_name_length < expression.length && function_spec.has_value())
       {
         usize arguments_position = function_name_length;
@@ -1912,6 +2032,7 @@ expand(EvalContext &cxt, makefile &mk, StringView text, usize depth) throws
         let const arguments = split_make_function_arguments(
             expression.substring(arguments_position),
             function_spec->maximum_argument_count, cxt.scratch_allocator());
+
         result += evaluate_make_function(cxt, mk, function_name, *function_spec,
                                          arguments, depth)
                       .view();
@@ -1922,9 +2043,11 @@ expand(EvalContext &cxt, makefile &mk, StringView text, usize depth) throws
         result += substitution->view();
       } else {
         let const expanded_name = expand(cxt, mk, expression, depth + 1);
+
         result +=
             expand_variable(cxt, mk, expanded_name.view(), depth + 1).view();
       }
+
       text_position =
           close_position < text.length ? close_position + 1 : close_position;
     } else if (text[text_position] == '$' && text_position + 1 < text.length &&
@@ -1957,6 +2080,7 @@ first_colon_not_followed_by_equals(StringView line) wontthrow -> Maybe<usize>
       token_start = i + 1;
       continue;
     }
+
     if (line[i] == ':' && i == token_start + 1 && i + 1 < line.length &&
         ((line[token_start] >= 'a' && line[token_start] <= 'z') ||
          (line[token_start] >= 'A' && line[token_start] <= 'Z')) &&
@@ -1964,6 +2088,7 @@ first_colon_not_followed_by_equals(StringView line) wontthrow -> Maybe<usize>
     {
       continue;
     }
+
     if (line[i] == ':' && !(i + 1 < line.length && line[i + 1] == '=')) {
       return i;
     }
@@ -1977,7 +2102,9 @@ assignment_variable_name(StringView assignment) wontthrow -> StringView
 {
   let const equals = assignment.find_character('=');
   if (!equals.has_value()) return StringView{};
+
   let name = assignment.substring_of_length(0, *equals);
+
   if (!name.is_empty()) {
     let const last = name[name.length - 1];
     if (last == '+' || last == '?' || last == ':') {
@@ -1992,9 +2119,11 @@ static fn
 is_command_line_assignment(StringView operand) wontthrow -> bool
 {
   let const equals = operand.find_character('=');
+
   if (!equals.has_value() || *equals == 0) {
     return false;
   }
+
   let const name = operand.substring_of_length(0, *equals);
 
   for (usize i = 0; i < name.length; i++)
@@ -2007,7 +2136,9 @@ static fn
 is_target_variable_assignment(StringView after_colon) wontthrow -> bool
 {
   if (!after_colon.find_character('=').has_value()) return false;
+
   let const name = assignment_variable_name(after_colon);
+
   if (name.is_empty()) return false;
 
   for (usize i = 0; i < name.length; i++)
@@ -2027,8 +2158,10 @@ apply_assignment(EvalContext &cxt,
 {
   let  value              = operator_and_value.substring(1);
   char operator_character = ' ';
+
   if (!name_part.is_empty()) {
     let const last = name_part[name_part.length - 1];
+
     if (last == ':' || last == '?' || last == '+') {
       operator_character = last;
       name_part = name_part.substring_of_length(0, name_part.length - 1);
@@ -2037,13 +2170,16 @@ apply_assignment(EvalContext &cxt,
 
   let const name          = trim(name_part);
   let const trimmed_value = trim(value);
+
   if (!is_command_line && mk.command_variable_names.find(name).has_value()) {
     return;
   }
+
   if (is_command_line) mk.command_variable_names.set(name, true);
 
   if (let const index = mk.variable_index.find(name); index.has_value()) {
     make_variable &variable = mk.variables[*index.value()];
+
     if (operator_character == '?') return;
     if (operator_character == '+') {
       let const appended_value =
@@ -2057,6 +2193,7 @@ apply_assignment(EvalContext &cxt,
           operator_character == ':'
               ? expand(cxt, mk, trimmed_value, 0)
               : String{cxt.scratch_allocator(), trimmed_value};
+
       variable.value  = String{cxt.scratch_allocator(), value_to_store.view()};
       variable.origin = is_command_line ? make_variable_origin::CommandLine
                                         : make_variable_origin::File;
@@ -2067,10 +2204,12 @@ apply_assignment(EvalContext &cxt,
 
     return;
   }
+
   let const value_to_store =
       operator_character == ':'
           ? expand(cxt, mk, trimmed_value, 0)
           : String{cxt.scratch_allocator(), trimmed_value};
+
   mk.variable_index.set(name, mk.variables.count());
   mk.variables.push(make_variable{
       String{cxt.scratch_allocator(), name                 },
@@ -2105,7 +2244,8 @@ struct make_logical_line
 static fn
 join_continuations(StringView source,
                    u32        source_name_index,
-                   Allocator  allocator) throws -> ArrayList<make_logical_line>
+                   Allocator  allocator) throws
+    -> ArrayList<make_logical_line>
 {
   let const physical = utils::split_lines(
       source, allocator, utils::line_terminator_mode::Preserve);
@@ -2124,11 +2264,13 @@ join_continuations(StringView source,
       {
         line += '\n';
         i++;
-        let next   = physical[i].without_trailing_newline();
+        let next = physical[i].without_trailing_newline();
+
         source_end = static_cast<usize>(next.data - source.data) + next.length;
         if (!next.is_empty() && next[0] == '\t') {
           next = next.substring(1);
         }
+
         line += next;
       }
     } else {
@@ -2139,7 +2281,9 @@ join_continuations(StringView source,
             String{allocator,
                    line.view().substring_of_length(0, line.view().length - 1)};
         i++;
+
         let const next = physical[i].without_trailing_newline();
+
         source_end = static_cast<usize>(next.data - source.data) + next.length;
         line += ' ';
         line += trim(next);
@@ -2179,7 +2323,9 @@ make_expansion_end(StringView       text,
       position += 2;
       continue;
     }
+
     let const current_closer = close_stack.back();
+
     if (text[position] == current_closer) {
       close_stack.pop_back();
       if (close_stack.is_empty()) {
@@ -2216,7 +2362,8 @@ leading_word(StringView text) wontthrow -> StringView
 }
 
 static fn
-makefile_without_comment(StringView line, Allocator allocator) throws -> String
+makefile_without_comment(StringView line, Allocator allocator) throws
+    -> String
 {
   let uncommented = String{allocator};
 
@@ -2228,6 +2375,7 @@ makefile_without_comment(StringView line, Allocator allocator) throws -> String
       line_position++;
       continue;
     }
+
     if (line[line_position] == '#') break;
     uncommented.push(line[line_position]);
   }
@@ -2286,6 +2434,7 @@ evaluate_conditional(EvalContext &cxt,
   if (directive == "ifdef" || directive == "ifndef") {
     let const name       = expand(cxt, mk, trim(rest), 0);
     bool      is_defined = false;
+
     if (const String *stored = mk.find_variable(name.view());
         stored != nullptr && !stored->is_empty())
     {
@@ -2302,6 +2451,7 @@ evaluate_conditional(EvalContext &cxt,
 
   let first  = StringView{};
   let second = StringView{};
+
   if (!split_conditional_arguments_at_top_level_comma(rest, first, second))
     return false;
   let const expanded_first  = expand(cxt, mk, first, 0);
@@ -2324,6 +2474,7 @@ struct make_source_frame
                              usize new_include_depth = 0)
       : lines(steal(new_lines)), include_depth(new_include_depth)
   {}
+
   ArrayList<make_logical_line> lines;
   usize                        line_position{0};
   usize                        include_depth{0};
@@ -2336,6 +2487,7 @@ parse_makefile_into(EvalContext                     &cxt,
                     usize first_source_position) throws -> void
 {
   let const saved_source_name_index = mk.active_source_name_index;
+
   defer { mk.active_source_name_index = saved_source_name_index; };
 
   ArrayList<usize>             current_rule_indices{cxt.scratch_allocator()};
@@ -2359,10 +2511,12 @@ parse_makefile_into(EvalContext                     &cxt,
                            cxt.scratch_allocator())});
 
   SourceLocation active_source_span;
+
   try {
     while (!source_frames.is_empty()) {
       make_source_frame &source_frame =
           source_frames[source_frames.count() - 1];
+
       if (source_frame.line_position == source_frame.lines.count()) {
         source_frames.pop_back();
         continue;
@@ -2370,9 +2524,11 @@ parse_makefile_into(EvalContext                     &cxt,
 
       const make_logical_line &logical =
           source_frame.lines[source_frame.line_position++];
+
       active_source_span          = logical.source_span;
       mk.active_source_name_index = logical.source_span.source_name_index;
-      let line                    = logical.text.view();
+
+      let line = logical.text.view();
 
       if (!line.is_empty() && line[0] == '\t') {
         if (do_is_active()) {
@@ -2384,13 +2540,16 @@ parse_makefile_into(EvalContext                     &cxt,
             mk.pattern_rules[index].rule.recipe_lines.push(
                 String{cxt.scratch_allocator(), line.substring(1)});
         }
+
         continue;
       }
 
       let uncommented = makefile_without_comment(line, cxt.scratch_allocator());
-      line            = uncommented.view();
+
+      line = uncommented.view();
 
       let const trimmed = trim(line);
+
       if (trimmed.is_empty()) {
         current_rule_indices.clear();
         current_pattern_indices.clear();
@@ -2411,6 +2570,7 @@ parse_makefile_into(EvalContext                     &cxt,
         current_pattern_indices.clear();
         continue;
       }
+
       if (directive == "else") {
         if (!conditionals.is_empty()) {
           conditional_state &top  = conditionals[conditionals.count() - 1];
@@ -2429,10 +2589,12 @@ parse_makefile_into(EvalContext                     &cxt,
             top.was_any_branch_taken = true;
           }
         }
+
         current_rule_indices.clear();
         current_pattern_indices.clear();
         continue;
       }
+
       if (directive == "endif") {
         if (!conditionals.is_empty()) conditionals.pop_back();
         current_rule_indices.clear();
@@ -2442,6 +2604,7 @@ parse_makefile_into(EvalContext                     &cxt,
 
       if (directive == "define") {
         let const name = trim(trimmed.substring(directive.length));
+
         if (name.is_empty())
           throw ErrorWithLocation{logical.source_span,
                                   "A define line must specify a variable"};
@@ -2453,12 +2616,14 @@ parse_makefile_into(EvalContext                     &cxt,
           let const definition_line =
               source_frame.lines[source_frame.line_position++].text.view();
           let const definition_directive = leading_word(trim(definition_line));
+
           if (definition_directive == "define") {
             define_depth++;
           } else if (definition_directive == "endef") {
             define_depth--;
             if (define_depth == 0) break;
           }
+
           if (!value.is_empty()) value += '\n';
           value += definition_line;
         }
@@ -2471,6 +2636,7 @@ parse_makefile_into(EvalContext                     &cxt,
           assignment += value.view();
           apply_assignment(cxt, mk, name, assignment.view());
         }
+
         current_rule_indices.clear();
         current_pattern_indices.clear();
         continue;
@@ -2487,12 +2653,15 @@ parse_makefile_into(EvalContext                     &cxt,
             expand(cxt, mk, trim(trimmed.substring(directive.length)), 0);
         let const include_paths =
             split_words(expanded_path.view(), cxt.scratch_allocator());
+
         if (include_paths.is_empty()) {
           current_rule_indices.clear();
           current_pattern_indices.clear();
           continue;
         }
+
         let const include_depth = source_frame.include_depth + 1;
+
         if (include_depth >= 17)
           throw ErrorWithLocation{
               logical.source_span,
@@ -2507,6 +2676,7 @@ parse_makefile_into(EvalContext                     &cxt,
           let const  included_source =
               Path{include_path.view(), cxt.scratch_allocator()}
                   .read_entire_file();
+
           if (!included_source.has_value())
             throw ErrorWithLocation{
                 logical.source_span,
@@ -2527,10 +2697,12 @@ parse_makefile_into(EvalContext                     &cxt,
 
       let expanded_statement = String{cxt.scratch_allocator()};
       let statement          = trimmed;
+
       if (directive == "override")
         statement = trim(statement.substring(directive.length));
 
       let const statement_word = leading_word(statement);
+
       if (statement_word == "undefine") {
         let const names = expand(
             cxt, mk, trim(statement.substring(statement_word.length)), 0);
@@ -2544,6 +2716,7 @@ parse_makefile_into(EvalContext                     &cxt,
         current_pattern_indices.clear();
         continue;
       }
+
       if (statement_word == "unexport") {
         let const names = trim(statement.substring(statement_word.length));
 
@@ -2556,14 +2729,17 @@ parse_makefile_into(EvalContext                     &cxt,
         current_pattern_indices.clear();
         continue;
       }
+
       if (statement_word == "export") {
         let const after_export =
             trim(statement.substring(statement_word.length));
+
         if (after_export.is_empty()) {
           current_rule_indices.clear();
           current_pattern_indices.clear();
           continue;
         }
+
         if (!after_export.find_character('=').has_value()) {
           for (let const &name :
                split_words(after_export, cxt.scratch_allocator()))
@@ -2576,11 +2752,14 @@ parse_makefile_into(EvalContext                     &cxt,
           current_pattern_indices.clear();
           continue;
         }
+
         let const exported_name = assignment_variable_name(after_export);
+
         if (!exported_name.is_empty()) {
           mk.exported_variable_names.set(exported_name, true);
           mk.unexported_variable_names.erase(exported_name);
         }
+
         statement = after_export;
       }
 
@@ -2603,9 +2782,11 @@ parse_makefile_into(EvalContext                     &cxt,
 
       if (is_rule) {
         let const after_colon = statement.substring(*colon + 1);
+
         if (is_target_variable_assignment(after_colon)) {
           let const targets = expand(
               cxt, mk, trim(statement.substring_of_length(0, *colon)), 0);
+
           current_rule_indices.clear();
           current_pattern_indices.clear();
 
@@ -2613,11 +2794,13 @@ parse_makefile_into(EvalContext                     &cxt,
                split_words(targets.view(), cxt.scratch_allocator()))
           {
             make_rule *rule = mk.find_mutable_rule(target.view());
+
             if (rule == nullptr) {
               make_rule fresh{cxt.scratch_allocator()};
               fresh.target = target.clone();
               rule         = &mk.rules[mk.add_rule(steal(fresh))];
             }
+
             rule->variable_assignments.push(
                 String{cxt.scratch_allocator(), trim(after_colon)});
           }
@@ -2629,13 +2812,16 @@ parse_makefile_into(EvalContext                     &cxt,
             expand(cxt, mk, trim(statement.substring_of_length(0, *colon)), 0);
         let prerequisite_text = after_colon;
         let inline_recipe     = StringView{};
+
         if (let const semicolon = after_colon.find_character(';');
             semicolon.has_value())
         {
           prerequisite_text = after_colon.substring_of_length(0, *semicolon);
           inline_recipe     = trim(after_colon.substring(*semicolon + 1));
         }
+
         let const prerequisites = expand(cxt, mk, prerequisite_text, 0);
+
         current_rule_indices.clear();
         current_pattern_indices.clear();
 
@@ -2645,12 +2831,15 @@ parse_makefile_into(EvalContext                     &cxt,
           let parsed_target =
               parse_make_pattern(target.view(), cxt.scratch_allocator());
           let normalized_target = parsed_target.prefix.clone();
+
           if (parsed_target.has_wildcard) {
             normalized_target.push('%');
             normalized_target += parsed_target.suffix.view();
           }
+
           let new_prerequisites =
               split_words(prerequisites.view(), cxt.scratch_allocator());
+
           if (let const special_target =
                   SPECIAL_TARGETS.find(normalized_target.view());
               special_target.has_value())
@@ -2669,6 +2858,7 @@ parse_makefile_into(EvalContext                     &cxt,
                   mk.ignored_targets.set(ignored.view(), true);
 
               break;
+
             case make_special_target::Silent:
               if (new_prerequisites.is_empty())
                 mk.is_silent = true;
@@ -2677,6 +2867,7 @@ parse_makefile_into(EvalContext                     &cxt,
                   mk.silent_targets.set(silent.view(), true);
 
               break;
+
             case make_special_target::Precious:
               if (new_prerequisites.is_empty())
                 mk.is_every_target_precious = true;
@@ -2685,6 +2876,7 @@ parse_makefile_into(EvalContext                     &cxt,
                   mk.precious_targets.set(precious.view(), true);
 
               break;
+
             case make_special_target::Suffixes:
               if (new_prerequisites.is_empty()) {
                 mk.suffixes.clear();
@@ -2693,17 +2885,22 @@ parse_makefile_into(EvalContext                     &cxt,
                   if (!mk.suffixes.find(suffix.view()).has_value())
                     mk.suffixes.push(suffix.clone());
               }
+
               break;
+
             default: break;
             }
           }
+
           let is_inference_rule = false;
+
           if (!normalized_target.view().find_character('/').has_value())
             for (let const &source_suffix : mk.suffixes) {
               if (normalized_target.view() == source_suffix.view()) {
                 is_inference_rule = true;
                 break;
               }
+
               if (!normalized_target.view().starts_with(source_suffix.view()))
                 continue;
 
@@ -2726,6 +2923,7 @@ parse_makefile_into(EvalContext                     &cxt,
           {
             mk.default_goal = normalized_target.clone();
           }
+
           if (!parsed_target.has_wildcard)
             if (make_rule *existing =
                     mk.find_mutable_rule(normalized_target.view());
@@ -2738,6 +2936,7 @@ parse_makefile_into(EvalContext                     &cxt,
                 for (String &prerequisite : new_prerequisites)
                   existing->prerequisites.push(steal(prerequisite));
               }
+
               current_rule_indices.push(
                   static_cast<usize>(existing - mk.rules.begin()));
               continue;
@@ -2745,6 +2944,7 @@ parse_makefile_into(EvalContext                     &cxt,
 
           if (parsed_target.has_wildcard) {
             make_pattern_rule pattern_rule{cxt.scratch_allocator()};
+
             pattern_rule.rule.target        = target.clone();
             pattern_rule.rule.prerequisites = steal(new_prerequisites);
             pattern_rule.pattern            = steal(parsed_target);
@@ -2752,6 +2952,7 @@ parse_makefile_into(EvalContext                     &cxt,
             current_pattern_indices.push(mk.pattern_rules.count() - 1);
           } else {
             make_rule rule{cxt.scratch_allocator()};
+
             rule.target        = steal(normalized_target);
             rule.prerequisites = steal(new_prerequisites);
             current_rule_indices.push(mk.add_rule(steal(rule)));
@@ -2767,12 +2968,14 @@ parse_makefile_into(EvalContext                     &cxt,
             mk.pattern_rules[index].rule.recipe_lines.push(
                 String{cxt.scratch_allocator(), inline_recipe});
         }
+
         continue;
       }
 
       if (equals.has_value()) {
         let const expanded_name =
             expand(cxt, mk, statement.substring_of_length(0, *equals), 0);
+
         apply_assignment(cxt, mk, expanded_name.view(),
                          statement.substring(*equals));
         current_rule_indices.clear();
@@ -2793,6 +2996,7 @@ parse_makefile(EvalContext                     &cxt,
                StringView initial_makeflags = {}) throws -> makefile
 {
   makefile mk{cxt.scratch_allocator()};
+
   mk.source_documents          = &sources;
   mk.is_environment_overriding = is_environment_overriding;
   if (!initial_makeflags.is_empty()) {
@@ -2803,6 +3007,7 @@ parse_makefile(EvalContext                     &cxt,
         make_variable_origin::Environment, make_variable_flavor::Recursive
     });
   }
+
   if (should_use_builtin_rules)
     for (let const *suffix : {".o", ".c", ".y", ".l", ".a", ".sh", ".f", ".c~",
                               ".y~", ".l~", ".sh~", ".f~"})
@@ -2810,6 +3015,7 @@ parse_makefile(EvalContext                     &cxt,
 
   for (let const &assignment : command_assignments) {
     let const equals = assignment.view().find_character('=');
+
     ASSERT(equals.has_value());
     apply_assignment(cxt, mk, assignment.view().substring_of_length(0, *equals),
                      assignment.view().substring(*equals), true);
@@ -2868,6 +3074,7 @@ parse_makefile(EvalContext                     &cxt,
     apply_makeflags(expanded_makeflags.view(), makefile_flags,
                     cxt.scratch_allocator());
   }
+
   if (should_use_builtin_rules && !makefile_flags.should_disable_builtin_rules)
   {
     for (let const &entry : BUILTIN_RULE_ENTRIES) {
@@ -2882,6 +3089,7 @@ parse_makefile(EvalContext                     &cxt,
         if (recipe_line == nullptr) {
           break;
         }
+
         rule.recipe_lines.push(String{cxt.scratch_allocator(), recipe_line});
       }
 
@@ -2915,7 +3123,8 @@ is_make_target_supplyable(EvalContext     &cxt,
                           makefile        &mk,
                           StringView       goal,
                           StringMap<bool> &active_targets,
-                          StringMap<bool> &supplyability_cache) throws -> bool
+                          StringMap<bool> &supplyability_cache) throws
+    -> bool
 {
   if (active_targets.find(goal).has_value()) return false;
   if (let const cached = supplyability_cache.find(goal); cached.has_value())
@@ -2927,19 +3136,23 @@ is_make_target_supplyable(EvalContext     &cxt,
 
     return true;
   }
+
   active_targets.set(goal, true);
   defer { active_targets.erase(goal); };
 
   for (let const &pattern_rule : mk.pattern_rules) {
     let const &pattern = pattern_rule.rule;
+
     if (pattern.recipe_lines.is_empty()) continue;
     let const stem = match_make_pattern(pattern_rule.pattern, goal);
+
     if (!stem.has_value()) continue;
 
     bool has_supplyable_prerequisites = true;
 
     for (let const &prerequisite : pattern.prerequisites) {
       let substituted = String{cxt.scratch_allocator()};
+
       append_make_replacement(substituted, prerequisite.view(), *stem, true);
       let const expanded = expand(cxt, mk, substituted.view(), 0);
 
@@ -2976,12 +3189,14 @@ is_make_target_supplyable(EvalContext     &cxt,
 
   for (let const &source_suffix_string : mk.suffixes) {
     let rule_name = source_suffix_string.clone();
+
     rule_name += target_suffix;
     if (mk.find_rule(rule_name.view()) == nullptr) continue;
 
     let source =
         String{cxt.scratch_allocator(),
                goal.substring_of_length(0, goal.length - target_suffix.length)};
+
     source += source_suffix_string.view();
     if (is_make_target_supplyable(cxt, mk, source.view(), active_targets,
                                   supplyability_cache))
@@ -3027,6 +3242,7 @@ build_target(const ExecContext        &ec,
   bool              has_explicit_rule = explicit_rule != nullptr;
   String            automatic_target{cxt.scratch_allocator(), goal};
   String            archive_member{cxt.scratch_allocator()};
+
   if (let const open = goal.find_character('('); open.has_value() &&
                                                  goal.length > *open + 1 &&
                                                  goal[goal.length - 1] == ')')
@@ -3071,6 +3287,7 @@ build_target(const ExecContext        &ec,
     {
       make_pattern_rule pattern_rule{cxt.scratch_allocator()};
       let const &stored_pattern_rule = mk.pattern_rules[pattern_rule_position];
+
       pattern_rule.pattern.prefix = stored_pattern_rule.pattern.prefix.clone();
       pattern_rule.pattern.suffix = stored_pattern_rule.pattern.suffix.clone();
       pattern_rule.pattern.has_wildcard =
@@ -3087,8 +3304,10 @@ build_target(const ExecContext        &ec,
         pattern_rule.rule.variable_assignments.push(assignment.clone());
 
       let const &pattern = pattern_rule.rule;
+
       if (pattern.recipe_lines.is_empty()) continue;
       let const stem = match_make_pattern(pattern_rule.pattern, goal);
+
       if (!stem.has_value() || stem->length >= best_stem_length) {
         continue;
       }
@@ -3098,6 +3317,7 @@ build_target(const ExecContext        &ec,
 
       for (let const &prerequisite : pattern.prerequisites) {
         let substituted = String{cxt.scratch_allocator()};
+
         append_make_replacement(substituted, prerequisite.view(), *stem, true);
         let const expanded = expand(cxt, mk, substituted.view(), 0);
 
@@ -3111,6 +3331,7 @@ build_target(const ExecContext        &ec,
             is_every_prerequisite_supplyable = false;
             break;
           }
+
           candidate.push(word.clone());
         }
 
@@ -3124,6 +3345,7 @@ build_target(const ExecContext        &ec,
       if (!candidate.is_empty()) {
         inferred_first_prerequisite = candidate[0].clone();
       }
+
       inferred_prerequisites.clear();
 
       for (String &prerequisite : candidate)
@@ -3152,6 +3374,7 @@ build_target(const ExecContext        &ec,
 
       for (let const &suffix : mk.suffixes) {
         let const candidate = suffix.view();
+
         if (inference_target.length >= candidate.length &&
             inference_target.substring(inference_target.length -
                                        candidate.length) == candidate)
@@ -3164,11 +3387,14 @@ build_target(const ExecContext        &ec,
       for (let const &source_suffix_string : mk.suffixes) {
         let const source_suffix = source_suffix_string.view();
         let       rule_name     = source_suffix_string.clone();
+
         rule_name += target_suffix;
         let const *suffix_rule = mk.find_rule(rule_name.view());
+
         if (suffix_rule == nullptr) continue;
 
         String stem{cxt.scratch_allocator()};
+
         if (archive_member.is_empty()) {
           stem = String{cxt.scratch_allocator(),
                         inference_target.substring_of_length(
@@ -3177,12 +3403,15 @@ build_target(const ExecContext        &ec,
           let const member_path =
               Path{archive_member.view(), cxt.scratch_allocator()};
           let const member_extension = member_path.extension();
-          stem                       = String{
+
+          stem = String{
               cxt.scratch_allocator(),
               archive_member.view().substring_of_length(
                   0, archive_member.view().length - member_extension.length)};
         }
+
         let source = String{cxt.scratch_allocator(), stem.view()};
+
         source += source_suffix;
         if (!is_make_target_supplyable(cxt, mk, source.view(),
                                        supply_active_targets,
@@ -3215,6 +3444,7 @@ build_target(const ExecContext        &ec,
 
           return false;
         }
+
         throw Error{
             "There is no rule to make the target '" +
             String{cxt.scratch_allocator(), goal}
@@ -3230,12 +3460,14 @@ build_target(const ExecContext        &ec,
 
     for (let const &suffix : mk.suffixes) {
       let const suffix_text = suffix.view();
+
       if (stem_source.length <= suffix_text.length ||
           stem_source.substring(stem_source.length - suffix_text.length) !=
               suffix_text)
       {
         continue;
       }
+
       target_stem = String{cxt.scratch_allocator(),
                            stem_source.substring_of_length(
                                0, stem_source.length - suffix_text.length)};
@@ -3248,14 +3480,15 @@ build_target(const ExecContext        &ec,
 
   for (let const &assignment : target_assignments) {
     let const name = assignment_variable_name(assignment.view());
+
     saved_variables.push(save_make_variable(mk, name, cxt.scratch_allocator()));
     let const equals = assignment.view().find_character('=');
+
     apply_assignment(cxt, mk, assignment.view().substring_of_length(0, *equals),
                      assignment.view().substring(*equals));
   }
 
-  defer
-  {
+  defer {
     for (usize i = saved_variables.count(); i-- > 0;) {
       restore_make_variable(mk, saved_variables[i], cxt.scratch_allocator());
     }
@@ -3279,6 +3512,7 @@ build_target(const ExecContext        &ec,
 
   active_targets.set(goal, true);
   defer { active_targets.erase(goal); };
+
   let has_outdated_prerequisite = false;
   let did_prerequisite_fail     = false;
 
@@ -3324,16 +3558,20 @@ build_target(const ExecContext        &ec,
   let       is_out_of_date      = options.should_always_make ||
                        mk.phony_targets.find(goal).has_value() ||
                        !was_target_existing || has_outdated_prerequisite;
+
   if (!is_out_of_date)
     for (let const &prerequisite : normal_prerequisites) {
       let const prerequisite_path =
           Path{prerequisite.view(), cxt.scratch_allocator()};
       let is_prerequisite_newer = prerequisite_path.is_newer_than(target_path);
+
       if (!archive_member.is_empty()) {
         let const prerequisite_time = prerequisite_path.modification_time();
-        is_prerequisite_newer       = prerequisite_time.has_value() &&
+
+        is_prerequisite_newer = prerequisite_time.has_value() &&
                                 *prerequisite_time > *archive_member_time;
       }
+
       if (!prerequisite_path.exists() || is_prerequisite_newer) {
         is_out_of_date = true;
         break;
@@ -3361,6 +3599,7 @@ build_target(const ExecContext        &ec,
         };
       os::close_fd(*fd);
     }
+
     if (!os::touch_file_times(automatic_target.view()))
       throw Error{
           "Unable to touch the target '" +
@@ -3392,12 +3631,15 @@ build_target(const ExecContext        &ec,
     let const prerequisite_path =
         Path{prerequisite.view(), cxt.scratch_allocator()};
     let is_prerequisite_newer = prerequisite_path.is_newer_than(target_path);
+
     if (!archive_member.is_empty()) {
       let const prerequisite_time = prerequisite_path.modification_time();
-      is_prerequisite_newer       = archive_member_time.has_value() &&
+
+      is_prerequisite_newer = archive_member_time.has_value() &&
                               prerequisite_time.has_value() &&
                               *prerequisite_time > *archive_member_time;
     }
+
     if (!was_target_existing || !prerequisite_path.exists() ||
         is_prerequisite_newer)
     {
@@ -3411,6 +3653,7 @@ build_target(const ExecContext        &ec,
     StringView name;
     StringView value;
   };
+
   const automatic_variable_value automatic_values[] = {
       {"@", automatic_target.view()},
       {"%", archive_member.view()  },
@@ -3420,8 +3663,10 @@ build_target(const ExecContext        &ec,
       {"?", newer_prereqs.view()   },
       {"*", target_stem.view()     },
   };
+
   let automatic_snapshots =
       ArrayList<make_variable_snapshot>{cxt.scratch_allocator()};
+
   automatic_snapshots.reserve(countof(automatic_values));
 
   for (let const &automatic : automatic_values) {
@@ -3431,8 +3676,7 @@ build_target(const ExecContext        &ec,
                              cxt.scratch_allocator());
   }
 
-  defer
-  {
+  defer {
     for (usize snapshot_position = automatic_snapshots.count();
          snapshot_position-- > 0;)
       restore_make_variable(mk, automatic_snapshots[snapshot_position],
@@ -3470,15 +3714,18 @@ build_target(const ExecContext        &ec,
         all_prereqs.view(), repeated_prereqs.view(), newer_prereqs.view(),
         target_stem.view(), cxt.scratch_allocator());
     let const command = expand(cxt, mk, with_autos.view(), 0);
+
     if (command.is_empty()) continue;
     if ((!is_silent && !is_target_silent) || options.is_dry_run) {
       ec.print_to_stdout(command + "\n");
     }
+
     if (options.is_dry_run && !should_force_run) {
       continue;
     }
 
     let const strict_toggles_off_scope = RuntimeStateScope{cxt};
+
     cxt.runtime_state().set_mood(mimic_mood::Posix);
     cxt.runtime_state().set_option(shell_option_id::Failglob, false);
     cxt.runtime_state().set_option(shell_option_id::Nounset, false);
@@ -3486,10 +3733,12 @@ build_target(const ExecContext        &ec,
     cxt.runtime_state().set_warning_level(0);
 
     let recipe_source = command.clone();
+
     if (const String *shell_value = mk.find_variable("SHELL");
         shell_value != nullptr)
     {
       let const shell = expand(cxt, mk, shell_value->view(), 0);
+
       if (!shell.is_empty()) {
         recipe_source = String{cxt.scratch_allocator()};
         append_shell_quoted_arg(recipe_source, shell.view());
@@ -3499,24 +3748,28 @@ build_target(const ExecContext        &ec,
     }
 
     let subshell_command = String{cxt.scratch_allocator(), "(\n"};
+
     subshell_command += recipe_source.view();
     subshell_command += "\n)";
     let const saved_terminal_exec =
         cxt.execution_store().terminal_exec_allowed();
+
     cxt.execution_store().terminal_exec_allowed() = false;
-    defer
-    {
+    defer {
       cxt.execution_store().terminal_exec_allowed() = saved_terminal_exec;
     };
 
     i32 status = 0;
+
     try {
       status = cxt.run_source(subshell_command.view(), "make",
                               ec.source_location(), StringView{"make"}, nullptr,
                               nullptr, return_handling::Consume);
       if (os::INTERRUPT_REQUESTED || status == 130) {
         os::INTERRUPT_REQUESTED = 0;
+
         let interrupt_error = InterruptErrorWithLocation{ec.source_location()};
+
         interrupt_error.set_command_status(130);
         throw interrupt_error;
       }
@@ -3528,9 +3781,11 @@ build_target(const ExecContext        &ec,
       {
         unused(os::remove_file(automatic_target.view()));
       }
+
       interrupt_error.set_command_status(130);
       throw;
     }
+
     if (status != 0 && !should_ignore_errors && !should_ignore_target_errors) {
       if (!was_target_existing && target_path.exists() &&
           !mk.is_every_target_precious &&
@@ -3556,7 +3811,8 @@ build_target(const ExecContext        &ec,
 } /* namespace */
 
 fn
-parse_makefile_shell_sources(StringView source, Allocator allocator) throws
+parse_makefile_shell_sources(StringView source,
+                             Allocator  allocator) throws
     -> SortedArrayList<make_shell_source_range,
                        order_comparator<make_shell_source_range>>
 {
@@ -3595,22 +3851,26 @@ parse_makefile_shell_sources(StringView source, Allocator allocator) throws
           ranges.push(make_shell_source_range{start_position, end_position,
                                               make_shell_source_kind::Recipe});
       }
+
       continue;
     }
 
     let const uncommented = makefile_without_comment(line, allocator);
     let const statement   = trim(uncommented.view());
+
     if (statement.is_empty()) {
       has_current_rule = false;
       continue;
     }
 
     let const statement_directive = leading_word(statement);
+
     if (statement_directive == "define") {
       define_depth     = 1;
       has_current_rule = false;
       continue;
     }
+
     if (CONDITIONAL_DIRECTIVES.contains(statement_directive) ||
         RULE_ENDING_DIRECTIVES.contains(statement_directive))
     {
@@ -3620,20 +3880,25 @@ parse_makefile_shell_sources(StringView source, Allocator allocator) throws
 
     let const colon  = first_colon_not_followed_by_equals(statement);
     let const equals = statement.find_character('=');
+
     if (colon.has_value() && (!equals.has_value() || *colon < *equals)) {
       let const after_colon = statement.substring(*colon + 1);
+
       if (is_target_variable_assignment(after_colon)) {
         has_current_rule = false;
         continue;
       }
 
-      has_current_rule   = true;
+      has_current_rule = true;
+
       let const raw_line = source.substring_of_length(
           logical.source_span.position, logical.source_span.length);
       let const raw_colon = first_colon_not_followed_by_equals(raw_line);
+
       if (!raw_colon.has_value()) continue;
       let const semicolon =
           raw_line.substring(*raw_colon + 1).find_character(';');
+
       if (!semicolon.has_value()) continue;
       usize start_position =
           logical.source_span.position + *raw_colon + 2 + *semicolon;
@@ -3655,7 +3920,8 @@ parse_makefile_shell_sources(StringView source, Allocator allocator) throws
     if (equals.has_value()) has_current_rule = false;
   }
 
-  let const recipe_range_count  = ranges.count();
+  let const recipe_range_count = ranges.count();
+
   let const do_is_inside_recipe = [&](usize source_position) {
     usize lower = 0;
     usize upper = recipe_range_count;
@@ -3673,6 +3939,7 @@ parse_makefile_shell_sources(StringView source, Allocator allocator) throws
 
     return false;
   };
+
   let   close_stack = ArrayList<char>{allocator};
   usize position    = 0;
   bool  is_comment  = false;
@@ -3683,10 +3950,12 @@ parse_makefile_shell_sources(StringView source, Allocator allocator) throws
       position++;
       continue;
     }
+
     if (is_comment) {
       position++;
       continue;
     }
+
     if (source[position] == '#' && !do_is_inside_recipe(position) &&
         (position == 0 || source[position - 1] != '\\'))
     {
@@ -3694,16 +3963,19 @@ parse_makefile_shell_sources(StringView source, Allocator allocator) throws
       position++;
       continue;
     }
+
     if (source[position] != '$') {
       position++;
       continue;
     }
+
     if (source[position + 1] == '$') {
       position += 2;
       continue;
     }
 
     let const expansion_end = make_expansion_end(source, position, close_stack);
+
     if (!expansion_end.has_value()) {
       position++;
       continue;
@@ -3732,9 +4004,11 @@ parse_makefile_shell_sources(StringView source, Allocator allocator) throws
         ranges.push(make_shell_source_range{
             body_start, *expansion_end, make_shell_source_kind::ShellFunction});
       }
+
       position = *expansion_end + 1;
       continue;
     }
+
     position += 2;
   }
 
@@ -3742,11 +4016,12 @@ parse_makefile_shell_sources(StringView source, Allocator allocator) throws
 }
 
 fn
-makefile_shell_analysis_source(StringView                     source,
-                               const make_shell_source_range &range) throws
+makefile_shell_analysis_source(
+    StringView source, const make_shell_source_range &range) throws
     -> String
 {
   let analysis_source = String{heap_allocator()};
+
   analysis_source.reserve(range.end_position);
   let   close_stack         = ArrayList<char>{heap_allocator()};
   usize position            = 0;
@@ -3756,12 +4031,14 @@ makefile_shell_analysis_source(StringView                     source,
 
   while (position < range.end_position) {
     let const byte = source[position];
+
     if (position < range.start_position || position >= range.end_position) {
       analysis_source.push(byte == '\n' ? '\n' : ' ');
       if (byte == '\n') line_start_position = position + 1;
       position++;
       continue;
     }
+
     if (byte != '$' || position + 1 >= range.end_position) {
       if (position >= range.start_position) {
         if (is_escaped) {
@@ -3774,11 +4051,13 @@ makefile_shell_analysis_source(StringView                     source,
           quote_byte = '\0';
         }
       }
+
       analysis_source.push(byte);
       if (byte == '\n') line_start_position = position + 1;
       position++;
       continue;
     }
+
     if (source[position + 1] == '$') {
       analysis_source.append(" $");
       position += 2;
@@ -3798,6 +4077,7 @@ makefile_shell_analysis_source(StringView                     source,
         line_prefix.find_substring(" in ").has_value() &&
         end_position - position >= 2;
     let const placeholder_length = is_for_word_list ? usize{3} : usize{2};
+
     analysis_source.append(is_for_word_list     ? "x y"
                            : quote_byte == '\0' ? ": "
                                                 : "x ");
@@ -3806,6 +4086,7 @@ makefile_shell_analysis_source(StringView                     source,
          masked_position <= end_position; masked_position++)
     {
       let const byte = source[masked_position] == '\n' ? '\n' : ' ';
+
       analysis_source.push(byte);
       if (byte == '\n') line_start_position = masked_position + 1;
     }
@@ -3820,8 +4101,7 @@ fn
 Make::execute(const ExecContext               &ec,
               EvalContext                     &cxt,
               const ArrayList<String>         &args,
-              const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+              const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   ArrayList<String>         parse_arguments{cxt.scratch_allocator()};
   ArrayList<SourceLocation> parse_locations{cxt.scratch_allocator()};
@@ -3829,24 +4109,30 @@ Make::execute(const ExecContext               &ec,
   ArrayList<SourceLocation> requested_makefile_locations{
       cxt.scratch_allocator()};
   ArrayList<String> command_assignments{cxt.scratch_allocator()};
-  let const         do_argument_location = [&](usize argument_position) {
+
+  let const do_argument_location = [&](usize argument_position) {
     return argument_position < arg_locations.count()
-                       ? arg_locations[argument_position]
-                       : ec.source_location();
+               ? arg_locations[argument_position]
+               : ec.source_location();
   };
+
   if (!args.is_empty()) {
     parse_arguments.push(args[0].clone());
     parse_locations.push(do_argument_location(0));
   }
+
   let const do_push_inherited_option = [&](String option) -> bool {
     ArrayList<String> probe{cxt.scratch_allocator()};
+
     probe.push(String{cxt.scratch_allocator(), StringView{"make"}});
     probe.push(option.clone());
     defer { reset_flags(FLAG_LIST); };
+
     try {
       let const probe_result = parse_util_operands(
           FLAG_LIST, probe, cxt.scratch_allocator(), nullptr,
           {.should_accept_unknown_flag_operand = true});
+
       if (!probe_result.operands.is_empty()) return false;
     } catch (const ErrorBase &) {
       return false;
@@ -3857,7 +4143,9 @@ Make::execute(const ExecContext               &ec,
 
     return true;
   };
+
   bool was_option_end_seen = false;
+
   if (let inherited_makeflags = os::get_environment_variable("MAKEFLAGS");
       inherited_makeflags.has_value())
     for (let const &word : split_makeflags_words(inherited_makeflags->view(),
@@ -3866,6 +4154,7 @@ Make::execute(const ExecContext               &ec,
       if (word.is_empty()) continue;
 
       let letters = word.view();
+
       if (letters == "--") {
         was_option_end_seen = true;
         continue;
@@ -3884,11 +4173,13 @@ Make::execute(const ExecContext               &ec,
       if (was_option_end_seen) continue;
 
       let inherited_options = String{cxt.scratch_allocator(), "-"};
+
       inherited_options += letters;
       if (do_push_inherited_option(steal(inherited_options))) continue;
 
       for (usize i = 0; i < letters.length; i++) {
         let inherited_option = String{cxt.scratch_allocator(), "-"};
+
         inherited_option.push(letters[i]);
         do_push_inherited_option(steal(inherited_option));
       }
@@ -3930,6 +4221,7 @@ Make::execute(const ExecContext               &ec,
   let const          is_stop_enabled = FLAG_MAKE_STOP.is_enabled();
 
   Maybe<Path> saved_directory;
+
   if (FLAG_MAKE_DIR.is_set()) {
     saved_directory = Path::current_directory();
     if (Path::set_current_directory(
@@ -3945,8 +4237,8 @@ Make::execute(const ExecContext               &ec,
       return 2;
     }
   }
-  defer
-  {
+
+  defer {
     if (saved_directory.has_value())
       static_cast<void>(Path::set_current_directory(*saved_directory));
   };
@@ -3967,8 +4259,10 @@ Make::execute(const ExecContext               &ec,
        makefile_position < requested_makefiles.count(); makefile_position++)
   {
     let const &makefile_path = requested_makefiles[makefile_position];
+
     if (makefile_path.view() == StringView{"-"}) {
       let source = utils::read_entire_standard_input();
+
       source += '\n';
       make_sources.push(
           make_source_document{steal(source), intern_source_name("-")});
@@ -3977,6 +4271,7 @@ Make::execute(const ExecContext               &ec,
 
     let part =
         Path{makefile_path.view(), cxt.scratch_allocator()}.read_entire_file();
+
     if (!part.has_value()) {
       report_soft_koshkit_util_error(
           ec, cxt, requested_makefile_locations[makefile_position],
@@ -3986,7 +4281,9 @@ Make::execute(const ExecContext               &ec,
 
       return 2;
     }
+
     let source = steal(*part);
+
     source += '\n';
     make_sources.push(make_source_document{
         steal(source), intern_source_name(makefile_path.view())});
@@ -4004,6 +4301,7 @@ Make::execute(const ExecContext               &ec,
        operand_position++)
   {
     let const &operand = operands[operand_position];
+
     if (is_command_line_assignment(operand.view())) {
       command_assignments.push(operand.clone());
       command_line_variable_names.set(assignment_variable_name(operand.view()),
@@ -4015,6 +4313,7 @@ Make::execute(const ExecContext               &ec,
   }
 
   String makeflags{cxt.scratch_allocator()};
+
   if (runtime_flags.should_always_make) makeflags += 'B';
   if (runtime_flags.is_environment_overriding) makeflags += 'e';
   if (runtime_flags.should_ignore_errors) makeflags += 'i';
@@ -4022,6 +4321,7 @@ Make::execute(const ExecContext               &ec,
     makeflags += 'j';
     if (FLAG_MAKE_JOBS.has_value()) makeflags += FLAG_MAKE_JOBS.value();
   }
+
   if (runtime_flags.should_keep_going)
     makeflags += 'k';
   else if (is_stop_enabled)
@@ -4042,17 +4342,19 @@ Make::execute(const ExecContext               &ec,
          byte_position++)
     {
       let const byte = assignment.view()[byte_position];
+
       if (byte == '\\' || is_blank(byte)) {
         makeflags += '\\';
       }
+
       makeflags += byte;
     }
   }
 
   let previous_makeflags = os::get_environment_variable("MAKEFLAGS");
+
   os::set_environment_variable("MAKEFLAGS", makeflags.view());
-  defer
-  {
+  defer {
     if (previous_makeflags.has_value())
       os::set_environment_variable("MAKEFLAGS", previous_makeflags->view());
     else
@@ -4060,6 +4362,7 @@ Make::execute(const ExecContext               &ec,
   };
 
   Maybe<makefile> parsed_makefile;
+
   try {
     parsed_makefile = parse_makefile(
         cxt, make_sources, command_assignments,
@@ -4076,7 +4379,9 @@ Make::execute(const ExecContext               &ec,
 
     throw;
   }
+
   ASSERT(parsed_makefile.has_value());
+
   let mk = steal(*parsed_makefile);
 
   if (const String *parsed_makeflags = mk.find_variable("MAKEFLAGS");
@@ -4089,13 +4394,14 @@ Make::execute(const ExecContext               &ec,
 
   ArrayList<saved_recipe_environment> saved_recipe_environment_values{
       cxt.scratch_allocator()};
-  defer
-  {
+
+  defer {
     for (usize environment_index = saved_recipe_environment_values.count();
          environment_index-- > 0;)
     {
       const saved_recipe_environment &saved =
           saved_recipe_environment_values[environment_index];
+
       if (saved.old_value.has_value())
         os::set_environment_variable(saved.name.view(),
                                      saved.old_value->view());
@@ -4103,10 +4409,13 @@ Make::execute(const ExecContext               &ec,
         os::unset_environment_variable(saved.name.view());
     }
   };
+
   mk.unexported_variable_names.for_each(
       [&](StringView name, bool is_unexported) throws {
         unused(is_unexported);
+
         let old_value = os::get_environment_variable(name);
+
         if (!old_value.has_value()) return;
         saved_recipe_environment_values.push(saved_recipe_environment{
             String{cxt.scratch_allocator(), name},
@@ -4122,8 +4431,10 @@ Make::execute(const ExecContext               &ec,
     {
       continue;
     }
+
     if (mk.unexported_variable_names.find(variable.name.view()).has_value())
       continue;
+
     let       old_value = os::get_environment_variable(variable.name.view());
     let const is_command_variable =
         mk.command_variable_names.find(variable.name.view()).has_value();
@@ -4131,11 +4442,13 @@ Make::execute(const ExecContext               &ec,
         command_line_variable_names.find(variable.name.view()).has_value();
     let const is_exported_variable =
         mk.exported_variable_names.find(variable.name.view()).has_value();
+
     if (!is_command_line_variable && !is_exported_variable &&
         !old_value.has_value())
     {
       continue;
     }
+
     if (!is_command_variable && old_value.has_value() &&
         runtime_flags.is_environment_overriding)
     {
@@ -4146,7 +4459,9 @@ Make::execute(const ExecContext               &ec,
         variable.name.clone(), old_value.has_value()
                                    ? Maybe<String>{old_value->clone()}
                                    : Maybe<String>{}});
+
     let const expanded_value = expand(cxt, mk, variable.value.view(), 0);
+
     os::set_environment_variable(variable.name.view(), expanded_value.view());
   }
 
@@ -4197,6 +4512,7 @@ Make::execute(const ExecContext               &ec,
     if (mk.default_goal.is_empty() && runtime_flags.is_print_database) {
       return 0;
     }
+
     if (mk.default_goal.is_empty())
       throw ErrorWithDetails{
           "The makefile defines no targets and no default goal",
@@ -4218,11 +4534,13 @@ Make::execute(const ExecContext               &ec,
       runtime_flags.should_touch};
   let has_outdated_goal = false;
   let did_fail          = false;
+
   try {
     for (usize goal_position = 0; goal_position < goals.count();
          goal_position++)
     {
       let const &goal = goals[goal_position];
+
       try {
         has_outdated_goal |=
             build_target(ec, cxt, mk, goal.view(), active_targets,
@@ -4260,20 +4578,27 @@ collect_makefile_targets(EvalContext &cxt, const Path &makefile) throws
   if (!source.has_value()) return targets;
 
   let const saved_suppressed = cxt.execution_store().make_shell_suppressed();
+
   cxt.execution_store().set_make_shell_suppressed(true);
-  defer { cxt.execution_store().set_make_shell_suppressed(saved_suppressed); };
+  defer {
+    cxt.execution_store().set_make_shell_suppressed(saved_suppressed);
+  };
 
   let const command_assignments = ArrayList<String>{cxt.scratch_allocator()};
   let       sources = ArrayList<make_source_document>{cxt.scratch_allocator()};
+
   sources.push(make_source_document{steal(*source),
                                     intern_source_name(makefile.view())});
+
   let const mk = parse_makefile(cxt, sources, command_assignments, false, true);
 
   for (let const &rule : mk.rules) {
     let const name = rule.target.view();
+
     if (name.is_empty() || name[0] == '.') {
       continue;
     }
+
     targets.push(rule.target.clone());
   }
 

@@ -44,6 +44,7 @@ Tee::execute(const ExecContext               &ec,
 
   for (let const &operand : operands) {
     let const fd = os::open_file_descriptor(operand.view(), mode);
+
     if (!fd.has_value()) {
       report_soft_koshkit_util_error(ec, cxt, args[0].view(),
                                      operand + ": " +
@@ -51,6 +52,7 @@ Tee::execute(const ExecContext               &ec,
       status = 1;
       continue;
     }
+
     output_descriptors.push(*fd);
     output_names.push(operand.view());
   }
@@ -59,18 +61,17 @@ Tee::execute(const ExecContext               &ec,
   output_positions.reserve(output_descriptors.count());
   batch.reserve(output_descriptors.count());
   batch_results.reserve(output_descriptors.count());
-  defer
-  {
+  defer {
     for (let const descriptor : output_descriptors)
       os::close_fd(descriptor);
   };
 
   char buffer[65536];
 
-  loop
-  {
+  loop {
     let const read_byte_count =
         os::read_fd(ec.in_fd.value_or(KOSH_STDIN), buffer, sizeof(buffer));
+
     if (!read_byte_count.has_value()) {
       if (os::INTERRUPT_REQUESTED) return 130;
       report_soft_koshkit_util_error(ec, cxt, args[0].view(),
@@ -79,6 +80,7 @@ Tee::execute(const ExecContext               &ec,
 
       return 1;
     }
+
     if (*read_byte_count == 0) break;
 
     ec.print_to_stdout(StringView{buffer, *read_byte_count});
@@ -87,15 +89,17 @@ Tee::execute(const ExecContext               &ec,
     for (usize index = 0; index < output_descriptors.count(); index++)
       written_byte_counts.push(0);
 
-    loop
-    {
+    loop {
       batch.clear();
       output_positions.clear();
+
       usize output_index = output_descriptors.count();
 
       while (output_index > 0) {
         output_index--;
+
         let const written_byte_count = written_byte_counts[output_index];
+
         if (written_byte_count == *read_byte_count) continue;
 
         batch.add(os::batch_operation::write_current(
@@ -115,6 +119,7 @@ Tee::execute(const ExecContext               &ec,
         let const &result          = batch_results[result_index];
         let const  remaining_byte_count =
             *read_byte_count - written_byte_counts[output_position];
+
         if (result.error_number == 0 && result.transferred_byte_count > 0 &&
             result.transferred_byte_count <= remaining_byte_count)
         {
@@ -123,12 +128,14 @@ Tee::execute(const ExecContext               &ec,
         }
 
         let reason = String{cxt.scratch_allocator()};
+
         if (result.error_number != 0) {
           os::set_last_system_error(result.error_number);
           reason = os::last_system_error_message();
         } else {
           reason = "write made no progress";
         }
+
         report_soft_koshkit_util_error(
             ec, cxt, args[0].view(),
             String{cxt.scratch_allocator(), output_names[output_position]} +

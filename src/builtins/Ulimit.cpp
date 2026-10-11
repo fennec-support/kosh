@@ -159,6 +159,7 @@ render_limit(const os::resource_limit &limit,
              Allocator                 allocator) throws -> String
 {
   let const value = FLAG_HARD.is_enabled() ? limit.hard : limit.soft;
+
   if (value == os::RESOURCE_UNLIMITED) return String{allocator, "unlimited"};
 
   return String::from(value / divisor, allocator);
@@ -180,8 +181,11 @@ Ulimit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
     for (let const &entry : RESOURCE_TABLE) {
       let const limit = os::get_resource_limit(entry.kind);
+
       if (!limit.has_value()) continue;
+
       let const label = String{cxt.scratch_allocator(), entry.label};
+
       out += label;
       out.append_repeated(' ', label.count() < 20 ? 20 - label.count() : 0);
       out.push(' ');
@@ -214,6 +218,7 @@ Ulimit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   }
 
   let current_limit = os::get_resource_limit(resource.kind);
+
   if (!current_limit.has_value())
     throw Error{"Unable to read the resource limit: " +
                 os::last_system_error_message()};
@@ -235,6 +240,7 @@ Ulimit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       args[1].c_str());
 
   let const is_posix = cxt.runtime_state().is_posix_mode();
+
   if (is_posix && args.count() > 2) {
     report_soft_builtin_error(ec, cxt, ec.arg_location_at(2),
                               "Too many operands",
@@ -246,8 +252,10 @@ Ulimit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let const &requested = args[1];
   let const  units     = block_factor(resource, cxt.runtime_state().get_mood());
   u64        value     = os::RESOURCE_UNLIMITED;
+
   if (requested != "unlimited") {
     let const parsed = utils::parse_decimal_u64(requested.view());
+
     if (parsed.is_error()) {
       report_soft_builtin_error(
           ec, cxt, ec.arg_location_at(1), requested + ": invalid limit",
@@ -255,8 +263,10 @@ Ulimit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
       return is_posix ? 2 : 1;
     }
+
     let const is_out_of_range =
         units != 0 && parsed.value() >= os::RESOURCE_UNLIMITED / units;
+
     if (is_out_of_range) {
       report_soft_builtin_error(ec, cxt, ec.arg_location_at(1),
                                 requested + ": limit out of range",
@@ -264,12 +274,14 @@ Ulimit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
       return 1;
     }
+
     value = parsed.value() * units;
   }
 
   if (FLAG_HARD.is_enabled() || !FLAG_SOFT.is_enabled()) {
     limit.hard = value;
   }
+
   if (FLAG_SOFT.is_enabled() || !FLAG_HARD.is_enabled()) {
     limit.soft = value;
   }

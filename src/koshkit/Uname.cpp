@@ -35,8 +35,7 @@ fn
 Uname::execute(const ExecContext               &ec,
                EvalContext                     &cxt,
                const ArrayList<String>         &args,
-               const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+               const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
@@ -53,22 +52,27 @@ Uname::execute(const ExecContext               &ec,
   let const should_release = is_all || FLAG_UNAME_RELEASE.is_enabled();
   let const should_version = is_all || FLAG_UNAME_VERSION.is_enabled();
   let const should_machine = is_all || FLAG_UNAME_MACHINE.is_enabled();
+
   if (!should_system && !should_node && !should_release && !should_version &&
       !should_machine)
   {
     should_system = true;
   }
 
-  let       output    = String{cxt.scratch_allocator()};
+  let output = String{cxt.scratch_allocator()};
+
   let const do_append = [&](StringView value) throws -> void {
     if (!output.is_empty()) output += ' ';
     output += value;
   };
+
   if (should_system) do_append(os::executable_system_name().view());
   if (should_node) {
     let const hostname = os::get_hostname();
+
     do_append(hostname.has_value() ? hostname->view() : StringView{"unknown"});
   }
+
   if (should_release) do_append(os::system_release_name().view());
   if (should_version) do_append(os::system_version_name().view());
   if (should_machine) do_append(os::executable_machine_name().view());

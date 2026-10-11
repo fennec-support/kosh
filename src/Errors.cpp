@@ -36,6 +36,7 @@ struct interned_source_name
   {
     other.data = nullptr;
   }
+
   ~interned_source_name()
   {
     heap_allocator().free_array(data, static_cast<usize>(length) + 1);
@@ -62,6 +63,7 @@ intern_source_name(StringView name) throws -> u32
 
   for (usize row_index = 0; row_index < table.count(); row_index++) {
     let const &row = table[row_index];
+
     if (row.kind == kind && row.length == name.length &&
         std::memcmp(row.data, name.data, name.length) == 0)
     {
@@ -70,6 +72,7 @@ intern_source_name(StringView name) throws -> u32
   }
 
   let const copy = heap_allocator().alloc_array<char>(name.length + 1);
+
   std::memcpy(copy, name.data, name.length);
   copy[name.length] = '\0';
   table.push(interned_source_name{copy, static_cast<u32>(name.length), kind});
@@ -81,6 +84,7 @@ fn
 source_identity_kind_at(u32 source_name_index) wontthrow -> source_identity_kind
 {
   let const &table = get_source_name_table();
+
   if (source_name_index == 0 || source_name_index > table.count()) {
     return source_identity_kind::File;
   }
@@ -94,8 +98,11 @@ source_name_at(u32 source_name_index) wontthrow -> Maybe<StringView>
   if (source_name_index == 0) return None;
 
   let const &table = get_source_name_table();
+
   if (source_name_index > table.count()) return None;
+
   let const &row = table[source_name_index - 1];
+
   if (row.kind == source_identity_kind::CommandString)
     return COMMAND_STRING_SOURCE_NAME;
 
@@ -117,7 +124,8 @@ struct diagnostic_color
 };
 
 cold static fn
-diagnostic_colors_for(error_severity severity) throws -> diagnostic_color
+diagnostic_colors_for(error_severity severity) throws
+    -> diagnostic_color
 {
   if (!colors::stderr_wants_color()) return diagnostic_color{};
 
@@ -159,6 +167,7 @@ append_diagnostic_message(String                 &out,
 {
   let const reset       = color.get_reset();
   usize     digit_start = message.length;
+
   if (!reset.is_empty() && message.length > 0 &&
       message[message.length - 1] == ')')
   {
@@ -174,6 +183,7 @@ append_diagnostic_message(String                 &out,
   let const has_code_suffix =
       digit_start + 1 < message.length && digit_start >= 4 &&
       message.substring_of_length(digit_start - 4, 4) == StringView{" (SC"};
+
   out += color.message;
   if (!has_code_suffix) {
     out += message;
@@ -225,6 +235,7 @@ get_context_pointing_to(StringView                         source,
 
   static constexpr usize LONG_LINE_CONTEXT_BYTES = 4096;
   let                    line_position           = full_line_position;
+
   if (line_position.line_end - line_position.line_start >
       2 * LONG_LINE_CONTEXT_BYTES)
   {
@@ -242,6 +253,7 @@ get_context_pointing_to(StringView                         source,
         byte_count > line_position.line_end - byte_position
             ? line_position.line_end
             : byte_position + byte_count;
+
     if (line_position.line_end > caret_end_position + LONG_LINE_CONTEXT_BYTES) {
       line_position.line_end = caret_end_position + LONG_LINE_CONTEXT_BYTES;
 
@@ -252,6 +264,7 @@ get_context_pointing_to(StringView                         source,
       }
     }
   }
+
   LOG(Debug, "assembling the caret context for line %zu", line_number + 1);
 
   static constexpr usize LINE_NUMBER_FIELD_WIDTH = 6;
@@ -290,6 +303,7 @@ get_context_pointing_to(StringView                         source,
 
   let expanded_line = String{heap_allocator()};
   let display_line  = context;
+
   if (tab_count != 0) {
     expanded_line.reserve(context.count() + tab_count * (TAB_WIDTH - 1));
 
@@ -304,8 +318,9 @@ get_context_pointing_to(StringView                         source,
     display_line = expanded_line.view();
   }
 
-  usize     caret_source_position     = 0;
-  usize     caret_expanded_position   = 0;
+  usize caret_source_position   = 0;
+  usize caret_expanded_position = 0;
+
   let const do_advance_caret_position = [&](usize byte_offset) {
     while (caret_source_position < byte_offset) {
       caret_expanded_position +=
@@ -334,17 +349,23 @@ get_context_pointing_to(StringView                         source,
 
   let generated_highlights = ArrayList<highlight_span>{heap_allocator()};
   const ArrayList<highlight_span> *source_highlights = &generated_highlights;
+
   if (eval_context != nullptr && !color.severity.is_empty()) {
     let *cache = eval_context->get_or_create_diagnostic_highlight_cache();
+
     source_highlights = cache->spans_for(source, line_position.line_start,
                                          line_position.line_end, *eval_context);
   }
+
   let expanded_highlights = ArrayList<highlight_span>{heap_allocator()};
   let line_highlights     = source_highlights;
+
   if (tab_count != 0 && !source_highlights->is_empty()) {
     expanded_highlights.reserve(source_highlights->count());
-    usize     highlight_source_position     = 0;
-    usize     highlight_expanded_position   = 0;
+
+    usize highlight_source_position   = 0;
+    usize highlight_expanded_position = 0;
+
     let const do_advance_highlight_position = [&](usize byte_offset) {
       while (highlight_source_position < byte_offset) {
         highlight_expanded_position +=
@@ -363,6 +384,7 @@ get_context_pointing_to(StringView                         source,
 
     line_highlights = &expanded_highlights;
   }
+
   let const display_cells = toiletline::get_display_width(display_line);
 
   usize window_start       = 0;
@@ -380,6 +402,7 @@ get_context_pointing_to(StringView                         source,
       display_cells > terminal_dimensions->columns - gutter_width;
   let const should_window_for_stream =
       !is_stderr_a_terminal && display_cells > UNBOUNDED_STREAM_LINE_WIDTH;
+
   if (should_window_for_terminal || should_window_for_stream) {
     let const available_line_width =
         should_window_for_terminal ? terminal_dimensions->columns - gutter_width
@@ -387,6 +410,7 @@ get_context_pointing_to(StringView                         source,
     let const caret_display_width = caret_width < 1 ? 1 : caret_width;
     let const half_window_width   = available_line_width / 2;
     let const caret_center        = caret_column + caret_display_width / 2;
+
     window_start =
         caret_center > half_window_width ? caret_center - half_window_width : 0;
     if (window_start + available_line_width > display_cells)
@@ -401,10 +425,12 @@ get_context_pointing_to(StringView                         source,
         window_end < display_cells)
     {
       let const shift = caret_column + caret_display_width - window_end;
-      window_start    = window_start + shift > caret_column ? caret_column
-                                                            : window_start + shift;
+
+      window_start = window_start + shift > caret_column ? caret_column
+                                                         : window_start + shift;
       window_end += shift;
     }
+
     if (window_end > display_cells) window_end = display_cells;
     if (window_end <= window_start) window_end = display_cells;
     has_left_ellipsis  = window_start > 0;
@@ -413,6 +439,7 @@ get_context_pointing_to(StringView                         source,
 
   usize window_start_byte = 0;
   usize window_end_byte   = display_line.length;
+
   if (has_left_ellipsis || has_right_ellipsis) {
     window_start_byte = toiletline::get_byte_offset_at_or_before_display_cell(
         display_line, window_start, window_start);
@@ -455,6 +482,7 @@ get_context_pointing_to(StringView                         source,
 
     if (!text_ends_a_sentence(*message)) msg += '.';
   }
+
   msg += color.get_reset();
 
   return msg;
@@ -466,6 +494,7 @@ cold fn
 ErrorBase::trailing_details_to_string() const throws -> String
 {
   let const note = detail_message();
+
   if (note.is_empty()) return String{heap_allocator()};
 
   let const severity      = error_severity::note;
@@ -495,17 +524,18 @@ ErrorWithDetails::ErrorWithDetails(StringView message, StringView note)
 {}
 
 cold fn
-ErrorBase::to_string(StringView source, EvalContext *context) const throws
-    -> String
+ErrorBase::to_string(StringView source, EvalContext *context) const throws -> String
 {
   unused(source);
   unused(context);
+
   let const severity      = get_severity();
   let const severity_word = get_error_severity_word(severity);
   let const color         = diagnostic_colors_for(severity);
   let const period        = text_ends_a_sentence(message()) ? "" : ".";
 
   let result = color.severity + severity_word + color.get_reset() + ": ";
+
   append_diagnostic_message(result, message().view(), color);
   result += period;
   result += color.get_reset();
@@ -571,12 +601,14 @@ resolve_rendered_site(StringView            source,
 
   let mapped_source   = source;
   let mapped_location = location;
+
   if (let const *parent =
           context->map_embedded_site(mapped_source, mapped_location);
       parent != nullptr)
   {
     let const parent_site = context->resolve_render_source(
         mapped_location, parent, static_cast<usize>(-1), 0);
+
     if (parent_site.is_windowed && parent_site.text != nullptr) {
       return rendered_site{parent_site.text->view(),
                            parent_site.rebase(mapped_location),
@@ -591,6 +623,7 @@ resolve_rendered_site(StringView            source,
 
   let const resolved =
       context->resolve_current_function_window(source, location);
+
   if (!resolved.is_windowed || resolved.text == nullptr) {
     return rendered_site{source, location, line_offset};
   }
@@ -600,12 +633,13 @@ resolve_rendered_site(StringView            source,
 }
 
 fn
-ErrorWithLocation::to_string(StringView   source,
-                             EvalContext *context) const throws -> String
+ErrorWithLocation::to_string(StringView source, EvalContext *context) const throws -> String
 {
   let const site = resolve_rendered_site(source, m_location, m_line_offset,
                                          m_is_rebased, context);
-  source         = site.source;
+
+  source = site.source;
+
   usize     byte_position = site.location.position;
   let const byte_count    = site.location.length;
 
@@ -614,8 +648,10 @@ ErrorWithLocation::to_string(StringView   source,
   }
 
   LOG_VARS(Debug, byte_position, byte_count);
+
   let const severity      = get_severity();
   let const severity_word = get_error_severity_word(severity);
+
   LOG(Debug, "formatting located %.*s", static_cast<int>(severity_word.length),
       severity_word.data);
 
@@ -638,6 +674,7 @@ ErrorWithLocation::to_string(StringView   source,
   let const color = diagnostic_colors_for(severity);
 
   let result = String{heap_allocator()};
+
   result += color.location;
   if (let const name = site.location.get_filename();
       name.has_value() && !m_is_filename_hidden)
@@ -645,6 +682,7 @@ ErrorWithLocation::to_string(StringView   source,
     result += *name;
     result += ':';
   }
+
   result += String::from(
       reported_line_number(line_position.line_number, site.line_offset),
       heap_allocator());
@@ -666,6 +704,7 @@ ErrorWithLocation::to_string(StringView   source,
   } else {
     result += ':';
   }
+
   result += '\n';
 
   result +=
@@ -749,14 +788,15 @@ ErrorWithLocationAndDetails::ErrorWithLocationAndDetails(
 {}
 
 cold fn
-DetailsWithLocation::to_string(StringView   source,
-                               EvalContext *context) const throws -> String
+DetailsWithLocation::to_string(StringView source, EvalContext *context) const throws -> String
 {
   if (m_message.is_empty()) return String{heap_allocator()};
 
   let const site = resolve_rendered_site(source, m_location, m_line_offset,
                                          m_is_rebased, context);
-  source         = site.source;
+
+  source = site.source;
+
   usize     byte_position = site.location.position;
   let const byte_count    = site.location.length;
 
@@ -783,6 +823,7 @@ DetailsWithLocation::to_string(StringView   source,
   let const color         = diagnostic_colors_for(severity);
 
   let result = String{heap_allocator()};
+
   result += color.location;
   if (let const name = site.location.get_filename();
       name.has_value() && !m_is_filename_hidden)
@@ -790,6 +831,7 @@ DetailsWithLocation::to_string(StringView   source,
     result += *name;
     result += ':';
   }
+
   result += String::from(
       reported_line_number(details_line_position.line_number, site.line_offset),
       heap_allocator());
@@ -811,14 +853,15 @@ DetailsWithLocation::to_string(StringView   source,
 }
 
 cold fn
-ErrorWithLocationAndDetails::details_to_string(
-    StringView source, EvalContext *context) const throws -> String
+ErrorWithLocationAndDetails::details_to_string(StringView source,
+                                               EvalContext *context) const throws -> String
 {
   if (m_details_message.is_empty()) return String{heap_allocator()};
 
   let const details =
       DetailsWithLocation{m_details_location, m_details_message.view()};
   let result = details.to_string(source, context);
+
   if (result.is_empty()) return result;
 
   result += trailing_details_to_string();

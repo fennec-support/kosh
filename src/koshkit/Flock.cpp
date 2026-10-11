@@ -31,8 +31,7 @@ fn
 Flock::execute(const ExecContext               &ec,
                EvalContext                     &cxt,
                const ArrayList<String>         &args,
-               const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+               const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
@@ -40,9 +39,11 @@ Flock::execute(const ExecContext               &ec,
 
   if (FLAG_TRANSACTION_HELD_LOCK.is_enabled()) {
     let const executable = os::current_executable_path();
+
     if (!executable.has_value()) return 126;
 
     let keeper = ArrayList<String>{cxt.scratch_allocator()};
+
     keeper.reserve(operands.count() + 7);
     keeper.push(String{executable->view()});
     keeper.push(String{"-p"});
@@ -56,6 +57,7 @@ Flock::execute(const ExecContext               &ec,
       keeper.push(operand.clone());
 
     cxt.prepare_child_environment();
+
     let const result =
         os::run_measured(keeper, {}, os::measured_output::Inherit);
 
@@ -63,21 +65,25 @@ Flock::execute(const ExecContext               &ec,
   }
 
   let const lock = os::acquire_process_lock(operands[0].view());
+
   if (!lock.has_value()) {
     report_soft_builtin_error(ec, cxt, operand_locations[0],
                               "Cannot acquire directory lock");
 
     return 1;
   }
+
   defer { os::release_process_lock(*lock); };
 
   let command = ArrayList<String>{cxt.scratch_allocator()};
+
   command.reserve(operands.count() - 1);
 
   for (usize position = 1; position < operands.count(); position++)
     command.push(operands[position].clone());
 
   cxt.prepare_child_environment();
+
   let const result =
       os::run_measured(command, *lock, os::measured_output::Inherit);
 

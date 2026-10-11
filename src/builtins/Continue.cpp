@@ -39,6 +39,7 @@ Continue::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   }
 
   i64 level = 1;
+
   if (ec.args().count() > 1) {
     let const parsed_level = ec.args()[1].to<i64>();
 
@@ -76,6 +77,7 @@ Continue::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
           make_error_for_arg(ec, 1,
                              "Unable to continue because '" + ec.args()[1] +
                                  "' is not a valid loop count");
+
       if (cxt.runtime_state().is_posix_mode()) error.set_command_status(2);
       throw error;
     }

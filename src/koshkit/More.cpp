@@ -34,8 +34,7 @@ fn
 More::execute(const ExecContext               &ec,
               EvalContext                     &cxt,
               const ArrayList<String>         &args,
-              const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+              const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
@@ -45,16 +44,20 @@ More::execute(const ExecContext               &ec,
 
   let   tagged_source      = String{cxt.scratch_allocator()};
   usize tagged_line_number = 1;
+
   if (FLAG_MORE_TAG.is_set()) {
     if (!operands.is_empty())
       return report_usage_error(ec, cxt, args[0].view());
+
     let const tags = Path{"tags"}.read_entire_file();
+
     if (!tags.has_value()) {
       report_soft_koshkit_util_error(ec, cxt, args[0].view(),
                                      "cannot read tags");
 
       return 1;
     }
+
     usize position = 0;
 
     while (position < tags->length()) {
@@ -63,25 +66,30 @@ More::execute(const ExecContext               &ec,
           remaining.find_character('\n').value_or(remaining.length);
       let const line      = remaining.substring_of_length(0, line_length);
       let const first_tab = line.find_character('\t');
+
       if (first_tab.has_value() &&
           line.substring_of_length(0, *first_tab) == FLAG_MORE_TAG.value())
       {
         let const after_name = line.substring(*first_tab + 1);
         let const second_tab = after_name.find_character('\t');
+
         if (second_tab.has_value()) {
           tagged_source =
               String{cxt.scratch_allocator(),
                      after_name.substring_of_length(0, *second_tab)};
           let const parsed =
               utils::parse_decimal_u64(after_name.substring(*second_tab + 1));
+
           if (!parsed.is_error() && parsed.value() != 0 &&
               parsed.value() <= SIZE_MAX)
           {
             tagged_line_number = static_cast<usize>(parsed.value());
           }
+
           break;
         }
       }
+
       position += line_length + (line_length < remaining.length ? 1 : 0);
     }
 
@@ -95,10 +103,12 @@ More::execute(const ExecContext               &ec,
   }
 
   let sources = source_list_from_operands(operands, cxt.scratch_allocator());
+
   if (FLAG_MORE_TAG.is_set()) {
     sources.clear();
     sources.push(tagged_source.view());
   }
+
   let const should_buffer = FLAG_MORE_COMMAND.is_set() ||
                             FLAG_MORE_TAG.is_set() ||
                             FLAG_MORE_SQUEEZE.is_enabled();
@@ -107,11 +117,13 @@ More::execute(const ExecContext               &ec,
   for (let const source : sources) {
     if (should_buffer) {
       let const input = read_named_or_stdin(ec, source);
+
       if (!input.has_value()) {
         KOSHKIT_REPORT_PATH_ERROR("read", source);
         status = 1;
         continue;
       }
+
       usize     output_start = 0;
       let       line_number  = usize{1};
       let const requested_line_number =
@@ -122,21 +134,27 @@ More::execute(const ExecContext               &ec,
       {
         let const newline =
             input->view().substring(output_start).find_character('\n');
+
         if (!newline.has_value()) {
           output_start = input->length();
           break;
         }
+
         output_start += *newline + 1;
         line_number++;
       }
 
       if (FLAG_MORE_COMMAND.is_set()) {
         let command = FLAG_MORE_COMMAND.value();
+
         if (!command.is_empty() && command[0] == '/') {
           command = command.substring(1);
         }
+
         let pattern = String{cxt.scratch_allocator(), command};
+
         if (FLAG_MORE_CASE.is_enabled()) pattern.lowercase_ascii();
+
         usize search_position = output_start;
 
         while (search_position < input->length()) {
@@ -146,20 +164,25 @@ More::execute(const ExecContext               &ec,
           let searchable =
               String{cxt.scratch_allocator(),
                      remaining.substring_of_length(0, line_length)};
+
           if (FLAG_MORE_CASE.is_enabled()) searchable.lowercase_ascii();
           if (std::strstr(searchable.c_str(), pattern.c_str()) != nullptr) {
             output_start = search_position;
             break;
           }
+
           search_position +=
               line_length + (line_length < remaining.length ? 1 : 0);
         }
       }
+
       let const selected = input->view().substring(output_start);
+
       if (!FLAG_MORE_SQUEEZE.is_enabled()) {
         ec.print_to_stdout(selected);
         continue;
       }
+
       let   squeezed  = String{cxt.scratch_allocator()};
       bool  was_blank = false;
       usize position  = 0;
@@ -169,10 +192,12 @@ More::execute(const ExecContext               &ec,
         let const line_length =
             remaining.find_character('\n').value_or(remaining.length);
         let const is_blank = line_length == 0;
+
         if (!is_blank || !was_blank) {
           squeezed += remaining.substring_of_length(0, line_length);
           if (line_length < remaining.length) squeezed += '\n';
         }
+
         was_blank = is_blank;
         position += line_length + (line_length < remaining.length ? 1 : 0);
       }
@@ -182,25 +207,28 @@ More::execute(const ExecContext               &ec,
     }
 
     let const input = open_named_or_stdin(ec, source);
+
     if (!input.has_value()) {
       KOSHKIT_REPORT_PATH_ERROR("read", source);
       status = 1;
       continue;
     }
-    defer
-    {
+
+    defer {
       if (input->mode == input_descriptor_mode::Owned)
         os::close_fd(input->descriptor);
     };
+
     char buffer[65536];
 
-    loop
-    {
+    loop {
       let const count = os::read_fd(input->descriptor, buffer, sizeof(buffer));
+
       if (!count.has_value()) {
         status = 1;
         break;
       }
+
       if (*count == 0) break;
       ec.print_to_stdout(StringView{buffer, *count});
     }

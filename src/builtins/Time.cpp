@@ -51,13 +51,14 @@ Time::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   double    user_before = 0, system_before = 0;
   let const child_times_before = os::read_child_cpu_times();
-  user_before                  = child_times_before.user_seconds;
-  system_before                = child_times_before.system_seconds;
+
+  user_before   = child_times_before.user_seconds;
+  system_before = child_times_before.system_seconds;
 
   let const saved_terminal_exec = cxt.execution_store().terminal_exec_allowed();
+
   cxt.execution_store().terminal_exec_allowed() = false;
-  defer
-  {
+  defer {
     cxt.execution_store().terminal_exec_allowed() = saved_terminal_exec;
   };
 
@@ -71,9 +72,11 @@ Time::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   double    user_after = 0, system_after = 0;
   let const child_times_after = os::read_child_cpu_times();
-  user_after                  = child_times_after.user_seconds;
-  system_after                = child_times_after.system_seconds;
-  let const rss_after         = os::children_peak_rss_bytes();
+
+  user_after   = child_times_after.user_seconds;
+  system_after = child_times_after.system_seconds;
+
+  let const rss_after = os::children_peak_rss_bytes();
 
   let const real_seconds = static_cast<double>(elapsed_nanos) / 1000000000.0;
   let const user_cpu     = user_after - user_before;

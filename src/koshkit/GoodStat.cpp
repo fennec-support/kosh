@@ -57,9 +57,11 @@ id_name(u32 id, Allocator allocator, goodstat_identity_kind kind) throws
   let const named = kind == goodstat_identity_kind::User
                         ? os::uid_to_username(id)
                         : os::gid_to_groupname(id);
+
   if (!named.has_value()) return String::from(id, allocator);
 
   let result = String{allocator, named->view()};
+
   result += " (";
   result += String::from(id, allocator).view();
   result += ")";
@@ -71,9 +73,11 @@ fn
 permission_text(u32 mode, Allocator allocator) throws -> String
 {
   let result = os::format_mode_string(mode);
+
   result += " (";
   let const digits =
       String::from_in_base(mode & 07777u, false, int_base::octal, allocator);
+
   result.append_repeated('0', 4 - digits.length());
   result += digits.view();
   result += ")";
@@ -85,6 +89,7 @@ fn
 size_text(u64 size, Allocator allocator) throws -> String
 {
   let result = format_human_size(size, allocator);
+
   result += " (";
   result += String::from(size, allocator).view();
   result += size == 1 ? " byte)" : " bytes)";
@@ -96,6 +101,7 @@ fn
 percent_used(const os::filesystem_status &filesystem) wontthrow -> u64
 {
   if (filesystem.total_blocks == 0) return 0;
+
   let const used = filesystem.total_blocks -
                    (filesystem.free_blocks > filesystem.total_blocks
                         ? filesystem.total_blocks
@@ -119,11 +125,15 @@ append_subject(String                    &output,
                goodstat_checksum_report   checksum_report,
                bool                       should_color) throws -> void
 {
-  let       table = ReportTable{allocator};
-  let const do_append_field =
-      [&](StringView name, StringView value, StringView style)
-          throws { table.add_field_row(name, value, style); };
+  let table = ReportTable{allocator};
+
+  let const do_append_field = [&](StringView name, StringView value,
+                                  StringView style) throws {
+    table.add_field_row(name, value, style);
+  };
+
   let const described_type = describe_file_type(operand, status, allocator);
+
   do_append_field("Type",
                   described_type.has_value() ? described_type->view()
                                              : file_type_name(status),
@@ -154,14 +164,17 @@ append_subject(String                    &output,
                   colors::ansi::BOLD_CYAN);
 
   let device = String::from(os::device_major(status.device_id), allocator);
+
   device += ",";
   device += String::from(os::device_minor(status.device_id), allocator).view();
   do_append_field("Device", device.view(), colors::ansi::BOLD_CYAN);
 
   let const type_letter = os::file_type_letter(status.mode);
+
   if (type_letter == 'b' || type_letter == 'c') {
     let special =
         String::from(os::device_major(status.special_device_id), allocator);
+
     special += ",";
     special +=
         String::from(os::device_minor(status.special_device_id), allocator)
@@ -170,6 +183,7 @@ append_subject(String                    &output,
   }
 
   let blocks = String::from(status.blocks, allocator);
+
   blocks += " of 512 bytes";
   do_append_field("Blocks", blocks.view(), colors::ansi::BOLD_CYAN);
   do_append_field("Accessed",
@@ -191,6 +205,7 @@ append_subject(String                    &output,
 
   if (filesystem_report == goodstat_filesystem_report::Include) {
     let filesystem = os::filesystem_status{};
+
     if (os::stat_filesystem(operand, filesystem)) {
       do_append_field("Filesystem", StringView{filesystem.type_name},
                       colors::ansi::BOLD_CYAN);
@@ -236,8 +251,7 @@ fn
 GoodStat::execute(const ExecContext               &ec,
                   EvalContext                     &cxt,
                   const ArrayList<String>         &args,
-                  const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+                  const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
@@ -259,6 +273,7 @@ GoodStat::execute(const ExecContext               &ec,
   let       operand_paths = ArrayList<Path>{allocator};
   let       file_statuses = ArrayList<os::file_status>{allocator};
   let       batch         = os::Batch{allocator};
+
   operand_paths.reserve(operands.count());
   file_statuses.reserve(operands.count());
   batch.reserve(operands.count());
@@ -282,6 +297,7 @@ GoodStat::execute(const ExecContext               &ec,
 
   for (usize index = 0; index < operands.count(); index++) {
     let const &operand = operands[index];
+
     if (results[index].error_number != 0) {
       os::set_last_system_error(results[index].error_number);
       KOSHKIT_REPORT_PATH_ERROR_AT(operand_locations[index], "stat", operand);

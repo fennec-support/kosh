@@ -71,11 +71,13 @@ struct option_text
   consteval option_text(const char (&text)[Count])
       : data(text), length(Count - 1)
   {}
+
   constexpr
   operator StringView() const wontthrow
   {
     return StringView{data, length};
   }
+
   constexpr fn
   is_empty() const wontthrow -> bool
   {
@@ -124,6 +126,7 @@ struct option_descriptor
     return !is_set_alias && !is_read_only && !is_invocation_only &&
            !is_session_dependent;
   }
+
   pure fn
   is_serialized() const wontthrow -> bool
   {
@@ -143,18 +146,21 @@ struct option_registry_view
   {
     return entries;
   }
+
   pure fn
   end() const wontthrow -> const option_descriptor *
   {
     return entries + entry_count;
   }
+
   pure fn
   count() const wontthrow -> usize
   {
     return entry_count;
   }
+
   pure fn
-  operator[](usize index) const wontthrow->const option_descriptor &
+  operator[](usize index) const wontthrow -> const option_descriptor &
   {
     return entries[index];
   }
@@ -164,6 +170,7 @@ pure fn
 get_option_registry() wontthrow -> option_registry_view;
 pure fn
 find_option_by_id(u16 id) wontthrow -> const option_descriptor *;
+
 fn
 find_option_by_koshconf_name(StringView name) wontthrow
     -> const option_descriptor *;
@@ -173,8 +180,9 @@ get_legacy_koshconf_alias(const option_descriptor &option) throws
 fn
 find_option_by_set_name(StringView name) wontthrow -> const option_descriptor *;
 fn
-find_option_by_shopt_name(StringView name) wontthrow
-    -> const option_descriptor *;
+find_option_by_shopt_name(StringView name)
+    wontthrow -> const option_descriptor *;
+
 pure fn
 find_option_by_letter(char letter) wontthrow -> const option_descriptor *;
 pure fn
@@ -189,16 +197,19 @@ fn
 read_option_number(const EvalContext       &cxt,
                    const option_descriptor &option) throws -> u32;
 fn
-read_option_text(const EvalContext &cxt, const option_descriptor &option) throws
-    -> String;
+read_option_text(const EvalContext       &cxt,
+                 const option_descriptor &option) throws -> String;
+
 fn
 format_option_number(const option_descriptor &option, u32 value) throws
     -> String;
 fn
-parse_option_number(const option_descriptor &option, StringView text) throws
-    -> Maybe<u32>;
+parse_option_number(const option_descriptor &option,
+                    StringView               text) throws -> Maybe<u32>;
 fn
-describe_option_values(const option_descriptor &option) throws -> String;
+describe_option_values(const option_descriptor &option) throws
+    -> String;
+
 fn
 write_option_number(EvalContext             &cxt,
                     const option_descriptor &option,

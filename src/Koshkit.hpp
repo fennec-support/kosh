@@ -95,6 +95,7 @@ report_unresolved_sort_key(const ExecContext &ec,
   X(Env, "env")                                                                \
   X(Printenv, "printenv")                                                      \
   X(Yes, "yes")                                                                \
+  X(Meow, "meow")                                                              \
   X(Pkill, "pkill")                                                            \
   X(Killall, "killall")                                                        \
   X(Ps, "ps")                                                                  \
@@ -187,7 +188,7 @@ public:
   execute(const ExecContext               &ec,
           EvalContext                     &cxt,
           const ArrayList<String>         &args,
-          const ArrayList<SourceLocation> &arg_locations) const throws = 0;
+          const ArrayList<SourceLocation> &arg_locations) const throws abstract;
 
   virtual ~Utility() = default;
 };
@@ -245,16 +246,19 @@ fn
 sorted_util_names() throws -> const ArrayList<String> &;
 
 fn
-resolve_util_program(EvalContext &cxt, StringView name) throws -> Maybe<Path>;
+resolve_util_program(EvalContext &cxt, StringView name) throws
+    -> Maybe<Path>;
 fn
 capture_util_program_output(const Path       &program,
                             ArrayList<String> arguments,
-                            u64 timeout_nanoseconds) throws -> Maybe<String>;
+                            u64               timeout_nanoseconds) throws
+    -> Maybe<String>;
 fn
 capture_util_program_output(EvalContext      &cxt,
                             StringView        name,
                             ArrayList<String> arguments,
-                            u64 timeout_nanoseconds) throws -> Maybe<String>;
+                            u64               timeout_nanoseconds) throws
+    -> Maybe<String>;
 
 fn
 collect_makefile_targets(EvalContext &cxt, const Path &makefile) throws
@@ -273,19 +277,20 @@ struct make_shell_source_range
   make_shell_source_kind kind;
 
   pure fn
-  operator<(const make_shell_source_range &other) const wontthrow->bool
+  operator<(const make_shell_source_range &other) const wontthrow -> bool
   {
     return start_position < other.start_position;
   }
 };
 
 fn
-parse_makefile_shell_sources(StringView source, Allocator allocator) throws
+parse_makefile_shell_sources(StringView source,
+                             Allocator  allocator) throws
     -> SortedArrayList<make_shell_source_range,
                        order_comparator<make_shell_source_range>>;
 fn
-makefile_shell_analysis_source(StringView                     source,
-                               const make_shell_source_range &range) throws
+makefile_shell_analysis_source(
+    StringView source, const make_shell_source_range &range) throws
     -> String;
 
 fn
@@ -354,8 +359,9 @@ print_util_help(const ExecContext &ec,
                                         verb, path, cxt.scratch_allocator()))
 
 fn
-path_error_message(StringView verb, StringView path, Allocator allocator) throws
-    -> String;
+path_error_message(StringView verb,
+                   StringView path,
+                   Allocator  allocator) throws -> String;
 
 #define U_CASE(util, name)                                                     \
   case Utility::Kind::util: {                                                  \
@@ -379,10 +385,10 @@ path_error_message(StringView verb, StringView path, Allocator allocator) throws
 
 KOSHKIT_UTILITY_LIST(UTILITY_STRUCT)
 
+fn read_fd_to_string(os::descriptor fd) throws -> Maybe<String>;
 fn
-read_fd_to_string(os::descriptor fd) throws -> Maybe<String>;
-fn
-confirm_koshkit_action(const ExecContext &ec, StringView prompt) throws -> bool;
+confirm_koshkit_action(const ExecContext &ec, StringView prompt) throws
+    -> bool;
 
 enum class removal_mode : u8
 {
@@ -391,8 +397,9 @@ enum class removal_mode : u8
 };
 
 fn
-remove_path(StringView path, Allocator allocator, removal_mode mode) throws
-    -> bool;
+remove_path(StringView   path,
+            Allocator    allocator,
+            removal_mode mode) throws -> bool;
 
 enum class copy_file_result : u8
 {
@@ -412,7 +419,8 @@ enum class copy_force_mode : u8
 fn
 copy_file_contents(StringView      source,
                    StringView      destination,
-                   copy_force_mode force_mode) throws -> copy_file_result;
+                   copy_force_mode force_mode) throws
+    -> copy_file_result;
 fn
 copy_file_or_throw(StringView      source,
                    StringView      destination,
@@ -535,29 +543,30 @@ public:
     source_open_state       open_state{source_open_state::Opened};
   };
 
-  SourceBatchReader(const ExecContext           &ec,
-                    const ArrayList<StringView> &sources,
-                    Allocator                    allocator,
-                    usize                        read_byte_count = 64 * 1024,
-                    SourceDashMode dash_mode = SourceDashMode::TreatAsStdin,
-                    SourceKindMode kind_mode = SourceKindMode::Probe,
-                    SourceReadMode read_mode = SourceReadMode::Batched) throws;
+  SourceBatchReader(
+      const ExecContext           &ec,
+      const ArrayList<StringView> &sources,
+      Allocator                    allocator,
+      usize                        read_byte_count = 64 * 1024,
+      SourceDashMode               dash_mode = SourceDashMode::TreatAsStdin,
+      SourceKindMode               kind_mode = SourceKindMode::Probe,
+      SourceReadMode               read_mode = SourceReadMode::Batched) throws;
   ~SourceBatchReader();
 
   fn
   read_next(ArrayList<Chunk> &chunks) throws -> ReadResult;
   fn
   read_next_ordered(ArrayList<Chunk> &chunks) throws -> ReadResult;
+
   fn
   finish_source(usize source_index) wontthrow -> void;
   fn
   set_source_read_byte_count(usize source_index, usize byte_count) wontthrow
       -> void;
 
-  SourceBatchReader(const SourceBatchReader &) = delete;
+  SourceBatchReader(const SourceBatchReader &)                = delete;
   fn
-  operator=(const SourceBatchReader &)
-      ->SourceBatchReader & = delete;
+  operator=(const SourceBatchReader &) -> SourceBatchReader & = delete;
 
 private:
   struct Reader
@@ -590,8 +599,8 @@ private:
   append_pending_chunks(ArrayList<Chunk> &chunks,
                         ChunkEmitMode     emit_mode) throws -> void;
   fn
-  read_next_internal(ArrayList<Chunk> &chunks, ChunkEmitMode emit_mode) throws
-      -> ReadResult;
+  read_next_internal(ArrayList<Chunk> &chunks,
+                     ChunkEmitMode     emit_mode) throws -> ReadResult;
 
   const ExecContext           &m_ec;
   const ArrayList<StringView> &m_sources;
@@ -640,20 +649,22 @@ visit_ordered_sources(const ExecContext           &ec,
   let   chunks            = ArrayList<SourceBatchReader::Chunk>{allocator};
   usize next_source_index = 0;
 
-  loop
-  {
+  loop {
     let const read_result = reader.read_next(chunks);
+
     if (read_result == SourceBatchReader::ReadResult::Interrupted)
       return source_visit_result::Interrupted;
 
     for (let const &chunk : chunks) {
-      let &result       = results[chunk.source_index];
+      let &result = results[chunk.source_index];
+
       result.completion = chunk.completion;
       if (chunk.error_number != 0) {
         result.content.reset();
         result.error_number = chunk.error_number;
         continue;
       }
+
       if (!result.content.has_value())
         result.content = String{heap_allocator()};
       result.content->append(chunk.content);
@@ -664,6 +675,7 @@ visit_ordered_sources(const ExecContext           &ec,
                source_completion_state::Complete)
     {
       let &result = results[next_source_index];
+
       if (!result.content.has_value())
         os::set_last_system_error(result.error_number);
       if constexpr (std::is_void_v<decltype(do_visit(next_source_index,
@@ -673,6 +685,7 @@ visit_ordered_sources(const ExecContext           &ec,
       } else if (!do_visit(next_source_index, result.content)) {
         return source_visit_result::Stopped;
       }
+
       result.content.reset();
       next_source_index++;
     }
@@ -683,7 +696,8 @@ visit_ordered_sources(const ExecContext           &ec,
 }
 
 fn
-print_environment(const ExecContext &ec, EvalContext &cxt) throws -> void;
+print_environment(const ExecContext &ec, EvalContext &cxt) throws
+    -> void;
 
 enum class input_descriptor_mode : u8
 {
@@ -725,52 +739,60 @@ fn
 visit_source_lines(const ExecContext &ec,
                    StringView         source,
                    Allocator          allocator,
-                   Visit &do_visit_line) throws -> source_line_outcome
+                   Visit             &do_visit_line) throws -> source_line_outcome
 {
   return visit_source_lines_with(
       ec, source, allocator, &do_visit_line,
-      [](opaque *visitor, StringView line, bool is_terminated)
-          throws { (*static_cast<Visit *>(visitor))(line, is_terminated); });
+      [](opaque *visitor, StringView line, bool is_terminated) throws {
+        (*static_cast<Visit *>(visitor))(line, is_terminated);
+      });
 }
+
 fn
-file_crc32c(const ExecContext &ec, StringView path, Allocator allocator) throws
-    -> Maybe<String>;
+file_crc32c(const ExecContext &ec,
+            StringView         path,
+            Allocator          allocator) throws -> Maybe<String>;
 
 fn
 source_list_from_operands(const ArrayList<String> &operands,
                           Allocator                allocator,
-                          usize first_operand_index = 0) throws
+                          usize                    first_operand_index = 0) throws
     -> ArrayList<StringView>;
 
 fn
 parse_strict_count(StringView text) throws -> ErrorOr<u64>;
 
 pure fn
-network_socket_state_name(os::network_socket_state state) wontthrow
-    -> StringView;
+network_socket_state_name(os::network_socket_state state)
+    wontthrow -> StringView;
 fn
 format_socket_endpoint(StringView                 address,
                        u16                        port,
                        os::network_address_family family,
                        Allocator                  allocator) throws -> String;
 fn
-format_human_size(u64 bytes, Allocator allocator, u64 unit_step = 1024) throws
-    -> String;
+format_human_size(u64       bytes,
+                  Allocator allocator,
+                  u64       unit_step = 1024) throws -> String;
 fn
 scaled_filesystem_blocks(u64 block_count,
                          u64 block_byte_count,
                          u64 output_unit) wontthrow -> u64;
 fn
 filesystem_usage_percent(u64 used, u64 available) wontthrow -> u64;
+
 pure fn
 file_type_name(const os::file_status &status) wontthrow -> StringView;
 fn
 describe_file_type(StringView             path,
                    const os::file_status &status,
                    Allocator              allocator) throws -> Maybe<String>;
+
 fn
-format_file_timestamp(i64 seconds, u32 nanoseconds, Allocator allocator) throws
-    -> String;
+format_file_timestamp(i64       seconds,
+                      u32       nanoseconds,
+                      Allocator allocator) throws -> String;
+
 fn
 get_init_system_name(Allocator allocator) throws -> String;
 

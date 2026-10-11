@@ -40,6 +40,7 @@ append_folded_line(String         &output,
 
   while (line.length - start > width) {
     usize break_length = width;
+
     if (break_mode == fold_break_mode::Blank) {
       for (usize offset = width; offset > 0; offset--)
         if (std::isspace(static_cast<u8>(line[start + offset - 1])) != 0) {
@@ -61,14 +62,15 @@ fn
 Fold::execute(const ExecContext               &ec,
               EvalContext                     &cxt,
               const ArrayList<String>         &args,
-              const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+              const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   u64 width_value = 80;
+
   if (FLAG_FOLD_WIDTH.is_set()) {
     let const parsed = utils::parse_decimal_u64(FLAG_FOLD_WIDTH.value());
+
     if (parsed.is_error() || parsed.value() == 0 || parsed.value() > SIZE_MAX) {
       KOSHKIT_REPORT_ERROR_AT(
           FLAG_FOLD_WIDTH.value_location(),
@@ -78,8 +80,10 @@ Fold::execute(const ExecContext               &ec,
 
       return 1;
     }
+
     width_value = parsed.value();
   }
+
   let const width = static_cast<usize>(width_value);
   let const sources =
       source_list_from_operands(operands, cxt.scratch_allocator());
@@ -114,6 +118,7 @@ Fold::execute(const ExecContext               &ec,
         KOSHKIT_REPORT_PATH_ERROR("read", sources[source_index]);
         status = 1;
       });
+
   if (visit == source_visit_result::Interrupted) return 130;
 
   ec.print_to_stdout(output);

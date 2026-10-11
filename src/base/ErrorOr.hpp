@@ -26,6 +26,7 @@ class mustuse ErrorOr
 {
 public:
   ErrorOr(T value) : m_is_error(false) { new (&m_storage) T(steal(value)); }
+
   ErrorOr(Error error) : m_is_error(true)
   {
     new (&m_storage) Error(steal(error));
@@ -38,6 +39,7 @@ public:
     else
       new (&m_storage) T(other.value_reference());
   }
+
   ErrorOr(ErrorOr &&other) noexcept(std::is_nothrow_move_constructible_v<T> &&
                                     std::is_nothrow_move_constructible_v<Error>)
       : m_is_error(other.m_is_error)
@@ -74,6 +76,7 @@ public:
 
     return value_reference();
   }
+
   hot mustuse pure fn
   value() const wontthrow -> const T &
   {
@@ -89,6 +92,7 @@ public:
 
     return error_reference();
   }
+
   mustuse pure fn
   error() const wontthrow -> const Error &
   {
@@ -120,16 +124,19 @@ private:
   {
     return *reinterpret_cast<T *>(&m_storage);
   }
+
   hot flatten fn
   value_reference() const wontthrow -> const T &
   {
     return *reinterpret_cast<const T *>(&m_storage);
   }
+
   fn
   error_reference() wontthrow -> Error &
   {
     return *reinterpret_cast<Error *>(&m_storage);
   }
+
   fn
   error_reference() const wontthrow -> const Error &
   {
@@ -147,6 +154,7 @@ private:
 #define TRY(expr)                                                              \
   ({                                                                           \
     auto t__result = (expr);                                                   \
-    if (t__result.is_error()) rarely return t__result.error();                 \
+    if (t__result.is_error()) rarely                                           \
+      return t__result.error();                                                \
     t__result.take();                                                          \
   })

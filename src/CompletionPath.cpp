@@ -83,9 +83,11 @@ static pure fn
 control_sequence_length(StringView text, usize position) wontthrow -> usize
 {
   let const byte = static_cast<u8>(text[position]);
+
   if (byte < 0x20 || byte == 0x7f) {
     return 1;
   }
+
   if (byte != 0xc2 || position + 1 >= text.length) {
     return 0;
   }
@@ -123,6 +125,7 @@ static fn
 append_ansi_c_control_byte(String &quoted, char byte) throws -> void
 {
   static constexpr StringView HEX_DIGITS{"0123456789abcdef"};
+
   switch (byte) {
   case '\a':   quoted += "\\a"; return;
   case '\b':   quoted += "\\b"; return;
@@ -136,6 +139,7 @@ append_ansi_c_control_byte(String &quoted, char byte) throws -> void
   }
 
   let const value = static_cast<u8>(byte);
+
   quoted += "\\x";
   quoted.push(HEX_DIGITS[value >> 4]);
   quoted.push(HEX_DIGITS[value & 0x0f]);
@@ -158,9 +162,11 @@ append_ansi_c_quoted(String &quoted, StringView text) throws -> void
     }
 
     let const byte = text[position];
+
     if (byte == '\'' || byte == '\\') {
       quoted.push('\\');
     }
+
     quoted.push(byte);
   }
 
@@ -171,6 +177,7 @@ fn
 internal::quote_path_candidate(StringView candidate) throws -> String
 {
   let quoted = String{completion_allocator()};
+
   if (has_control_sequence(candidate)) {
     append_ansi_c_quoted(quoted, candidate);
 
@@ -184,6 +191,7 @@ internal::quote_path_candidate(StringView candidate) throws -> String
       quoted += "'\"'\"'";
       continue;
     }
+
     quoted.push(candidate[position]);
   }
 
@@ -193,8 +201,8 @@ internal::quote_path_candidate(StringView candidate) throws -> String
 }
 
 fn
-internal::append_with_quoted_controls(String &candidate, StringView text) throws
-    -> void
+internal::append_with_quoted_controls(String    &candidate,
+                                      StringView text) throws -> void
 {
   for (usize position = 0; position < text.length; position++) {
     usize run_length = 0;
@@ -202,6 +210,7 @@ internal::append_with_quoted_controls(String &candidate, StringView text) throws
     while (position + run_length < text.length) {
       let const sequence_length =
           control_sequence_length(text, position + run_length);
+
       if (sequence_length == 0) break;
 
       run_length += sequence_length;
@@ -227,6 +236,7 @@ append_open_quote_candidate(String    &candidate,
   for (usize position = 0; position < text.length; position++) {
     let const byte            = text[position];
     let const sequence_length = control_sequence_length(text, position);
+
     if (sequence_length != 0) {
       candidate.push(quote_character);
       append_ansi_c_quoted(candidate,
@@ -236,15 +246,18 @@ append_open_quote_candidate(String    &candidate,
       position += sequence_length - 1;
       continue;
     }
+
     if (is_ansi_c_quote && (byte == '\'' || byte == '\\')) {
       candidate.push('\\');
       candidate.push(byte);
       continue;
     }
+
     if (quote_character == '\'' && byte == '\'') {
       candidate += "'\"'\"'";
       continue;
     }
+
     if (quote_character == '"' && byte_needs_double_quote_escape(byte)) {
       candidate.push('"');
       candidate.push('\'');
@@ -253,6 +266,7 @@ append_open_quote_candidate(String    &candidate,
       candidate.push('"');
       continue;
     }
+
     candidate.push(byte);
   }
 }
@@ -274,6 +288,7 @@ open_quote_candidate_boundary(StringView typed,
             ? candidate[candidate_position] == typed[typed_position]
             : utils::ascii_to_lower(candidate[candidate_position]) ==
                   utils::ascii_to_lower(typed[typed_position]);
+
     candidate_position++;
     if (is_equal) typed_position++;
   }
@@ -299,12 +314,14 @@ append_candidate_suffix(String    &candidate,
   for (usize position = 0; position <= suffix.length; position++) {
     let const is_separator = position < suffix.length &&
                              os::is_directory_separator(suffix[position]);
+
     if (position < suffix.length && !is_separator) {
       continue;
     }
 
     let const component =
         suffix.substring_of_length(component_start, position - component_start);
+
     if (path_candidate_needs_quoting(component))
       candidate += quote_path_candidate(component);
     else
@@ -327,6 +344,7 @@ internal::shell_syntax_candidate_is_unchanged(
   {
     return false;
   }
+
   if (raw_token != decoded_word.text.view()) return false;
   if (!decoded_candidate.starts_with(raw_token)) return false;
 
@@ -346,12 +364,14 @@ internal::rebuild_shell_syntax_candidate(
   let       candidate            = String{completion_allocator()};
   let const content_start        = decoded_word.last_quote_content_start;
   let const is_last_quote_ansi_c = decoded_word.is_last_quote_ansi_c;
+
   if (decoded_candidate.starts_with(decoded_word.text.view())) {
     let const suffix = decoded_candidate.substring(decoded_word.text.length());
     let const should_extend_closed_quote =
         decoded_word.quote_character == 0 &&
         decoded_word.last_quote_character != 0 && !raw_token.is_empty() &&
         raw_token[raw_token.length - 1] == decoded_word.last_quote_character;
+
     if (should_extend_closed_quote) {
       candidate.append(raw_token.substring_of_length(0, raw_token.length - 1));
       append_open_quote_candidate(candidate, suffix,
@@ -416,6 +436,7 @@ internal::rebuild_shell_syntax_candidate(
   let const candidate_prefix =
       decoded_candidate.substring_of_length(0, candidate_boundary);
   let is_ansi_c_quote = false;
+
   if (decoded_prefix == candidate_prefix) {
     is_ansi_c_quote = is_last_quote_ansi_c;
     candidate.append(raw_token.substring_of_length(0, content_start));
@@ -423,6 +444,7 @@ internal::rebuild_shell_syntax_candidate(
     append_candidate_suffix(candidate, candidate_prefix, should_quote_words);
     candidate.push(decoded_word.last_quote_character);
   }
+
   append_open_quote_candidate(
       candidate, decoded_candidate.substring(candidate_boundary),
       decoded_word.last_quote_character, is_ansi_c_quote);
@@ -435,7 +457,8 @@ internal::rebuild_shell_syntax_candidate(
 static fn
 expand_leading_variable_path(StringView   directory_part,
                              usize        expansion_end,
-                             EvalContext &context) throws -> Maybe<String>
+                             EvalContext &context) throws
+    -> Maybe<String>
 {
   if (directory_part.is_empty() || directory_part[0] != '$' ||
       expansion_end > directory_part.length)
@@ -448,9 +471,11 @@ expand_leading_variable_path(StringView   directory_part,
   usize     name_start = 1;
   let const is_braced =
       name_start < expansion.length && expansion[name_start] == '{';
+
   if (is_braced) name_start++;
 
   let name_end = expansion.length;
+
   if (is_braced) {
     if (name_end <= name_start || expansion[name_end - 1] != '}') {
       return None;
@@ -460,12 +485,15 @@ expand_leading_variable_path(StringView   directory_part,
 
   let const name =
       expansion.substring_of_length(name_start, name_end - name_start);
+
   if (name.is_empty()) return None;
 
   let const value = context.get_variable_value(name);
+
   if (!value.has_value()) return None;
 
   let expanded = String{completion_allocator(), value->view()};
+
   expanded.append(directory_part.substring(expansion_end));
 
   return expanded;
@@ -492,17 +520,22 @@ internal::resolve_listing_directory(
         expanded.has_value())
     {
       let directory = Path{expanded->view()};
+
       if (directory.is_absolute()) return directory;
+
       let resolved_path = base_directory.clone();
+
       resolved_path.append(expanded->view());
 
       return resolved_path;
     }
 
   let directory = Path{directory_part};
+
   if (directory.is_absolute()) return directory;
 
   let resolved_path = base_directory.clone();
+
   resolved_path.append(directory_part);
 
   return resolved_path;

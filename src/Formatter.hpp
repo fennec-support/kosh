@@ -42,7 +42,8 @@ format_shell_source(StringView         source,
                     String            *ast_output,
                     BumpArena         *function_arena,
                     mimic_mood         mood,
-                    Maybe<StringView>  filename = None) throws -> Maybe<String>;
+                    Maybe<StringView>  filename = None) throws
+    -> Maybe<String>;
 
 fn
 format_bash_function_source(StringView source) throws -> String;
@@ -50,16 +51,18 @@ format_bash_function_source(StringView source) throws -> String;
 fn
 apply_source_fixes(StringView                   source,
                    const ArrayList<source_fix> &fixes,
-                   ArrayList<diagnostic_id> *applied_origins = nullptr) throws
-    -> Maybe<String>;
+                   ArrayList<diagnostic_id>    *applied_origins =
+                       nullptr) throws -> Maybe<String>;
 
 fn
-select_nonconflicting_source_edits(ArrayList<const source_edit *> &&candidates)
-    throws -> ArrayList<const source_edit *>;
+select_nonconflicting_source_edits(
+    ArrayList<const source_edit *> &&candidates) throws
+    -> ArrayList<const source_edit *>;
 
 fn
 source_fixes_for_original_line_endings(
-    StringView source, const ArrayList<source_fix> &normalized_fixes) throws
+    StringView                   source,
+    const ArrayList<source_fix> &normalized_fixes) throws
     -> ArrayList<source_fix>;
 
 fn

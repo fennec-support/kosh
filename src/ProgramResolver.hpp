@@ -31,19 +31,19 @@ namespace utils {
 struct program_name_comparator
 {
   pure fn
-  operator()(const String &left, const String &right) const wontthrow->bool
+  operator()(const String &left, const String &right) const wontthrow -> bool
   {
     return left.view() < right.view();
   }
 
   pure fn
-  operator()(const String &left, StringView right) const wontthrow->bool
+  operator()(const String &left, StringView right) const wontthrow -> bool
   {
     return left.view() < right;
   }
 
   pure fn
-  operator()(StringView left, const String &right) const wontthrow->bool
+  operator()(StringView left, const String &right) const wontthrow -> bool
   {
     return left < right.view();
   }
@@ -151,6 +151,7 @@ public:
   begin_explicit_completion(CompletionRefresh refresh) throws -> void;
   fn
   end_explicit_completion() wontthrow -> void;
+
   fn
   search(StringView               program_name,
          SearchMode               search_mode   = SearchMode::First,
@@ -159,12 +160,14 @@ public:
          const Maybe<StringView> &path_override = None) throws
       -> ArrayList<Path>;
   fn
-  get_status(StringView name, StatusLookup lookup = StatusLookup::Cached) throws
+  get_status(StringView   name,
+             StatusLookup lookup = StatusLookup::Cached) throws
       -> Status;
   fn
-  get_command_names(StringView      validation_prefix = {},
-                    ValidationScope validation_scope  = ValidationScope::Prefix)
-      throws -> const ArrayList<String> &;
+  get_command_names(
+      StringView      validation_prefix = {},
+      ValidationScope validation_scope  = ValidationScope::Prefix) throws
+      -> const ArrayList<String> &;
   fn
   command_name_has_prefix(StringView prefix) throws -> bool;
   pure fn
@@ -189,10 +192,12 @@ private:
   mark_command_name_indexes_stale() wontthrow -> void;
   fn
   clear_command_name_indexes() wontthrow -> void;
+
   fn
   mark_derived_indexes_stale() wontthrow -> void;
   fn
   clear_derived_indexes() wontthrow -> void;
+
   fn
   split_path_dirs(StringView path) throws -> ArrayList<String>;
   fn
@@ -204,15 +209,17 @@ private:
   get_index_path_dirs() throws -> const ArrayList<String> &;
   fn
   refresh_path_directory_generations() throws -> void;
+
   static fn
   probe_directory_entries(const Path                            &directory,
                           const ArrayList<Path::DirectoryChild> &entries,
-                          DirectoryProbe &probe) throws -> void;
+                          DirectoryProbe                        &probe) throws -> void;
   fn
   rebuild_path_command_index(CompletionRefresh refresh) throws -> void;
   fn
   prepare_complete_path_cache(StringView      validation_prefix,
-                              ValidationScope validation_scope) throws -> void;
+                              ValidationScope validation_scope) throws
+      -> void;
   fn
   validate_path_directory_generations() throws -> bool;
   fn
@@ -222,36 +229,42 @@ private:
                      SearchMode        search_mode,
                      Requirement       requirement,
                      CachePolicy       cache_policy,
-                     Maybe<StringView> path_override) throws -> ArrayList<Path>;
+                     Maybe<StringView> path_override) throws
+      -> ArrayList<Path>;
   fn
   cache_resolved_path(StringView            name,
                       const Path           &full_path,
                       os::program_extension extension,
                       ProgramPathKind       kind) throws -> void;
   pure fn
-  find_cached_program_path(
-      const CacheEntry     &entry,
-      os::program_extension wanted_extension) const wontthrow -> const Path *;
+  find_cached_program_path(const CacheEntry     &entry,
+                           os::program_extension wanted_extension) const wontthrow
+      -> const Path *;
+
   StringMap<CacheEntry>     m_execution_cache{heap_allocator()};
   StringMap<Status>         m_command_statuses{heap_allocator()};
   ArrayList<DirectoryProbe> m_directory_probes{heap_allocator()};
+
   SortedArrayList<String, program_name_comparator> m_command_names{
       heap_allocator(), program_name_comparator{}};
   SortedArrayList<String, program_name_comparator> m_regular_names{
       heap_allocator(), program_name_comparator{}};
+
   Maybe<String>     m_path;
   ArrayList<String> m_path_dirs{heap_allocator()};
   ArrayList<String> m_index_path_dirs{heap_allocator()};
   ArrayList<u64>    m_path_directory_generations{heap_allocator()};
   String            m_validated_prefix{heap_allocator()};
-  bool              m_is_path_directory_list_valid{false};
-  bool              m_is_path_generation_list_valid{false};
-  bool              m_is_command_name_list_valid{false};
-  u64               m_path_directories_validation_epoch{0};
-  u64               m_command_names_validation_epoch{0};
-  u64               m_prefix_validation_epoch{0};
-  u64               m_statuses_validation_epoch{0};
-  usize             m_explicit_completion_depth{0};
+
+  bool m_is_path_directory_list_valid{false};
+  bool m_is_path_generation_list_valid{false};
+  bool m_is_command_name_list_valid{false};
+
+  u64   m_path_directories_validation_epoch{0};
+  u64   m_command_names_validation_epoch{0};
+  u64   m_prefix_validation_epoch{0};
+  u64   m_statuses_validation_epoch{0};
+  usize m_explicit_completion_depth{0};
 };
 
 } /* namespace utils */

@@ -110,8 +110,7 @@ class PrRowWriter
 {
 public:
   PrRowWriter(String &output, bool should_tabify) wontthrow
-      : m_output(output),
-        m_should_tabify(should_tabify)
+      : m_output(output), m_should_tabify(should_tabify)
   {}
 
   fn
@@ -154,7 +153,9 @@ public:
   {
     flush_spaces();
     m_output += byte;
+
     let const code = static_cast<u8>(byte);
+
     if (code >= 0x20 && code < 0x7f) {
       m_position++;
     } else if (byte == '\b' && m_position > 0) {
@@ -185,9 +186,9 @@ public:
   {
     let const goal = m_position + m_pending_space_count;
 
-    loop
-    {
+    loop {
       let const next_stop = (m_position / PR_TAB_WIDTH + 1) * PR_TAB_WIDTH;
+
       if (goal - m_position <= 1 || next_stop > goal) break;
       m_output += '\t';
       m_position = next_stop;
@@ -257,11 +258,14 @@ append_pr_text(PrRowWriter     &writer,
 
   for (usize index = 0; index < text.length; index++) {
     let const byte = text[index];
+
     if (byte == '\t') {
       let const width = PR_TAB_WIDTH - input_position % PR_TAB_WIDTH;
+
       if (has_width_limit && input_position + width > layout.column_width) {
         return;
       }
+
       input_position += width;
       if (!layout.should_expand_tabs) {
         writer.add_byte(byte);
@@ -282,10 +286,12 @@ append_pr_text(PrRowWriter     &writer,
     }
 
     let const code = static_cast<u8>(byte);
+
     if (code >= 0x20 && code < 0x7f) {
       if (has_width_limit && input_position + 1 > layout.column_width) return;
       input_position++;
     }
+
     if (byte == ' ') {
       writer.add_space();
     } else {
@@ -301,15 +307,18 @@ append_pr_row(PrRowWriter                   &writer,
               Allocator                      allocator) throws -> void
 {
   writer.begin_row();
+
   bool has_printed_column = false;
 
   for (usize column = 0; column < row.count(); column++) {
     let const &entry = row[column];
+
     if (!entry.is_present && !layout.is_merge) break;
 
     if (layout.is_aligned) {
       let const start           = layout.get_column_start(column);
       let const separator_width = column == 0 ? 0 : layout.separator.length;
+
       writer.pad_to(start > separator_width ? start - separator_width : 0);
     } else if (column == 0) {
       writer.pad_to(layout.offset);
@@ -321,10 +330,12 @@ append_pr_row(PrRowWriter                   &writer,
       }
       writer.add_text(layout.separator);
     }
+
     writer.flush_spaces();
 
     let const is_numbered_column =
         layout.is_numbered && (!layout.is_merge || column == 0);
+
     if (is_numbered_column)
       append_pr_number(writer, layout, entry.number, allocator);
     if (!entry.is_present) continue;
@@ -333,6 +344,7 @@ append_pr_row(PrRowWriter                   &writer,
         is_numbered_column && layout.is_aligned && !layout.is_merge
             ? layout.number_width
             : 0;
+
     append_pr_text(writer, layout, entry.text, input_position);
     has_printed_column = true;
   }
@@ -344,12 +356,15 @@ fn
 Pr::execute(const ExecContext               &ec,
             EvalContext                     &cxt,
             const ArrayList<String>         &args,
-            const ArrayList<SourceLocation> &arg_locations) const throws -> i32
+            const ArrayList<SourceLocation> &arg_locations) const throws
+    -> i32
 {
   let filtered_args      = ArrayList<String>{cxt.scratch_allocator()};
   let filtered_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};
+
   filtered_args.push(args[0].clone());
   filtered_locations.push(arg_locations[0]);
+
   usize                 column_count = 1;
   usize                 first_page   = 1;
   usize                 last_page    = SIZE_MAX;
@@ -359,6 +374,7 @@ Pr::execute(const ExecContext               &ec,
 
   for (usize index = 1; index < args.count(); index++) {
     let const argument = args[index].view();
+
     if (has_ended_options || argument == "--") {
       has_ended_options = true;
       filtered_args.push(args[index].clone());
@@ -375,6 +391,7 @@ Pr::execute(const ExecContext               &ec,
     bool  is_page        = false;
     bool  is_column      = false;
     usize consumed_count = 0;
+
     if (numeric.length > 1 && numeric[0] == '+') {
       is_page = true;
       numeric = numeric.substring(1);
@@ -388,6 +405,7 @@ Pr::execute(const ExecContext               &ec,
     {
       let const name_length =
           argument.starts_with("--pages") ? usize{7} : usize{9};
+
       is_page   = name_length == 7;
       is_column = !is_page;
       if (argument.length > name_length && argument[name_length] == '=') {
@@ -400,15 +418,18 @@ Pr::execute(const ExecContext               &ec,
         is_column = false;
       }
     }
+
     if (is_page || is_column) {
       let page_text      = numeric;
       let last_page_text = StringView{};
+
       if (is_page) {
         if (let const colon = numeric.find_character(':'); colon.has_value()) {
           page_text      = numeric.substring_of_length(0, *colon);
           last_page_text = numeric.substring(*colon + 1);
         }
       }
+
       let const parsed      = parse_pr_number(page_text);
       let const parsed_last = last_page_text.is_empty()
                                   ? Maybe<usize>{}
@@ -419,11 +440,13 @@ Pr::execute(const ExecContext               &ec,
            (parsed.has_value() && *parsed_last < *parsed));
       let const is_invalid =
           !parsed.has_value() || *parsed == 0 || is_last_invalid;
+
       if (is_invalid && argument[0] == '+') {
         filtered_args.push(args[index].clone());
         filtered_locations.push(arg_locations[index]);
         continue;
       }
+
       if (is_invalid) {
         KOSHKIT_REPORT_ERROR_AT(
             arg_locations[index],
@@ -456,8 +479,10 @@ Pr::execute(const ExecContext               &ec,
   KOSHKIT_PARSE_OPERANDS_OR_HELP(filtered_args, filtered_locations);
 
   usize page_length = 66;
+
   if (FLAG_PR_LENGTH.is_set()) {
     let const parsed = parse_pr_number(FLAG_PR_LENGTH.value());
+
     if (!parsed.has_value() || *parsed == 0) {
       KOSHKIT_REPORT_ERROR_AT(
           FLAG_PR_LENGTH.value_location(),
@@ -471,8 +496,10 @@ Pr::execute(const ExecContext               &ec,
   }
 
   usize page_width = 72;
+
   if (FLAG_PR_WIDTH.is_set()) {
     let const parsed = parse_pr_number(FLAG_PR_WIDTH.value());
+
     if (!parsed.has_value() || *parsed == 0) {
       KOSHKIT_REPORT_ERROR_AT(
           FLAG_PR_WIDTH.value_location(),
@@ -486,8 +513,10 @@ Pr::execute(const ExecContext               &ec,
   }
 
   usize offset = 0;
+
   if (FLAG_PR_OFFSET.is_set()) {
     let const parsed = parse_pr_number(FLAG_PR_OFFSET.value());
+
     if (!parsed.has_value()) {
       KOSHKIT_REPORT_ERROR_AT(
           FLAG_PR_OFFSET.value_location(),
@@ -501,6 +530,7 @@ Pr::execute(const ExecContext               &ec,
   }
 
   let const is_merge = FLAG_PR_MERGE.is_enabled();
+
   if (is_merge && column_count_location.has_value()) {
     KOSHKIT_REPORT_ERROR_AT(*column_count_location,
                             "a column count cannot be combined with -m",
@@ -508,6 +538,7 @@ Pr::execute(const ExecContext               &ec,
 
     return 1;
   }
+
   if (is_merge && FLAG_PR_ACROSS.is_enabled()) {
     KOSHKIT_REPORT_ERROR_AT(FLAG_PR_ACROSS.value_location(),
                             "-a cannot be combined with -m", "drop -a or -m");
@@ -520,12 +551,15 @@ Pr::execute(const ExecContext               &ec,
   let                    output              = String{cxt.scratch_allocator()};
   i32                    status              = 0;
   static constexpr usize OUTPUT_FLUSH_LENGTH = 64 * 1024;
-  let const              do_flush_output     = [&]() throws -> void {
+
+  let const do_flush_output = [&]() throws -> void {
     if (output.length() < OUTPUT_FLUSH_LENGTH) return;
     ec.print_to_stdout(output);
     output.clear();
   };
-  let const do_report_read_error = [&](StringView source) throws -> void {
+
+  let const do_report_read_error =
+      [&](StringView source) throws -> void {
     if (!FLAG_PR_NO_ERRORS.is_enabled())
       KOSHKIT_REPORT_PATH_ERROR("read", source);
     status = 1;
@@ -533,15 +567,18 @@ Pr::execute(const ExecContext               &ec,
 
   let &scratch_arena = cxt.expansion_store().scratch_arena();
   let  owned_inputs  = ArrayList<os::descriptor>{cxt.scratch_allocator()};
-  defer
-  {
+
+  defer {
     for (let const descriptor : owned_inputs)
       os::close_fd(descriptor);
   };
-  i64       opened_modification_time = 0;
-  let const do_open_reader           = [&](StringView source)
-                                 throws -> utils::BufferedLineReader * {
+
+  i64 opened_modification_time = 0;
+
+  let const do_open_reader =
+      [&](StringView source) throws -> utils::BufferedLineReader * {
     let const input = open_named_or_stdin(ec, source);
+
     if (!input.has_value()) {
       do_report_read_error(source);
 
@@ -549,7 +586,9 @@ Pr::execute(const ExecContext               &ec,
     }
 
     opened_modification_time = os::current_unix_seconds();
-    let input_status         = os::file_status{};
+
+    let input_status = os::file_status{};
+
     if (source != "-" && os::stat_descriptor(input->descriptor, input_status))
       opened_modification_time = input_status.modification_time;
     if (input->mode == input_descriptor_mode::Owned)
@@ -581,9 +620,11 @@ Pr::execute(const ExecContext               &ec,
 
   let readers = ArrayList<utils::BufferedLineReader *>{cxt.scratch_allocator()};
   let reader_sources = ArrayList<StringView>{cxt.scratch_allocator()};
+
   if (is_merge) {
     for (let const source : sources) {
       let *const reader = do_open_reader(source);
+
       if (reader == nullptr) continue;
       readers.push(reader);
       reader_sources.push(source);
@@ -597,6 +638,7 @@ Pr::execute(const ExecContext               &ec,
   let const is_aligned =
       is_multicolumn && (FLAG_PR_WIDTH.is_set() || !has_separator_option);
   let separator = StringView{};
+
   if (is_aligned) {
     separator = has_separator_option && FLAG_PR_WIDTH.is_set()
                     ? separator_text
@@ -606,7 +648,8 @@ Pr::execute(const ExecContext               &ec,
     separator = separator_text.is_empty() ? StringView{"\t"} : separator_text;
   }
 
-  let layout                = pr_layout{};
+  let layout = pr_layout{};
+
   layout.offset             = offset;
   layout.column_count       = effective_column_count;
   layout.separator          = separator;
@@ -616,13 +659,16 @@ Pr::execute(const ExecContext               &ec,
   layout.is_numbered        = is_numbered;
   layout.should_expand_tabs = is_multicolumn && separator != "\t";
   layout.number_width       = is_numbered ? PR_NUMBER_FIELD_WIDTH : 0;
+
   if (is_multicolumn) {
     let const merge_number_width = is_merge ? layout.number_width : 0;
     let const separator_width = (effective_column_count - 1) * separator.length;
     let const used_width      = separator_width + merge_number_width;
+
     layout.column_width = page_width > used_width ? (page_width - used_width) /
                                                         effective_column_count
                                                   : 0;
+
     if (layout.column_width == 0) {
       KOSHKIT_REPORT_ERROR("the page width is too narrow for the columns",
                            "use a larger width with -w or fewer columns");
@@ -649,6 +695,7 @@ Pr::execute(const ExecContext               &ec,
     writer.flush_spaces();
     output += "\n\n";
     append_pr_indent(output, offset);
+
     let const page_text =
         StringView{"Page "} + String::from(page_number, page_allocator);
     let const used_width = toiletline::get_display_width(date_text) +
@@ -657,16 +704,20 @@ Pr::execute(const ExecContext               &ec,
     let const available_width =
         page_width > used_width ? page_width - used_width : 0;
     let const left_space_count = available_width / 2;
+
     output += date_text;
     append_pr_indent(output, left_space_count < 1 ? 1 : left_space_count);
     output += title;
+
     let const right_space_count = available_width - left_space_count;
+
     append_pr_indent(output, right_space_count < 1 ? 1 : right_space_count);
     output += page_text;
     output += "\n\n\n";
   };
 
-  let const do_finish_page = [&](usize emitted_line_count) throws -> void {
+  let const do_finish_page =
+      [&](usize emitted_line_count) throws -> void {
     if (!has_page_frame) return;
 
     if (is_form_feed_page) {
@@ -681,9 +732,9 @@ Pr::execute(const ExecContext               &ec,
     output += "\n\n\n\n\n";
   };
 
-  let const do_append_row = [&](const ArrayList<pr_row_entry> &row,
-                                bool   is_input_exhausted,
-                                usize &emitted_line_count) throws -> void {
+  let const do_append_row =
+      [&](const ArrayList<pr_row_entry> &row, bool is_input_exhausted,
+          usize &emitted_line_count) throws -> void {
     append_pr_row(writer, layout, row, page_allocator);
     emitted_line_count++;
     if (is_double_space && (has_page_frame || !is_input_exhausted)) {
@@ -695,6 +746,7 @@ Pr::execute(const ExecContext               &ec,
   let const date_format = FLAG_PR_DATE_FORMAT.is_set()
                               ? FLAG_PR_DATE_FORMAT.value()
                               : StringView{"%Y-%m-%d %H:%M"};
+
   if (is_merge) {
     let const date_text = os::format_local_time(date_format, start_time);
     let const title =
@@ -705,19 +757,25 @@ Pr::execute(const ExecContext               &ec,
 
     while (open_reader_count > 0 && page_number <= last_page) {
       let const page_mark = page_arena.mark();
+
       defer { page_arena.release(page_mark); };
+
       let rows = ArrayList<ArrayList<pr_row_entry>>{page_allocator};
 
       while (rows.count() < rows_per_page && open_reader_count > 0) {
         let row = ArrayList<pr_row_entry>{page_allocator};
+
         row.reserve(readers.count());
+
         bool has_line = false;
 
         for (usize column = 0; column < readers.count(); column++) {
-          let entry    = pr_row_entry{};
+          let entry = pr_row_entry{};
+
           entry.number = row_number;
           if (readers[column] != nullptr) {
             let const result = readers[column]->next();
+
             if (result == utils::BufferedLineReader::Result::Line) {
               entry.text = page_arena
                                .create<String>(page_allocator,
@@ -730,10 +788,12 @@ Pr::execute(const ExecContext               &ec,
                 if (os::INTERRUPT_REQUESTED) return 130;
                 do_report_read_error(reader_sources[column]);
               }
+
               readers[column] = nullptr;
               open_reader_count--;
             }
           }
+
           row.push(steal(entry));
         }
 
@@ -751,6 +811,7 @@ Pr::execute(const ExecContext               &ec,
 
       if (has_page_frame)
         do_append_header(date_text.view(), title, page_number);
+
       usize emitted_line_count = 0;
 
       for (let const &row : rows)
@@ -767,24 +828,28 @@ Pr::execute(const ExecContext               &ec,
   }
 
   let const page_entry_capacity = rows_per_page * effective_column_count;
-  let const do_append_source    = [&](StringView                 source,
-                                   utils::BufferedLineReader &reader,
-                                   i64 modification_time) throws -> bool {
+
+  let const do_append_source =
+      [&](StringView source, utils::BufferedLineReader &reader,
+          i64 modification_time) throws -> bool {
     let const date_text = os::format_local_time(date_format, modification_time);
     let const title     = FLAG_PR_HEADER.is_set() ? FLAG_PR_HEADER.value()
-                             : source == "-"         ? StringView{}
-                                                     : source;
+                          : source == "-"         ? StringView{}
+                                                  : source;
     usize     page_number = 1;
     u64       line_number = 1;
     bool      has_ended   = false;
 
     while (!has_ended && page_number <= last_page) {
       let const page_mark = page_arena.mark();
+
       defer { page_arena.release(page_mark); };
+
       let lines = ArrayList<String>{page_allocator};
 
       while (!has_ended && lines.count() < page_entry_capacity) {
         let const result = reader.next();
+
         if (result == utils::BufferedLineReader::Result::Line) {
           lines.push(String{page_allocator, reader.get_line()});
           continue;
@@ -794,12 +859,14 @@ Pr::execute(const ExecContext               &ec,
           if (os::INTERRUPT_REQUESTED) return false;
           do_report_read_error(source);
         }
+
         has_ended = true;
       }
 
       if (lines.is_empty()) return true;
 
       let const page_line_number = line_number;
+
       line_number += lines.count();
       if (page_number < first_page) {
         page_number++;
@@ -808,11 +875,13 @@ Pr::execute(const ExecContext               &ec,
 
       if (has_page_frame)
         do_append_header(date_text.view(), title, page_number);
+
       let const entry_count          = lines.count();
       let const column_count_on_page = effective_column_count;
       let       column_starts        = ArrayList<usize>{page_allocator};
       let       column_lengths       = ArrayList<usize>{page_allocator};
       usize     row_count            = 0;
+
       if (column_count_on_page > 1 && !FLAG_PR_ACROSS.is_enabled()) {
         usize next_start = 0;
 
@@ -820,6 +889,7 @@ Pr::execute(const ExecContext               &ec,
           let const length =
               entry_count / column_count_on_page +
               (column < entry_count % column_count_on_page ? 1 : 0);
+
           column_starts.push(next_start);
           column_lengths.push(length);
           next_start += length;
@@ -836,12 +906,14 @@ Pr::execute(const ExecContext               &ec,
 
       for (usize row_index = 0; row_index < row_count; row_index++) {
         row.clear();
+
         usize present_count = 0;
 
         for (usize column = 0; column < column_count_on_page; column++) {
           let entry       = pr_row_entry{};
           let entry_index = usize{0};
           let is_present  = false;
+
           if (column_starts.is_empty()) {
             entry_index = row_index * column_count_on_page + column;
             is_present  = entry_index < entry_count;
@@ -849,12 +921,14 @@ Pr::execute(const ExecContext               &ec,
             entry_index = column_starts[column] + row_index;
             is_present  = row_index < column_lengths[column];
           }
+
           if (is_present) {
             entry.text       = lines[entry_index].view();
             entry.number     = page_line_number + entry_index;
             entry.is_present = true;
             present_count++;
           }
+
           row.push(steal(entry));
         }
 
@@ -862,6 +936,7 @@ Pr::execute(const ExecContext               &ec,
         let const is_input_exhausted =
             is_last_row && has_ended && column_count_on_page > 1 &&
             (!column_starts.is_empty() || present_count < column_count_on_page);
+
         do_append_row(row, is_input_exhausted, emitted_line_count);
       }
 
@@ -875,9 +950,12 @@ Pr::execute(const ExecContext               &ec,
 
   for (let const source : sources) {
     let *const reader = do_open_reader(source);
+
     if (reader == nullptr) continue;
+
     let const modification_time =
         source == "-" ? start_time : opened_modification_time;
+
     if (!do_append_source(source, *reader, modification_time)) return 130;
   }
 

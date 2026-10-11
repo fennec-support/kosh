@@ -31,8 +31,7 @@ cold fn
 Nproc::execute(const ExecContext               &ec,
                EvalContext                     &cxt,
                const ArrayList<String>         &args,
-               const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+               const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
@@ -45,8 +44,10 @@ Nproc::execute(const ExecContext               &ec,
   }
 
   u64 ignored_count = 0;
+
   if (FLAG_NPROC_IGNORE.is_set()) {
     let const parsed = FLAG_NPROC_IGNORE.value().to<u64>();
+
     if (parsed.is_error()) {
       KOSHKIT_REPORT_ERROR_AT(
           FLAG_NPROC_IGNORE.value_location(),
@@ -56,6 +57,7 @@ Nproc::execute(const ExecContext               &ec,
 
       return 1;
     }
+
     ignored_count = parsed.value();
   }
 
@@ -68,6 +70,7 @@ Nproc::execute(const ExecContext               &ec,
           ? usize{1}
           : processor_count - static_cast<usize>(ignored_count);
   let output = String::from(result_count, cxt.scratch_allocator());
+
   output += '\n';
   ec.print_to_stdout(output);
 

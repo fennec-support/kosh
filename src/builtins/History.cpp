@@ -46,6 +46,7 @@ report_history_file_failure(const ExecContext &ec,
                             StringView         failure_message) throws -> void
 {
   let const path = toiletline::get_history_path();
+
   if (!path.has_value()) {
     report_soft_builtin_error(ec, cxt, ec.source_location(),
                               StringView{"Unable to "} + action +
@@ -60,36 +61,45 @@ report_history_file_failure(const ExecContext &ec,
 }
 
 static fn
-history_target_needs_separator(const Path &target) throws -> ErrorOr<bool>
+history_target_needs_separator(const Path &target) throws
+    -> ErrorOr<bool>
 {
   os::file_status status{};
+
   if (!os::stat_path_following(target.view(), status)) {
     if (os::last_system_error_is_missing_file()) return false;
 
     return Error{os::last_system_error_message()};
   }
+
   if (status.size == 0) return false;
 
   let const opened =
       os::open_file_descriptor(target.view(), os::file_open_mode::Read);
+
   if (!opened.has_value()) return Error{os::last_system_error_message()};
 
   let const fd        = opened.value();
   char      last_byte = '\0';
+
   if (!os::seek_descriptor_from_start(fd, status.size - 1)) {
     let const failure_message = os::last_system_error_message();
+
     unused(os::close_fd(fd));
 
     return Error{failure_message.view()};
   }
 
   let const read_count = os::read_fd(fd, &last_byte, 1);
+
   if (!read_count.has_value()) {
     let const failure_message = os::last_system_error_message();
+
     unused(os::close_fd(fd));
 
     return Error{failure_message.view()};
   }
+
   if (*read_count != 1) {
     unused(os::close_fd(fd));
 
@@ -108,6 +118,7 @@ print_history_list(const ExecContext &ec,
 {
   let const read_events =
       toiletline::get_history_events(cxt.scratch_allocator());
+
   if (read_events.is_error()) {
     report_history_file_failure(ec, cxt, "read", read_events.error().message());
 
@@ -117,6 +128,7 @@ print_history_list(const ExecContext &ec,
   let const &events = read_events.value();
 
   usize first_index = 0;
+
   if (wanted_count != 0 && wanted_count < events.count()) {
     first_index = events.count() - wanted_count;
   }
@@ -128,6 +140,7 @@ print_history_list(const ExecContext &ec,
     let const number =
         utils::int_to_text_into(static_cast<i64>(events[i].number),
                                 number_buffer, sizeof(number_buffer));
+
     out.append_repeated(' ', number.length < 5 ? 5 - number.length : 0);
     out.append(number);
     out += "  ";
@@ -150,23 +163,28 @@ struct history_file_identity
 };
 
 static fn
-get_history_file_identity(const Path &path) throws -> history_file_identity
+get_history_file_identity(const Path &path) throws
+    -> history_file_identity
 {
   let identity = history_file_identity{};
+
   if (let canonical = os::canonical_path(path); canonical.has_value()) {
     identity.resolved_path = canonical->text();
   } else {
-    let const absolute     = path.to_absolute();
+    let const absolute = path.to_absolute();
+
     identity.resolved_path = absolute.text();
   }
 
   let status = os::file_status{};
+
   identity.has_file_identity =
       os::stat_path_following(path.view(), status) && status.has_file_identity;
   if (identity.has_file_identity) {
     identity.device_id = status.device_id;
     identity.file_id   = status.file_id;
   }
+
   identity.is_set = true;
 
   return identity;
@@ -179,6 +197,7 @@ history_file_identity_matches(const history_file_identity &left,
   if (!left.is_set || !right.is_set) {
     return false;
   }
+
   if (left.has_file_identity && right.has_file_identity) {
     return left.device_id == right.device_id && left.file_id == right.file_id;
   }
@@ -207,15 +226,18 @@ write_history_contents(const Path        &target,
 {
   let const did_exist = target.exists();
   let const opened    = os::open_file_descriptor(target.view(), mode);
+
   if (!opened.has_value()) return Error{os::last_system_error_message()};
 
   if (!did_exist) unused(os::set_file_mode(target.view(), 0600));
 
   let const fd = opened.value();
+
   if (!contents.is_empty() &&
       !os::write_all(fd, contents.data, contents.length))
   {
     let const failure_message = os::last_system_error_message();
+
     unused(os::close_fd(fd));
 
     return Error{failure_message.view()};
@@ -249,17 +271,21 @@ get_history_append_state() -> history_append_state &
 static fn
 write_history_to_file(EvalContext            &cxt,
                       const Path             &target,
-                      history_file_write_mode write_mode) throws -> ErrorOr<Ok>
+                      history_file_write_mode write_mode) throws
+    -> ErrorOr<Ok>
 {
   let      &append_state = get_history_append_state();
   let const source_path  = toiletline::get_history_path();
+
   if (write_mode == history_file_write_mode::Append &&
       source_path.has_value() && source_path->exists() && target.exists() &&
       source_path->is_same_file_as(target))
   {
     TRY(toiletline::append_unwritten_history());
+
     let const appended_number =
         TRY(toiletline::get_newest_history_event_number());
+
     append_state.identity     = get_history_file_identity(target);
     append_state.event_number = appended_number.value_or(0);
 
@@ -270,6 +296,7 @@ write_history_to_file(EvalContext            &cxt,
   let const lock_target     = Path{target_identity.resolved_path.view()};
   let const lock_parent     = lock_target.parent_or_current();
   let       lock            = os::acquire_process_lock(lock_parent.view());
+
   if (!lock.has_value()) return Error{os::last_system_error_message()};
 
   defer { os::release_process_lock(lock.take()); };
@@ -279,6 +306,7 @@ write_history_to_file(EvalContext            &cxt,
 
   usize     newest_number  = 0;
   let const current_number = TRY(toiletline::get_newest_history_event_number());
+
   if (current_number.has_value()) {
     newest_number = *current_number;
   }
@@ -286,6 +314,7 @@ write_history_to_file(EvalContext            &cxt,
   if (append_state.event_number > newest_number) append_state.event_number = 0;
 
   Maybe<usize> written_above{None};
+
   if (write_mode == history_file_write_mode::Append)
     written_above = append_state.event_number;
 
@@ -309,6 +338,7 @@ write_history_to_file(EvalContext            &cxt,
 
   let append_payload = String{cxt.scratch_allocator()};
   let contents       = payload.view();
+
   if (!payload.is_empty()) {
     if (TRY(history_target_needs_separator(target))) {
       append_payload.reserve(payload.count() + 1);
@@ -333,9 +363,10 @@ struct history_selection
 };
 
 static fn
-parse_history_selection(StringView specification,
-                        const ArrayList<toiletline::history_event> &events)
-    throws -> Maybe<history_selection>
+parse_history_selection(
+    StringView                                  specification,
+    const ArrayList<toiletline::history_event> &events) throws
+    -> Maybe<history_selection>
 {
   if (events.is_empty()) return None;
 
@@ -349,12 +380,14 @@ parse_history_selection(StringView specification,
 
   let const do_resolve = [&](StringView text) throws -> Maybe<usize> {
     let const parsed = utils::parse_decimal_i64(text);
+
     if (parsed.is_error() || parsed.value() == 0) {
       return None;
     }
 
     if (parsed.value() < 0) {
       let const index = static_cast<i64>(events.count()) + parsed.value();
+
       if (index < 0) return None;
 
       return static_cast<usize>(index);
@@ -370,6 +403,7 @@ parse_history_selection(StringView specification,
 
   if (!separator.has_value()) {
     let const index = do_resolve(specification);
+
     if (!index.has_value()) return None;
 
     return history_selection{*index, *index};
@@ -378,6 +412,7 @@ parse_history_selection(StringView specification,
   let const first_index =
       do_resolve(specification.substring_of_length(0, *separator));
   let const last_index = do_resolve(specification.substring(*separator + 1));
+
   if (!first_index.has_value() || !last_index.has_value() ||
       *first_index > *last_index)
   {
@@ -418,6 +453,7 @@ History::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
       return 1;
     }
+
     if (let const result = toiletline::sync_history(); result.is_error()) {
       report_history_file_failure(ec, cxt, "sync", result.error().message());
 
@@ -437,6 +473,7 @@ History::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     if (args.count() > 1) {
       let const source      = Path{args[1].view()};
       let const source_text = source.read_entire_file();
+
       if (!source_text.has_value()) {
         report_soft_builtin_error(
             ec, cxt, ec.arg_location_at(1),
@@ -446,6 +483,7 @@ History::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
         return 1;
       }
+
       if (!toiletline::is_history_contents_valid(source_text->view())) {
         report_soft_builtin_error(ec, cxt, ec.arg_location_at(1),
                                   StringView{"cannot read history from '"} +
@@ -455,9 +493,11 @@ History::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
         return 1;
       }
+
       let const source_identity = get_history_file_identity(source);
       let      &import_state    = get_history_import_state();
       let       imported        = source_text->view();
+
       if (FLAG_HISTORY_READ_NEW.is_enabled() &&
           history_file_identity_matches(import_state.identity,
                                         source_identity) &&
@@ -496,10 +536,12 @@ History::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     if (args.count() > 1) {
       cxt.guard_restricted_path(args[1].view(), ec.arg_location_at(1),
                                 restricted_path_use::History);
+
       let const target     = Path{args[1].view()};
       let const write_mode = FLAG_HISTORY_APPEND.is_enabled()
                                  ? history_file_write_mode::Append
                                  : history_file_write_mode::Replace;
+
       if (let const result = write_history_to_file(cxt, target, write_mode);
           result.is_error())
       {
@@ -543,6 +585,7 @@ History::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   if (FLAG_HISTORY_DELETE.is_set()) {
     let const read_events =
         toiletline::get_history_events(cxt.scratch_allocator());
+
     if (read_events.is_error()) {
       report_history_file_failure(ec, cxt, "read",
                                   read_events.error().message());
@@ -553,6 +596,7 @@ History::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     let const &events = read_events.value();
     let const  selection =
         parse_history_selection(FLAG_HISTORY_DELETE.value(), events);
+
     if (!selection.has_value()) {
       report_soft_builtin_error(ec, cxt, FLAG_HISTORY_DELETE.value_location(),
                                 FLAG_HISTORY_DELETE.value() +
@@ -565,6 +609,7 @@ History::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
          index-- > selection->first_index;)
     {
       let const &event = events[index];
+
       if (!toiletline::rewrite_history_event(event.number, event.command.view(),
                                              ""))
       {
@@ -601,8 +646,10 @@ History::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   if (did_maintain_list) return 0;
 
   usize wanted_count = 0;
+
   if (args.count() > 1) {
     let const parsed = utils::parse_decimal_i64(args[1].view());
+
     if (parsed.is_error()) {
       report_soft_builtin_error(ec, cxt, ec.arg_location_at(1),
                                 StringView{"'"} + args[1].view() +

@@ -51,6 +51,7 @@ EvalContext::get_glob_charset() const throws -> glob_charset
 {
   for (let const name : {"LC_ALL", "LC_CTYPE", "LANG"}) {
     let const value = get_variable_value(name);
+
     if (!value.has_value() || value->is_empty()) {
       continue;
     }
@@ -71,8 +72,11 @@ EvalContext::get_glob_charset_for(StringView subject) const throws
 
   while (position + 4 * sizeof(byte_vector) <= subject.length) {
     byte_vector lanes[4];
+
     __builtin_memcpy(lanes, subject.data + position, sizeof(lanes));
+
     let const merged = lanes[0] | lanes[1] | lanes[2] | lanes[3];
+
     if (((merged[0] | merged[1]) & byte_scan::HIGH_BITS) != 0) {
       return get_glob_charset();
     }
@@ -101,6 +105,7 @@ fn
 EvalContext::first_field_separator() const throws -> StringView
 {
   let const separators = variable_store().field_separators();
+
   if (separators.is_empty()) return separators;
 
   return separators.substring_of_length(
@@ -117,6 +122,7 @@ EvalContext::expand_path_once(const glob_field   &field,
   let       expanded = ArrayList<glob_field>{scratch};
 
   let const path = field.text.view();
+
   LOG(All, "scanning a directory for the glob component '%.*s'",
       static_cast<int>(path.length), path.data);
 
@@ -124,6 +130,7 @@ EvalContext::expand_path_once(const glob_field   &field,
   let const has_slashes = last_slash.has_value();
 
   let parent_dir = Path{};
+
   if (has_slashes)
     parent_dir =
         Path{*last_slash != 0 ? path.substring_of_length(0, *last_slash)
@@ -134,9 +141,11 @@ EvalContext::expand_path_once(const glob_field   &field,
   let const stem_start = has_slashes ? *last_slash + 1 : 0;
   let const has_glob   = stem_start < path.length;
   let       glob       = StringView{};
+
   if (has_glob) glob = path.substring(stem_start);
 
   let entries = Path::read_directory_typed(parent_dir);
+
   if (!entries.has_value()) {
     LOG(Debug,
         "the parent directory is unreadable, the glob '%.*s' yields no match",
@@ -161,6 +170,7 @@ EvalContext::expand_path_once(const glob_field   &field,
   ASSERT(!glob.is_empty());
 
   let const is_dot_pattern = glob[0] == '.';
+
   if (is_dot_pattern && !is_shopt_enabled("globskipdots")) {
     entries->push(
         Path::DirectoryChild{String{"."}, Path::EntryKind::Directory});
@@ -168,12 +178,13 @@ EvalContext::expand_path_once(const glob_field   &field,
         Path::DirectoryChild{String{".."}, Path::EntryKind::Directory});
   }
 
-  let const           dotglob_is_on        = is_shopt_enabled("dotglob");
-  let const           nocaseglob_is_on     = is_shopt_enabled("nocaseglob");
-  let const           extglob              = get_extglob_mode();
-  Maybe<glob_charset> locale_charset       = None;
-  let const           do_get_entry_charset = [&](StringView filename)
-                                       throws -> glob_charset {
+  let const           dotglob_is_on    = is_shopt_enabled("dotglob");
+  let const           nocaseglob_is_on = is_shopt_enabled("nocaseglob");
+  let const           extglob          = get_extglob_mode();
+  Maybe<glob_charset> locale_charset   = None;
+
+  let const do_get_entry_charset =
+      [&](StringView filename) throws -> glob_charset {
     if (get_glob_charset_for(filename) == glob_charset::Bytes) {
       return glob_charset::Bytes;
     }
@@ -183,14 +194,16 @@ EvalContext::expand_path_once(const glob_field   &field,
   };
 
   let lowered_glob = String{scratch};
+
   if (nocaseglob_is_on) {
     lowered_glob =
         utils::lowercase_for_glob(glob, get_glob_charset_for(glob), scratch);
   }
+
   let const match_glob = nocaseglob_is_on ? lowered_glob.view() : glob;
 
-  let const do_entry_matches = [&](const Path::DirectoryChild &entry)
-                                   throws -> bool {
+  let const do_entry_matches =
+      [&](const Path::DirectoryChild &entry) throws -> bool {
     let const filename = entry.name.view();
 
     if (filename == "." || filename == "..") {
@@ -209,10 +222,12 @@ EvalContext::expand_path_once(const glob_field   &field,
         nocaseglob_is_on ? os::case_sensitivity::Insensitive
                          : os::case_sensitivity::Sensitive);
   };
+
   let const do_append_entry = [&](StringView filename) throws -> void {
     evaluation_metrics_store().add_expansion(runtime_state().stats_enabled());
 
     let result_field = glob_field{scratch};
+
     result_field.text.append(typed_prefix);
     result_field.text.append(filename);
     expanded.push(steal(result_field));
@@ -229,6 +244,7 @@ EvalContext::expand_path_once(const glob_field   &field,
   let uncertain_positions = ArrayList<usize>{scratch};
   let uncertain_paths     = ArrayList<Path>{scratch};
   let uncertain_statuses  = ArrayList<os::file_status>{scratch};
+
   should_include.reserve(entries->count());
   uncertain_positions.reserve(entries->count());
   uncertain_paths.reserve(entries->count());
@@ -236,6 +252,7 @@ EvalContext::expand_path_once(const glob_field   &field,
 
   for (usize index = 0; index < entries->count(); index++) {
     let const &entry = (*entries)[index];
+
     should_include.push(false);
     if (!do_entry_matches(entry)) continue;
 
@@ -243,6 +260,7 @@ EvalContext::expand_path_once(const glob_field   &field,
       should_include[index] = true;
       continue;
     }
+
     if (entry.kind == Path::EntryKind::Regular ||
         entry.kind == Path::EntryKind::Other)
     {
@@ -250,6 +268,7 @@ EvalContext::expand_path_once(const glob_field   &field,
     }
 
     let full_path = parent_dir.clone();
+
     full_path.append(entry.name.view());
     uncertain_positions.push(index);
     uncertain_paths.push(steal(full_path));
@@ -257,6 +276,7 @@ EvalContext::expand_path_once(const glob_field   &field,
   }
 
   let directory_batch = os::Batch{scratch};
+
   directory_batch.reserve(uncertain_paths.count());
 
   for (usize index = 0; index < uncertain_paths.count(); index++)
@@ -289,14 +309,17 @@ first_active_glob(StringView    text,
     }
 
     let const ch = text.data[i];
+
     if (mode == extglob_mode::Enabled && i + 1 < text.length &&
         lexer::is_extglob_operator(ch) && text.data[i + 1] == '(')
     {
       return i;
     }
+
     if (ch == '*' || ch == '?') {
       return i;
     }
+
     if (ch == '[') {
       if (!open_bracket) {
         open_bracket = i;
@@ -330,9 +353,11 @@ collect_globstar_paths(const Path        &dir,
   if (should_match_directories_only && should_include_base) {
     out.push(String{allocator, relative});
   }
+
   if (depth >= GLOBSTAR_MAX_DEPTH) return;
 
   let const entries = Path::read_directory_typed(dir);
+
   if (!entries.has_value()) return;
 
   let is_directory        = Bitset{allocator};
@@ -340,6 +365,7 @@ collect_globstar_paths(const Path        &dir,
   let uncertain_positions = ArrayList<usize>{allocator};
   let uncertain_paths     = ArrayList<Path>{allocator};
   let uncertain_statuses  = ArrayList<os::file_status>{allocator};
+
   is_directory.reset(entries->count());
   is_symbolic_link.reset(entries->count());
 
@@ -351,18 +377,23 @@ collect_globstar_paths(const Path        &dir,
     let const  name  = entry.name.view();
     let const  should_skip =
         !should_match_dotfiles && !name.is_empty() && name[0] == '.';
+
     switch (entry.kind) {
     case Path::EntryKind::Directory: is_directory.set(index); break;
+
     case Path::EntryKind::Symlink:
       is_symbolic_link.set(index);
       if (!should_skip) uncertain_count++;
       break;
+
     case Path::EntryKind::Unknown:
       if (!should_skip) {
         uncertain_count++;
         unknown_count++;
       }
+
       break;
+
     case Path::EntryKind::Regular:
     case Path::EntryKind::Other:   break;
     }
@@ -375,18 +406,22 @@ collect_globstar_paths(const Path        &dir,
   for (usize index = 0; index < entries->count(); index++) {
     let const &entry = (*entries)[index];
     let const  name  = entry.name.view();
+
     if (!should_match_dotfiles && !name.is_empty() && name[0] == '.') {
       continue;
     }
+
     switch (entry.kind) {
     case Path::EntryKind::Symlink:
-    case Path::EntryKind::Unknown:   break;
+    case Path::EntryKind::Unknown: break;
+
     case Path::EntryKind::Directory:
     case Path::EntryKind::Regular:
     case Path::EntryKind::Other:     continue;
     }
 
     let child_path = dir;
+
     child_path.append(name);
     uncertain_positions.push(index);
     uncertain_paths.push(steal(child_path));
@@ -394,6 +429,7 @@ collect_globstar_paths(const Path        &dir,
   }
 
   let lstat_batch = os::Batch{allocator};
+
   lstat_batch.reserve(unknown_count);
 
   for (usize index = 0; index < uncertain_paths.count(); index++)
@@ -420,6 +456,7 @@ collect_globstar_paths(const Path        &dir,
   }
 
   let stat_batch = os::Batch{allocator};
+
   stat_batch.reserve(uncertain_paths.count());
 
   for (usize index = 0; index < uncertain_paths.count(); index++)
@@ -437,6 +474,7 @@ collect_globstar_paths(const Path        &dir,
   for (usize index = 0; index < entries->count(); index++) {
     let const &entry = (*entries)[index];
     let const  name  = entry.name.view();
+
     if (!should_match_dotfiles && !name.is_empty() && name[0] == '.') {
       continue;
     }
@@ -445,11 +483,14 @@ collect_globstar_paths(const Path        &dir,
     child_dir.append(name);
 
     let child_relative = String{allocator};
+
     child_relative.reserve(relative.length + name.length + 1);
+
     if (!relative.is_empty()) {
       child_relative.append(relative);
       child_relative += '/';
     }
+
     child_relative.append(name);
 
     let const is_listed =
@@ -476,24 +517,29 @@ EvalContext::expand_path_recurse(ArrayList<glob_field> fields) throws
   let       result  = ArrayList<glob_field>{scratch};
 
   let glob_indices = ArrayList<Maybe<usize>>{scratch};
+
   glob_indices.reserve(fields.count());
+
   let should_batch_literals = !fields.is_empty();
 
   for (let const &field : fields) {
     let const glob_index = first_active_glob(
         field.text.view(), field.glob_active, get_extglob_mode());
+
     if (glob_index.has_value()) should_batch_literals = false;
     glob_indices.push(glob_index);
   }
 
   if (should_batch_literals) {
     let literal_paths = ArrayList<Path>{scratch};
+
     literal_paths.reserve(fields.count());
 
     for (let const &field : fields)
       literal_paths.push(Path{field.text.view(), scratch});
 
     let literal_batch = os::Batch{scratch};
+
     literal_batch.reserve(fields.count());
 
     for (usize index = 0; index < fields.count(); index++)
@@ -551,8 +597,10 @@ EvalContext::expand_path_recurse(ArrayList<glob_field> fields) throws
 
     if (is_globstar_component) {
       LOG(All, "expanding a globstar component across directory levels");
+
       let const prefix = text.substring_of_length(0, component_start);
       let       base   = Path{StringView{"."}};
+
       if (component_start == 1)
         base = Path{StringView{"/"}};
       else if (component_start > 1)
@@ -564,6 +612,7 @@ EvalContext::expand_path_recurse(ArrayList<glob_field> fields) throws
       let const should_list_symlinked_directories =
           !has_pattern_after || component_start != 0;
       let relatives = ArrayList<String>{scratch};
+
       collect_globstar_paths(
           base, StringView{""}, directory_position, is_shopt_enabled("dotglob"),
           should_list_symlinked_directories, true, 0, scratch, relatives);
@@ -571,12 +620,14 @@ EvalContext::expand_path_recurse(ArrayList<glob_field> fields) throws
       if (!directory_position) {
         if (!prefix.is_empty()) {
           let base_field = glob_field{scratch};
+
           base_field.text.append(prefix);
           result.push(steal(base_field));
         }
 
         for (let const &relative : relatives) {
           let match_field = glob_field{scratch};
+
           match_field.text.append(prefix);
           match_field.text.append(relative.view());
           result.push(steal(match_field));
@@ -590,12 +641,15 @@ EvalContext::expand_path_recurse(ArrayList<glob_field> fields) throws
 
       for (let const &relative : relatives) {
         let candidate = glob_field{scratch};
+
         candidate.text.append(prefix);
         if (!relative.view().is_empty()) {
           candidate.text.append(relative.view());
           candidate.text += '/';
         }
+
         let const literal_length = candidate.text.count();
+
         candidate.text.append(suffix);
         if (candidate.text.is_empty()) continue;
 
@@ -627,6 +681,7 @@ EvalContext::expand_path_recurse(ArrayList<glob_field> fields) throws
 
     let const slash_offset        = static_cast<std::ptrdiff_t>(*slash_after);
     let       directory_component = glob_field{scratch};
+
     directory_component.text.append(StringView{text.data, *slash_after});
 
     for (std::ptrdiff_t k = 0; k < slash_offset; k++)
@@ -634,6 +689,7 @@ EvalContext::expand_path_recurse(ArrayList<glob_field> fields) throws
           field.glob_active[static_cast<usize>(k)]);
 
     let removed_suffix = glob_field{scratch};
+
     removed_suffix.text.append(
         StringView{text.data + *slash_after, text.length - *slash_after});
 
@@ -668,11 +724,13 @@ EvalContext::expand_path_recurse(ArrayList<glob_field> fields) throws
 fn
 EvalContext::expand_tilde(WordSegment &leading_segment,
                           bool         is_word_continued,
-                          bool should_stop_at_colon) const throws -> void
+                          bool         should_stop_at_colon) const throws
+    -> void
 {
   if (!leading_segment.is_tilde_candidate()) return;
 
   let &text = leading_segment.text;
+
   if (text.is_empty() || text[0] != '~') {
     return;
   }
@@ -692,32 +750,40 @@ EvalContext::expand_tilde(WordSegment &leading_segment,
   }
 
   let const directory = resolve_tilde_prefix(name);
+
   if (name.is_empty() && !directory.has_value()) {
     throw Error{"Could not figure out home directory"};
   }
+
   if (!directory.has_value()) return;
 
   LOG(All, "the tilde prefix '~%.*s' expands to '%.*s'",
       static_cast<int>(name.length), name.data,
       static_cast<int>(directory->view().length), directory->view().data);
+
   let expanded = String{heap_allocator()};
+
   expanded.append(directory->view());
   expanded.append(text.view().substring(name_end));
   text.assign_copy(heap_allocator(), expanded.view());
 }
 
 fn
-EvalContext::resolve_tilde_prefix(StringView name) const throws -> Maybe<String>
+EvalContext::resolve_tilde_prefix(StringView name) const throws
+    -> Maybe<String>
 {
   if (name == "+" || name == "-") {
     return get_variable_value(name == "+" ? StringView{"PWD"}
                                           : StringView{"OLDPWD"});
   }
+
   if (name.is_empty()) {
     if (let home = get_variable_value("HOME"); home.has_value()) return home;
   }
+
   let const home =
       name.is_empty() ? os::get_home_directory() : os::get_home_for_user(name);
+
   if (!home) return koshka::None;
 
   return String{heap_allocator(), home->text().view()};
@@ -726,10 +792,10 @@ EvalContext::resolve_tilde_prefix(StringView name) const throws -> Maybe<String>
 fn
 EvalContext::expand_colon_tildes(WordSegment &segment,
                                  bool         is_word_continued,
-                                 Maybe<usize> equals_position) const throws
-    -> void
+                                 Maybe<usize> equals_position) const throws -> void
 {
   if (!segment.is_tilde_candidate()) return;
+
   let const view        = segment.text.view();
   let       rewritten   = String{heap_allocator()};
   let       was_changed = false;
@@ -738,6 +804,7 @@ EvalContext::expand_colon_tildes(WordSegment &segment,
   while (i < view.length) {
     let const is_separator = view[i] == ':' || (equals_position.has_value() &&
                                                 *equals_position == i);
+
     if (is_separator && i + 1 < view.length && view[i + 1] == '~') {
       usize prefix_end = i + 2;
 
@@ -749,6 +816,7 @@ EvalContext::expand_colon_tildes(WordSegment &segment,
 
       if (!(prefix_end == view.length && is_word_continued)) {
         let const name = view.substring_of_length(i + 2, prefix_end - i - 2);
+
         if (let const directory = resolve_tilde_prefix(name)) {
           rewritten += view[i];
           rewritten.append(directory->view());
@@ -758,6 +826,7 @@ EvalContext::expand_colon_tildes(WordSegment &segment,
         }
       }
     }
+
     rewritten += view[i];
     i++;
   }
@@ -790,6 +859,7 @@ parse_glob_ignore_patterns(StringView list,
     let const colon = rest.find_character(':');
     let const entry =
         colon.has_value() ? rest.substring_of_length(0, *colon) : rest;
+
     entry_start += entry.length + 1;
     if (entry.is_empty()) continue;
 
@@ -797,6 +867,7 @@ parse_glob_ignore_patterns(StringView list,
 
     for (usize index = 0; index < entry.length; index++) {
       let const is_escaped = entry[index] == '\\' && index + 1 < entry.length;
+
       if (is_escaped) index++;
       pattern.text.push(should_fold_case ? utils::ascii_to_lower(entry[index])
                                          : entry[index]);
@@ -833,11 +904,13 @@ glob_ignore_segments_match(const glob_ignore_pattern &pattern,
     let const text_segment = text_slash.has_value()
                                  ? text_rest.substring_of_length(0, *text_slash)
                                  : text_rest;
+
     if (!utils::glob_matches(pattern_segment, text_segment, pattern.active,
                              pattern_start, mode, charset))
     {
       return false;
     }
+
     if (!pattern_slash.has_value() || !text_slash.has_value()) {
       return !pattern_slash.has_value() && !text_slash.has_value();
     }
@@ -856,6 +929,7 @@ glob_ignore_pattern_matches(const glob_ignore_pattern &pattern,
   let const length            = pattern.text.length();
   let const has_trailing_star = length > 0 && pattern.text[length - 1] == '*' &&
                                 pattern.active[length - 1];
+
   if (!has_trailing_star) {
     return glob_ignore_segments_match(pattern, length, path, mode, charset);
   }
@@ -888,20 +962,26 @@ EvalContext::expand_path(glob_field            field,
 
   if (!has_glob) {
     let single_result = ArrayList<String>{scratch};
+
     single_result.push(steal(field.text));
 
     return steal(single_result).make_sorted(sort_order::ascending);
   }
 
   let pattern = String{scratch};
+
   pattern.append(field.text.view());
+
   let const has_literal_glob = field.has_literal_glob;
 
   let input = ArrayList<glob_field>{scratch};
+
   input.push(steal(field));
+
   let fields = expand_path_recurse(steal(input));
 
   let values = ArrayList<String>{scratch};
+
   values.reserve(fields.count());
 
   let const glob_ignore_value = runtime_state().was_glob_ignore_assigned()
@@ -914,11 +994,13 @@ EvalContext::expand_path(glob_field            field,
       has_glob_ignore ? parse_glob_ignore_patterns(glob_ignore_value->view(),
                                                    should_fold_case, scratch)
                       : ArrayList<glob_ignore_pattern>{scratch};
-  let const extglob       = get_extglob_mode();
+  let const extglob = get_extglob_mode();
+
   let const do_is_ignored = [&](StringView path) throws -> bool {
     let const last_slash = path.find_last_character('/');
     let const name =
         last_slash.has_value() ? path.substring(*last_slash + 1) : path;
+
     if (name == "." || name == "..") {
       return true;
     }
@@ -955,6 +1037,7 @@ EvalContext::expand_path(glob_field            field,
     let const is_failglob_fatal =
         failglob_is_on &&
         (failglob_is_explicit || !strict_diagnostics_are_warnings());
+
     if (!expansion_store().glob_exempt_for_test() &&
         (is_failglob_fatal || has_literal_glob))
     {
@@ -990,6 +1073,7 @@ EvalContext::expand_glob_lenient(StringView pattern) throws
   let       values  = ArrayList<String>{scratch};
 
   let field = glob_field{scratch};
+
   field.text.append(pattern);
   field.glob_active.reserve(pattern.length);
 
@@ -1008,6 +1092,7 @@ EvalContext::expand_glob_lenient(StringView pattern) throws
   }
 
   let input = ArrayList<glob_field>{scratch};
+
   input.push(steal(field));
 
   for (let &f : expand_path_recurse(steal(input)))

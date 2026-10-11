@@ -27,6 +27,7 @@ Yes::execute(const ExecContext               &ec,
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   String line{cxt.scratch_allocator()};
+
   if (operands.is_empty())
     line += "y";
   else
@@ -39,6 +40,7 @@ Yes::execute(const ExecContext               &ec,
 
   static constexpr usize OUTPUT_BUFFER_LENGTH = 64 * 1024;
   let                    output               = String{cxt.scratch_allocator()};
+
   output.reserve(OUTPUT_BUFFER_LENGTH);
 
   do {
@@ -47,8 +49,7 @@ Yes::execute(const ExecContext               &ec,
 
   let const out_fd = ec.out_fd.value_or(KOSH_STDOUT);
 
-  loop
-  {
+  loop {
     if (os::INTERRUPT_REQUESTED) return 130;
 
     if (!os::write_all(out_fd, output.data(), output.count())) {

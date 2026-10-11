@@ -119,6 +119,10 @@ echo "--- head -n 2 ---"
 "$BIN" -c 'koshkit head -n 2 fruit.txt'
 echo "--- tail -n 1 ---"
 "$BIN" -c 'koshkit tail -n 1 fruit.txt'
+echo "--- head -2 and tail -1 take the historical count form ---"
+"$BIN" -c 'koshkit head -2 fruit.txt; koshkit tail -1 fruit.txt'
+echo "--- a -2 after a file is a file operand ---"
+"$BIN" -c 'koshkit head fruit.txt -2 2>/dev/null; printf "status=%s\n" "$?"'
 echo "--- sort ---"
 "$BIN" -c 'koshkit sort fruit.txt'
 echo "--- sort -r ---"

@@ -44,11 +44,14 @@ renice_identifier(StringView text, os::priority_target target) throws
     -> Maybe<i64>
 {
   let const parsed = utils::parse_decimal_i64(text);
+
   if (!parsed.is_error() && parsed.value() >= 0) {
     return parsed.value();
   }
+
   if (target == os::priority_target::User) {
     let const user = os::username_to_uid(text);
+
     if (user.has_value()) return *user;
   }
 
@@ -59,20 +62,22 @@ fn
 Renice::execute(const ExecContext               &ec,
                 EvalContext                     &cxt,
                 const ArrayList<String>         &args,
-                const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+                const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   let const selector_count =
       static_cast<usize>(FLAG_RENICE_GROUP.is_enabled()) +
       FLAG_RENICE_PROCESS.is_enabled() + FLAG_RENICE_USER.is_enabled();
+
   if (operands.is_empty() || !FLAG_RENICE_INCREMENT.is_set() ||
       selector_count > 1)
   {
     return report_usage_error(ec, cxt, args[0].view());
   }
+
   let const parsed = utils::parse_decimal_i64(FLAG_RENICE_INCREMENT.value());
+
   if (parsed.is_error() || parsed.value() < INT32_MIN ||
       parsed.value() > INT32_MAX)
   {
@@ -83,6 +88,7 @@ Renice::execute(const ExecContext               &ec,
 
     return 2;
   }
+
   let const increment = parsed.value();
   let const target =
       FLAG_RENICE_GROUP.is_enabled()  ? os::priority_target::ProcessGroup
@@ -95,23 +101,29 @@ Renice::execute(const ExecContext               &ec,
   {
     let const &operand = operands[operand_position];
     let const  id      = renice_identifier(operand.view(), target);
+
     if (!id.has_value()) {
       let const note = target == os::priority_target::User
                            ? "use a user name or a nonnegative decimal user id"
                            : "use a nonnegative decimal identifier";
+
       KOSHKIT_REPORT_ERROR_AT(operand_locations[operand_position],
                               "invalid identifier '" + operand + "'", note);
       result = 1;
       continue;
     }
+
     let const current = os::get_priority(*id, target);
+
     if (!current.has_value()) {
       KOSHKIT_REPORT_PATH_ERROR_AT(operand_locations[operand_position],
                                    "read priority for", operand);
       result = 1;
       continue;
     }
+
     let priority = static_cast<i64>(*current) + increment;
+
     if (priority < -20) priority = -20;
     if (priority > 19) priority = 19;
     if (!os::set_priority(*id, static_cast<i32>(priority), target)) {

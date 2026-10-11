@@ -48,6 +48,7 @@ report_exec_resolution_error(ExecContext   &ec,
                              i32            command_status) throws -> i32
 {
   let error = ErrorWithLocation{steal(location), message};
+
   error.set_command_status(command_status);
   show_message(error.to_string(cxt.source_store().current_source_view(), &cxt));
 
@@ -67,6 +68,7 @@ fn
 Exec::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let const &args = ec.args();
+
   ASSERT(!args.is_empty());
 
   let   should_be_login_shell        = false;
@@ -78,6 +80,7 @@ Exec::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   if (!cxt.runtime_state().is_posix_mode()) {
     while (command_index < args.count()) {
       let const arg = args[command_index].view();
+
       if (arg == "--") {
         command_index++;
         break;
@@ -91,6 +94,7 @@ Exec::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
       for (usize k = 1; k < arg.length; k++) {
         let const option = arg[k];
+
         if (option == 'l') {
           should_be_login_shell = true;
         } else if (option == 'c') {
@@ -114,6 +118,7 @@ Exec::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
           break;
         } else {
           let option_text = String{cxt.scratch_allocator()};
+
           option_text.append(
               arg.substring_of_length(k, utils::decode_utf8(arg, k, 0).length));
           report_soft_builtin_error(
@@ -141,6 +146,7 @@ Exec::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   }
 
   let const &command_name = args[command_index];
+
   if (cxt.runtime_state().option_is_enabled(shell_option_id::Restricted))
     throw ErrorWithLocation{ec.arg_location_at(command_index),
                             "exec is forbidden in a restricted shell"};
@@ -148,6 +154,7 @@ Exec::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   LOG(Info, "exec replacing the shell with '%s'", command_name.c_str());
 
   let program_path = Path{};
+
   if (os::has_directory_separator(command_name.view())) {
     let const typed_program_path = Path{command_name.view()};
     let       resolved =
@@ -155,19 +162,23 @@ Exec::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                   ? os::canonical_path(
                   typed_program_path.to_absolute_without_normalizing())
                   : Path::canonicalize(command_name);
+
     if (!resolved) {
       let error_location   = ec.arg_location_at(command_index);
       let reported_program = command_name.view();
       let raw_program      = command_name.view();
+
       if (let const *source = cxt.source_store().current_source();
           source != nullptr)
         if (let source_text = error_location.get_source_text(source->view()))
           raw_program = *source_text;
+
       let const target = typed_program_path.to_absolute_without_normalizing();
       let const unavailable = utils::locate_first_unavailable_path_component(
           target, command_name.view(), raw_program, error_location,
           cxt.scratch_allocator());
       let is_missing_directory = false;
+
       if (unavailable.has_value()) {
         error_location       = unavailable->location;
         reported_program     = unavailable->reported_prefix.view();
@@ -187,6 +198,7 @@ Exec::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
           StringView{"The command '"} + reported_program + "' was not found",
           127);
     }
+
     if (typed_program_path.has_trailing_separator() &&
         !resolved->is_directory())
     {
@@ -194,12 +206,14 @@ Exec::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                                           ec.arg_location_at(command_index),
                                           "This file is not a directory", 126);
     }
+
     program_path = resolved.take();
   } else {
     let const found = cxt.program_resolver().search(
         command_name, ProgramResolver::SearchMode::First,
         ProgramResolver::Requirement::Execution,
         ProgramResolver::CachePolicy::ReadOnly);
+
     if (found.count() == 0)
       return report_exec_resolution_error(
           ec, cxt, ec.arg_location_at(command_index),
@@ -220,12 +234,14 @@ Exec::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   if (should_be_login_shell) {
     let dashed_argv0 = StringView{"-"} + command_args[0];
-    command_args[0]  = steal(dashed_argv0);
+
+    command_args[0] = steal(dashed_argv0);
   }
 
   let command = ExecContext::make_from_resolved(
       ec.source_location(), ResolvedCommand::from_program(program_path),
       steal(command_args), steal(command_arg_locations));
+
   if (ec.in_fd) command.in_fd = ec.in_fd.take();
   if (ec.out_fd) command.out_fd = ec.out_fd.take();
   if (ec.err_fd) command.err_fd = ec.err_fd.take();
@@ -244,8 +260,10 @@ Exec::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   if (cxt.in_subshell() || cxt.job_table_store().is_in_pipeline_stage()) {
     LOG(Info, "exec runs '%s' as a child rather than replacing the shell",
         command_name.c_str());
+
     let const status =
         utils::execute_context(steal(command), cxt, execution_mode::Foreground);
+
     if (cxt.in_subshell()) cxt.request_exit(status, ec.source_location());
 
     return status;
@@ -253,19 +271,21 @@ Exec::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   let saved_descriptors =
       ArrayList<os::saved_descriptor>{cxt.scratch_allocator()};
-  defer
-  {
+
+  defer {
     for (usize i = saved_descriptors.count(); i > 0; i--)
       os::restore_descriptor(saved_descriptors[i - 1]);
   };
 
   for (i32 shell_fd = 0; shell_fd < 3; shell_fd++) {
     let const saved_descriptor = os::save_descriptor(shell_fd);
+
     if (!saved_descriptor.is_dup2_ok) {
       return report_exec_resolution_error(
           ec, cxt, ec.arg_location_at(command_index),
           "Unable to preserve the shell's standard descriptors", 126);
     }
+
     saved_descriptors.push(saved_descriptor);
   }
 
@@ -280,8 +300,10 @@ Exec::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   command.in_fd.reset();
   command.out_fd.reset();
   command.err_fd.reset();
+
   let const status = cxt.run_program_fallback(
       command, cxt.runtime_state().get_mood(), script_isolation::Shared);
+
   utils::quit(status, utils::farewell_policy::Silent);
 }
 

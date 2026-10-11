@@ -27,8 +27,9 @@ public:
   {
     other.m_length = 0;
   }
+
   fn
-  operator=(const Bitset &other) throws->Bitset &
+  operator=(const Bitset &other) throws -> Bitset &
   {
     if (this != &other) {
       m_words  = other.m_words;
@@ -37,8 +38,9 @@ public:
 
     return *this;
   }
+
   fn
-  operator=(Bitset &&other) wontthrow->Bitset &
+  operator=(Bitset &&other) wontthrow -> Bitset &
   {
     if (this != &other) {
       m_words        = steal(other.m_words);
@@ -54,13 +56,14 @@ public:
   {
     let const bit_position = m_length;
     let const word_index   = bit_position / BITS_PER_WORD;
+
     if (word_index >= m_words.count()) m_words.push(0);
     m_length++;
     if (is_set) m_words[word_index] |= u64{1} << (bit_position % BITS_PER_WORD);
   }
 
   hot mustuse pure fn
-  operator[](usize index) const wontthrow->bool
+  operator[](usize index) const wontthrow -> bool
   {
     if (index >= m_length) return false;
 
@@ -72,8 +75,10 @@ public:
   set(usize index, bool is_set = true) wontthrow -> void
   {
     ASSERT(index < m_length, "bit index is past the end");
+
     let const mask = u64{1} << (index % BITS_PER_WORD);
     let      &word = m_words[index / BITS_PER_WORD];
+
     if (is_set)
       word |= mask;
     else
@@ -85,8 +90,10 @@ public:
   {
     m_words.clear();
     m_length = 0;
+
     let const word_count =
         bit_count / BITS_PER_WORD + (bit_count % BITS_PER_WORD != 0 ? 1 : 0);
+
     m_words.reserve(word_count);
 
     for (usize i = 0; i < word_count; i++)
@@ -100,6 +107,7 @@ public:
   {
     return m_length;
   }
+
   mustuse pure fn
   is_empty() const wontthrow -> bool
   {
@@ -111,6 +119,7 @@ public:
   {
     let const word_count =
         bit_count / BITS_PER_WORD + (bit_count % BITS_PER_WORD != 0 ? 1 : 0);
+
     m_words.reserve(word_count);
   }
 

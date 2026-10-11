@@ -434,9 +434,11 @@ find_flag(const FlagList &flags,
 
         let const is_flag_longer_than_argument =
             flag_length > flag_start_length;
+
         if (is_flag_longer_than_argument) continue;
 
         let const after_name = flag_start[flag_length];
+
         if (flag_length > longest_length &&
             std::strncmp(flags[i]->long_name().data, flag_start, flag_length) ==
                 0 &&
@@ -463,7 +465,8 @@ parse_flags_vec(const FlagList                  &flags,
                 StringView                       program_name,
                 flag_parse_options               parse_options,
                 Allocator                        allocator,
-                ArrayList<usize> *operand_indices) throws -> ArrayList<String>
+                ArrayList<usize>                *operand_indices) throws
+    -> ArrayList<String>
 {
   reset_flags(flags);
 
@@ -499,6 +502,7 @@ static fn
 flag_name(const Flag *f, bool is_long) throws -> String
 {
   let name = String{heap_allocator()};
+
   name += "-";
   if (is_long) {
     name += "-";
@@ -511,7 +515,8 @@ flag_name(const Flag *f, bool is_long) throws -> String
 }
 
 static fn
-prefixed_message(StringView program_name, StringView message) throws -> String
+prefixed_message(StringView program_name, StringView message) throws
+    -> String
 {
   if (program_name.is_empty()) return String{heap_allocator(), message};
 
@@ -529,6 +534,7 @@ suggest_long_flag(const FlagList &flags, StringView typed_name) throws
 
   for (let const *flag : flags) {
     let const candidate = flag->long_name();
+
     if (candidate.is_empty()) continue;
 
     suggestion.consider(candidate);
@@ -574,10 +580,12 @@ attached_flag_value_location(
     usize                            argument_index,
     const char                      *value,
     usize                            base_position,
-    const ArrayList<SourceLocation> *arg_locations) throws -> SourceLocation
+    const ArrayList<SourceLocation> *arg_locations) throws
+    -> SourceLocation
 {
   let location =
       argument_location(argv, argument_index, base_position, arg_locations);
+
   if (location.length != std::strlen(argv[argument_index])) return location;
 
   location.position += static_cast<u32>(value - argv[argument_index]);
@@ -587,17 +595,19 @@ attached_flag_value_location(
 }
 
 static fn
-boolean_flag_location(const char *const               *argv,
-                      usize                            argument_index,
-                      const char                      *flag_offset,
-                      bool                             is_long,
-                      usize                            base_position,
-                      const ArrayList<SourceLocation> *arg_locations) throws
+boolean_flag_location(
+    const char *const               *argv,
+    usize                            argument_index,
+    const char                      *flag_offset,
+    bool                             is_long,
+    usize                            base_position,
+    const ArrayList<SourceLocation> *arg_locations) throws
     -> SourceLocation
 {
   let location =
       argument_location(argv, argument_index, base_position, arg_locations);
   let const argument_length = std::strlen(argv[argument_index]);
+
   if (!is_long && argument_length > 2 && location.length == argument_length) {
     location.position += static_cast<u32>(flag_offset - argv[argument_index]);
     location.length = 1;
@@ -617,7 +627,8 @@ parse_flags(const FlagList                  &flags,
             StringView                       program_name,
             flag_parse_options               parse_options,
             Allocator                        allocator,
-            ArrayList<usize> *operand_indices) throws -> ArrayList<String>
+            ArrayList<usize>                *operand_indices) throws
+    -> ArrayList<String>
 {
   ASSERT(argc >= 0);
 
@@ -651,15 +662,18 @@ parse_flags(const FlagList                  &flags,
 
     if (should_take_next_argument_as_value) {
       bool is_next_known_boolean_flag = false;
+
       if (previous_flag == operand_value_flag &&
           operand_value_flag != nullptr && argv[i][0] == '-' &&
           argv[i][1] != '\0')
       {
         let const is_long_token = argv[i][1] == '-';
         let const token_offset  = is_long_token ? &argv[i][2] : &argv[i][1];
+
         if (*token_offset != '\0') {
           Flag       *probe_flag  = nullptr;
           const char *probe_value = nullptr;
+
           if (find_flag(flags, token_offset, is_long_token, &probe_flag,
                         &probe_value) &&
               (probe_flag->kind() == Flag::Kind::Bool ||
@@ -680,6 +694,7 @@ parse_flags(const FlagList                  &flags,
         let const value_position = ++position;
         let const value_location = argument_location(
             argv, static_cast<usize>(i), base_position, arg_locations);
+
         if (previous_flag->kind() == Flag::Kind::String)
           static_cast<FlagString *>(previous_flag)->set(argv[i]);
         else
@@ -697,6 +712,7 @@ parse_flags(const FlagList                  &flags,
     let const is_plus_cluster = !parse_options.plus_letters.is_empty() &&
                                 !should_ignore_rest && i != 0 &&
                                 argv[i][0] == '+' && argv[i][1] != '\0';
+
     if (is_plus_cluster) {
       for (const char *letter = &argv[i][1]; *letter != '\0'; letter++) {
         Flag       *plus_flag  = nullptr;
@@ -704,14 +720,18 @@ parse_flags(const FlagList                  &flags,
         let const   is_known =
             parse_options.plus_letters.find_character(*letter).has_value() &&
             find_flag(flags, letter, false, &plus_flag, &plus_value);
+
         if (!is_known) {
           let message = String{"The flag '+"};
+
           message.push(*letter);
           message += "' cannot be turned off";
+
           let error =
               ErrorWithLocation{argument_location(argv, static_cast<usize>(i),
                                                   base_position, arg_locations),
                                 prefixed_message(program_name, message.view())};
+
           error.set_command_status(2);
           throw error;
         }
@@ -719,6 +739,7 @@ parse_flags(const FlagList                  &flags,
         let const flag_location =
             boolean_flag_location(argv, static_cast<usize>(i), letter, false,
                                   base_position, arg_locations);
+
         if (plus_flag->kind() == Flag::Kind::Bool) {
           static_cast<FlagBool *>(plus_flag)->disable();
           plus_flag->set_position(++position);
@@ -732,6 +753,7 @@ parse_flags(const FlagList                  &flags,
           let const value_location = attached_flag_value_location(
               argv, static_cast<usize>(i), plus_value, base_position,
               arg_locations);
+
           static_cast<FlagManyStrings *>(plus_flag)->append(
               plus_value, value_position, value_location, true);
           plus_flag->set_position(value_position);
@@ -743,6 +765,7 @@ parse_flags(const FlagList                  &flags,
           was_previous_flag_after_plus       = true;
           plus_flag->set_value_location(flag_location);
         }
+
         break;
       }
 
@@ -754,10 +777,12 @@ parse_flags(const FlagList                  &flags,
         parse_options.should_accept_negative_number_operand &&
         argument.length > 1 && argument[0] == '-' &&
         argument.substring(1).is_all_decimal_digits();
+
     if (should_ignore_rest || argv[i][0] != '-' || i == 0 ||
         is_negative_number_operand)
     {
       let const is_program_name = i == 0;
+
       if (is_program_name && parse_options.should_omit_program_name) {
         continue;
       }
@@ -770,6 +795,7 @@ parse_flags(const FlagList                  &flags,
       {
         should_ignore_rest = true;
       }
+
       continue;
     }
 
@@ -818,6 +844,7 @@ parse_flags(const FlagList                  &flags,
                 prefixed_message(program_name, "The flag '" +
                                                    flag_name(flag, is_long) +
                                                    "' does not take a value")};
+
             error.set_command_status(2);
             throw error;
           }
@@ -857,6 +884,7 @@ parse_flags(const FlagList                  &flags,
 
         case Flag::Kind::OptionalValue: {
           let const optional_flag = static_cast<FlagOptionalValue *>(flag);
+
           optional_flag->enable();
           optional_flag->set_position(++position);
           optional_flag->set_value_location(
@@ -864,9 +892,11 @@ parse_flags(const FlagList                  &flags,
                                     is_long, base_position, arg_locations));
 
           let value = StringView{value_offset};
+
           if (!value.is_empty() && value[0] == '=') {
             value = value.substring(1);
           }
+
           if (!value.is_empty() && optional_flag->should_accept_value(value)) {
             optional_flag->set(value);
             optional_flag->set_value_location(attached_flag_value_location(
@@ -879,6 +909,7 @@ parse_flags(const FlagList                  &flags,
                 prefixed_message(program_name,
                                  "Invalid value '" + String{value} + "' for '" +
                                      flag_name(flag, true) + "'")};
+
             error.set_command_status(2);
             throw error;
           } else if (!value.is_empty()) {
@@ -890,6 +921,7 @@ parse_flags(const FlagList                  &flags,
             i++;
             let const value_location = argument_location(
                 argv, static_cast<usize>(i), base_position, arg_locations);
+
             optional_flag->set(StringView{argv[i]});
             optional_flag->set_value_location(value_location);
           }
@@ -911,12 +943,14 @@ parse_flags(const FlagList                  &flags,
 
               if (*value_offset != '\0') {
                 let const value_position = ++position;
+
                 if (flag->kind() == Flag::Kind::String)
                   static_cast<FlagString *>(flag)->set(value_offset);
                 else {
                   let const value_location = attached_flag_value_location(
                       argv, static_cast<usize>(i), value_offset, base_position,
                       arg_locations);
+
                   static_cast<FlagManyStrings *>(flag)->append(
                       value_offset, value_position, value_location);
                 }
@@ -933,17 +967,20 @@ parse_flags(const FlagList                  &flags,
                                       base_position, arg_locations),
                     "No value provided for '" + flag_name(flag, is_long) +
                         "' flag"};
+
                 error.set_command_status(2);
                 throw error;
               }
             } else if (!is_long) {
               let const value_position = ++position;
+
               if (flag->kind() == Flag::Kind::String)
                 static_cast<FlagString *>(flag)->set(value_offset);
               else {
                 let const value_location = attached_flag_value_location(
                     argv, static_cast<usize>(i), value_offset, base_position,
                     arg_locations);
+
                 static_cast<FlagManyStrings *>(flag)->append(
                     value_offset, value_position, value_location);
               }
@@ -961,6 +998,7 @@ parse_flags(const FlagList                  &flags,
                   "Long flags require a separator between the flag and the "
                   "value. Try using '" +
                       flag_name(flag, is_long) + "=" + value_offset + "'"};
+
               error.set_command_status(2);
               throw error;
             }
@@ -979,18 +1017,21 @@ parse_flags(const FlagList                  &flags,
         if (*flag_offset == '-') {
           let error = Error{prefixed_message(
               program_name, "Missing space between '-' and other options")};
+
           error.set_command_status(2);
           throw error;
         } else {
           let error_message = String{heap_allocator()};
           let details =
               String{"Use `--` before an operand that begins with a dash"};
+
           error_message += "Unknown flag '-";
 
           if (!is_long) {
             let const flag_view  = StringView{flag_offset};
             let const decoded    = utils::decode_utf8(flag_view, 0, 0);
             let const byte_count = decoded.length > 1 ? decoded.length : 1;
+
             error_message += flag_view.substring_of_length(0, byte_count);
           } else {
             error_message += "-";
@@ -1002,6 +1043,7 @@ parse_flags(const FlagList                  &flags,
                 equals_position.has_value()
                     ? flag_view.substring_of_length(0, *equals_position)
                     : flag_view;
+
             error_message += typed_name;
             if (let const similar_flag = suggest_long_flag(flags, typed_name);
                 similar_flag.has_value())
@@ -1009,6 +1051,7 @@ parse_flags(const FlagList                  &flags,
               details = "Did you mean '--" + *similar_flag + "'?";
             }
           }
+
           error_message += "'";
 
           LOG(Debug, "rejecting the unknown flag in '%s'", argv[i]);
@@ -1017,6 +1060,7 @@ parse_flags(const FlagList                  &flags,
           let       error     = ErrorWithLocationAndDetails{
               argument_location(argv, arg_index, base_position, arg_locations),
               prefixed_message(program_name, error_message), details};
+
           error.set_command_status(2);
           throw error;
         }
@@ -1032,6 +1076,7 @@ parse_flags(const FlagList                  &flags,
                          "No value provided for '" +
                              flag_name(previous_flag, was_previous_flag_long) +
                              "' flag")};
+
     error.set_command_status(2);
     throw error;
   }
@@ -1047,11 +1092,13 @@ parse_util_operands(const FlagList                  &flags,
                     flag_parse_options               parse_options) throws
     -> util_operands_result
 {
-  let operand_locations                  = ArrayList<SourceLocation>{allocator};
+  let operand_locations = ArrayList<SourceLocation>{allocator};
+
   parse_options.should_omit_program_name = true;
   let operands =
       parse_flags_vec(flags, args, 0, nullptr, arg_locations,
                       &operand_locations, {}, parse_options, allocator);
+
   ASSERT(operands.allocator() == allocator);
   ASSERT(operand_locations.allocator() == allocator);
   ASSERT(operands.count() == operand_locations.count());
@@ -1064,12 +1111,13 @@ parse_until_subcommand(const FlagList                  &flags,
                        const ArrayList<String>         &args,
                        const ArrayList<SourceLocation> *arg_locations,
                        ArrayList<SourceLocation>       *operand_locations,
-                       StringView program_name) throws -> usize
+                       StringView                       program_name) throws -> usize
 {
   let       operand_indices = ArrayList<usize>{heap_allocator()};
   let const operands =
       parse_flags_vec(flags, args, 0, nullptr, arg_locations, operand_locations,
                       program_name, {}, heap_allocator(), &operand_indices);
+
   if (operands.count() <= 1) return args.count();
 
   return operand_indices[1];
@@ -1085,6 +1133,7 @@ arg_needs_shell_quoting(StringView arg) wontthrow -> bool
     let const is_ascii_alphanumeric = (character >= 'a' && character <= 'z') ||
                                       (character >= 'A' && character <= 'Z') ||
                                       (character >= '0' && character <= '9');
+
     switch (character) {
     case '_':
     case '@':
@@ -1096,6 +1145,7 @@ arg_needs_shell_quoting(StringView arg) wontthrow -> bool
     case '.':
     case '/':
     case '-': break;
+
     default:
       if (!is_ascii_alphanumeric) return true;
       break;
@@ -1109,6 +1159,7 @@ pure fn
 shell_quoted_arg_length(StringView arg) wontthrow -> usize
 {
   if (!arg_needs_shell_quoting(arg)) return arg.length;
+
   usize count = 2;
 
   for (usize i = 0; i < arg.length; i++) {
@@ -1128,6 +1179,7 @@ append_shell_quoted_arg(String    &out,
 
     return;
   }
+
   out.push('\'');
 
   for (usize i = 0; i < arg.length; i++) {
@@ -1159,13 +1211,17 @@ reset_flags(const FlagList &flags) throws -> void
   for (let const flag : flags)
     switch (flag->kind()) {
     case Flag::Kind::Bool: static_cast<FlagBool *>(flag)->reset(); break;
+
     case Flag::Kind::RepeatedBool:
       static_cast<FlagRepeatedBool *>(flag)->reset();
       break;
+
     case Flag::Kind::String: static_cast<FlagString *>(flag)->reset(); break;
+
     case Flag::Kind::ManyStrings:
       static_cast<FlagManyStrings *>(flag)->reset();
       break;
+
     case Flag::Kind::OptionalValue:
       static_cast<FlagOptionalValue *>(flag)->reset();
       break;
@@ -1187,6 +1243,7 @@ cold fn
 show_version() throws -> void
 {
   let s = String{heap_allocator()};
+
   s += "Koshka Shell ";
   append_version_triple(s, heap_allocator());
   s += '\n';
@@ -1231,6 +1288,7 @@ cold fn
 short_version_string(Allocator allocator) throws -> String
 {
   let s = String{allocator};
+
   append_version_triple(s, allocator);
   s += '-';
   s += KOSH_BUILD_MODE;
@@ -1244,6 +1302,7 @@ cold fn
 show_short_version() throws -> void
 {
   let s = short_version_string(heap_allocator());
+
   s += '\n';
 
   print(s);
@@ -1284,10 +1343,13 @@ wrap_text(StringView          text,
 
   for (usize i = 0; i <= text.length; i++) {
     let const is_at_end = i == text.length;
+
     if (!is_at_end && text[i] != ' ') {
       continue;
     }
+
     let const word_length = i - word_start;
+
     if (word_length > 0) {
       if (is_line_started && line_used + 1 + word_length > text_width) {
         out += '\n';
@@ -1296,6 +1358,7 @@ wrap_text(StringView          text,
         text_width      = width > line_indent ? width - line_indent : 1;
         line_used       = 0;
       }
+
       if (!is_line_started) {
         out.append_repeated(' ', line_indent);
         is_line_started = true;
@@ -1303,9 +1366,11 @@ wrap_text(StringView          text,
         out += ' ';
         line_used++;
       }
+
       out += text.substring_of_length(word_start, word_length);
       line_used += word_length;
     }
+
     word_start = i + 1;
   }
 
@@ -1359,6 +1424,7 @@ append_report_text(String    &output,
   if (text.is_empty()) return;
 
   let const is_styled = should_color && !style.is_empty();
+
   if (is_styled) output += style;
   output += text;
   if (is_styled) output += colors::ansi::RESET;
@@ -1377,16 +1443,18 @@ ReportTable::add_column(StringView             heading,
 
 fn
 ReportTable::add_heading(StringView             heading,
-                         report_table_alignment alignment) throws -> void
+                         report_table_alignment alignment) throws
+    -> void
 {
   add_column(heading, alignment, colors::ansi::BOLD_CYAN);
 }
 
 fn
-ReportTable::add_row(const ArrayList<report_table_cell_view> &cells) throws
-    -> void
+ReportTable::add_row(const ArrayList<report_table_cell_view> &cells)
+    throws -> void
 {
   let row = ArrayList<report_table_cell>{m_grid_rows.allocator()};
+
   row.reserve(cells.count());
 
   for (let const &cell : cells)
@@ -1404,6 +1472,7 @@ ReportTable::add_field_row(StringView name,
                            StringView name_style) throws -> void
 {
   let row = ArrayList<report_table_cell>{m_grid_rows.allocator()};
+
   row.reserve(2);
   row.push({
       String{row.allocator(), name},
@@ -1426,22 +1495,27 @@ append_report_grid(String                                        &output,
                    usize column_gap_space_count) throws -> void
 {
   let column_count = columns.count();
+
   if (column_count == 0) {
     for (let const &row : rows)
       if (column_count < row.count()) column_count = row.count();
   }
+
   if (column_count == 0) return;
 
   let widths = ArrayList<usize>{columns.allocator()};
+
   widths.reserve(column_count);
 
   for (usize index = 0; index < column_count; index++) {
     usize width = 0;
+
     if (index < columns.count())
       width = toiletline::get_display_width(columns[index].heading.view());
     if (index < columns.count() && width < columns[index].min_width) {
       width = columns[index].min_width;
     }
+
     widths.push(width);
   }
 
@@ -1449,6 +1523,7 @@ append_report_grid(String                                        &output,
     for (usize index = 0; index < column_count; index++) {
       if (index >= row.count()) continue;
       let const width = toiletline::get_display_width(row[index].text.view());
+
       if (widths[index] < width) widths[index] = width;
     }
   }
@@ -1463,9 +1538,11 @@ append_report_grid(String                                        &output,
               index < row.count() ? row[index].text.view() : StringView{};
           let style =
               index < columns.count() ? columns[index].style : StringView{};
+
           if (index < row.count() && !row[index].style.is_empty()) {
             style = row[index].style;
           }
+
           let const is_right_aligned =
               index < columns.count() &&
               columns[index].alignment == report_table_alignment::Right;
@@ -1481,6 +1558,7 @@ append_report_grid(String                                        &output,
             pending_space_count = 0;
             append_report_text(output, text, style, should_color);
           }
+
           if (!is_right_aligned) pending_space_count += padding_length;
           pending_space_count += column_gap_space_count;
         }
@@ -1490,6 +1568,7 @@ append_report_grid(String                                        &output,
 
   if (should_show_header && !columns.is_empty()) {
     let header = ArrayList<report_table_cell>{columns.allocator()};
+
     header.reserve(columns.count());
 
     for (let const &column : columns)
@@ -1506,10 +1585,10 @@ append_report_grid(String                                        &output,
 }
 
 fn
-ReportTable::to_string(bool should_color, StringView indentation) const throws
-    -> String
+ReportTable::to_string(bool should_color, StringView indentation) const throws -> String
 {
   let output = String{m_columns.allocator()};
+
   if (m_grid_rows.is_empty()) return output;
 
   append_report_grid(output, m_columns, m_grid_rows, should_color, indentation,
@@ -1531,6 +1610,7 @@ append_titled_report_table(String            &output,
                            bool               should_color) throws -> void
 {
   let const body = table.to_string(should_color, "  ");
+
   if (body.is_empty()) return;
 
   if (!output.is_empty()) {
@@ -1540,6 +1620,7 @@ append_titled_report_table(String            &output,
 
     output += "\n\n";
   }
+
   append_report_text(output, title, colors::ansi::BOLD_BLUE, should_color);
   output += '\n';
   output += body.view();
@@ -1552,6 +1633,7 @@ report_indentation_width(StringView indentation) wontthrow -> usize
 
   for (usize index = 0; index < indentation.length; index++) {
     let const byte = indentation[index];
+
     if (byte == '\t') {
       width += 8 - (width % 8);
       continue;
@@ -1568,7 +1650,7 @@ append_report_name_section(String                      &output,
                            StringView                   title,
                            const ArrayList<StringView> &names,
                            bool                         should_color,
-                           StringView indentation) throws -> void
+                           StringView                   indentation) throws -> void
 {
   output += indentation;
   append_report_text(output, title, colors::ansi::BOLD_BLUE, should_color);
@@ -1589,13 +1671,17 @@ append_report_name_section(String                      &output,
 
   for (usize index = 0; index < names.count(); index++) {
     let const name = names[index];
+
     if (index % column_count == 0) {
       output += indentation;
       output += "  ";
     }
+
     output += name;
+
     let const is_last_in_row =
         index % column_count == column_count - 1 || index + 1 == names.count();
+
     if (is_last_in_row) {
       output += '\n';
     } else {
@@ -1636,7 +1722,8 @@ format_cli_help(StringView text, bool should_color) throws -> String
     bool has_heading_letter = false;
 
     for (usize index = 0; index < line.length && is_heading; index++) {
-      let const byte     = line[index];
+      let const byte = line[index];
+
       has_heading_letter = has_heading_letter || (byte >= 'A' && byte <= 'Z');
       is_heading         = byte == ' ' || (byte >= 'A' && byte <= 'Z');
     }
@@ -1678,6 +1765,7 @@ write_alternate_screen_sequence(const ExecContext &ec,
                                 StringView         sequence) wontthrow -> bool
 {
   let descriptor = KOSH_STDOUT;
+
   if (ec.out_fd.has_value()) descriptor = *ec.out_fd;
 
   return os::write_all(descriptor, sequence.data, sequence.length);
@@ -1713,6 +1801,7 @@ format_live_duration(f64 seconds, Allocator allocator) throws -> String
   let const nanoseconds = static_cast<u64>(seconds * 1000000000.0 + 0.5);
   let       result      = String::from(nanoseconds / 1000000000ULL, allocator);
   u64       fraction    = nanoseconds % 1000000000ULL;
+
   if (fraction != 0) {
     usize digit_count = 9;
 
@@ -1722,6 +1811,7 @@ format_live_duration(f64 seconds, Allocator allocator) throws -> String
     }
 
     let const fraction_text = String::from(fraction, allocator);
+
     result += ".";
 
     for (usize index = fraction_text.length(); index < digit_count; index++)
@@ -1736,8 +1826,8 @@ format_live_duration(f64 seconds, Allocator allocator) throws -> String
 }
 
 pure fn
-rolling_window_start(u64 now_nanoseconds, u64 window_nanoseconds) wontthrow
-    -> u64
+rolling_window_start(u64 now_nanoseconds, u64 window_nanoseconds)
+    wontthrow -> u64
 {
   return now_nanoseconds > window_nanoseconds
              ? now_nanoseconds - window_nanoseconds
@@ -1745,7 +1835,8 @@ rolling_window_start(u64 now_nanoseconds, u64 window_nanoseconds) wontthrow
 }
 
 cold fn
-make_flag_help(const FlagList &flags, bool should_color) throws -> String
+make_flag_help(const FlagList &flags, bool should_color) throws
+    -> String
 {
   let s = String{heap_allocator()};
 
@@ -1757,6 +1848,7 @@ make_flag_help(const FlagList &flags, bool should_color) throws -> String
 
     let flag_name  = String{heap_allocator()};
     let flag_value = String{heap_allocator()};
+
     if (f->short_name() != '\0') {
       flag_name += "  -";
       flag_name += f->short_name();
@@ -1765,6 +1857,7 @@ make_flag_help(const FlagList &flags, bool should_color) throws -> String
         flag_name += f->short_name();
         flag_name += "..]";
       }
+
       if (!f->long_name().is_empty()) flag_name += ", ";
     } else if (!f->long_name().is_empty()) {
       flag_name += "      ";
@@ -1776,8 +1869,10 @@ make_flag_help(const FlagList &flags, bool should_color) throws -> String
       flag_name += "--";
       flag_name += f->long_name();
       switch (f->kind()) {
-      case koshka::Flag::Kind::String:        flag_value += "=<...>"; break;
-      case koshka::Flag::Kind::ManyStrings:   flag_value += "=<.., ..>"; break;
+      case koshka::Flag::Kind::String: flag_value += "=<...>"; break;
+
+      case koshka::Flag::Kind::ManyStrings: flag_value += "=<.., ..>"; break;
+
       case koshka::Flag::Kind::OptionalValue: {
         flag_value += "[=<";
         flag_value += static_cast<const FlagOptionalValue *>(f)->value_name();
@@ -1793,6 +1888,7 @@ make_flag_help(const FlagList &flags, bool should_color) throws -> String
     append_report_text(s, flag_value.view(), colors::ansi::DIM, should_color);
 
     let const flag_width = flag_name.length() + flag_value.length();
+
     if (flag_width + 2 > DESCRIPTION_COLUMN) {
       s += '\n';
 
@@ -1810,11 +1906,13 @@ make_flag_help(const FlagList &flags, bool should_color) throws -> String
 
     for (usize i = 0; i <= description.length; i++) {
       let const is_at_end = i == description.length;
+
       if (!is_at_end && description[i] != ' ') {
         continue;
       }
 
       let const word_length = i - word_start;
+
       if (word_length > 0) {
         if (line_used > 0 && line_used + 1 + word_length > TEXT_WIDTH) {
           description_text += '\n';
@@ -1824,14 +1922,17 @@ make_flag_help(const FlagList &flags, bool should_color) throws -> String
 
           line_used = 0;
         }
+
         if (line_used > 0) {
           description_text += ' ';
           line_used++;
         }
+
         description_text +=
             description.substring_of_length(word_start, word_length);
         line_used += word_length;
       }
+
       word_start = i + 1;
     }
 
@@ -1854,6 +1955,7 @@ make_flag_help(const FlagList &flags, bool should_color) throws -> String
         s += SECTION_HEADERS[section];
         was_header_printed = true;
       }
+
       do_render_flag(flag);
     }
   }
@@ -1877,9 +1979,11 @@ print_error(StringView text) throws -> void
   while (written_count < text.count()) {
     let const written = os::write_fd(KOSH_STDERR, text.data + written_count,
                                      text.count() - written_count);
+
     if (!written.has_value() || *written == 0) {
       return;
     }
+
     written_count += *written;
   }
 }
@@ -1911,6 +2015,7 @@ show_message(StringView err) throws -> void
     print_error("\n");
     ONE_SHOT_MESSAGE_LEADING_NEWLINE_ARMED = false;
   }
+
   print_error(err);
   print_error("\n");
 }

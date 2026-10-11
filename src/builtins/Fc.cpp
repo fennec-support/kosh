@@ -81,18 +81,22 @@ resolve_fc_selection(StringView                                  specification,
     bool      was_out_of_range = false;
     let const parsed =
         utils::parse_decimal_i64(specification, &was_out_of_range);
+
     if (parsed.is_error() || was_out_of_range) {
       return fc_selection{-1, fc_selection_error::OutOfRange};
     }
 
     let const number            = parsed.value();
     let const has_negative_sign = specification[0] == '-';
+
     if (number < 0) {
       let index = last_eligible_index + number + 1;
+
       if (index < 0) index = 0;
 
       return fc_selection{index, fc_selection_error::None};
     }
+
     if (number == 0) {
       if (has_negative_sign) {
         if (!is_listing)
@@ -108,6 +112,7 @@ resolve_fc_selection(StringView                                  specification,
     }
 
     let const relative_number = number - static_cast<i64>(events[0].number);
+
     if (relative_number < 0 || relative_number >= last_eligible_index) {
       return fc_selection{is_first ? 0 : last_eligible_index,
                           fc_selection_error::None};
@@ -157,6 +162,7 @@ replace_all(StringView source,
 
   while (position < source.length) {
     let const remaining = source.length - position;
+
     if (remaining >= pattern.length &&
         std::memcmp(source.data + position, pattern.data, pattern.length) == 0)
     {
@@ -187,7 +193,7 @@ static fn
 remember_fc_command(EvalContext                                &cxt,
                     const ArrayList<toiletline::history_event> &events,
                     Maybe<usize>                                active_index,
-                    StringView command) throws -> bool
+                    StringView                                  command) throws -> bool
 {
   if (command.is_empty()) return false;
   if (events.is_empty()) return false;
@@ -195,11 +201,13 @@ remember_fc_command(EvalContext                                &cxt,
   let const replacement_index =
       active_index.has_value() ? *active_index : events.count() - 1;
   let const &replaced = events[replacement_index];
+
   if (!toiletline::rewrite_history_event(replaced.number,
                                          replaced.command.view(), command))
   {
     return false;
   }
+
   if (active_index.has_value()) cxt.history_recorder().set_event_number(None);
 
   return true;
@@ -210,7 +218,7 @@ selected_source(const ArrayList<toiletline::history_event> &events,
                 i64                                         first_index,
                 i64                                         last_index,
                 bool                                        should_reverse,
-                Allocator allocator) throws -> String
+                Allocator                                   allocator) throws -> String
 {
   let       source    = String{allocator};
   let       index     = should_reverse ? last_index : first_index;
@@ -236,6 +244,7 @@ execute_fc_command(const ExecContext               &ec,
                    Maybe<usize> active_index) throws -> i32
 {
   usize operand_position = 1;
+
   struct substitution
   {
     StringView pattern;
@@ -246,6 +255,7 @@ execute_fc_command(const ExecContext               &ec,
   while (operand_position < args.count()) {
     let const operand   = args[operand_position].view();
     let const separator = operand.find_character('=');
+
     if (!separator.has_value()) break;
     substitutions.push(substitution{operand.substring_of_length(0, *separator),
                                     operand.substring(*separator + 1)});
@@ -259,6 +269,7 @@ execute_fc_command(const ExecContext               &ec,
       fc_selection{last_eligible_index, last_eligible_index < 0
                                             ? fc_selection_error::NotFound
                                             : fc_selection_error::None};
+
   if (operand_position < args.count()) {
     selection =
         resolve_fc_selection(args[operand_position].view(), events,
@@ -269,6 +280,7 @@ execute_fc_command(const ExecContext               &ec,
       selection.error = fc_selection_error::NotFound;
     }
   }
+
   if (selection.error != fc_selection_error::None) {
     return report_fc_selection_error(
         ec, cxt, get_operand_location(ec, operand_locations, operand_position),
@@ -313,7 +325,7 @@ list_fc_commands(const ExecContext                          &ec,
                  const fc_options                           &options,
                  const ArrayList<toiletline::history_event> &events,
                  i64                                         first_index,
-                 i64 last_index) throws -> i32
+                 i64                                         last_index) throws -> i32
 {
   let       output    = String{cxt.scratch_allocator()};
   let       index     = options.should_reverse ? last_index : first_index;
@@ -324,6 +336,7 @@ list_fc_commands(const ExecContext                          &ec,
        index += step)
   {
     let const &event = events[static_cast<usize>(index)];
+
     if (options.should_number)
       output += String::from(event.number, cxt.scratch_allocator());
     output += cxt.runtime_state().is_posix_option_on() ? "\t" : "\t ";
@@ -337,7 +350,8 @@ list_fc_commands(const ExecContext                          &ec,
 }
 
 static fn
-editor_name(EvalContext &cxt, const fc_options &options) throws -> String
+editor_name(EvalContext &cxt, const fc_options &options) throws
+    -> String
 {
   if (options.editor.has_value())
     return String{cxt.scratch_allocator(), *options.editor};
@@ -346,6 +360,7 @@ editor_name(EvalContext &cxt, const fc_options &options) throws -> String
   {
     return String{cxt.scratch_allocator(), value->view()};
   }
+
   if (let value = cxt.get_variable_value("EDITOR");
       value.has_value() && !value->is_empty())
   {
@@ -362,34 +377,39 @@ edit_fc_commands(const ExecContext                          &ec,
                  const ArrayList<toiletline::history_event> &events,
                  Maybe<usize>                                active_index,
                  i64                                         first_index,
-                 i64 last_index) throws -> i32
+                 i64                                         last_index) throws -> i32
 {
   let const source =
       selected_source(events, first_index, last_index, options.should_reverse,
                       cxt.scratch_allocator());
   let temp_path = os::write_to_named_temp_file(Path::temp_directory(), "sfc",
                                                source.view());
+
   if (!temp_path.has_value()) {
     report_soft_builtin_error(ec, cxt, ec.source_location(),
                               "cannot create the editor file");
 
     return 1;
   }
+
   defer { unused(os::remove_file(temp_path->text().view())); };
 
   let editor_command = editor_name(cxt, options);
+
   editor_command.push(' ');
   append_shell_quoted_arg(editor_command, temp_path->text().view(), true);
 
   i32 editor_status = 1;
+
   {
     let const saved_terminal_exec =
         cxt.execution_store().terminal_exec_allowed();
+
     cxt.execution_store().terminal_exec_allowed() = false;
-    defer
-    {
+    defer {
       cxt.execution_store().terminal_exec_allowed() = saved_terminal_exec;
     };
+
     editor_status = cxt.run_source(
         editor_command.view(), "fc editor", ec.source_location(),
         StringView{"fc"}, nullptr, nullptr, return_handling::Propagate);
@@ -400,33 +420,38 @@ edit_fc_commands(const ExecContext                          &ec,
   }
 
   let edited = temp_path->read_entire_file();
+
   if (!edited.has_value()) {
     report_soft_builtin_error(ec, cxt, ec.source_location(),
                               "cannot read the editor file");
 
     return 1;
   }
+
   if (!os::remove_file(temp_path->text().view())) {
     report_soft_builtin_error(ec, cxt, ec.source_location(),
                               "cannot remove the editor file");
 
     return 1;
   }
+
   if (edited->is_empty()) return 0;
 
   edited->normalize_crlf_line_endings();
   let const ast_mark      = cxt.arena_store().parse_arena()->mark();
   let const function_mark = cxt.arena_store().function_arena()->mark();
+
   {
-    defer
-    {
+    defer {
       cxt.arena_store().function_arena()->release(function_mark);
       cxt.arena_store().parse_arena()->release(ast_mark);
     };
+
     let parser = Parser{
         Lexer{edited->view(), *cxt.arena_store().parse_arena(), None,
               cxt.runtime_state().get_mood()}
     };
+
     unused(parser.construct_ast());
   }
 
@@ -437,16 +462,17 @@ edit_fc_commands(const ExecContext                          &ec,
   let const should_replace_active =
       active_index.has_value() && !cxt.history_recorder().has_transaction();
   let should_end_transaction = should_replace_active;
+
   if (should_end_transaction)
     cxt.history_recorder().begin_transaction(recorded_commands);
-  defer
-  {
+  defer {
     if (should_end_transaction) cxt.history_recorder().end_transaction();
   };
 
   let const status = cxt.run_source(
       edited->view(), "fc", ec.source_location(), StringView{"fc"}, nullptr,
       nullptr, return_handling::Consume, history_recording::Enabled);
+
   if (should_end_transaction) {
     cxt.history_recorder().end_transaction();
     should_end_transaction = false;
@@ -454,6 +480,7 @@ edit_fc_commands(const ExecContext                          &ec,
 
   if (should_replace_active) {
     let const &active = events[*active_index];
+
     if (!toiletline::rewrite_history_event(active.number, active.command.view(),
                                            recorded_commands))
     {
@@ -462,6 +489,7 @@ edit_fc_commands(const ExecContext                          &ec,
 
       return 1;
     }
+
     cxt.history_recorder().set_event_number(None);
   }
 
@@ -482,12 +510,14 @@ Fc::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       FLAG_FC_REVERSE.is_enabled(), FLAG_FC_EXECUTE.is_enabled(),
       FLAG_FC_EDITOR.is_set() ? Maybe<StringView>{FLAG_FC_EDITOR.value()}
                               : None};
+
   if (options.editor.has_value() && *options.editor == "-") {
     options.should_execute = true;
   }
 
   let const read_events =
       toiletline::get_history_events(cxt.scratch_allocator());
+
   if (read_events.is_error()) {
     report_soft_builtin_error(ec, cxt, ec.source_location(),
                               StringView{"Unable to read the history file: "} +
@@ -508,6 +538,7 @@ Fc::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let const last_eligible_index = active_index.has_value()
                                       ? static_cast<i64>(*active_index) - 1
                                       : static_cast<i64>(events.count()) - 1;
+
   if (last_eligible_index < 0) return 0;
 
   i64   first_index      = last_eligible_index;
@@ -518,6 +549,7 @@ Fc::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     let const first = resolve_fc_selection(
         args[operand_position].view(), events, last_eligible_index,
         options.should_list, true, active_index);
+
     if (first.error != fc_selection_error::None)
       return report_fc_selection_error(
           ec, cxt, operand_locations[operand_position], first.error);
@@ -527,6 +559,7 @@ Fc::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       let const last = resolve_fc_selection(
           args[operand_position + 1].view(), events, last_eligible_index,
           options.should_list, false, active_index);
+
       if (last.error != fc_selection_error::None)
         return report_fc_selection_error(
             ec, cxt, operand_locations[operand_position + 1], last.error);
@@ -542,7 +575,8 @@ Fc::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   }
 
   if (last_index < first_index) {
-    let const saved_first  = first_index;
+    let const saved_first = first_index;
+
     first_index            = last_index;
     last_index             = saved_first;
     options.should_reverse = true;

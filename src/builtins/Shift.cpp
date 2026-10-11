@@ -73,6 +73,7 @@ Shift::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       static_cast<long long>(shift_count), params.count());
 
   let shifted = ArrayList<String>{heap_allocator()};
+
   shifted.reserve(params.count() - static_cast<usize>(shift_count));
 
   for (usize i = static_cast<usize>(shift_count); i < params.count(); i++)

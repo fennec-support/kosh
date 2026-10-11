@@ -125,15 +125,17 @@ fn
 find_named_option(const ExecContext       &ec,
                   EvalContext             &cxt,
                   const koshconf_operands &operands,
-                  usize index) throws -> const option_descriptor *
+                  usize                    index) throws -> const option_descriptor *
 {
   let const *option = find_option_by_koshconf_name(operands.values[index]);
   let const *bash_option =
       option != nullptr ? nullptr
                         : find_option_by_set_name(operands.values[index]);
+
   if (bash_option == nullptr && option == nullptr) {
     bash_option = find_option_by_shopt_name(operands.values[index]);
   }
+
   if (bash_option != nullptr && !bash_option->koshconf_name.is_empty()) {
     report_soft_builtin_error(
         ec, cxt, operands.locations[index],
@@ -143,10 +145,12 @@ find_named_option(const ExecContext       &ec,
 
     return nullptr;
   }
+
   if (option != nullptr) return option;
 
   let const suggestion =
       suggest_koshconf_option_name(operands.values[index].view());
+
   report_soft_builtin_error(
       ec, cxt, operands.locations[index],
       StringView{"Unknown option '"} + operands.values[index] + "'",
@@ -158,9 +162,11 @@ find_named_option(const ExecContext       &ec,
 }
 
 fn
-require_user_path(const ExecContext &ec, EvalContext &cxt) throws -> Maybe<Path>
+require_user_path(const ExecContext &ec, EvalContext &cxt) throws
+    -> Maybe<Path>
 {
   let path = get_user_koshconf_path();
+
   if (!path.has_value())
     report_soft_builtin_error(
         ec, cxt,
@@ -190,13 +196,16 @@ run_create(const ExecContext       &ec,
   if (operands.values.count() != 3)
     return report_usage(ec, cxt, ec.source_location(),
                         "The create form takes one preset name");
+
   let const preset = KOSHCONF_PRESETS.find(operands.values[2]);
+
   if (!preset.has_value())
     return report_usage(ec, cxt, operands.locations[2],
                         StringView{"Unknown preset '"} + operands.values[2] +
                             "', expected 'bash', 'sh', or 'kosh'");
 
   let const path = require_user_path(ec, cxt);
+
   if (!path.has_value()) return 1;
   if (os::path_exists(path->text().view()) && !FLAG_FORCE.is_enabled()) {
     report_soft_builtin_error(ec, cxt, ec.source_location(),
@@ -229,11 +238,14 @@ run_set(const ExecContext       &ec,
   if (operands.values.count() != 4)
     return report_usage(ec, cxt, ec.source_location(),
                         "The set form takes an option name and a value");
+
   let const *option = find_named_option(ec, cxt, operands, 2);
   if (option == nullptr) return 1;
+
   let const value = operands.values[3].view();
 
   let const should_persist = FLAG_PERSIST.is_enabled();
+
   if (should_persist && !option->is_configurable()) {
     report_soft_builtin_error(
         ec, cxt, operands.locations[2],
@@ -254,6 +266,7 @@ run_set(const ExecContext       &ec,
   }
 
   let persisted_value = String{heap_allocator()};
+
   if (should_persist) {
     persisted_value = option->type == option_type::String
                           ? String{value}
@@ -278,7 +291,9 @@ run_set(const ExecContext       &ec,
   }
 
   if (!should_persist) return 0;
+
   let const path = require_user_path(ec, cxt);
+
   if (!path.has_value()) return 1;
   try {
     persist_koshconf_setting(*path, *option, persisted_value.view());
@@ -302,10 +317,13 @@ run_get(const ExecContext       &ec,
   if (operands.values.count() != 3)
     return report_usage(ec, cxt, ec.source_location(),
                         "The get form takes one option name");
+
   let const *option = find_named_option(ec, cxt, operands, 2);
+
   if (option == nullptr) return 1;
 
   let line = read_option_text(cxt, *option);
+
   line += '\n';
   ec.print_to_stdout(line);
 
@@ -338,6 +356,7 @@ run_list(const ExecContext       &ec,
       });
 
   let out = String{cxt.scratch_allocator()};
+
   out += LIST_HEADING;
   out += '\n';
 
@@ -345,11 +364,13 @@ run_list(const ExecContext       &ec,
     let const &option = *option_pointer;
     let const  line   = format_koshconf_display_line(
         option, read_option_text(cxt, option).view());
+
     out += line.view();
     out += '\n';
     if (!FLAG_ALL.is_enabled()) continue;
 
     let const alias = get_legacy_koshconf_alias(option);
+
     if (!alias.has_value()) continue;
 
     out += alias->view();
@@ -360,6 +381,7 @@ run_list(const ExecContext       &ec,
   if (FLAG_ALL.is_enabled()) {
     for (let const *option_pointer : set_only) {
       let const set_only_alias = get_legacy_koshconf_alias(*option_pointer);
+
       if (!set_only_alias.has_value()) continue;
 
       out += set_only_alias->view();
@@ -368,6 +390,7 @@ run_list(const ExecContext       &ec,
       out += '\n';
     }
   }
+
   ec.print_to_stdout(out);
 
   return 0;
@@ -383,6 +406,7 @@ run_load(const ExecContext       &ec,
                         "The load form takes one encoded value");
 
   let reading = koshconf_reading{};
+
   if (let const problem =
           read_koshconf_blob(operands.values[2].view(), reading);
       problem.has_value())
@@ -393,6 +417,7 @@ run_load(const ExecContext       &ec,
 
     return 1;
   }
+
   apply_koshconf_settings(cxt, reading.settings, option_origin::Koshconf,
                           reading.warnings);
 
@@ -415,6 +440,7 @@ run_save(const ExecContext       &ec,
 
   if (!FLAG_PERSIST.is_enabled()) {
     let blob = encode_koshconf_blob(cxt);
+
     blob += '\n';
     ec.print_to_stdout(blob);
 
@@ -422,6 +448,7 @@ run_save(const ExecContext       &ec,
   }
 
   let const path = require_user_path(ec, cxt);
+
   if (!path.has_value()) return 1;
 
   try {
@@ -452,7 +479,9 @@ Koshconf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   if (args.count() < 2)
     return report_usage(ec, cxt, ec.source_location(),
                         "A subcommand is required");
+
   let const command = KOSHCONF_COMMANDS.find(args[1]);
+
   if (!command.has_value()) {
     let suggestion = utils::NameSuggestion{args[1].view()};
 
@@ -460,6 +489,7 @@ Koshconf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       suggestion.consider(entry.key.to_string().view());
 
     let const close_match = suggestion.take_suggestion();
+
     report_soft_builtin_error(
         ec, cxt, operand_locations[1],
         StringView{"Unknown subcommand '"} + args[1] +
@@ -470,16 +500,19 @@ Koshconf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
     return 2;
   }
+
   if (FLAG_ALL.is_enabled() && *command != koshconf_command::List) {
     return report_usage(ec, cxt, ec.source_location(),
                         "Only the list form accepts --all");
   }
+
   if (FLAG_PERSIST.is_enabled() &&
       (*command != koshconf_command::Set && *command != koshconf_command::Save))
   {
     return report_usage(ec, cxt, ec.source_location(),
                         "Only the set and save forms accept --persist");
   }
+
   if (FLAG_FORCE.is_enabled() && *command != koshconf_command::Create) {
     return report_usage(ec, cxt, ec.source_location(),
                         "Only the create form accepts --force");
@@ -489,6 +522,7 @@ Koshconf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       *command == koshconf_command::Create ||
       *command == koshconf_command::Set || *command == koshconf_command::Load ||
       (*command == koshconf_command::Save && FLAG_PERSIST.is_enabled());
+
   if (is_mutation &&
       cxt.runtime_state().option_is_enabled(shell_option_id::Restricted))
   {
@@ -500,7 +534,9 @@ Koshconf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   }
 
   LOG(Debug, "koshconf running the '%s' form", args[1].c_str());
+
   let const operands = koshconf_operands{args, operand_locations};
+
   switch (*command) {
   case koshconf_command::Create: return run_create(ec, cxt, operands);
   case koshconf_command::Set:    return run_set(ec, cxt, operands);
@@ -509,6 +545,7 @@ Koshconf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   case koshconf_command::Load:   return run_load(ec, cxt, operands);
   case koshconf_command::Save:   return run_save(ec, cxt, operands);
   }
+
   unreachable("Unhandled koshconf form");
 }
 

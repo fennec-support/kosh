@@ -140,11 +140,12 @@ skip_sort_digits(StringView text, usize position) wontthrow -> usize
 }
 
 static fn
-parse_sort_count(StringView text, usize &position, usize &value) wontthrow
-    -> bool
+parse_sort_count(StringView text, usize &position, usize &value)
+    wontthrow -> bool
 {
   let const start = position;
-  value           = 0;
+
+  value = 0;
 
   while (position < text.length && lexer::is_number(text[position])) {
     value = value * 10 + static_cast<usize>(text[position] - '0');
@@ -175,28 +176,35 @@ parse_sort_endpoint(StringView text,
   while (position < text.length && text[position] != ',') {
     switch (text[position]) {
     case 'b': is_blank_skipping = true; break;
+
     case 'd':
       key.modifiers.is_dictionary = true;
       key.has_ordering            = true;
       break;
+
     case 'f':
       key.modifiers.is_folding = true;
       key.has_ordering         = true;
       break;
+
     case 'i':
       key.modifiers.is_printable_only = true;
       key.has_ordering                = true;
       break;
+
     case 'n':
       key.modifiers.is_numeric = true;
       key.has_ordering         = true;
       break;
+
     case 'r':
       key.modifiers.is_reversed = true;
       key.has_ordering          = true;
       break;
+
     default: return false;
     }
+
     position++;
   }
 
@@ -207,6 +215,7 @@ static fn
 parse_sort_key(StringView text, sort_key &key) wontthrow -> bool
 {
   usize position = 0;
+
   if (!parse_sort_endpoint(text, position, key.start_field, key.start_character,
                            key, key.modifiers.is_start_blank_skipping))
     return false;
@@ -235,6 +244,7 @@ find_sort_field_start(StringView           line,
     if (settings.has_separator) {
       let const found =
           line.substring(position).find_character(settings.separator);
+
       if (!found.has_value()) return line.length;
 
       position += *found + 1;
@@ -268,6 +278,7 @@ extract_sort_key(StringView            line,
                  const sort_modifiers &modifiers) wontthrow -> StringView
 {
   usize start = find_sort_field_start(line, key.start_field, settings);
+
   if (modifiers.is_start_blank_skipping) start = skip_sort_blanks(line, start);
 
   if (key.start_character > 1)
@@ -276,13 +287,16 @@ extract_sort_key(StringView            line,
                 : line.length;
 
   usize end = line.length;
+
   if (key.has_end) {
     let const field_start =
         find_sort_field_start(line, key.end_field, settings);
+
     if (key.end_character == 0) {
       end = find_sort_field_end(line, field_start, settings);
     } else {
       usize position = field_start;
+
       if (modifiers.is_end_blank_skipping)
         position = skip_sort_blanks(line, position);
 
@@ -313,6 +327,7 @@ compare_sort_numbers(StringView left, StringView right) wontthrow -> int
     usize position = skip_sort_blanks(text, 0);
 
     parsed_number number{};
+
     if (position < text.length) {
       if (text[position] == '-') {
         number.is_negative = true;
@@ -346,6 +361,7 @@ compare_sort_numbers(StringView left, StringView right) wontthrow -> int
     let const has_integer_digits = number.integer_start != number.integer_end;
     let const has_fraction_digits =
         number.fraction_start != number.fraction_end;
+
     if (!has_integer_digits) {
       if (!has_fraction_digits) number.is_negative = false;
     }
@@ -373,6 +389,7 @@ compare_sort_numbers(StringView left, StringView right) wontthrow -> int
       right_number.fraction_end - right_number.fraction_start);
 
   int result = 0;
+
   if (left_integer.length != right_integer.length)
     result = left_integer.length < right_integer.length ? -1 : 1;
   else if (left_integer != right_integer)
@@ -428,16 +445,17 @@ compare_sort_text(StringView            left,
     usize left_position  = 0;
     usize right_position = 0;
 
-    loop
-    {
+    loop {
       let const left_character =
           next_sort_character(left, left_position, modifiers);
       let const right_character =
           next_sort_character(right, right_position, modifiers);
+
       if (left_character != right_character) {
         result = left_character < right_character ? -1 : 1;
         break;
       }
+
       if (left_character < 0) break;
     }
   }
@@ -463,7 +481,8 @@ compare_sort_keys(const sort_entry    &left,
 
   for (let const &key : settings.keys) {
     let const &modifiers = key.has_ordering ? key.modifiers : settings.global;
-    sort_modifiers effective          = modifiers;
+    sort_modifiers effective = modifiers;
+
     effective.is_start_blank_skipping = key.modifiers.is_start_blank_skipping ||
                                         settings.global.is_start_blank_skipping;
     effective.is_end_blank_skipping = key.modifiers.is_end_blank_skipping ||
@@ -472,6 +491,7 @@ compare_sort_keys(const sort_entry    &left,
     let const result = compare_sort_text(
         extract_sort_key(left.line, key, settings, effective),
         extract_sort_key(right.line, key, settings, effective), effective);
+
     if (result != 0) return result;
   }
 
@@ -482,9 +502,10 @@ pure static fn
 compare_sort_entries(const sort_entry    &left,
                      const sort_entry    &right,
                      const sort_settings &settings,
-                     bool is_last_resort_enabled) wontthrow -> int
+                     bool                 is_last_resort_enabled) wontthrow -> int
 {
   let const key_result = compare_sort_keys(left, right, settings);
+
   if (key_result != 0) return key_result;
 
   if (is_last_resort_enabled) {
@@ -504,13 +525,13 @@ fn
 Sort::execute(const ExecContext               &ec,
               EvalContext                     &cxt,
               const ArrayList<String>         &args,
-              const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+              const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   let settings = sort_settings{ArrayList<sort_key>{cxt.scratch_allocator()},
                                sort_modifiers{}};
+
   settings.global.is_start_blank_skipping = FLAG_SORT_BLANKS.is_enabled();
   settings.global.is_end_blank_skipping   = FLAG_SORT_BLANKS.is_enabled();
   settings.global.is_dictionary           = FLAG_SORT_DICTIONARY.is_enabled();
@@ -526,12 +547,14 @@ Sort::execute(const ExecContext               &ec,
 
       return 2;
     }
+
     settings.has_separator = true;
     settings.separator     = FLAG_SORT_SEPARATOR.value()[0];
   }
 
   for (usize key_index = 0; key_index < FLAG_SORT_KEY.count(); key_index++) {
     sort_key key{};
+
     if (!parse_sort_key(FLAG_SORT_KEY.get(key_index), key)) {
       KOSHKIT_REPORT_ERROR_AT(
           FLAG_SORT_KEY.get_location(key_index),
@@ -542,6 +565,7 @@ Sort::execute(const ExecContext               &ec,
 
       return 2;
     }
+
     settings.keys.push(key);
   }
 
@@ -557,6 +581,7 @@ Sort::execute(const ExecContext               &ec,
   i32 status = 0;
   let source_results =
       read_named_or_stdin_batch(ec, sources, cxt.scratch_allocator());
+
   if (os::INTERRUPT_REQUESTED) return 130;
 
   usize line_count = 0;
@@ -574,10 +599,12 @@ Sort::execute(const ExecContext               &ec,
   }
 
   let collected_lines = ArrayList<sort_entry>{cxt.scratch_allocator()};
+
   collected_lines.reserve(line_count);
 
   for (usize source_index = 0; source_index < sources.count(); source_index++) {
     let &source_result = source_results[source_index];
+
     if (!source_result.content.has_value()) {
       os::set_last_system_error(source_result.error_number);
       KOSHKIT_REPORT_PATH_ERROR("read", sources[source_index]);
@@ -603,6 +630,7 @@ Sort::execute(const ExecContext               &ec,
                                    : compare_sort_entries(previous, current, settings,
                                                           is_last_resort_enabled);
       let const  is_in_order = result < 0 || (result == 0 && !is_unique);
+
       if (is_in_order) continue;
 
       if (FLAG_SORT_CHECK.is_enabled()) {
@@ -625,6 +653,7 @@ Sort::execute(const ExecContext               &ec,
   });
 
   let output_descriptor = Maybe<os::descriptor>{};
+
   if (FLAG_SORT_OUTPUT.is_set()) {
     output_descriptor = os::open_file_descriptor(FLAG_SORT_OUTPUT.value(),
                                                  os::file_open_mode::Truncate);
@@ -637,15 +666,17 @@ Sort::execute(const ExecContext               &ec,
       return 2;
     }
   }
-  defer
-  {
+
+  defer {
     if (output_descriptor.has_value()) os::close_fd(*output_descriptor);
   };
 
   let                    output               = String{cxt.scratch_allocator()};
   bool                   did_write_fail       = false;
   static constexpr usize OUTPUT_BUFFER_LENGTH = 64 * 1024;
+
   output.reserve(OUTPUT_BUFFER_LENGTH);
+
   let const do_flush = [&]() throws -> void {
     if (output.is_empty()) return;
 
@@ -664,6 +695,7 @@ Sort::execute(const ExecContext               &ec,
 
     output.clear();
   };
+
   let const do_print_line = [&](StringView line) throws -> void {
     if (output.count() + line.count() + 1 > OUTPUT_BUFFER_LENGTH) do_flush();
 

@@ -87,6 +87,7 @@ get_hints_length(StringView hints) wontthrow -> usize
     let const rest         = hints.substring(position);
     let const separator    = rest.find_character('|');
     let const entry_length = separator.has_value() ? *separator : rest.length;
+
     length += entry_length;
     entry_count++;
     if (!separator.has_value()) break;
@@ -98,11 +99,12 @@ get_hints_length(StringView hints) wontthrow -> usize
 }
 
 pure fn
-get_header_length(const header_pieces &pieces, header_fit fit) wontthrow
-    -> usize
+get_header_length(const header_pieces &pieces, header_fit fit)
+    wontthrow -> usize
 {
   usize length =
       pieces.title.length + SEGMENT_GAP.length + LIVE_INDICATOR.length;
+
   if (fit.has_clock) length += SEGMENT_GAP.length + pieces.clock.length;
   if (fit.has_labels) length += SEGMENT_GAP.length + pieces.labels.length;
   if (fit.hint_entry_count != 0) {
@@ -125,7 +127,8 @@ append_styled(String    &output,
 }
 
 fn
-append_hints(String &output, StringView hints, bool should_style) throws -> void
+append_hints(String &output, StringView hints, bool should_style) throws
+    -> void
 {
   usize position = 0;
 
@@ -136,6 +139,7 @@ append_hints(String &output, StringView hints, bool should_style) throws -> void
         separator.has_value() ? rest.substring_of_length(0, *separator) : rest;
     let const key_end    = entry.find_character(' ');
     let const key_length = key_end.has_value() ? *key_end : entry.length;
+
     if (position != 0) output += SEGMENT_GAP;
 
     append_styled(output, entry.substring_of_length(0, key_length),
@@ -152,14 +156,13 @@ append_hints(String &output, StringView hints, bool should_style) throws -> void
 
 LiveView::LiveView(const ExecContext       &ec,
                    const live_view_options &options) wontthrow
-    : m_ec(ec),
-      m_options(options),
+    : m_ec(ec), m_options(options),
       m_output_fd(ec.out_fd.value_or(KOSH_STDOUT)),
       m_input_fd(ec.in_fd.value_or(KOSH_STDIN)),
       m_sample_interval_nanoseconds(static_cast<u64>(
-          options.sample_interval_seconds *NANOSECONDS_PER_SECOND)),
+          options.sample_interval_seconds * NANOSECONDS_PER_SECOND)),
       m_refresh_interval_nanoseconds(static_cast<u64>(
-          options.refresh_interval_seconds *NANOSECONDS_PER_SECOND)),
+          options.refresh_interval_seconds * NANOSECONDS_PER_SECOND)),
       m_raw_input(os::is_fd_a_tty(m_output_fd) ? m_input_fd : KOSH_INVALID_FD),
       m_is_terminal(os::is_fd_a_tty(m_output_fd))
 {
@@ -207,6 +210,7 @@ LiveView::get_wait_nanoseconds(u64 now_nanoseconds,
   let       wait_nanoseconds = m_refresh_interval_nanoseconds > refresh_elapsed
                                    ? m_refresh_interval_nanoseconds - refresh_elapsed
                                    : 0;
+
   if (m_sample_interval_nanoseconds == 0) return wait_nanoseconds;
 
   let const sample_elapsed = now_nanoseconds - last_sample_nanoseconds;
@@ -229,6 +233,7 @@ live_report_options::parse_window_seconds(const ExecContext &ec,
     -> Maybe<f64>
 {
   let const seconds = parse_koshkit_duration_seconds(text, location, allocator);
+
   if (seconds <= 0.0) {
     report_soft_koshkit_util_error(ec, cxt, location, utility_name, title,
                                    note);
@@ -246,10 +251,11 @@ live_report_options::parse_with_window(const ExecContext       &ec,
                                        const FlagOptionalValue &live_flag,
                                        bool                     is_cumulative,
                                        f64                      window_seconds,
-                                       Allocator allocator) throws
+                                       Allocator                allocator) throws
     -> Maybe<live_report_options>
 {
   live_report_options options{};
+
   options.is_live        = live_flag.is_enabled();
   options.is_cumulative  = is_cumulative;
   options.window_seconds = window_seconds;
@@ -262,6 +268,7 @@ live_report_options::parse_with_window(const ExecContext       &ec,
   let const interval = parse_window_seconds(
       ec, cxt, utility_name, live_flag.value(), live_flag.value_location(),
       "invalid live interval", "use a positive number of seconds", allocator);
+
   if (!interval.has_value()) return None;
 
   options.interval_seconds = *interval;
@@ -280,6 +287,7 @@ live_report_options::parse(const ExecContext       &ec,
 {
   let options = parse_with_window(ec, cxt, utility_name, live_flag,
                                   cumulative_flag.is_enabled(), 1.0, allocator);
+
   if (!options.has_value() || !cumulative_flag.has_value()) {
     return options;
   }
@@ -288,6 +296,7 @@ live_report_options::parse(const ExecContext       &ec,
       ec, cxt, utility_name, cumulative_flag.value(),
       cumulative_flag.value_location(), "invalid cumulative interval",
       "use a positive number of seconds", allocator);
+
   if (!window.has_value()) return None;
 
   options->window_seconds = *window;
@@ -299,6 +308,7 @@ fn
 LiveView::get_dimensions() const wontthrow -> live_view_dimensions
 {
   live_view_dimensions dimensions{};
+
   dimensions.is_terminal = m_is_terminal;
   if (!m_is_terminal) return dimensions;
 
@@ -345,16 +355,19 @@ LiveView::wait_for_input(u64 wait_nanoseconds, live_view_input &input) wontthrow
 
   let const readiness =
       os::wait_for_fd_readable(m_input_fd, static_cast<i64>(wait_nanoseconds));
+
   if (os::INTERRUPT_REQUESTED != 0) return false;
   if (readiness < 0) {
     m_has_input = false;
 
     return true;
   }
+
   if (readiness == 0) return true;
 
   char      buffer[128];
   let const read_count = os::read_fd(m_input_fd, buffer, sizeof(buffer));
+
   if (!read_count.has_value() || *read_count == 0) {
     m_has_input = false;
 
@@ -365,8 +378,10 @@ LiveView::wait_for_input(u64 wait_nanoseconds, live_view_input &input) wontthrow
 
   while (index < *read_count && input.key_count < live_view_input::CAPACITY) {
     let const byte = buffer[index];
+
     index++;
     live_view_key key{};
+
     if (byte != 27) {
       key.character                 = byte;
       input.keys[input.key_count++] = key;
@@ -381,6 +396,7 @@ LiveView::wait_for_input(u64 wait_nanoseconds, live_view_input &input) wontthrow
     }
 
     index++;
+
     char parameter = 0;
 
     while (index < *read_count && buffer[index] >= 0x30 &&
@@ -389,18 +405,22 @@ LiveView::wait_for_input(u64 wait_nanoseconds, live_view_input &input) wontthrow
       parameter = buffer[index];
       index++;
     }
+
     if (index >= *read_count) break;
 
     let const final_byte = buffer[index];
+
     index++;
     if (final_byte == 'A') key.special = live_view_special_key::Up;
     if (final_byte == 'B') key.special = live_view_special_key::Down;
     if (final_byte == '~' && parameter == '5') {
       key.special = live_view_special_key::PageUp;
     }
+
     if (final_byte == '~' && parameter == '6') {
       key.special = live_view_special_key::PageDown;
     }
+
     if (key.special != live_view_special_key::None)
       input.keys[input.key_count++] = key;
   }
@@ -414,21 +434,25 @@ LiveView::append_frame_start(String                     &frame,
                              Allocator allocator) const throws -> void
 {
   if (m_is_terminal) frame += "\x1b[H\x1b[2J";
+  if (!m_options.should_show_header) return;
 
   let const should_style = m_is_terminal && m_options.should_color;
   let const clock =
       os::format_local_time("%H:%M:%S", os::current_unix_seconds());
   let labels = String{allocator};
+
   if (m_options.window_seconds > 0.0) {
     labels += "window ";
     labels += format_live_duration(m_options.window_seconds, allocator).view();
     labels += ", ";
   }
+
   labels += "every ";
   labels += format_live_duration(m_options.refresh_interval_seconds, allocator)
                 .view();
 
   let hints = String{allocator, "q quit"};
+
   if (!m_options.extra_key_hints.is_empty()) {
     hints += '|';
     hints += m_options.extra_key_hints;
@@ -436,6 +460,7 @@ LiveView::append_frame_start(String                     &frame,
 
   let const pieces =
       header_pieces{m_options.title, clock.view(), labels.view(), hints.view()};
+
   if (!m_is_terminal) {
     frame += pieces.title;
     frame += SEGMENT_GAP;
@@ -451,6 +476,7 @@ LiveView::append_frame_start(String                     &frame,
 
   let const  width = static_cast<usize>(dimensions.columns);
   header_fit fit{};
+
   fit.hint_entry_count = get_hint_entry_count(pieces.hints);
 
   while (get_header_length(pieces, fit) > width) {
@@ -471,11 +497,14 @@ LiveView::append_frame_start(String                     &frame,
 
   if (should_style) frame += BAR_BASE_STYLE;
   frame += ' ';
+
   let used_length = static_cast<usize>(1);
+
   if (get_header_length(pieces, fit) > width) {
     let const room = width > 2 ? width - 2 : 0;
     let const title_length =
         pieces.title.length < room ? pieces.title.length : room;
+
     append_styled(frame, pieces.title.substring_of_length(0, title_length),
                   BAR_TITLE_STYLE, should_style);
     used_length += title_length;
@@ -490,11 +519,13 @@ LiveView::append_frame_start(String                     &frame,
       append_styled(frame, pieces.clock, BAR_CLOCK_STYLE, should_style);
       used_length += SEGMENT_GAP.length + pieces.clock.length;
     }
+
     if (fit.has_labels) {
       frame += SEGMENT_GAP;
       append_styled(frame, pieces.labels, BAR_LABEL_STYLE, should_style);
       used_length += SEGMENT_GAP.length + pieces.labels.length;
     }
+
     if (fit.hint_entry_count != 0) {
       let const hints_length = get_hints_length(shown_hints);
       let const gap_length   = width - used_length - hints_length - 1;
@@ -513,13 +544,13 @@ LiveView::append_frame_start(String                     &frame,
 
     frame += colors::ansi::RESET;
   }
+
   frame += "\n\n";
 }
 
 fn
 LiveView::write_frame(String                     &frame,
-                      const live_view_dimensions &dimensions) const throws
-    -> void
+                      const live_view_dimensions &dimensions) const throws -> void
 {
   if (m_is_terminal && dimensions.rows > 1) {
     usize line_count  = 0;

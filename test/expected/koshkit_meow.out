@@ -1,0 +1,12 @@
+== redirected output receives one still cat:
+meow!
+ /\_/\
+( o.o )_________
+ > ^ <          )~
+  ||  ||   ||  ||
+status=0
+== the frame rate option is accepted, and a rate of zero is refused:
+5
+status=1
+== an operand is refused:
+status=1

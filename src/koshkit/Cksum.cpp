@@ -49,6 +49,7 @@ update_checksum(u32 checksum, const char *bytes, usize byte_count) wontthrow
 {
   for (usize position = 0; position < byte_count; position++) {
     let const byte = static_cast<u8>(bytes[position]);
+
     checksum = (checksum << 8) ^ CHECKSUM_TABLE.values[(checksum >> 24) ^ byte];
   }
 
@@ -68,6 +69,7 @@ finish_checksum(u32 checksum, u64 byte_count) wontthrow -> u32
 {
   for (u64 length = byte_count; length != 0; length >>= 8) {
     let const byte = static_cast<u8>(length);
+
     checksum = (checksum << 8) ^ CHECKSUM_TABLE.values[(checksum >> 24) ^ byte];
   }
 
@@ -78,14 +80,14 @@ fn
 Cksum::execute(const ExecContext               &ec,
                EvalContext                     &cxt,
                const ArrayList<String>         &args,
-               const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+               const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   let const sources =
       source_list_from_operands(operands, cxt.scratch_allocator());
   let source_states = ArrayList<checksum_source_state>{cxt.scratch_allocator()};
+
   source_states.reserve(sources.count());
 
   for (usize source_index = 0; source_index < sources.count(); source_index++)
@@ -96,13 +98,14 @@ Cksum::execute(const ExecContext               &ec,
   usize next_output_index = 0;
   i32   status            = 0;
 
-  loop
-  {
+  loop {
     let const read_result = reader.read_next(chunks);
+
     if (read_result == SourceBatchReader::ReadResult::Interrupted) return 130;
 
     for (let const &chunk : chunks) {
       let &state = source_states[chunk.source_index];
+
       if (chunk.error_number != 0) {
         state.error_number = chunk.error_number;
         state.completion   = source_completion_state::Complete;
@@ -110,7 +113,7 @@ Cksum::execute(const ExecContext               &ec,
       }
 
       state.checksum = update_checksum(state.checksum, chunk.content.data,
-                                       chunk.content.length);
+                                                    chunk.content.length);
       state.byte_count += chunk.content.length;
       state.completion = chunk.completion;
     }
@@ -121,6 +124,7 @@ Cksum::execute(const ExecContext               &ec,
     {
       let const &state  = source_states[next_output_index];
       let const  source = sources[next_output_index];
+
       if (state.error_number != 0) {
         os::set_last_system_error(state.error_number);
         KOSHKIT_REPORT_PATH_ERROR("read", source);
@@ -128,16 +132,19 @@ Cksum::execute(const ExecContext               &ec,
       } else {
         let output =
             String::from(finish_checksum(state.checksum, state.byte_count),
-                         cxt.scratch_allocator());
+                                      cxt.scratch_allocator());
+
         output += ' ';
         output += String::from(state.byte_count, cxt.scratch_allocator());
         if (!operands.is_empty()) {
           output += ' ';
           output += source;
         }
+
         output += '\n';
         ec.print_to_stdout(output);
       }
+
       next_output_index++;
     }
 

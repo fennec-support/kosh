@@ -49,10 +49,12 @@ static pure fn
 logger_priority_is_valid(StringView priority) wontthrow -> bool
 {
   let severity = priority;
+
   if (let const separator = priority.find_character('.'); separator.has_value())
   {
     let const facility = priority.substring_of_length(0, *separator);
-    severity           = priority.substring(*separator + 1);
+
+    severity = priority.substring(*separator + 1);
     if (!LOGGER_FACILITIES.contains(facility)) return false;
   }
 
@@ -63,26 +65,30 @@ fn
 Logger::execute(const ExecContext               &ec,
                 EvalContext                     &cxt,
                 const ArrayList<String>         &args,
-                const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+                const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (FLAG_LOGGER_FILE.is_set() && !operands.is_empty()) {
     return report_usage_error(ec, cxt, args[0].view());
   }
+
   let message = String{cxt.scratch_allocator()};
+
   if (FLAG_LOGGER_FILE.is_set()) {
     let const content = read_named_or_stdin(ec, FLAG_LOGGER_FILE.value());
+
     if (!content.has_value()) {
       KOSHKIT_REPORT_PATH_ERROR_AT(FLAG_LOGGER_FILE.value_location(), "read",
                                    FLAG_LOGGER_FILE.value());
 
       return 1;
     }
+
     message = content->clone();
   } else if (operands.is_empty()) {
     let const content = read_fd_to_string(ec.in_fd.value_or(KOSH_STDIN));
+
     if (!content.has_value()) return 1;
     message = content->clone();
   } else {
@@ -101,6 +107,7 @@ Logger::execute(const ExecContext               &ec,
   let const priority = FLAG_LOGGER_PRIORITY.is_set()
                            ? FLAG_LOGGER_PRIORITY.value()
                            : StringView{"user.notice"};
+
   if (!logger_priority_is_valid(priority)) {
     report_soft_koshkit_util_error(
         ec, cxt, FLAG_LOGGER_PRIORITY.value_location(), args[0].view(),
@@ -108,6 +115,7 @@ Logger::execute(const ExecContext               &ec,
 
     return 1;
   }
+
   if (!os::write_system_log({tag, priority, message.view(),
                              FLAG_LOGGER_PID.is_enabled(),
                              FLAG_LOGGER_STDERR.is_enabled()}))
@@ -115,6 +123,7 @@ Logger::execute(const ExecContext               &ec,
     let const location = FLAG_LOGGER_PRIORITY.is_set()
                              ? FLAG_LOGGER_PRIORITY.value_location()
                              : arg_locations[0];
+
     report_soft_koshkit_util_error(ec, cxt, location, args[0].view(),
                                    "cannot write to the system log: " +
                                        os::last_system_error_message());

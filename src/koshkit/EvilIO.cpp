@@ -126,6 +126,7 @@ resolve_sort_key(StringView value,
     -> koshkit_key_resolution<evilio_sort_key>
 {
   koshkit_key_resolution<evilio_sort_key> result{{}, 0, String{allocator}};
+
   if (let const exact = SORT_KEYS.find(value); exact.has_value()) {
     result.add_match(exact->key, exact->name);
 
@@ -142,6 +143,7 @@ resolve_sort_key(StringView value,
       {
         continue;
       }
+
       result.add_match(entry.value.key, entry.value.name);
     }
 
@@ -201,8 +203,8 @@ struct process_io_totals
 };
 
 pure fn
-process_sort_value(const io_row &row, evilio_sort_key key) wontthrow
-    -> Maybe<u64>
+process_sort_value(const io_row &row, evilio_sort_key key)
+    wontthrow -> Maybe<u64>
 {
   switch (key) {
   case evilio_sort_key::Pid:   return static_cast<u64>(row.pid);
@@ -223,7 +225,7 @@ process_sort_value(const io_row &row, evilio_sort_key key) wontthrow
 struct process_pid_comparator
 {
   pure fn
-  operator()(const io_row &left, const io_row &right) const wontthrow->bool
+  operator()(const io_row &left, const io_row &right) const wontthrow -> bool
   {
     return left.pid < right.pid;
   }
@@ -234,21 +236,25 @@ struct process_row_comparator
   Maybe<evilio_sort_key> sort_key;
 
   pure fn
-  operator()(const io_row &left, const io_row &right) const throws->bool
+  operator()(const io_row &left, const io_row &right) const throws
+      -> bool
   {
     if (!sort_key.has_value()) {
       let const left_total  = saturated_sum(left.status.read_byte_count,
                                             left.status.written_byte_count);
       let const right_total = saturated_sum(right.status.read_byte_count,
                                             right.status.written_byte_count);
+
       if (left_total != right_total) return left_total > right_total;
 
       return left.pid < right.pid;
     }
 
     if (*sort_key == evilio_sort_key::Pid) return left.pid < right.pid;
+
     let const left_value  = process_sort_value(left, *sort_key);
     let const right_value = process_sort_value(right, *sort_key);
+
     if (left_value.has_value() != right_value.has_value())
       return left_value.has_value();
     if (left_value.has_value() && *left_value != *right_value) {
@@ -295,6 +301,7 @@ counter_rate(u64 before, u64 after, u64 elapsed_nanoseconds) wontthrow
     -> Maybe<u64>
 {
   let const delta = counter_delta(before, after);
+
   if (!delta.has_value() || elapsed_nanoseconds == 0) {
     return None;
   }
@@ -321,6 +328,7 @@ read_process_io_rows(Allocator        allocator,
   let const processes         = os::enumerate_processes();
   let       process_ids       = ArrayList<i64>{allocator};
   let       process_positions = ArrayList<usize>{allocator};
+
   process_ids.reserve(processes.count());
   process_positions.reserve(processes.count());
 
@@ -328,6 +336,7 @@ read_process_io_rows(Allocator        allocator,
        process_position++)
   {
     let const &process = processes[process_position];
+
     if (process.pid <= 0) continue;
     if (selected_pid.has_value() && process.pid != *selected_pid) {
       continue;
@@ -339,6 +348,7 @@ read_process_io_rows(Allocator        allocator,
 
   let statuses     = ArrayList<os::process_io_status>{allocator};
   let availability = ArrayList<u8>{allocator};
+
   os::read_process_io_statuses(process_ids, statuses, availability);
 
   for (usize query_position = 0; query_position < process_ids.count();
@@ -348,6 +358,7 @@ read_process_io_rows(Allocator        allocator,
 
     let const &process = processes[process_positions[query_position]];
     let const &status  = statuses[query_position];
+
     if (idle_mode == evilio_idle_mode::Omit && is_idle_process_io(status)) {
       continue;
     }
@@ -392,11 +403,13 @@ sample_process_io_rows(const ArrayList<io_row> &before_rows,
                                            after.status.read_byte_count);
     let const  write_delta = counter_delta(before.status.written_byte_count,
                                            after.status.written_byte_count);
+
     if (!read_delta.has_value() || !write_delta.has_value()) {
       continue;
     }
 
     os::process_io_status status{*read_delta, *write_delta, 0, 0, false};
+
     if (before.status.has_operation_counts && after.status.has_operation_counts)
     {
       let const read_operation_delta =
@@ -405,6 +418,7 @@ sample_process_io_rows(const ArrayList<io_row> &before_rows,
       let const write_operation_delta =
           counter_delta(before.status.write_operation_count,
                         after.status.write_operation_count);
+
       if (read_operation_delta.has_value() && write_operation_delta.has_value())
       {
         status.read_operation_count  = *read_operation_delta;
@@ -412,6 +426,7 @@ sample_process_io_rows(const ArrayList<io_row> &before_rows,
         status.has_operation_counts  = true;
       }
     }
+
     if (idle_mode == evilio_idle_mode::Omit && is_idle_process_io(status)) {
       continue;
     }
@@ -436,7 +451,7 @@ struct live_process_row
 
 fn
 get_process_window_status(const live_process_row &row,
-                          u64 window_start_nanoseconds) wontthrow
+                          u64                     window_start_nanoseconds) wontthrow
     -> os::process_io_status
 {
   let const  boundary = row.history.get_boundary(window_start_nanoseconds);
@@ -448,6 +463,7 @@ get_process_window_status(const live_process_row &row,
   let const do_get_baseline = [&](u64 before_value, u64 after_value) {
     return row.history.interpolate(boundary, before_value, after_value);
   };
+
   if (let const baseline = do_get_baseline(before.read_byte_count,
                                            after_boundary.read_byte_count);
       baseline.has_value())
@@ -456,6 +472,7 @@ get_process_window_status(const live_process_row &row,
         delta.has_value())
       status.read_byte_count = *delta;
   }
+
   if (let const baseline = do_get_baseline(before.written_byte_count,
                                            after_boundary.written_byte_count);
       baseline.has_value())
@@ -464,6 +481,7 @@ get_process_window_status(const live_process_row &row,
         delta.has_value())
       status.written_byte_count = *delta;
   }
+
   if (before.has_operation_counts && after_boundary.has_operation_counts &&
       newest.has_operation_counts)
   {
@@ -471,11 +489,13 @@ get_process_window_status(const live_process_row &row,
         before.read_operation_count, after_boundary.read_operation_count);
     let const write_baseline = do_get_baseline(
         before.write_operation_count, after_boundary.write_operation_count);
+
     if (read_baseline.has_value() && write_baseline.has_value()) {
       let const read_delta =
           counter_delta(*read_baseline, newest.read_operation_count);
       let const write_delta =
           counter_delta(*write_baseline, newest.write_operation_count);
+
       if (read_delta.has_value() && write_delta.has_value()) {
         status.read_operation_count  = *read_delta;
         status.write_operation_count = *write_delta;
@@ -493,9 +513,10 @@ append_process_io_rate_report(String                  &output,
                               usize                    row_limit,
                               Allocator                allocator,
                               StringView               duration_suffix,
-                              bool should_color) throws -> void
+                              bool                     should_color) throws -> void
 {
   let table = ReportTable{allocator};
+
   table.add_heading("PID", report_table_alignment::Right);
   table.add_heading(String{"READ"} + duration_suffix,
                     report_table_alignment::Right);
@@ -524,6 +545,7 @@ append_process_io_rate_report(String                  &output,
             ? String::from(row.status.write_operation_count, allocator)
             : String{allocator, "-"};
     let cells = ArrayList<report_table_cell_view>{allocator};
+
     cells.push({pid.view(), colors::ansi::BOLD_MAGENTA});
     cells.push({read.view(), colors::ansi::GREEN});
     cells.push({write.view(), colors::ansi::GREEN});
@@ -551,8 +573,10 @@ fn
 percent_text(u64 part, u64 total, Allocator allocator) throws -> String
 {
   if (total == 0) return String{allocator, "0.0%"};
+
   let const tenths = static_cast<u64>(static_cast<u128>(part) * 1000 / total);
   let       result = String::from(tenths / 10, allocator);
+
   result += ".";
   result += String::from(tenths % 10, allocator).view();
   result += "%";
@@ -587,25 +611,31 @@ disk_failure_total(const os::disk_io_status *before,
 {
   u64  total     = 0;
   bool has_total = false;
+
   if (after.has_field(read_field)) {
     let value = Maybe<u64>{after.*read_member};
+
     if (sampling == report_sampling_mode::Rolling) {
       value = before != nullptr && before->has_field(read_field)
                   ? counter_delta(before->*read_member, after.*read_member)
                   : Maybe<u64>{};
     }
+
     if (value.has_value()) {
       total     = saturated_sum(total, *value);
       has_total = true;
     }
   }
+
   if (after.has_field(write_field)) {
     let value = Maybe<u64>{after.*write_member};
+
     if (sampling == report_sampling_mode::Rolling) {
       value = before != nullptr && before->has_field(write_field)
                   ? counter_delta(before->*write_member, after.*write_member)
                   : Maybe<u64>{};
     }
+
     if (value.has_value()) {
       total     = saturated_sum(total, *value);
       has_total = true;
@@ -623,6 +653,7 @@ make_disk_io_row(const os::disk_io_status *before,
                  report_sampling_mode      sampling) throws -> disk_io_row
 {
   disk_io_row row{};
+
   row.name = String{allocator, after.name.view()};
   if (sampling == report_sampling_mode::Rolling) {
     if (before != nullptr) {
@@ -632,18 +663,21 @@ make_disk_io_row(const os::disk_io_status *before,
         row.read =
             counter_delta(before->read_byte_count, after.read_byte_count);
       }
+
       if (before->has_field(os::disk_io_field::WrittenBytes) &&
           after.has_field(os::disk_io_field::WrittenBytes))
       {
         row.write =
             counter_delta(before->written_byte_count, after.written_byte_count);
       }
+
       if (before->has_field(os::disk_io_field::ReadOperations) &&
           after.has_field(os::disk_io_field::ReadOperations))
       {
         row.read_operations = counter_delta(before->read_operation_count,
                                             after.read_operation_count);
       }
+
       if (before->has_field(os::disk_io_field::WriteOperations) &&
           after.has_field(os::disk_io_field::WriteOperations))
       {
@@ -674,6 +708,7 @@ make_disk_io_row(const os::disk_io_status *before,
       {
         let const busy =
             *delta < elapsed_nanoseconds ? *delta : elapsed_nanoseconds;
+
         row.busy_tenths = static_cast<u64>(static_cast<u128>(busy) * 1000 /
                                            elapsed_nanoseconds);
       }
@@ -686,6 +721,7 @@ make_disk_io_row(const os::disk_io_status *before,
       {
         let const busy =
             *idle < elapsed_nanoseconds ? elapsed_nanoseconds - *idle : 0;
+
         row.busy_tenths = static_cast<u64>(static_cast<u128>(busy) * 1000 /
                                            elapsed_nanoseconds);
       }
@@ -700,6 +736,7 @@ make_disk_io_row(const os::disk_io_status *before,
                                            after.read_time_nanoseconds);
       let const operations = counter_delta(before->read_operation_count,
                                            after.read_operation_count);
+
       if (time.has_value() && operations.has_value() && *operations != 0) {
         row.read_latency_nanoseconds = *time / *operations;
       }
@@ -713,6 +750,7 @@ make_disk_io_row(const os::disk_io_status *before,
                                            after.write_time_nanoseconds);
       let const operations = counter_delta(before->write_operation_count,
                                            after.write_operation_count);
+
       if (time.has_value() && operations.has_value() && *operations != 0) {
         row.write_latency_nanoseconds = *time / *operations;
       }
@@ -754,10 +792,12 @@ make_disk_io_rows(const os::disk_io_snapshot &before_snapshot,
     -> ArrayList<disk_io_row>
 {
   let rows = ArrayList<disk_io_row>{allocator};
+
   rows.reserve(after_snapshot.disks.count());
 
   for (let const &after : after_snapshot.disks) {
     let const before = find_disk_io_status(before_snapshot, after.name.view());
+
     rows.push(make_disk_io_row(before, after, elapsed_nanoseconds, allocator,
                                sampling));
   }
@@ -810,10 +850,12 @@ sort_disk_rows(ArrayList<disk_io_row> &rows,
                Maybe<evilio_sort_key>  sort_key) throws -> void
 {
   if (!sort_key.has_value()) return;
+
   let const do_compare = [sort_key](const disk_io_row &left,
                                     const disk_io_row &right) {
     let const left_value  = disk_sort_value(left, *sort_key);
     let const right_value = disk_sort_value(right, *sort_key);
+
     if (left_value.has_value() != right_value.has_value())
       return left_value.has_value();
     if (left_value.has_value() && *left_value != *right_value) {
@@ -822,6 +864,7 @@ sort_disk_rows(ArrayList<disk_io_row> &rows,
 
     return left.name.view() < right.name.view();
   };
+
   rows.sort(do_compare);
 }
 
@@ -843,6 +886,7 @@ tenths_text(u64                 tenths,
             evilio_percent_mode percent_mode) throws -> String
 {
   let result = String::from(tenths / 10, allocator);
+
   result += ".";
   result += String::from(tenths % 10, allocator).view();
   if (percent_mode == evilio_percent_mode::Include) result += "%";
@@ -863,6 +907,7 @@ append_disk_io_report(String                       &output,
   }
 
   let table = ReportTable{allocator};
+
   table.add_heading("DEVICE");
   table.add_heading(sampling == report_sampling_mode::Rolling
                         ? String{"READ"} + duration_suffix
@@ -906,15 +951,18 @@ append_disk_io_report(String                       &output,
             ? String::from(*row.write_operations, allocator)
             : String{allocator, "-"};
     let cells = ArrayList<report_table_cell_view>{allocator};
+
     cells.push({row.name.view(), colors::ansi::BOLD_GREEN});
     cells.push({read.view(), colors::ansi::GREEN});
     cells.push({write.view(), colors::ansi::GREEN});
     cells.push({read_operations.view(), {}});
     cells.push({write_operations.view(), {}});
+
     let busy          = String{allocator};
     let read_latency  = String{allocator};
     let write_latency = String{allocator};
     let average_queue = String{allocator};
+
     if (sampling == report_sampling_mode::Rolling) {
       busy          = row.busy_tenths.has_value()
                           ? tenths_text(*row.busy_tenths, allocator,
@@ -937,6 +985,7 @@ append_disk_io_report(String                       &output,
       cells.push({write_latency.view(), {}});
       cells.push({average_queue.view(), {}});
     }
+
     let const queue   = row.queue.has_value()
                             ? String::from(*row.queue, allocator)
                             : String{allocator, "-"};
@@ -946,6 +995,7 @@ append_disk_io_report(String                       &output,
     let const retries = row.retries.has_value()
                             ? String::from(*row.retries, allocator)
                             : String{allocator, "-"};
+
     cells.push({queue.view(), {}});
     cells.push({errors.view(), row.errors.has_value() && *row.errors != 0
                                    ? colors::ansi::BOLD_RED
@@ -958,6 +1008,7 @@ append_disk_io_report(String                       &output,
 
   append_titled_report_table(output, "Disk I/O", table, should_color);
 }
+
 fn
 run_live_process_io(const ExecContext         &ec,
                     Maybe<i64>                 selected_pid,
@@ -972,13 +1023,16 @@ run_live_process_io(const ExecContext         &ec,
   let const window_nanoseconds      = report_options.get_window_nanoseconds();
   u64       last_sample_nanoseconds = os::monotonic_nanos();
   let const started_at_nanoseconds  = last_sample_nanoseconds;
-  let const do_get_key              = [](const auto &row) {
+
+  let const do_get_key = [](const auto &row) {
     return live_process_identity{row.pid, row.start_token};
   };
+
   let const do_get_value =
       [](const io_row &row) -> const os::process_io_status & {
     return row.status;
   };
+
   let const do_make_row = [&](const io_row &row) {
     live_process_row entry{};
     entry.pid         = row.pid;
@@ -987,12 +1041,15 @@ run_live_process_io(const ExecContext         &ec,
 
     return entry;
   };
+
   let baseline_rows =
       read_process_io_rows(allocator, selected_pid, evilio_idle_mode::Include);
+
   if (take_interrupt_request()) return 130;
   if (selected_pid.has_value() && baseline_rows.is_empty()) {
     return 1;
   }
+
   update_retained_rows(retained, baseline_rows, last_sample_nanoseconds,
                        window_nanoseconds, allocator, do_get_key, do_get_value,
                        process_io_counter_reset, do_make_row);
@@ -1000,6 +1057,7 @@ run_live_process_io(const ExecContext         &ec,
   let const do_sample = [&](u64 now, Allocator frame_allocator) -> Maybe<i32> {
     let after_rows = read_process_io_rows(frame_allocator, selected_pid,
                                           evilio_idle_mode::Include);
+
     if (take_interrupt_request()) return 130;
     if (selected_pid.has_value() && after_rows.is_empty()) {
       return 1;
@@ -1012,10 +1070,13 @@ run_live_process_io(const ExecContext         &ec,
 
     return None;
   };
+
   let const do_render = [&](String   &output, const live_view_dimensions &,
                             Allocator frame_allocator) -> Maybe<i32> {
     let rows = ArrayList<io_row>{frame_allocator};
+
     rows.reserve(retained.count());
+
     let const window_start =
         rolling_window_start(last_sample_nanoseconds, window_nanoseconds);
 
@@ -1028,6 +1089,7 @@ run_live_process_io(const ExecContext         &ec,
     }
 
     let const sorted_rows = sort_process_rows(steal(rows), sort_key);
+
     append_process_io_rate_report(output, sorted_rows, row_limit,
                                   frame_allocator, sample_duration_label,
                                   should_color);
@@ -1057,8 +1119,10 @@ make_disk_window_row(const live_disk_row &row,
   let const &upper    = row.history.samples[boundary.after_index];
   let const &newest   = row.history.get_newest();
   os::disk_io_status before{};
-  before.name              = String{allocator, row.name.view()};
-  before.available_fields  = lower.available_fields & upper.available_fields;
+
+  before.name             = String{allocator, row.name.view()};
+  before.available_fields = lower.available_fields & upper.available_fields;
+
   let const do_interpolate = [&](os::disk_io_field field,
                                  u64 os::disk_io_status::*member) {
     if (!lower.has_field(field) || !upper.has_field(field)) {
@@ -1069,6 +1133,7 @@ make_disk_window_row(const live_disk_row &row,
         value.has_value())
       before.*member = *value;
   };
+
   do_interpolate(os::disk_io_field::ReadBytes,
                  &os::disk_io_status::read_byte_count);
   do_interpolate(os::disk_io_field::WrittenBytes,
@@ -1095,6 +1160,7 @@ make_disk_window_row(const live_disk_row &row,
                  &os::disk_io_status::read_retry_count);
   do_interpolate(os::disk_io_field::WriteRetries,
                  &os::disk_io_status::write_retry_count);
+
   let const elapsed_nanoseconds =
       row.history.get_newest_timestamp() > boundary.timestamp
           ? row.history.get_newest_timestamp() - boundary.timestamp
@@ -1117,17 +1183,21 @@ run_live_disk_io(const ExecContext         &ec,
   u64       last_sample_nanoseconds = os::monotonic_nanos();
   let const started_at_nanoseconds  = last_sample_nanoseconds;
   let const do_get_key = [](const auto &row) { return row.name.view(); };
+
   let const do_get_value =
       [](const os::disk_io_status &disk) -> const os::disk_io_status & {
     return disk;
   };
+
   let const do_make_row = [&](const os::disk_io_status &disk) {
     live_disk_row entry{};
     entry.name = String{allocator, disk.name.view()};
 
     return entry;
   };
+
   let baseline_snapshot = os::read_disk_io_snapshot(allocator);
+
   update_retained_rows(retained, baseline_snapshot.disks,
                        last_sample_nanoseconds, window_nanoseconds, allocator,
                        do_get_key, do_get_value, disk_io_counter_reset,
@@ -1135,6 +1205,7 @@ run_live_disk_io(const ExecContext         &ec,
 
   let const do_sample = [&](u64 now, Allocator frame_allocator) -> Maybe<i32> {
     let after_snapshot = os::read_disk_io_snapshot(allocator);
+
     update_retained_rows(retained, after_snapshot.disks, now,
                          window_nanoseconds, frame_allocator, do_get_key,
                          do_get_value, disk_io_counter_reset, do_make_row);
@@ -1142,11 +1213,13 @@ run_live_disk_io(const ExecContext         &ec,
 
     return None;
   };
+
   let const do_render = [&](String   &output, const live_view_dimensions &,
                             Allocator frame_allocator) -> Maybe<i32> {
     let const window_start =
         rolling_window_start(last_sample_nanoseconds, window_nanoseconds);
     let rows = ArrayList<disk_io_row>{frame_allocator};
+
     rows.reserve(retained.count());
 
     for (let const &row : retained)
@@ -1182,6 +1255,7 @@ add_metric_row(ReportTable &table,
                StringView   style = {}) throws -> void
 {
   let cells = ArrayList<report_table_cell_view>{allocator};
+
   cells.push({name, colors::ansi::BOLD_CYAN});
   cells.push({value, style});
   table.add_row(cells);
@@ -1195,7 +1269,9 @@ add_rate_row(ReportTable &table,
              Allocator    allocator) throws -> void
 {
   if (!rate.has_value()) return;
+
   let value = String::from(*rate, allocator);
+
   value += suffix;
   add_metric_row(table, name, value.view(), allocator);
 }
@@ -1207,7 +1283,9 @@ add_stall_row(ReportTable &table,
               Allocator    allocator) throws -> void
 {
   if (!rate.has_value()) return;
+
   let value = String::from(*rate, allocator);
+
   value += " us/s (";
   value += percent_text(*rate, 1000000, allocator).view();
   value += ")";
@@ -1225,6 +1303,7 @@ append_process_io_report(String                  &output,
 {
   let const has_operation_counts = totals.has_operation_counts;
   let       summary_table        = make_metric_table(allocator);
+
   add_metric_row(summary_table, "Visible processes",
                  String::from(rows.count(), allocator), allocator);
   add_metric_row(summary_table, "Total bytes read",
@@ -1241,10 +1320,12 @@ append_process_io_report(String                  &output,
                    String::from(totals.write_operation_count, allocator),
                    allocator);
   }
+
   append_titled_report_table(output, "Process I/O summary", summary_table,
                              should_color);
 
   let process_table = ReportTable{allocator};
+
   process_table.add_heading("PID", report_table_alignment::Right);
   process_table.add_heading("READ", report_table_alignment::Right);
   process_table.add_heading("WRITTEN", report_table_alignment::Right);
@@ -1252,6 +1333,7 @@ append_process_io_report(String                  &output,
     process_table.add_heading("READ OPS", report_table_alignment::Right);
     process_table.add_heading("WRITE OPS", report_table_alignment::Right);
   }
+
   process_table.add_heading("COMMAND");
 
   let const shown_count = rows.count() < row_limit ? rows.count() : row_limit;
@@ -1265,6 +1347,7 @@ append_process_io_report(String                  &output,
     let read_operations  = String{allocator};
     let write_operations = String{allocator};
     let cells            = ArrayList<report_table_cell_view>{allocator};
+
     cells.push({pid.view(), colors::ansi::BOLD_MAGENTA});
     cells.push({read.view(), colors::ansi::GREEN});
     cells.push({written.view(), colors::ansi::GREEN});
@@ -1280,6 +1363,7 @@ append_process_io_report(String                  &output,
       cells.push({read_operations.view(), colors::ansi::GREEN});
       cells.push({write_operations.view(), colors::ansi::GREEN});
     }
+
     cells.push({row.name.view(), colors::ansi::BOLD_CYAN});
     process_table.add_row(cells);
   }
@@ -1293,8 +1377,7 @@ fn
 EvilIO::execute(const ExecContext               &ec,
                 EvalContext                     &cxt,
                 const ArrayList<String>         &args,
-                const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+                const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(
       args, arg_locations,
@@ -1306,6 +1389,7 @@ EvilIO::execute(const ExecContext               &ec,
   let       process_limit_location   = Maybe<SourceLocation>{};
   let       sample_duration_operand  = Maybe<StringView>{};
   let       sample_duration_location = Maybe<SourceLocation>{};
+
   if (FLAG_EVILIO_CUMULATIVE.has_value()) {
     sample_duration_operand  = FLAG_EVILIO_CUMULATIVE.value();
     sample_duration_location = FLAG_EVILIO_CUMULATIVE.value_location();
@@ -1316,11 +1400,13 @@ EvilIO::execute(const ExecContext               &ec,
   {
     let const &operand          = operands[operand_index];
     let const  is_process_limit = operand.length() > 1 && operand[0] == '-';
+
     if (is_process_limit && !process_limit_operand.has_value()) {
       process_limit_operand  = operand.view();
       process_limit_location = operand_locations[operand_index];
       continue;
     }
+
     if (!is_process_limit && !sample_duration_operand.has_value()) {
       sample_duration_operand  = operand.view();
       sample_duration_location = operand_locations[operand_index];
@@ -1344,17 +1430,20 @@ EvilIO::execute(const ExecContext               &ec,
   }
 
   f64 cumulative_duration_seconds = 1.0;
+
   if (sample_duration_operand.has_value()) {
     let const parsed_duration = live_report_options::parse_window_seconds(
         ec, cxt, args[0].view(), *sample_duration_operand,
         *sample_duration_location, "invalid duration",
         "the duration must be greater than zero", allocator);
+
     if (!parsed_duration.has_value()) return 1;
 
     cumulative_duration_seconds = *parsed_duration;
   }
 
   usize row_limit = FLAG_EVILIO_PS.is_enabled() ? SIZE_MAX : 10;
+
   if (process_limit_operand.has_value()) {
     if (FLAG_EVILIO_COUNT.is_set()) {
       let conflict_location = *process_limit_location;
@@ -1368,19 +1457,24 @@ EvilIO::execute(const ExecContext               &ec,
 
       return 1;
     }
+
     let const parsed = utils::parse_integer_in_base(
         process_limit_operand->substring(1), nullptr, int_base::decimal);
+
     if (parsed.is_error() || parsed.value() < 1 || parsed.value() > 100000) {
       KOSHKIT_REPORT_ERROR_AT(*process_limit_location, "invalid count",
                               "the count must be from 1 through 100000");
 
       return 1;
     }
+
     row_limit = static_cast<usize>(parsed.value());
   }
+
   if (FLAG_EVILIO_COUNT.is_set()) {
     let const parsed = utils::parse_integer_in_base(FLAG_EVILIO_COUNT.value(),
                                                     nullptr, int_base::decimal);
+
     if (parsed.is_error() || parsed.value() < 1 || parsed.value() > 100000) {
       KOSHKIT_REPORT_ERROR_AT(FLAG_EVILIO_COUNT.value_location(),
                               "invalid count",
@@ -1388,13 +1482,16 @@ EvilIO::execute(const ExecContext               &ec,
 
       return 1;
     }
+
     row_limit = static_cast<usize>(parsed.value());
   }
 
   Maybe<i64> selected_pid;
+
   if (FLAG_EVILIO_PID.is_set()) {
     let const parsed = utils::parse_integer_in_base(FLAG_EVILIO_PID.value(),
                                                     nullptr, int_base::decimal);
+
     if (parsed.is_error() || parsed.value() <= 0) {
       KOSHKIT_REPORT_ERROR_AT(FLAG_EVILIO_PID.value_location(),
                               "invalid process id",
@@ -1402,6 +1499,7 @@ EvilIO::execute(const ExecContext               &ec,
 
       return 1;
     }
+
     selected_pid = parsed.value();
   }
 
@@ -1410,22 +1508,27 @@ EvilIO::execute(const ExecContext               &ec,
       ec, cxt, args[0].view(), FLAG_EVILIO_LIVE,
       FLAG_EVILIO_CUMULATIVE.is_enabled(), cumulative_duration_seconds,
       allocator);
+
   if (!report_options.has_value()) return 1;
 
   String sample_duration_label{allocator, "/S"};
+
   if (report_options->is_cumulative || report_options->is_live) {
     sample_duration_label =
         String{allocator, "/"} +
         format_live_duration(report_options->window_seconds, allocator).view();
   }
+
   let const should_show_processes =
       FLAG_EVILIO_PS.is_enabled() || FLAG_EVILIO_COUNT.is_set() ||
       selected_pid.has_value() || process_limit_operand.has_value();
 
   Maybe<evilio_sort_key> sort_key{};
+
   if (FLAG_EVILIO_SORT.is_set()) {
     let const resolved = resolve_sort_key(FLAG_EVILIO_SORT.value(),
                                           should_show_processes, allocator);
+
     if (!report_unresolved_sort_key(
             ec, cxt, FLAG_EVILIO_SORT.value_location(), args[0].view(),
             resolved.match_count, resolved.matches.view(),
@@ -1433,8 +1536,10 @@ EvilIO::execute(const ExecContext               &ec,
             "write-latency, average-queue, queue, errors, or retries"))
       return 1;
 
-    sort_key       = resolved.key;
+    sort_key = resolved.key;
+
     let const spec = find_sort_spec(*sort_key);
+
     if (should_show_processes && (spec == nullptr || !spec->is_process_metric))
     {
       KOSHKIT_REPORT_ERROR_AT(FLAG_EVILIO_SORT.value_location(),
@@ -1443,6 +1548,7 @@ EvilIO::execute(const ExecContext               &ec,
 
       return 1;
     }
+
     if (!should_show_processes && (spec == nullptr || !spec->is_disk_metric)) {
       KOSHKIT_REPORT_ERROR_AT(
           FLAG_EVILIO_SORT.value_location(),
@@ -1452,6 +1558,7 @@ EvilIO::execute(const ExecContext               &ec,
 
       return 1;
     }
+
     if (!should_show_processes && sort_key_needs_sample(*sort_key) &&
         !FLAG_EVILIO_ALL.is_enabled() && !FLAG_EVILIO_CUMULATIVE.is_enabled() &&
         !FLAG_EVILIO_LIVE.is_enabled())
@@ -1470,6 +1577,7 @@ EvilIO::execute(const ExecContext               &ec,
       (FLAG_EVILIO_CUMULATIVE.is_enabled() || FLAG_EVILIO_LIVE.is_enabled()))
   {
     let conflict_location = FLAG_EVILIO_ALL.value_location();
+
     if (FLAG_EVILIO_CUMULATIVE.position() > FLAG_EVILIO_ALL.position())
       conflict_location = FLAG_EVILIO_CUMULATIVE.value_location();
     if (FLAG_EVILIO_LIVE.position() > FLAG_EVILIO_ALL.position() &&
@@ -1477,6 +1585,7 @@ EvilIO::execute(const ExecContext               &ec,
     {
       conflict_location = FLAG_EVILIO_LIVE.value_location();
     }
+
     KOSHKIT_REPORT_ERROR_AT(conflict_location, "conflicting report modes",
                             "use --all without --cumulative or --live");
 
@@ -1497,8 +1606,10 @@ EvilIO::execute(const ExecContext               &ec,
   if (FLAG_EVILIO_CUMULATIVE.is_enabled() && should_show_processes) {
     let const before_rows = read_process_io_rows(allocator, selected_pid,
                                                  evilio_idle_mode::Include);
+
     os::sleep_for_seconds(cumulative_duration_seconds);
     if (take_interrupt_request()) return 130;
+
     let const after_rows   = read_process_io_rows(allocator, selected_pid,
                                                   evilio_idle_mode::Include);
     let const sampled_rows = sample_process_io_rows(
@@ -1506,6 +1617,7 @@ EvilIO::execute(const ExecContext               &ec,
         selected_pid.has_value() ? evilio_idle_mode::Include
                                  : evilio_idle_mode::Omit);
     let output = String{allocator};
+
     append_process_io_rate_report(output, sampled_rows, row_limit, allocator,
                                   sample_duration_label.view(), should_color);
     ec.print_to_stdout(output);
@@ -1526,6 +1638,7 @@ EvilIO::execute(const ExecContext               &ec,
     let const sorted_rows = sort_process_rows(steal(rows), sort_key);
 
     let output = String{allocator};
+
     append_process_io_report(output, sorted_rows, row_limit, totals, allocator,
                              should_color);
     ec.print_to_stdout(output);
@@ -1544,6 +1657,7 @@ EvilIO::execute(const ExecContext               &ec,
   bool                       has_swap_before     = false;
   bool                       has_swap_after      = false;
   u64                        elapsed_nanoseconds = 0;
+
   disk_after = os::read_disk_io_snapshot(allocator);
   if (FLAG_EVILIO_ALL.is_enabled()) {
     has_activity_before = os::read_system_activity_status(activity_before);
@@ -1577,6 +1691,7 @@ EvilIO::execute(const ExecContext               &ec,
       !FLAG_EVILIO_CUMULATIVE.is_enabled() && os::read_memory_status(memory);
 
   let output = String{allocator};
+
   if (has_activity_before && has_activity_after &&
       activity_before.has_field(os::system_activity_field::Cpu) &&
       activity_after.has_field(os::system_activity_field::Cpu))
@@ -1587,25 +1702,32 @@ EvilIO::execute(const ExecContext               &ec,
                                      activity_after.cpu_system_units);
     let const idle   = counter_delta(activity_before.cpu_idle_units,
                                      activity_after.cpu_idle_units);
+
     if (user.has_value() && system.has_value() && idle.has_value()) {
       let wait = Maybe<u64>{};
+
       if (activity_before.has_field(os::system_activity_field::CpuWait) &&
           activity_after.has_field(os::system_activity_field::CpuWait))
       {
         wait = counter_delta(activity_before.cpu_wait_units,
                              activity_after.cpu_wait_units);
       }
+
       let stolen = Maybe<u64>{};
+
       if (activity_before.has_field(os::system_activity_field::CpuStolen) &&
           activity_after.has_field(os::system_activity_field::CpuStolen))
       {
         stolen = counter_delta(activity_before.cpu_stolen_units,
                                activity_after.cpu_stolen_units);
       }
+
       u64 total = saturated_sum(saturated_sum(*user, *system), *idle);
       if (wait.has_value()) total = saturated_sum(total, *wait);
       if (stolen.has_value()) total = saturated_sum(total, *stolen);
+
       let table = make_metric_table(allocator);
+
       add_metric_row(table, "User CPU time",
                      percent_text(*user, total, allocator), allocator);
       add_metric_row(table, "System CPU time",
@@ -1616,16 +1738,19 @@ EvilIO::execute(const ExecContext               &ec,
         add_metric_row(table, "I/O wait CPU time",
                        percent_text(*wait, total, allocator), allocator);
       }
+
       if (stolen.has_value()) {
         add_metric_row(table, "Stolen CPU time",
                        percent_text(*stolen, total, allocator), allocator);
       }
+
       append_titled_report_table(output, "Processor activity", table,
                                  should_color);
     }
   }
 
   let memory_table = make_metric_table(allocator);
+
   if (has_memory_status) {
     if (memory.has_field(os::memory_status_field::Total) &&
         (memory.has_field(os::memory_status_field::Available) ||
@@ -1641,6 +1766,7 @@ EvilIO::execute(const ExecContext               &ec,
                                            ? total_byte_count - available_byte_count
                                            : 0;
       let       status = format_human_size(used_byte_count, allocator);
+
       status += " / ";
       status += format_human_size(total_byte_count, allocator).view();
       status += " (";
@@ -1649,29 +1775,35 @@ EvilIO::execute(const ExecContext               &ec,
       status += ")";
       add_metric_row(memory_table, "Used memory", status.view(), allocator);
     }
+
     if (memory.has_field(os::memory_status_field::Available)) {
       let const available_byte_count = memory.available_kib > UINT64_MAX / 1024
                                            ? UINT64_MAX
                                            : memory.available_kib * 1024;
+
       add_metric_row(memory_table, "Available memory",
                      format_human_size(available_byte_count, allocator),
                      allocator);
     }
+
     if (memory.has_field(os::memory_status_field::Free)) {
       let const free_byte_count = memory.free_kib > UINT64_MAX / 1024
                                       ? UINT64_MAX
                                       : memory.free_kib * 1024;
+
       add_metric_row(memory_table, "Free memory",
                      format_human_size(free_byte_count, allocator), allocator);
     }
+
     if (FLAG_EVILIO_ALL.is_enabled()) {
-      let const do_add_memory_size =
-          [&](StringView name, os::memory_status_field field, u64 value_kib)
-              throws -> void {
+      let const do_add_memory_size = [&](StringView              name,
+                                         os::memory_status_field field,
+                                         u64 value_kib) throws -> void {
         if (!memory.has_field(field)) return;
 
         let const value_byte_count =
             value_kib > UINT64_MAX / 1024 ? UINT64_MAX : value_kib * 1024;
+
         add_metric_row(memory_table, name,
                        format_human_size(value_byte_count, allocator),
                        allocator);
@@ -1702,6 +1834,7 @@ EvilIO::execute(const ExecContext               &ec,
                        String::from(memory.huge_page_total_count, allocator),
                        allocator);
       }
+
       if (memory.has_field(os::memory_status_field::HugePagesFree)) {
         add_metric_row(memory_table, "Huge pages free",
                        String::from(memory.huge_page_free_count, allocator),
@@ -1709,6 +1842,7 @@ EvilIO::execute(const ExecContext               &ec,
       }
     }
   }
+
   if (has_activity_before && has_activity_after) {
     if (activity_before.has_field(os::system_activity_field::PageScan) &&
         activity_after.has_field(os::system_activity_field::PageScan))
@@ -1719,6 +1853,7 @@ EvilIO::execute(const ExecContext               &ec,
                                 elapsed_nanoseconds),
                    "/s", allocator);
     }
+
     if (activity_before.has_field(os::system_activity_field::PageSteal) &&
         activity_after.has_field(os::system_activity_field::PageSteal))
     {
@@ -1728,6 +1863,7 @@ EvilIO::execute(const ExecContext               &ec,
                                 elapsed_nanoseconds),
                    "/s", allocator);
     }
+
     if (activity_before.has_field(os::system_activity_field::DirectReclaim) &&
         activity_after.has_field(os::system_activity_field::DirectReclaim))
     {
@@ -1737,6 +1873,7 @@ EvilIO::execute(const ExecContext               &ec,
                                 elapsed_nanoseconds),
                    "/s", allocator);
     }
+
     if (activity_before.has_field(os::system_activity_field::CompactionStall) &&
         activity_after.has_field(os::system_activity_field::CompactionStall))
     {
@@ -1746,6 +1883,7 @@ EvilIO::execute(const ExecContext               &ec,
                                 elapsed_nanoseconds),
                    "/s", allocator);
     }
+
     if (activity_before.has_field(os::system_activity_field::OomKills) &&
         activity_after.has_field(os::system_activity_field::OomKills))
     {
@@ -1755,11 +1893,13 @@ EvilIO::execute(const ExecContext               &ec,
                                 elapsed_nanoseconds),
                    "/s", allocator);
     }
+
     if (activity_after.has_field(os::system_activity_field::DirtyPages)) {
       add_metric_row(memory_table, "Dirty pages",
                      String::from(activity_after.dirty_page_count, allocator),
                      allocator);
     }
+
     if (activity_after.has_field(os::system_activity_field::WritebackPages)) {
       add_metric_row(
           memory_table, "Writeback pages",
@@ -1767,11 +1907,13 @@ EvilIO::execute(const ExecContext               &ec,
           allocator);
     }
   }
+
   if (has_memory_status || (has_activity_before && has_activity_after)) {
     append_titled_report_table(output, "Memory", memory_table, should_color);
   }
 
   let paging_table = make_metric_table(allocator);
+
   if (has_activity_before && has_activity_after) {
     if (activity_before.has_field(os::system_activity_field::PageInput) &&
         activity_after.has_field(os::system_activity_field::PageInput))
@@ -1779,24 +1921,28 @@ EvilIO::execute(const ExecContext               &ec,
       let const rate = counter_rate(activity_before.page_input_byte_count,
                                     activity_after.page_input_byte_count,
                                     elapsed_nanoseconds);
+
       if (rate.has_value()) {
         add_metric_row(paging_table, "Page input rate",
                        (format_human_size(*rate, allocator) + "/s").view(),
                        allocator);
       }
     }
+
     if (activity_before.has_field(os::system_activity_field::PageOutput) &&
         activity_after.has_field(os::system_activity_field::PageOutput))
     {
       let const rate = counter_rate(activity_before.page_output_byte_count,
                                     activity_after.page_output_byte_count,
                                     elapsed_nanoseconds);
+
       if (rate.has_value()) {
         add_metric_row(paging_table, "Page output rate",
                        (format_human_size(*rate, allocator) + "/s").view(),
                        allocator);
       }
     }
+
     if (activity_before.has_field(os::system_activity_field::Faults) &&
         activity_after.has_field(os::system_activity_field::Faults))
     {
@@ -1806,6 +1952,7 @@ EvilIO::execute(const ExecContext               &ec,
                                 elapsed_nanoseconds),
                    "/s", allocator);
     }
+
     if (activity_before.has_field(os::system_activity_field::MajorFaults) &&
         activity_after.has_field(os::system_activity_field::MajorFaults))
     {
@@ -1816,15 +1963,18 @@ EvilIO::execute(const ExecContext               &ec,
                    "/s", allocator);
     }
   }
+
   if (has_activity_before && has_activity_after) {
     append_titled_report_table(output, "Paging", paging_table, should_color);
   }
 
   let scheduler_table = make_metric_table(allocator);
+
   if (has_activity_after) {
     if (activity_after.has_field(os::system_activity_field::Runnable)) {
       let runnable =
           String::from(activity_after.runnable_process_count, allocator);
+
       runnable += " for ";
       runnable +=
           String::from(os::get_processor_counts().online_count, allocator)
@@ -1833,6 +1983,7 @@ EvilIO::execute(const ExecContext               &ec,
       add_metric_row(scheduler_table, "Runnable processes", runnable.view(),
                      allocator);
     }
+
     if (activity_after.has_field(os::system_activity_field::Blocked)) {
       add_metric_row(
           scheduler_table, "I/O-blocked processes",
@@ -1840,11 +1991,13 @@ EvilIO::execute(const ExecContext               &ec,
           allocator);
     }
   }
+
   if (has_activity_after)
     append_titled_report_table(output, "Scheduler", scheduler_table,
                                should_color);
 
   let stalls_table = make_metric_table(allocator);
+
   if (has_activity_before && has_activity_after) {
     if (activity_before.has_field(os::system_activity_field::CpuSomeStall) &&
         activity_after.has_field(os::system_activity_field::CpuSomeStall))
@@ -1855,6 +2008,7 @@ EvilIO::execute(const ExecContext               &ec,
                                  elapsed_nanoseconds),
                     allocator);
     }
+
     if (activity_before.has_field(os::system_activity_field::CpuFullStall) &&
         activity_after.has_field(os::system_activity_field::CpuFullStall))
     {
@@ -1864,6 +2018,7 @@ EvilIO::execute(const ExecContext               &ec,
                                  elapsed_nanoseconds),
                     allocator);
     }
+
     if (activity_before.has_field(os::system_activity_field::MemorySomeStall) &&
         activity_after.has_field(os::system_activity_field::MemorySomeStall))
     {
@@ -1873,6 +2028,7 @@ EvilIO::execute(const ExecContext               &ec,
                                  elapsed_nanoseconds),
                     allocator);
     }
+
     if (activity_before.has_field(os::system_activity_field::MemoryFullStall) &&
         activity_after.has_field(os::system_activity_field::MemoryFullStall))
     {
@@ -1882,6 +2038,7 @@ EvilIO::execute(const ExecContext               &ec,
                                  elapsed_nanoseconds),
                     allocator);
     }
+
     if (activity_before.has_field(os::system_activity_field::IoSomeStall) &&
         activity_after.has_field(os::system_activity_field::IoSomeStall))
     {
@@ -1891,6 +2048,7 @@ EvilIO::execute(const ExecContext               &ec,
                                  elapsed_nanoseconds),
                     allocator);
     }
+
     if (activity_before.has_field(os::system_activity_field::IoFullStall) &&
         activity_after.has_field(os::system_activity_field::IoFullStall))
     {
@@ -1901,6 +2059,7 @@ EvilIO::execute(const ExecContext               &ec,
                     allocator);
     }
   }
+
   if (has_activity_before && has_activity_after) {
     append_titled_report_table(output, "Pressure stalls", stalls_table,
                                should_color);
@@ -1912,6 +2071,7 @@ EvilIO::execute(const ExecContext               &ec,
         (FLAG_EVILIO_ALL.is_enabled() || FLAG_EVILIO_CUMULATIVE.is_enabled())
             ? report_sampling_mode::Rolling
             : report_sampling_mode::Instant);
+
     sort_disk_rows(disk_rows, sort_key);
     append_disk_io_report(
         output, disk_rows, allocator, sample_duration_label.view(),
@@ -1927,11 +2087,13 @@ EvilIO::execute(const ExecContext               &ec,
     return 0;
   }
 
-  let swap_table      = make_metric_table(allocator);
-  let do_add_swap_row = [&](StringView section, StringView status)
-                            throws -> void {
+  let swap_table = make_metric_table(allocator);
+
+  let do_add_swap_row = [&](StringView section,
+                            StringView status) throws -> void {
     add_metric_row(swap_table, section, status, allocator);
   };
+
   if (!has_swap_after) {
     do_add_swap_row("Status", "Unavailable");
   } else {
@@ -1941,8 +2103,11 @@ EvilIO::execute(const ExecContext               &ec,
             : static_cast<u64>(static_cast<u128>(swap_after.used_byte_count) *
                                100 / swap_after.total_byte_count),
         allocator);
+
     utilization += "%";
+
     let status = format_human_size(swap_after.used_byte_count, allocator);
+
     status += " / ";
     status += format_human_size(swap_after.total_byte_count, allocator).view();
     status += " (";
@@ -1953,6 +2118,7 @@ EvilIO::execute(const ExecContext               &ec,
     do_add_swap_row("Usage", status.view());
     if (FLAG_EVILIO_ALL.is_enabled() && swap_after.has_activity) {
       let activity = String{allocator};
+
       if (FLAG_EVILIO_ALL.is_enabled() && has_swap_before &&
           swap_before.has_activity)
       {
@@ -1962,6 +2128,7 @@ EvilIO::execute(const ExecContext               &ec,
         let const output_rate =
             counter_rate(swap_before.output_byte_count,
                          swap_after.output_byte_count, elapsed_nanoseconds);
+
         if (input_rate.has_value() && output_rate.has_value()) {
           activity = format_human_size(*input_rate, allocator);
           activity += "/s in, ";
@@ -1969,6 +2136,7 @@ EvilIO::execute(const ExecContext               &ec,
           activity += "/s out";
         }
       }
+
       if (activity.is_empty()) {
         activity = format_human_size(swap_after.input_byte_count, allocator);
         activity += " in, ";
@@ -1976,13 +2144,16 @@ EvilIO::execute(const ExecContext               &ec,
             format_human_size(swap_after.output_byte_count, allocator).view();
         activity += " out";
       }
+
       do_add_swap_row("Input/output activity", activity.view());
     }
+
     if (swap_after.has_encryption_state) {
       do_add_swap_row("Encryption status",
                       swap_after.is_encrypted ? "enabled" : "disabled");
     }
   }
+
   append_titled_report_table(output, "Swap", swap_table, should_color);
 
   ec.print_to_stdout(output);

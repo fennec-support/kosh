@@ -36,12 +36,15 @@ public:
       : StringMap(other.m_allocator, other.m_first_capacity)
   {
     if (other.m_count == 0) return;
+
     let const fitted_slot_count = m_first_capacity == DEFAULT_MAP_FIRST_CAPACITY
                                       ? static_cast<usize>(other.m_capacity)
                                       : fitted_capacity(other.m_count);
+
     if (other.m_tombstones == 0 && fitted_slot_count == other.m_capacity) {
       let const fresh_slots = m_allocator.alloc_array<Slot>(other.m_capacity);
       usize     constructed_count = 0;
+
       try {
         for (; constructed_count < other.m_capacity; constructed_count++)
           new (&fresh_slots[constructed_count])
@@ -88,8 +91,9 @@ public:
     other.m_count      = 0;
     other.m_tombstones = 0;
   }
+
   fn
-  operator=(StringMap &&other) wontthrow->StringMap &
+  operator=(StringMap &&other) wontthrow -> StringMap &
   {
     if (this != &other) {
       destroy_all();
@@ -107,11 +111,13 @@ public:
 
     return *this;
   }
+
   cold fn
-  operator=(const StringMap &other) throws->StringMap &
+  operator=(const StringMap &other) throws -> StringMap &
   {
     if (this != &other) {
       StringMap copy{other};
+
       *this = steal(copy);
     }
 
@@ -130,12 +136,16 @@ public:
   reserve(usize expected_count) throws -> void
   {
     let const third = expected_count / 3;
-    if (expected_count > SIZE_MAX - third - 1) rarely throw std::bad_alloc{};
+
+    if (expected_count > SIZE_MAX - third - 1) rarely
+      throw std::bad_alloc{};
+
     let const needed       = expected_count + third + 1;
     usize     new_capacity = m_capacity == 0 ? m_first_capacity : m_capacity;
 
     while (new_capacity < needed) {
-      if (new_capacity > SIZE_MAX / 2) rarely throw std::bad_alloc{};
+      if (new_capacity > SIZE_MAX / 2) rarely
+        throw std::bad_alloc{};
       new_capacity *= 2;
     }
 
@@ -158,6 +168,7 @@ public:
   find_hashed(StringView key, u64 hash) const wontthrow -> Maybe<const Value *>
   {
     if (m_capacity == 0) return None;
+
     let const found = probe(key, hash).found;
 
     return found == NO_INDEX ? None
@@ -168,6 +179,7 @@ public:
   find_hashed(StringView key, u64 hash) wontthrow -> Maybe<Value *>
   {
     if (m_capacity == 0) return None;
+
     let const found = probe(key, hash).found;
 
     return found == NO_INDEX ? None : Maybe<Value *>{&m_slots[found].value};
@@ -190,6 +202,7 @@ public:
   {
     let const hash   = hash_bytes(key);
     let const result = prepare_insertion(key, hash);
+
     if (result.found != NO_INDEX) return false;
     place(result.insertion, key, hash, steal(value));
 
@@ -201,6 +214,7 @@ public:
   {
     let const hash   = hash_bytes(key);
     let const result = prepare_insertion(key, hash);
+
     if (result.found != NO_INDEX) return m_slots[result.found].value;
 
     return *place(result.insertion, key, hash, steal(default_value));
@@ -211,16 +225,19 @@ public:
   {
     let const hash   = hash_bytes(key);
     let const result = prepare_insertion(key, hash);
+
     if (result.found != NO_INDEX) {
       Value    *existing = &m_slots[result.found].value;
       let const is_buffer_wasteful =
           existing->count() > 256 && value.length < existing->count() / 2;
+
       if (!is_buffer_wasteful) {
         existing->clear();
         existing->append(value);
 
         return existing;
       }
+
       *existing = String{m_allocator, value};
 
       return existing;
@@ -233,10 +250,14 @@ public:
   erase(StringView key) throws -> void
   {
     if (m_capacity == 0) return;
+
     let const found = probe(key, hash_bytes(key)).found;
+
     if (found == NO_INDEX) return;
     ASSERT(m_slots != nullptr);
-    let &slot  = m_slots[found];
+
+    let &slot = m_slots[found];
+
     slot.key   = String{m_allocator};
     slot.value = Value{};
     slot.set_state(Slot::Tombstone);
@@ -279,6 +300,7 @@ private:
       Occupied,
       Tombstone,
     };
+
     static constexpr u64 STATE_SHIFT = 62;
     static constexpr u64 HASH_MASK   = (u64{1} << STATE_SHIFT) - 1;
 
@@ -334,6 +356,7 @@ private:
   probe(StringView key, u64 hash) const wontthrow -> ProbeResult
   {
     ASSERT(m_capacity != 0);
+
     let const mask            = m_capacity - 1;
     let       index           = static_cast<usize>(hash) & mask;
     let       first_tombstone = NO_INDEX;
@@ -341,20 +364,26 @@ private:
 
     ASSERT(m_count + m_tombstones < m_capacity);
 
-    loop
-    {
+    loop {
       let const &candidate = m_slots[index];
+
       if (candidate.packed == wanted && candidate.key.view() == key) {
-        usually { return {index, index}; }
+        usually {
+          return {index, index};
+        }
       }
+
       let const state = candidate.get_state();
+
       if (state == Slot::Empty) {
         return {NO_INDEX,
                 first_tombstone != NO_INDEX ? first_tombstone : index};
       }
+
       if (state == Slot::Tombstone && first_tombstone == NO_INDEX) {
         first_tombstone = index;
       }
+
       index = (index + 1) & mask;
     }
   }
@@ -367,7 +396,9 @@ private:
     }
 
     ASSERT(m_slots != nullptr);
+
     let result = probe(key, hash);
+
     ASSERT(result.insertion != NO_INDEX);
     if (result.found != NO_INDEX ||
         m_slots[result.insertion].get_state() == Slot::Tombstone)
@@ -376,14 +407,17 @@ private:
     }
 
     let const maximum_occupied = (m_capacity >> 1) + (m_capacity >> 2);
+
     if (m_count + m_tombstones + 1 <= maximum_occupied) return result;
 
     if (m_count + 1 > maximum_occupied) {
-      if (m_capacity > UINT32_MAX / 2) rarely throw std::bad_alloc{};
+      if (m_capacity > UINT32_MAX / 2) rarely
+        throw std::bad_alloc{};
       rehash(m_capacity * 2);
     } else {
       rehash(m_capacity);
     }
+
     result = probe(key, hash);
 
     return result;
@@ -396,26 +430,31 @@ private:
   }
 
   hot fn
-  set_value_with_hash(StringView key, Value value, u64 hash) throws -> Value *
+  set_value_with_hash(StringView key, Value value, u64 hash) throws
+      -> Value *
   {
     let const result = prepare_insertion(key, hash);
+
     if (result.found != NO_INDEX) {
       m_slots[result.found].value = steal(value);
 
       return &m_slots[result.found].value;
     }
+
     ASSERT(result.insertion != NO_INDEX);
 
     return place(result.insertion, key, hash, steal(value));
   }
 
   fn
-  place(usize index, StringView key, u64 hash, Value value) throws -> Value *
+  place(usize index, StringView key, u64 hash, Value value) throws
+      -> Value *
   {
     let      &slot          = m_slots[index];
     let const was_tombstone = slot.get_state() == Slot::Tombstone;
-    slot.key                = String{m_allocator, key};
-    slot.value              = steal(value);
+
+    slot.key   = String{m_allocator, key};
+    slot.value = steal(value);
     if (was_tombstone) m_tombstones--;
     slot.packed = Slot::pack(Slot::Occupied, hash);
     m_count++;
@@ -426,9 +465,12 @@ private:
   cold fn
   rehash(usize new_capacity) throws -> void
   {
-    if (new_capacity > UINT32_MAX) rarely throw std::bad_alloc{};
+    if (new_capacity > UINT32_MAX) rarely
+      throw std::bad_alloc{};
+
     let const fresh_slots       = m_allocator.alloc_array<Slot>(new_capacity);
     usize     constructed_count = 0;
+
     try {
       for (; constructed_count < new_capacity; constructed_count++)
         new (&fresh_slots[constructed_count]) Slot{};
@@ -445,6 +487,7 @@ private:
 
     usize     fresh_count = 0;
     let const mask        = new_capacity - 1;
+
     try {
       for (usize i = 0; i < old_capacity; i++) {
         if (old_slots[i].get_state() != Slot::Occupied) continue;
@@ -454,7 +497,8 @@ private:
         while (fresh_slots[index].get_state() == Slot::Occupied)
           index = (index + 1) & mask;
 
-        let &destination   = fresh_slots[index];
+        let &destination = fresh_slots[index];
+
         destination.key    = old_slots[i].key;
         destination.packed = old_slots[i].packed;
         fresh_count++;

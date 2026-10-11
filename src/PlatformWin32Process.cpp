@@ -59,9 +59,10 @@ struct windows_measured_launch_options
 };
 
 static fn
-run_measured_with_options(const ArrayList<String>               &argv,
-                          measured_output                        output,
-                          const windows_measured_launch_options &options) throws
+run_measured_with_options(
+    const ArrayList<String>               &argv,
+    measured_output                        output,
+    const windows_measured_launch_options &options) throws
     -> Maybe<measured_result>;
 
 fn
@@ -76,9 +77,12 @@ get_priority(i64 id, priority_target target) wontthrow -> Maybe<i32>
       id == 0 ? GetCurrentProcessId() : static_cast<DWORD>(id);
   let const process =
       OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, process_id);
+
   if (process == nullptr) return None;
   defer { CloseHandle(process); };
+
   let const priority_class = GetPriorityClass(process);
+
   if (priority_class == 0) return None;
 
   return priority_from_windows_class(priority_class);
@@ -95,6 +99,7 @@ set_priority(i64 id, i32 priority, priority_target target) wontthrow -> bool
   let const process_id =
       id == 0 ? GetCurrentProcessId() : static_cast<DWORD>(id);
   let const process = OpenProcess(PROCESS_SET_INFORMATION, FALSE, process_id);
+
   if (process == nullptr) return false;
   defer { CloseHandle(process); };
 
@@ -102,42 +107,54 @@ set_priority(i64 id, i32 priority, priority_target target) wontthrow -> bool
 }
 
 fn
-run_nice(const ArrayList<String> &argv, i32 increment) throws -> Maybe<i32>
+run_nice(const ArrayList<String> &argv, i32 increment) throws
+    -> Maybe<i32>
 {
   let const current_priority_class = GetPriorityClass(GetCurrentProcess());
+
   if (current_priority_class == 0) return None;
+
   let const current_priority =
       priority_from_windows_class(current_priority_class);
+
   if (!current_priority.has_value()) return None;
+
   let adjusted_priority = static_cast<i64>(*current_priority) + increment;
+
   if (adjusted_priority < -20) adjusted_priority = -20;
   if (adjusted_priority > 19) adjusted_priority = 19;
+
   windows_measured_launch_options options{};
+
   options.creation_flags =
       windows_priority_class(static_cast<i32>(adjusted_priority));
+
   let const result =
       run_measured_with_options(argv, measured_output::Inherit, options);
+
   if (!result.has_value()) return None;
 
   return static_cast<i32>(result->exit_status);
 }
 
 fn
-run_nohup(const ArrayList<String> &argv, const nohup_options &options) throws
-    -> Maybe<i32>
+run_nohup(const ArrayList<String> &argv,
+          const nohup_options     &options) throws -> Maybe<i32>
 {
   if (argv.is_empty()) return None;
 
   SECURITY_ATTRIBUTES inheritable{};
+
   inheritable.nLength        = sizeof(inheritable);
   inheritable.bInheritHandle = TRUE;
-  HANDLE null_input          = INVALID_HANDLE_VALUE;
-  HANDLE nohup_output        = INVALID_HANDLE_VALUE;
-  let    child_input         = options.input;
-  let    child_output        = options.output;
-  let    child_error         = options.error;
-  defer
-  {
+
+  HANDLE null_input   = INVALID_HANDLE_VALUE;
+  HANDLE nohup_output = INVALID_HANDLE_VALUE;
+  let    child_input  = options.input;
+  let    child_output = options.output;
+  let    child_error  = options.error;
+
+  defer {
     if (null_input != INVALID_HANDLE_VALUE) CloseHandle(null_input);
     if (nohup_output != INVALID_HANDLE_VALUE) CloseHandle(nohup_output);
   };
@@ -149,35 +166,46 @@ run_nohup(const ArrayList<String> &argv, const nohup_options &options) throws
     if (null_input == INVALID_HANDLE_VALUE) return None;
     child_input = null_input;
   }
+
   if (is_fd_a_tty(child_output)) {
     nohup_output = CreateFileW(L"nohup.out", FILE_APPEND_DATA,
                                FILE_SHARE_READ | FILE_SHARE_WRITE, &inheritable,
                                OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
     if (nohup_output == INVALID_HANDLE_VALUE && !options.home.is_empty()) {
       let home_output = String{heap_allocator(), options.home};
+
       if (home_output.back() != '/' && home_output.back() != '\\') {
         home_output += '/';
       }
+
       home_output += "nohup.out";
+
       let const wide_home_output =
           utf8_to_wide(home_output.view(), heap_allocator());
+
       if (!wide_home_output.has_value()) return None;
       nohup_output =
           CreateFileW(wide_home_output->begin(), FILE_APPEND_DATA,
                       FILE_SHARE_READ | FILE_SHARE_WRITE, &inheritable,
                       OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
     }
+
     if (nohup_output == INVALID_HANDLE_VALUE) return None;
     child_output = nohup_output;
   }
+
   if (is_fd_a_tty(child_error)) child_error = child_output;
+
   windows_measured_launch_options launch_options{};
+
   launch_options.creation_flags = CREATE_NEW_PROCESS_GROUP;
   launch_options.input          = child_input;
   launch_options.output         = child_output;
   launch_options.error          = child_error;
+
   let const result =
       run_measured_with_options(argv, measured_output::Inherit, launch_options);
+
   if (!result.has_value()) return None;
 
   return static_cast<i32>(result->exit_status);
@@ -211,6 +239,7 @@ fill_resource_usage(HANDLE                  process_handle,
   FILETIME exit_time{};
   FILETIME kernel_time{};
   FILETIME user_time{};
+
   if (GetProcessTimes(process_handle, &creation_time, &exit_time, &kernel_time,
                       &user_time) != FALSE)
   {
@@ -220,6 +249,7 @@ fill_resource_usage(HANDLE                  process_handle,
 
   PROCESS_MEMORY_COUNTERS memory_counters{};
   memory_counters.cb = sizeof(memory_counters);
+
   if (GetProcessMemoryInfo(process_handle, &memory_counters,
                            sizeof(memory_counters)) != FALSE)
   {
@@ -230,6 +260,7 @@ fill_resource_usage(HANDLE                  process_handle,
   }
 
   IO_COUNTERS io_counters{};
+
   if (GetProcessIoCounters(process_handle, &io_counters) != FALSE) {
     resources.read_call_count    = io_counters.ReadOperationCount;
     resources.write_call_count   = io_counters.WriteOperationCount;
@@ -242,6 +273,7 @@ fn
 read_own_resource_usage() wontthrow -> process_resource_usage
 {
   process_resource_usage resources{};
+
   fill_resource_usage(GetCurrentProcess(), resources);
 
   return resources;
@@ -254,6 +286,7 @@ record_child_process_usage(process child) wontthrow -> void
   FILETIME exit_time{};
   FILETIME kernel_time{};
   FILETIME user_time{};
+
   if (GetProcessTimes(child, &creation_time, &exit_time, &kernel_time,
                       &user_time) != FALSE)
   {
@@ -265,6 +298,7 @@ record_child_process_usage(process child) wontthrow -> void
 
   PROCESS_MEMORY_COUNTERS memory_counters{};
   memory_counters.cb = sizeof(memory_counters);
+
   if (GetProcessMemoryInfo(child, &memory_counters, sizeof(memory_counters)) ==
       FALSE)
     return;
@@ -278,6 +312,7 @@ record_child_process_usage(process child) wontthrow -> void
     let const observed_peak_rss_byte_count =
         InterlockedCompareExchange64(&CHILD_PEAK_RSS_BYTES, peak_rss_byte_count,
                                      previous_peak_rss_byte_count);
+
     if (observed_peak_rss_byte_count == previous_peak_rss_byte_count) break;
     previous_peak_rss_byte_count = observed_peak_rss_byte_count;
   }
@@ -306,25 +341,28 @@ create_process_utf8(StringView           application_path,
                     const HANDLE        *inherited_handles,
                     usize                inherited_handle_count,
                     PROCESS_INFORMATION &process_info,
-                    const ExecContext *stage_context = nullptr) throws -> bool;
+                    const ExecContext   *stage_context = nullptr) throws
+    -> bool;
 
 fn
-ProgramCapture::start(const ArrayList<String> &argv,
-                      u64 timeout_nanos) wontthrow -> Maybe<ProgramCapture>
+ProgramCapture::start(const ArrayList<String> &argv, u64 timeout_nanos)
+    wontthrow
+    -> Maybe<ProgramCapture>
 {
   if (argv.is_empty()) return None;
 
   SECURITY_ATTRIBUTES inheritable{sizeof(SECURITY_ATTRIBUTES), nullptr, TRUE};
   HANDLE              read_end  = INVALID_HANDLE_VALUE;
   HANDLE              write_end = INVALID_HANDLE_VALUE;
+
   if (CreatePipe(&read_end, &write_end, &inheritable, 0) == FALSE) return None;
+
   bool is_read_end_owned = true;
-  defer
-  {
+
+  defer {
     if (is_read_end_owned) CloseHandle(read_end);
   };
-  defer
-  {
+  defer {
     if (write_end != INVALID_HANDLE_VALUE) CloseHandle(write_end);
   };
   if (SetHandleInformation(read_end, HANDLE_FLAG_INHERIT, 0) == FALSE)
@@ -333,11 +371,13 @@ ProgramCapture::start(const ArrayList<String> &argv,
   let const null_input =
       CreateFileW(L"NUL", GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE,
                   &inheritable, OPEN_EXISTING, 0, nullptr);
+
   if (null_input == INVALID_HANDLE_VALUE) return None;
   defer { CloseHandle(null_input); };
 
   let application_path              = argv[0].c_str();
   let resolved_program_path_storage = String{heap_allocator()};
+
   if (let resolved_program_path = canonical_path(Path{argv[0].view()})) {
     resolved_program_path_storage = resolved_program_path->text().clone();
     application_path              = resolved_program_path_storage.c_str();
@@ -345,8 +385,10 @@ ProgramCapture::start(const ArrayList<String> &argv,
 
   let application_path_storage = String{heap_allocator()};
   let command_line             = make_os_args(argv);
+
   if (is_batch_program(argv[0].view())) {
     let batch_command = String{heap_allocator()};
+
     append_windows_quoted_arg(batch_command,
                               resolved_program_path_storage.is_empty()
                                   ? argv[0].view()
@@ -359,12 +401,15 @@ ProgramCapture::start(const ArrayList<String> &argv,
       append_windows_quoted_arg(batch_command, argv[argument_position].view());
     }
 
-    let command_processor      = get_environment_variable("COMSPEC");
-    application_path_storage   = command_processor.has_value()
-                                     ? command_processor.take()
-                                     : String{"cmd.exe"};
-    application_path           = application_path_storage.c_str();
+    let command_processor = get_environment_variable("COMSPEC");
+
+    application_path_storage = command_processor.has_value()
+                                   ? command_processor.take()
+                                   : String{"cmd.exe"};
+    application_path         = application_path_storage.c_str();
+
     let processor_command_line = String{heap_allocator()};
+
     append_windows_quoted_arg(processor_command_line,
                               application_path_storage.view());
     processor_command_line += " /d /s /c \"";
@@ -372,10 +417,12 @@ ProgramCapture::start(const ArrayList<String> &argv,
     processor_command_line += '"';
     command_line = steal(processor_command_line);
   }
+
   LOG(Debug, "capturing output from '%s' with command line '%s'",
       application_path, command_line.c_str());
 
   STARTUPINFOW startup_info{};
+
   startup_info.cb         = sizeof(startup_info);
   startup_info.dwFlags    = STARTF_USESTDHANDLES;
   startup_info.hStdInput  = null_input;
@@ -384,17 +431,20 @@ ProgramCapture::start(const ArrayList<String> &argv,
 
   PROCESS_INFORMATION process_info{};
   HANDLE              inherited_handles[] = {null_input, write_end};
+
   if (!create_process_utf8(StringView{application_path}, command_line.view(),
                            {}, CREATE_NO_WINDOW, nullptr, startup_info,
                            inherited_handles, 2, process_info))
   {
     return None;
   }
+
   CloseHandle(process_info.hThread);
   CloseHandle(write_end);
   write_end = INVALID_HANDLE_VALUE;
 
-  let capture              = ProgramCapture{};
+  let capture = ProgramCapture{};
+
   capture.m_child          = process_info.hProcess;
   capture.m_output         = read_end;
   is_read_end_owned        = false;
@@ -417,6 +467,7 @@ ProgramCapture::step() wontthrow -> State
        m_output != KOSH_INVALID_FD && step_read_count < 16; step_read_count++)
   {
     DWORD available_byte_count = 0;
+
     if (PeekNamedPipe(m_output, nullptr, 0, nullptr, &available_byte_count,
                       nullptr) == FALSE)
     {
@@ -428,6 +479,7 @@ ProgramCapture::step() wontthrow -> State
       do_close_output();
       break;
     }
+
     if (available_byte_count == 0) break;
 
     char      buffer[4096];
@@ -435,6 +487,7 @@ ProgramCapture::step() wontthrow -> State
                                     ? available_byte_count
                                     : sizeof(buffer);
     DWORD     read_count      = 0;
+
     if (ReadFile(m_output, buffer, requested_count, &read_count, nullptr) ==
         FALSE)
     {
@@ -446,11 +499,13 @@ ProgramCapture::step() wontthrow -> State
       do_close_output();
       break;
     }
+
     m_captured.append(StringView{buffer, static_cast<usize>(read_count)});
   }
 
   if (WaitForSingleObject(m_child, 0) == WAIT_OBJECT_0) {
     DWORD remaining_byte_count = 0;
+
     if (m_output != KOSH_INVALID_FD &&
         ((PeekNamedPipe(m_output, nullptr, 0, nullptr, &remaining_byte_count,
                         nullptr) != FALSE &&
@@ -460,10 +515,13 @@ ProgramCapture::step() wontthrow -> State
       return State::Running;
     }
     if (m_output != KOSH_INVALID_FD) do_close_output();
+
     DWORD child_exit_code = 0;
+
     if (GetExitCodeProcess(m_child, &child_exit_code) != FALSE) {
       m_exit_status = static_cast<i32>(child_exit_code);
     }
+
     record_child_process_usage(m_child);
     CloseHandle(m_child);
     m_child = KOSH_INVALID_PROCESS;
@@ -495,6 +553,7 @@ ProgramCapture::abandon() wontthrow -> void
     CloseHandle(m_output);
     m_output = KOSH_INVALID_FD;
   }
+
   if (m_child == KOSH_INVALID_PROCESS) return;
 
   TerminateProcess(m_child, 1);
@@ -621,8 +680,8 @@ make_handle_inheritable(HANDLE handle, inherited_handle_state &state) wontthrow
 }
 
 static fn
-restore_handle_inheritance(const inherited_handle_state &state) wontthrow
-    -> bool
+restore_handle_inheritance(const inherited_handle_state &state)
+    wontthrow -> bool
 {
   if (!state.should_restore) return true;
 
@@ -696,24 +755,30 @@ create_process_utf8(StringView           application_path,
   let wide_application = application_path.is_empty()
                              ? Maybe<ArrayList<wchar_t>>{}
                              : path_to_wide(application_path, heap_allocator());
+
   if (!application_path.is_empty() && !wide_application.has_value()) {
     return false;
   }
 
   let wide_command_line = utf8_to_wide(command_line, heap_allocator());
+
   if (!wide_command_line.has_value()) return false;
   let wide_working_directory =
       working_directory.is_empty()
           ? Maybe<ArrayList<wchar_t>>{}
           : path_to_wide(working_directory, heap_allocator());
+
   if (!working_directory.is_empty() && !wide_working_directory.has_value()) {
     return false;
   }
 
   scan_inherited_shell_fds();
+
   let unique_handles = ArrayList<HANDLE>{heap_allocator()};
+
   unique_handles.reserve(inherited_handle_count +
                          static_cast<usize>(HIGHEST_OPEN_SHELL_FD + 1));
+
   let const do_add_unique_handle = [&](HANDLE handle) throws {
     if (handle == nullptr || handle == INVALID_HANDLE_VALUE) {
       return;
@@ -732,7 +797,9 @@ create_process_utf8(StringView           application_path,
   let const do_raise_highest_fd = [](i32 &highest, i32 target_fd) wontthrow {
     if (target_fd > highest) highest = target_fd;
   };
+
   i32 highest_inherited_fd = HIGHEST_OPEN_SHELL_FD;
+
   if (stage_context != nullptr)
     stage_context->apply_nonstandard_routing(
         [&](os::descriptor, i32 target_fd) {
@@ -746,16 +813,19 @@ create_process_utf8(StringView           application_path,
         });
 
   let inherited_fd_storage = ArrayList<u8>{heap_allocator()};
+
   if (highest_inherited_fd > 2) {
     let const inherited_fd_count = highest_inherited_fd + 1;
     let const storage_byte_count = sizeof(i32) +
                                    static_cast<usize>(inherited_fd_count) +
                                    sizeof(intptr_t) * inherited_fd_count;
+
     if (storage_byte_count > UINT16_MAX) {
       SetLastError(ERROR_TOO_MANY_OPEN_FILES);
 
       return false;
     }
+
     inherited_fd_storage.reserve(storage_byte_count);
 
     for (usize byte_position = 0; byte_position < storage_byte_count;
@@ -764,11 +834,11 @@ create_process_utf8(StringView           application_path,
 
     __builtin_memcpy(inherited_fd_storage.begin(), &inherited_fd_count,
                      sizeof(inherited_fd_count));
+
     let *flags   = inherited_fd_storage.begin() + sizeof(inherited_fd_count);
     let *handles = flags + inherited_fd_count;
 
-    let const do_place_inherited_fd = [&](i32    shell_fd,
-                                          HANDLE handle) wontthrow {
+    let const do_place_inherited_fd = [&](i32 shell_fd, HANDLE handle) wontthrow {
       if (shell_fd < 0 || shell_fd >= inherited_fd_count) {
         return;
       }
@@ -779,6 +849,7 @@ create_process_utf8(StringView           application_path,
       flags[shell_fd] =
           (handle == nullptr || handle == INVALID_HANDLE_VALUE) ? 0 : 1;
     };
+
     let const do_read_inherited_fd = [&](i32 shell_fd) wontthrow -> HANDLE {
       if (shell_fd < 0 || shell_fd >= inherited_fd_count) {
         return INVALID_HANDLE_VALUE;
@@ -820,10 +891,12 @@ create_process_utf8(StringView           application_path,
   }
 
   static SRWLOCK launch_lock = SRWLOCK_INIT;
+
   AcquireSRWLockExclusive(&launch_lock);
   defer { ReleaseSRWLockExclusive(&launch_lock); };
 
   let inheritance_states = ArrayList<inherited_handle_state>{heap_allocator()};
+
   inheritance_states.reserve(unique_handles.count());
 
   for (usize handle_position = 0; handle_position < unique_handles.count();
@@ -833,8 +906,8 @@ create_process_utf8(StringView           application_path,
   usize inheritable_handle_count = 0;
   DWORD preserved_error          = ERROR_SUCCESS;
   bool  did_restore_inheritance  = false;
-  defer
-  {
+
+  defer {
     if (!did_restore_inheritance) {
       for (usize restore_position = 0;
            restore_position < inheritable_handle_count; restore_position++)
@@ -865,6 +938,7 @@ create_process_utf8(StringView           application_path,
   LPPROC_THREAD_ATTRIBUTE_LIST attribute_list       = nullptr;
   ArrayList<u8>                attribute_storage{heap_allocator()};
   STARTUPINFOEXW               extended_startup{};
+
   extended_startup.StartupInfo.cb          = unique_handles.is_empty()
                                                  ? sizeof(STARTUPINFOW)
                                                  : sizeof(extended_startup);
@@ -873,17 +947,20 @@ create_process_utf8(StringView           application_path,
   extended_startup.StartupInfo.hStdInput   = startup_info.hStdInput;
   extended_startup.StartupInfo.hStdOutput  = startup_info.hStdOutput;
   extended_startup.StartupInfo.hStdError   = startup_info.hStdError;
+
   if (!inherited_fd_storage.is_empty()) {
     extended_startup.StartupInfo.cbReserved2 =
         static_cast<WORD>(inherited_fd_storage.count());
     extended_startup.StartupInfo.lpReserved2 = inherited_fd_storage.begin();
   }
+
   bool is_attribute_list_initialized = false;
-  defer
-  {
+
+  defer {
     if (is_attribute_list_initialized)
       DeleteProcThreadAttributeList(attribute_list);
   };
+
   if (!unique_handles.is_empty()) {
     InitializeProcThreadAttributeList(nullptr, 1, 0, &attribute_byte_count);
     if (attribute_byte_count == 0) {
@@ -939,6 +1016,7 @@ create_process_utf8(StringView           application_path,
     }
 
   did_restore_inheritance = true;
+
   if (restoration_error == ERROR_SUCCESS) return did_create;
 
   if (did_create) {
@@ -948,6 +1026,7 @@ create_process_utf8(StringView           application_path,
     CloseHandle(process_info.hProcess);
     process_info = PROCESS_INFORMATION{};
   }
+
   preserved_error = restoration_error;
 
   return false;
@@ -1120,8 +1199,7 @@ execute_program(ExecContext &ec, const program_execution_options &options)
       [&]() { startup_info.hStdOutput = startup_info.hStdError; });
 
   bool did_hand_handles_to_fallback = false;
-  defer
-  {
+  defer {
     if (!did_hand_handles_to_fallback) ec.close_fds();
   };
 
@@ -1135,8 +1213,7 @@ execute_program(ExecContext &ec, const program_execution_options &options)
       !is_fd_a_tty(startup_info.hStdError);
 
   HANDLE null_handle = INVALID_HANDLE_VALUE;
-  defer
-  {
+  defer {
     if (null_handle != INVALID_HANDLE_VALUE) CloseHandle(null_handle);
   };
   if (should_use_standard_handles) {
@@ -1217,7 +1294,8 @@ spawn_subshell_stage(StringView                   source,
                      Maybe<descriptor>            err_fd,
                      bool                         should_trace_sources,
                      const child_evaluator_state &evaluator,
-                     process_group_mode process_group) throws -> Maybe<process>;
+                     process_group_mode           process_group) throws
+    -> Maybe<process>;
 
 static fn
 make_internal_pipe_path() throws -> String
@@ -1297,8 +1375,9 @@ make_subshell_transport(const subshell_bootstrap &bootstrap,
 }
 
 static fn
-send_internal_pipe(StringView path, StringView content, process child) throws
-    -> bool
+send_internal_pipe(StringView path,
+                   StringView content,
+                   process    child) throws -> bool
 {
   let const wide_path = utf8_to_wide(path, heap_allocator());
   if (!wide_path.has_value()) return false;
@@ -1425,9 +1504,10 @@ struct substitution_relay
 };
 
 static fn
-copy_relay_pipe_name(
-    StringView name,
-    wchar_t (&output)[SUBSTITUTION_RELAY_PATH_LENGTH]) wontthrow -> bool
+copy_relay_pipe_name(StringView name,
+                     wchar_t (&output)[SUBSTITUTION_RELAY_PATH_LENGTH])
+    wontthrow
+    -> bool
 {
   if (name.length >= SUBSTITUTION_RELAY_PATH_LENGTH) return false;
 
@@ -1781,7 +1861,7 @@ start_relay_offer(substitution_relay &relay, usize position) wontthrow -> void
 
 static fn
 has_other_connected_relay_client(const substitution_relay &relay,
-                                 usize position) wontthrow -> bool
+                                 usize                     position) wontthrow -> bool
 {
   for (usize other = 0; other < SUBSTITUTION_RELAY_CLIENT_COUNT; other++) {
     if (other != position &&
@@ -2210,7 +2290,8 @@ run_substitution_relay(opaque *context) wontthrow -> void
 }
 
 static fn
-create_substitution_relay(bool is_command_writes) throws -> substitution_relay *
+create_substitution_relay(bool is_command_writes) throws
+    -> substitution_relay *
 {
   let const storage = os::allocate_aligned(sizeof(substitution_relay),
                                            alignof(substitution_relay));
@@ -2235,7 +2316,8 @@ throw_relay_error(const char *message) throws -> void
 }
 
 fn
-launch_process_substitution(const process_substitution_options &options) throws
+launch_process_substitution(
+    const process_substitution_options &options) throws
     -> process_substitution_launch
 {
   let const is_command_writes =
@@ -2243,8 +2325,7 @@ launch_process_substitution(const process_substitution_options &options) throws
   let       path      = make_internal_pipe_path();
   let const body_path = make_internal_pipe_path();
   let       relay     = create_substitution_relay(is_command_writes);
-  defer
-  {
+  defer {
     if (relay != nullptr) destroy_substitution_relay(relay);
   };
 
@@ -2367,7 +2448,8 @@ spawn_subshell_stage(StringView                   source,
                      Maybe<descriptor>            err_fd,
                      bool                         should_trace_sources,
                      const child_evaluator_state &evaluator,
-                     process_group_mode process_group) throws -> Maybe<process>
+                     process_group_mode           process_group) throws
+    -> Maybe<process>
 {
   let const bootstrap  = evaluator.bootstrap;
   let const mood       = evaluator.mood;
@@ -2421,8 +2503,7 @@ spawn_subshell_stage(StringView                   source,
   startup_info.hStdOutput = out_fd ? *out_fd : GetStdHandle(STD_OUTPUT_HANDLE);
   startup_info.hStdError  = err_fd ? *err_fd : GetStdHandle(STD_ERROR_HANDLE);
   HANDLE null_handle      = INVALID_HANDLE_VALUE;
-  defer
-  {
+  defer {
     if (null_handle != INVALID_HANDLE_VALUE) CloseHandle(null_handle);
   };
   if (!ensure_valid_standard_handles(startup_info, null_handle)) return None;
@@ -2449,8 +2530,7 @@ spawn_subshell_stage(StringView                   source,
   }
   CloseHandle(process_info.hThread);
   bool should_terminate_child = has_bootstrap;
-  defer
-  {
+  defer {
     if (!should_terminate_child) return;
     TerminateProcess(process_info.hProcess, 1);
     WaitForSingleObject(process_info.hProcess, INFINITE);
@@ -2616,8 +2696,8 @@ thread_trampoline(LPVOID raw_context) -> DWORD
 }
 
 fn
-start_thread(void (*entry)(opaque *), opaque *context) wontthrow
-    -> Maybe<thread>
+start_thread(void (*entry)(opaque *), opaque *context)
+    wontthrow -> Maybe<thread>
 {
   let const storage = os::allocate_aligned(sizeof(thread_start_context),
                                            alignof(thread_start_context));
@@ -3144,7 +3224,8 @@ get_effective_group_id() wontthrow -> i64
 }
 
 fn
-get_supplementary_group_ids(Allocator allocator) throws -> ArrayList<u32>
+get_supplementary_group_ids(Allocator allocator) throws
+    -> ArrayList<u32>
 {
   let groups = ArrayList<u32>{allocator};
   groups.push(0);
@@ -3322,9 +3403,10 @@ read_malloc_heap_stats(malloc_heap_stats &stats) wontthrow -> bool
 }
 
 static fn
-run_measured_with_options(const ArrayList<String>               &argv,
-                          measured_output                        output,
-                          const windows_measured_launch_options &options) throws
+run_measured_with_options(
+    const ArrayList<String>               &argv,
+    measured_output                        output,
+    const windows_measured_launch_options &options) throws
     -> Maybe<measured_result>
 {
   let const should_suppress_output = output == measured_output::Suppress;
@@ -3358,8 +3440,7 @@ run_measured_with_options(const ArrayList<String>               &argv,
       startup.hStdError  = null_handle;
     }
   }
-  defer
-  {
+  defer {
     if (null_handle != INVALID_HANDLE_VALUE) CloseHandle(null_handle);
   };
 
@@ -3420,7 +3501,8 @@ fn
 run_measured(const ArrayList<String> &argv,
              const Maybe<descriptor> &inherited_handle,
              measured_output          output,
-             bool should_collect_resources) throws -> Maybe<measured_result>
+             bool                     should_collect_resources) throws
+    -> Maybe<measured_result>
 {
   windows_measured_launch_options options{};
   options.inherited_handle         = inherited_handle;
@@ -3429,7 +3511,8 @@ run_measured(const ArrayList<String> &argv,
   return run_measured_with_options(argv, output, options);
 }
 fn
-enumerate_processes(process_detail detail) throws -> ArrayList<process_entry>
+enumerate_processes(process_detail detail) throws
+    -> ArrayList<process_entry>
 {
   unused(detail);
   ArrayList<process_entry> processes{heap_allocator()};
@@ -3585,7 +3668,7 @@ read_process_io_status(i64 pid, process_io_status &status) wontthrow -> bool
 fn
 read_process_io_statuses(const ArrayList<i64>         &process_ids,
                          ArrayList<process_io_status> &statuses,
-                         ArrayList<u8> &availability) throws -> void
+                         ArrayList<u8>                &availability) throws -> void
 {
   statuses.clear();
   availability.clear();
@@ -3865,8 +3948,8 @@ scan_process_file_users(const ArrayList<process_file_query> &queries,
 
 fn
 process_file_query_is_supported(const file_status       &status,
-                                process_file_match_scope scope) wontthrow
-    -> bool
+                                process_file_match_scope scope)
+    wontthrow -> bool
 {
   return scope == process_file_match_scope::File &&
          file_type_letter(status.mode) != 'd';

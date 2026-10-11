@@ -89,6 +89,7 @@ parse_tail_count(StringView spec) throws -> Maybe<parsed_tail_count>
 {
   let origin = count_origin::FromEnd;
   let digits = spec;
+
   if (digits.length > 0 && digits[0] == '+') {
     origin = count_origin::FromStart;
     digits = digits.substring(1);
@@ -103,6 +104,7 @@ parse_tail_count(StringView spec) throws -> Maybe<parsed_tail_count>
   }
 
   let const parsed = parse_strict_count(digits);
+
   if (parsed.is_error()) return None;
 
   let const largest_count = static_cast<u64>(INT64_MAX);
@@ -136,11 +138,14 @@ struct tail_options
     tail_options options;
 
     let const is_bytes_overriding_lines = FLAG_TAIL_BYTES.is_set();
+
     options.unit =
         is_bytes_overriding_lines ? tail_unit::Bytes : tail_unit::Lines;
+
     let parsed_count = Maybe<parsed_tail_count>{
         parsed_tail_count{count_origin::FromEnd, 10}
     };
+
     if (options.unit == tail_unit::Bytes) {
       parsed_count = parse_tail_count(FLAG_TAIL_BYTES.value());
       if (!parsed_count.has_value()) {
@@ -162,6 +167,7 @@ struct tail_options
         };
       }
     }
+
     options.origin = parsed_count->origin;
     options.count  = parsed_count->count;
 
@@ -177,6 +183,7 @@ struct tail_options
     if (FLAG_TAIL_SLEEP.is_set()) {
       let const parsed_seconds =
           utils::parse_decimal_f64(String{allocator, FLAG_TAIL_SLEEP.value()});
+
       if (parsed_seconds.is_error() || !(parsed_seconds.value() >= 0.0)) {
         throw ErrorWithDetails{
             "invalid number of seconds '" +
@@ -191,6 +198,7 @@ struct tail_options
 
     if (FLAG_TAIL_PID.is_set()) {
       let const parsed_process_id = parse_strict_count(FLAG_TAIL_PID.value());
+
       if (parsed_process_id.is_error() ||
           parsed_process_id.value() > static_cast<u64>(INT32_MAX))
       {
@@ -233,20 +241,20 @@ struct positioned_tail_state
 
 static fn
 find_tail_starts_from_end(ArrayList<positioned_tail_state> &states,
-                          Allocator allocator) throws -> void
+                          Allocator                         allocator) throws -> void
 {
   let batch            = os::Batch{allocator};
   let results          = ArrayList<os::batch_result>{allocator};
   let operation_states = ArrayList<usize>{allocator};
 
-  loop
-  {
+  loop {
     batch.clear();
     results.clear();
     operation_states.clear();
 
     for (usize state_index = 0; state_index < states.count(); state_index++) {
       let &state = states[state_index];
+
       if (state.is_done || state.scan_offset == 0) {
         continue;
       }
@@ -254,7 +262,8 @@ find_tail_starts_from_end(ArrayList<positioned_tail_state> &states,
       let const block_byte_count = state.scan_offset > TAIL_BLOCK_BYTE_COUNT
                                        ? TAIL_BLOCK_BYTE_COUNT
                                        : static_cast<usize>(state.scan_offset);
-      state.read_byte_count      = block_byte_count;
+
+      state.read_byte_count = block_byte_count;
       batch.add(os::batch_operation::read(
           state.descriptor, state.buffer.begin(), block_byte_count,
           state.scan_offset - block_byte_count));
@@ -270,6 +279,7 @@ find_tail_starts_from_end(ArrayList<positioned_tail_state> &states,
     {
       let       &state  = states[operation_states[result_index]];
       let const &result = results[result_index];
+
       if (result.error_number != 0) {
         state.error_number = result.error_number;
         state.is_done      = true;
@@ -277,6 +287,7 @@ find_tail_starts_from_end(ArrayList<positioned_tail_state> &states,
       }
 
       let const transferred = result.transferred_byte_count;
+
       if (transferred == 0) {
         state.is_done = true;
         continue;
@@ -288,6 +299,7 @@ find_tail_starts_from_end(ArrayList<positioned_tail_state> &states,
         if (state.buffer.begin()[position - 1] != '\n') continue;
 
         let const absolute = block_offset + position - 1;
+
         if (absolute + 1 == state.file_byte_count) continue;
 
         if (--state.remaining_newline_count == 0) {
@@ -305,20 +317,20 @@ find_tail_starts_from_end(ArrayList<positioned_tail_state> &states,
 
 static fn
 find_tail_starts_from_start(ArrayList<positioned_tail_state> &states,
-                            Allocator allocator) throws -> void
+                            Allocator                         allocator) throws -> void
 {
   let batch            = os::Batch{allocator};
   let results          = ArrayList<os::batch_result>{allocator};
   let operation_states = ArrayList<usize>{allocator};
 
-  loop
-  {
+  loop {
     batch.clear();
     results.clear();
     operation_states.clear();
 
     for (usize state_index = 0; state_index < states.count(); state_index++) {
       let &state = states[state_index];
+
       if (state.is_done) continue;
 
       if (state.scan_offset >= state.file_byte_count) {
@@ -331,7 +343,8 @@ find_tail_starts_from_start(ArrayList<positioned_tail_state> &states,
       let const block_byte_count = remaining > TAIL_BLOCK_BYTE_COUNT
                                        ? TAIL_BLOCK_BYTE_COUNT
                                        : static_cast<usize>(remaining);
-      state.read_byte_count      = block_byte_count;
+
+      state.read_byte_count = block_byte_count;
       batch.add(os::batch_operation::read(state.descriptor,
                                           state.buffer.begin(),
                                           block_byte_count, state.scan_offset));
@@ -347,6 +360,7 @@ find_tail_starts_from_start(ArrayList<positioned_tail_state> &states,
     {
       let       &state  = states[operation_states[result_index]];
       let const &result = results[result_index];
+
       if (result.error_number != 0) {
         state.error_number = result.error_number;
         state.is_done      = true;
@@ -376,14 +390,54 @@ find_tail_starts_from_start(ArrayList<positioned_tail_state> &states,
   }
 }
 
+static fn
+expand_obsolete_line_count(
+    const ArrayList<String>         &args,
+    const ArrayList<SourceLocation> &arg_locations,
+    ArrayList<String>               &expanded_args,
+    ArrayList<SourceLocation>       &expanded_locations) throws -> void
+{
+  let const allocator = expanded_args.allocator();
+
+  for (usize index = 0; index < args.count(); index++) {
+    let const argument = args[index].view();
+    let const location =
+        index < arg_locations.count() ? arg_locations[index] : SourceLocation{};
+    bool is_obsolete_count =
+        index == 1 && argument.length > 1 && argument[0] == '-';
+
+    for (usize position = 1; is_obsolete_count && position < argument.length;
+         position++)
+    {
+      is_obsolete_count =
+          argument[position] >= '0' && argument[position] <= '9';
+    }
+
+    if (is_obsolete_count) {
+      expanded_args.push(String{allocator, "-n"});
+      expanded_locations.push(location);
+      expanded_args.push(String{allocator, argument.substring(1)});
+      expanded_locations.push(location);
+      continue;
+    }
+
+    expanded_args.push(String{allocator, argument});
+    expanded_locations.push(location);
+  }
+}
+
 fn
 Tail::execute(const ExecContext               &ec,
               EvalContext                     &cxt,
               const ArrayList<String>         &args,
-              const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+              const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
-  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
+  let expanded_args      = ArrayList<String>{cxt.scratch_allocator()};
+  let expanded_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};
+
+  expand_obsolete_line_count(args, arg_locations, expanded_args,
+                             expanded_locations);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(expanded_args, expanded_locations);
 
   let const options = tail_options::parse(cxt.scratch_allocator());
 
@@ -403,6 +457,7 @@ Tail::execute(const ExecContext               &ec,
   let       metadata_source_indices = ArrayList<usize>{allocator};
   let       metadata_results        = ArrayList<os::batch_result>{allocator};
   let       metadata_batch          = os::Batch{allocator};
+
   paths.reserve(sources.count());
   statuses.reserve(sources.count());
   metadata_errors.reserve(sources.count());
@@ -430,13 +485,15 @@ Tail::execute(const ExecContext               &ec,
           metadata_results[result_index].error_number;
   }
 
-  let       output          = String{allocator};
+  let output = String{allocator};
+
   let const do_flush_output = [&]() throws -> void {
     if (output.is_empty()) return;
 
     ec.print_to_stdout(output);
     output.clear();
   };
+
   let const do_write_output = [&](StringView text) throws -> void {
     if (output.count() + text.length < TAIL_OUTPUT_FLUSH_BYTE_COUNT) {
       output += text;
@@ -453,7 +510,8 @@ Tail::execute(const ExecContext               &ec,
       (sources.count() > 1 && !FLAG_TAIL_QUIET.is_enabled() &&
        !FLAG_TAIL_SILENT.is_enabled());
   Maybe<usize> last_header_source_index = None;
-  let const    do_write_header = [&](usize source_index) throws -> void {
+
+  let const do_write_header = [&](usize source_index) throws -> void {
     if (!should_print_headers) return;
 
     if (last_header_source_index.has_value() &&
@@ -466,24 +524,26 @@ Tail::execute(const ExecContext               &ec,
     last_header_source_index = source_index;
     output += "==> ";
     output += sources[source_index] == "-" ? StringView{"standard input"}
-                                              : sources[source_index];
+                                           : sources[source_index];
     output += " <==\n";
   };
 
-  i32       status          = 0;
-  let const do_report_error = [&](usize source_index, StringView prefix)
-                                  throws -> void {
+  i32 status = 0;
+
+  let const do_report_error = [&](usize      source_index,
+                                  StringView prefix) throws -> void {
     let const message = String{allocator, prefix} +
                         String{cxt.scratch_allocator(), sources[source_index]} +
                         "': " + os::last_system_error_message();
+
     do_flush_output();
     report_soft_koshkit_util_error(ec, cxt, args[0].view(), message);
     status = 1;
   };
 
   let states = ArrayList<positioned_tail_state>{allocator};
-  defer
-  {
+
+  defer {
     for (let &state : states)
       if (state.descriptor != KOSH_INVALID_FD)
         unused(os::close_fd(state.descriptor));
@@ -491,6 +551,7 @@ Tail::execute(const ExecContext               &ec,
 
   let follow_entries       = ArrayList<tail_follow_entry>{allocator};
   let buffered_byte_counts = ArrayList<u64>{allocator};
+
   if (options.is_following) {
     follow_entries.reserve(sources.count());
     buffered_byte_counts.reserve(sources.count());
@@ -501,8 +562,8 @@ Tail::execute(const ExecContext               &ec,
       buffered_byte_counts.push(0);
     }
   }
-  defer
-  {
+
+  defer {
     for (let &entry : follow_entries) {
       if (entry.descriptor != KOSH_INVALID_FD && !entry.is_standard_input) {
         unused(os::close_fd(entry.descriptor));
@@ -510,7 +571,8 @@ Tail::execute(const ExecContext               &ec,
     }
   };
 
-  let const do_open_positioned = [&](usize source_index) throws -> void {
+  let const do_open_positioned =
+      [&](usize source_index) throws -> void {
     if (sources[source_index] == "" || sources[source_index] == "-" ||
         metadata_errors[source_index] != 0 ||
         os::file_type_letter(statuses[source_index].mode) != '-')
@@ -520,8 +582,11 @@ Tail::execute(const ExecContext               &ec,
 
     let const descriptor = os::open_file_descriptor(sources[source_index],
                                                     os::file_open_mode::Read);
+
     if (!descriptor.has_value()) return;
+
     let const file_byte_count = os::regular_descriptor_file_size(*descriptor);
+
     if (!file_byte_count.has_value()) {
       unused(os::close_fd(*descriptor));
 
@@ -529,6 +594,7 @@ Tail::execute(const ExecContext               &ec,
     }
 
     positioned_tail_state state{};
+
     state.source_index    = source_index;
     state.descriptor      = *descriptor;
     state.file_byte_count = *file_byte_count;
@@ -556,17 +622,21 @@ Tail::execute(const ExecContext               &ec,
           options.count > 0 ? static_cast<u64>(options.count - 1) : 0;
       state.is_done = state.remaining_newline_count == 0;
     }
+
     if (!state.is_done) state.buffer.reserve(TAIL_BLOCK_BYTE_COUNT);
 
     states.push(steal(state));
   };
 
   let block = ArrayList<char>{allocator};
+
   block.reserve(TAIL_BLOCK_BYTE_COUNT);
-  let       read_batch          = os::Batch{allocator};
-  let       read_results        = ArrayList<os::batch_result>{allocator};
-  let const do_write_positioned = [&](const positioned_tail_state &state)
-                                      throws -> i32 {
+
+  let read_batch   = os::Batch{allocator};
+  let read_results = ArrayList<os::batch_result>{allocator};
+
+  let const do_write_positioned =
+      [&](const positioned_tail_state &state) throws -> i32 {
     u64 offset = state.start_offset;
 
     while (offset < state.file_byte_count) {
@@ -574,6 +644,7 @@ Tail::execute(const ExecContext               &ec,
       let const block_byte_count = remaining > TAIL_BLOCK_BYTE_COUNT
                                        ? TAIL_BLOCK_BYTE_COUNT
                                        : static_cast<usize>(remaining);
+
       read_batch.clear();
       read_results.clear();
       read_batch.add(os::batch_operation::read(state.descriptor, block.begin(),
@@ -582,6 +653,7 @@ Tail::execute(const ExecContext               &ec,
       if (os::INTERRUPT_REQUESTED) return 0;
 
       let const &result = read_results[0];
+
       if (result.error_number != 0) return result.error_number;
       if (result.transferred_byte_count == 0) break;
 
@@ -594,11 +666,13 @@ Tail::execute(const ExecContext               &ec,
 
   let const do_write_buffered = [&](usize source_index) throws -> void {
     let const content = read_named_or_stdin(ec, sources[source_index]);
+
     if (os::INTERRUPT_REQUESTED) return;
     if (!content.has_value()) {
       let const is_directory =
           metadata_errors[source_index] == 0 &&
           os::file_type_letter(statuses[source_index].mode) == 'd';
+
       if (is_directory) do_write_header(source_index);
 
       do_report_error(source_index,
@@ -614,6 +688,7 @@ Tail::execute(const ExecContext               &ec,
     let const text         = content->view();
     let const wanted_count = static_cast<usize>(options.count);
     usize     start        = 0;
+
     if (options.unit == tail_unit::Bytes) {
       start =
           options.origin == count_origin::FromStart
@@ -632,8 +707,10 @@ Tail::execute(const ExecContext               &ec,
     } else if (wanted_count == 0) {
       start = text.length;
     } else {
-      start                         = text.length;
+      start = text.length;
+
       usize remaining_newline_count = wanted_count;
+
       if (start > 0 && text[start - 1] == '\n') {
         start--;
       }
@@ -668,6 +745,7 @@ Tail::execute(const ExecContext               &ec,
     } else if (options.unit == tail_unit::Lines) {
       find_tail_starts_from_start(states, allocator);
     }
+
     if (os::INTERRUPT_REQUESTED) return 130;
 
     usize state_index = 0;
@@ -684,6 +762,7 @@ Tail::execute(const ExecContext               &ec,
       }
 
       let const &state = states[state_index];
+
       state_index++;
       if (state.error_number != 0) {
         os::set_last_system_error(state.error_number);
@@ -693,6 +772,7 @@ Tail::execute(const ExecContext               &ec,
 
       do_write_header(source_index);
       let const error_number = do_write_positioned(state);
+
       if (os::INTERRUPT_REQUESTED) return 130;
       if (error_number != 0) {
         os::set_last_system_error(error_number);
@@ -726,6 +806,7 @@ Tail::execute(const ExecContext               &ec,
 
   for (usize source_index = 0; source_index < sources.count(); source_index++) {
     let &entry = follow_entries[source_index];
+
     if (sources[source_index] == "-") {
       if (options.should_follow_name) {
         report_soft_koshkit_util_error(ec, cxt, args[0].view(),
@@ -735,6 +816,7 @@ Tail::execute(const ExecContext               &ec,
       }
 
       let const standard_input = ec.in_fd.value_or(KOSH_STDIN);
+
       if (!os::stat_descriptor(standard_input, entry.identity) ||
           os::file_type_letter(entry.identity.mode) != '-')
       {
@@ -752,6 +834,7 @@ Tail::execute(const ExecContext               &ec,
     if (entry.descriptor == KOSH_INVALID_FD) {
       let const descriptor = os::open_file_descriptor(sources[source_index],
                                                       os::file_open_mode::Read);
+
       if (!descriptor.has_value()) {
         if (options.should_retry) {
           entry.is_active = true;
@@ -795,14 +878,16 @@ Tail::execute(const ExecContext               &ec,
     return 1;
   }
 
-  let const do_report_follow_message = [&](const String &message)
-                                           throws -> void {
+  let const do_report_follow_message =
+      [&](const String &message) throws -> void {
     do_flush_output();
     report_soft_koshkit_util_error(ec, cxt, args[0].view(), message.view());
   };
+
   let const do_quote_source = [&](usize source_index) throws -> String {
     return "'" + String{allocator, sources[source_index]} + "'";
   };
+
   let const do_deactivate = [&](usize source_index) wontthrow -> void {
     let &entry = follow_entries[source_index];
     if (entry.descriptor != KOSH_INVALID_FD && !entry.is_standard_input) {
@@ -813,9 +898,11 @@ Tail::execute(const ExecContext               &ec,
     entry.is_active  = false;
     active_count--;
   };
+
   let const do_read_followed = [&](usize source_index) throws -> void {
     let            &entry = follow_entries[source_index];
     os::file_status current{};
+
     if (os::stat_descriptor(entry.descriptor, current) &&
         current.size < entry.offset)
     {
@@ -825,10 +912,10 @@ Tail::execute(const ExecContext               &ec,
       entry.offset = 0;
     }
 
-    loop
-    {
+    loop {
       let const read_count =
           os::read_fd(entry.descriptor, block.begin(), TAIL_BLOCK_BYTE_COUNT);
+
       if (os::INTERRUPT_REQUESTED) return;
 
       if (!read_count.has_value()) {
@@ -845,12 +932,14 @@ Tail::execute(const ExecContext               &ec,
       entry.offset += *read_count;
     }
   };
+
   let const do_reopen_followed = [&](usize                  source_index,
                                      const os::file_status &named_status,
-                                     StringView reason) throws -> void {
+                                     StringView             reason) throws -> void {
     let      &entry      = follow_entries[source_index];
     let const descriptor = os::open_file_descriptor(sources[source_index],
                                                     os::file_open_mode::Read);
+
     if (!descriptor.has_value()) return;
 
     if (entry.descriptor != KOSH_INVALID_FD) {
@@ -884,8 +973,7 @@ Tail::execute(const ExecContext               &ec,
                                ? TAIL_MINIMUM_WAIT_SECONDS
                                : options.sleep_seconds;
 
-  loop
-  {
+  loop {
     let const is_watched_process_gone =
         options.watched_process_id != 0 &&
         !os::process_is_running(
@@ -894,15 +982,19 @@ Tail::execute(const ExecContext               &ec,
     for (usize source_index = 0; source_index < sources.count(); source_index++)
     {
       let &entry = follow_entries[source_index];
+
       if (!entry.is_active) continue;
 
       let const is_waiting = entry.descriptor == KOSH_INVALID_FD;
+
       if (is_waiting || options.should_follow_name) {
         os::file_status named_status{};
+
         if (!os::stat_path_following(sources[source_index], named_status)) {
           if (is_waiting) continue;
 
           let const message = os::last_system_error_message();
+
           if (options.should_retry) {
             do_report_follow_message(do_quote_source(source_index) +
                                      " has become inaccessible: " + message);
@@ -922,6 +1014,7 @@ Tail::execute(const ExecContext               &ec,
             entry.identity.has_file_identity &&
             (named_status.device_id != entry.identity.device_id ||
              named_status.file_id != entry.identity.file_id);
+
         if (is_waiting || is_replaced) {
           do_reopen_followed(source_index, named_status,
                              is_waiting ? "appeared" : "been replaced");

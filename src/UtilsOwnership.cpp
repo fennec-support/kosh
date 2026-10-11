@@ -27,13 +27,16 @@ static fn
 parse_numeric_id(StringView text) wontthrow -> Maybe<u32>
 {
   if (text.is_empty()) return None;
+
   u64 value = 0;
 
   for (usize position = 0; position < text.length; position++) {
     let const byte = text[position];
+
     if (byte < '0' || byte > '9') {
       return None;
     }
+
     value = value * 10 + static_cast<u64>(byte - '0');
     if (value > UINT32_MAX) return None;
   }
@@ -66,6 +69,7 @@ change_path_ownership_recursive(
   let const should_follow_nested_symlinks =
       nested_symlink_mode == ownership_symlink_mode::Follow;
   os::file_status path_status{};
+
   if (known_path_status != nullptr) {
     path_status = *known_path_status;
   } else if (!os::stat_path(path.view(), path_status)) {
@@ -81,6 +85,7 @@ change_path_ownership_recursive(
   let const follow_mode = !is_symlink || should_follow_symlink
                               ? os::symlink_follow_mode::Follow
                               : os::symlink_follow_mode::NoFollow;
+
   if (!os::set_file_owner(path.view(), owner_id, group_id, follow_mode)) {
     koshkit::report_soft_koshkit_error(
         ec, cxt,
@@ -96,6 +101,7 @@ change_path_ownership_recursive(
   }
 
   os::file_status followed_status{};
+
   if (is_symlink) {
     if (was_followed_status_queried) {
       if (known_followed_status == nullptr) return true;
@@ -106,6 +112,7 @@ change_path_ownership_recursive(
   } else {
     followed_status = path_status;
   }
+
   if (os::file_type_letter(followed_status.mode) != 'd') return true;
 
   if (traversal_mode == ownership_traversal_mode::RecursiveOneFileSystem) {
@@ -132,15 +139,20 @@ change_path_ownership_recursive(
     active_directories.push(
         {followed_status.device_id, followed_status.file_id});
   }
-  defer
-  {
+
+  defer {
     if (followed_status.has_file_identity) active_directories.pop_back();
   };
 
   let const directory_scratch = cxt.expansion_store().scratch_arena().mark();
-  defer { cxt.expansion_store().scratch_arena().release(directory_scratch); };
+
+  defer {
+    cxt.expansion_store().scratch_arena().release(directory_scratch);
+  };
+
   let children =
       os::list_directory_status(path.view(), cxt.scratch_allocator());
+
   if (!children.has_value()) {
     koshkit::report_soft_koshkit_error(
         ec, cxt,
@@ -155,6 +167,7 @@ change_path_ownership_recursive(
   let followed_child_statuses =
       ArrayList<os::file_status>{cxt.scratch_allocator()};
   let followed_batch = os::Batch{cxt.scratch_allocator()};
+
   child_paths.reserve(children->count());
   if (should_follow_nested_symlinks) {
     followed_child_positions.reserve(children->count());
@@ -167,6 +180,7 @@ change_path_ownership_recursive(
   {
     let const &child_entry = (*children)[child_position];
     let        child       = Path{path.view(), cxt.scratch_allocator()};
+
     child.append(child_entry.child.name.view());
     child_paths.push(steal(child));
 
@@ -174,6 +188,7 @@ change_path_ownership_recursive(
         child_entry.child.kind == Path::EntryKind::Symlink ||
         (child_entry.has_status &&
          os::file_type_letter(child_entry.status.mode) == 'l');
+
     if (!should_follow_nested_symlinks || !is_child_symlink) {
       continue;
     }
@@ -185,6 +200,7 @@ change_path_ownership_recursive(
   }
 
   let followed_results = ArrayList<os::batch_result>{cxt.scratch_allocator()};
+
   if (followed_batch.count() != 0) followed_batch.execute(followed_results);
 
   bool  did_succeed       = true;
@@ -194,12 +210,14 @@ change_path_ownership_recursive(
        child_position++)
   {
     if (os::INTERRUPT_REQUESTED) return did_succeed;
+
     let const &child_entry = (*children)[child_position];
     let const  child_status =
         child_entry.has_status ? &child_entry.status : nullptr;
     let known_child_followed_status =
         static_cast<const os::file_status *>(nullptr);
     let was_child_followed_status_queried = false;
+
     if (followed_position < followed_child_positions.count() &&
         followed_child_positions[followed_position] == child_position)
     {
@@ -251,7 +269,8 @@ change_operands_ownership(const ExecContext       &ec,
                           EvalContext             &cxt,
                           StringView               utility_name,
                           const ArrayList<String> &operands,
-                          const ownership_request &request) throws -> i32
+                          const ownership_request &request) throws
+    -> i32
 {
   let const traversal_mode =
       !request.is_recursive ? ownership_traversal_mode::SinglePath
@@ -259,6 +278,7 @@ change_operands_ownership(const ExecContext       &ec,
           ? ownership_traversal_mode::RecursiveOneFileSystem
           : ownership_traversal_mode::Recursive;
   let traversal_position = request.command_line_follow_position;
+
   if (request.follow_position > traversal_position)
     traversal_position = request.follow_position;
   if (request.physical_position > traversal_position)
@@ -277,8 +297,10 @@ change_operands_ownership(const ExecContext       &ec,
 
   for (usize index = 1; index < operands.count(); index++) {
     if (os::INTERRUPT_REQUESTED) return 130;
+
     let active_directories =
         ArrayList<ownership_directory_identity>{heap_allocator()};
+
     if (!change_path_ownership_recursive(
             ec, cxt, utility_name,
             Path{operands[index].view(), cxt.scratch_allocator()},

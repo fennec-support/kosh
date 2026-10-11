@@ -29,10 +29,9 @@ public:
   Hive &
   operator=(const Hive &) = delete;
 
-  Hive(Hive &&other) wontthrow : m_allocator{other.m_allocator},
-                                 m_blocks{other.m_blocks},
-                                 m_free{other.m_free},
-                                 m_count{other.m_count}
+  Hive(Hive &&other) wontthrow
+      : m_allocator{other.m_allocator}, m_blocks{other.m_blocks},
+        m_free{other.m_free}, m_count{other.m_count}
   {
     other.m_blocks = nullptr;
     other.m_free   = nullptr;
@@ -40,7 +39,7 @@ public:
   }
 
   fn
-  operator=(Hive &&other) wontthrow->Hive &
+  operator=(Hive &&other) wontthrow -> Hive &
   {
     if (this == &other) return *this;
 
@@ -67,6 +66,7 @@ public:
     let *const free_slot = m_free;
     let *const element =
         new (free_slot->bytes) T{static_cast<Arguments &&>(arguments)...};
+
     m_free               = free_slot->next_free;
     free_slot->next_free = nullptr;
     free_slot->is_live   = true;
@@ -81,6 +81,7 @@ public:
     ASSERT(element != nullptr);
 
     let *const erased_slot = reinterpret_cast<Slot *>(element);
+
     ASSERT(erased_slot->is_live);
     element->~T();
     erased_slot->is_live   = false;
@@ -102,6 +103,7 @@ private:
     Slot *next_free;
     bool  is_live;
   };
+
   static_assert(std::is_standard_layout_v<Slot>);
 
   struct Block
@@ -114,8 +116,9 @@ private:
   add_block() throws -> void
   {
     let *const added = m_allocator.alloc_array<Block>(1);
-    added->next      = m_blocks;
-    m_blocks         = added;
+
+    added->next = m_blocks;
+    m_blocks    = added;
 
     for (usize i = BLOCK_SLOT_COUNT; i > 0; i--) {
       added->slots[i - 1].is_live   = false;

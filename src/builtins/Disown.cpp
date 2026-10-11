@@ -66,6 +66,7 @@ Disown::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   if (names.count() <= 1) {
     let const job = cxt.job_table_store().most_recent_job();
+
     if (job == nullptr) throw Error{"There is no such job"};
     cxt.job_table_store().remove_job(job->id);
 
@@ -74,6 +75,7 @@ Disown::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   for (usize i = 1; i < names.count(); i++) {
     let const job = cxt.job_table_store().find_job_by_spec(names[i]);
+
     if (job == nullptr || !cxt.job_table_store().remove_job(job->id)) {
       throw ErrorWithLocation{get_operand_location(ec, operand_locations, i),
                               "'" + names[i] + "' is not a valid job"};

@@ -27,12 +27,14 @@ REGISTER_KOSHKIT_UTIL_FLAGS(Paste);
 namespace koshka::koshkit {
 
 static fn
-parse_paste_delimiters(StringView text, Allocator allocator) throws -> String
+parse_paste_delimiters(StringView text, Allocator allocator) throws
+    -> String
 {
   String delimiters{allocator};
 
   for (usize position = 0; position < text.length; position++) {
     let byte = text[position];
+
     if (byte == '\\' && position + 1 < text.length) {
       byte = text[++position];
       if (byte == 'n')
@@ -42,6 +44,7 @@ parse_paste_delimiters(StringView text, Allocator allocator) throws -> String
       else if (byte == '0')
         byte = '\0';
     }
+
     delimiters += byte;
   }
 
@@ -54,6 +57,7 @@ append_paste_delimiter(String    &output,
                        usize      delimiter_position) throws -> void
 {
   let const delimiter = delimiters[delimiter_position % delimiters.length];
+
   if (delimiter != '\0') output += delimiter;
 }
 
@@ -61,14 +65,14 @@ fn
 Paste::execute(const ExecContext               &ec,
                EvalContext                     &cxt,
                const ArrayList<String>         &args,
-               const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+               const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   let const delimiter_text = FLAG_PASTE_DELIMITERS.is_set()
                                  ? FLAG_PASTE_DELIMITERS.value()
                                  : StringView{"\t"};
+
   if (delimiter_text.is_empty()) {
     KOSHKIT_REPORT_ERROR_AT(FLAG_PASTE_DELIMITERS.value_location(),
                             "delimiter list is empty",
@@ -91,13 +95,16 @@ Paste::execute(const ExecContext               &ec,
 
   let &scratch_arena = cxt.expansion_store().scratch_arena();
   let  owned_inputs  = ArrayList<os::descriptor>{cxt.scratch_allocator()};
-  defer
-  {
+
+  defer {
     for (let const descriptor : owned_inputs)
       os::close_fd(descriptor);
   };
+
   let columns = ArrayList<paste_column>{cxt.scratch_allocator()};
+
   columns.reserve(sources.count());
+
   utils::BufferedLineReader *stdin_reader = nullptr;
 
   for (let const source : sources) {
@@ -107,6 +114,7 @@ Paste::execute(const ExecContext               &ec,
     }
 
     let const input = open_named_or_stdin(ec, source);
+
     if (!input.has_value()) {
       KOSHKIT_REPORT_PATH_ERROR("read", source);
       status = 1;
@@ -116,19 +124,25 @@ Paste::execute(const ExecContext               &ec,
 
     if (input->mode == input_descriptor_mode::Owned)
       owned_inputs.push(input->descriptor);
+
     let *const reader = scratch_arena.create<utils::BufferedLineReader>(
         input->descriptor, bump_allocator(scratch_arena));
+
     if (source == "-") stdin_reader = reader;
     columns.push(paste_column{reader, false});
   }
 
   static constexpr usize OUTPUT_FLUSH_LENGTH = 64 * 1024;
   let                    output              = String{cxt.scratch_allocator()};
-  let const do_read_line = [&](usize column_index) throws -> Maybe<StringView> {
+
+  let const do_read_line =
+      [&](usize column_index) throws -> Maybe<StringView> {
     let &column = columns[column_index];
+
     if (column.is_finished) return None;
 
     let const result = column.reader->next();
+
     if (result == utils::BufferedLineReader::Result::Line)
       return column.reader->get_line();
 
@@ -138,6 +152,7 @@ Paste::execute(const ExecContext               &ec,
       KOSHKIT_REPORT_PATH_ERROR("read", sources[column_index]);
       status = 1;
     }
+
     column.is_finished = true;
 
     return None;
@@ -148,9 +163,9 @@ Paste::execute(const ExecContext               &ec,
     {
       usize line_index = 0;
 
-      loop
-      {
+      loop {
         let const line = do_read_line(column_index);
+
         if (!line.has_value()) break;
 
         if (line_index != 0)
@@ -167,8 +182,7 @@ Paste::execute(const ExecContext               &ec,
       output += '\n';
     }
   } else {
-    loop
-    {
+    loop {
       let const line_start    = output.length();
       bool      did_read_line = false;
 
@@ -177,7 +191,9 @@ Paste::execute(const ExecContext               &ec,
       {
         if (column_index != 0)
           append_paste_delimiter(output, delimiters.view(), column_index - 1);
+
         let const line = do_read_line(column_index);
+
         if (!line.has_value()) continue;
 
         output += *line;

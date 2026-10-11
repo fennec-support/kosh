@@ -79,6 +79,7 @@ struct cp_options
   for_child() const -> cp_options
   {
     let child = *this;
+
     if (symlink_mode != cp_symlink_mode::FollowAll)
       child.symlink_mode = cp_symlink_mode::Preserve;
     child.is_operand_root = false;
@@ -129,6 +130,7 @@ join_with_operand_separator(StringView parent,
                             Allocator  allocator) throws -> Path
 {
   let joined = Path{parent, allocator};
+
   if (parent.length == 0 ||
       os::is_directory_separator(parent[parent.length - 1]))
   {
@@ -156,6 +158,7 @@ static fn
 source_file_status(StringView source) throws -> Maybe<os::file_status>
 {
   os::file_status status{};
+
   if (!os::stat_path_following(source, status)) return {};
 
   return status;
@@ -170,10 +173,12 @@ copy_path(const ExecContext                &ec,
           const cp_options                 &options,
           Allocator                         allocator,
           const os::file_status            *known_lstat,
-          ArrayList<cp_directory_identity> &active_directories) throws -> bool
+          ArrayList<cp_directory_identity> &active_directories) throws
+    -> bool
 {
   let const source_path      = Path{source, allocator};
   let const destination_path = Path{destination, allocator};
+
   if (destination_path.exists() &&
       source_path.is_same_file_as(destination_path))
   {
@@ -184,6 +189,7 @@ copy_path(const ExecContext                &ec,
           + "' are the same file"
     };
   }
+
   let const is_source_symlink =
       options.symlink_mode == cp_symlink_mode::Preserve &&
       (known_lstat != nullptr ? os::file_type_letter(known_lstat->mode) == 'l'
@@ -193,6 +199,7 @@ copy_path(const ExecContext                &ec,
     if (let const target = os::read_symlink(source, allocator)) {
       let const is_destination_blocking_symlink =
           destination_path.exists() || destination_path.is_symbolic_link();
+
       if (is_destination_blocking_symlink && !os::remove_file(destination)) {
         throw Error{
             "unable to remove '" + String{allocator, destination}
@@ -200,6 +207,7 @@ copy_path(const ExecContext                &ec,
             "': " + os::last_system_error_message()
         };
       }
+
       if (!os::create_symlink(target->view(), destination)) {
         throw Error{
             "unable to create the symlink '" + String{allocator, destination}
@@ -217,6 +225,7 @@ copy_path(const ExecContext                &ec,
   }
 
   let source_status = Maybe<os::file_status>{};
+
   if (known_lstat != nullptr && os::file_type_letter(known_lstat->mode) != 'l')
   {
     source_status = *known_lstat;
@@ -228,6 +237,7 @@ copy_path(const ExecContext                &ec,
       source_status.has_value()
           ? os::file_type_letter(source_status->mode) == 'd'
           : source_path.is_directory();
+
   if (is_source_directory && !is_source_symlink) {
     if (options.recursive_mode == cp_recursive_mode::SinglePath)
       throw Error{
@@ -244,13 +254,17 @@ copy_path(const ExecContext                &ec,
       let const destination_absolute =
           Path{destination, allocator}.to_absolute().normalized();
       let source_prefix = source_absolute.text().clone();
+
       source_prefix.push(os::DIRECTORY_SEPARATOR);
+
       let is_destination_inside_source =
           destination_absolute.view() == source_absolute.view() ||
           destination_absolute.view().starts_with(source_prefix.view());
+
       if (!is_destination_inside_source) {
         let const resolved_source = os::canonical_path(source_absolute);
         let resolved_destination  = os::canonical_path(destination_absolute);
+
         if (!resolved_destination.has_value()) {
           if (let const parent =
                   os::canonical_path(destination_absolute.parent()))
@@ -259,14 +273,17 @@ copy_path(const ExecContext                &ec,
             resolved_destination->append(destination_absolute.filename());
           }
         }
+
         if (resolved_source.has_value() && resolved_destination.has_value()) {
           let resolved_prefix = resolved_source->text().clone();
+
           resolved_prefix.push(os::DIRECTORY_SEPARATOR);
           is_destination_inside_source =
               resolved_destination->view() == resolved_source->view() ||
               resolved_destination->view().starts_with(resolved_prefix.view());
         }
       }
+
       if (is_destination_inside_source) {
         throw ErrorWithDetails{
             "cannot copy '" + String{allocator, source}
@@ -278,6 +295,7 @@ copy_path(const ExecContext                &ec,
 
     let const has_identity =
         source_status.has_value() && source_status->has_file_identity;
+
     if (has_identity) {
       for (let const &identity : active_directories) {
         if (identity.device_id == source_status->device_id &&
@@ -294,19 +312,25 @@ copy_path(const ExecContext                &ec,
       active_directories.push(
           {source_status->device_id, source_status->file_id});
     }
-    defer
-    {
+
+    defer {
       if (has_identity) active_directories.pop_back();
     };
 
     let const did_destination_exist =
         Path{destination, allocator}.is_directory();
+
     os::make_directory(destination, 0700);
+
     let const directory_scratch = cxt.expansion_store().scratch_arena().mark();
-    defer { cxt.expansion_store().scratch_arena().release(directory_scratch); };
+
+    defer {
+      cxt.expansion_store().scratch_arena().release(directory_scratch);
+    };
 
     let child_options        = options.for_child();
     let is_other_file_system = false;
+
     if (options.is_one_file_system && source_status.has_value()) {
       if (!options.root_device_id.has_value())
         child_options.root_device_id = source_status->device_id;
@@ -316,8 +340,10 @@ copy_path(const ExecContext                &ec,
     }
 
     bool did_succeed = true;
+
     if (!is_other_file_system) {
       let names = os::list_directory_status(source, allocator);
+
       if (!names.has_value())
         throw Error{
             "unable to read the directory '" + String{allocator, source}
@@ -327,12 +353,18 @@ copy_path(const ExecContext                &ec,
 
       for (let const &entry : *names) {
         if (os::INTERRUPT_REQUESTED) return false;
+
         let const child_scratch = cxt.expansion_store().scratch_arena().mark();
-        defer { cxt.expansion_store().scratch_arena().release(child_scratch); };
+
+        defer {
+          cxt.expansion_store().scratch_arena().release(child_scratch);
+        };
+
         let const child_source = join_with_operand_separator(
             source, entry.child.name.view(), allocator);
         let const child_destination = join_with_operand_separator(
             destination, entry.child.name.view(), allocator);
+
         try {
           if (!copy_path(ec, cxt, utility_name, child_source.view(),
                          child_destination.view(), child_options, allocator,
@@ -345,6 +377,7 @@ copy_path(const ExecContext                &ec,
           report_copy_error(ec, cxt, utility_name, error);
           did_succeed = false;
         }
+
         if (os::INTERRUPT_REQUESTED) return false;
       }
     }
@@ -357,6 +390,7 @@ copy_path(const ExecContext                &ec,
                                          : source_status->mode & 0777 &
                                                ~os::get_file_creation_mask());
     }
+
     if (source_status.has_value() && options.should_preserve &&
         !os::set_file_times(destination,
                             {source_status->access_time,
@@ -378,6 +412,7 @@ copy_path(const ExecContext                &ec,
   let const source_type_letter = source_status.has_value()
                                      ? os::file_type_letter(source_status->mode)
                                      : '-';
+
   if (options.recursive_mode == cp_recursive_mode::Recursive &&
       source_type_letter != '-')
   {
@@ -401,6 +436,7 @@ copy_path(const ExecContext                &ec,
 
   let const is_destination_link_to_unlink_before_copy =
       destination_path.is_symbolic_link();
+
   if (is_destination_link_to_unlink_before_copy &&
       !os::remove_file(destination))
   {
@@ -412,6 +448,7 @@ copy_path(const ExecContext                &ec,
   }
 
   let const did_destination_exist = Path{destination, allocator}.exists();
+
   copy_file(ec, source, destination, options, allocator);
 
   if (source_status.has_value() &&
@@ -422,6 +459,7 @@ copy_path(const ExecContext                &ec,
                                        : source_status->mode & 0777 &
                                              ~os::get_file_creation_mask());
   }
+
   if (source_status.has_value() && options.should_preserve &&
       !os::set_file_times(destination,
                           {source_status->access_time,
@@ -443,7 +481,8 @@ fn
 Cp::execute(const ExecContext               &ec,
             EvalContext                     &cxt,
             const ArrayList<String>         &args,
-            const ArrayList<SourceLocation> &arg_locations) const throws -> i32
+            const ArrayList<SourceLocation> &arg_locations) const throws
+    -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
@@ -455,20 +494,24 @@ Cp::execute(const ExecContext               &ec,
           : cp_recursive_mode::SinglePath;
   usize           symlink_position = 0;
   cp_symlink_mode symlink_mode     = cp_symlink_mode::Preserve;
+
   if (FLAG_CP_FOLLOW_ROOT.is_enabled()) {
     symlink_position = FLAG_CP_FOLLOW_ROOT.position();
     symlink_mode     = cp_symlink_mode::FollowRoot;
   }
+
   if (FLAG_CP_FOLLOW_ALL.is_enabled()) {
     if (FLAG_CP_FOLLOW_ALL.position() > symlink_position) {
       symlink_position = FLAG_CP_FOLLOW_ALL.position();
       symlink_mode     = cp_symlink_mode::FollowAll;
     }
   }
+
   if (FLAG_CP_FOLLOW_NONE.is_enabled()) {
     if (FLAG_CP_FOLLOW_NONE.position() > symlink_position)
       symlink_mode = cp_symlink_mode::Preserve;
   }
+
   if (recursive_mode == cp_recursive_mode::SinglePath &&
       !FLAG_CP_FOLLOW_NONE.is_enabled())
   {
@@ -504,11 +547,13 @@ Cp::execute(const ExecContext               &ec,
   for (usize i = 0; i + 1 < operands.count(); i++) {
     let const source = operands[i].view();
     let       target = String{cxt.scratch_allocator(), destination};
+
     if (is_destination_directory) {
       let const source_path = Path{source, cxt.scratch_allocator()};
       let const leaf        = source_path.filename();
-      target                = join_with_operand_separator(destination, leaf,
-                                                          cxt.scratch_allocator())
+
+      target = join_with_operand_separator(destination, leaf,
+                                           cxt.scratch_allocator())
                    .text();
     }
 
@@ -529,6 +574,7 @@ Cp::execute(const ExecContext               &ec,
       report_copy_error(ec, cxt, args[0].view(), error);
       status = 1;
     }
+
     if (os::INTERRUPT_REQUESTED) return 130;
   }
 

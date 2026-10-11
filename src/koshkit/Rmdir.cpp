@@ -24,8 +24,7 @@ fn
 Rmdir::execute(const ExecContext               &ec,
                EvalContext                     &cxt,
                const ArrayList<String>         &args,
-               const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+               const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
@@ -38,6 +37,7 @@ Rmdir::execute(const ExecContext               &ec,
        operand_index++)
   {
     let const &operand = operands[operand_index];
+
     if (!os::remove_directory(operand.view())) {
       KOSHKIT_REPORT_ERROR_AT(operand_locations[operand_index],
                               "failed to remove '" + operand +
@@ -49,12 +49,13 @@ Rmdir::execute(const ExecContext               &ec,
     if (FLAG_RMDIR_PARENTS.is_enabled()) {
       let current = Path{operand.view(), allocator};
 
-      loop
-      {
+      loop {
         let parent = current.parent();
+
         if (parent.is_empty() || parent == current) {
           break;
         }
+
         if (!os::remove_directory(parent.view())) {
           KOSHKIT_REPORT_ERROR_AT(operand_locations[operand_index],
                                   "failed to remove '" + parent.text() +
@@ -62,6 +63,7 @@ Rmdir::execute(const ExecContext               &ec,
           status = 1;
           break;
         }
+
         current = steal(parent);
       }
     }

@@ -132,6 +132,17 @@ banana
 apple
 --- tail -n 1 ---
 apple
+--- head -2 and tail -1 take the historical count form ---
+banana
+apple
+apple
+--- a -2 after a file is a file operand ---
+==> fruit.txt <==
+banana
+apple
+cherry
+apple
+status=1
 --- sort ---
 apple
 apple

@@ -177,6 +177,7 @@ is_ascii_line(StringView line) wontthrow -> bool
 
   for (; index + sizeof(u64) <= line.length; index += sizeof(u64)) {
     u64 word = 0;
+
     std::memcpy(&word, line.data + index, sizeof(word));
     if ((word & HIGH_BITS) != 0) return false;
   }
@@ -199,10 +200,11 @@ find_required_regex_literal(StringView pattern, bool is_extended) wontthrow
     return {};
   }
 
-  let       required_literal = StringView{};
-  usize     run_start        = 0;
-  usize     run_length       = 0;
-  let const do_close_run     = [&]() wontthrow -> void {
+  let   required_literal = StringView{};
+  usize run_start        = 0;
+  usize run_length       = 0;
+
+  let const do_close_run = [&]() wontthrow -> void {
     if (run_length > required_literal.length)
       required_literal = pattern.substring_of_length(run_start, run_length);
     run_length = 0;
@@ -212,6 +214,7 @@ find_required_regex_literal(StringView pattern, bool is_extended) wontthrow
 
   while (index < pattern.length) {
     let const character = pattern[index];
+
     if (character == '[') break;
 
     if (is_extended && (character == '(' || character == ')')) {
@@ -221,7 +224,9 @@ find_required_regex_literal(StringView pattern, bool is_extended) wontthrow
     if (is_extended && character == '{') {
       if (run_length != 0) run_length--;
       do_close_run();
+
       let const interval_end = pattern.substring(index + 1).find_character('}');
+
       index =
           interval_end.has_value() ? index + *interval_end + 2 : pattern.length;
       continue;
@@ -231,6 +236,7 @@ find_required_regex_literal(StringView pattern, bool is_extended) wontthrow
       if (index + 1 == pattern.length) break;
 
       let const escaped = pattern[index + 1];
+
       if (escaped == '(' || escaped == ')') {
         break;
       }
@@ -238,9 +244,11 @@ find_required_regex_literal(StringView pattern, bool is_extended) wontthrow
       if (escaped == '{' || escaped == '?' || escaped == '+') {
         if (run_length != 0) run_length--;
       }
+
       do_close_run();
       if (escaped == '{') {
         let const interval_end = pattern.find_substring("\\}", index + 2);
+
         index = interval_end.has_value() ? *interval_end + 2 : pattern.length;
         continue;
       }
@@ -257,16 +265,20 @@ find_required_regex_literal(StringView pattern, bool is_extended) wontthrow
         do_close_run();
         break;
       }
+
       if (run_length == 0) run_start = index;
       run_length++;
       break;
+
     case '*':
       if (run_length != 0) run_length--;
       do_close_run();
       break;
+
     case '.':
     case '^':
     case '$': do_close_run(); break;
+
     default:
       if (run_length == 0) run_start = index;
       run_length++;
@@ -290,11 +302,13 @@ collect_recursive_sources(const ExecContext &ec,
                           ArrayList<Path>   &storage,
                           i32               &status,
                           bool               should_report_errors,
-                          const u64 *operand_device_id = nullptr) throws -> void
+                          const u64         *operand_device_id = nullptr) throws
+    -> void
 {
   let const       is_one_file_system = FLAG_GREP_ONE_FILE_SYSTEM.is_enabled();
   os::file_status file_status{};
   bool            has_file_status = false;
+
   if (path_kind == Path::EntryKind::Unknown) {
     if (!os::stat_path(path.view(), file_status)) {
       if (should_report_errors) {
@@ -302,6 +316,7 @@ collect_recursive_sources(const ExecContext &ec,
                                        path.text() + ": " +
                                            os::last_system_error_message());
       }
+
       status = 2;
 
       return;
@@ -311,8 +326,10 @@ collect_recursive_sources(const ExecContext &ec,
 
     switch (os::file_type_letter(file_status.mode)) {
     case 'd': path_kind = Path::EntryKind::Directory; break;
+
     case '-': path_kind = Path::EntryKind::Regular; break;
-    default:  path_kind = Path::EntryKind::Other; break;
+
+    default: path_kind = Path::EntryKind::Other; break;
     }
   }
 
@@ -323,6 +340,7 @@ collect_recursive_sources(const ExecContext &ec,
   }
 
   u64 current_device_id = 0;
+
   if (is_one_file_system) {
     if (!has_file_status)
       has_file_status = os::stat_path(path.view(), file_status);
@@ -340,16 +358,19 @@ collect_recursive_sources(const ExecContext &ec,
   }
 
   let children = Path::read_directory_typed(path, allocator);
+
   if (!children.has_value()) {
     if (should_report_errors) {
       report_soft_koshkit_util_error(ec, cxt, "grep",
                                      path.text() + ": " +
                                          os::last_system_error_message());
     }
+
     status = 2;
 
     return;
   }
+
   children->sort(
       [](const Path::DirectoryChild &left, const Path::DirectoryChild &right) {
         return left.name.view() < right.name.view();
@@ -358,11 +379,14 @@ collect_recursive_sources(const ExecContext &ec,
   if (os::INTERRUPT_REQUESTED) return;
 
   let child_paths = ArrayList<Path>{allocator};
+
   child_paths.reserve(children->count());
+
   usize unknown_count = 0;
 
   for (let const &child : *children) {
     let child_path = path.clone();
+
     child_path.append(child.name.view());
     child_paths.push(steal(child_path));
     if (child.kind == Path::EntryKind::Unknown) unknown_count++;
@@ -376,6 +400,7 @@ collect_recursive_sources(const ExecContext &ec,
     let const wave_count       = unknown_count < GREP_UNKNOWN_BATCH_COUNT
                                      ? unknown_count
                                      : GREP_UNKNOWN_BATCH_COUNT;
+
     unknown_statuses.reserve(wave_count);
     unknown_indices.reserve(wave_count);
     results.reserve(wave_count);
@@ -394,6 +419,7 @@ collect_recursive_sources(const ExecContext &ec,
 
       for (usize index = 0; index < unknown_indices.count(); index++) {
         let &kind = (*children)[unknown_indices[index]].kind;
+
         if (results[index].error_number != 0) {
           kind = Path::EntryKind::Other;
           continue;
@@ -401,8 +427,10 @@ collect_recursive_sources(const ExecContext &ec,
 
         switch (os::file_type_letter(unknown_statuses[index].mode)) {
         case 'd': kind = Path::EntryKind::Directory; break;
+
         case '-': kind = Path::EntryKind::Regular; break;
-        default:  kind = Path::EntryKind::Other; break;
+
+        default: kind = Path::EntryKind::Other; break;
         }
       }
 
@@ -424,7 +452,9 @@ collect_recursive_sources(const ExecContext &ec,
 
   for (usize index = 0; index < children->count(); index++) {
     if (os::INTERRUPT_REQUESTED) return;
+
     let const kind = (*children)[index].kind;
+
     if (kind == Path::EntryKind::Directory)
       collect_recursive_sources(ec, cxt, child_paths[index], kind, allocator,
                                 storage, status, should_report_errors,
@@ -511,6 +541,7 @@ apply_grep_color_capability(grep_palette &palette,
                             StringView    value) wontthrow -> void
 {
   let const capability = GREP_COLOR_CAPABILITIES.find(name);
+
   if (!capability.has_value()) return;
 
   if (*capability == grep_color_capability::Reverse) {
@@ -518,19 +549,26 @@ apply_grep_color_capability(grep_palette &palette,
 
     return;
   }
+
   if (!has_value) return;
 
   switch (*capability) {
   case grep_color_capability::SelectedMatch:
   case grep_color_capability::MatchBoth:     palette.selected_match = value; break;
+
   case grep_color_capability::SelectedLine:
     palette.selected_line = value;
     break;
+
   case grep_color_capability::ContextLine: palette.context_line = value; break;
-  case grep_color_capability::FileName:    palette.file_name = value; break;
-  case grep_color_capability::LineNumber:  palette.line_number = value; break;
-  case grep_color_capability::Separator:   palette.separator = value; break;
-  case grep_color_capability::Reverse:     break;
+
+  case grep_color_capability::FileName: palette.file_name = value; break;
+
+  case grep_color_capability::LineNumber: palette.line_number = value; break;
+
+  case grep_color_capability::Separator: palette.separator = value; break;
+
+  case grep_color_capability::Reverse: break;
   }
 }
 
@@ -544,8 +582,10 @@ parse_grep_colors(grep_palette &palette, StringView specification) wontthrow
 
   for (usize index = 0;; index++) {
     let const byte = index < specification.length ? specification[index] : '\0';
+
     if (byte == ':' || byte == '\0') {
       let const name_end = has_value ? value_start - 1 : index;
+
       apply_grep_color_capability(
           palette,
           specification.substring_of_length(name_start, name_end - name_start),
@@ -583,13 +623,11 @@ class GrepMatcher
 {
 public:
   GrepMatcher(Allocator allocator, const grep_options &options) throws
-      : m_options(options),
-        m_allocator(allocator),
-        m_folded_pattern(allocator),
-        m_fast_bytes(allocator),
-        m_fast_segments(allocator)
+      : m_options(options), m_allocator(allocator), m_folded_pattern(allocator),
+        m_fast_bytes(allocator), m_fast_segments(allocator)
   {
-    let const pattern  = m_options.pattern;
+    let const pattern = m_options.pattern;
+
     m_is_ascii_pattern = is_ascii_pattern(pattern);
     m_should_use_literal_search =
         (m_options.is_fixed || is_literal_search_pattern(pattern)) &&
@@ -609,6 +647,7 @@ public:
   {
     let const is_span_regex_needed =
         m_options.should_highlight && !m_should_use_literal_search;
+
     if (!is_span_regex_needed && (m_should_use_literal_search ||
                                   (m_has_fast_matcher && !m_has_utf8_wildcard)))
     {
@@ -618,6 +657,7 @@ public:
     let const sensitivity = m_options.should_ignore_case
                                 ? os::case_sensitivity::Insensitive
                                 : os::case_sensitivity::Sensitive;
+
     if ((!m_has_fast_matcher || is_span_regex_needed) &&
         (!m_options.is_utf8 || m_is_ascii_pattern))
     {
@@ -662,6 +702,7 @@ public:
                             (!m_is_ascii_pattern || !is_ascii_line(value))
                         ? *m_utf8_regex
                         : *m_regex;
+
     if (!m_options.is_whole_line)
       return os::regex_matches_null_terminated(*selected.get(), value);
 
@@ -683,12 +724,14 @@ public:
       let const needle = m_options.should_ignore_case
                              ? StringView{m_folded_pattern.view()}
                              : m_options.pattern;
+
       if (needle.is_empty() || value.length < needle.length) {
         return false;
       }
 
       if (!m_options.should_ignore_case) {
         let const start = value.find_substring(needle, from);
+
         if (!start.has_value()) return false;
 
         out_start = *start;
@@ -727,6 +770,7 @@ public:
             value.substring(from), m_allocator,
             from == 0 ? os::regex_start_position::Beginning
                         : os::regex_start_position::NotBeginning});
+
     if (report.result != os::regex_match_result::Matched) return false;
 
     out_start = from + static_cast<usize>(report.spans[0].start);
@@ -744,6 +788,7 @@ private:
         m_options.is_extended
             ? os::compile_regex(m_options.pattern, sensitivity)
             : os::compile_basic_regex(m_options.pattern, sensitivity);
+
     if (!compiled.has_value()) return false;
 
     target = CompiledRegex{*compiled};
@@ -755,6 +800,7 @@ private:
   close_fast_segment(usize segment_start) throws -> void
   {
     let const length = m_fast_bytes.count() - segment_start;
+
     if (length == 0) return;
 
     let has_wildcard = false;
@@ -770,14 +816,17 @@ private:
   prepare_fast_matcher() throws -> void
   {
     let const pattern = m_options.pattern;
+
     if (m_should_use_literal_search) return;
 
     usize body_start = 0;
     usize body_end   = pattern.length;
+
     if (body_end != 0 && pattern[0] == '^') {
       m_is_fast_start_anchored = true;
       body_start               = 1;
     }
+
     if (body_end > body_start && pattern[body_end - 1] == '$') {
       m_is_fast_end_anchored = true;
       body_end--;
@@ -792,6 +841,7 @@ private:
 
     for (usize index = body_start; index < body_end; index++) {
       let const character = pattern[index];
+
       if (character == '.') {
         if (index + 1 < body_end && pattern[index + 1] == '*') {
           close_fast_segment(segment_start);
@@ -799,6 +849,7 @@ private:
           if (m_fast_segments.is_empty() && !has_any_gap) {
             has_leading_gap = true;
           }
+
           has_any_gap      = true;
           has_trailing_gap = true;
           index++;
@@ -807,6 +858,7 @@ private:
           has_single_wildcard = true;
           has_trailing_gap    = false;
         }
+
         continue;
       }
 
@@ -825,8 +877,10 @@ private:
       case '{':
       case '}':
       case '|':  did_fail = true; break;
-      default:   did_fail = static_cast<unsigned char>(character) > 0x7f; break;
+
+      default: did_fail = static_cast<unsigned char>(character) > 0x7f; break;
       }
+
       if (did_fail) break;
 
       m_fast_bytes += m_options.should_ignore_case
@@ -854,6 +908,7 @@ private:
       m_is_fast_empty_line_only =
           m_is_fast_start_anchored && m_is_fast_end_anchored && !has_any_gap;
     }
+
     if (has_leading_gap) m_is_fast_start_anchored = false;
     if (has_trailing_gap) m_is_fast_end_anchored = false;
     m_has_utf8_wildcard = m_options.is_utf8 && has_single_wildcard;
@@ -863,16 +918,18 @@ private:
   fn
   does_fast_segment_match_at(const grep_fast_segment &segment,
                              StringView               value,
-                             usize position) const wontthrow -> bool
+                             usize                    position) const wontthrow -> bool
   {
     let const needle =
         m_fast_bytes.view().substring_of_length(segment.start, segment.length);
 
     for (usize index = 0; index < segment.length; index++) {
       let const wanted = needle[index];
+
       if (wanted == '\0') continue;
 
       let const actual = value[position + index];
+
       if ((m_options.should_ignore_case ? utils::ascii_to_lower(actual)
                                         : actual) != wanted)
       {
@@ -887,7 +944,7 @@ private:
   find_fast_segment(const grep_fast_segment &segment,
                     StringView               value,
                     usize                    from,
-                    usize limit) const wontthrow -> Maybe<usize>
+                    usize                    limit) const wontthrow -> Maybe<usize>
   {
     if (limit < from || limit - from < segment.length) {
       return None;
@@ -912,6 +969,7 @@ private:
   match_fast_line(StringView value) const wontthrow -> bool
   {
     let const segment_count = m_fast_segments.count();
+
     if (segment_count == 0)
       return !m_is_fast_empty_line_only || value.length == 0;
 
@@ -922,6 +980,7 @@ private:
 
     if (m_is_fast_start_anchored) {
       let const &head = m_fast_segments[0];
+
       if (value.length < head.length ||
           !does_fast_segment_match_at(head, value, 0))
       {
@@ -939,6 +998,7 @@ private:
     if (m_is_fast_end_anchored) {
       last--;
       let const &tail = m_fast_segments[last];
+
       if (value.length < tail.length || value.length - tail.length < position ||
           !does_fast_segment_match_at(tail, value, value.length - tail.length))
       {
@@ -951,6 +1011,7 @@ private:
     for (usize index = first; index < last; index++) {
       let const found =
           find_fast_segment(m_fast_segments[index], value, position, limit);
+
       if (!found.has_value()) return false;
 
       position = *found + m_fast_segments[index].length;
@@ -963,6 +1024,7 @@ private:
   prepare_repeated_class_path() wontthrow -> void
   {
     let const pattern = m_options.pattern;
+
     if (m_should_use_literal_search || m_has_fast_matcher ||
         m_options.should_ignore_case || pattern.length < 4 ||
         pattern[0] != '^' || pattern[pattern.length - 1] != '$' ||
@@ -974,10 +1036,12 @@ private:
 
     let const body = pattern.substring_of_length(1, pattern.length - 2);
     let const class_position = body.find_character('[');
+
     if (!class_position.has_value()) return;
 
     let const class_and_suffix    = body.substring(*class_position);
     let const repetition_position = class_and_suffix.find_character('*');
+
     if (!repetition_position.has_value()) return;
 
     let const class_expression =
@@ -985,6 +1049,7 @@ private:
     let const repeated_class = GREP_REPEATED_CLASSES.find(class_expression);
     let const prefix         = body.substring_of_length(0, *class_position);
     let const suffix = class_and_suffix.substring(*repetition_position + 1);
+
     if (repeated_class.has_value() && is_literal_search_pattern(prefix) &&
         is_literal_search_pattern(suffix) && is_ascii_pattern(prefix) &&
         is_ascii_pattern(suffix))
@@ -999,6 +1064,7 @@ private:
   prepare_regex_prefix() wontthrow -> void
   {
     let const pattern = m_options.pattern;
+
     if (m_should_use_literal_search || m_options.should_ignore_case ||
         pattern.length <= 1 || pattern[0] != '^' ||
         pattern.find_substring("\\|").has_value() ||
@@ -1011,6 +1077,7 @@ private:
 
     for (usize index = 1; index < pattern.length; index++) {
       let const character = pattern[index];
+
       if (character == '*' || character == '\\' ||
           (m_options.is_extended &&
            (character == '+' || character == '?' || character == '{')))
@@ -1018,9 +1085,11 @@ private:
         if (prefix_length != 0) prefix_length--;
         break;
       }
+
       if (m_options.is_extended && (character == '(' || character == ')')) {
         break;
       }
+
       if (character == '.' || character == '[' || character == '$' ||
           character == '^' || character == '\n' || character == '\0' ||
           static_cast<unsigned char>(character) > 0x7f)
@@ -1071,11 +1140,13 @@ private:
     for (usize index = m_fast_regex_prefix.length; index < middle_end; index++)
     {
       let const byte = static_cast<unsigned char>(value[index]);
+
       if (byte == 0 || byte >= 0x80) {
         return match_regex(value);
       }
 
       u8 byte_class = 0;
+
       if (isalpha(byte) != 0)
         byte_class = 1;
       else if (isdigit(byte) != 0)
@@ -1154,26 +1225,20 @@ public:
              String                              pattern_text,
              const ArrayList<grep_pattern_span> &pattern_spans,
              usize                               first_source_index) throws
-      : m_ec(ec),
-        m_cxt(cxt),
-        m_args(args),
-        m_operand_locations(operand_locations),
-        m_options(options),
+      : m_ec(ec), m_cxt(cxt), m_args(args),
+        m_operand_locations(operand_locations), m_options(options),
         m_first_source_index(first_source_index),
         m_allocator(cxt.scratch_allocator()),
-        m_pattern_text(steal(pattern_text)),
-        m_matchers(m_allocator),
-        m_recursive_storage(m_allocator),
-        m_sources(m_allocator),
-        m_source_line_numbers(m_allocator),
-        m_source_match_counts(m_allocator),
-        m_output(m_allocator),
-        m_line(m_allocator)
+        m_pattern_text(steal(pattern_text)), m_matchers(m_allocator),
+        m_recursive_storage(m_allocator), m_sources(m_allocator),
+        m_source_line_numbers(m_allocator), m_source_match_counts(m_allocator),
+        m_output(m_allocator), m_line(m_allocator)
   {
     m_matchers.reserve(pattern_spans.count());
 
     for (let const &span : pattern_spans) {
       let matcher_options = m_options;
+
       matcher_options.pattern =
           m_pattern_text.view().substring_of_length(span.start, span.length);
       matcher_options.is_fixed    = span.is_fixed;
@@ -1217,19 +1282,25 @@ public:
         source_list_from_operands(operands, m_allocator, m_first_source_index);
     let const is_working_directory_implied =
         is_recursive && operands.count() <= m_first_source_index;
+
     if (is_working_directory_implied) {
       operand_sources.clear();
       operand_sources.push(".");
     }
+
     bool has_directory_operand = false;
+
     if (is_recursive) {
       for (let const source : operand_sources) {
         if (source == "-") {
           m_sources.push(source);
           continue;
         }
+
         if (os::path_is_directory(source)) has_directory_operand = true;
+
         let const source_path = Path{source, m_allocator};
+
         collect_recursive_sources(
             m_ec, m_cxt, source_path, Path::EntryKind::Unknown, m_allocator,
             m_recursive_storage, m_status, !m_options.should_suppress_messages);
@@ -1239,6 +1310,7 @@ public:
 
       for (let const &source : m_recursive_storage) {
         let const view = source.view();
+
         if (is_working_directory_implied && view.starts_with("./")) {
           m_sources.push(view.substring(2));
         } else {
@@ -1263,6 +1335,7 @@ public:
       for (usize index = 0; index < m_sources.count(); index++)
         m_source_line_numbers.push(1);
     }
+
     if (m_options.output_mode == grep_output_mode::Count ||
         m_options.output_mode == grep_output_mode::List)
     {
@@ -1292,9 +1365,9 @@ public:
     let       chunks   = ArrayList<SourceBatchReader::Chunk>{m_allocator};
     let const is_quiet = m_options.output_mode == grep_output_mode::Quiet;
 
-    loop
-    {
+    loop {
       let const read_result = reader.read_next_ordered(chunks);
+
       if (read_result == SourceBatchReader::ReadResult::Complete) break;
       if (read_result == SourceBatchReader::ReadResult::Interrupted) return 130;
 
@@ -1350,6 +1423,7 @@ private:
   append_source_name(StringView source) throws -> void
   {
     let const name = source == "-" ? StringView{"(standard input)"} : source;
+
     if (m_options.should_color) {
       append_sgr_text(m_palette.file_name, name);
 
@@ -1377,6 +1451,7 @@ private:
     char      line_number[20];
     let const text =
         utils::uint_to_text_into(number, line_number, sizeof(line_number));
+
     if (m_options.should_color) {
       append_sgr_text(m_palette.line_number, text);
 
@@ -1395,10 +1470,12 @@ private:
       append_source_name(source);
       append_separator();
     }
+
     if (m_options.should_print_line_numbers) {
       append_line_number(m_source_line_numbers[source_index]);
       append_separator();
     }
+
     if (m_options.should_highlight)
       append_highlighted_text(value);
     else
@@ -1426,6 +1503,7 @@ private:
       for (let &matcher : m_matchers) {
         usize start = 0;
         usize end   = 0;
+
         if (!matcher.find_span(value, position, start, end)) continue;
 
         if (!did_find || start < best_start ||
@@ -1481,45 +1559,57 @@ private:
           flush_output_if_full();
           break;
         }
+
         if (m_should_print_names) {
           append_source_name(source);
           m_output += ':';
         }
+
         if (m_options.should_print_line_numbers) {
           char line_number[20];
+
           m_output +=
               utils::uint_to_text_into(m_source_line_numbers[source_index],
                                        line_number, sizeof(line_number));
           m_output += ':';
         }
+
         m_output += value;
         m_output += '\n';
         flush_output_if_full();
         break;
+
       case grep_output_mode::Count:
         m_source_match_counts[source_index]++;
         break;
+
       case grep_output_mode::List:
         if (m_source_match_counts[source_index]++ == 0) {
           append_source_name(source);
           m_output += '\n';
           flush_output_if_full();
         }
+
         break;
+
       case grep_output_mode::Quiet: break;
       }
     }
+
     m_line.clear();
   }
 
   fn
-  print_source_count(usize source_index, StringView source) throws -> void
+  print_source_count(usize source_index, StringView source) throws
+      -> void
   {
     char count_text[20];
+
     if (m_should_print_names) {
       append_source_name(source);
       append_separator();
     }
+
     m_output += utils::uint_to_text_into(m_source_match_counts[source_index],
                                          count_text, sizeof(count_text));
     m_output += '\n';
@@ -1527,7 +1617,8 @@ private:
   }
 
   fn
-  finish_pending_line(usize source_index, StringView source) throws -> void
+  finish_pending_line(usize source_index, StringView source) throws
+      -> void
   {
     process_line(source_index, source, m_line.view(),
                  match_line(m_line.view()));
@@ -1549,11 +1640,13 @@ private:
     while (position < lines.length) {
       let const line_end =
           position + *lines.substring(position).find_character('\n');
+
       if (m_options.should_invert) {
         process_line(source_index, source,
                      lines.substring_of_length(position, line_end - position),
                      false);
       }
+
       if (m_options.should_print_line_numbers)
         m_source_line_numbers[source_index]++;
 
@@ -1567,11 +1660,14 @@ private:
   {
     let const content      = chunk.content;
     let const last_newline = content.find_last_character('\n');
+
     if (!last_newline.has_value()) return 0;
 
     usize position = 0;
+
     if (!m_line.is_empty()) {
       let const first_newline = *content.find_character('\n');
+
       m_line.append(content.substring_of_length(0, first_newline));
       finish_pending_line(chunk.source_index, source);
       position = first_newline + 1;
@@ -1581,6 +1677,7 @@ private:
 
     while (position < lines_end) {
       let const hit = content.find_substring(m_candidate_literal, position);
+
       if (!hit.has_value() || *hit >= lines_end) {
         skip_candidate_free_lines(
             chunk.source_index, source,
@@ -1594,6 +1691,7 @@ private:
       let const candidate_start = hit_line_offset.has_value()
                                       ? position + *hit_line_offset + 1
                                       : position;
+
       skip_candidate_free_lines(
           chunk.source_index, source,
           content.substring_of_length(position, candidate_start - position));
@@ -1602,6 +1700,7 @@ private:
           *hit + *content.substring(*hit).find_character('\n');
       let const candidate = content.substring_of_length(
           candidate_start, candidate_end - candidate_start);
+
       process_line(chunk.source_index, source, candidate,
                    m_is_literal_hit_sufficient || match_line(candidate));
       if (m_options.should_print_line_numbers)
@@ -1627,6 +1726,7 @@ private:
 
       let const segment = chunk.content.substring_of_length(
           position, delimiter_position - position);
+
       if (delimiter_position == chunk.content.length) {
         m_line.append(segment);
         break;
@@ -1653,6 +1753,7 @@ private:
     let const scanned_length = m_candidate_literal.is_empty()
                                    ? 0
                                    : scan_chunk_candidates(chunk, source);
+
     split_chunk(chunk, source, scanned_length);
 
     if (chunk.completion != source_completion_state::Complete) return;
@@ -1663,11 +1764,13 @@ private:
       if (m_options.should_suppress_messages) return;
 
       os::set_last_system_error(chunk.error_number);
+
       let const source_location =
           chunk.source_index + m_first_source_index <
                   m_operand_locations.count()
               ? m_operand_locations[chunk.source_index + m_first_source_index]
               : m_ec.source_location();
+
       m_ec.print_to_stdout(m_output);
       m_output.clear();
       report_soft_koshkit_util_error(
@@ -1711,14 +1814,14 @@ fn
 Grep::execute(const ExecContext               &ec,
               EvalContext                     &cxt,
               const ArrayList<String>         &args,
-              const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+              const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations,
                                  {.should_allow_options_after_operands = true});
 
   let const has_pattern_flag =
       !FLAG_GREP_EXPRESSION.is_empty() || !FLAG_GREP_PATTERN_FILE.is_empty();
+
   if (operands.is_empty() && !has_pattern_flag) {
     return report_usage_error(ec, cxt, args[0].view());
   }
@@ -1730,7 +1833,8 @@ Grep::execute(const ExecContext               &ec,
     return 2;
   }
 
-  let options            = grep_options{};
+  let options = grep_options{};
+
   options.recursion_mode = FLAG_GREP_RECURSIVE.is_enabled()
                                ? grep_recursion_mode::Recursive
                                : grep_recursion_mode::Files;
@@ -1758,6 +1862,7 @@ Grep::execute(const ExecContext               &ec,
 
   let pattern_text  = String{cxt.scratch_allocator()};
   let pattern_spans = ArrayList<grep_pattern_span>{cxt.scratch_allocator()};
+
   let const do_add_pattern = [&](StringView pattern) throws -> void {
     let const should_escape = options.is_fixed && options.should_ignore_case &&
                               !is_ascii_pattern(pattern);
@@ -1767,6 +1872,7 @@ Grep::execute(const ExecContext               &ec,
       if (should_escape && is_basic_regex_special(pattern[index])) {
         pattern_text += '\\';
       }
+
       pattern_text += pattern[index];
     }
 
@@ -1774,12 +1880,13 @@ Grep::execute(const ExecContext               &ec,
                         static_cast<u32>(pattern_text.count() - start),
                         options.is_fixed && !should_escape});
   };
+
   let const do_add_pattern_list = [&](StringView list) throws -> void {
     usize start = 0;
 
-    loop
-    {
+    loop {
       let const newline = list.substring(start).find_character('\n');
+
       if (!newline.has_value()) {
         do_add_pattern(list.substring(start));
         break;
@@ -1791,6 +1898,7 @@ Grep::execute(const ExecContext               &ec,
   };
 
   usize first_source_index = 0;
+
   if (!has_pattern_flag) {
     do_add_pattern_list(operands[0].view());
     first_source_index = 1;
@@ -1803,6 +1911,7 @@ Grep::execute(const ExecContext               &ec,
     let const file_name = FLAG_GREP_PATTERN_FILE.get(index);
     let const contents =
         Path{file_name, cxt.scratch_allocator()}.read_entire_file();
+
     if (!contents.has_value()) {
       report_soft_koshkit_util_error(
           ec, cxt, FLAG_GREP_PATTERN_FILE.get_location(index), args[0].view(),
@@ -1815,6 +1924,7 @@ Grep::execute(const ExecContext               &ec,
     if (contents->is_empty()) continue;
 
     let list = contents->view();
+
     if (list[list.length - 1] == '\n')
       list = list.substring_of_length(0, list.length - 1);
     do_add_pattern_list(list);
@@ -1830,19 +1940,24 @@ Grep::execute(const ExecContext               &ec,
                           first_source_index};
   let color_variable        = Maybe<String>{};
   let legacy_color_variable = Maybe<String>{};
+
   if (options.should_color) {
     grep_palette palette{};
+
     legacy_color_variable = cxt.get_variable_value("GREP_COLOR");
     if (legacy_color_variable.has_value() && !legacy_color_variable->is_empty())
     {
       palette.selected_match = legacy_color_variable->view();
     }
+
     color_variable = cxt.get_variable_value("GREP_COLORS");
     if (color_variable.has_value())
       parse_grep_colors(palette, color_variable->view());
     search.set_palette(palette);
   }
+
   let const invalid_pattern = search.find_invalid_pattern();
+
   if (invalid_pattern.has_value()) {
     report_soft_koshkit_util_error(
         ec, cxt, has_pattern_flag ? ec.source_location() : operand_locations[0],

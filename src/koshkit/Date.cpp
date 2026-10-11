@@ -25,8 +25,7 @@ fn
 Date::execute(const ExecContext               &ec,
               EvalContext                     &cxt,
               const ArrayList<String>         &args,
-              const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+              const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
@@ -43,6 +42,7 @@ Date::execute(const ExecContext               &ec,
   let const  now = std::time(nullptr);
   let const *broken_down =
       FLAG_DATE_UTC.is_enabled() ? std::gmtime(&now) : std::localtime(&now);
+
   if (broken_down == nullptr) {
     report_soft_koshkit_util_error(ec, cxt, args[0].view(),
                                    "cannot convert the current time");
@@ -56,9 +56,11 @@ Date::execute(const ExecContext               &ec,
   char      buffer[8192];
   let const length =
       std::strftime(buffer, sizeof(buffer), format_text.c_str(), broken_down);
+
   if (length == 0 && !format.is_empty()) {
     let const location =
         operands.is_empty() ? ec.source_location() : operand_locations[0];
+
     report_soft_koshkit_util_error(
         ec, cxt, location, args[0].view(),
         "formatted output exceeds the supported line length");

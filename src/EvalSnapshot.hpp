@@ -107,8 +107,9 @@ inline constexpr usize LETTER_COMPGEN_ACTION_COUNT =
     sizeof(LETTER_COMPGEN_ACTIONS) / sizeof(LETTER_COMPGEN_ACTIONS[0]);
 
 inline constexpr pure fn
-compgen_letter_action_mask(const bool (
-    &is_action_enabled)[LETTER_COMPGEN_ACTION_COUNT]) wontthrow -> u32
+compgen_letter_action_mask(
+    const bool (&is_action_enabled)[LETTER_COMPGEN_ACTION_COUNT])
+    wontthrow -> u32
 {
   u32 action_mask = 0;
 
@@ -220,7 +221,8 @@ struct completion_spec
   fn
   clone(Allocator allocator) const throws -> completion_spec
   {
-    let copy            = completion_spec{};
+    let copy = completion_spec{};
+
     copy.function_name  = String{allocator, function_name.view()};
     copy.word_list      = String{allocator, word_list.view()};
     copy.glob_pattern   = String{allocator, glob_pattern.view()};
@@ -355,15 +357,18 @@ public:
   explicit CompiledRegex(os::compiled_regex compiled)
       : m_re(compiled), m_is_owned(true)
   {}
+
   ~CompiledRegex()
   {
     if (m_is_owned) os::free_regex(m_re);
   }
+
   CompiledRegex(CompiledRegex &&other) noexcept
       : m_re(other.m_re), m_is_owned(other.m_is_owned)
   {
     other.m_is_owned = false;
   }
+
   fn
   operator=(CompiledRegex &&other) noexcept -> CompiledRegex &
   {
@@ -376,6 +381,7 @@ public:
 
     return *this;
   }
+
   CompiledRegex(const CompiledRegex &) = delete;
   CompiledRegex &
   operator=(const CompiledRegex &) = delete;

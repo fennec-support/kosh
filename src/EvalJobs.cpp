@@ -53,6 +53,7 @@ JobTable::find_finished_status(i64 process_id) const wontthrow -> Maybe<i32>
         (m_next_finished_status_slot + REMEMBERED_FINISHED_STATUS_COUNT - age) %
         REMEMBERED_FINISHED_STATUS_COUNT;
     let const &entry = m_finished_statuses[slot];
+
     if (entry.process_id == process_id) return entry.status;
   }
 
@@ -71,6 +72,7 @@ JobTable::take_snapshot() throws -> job_table_snapshot
 {
   let finished_statuses =
       ArrayList<finished_process_status>{m_finished_statuses.allocator()};
+
   finished_statuses.reserve(m_finished_statuses.count());
 
   for (let const &entry : m_finished_statuses)
@@ -80,6 +82,7 @@ JobTable::take_snapshot() throws -> job_table_snapshot
       m_last_background_pid,           steal(m_jobs),
       steal(m_detached_job_processes), steal(finished_statuses),
       m_next_finished_status_slot,     m_next_job_id};
+
   m_next_job_id = 1;
 
   return snapshot;
@@ -148,7 +151,8 @@ JobTable::register_job(os::process pid,
                        StringView  command,
                        i64         process_group_id) throws -> i32
 {
-  let new_job              = job{m_jobs.allocator()};
+  let new_job = job{m_jobs.allocator()};
+
   new_job.id               = claim_job_id();
   new_job.pid              = pid;
   new_job.process_id       = os::process_id_of(pid);
@@ -168,19 +172,22 @@ JobTable::register_pipeline_job(const ArrayList<os::process> &processes,
                                 StringView                    command,
                                 i64 process_group_id) throws -> i32
 {
-  let new_job              = job{m_jobs.allocator()};
+  let new_job = job{m_jobs.allocator()};
+
   new_job.id               = claim_job_id();
   new_job.pid              = primary_process;
   new_job.process_id       = os::process_id_of(primary_process);
   new_job.process_group_id = process_group_id;
   new_job.command          = String{m_jobs.allocator(), command};
-  bool did_skip_primary    = false;
+
+  bool did_skip_primary = false;
 
   for (let const process : processes) {
     if (!did_skip_primary && process == primary_process) {
       did_skip_primary = true;
       continue;
     }
+
     new_job.earlier_pipeline_processes.push(process);
   }
 
@@ -197,8 +204,9 @@ JobTable::register_stopped_job(os::process pid,
                                i32         status,
                                i64         process_group_id) throws -> i32
 {
-  let const id              = register_job(pid, command, process_group_id);
-  job      &registered      = m_jobs.back();
+  let const id         = register_job(pid, command, process_group_id);
+  job      &registered = m_jobs.back();
+
   registered.state          = job::State::Stopped;
   registered.stopped_status = status;
 
@@ -212,6 +220,7 @@ JobTable::notify_stopped_job(i32 id) throws -> void
     if (m_jobs[index].id != id) continue;
 
     let line = String{heap_allocator(), "\n"};
+
     append_status_line(line, index, job_line_format{});
     line.push('\n');
     print_error(line);
@@ -221,8 +230,8 @@ JobTable::notify_stopped_job(i32 id) throws -> void
 }
 
 static fn
-describe_job_state(const job &entry, const job_line_format &format) throws
-    -> String
+describe_job_state(const job             &entry,
+                   const job_line_format &format) throws -> String
 {
   switch (entry.state) {
   case job::State::Running: return String{"Running"};
@@ -242,6 +251,7 @@ describe_job_state(const job &entry, const job_line_format &format) throws
   if (entry.last_status == 0) return String{"Done"};
 
   let const status = String::from(entry.last_status, heap_allocator());
+
   if (format.is_posix) return "Done(" + status + ")";
 
   return "Exit " + status;
@@ -250,13 +260,15 @@ describe_job_state(const job &entry, const job_line_format &format) throws
 fn
 JobTable::append_status_line(String                &out,
                              usize                  index,
-                             const job_line_format &format) const throws -> void
+                             const job_line_format &format) const throws
+    -> void
 {
   constexpr usize PROCESS_ID_COLUMN_WIDTH = 5;
   constexpr usize STATE_COLUMN_WIDTH      = 27;
 
   let const &entry  = m_jobs[index];
   char       marker = ' ';
+
   if (index == m_jobs.count() - 1) {
     marker = '+';
   } else if (index + 2 == m_jobs.count()) {
@@ -268,6 +280,7 @@ JobTable::append_status_line(String                &out,
   out.push(' ');
   if (format.should_show_process_id) {
     let const process_id = String::from(entry.process_id, heap_allocator());
+
     out.append_repeated(' ', process_id.count() < PROCESS_ID_COLUMN_WIDTH
                                  ? PROCESS_ID_COLUMN_WIDTH - process_id.count()
                                  : 0);
@@ -278,6 +291,7 @@ JobTable::append_status_line(String                &out,
   }
 
   let const state = describe_job_state(entry, format);
+
   out.append(format.state_color);
   out.append(state.view());
   if (!format.state_color.is_empty()) out.append(format.color_reset);
@@ -288,6 +302,7 @@ JobTable::append_status_line(String                &out,
   if (entry.state == job::State::Done && entry.termination.did_dump_core) {
     out += "(core dumped) ";
   }
+
   out.append(entry.command.view());
   if (entry.state == job::State::Running) out += " &";
 }
@@ -302,6 +317,7 @@ poll_owned_processes(ArrayList<os::process> &processes) wontthrow -> Maybe<i32>
   {
     i32       status = 0;
     let const state = os::poll_process(processes[process_position - 1], status);
+
     if (state == os::process_state::Exited)
       processes.remove(process_position - 1);
     else if (state == os::process_state::Stopped)
@@ -323,6 +339,7 @@ JobTable::update_jobs() throws -> void
 
     let const earlier_stopped_status =
         poll_owned_processes(job.earlier_pipeline_processes);
+
     if (earlier_stopped_status.has_value()) {
       if (job.state != job::State::Stopped)
         job.has_unreported_state_change = true;
@@ -334,25 +351,30 @@ JobTable::update_jobs() throws -> void
       i32       status      = 0;
       let       termination = os::process_termination{};
       let const state       = os::poll_process(job.pid, status, &termination);
+
       switch (state) {
       case os::process_state::Exited:
         job.is_primary_process_active = false;
         job.last_status               = status;
         job.termination               = termination;
         break;
+
       case os::process_state::Stopped:
         if (job.state != job::State::Stopped)
           job.has_unreported_state_change = true;
         job.state          = job::State::Stopped;
         job.stopped_status = status;
         break;
+
       case os::process_state::Running:
         if (!earlier_stopped_status.has_value()) {
           if (job.state != job::State::Running)
             job.has_unreported_state_change = true;
           job.state = job::State::Running;
         }
+
         break;
+
       case os::process_state::Unchanged: break;
       }
     }
@@ -368,15 +390,17 @@ JobTable::update_jobs() throws -> void
 }
 
 fn
-JobTable::wait_for_job_processes(job  &job,
-                                 bool *was_stopped,
-                                 bool should_wait_for_termination) throws -> i32
+JobTable::wait_for_job_processes(
+    job  &job,
+    bool *was_stopped,
+    bool  should_wait_for_termination) throws -> i32
 {
   if (job.state == job::State::Done) {
     if (was_stopped != nullptr) *was_stopped = false;
 
     return job.last_status;
   }
+
   if (job.state == job::State::Stopped && !should_wait_for_termination) {
     if (was_stopped != nullptr) *was_stopped = true;
 
@@ -384,14 +408,14 @@ JobTable::wait_for_job_processes(job  &job,
   }
 
   if constexpr (os::HAS_CHILD_STATE_CHANGE_WAIT) {
-    loop
-    {
+    loop {
       update_jobs();
       if (job.state == job::State::Done) {
         if (was_stopped != nullptr) *was_stopped = false;
 
         return job.last_status;
       }
+
       if (job.state == job::State::Stopped && !should_wait_for_termination) {
         if (was_stopped != nullptr) *was_stopped = true;
 
@@ -411,8 +435,7 @@ JobTable::wait_for_job_processes(job  &job,
     }
   }
 
-  loop
-  {
+  loop {
     let const fallback_process    = job.is_primary_process_active
                                         ? job.pid
                                         : job.earlier_pipeline_processes.back();
@@ -456,11 +479,10 @@ JobTable::wait_for_job_processes(job  &job,
 
 fn
 JobTable::wait_for_next_job(const ArrayList<i32> &job_ids,
-                            bool should_wait_for_termination) throws
+                            bool                  should_wait_for_termination) throws
     -> next_job_wait
 {
-  loop
-  {
+  loop {
     update_jobs();
 
     bool has_waitable_job = false;
@@ -502,6 +524,7 @@ JobTable::find_job_index_by_spec(StringView spec) throws -> Maybe<usize>
   if (m_jobs.is_empty()) return koshka::None;
 
   StringView body = spec;
+
   if (!body.is_empty() && body[0] == '%') {
     body = body.substring(1);
   }
@@ -509,6 +532,7 @@ JobTable::find_job_index_by_spec(StringView spec) throws -> Maybe<usize>
   if (body.is_empty() || body == "+" || body == "%") {
     return m_jobs.count() - 1;
   }
+
   if (body == "-")
     return m_jobs.count() >= 2 ? m_jobs.count() - 2 : m_jobs.count() - 1;
 
@@ -520,6 +544,7 @@ JobTable::find_job_index_by_spec(StringView spec) throws -> Maybe<usize>
   }
 
   let const is_substring_match = body[0] == '?';
+
   if (is_substring_match) body = body.substring(1);
 
   if (body.is_empty()) return koshka::None;
@@ -647,6 +672,7 @@ JobTable::remove_job(i32 id) throws -> bool
   let const detached_count = removed.earlier_pipeline_processes.count() +
                              (removed.is_primary_process_active ? 1 : 0);
   let kept = ArrayList<job>{m_jobs.allocator()};
+
   kept.reserve(m_jobs.count() - 1);
   m_detached_job_processes.reserve(m_detached_job_processes.count() +
                                    detached_count);
@@ -675,6 +701,7 @@ JobTable::format_done_job_notifications(StringView line_ending,
 
   for (usize i = 0; i < m_jobs.count(); i++) {
     let const &job = m_jobs[i];
+
     if (job.state != job::State::Done || job.was_waited) {
       continue;
     }
@@ -693,6 +720,7 @@ EvalContext::notify_done_jobs() throws -> void
 {
   let const lines = job_table_store().format_done_job_notifications(
       "\n", runtime_state().is_posix_option_on());
+
   if (!lines.is_empty()) print_error(lines);
 }
 

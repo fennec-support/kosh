@@ -30,7 +30,8 @@ public:
   parse(StringView source, u32 radix, BumpArena &arena) throws
       -> ArithmeticValue;
   static fn
-  parse_decimal(StringView text, BumpArena &arena) throws -> ArithmeticValue;
+  parse_decimal(StringView text, BumpArena &arena) throws
+      -> ArithmeticValue;
 
   pure fn
   is_zero() const wontthrow -> bool;
@@ -43,8 +44,7 @@ public:
   fn
   to_string(Allocator allocator) const throws -> String;
   fn
-  compare(const ArithmeticValue &other, Allocator allocator) const throws
-      -> i32;
+  compare(const ArithmeticValue &other, Allocator allocator) const throws -> i32;
   pure fn
   get_decimal_scale() const wontthrow -> u32;
   pure fn
@@ -86,6 +86,7 @@ public:
   rescale(const ArithmeticValue &value,
           u32                    decimal_scale,
           BumpArena             &arena) throws -> ArithmeticValue;
+
   static fn
   shift_left(const ArithmeticValue &value,
              const ArithmeticValue &count,
@@ -94,6 +95,7 @@ public:
   shift_right(const ArithmeticValue &value,
               const ArithmeticValue &count,
               BumpArena             &arena) throws -> ArithmeticValue;
+
   static fn
   bitwise(char                   kind,
           const ArithmeticValue &left,
@@ -102,6 +104,7 @@ public:
   static fn
   bit_not(const ArithmeticValue &value, BumpArena &arena) throws
       -> ArithmeticValue;
+
   static fn
   absolute(const ArithmeticValue &value, BumpArena &arena) throws
       -> ArithmeticValue;
@@ -119,7 +122,8 @@ private:
   static constexpr uintptr NEGATIVE_STORAGE_FLAG = 1;
 
   static fn
-  from_signed_128(i128 value, BumpArena &arena) throws -> ArithmeticValue;
+  from_signed_128(i128 value, BumpArena &arena) throws
+      -> ArithmeticValue;
   static fn
   from_magnitude(const u64 *limbs,
                  usize      limb_count,
@@ -141,7 +145,8 @@ private:
                   const ArithmeticValue &right) wontthrow -> bool;
   static fn
   get_shift_bit_count(const ArithmeticValue &value,
-                      const ArithmeticValue &count) throws -> Maybe<usize>;
+                      const ArithmeticValue &count) throws
+      -> Maybe<usize>;
 
   pure fn
   is_promoted() const wontthrow -> bool;
@@ -177,6 +182,7 @@ inline constexpr radix_digit_table RADIX_DIGIT_TABLE = [] {
 
   for (u32 byte = 0; byte < 256; byte++) {
     u8 value = 64;
+
     if (byte >= '0' && byte <= '9') {
       value = static_cast<u8>(byte - '0');
     } else if (byte >= 'a' && byte <= 'z') {
@@ -188,6 +194,7 @@ inline constexpr radix_digit_table RADIX_DIGIT_TABLE = [] {
     } else if (byte == '_') {
       value = 63;
     }
+
     table.values[byte] = value;
   }
 
@@ -198,6 +205,7 @@ alwaysinline pure fn
 radix_digit_value(char byte, u32 radix) wontthrow -> u32
 {
   let const value = RADIX_DIGIT_TABLE.values[static_cast<u8>(byte)];
+
   if (radix > 36 && byte >= 'A' && byte <= 'Z') {
     return value + 26u;
   }
@@ -225,10 +233,12 @@ detect_radix_prefix(StringView body) wontthrow -> radix_prefix
   {
     return {16, 2};
   }
+
   if (body.length >= 2 && body[0] == '0' && (body[1] == 'b' || body[1] == 'B'))
   {
     return {2, 2};
   }
+
   if (body.length >= 1 && body[0] == '0') {
     return {8, 0};
   }

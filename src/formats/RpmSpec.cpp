@@ -33,13 +33,16 @@ parse_rpm_spec_format(const parser_format_input &input,
 
   while (position < input.source.length) {
     let const line = input.source.next_line(position);
+
     if (!is_script_section(line)) continue;
+
     let const shell_start = position;
     usize     shell_end   = input.source.length;
 
     while (position < input.source.length) {
       let const next_start = position;
       let const next_line  = input.source.next_line(position);
+
       if (!next_line.is_empty() && next_line[0] == '%' &&
           !next_line.starts_with("%%"))
       {

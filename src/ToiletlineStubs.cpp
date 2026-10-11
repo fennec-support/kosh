@@ -98,8 +98,11 @@ resolve_no_editor_history_path() -> Maybe<Path>
   }
 
   let home = os::get_home_directory();
+
   if (!home.has_value()) return None;
+
   let path = home->clone();
+
   path.append(NO_EDITOR_HISTORY_FILE);
 
   return path;
@@ -131,12 +134,14 @@ get_history_record_span(const no_editor_history_state &state,
                         usize record_index) -> history_record_span
 {
   ASSERT(record_index < state.record_byte_offsets.count());
+
   let const start_byte_offset =
       get_history_record_byte_offset(state, record_index);
   let const end_byte_offset =
       record_index + 1 < state.record_byte_offsets.count()
           ? get_history_record_byte_offset(state, record_index + 1)
           : state.trailing_record_start_byte_offset;
+
   ASSERT(start_byte_offset < end_byte_offset);
 
   return {start_byte_offset, end_byte_offset};
@@ -170,28 +175,34 @@ next_history_record(StringView           contents,
                     bool                &is_valid) -> bool
 {
   span.start_byte_offset = byte_offset;
+
   bool is_escape_pending = false;
 
   while (byte_offset < contents.length) {
     let const byte = static_cast<u8>(contents[byte_offset]);
+
     byte_offset++;
 
     if (is_escape_pending) {
       is_escape_pending = false;
       continue;
     }
+
     if (byte == '\\') {
       is_escape_pending = true;
       continue;
     }
+
     if (byte == '\n') {
       span.end_byte_offset = byte_offset;
 
       return true;
     }
+
     if (byte == '\r' || byte == '\t' || byte == '\v' || byte == '\f') {
       continue;
     }
+
     if (byte < 0x20 || byte == 0x7f) {
       is_valid = false;
 
@@ -208,16 +219,20 @@ decode_history_record(String             &decoded,
                       history_record_span span) -> bool
 {
   decoded.clear();
+
   let const encoded_byte_count = span.end_byte_offset - span.start_byte_offset;
+
   decoded.reserve(encoded_byte_count < NO_EDITOR_HISTORY_DECODED_MAX_BYTE_COUNT
                       ? encoded_byte_count
                       : NO_EDITOR_HISTORY_DECODED_MAX_BYTE_COUNT);
+
   bool is_escape_pending = false;
 
   for (usize byte_offset = span.start_byte_offset;
        byte_offset + 1 < span.end_byte_offset; byte_offset++)
   {
     let byte = contents[byte_offset];
+
     if (is_escape_pending) {
       is_escape_pending = false;
       if (byte == 'n') {
@@ -226,6 +241,7 @@ decode_history_record(String             &decoded,
         if (decoded.count() == NO_EDITOR_HISTORY_DECODED_MAX_BYTE_COUNT) {
           return false;
         }
+
         decoded.push('\\');
       }
     } else if (byte == '\\') {
@@ -251,6 +267,7 @@ scan_no_editor_history(const Path &path,
     -> history_scan_outcome
 {
   let &state = get_no_editor_history_state();
+
   if (state.loaded_path.view() != path.view())
     state.loaded_path = String{heap_allocator(), path.view()};
   state.branch_contents = String{heap_allocator(), contents};
@@ -288,6 +305,7 @@ scan_no_editor_history(const Path &path,
   } else if (state.file_status.size != contents.length) {
     return history_scan_outcome::Stale;
   }
+
   state.is_rewritable =
       state.has_file_status && state.file_status.has_file_identity;
   state.is_file_bad = false;
@@ -300,15 +318,18 @@ static fn
 load_no_editor_history(const Path &path, bool should_allow_missing)
     -> ErrorOr<Ok>
 {
-  let &state      = get_no_editor_history_state();
+  let &state = get_no_editor_history_state();
+
   state.is_loaded = false;
 
   for (int attempt_index = 0;
        attempt_index < toiletline::HISTORY_RACE_ATTEMPT_COUNT; attempt_index++)
   {
     let const contents = path.read_entire_file();
+
     if (!contents.has_value()) {
       let const was_missing = os::last_system_error_is_missing_file();
+
       if (!should_allow_missing || !was_missing) {
         return Error{os::last_system_error_message()};
       }
@@ -323,6 +344,7 @@ load_no_editor_history(const Path &path, bool should_allow_missing)
     }
 
     let const outcome = scan_no_editor_history(path, contents->view());
+
     if (outcome == history_scan_outcome::Loaded) return Success;
     if (outcome == history_scan_outcome::Invalid)
       return Error{"the file contains invalid data"};
@@ -336,6 +358,7 @@ ensure_no_editor_history_loaded(const Path &path, bool should_allow_missing)
     -> ErrorOr<Ok>
 {
   let &state = get_no_editor_history_state();
+
   if (!state.is_loaded || state.loaded_path.view() != path.view()) {
     return load_no_editor_history(path, should_allow_missing);
   }
@@ -350,8 +373,11 @@ find_no_editor_history_event(Allocator    allocator,
                              Match do_match) -> Maybe<toiletline::history_event>
 {
   let const path = resolve_no_editor_history_path();
+
   if (!path.has_value()) return None;
+
   if (ensure_no_editor_history_loaded(*path, false).is_error()) return None;
+
   let      &state                 = get_no_editor_history_state();
   let const retained_record_count = state.record_byte_offsets.count();
   let const first_number = state.total_count - retained_record_count + 1;
@@ -359,10 +385,13 @@ find_no_editor_history_event(Allocator    allocator,
 
   for (usize index = retained_record_count; index > 0; index--) {
     let const number = first_number + index - 1;
+
     if (before_event_number.has_value() && number >= *before_event_number) {
       continue;
     }
+
     let const span = get_history_record_span(state, index - 1);
+
     if (!decode_history_record(decoded, state.branch_contents.view(), span))
       return None;
     if (do_match(number, decoded.view())) {
@@ -381,12 +410,19 @@ rewrite_no_editor_history_event(usize                    wanted_number,
                                 const ArrayList<String> &replacements) -> bool
 {
   let const path = resolve_no_editor_history_path();
+
   if (!path.has_value()) return false;
+
   let &state = get_no_editor_history_state();
+
   if (ensure_no_editor_history_loaded(*path, false).is_error()) return false;
+
   let const retained_record_count = state.record_byte_offsets.count();
+
   if (retained_record_count == 0) return false;
+
   let const first_number = state.total_count - retained_record_count + 1;
+
   if (wanted_number < first_number ||
       wanted_number >= first_number + retained_record_count)
   {
@@ -396,6 +432,7 @@ rewrite_no_editor_history_event(usize                    wanted_number,
   let const retained_index = wanted_number - first_number;
   let const private_span   = get_history_record_span(state, retained_index);
   let       decoded        = String{heap_allocator()};
+
   if (!decode_history_record(decoded, state.branch_contents.view(),
                              private_span) ||
       decoded.view() != expected)
@@ -412,11 +449,13 @@ rewrite_no_editor_history_event(usize                    wanted_number,
     {
       return false;
     }
+
     replacement_byte_offsets.push(encoded_replacements.count());
     toiletline::encode_history_record(encoded_replacements, replacement.view());
   }
 
   let private_rewritten = String{heap_allocator()};
+
   private_rewritten.append(state.branch_contents.substring_of_length(
       0, private_span.start_byte_offset));
   private_rewritten.append(encoded_replacements.view());
@@ -451,12 +490,14 @@ rewrite_no_editor_history_event(usize                    wanted_number,
   }
 
   state.total_count = state.total_count - 1 + replacement_byte_offsets.count();
+
   let const retained_count       = private_offsets.count() < state.entry_limit
                                        ? private_offsets.count()
                                        : state.entry_limit;
   let const first_retained_index = private_offsets.count() - retained_count;
   let       retained_private_offsets = ArrayList<usize>{heap_allocator()};
   let       retained_durable_offsets = ArrayList<usize>{heap_allocator()};
+
   retained_private_offsets.reserve(retained_count);
   retained_durable_offsets.reserve(retained_count);
 
@@ -467,11 +508,12 @@ rewrite_no_editor_history_event(usize                    wanted_number,
     retained_durable_offsets.push(durable_offsets[new_index]);
   }
 
-  state.branch_contents                    = steal(private_rewritten);
-  state.record_byte_offsets                = steal(retained_private_offsets);
-  state.durable_record_byte_offsets        = steal(retained_durable_offsets);
-  state.first_record_index                 = 0;
-  state.file_byte_count                    = state.branch_contents.count();
+  state.branch_contents             = steal(private_rewritten);
+  state.record_byte_offsets         = steal(retained_private_offsets);
+  state.durable_record_byte_offsets = steal(retained_durable_offsets);
+  state.first_record_index          = 0;
+  state.file_byte_count             = state.branch_contents.count();
+
   usize               trailing_byte_offset = 0;
   history_record_span trailing_span{};
   bool                is_trailing_valid = true;
@@ -494,6 +536,7 @@ append_no_editor_history_records(no_editor_history_state &state,
   let const previous_branch_byte_count = state.branch_contents.count();
   let const has_private_unterminated_record =
       state.trailing_record_start_byte_offset != previous_branch_byte_count;
+
   if (has_private_unterminated_record) {
     push_history_record_byte_offset(state,
                                     state.trailing_record_start_byte_offset,
@@ -593,22 +636,28 @@ fn
 write_history() -> koshka::ErrorOr<koshka::Ok>
 {
   let const path = get_history_path();
+
   if (!path.has_value()) return koshka::Error{"the path is unavailable"};
 
   let const parent = path->parent_or_current();
   let       lock   = koshka::os::acquire_process_lock(parent.view());
+
   if (!lock.has_value())
     return koshka::Error{koshka::os::last_system_error_message()};
   defer { koshka::os::release_process_lock(lock.take()); };
 
   let &state = koshka::internal::get_no_editor_history_state();
+
   TRY(koshka::internal::ensure_no_editor_history_loaded(*path, true));
+
   let written         = String{koshka::heap_allocator()};
   let durable_offsets = koshka::ArrayList<usize>{koshka::heap_allocator()};
+
   durable_offsets.reserve(state.record_byte_offsets.count());
 
   for (usize index = 0; index < state.record_byte_offsets.count(); index++) {
     let const span = koshka::internal::get_history_record_span(state, index);
+
     durable_offsets.push(written.count());
     written.append(state.branch_contents.substring_of_length(
         span.start_byte_offset, span.end_byte_offset - span.start_byte_offset));
@@ -623,6 +672,7 @@ write_history() -> koshka::ErrorOr<koshka::Ok>
   for (usize index = 0; index < durable_offsets.count(); index++) {
     let const slot = (state.first_record_index + index) %
                      state.durable_record_byte_offsets.count();
+
     state.durable_record_byte_offsets[slot] = durable_offsets[index];
   }
 
@@ -641,6 +691,7 @@ fn
 read_history() -> koshka::ErrorOr<koshka::Ok>
 {
   let const path = get_history_path();
+
   if (!path.has_value()) return koshka::Error{"the path is unavailable"};
 
   return koshka::internal::load_no_editor_history(*path, false);
@@ -650,9 +701,12 @@ fn
 sync_history() -> koshka::ErrorOr<koshka::Ok>
 {
   let const path = get_history_path();
+
   if (!path.has_value()) return koshka::Error{"the path is unavailable"};
+
   let const parent = path->parent_or_current();
   let       lock   = koshka::os::acquire_process_lock(parent.view());
+
   if (!lock.has_value())
     return koshka::Error{koshka::os::last_system_error_message()};
   defer { koshka::os::release_process_lock(lock.take()); };
@@ -664,14 +718,16 @@ fn
 clear_history() -> koshka::ErrorOr<koshka::Ok>
 {
   let const path = get_history_path();
+
   if (!path.has_value()) return koshka::Error{"the path is unavailable"};
 
   let      &state       = koshka::internal::get_no_editor_history_state();
   let const entry_limit = state.entry_limit;
-  state                 = koshka::internal::no_editor_history_state{};
-  state.loaded_path     = String{koshka::heap_allocator(), path->view()};
-  state.entry_limit     = entry_limit;
-  state.is_loaded       = true;
+
+  state             = koshka::internal::no_editor_history_state{};
+  state.loaded_path = String{koshka::heap_allocator(), path->view()};
+  state.entry_limit = entry_limit;
+  state.is_loaded   = true;
 
   return koshka::Success;
 }
@@ -680,15 +736,19 @@ fn
 import_history(StringView contents) -> koshka::ErrorOr<koshka::Ok>
 {
   let const path = get_history_path();
+
   if (!path.has_value()) return koshka::Error{"the path is unavailable"};
 
   TRY(koshka::internal::ensure_no_editor_history_loaded(*path, true));
+
   let &state = koshka::internal::get_no_editor_history_state();
+
   if (state.entry_limit == 0 || contents.is_empty()) {
     return koshka::Success;
   }
 
   let records = String{koshka::heap_allocator(), contents};
+
   if (contents[contents.length - 1] != '\n') records.push('\n');
   unused(koshka::internal::append_no_editor_history_records(state,
                                                             records.view()));
@@ -700,14 +760,18 @@ fn
 append_unwritten_history() -> koshka::ErrorOr<koshka::Ok>
 {
   let const path = get_history_path();
+
   if (!path.has_value()) return koshka::Error{"the path is unavailable"};
+
   let const parent = path->parent_or_current();
   let       lock   = koshka::os::acquire_process_lock(parent.view());
+
   if (!lock.has_value())
     return koshka::Error{koshka::os::last_system_error_message()};
   defer { koshka::os::release_process_lock(lock.take()); };
 
   TRY(koshka::internal::ensure_no_editor_history_loaded(*path, true));
+
   let &state             = koshka::internal::get_no_editor_history_state();
   let  payload           = String{koshka::heap_allocator()};
   let  unwritten_indexes = koshka::ArrayList<usize>{koshka::heap_allocator()};
@@ -722,6 +786,7 @@ append_unwritten_history() -> koshka::ErrorOr<koshka::Ok>
     }
 
     let const span = koshka::internal::get_history_record_span(state, index);
+
     unwritten_indexes.push(index);
     unwritten_byte_offsets.push(payload.count());
     payload.append(state.branch_contents.substring_of_length(
@@ -733,9 +798,11 @@ append_unwritten_history() -> koshka::ErrorOr<koshka::Ok>
   let const file_byte_count =
       koshka::os::path_file_size(path->text().view()).value_or(0);
   bool should_add_file_separator = false;
+
   if (file_byte_count > 0) {
     let readable = koshka::os::open_file_descriptor(
         path->text().view(), koshka::os::file_open_mode::Read);
+
     if (!readable.has_value())
       return koshka::Error{koshka::os::last_system_error_message()};
 
@@ -747,6 +814,7 @@ append_unwritten_history() -> koshka::ErrorOr<koshka::Ok>
         was_positioned ? koshka::os::read_fd(read_fd, &last_byte, 1)
                        : koshka::Maybe<usize>{};
     let const was_read = read_byte_count.has_value() && *read_byte_count == 1;
+
     if (!koshka::os::close_fd(read_fd) || !was_read) {
       return koshka::Error{koshka::os::last_system_error_message()};
     }
@@ -755,16 +823,21 @@ append_unwritten_history() -> koshka::ErrorOr<koshka::Ok>
   }
 
   let written = String{koshka::heap_allocator()};
+
   if (should_add_file_separator) written.push('\n');
   written.append(payload.view());
+
   let const opened = koshka::os::open_file_descriptor(
       path->text().view(), koshka::os::file_open_mode::Append);
+
   if (!opened.has_value())
     return koshka::Error{koshka::os::last_system_error_message()};
 
   let const fd = opened.value();
+
   if (!koshka::os::write_all(fd, written.data(), written.count())) {
     let const failure_message = koshka::os::last_system_error_message();
+
     unused(koshka::os::close_fd(fd));
 
     return koshka::Error{failure_message.view()};
@@ -779,6 +852,7 @@ append_unwritten_history() -> koshka::ErrorOr<koshka::Ok>
   for (usize index = 0; index < unwritten_indexes.count(); index++) {
     let const slot = (state.first_record_index + unwritten_indexes[index]) %
                      state.durable_record_byte_offsets.count();
+
     state.durable_record_byte_offsets[slot] =
         first_byte_offset + unwritten_byte_offsets[index];
   }
@@ -804,9 +878,12 @@ set_history_limit(usize entry_count) -> void
   let      &state = koshka::internal::get_no_editor_history_state();
   let const retained_limit =
       entry_count < TL_HISTORY_MAX_SIZE ? entry_count : TL_HISTORY_MAX_SIZE;
+
   if (retained_limit == state.entry_limit) return;
-  state.entry_limit               = static_cast<u16>(retained_limit);
+  state.entry_limit = static_cast<u16>(retained_limit);
+
   let const retained_record_count = state.record_byte_offsets.count();
+
   if (retained_record_count <= retained_limit && state.first_record_index == 0)
   {
     return;
@@ -818,8 +895,10 @@ set_history_limit(usize entry_count) -> void
   let const new_record_count = retained_record_count < retained_limit
                                    ? retained_record_count
                                    : retained_limit;
+
   retained_offsets.reserve(new_record_count);
   retained_durable_offsets.reserve(new_record_count);
+
   let const first_retained_index = retained_record_count - new_record_count;
 
   for (usize index = first_retained_index; index < retained_record_count;
@@ -840,10 +919,12 @@ fn
 get_newest_history_event_number() -> koshka::ErrorOr<koshka::Maybe<usize>>
 {
   let const path = get_history_path();
+
   if (!path.has_value()) return koshka::Maybe<usize>{koshka::None};
   TRY(koshka::internal::ensure_no_editor_history_loaded(*path, false));
 
   let const &state = koshka::internal::get_no_editor_history_state();
+
   if (state.record_byte_offsets.is_empty())
     return koshka::Maybe<usize>{koshka::None};
 
@@ -857,13 +938,16 @@ get_history_events(koshka::Allocator    allocator,
 {
   let       events = koshka::ArrayList<history_event>{allocator};
   let const path   = get_history_path();
+
   if (!path.has_value()) return steal(events);
 
   TRY(koshka::internal::ensure_no_editor_history_loaded(*path, true));
+
   let      &state = koshka::internal::get_no_editor_history_state();
   let const retained_record_count = state.record_byte_offsets.count();
   let const first_number = state.total_count - retained_record_count + 1;
   usize     first_index  = 0;
+
   if (after_event_number.has_value() && *after_event_number >= first_number) {
     first_index = *after_event_number - first_number + 1;
   }
@@ -875,11 +959,13 @@ get_history_events(koshka::Allocator    allocator,
   for (usize index = first_index; index < retained_record_count; index++) {
     let const span    = koshka::internal::get_history_record_span(state, index);
     let       command = String{allocator};
+
     if (!koshka::internal::decode_history_record(
             command, state.branch_contents.view(), span))
     {
       return koshka::Error{"the file contains invalid data"};
     }
+
     events.push(history_event{first_number + index, steal(command)});
   }
 
@@ -893,6 +979,7 @@ get_relative_history_event(koshka::Allocator    allocator,
     -> koshka::Maybe<history_event>
 {
   if (distance == 0) return koshka::None;
+
   usize remaining_event_count = distance;
 
   return koshka::internal::find_no_editor_history_event(
@@ -943,24 +1030,31 @@ append_history_event(StringView command) -> koshka::Maybe<usize>
   {
     return koshka::None;
   }
+
   let const path = get_history_path();
+
   if (!path.has_value()) return koshka::None;
   if (koshka::internal::ensure_no_editor_history_loaded(*path, true).is_error())
     return koshka::None;
 
   let &state = koshka::internal::get_no_editor_history_state();
+
   if (state.is_file_bad) return koshka::None;
   if (state.entry_limit == 0) return state.total_count;
+
   let const first_rune = koshka::utils::decode_utf8(command, 0, 0xfffd);
+
   if (first_rune.length >= command.length ||
       !toiletline::is_history_contents_valid(command))
   {
     return koshka::None;
   }
+
   if (!state.record_byte_offsets.is_empty()) {
     let const newest_span = koshka::internal::get_history_record_span(
         state, state.record_byte_offsets.count() - 1);
     let newest = String{koshka::heap_allocator()};
+
     if (!koshka::internal::decode_history_record(
             newest, state.branch_contents.view(), newest_span))
     {
@@ -971,6 +1065,7 @@ append_history_event(StringView command) -> koshka::Maybe<usize>
   }
 
   let record = String{koshka::heap_allocator()};
+
   encode_history_record(record, command);
 
   return koshka::internal::append_no_editor_history_records(state,
@@ -982,6 +1077,7 @@ rewrite_history_event(usize number, StringView expected, StringView replacement)
     -> bool
 {
   let replacements = koshka::ArrayList<String>{koshka::heap_allocator()};
+
   if (!replacement.is_empty())
     replacements.push(String{koshka::heap_allocator(), replacement});
 
@@ -1123,6 +1219,7 @@ get_default_prompt_template() -> String
   } else {
     template_string += "[\\u@\\h${KOSH_GIT_BRANCH:+ ($KOSH_GIT_BRANCH)} \\P";
   }
+
   template_string += "] ";
 
   return template_string;

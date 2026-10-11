@@ -59,6 +59,7 @@ Suspend::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   }
 
   let const signal_number = os::signal_number_from_name(StringView{"STOP"});
+
   if (!signal_number.has_value()) {
     report_soft_builtin_error(ec, cxt, ec.source_location(),
                               "Unable to suspend the shell",
@@ -69,6 +70,7 @@ Suspend::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   let const self_pid     = os::get_shell_process_id();
   let const self_process = os::process_from_pid(self_pid);
+
   if (!os::signal_process(self_process, *signal_number)) {
     report_soft_builtin_error(ec, cxt, ec.source_location(),
                               "Unable to suspend the shell",

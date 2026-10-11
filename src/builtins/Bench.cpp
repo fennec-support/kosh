@@ -136,6 +136,7 @@ class CommandResult
 {
 public:
   explicit CommandResult(Allocator allocator) : label(allocator) {}
+
   String       label;
   usize        sample_count{0};
   bool         has_perf{false};
@@ -159,10 +160,11 @@ colored(StringView code, bool should_color) wontthrow -> StringView
 
 template <typename Accessor>
 fn
-compute_stats(const ArrayList<bench_sample> &samples, Accessor accessor) throws
-    -> metric_stats
+compute_stats(const ArrayList<bench_sample> &samples,
+              Accessor                       accessor) throws -> metric_stats
 {
   let stats = metric_stats{};
+
   if (samples.is_empty()) return stats;
 
   double sum     = 0;
@@ -171,20 +173,23 @@ compute_stats(const ArrayList<bench_sample> &samples, Accessor accessor) throws
 
   for (usize i = 0; i < samples.count(); i++) {
     let const value = accessor(samples[i]);
+
     sum += value;
     if (value < minimum) minimum = value;
     if (value > maximum) maximum = value;
   }
 
   let const count = static_cast<double>(samples.count());
-  stats.mean      = sum / count;
-  stats.min       = minimum;
-  stats.max       = maximum;
+
+  stats.mean = sum / count;
+  stats.min  = minimum;
+  stats.max  = maximum;
 
   double variance_sum = 0;
 
   for (usize i = 0; i < samples.count(); i++) {
     let const delta = accessor(samples[i]) - stats.mean;
+
     variance_sum += delta * delta;
   }
 
@@ -195,8 +200,9 @@ compute_stats(const ArrayList<bench_sample> &samples, Accessor accessor) throws
 }
 
 cold fn
-format_metric(double value, metric_unit unit, Allocator allocator) throws
-    -> String
+format_metric(double      value,
+              metric_unit unit,
+              Allocator   allocator) throws -> String
 {
   double      scaled = value;
   const char *suffix;
@@ -215,7 +221,9 @@ format_metric(double value, metric_unit unit, Allocator allocator) throws
     } else {
       suffix = "ns";
     }
+
     break;
+
   case metric_unit::Bytes:
     if (value >= 1024.0 * 1024 * 1024) {
       scaled = value / (1024.0 * 1024 * 1024);
@@ -229,7 +237,9 @@ format_metric(double value, metric_unit unit, Allocator allocator) throws
     } else {
       suffix = "B";
     }
+
     break;
+
   case metric_unit::Count:
     if (value >= 1e9) {
       scaled = value / 1e9;
@@ -243,11 +253,14 @@ format_metric(double value, metric_unit unit, Allocator allocator) throws
     } else {
       suffix = "";
     }
+
     break;
+
   default: unreachable("invalid benchmark metric unit %d", ENUM(unit));
   }
 
   char buffer[64];
+
   std::snprintf(buffer, sizeof(buffer), "%.3g%s", scaled, suffix);
 
   return String{allocator, buffer};
@@ -259,6 +272,7 @@ public:
   explicit MetricRow(Allocator allocator)
       : mean(allocator), std_dev(allocator), min(allocator), max(allocator)
   {}
+
   StringView  name{};
   metric_unit unit{metric_unit::Count};
   String      mean;
@@ -273,7 +287,8 @@ make_metric_row(StringView          name,
                 metric_unit         unit,
                 Allocator           allocator) throws -> MetricRow
 {
-  let row     = MetricRow{allocator};
+  let row = MetricRow{allocator};
+
   row.name    = name;
   row.unit    = unit;
   row.mean    = format_metric(stats.mean, unit, allocator);
@@ -299,7 +314,9 @@ append_metric_line(String          &out,
 {
   out += "  ";
   out.append(row.name);
+
   let const name_padding = row.name.length < 22 ? 22 - row.name.length : 1;
+
   append_padding(out, name_padding);
 
   out.append(colored(colors::ansi::BOLD_GREEN, should_color));
@@ -349,6 +366,7 @@ append_relative_line(String             &out,
       ratio * std::sqrt(first_cv * first_cv + other_cv * other_cv);
 
   char buffer[128];
+
   if (ratio > 1.0) {
     std::snprintf(buffer, sizeof(buffer), "%.2fx slower +/- %.2f", ratio,
                   ratio_uncertainty);
@@ -358,18 +376,22 @@ append_relative_line(String             &out,
                   ratio_uncertainty / (ratio * ratio));
     out.append(colored(colors::ansi::BOLD_GREEN, should_color));
   }
+
   out += StringView{buffer};
   out.append(colored(colors::ansi::RESET, should_color));
   out += "\n";
 }
 
 fn
-parse_count_flag(const FlagString &flag, StringView flag_name) throws -> u64
+parse_count_flag(const FlagString &flag, StringView flag_name) throws
+    -> u64
 {
   let const parsed = flag.value().to<u64>();
+
   if (parsed.is_error()) {
     let const error = Error{StringView{"--"} + flag_name +
                             " expects a number, got '" + flag.value() + "'"};
+
     relocate_error(error, flag.value_location());
   }
 
@@ -386,10 +408,12 @@ progress_is_enabled() throws -> bool
 }
 
 fn
-draw_progress(StringView command, u64 percent, Allocator allocator) throws
-    -> void
+draw_progress(StringView command,
+              u64        percent,
+              Allocator  allocator) throws -> void
 {
   let line = String{allocator};
+
   line += CLEAR_PROGRESS_LINE;
   line += "Benchmarking '";
   line.append(command);
@@ -421,15 +445,16 @@ sample_command(StringView shell_binary,
                i64       &failure_status,
                Allocator  allocator) throws -> CommandResult
 {
-  defer
-  {
+  defer {
     if (should_show_progress) clear_progress();
   };
 
-  let result   = CommandResult{allocator};
+  let result = CommandResult{allocator};
+
   result.label = command;
 
   let child_argv = ArrayList<String>{allocator};
+
   if (should_use_shell) {
     child_argv.push(String{allocator, shell_binary});
     child_argv.push(String{allocator, "-c"});
@@ -439,6 +464,7 @@ sample_command(StringView shell_binary,
 
     for (usize i = 0; i <= command.length; i++) {
       let const is_at_end = i == command.length;
+
       if (is_at_end || command[i] == ' ' || command[i] == '\t') {
         if (i > start)
           child_argv.push(
@@ -470,30 +496,37 @@ sample_command(StringView shell_binary,
     }
 
     let const elapsed_nanos = os::monotonic_nanos() - start_nanos;
+
     if (run_limit.has_value() && i >= *run_limit) {
       break;
     }
+
     if (!run_limit.has_value() && i >= MIN_SAMPLES &&
         elapsed_nanos >= duration_nanos)
     {
       break;
     }
+
     if (i >= MAX_SAMPLES) break;
 
     if (should_show_progress &&
         (elapsed_nanos - last_progress_nanos) >= PROGRESS_INTERVAL_NANOS)
     {
       last_progress_nanos = elapsed_nanos;
-      u64 percent         = 0;
+
+      u64 percent = 0;
+
       if (run_limit.has_value() && *run_limit > 0) {
         percent = static_cast<u64>(i) * 100 / *run_limit;
       } else if (duration_nanos > 0) {
         let const progress = static_cast<u128>(elapsed_nanos) * 100;
+
         percent =
             os::divide_u128_by_u64(static_cast<u64>(progress >> 64u),
                                    static_cast<u64>(progress), duration_nanos)
                 .quotient;
       }
+
       draw_progress(command, percent, allocator);
     }
 
@@ -502,6 +535,7 @@ sample_command(StringView shell_binary,
                          should_suppress_output ? os::measured_output::Suppress
                                                 : os::measured_output::Inherit,
                          should_collect_extended);
+
     if (!measured.has_value())
       throw Error{StringView{"Unable to run '"} + command +
                   "': " + os::last_system_error_message()};
@@ -517,7 +551,8 @@ sample_command(StringView shell_binary,
       break;
     }
 
-    let sample        = bench_sample{};
+    let sample = bench_sample{};
+
     sample.wall_nanos = static_cast<double>(measured->wall_nanos);
     sample.peak_rss_byte_count =
         static_cast<double>(measured->peak_rss_byte_count);
@@ -535,12 +570,14 @@ sample_command(StringView shell_binary,
     if (should_collect_extended) {
       for (usize k = 0; k < EXTENDED_METRIC_COUNT; k++) {
         let const &value = measured->resources.*(EXTENDED_METRICS[k].field);
+
         if (value.has_value())
           sample.extended_values[k] = static_cast<double>(*value);
         else
           is_extended_available[k] = false;
       }
     }
+
     samples.push(sample);
   }
 
@@ -586,6 +623,7 @@ append_command_label(String      &out,
   } else {
     out += label;
   }
+
   out += '`';
 }
 
@@ -601,6 +639,7 @@ append_summary(String              &out,
   out += " (" + String::from(result.sample_count, allocator) + " runs)\n";
 
   let rows = ArrayList<MetricRow>{allocator};
+
   rows.push(make_metric_row("wall time", result.wall_time,
                             metric_unit::Nanoseconds, allocator));
   rows.push(make_metric_row("peak rss", result.peak_rss, metric_unit::Bytes,
@@ -621,6 +660,7 @@ append_summary(String              &out,
     let const branch_misses_name    = result.is_perf_system_wide
                                           ? StringView{"branch misses (system)"}
                                           : StringView{"branch misses"};
+
     rows.push(make_metric_row(cpu_cycles_name, result.cpu_cycles,
                               metric_unit::Count, allocator));
     rows.push(make_metric_row(instructions_name, result.instructions,
@@ -678,6 +718,7 @@ append_comparison(String              &out,
     let const instructions_name = first.is_perf_system_wide
                                       ? StringView{"instructions (system)"}
                                       : StringView{"instructions"};
+
     append_relative_line(out, cpu_cycles_name, first.cpu_cycles,
                          other.cpu_cycles, should_color);
     append_relative_line(out, instructions_name, first.instructions,
@@ -703,6 +744,7 @@ Bench::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   cxt.prepare_child_environment();
 
   Maybe<u64> run_limit = None;
+
   if (FLAG_bench_runs.is_set())
     run_limit = parse_count_flag(FLAG_bench_runs, StringView{"runs"});
 
@@ -714,6 +756,7 @@ Bench::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   }
 
   u64 duration_millis = DEFAULT_DURATION_MILLIS;
+
   if (FLAG_bench_duration.is_set())
     duration_millis =
         parse_count_flag(FLAG_bench_duration, StringView{"duration"});
@@ -730,10 +773,12 @@ Bench::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   let shell_binary = String{cxt.scratch_allocator(),
                             cxt.execution_store().get_shell_executable_path()};
+
   if (shell_binary.is_empty()) {
     if (let const detected = os::current_executable_path())
       shell_binary = String{cxt.scratch_allocator(), detected->view()};
   }
+
   if (should_use_shell && shell_binary.is_empty()) {
     throw Error{
         StringView{"bench cannot find the kosh binary to run a sample"}};
@@ -748,6 +793,7 @@ Bench::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     bool was_interrupted  = false;
     bool did_command_fail = false;
     i64  failure_status   = 0;
+
     results.push(sample_command(
         shell_binary.view(), arguments[i].view(), run_limit, duration_millis,
         should_show_progress, should_suppress_output, should_ignore_exit_code,

@@ -28,8 +28,9 @@ REGISTER_BUILTIN_FLAGS(Bg);
 namespace koshka {
 
 static fn
-resume_job_in_background(ExecContext &ec, EvalContext &cxt, job *job) throws
-    -> void
+resume_job_in_background(ExecContext &ec,
+                         EvalContext &cxt,
+                         job         *job) throws -> void
 {
   LOG(Info, "bg resuming job %d in the background", job->id);
   continue_job(*job);
@@ -41,12 +42,14 @@ fn
 Bg::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let const &args = ec.args();
+
   ASSERT(!args.is_empty());
 
   cxt.job_table_store().forget_waited_jobs();
 
   if (args.count() <= 1) {
     job *job = cxt.job_table_store().most_recent_job();
+
     if (job == nullptr)
       throw ErrorWithDetails{"There is no such job", "List jobs with `jobs`"};
 
@@ -57,6 +60,7 @@ Bg::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   for (usize arg_position = 1; arg_position < args.count(); arg_position++) {
     job *job = cxt.job_table_store().find_job_by_spec(args[arg_position]);
+
     if (job == nullptr)
       throw ErrorWithDetails{"There is no such job", "List jobs with `jobs`"};
 

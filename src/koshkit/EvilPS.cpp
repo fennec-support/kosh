@@ -167,7 +167,7 @@ fn
 set_cpu_percentage(tree_node                  &node,
                    const live_process_cpu_row &row,
                    u64                         window_start_nanoseconds,
-                   u64 now_nanoseconds) wontthrow -> void
+                   u64                         now_nanoseconds) wontthrow -> void
 {
   if (row.history.timestamps.count() < 2) return;
 
@@ -175,9 +175,11 @@ set_cpu_percentage(tree_node                  &node,
   let const baseline = row.history.interpolate(
       boundary, row.history.samples[boundary.before_index],
       row.history.samples[boundary.after_index]);
+
   if (!baseline.has_value()) return;
 
   let const current_milliseconds = row.history.get_newest();
+
   if (current_milliseconds < *baseline || now_nanoseconds <= boundary.timestamp)
   {
     return;
@@ -193,28 +195,35 @@ fn
 update_cpu_history(ArrayList<tree_node>            &nodes,
                    ArrayList<live_process_cpu_row> &history,
                    u64                              now_nanoseconds,
-                   u64 window_nanoseconds) throws -> void
+                   u64                              window_nanoseconds) throws -> void
 {
   let const window_start_nanoseconds =
       rolling_window_start(now_nanoseconds, window_nanoseconds);
-  let const allocator  = history.allocator();
+  let const allocator = history.allocator();
+
   let const do_get_key = [](const auto &item) {
     return live_process_identity{item.pid, item.start_token};
   };
+
   let const do_get_value = [](const tree_node &node) -> const u64 & {
     return node.cpu_milliseconds;
   };
+
   let const do_is_reset = [](u64 before, u64 after) { return after < before; };
+
   let const do_make_row = [&](const tree_node &node) {
     live_process_cpu_row fresh{allocator};
+
     fresh.pid         = node.pid;
     fresh.start_token = node.start_token;
 
     return fresh;
   };
+
   let const do_updated = [&](tree_node &node, live_process_cpu_row &row) {
     set_cpu_percentage(node, row, window_start_nanoseconds, now_nanoseconds);
   };
+
   update_retained_rows(history, nodes, now_nanoseconds, window_nanoseconds,
                        allocator, do_get_key, do_get_value, do_is_reset,
                        do_make_row, do_updated);
@@ -243,13 +252,16 @@ compare_nodes(const tree_node             &left,
     switch (*options.sort_key) {
     case evilps_sort_key::Cpu: {
       let const is_rolling = options.sampling == report_sampling_mode::Rolling;
+
       if (is_rolling && left.has_cpu_percentage != right.has_cpu_percentage) {
         return left.has_cpu_percentage;
       }
+
       let const left_cpu =
           is_rolling ? left.cpu_percentage_hundredths : left.cpu_milliseconds;
       let const right_cpu =
           is_rolling ? right.cpu_percentage_hundredths : right.cpu_milliseconds;
+
       if (left_cpu != right_cpu) return left_cpu > right_cpu;
       break;
     }
@@ -257,6 +269,7 @@ compare_nodes(const tree_node             &left,
       if (left.resident_kib != right.resident_kib)
         return left.resident_kib > right.resident_kib;
       break;
+
     case evilps_sort_key::Pid:  return left.pid < right.pid;
     case evilps_sort_key::Name: break;
     }
@@ -276,8 +289,8 @@ struct tree_node_comparator
   const evilps_render_options *options;
 
   pure fn
-  operator()(const tree_node &left,
-             const tree_node &right) const wontthrow->bool
+  operator()(const tree_node &left, const tree_node &right) const wontthrow
+      -> bool
   {
     return compare_nodes(left, right, *options);
   }
@@ -303,10 +316,13 @@ append_cpu_value(String              &output,
 
       return;
     }
+
     output += String::from(node.cpu_percentage_hundredths / 100, allocator);
     output += ".";
+
     let const fraction =
         String::from(node.cpu_percentage_hundredths % 100, allocator);
+
     output.append_repeated('0', 2 - fraction.length());
     output += fraction.view();
     output += "%";
@@ -316,8 +332,10 @@ append_cpu_value(String              &output,
 
   output += String::from(node.cpu_milliseconds / 1000, allocator);
   output += ".";
+
   let const milliseconds =
       String::from(node.cpu_milliseconds % 1000, allocator);
+
   output.append_repeated('0', 3 - milliseconds.length());
   output += milliseconds.view();
   output += "s";
@@ -342,8 +360,11 @@ append_bounded_command(String    &output,
                                 ? output.view().substring(*line_start + 1)
                                 : output.view();
   let const current_width = toiletline::get_display_width(current_line);
+
   if (current_width >= line_width_limit) return;
+
   let const available = line_width_limit - current_width - 1;
+
   if (available == 0) return;
 
   output += " ";
@@ -358,6 +379,7 @@ append_bounded_command(String    &output,
     let const kept_byte_count =
         toiletline::get_byte_offset_at_or_before_display_cell(
             command, available, actual_cells);
+
     append_report_text(output, command.substring_of_length(0, kept_byte_count),
                        colors::ansi::DIM, should_color);
 
@@ -368,6 +390,7 @@ append_bounded_command(String    &output,
   let const kept_byte_count =
       toiletline::get_byte_offset_at_or_before_display_cell(
           command, available - 3, actual_cells);
+
   append_report_text(output, command.substring_of_length(0, kept_byte_count),
                      colors::ansi::DIM, should_color);
   append_report_text(output, "...", colors::ansi::DIM, should_color);
@@ -381,6 +404,7 @@ append_label(String                      &output,
 {
   let const should_color = options.should_color;
   let const sort_key     = options.sort_key;
+
   append_report_text(output, node.name.view(), colors::ansi::BOLD_GREEN,
                      should_color);
 
@@ -394,6 +418,7 @@ append_label(String                      &output,
 
   if (FLAG_EVILPS_ALL.is_enabled() || FLAG_EVILPS_OWNER.is_enabled()) {
     let const owner = os::uid_to_username(node.owner_id);
+
     output += ",";
     append_report_text(output,
                        owner.has_value()
@@ -408,6 +433,7 @@ append_label(String                      &output,
   let const should_show_memory =
       FLAG_EVILPS_ALL.is_enabled() || FLAG_EVILPS_MEMORY.is_enabled() ||
       (sort_key.has_value() && *sort_key == evilps_sort_key::Memory);
+
   if (should_show_cpu || should_show_memory) {
     output += " [";
     if (should_show_cpu) {
@@ -415,14 +441,17 @@ append_label(String                      &output,
       output += " ";
       append_cpu_value(output, node, allocator, options.sampling);
     }
+
     if (should_show_cpu && should_show_memory) {
       output += "  ";
     }
+
     if (should_show_memory) {
       append_report_text(output, "MEM", colors::ansi::BOLD_CYAN, should_color);
       output += " ";
       output += format_human_size(node.resident_kib * 1024, allocator).view();
     }
+
     output += "]";
   }
 
@@ -444,10 +473,12 @@ render_process_relatives(String                      &output,
                          usize                        depth,
                          Allocator                    allocator,
                          usize                       &rendered_count,
-                         const evilps_render_options &options) throws -> void
+                         const evilps_render_options &options) throws
+    -> void
 {
   let const should_color = options.should_color;
   let const output_limit = options.output_limit;
+
   if (depth > MAXIMUM_TREE_DEPTH || rendered_count >= output_limit) {
     return;
   }
@@ -456,6 +487,7 @@ render_process_relatives(String                      &output,
   let const        parent_pid        = nodes[parent_position].pid;
   let const        ancestor_pid      = nodes[parent_position].parent_pid;
   let              ancestor_position = Maybe<usize>{None};
+
   if (options.parent_mode == evilps_parent_display_mode::FollowAncestors &&
       ancestor_pid != parent_pid)
   {
@@ -492,10 +524,12 @@ render_process_relatives(String                      &output,
     if (rendered_count >= output_limit) break;
 
     let const position = relative_positions[index];
+
     if (nodes[position].was_rendered) continue;
 
-    let const is_last            = index + 1 == relative_positions.count();
-    let const connector          = get_tree_connector(is_last);
+    let const is_last   = index + 1 == relative_positions.count();
+    let const connector = get_tree_connector(is_last);
+
     nodes[position].was_rendered = true;
 
     append_report_text(output, prefix.view(), colors::ansi::CYAN, should_color);
@@ -505,6 +539,7 @@ render_process_relatives(String                      &output,
     rendered_count++;
 
     let relative_prefix = String{allocator, prefix.view()};
+
     relative_prefix += connector.continuation;
     render_process_relatives(output, nodes, position, relative_prefix,
                              depth + 1, allocator, rendered_count, options);
@@ -524,6 +559,7 @@ read_process_nodes(Allocator            allocator,
 
   for (let const &process : processes) {
     tree_node node{};
+
     node.pid              = process.pid;
     node.parent_pid       = process.parent_pid;
     node.cpu_milliseconds = process.cpu_milliseconds;
@@ -539,8 +575,8 @@ read_process_nodes(Allocator            allocator,
 }
 
 fn
-mark_search_visibility(ArrayList<tree_node> &nodes, StringView search) throws
-    -> void
+mark_search_visibility(ArrayList<tree_node> &nodes,
+                       StringView            search) throws -> void
 {
   if (search.is_empty()) return;
 
@@ -558,6 +594,7 @@ mark_search_visibility(ArrayList<tree_node> &nodes, StringView search) throws
 
   for (usize index = 0; index < nodes.count(); index++) {
     if (!nodes[index].is_search_visible) continue;
+
     let parent_pid = nodes[index].parent_pid;
 
     while (parent_pid > 0) {
@@ -594,15 +631,18 @@ render_process_snapshot(const ExecContext               &ec,
     return 1;
   }
 
-  let const sort_key       = options.sort_key;
-  let const search         = options.search;
-  let const output_limit   = options.output_limit;
-  let const viewport_rows  = options.viewport_rows;
-  let const scroll_offset  = options.scroll_offset;
-  let const body_start     = output.length();
+  let const sort_key      = options.sort_key;
+  let const search        = options.search;
+  let const output_limit  = options.output_limit;
+  let const viewport_rows = options.viewport_rows;
+  let const scroll_offset = options.scroll_offset;
+  let const body_start    = output.length();
+
   let const do_window_body = [&]() throws -> void {
     let const body = String{allocator, output.view().substring(body_start)};
+
     output.truncate(body_start);
+
     usize line_number = 0;
     usize position    = 0;
 
@@ -613,24 +653,31 @@ render_process_snapshot(const ExecContext               &ec,
           relative_end.has_value() ? position + *relative_end : body.length();
       let const line =
           body.view().substring_of_length(position, line_end - position);
+
       if (line_number >= scroll_offset &&
           line_number - scroll_offset < viewport_rows - 1)
       {
         output += line;
         output += "\n";
       }
+
       line_number++;
       position = relative_end.has_value() ? line_end + 1 : body.length();
     }
 
     visible_line_count = line_number;
   };
-  let hide_options           = options;
-  hide_options.parent_mode   = evilps_parent_display_mode::HideAncestors;
-  let follow_options         = options;
+
+  let hide_options = options;
+
+  hide_options.parent_mode = evilps_parent_display_mode::HideAncestors;
+
+  let follow_options = options;
+
   follow_options.parent_mode = evilps_parent_display_mode::FollowAncestors;
 
   let nodes = sort_nodes(steal(unordered_nodes), options);
+
   defer { unordered_nodes = steal(nodes).into_array_list(); };
 
   for (let &node : nodes)
@@ -639,9 +686,11 @@ render_process_snapshot(const ExecContext               &ec,
   mark_search_visibility(nodes, search);
 
   i64 root_pid = 1;
+
   if (!operands.is_empty()) {
     let const parsed = utils::parse_integer_in_base(operands[0].view(), nullptr,
                                                     int_base::decimal);
+
     if (parsed.is_error()) {
       report_soft_koshkit_util_error(ec, cxt, operand_locations[0], "evilps",
                                      "invalid process id '" + operands[0] + "'",
@@ -678,6 +727,7 @@ render_process_snapshot(const ExecContext               &ec,
                                String{allocator, root_indentation}, 0,
                                allocator, rendered_count, hide_options);
     }
+
     visible_line_count = 1;
     if (viewport_rows != 0) do_window_body();
 
@@ -778,9 +828,11 @@ struct evilps_live_state
 };
 
 fn
-evilps_live_state::handle_key(live_view_key key) throws -> live_view_key_action
+evilps_live_state::handle_key(live_view_key key) throws
+    -> live_view_key_action
 {
-  let const is_editing   = !input.is_empty() && input[0] == '/';
+  let const is_editing = !input.is_empty() && input[0] == '/';
+
   let const do_scroll_up = [&](usize line_count) {
     scroll_offset = scroll_offset > line_count ? scroll_offset - line_count : 0;
   };
@@ -817,6 +869,7 @@ evilps_live_state::handle_key(live_view_key key) throws -> live_view_key_action
   }
 
   let const byte = key.character;
+
   if (is_editing) {
     if (byte == 127 || byte == 8) {
       input.truncate(input.length() - 1);
@@ -856,16 +909,21 @@ evilps_live_state::handle_key(live_view_key key) throws -> live_view_key_action
       sort_key = evilps_sort_key::Name;
     } else {
       switch (*sort_key) {
-      case evilps_sort_key::Name:   sort_key = evilps_sort_key::Pid; break;
-      case evilps_sort_key::Pid:    sort_key = evilps_sort_key::Cpu; break;
-      case evilps_sort_key::Cpu:    sort_key = evilps_sort_key::Memory; break;
+      case evilps_sort_key::Name: sort_key = evilps_sort_key::Pid; break;
+
+      case evilps_sort_key::Pid: sort_key = evilps_sort_key::Cpu; break;
+
+      case evilps_sort_key::Cpu: sort_key = evilps_sort_key::Memory; break;
+
       case evilps_sort_key::Memory: sort_key = None; break;
       }
     }
+
     scroll_offset = 0;
     if (sort_key.has_value() && *sort_key == evilps_sort_key::Cpu) {
       should_sample_cpu = true;
     }
+
     if (sort_key.has_value() && *sort_key == evilps_sort_key::Memory) {
       resource_mode = evilps_resource_mode::ResourceStats;
     }
@@ -888,23 +946,25 @@ fn
 EvilPS::execute(const ExecContext               &ec,
                 EvalContext                     &cxt,
                 const ArrayList<String>         &args,
-                const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+                const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   let[operands, operand_locations] = parse_util_operands(
       FLAG_LIST, args, cxt.scratch_allocator(), &arg_locations,
       {.should_accept_negative_number_operand = true,
-       .should_allow_options_after_operands   = true});
+       .should_allow_options_after_operands = true});
+
   defer { reset_flags(FLAG_LIST); };
 
   KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
 
   let const allocator    = cxt.scratch_allocator();
   usize     output_limit = SIZE_MAX;
+
   if (!operands.is_empty() && operands[0].length() > 1 && operands[0][0] == '-')
   {
     let const parsed = utils::parse_integer_in_base(
         operands[0].view().substring(1), nullptr, int_base::decimal);
+
     if (parsed.is_error() || parsed.value() <= 0 ||
         static_cast<u64>(parsed.value()) > SIZE_MAX)
     {
@@ -913,6 +973,7 @@ EvilPS::execute(const ExecContext               &ec,
 
       return 1;
     }
+
     output_limit = static_cast<usize>(parsed.value());
     operands.remove(0);
     operand_locations.remove(0);
@@ -926,6 +987,7 @@ EvilPS::execute(const ExecContext               &ec,
   }
 
   Maybe<evilps_sort_key> sort_key{};
+
   if (FLAG_EVILPS_SORT.is_set()) {
     sort_key = resolve_sort_key(FLAG_EVILPS_SORT.value());
     if (!sort_key.has_value()) {
@@ -951,10 +1013,12 @@ EvilPS::execute(const ExecContext               &ec,
   let const report_options =
       live_report_options::parse(ec, cxt, args[0].view(), FLAG_EVILPS_LIVE,
                                  FLAG_EVILPS_CUMULATIVE, allocator);
+
   if (!report_options.has_value()) return 1;
 
   let const window_nanoseconds = report_options->get_window_nanoseconds();
   let       line_width_limit   = SIZE_MAX;
+
   if (!FLAG_EVILPS_WIDE.is_enabled()) {
     if (let const dimensions =
             os::get_terminal_dimensions(ec.out_fd.value_or(KOSH_STDOUT));
@@ -969,9 +1033,11 @@ EvilPS::execute(const ExecContext               &ec,
     let       history        = ArrayList<live_process_cpu_row>{live_allocator};
     let       nodes = read_process_nodes(live_allocator, resource_mode);
     let const started_at_nanoseconds = os::monotonic_nanos();
+
     if (should_sample_cpu)
       update_cpu_history(nodes, history, started_at_nanoseconds,
                          window_nanoseconds);
+
     let state = evilps_live_state{live_allocator, sort_key, should_sample_cpu,
                                   resource_mode};
 
@@ -982,13 +1048,16 @@ EvilPS::execute(const ExecContext               &ec,
 
       return None;
     };
+
     let const do_key = [&](live_view_key key) -> live_view_key_action {
       return state.handle_key(key);
     };
+
     let const do_render = [&](String                     &frame,
                               const live_view_dimensions &dimensions,
                               Allocator frame_allocator) -> Maybe<i32> {
       evilps_render_options render_options{};
+
       render_options.sort_key         = state.sort_key;
       render_options.sampling         = report_sampling_mode::Rolling;
       render_options.line_width_limit = line_width_limit;
@@ -1000,12 +1069,15 @@ EvilPS::execute(const ExecContext               &ec,
       {
         render_options.line_width_limit = dimensions.columns;
       }
+
       render_options.viewport_rows =
           dimensions.is_terminal && dimensions.rows > 4 ? dimensions.rows - 3
                                                         : 0;
-      let const viewport_rows      = render_options.viewport_rows;
-      let const body_start_length  = frame.length();
-      let const requested_offset   = state.scroll_offset;
+
+      let const viewport_rows     = render_options.viewport_rows;
+      let const body_start_length = frame.length();
+      let const requested_offset  = state.scroll_offset;
+
       render_options.scroll_offset = requested_offset;
       if (viewport_rows != 0 && state.previous_visible_line_count.has_value()) {
         render_options.scroll_offset = get_clamped_scroll_offset(
@@ -1035,17 +1107,22 @@ EvilPS::execute(const ExecContext               &ec,
             frame += state.search.view();
           }
         }
+
         frame += "\n";
+
         usize     visible_line_count = 0;
         let const status             = render_process_snapshot(
             ec, cxt, frame_allocator, frame, nodes, operands, operand_locations,
             render_options, visible_line_count);
+
         if (status != 0) return status;
         if (viewport_rows == 0) break;
 
         state.previous_visible_line_count = visible_line_count;
-        let const clamped_offset          = get_clamped_scroll_offset(
+
+        let const clamped_offset = get_clamped_scroll_offset(
             requested_offset, visible_line_count, viewport_rows - 1);
+
         state.scroll_offset = clamped_offset;
         if (clamped_offset == render_options.scroll_offset) break;
 
@@ -1057,6 +1134,7 @@ EvilPS::execute(const ExecContext               &ec,
 
     let options = report_options->make_view_options("evilps", should_color,
                                                     started_at_nanoseconds);
+
     options.extra_key_hints = "s sort|j/k scroll|/ search";
     options.should_render_first_frame_immediately = true;
 
@@ -1065,22 +1143,27 @@ EvilPS::execute(const ExecContext               &ec,
 
   let                  nodes    = read_process_nodes(allocator, resource_mode);
   report_sampling_mode sampling = report_sampling_mode::Instant;
+
   if (report_options->is_cumulative) {
     let       history            = ArrayList<live_process_cpu_row>{allocator};
     let const before_nanoseconds = os::monotonic_nanos();
+
     if (should_sample_cpu)
       update_cpu_history(nodes, history, before_nanoseconds,
                          window_nanoseconds);
     os::sleep_for_seconds(report_options->window_seconds);
     if (take_interrupt_request()) return 130;
-    nodes                       = read_process_nodes(allocator, resource_mode);
+    nodes = read_process_nodes(allocator, resource_mode);
+
     let const after_nanoseconds = os::monotonic_nanos();
+
     if (should_sample_cpu)
       update_cpu_history(nodes, history, after_nanoseconds, window_nanoseconds);
     sampling = report_sampling_mode::Rolling;
   }
 
   evilps_render_options render_options{};
+
   render_options.sort_key         = sort_key;
   render_options.sampling         = sampling;
   render_options.line_width_limit = line_width_limit;
@@ -1092,6 +1175,7 @@ EvilPS::execute(const ExecContext               &ec,
   let const status             = render_process_snapshot(
       ec, cxt, allocator, output, nodes, operands, operand_locations,
       render_options, visible_line_count);
+
   if (status == 0) ec.print_to_stdout(output);
 
   return status;

@@ -116,16 +116,18 @@ struct evilnet_statistics_comparator
   Maybe<usize>     spec_index;
 
   pure fn
-  operator()(
-      const os::network_interface_statistics_entry &left,
-      const os::network_interface_statistics_entry &right) const wontthrow->bool
+  operator()(const os::network_interface_statistics_entry &left,
+             const os::network_interface_statistics_entry &right) const wontthrow
+      -> bool
   {
     if (selected == evilnet_sort_key::Name || !spec_index.has_value()) {
       return left.interface_name.view() < right.interface_name.view();
     }
+
     let const &spec            = EVILNET_SORT_SPECS[*spec_index];
     let const  left_available  = left.has_field(spec.field);
     let const  right_available = right.has_field(spec.field);
+
     if (left_available != right_available) return left_available;
     if (left_available && left.*(spec.member) != right.*(spec.member)) {
       return left.*(spec.member) > right.*(spec.member);
@@ -148,6 +150,7 @@ resolve_evilnet_sort_key(StringView value, Allocator allocator) throws
 
       return result;
     }
+
     if (spec.name.starts_with(value)) result.add_match(spec.key, spec.name);
   }
 
@@ -161,7 +164,8 @@ using sorted_network_statistics =
 fn
 sort_network_statistics(
     ArrayList<os::network_interface_statistics_entry> statistics,
-    Maybe<evilnet_sort_key> sort_key) throws -> sorted_network_statistics
+    Maybe<evilnet_sort_key>                           sort_key) throws
+    -> sorted_network_statistics
 {
   let const selected   = sort_key.value_or(evilnet_sort_key::Name);
   let       spec_index = Maybe<usize>{None};
@@ -192,8 +196,8 @@ family_name(os::network_address_family family) wontthrow -> StringView
 }
 
 fn
-append_network_interface_report(String &output, bool should_color) throws
-    -> usize
+append_network_interface_report(String &output,
+                                bool    should_color) throws -> usize
 {
   let const addresses = os::network_interface_addresses().make_sorted(
       [](const os::network_interface_address &left,
@@ -208,6 +212,7 @@ append_network_interface_report(String &output, bool should_color) throws
       });
 
   let table = ReportTable{addresses.allocator()};
+
   table.add_heading("NAME");
   table.add_column("FAMILY", report_table_alignment::Left,
                    colors::ansi::BOLD_MAGENTA);
@@ -216,6 +221,7 @@ append_network_interface_report(String &output, bool should_color) throws
 
   for (let const &address : addresses) {
     let cells = ArrayList<report_table_cell_view>{addresses.allocator()};
+
     cells.push({address.interface_name.view(), colors::ansi::BOLD_GREEN});
     cells.push({family_name(address.family), colors::ansi::BOLD_MAGENTA});
     cells.push({address.address.view(), colors::ansi::RESET});
@@ -238,8 +244,10 @@ append_network_traffic_statistics_report(
     bool should_color) throws -> usize
 {
   let table = ReportTable{allocator};
+
   table.set_column_gap(3);
   table.add_heading("NAME");
+
   let receive_header          = String{allocator, "RX"};
   let transmit_header         = String{allocator, "TX"};
   let receive_packets_header  = String{allocator, "RX PACKETS"};
@@ -248,6 +256,7 @@ append_network_traffic_statistics_report(
   let transmit_errors_header  = String{allocator, "TX ERRORS"};
   let receive_drops_header    = String{allocator, "RX DROPS"};
   let transmit_drops_header   = String{allocator, "TX DROPS"};
+
   receive_header += duration_suffix;
   transmit_header += duration_suffix;
   receive_packets_header += duration_suffix;
@@ -256,6 +265,7 @@ append_network_traffic_statistics_report(
   transmit_errors_header += duration_suffix;
   receive_drops_header += duration_suffix;
   transmit_drops_header += duration_suffix;
+
   const StringView HEADERS[] = {
       receive_header.view(),
       transmit_header.view(),
@@ -275,6 +285,7 @@ append_network_traffic_statistics_report(
     table.add_heading(heading, report_table_alignment::Right);
 
   let cells = ArrayList<report_table_cell_view>{allocator};
+
   cells.reserve(countof(HEADERS) + 1);
 
   for (let const &entry : statistics) {
@@ -282,6 +293,7 @@ append_network_traffic_statistics_report(
         default_interface.has_value() &&
         entry.interface_name.view() == default_interface->view();
     let values = ArrayList<String>{allocator};
+
     values.reserve(countof(HEADERS));
     values.push(entry.has_field(os::network_statistics_field::ReceiveBytes)
                     ? format_human_size(entry.receive_byte_count, allocator)
@@ -289,6 +301,7 @@ append_network_traffic_statistics_report(
     values.push(entry.has_field(os::network_statistics_field::TransmitBytes)
                     ? format_human_size(entry.transmit_byte_count, allocator)
                     : String{allocator, "-"});
+
     const u64 counters[] = {entry.receive_packet_count,
                             entry.transmit_packet_count,
                             entry.receive_error_count,
@@ -314,6 +327,7 @@ append_network_traffic_statistics_report(
 
     for (usize index = 0; index < countof(counters); index++) {
       let value = String{allocator, "-"};
+
       if (entry.has_field(FIELDS[index])) {
         if (index == 6 || index == 7) {
           value = format_human_size(counters[index], allocator);
@@ -322,6 +336,7 @@ append_network_traffic_statistics_report(
           value = String::from(counters[index], allocator);
         }
       }
+
       values.push(steal(value));
     }
 
@@ -335,10 +350,11 @@ append_network_traffic_statistics_report(
 
     table.add_row(cells);
 
-    let       warning = String{allocator};
-    let const do_append_nonzero =
-        [&](StringView name, os::network_statistics_field field, u64 value)
-            throws -> void {
+    let warning = String{allocator};
+
+    let const do_append_nonzero = [&](StringView                   name,
+                                      os::network_statistics_field field,
+                                      u64 value) throws -> void {
       if (!entry.has_field(field) || value == 0) {
         return;
       }
@@ -348,6 +364,7 @@ append_network_traffic_statistics_report(
       warning += " ";
       warning += String::from(value, allocator).view();
     };
+
     do_append_nonzero("receive errors",
                       os::network_statistics_field::ReceiveErrors,
                       entry.receive_error_count);
@@ -362,6 +379,7 @@ append_network_traffic_statistics_report(
                       entry.transmit_drop_count);
     if (!warning.is_empty()) {
       let message = String{allocator, "Interface "};
+
       message += entry.interface_name.view();
       message += " reports ";
       message += warning.view();
@@ -379,7 +397,7 @@ append_network_traffic_report(String                 &output,
                               ArrayList<String>      &warnings,
                               Allocator               allocator,
                               Maybe<evilnet_sort_key> sort_key,
-                              bool should_color) throws -> usize
+                              bool                    should_color) throws -> usize
 {
   let const statistics = sort_network_statistics(
       os::read_network_interface_statistics(), sort_key);
@@ -397,29 +415,39 @@ append_tcp_report(String            &output,
                   bool               should_color) throws -> bool
 {
   os::tcp_statistics statistics{};
+
   if (!os::read_tcp_statistics(statistics)) return false;
 
   let table = ReportTable{allocator};
+
   table.add_heading("GROUP");
   table.add_heading("METRIC");
   table.add_heading("COUNT", report_table_alignment::Right);
+
   let cells = ArrayList<report_table_cell_view>{allocator};
+
   cells.reserve(3);
-  bool      has_rows = false;
-  let const do_append_group =
-      [&](StringView title, const StringView *names, const u64 *values,
-          const os::tcp_statistics_field *fields, usize field_count) throws {
-        for (usize index = 0; index < field_count; index++) {
-          if (!statistics.has_field(fields[index])) continue;
-          let const value = String::from(values[index], allocator);
-          cells.clear();
-          cells.push({title, colors::ansi::BOLD_CYAN});
-          cells.push({names[index], colors::ansi::RESET});
-          cells.push({value.view(), colors::ansi::RESET});
-          table.add_row(cells);
-          has_rows = true;
-        }
-      };
+
+  bool has_rows = false;
+
+  let const do_append_group = [&](StringView title, const StringView *names,
+                                  const u64                      *values,
+                                  const os::tcp_statistics_field *fields,
+                                  usize                           field_count) throws {
+    for (usize index = 0; index < field_count; index++) {
+      if (!statistics.has_field(fields[index])) continue;
+
+      let const value = String::from(values[index], allocator);
+
+      cells.clear();
+      cells.push({title, colors::ansi::BOLD_CYAN});
+      cells.push({names[index], colors::ansi::RESET});
+      cells.push({value.view(), colors::ansi::RESET});
+      table.add_row(cells);
+      has_rows = true;
+    }
+  };
+
   constexpr StringView OPEN_NAMES[]  = {"active", "passive"};
   const u64            open_values[] = {statistics.active_open_count,
                                         statistics.passive_open_count};
@@ -427,8 +455,10 @@ append_tcp_report(String            &output,
       os::tcp_statistics_field::ActiveOpens,
       os::tcp_statistics_field::PassiveOpens,
   };
+
   do_append_group("Opens", OPEN_NAMES, open_values, OPEN_FIELDS,
                   countof(OPEN_NAMES));
+
   constexpr StringView CONNECTION_NAMES[] = {"established", "failed",
                                              "established resets"};
   const u64 connection_values[] = {statistics.current_established_count,
@@ -439,8 +469,10 @@ append_tcp_report(String            &output,
       os::tcp_statistics_field::AttemptFailures,
       os::tcp_statistics_field::EstablishedResets,
   };
+
   do_append_group("Connections", CONNECTION_NAMES, connection_values,
                   CONNECTION_FIELDS, countof(CONNECTION_NAMES));
+
   constexpr StringView SEGMENT_NAMES[]  = {"received", "sent", "retransmitted"};
   const u64            segment_values[] = {statistics.received_segment_count,
                                            statistics.sent_segment_count,
@@ -450,8 +482,10 @@ append_tcp_report(String            &output,
       os::tcp_statistics_field::SentSegments,
       os::tcp_statistics_field::RetransmittedSegments,
   };
+
   do_append_group("Segments", SEGMENT_NAMES, segment_values, SEGMENT_FIELDS,
                   countof(SEGMENT_NAMES));
+
   constexpr StringView FAILURE_NAMES[] = {
       "input errors",
       "sent resets",
@@ -500,6 +534,7 @@ append_tcp_report(String            &output,
       os::tcp_statistics_field::RequestQueueFullDrops,
       os::tcp_statistics_field::RetransmitFailures,
   };
+
   do_append_group("Failures", FAILURE_NAMES, failure_values, FAILURE_FIELDS,
                   countof(FAILURE_NAMES));
   if (has_rows) append_titled_report_table(output, "TCP", table, should_color);
@@ -578,6 +613,7 @@ append_tcp_report(String            &output,
 
   if (!warning.is_empty()) {
     let message = String{allocator, "TCP counters include "};
+
     message += warning.view();
     warnings.push(steal(message));
   }
@@ -637,6 +673,7 @@ sample_network_statistics(
     -> ArrayList<os::network_interface_statistics_entry>
 {
   let sampled = ArrayList<os::network_interface_statistics_entry>{allocator};
+
   sampled.reserve(after.count());
 
   for (let const &entry : after) {
@@ -649,52 +686,61 @@ sample_network_statistics(
       }
     }
 
-    let result            = entry;
+    let result = entry;
+
     result.interface_name = String{allocator, entry.interface_name.view()};
     if (previous_index.has_value()) {
       let const &previous = before[*previous_index];
+
       if (entry.has_field(os::network_statistics_field::ReceiveBytes) &&
           previous.has_field(os::network_statistics_field::ReceiveBytes))
       {
         result.receive_byte_count = network_counter_delta(
             previous.receive_byte_count, entry.receive_byte_count);
       }
+
       if (entry.has_field(os::network_statistics_field::TransmitBytes) &&
           previous.has_field(os::network_statistics_field::TransmitBytes))
       {
         result.transmit_byte_count = network_counter_delta(
             previous.transmit_byte_count, entry.transmit_byte_count);
       }
+
       if (entry.has_field(os::network_statistics_field::ReceivePackets) &&
           previous.has_field(os::network_statistics_field::ReceivePackets))
       {
         result.receive_packet_count = network_counter_delta(
             previous.receive_packet_count, entry.receive_packet_count);
       }
+
       if (entry.has_field(os::network_statistics_field::TransmitPackets) &&
           previous.has_field(os::network_statistics_field::TransmitPackets))
       {
         result.transmit_packet_count = network_counter_delta(
             previous.transmit_packet_count, entry.transmit_packet_count);
       }
+
       if (entry.has_field(os::network_statistics_field::ReceiveErrors) &&
           previous.has_field(os::network_statistics_field::ReceiveErrors))
       {
         result.receive_error_count = network_counter_delta(
             previous.receive_error_count, entry.receive_error_count);
       }
+
       if (entry.has_field(os::network_statistics_field::TransmitErrors) &&
           previous.has_field(os::network_statistics_field::TransmitErrors))
       {
         result.transmit_error_count = network_counter_delta(
             previous.transmit_error_count, entry.transmit_error_count);
       }
+
       if (entry.has_field(os::network_statistics_field::ReceiveDrops) &&
           previous.has_field(os::network_statistics_field::ReceiveDrops))
       {
         result.receive_drop_count = network_counter_delta(
             previous.receive_drop_count, entry.receive_drop_count);
       }
+
       if (entry.has_field(os::network_statistics_field::TransmitDrops) &&
           previous.has_field(os::network_statistics_field::TransmitDrops))
       {
@@ -702,6 +748,7 @@ sample_network_statistics(
             previous.transmit_drop_count, entry.transmit_drop_count);
       }
     }
+
     sampled.push(steal(result));
   }
 
@@ -724,9 +771,12 @@ get_network_window_status(const live_network_row &row,
   let const &before   = row.history.samples[boundary.before_index];
   let const &after_boundary = row.history.samples[boundary.after_index];
   let        sampled        = row.history.get_newest();
-  sampled.interface_name    = String{allocator, row.interface_name.view()};
-  let const &newest         = row.history.get_newest();
-  let const  do_sample =
+
+  sampled.interface_name = String{allocator, row.interface_name.view()};
+
+  let const &newest = row.history.get_newest();
+
+  let const do_sample =
       [&](os::network_statistics_field field,
           u64 os::network_interface_statistics_entry::*member) {
         if (!before.has_field(field) || !after_boundary.has_field(field)) {
@@ -734,15 +784,19 @@ get_network_window_status(const live_network_row &row,
 
           return;
         }
+
         let const baseline = row.history.interpolate(boundary, before.*member,
                                                      after_boundary.*member);
+
         if (!baseline.has_value()) {
           sampled.available_fields &= ~static_cast<u32>(field);
 
           return;
         }
+
         sampled.*member = network_counter_delta(*baseline, newest.*member);
       };
+
   do_sample(os::network_statistics_field::ReceiveBytes,
             &os::network_interface_statistics_entry::receive_byte_count);
   do_sample(os::network_statistics_field::TransmitBytes,
@@ -778,26 +832,35 @@ run_live_network_traffic(const ExecContext         &ec,
       format_live_duration(report_options.window_seconds, allocator);
   let const default_interface = os::default_network_interface(allocator);
   let       duration_suffix   = String{allocator, "/"};
+
   duration_suffix += sample_label.view();
+
   let const do_get_key = [](const auto &row) {
     return row.interface_name.view();
   };
+
   let const do_get_value =
       [](const os::network_interface_statistics_entry &entry)
       -> const os::network_interface_statistics_entry & { return entry; };
+
   let const do_make_row =
       [&](const os::network_interface_statistics_entry &entry) {
         live_network_row row{};
+
         row.interface_name = String{allocator, entry.interface_name.view()};
 
         return row;
       };
+
   let baseline = os::read_network_interface_statistics();
+
   update_retained_rows(retained, baseline, last_sample_nanoseconds,
                        window_nanoseconds, allocator, do_get_key, do_get_value,
                        network_counter_reset, do_make_row);
+
   let const do_sample = [&](u64 now, Allocator frame_allocator) -> Maybe<i32> {
     let current = os::read_network_interface_statistics();
+
     update_retained_rows(retained, current, now, window_nanoseconds,
                          frame_allocator, do_get_key, do_get_value,
                          network_counter_reset, do_make_row);
@@ -805,11 +868,14 @@ run_live_network_traffic(const ExecContext         &ec,
 
     return None;
   };
+
   let const do_render = [&](String   &output, const live_view_dimensions &,
                             Allocator frame_allocator) -> Maybe<i32> {
     let statistics =
         ArrayList<os::network_interface_statistics_entry>{frame_allocator};
+
     statistics.reserve(retained.count());
+
     let const window_start =
         rolling_window_start(last_sample_nanoseconds, window_nanoseconds);
 
@@ -821,6 +887,7 @@ run_live_network_traffic(const ExecContext         &ec,
     let const sorted_statistics =
         sort_network_statistics(steal(statistics), sort_key);
     let warnings = ArrayList<String>{frame_allocator};
+
     append_network_traffic_statistics_report(
         output, warnings, frame_allocator, sorted_statistics,
         duration_suffix.view(), default_interface, should_color);
@@ -846,8 +913,7 @@ fn
 EvilNet::execute(const ExecContext               &ec,
                  EvalContext                     &cxt,
                  const ArrayList<String>         &args,
-                 const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+                 const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
@@ -863,9 +929,11 @@ EvilNet::execute(const ExecContext               &ec,
   let                     warnings     = ArrayList<String>{allocator};
   let const               should_color = koshkit_should_color();
   Maybe<evilnet_sort_key> sort_key{};
+
   if (FLAG_EVILNET_SORT.is_set()) {
     let const resolved =
         resolve_evilnet_sort_key(FLAG_EVILNET_SORT.value(), allocator);
+
     if (!report_unresolved_sort_key(
             ec, cxt, FLAG_EVILNET_SORT.value_location(), args[0].view(),
             resolved.match_count, resolved.matches.view(),
@@ -874,6 +942,7 @@ EvilNet::execute(const ExecContext               &ec,
       return 1;
     sort_key = resolved.key;
   }
+
   if (FLAG_EVILNET_FAILURES.is_enabled() && FLAG_EVILNET_LIVE.is_enabled()) {
     KOSHKIT_REPORT_ERROR_AT(FLAG_EVILNET_FAILURES.value_location(),
                             "conflicting flags",
@@ -881,15 +950,18 @@ EvilNet::execute(const ExecContext               &ec,
 
     return 2;
   }
+
   let const report_options =
       live_report_options::parse(ec, cxt, args[0].view(), FLAG_EVILNET_LIVE,
                                  FLAG_EVILNET_CUMULATIVE, allocator);
+
   if (!report_options.has_value()) return 1;
 
   if (report_options->is_live) {
     return run_live_network_traffic(ec, heap_allocator(), *report_options,
                                     sort_key, should_color);
   }
+
   let const should_show_all = FLAG_EVILNET_ALL.is_enabled();
   let const should_show_traffic =
       should_show_all || FLAG_EVILNET_TRAFFIC.is_enabled() ||
@@ -903,17 +975,21 @@ EvilNet::execute(const ExecContext               &ec,
           : 0;
   usize traffic_count      = 0;
   bool  has_tcp_statistics = false;
+
   if (should_show_traffic && !should_show_failures) {
     if (report_options->is_cumulative) {
       let const before = os::read_network_interface_statistics();
+
       os::sleep_for_seconds(report_options->window_seconds);
       if (take_interrupt_request()) return 130;
+
       let const after   = os::read_network_interface_statistics();
       let       sampled = sample_network_statistics(before, after, allocator);
       let const sorted_sampled =
           sort_network_statistics(steal(sampled), sort_key);
       let const default_interface = os::default_network_interface(allocator);
       let       duration_suffix   = String{allocator, "/"};
+
       duration_suffix +=
           format_live_duration(report_options->window_seconds, allocator)
               .view();
@@ -925,6 +1001,7 @@ EvilNet::execute(const ExecContext               &ec,
                                                     sort_key, should_color);
     }
   }
+
   if (should_show_all || should_show_failures) {
     has_tcp_statistics =
         append_tcp_report(output, warnings, allocator, should_color);

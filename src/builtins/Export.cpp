@@ -57,6 +57,7 @@ Export::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     for (usize i = 1; i < args.count(); i++) {
       let const  name   = String{cxt.scratch_allocator(), args[i].view()};
       let const *source = cxt.function_store().find_source(name.view());
+
       if (source == nullptr) {
         report_soft_builtin_error(
             ec, cxt, get_operand_location(ec, operand_locations, i),
@@ -67,6 +68,7 @@ Export::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
       let const src        = source->view();
       usize     body_start = 0;
+
       if (let const close_paren = src.find_character(')');
           close_paren.has_value())
         body_start = close_paren.value() + 1;
@@ -81,6 +83,7 @@ Export::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       let const body = src.substring(body_start);
 
       let env_key = String{cxt.scratch_allocator(), "BASH_FUNC_"};
+
       env_key += name.view();
       env_key += "%%";
       if (FLAG_EXPORT_UNMARK.is_enabled()) {
@@ -90,6 +93,7 @@ Export::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       }
 
       let value = String{cxt.scratch_allocator(), "() "};
+
       if (!body.is_empty() && body[0] == '{') {
         value += body;
       } else {
@@ -107,7 +111,8 @@ Export::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   if (args.count() == 1 && !ec.has_stripped_array_operands) {
     let const is_declare_form = cxt.runtime_state().is_bash_compatible();
-    let const do_is_array     = [&cxt](StringView name) wontthrow -> bool {
+
+    let const do_is_array = [&cxt](StringView name) wontthrow -> bool {
       let const &store = cxt.variable_store();
 
       return store.indexed_arrays().find(name).has_value() ||
@@ -116,12 +121,14 @@ Export::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     };
 
     let listed_names = os::environment_names();
+
     if (is_declare_form) {
       cxt.variable_store().exported_names().for_each(
           [&](StringView name, const auto &) throws -> void {
             if (do_is_array(name)) listed_names.push(String{name});
           });
     }
+
     let const names = steal(listed_names).make_sorted(sort_order::ascending);
 
     let out = String{cxt.scratch_allocator()};
@@ -134,6 +141,7 @@ Export::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
       let const value = os::get_environment_variable(name).value_or(
           String{cxt.scratch_allocator()});
+
       out += is_declare_form ? "declare -x " : "export ";
       out += name;
       if (is_declare_form) {
@@ -145,6 +153,7 @@ Export::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         out += '=';
         append_shell_quoted_arg(out, value.view(), true);
       }
+
       out += "\n";
     }
 
@@ -159,6 +168,7 @@ Export::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     for (usize i = 1; i < args.count(); i++) {
       let const parts = NameValueArg::from(args[i]);
       let const name  = String{cxt.scratch_allocator(), parts.get_name()};
+
       if (!name_is_valid_identifier(name.view())) {
         report_invalid_identifier(
             ec, cxt, get_operand_location(ec, operand_locations, i), args[i]);
@@ -186,6 +196,7 @@ Export::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     let       name          = String{cxt.scratch_allocator()};
     let       value         = String{cxt.scratch_allocator()};
     let const has_new_value = parts.get_value().has_value();
+
     if (!has_new_value) {
       name = arg;
       value =
@@ -201,19 +212,21 @@ Export::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       has_error = true;
       continue;
     }
-    if (cxt.variable_store().attributes().is_nameref(name.view())) rarely
-      {
-        name = cxt.resolve_nameref_for_write(name.view());
-      }
+
+    if (cxt.variable_store().attributes().is_nameref(name.view())) rarely {
+      name = cxt.resolve_nameref_for_write(name.view());
+    }
 
     let const is_array =
         cxt.variable_store().indexed_arrays().find(name.view()).has_value() ||
         cxt.is_associative_array(name.view());
+
     if (is_array && !(has_new_value && cxt.is_readonly(name))) {
       if (has_new_value) {
         cxt.assign_array_element(name.view(), "0", value.view(),
                                  assignment_update_mode::Replace);
       }
+
       cxt.mark_exported(name);
       continue;
     }
@@ -227,6 +240,7 @@ Export::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         has_assignment_error = true;
         continue;
       }
+
       cxt.record_environment_change(name);
       os::set_environment_variable(name, value);
       cxt.mark_exported(name);
@@ -236,6 +250,7 @@ Export::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     }
 
     let const is_integer_name = cxt.is_integer_variable(name.view());
+
     if (has_new_value && is_integer_name) {
       value = value.is_empty() ? String{cxt.scratch_allocator(), "0"}
                                : cxt.evaluate_arithmetic_text(value.view());
@@ -254,19 +269,23 @@ Export::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                                      *bracket + 1, name.count() - *bracket - 2),
                                  value.view(), assignment_update_mode::Replace);
       }
+
       continue;
     }
 
     if (has_new_value) cxt.write_dynamic_variable(name.view(), value.view());
 
     LOG(All, "export moving '%s' into the environment", name.c_str());
+
     let const environment_name = os::get_environment_spelling(name.view());
+
     cxt.unset_shell_variable(name);
     if (is_integer_name)
       cxt.variable_store().attributes().mark_integer(name.view());
     if (!os::is_environment_value_storable(value.view())) {
       cxt.set_shell_variable(environment_name.view(), value.view());
     }
+
     cxt.record_environment_change(environment_name.view());
     os::set_environment_variable(environment_name.view(), value);
     cxt.mark_exported(environment_name.view());

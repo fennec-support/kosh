@@ -46,16 +46,17 @@ enum class csplit_exhaustion_mode : u8
 };
 
 constexpr fn
-operator|(csplit_write_policy left,
-          csplit_write_policy right) wontthrow->csplit_write_policy
+operator|(csplit_write_policy left, csplit_write_policy right) wontthrow
+    -> csplit_write_policy
 {
   return static_cast<csplit_write_policy>(static_cast<u8>(left) |
                                           static_cast<u8>(right));
 }
 
 constexpr fn
-has_csplit_policy(csplit_write_policy policy,
-                  csplit_write_policy value) wontthrow -> bool
+has_csplit_policy(csplit_write_policy policy, csplit_write_policy value)
+    wontthrow
+    -> bool
 {
   return (static_cast<u8>(policy) & static_cast<u8>(value)) != 0;
 }
@@ -73,6 +74,7 @@ csplit_output_name(const csplit_name_format &format,
                    Allocator                 allocator) throws -> String
 {
   let const digits = String::from(index, allocator);
+
   if (digits.length() > format.digit_count) {
     throw ErrorWithLocationAndDetails{format.width_location,
                                       "output file suffixes are exhausted",
@@ -105,6 +107,7 @@ write_csplit_part(const ExecContext           &ec,
       csplit_output_name(name_format, output_index, cxt.scratch_allocator());
   let const descriptor =
       os::open_file_descriptor(name.view(), os::file_open_mode::Truncate);
+
   if (!descriptor.has_value()) {
     report_soft_koshkit_util_error(ec, cxt, "csplit",
                                    "cannot create '" + name +
@@ -112,9 +115,10 @@ write_csplit_part(const ExecContext           &ec,
 
     return false;
   }
+
   bool is_output_tracked = false;
-  defer
-  {
+
+  defer {
     os::close_fd(*descriptor);
     if (!is_output_tracked &&
         !has_csplit_policy(policy, csplit_write_policy::KeepFiles))
@@ -122,6 +126,7 @@ write_csplit_part(const ExecContext           &ec,
       unused(os::remove_file(name.view()));
     }
   };
+
   output_paths.push(name.clone());
   is_output_tracked = true;
 
@@ -137,6 +142,7 @@ write_csplit_part(const ExecContext           &ec,
 
       return false;
     }
+
     byte_count += lines[line_index].length;
   }
 
@@ -151,16 +157,17 @@ fn
 Csplit::execute(const ExecContext               &ec,
                 EvalContext                     &cxt,
                 const ArrayList<String>         &args,
-                const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+                const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (operands.count() < 2) return report_usage_error(ec, cxt, args[0].view());
 
   u64 digit_count_value = 2;
+
   if (FLAG_CSPLIT_DIGITS.is_set()) {
     let const parsed = utils::parse_decimal_u64(FLAG_CSPLIT_DIGITS.value());
+
     if (parsed.is_error() || parsed.value() == 0 || parsed.value() > SIZE_MAX) {
       KOSHKIT_REPORT_ERROR_AT(
           FLAG_CSPLIT_DIGITS.value_location(),
@@ -185,17 +192,21 @@ Csplit::execute(const ExecContext               &ec,
   let const prefix_name_length =
       os::path_component_length(prefix_path.filename());
   bool is_component_too_long = false;
+
   if (name_limit > 0) {
     let const maximum_name_length = static_cast<usize>(name_limit);
+
     is_component_too_long =
         digit_count > maximum_name_length ||
         (prefix_name_length.has_value() &&
          *prefix_name_length > maximum_name_length - digit_count);
   }
+
   if (is_component_too_long) {
     let const location = FLAG_CSPLIT_PREFIX.is_set()
                              ? FLAG_CSPLIT_PREFIX.value_location()
                              : FLAG_CSPLIT_DIGITS.value_location();
+
     KOSHKIT_REPORT_ERROR_AT(
         location, "the output filename component is too long",
         "shorten the output prefix or reduce the suffix width");
@@ -204,11 +215,13 @@ Csplit::execute(const ExecContext               &ec,
   }
 
   let const content = read_named_or_stdin(ec, operands[0].view());
+
   if (!content.has_value()) {
     KOSHKIT_REPORT_PATH_ERROR("read", operands[0]);
 
     return 1;
   }
+
   let       lines = utils::split_lines(content->view(), cxt.scratch_allocator(),
                                        utils::line_terminator_mode::Preserve);
   usize     current_line = 0;
@@ -219,12 +232,13 @@ Csplit::execute(const ExecContext               &ec,
                                        : csplit_write_policy::None) |
       (FLAG_CSPLIT_KEEP.is_enabled() ? csplit_write_policy::KeepFiles
                                      : csplit_write_policy::None);
-  defer
-  {
+
+  defer {
     if (!has_csplit_policy(write_policy, csplit_write_policy::KeepFiles))
       for (let const &path : output_paths)
         unused(os::remove_file(path.view()));
   };
+
   let  previous_pattern               = String{cxt.scratch_allocator()};
   bool has_previous_nonrepeat_pattern = false;
   bool has_applied_pattern            = false;
@@ -236,6 +250,7 @@ Csplit::execute(const ExecContext               &ec,
     usize     target_line       = SIZE_MAX;
     bool      should_write_part = true;
     let const numeric           = utils::parse_decimal_u64(pattern);
+
     if (!numeric.is_error()) {
       if (numeric.value() == 0) {
         throw ErrorWithLocationAndDetails{
@@ -244,6 +259,7 @@ Csplit::execute(const ExecContext               &ec,
       }
 
       u64 numeric_target = numeric.value() - 1;
+
       if (repeat_mode == csplit_repeat_mode::Repeat) {
         if (numeric.value() > lines.count() - current_line) {
           if (exhaustion_mode == csplit_exhaustion_mode::Allow) {
@@ -257,6 +273,7 @@ Csplit::execute(const ExecContext               &ec,
 
         numeric_target = static_cast<u64>(current_line) + numeric.value();
       }
+
       if (numeric_target > lines.count()) {
         if (exhaustion_mode == csplit_exhaustion_mode::Allow) {
           return false;
@@ -266,6 +283,7 @@ Csplit::execute(const ExecContext               &ec,
             pattern_location, "line number is outside the input",
             "use a positive line number within the input"};
       }
+
       target_line = static_cast<usize>(numeric_target);
     } else if (pattern.length >= 2 && (pattern[0] == '/' || pattern[0] == '%'))
     {
@@ -275,6 +293,7 @@ Csplit::execute(const ExecContext               &ec,
 
       while (delimiter_position < pattern.length) {
         let const byte = pattern[delimiter_position];
+
         if (byte == '\\' && delimiter_position + 1 < pattern.length &&
             pattern[delimiter_position + 1] == delimiter)
         {
@@ -286,6 +305,7 @@ Csplit::execute(const ExecContext               &ec,
         if (byte == delimiter) {
           break;
         }
+
         expression += byte;
         delimiter_position++;
       }
@@ -293,6 +313,7 @@ Csplit::execute(const ExecContext               &ec,
       if (delimiter_position >= pattern.length) {
         let note = String{cxt.scratch_allocator(),
                           "close the expression with the same "};
+
         note += delimiter;
         note += " delimiter";
         throw ErrorWithLocationAndDetails{
@@ -300,11 +321,14 @@ Csplit::execute(const ExecContext               &ec,
       }
 
       should_write_part = pattern[0] == '/';
-      i64 offset        = 0;
+
+      i64 offset = 0;
+
       if (delimiter_position + 1 < pattern.length) {
         bool      is_offset_out_of_range = false;
         let const parsed_offset          = utils::parse_decimal_i64(
             pattern.substring(delimiter_position + 1), &is_offset_out_of_range);
+
         if (parsed_offset.is_error() || is_offset_out_of_range) {
           throw ErrorWithLocationAndDetails{
               pattern_location, "invalid regular expression offset",
@@ -314,14 +338,18 @@ Csplit::execute(const ExecContext               &ec,
 
         offset = parsed_offset.value();
       }
+
       let maybe_compiled = os::compile_basic_regex(
           expression.view(), os::case_sensitivity::Sensitive);
+
       if (!maybe_compiled.has_value()) {
         throw ErrorWithLocationAndDetails{
             pattern_location, "invalid regular expression",
             "use a valid basic regular expression"};
       }
+
       let &compiled = *maybe_compiled;
+
       defer { os::free_regex(compiled); };
 
       let const search_start =
@@ -349,7 +377,9 @@ Csplit::execute(const ExecContext               &ec,
             pattern_location, "regular expression did not match",
             "use a pattern that matches a remaining input line"};
       }
+
       let const adjusted_line = static_cast<i128>(matched_line) + offset;
+
       if (adjusted_line < 0 || adjusted_line > lines.count()) {
         if (exhaustion_mode == csplit_exhaustion_mode::Allow) {
           return false;
@@ -359,6 +389,7 @@ Csplit::execute(const ExecContext               &ec,
             pattern_location, "regular expression offset is outside the input",
             "use an offset that selects a line within the input"};
       }
+
       target_line = static_cast<usize>(adjusted_line);
     } else {
       throw ErrorWithLocationAndDetails{
@@ -374,6 +405,7 @@ Csplit::execute(const ExecContext               &ec,
           pattern_location, "split point precedes the current segment",
           "choose a split point at or after the current segment"};
     }
+
     if (exhaustion_mode == csplit_exhaustion_mode::Allow &&
         target_line == current_line)
     {
@@ -384,12 +416,14 @@ Csplit::execute(const ExecContext               &ec,
       let const width_location = FLAG_CSPLIT_DIGITS.is_set()
                                      ? FLAG_CSPLIT_DIGITS.value_location()
                                      : pattern_location;
+
       if (!write_csplit_part(
               ec, cxt, csplit_name_format{prefix, digit_count, width_location},
               output_index++, lines, current_line, target_line, output_paths,
               write_policy))
         throw Error{"cannot write output"};
     }
+
     current_line        = target_line;
     has_applied_pattern = true;
 
@@ -400,6 +434,7 @@ Csplit::execute(const ExecContext               &ec,
        pattern_index++)
   {
     let const pattern = operands[pattern_index].view();
+
     if (pattern.length >= 2 && pattern[0] == '{' &&
         pattern[pattern.length - 1] == '}')
     {
@@ -411,6 +446,7 @@ Csplit::execute(const ExecContext               &ec,
       }
 
       let const repeat = pattern.substring_of_length(1, pattern.length - 2);
+
       if (repeat == "*") {
         while (do_apply_pattern(
             previous_pattern.view(), operand_locations[pattern_index],
@@ -418,6 +454,7 @@ Csplit::execute(const ExecContext               &ec,
         {}
       } else {
         let const repeat_count = utils::parse_decimal_u64(repeat);
+
         if (repeat_count.is_error()) {
           throw ErrorWithLocationAndDetails{
               operand_locations[pattern_index],
@@ -431,9 +468,11 @@ Csplit::execute(const ExecContext               &ec,
               previous_pattern.view(), operand_locations[pattern_index],
               csplit_repeat_mode::Repeat, csplit_exhaustion_mode::Error));
       }
+
       has_previous_nonrepeat_pattern = false;
       continue;
     }
+
     previous_pattern               = operands[pattern_index].clone();
     has_previous_nonrepeat_pattern = true;
     unused(do_apply_pattern(pattern, operand_locations[pattern_index],
@@ -445,6 +484,7 @@ Csplit::execute(const ExecContext               &ec,
       FLAG_CSPLIT_DIGITS.is_set()
           ? FLAG_CSPLIT_DIGITS.value_location()
           : operand_locations[operand_locations.count() - 1];
+
   if (!write_csplit_part(
           ec, cxt, csplit_name_format{prefix, digit_count, width_location},
           output_index, lines, current_line, lines.count(), output_paths,

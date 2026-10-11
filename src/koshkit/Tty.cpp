@@ -35,11 +35,13 @@ Tty::execute(const ExecContext               &ec,
   }
 
   let const name = os::terminal_name(ec.in_fd.value_or(KOSH_STDIN));
+
   if (!name.has_value()) {
     if (!FLAG_TTY_SILENT.is_enabled()) ec.print_to_stdout("not a tty\n");
 
     return 1;
   }
+
   if (!FLAG_TTY_SILENT.is_enabled()) {
     ec.print_to_stdout(name->view());
     ec.print_to_stdout("\n");

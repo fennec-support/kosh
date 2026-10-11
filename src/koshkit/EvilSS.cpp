@@ -90,19 +90,19 @@ struct process_pid_order
 {
   pure fn
   operator()(const os::process_entry &left,
-             const os::process_entry &right) const wontthrow->bool
+             const os::process_entry &right) const wontthrow -> bool
   {
     return left.pid < right.pid;
   }
 
   pure fn
-  operator()(const os::process_entry &left, i64 right) const wontthrow->bool
+  operator()(const os::process_entry &left, i64 right) const wontthrow -> bool
   {
     return left.pid < right;
   }
 
   pure fn
-  operator()(i64 left, const os::process_entry &right) const wontthrow->bool
+  operator()(i64 left, const os::process_entry &right) const wontthrow -> bool
   {
     return left < right.pid;
   }
@@ -125,6 +125,7 @@ unix_endpoint(StringView path, u64 identity, Allocator allocator) throws
     -> String
 {
   let result = String{allocator, path.is_empty() ? StringView{"*"} : path};
+
   result += ":";
   result += String::from(identity, allocator).view();
 
@@ -169,6 +170,7 @@ append_network_socket_report(String                              &output,
           });
 
   let owner_process_ids = ArrayList<u32>{allocator};
+
   if (options.should_show_processes) {
     for (let const &socket : sockets) {
       if (socket.process_id != 0 && socket.has_owner_start_token) {
@@ -190,9 +192,11 @@ append_network_socket_report(String                              &output,
 
     owner_process_ids.truncate(unique_count);
   }
+
   let const processes = os::describe_processes(owner_process_ids)
                             .make_sorted(process_pid_order{});
-  let       owner_texts       = ArrayList<owner_text_entry>{allocator};
+  let owner_texts = ArrayList<owner_text_entry>{allocator};
+
   let const do_get_owner_text = [&](u32 owner_id) throws -> String {
     for (let const &entry : owner_texts) {
       if (entry.owner_id == owner_id)
@@ -200,6 +204,7 @@ append_network_socket_report(String                              &output,
     }
 
     let const owner_name = os::uid_to_username(owner_id);
+
     owner_texts.push(owner_text_entry{
         owner_id, owner_name.has_value() ? String{allocator, owner_name->view()}
                                          : String::from(owner_id, allocator)
@@ -207,6 +212,7 @@ append_network_socket_report(String                              &output,
 
     return String{allocator, owner_texts.back().text.view()};
   };
+
   let  rows                = ArrayList<socket_row>{allocator};
   u64  previous_identity   = 0;
   u32  previous_process_id = 0;
@@ -222,12 +228,14 @@ append_network_socket_report(String                              &output,
     let const is_selected_protocol = (is_tcp && options.should_show_tcp) ||
                                      (is_udp && options.should_show_udp) ||
                                      (is_unix && options.should_show_unix);
+
     if (has_protocol_filter && !is_selected_protocol) {
       continue;
     }
 
     let const has_address_family_filter =
         options.should_show_ipv4 || options.should_show_ipv6;
+
     if (is_unix) {
       if (has_address_family_filter && !options.should_show_unix) {
         continue;
@@ -238,6 +246,7 @@ append_network_socket_report(String                              &output,
       {
         continue;
       }
+
       if (options.should_show_ipv6 && !options.should_show_ipv4 &&
           socket.family != os::network_address_family::IPv6)
       {
@@ -246,9 +255,11 @@ append_network_socket_report(String                              &output,
     }
 
     let const is_socket_listening = is_listening(socket);
+
     if (options.is_listening_only && !is_socket_listening) {
       continue;
     }
+
     if (!options.should_include_listening && !options.is_listening_only &&
         is_socket_listening)
     {
@@ -260,11 +271,13 @@ append_network_socket_report(String                              &output,
     {
       continue;
     }
+
     has_previous        = true;
     previous_identity   = socket.identity;
     previous_process_id = socket.process_id;
 
     let row = socket_row{allocator};
+
     row.protocol =
         String{allocator, is_unix ? unix_protocol_name(socket.unix_type)
                                   : (is_tcp ? "tcp" : "udp")};
@@ -291,8 +304,10 @@ append_network_socket_report(String                              &output,
 
       if (socket.process_id != 0 && socket.has_owner_start_token) {
         let const found = processes.find(static_cast<i64>(socket.process_id));
+
         if (found.has_value()) {
           let const &process = processes[*found];
+
           if (process.start_token != 0 &&
               process.start_token == socket.owner_start_token)
           {
@@ -304,10 +319,12 @@ append_network_socket_report(String                              &output,
         }
       }
     }
+
     rows.push(steal(row));
   }
 
   let table = ReportTable{allocator};
+
   table.set_header_visible(options.should_show_header);
   table.add_heading("Netid");
   table.add_heading("State");
@@ -322,6 +339,7 @@ append_network_socket_report(String                              &output,
   }
 
   let cells = ArrayList<report_table_cell_view>{allocator};
+
   cells.reserve(options.should_show_processes ? 9 : 6);
 
   for (let const &row : rows) {
@@ -337,6 +355,7 @@ append_network_socket_report(String                              &output,
       cells.push({row.process_name.view(), colors::ansi::BOLD_GREEN});
       cells.push({row.owner.view(), colors::ansi::YELLOW});
     }
+
     table.add_row(cells);
   }
 
@@ -351,8 +370,7 @@ fn
 EvilSS::execute(const ExecContext               &ec,
                 EvalContext                     &cxt,
                 const ArrayList<String>         &args,
-                const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+                const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
@@ -371,6 +389,7 @@ EvilSS::execute(const ExecContext               &ec,
   }
 
   unused(FLAG_EVILSS_NUMERIC);
+
   let const allocator      = cxt.scratch_allocator();
   let const should_color   = koshkit_should_color();
   let const report_options = network_socket_report_options{
@@ -388,9 +407,11 @@ EvilSS::execute(const ExecContext               &ec,
   if (FLAG_EVILSS_LIVE.is_enabled()) {
     let const live_options = live_report_options::parse_with_window(
         ec, cxt, args[0].view(), FLAG_EVILSS_LIVE, false, 1.0, allocator);
+
     if (!live_options.has_value()) return 1;
 
     let const do_sample = [](u64, Allocator) -> Maybe<i32> { return None; };
+
     let const do_render = [&](String   &frame, const live_view_dimensions &,
                               Allocator frame_allocator) -> Maybe<i32> {
       append_network_socket_report(frame, report_options, frame_allocator,
@@ -405,6 +426,7 @@ EvilSS::execute(const ExecContext               &ec,
   }
 
   let output = String{allocator};
+
   append_network_socket_report(output, report_options, allocator, should_color);
 
   ec.print_to_stdout(output);

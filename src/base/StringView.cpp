@@ -17,6 +17,7 @@ fn
 StringView::to_lower_ascii(Allocator allocator) const throws -> String
 {
   let result = String{allocator, *this};
+
   result.lowercase_ascii();
 
   return result;
@@ -28,6 +29,7 @@ StringView::copy_to(Allocator allocator) const throws -> StringView
   if (length == 0) return StringView{};
 
   let const bytes = allocator.alloc_array<char>(length);
+
   __builtin_memcpy(bytes, data, length);
 
   return StringView{bytes, length};
@@ -40,8 +42,9 @@ parse_decimal_i64(StringView text, bool *out_of_range = nullptr) throws
 fn
 parse_decimal_u64(StringView text) throws -> ErrorOr<u64>;
 fn
-parse_integer_in_base(StringView text, bool *out_of_range, int_base base) throws
-    -> ErrorOr<i64>;
+parse_integer_in_base(StringView text,
+                      bool      *out_of_range,
+                      int_base   base) throws -> ErrorOr<i64>;
 fn
 parse_integer_in_base_u64(StringView text, int_base base) throws
     -> ErrorOr<u64>;
@@ -79,6 +82,7 @@ StringView::to() const throws -> ErrorOr<T>
 {
   if constexpr (is_tagged_int_v<T>) {
     using U = typename T::underlying;
+
     if constexpr (std::is_same_v<U, u64>)
       return T{TRY(utils::parse_integer_in_base_u64(*this, T::base))};
     else
@@ -125,6 +129,7 @@ StringView::find_character(char wanted) const wontthrow -> Maybe<usize>
 {
   let const found =
       byte_scan::find_byte(data, length, static_cast<unsigned char>(wanted));
+
   if (found == nullptr) return None;
 
   return static_cast<usize>(found - data);
@@ -135,6 +140,7 @@ StringView::find_last_character(char wanted) const wontthrow -> Maybe<usize>
 {
   let const found = byte_scan::find_last_byte(
       data, length, static_cast<unsigned char>(wanted));
+
   if (found == nullptr) return None;
 
   return static_cast<usize>(found - data);
@@ -146,7 +152,9 @@ StringView::find_substring(StringView needle, usize from) const wontthrow
 {
   if (needle.length == 0) return from <= length ? Maybe<usize>{from} : None;
   if (needle.length > length) return None;
+
   let const last_start = length - needle.length;
+
   if (from > last_start) return None;
 
   let position = from;
@@ -156,8 +164,11 @@ StringView::find_substring(StringView needle, usize from) const wontthrow
     let const found =
         byte_scan::find_byte(data + position, scan_length,
                              static_cast<unsigned char>(needle.data[0]));
+
     if (found == nullptr) return None;
+
     let const candidate = static_cast<usize>(found - data);
+
     if (byte_scan::are_bytes_equal(data + candidate, needle.data,
                                    needle.length))
       return candidate;
@@ -182,6 +193,7 @@ StringView::substring_of_length(usize start, usize count) const wontthrow
 {
   if (start >= length)
     return StringView{data == nullptr ? nullptr : data + length, 0};
+
   usize remaining = length - start;
 
   return StringView{data + start, count < remaining ? count : remaining};
@@ -194,6 +206,7 @@ StringView::next_line(usize &position) const wontthrow -> StringView
   let const newline     = remaining.find_character('\n');
   let const line_length = newline.has_value() ? *newline : remaining.length;
   let const line        = remaining.substring_of_length(0, line_length);
+
   position += line_length;
   if (position < length) position++;
 

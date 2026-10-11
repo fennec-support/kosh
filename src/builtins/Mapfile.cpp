@@ -49,14 +49,18 @@ Mapfile::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   if (FLAG_HELP.is_enabled()) SHOW_BUILTIN_HELP_AND_RETURN(ec);
 
   let const do_parse_count = [&](const FlagString &flag, StringView label,
-                                 StringView note, i64 &value) throws -> bool {
+                                 StringView note,
+                                 i64       &value) throws -> bool {
     if (!flag.is_set()) return true;
+
     let const parsed = flag.value().to<i64>();
+
     if (!parsed.is_error() && parsed.value() >= 0) {
       value = parsed.value();
 
       return true;
     }
+
     report_soft_builtin_error(ec, cxt, flag.value_location(),
                               flag.value() + label, note);
 
@@ -67,6 +71,7 @@ Mapfile::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   i64 skip_count       = 0;
   i64 origin           = 0;
   i64 callback_quantum = 5000;
+
   if (!do_parse_count(FLAG_MAPFILE_COUNT, ": invalid line count",
                       "The -n count must be a whole number", max_lines) ||
       !do_parse_count(FLAG_MAPFILE_SKIP, ": invalid line count",
@@ -86,8 +91,10 @@ Mapfile::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   }
 
   let read_fd = ec.in_fd.value_or(KOSH_STDIN);
+
   if (FLAG_MAPFILE_FD.is_set()) {
     let const parsed_fd = FLAG_MAPFILE_FD.value().to<i64>();
+
     if (parsed_fd.is_error() || parsed_fd.value() < 0 ||
         parsed_fd.value() > INT32_MAX)
     {
@@ -97,16 +104,19 @@ Mapfile::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
       return 1;
     }
+
     read_fd = os::descriptor_from_fd_number(parsed_fd.value());
   }
 
   let const array_name =
       args.count() > 1 ? args[1].view() : StringView{"MAPFILE"};
+
   if (!name_is_valid_identifier(array_name)) {
     report_invalid_identifier(ec, cxt, ec.arg_location_at(1), array_name);
 
     return 1;
   }
+
   let const should_strip_newline = FLAG_MAPFILE_TRIM.is_enabled();
   let const has_origin           = FLAG_MAPFILE_ORIGIN.is_set();
   let const has_callback         = FLAG_MAPFILE_CALLBACK.is_set();
@@ -121,6 +131,7 @@ Mapfile::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   for (i64 skipped = 0; skipped < skip_count; skipped++) {
     let const skipped_line = utils::read_line_from_fd(read_fd, delimiter);
+
     if (skipped_line.did_read_fail) {
       report_soft_builtin_error(ec, cxt, ec.source_location(),
                                 StringView{"Unable to read mapfile input: "} +
@@ -128,30 +139,32 @@ Mapfile::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
       return 1;
     }
+
     if (!skipped_line.line.has_value()) break;
   }
 
   let lines = ArrayList<String>{heap_allocator()};
+
   if (has_callback && !has_origin) {
     cxt.set_indexed_array(array_name, ArrayList<String>{heap_allocator()});
   }
 
   let const saved_terminal_exec = cxt.execution_store().terminal_exec_allowed();
+
   cxt.execution_store().terminal_exec_allowed() = false;
-  defer
-  {
+  defer {
     cxt.execution_store().terminal_exec_allowed() = saved_terminal_exec;
   };
 
   usize read_count = 0;
 
-  loop
-  {
+  loop {
     if (max_lines > 0 && static_cast<i64>(read_count) >= max_lines) {
       break;
     }
 
     let read = utils::read_line_from_fd(read_fd, delimiter);
+
     if (read.did_read_fail) {
       report_soft_builtin_error(ec, cxt, ec.source_location(),
                                 StringView{"Unable to read mapfile input: "} +
@@ -159,9 +172,11 @@ Mapfile::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
       return 1;
     }
+
     if (!read.line.has_value()) break;
 
     let element = read.line.take();
+
     if (!should_strip_newline && read.was_delimiter_terminated) {
       element.push(delimiter);
     }
@@ -170,10 +185,12 @@ Mapfile::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     char      index_text[24];
     let const subscript =
         utils::int_to_text_into(array_index, index_text, sizeof(index_text));
+
     if (has_callback &&
         (read_count + 1) % static_cast<usize>(callback_quantum) == 0)
     {
       let callback = String{heap_allocator(), FLAG_MAPFILE_CALLBACK.value()};
+
       callback.push(' ');
       append_shell_quoted_arg(callback, subscript, true);
       callback.push(' ');
@@ -189,6 +206,7 @@ Mapfile::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     } else {
       lines.push(steal(element));
     }
+
     read_count++;
   }
 
@@ -204,6 +222,7 @@ Mapfile::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       let const subscript =
           utils::int_to_text_into(origin + static_cast<i64>(element_index),
                                   index_text, sizeof(index_text));
+
       cxt.assign_array_element(array_name, subscript,
                                lines[element_index].view(),
                                assignment_update_mode::Replace);

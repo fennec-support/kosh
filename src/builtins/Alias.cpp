@@ -58,6 +58,7 @@ Alias::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       cxt.scope_store().set_alias(parts.get_name(), *parts.get_value());
     } else if (const Maybe<String> value = cxt.scope_store().get_alias(arg)) {
       String message{cxt.scratch_allocator(), "alias "};
+
       message += arg;
       message += '=';
       append_shell_quoted_arg(message, value->view(), true);

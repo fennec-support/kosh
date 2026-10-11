@@ -21,10 +21,10 @@ namespace expressions::internal {
 namespace {
 
 fn
-check_posix_redirection_portability(AnalysisContext   &actx,
-                                    const Redirection &redirection,
-                                    SourceLocation     fallback_location) throws
-    -> void
+check_posix_redirection_portability(
+    AnalysisContext   &actx,
+    const Redirection &redirection,
+    SourceLocation     fallback_location) throws -> void
 {
   let const do_get_location = [&]() -> SourceLocation {
     return redirection.target != nullptr ? redirection.target->source_location()
@@ -41,8 +41,10 @@ check_posix_redirection_portability(AnalysisContext   &actx,
 
   let const descriptor =
       redirection.fd > redirection.dup_fd ? redirection.fd : redirection.dup_fd;
+
   if (descriptor > 9) {
     let const descriptor_text = String::from(descriptor, heap_allocator());
+
     actx.report_diagnostic(diagnostic_id::sc3023, do_get_location(),
                            {descriptor_text.view()});
   }
@@ -81,9 +83,11 @@ check_posix_redirection_portability(AnalysisContext   &actx,
   }
 
   let const target_text = redirection.target->raw_view();
+
   if (!target_text.has_value()) return;
 
   let const view = *target_text;
+
   if (redirection.kind == Redirection::Kind::DuplicateOutput &&
       redirection.is_dup_filename_allowed)
   {
@@ -139,6 +143,7 @@ check_redirection_lints(AnalysisContext          &actx,
     }
 
     let const is_posix = actx.is_posix_sh_shebang;
+
     if (is_posix) {
       check_posix_redirection_portability(actx, redirection,
                                           input.command_location());
@@ -174,6 +179,7 @@ check_redirection_lints(AnalysisContext          &actx,
     let const is_file_output =
         redirection.kind == Redirection::Kind::TruncateOutput ||
         redirection.kind == Redirection::Kind::TruncateOutputOverride;
+
     if (is_file_output && redirection.fd == 1 && saw_stderr_to_stdout &&
         redirection.target != nullptr)
     {
@@ -199,6 +205,7 @@ check_redirection_lints(AnalysisContext          &actx,
         }
       } else if (output_spelling.has_value() || is_input_redirection) {
         let const digits = redirection.target->raw_view();
+
         if (digits.has_value() && !digits->is_empty() &&
             digits->is_all_decimal_digits())
         {
@@ -211,6 +218,7 @@ check_redirection_lints(AnalysisContext          &actx,
           let const target_source =
               redirection.target->source_location().get_source_text(
                   actx.source);
+
           if (target_source.has_value() && !target_source->is_empty() &&
               (*target_source)[0] != '"' && (*target_source)[0] != '\'')
           {
@@ -252,6 +260,7 @@ check_redirection_lints(AnalysisContext          &actx,
             {redirection.target->raw_view().value_or(StringView{})});
       }
     }
+
     if (redirection.kind == Redirection::Kind::ReadInput &&
         redirection.target != nullptr &&
         redirection.target->kind() == Token::Kind::Word)
@@ -261,6 +270,7 @@ check_redirection_lints(AnalysisContext          &actx,
                         .to_literal_string();
       read_token = redirection.target;
     }
+
     if (is_file_output && redirection.target != nullptr &&
         redirection.target->kind() == Token::Kind::Word &&
         read_token != nullptr)
@@ -269,6 +279,7 @@ check_redirection_lints(AnalysisContext          &actx,
           static_cast<const tokens::WordToken *>(redirection.target)
               ->word()
               .to_literal_string();
+
       if (!read_target.is_empty() && write_target.view() == read_target.view())
       {
         actx.report_diagnostic(
@@ -281,6 +292,7 @@ check_redirection_lints(AnalysisContext          &actx,
   if (input.redirections.is_empty() || input.is_command_shadowed) {
     return;
   }
+
   if (!input.is_in_group(COMMAND_GROUP_NON_STDIN_READER)) return;
   if (args_have_stdin_operand(input.args)) return;
 
@@ -308,6 +320,7 @@ check_test_operand_lints(AnalysisContext          &actx,
 
   usize operand_end            = args.count();
   bool  is_bracket_form_closed = true;
+
   if (input.command_id() == command_name_id::SingleBracket ||
       input.command_id() == command_name_id::DoubleBracket)
   {
@@ -323,6 +336,7 @@ check_test_operand_lints(AnalysisContext          &actx,
   }
 
   let previous_literal = String{heap_allocator()};
+
   if (args.count() > 1 && args[0]->kind() == Token::Kind::Word) {
     previous_literal = static_cast<const tokens::WordToken *>(args[0])
                            ->word()
@@ -345,6 +359,7 @@ check_test_operand_lints(AnalysisContext          &actx,
     if (view == "==" && i >= 2 && !is_previous_binary_operator) {
       actx.report_diagnostic(diagnostic_id::sc3014, args[i]->source_location());
     }
+
     let const is_previous_bang = previous_literal.view() == "!";
 
     if (view_looks_like_test_operator(view) && view[1] != '-' &&
@@ -354,12 +369,14 @@ check_test_operand_lints(AnalysisContext          &actx,
       let const  is_unary_slot =
           i == 1 || is_test_condition_opener_word(previous_literal.view());
       let is_string_operand = false;
+
       if (is_unary_slot && i + 1 < args.count() &&
           args[i + 1]->kind() == Token::Kind::Word)
       {
         let const next = static_cast<const tokens::WordToken *>(args[i + 1])
                              ->word()
                              .to_literal_string();
+
         is_string_operand = is_test_binary_operator_word(next.view());
       }
 
@@ -388,6 +405,7 @@ check_test_operand_lints(AnalysisContext          &actx,
           static_cast<const tokens::WordToken *>(args[i - 1])->word();
       let const &right =
           static_cast<const tokens::WordToken *>(args[i + 1])->word();
+
       if (word_is_fully_literal(left) && word_is_fully_literal(right)) {
         let const left_shape  = classify_test_operand(left);
         let const right_shape = classify_test_operand(right);
@@ -445,6 +463,7 @@ check_test_operand_lints(AnalysisContext          &actx,
 
     if (is_posix) {
       let const is_operator_slot = i >= 2 && !is_previous_binary_operator;
+
       if ((view == "<" || view == ">") && is_operator_slot) {
         actx.report_diagnostic(diagnostic_id::sc3012,
                                args[i]->source_location(), {view});
@@ -460,6 +479,7 @@ check_test_operand_lints(AnalysisContext          &actx,
     if (view == "-o" && i >= 3) {
       let const before = test_inequality_left_operand(args, i - 2, operand_end);
       let const after  = test_inequality_left_operand(args, i + 2, operand_end);
+
       if (before.has_value() && after.has_value() && *before == *after) {
         actx.report_diagnostic(diagnostic_id::sc2056,
                                args[i]->source_location(), {*before});
@@ -474,6 +494,7 @@ check_test_operand_lints(AnalysisContext          &actx,
       let const next = static_cast<const tokens::WordToken *>(args[i + 1])
                            ->word()
                            .to_literal_string();
+
       if (next.view() == "-z") {
         actx.report_diagnostic(diagnostic_id::sc2236,
                                args[i]->source_location());
@@ -487,6 +508,7 @@ check_test_operand_lints(AnalysisContext          &actx,
                            ->word()
                            .to_literal_string();
         let const inverse = negated_test_operator(op.view());
+
         if (inverse.has_value()) {
           actx.report_diagnostic(diagnostic_id::sc2335,
                                  args[i]->source_location(),
@@ -517,12 +539,15 @@ check_test_operand_lints(AnalysisContext          &actx,
       case bracketed_constant_kind::False:
         actx.report_diagnostic(diagnostic_id::sc2158, location);
         break;
+
       case bracketed_constant_kind::Zero:
         actx.report_diagnostic(diagnostic_id::sc2159, location);
         break;
+
       case bracketed_constant_kind::True:
         actx.report_diagnostic(diagnostic_id::sc2160, location);
         break;
+
       case bracketed_constant_kind::One:
         actx.report_diagnostic(diagnostic_id::sc2161, location);
         break;
@@ -543,6 +568,7 @@ check_test_operand_lints(AnalysisContext          &actx,
 
   for (usize i = 1; i < operand_end; i++) {
     if (args[i]->kind() != Token::Kind::Word) continue;
+
     let const &word = static_cast<const tokens::WordToken *>(args[i])->word();
     let const  literal = word.to_literal_string();
     let const  view    = literal.view();
@@ -552,6 +578,7 @@ check_test_operand_lints(AnalysisContext          &actx,
     {
       let const &next =
           static_cast<const tokens::WordToken *>(args[i + 1])->word();
+
       if (word_is_fully_literal(next)) {
         actx.report_diagnostic(diagnostic_id::sc2157,
                                args[i + 1]->source_location(), {view});
@@ -583,8 +610,10 @@ check_test_operand_lints(AnalysisContext          &actx,
     {
       let const &right =
           static_cast<const tokens::WordToken *>(args[i + 1])->word();
+
       if (word_is_fully_literal(right)) {
         let const right_literal = right.to_literal_string();
+
         if (right_literal.view().find_character('*').has_value() ||
             right_literal.view().find_character('?').has_value())
         {
@@ -594,6 +623,7 @@ check_test_operand_lints(AnalysisContext          &actx,
           let const &left =
               static_cast<const tokens::WordToken *>(args[i - 1])->word();
           let const left_literal = left.to_literal_string();
+
           if (word_is_fully_literal(left) &&
               left_literal.view() != right_literal.view())
           {
@@ -648,7 +678,8 @@ prefix_value_is_own_name(const PrefixAssignment &var) wontthrow -> bool
 
 fn
 check_prefix_assignment_reads(AnalysisContext          &actx,
-                              const command_lint_input &input) throws -> bool
+                              const command_lint_input &input) throws
+    -> bool
 {
   if (input.local_vars.is_empty()) return false;
 
@@ -661,6 +692,7 @@ check_prefix_assignment_reads(AnalysisContext          &actx,
         value.segments.count() == 1 &&
         (value.segments[0].kind == WordSegment::Kind::UnquotedText ||
          value.segments[0].kind == WordSegment::Kind::LiteralText);
+
     if (is_bare_word_value) {
       let const assigned = value.segments[0].text.view();
       let const name     = input.local_vars[0].get_name();
@@ -668,6 +700,7 @@ check_prefix_assignment_reads(AnalysisContext          &actx,
           !COMMAND_VALUED_VARIABLES.contains(name) &&
           get_analysis_command_info(assigned).id != command_name_id::Unknown &&
           input.command_id() == command_name_id::Unknown;
+
       if (input.command_literal[0] == '-' || is_command_value) {
         actx.report_diagnostic(diagnostic_id::sc2037,
                                input.local_vars[0].get_location(),
@@ -679,10 +712,12 @@ check_prefix_assignment_reads(AnalysisContext          &actx,
 
   for (usize i = 1; i < args.count(); i++) {
     if (args[i]->kind() != Token::Kind::Word) continue;
+
     let const &word = static_cast<const tokens::WordToken *>(args[i])->word();
 
     for (let const &segment : word.segments) {
       if (segment.kind != WordSegment::Kind::VariableReference) continue;
+
       const StringView referenced{segment.text.data(), segment.text.count()};
       bool             has_name_prefix = false;
 
@@ -711,6 +746,7 @@ pure fn
 value_is_self_arithmetic(StringView name, StringView value) wontthrow -> bool
 {
   usize position = 0;
+
   if (position < value.length && value[position] == '$') {
     position++;
   }
@@ -736,10 +772,11 @@ value_is_self_arithmetic(StringView name, StringView value) wontthrow -> bool
 }
 
 pure fn
-assignment_value_is_own_name(StringView name, StringView value) wontthrow
-    -> bool
+assignment_value_is_own_name(StringView name, StringView value)
+    wontthrow -> bool
 {
   StringView inner = value;
+
   if (inner.length >= 2 && inner[0] == '"' && inner[inner.length - 1] == '"') {
     inner = inner.substring_of_length(1, inner.length - 2);
   }
@@ -781,9 +818,11 @@ segment_holds_literal_pattern(StringView text) wontthrow -> bool
   if (text.find_character('*').has_value()) return true;
 
   let const open = text.find_character('{');
+
   if (!open.has_value()) return false;
 
   let const comma = text.substring(*open).find_character(',');
+
   if (!comma.has_value()) return false;
 
   return text.substring(*open + *comma).find_character('}').has_value();
@@ -837,9 +876,11 @@ scan_assignment_value(AnalysisContext      &actx,
 
 fn
 check_assignment_value_shape(AnalysisContext             &actx,
-                             const assignment_lint_input &input) throws -> void
+                             const assignment_lint_input &input) throws
+    -> void
 {
   let const equals = input.raw_assignment.find_character('=');
+
   if (!equals.has_value()) return;
 
   let const value = input.raw_assignment.substring(*equals + 1);
@@ -860,6 +901,7 @@ check_assignment_value_shape(AnalysisContext             &actx,
   if (value_is_self_arithmetic(input.name, value)) {
     let const id =
         value[0] == '$' ? diagnostic_id::sc2099 : diagnostic_id::sc2100;
+
     actx.report_diagnostic(id, input.location, {input.name});
   }
 
@@ -889,6 +931,7 @@ check_assignment_value_shape(AnalysisContext             &actx,
   }
 
   let const first_bracket = input.name.find_character('[');
+
   if (input.shape.has_quoted_literal_value &&
       input.shape.has_only_literal_segments && !first_bracket.has_value())
   {
@@ -902,6 +945,7 @@ check_assignment_value_shape(AnalysisContext             &actx,
       let const id = input.update_mode == assignment_update_mode::Append
                          ? diagnostic_id::sc2179
                          : diagnostic_id::sc2178;
+
       actx.report_diagnostic(id, input.location, {input.name});
     }
 
@@ -910,6 +954,7 @@ check_assignment_value_shape(AnalysisContext             &actx,
 
   let const after_first = input.name.substring(*first_bracket + 1);
   let const closer      = after_first.find_character(']');
+
   if (closer.has_value() &&
       after_first.substring(*closer + 1).find_character('[').has_value())
   {
@@ -925,6 +970,7 @@ option_letter_index(char letter) wontthrow -> u32
   if (letter >= 'a' && letter <= 'z') {
     return static_cast<u32>(letter - 'a');
   }
+
   if (letter >= 'A' && letter <= 'Z') {
     return static_cast<u32>(letter - 'A') + 26;
   }
@@ -961,6 +1007,7 @@ literal_run_matches_at(const Word &case_word,
 {
   for (usize i = start; i < end; i++) {
     let const text = case_word.segments[i].text.view();
+
     if (position + text.length > pattern.length) return false;
     if (pattern.substring_of_length(position, text.length) != text)
       return false;
@@ -981,6 +1028,7 @@ case_pattern_can_match_word(const Word &case_word, StringView pattern) wontthrow
 
   while (first < last && segment_is_literal(case_word.segments[first])) {
     let const text = case_word.segments[first].text.view();
+
     if (front + text.length > back) return false;
     if (pattern.substring_of_length(front, text.length) != text) return false;
     front += text.length;
@@ -991,6 +1039,7 @@ case_pattern_can_match_word(const Word &case_word, StringView pattern) wontthrow
 
   while (last > first && segment_is_literal(case_word.segments[last - 1])) {
     let const text = case_word.segments[last - 1].text.view();
+
     if (back < front + text.length) return false;
     if (pattern.substring_of_length(back - text.length, text.length) != text)
       return false;
@@ -1113,6 +1162,7 @@ check_case_pattern_shape(AnalysisContext       &actx,
   if (pattern_literal.length != 1) return;
 
   let const letter_index = option_letter_index(pattern_literal[0]);
+
   if (letter_index == 64) return;
 
   tally.handled_option_letters |= u64{1} << letter_index;
@@ -1133,6 +1183,7 @@ check_case_option_coverage(AnalysisContext       &actx,
   for (usize i = 0; i < input.getopts_optstring.length; i++) {
     let const letter       = input.getopts_optstring[i];
     let const letter_index = option_letter_index(letter);
+
     if (letter_index == 64) continue;
     if ((tally.handled_option_letters & (u64{1} << letter_index)) != 0)
       continue;

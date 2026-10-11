@@ -19,6 +19,7 @@ get_diagnostic_definition(diagnostic_id id) wontthrow
     -> const diagnostic_definition &
 {
   let const index = static_cast<usize>(id);
+
   ASSERT(index < get_diagnostic_count());
 
   return DIAGNOSTIC_DEFINITIONS[index];
@@ -31,9 +32,9 @@ get_diagnostic_count() wontthrow -> usize
 }
 
 fn
-format_diagnostic_template(const char                       *text_template,
-                           std::initializer_list<StringView> arguments) throws
-    -> String
+format_diagnostic_template(
+    const char                       *text_template,
+    std::initializer_list<StringView> arguments) throws -> String
 {
   let       result = String{heap_allocator()};
   let const text   = StringView{text_template};
@@ -47,11 +48,15 @@ format_diagnostic_template(const char                       *text_template,
     }
 
     usize argument_index = 0;
+
     switch (text[position + 1]) {
     case '0': argument_index = 0; break;
+
     case '1': argument_index = 1; break;
+
     case '2': argument_index = 2; break;
-    default:  result += text[position]; continue;
+
+    default: result += text[position]; continue;
     }
 
     if (argument_index >= arguments.size()) return String{heap_allocator()};
@@ -63,8 +68,8 @@ format_diagnostic_template(const char                       *text_template,
 }
 
 fn
-append_diagnostic_code(String &message, Maybe<u16> shellcheck_code) throws
-    -> void
+append_diagnostic_code(String    &message,
+                       Maybe<u16> shellcheck_code) throws -> void
 {
   if (!shellcheck_code.has_value()) return;
   if (message.is_empty()) return;
@@ -76,6 +81,7 @@ append_diagnostic_code(String &message, Maybe<u16> shellcheck_code) throws
   }
 
   char code_text[32];
+
   message += " (SC";
   message +=
       utils::int_to_text_into(*shellcheck_code, code_text, sizeof(code_text));
@@ -88,6 +94,7 @@ parse_diagnostic_code(StringView text) wontthrow -> Maybe<u16>
   if (text.length >= 2 && text[0] == 'S' && text[1] == 'C') {
     text = text.substring(2);
   }
+
   if (!text.is_all_decimal_digits()) return None;
 
   u32 value = 0;
@@ -128,7 +135,8 @@ shellcheck_selector_disables(const shellcheck_selector &selector,
 static fn
 push_resolved_selector(StringView                      source,
                        StringView                      text,
-                       ArrayList<shellcheck_selector> &selectors) throws -> void
+                       ArrayList<shellcheck_selector> &selectors) throws
+    -> void
 {
   if (text == StringView{"all"}) {
     selectors.push(shellcheck_selector{shellcheck_selector_kind::All});
@@ -149,6 +157,7 @@ push_resolved_selector(StringView                      source,
     let const range_start =
         parse_diagnostic_code(text.substring_of_length(0, *separator));
     let const range_end = parse_diagnostic_code(text.substring(*separator + 1));
+
     if (range_start.has_value() && range_end.has_value()) {
       selectors.push(shellcheck_selector{
           shellcheck_selector_kind::CodeRange,
@@ -162,6 +171,7 @@ push_resolved_selector(StringView                      source,
   }
 
   let const slug_position = static_cast<usize>(text.data - source.data);
+
   selectors.push(shellcheck_selector{
       shellcheck_selector_kind::Slug, {slug_position, text.length},
        0, 0
@@ -194,10 +204,10 @@ collect_comma_separated_selectors(
 }
 
 fn
-collect_shellcheck_selectors(StringView                      source,
-                             shellcheck_directive_span       comment_span,
-                             ArrayList<shellcheck_selector> &selectors) throws
-    -> void
+collect_shellcheck_selectors(
+    StringView                      source,
+    shellcheck_directive_span       comment_span,
+    ArrayList<shellcheck_selector> &selectors) throws -> void
 {
   if (comment_span.position + comment_span.length > source.length) return;
 
@@ -212,12 +222,14 @@ collect_shellcheck_selectors(StringView                      source,
   }
 
   let const directive_text = comment.substring(position);
+
   if (!directive_text.starts_with(StringView{"shellcheck"}) ||
       (directive_text.length > 10 && directive_text[10] != ' ' &&
        directive_text[10] != '\t'))
   {
     return;
   }
+
   position += 10;
 
   while (position < comment.length) {
@@ -230,6 +242,7 @@ collect_shellcheck_selectors(StringView                      source,
     if (position >= comment.length || comment[position] == '#') {
       break;
     }
+
     if (!comment.substring(position).starts_with(StringView{"disable="})) {
       while (position < comment.length && comment[position] != ' ' &&
              comment[position] != '\t' && comment[position] != '#')
@@ -239,15 +252,19 @@ collect_shellcheck_selectors(StringView                      source,
 
       continue;
     }
+
     position += 8;
 
     char quote = '\0';
+
     if (position < comment.length &&
         (comment[position] == '\'' || comment[position] == '"'))
     {
       quote = comment[position++];
     }
+
     let const value_start = position;
+
     if (quote != '\0') {
       while (position < comment.length && comment[position] != quote) {
         position++;
@@ -261,6 +278,7 @@ collect_shellcheck_selectors(StringView                      source,
         position++;
       }
     }
+
     collect_comma_separated_selectors(
         source,
         comment.substring_of_length(value_start, position - value_start),

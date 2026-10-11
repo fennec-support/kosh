@@ -79,9 +79,11 @@ report_value(StringView        report,
       if (!line.starts_with(names[index])) continue;
 
       let value = line.substring(names[index].length).trim_blanks();
+
       if (!value.is_empty() && value[0] == ':') {
         value = value.substring(1).trim_blanks();
       }
+
       if (!value.is_empty()) return String{allocator, value};
     }
   }
@@ -96,10 +98,12 @@ is_nonzero_smart_counter(StringView value) wontthrow -> bool
 
   for (usize index = 0; index < value.length; index++) {
     let const byte = value[index];
+
     if (byte >= '0' && byte <= '9') {
       if (byte != '0') is_nonzero = true;
       continue;
     }
+
     if (byte != ',') return false;
   }
 
@@ -153,6 +157,7 @@ append_ata_smart_statistics(StringView report,
     usize     word_position = 0;
     let const attribute_id  = line.next_ascii_whitespace_word(word_position);
     let const field         = FIELDS.find(attribute_id);
+
     if (!field.has_value()) continue;
     if (line.next_ascii_whitespace_word(word_position).is_empty()) continue;
 
@@ -167,6 +172,7 @@ append_ata_smart_statistics(StringView report,
     if (!has_metadata) continue;
 
     let const value = line.next_ascii_whitespace_word(word_position);
+
     append_smart_statistic(statistics, warning_statistics, *field, value);
   }
 }
@@ -189,6 +195,7 @@ format_smart_statistics(StringView report,
 
   for (let const &field : REPORT_FIELDS) {
     let const value = report_value(report, &field.report_name, 1, allocator);
+
     append_smart_statistic(statistics, warning_statistics, field, value.view());
   }
 
@@ -259,26 +266,35 @@ read_smart_rows(EvalContext                             &cxt,
   for (let const &filesystem : filesystems) {
     let  row     = smart_row{};
     bool has_row = false;
+
     if (smartctl.has_value() && filesystem.source.starts_with("/dev/")) {
       let arguments = ArrayList<String>{allocator};
+
       arguments.push(String{"-a"});
       arguments.push(filesystem.source.clone());
+
       let const report = capture_util_program_output(
           *smartctl, steal(arguments), 10'000'000'000);
+
       if (report.has_value())
         has_row = parse_smart_report(report->view(), filesystem.source.view(),
                                      row, allocator);
     }
+
     if (!has_row && smart_fallback.has_value()) {
       let arguments = ArrayList<String>{allocator};
+
       arguments.push(String{platform_tools.smart_fallback_subcommand});
       arguments.push(filesystem.target.clone());
+
       let const report = capture_util_program_output(
           *smart_fallback, steal(arguments), 10'000'000'000);
+
       if (report.has_value())
         has_row = parse_smart_report(report->view(), filesystem.source.view(),
                                      row, allocator);
     }
+
     if (!has_row) continue;
 
     bool is_duplicate = false;
@@ -301,8 +317,7 @@ fn
 EvilDisk::execute(const ExecContext               &ec,
                   EvalContext                     &cxt,
                   const ArrayList<String>         &args,
-                  const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+                  const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
@@ -310,6 +325,7 @@ EvilDisk::execute(const ExecContext               &ec,
   let const allocator    = cxt.scratch_allocator();
 
   let filesystems = ArrayList<os::mounted_filesystem>{allocator};
+
   if (operands.is_empty()) {
     filesystems = os::mounted_filesystems();
     filesystems.sort([](const os::mounted_filesystem &left,
@@ -327,8 +343,11 @@ EvilDisk::execute(const ExecContext               &ec,
                                               String{allocator}});
     }
   }
+
   let rows = ArrayList<disk_row>{allocator};
+
   rows.reserve(filesystems.count());
+
   i32   status                   = 0;
   usize skipped_permission_count = 0;
 
@@ -337,14 +356,17 @@ EvilDisk::execute(const ExecContext               &ec,
   {
     let const            &mounted = filesystems[filesystem_index];
     os::filesystem_status filesystem{};
+
     if (!os::stat_filesystem(mounted.target.view(), filesystem)) {
       if (operands.is_empty() && os::last_system_error_is_permission_denied()) {
         skipped_permission_count++;
         continue;
       }
+
       let const location = operands.is_empty()
                                ? ec.source_location()
                                : operand_locations[filesystem_index];
+
       KOSHKIT_REPORT_PATH_ERROR_AT(location, "read", mounted.target);
       status = 1;
       continue;
@@ -360,22 +382,25 @@ EvilDisk::execute(const ExecContext               &ec,
     let const used        = total > free ? total - free : 0;
     let const use_percent = filesystem_usage_percent(used, available);
     let       row         = disk_row{};
-    row.source            = String{allocator, mounted.source.view()};
-    row.type              = mounted.type.is_empty() ? String{allocator, "-"}
-                                                    : String{allocator, mounted.type.view()};
-    row.size              = format_human_size(total, allocator);
-    row.used              = format_human_size(used, allocator);
-    row.available         = format_human_size(available, allocator);
-    row.use               = String::from(use_percent, allocator) + "%";
-    row.target            = String{allocator, mounted.target.view()};
-    row.use_percent       = use_percent;
+
+    row.source      = String{allocator, mounted.source.view()};
+    row.type        = mounted.type.is_empty() ? String{allocator, "-"}
+                                              : String{allocator, mounted.type.view()};
+    row.size        = format_human_size(total, allocator);
+    row.used        = format_human_size(used, allocator);
+    row.available   = format_human_size(available, allocator);
+    row.use         = String::from(use_percent, allocator) + "%";
+    row.target      = String{allocator, mounted.target.view()};
+    row.use_percent = use_percent;
     rows.push(steal(row));
   }
 
   let output   = String{allocator};
   let warnings = ArrayList<String>{allocator};
+
   if (skipped_permission_count != 0) {
     let warning = String{allocator, "Skipped "};
+
     warning += String::from(skipped_permission_count, allocator).view();
     warning += " filesystem";
     if (skipped_permission_count != 1) warning += "s";
@@ -385,6 +410,7 @@ EvilDisk::execute(const ExecContext               &ec,
 
   let unavailable_sections = ArrayList<StringView>{allocator};
   let capacity_table       = ReportTable{allocator};
+
   capacity_table.add_heading("FILESYSTEM");
   capacity_table.add_heading("TYPE");
   capacity_table.add_heading("SIZE", report_table_alignment::Right);
@@ -395,6 +421,7 @@ EvilDisk::execute(const ExecContext               &ec,
 
   for (let const &row : rows) {
     let cells = ArrayList<report_table_cell_view>{allocator};
+
     cells.push({row.source.view(), colors::ansi::GREEN});
     cells.push({row.type.view(), colors::ansi::BOLD_MAGENTA});
     cells.push({row.size.view(), colors::ansi::CYAN});
@@ -432,6 +459,7 @@ EvilDisk::execute(const ExecContext               &ec,
     unavailable_sections.push("Disk failure counters");
   } else {
     let table = ReportTable{allocator};
+
     table.add_heading("DEVICE");
     table.add_heading("READ ERRORS", report_table_alignment::Right);
     table.add_heading("WRITE ERRORS", report_table_alignment::Right);
@@ -452,6 +480,7 @@ EvilDisk::execute(const ExecContext               &ec,
           os::disk_io_field::WriteRetries,
       };
       let counter_text = ArrayList<String>{allocator};
+
       counter_text.reserve(countof(counters));
 
       for (usize index = 0; index < countof(counters); index++) {
@@ -461,10 +490,12 @@ EvilDisk::execute(const ExecContext               &ec,
       }
 
       let cells = ArrayList<report_table_cell_view>{allocator};
+
       cells.push({disk.name.view(), colors::ansi::BOLD_GREEN});
 
       for (usize index = 0; index < counter_text.count(); index++) {
         let color = colors::ansi::DIM;
+
         if (disk.has_field(FIELDS[index]))
           color = counters[index] == 0 ? colors::ansi::GREEN
                                        : colors::ansi::BOLD_RED;
@@ -493,6 +524,7 @@ EvilDisk::execute(const ExecContext               &ec,
       {
         continue;
       }
+
       identity_rows.push(identity_row{
           filesystem.target.view(),
           filesystem.volume_name.is_empty() ? StringView{"-"}
@@ -505,12 +537,14 @@ EvilDisk::execute(const ExecContext               &ec,
       unavailable_sections.push("Identity data");
     } else {
       let table = ReportTable{allocator};
+
       table.add_heading("MOUNT");
       table.add_heading("LABEL");
       table.add_heading("UUID");
 
       for (let const &row : identity_rows) {
         let cells = ArrayList<report_table_cell_view>{allocator};
+
         cells.push({row.mount, colors::ansi::BOLD_GREEN});
         cells.push({row.label, colors::ansi::RESET});
         cells.push({row.uuid, colors::ansi::DIM});
@@ -522,6 +556,7 @@ EvilDisk::execute(const ExecContext               &ec,
     }
 
     let table = ReportTable{allocator};
+
     table.add_heading("MOUNT");
     table.add_heading("TYPE");
     table.add_heading("STATUS");
@@ -531,6 +566,7 @@ EvilDisk::execute(const ExecContext               &ec,
     table.add_heading("CORRUPTION", report_table_alignment::Right);
     table.add_heading("GENERATION", report_table_alignment::Right);
     table.add_heading("RECORDED ERRORS", report_table_alignment::Right);
+
     constexpr StringView SUPPORTED_TYPES[] = {"btrfs", "ext4", "ntfs", "ntfs3"};
 
     for (let const &filesystem : filesystems) {
@@ -541,6 +577,7 @@ EvilDisk::execute(const ExecContext               &ec,
       let corruption_count     = String{allocator, "-"};
       let generation_count     = String{allocator, "-"};
       let recorded_error_count = String{allocator, "-"};
+
       if (let const evidence =
               os::read_filesystem_integrity_evidence(filesystem.target.view());
           evidence.has_value())
@@ -556,11 +593,13 @@ EvilDisk::execute(const ExecContext               &ec,
           generation_count =
               String::from(evidence->counters.generation_count, allocator);
           break;
+
         case os::filesystem_integrity_kind::Ext4RecordedErrors:
           status = "recorded errors";
           recorded_error_count =
               String::from(evidence->recorded_error_count, allocator);
           break;
+
         case os::filesystem_integrity_kind::NtfsDirtyFlag:
           status =
               evidence->is_dirty ? StringView{"dirty"} : StringView{"clean"};
@@ -573,7 +612,9 @@ EvilDisk::execute(const ExecContext               &ec,
           break;
         }
       }
+
       let cells = ArrayList<report_table_cell_view>{allocator};
+
       cells.push({filesystem.target.view(), colors::ansi::BOLD_GREEN});
       cells.push({filesystem.type.view(), colors::ansi::BOLD_MAGENTA});
       cells.push({status, status == "dirty" ? colors::ansi::BOLD_RED
@@ -593,10 +634,12 @@ EvilDisk::execute(const ExecContext               &ec,
 
   if (FLAG_EVILDISK_ALL.is_enabled()) {
     let const smart_rows = read_smart_rows(cxt, filesystems, allocator);
+
     if (smart_rows.is_empty()) {
       unavailable_sections.push("SMART data");
     } else {
       let table = ReportTable{allocator};
+
       table.add_heading("DEVICE");
       table.add_heading("STATUS");
       table.add_heading("MODEL");
@@ -606,6 +649,7 @@ EvilDisk::execute(const ExecContext               &ec,
       for (let const &row : smart_rows) {
         let const is_healthy = smart_status_is_healthy(row.status.view());
         let       cells      = ArrayList<report_table_cell_view>{allocator};
+
         cells.push({row.device.view(), colors::ansi::BOLD_GREEN});
         cells.push({row.status.view(), is_healthy ? colors::ansi::BOLD_GREEN
                                                   : colors::ansi::BOLD_YELLOW});
@@ -617,6 +661,7 @@ EvilDisk::execute(const ExecContext               &ec,
         if (!is_healthy) {
           warnings.push(row.device + " reports SMART status " + row.status);
         }
+
         if (!row.warning_statistics.is_empty()) {
           warnings.push(row.device + " reports nonzero SMART counters " +
                         row.warning_statistics);
@@ -629,12 +674,14 @@ EvilDisk::execute(const ExecContext               &ec,
 
   if (!unavailable_sections.is_empty()) {
     let table = ReportTable{allocator};
+
     table.add_heading("SECTION");
     table.add_column("STATUS", report_table_alignment::Left,
                      colors::ansi::BOLD_YELLOW);
 
     for (let const section : unavailable_sections) {
       let cells = ArrayList<report_table_cell_view>{allocator};
+
       cells.push({section, colors::ansi::BOLD_CYAN});
       cells.push({"Unavailable", colors::ansi::BOLD_YELLOW});
       table.add_row(cells);

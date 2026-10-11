@@ -161,6 +161,7 @@ total_size(const ExecContext        &ec,
     -> Maybe<du_size_result>
 {
   os::file_status queried_status{};
+
   if (known_status == nullptr) {
     if (!os::stat_path(path.view(), queried_status)) {
       report_soft_koshkit_util_error(ec, cxt, "du",
@@ -177,12 +178,14 @@ total_size(const ExecContext        &ec,
   let const root_device_id     = known_status->device_id;
   let const is_one_file_system = FLAG_DU_ONE_FILE_SYSTEM.is_enabled();
   let const type_letter        = os::file_type_letter(known_status->mode);
+
   if (type_letter != 'd' && known_status->has_file_identity &&
       known_status->link_count > 1)
   {
     const u64 identity[] = {known_status->device_id, known_status->file_id};
     let const key =
         StringView{reinterpret_cast<const char *>(identity), sizeof(identity)};
+
     if (!seen_links.add(key)) return du_size_result{0, false};
   }
 
@@ -196,6 +199,7 @@ total_size(const ExecContext        &ec,
   }
 
   let const allocated_byte_count = known_status->blocks * 512;
+
   if (type_letter != 'd') {
     if (output_rows != nullptr)
       append_output_row(*output_rows, allocated_byte_count, path.view(),
@@ -218,6 +222,7 @@ total_size(const ExecContext        &ec,
   let       fallback_paths         = ArrayList<Path>{allocator};
   let       fallback_batch         = os::Batch{allocator};
   let       fallback_results       = ArrayList<os::batch_result>{allocator};
+
   frames.reserve(32);
   directory_queue.reserve(32);
   stat_work.reserve(512);
@@ -232,12 +237,14 @@ total_size(const ExecContext        &ec,
       false, false, false
   });
   directory_queue.push(0);
+
   bool           is_root_complete = false;
   du_size_result root_result{0, false};
 
   let const do_try_complete = [&](usize frame_index) throws -> void {
     while (frame_index != SIZE_MAX) {
       let &frame = frames[frame_index];
+
       if (frame.is_complete || !frame.is_enumerated ||
           frame.pending_directory_count != 0)
       {
@@ -262,6 +269,7 @@ total_size(const ExecContext        &ec,
         }
 
         let &parent = frames[frame.parent_index];
+
         if (frame.total_byte_count > UINT64_MAX - parent.total_byte_count) {
           report_soft_koshkit_util_error(ec, cxt, "du",
                                          "cannot read '" + frame.path.text() +
@@ -283,6 +291,7 @@ total_size(const ExecContext        &ec,
 
       let const parent_index = frame.parent_index;
       let      &parent       = frames[parent_index];
+
       if (parent.pending_directory_count != 0) parent.pending_directory_count--;
       frame.path = Path{};
       reusable_frame_indices.push(frame_index);
@@ -290,11 +299,13 @@ total_size(const ExecContext        &ec,
     }
   };
 
-  let const do_process_stat_work = [&](du_stat_work &work, i32 error_number)
-                                       throws -> void {
-    let const parent_index       = work.parent_index;
+  let const do_process_stat_work =
+      [&](du_stat_work &work, i32 error_number) throws -> void {
+    let const parent_index = work.parent_index;
+
     let const do_make_child_path = [&]() throws -> Path {
       let child_path = Path{frames[parent_index].path.view(), wave_allocator};
+
       child_path.append(StringView{work.name});
 
       return child_path;
@@ -314,6 +325,7 @@ total_size(const ExecContext        &ec,
     }
 
     let const &status = work.status;
+
     if (is_one_file_system && status.device_id != root_device_id) {
       LOG(Debug, "du skips '%s', which is on another file system", work.name);
 
@@ -321,12 +333,15 @@ total_size(const ExecContext        &ec,
     }
 
     let const type = os::file_type_letter(status.mode);
+
     if (type != 'd' && status.has_file_identity && status.link_count > 1) {
       const u64 identity[] = {status.device_id, status.file_id};
       let const key = StringView{reinterpret_cast<const char *>(identity),
                                  sizeof(identity)};
+
       if (!seen_links.add(key)) return;
     }
+
     if (status.blocks > UINT64_MAX / 512) {
       let child_path = do_make_child_path();
       report_soft_koshkit_util_error(ec, cxt, "du",
@@ -339,10 +354,13 @@ total_size(const ExecContext        &ec,
     }
 
     let const allocated_byte_count = status.blocks * 512;
+
     if (type == 'd') {
       let child_path = Path{frames[parent_index].path.view(), heap_allocator()};
+
       child_path.append(StringView{work.name});
       frames[parent_index].pending_directory_count++;
+
       let child_frame = du_directory_frame{steal(child_path),
                                            parent_index,
                                            allocated_byte_count,
@@ -350,11 +368,13 @@ total_size(const ExecContext        &ec,
                                            false,
                                            false,
                                            false};
+
       if (reusable_frame_indices.is_empty()) {
         frames.push(steal(child_frame));
         directory_queue.push(frames.count() - 1);
       } else {
         let const frame_index = reusable_frame_indices.back();
+
         reusable_frame_indices.pop_back();
         frames[frame_index] = steal(child_frame);
         directory_queue.push(frame_index);
@@ -379,14 +399,15 @@ total_size(const ExecContext        &ec,
     frames[parent_index].total_byte_count += allocated_byte_count;
     if (output_rows != nullptr) {
       let child_path = do_make_child_path();
+
       append_output_row(*output_rows, allocated_byte_count, child_path.view(),
                         colors::file_entry_type_of_mode(status.mode),
                         allocator);
     }
   };
 
-  let const do_flush_stat_work = [&](Maybe<os::descriptor> directory)
-                                     throws -> void {
+  let const do_flush_stat_work =
+      [&](Maybe<os::descriptor> directory) throws -> void {
     if (stat_work.is_empty()) return;
 
     if (directory.has_value()) {
@@ -403,6 +424,7 @@ total_size(const ExecContext        &ec,
 
       for (let &work : stat_work) {
         let path = Path{frames[work.parent_index].path.view(), wave_allocator};
+
         path.append(StringView{work.name});
         fallback_paths.push(steal(path));
         fallback_batch.add(os::batch_operation::lstat(
@@ -439,17 +461,21 @@ total_size(const ExecContext        &ec,
 
     for (; directory_index < frontier_end; directory_index++) {
       if (os::INTERRUPT_REQUESTED) return None;
+
       let const list_mark = list_arena.mark();
       defer { list_arena.release(list_mark); };
+
       let const frame_index = directory_queue[directory_index];
       let const listing     = os::list_directory_for_batch(
           frames[frame_index].path.view(), list_allocator);
       let const directory = listing.directory;
-      defer
-      {
+
+      defer {
         if (directory.has_value()) unused(os::close_fd(*directory));
       };
+
       let const &children = listing.children;
+
       if (!children.has_value()) {
         report_soft_koshkit_util_error(
             ec, cxt, "du",
@@ -461,6 +487,7 @@ total_size(const ExecContext        &ec,
         do_try_complete(frame_index);
         continue;
       }
+
       frames[frame_index].is_enumerated = true;
 
       for (let const &child : *children) {
@@ -493,22 +520,27 @@ build_tree_nodes(const du_tree_request   &request,
   for (let const &span : request.spans) {
     let const target     = request.targets[span.target_index].view();
     let const root_index = nodes.count();
+
     nodes.push(du_tree_node{target, target});
     root_indices.push(root_index);
+
     let node_by_path = StringMap<usize>{allocator};
 
     for (usize offset = 0; offset < span.row_count; offset++) {
       if (os::INTERRUPT_REQUESTED) return false;
 
       let const path = request.rows[span.first_row + offset].path.view();
+
       let const do_get_or_create_child =
-          [&](usize parent_index, usize component_end, usize component_start)
-              throws -> usize {
+          [&](usize parent_index, usize component_end,
+              usize component_start) throws -> usize {
         let const key  = path.substring_of_length(0, component_end);
         let      &slot = node_by_path.get_or_create(key, SIZE_MAX);
+
         if (slot != SIZE_MAX) return slot;
 
         let const child_index = nodes.count();
+
         nodes.push(du_tree_node{
             key, path.substring_of_length(component_start,
                                           component_end - component_start)});
@@ -527,6 +559,7 @@ build_tree_nodes(const du_tree_request   &request,
       }
 
       usize current_index = root_index;
+
       if (last_end > target.length) {
         usize last_start = last_end;
 
@@ -545,6 +578,7 @@ build_tree_nodes(const du_tree_request   &request,
         }
 
         usize parent_index = root_index;
+
         if (parent_end > target.length) {
           if (let const found =
                   node_by_path.find(path.substring_of_length(0, parent_end)))
@@ -555,6 +589,7 @@ build_tree_nodes(const du_tree_request   &request,
 
             while (position < parent_end) {
               let const component = Path::next_component(path, position);
+
               if (component.text.is_empty()) break;
 
               parent_index =
@@ -568,7 +603,8 @@ build_tree_nodes(const du_tree_request   &request,
             do_get_or_create_child(parent_index, last_end, last_start);
       }
 
-      let const &row                  = request.rows[span.first_row + offset];
+      let const &row = request.rows[span.first_row + offset];
+
       nodes[current_index].byte_count = row.byte_count;
       nodes[current_index].type       = row.type;
       nodes[current_index].has_size   = true;
@@ -577,10 +613,12 @@ build_tree_nodes(const du_tree_request   &request,
 
   for (usize index = nodes.count(); index-- > 0;) {
     let &node = nodes[index];
+
     if (!node.has_size) node.byte_count = node.child_total_byte_count;
     if (node.parent_index == SIZE_MAX) continue;
 
     let &parent = nodes[node.parent_index];
+
     parent.child_total_byte_count =
         node.byte_count > UINT64_MAX - parent.child_total_byte_count
             ? UINT64_MAX
@@ -606,10 +644,12 @@ order_tree_children(ArrayList<du_tree_node> &nodes,
                     Allocator                allocator) throws -> void
 {
   let keys = ArrayList<du_tree_order_key>{allocator};
+
   keys.reserve(nodes.count());
 
   for (usize index = 0; index < nodes.count(); index++) {
     let const &node = nodes[index];
+
     if (node.parent_index != SIZE_MAX && node.is_kept) {
       keys.push(du_tree_order_key{index, node.parent_index, node.byte_count,
                                   node.path});
@@ -623,10 +663,12 @@ order_tree_children(ArrayList<du_tree_node> &nodes,
 
         return is_tree_key_before(left, right);
       });
+
   child_order.reserve(sorted.count());
 
   for (let const &key : sorted) {
     let &parent = nodes[key.parent_index];
+
     if (parent.child_count == 0) parent.first_child = child_order.count();
     parent.child_count++;
     child_order.push(key.node_index);
@@ -642,12 +684,15 @@ keep_largest_tree_nodes(ArrayList<du_tree_node> &nodes,
   let const top_count =
       row_limit > root_indices.count() ? row_limit - root_indices.count() : 0;
   let heap = ArrayList<du_tree_order_key>{allocator};
+
   heap.reserve(top_count);
+
   let const do_sift_down = [&]() wontthrow -> void {
     usize index = 0;
 
     while (true) {
       usize worst = index * 2 + 1;
+
       if (worst >= heap.count()) break;
 
       if (worst + 1 < heap.count() &&
@@ -655,23 +700,28 @@ keep_largest_tree_nodes(ArrayList<du_tree_node> &nodes,
       {
         worst++;
       }
+
       if (!is_tree_key_before(heap[index], heap[worst])) break;
 
       let const displaced = heap[index];
-      heap[index]         = heap[worst];
-      heap[worst]         = displaced;
-      index               = worst;
+
+      heap[index] = heap[worst];
+      heap[worst] = displaced;
+      index       = worst;
     }
   };
 
   for (usize index = 0; index < nodes.count(); index++) {
     let const &node = nodes[index];
+
     if (node.parent_index == SIZE_MAX) continue;
 
     let const key =
         du_tree_order_key{index, node.parent_index, node.byte_count, node.path};
+
     if (heap.count() < top_count) {
       heap.push(key);
+
       usize child = heap.count() - 1;
 
       while (child != 0 && is_tree_key_before(heap[(child - 1) / 2], key)) {
@@ -724,7 +774,9 @@ render_tree(const ArrayList<du_tree_node> &nodes,
             Allocator                      allocator) throws -> bool
 {
   let rendered_sizes = ArrayList<String>{allocator};
+
   rendered_sizes.reserve(nodes.count());
+
   usize size_width = 0;
 
   for (let const &node : nodes) {
@@ -736,12 +788,14 @@ render_tree(const ArrayList<du_tree_node> &nodes,
     let rendered_size = request.is_human
                             ? format_human_size(node.byte_count, allocator)
                             : String::from(node.byte_count, allocator);
+
     if (rendered_size.length() > size_width)
       size_width = rendered_size.length();
     rendered_sizes.push(steal(rendered_size));
   }
 
-  let const should_color       = request.should_color;
+  let const should_color = request.should_color;
+
   let const do_find_last_shown = [&](usize node_index) wontthrow -> usize {
     let const &node = nodes[node_index];
 
@@ -753,11 +807,13 @@ render_tree(const ArrayList<du_tree_node> &nodes,
     return SIZE_MAX;
   };
 
-  let       output         = String{allocator};
-  let       prefix         = String{allocator};
-  let       cursors        = ArrayList<du_tree_cursor>{allocator};
-  let const do_append_line = [&](usize node_index, StringView connector,
-                                 bool has_shown_children) throws -> void {
+  let output  = String{allocator};
+  let prefix  = String{allocator};
+  let cursors = ArrayList<du_tree_cursor>{allocator};
+
+  let const do_append_line =
+      [&](usize node_index, StringView connector,
+          bool has_shown_children) throws -> void {
     let const size_text = rendered_sizes[node_index].view();
 
     for (usize padding = size_text.length; padding < size_width; padding++)
@@ -783,6 +839,7 @@ render_tree(const ArrayList<du_tree_node> &nodes,
     if (os::INTERRUPT_REQUESTED) return false;
 
     let const root_last_shown = do_find_last_shown(root_index);
+
     prefix.clear();
     do_append_line(root_index, "└─", root_last_shown != SIZE_MAX);
     if (root_last_shown == SIZE_MAX) continue;
@@ -812,9 +869,12 @@ render_tree(const ArrayList<du_tree_node> &nodes,
       let const position    = cursor.next_position;
       let const is_last     = position == cursor.last_shown_position;
       let const child_index = child_order[parent.first_child + position];
+
       cursor.next_position++;
       prefix.truncate(cursor.prefix_length);
+
       let const child_last_shown = do_find_last_shown(child_index);
+
       do_append_line(child_index, is_last ? "└─" : "├─",
                      child_last_shown != SIZE_MAX);
       if (child_last_shown == SIZE_MAX) continue;
@@ -838,6 +898,7 @@ print_tree_report(const du_tree_request &request,
   let nodes        = ArrayList<du_tree_node>{allocator};
   let root_indices = ArrayList<usize>{allocator};
   let child_order  = ArrayList<usize>{allocator};
+
   nodes.reserve(request.rows.count() + request.spans.count());
   if (!build_tree_nodes(request, allocator, nodes, root_indices)) return false;
 
@@ -870,7 +931,8 @@ fn
 Du::execute(const ExecContext               &ec,
             EvalContext                     &cxt,
             const ArrayList<String>         &args,
-            const ArrayList<SourceLocation> &arg_locations) const throws -> i32
+            const ArrayList<SourceLocation> &arg_locations) const throws
+    -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
@@ -878,6 +940,7 @@ Du::execute(const ExecContext               &ec,
   let       targets                = ArrayList<Path>{allocator};
   let       target_statuses        = ArrayList<os::file_status>{allocator};
   let       is_target_status_known = ArrayList<bool>{allocator};
+
   if (operands.is_empty()) {
     targets.push(Path{".", allocator});
   } else {
@@ -889,7 +952,9 @@ Du::execute(const ExecContext               &ec,
 
   target_statuses.reserve(targets.count());
   is_target_status_known.reserve(targets.count());
+
   let batch = os::Batch{allocator};
+
   batch.reserve(targets.count());
 
   for (usize index = 0; index < targets.count(); index++) {
@@ -907,7 +972,9 @@ Du::execute(const ExecContext               &ec,
   let const is_tree       = is_top || FLAG_DU_TREE.is_enabled();
   let       operand_spans = ArrayList<du_operand_span>{allocator};
   let       output_rows   = ArrayList<du_output_row>{allocator};
+
   output_rows.reserve(targets.count());
+
   let  seen_links      = HashSet{allocator};
   i32  status          = 0;
   bool has_failure     = false;
@@ -915,6 +982,7 @@ Du::execute(const ExecContext               &ec,
 
   for (usize index = 0; index < targets.count(); index++) {
     let const &target = targets[index];
+
     if (!is_target_status_known[index]) {
       os::set_last_system_error(target_results[index].error_number);
       KOSHKIT_REPORT_PATH_ERROR("access", target.text());
@@ -927,10 +995,12 @@ Du::execute(const ExecContext               &ec,
         total_size(ec, cxt, target, has_failure,
                    FLAG_DU_SUMMARY.is_enabled() ? nullptr : &output_rows,
                    seen_links, allocator, &target_statuses[index]);
+
     if (os::INTERRUPT_REQUESTED) {
       was_interrupted = true;
       break;
     }
+
     if (!total.has_value()) {
       status = 1;
     } else if (FLAG_DU_SUMMARY.is_enabled() && total->should_emit) {
@@ -939,6 +1009,7 @@ Du::execute(const ExecContext               &ec,
           colors::file_entry_type_of_mode(target_statuses[index].mode),
           allocator);
     }
+
     if (is_tree && output_rows.count() != first_row_index) {
       operand_spans.push(du_operand_span{
           index, first_row_index, output_rows.count() - first_row_index});
@@ -947,6 +1018,7 @@ Du::execute(const ExecContext               &ec,
 
   if (is_tree) {
     usize row_limit = 0;
+
     if (is_top) {
       row_limit = TOP_ROW_LIMIT;
       if (let const dimensions =
@@ -954,6 +1026,7 @@ Du::execute(const ExecContext               &ec,
       {
         let const terminal_row_limit =
             dimensions->rows > 14 ? dimensions->rows - 4 : 10;
+
         if (terminal_row_limit < row_limit) row_limit = terminal_row_limit;
       }
     }
@@ -962,6 +1035,7 @@ Du::execute(const ExecContext               &ec,
         du_tree_request{output_rows, operand_spans,
                         targets,     is_top || FLAG_DU_HUMAN.is_enabled(),
                         row_limit,   koshkit_should_color()};
+
     if (was_interrupted || !print_tree_report(request, ec, allocator)) {
       return 130;
     }
@@ -972,12 +1046,15 @@ Du::execute(const ExecContext               &ec,
   }
 
   usize shared_path_prefix_length = 0;
+
   if (!output_rows.is_empty()) {
-    let const first_path      = output_rows[0].path.view();
+    let const first_path = output_rows[0].path.view();
+
     shared_path_prefix_length = first_path.length;
 
     for (usize row_index = 1; row_index < output_rows.count(); row_index++) {
       let const path = output_rows[row_index].path.view();
+
       if (path.length < shared_path_prefix_length)
         shared_path_prefix_length = path.length;
 
@@ -995,10 +1072,12 @@ Du::execute(const ExecContext               &ec,
   }
 
   let collected_output_order = ArrayList<du_sort_key>{allocator};
+
   collected_output_order.reserve(output_rows.count());
 
   for (usize row_index = 0; row_index < output_rows.count(); row_index++) {
     let const &row = output_rows[row_index];
+
     collected_output_order.push(du_sort_key{
         row.byte_count, row.path.view().substring(shared_path_prefix_length),
         row_index});
@@ -1016,11 +1095,13 @@ Du::execute(const ExecContext               &ec,
   let const is_human       = FLAG_DU_HUMAN.is_enabled();
   let       rendered_sizes = ArrayList<String>{allocator};
   usize     size_width     = 0;
+
   if (is_human) {
     rendered_sizes.reserve(output_order.count());
 
     for (let const &sort_key : output_order) {
       let rendered_size = format_human_size(sort_key.byte_count, allocator);
+
       if (rendered_size.length() > size_width)
         size_width = rendered_size.length();
       rendered_sizes.push(steal(rendered_size));
@@ -1036,10 +1117,12 @@ Du::execute(const ExecContext               &ec,
     let const &sort_key      = output_order[index];
     let const &row           = output_rows[sort_key.row_index];
     let        rendered_size = String{allocator};
+
     if (!is_human) rendered_size = String::from(sort_key.byte_count, allocator);
 
     let const size_text =
         is_human ? rendered_sizes[index].view() : rendered_size.view();
+
     output.append_repeated(' ', size_width - size_text.length);
     append_report_text(output, size_text, colors::ansi::BOLD_GREEN,
                        should_color);

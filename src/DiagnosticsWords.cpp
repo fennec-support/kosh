@@ -24,7 +24,8 @@ namespace expressions::internal {
 fn
 check_posix_arithmetic_operators(AnalysisContext      &actx,
                                  StringView            expression,
-                                 const SourceLocation &location) throws -> void
+                                 const SourceLocation &location) throws
+    -> void
 {
   let has_increment = false;
   let has_decrement = false;
@@ -32,13 +33,17 @@ check_posix_arithmetic_operators(AnalysisContext      &actx,
 
   for (usize position = 0; position + 1 < expression.length; position++) {
     let const byte = expression[position];
+
     if (expression[position + 1] != byte) continue;
 
     switch (byte) {
     case '+': has_increment = true; break;
+
     case '-': has_decrement = true; break;
+
     case '*': has_exponent = true; break;
-    default:  continue;
+
+    default: continue;
     }
 
     position++;
@@ -52,8 +57,9 @@ check_posix_arithmetic_operators(AnalysisContext      &actx,
 }
 
 static pure fn
-arithmetic_expansion_assigns(StringView expression,
-                             usize      expansion_end) wontthrow -> bool
+arithmetic_expansion_assigns(StringView expression, usize expansion_end)
+    wontthrow
+    -> bool
 {
   usize at = expansion_end;
 
@@ -69,6 +75,7 @@ arithmetic_expansion_assigns(StringView expression,
     if (at + 1 >= expression.length || expression[at + 1] != expression[at]) {
       return false;
     }
+
     at += 2;
     break;
 
@@ -98,13 +105,15 @@ note_arithmetic_target_record(AnalysisContext       &actx,
                               const SourceLocation  &location,
                               Maybe<usize>           expression_base_position,
                               bool                   is_conditional,
-                              assignment_update_mode update_mode) throws -> void
+                              assignment_update_mode update_mode) throws
+    -> void
 {
   if (!expression_base_position.has_value()) return;
 
   let const target_offset = static_cast<usize>(target.data - expression.data);
   const SourceLocation name_location{*expression_base_position + target_offset,
                                      target.length, location.source_name_index};
+
   if (analysis_source_text(actx, name_location) != target) return;
 
   actx.note_variable_occurrence(target, name_location,
@@ -141,34 +150,41 @@ check_arithmetic_expression_lints(AnalysisContext      &actx,
     assignment_update_mode update_mode;
     bool                   has_fixed_end;
   };
-  let       pending_writes    = ArrayList<arithmetic_write>{heap_allocator()};
-  usize     parenthesis_depth = 0;
-  usize     bracket_depth     = 0;
-  usize     ternary_depth     = 0;
-  let const do_apply_write    = [&]() throws -> void {
+  let   pending_writes    = ArrayList<arithmetic_write>{heap_allocator()};
+  usize parenthesis_depth = 0;
+  usize bracket_depth     = 0;
+  usize ternary_depth     = 0;
+
+  let const do_apply_write = [&]() throws -> void {
     let const write = pending_writes.back();
+
     pending_writes.pop_back();
     actx.note_variable_assignment(write.name, location, !is_conditional);
     note_arithmetic_target_record(actx, expression, write.name, location,
-                                     expression_base_position, is_conditional,
-                                     write.update_mode);
+                                  expression_base_position, is_conditional,
+                                  write.update_mode);
   };
-  let const do_apply_fixed_writes = [&](usize end_position) throws -> void {
+
+  let const do_apply_fixed_writes =
+      [&](usize end_position) throws -> void {
     while (!pending_writes.is_empty() && pending_writes.back().has_fixed_end &&
            pending_writes.back().end_position <= end_position)
     {
       do_apply_write();
     }
   };
+
   let const do_apply_boundary_writes = [&]() throws -> void {
     while (!pending_writes.is_empty()) {
       let const &write = pending_writes.back();
+
       if (write.has_fixed_end || write.parenthesis_depth != parenthesis_depth ||
           write.bracket_depth != bracket_depth ||
           write.ternary_depth != ternary_depth)
       {
         break;
       }
+
       do_apply_write();
     }
   };
@@ -185,6 +201,7 @@ check_arithmetic_expression_lints(AnalysisContext      &actx,
         has_pending_division = false;
         break;
       }
+
       has_pending_division = true;
       break;
 
@@ -194,10 +211,12 @@ check_arithmetic_expression_lints(AnalysisContext      &actx,
         has_pending_division = false;
         break;
       }
+
       if (has_pending_division && !has_reported_precision_loss) {
         actx.report_diagnostic(diagnostic_id::sc2017, location);
         has_reported_precision_loss = true;
       }
+
       has_pending_division = false;
       break;
 
@@ -210,16 +229,19 @@ check_arithmetic_expression_lints(AnalysisContext      &actx,
       }
 
       let const after = position + 3;
+
       if (after < expression.length && !lexer::is_whitespace(expression[after]))
       {
         break;
       }
 
       let const candidate = expression.substring_of_length(position, 3);
+
       if (is_test_numeric_operator_word(candidate)) {
         actx.report_diagnostic(diagnostic_id::sc1106, location, {candidate});
         has_reported_test_operator = true;
       }
+
       break;
     }
 
@@ -272,19 +294,23 @@ check_arithmetic_expression_lints(AnalysisContext      &actx,
       {
         break;
       }
+
       if (obvious_power_position.has_value() &&
           *obvious_power_position == position)
       {
         let operator_location = location;
+
         if (expression_base_position.has_value()) {
           operator_location =
               SourceLocation{*expression_base_position + position, 1,
                              location.source_name_index};
         }
+
         actx.report_diagnostic(diagnostic_id::arithmetic_xor_power,
                                operator_location);
         has_reported_xor_power = true;
       }
+
       break;
     }
 
@@ -297,6 +323,7 @@ check_arithmetic_expression_lints(AnalysisContext      &actx,
       usize     name_start      = position + 1;
       let const is_braced =
           name_start < expression.length && expression[name_start] == '{';
+
       if (is_braced) name_start++;
 
       let const has_plain_name =
@@ -335,6 +362,7 @@ check_arithmetic_expression_lints(AnalysisContext      &actx,
            lexer::is_variable_name(expression[dollar_position - 1])) ||
           (expansion_end < expression.length &&
            lexer::is_variable_name(expression[expansion_end]));
+
       if (has_plain_name && !is_name_part &&
           !arithmetic_expansion_assigns(expression, expansion_end))
       {
@@ -343,16 +371,19 @@ check_arithmetic_expression_lints(AnalysisContext      &actx,
 
       let const referenced =
           expression.substring_of_length(name_start, name_end - name_start);
+
       if (!referenced.is_empty() && expression_base_position.has_value()) {
         let const occurrence_start  = dollar_position;
         let const occurrence_length = expansion_end - occurrence_start;
         let const occurrence_location =
             SourceLocation{*expression_base_position + occurrence_start,
                            occurrence_length, location.source_name_index};
+
         actx.note_variable_occurrence(referenced, occurrence_location,
                                       variable_occurrence_kind::Reference);
         actx.note_positional_reference(referenced, occurrence_location);
       }
+
       break;
     }
 
@@ -370,6 +401,7 @@ check_arithmetic_expression_lints(AnalysisContext      &actx,
 
       let const word =
           expression.substring_of_length(start, position + 1 - start);
+
       if (!lexer::is_number(word[0])) {
         usize after_name = position + 1;
 
@@ -384,6 +416,7 @@ check_arithmetic_expression_lints(AnalysisContext      &actx,
         let   is_step_target         = false;
         let   is_prefix_step_target  = false;
         usize operator_end           = after_name;
+
         if (start >= 2 &&
             (expression[start - 1] == '+' || expression[start - 1] == '-') &&
             expression[start - 2] == expression[start - 1])
@@ -421,6 +454,7 @@ check_arithmetic_expression_lints(AnalysisContext      &actx,
               is_compound_assignment = true;
               is_step_target         = true;
             }
+
             break;
 
           case '<':
@@ -433,6 +467,7 @@ check_arithmetic_expression_lints(AnalysisContext      &actx,
                                          expression, after_name + 2) == word;
               is_compound_assignment = is_assignment_target;
             }
+
             break;
 
           default: break;
@@ -443,6 +478,7 @@ check_arithmetic_expression_lints(AnalysisContext      &actx,
           let const name_location =
               SourceLocation{*expression_base_position + start, word.length,
                              location.source_name_index};
+
           if (!is_assignment_target || is_compound_assignment) {
             actx.note_variable_occurrence(word, name_location,
                                           variable_occurrence_kind::Reference);
@@ -466,6 +502,7 @@ check_arithmetic_expression_lints(AnalysisContext      &actx,
               }
             }
           }
+
           pending_writes.push(arithmetic_write{
               word, operator_end, parenthesis_depth, bracket_depth,
               ternary_depth,
@@ -473,10 +510,12 @@ check_arithmetic_expression_lints(AnalysisContext      &actx,
                                      : assignment_update_mode::Replace,
               is_step_target || is_prefix_step_target});
         }
+
         break;
       }
 
       let const dot = word.find_character('.');
+
       if (!actx.options.is_default_mood && dot.has_value() &&
           *dot + 1 < word.length && lexer::is_number(word[*dot + 1]) &&
           !has_reported_decimal)
@@ -492,6 +531,7 @@ check_arithmetic_expression_lints(AnalysisContext      &actx,
         actx.report_diagnostic(diagnostic_id::sc2080, location, {word});
         has_reported_octal = true;
       }
+
       break;
     }
     }
@@ -505,11 +545,11 @@ check_arithmetic_expression_lints(AnalysisContext      &actx,
 }
 
 fn
-check_numeric_comparison_operand(AnalysisContext &actx,
-                                 StringView       operator_view,
-                                 const Token     *operand_token,
-                                 bool should_prefer_string_comparison) throws
-    -> void
+check_numeric_comparison_operand(
+    AnalysisContext &actx,
+    StringView       operator_view,
+    const Token     *operand_token,
+    bool             should_prefer_string_comparison) throws -> void
 {
   if (operand_token == nullptr || operand_token->kind() != Token::Kind::Word) {
     return;
@@ -520,9 +560,11 @@ check_numeric_comparison_operand(AnalysisContext &actx,
   let const  location = operand_token->source_location();
   let const &word =
       static_cast<const tokens::WordToken *>(operand_token)->word();
+
   if (!word_is_fully_literal(word)) return;
 
   let const literal = word.to_literal_string();
+
   if (view_is_integer_literal(literal.view())) return;
 
   if (view_has_arithmetic_operator(literal.view())) {
@@ -541,9 +583,11 @@ check_numeric_comparison_operand(AnalysisContext &actx,
 fn
 check_posix_word_portability(AnalysisContext   &actx,
                              const WordSegment &segment,
-                             SourceLocation fallback_location) throws -> void
+                             SourceLocation     fallback_location) throws
+    -> void
 {
-  let const text            = segment.text.view();
+  let const text = segment.text.view();
+
   let const do_get_location = [&]() -> SourceLocation {
     return expansion_location_with_sigil(
         actx, segment.get_source_location(fallback_location.source_name_index)
@@ -573,6 +617,7 @@ check_posix_word_portability(AnalysisContext   &actx,
     let const spelling    = !source_text.is_empty() && source_text[0] == '`'
                                 ? diagnostic_id::sc3035
                                 : diagnostic_id::sc3034;
+
     actx.report_diagnostic(spelling, location);
     break;
   }
@@ -596,6 +641,7 @@ check_posix_word_portability(AnalysisContext   &actx,
 
     for (usize position = 0; position + 1 < text.length; position++) {
       let const following = text[position + 1];
+
       if (following != '(' && following != '^') {
         continue;
       }
@@ -616,6 +662,7 @@ check_posix_word_portability(AnalysisContext   &actx,
     }
 
     let const location = do_get_location();
+
     if (has_extended_glob)
       actx.report_diagnostic(diagnostic_id::sc3002, location, {text});
     if (has_caret_bracket)
@@ -630,7 +677,8 @@ check_posix_word_portability(AnalysisContext   &actx,
 fn
 check_posix_word_portability(AnalysisContext      &actx,
                              const Word           &word,
-                             const SourceLocation &location) throws -> void
+                             const SourceLocation &location) throws
+    -> void
 {
   if (!actx.is_posix_sh_shebang) return;
 
@@ -643,7 +691,8 @@ check_posix_word_portability(AnalysisContext      &actx,
 
 fn
 check_operand_lints_before_scan(AnalysisContext          &actx,
-                                const command_lint_input &input) throws -> void
+                                const command_lint_input &input) throws
+    -> void
 {
   if (input.is_command_shadowed) return;
 
@@ -652,6 +701,7 @@ check_operand_lints_before_scan(AnalysisContext          &actx,
   if (input.is_in_group(COMMAND_GROUP_TEST)) {
     for (usize i = 1; i < args.count(); i++) {
       let const literal = args[i]->raw_string();
+
       if (literal.view() == "=~")
         actx.report_diagnostic(diagnostic_id::sc2074,
                                args[i]->source_location());
@@ -659,6 +709,7 @@ check_operand_lints_before_scan(AnalysisContext          &actx,
 
     if (args.count() >= 4) {
       let const first_operand = args[1]->raw_string();
+
       if (first_operand.view().starts_with(StringView{"x$"}) ||
           first_operand.view().starts_with(StringView{"x\"$"}))
       {
@@ -722,9 +773,11 @@ check_operand_lints_before_scan(AnalysisContext          &actx,
     if (has_exec && !has_exec_terminator && exec_location.has_value()) {
       actx.report_diagnostic(diagnostic_id::sc2067, *exec_location);
     }
+
     if (has_or && has_action && !has_group && or_location.has_value()) {
       actx.report_diagnostic(diagnostic_id::sc2146, *or_location);
     }
+
     if (!has_path_operand)
       actx.report_diagnostic(diagnostic_id::sc2185, input.command_location());
     break;
@@ -733,6 +786,7 @@ check_operand_lints_before_scan(AnalysisContext          &actx,
   case command_name_id::Alias:
     for (usize i = 1; i < args.count(); i++) {
       let const raw = args[i]->raw_string();
+
       if (view_contains(raw.view(), StringView{"$1"}) ||
           view_contains(raw.view(), StringView{"$@"}) ||
           view_contains(raw.view(), StringView{"$*"}))
@@ -776,6 +830,7 @@ check_operand_lints_before_scan(AnalysisContext          &actx,
   case command_name_id::Echo: {
     if (args.count() == 2 && args[1]->kind() == Token::Kind::Word) {
       let const &word = static_cast<const tokens::WordToken *>(args[1])->word();
+
       if (word.segments.count() == 1 &&
           word.segments[0].kind == WordSegment::Kind::CommandSubstitution)
       {
@@ -840,7 +895,8 @@ fn
 check_equals_bearing_command_name(AnalysisContext      &actx,
                                   StringView            command_literal,
                                   usize                 equals_position,
-                                  const SourceLocation &location) throws -> bool
+                                  const SourceLocation &location) throws
+    -> bool
 {
   switch (command_literal[0]) {
   case '$': {
@@ -936,6 +992,7 @@ check_command_word_shape(AnalysisContext          &actx,
       !command_literal.starts_with(StringView{"[["}))
   {
     let const command_source = location.get_source_text(actx.source);
+
     if (command_source.has_value() && !command_source->is_empty() &&
         ((*command_source)[0] == '"' || (*command_source)[0] == '\''))
     {
@@ -966,6 +1023,7 @@ check_command_word_shape(AnalysisContext          &actx,
   {
     String    last_storage{heap_allocator()};
     let const last_raw = borrowed_token_text(args.back(), last_storage);
+
     if (!last_raw.is_empty() && last_raw[last_raw.length - 1] == ']') {
       actx.report_diagnostic(diagnostic_id::sc1014, location);
     }
@@ -1027,7 +1085,8 @@ constexpr StaticStringSet FIND_PATTERN_PREDICATES{FIND_PATTERN_PREDICATE_KEYS};
 
 fn
 check_operand_lints_after_scan(AnalysisContext          &actx,
-                               const command_lint_input &input) throws -> void
+                               const command_lint_input &input) throws
+    -> void
 {
   if (input.is_command_shadowed) return;
 
@@ -1042,11 +1101,13 @@ check_operand_lints_after_scan(AnalysisContext          &actx,
       if (args[i]->kind() != Token::Kind::Word) continue;
       let const &word = static_cast<const tokens::WordToken *>(args[i])->word();
       let const  literal = word.to_literal_string();
+
       if (should_skip_option_operand) {
         should_skip_option_operand = false;
         if (should_take_array_target) {
           should_take_array_target = false;
           let const target         = operand_target_name(literal.view());
+
           if (!target.is_empty()) {
             actx.add_array_valued_name(target);
             actx.external_input_names.add(target);
@@ -1055,6 +1116,7 @@ check_operand_lints_after_scan(AnalysisContext          &actx,
 
         continue;
       }
+
       if (literal.view().length == 2 && literal.view()[0] == '-') {
         switch (literal.view()[1]) {
         case 'a':
@@ -1073,6 +1135,7 @@ check_operand_lints_after_scan(AnalysisContext          &actx,
         default: break;
         }
       }
+
       if (literal.view().starts_with("-")) continue;
       if (word.segments.count() == 1 &&
           word.segments[0].kind == WordSegment::Kind::VariableReference)
@@ -1085,14 +1148,17 @@ check_operand_lints_after_scan(AnalysisContext          &actx,
           !literal.view().starts_with("-"))
       {
         let const target = operand_target_name(literal.view());
+
         if (!target.is_empty()) {
           actx.report_diagnostic(diagnostic_id::sc2030_read,
                                  args[i]->source_location());
           actx.pipeline_lost_names.add(target);
         }
       }
+
       if (!literal.view().starts_with("-")) {
         let const target = operand_target_name(literal.view());
+
         if (!target.is_empty()) actx.external_input_names.add(target);
       }
     }
@@ -1110,16 +1176,20 @@ check_operand_lints_after_scan(AnalysisContext          &actx,
       let const &word = static_cast<const tokens::WordToken *>(args[i])->word();
       let const  literal = word.to_literal_string();
       let const  view    = literal.view();
+
       if (should_skip_option_value) {
         should_skip_option_value = false;
         continue;
       }
+
       if (!view.is_empty() && view[0] == '-') {
         if (view.length >= 2 && ssh_option_takes_value(view[view.length - 1])) {
           should_skip_option_value = true;
         }
+
         continue;
       }
+
       if (!has_seen_host) {
         has_seen_host = true;
         continue;
@@ -1149,20 +1219,26 @@ check_operand_lints_after_scan(AnalysisContext          &actx,
                               ->word()
                               .to_literal_string();
       let const view = literal.view();
+
       if (is_command_value_next) {
         let const command_word = leading_command_word(view);
+
         if (actx.functions.defined.contains(command_word)) {
           actx.report_diagnostic(diagnostic_id::sc2032,
                                  args[i]->source_location(), {command_word});
         }
+
         break;
       }
+
       if (!view.is_empty() && view[0] == '-') {
         if (view == "-c" || view == "--command") {
           is_command_value_next = true;
         }
+
         continue;
       }
+
       if (!has_seen_user) {
         has_seen_user = true;
         continue;
@@ -1175,6 +1251,7 @@ check_operand_lints_after_scan(AnalysisContext          &actx,
         actx.report_diagnostic(diagnostic_id::sc2117,
                                args[i]->source_location(), {view});
       }
+
       break;
     }
 
@@ -1186,6 +1263,7 @@ check_operand_lints_after_scan(AnalysisContext          &actx,
 
     for (usize i = 1; i < args.count(); i++) {
       let const raw = args[i]->raw_string();
+
       if (should_check_cdpath &&
           (raw.view().starts_with(StringView{"CDPATH="}) ||
            raw.view() == "CDPATH"))
@@ -1197,6 +1275,7 @@ check_operand_lints_after_scan(AnalysisContext          &actx,
       if (args[i]->kind() != Token::Kind::Word) continue;
 
       let const &word = static_cast<const tokens::WordToken *>(args[i])->word();
+
       if (word.segments.count() != 1 ||
           word.segments[0].kind != WordSegment::Kind::VariableReference)
       {
@@ -1205,6 +1284,7 @@ check_operand_lints_after_scan(AnalysisContext          &actx,
 
       let const text = word.segments[0].text.view();
       let const name = operand_target_name(text);
+
       if (!name.is_empty() && name.length == text.length) {
         actx.report_diagnostic(diagnostic_id::sc2163,
                                args[i]->source_location(), {name});
@@ -1222,6 +1302,7 @@ check_operand_lints_after_scan(AnalysisContext          &actx,
       if (args[i]->kind() != Token::Kind::Word) continue;
       let const raw      = args[i]->raw_string();
       let const raw_view = raw.view();
+
       if (!has_ended_options && raw_view == "--") {
         has_ended_options = true;
       } else if (!has_ended_options && raw_view.length > 1 &&
@@ -1237,15 +1318,18 @@ check_operand_lints_after_scan(AnalysisContext          &actx,
       if (args[i]->kind() != Token::Kind::Word) continue;
       let const raw      = args[i]->raw_string();
       let const raw_view = raw.view();
+
       if (!has_ended_options && raw_view == "--") {
         has_ended_options = true;
         continue;
       }
+
       if (!has_ended_options && raw_view.length > 1 && raw_view[0] == '-') {
         continue;
       }
 
       let const target = operand_target_name(raw_view);
+
       if (!is_function_mode && !target.is_empty() &&
           !raw_view.find_character('[').has_value() &&
           !actx.readonly_assigned_names.contains(target))
@@ -1254,12 +1338,14 @@ check_operand_lints_after_scan(AnalysisContext          &actx,
             raw.count() == target.length
                 ? args[i]->source_location().subspan(0, target.length)
                 : args[i]->source_location();
+
         actx.note_variable_occurrence(target, name_location,
                                       variable_occurrence_kind::Unset);
       }
 
       let const source_text =
           analysis_source_text(actx, args[i]->source_location());
+
       if (raw.view().find_character('[').has_value() &&
           raw.view().find_character(']').has_value() &&
           (source_text.is_empty() ||
@@ -1290,6 +1376,7 @@ check_operand_lints_after_scan(AnalysisContext          &actx,
 
       if (predicate_view == "-exec" || predicate_view == "-execdir") {
         let const action = args[i + 1]->raw_string();
+
         if (actx.functions.defined.contains(action.view())) {
           actx.report_diagnostic(diagnostic_id::sc2033,
                                  args[i + 1]->source_location(),
@@ -1299,6 +1386,7 @@ check_operand_lints_after_scan(AnalysisContext          &actx,
         if (i + 3 < args.count()) {
           let const shell_flag = args[i + 2]->raw_string();
           let const script     = args[i + 3]->raw_string();
+
           if ((action.view() == "sh" || action.view() == "bash") &&
               shell_flag.view() == "-c" &&
               view_contains(script.view(), StringView{"{}"}))
@@ -1316,6 +1404,7 @@ check_operand_lints_after_scan(AnalysisContext          &actx,
     for (usize i = 1; i < args.count() && i <= 2; i++) {
       if (args[i]->kind() != Token::Kind::Word) continue;
       let const &word = static_cast<const tokens::WordToken *>(args[i])->word();
+
       if (word_is_bare_glob(word))
         actx.report_diagnostic(diagnostic_id::sc2060,
                                args[i]->source_location());
@@ -1326,6 +1415,7 @@ check_operand_lints_after_scan(AnalysisContext          &actx,
   case command_name_id::Let:
     for (usize i = 1; i < args.count(); i++) {
       let const expression = args[i]->raw_string();
+
       if (arithmetic_reads_external_input(actx, expression.view()))
         actx.report_diagnostic(diagnostic_id::external_arithmetic_input,
                                args[i]->source_location());
@@ -1349,6 +1439,7 @@ check_operand_lints_after_scan(AnalysisContext          &actx,
 
   case command_name_id::Printf: {
     usize format_index = 1;
+
     if (format_index < args.count()) {
       let const leading = args[format_index]->raw_string();
       let const view    = leading.view();
@@ -1357,6 +1448,7 @@ check_operand_lints_after_scan(AnalysisContext          &actx,
         format_index += 2;
         if (format_index - 1 < args.count()) {
           let const name = args[format_index - 1]->raw_string();
+
           note_formatted_target(actx, input, operand_target_name(name.view()),
                                 args[format_index - 1]->source_location());
         }
@@ -1364,6 +1456,7 @@ check_operand_lints_after_scan(AnalysisContext          &actx,
         let const name             = operand_target_name(view.substring(2));
         let const option_location  = args[format_index]->source_location();
         let const is_span_verbatim = option_location.length == view.length;
+
         note_formatted_target(actx, input, name,
                               is_span_verbatim
                                   ? option_location.subspan(2, name.length)
@@ -1379,12 +1472,14 @@ check_operand_lints_after_scan(AnalysisContext          &actx,
     {
       let const &format_word =
           static_cast<const tokens::WordToken *>(args[format_index])->word();
+
       if (word_is_fully_literal(format_word)) {
         let const format               = format_word.to_literal_string();
         let       has_quote_conversion = false;
         let const consumed =
             printf_consumed_argument_count(format.view(), has_quote_conversion);
         let const available = args.count() - format_index - 1;
+
         if (consumed > available) {
           actx.report_diagnostic(diagnostic_id::sc2183,
                                  args[format_index]->source_location());
@@ -1399,6 +1494,7 @@ check_operand_lints_after_scan(AnalysisContext          &actx,
         }
       }
     }
+
     break;
   }
 
@@ -1414,6 +1510,7 @@ check_operand_lints_after_scan(AnalysisContext          &actx,
       if (args[i]->kind() != Token::Kind::Word) continue;
 
       let const &word = static_cast<const tokens::WordToken *>(args[i])->word();
+
       if (word_is_bare_glob(word)) {
         actx.report_diagnostic(diagnostic_id::sc2024_glob,
                                args[i]->source_location());
@@ -1423,6 +1520,7 @@ check_operand_lints_after_scan(AnalysisContext          &actx,
 
       let const literal = word.to_literal_string();
       let const view    = literal.view();
+
       if (view.is_empty() || view[0] == '-') {
         continue;
       }

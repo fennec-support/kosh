@@ -441,6 +441,7 @@ get_diagnostic_definition(diagnostic_id id) wontthrow
     -> const diagnostic_definition &;
 pure fn
 get_diagnostic_count() wontthrow -> usize;
+
 pure inline fn
 get_diagnostic_tier_name(diagnostic_tier tier) wontthrow -> StringView
 {
@@ -451,18 +452,20 @@ get_diagnostic_tier_name(diagnostic_tier tier) wontthrow -> StringView
   }
   unreachable("invalid diagnostic tier %d", ENUM(tier));
 }
+
 fn
 format_diagnostic_template(
     const char                       *text_template,
     std::initializer_list<StringView> arguments = {}) throws -> String;
 fn
-append_diagnostic_code(String &message, Maybe<u16> shellcheck_code) throws
-    -> void;
+append_diagnostic_code(String    &message,
+                       Maybe<u16> shellcheck_code) throws -> void;
+
 fn
-collect_shellcheck_selectors(StringView                      source,
-                             shellcheck_directive_span       comment_span,
-                             ArrayList<shellcheck_selector> &selectors) throws
-    -> void;
+collect_shellcheck_selectors(
+    StringView                      source,
+    shellcheck_directive_span       comment_span,
+    ArrayList<shellcheck_selector> &selectors) throws -> void;
 pure fn
 shellcheck_selector_disables(const shellcheck_selector &selector,
                              StringView                 source,
@@ -580,6 +583,7 @@ struct analysis_command_info
 };
 
 fn
-get_analysis_command_info(StringView name) throws -> analysis_command_info;
+get_analysis_command_info(StringView name) throws
+    -> analysis_command_info;
 
 } /* namespace koshka */

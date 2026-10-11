@@ -44,31 +44,37 @@ public:
   {
     return m_names.contains(name);
   }
+
   fn
   declare(StringView name) throws -> void
   {
     m_names.add(name);
   }
+
   fn
   forget(StringView name) throws -> void
   {
     m_names.remove(name);
   }
+
   fn
   names() wontthrow -> HashSet &
   {
     return m_names;
   }
+
   pure fn
   names() const wontthrow -> const HashSet &
   {
     return m_names;
   }
+
   fn
   values() wontthrow -> StringMap<String> &
   {
     return m_values;
   }
+
   pure fn
   values() const wontthrow -> const StringMap<String> &
   {
@@ -82,12 +88,14 @@ public:
       m_sequences.set(composite, m_next_sequence++);
     m_values.set(composite, value);
   }
+
   fn
   erase_ordered(StringView composite) throws -> void
   {
     m_values.erase(composite);
     m_sequences.erase(composite);
   }
+
   pure fn
   sequence_of(StringView composite) const wontthrow -> u64
   {
@@ -172,8 +180,7 @@ struct status_result
 
   constexpr status_result() wontthrow = default;
   constexpr status_result(i64 exit_status, u32 status_flags = 0) wontthrow
-      : status{static_cast<i32>(exit_status)},
-        flags{status_flags}
+      : status{static_cast<i32>(exit_status)}, flags{status_flags}
   {}
 
   pure fn
@@ -211,8 +218,8 @@ enum class variable_attribute : u8
 
 struct variable_entry
 {
-  explicit variable_entry(Allocator allocator) wontthrow : value{allocator},
-                                                           elements{allocator}
+  explicit variable_entry(Allocator allocator) wontthrow
+      : value{allocator}, elements{allocator}
   {}
   variable_entry(const variable_entry &) = delete;
   variable_entry &
@@ -240,10 +247,8 @@ private:
                  u8                cloned_attribute_bits,
                  bool              has_cloned_value,
                  bool              is_cloned_indexed_array) wontthrow
-      : value{steal(cloned_value)},
-        elements{steal(cloned_elements)},
-        attribute_bits{cloned_attribute_bits},
-        has_value{has_cloned_value},
+      : value{steal(cloned_value)}, elements{steal(cloned_elements)},
+        attribute_bits{cloned_attribute_bits}, has_value{has_cloned_value},
         is_indexed_array{is_cloned_indexed_array}
   {}
 };
@@ -251,15 +256,12 @@ private:
 struct variable_table_body
 {
   explicit variable_table_body(Allocator allocator) wontthrow
-      : index{allocator},
-        entries{allocator},
-        allocator{allocator}
+      : index{allocator}, entries{allocator}, allocator{allocator}
   {}
+
   variable_table_body(variable_table_body &&other) wontthrow
-      : index{steal(other.index)},
-        entries{steal(other.entries)},
-        allocator{other.allocator},
-        pipestatus_entry{other.pipestatus_entry},
+      : index{steal(other.index)}, entries{steal(other.entries)},
+        allocator{other.allocator}, pipestatus_entry{other.pipestatus_entry},
         value_count{other.value_count},
         indexed_array_count{other.indexed_array_count},
         has_namerefs{other.has_namerefs},
@@ -278,7 +280,8 @@ struct variable_table_body
   mustuse fn
   clone() const throws -> variable_table_body
   {
-    let copy                 = variable_table_body{allocator};
+    let copy = variable_table_body{allocator};
+
     copy.index               = index.clone();
     copy.value_count         = value_count;
     copy.indexed_array_count = indexed_array_count;
@@ -305,9 +308,9 @@ class VariableTable
 {
 public:
   explicit VariableTable(Allocator allocator) wontthrow : m_body{allocator} {}
-  VariableTable(VariableTable &&other) wontthrow = default;
+  VariableTable(VariableTable &&other) wontthrow                = default;
   fn
-  operator=(VariableTable &&other) wontthrow->VariableTable & = default;
+  operator=(VariableTable &&other) wontthrow -> VariableTable & = default;
 
   VariableTable(const VariableTable &) = delete;
   VariableTable &
@@ -316,7 +319,8 @@ public:
   mustuse fn
   clone() const throws -> VariableTable
   {
-    let copy    = VariableTable{m_body.allocator()};
+    let copy = VariableTable{m_body.allocator()};
+
     copy.m_body = m_body.clone();
 
     return copy;
@@ -325,7 +329,8 @@ public:
   mustuse fn
   share() const wontthrow -> VariableTable
   {
-    let copy    = VariableTable{m_body.allocator()};
+    let copy = VariableTable{m_body.allocator()};
+
     copy.m_body = m_body;
 #if !defined NDEBUG
     copy.m_debug_shared_checksum = debug_checksum();
@@ -351,6 +356,7 @@ public:
     if (m_body.is_empty()) return None;
 
     let const found = m_body.read().index.find(name);
+
     if (!found.has_value()) return None;
 
     return *found.value();
@@ -368,10 +374,12 @@ public:
   get_or_create(StringView name) throws -> variable_entry &
   {
     let &table = body();
+
     if (let const found = table.index.find(name); found.has_value())
       return **found.value();
 
     let *const created = table.entries.emplace(table.allocator);
+
     try {
       table.index.set(name, created);
     } catch (...) {
@@ -383,7 +391,8 @@ public:
   }
 
   fn
-  release_if_unused(StringView name, variable_entry &entry) throws -> void
+  release_if_unused(StringView name, variable_entry &entry) throws
+      -> void
   {
     if (entry.has_value || entry.is_indexed_array || entry.attribute_bits != 0)
     {
@@ -391,6 +400,7 @@ public:
     }
 
     let &table = body();
+
     if (&entry == table.pipestatus_entry) table.pipestatus_entry = nullptr;
     table.index.erase(name);
     table.entries.erase(&entry);
@@ -401,6 +411,7 @@ public:
       -> ArrayList<String> *
   {
     let &entry = get_or_create(name);
+
     if (!entry.is_indexed_array) body().indexed_array_count++;
     entry.is_indexed_array = true;
     entry.elements         = steal(elements);
@@ -412,11 +423,13 @@ public:
   erase_elements(StringView name) throws -> void
   {
     let const current = find(name);
+
     if (!current.has_value() || !(*current)->is_indexed_array) {
       return;
     }
 
-    let &entry             = *find_for_write(name).value();
+    let &entry = *find_for_write(name).value();
+
     entry.is_indexed_array = false;
     entry.elements.clear();
     body().indexed_array_count--;
@@ -429,9 +442,11 @@ public:
     if (m_body.is_empty()) return None;
 
     let const &table = m_body.read();
+
     if (table.pipestatus_entry != nullptr) return table.pipestatus_entry;
 
     let const found = table.index.find(StringView{"PIPESTATUS", 10});
+
     if (!found.has_value()) return None;
 
     table.pipestatus_entry = *found.value();
@@ -445,6 +460,7 @@ public:
     if (!find_pipestatus().has_value()) return None;
 
     let &table = body();
+
     if (table.pipestatus_entry == nullptr) {
       table.pipestatus_entry =
           *table.index.find(StringView{"PIPESTATUS", 10}).value();
@@ -460,18 +476,23 @@ public:
   }
 
   fn
-  assign_value(variable_entry &entry, StringView value) throws -> String *
+  assign_value(variable_entry &entry, StringView value) throws
+      -> String *
   {
     let &table = body();
+
     if (!entry.has_value) table.value_count++;
     entry.has_value = true;
+
     let const is_buffer_wasteful =
         entry.value.count() > 256 && value.length < entry.value.count() / 2;
+
     if (is_buffer_wasteful) {
       entry.value = String{table.allocator, value};
 
       return &entry.value;
     }
+
     entry.value.clear();
     entry.value.append(value);
 
@@ -482,11 +503,13 @@ public:
   erase_value(StringView name) throws -> void
   {
     let const current = find(name);
+
     if (!current.has_value() || !(*current)->has_value) {
       return;
     }
 
-    let &entry      = *find_for_write(name).value();
+    let &entry = *find_for_write(name).value();
+
     entry.has_value = false;
     entry.value.clear();
     body().value_count--;
@@ -500,7 +523,8 @@ public:
     if (bits == 0) {
       if (!find(name).has_value()) return;
 
-      let &entry           = *find_for_write(name).value();
+      let &entry = *find_for_write(name).value();
+
       entry.attribute_bits = 0;
       release_if_unused(name, entry);
 
@@ -527,26 +551,31 @@ public:
   {
     return m_body.allocator();
   }
+
   pure fn
   value_count() const wontthrow -> usize
   {
     return m_body.is_empty() ? 0 : m_body.read().value_count;
   }
+
   pure fn
   indexed_array_count() const wontthrow -> usize
   {
     return m_body.is_empty() ? 0 : m_body.read().indexed_array_count;
   }
+
   pure fn
   has_namerefs() const wontthrow -> bool
   {
     return !m_body.is_empty() && m_body.read().has_namerefs;
   }
+
   pure fn
   has_declared_marks() const wontthrow -> bool
   {
     return !m_body.is_empty() && m_body.read().has_declared_marks;
   }
+
   fn
   note_attribute_bits(u8 bits) throws -> void
   {
@@ -554,6 +583,7 @@ public:
         (bits & static_cast<u8>(variable_attribute::Nameref)) != 0;
     let const is_declared =
         (bits & static_cast<u8>(variable_attribute::Declared)) != 0;
+
     if (is_nameref && !has_namerefs()) body().has_namerefs = true;
     if (is_declared && !has_declared_marks()) body().has_declared_marks = true;
   }
@@ -575,8 +605,9 @@ private:
   pure fn
   debug_checksum() const wontthrow -> u64
   {
-    u64       checksum = 14695981039346656037ULL;
-    let const do_mix   = [&](StringView bytes) wontthrow {
+    u64 checksum = 14695981039346656037ULL;
+
+    let const do_mix = [&](StringView bytes) wontthrow {
       for (usize index = 0; index < bytes.length; index++) {
         checksum ^= static_cast<u8>(bytes[index]);
         checksum *= 1099511628211ULL;
@@ -937,14 +968,16 @@ public:
   find_finished_status(i64 process_id) const wontthrow -> Maybe<i32>;
   fn
   forget_finished_statuses() wontthrow -> void;
+
   fn
-  register_job(os::process pid, StringView command, i64 process_group_id) throws
-      -> i32;
+  register_job(os::process pid,
+               StringView  command,
+               i64         process_group_id) throws -> i32;
   fn
   register_pipeline_job(const ArrayList<os::process> &processes,
                         os::process                   primary_process,
                         StringView                    command,
-                        i64 process_group_id) throws -> i32;
+                        i64                           process_group_id) throws -> i32;
   fn
   register_stopped_job(os::process pid,
                        StringView  command,
@@ -952,20 +985,25 @@ public:
                        i64         process_group_id) throws -> i32;
   fn
   notify_stopped_job(i32 id) throws -> void;
+
   fn
   append_status_line(String                &out,
                      usize                  index,
-                     const job_line_format &format) const throws -> void;
+                     const job_line_format &format) const throws
+      -> void;
   fn
   update_jobs() throws -> void;
+
   fn
-  wait_for_job_processes(job  &entry,
-                         bool *was_stopped                 = nullptr,
-                         bool  should_wait_for_termination = false) throws
-      -> i32;
+  wait_for_job_processes(
+      job  &entry,
+      bool *was_stopped                 = nullptr,
+      bool  should_wait_for_termination = false) throws -> i32;
   fn
   wait_for_next_job(const ArrayList<i32> &job_ids,
-                    bool should_wait_for_termination) throws -> next_job_wait;
+                    bool                  should_wait_for_termination) throws
+      -> next_job_wait;
+
   fn
   find_job_index_by_spec(StringView spec) throws -> Maybe<usize>;
   fn
@@ -980,28 +1018,29 @@ public:
   mark_job_waited(i32 id, bool should_remember_status) wontthrow -> void;
   fn
   mark_job_waited(job &entry, bool should_remember_status) wontthrow -> void;
+
   fn
   forget_waited_jobs() throws -> void
   {
     if (m_has_waited_jobs) forget_marked_waited_jobs();
   }
+
   fn
   inherit_parent_jobs(bool should_keep_finished_statuses) wontthrow -> void;
   fn
   remove_job(i32 id) throws -> bool;
   fn
-  format_done_job_notifications(StringView line_ending, bool is_posix) throws
-      -> String;
+  format_done_job_notifications(StringView line_ending,
+                                bool       is_posix) throws -> String;
   fn
   take_snapshot() throws -> job_table_snapshot;
   fn
   restore_snapshot(job_table_snapshot snapshot) throws -> void;
   fn
-  append_wire(String &output, os::subshell_bootstrap &bootstrap) const throws
-      -> void;
+  append_wire(String &output, os::subshell_bootstrap &bootstrap) const throws -> void;
   static fn
-  from_wire(subshell_bootstrap_reader &reader, job_table_wire &wire) throws
-      -> bool;
+  from_wire(subshell_bootstrap_reader &reader,
+            job_table_wire            &wire) throws -> bool;
   fn
   apply_wire(job_table_wire wire) wontthrow -> void;
 
@@ -1010,36 +1049,43 @@ public:
   {
     return m_last_background_pid;
   }
+
   pure fn
   last_background_pid() const wontthrow -> const Maybe<i64> &
   {
     return m_last_background_pid;
   }
+
   fn
   jobs() wontthrow -> ArrayList<job> &
   {
     return m_jobs;
   }
+
   pure fn
   jobs() const wontthrow -> const ArrayList<job> &
   {
     return m_jobs;
   }
+
   fn
   detached_job_processes() wontthrow -> ArrayList<os::process> &
   {
     return m_detached_job_processes;
   }
+
   pure fn
   detached_job_processes() const wontthrow -> const ArrayList<os::process> &
   {
     return m_detached_job_processes;
   }
+
   fn
   next_job_id() wontthrow -> i32 &
   {
     return m_next_job_id;
   }
+
   pure fn
   next_job_id() const wontthrow -> i32
   {
@@ -1051,21 +1097,25 @@ public:
   {
     return m_foreground_program_title_buffer;
   }
+
   fn
   set_in_pipeline_stage(bool is_in_stage) wontthrow -> void
   {
     m_is_in_pipeline_stage = is_in_stage;
   }
+
   pure fn
   is_in_pipeline_stage() const wontthrow -> bool
   {
     return m_is_in_pipeline_stage;
   }
+
   fn
   set_stage_boundary_published(bool was_published) wontthrow -> void
   {
     m_was_stage_boundary_published = was_published;
   }
+
   pure fn
   was_stage_boundary_published() const wontthrow -> bool
   {
@@ -1185,8 +1235,7 @@ public:
   ~FunctionBodyHandle();
 
   fn
-  operator=(const FunctionBodyHandle &other)
-      ->FunctionBodyHandle &;
+  operator=(const FunctionBodyHandle &other) -> FunctionBodyHandle &;
   fn
   operator=(FunctionBodyHandle &&other) noexcept -> FunctionBodyHandle &;
 
@@ -1198,6 +1247,7 @@ public:
   {
     return m_storage != nullptr;
   }
+
   pure fn
   get_arena() const wontthrow -> BumpArena *;
   pure fn
@@ -1206,11 +1256,13 @@ public:
   get_source() const wontthrow -> const String *;
   pure fn
   get_definition_info() const wontthrow -> const function_definition_info *;
+
   fn
   set_body(const Expression *body) wontthrow -> void;
   fn
   set_definition(StringView               source,
-                 function_definition_info definition_info) const throws -> void;
+                 function_definition_info definition_info) const throws
+      -> void;
 
 private:
   explicit FunctionBodyHandle(function_body_storage *storage)
@@ -1267,6 +1319,7 @@ struct reporting_revisions
   changed_fields_since(const reporting_revisions &prior) const wontthrow -> u8
   {
     u8 fields = 0;
+
     if (mood != prior.mood) fields |= static_cast<u8>(reporting_field::Mood);
     if (warning != prior.warning)
       fields |= static_cast<u8>(reporting_field::Warning);
@@ -1311,8 +1364,9 @@ struct saved_frame_trap
 };
 
 fn
-record_directory_access(StringView directory, Allocator allocator) throws
-    -> void;
+record_directory_access(StringView directory,
+                        Allocator  allocator) throws -> void;
+
 fn
 z_completion_candidates(StringView query, Allocator allocator) throws
     -> ArrayList<String>;

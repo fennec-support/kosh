@@ -39,7 +39,8 @@ append_word_loop_header(EvalContext                    &cxt,
                         StringView                      keyword,
                         StringView                      variable_name,
                         bool                            has_in_clause,
-                        const ArrayList<const Token *> &words) throws -> void
+                        const ArrayList<const Token *> &words) throws
+    -> void
 {
   if (!cxt.runtime_state().should_echo_expanded() &&
       !cxt.runtime_state().bash_dynamic_variables_enabled() &&
@@ -88,7 +89,7 @@ does_async_child_use_command_string_status(const EvalContext &cxt,
 static fn
 async_error_status(const EvalContext &cxt,
                    const ErrorBase   &error,
-                   bool should_use_command_string_status) wontthrow -> i32
+                   bool               should_use_command_string_status) wontthrow -> i32
 {
   if (should_use_command_string_status && error.is_script_fatal() &&
       error.command_status() == 1)
@@ -124,8 +125,7 @@ fn
 Command::evaluate_async_with(EvalContext &cxt,
                              async_body   body,
                              void        *context,
-                             StringView   expanded_child_source) const throws
-    -> i64
+                             StringView   expanded_child_source) const throws -> i64
 {
   if (!cxt.job_table_store().jobs().is_empty())
     cxt.job_table_store().update_jobs();
@@ -141,8 +141,10 @@ Command::evaluate_async_with(EvalContext &cxt,
   let const should_use_command_string_status =
       does_async_child_use_command_string_status(cxt, *this);
   let const evaluator = cxt.make_child_evaluator_state(bootstrap);
+
   bootstrap.should_use_command_string_status = should_use_command_string_status;
   cxt.set_child_source_origin(bootstrap, child_source, source_location());
+
   let const launch = os::launch_compound_stage(os::compound_stage_options{
       .source            = child_source,
       .location          = source_location(),
@@ -152,19 +154,22 @@ Command::evaluate_async_with(EvalContext &cxt,
   let const child  = launch.child;
 
   if (launch.should_evaluate_child) {
-    i32       status                       = 1;
+    i32 status = 1;
+
     let const do_run_exit_trap_after_error = [&](i32 error_status) {
       if ((!is_simple_command() && !is_assignment()) ||
           !cxt.runtime_state().is_bash_compatible())
       {
         return;
       }
+
       try {
         cxt.run_exit_trap(error_status & 0xFF);
       } catch (...) {
         LOG(Debug, "the async child failed to run the EXIT trap");
       }
     };
+
     try {
       cxt.enter_subshell();
       cxt.hide_coprocess_descriptors();
@@ -191,14 +196,18 @@ Command::evaluate_async_with(EvalContext &cxt,
     } catch (...) {
       LOG(Debug, "the compound command child swallowed an unknown error");
     }
+
     koshka::flush();
     os::exit_process_immediately(status);
   }
 
   let const process_id = os::process_id_of(child);
+
   cxt.job_table_store().set_last_background_pid(process_id);
+
   let const id =
       cxt.job_table_store().register_job(child, command_text, process_id);
+
   if (cxt.execution_store().shell_is_interactive()) {
     koshka::print_error(
         "[" + String::from(id, heap_allocator()) + "] " +
@@ -237,8 +246,8 @@ IfClause::IfClause(SourceLocation         location,
 IfClause::~IfClause() = default;
 
 fn
-IfClause::can_evaluate_in_process_substitution(
-    const EvalContext &cxt, HashSet &active_functions) const throws -> bool
+IfClause::can_evaluate_in_process_substitution(const EvalContext &cxt,
+                                               HashSet &active_functions) const throws -> bool
 {
   for (let const &branch : m_branches) {
     if (!branch.condition->can_evaluate_in_process_substitution(
@@ -259,6 +268,7 @@ cold fn
 IfClause::to_string() const throws -> String
 {
   let result = String{"IfClause"};
+
   append_ast_execution_flags(result);
 
   return result;
@@ -286,10 +296,10 @@ IfClause::to_ast_string(usize layer) const throws -> String
 }
 
 hot fn
-IfClause::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws
-    -> status_result
+IfClause::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> status_result
 {
   cxt.execution_store().terminal_exec_allowed() = false;
+
   let const should_skip_condition_commands = !folded_commands_are_observed(cxt);
 
   if (is_fully_eliminated() && should_skip_condition_commands) {
@@ -316,9 +326,11 @@ IfClause::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws
     ASSERT(body != nullptr);
 
     i64 condition_status;
+
     {
       cxt.execution_store().condition_depth()++;
       defer { cxt.execution_store().condition_depth()--; };
+
       condition_status = condition->evaluate(cxt);
     }
 
@@ -333,8 +345,7 @@ IfClause::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws
 }
 
 fn
-IfClause::analyze(AnalysisContext &actx, bool is_unconditional) const throws
-    -> void
+IfClause::analyze(AnalysisContext &actx, bool is_unconditional) const throws -> void
 {
   optimizer::optimize_node(this, actx);
 
@@ -347,25 +358,33 @@ IfClause::analyze(AnalysisContext &actx, bool is_unconditional) const throws
 
   for (usize i = 0; i < m_branches.count(); i++) {
     let const & [ condition, body ] = m_branches[i];
+
     ASSERT(condition != nullptr);
     ASSERT(body != nullptr);
 
     actx.tested_command_names = condition_failure_names.clone();
+
     let const was_retaining_tested_command_names =
         actx.walk.should_retain_tested_command_names;
+
     actx.walk.should_retain_tested_command_names = true;
+
     let const was_analyzing_condition = actx.walk.is_analyzing_condition;
-    actx.walk.is_analyzing_condition  = true;
+
+    actx.walk.is_analyzing_condition = true;
+
     if (!is_first_branch) actx.conditional_branch_depth++;
     condition->analyze(actx, is_unconditional && is_first_branch);
     if (!is_first_branch) actx.conditional_branch_depth--;
     actx.walk.is_analyzing_condition = was_analyzing_condition;
     actx.walk.should_retain_tested_command_names =
         was_retaining_tested_command_names;
+
     let const is_dead_branch =
         has_folded_branch() && folded_branch_index() != i;
     let       condition_failure_occurrences = actx.occurrences.snapshot();
     let const was_silenced = actx.effects.should_silence_unresolved_commands;
+
     if (is_dead_branch) actx.effects.should_silence_unresolved_commands = true;
     actx.conditional_branch_depth++;
     body->analyze(actx, false);
@@ -373,6 +392,7 @@ IfClause::analyze(AnalysisContext &actx, bool is_unconditional) const throws
     actx.effects.should_silence_unresolved_commands = was_silenced;
 
     let const is_exiting_branch = !is_dead_branch && body->always_exits(actx);
+
     if (is_exiting_branch) did_skip_exiting_branch = true;
 
     if (!is_dead_branch && !is_exiting_branch) {
@@ -396,6 +416,7 @@ IfClause::analyze(AnalysisContext &actx, bool is_unconditional) const throws
   let const is_else_dead =
       has_folded_branch() && folded_branch_index() != m_branches.count();
   let const was_else_silenced = actx.effects.should_silence_unresolved_commands;
+
   if (is_else_dead) actx.effects.should_silence_unresolved_commands = true;
   actx.tested_command_names = steal(condition_failure_names);
   actx.conditional_branch_depth++;
@@ -406,6 +427,7 @@ IfClause::analyze(AnalysisContext &actx, bool is_unconditional) const throws
 
   let const is_exiting_else =
       m_otherwise != nullptr && m_otherwise->always_exits(actx);
+
   if (is_exiting_else) did_skip_exiting_branch = true;
 
   if (!is_else_dead && !is_exiting_else) {
@@ -475,6 +497,7 @@ cold fn
 WhileLoop::to_string() const throws -> String
 {
   let result = String{is_until() ? "UntilLoop" : "WhileLoop"};
+
   append_ast_execution_flags(result);
 
   return result;
@@ -489,6 +512,7 @@ WhileLoop::to_ast_string(usize layer) const throws -> String
   let const pad       = indent_for_layer(layer);
   let const child_pad = pad + EXPRESSION_AST_INDENT;
   let       s         = pad + "[" + to_string() + "]";
+
   s += "\n" + child_pad + m_condition->to_ast_string(layer + 1);
   s += "\n" + child_pad + m_body->to_ast_string(layer + 1);
 
@@ -496,7 +520,8 @@ WhileLoop::to_ast_string(usize layer) const throws -> String
 }
 
 hot fn
-internal::resolve_loop_control(EvalContext &cxt) throws -> loop_disposition
+internal::resolve_loop_control(EvalContext &cxt) throws
+    -> loop_disposition
 {
   if (!cxt.runtime_state().is_posix_mode())
     cxt.job_table_store().forget_waited_jobs();
@@ -505,6 +530,7 @@ internal::resolve_loop_control(EvalContext &cxt) throws -> loop_disposition
   if (!cxt.control_flow_store().has_pending()) return loop_disposition::RunNext;
 
   let &control = cxt.control_flow_store().pending();
+
   if (control.kind != control_flow::Kind::Break &&
       control.kind != control_flow::Kind::Continue)
   {
@@ -520,6 +546,7 @@ internal::resolve_loop_control(EvalContext &cxt) throws -> loop_disposition
   }
 
   let const is_break = control.kind == control_flow::Kind::Break;
+
   cxt.control_flow_store().clear();
   LOG(All, "consuming the %s aimed at this loop",
       is_break ? "break" : "continue");
@@ -528,8 +555,7 @@ internal::resolve_loop_control(EvalContext &cxt) throws -> loop_disposition
 }
 
 hot fn
-WhileLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws
-    -> status_result
+WhileLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> status_result
 {
   ASSERT(m_condition != nullptr);
   ASSERT(m_body != nullptr);
@@ -538,10 +564,12 @@ WhileLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws
 
   let const is_until_loop     = is_until();
   let const is_folded_to_skip = this->is_folded_to_skip();
+
   LOG(Debug, "entering the %s loop%s", is_until_loop ? "until" : "while",
       is_folded_to_skip ? ", folded to skip the body" : "");
 
   let const should_skip_condition_commands = !folded_commands_are_observed(cxt);
+
   if ((is_folded_to_skip || is_fully_eliminated()) &&
       should_skip_condition_commands)
   {
@@ -554,18 +582,21 @@ WhileLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws
   defer { cxt.leave_loop(); };
 
   let const redirect_fd_mark = cxt.mark_loop_redirect_fds();
+
   defer { cxt.cleanup_loop_redirect_fds(redirect_fd_mark); };
 
   status_result result{};
 
-  loop
-  {
+  loop {
     i64 condition_status;
+
     {
       cxt.execution_store().condition_depth()++;
       defer { cxt.execution_store().condition_depth()--; };
+
       condition_status = m_condition->evaluate(cxt);
     }
+
     if (cxt.runtime_state().no_exec()) break;
     if (cxt.control_flow_store().has_pending()) {
       if (resolve_loop_control(cxt) == loop_disposition::StopLoop) break;
@@ -574,6 +605,7 @@ WhileLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws
 
     let const should_run_body =
         is_until_loop ? (condition_status != 0) : (condition_status == 0);
+
     if (!should_run_body) break;
 
     result = m_body->evaluate_status(cxt);
@@ -593,8 +625,7 @@ WhileLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws
 }
 
 fn
-WhileLoop::analyze(AnalysisContext &actx, bool is_unconditional) const throws
-    -> void
+WhileLoop::analyze(AnalysisContext &actx, bool is_unconditional) const throws -> void
 {
   ASSERT(m_condition != nullptr);
   ASSERT(m_body != nullptr);
@@ -605,17 +636,22 @@ WhileLoop::analyze(AnalysisContext &actx, bool is_unconditional) const throws
 
   let const saved_walk                 = actx.walk;
   let       saved_tested_command_names = actx.tested_command_names.clone();
-  actx.walk.is_inside_loop_condition   = true;
+
+  actx.walk.is_inside_loop_condition           = true;
   actx.walk.has_input_reading_loop_condition   = false;
   actx.walk.should_retain_tested_command_names = true;
-  let const saved_getopts                      = actx.active_getopts;
-  actx.active_getopts                          = {};
-  actx.walk.is_analyzing_condition             = true;
+
+  let const saved_getopts = actx.active_getopts;
+
+  actx.active_getopts              = {};
+  actx.walk.is_analyzing_condition = true;
   actx.loop_body_depth++;
   m_condition->analyze(actx, is_unconditional);
   actx.loop_body_depth--;
+
   let const has_input_reading_loop_condition =
       actx.walk.has_input_reading_loop_condition;
+
   actx.walk = saved_walk;
 
   if (is_until()) {
@@ -626,6 +662,7 @@ WhileLoop::analyze(AnalysisContext &actx, bool is_unconditional) const throws
 
   let       condition_occurrences = actx.occurrences.snapshot();
   let const was_silenced = actx.effects.should_silence_unresolved_commands;
+
   if (has_input_reading_loop_condition) actx.walk.is_inside_read_loop = true;
   if (is_folded_to_skip())
     actx.effects.should_silence_unresolved_commands = true;
@@ -692,6 +729,7 @@ cold fn
 SelectLoop::to_string() const throws -> String
 {
   let result = "SelectLoop \"" + m_variable_name + "\"";
+
   append_ast_execution_flags(result);
 
   return result;
@@ -708,8 +746,7 @@ SelectLoop::to_ast_string(usize layer) const throws -> String
 }
 
 fn
-SelectLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws
-    -> status_result
+SelectLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> status_result
 {
   ASSERT(m_body != nullptr);
 
@@ -720,10 +757,13 @@ SelectLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws
                                      : cxt.variable_store().positional_params();
 
   let select_trace = String{cxt.scratch_allocator()};
+
   append_word_loop_header(cxt, select_trace, "select", m_variable_name,
                           m_has_in_clause, m_words);
+
   let const should_run_select = publish_command_and_run_debug_trap(
       cxt, [&] { return String{heap_allocator(), select_trace.view()}; });
+
   if (!should_run_select) return {cxt.execution_store().last_exit_status()};
 
   cxt.write_xtrace(select_trace.view());
@@ -737,13 +777,13 @@ SelectLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws
   defer { cxt.leave_loop(); };
 
   let const redirect_fd_mark = cxt.mark_loop_redirect_fds();
+
   defer { cxt.cleanup_loop_redirect_fds(redirect_fd_mark); };
 
   status_result result{};
   bool          should_reprint_menu = true;
 
-  loop
-  {
+  loop {
     if (should_reprint_menu) {
       let menu = String{cxt.scratch_allocator()};
 
@@ -757,9 +797,11 @@ SelectLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws
       koshka::print_error(menu.view());
       should_reprint_menu = false;
     }
+
     koshka::print_error(cxt.get_variable_value("PS3").value_or(String{"#? "}));
 
     let const input = utils::read_line_from_fd(KOSH_STDIN);
+
     if (!input.line.has_value()) {
       koshka::print("\n");
       result.status = 1;
@@ -767,6 +809,7 @@ SelectLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws
     }
 
     let const &reply = *input.line;
+
     LOG(All, "the select prompt read the reply '%s'", reply.c_str());
     cxt.set_shell_variable("REPLY", reply.view());
     if (reply.is_empty()) {
@@ -775,6 +818,7 @@ SelectLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws
     }
 
     let const choice = reply.view().to<i64>();
+
     if (!choice.is_error() && choice.value() >= 1 &&
         static_cast<usize>(choice.value()) <= values.count())
     {
@@ -820,6 +864,7 @@ cold fn
 ForLoop::to_string() const throws -> String
 {
   let result = String{"ForLoop \""};
+
   result += m_variable_name;
   result += "\"";
   append_ast_execution_flags(result);
@@ -834,14 +879,14 @@ ForLoop::to_ast_string(usize layer) const throws -> String
 
   let const pad = indent_for_layer(layer);
   let       s   = pad + "[" + to_string() + "]";
+
   s += "\n" + pad + EXPRESSION_AST_INDENT + m_body->to_ast_string(layer + 1);
 
   return s;
 }
 
 hot fn
-ForLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws
-    -> status_result
+ForLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> status_result
 {
   ASSERT(m_body != nullptr);
 
@@ -854,8 +899,11 @@ ForLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws
   }
 
   cxt.source_store().set_current_location(source_location());
+
   let const substitution_mark = cxt.mark_process_substitutions();
+
   defer { cxt.cleanup_process_substitutions(substitution_mark); };
+
   let const values = m_has_in_clause ? cxt.process_args(m_words)
                                      : cxt.variable_store().positional_params();
 
@@ -864,8 +912,8 @@ ForLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws
         cxt.runtime_state().is_posix_mode());
   Maybe<String> saved_value =
       should_scope_variable ? cxt.get_variable_value(m_variable_name) : None;
-  defer
-  {
+
+  defer {
     if (should_scope_variable && !cxt.is_readonly(m_variable_name)) {
       try {
         if (saved_value.has_value())
@@ -883,6 +931,7 @@ ForLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws
       values.count());
 
   let loop_trace = String{cxt.scratch_allocator()};
+
   append_word_loop_header(cxt, loop_trace, "for", m_variable_name,
                           m_has_in_clause, m_words);
 
@@ -890,6 +939,7 @@ ForLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws
   defer { cxt.leave_loop(); };
 
   let const redirect_fd_mark = cxt.mark_loop_redirect_fds();
+
   defer { cxt.cleanup_loop_redirect_fds(redirect_fd_mark); };
 
   status_result result{};
@@ -899,6 +949,7 @@ ForLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws
 
     let const should_run_iteration = publish_command_and_run_debug_trap(
         cxt, [&] { return String{heap_allocator(), loop_trace.view()}; });
+
     if (!should_run_iteration) {
       if (cxt.control_flow_store().has_pending()) break;
 
@@ -909,16 +960,16 @@ ForLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws
     cxt.write_xtrace(loop_trace.view());
     try {
       if (cxt.variable_store().attributes().is_nameref(m_variable_name)) rarely
-        {
-          cxt.bind_nameref(m_variable_name, value);
-        }
-      else
+      {
+        cxt.bind_nameref(m_variable_name, value);
+      } else
         cxt.set_shell_variable(m_variable_name, value);
     } catch (ErrorBase &error) {
       cxt.mark_expansion_error(error,
                                expansion_error_reach::CommandOrPosixScript);
       relocate_if_unlocated(error, source_location());
     }
+
     result = m_body->evaluate_status(cxt);
     if (cxt.runtime_state().no_exec()) break;
     if (resolve_loop_control(cxt) == loop_disposition::StopLoop) break;
@@ -936,8 +987,7 @@ ForLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws
 }
 
 fn
-ForLoop::analyze(AnalysisContext &actx, bool is_unconditional) const throws
-    -> void
+ForLoop::analyze(AnalysisContext &actx, bool is_unconditional) const throws -> void
 {
   ASSERT(m_body != nullptr);
 
@@ -947,6 +997,7 @@ ForLoop::analyze(AnalysisContext &actx, bool is_unconditional) const throws
 
   let const outer_loop_location =
       actx.active_loop_variables.find(m_variable_name);
+
   if (outer_loop_location.has_value()) {
     actx.report_diagnostic(diagnostic_id::sc2165, m_variable_location,
                            {m_variable_name}, *outer_loop_location.value());
@@ -956,11 +1007,11 @@ ForLoop::analyze(AnalysisContext &actx, bool is_unconditional) const throws
 
   let const had_outer_loop_variable   = outer_loop_location.has_value();
   let       saved_outer_loop_location = SourceLocation{};
+
   if (had_outer_loop_variable)
     saved_outer_loop_location = *outer_loop_location.value();
   actx.active_loop_variables.set(m_variable_name, m_variable_location);
-  defer
-  {
+  defer {
     if (had_outer_loop_variable)
       actx.active_loop_variables.set(m_variable_name,
                                      saved_outer_loop_location);
@@ -972,6 +1023,7 @@ ForLoop::analyze(AnalysisContext &actx, bool is_unconditional) const throws
 
   for (let const t : m_words) {
     if (t->kind() != Token::Kind::Word) continue;
+
     let const &word        = static_cast<const tokens::WordToken *>(t)->word();
     let const  source_text = analysis_source_text(actx, t->source_location());
 
@@ -1013,7 +1065,9 @@ ForLoop::analyze(AnalysisContext &actx, bool is_unconditional) const throws
         {
           start++;
         }
+
         let const trimmed = body.substring(start);
+
         if (trimmed.starts_with(StringView{"ls "}) || trimmed == "ls") {
           actx.report_diagnostic(diagnostic_id::sc2045, t->source_location());
         } else if (trimmed.starts_with(StringView{"cat "})) {
@@ -1023,6 +1077,7 @@ ForLoop::analyze(AnalysisContext &actx, bool is_unconditional) const throws
         {
           actx.report_diagnostic(diagnostic_id::sc2044, t->source_location());
         }
+
         break;
       }
 
@@ -1064,6 +1119,7 @@ ForLoop::analyze(AnalysisContext &actx, bool is_unconditional) const throws
   let const is_conditional = !is_unconditional ||
                              actx.effects.has_seen_runtime_definer ||
                              (m_has_in_clause && m_words.is_empty());
+
   actx.note_variable_occurrence(m_variable_name, m_variable_location,
                                 variable_occurrence_kind::Assignment,
                                 is_conditional);
@@ -1115,6 +1171,7 @@ cold fn
 CaseClause::to_string() const throws -> String
 {
   let result = String{"CaseClause"};
+
   append_ast_execution_flags(result);
 
   return result;
@@ -1136,8 +1193,7 @@ CaseClause::to_ast_string(usize layer) const throws -> String
 }
 
 fn
-CaseClause::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws
-    -> status_result
+CaseClause::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> status_result
 {
   ASSERT(m_word != nullptr);
 
@@ -1146,14 +1202,17 @@ CaseClause::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws
 
   let const should_run_case = publish_command_and_run_debug_trap(cxt, [&] {
     let header_text = String{heap_allocator(), "case "};
+
     append_word_source_text(cxt, header_text, *m_word);
     header_text += " in ";
 
     return header_text;
   });
+
   if (!should_run_case) return {cxt.execution_store().last_exit_status()};
 
   let const substitution_mark = cxt.mark_process_substitutions();
+
   defer { cxt.cleanup_process_substitutions(substitution_mark); };
 
   let const do_expand_no_glob = [&cxt](const Token *t) -> String {
@@ -1173,12 +1232,14 @@ CaseClause::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws
   let      &scratch_arena = cxt.expansion_store().scratch_arena();
   let const subject_mark  = scratch_arena.mark();
   let       subject       = String{heap_allocator()};
+
   try {
     subject.append(do_expand_no_glob(m_word).view());
   } catch (...) {
     scratch_arena.release(subject_mark);
     throw;
   }
+
   scratch_arena.release(subject_mark);
 
   LOG(Debug, "the case subject expanded to '%s'", subject.c_str());
@@ -1193,12 +1254,14 @@ CaseClause::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws
 
   let const do_arm_matches = [&](const case_item &item) throws -> bool {
     let const arm_mark = scratch_arena.mark();
+
     defer { scratch_arena.release(arm_mark); };
 
     for (let const pattern_token : item.patterns) {
       if (pattern_token->kind() == Token::Kind::Word) {
         const Word &pattern_word =
             static_cast<const tokens::WordToken *>(pattern_token)->word();
+
         if (!is_case_insensitive &&
             pattern_word.plain_literal_kind() != Word::PlainLiteral::NotPlain)
         {
@@ -1209,6 +1272,7 @@ CaseClause::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws
 
       let pattern_active = Bitset{cxt.scratch_allocator()};
       let pattern        = String{cxt.scratch_allocator()};
+
       if (pattern_token->kind() == Token::Kind::Word) {
         try {
           pattern = cxt.expand_case_pattern_masked(
@@ -1223,15 +1287,18 @@ CaseClause::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws
         for (usize k = 0; k < pattern.count(); k++)
           pattern_active.push(true);
       }
+
       if (is_case_insensitive) {
         let const folded_pattern = utils::lowercase_for_glob(
             pattern.view(), cxt.get_glob_charset_for(pattern.view()),
             cxt.scratch_allocator());
+
         if (utils::glob_matches(folded_pattern.view(), folded_subject.view(),
                                 pattern_active, 0, extglob, charset))
         {
           return true;
         }
+
         continue;
       }
 
@@ -1257,8 +1324,7 @@ CaseClause::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws
 
     bool should_resume_matching = false;
 
-    loop
-    {
+    loop {
       ASSERT(m_items[i].body != nullptr);
       result = m_items[i].body->evaluate_status(cxt);
       cxt.execution_store().set_last_exit_status(result.status);
@@ -1266,15 +1332,18 @@ CaseClause::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws
       if (cxt.control_flow_store().has_pending()) return result;
 
       let const terminator = m_items[i].terminator;
+
       if (terminator == case_terminator::FallThrough && i + 1 < m_items.count())
       {
         i++;
         continue;
       }
+
       if (terminator == case_terminator::ContinueMatch) {
         i++;
         should_resume_matching = true;
       }
+
       break;
     }
 
@@ -1292,8 +1361,7 @@ CaseClause::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws
 }
 
 fn
-CaseClause::analyze(AnalysisContext &actx, bool is_unconditional) const throws
-    -> void
+CaseClause::analyze(AnalysisContext &actx, bool is_unconditional) const throws -> void
 {
   analyze_token_substitutions(actx, m_word, is_unconditional);
 
@@ -1310,9 +1378,11 @@ CaseClause::analyze(AnalysisContext &actx, bool is_unconditional) const throws
 
       let const &pattern_word =
           static_cast<const tokens::WordToken *>(pattern)->word();
+
       if (pattern_word.segments.count() != 1) continue;
 
       let const &segment = pattern_word.segments[0];
+
       if (segment.kind == WordSegment::Kind::UnquotedText &&
           segment.text == "*")
       {
@@ -1330,6 +1400,7 @@ CaseClause::analyze(AnalysisContext &actx, bool is_unconditional) const throws
   if (m_word->kind() == Token::Kind::Word) {
     let const &case_word =
         static_cast<const tokens::WordToken *>(m_word)->word();
+
     check_posix_word_portability(actx, case_word, m_word->source_location());
 
     for (let const &segment : case_word.segments) {
@@ -1340,6 +1411,7 @@ CaseClause::analyze(AnalysisContext &actx, bool is_unconditional) const throws
 
   for (usize i = 0; i < m_items.count(); i++) {
     let const &item = m_items[i];
+
     ASSERT(item.body != nullptr);
 
     actx.occurrences = common_occurrences;
@@ -1348,8 +1420,10 @@ CaseClause::analyze(AnalysisContext &actx, bool is_unconditional) const throws
 
     for (let const pattern : item.patterns) {
       if (pattern->kind() != Token::Kind::Word) continue;
+
       let const &pattern_word =
           static_cast<const tokens::WordToken *>(pattern)->word();
+
       check_posix_word_portability(actx, pattern_word,
                                    pattern->source_location());
 
@@ -1365,6 +1439,7 @@ CaseClause::analyze(AnalysisContext &actx, bool is_unconditional) const throws
 
     let const has_later_item  = i + 1 < m_items.count();
     let const is_exiting_item = item.body->always_exits(actx);
+
     if (!is_exiting_item &&
         (item.terminator != case_terminator::FallThrough || !has_later_item))
     {
@@ -1384,7 +1459,8 @@ CaseClause::analyze(AnalysisContext &actx, bool is_unconditional) const throws
 
   actx.occurrences = steal(merged_occurrences);
 
-  let case_input           = case_lint_input{};
+  let case_input = case_lint_input{};
+
   case_input.case_location = m_word->source_location();
   case_input.case_word_source =
       analysis_source_text(actx, case_input.case_location);
@@ -1395,6 +1471,7 @@ CaseClause::analyze(AnalysisContext &actx, bool is_unconditional) const throws
     check_case_word_shape(actx, case_input);
 
     let const &case_word = *case_input.case_word;
+
     if (!actx.active_getopts.variable_name.is_empty() &&
         case_word.segments.count() == 1 &&
         case_word.segments[0].kind == WordSegment::Kind::VariableReference &&
@@ -1419,6 +1496,7 @@ CaseClause::analyze(AnalysisContext &actx, bool is_unconditional) const throws
       let const literal      = pattern_word.to_literal_string();
       let const raw_pattern  = pattern->raw_string();
       let       is_duplicate = false;
+
       if (let const earlier_location =
               earlier_patterns.find(raw_pattern.view());
           earlier_location.has_value())
@@ -1428,11 +1506,13 @@ CaseClause::analyze(AnalysisContext &actx, bool is_unconditional) const throws
                                *earlier_location.value());
         is_duplicate = true;
       }
+
       if (!is_duplicate) {
         for (usize prefix_index = 0;
              prefix_index < earlier_shadow_prefixes.count(); prefix_index++)
         {
           let const &prefix = earlier_shadow_prefixes[prefix_index];
+
           if (!literal.view().starts_with(prefix.view())) continue;
           actx.report_diagnostic(diagnostic_id::sc2222,
                                  pattern->source_location(), {},
@@ -1440,6 +1520,7 @@ CaseClause::analyze(AnalysisContext &actx, bool is_unconditional) const throws
           break;
         }
       }
+
       if (!is_duplicate)
         earlier_patterns.set(raw_pattern.view(), pattern->source_location());
       if (pattern_word.segments.count() == 1 &&
@@ -1480,7 +1561,8 @@ BraceGroup::always_exits(const AnalysisContext &actx) const wontthrow -> bool
 
 fn
 BraceGroup::can_evaluate_in_process_substitution(
-    const EvalContext &cxt, HashSet &active_functions) const throws -> bool
+    const EvalContext &cxt, HashSet &active_functions) const throws
+    -> bool
 {
   return m_body->can_evaluate_in_process_substitution(cxt, active_functions);
 }
@@ -1506,8 +1588,7 @@ BraceGroup::to_ast_string(usize layer) const throws -> String
 }
 
 fn
-BraceGroup::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws
-    -> status_result
+BraceGroup::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> status_result
 {
   ASSERT(m_body != nullptr);
 
@@ -1523,8 +1604,7 @@ BraceGroup::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws
 }
 
 fn
-BraceGroup::analyze(AnalysisContext &actx, bool is_unconditional) const throws
-    -> void
+BraceGroup::analyze(AnalysisContext &actx, bool is_unconditional) const throws -> void
 {
   ASSERT(m_body != nullptr);
 
@@ -1561,8 +1641,7 @@ CoprocCommand::to_ast_string(usize layer) const throws -> String
 }
 
 fn
-CoprocCommand::analyze(AnalysisContext &actx,
-                       bool             is_unconditional) const throws -> void
+CoprocCommand::analyze(AnalysisContext &actx, bool is_unconditional) const throws -> void
 {
   ASSERT(m_body != nullptr);
 
@@ -1572,8 +1651,7 @@ CoprocCommand::analyze(AnalysisContext &actx,
 static constexpr i32 COPROCESS_FD_FLOOR = 10;
 
 fn
-CoprocCommand::evaluate_impl(EvalContext &cxt,
-                             root_evaluation_mode) const throws -> status_result
+CoprocCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> status_result
 {
   ASSERT(m_body != nullptr);
 
@@ -1606,6 +1684,7 @@ CoprocCommand::evaluate_impl(EvalContext &cxt,
 
   let       bootstrap = os::subshell_bootstrap{};
   let const evaluator = cxt.make_child_evaluator_state(bootstrap);
+
   cxt.set_child_source_origin(bootstrap, body_text, body_location);
 
   let const launch = os::launch_compound_stage(os::compound_stage_options{
@@ -1623,6 +1702,7 @@ CoprocCommand::evaluate_impl(EvalContext &cxt,
     os::close_fd(away_from_child->in);
 
     i32 status = 1;
+
     try {
       cxt.enter_subshell();
       cxt.job_table_store().inherit_parent_jobs(false);
@@ -1645,6 +1725,7 @@ CoprocCommand::evaluate_impl(EvalContext &cxt,
     } catch (...) {
       LOG(Debug, "the coprocess child swallowed an unknown error");
     }
+
     koshka::flush();
     os::exit_process_immediately(status);
   }
@@ -1656,6 +1737,7 @@ CoprocCommand::evaluate_impl(EvalContext &cxt,
                                                             COPROCESS_FD_FLOOR);
   let const write_fd = os::move_descriptor_to_free_shell_fd(toward_child->out,
                                                             COPROCESS_FD_FLOOR);
+
   if (read_fd < 0 || write_fd < 0) {
     if (read_fd < 0)
       os::close_fd(away_from_child->in);
@@ -1672,14 +1754,17 @@ CoprocCommand::evaluate_impl(EvalContext &cxt,
   }
 
   let const process_id = os::process_id_of(child);
+
   cxt.set_coprocess_descriptors(read_fd, write_fd, process_id, m_name);
 
   let descriptors = ArrayList<String>{heap_allocator()};
+
   descriptors.push(String::from(read_fd, heap_allocator()));
   descriptors.push(String::from(write_fd, heap_allocator()));
   cxt.set_indexed_array(m_name, steal(descriptors));
 
   let pid_name = String{m_name};
+
   pid_name += "_PID";
   cxt.set_shell_variable(
       pid_name.view(),
@@ -1689,6 +1774,7 @@ CoprocCommand::evaluate_impl(EvalContext &cxt,
 
   let const id =
       cxt.job_table_store().register_job(child, command_text, process_id);
+
   if (cxt.execution_store().shell_is_interactive()) {
     koshka::print_error(
         "[" + String::from(id, heap_allocator()) + "] " +

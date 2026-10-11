@@ -40,6 +40,7 @@ Unalias::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       let const name_length =
           equals_position.has_value() ? *equals_position : definition.count();
       let const name = definition.substring_of_length(0, name_length);
+
       cxt.scope_store().remove_alias(name);
     }
 
@@ -52,6 +53,7 @@ Unalias::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   for (usize i = 1; i < args.count(); i++) {
     let const &name = args[i];
+
     LOG(All, "unalias removing alias '%s'", name.c_str());
     if (!cxt.scope_store().remove_alias(name)) {
       report_soft_builtin_error(ec, cxt,

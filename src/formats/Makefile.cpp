@@ -22,6 +22,7 @@ parse_makefile_format(const parser_format_input &input,
 
   while (position < input.source.length) {
     let const line = input.source.next_line(position);
+
     if (parser_format_has_substring(line, "SHELL") &&
         parser_format_has_substring(line, "="))
     {
@@ -41,6 +42,7 @@ parse_makefile_format(const parser_format_input &input,
     let analysis_source =
         koshkit::makefile_shell_analysis_source(input.source, range);
     let const fragment_count = document.fragments.count();
+
     parser_format_add_fragment(document, input.source, range.start_position,
                                range.end_position, 1, steal(analysis_source),
                                parser_format_codec::Continued, mood);

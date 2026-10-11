@@ -53,7 +53,7 @@ struct newest_named_entry_comparator
 {
   template <class Entry>
   pure fn
-  operator()(const Entry &left, const Entry &right) const wontthrow->bool
+  operator()(const Entry &left, const Entry &right) const wontthrow -> bool
   {
     if (left.modification_time != right.modification_time)
       return left.modification_time > right.modification_time;
@@ -116,6 +116,7 @@ is_dump_entry(StringView      directory,
               dump_entry_kind kind) wontthrow -> bool
 {
   if (name.is_empty()) return false;
+
   let const is_directory = kind == dump_entry_kind::Directory;
 
   constexpr PackedStringKey SUFFIX_KEYS[] = {
@@ -130,10 +131,13 @@ is_dump_entry(StringView      directory,
     if (is_directory && name.starts_with("ccpp-")) {
       return true;
     }
+
     break;
+
   case '_':
     if (dump_suffix(name) == StringView{".crash"}) return true;
     break;
+
   default: break;
   }
 
@@ -151,6 +155,7 @@ program_of_dump(StringView name, Allocator allocator) throws -> String
   if (name.starts_with("core.")) {
     let const rest = name.substring_of_length(5, name.length - 5);
     let const dot  = rest.find_character('.');
+
     if (dot.has_value())
       return String{allocator, rest.substring_of_length(0, *dot)};
 
@@ -183,6 +188,7 @@ program_of_dump(StringView name, Allocator allocator) throws -> String
   }
 
   let const suffix = dump_suffix(name);
+
   if (!suffix.is_empty() && suffix.length < name.length) {
     return String{allocator,
                   name.substring_of_length(0, name.length - suffix.length)};
@@ -197,6 +203,7 @@ collect_dumps(StringView directory, Allocator allocator) throws
 {
   let       dumps    = ArrayList<dump_entry>{allocator};
   let const children = os::list_directory_status(directory, allocator);
+
   if (!children.has_value())
     return steal(dumps).make_sorted(newest_named_entry_comparator{});
 
@@ -204,6 +211,7 @@ collect_dumps(StringView directory, Allocator allocator) throws
 
   for (usize index = 0; index < children->count(); index++) {
     let const &child_entry = (*children)[index];
+
     if (!child_entry.has_status) continue;
 
     let const &child  = child_entry.child;
@@ -211,9 +219,11 @@ collect_dumps(StringView directory, Allocator allocator) throws
     let const  kind   = os::file_type_letter(status.mode) == 'd'
                             ? dump_entry_kind::Directory
                             : dump_entry_kind::File;
+
     if (!is_dump_entry(directory, child.name.view(), kind)) continue;
 
-    let dump               = dump_entry{};
+    let dump = dump_entry{};
+
     dump.name              = String{allocator, child.name.view()};
     dump.program           = program_of_dump(child.name.view(), allocator);
     dump.size              = status.size;
@@ -232,9 +242,12 @@ append_titled_message(String    &output,
                       bool       should_color) throws -> void
 {
   let table = ReportTable{allocator};
+
   table.set_header_visible(false);
   table.add_column("");
+
   let cells = ArrayList<report_table_cell_view>{allocator};
+
   cells.push({message, {}});
   table.add_row(cells);
   append_titled_report_table(output, title, table, should_color);
@@ -247,6 +260,7 @@ append_setting_row(ReportTable &table,
                    StringView   value) throws -> void
 {
   let cells = ArrayList<report_table_cell_view>{allocator};
+
   cells.push({name, colors::ansi::BOLD_CYAN});
   cells.push({value, colors::ansi::GREEN});
   table.add_row(cells);
@@ -258,12 +272,14 @@ append_kernel_settings(String   &output,
                        bool      should_color) throws -> void
 {
   let table = ReportTable{allocator};
+
   table.set_header_visible(false);
   table.add_column("");
   table.add_column("");
 
   for (let const setting : KERNEL_SETTINGS) {
     let const content = Path{setting}.read_entire_file();
+
     if (!content.has_value()) continue;
 
     append_setting_row(table, allocator, setting,
@@ -272,6 +288,7 @@ append_kernel_settings(String   &output,
 
   if (table.get_row_count() == 0) {
     let const pattern = os::get_environment_variable("KOSH_CORE_PATTERN");
+
     if (pattern.has_value()) {
       append_setting_row(table, allocator, "core pattern", pattern->view());
     } else {
@@ -300,8 +317,10 @@ append_core_dump_report(String   &output,
     directories.push(String{allocator, candidate});
 
   let const home = os::get_environment_variable("HOME");
+
   if (home.has_value()) {
     let directory = Path{home->view(), allocator};
+
     directory.append("Library/Logs/DiagnosticReports");
     directories.push(String{allocator, directory.view()});
   }
@@ -310,24 +329,29 @@ append_core_dump_report(String   &output,
 
   for (let const &owned_directory : directories) {
     let const directory = owned_directory.view();
+
     if (!os::path_is_directory(directory)) continue;
 
     let const dumps = collect_dumps(directory, allocator);
+
     if (dumps.is_empty()) continue;
 
     total_dump_count += dumps.count();
+
     u64 total_byte_count = 0;
 
     for (let const &dump : dumps)
       total_byte_count += dump.size;
 
     let title = String{allocator, directory};
+
     title += ": ";
     title += String::from(dumps.count(), allocator).view();
     title += " dumps, ";
     title += format_human_size(total_byte_count, allocator).view();
 
     let table = ReportTable{allocator};
+
     table.add_heading("SIZE");
     table.add_heading("MODIFIED");
     table.add_heading("PROGRAM");
@@ -343,6 +367,7 @@ append_core_dump_report(String   &output,
       let const  modified = utils::format_unix_timestamp(dump.modification_time,
                                                          "%Y-%m-%d %H:%M");
       let        cells    = ArrayList<report_table_cell_view>{allocator};
+
       cells.push({size.view(), colors::ansi::GREEN});
       cells.push({modified.view(), colors::ansi::DIM});
       cells.push({dump.program.view(), colors::ansi::BOLD_MAGENTA});
@@ -387,17 +412,23 @@ label_of_magic(const char *bytes, usize byte_count) wontthrow -> StringView
     if (byte_count >= 8 && std::memcmp(bytes, "LPKSHHRH", 8) == 0) {
       return "journal";
     }
+
     break;
+
   case 'S':
     if (byte_count >= 6 && std::memcmp(bytes, "SQLite", 6) == 0) {
       return "sqlite";
     }
+
     break;
+
   case 0x1f:
     if (byte_count >= 2 && static_cast<unsigned char>(bytes[1]) == 0x8b) {
       return "gzip";
     }
+
     break;
+
   case 0xfd:
     if (byte_count >= 6 && std::memcmp(bytes,
                                        "\xfd"
@@ -406,7 +437,9 @@ label_of_magic(const char *bytes, usize byte_count) wontthrow -> StringView
     {
       return "xz";
     }
+
     break;
+
   case 0x28:
     if (byte_count >= 4 && static_cast<unsigned char>(bytes[1]) == 0xb5 &&
         static_cast<unsigned char>(bytes[2]) == 0x2f &&
@@ -414,12 +447,16 @@ label_of_magic(const char *bytes, usize byte_count) wontthrow -> StringView
     {
       return "zstd";
     }
+
     break;
+
   case 'B':
     if (byte_count >= 3 && std::memcmp(bytes, "BZh", 3) == 0) {
       return "bzip2";
     }
+
     break;
+
   case 0x04:
     if (byte_count >= 4 && static_cast<unsigned char>(bytes[1]) == 0x22 &&
         static_cast<unsigned char>(bytes[2]) == 0x4d &&
@@ -427,12 +464,15 @@ label_of_magic(const char *bytes, usize byte_count) wontthrow -> StringView
     {
       return "lz4";
     }
+
     break;
+
   default: break;
   }
 
   for (usize index = 0; index < byte_count; index++) {
     let const byte = static_cast<unsigned char>(bytes[index]);
+
     if (byte == 0) return "binary";
 
     if (byte < 0x09 || (byte > 0x0d && byte < 0x20)) {
@@ -456,16 +496,20 @@ collect_log_entries(StringView directory, Allocator allocator) throws
 {
   let       entries  = ArrayList<log_entry>{allocator};
   let const children = os::list_directory_status(directory, allocator);
+
   if (!children.has_value())
     return steal(entries).make_sorted(newest_named_entry_comparator{});
 
   entries.reserve(children->count());
+
   format_probe probes[FORMAT_BATCH_COUNT]{};
   usize        probe_count = 0;
   let          batch       = os::Batch{allocator};
   let          results     = ArrayList<os::batch_result>{allocator};
+
   batch.reserve(FORMAT_BATCH_COUNT);
   results.reserve(FORMAT_BATCH_COUNT);
+
   let const do_flush_probes = [&]() throws -> void {
     batch.clear();
 
@@ -478,10 +522,12 @@ collect_log_entries(StringView directory, Allocator allocator) throws
 
     for (usize index = 0; index < probe_count; index++) {
       let const &result = results[index];
+
       if (result.error_number == 0) {
         entries[probes[index].entry_position].format_label =
             label_of_magic(probes[index].bytes, result.transferred_byte_count);
       }
+
       unused(os::close_fd(probes[index].descriptor));
     }
 
@@ -490,18 +536,23 @@ collect_log_entries(StringView directory, Allocator allocator) throws
 
   for (usize index = 0; index < children->count(); index++) {
     let const &child_entry = (*children)[index];
+
     if (!child_entry.has_status) continue;
 
     let const &child      = child_entry.child;
     let        child_path = Path{directory, allocator};
+
     child_path.append(child.name.view());
 
-    let entry               = log_entry{};
+    let entry = log_entry{};
+
     entry.name              = String{allocator, child.name.view()};
     entry.size              = child_entry.status.size;
     entry.modification_time = child_entry.status.modification_time;
+
     let const is_directory =
         os::file_type_letter(child_entry.status.mode) == 'd';
+
     entry.format_label =
         is_directory ? StringView{"directory"} : StringView{"unreadable"};
     entries.push(steal(entry));
@@ -509,6 +560,7 @@ collect_log_entries(StringView directory, Allocator allocator) throws
 
     let const opened =
         os::open_file_descriptor(child_path.text(), os::file_open_mode::Read);
+
     if (!opened.has_value()) continue;
 
     probes[probe_count].descriptor     = *opened;
@@ -523,8 +575,9 @@ collect_log_entries(StringView directory, Allocator allocator) throws
 }
 
 fn
-append_log_report(String &output, Allocator allocator, bool should_color) throws
-    -> void
+append_log_report(String   &output,
+                  Allocator allocator,
+                  bool      should_color) throws -> void
 {
   usize directory_count = 0;
 
@@ -532,6 +585,7 @@ append_log_report(String &output, Allocator allocator, bool should_color) throws
     if (!os::path_is_directory(directory)) continue;
 
     let const entries = collect_log_entries(directory, allocator);
+
     if (entries.is_empty()) continue;
 
     directory_count++;
@@ -542,12 +596,14 @@ append_log_report(String &output, Allocator allocator, bool should_color) throws
       total_byte_count += entry.size;
 
     let title = String{allocator, directory};
+
     title += ": ";
     title += String::from(entries.count(), allocator).view();
     title += " entries, ";
     title += format_human_size(total_byte_count, allocator).view();
 
     let table = ReportTable{allocator};
+
     table.add_heading("SIZE");
     table.add_heading("FORMAT");
     table.add_heading("MODIFIED");
@@ -563,6 +619,7 @@ append_log_report(String &output, Allocator allocator, bool should_color) throws
       let const modified = utils::format_unix_timestamp(entry.modification_time,
                                                         "%Y-%m-%d %H:%M");
       let       cells    = ArrayList<report_table_cell_view>{allocator};
+
       cells.push({size.view(), colors::ansi::GREEN});
       cells.push({entry.format_label, colors::ansi::BOLD_MAGENTA});
       cells.push({modified.view(), colors::ansi::DIM});
@@ -586,8 +643,7 @@ fn
 EvilLogs::execute(const ExecContext               &ec,
                   EvalContext                     &cxt,
                   const ArrayList<String>         &args,
-                  const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+                  const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
@@ -603,9 +659,11 @@ EvilLogs::execute(const ExecContext               &ec,
   let const should_color = koshkit_should_color();
   let const has_filter =
       FLAG_EVILLOGS_CORES.is_enabled() || FLAG_EVILLOGS_LOGS.is_enabled();
+
   if (!has_filter || FLAG_EVILLOGS_CORES.is_enabled()) {
     append_core_dump_report(output, allocator, should_color);
   }
+
   if (!has_filter || FLAG_EVILLOGS_LOGS.is_enabled()) {
     append_log_report(output, allocator, should_color);
   }

@@ -44,6 +44,7 @@ cold fn
 ConditionalCommand::to_string() const throws -> String
 {
   let result = String{"ConditionalCommand"};
+
   append_ast_execution_flags(result);
 
   return result;
@@ -61,6 +62,7 @@ conditional_word_is_literal(const Token *token) wontthrow -> bool
   if (token == nullptr || token->kind() != Token::Kind::Word) {
     return false;
   }
+
   let const &word = static_cast<const tokens::WordToken *>(token)->word();
 
   for (let const &segment : word.segments)
@@ -80,6 +82,7 @@ conditional_word_has_glob(const Token *token) wontthrow -> bool
   if (token == nullptr || token->kind() != Token::Kind::Word) {
     return false;
   }
+
   let const &word = static_cast<const tokens::WordToken *>(token)->word();
 
   for (let const &segment : word.segments)
@@ -96,6 +99,7 @@ conditional_word_is_numeric_literal(const Token *token) throws -> bool
   if (!conditional_word_is_literal(token)) return false;
   let const literal = token->raw_string();
   let       view    = literal.view();
+
   if (!view.is_empty() && (view[0] == '-' || view[0] == '+')) {
     view = view.substring(1);
   }
@@ -126,7 +130,8 @@ conditional_operator_view(const conditional_element &element) wontthrow
   case Kind::Less:    return StringView{"<"};
   case Kind::Greater: return StringView{">"};
   case Kind::Operand: break;
-  default:            return None;
+
+  default: return None;
   }
 
   if (!element.is_bare_unquoted || element.word == nullptr) {
@@ -134,6 +139,7 @@ conditional_operator_view(const conditional_element &element) wontthrow
   }
 
   let view = element.word->raw_view();
+
   if (!view.has_value() || !is_conditional_binary_operator(*view)) {
     return None;
   }
@@ -144,7 +150,7 @@ conditional_operator_view(const conditional_element &element) wontthrow
 cold static fn
 conditional_inequality_left_operand(
     const ArrayList<conditional_element> &elements,
-    usize operator_index) wontthrow -> Maybe<StringView>
+    usize                                 operator_index) wontthrow -> Maybe<StringView>
 {
   using Kind = conditional_element::Kind;
   if (operator_index == 0 || operator_index + 1 >= elements.count()) {
@@ -152,11 +158,13 @@ conditional_inequality_left_operand(
   }
 
   let const op_view = conditional_operator_view(elements[operator_index]);
+
   if (!op_view.has_value() || *op_view != StringView{"!="}) {
     return None;
   }
 
   let const &left = elements[operator_index - 1];
+
   if (left.kind != Kind::Operand || left.word == nullptr) {
     return None;
   }
@@ -219,8 +227,7 @@ conditional_element_ends_operand(const conditional_element &element) wontthrow
 }
 
 fn
-ConditionalCommand::analyze(AnalysisContext &actx,
-                            bool is_unconditional) const throws -> void
+ConditionalCommand::analyze(AnalysisContext &actx, bool is_unconditional) const throws -> void
 {
   for (let const &element : m_elements)
     analyze_token_substitutions(actx, element.word, is_unconditional);
@@ -232,6 +239,7 @@ ConditionalCommand::analyze(AnalysisContext &actx,
     if (element.kind == Kind::Less || element.kind == Kind::Greater) {
       let const op =
           element.kind == Kind::Less ? StringView{"<"} : StringView{">"};
+
       if ((i > 0 &&
            conditional_word_is_numeric_literal(m_elements[i - 1].word)) ||
           (i + 1 < m_elements.count() &&
@@ -239,6 +247,7 @@ ConditionalCommand::analyze(AnalysisContext &actx,
       {
         actx.report_diagnostic(diagnostic_id::sc2071, element.location, {op});
       }
+
       if (i > 0 && i + 1 < m_elements.count() &&
           conditional_word_is_literal(m_elements[i - 1].word) &&
           conditional_word_is_literal(m_elements[i + 1].word))
@@ -249,12 +258,14 @@ ConditionalCommand::analyze(AnalysisContext &actx,
                               m_elements[i + 1].word->source_location()),
             {op});
       }
+
       continue;
     }
 
     if (element.kind == Kind::Or && i >= 3) {
       let const before = conditional_inequality_left_operand(m_elements, i - 2);
       let const after  = conditional_inequality_left_operand(m_elements, i + 2);
+
       if (before.has_value() && after.has_value() && *before == *after) {
         actx.report_diagnostic(diagnostic_id::sc2055,
                                m_elements[i + 1].word->source_location(),
@@ -273,6 +284,7 @@ ConditionalCommand::analyze(AnalysisContext &actx,
         i + 1 < m_elements.count())
     {
       let const next_operator = conditional_operator_view(m_elements[i + 1]);
+
       if (next_operator.has_value()) {
         actx.report_diagnostic(diagnostic_id::sc1019,
                                element.word->source_location(),
@@ -281,6 +293,7 @@ ConditionalCommand::analyze(AnalysisContext &actx,
     }
 
     let const misuse = CONDITIONAL_MISUSES.find(operand.view());
+
     if (misuse.has_value()) {
       let const written = element.word->source_location()
                               .get_source_text(actx.source)
@@ -295,6 +308,7 @@ ConditionalCommand::analyze(AnalysisContext &actx,
           actx.report_diagnostic(diagnostic_id::sc2108,
                                  element.word->source_location());
         }
+
         break;
 
       case conditional_misuse_kind::OrOperator:
@@ -302,6 +316,7 @@ ConditionalCommand::analyze(AnalysisContext &actx,
           actx.report_diagnostic(diagnostic_id::sc2110,
                                  element.word->source_location());
         }
+
         break;
 
       case conditional_misuse_kind::EscapedParenthesis:
@@ -309,6 +324,7 @@ ConditionalCommand::analyze(AnalysisContext &actx,
           actx.report_diagnostic(diagnostic_id::sc1029,
                                  element.word->source_location());
         }
+
         break;
 
       case conditional_misuse_kind::BraceGroup:
@@ -316,11 +332,13 @@ ConditionalCommand::analyze(AnalysisContext &actx,
           actx.report_diagnostic(diagnostic_id::sc1026,
                                  element.word->source_location());
         }
+
         break;
       }
     }
 
     let const token_kind = element.word->kind();
+
     if (token_kind == Token::Kind::GreaterEquals ||
         token_kind == Token::Kind::LessEquals)
     {
@@ -376,14 +394,17 @@ ConditionalCommand::analyze(AnalysisContext &actx,
     }
 
     let is_binary_operand = false;
+
     if (i > 0) {
       is_binary_operand =
           conditional_operator_view(m_elements[i - 1]).has_value();
     }
+
     if (!is_binary_operand && i + 1 < m_elements.count()) {
       is_binary_operand =
           conditional_operator_view(m_elements[i + 1]).has_value();
     }
+
     if (!is_binary_operand && !conditional_operator_view(element).has_value() &&
         element.word->kind() == Token::Kind::Word)
     {
@@ -399,6 +420,7 @@ ConditionalCommand::analyze(AnalysisContext &actx,
           break;
         }
     }
+
     if (element.is_bare_unquoted &&
         (operand.view() == "-n" || operand.view() == "-z") &&
         i + 1 < m_elements.count() &&
@@ -428,6 +450,7 @@ ConditionalCommand::analyze(AnalysisContext &actx,
     let const right = m_elements[i + 1].word;
     let const should_prefer_string_comparison =
         operand.view() == "-eq" || operand.view() == "-ne";
+
     check_numeric_comparison_operand(actx, operand.view(), left,
                                      should_prefer_string_comparison);
     check_numeric_comparison_operand(actx, operand.view(), right,
@@ -437,6 +460,7 @@ ConditionalCommand::analyze(AnalysisContext &actx,
         operand.view() == "=~" ||
         ((operand.view() == "=" || operand.view() == "==") &&
          conditional_word_has_glob(right));
+
     if (!is_pattern_operator && conditional_word_is_literal(left) &&
         conditional_word_is_literal(right))
     {
@@ -451,6 +475,7 @@ ConditionalCommand::analyze(AnalysisContext &actx,
     {
       let const &right_word =
           static_cast<const tokens::WordToken *>(right)->word();
+
       if (right_word.segments.count() == 1 &&
           right_word.segments[0].kind == WordSegment::Kind::VariableReference &&
           !right_word.segments[0].is_in_double_quotes)
@@ -465,6 +490,7 @@ ConditionalCommand::analyze(AnalysisContext &actx,
     if (operand.view() == "=~" && right != nullptr) {
       let const source_text =
           analysis_source_text(actx, right->source_location());
+
       if (source_text.is_empty()) continue;
 
       if (source_text[0] == '\'' || source_text[0] == '"') {
@@ -480,8 +506,8 @@ ConditionalCommand::analyze(AnalysisContext &actx,
 }
 
 static fn
-conditional_command_text(const ArrayList<conditional_element> &elements) throws
-    -> String
+conditional_command_text(
+    const ArrayList<conditional_element> &elements) throws -> String
 {
   let command_text = String{heap_allocator(), "[["};
 
@@ -491,24 +517,30 @@ conditional_command_text(const ArrayList<conditional_element> &elements) throws
     case conditional_element::Kind::Operand:
       if (element.word != nullptr) command_text += element.word->raw_string();
       break;
-    case conditional_element::Kind::And:        command_text += "&&"; break;
-    case conditional_element::Kind::Or:         command_text += "||"; break;
-    case conditional_element::Kind::Not:        command_text += "!"; break;
-    case conditional_element::Kind::OpenParen:  command_text += "("; break;
+
+    case conditional_element::Kind::And: command_text += "&&"; break;
+
+    case conditional_element::Kind::Or: command_text += "||"; break;
+
+    case conditional_element::Kind::Not: command_text += "!"; break;
+
+    case conditional_element::Kind::OpenParen: command_text += "("; break;
+
     case conditional_element::Kind::CloseParen: command_text += ")"; break;
-    case conditional_element::Kind::Less:       command_text += "<"; break;
-    case conditional_element::Kind::Greater:    command_text += ">"; break;
+
+    case conditional_element::Kind::Less: command_text += "<"; break;
+
+    case conditional_element::Kind::Greater: command_text += ">"; break;
     }
   }
+
   command_text += " ]]";
 
   return command_text;
 }
 
 fn
-ConditionalCommand::evaluate_impl(EvalContext &cxt,
-                                  root_evaluation_mode) const throws
-    -> status_result
+ConditionalCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> status_result
 {
   cxt.source_store().set_current_location(source_location());
 
@@ -521,22 +553,30 @@ ConditionalCommand::evaluate_impl(EvalContext &cxt,
                   [&] { return conditional_command_text(m_elements); });
             });
       });
+
   if (!should_run_conditional) return cxt.execution_store().last_exit_status();
 
   let const substitution_mark = cxt.mark_process_substitutions();
+
   defer { cxt.cleanup_process_substitutions(substitution_mark); };
 
   i64 status;
+
   try {
     let const scratch_mark = cxt.expansion_store().scratch_arena().mark();
-    defer { cxt.expansion_store().scratch_arena().release(scratch_mark); };
+    defer {
+      cxt.expansion_store().scratch_arena().release(scratch_mark);
+    };
+
     status = cxt.evaluate_conditional(m_elements) ? 0 : 1;
   } catch (const Error &e) {
     SourceLocation span = source_location();
+
     if (source_end_position() > span.position)
       span.length = static_cast<u32>(source_end_position() - span.position);
     relocate_if_unlocated(e, span);
   }
+
   LOG(Debug, "the [[ ]] conditional yielded status %lld",
       static_cast<long long>(status));
   cxt.publish_single_pipe_status(static_cast<i32>(status));
@@ -558,7 +598,8 @@ ArithmeticCommand::~ArithmeticCommand()
 
 fn
 ArithmeticCommand::can_evaluate_in_process_substitution(
-    const EvalContext &cxt, HashSet &active_functions) const throws -> bool
+    const EvalContext &cxt, HashSet &active_functions) const throws
+    -> bool
 {
   unused(cxt);
   unused(active_functions);
@@ -576,6 +617,7 @@ cold fn
 ArithmeticCommand::to_ast_string(usize layer) const throws -> String
 {
   let label = to_string() + " \"" + m_expression + "\"";
+
   append_ast_execution_flags(label);
 
   return indent_for_layer(layer) + "[" + label + "]";
@@ -610,6 +652,7 @@ static fn
 arithmetic_clause_command_text(StringView clause) throws -> String
 {
   let command_text = String{heap_allocator()};
+
   command_text.reserve(clause.length + 4);
   command_text += "((";
   command_text.append(clause);
@@ -619,9 +662,7 @@ arithmetic_clause_command_text(StringView clause) throws -> String
 }
 
 fn
-ArithmeticCommand::evaluate_impl(EvalContext &cxt,
-                                 root_evaluation_mode) const throws
-    -> status_result
+ArithmeticCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> status_result
 {
   LOG(Debug, "evaluating the arithmetic command '%.*s'",
       static_cast<int>(m_expression.length), m_expression.data);
@@ -632,6 +673,7 @@ ArithmeticCommand::evaluate_impl(EvalContext &cxt,
     return m_published_command_text.get(
         false, [&] { return arithmetic_clause_command_text(m_expression); });
   });
+
   if (!should_run_clause) return cxt.execution_store().last_exit_status();
 
   if (is_blank_clause(m_expression)) {
@@ -640,12 +682,15 @@ ArithmeticCommand::evaluate_impl(EvalContext &cxt,
   }
 
   bool is_nonzero;
+
   try {
     const SourceLocation body_base{source_location().position + 2, 0,
                                    source_location().source_name_index};
+
     if (m_cache == nullptr) {
       let const block = heap_allocator().alloc_array<arith_token_cache>(1);
-      m_cache         = new (block) arith_token_cache{};
+
+      m_cache = new (block) arith_token_cache{};
     }
 
     try {
@@ -661,14 +706,15 @@ ArithmeticCommand::evaluate_impl(EvalContext &cxt,
   } catch (const Error &e) {
     relocate_if_unlocated(e, source_location());
   }
+
   const i64 status = is_nonzero ? 0 : 1;
+
   cxt.publish_single_pipe_status(static_cast<i32>(status));
   SET_AND_RETURN_EXIT_STATUS(cxt, status);
 }
 
 fn
-ArithmeticCommand::analyze(AnalysisContext &actx,
-                           bool is_unconditional) const throws -> void
+ArithmeticCommand::analyze(AnalysisContext &actx, bool is_unconditional) const throws -> void
 {
   analyze_region_substitutions(
       actx, source_location(), source_location().position,
@@ -692,8 +738,7 @@ ArithmeticCommand::analyze(AnalysisContext &actx,
 }
 
 fn
-SelectLoop::analyze(AnalysisContext &actx, bool is_unconditional) const throws
-    -> void
+SelectLoop::analyze(AnalysisContext &actx, bool is_unconditional) const throws -> void
 {
   ASSERT(m_body != nullptr);
 
@@ -705,6 +750,7 @@ SelectLoop::analyze(AnalysisContext &actx, bool is_unconditional) const throws
     if (t->kind() != Token::Kind::Word) continue;
 
     let const &word = static_cast<const tokens::WordToken *>(t)->word();
+
     check_posix_word_portability(actx, word, t->source_location());
 
     for (let const &segment : word.segments) {
@@ -717,6 +763,7 @@ SelectLoop::analyze(AnalysisContext &actx, bool is_unconditional) const throws
   let const is_conditional = !is_unconditional ||
                              actx.effects.has_seen_runtime_definer ||
                              (m_has_in_clause && m_words.is_empty());
+
   actx.note_variable_occurrence(m_variable_name, m_variable_location,
                                 variable_occurrence_kind::Assignment,
                                 is_conditional);
@@ -760,7 +807,8 @@ CStyleForLoop::get_clause_cache(arith_token_cache *&slot) throws
 {
   if (slot == nullptr) {
     let const block = heap_allocator().alloc_array<arith_token_cache>(1);
-    slot            = new (block) arith_token_cache{};
+
+    slot = new (block) arith_token_cache{};
   }
 
   return *slot;
@@ -779,6 +827,7 @@ CStyleForLoop::to_ast_string(usize layer) const throws -> String
   let const pad = indent_for_layer(layer);
   let       label =
       to_string() + " \"" + m_init + ";" + m_condition + ";" + m_step + "\"";
+
   append_ast_execution_flags(label);
 
   return pad + "[" + label + "]\n" + pad + EXPRESSION_AST_INDENT +
@@ -786,14 +835,14 @@ CStyleForLoop::to_ast_string(usize layer) const throws -> String
 }
 
 fn
-CStyleForLoop::evaluate_impl(EvalContext &cxt,
-                             root_evaluation_mode) const throws -> status_result
+CStyleForLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> status_result
 {
   ASSERT(m_body != nullptr);
 
   cxt.execution_store().terminal_exec_allowed() = false;
 
   let const should_skip_condition_commands = !folded_commands_are_observed(cxt);
+
   if (is_fully_eliminated() && should_skip_condition_commands) {
     LOG(Debug, "running the fully eliminated c-style for as a no-op");
     cxt.publish_single_pipe_status(0);
@@ -830,6 +879,7 @@ CStyleForLoop::evaluate_impl(EvalContext &cxt,
             clause_without_leading_blanks(m_init));
       });
     });
+
     if (!should_run_init) return {cxt.execution_store().last_exit_status()};
 
     cxt.evaluate_arithmetic_nonzero(m_init, nullptr,
@@ -851,6 +901,7 @@ CStyleForLoop::evaluate_impl(EvalContext &cxt,
                 clause_without_leading_blanks(m_condition));
           });
         });
+
     if (!should_run_condition) return false;
 
     let &cache = get_clause_cache(m_condition_cache);
@@ -888,9 +939,11 @@ CStyleForLoop::evaluate_impl(EvalContext &cxt,
               clause_without_leading_blanks(m_step));
         });
       });
+
       if (!should_run_step) break;
 
       let &cache = get_clause_cache(m_step_cache);
+
       cxt.evaluate_arithmetic_cached_clause_nonzero(
           m_step, cache.tokens, cache.is_tokenized, cache.is_simple);
     }
@@ -908,8 +961,7 @@ CStyleForLoop::evaluate_impl(EvalContext &cxt,
 }
 
 fn
-CStyleForLoop::analyze(AnalysisContext &actx,
-                       bool             is_unconditional) const throws -> void
+CStyleForLoop::analyze(AnalysisContext &actx, bool is_unconditional) const throws -> void
 {
   ASSERT(m_body != nullptr);
 
@@ -975,8 +1027,7 @@ CStyleForLoop::init_clause() const wontthrow -> StringView
 
 fn
 CStyleForLoop::set_folded_condition(i64  compatibility_value,
-                                    bool is_exact_nonzero) const wontthrow
-    -> void
+                                    bool is_exact_nonzero) const wontthrow -> void
 {
   m_folded_condition                  = compatibility_value;
   m_is_exact_folded_condition_nonzero = is_exact_nonzero;
@@ -1010,6 +1061,7 @@ fn
 Subshell::error_report_location() const wontthrow -> SourceLocation
 {
   let const location = source_location();
+
   if (source_end_position() <= location.position) return location;
 
   return SourceLocation{source_end_position() - 1, 1,
@@ -1023,17 +1075,22 @@ Subshell::collapsed_body() const wontthrow -> const Expression *
 
   while (current != nullptr) {
     let const *list = current->as_compound_list();
+
     if (list == nullptr) break;
 
     let const *sole = list->single_unconditional_command();
+
     if (sole == nullptr) break;
 
     let const *inner = sole->as_subshell();
+
     if (inner == nullptr) {
       let const *wrapper = sole->as_redirected_command();
+
       if (wrapper == nullptr) break;
 
       let const *wrapped = wrapper->child();
+
       if (wrapped == nullptr || wrapped->as_subshell() == nullptr) {
         break;
       }
@@ -1051,6 +1108,7 @@ cold fn
 Subshell::to_string() const throws -> String
 {
   let result = String{"Subshell"};
+
   append_ast_execution_flags(result);
 
   return result;
@@ -1070,11 +1128,13 @@ Subshell::to_ast_string(usize layer) const throws -> String
 static fn
 evaluate_subshell_in_process(const Expression *body,
                              EvalContext      &cxt,
-                             bool should_allow_terminal_exec) throws -> i64
+                             bool              should_allow_terminal_exec) throws
+    -> i64
 {
   ASSERT(body != nullptr);
 
-  let const saved_loop_depth         = cxt.execution_store().loop_depth();
+  let const saved_loop_depth = cxt.execution_store().loop_depth();
+
   cxt.execution_store().loop_depth() = 0;
   defer { cxt.execution_store().loop_depth() = saved_loop_depth; };
 
@@ -1085,9 +1145,13 @@ evaluate_subshell_in_process(const Expression *body,
 
   let       snapshot      = cxt.snapshot_state();
   let const subshell_mark = cxt.expansion_store().scratch_arena().mark();
-  defer { cxt.expansion_store().scratch_arena().release(subshell_mark); };
+  defer {
+    cxt.expansion_store().scratch_arena().release(subshell_mark);
+  };
+
   bool did_enter_subshell = false;
   i64  ret                = 0;
+
   try {
     cxt.execution_store().terminal_exec_allowed() = false;
     cxt.enter_subshell();
@@ -1098,12 +1162,15 @@ evaluate_subshell_in_process(const Expression *body,
     cxt.reset_inherited_signal_traps();
     if (should_allow_terminal_exec)
       cxt.execution_store().allow_terminal_exec_at_current_depth();
+
     let const do_confine_error =
-        [&](ErrorBase &error, Maybe<SourceLocation> location) throws -> void {
+        [&](ErrorBase            &error,
+            Maybe<SourceLocation> location) throws -> void {
       if (!error.is_script_fatal() && !error.is_line_discarding()) {
         unused(cxt.run_subshell_exit_trap());
         throw;
       }
+
       LOG(Debug, "the subshell confined a script-fatal error: %s",
           error.message().c_str());
       if (!error.was_rendered()) {
@@ -1112,13 +1179,16 @@ evaluate_subshell_in_process(const Expression *body,
         if (location.has_value() && error.is_line_discarding()) {
           cxt.print_source_backtrace(*location);
         }
+
         error.set_rendered();
       }
+
       ret =
           cxt.runtime_state().is_bash_compatible() ? error.command_status() : 2;
       cxt.execution_store().set_last_exit_status(static_cast<i32>(ret));
       cxt.control_flow_store().clear();
     };
+
     try {
       ret = body->evaluate(cxt);
     } catch (ErrorWithLocation &error) {
@@ -1129,6 +1199,7 @@ evaluate_subshell_in_process(const Expression *body,
 
     if (cxt.control_flow_store().has_pending()) {
       let const kind = cxt.control_flow_store().pending().kind;
+
       if (kind == control_flow::Kind::Exit ||
           kind == control_flow::Kind::Return)
       {
@@ -1152,6 +1223,7 @@ evaluate_subshell_in_process(const Expression *body,
     cxt.note_subshell_child_exit();
     throw;
   }
+
   cxt.leave_subshell();
   cxt.restore_state(steal(snapshot));
   cxt.note_subshell_child_exit();
@@ -1159,8 +1231,7 @@ evaluate_subshell_in_process(const Expression *body,
 }
 
 fn
-Subshell::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws
-    -> status_result
+Subshell::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> status_result
 {
   ASSERT(m_body != nullptr);
 
@@ -1176,8 +1247,10 @@ Subshell::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws
 
     return end_position;
   }();
+
   let const is_terminal_in_forked_child =
       cxt.in_subshell() && cxt.can_replace_process();
+
   let const should_elide_fork = [&] {
     let const should_elide =
         cxt.execution_store().should_elide_pending_subshell_fork();
@@ -1185,6 +1258,7 @@ Subshell::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws
 
     return should_elide || is_terminal_in_forked_child;
   }();
+
   let const end_position = pending_end_position != 0
                                ? static_cast<usize>(pending_end_position)
                                : source_end_position();
@@ -1197,11 +1271,13 @@ Subshell::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws
       redirected_body != nullptr && redirected_body->child() != nullptr &&
       redirected_body->child()->as_subshell() != nullptr;
 
-  let const do_run_body = [&](bool should_allow_terminal_exec) throws -> i64 {
+  let const do_run_body =
+      [&](bool should_allow_terminal_exec) throws -> i64 {
     if (should_elide_body_fork)
       cxt.execution_store().should_elide_pending_subshell_fork() = true;
 
     let frame = SubstitutionFrame{cxt};
+
     frame.push_source_frame(source_location(), "a subshell");
 
     try {
@@ -1213,6 +1289,7 @@ Subshell::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws
       }
 
       let const trace_location = error.location();
+
       show_message(
           error.to_string(cxt.source_store().current_source_view(), &cxt));
       cxt.print_source_backtrace(trace_location);
@@ -1228,6 +1305,7 @@ Subshell::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws
 
     let text =
         internal::subshell_command_text(cxt, source_location(), end_position);
+
     if (!text.is_empty())
       cxt.execution_store().set_current_command(steal(text));
   };
@@ -1241,6 +1319,7 @@ Subshell::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws
           : os::try_fork_compound_stage(os::fork_compound_stage_options{});
   if (!forked_child.has_value()) {
     i32 status = 1;
+
     try {
       status = static_cast<i32>(do_run_body(is_terminal_in_forked_child));
     } catch (const ErrorBase &error) {
@@ -1248,6 +1327,7 @@ Subshell::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws
         show_message(
             error.to_string(cxt.source_store().current_source_view(), &cxt));
       }
+
       if (cxt.runtime_state().is_posix_mode())
         status = static_cast<i32>(error.command_status());
     }
@@ -1258,8 +1338,10 @@ Subshell::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws
   }
 
   let const child = *forked_child;
+
   if (os::process_id_of(child) == 0) {
     i32 status = 1;
+
     try {
       status = static_cast<i32>(do_run_body(true));
     } catch (const ErrorBase &error) {
@@ -1267,17 +1349,20 @@ Subshell::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws
         show_message(
             error.to_string(cxt.source_store().current_source_view(), &cxt));
       }
+
       if (cxt.runtime_state().is_posix_mode())
         status = static_cast<i32>(error.command_status());
     } catch (...) {
       LOG(Debug, "the subshell child swallowed an unknown error");
     }
+
     koshka::flush();
     os::exit_process_immediately(status);
   }
 
   let       was_stopped = false;
   let const status      = os::wait_and_monitor_process(child, &was_stopped);
+
   unused(was_stopped);
 
   do_publish_subshell();
@@ -1291,6 +1376,7 @@ subshell_body_is_conditional_expression(StringView body) wontthrow -> bool
   if (body.length < 5) return false;
 
   let const closer = body.substring_of_length(body.length - 2, 2);
+
   if (body.starts_with(StringView{"[[ "})) return closer == StringView{"]]"};
   if (body.starts_with(StringView{"(( "})) return closer == StringView{"))"};
 
@@ -1301,21 +1387,23 @@ cold static fn
 subshell_body_is_bracket_test(const Expression *body) throws -> bool
 {
   let const compound_list = body->as_compound_list();
+
   if (compound_list == nullptr) return false;
 
   return compound_list->has_single_test_command();
 }
 
 fn
-Subshell::analyze(AnalysisContext &actx, bool is_unconditional) const throws
-    -> void
+Subshell::analyze(AnalysisContext &actx, bool is_unconditional) const throws -> void
 {
   ASSERT(m_body != nullptr);
 
   let const was_analyzing_condition = actx.walk.is_analyzing_condition;
-  actx.walk.is_analyzing_condition  = false;
+
+  actx.walk.is_analyzing_condition = false;
 
   let const end_position = source_end_position();
+
   if (end_position > source_location().position + 1 &&
       end_position <= actx.source.length)
   {
@@ -1337,6 +1425,7 @@ Subshell::analyze(AnalysisContext &actx, bool is_unconditional) const throws
     }
 
     let is_unary_test_prefix = false;
+
     if (body.length >= 3 && body[0] == '-') {
       switch (body[1]) {
       case 'd':
@@ -1378,6 +1467,7 @@ Subshell::analyze(AnalysisContext &actx, bool is_unconditional) const throws
 
   {
     let scope = AnalysisScopeGuard{actx, analysis_scope_mode::Subshell};
+
     actx.apply_scope_definitions(m_analysis_scope_definitions);
     m_body->analyze(actx, is_unconditional);
   }
@@ -1410,6 +1500,7 @@ cold fn
 FunctionDefinition::to_string() const throws -> String
 {
   let result = String{"FunctionDefinition \""};
+
   result += StringView{m_name};
   result += "\"";
   append_ast_execution_flags(result);
@@ -1429,13 +1520,12 @@ FunctionDefinition::to_ast_string(usize layer) const throws -> String
 }
 
 fn
-FunctionDefinition::evaluate_impl(EvalContext &cxt,
-                                  root_evaluation_mode) const throws
-    -> status_result
+FunctionDefinition::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> status_result
 {
   ASSERT(m_body != nullptr);
 
   let body_end_position = m_body->source_end_position();
+
   if (const RedirectedCommand *redirected = m_body->as_redirected_command();
       redirected != nullptr)
   {
@@ -1447,6 +1537,7 @@ FunctionDefinition::evaluate_impl(EvalContext &cxt,
   }
 
   let definition_text = String{cxt.scratch_allocator()};
+
   if (const String *source = cxt.source_store().current_source();
       source != nullptr &&
       body_end_position > m_body->source_location().position &&
@@ -1458,6 +1549,7 @@ FunctionDefinition::evaluate_impl(EvalContext &cxt,
         m_body->source_location().position,
         body_end_position - m_body->source_location().position));
   }
+
   LOG(Info, "registering the function '%s'%s", m_name.c_str(),
       definition_text.is_empty() ? " without recorded definition text" : "");
   cxt.register_function(m_name, m_body_storage, definition_text.view(),
@@ -1467,8 +1559,7 @@ FunctionDefinition::evaluate_impl(EvalContext &cxt,
 }
 
 fn
-FunctionDefinition::analyze(AnalysisContext &actx,
-                            bool is_unconditional) const throws -> void
+FunctionDefinition::analyze(AnalysisContext &actx, bool is_unconditional) const throws -> void
 {
   ASSERT(m_body != nullptr);
 
@@ -1476,8 +1567,10 @@ FunctionDefinition::analyze(AnalysisContext &actx,
   actx.add_defined_function(m_name);
 
   let const function_definition_index = actx.functions.records.count();
+
   {
     let scope = AnalysisScopeGuard{actx, analysis_scope_mode::Function};
+
     actx.apply_scope_definitions(m_analysis_scope_definitions);
     actx.active_function_definition_index = function_definition_index;
     actx.functions.records.push(function_definition_record{
@@ -1508,24 +1601,29 @@ FunctionDefinition::analyze(AnalysisContext &actx,
 
     let &function_definition =
         actx.functions.records[function_definition_index];
+
     if (function_definition.recursive_call_count > 0) {
       let const diagnostic =
           function_definition.recursive_call_count >= 2 &&
                   function_definition.async_recursive_call_count >= 2
               ? diagnostic_id::fork_bomb
               : diagnostic_id::sc2264;
+
       actx.report_diagnostic(diagnostic,
                              function_definition.first_recursive_call_location,
                              {m_name.view()}, source_location());
     }
+
     function_definition.occurrence_end =
         actx.symbol_records != nullptr
             ? actx.symbol_records->variable_occurrences.count()
             : 0;
     function_definition.exit_states = actx.occurrences.assigned.snapshot();
     function_definition.is_analysis_complete = true;
+
     let const previous_definition_index =
         actx.functions.latest_indices.find(m_name.view());
+
     if (previous_definition_index.has_value()) {
       function_definition.previous_definition_index =
           *previous_definition_index.value();
@@ -1549,6 +1647,7 @@ cold fn
 RedirectedCommand::to_string() const throws -> String
 {
   let result = String{"RedirectedCommand"};
+
   append_ast_execution_flags(result);
 
   return result;
@@ -1566,8 +1665,7 @@ RedirectedCommand::to_ast_string(usize layer) const throws -> String
 }
 
 fn
-RedirectedCommand::analyze(AnalysisContext &actx,
-                           bool is_unconditional) const throws -> void
+RedirectedCommand::analyze(AnalysisContext &actx, bool is_unconditional) const throws -> void
 {
   ASSERT(m_child != nullptr);
 
@@ -1575,6 +1673,7 @@ RedirectedCommand::analyze(AnalysisContext &actx,
     analyze_redirection_substitutions(actx, redirection, source_location(),
                                       is_unconditional);
   }
+
   m_child->analyze(actx, is_unconditional);
 
   if (m_redirections.is_empty()) return;
@@ -1614,9 +1713,7 @@ RedirectedCommand::redirections() const wontthrow
 }
 
 fn
-RedirectedCommand::evaluate_impl(EvalContext &cxt,
-                                 root_evaluation_mode) const throws
-    -> status_result
+RedirectedCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> status_result
 {
   if (is_async()) return {static_cast<i32>(evaluate_async(cxt)), 0};
 
@@ -1628,7 +1725,8 @@ RedirectedCommand::evaluate_impl(EvalContext &cxt,
 }
 
 fn
-RedirectedCommand::evaluate_async_body(EvalContext &cxt) const throws -> i64
+RedirectedCommand::evaluate_async_body(EvalContext &cxt) const throws
+    -> i64
 {
   try {
     return evaluate_redirected(cxt).status;
@@ -1658,16 +1756,15 @@ RedirectedCommand::evaluate_redirected(EvalContext &cxt) const throws
 
   let const own_redirection_substitution_mark =
       cxt.mark_process_substitutions();
-  defer
-  {
+  defer {
     cxt.cleanup_process_substitutions(own_redirection_substitution_mark);
   };
 
   cxt.execution_store().terminal_exec_allowed() = false;
 
   ArrayList<os::saved_descriptor> saved_descriptors{cxt.scratch_allocator()};
-  defer
-  {
+
+  defer {
     koshka::flush();
 
     for (usize i = saved_descriptors.count(); i > 0; i--)
@@ -1677,16 +1774,21 @@ RedirectedCommand::evaluate_redirected(EvalContext &cxt) const throws
   koshka::flush();
 
   Maybe<eval_state_snapshot> redirection_snapshot;
+
   if (m_child->as_subshell() != nullptr &&
       cxt.runtime_state().is_bash_compatible() &&
       redirections_can_change_state(m_redirections))
   {
     redirection_snapshot = snapshot_child_redirection_state(cxt);
   }
-  defer { discard_child_redirection_state(cxt, redirection_snapshot); };
+
+  defer {
+    discard_child_redirection_state(cxt, redirection_snapshot);
+  };
 
   for (let const &redir : m_redirections) {
     let r = resolve_redirection(redir, cxt, source_location());
+
     r.target_fd =
         allocate_redirection_descriptor(redir, r, cxt, source_location());
     switch (r.kind) {
@@ -1697,6 +1799,7 @@ RedirectedCommand::evaluate_redirected(EvalContext &cxt) const throws
             os::saved_descriptor{.shell_fd = r.target_fd, .was_open = false});
         break;
       }
+
       saved_descriptors.push(
           os::save_and_replace_descriptor(r.target_fd, r.opened_fd));
       os::close_fd(r.opened_fd);
@@ -1705,15 +1808,19 @@ RedirectedCommand::evaluate_redirected(EvalContext &cxt) const throws
     case redirection_outcome::BothStreams: {
       const os::saved_descriptor saved_out =
           os::save_and_replace_descriptor(1, r.opened_fd);
+
       saved_descriptors.push(saved_out);
+
       const os::saved_descriptor saved_err =
           os::save_and_replace_descriptor(2, r.opened_fd);
+
       saved_descriptors.push(saved_err);
       os::close_fd(r.opened_fd);
       if (!saved_out.is_dup2_ok || !saved_err.is_dup2_ok) {
         throw ErrorWithLocation{redir.target->source_location(),
                                 "Bad file descriptor"};
       }
+
       break;
     }
     case redirection_outcome::Duplicate: {
@@ -1727,15 +1834,18 @@ RedirectedCommand::evaluate_redirected(EvalContext &cxt) const throws
       let const source = os::descriptor_for_shell_fd(r.dup_from_fd);
       const os::saved_descriptor saved =
           os::save_and_replace_descriptor(r.target_fd, source);
+
       saved_descriptors.push(saved);
       if (!saved.is_dup2_ok) {
         let const location = redir.target != nullptr
                                  ? redir.target->source_location()
                                  : source_location();
+
         throw ErrorWithLocation{location,
                                 String::from(r.dup_from_fd, heap_allocator()) +
                                     ": Bad file descriptor"};
       }
+
       break;
     }
     }
@@ -1755,10 +1865,12 @@ RedirectedCommand::evaluate_redirected(EvalContext &cxt) const throws
   } catch (ErrorWithLocationAndDetails &error) {
     if (!error.was_rendered()) {
       let const source_text = cxt.source_store().current_source_view();
+
       show_message(error.to_string(source_text, &cxt));
       show_message(error.details_to_string(source_text, &cxt));
       error.set_rendered();
     }
+
     throw;
   } catch (ErrorWithLocation &error) {
     if (!error.was_rendered()) {
@@ -1766,6 +1878,7 @@ RedirectedCommand::evaluate_redirected(EvalContext &cxt) const throws
           error.to_string(cxt.source_store().current_source_view(), &cxt));
       error.set_rendered();
     }
+
     throw;
   }
 }

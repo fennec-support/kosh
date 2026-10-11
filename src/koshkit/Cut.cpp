@@ -42,6 +42,7 @@ Cut::execute(const ExecContext               &ec,
   let const selection_count = static_cast<usize>(FLAG_CUT_BYTES.is_set()) +
                               static_cast<usize>(FLAG_CUT_CHARACTERS.is_set()) +
                               static_cast<usize>(FLAG_CUT_FIELDS.is_set());
+
   if (selection_count != 1 ||
       (FLAG_CUT_DELIMITER.is_set() && !FLAG_CUT_FIELDS.is_set()) ||
       (FLAG_CUT_NO_SPLIT.is_enabled() && !FLAG_CUT_BYTES.is_set()))
@@ -58,6 +59,7 @@ Cut::execute(const ExecContext               &ec,
                                      : FLAG_CUT_FIELDS.value_location();
   let const ranges =
       utils::parse_text_position_ranges(list, cxt.scratch_allocator());
+
   if (!ranges.has_value()) {
     KOSHKIT_REPORT_ERROR_AT(
         list_location,
@@ -69,6 +71,7 @@ Cut::execute(const ExecContext               &ec,
   }
 
   char delimiter = '\t';
+
   if (FLAG_CUT_DELIMITER.is_set()) {
     if (FLAG_CUT_DELIMITER.value().length != 1) {
       KOSHKIT_REPORT_ERROR_AT(FLAG_CUT_DELIMITER.value_location(),
@@ -90,6 +93,7 @@ Cut::execute(const ExecContext               &ec,
   let       reader = SourceBatchReader{ec, sources, cxt.scratch_allocator()};
   let chunks = ArrayList<SourceBatchReader::Chunk>{cxt.scratch_allocator()};
   i32 status = 0;
+
   let const do_process_line = [&](StringView line_view) throws -> void {
     if (!is_field_mode) {
       if (is_byte_mode) {
@@ -98,12 +102,14 @@ Cut::execute(const ExecContext               &ec,
 
           while (byte_position < line_view.length) {
             let const decoded = utils::decode_utf8(line_view, byte_position, 0);
+
             if (utils::text_position_is_selected(byte_position + decoded.length,
                                                  *ranges))
             {
               output +=
                   line_view.substring_of_length(byte_position, decoded.length);
             }
+
             byte_position += decoded.length;
           }
         } else {
@@ -125,9 +131,11 @@ Cut::execute(const ExecContext               &ec,
           character_position++;
         }
       }
+
       output += '\n';
     } else {
       let const first_delimiter = line_view.find_character(delimiter);
+
       if (!first_delimiter.has_value()) {
         if (!should_suppress_undelimited) {
           output += line_view;
@@ -168,9 +176,9 @@ Cut::execute(const ExecContext               &ec,
     }
   };
 
-  loop
-  {
+  loop {
     let const read_result = reader.read_next_ordered(chunks);
+
     if (read_result == SourceBatchReader::ReadResult::Complete) break;
     if (read_result == SourceBatchReader::ReadResult::Interrupted) return 130;
 
@@ -199,6 +207,7 @@ Cut::execute(const ExecContext               &ec,
       if (chunk.completion != source_completion_state::Complete) continue;
 
       let const source = sources[chunk.source_index];
+
       if (chunk.error_number != 0) {
         line.clear();
         os::set_last_system_error(chunk.error_number);

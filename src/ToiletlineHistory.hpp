@@ -28,6 +28,7 @@ inline constexpr usize HISTORY_RECORD_MAX_DECODED_BYTE_COUNT =
 fn
 write_history_file_atomically(const koshka::Path &path,
                               koshka::StringView  name_prefix,
-                              koshka::StringView  contents) throws -> bool;
+                              koshka::StringView  contents) throws
+    -> bool;
 
 } /* namespace toiletline */

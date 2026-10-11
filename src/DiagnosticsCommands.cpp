@@ -36,7 +36,7 @@ signal_name_is_unblockable(StringView bare) wontthrow -> bool
 fn
 check_trap_condition_operands(AnalysisContext                &actx,
                               const ArrayList<const Token *> &args,
-                              trap_condition_mode mode) throws -> void
+                              trap_condition_mode             mode) throws -> void
 {
   let const is_posix = mode == trap_condition_mode::Posix;
 
@@ -47,6 +47,7 @@ check_trap_condition_operands(AnalysisContext                &actx,
                             ->word()
                             .to_literal_string();
     let const view = literal.view();
+
     if (view.is_empty()) continue;
 
     if (view == "ERR") {
@@ -67,6 +68,7 @@ check_trap_condition_operands(AnalysisContext                &actx,
                              {view});
 
       let const name = os::signal_name_from_number(static_cast<i32>(number));
+
       if (name.has_value() && signal_name_is_unblockable(name->view())) {
         actx.report_diagnostic(diagnostic_id::sc2173,
                                args[i]->source_location(), {view});
@@ -80,6 +82,7 @@ check_trap_condition_operands(AnalysisContext                &actx,
 
     for (usize position = 0; position < view.length; position++) {
       let const byte = view[position];
+
       if (byte >= 'a' && byte <= 'z') {
         has_lowercase = true;
         uppercase.push(static_cast<char>(byte - 'a' + 'A'));
@@ -136,6 +139,7 @@ check_command_name_lints(AnalysisContext          &actx,
             !reference_has_quoted_alternate_word(segment.text.view()))
         {
           let const operand_location = args[i]->source_location();
+
           actx.report_diagnostic(
               diagnostic_id::sc2086_test,
               expansion_location_with_sigil(
@@ -169,10 +173,12 @@ check_command_name_lints(AnalysisContext          &actx,
       static constexpr PackedStringKey ECHO_FLAG_KEYS[] = {
           SSK("-e"), SSK("-n"), SSK("-E"), SSK("-ne"), SSK("-en")};
       static constexpr StaticStringSet ECHO_FLAGS{ECHO_FLAG_KEYS};
+
       if (ECHO_FLAGS.contains(view))
         actx.report_diagnostic(diagnostic_id::sc3037,
                                args[1]->source_location(), {view});
     }
+
     break;
 
   case command_name_id::Declare:
@@ -188,6 +194,7 @@ check_command_name_lints(AnalysisContext          &actx,
     } else {
       actx.report_diagnostic(diagnostic_id::typeset_spelling, location);
     }
+
     break;
 
   case command_name_id::Source:
@@ -200,6 +207,7 @@ check_command_name_lints(AnalysisContext          &actx,
     {
       actx.report_diagnostic(diagnostic_id::sc2168, location);
     }
+
     break;
 
   case command_name_id::Mapfile:
@@ -218,10 +226,12 @@ check_command_name_lints(AnalysisContext          &actx,
                               ->word()
                               .to_literal_string();
       let const view = literal.view();
+
       if (should_skip_option_operand) {
         should_skip_option_operand = false;
         continue;
       }
+
       if (view.length == 2 && view[0] == '-') {
         switch (view[1]) {
         case 'C':
@@ -235,9 +245,11 @@ check_command_name_lints(AnalysisContext          &actx,
         default: continue;
         }
       }
+
       if (view.length >= 2 && view[0] == '-') {
         continue;
       }
+
       if (!operand_target_name(view).is_empty()) filled_name_index = i;
     }
 
@@ -250,6 +262,7 @@ check_command_name_lints(AnalysisContext          &actx,
         static_cast<const tokens::WordToken *>(args[filled_name_index])
             ->word()
             .to_literal_string();
+
     actx.add_array_valued_name(operand_target_name(filled.view()));
     break;
   }
@@ -263,6 +276,7 @@ check_command_name_lints(AnalysisContext          &actx,
         static_cast<const tokens::WordToken *>(args[1])->word();
     let const &name_word =
         static_cast<const tokens::WordToken *>(args[2])->word();
+
     if (optstring_word.segments.count() != 1) break;
     if (name_word.segments.count() != 1) break;
     if (!word_is_fully_literal(optstring_word)) break;
@@ -285,14 +299,17 @@ check_command_name_lints(AnalysisContext          &actx,
       actx.report_diagnostic(diagnostic_id::sc2106, location,
                              {input.command_literal});
     }
+
     break;
 
   case command_name_id::Set:
     if (args.count() >= 2) {
       let const literal = args[1]->raw_string();
       let const view    = literal.view();
+
       if (!view.is_empty() && view[0] != '-' && view[0] != '+') {
         let const target = operand_target_name(view);
+
         if (!target.is_empty() && target.length < view.length &&
             view[target.length] == '=')
         {
@@ -301,14 +318,17 @@ check_command_name_lints(AnalysisContext          &actx,
         }
       }
     }
+
     break;
 
   case command_name_id::Dot:
     if (is_posix && args.count() > 2) {
       let const operand = args[2]->raw_string();
+
       actx.report_diagnostic(diagnostic_id::sc2240, args[2]->source_location(),
                              {operand.view()});
     }
+
     break;
 
   case command_name_id::Which:
@@ -346,6 +366,7 @@ check_command_name_lints(AnalysisContext          &actx,
         actx.report_diagnostic(diagnostic_id::sc2064,
                                args[1]->source_location());
     }
+
     check_trap_condition_operands(actx, args,
                                   is_posix ? trap_condition_mode::Posix
                                            : trap_condition_mode::Default);
@@ -357,11 +378,13 @@ check_command_name_lints(AnalysisContext          &actx,
                            ->word()
                            .to_literal_string();
       let const view = flag.view();
+
       if (view.length >= 2 && view[0] == '-' && view != "--") {
         actx.report_diagnostic(diagnostic_id::sc3038,
                                args[1]->source_location(), {view});
       }
     }
+
     break;
 
   case command_name_id::Let:
@@ -389,14 +412,17 @@ check_command_name_lints(AnalysisContext          &actx,
         format_index = i;
         break;
       }
+
       let const literal = static_cast<const tokens::WordToken *>(args[i])
                               ->word()
                               .to_literal_string();
       let const view = literal.view();
+
       if (view == "--") {
         if (i + 1 < args.count()) format_index = i + 1;
         break;
       }
+
       if (!(view.length >= 1 && view[0] == '-')) {
         format_index = i;
         break;
@@ -421,6 +447,7 @@ check_command_name_lints(AnalysisContext          &actx,
         actx.report_diagnostic(diagnostic_id::sc2059,
                                args[format_index]->source_location());
     }
+
     break;
   }
 
@@ -430,7 +457,8 @@ check_command_name_lints(AnalysisContext          &actx,
 
 fn
 check_command_value_lints(AnalysisContext          &actx,
-                          const command_lint_input &input) throws -> void
+                          const command_lint_input &input) throws
+    -> void
 {
   if (input.is_command_shadowed) return;
 
@@ -444,6 +472,7 @@ check_command_value_lints(AnalysisContext          &actx,
       if (args[i]->kind() == Token::Kind::Assignment) {
         let const *assignment =
             static_cast<const tokens::Assignment *>(args[i]);
+
         if (has_array_declaration)
           actx.add_array_valued_name(assignment->key().view());
 
@@ -485,6 +514,7 @@ check_command_value_lints(AnalysisContext          &actx,
       if (!has_array_declaration) continue;
 
       let const target = operand_target_name(view);
+
       if (!target.is_empty()) actx.add_array_valued_name(target);
     }
   }
@@ -496,6 +526,7 @@ check_command_value_lints(AnalysisContext          &actx,
     for (usize i = 1; i < args.count(); i++) {
       if (args[i]->kind() != Token::Kind::Word) continue;
       let const &word = static_cast<const tokens::WordToken *>(args[i])->word();
+
       if (word.segments.count() >= 2 &&
           word.segments[0].kind == WordSegment::Kind::VariableReference &&
           !word.segments[0].text.view().find_character(':').has_value() &&
@@ -505,8 +536,10 @@ check_command_value_lints(AnalysisContext          &actx,
                                args[i]->source_location(),
                                {word.segments[0].text.view()});
       }
+
       if (word_is_fully_literal(word)) {
         let const literal = word.to_literal_string();
+
         if (is_system_directory(literal.view()))
           actx.report_diagnostic(diagnostic_id::sc2114,
                                  args[i]->source_location(), {literal.view()});
@@ -525,14 +558,17 @@ check_command_value_lints(AnalysisContext          &actx,
       let const &word = static_cast<const tokens::WordToken *>(args[i])->word();
       let const  literal = word.to_literal_string();
       let const  view    = literal.view();
+
       if (view.length >= 1 && view[0] == '-') {
         if (view.find_character('F').has_value() ||
             view.starts_with(StringView{"--fixed-strings"}))
         {
           is_fixed_string_mode = true;
         }
+
         continue;
       }
+
       if (word.segments.count() == 1 &&
           word.segments[0].kind == WordSegment::Kind::UnquotedText &&
           word.segments[0].has_glob_metacharacter())
@@ -546,6 +582,7 @@ check_command_value_lints(AnalysisContext          &actx,
         actx.report_diagnostic(diagnostic_id::sc2022,
                                args[i]->source_location(), {view});
       }
+
       break;
     }
 
@@ -556,6 +593,7 @@ check_command_value_lints(AnalysisContext          &actx,
     if (args_have_short_flag(args, 'p') && args_have_short_flag(args, 'm')) {
       actx.report_diagnostic(diagnostic_id::sc2174, input.command_location());
     }
+
     break;
 
   case command_name_id::Exit:
@@ -571,14 +609,18 @@ check_command_value_lints(AnalysisContext          &actx,
     if (args.count() >= 2 && args[1]->kind() == Token::Kind::Word) {
       let const &operand =
           static_cast<const tokens::WordToken *>(args[1])->word();
+
       if (word_is_fully_literal(operand)) {
         let const literal     = operand.to_literal_string();
         let const view        = literal.view();
         let       is_in_range = view_is_integer_literal(view) && view[0] != '-';
+
         if (is_in_range) {
           let const parsed_code = view.to<i64>();
+
           is_in_range = !parsed_code.is_error() && parsed_code.value() <= 255;
         }
+
         if (!is_in_range) {
           actx.report_diagnostic(diagnostic_id::sc2242,
                                  args[1]->source_location(),
@@ -592,6 +634,7 @@ check_command_value_lints(AnalysisContext          &actx,
                                args[1]->source_location());
       }
     }
+
     break;
   }
 
@@ -599,13 +642,16 @@ check_command_value_lints(AnalysisContext          &actx,
   case command_name_id::Ln:
   case command_name_id::Mv: {
     let const operand = single_literal_file_operand(args);
+
     if (!operand.has_value()) break;
 
     let missing_destination = diagnostic_id::sc2224;
+
     switch (input.command_id()) {
     case command_name_id::Cp:
       missing_destination = diagnostic_id::sc2225;
       break;
+
     case command_name_id::Ln:
       missing_destination = diagnostic_id::sc2226;
       break;
@@ -628,6 +674,7 @@ check_command_value_lints(AnalysisContext          &actx,
                               ->word()
                               .to_literal_string();
       let const view = literal.view();
+
       if (!view.is_empty() && view[0] == '-') {
         continue;
       }
@@ -636,6 +683,7 @@ check_command_value_lints(AnalysisContext          &actx,
         actx.report_diagnostic(diagnostic_id::sc2033,
                                args[i]->source_location(), {view});
       }
+
       break;
     }
 

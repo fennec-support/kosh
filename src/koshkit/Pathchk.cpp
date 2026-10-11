@@ -42,12 +42,12 @@ fn
 Pathchk::execute(const ExecContext               &ec,
                  EvalContext                     &cxt,
                  const ArrayList<String>         &args,
-                 const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+                 const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (operands.is_empty()) return report_usage_error(ec, cxt, args[0].view());
+
   let const should_check_portable = FLAG_PATHCHK_PORTABLE.is_enabled();
   let const should_check_hyphen   = FLAG_PATHCHK_LEADING_HYPHEN.is_enabled();
   i32       status                = 0;
@@ -56,18 +56,22 @@ Pathchk::execute(const ExecContext               &ec,
     let const path       = operand.view();
     i64       path_limit = 256;
     i64       name_limit = 14;
+
     if (!should_check_portable) {
       let const configuration_path = !path.is_empty() && path[0] == '/'
                                          ? StringView{"/"}
                                          : StringView{"."};
-      path_limit                   = os::path_configuration(configuration_path,
-                                                            os::path_configuration_key::PathMax)
+
+      path_limit = os::path_configuration(configuration_path,
+                                          os::path_configuration_key::PathMax)
                        .value_or(4096);
       name_limit = os::path_configuration(configuration_path,
                                           os::path_configuration_key::NameMax)
                        .value_or(255);
     }
+
     String reason{cxt.scratch_allocator()};
+
     if (path.is_empty() && should_check_hyphen) {
       reason = "empty pathname";
     } else if (path_limit > 0 && path.length >= static_cast<usize>(path_limit))
@@ -79,23 +83,28 @@ Pathchk::execute(const ExecContext               &ec,
       while (position < path.length) {
         let const component        = Path::next_component(path, position);
         let       component_length = component.text.length;
+
         if (!should_check_portable) {
           let const native_length = os::path_component_length(component.text);
+
           if (native_length.has_value()) {
             component_length = *native_length;
           }
         }
+
         if (name_limit > 0 && component_length > static_cast<usize>(name_limit))
         {
           reason = "component too long";
           break;
         }
+
         if (should_check_hyphen && !component.text.is_empty() &&
             component.text[0] == '-')
         {
           reason = "a component begins with '-'";
           break;
         }
+
         if (should_check_portable) {
           for (usize byte_position = 0; byte_position < component.text.length;
                byte_position++)
@@ -106,6 +115,7 @@ Pathchk::execute(const ExecContext               &ec,
             }
           }
         }
+
         if (!reason.is_empty()) {
           break;
         }

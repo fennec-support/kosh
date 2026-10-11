@@ -28,17 +28,20 @@ report_break_out_of_range(const ExecContext &ec,
                           StringView         count) throws -> void
 {
   let message = String{cxt.scratch_allocator()};
+
   message += "break count '";
   message.append(count);
   message += "' is out of range";
 
   const ErrorWithLocation located{ec.arg_location_at(1), message.view()};
+
   if (const String *source = cxt.source_store().current_source();
       source != nullptr)
   {
     show_message(located.to_string(source->view(), &cxt));
   } else {
     let fallback = String{cxt.scratch_allocator()};
+
     fallback.append(message.view());
     fallback += "\n";
     print_error(fallback.view());
@@ -51,6 +54,7 @@ Break::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   ASSERT(!ec.args().is_empty());
 
   let const is_posix_mode = cxt.runtime_state().is_posix_mode();
+
   if (cxt.execution_store().loop_depth() == 0 && !is_posix_mode) {
     LOG(All, "break outside a loop does nothing");
     report_loop_control_without_loop(ec, cxt);
@@ -59,19 +63,24 @@ Break::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   }
 
   i64 level = 1;
+
   if (ec.args().count() > 1) {
     let const parsed_level = ec.args()[1].to<i64>();
+
     if (parsed_level.is_error()) {
       let message = String{cxt.scratch_allocator()};
+
       message += "Unable to break because '";
       message.append(ec.args()[1].view());
       message += "' is not a valid integer";
 
       ErrorWithLocation located{ec.arg_location_at(1), message.view()};
+
       located.set_script_fatal();
       located.set_command_status(2);
       throw located;
     }
+
     level = parsed_level.value();
   }
 
@@ -79,6 +88,7 @@ Break::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     ErrorWithLocation located{
         ec.arg_location_at(2),
         StringView{"break accepts at most one loop count"}};
+
     located.set_script_fatal();
     located.set_command_status(1);
     throw located;
@@ -88,6 +98,7 @@ Break::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     let error = make_error_for_arg(ec, 1,
                                    "Unable to break because '" + ec.args()[1] +
                                        "' is not a valid loop count");
+
     error.set_command_status(2);
     throw error;
   }

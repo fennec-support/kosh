@@ -42,33 +42,34 @@ fn
 Comm::execute(const ExecContext               &ec,
               EvalContext                     &cxt,
               const ArrayList<String>         &args,
-              const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+              const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (operands.count() != 2) return report_usage_error(ec, cxt, args[0].view());
 
   let const left_input = open_named_or_stdin(ec, operands[0].view());
+
   if (!left_input.has_value()) {
     KOSHKIT_REPORT_PATH_ERROR("read", operands[0]);
 
     return 2;
   }
-  defer
-  {
+
+  defer {
     if (left_input->mode == input_descriptor_mode::Owned)
       os::close_fd(left_input->descriptor);
   };
 
   let const right_input = open_named_or_stdin(ec, operands[1].view());
+
   if (!right_input.has_value()) {
     KOSHKIT_REPORT_PATH_ERROR("read", operands[1]);
 
     return 2;
   }
-  defer
-  {
+
+  defer {
     if (right_input->mode == input_descriptor_mode::Owned)
       os::close_fd(right_input->descriptor);
   };
@@ -84,14 +85,15 @@ Comm::execute(const ExecContext               &ec,
                                !FLAG_COMM_HIDE_COMMON.is_enabled()};
   let        output         = String{cxt.scratch_allocator()};
 
-  String    previous_lines[2]        = {String{cxt.scratch_allocator()},
-                                        String{cxt.scratch_allocator()}};
-  bool      has_previous_line[2]     = {false, false};
-  bool      was_disorder_reported[2] = {false, false};
-  bool      has_seen_unpairable_line = false;
-  let const do_advance = [&](usize side, utils::BufferedLineReader &reader,
-                             utils::BufferedLineReader::Result &result)
-                             throws -> void {
+  String previous_lines[2]        = {String{cxt.scratch_allocator()},
+                                     String{cxt.scratch_allocator()}};
+  bool   has_previous_line[2]     = {false, false};
+  bool   was_disorder_reported[2] = {false, false};
+  bool   has_seen_unpairable_line = false;
+
+  let const do_advance =
+      [&](usize side, utils::BufferedLineReader &reader,
+          utils::BufferedLineReader::Result &result) throws -> void {
     previous_lines[side].clear();
     previous_lines[side].append(reader.get_line());
     has_previous_line[side] = true;
@@ -111,8 +113,7 @@ Comm::execute(const ExecContext               &ec,
     was_disorder_reported[side] = true;
   };
 
-  loop
-  {
+  loop {
     if (left_result == utils::BufferedLineReader::Result::Error ||
         right_result == utils::BufferedLineReader::Result::Error)
     {
@@ -122,6 +123,7 @@ Comm::execute(const ExecContext               &ec,
 
       return 2;
     }
+
     if (left_result == utils::BufferedLineReader::Result::End &&
         right_result == utils::BufferedLineReader::Result::End)
     {
@@ -139,6 +141,7 @@ Comm::execute(const ExecContext               &ec,
     } else {
       let const left_line  = left_reader.get_line();
       let const right_line = right_reader.get_line();
+
       if (left_line == right_line) {
         append_comm_line(output, 2, left_line, should_show);
         do_advance(0, left_reader, left_result);

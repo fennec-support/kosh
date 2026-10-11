@@ -57,8 +57,8 @@ struct t__dump_state
 
 template <class StringT>
 fn
-t__append_dump_text(t__dump_state<StringT> &state, const char *text) throws
-    -> void
+t__append_dump_text(t__dump_state<StringT> &state,
+                    const char             *text) throws -> void
 {
   for (; *text != '\0'; text++) {
     if (state.is_at_line_start && *text != '\n') {
@@ -95,11 +95,13 @@ t__strprintf(t__dump_state<StringT> &state,
              Args &&...args) throws -> void
 {
   const int written = ::snprintf(nullptr, 0, format, args...);
+
   if (written < 0) return;
 
   const usize formatted_length = static_cast<usize>(written);
   let         allocator        = state.output.allocator();
   char *rendered = allocator.template alloc_array<char>(formatted_length + 1);
+
   defer { allocator.free_array(rendered, formatted_length + 1); };
 
   unused(::snprintf(rendered, formatted_length + 1, format, args...));
@@ -123,6 +125,7 @@ t__strprintf(t__dump_state<StringT> &state,
         if (!state.is_at_line_start) t__append_dump_text(state, "\n");
 
         const usize previous_indent = state.base_indent;
+
         state.base_indent += clang_indent + 2;
         __builtin_dump_struct(pointer, t__strprintf<StringT>, state);
         state.base_indent = previous_indent;
@@ -133,9 +136,11 @@ t__strprintf(t__dump_state<StringT> &state,
 
 template <class StringT, class T, class AllocatorT>
 fn
-t__string_from_struct(const T &value, AllocatorT allocator) throws -> StringT
+t__string_from_struct(const T &value, AllocatorT allocator) throws
+    -> StringT
 {
   let state = t__dump_state<StringT>{StringT{allocator}, 0, true};
+
   __builtin_dump_struct(&value, t__strprintf<StringT>, state);
 
   return static_cast<StringT &&>(state.output);
@@ -190,14 +195,13 @@ t__string_from_struct(const T &value, AllocatorT allocator) throws -> StringT
 #if !defined NDEBUG
 #define ASSERT(x, ...)                                                         \
   do {                                                                         \
-    if (!(x)) rarely                                                           \
-      {                                                                        \
-        TRACELN("'ASSERT(" #x ")' fail in %s().", __func__);                   \
-        if (!VA_ARE_EMPTY(__VA_ARGS__)) {                                      \
-          TRACELN("Details: " __VA_ARGS__);                                    \
-        }                                                                      \
-        TRAP();                                                                \
+    if (!(x)) rarely {                                                         \
+      TRACELN("'ASSERT(" #x ")' fail in %s().", __func__);                     \
+      if (!VA_ARE_EMPTY(__VA_ARGS__)) {                                        \
+        TRACELN("Details: " __VA_ARGS__);                                      \
       }                                                                        \
+      TRAP();                                                                  \
+    }                                                                          \
   } while (0)
 #else
 #define ASSERT(...)

@@ -77,8 +77,16 @@ dir=$(mktemp -d)
 : > "$dir/keep"
 echo "== rm -rf / is refused (count of the refusal):"
 "$BIN" -c "koshkit rm -rf --dry-run /" </dev/null 2>&1 | grep -c "dangerous to operate recursively on '/';"
-echo "== rm -rf // is refused (count):"
-"$BIN" -c "koshkit rm -rf --dry-run //" </dev/null 2>&1 | grep -c "on '//' (same as '/')"
+echo "== another spelling of the root is refused (count):"
+root_alias=//
+if [ "${OS-}" = Windows_NT ]; then
+  root_alias="$(pwd -W | cut -c1-2)/"
+fi
+"$BIN" -c "koshkit rm -rf --dry-run $root_alias" </dev/null 2>&1 |
+  grep -c "dangerous to operate recursively on '$root_alias'"
+echo "== a drive or root spelled with a trailing separator is refused (count):"
+"$BIN" -c "koshkit rm -rf --dry-run ///" </dev/null 2>&1 |
+  grep -c "dangerous to operate recursively on '///'"
 echo "== rm without -r reports a directory instead of refusing it:"
 "$BIN" -c "koshkit rm --dry-run /; echo status=\$?" </dev/null 2>&1 | grep -c -e "Is a directory" -e "status=1"
 echo "== a normal file is reported for removal under --dry-run, and survives:"
@@ -101,7 +109,8 @@ printf "n\\n" | "$BIN" -c "koshkit rm -rI --dry-run tree; echo status=\$?" 2>&1
 echo
 echo "== rm -i names the file type in its prompt:"
 printf "n\\n" | "$BIN" -c "koshkit rm -ri --dry-run tree; echo status=\$?" 2>&1 | tr "?" "\\n"
-printf "y\\nn\\ny\\n" | "$BIN" -c "koshkit rm -ri --dry-run single; echo status=\$?" 2>&1 | tr "?" "\\n"
+printf "y\\nn\\ny\\n" | "$BIN" -c "koshkit rm -ri --dry-run single; echo status=\$?" 2>&1 |
+  tr "?" "\\n" | tr '\\' '/'
 echo "== the last of -f and -i decides:"
 "$BIN" -c "koshkit rm -i -f --dry-run a" </dev/null 2>&1
 echo "== rm . without -r reports a directory:"

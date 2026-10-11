@@ -48,6 +48,7 @@ parse_touch_time(StringView text) throws -> Maybe<i64>
 {
   let main_length = text.length;
   i32 second      = 0;
+
   if (main_length >= 3 && text[main_length - 3] == '.') {
     if (!parse_touch_pair(text, main_length - 2, second)) return None;
 
@@ -60,13 +61,16 @@ parse_touch_time(StringView text) throws -> Maybe<i64>
 
   let const  now     = std::time(nullptr);
   let const *current = std::localtime(&now);
+
   if (current == nullptr) throw Error{"cannot read the current time"};
 
   struct tm value    = *current;
   usize     position = 0;
+
   if (main_length == 12) {
     i32 century;
     i32 year;
+
     if (!parse_touch_pair(text, position, century) ||
         !parse_touch_pair(text, position + 2, year))
     {
@@ -77,15 +81,18 @@ parse_touch_time(StringView text) throws -> Maybe<i64>
     position += 4;
   } else if (main_length == 10) {
     i32 year;
+
     if (!parse_touch_pair(text, position, year)) return None;
 
     value.tm_year = year >= 69 ? year : year + 100;
     position += 2;
   }
+
   i32 month;
   i32 day;
   i32 hour;
   i32 minute;
+
   if (!parse_touch_pair(text, position, month) ||
       !parse_touch_pair(text, position + 2, day) ||
       !parse_touch_pair(text, position + 4, hour) ||
@@ -100,13 +107,15 @@ parse_touch_time(StringView text) throws -> Maybe<i64>
     return None;
   }
 
-  value.tm_mon        = month - 1;
-  value.tm_mday       = day;
-  value.tm_hour       = hour;
-  value.tm_min        = minute;
-  value.tm_sec        = second;
-  value.tm_isdst      = -1;
+  value.tm_mon   = month - 1;
+  value.tm_mday  = day;
+  value.tm_hour  = hour;
+  value.tm_min   = minute;
+  value.tm_sec   = second;
+  value.tm_isdst = -1;
+
   let const timestamp = std::mktime(&value);
+
   if (timestamp == static_cast<time_t>(-1) || value.tm_mon != month - 1 ||
       value.tm_mday != day || value.tm_hour != hour || value.tm_min != minute ||
       value.tm_sec != second)
@@ -121,8 +130,7 @@ fn
 Touch::execute(const ExecContext               &ec,
                EvalContext                     &cxt,
                const ArrayList<String>         &args,
-               const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+               const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
@@ -132,6 +140,7 @@ Touch::execute(const ExecContext               &ec,
         FLAG_TOUCH_REFERENCE.position() > FLAG_TOUCH_TIME.position()
             ? FLAG_TOUCH_REFERENCE.value_location()
             : FLAG_TOUCH_TIME.value_location();
+
     KOSHKIT_REPORT_ERROR_AT(conflict_location,
                             "-r and -t cannot be used together");
 
@@ -139,6 +148,7 @@ Touch::execute(const ExecContext               &ec,
   }
 
   os::file_status reference_status{};
+
   if (FLAG_TOUCH_REFERENCE.is_set() &&
       !os::stat_path_following(FLAG_TOUCH_REFERENCE.value(), reference_status))
   {
@@ -149,6 +159,7 @@ Touch::execute(const ExecContext               &ec,
   }
 
   Maybe<i64> requested_time;
+
   if (FLAG_TOUCH_TIME.is_set()) {
     requested_time = parse_touch_time(FLAG_TOUCH_TIME.value());
     if (!requested_time.has_value()) {
@@ -175,6 +186,7 @@ Touch::execute(const ExecContext               &ec,
 
       let const fd =
           os::open_file_descriptor(operand.view(), os::file_open_mode::Append);
+
       if (!fd.has_value()) {
         KOSHKIT_REPORT_PATH_ERROR("touch", operand);
         status = 1;
@@ -185,6 +197,7 @@ Touch::execute(const ExecContext               &ec,
     }
 
     os::file_status current_status{};
+
     if (!os::stat_path_following(operand.view(), current_status)) {
       KOSHKIT_REPORT_PATH_ERROR("touch", operand);
       status = 1;
@@ -206,6 +219,7 @@ Touch::execute(const ExecContext               &ec,
         FLAG_TOUCH_REFERENCE.is_set()
             ? reference_status.modification_nanoseconds
             : 0;
+
     if (!os::set_file_times(
             operand.view(),
             {should_change_access ? selected_access_time

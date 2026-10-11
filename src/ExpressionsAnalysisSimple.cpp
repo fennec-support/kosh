@@ -66,23 +66,28 @@ has_multi_digit_positional_expansion(StringView source) wontthrow -> bool
 
   for (usize position = 0; position < source.length; position++) {
     let const byte = source[position];
+
     if (state == shell_quote_state::Single) {
       if (byte == '\'') state = shell_quote_state::Normal;
       continue;
     }
+
     if (byte == '\\') {
       if (position + 1 < source.length) position++;
       continue;
     }
+
     if (byte == '"') {
       state = state == shell_quote_state::Double ? shell_quote_state::Normal
                                                  : shell_quote_state::Double;
       continue;
     }
+
     if (state == shell_quote_state::Normal && byte == '\'') {
       state = shell_quote_state::Single;
       continue;
     }
+
     if (byte == '$' && position + 2 < source.length &&
         source[position + 1] >= '1' && source[position + 1] <= '9' &&
         source[position + 2] >= '0' && source[position + 2] <= '9')
@@ -95,10 +100,11 @@ has_multi_digit_positional_expansion(StringView source) wontthrow -> bool
 }
 
 fn
-literal_generated_path(const Token *token, const AnalysisContext &) throws
-    -> Maybe<String>
+literal_generated_path(const Token *token,
+                       const AnalysisContext &) throws -> Maybe<String>
 {
   let literal = optimizer::literal_word_value(token);
+
   if (!literal.has_value()) return None;
 
   return normalized_relative_executable_path(literal->view());
@@ -117,10 +123,12 @@ update_generated_executable_paths(AnalysisContext                &actx,
   }
 
   let is_driver = false;
+
   if (command_name.has_value()) {
     let const command_path = Path{*command_name};
     let const filename     = command_path.filename();
-    is_driver              = GENERATED_EXECUTABLE_DRIVERS.contains(filename);
+
+    is_driver = GENERATED_EXECUTABLE_DRIVERS.contains(filename);
   } else if (let variable_name =
                  optimizer::plain_variable_reference_name(args[0]);
              variable_name.has_value())
@@ -131,15 +139,18 @@ update_generated_executable_paths(AnalysisContext                &actx,
   if (is_driver) {
     for (usize i = 1; i < args.count(); i++) {
       let literal = optimizer::literal_word_value(args[i]);
+
       if (!literal.has_value()) continue;
 
       let output = Maybe<String>{};
+
       if (*literal == "-o" && i + 1 < args.count()) {
         output = literal_generated_path(args[i + 1], actx);
       } else if (literal->view().starts_with("-o") && literal->count() > 2) {
         output =
             normalized_relative_executable_path(literal->view().substring(2));
       }
+
       if (!output.has_value()) continue;
 
       actx.generated_relative_executable_paths.add(output->view());
@@ -154,11 +165,13 @@ update_generated_executable_paths(AnalysisContext                &actx,
       args.count() == 3)
   {
     let destination = literal_generated_path(args[2], actx);
+
     if (destination.has_value())
       actx.generated_relative_executable_paths.add(destination->view());
 
     if (command_id == command_name_id::Mv) {
       let source = literal_generated_path(args[1], actx);
+
       if (source.has_value())
         actx.generated_relative_executable_paths.remove(source->view());
     }
@@ -177,6 +190,7 @@ update_generated_executable_paths(AnalysisContext                &actx,
     }
 
     let target = literal_generated_path(args[1], actx);
+
     if (target.has_value()) {
       actx.generated_relative_executable_paths.remove(target->view());
     } else {
@@ -207,6 +221,7 @@ pure fn
 internal::reference_has_quoted_alternate_word(StringView spec) wontthrow -> bool
 {
   usize position = 0;
+
   if (!spec.is_empty() && (spec[0] == '@' || spec[0] == '*')) {
     position = 1;
   } else {
@@ -229,9 +244,11 @@ internal::reference_has_quoted_alternate_word(StringView spec) wontthrow -> bool
   if (position < spec.length && spec[position] == ':') {
     position++;
   }
+
   if (position >= spec.length || spec[position] != '+') {
     return false;
   }
+
   position++;
 
   while (position < spec.length) {
@@ -243,6 +260,7 @@ internal::reference_has_quoted_alternate_word(StringView spec) wontthrow -> bool
 
     while (position < spec.length && !is_closed) {
       let const byte = spec[position];
+
       if (byte == '\\') {
         position += 2;
         continue;
@@ -311,6 +329,7 @@ cold static fn
 view_has_brace_expansion(StringView text) wontthrow -> bool
 {
   let const open = text.find_character('{');
+
   if (!open.has_value()) return false;
 
   for (usize position = *open + 1; position < text.length; position++) {
@@ -321,7 +340,9 @@ view_has_brace_expansion(StringView text) wontthrow -> bool
       if (position + 1 < text.length && text[position + 1] == '.') {
         return true;
       }
+
       break;
+
     default: break;
     }
   }
@@ -330,8 +351,8 @@ view_has_brace_expansion(StringView text) wontthrow -> bool
 }
 
 cold fn
-internal::classify_test_operand(const Word &word) wontthrow
-    -> test_operand_shape
+internal::classify_test_operand(const Word &word)
+    wontthrow -> test_operand_shape
 {
   test_operand_shape shape;
 
@@ -341,11 +362,13 @@ internal::classify_test_operand(const Word &word) wontthrow
       if (!segment.is_in_double_quotes) shape.has_unquoted_expansion = true;
 
       let const name = segment.text.view();
+
       if (name == "@" || (name.length >= 3 &&
                           name.substring(name.length - 3) == StringView{"[@]"}))
       {
         shape.has_array_spread = true;
       }
+
       if (reference_names_positional(name))
         shape.has_positional_reference = true;
       break;
@@ -374,13 +397,16 @@ bare_glob_can_start_with_dash(const Word &word) wontthrow -> bool
 {
   if (!word_is_bare_glob(word)) return false;
   let const text = word.segments[0].text.view();
+
   if (text.is_empty()) return false;
   if (text[0] == '*' || text[0] == '?') {
     return true;
   }
+
   if (text[0] != '[') return false;
 
   let const close = text.find_character(']');
+
   if (!close.has_value()) return false;
   if (*close > 1 && (text[1] == '!' || text[1] == '^')) {
     return true;
@@ -431,6 +457,7 @@ substitution_body_is_bare_echo(StringView body) wontthrow -> bool
   }
 
   let const trimmed = body.substring(start);
+
   if (!trimmed.starts_with(StringView{"echo "}) && trimmed != "echo") {
     return false;
   }
@@ -446,13 +473,14 @@ substitution_body_is_bare_echo(StringView body) wontthrow -> bool
 }
 
 cold fn
-internal::args_have_stdin_operand(const ArrayList<const Token *> &args) throws
-    -> bool
+internal::args_have_stdin_operand(const ArrayList<const Token *> &args)
+    throws -> bool
 {
   let storage = String{heap_allocator()};
 
   for (usize i = 1; i < args.count(); i++) {
     let const raw = borrowed_token_text(args[i], storage);
+
     if (raw == "-" || raw == "/dev/stdin") {
       return true;
     }
@@ -467,6 +495,7 @@ internal::operand_target_name(StringView text) wontthrow -> StringView
   if (text.is_empty() || text[0] == '-') {
     return StringView{};
   }
+
   usize end = 0;
 
   while (end < text.length && lexer::is_variable_name(text[end])) {
@@ -535,6 +564,7 @@ note_variable_target_operands(AnalysisContext                &actx,
     } else if (!value_options.is_empty() && view.length >= 2 && view[0] == '-')
     {
       let const last_letter = view[view.length - 1];
+
       should_skip_option_value =
           value_options.find_character(last_letter).has_value();
       is_array_option_value =
@@ -548,6 +578,7 @@ note_variable_target_operands(AnalysisContext                &actx,
     }
 
     let const target = operand_target_name(view);
+
     if (target.is_empty()) continue;
 
     if (should_note_assignment)
@@ -569,8 +600,7 @@ note_variable_target_operands(AnalysisContext                &actx,
 }
 
 fn
-SimpleCommand::analyze(AnalysisContext &actx,
-                       bool             is_unconditional) const throws -> void
+SimpleCommand::analyze(AnalysisContext &actx, bool is_unconditional) const throws -> void
 {
   optimizer::optimize_node(this, actx);
 
@@ -613,6 +643,7 @@ SimpleCommand::analyze(AnalysisContext &actx,
 
     let const shape =
         scan_assignment_value(actx, var.get_value(), var.get_location());
+
     check_assignment_value_shape(
         actx,
         assignment_lint_input{var.get_name(),
@@ -623,6 +654,7 @@ SimpleCommand::analyze(AnalysisContext &actx,
     if (is_prefix_persistent) {
       let const name_location =
           var.get_location().subspan(0, var.get_name().length);
+
       actx.note_variable_occurrence(
           var.get_name(), name_location, variable_occurrence_kind::Assignment,
           !is_unconditional || actx.effects.has_seen_runtime_definer,
@@ -640,6 +672,7 @@ SimpleCommand::analyze(AnalysisContext &actx,
   for (let const &assignment : m_array_args) {
     let const name_location =
         assignment.location.subspan(0, assignment.name.count());
+
     actx.note_variable_occurrence(assignment.name.view(), name_location,
                                   variable_occurrence_kind::Assignment,
                                   !is_unconditional ||
@@ -699,6 +732,7 @@ SimpleCommand::analyze(AnalysisContext &actx,
       let const id = actx.walk.is_direct_pipeline_stage ? diagnostic_id::sc2189
                                                         : diagnostic_id::sc2188;
       let const target = m_redirections[0].target;
+
       actx.report_diagnostic(id, target != nullptr ? target->source_location()
                                                    : source_location());
     }
@@ -707,6 +741,7 @@ SimpleCommand::analyze(AnalysisContext &actx,
   }
 
   ASSERT(m_args[0] != nullptr);
+
   let const name                     = static_command_name(m_args[0]);
   let const borrowed_command_literal = m_args[0]->raw_view();
   let const command_literal_storage  = borrowed_command_literal.has_value()
@@ -723,38 +758,45 @@ SimpleCommand::analyze(AnalysisContext &actx,
 
   if (command_is_defined_function) {
     let const call_location = m_args[0]->source_location();
+
     actx.function_calls.push(function_call_record{
         String{heap_allocator(), command_literal},
         call_location,
         m_args.count() > 1, actx.function_scope_depth != 0
     });
+
     let const active_index = actx.active_function_definition_index;
     let const latest_index =
         actx.functions.latest_indices.find(command_literal);
     let const was_redefined_in_body =
         latest_index.has_value() && *latest_index.value() > active_index;
+
     if (active_index != AnalysisContext::NO_ACTIVE_FUNCTION_DEFINITION &&
         actx.functions.records[active_index].name.view() == command_literal &&
         actx.conditional_branch_depth == 0 && !was_redefined_in_body)
     {
       let &definition =
           actx.functions.records[actx.active_function_definition_index];
+
       if (definition.recursive_call_count == 0)
         definition.first_recursive_call_location = call_location;
       definition.recursive_call_count++;
       if (is_async()) definition.async_recursive_call_count++;
     }
+
     actx.apply_called_function(command_literal, call_location);
   }
 
   let const command_info = get_analysis_command_info(command_literal);
   let const command_id   = command_info.id;
+
   if (!is_command_shadowed &&
       (command_id == command_name_id::Cd || command_literal == "pushd" ||
        command_literal == "popd"))
   {
     actx.mark_working_directory_unknown();
   }
+
   let const command_is_assignment_builtin =
       command_info.is_in_group(COMMAND_GROUP_ASSIGNMENT_BUILTIN);
 
@@ -768,6 +810,7 @@ SimpleCommand::analyze(AnalysisContext &actx,
                                  .to_literal_string()
                                   : m_args[i]->raw_string();
       let const target_name = operand_target_name(word.view());
+
       if (target_name.is_empty()) continue;
 
       actx.function_local_names.set(target_name, m_args[i]->source_location());
@@ -799,6 +842,7 @@ SimpleCommand::analyze(AnalysisContext &actx,
     for (usize i = 1; i < m_args.count(); i++) {
       let       flag_storage = String{heap_allocator()};
       let const flag_text    = borrowed_token_text(m_args[i], flag_storage);
+
       if (flag_text.length < 2 || flag_text[0] != '-') {
         continue;
       }
@@ -823,6 +867,7 @@ SimpleCommand::analyze(AnalysisContext &actx,
       if (m_args[i]->kind() == Token::Kind::Assignment) {
         let const *assignment =
             static_cast<const tokens::Assignment *>(m_args[i]);
+
         recorded_name  = assignment->key().view();
         recorded_value = &assignment->value_word();
         update_mode    = assignment->get_update_mode();
@@ -837,6 +882,7 @@ SimpleCommand::analyze(AnalysisContext &actx,
           if (is_reporting_form) continue;
 
           let const declared = optimizer::literal_word_value(word);
+
           if (!declared.has_value()) continue;
           if (!lexer::word_is_variable_name(declared->view())) continue;
 
@@ -870,6 +916,7 @@ SimpleCommand::analyze(AnalysisContext &actx,
 
       let const name_location =
           m_args[i]->source_location().subspan(0, recorded_name.length);
+
       if (recorded_value != nullptr) {
         for (let const &segment : recorded_value->segments) {
           if (segment.kind != WordSegment::Kind::VariableReference) continue;
@@ -892,18 +939,21 @@ SimpleCommand::analyze(AnalysisContext &actx,
   }
 
   usize source_command_index = m_args.count();
+
   if (!is_command_shadowed && (command_id == command_name_id::Dot ||
                                command_id == command_name_id::Source))
   {
     source_command_index = 0;
   } else if (!is_command_shadowed) {
     let const wrapped_index = wrapped_command_index(command_id, m_args);
+
     if (wrapped_index.has_value()) {
       let       command_storage = String{heap_allocator()};
       let const wrapped_command =
           borrowed_token_text(m_args[*wrapped_index], command_storage);
       let const wrapped_command_id =
           get_analysis_command_info(wrapped_command).id;
+
       if (wrapped_command_id == command_name_id::Dot ||
           wrapped_command_id == command_name_id::Source)
       {
@@ -913,11 +963,13 @@ SimpleCommand::analyze(AnalysisContext &actx,
   }
 
   bool did_analyze_source = false;
+
   if (source_command_index < m_args.count()) {
     let const should_merge_source_state = is_unconditional;
     let const should_merge_source_uncertainty =
         actx.function_scope_depth == 0 && !actx.walk.is_direct_pipeline_stage &&
         !actx.walk.is_inside_subshell_analysis;
+
     did_analyze_source = analyze_followed_source(
         actx, m_args, source_command_index, should_merge_source_state,
         should_merge_source_uncertainty);
@@ -963,13 +1015,16 @@ SimpleCommand::analyze(AnalysisContext &actx,
     let const   is_operand   = i >= 1;
     const Word *word         = nullptr;
     const Word *locale_word  = nullptr;
+
     if (arg->kind() == Token::Kind::Word) {
       word        = &static_cast<const tokens::WordToken *>(arg)->word();
       locale_word = word;
     } else if (arg->kind() == Token::Kind::Assignment) {
       locale_word = &static_cast<const tokens::Assignment *>(arg)->value_word();
     }
+
     let is_assignment_builtin_operand = false;
+
     if (is_operand && command_is_assignment_builtin && word != nullptr) {
       is_assignment_builtin_operand =
           word->get_assignment_split().has_value() ||
@@ -1054,6 +1109,7 @@ SimpleCommand::analyze(AnalysisContext &actx,
         {
           has_dollar_bracket = true;
         }
+
         if (!was_quote_escape_pending && !was_in_parameter_expansion &&
             is_in_double_quote && position + 1 < source_text.length &&
             source_text[position + 1] == '"')
@@ -1064,6 +1120,7 @@ SimpleCommand::analyze(AnalysisContext &actx,
             has_literal_dollar_in_quotes = true;
           }
         }
+
         if (!was_quote_escape_pending && !is_in_single_quote &&
             !is_in_ansi_c_quote && position + 1 < source_text.length &&
             source_text[position + 1] == '{')
@@ -1140,6 +1197,7 @@ SimpleCommand::analyze(AnalysisContext &actx,
           {
             has_external_arithmetic_read = true;
           }
+
           break;
         }
 
@@ -1153,6 +1211,7 @@ SimpleCommand::analyze(AnalysisContext &actx,
           {
             echo_only_substitution_count++;
           }
+
           break;
 
         case WordSegment::Kind::FunctionSubstitution:
@@ -1172,25 +1231,31 @@ SimpleCommand::analyze(AnalysisContext &actx,
           } else {
             quote_sandwich_state = 0;
           }
+
           break;
 
         case WordSegment::Kind::VariableReference: {
           quote_sandwich_state = 0;
+
           let const referenced = segment.text.view();
+
           if (!is_assignment_builtin_operand)
             note_variable_reference(actx, segment, arg_location);
           if (is_assignment_builtin_operand) {
             let const segment_location =
                 segment.get_source_location(arg_location.source_name_index)
                     .value_or(arg_location);
+
             actx.note_positional_reference(
                 referenced,
                 expansion_location_with_sigil(actx, segment_location));
           }
+
           if (!is_operand) break;
 
           if (segment.is_split_eligible()) {
             let const colon = referenced.find_character(':');
+
             if (colon.has_value() && *colon + 1 < referenced.length &&
                 referenced[*colon + 1] == '=')
             {
@@ -1205,6 +1270,7 @@ SimpleCommand::analyze(AnalysisContext &actx,
           {
             has_bare_star_reference = true;
           }
+
           if (referenced == "@" && !has_spread_alone_unquoted &&
               !has_spread_in_longer_word)
           {
@@ -1212,11 +1278,13 @@ SimpleCommand::analyze(AnalysisContext &actx,
                 word->segments.count() == 1 && !segment.is_in_double_quotes;
             has_spread_in_longer_word = word->segments.count() > 1;
           }
+
           if (lost_pipeline_name.is_empty() &&
               actx.pipeline_lost_names.contains(referenced))
           {
             lost_pipeline_name = referenced;
           }
+
           if (!has_split_eligible_variable && segment.is_split_eligible() &&
               !is_split_exempt_variable_name(referenced) &&
               !internal::reference_has_quoted_alternate_word(referenced))
@@ -1227,11 +1295,13 @@ SimpleCommand::analyze(AnalysisContext &actx,
                 segment.get_source_location(arg_location.source_name_index)
                     .value_or(arg_location));
           }
+
           if (should_check_array_reads && bare_array_name.is_empty() &&
               actx.array_valued_names.contains(referenced))
           {
             bare_array_name = referenced;
           }
+
           if (should_check_quoted_values && quoted_value_name.is_empty() &&
               segment.is_split_eligible())
           {
@@ -1240,6 +1310,7 @@ SimpleCommand::analyze(AnalysisContext &actx,
             if (quoted_value_assignment.has_value())
               quoted_value_name = referenced;
           }
+
           break;
         }
 
@@ -1284,6 +1355,7 @@ SimpleCommand::analyze(AnalysisContext &actx,
                                  source_text == "'~'" ||
                                  source_text.starts_with(StringView{"\"~/"}) ||
                                  source_text.starts_with(StringView{"'~/"});
+
       if (is_quoted_home)
         actx.report_diagnostic(diagnostic_id::sc2088, arg_location);
 
@@ -1314,6 +1386,7 @@ SimpleCommand::analyze(AnalysisContext &actx,
 
       if (!quoted_value_name.is_empty()) {
         let const assignment_location = *quoted_value_assignment.value();
+
         actx.report_diagnostic(diagnostic_id::sc2089, assignment_location,
                                {quoted_value_name});
         actx.report_diagnostic(diagnostic_id::sc2090, arg_location,
@@ -1376,6 +1449,7 @@ SimpleCommand::analyze(AnalysisContext &actx,
   if (m_args[0]->kind() == Token::Kind::Word) {
     let const &command_word =
         static_cast<const tokens::WordToken *>(m_args[0])->word();
+
     if (command_word.segments.count() == 1 &&
         command_word.segments[0].kind == WordSegment::Kind::CommandSubstitution)
     {
@@ -1398,6 +1472,7 @@ SimpleCommand::analyze(AnalysisContext &actx,
                                  .to_literal_string()
                                   : m_args[i]->raw_string();
       let const target_name = operand_target_name(word.view());
+
       if (utils::environment_name_is_path(target_name))
         actx.mark_path_unknown(true);
       if (is_source_location_variable(target_name))
@@ -1417,8 +1492,10 @@ SimpleCommand::analyze(AnalysisContext &actx,
   {
     if (*wrapped_index < m_args.count()) {
       runtime_definer_name = m_args[*wrapped_index]->raw_string();
+
       let const runtime_definer_info =
           get_analysis_command_info(runtime_definer_name.view());
+
       runtime_definer_id = runtime_definer_info.id;
       is_runtime_definer =
           runtime_definer_info.is_in_group(COMMAND_GROUP_RUNTIME_DEFINER);
@@ -1474,10 +1551,12 @@ SimpleCommand::analyze(AnalysisContext &actx,
 
   let unavailable          = Maybe<utils::unavailable_path_source_component>{};
   let command_was_resolved = false;
+
   if (should_check_command_resolution) {
     command_was_resolved = command_resolves(*name, m_args[0]->source_location(),
                                             actx, unavailable);
   }
+
   if (should_check_command_resolution && !command_was_resolved &&
       m_args.count() == 1 && actx.eval_context != nullptr &&
       actx.eval_context->execution_store().shell_is_interactive() &&
@@ -1487,6 +1566,7 @@ SimpleCommand::analyze(AnalysisContext &actx,
     command_was_resolved = true;
     actx.mark_working_directory_unknown();
   }
+
   if (should_check_command_resolution && !command_was_resolved &&
       !actx.tested_command_names.contains(*name))
   {
@@ -1494,6 +1574,7 @@ SimpleCommand::analyze(AnalysisContext &actx,
     let diagnostic_location  = m_args[0]->source_location();
     let reported_name        = *name;
     let is_missing_directory = false;
+
     if (unavailable.has_value() &&
         resolution_diagnostic == diagnostic_id::unresolved_command)
     {
@@ -1505,8 +1586,10 @@ SimpleCommand::analyze(AnalysisContext &actx,
     }
 
     let suggestion = Maybe<String>{};
+
     if (!is_missing_directory) {
       let local_names = ArrayList<String>{heap_allocator()};
+
       actx.functions.defined.for_each(
           [&](StringView n) throws { local_names.push(String{n}); });
       actx.functions.aliases.for_each(
@@ -1547,6 +1630,7 @@ SimpleCommand::analyze(AnalysisContext &actx,
 
   let const is_top_level_unconditional =
       actx.function_scope_depth == 0 && is_unconditional;
+
   if (!is_command_shadowed &&
       command_info.is_in_group(COMMAND_GROUP_VARIABLE_TARGET) &&
       !command_info.is_in_group(COMMAND_GROUP_ASSIGNMENT_BUILTIN))
@@ -1559,6 +1643,7 @@ SimpleCommand::analyze(AnalysisContext &actx,
   if (!is_top_level_unconditional || is_command_shadowed) {
     return;
   }
+
   if (command_info.is_in_group(COMMAND_GROUP_VARIABLE_TARGET) ||
       command_info.is_in_group(COMMAND_GROUP_VARIABLE_PROBE))
   {
@@ -1589,6 +1674,7 @@ SimpleCommand::analyze(AnalysisContext &actx,
               .get_source_location(
                   m_args[i]->source_location().source_name_index)
               .value_or(m_args[i]->source_location());
+
       actx.note_variable_read(
           segment.text.view(),
           expansion_location_with_sigil(actx, segment_location),
@@ -1599,47 +1685,55 @@ SimpleCommand::analyze(AnalysisContext &actx,
 
 fn
 SimpleCommand::append_presence_tested_command_names(
-    const AnalysisContext &actx,
-    HashSet               &names,
-    bool                   is_status_success) const throws -> void
+    const AnalysisContext &actx, HashSet &names, bool is_status_success) const throws -> void
 {
   if (is_status_success == is_negated() || m_args.is_empty()) {
     return;
   }
 
   let name = static_command_name(m_args[0]);
+
   if (!name.has_value()) {
     let const raw_name = m_args[0]->raw_view();
+
     if (!raw_name.has_value() || *raw_name != "[") {
       return;
     }
     name = *raw_name;
   }
+
   if (actx.functions.defined.contains(*name) ||
       actx.functions.aliases.contains(*name))
   {
     return;
   }
+
   let const is_test_presence_form    = *name == "test" && m_args.count() == 3;
   bool      is_bracket_presence_form = false;
+
   if (*name == "[" && m_args.count() == 4) {
-    let const closing        = static_command_name(m_args[3]);
+    let const closing = static_command_name(m_args[3]);
+
     is_bracket_presence_form = closing.has_value() && *closing == "]";
   }
+
   if (is_test_presence_form || is_bracket_presence_form) {
     let const option                  = static_command_name(m_args[1]);
     bool      is_zsh_presence_operand = false;
+
     if (m_args[2]->kind() == Token::Kind::Word) {
       let const &operand =
           static_cast<const tokens::WordToken *>(m_args[2])->word();
       let const operand_source =
           analysis_source_text(actx, m_args[2]->source_location());
+
       is_zsh_presence_operand =
           operand.segments.count() == 1 &&
           operand.segments[0].kind == WordSegment::Kind::VariableReference &&
           (operand_source == "${ZSH_VERSION+set}" ||
            operand_source == "\"${ZSH_VERSION+set}\"");
     }
+
     if (option.has_value() && *option == "-n" && is_zsh_presence_operand) {
       names.add("emulate");
       names.add("setopt");
@@ -1651,6 +1745,7 @@ SimpleCommand::append_presence_tested_command_names(
 
   let const is_command_test = *name == "command";
   let const is_type_or_hash = *name == "type" || *name == "hash";
+
   if (!is_command_test && !is_type_or_hash) {
     return;
   }
@@ -1659,11 +1754,13 @@ SimpleCommand::append_presence_tested_command_names(
 
   for (usize i = 1; i < m_args.count(); i++) {
     let const arg = static_command_name(m_args[i]);
+
     if (!arg.has_value()) break;
     if (is_command_test && (*arg == "-v" || *arg == "-V")) {
       has_presence_flag = true;
       continue;
     }
+
     if (arg->starts_with("-")) continue;
     if (has_presence_flag) names.add(*arg);
   }
@@ -1677,6 +1774,7 @@ SimpleCommand::try_static_condition_verdict(
   if (is_async() || is_negated()) {
     return koshka::None;
   }
+
   if (m_local_vars.count() > 0) return koshka::None;
 
   return optimizer::simple_command_static_verdict(m_args, actx);

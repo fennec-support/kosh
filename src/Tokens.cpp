@@ -95,12 +95,14 @@ WordSegment::get_eval_cache(BumpArena *cache_arena) const throws
     let *const record_arena = cache_arena == nullptr || cache_arena->owns(this)
                                   ? cache_arena
                                   : BumpArena::find_live_owner(this);
+
     if (record_arena != nullptr) {
       m_eval_cache           = record_arena->create<segment_eval_cache>();
       is_eval_cache_in_arena = true;
     } else {
       let const block = heap_allocator().alloc_array<segment_eval_cache>(1);
-      m_eval_cache    = new (block) segment_eval_cache{};
+
+      m_eval_cache = new (block) segment_eval_cache{};
     }
   }
 
@@ -108,19 +110,23 @@ WordSegment::get_eval_cache(BumpArena *cache_arena) const throws
 }
 
 fn
-WordSegment::set_exact_constant_arithmetic_text(
-    StringView text, BumpArena *cache_arena) const throws -> void
+WordSegment::set_exact_constant_arithmetic_text(StringView text,
+                                                BumpArena *cache_arena) const throws -> void
 {
   let      &cache = get_eval_cache(cache_arena);
   let const arena = cache_arena;
+
   if (arena == nullptr) return;
+
   let const allocator = bump_allocator(*arena);
+
   if (cache.arith == nullptr ||
       !arena->is_lifetime_valid(cache.arithmetic_lifetime))
   {
     cache.arith               = arena->create<arith_token_cache>(allocator);
     cache.arithmetic_lifetime = arena->register_lifetime();
   }
+
   cache.arith->exact_constant_text     = String{allocator, text};
   cache.arith->has_exact_constant_text = true;
 }
@@ -138,14 +144,16 @@ fn
 WordSegment::move_resources_to_arena(BumpArena &arena) throws -> void
 {
   let const allocator = bump_allocator(arena);
+
   text.move_to_allocator(allocator);
   if (m_eval_cache == nullptr || allocator.owns(m_eval_cache)) {
     return;
   }
 
-  let const cache         = arena.create<segment_eval_cache>(*m_eval_cache);
-  cache->substitution_ast = nullptr;
-  cache->arith            = nullptr;
+  let const cache = arena.create<segment_eval_cache>(*m_eval_cache);
+
+  cache->substitution_ast      = nullptr;
+  cache->arith                 = nullptr;
   cache->substitution_lifetime = {};
   cache->arithmetic_lifetime   = {};
   if (!is_eval_cache_in_arena) heap_allocator().free_array(m_eval_cache, 1);
@@ -166,6 +174,7 @@ Word::move_resources_to_arena(BumpArena &arena) throws -> void
   {
     let const moved_value =
         allocator.alloc_array<char>(m_constant_value_length);
+
     __builtin_memcpy(moved_value, m_constant_value_data,
                      m_constant_value_length);
     segments.allocator().free_array(m_constant_value_data,
@@ -211,10 +220,12 @@ Word::to_literal_string() const throws -> String
       result += ')';
       continue;
     case WordSegment::Kind::VariableReference: result += '$'; break;
+
     case WordSegment::Kind::LiteralText:
     case WordSegment::Kind::UnquotedText:
-    case WordSegment::Kind::DoubleQuotedText:  break;
+    case WordSegment::Kind::DoubleQuotedText: break;
     }
+
     result += segment.text;
   }
 
@@ -251,6 +262,7 @@ Word::constant_value() const throws -> StringView
 
     for (let const &segment : segments) {
       let const view = segment.text.view();
+
       __builtin_memcpy(buffer + write_position, view.data, view.length);
       write_position += view.length;
     }
@@ -266,6 +278,7 @@ pure fn
 Word::is_all_ascii_digits() const wontthrow -> bool
 {
   if (segments.is_empty()) return false;
+
   bool has_seen_digit = false;
 
   for (let const &segment : segments) {
@@ -295,6 +308,7 @@ Word::get_fd_allocation_target() const wontthrow -> Maybe<fd_allocation_target>
   if (segments.count() != 1) return None;
 
   let const &segment = segments[0];
+
   if (segment.kind != WordSegment::Kind::UnquotedText &&
       segment.kind != WordSegment::Kind::LiteralText)
   {
@@ -302,11 +316,13 @@ Word::get_fd_allocation_target() const wontthrow -> Maybe<fd_allocation_target>
   }
 
   let const text = segment.text.view();
+
   if (text.length < 3 || text[0] != '{' || text[text.length - 1] != '}') {
     return None;
   }
 
   let const inner = text.substring_of_length(1, text.length - 2);
+
   if (!lexer::is_variable_name_start(inner[0])) return None;
 
   usize name_length = 1;
@@ -340,6 +356,7 @@ Word::get_fd_allocation_target() const wontthrow -> Maybe<fd_allocation_target>
   }
 
   let const subscript_length = inner.length - name_length - 2;
+
   if (subscript_length == 0) return None;
 
   return fd_allocation_target{
@@ -351,6 +368,7 @@ pure fn
 Word::fd_allocation_name() const wontthrow -> Maybe<StringView>
 {
   let const target = get_fd_allocation_target();
+
   if (!target.has_value()) return None;
 
   if (!target->has_subscript) return target->name;
@@ -386,23 +404,31 @@ Word::to_pretty_string() const throws -> String
   for (let const &segment : segments) {
     result += "\n  ";
     switch (segment.kind) {
-    case WordSegment::Kind::LiteralText:       result += "Literal"; break;
-    case WordSegment::Kind::UnquotedText:      result += "Unquoted"; break;
-    case WordSegment::Kind::DoubleQuotedText:  result += "DoubleQuoted"; break;
+    case WordSegment::Kind::LiteralText: result += "Literal"; break;
+
+    case WordSegment::Kind::UnquotedText: result += "Unquoted"; break;
+
+    case WordSegment::Kind::DoubleQuotedText: result += "DoubleQuoted"; break;
+
     case WordSegment::Kind::VariableReference: result += "Variable"; break;
+
     case WordSegment::Kind::CommandSubstitution:
       result += "CommandSubstitution";
       break;
+
     case WordSegment::Kind::ProcessSubstitution:
       result += "ProcessSubstitution";
       break;
+
     case WordSegment::Kind::ArithmeticExpansion:
       result += "ArithmeticExpansion";
       break;
+
     case WordSegment::Kind::FunctionSubstitution:
       result += "FunctionSubstitution";
       break;
     }
+
     result += " \"";
     result += segment.text;
     result += '"';
@@ -425,8 +451,8 @@ segment_holds_literal_text(WordSegment::Kind kind) wontthrow -> bool
 }
 
 static fn
-append_subscript_segment_source(const WordSegment &segment, String &out) throws
-    -> bool
+append_subscript_segment_source(const WordSegment &segment,
+                                String            &out) throws -> bool
 {
   switch (segment.kind) {
   case WordSegment::Kind::VariableReference:
@@ -472,13 +498,16 @@ array_element_assignment_split(const ArrayList<WordSegment> &segments,
   let              subscript = String{heap_allocator()};
   const StringView subscript_head_without_close =
       first.text.substring(name_end + 1);
+
   if (subscript_head_without_close.find_character(']').has_value()) {
     return koshka::None;
   }
+
   subscript.append(subscript_head_without_close);
 
   for (usize i = 1; i < segments.count(); i++) {
     let const &segment = segments[i];
+
     if (!segment_holds_literal_text(segment.kind)) {
       if (!append_subscript_segment_source(segment, subscript))
         return koshka::None;
@@ -486,15 +515,18 @@ array_element_assignment_split(const ArrayList<WordSegment> &segments,
     }
 
     let const close = segment.text.find_character(']');
+
     if (!close.has_value()) {
       subscript.append(segment.text.view());
       continue;
     }
 
     subscript.append(segment.text.substring_of_length(0, *close));
+
     const StringView after       = segment.text.substring(*close + 1);
     let              update_mode = assignment_update_mode::Replace;
     usize            value_start = 0;
+
     if (after.starts_with("+=")) {
       update_mode = assignment_update_mode::Append;
       value_start = 2;
@@ -505,13 +537,15 @@ array_element_assignment_split(const ArrayList<WordSegment> &segments,
     }
 
     let key = String{first.text.substring_of_length(0, name_end)};
+
     key.push('[');
     key.append(subscript.view());
     key.push(']');
 
     LOG(All, "folding the subscript into array element key '%s'", key.c_str());
 
-    let value                          = Word{};
+    let value = Word{};
+
     value.has_locale_translation_quote = has_locale_translation_quote;
     value.segments.push(WordSegment{
         WordSegment::Kind::UnquotedText,
@@ -545,12 +579,14 @@ find_assignment_equals(StringView text) wontthrow -> Maybe<usize>
 
   for (usize position = cursor; position < text.length; position++) {
     let const byte = text[position];
+
     if (byte == '[') {
       depth++;
     } else if (byte == ']' && depth > 0 && --depth == 0) {
       if (position + 1 < text.length && text[position + 1] == '=') {
         return position + 1;
       }
+
       if (position + 2 < text.length && text[position + 1] == '+' &&
           text[position + 2] == '=')
       {
@@ -571,6 +607,7 @@ Word::get_assignment_split(Allocator allocator) const throws
   if (segments.is_empty()) return koshka::None;
 
   const WordSegment &first = segments[0];
+
   if (first.kind != WordSegment::Kind::UnquotedText) return koshka::None;
 
   if (first.text.is_empty() || !lexer::is_variable_name_start(first.text[0])) {
@@ -578,6 +615,7 @@ Word::get_assignment_split(Allocator allocator) const throws
   }
 
   let const equals_position = find_assignment_equals(first.text.view());
+
   if (!equals_position.has_value()) {
     if (first.text.find_character('[').has_value())
       return array_element_assignment_split(segments,
@@ -585,6 +623,7 @@ Word::get_assignment_split(Allocator allocator) const throws
 
     return koshka::None;
   }
+
   if (*equals_position == 0) return koshka::None;
 
   ASSERT(*equals_position <= first.text.count());
@@ -595,6 +634,7 @@ Word::get_assignment_split(Allocator allocator) const throws
   const usize name_length = update_mode == assignment_update_mode::Append
                                 ? *equals_position - 1
                                 : *equals_position;
+
   if (name_length == 0) return koshka::None;
 
   usize name_cursor = 1;
@@ -611,12 +651,14 @@ Word::get_assignment_split(Allocator allocator) const throws
     }
     name_cursor = name_length;
   }
+
   if (name_cursor != name_length) return koshka::None;
 
   let const name_view = first.text.substring_of_length(0, name_length);
   let       name      = String{allocator, name_view};
 
-  let value                          = Word{};
+  let value = Word{};
+
   value.segments                     = ArrayList<WordSegment>{allocator};
   value.has_locale_translation_quote = has_locale_translation_quote;
   value.segments.push(WordSegment{
@@ -643,6 +685,7 @@ quoted_assignment_name_prefix(const ArrayList<WordSegment> &segments,
 
     let const text  = segments[i].text.view();
     let const found = text.find_character('=');
+
     if (!found.has_value()) {
       prefix.append(text);
       continue;
@@ -658,12 +701,14 @@ quoted_assignment_name_prefix(const ArrayList<WordSegment> &segments,
 }
 
 cold fn
-Word::get_quoted_assignment_split() const throws -> Maybe<word_assignment_split>
+Word::get_quoted_assignment_split() const throws
+    -> Maybe<word_assignment_split>
 {
   let       equals_segment  = segments.count();
   let       equals_position = usize{0};
   let const prefix =
       quoted_assignment_name_prefix(segments, equals_segment, equals_position);
+
   if (equals_segment == segments.count()) return koshka::None;
 
   let const prefix_view = prefix.view();
@@ -674,6 +719,7 @@ Word::get_quoted_assignment_split() const throws -> Maybe<word_assignment_split>
   let const name_length = update_mode == assignment_update_mode::Append
                               ? prefix_view.length - 1
                               : prefix_view.length;
+
   if (name_length == 0) return koshka::None;
 
   if (!lexer::is_variable_name_start(prefix_view[0])) return koshka::None;
@@ -697,7 +743,8 @@ Word::get_quoted_assignment_split() const throws -> Maybe<word_assignment_split>
 
   const WordSegment &carrier = segments[equals_segment];
 
-  let value                          = Word{};
+  let value = Word{};
+
   value.has_locale_translation_quote = has_locale_translation_quote;
   value.segments.push(WordSegment{
       carrier.kind,
@@ -729,6 +776,7 @@ SegmentText::grow_owned(usize needed) throws -> void
   }
 
   let const fresh = heap_allocator().alloc_array<char>(new_capacity);
+
   if (m_length > 0) std::memcpy(fresh, m_data, m_length);
   if (m_capacity != 0) {
     heap_allocator().free_array(const_cast<char *>(m_data), m_capacity);
@@ -742,10 +790,11 @@ fn
 SegmentText::append(StringView other) throws -> void
 {
   if (other.length == 0) return;
-  if (other.length > MAXIMUM_TEXT_LENGTH - m_length)
-    rarely throw std::bad_alloc{};
+  if (other.length > MAXIMUM_TEXT_LENGTH - m_length) rarely
+    throw std::bad_alloc{};
 
   let const needed = static_cast<usize>(m_length) + other.length;
+
   if (needed > m_capacity) {
     let const source_address  = reinterpret_cast<uintptr>(other.data);
     let const storage_address = reinterpret_cast<uintptr>(m_data);
@@ -768,7 +817,7 @@ namespace tokens {
 
 #define TOKEN_DECLS(t, s)                                                      \
   t::t(SourceLocation location) : Token(steal(location), Token::Kind::t) {}    \
-  String            t::raw_string() const throws { return s; }                 \
+  String t::raw_string() const throws { return s; }                            \
   Maybe<StringView> t::raw_view() const wontthrow { return StringView{s}; }
 
 TOKEN_DECLS(If, "if");
@@ -813,6 +862,7 @@ fn
 Assignment::raw_string() const throws -> String
 {
   let result = m_key.clone();
+
   result += m_update_mode == assignment_update_mode::Append ? "+=" : "=";
   result += m_value.to_literal_string();
 
@@ -908,6 +958,7 @@ ExpandedWordToken::fill_literal() const throws -> void
   if (view.length > ~static_cast<u32>(0)) throw std::bad_alloc{};
 
   let buffer = m_word.segments.allocator().alloc_array<char>(view.length);
+
   __builtin_memcpy(buffer, view.data, view.length);
 
   m_literal_data   = buffer;
@@ -941,8 +992,9 @@ ExpandedWordToken::raw_string() const throws -> String
 }
 
 fn
-create_word_token(BumpArena &arena, SourceLocation location, Word word) throws
-    -> WordToken *
+create_word_token(BumpArena     &arena,
+                  SourceLocation location,
+                  Word           word) throws -> WordToken *
 {
   word.move_resources_to_arena(arena);
 

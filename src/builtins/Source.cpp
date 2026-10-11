@@ -35,27 +35,32 @@ Source::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   if (ec.args().count() < 2) return report_usage_error(ec, cxt, ec.program());
 
   usize path_index = 1;
+
   if (ec.args()[1] == "--") path_index = 2;
   if (path_index >= ec.args().count())
     return report_usage_error(ec, cxt, ec.program());
 
   let const path = ec.args()[path_index].clone();
+
   cxt.guard_restricted_path(path.view(), ec.arg_location_at(path_index),
                             restricted_path_use::Source);
   LOG(Info, "source running file '%s' in the current shell", path.c_str());
 
   let resolved_source_path = cxt.resolve_source_path(path.view());
+
   if (!resolved_source_path.has_value())
     throw ErrorWithLocationAndDetails{
         ec.arg_location_at(path_index),
         "Unable to source the file '" + path + "': not found in PATH",
         "Pass an absolute path or add its directory to PATH"};
+
   let       source_path = resolved_source_path.take();
   let const source_name = os::has_directory_separator(path.view())
                               ? path.view()
                               : source_path.text().view();
 
   let const contents = source_path.read_entire_file();
+
   if (!contents.has_value())
     throw ErrorWithLocation{ec.arg_location_at(path_index),
                             "Unable to source the file '" + path +
@@ -65,12 +70,13 @@ Source::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                              ec.args().count() > path_index + 1;
   let saved_params = ArrayList<String>{heap_allocator()};
   let params       = ArrayList<String>{heap_allocator()};
+
   if (has_extra_args) {
     for (usize i = path_index + 1; i < ec.args().count(); i++)
       params.push_managed(ec.args()[i]);
   }
-  defer
-  {
+
+  defer {
     if (has_extra_args)
       cxt.variable_store().positional_params() = steal(saved_params);
   };
@@ -82,12 +88,16 @@ Source::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   i32 status               = 0;
   let status_before_return = Maybe<i32>{None};
+
   {
     let bash_argument_frame_context = EvalContext::BashArgumentFrameContext{};
+
     cxt.enter_bash_source_argument_frame(bash_argument_frame_context,
                                          has_extra_args ? &params : nullptr,
                                          source_name);
-    defer { cxt.leave_bash_argument_frame(bash_argument_frame_context); };
+    defer {
+      cxt.leave_bash_argument_frame(bash_argument_frame_context);
+    };
 
     if (has_extra_args) {
       saved_params = steal(cxt.variable_store().positional_params());

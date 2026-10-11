@@ -31,6 +31,7 @@ hot inline fn
 load_word(const char *bytes) wontthrow -> u64
 {
   u64 word = 0;
+
   __builtin_memcpy(&word, bytes, 8);
 
   return word;
@@ -42,6 +43,7 @@ load_partial_word(const char *bytes, usize byte_count) wontthrow -> u64
   if (byte_count >= 4) {
     u32 head;
     u32 tail;
+
     __builtin_memcpy(&head, bytes, 4);
     __builtin_memcpy(&tail, bytes + byte_count - 4, 4);
 
@@ -68,6 +70,7 @@ are_bytes_equal(const char *left, const char *right, usize byte_count) wontthrow
     u32 right_head;
     u32 left_tail;
     u32 right_tail;
+
     __builtin_memcpy(&left_head, left, 4);
     __builtin_memcpy(&right_head, right, 4);
     __builtin_memcpy(&left_tail, left + byte_count - 4, 4);
@@ -109,6 +112,7 @@ find_byte(const char *bytes, usize byte_count, unsigned char wanted) wontthrow
   while (position + 8 <= byte_count) {
     let const word  = load_word(bytes + position) ^ broadcast;
     let const marks = (word - LOW_BITS) & ~word & HIGH_BITS;
+
     if (marks != 0) {
       let const offset = static_cast<usize>(__builtin_ctzll(marks)) >> 3;
 
@@ -139,8 +143,10 @@ find_last_byte(const char   *bytes,
 
   while (position >= 8) {
     position -= 8;
+
     let const word  = load_word(bytes + position) ^ broadcast;
     let const marks = (word - LOW_BITS) & ~word & HIGH_BITS;
+
     if (marks != 0) {
       for (usize offset = 8; offset > 0; offset--)
         if (bytes[position + offset - 1] == static_cast<char>(wanted))
@@ -173,9 +179,9 @@ public:
   constexpr StringView(const char *bytes, usize count)
       : data(bytes), length(count)
   {}
+
   constexpr StringView(const char *cstr) wontthrow
-      : data(cstr),
-        length(cstr != nullptr ? __builtin_strlen(cstr) : 0)
+      : data(cstr), length(cstr != nullptr ? __builtin_strlen(cstr) : 0)
   {}
 
   hot mustuse pure fn
@@ -183,13 +189,15 @@ public:
   {
     return length;
   }
+
   hot mustuse pure fn
   is_empty() const wontthrow -> bool
   {
     return length == 0;
   }
+
   hot mustuse pure fn
-  operator[](usize i) const wontthrow->char
+  operator[](usize i) const wontthrow -> char
   {
     ASSERT(i < length, "string-view index is past the end");
 
@@ -203,27 +211,31 @@ public:
   copy_to(Allocator allocator) const throws -> StringView;
 
   hot flatten mustuse pure fn
-  operator==(StringView other) const wontthrow->bool
+  operator==(StringView other) const wontthrow -> bool
   {
     if (length != other.length) return false;
     if (length == 0) return true;
 
     return byte_scan::are_bytes_equal(data, other.data, length);
   }
+
   hot flatten mustuse pure fn
-  operator!=(StringView other) const wontthrow->bool
+  operator!=(StringView other) const wontthrow -> bool
   {
     return !(*this == other);
   }
+
   hot mustuse pure fn
-  operator<(StringView other) const wontthrow->bool
+  operator<(StringView other) const wontthrow -> bool
   {
     let const shared_length = length < other.length ? length : other.length;
+
 #if defined __BYTE_ORDER__ && __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
     if (shared_length >= 8) {
       let const left_word = __builtin_bswap64(byte_scan::load_word(data));
       let const right_word =
           __builtin_bswap64(byte_scan::load_word(other.data));
+
       if (left_word != right_word) return left_word < right_word;
     }
 #endif
@@ -268,6 +280,7 @@ public:
 
     while (position < length) {
       let const word = next_ascii_whitespace_word(position);
+
       if (!word.is_empty()) do_word(word);
     }
   }
@@ -319,16 +332,19 @@ hash_bytes(StringView view) wontthrow -> u64
 {
   u64   hash = view.length * 0x9e3779b97f4a7c15ull;
   usize i    = 0;
+
 #pragma clang loop unroll_count(4)
 
   for (; i + 8 <= view.length; i += 8) {
     u64 chunk;
+
     __builtin_memcpy(&chunk, view.data + i, 8);
     hash = (hash ^ chunk) * 0x100000001b3ull;
   }
 
   let const tail = byte_scan::load_partial_word(view.data + i, view.length - i);
-  hash           = (hash ^ tail) * 0x100000001b3ull;
+
+  hash = (hash ^ tail) * 0x100000001b3ull;
   hash ^= hash >> 32;
   hash *= 0xff51afd7ed558ccdull;
   hash ^= hash >> 31;

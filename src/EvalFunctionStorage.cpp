@@ -101,6 +101,7 @@ FunctionBodyHandle::create(usize source_length_hint) throws
                  : wanted_byte_count);
 
   let const arena_storage = heap_allocator().alloc_array<BumpArena>(1);
+
   try {
     new (arena_storage) BumpArena{arena_byte_count};
   } catch (...) {
@@ -109,6 +110,7 @@ FunctionBodyHandle::create(usize source_length_hint) throws
   }
 
   let *storage = static_cast<function_body_storage *>(nullptr);
+
   try {
     storage = heap_allocator().alloc_array<function_body_storage>(1);
     new (storage) function_body_storage{arena_storage};
@@ -155,12 +157,12 @@ FunctionBodyHandle::set_body(const Expression *body) wontthrow -> void
 
 fn
 FunctionBodyHandle::set_definition(
-    StringView source, function_definition_info definition_info) const throws
-    -> void
+    StringView source, function_definition_info definition_info) const throws -> void
 {
   ASSERT(m_storage != nullptr);
 
   let owned_source = String{heap_allocator(), source};
+
   utils::invalidate_line_number_cache_for(m_storage->source.view());
   utils::invalidate_line_number_cache_for(
       m_storage->definition_info.render_source.view());
@@ -177,6 +179,7 @@ live_function_storage_stats() wontthrow -> function_arena_stats
        storage            = storage->next_live)
   {
     let const &arena = *storage->arena;
+
     total.bytes_used += arena.bytes_used();
     total.bytes_capacity += arena.bytes_capacity();
     total.block_count += arena.block_count();
@@ -204,6 +207,7 @@ FunctionBodyHandle::release() wontthrow -> void
     m_storage->~function_body_storage();
     heap_allocator().free_array(m_storage, 1);
   }
+
   m_storage = nullptr;
 }
 

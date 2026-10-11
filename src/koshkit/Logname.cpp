@@ -21,8 +21,7 @@ fn
 Logname::execute(const ExecContext               &ec,
                  EvalContext                     &cxt,
                  const ArrayList<String>         &args,
-                 const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+                 const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
@@ -33,13 +32,16 @@ Logname::execute(const ExecContext               &ec,
 
     return 2;
   }
+
   let const name = os::get_login_user();
+
   if (!name.has_value()) {
     report_soft_koshkit_util_error(ec, cxt, args[0].view(),
                                    "login name is unavailable");
 
     return 1;
   }
+
   ec.print_to_stdout(name->view());
   ec.print_to_stdout("\n");
 

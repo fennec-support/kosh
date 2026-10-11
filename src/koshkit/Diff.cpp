@@ -77,7 +77,8 @@ struct diff_lines
 };
 
 static fn
-split_diff_lines(StringView contents, Allocator allocator) throws -> diff_lines
+split_diff_lines(StringView contents, Allocator allocator) throws
+    -> diff_lines
 {
   if (contents.length > UINT32_MAX) throw std::bad_alloc{};
 
@@ -88,6 +89,7 @@ split_diff_lines(StringView contents, Allocator allocator) throws -> diff_lines
     if (os::INTERRUPT_REQUESTED) break;
 
     let const newline = contents.substring(scan_position).find_character('\n');
+
     if (!newline.has_value()) break;
 
     scan_position += *newline + 1;
@@ -111,8 +113,7 @@ diff_lines_equal(StringView           left,
   usize left_position  = 0;
   usize right_position = 0;
 
-  loop
-  {
+  loop {
     while (left_position < left.length &&
            is_ascii_whitespace(left[left_position]))
     {
@@ -128,6 +129,7 @@ diff_lines_equal(StringView           left,
     if (left_position == left.length || right_position == right.length) {
       return left_position == left.length && right_position == right.length;
     }
+
     if (left[left_position] != right[right_position]) return false;
 
     left_position++;
@@ -139,7 +141,7 @@ static fn
 append_replacement_edits(ArrayList<diff_edit> &edits,
                          usize                 equal_prefix_count,
                          usize                 left_middle_count,
-                         usize right_middle_count) throws -> bool
+                         usize                 right_middle_count) throws -> bool
 {
   for (usize index = 0; index < equal_prefix_count; index++) {
     if (os::INTERRUPT_REQUESTED) return false;
@@ -163,7 +165,8 @@ static fn
 make_diff_edits(const diff_lines    &left_lines,
                 const diff_lines    &right_lines,
                 Allocator            allocator,
-                diff_whitespace_mode whitespace_mode) throws -> diff_edit_result
+                diff_whitespace_mode whitespace_mode) throws
+    -> diff_edit_result
 {
   let   edits              = ArrayList<diff_edit>{allocator};
   usize equal_prefix_count = 0;
@@ -209,11 +212,13 @@ make_diff_edits(const diff_lines    &left_lines,
 
     next_frontier->clear();
     next_frontier->reserve(distance + 1);
+
     let const signed_distance = static_cast<i64>(distance);
 
     for (usize step = 0; step <= distance; step++) {
       let const diagonal      = -signed_distance + static_cast<i64>(step) * 2;
       usize     left_position = 0;
+
       if (distance != 0) {
         if (step == 0)
           left_position = (*frontier)[step];
@@ -226,7 +231,9 @@ make_diff_edits(const diff_lines    &left_lines,
       }
 
       let const right_signed = static_cast<i64>(left_position) - diagonal;
+
       ASSERT(right_signed >= 0);
+
       usize right_position = static_cast<usize>(right_signed);
 
       while (
@@ -253,12 +260,15 @@ make_diff_edits(const diff_lines    &left_lines,
     }
 
     let saved_frontier = frontier;
-    frontier           = next_frontier;
-    next_frontier      = saved_frontier;
+
+    frontier      = next_frontier;
+    next_frontier = saved_frontier;
+
     if (found_distance != maximum_distance + 1) break;
   }
 
   ASSERT(found_distance <= maximum_distance);
+
   usize left_position  = left_middle_count;
   usize right_position = right_middle_count;
 
@@ -268,7 +278,9 @@ make_diff_edits(const diff_lines    &left_lines,
     let const diagonal =
         static_cast<i64>(left_position) - static_cast<i64>(right_position);
     let const signed_distance = static_cast<i64>(distance);
+
     ASSERT(diagonal >= -signed_distance && diagonal <= signed_distance);
+
     let const step = static_cast<usize>((diagonal + signed_distance) / 2);
     let const previous_row = (distance - 1) * distance / 2;
     let const is_insertion =
@@ -281,7 +293,9 @@ make_diff_edits(const diff_lines    &left_lines,
         static_cast<usize>(trace[previous_row + previous_step]);
     let const previous_right_signed =
         static_cast<i64>(previous_left) - previous_diagonal;
+
     ASSERT(previous_right_signed >= 0);
+
     let const previous_right = static_cast<usize>(previous_right_signed);
 
     while (left_position > previous_left && right_position > previous_right) {
@@ -316,10 +330,12 @@ make_diff_edits(const diff_lines    &left_lines,
 
   for (usize index = 0; index < edits.count() / 2; index++) {
     if (os::INTERRUPT_REQUESTED) return {steal(edits), true};
+
     let const opposite = edits.count() - index - 1;
     let const saved    = edits[index];
-    edits[index]       = edits[opposite];
-    edits[opposite]    = saved;
+
+    edits[index]    = edits[opposite];
+    edits[opposite] = saved;
   }
 
   return {steal(edits), false};
@@ -335,6 +351,7 @@ static fn
 flush_diff_output(const ExecContext &ec, String &output) throws -> void
 {
   constexpr usize OUTPUT_BUFFER_LENGTH = 64 * 1024;
+
   if (output.count() < OUTPUT_BUFFER_LENGTH) return;
 
   ec.print_to_stdout(output);
@@ -357,6 +374,7 @@ append_diff_line(const ExecContext &ec,
                  StringView         line) throws -> void
 {
   let const has_newline = !line.is_empty() && line[line.length - 1] == '\n';
+
   if (style.is_empty()) {
     output += prefix;
     output += line;
@@ -372,11 +390,13 @@ append_diff_line(const ExecContext &ec,
     output += '\n';
     output += "\\ No newline at end of file\n";
   }
+
   flush_diff_output(ec, output);
 }
 
 static fn
-append_normal_range(String &output, usize start, usize count) throws -> void
+append_normal_range(String &output, usize start, usize count) throws
+    -> void
 {
   append_diff_number(output, start + 1);
   if (count > 1) {
@@ -453,6 +473,7 @@ append_normal_diff(const ExecContext          &ec,
     if (left_count != 0 && right_count != 0) {
       output += "---\n";
     }
+
     usize block_right = right_start;
 
     for (usize index = block_start; index < edit_position; index++) {
@@ -467,7 +488,8 @@ append_normal_diff(const ExecContext          &ec,
 }
 
 static fn
-append_unified_range(String &output, usize start, usize count) throws -> void
+append_unified_range(String &output, usize start, usize count) throws
+    -> void
 {
   append_diff_number(output, count == 0 ? start : start + 1);
   if (count != 1) {
@@ -484,6 +506,7 @@ make_diff_header_name(StringView        operand,
   if (label.has_value()) return String{allocator, *label};
 
   let result = String{allocator, operand};
+
   if (operand != "-")
     if (let const modification_time = os::path_modification_time(operand)) {
       result += '\t';
@@ -588,15 +611,18 @@ append_unified_diff(const ExecContext          &ec,
         append_diff_line(ec, output, StringView{}, " ",
                          left_lines.get(left_position));
         break;
+
       case diff_edit::Delete:
         append_diff_line(ec, output, palette.removed, "-",
                          left_lines.get(left_position));
         break;
+
       case diff_edit::Insert:
         append_diff_line(ec, output, palette.added, "+",
                          right_lines.get(right_position));
         break;
       }
+
       advance_diff_position(edits[current_edit], left_position, right_position);
       current_edit++;
     }
@@ -611,8 +637,7 @@ fn
 Diff::execute(const ExecContext               &ec,
               EvalContext                     &cxt,
               const ArrayList<String>         &args,
-              const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+              const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
@@ -630,16 +655,17 @@ Diff::execute(const ExecContext               &ec,
   let right_contents = String{heap_allocator()};
   let reader         = SourceBatchReader{ec, sources, cxt.scratch_allocator()};
   let chunks = ArrayList<SourceBatchReader::Chunk>{cxt.scratch_allocator()};
-  i32 right_error_number         = 0;
-  let const do_report_read_error = [&](usize source_index, i32 error_number)
-                                       throws -> void {
+  i32 right_error_number = 0;
+
+  let const do_report_read_error =
+      [&](usize source_index, i32 error_number) throws -> void {
     os::set_last_system_error(error_number);
     KOSHKIT_REPORT_PATH_ERROR("read", operands[source_index]);
   };
 
-  loop
-  {
+  loop {
     let const read_result = reader.read_next(chunks);
+
     if (read_result == SourceBatchReader::ReadResult::Complete) break;
     if (read_result == SourceBatchReader::ReadResult::Interrupted) return 130;
 
@@ -656,6 +682,7 @@ Diff::execute(const ExecContext               &ec,
       }
 
       let &contents = chunk.source_index == 0 ? left_contents : right_contents;
+
       contents.append(chunk.content);
     }
   }
@@ -676,6 +703,7 @@ Diff::execute(const ExecContext               &ec,
                                                         : operands[0].view();
     let const right_name = FLAG_DIFF_LABEL.count() == 2 ? FLAG_DIFF_LABEL.get(1)
                                                         : operands[1].view();
+
     ec.print_to_stdout("Binary files " +
                        String{cxt.scratch_allocator(), left_name} + " and " +
                        right_name + " differ\n");
@@ -685,14 +713,19 @@ Diff::execute(const ExecContext               &ec,
 
   let const left_lines =
       split_diff_lines(left_contents.view(), cxt.scratch_allocator());
+
   if (os::INTERRUPT_REQUESTED) return 130;
+
   let const right_lines =
       split_diff_lines(right_contents.view(), cxt.scratch_allocator());
+
   if (os::INTERRUPT_REQUESTED) return 130;
+
   let const result = make_diff_edits(
       left_lines, right_lines, cxt.scratch_allocator(),
       FLAG_DIFF_IGNORE_SPACE.is_enabled() ? diff_whitespace_mode::Ignore
                                           : diff_whitespace_mode::Preserve);
+
   if (result.was_interrupted) return 130;
 
   bool has_difference = false;
@@ -709,6 +742,7 @@ Diff::execute(const ExecContext               &ec,
 
   let output  = String{cxt.scratch_allocator()};
   let palette = diff_palette{};
+
   if (resolve_koshkit_color_flag(FLAG_DIFF_COLOR.is_enabled(),
                                  FLAG_DIFF_COLOR.has_value(),
                                  FLAG_DIFF_COLOR.value()))
@@ -716,6 +750,7 @@ Diff::execute(const ExecContext               &ec,
     palette = diff_palette{colors::ansi::RED, colors::ansi::GREEN,
                            colors::ansi::CYAN, colors::ansi::BOLD};
   }
+
   if (FLAG_DIFF_UNIFIED.is_enabled()) {
     let const left_name = make_diff_header_name(
         operands[0].view(),
@@ -727,6 +762,7 @@ Diff::execute(const ExecContext               &ec,
         FLAG_DIFF_LABEL.count() == 2 ? Maybe<StringView>{FLAG_DIFF_LABEL.get(1)}
                                      : None,
         cxt.scratch_allocator());
+
     if (!append_unified_diff(ec, output, left_name, right_name, left_lines,
                              right_lines, result.edits, palette))
       return 130;

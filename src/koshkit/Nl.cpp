@@ -116,6 +116,7 @@ append_nl_number(String          &output,
 {
   let const digits  = String::from(number, output.allocator());
   let const padding = width > digits.length() ? width - digits.length() : 0;
+
   if (format != nl_number_format::Left)
     output.append_repeated(format == nl_number_format::Zero ? '0' : ' ',
                            padding);
@@ -128,7 +129,8 @@ fn
 Nl::execute(const ExecContext               &ec,
             EvalContext                     &cxt,
             const ArrayList<String>         &args,
-            const ArrayList<SourceLocation> &arg_locations) const throws -> i32
+            const ArrayList<SourceLocation> &arg_locations) const throws
+    -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
@@ -140,12 +142,14 @@ Nl::execute(const ExecContext               &ec,
       FLAG_NL_HEADER.is_set() ? FLAG_NL_HEADER.value() : StringView{"n"});
   let const footer_style = NL_STYLES.find(
       FLAG_NL_FOOTER.is_set() ? FLAG_NL_FOOTER.value() : StringView{"n"});
+
   if (!body_style.has_value() || !header_style.has_value() ||
       !footer_style.has_value())
   {
     let const *invalid_flag = !body_style.has_value()     ? &FLAG_NL_BODY
                               : !header_style.has_value() ? &FLAG_NL_HEADER
                                                           : &FLAG_NL_FOOTER;
+
     KOSHKIT_REPORT_ERROR_AT(
         invalid_flag->value_location(),
         "unsupported numbering style '" + invalid_flag->value() + "'",
@@ -164,6 +168,7 @@ Nl::execute(const ExecContext               &ec,
   };
   static constexpr StaticStringMap NUMBER_FORMATS{NUMBER_FORMAT_ENTRIES};
   let const number_format = NUMBER_FORMATS.find(number_format_name);
+
   if (!number_format.has_value()) {
     KOSHKIT_REPORT_ERROR_AT(FLAG_NL_FORMAT.value_location(),
                             "invalid number format '" + FLAG_NL_FORMAT.value() +
@@ -174,8 +179,10 @@ Nl::execute(const ExecContext               &ec,
   }
 
   u64 increment = 1;
+
   if (FLAG_NL_INCREMENT.is_set()) {
     let const parsed = utils::parse_decimal_u64(FLAG_NL_INCREMENT.value());
+
     if (parsed.is_error() || parsed.value() > INT64_MAX) {
       KOSHKIT_REPORT_ERROR_AT(
           FLAG_NL_INCREMENT.value_location(),
@@ -189,8 +196,10 @@ Nl::execute(const ExecContext               &ec,
   }
 
   u64 blank_group = 1;
+
   if (FLAG_NL_BLANK_GROUP.is_set()) {
     let const parsed = utils::parse_decimal_u64(FLAG_NL_BLANK_GROUP.value());
+
     if (parsed.is_error() || parsed.value() == 0) {
       KOSHKIT_REPORT_ERROR_AT(FLAG_NL_BLANK_GROUP.value_location(),
                               "invalid blank group '" +
@@ -204,8 +213,10 @@ Nl::execute(const ExecContext               &ec,
   }
 
   u64 width_value = 6;
+
   if (FLAG_NL_WIDTH.is_set()) {
     let const parsed = utils::parse_decimal_u64(FLAG_NL_WIDTH.value());
+
     if (parsed.is_error() || parsed.value() == 0 || parsed.value() > SIZE_MAX) {
       KOSHKIT_REPORT_ERROR_AT(
           FLAG_NL_WIDTH.value_location(),
@@ -219,8 +230,10 @@ Nl::execute(const ExecContext               &ec,
   }
 
   u64 start_value = 1;
+
   if (FLAG_NL_START.is_set()) {
     let const parsed = utils::parse_decimal_u64(FLAG_NL_START.value());
+
     if (parsed.is_error() || parsed.value() > INT64_MAX) {
       KOSHKIT_REPORT_ERROR_AT(
           FLAG_NL_START.value_location(),
@@ -237,6 +250,7 @@ Nl::execute(const ExecContext               &ec,
       FLAG_NL_SEPARATOR.is_set() ? FLAG_NL_SEPARATOR.value() : StringView{"\t"};
   let const delimiter = FLAG_NL_DELIMITER.is_set() ? FLAG_NL_DELIMITER.value()
                                                    : StringView{"\\:"};
+
   if (delimiter.length != 2) {
     KOSHKIT_REPORT_ERROR_AT(FLAG_NL_DELIMITER.value_location(),
                             "the section delimiter must be two bytes");
@@ -246,13 +260,14 @@ Nl::execute(const ExecContext               &ec,
 
   let const source = operands.is_empty() ? StringView{"-"} : operands[0].view();
   let const input  = open_named_or_stdin(ec, source);
+
   if (!input.has_value()) {
     KOSHKIT_REPORT_PATH_ERROR("read", source);
 
     return 1;
   }
-  defer
-  {
+
+  defer {
     if (input->mode == input_descriptor_mode::Owned)
       os::close_fd(input->descriptor);
   };
@@ -264,14 +279,14 @@ Nl::execute(const ExecContext               &ec,
   i64      number        = static_cast<i64>(start_value);
   u64      blank_count   = 0;
 
-  loop
-  {
+  loop {
     let const result = reader.next();
+
     if (result == utils::BufferedLineReader::Result::End) break;
     if (result == utils::BufferedLineReader::Result::Error) {
       if (os::INTERRUPT_REQUESTED) return 130;
       report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                     os::last_system_error_message());
+                                            os::last_system_error_message());
 
       return 1;
     }
@@ -286,11 +301,11 @@ Nl::execute(const ExecContext               &ec,
          position++)
       is_section_delimiter =
           line.substring_of_length(position * delimiter.length,
-                                   delimiter.length) == delimiter;
+                                          delimiter.length) == delimiter;
     if (is_section_delimiter) {
       section_style = delimiter_count == 3   ? *header_style
-                      : delimiter_count == 2 ? *body_style
-                                             : *footer_style;
+                             : delimiter_count == 2 ? *body_style
+                                                    : *footer_style;
       if (!FLAG_NL_NO_RESET.is_enabled())
         number = static_cast<i64>(start_value);
       blank_count = 0;
@@ -299,10 +314,10 @@ Nl::execute(const ExecContext               &ec,
     }
 
     if (nl_style_numbers(section_style, line.is_empty(), blank_count,
-                         blank_group))
+                                blank_group))
     {
       append_nl_number(output, number, static_cast<usize>(width_value),
-                       separator, *number_format);
+                              separator, *number_format);
       if (increment > static_cast<u64>(INT64_MAX - number))
         number = INT64_MAX;
       else
@@ -311,6 +326,7 @@ Nl::execute(const ExecContext               &ec,
       output.append_repeated(' ', static_cast<usize>(width_value));
       output += line.is_empty() ? StringView{" "} : separator;
     }
+
     output += line;
     output += '\n';
     if (output.count() >= 65536) {

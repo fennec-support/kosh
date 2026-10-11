@@ -77,16 +77,19 @@ Who::execute(const ExecContext               &ec,
   }
 
   let const is_current = FLAG_WHO_CURRENT.is_enabled() || !operands.is_empty();
+
   if (!is_current) {
     let const has_nonuser_selection =
         !FLAG_WHO_ALL.is_enabled() &&
         (FLAG_WHO_BOOT.is_enabled() || FLAG_WHO_DEAD.is_enabled() ||
          FLAG_WHO_LOGIN.is_enabled() || FLAG_WHO_PROCESS.is_enabled() ||
          FLAG_WHO_RUNLEVEL.is_enabled() || FLAG_WHO_TIME.is_enabled());
+
     if (has_nonuser_selection) return 0;
 
     let const sessions = os::logged_in_users();
     let       output   = String{cxt.scratch_allocator()};
+
     if (FLAG_WHO_QUICK.is_enabled()) {
       for (let const &session : sessions) {
         output += session.user.view();
@@ -101,6 +104,7 @@ Who::execute(const ExecContext               &ec,
 
       return 0;
     }
+
     if (FLAG_WHO_HEADING.is_enabled()) output += "NAME LINE TIME\n";
 
     for (let const &session : sessions) {
@@ -113,6 +117,7 @@ Who::execute(const ExecContext               &ec,
         output +=
             utils::format_unix_timestamp(session.login_time, "%b %e %H:%M");
       }
+
       if (FLAG_WHO_IDLE.is_enabled()) output += " .";
       output += '\n';
     }
@@ -124,9 +129,11 @@ Who::execute(const ExecContext               &ec,
 
   let const user     = os::get_current_user();
   let const terminal = os::terminal_name(ec.in_fd.value_or(KOSH_STDIN));
+
   if (!user.has_value() || !terminal.has_value()) {
     return 1;
   }
+
   ec.print_to_stdout(user->view());
   ec.print_to_stdout(" ");
   ec.print_to_stdout(terminal->view());

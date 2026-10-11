@@ -32,6 +32,7 @@ fn
 Echo::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let const &args = ec.args();
+
   ASSERT(!args.is_empty());
 
   if (args.count() == 2 && args[1] == "--help" &&
@@ -55,9 +56,11 @@ Echo::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   if (!cxt.runtime_state().is_posix_mode()) {
     while (start < args.count()) {
       let const arg = args[start].view();
+
       if (arg.length < 2 || arg[0] != '-') {
         break;
       }
+
       let is_all_option_letters       = true;
       let candidate_suppress_newline  = should_suppress_newline;
       let candidate_interpret_escapes = should_interpret_escapes;
@@ -93,6 +96,7 @@ Echo::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     if (i > start) output += ' ';
 
     let const &arg = args[i];
+
     if (!should_interpret_escapes) {
       output += arg.view();
       continue;
@@ -105,15 +109,23 @@ Echo::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       }
 
       let const escaped = arg[j + 1];
+
       j++;
       switch (escaped) {
       case 'a': output += '\a'; break;
+
       case 'b': output += '\b'; break;
+
       case 'f': output += '\f'; break;
+
       case 'n': output += '\n'; break;
+
       case 'r': output += '\r'; break;
+
       case 't': output += '\t'; break;
+
       case 'v': output += '\v'; break;
+
       case 'e':
       case 'E':
         if (cxt.runtime_state().is_posix_mode()) {
@@ -122,10 +134,14 @@ Echo::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         } else {
           output += '\x1b';
         }
+
         break;
+
       case '\\': output += '\\'; break;
-      case 'c':  should_stop = true; break;
-      case 'x':  {
+
+      case 'c': should_stop = true; break;
+
+      case 'x': {
         if (cxt.runtime_state().is_posix_mode()) {
           output += '\\';
           output += escaped;
@@ -137,6 +153,7 @@ Echo::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
         while (digit_count < 2 && j + 1 < arg.length()) {
           let const digit = utils::hex_digit_value(arg[j + 1]);
+
           if (!digit.has_value()) break;
           value = value * 16 + *digit;
           j++;
@@ -150,6 +167,7 @@ Echo::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
           output += static_cast<char>(value);
         }
       } break;
+
       case '0':
       case '1':
       case '2':
@@ -163,6 +181,7 @@ Echo::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
           output += escaped;
           break;
         }
+
         i32   value       = escaped - '0';
         usize digit_count = escaped == '0' ? 0 : 1;
 
@@ -176,6 +195,7 @@ Echo::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
         output += static_cast<char>(value);
       } break;
+
       default:
         output += '\\';
         output += escaped;

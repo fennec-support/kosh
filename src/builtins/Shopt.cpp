@@ -43,8 +43,9 @@ namespace koshka {
 namespace {
 
 fn
-shopt_status_line(StringView name, bool is_on, Allocator allocator) throws
-    -> String
+shopt_status_line(StringView name,
+                  bool       is_on,
+                  Allocator  allocator) throws -> String
 {
   constexpr usize NAME_FIELD_WIDTH = 20;
   let             line             = String{allocator, name};
@@ -62,6 +63,7 @@ format_option_names_help(Allocator allocator) throws -> String
 {
   let        section = String{allocator, "OPTION NAMES\n"};
   let const &names   = shopt_option_name_list();
+
   utils::append_name_columns(section, names.count(),
                              [&](usize index) { return names[index]; });
 
@@ -81,6 +83,7 @@ shopt_reusable_line(StringView          name,
                     shopt_reusable_form form) throws -> String
 {
   let line = String{allocator};
+
   if (form == shopt_reusable_form::SetOption)
     line += is_on ? "set -o " : "set +o ";
   else
@@ -92,8 +95,8 @@ shopt_reusable_line(StringView          name,
 }
 
 fn
-shopt_is_on(const EvalContext &cxt, const option_descriptor &option) throws
-    -> bool
+shopt_is_on(const EvalContext       &cxt,
+            const option_descriptor &option) throws -> bool
 {
   return read_option_number(cxt, option) != 0;
 }
@@ -124,6 +127,7 @@ enabled_shopt_option_names(const EvalContext &cxt) throws -> String
     if (option.shopt_name.is_empty() || !shopt_is_on(cxt, option)) {
       continue;
     }
+
     if (!joined.is_empty()) joined.push(':');
     joined.append(option.shopt_name);
   }
@@ -157,18 +161,21 @@ Shopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     name_locations.push(operand_locations[i]);
   }
 
-  let const do_format_status_line = [&](StringView name, bool is_on) throws {
+  let const do_format_status_line = [&](StringView name,
+                                        bool       is_on) throws {
     return should_print_reusable
                ? shopt_reusable_line(name, is_on, cxt.scratch_allocator(),
                                      reusable_form)
                : shopt_status_line(name, is_on, cxt.scratch_allocator());
   };
 
-  i32       status = 0;
+  i32 status = 0;
+
   let const do_find_or_reject =
       [&](StringView name, const SourceLocation &location)
           throws -> const option_descriptor * {
     let const *option = find_option_by_shopt_name(name);
+
     if (option != nullptr) return option;
     status = 1;
     if (!is_quiet)
@@ -184,11 +191,13 @@ Shopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       if (!is_quiet) {
         for (let const &name : shell_option_names()) {
           let on = query_shell_option(cxt, name);
+
           if (!on.has_value()) continue;
 
           if (should_enable && !*on) {
             continue;
           }
+
           if (should_disable && *on) {
             continue;
           }
@@ -203,6 +212,7 @@ Shopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     for (usize n = 0; n < names.count(); n++) {
       let const &name     = names[n];
       let const &location = name_locations[n];
+
       if (should_enable || should_disable) {
         if (!apply_shell_option(cxt, name, should_enable)) {
           if (is_quiet) {
@@ -217,6 +227,7 @@ Shopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         if (!*on) {
           status = 1;
         }
+
         if (!is_quiet) {
           ec.print_to_stdout(do_format_status_line(name, *on).view());
         }
@@ -238,10 +249,13 @@ Shopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       if (!is_quiet) {
         for (let const &option : get_option_registry()) {
           if (option.shopt_name.is_empty()) continue;
+
           let const is_on = shopt_is_on(cxt, option);
+
           if (should_enable && !is_on) {
             continue;
           }
+
           if (should_disable && is_on) {
             continue;
           }
@@ -256,9 +270,11 @@ Shopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
     for (usize n = 0; n < names.count(); n++) {
       let const *option = do_find_or_reject(names[n], name_locations[n]);
+
       if (option == nullptr || option->is_read_only) {
         continue;
       }
+
       LOG(Info, "shopt setting '%.*s' to %s", static_cast<int>(names[n].length),
           names[n].data, should_enable ? "on" : "off");
       write_option_number(cxt, *option, should_enable ? 1 : 0,
@@ -282,8 +298,11 @@ Shopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   for (usize n = 0; n < names.count(); n++) {
     let const *option = do_find_or_reject(names[n], name_locations[n]);
+
     if (option == nullptr) continue;
+
     let const is_on = shopt_is_on(cxt, *option);
+
     if (!is_on) status = 1;
     if (!is_quiet)
       ec.print_to_stdout(do_format_status_line(names[n], is_on).view());

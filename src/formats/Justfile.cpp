@@ -22,17 +22,21 @@ parse_justfile_format(const parser_format_input &input,
   while (position < input.source.length) {
     let const line_start = position;
     let const line       = input.source.next_line(position);
+
     if (parser_format_has_substring(line, "set shell") &&
         parser_format_has_substring(line, "bash"))
     {
       mood = mimic_mood::Bash;
     }
+
     if (!line.is_empty() && line[0] != ' ' && line[0] != '\t') {
       is_recipe = line[line.length - 1] == ':' &&
                   !parser_format_has_substring(line, ":=");
       continue;
     }
+
     if (!is_recipe) continue;
+
     usize shell_start = 0;
 
     while (shell_start < line.length &&
@@ -45,6 +49,7 @@ parse_justfile_format(const parser_format_input &input,
     if (shell_start < line.length && line[shell_start] == '@') {
       shell_start++;
     }
+
     parser_format_add_fragment(document, input.source, line_start + shell_start,
                                line_start + line.length, 0, None,
                                parser_format_codec::Direct, mood);

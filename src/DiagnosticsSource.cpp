@@ -73,8 +73,8 @@ build_source_scan_table() -> source_scan_table
 constexpr source_scan_table SOURCE_SCAN = build_source_scan_table();
 
 alwaysinline pure fn
-skip_plain_bytes(StringView source, usize at, u8 acting_state) wontthrow
-    -> usize
+skip_plain_bytes(StringView source, usize at, u8 acting_state)
+    wontthrow -> usize
 {
   while (at + 1 < source.length &&
          (SOURCE_SCAN.acting_states[static_cast<u8>(source[at + 1])] &
@@ -122,6 +122,7 @@ source_holds_scanned_byte(StringView source) wontthrow -> bool
 
   while (at + sizeof(u64) <= source.length) {
     u64 chunk = 0;
+
     __builtin_memcpy(&chunk, source.data + at, sizeof(u64));
     if (chunk_holds_scanned_byte(chunk)) return true;
     at += sizeof(u64);
@@ -129,6 +130,7 @@ source_holds_scanned_byte(StringView source) wontthrow -> bool
 
   for (; at < source.length; at++) {
     let const byte = static_cast<u8>(source[at]);
+
     if (byte >= 0x80 || byte == '\r' || byte == '\\') {
       return true;
     }
@@ -281,6 +283,7 @@ pure fn
 skip_here_document(StringView source, usize at) wontthrow -> usize
 {
   usize cursor = at + 2;
+
   if (cursor < source.length && source[cursor] == '-') {
     cursor++;
   }
@@ -298,6 +301,7 @@ skip_here_document(StringView source, usize at) wontthrow -> usize
       (source[cursor] == '\'' || source[cursor] == '"'))
   {
     let const quote = source[cursor];
+
     cursor++;
     delimiter_start = cursor;
 
@@ -374,6 +378,7 @@ fn
 escape_spelling(char escaped) throws -> String
 {
   let spelling = String{"\\"};
+
   spelling.push(escaped);
 
   return spelling;
@@ -386,6 +391,7 @@ line_above_continues(StringView source, usize line_start) wontthrow -> bool
   if (source[line_start - 1] != '\n') return false;
 
   usize ending = line_start - 1;
+
   if (source[ending - 1] == '\r') ending--;
 
   return ending > 0 && source[ending - 1] == '\\';
@@ -394,7 +400,8 @@ line_above_continues(StringView source, usize line_start) wontthrow -> bool
 } /* namespace */
 
 fn
-check_source_bytes(AnalysisContext &actx, StringView source) throws -> void
+check_source_bytes(AnalysisContext &actx, StringView source) throws
+    -> void
 {
   if (!source_holds_scanned_byte(source)) return;
 
@@ -427,6 +434,7 @@ check_source_bytes(AnalysisContext &actx, StringView source) throws -> void
 
       if (id.has_value() && at != 0) {
         let const spelling = codepoint_spelling(decoded.value);
+
         actx.report_diagnostic(*id, SourceLocation{at, decoded.length},
                                {spelling.view()});
       }
@@ -486,6 +494,7 @@ check_source_bytes(AnalysisContext &actx, StringView source) throws -> void
           }
         } else if (byte_is_ascii_letter(escaped) && !is_command_position) {
           let const spelling = escape_spelling(escaped);
+
           actx.report_diagnostic(
               escape_names_control_byte(escaped) ? diagnostic_id::sc1012
                                                  : diagnostic_id::sc1001,
@@ -503,6 +512,7 @@ check_source_bytes(AnalysisContext &actx, StringView source) throws -> void
           state              = source_scan_state::Comment;
           comment_line_start = line_start;
         }
+
         break;
 
       case '<':
@@ -516,8 +526,10 @@ check_source_bytes(AnalysisContext &actx, StringView source) throws -> void
           while (line_start > 0 && source[line_start - 1] != '\n') {
             line_start--;
           }
+
           continue;
         }
+
         break;
 
       case ' ':
@@ -544,6 +556,7 @@ check_source_bytes(AnalysisContext &actx, StringView source) throws -> void
         at                  = skip_plain_bytes(source, at, SCAN_ACTS_NORMAL);
         break;
       }
+
       break;
 
     case source_scan_state::SingleQuoted:
@@ -560,12 +573,14 @@ check_source_bytes(AnalysisContext &actx, StringView source) throws -> void
                                    SourceLocation{at - 1, 2});
           }
         }
+
         break;
 
       default:
         at = skip_plain_bytes(source, at, SCAN_ACTS_SINGLE_QUOTED);
         break;
       }
+
       break;
 
     case source_scan_state::AnsiCQuoted:
@@ -577,6 +592,7 @@ check_source_bytes(AnalysisContext &actx, StringView source) throws -> void
         at = skip_plain_bytes(source, at, SCAN_ACTS_ANSI_C_QUOTED);
         break;
       }
+
       break;
 
     case source_scan_state::DoubleQuoted:
@@ -593,6 +609,7 @@ check_source_bytes(AnalysisContext &actx, StringView source) throws -> void
 
         let const body_end =
             lexer::scan_balanced_shell_region(source, at + 2, ')');
+
         if (!body_end.has_value()) break;
 
         quoted_substitution_ends.push(*body_end - 1);
@@ -606,6 +623,7 @@ check_source_bytes(AnalysisContext &actx, StringView source) throws -> void
         at = skip_plain_bytes(source, at, SCAN_ACTS_DOUBLE_QUOTED);
         break;
       }
+
       break;
 
     case source_scan_state::Comment:
@@ -830,9 +848,9 @@ check_shebang(AnalysisContext       &actx,
   let   shell_argument_location = interpreter_location;
   let   has_split_string_flag   = false;
 
-  loop
-  {
+  loop {
     let const word = reader.read_next_word();
+
     if (word.is_empty()) break;
 
     if (shell_argument.is_empty() && word[0] != '-') {
@@ -901,9 +919,9 @@ find_line_start(StringView source, usize position) wontthrow -> usize
 }
 
 pure fn
-only_blanks_precede(StringView source,
-                    usize      line_start,
-                    usize      position) wontthrow -> bool
+only_blanks_precede(StringView source, usize line_start, usize position)
+    wontthrow
+    -> bool
 {
   for (usize at = line_start; at < position; at++) {
     if (!lexer::is_whitespace(source[at])) return false;
@@ -913,13 +931,12 @@ only_blanks_precede(StringView source,
 }
 
 pure fn
-read_word_below_directive(StringView source, usize after) wontthrow
-    -> StringView
+read_word_below_directive(StringView source, usize after)
+    wontthrow -> StringView
 {
   usize at = after;
 
-  loop
-  {
+  loop {
     while (at < source.length &&
            (lexer::is_whitespace(source[at]) || source[at] == '\n'))
     {
@@ -1074,7 +1091,8 @@ fn
 check_shellcheck_directives(
     AnalysisContext                            &actx,
     StringView                                  source,
-    const ArrayList<shellcheck_directive_span> &directives) throws -> void
+    const ArrayList<shellcheck_directive_span> &directives) throws
+    -> void
 {
   usize previous_position = static_cast<usize>(-1);
 
@@ -1172,19 +1190,22 @@ struct resembling_assignment
 
 fn
 suggest_shell_maintained_variable_name(
-    const HashSet &shell_maintained_variable_names, StringView name) throws
-    -> Maybe<String>
+    const HashSet &shell_maintained_variable_names,
+    StringView     name) throws -> Maybe<String>
 {
   let suggestion = utils::NameSuggestion{name};
+
   shell_maintained_variable_names.for_each(
-      [&](StringView candidate) throws { suggestion.consider(candidate); });
+      [&](StringView candidate) throws {
+        suggestion.consider(candidate);
+      });
 
   return suggestion.take_suggestion();
 }
 
 fn
 collect_shell_provided_variable_names(const AnalysisContext &actx,
-                                      HashSet &out_names) throws -> void
+                                      HashSet               &out_names) throws -> void
 {
   static constexpr PackedStringKey FIXED_VARIABLE_KEYS[] = {
       SSK("KOSH"),    SSK("KOSH_VERSION"),    SSK("KOSH_COMMIT"),
@@ -1192,6 +1213,7 @@ collect_shell_provided_variable_names(const AnalysisContext &actx,
 
   for (let const &key : FIXED_VARIABLE_KEYS) {
     let name = key.to_string();
+
     out_names.add(name.view());
   }
 
@@ -1202,11 +1224,13 @@ collect_shell_provided_variable_names(const AnalysisContext &actx,
 
     for (let const &key : BASH_IDENTITY_KEYS) {
       let name = key.to_string();
+
       out_names.add(name.view());
     }
   }
 
   let dynamic_names = ArrayList<StringView>{heap_allocator()};
+
   actx.eval_context->append_dynamic_variable_names(dynamic_names);
 
   for (let const name : dynamic_names)
@@ -1226,8 +1250,7 @@ names_resemble_each_other(StringView left, StringView right) wontthrow -> bool
   usize at_left  = 0;
   usize at_right = 0;
 
-  loop
-  {
+  loop {
     while (at_left < left.length && left[at_left] == '_') {
       at_left++;
     }
@@ -1239,6 +1262,7 @@ names_resemble_each_other(StringView left, StringView right) wontthrow -> bool
     if (at_left == left.length || at_right == right.length) {
       break;
     }
+
     if (fold_name_byte(left[at_left]) != fold_name_byte(right[at_right]))
       return false;
 
@@ -1282,11 +1306,11 @@ check_unassigned_variable_reads(AnalysisContext &actx) throws -> void
   }
 
   let collected_reads = ArrayList<unassigned_read>{heap_allocator()};
+
   actx.reads_before_assignment.for_each(
-      [&collected_reads](StringView name, const SourceLocation &location)
-          throws -> void {
-            collected_reads.push(unassigned_read{name, location});
-          });
+      [&collected_reads](StringView            name,
+                         const SourceLocation &location) throws
+          -> void { collected_reads.push(unassigned_read{name, location}); });
 
   let const reads =
       steal(collected_reads)
@@ -1296,6 +1320,7 @@ check_unassigned_variable_reads(AnalysisContext &actx) throws -> void
               });
 
   let shell_maintained_variable_names = HashSet{heap_allocator()};
+
   collect_shell_provided_variable_names(actx, shell_maintained_variable_names);
 
   for (let const &read : reads) {
@@ -1303,6 +1328,7 @@ check_unassigned_variable_reads(AnalysisContext &actx) throws -> void
         actx.diagnostic_assignment_traces.find(read.name).has_value() ||
         actx.assigned_names_so_far.find(read.name).has_value() ||
         actx.global_assigned_names.find(read.name).has_value();
+
     if (has_conditional_assignment) {
       actx.report_diagnostic(diagnostic_id::sc2154, read.location, {read.name});
       continue;
@@ -1310,7 +1336,8 @@ check_unassigned_variable_reads(AnalysisContext &actx) throws -> void
 
     resembling_assignment resembled{};
     resembling_assignment misspelled{};
-    let const             do_match = [&read, &resembled, &misspelled](
+
+    let const do_match = [&read, &resembled, &misspelled](
                              StringView            assigned,
                              const SourceLocation &location,
                              assignment_binder     binder) throws -> void {
@@ -1331,18 +1358,23 @@ check_unassigned_variable_reads(AnalysisContext &actx) throws -> void
     };
 
     actx.diagnostic_assignment_traces.for_each(
-        [&](StringView assigned, const diagnostic_assignment_trace &trace)
-            throws { do_match(assigned, trace.location, trace.binder); });
+        [&](StringView                         assigned,
+            const diagnostic_assignment_trace &trace) throws {
+          do_match(assigned, trace.location, trace.binder);
+        });
     actx.assigned_names_so_far.for_each(
-        [&](StringView assigned, const SourceLocation &location) throws {
+        [&](StringView            assigned,
+            const SourceLocation &location) throws {
           do_match(assigned, location, assignment_binder::Assignment);
         });
     actx.global_assigned_names.for_each(
-        [&](StringView assigned, const SourceLocation &location) throws {
+        [&](StringView            assigned,
+            const SourceLocation &location) throws {
           do_match(assigned, location, assignment_binder::Assignment);
         });
     actx.function_local_names.for_each(
-        [&](StringView assigned, const SourceLocation &location) throws {
+        [&](StringView            assigned,
+            const SourceLocation &location) throws {
           do_match(assigned, location, assignment_binder::Declaration);
         });
 
@@ -1351,6 +1383,7 @@ check_unassigned_variable_reads(AnalysisContext &actx) throws -> void
     if (resembled.name.is_empty()) {
       let maintained = suggest_shell_maintained_variable_name(
           shell_maintained_variable_names, read.name);
+
       if (maintained.has_value()) {
         actx.report_diagnostic(diagnostic_id::sc2153_builtin, read.location,
                                {read.name, maintained->view()});
@@ -1386,11 +1419,13 @@ build_function_name_summaries(const AnalysisContext &actx) throws
     -> StringMap<function_name_summary>
 {
   StringMap<function_name_summary> summaries{heap_allocator()};
+
   summaries.reserve(actx.functions.records.count());
 
   for (usize index = 0; index < actx.functions.records.count(); index++) {
     let const &definition = actx.functions.records[index];
     let       &summary    = summaries.get_or_create(definition.name.view(), {});
+
     if (summary.first_definition_index != NO_DEFINITION_INDEX) continue;
 
     summary.first_definition_index    = index;
@@ -1399,6 +1434,7 @@ build_function_name_summaries(const AnalysisContext &actx) throws
 
   for (let const &call : actx.function_calls) {
     let const summary = summaries.find(call.name.view());
+
     if (!summary.has_value()) continue;
 
     if (call.has_arguments) {
@@ -1414,7 +1450,8 @@ build_function_name_summaries(const AnalysisContext &actx) throws
 fn
 check_function_argument_use(AnalysisContext                  &actx,
                             const function_definition_record &definition,
-                            const function_name_summary &summary) throws -> void
+                            const function_name_summary      &summary) throws
+    -> void
 {
   if (summary.has_call_with_arguments || !summary.has_call_without_arguments) {
     return;
@@ -1445,6 +1482,7 @@ check_call_before_definition(
     if (search_builtin(call.name.view()).has_value()) continue;
 
     let const summary = summaries.find(call.name.view());
+
     if (!summary.has_value()) continue;
     if (call.location.position >= summary->first_definition_position) continue;
 
@@ -1478,9 +1516,11 @@ check_function_argument_dataflow(AnalysisContext &actx) throws -> void
   if (should_check_argument_use) {
     for (usize index = 0; index < actx.functions.records.count(); index++) {
       let const &definition = actx.functions.records[index];
+
       if (definition.first_positional_read.is_empty()) continue;
 
       let const summary = summaries.find(definition.name.view());
+
       if (!summary.has_value() || summary->first_definition_index != index) {
         continue;
       }

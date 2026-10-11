@@ -37,6 +37,7 @@ get_error_severity_word(error_severity severity) wontthrow -> StringView
   case error_severity::details: return "details";
   case error_severity::trace:   return "trace";
   }
+
   unreachable("invalid error severity %d", ENUM(severity));
 }
 
@@ -52,8 +53,8 @@ enum class source_identity_kind : u8
 };
 
 fn
-source_identity_kind_at(u32 source_name_index) wontthrow
-    -> source_identity_kind;
+source_identity_kind_at(u32 source_name_index)
+    wontthrow -> source_identity_kind;
 
 inline constexpr i32 SYNTAX_ERROR_STATUS              = 2;
 inline constexpr i32 BASH_COMMAND_STRING_FATAL_STATUS = 127;
@@ -73,8 +74,7 @@ struct SourceLocation
   SourceLocation(usize position,
                  usize length,
                  u32   source_name_index = 0) wontthrow
-      : position{static_cast<u32>(position)},
-        length{static_cast<u32>(length)},
+      : position{static_cast<u32>(position)}, length{static_cast<u32>(length)},
         source_name_index{source_name_index}
   {}
 
@@ -120,13 +120,17 @@ struct SourceLocation
   {
     ASSERT(part.data >= source.data &&
            part.data + part.length <= source.data + source.length);
+
     let const part_offset = static_cast<usize>(part.data - source.data);
     if (part_offset < source_offset) return nullptr;
+
     let const mapped_offset = part_offset - source_offset;
+
     if (part.length == 0) return nullptr;
     if (mapped_offset > length || part.length > length - mapped_offset) {
       return nullptr;
     }
+
     storage = subspan(mapped_offset, part.length);
 
     return &storage;
@@ -153,7 +157,7 @@ public:
   virtual ~ErrorBase();
 
   virtual pure fn
-  message() const wontthrow -> const String & = 0;
+  message() const wontthrow -> const String & abstract;
   virtual pure fn
   detail_message() const wontthrow -> StringView
   {
@@ -164,51 +168,58 @@ public:
   get_severity() const wontthrow -> error_severity;
 
   virtual fn
-  to_string(StringView source, EvalContext *context = nullptr) const throws
-      -> String;
+  to_string(StringView source, EvalContext *context = nullptr) const throws -> String;
 
   fn
   set_script_fatal() wontthrow -> void
   {
     m_is_script_fatal = true;
   }
+
   pure fn
   is_script_fatal() const wontthrow -> bool
   {
     return m_is_script_fatal;
   }
+
   fn
   set_line_discarding() wontthrow -> void
   {
     m_is_line_discarding = true;
   }
+
   pure fn
   is_line_discarding() const wontthrow -> bool
   {
     return m_is_line_discarding;
   }
+
   fn
   set_top_level_line_discarding() wontthrow -> void
   {
     m_is_line_discarding           = true;
     m_is_top_level_line_discarding = true;
   }
+
   pure fn
   is_top_level_line_discarding() const wontthrow -> bool
   {
     return m_is_top_level_line_discarding;
   }
+
   fn
   take_line_discard_marks(const ErrorBase &source) wontthrow -> void
   {
     m_is_line_discarding           = source.m_is_line_discarding;
     m_is_top_level_line_discarding = source.m_is_top_level_line_discarding;
   }
+
   fn
   set_command_status(i64 status) wontthrow -> void
   {
     m_command_status = status;
   }
+
   pure fn
   command_status() const wontthrow -> i64
   {
@@ -220,6 +231,7 @@ public:
   {
     m_was_rendered = true;
   }
+
   pure fn
   was_rendered() const wontthrow -> bool
   {
@@ -228,6 +240,7 @@ public:
 
 protected:
   bool m_was_rendered{false};
+
   fn
   trailing_details_to_string() const throws -> String;
 
@@ -322,8 +335,7 @@ public:
   ErrorWithLocation(SourceLocation location, StringView message);
 
   fn
-  to_string(StringView source, EvalContext *context = nullptr) const throws
-      -> String override;
+  to_string(StringView source, EvalContext *context = nullptr) const throws -> String override;
 
   fn
   set_line_offset(isize offset) wontthrow -> void
@@ -331,6 +343,7 @@ public:
     m_line_offset = offset;
     m_is_rebased  = true;
   }
+
   fn
   hide_filename() wontthrow -> void
   {
@@ -342,6 +355,7 @@ public:
   {
     return m_location;
   }
+
   fn
   set_location(SourceLocation location) wontthrow -> void
   {
@@ -430,9 +444,9 @@ public:
 
   fn
   get_severity() const wontthrow -> error_severity override;
+
   fn
-  to_string(StringView source, EvalContext *context = nullptr) const throws
-      -> String override;
+  to_string(StringView source, EvalContext *context = nullptr) const throws -> String override;
 };
 
 class ErrorWithLocationAndDetails : public ErrorWithLocation
@@ -466,8 +480,7 @@ public:
   }
 
   fn
-  details_to_string(StringView   source,
-                    EvalContext *context = nullptr) const throws -> String;
+  details_to_string(StringView source, EvalContext *context = nullptr) const throws -> String;
 
 protected:
   SourceLocation m_details_location;
@@ -483,12 +496,13 @@ static_assert(
     !std::is_same_v<WarningWithLocationAndDetails, WarningWithLocation>);
 
 wontreturn inline fn
-relocate_error(const ErrorBase &error, const SourceLocation &location) throws
-    -> void
+relocate_error(const ErrorBase      &error,
+               const SourceLocation &location) throws -> void
 {
   if (!error.detail_message().is_empty()) {
     let relocated = ErrorWithLocationAndDetails{
         location, error.message().view(), error.detail_message()};
+
     if (error.is_script_fatal()) relocated.set_script_fatal();
     relocated.take_line_discard_marks(error);
     relocated.set_command_status(error.command_status());
@@ -496,6 +510,7 @@ relocate_error(const ErrorBase &error, const SourceLocation &location) throws
   }
 
   let relocated = ErrorWithLocation{location, error.message().view()};
+
   if (error.is_script_fatal()) relocated.set_script_fatal();
   relocated.take_line_discard_marks(error);
   relocated.set_command_status(error.command_status());

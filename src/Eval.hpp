@@ -80,6 +80,7 @@ public:
   {
     return kind == Kind::Builtin;
   }
+
   mustuse bool
   is_unresolved() const
   {
@@ -180,7 +181,7 @@ struct reporting_state
   bool is_diagnostics_disabled{false};
 
   pure fn
-  operator==(const reporting_state &other) const wontthrow->bool
+  operator==(const reporting_state &other) const wontthrow -> bool
   {
     return warning_level == other.warning_level &&
            is_annoying_disabled == other.is_annoying_disabled &&
@@ -262,7 +263,7 @@ public:
   set_annoying_diagnostics_enabled(bool is_enabled) wontthrow -> void;
 #define KOSH_RUNTIME_FLAG(getter, setter, flag)                                \
   pure fn getter() const wontthrow -> bool { return has_flag(Flag::flag); }    \
-  fn      setter(bool is_enabled) wontthrow -> void                            \
+  fn setter(bool is_enabled) wontthrow -> void                                 \
   {                                                                            \
     set_flag(Flag::flag, is_enabled);                                          \
   }
@@ -302,6 +303,7 @@ public:
   {
     return m_shell_options;
   }
+
   fn
   set_shell_options(u64 options) wontthrow -> void
   {
@@ -337,11 +339,13 @@ public:
   {
     return m_mood == mimic_mood::Posix;
   }
+
   pure fn
   bash_dynamic_variables_enabled() const wontthrow -> bool
   {
     return !is_posix_mode();
   }
+
   pure fn
   bash_additions_enabled() const wontthrow -> bool
   {
@@ -359,6 +363,7 @@ public:
   {
     m_mood = value;
   }
+
   pure fn
   get_mood() const wontthrow -> mimic_mood
   {
@@ -370,6 +375,7 @@ public:
   {
     m_tab_selector = selector;
   }
+
   pure fn
   get_tab_selector() const wontthrow -> tab_selector_mode
   {
@@ -381,6 +387,7 @@ public:
   {
     set_option(shell_option_id::Mimicry, is_enabled);
   }
+
   pure fn
   is_mimicry_enabled() const wontthrow -> bool
   {
@@ -392,6 +399,7 @@ public:
   {
     m_reporting.warning_level = level;
   }
+
   pure fn
   get_warning_level() const wontthrow -> u8
   {
@@ -403,6 +411,7 @@ public:
   {
     return {is_mimicry_enabled(), get_reporting_state()};
   }
+
   fn
   set_inheritable_analysis_state(
       const inheritable_analysis_state &state) wontthrow -> void
@@ -410,16 +419,19 @@ public:
     set_mimicry(state.is_mimicry_enabled);
     set_reporting_state(state.reporting);
   }
+
   pure fn
   get_reporting_state() const wontthrow -> reporting_state
   {
     return m_reporting;
   }
+
   fn
   set_reporting_state(const reporting_state &state) wontthrow -> void
   {
     m_reporting = state;
   }
+
   fn
   set_warnings_enabled(bool is_enabled) wontthrow -> void
   {
@@ -513,6 +525,7 @@ public:
   {
     set_option(shell_option_id::ShowExitCode, is_enabled);
   }
+
   pure fn
   show_exit_code() const wontthrow -> bool
   {
@@ -560,6 +573,7 @@ private:
 
     return static_cast<u8>((m_flags & ~REPORTING_FLAGS) | reporting_flags);
   }
+
   fn
   set_wire_flags(u8 flags) wontthrow -> void
   {
@@ -569,11 +583,13 @@ private:
     m_reporting.is_annoying_disabled =
         (flags & static_cast<u8>(Flag::AnnoyingDiagnosticsEnabled)) == 0;
   }
+
   pure fn
   has_flag(Flag flag) const wontthrow -> bool
   {
     return (m_flags & static_cast<u8>(flag)) != 0;
   }
+
   fn
   set_flag(Flag flag, bool is_enabled) wontthrow -> void
   {
@@ -610,7 +626,7 @@ public:
   explicit RuntimeStateScope(EvalContext &context);
   RuntimeStateScope(const RuntimeStateScope &) = delete;
   fn
-  operator=(const RuntimeStateScope &) = delete;
+  operator=(const RuntimeStateScope &)         = delete;
   ~RuntimeStateScope();
 
 private:
@@ -637,7 +653,7 @@ struct definition_state
   }
 
   pure fn
-  operator==(const definition_state &other) const wontthrow->bool
+  operator==(const definition_state &other) const wontthrow -> bool
   {
     return mood == other.mood && reporting == other.reporting;
   }
@@ -645,8 +661,9 @@ struct definition_state
   fn
   append_wire(String &output) const throws -> void;
   static fn
-  from_wire(subshell_bootstrap_reader &reader,
-            definition_state          &state) wontthrow -> bool;
+  from_wire(subshell_bootstrap_reader &reader, definition_state &state)
+      wontthrow
+      -> bool;
 };
 
 inline pure fn
@@ -668,8 +685,8 @@ RuntimeState::is_annoying_diagnostics_enabled() const wontthrow -> bool
 }
 
 inline fn
-RuntimeState::set_annoying_diagnostics_enabled(bool is_enabled) wontthrow
-    -> void
+RuntimeState::set_annoying_diagnostics_enabled(bool is_enabled)
+    wontthrow -> void
 {
   m_reporting.is_annoying_disabled = !is_enabled;
 }
@@ -759,8 +776,9 @@ public:
   }
 
   fn
-  set_warning_suppressed(suppressible_warning which,
-                         bool                 is_suppressed) wontthrow -> void
+  set_warning_suppressed(suppressible_warning which, bool is_suppressed)
+      wontthrow
+      -> void
   {
     let const bit = u32{1} << static_cast<u32>(which);
     if (is_suppressed)
@@ -857,36 +875,43 @@ public:
   {
     return m_aliases;
   }
+
   pure fn
   aliases() const wontthrow -> const StringMap<String> &
   {
     return m_aliases;
   }
+
   fn
   local_scopes() wontthrow -> ArrayList<ArrayList<local_binding>> &
   {
     return m_local_scopes;
   }
+
   pure fn
   local_scopes() const wontthrow -> const ArrayList<ArrayList<local_binding>> &
   {
     return m_local_scopes;
   }
+
   fn
   saved_scope_shell_options() wontthrow -> ArrayList<Maybe<u64>> &
   {
     return m_saved_scope_shell_options;
   }
+
   fn
   local_scope_depth() wontthrow -> usize &
   {
     return m_local_scope_depth;
   }
+
   pure fn
   local_scope_depth() const wontthrow -> usize
   {
     return m_local_scope_depth;
   }
+
   fn
   current_local_scope() wontthrow -> ArrayList<local_binding> &
   {
@@ -895,6 +920,7 @@ public:
 
     return m_local_scopes[m_local_scope_depth - 1];
   }
+
   pure fn
   current_local_scope() const wontthrow -> const ArrayList<local_binding> &
   {
@@ -903,6 +929,7 @@ public:
 
     return m_local_scopes[m_local_scope_depth - 1];
   }
+
   pure fn
   has_current_local(StringView name) const wontthrow -> bool
   {
@@ -913,6 +940,7 @@ public:
 
     return false;
   }
+
   pure fn
   has_active_local(StringView name) const wontthrow -> bool
   {
@@ -927,6 +955,7 @@ public:
 
     return false;
   }
+
   pure fn
   is_self_reference(StringView name) const wontthrow -> bool
   {
@@ -939,6 +968,7 @@ public:
 
     return false;
   }
+
   pure fn
   is_current_self_reference(StringView name) const wontthrow -> bool
   {
@@ -949,6 +979,7 @@ public:
 
     return false;
   }
+
   fn
   forget_current_self_reference(StringView name) throws -> void
   {
@@ -968,6 +999,7 @@ public:
   {
     m_aliases.set(name, value);
   }
+
   fn
   remove_alias(StringView name) throws -> bool
   {
@@ -976,11 +1008,13 @@ public:
 
     return true;
   }
+
   pure fn
   has_aliases() const wontthrow -> bool
   {
     return m_aliases.count() != 0;
   }
+
   fn
   get_alias(StringView name) const throws -> Maybe<String>
   {
@@ -989,6 +1023,7 @@ public:
 
     return None;
   }
+
   pure fn
   find_alias(StringView name) const wontthrow -> Maybe<StringView>
   {
@@ -997,6 +1032,7 @@ public:
 
     return None;
   }
+
   fn
   alias_definitions() const throws
       -> SortedArrayList<String, order_comparator<String>>
@@ -1011,6 +1047,7 @@ public:
 
     return steal(out).make_sorted(sort_order::ascending);
   }
+
   fn
   alias_names() const throws -> HashSet
   {
@@ -1022,14 +1059,16 @@ public:
 
     return out;
   }
+
   template <typename Callback>
   fn
   for_each_alias_name(Callback callback) const throws -> void
   {
-    m_aliases.for_each([&](StringView name, const String &value) throws {
-      unused(value);
-      callback(name);
-    });
+    m_aliases.for_each(
+        [&](StringView name, const String &value) throws {
+          unused(value);
+          callback(name);
+        });
   }
 
   fn
@@ -1037,6 +1076,7 @@ public:
   {
     return scope_snapshot{m_aliases, m_local_scopes, m_local_scope_depth};
   }
+
   fn
   restore(scope_snapshot snapshot) throws -> void
   {
@@ -1044,11 +1084,13 @@ public:
     m_local_scopes      = steal(snapshot.local_scopes);
     m_local_scope_depth = snapshot.local_scope_depth;
   }
+
   fn
   append_wire(String &output) const throws -> void;
   static fn
   from_wire(subshell_bootstrap_reader           &reader,
-            ArrayList<ArrayList<local_binding>> &local_scopes) throws -> bool;
+            ArrayList<ArrayList<local_binding>> &local_scopes) throws
+      -> bool;
   fn
   apply_wire(ArrayList<ArrayList<local_binding>> local_scopes) wontthrow -> void
   {
@@ -1066,8 +1108,8 @@ private:
 class ExecutionStore
 {
 public:
-  explicit ExecutionStore(bool   is_shell_interactive,
-                          String shell_name) wontthrow
+  explicit ExecutionStore(bool is_shell_interactive, String shell_name)
+      wontthrow
       : m_shell_name(steal(shell_name)),
         m_is_shell_interactive(is_shell_interactive)
   {}
@@ -1077,62 +1119,74 @@ public:
   {
     return m_shell_name.view();
   }
+
   fn
   set_shell_name(String shell_name) wontthrow -> void
   {
     m_shell_name = steal(shell_name);
   }
+
   pure fn
   get_shell_executable_path() const wontthrow -> StringView
   {
     return m_shell_executable_path.view();
   }
+
   fn
   set_shell_executable_path(String path) wontthrow -> void
   {
     m_shell_executable_path = steal(path);
   }
+
   pure fn
   get_last_argument() const wontthrow -> const String &
   {
     return m_last_argument;
   }
+
   fn
   set_last_argument(String argument) wontthrow -> void
   {
     m_last_argument = steal(argument);
   }
+
   pure fn
   has_execution_string() const wontthrow -> bool
   {
     return m_execution_string.has_value();
   }
+
   pure fn
   get_execution_string() const wontthrow -> StringView
   {
     return m_execution_string.has_value() ? m_execution_string->view()
                                           : StringView{};
   }
+
   fn
   set_execution_string(String text) wontthrow -> void
   {
     m_execution_string = steal(text);
   }
+
   pure fn
   get_command_number() const wontthrow -> usize
   {
     return m_command_number;
   }
+
   fn
   advance_command_number() wontthrow -> void
   {
     m_command_number++;
   }
+
   fn
   set_current_command(const CopyOnWrite<String> &command) wontthrow -> void
   {
     m_current_command = command;
   }
+
   fn
   set_current_command(String command) throws -> void
   {
@@ -1143,6 +1197,7 @@ public:
 
     m_current_command.write() = steal(command);
   }
+
   fn
   set_current_command(StringView command) throws -> void
   {
@@ -1155,16 +1210,19 @@ public:
     text.clear();
     text += command;
   }
+
   pure fn
   save_current_command() const wontthrow -> CopyOnWrite<String>
   {
     return m_current_command;
   }
+
   fn
   restore_current_command(const CopyOnWrite<String> &saved) wontthrow -> void
   {
     m_current_command = saved;
   }
+
   pure fn
   get_current_command() const wontthrow -> StringView
   {
@@ -1172,12 +1230,14 @@ public:
 
     return m_current_command.read().view();
   }
+
   fn
   snapshot() const throws -> execution_snapshot
   {
     return execution_snapshot{m_last_argument, m_terminal_exec_subshell_depth,
                               m_terminal_exec_allowed};
   }
+
   fn
   restore(execution_snapshot snapshot) wontthrow -> void
   {
@@ -1185,22 +1245,25 @@ public:
     m_terminal_exec_subshell_depth = snapshot.terminal_exec_subshell_depth;
     m_terminal_exec_allowed        = snapshot.terminal_exec_allowed;
   }
+
   fn
   append_wire(String &output) const throws -> void;
   static fn
-  from_wire(subshell_bootstrap_reader &reader, execution_wire &wire) throws
-      -> bool;
+  from_wire(subshell_bootstrap_reader &reader,
+            execution_wire            &wire) throws -> bool;
   fn
   apply_wire(execution_wire wire) wontthrow -> void
   {
     m_execution_string = steal(wire.execution_string);
     m_last_argument    = steal(wire.last_argument);
   }
+
   fn
   set_make_shell_suppressed(bool is_suppressed) wontthrow -> void
   {
     m_is_make_shell_suppressed = is_suppressed;
   }
+
   pure fn
   make_shell_suppressed() const wontthrow -> bool
   {
@@ -1212,182 +1275,218 @@ public:
   {
     return m_last_exit_status;
   }
+
   fn
   set_last_exit_status(i32 status) wontthrow
   {
     m_last_exit_status = status;
   }
+
   pure fn
   last_exit_status() const wontthrow -> i32
   {
     return m_last_exit_status;
   }
+
   fn
   last_command_duration_nanos() wontthrow -> u64 &
   {
     return m_last_command_duration_nanos;
   }
+
   fn
   set_last_command_duration_nanos(u64 nanos) wontthrow
   {
     m_last_command_duration_nanos = nanos;
   }
+
   pure fn
   last_command_duration_nanos() const wontthrow -> u64
   {
     return m_last_command_duration_nanos;
   }
+
   fn
   subshell_depth() wontthrow -> usize &
   {
     return m_subshell_depth;
   }
+
   pure fn
   subshell_depth() const wontthrow -> usize
   {
     return m_subshell_depth;
   }
+
   fn
   condition_depth() wontthrow -> usize &
   {
     return m_condition_depth;
   }
+
   pure fn
   condition_depth() const wontthrow -> usize
   {
     return m_condition_depth;
   }
+
   fn
   loop_depth() wontthrow -> usize &
   {
     return m_loop_depth;
   }
+
   pure fn
   loop_depth() const wontthrow -> usize
   {
     return m_loop_depth;
   }
+
   fn
   terminal_exec_allowed() wontthrow -> bool &
   {
     return m_terminal_exec_allowed;
   }
+
   pure fn
   terminal_exec_allowed() const wontthrow -> bool
   {
     return m_terminal_exec_allowed;
   }
+
   pure fn
   get_terminal_exec_subshell_depth() const wontthrow -> usize
   {
     return m_terminal_exec_subshell_depth;
   }
+
   fn
   allow_terminal_exec_at_current_depth() wontthrow -> void
   {
     m_terminal_exec_subshell_depth = m_subshell_depth;
     m_terminal_exec_allowed        = true;
   }
+
   fn
   completion_function_running() wontthrow -> bool &
   {
     return m_is_completion_function_running;
   }
+
   pure fn
   completion_function_running() const wontthrow -> bool
   {
     return m_is_completion_function_running;
   }
+
   fn
   should_mark_completion_directories() wontthrow -> bool &
   {
     return m_should_mark_completion_directories;
   }
+
   pure fn
   should_mark_completion_directories() const wontthrow -> bool
   {
     return m_should_mark_completion_directories;
   }
+
   pure fn
   get_completion_option_mask() const wontthrow -> u32
   {
     return m_completion_option_mask;
   }
+
   fn
   set_completion_option_mask(u32 option_mask) wontthrow -> void
   {
     m_completion_option_mask = option_mask;
   }
+
   pure fn
   get_completion_command_name() const wontthrow -> StringView
   {
     return m_completion_command_name.view();
   }
+
   fn
   set_completion_command_name(StringView command_name) throws -> void
   {
     m_completion_command_name = String{heap_allocator(), command_name};
   }
+
   fn
   prompt_command_running() wontthrow -> bool &
   {
     return m_is_prompt_command_running;
   }
+
   pure fn
   prompt_command_running() const wontthrow -> bool
   {
     return m_is_prompt_command_running;
   }
+
   pure fn
   is_child_environment_fixed() const wontthrow -> bool
   {
     return m_is_child_environment_fixed;
   }
+
   fn
   set_child_environment_fixed(bool is_fixed) wontthrow -> void
   {
     m_is_child_environment_fixed = is_fixed;
   }
+
   fn
   pending_subshell_end_position() wontthrow -> u32 &
   {
     return m_pending_subshell_end_position;
   }
+
   fn
   should_elide_pending_subshell_fork() wontthrow -> bool &
   {
     return m_should_elide_pending_subshell_fork;
   }
+
   fn
   line_discard_root() wontthrow -> const Expression *&
   {
     return m_line_discard_root;
   }
+
   fn
   top_level_line_discard_root() wontthrow -> const Expression *&
   {
     return m_top_level_line_discard_root;
   }
+
   fn
   line_discard_source() wontthrow -> StringView &
   {
     return m_line_discard_source;
   }
+
   fn
   line_discard_status() wontthrow -> Maybe<i64> &
   {
     return m_line_discard_status;
   }
+
   fn
   line_discard_subshell_depth() wontthrow -> usize &
   {
     return m_line_discard_subshell_depth;
   }
+
   pure fn
   shell_is_interactive() const wontthrow -> bool
   {
     return m_is_shell_interactive;
   }
+
   fn
   set_shell_is_interactive(bool is_interactive) wontthrow -> void
   {
@@ -1463,11 +1562,13 @@ public:
   {
     return m_builtins_run;
   }
+
   pure fn
   get_functions_run() const wontthrow -> usize
   {
     return m_functions_run;
   }
+
   pure fn
   get_external_commands_run() const wontthrow -> usize
   {
@@ -1497,31 +1598,37 @@ public:
   {
     return m_expressions_executed_last;
   }
+
   pure fn
   total_expressions_executed() const wontthrow -> usize
   {
     return m_expressions_executed_total + m_expressions_executed_last;
   }
+
   pure fn
   last_expansion_count() const wontthrow -> usize
   {
     return m_expansions_last;
   }
+
   pure fn
   total_expansion_count() const wontthrow -> usize
   {
     return m_expansions_total + m_expansions_last;
   }
+
   pure fn
   commands_evaluated() const wontthrow -> usize
   {
     return m_commands_evaluated;
   }
+
   pure fn
   peak_ast_arena_bytes() const wontthrow -> usize
   {
     return m_peak_ast_arena_byte_count;
   }
+
   pure fn
   command_evaluation_index() const wontthrow -> usize
   {
@@ -1549,6 +1656,7 @@ public:
   {
     return m_branch_command_index == command_index;
   }
+
   pure fn
   are_counts_current(usize command_index) const wontthrow -> bool
   {
@@ -1556,22 +1664,22 @@ public:
   }
 
   fn
-  refresh_branch(usize      command_index,
-                 StringView ceiling_directories) const throws -> void;
+  refresh_branch(usize command_index, StringView ceiling_directories) const throws -> void;
   fn
-  refresh_status(usize      command_index,
-                 StringView ceiling_directories) const throws -> void;
+  refresh_status(usize command_index, StringView ceiling_directories) const throws -> void;
 
   pure fn
   get_branch() const wontthrow -> StringView
   {
     return m_branch.view();
   }
+
   pure fn
   get_ahead_count() const wontthrow -> i32
   {
     return m_ahead_count;
   }
+
   pure fn
   get_behind_count() const wontthrow -> i32
   {
@@ -1594,16 +1702,19 @@ public:
   {
     return m_arena;
   }
+
   fn
   get_cached_text() wontthrow -> String &
   {
     return m_cached_text;
   }
+
   pure fn
   get_cached_ast() const wontthrow -> Expression *
   {
     return m_cached_ast;
   }
+
   fn
   set_cached_ast(Expression *ast) wontthrow -> void
   {
@@ -1633,6 +1744,7 @@ public:
     if (level < 1) level = 1;
     set(control_flow{level, source, String{origin}, location, kind});
   }
+
   fn
   request_return(i64            status,
                  SourceLocation location,
@@ -1642,6 +1754,7 @@ public:
     set(control_flow{status, source, String{origin}, location,
                      control_flow::Kind::Return});
   }
+
   fn
   request_exit(i64            status,
                SourceLocation location,
@@ -1651,32 +1764,38 @@ public:
     set(control_flow{status, source, String{origin}, location,
                      control_flow::Kind::Exit});
   }
+
   fn
   set(control_flow value) throws -> void
   {
     m_pending = steal(value);
   }
+
   fn
   pending() wontthrow -> control_flow &
   {
     return m_pending;
   }
+
   pure fn
   pending() const wontthrow -> const control_flow &
   {
     return m_pending;
   }
+
   pure fn
   has_pending() const wontthrow -> bool
   {
     return m_pending.kind != control_flow::Kind::Normal;
   }
+
   pure fn
   has_pending_loop_jump() const wontthrow -> bool
   {
     return m_pending.kind == control_flow::Kind::Break ||
            m_pending.kind == control_flow::Kind::Continue;
   }
+
   fn
   clear() wontthrow -> void
   {
@@ -1714,8 +1833,7 @@ public:
 
 private:
   NameValueArg(StringView name, Maybe<StringView> value) wontthrow
-      : m_name(name),
-        m_value(steal(value))
+      : m_name(name), m_value(steal(value))
   {}
 
   StringView        m_name;
@@ -1764,7 +1882,8 @@ fn
 compute_substring_bounds(i64               value_count,
                          i64               offset,
                          Maybe<i64>        length,
-                         substring_subject subject) throws -> substring_bounds;
+                         substring_subject subject) throws
+    -> substring_bounds;
 pure fn
 shopt_option_index(StringView name) wontthrow -> Maybe<u8>;
 
@@ -1819,6 +1938,7 @@ struct bash_argument_frame
   {
     return (flags & static_cast<u8>(flag)) != 0;
   }
+
   fn
   set_flag(bash_argument_frame_flag flag) wontthrow -> void
   {
@@ -1834,26 +1954,31 @@ public:
   {
     return m_is_active;
   }
+
   pure fn
   values() const wontthrow -> const ArrayList<String> &
   {
     return m_values;
   }
+
   pure fn
   frame_counts() const wontthrow -> const ArrayList<u32> &
   {
     return m_frame_counts;
   }
+
   pure fn
   get_context() const wontthrow -> bash_argument_frame *
   {
     return m_context;
   }
+
   fn
   set_context(bash_argument_frame *context) wontthrow -> void
   {
     m_context = context;
   }
+
   fn
   adopt_inherited_context(u8 flags, String source_path) wontthrow -> void
   {
@@ -1963,6 +2088,7 @@ public:
 
     return &(*entry)->value;
   }
+
   hot fn
   find_for_write(StringView name) throws -> Maybe<String *>
   {
@@ -1970,16 +2096,19 @@ public:
 
     return &(*m_table->find_for_write(name))->value;
   }
+
   fn
   set(StringView name, StringView value) throws -> String *
   {
     return m_table->set_value(name, value);
   }
+
   fn
   erase(StringView name) throws -> void
   {
     m_table->erase_value(name);
   }
+
   pure fn
   count() const wontthrow -> usize
   {
@@ -1990,9 +2119,10 @@ public:
   fn
   for_each(Callback do_callback) const throws -> void
   {
-    m_table->for_each([&](StringView name, const variable_entry &entry) throws {
-      if (entry.has_value) do_callback(name, entry.value);
-    });
+    m_table->for_each(
+        [&](StringView name, const variable_entry &entry) throws {
+          if (entry.has_value) do_callback(name, entry.value);
+        });
   }
 
 private:
@@ -2014,6 +2144,7 @@ public:
 
     return &(*entry)->elements;
   }
+
   hot fn
   find_for_write(StringView name) throws -> Maybe<ArrayList<String> *>
   {
@@ -2021,13 +2152,17 @@ public:
 
     return &(*m_table->find_for_write(name))->elements;
   }
+
   fn
-  set(StringView name, ArrayList<String> elements) throws -> ArrayList<String> *
+  set(StringView name, ArrayList<String> elements) throws
+      -> ArrayList<String> *
   {
     return m_table->set_elements(name, steal(elements));
   }
+
   fn
-  get_or_create(StringView name, ArrayList<String> default_elements) throws
+  get_or_create(StringView        name,
+                ArrayList<String> default_elements) throws
       -> ArrayList<String> &
   {
     if (let const existing = find_for_write(name); existing.has_value())
@@ -2035,11 +2170,13 @@ public:
 
     return *m_table->set_elements(name, steal(default_elements));
   }
+
   fn
   erase(StringView name) throws -> void
   {
     m_table->erase_elements(name);
   }
+
   pure fn
   count() const wontthrow -> usize
   {
@@ -2050,9 +2187,10 @@ public:
   fn
   for_each(Callback do_callback) const throws -> void
   {
-    m_table->for_each([&](StringView name, const variable_entry &entry) throws {
-      if (entry.is_indexed_array) do_callback(name, entry.elements);
-    });
+    m_table->for_each(
+        [&](StringView name, const variable_entry &entry) throws {
+          if (entry.is_indexed_array) do_callback(name, entry.elements);
+        });
   }
 
 private:
@@ -2062,8 +2200,7 @@ private:
 class VariableAttributes
 {
 public:
-  explicit VariableAttributes(VariableTable *table) wontthrow : m_table{table}
-  {}
+  explicit VariableAttributes(VariableTable *table) wontthrow : m_table{table} {}
 
   pure fn
   get_bits(StringView name) const wontthrow -> u8
@@ -2072,11 +2209,13 @@ public:
 
     return entry.has_value() ? (*entry)->attribute_bits : u8{0};
   }
+
   fn
   set_bits(StringView name, u8 bits) throws -> void
   {
     m_table->set_attribute_bits(name, bits);
   }
+
   fn
   erase(StringView name) throws -> void
   {
@@ -2088,9 +2227,11 @@ public:
   {
     return (get_bits(name) & static_cast<u8>(attribute)) != 0;
   }
+
   fn
-  set(StringView name, variable_attribute attribute, bool is_enabled) throws
-      -> void
+  set(StringView         name,
+      variable_attribute attribute,
+      bool               is_enabled) throws -> void
   {
     let const mask = static_cast<u8>(attribute);
 
@@ -2113,26 +2254,31 @@ public:
   {
     return has(name, variable_attribute::Readonly);
   }
+
   pure fn
   is_declared(StringView name) const wontthrow -> bool
   {
     return has(name, variable_attribute::Declared);
   }
+
   pure fn
   is_integer(StringView name) const wontthrow -> bool
   {
     return has(name, variable_attribute::Integer);
   }
+
   pure fn
   is_lowercase(StringView name) const wontthrow -> bool
   {
     return has(name, variable_attribute::Lowercase);
   }
+
   pure fn
   is_uppercase(StringView name) const wontthrow -> bool
   {
     return has(name, variable_attribute::Uppercase);
   }
+
   pure fn
   has_case(StringView name) const wontthrow -> bool
   {
@@ -2140,11 +2286,13 @@ public:
             (static_cast<u8>(variable_attribute::Lowercase) |
              static_cast<u8>(variable_attribute::Uppercase))) != 0;
   }
+
   hot pure fn
   has_namerefs() const wontthrow -> bool
   {
     return m_table->has_namerefs();
   }
+
   hot pure fn
   is_nameref(StringView name) const wontthrow -> bool
   {
@@ -2156,49 +2304,58 @@ public:
   {
     set(name, variable_attribute::Readonly, true);
   }
+
   fn
   unmark_readonly(StringView name) throws -> void
   {
     set(name, variable_attribute::Readonly, false);
   }
+
   fn
   mark_declared(StringView name) throws -> void
   {
     set(name, variable_attribute::Declared, true);
   }
+
   fn
   unmark_declared(StringView name) throws -> void
   {
     if (m_table->has_declared_marks())
       set(name, variable_attribute::Declared, false);
   }
+
   fn
   mark_integer(StringView name) throws -> void
   {
     set(name, variable_attribute::Integer, true);
   }
+
   fn
   unmark_integer(StringView name) throws -> void
   {
     set(name, variable_attribute::Integer, false);
   }
+
   fn
   mark_lowercase(StringView name) throws -> void
   {
     set(name, variable_attribute::Uppercase, false);
     set(name, variable_attribute::Lowercase, true);
   }
+
   fn
   unmark_lowercase(StringView name) throws -> void
   {
     set(name, variable_attribute::Lowercase, false);
   }
+
   fn
   mark_uppercase(StringView name) throws -> void
   {
     set(name, variable_attribute::Lowercase, false);
     set(name, variable_attribute::Uppercase, true);
   }
+
   fn
   unmark_uppercase(StringView name) throws -> void
   {
@@ -2217,29 +2374,32 @@ public:
 
   template <typename Callback>
   fn
-  for_each_marked(variable_attribute attribute,
-                  Callback           do_callback) const throws -> void
+  for_each_marked(variable_attribute attribute, Callback do_callback) const throws -> void
   {
-    m_table->for_each([&](StringView name, const variable_entry &entry) throws {
-      if ((entry.attribute_bits & static_cast<u8>(attribute)) != 0)
-        do_callback(name);
-    });
+    m_table->for_each(
+        [&](StringView name, const variable_entry &entry) throws {
+          if ((entry.attribute_bits & static_cast<u8>(attribute)) != 0)
+            do_callback(name);
+        });
   }
+
   template <typename Callback>
   fn
   for_each_name(Callback do_callback) const throws -> void
   {
-    m_table->for_each([&](StringView name, const variable_entry &entry) throws {
-      if (entry.attribute_bits != 0) do_callback(name);
-    });
+    m_table->for_each(
+        [&](StringView name, const variable_entry &entry) throws {
+          if (entry.attribute_bits != 0) do_callback(name);
+        });
   }
 
   fn
   entries() const throws -> StringMap<u8>
   {
     let marked = StringMap<u8>{m_table->allocator()};
-    for_each_name([&](StringView name)
-                      throws { marked.set(name, get_bits(name)); });
+    for_each_name([&](StringView name) throws {
+      marked.set(name, get_bits(name));
+    });
 
     return marked;
   }
@@ -2287,11 +2447,13 @@ public:
   {
     return ScalarVariables{&m_variables};
   }
+
   pure fn
   shell_variables() const wontthrow -> const ScalarVariables
   {
     return ScalarVariables{const_cast<VariableTable *>(&m_variables)};
   }
+
   hot pure fn
   find_plain_scalar(StringView name) const wontthrow -> Maybe<const String *>
   {
@@ -2299,43 +2461,51 @@ public:
     if (!entry.has_value() || !(*entry)->has_value) {
       return None;
     }
+
     if (((*entry)->attribute_bits &
-         static_cast<u8>(variable_attribute::Nameref)) != 0)
-      rarely return None;
+         static_cast<u8>(variable_attribute::Nameref)) != 0) rarely
+      return None;
 
     return &(*entry)->value;
   }
+
   hot pure fn
-  find_variable(StringView name) const wontthrow
-      -> Maybe<const variable_entry *>
+  find_variable(StringView name) const wontthrow -> Maybe<const variable_entry *>
   {
     return m_variables.find(name);
   }
+
   hot fn
-  find_variable_for_write(StringView name) throws -> Maybe<variable_entry *>
+  find_variable_for_write(StringView name) throws
+      -> Maybe<variable_entry *>
   {
     return m_variables.find_for_write(name);
   }
+
   pure fn
   is_pipestatus_scalar_possible() const wontthrow -> bool
   {
     return m_is_pipestatus_scalar_possible;
   }
+
   fn
   set_pipestatus_scalar_possible(bool is_possible) wontthrow -> void
   {
     m_is_pipestatus_scalar_possible = is_possible;
   }
+
   pure fn
   is_locale_scalar_possible() const wontthrow -> bool
   {
     return m_is_locale_scalar_possible;
   }
+
   fn
   set_locale_scalar_possible() wontthrow -> void
   {
     m_is_locale_scalar_possible = true;
   }
+
   fn
   history_limit(StringView name, usize fallback) const wontthrow -> usize
   {
@@ -2348,12 +2518,14 @@ public:
 
     return static_cast<usize>(parsed.value());
   }
+
   fn
-  special_variable_definition_locations() wontthrow
-      -> StringMap<SourceLocation> &
+  special_variable_definition_locations()
+      wontthrow -> StringMap<SourceLocation> &
   {
     return m_special_variable_definition_locations;
   }
+
   pure fn
   special_variable_definition_locations() const wontthrow
       -> const StringMap<SourceLocation> &
@@ -2368,6 +2540,7 @@ public:
 
     return (m_field_separator_bits[byte >> 6] & (u64{1} << (byte & 63))) != 0;
   }
+
   hot pure fn
   has_non_ascii_field_separators() const wontthrow -> bool
   {
@@ -2379,96 +2552,115 @@ public:
   {
     return IndexedArrays{&m_variables};
   }
+
   pure fn
   indexed_arrays() const wontthrow -> const IndexedArrays
   {
     return IndexedArrays{const_cast<VariableTable *>(&m_variables)};
   }
+
   fn
   associative_arrays() wontthrow -> CompositeKeyArrays &
   {
     return m_associative_arrays;
   }
+
   pure fn
   associative_arrays() const wontthrow -> const CompositeKeyArrays &
   {
     return m_associative_arrays;
   }
+
   fn
   sparse_arrays() wontthrow -> CompositeKeyArrays &
   {
     return m_sparse_arrays;
   }
+
   pure fn
   sparse_arrays() const wontthrow -> const CompositeKeyArrays &
   {
     return m_sparse_arrays;
   }
+
   fn
   exported_names() throws -> StringMap<exported_name_value> &
   {
     return m_exported_names.write();
   }
+
   pure fn
   exported_names() const wontthrow -> const StringMap<exported_name_value> &
   {
     return m_exported_names.read();
   }
+
   fn
   attributes() wontthrow -> VariableAttributes
   {
     return VariableAttributes{&m_variables};
   }
+
   pure fn
   attributes() const wontthrow -> const VariableAttributes
   {
     return VariableAttributes{const_cast<VariableTable *>(&m_variables)};
   }
+
   fn
   variables() wontthrow -> VariableTable &
   {
     return m_variables;
   }
+
   fn
   positional_params() wontthrow -> ArrayList<String> &
   {
     return m_positional_params;
   }
+
   pure fn
   positional_params() const wontthrow -> const ArrayList<String> &
   {
     return m_positional_params;
   }
+
   fn
   directory_stack() wontthrow -> ArrayList<String> &
   {
     return m_directory_stack;
   }
+
   pure fn
   directory_stack() const wontthrow -> const ArrayList<String> &
   {
     return m_directory_stack;
   }
+
   fn
   bash_arguments() const wontthrow -> BashArgumentStack &
   {
     return m_bash_arguments;
   }
+
   fn
   disabled_bash_special_arrays() wontthrow -> u8 &
   {
     return m_disabled_bash_special_arrays;
   }
+
   pure fn
   disabled_bash_special_arrays() const wontthrow -> u8
   {
     return m_disabled_bash_special_arrays;
   }
+
   fn
   unset_dynamic_readers() wontthrow -> u8 &
   {
     return m_unset_dynamic_readers;
   }
+
   pure fn
   unset_dynamic_readers() const wontthrow -> u8
   {
@@ -2482,14 +2674,15 @@ public:
   fn
   append_wire(String &output) const throws -> void;
   static fn
-  from_wire(subshell_bootstrap_reader &reader, variable_wire &wire) throws
-      -> bool;
+  from_wire(subshell_bootstrap_reader &reader,
+            variable_wire             &wire) throws -> bool;
   fn
   apply_wire_masks(const variable_wire &wire) wontthrow -> void
   {
     m_disabled_bash_special_arrays = wire.disabled_bash_special_arrays;
     m_unset_dynamic_readers        = wire.unset_dynamic_readers;
   }
+
   fn
   apply_wire(variable_wire wire) wontthrow -> void
   {
@@ -2530,22 +2723,26 @@ public:
   {
     m_specs.set(command, steal(spec));
   }
+
   fn
-  register_slot_spec(completion_spec_slot slot, completion_spec spec) throws
-      -> void
+  register_slot_spec(completion_spec_slot slot,
+                     completion_spec      spec) throws -> void
   {
     get_slot(slot) = steal(spec);
   }
+
   pure fn
   lookup_spec(StringView command) const wontthrow -> const completion_spec *
   {
     return m_specs.find(command).value_or(nullptr);
   }
+
   fn
   lookup_spec(StringView command) wontthrow -> completion_spec *
   {
     return m_specs.find(command).value_or(nullptr);
   }
+
   pure fn
   get_slot_spec(completion_spec_slot slot) const wontthrow
       -> const completion_spec *
@@ -2554,6 +2751,7 @@ public:
 
     return spec.has_value() ? &*spec : nullptr;
   }
+
   fn
   get_slot_spec(completion_spec_slot slot) wontthrow -> completion_spec *
   {
@@ -2561,6 +2759,7 @@ public:
 
     return spec.has_value() ? &*spec : nullptr;
   }
+
   fn
   remove_spec(StringView command) throws -> bool
   {
@@ -2570,6 +2769,7 @@ public:
 
     return true;
   }
+
   fn
   remove_slot_spec(completion_spec_slot slot) wontthrow -> bool
   {
@@ -2580,6 +2780,7 @@ public:
 
     return true;
   }
+
   fn
   remove_all_specs() wontthrow -> void
   {
@@ -2588,6 +2789,7 @@ public:
     m_empty_spec.reset();
     m_initial_spec.reset();
   }
+
   pure fn
   specs() const wontthrow -> const StringMap<completion_spec> &
   {
@@ -2600,6 +2802,7 @@ public:
     return completion_snapshot{m_specs, m_default_spec, m_empty_spec,
                                m_initial_spec};
   }
+
   fn
   restore(completion_snapshot snapshot) wontthrow -> void
   {
@@ -2608,11 +2811,12 @@ public:
     m_empty_spec   = steal(snapshot.empty_spec);
     m_initial_spec = steal(snapshot.initial_spec);
   }
+
   fn
   append_wire(String &output) const throws -> void;
   static fn
-  from_wire(subshell_bootstrap_reader &reader, completion_snapshot &wire) throws
-      -> bool;
+  from_wire(subshell_bootstrap_reader &reader,
+            completion_snapshot       &wire) throws -> bool;
 
 private:
   fn
@@ -2625,6 +2829,7 @@ private:
     }
     unreachable();
   }
+
   pure fn
   get_slot(completion_spec_slot slot) const wontthrow
       -> const Maybe<completion_spec> &
@@ -2664,9 +2869,11 @@ public:
   for_each_name(Callback do_callback) const throws -> void
   {
     m_definitions.read().for_each(
-        [&](StringView name, const FunctionBodyHandle &)
-            throws { do_callback(name); });
+        [&](StringView name, const FunctionBodyHandle &) throws {
+          do_callback(name);
+        });
   }
+
   fn
   find_source(StringView name) const wontthrow -> const String *
   {
@@ -2674,6 +2881,7 @@ public:
 
     return storage.has_value() ? storage->get_source() : nullptr;
   }
+
   mustuse fn
   sorted_names() const throws
       -> SortedArrayList<String, order_comparator<String>>
@@ -2684,6 +2892,7 @@ public:
 
     return steal(out).make_sorted(sort_order::ascending);
   }
+
   fn
   find_function(StringView name) const wontthrow -> Maybe<const Expression *>
   {
@@ -2692,21 +2901,25 @@ public:
     return storage.has_value() ? Maybe<const Expression *>{storage->get_body()}
                                : None;
   }
+
   pure fn
   find_storage(StringView name) const wontthrow -> const FunctionBodyHandle *
   {
     return m_definitions.read().find(name).value_or(nullptr);
   }
+
   pure fn
   has_functions() const wontthrow -> bool
   {
     return m_definitions.read().count() != 0;
   }
+
   pure fn
   is_readonly(StringView name) const wontthrow -> bool
   {
     return m_readonly.contains(name);
   }
+
   mustuse fn
   sorted_readonly_names() const throws
       -> SortedArrayList<String, order_comparator<String>>
@@ -2719,6 +2932,7 @@ public:
 
     return steal(out).make_sorted(sort_order::ascending);
   }
+
   fn
   names() const throws -> HashSet
   {
@@ -2727,41 +2941,49 @@ public:
 
     return names;
   }
+
   fn
   definitions() throws -> StringMap<FunctionBodyHandle> &
   {
     return m_definitions.write();
   }
+
   pure fn
   definitions() const wontthrow -> const StringMap<FunctionBodyHandle> &
   {
     return m_definitions.read();
   }
+
   fn
   readonly() wontthrow -> HashSet &
   {
     return m_readonly;
   }
+
   pure fn
   readonly() const wontthrow -> const HashSet &
   {
     return m_readonly;
   }
+
   fn
   call_depth() wontthrow -> usize &
   {
     return m_call_depth;
   }
+
   pure fn
   call_depth() const wontthrow -> const usize &
   {
     return m_call_depth;
   }
+
   fn
   call_frames() wontthrow -> ArrayList<function_call_frame> &
   {
     return m_call_frames;
   }
+
   pure fn
   call_frames() const wontthrow -> const ArrayList<function_call_frame> &
   {
@@ -2773,22 +2995,25 @@ public:
   {
     return m_definitions;
   }
+
   fn
   restore(CopyOnWrite<StringMap<FunctionBodyHandle>> definitions) wontthrow
       -> void
   {
     m_definitions = steal(definitions);
   }
+
   fn
   append_wire(String &output) const throws -> void;
   static fn
-  from_wire(subshell_bootstrap_reader &reader, function_wire &wire) throws
-      -> bool;
+  from_wire(subshell_bootstrap_reader &reader,
+            function_wire             &wire) throws -> bool;
   fn
   apply_wire_depth(const function_wire &wire) wontthrow -> void
   {
     m_call_depth = wire.call_depth;
   }
+
   fn
   apply_wire_definitions(function_wire &wire) throws -> void;
 
@@ -2809,6 +3034,7 @@ public:
     m_held_exit_action = None;
     refresh_flags();
   }
+
   fn
   set_action(StringView condition, StringView action) throws -> void
   {
@@ -2819,6 +3045,7 @@ public:
                        0
     });
   }
+
   fn
   reset(StringView condition) throws -> void
   {
@@ -2826,6 +3053,7 @@ public:
     m_held_exit_action = None;
     refresh_flags();
   }
+
   fn
   hold_exit_trap_for_listing() throws -> void
   {
@@ -2837,16 +3065,19 @@ public:
     refresh_flags();
     m_held_exit_action = steal(held);
   }
+
   pure fn
   held_exit_action() const wontthrow -> const Maybe<String> &
   {
     return m_held_exit_action;
   }
+
   pure fn
   find(StringView condition) const wontthrow -> Maybe<const trap_definition *>
   {
     return m_traps.find(condition);
   }
+
   pure fn
   find_active(StringView condition) const wontthrow
       -> Maybe<const trap_definition *>
@@ -2858,9 +3089,9 @@ public:
 
     return None;
   }
+
   pure fn
-  find_definition(StringView condition) const wontthrow
-      -> Maybe<trap_definition>
+  find_definition(StringView condition) const wontthrow -> Maybe<trap_definition>
   {
     let const found = m_traps.find(condition);
     if (!found.has_value() || !found.value()->has_location) {
@@ -2873,17 +3104,20 @@ public:
       return None;
     }
   }
+
   pure fn
   count() const wontthrow -> usize
   {
     return m_traps.count();
   }
+
   template <class Fn>
   fn
   list(Fn callback) const throws -> void
   {
     m_traps.for_each(callback);
   }
+
   fn
   discard_signal_traps() throws -> void
   {
@@ -2900,11 +3134,13 @@ public:
     m_held_exit_action = None;
     refresh_flags();
   }
+
   fn
   snapshot() const throws -> trap_snapshot
   {
     return trap_snapshot{m_traps, m_install_state};
   }
+
   fn
   restore(trap_snapshot snapshot) throws -> void
   {
@@ -2913,16 +3149,18 @@ public:
     m_held_exit_action = None;
     refresh_flags();
   }
+
   fn
   append_wire(String &output) const throws -> void;
   static fn
   from_wire(subshell_bootstrap_reader &reader,
-            u64 &startup_ignored_signals) wontthrow -> bool;
+            u64                       &startup_ignored_signals) wontthrow -> bool;
   fn
   cached_bodies() wontthrow -> StringMap<FunctionBodyHandle> &
   {
     return m_cached_bodies;
   }
+
   pure fn
   cached_bodies() const wontthrow -> const StringMap<FunctionBodyHandle> &
   {
@@ -2934,121 +3172,145 @@ public:
   {
     return m_has_debug_trap;
   }
+
   pure fn
   has_err_trap() const wontthrow -> bool
   {
     return m_has_err_trap;
   }
+
   fn
   debug_trap_active_depth() wontthrow -> usize &
   {
     return m_install_state.debug_active_depth;
   }
+
   pure fn
   debug_trap_active_depth() const wontthrow -> usize
   {
     return m_install_state.debug_active_depth;
   }
+
   fn
   err_trap_active_depth() wontthrow -> usize &
   {
     return m_install_state.err_active_depth;
   }
+
   pure fn
   err_trap_active_depth() const wontthrow -> usize
   {
     return m_install_state.err_active_depth;
   }
+
   fn
   is_replaying_inherited_state() wontthrow -> bool &
   {
     return m_is_replaying_inherited_state;
   }
+
   pure fn
   is_replaying_inherited_state() const wontthrow -> bool
   {
     return m_is_replaying_inherited_state;
   }
+
   fn
   exit_trap_ran() wontthrow -> bool &
   {
     return m_did_exit_trap_run;
   }
+
   pure fn
   exit_trap_ran() const wontthrow -> bool
   {
     return m_did_exit_trap_run;
   }
+
   fn
   did_reset_inherited_signal_traps() wontthrow -> bool &
   {
     return m_install_state.did_reset_inherited_signal_traps;
   }
+
   pure fn
   did_reset_inherited_signal_traps() const wontthrow -> bool
   {
     return m_install_state.did_reset_inherited_signal_traps;
   }
+
   fn
   startup_ignored_signals() wontthrow -> u64 &
   {
     return m_startup_ignored_signals;
   }
+
   pure fn
   startup_ignored_signals() const wontthrow -> u64
   {
     return m_startup_ignored_signals;
   }
+
   fn
   pending_child_trap_count() wontthrow -> u32 &
   {
     return m_pending_child_trap_count;
   }
+
   pure fn
   pending_child_trap_count() const wontthrow -> u32
   {
     return m_pending_child_trap_count;
   }
+
   pure fn
   trap_action_depth() const wontthrow -> u32
   {
     return m_action_frame.depth;
   }
+
   pure fn
   action_frame() const wontthrow -> const trap_action_frame &
   {
     return m_action_frame;
   }
+
   pure fn
   is_condition_running(u8 condition_bit) const wontthrow -> bool
   {
     return (m_action_frame.running_conditions & condition_bit) != 0;
   }
+
   fn
   mark_condition_running(u8 condition_bit) wontthrow -> void
   {
     m_action_frame.running_conditions |= condition_bit;
   }
+
   fn
   unmark_condition_running(u8 condition_bit) wontthrow -> void
   {
     m_action_frame.running_conditions &= static_cast<u8>(~condition_bit);
   }
+
   fn
   last_trap_action_status() wontthrow -> i32 &
   {
     return m_last_trap_action_status;
   }
+
   pure fn
   last_trap_action_status() const wontthrow -> i32
   {
     return m_last_trap_action_status;
   }
+
   fn
   status_before_return() wontthrow -> i32 &
   {
     return m_status_before_return;
   }
+
   pure fn
   status_before_return() const wontthrow -> i32
   {
@@ -3067,6 +3329,7 @@ private:
 
     return previous;
   }
+
   mustuse fn
   enter_condition_action(u8    condition_bit,
                          usize trigger_line_number,
@@ -3082,6 +3345,7 @@ private:
 
     return previous;
   }
+
   mustuse fn
   leave_action_for_subshell() wontthrow -> trap_action_frame
   {
@@ -3092,11 +3356,13 @@ private:
 
     return previous;
   }
+
   fn
   restore_action_frame(const trap_action_frame &previous) wontthrow -> void
   {
     m_action_frame = previous;
   }
+
   fn
   refresh_flags() wontthrow -> void
   {
@@ -3134,6 +3400,7 @@ public:
   {
     return TrapActionScope{store, store.enter_action(saved_exit_status)};
   }
+
   mustuse static fn
   enter_condition(TrapStore &store,
                   u8         condition_bit,
@@ -3147,16 +3414,16 @@ public:
                                             source_frame_count, function_depth,
                                             saved_exit_status)};
   }
+
   mustuse static fn
   leave_for_subshell(TrapStore &store) wontthrow -> TrapActionScope
   {
     return TrapActionScope{store, store.leave_action_for_subshell()};
   }
 
-  TrapActionScope(const TrapActionScope &) = delete;
+  TrapActionScope(const TrapActionScope &)                = delete;
   fn
-  operator=(const TrapActionScope &)
-      ->TrapActionScope & = delete;
+  operator=(const TrapActionScope &) -> TrapActionScope & = delete;
   ~TrapActionScope() { m_store.restore_action_frame(m_previous); }
 
 private:
@@ -3176,138 +3443,166 @@ public:
   {
     return m_scratch_arena;
   }
+
   fn
   scratch_allocator() const wontthrow -> Allocator
   {
     return bump_allocator(m_scratch_arena);
   }
+
   fn
   find_cached_regex(StringView key) wontthrow -> CompiledRegex *
   {
     return m_regex_cache.find(key).value_or(nullptr);
   }
+
   fn
   clear_regex_cache() wontthrow -> void
   {
     m_regex_cache.clear();
   }
+
   fn
-  store_regex(StringView key, CompiledRegex regex) throws -> CompiledRegex *
+  store_regex(StringView key, CompiledRegex regex) throws
+      -> CompiledRegex *
   {
     return m_regex_cache.set(key, steal(regex));
   }
+
   fn
   substitution_depth() wontthrow -> usize &
   {
     return m_substitution_depth;
   }
+
   pure fn
   substitution_depth() const wontthrow -> usize
   {
     return m_substitution_depth;
   }
+
   fn
   parameter_expansion_depth() wontthrow -> usize &
   {
     return m_parameter_expansion_depth;
   }
+
   pure fn
   parameter_expansion_depth() const wontthrow -> usize
   {
     return m_parameter_expansion_depth;
   }
+
   fn
   set_glob_exempt_for_test(bool is_exempt) wontthrow
   {
     m_is_glob_exempt_for_test = is_exempt;
   }
+
   pure fn
   glob_exempt_for_test() const wontthrow -> bool
   {
     return m_is_glob_exempt_for_test;
   }
+
   fn
   is_expanding_here_document() wontthrow -> bool &
   {
     return m_is_expanding_here_document;
   }
+
   fn
   is_expanding_assignment_value() wontthrow -> bool &
   {
     return m_is_expanding_assignment_value;
   }
+
   fn
   is_expanding_single_string() wontthrow -> bool &
   {
     return m_is_expanding_single_string;
   }
+
   pure fn
   is_expanding_assignment_value() const wontthrow -> bool
   {
     return m_is_expanding_assignment_value;
   }
+
   pure fn
   is_expanding_single_string() const wontthrow -> bool
   {
     return m_is_expanding_single_string;
   }
+
   pure fn
   is_expanding_here_document() const wontthrow -> bool
   {
     return m_is_expanding_here_document;
   }
+
   fn
   pending_process_substitutions() wontthrow -> ArrayList<process_substitution> &
   {
     return m_pending_process_substitutions;
   }
+
   pure fn
   pending_process_substitutions() const wontthrow
       -> const ArrayList<process_substitution> &
   {
     return m_pending_process_substitutions;
   }
+
   fn
   held_process_substitutions() wontthrow -> ArrayList<process_substitution> &
   {
     return m_held_process_substitutions;
   }
+
   pure fn
   held_process_substitutions() const wontthrow
       -> const ArrayList<process_substitution> &
   {
     return m_held_process_substitutions;
   }
+
   fn
   loop_redirect_fds() wontthrow -> ArrayList<loop_redirect_fd> &
   {
     return m_loop_redirect_fds;
   }
+
   pure fn
   loop_redirect_fds() const wontthrow -> const ArrayList<loop_redirect_fd> &
   {
     return m_loop_redirect_fds;
   }
+
   fn
   get_getopts_cursor() wontthrow -> getopts_cursor &
   {
     return m_getopts_cursor;
   }
+
   pure fn
   get_getopts_cursor() const wontthrow -> const getopts_cursor &
   {
     return m_getopts_cursor;
   }
+
   fn
   set_getopts_cursor(const getopts_cursor &cursor) wontthrow -> void
   {
     m_getopts_cursor = cursor;
   }
+
   fn
   regex_cache() wontthrow -> StringMap<CompiledRegex> &
   {
     return m_regex_cache;
   }
+
   pure fn
   regex_cache() const wontthrow -> const StringMap<CompiledRegex> &
   {
@@ -3345,48 +3640,57 @@ public:
   {
     m_event_number = steal(number);
   }
+
   pure fn
   get_event_number() const wontthrow -> Maybe<usize>
   {
     return m_event_number;
   }
+
   fn
   begin_transaction(ArrayList<String> &commands) throws -> void
   {
     m_transaction_stack.push(&commands);
   }
+
   fn
   end_transaction() wontthrow -> void
   {
     ASSERT(!m_transaction_stack.is_empty());
     m_transaction_stack.pop_back();
   }
+
   pure fn
   has_transaction() const wontthrow -> bool
   {
     return !m_transaction_stack.is_empty();
   }
+
   fn
   append_to_transaction(StringView command) throws -> void
   {
     ASSERT(!m_transaction_stack.is_empty());
     m_transaction_stack.back()->push(String{heap_allocator(), command});
   }
+
   pure fn
   get_mark() const wontthrow -> history_recording_mark
   {
     return m_mark;
   }
+
   fn
   begin_recording(const Expression *root, StringView source) wontthrow -> void
   {
     m_mark = history_recording_mark{root, source};
   }
+
   fn
   restore_mark(history_recording_mark mark) wontthrow -> void
   {
     m_mark = mark;
   }
+
   pure fn
   find_source_for(const Expression *root) const wontthrow -> Maybe<StringView>
   {
@@ -3415,23 +3719,27 @@ public:
   {
     return source_retention_mark{m_asts.count(), m_sources.count()};
   }
+
   pure fn
   count() const wontthrow -> usize
   {
     return m_sources.count();
   }
+
   fn
   reserve_one_more() throws -> void
   {
     m_asts.reserve(m_asts.count() + 1);
     m_sources.reserve(m_sources.count() + 1);
   }
+
   fn
   retain(String *source, Expression *ast) throws -> void
   {
     m_sources.push(source);
     m_asts.push(ast);
   }
+
   pure fn
   owns(const String *source) const wontthrow -> bool
   {
@@ -3441,27 +3749,32 @@ public:
 
     return false;
   }
+
   pure fn
   generation_of(const String *source) const wontthrow -> u64
   {
     return owns(source) ? m_generation : EXTERNAL_SOURCE_GENERATION;
   }
+
   pure fn
   get_generation() const wontthrow -> u64
   {
     return m_generation;
   }
+
   fn
   set_generation(u64 generation) wontthrow -> void
   {
     m_generation = generation;
   }
+
   pure fn
   is_stale_generation(u64 generation) const wontthrow -> bool
   {
     return generation != EXTERNAL_SOURCE_GENERATION &&
            generation != m_generation;
   }
+
   fn
   release_to(source_retention_mark mark) wontthrow -> void;
   fn
@@ -3488,108 +3801,129 @@ public:
     m_current_source_generation = source_generation;
     m_current_origin            = steal(origin);
   }
+
   fn
   set_current_location(SourceLocation location) wontthrow -> void
   {
     m_current_location = location;
   }
+
   fn
   set_source_depth(usize depth) wontthrow -> void
   {
     m_source_depth = depth;
   }
+
   pure fn
   source_depth() const wontthrow -> usize
   {
     return m_source_depth;
   }
+
   fn
   set_rejected_return_source_frames(usize count) wontthrow -> void
   {
     m_rejected_return_source_frames = count;
   }
+
   pure fn
   rejected_return_source_frames() const wontthrow -> usize
   {
     return m_rejected_return_source_frames;
   }
+
   fn
   set_function_substitution_depth(usize depth) wontthrow -> void
   {
     m_function_substitution_depth = depth;
   }
+
   pure fn
   function_substitution_depth() const wontthrow -> usize
   {
     return m_function_substitution_depth;
   }
+
   fn
   set_script_run(bool is_script_run) wontthrow -> void
   {
     m_is_script_run = is_script_run;
   }
+
   pure fn
   is_script_run() const wontthrow -> bool
   {
     return m_is_script_run;
   }
+
   fn
   mimicry_depth() wontthrow -> usize &
   {
     return m_mimicry_depth;
   }
+
   pure fn
   mimicry_depth() const wontthrow -> usize
   {
     return m_mimicry_depth;
   }
+
   fn
   set_mimicry_depth(usize depth) wontthrow -> void
   {
     m_mimicry_depth = depth;
   }
+
   fn
   current_source() wontthrow -> const String *&
   {
     return m_current_source;
   }
+
   pure fn
   current_source() const wontthrow -> const String *
   {
     return m_current_source;
   }
+
   pure fn
   current_source_view() const wontthrow -> StringView
   {
     return m_current_source != nullptr ? m_current_source->view()
                                        : StringView{};
   }
+
   fn
   push_embedded_source(embedded_source source) throws -> void
   {
     m_embedded_sources.push(steal(source));
   }
+
   fn
   pop_embedded_source() wontthrow -> void
   {
     m_embedded_sources.pop_back();
   }
+
   fn
   set_embedded_depth_floor(usize floor) wontthrow -> void
   {
     m_embedded_sources.back().call_depth_floor = floor;
   }
+
   pure fn
   embedded_sources() const wontthrow -> const ArrayList<embedded_source> &
   {
     return m_embedded_sources;
   }
+
   fn
-  push_line_base(const String *source, usize preceding_line_count) throws
-      -> void
+  push_line_base(const String *source,
+                 usize         preceding_line_count) throws -> void
   {
     m_line_bases.push(source_line_base{source, preceding_line_count});
   }
+
   pure fn
   preceding_line_count_of(const String *source) const wontthrow -> usize
   {
@@ -3599,41 +3933,49 @@ public:
 
     return 0;
   }
+
   fn
   current_origin() wontthrow -> String &
   {
     return m_current_origin;
   }
+
   pure fn
   current_origin() const wontthrow -> const String &
   {
     return m_current_origin;
   }
+
   fn
   current_location() wontthrow -> SourceLocation &
   {
     return m_current_location;
   }
+
   pure fn
   current_location() const wontthrow -> const SourceLocation &
   {
     return m_current_location;
   }
+
   fn
   source_frames() wontthrow -> ArrayList<source_frame> &
   {
     return m_source_frames;
   }
+
   pure fn
   source_frames() const wontthrow -> const ArrayList<source_frame> &
   {
     return m_source_frames;
   }
+
   fn
   current_source_generation() wontthrow -> u64 &
   {
     return m_current_source_generation;
   }
+
   pure fn
   current_source_generation() const wontthrow -> u64
   {
@@ -3663,16 +4005,19 @@ public:
   {
     m_parse_arena = arena;
   }
+
   pure fn
   parse_arena() const wontthrow -> BumpArena *
   {
     return m_parse_arena;
   }
+
   fn
   set_function_arena(BumpArena *arena) wontthrow -> void
   {
     m_function_arena = arena;
   }
+
   pure fn
   function_arena() const wontthrow -> BumpArena *
   {
@@ -3692,11 +4037,13 @@ public:
   {
     return m_coprocess;
   }
+
   pure fn
   coprocess() const wontthrow -> const coprocess_descriptors &
   {
     return m_coprocess;
   }
+
   fn
   saved_descriptors() wontthrow -> ArrayList<subshell_saved_descriptor> &
   {
@@ -3716,36 +4063,43 @@ public:
   {
     return m_environment_undo_log;
   }
+
   fn
   confined_write_log() wontthrow -> ArrayList<environment_undo_entry> &
   {
     return m_confined_write_log;
   }
+
   fn
   confined_write_depth() wontthrow -> usize &
   {
     return m_confined_write_depth;
   }
+
   pure fn
   confined_write_depth() const wontthrow -> usize
   {
     return m_confined_write_depth;
   }
+
   fn
   confined_clock() wontthrow -> dynamic_clock_state &
   {
     return m_confined_clock;
   }
+
   pure fn
   confined_clock() const wontthrow -> const dynamic_clock_state &
   {
     return m_confined_clock;
   }
+
   fn
   was_confined_ignoreeof_enabled() wontthrow -> bool &
   {
     return m_was_confined_ignoreeof_enabled;
   }
+
   pure fn
   was_confined_ignoreeof_enabled() const wontthrow -> bool
   {
@@ -3757,6 +4111,7 @@ public:
   {
     return m_environment_undo_log.count();
   }
+
   fn
   restore(usize undo_mark) wontthrow -> void;
 
@@ -3776,61 +4131,72 @@ public:
   {
     return m_is_login_shell;
   }
+
   fn
   set_login_shell(bool is_login_shell) wontthrow -> void
   {
     m_is_login_shell = is_login_shell;
   }
+
   pure fn
   has_custom_rcfile() const wontthrow -> bool
   {
     return m_has_custom_rcfile;
   }
+
   fn
   set_custom_rcfile(bool has_custom_rcfile) wontthrow -> void
   {
     m_has_custom_rcfile = has_custom_rcfile;
   }
+
   pure fn
   startup_finished() const wontthrow -> bool
   {
     return m_is_startup_finished;
   }
+
   fn
   mark_startup_finished() wontthrow -> void
   {
     m_is_startup_finished = true;
   }
+
   pure fn
   is_restricted_shell() const wontthrow -> bool
   {
     return m_is_restricted_shell;
   }
+
   fn
   request_restricted_shell() wontthrow -> void
   {
     m_is_restricted_shell = true;
   }
+
   fn
   set_restricted_shell(bool is_restricted) wontthrow -> void
   {
     m_is_restricted_shell = is_restricted;
   }
+
   pure fn
   get_init_moods() const wontthrow -> StringView
   {
     return m_init_moods.view();
   }
+
   fn
   set_init_moods(StringView moods) throws -> void
   {
     m_init_moods = String{moods};
   }
+
   fn
   append_wire(String &output) const throws -> void;
   static fn
-  from_wire(subshell_bootstrap_reader &reader, startup_wire &wire) throws
-      -> bool;
+  from_wire(subshell_bootstrap_reader &reader,
+            startup_wire              &wire) throws -> bool;
 
 private:
   String m_init_moods{heap_allocator()};
@@ -3856,21 +4222,24 @@ public:
   {
     return m_is_source_traces_enabled;
   }
+
   fn
   set_source_traces_enabled(bool is_enabled) wontthrow -> void
   {
     m_is_source_traces_enabled = is_enabled;
   }
+
   fn
   append_wire(String &output) const throws -> void;
   static fn
   from_wire(subshell_bootstrap_reader &reader,
-            bool &is_source_traces_enabled) wontthrow -> bool;
+            bool                      &is_source_traces_enabled) wontthrow -> bool;
   fn
   diagnostic_highlight_cache() wontthrow -> completion::ShellHighlightCache *&
   {
     return m_diagnostic_highlight_cache;
   }
+
   fn
   runtime_diagnostic_highlight_cache() wontthrow
       -> completion::ShellHighlightCache *&
@@ -3893,41 +4262,49 @@ public:
   {
     return m_clock.shell_start_time;
   }
+
   pure fn
   shell_start_time() const wontthrow -> const i64 &
   {
     return m_clock.shell_start_time;
   }
+
   fn
   seconds_base() wontthrow -> i64 &
   {
     return m_clock.seconds_base;
   }
+
   pure fn
   seconds_base() const wontthrow -> const i64 &
   {
     return m_clock.seconds_base;
   }
+
   fn
   random_state() const wontthrow -> u64 &
   {
     return m_clock.random_state;
   }
+
   fn
   is_random_reseed_pending() const wontthrow -> bool &
   {
     return m_clock.is_random_reseed_pending;
   }
+
   fn
   get_random_reseed_count() const wontthrow -> u64 &
   {
     return m_random_reseed_count;
   }
+
   pure fn
   get_clock() const wontthrow -> const dynamic_clock_state &
   {
     return m_clock;
   }
+
   fn
   set_clock(const dynamic_clock_state &clock) wontthrow -> void
   {
@@ -3974,241 +4351,289 @@ public:
   {
     return expansion_store().scratch_allocator();
   }
+
   fn
   arena_store() wontthrow -> ArenaStore &
   {
     return m_arena_store;
   }
+
   pure fn
   arena_store() const wontthrow -> const ArenaStore &
   {
     return m_arena_store;
   }
+
   fn
   subshell_store() wontthrow -> SubshellStore &
   {
     return m_subshell_store;
   }
+
   pure fn
   subshell_store() const wontthrow -> const SubshellStore &
   {
     return m_subshell_store;
   }
+
   fn
   environment_store() wontthrow -> EnvironmentStore &
   {
     return m_environment_store;
   }
+
   pure fn
   environment_store() const wontthrow -> const EnvironmentStore &
   {
     return m_environment_store;
   }
+
   fn
   startup_store() wontthrow -> StartupStore &
   {
     return m_startup_store;
   }
+
   pure fn
   startup_store() const wontthrow -> const StartupStore &
   {
     return m_startup_store;
   }
+
   fn
   diagnostics_store() wontthrow -> DiagnosticsStore &
   {
     return m_diagnostics_store;
   }
+
   pure fn
   diagnostics_store() const wontthrow -> const DiagnosticsStore &
   {
     return m_diagnostics_store;
   }
+
   fn
   program_resolver() wontthrow -> ProgramResolver &
   {
     return m_program_resolver;
   }
+
   pure fn
   program_resolver() const wontthrow -> const ProgramResolver &
   {
     return m_program_resolver;
   }
+
   fn
   dynamic_runtime_store() wontthrow -> DynamicRuntimeStore &
   {
     return m_dynamic_runtime_store;
   }
+
   pure fn
   dynamic_runtime_store() const wontthrow -> const DynamicRuntimeStore &
   {
     return m_dynamic_runtime_store;
   }
+
   fn
   trap_store() wontthrow -> TrapStore &
   {
     return m_trap_store;
   }
+
   pure fn
   trap_store() const wontthrow -> const TrapStore &
   {
     return m_trap_store;
   }
+
   fn
   expansion_store() wontthrow -> ExpansionStore &
   {
     return m_expansion_store;
   }
+
   pure fn
   expansion_store() const wontthrow -> const ExpansionStore &
   {
     return m_expansion_store;
   }
+
   fn
   history_recorder() wontthrow -> HistoryRecorder &
   {
     return m_history_recorder;
   }
+
   pure fn
   history_recorder() const wontthrow -> const HistoryRecorder &
   {
     return m_history_recorder;
   }
+
   fn
   source_retention() wontthrow -> SourceRetention &
   {
     return m_source_retention;
   }
+
   pure fn
   source_retention() const wontthrow -> const SourceRetention &
   {
     return m_source_retention;
   }
+
   fn
   source_store() wontthrow -> SourceStore &
   {
     return m_source_store;
   }
+
   pure fn
   source_store() const wontthrow -> const SourceStore &
   {
     return m_source_store;
   }
+
   fn
   runtime_control_store() wontthrow -> RuntimeControlStore &
   {
     return m_runtime_control_store;
   }
+
   pure fn
   runtime_control_store() const wontthrow -> const RuntimeControlStore &
   {
     return m_runtime_control_store;
   }
+
   fn
   runtime_state() wontthrow -> RuntimeState &
   {
     return m_runtime;
   }
+
   pure fn
   runtime_state() const wontthrow -> const RuntimeState &
   {
     return m_runtime;
   }
+
   fn
   scope_store() wontthrow -> ScopeStore &
   {
     return m_scope_store;
   }
+
   pure fn
   scope_store() const wontthrow -> const ScopeStore &
   {
     return m_scope_store;
   }
+
   fn
   execution_store() wontthrow -> ExecutionStore &
   {
     return m_execution_store;
   }
+
   pure fn
   execution_store() const wontthrow -> const ExecutionStore &
   {
     return m_execution_store;
   }
+
   fn
   evaluation_metrics_store() wontthrow -> EvaluationMetricsStore &
   {
     return m_evaluation_metrics_store;
   }
+
   pure fn
   evaluation_metrics_store() const wontthrow -> const EvaluationMetricsStore &
   {
     return m_evaluation_metrics_store;
   }
+
   fn
   git_status_cache() wontthrow -> GitStatusCache &
   {
     return m_git_status_cache;
   }
+
   pure fn
   git_status_cache() const wontthrow -> const GitStatusCache &
   {
     return m_git_status_cache;
   }
+
   fn
   completion_store() wontthrow -> CompletionStore &
   {
     return m_completion_store;
   }
+
   pure fn
   completion_store() const wontthrow -> const CompletionStore &
   {
     return m_completion_store;
   }
+
   fn
   prompt_command_store() wontthrow -> PromptCommandStore &
   {
     return m_prompt_command_store;
   }
+
   pure fn
   prompt_command_store() const wontthrow -> const PromptCommandStore &
   {
     return m_prompt_command_store;
   }
+
   fn
   control_flow_store() wontthrow -> ControlFlowStore &
   {
     return m_control_flow_store;
   }
+
   pure fn
   control_flow_store() const wontthrow -> const ControlFlowStore &
   {
     return m_control_flow_store;
   }
+
   fn
   function_store() wontthrow -> FunctionStore &
   {
     return m_function_store;
   }
+
   pure fn
   function_store() const wontthrow -> const FunctionStore &
   {
     return m_function_store;
   }
+
   fn
   variable_store() wontthrow -> VariableStore &
   {
     return m_variable_store;
   }
+
   pure fn
   variable_store() const wontthrow -> const VariableStore &
   {
     return m_variable_store;
   }
+
   fn
   job_table_store() wontthrow -> JobTable &
   {
     return m_job_table;
   }
+
   pure fn
   job_table_store() const wontthrow -> const JobTable &
   {
@@ -4261,6 +4686,7 @@ public:
   {
     return m_source;
   }
+
   pure fn
   get_location() const wontthrow -> const SourceLocation &
   {
@@ -4278,21 +4704,20 @@ private:
 class SubstitutionFrame
 {
 public:
-  explicit SubstitutionFrame(EvalContext &context) wontthrow
-      : m_context(context)
+  explicit SubstitutionFrame(EvalContext &context)
+      wontthrow : m_context(context)
   {}
-  SubstitutionFrame(const SubstitutionFrame &) = delete;
+  SubstitutionFrame(const SubstitutionFrame &)                = delete;
   fn
-  operator=(const SubstitutionFrame &)
-      ->SubstitutionFrame & = delete;
+  operator=(const SubstitutionFrame &) -> SubstitutionFrame & = delete;
   ~SubstitutionFrame();
 
   fn
-  push_source_frame(const WordSegment &segment, StringView origin) throws
-      -> void;
+  push_source_frame(const WordSegment &segment,
+                    StringView         origin) throws -> void;
   fn
-  push_source_frame(const SourceLocation &location, StringView origin) throws
-      -> void;
+  push_source_frame(const SourceLocation &location,
+                    StringView            origin) throws -> void;
   fn
   register_embedded(StringView            inner,
                     const SourceLocation &parent_location,
@@ -4319,10 +4744,9 @@ public:
   UntracedTrapScope(EvalContext &context,
                     Kind         kind,
                     bool         should_apply = true) throws;
-  UntracedTrapScope(const UntracedTrapScope &) = delete;
+  UntracedTrapScope(const UntracedTrapScope &)                = delete;
   fn
-  operator=(const UntracedTrapScope &)
-      ->UntracedTrapScope & = delete;
+  operator=(const UntracedTrapScope &) -> UntracedTrapScope & = delete;
   ~UntracedTrapScope();
 
 private:
@@ -4338,10 +4762,9 @@ public:
                        const definition_state &state,
                        definition_state_exit   exit,
                        bool                    should_enter = true) wontthrow;
-  DefinitionStateScope(const DefinitionStateScope &) = delete;
+  DefinitionStateScope(const DefinitionStateScope &)                = delete;
   fn
-  operator=(const DefinitionStateScope &)
-      ->DefinitionStateScope & = delete;
+  operator=(const DefinitionStateScope &) -> DefinitionStateScope & = delete;
   ~DefinitionStateScope();
 
 private:
@@ -4365,7 +4788,8 @@ public:
                ArrayList<SourceLocation>      *expanded_locations = nullptr,
                argument_lifetime lifetime = argument_lifetime::Persistent,
                argument_context  context  = argument_context::Command,
-               Bitset *subscript_flags = nullptr) throws -> ArrayList<String>;
+               Bitset           *subscript_flags = nullptr) throws
+      -> ArrayList<String>;
 
   fn
   set_shell_variable(StringView name, StringView value) throws -> void;
@@ -4378,14 +4802,15 @@ public:
   restore_temporary_shell_variable(
       StringView            name,
       const Maybe<String>  &previous_value,
-      Maybe<SourceLocation> previous_definition_location) throws -> void;
+      Maybe<SourceLocation> previous_definition_location) throws
+      -> void;
   fn
   begin_confined_variable_writes() wontthrow -> usize;
   fn
   rollback_confined_variable_writes(usize mark) wontthrow -> void;
   fn
-  seed_shell_identity_variables(shell_identity_mode identity_mode) throws
-      -> void;
+  seed_shell_identity_variables(shell_identity_mode identity_mode)
+      throws -> void;
 
   fn
   materialize_kosh_identity() const throws -> Maybe<String>;
@@ -4398,26 +4823,31 @@ public:
   unset_shell_variable(StringView name) throws -> void;
 
   fn
-  unset_array_element(StringView name, StringView subscript) throws -> void;
+  unset_array_element(StringView name, StringView subscript) throws
+      -> void;
 
   fn
-  set_indexed_array(StringView name, ArrayList<String> values) throws -> void;
+  set_indexed_array(StringView name, ArrayList<String> values) throws
+      -> void;
   fn
   publish_single_pipe_status(i32 status) throws -> void;
   fn
   publish_pipe_statuses(ArrayList<String> values) throws -> void;
   fn
-  set_array_element(StringView name, usize index, StringView value) throws
-      -> void;
+  set_array_element(StringView name,
+                    usize      index,
+                    StringView value) throws -> void;
 
   fn
   assign_array_element(StringView             name,
                        StringView             subscript,
                        StringView             value,
-                       assignment_update_mode update_mode) throws -> void;
+                       assignment_update_mode update_mode) throws
+      -> void;
   fn
   read_array_element_arithmetic_text(StringView name,
-                                     StringView subscript) throws -> String;
+                                     StringView subscript) throws
+      -> String;
   fn
   declare_associative_array(StringView name) throws -> void;
   fn
@@ -4428,6 +4858,7 @@ public:
     return m_variable_store.associative_arrays().has(name) ||
            is_bash_aliases_special(name);
   }
+
   pure fn
   is_bash_special_array_active(bash_special_array_id id) const wontthrow -> bool
   {
@@ -4435,18 +4866,21 @@ public:
            (m_variable_store.disabled_bash_special_arrays() &
             bash_special_array_mask(id)) == 0;
   }
+
   fn
   disable_bash_special_array(bash_special_array_id id) wontthrow -> void
   {
     m_variable_store.disabled_bash_special_arrays() |=
         bash_special_array_mask(id);
   }
+
   pure fn
   is_bash_aliases_special(StringView name) const wontthrow -> bool
   {
     return name == BASH_ALIASES_VARIABLE &&
            is_bash_special_array_active(bash_special_array_id::Aliases);
   }
+
   pure fn
   is_bash_directory_stack_special(StringView name) const wontthrow -> bool
   {
@@ -4455,10 +4889,9 @@ public:
                bash_special_array_id::DirectoryStack) &&
            !scope_store().has_current_local(name);
   }
+
   fn
-  get_bash_directory_stack_element(usize     index,
-                                   Allocator allocator) const throws
-      -> Maybe<String>;
+  get_bash_directory_stack_element(usize index, Allocator allocator) const throws -> Maybe<String>;
   fn
   set_bash_directory_stack_element(usize index, StringView value) throws
       -> void;
@@ -4467,8 +4900,7 @@ public:
                           StringView key,
                           StringView value) throws -> void;
   fn
-  lookup_associative_element(StringView name, StringView key) const throws
-      -> Maybe<String>;
+  lookup_associative_element(StringView name, StringView key) const throws -> Maybe<String>;
   fn
   associative_keys(StringView name) const throws -> ArrayList<String>;
   fn
@@ -4479,29 +4911,34 @@ public:
   fn
   array_element_count(StringView name) const throws -> usize;
   fn
-  collect_array_elements(StringView name) const throws -> ArrayList<String>;
+  collect_array_elements(StringView name) const throws
+      -> ArrayList<String>;
 
   fn
-  array_element_is_set(StringView name, StringView subscript) throws -> bool;
+  array_element_is_set(StringView name, StringView subscript) throws
+      -> bool;
 
   fn
-  cached_compiled_regex(StringView pattern) throws -> os::compiled_regex *;
+  cached_compiled_regex(StringView pattern) throws
+      -> os::compiled_regex *;
 
   fn
-  collect_array_subscripts(StringView name) const throws -> ArrayList<String>;
+  collect_array_subscripts(StringView name) const throws
+      -> ArrayList<String>;
 
   fn
   clear_sparse_array(StringView name) throws -> void;
 
   fn
-  assign_indexed_array_elements(StringView               name,
-                                const ArrayList<String> &elements,
-                                assignment_update_mode   update_mode,
-                                const Bitset *subscript_flags = nullptr) throws
-      -> void;
+  assign_indexed_array_elements(
+      StringView               name,
+      const ArrayList<String> &elements,
+      assignment_update_mode   update_mode,
+      const Bitset            *subscript_flags = nullptr) throws -> void;
   fn
   assign_associative_elements(StringView               name,
-                              const ArrayList<String> &elements) throws -> void;
+                              const ArrayList<String> &elements) throws
+      -> void;
 
   fn
   record_environment_change(StringView name) throws -> void;
@@ -4518,12 +4955,14 @@ public:
   is_exported(StringView name) const throws -> bool;
 
   fn
-  sync_exported_after_restore(StringView name, bool has_value) throws -> void;
+  sync_exported_after_restore(StringView name, bool has_value) throws
+      -> void;
 
   fn
   get_variable_value(StringView name) const throws -> Maybe<String>;
   fn
-  get_variable_value_checked(StringView name) const throws -> Maybe<String>;
+  get_variable_value_checked(StringView name) const throws
+      -> Maybe<String>;
 
   fn
   resolve_nameref(StringView name) const throws -> Maybe<String>;
@@ -4541,7 +4980,8 @@ public:
   unbind_circular_nameref(StringView name) throws -> bool;
   fn
   assign_caller_binding_of_circular_nameref(StringView name,
-                                            StringView value) throws -> bool;
+                                            StringView value) throws
+      -> bool;
   fn
   assign_global_beneath_locals(StringView name,
                                StringView value,
@@ -4551,9 +4991,8 @@ public:
   fn
   resolve_nameref_base_for_write(StringView name) throws -> String;
   fn
-  resolve_nameref_whole_variable_for_write(StringView name,
-                                           bool should_discard_line) throws
-      -> String;
+  resolve_nameref_whole_variable_for_write(
+      StringView name, bool should_discard_line) throws -> String;
   fn
   guard_nameref_name(StringView name) const throws -> void;
   fn
@@ -4569,7 +5008,8 @@ public:
   is_dynamic_write_owner(StringView name) const wontthrow -> bool;
 
   fn
-  write_dynamic_variable(StringView name, StringView value) throws -> bool;
+  write_dynamic_variable(StringView name, StringView value) throws
+      -> bool;
 
   fn
   append_dynamic_variable_names(ArrayList<StringView> &out) const throws
@@ -4582,7 +5022,8 @@ public:
   unset_dynamic_reader(StringView name) wontthrow -> void;
 
   fn
-  suggest_similar_variable_name(StringView name) const throws -> Maybe<String>;
+  suggest_similar_variable_name(StringView name) const throws
+      -> Maybe<String>;
 
   hot fn
   has_variable_name(StringView name) const throws -> bool
@@ -4601,7 +5042,7 @@ public:
                     const FunctionBodyHandle &body_storage,
                     StringView                definition_text,
                     usize                     body_start_position,
-                    SourceLocation definition_location) throws -> void;
+                    SourceLocation            definition_location) throws -> void;
   fn
   function_definition_info_of(StringView name) const wontthrow
       -> const function_definition_info *;
@@ -4655,12 +5096,12 @@ public:
   map_embedded_site(StringView     &rendered_source,
                     SourceLocation &location) const wontthrow -> const String *;
   pure fn
-  resolve_current_function_window(
-      StringView            rendered_source,
-      const SourceLocation &location) const wontthrow -> ResolvedRenderSource;
+  resolve_current_function_window(StringView            rendered_source,
+                                  const SourceLocation &location) const wontthrow
+      -> ResolvedRenderSource;
   pure fn
   source_text_in_span(const SourceLocation &location,
-                      usize end_position) const wontthrow -> StringView;
+                      usize                 end_position) const wontthrow -> StringView;
   pure fn
   function_storage_stats() const wontthrow -> function_arena_stats;
   fn
@@ -4675,7 +5116,7 @@ public:
                           StringView               line,
                           usize                    point,
                           i32                     *out_exit_status = nullptr,
-                          bool should_mark_directories = false) throws
+                          bool should_mark_directories             = false) throws
       -> ArrayList<String>;
   fn
   run_completion_command(StringView command,
@@ -4690,15 +5131,15 @@ public:
       -> ArrayList<String>;
 
   fn
-  variable_names(Allocator result_allocator = heap_allocator()) const throws
-      -> HashSet;
+  variable_names(Allocator result_allocator = heap_allocator()) const throws -> HashSet;
   fn
   set_trap(StringView            condition,
            StringView            action,
-           Maybe<SourceLocation> definition_location = None) throws -> void;
+           Maybe<SourceLocation> definition_location = None) throws
+      -> void;
   fn
   capture_trap_definition(const SourceLocation &location,
-                          StringView action) throws -> trap_definition;
+                          StringView            action) throws -> trap_definition;
   fn
   remove_trap(StringView condition) throws -> void;
   fn
@@ -4707,9 +5148,9 @@ public:
   run_exit_trap(Maybe<i32> final_status = None) throws -> void;
 
   fn
-  run_named_trap(StringView            condition,
-                 const SourceLocation *trigger_location = nullptr) throws
-      -> void;
+  run_named_trap(
+      StringView            condition,
+      const SourceLocation *trigger_location = nullptr) throws -> void;
   fn
   cached_trap_body(StringView condition, StringView action) throws
       -> FunctionBodyHandle;
@@ -4726,12 +5167,14 @@ public:
            (runtime_state().option_is_enabled(shell_option_id::Errtrace) ||
             nesting_depth() <= trap_store().err_trap_active_depth());
   }
+
   pure fn
   nesting_depth() const wontthrow -> usize
   {
     return function_store().call_depth() + execution_store().subshell_depth() +
            expansion_store().substitution_depth();
   }
+
   pure fn
   should_run_debug_trap() const wontthrow -> bool
   {
@@ -4740,6 +5183,7 @@ public:
            (runtime_state().option_is_enabled(shell_option_id::Functrace) ||
             nesting_depth() <= trap_store().debug_trap_active_depth());
   }
+
   fn
   lower_trap_depths_to_current() wontthrow -> void
   {
@@ -4749,6 +5193,7 @@ public:
     if (trap_store().err_trap_active_depth() > depth)
       trap_store().err_trap_active_depth() = depth;
   }
+
   mustuse fn
   save_untraced_trap(StringView      condition,
                      shell_option_id trace_option,
@@ -4762,6 +5207,7 @@ public:
   {
     return !runtime_state().is_posix_mode();
   }
+
   pure fn
   trap_trigger_line_number() const wontthrow -> Maybe<usize>
   {
@@ -4802,8 +5248,7 @@ public:
   fn
   is_integer_variable(StringView name) const wontthrow -> bool;
   fn
-  append_integer_expression(String &joined, StringView expression) const throws
-      -> void;
+  append_integer_expression(String &joined, StringView expression) const throws -> void;
 
   fn
   enter_function_scope() throws -> void;
@@ -4818,13 +5263,14 @@ public:
   using BashArgumentFrameFlag    = koshka::bash_argument_frame_flag;
   using BashArgumentFrameContext = koshka::bash_argument_frame;
   fn
-  enter_bash_function_argument_frame(BashArgumentFrameContext &frame_context,
-                                     const ArrayList<String>  &arguments) throws
-      -> void;
+  enter_bash_function_argument_frame(
+      BashArgumentFrameContext &frame_context,
+      const ArrayList<String>  &arguments) throws -> void;
   fn
   enter_bash_source_argument_frame(BashArgumentFrameContext &frame_context,
                                    const ArrayList<String>  *arguments,
-                                   StringView source_path) throws -> void;
+                                   StringView                source_path) throws
+      -> void;
   fn
   leave_bash_argument_frame(BashArgumentFrameContext &frame_context) wontthrow
       -> void;
@@ -4876,7 +5322,8 @@ public:
   mustuse fn
   dynamic_array_element_text(DynamicArray which,
                              usize        index,
-                             Allocator result_allocator) const throws -> String;
+                             Allocator    result_allocator) const throws
+      -> String;
   pure fn
   is_bash_argument_array(StringView name) const wontthrow -> bool;
   pure fn
@@ -4885,8 +5332,7 @@ public:
   mustuse fn
   line_number_at_location(const SourceLocation &location,
                           const String         *fallback_source = nullptr,
-                          Maybe<usize> fallback_call_depth = None) const throws
-      -> usize;
+                          Maybe<usize> fallback_call_depth = None) const throws -> usize;
   fn
   push_root_source_frame(const String     *parent_source,
                          SourceLocation    call_site,
@@ -4901,7 +5347,8 @@ public:
   borrowed_frame_source(const source_frame &frame) const wontthrow
       -> const String *;
   fn
-  declare_local(StringView name, bool should_inherit_value) throws -> void;
+  declare_local(StringView name, bool should_inherit_value) throws
+      -> void;
   fn
   declare_self_reference(StringView name) throws -> void;
   fn
@@ -4911,21 +5358,20 @@ public:
   fn
   make_subshell_bootstrap() const throws -> os::subshell_bootstrap;
   fn
-  make_child_evaluator_state(os::subshell_bootstrap &bootstrap) const throws
-      -> os::child_evaluator_state;
+  make_child_evaluator_state(os::subshell_bootstrap &bootstrap) const throws -> os::child_evaluator_state;
   fn
-  apply_subshell_bootstrap(os::subshell_bootstrap bootstrap) throws -> void;
+  apply_subshell_bootstrap(os::subshell_bootstrap bootstrap) throws
+      -> void;
   fn
   set_child_source_origin(os::subshell_bootstrap &bootstrap,
                           StringView              child_source,
-                          const SourceLocation   &launch_location) const throws
-      -> void;
+                          const SourceLocation &launch_location) const throws -> void;
   fn
-  register_inherited_source_origin(StringView         origin,
-                                   const String      &contents,
-                                   ArrayList<String> &windows,
-                                   Maybe<StringView> &source_name) throws
-      -> bool;
+  register_inherited_source_origin(
+      StringView         origin,
+      const String      &contents,
+      ArrayList<String> &windows,
+      Maybe<StringView> &source_name) throws -> bool;
 
   fn
   enter_subshell() wontthrow -> void;
@@ -4974,21 +5420,24 @@ public:
   {
     return SourceScope{*this};
   }
+
   mustuse fn
-  enter_source_scope(const String *source, String origin) wontthrow
-      -> SourceScope
+  enter_source_scope(const String *source, String origin)
+      wontthrow -> SourceScope
   {
     return SourceScope{*this, source, steal(origin)};
   }
+
   fn
   record_history_event(StringView command) throws -> bool;
   fn
   print_source_backtrace(Maybe<SourceLocation> error_location = None,
                          bool should_defer_for_source_file    = true,
-                         bool is_replay = false) throws -> void;
+                         bool is_replay                       = false) throws -> void;
   fn
   set_diagnostic_highlight_cache(completion::ShellHighlightCache *cache)
-      wontthrow -> completion::ShellHighlightCache *
+      wontthrow
+      -> completion::ShellHighlightCache *
   {
     let *previous = diagnostics_store().diagnostic_highlight_cache();
     diagnostics_store().diagnostic_highlight_cache() = cache;
@@ -5004,7 +5453,7 @@ public:
 
   fn
   render_contained_substitution_error(const std::exception_ptr &error,
-                                      StringView source) throws -> void;
+                                      StringView                source) throws -> void;
 
   pure fn
   strict_diagnostics_are_warnings() const wontthrow -> bool
@@ -5014,6 +5463,7 @@ public:
 
     return runtime_state().get_warning_level() >= 1;
   }
+
   fn
   report_unset_reference(StringView name) throws -> void;
   fn
@@ -5026,8 +5476,8 @@ public:
   show_runtime_warning_at(SourceLocation location,
                           StringView     message,
                           StringView     note         = {},
-                          bool should_ignore_disabled = false) wontthrow
-      -> void;
+                          bool should_ignore_disabled = false)
+      wontthrow -> void;
   cold fn
   show_runtime_error_at(SourceLocation location, StringView message) wontthrow
       -> void;
@@ -5047,6 +5497,7 @@ public:
 
       return;
     }
+
     if (!runtime_state().is_posix_option_on()) return;
     runtime_control_store().note_explicit_mood();
     select_mood(mimic_mood::Bash);
@@ -5068,12 +5519,15 @@ public:
     if (is_strict || !runtime_state().was_error_unset_set_explicitly()) {
       runtime_state().set_error_unset(is_strict && !is_completion_running);
     }
+
     if (is_strict || !runtime_state().was_pipefail_set_explicitly()) {
       runtime_state().set_pipefail(is_strict);
     }
+
     if (is_strict || !runtime_state().was_failglob_set_explicitly()) {
       runtime_state().set_failglob(is_strict && !is_completion_running);
     }
+
     if (is_strict || !runtime_state().was_extended_arithmetic_set_explicitly())
     {
       runtime_state().set_extended_arithmetic(is_strict);
@@ -5094,10 +5548,11 @@ public:
   }
 
   fn
-  leave_definition_state(
-      const function_runtime_state &state,
-      definition_state_exit         exit =
-          definition_state_exit::PropagateMutations) wontthrow -> void
+  leave_definition_state(const function_runtime_state &state,
+                         definition_state_exit         exit =
+                             definition_state_exit::PropagateMutations)
+      wontthrow
+      -> void
   {
     if (exit == definition_state_exit::RestoreCaller) {
       state.previous.restore(*this);
@@ -5195,7 +5650,8 @@ public:
   fn
   first_field_separator() const throws -> StringView;
   hot fn
-  get_glob_charset_for(const String &subject) const throws -> glob_charset
+  get_glob_charset_for(const String &subject) const throws
+      -> glob_charset
   {
     return subject.is_ascii() ? glob_charset::Bytes : get_glob_charset();
   }
@@ -5212,6 +5668,7 @@ public:
     {
       return false;
     }
+
     if (runtime_state().is_shopt_option_overridden(*index))
       return runtime_state().is_shopt_option_enabled(*index);
     if (*index == shopt_option_index(shopt_option_id::Extglob))
@@ -5237,12 +5694,14 @@ public:
 
   fn
   expand_word_for_assignment(const Word &word,
-                             bool is_assignment_value = false) throws -> String;
+                             bool        is_assignment_value = false) throws
+      -> String;
 
   fn
   evaluate_arithmetic(StringView            expression,
                       const SourceLocation *expression_base = nullptr,
-                      bool should_discard_top_level_line = false) throws -> i64;
+                      bool should_discard_top_level_line    = false) throws
+      -> i64;
   fn
   mark_expansion_error(ErrorBase            &error,
                        expansion_error_reach reach) const wontthrow -> void;
@@ -5250,7 +5709,8 @@ public:
   evaluate_arithmetic_text(StringView            expression,
                            const SourceLocation *expression_base = nullptr,
                            arithmetic_text_kind  text_kind =
-                               arithmetic_text_kind::Value) throws -> String;
+                               arithmetic_text_kind::Value) throws
+      -> String;
   fn
   evaluate_calculator_arithmetic_text(
       StringView            expression,
@@ -5262,11 +5722,13 @@ public:
   evaluate_arithmetic_nonzero(StringView            expression,
                               const SourceLocation *expression_base = nullptr,
                               arithmetic_text_kind  text_kind =
-                                  arithmetic_text_kind::Value) throws -> bool;
+                                  arithmetic_text_kind::Value) throws
+      -> bool;
   fn
   compare_arithmetic(StringView left, StringView right) throws -> i32;
   fn
-  evaluate_arithmetic_cached_text(const WordSegment &segment) throws -> String;
+  evaluate_arithmetic_cached_text(const WordSegment &segment) throws
+      -> String;
 
   fn
   evaluate_arithmetic_cached_clause_nonzero(
@@ -5277,24 +5739,26 @@ public:
       const SourceLocation   *source_location = nullptr) throws -> bool;
 
   fn
-  evaluate_conditional(const ArrayList<conditional_element> &elements) throws
-      -> bool;
+  evaluate_conditional(const ArrayList<conditional_element> &elements)
+      throws -> bool;
 
   fn
-  expand_case_pattern_masked(const Word &word, Bitset &active_out) throws
+  expand_case_pattern_masked(const Word &word,
+                             Bitset     &active_out) throws -> String;
+
+  fn
+  capture_command_substitution(
+      const String         &source,
+      Maybe<StringView>     filename  = None,
+      const SourceLocation *call_site = nullptr) throws -> String;
+
+  fn
+  capture_command_substitution(const WordSegment &segment) throws
       -> String;
 
   fn
-  capture_command_substitution(const String         &source,
-                               Maybe<StringView>     filename  = None,
-                               const SourceLocation *call_site = nullptr) throws
+  capture_function_substitution(const WordSegment &segment) throws
       -> String;
-
-  fn
-  capture_command_substitution(const WordSegment &segment) throws -> String;
-
-  fn
-  capture_function_substitution(const WordSegment &segment) throws -> String;
   fn
   capture_function_substitution(StringView            text,
                                 const SourceLocation *call_site) throws
@@ -5310,24 +5774,25 @@ public:
   read_redirect_substitution(StringView source) throws -> Maybe<String>;
 
   fn
-  setup_process_substitution(const WordSegment &segment) throws -> String;
+  setup_process_substitution(const WordSegment &segment) throws
+      -> String;
   fn
-  setup_process_substitution(StringView            text,
-                             Maybe<SourceLocation> segment_location) throws
+  setup_process_substitution(
+      StringView text, Maybe<SourceLocation> segment_location) throws
       -> String;
   mustuse fn
   mark_process_substitutions() const wontthrow -> process_substitution_mark;
   fn
-  cleanup_process_substitutions(process_substitution_mark mark) wontthrow
-      -> void;
+  cleanup_process_substitutions(process_substitution_mark mark)
+      wontthrow -> void;
   fn
   hold_process_substitutions(process_substitution_mark mark) wontthrow -> void;
   fn
   release_finished_held_process_substitutions() wontthrow -> void;
   fn
   wait_for_process_substitution(i64  process_id,
-                                bool should_block = true) wontthrow
-      -> Maybe<i32>;
+                                bool should_block = true)
+      wontthrow -> Maybe<i32>;
   pure fn
   is_pending_process_substitution(i64 process_id) const wontthrow -> bool;
 
@@ -5349,11 +5814,13 @@ public:
   fn
   run_captured_substitution(const Expression     *ast,
                             const String         &source,
-                            Maybe<SourceLocation> call_site) throws -> String;
+                            Maybe<SourceLocation> call_site) throws
+      -> String;
   fn
   run_function_substitution(const Expression *ast,
                             const String     &source,
-                            bool is_value_substitution) throws -> String;
+                            bool              is_value_substitution) throws
+      -> String;
 
   fn
   run_source(StringView                source,
@@ -5394,9 +5861,9 @@ public:
   clear_retained_sources() wontthrow -> void;
 
   fn
-  expand_heredoc_body(StringView            body,
-                      const SourceLocation *source_location = nullptr) throws
-      -> String;
+  expand_heredoc_body(
+      StringView            body,
+      const SourceLocation *source_location = nullptr) throws -> String;
 
   fn
   expand_modifier_word(StringView word,
@@ -5405,7 +5872,8 @@ public:
                        const SourceLocation *source_location    = nullptr,
                        bool should_expand_process_substitution  = false,
                        parameter_word_quoting quoting =
-                           parameter_word_quoting::Unquoted) throws -> String;
+                           parameter_word_quoting::Unquoted) throws
+      -> String;
 
   fn
   expand_modifier_word_masked(
@@ -5415,25 +5883,25 @@ public:
       const SourceLocation *source_location      = nullptr) throws -> String;
 
   fn
-  expand_modifier_word_fields(StringView                    word,
-                              bool                          is_outer_quoted,
-                              Bitset                       &active_out,
-                              ArrayList<usize>             &break_out,
-                              ArrayList<quoted_empty_mark> &mark_out,
-                              const SourceLocation *source_location) throws
-      -> String;
+  expand_modifier_word_fields(
+      StringView                    word,
+      bool                          is_outer_quoted,
+      Bitset                       &active_out,
+      ArrayList<usize>             &break_out,
+      ArrayList<quoted_empty_mark> &mark_out,
+      const SourceLocation         *source_location) throws -> String;
 
   class ModifierWordExpander;
   class ParameterExpander;
 
   fn
-  expand_modifier_word_worker(StringView word,
-                              Bitset    *active_out,
-                              bool       should_remove_quotes,
-                              bool       is_pattern_word,
-                              bool       should_strip_escaped_literals,
-                              const SourceLocation *source_location) throws
-      -> String;
+  expand_modifier_word_worker(
+      StringView            word,
+      Bitset               *active_out,
+      bool                  should_remove_quotes,
+      bool                  is_pattern_word,
+      bool                  should_strip_escaped_literals,
+      const SourceLocation *source_location) throws -> String;
 
   fn
   write_xtrace(StringView command) throws -> void;
@@ -5446,6 +5914,7 @@ public:
     if (startup_store().is_restricted_shell())
       runtime_state().set_option(shell_option_id::Restricted, true);
   }
+
   fn
   guard_restricted_path(StringView            path,
                         const SourceLocation &location,
@@ -5462,8 +5931,7 @@ protected:
   option_flags_string() const throws -> String;
 
   fn
-  initialize_bash_argument_arrays(
-      bool should_include_current_frame) const throws -> void;
+  initialize_bash_argument_arrays(bool should_include_current_frame) const throws -> void;
   fn
   append_current_bash_argument_frame() const throws -> void;
 
@@ -5483,12 +5951,12 @@ protected:
   restore_local_binding(local_binding &binding) throws -> void;
 
   fn
-  apply_parameter_expansion(
-      StringView             spec,
-      const SourceLocation  *source_location                    = nullptr,
-      usize                  source_location_offset             = 0,
-      bool                   should_expand_process_substitution = false,
-      parameter_word_quoting quoting = parameter_word_quoting::Unquoted) throws
+  apply_parameter_expansion(StringView            spec,
+                            const SourceLocation *source_location = nullptr,
+                            usize                 source_location_offset = 0,
+                            bool should_expand_process_substitution = false,
+                            parameter_word_quoting quoting =
+                                parameter_word_quoting::Unquoted) throws
       -> String;
 
   fn
@@ -5525,10 +5993,10 @@ protected:
       const SourceLocation *source_location = nullptr) throws -> String;
 
   fn
-  pattern_replace_value(StringView            value,
-                        StringView            spec,
-                        const SourceLocation *source_location = nullptr) throws
-      -> String;
+  pattern_replace_value(
+      StringView            value,
+      StringView            spec,
+      const SourceLocation *source_location = nullptr) throws -> String;
 
   fn
   apply_case_modification(
@@ -5550,29 +6018,28 @@ protected:
       StringView            spec,
       const SourceLocation *source_location = nullptr) throws -> String;
   fn
-  apply_value_modifier(StringView            value,
-                       StringView            modifier,
-                       const SourceLocation *source_location = nullptr) throws
-      -> String;
+  apply_value_modifier(
+      StringView            value,
+      StringView            modifier,
+      const SourceLocation *source_location = nullptr) throws -> String;
   fn
   trim_positional_fields(bool                  is_star,
                          bool                  is_quoted,
                          StringView            modifier,
-                         const SourceLocation *source_location = nullptr) throws
-      -> ArrayList<String>;
+                         const SourceLocation *source_location =
+                             nullptr) throws -> ArrayList<String>;
   fn
   is_posix_positional_test_null(bool is_colon,
                                 char op,
                                 bool should_test_joined) wontthrow -> bool;
 
   fn
-  apply_array_subscript(StringView            name,
-                        StringView            subscript,
-                        const SourceLocation *source_location = nullptr) throws
-      -> String;
+  apply_array_subscript(
+      StringView            name,
+      StringView            subscript,
+      const SourceLocation *source_location = nullptr) throws -> String;
   fn
-  read_literal_array_element(StringView name, StringView subscript) const throws
-      -> Maybe<String>;
+  read_literal_array_element(StringView name, StringView subscript) const throws -> Maybe<String>;
   fn
   array_negative_index_base(StringView name) const throws -> i64;
 
@@ -5606,7 +6073,8 @@ protected:
   fn
   expand_colon_tildes(WordSegment &segment,
                       bool         is_word_continued,
-                      Maybe<usize> equals_position = None) const throws -> void;
+                      Maybe<usize> equals_position = None) const throws
+      -> void;
 };
 
 } /* namespace koshka */

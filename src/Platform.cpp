@@ -47,6 +47,7 @@ fn
 system_configuration(system_configuration_key key) wontthrow -> Maybe<i64>
 {
   let const result = query_system_configuration(key);
+
   if (result.status != configuration_query_status::Value) return None;
 
   return result.value;
@@ -57,6 +58,7 @@ path_configuration(StringView path, path_configuration_key key) wontthrow
     -> Maybe<i64>
 {
   let const result = query_path_configuration(path, key);
+
   if (result.status != configuration_query_status::Value) return None;
 
   return result.value;
@@ -176,14 +178,15 @@ ProgramCapture::take_output() wontthrow -> String
 }
 
 fn
-capture_program_output(const ArrayList<String> &argv,
-                       u64 timeout_nanos) wontthrow -> Maybe<String>
+capture_program_output(const ArrayList<String> &argv, u64 timeout_nanos)
+    wontthrow
+    -> Maybe<String>
 {
   let capture = ProgramCapture::start(argv, timeout_nanos);
+
   if (!capture.has_value()) return None;
 
-  loop
-  {
+  loop {
     switch (capture->step()) {
     case ProgramCapture::State::Finished: return capture->take_output();
     case ProgramCapture::State::Failed:   return None;
@@ -194,13 +197,13 @@ capture_program_output(const ArrayList<String> &argv,
 
 fn
 program_exits_successfully(const ArrayList<String> &argv,
-                           u64 timeout_nanos) wontthrow -> bool
+                           u64                      timeout_nanos) wontthrow -> bool
 {
   let capture = ProgramCapture::start(argv, timeout_nanos);
+
   if (!capture.has_value()) return false;
 
-  loop
-  {
+  loop {
     switch (capture->step()) {
     case ProgramCapture::State::Finished:
       return capture->exit_status().value_or(-1) == 0;
@@ -225,6 +228,7 @@ ScopedEnvironment::~ScopedEnvironment()
 {
   for (usize index = m_saved.count(); index > 0; index--) {
     let const &saved = m_saved[index - 1];
+
     try {
       if (saved.previous.has_value())
         set_environment_variable(saved.key.view(), saved.previous->view());
@@ -238,14 +242,14 @@ static fn
 take_environment_variable(StringView key) throws -> Maybe<String>
 {
   let text = get_environment_variable(key);
+
   if (text.has_value()) unset_environment_variable(key);
 
   return text;
 }
 
 fn
-inherited_subshell_state::apply_to(ScopedEnvironment &environment) const throws
-    -> void
+inherited_subshell_state::apply_to(ScopedEnvironment &environment) const throws -> void
 {
   environment.set(internal::PREVIOUS_EXIT_STATUS,
                   String::from(previous_exit_status, heap_allocator()).view());
@@ -269,6 +273,7 @@ inherited_subshell_state::take_from_environment() throws
   let const parent_process_id_text =
       take_environment_variable(internal::SHELL_PARENT_PROCESS_ID);
   let const depth_text = take_environment_variable(internal::SUBSHELL_DEPTH);
+
   if (!status_text.has_value() || !process_id_text.has_value() ||
       !parent_process_id_text.has_value() || !depth_text.has_value())
   {
@@ -279,11 +284,13 @@ inherited_subshell_state::take_from_environment() throws
   let const process_id        = process_id_text->view().to<i64>();
   let const parent_process_id = parent_process_id_text->view().to<i64>();
   let const depth             = depth_text->view().to<u64>();
+
   if (status.is_error() || process_id.is_error() ||
       parent_process_id.is_error() || depth.is_error())
   {
     return None;
   }
+
   if (process_id.value() <= 0 || depth.value() > static_cast<u64>(SIZE_MAX)) {
     return None;
   }
@@ -339,6 +346,7 @@ divide_u128_by_u64(u64 high, u64 low, u64 divisor) wontthrow
 
   for (u32 bit_position = 64; bit_position > 0; bit_position--) {
     let const has_overflow = (remainder >> 63u) != 0;
+
     remainder = (remainder << 1u) | ((low >> (bit_position - 1)) & 1u);
     if (has_overflow || remainder >= divisor) {
       remainder -= divisor;
@@ -412,7 +420,8 @@ fn
 take_reaped_child_count() wontthrow -> u32
 {
   let const reaped_count = REAPED_CHILD_COUNT;
-  REAPED_CHILD_COUNT     = 0;
+
+  REAPED_CHILD_COUNT = 0;
 
   return reaped_count;
 }
@@ -457,6 +466,7 @@ fn
 get_file_creation_mask() wontthrow -> u32
 {
   let const previous_mask = KOSH_UMASK(0);
+
   KOSH_UMASK(previous_mask);
 
   return static_cast<u32>(previous_mask);
@@ -481,9 +491,11 @@ compile_regex(StringView pattern, case_sensitivity sensitivity) throws
   let const is_case_insensitive = sensitivity == case_sensitivity::Insensitive;
   let const pattern_text        = String{heap_allocator(), pattern};
   int       compile_flags       = REG_EXTENDED;
+
   if (is_case_insensitive) compile_flags |= REG_ICASE;
 
   compiled_regex compiled{};
+
   if (regcomp(&compiled.re, pattern_text.c_str(), compile_flags) != 0)
     return None;
 
@@ -491,18 +503,21 @@ compile_regex(StringView pattern, case_sensitivity sensitivity) throws
 }
 
 fn
-compile_basic_regex(StringView pattern, case_sensitivity sensitivity) throws
+compile_basic_regex(StringView       pattern,
+                    case_sensitivity sensitivity) throws
     -> Maybe<compiled_regex>
 {
   let const is_case_insensitive = sensitivity == case_sensitivity::Insensitive;
   let const pattern_text        = String{heap_allocator(), pattern};
   int       compile_flags       = 0;
+
 #if defined REG_ENHANCED
   compile_flags |= REG_ENHANCED;
 #endif
   if (is_case_insensitive) compile_flags |= REG_ICASE;
 
   compiled_regex compiled{};
+
   if (regcomp(&compiled.re, pattern_text.c_str(), compile_flags) != 0)
     return None;
 
@@ -517,6 +532,7 @@ execute_regex(compiled_regex                &compiled,
   let       report      = regex_execution_report{options.scratch};
   let const group_count = compiled.re.re_nsub + 1;
   let       matches     = ArrayList<regmatch_t>{options.scratch};
+
   matches.reserve(group_count);
 
   for (usize i = 0; i < group_count; i++)
@@ -525,21 +541,26 @@ execute_regex(compiled_regex                &compiled,
   int execute_flags =
       options.start_position == regex_start_position::NotBeginning ? REG_NOTBOL
                                                                    : 0;
+
 #if defined REG_STARTEND && !defined KOSH_HAS_ADDRESS_SANITIZER
   matches[0].rm_so = 0;
   matches[0].rm_eo = static_cast<regoff_t>(options.subject.length);
   execute_flags |= REG_STARTEND;
+
   const int match_result = regexec(&compiled.re, options.subject.data,
                                    group_count, matches.begin(), execute_flags);
 #elif defined REG_STARTEND
   let const subject_text = String{options.scratch, options.subject};
-  matches[0].rm_so       = 0;
-  matches[0].rm_eo       = static_cast<regoff_t>(options.subject.length);
+
+  matches[0].rm_so = 0;
+  matches[0].rm_eo = static_cast<regoff_t>(options.subject.length);
   execute_flags |= REG_STARTEND;
+
   const int match_result = regexec(&compiled.re, subject_text.c_str(),
                                    group_count, matches.begin(), execute_flags);
 #else
   let subject_text = String{options.scratch};
+
   subject_text.reserve(options.subject.length);
   let remaining = options.subject;
 
@@ -550,6 +571,7 @@ execute_regex(compiled_regex                &compiled,
   }
 
   subject_text.append(remaining);
+
   const int match_result = regexec(&compiled.re, subject_text.c_str(),
                                    group_count, matches.begin(), execute_flags);
 #endif
@@ -558,6 +580,7 @@ execute_regex(compiled_regex                &compiled,
 
   if (match_result != 0) {
     char error_text[256];
+
     regerror(match_result, &compiled.re, error_text, sizeof(error_text));
     report.error_message = String{options.scratch, StringView{error_text}};
     report.result        = regex_match_result::Error;
@@ -584,10 +607,12 @@ free_regex(compiled_regex &compiled) wontthrow -> void
 }
 
 fn
-regex_matches(compiled_regex &compiled, StringView subject) throws -> bool
+regex_matches(compiled_regex &compiled, StringView subject) throws
+    -> bool
 {
 #if defined REG_STARTEND
   regmatch_t bounds[1];
+
   bounds[0].rm_so = 0;
   bounds[0].rm_eo = static_cast<regoff_t>(subject.length);
 #if defined KOSH_HAS_ADDRESS_SANITIZER
@@ -601,6 +626,7 @@ regex_matches(compiled_regex &compiled, StringView subject) throws -> bool
 #endif
 #else
   let null_terminated = String{heap_allocator()};
+
   null_terminated.reserve(subject.length);
 
   for (usize position = 0; position < subject.length; position++) {
@@ -640,9 +666,9 @@ read_fd_to_string(os::descriptor fd, Allocator allocator) throws
   let  contents = String{allocator};
   char buffer[16384];
 
-  loop
-  {
+  loop {
     let const read_count = read_fd(fd, buffer, sizeof(buffer));
+
     if (!read_count.has_value()) return None;
     if (*read_count == 0) return Maybe<String>{steal(contents)};
     contents.append(StringView{buffer, *read_count});
@@ -767,6 +793,7 @@ is_x86_sse42_available() wontthrow -> bool
   u32 ebx;
   u32 ecx;
   u32 edx;
+
   __asm__ volatile("cpuid" : "+a"(eax), "=b"(ebx), "=c"(ecx), "=d"(edx));
   unused(ebx);
   unused(edx);
@@ -805,6 +832,7 @@ is_aarch64_crc32c_available() wontthrow -> bool
 #elif defined __APPLE__
   int   is_available = 0;
   usize value_length = sizeof(is_available);
+
   if (sysctlbyname("hw.optional.armv8_crc32", &is_available, &value_length,
                    nullptr, 0) != 0)
     return false;
@@ -837,6 +865,7 @@ crc32c_update_streams(u32                       crc,
     u64 first_word;
     u64 middle_word;
     u64 last_word;
+
     __builtin_memcpy(&first_word, data + offset, 8);
     __builtin_memcpy(&middle_word, data + block_length + offset, 8);
     __builtin_memcpy(&last_word, data + 2 * block_length + offset, 8);
@@ -871,6 +900,7 @@ crc32c_update_hardware(u32 crc, const u8 *data, usize length) wontthrow -> u32
 
   while (length >= 8) {
     u64 word;
+
     __builtin_memcpy(&word, data, 8);
     crc = static_cast<u32>(Instructions::update_word(crc, word));
     data += 8;
@@ -893,6 +923,7 @@ crc32c_update_software(u32 crc, const u8 *data, usize length) wontthrow -> u32
     for (int bit = 0; bit < 8; bit++) {
       let const mix =
           static_cast<u32>(-static_cast<i32>(crc & 1)) & 0x82f63b78u;
+
       crc = (crc >> 1) ^ mix;
     }
   }
@@ -909,10 +940,12 @@ crc32c_update(u32 crc, const void *data, usize length) wontthrow -> u32
 
 #if defined __x86_64__ && !defined __COSMOPOLITAN__
   static let const has_sse42 = is_x86_sse42_available();
+
   if (has_sse42)
     return crc32c_update_hardware<crc32c_x86_instructions>(crc, bytes, length);
 #elif defined __aarch64__ || defined __arm64__ || defined _M_ARM64
   static let const has_crc32c = is_aarch64_crc32c_available();
+
   if (has_crc32c)
     return crc32c_update_hardware<crc32c_arm_instructions>(crc, bytes, length);
 #endif

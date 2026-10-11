@@ -53,7 +53,9 @@ class AnalysisSourceProvider
 public:
   virtual ~AnalysisSourceProvider() = default;
   virtual fn
-  read_source(const Path &canonical_path) throws -> Maybe<String> = 0;
+  read_source(const Path &canonical_path) throws
+      -> Maybe<String>
+          abstract;
 };
 
 class AnalysisUnitStream
@@ -61,9 +63,9 @@ class AnalysisUnitStream
 public:
   virtual ~AnalysisUnitStream() = default;
   virtual fn
-  next_unit() throws -> const Expression * = 0;
+  next_unit() throws -> const Expression * abstract;
   virtual fn
-  release_unit() throws -> void = 0;
+  release_unit() throws -> void abstract;
 };
 
 namespace expressions {
@@ -170,7 +172,7 @@ public:
   ~AssignmentIndexSet();
 
   fn
-  operator=(const AssignmentIndexSet &other) wontthrow->AssignmentIndexSet &;
+  operator=(const AssignmentIndexSet &other) wontthrow -> AssignmentIndexSet &;
   fn
   operator=(AssignmentIndexSet &&other) noexcept -> AssignmentIndexSet &;
 
@@ -184,7 +186,7 @@ public:
   pure fn
   is_empty() const wontthrow -> bool;
   pure fn
-  operator[](usize index) const wontthrow->usize;
+  operator[](usize index) const wontthrow -> usize;
   pure fn
   begin() const wontthrow -> const usize *;
   pure fn
@@ -230,7 +232,7 @@ public:
 
   fn
   operator=(const VariableOccurrenceStateMap &other) throws
-      ->VariableOccurrenceStateMap &;
+      -> VariableOccurrenceStateMap &;
   fn
   operator=(VariableOccurrenceStateMap &&other) noexcept
       -> VariableOccurrenceStateMap &;
@@ -239,6 +241,7 @@ public:
   snapshot() throws -> VariableOccurrenceStateMap;
   pure fn
   find(StringView name) const wontthrow -> const variable_occurrence_state *;
+
   fn
   set(StringView name, variable_occurrence_state state) throws -> void;
   fn
@@ -284,7 +287,8 @@ struct variable_occurrence_pair
   }
 
   fn
-  replace(StringView name, variable_occurrence_state state) throws -> void
+  replace(StringView name, variable_occurrence_state state) throws
+      -> void
   {
     assigned.set(name, steal(state));
     inherited.erase(name);
@@ -299,21 +303,25 @@ struct function_global_assignment
 
 struct function_definition_record
 {
-  String  name;
-  usize   occurrence_start{0};
-  usize   occurrence_end{0};
+  String name;
+  usize  occurrence_start{0};
+  usize  occurrence_end{0};
+
   HashSet affected_names{heap_allocator(), SMALL_MAP_FIRST_CAPACITY};
   HashSet local_names{heap_allocator(), SMALL_MAP_FIRST_CAPACITY};
+
   VariableOccurrenceStateMap exit_states;
   String                     first_positional_read;
   Maybe<usize>               previous_definition_index{};
   usize                      recursive_call_count{0};
   usize                      async_recursive_call_count{0};
-  SourceLocation             location;
-  SourceLocation             first_positional_read_location{};
-  SourceLocation             first_recursive_call_location{};
-  bool                       has_been_called{false};
-  bool                       is_analysis_complete{false};
+
+  SourceLocation location;
+  SourceLocation first_positional_read_location{};
+  SourceLocation first_recursive_call_location{};
+
+  bool has_been_called{false};
+  bool is_analysis_complete{false};
 };
 
 struct analysis_name_insertion
@@ -367,6 +375,7 @@ struct analysis_function_table
     for (usize index = records.count(); index > mark.definition_count; index--)
     {
       let const &definition = records[index - 1];
+
       if (!definition.is_analysis_complete) continue;
 
       if (definition.previous_definition_index.has_value()) {
@@ -440,8 +449,8 @@ struct analysis_effects
   bool should_silence_unresolved_commands{false};
 
   fn
-  raise(const analysis_effects &delta, analysis_effects *mirror) wontthrow
-      -> void
+  raise(const analysis_effects &delta, analysis_effects *mirror)
+      wontthrow -> void
   {
     has_seen_runtime_definer =
         has_seen_runtime_definer || delta.has_seen_runtime_definer;
@@ -523,6 +532,7 @@ struct analysis_options
   from_runtime(const RuntimeState &runtime) wontthrow -> analysis_options
   {
     analysis_options options{};
+
     options.warning_level        = runtime.get_warning_level();
     options.is_default_mood      = runtime.get_mood() == mimic_mood::Default;
     options.should_emit_annoying = runtime.is_annoying_diagnostics_enabled();
@@ -576,6 +586,7 @@ struct analysis_reporter
          const Maybe<SourceLocation>      &related_location) throws -> bool;
   fn
   flush(const analysis_report_site &site) throws -> void;
+
   pure fn
   should_report(diagnostic_id id) const wontthrow -> bool;
   pure fn
@@ -763,14 +774,15 @@ public:
   {
     while (scoped_name_insertions.count() > mark) {
       let const &insertion = scoped_name_insertions.back();
+
       insertion.names->remove(insertion.name.view());
       scoped_name_insertions.pop_back();
     }
   }
 
   fn
-  add_global_assigned_name(StringView name, SourceLocation location) throws
-      -> void
+  add_global_assigned_name(StringView     name,
+                           SourceLocation location) throws -> void
   {
     global_assigned_names.set(name, steal(location));
     if (current_source_effects != nullptr)
@@ -780,7 +792,8 @@ public:
   fn
   mark_path_unknown(bool should_silence_commands) wontthrow -> void
   {
-    let delta                                = analysis_effects{};
+    let delta = analysis_effects{};
+
     delta.has_unknown_path                   = true;
     delta.should_silence_unresolved_commands = should_silence_commands;
     raise_effects(delta);
@@ -789,7 +802,8 @@ public:
   fn
   mark_working_directory_unknown() wontthrow -> void
   {
-    let delta                           = analysis_effects{};
+    let delta = analysis_effects{};
+
     delta.has_unknown_working_directory = true;
     generated_relative_executable_paths =
         HashSet{heap_allocator(), SMALL_MAP_FIRST_CAPACITY};
@@ -799,7 +813,8 @@ public:
   fn
   mark_runtime_definer_seen() wontthrow -> void
   {
-    let delta                      = analysis_effects{};
+    let delta = analysis_effects{};
+
     delta.has_seen_runtime_definer = true;
     raise_effects(delta);
   }
@@ -813,6 +828,7 @@ public:
       case analysis_scope_definition_kind::Function:
         add_defined_function(definition.name.view());
         break;
+
       case analysis_scope_definition_kind::Alias:
         add_known_alias(definition.name.view());
         break;
@@ -823,18 +839,20 @@ public:
   fn
   report_diagnostic(diagnostic_id                     id,
                     const SourceLocation             &location,
-                    std::initializer_list<StringView> arguments   = {},
-                    const Maybe<SourceLocation> &related_location = None) throws
-      -> bool
+                    std::initializer_list<StringView> arguments = {},
+                    const Maybe<SourceLocation>      &related_location =
+                        None) throws -> bool
   {
     return reporter.report(get_report_site(), id, location, arguments,
                            related_location);
   }
+
   fn
   flush_warnings() throws -> void
   {
     reporter.flush(get_report_site());
   }
+
   fn
   print_diagnostic_summary() const throws -> void;
   fn
@@ -845,33 +863,36 @@ public:
   {
     return reporter.should_report(id);
   }
+
   fn
   note_variable_assignment(StringView            name,
                            const SourceLocation &location,
                            bool is_proven_unconditional) throws -> void;
 
   fn
-  note_variable_assignment_record(StringView             name,
-                                  const Word            *value_word,
-                                  const SourceLocation  &location,
-                                  bool                   is_conditional,
-                                  assignment_update_mode update_mode) throws
-      -> void;
+  note_variable_assignment_record(
+      StringView             name,
+      const Word            *value_word,
+      const SourceLocation  &location,
+      bool                   is_conditional,
+      assignment_update_mode update_mode) throws -> void;
   fn
   note_variable_binding_record(StringView            name,
                                const SourceLocation &location,
                                assignment_binder     binder,
-                               bool is_conditional) throws -> void;
+                               bool                  is_conditional) throws -> void;
   fn
   note_variable_occurrence(StringView               name,
                            const SourceLocation    &location,
                            variable_occurrence_kind kind,
                            bool                     is_unresolved = false,
                            assignment_update_mode   update_mode =
-                               assignment_update_mode::Replace) throws -> void;
+                               assignment_update_mode::Replace) throws
+      -> void;
   fn
   apply_called_function(StringView            name,
-                        const SourceLocation &call_location) throws -> void;
+                        const SourceLocation &call_location) throws
+      -> void;
   fn
   note_function_body_record(StringView name,
                             usize      name_position,
@@ -880,16 +901,19 @@ public:
 
   fn
   note_positional_reference(StringView            name,
-                            const SourceLocation &location) throws -> void
+                            const SourceLocation &location) throws
+      -> void
   {
     if (active_function_definition_index == NO_ACTIVE_FUNCTION_DEFINITION)
       return;
     if (!reference_names_positional(name)) return;
 
     let &definition = functions.records[active_function_definition_index];
+
     if (!definition.first_positional_read.is_empty()) return;
 
     let spelling = location.get_source_text(source).value_or(name);
+
     definition.first_positional_read          = String{spelling};
     definition.first_positional_read_location = location;
   }
@@ -897,7 +921,7 @@ public:
   fn
   note_variable_read(StringView            name,
                      const SourceLocation &location,
-                     bool is_top_level_unconditional) throws -> void;
+                     bool                  is_top_level_unconditional) throws -> void;
   fn
   note_variable_scope(StringView name) throws -> void;
   pure fn
@@ -936,8 +960,8 @@ analyze_ast(const Expression                *root,
             const analysis_outputs          &outputs          = {},
             AnalysisSourceProvider          *source_provider  = nullptr,
             AnalysisUnitStream              *unit_stream      = nullptr,
-            const parsed_format_document    *format_document  = nullptr) throws
-    -> bool;
+            const parsed_format_document    *format_document =
+                nullptr) throws -> bool;
 
 mustuse pure fn
 is_source_location_variable(StringView name) wontthrow -> bool;
@@ -963,18 +987,19 @@ public:
   virtual fn
   error_report_location() const wontthrow -> SourceLocation;
   fn
-  evaluate_root_status(EvalContext &cxt, root_evaluation_mode mode) const throws
-      -> status_result;
+  evaluate_root_status(EvalContext &cxt, root_evaluation_mode mode) const throws -> status_result;
   fn
   evaluate_status(EvalContext &cxt) const throws -> status_result
   {
     return evaluate_root_status(cxt, root_evaluation_mode::Normal);
   }
+
   fn
   evaluate_root(EvalContext &cxt, root_evaluation_mode mode) const throws -> i64
   {
     return evaluate_root_status(cxt, mode).status;
   }
+
   fn
   evaluate(EvalContext &cxt) const throws -> i64
   {
@@ -989,7 +1014,7 @@ public:
   operator=(Expression &&) noexcept = delete;
 
   virtual fn
-  to_string() const throws -> String = 0;
+  to_string() const throws -> String abstract;
   virtual fn
   to_ast_string(usize layer = 0) const throws -> String;
 
@@ -1024,21 +1049,20 @@ public:
   always_exits(const AnalysisContext &actx) const wontthrow -> bool;
 
   static fn
-  operator delete(opaque *pointer) wontthrow->void;
+  operator delete(opaque *pointer) wontthrow -> void;
 
   virtual fn
-  analyze(AnalysisContext &actx, bool is_unconditional) const throws -> void;
+  analyze(AnalysisContext &actx, bool is_unconditional) const throws
+      -> void;
 
   virtual fn
   append_presence_tested_command_names(const AnalysisContext &actx,
                                        HashSet               &names,
-                                       bool is_status_success) const throws
-      -> void;
+                                       bool is_status_success) const throws -> void;
 
   virtual fn
   can_evaluate_in_process_substitution(const EvalContext &cxt,
-                                       HashSet &active_functions) const throws
-      -> bool;
+                                       HashSet &active_functions) const throws -> bool;
 
   virtual fn
   try_static_condition_verdict(const AnalysisContext &actx) const wontthrow
@@ -1046,8 +1070,8 @@ public:
 
 protected:
   virtual fn
-  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws
-      -> status_result = 0;
+  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws -> status_result
+      abstract;
 
   SourceLocation m_location;
   u32            m_source_end_position;
@@ -1076,8 +1100,7 @@ public:
 
 protected:
   fn
-  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws
-      -> status_result override;
+  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws -> status_result override;
 
   const Expression *m_condition;
   const Expression *m_then;
@@ -1097,8 +1120,7 @@ public:
 
 protected:
   fn
-  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws
-      -> status_result override;
+  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws -> status_result override;
 };
 
 class PrefixAssignment
@@ -1111,16 +1133,19 @@ public:
   {
     return token->key().view();
   }
+
   pure fn
   get_value() const wontthrow -> const Word &
   {
     return token->value_word();
   }
+
   pure fn
   get_location() const wontthrow -> SourceLocation
   {
     return token->source_location();
   }
+
   pure fn
   get_update_mode() const wontthrow -> assignment_update_mode
   {
@@ -1206,11 +1231,10 @@ protected:
   virtual fn
   evaluate_async_body(EvalContext &cxt) const throws -> i64;
   fn
-  evaluate_async_with(
-      EvalContext &cxt,
-      async_body   body,
-      void        *context,
-      StringView   expanded_child_source = StringView{}) const throws -> i64;
+  evaluate_async_with(EvalContext &cxt,
+                      async_body   body,
+                      void        *context,
+                      StringView expanded_child_source = StringView{}) const throws -> i64;
 
   fn
   append_ast_execution_flags(String &label) const throws -> void;
@@ -1232,6 +1256,7 @@ protected:
   {
     return (m_execution_flags & static_cast<u8>(flag)) != 0;
   }
+
   fn
   set_execution_flag(ExecutionFlag flag, bool is_set = true) const wontthrow
       -> void
@@ -1292,13 +1317,11 @@ public:
 
   fn
   can_evaluate_in_process_substitution(const EvalContext &cxt,
-                                       HashSet &active_functions) const throws
-      -> bool override;
+                                       HashSet &active_functions) const throws -> bool override;
 
 protected:
   fn
-  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws
-      -> status_result override;
+  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws -> status_result override;
   fn
   evaluate_assignment(EvalContext &cxt) const throws -> i64;
 
@@ -1375,15 +1398,16 @@ public:
   ~SimpleCommand() override;
 
   fn
-  set_redirections(ArrayList<Redirection> &&redirections) throws -> void;
-
-  fn
-  append_redirection(const Redirection &redirection, Allocator allocator) throws
+  set_redirections(ArrayList<Redirection> &&redirections) throws
       -> void;
 
   fn
-  set_array_args(ArrayList<array_builtin_assignment> &&array_args) throws
-      -> void;
+  append_redirection(const Redirection &redirection,
+                     Allocator          allocator) throws -> void;
+
+  fn
+  set_array_args(ArrayList<array_builtin_assignment> &&array_args)
+      throws -> void;
 
   fn
   set_full_source_end_position(usize position) wontthrow -> void;
@@ -1396,7 +1420,8 @@ public:
   assignments_source_end_position() const wontthrow -> usize;
 
   fn
-  redirect_exec_context(ExecContext &ec, EvalContext &cxt) const throws -> void;
+  redirect_exec_context(ExecContext &ec, EvalContext &cxt) const throws
+      -> void;
 
   fn
   is_simple_command() const wontthrow -> bool override;
@@ -1420,8 +1445,7 @@ public:
   fn
   append_presence_tested_command_names(const AnalysisContext &actx,
                                        HashSet               &names,
-                                       bool is_status_success) const throws
-      -> void override;
+                                       bool is_status_success) const throws -> void override;
 
   fn
   try_static_condition_verdict(const AnalysisContext &actx) const wontthrow
@@ -1435,13 +1459,11 @@ public:
 
   fn
   can_evaluate_in_process_substitution(const EvalContext &cxt,
-                                       HashSet &active_functions) const throws
-      -> bool override;
+                                       HashSet &active_functions) const throws -> bool override;
 
 protected:
   fn
-  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws
-      -> status_result override;
+  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws -> status_result override;
 
   ArrayList<const Token *> m_args{heap_allocator()};
 
@@ -1452,12 +1474,12 @@ protected:
     Maybe<Builtin::Kind> builtin{};
     bool                 is_special{false};
   };
+
   mutable Maybe<LiteralCommandLookup> m_literal_command_lookup{};
   mutable published_command_text      m_published_command_text{};
 
   fn
-  get_literal_command_lookup(const ArrayList<String> &program_args) const throws
-      -> const LiteralCommandLookup *;
+  get_literal_command_lookup(const ArrayList<String> &program_args) const throws -> const LiteralCommandLookup *;
 
   u32 m_full_source_end_position{0};
 
@@ -1500,21 +1522,18 @@ public:
   fn
   append_presence_tested_command_names(const AnalysisContext &actx,
                                        HashSet               &names,
-                                       bool is_status_success) const throws
-      -> void override;
+                                       bool is_status_success) const throws -> void override;
   fn
   try_static_condition_verdict(const AnalysisContext &actx) const wontthrow
       -> Maybe<bool> override;
 
   fn
   can_evaluate_in_process_substitution(const EvalContext &cxt,
-                                       HashSet &active_functions) const throws
-      -> bool override;
+                                       HashSet &active_functions) const throws -> bool override;
 
 protected:
   fn
-  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws
-      -> status_result override;
+  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws -> status_result override;
 
   Kind           m_kind;
   const Command *m_cmd;
@@ -1536,7 +1555,8 @@ public:
   pure fn
   node_count() const wontthrow -> usize;
   fn
-  move_nodes_from(usize first_index, CompoundList &destination) throws -> void;
+  move_nodes_from(usize first_index, CompoundList &destination) throws
+      -> void;
 
   fn
   single_unconditional_command() const wontthrow -> const Command *;
@@ -1552,8 +1572,7 @@ public:
   fn
   append_presence_tested_command_names(const AnalysisContext &actx,
                                        HashSet               &names,
-                                       bool is_status_success) const throws
-      -> void override;
+                                       bool is_status_success) const throws -> void override;
   fn
   try_static_condition_verdict(const AnalysisContext &actx) const wontthrow
       -> Maybe<bool> override;
@@ -1564,13 +1583,11 @@ public:
 
   fn
   can_evaluate_in_process_substitution(const EvalContext &cxt,
-                                       HashSet &active_functions) const throws
-      -> bool override;
+                                       HashSet &active_functions) const throws -> bool override;
 
 protected:
   fn
-  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws
-      -> status_result override;
+  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws -> status_result override;
 
   ArrayList<const CompoundListCondition *> m_nodes{heap_allocator()};
 };
@@ -1599,8 +1616,7 @@ public:
   fn
   append_presence_tested_command_names(const AnalysisContext &actx,
                                        HashSet               &names,
-                                       bool is_status_success) const throws
-      -> void override;
+                                       bool is_status_success) const throws -> void override;
 
   fn
   as_simple_command() const wontthrow -> const SimpleCommand * override;
@@ -1609,8 +1625,7 @@ public:
 
 protected:
   fn
-  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws
-      -> status_result override;
+  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws -> status_result override;
 
   fn
   evaluate_with_compound_stages(EvalContext &cxt) const throws -> i64;
@@ -1673,13 +1688,11 @@ public:
 
   fn
   can_evaluate_in_process_substitution(const EvalContext &cxt,
-                                       HashSet &active_functions) const throws
-      -> bool override;
+                                       HashSet &active_functions) const throws -> bool override;
 
 protected:
   fn
-  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws
-      -> status_result override;
+  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws -> status_result override;
 
   ArrayList<if_branch> m_branches{heap_allocator()};
   const Expression    *m_otherwise;
@@ -1724,8 +1737,7 @@ public:
 
 protected:
   fn
-  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws
-      -> status_result override;
+  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws -> status_result override;
 
   const Expression *m_condition;
   const Expression *m_body;
@@ -1749,6 +1761,7 @@ public:
   fn
   analyze(AnalysisContext &actx, bool is_unconditional) const throws
       -> void override;
+
   fn
   as_for_loop() const wontthrow -> const ForLoop * override;
 
@@ -1759,8 +1772,7 @@ public:
 
 protected:
   fn
-  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws
-      -> status_result override;
+  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws -> status_result override;
 
   StringView               m_variable_name;
   ArrayList<const Token *> m_words{heap_allocator()};
@@ -1801,8 +1813,7 @@ public:
 
 protected:
   fn
-  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws
-      -> status_result override;
+  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws -> status_result override;
 
   const Token         *m_word;
   ArrayList<case_item> m_items{heap_allocator()};
@@ -1825,13 +1836,11 @@ public:
   always_exits(const AnalysisContext &actx) const wontthrow -> bool override;
   fn
   can_evaluate_in_process_substitution(const EvalContext &cxt,
-                                       HashSet &active_functions) const throws
-      -> bool override;
+                                       HashSet &active_functions) const throws -> bool override;
 
 protected:
   fn
-  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws
-      -> status_result override;
+  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws -> status_result override;
 
   const Expression *m_body;
 };
@@ -1854,8 +1863,7 @@ public:
 
 protected:
   fn
-  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws
-      -> status_result override;
+  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws -> status_result override;
 
   StringView        m_name;
   const Expression *m_body;
@@ -1888,8 +1896,7 @@ public:
 
 protected:
   fn
-  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws
-      -> status_result override;
+  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws -> status_result override;
 
   fn
   collapsed_body() const wontthrow -> const Expression *;
@@ -1916,8 +1923,7 @@ public:
 
 protected:
   fn
-  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws
-      -> status_result override;
+  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws -> status_result override;
 
   ArrayList<conditional_element> m_elements;
   mutable published_command_text m_published_command_text{};
@@ -1940,13 +1946,11 @@ public:
 
   fn
   can_evaluate_in_process_substitution(const EvalContext &cxt,
-                                       HashSet &active_functions) const throws
-      -> bool override;
+                                       HashSet &active_functions) const throws -> bool override;
 
 protected:
   fn
-  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws
-      -> status_result override;
+  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws -> status_result override;
 
   StringView m_expression;
 
@@ -1990,8 +1994,7 @@ public:
 
 protected:
   fn
-  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws
-      -> status_result override;
+  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws -> status_result override;
 
   usize             m_header_position;
   StringView        m_init;
@@ -2009,7 +2012,8 @@ protected:
   mutable published_command_text m_published_step_text{};
 
   static fn
-  get_clause_cache(arith_token_cache *&slot) throws -> arith_token_cache &;
+  get_clause_cache(arith_token_cache *&slot) throws
+      -> arith_token_cache &;
 };
 
 class SelectLoop : public CompoundCommand
@@ -2034,8 +2038,7 @@ public:
 
 protected:
   fn
-  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws
-      -> status_result override;
+  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws -> status_result override;
 
   StringView               m_variable_name;
   ArrayList<const Token *> m_words{heap_allocator()};
@@ -2071,8 +2074,7 @@ public:
 
 protected:
   fn
-  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws
-      -> status_result override;
+  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws -> status_result override;
   fn
   evaluate_async_body(EvalContext &cxt) const throws -> i64 override;
 
@@ -2113,8 +2115,7 @@ public:
 
 protected:
   fn
-  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws
-      -> status_result override;
+  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws -> status_result override;
 
   String                                m_name;
   FunctionBodyHandle                    m_body_storage;

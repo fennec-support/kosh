@@ -26,9 +26,10 @@ namespace koshka::expressions::internal {
 
 fn
 indent_for_layer(usize layer) throws -> String;
+
 fn
-report_command_resolution_error(EvalContext                        &cxt,
-                                CommandResolutionErrorWithLocation &e) throws
+report_command_resolution_error(
+    EvalContext &cxt, CommandResolutionErrorWithLocation &e) throws
     -> void;
 
 fn
@@ -42,32 +43,39 @@ full_source_text(const EvalContext &cxt, const Expression &node) wontthrow
 fn
 static_command_name(const Token *token) throws -> Maybe<StringView>;
 fn
-normalized_relative_executable_path(StringView path) throws -> Maybe<String>;
+normalized_relative_executable_path(StringView path) throws
+    -> Maybe<String>;
 
 fn
-borrowed_token_text(const Token *token, String &storage) throws -> StringView;
+borrowed_token_text(const Token *token, String &storage) throws
+    -> StringView;
+
 fn
 wrapped_command_index(command_name_id                 wrapper_id,
                       const ArrayList<const Token *> &args) throws
     -> Maybe<usize>;
 fn
-apply_followed_source_effects(AnalysisContext               &actx,
-                              const followed_source_effects &effects,
-                              bool should_merge_parent_state,
-                              bool should_merge_parent_uncertainty) throws
-    -> void;
+apply_followed_source_effects(
+    AnalysisContext               &actx,
+    const followed_source_effects &effects,
+    bool                           should_merge_parent_state,
+    bool                           should_merge_parent_uncertainty) throws -> void;
 fn
 analyze_followed_source(AnalysisContext                &actx,
                         const ArrayList<const Token *> &args,
                         usize                           command_index,
                         bool should_merge_parent_state,
-                        bool should_merge_parent_uncertainty) throws -> bool;
+                        bool should_merge_parent_uncertainty) throws
+    -> bool;
+
 fn
-command_resolves(StringView                                       name,
-                 const SourceLocation                            &location,
-                 const AnalysisContext                           &actx,
-                 Maybe<utils::unavailable_path_source_component> &unavailable)
-    throws -> bool;
+command_resolves(
+    StringView                                       name,
+    const SourceLocation                            &location,
+    const AnalysisContext                           &actx,
+    Maybe<utils::unavailable_path_source_component> &unavailable) throws
+    -> bool;
+
 pure fn
 word_has_malformed_glob_bracket(const Word &word) wontthrow -> bool;
 
@@ -82,7 +90,8 @@ expansion_location_with_sigil(const AnalysisContext &actx,
 fn
 note_variable_reference(AnalysisContext   &actx,
                         const WordSegment &segment,
-                        SourceLocation     fallback_location) throws -> void;
+                        SourceLocation     fallback_location) throws
+    -> void;
 
 pure fn
 location_spanning(SourceLocation first, SourceLocation last) wontthrow
@@ -91,7 +100,7 @@ pure fn
 view_contains(StringView view, StringView needle) wontthrow -> bool;
 pure fn
 arithmetic_reads_external_input(const AnalysisContext &actx,
-                                StringView expression) wontthrow -> bool;
+                                StringView             expression) wontthrow -> bool;
 cold fn
 word_is_bare_glob(const Word &word) wontthrow -> bool;
 
@@ -109,31 +118,37 @@ classify_test_operand(const Word &word) wontthrow -> test_operand_shape;
 fn
 operand_target_name(StringView text) wontthrow -> StringView;
 cold fn
-args_have_stdin_operand(const ArrayList<const Token *> &args) throws -> bool;
+args_have_stdin_operand(const ArrayList<const Token *> &args) throws
+    -> bool;
 fn
 check_posix_word_portability(AnalysisContext   &actx,
                              const WordSegment &segment,
-                             SourceLocation fallback_location) throws -> void;
+                             SourceLocation     fallback_location) throws
+    -> void;
 fn
 check_posix_word_portability(AnalysisContext      &actx,
                              const Word           &word,
-                             const SourceLocation &location) throws -> void;
+                             const SourceLocation &location) throws
+    -> void;
 fn
 check_posix_arithmetic_operators(AnalysisContext      &actx,
                                  StringView            expression,
-                                 const SourceLocation &location) throws -> void;
+                                 const SourceLocation &location) throws
+    -> void;
 fn
 check_arithmetic_expression_lints(AnalysisContext      &actx,
                                   StringView            expression,
                                   const SourceLocation &location,
                                   Maybe<usize> expression_base_position = None,
-                                  bool is_conditional = false) throws -> void;
-fn
-check_numeric_comparison_operand(AnalysisContext &actx,
-                                 StringView       operator_view,
-                                 const Token     *operand_token,
-                                 bool should_prefer_string_comparison) throws
+                                  bool         is_conditional           = false) throws
     -> void;
+fn
+check_numeric_comparison_operand(
+    AnalysisContext &actx,
+    StringView       operator_view,
+    const Token     *operand_token,
+    bool             should_prefer_string_comparison) throws -> void;
+
 pure fn
 is_test_unary_operator_word(StringView op) wontthrow -> bool;
 
@@ -194,7 +209,8 @@ struct assignment_lint_input
 
 fn
 check_assignment_value_shape(AnalysisContext             &actx,
-                             const assignment_lint_input &input) throws -> void;
+                             const assignment_lint_input &input) throws
+    -> void;
 
 struct case_lint_input
 {
@@ -230,7 +246,8 @@ check_case_option_coverage(AnalysisContext       &actx,
                            const case_arm_tally  &tally) throws -> void;
 
 fn
-check_source_bytes(AnalysisContext &actx, StringView source) throws -> void;
+check_source_bytes(AnalysisContext &actx, StringView source) throws
+    -> void;
 
 fn
 check_shebang(AnalysisContext       &actx,
@@ -241,7 +258,8 @@ fn
 check_shellcheck_directives(
     AnalysisContext                            &actx,
     StringView                                  source,
-    const ArrayList<shellcheck_directive_span> &directives) throws -> void;
+    const ArrayList<shellcheck_directive_span> &directives) throws
+    -> void;
 
 fn
 check_heredoc_terminators(
@@ -251,28 +269,35 @@ check_heredoc_terminators(
 
 fn
 check_operand_lints_before_scan(AnalysisContext          &actx,
-                                const command_lint_input &input) throws -> void;
+                                const command_lint_input &input) throws
+    -> void;
 fn
 check_command_word_shape(AnalysisContext          &actx,
-                         const command_lint_input &input) throws -> bool;
+                         const command_lint_input &input) throws
+    -> bool;
 fn
 check_operand_lints_after_scan(AnalysisContext          &actx,
-                               const command_lint_input &input) throws -> void;
+                               const command_lint_input &input) throws
+    -> void;
 fn
 check_command_name_lints(AnalysisContext          &actx,
-                         const command_lint_input &input) throws -> void;
+                         const command_lint_input &input) throws
+    -> void;
 fn
 check_command_value_lints(AnalysisContext          &actx,
-                          const command_lint_input &input) throws -> void;
+                          const command_lint_input &input) throws
+    -> void;
 fn
 check_redirection_lints(AnalysisContext          &actx,
                         const command_lint_input &input) throws -> void;
 fn
 check_test_operand_lints(AnalysisContext          &actx,
-                         const command_lint_input &input) throws -> void;
+                         const command_lint_input &input) throws
+    -> void;
 fn
 check_prefix_assignment_reads(AnalysisContext          &actx,
-                              const command_lint_input &input) throws -> bool;
+                              const command_lint_input &input) throws
+    -> bool;
 
 alwaysinline fn
 set_and_return_exit_status(EvalContext &cxt, i64 status) wontthrow -> i64
@@ -303,8 +328,8 @@ fn
 resolve_redirection(const Redirection    &redir,
                     EvalContext          &cxt,
                     const SourceLocation &fallback_location,
-                    bool                 *open_or_stage_failed = nullptr,
-                    bool should_allow_fd_memoization           = false) throws
+                    bool                 *open_or_stage_failed        = nullptr,
+                    bool                  should_allow_fd_memoization = false) throws
     -> resolved_redirection;
 
 pure fn
@@ -339,17 +364,19 @@ fn
 resolve_loop_control(EvalContext &cxt) throws -> loop_disposition;
 
 fn
-reprinted_command_text(StringView source, bool has_bash_additions) throws
-    -> String;
+reprinted_command_text(StringView source,
+                       bool       has_bash_additions) throws -> String;
 
 template <typename CommandTextBuilder>
 fn
 source_command_text(EvalContext          &cxt,
                     const SourceLocation &location,
                     usize                 end_position,
-                    CommandTextBuilder do_build_command_text) throws -> String
+                    CommandTextBuilder    do_build_command_text) throws
+    -> String
 {
   let const text = cxt.source_text_in_span(location, end_position);
+
   if (text.length == 0) return do_build_command_text();
 
   return reprinted_command_text(text,
@@ -362,14 +389,15 @@ subshell_command_text(EvalContext          &cxt,
                       usize                 end_position) throws -> String;
 
 fn
-append_word_source_text(EvalContext &cxt, String &out, const Token &word) throws
-    -> void;
+append_word_source_text(EvalContext &cxt,
+                        String      &out,
+                        const Token &word) throws -> void;
 
 fn
-append_redirections_text(EvalContext                   &cxt,
-                         String                        &out,
-                         const SparseList<Redirection> &redirections) throws
-    -> void;
+append_redirections_text(
+    EvalContext                   &cxt,
+    String                        &out,
+    const SparseList<Redirection> &redirections) throws -> void;
 
 inline fn
 command_text_is_observed(const EvalContext &cxt) wontthrow -> bool
@@ -390,7 +418,8 @@ fn
 publish_command_and_run_debug_trap(
     EvalContext         &cxt,
     CommandTextBuilder   do_build_command_text,
-    root_evaluation_mode mode = root_evaluation_mode::Normal) throws -> bool
+    root_evaluation_mode mode = root_evaluation_mode::Normal) throws
+    -> bool
 {
   let const was_text_published =
       mode == root_evaluation_mode::PreparedPipelineStage &&
@@ -402,6 +431,7 @@ publish_command_and_run_debug_trap(
 
   if (mode == root_evaluation_mode::Normal && cxt.should_run_debug_trap()) {
     let const was_control_flow_pending = cxt.control_flow_store().has_pending();
+
     cxt.run_named_trap(StringView{"DEBUG", 5});
 
     if (was_control_flow_pending) return true;
@@ -428,14 +458,15 @@ publish_command_and_run_debug_trap(
 }
 
 fn
-publish_simple_command(
-    EvalContext         &cxt,
-    const SimpleCommand &command,
-    root_evaluation_mode mode = root_evaluation_mode::Normal) throws -> bool;
+publish_simple_command(EvalContext         &cxt,
+                       const SimpleCommand &command,
+                       root_evaluation_mode mode =
+                           root_evaluation_mode::Normal) throws -> bool;
 fn
 expand_command_aliases(EvalContext               &cxt,
                        ArrayList<String>         &args,
-                       ArrayList<SourceLocation> &arg_locations) throws -> void;
+                       ArrayList<SourceLocation> &arg_locations) throws
+    -> void;
 
 pure fn
 is_shell_maintained_variable(StringView name) wontthrow -> bool;
@@ -496,7 +527,7 @@ fn
 analyze_word_substitutions(AnalysisContext      &actx,
                            const Word           &word,
                            const SourceLocation &location,
-                           bool is_unconditional) throws -> void;
+                           bool                  is_unconditional) throws -> void;
 fn
 analyze_token_substitutions(AnalysisContext &actx,
                             const Token     *token,
@@ -516,6 +547,6 @@ analyze_region_substitutions(AnalysisContext      &actx,
                              usize                 region_position,
                              usize                 region_length,
                              bool                  is_heredoc,
-                             bool is_unconditional) throws -> void;
+                             bool                  is_unconditional) throws -> void;
 
 } /* namespace koshka::expressions::internal */

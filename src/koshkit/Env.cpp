@@ -36,6 +36,7 @@ static fn
 is_assignment(StringView text) wontthrow -> bool
 {
   let const equals = text.find_character('=');
+
   if (!equals.has_value() || *equals == 0) {
     return false;
   }
@@ -46,6 +47,7 @@ is_assignment(StringView text) wontthrow -> bool
                         (character >= 'A' && character <= 'Z') ||
                         (character >= '0' && character <= '9') ||
                         character == '_';
+
     if (!is_name) return false;
     if (i == 0 && character >= '0' && character <= '9') {
       return false;
@@ -64,20 +66,22 @@ Env::execute(const ExecContext               &ec,
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   cxt.prepare_child_environment();
+
   ArrayList<String> saved_names{cxt.scratch_allocator()};
   ArrayList<String> saved_values{cxt.scratch_allocator()};
   ArrayList<bool>   was_present{cxt.scratch_allocator()};
-  let const         do_save_and_unset = [&](StringView name) throws -> void {
+
+  let const do_save_and_unset = [&](StringView name) throws -> void {
     let const previous = os::get_environment_variable(name);
+
     saved_names.push(String{cxt.scratch_allocator(), name});
     saved_values.push(previous.has_value() ? previous->clone()
-                                                   : String{cxt.scratch_allocator()});
+                                           : String{cxt.scratch_allocator()});
     was_present.push(previous.has_value());
     os::unset_environment_variable(name);
   };
 
-  defer
-  {
+  defer {
     for (usize i = saved_names.count(); i-- > 0;) {
       if (was_present[i])
         os::set_environment_variable(saved_names[i].view(),
@@ -109,6 +113,7 @@ Env::execute(const ExecContext               &ec,
     let const value  = text.substring(equals + 1);
 
     let const previous = os::get_environment_variable(name);
+
     saved_names.push(String{cxt.scratch_allocator(), name});
     saved_values.push(previous.has_value() ? previous->clone()
                                            : String{cxt.scratch_allocator()});
@@ -138,6 +143,7 @@ Env::execute(const ExecContext               &ec,
                           ? steal(*environment_path)
                           : String{utils::DEFAULT_COMMAND_SEARCH_PATH}};
   Maybe<ExecContext> sub;
+
   try {
     sub = ExecContext::make_from(
         ec.source_location(), cxt.source_store().current_source_view(),
@@ -154,12 +160,18 @@ Env::execute(const ExecContext               &ec,
   let      &execution = cxt.execution_store();
   let const was_child_environment_fixed =
       execution.is_child_environment_fixed();
+
   execution.set_child_environment_fixed(true);
-  defer { execution.set_child_environment_fixed(was_child_environment_fixed); };
+  defer {
+    execution.set_child_environment_fixed(was_child_environment_fixed);
+  };
 
   let snapshot = cxt.snapshot_state();
+
   cxt.enter_subshell();
+
   i32 status = 0;
+
   try {
     status =
         utils::execute_context(steal(*sub), cxt, execution_mode::Foreground);
@@ -168,10 +180,12 @@ Env::execute(const ExecContext               &ec,
     cxt.restore_state(steal(snapshot));
     throw;
   }
+
   if (cxt.control_flow_store().has_pending()) {
     status = static_cast<i32>(cxt.control_flow_store().pending().value);
     cxt.control_flow_store().clear();
   }
+
   cxt.leave_subshell();
   cxt.restore_state(steal(snapshot));
 

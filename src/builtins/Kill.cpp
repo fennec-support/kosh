@@ -49,9 +49,11 @@ Kill::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       if (StringView{spec}.is_all_decimal_digits()) {
         let const     parsed = StringView{spec}.to<i64>();
         Maybe<String> name   = koshka::None;
+
         if (!parsed.is_error() && parsed.value() <= INT32_MAX) {
           let const number = static_cast<i32>(parsed.value());
-          name             = os::signal_name_from_number(number);
+
+          name = os::signal_name_from_number(number);
           if (!name.has_value() && number > 128) {
             name = os::signal_name_from_number(number - 128);
           }
@@ -87,8 +89,8 @@ Kill::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   usize first_target  = 1;
   let   signal_number = os::signal_number_from_name("TERM").value_or(15);
 
-  let const do_resolve_signal = [&ec](StringView spec, usize index)
-                                    throws -> i32 {
+  let const do_resolve_signal = [&ec](StringView spec,
+                                      usize      index) throws -> i32 {
     if (let const parsed = spec.to<i64>(); !parsed.is_error() &&
                                            spec[0] >= '0' && spec[0] <= '9' &&
                                            parsed.value() <= INT32_MAX)
@@ -133,8 +135,10 @@ Kill::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     const String &target = args[i];
 
     let pid = os::process{};
+
     if (!target.is_empty() && target[0] == '%') {
       const job *const job = cxt.job_table_store().find_job_by_spec(target);
+
       if (job == nullptr) {
         report_soft_builtin_error(ec, cxt, ec.arg_location_at(i),
                                   StringView{"'"} + target +
@@ -142,9 +146,11 @@ Kill::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         status = 1;
         continue;
       }
+
       let did_find_active_process = false;
       let did_signal_process      = false;
       let signal_error            = String{cxt.scratch_allocator()};
+
       if (job->is_primary_process_active) {
         did_find_active_process = true;
         if (os::signal_process(job->pid, signal_number))
@@ -165,14 +171,17 @@ Kill::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         let const reason = did_find_active_process
                                ? signal_error.view()
                                : StringView{"The job has finished"};
+
         report_soft_builtin_error(ec, cxt, ec.arg_location_at(i),
                                   StringView{"Cannot signal '"} + target +
                                       "': " + reason);
         status = 1;
       }
+
       continue;
     } else {
       const ErrorOr<i64> parsed_value = target.to<i64>();
+
       if (parsed_value.is_error() || parsed_value.value() > INT32_MAX ||
           parsed_value.value() < INT32_MIN)
       {
@@ -182,6 +191,7 @@ Kill::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         status = 1;
         continue;
       }
+
       pid = os::process_from_pid(parsed_value.value());
     }
 
@@ -189,6 +199,7 @@ Kill::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         target.c_str());
     if (!os::signal_process(pid, signal_number)) {
       let const signal_error = os::last_system_error_message();
+
       report_soft_builtin_error(ec, cxt, ec.arg_location_at(i),
                                 StringView{"Cannot signal '"} + target +
                                     "': " + signal_error);

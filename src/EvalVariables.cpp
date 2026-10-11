@@ -33,8 +33,7 @@ namespace koshka {
 
 fn
 GitStatusCache::refresh_branch(usize      command_index,
-                               StringView ceiling_directories) const throws
-    -> void
+                               StringView ceiling_directories) const throws -> void
 {
   m_branch               = utils::current_git_branch(ceiling_directories);
   m_branch_command_index = command_index;
@@ -42,13 +41,13 @@ GitStatusCache::refresh_branch(usize      command_index,
 
 fn
 GitStatusCache::refresh_status(usize      command_index,
-                               StringView ceiling_directories) const throws
-    -> void
+                               StringView ceiling_directories) const throws -> void
 {
-  let status     = utils::git_status(ceiling_directories, heap_allocator());
-  m_branch       = steal(status.branch);
-  m_ahead_count  = status.ahead_count;
-  m_behind_count = status.behind_count;
+  let status = utils::git_status(ceiling_directories, heap_allocator());
+
+  m_branch               = steal(status.branch);
+  m_ahead_count          = status.ahead_count;
+  m_behind_count         = status.behind_count;
   m_branch_command_index = command_index;
   m_counts_command_index = command_index;
 }
@@ -67,7 +66,9 @@ EvalContext::next_random_u32() const wontthrow -> u32
 
   if (dynamic_runtime_store().is_random_reseed_pending()) {
     dynamic_runtime_store().is_random_reseed_pending() = false;
+
     let &reseed_count = dynamic_runtime_store().get_random_reseed_count();
+
     reseed_count++;
     dynamic_runtime_store().random_state() ^=
         (os::realtime_microseconds() ^
@@ -133,6 +134,7 @@ static fn
 ansi_escape_for_color(StringView name) throws -> Maybe<StringView>
 {
   let const found = KOSH_ANSI_COLORS.find(name);
+
   if (!found.has_value()) return None;
 
   return found->escape;
@@ -304,6 +306,7 @@ EvalContext::variable_requires_dynamic_lookup(StringView name) const wontthrow
   if (name[0] == 'K' && name.starts_with("KOSH_ANSI_")) {
     return true;
   }
+
   if (is_bash_aliases_special(name)) return true;
   if (is_bash_directory_stack_special(name)) return true;
 
@@ -312,8 +315,8 @@ EvalContext::variable_requires_dynamic_lookup(StringView name) const wontthrow
 }
 
 pure fn
-EvalContext::is_write_discarded_dynamic_variable(
-    StringView name) const wontthrow -> bool
+EvalContext::is_write_discarded_dynamic_variable(StringView name) const wontthrow
+    -> bool
 {
   if (name.is_empty() || !is_dynamic_first_byte(name[0])) {
     return false;
@@ -364,6 +367,7 @@ fn
 EvalContext::unset_dynamic_reader(StringView name) wontthrow -> void
 {
   let const id = dynamic_reader_of(name);
+
   if (!id.has_value()) return;
 
   LOG(Debug, "taking the dynamic reader of '%.*s' away",
@@ -383,12 +387,13 @@ EvalContext::is_dynamic_write_owner(StringView name) const wontthrow -> bool
 }
 
 hot fn
-EvalContext::write_dynamic_variable(StringView name, StringView value) throws
-    -> bool
+EvalContext::write_dynamic_variable(StringView name,
+                                    StringView value) throws -> bool
 {
   if (!runtime_state().bash_dynamic_variables_enabled()) return false;
 
   let const id = dynamic_reader_of(name);
+
   if (!id.has_value()) return false;
   if ((variable_store().unset_dynamic_readers() & dynamic_reader_mask(*id)) !=
       0)
@@ -421,7 +426,8 @@ EvalContext::write_dynamic_variable(StringView name, StringView value) throws
 }
 
 hot fn
-EvalContext::get_variable_value(StringView name) const throws -> Maybe<String>
+EvalContext::get_variable_value(StringView name) const throws
+    -> Maybe<String>
 {
   let const first_byte = name.is_empty() ? '\0' : name[0];
 
@@ -450,8 +456,10 @@ EvalContext::get_variable_value(StringView name) const throws -> Maybe<String>
     case '@': {
       let separator     = StringView{" "};
       let has_separator = true;
+
       if (first_byte == '*' || runtime_state().is_posix_mode()) {
         let const ifs = variable_store().field_separators();
+
         has_separator = !ifs.is_empty();
         if (has_separator) {
           separator = ifs.substring_of_length(
@@ -459,6 +467,7 @@ EvalContext::get_variable_value(StringView name) const throws -> Maybe<String>
                                                  get_glob_charset_for(ifs)));
         }
       }
+
       let   joined        = String{heap_allocator()};
       usize joined_length = 0;
 
@@ -469,6 +478,7 @@ EvalContext::get_variable_value(StringView name) const throws -> Maybe<String>
         joined_length += (variable_store().positional_params().count() - 1) *
                          separator.length;
       }
+
       joined.reserve(joined_length);
 
       for (usize i = 0; i < variable_store().positional_params().count(); i++) {
@@ -489,8 +499,11 @@ EvalContext::get_variable_value(StringView name) const throws -> Maybe<String>
     if (name.is_all_decimal_digits()) {
       if (name.count() > 9) return None;
       let const parsed_index = name.to<i64>();
+
       if (parsed_index.is_error()) return None;
+
       let const index = static_cast<usize>(parsed_index.value());
+
       if (index >= 1 && index <= variable_store().positional_params().count()) {
         ASSERT(index - 1 < variable_store().positional_params().count());
 
@@ -501,24 +514,24 @@ EvalContext::get_variable_value(StringView name) const throws -> Maybe<String>
     }
   }
 
-  if (variable_store().attributes().has_namerefs()) rarely
-    {
-      if (let const target = resolve_nameref(name); target.has_value()) {
-        if (target->is_empty()) {
-          warn_circular_nameref(name);
+  if (variable_store().attributes().has_namerefs()) rarely {
+    if (let const target = resolve_nameref(name); target.has_value()) {
+      if (target->is_empty()) {
+        warn_circular_nameref(name);
 
-          return None;
-        }
-
-        let const bracket = target->view().find_character('[');
-        if (!bracket.has_value()) return get_variable_value(target->view());
-
-        return read_literal_array_element(
-            target->view().substring_of_length(0, *bracket),
-            target->view().substring_of_length(*bracket + 1,
-                                               target->count() - *bracket - 2));
+        return None;
       }
+
+      let const bracket = target->view().find_character('[');
+
+      if (!bracket.has_value()) return get_variable_value(target->view());
+
+      return read_literal_array_element(
+          target->view().substring_of_length(0, *bracket),
+          target->view().substring_of_length(*bracket + 1,
+                                             target->count() - *bracket - 2));
     }
+  }
 
   if (let const stored = variable_store().shell_variables().find(name);
       stored.has_value())
@@ -532,6 +545,7 @@ EvalContext::get_variable_value(StringView name) const throws -> Maybe<String>
 
       return array->front();
     }
+
   if (is_associative_array(name)) return lookup_associative_element(name, "0");
   if (is_bash_directory_stack_special(name))
     return get_bash_directory_stack_element(0, heap_allocator());
@@ -557,9 +571,11 @@ EvalContext::get_variable_value(StringView name) const throws -> Maybe<String>
       case dynamic_var::KOSH_GIT_BRANCH: {
         let const command_index =
             evaluation_metrics_store().command_evaluation_index();
+
         if (!git_status_cache().is_branch_current(command_index)) {
           let const ceiling_directories =
               get_variable_value("GIT_CEILING_DIRECTORIES");
+
           git_status_cache().refresh_branch(command_index,
                                             ceiling_directories.has_value()
                                                 ? ceiling_directories->view()
@@ -572,9 +588,11 @@ EvalContext::get_variable_value(StringView name) const throws -> Maybe<String>
       case dynamic_var::KOSH_GIT_BEHIND: {
         let const command_index =
             evaluation_metrics_store().command_evaluation_index();
+
         if (!git_status_cache().are_counts_current(command_index)) {
           let const ceiling_directories =
               get_variable_value("GIT_CEILING_DIRECTORIES");
+
           git_status_cache().refresh_status(command_index,
                                             ceiling_directories.has_value()
                                                 ? ceiling_directories->view()
@@ -638,6 +656,7 @@ EvalContext::get_variable_value(StringView name) const throws -> Maybe<String>
         case dynamic_var::EPOCHREALTIME: {
           let const microseconds = os::realtime_microseconds();
           char      fraction[8];
+
           std::snprintf(
               fraction, sizeof(fraction), "%06llu",
               static_cast<unsigned long long>(microseconds % 1000000ULL));
@@ -659,11 +678,13 @@ EvalContext::get_variable_value(StringView name) const throws -> Maybe<String>
             return dynamic_array_element_text(DynamicArray::ArgumentCount, 0,
                                               heap_allocator());
           break;
+
         case dynamic_var::BASH_ARGV:
           if (dynamic_array_element_count(DynamicArray::ArgumentValue) != 0)
             return dynamic_array_element_text(DynamicArray::ArgumentValue, 0,
                                               heap_allocator());
           break;
+
         case dynamic_var::BASH_ARGV0:
           return String{heap_allocator(), execution_store().get_shell_name()};
         case dynamic_var::BASH_EXECUTION_STRING:
@@ -671,6 +692,7 @@ EvalContext::get_variable_value(StringView name) const throws -> Maybe<String>
             return String{heap_allocator(),
                           execution_store().get_execution_string()};
           break;
+
         case dynamic_var::BASH_SUBSHELL:
           return String::from(
               static_cast<i64>(execution_store().subshell_depth()),
@@ -687,6 +709,7 @@ EvalContext::get_variable_value(StringView name) const throws -> Maybe<String>
             return String{heap_allocator(),
                           execution_store().get_current_command()};
           break;
+
         case dynamic_var::PPID:
           return String::from(os::get_shell_parent_process_id(),
                               heap_allocator());
@@ -694,6 +717,7 @@ EvalContext::get_variable_value(StringView name) const throws -> Maybe<String>
           return String::from(os::get_real_user_id(), heap_allocator());
         case dynamic_var::HISTCMD: {
           usize event_number = 0;
+
           if (execution_store().shell_is_interactive()) {
             if (let const newest =
                     toiletline::get_newest_history_event_number();
@@ -739,6 +763,7 @@ static pure fn
 is_valid_nameref_target(StringView target) wontthrow -> bool
 {
   let base = target;
+
   if (let const bracket = target.find_character('['); bracket.has_value()) {
     if (target[target.length - 1] != ']' || *bracket + 2 >= target.length) {
       return false;
@@ -751,11 +776,13 @@ is_valid_nameref_target(StringView target) wontthrow -> bool
 }
 
 fn
-EvalContext::resolve_nameref(StringView name) const throws -> Maybe<String>
+EvalContext::resolve_nameref(StringView name) const throws
+    -> Maybe<String>
 {
   if (!variable_store().attributes().is_nameref(name)) return None;
 
   let const stored = variable_store().shell_variables().find(name);
+
   if (!stored.has_value() || stored->is_empty()) {
     return None;
   }
@@ -766,9 +793,11 @@ EvalContext::resolve_nameref(StringView name) const throws -> Maybe<String>
     if (target.view() == name || !is_valid_nameref_target(target.view())) {
       return String{heap_allocator()};
     }
+
     if (!variable_store().attributes().is_nameref(target.view())) return target;
 
     let const next = variable_store().shell_variables().find(target.view());
+
     if (!next.has_value() || next->is_empty()) {
       return target;
     }
@@ -835,14 +864,14 @@ EvalContext::unbind_circular_nameref(StringView name) throws -> bool
 fn
 EvalContext::resolve_nameref_for_write(StringView name) throws -> String
 {
-  if (is_generated_nameref(name)) rarely
-    {
-      throw Error{"Unable to assign '" + name +
-                  "' because its generated value is not a variable name for "
-                  "the name reference"};
-    }
+  if (is_generated_nameref(name)) rarely {
+    throw Error{"Unable to assign '" + name +
+                "' because its generated value is not a variable name for "
+                "the name reference"};
+  }
 
   let target = resolve_nameref(name);
+
   if (!target.has_value()) return String{heap_allocator(), name};
 
   if (target->is_empty())
@@ -852,9 +881,11 @@ EvalContext::resolve_nameref_for_write(StringView name) throws -> String
 }
 
 fn
-EvalContext::resolve_nameref_base_for_write(StringView name) throws -> String
+EvalContext::resolve_nameref_base_for_write(StringView name) throws
+    -> String
 {
   let target = resolve_nameref_for_write(name);
+
   if (let const bracket = target.view().find_character('[');
       bracket.has_value())
   {
@@ -870,9 +901,11 @@ EvalContext::resolve_nameref_whole_variable_for_write(
     StringView name, bool should_discard_line) throws -> String
 {
   let target = resolve_nameref_for_write(name);
+
   if (target.view().find_character('[').has_value()) {
     let error = Error{"'" + target.view() +
                       "' is an array element, not a variable for this write"};
+
     if (should_discard_line)
       mark_expansion_error(error, expansion_error_reach::Line);
     throw steal(error);
@@ -897,13 +930,15 @@ EvalContext::guard_nameref_name(StringView name) const throws -> void
 }
 
 fn
-EvalContext::bind_nameref(StringView name, StringView target) throws -> void
+EvalContext::bind_nameref(StringView name, StringView target) throws
+    -> void
 {
   guard_nameref_name(name);
   if (!is_valid_nameref_target(target)) {
     throw Error{"'" + target +
                 "' is not a valid variable name for a name reference"};
   }
+
   if (target == name) {
     throw Error{"The name reference '" + name + "' would refer to itself"};
   }
@@ -913,7 +948,8 @@ EvalContext::bind_nameref(StringView name, StringView target) throws -> void
 }
 
 fn
-EvalContext::bind_self_nameref(StringView name, bool is_local) throws -> void
+EvalContext::bind_self_nameref(StringView name, bool is_local) throws
+    -> void
 {
   guard_nameref_name(name);
   if (is_local) {
@@ -927,11 +963,13 @@ EvalContext::bind_self_nameref(StringView name, bool is_local) throws -> void
 }
 
 fn
-EvalContext::resolve_nameref_parameter(StringView spec) throws -> Maybe<String>
+EvalContext::resolve_nameref_parameter(StringView spec) throws
+    -> Maybe<String>
 {
   let const prefix_length =
       !spec.is_empty() && (spec[0] == '!' || spec[0] == '#') ? usize{1}
                                                              : usize{0};
+
   if (spec.length <= prefix_length ||
       !lexer::is_variable_name_start(spec[prefix_length]))
   {
@@ -950,12 +988,12 @@ EvalContext::resolve_nameref_parameter(StringView spec) throws -> Maybe<String>
 
   let const name =
       spec.substring_of_length(prefix_length, name_end - prefix_length);
+
   if (prefix_length == 0 &&
       (name_end == spec.length || spec[name_end] != '[') &&
       is_generated_nameref(name))
   {
-    rarely
-    {
+    rarely {
       let error = Error{"Unable to expand '" + name +
                         "' because its generated value is not a variable "
                         "name for the name reference"};
@@ -965,11 +1003,13 @@ EvalContext::resolve_nameref_parameter(StringView spec) throws -> Maybe<String>
   }
 
   let const target = resolve_nameref(name);
+
   if (!target.has_value() || target->is_empty()) {
     return None;
   }
 
   let rewritten = String{scratch_allocator()};
+
   rewritten.reserve(spec.length - (name_end - prefix_length) + target->count());
   rewritten.append(spec.substring_of_length(0, prefix_length));
   rewritten.append(target->view());
@@ -979,8 +1019,7 @@ EvalContext::resolve_nameref_parameter(StringView spec) throws -> Maybe<String>
 }
 
 fn
-EvalContext::append_dynamic_variable_names(
-    ArrayList<StringView> &out) const throws -> void
+EvalContext::append_dynamic_variable_names(ArrayList<StringView> &out) const throws -> void
 {
   for (let const &entry : ALWAYS_DYNAMIC.entries)
     out.push(entry.value.name);

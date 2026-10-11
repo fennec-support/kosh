@@ -47,6 +47,7 @@ is_constant_arithmetic_text(StringView text) wontthrow -> bool
     let const is_growing_operator =
         i + 1 < text.length && ((text[i] == '*' && text[i + 1] == '*') ||
                                 (text[i] == '<' && text[i + 1] == '<'));
+
     if (!is_growing_operator) continue;
 
     growing_operator_count++;
@@ -82,6 +83,7 @@ pure fn
 is_plain_integer_literal(StringView text) wontthrow -> bool
 {
   if (text.is_empty()) return false;
+
   let const start_position = text[0] == '-' ? usize{1} : usize{0};
 
   return text.substring(start_position).is_all_decimal_digits();
@@ -95,6 +97,7 @@ is_split_eligible_variable_operand(const Token *token) wontthrow -> bool
   if (token->kind() != Token::Kind::Word) return false;
 
   let const &word = static_cast<const tokens::WordToken *>(token)->word();
+
   if (word.segments.count() != 1) return false;
 
   const WordSegment &segment = word.segments[0];
@@ -122,13 +125,14 @@ fn
 constant_test_verdict(const ArrayList<const Token *> &args,
                       usize                           first_operand_index,
                       usize                           operand_count,
-                      const AnalysisContext &actx) throws -> Maybe<bool>
+                      const AnalysisContext          &actx) throws -> Maybe<bool>
 {
   if (operand_count == 0) return Maybe<bool>{false};
 
   if (operand_count == 1) {
     let const value =
         propagated_test_operand_value(args[first_operand_index], actx);
+
     if (!value.has_value()) return None;
 
     return Maybe<bool>{!value->is_empty()};
@@ -139,9 +143,11 @@ constant_test_verdict(const ArrayList<const Token *> &args,
         propagated_test_operand_value(args[first_operand_index], actx);
     let const arg =
         propagated_test_operand_value(args[first_operand_index + 1], actx);
+
     if (!op.has_value() || !arg.has_value()) {
       return None;
     }
+
     if (*op == "-n") return Maybe<bool>{!arg->is_empty()};
     if (*op == "-z") return Maybe<bool>{arg->is_empty()};
 
@@ -155,9 +161,11 @@ constant_test_verdict(const ArrayList<const Token *> &args,
         propagated_test_operand_value(args[first_operand_index + 1], actx);
     let const rhs =
         propagated_test_operand_value(args[first_operand_index + 2], actx);
+
     if (!lhs.has_value() || !op.has_value() || !rhs.has_value()) {
       return None;
     }
+
     if (*op == "=") return Maybe<bool>{*lhs == *rhs};
     if (*op == "!=") return Maybe<bool>{*lhs != *rhs};
 
@@ -173,6 +181,7 @@ may_expand_assignment_tilde(StringView text) wontthrow -> bool
   if (!lexer::word_looks_like_assignment(text)) return false;
 
   let const equals = text.find_character('=');
+
   if (equals.has_value() && *equals + 1 < text.length &&
       text[*equals + 1] == '~')
   {
@@ -195,6 +204,7 @@ literal_word_value(const Word &word) throws -> Maybe<String>
     case WordSegment::Kind::DoubleQuotedText:
       value.append(segment.text.view());
       break;
+
     case WordSegment::Kind::UnquotedText:
       for (usize i = 0; i < segment.text.count(); i++) {
         if (lexer::is_expandable_char(segment.text[i])) return None;
@@ -203,13 +213,16 @@ literal_word_value(const Word &word) throws -> Maybe<String>
       if (!segment.text.is_empty() && segment.text[0] == '~') {
         return None;
       }
+
       if (&segment == &word.segments.front() &&
           may_expand_assignment_tilde(segment.text.view()))
       {
         return None;
       }
+
       value.append(segment.text.view());
       break;
+
     default: return None;
     }
   }
@@ -247,6 +260,7 @@ command_word_literal(const Token *token) throws -> Maybe<String>
     {
       return None;
     }
+
     name.append(segment.text.view());
   }
 
@@ -263,11 +277,15 @@ plain_variable_reference_name(const Token *token) wontthrow -> Maybe<StringView>
   if (token->kind() != Token::Kind::Word) return None;
 
   let const &word = static_cast<const tokens::WordToken *>(token)->word();
+
   if (word.segments.count() != 1) return None;
 
   const WordSegment &segment = word.segments[0];
+
   if (segment.kind != WordSegment::Kind::VariableReference) return None;
+
   let const name = segment.text.view();
+
   if (!lexer::word_is_variable_name(name)) return None;
 
   return name;
@@ -279,9 +297,11 @@ propagated_literal_word_value(const Token           *token,
     -> Maybe<String>
 {
   let literal = literal_word_value(token);
+
   if (literal.has_value()) return literal;
 
   let const name = plain_variable_reference_name(token);
+
   if (!name.has_value()) return None;
   if (let const recorded = actx.constant_variables.find(*name);
       recorded.has_value())
@@ -348,6 +368,7 @@ try_fold_arithmetic_with_constants(StringView             expression,
 
     while (i < expression.length) {
       let const byte = expression[i];
+
       if (!lexer::is_variable_name_start(byte)) {
         rewritten += byte;
         i++;
@@ -364,6 +385,7 @@ try_fold_arithmetic_with_constants(StringView             expression,
           StringView{&expression.data[start_position], i - start_position};
 
       let const recorded = actx.constant_variables.find(name);
+
       if (!recorded.has_value()) {
         LOG(All,
             "skipping the arithmetic fold, '%.*s' is not a recorded constant",
@@ -371,6 +393,7 @@ try_fold_arithmetic_with_constants(StringView             expression,
 
         return None;
       }
+
       if (!is_plain_integer_literal(recorded->view())) {
         LOG(All,
             "skipping the arithmetic fold, the value of '%.*s' is not a plain "
@@ -379,6 +402,7 @@ try_fold_arithmetic_with_constants(StringView             expression,
 
         return None;
       }
+
       rewritten.append(recorded->view());
     }
 
@@ -413,11 +437,13 @@ constexpr StaticStringMap STATIC_VERDICT_KINDS{STATIC_VERDICT_ENTRIES};
 
 fn
 simple_command_static_verdict(const ArrayList<const Token *> &args,
-                              const AnalysisContext &actx) throws -> Maybe<bool>
+                              const AnalysisContext          &actx) throws
+    -> Maybe<bool>
 {
   if (args.is_empty()) return None;
 
   let const name = command_word_literal(args[0]);
+
   if (!name.has_value()) return None;
 
   if (actx.functions.defined.contains(name->view())) {
@@ -426,6 +452,7 @@ simple_command_static_verdict(const ArrayList<const Token *> &args,
 
     return None;
   }
+
   if (actx.functions.aliases.contains(name->view())) {
     LOG(All, "declining the static verdict, an alias shadows '%s'",
         name->c_str());
@@ -434,6 +461,7 @@ simple_command_static_verdict(const ArrayList<const Token *> &args,
   }
 
   let const kind = STATIC_VERDICT_KINDS.find(name->view());
+
   if (!kind.has_value()) return None;
 
   switch (*kind) {
@@ -450,11 +478,14 @@ simple_command_static_verdict(const ArrayList<const Token *> &args,
     return Maybe<bool>{false};
   case static_verdict_kind::test_like: {
     usize last_index = args.count();
+
     if (*name == "[") {
       let const closing = literal_word_value(args[args.count() - 1]);
+
       if (!closing.has_value() || *closing != "]") {
         return None;
       }
+
       last_index -= 1;
     }
 
@@ -466,8 +497,8 @@ simple_command_static_verdict(const ArrayList<const Token *> &args,
 }
 
 pure fn
-word_segment_has_glob_metacharacter(const WordSegment &segment) wontthrow
-    -> bool
+word_segment_has_glob_metacharacter(const WordSegment &segment)
+    wontthrow -> bool
 {
   let const text = segment.text.view();
 
@@ -483,6 +514,7 @@ word_segment_has_glob_metacharacter(const WordSegment &segment) wontthrow
       if (i + 1 < text.length && text[i + 1] == '(') {
         return true;
       }
+
       break;
 
     default: break;
@@ -501,11 +533,13 @@ classify_plain_literal(const Word &word) wontthrow -> Word::PlainLiteral
       word.segments[0].kind == WordSegment::Kind::UnquotedText)
   {
     const WordSegment &only = word.segments[0];
+
     if (word_segment_has_glob_metacharacter(only))
       return Word::PlainLiteral::NotPlain;
     if (!only.text.is_empty() && only.text[0] == '~') {
       return Word::PlainLiteral::NotPlain;
     }
+
     if (may_expand_assignment_tilde(only.text.view()))
       return Word::PlainLiteral::NotPlain;
 
@@ -538,11 +572,13 @@ arithmetic_has_side_effect(StringView text) wontthrow -> bool
     if (text[i] == '=') {
       let const previous = i > 0 ? text[i - 1] : '\0';
       let const next     = i + 1 < text.length ? text[i + 1] : '\0';
+
       if (i >= 2 && ((previous == '<' && text[i - 2] == '<') ||
                      (previous == '>' && text[i - 2] == '>')))
       {
         return true;
       }
+
       if (previous != '=' && previous != '!' && previous != '<' &&
           previous != '>' && next != '=')
       {
@@ -555,10 +591,10 @@ arithmetic_has_side_effect(StringView text) wontthrow -> bool
 }
 
 fn
-fold_constant_arithmetic_in_word(const Word           &word,
-                                 AnalysisContext      &actx,
-                                 const SourceLocation &fallback_location) throws
-    -> bool
+fold_constant_arithmetic_in_word(
+    const Word           &word,
+    AnalysisContext      &actx,
+    const SourceLocation &fallback_location) throws -> bool
 {
   bool did_fold = false;
 
@@ -573,6 +609,7 @@ fold_constant_arithmetic_in_word(const Word           &word,
 
     let       result = try_fold_exact_constant_arithmetic(segment.text.view());
     let const is_direct_constant = result.has_value();
+
     if (!result.has_value())
       result = try_fold_arithmetic_with_constants(segment.text.view(), actx);
     if (result.has_value()) {
@@ -589,6 +626,7 @@ fold_constant_arithmetic_in_word(const Word           &word,
       if (actx.options.should_report_optimizer_diagnostics) {
         let const segment_location =
             segment.get_source_location(fallback_location.source_name_index);
+
         actx.report_diagnostic(diagnostic_id::optimizer_folded_arithmetic,
                                segment_location.has_value() ? *segment_location
                                                             : fallback_location,
@@ -650,12 +688,14 @@ rule_dead_branch_elimination(const Expression *node,
                              AnalysisContext  &actx) throws -> bool
 {
   const expressions::IfClause *clause = node->as_if_clause();
+
   if (clause == nullptr) return false;
   if (clause->has_folded_branch()) return false;
 
   for (usize i = 0; i < clause->branches().count(); i++) {
     let const verdict =
         clause->branches()[i].condition->try_static_condition_verdict(actx);
+
     if (!verdict.has_value()) {
       LOG(All,
           "the dead-branch fold stops, condition %zu is not statically "
@@ -664,12 +704,14 @@ rule_dead_branch_elimination(const Expression *node,
 
       return false;
     }
+
     if (*verdict) {
       LOG(All, "dead-branch elimination chose branch %zu", i);
       clause->set_folded_branch(i);
       actx.optimizer_eliminated_count++;
       if (actx.options.should_report_optimizer_diagnostics) {
         let const index = String::from(static_cast<i64>(i), heap_allocator());
+
         actx.report_diagnostic(diagnostic_id::optimizer_folded_branch,
                                node->source_location(), {index.view()});
       }
@@ -689,15 +731,17 @@ rule_dead_branch_elimination(const Expression *node,
 }
 
 fn
-rule_loop_elimination(const Expression *node, AnalysisContext &actx) throws
-    -> bool
+rule_loop_elimination(const Expression *node,
+                      AnalysisContext  &actx) throws -> bool
 {
   const expressions::WhileLoop *loop_node = node->as_while_loop();
+
   if (loop_node == nullptr) return false;
   if (loop_node->is_folded_to_skip()) return false;
 
   let const verdict =
       loop_node->condition()->try_static_condition_verdict(actx);
+
   if (!verdict.has_value()) {
     LOG(All,
         "the loop fold declines, the condition is not statically decidable");
@@ -706,6 +750,7 @@ rule_loop_elimination(const Expression *node, AnalysisContext &actx) throws
   }
 
   let const body_would_run = loop_node->is_until() ? !*verdict : *verdict;
+
   if (body_would_run) {
     LOG(All,
         "the loop fold declines, the body would run under the static verdict");
@@ -730,6 +775,7 @@ rule_eliminate_compound_body(const Expression *node,
                              AnalysisContext  &actx) throws -> bool
 {
   const expressions::IfClause *clause = node->as_if_clause();
+
   if (clause == nullptr) return false;
   if (clause->is_fully_eliminated()) return false;
   if (!clause->has_folded_branch()) return false;
@@ -749,10 +795,11 @@ rule_eliminate_compound_body(const Expression *node,
 }
 
 fn
-rule_eliminate_empty_for(const Expression *node, AnalysisContext &actx) throws
-    -> bool
+rule_eliminate_empty_for(const Expression *node,
+                         AnalysisContext  &actx) throws -> bool
 {
   const expressions::ForLoop *loop_node = node->as_for_loop();
+
   if (loop_node == nullptr) return false;
   if (loop_node->is_fully_eliminated()) return false;
 
@@ -771,19 +818,24 @@ rule_eliminate_empty_for(const Expression *node, AnalysisContext &actx) throws
 }
 
 fn
-rule_fold_cstyle_for(const Expression *node, AnalysisContext &actx) throws
-    -> bool
+rule_fold_cstyle_for(const Expression *node,
+                     AnalysisContext  &actx) throws -> bool
 {
   const expressions::CStyleForLoop *loop_node = node->as_cstyle_for_loop();
+
   if (loop_node == nullptr) return false;
   if (loop_node->has_folded_condition()) return false;
 
   let const trimmed = loop_node->condition_clause().trim_blanks();
+
   if (trimmed.length == 0) return false;
 
   let const value = try_fold_constant_arithmetic(trimmed);
+
   if (!value.has_value()) return false;
+
   bool is_exact_nonzero;
+
   try {
     is_exact_nonzero = evaluate_constant_arithmetic_nonzero(trimmed, true);
   } catch (const Error &) {
@@ -797,6 +849,7 @@ rule_fold_cstyle_for(const Expression *node, AnalysisContext &actx) throws
   actx.optimizer_eliminated_count++;
   if (actx.options.should_report_optimizer_diagnostics) {
     let const folded = String::from(*value, heap_allocator());
+
     actx.report_diagnostic(diagnostic_id::optimizer_folded_arithmetic,
                            node->source_location(), {trimmed, folded.view()});
   }
@@ -814,7 +867,8 @@ rule_fold_cstyle_for(const Expression *node, AnalysisContext &actx) throws
   return true;
 }
 
-using OptimizationRule = fn(const Expression *, AnalysisContext &) throws->bool;
+using OptimizationRule = bool(const Expression *,
+                              AnalysisContext &) throws;
 
 OptimizationRule *const OPTIMIZATION_RULES[] = {
     rule_fold_constant_arithmetic, rule_dead_branch_elimination,
@@ -827,7 +881,8 @@ constexpr usize MAX_OPTIMIZATION_PASSES = 8;
 } /* namespace */
 
 fn
-optimize_node(const Expression *node, AnalysisContext &actx) throws -> void
+optimize_node(const Expression *node, AnalysisContext &actx) throws
+    -> void
 {
   ASSERT(node != nullptr);
 

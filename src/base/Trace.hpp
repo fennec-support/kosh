@@ -69,6 +69,7 @@ inline fn
 value_to_log_string(char value) -> String
 {
   String out{heap_allocator()};
+
   out.push(value);
 
   return out;
@@ -88,6 +89,7 @@ fn
 value_to_log_string(T value) -> String
 {
   char buffer[64];
+
   std::snprintf(buffer, sizeof(buffer), "%g", static_cast<double>(value));
 
   return String{buffer};
@@ -99,6 +101,7 @@ fn
 value_to_log_string(T value) -> String
 {
   char buffer[32];
+
   std::snprintf(buffer, sizeof(buffer), "%p",
                 static_cast<const opaque *>(value));
 
@@ -116,12 +119,14 @@ format_named_values(StringView names, Args &&...args) -> String
   let do_append_one = [&](auto &&value) {
     StringView   name           = names;
     Maybe<usize> comma_position = names.find_character(',');
+
     if (comma_position.has_value()) {
       name  = names.substring_of_length(0, comma_position.value());
       names = names.substring(comma_position.value() + 1);
     } else {
       names = StringView{};
     }
+
     usize start = 0;
 
     while (start < name.length &&
@@ -172,33 +177,30 @@ format_named_values(StringView names, Args &&...args) -> String
 #define LOG(level, ...)                                                        \
   do {                                                                         \
     constexpr ::koshka::verbosity t__log_level = ::koshka::verbosity::level;   \
-    if (t__log_level <= ::koshka::LOGGER_VERBOSITY) rarely                     \
-      {                                                                        \
-        std::FILE *t__log_stream = ::koshka::log_output_stream();              \
-        unused(std::fprintf(                                                   \
-            t__log_stream,                                                     \
-            "[%s] %32s %32s(): ", ::koshka::verbosity_to_string(t__log_level), \
-            __FILE__ ":" T__LOG_STRINGIZE(__LINE__), __func__));               \
-        unused(std::fprintf(t__log_stream, __VA_ARGS__));                      \
-        unused(std::fputc('\n', t__log_stream));                               \
-        unused(std::fflush(t__log_stream));                                    \
-      }                                                                        \
+    if (t__log_level <= ::koshka::LOGGER_VERBOSITY) rarely {                   \
+      std::FILE *t__log_stream = ::koshka::log_output_stream();                \
+      unused(std::fprintf(t__log_stream, "[%s] %32s %32s(): ",                 \
+                          ::koshka::verbosity_to_string(t__log_level),         \
+                          __FILE__ ":" T__LOG_STRINGIZE(__LINE__), __func__)); \
+      unused(std::fprintf(t__log_stream, __VA_ARGS__));                        \
+      unused(std::fputc('\n', t__log_stream));                                 \
+      unused(std::fflush(t__log_stream));                                      \
+    }                                                                          \
   } while (0)
 
 #define LOG_VARS(level, ...)                                                   \
   do {                                                                         \
     constexpr ::koshka::verbosity t__log_level = ::koshka::verbosity::level;   \
-    if (t__log_level <= ::koshka::LOGGER_VERBOSITY) rarely                     \
-      {                                                                        \
-        ::koshka::String t__vars = ::koshka::log_detail::format_named_values(  \
-            #__VA_ARGS__, __VA_ARGS__);                                        \
-        std::FILE *t__log_stream = ::koshka::log_output_stream();              \
-        unused(std::fprintf(t__log_stream, "[%s] %32s %32s(): %s\n",           \
-                            ::koshka::verbosity_to_string(t__log_level),       \
-                            __FILE__ ":" T__LOG_STRINGIZE(__LINE__), __func__, \
-                            t__vars.c_str()));                                 \
-        unused(std::fflush(t__log_stream));                                    \
-      }                                                                        \
+    if (t__log_level <= ::koshka::LOGGER_VERBOSITY) rarely {                   \
+      ::koshka::String t__vars = ::koshka::log_detail::format_named_values(    \
+          #__VA_ARGS__, __VA_ARGS__);                                          \
+      std::FILE *t__log_stream = ::koshka::log_output_stream();                \
+      unused(std::fprintf(t__log_stream, "[%s] %32s %32s(): %s\n",             \
+                          ::koshka::verbosity_to_string(t__log_level),         \
+                          __FILE__ ":" T__LOG_STRINGIZE(__LINE__), __func__,   \
+                          t__vars.c_str()));                                   \
+      unused(std::fflush(t__log_stream));                                      \
+    }                                                                          \
   } while (0)
 
 #endif

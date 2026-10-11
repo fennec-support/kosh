@@ -42,6 +42,7 @@ public:
     PackedStringKey key{};
     let const       count =
         text.count() < BYTE_CAPACITY ? text.count() : BYTE_CAPACITY;
+
 #if defined __BYTE_ORDER__ && __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
     if (count < 8) {
       key.words[0] = byte_scan::load_partial_word(text.data, count);
@@ -55,10 +56,12 @@ public:
   }
 
   hot mustuse constexpr fn
-  operator==(const PackedStringKey &other) const wontthrow->bool
+  operator==(const PackedStringKey &other) const wontthrow -> bool
   {
     if (words[0] != other.words[0]) return false;
+
     u64 difference = 0;
+
 #pragma clang loop unroll_count(4)
     for (usize i = 1; i < WORD_COUNT; i++)
       difference |= words[i] ^ other.words[i];
@@ -67,7 +70,7 @@ public:
   }
 
   hot mustuse constexpr fn
-  operator<(const PackedStringKey &other) const wontthrow->bool
+  operator<(const PackedStringKey &other) const wontthrow -> bool
   {
     for (usize i = 0; i < WORD_COUNT; i++)
       if (words[i] != other.words[i]) return words[i] < other.words[i];
@@ -81,6 +84,7 @@ public:
     for (usize k = 0; k < WORD_COUNT; k++) {
       let const w = words[k];
       let const z = (w - 0x0101010101010101ull) & ~w & 0x8080808080808080ull;
+
       if (z != 0) return (k * 8) + static_cast<usize>(__builtin_ctzll(z) >> 3);
     }
 
@@ -102,6 +106,7 @@ public:
     for (; length < BYTE_CAPACITY; length++) {
       let const byte =
           static_cast<char>((words[length / 8] >> (8 * (length % 8))) & 0xFF);
+
       if (byte == '\0') break;
       buffer[length] = byte;
     }

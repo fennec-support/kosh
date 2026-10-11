@@ -42,6 +42,7 @@ cold fn
 test_inequality_left_operand(const ArrayList<const Token *> &args,
                              usize                           operator_index,
                              usize operand_end) wontthrow -> Maybe<StringView>;
+
 cold fn
 view_looks_like_test_operator(StringView view) wontthrow -> bool;
 cold fn
@@ -54,6 +55,7 @@ cold fn
 view_is_glob_shaped_pattern(StringView view) wontthrow -> bool;
 cold fn
 view_is_plain_substitution_script(StringView view) wontthrow -> bool;
+
 cold fn
 find_echo_escape_sequence(StringView view) wontthrow -> StringView;
 cold fn
@@ -62,6 +64,7 @@ find_echo_escape_sequence_outside_substitutions(StringView   operand_text,
     -> StringView;
 cold fn
 view_settles_echo_escapes(StringView view) wontthrow -> bool;
+
 cold fn
 substitution_runs_pattern_matcher(StringView body) throws -> bool;
 cold fn
@@ -70,17 +73,21 @@ cold fn
 token_has_command_substitution(const Token *token) wontthrow -> bool;
 cold fn
 token_has_ansi_c_quote(const Token *token) wontthrow -> bool;
+
 cold fn
 printf_consumed_argument_count(StringView format,
-                               bool &has_quote_conversion) wontthrow -> usize;
+                               bool      &has_quote_conversion) wontthrow -> usize;
+
 cold pure fn
 view_is_integer_literal(StringView view) wontthrow -> bool;
+
 cold fn
-args_have_short_flag(const ArrayList<const Token *> &args, char letter) throws
-    -> bool;
+args_have_short_flag(const ArrayList<const Token *> &args,
+                     char                            letter) throws -> bool;
 cold fn
 single_literal_file_operand(const ArrayList<const Token *> &args) throws
     -> Maybe<const Token *>;
+
 pure fn
 ssh_option_takes_value(char letter) wontthrow -> bool;
 pure fn
@@ -93,14 +100,16 @@ pure fn
 is_find_leading_option(StringView word) wontthrow -> bool;
 pure fn
 is_shell_only_builtin(StringView name) wontthrow -> bool;
+
 fn
 check_posix_parameter_expansion(AnalysisContext   &actx,
                                 const WordSegment &segment,
                                 StringView         text,
                                 SourceLocation     fallback_location) throws
     -> void;
+
 pure fn
 arithmetic_assignment_target(StringView expression,
-                             usize equals_position) wontthrow -> StringView;
+                             usize      equals_position) wontthrow -> StringView;
 
 } /* namespace koshka::expressions::internal */

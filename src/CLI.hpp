@@ -82,18 +82,21 @@ public:
   {
     return m_count;
   }
+
   pure fn
   begin() const wontthrow -> const StringView *
   {
     return m_lines;
   }
+
   pure fn
   end() const wontthrow -> const StringView *
   {
     return m_lines + m_count;
   }
+
   pure fn
-  operator[](usize index) const wontthrow->StringView
+  operator[](usize index) const wontthrow -> StringView
   {
     ASSERT(index < m_count);
 
@@ -121,18 +124,21 @@ public:
   {
     return m_count;
   }
+
   pure fn
   begin() const wontthrow -> Flag *const *
   {
     return m_flags;
   }
+
   pure fn
   end() const wontthrow -> Flag *const *
   {
     return m_flags + m_count;
   }
+
   pure fn
-  operator[](usize index) const wontthrow->Flag *
+  operator[](usize index) const wontthrow -> Flag *
   {
     ASSERT(index < m_count);
 
@@ -405,7 +411,7 @@ parse_flags_vec(const FlagList                  &flags,
                 StringView                       program_name  = StringView{},
                 flag_parse_options               parse_options = {},
                 Allocator                        allocator = heap_allocator(),
-                ArrayList<usize> *operand_indices          = nullptr) throws
+                ArrayList<usize>                *operand_indices = nullptr) throws
     -> ArrayList<String>;
 fn
 parse_flags(const FlagList                  &flags,
@@ -420,6 +426,7 @@ parse_flags(const FlagList                  &flags,
             Allocator                        allocator       = heap_allocator(),
             ArrayList<usize>                *operand_indices = nullptr) throws
     -> ArrayList<String>;
+
 struct util_operands_result
 {
   ArrayList<String>         operands;
@@ -433,12 +440,14 @@ parse_util_operands(const FlagList                  &flags,
                     const ArrayList<SourceLocation> *arg_locations = nullptr,
                     flag_parse_options               parse_options = {}) throws
     -> util_operands_result;
+
 fn
 parse_until_subcommand(const FlagList                  &flags,
                        const ArrayList<String>         &args,
                        const ArrayList<SourceLocation> *arg_locations = nullptr,
                        ArrayList<SourceLocation> *operand_locations   = nullptr,
-                       StringView program_name = StringView{}) throws -> usize;
+                       StringView                 program_name = StringView{}) throws
+    -> usize;
 
 fn
 join_command_line(int argc, const char *const *argv) throws -> String;
@@ -450,7 +459,8 @@ shell_quoted_arg_length(StringView arg) wontthrow -> usize;
 fn
 append_shell_quoted_arg(String    &out,
                         StringView arg,
-                        bool       should_always_quote = false) throws -> void;
+                        bool       should_always_quote = false) throws
+    -> void;
 
 fn
 reset_flags(const FlagList &flags) throws -> void;
@@ -465,6 +475,7 @@ show_short_version() throws -> void;
 fn
 make_synopsis(StringView program_name, const SynopsisList &lines) throws
     -> String;
+
 fn
 make_flag_help(const FlagList &flags, bool should_color = false) throws
     -> String;
@@ -473,7 +484,8 @@ fn
 wrap_text(StringView          text,
           usize               indent,
           usize               width,
-          const Maybe<usize> &continuation_indent = {}) throws -> String;
+          const Maybe<usize> &continuation_indent = {}) throws
+    -> String;
 
 enum class cli_color_mode : u8
 {
@@ -501,11 +513,13 @@ append_report_text(String    &output,
                    StringView text,
                    StringView style,
                    bool       should_color) throws -> void;
+
 enum class report_table_alignment : u8
 {
   Left,
   Right,
 };
+
 struct report_table_column
 {
   String                 heading;
@@ -513,16 +527,19 @@ struct report_table_column
   StringView             style;
   usize                  min_width{0};
 };
+
 struct report_table_cell_view
 {
   StringView text;
   StringView style;
 };
+
 struct report_table_cell
 {
   String     text;
   StringView style;
 };
+
 class ReportTable
 {
 public:
@@ -538,36 +555,42 @@ public:
   add_heading(StringView             heading,
               report_table_alignment alignment =
                   report_table_alignment::Left) throws -> void;
+
   fn
   set_header_visible(bool should_show_header) wontthrow -> void
   {
     m_should_show_header = should_show_header;
   }
+
   fn
   clear_rows() wontthrow -> void
   {
     m_grid_rows.clear();
   }
+
   fn
   set_column_gap(usize space_count) wontthrow -> void
   {
     m_column_gap_space_count = space_count;
   }
+
   pure fn
   get_row_count() const wontthrow -> usize
   {
     return m_grid_rows.count();
   }
+
   fn
-  add_row(const ArrayList<report_table_cell_view> &cells) throws -> void;
-  fn
-  add_field_row(StringView name, StringView value, StringView name_style) throws
+  add_row(const ArrayList<report_table_cell_view> &cells) throws
       -> void;
+  fn
+  add_field_row(StringView name,
+                StringView value,
+                StringView name_style) throws -> void;
   fn
   to_string() const throws -> String;
   fn
-  to_string(bool should_color, StringView indentation = "  ") const throws
-      -> String;
+  to_string(bool should_color, StringView indentation = "  ") const throws -> String;
 
 private:
   ArrayList<report_table_column>          m_columns;
@@ -575,21 +598,25 @@ private:
   bool                                    m_should_show_header{true};
   usize                                   m_column_gap_space_count{2};
 };
+
 fn
 append_titled_report_table(String            &output,
                            StringView         title,
                            const ReportTable &table,
                            bool               should_color) throws -> void;
+
 fn
 append_report_name_section(String                      &output,
                            StringView                   title,
                            const ArrayList<StringView> &names,
                            bool                         should_color,
                            StringView indentation = {}) throws -> void;
+
 fn
 format_cli_help(StringView text, bool should_color) throws -> String;
 fn
 format_cli_help(StringView text) throws -> String;
+
 fn
 enter_alternate_screen(const ExecContext &ec) wontthrow -> bool;
 fn
@@ -687,7 +714,7 @@ struct rolling_history
   pure fn
   interpolate(const rolling_window_boundary &boundary,
               u64                            before_value,
-              u64 after_value) const wontthrow -> Maybe<u64>
+              u64                            after_value) const wontthrow -> Maybe<u64>
   {
     if (after_value < before_value) return None;
 

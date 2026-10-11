@@ -40,14 +40,18 @@ append_strings_record(String    &output,
 {
   if (radix != '\0') {
     int_base base = int_base::decimal;
+
     switch (radix) {
     case 'o': base = int_base::octal; break;
+
     case 'x': base = int_base::hex; break;
-    default:  break;
+
+    default: break;
     }
 
     let const digits =
         String::from_in_base(offset, false, base, output.allocator());
+
     if (digits.length() < 7) output.append_repeated(' ', 7 - digits.length());
 
     output += digits.view();
@@ -62,14 +66,15 @@ fn
 Strings::execute(const ExecContext               &ec,
                  EvalContext                     &cxt,
                  const ArrayList<String>         &args,
-                 const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+                 const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   u64 minimum_length = 4;
+
   if (FLAG_STRINGS_MINIMUM.is_set()) {
     let const parsed = utils::parse_decimal_u64(FLAG_STRINGS_MINIMUM.value());
+
     if (parsed.is_error() || parsed.value() == 0 || parsed.value() > SIZE_MAX) {
       KOSHKIT_REPORT_ERROR_AT(
           FLAG_STRINGS_MINIMUM.value_location(), "invalid minimum length",
@@ -80,7 +85,9 @@ Strings::execute(const ExecContext               &ec,
 
     minimum_length = parsed.value();
   }
+
   char radix = '\0';
+
   if (FLAG_STRINGS_RADIX.is_set()) {
     let const radix_value    = FLAG_STRINGS_RADIX.value();
     let       is_valid_radix = false;
@@ -112,18 +119,19 @@ Strings::execute(const ExecContext               &ec,
   let run    = String{cxt.scratch_allocator()};
   let reader = SourceBatchReader{ec, sources, cxt.scratch_allocator()};
   let chunks = ArrayList<SourceBatchReader::Chunk>{cxt.scratch_allocator()};
-  u64 byte_offset    = 0;
-  u64 run_offset     = 0;
-  i32 status         = 0;
+  u64 byte_offset = 0;
+  u64 run_offset  = 0;
+  i32 status      = 0;
+
   let const do_flush = [&]() throws -> void {
     if (run.length() >= minimum_length)
       append_strings_record(output, run.view(), run_offset, radix);
     run.clear();
   };
 
-  loop
-  {
+  loop {
     let const read_result = reader.read_next_ordered(chunks);
+
     if (read_result == SourceBatchReader::ReadResult::Complete) break;
     if (read_result == SourceBatchReader::ReadResult::Interrupted) return 130;
 
@@ -158,6 +166,7 @@ Strings::execute(const ExecContext               &ec,
         let const run_length = run_end - position;
         let const run_text =
             chunk.content.substring_of_length(position, run_length);
+
         if (run.is_empty() && run_end < chunk.content.length) {
           if (run_length >= minimum_length)
             append_strings_record(output, run_text, byte_offset, radix);
@@ -179,6 +188,7 @@ Strings::execute(const ExecContext               &ec,
       if (chunk.completion != source_completion_state::Complete) continue;
 
       let const source = sources[chunk.source_index];
+
       if (chunk.error_number != 0) {
         run.clear();
         os::set_last_system_error(chunk.error_number);

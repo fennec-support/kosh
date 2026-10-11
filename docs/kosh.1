@@ -2860,7 +2860,7 @@ evildisk, evilfiles, evilfs, evilio, eviliso, evillogs, evilnet, evilps, evilss,
 expand, expr, file, find, flock, fold, fuser, getconf, goodcore, goodfsw,
 goodnode, goodstat, grep, head, id, killall, link, ln, locale, logger,
 logname, ls, make,
-man, mkdir, mkfifo, more, mv, nice, nl, nohup, nproc, od, paste, pathchk,
+man, meow, mkdir, mkfifo, more, mv, nice, nl, nohup, nproc, od, paste, pathchk,
 pkill, pr, printenv, ps, readlink, realpath, renice, retry, rm, rmdir, sed, seq,
 sleep, sort, split, stat, strings, stty, sync, tabs, tail, tee, timeout, touch,
 tput, tr, tsort, tty, uname, unexpand, uniq, unlink, watch, wc, which, who,
@@ -3240,14 +3240,21 @@ The first ten lines are printed by default. The
 .B \-n
 option selects a line count and the
 .B \-c
-option selects a byte count.
+option selects a byte count. A first argument of a dash and digits, such as
+.BR \-5 ,
+is the historical spelling of
+.BR "\-n 5" .
 .TP
 .B tail
 The last ten lines are printed by default. The
 .B \-n
 option selects a line count and the
 .B \-c
-option selects a byte count. The
+option selects a byte count. A first argument of a dash and digits, such as
+.BR \-5 ,
+is the historical spelling of
+.BR "\-n 5" .
+The
 .BR \-q ,
 .BR \-\-quiet ,
 and
@@ -3399,6 +3406,16 @@ Common variable functions include
 and
 .BR wildcard .
 .TP
+.B meow
+A screensaver: a walking cat bounces across a twinkling starfield and meows at
+the walls until any key is pressed. The
+.B \-f
+or
+.B \-\-fps
+option sets the frames drawn per second, from 1 to 240, with 60 by default; the
+cat keeps the same speed at every rate. Redirected output receives one still
+cat and no terminal escape sequences.
+.TP
 .B mkdir
 Directories are created with
 .B \-p
@@ -3472,7 +3489,14 @@ Paths are removed with
 .BR \-i ,
 and
 .BR \-\-dry\-run .
-Root, dot, and dot-dot are refused. The
+Root, dot, and dot-dot are refused. Root covers every spelling of a root
+directory, such as
+.BR // ,
+a Windows drive root such as
+.BR C:/ ,
+and an operand that resolves to one, such as
+.B C:
+while its current directory is the drive root. The
 .BR \-x ", " \-\-one\-file\-system
 option skips a directory on a file system other than the one of its path
 operand, reports it as being on a different device, and makes the status 1.

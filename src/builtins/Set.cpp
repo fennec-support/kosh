@@ -62,8 +62,8 @@ is_restricted(const EvalContext &cxt) wontthrow -> bool
 }
 
 fn
-option_is_on(const EvalContext &cxt, const option_descriptor &option) throws
-    -> bool
+option_is_on(const EvalContext       &cxt,
+             const option_descriptor &option) throws -> bool
 {
   if (!option_is_available(cxt, option)) return false;
   if (option.storage == option_storage::WarningLevel)
@@ -76,7 +76,8 @@ fn
 apply_or_reject_option(EvalContext             &cxt,
                        const option_descriptor &option,
                        bool                     is_enabled,
-                       bool should_step_warning_level = false) throws -> void
+                       bool should_step_warning_level = false) throws
+    -> void
 {
   if (!option_is_available(cxt, option))
     throw Error{StringView{"Unknown option '"} + option.set_name + "'"};
@@ -88,6 +89,7 @@ apply_or_reject_option(EvalContext             &cxt,
 
     return;
   }
+
   write_option_number(cxt, option, is_enabled ? 1 : 0, option_origin::Set);
 }
 
@@ -148,9 +150,11 @@ find_retired_option_replacement(StringView name, bool is_enabled) throws
   static constexpr StaticStringMap RETIRED{RETIRED_ENTRIES};
 
   let const retired = RETIRED.find(name);
+
   if (!retired.has_value()) return None;
 
   let replacement = String{heap_allocator()};
+
   switch (retired->owner) {
   case Koshconf:
   case KoshconfInverted: {
@@ -159,10 +163,12 @@ find_retired_option_replacement(StringView name, bool is_enabled) throws
     replacement += retired->replacement;
     replacement += is_on ? " on" : " off";
   } break;
+
   case Set:
     replacement += is_enabled ? "set -o " : "set +o ";
     replacement += retired->replacement;
     break;
+
   case Shopt:
     replacement += is_enabled ? "shopt -s " : "shopt -u ";
     replacement += retired->replacement;
@@ -181,6 +187,7 @@ list_options(const EvalContext &cxt) throws -> String
     if (!option.is_listed_by_set || !option_is_available(cxt, option)) {
       continue;
     }
+
     out += option_is_on(cxt, option) ? "set -o " : "set +o ";
     out += option.set_name;
     out += '\n';
@@ -199,6 +206,7 @@ list_options_columnar(const EvalContext &cxt) throws -> String
     if (!option.is_listed_by_set || !option_is_available(cxt, option)) {
       continue;
     }
+
     out += option.set_name;
     out.append_repeated(' ', option.set_name.length < name_field_width
                                  ? name_field_width - option.set_name.length
@@ -224,10 +232,13 @@ apply_long_option_by_name(const ExecContext       &ec,
 
     return;
   }
+
   let const &name   = args[++i];
   let const *option = find_option_by_set_name(name);
+
   if (option == nullptr) {
     let const message = StringView{"Unknown -o option '"} + name + "'";
+
     if (let const replacement =
             find_retired_option_replacement(name.view(), is_enabled);
         replacement.has_value())
@@ -236,14 +247,18 @@ apply_long_option_by_name(const ExecContext       &ec,
                                StringView{"The option was retired; use `"} +
                                    *replacement + "` instead");
     }
+
     throw make_error_for_arg(ec, i, message.view());
   }
+
   if (!option_is_available(cxt, *option)) {
     let error = make_error_for_arg(
         ec, i, StringView{"Unknown -o option '"} + name + "'");
+
     error.set_command_status(2);
     throw error;
   }
+
   apply_or_reject_option(cxt, *option, is_enabled);
 }
 
@@ -266,6 +281,7 @@ format_option_table() throws -> String
     let const name_cell = option.set_name.is_empty()
                               ? StringView{option.koshconf_name}
                               : StringView{option.set_name};
+
     out += name_cell;
     out.append_repeated(' ', name_cell.count() < name_field_width
                                  ? name_field_width - name_cell.count()
@@ -281,11 +297,13 @@ fn
 format_option_switches_help() throws -> String
 {
   let section = String{"OPTION SWITCHES\n"};
+
   section += "  A letter after a minus enables the option and after a plus "
              "disables it.\n  -o NAME and +o NAME do the same by Bash "
              "name. A Koshka letter is shown with its koshconf name.\n\n";
   section += format_option_table();
   section += "\n  The -o long names:\n";
+
   let listed_names = String{heap_allocator()};
 
   for (let const &option : get_set_listing_order()) {
@@ -306,6 +324,7 @@ query_shell_option(const EvalContext &cxt, StringView name) throws
     -> Maybe<bool>
 {
   let const *option = find_option_by_set_name(name);
+
   if (option == nullptr) return None;
 
   return option_is_on(cxt, *option);
@@ -335,6 +354,7 @@ shell_option_letters() throws -> const String &
 
     for (usize position = 0; position < order.count(); position++) {
       let const letter = order[position];
+
       collected.push(letter);
       if (letter == 'h') collected.push('r');
     }
@@ -371,6 +391,7 @@ enabled_shell_option_letters(const EvalContext &cxt) throws -> String
   for (usize position = 0; position < order.count(); position++) {
     let const  letter = order[position];
     let const *option = find_option_by_letter(letter);
+
     ASSERT(option != nullptr);
     if (letter == 'h') {
       if (option_is_on(cxt, *option)) letters.push('h');
@@ -379,6 +400,7 @@ enabled_shell_option_letters(const EvalContext &cxt) throws -> String
       if (cxt.execution_store().shell_is_interactive()) letters.push('i');
       continue;
     }
+
     if (option->storage == option_storage::WarningLevel) {
       for (u8 warning_level = 0;
            warning_level < cxt.runtime_state().get_warning_level();
@@ -387,6 +409,7 @@ enabled_shell_option_letters(const EvalContext &cxt) throws -> String
 
       continue;
     }
+
     if (option_is_on(cxt, *option)) letters.push(letter);
   }
 
@@ -396,13 +419,16 @@ enabled_shell_option_letters(const EvalContext &cxt) throws -> String
 }
 
 fn
-apply_shell_option(EvalContext &cxt, StringView name, bool is_enabled) throws
-    -> bool
+apply_shell_option(EvalContext &cxt,
+                   StringView   name,
+                   bool         is_enabled) throws -> bool
 {
   let const *option = find_option_by_set_name(name);
+
   if (option == nullptr || !option_is_available(cxt, *option)) {
     return false;
   }
+
   apply_or_reject_option(cxt, *option, is_enabled);
 
   return true;
@@ -412,6 +438,7 @@ fn
 Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let const &args = ec.args();
+
   ASSERT(!args.is_empty());
 
   if (args.count() > 1 && args[1] == "--help") {
@@ -436,7 +463,8 @@ Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   bool is_collecting_operands = false;
   bool should_rebind          = false;
 
-  usize     i = 1;
+  usize i = 1;
+
   let const do_read_option_value =
       [&](const String &option_arg) -> Maybe<StringView> {
     if (let const eq = option_arg.view().find_character('='); eq.has_value())
@@ -464,13 +492,16 @@ Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
     if (arg == "-M" || arg.view().starts_with(StringView{"-M="})) {
       let const value = do_read_option_value(arg);
+
       if (!value.has_value()) {
         ec.print_to_stdout(String{cxt.scratch_allocator(),
                                   mood_name(cxt.runtime_state().get_mood())} +
                            "\n");
         continue;
       }
+
       let const parsed = parse_mood_name(*value);
+
       if (!parsed.has_value())
         throw make_error_for_arg(
             ec, i,
@@ -480,7 +511,9 @@ Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         throw make_error_for_arg(
             ec, i, "Changing the mood is forbidden in a restricted shell");
       }
+
       let const *mood_option = find_option_by_letter('M');
+
       ASSERT(mood_option != nullptr);
       write_option_number(cxt, *mood_option, static_cast<u32>(*parsed),
                           option_origin::Set);
@@ -489,6 +522,7 @@ Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
     if (arg == "-L" || arg.view().starts_with(StringView{"-L="})) {
       let const value = do_read_option_value(arg);
+
       if (!value.has_value()) {
         let out = String{cxt.scratch_allocator()};
 
@@ -504,6 +538,7 @@ Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         ec.print_to_stdout(out);
         continue;
       }
+
       let   moods      = ArrayList<mimic_mood>{cxt.scratch_allocator()};
       usize name_start = 0;
 
@@ -511,10 +546,14 @@ Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         if (j != value->length && (*value)[j] != ',') {
           continue;
         }
+
         let const name = value->substring_of_length(name_start, j - name_start);
-        name_start     = j + 1;
+
+        name_start = j + 1;
         if (name.is_empty()) continue;
+
         let const parsed = parse_mood_name(name);
+
         if (!parsed.has_value())
           throw make_error_for_arg(
               ec, i,
@@ -524,6 +563,7 @@ Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       }
 
       let const previous_mood = cxt.runtime_state().get_mood();
+
       source_init_moods(cxt, moods, cxt.startup_store().is_login_shell(),
                         cxt.execution_store().shell_is_interactive());
       cxt.select_mood(previous_mood);
@@ -546,6 +586,7 @@ Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       if (arg[0] == '-') {
         let const *xtrace  = find_option_by_letter('x');
         let const *verbose = find_option_by_letter('v');
+
         ASSERT(xtrace != nullptr && verbose != nullptr);
         apply_or_reject_option(cxt, *xtrace, false);
         apply_or_reject_option(cxt, *verbose, false);
@@ -566,6 +607,7 @@ Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
           apply_long_option_by_name(ec, cxt, args, i, is_enabled);
           break;
         }
+
         if (letter == 'r') {
           if (!is_enabled && cxt.runtime_state().option_is_enabled(
                                  shell_option_id::Restricted))
@@ -583,25 +625,32 @@ Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
             option != nullptr &&
             (option->type == option_type::Boolean ||
              option->storage == option_storage::WarningLevel);
+
         if (!is_letter_flag || !option_is_available(cxt, *option)) {
           let invalid_option = String{heap_allocator()};
+
           invalid_option += arg[0];
           invalid_option += arg.view().substring_of_length(
               c, utils::decode_utf8(arg.view(), c, 0).length);
           if (!is_letter_flag)
             throw make_error_for_arg(
                 ec, i, StringView{"Unknown option '"} + invalid_option + "'");
+
           let unavailable_error = make_error_for_arg(
               ec, i, StringView{"Unknown option '"} + invalid_option + "'");
+
           unavailable_error.set_command_status(2);
           throw unavailable_error;
         }
+
         let const is_mimicry = option->storage == option_storage::ShellOption &&
                                option->shell_option == shell_option_id::Mimicry;
+
         if (is_mimicry && is_restricted(cxt)) {
           throw make_error_for_arg(
               ec, i, "Changing mimicry is forbidden in a restricted shell");
         }
+
         apply_or_reject_option(cxt, *option, is_enabled, true);
       }
 

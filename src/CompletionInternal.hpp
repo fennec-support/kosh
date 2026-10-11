@@ -75,6 +75,7 @@ fn
 is_in_command_position(StringView line, usize token_start) wontthrow -> bool;
 pure fn
 command_segment_start(StringView line, usize cursor) wontthrow -> usize;
+
 pure fn
 split_path_token(StringView token) wontthrow -> path_token;
 pure fn
@@ -82,7 +83,9 @@ path_candidate_needs_quoting(StringView candidate) wontthrow -> bool;
 fn
 quote_path_candidate(StringView candidate) throws -> String;
 fn
-append_with_quoted_controls(String &candidate, StringView text) throws -> void;
+append_with_quoted_controls(String &candidate, StringView text) throws
+    -> void;
+
 pure fn
 shell_syntax_candidate_is_unchanged(
     StringView                       raw_token,
@@ -93,49 +96,58 @@ fn
 rebuild_shell_syntax_candidate(StringView                       raw_token,
                                const utils::decoded_shell_word &decoded_word,
                                StringView decoded_candidate,
-                               bool should_quote_words = true) throws -> String;
+                               bool       should_quote_words = true) throws
+    -> String;
+
 fn
-resolve_listing_directory(StringView                      directory_part,
-                          const Path                     &base_directory,
-                          EvalContext                    &context,
-                          const utils::leading_expansion &leading) throws
-    -> Path;
+resolve_listing_directory(
+    StringView                      directory_part,
+    const Path                     &base_directory,
+    EvalContext                    &context,
+    const utils::leading_expansion &leading) throws -> Path;
+
 fn
 command_word_of(StringView line) wontthrow -> StringView;
 pure fn
 token_has_glob_metacharacter(StringView token) wontthrow -> bool;
 fn
-resolve_completion_alias(StringView command, EvalContext &context) throws
-    -> String;
+resolve_completion_alias(StringView   command,
+                         EvalContext &context) throws -> String;
 fn
-resolve_completion_command(StringView command, EvalContext &context) throws
-    -> String;
+resolve_completion_command(StringView   command,
+                           EvalContext &context) throws -> String;
+
 fn
-split_completion_words(StringView line, usize cursor, usize &cword) throws
+split_completion_words(StringView line,
+                       usize      cursor,
+                       usize     &cword) throws -> ArrayList<String>;
+
+fn
+best_tier_matches(StringView                   token,
+                  const ArrayList<StringView> &names) throws
     -> ArrayList<String>;
-fn
-best_tier_matches(StringView token, const ArrayList<StringView> &names) throws
-    -> ArrayList<String>;
+
 pure fn
 word_is_function_name(StringView word) wontthrow -> bool;
 pure fn
 word_defines_function(StringView line, usize word_end, usize end) wontthrow
     -> bool;
 fn
-advance_shell_keyword_state(StringView                       word,
-                            usize                            frame_depth,
-                            completion::shell_lexical_state &state) throws
-    -> Maybe<bool>;
+advance_shell_keyword_state(
+    StringView                       word,
+    usize                            frame_depth,
+    completion::shell_lexical_state &state) throws -> Maybe<bool>;
+
 fn
-scan_highlight_range(StringView                 line,
-                     usize                      begin,
-                     usize                      end,
-                     EvalContext               &context,
-                     ArrayList<highlight_span> &spans,
-                     HashSet                   &line_variable_names,
-                     HashSet                   &function_names,
-                     bool should_stop_at_closing_parenthesis = false) throws
-    -> usize;
+scan_highlight_range(
+    StringView                 line,
+    usize                      begin,
+    usize                      end,
+    EvalContext               &context,
+    ArrayList<highlight_span> &spans,
+    HashSet                   &line_variable_names,
+    HashSet                   &function_names,
+    bool should_stop_at_closing_parenthesis = false) throws -> usize;
 
 fn
 second_word_of(StringView line) wontthrow -> Maybe<StringView>;
@@ -143,7 +155,9 @@ fn
 manpage_text_for(StringView page_name, EvalContext &context) throws
     -> StringView;
 fn
-help_text_of(StringView command, EvalContext &context) throws -> StringView;
+help_text_of(StringView command, EvalContext &context) throws
+    -> StringView;
+
 fn
 complete_from_man_subcommands(StringView                  line,
                               StringView                  token,
@@ -182,11 +196,12 @@ complete_from_process_arguments(StringView                  line,
                                 completion::completion_mode mode) throws
     -> Maybe<ArrayList<String>>;
 fn
-complete_from_tools_with_targets(StringView                  line,
-                                 StringView                  token,
-                                 usize                       token_start,
-                                 EvalContext                &context,
-                                 completion::completion_mode mode) throws
+complete_from_tools_with_targets(
+    StringView                  line,
+    StringView                  token,
+    usize                       token_start,
+    EvalContext                &context,
+    completion::completion_mode mode) throws
     -> Maybe<ArrayList<String>>;
 fn
 complete_from_builtin_flags(StringView                  line,
@@ -214,6 +229,7 @@ complete_from_initial_word_spec(StringView                  line,
                                 completion::completion_mode mode,
                                 u32                        &option_mask) throws
     -> Maybe<ArrayList<String>>;
+
 struct completion_command_range
 {
   usize start;
@@ -229,19 +245,19 @@ struct shell_lexical_scan_target
 };
 
 fn
-advance_shell_lexical_state(StringView                       source,
-                            usize                            end,
-                            completion::shell_lexical_state &state,
-                            shell_lexical_scan_target *target = nullptr) throws
-    -> void;
+advance_shell_lexical_state(
+    StringView                       source,
+    usize                            end,
+    completion::shell_lexical_state &state,
+    shell_lexical_scan_target       *target = nullptr) throws -> void;
 
 fn
 command_substitution_range(StringView line, usize cursor) throws
     -> completion_command_range;
 
 fn
-collect_case_pattern_ends(StringView line, ArrayList<usize> &positions) throws
-    -> void;
+collect_case_pattern_ends(StringView        line,
+                          ArrayList<usize> &positions) throws -> void;
 
 } /* namespace completion::internal */
 

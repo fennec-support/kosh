@@ -97,8 +97,10 @@ Read::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   }
 
   let read_fd = ec.in_fd.value_or(KOSH_STDIN);
+
   if (FLAG_READ_FD.is_set()) {
     let const parsed = FLAG_READ_FD.value().to<i64>();
+
     if (parsed.is_error() || parsed.value() < 0 || parsed.value() > INT32_MAX) {
       report_soft_builtin_error(ec, cxt, FLAG_READ_FD.value_location(),
                                 FLAG_READ_FD.value() +
@@ -106,18 +108,22 @@ Read::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
       return 1;
     }
+
     read_fd = os::descriptor_from_fd_number(parsed.value());
   }
 
   i64 timeout_nanos = -1;
+
   if (FLAG_READ_TIMEOUT.is_set()) {
     let const parsed =
         utils::parse_timeout_seconds_to_nanos(FLAG_READ_TIMEOUT.value());
+
     if (parsed.is_error()) {
       let timeout_arg_index = usize{1};
 
       for (usize k = 1; k < ec.args().count(); k++) {
         let const &a = ec.args()[k];
+
         if (a == "-t" || (a.length() > 2 && a[0] == '-' && a[1] == 't')) {
           timeout_arg_index = a == "-t" ? k + 1 : k;
           break;
@@ -131,6 +137,7 @@ Read::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
       return 1;
     }
+
     timeout_nanos = parsed.value();
   }
 
@@ -145,20 +152,24 @@ Read::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                                  : (UINT64_MAX - start_nanos < duration_nanos
                                         ? UINT64_MAX
                                         : start_nanos + duration_nanos);
-  let const do_read_byte   = [&](char &byte) -> Maybe<usize> {
+
+  let const do_read_byte = [&](char &byte) -> Maybe<usize> {
     if (deadline_nanos != 0) {
       let const now_nanos = os::monotonic_nanos();
+
       if (now_nanos >= deadline_nanos) {
         was_timed_out = true;
 
         return koshka::None;
       }
+
       let const remaining_nanos_unsigned = deadline_nanos - now_nanos;
       let const remaining_nanos          = static_cast<i64>(
           remaining_nanos_unsigned > static_cast<u64>(INT64_MAX)
               ? INT64_MAX
               : remaining_nanos_unsigned);
       let const readable = os::wait_for_fd_readable(read_fd, remaining_nanos);
+
       if (readable != 1) {
         was_timed_out = readable == 0;
 
@@ -172,6 +183,7 @@ Read::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let terminal_echo = os::TerminalEchoGuard{
       read_fd, FLAG_READ_SILENT.is_enabled() ? os::terminal_echo_mode::Disable
                                              : os::terminal_echo_mode::Keep};
+
   if (!terminal_echo.did_succeed()) {
     report_soft_builtin_error(ec, cxt,
                               "Unable to disable terminal echo: " +
@@ -189,6 +201,7 @@ Read::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   if (FLAG_READ_QUERY.is_enabled()) {
     char      answer = 0;
     let const got    = do_read_byte(answer);
+
     if (!got.has_value() || *got == 0) {
       return was_timed_out ? 142 : 1;
     }
@@ -209,10 +222,12 @@ Read::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   LOG(Debug, "read reading into '%s'",
       has_operands ? names[1].c_str() : "REPLY");
+
   const usize  first_operand = 1;
   let const    operand_count = has_operands ? names.count() - first_operand : 1;
   const String reply_name    = "REPLY";
-  let const    do_operand_name = [&](usize index) -> const String    &{
+
+  let const do_operand_name = [&](usize index) -> const String & {
     if (!has_operands) return reply_name;
     ASSERT(first_operand + index < names.count());
 
@@ -228,10 +243,12 @@ Read::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let const is_exact_count = FLAG_READ_EXACT_NCHARS.is_set();
   let const has_byte_limit = is_exact_count || FLAG_READ_NCHARS.is_set();
   i64       max_byte_count = 0;
+
   if (has_byte_limit) {
     let const &count_flag =
         is_exact_count ? FLAG_READ_EXACT_NCHARS : FLAG_READ_NCHARS;
     let const parsed = count_flag.value().to<i64>();
+
     if (parsed.is_error() || parsed.value() < 0) {
       report_soft_builtin_error(ec, cxt, count_flag.value_location(),
                                 count_flag.value() + ": invalid byte count");
@@ -255,6 +272,7 @@ Read::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     while (output_count < max_byte_count) {
       char      byte = 0;
       let const got  = do_read_byte(byte);
+
       if (!got.has_value() || *got == 0) {
         break;
       }
@@ -262,6 +280,7 @@ Read::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       if (should_process_escapes && byte == '\\') {
         char      escaped_byte = 0;
         let const got_escaped  = do_read_byte(escaped_byte);
+
         if (!got_escaped.has_value() || *got_escaped == 0) {
           break;
         }
@@ -289,13 +308,17 @@ Read::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   } else {
     let read_line_result = utils::read_line_from_fd(
         read_fd, delimiter, deadline_nanos, cxt.scratch_allocator());
+
     was_newline_terminated = read_line_result.was_delimiter_terminated;
     was_timed_out          = read_line_result.was_timed_out;
-    let read_line          = steal(read_line_result.line);
+
+    let read_line = steal(read_line_result.line);
+
     if (read_line.has_value()) {
       was_read_successful = true;
 
       let accumulated = steal(*read_line);
+
       if (should_process_escapes) {
         let const do_trailing_backslash_count = [&accumulated]() -> usize {
           usize backslash_count = 0;
@@ -313,11 +336,15 @@ Read::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         while (was_newline_terminated && do_trailing_backslash_count() % 2 == 1)
         {
           accumulated.pop_back();
+
           let continued_result = utils::read_line_from_fd(
               read_fd, delimiter, deadline_nanos, cxt.scratch_allocator());
+
           was_newline_terminated = continued_result.was_delimiter_terminated;
           was_timed_out = was_timed_out || continued_result.was_timed_out;
+
           let continued = steal(continued_result.line);
+
           if (!continued.has_value()) break;
           accumulated.append(continued->view());
         }
@@ -353,11 +380,13 @@ Read::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       cxt.variable_store().has_non_ascii_field_separators() &&
       cxt.get_glob_charset_for(field_separators.view()) == glob_charset::Utf8 &&
       cxt.get_glob_charset_for(line.view()) == glob_charset::Utf8;
+
   let const do_step = [&](usize i) -> usize {
     return is_multibyte ? utils::charset_character_length(line.view(), i,
                                                           glob_charset::Utf8)
                         : 1;
   };
+
   let const do_separator_length = [&](usize i) -> usize {
     if (is_literal_byte[i]) return 0;
     if (!is_multibyte || static_cast<u8>(line[i]) < 0x80) {
@@ -370,6 +399,7 @@ Read::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     for (usize position = 0; position < separators.length;) {
       let const length = utils::charset_character_length(separators, position,
                                                          glob_charset::Utf8);
+
       if (separators.substring_of_length(position, length) == character)
         return character.length;
       position += length;
@@ -377,19 +407,23 @@ Read::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
     return 0;
   };
+
   let const do_is_separator = [&](usize i) {
     return do_separator_length(i) > 0;
   };
+
   let const do_is_ifs_whitespace = [&](usize i) {
     return (line[i] == ' ' || line[i] == '\t' || line[i] == '\n') &&
            do_is_separator(i);
   };
+
   let const do_is_ifs_nonwhitespace = [&](usize i) {
     return do_is_separator(i) && !do_is_ifs_whitespace(i);
   };
 
   let const read_status =
       was_timed_out ? 142 : (was_newline_terminated ? 0 : 1);
+
   if (is_exact_count && !FLAG_READ_ARRAY.is_set()) {
     for (usize i = 0; i < operand_count; i++)
       cxt.set_shell_variable(do_operand_name(i),
@@ -397,12 +431,15 @@ Read::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
     return read_status;
   }
-  usize     cursor                 = 0;
+
+  usize cursor = 0;
+
   let const do_skip_ifs_whitespace = [&]() {
     while (cursor < line.length() && do_is_ifs_whitespace(cursor)) {
       cursor++;
     }
   };
+
   let const do_skip_field = [&]() -> usize {
     let const start = cursor;
 
@@ -412,6 +449,7 @@ Read::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
     return start;
   };
+
   let const do_skip_delimiter = [&]() {
     do_skip_ifs_whitespace();
     if (cursor < line.length() && do_is_ifs_nonwhitespace(cursor)) {
@@ -422,10 +460,12 @@ Read::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   if (FLAG_READ_ARRAY.is_set()) {
     let words = ArrayList<String>{heap_allocator()};
+
     do_skip_ifs_whitespace();
 
     while (cursor < line.length()) {
       let const start = do_skip_field();
+
       words.push(String{line.substring_of_length(start, cursor - start)});
       do_skip_delimiter();
     }
@@ -449,6 +489,7 @@ Read::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       let const field_end   = cursor;
 
       let has_trailing_content = false;
+
       if (cursor < line.length()) {
         if (!do_is_ifs_whitespace(cursor))
           cursor += do_separator_length(cursor);
@@ -457,6 +498,7 @@ Read::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       }
 
       usize end_position = field_end;
+
       if (has_trailing_content) {
         end_position = line.length();
 
@@ -474,6 +516,7 @@ Read::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     }
 
     let const start = do_skip_field();
+
     cxt.set_shell_variable(do_operand_name(i),
                            line.substring_of_length(start, cursor - start));
     do_skip_delimiter();

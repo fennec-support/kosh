@@ -20,30 +20,28 @@ template <class T>
 class CopyOnWrite
 {
 public:
-  explicit CopyOnWrite(Allocator allocator) wontthrow : m_allocator{allocator},
-                                                        m_shared{nullptr}
+  explicit CopyOnWrite(Allocator allocator) wontthrow
+      : m_allocator{allocator}, m_shared{nullptr}
   {}
 
   CopyOnWrite(Allocator allocator, T value) throws
-      : m_allocator{allocator},
-        m_shared{create(allocator, steal(value))}
+      : m_allocator{allocator}, m_shared{create(allocator, steal(value))}
   {}
 
   CopyOnWrite(const CopyOnWrite &other) wontthrow
-      : m_allocator{other.m_allocator},
-        m_shared{other.m_shared}
+      : m_allocator{other.m_allocator}, m_shared{other.m_shared}
   {
     if (m_shared != nullptr) m_shared->reference_count++;
   }
 
-  CopyOnWrite(CopyOnWrite &&other) wontthrow : m_allocator{other.m_allocator},
-                                               m_shared{other.m_shared}
+  CopyOnWrite(CopyOnWrite &&other) wontthrow
+      : m_allocator{other.m_allocator}, m_shared{other.m_shared}
   {
     other.m_shared = nullptr;
   }
 
   fn
-  operator=(const CopyOnWrite &other) wontthrow->CopyOnWrite &
+  operator=(const CopyOnWrite &other) wontthrow -> CopyOnWrite &
   {
     if (m_shared == other.m_shared) return *this;
 
@@ -56,7 +54,7 @@ public:
   }
 
   fn
-  operator=(CopyOnWrite &&other) wontthrow->CopyOnWrite &
+  operator=(CopyOnWrite &&other) wontthrow -> CopyOnWrite &
   {
     if (this == &other) return *this;
 
@@ -108,6 +106,7 @@ public:
   assign(T value) throws -> void
   {
     let *const created = create(m_allocator, steal(value));
+
     release();
     m_shared = created;
   }
@@ -118,6 +117,7 @@ public:
     ASSERT(m_shared != nullptr);
     if (m_shared->reference_count > 1) {
       let *const copy = create(m_allocator, clone_value(m_shared->value));
+
       release();
       m_shared = copy;
     }
@@ -149,6 +149,7 @@ private:
       m_shared->~Shared();
       m_allocator.free_array(m_shared, 1);
     }
+
     m_shared = nullptr;
   }
 

@@ -30,6 +30,7 @@ static fn
 format_filesystem_id(u64 value, Allocator allocator) throws -> String
 {
   let text = String{allocator, "0x"};
+
   text += String::from_in_base(value, false, int_base::hex, allocator).view();
 
   return text;
@@ -39,8 +40,7 @@ fn
 EvilFS::execute(const ExecContext               &ec,
                 EvalContext                     &cxt,
                 const ArrayList<String>         &args,
-                const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+                const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
@@ -64,10 +64,12 @@ EvilFS::execute(const ExecContext               &ec,
   let const allocator    = cxt.scratch_allocator();
   let       output       = String{allocator};
   let const should_color = koshkit_should_color();
+
   if (FLAG_EVILFS_ALL.is_enabled()) {
     usize skipped_permission_count = 0;
     let   skipped_warning          = String{allocator};
     let   table                    = ReportTable{allocator};
+
     table.add_heading("SOURCE");
     table.add_heading("TARGET");
     table.add_heading("VOLUME");
@@ -91,6 +93,7 @@ EvilFS::execute(const ExecContext               &ec,
       let const             is_metadata_available =
           os::stat_filesystem(mount.target.view(), status);
       let metadata_status = String{allocator, "Available"};
+
       if (!is_metadata_available) {
         if (os::last_system_error_is_permission_denied()) {
           skipped_permission_count++;
@@ -110,6 +113,7 @@ EvilFS::execute(const ExecContext               &ec,
       let total_files            = String{allocator, "-"};
       let free_files             = String{allocator, "-"};
       let name_limit             = String{allocator, "-"};
+
       if (is_metadata_available) {
         filesystem_id = format_filesystem_id(status.filesystem_id, allocator);
         type_id       = format_filesystem_id(status.type_id, allocator);
@@ -125,6 +129,7 @@ EvilFS::execute(const ExecContext               &ec,
       }
 
       let cells = ArrayList<report_table_cell_view>{allocator};
+
       cells.push({mount.source.view(), colors::ansi::GREEN});
       cells.push({mount.target.view(), colors::ansi::BOLD_GREEN});
       cells.push({mount.volume_name.is_empty() ? StringView{"-"}
@@ -160,6 +165,7 @@ EvilFS::execute(const ExecContext               &ec,
           skipped_permission_count == 1 ? " filesystem" : " filesystems";
       skipped_warning += " due to permission denied.";
     }
+
     ec.print_to_stdout(output);
     if (!skipped_warning.is_empty())
       show_report_warning(skipped_warning.view());
@@ -168,6 +174,7 @@ EvilFS::execute(const ExecContext               &ec,
   }
 
   let table = ReportTable{allocator};
+
   table.add_heading("SOURCE");
   table.add_heading("TARGET");
   table.add_heading("TYPE");
@@ -175,6 +182,7 @@ EvilFS::execute(const ExecContext               &ec,
 
   for (let const &mount : mounts) {
     let cells = ArrayList<report_table_cell_view>{allocator};
+
     cells.push({mount.source.view(), colors::ansi::GREEN});
     cells.push({mount.target.view(), colors::ansi::BOLD_GREEN});
     cells.push({mount.type.view(), colors::ansi::BOLD_MAGENTA});

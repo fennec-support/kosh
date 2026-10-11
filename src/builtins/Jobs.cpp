@@ -48,7 +48,8 @@ enum class jobs_color_mode : u8
 };
 
 fn
-state_color(job::State state, jobs_color_mode color_mode) throws -> StringView
+state_color(job::State state, jobs_color_mode color_mode) throws
+    -> StringView
 {
   if (color_mode == jobs_color_mode::Plain) return StringView{};
   switch (state) {
@@ -88,6 +89,7 @@ Jobs::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   let selected = ArrayList<usize>{cxt.scratch_allocator()};
   i32 status   = 0;
+
   if (names.count() > 1) {
     for (usize a = 1; a < names.count(); a++) {
       if (let const index =
@@ -115,9 +117,11 @@ Jobs::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     if (FLAG_JOBS_RUNNING.is_enabled() && job.state != job::State::Running) {
       continue;
     }
+
     if (FLAG_JOBS_STOPPED.is_enabled() && job.state != job::State::Stopped) {
       continue;
     }
+
     if (FLAG_JOBS_CHANGED.is_enabled() && !job.has_unreported_state_change) {
       continue;
     }

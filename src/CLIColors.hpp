@@ -60,6 +60,7 @@ fn
 stderr_is_a_terminal() wontthrow -> bool;
 fn
 terminal_wants_color(bool is_output_terminal) throws -> bool;
+
 fn
 terminal_supports_styled_underlines() throws -> bool;
 

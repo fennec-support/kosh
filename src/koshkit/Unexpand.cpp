@@ -26,12 +26,14 @@ static fn
 append_unexpanded_blanks(String                 &output,
                          usize                   start_column,
                          usize                   end_column,
-                         const ArrayList<usize> &tab_stops) throws -> void
+                         const ArrayList<usize> &tab_stops) throws
+    -> void
 {
   usize column = start_column;
 
   while (column < end_column) {
     let const target = utils::get_next_tab_column(column, tab_stops);
+
     if (target > column + 1 && target <= end_column) {
       output += '\t';
       column = target;
@@ -46,15 +48,16 @@ fn
 Unexpand::execute(const ExecContext               &ec,
                   EvalContext                     &cxt,
                   const ArrayList<String>         &args,
-                  const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+                  const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   let tab_stops = ArrayList<usize>{cxt.scratch_allocator()};
+
   if (FLAG_UNEXPAND_TABS.is_set()) {
     let const parsed = utils::parse_tab_stop_list(FLAG_UNEXPAND_TABS.value(),
                                                   cxt.scratch_allocator());
+
     if (!parsed.has_value()) {
       KOSHKIT_REPORT_ERROR_AT(
           FLAG_UNEXPAND_TABS.value_location(), "invalid tab list",
@@ -87,17 +90,21 @@ Unexpand::execute(const ExecContext               &ec,
       let const byte = content[position];
       let const should_convert =
           FLAG_UNEXPAND_ALL.is_enabled() || !has_nonblank;
+
       if (should_convert && (byte == ' ' || byte == '\t')) {
         if (!has_pending_blanks) {
           blank_start_column = column;
           has_pending_blanks = true;
         }
+
         if (byte == ' ')
           column++;
         else {
           let const target = utils::get_next_tab_column(column, tab_stops);
-          column           = target == column ? column + 1 : target;
+
+          column = target == column ? column + 1 : target;
         }
+
         continue;
       }
 
@@ -108,6 +115,7 @@ Unexpand::execute(const ExecContext               &ec,
       } else {
         column++;
       }
+
       has_nonblank = true;
     }
 
@@ -115,7 +123,9 @@ Unexpand::execute(const ExecContext               &ec,
   };
 
   static constexpr usize OUTPUT_FLUSH_LENGTH = 64 * 1024;
-  let do_visit_line = [&](StringView line, bool is_terminated) throws -> void {
+
+  let do_visit_line = [&](StringView line,
+                          bool       is_terminated) throws -> void {
     do_append_line(line);
     if (is_terminated) output += '\n';
     if (output.length() >= OUTPUT_FLUSH_LENGTH) {
@@ -127,6 +137,7 @@ Unexpand::execute(const ExecContext               &ec,
   for (let const source : sources) {
     let const outcome =
         visit_source_lines(ec, source, heap_allocator(), do_visit_line);
+
     if (outcome == source_line_outcome::Interrupted) return 130;
     if (outcome == source_line_outcome::Failed) {
       KOSHKIT_REPORT_PATH_ERROR("read", source);

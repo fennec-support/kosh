@@ -65,6 +65,7 @@ make_entry(u16             id,
            u8              bash_default_value) wontthrow -> option_descriptor
 {
   option_descriptor entry{};
+
   entry.koshconf_name       = koshconf_name;
   entry.set_name            = shape.set_name;
   entry.shopt_name          = shape.shopt_name;
@@ -110,6 +111,7 @@ posix_flag(u16             id,
            bool            is_on) wontthrow -> option_descriptor
 {
   let entry = flag(id, koshconf_name, category, shell_option, shape, is_on);
+
   entry.is_posix_set_option = true;
 
   return entry;
@@ -137,6 +139,7 @@ set_alias(option_text     set_name,
           bool            is_on) wontthrow -> option_descriptor
 {
   option_descriptor entry{};
+
   entry.set_name            = set_name;
   entry.help                = help;
   entry.enum_values         = enum_values(BOOLEAN_VALUE_NAMES);
@@ -1316,6 +1319,7 @@ make_name_entries() wontthrow -> name_entry_table<name_count(Kind)>
 
   for (usize index = 0; index < countof(OPTION_REGISTRY); index++) {
     let const name = name_of(OPTION_REGISTRY[index], Kind);
+
     if (!name.is_empty())
       result.entries[position++] = {PackedStringKey::from_literal(name.data),
                                     static_cast<u8>(index)};
@@ -1353,14 +1357,17 @@ registry_is_valid() wontthrow -> bool
     let const &entry = OPTION_REGISTRY[left];
     let const  is_after_alias =
         left > 0 && OPTION_REGISTRY[left - 1].is_set_alias;
+
     if (entry.is_set_alias) {
       let const is_valid_alias = entry.id == 0 &&
                                  entry.koshconf_name.is_empty() &&
                                  !entry.set_name.is_empty();
+
       if (!is_valid_alias) return false;
 
       continue;
     }
+
     if (is_after_alias) return false;
     if (entry.koshconf_name.is_empty() || entry.id == 0) {
       return false;
@@ -1374,17 +1381,20 @@ registry_is_valid() wontthrow -> bool
     {
       return false;
     }
+
     if (entry.default_value >= 0xff) return false;
     if (entry.storage == option_storage::Variable &&
         entry.variable_name.is_empty())
     {
       return false;
     }
+
     if (entry.storage == option_storage::ShellOption &&
         entry.shell_option == shell_option_id::Count)
     {
       return false;
     }
+
     if (left > 0 && OPTION_REGISTRY[left - 1].id >= entry.id) {
       return false;
     }
@@ -1475,6 +1485,7 @@ make_letter_table() wontthrow -> letter_table
 
   for (usize position = 0; position < countof(OPTION_REGISTRY); position++) {
     let const letter = OPTION_REGISTRY[position].letter;
+
     if (letter != '\0')
       result.positions[static_cast<u8>(letter)] = static_cast<u8>(position);
   }
@@ -1520,6 +1531,7 @@ display_name(const option_descriptor &option, option_origin origin) wontthrow
   if (origin == option_origin::Set && !option.set_name.is_empty()) {
     return option.set_name;
   }
+
   if (origin == option_origin::Shopt && !option.shopt_name.is_empty()) {
     return option.shopt_name;
   }
@@ -1528,10 +1540,11 @@ display_name(const option_descriptor &option, option_origin origin) wontthrow
 }
 
 fn
-read_boolean(const EvalContext &cxt, const option_descriptor &option) throws
-    -> bool
+read_boolean(const EvalContext       &cxt,
+             const option_descriptor &option) throws -> bool
 {
   let const &state = cxt.runtime_state();
+
   switch (option.storage) {
   case option_storage::ShellOption:
     return state.option_is_enabled(option.shell_option);
@@ -1555,6 +1568,7 @@ read_boolean(const EvalContext &cxt, const option_descriptor &option) throws
   case option_storage::SpaceAfterCompletion:
   case option_storage::Variable:             break;
   }
+
   unreachable("A non-boolean option was read as a boolean");
 }
 
@@ -1569,26 +1583,32 @@ write_shell_option(EvalContext             &cxt,
     throw Error{"Unable to drop elevated ids: " +
                 os::last_system_error_message()};
   }
+
   if (option.shell_option == shell_option_id::Ignoreeof) {
     let const value = cxt.get_variable_value("IGNOREEOF");
+
     if (is_enabled && !value.has_value()) {
       cxt.set_shell_variable("IGNOREEOF", "10");
     } else if (!is_enabled && value.has_value()) {
       cxt.disable_ignoreeof();
     }
   }
+
   cxt.runtime_control_store().option_mutations().note(option.shell_option);
   cxt.runtime_state().set_option(option.shell_option, is_enabled);
   switch (option.shell_option) {
   case shell_option_id::Nounset:
     cxt.runtime_state().set_error_unset_set_explicitly(is_enabled);
     break;
+
   case shell_option_id::Pipefail:
     cxt.runtime_state().set_pipefail_set_explicitly(is_enabled);
     break;
+
   case shell_option_id::ExtendedArithmetic:
     cxt.runtime_state().set_extended_arithmetic_set_explicitly(is_enabled);
     break;
+
   default: break;
   }
 }
@@ -1599,6 +1619,7 @@ write_boolean(EvalContext             &cxt,
               bool                     is_enabled) throws -> void
 {
   let &state = cxt.runtime_state();
+
   switch (option.storage) {
   case option_storage::ShellOption:
     write_shell_option(cxt, option, is_enabled);
@@ -1649,6 +1670,7 @@ write_boolean(EvalContext             &cxt,
   case option_storage::SpaceAfterCompletion:
   case option_storage::Variable:             break;
   }
+
   unreachable("A non-boolean option was written as a boolean");
 }
 
@@ -1678,6 +1700,7 @@ pure fn
 find_option_by_id(u16 id) wontthrow -> const option_descriptor *
 {
   if (id > 0xff) return nullptr;
+
   let const position = OPTIONS_BY_ID.positions[id];
 
   return position == 0xff ? nullptr : &OPTION_REGISTRY[position];
@@ -1692,8 +1715,8 @@ find_option_by_set_name(StringView name) wontthrow -> const option_descriptor *
 }
 
 fn
-find_option_by_shopt_name(StringView name) wontthrow
-    -> const option_descriptor *
+find_option_by_shopt_name(StringView name)
+    wontthrow -> const option_descriptor *
 {
   let const position = OPTIONS_BY_SHOPT_NAME.find(name);
 
@@ -1712,6 +1735,7 @@ get_legacy_koshconf_alias(const option_descriptor &option) throws
   }
 
   let alias = String{heap_allocator()};
+
   if (!option.set_name.is_empty()) {
     alias +=
         option.is_posix_set_option ? POSIX_ALIAS_PREFIX : BASH_ALIAS_PREFIX;
@@ -1719,6 +1743,7 @@ get_legacy_koshconf_alias(const option_descriptor &option) throws
 
     return alias;
   }
+
   if (option.shopt_name.is_empty()) return None;
 
   alias += BASH_ALIAS_PREFIX;
@@ -1732,9 +1757,11 @@ find_option_by_koshconf_name(StringView name) wontthrow
     -> const option_descriptor *
 {
   let const position = OPTIONS_BY_KOSHCONF_NAME.find(name);
+
   if (position.has_value()) return &OPTION_REGISTRY[*position];
 
   let const is_posix_alias = name.starts_with(POSIX_ALIAS_PREFIX);
+
   if (!is_posix_alias && !name.starts_with(BASH_ALIAS_PREFIX)) {
     return nullptr;
   }
@@ -1742,12 +1769,15 @@ find_option_by_koshconf_name(StringView name) wontthrow
   let const spelling = name.substring(
       is_posix_alias ? POSIX_ALIAS_PREFIX.count() : BASH_ALIAS_PREFIX.count());
   let const *found = find_option_by_set_name(spelling);
+
   if (found != nullptr && found->is_posix_set_option != is_posix_alias) {
     return nullptr;
   }
+
   if (found == nullptr && !is_posix_alias) {
     found = find_option_by_shopt_name(spelling);
   }
+
   if (found == nullptr) return nullptr;
 
   if (found->is_set_alias) {
@@ -1777,6 +1807,7 @@ pure fn
 shopt_option_index(StringView name) wontthrow -> Maybe<u8>
 {
   let const index = SHOPT_STORAGE.find_index(name);
+
   if (!index.has_value()) return None;
 
   return Maybe<u8>{static_cast<u8>(*index)};
@@ -1841,6 +1872,7 @@ read_option_number(const EvalContext       &cxt,
                    const option_descriptor &option) throws -> u32
 {
   let const &state = cxt.runtime_state();
+
   switch (option.storage) {
   case option_storage::Mood: return static_cast<u32>(state.get_mood());
   case option_storage::TabSelector:
@@ -1876,14 +1908,15 @@ format_option_number(const option_descriptor &option, u32 value) throws
 }
 
 fn
-read_option_text(const EvalContext &cxt, const option_descriptor &option) throws
-    -> String
+read_option_text(const EvalContext       &cxt,
+                 const option_descriptor &option) throws -> String
 {
   if (option.storage == option_storage::Variable) {
     let value = cxt.get_variable_value(option.variable_name);
 
     return value.has_value() ? steal(*value) : String{heap_allocator()};
   }
+
   if (option.storage == option_storage::InitMoods)
     return String{cxt.startup_store().get_init_moods()};
 
@@ -1891,8 +1924,8 @@ read_option_text(const EvalContext &cxt, const option_descriptor &option) throws
 }
 
 fn
-parse_option_number(const option_descriptor &option, StringView text) throws
-    -> Maybe<u32>
+parse_option_number(const option_descriptor &option,
+                    StringView               text) throws -> Maybe<u32>
 {
   if (option.type == option_type::Boolean) {
     static constexpr static_string_entry<u8> BOOLEAN_SPELLINGS[] = {
@@ -1905,6 +1938,7 @@ parse_option_number(const option_descriptor &option, StringView text) throws
     };
     static constexpr StaticStringMap BOOLEANS{BOOLEAN_SPELLINGS};
     let const                        parsed = BOOLEANS.find(text);
+
     if (!parsed.has_value()) return None;
 
     return Maybe<u32>{*parsed};
@@ -1916,6 +1950,7 @@ parse_option_number(const option_descriptor &option, StringView text) throws
 
   if (option.storage == option_storage::Mood) {
     let const mood = parse_mood_name(text);
+
     if (mood.has_value()) return Maybe<u32>{static_cast<u32>(*mood)};
   }
 
@@ -1927,15 +1962,18 @@ describe_option_values(const option_descriptor &option) throws -> String
 {
   if (option.type == option_type::Boolean)
     return String{"'on', 'off', 'true', 'false', '1', or '0'"};
+
   let description = String{heap_allocator()};
 
   for (u8 value = 0; value < option.enum_values.name_count; value++) {
     let const is_last = value + 1 == option.enum_values.name_count;
+
     if (value > 0 && is_last) {
       description += option.enum_values.name_count == 2 ? " or " : ", or ";
     } else if (value > 0) {
       description += ", ";
     }
+
     description += '\'';
     description += option.enum_values.names[value];
     description += '\'';
@@ -1954,10 +1992,12 @@ write_option_number(EvalContext             &cxt,
     throw Error{StringView{"Unable to change '"} +
                 display_name(option, origin) +
                 "' because it is fixed at shell startup"};
+
   let const is_held_by_kosh_mood =
       option.is_fixed_in_kosh_mood && origin != option_origin::Startup &&
       cxt.runtime_state().get_mood() == mimic_mood::Default &&
       value != option.strict_value;
+
   if (is_held_by_kosh_mood) {
     let error = ErrorWithDetails{
         StringView{"The kosh mood keeps '"} + display_name(option, origin) +
@@ -1966,10 +2006,13 @@ write_option_number(EvalContext             &cxt,
         "it"};
     throw error;
   }
+
   LOG(Info, "setting option '%.*s' to %u",
       static_cast<int>(option.koshconf_name.length), option.koshconf_name.data,
       value);
+
   let &state = cxt.runtime_state();
+
   switch (option.storage) {
   case option_storage::Mood:
     cxt.select_mood(static_cast<mimic_mood>(value));
@@ -2027,6 +2070,7 @@ write_option_text(EvalContext             &cxt,
 
     return;
   }
+
   if (option.storage == option_storage::InitMoods) {
     cxt.startup_store().set_init_moods(text);
 
@@ -2034,6 +2078,7 @@ write_option_text(EvalContext             &cxt,
   }
 
   let const value = parse_option_number(option, text);
+
   if (!value.has_value())
     throw Error{StringView{"Invalid value '"} + text + "' for '" +
                 display_name(option, origin) + "', expected " +

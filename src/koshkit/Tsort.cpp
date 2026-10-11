@@ -30,8 +30,7 @@ fn
 Tsort::execute(const ExecContext               &ec,
                EvalContext                     &cxt,
                const ArrayList<String>         &args,
-               const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+               const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
@@ -39,6 +38,7 @@ Tsort::execute(const ExecContext               &ec,
 
   let const source = operands.is_empty() ? StringView{"-"} : operands[0].view();
   let const content = read_named_or_stdin(ec, source);
+
   if (!content.has_value()) {
     KOSHKIT_REPORT_PATH_ERROR("read", source);
 
@@ -75,13 +75,15 @@ Tsort::execute(const ExecContext               &ec,
     return 1;
   }
 
-  let       vertex_indices  = StringMap<usize>{cxt.scratch_allocator()};
-  let       vertices        = ArrayList<tsort_vertex>{cxt.scratch_allocator()};
+  let vertex_indices = StringMap<usize>{cxt.scratch_allocator()};
+  let vertices       = ArrayList<tsort_vertex>{cxt.scratch_allocator()};
+
   let const do_vertex_index = [&](StringView name) throws -> usize {
     if (let const found = vertex_indices.find(name); found.has_value())
       return *found.value();
 
     let const index = vertices.count();
+
     vertices.push(tsort_vertex{name, ArrayList<usize>{cxt.scratch_allocator()},
                                0, false});
     vertex_indices.set(name, index);
@@ -92,12 +94,14 @@ Tsort::execute(const ExecContext               &ec,
   for (usize token_index = 0; token_index < tokens.count(); token_index += 2) {
     let const from = do_vertex_index(tokens[token_index]);
     let const to   = do_vertex_index(tokens[token_index + 1]);
+
     if (from == to) continue;
 
     vertices[from].outgoing.push(to);
   }
 
   let edge_marks = ArrayList<usize>{cxt.scratch_allocator()};
+
   edge_marks.reserve(vertices.count());
 
   for (usize index = 0; index < vertices.count(); index++)
@@ -105,7 +109,9 @@ Tsort::execute(const ExecContext               &ec,
 
   for (usize from = 0; from < vertices.count(); from++) {
     let deduplicated = ArrayList<usize>{cxt.scratch_allocator()};
+
     deduplicated.reserve(vertices[from].outgoing.count());
+
     let const edge_mark = from + 1;
 
     for (let const to : vertices[from].outgoing) {
@@ -130,6 +136,7 @@ Tsort::execute(const ExecContext               &ec,
   while (ready_position < ready.count()) {
     let const index  = ready[ready_position++];
     let      &vertex = vertices[index];
+
     if (vertex.is_emitted) continue;
 
     vertex.is_emitted = true;
@@ -145,6 +152,7 @@ Tsort::execute(const ExecContext               &ec,
   }
 
   i32 status = 0;
+
   if (emitted_count != vertices.count()) {
     report_soft_koshkit_util_error(ec, cxt, args[0].view(),
                                    "input contains a cycle");

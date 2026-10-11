@@ -38,6 +38,7 @@ cold wontreturn static fn
 fail_conditional_syntax(StringView reason) throws -> void
 {
   ErrorWithDetails error{"Unable to evaluate the [[ ]]", reason};
+
   error.set_command_status(2);
   throw error;
 }
@@ -64,6 +65,7 @@ struct conditional_evaluator
   {
     return pos >= elements.count();
   }
+
   pure fn
   kind_at(usize i) const wontthrow -> Kind
   {
@@ -86,6 +88,7 @@ struct conditional_evaluator
           ->word()
           .to_literal_string();
     }
+
     if (e.word != nullptr) return e.word->raw_string();
 
     return String{heap_allocator()};
@@ -102,14 +105,15 @@ struct conditional_evaluator
         relocate_if_unlocated(err, e.word->source_location());
       }
     }
+
     if (e.word != nullptr) return e.word->raw_string();
 
     return String{heap_allocator()};
   }
 
   fn
-  operand_pattern_masked(const conditional_element &e, Bitset &active) throws
-      -> String
+  operand_pattern_masked(const conditional_element &e,
+                         Bitset                    &active) throws -> String
   {
     if (e.word != nullptr && e.word->kind() == Token::Kind::Word) {
       try {
@@ -119,6 +123,7 @@ struct conditional_evaluator
         relocate_if_unlocated(err, e.word->source_location());
       }
     }
+
     let raw =
         e.word != nullptr ? e.word->raw_string() : String{heap_allocator()};
 
@@ -238,8 +243,9 @@ struct conditional_evaluator
   }
 
   fn
-  regex_match(StringView value, StringView pattern, const Bitset &active) throws
-      -> bool
+  regex_match(StringView    value,
+              StringView    pattern,
+              const Bitset &active) throws -> bool
   {
     if (!os::HAS_REGEX_ENGINE) {
       fail_conditional("Unable to use =~ in the [[ ]]",
@@ -260,6 +266,7 @@ struct conditional_evaluator
         cxt.cached_compiled_regex(escaped_pattern.view());
     let const match = os::execute_regex(
         *compiled, os::regex_execution_options{value, cxt.scratch_allocator()});
+
     LOG(All, "the =~ regex %s the value",
         match.result == os::regex_match_result::Matched ? "matched"
                                                         : "did not match");
@@ -270,12 +277,14 @@ struct conditional_evaluator
 
       return false;
     }
+
     if (match.result == os::regex_match_result::Error) {
       fail_conditional("Unable to match the =~ pattern",
                        match.error_message.view());
     }
 
     let rematch = ArrayList<String>{heap_allocator()};
+
     rematch.reserve(match.spans.count());
 
     for (usize i = 0; i < match.spans.count(); i++) {
@@ -283,8 +292,10 @@ struct conditional_evaluator
         rematch.push(String{heap_allocator()});
         continue;
       }
+
       let const start = static_cast<usize>(match.spans[i].start);
       let const end   = static_cast<usize>(match.spans[i].end);
+
       rematch.push(String{heap_allocator(),
                           value.substring_of_length(start, end - start)});
     }
@@ -307,8 +318,10 @@ struct conditional_evaluator
         let const name      = operand.substring_of_length(0, *bracket);
         let const subscript = operand.substring_of_length(
             *bracket + 1, operand.length - *bracket - 2);
+
         return cxt.array_element_is_set(name, subscript);
       }
+
       if (cxt.is_generated_nameref(operand)) return false;
 
       return cxt.get_variable_value(operand).has_value();
@@ -347,8 +360,10 @@ struct conditional_evaluator
       if (ErrorOr<i64> descriptor = operand.to<i64>(); !descriptor.is_error())
         return os::is_fd_a_tty(
             os::descriptor_from_fd_number(descriptor.value()));
+
       ErrorWithDetails error{"Unable to test '-t " + operand + "'",
                              "The operand is not an integer"};
+
       error.set_command_status(2);
       throw error;
     }
@@ -360,8 +375,9 @@ struct conditional_evaluator
   }
 
   fn
-  eval_binary(StringView left, BinaryOperatorKind op, StringView right) throws
-      -> bool
+  eval_binary(StringView         left,
+              BinaryOperatorKind op,
+              StringView         right) throws -> bool
   {
     switch (op) {
     case BinaryOperatorKind::SameFile:
@@ -373,7 +389,8 @@ struct conditional_evaluator
     default: break;
     }
 
-    let const do_normalize = [&](StringView operand) throws -> StringView {
+    let const do_normalize =
+        [&](StringView operand) throws -> StringView {
       for (usize i = 0; i < operand.length; i++) {
         if (operand[i] != ' ' && operand[i] != '\t') {
           return operand;
@@ -382,8 +399,10 @@ struct conditional_evaluator
 
       return "0";
     };
+
     let const ordering =
         cxt.compare_arithmetic(do_normalize(left), do_normalize(right));
+
     switch (op) {
     case BinaryOperatorKind::ArithmeticEqual:        return ordering == 0;
     case BinaryOperatorKind::ArithmeticNotEqual:     return ordering != 0;
@@ -402,6 +421,7 @@ struct conditional_evaluator
       fail_conditional(
           "The expression ends unexpectedly",
           "A conditional needs an operator or an operand after this point");
+
     const conditional_element &first = elements[pos];
     if (first.kind != Kind::Operand)
       fail_conditional("An operator appears where an operand is expected");
@@ -409,6 +429,7 @@ struct conditional_evaluator
     let const first_literal = operand_literal(first);
 
     let selected_unary_operator = Maybe<UnaryOperatorKind>{};
+
     if (first.is_bare_unquoted)
       selected_unary_operator = unary_operator(first_literal.view());
     if (selected_unary_operator.has_value()) {
@@ -419,6 +440,7 @@ struct conditional_evaluator
 
       pos += 2;
       if (is_skipping) return false;
+
       let const is_existence_test =
           *selected_unary_operator == UnaryOperatorKind::VariableSet;
       let const saved_suppress_unset =
@@ -427,19 +449,20 @@ struct conditional_evaluator
       let const saved_suppress_test_operand =
           cxt.runtime_control_store().is_warning_suppressed(
               suppressible_warning::UnsetTestOperand);
+
       cxt.runtime_control_store().set_warning_suppressed(
           suppressible_warning::UnsetTestOperand, true);
       if (is_existence_test)
         cxt.runtime_control_store().set_warning_suppressed(
             suppressible_warning::UnsetReference, true);
-      defer
-      {
+      defer {
         cxt.runtime_control_store().set_warning_suppressed(
             suppressible_warning::UnsetReference, saved_suppress_unset);
         cxt.runtime_control_store().set_warning_suppressed(
             suppressible_warning::UnsetTestOperand,
             saved_suppress_test_operand);
       };
+
       let const operand = operand_value(elements[pos - 1]);
 
       return eval_unary(*selected_unary_operator, operand.view());
@@ -447,21 +470,25 @@ struct conditional_evaluator
 
     if (pos + 1 < elements.count()) {
       let const next = kind_at(pos + 1);
+
       if (next == Kind::Less || next == Kind::Greater) {
         if (pos + 2 >= elements.count() || kind_at(pos + 2) != Kind::Operand) {
           fail_conditional("An operand is missing after a comparison");
         }
         pos += 3;
         if (is_skipping) return false;
+
         let const left  = operand_value(elements[pos - 3]);
         let const right = operand_value(elements[pos - 1]);
         let const order = os::collate_compare(left, right);
 
         return next == Kind::Less ? order < 0 : order > 0;
       }
+
       if (next == Kind::Operand && elements[pos + 1].is_bare_unquoted) {
         let const op                       = operand_literal(elements[pos + 1]);
         let const selected_binary_operator = binary_operator(op.view());
+
         if (selected_binary_operator.has_value()) {
           if (pos + 2 >= elements.count() || kind_at(pos + 2) != Kind::Operand)
           {
@@ -489,20 +516,22 @@ struct conditional_evaluator
 
             return false;
           }();
+
           let const saved_suppress_test_operand =
               cxt.runtime_control_store().is_warning_suppressed(
                   suppressible_warning::UnsetTestOperand);
+
           if (is_test_operand_op)
             cxt.runtime_control_store().set_warning_suppressed(
                 suppressible_warning::UnsetTestOperand, true);
-          defer
-          {
+          defer {
             cxt.runtime_control_store().set_warning_suppressed(
                 suppressible_warning::UnsetTestOperand,
                 saved_suppress_test_operand);
           };
 
           let const left = operand_value(elements[pos - 3]);
+
           if (*selected_binary_operator == BinaryOperatorKind::PatternEqual ||
               *selected_binary_operator == BinaryOperatorKind::PatternNotEqual)
           {
@@ -513,6 +542,7 @@ struct conditional_evaluator
             let const pattern_extglob     = cxt.runtime_state().is_posix_mode()
                                                 ? extglob_mode::Disabled
                                                 : extglob_mode::Enabled;
+
             if (!is_case_insensitive) {
               let const is_matched = utils::glob_matches(
                   pattern.view(), left.view(), active, 0, pattern_extglob,
@@ -539,19 +569,23 @@ struct conditional_evaluator
                        ? !is_matched
                        : is_matched;
           }
+
           if (*selected_binary_operator == BinaryOperatorKind::Regex) {
             let          active = Bitset{cxt.scratch_allocator()};
             const String pattern =
                 operand_pattern_masked(elements[pos - 1], active);
+
             try {
               return regex_match(left.view(), pattern.view(), active);
             } catch (const Error &err) {
               const conditional_element &operand = elements[pos - 1];
+
               if (operand.word != nullptr)
                 relocate_if_unlocated(err, operand.word->source_location());
               throw;
             }
           }
+
           let const right = operand_value(elements[pos - 1]);
 
           return eval_binary(left.view(), *selected_binary_operator,
@@ -562,6 +596,7 @@ struct conditional_evaluator
 
     pos++;
     if (is_skipping) return false;
+
     let const value = operand_value(elements[pos - 1]);
 
     return !value.is_empty();
@@ -575,12 +610,16 @@ struct conditional_evaluator
 
       return !eval_term();
     }
+
     if (!at_end() && kind_at(pos) == Kind::OpenParen) {
       pos++;
+
       let const is_inner_true = eval_or();
+
       if (at_end() || kind_at(pos) != Kind::CloseParen) {
         throw Error{"Expected ')'"};
       }
+
       pos++;
 
       return is_inner_true;
@@ -596,11 +635,15 @@ struct conditional_evaluator
 
     while (!at_end() && kind_at(pos) == Kind::And) {
       pos++;
-      let const was_skipping            = is_skipping;
-      is_skipping                       = is_skipping || !and_result;
+
+      let const was_skipping = is_skipping;
+
+      is_skipping = is_skipping || !and_result;
+
       let const is_right_hand_side_true = eval_term();
-      is_skipping                       = was_skipping;
-      and_result                        = and_result && is_right_hand_side_true;
+
+      is_skipping = was_skipping;
+      and_result  = and_result && is_right_hand_side_true;
     }
 
     return and_result;
@@ -613,11 +656,15 @@ struct conditional_evaluator
 
     while (!at_end() && kind_at(pos) == Kind::Or) {
       pos++;
-      let const was_skipping            = is_skipping;
-      is_skipping                       = is_skipping || or_result;
+
+      let const was_skipping = is_skipping;
+
+      is_skipping = is_skipping || or_result;
+
       let const is_right_hand_side_true = eval_and();
-      is_skipping                       = was_skipping;
-      or_result                         = or_result || is_right_hand_side_true;
+
+      is_skipping = was_skipping;
+      or_result   = or_result || is_right_hand_side_true;
     }
 
     return or_result;
@@ -634,6 +681,7 @@ EvalContext::cached_compiled_regex(StringView pattern) throws
 {
   let const is_case_insensitive = is_shopt_enabled("nocasematch");
   let       key                 = String{scratch_allocator()};
+
   key.reserve(pattern.length + 1);
   key += is_case_insensitive ? 'i' : 's';
   key += pattern;
@@ -655,13 +703,16 @@ EvalContext::cached_compiled_regex(StringView pattern) throws
 
   LOG(Debug, "regex cache miss, compiling the pattern '%.*s'",
       static_cast<int>(pattern.length), pattern.data);
+
   let const pattern_text = String{scratch_allocator(), pattern};
   let const compiled =
       os::compile_regex(pattern_text.view(),
                         is_case_insensitive ? os::case_sensitivity::Insensitive
                                             : os::case_sensitivity::Sensitive);
+
   if (!compiled.has_value()) {
     let reason = String{scratch_allocator()};
+
     reason += "The regular expression '";
     reason += pattern;
     reason += "' is invalid";
@@ -685,6 +736,7 @@ EvalContext::evaluate_conditional(
 
   let       evaluator           = conditional_evaluator{*this, elements};
   let const is_conditional_true = evaluator.eval_or();
+
   if (!evaluator.at_end()) {
     fail_conditional_syntax(
         "The token '" + evaluator.unexpected_token() +

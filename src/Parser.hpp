@@ -56,14 +56,15 @@ public:
   fn
   construct_ast(ArrayList<String>            &errors,
                 EvalContext                  *context,
-                ArrayList<source_diagnostic> *diagnostic_sink = nullptr) throws
-      -> Expression *;
+                ArrayList<source_diagnostic> *diagnostic_sink =
+                    nullptr) throws -> Expression *;
 
   fn
   construct_next_top_level_ast(
       ArrayList<String>            &errors,
       EvalContext                  *context,
-      ArrayList<source_diagnostic> *diagnostic_sink) throws -> Expression *;
+      ArrayList<source_diagnostic> *diagnostic_sink) throws
+      -> Expression *;
 
   fn
   drop_lexer_peek_cache() wontthrow -> void
@@ -73,16 +74,21 @@ public:
 
   pure fn
   debug_words() const wontthrow -> const ArrayList<Word> &;
+
   fn
-  take_shellcheck_suppressions() throws -> ArrayList<shellcheck_suppression>;
+  take_shellcheck_suppressions() throws
+      -> ArrayList<shellcheck_suppression>;
+
   fn
   take_shellcheck_directive_spans() throws
       -> ArrayList<shellcheck_directive_span>
   {
     return m_lexer.take_shellcheck_directive_spans();
   }
+
   fn
-  take_heredoc_terminator_misses() throws -> ArrayList<heredoc_terminator_miss>
+  take_heredoc_terminator_misses() throws
+      -> ArrayList<heredoc_terminator_miss>
   {
     return m_lexer.take_heredoc_terminator_misses();
   }
@@ -95,24 +101,28 @@ public:
     m_analysis_scope_collection_mode    = mode;
     m_lexer.set_analysis_metadata_collection_mode(mode);
   }
+
   fn
   set_substitution_validation_mode(substitution_validation_mode mode) wontthrow
       -> void
   {
     m_lexer.set_substitution_validation_mode(mode);
   }
+
   fn
   set_error_collection(
       ArrayList<ErrorWithLocationAndDetails> *collection) wontthrow -> void
   {
     m_error_collection = collection;
   }
+
   fn
   set_analysis_scope_collection_mode(
       analysis_metadata_collection_mode mode) wontthrow -> void
   {
     m_analysis_scope_collection_mode = mode;
   }
+
   fn
   take_analysis_scope_definitions() throws
       -> ArrayList<analysis_scope_definition>;
@@ -139,12 +149,13 @@ private:
       heap_allocator()};
 
   fn
-  record_analysis_scope_definition(StringView                     name,
-                                   analysis_scope_definition_kind kind) throws
+  record_analysis_scope_definition(
+      StringView name, analysis_scope_definition_kind kind) throws
       -> void;
   fn
-  record_analysis_alias_definitions(const ArrayList<const Token *> &args) throws
-      -> void;
+  record_analysis_alias_definitions(
+      const ArrayList<const Token *> &args) throws -> void;
+
   mustuse fn
   open_analysis_scope() const wontthrow -> usize;
   fn
@@ -165,11 +176,11 @@ private:
       EvalContext                       *context,
       ArrayList<source_diagnostic>      *diagnostic_sink) throws -> void;
   cold fn
-  record_parse_error(const ErrorWithLocation      &error,
-                     ArrayList<String>            &errors,
-                     EvalContext                  *context,
-                     ArrayList<source_diagnostic> *diagnostic_sink) throws
-      -> void;
+  record_parse_error(
+      const ErrorWithLocation      &error,
+      ArrayList<String>            &errors,
+      EvalContext                  *context,
+      ArrayList<source_diagnostic> *diagnostic_sink) throws -> void;
   cold fn
   record_substitution_errors(
       ArrayList<String>            &errors,
@@ -178,16 +189,18 @@ private:
   cold fn
   record_error(ArrayList<String>            &errors,
                EvalContext                  *context,
-               ArrayList<source_diagnostic> *diagnostic_sink) throws -> void;
-  fn
-  peek_top_level_token(ArrayList<String>            &errors,
-                       EvalContext                  *context,
-                       ArrayList<source_diagnostic> *diagnostic_sink) throws
-      -> Token *;
+               ArrayList<source_diagnostic> *diagnostic_sink) throws
+      -> void;
 
   fn
-  next_token_of_kind(Token::Kind kind, StringView missing_message) throws
-      -> Token *;
+  peek_top_level_token(
+      ArrayList<String>            &errors,
+      EvalContext                  *context,
+      ArrayList<source_diagnostic> *diagnostic_sink) throws -> Token *;
+
+  fn
+  next_token_of_kind(Token::Kind kind,
+                     StringView  missing_message) throws -> Token *;
   fn
   skip_newlines_after_pipe() throws -> void;
   fn
@@ -201,31 +214,32 @@ private:
       Maybe<SourceLocation>               &first_location,
       ArrayList<expressions::Redirection> &out,
       const Token                         *fd_allocation_name_token,
-      redirection_descriptor_spelling      descriptor_spelling) throws -> void;
+      redirection_descriptor_spelling      descriptor_spelling) throws
+      -> void;
 
   fn
-  build_both_streams_redirection(const SourceLocation  &op_location,
-                                 Maybe<SourceLocation> &first_location,
-                                 ArrayList<expressions::Redirection> &out,
-                                 assignment_update_mode update_mode) throws
-      -> void;
+  build_both_streams_redirection(
+      const SourceLocation                &op_location,
+      Maybe<SourceLocation>               &first_location,
+      ArrayList<expressions::Redirection> &out,
+      assignment_update_mode               update_mode) throws -> void;
 
   mustuse fn
   wrap_with_stderr_to_stdout(Command *command) throws -> Command *;
 
   fn
-  build_here_string_redirection(i32                    fd,
-                                const SourceLocation  &op_location,
-                                Maybe<SourceLocation> &first_location,
-                                ArrayList<expressions::Redirection> &out) throws
-      -> void;
+  build_here_string_redirection(
+      i32                                  fd,
+      const SourceLocation                &op_location,
+      Maybe<SourceLocation>               &first_location,
+      ArrayList<expressions::Redirection> &out) throws -> void;
 
   fn
-  build_heredoc_redirection(i32                                  fd,
-                            const SourceLocation                &op_location,
-                            Maybe<SourceLocation>               &first_location,
-                            ArrayList<expressions::Redirection> &out) throws
-      -> void;
+  build_heredoc_redirection(
+      i32                                  fd,
+      const SourceLocation                &op_location,
+      Maybe<SourceLocation>               &first_location,
+      ArrayList<expressions::Redirection> &out) throws -> void;
 
   mustuse fn
   try_parse_descriptor_prefixed_redirection(
@@ -254,7 +268,8 @@ private:
   reject_empty_loop_body(const Expression *body) throws -> void;
   mustuse fn
   parse_loop_body(const SourceLocation &location,
-                  StringView unterminated_message) throws -> parsed_loop_body;
+                  StringView            unterminated_message) throws
+      -> parsed_loop_body;
 
   mustuse fn
   parse_if() throws -> Command *;
@@ -294,14 +309,15 @@ private:
   mustuse fn
   parse_conditional_command() throws -> Command *;
   mustuse fn
-  parse_function_definition(const Token *name_token) throws -> Command *;
+  parse_function_definition(const Token *name_token) throws
+      -> Command *;
 
   mustuse fn
   parse_keyword_function_definition() throws -> Command *;
 
   mustuse fn
-  finish_function_body(const SourceLocation &location, StringView name) throws
-      -> Command *;
+  finish_function_body(const SourceLocation &location,
+                       StringView            name) throws -> Command *;
 
   fn
   consume_bash_array_assignment() throws -> ArrayList<const Token *>;

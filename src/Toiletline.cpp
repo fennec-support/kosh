@@ -172,6 +172,7 @@ struct completion_session
   {
     return context != nullptr;
   }
+
   fn
   run_selector(koshka::completion::completion_result &out_result,
                usize token_codepoint_count) throws -> selector_outcome;
@@ -191,7 +192,8 @@ struct completion_session
   fn
   hint(const char *buffer, size_t cursor) -> const char *;
   fn
-                     idle(const char *buffer, size_t cursor) -> int;
+  idle(const char *buffer, size_t cursor) -> int;
+
   koshka::String     hint_row{koshka::heap_allocator()};
   koshka::String     syntax_checked_line{koshka::heap_allocator()};
   koshka::String     syntax_problem{koshka::heap_allocator()};
@@ -222,7 +224,8 @@ constexpr koshka::StringView DEFAULT_SELECTOR_OPTIONS_WITHOUT_RECORD_FRAMING{
 
 fn
 resolve_selector_program_or_report_why_it_cannot_run(
-    koshka::EvalContext &context) throws -> koshka::ErrorOr<koshka::Path>
+    koshka::EvalContext &context) throws
+    -> koshka::ErrorOr<koshka::Path>
 {
   let const configured = context.get_variable_value(SELECTOR_COMMAND_VARIABLE);
   if (configured.has_value() && configured->is_empty()) {
@@ -237,6 +240,7 @@ resolve_selector_program_or_report_why_it_cannot_run(
       command_name, koshka::ProgramResolver::SearchMode::First,
       koshka::ProgramResolver::Requirement::Execution,
       koshka::ProgramResolver::CachePolicy::ReadOnly);
+
   if (resolved.is_empty()) {
     return koshka::Error{koshka::StringView{"The tab selector '"} +
                          command_name + "' was not found"};
@@ -246,8 +250,8 @@ resolve_selector_program_or_report_why_it_cannot_run(
 }
 
 fn
-selector_failure_note_with_variable_values(koshka::EvalContext &context) throws
-    -> koshka::String
+selector_failure_note_with_variable_values(
+    koshka::EvalContext &context) throws -> koshka::String
 {
   let note = koshka::String{koshka::heap_allocator()};
 
@@ -315,6 +319,7 @@ build_selector_args(koshka::EvalContext &context,
     -> koshka::ArrayList<koshka::String>
 {
   let args = koshka::ArrayList<koshka::String>{koshka::heap_allocator()};
+
   args.push(koshka::String{program.view()});
 
   args.push(koshka::String{"--read0"});
@@ -333,8 +338,8 @@ build_selector_args(koshka::EvalContext &context,
 }
 
 fn
-parse_selector_reply_stripping_descriptions(koshka::StringView reply,
-                                            bool has_descriptions) throws
+parse_selector_reply_stripping_descriptions(
+    koshka::StringView reply, bool has_descriptions) throws
     -> koshka::ArrayList<koshka::String>
 {
   let   selected = koshka::ArrayList<koshka::String>{koshka::heap_allocator()};
@@ -344,8 +349,10 @@ parse_selector_reply_stripping_descriptions(koshka::StringView reply,
     if (i != reply.length && reply[i] != '\0') {
       continue;
     }
+
     if (i > start) {
       let record = reply.substring_of_length(start, i - start);
+
       if (has_descriptions) {
         if (let const tab = record.find_character('\t'); tab.has_value())
           record = record.substring_of_length(0, *tab);
@@ -357,6 +364,7 @@ parse_selector_reply_stripping_descriptions(koshka::StringView reply,
 
       if (!record.is_empty()) selected.push(koshka::String{record});
     }
+
     start = i + 1;
   }
 
@@ -392,6 +400,7 @@ signal_program_group(koshka::os::process child,
                      koshka::StringView  signal_name) throws -> bool
 {
   let const signal_number = koshka::os::signal_number_from_name(signal_name);
+
   if (!signal_number.has_value() ||
       !koshka::os::is_process_signal_supported(*signal_number))
   {
@@ -399,6 +408,7 @@ signal_program_group(koshka::os::process child,
   }
 
   let const group = koshka::os::process_group_of(child);
+
   defer { koshka::os::close_process_reference(group); };
 
   return koshka::os::signal_process(group, *signal_number);
@@ -411,6 +421,7 @@ is_suspension_status(i32 stop_status) throws -> bool
        {koshka::StringView{"TSTP"}, koshka::StringView{"STOP"}})
   {
     let const signal_number = koshka::os::signal_number_from_name(name);
+
     if (signal_number.has_value() && stop_status == 128 + *signal_number) {
       return true;
     }
@@ -427,6 +438,7 @@ continue_stopped_program(koshka::os::process child,
   let const should_continue = !koshka::os::INTERRUPT_REQUESTED &&
                               continue_count < STOPPED_PROGRAM_CONTINUE_LIMIT &&
                               is_suspension_status(stop_status);
+
   if (should_continue && signal_program_group(child, "CONT")) {
     continue_count++;
 
@@ -447,11 +459,11 @@ wait_for_continued_program(koshka::os::process child) throws -> i32
 {
   usize continue_count = 0;
 
-  loop
-  {
+  loop {
     bool      was_stopped = false;
     let const status =
         koshka::os::wait_and_monitor_process(child, &was_stopped);
+
     if (!was_stopped) return status;
     if (!continue_stopped_program(child, status, continue_count)) {
       unused(koshka::os::reap_process_quietly(child));
@@ -462,9 +474,10 @@ wait_for_continued_program(koshka::os::process child) throws -> i32
 }
 
 fn
-read_while_continuing_program(koshka::os::descriptor fd,
-                              koshka::os::process    child,
-                              koshka::Maybe<i32>    &out_exit_status) throws
+read_while_continuing_program(
+    koshka::os::descriptor fd,
+    koshka::os::process    child,
+    koshka::Maybe<i32>    &out_exit_status) throws
     -> koshka::Maybe<koshka::String>
 {
   if (!get_continue_signal().has_value()) {
@@ -475,10 +488,10 @@ read_while_continuing_program(koshka::os::descriptor fd,
   char  buffer[4096];
   usize continue_count = 0;
 
-  loop
-  {
+  loop {
     let const readiness =
         koshka::os::wait_for_fd_readable(fd, STOPPED_PROGRAM_POLL_NANOS);
+
     if (readiness < 0) return koshka::None;
 
     if (readiness == 0) {
@@ -486,6 +499,7 @@ read_while_continuing_program(koshka::os::descriptor fd,
 
       i32       status = 0;
       let const state  = koshka::os::poll_process(child, status);
+
       if (state == koshka::os::process_state::Stopped) {
         if (!continue_stopped_program(child, status, continue_count)) {
           unused(koshka::os::reap_process_quietly(child));
@@ -494,10 +508,12 @@ read_while_continuing_program(koshka::os::descriptor fd,
       } else if (state == koshka::os::process_state::Exited) {
         out_exit_status = status;
       }
+
       continue;
     }
 
     let const read_count = koshka::os::read_fd(fd, buffer, sizeof(buffer));
+
     if (!read_count.has_value()) return koshka::None;
     if (*read_count == 0) return koshka::Maybe<koshka::String>{steal(captured)};
 
@@ -521,10 +537,11 @@ report_selector_failure_above_repainted_prompt(
 }
 
 fn
-run_selector_program(koshka::EvalContext               &context,
-                     koshka::StringView                 input,
-                     bool                               has_descriptions,
-                     koshka::ArrayList<koshka::String> &out_selected) throws
+run_selector_program(
+    koshka::EvalContext               &context,
+    koshka::StringView                 input,
+    bool                               has_descriptions,
+    koshka::ArrayList<koshka::String> &out_selected) throws
     -> selector_outcome
 {
   if (!::itl_g_is_active) return selector_outcome::NotRun;
@@ -533,6 +550,7 @@ run_selector_program(koshka::EvalContext               &context,
 
   let const program =
       resolve_selector_program_or_report_why_it_cannot_run(context);
+
   if (program.is_error()) {
     let const note = selector_failure_note_with_variable_values(context);
     report_selector_failure_above_repainted_prompt(program.error().message(),
@@ -540,12 +558,15 @@ run_selector_program(koshka::EvalContext               &context,
 
     return selector_outcome::NotRun;
   }
+
   let const &selector_program = program.value();
 
   let const input_fd = koshka::os::write_to_temp_file(input);
+
   if (!input_fd.has_value()) return selector_outcome::NotRun;
 
   let const output_pipe = koshka::os::make_pipe();
+
   if (!output_pipe.has_value()) {
     koshka::os::close_fd(*input_fd);
 
@@ -554,8 +575,8 @@ run_selector_program(koshka::EvalContext               &context,
 
   bool is_child_descriptor_pair_owned = true;
   bool is_read_end_open               = true;
-  defer
-  {
+
+  defer {
     if (is_child_descriptor_pair_owned) {
       koshka::os::close_fd(*input_fd);
       koshka::os::close_fd(output_pipe->out);
@@ -570,33 +591,37 @@ run_selector_program(koshka::EvalContext               &context,
       koshka::ResolvedCommand::from_program(
           koshka::Path{selector_program.text()}),
       build_selector_args(context, selector_program), steal(arg_locations));
+
   selector.in_fd  = *input_fd;
   selector.out_fd = output_pipe->out;
 
   koshka::flush();
   if (::tl_begin_external_screen() != TL_SUCCESS)
     return selector_outcome::NotRun;
+
   bool is_editor_suspended = true;
-  defer
-  {
+
+  defer {
     if (is_editor_suspended) unused(::tl_end_external_screen());
   };
 
   is_child_descriptor_pair_owned = false;
-  let const child                = koshka::os::execute_program(
+
+  let const child = koshka::os::execute_program(
       selector, koshka::os::program_execution_options{
-                                   .fallback = koshka::os::script_fallback_policy::Reject,
-                                   .handoff  = koshka::os::terminal_handoff::BeforeStart});
+                    .fallback = koshka::os::script_fallback_policy::Reject,
+                    .handoff  = koshka::os::terminal_handoff::BeforeStart});
 
   bool is_terminal_lent = true;
-  defer
-  {
+
+  defer {
     if (is_terminal_lent) koshka::os::reclaim_controlling_terminal();
   };
 
   koshka::Maybe<i32> exit_status = koshka::None;
   let const          captured =
       read_while_continuing_program(output_pipe->in, child, exit_status);
+
   koshka::os::close_fd(output_pipe->in);
   is_read_end_open = false;
 
@@ -616,6 +641,7 @@ run_selector_program(koshka::EvalContext               &context,
     }
 
     let const note = selector_failure_note_with_variable_values(context);
+
     report_selector_failure_above_repainted_prompt(
         koshka::StringView{"The tab selector '"} + selector_program.view() +
             "' exited with status " +
@@ -654,6 +680,7 @@ completion_session::run_selector(koshka::completion::completion_result &result,
   let const outcome = run_selector_program(
       *context, build_nul_separated_selector_input(result).view(),
       result.descriptions.count() > 0, selected);
+
   if (outcome != selector_outcome::Selected) return outcome;
 
   let replacement = koshka::String{koshka::heap_allocator()};
@@ -697,6 +724,7 @@ completion_session::select_history(const char *const *entries,
     let selected = koshka::ArrayList<koshka::String>{koshka::heap_allocator()};
     let const outcome =
         run_selector_program(*context, input.view(), false, selected);
+
     if (outcome == selector_outcome::NotRun) return 0;
     if (outcome == selector_outcome::Dismissed) return -1;
     if (selected.is_empty()) return 0;
@@ -734,10 +762,12 @@ get_line_editor_words(koshka::EvalContext &context) throws
     }
 
     let words = context.expand_wordlist_to_fields(value->view(), false);
+
     if (!words.is_empty()) return words;
   }
 
   let words = koshka::ArrayList<koshka::String>{koshka::heap_allocator()};
+
   words.push(koshka::String{"vi"});
 
   return words;
@@ -756,6 +786,7 @@ run_line_editor(koshka::EvalContext &context,
       words[0].view(), koshka::ProgramResolver::SearchMode::First,
       koshka::ProgramResolver::Requirement::Execution,
       koshka::ProgramResolver::CachePolicy::ReadOnly);
+
   if (resolved.is_empty()) {
     report_selector_failure_above_repainted_prompt(
         koshka::StringView{"The editor '"} + words[0].view() +
@@ -767,11 +798,15 @@ run_line_editor(koshka::EvalContext &context,
 
   let const temp_path = koshka::os::write_to_named_temp_file(
       koshka::Path::temp_directory(), "kosh-edit", line);
+
   if (!temp_path.has_value()) return false;
-  defer { unused(koshka::os::remove_file(temp_path->text().view())); };
+  defer {
+    unused(koshka::os::remove_file(temp_path->text().view()));
+  };
 
   let const program = koshka::Path{resolved[0].text()};
-  words[0]          = koshka::String{program.view()};
+
+  words[0] = koshka::String{program.view()};
   words.push(koshka::String{temp_path->text().view()});
 
   let arg_locations =
@@ -783,9 +818,10 @@ run_line_editor(koshka::EvalContext &context,
 
   koshka::flush();
   if (::tl_begin_external_screen() != TL_SUCCESS) return false;
+
   bool is_editor_suspended = true;
-  defer
-  {
+
+  defer {
     if (is_editor_suspended) unused(::tl_end_external_screen());
   };
 
@@ -793,12 +829,15 @@ run_line_editor(koshka::EvalContext &context,
       editor, koshka::os::program_execution_options{
                   .fallback = koshka::os::script_fallback_policy::Reject,
                   .handoff  = koshka::os::terminal_handoff::BeforeStart});
+
   bool is_terminal_lent = true;
-  defer
-  {
+
+  defer {
     if (is_terminal_lent) koshka::os::reclaim_controlling_terminal();
   };
+
   let const status = wait_for_continued_program(child);
+
   koshka::os::reclaim_controlling_terminal();
   is_terminal_lent                = false;
   koshka::os::INTERRUPT_REQUESTED = 0;
@@ -817,6 +856,7 @@ run_line_editor(koshka::EvalContext &context,
   }
 
   let edited = temp_path->read_entire_file();
+
   if (!edited.has_value()) return false;
 
   edited->normalize_crlf_line_endings();
@@ -865,23 +905,26 @@ completion_session::complete(const char    *buffer,
 
   try {
     let const is_explicit_completion = is_for_listing != 0;
-    has_pending_gather               = false;
+
+    has_pending_gather = false;
+
     let const deferral =
         koshka::completion::ScopedDocumentationDeferral{is_explicit_completion};
+
     if (is_explicit_completion) {
       context->program_resolver().begin_explicit_completion(
           koshka::ProgramResolver::CompletionRefresh::Listings);
     }
-    defer
-    {
+
+    defer {
       if (is_explicit_completion)
         context->program_resolver().end_explicit_completion();
     };
 
     let const has_signal_keys_lent_to_completion_spec =
         is_explicit_completion && ::tl_set_signal_keys(1) == TL_SUCCESS;
-    defer
-    {
+
+    defer {
       if (has_signal_keys_lent_to_completion_spec)
         unused(::tl_set_signal_keys(0));
       koshka::os::INTERRUPT_REQUESTED = 0;
@@ -902,6 +945,7 @@ completion_session::complete(const char    *buffer,
         is_for_listing != 0 ? koshka::completion::completion_mode::Listing
                             : koshka::completion::completion_mode::Ghost);
     let const &completions = *result;
+
     koshka::arm_message_leading_newline(false);
 
     if (koshka::os::INTERRUPT_REQUESTED) return 0;
@@ -993,6 +1037,7 @@ completion_session::highlight(const char *buffer, tl_highlight *out) -> int
 
     if (!has_highlighted_spans || highlighted_line.view() != line) {
       let const result = koshka::completion::highlight_line(line, *context);
+
       highlighted_line.clear();
       highlighted_line.append(line);
       highlighted_spans.clear();
@@ -1014,6 +1059,7 @@ completion_session::highlight(const char *buffer, tl_highlight *out) -> int
     usize range_starts[2] = {0, 0};
     usize range_ends[2]   = {0, 0};
     usize range_count     = 0;
+
     if (bracket.has_value() && !emphasis.is_empty()) {
       range_starts[0] = bracket->open_start;
       range_ends[0]   = bracket->open_end;
@@ -1021,18 +1067,21 @@ completion_session::highlight(const char *buffer, tl_highlight *out) -> int
       range_ends[1]   = bracket->close_end;
       range_count     = 2;
     }
+
     bracket_style_count = 0;
 
-    size_t    filled             = 0;
-    usize     byte_position      = 0;
-    usize     codepoint_position = 0;
-    let const do_advance         = [&](usize target) -> void {
+    size_t filled             = 0;
+    usize  byte_position      = 0;
+    usize  codepoint_position = 0;
+
+    let const do_advance = [&](usize target) -> void {
       while (byte_position < target) {
         if ((static_cast<unsigned char>(buffer[byte_position]) & 0xC0) != 0x80)
           codepoint_position++;
         byte_position++;
       }
     };
+
     let const do_push = [&](usize start, usize end, const char *sgr) -> void {
       if (start >= end || sgr == nullptr || filled >= out->capacity) {
         return;
@@ -1045,11 +1094,14 @@ completion_session::highlight(const char *buffer, tl_highlight *out) -> int
       out->spans[filled].sgr = sgr;
       filled++;
     };
+
     let const do_emphasize = [&](koshka::StringView style) -> const char * {
       let const fallback = style.is_empty() ? nullptr : style.data;
+
       if (bracket_style_count == countof(bracket_styles)) return fallback;
 
       let &slot = bracket_styles[bracket_style_count];
+
       if (style.length + emphasis.length >= sizeof(slot)) return fallback;
 
       if (!style.is_empty()) std::memcpy(slot, style.data, style.length);
@@ -1059,7 +1111,9 @@ completion_session::highlight(const char *buffer, tl_highlight *out) -> int
 
       return slot;
     };
-    usize     range_index    = 0;
+
+    usize range_index = 0;
+
     let const do_push_styled = [&](usize start, usize end,
                                    koshka::StringView style) -> void {
       let const sgr = style.is_empty() ? nullptr : style.data;
@@ -1080,6 +1134,7 @@ completion_session::highlight(const char *buffer, tl_highlight *out) -> int
                                     : start;
         let const piece_end =
             range_ends[range_index] < end ? range_ends[range_index] : end;
+
         do_push(start, piece_start, sgr);
         do_push(piece_start, piece_end, do_emphasize(style));
         start = piece_end;
@@ -1125,6 +1180,7 @@ kosh_wake_callback(int phase) -> int
       {
         return 0;
       }
+
       WAKE_NOTIFICATION_STASH =
           JOB_CONTEXT->job_table_store().format_done_job_notifications(
               "\r\n", JOB_CONTEXT->runtime_state().is_posix_option_on());
@@ -1132,6 +1188,7 @@ kosh_wake_callback(int phase) -> int
 
       return WAKE_NOTIFICATION_STASH.is_empty() ? 0 : 1;
     }
+
     koshka::print_error(WAKE_NOTIFICATION_STASH.view());
     koshka::flush();
     WAKE_NOTIFICATION_STASH.clear();
@@ -1172,9 +1229,11 @@ completion_session::hint(const char *buffer, size_t cursor) -> const char *
   try {
     let const byte_length = std::strlen(buffer);
     let const line        = koshka::StringView{buffer, byte_length};
+
     if (should_show_diagnostics) {
       let const mood                  = context->runtime_state().get_mood();
       let const is_cursor_at_line_end = cursor == byte_length;
+
       if (!has_syntax_checked_line || syntax_checked_line.view() != line ||
           syntax_checked_mood != mood ||
           was_syntax_checked_at_line_end != is_cursor_at_line_end)
@@ -1249,26 +1308,32 @@ completion_session::idle(const char *buffer, size_t cursor) -> int
   try {
     let const line    = koshka::StringView{buffer, std::strlen(buffer)};
     let       outcome = 0;
+
     koshka::completion::warm_cdpath_indexes(*context);
+
     let const should_analyze =
         should_show_diagnostics &&
         (!has_analyzed_line || analyzed_line.view() != line);
+
     if (should_analyze) {
       let const has_previous_finding = !analysis_finding.is_empty();
-      analyzed_line                  = koshka::String{line};
-      has_analyzed_line              = true;
+
+      analyzed_line     = koshka::String{line};
+      has_analyzed_line = true;
       unused(koshka::completion::describe_analysis_finding(line, *context,
                                                            analysis_finding));
       if (has_previous_finding || !analysis_finding.is_empty()) {
         outcome |= TL_IDLE_REFRESH;
       }
     }
+
     if (!should_show_hints && !has_pending_gather) {
       return outcome;
     }
 
     let const progress = koshka::completion::step_idle_documentation(
         line, cursor, *context, !has_pending_gather);
+
     if (progress.did_finish_load) outcome |= TL_IDLE_REFRESH;
     if (progress.is_loading) outcome |= TL_IDLE_AGAIN;
     if (!progress.is_loading) has_pending_gather = false;
@@ -1324,9 +1389,13 @@ resolve_history_path(StringView env_name, StringView default_file)
   {
     return koshka::Path{override_path->view()};
   }
+
   static let const home = koshka::os::get_home_directory();
+
   if (!home.has_value()) return koshka::None;
+
   let path = home->clone();
+
   path.append(default_file);
 
   return path;
@@ -1446,9 +1515,12 @@ provide_history_search_snapshot(const char **out_contents, size_t *out_size)
 
   try {
     let const path = get_history_file_path();
+
     if (!path.has_value()) return 0;
+
     let const parent = path->parent_or_current();
     let       lock   = os::acquire_process_lock(parent.view());
+
     if (!lock.has_value()) return 0;
     defer { os::release_process_lock(lock.take()); };
 
@@ -1456,6 +1528,7 @@ provide_history_search_snapshot(const char **out_contents, size_t *out_size)
          attempt_index++)
     {
       let status_before = os::file_status{};
+
       if (!os::stat_path_following(path->text().view(), status_before)) {
         if (!os::last_system_error_is_missing_file()) return 0;
 
@@ -1467,8 +1540,11 @@ provide_history_search_snapshot(const char **out_contents, size_t *out_size)
       }
 
       let contents = path->read_entire_file();
+
       if (!contents.has_value()) continue;
+
       let status_after = os::file_status{};
+
       if (!os::stat_path_following(path->text().view(), status_after)) continue;
       if (!os::file_status_matches(status_before, status_after)) continue;
       if (!is_history_contents_valid(contents->view())) return 0;
@@ -1578,6 +1654,7 @@ restore_history_snapshot(const history_snapshot &snapshot) -> void
                                 snapshot.encoded_contents.data(),
                                 snapshot.encoded_contents.count());
   }
+
   ::itl_g_history_read_buffer_loaded = snapshot.is_buffer_loaded;
   ::itl_g_history_read_buffer_offset = snapshot.buffer_byte_offset;
   ::itl_g_history_read_buffer_start  = snapshot.buffer_start_byte_offset;
@@ -1598,7 +1675,8 @@ public:
   enter() -> void
   {
     let const did_restore_calc = exchange(m_shell, m_calc);
-    m_is_active                = true;
+
+    m_is_active = true;
 
     if (did_restore_calc) return;
 
@@ -1729,6 +1807,7 @@ append_encoded_records_to_private_branch_as_unwritten(StringView records)
   let const has_unterminated_tail =
       !::itl_g_history_ends_with_newline && !buffered.is_empty();
   usize unterminated_offset = ::itl_g_history_read_buffer_offset;
+
   if (has_unterminated_tail) {
     usize position = 0;
 
@@ -1742,6 +1821,7 @@ append_encoded_records_to_private_branch_as_unwritten(StringView records)
   }
 
   let payload = String{koshka::heap_allocator()};
+
   payload.reserve(records.length + 1);
   if (has_unterminated_tail) payload.push('\n');
   payload.append(records);
@@ -1777,12 +1857,15 @@ fn
 write_history() -> koshka::ErrorOr<koshka::Ok>
 {
   let const path = get_history_file_path();
+
   if (!path.has_value()) return koshka::Error{"the path is unavailable"};
 
   let const parent = path->parent_or_current();
   let       lock   = os::acquire_process_lock(parent.view());
+
   if (!lock.has_value()) return koshka::Error{os::last_system_error_message()};
   defer { os::release_process_lock(lock.take()); };
+
   TRY(ensure_history_loaded(*path, true));
   if (!::itl_history_ensure_read_buffer() && ::itl_g_history_count != 0) {
     return koshka::Error{"the file contains invalid data"};
@@ -1790,6 +1873,7 @@ write_history() -> koshka::ErrorOr<koshka::Ok>
 
   let written         = String{koshka::heap_allocator()};
   let durable_offsets = koshka::ArrayList<usize>{koshka::heap_allocator()};
+
   durable_offsets.reserve(::itl_g_history_count);
   let const private_contents =
       ::itl_g_history_read_buffer == nullptr
@@ -1799,6 +1883,7 @@ write_history() -> koshka::ErrorOr<koshka::Ok>
 
   for (usize index = 0; index < ::itl_g_history_count; index++) {
     let const start_offset = ::itl_history_index_to_offset(index);
+
     if (start_offset < ::itl_g_history_read_buffer_offset)
       return koshka::Error{"the file contains invalid data"};
     let const start_offset_in_buffer =
@@ -1860,6 +1945,7 @@ load_history(const Path &path, bool should_allow_missing)
     if (::tl_history_load(path.c_str()) != TL_SUCCESS) {
       let const history_errno = errno;
       let const was_missing   = !::itl_g_history_file_is_bad;
+
       if (!should_allow_missing || !was_missing) {
         return koshka::Error{history_errno == EINVAL
                                  ? StringView{"the file contains invalid data"}
@@ -1867,6 +1953,7 @@ load_history(const Path &path, bool should_allow_missing)
       }
 
       let status_after = os::file_status{};
+
       if (!os::stat_path_following(path.view(), status_after)) {
         if (os::last_system_error_is_missing_file()) {
           ::itl_history_offsets_reset();
@@ -1885,10 +1972,12 @@ load_history(const Path &path, bool should_allow_missing)
 
         return koshka::Error{os::last_system_error_message()};
       }
+
       continue;
     }
 
     let status_after = os::file_status{};
+
     if (!os::stat_path_following(path.view(), status_after)) continue;
     if (!had_status_before ||
         !os::file_status_matches(status_before, status_after))
@@ -1911,6 +2000,7 @@ sync_history(const Path &path, bool should_allow_missing)
     -> koshka::ErrorOr<koshka::Ok>
 {
   let status = os::file_status{};
+
   if (::itl_g_history_path != nullptr &&
       StringView{::itl_g_history_path} == path.view() &&
       !::itl_g_history_file_is_bad && HISTORY_FILE.has_status &&
@@ -1954,6 +2044,7 @@ fn
 read_history() -> koshka::ErrorOr<koshka::Ok>
 {
   let const path = get_history_file_path();
+
   if (!path.has_value()) return koshka::Error{"the path is unavailable"};
 
   return sync_history(*path, false);
@@ -1963,9 +2054,12 @@ fn
 sync_history() -> koshka::ErrorOr<koshka::Ok>
 {
   let const path = get_history_file_path();
+
   if (!path.has_value()) return koshka::Error{"the path is unavailable"};
+
   let const parent = path->parent_or_current();
   let       lock   = os::acquire_process_lock(parent.view());
+
   if (!lock.has_value()) return koshka::Error{os::last_system_error_message()};
   defer { os::release_process_lock(lock.take()); };
 
@@ -1976,6 +2070,7 @@ fn
 clear_history() -> koshka::ErrorOr<koshka::Ok>
 {
   let const path = get_history_file_path();
+
   if (!path.has_value()) return koshka::Error{"the path is unavailable"};
 
   reset_private_history(*path);
@@ -1987,6 +2082,7 @@ fn
 import_history(StringView contents) -> koshka::ErrorOr<koshka::Ok>
 {
   let const path = get_history_file_path();
+
   if (!path.has_value()) return koshka::Error{"the path is unavailable"};
 
   TRY(ensure_history_loaded(*path, true));
@@ -1995,6 +2091,7 @@ import_history(StringView contents) -> koshka::ErrorOr<koshka::Ok>
   }
 
   let records = String{koshka::heap_allocator(), contents};
+
   if (contents[contents.length - 1] != '\n') records.push('\n');
   if (!append_encoded_records_to_private_branch_as_unwritten(records.view()))
     return koshka::Error{"the file contains invalid data"};
@@ -2006,11 +2103,15 @@ fn
 append_unwritten_history() -> koshka::ErrorOr<koshka::Ok>
 {
   let const path = get_history_file_path();
+
   if (!path.has_value()) return koshka::Error{"the path is unavailable"};
+
   let const parent = path->parent_or_current();
   let       lock   = os::acquire_process_lock(parent.view());
+
   if (!lock.has_value()) return koshka::Error{os::last_system_error_message()};
   defer { os::release_process_lock(lock.take()); };
+
   TRY(ensure_history_loaded(*path, true));
   if (::itl_g_history_count == 0) return koshka::Success;
   if (!::itl_history_ensure_read_buffer())
@@ -2025,6 +2126,7 @@ append_unwritten_history() -> koshka::ErrorOr<koshka::Ok>
 
   for (usize index = 0; index < ::itl_g_history_count; index++) {
     let const slot = (::itl_g_history_head + index) % TL_HISTORY_MAX_SIZE;
+
     if (::itl_g_history_durable_offsets[slot] !=
         UNWRITTEN_HISTORY_RECORD_BYTE_OFFSET)
     {
@@ -2032,6 +2134,7 @@ append_unwritten_history() -> koshka::ErrorOr<koshka::Ok>
     }
 
     let const start_offset = ::itl_g_history_offsets[slot];
+
     if (start_offset < ::itl_g_history_read_buffer_offset)
       return koshka::Error{"the file contains invalid data"};
 
@@ -2039,6 +2142,7 @@ append_unwritten_history() -> koshka::ErrorOr<koshka::Ok>
         start_offset - ::itl_g_history_read_buffer_offset;
     let const end_offset_in_buffer =
         find_history_record_end(buffered, start_offset_in_buffer);
+
     if (!end_offset_in_buffer.has_value())
       return koshka::Error{"the file contains invalid data"};
 
@@ -2054,9 +2158,11 @@ append_unwritten_history() -> koshka::ErrorOr<koshka::Ok>
   let const file_byte_count =
       os::path_file_size(path->text().view()).value_or(0);
   bool should_add_file_separator = false;
+
   if (file_byte_count > 0) {
     let const readable =
         os::open_file_descriptor(path->view(), os::file_open_mode::Read);
+
     if (!readable.has_value())
       return koshka::Error{os::last_system_error_message()};
 
@@ -2068,6 +2174,7 @@ append_unwritten_history() -> koshka::ErrorOr<koshka::Ok>
                                     ? os::read_fd(read_fd, &last_byte, 1)
                                     : koshka::Maybe<usize>{};
     let const was_read = read_byte_count.has_value() && *read_byte_count == 1;
+
     if (!os::close_fd(read_fd) || !was_read) {
       return koshka::Error{os::last_system_error_message()};
     }
@@ -2076,14 +2183,18 @@ append_unwritten_history() -> koshka::ErrorOr<koshka::Ok>
   }
 
   let written = String{koshka::heap_allocator()};
+
   if (should_add_file_separator) written.push('\n');
   written.append(payload.view());
+
   let const opened =
       os::open_file_descriptor(path->view(), os::file_open_mode::Append);
+
   if (!opened.has_value())
     return koshka::Error{os::last_system_error_message()};
 
   let const fd = opened.value();
+
   if (!os::write_all(fd, written.data(), written.count())) {
     let const failure_message = os::last_system_error_message();
     unused(os::close_fd(fd));
@@ -2102,7 +2213,8 @@ append_unwritten_history() -> koshka::ErrorOr<koshka::Ok>
   }
 
   let const previous_tracking = HISTORY_FILE;
-  ::itl_g_history_file_size   = first_byte_offset + payload.count();
+
+  ::itl_g_history_file_size = first_byte_offset + payload.count();
   HISTORY_FILE.note_append(*path, previous_tracking, file_byte_count == 0,
                            ::itl_g_history_file_size);
 
@@ -2131,6 +2243,7 @@ fn
 get_newest_history_event_number() -> koshka::ErrorOr<koshka::Maybe<usize>>
 {
   let const path = get_history_file_path();
+
   if (!path.has_value()) return koshka::Maybe<usize>{koshka::None};
   TRY(ensure_history_loaded(*path, true));
   if (::itl_g_history_count == 0) return koshka::Maybe<usize>{koshka::None};
@@ -2145,6 +2258,7 @@ get_history_events(koshka::Allocator    allocator,
 {
   let       events = koshka::ArrayList<history_event>{allocator};
   let const path   = get_history_file_path();
+
   if (!path.has_value()) return events;
 
   TRY(ensure_history_loaded(*path, true));
@@ -2155,6 +2269,7 @@ get_history_events(koshka::Allocator    allocator,
   let const first_number =
       ::itl_g_history_total_count - ::itl_g_history_count + 1;
   usize first_index = 0;
+
   if (after_event_number.has_value() && *after_event_number >= first_number) {
     first_index = *after_event_number - first_number + 1;
   }
@@ -2163,6 +2278,7 @@ get_history_events(koshka::Allocator    allocator,
 
   for (usize index = first_index; index < ::itl_g_history_count; index++) {
     usize decoded_byte_count = 0;
+
     if (!::itl_history_decode_entry_buffered(
             ::itl_history_index_to_offset(index), decoded, sizeof(decoded),
             &decoded_byte_count))
@@ -2199,18 +2315,22 @@ find_history_event(koshka::Allocator    allocator,
 
   for (usize index = ::itl_g_history_count; index > 0; index--) {
     let const number = first_number + index - 1;
+
     if (before_event_number.has_value() && number >= *before_event_number) {
       continue;
     }
 
     usize decoded_byte_count = 0;
+
     if (!::itl_history_decode_entry_buffered(
             ::itl_history_index_to_offset(index - 1), decoded, sizeof(decoded),
             &decoded_byte_count))
     {
       return koshka::None;
     }
+
     let const command = koshka::StringView{decoded, decoded_byte_count};
+
     if (do_match(number, command))
       return history_event{
           number, koshka::String{allocator, command}
@@ -2227,6 +2347,7 @@ get_relative_history_event(koshka::Allocator    allocator,
     -> koshka::Maybe<history_event>
 {
   if (distance == 0) return koshka::None;
+
   usize remaining_event_count = distance;
 
   return find_history_event(
@@ -2282,6 +2403,7 @@ append_private_history_event(const itl_string_t *entry, StringView command)
 
     char  newest[ITL_STRING_MAX_LEN];
     usize newest_byte_count = 0;
+
     if (::itl_history_decode_entry_buffered(
             ::itl_history_index_to_offset(::itl_g_history_count - 1), newest,
             sizeof(newest), &newest_byte_count) &&
@@ -2294,6 +2416,7 @@ append_private_history_event(const itl_string_t *entry, StringView command)
   }
 
   let record = String{koshka::heap_allocator()};
+
   encode_history_record(record, command);
   if (!append_encoded_records_to_private_branch_as_unwritten(record.view()))
     return koshka::None;
@@ -2311,16 +2434,22 @@ append_history_event(StringView command) -> koshka::Maybe<usize>
   }
 
   let const path = get_active_history_file_path();
+
   if (!path.has_value()) return koshka::None;
+
   let const parent = path->parent_or_current();
   let       lock   = os::acquire_process_lock(parent.view());
+
   if (!lock.has_value()) return koshka::None;
   defer { os::release_process_lock(lock.take()); };
+
   if (ensure_history_loaded(*path, true).is_error()) return koshka::None;
   if (::itl_g_history_limit == 0) return ::itl_g_history_total_count;
 
   itl_string_t *entry = ::itl_string_alloc();
+
   defer { ITL_STRING_FREE(entry); };
+
   if (!::itl_string_from_bytes(entry, command.data, command.length))
     return koshka::None;
 
@@ -2329,6 +2458,7 @@ append_history_event(StringView command) -> koshka::Maybe<usize>
 
   let const was_empty         = ::itl_g_history_total_count == 0;
   let const previous_tracking = HISTORY_FILE;
+
   if (!::itl_history_append_to_file(entry, false, false)) return koshka::None;
   HISTORY_FILE.note_append(*path, previous_tracking, was_empty,
                            ::itl_g_history_file_size);
@@ -2348,6 +2478,7 @@ rewrite_history_event(usize number, StringView expected, StringView replacement)
 {
   let replacements =
       koshka::ArrayList<koshka::String>{koshka::heap_allocator()};
+
   if (!replacement.is_empty())
     replacements.push(koshka::String{koshka::heap_allocator(), replacement});
 
@@ -2361,16 +2492,21 @@ rewrite_history_event(usize                                    number,
     -> bool
 {
   let const path = get_history_file_path();
+
   if (!path.has_value()) return false;
+
   let const parent = path->parent_or_current();
   let       lock   = os::acquire_process_lock(parent.view());
+
   if (!lock.has_value()) return false;
   defer { os::release_process_lock(lock.take()); };
+
   if (ensure_history_loaded(*path, false).is_error()) return false;
   if (::itl_g_history_count == 0) return false;
 
   let const first_number =
       ::itl_g_history_total_count - ::itl_g_history_count + 1;
+
   if (number < first_number || number >= first_number + ::itl_g_history_count) {
     return false;
   }
@@ -2384,18 +2520,23 @@ rewrite_history_event(usize                                    number,
       durable_start_offset != UNWRITTEN_HISTORY_RECORD_BYTE_OFFSET;
   let   contents           = String{koshka::heap_allocator()};
   usize durable_end_offset = durable_start_offset;
+
   if (should_rewrite_file) {
     let read_contents = path->read_entire_file();
+
     if (!read_contents.has_value()) return false;
 
     let current_status = os::file_status{};
+
     if (!os::stat_path_following(path->text().view(), current_status))
       return false;
     if (!HISTORY_FILE.matches_identity(current_status)) return false;
 
     contents = read_contents.take();
+
     let const end_offset =
         find_history_record_end(contents.view(), durable_start_offset);
+
     if (!end_offset.has_value()) return false;
 
     durable_end_offset = *end_offset;
@@ -2412,12 +2553,14 @@ rewrite_history_event(usize                                    number,
       private_start_offset - ::itl_g_history_read_buffer_offset;
   let const private_end_offset =
       find_history_record_end(private_contents, private_start_offset_in_buffer);
+
   if (!private_end_offset.has_value()) return false;
 
   let const private_end_offset_in_buffer = *private_end_offset;
 
   char  decoded[ITL_STRING_MAX_LEN + 1];
   usize decoded_byte_count = 0;
+
   if (!::itl_history_decode_entry_buffered(private_start_offset, decoded,
                                            sizeof(decoded),
                                            &decoded_byte_count) ||
@@ -2437,11 +2580,14 @@ rewrite_history_event(usize                                    number,
   }
 
   let durable_rewritten = koshka::String{koshka::heap_allocator()};
+
   if (should_rewrite_file) {
     let expected_encoded = koshka::String{koshka::heap_allocator()};
     encode_history_record(expected_encoded, expected);
+
     let const durable_record = contents.view().substring_of_length(
         durable_start_offset, durable_end_offset - durable_start_offset);
+
     if (durable_record != expected_encoded.view()) return false;
 
     durable_rewritten.reserve(contents.count() -
@@ -2454,6 +2600,7 @@ rewrite_history_event(usize                                    number,
   }
 
   let private_rewritten = koshka::String{koshka::heap_allocator()};
+
   private_rewritten.reserve(
       private_contents.length -
       (private_end_offset_in_buffer - private_start_offset_in_buffer) +
@@ -2471,12 +2618,14 @@ rewrite_history_event(usize                                    number,
   let const durable_removed_byte_count =
       durable_end_offset - durable_start_offset;
   let const resulting_count = ::itl_g_history_count - 1 + replacements.count();
+
   private_offsets.reserve(resulting_count);
   durable_offsets.reserve(resulting_count);
 
   for (usize old_index = 0; old_index < index; old_index++) {
     let const old_slot =
         (::itl_g_history_head + old_index) % TL_HISTORY_MAX_SIZE;
+
     private_offsets.push(::itl_g_history_offsets[old_slot] -
                          ::itl_g_history_read_buffer_offset);
     durable_offsets.push(::itl_g_history_durable_offsets[old_slot]);
@@ -2498,10 +2647,12 @@ rewrite_history_event(usize                                    number,
     private_offsets.push(
         ::itl_g_history_offsets[old_slot] - ::itl_g_history_read_buffer_offset -
         private_removed_byte_count + encoded_replacements.count());
+
     let const old_durable_offset = ::itl_g_history_durable_offsets[old_slot];
     let const is_durable_offset_moved =
         should_rewrite_file &&
         old_durable_offset != UNWRITTEN_HISTORY_RECORD_BYTE_OFFSET;
+
     durable_offsets.push(is_durable_offset_moved
                              ? old_durable_offset - durable_removed_byte_count +
                                    encoded_replacements.count()
@@ -2567,13 +2718,16 @@ set_title(StringView title) -> void
   let const output = koshka::colors::stdout_is_a_terminal()   ? KOSH_STDOUT
                      : koshka::colors::stderr_is_a_terminal() ? KOSH_STDERR
                                                               : KOSH_INVALID_FD;
+
   if (output == KOSH_INVALID_FD) return;
 
   static constexpr usize MAX_TITLE_LENGTH = 4096;
   let                    sequence         = String{koshka::heap_allocator()};
+
   sequence.reserve(title.count() < MAX_TITLE_LENGTH ? title.count() + 5
                                                     : MAX_TITLE_LENGTH + 5);
   sequence += "\x1b]0;";
+
   bool was_space_appended = false;
 
   for (usize position = 0;
@@ -2581,12 +2735,14 @@ set_title(StringView title) -> void
   {
     let const byte          = title[position];
     let const unsigned_byte = static_cast<unsigned char>(byte);
+
     if (byte == '\t' || byte == '\n' || byte == '\r') {
       if (!was_space_appended) sequence.push(' ');
       was_space_appended = true;
       position++;
       continue;
     }
+
     if (byte == '\x1b' && position + 1 < title.count() &&
         title[position + 1] == '[')
     {
@@ -2603,10 +2759,12 @@ set_title(StringView title) -> void
         continue;
       }
     }
+
     if (unsigned_byte < 0x20 || unsigned_byte == 0x7f) {
       position++;
       continue;
     }
+
     if (unsigned_byte < 0x80) {
       sequence.push(byte);
       was_space_appended = byte == ' ';
@@ -2616,6 +2774,7 @@ set_title(StringView title) -> void
 
     usize codepoint_length = 0;
     u32   codepoint        = 0;
+
     if (unsigned_byte >= 0xc2 && unsigned_byte <= 0xdf) {
       codepoint_length = 2;
       codepoint        = unsigned_byte & 0x1f;
@@ -2626,10 +2785,12 @@ set_title(StringView title) -> void
       codepoint_length = 4;
       codepoint        = unsigned_byte & 0x07;
     }
+
     if (codepoint_length == 0 || position + codepoint_length > title.count()) {
       position++;
       continue;
     }
+
     bool is_valid = true;
 
     for (usize continuation_index = 1; continuation_index < codepoint_length;
@@ -2637,10 +2798,12 @@ set_title(StringView title) -> void
     {
       let const continuation_byte =
           static_cast<unsigned char>(title[position + continuation_index]);
+
       if ((continuation_byte & 0xc0) != 0x80) {
         is_valid = false;
         break;
       }
+
       codepoint = (codepoint << 6) | (continuation_byte & 0x3f);
     }
 
@@ -2649,6 +2812,7 @@ set_title(StringView title) -> void
     let const minimum_codepoint = codepoint_length == 2   ? 0x80u
                                   : codepoint_length == 3 ? 0x800u
                                                           : 0x10000u;
+
     if (!is_valid || codepoint < minimum_codepoint || codepoint > 0x10ffffu ||
         (codepoint >= 0xd800u && codepoint <= 0xdfffu) ||
         (codepoint >= 0x80u && codepoint <= 0x9fu))
@@ -2656,6 +2820,7 @@ set_title(StringView title) -> void
       position++;
       continue;
     }
+
     sequence.append(title.substring_of_length(position, codepoint_length));
     was_space_appended = false;
     position += codepoint_length;
@@ -2666,6 +2831,7 @@ set_title(StringView title) -> void
   static String LAST_TITLE_SEQUENCE{koshka::heap_allocator()};
   static u64    LAST_TITLE_EPOCH = static_cast<u64>(-1);
   let const     current_epoch    = os::get_descriptor_epoch();
+
   if (current_epoch == LAST_TITLE_EPOCH &&
       sequence.view() == LAST_TITLE_SEQUENCE.view())
   {
@@ -2683,6 +2849,7 @@ set_idle_title() -> void
   static const String user      = os::get_current_user().value_or("???");
   let const           directory = Path::current_directory().text();
   let                 title     = String{koshka::heap_allocator()};
+
   title.reserve(user.count() + directory.count() + 3);
   title += user;
   title += " @ ";
@@ -2760,7 +2927,9 @@ set_hint_row(bool should_show_hints, bool should_show_diagnostics) -> void
 {
   COMPLETION_SESSION.should_show_hints       = should_show_hints;
   COMPLETION_SESSION.should_show_diagnostics = should_show_diagnostics;
+
   let const is_row_shown = should_show_hints || should_show_diagnostics;
+
   ::tl_set_hint_callback(is_row_shown ? kosh_hint_callback : nullptr);
   ::tl_set_idle_callback(kosh_idle_callback, IDLE_DELAY_MS, IDLE_REPEAT_MS);
   koshka::completion::set_slow_gather_notice(::tl_show_completion_loading);
@@ -2818,6 +2987,7 @@ initialize() -> void
       kosh_history.has_value())
   {
     let const result = load_history(*kosh_history, true);
+
     if (result.is_error()) {
       koshka::show_message(
           koshka::StringView{"Unable to read the history at '"} +
@@ -2841,34 +3011,44 @@ compact_history_file_from_locked_reread(usize entry_limit) -> bool
   if (!is_history_persistent()) return true;
 
   let const path = get_history_file_path();
+
   if (!path.has_value()) return true;
+
   let const parent = path->parent_or_current();
   let       lock   = os::acquire_process_lock(parent.view());
+
   if (!lock.has_value()) return false;
   defer { os::release_process_lock(lock.take()); };
 
   set_history_limit(entry_limit);
   if (load_history(*path, true).is_error()) return false;
+
   let const retained_entry_limit = ::itl_g_history_limit;
+
   if (entry_limit == 0 || ::itl_g_history_total_count <= entry_limit) {
     return true;
   }
+
   if (entry_limit > retained_entry_limit) return true;
 
   let contents = String{koshka::heap_allocator()};
+
   if (!::itl_history_ensure_read_buffer() && ::itl_g_history_count != 0) {
     return false;
   }
+
   char decoded[ITL_STRING_MAX_LEN + 1];
 
   for (usize index = 0; index < ::itl_g_history_count; index++) {
     usize decoded_byte_count = 0;
+
     if (!::itl_history_decode_entry_buffered(
             ::itl_history_index_to_offset(index), decoded, sizeof(decoded),
             &decoded_byte_count))
     {
       return false;
     }
+
     encode_history_record(contents, StringView{decoded, decoded_byte_count});
   }
 
@@ -2920,6 +3100,7 @@ get_input(const String &prompt,
   let completion_base_directory = koshka::Maybe<Path>{};
   let completion_storage =
       koshka::Maybe<koshka::completion::completion_result>{};
+
   if (is_completion_enabled()) {
     COMPLETION_SESSION.is_highlight_color_enabled =
         colors::stdout_wants_color();
@@ -2939,18 +3120,25 @@ get_input(const String &prompt,
     COMPLETION_SESSION.attach_prompt(&*completion_base_directory,
                                      &*completion_storage);
   }
+
   let const history_path = get_active_history_file_path();
+
   if (history_path.has_value())
     unused(ensure_history_loaded(*history_path, true));
-  ::itl_g_last_history_event_number      = 0;
+  ::itl_g_last_history_event_number = 0;
+
   let const previous_history_total_count = ::itl_g_history_total_count;
   let const was_history_empty            = previous_history_total_count == 0;
   let const previous_history_tracking    = HISTORY_FILE;
-  ::itl_g_tty_changed_size               = 1;
+
+  ::itl_g_tty_changed_size = 1;
+
   i32 code = ::tl_get_input(TL_BUFFER, sizeof(TL_BUFFER), prompt.c_str());
+
   try {
     koshka::completion::abandon_idle_documentation();
   } catch (...) {}
+
   ::tl_set_right_prompt(nullptr);
   ::tl_set_transient_prompt(nullptr);
   if (history_path.has_value() &&
@@ -2959,6 +3147,7 @@ get_input(const String &prompt,
     HISTORY_FILE.note_append(*history_path, previous_history_tracking,
                              was_history_empty, ::itl_g_history_file_size);
   }
+
   COMPLETION_SESSION.detach_prompt();
   if (code == TL_ERROR) {
     throw koshka::ErrorWithDetails{
@@ -2966,6 +3155,7 @@ get_input(const String &prompt,
             koshka::os::last_system_error_message(),
         "Pass `-s` to read stdin without the editor"};
   }
+
   let const history_event_number =
       ::itl_g_last_history_event_number == 0
           ? koshka::Maybe<usize>{koshka::None}
@@ -2997,6 +3187,7 @@ enter_raw_mode() -> void
   {
     return;
   }
+
   throw koshka::ErrorWithDetails{"Toiletline: could not enter raw mode: " +
                                      koshka::os::last_system_error_message(),
                                  "The input is not an interactive terminal"};
@@ -3030,10 +3221,12 @@ emit_newlines(StringView buffer) -> void
 static constexpr usize PROMPT_PWD_LENGTH = 24;
 
 static fn
-shorten_path_with_ellipsis(StringView path, usize max_length) throws -> String
+shorten_path_with_ellipsis(StringView path, usize max_length) throws
+    -> String
 {
   if (path.length <= max_length) return String{path};
   if (max_length < 3) return String{path};
+
   usize tail_start = path.length - max_length + 3;
 
   while (tail_start < path.length &&
@@ -3043,6 +3236,7 @@ shorten_path_with_ellipsis(StringView path, usize max_length) throws -> String
   }
 
   let shortened = String{koshka::heap_allocator()};
+
   shortened += "...";
   shortened += StringView{path.data + tail_start, path.length - tail_start};
 
@@ -3067,8 +3261,11 @@ static fn
 format_prompt_duration(u64 nanos) throws -> String
 {
   const u64 milliseconds = nanos / 1000000ULL;
+
   if (milliseconds < 5) return String{koshka::heap_allocator()};
+
   let out = String{koshka::heap_allocator()};
+
   if (milliseconds < 1000) {
     out.append(
         String::from(static_cast<i64>(milliseconds), koshka::heap_allocator()));
@@ -3085,6 +3282,7 @@ prompt_strftime(const char *format) throws -> String
 {
   std::time_t now   = std::time(nullptr);
   std::tm    *local = std::localtime(&now);
+
   if (local == nullptr) return String{koshka::heap_allocator()};
   char  buffer[128];
   usize written = std::strftime(buffer, sizeof(buffer), format, local);
@@ -3100,6 +3298,7 @@ prompt_hostname(bool should_use_full_hostname) throws -> String
   String host = os::get_hostname().value_or(
       os::get_environment_variable("HOSTNAME").value_or("localhost"));
   if (should_use_full_hostname) return host;
+
   let const dot = host.view().find_character('.');
 
   return String{
@@ -3111,9 +3310,11 @@ collapse_home_prefix(StringView path) throws -> String
 {
   let         shown = String{path};
   Maybe<Path> home  = os::get_home_directory();
+
   if (!home.has_value()) return shown;
 
   let const home_length = home->count();
+
   if (shown.starts_with(home->text()) &&
       (shown.length() == home_length || shown.view()[home_length] == '/'))
   {
@@ -3130,6 +3331,7 @@ static fn
 append_prompt_notation(String &out, u32 value) throws -> void
 {
   static constexpr StringView HEX_DIGITS{"0123456789abcdef"};
+
   if (value < 0x80) {
     out.push('^');
     out.push(static_cast<char>(value ^ 0x40));
@@ -3143,8 +3345,9 @@ append_prompt_notation(String &out, u32 value) throws -> void
 }
 
 static fn
-append_prompt_value(String &out, StringView value, bool should_quote) throws
-    -> void
+append_prompt_value(String    &out,
+                    StringView value,
+                    bool       should_quote) throws -> void
 {
   if (!should_quote) {
     out.append(value);
@@ -3156,13 +3359,15 @@ append_prompt_value(String &out, StringView value, bool should_quote) throws
     if (value[i] == '$' || value[i] == '`' || value[i] == '\\') {
       out.push('\\');
     }
+
     out.push(value[i]);
   }
 }
 
 static fn
-append_prompt_data(String &out, StringView data, bool should_quote) throws
-    -> void
+append_prompt_data(String    &out,
+                   StringView data,
+                   bool       should_quote) throws -> void
 {
   static constexpr u32 INVALID_CODEPOINT = 0xffffffffu;
   let                  shown             = String{koshka::heap_allocator()};
@@ -3170,6 +3375,7 @@ append_prompt_data(String &out, StringView data, bool should_quote) throws
 
   while (position < data.length) {
     let const byte = static_cast<u8>(data[position]);
+
     if (byte < 0x20 || byte == 0x7f) {
       append_prompt_notation(shown, byte);
       position++;
@@ -3177,6 +3383,7 @@ append_prompt_data(String &out, StringView data, bool should_quote) throws
     }
 
     let const decoded = utils::decode_utf8(data, position, INVALID_CODEPOINT);
+
     if (decoded.value == INVALID_CODEPOINT) {
       append_prompt_notation(shown, byte);
     } else if (decoded.value >= 0x80 && decoded.value < 0xa0) {
@@ -3215,10 +3422,12 @@ prompt_version(EvalContext &context, bool is_full) throws -> String
 {
   let const versinfo =
       context.variable_store().indexed_arrays().find("BASH_VERSINFO");
+
   if (versinfo.has_value() && versinfo->count() >= 3 &&
       context.get_variable_value("BASH_VERSION").has_value())
   {
     let version = String{(*versinfo.value())[0].view()};
+
     version += '.';
     version.append((*versinfo.value())[1].view());
     if (is_full) {
@@ -3241,6 +3450,7 @@ prompt_history_number(EvalContext &context) throws -> usize
   if (!context.execution_store().shell_is_interactive()) return 1;
 
   let const newest = get_newest_history_event_number();
+
   if (newest.is_error() || !newest.value().has_value()) {
     return 1;
   }
@@ -3255,10 +3465,12 @@ expand_prompt_escapes(StringView   prompt,
                       EvalContext &context,
                       bool         should_quote) throws -> String
 {
-  let       out             = String{koshka::heap_allocator()};
+  let out = String{koshka::heap_allocator()};
+
   let const do_append_value = [&](StringView value) throws {
     append_prompt_value(out, value, should_quote);
   };
+
   let const do_append_data = [&](StringView data) throws {
     append_prompt_data(out, data, should_quote);
   };
@@ -3268,6 +3480,7 @@ expand_prompt_escapes(StringView   prompt,
       out += prompt[i];
       continue;
     }
+
     u8 escaped = static_cast<u8>(prompt[i + 1]);
 
     if (escaped >= '0' && escaped <= '7') {
@@ -3289,35 +3502,58 @@ expand_prompt_escapes(StringView   prompt,
     i++;
     switch (escaped) {
     case 'u': do_append_data(user); break;
+
     case 'h': do_append_data(prompt_hostname(false).view()); break;
+
     case 'H': do_append_data(prompt_hostname(true).view()); break;
+
     case 'w':
       do_append_data(collapse_home_prefix(working_directory).view());
       break;
+
     case 'W': do_append_data(Path{working_directory}.filename()); break;
+
     case 'P':
       do_append_data(
           shorten_path_with_ellipsis(
               collapse_home_prefix(working_directory).view(), PROMPT_PWD_LENGTH)
               .view());
       break;
+
     case 'g': do_append_data(git_branch().view()); break;
+
     case '$': do_append_value(user == "root" ? "#" : "$"); break;
+
     case 'n': out += '\n'; break;
+
     case 'r': out += '\r'; break;
+
     case 'e': out += '\x1b'; break;
+
     case 'a': out += '\a'; break;
+
     case '[': break;
+
     case ']': break;
+
     case 't': do_append_value(prompt_strftime("%H:%M:%S").view()); break;
+
     case 'T': do_append_value(prompt_strftime("%I:%M:%S").view()); break;
+
     case '@': do_append_value(prompt_strftime("%I:%M %p").view()); break;
+
     case 'A': do_append_value(prompt_strftime("%H:%M").view()); break;
+
     case 'd': do_append_value(prompt_strftime("%a %b %d").view()); break;
+
     case 's': do_append_data(prompt_shell_name(context).view()); break;
+
     case 'v': do_append_data(prompt_version(context, false).view()); break;
+
     case 'V': do_append_data(prompt_version(context, true).view()); break;
+
     case 'l': do_append_data(prompt_terminal_name().view()); break;
+
     case '?': {
       const i32 status           = context.execution_store().last_exit_status();
       let const should_use_color = colors::stdout_wants_color();
@@ -3326,6 +3562,7 @@ expand_prompt_escapes(StringView   prompt,
       out += String::from(status, koshka::heap_allocator());
       if (should_use_color) out += colors::ansi::RESET;
     } break;
+
     case '.': {
       const i32 status           = context.execution_store().last_exit_status();
       let const should_use_color = colors::stdout_wants_color();
@@ -3337,15 +3574,18 @@ expand_prompt_escapes(StringView   prompt,
         out += colors::ansi::RESET;
       }
     } break;
+
     case 'j':
       out += String::from(
           static_cast<i64>(context.job_table_store().jobs().count()),
           koshka::heap_allocator());
       break;
+
     case 'L':
       out += format_prompt_duration(
           context.execution_store().last_command_duration_nanos());
       break;
+
     case 'D': {
       if (i + 1 >= prompt.length || prompt[i + 1] != '{') {
         out += "\\D";
@@ -3364,15 +3604,19 @@ expand_prompt_escapes(StringView   prompt,
       do_append_value(prompt_strftime(format.c_str()).view());
       i = format_start + format_length;
     } break;
+
     case '!':
       out += String::from(prompt_history_number(context),
                           koshka::heap_allocator());
       break;
+
     case '#':
       out += String::from(context.execution_store().get_command_number(),
                           koshka::heap_allocator());
       break;
+
     case '\\': out += '\\'; break;
+
     default:
       out += '\\';
       out += static_cast<char>(escaped);
@@ -3388,6 +3632,7 @@ struct prompt_cache_input
   String        name{koshka::heap_allocator()};
   Maybe<String> value{};
 };
+
 struct prompt_cache
 {
   String prompt_template{koshka::heap_allocator()};
@@ -3443,18 +3688,20 @@ static prompt_cache PROMPT_CACHE{};
 
 static fn
 scan_prompt_template_inputs_or_report_impure(
-    StringView text, koshka::ArrayList<prompt_cache_input> &names) throws
-    -> bool
+    StringView                             text,
+    koshka::ArrayList<prompt_cache_input> &names) throws -> bool
 {
   let const do_is_name_byte = [](char c) {
     return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
            (c >= '0' && c <= '9') || c == '_';
   };
+
   let const do_add_name = [&](StringView name) throws {
     for (let const &known : names)
       if (known.name.view() == name) return;
 
-    let input  = prompt_cache_input{};
+    let input = prompt_cache_input{};
+
     input.name = String{name};
     names.push(steal(input));
   };
@@ -3464,10 +3711,12 @@ scan_prompt_template_inputs_or_report_impure(
     if (byte == '`') return false;
     if (byte != '$') continue;
     if (i + 1 >= text.length) continue;
+
     let const next = text[i + 1];
     if (next == '(') return false;
     if (next == '{') {
       usize j = i + 2;
+
       if (j < text.length && (text[j] == ' ' || text[j] == '\t' ||
                               text[j] == '\n' || text[j] == '|'))
       {
@@ -3476,6 +3725,7 @@ scan_prompt_template_inputs_or_report_impure(
       if (j < text.length && (text[j] == '#' || text[j] == '!')) {
         j++;
       }
+
       usize name_start = j;
 
       while (j < text.length && do_is_name_byte(text[j])) {
@@ -3487,12 +3737,15 @@ scan_prompt_template_inputs_or_report_impure(
       if (j < text.length && text[j] == '=') {
         return false;
       }
+
       if (j + 1 < text.length && text[j] == ':' && text[j + 1] == '=') {
         return false;
       }
+
       i = j - 1;
       continue;
     }
+
     usize j = i + 1;
 
     while (j < text.length && do_is_name_byte(text[j])) {
@@ -3504,6 +3757,7 @@ scan_prompt_template_inputs_or_report_impure(
       i = j - 1;
       continue;
     }
+
     do_add_name(text.substring_of_length(i + 1, 1));
     i++;
   }
@@ -3549,6 +3803,7 @@ get_default_prompt_template() -> String
     template_string += R"($KOSH_GIT_BEHIND})";
     template_string += R"(${KOSH_GIT_BRANCH:+ at }\u@\h \P)";
   }
+
   template_string += R"( \. )";
 
   return template_string;
@@ -3573,6 +3828,7 @@ strip_sgr_color_sequences_only(StringView text) throws -> String
         continue;
       }
     }
+
     out.push(text[i]);
     i++;
   }
@@ -3581,7 +3837,8 @@ strip_sgr_color_sequences_only(StringView text) throws -> String
 }
 
 static fn
-finish_prompt_dropping_width_markers(StringView expanded) throws -> String
+finish_prompt_dropping_width_markers(StringView expanded) throws
+    -> String
 {
   let shown = String{koshka::heap_allocator()};
 
@@ -3602,6 +3859,7 @@ get_cached_user() throws -> const String &
 {
   static String CACHED_USER{koshka::heap_allocator()};
   static bool   was_user_resolved = false;
+
   if (!was_user_resolved) {
     CACHED_USER       = os::get_current_user().value_or("???");
     was_user_resolved = true;
@@ -3628,12 +3886,16 @@ expand_decoded_prompt(EvalContext &context,
 {
   const i32     saved_status = context.execution_store().last_exit_status();
   Maybe<String> expanded     = koshka::None;
+
   try {
     let source_text = String{"$"};
+
     source_text.append(name);
+
     let const source_name = koshka::intern_source_name(source_text.view());
     let const source_location =
         koshka::SourceLocation{0, decoded.length, source_name};
+
     expanded =
         String{context.expand_heredoc_body(decoded, &source_location).view()};
   } catch (const koshka::ErrorBase &error) {
@@ -3643,6 +3905,7 @@ expand_decoded_prompt(EvalContext &context,
         definition.has_value())
       context.print_source_backtrace(definition);
   }
+
   context.execution_store().set_last_exit_status(saved_status);
 
   return expanded;
@@ -3662,7 +3925,8 @@ expand_prompt_variable(EvalContext &context,
 }
 
 fn
-expand_prompt_template(StringView prompt, EvalContext &context) throws -> String
+expand_prompt_template(StringView prompt, EvalContext &context) throws
+    -> String
 {
   let const decoded = decode_prompt(prompt, context, true);
 
@@ -3686,6 +3950,7 @@ build_prompt(EvalContext &context) -> String
       koshka::ArrayList<prompt_cache_input>{koshka::heap_allocator()};
   let const is_cacheable = scan_prompt_template_inputs_or_report_impure(
       decoded.view(), scanned_inputs);
+
   if (is_cacheable && PROMPT_CACHE.matches(decoded.view(), context)) {
     return finish_prompt_dropping_width_markers(PROMPT_CACHE.expansion.view());
   }
@@ -3719,6 +3984,7 @@ build_right_prompt(EvalContext &context) -> String
 {
   for (let const name : {StringView{"RPS1"}, StringView{"RPROMPT"}}) {
     Maybe<String> right_template = context.get_variable_value(name);
+
     if (right_template.has_value() && !right_template->is_empty()) {
       return render_prompt_variable(context, name, right_template->view());
     }
@@ -3732,6 +3998,7 @@ build_transient_prompt(EvalContext &context) -> String
 {
   Maybe<String> transient_template =
       context.get_variable_value("PS1_TRANSIENT");
+
   if (transient_template.has_value() && !transient_template->is_empty()) {
     return render_prompt_variable(context, "PS1_TRANSIENT",
                                   transient_template->view());
@@ -3745,6 +4012,7 @@ fn
 render_ps0(EvalContext &context) -> String
 {
   Maybe<String> ps0 = context.get_variable_value("PS0");
+
   if (!ps0.has_value() || ps0->is_empty()) {
     return String{koshka::heap_allocator()};
   }
@@ -3752,6 +4020,7 @@ render_ps0(EvalContext &context) -> String
   let const     decoded = decode_prompt(ps0->view(), context, true);
   Maybe<String> expanded =
       expand_decoded_prompt(context, "PS0", decoded.view());
+
   if (!expanded.has_value()) return String{koshka::heap_allocator()};
 
   return finish_prompt_dropping_width_markers(expanded->view());
@@ -3793,14 +4062,17 @@ static fn
 append_hex_byte(String &output, unsigned char byte) throws -> void
 {
   static constexpr StringView DIGITS{"0123456789abcdef"};
+
   output.push(DIGITS[byte >> 4]);
   output.push(DIGITS[byte & 0x0f]);
 }
 
 static fn
-append_file_uri_path(String &output, StringView directory) throws -> void
+append_file_uri_path(String &output, StringView directory) throws
+    -> void
 {
   let const is_drive_path = directory.count() >= 2 && directory[1] == ':';
+
   if (is_drive_path || (directory.count() > 0 && directory[0] == '\\')) {
     output.push('/');
   }
@@ -3811,6 +4083,7 @@ append_file_uri_path(String &output, StringView directory) throws -> void
         (byte >= 'a' && byte <= 'z') || (byte >= 'A' && byte <= 'Z') ||
         (byte >= '0' && byte <= '9') || byte == '-' || byte == '.' ||
         byte == '_' || byte == '~' || byte == '/' || byte == ':';
+
     if (is_plain) {
       output.push(static_cast<char>(byte));
     } else if (byte == '\\' && is_drive_path) {
@@ -3830,6 +4103,7 @@ append_uri_host(String &output, StringView host) throws -> void
     let const is_plain =
         (byte >= 'a' && byte <= 'z') || (byte >= 'A' && byte <= 'Z') ||
         (byte >= '0' && byte <= '9') || byte == '-' || byte == '.';
+
     if (is_plain) {
       output.push(static_cast<char>(byte));
     } else {
@@ -3848,6 +4122,7 @@ append_vscode_property(String &output, StringView value) throws -> void
         index + 1 < value.count() ? value[index + 1] : '\0');
     let const is_c1_control =
         byte == 0xc2 && next_byte >= 0x80 && next_byte < 0xa0;
+
     if (byte == '\\') {
       output += "\\\\";
     } else if (is_c1_control) {
@@ -3869,6 +4144,7 @@ emit_command_end_mark(EvalContext &context, i32 exit_status) -> void
   if (!is_shell_integration_enabled(context)) return;
 
   let sequence = String{koshka::heap_allocator()};
+
   sequence += "\x1b]133;D;";
   sequence += String::from(exit_status, koshka::heap_allocator());
   sequence += OSC_END;
@@ -3885,6 +4161,7 @@ emit_prompt_start_marks(EvalContext &context) -> void
   let const host      = os::get_hostname().value_or(String{""});
 
   let sequence = String{koshka::heap_allocator()};
+
   sequence += "\x1b]7;file://";
   append_uri_host(sequence, host.view());
   append_file_uri_path(sequence, directory.view());
@@ -3894,6 +4171,7 @@ emit_prompt_start_marks(EvalContext &context) -> void
     append_vscode_property(sequence, directory.view());
     sequence += OSC_END;
   }
+
   sequence += "\x1b]133;A";
   sequence += OSC_END;
   koshka::print(sequence);
@@ -3915,11 +4193,13 @@ emit_command_start_marks(EvalContext &context, StringView command_line) -> void
   if (!is_shell_integration_enabled(context)) return;
 
   let sequence = String{koshka::heap_allocator()};
+
   if (is_vscode_terminal()) {
     sequence += "\x1b]633;E;";
     append_vscode_property(sequence, command_line);
     sequence += OSC_END;
   }
+
   sequence += "\x1b]133;C";
   sequence += OSC_END;
   koshka::print(sequence);

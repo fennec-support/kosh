@@ -37,6 +37,7 @@ bc_digit_value(char byte) wontthrow -> u32
   if (byte >= '0' && byte <= '9') {
     return static_cast<u32>(byte - '0');
   }
+
   if (byte >= 'A' && byte <= 'F') {
     return static_cast<u32>(byte - 'A' + 10);
   }
@@ -45,7 +46,8 @@ bc_digit_value(char byte) wontthrow -> u32
 }
 
 static fn
-bc_strip_comments(StringView program, Allocator allocator) throws -> String
+bc_strip_comments(StringView program, Allocator allocator) throws
+    -> String
 {
   let  stripped      = String{allocator};
   bool is_in_comment = false;
@@ -63,8 +65,10 @@ bc_strip_comments(StringView program, Allocator allocator) throws -> String
       } else {
         stripped.push(' ');
       }
+
       continue;
     }
+
     if (!is_in_string && program[position] == '/' &&
         position + 1 < program.length && program[position + 1] == '*')
     {
@@ -73,12 +77,14 @@ bc_strip_comments(StringView program, Allocator allocator) throws -> String
       position++;
       continue;
     }
+
     if (!is_in_string && program[position] == '\\' &&
         position + 1 < program.length && program[position + 1] == '\n')
     {
       position++;
       continue;
     }
+
     if (!is_in_string && program[position] == '\\' &&
         position + 2 < program.length && program[position + 1] == '\r' &&
         program[position + 2] == '\n')
@@ -86,6 +92,7 @@ bc_strip_comments(StringView program, Allocator allocator) throws -> String
       position += 2;
       continue;
     }
+
     if (program[position] == '"') is_in_string = !is_in_string;
     stripped.push(program[position]);
   }
@@ -94,16 +101,19 @@ bc_strip_comments(StringView program, Allocator allocator) throws -> String
 }
 
 static fn
-bc_radix_number(StringView number, u32 input_base, Allocator allocator) throws
-    -> String
+bc_radix_number(StringView number,
+                u32        input_base,
+                Allocator  allocator) throws -> String
 {
   if (input_base == 10) return String{allocator, number};
+
   let const point = number.find_character('.');
   let const integer =
       point.has_value() ? number.substring_of_length(0, *point) : number;
   let const fraction =
       point.has_value() ? number.substring(*point + 1) : StringView{};
   let translated = String{allocator, "("};
+
   if (integer.is_empty()) {
     translated += '0';
   } else {
@@ -111,6 +121,7 @@ bc_radix_number(StringView number, u32 input_base, Allocator allocator) throws
     translated += '#';
     translated += integer;
   }
+
   if (!fraction.is_empty()) {
     translated += "+(";
     translated += String::from(input_base, allocator);
@@ -125,6 +136,7 @@ bc_radix_number(StringView number, u32 input_base, Allocator allocator) throws
     translated += String::from(fraction.length, allocator);
     translated += "))";
   }
+
   translated += ')';
 
   return translated;
@@ -151,6 +163,7 @@ bc_translate_expression(StringView   expression,
       SSK("atan"), SSK("cos"), SSK("exp"), SSK("ln"), SSK("sin"), SSK("sqrt"),
   };
   static constexpr StaticStringSet SCALED_FUNCTIONS{SCALED_FUNCTION_ENTRIES};
+
   enum class bc_state_variable : u8
   {
     InputBase,
@@ -163,22 +176,26 @@ bc_translate_expression(StringView   expression,
       {SSK("scale"), bc_state_variable::Scale     },
   };
   static constexpr StaticStringMap STATE_VARIABLES{STATE_ENTRIES};
+
   static constexpr PackedStringKey NATIVE_FUNCTION_ENTRIES[] = {
       SSK("length"),
       SSK("scale"),
       SSK("sqrt"),
   };
   static constexpr StaticStringSet NATIVE_FUNCTIONS{NATIVE_FUNCTION_ENTRIES};
-  let                              translated = String{allocator};
-  usize                            position   = 0;
+
+  let   translated = String{allocator};
+  usize position   = 0;
 
   while (position < expression.length) {
     let const byte = expression[position];
+
     if (byte == '^') {
       translated += "**";
       position++;
       continue;
     }
+
     if ((byte >= '0' && byte <= '9') || (byte >= 'A' && byte <= 'F') ||
         (byte == '.' && position + 1 < expression.length &&
          expression[position + 1] >= '0' && expression[position + 1] <= '9'))
@@ -196,6 +213,7 @@ bc_translate_expression(StringView   expression,
       let const radix_number = bc_radix_number(
           expression.substring_of_length(number_start, position - number_start),
           input_base, allocator);
+
       if (input_base == 10)
         translated += radix_number.view();
       else
@@ -203,6 +221,7 @@ bc_translate_expression(StringView   expression,
             cxt.evaluate_calculator_arithmetic_text(radix_number.view());
       continue;
     }
+
     if (lexer::is_variable_name_start(byte)) {
       let const name_start = position;
 
@@ -227,14 +246,17 @@ bc_translate_expression(StringView   expression,
           next_position < expression.length && expression[next_position] == '(';
       let const state_variable =
           is_function ? Maybe<bc_state_variable>{} : STATE_VARIABLES.find(name);
+
       if (state_variable.has_value()) {
         switch (*state_variable) {
         case bc_state_variable::InputBase:
           translated += String::from(input_base, allocator);
           break;
+
         case bc_state_variable::OutputBase:
           translated += String::from(output_base, allocator);
           break;
+
         case bc_state_variable::Scale:
           translated += String::from(scale, allocator);
           break;
@@ -247,6 +269,7 @@ bc_translate_expression(StringView   expression,
         translated += *math_function;
       } else {
         let variable_name = String{allocator, "__bc_"};
+
         variable_name += name;
         translated += variable_name.view();
         if (!cxt.variable_store()
@@ -261,14 +284,17 @@ bc_translate_expression(StringView   expression,
           cxt.set_shell_variable(variable_name.view(), "0");
         }
       }
+
       continue;
     }
+
     translated.push(byte);
     position++;
   }
 
   let scaled = String{allocator};
-  position   = 0;
+
+  position = 0;
 
   while (position < translated.count()) {
     usize name_end = position;
@@ -281,6 +307,7 @@ bc_translate_expression(StringView   expression,
 
     let const function_name =
         translated.view().substring_of_length(position, name_end - position);
+
     if (name_end < translated.count() && translated[name_end] == '(' &&
         SCALED_FUNCTIONS.contains(function_name))
     {
@@ -305,6 +332,7 @@ bc_translate_expression(StringView   expression,
         continue;
       }
     }
+
     scaled.push(translated[position++]);
   }
 
@@ -336,6 +364,7 @@ bc_is_assignment(StringView statement) wontthrow -> bool
 
   if (position < statement.length && statement[position] == '[') {
     usize depth = 1;
+
     position++;
 
     while (position < statement.length && depth != 0) {
@@ -390,6 +419,7 @@ bc_register_value(StringView statement, StringView name) wontthrow
   if (position >= statement.length || statement[position] != '=') {
     return {};
   }
+
   position++;
 
   return statement.substring(position).trim_blanks();
@@ -404,12 +434,15 @@ bc_parse_register(StringView   value,
 {
   if (value.length == 1) {
     let const digit = bc_digit_value(value[0]);
+
     if (digit != ~u32{0}) return digit;
   }
+
   let const translated = bc_translate_expression(value, input_base, output_base,
                                                  0, false, cxt, allocator);
   let const result = cxt.evaluate_calculator_arithmetic_text(translated.view());
   let const parsed = utils::parse_decimal_u64(result.view());
+
   if (parsed.is_error() || parsed.value() > ~u32{0}) {
     return {};
   }
@@ -431,26 +464,35 @@ bc_format_in_base(StringView   decimal,
                   Allocator    allocator) throws -> String
 {
   if (output_base == 10) return String{allocator, decimal};
+
   bool is_negative = !decimal.is_empty() && decimal[0] == '-';
+
   if (is_negative) decimal = decimal.substring(1);
+
   let const point   = decimal.find_character('.');
   let       integer = String{allocator, point.has_value()
                                             ? decimal.substring_of_length(0, *point)
                                             : decimal};
+
   if (integer.is_empty()) integer += '0';
+
   let reversed = String{allocator};
 
   while (integer.view() != "0") {
     let expression = String{allocator, "("};
+
     expression += integer.view();
     expression += ")%";
     expression += String::from(output_base, allocator);
+
     let const remainder =
         cxt.evaluate_calculator_arithmetic_text(expression.view());
     let const digit = utils::parse_decimal_u64(remainder.view());
+
     if (digit.is_error() || digit.value() >= output_base) {
       throw std::bad_alloc{};
     }
+
     reversed.push(bc_base_digit(static_cast<u32>(digit.value())));
     expression = String{allocator, "("};
     expression += integer.view();
@@ -460,6 +502,7 @@ bc_format_in_base(StringView   decimal,
   }
 
   let formatted = String{allocator};
+
   if (is_negative) formatted += '-';
   if (reversed.is_empty()) {
     formatted += '0';
@@ -469,20 +512,26 @@ bc_format_in_base(StringView   decimal,
   }
 
   if (!point.has_value()) return formatted;
+
   let const fraction_digits = decimal.length - *point - 1;
+
   if (fraction_digits == 0) return formatted;
+
   let const output_digit_count = static_cast<usize>(
       std::ceil(static_cast<double>(fraction_digits) * std::log(10.0) /
                 std::log(static_cast<double>(output_base))));
   let fraction = String{allocator, "0."};
+
   fraction += decimal.substring(*point + 1);
   formatted += '.';
 
   for (usize position = 0; position < output_digit_count; position++) {
     let expression = String{allocator, "("};
+
     expression += fraction.view();
     expression += ")*";
     expression += String::from(output_base, allocator);
+
     let const product =
         cxt.evaluate_calculator_arithmetic_text(expression.view());
     let const product_point = product.find_character('.');
@@ -490,9 +539,11 @@ bc_format_in_base(StringView   decimal,
                                   ? product.substring_of_length(0, *product_point)
                                   : product.view();
     let const digit         = utils::parse_decimal_u64(whole);
+
     if (digit.is_error() || digit.value() >= output_base) {
       throw std::bad_alloc{};
     }
+
     formatted += bc_base_digit(static_cast<u32>(digit.value()));
     fraction = String{allocator, "0"};
     if (product_point.has_value())
@@ -574,8 +625,8 @@ bc_expand_function_calls(StringView         expression,
                          Allocator          allocator) throws -> String;
 
 static fn
-bc_group_nested_assignment(StringView expression, Allocator allocator) throws
-    -> String
+bc_group_nested_assignment(StringView expression,
+                           Allocator  allocator) throws -> String
 {
   usize depth      = 0;
   usize name_start = 0;
@@ -586,12 +637,14 @@ bc_group_nested_assignment(StringView expression, Allocator allocator) throws
       depth++;
       continue;
     }
+
     if ((expression[position] == ')' || expression[position] == ']') &&
         depth != 0)
     {
       depth--;
       continue;
     }
+
     if (depth == 0 && lexer::is_variable_name_start(expression[position])) {
       name_start = position;
 
@@ -605,6 +658,7 @@ bc_group_nested_assignment(StringView expression, Allocator allocator) throws
       position--;
       continue;
     }
+
     if (depth != 0 || position + 1 >= expression.length ||
         expression[position + 1] != '=' ||
         (expression[position] != '+' && expression[position] != '-' &&
@@ -613,6 +667,7 @@ bc_group_nested_assignment(StringView expression, Allocator allocator) throws
     {
       continue;
     }
+
     usize previous = position;
 
     while (previous > 0 && (expression[previous - 1] == ' ' ||
@@ -622,6 +677,7 @@ bc_group_nested_assignment(StringView expression, Allocator allocator) throws
     }
 
     if (previous != name_end) continue;
+
     usize prefix_end = name_start;
 
     while (prefix_end > 0 && (expression[prefix_end - 1] == ' ' ||
@@ -631,8 +687,10 @@ bc_group_nested_assignment(StringView expression, Allocator allocator) throws
     }
 
     if (prefix_end == 0) continue;
+
     let grouped =
         String{allocator, expression.substring_of_length(0, name_start)};
+
     grouped += '(';
     grouped += expression.substring(name_start);
     grouped += ')';
@@ -689,9 +747,11 @@ bc_print_result(String             result,
              result[0] == '-' && result[1] == '0' && result[2] == '.')
   {
     let formatted = String{allocator, "-"};
+
     formatted += result.view().substring(2);
     result = steal(formatted);
   }
+
   constexpr usize OUTPUT_LINE_LENGTH = 68;
   let             output             = String{allocator};
   usize           position           = 0;
@@ -708,8 +768,8 @@ bc_print_result(String             result,
 }
 
 static fn
-bc_find_function(bc_runtime &runtime, StringView name) wontthrow
-    -> bc_function *
+bc_find_function(bc_runtime &runtime, StringView name)
+    wontthrow -> bc_function *
 {
   for (let &function : runtime.functions) {
     if (function.name.view() == name) return &function;
@@ -724,6 +784,7 @@ bc_define_function(StringView  statement,
                    Allocator   allocator) throws -> bool
 {
   if (!statement.starts_with("define")) return false;
+
   usize position = 6;
 
   while (position < statement.length &&
@@ -737,6 +798,7 @@ bc_define_function(StringView  statement,
   {
     return false;
   }
+
   let const name_start = position;
 
   while (position < statement.length &&
@@ -757,6 +819,7 @@ bc_define_function(StringView  statement,
   if (position >= statement.length || statement[position] != '(') {
     return false;
   }
+
   let const parameter_start = ++position;
   usize     depth           = 1;
 
@@ -769,6 +832,7 @@ bc_define_function(StringView  statement,
   }
 
   if (depth != 0) return false;
+
   let const parameters = statement.substring_of_length(
       parameter_start, position - parameter_start - 1);
 
@@ -782,6 +846,7 @@ bc_define_function(StringView  statement,
   if (position >= statement.length || statement[position] != '{') {
     return false;
   }
+
   let const body_start  = ++position;
   usize     brace_depth = 1;
 
@@ -800,21 +865,28 @@ bc_define_function(StringView  statement,
   }
 
   bc_function function{allocator};
-  function.name    = String{allocator, name};
-  function.body    = String{allocator, statement.substring_of_length(
+
+  function.name = String{allocator, name};
+  function.body = String{allocator, statement.substring_of_length(
                                         body_start, position - body_start - 1)};
+
   usize part_start = 0;
 
   for (usize part_end = 0; part_end <= parameters.length; part_end++) {
     if (part_end != parameters.length && parameters[part_end] != ',') {
       continue;
     }
+
     let parameter =
         parameters.substring_of_length(part_start, part_end - part_start)
             .trim_blanks();
+
     part_start = part_end + 1;
+
     if (parameter.is_empty()) continue;
+
     bc_function_parameter parsed{allocator};
+
     if (parameter.length >= 2 && parameter[parameter.length - 2] == '[' &&
         parameter[parameter.length - 1] == ']')
     {
@@ -822,6 +894,7 @@ bc_define_function(StringView  statement,
       parameter =
           parameter.substring_of_length(0, parameter.length - 2).trim_blanks();
     }
+
     if (parameter.is_empty()) return false;
     parsed.name = String{allocator, parameter};
     function.parameters.push(steal(parsed));
@@ -845,6 +918,7 @@ bc_declare_auto(StringView   statement,
   {
     return false;
   }
+
   let const declarations = statement.substring(4);
   usize     part_start   = 0;
 
@@ -852,19 +926,26 @@ bc_declare_auto(StringView   statement,
     if (part_end != declarations.length && declarations[part_end] != ',') {
       continue;
     }
+
     let name =
         declarations.substring_of_length(part_start, part_end - part_start)
             .trim_blanks();
+
     part_start = part_end + 1;
+
     if (name.is_empty()) continue;
+
     bool is_array = false;
+
     if (name.length >= 2 && name[name.length - 2] == '[' &&
         name[name.length - 1] == ']')
     {
       is_array = true;
       name     = name.substring_of_length(0, name.length - 2).trim_blanks();
     }
+
     let translated = String{allocator, "__bc_"};
+
     translated += name;
     cxt.declare_local(translated.view(), true);
     if (is_array)
@@ -884,11 +965,13 @@ bc_evaluate_function_call(StringView         statement,
                           bc_runtime        &runtime) throws -> Maybe<String>
 {
   usize position = 0;
+
   if (statement.is_empty() ||
       !lexer::is_variable_name_start(statement[position]))
   {
     return {};
   }
+
   let const name_start = position;
 
   while (position < statement.length &&
@@ -900,6 +983,7 @@ bc_evaluate_function_call(StringView         statement,
   let const name =
       statement.substring_of_length(name_start, position - name_start);
   let *function = bc_find_function(runtime, name);
+
   if (function == nullptr) return {};
 
   while (position < statement.length &&
@@ -911,6 +995,7 @@ bc_evaluate_function_call(StringView         statement,
   if (position >= statement.length || statement[position] != '(') {
     return {};
   }
+
   let const arguments_start = ++position;
   usize     depth           = 1;
 
@@ -925,11 +1010,13 @@ bc_evaluate_function_call(StringView         statement,
   if (depth != 0 || !statement.substring(position).trim_blanks().is_empty()) {
     return {};
   }
+
   let const arguments_text = statement.substring_of_length(
       arguments_start, position - arguments_start - 1);
   let   arguments  = ArrayList<StringView>{cxt.scratch_allocator()};
   usize part_start = 0;
-  depth            = 0;
+
+  depth = 0;
 
   for (usize part_end = 0; part_end <= arguments_text.length; part_end++) {
     if (part_end != arguments_text.length) {
@@ -942,15 +1029,19 @@ bc_evaluate_function_call(StringView         statement,
         depth--;
       }
     }
+
     if (part_end != arguments_text.length &&
         (arguments_text[part_end] != ',' || depth != 0))
     {
       continue;
     }
+
     let const argument =
         arguments_text.substring_of_length(part_start, part_end - part_start)
             .trim_blanks();
+
     part_start = part_end + 1;
+
     if (!argument.is_empty()) arguments.push(argument);
   }
 
@@ -969,8 +1060,10 @@ bc_evaluate_function_call(StringView         statement,
     bc_function_argument argument{cxt.scratch_allocator()};
     let const            source =
         index < arguments.count() ? arguments[index] : StringView{"0"};
+
     if (function->parameters[index].is_array) {
       let source_name = source;
+
       if (source_name.length >= 2 &&
           source_name[source_name.length - 2] == '[' &&
           source_name[source_name.length - 1] == ']')
@@ -978,7 +1071,9 @@ bc_evaluate_function_call(StringView         statement,
         source_name = source_name.substring_of_length(0, source_name.length - 2)
                           .trim_blanks();
       }
+
       let translated = String{cxt.scratch_allocator(), "__bc_"};
+
       translated += source_name;
       if (let const array =
               cxt.variable_store().indexed_arrays().find(translated.view());
@@ -987,6 +1082,7 @@ bc_evaluate_function_call(StringView         statement,
     } else {
       argument.scalar = bc_evaluate_text(source, cxt, runtime, ec);
     }
+
     prepared.push(steal(argument));
   }
 
@@ -995,6 +1091,7 @@ bc_evaluate_function_call(StringView         statement,
 
   for (usize index = 0; index < function->parameters.count(); index++) {
     let translated = String{cxt.scratch_allocator(), "__bc_"};
+
     translated += function->parameters[index].name.view();
     cxt.declare_local(translated.view(), true);
     if (function->parameters[index].is_array)
@@ -1004,11 +1101,14 @@ bc_evaluate_function_call(StringView         statement,
   }
 
   let saved_return = runtime.return_value.clone();
+
   runtime.return_value.clear();
-  let const body       = function->body.clone();
-  let const flow       = bc_run_program(body.view(), ec, cxt, runtime);
-  let       result     = flow == bc_flow::Return ? runtime.return_value.clone()
-                                                 : String{cxt.scratch_allocator(), "0"};
+
+  let const body   = function->body.clone();
+  let const flow   = bc_run_program(body.view(), ec, cxt, runtime);
+  let       result = flow == bc_flow::Return ? runtime.return_value.clone()
+                                             : String{cxt.scratch_allocator(), "0"};
+
   runtime.return_value = steal(saved_return);
 
   return result;
@@ -1078,6 +1178,7 @@ bc_expand_function_calls(StringView         expression,
     let result = bc_evaluate_function_call(
         expression.substring_of_length(name_start, call_end - name_start), ec,
         cxt, runtime);
+
     if (!result.has_value()) {
       expanded +=
           expression.substring_of_length(name_start, call_end - name_start);
@@ -1086,6 +1187,7 @@ bc_expand_function_calls(StringView         expression,
       expanded += result->view();
       expanded += ')';
     }
+
     position = call_end;
   }
 
@@ -1100,6 +1202,7 @@ bc_try_function_call(StringView         statement,
                      bc_output_mode     output_mode) throws -> bool
 {
   let result = bc_evaluate_function_call(statement, ec, cxt, runtime);
+
   if (!result.has_value()) return false;
   if (output_mode == bc_output_mode::Print)
     bc_print_result(steal(*result), ec, cxt, runtime);
@@ -1115,6 +1218,7 @@ bc_execute_simple(StringView         statement,
                   bc_output_mode     output_mode) throws -> void
 {
   let const allocator = cxt.scratch_allocator();
+
   if (statement.length >= 2 && statement[0] == '"' &&
       statement[statement.length - 1] == '"')
   {
@@ -1124,6 +1228,7 @@ bc_execute_simple(StringView         statement,
 
     return;
   }
+
   if (bc_try_function_call(statement, ec, cxt, runtime, output_mode)) return;
 
   if (let const value = bc_register_value(statement, "ibase");
@@ -1131,6 +1236,7 @@ bc_execute_simple(StringView         statement,
   {
     let const parsed = bc_parse_register(*value, runtime.input_base,
                                          runtime.output_base, cxt, allocator);
+
     if (!parsed.has_value() || *parsed < 2 || *parsed > 16) {
       report_soft_koshkit_util_error(
           ec, cxt, "bc", "invalid ibase",
@@ -1142,11 +1248,13 @@ bc_execute_simple(StringView         statement,
 
     return;
   }
+
   if (let const value = bc_register_value(statement, "obase");
       value.has_value())
   {
     let const parsed = bc_parse_register(*value, runtime.input_base,
                                          runtime.output_base, cxt, allocator);
+
     if (!parsed.has_value() || *parsed < 2 || *parsed > 16) {
       report_soft_koshkit_util_error(
           ec, cxt, "bc", "invalid obase",
@@ -1158,11 +1266,13 @@ bc_execute_simple(StringView         statement,
 
     return;
   }
+
   if (let const value = bc_register_value(statement, "scale");
       value.has_value())
   {
     let const parsed = bc_parse_register(*value, runtime.input_base,
                                          runtime.output_base, cxt, allocator);
+
     if (!parsed.has_value() || *parsed > 100000) {
       report_soft_koshkit_util_error(
           ec, cxt, "bc", "invalid scale",
@@ -1177,9 +1287,11 @@ bc_execute_simple(StringView         statement,
 
   try {
     let result = bc_evaluate_text(statement, cxt, runtime, ec);
+
     if (output_mode != bc_output_mode::Print || bc_is_assignment(statement)) {
       return;
     }
+
     bc_print_result(steal(result), ec, cxt, runtime);
   } catch (const Error &error) {
     report_soft_koshkit_util_error(ec, cxt, "bc", error.to_string());
@@ -1200,6 +1312,7 @@ bc_condition_is_true(StringView         condition,
       expanded.view(), runtime.input_base, runtime.output_base, runtime.scale,
       runtime.has_math_library, cxt, allocator);
   let expression = String{allocator, "("};
+
   expression += translated.view();
   expression += ")!=0";
 
@@ -1214,6 +1327,7 @@ bc_control_parts(StringView  statement,
                  StringView &body) wontthrow -> bool
 {
   if (!statement.starts_with(keyword)) return false;
+
   usize position = keyword.length;
 
   while (position < statement.length &&
@@ -1225,6 +1339,7 @@ bc_control_parts(StringView  statement,
   if (position >= statement.length || statement[position] != '(') {
     return false;
   }
+
   let const header_start = ++position;
   usize     depth        = 1;
 
@@ -1263,16 +1378,19 @@ bc_execute_statement(StringView         statement,
        statement[6] == '('))
   {
     let value = statement.substring(6).trim_blanks();
+
     if (value.length >= 2 && value[0] == '(' && value[value.length - 1] == ')')
     {
       value = value.substring_of_length(1, value.length - 2).trim_blanks();
     }
+
     runtime.return_value = value.is_empty()
                                ? String{cxt.scratch_allocator(), "0"}
                                : bc_evaluate_text(value, cxt, runtime, ec);
 
     return bc_flow::Return;
   }
+
   if (statement.length >= 2 && statement[0] == '{' &&
       statement[statement.length - 1] == '}')
   {
@@ -1283,23 +1401,28 @@ bc_execute_statement(StringView         statement,
 
   StringView header;
   StringView body;
+
   if (bc_control_parts(statement, "if", header, body)) {
     if (!bc_condition_is_true(header, ec, cxt, runtime)) return bc_flow::Normal;
 
     return bc_execute_statement(body, ec, cxt, runtime);
   }
+
   if (bc_control_parts(statement, "while", header, body)) {
     while (bc_condition_is_true(header, ec, cxt, runtime)) {
       let const flow = bc_execute_statement(body, ec, cxt, runtime);
+
       if (flow == bc_flow::Quit || flow == bc_flow::Return) {
         return flow;
       }
+
       if (flow == bc_flow::Break) break;
       if (os::INTERRUPT_REQUESTED) break;
     }
 
     return bc_flow::Normal;
   }
+
   if (bc_control_parts(statement, "for", header, body)) {
     StringView parts[3];
     usize      part_count = 0;
@@ -1314,10 +1437,12 @@ bc_execute_statement(StringView         statement,
           depth--;
         }
       }
+
       if (position != header.length && (header[position] != ';' || depth != 0))
       {
         continue;
       }
+
       if (part_count >= 3) return bc_flow::Normal;
       parts[part_count++] =
           header.substring_of_length(part_start, position - part_start)
@@ -1333,9 +1458,11 @@ bc_execute_statement(StringView         statement,
            bc_condition_is_true(parts[1], ec, cxt, runtime))
     {
       let const flow = bc_execute_statement(body, ec, cxt, runtime);
+
       if (flow == bc_flow::Quit || flow == bc_flow::Return) {
         return flow;
       }
+
       if (flow == bc_flow::Break) break;
       if (!parts[2].is_empty())
         bc_execute_simple(parts[2], ec, cxt, runtime, bc_output_mode::Silent);
@@ -1364,6 +1491,7 @@ bc_run_program(StringView         program,
   for (usize position = 0; position <= program.length; position++) {
     if (position != program.length) {
       let const byte = program[position];
+
       if (byte == '"') is_in_string = !is_in_string;
       if (!is_in_string) {
         if (byte == '(') {
@@ -1376,6 +1504,7 @@ bc_run_program(StringView         program,
           brace_depth--;
         }
       }
+
       if (is_in_string || parenthesis_depth != 0 || brace_depth != 0 ||
           (byte != ';' && byte != '\n'))
       {
@@ -1386,8 +1515,11 @@ bc_run_program(StringView         program,
     let const statement =
         program.substring_of_length(statement_start, position - statement_start)
             .trim_blanks();
+
     statement_start = position + 1;
-    let const flow  = bc_execute_statement(statement, ec, cxt, runtime);
+
+    let const flow = bc_execute_statement(statement, ec, cxt, runtime);
+
     if (flow != bc_flow::Normal) return flow;
   }
 
@@ -1398,7 +1530,8 @@ fn
 Bc::execute(const ExecContext               &ec,
             EvalContext                     &cxt,
             const ArrayList<String>         &args,
-            const ArrayList<SourceLocation> &arg_locations) const throws -> i32
+            const ArrayList<SourceLocation> &arg_locations) const throws
+    -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
@@ -1420,11 +1553,13 @@ Bc::execute(const ExecContext               &ec,
 
         return true;
       });
+
   if (visit == source_visit_result::Interrupted) return 130;
   if (visit == source_visit_result::Stopped) return 1;
   program = bc_strip_comments(program.view(), cxt.scratch_allocator());
 
   bc_runtime runtime{cxt.scratch_allocator()};
+
   runtime.has_math_library = FLAG_BC_MATH_LIBRARY.is_enabled();
   if (runtime.has_math_library) runtime.scale = 20;
   unused(bc_run_program(program.view(), ec, cxt, runtime));

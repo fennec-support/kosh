@@ -58,6 +58,7 @@ Hash::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     for (usize i = 1; i < args.count(); i++) {
       let const *remembered =
           cxt.program_resolver().find_remembered_path(args[i].view());
+
       if (remembered == nullptr) {
         report_soft_builtin_error(
             ec, cxt, "The command '" + args[i] + "' was not found");
@@ -69,6 +70,7 @@ Hash::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         output.append(args[i].view());
         output += '\t';
       }
+
       output.append(remembered->text());
       output += '\n';
     }

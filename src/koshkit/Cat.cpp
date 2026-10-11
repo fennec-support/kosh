@@ -52,12 +52,13 @@ static fn
 append_number_prefix(String &output, i64 line_number) throws -> void
 {
   char  prefix[32];
-  usize position     = sizeof(prefix);
-  prefix[--position] = '\t';
-  let remaining      = static_cast<u64>(line_number);
+  usize position = sizeof(prefix);
 
-  loop
-  {
+  prefix[--position] = '\t';
+
+  let remaining = static_cast<u64>(line_number);
+
+  loop {
     prefix[--position] = static_cast<char>('0' + remaining % 10);
     remaining /= 10;
     if (remaining == 0) break;
@@ -91,6 +92,7 @@ append_numbered_chunk(String    &output,
     let const newline_offset = remaining.find_character('\n');
     let const length =
         newline_offset.has_value() ? *newline_offset + 1 : remaining.length;
+
     output.append(remaining.substring_of_length(0, length));
     is_at_output_line_start = newline_offset.has_value();
     position += length;
@@ -109,11 +111,13 @@ append_cat_source(String            &output,
   let const should_number = number_mode == cat_number_mode::Numbered;
   let const should_highlight =
       highlight_mode == cat_highlight_mode::Highlighted;
+
   if (!should_number && !should_highlight) {
     output += source;
 
     return;
   }
+
   if (!should_number) {
     completion::append_highlighted_source(
         output, source, context, colors::PRINTED_SOURCE_HIGHLIGHT_THEME);
@@ -140,15 +144,18 @@ append_cat_source(String            &output,
 
     let const line =
         source.substring_of_length(line_start, line_end - line_start);
+
     if (should_highlight) {
       let const *spans =
           highlight_cache.spans_for(source, line_start, line_end, context);
+
       completion::append_highlighted_range(
           output, line, *spans, 0, line.length,
           colors::PRINTED_SOURCE_HIGHLIGHT_THEME);
     } else {
       output += line;
     }
+
     is_at_output_line_start = !line.is_empty() && line[line.length - 1] == '\n';
     line_start              = line_end;
   }
@@ -168,6 +175,7 @@ Cat::execute(const ExecContext               &ec,
   let const output_descriptor = ec.out_fd.value_or(KOSH_STDOUT);
   let const output_byte_count =
       os::regular_descriptor_file_size(output_descriptor);
+
   let const do_is_output = [&](StringView source) wontthrow -> bool {
     if (source == "-")
       return os::descriptors_refer_to_same_file(ec.in_fd.value_or(KOSH_STDIN),
@@ -175,10 +183,12 @@ Cat::execute(const ExecContext               &ec,
 
     let const opened =
         os::open_file_descriptor(source, os::file_open_mode::ReadNonblocking);
+
     if (!opened.has_value()) return false;
 
     let const is_output =
         os::descriptors_refer_to_same_file(*opened, output_descriptor);
+
     os::close_fd(*opened);
 
     return is_output;
@@ -197,21 +207,24 @@ Cat::execute(const ExecContext               &ec,
       input_status = 1;
       continue;
     }
+
     sources.push(source);
   }
 
   let const should_highlight_output =
       FLAG_CAT_SYNTAX_HIGHLIGHTING.is_enabled() && colors::stdout_wants_color();
+
   if (!FLAG_CAT_NUMBER.is_enabled() && !should_highlight_output) {
     let reader = SourceBatchReader{ec, sources, cxt.scratch_allocator()};
     let chunks = ArrayList<SourceBatchReader::Chunk>{cxt.scratch_allocator()};
     i32 status = input_status;
 
-    loop
-    {
+    loop {
       let const read_result = reader.read_next_ordered(chunks);
+
       switch (read_result) {
-      case SourceBatchReader::ReadResult::Chunks:      break;
+      case SourceBatchReader::ReadResult::Chunks: break;
+
       case SourceBatchReader::ReadResult::Complete:    return status;
       case SourceBatchReader::ReadResult::Interrupted: return 130;
       }
@@ -245,9 +258,9 @@ Cat::execute(const ExecContext               &ec,
     usize source_start                   = 0;
     i32   status                         = input_status;
 
-    loop
-    {
+    loop {
       let const read_result = reader.read_next_ordered(chunks);
+
       if (read_result == SourceBatchReader::ReadResult::Complete) break;
       if (read_result == SourceBatchReader::ReadResult::Interrupted) return 130;
 
@@ -265,7 +278,7 @@ Cat::execute(const ExecContext               &ec,
           status = 1;
         } else {
           append_numbered_chunk(output, chunk.content, line_number,
-                                is_at_output_line_start);
+                                                          is_at_output_line_start);
         }
 
         if (output.count() >= CAT_OUTPUT_FLUSH_BYTE_COUNT) {
@@ -298,6 +311,7 @@ Cat::execute(const ExecContext               &ec,
       ec, sources, cxt.scratch_allocator(),
       [&](usize source_index, const Maybe<String> &content) throws {
         let const source = sources[source_index];
+
         if (!content.has_value()) {
           report_soft_koshkit_util_error(
               ec, cxt, args[0].view(),
@@ -318,10 +332,12 @@ Cat::execute(const ExecContext               &ec,
         let const highlight_mode = should_highlight_source
                                        ? cat_highlight_mode::Highlighted
                                        : cat_highlight_mode::Plain;
+
         append_cat_source(output, content->view(), line_number,
                           is_at_output_line_start, cxt, number_mode,
                           highlight_mode);
       });
+
   if (visit == source_visit_result::Interrupted) return 130;
 
   ec.print_to_stdout(output);

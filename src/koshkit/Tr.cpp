@@ -72,6 +72,7 @@ decode_escaped_char(StringView set, usize position) wontthrow -> decoded_char
   }
 
   let const escaped = set[position + 1];
+
   switch (escaped) {
   case 'a':  return {'\a', 2};
   case 'b':  return {'\b', 2};
@@ -89,6 +90,7 @@ decode_escaped_char(StringView set, usize position) wontthrow -> decoded_char
 
     while (digit_count < 3 && position + 1 + digit_count < set.length) {
       let const digit = set[position + 1 + digit_count];
+
       if (digit < '0' || digit > '7') {
         break;
       }
@@ -103,8 +105,9 @@ decode_escaped_char(StringView set, usize position) wontthrow -> decoded_char
 }
 
 static fn
-expand_posix_class(StringView set, usize position, String &expanded) throws
-    -> usize
+expand_posix_class(StringView set,
+                   usize      position,
+                   String    &expanded) throws -> usize
 {
   if (set[position] != '[' || position + 1 >= set.length ||
       set[position + 1] != ':')
@@ -125,6 +128,7 @@ expand_posix_class(StringView set, usize position, String &expanded) throws
   let const name_start = position + 2;
   let const class_name = set.substring_of_length(name_start, scan - name_start);
   let const test       = TR_POSIX_CLASSES.find(class_name);
+
   if (!test.has_value()) return 0;
 
   for (int byte = 0; byte < 256; byte++) {
@@ -137,7 +141,8 @@ expand_posix_class(StringView set, usize position, String &expanded) throws
 static fn
 expand_set(StringView   set,
            Allocator    allocator,
-           Maybe<usize> repeat_target_length = None) throws -> Maybe<String>
+           Maybe<usize> repeat_target_length = None) throws
+    -> Maybe<String>
 {
   String       expanded{allocator};
   Maybe<usize> fill_position;
@@ -156,6 +161,7 @@ expand_set(StringView   set,
     {
       let const repeated = decode_escaped_char(set, i + 1);
       let       star     = i + 1 + repeated.width_count;
+
       if (star < set.length && set[star] == '*') {
         usize close = star + 1;
 
@@ -170,11 +176,14 @@ expand_set(StringView   set,
                                 ? int_base::octal
                                 : int_base::decimal;
           let       count = usize{0};
+
           if (!digits.is_empty()) {
             let const parsed = utils::parse_integer_in_base_u64(digits, base);
-            count            = parsed.is_error() ? *repeat_target_length
-                                                 : static_cast<usize>(parsed.value());
+
+            count = parsed.is_error() ? *repeat_target_length
+                                      : static_cast<usize>(parsed.value());
           }
+
           if (count == 0) {
             if (fill_position.has_value()) return None;
 
@@ -187,6 +196,7 @@ expand_set(StringView   set,
             for (usize n = 0; n < capped; n++)
               expanded.push(static_cast<char>(repeated.byte));
           }
+
           i = close + 1;
           continue;
         }
@@ -198,6 +208,7 @@ expand_set(StringView   set,
 
     if (after < set.length && set[after] == '-' && after + 1 < set.length) {
       let const second = decode_escaped_char(set, after + 1);
+
       if (first.byte > second.byte) {
         return None;
       }
@@ -215,6 +226,7 @@ expand_set(StringView   set,
 
   if (fill_position.has_value() && *repeat_target_length > expanded.count()) {
     let filled = String{allocator};
+
     filled.append(expanded.view().substring_of_length(0, *fill_position));
 
     for (usize n = expanded.count(); n < *repeat_target_length; n++)
@@ -231,7 +243,8 @@ fn
 Tr::execute(const ExecContext               &ec,
             EvalContext                     &cxt,
             const ArrayList<String>         &args,
-            const ArrayList<SourceLocation> &arg_locations) const throws -> i32
+            const ArrayList<SourceLocation> &arg_locations) const throws
+    -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
@@ -239,6 +252,7 @@ Tr::execute(const ExecContext               &ec,
   let const is_squeezing = FLAG_TR_SQUEEZE.is_enabled();
   let const is_complementing =
       FLAG_TR_COMPLEMENT.is_enabled() || FLAG_TR_COMPLEMENT_VALUES.is_enabled();
+
   if (operands.is_empty()) return report_usage_error(ec, cxt, args[0].view());
 
   if (!is_deleting && !is_squeezing && operands.count() < 2) {
@@ -259,6 +273,7 @@ Tr::execute(const ExecContext               &ec,
   }
 
   let set1 = expand_set(operands[0].view(), cxt.scratch_allocator());
+
   if (!set1.has_value()) {
     KOSHKIT_REPORT_ERROR_AT(
         operand_locations[0], "reverse range in set '" + operands[0] + "'",
@@ -283,9 +298,11 @@ Tr::execute(const ExecContext               &ec,
   }
 
   let set2 = String{cxt.scratch_allocator()};
+
   if (operands.count() >= 2) {
     let expanded_set2 = expand_set(operands[1].view(), cxt.scratch_allocator(),
                                    set1->count() > 0 ? set1->count() : 1);
+
     if (!expanded_set2.has_value()) {
       KOSHKIT_REPORT_ERROR_AT(
           operand_locations[1], "reverse range in set '" + operands[1] + "'",
@@ -293,6 +310,7 @@ Tr::execute(const ExecContext               &ec,
 
       return 1;
     }
+
     set2 = steal(*expanded_set2);
   }
 
@@ -304,30 +322,34 @@ Tr::execute(const ExecContext               &ec,
     translation[i] = static_cast<unsigned char>(i);
 
   for (usize i = 0; i < set1->count(); i++) {
-    let const from   = static_cast<unsigned char>(set1->view()[i]);
+    let const from = static_cast<unsigned char>(set1->view()[i]);
+
     is_in_set1[from] = true;
     if (!is_deleting && set2.count() > 0) {
-      let const index   = i < set2.count() ? i : set2.count() - 1;
+      let const index = i < set2.count() ? i : set2.count() - 1;
+
       translation[from] = static_cast<unsigned char>(set2.view()[index]);
     }
   }
 
   bool is_squeezed[BYTE_VALUE_COUNT] = {};
+
   if (is_squeezing) {
     let const &squeeze_source = operands.count() >= 2 ? set2 : *set1;
 
     for (usize i = 0; i < squeeze_source.count(); i++)
       is_squeezed[static_cast<unsigned char>(squeeze_source.view()[i])] = true;
   }
+
   int last_byte = -1;
 
   char input[65536];
   char output[sizeof(input)];
 
-  loop
-  {
+  loop {
     let const read_count =
         os::read_fd(ec.in_fd.value_or(KOSH_STDIN), input, sizeof(input));
+
     if (!read_count.has_value()) {
       if (os::INTERRUPT_REQUESTED) return 130;
       report_soft_koshkit_util_error(ec, cxt, args[0].view(),
@@ -336,12 +358,15 @@ Tr::execute(const ExecContext               &ec,
 
       return 1;
     }
+
     if (*read_count == 0) break;
 
     usize output_count = 0;
+
     if (is_deleting) {
       for (usize i = 0; i < *read_count; i++) {
         let const byte = static_cast<unsigned char>(input[i]);
+
         if (!is_in_set1[byte]) output[output_count++] = static_cast<char>(byte);
       }
     } else {
@@ -357,6 +382,7 @@ Tr::execute(const ExecContext               &ec,
 
       for (usize i = 0; i < output_count; i++) {
         let const byte = static_cast<unsigned char>(output[i]);
+
         if (is_squeezed[byte]) {
           if (byte == last_byte) continue;
         }

@@ -168,8 +168,7 @@ struct removal_request
   bool                is_stdin_terminal;
 
   fn
-  choose(const os::tree_removal_entry &entry, bool is_descending) const throws
-      -> os::tree_removal_choice
+  choose(const os::tree_removal_entry &entry, bool is_descending) const throws -> os::tree_removal_choice
   {
     if (interaction == removal_interaction::Never) {
       return os::tree_removal_choice::Proceed;
@@ -180,6 +179,7 @@ struct removal_request
         (interaction == removal_interaction::Always || is_stdin_terminal);
     let const is_write_protected =
         can_ask_write_protected && entry.is_write_protected;
+
     if (!is_write_protected && interaction != removal_interaction::Always) {
       return os::tree_removal_choice::Proceed;
     }
@@ -187,6 +187,7 @@ struct removal_request
     let       prompt = String{allocator, "rm: "};
     let const protection =
         is_write_protected ? StringView{"write-protected "} : StringView{};
+
     if (is_descending) {
       prompt += "descend into ";
       prompt += protection;
@@ -198,6 +199,7 @@ struct removal_request
                                         : removal_type_name(*entry.status);
       prompt += " '";
     }
+
     prompt += entry.path;
     prompt += "'? ";
 
@@ -207,12 +209,14 @@ struct removal_request
   }
 
   fn
-  report_removed(const os::tree_removal_entry &entry) const throws -> void
+  report_removed(const os::tree_removal_entry &entry) const throws
+      -> void
   {
     if (!is_verbose) return;
 
     let const is_directory = entry.status != nullptr &&
                              os::file_type_letter(entry.status->mode) == 'd';
+
     ec.print_to_stdout((is_directory ? "removed directory '" : "removed '") +
                        String{allocator, entry.path} + "'\n");
   }
@@ -220,11 +224,13 @@ struct removal_request
   fn
   should_skip_other_file_system(StringView             path,
                                 const os::file_status *known_status,
-                                Maybe<u64> &root_device_id) const throws -> bool
+                                Maybe<u64>            &root_device_id) const throws
+      -> bool
   {
     if (!is_one_file_system) return false;
 
     os::file_status queried_status{};
+
     if (known_status == nullptr) {
       if (!os::stat_path(path, queried_status)) return false;
 
@@ -247,8 +253,7 @@ struct removal_request
   }
 
   fn
-  should_descend(StringView path, Path::EntryKind known_kind) const throws
-      -> bool
+  should_descend(StringView path, Path::EntryKind known_kind) const throws -> bool
   {
     return should_descend_into(path, allocator, mode, known_kind);
   }
@@ -263,6 +268,7 @@ struct removal_request
 
     let status = os::file_status{};
     let entry  = os::tree_removal_entry{};
+
     entry.path = path;
     if (os::stat_path(path, status)) {
       entry.status             = &status;
@@ -275,8 +281,9 @@ struct removal_request
 };
 
 fn
-remove_path(StringView path, Allocator allocator, removal_mode mode) throws
-    -> bool
+remove_path(StringView   path,
+            Allocator    allocator,
+            removal_mode mode) throws -> bool
 {
   if (mode == removal_mode::Recursive) return os::remove_tree(path, allocator);
 
@@ -294,11 +301,13 @@ choose_tree_directory_entry(void *context, const os::tree_removal_entry &entry)
     -> os::tree_removal_choice
 {
   let &state = *static_cast<tree_removal_state *>(context);
+
   if (state.request.should_skip_other_file_system(entry.path, entry.status,
                                                   state.root_device_id))
   {
     return os::tree_removal_choice::Fail;
   }
+
   if (entry.is_empty_directory) return os::tree_removal_choice::Proceed;
 
   return state.request.choose(entry, true);
@@ -332,6 +341,7 @@ report_tree_removal_failure(void                    *context,
            ? "cannot remove '" + String{path} +
                 "': the directory was replaced while it was removed"
            : "cannot remove '" + String{path} + "': " + reason;
+
   report_soft_koshkit_util_error(request.ec, request.cxt, request.utility_name,
                                  message);
 }
@@ -342,14 +352,19 @@ remove_path_with_prompt(const removal_request &request,
                         bool                   is_directory_mode) throws -> bool
 {
   let &cxt = request.cxt;
+
   if (request.should_descend(path, Path::EntryKind::Unknown)) {
-    let state           = tree_removal_state{request, {}};
-    let hooks           = os::tree_removal_hooks{};
-    hooks.context       = &state;
+    let state = tree_removal_state{request, {}};
+    let hooks = os::tree_removal_hooks{};
+
+    hooks.context = &state;
+
     let const is_asking = request.interaction != removal_interaction::Never;
+
     if (is_asking || request.is_one_file_system) {
       hooks.should_enter_directory = choose_tree_directory_entry;
     }
+
     if (is_asking) hooks.should_remove = choose_tree_removal;
     if (request.is_verbose) hooks.report_removed = report_tree_removed;
     hooks.report_failure = report_tree_removal_failure;
@@ -364,34 +379,43 @@ remove_path_with_prompt(const removal_request &request,
 
     return false;
   };
+
   let const do_report_failure = [&]() throws -> bool {
     return do_report_reason(os::last_system_error_message().view());
   };
 
   let status = os::file_status{};
+
   if (!os::stat_path(path, status)) return do_report_failure();
 
-  let entry              = os::tree_removal_entry{};
-  entry.path             = path;
-  entry.status           = &status;
+  let entry = os::tree_removal_entry{};
+
+  entry.path   = path;
+  entry.status = &status;
+
   let const is_directory = os::file_type_letter(status.mode) == 'd';
+
   entry.is_write_protected =
       os::file_type_letter(status.mode) != 'l' && !os::path_is_writable(path);
   if (is_directory) {
     if (!is_directory_mode) return do_report_reason("Is a directory");
 
     let const children = os::list_directory(path, request.allocator);
+
     if (children.has_value() && !children->is_empty()) {
       return do_report_reason("Directory not empty");
     }
+
     entry.is_empty_directory = true;
   }
 
   if (request.choose(entry, false) == os::tree_removal_choice::Keep) {
     return true;
   }
+
   let const is_removed =
       is_directory ? os::remove_directory(path) : os::remove_file(path);
+
   if (!is_removed) return do_report_failure();
 
   request.report_removed(entry);
@@ -406,10 +430,11 @@ report_dry_run_removal(const removal_request &request,
                        bool                  &is_kept,
                        bool                  &is_left_behind,
                        Path::EntryKind known_kind = Path::EntryKind::Unknown,
-                       const os::file_status *known_status = nullptr,
-                       Maybe<u64> root_device_id           = {}) throws -> bool
+                       const os::file_status *known_status   = nullptr,
+                       Maybe<u64>             root_device_id = {}) throws -> bool
 {
-  let      &cxt              = request.cxt;
+  let &cxt = request.cxt;
+
   let const do_report_reason = [&](StringView reason) throws -> bool {
     report_soft_koshkit_util_error(request.ec, cxt, request.utility_name,
                                    "cannot remove '" + String{path} +
@@ -421,14 +446,20 @@ report_dry_run_removal(const removal_request &request,
   bool did_succeed    = true;
   bool has_kept_child = false;
   bool has_left_child = false;
+
   if (request.should_descend(path, known_kind)) {
     if (request.should_skip_other_file_system(path, known_status,
                                               root_device_id))
       return false;
 
     let const directory_scratch = cxt.expansion_store().scratch_arena().mark();
-    defer { cxt.expansion_store().scratch_arena().release(directory_scratch); };
+
+    defer {
+      cxt.expansion_store().scratch_arena().release(directory_scratch);
+    };
+
     let names = os::list_directory_status(path, request.allocator);
+
     if (!names.has_value()) {
       report_soft_koshkit_util_error(
           request.ec, cxt, request.utility_name,
@@ -448,12 +479,20 @@ report_dry_run_removal(const removal_request &request,
 
     for (let const &entry : *names) {
       if (os::INTERRUPT_REQUESTED) return false;
+
       let const child_scratch = cxt.expansion_store().scratch_arena().mark();
-      defer { cxt.expansion_store().scratch_arena().release(child_scratch); };
+
+      defer {
+        cxt.expansion_store().scratch_arena().release(child_scratch);
+      };
+
       let child = Path{path, request.allocator};
+
       child.append(entry.child.name.view());
+
       bool is_child_kept = false;
       bool is_child_left = false;
+
       if (!report_dry_run_removal(
               request, child.view(), is_directory_mode, is_child_kept,
               is_child_left, effective_entry_kind(entry),
@@ -461,17 +500,20 @@ report_dry_run_removal(const removal_request &request,
       {
         did_succeed = false;
       }
+
       if (is_child_kept) has_kept_child = true;
       if (is_child_left) has_left_child = true;
       if (os::INTERRUPT_REQUESTED) return false;
     }
   } else {
     let status = os::file_status{};
+
     if (os::stat_path(path, status) && os::file_type_letter(status.mode) == 'd')
     {
       if (!is_directory_mode) return do_report_reason("Is a directory");
 
       let const children = os::list_directory(path, request.allocator);
+
       if (children.has_value() && !children->is_empty()) {
         return do_report_reason("Directory not empty");
       }
@@ -485,11 +527,13 @@ report_dry_run_removal(const removal_request &request,
 
     return true;
   }
+
   if (request.choose_path(path, false) == os::tree_removal_choice::Keep) {
     is_left_behind = true;
 
     return true;
   }
+
   if (has_left_child) return do_report_reason("Directory not empty");
 
   request.ec.print_to_stdout("rm: would remove '" +
@@ -531,12 +575,47 @@ is_same_file_as_root(StringView operand) wontthrow -> bool
 }
 
 static fn
-is_on_other_device_than_parent(StringView operand, Allocator allocator) throws
-    -> bool
+names_root_directory(StringView operand) wontthrow -> bool
+{
+  let const root_length = os::path_root_length(operand);
+
+  if (root_length == 0 ||
+      !os::is_directory_separator(operand[operand.length - 1]))
+  {
+    return false;
+  }
+
+  for (usize index = root_length; index < operand.length; index++) {
+    if (!os::is_directory_separator(operand[index])) return false;
+  }
+
+  return true;
+}
+
+static fn
+resolves_to_root_directory(StringView operand,
+                           Allocator  allocator) throws -> bool
+{
+  if (names_root_directory(operand)) return true;
+
+  let const path = Path{operand, allocator};
+
+  if (path.is_symbolic_link()) return false;
+
+  let const canonical = os::canonical_path(path);
+
+  return canonical.has_value() &&
+         names_root_directory(canonical->text().view());
+}
+
+static fn
+is_on_other_device_than_parent(StringView operand,
+                               Allocator  allocator) throws -> bool
 {
   let operand_status = os::file_status{};
   let parent_status  = os::file_status{};
   let parent         = Path{operand, allocator};
+
   parent.append("..");
 
   return os::stat_path(operand, operand_status) &&
@@ -549,7 +628,8 @@ fn
 Rm::execute(const ExecContext               &ec,
             EvalContext                     &cxt,
             const ArrayList<String>         &args,
-            const ArrayList<SourceLocation> &arg_locations) const throws -> i32
+            const ArrayList<SourceLocation> &arg_locations) const throws
+    -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
@@ -561,24 +641,30 @@ Rm::execute(const ExecContext               &ec,
           ? INTERACTION_WORDS.find(FLAG_RM_INTERACTIVE_WHEN.value())
                 .value_or(removal_interaction::Always)
           : removal_interaction::Always;
+
   struct interaction_setting
   {
     usize               position;
     removal_interaction interaction;
     Maybe<bool>         should_ignore_missing;
   };
+
   let settings = ArrayList<interaction_setting>{allocator};
+
   if (FLAG_RM_FORCE.is_enabled()) {
     settings.push({FLAG_RM_FORCE.position(), removal_interaction::Never, true});
   }
+
   if (FLAG_RM_INTERACTIVE.is_enabled()) {
     settings.push(
         {FLAG_RM_INTERACTIVE.position(), removal_interaction::Always, false});
   }
+
   if (FLAG_RM_INTERACTIVE_ONCE.is_enabled()) {
     settings.push({FLAG_RM_INTERACTIVE_ONCE.position(),
                    removal_interaction::Once, false});
   }
+
   if (FLAG_RM_INTERACTIVE_WHEN.is_enabled()) {
     settings.push({FLAG_RM_INTERACTIVE_WHEN.position(), when_interaction,
                    when_interaction == removal_interaction::Never
@@ -591,7 +677,8 @@ Rm::execute(const ExecContext               &ec,
          slot > 0 && settings[slot].position < settings[slot - 1].position;
          slot--)
     {
-      let const moved    = settings[slot];
+      let const moved = settings[slot];
+
       settings[slot]     = settings[slot - 1];
       settings[slot - 1] = moved;
     }
@@ -635,6 +722,7 @@ Rm::execute(const ExecContext               &ec,
       (is_recursive || operands.count() > 3))
   {
     let prompt = String{allocator, "rm: remove "};
+
     prompt += String::from(operands.count(), allocator).view();
     prompt += operands.count() == 1 ? " argument" : " arguments";
     prompt += is_recursive ? " recursively? " : "? ";
@@ -655,11 +743,17 @@ Rm::execute(const ExecContext               &ec,
       continue;
     }
 
+    let const is_root_alias = is_recursive && should_preserve_root &&
+                              operand != "/" &&
+                              is_same_file_as_root(operand.view());
+
     if (is_recursive && should_preserve_root &&
-        is_same_file_as_root(operand.view()))
+        (is_root_alias ||
+         resolves_to_root_directory(operand.view(), allocator)))
     {
-      let const subject = operand == "/" ? String{allocator, "'/'"}
-                                         : "'" + operand + "' (same as '/')";
+      let const subject = is_root_alias ? "'" + operand + "' (same as '/')"
+                                        : "'" + operand + "'";
+
       report_soft_koshkit_util_error(
           ec, cxt, args[0].view(),
           "it is dangerous to operate recursively on " + subject +
@@ -681,6 +775,7 @@ Rm::execute(const ExecContext               &ec,
     }
 
     let const target = Path{operand.view(), allocator};
+
     if (!target.exists() && !target.is_symbolic_link()) {
       if (should_ignore_missing) continue;
       report_soft_koshkit_util_error(ec, cxt, args[0].view(),
@@ -689,14 +784,17 @@ Rm::execute(const ExecContext               &ec,
       status = 1;
       continue;
     }
+
     if (is_dry_run) {
       bool is_kept        = false;
       bool is_left_behind = false;
+
       if (!report_dry_run_removal(request, operand.view(), is_directory_mode,
                                   is_kept, is_left_behind))
       {
         status = 1;
       }
+
       if (os::INTERRUPT_REQUESTED) return 130;
       continue;
     }
@@ -705,6 +803,7 @@ Rm::execute(const ExecContext               &ec,
       if (os::INTERRUPT_REQUESTED) return 130;
       status = 1;
     }
+
     if (os::INTERRUPT_REQUESTED) return 130;
   }
 

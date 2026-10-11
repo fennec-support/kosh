@@ -64,7 +64,9 @@ mask_to_symbolic(u32 mask, Allocator allocator) throws -> String
     if (g > 0) out.push(',');
     out.push(groups[g]);
     out.push('=');
+
     let const bits = (allowed >> shifts[g]) & 7u;
+
     if (bits & 4u) out.push('r');
     if (bits & 2u) out.push('w');
     if (bits & 1u) out.push('x');
@@ -74,7 +76,8 @@ mask_to_symbolic(u32 mask, Allocator allocator) throws -> String
 }
 
 fn
-apply_symbolic_mask(StringView spec, u32 current_mask) throws -> Maybe<u32>
+apply_symbolic_mask(StringView spec, u32 current_mask) throws
+    -> Maybe<u32>
 {
   u32   allowed = (~current_mask) & PERMISSION_BITS;
   usize i       = 0;
@@ -92,10 +95,13 @@ apply_symbolic_mask(StringView spec, u32 current_mask) throws -> Maybe<u32>
     if (who == 0) who = PERMISSION_BITS;
 
     if (i >= spec.length) return None;
+
     let const op = spec[i];
+
     if (op != '+' && op != '-' && op != '=') {
       return None;
     }
+
     i++;
 
     u32 permission = 0;
@@ -110,6 +116,7 @@ apply_symbolic_mask(StringView spec, u32 current_mask) throws -> Maybe<u32>
     }
 
     u32 permission_bits = 0;
+
     if (who & 0700u) permission_bits |= permission << 6;
     if (who & 0070u) permission_bits |= permission << 3;
     if (who & 0007u) permission_bits |= permission;
@@ -137,6 +144,7 @@ Umask::execute(ExecContext &ec, EvalContext &cxt) const throws
 {
   let operand_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};
   let const operands = PARSE_BUILTIN_ARGS_WITH_LOCATIONS(ec, operand_locations);
+
   ASSERT(!ec.args().is_empty());
 
   if (FLAG_HELP.is_enabled()) SHOW_BUILTIN_HELP_AND_RETURN(ec);
@@ -156,6 +164,7 @@ Umask::execute(ExecContext &ec, EvalContext &cxt) const throws
   if (operands.count() < 2) {
     let const mask = os::get_file_creation_mask();
     let       out  = String{cxt.scratch_allocator()};
+
     if (should_print_reusable)
       out += should_print_symbolic ? "umask -S " : "umask ";
 
@@ -163,9 +172,11 @@ Umask::execute(ExecContext &ec, EvalContext &cxt) const throws
       out += mask_to_symbolic(mask, cxt.scratch_allocator()).view();
     } else {
       char buffer[8];
+
       std::snprintf(buffer, sizeof(buffer), "%04o", mask);
       out += buffer;
     }
+
     out.push('\n');
 
     ec.print_to_stdout(out);
@@ -181,12 +192,14 @@ Umask::execute(ExecContext &ec, EvalContext &cxt) const throws
   if (!requested.is_empty() && requested[0] >= '0' && requested[0] <= '7') {
     let const parsed =
         utils::parse_integer_in_base(requested, nullptr, int_base::octal);
+
     if (parsed.is_error() || parsed.value() > 0777) {
       throw make_error_for_arg(
           ec, 1,
           "Unable to set the file creation mask because '" + requested +
               "' is not a valid octal mask");
     }
+
     os::set_file_creation_mask(static_cast<u32>(parsed.value()));
 
     return 0;
@@ -194,6 +207,7 @@ Umask::execute(ExecContext &ec, EvalContext &cxt) const throws
 
   let const new_mask =
       apply_symbolic_mask(requested.view(), os::get_file_creation_mask());
+
   if (!new_mask.has_value())
     throw make_error_for_arg(ec, 1,
                              "Unable to set the file creation mask because '" +

@@ -48,6 +48,7 @@ change_mode(const ExecContext     &ec,
             const u64             *operand_device_id) throws -> bool
 {
   os::file_status status{};
+
   if (known_status != nullptr) {
     status = *known_status;
   } else if (!os::stat_path_following(path.view(), status)) {
@@ -67,9 +68,11 @@ change_mode(const ExecContext     &ec,
       os::file_type_letter(status.mode) == 'd'
           ? utils::file_kind_mode::Directory
           : utils::file_kind_mode::Regular);
+
   ASSERT(parsed.has_value());
 
   bool did_succeed = true;
+
   if (!os::set_file_mode(path.view(), *parsed)) {
     report_soft_koshkit_util_error(ec, cxt, "chmod",
                                    "cannot change mode of '" + path.text() +
@@ -85,9 +88,13 @@ change_mode(const ExecContext     &ec,
   }
 
   let const directory_scratch = cxt.expansion_store().scratch_arena().mark();
-  defer { cxt.expansion_store().scratch_arena().release(directory_scratch); };
+  defer {
+    cxt.expansion_store().scratch_arena().release(directory_scratch);
+  };
+
   let children =
       os::list_directory_status(path.view(), cxt.scratch_allocator());
+
   if (!children.has_value()) {
     report_soft_koshkit_util_error(ec, cxt, "chmod",
                                    "cannot read directory '" + path.text() +
@@ -103,21 +110,29 @@ change_mode(const ExecContext     &ec,
 
   for (let const &child_entry : *children) {
     if (os::INTERRUPT_REQUESTED) return did_succeed;
+
     let const child_scratch = cxt.expansion_store().scratch_arena().mark();
-    defer { cxt.expansion_store().scratch_arena().release(child_scratch); };
+    defer {
+      cxt.expansion_store().scratch_arena().release(child_scratch);
+    };
+
     let const is_child_symlink =
         child_entry.child.kind == Path::EntryKind::Symlink ||
         (child_entry.has_status &&
          os::file_type_letter(child_entry.status.mode) == 'l');
+
     if (is_child_symlink) continue;
 
     let child = Path{path.view(), cxt.scratch_allocator()};
+
     child.append(child_entry.child.name.view());
+
     let const child_status =
         child_entry.has_status &&
                 os::file_type_letter(child_entry.status.mode) != 'l'
             ? &child_entry.status
             : nullptr;
+
     if (!change_mode(ec, cxt, child, expression, child_status,
                      chmod_traversal_mode::Recursive, children_device_id))
       did_succeed = false;
@@ -130,13 +145,14 @@ fn
 Chmod::execute(const ExecContext               &ec,
                EvalContext                     &cxt,
                const ArrayList<String>         &args,
-               const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+               const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (operands.count() < 2) return report_usage_error(ec, cxt, args[0].view());
+
   let const expression = operands[0].view();
+
   if (!utils::parse_file_mode(expression, 0, 0, utils::file_kind_mode::Regular)
            .has_value())
   {

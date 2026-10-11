@@ -27,7 +27,9 @@ tree still present
 keep-survives
 == rm -rf / is refused (count of the refusal):
 1
-== rm -rf // is refused (count):
+== another spelling of the root is refused (count):
+1
+== a drive or root spelled with a trailing separator is refused (count):
 1
 == rm without -r reports a directory instead of refusing it:
 2

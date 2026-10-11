@@ -31,15 +31,16 @@ fn
 Expand::execute(const ExecContext               &ec,
                 EvalContext                     &cxt,
                 const ArrayList<String>         &args,
-                const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+                const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   let tab_stops = ArrayList<usize>{cxt.scratch_allocator()};
+
   if (FLAG_EXPAND_TABS.is_set()) {
     let const parsed = utils::parse_tab_stop_list(FLAG_EXPAND_TABS.value(),
                                                   cxt.scratch_allocator());
+
     if (!parsed.has_value()) {
       KOSHKIT_REPORT_ERROR_AT(
           FLAG_EXPAND_TABS.value_location(), "invalid tab list",
@@ -47,6 +48,7 @@ Expand::execute(const ExecContext               &ec,
 
       return 1;
     }
+
     tab_stops = steal(*parsed);
   }
 
@@ -61,9 +63,11 @@ Expand::execute(const ExecContext               &ec,
 
     while (position < text.length) {
       let const byte = text[position];
+
       switch (byte) {
       case '\t': {
         let const target = utils::get_next_tab_column(column, tab_stops);
+
         if (target == column) {
           output += '\t';
         } else {
@@ -73,6 +77,7 @@ Expand::execute(const ExecContext               &ec,
 
         position++;
       }
+
         continue;
 
       case '\n':
@@ -104,7 +109,9 @@ Expand::execute(const ExecContext               &ec,
   };
 
   static constexpr usize OUTPUT_FLUSH_LENGTH = 64 * 1024;
-  let do_visit_line = [&](StringView line, bool is_terminated) throws -> void {
+
+  let do_visit_line = [&](StringView line,
+                          bool       is_terminated) throws -> void {
     do_append_line(line);
     if (is_terminated) output += '\n';
     if (output.length() >= OUTPUT_FLUSH_LENGTH) {
@@ -116,6 +123,7 @@ Expand::execute(const ExecContext               &ec,
   for (let const source : sources) {
     let const outcome =
         visit_source_lines(ec, source, heap_allocator(), do_visit_line);
+
     if (outcome == source_line_outcome::Interrupted) return 130;
     if (outcome == source_line_outcome::Failed) {
       KOSHKIT_REPORT_PATH_ERROR("read", source);

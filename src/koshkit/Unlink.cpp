@@ -24,8 +24,7 @@ cold fn
 Unlink::execute(const ExecContext               &ec,
                 EvalContext                     &cxt,
                 const ArrayList<String>         &args,
-                const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+                const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
@@ -41,6 +40,7 @@ Unlink::execute(const ExecContext               &ec,
   let const  target_path = Path{target.view(), cxt.scratch_allocator()};
   let const  is_real_directory =
       target_path.is_directory() && !target_path.is_symbolic_link();
+
   if (is_real_directory) {
     KOSHKIT_REPORT_ERROR_AT(operand_locations[0], "cannot unlink '" + target +
                                                       "': it is a directory");

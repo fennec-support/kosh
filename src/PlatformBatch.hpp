@@ -72,6 +72,7 @@ struct batch_operation
   static fn
   write_current(descriptor fd, const char *buffer, usize byte_count) wontthrow
       -> batch_operation;
+
   static fn
   lstat(const Path &path, file_status &status) wontthrow -> batch_operation;
   static fn
@@ -79,9 +80,10 @@ struct batch_operation
   static fn
   exists(const Path &path) wontthrow -> batch_operation;
   static fn
-  lstat_at(descriptor   directory,
-           const char  *name,
-           file_status &status) wontthrow -> batch_operation;
+  lstat_at(descriptor directory, const char *name, file_status &status)
+      wontthrow
+      -> batch_operation;
+
   static fn
   lstat(Path &&path, file_status &status) wontthrow -> batch_operation = delete;
   static fn
@@ -103,12 +105,14 @@ struct batch_operation
 
 private:
   Kind syscall_id{Kind::Invalid};
+
   union
   {
     const Path *path;
     const char *input_buffer;
     char       *output_buffer;
   } m_primary{};
+
   union
   {
     file_status *status;
@@ -117,6 +121,7 @@ private:
 
   explicit batch_operation(Kind kind) : syscall_id(kind) {}
   batch_operation() = default;
+
   friend class Batch;
   friend struct batch_internal::batch_operation_access;
 };
@@ -297,7 +302,8 @@ public:
               batch_deduplication::Enabled) throws -> void;
   fn
   execute(batch_deduplication deduplication =
-              batch_deduplication::Enabled) throws -> ArrayList<batch_result>;
+              batch_deduplication::Enabled) throws
+      -> ArrayList<batch_result>;
 
   pure fn
   count() const wontthrow -> usize;

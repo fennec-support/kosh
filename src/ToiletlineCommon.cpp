@@ -71,6 +71,7 @@ codepoint_is_in(u32                       codepoint,
 
   while (low < high) {
     let const middle = low + (high - low) / 2;
+
     if (codepoint < intervals[middle].first)
       high = middle;
     else if (codepoint > intervals[middle].last)
@@ -97,6 +98,7 @@ codepoint_display_width(u32 codepoint) -> usize
   {
     return 0;
   }
+
   if (codepoint_is_in(codepoint, WIDE_INTERVALS, countof(WIDE_INTERVALS)))
     return 2;
 
@@ -157,14 +159,17 @@ display_width_walk(StringView text, usize stop_after, usize *out_byte_offset)
       } else if (text[byte_offset] != '\0') {
         byte_offset++;
       }
+
       continue;
     }
 
     let const decoded = koshka::utils::decode_utf8(text, byte_offset, 0xfffd);
     let const character_width = codepoint_display_width(decoded.value);
+
     if (character_width > 0 && width >= stop_after) {
       break;
     }
+
     width += character_width;
     byte_offset += decoded.length;
   }
@@ -186,6 +191,7 @@ is_history_contents_valid(StringView contents) -> bool
 
   for (usize byte_offset = 0; byte_offset < contents.length;) {
     let const byte = static_cast<u8>(contents[byte_offset]);
+
     switch (byte) {
     case '\n':
       decoded_byte_count = 0;
@@ -196,6 +202,7 @@ is_history_contents_valid(StringView contents) -> bool
     case '\t':
     case '\v':
     case '\f': break;
+
     default:
       if (byte < 0x20 || byte == 0x7f) {
         return false;
@@ -203,6 +210,7 @@ is_history_contents_valid(StringView contents) -> bool
     }
 
     usize escaped_byte_count = 0;
+
     if (is_escape_pending) {
       is_escape_pending = false;
       if (byte != 'n' && byte != '\\') {
@@ -230,6 +238,7 @@ is_history_contents_valid(StringView contents) -> bool
 
     usize codepoint_byte_count = 0;
     u32   codepoint            = 0;
+
     if (byte >= 0xc2 && byte <= 0xdf) {
       codepoint_byte_count = 2;
       codepoint            = byte & 0x1f;
@@ -242,6 +251,7 @@ is_history_contents_valid(StringView contents) -> bool
     } else {
       return false;
     }
+
     if (byte_offset + codepoint_byte_count > contents.length) return false;
 
     for (usize continuation_index = 1;
@@ -249,22 +259,29 @@ is_history_contents_valid(StringView contents) -> bool
     {
       let const continuation_byte =
           static_cast<u8>(contents[byte_offset + continuation_index]);
+
       if ((continuation_byte & 0xc0) != 0x80) return false;
       codepoint = (codepoint << 6) | (continuation_byte & 0x3f);
     }
 
     u32 minimum_codepoint = 0;
+
     switch (codepoint_byte_count) {
-    case 2:  minimum_codepoint = 0x80u; break;
-    case 3:  minimum_codepoint = 0x800u; break;
-    case 4:  minimum_codepoint = 0x10000u; break;
+    case 2: minimum_codepoint = 0x80u; break;
+
+    case 3: minimum_codepoint = 0x800u; break;
+
+    case 4: minimum_codepoint = 0x10000u; break;
+
     default: return false;
     }
+
     if (codepoint < minimum_codepoint || codepoint > 0x10ffffu ||
         (codepoint >= 0xd800u && codepoint <= 0xdfffu))
     {
       return false;
     }
+
     decoded_byte_count += escaped_byte_count + codepoint_byte_count;
     if (decoded_byte_count > HISTORY_RECORD_MAX_DECODED_BYTE_COUNT)
       return false;
@@ -282,6 +299,7 @@ encode_history_record(String &output, StringView command) -> void
 
   for (usize byte_offset = 0; byte_offset < command.length; byte_offset++) {
     let const byte = command[byte_offset];
+
     if (byte == '\\')
       output += "\\\\";
     else if (byte == '\n')
@@ -299,6 +317,7 @@ write_history_file_atomically(const koshka::Path &path,
                               StringView          contents) throws -> bool
 {
   let target = koshka::Path{path.view()};
+
   if (let resolved = koshka::os::canonical_path(path); resolved.has_value())
     target = steal(*resolved);
 
@@ -306,6 +325,7 @@ write_history_file_atomically(const koshka::Path &path,
   let const has_status = koshka::os::stat_path_following(target.view(), status);
   let const replacement = koshka::os::write_to_named_temp_file(
       target.parent_or_current(), name_prefix, contents);
+
   if (!replacement.has_value()) return false;
 
   if ((has_status &&
@@ -340,9 +360,12 @@ get_utf8_length(const char *bytes, usize byte_count) -> usize
 
   while (byte_offset + sizeof(u64) <= byte_count) {
     u64 word;
+
     std::memcpy(&word, bytes + byte_offset, sizeof(word));
     if (((word - LOW_BITS) & ~word & HIGH_BITS) != 0) break;
+
     let const continuation_bits = word & ~(word << 1) & HIGH_BITS;
+
     codepoint_count +=
         sizeof(u64) -
         static_cast<usize>(__builtin_popcountll(continuation_bits));
@@ -393,6 +416,7 @@ get_byte_offset_at_or_before_display_cell(StringView text,
                                           usize &actual_cell_position) -> usize
 {
   usize byte_offset = 0;
+
   actual_cell_position =
       koshka::internal::display_width_walk(text, cell_position, &byte_offset);
   if (actual_cell_position <= cell_position) return byte_offset;

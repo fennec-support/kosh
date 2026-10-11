@@ -25,7 +25,8 @@ enum class mimic_mood : u8
 };
 
 fn
-detect_mimic_shell_from_source(StringView source) throws -> Maybe<mimic_mood>;
+detect_mimic_shell_from_source(StringView source) throws
+    -> Maybe<mimic_mood>;
 
 pure fn
 detect_mimic_shell_from_extension(StringView dotted_extension) throws

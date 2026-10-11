@@ -108,6 +108,7 @@ Type::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                                      : ProgramResolver::Requirement::Execution,
           FLAG_TYPE_ALL.is_enabled() ? ProgramResolver::CachePolicy::Bypass
                                      : ProgramResolver::CachePolicy::ReadOnly);
+
       if (paths.count() != 0) {
         for (let const &path : paths) {
           if (should_print_word)
@@ -119,6 +120,7 @@ Type::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       } else {
         did_find_all = false;
       }
+
       continue;
     }
 
@@ -126,6 +128,7 @@ Type::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     Maybe<String>        alias_value;
     Maybe<Builtin::Kind> builtin_kind;
     bool                 is_bundled_utility = false;
+
     if (name_is_keyword_in_mood(name.view(), cxt.runtime_state().get_mood())) {
       word = "keyword";
     } else if (let const alias = cxt.scope_store().get_alias(name.view());
@@ -160,6 +163,7 @@ Type::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         Keyword,
         Function,
       };
+
       static constexpr static_string_entry<resolution_kind> KIND_ENTRIES[] = {
           {SSK("alias"),    resolution_kind::Alias   },
           {SSK("keyword"),  resolution_kind::Keyword },
@@ -187,6 +191,7 @@ Type::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
               info != nullptr)
           {
             let const source_name = source_name_at(info->source_name_index);
+
             if (source_name.has_value() && !source_name->is_empty()) {
               out += " defined in ";
               out += *source_name;
@@ -196,6 +201,7 @@ Type::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                 info->definition_line > info->enclosing_line_count
                     ? info->definition_line - info->enclosing_line_count
                     : info->definition_line;
+
             if (shown_line != 0) {
               out += " on line ";
               out += String::from(shown_line, cxt.scratch_allocator());
@@ -203,6 +209,7 @@ Type::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
           }
         }
       }
+
       out += "\n";
 
       if (is_function) {
@@ -241,6 +248,7 @@ Type::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
     if (FLAG_TYPE_ALL.is_enabled()) {
       bool has_any = false;
+
       if (!word.is_empty()) {
         has_any = true;
         if (should_print_word) {
@@ -276,6 +284,7 @@ Type::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         }
         did_find_all = false;
       }
+
       continue;
     }
 

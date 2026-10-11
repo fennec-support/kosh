@@ -35,41 +35,51 @@ Getopts::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   let const &optstring = args[1];
   let const &name      = args[2];
+
   if (!name_is_valid_assignment_target(name.view())) {
     report_invalid_identifier(ec, cxt, ec.arg_location_at(2), name.view());
 
     return 1;
   }
+
   let const is_silent = !optstring.is_empty() && optstring[0] == ':';
 
   bool should_print_diagnostic = !is_silent;
+
   if (let value = cxt.get_variable_value("OPTERR"); value.has_value()) {
     let const parsed_value = (*value).to<i64>();
+
     if (!parsed_value.is_error() && parsed_value.value() == 0) {
       should_print_diagnostic = false;
     }
   }
 
   let explicit_operands = ArrayList<String>{cxt.scratch_allocator()};
+
   if (args.count() > 3) {
     for (usize i = 3; i < args.count(); i++)
       explicit_operands.push(args[i]);
   }
+
   const ArrayList<String> &operands =
       args.count() > 3 ? explicit_operands
                        : cxt.variable_store().positional_params();
 
   i64 optind = 1;
+
   if (let value = cxt.get_variable_value("OPTIND"); value.has_value()) {
     let const parsed_value = (*value).to<i64>();
-    optind                 = parsed_value.is_error() ? 1 : parsed_value.value();
+
+    optind = parsed_value.is_error() ? 1 : parsed_value.value();
   }
 
   LOG(Debug, "getopts parsing into '%s' at OPTIND %lld of %zu operands",
       name.c_str(), static_cast<long long>(optind), operands.count());
 
   let &cursor = cxt.expansion_store().get_getopts_cursor();
+
   if (optind != cursor.last_optind) cursor.char_index = 1;
+
   let char_index = cursor.char_index;
 
   let const do_finish = [&](i32 code) -> i32 {
@@ -88,7 +98,9 @@ Getopts::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   }
 
   ASSERT(static_cast<usize>(optind) - 1 < operands.count());
+
   let const &current = operands[static_cast<usize>(optind) - 1];
+
   if (current.length() < 2 || current[0] != '-' || current == "--") {
     if (current == "--") optind++;
     cxt.set_shell_variable(name, "?");
@@ -98,9 +110,12 @@ Getopts::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   if (char_index >= current.length()) char_index = 1;
   ASSERT(char_index < current.length());
+
   let const option           = current[char_index];
   let       option_as_string = String{cxt.scratch_allocator()};
+
   option_as_string.push(option);
+
   let const spec = optstring.find_character(option);
 
   let const do_advance_letter = [&]() {
@@ -115,6 +130,7 @@ Getopts::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     if (!should_print_diagnostic) return;
 
     let const message = prefix + option_as_string;
+
     if (args.count() > 3) {
       report_soft_builtin_error(
           ec, cxt, ec.arg_location_at(static_cast<usize>(optind) + 2), message);
@@ -138,14 +154,17 @@ Getopts::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   let const should_take_argument =
       *spec + 1 < optstring.length() && optstring[*spec + 1] == ':';
+
   if (should_take_argument) {
     if (char_index + 1 < current.length()) {
       let const optarg = current.substring(char_index + 1);
+
       cxt.set_shell_variable("OPTARG", optarg);
       optind++;
       char_index = 1;
     } else if (static_cast<usize>(optind) < operands.count()) {
       let const &optarg = operands[static_cast<usize>(optind)];
+
       cxt.set_shell_variable("OPTARG", optarg);
       optind += 2;
       char_index = 1;
@@ -163,6 +182,7 @@ Getopts::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
       return do_finish(0);
     }
+
     cxt.set_shell_variable(name, option_as_string);
 
     return do_finish(0);

@@ -64,16 +64,20 @@ linux_socket_state(u64 value) wontthrow -> network_socket_state
 static fn
 linux_socket_address(StringView             encoded,
                      Allocator              allocator,
-                     network_address_family family) throws -> Maybe<String>
+                     network_address_family family) throws
+    -> Maybe<String>
 {
   if (family == network_address_family::IPv6) {
     if (encoded.length != 32) return None;
+
     u8 bytes[16]{};
 
     for (usize word_index = 0; word_index < 4; word_index++) {
       let const word = utils::parse_integer_in_base_u64(
           encoded.substring_of_length(word_index * 8, 8), int_base::hex);
+
       if (word.is_error()) return None;
+
       let const value = word.value();
 
       for (usize byte_index = 0; byte_index < 4; byte_index++)
@@ -82,6 +86,7 @@ linux_socket_address(StringView             encoded,
     }
 
     char text[INET6_ADDRSTRLEN]{};
+
     if (::inet_ntop(AF_INET6, bytes, text, sizeof(text)) == nullptr)
       return None;
 
@@ -89,10 +94,14 @@ linux_socket_address(StringView             encoded,
   }
 
   if (encoded.length != 8) return None;
+
   let const value = utils::parse_integer_in_base_u64(encoded, int_base::hex);
+
   if (value.is_error()) return None;
+
   u32  address = static_cast<u32>(value.value());
   char text[INET_ADDRSTRLEN]{};
+
   if (::inet_ntop(AF_INET, &address, text, sizeof(text)) == nullptr)
     return None;
 
@@ -119,21 +128,21 @@ struct linux_unix_socket_peer_comparator
 {
   pure fn
   operator()(const linux_unix_socket_peer &left,
-             const linux_unix_socket_peer &right) const wontthrow->bool
+             const linux_unix_socket_peer &right) const wontthrow -> bool
   {
     return left.identity < right.identity;
   }
 
   pure fn
-  operator()(u64                           left,
-             const linux_unix_socket_peer &right) const wontthrow->bool
+  operator()(u64 left, const linux_unix_socket_peer &right) const wontthrow
+      -> bool
   {
     return left < right.identity;
   }
 
   pure fn
-  operator()(const linux_unix_socket_peer &left,
-             u64                           right) const wontthrow->bool
+  operator()(const linux_unix_socket_peer &left, u64 right) const wontthrow
+      -> bool
   {
     return left.identity < right;
   }
@@ -143,7 +152,8 @@ using linux_unix_socket_peer_list =
     SortedArrayList<linux_unix_socket_peer, linux_unix_socket_peer_comparator>;
 
 static fn
-linux_socket_proc_path(StringView suffix, Allocator allocator) throws -> String
+linux_socket_proc_path(StringView suffix, Allocator allocator) throws
+    -> String
 {
   let path = String{allocator, "/proc"};
   path += suffix;
@@ -158,6 +168,7 @@ linux_unix_socket_peers(Allocator allocator) throws
   let       peers = ArrayList<linux_unix_socket_peer>{allocator};
   let const descriptor =
       ::socket(AF_NETLINK, SOCK_RAW | SOCK_CLOEXEC, NETLINK_SOCK_DIAG);
+
   if (descriptor < 0)
     return linux_unix_socket_peer_list{allocator,
                                        linux_unix_socket_peer_comparator{}};
@@ -168,6 +179,7 @@ linux_unix_socket_peers(Allocator allocator) throws
     struct nlmsghdr      header;
     struct unix_diag_req request;
   } message{};
+
   message.header.nlmsg_len     = NLMSG_LENGTH(sizeof(message.request));
   message.header.nlmsg_type    = SOCK_DIAG_BY_FAMILY;
   message.header.nlmsg_flags   = NLM_F_REQUEST | NLM_F_DUMP;
@@ -175,7 +187,9 @@ linux_unix_socket_peers(Allocator allocator) throws
   message.request.sdiag_family = AF_UNIX;
   message.request.udiag_states = UINT32_MAX;
   message.request.udiag_show   = UDIAG_SHOW_PEER | UDIAG_SHOW_RQLEN;
+
   struct sockaddr_nl kernel{};
+
   kernel.nl_family = AF_NETLINK;
   if (::sendto(descriptor, &message, message.header.nlmsg_len, 0,
                reinterpret_cast<struct sockaddr *>(&kernel),
@@ -192,10 +206,12 @@ linux_unix_socket_peers(Allocator allocator) throws
     if (now_nanos == 0 || now_nanos >= deadline_nanos) {
       break;
     }
+
     let const remaining_nanos = deadline_nanos - now_nanos;
     let const timeout_milliseconds =
         static_cast<int>((remaining_nanos + 999999) / 1000000);
     struct pollfd waited{};
+
     waited.fd     = descriptor;
     waited.events = POLLIN;
     if (::poll(&waited, 1, timeout_milliseconds) <= 0 ||
@@ -207,15 +223,19 @@ linux_unix_socket_peers(Allocator allocator) throws
     alignas(struct nlmsghdr) char buffer[64 * 1024]{};
     struct iovec                  vector{buffer, sizeof(buffer)};
     struct msghdr                 response{};
+
     response.msg_iov    = &vector;
     response.msg_iovlen = 1;
-    let const received  = ::recvmsg(descriptor, &response, MSG_TRUNC);
+
+    let const received = ::recvmsg(descriptor, &response, MSG_TRUNC);
+
     if (received <= 0 || static_cast<usize>(received) > sizeof(buffer) ||
         (response.msg_flags & MSG_TRUNC) != 0)
     {
       is_valid = false;
       break;
     }
+
     u32 remaining = static_cast<u32>(received);
 
     for (let *header = reinterpret_cast<struct nlmsghdr *>(buffer);
@@ -251,14 +271,17 @@ linux_unix_socket_peers(Allocator allocator) throws
             RTA_PAYLOAD(attribute) >= sizeof(u32))
         {
           u32 peer_identity = 0;
+
           std::memcpy(&peer_identity, RTA_DATA(attribute),
                       sizeof(peer_identity));
           peer.peer_identity = peer_identity;
         }
+
         if (attribute->rta_type == UNIX_DIAG_RQLEN &&
             RTA_PAYLOAD(attribute) >= sizeof(struct unix_diag_rqlen))
         {
           struct unix_diag_rqlen queue_lengths{};
+
           std::memcpy(&queue_lengths, RTA_DATA(attribute),
                       sizeof(queue_lengths));
           peer.receive_queue_byte_count = queue_lengths.udiag_rqueue;
@@ -293,10 +316,13 @@ linux_unix_peer_record(const linux_unix_socket_peer_list &peers,
 }
 
 static fn
-linux_process_start_token(StringView process_directory) throws -> Maybe<u64>
+linux_process_start_token(StringView process_directory) throws
+    -> Maybe<u64>
 {
   let const stat = Path{String{process_directory} + "/stat"}.read_entire_file();
+
   if (!stat.has_value()) return None;
+
   usize after_name_position = stat->count();
 
   for (usize position = stat->count(); position > 0; position--) {
@@ -307,9 +333,11 @@ linux_process_start_token(StringView process_directory) throws -> Maybe<u64>
   }
 
   if (after_name_position >= stat->count()) return None;
+
   let const start_token =
       nth_space_field(stat->view().substring(after_name_position), 19)
           .to<u64>();
+
   if (start_token.is_error()) return None;
 
   return start_token.value();
@@ -327,6 +355,7 @@ linux_unix_socket_field(StringView text, usize index) wontthrow -> StringView
     }
 
     if (position >= text.length) break;
+
     let const start = position;
 
     while (position < text.length && text[position] != ' ') {
@@ -356,10 +385,12 @@ for_each_proc_net_row(StringView path, Row do_row) throws -> void
 
   while (position < text.length) {
     let const line = each_line(text, position);
+
     if (is_header) {
       is_header = false;
       continue;
     }
+
     do_row(line);
   }
 }
@@ -372,6 +403,7 @@ push_socket_for_owners(const ArrayList<linux_socket_owner> *owners,
                        Push do_push_socket) throws -> void
 {
   bool has_process_owner = false;
+
   if (process_mode == network_socket_process_mode::WithProcesses &&
       owners != nullptr)
   {
@@ -382,6 +414,7 @@ push_socket_for_owners(const ArrayList<linux_socket_owner> *owners,
       }
     }
   }
+
   if (!has_process_owner) do_push_socket(0, 0, false);
 }
 
@@ -394,14 +427,18 @@ linux_unix_sockets(const ArrayList<linux_socket_owner> *owners,
   let       result = ArrayList<network_socket_entry>{allocator};
   let const peers  = linux_unix_socket_peers(allocator);
   let const path   = linux_socket_proc_path("/net/unix", allocator);
+
   for_each_proc_net_row(path.view(), [&](StringView line) throws {
     let const inode = linux_unix_socket_field(line, 6).to<u64>();
+
     if (inode.is_error()) return;
+
     let const flags = utils::parse_integer_in_base_u64(
         linux_unix_socket_field(line, 3), int_base::hex);
     let const type  = linux_unix_socket_field(line, 4);
     let const state = linux_unix_socket_field(line, 5);
     let       path  = linux_unix_socket_field(line, 7);
+
     let const unix_type =
         type == "0002"
             ? network_unix_socket_type::Datagram
@@ -413,7 +450,8 @@ linux_unix_sockets(const ArrayList<linux_socket_owner> *owners,
         is_listener ? network_socket_state::Listen
                     : (state == "03" ? network_socket_state::Established
                                      : network_socket_state::Unconnected);
-    let const peer           = linux_unix_peer_record(peers, inode.value());
+    let const peer = linux_unix_peer_record(peers, inode.value());
+
     let const do_push_socket = [&](u32 process_id, u64 start_token,
                                    bool has_start_token) throws {
       let socket = network_socket_entry{
@@ -432,10 +470,12 @@ linux_unix_sockets(const ArrayList<linux_socket_owner> *owners,
           row_state,
           unix_type
       };
+
       socket.owner_start_token     = start_token;
       socket.has_owner_start_token = has_start_token;
       result.push(steal(socket));
     };
+
     push_socket_for_owners(owners, process_mode, inode.value(), do_push_socket);
   });
 
@@ -443,12 +483,15 @@ linux_unix_sockets(const ArrayList<linux_socket_owner> *owners,
 }
 
 static fn
-linux_socket_owners(Allocator allocator) throws -> ArrayList<linux_socket_owner>
+linux_socket_owners(Allocator allocator) throws
+    -> ArrayList<linux_socket_owner>
 {
   let       owners         = ArrayList<linux_socket_owner>{allocator};
   let const proc_path      = linux_socket_proc_path({}, allocator);
   DIR      *proc_directory = ::opendir(proc_path.c_str());
+
   if (proc_directory == nullptr) return owners;
+
   defer { ::closedir(proc_directory); };
 
   for (struct dirent *entry = ::readdir(proc_directory); entry != nullptr;
@@ -456,6 +499,7 @@ linux_socket_owners(Allocator allocator) throws -> ArrayList<linux_socket_owner>
   {
     let const name       = StringView{entry->d_name};
     let const parsed_pid = name.to<u32>();
+
     if (parsed_pid.is_error()) continue;
 
     let const  process_directory    = proc_path + "/" + name;
@@ -464,6 +508,7 @@ linux_socket_owners(Allocator allocator) throws -> ArrayList<linux_socket_owner>
 
     let const descriptor_path      = process_directory + "/fd";
     DIR      *descriptor_directory = ::opendir(descriptor_path.c_str());
+
     if (descriptor_directory == nullptr) continue;
 
     let const descriptor_directory_fd = ::dirfd(descriptor_directory);
@@ -472,22 +517,30 @@ linux_socket_owners(Allocator allocator) throws -> ArrayList<linux_socket_owner>
          descriptor != nullptr; descriptor = ::readdir(descriptor_directory))
     {
       if (descriptor->d_name[0] == '.') continue;
+
       char      target[128];
       let const target_length =
           ::readlinkat(descriptor_directory_fd, descriptor->d_name, target,
                        sizeof(target) - 1);
+
       if (target_length <= 9) continue;
+
       target[target_length] = '\0';
+
       let const target_view =
           StringView{target, static_cast<usize>(target_length)};
+
       if (!target_view.starts_with("socket:[") ||
           target_view[target_view.length - 1] != ']')
       {
         continue;
       }
+
       let const inode =
           target_view.substring_of_length(8, target_view.length - 9).to<u64>();
+
       if (inode.is_error()) continue;
+
       bool is_known = false;
 
       for (let const &owner : owners) {
@@ -502,6 +555,7 @@ linux_socket_owners(Allocator allocator) throws -> ArrayList<linux_socket_owner>
           start_token = linux_process_start_token(process_directory.view());
           did_read_start_token = true;
         }
+
         owners.push(linux_socket_owner{inode.value(), start_token.value_or(0),
                                        parsed_pid.value(),
                                        start_token.has_value()});
@@ -515,15 +569,17 @@ linux_socket_owners(Allocator allocator) throws -> ArrayList<linux_socket_owner>
 }
 
 static fn
-linux_network_sockets_from_file(StringView                           path,
-                                network_socket_protocol              protocol,
-                                const ArrayList<linux_socket_owner> *owners,
-                                Allocator                            allocator,
-                                network_address_family               family,
-                                network_socket_process_mode process_mode) throws
+linux_network_sockets_from_file(
+    StringView                           path,
+    network_socket_protocol              protocol,
+    const ArrayList<linux_socket_owner> *owners,
+    Allocator                            allocator,
+    network_address_family               family,
+    network_socket_process_mode          process_mode) throws
     -> ArrayList<network_socket_entry>
 {
   let result = ArrayList<network_socket_entry>{allocator};
+
   for_each_proc_net_row(path, [&](StringView line) throws {
     let const local           = nth_space_field(line, 1);
     let const peer            = nth_space_field(line, 2);
@@ -556,6 +612,7 @@ linux_network_sockets_from_file(StringView                           path,
         queues.substring_of_length(0, *queue_separator), int_base::hex);
     let const owner_id = owner_word.to<u32>();
     let const inode    = inode_word.to<u64>();
+
     if (!local_address.has_value() || !peer_address.has_value() ||
         local_port.is_error() || peer_port.is_error() ||
         state_value.is_error() || receive_queue.is_error() ||
@@ -583,10 +640,12 @@ linux_network_sockets_from_file(StringView                           path,
               ? network_socket_state::Unconnected
               : linux_socket_state(state_value.value()),
       };
+
       if (!owner_id.is_error()) {
         socket.owner_id     = owner_id.value();
         socket.has_owner_id = true;
       }
+
       socket.owner_start_token     = start_token;
       socket.has_owner_start_token = has_start_token;
       result.push(steal(socket));
@@ -604,8 +663,10 @@ fn
 logged_in_users() throws -> ArrayList<user_session>
 {
   let result = ArrayList<user_session>{heap_allocator()};
+
   setutxent();
   defer { endutxent(); };
+
   const struct utmpx *entry;
 
   while ((entry = getutxent()) != nullptr) {
@@ -614,6 +675,7 @@ logged_in_users() throws -> ArrayList<user_session>
     }
     let const user_length = strnlen(entry->ut_user, sizeof(entry->ut_user));
     let const line_length = strnlen(entry->ut_line, sizeof(entry->ut_line));
+
     result.push(user_session{
         String{StringView{entry->ut_user, user_length}},
         String{StringView{entry->ut_line, line_length}},
@@ -639,6 +701,7 @@ system_log_priority(StringView priority) wontthrow -> int
   };
   static constexpr StaticStringMap PRIORITIES{PRIORITY_ENTRIES};
   let                              name = priority;
+
   if (let const separator = priority.find_character('.'); separator.has_value())
     name = priority.substring(*separator + 1);
 
@@ -651,6 +714,7 @@ write_system_log(const system_log_options &options) wontthrow -> bool
   let tag_text     = String{heap_allocator(), options.tag};
   let message_text = String{heap_allocator(), options.message};
   let log_options  = options.should_include_pid ? LOG_PID : 0;
+
   if (options.should_copy_to_stderr) log_options |= LOG_PERROR;
   openlog(tag_text.is_empty() ? nullptr : tag_text.c_str(), log_options, 0);
   syslog(system_log_priority(options.priority), "%s", message_text.c_str());
@@ -690,12 +754,13 @@ hot fn
 write_fd(os::descriptor fd, const opaque *buf, usize size) wontthrow
     -> Maybe<usize>
 {
-  loop
-  {
+  loop {
     let written_count = write(fd, buf, size);
+
     if (written_count == -1 && errno == EINTR) {
       continue;
     }
+
     if (written_count == -1) return koshka::None;
 
     return static_cast<usize>(written_count);
@@ -712,13 +777,14 @@ write_to_numbered_fd(i64 fd_number, const opaque *buf, usize size) wontthrow
 hot fn
 read_fd(os::descriptor fd, opaque *buf, usize size) wontthrow -> Maybe<usize>
 {
-  loop
-  {
+  loop {
     let read_count = read(fd, buf, size);
+
     if (read_count == -1 && errno == EINTR) {
       if (INTERRUPT_REQUESTED) return koshka::None;
       continue;
     }
+
     if (read_count == -1) return koshka::None;
 
     return static_cast<usize>(read_count);
@@ -744,6 +810,7 @@ regular_descriptor_file_size(os::descriptor fd) wontthrow -> Maybe<u64>
   let const        is_page_multiple =
       page_byte_count != 0 && size % page_byte_count == 0;
   let const is_unbacked = is_page_multiple && info.st_blocks == 0;
+
   if (is_unbacked) return None;
 
   return size;
@@ -775,26 +842,33 @@ wait_for_fd_readable(os::descriptor fd, i64 timeout_nanos) wontthrow -> i32
                                         ? UINT64_MAX
                                         : start_nanos + duration_nanos);
 
-  loop
-  {
+  loop {
     int timeout_millis = -1;
+
     if (timeout_nanos == 0) {
       timeout_millis = 0;
     } else if (has_deadline) {
       const u64 now_nanos = monotonic_nanos();
+
       if (now_nanos >= deadline_nanos) return 0;
+
       let const remaining_nanos  = deadline_nanos - now_nanos;
       let       remaining_millis = remaining_nanos / 1'000'000;
+
       if (remaining_nanos % 1'000'000 != 0) remaining_millis++;
+
       timeout_millis = static_cast<int>(
           remaining_millis > INT_MAX ? INT_MAX : remaining_millis);
     }
 
     struct pollfd watch;
-    watch.fd        = fd;
-    watch.events    = POLLIN;
-    watch.revents   = 0;
+
+    watch.fd      = fd;
+    watch.events  = POLLIN;
+    watch.revents = 0;
+
     const int ready = poll(&watch, 1, timeout_millis);
+
     if (ready < 0) {
       if (errno == EINTR) {
         if (INTERRUPT_REQUESTED) return -1;
@@ -803,10 +877,12 @@ wait_for_fd_readable(os::descriptor fd, i64 timeout_nanos) wontthrow -> i32
 
       return -1;
     }
+
     if (ready == 0) {
       if (timeout_nanos == 0) return 0;
       continue;
     }
+
     if ((watch.revents & POLLNVAL) != 0) return -1;
     if ((watch.revents & (POLLIN | POLLHUP)) != 0) return 1;
 
@@ -818,6 +894,7 @@ fn
 close_fd(os::descriptor fd) wontthrow -> bool
 {
   const int prior_errno = errno;
+
   if (close(fd) == -1) return false;
   errno = prior_errno;
 
@@ -828,6 +905,7 @@ fn
 redirect_stdout(os::descriptor target) wontthrow -> os::descriptor
 {
   const os::descriptor saved = fcntl(STDOUT_FILENO, F_DUPFD_CLOEXEC, 0);
+
   dup2(target, STDOUT_FILENO);
   note_descriptor_rebound();
 
@@ -859,6 +937,7 @@ highest_free_shell_fd() wontthrow -> int
   int       ceiling_fd  = SHELL_HIDDEN_FD_CEILING;
 
   let const open_file_limit = get_resource_limit(resource_kind::OpenFiles);
+
   if (open_file_limit.has_value() &&
       open_file_limit->soft != RESOURCE_UNLIMITED &&
       open_file_limit->soft <= static_cast<u64>(ceiling_fd))
@@ -886,6 +965,7 @@ static fn
 save_descriptor_at(i32 shell_fd, int floor_fd) wontthrow -> saved_descriptor
 {
   saved_descriptor result{};
+
   result.shell_fd = shell_fd;
 
   os::descriptor backup = fcntl(shell_fd, F_DUPFD_CLOEXEC, floor_fd);
@@ -908,10 +988,11 @@ save_descriptor_at(i32 shell_fd, int floor_fd) wontthrow -> saved_descriptor
 static fn
 save_and_replace_descriptor_at(i32            shell_fd,
                                os::descriptor target,
-                               int floor_fd) wontthrow -> saved_descriptor
+                               int            floor_fd) wontthrow -> saved_descriptor
 {
   if (fcntl(target, F_GETFD) == -1) {
     saved_descriptor failed{};
+
     failed.shell_fd   = shell_fd;
     failed.is_dup2_ok = false;
 
@@ -919,6 +1000,7 @@ save_and_replace_descriptor_at(i32            shell_fd,
   }
 
   let result = save_descriptor_at(shell_fd, floor_fd);
+
   if (!result.is_dup2_ok) return result;
 
   result.is_dup2_ok = dup2(target, shell_fd) != -1;
@@ -979,9 +1061,13 @@ fn
 reopen_terminal_as_stdin() wontthrow -> bool
 {
   const int tty_fd = open("/dev/tty", O_RDWR);
+
   if (tty_fd == -1) return false;
+
   LOG(Info, "reopening the controlling terminal onto fd 0");
+
   let const was_replaced = dup2(tty_fd, STDIN_FILENO) != -1;
+
   note_descriptor_rebound();
   close(tty_fd);
 
@@ -1008,6 +1094,7 @@ move_descriptor_to_free_shell_fd(os::descriptor source, i32 floor_fd) wontthrow
     -> i32
 {
   let const moved = fcntl(source, F_DUPFD_CLOEXEC, floor_fd);
+
   if (moved == -1) return -1;
 
   close(source);
@@ -1022,6 +1109,7 @@ descriptors_refer_to_same_file(os::descriptor first,
 {
   struct stat first_status{};
   struct stat second_status{};
+
   if (::fstat(first, &first_status) != 0 ||
       ::fstat(second, &second_status) != 0)
   {
@@ -1048,6 +1136,7 @@ replace_descriptor(i32 shell_fd, os::descriptor target) wontthrow -> bool
   if (target == shell_fd) return true;
 
   let const was_replaced = dup2(target, shell_fd) != -1;
+
   note_descriptor_rebound();
 
   return was_replaced;
@@ -1069,6 +1158,7 @@ allocate_free_shell_fd(i32 floor_fd) wontthrow -> i32
 
   for (let const source : probe_sources) {
     const int allocated = fcntl(source, F_DUPFD_CLOEXEC, floor_fd);
+
     if (allocated != -1) {
       close(allocated);
 
@@ -1097,6 +1187,7 @@ fn
 get_login_user() throws -> Maybe<String>
 {
   char name[256];
+
   if (getlogin_r(name, sizeof(name)) == 0) return String{name};
 
   return uid_to_username(static_cast<u32>(getuid()));
@@ -1106,18 +1197,23 @@ fn
 get_hostname() throws -> Maybe<String>
 {
   char buffer[256];
+
   if (gethostname(buffer, sizeof(buffer)) != 0) return koshka::None;
+
   buffer[sizeof(buffer) - 1] = '\0';
 
   return String{buffer};
 }
 
 fn
-network_interface_addresses() throws -> ArrayList<network_interface_address>
+network_interface_addresses() throws
+    -> ArrayList<network_interface_address>
 {
   let result = ArrayList<network_interface_address>{heap_allocator()};
   struct ifaddrs *interfaces = nullptr;
+
   if (::getifaddrs(&interfaces) != 0) return result;
+
   defer { ::freeifaddrs(interfaces); };
 
   for (let *current = interfaces; current != nullptr;
@@ -1128,6 +1224,7 @@ network_interface_addresses() throws -> ArrayList<network_interface_address>
     }
 
     let const family = current->ifa_addr->sa_family;
+
     if (family != AF_INET && family != AF_INET6) {
       continue;
     }
@@ -1135,6 +1232,7 @@ network_interface_addresses() throws -> ArrayList<network_interface_address>
     char      address[NI_MAXHOST]{};
     let const address_length = family == AF_INET ? sizeof(struct sockaddr_in)
                                                  : sizeof(struct sockaddr_in6);
+
     if (::getnameinfo(current->ifa_addr, static_cast<socklen_t>(address_length),
                       address, sizeof(address), nullptr, 0,
                       NI_NUMERICHOST) != 0)
@@ -1158,6 +1256,7 @@ default_network_interface(Allocator allocator) throws -> Maybe<String>
 {
 #if defined __linux__
   let contents = Path{"/proc/net/route"}.read_entire_file();
+
   if (!contents.has_value()) return None;
 
   usize position = 0;
@@ -1172,6 +1271,7 @@ default_network_interface(Allocator allocator) throws -> Maybe<String>
 
     let const line =
         contents->view().substring_of_length(line_start, position - line_start);
+
     if (position < contents->length()) position++;
     if (line.starts_with("Iface")) continue;
 
@@ -1205,6 +1305,7 @@ default_network_interface(Allocator allocator) throws -> Maybe<String>
          words[3][3] == '7' || words[3][3] == '9' || words[3][3] == 'b' ||
          words[3][3] == 'B' || words[3][3] == 'd' || words[3][3] == 'D' ||
          words[3][3] == 'f' || words[3][3] == 'F');
+
     if (word_count >= 4 && words[1] == "00000000" && has_up_flag) {
       return String{allocator, words[0]};
     }
@@ -1251,11 +1352,13 @@ socket_address(const struct in_sockinfo &info,
   char          buffer[INET6_ADDRSTRLEN]{};
   const opaque *address       = nullptr;
   int           native_family = AF_INET;
+
   if (family == network_address_family::IPv4) {
     switch (side) {
     case socket_address_side::Local:
       address = static_cast<const opaque *>(&info.insi_laddr.ina_46.i46a_addr4);
       break;
+
     case socket_address_side::Peer:
       address = static_cast<const opaque *>(&info.insi_faddr.ina_46.i46a_addr4);
       break;
@@ -1266,6 +1369,7 @@ socket_address(const struct in_sockinfo &info,
     case socket_address_side::Local:
       address = static_cast<const opaque *>(&info.insi_laddr.ina_6);
       break;
+
     case socket_address_side::Peer:
       address = static_cast<const opaque *>(&info.insi_faddr.ina_6);
       break;
@@ -1306,9 +1410,11 @@ network_sockets(network_socket_process_mode process_mode) throws
     let const process_id = static_cast<pid_t>(process.pid);
     let       descriptor_byte_count =
         ::proc_pidinfo(process_id, PROC_PIDLISTFDS, 0, nullptr, 0);
+
     if (descriptor_byte_count <= 0) continue;
 
     ArrayList<struct proc_fdinfo> descriptors{heap_allocator()};
+
     descriptors.reserve(static_cast<usize>(descriptor_byte_count) /
                         sizeof(struct proc_fdinfo));
     descriptor_byte_count =
@@ -1321,9 +1427,11 @@ network_sockets(network_socket_process_mode process_mode) throws
 
     for (usize index = 0; index < descriptor_count; index++) {
       let const &descriptor = descriptors.begin()[index];
+
       if (descriptor.proc_fdtype != PROX_FDTYPE_SOCKET) continue;
 
       struct socket_fdinfo socket{};
+
       if (::proc_pidfdinfo(process_id, descriptor.proc_fd, PROC_PIDFDSOCKETINFO,
                            &socket, sizeof(socket)) != sizeof(socket))
       {
@@ -1331,9 +1439,11 @@ network_sockets(network_socket_process_mode process_mode) throws
       }
 
       let const &info = socket.psi;
+
       if (info.soi_family != AF_INET && info.soi_family != AF_INET6) {
         continue;
       }
+
       if (info.soi_protocol != IPPROTO_TCP && info.soi_protocol != IPPROTO_UDP)
       {
         continue;
@@ -1368,6 +1478,7 @@ network_sockets(network_socket_process_mode process_mode) throws
                         : network_socket_state::Unconnected,
           network_unix_socket_type::Stream,
       };
+
       entry.owner_start_token     = process.start_token;
       entry.owner_id              = process.owner_id;
       entry.has_owner_start_token = process.start_token != 0;
@@ -1379,8 +1490,10 @@ network_sockets(network_socket_process_mode process_mode) throws
 #elif defined __linux__
   let const allocator = heap_allocator();
   let       owners    = ArrayList<linux_socket_owner>{allocator};
+
   if (process_mode == network_socket_process_mode::WithProcesses)
     owners = linux_socket_owners(allocator);
+
   struct linux_socket_source
   {
     StringView              suffix;
@@ -1426,8 +1539,10 @@ get_processor_counts() wontthrow -> processor_counts
   let const        online     = sysconf(_SC_NPROCESSORS_ONLN);
   let const        configured = sysconf(_SC_NPROCESSORS_CONF);
   processor_counts counts{};
+
   if (online > 0) counts.online_count = static_cast<usize>(online);
   if (configured > 0) counts.configured_count = static_cast<usize>(configured);
+
   counts.online_count =
       affinity_processor_count(counts.online_count, counts.configured_count);
   if (counts.configured_count < counts.online_count)
@@ -1477,13 +1592,16 @@ get_home_for_user(StringView username) throws -> Maybe<Path>
   if (username.is_empty()) return koshka::None;
 
   let const contents = Path{StringView{"/etc/passwd"}}.read_entire_file();
+
   if (!contents) return koshka::None;
 
   let const text = contents->view();
 
   for (let const &line : utils::split_lines(text)) {
     if (passwd_field(line, 0) != username) continue;
+
     let const home_field = passwd_field(line, 5);
+
     if (home_field.is_empty()) return koshka::None;
 
     return Path{home_field};
@@ -1497,12 +1615,14 @@ enumerate_first_fields(const Path &database) throws -> ArrayList<String>
 {
   ArrayList<String> names{heap_allocator()};
   let const         contents = database.read_entire_file();
+
   if (!contents) return names;
 
   let const text = contents->view();
 
   for (let const &line : utils::split_lines(text)) {
     let const name = passwd_field(line, 0);
+
     if (!name.is_empty() && line.find_character(':').has_value()) {
       names.push(String{name});
     }
@@ -1553,6 +1673,7 @@ fn
 terminal_name(descriptor fd) throws -> Maybe<String>
 {
   char buffer[1024];
+
   if (ttyname_r(fd, buffer, sizeof(buffer)) != 0) return None;
 
   return String{buffer};
@@ -1565,6 +1686,7 @@ TerminalEchoGuard::TerminalEchoGuard(descriptor         input,
   if (mode != terminal_echo_mode::Disable || !is_fd_a_tty(input)) {
     return;
   }
+
   if (tcgetattr(input, &m_original_mode) != 0) {
     m_did_succeed = false;
 
@@ -1572,7 +1694,9 @@ TerminalEchoGuard::TerminalEchoGuard(descriptor         input,
   }
 
   let quiet_mode = m_original_mode;
+
   quiet_mode.c_lflag &= static_cast<tcflag_t>(~ECHO);
+
   if (tcsetattr(input, TCSANOW, &quiet_mode) != 0) {
     m_did_succeed = false;
 
@@ -1600,6 +1724,7 @@ TerminalRawInputGuard::TerminalRawInputGuard(descriptor input) wontthrow
   if (tcgetattr(input, &m_original_mode) != 0) return;
 
   let raw_mode = m_original_mode;
+
   raw_mode.c_lflag &= static_cast<tcflag_t>(~(ECHO | ICANON));
   raw_mode.c_cc[VMIN]  = 1;
   raw_mode.c_cc[VTIME] = 0;
@@ -1635,6 +1760,7 @@ fn
 collate_compare(const String &left, const String &right) wontthrow -> int
 {
   static const int did_bind_collate = (setlocale(LC_COLLATE, ""), 0);
+
   unused(did_bind_collate);
 
   return strcoll(left.c_str(), right.c_str());
@@ -1645,6 +1771,7 @@ get_unicode_locale() wontthrow -> locale_t
 {
   static const locale_t unicode_locale = [] {
     locale_t created = newlocale(LC_CTYPE_MASK, "C.UTF-8", nullptr);
+
     if (created == nullptr)
       created = newlocale(LC_CTYPE_MASK, "en_US.UTF-8", nullptr);
 
@@ -1658,6 +1785,7 @@ fn
 code_point_to_upper(u32 code_point) wontthrow -> u32
 {
   let const unicode_locale = get_unicode_locale();
+
   if (unicode_locale == nullptr) return code_point;
 
   return static_cast<u32>(
@@ -1668,6 +1796,7 @@ fn
 code_point_to_lower(u32 code_point) wontthrow -> u32
 {
   let const unicode_locale = get_unicode_locale();
+
   if (unicode_locale == nullptr) return code_point;
 
   return static_cast<u32>(
@@ -1678,12 +1807,14 @@ fn
 locale_is_available(StringView locale_name) wontthrow -> bool
 {
   char name[64];
+
   if (locale_name.length >= sizeof(name)) return false;
 
   std::memcpy(name, locale_name.data, locale_name.length);
   name[locale_name.length] = '\0';
 
   let const created = newlocale(LC_CTYPE_MASK, name, nullptr);
+
   if (created == nullptr) return false;
 
   freelocale(created);
@@ -1697,6 +1828,7 @@ code_point_is_in_class(StringView class_name, u32 code_point) wontthrow -> bool
   let const unicode_locale = get_unicode_locale();
 
   char name[16];
+
   if (unicode_locale == nullptr || class_name.length >= sizeof(name)) {
     return false;
   }
@@ -1715,9 +1847,11 @@ RegexUtf8Scope::RegexUtf8Scope(bool is_enabled) wontthrow
   if (!is_enabled) return;
 
   let const regex_locale = get_unicode_locale();
+
   if (regex_locale == nullptr) return;
 
   let const previous = uselocale(regex_locale);
+
   if (previous == nullptr) return;
 
   m_previous  = previous;
@@ -1741,10 +1875,12 @@ static fn
 locale_has_dot_decimal_point(locale_t numeric_locale) wontthrow -> bool
 {
   let const previous = uselocale(numeric_locale);
+
   if (previous == nullptr) return false;
 
   char      half[8];
   let const length = std::snprintf(half, sizeof(half), "%.1f", 0.5);
+
   uselocale(previous);
 
   return length == 3 && half[1] == '.';
@@ -1769,7 +1905,9 @@ get_numeric_locale(StringView locale_name) wontthrow
   }
 
   let &slot = cache[next_slot];
+
   next_slot = (next_slot + 1) % CACHE_ENTRY_COUNT;
+
   if (slot.numeric_locale != nullptr) freelocale(slot.numeric_locale);
 
   std::memcpy(slot.name, locale_name.data, locale_name.length);
@@ -1783,6 +1921,7 @@ get_numeric_locale(StringView locale_name) wontthrow
 #if defined KOSH_HAS_ADDRESS_SANITIZER
   __lsan_enable();
 #endif
+
   slot.has_dot_decimal_point =
       slot.numeric_locale == nullptr ||
       locale_has_dot_decimal_point(slot.numeric_locale);
@@ -1795,6 +1934,7 @@ NumericLocaleScope::activate(StringView locale_name, bool is_grouping) wontthrow
     -> void
 {
   let const entry = get_numeric_locale(locale_name);
+
   if (entry == nullptr || entry->numeric_locale == nullptr) {
     return;
   }
@@ -1804,6 +1944,7 @@ NumericLocaleScope::activate(StringView locale_name, bool is_grouping) wontthrow
   }
 
   let const previous = uselocale(entry->numeric_locale);
+
   if (previous == nullptr) return;
 
   m_previous  = previous;
@@ -1821,8 +1962,10 @@ read_process_cpu_times() wontthrow -> cpu_times
 {
   cpu_times  result{};
   struct tms accounting{};
+
   if (times(&accounting) != static_cast<clock_t>(-1)) {
     let const ticks = static_cast<double>(sysconf(_SC_CLK_TCK));
+
     if (ticks > 0) {
       result.self_user_seconds =
           static_cast<double>(accounting.tms_utime) / ticks;
@@ -1874,12 +2017,15 @@ fn
 get_resource_limit(resource_kind kind) wontthrow -> Maybe<resource_limit>
 {
   let const which = rlimit_resource_of(kind);
+
   if (!which.has_value()) return None;
 
   struct rlimit limit{};
+
   if (getrlimit(*which, &limit) != 0) return None;
 
   resource_limit result{};
+
   result.soft = limit.rlim_cur == RLIM_INFINITY
                     ? RESOURCE_UNLIMITED
                     : static_cast<u64>(limit.rlim_cur);
@@ -1895,9 +2041,11 @@ set_resource_limit(const resource_limit &limit, resource_kind kind) wontthrow
     -> bool
 {
   let const which = rlimit_resource_of(kind);
+
   if (!which.has_value()) return false;
 
   struct rlimit target{};
+
   target.rlim_cur = limit.soft == RESOURCE_UNLIMITED
                         ? RLIM_INFINITY
                         : static_cast<rlim_t>(limit.soft);
@@ -1921,11 +2069,13 @@ is_directory_separator(char c) wontthrow -> bool
 }
 
 fn
-get_terminal_dimensions(descriptor output) wontthrow
-    -> Maybe<terminal_dimensions>
+get_terminal_dimensions(descriptor output)
+    wontthrow -> Maybe<terminal_dimensions>
 {
   LOG(Debug, "querying the terminal size");
+
   struct winsize window{};
+
   if (ioctl(output, TIOCGWINSZ, &window) != 0) return None;
   if (window.ws_col == 0 || window.ws_row == 0) {
     return None;
@@ -2114,18 +2264,23 @@ append_terminal_character(String &output, cc_t value) throws -> void
 fn
 terminal_settings(descriptor                    terminal,
                   Allocator                     allocator,
-                  terminal_settings_output_mode mode) throws -> Maybe<String>
+                  terminal_settings_output_mode mode) throws
+    -> Maybe<String>
 {
   termios state{};
   if (tcgetattr(terminal, &state) != 0) return None;
+
   let output = String{allocator};
+
   if (mode == terminal_settings_output_mode::Encoded) {
-    bool is_first_field  = true;
-    let  do_append_field = [&](u64 value) throws {
+    bool is_first_field = true;
+
+    let do_append_field = [&](u64 value) throws {
       if (!is_first_field) output += ':';
       output += String::from_in_base(value, false, int_base::hex, allocator);
       is_first_field = false;
     };
+
     do_append_field(state.c_iflag);
     do_append_field(state.c_oflag);
     do_append_field(state.c_cflag);
@@ -2140,6 +2295,7 @@ terminal_settings(descriptor                    terminal,
 
     return output;
   }
+
   output += "speed ";
   output += String::from(terminal_speed_number(cfgetospeed(&state)), allocator);
   output += " baud; ";
@@ -2167,6 +2323,7 @@ terminal_settings(descriptor                    terminal,
       output += "; ";
     }
   }
+
   output += '\n';
 
   return output;
@@ -2176,8 +2333,9 @@ static fn
 restore_encoded_terminal_settings(termios &state, StringView encoded) wontthrow
     -> bool
 {
-  usize position      = 0;
-  let   do_read_field = [&](u64 &value) wontthrow -> bool {
+  usize position = 0;
+
+  let do_read_field = [&](u64 &value) wontthrow -> bool {
     if (position > encoded.length) return false;
     usize end = position;
 
@@ -2186,8 +2344,10 @@ restore_encoded_terminal_settings(termios &state, StringView encoded) wontthrow
     }
 
     if (end == position) return false;
+
     let const parsed = utils::parse_integer_in_base_u64(
         encoded.substring_of_length(position, end - position), int_base::hex);
+
     if (parsed.is_error()) return false;
     value    = parsed.value();
     position = end < encoded.length ? end + 1 : encoded.length + 1;
@@ -2201,6 +2361,7 @@ restore_encoded_terminal_settings(termios &state, StringView encoded) wontthrow
   u64 local_flags   = 0;
   u64 input_speed   = 0;
   u64 output_speed  = 0;
+
   if (!do_read_field(input_flags) || !do_read_field(output_flags) ||
       !do_read_field(control_flags) || !do_read_field(local_flags) ||
       !do_read_field(input_speed) || !do_read_field(output_speed))
@@ -2230,6 +2391,7 @@ restore_encoded_terminal_settings(termios &state, StringView encoded) wontthrow
 
   for (usize index = 0; index < NCCS; index++) {
     u64 value = 0;
+
     if (!do_read_field(value) || value > UCHAR_MAX) {
       return false;
     }
@@ -2247,16 +2409,19 @@ parse_terminal_character(StringView text, cc_t &value) wontthrow -> bool
 
     return true;
   }
+
   if (text == "^?") {
     value = 127;
 
     return true;
   }
+
   if (text.length == 2 && text[0] == '^') {
     value = static_cast<cc_t>(text[1] & 31);
 
     return true;
   }
+
   if (text.length != 1) return false;
   value = static_cast<cc_t>(text[0]);
 
@@ -2269,8 +2434,10 @@ apply_terminal_settings(descriptor               terminal,
     -> terminal_settings_apply_result
 {
   termios state{};
+
   if (tcgetattr(terminal, &state) != 0)
     return {terminal_settings_apply_kind::SystemError, 0};
+
   if (settings.count() == 1 &&
       settings[0].view().find_character(':').has_value())
   {
@@ -2289,6 +2456,7 @@ apply_terminal_settings(descriptor               terminal,
     let const setting     = settings[index].view();
     let const is_disabled = setting.length > 1 && setting[0] == '-';
     let const name        = is_disabled ? setting.substring(1) : setting;
+
     if (let const selected_flag = TERMINAL_FLAGS.find(name);
         selected_flag.has_value())
     {
@@ -2307,6 +2475,7 @@ apply_terminal_settings(descriptor               terminal,
       }
 
       cc_t value = 0;
+
       if (!parse_terminal_character(settings[index].view(), value))
         return {terminal_settings_apply_kind::InvalidSetting, index};
       state.c_cc[selected_character->index] = value;
@@ -2314,8 +2483,10 @@ apply_terminal_settings(descriptor               terminal,
     }
 
     let const selected_setting = TERMINAL_SETTINGS.find(name);
+
     if (!selected_setting.has_value()) {
       let const speed = terminal_speed_value(name);
+
       if (speed == static_cast<speed_t>(~speed_t{0}) || is_disabled) {
         return {terminal_settings_apply_kind::InvalidSetting, index};
       }
@@ -2331,7 +2502,9 @@ apply_terminal_settings(descriptor               terminal,
     case terminal_setting_kind::CharacterSize: {
       if (is_disabled)
         return {terminal_settings_apply_kind::InvalidSetting, index};
+
       static constexpr tcflag_t CHARACTER_SIZES[] = {CS5, CS6, CS7, CS8};
+
       state.c_cflag = (state.c_cflag & ~CSIZE) | CHARACTER_SIZES[name[2] - '5'];
       continue;
     }
@@ -2391,6 +2564,7 @@ apply_terminal_settings(descriptor               terminal,
       }
 
       let const parsed = utils::parse_decimal_u64(settings[index].view());
+
       if (parsed.is_error() || parsed.value() > UINT16_MAX) {
         return {terminal_settings_apply_kind::InvalidSetting, index};
       }
@@ -2408,6 +2582,7 @@ apply_terminal_settings(descriptor               terminal,
       if (++index == settings.count())
         return {terminal_settings_apply_kind::InvalidSetting, index - 1};
       let const parsed = utils::parse_decimal_u64(settings[index].view());
+
       if (parsed.is_error() || parsed.value() > UCHAR_MAX) {
         return {terminal_settings_apply_kind::InvalidSetting, index};
       }
@@ -2460,20 +2635,25 @@ get_environment_variable(StringView key) throws -> Maybe<String>
 {
   LOG(All, "reading the environment variable '%.*s'",
       static_cast<int>(key.length), key.data);
+
   const String key_string{key};
   const char  *e = std::getenv(key_string.c_str());
+
   if (e != nullptr) return String{e};
 
   return koshka::None;
 }
 
 fn
-set_environment_variable(StringView key, StringView value) throws -> void
+set_environment_variable(StringView key, StringView value) throws
+    -> void
 {
   LOG(All, "setting the environment variable '%.*s'",
       static_cast<int>(key.length), key.data);
+
   const String key_string{key};
   const String value_string{value};
+
   setenv(key_string.c_str(), value_string.c_str(), 1);
   ENVIRONMENT_EPOCH++;
 }
@@ -2483,7 +2663,9 @@ unset_environment_variable(StringView key) throws -> void
 {
   LOG(All, "unsetting the environment variable '%.*s'",
       static_cast<int>(key.length), key.data);
+
   const String key_string{key};
+
   unsetenv(key_string.c_str());
   ENVIRONMENT_EPOCH++;
 }
@@ -2500,7 +2682,8 @@ signal_internal_diagnostic() wontthrow -> void
 
 fn
 for_each_environment_name(opaque                   *context,
-                          environment_name_callback callback) throws -> void
+                          environment_name_callback callback) throws
+    -> void
 {
   if (environ == nullptr) return;
 
@@ -2509,6 +2692,7 @@ for_each_environment_name(opaque                   *context,
     let const  equals = pair.find_character('=');
     let const  name =
         equals.has_value() ? pair.substring_of_length(0, *equals) : pair;
+
     callback(context, name);
   }
 }
@@ -2517,6 +2701,7 @@ fn
 environment_names() throws -> ArrayList<String>
 {
   ArrayList<String> names{heap_allocator()};
+
   for_each_environment_name(&names, [](opaque *context, StringView name) {
     static_cast<ArrayList<String> *>(context)->push(String{name});
   });
@@ -2579,6 +2764,7 @@ make_sigset_impl(int first, ...) wontthrow -> sigset_t
   va_list va;
 
   sigset_t sm;
+
   sigemptyset(&sm);
 
   va_start(va, first);
@@ -2594,9 +2780,9 @@ make_sigset_impl(int first, ...) wontthrow -> sigset_t
 #define make_sigset(...) make_sigset_impl(__VA_ARGS__, -1)
 
 static fn
-sigchild_handler(int        signal_number,
-                 siginfo_t *siginfo,
-                 opaque    *context) wontthrow -> void
+sigchild_handler(int signal_number, siginfo_t *siginfo, opaque *context)
+    wontthrow
+    -> void
 {
   unused(context);
   unused(siginfo);
@@ -2613,6 +2799,7 @@ static fn
 install_child_state_handler() throws -> void
 {
   struct sigaction action = {};
+
   check_syscall(sigemptyset(&action.sa_mask));
   action.sa_flags     = SA_SIGINFO;
   action.sa_sigaction = sigchild_handler;
@@ -2625,13 +2812,15 @@ reset_signal_handlers() throws -> void
   LOG(Debug, "restoring signal dispositions for a child process");
 
   sigset_t sm;
+
   sigfillset(&sm);
   check_syscall(sigprocmask(SIG_UNBLOCK, &sm, nullptr));
   sigemptyset(&SIGNALS_UNBLOCKED_BY_TRAP);
 
   struct sigaction sa = {};
-  sa.sa_handler       = SIG_DFL;
-  CHILD_TRAP_ARMED    = 0;
+
+  sa.sa_handler    = SIG_DFL;
+  CHILD_TRAP_ARMED = 0;
   install_child_state_handler();
   check_syscall(sigaction(SIGINT, &sa, nullptr));
 
@@ -2649,7 +2838,8 @@ reset_signal_handlers() throws -> void
 
   if (IS_PIPE_SIGNAL_IGNORED_BY_TRAP || WAS_PIPE_SIGNAL_IGNORED_AT_ENTRY) {
     struct sigaction ignore = {};
-    ignore.sa_handler       = SIG_IGN;
+
+    ignore.sa_handler = SIG_IGN;
     check_syscall(sigaction(SIGPIPE, &ignore, nullptr));
   } else {
     check_syscall(sigaction(SIGPIPE, &sa, nullptr));
@@ -2678,6 +2868,7 @@ capture_entry_ignored_signals() wontthrow -> void
     }
 
     struct sigaction sa = {};
+
     if (sigaction(signal_number, nullptr, &sa) != 0) continue;
     if (sa.sa_handler != SIG_IGN) continue;
 
@@ -2697,11 +2888,13 @@ fn
 set_default_signal_handlers(signal_profile profile) throws -> void
 {
   let const is_interactive = profile == signal_profile::Interactive;
+
   LOG(Info, "installing the shell signal handlers, interactive %d",
       is_interactive ? 1 : 0);
 
   if (is_interactive) {
     sigset_t sm = make_sigset(SIGTERM, SIGQUIT, SIGSTOP, SIGTSTP);
+
     check_syscall(sigprocmask(SIG_BLOCK, &sm, nullptr));
   }
 
@@ -2709,12 +2902,14 @@ set_default_signal_handlers(signal_profile profile) throws -> void
 
   if ((ENTRY_IGNORED_SIGNALS & (u64{1} << (SIGINT - 1))) == 0) {
     struct sigaction si = {};
-    si.sa_handler       = handle_interrupt;
+
+    si.sa_handler = handle_interrupt;
     check_syscall(sigaction(SIGINT, &si, nullptr));
   }
 
   struct sigaction sp = {};
-  sp.sa_handler       = SIG_IGN;
+
+  sp.sa_handler = SIG_IGN;
   check_syscall(sigaction(SIGPIPE, &sp, nullptr));
 }
 
@@ -2755,8 +2950,10 @@ fn
 install_fatal_exit_hook(void (*hook)()) throws -> void
 {
   let const was_installed = FATAL_EXIT_HOOK != nullptr;
-  FATAL_EXIT_HOOK         = hook;
-  FATAL_EXIT_HOOK_OWNER   = getpid();
+
+  FATAL_EXIT_HOOK       = hook;
+  FATAL_EXIT_HOOK_OWNER = getpid();
+
   if (was_installed) return;
 
   LOG(Info, "installing the fatal exit hook");
@@ -2765,6 +2962,7 @@ install_fatal_exit_hook(void (*hook)()) throws -> void
   }
 
   struct sigaction action = {};
+
   check_syscall(sigemptyset(&action.sa_mask));
   action.sa_flags     = SA_SIGINFO;
   action.sa_sigaction = handle_fatal_signal;
@@ -2787,10 +2985,12 @@ static fn
 unblock_signal_for_trap(i32 signal_number) throws -> void
 {
   sigset_t wanted;
+
   sigemptyset(&wanted);
   sigaddset(&wanted, signal_number);
 
   sigset_t previous;
+
   sigemptyset(&previous);
   check_syscall(sigprocmask(SIG_UNBLOCK, &wanted, &previous));
 
@@ -2810,6 +3010,7 @@ reblock_signal_after_trap(i32 signal_number) throws -> void
       signal_number);
 
   sigset_t wanted;
+
   sigemptyset(&wanted);
   sigaddset(&wanted, signal_number);
   check_syscall(sigprocmask(SIG_BLOCK, &wanted, nullptr));
@@ -2817,10 +3018,11 @@ reblock_signal_after_trap(i32 signal_number) throws -> void
 }
 
 static fn
-install_signal_disposition(i32 signal_number, void (*handler)(int)) throws
-    -> void
+install_signal_disposition(i32 signal_number,
+                           void (*handler)(int)) throws -> void
 {
   struct sigaction sa = {};
+
   check_syscall(sigemptyset(&sa.sa_mask));
   sa.sa_handler = handler;
   check_syscall(sigaction(signal_number, &sa, nullptr));
@@ -2887,13 +3089,16 @@ lookup_name_by_id(StringView database_path,
 {
   let const contents = Path{database_path}.read_entire_file();
   if (!contents) return koshka::None;
+
   let const wanted =
       String::from(static_cast<u64>(wanted_id), heap_allocator());
   let const text = contents->view();
 
   for (let const &line : utils::split_lines(text)) {
     if (passwd_field(line, id_field_index) != wanted.view()) continue;
+
     let const name = passwd_field(line, 0);
+
     if (!name.is_empty()) return String{name};
   }
 
@@ -2906,11 +3111,14 @@ lookup_id_by_name(StringView database_path,
                   usize      id_field_index) throws -> Maybe<u32>
 {
   let const contents = Path{database_path}.read_entire_file();
+
   if (!contents) return koshka::None;
 
   for (let const &line : utils::split_lines(contents->view())) {
     if (passwd_field(line, 0) != wanted_name) continue;
+
     let const id = passwd_field(line, id_field_index).to<i64>();
+
     if (!id.is_error() && id.value() >= 0 && id.value() <= UINT32_MAX) {
       return static_cast<u32>(id.value());
     }
@@ -2926,6 +3134,7 @@ uid_to_username(u32 uid) throws -> Maybe<String>
   struct passwd  entry{};
   struct passwd *result = nullptr;
   char           buffer[16384];
+
   if (getpwuid_r(static_cast<uid_t>(uid), &entry, buffer, sizeof(buffer),
                  &result) != 0 ||
       result == nullptr || result->pw_name == nullptr)
@@ -3131,11 +3340,15 @@ query_system_configuration(system_configuration_key key) wontthrow
 {
   if (key == system_configuration_key::Count)
     return {configuration_query_status::Undefined, 0};
+
   let const native_key = SYSTEM_CONFIGURATION_KEYS[static_cast<usize>(key)];
+
   if (native_key < 0) return {configuration_query_status::Undefined, 0};
 
-  errno           = 0;
+  errno = 0;
+
   let const value = sysconf(native_key);
+
   if (value == -1) return failed_configuration_query();
 
   return {configuration_query_status::Value, static_cast<i64>(value)};
@@ -3201,12 +3414,17 @@ query_string_configuration(string_configuration_key key,
     -> StringConfigurationResult
 {
   let result = StringConfigurationResult{allocator};
+
   if (key == string_configuration_key::Count) return result;
+
   let const native_key = STRING_CONFIGURATION_KEYS[static_cast<usize>(key)];
+
   if (native_key < 0) return result;
 
-  errno                     = 0;
+  errno = 0;
+
   usize required_byte_count = confstr(native_key, nullptr, 0);
+
   if (required_byte_count == 0) {
     if (errno != 0) result.status = configuration_query_status::Error;
 
@@ -3218,13 +3436,16 @@ query_string_configuration(string_configuration_key key,
   for (usize attempt_count = 0; attempt_count < 4; attempt_count++) {
     buffer.reserve(required_byte_count);
     errno = 0;
+
     let const actual_byte_count =
         confstr(native_key, buffer.begin(), required_byte_count);
+
     if (actual_byte_count == 0) {
       if (errno != 0) result.status = configuration_query_status::Error;
 
       return result;
     }
+
     if (actual_byte_count > required_byte_count) {
       required_byte_count = actual_byte_count;
       continue;
@@ -3291,11 +3512,15 @@ query_path_configuration(StringView path, path_configuration_key key) wontthrow
   if (key == path_configuration_key::Count)
     return {configuration_query_status::Undefined, 0};
   let const native_key = PATH_CONFIGURATION_KEYS[static_cast<usize>(key)];
+
   if (native_key < 0) return {configuration_query_status::Undefined, 0};
 
   let const path_text = String{heap_allocator(), path};
-  errno               = 0;
-  let const value     = pathconf(path_text.c_str(), native_key);
+
+  errno = 0;
+
+  let const value = pathconf(path_text.c_str(), native_key);
+
   if (value == -1) return failed_configuration_query();
 
   return {configuration_query_status::Value, static_cast<i64>(value)};
@@ -3311,10 +3536,13 @@ fn
 sleep_for_seconds(double seconds) wontthrow -> void
 {
   if (seconds <= 0.0) return;
+
   struct timespec requested;
+
   requested.tv_sec  = static_cast<time_t>(seconds);
   requested.tv_nsec = static_cast<long>(
       (seconds - static_cast<double>(requested.tv_sec)) * 1000000000.0);
+
   struct timespec remaining;
 
   while (nanosleep(&requested, &remaining) == -1 && errno == EINTR) {
@@ -3370,6 +3598,7 @@ register_platform_flags(FlagList &flags) throws -> void
                          "Trace functions under Cosmopolitan."};
   static FlagBool strace{'\0', "strace", flag_section::Debug,
                          "Trace system calls under Cosmopolitan."};
+
   flags.push(&ftrace);
   flags.push(&strace);
 #else

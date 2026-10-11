@@ -24,8 +24,7 @@ fn
 Tabs::execute(const ExecContext               &ec,
               EvalContext                     &cxt,
               const ArrayList<String>         &args,
-              const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+              const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations,
                                  {.should_accept_unknown_flag_operand = true});
@@ -37,6 +36,7 @@ Tabs::execute(const ExecContext               &ec,
 
     return 1;
   }
+
   static constexpr static_string_entry<StringView> TEMPLATE_ENTRIES[] = {
       {SSK("-a"),  "1,10,16,36,72"                                   },
       {SSK("-a2"), "1,10,16,40,72"                                   },
@@ -52,12 +52,14 @@ Tabs::execute(const ExecContext               &ec,
   let stops = ArrayList<u64>{cxt.scratch_allocator()};
   let specification =
       operands.count() == 1 ? operands[0].view() : StringView{"-8"};
+
   if (let const canned = TEMPLATES.find(specification); canned.has_value())
     specification = *canned;
   if (specification.length > 1 && specification[0] == '-' &&
       specification[1] >= '0' && specification[1] <= '9')
   {
     let const parsed = utils::parse_decimal_u64(specification.substring(1));
+
     if (parsed.is_error() || parsed.value() == 0 || parsed.value() > 160) {
       KOSHKIT_REPORT_ERROR_AT(
           operand_locations[0], "invalid tab interval '" + operands[0] + "'",
@@ -78,8 +80,11 @@ Tabs::execute(const ExecContext               &ec,
           remaining.find_character(',').value_or(remaining.length);
       let       item        = remaining.substring_of_length(0, item_length);
       let const is_relative = !item.is_empty() && item[0] == '+';
+
       if (is_relative) item = item.substring(1);
+
       let const parsed = utils::parse_decimal_u64(item);
+
       if (parsed.is_error() || parsed.value() == 0) {
         KOSHKIT_REPORT_ERROR_AT(
             operand_locations[0], "invalid tab stop in '" + operands[0] + "'",
@@ -88,13 +93,16 @@ Tabs::execute(const ExecContext               &ec,
 
         return 1;
       }
+
       let stop = parsed.value();
+
       if (is_relative) {
         if (stop > 160 - previous_stop)
           stop = 161;
         else
           stop += previous_stop;
       }
+
       if (stop <= previous_stop || stop > 160) {
         KOSHKIT_REPORT_ERROR_AT(
             operand_locations[0],
@@ -105,12 +113,14 @@ Tabs::execute(const ExecContext               &ec,
 
         return 1;
       }
+
       stops.push(stop);
       previous_stop = stop;
       if (item_length == remaining.length) break;
       position += item_length + 1;
     }
   }
+
   let output = String{cxt.scratch_allocator(), "\r\033[3g"};
   u64 column = 1;
 

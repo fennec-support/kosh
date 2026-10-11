@@ -71,6 +71,7 @@ Enable::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   for (usize i = 1; i < args.count(); i++) {
     let const &name     = args[i];
     let const  resolved = search_builtin(name.view());
+
     if (!resolved.has_value()) {
       report_soft_builtin_error(
           ec, cxt, get_operand_location(ec, operand_locations, i),

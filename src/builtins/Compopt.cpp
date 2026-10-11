@@ -51,14 +51,16 @@ REGISTER_BUILTIN_FLAGS(Compopt);
 namespace koshka {
 
 static fn
-append_option_line(String &output, u32 option_mask, StringView name) throws
-    -> void
+append_option_line(String    &output,
+                   u32        option_mask,
+                   StringView name) throws -> void
 {
   output += "compopt ";
 
   for (let const &entry : COMPLETION_OPTION_ENTRIES) {
     let const is_enabled =
         (option_mask & completion_option_bit(entry.value)) != 0;
+
     output += is_enabled ? "-o " : "+o ";
     output += entry.key.to_string();
     output += ' ';
@@ -72,6 +74,7 @@ fn
 Compopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let const &args = ec.args();
+
   ASSERT(!args.is_empty());
 
   u32   enabled_mask     = 0;
@@ -83,6 +86,7 @@ Compopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   for (; name_index < args.count(); name_index++) {
     let const argument = args[name_index].view();
+
     if (argument == "--") {
       name_index++;
       break;
@@ -97,6 +101,7 @@ Compopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
     for (usize k = 1; k < argument.length; k++) {
       let const letter = argument[k];
+
       switch (letter) {
       case 'D': has_default_slot = true; continue;
       case 'E': has_empty_slot = true; continue;
@@ -106,6 +111,7 @@ Compopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
       if (letter != 'o') {
         let invalid_option = String{cxt.scratch_allocator()};
+
         invalid_option += argument[0];
         invalid_option += letter;
         report_soft_builtin_error(ec, cxt, ec.arg_location_at(argument_index),
@@ -117,6 +123,7 @@ Compopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
       let option_name       = argument.substring(k + 1);
       let option_name_index = argument_index;
+
       if (option_name.is_empty()) {
         if (name_index + 1 >= args.count())
           return report_usage_error(ec, cxt, ec.program());
@@ -127,6 +134,7 @@ Compopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       }
 
       let const option = COMPLETION_OPTIONS.find(option_name);
+
       if (!option.has_value()) {
         report_soft_builtin_error(
             ec, cxt, ec.arg_location_at(option_name_index),
@@ -144,14 +152,17 @@ Compopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   }
 
   let const should_print = enabled_mask == 0 && disabled_mask == 0;
-  let const do_apply     = [&](u32 option_mask) wontthrow -> u32 {
+
+  let const do_apply = [&](u32 option_mask) wontthrow -> u32 {
     return (option_mask | enabled_mask) & ~disabled_mask;
   };
+
   let output = String{cxt.scratch_allocator()};
 
   let slot             = Maybe<completion_spec_slot>{None};
   let slot_flag        = StringView{};
   let slot_description = StringView{};
+
   if (has_default_slot) {
     slot             = completion_spec_slot::Default;
     slot_flag        = "-D";
@@ -168,6 +179,7 @@ Compopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   if (slot.has_value()) {
     let *spec = cxt.completion_store().get_slot_spec(*slot);
+
     if (spec == nullptr) {
       report_soft_builtin_error(ec, cxt,
                                 StringView{"The "} + slot_description +
@@ -188,6 +200,7 @@ Compopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   if (name_index >= args.count()) {
     let &execution = cxt.execution_store();
+
     if (!execution.completion_function_running()) {
       report_soft_builtin_error(ec, cxt,
                                 "No completion function is running. A command "
@@ -206,6 +219,7 @@ Compopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
     let const filenames_bit =
         completion_option_bit(completion_option::FileNames);
+
     if ((disabled_mask & filenames_bit) != 0) {
       execution.should_mark_completion_directories() = false;
     } else if ((enabled_mask & filenames_bit) != 0) {
@@ -224,6 +238,7 @@ Compopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   for (; name_index < args.count(); name_index++) {
     let const name = args[name_index].view();
     let      *spec = cxt.completion_store().lookup_spec(name);
+
     if (spec == nullptr) {
       report_soft_builtin_error(ec, cxt, ec.arg_location_at(name_index),
                                 StringView{"The command '"} + name +

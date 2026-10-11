@@ -38,13 +38,14 @@ using namespace internal;
 
 pure fn
 find_pipe_overriding_redirection(const SimpleCommand *stage,
-                                 bool is_output_wanted) wontthrow
+                                 bool                 is_output_wanted) wontthrow
     -> const Redirection *
 {
   for (let const &redirection : stage->redirections()) {
     let const claims_stream = is_output_wanted
                                   ? redirection.opens_output_file()
                                   : redirection.opens_input_source();
+
     if (claims_stream && redirection.fd == (is_output_wanted ? 1 : 0)) {
       return &redirection;
     }
@@ -54,8 +55,7 @@ find_pipe_overriding_redirection(const SimpleCommand *stage,
 }
 
 fn
-Pipeline::analyze(AnalysisContext &actx, bool is_unconditional) const throws
-    -> void
+Pipeline::analyze(AnalysisContext &actx, bool is_unconditional) const throws -> void
 {
   if (actx.is_posix_sh_shebang && is_timed()) {
     actx.report_diagnostic(diagnostic_id::sc2176, time_location());
@@ -66,13 +66,16 @@ Pipeline::analyze(AnalysisContext &actx, bool is_unconditional) const throws
 
   for (let const command : m_commands) {
     ASSERT(command != nullptr);
+
     let const was_direct_pipeline_stage = actx.walk.is_direct_pipeline_stage;
+
     actx.walk.is_direct_pipeline_stage =
         has_multiple_stages && (command->as_simple_command() != nullptr ||
                                 command->as_assign_command() != nullptr);
 
     if (has_multiple_stages) {
       let scope = AnalysisScopeGuard{actx, analysis_scope_mode::Pipeline};
+
       command->analyze(actx, is_unconditional_stage);
     } else {
       command->analyze(actx, is_unconditional_stage);
@@ -83,10 +86,12 @@ Pipeline::analyze(AnalysisContext &actx, bool is_unconditional) const throws
 
   if (m_commands.count() > 1) {
     ASSERT(m_commands[0] != nullptr);
+
     const SimpleCommand *first_stage = m_commands[0]->as_simple_command();
 
     if (m_commands[0]->is_assignment()) {
       const AssignCommand *assign = m_commands[0]->as_assign_command();
+
       if (assign != nullptr) {
         actx.report_diagnostic(diagnostic_id::sc2036,
                                m_commands[0]->source_location(),
@@ -102,6 +107,7 @@ Pipeline::analyze(AnalysisContext &actx, bool is_unconditional) const throws
 
     if (first_stage != nullptr) {
       let const &cat_args = first_stage->args();
+
       if (cat_args.count() == 2) {
         let const name                = static_command_name(cat_args[0]);
         let       raw_operand_storage = String{heap_allocator()};
@@ -110,6 +116,7 @@ Pipeline::analyze(AnalysisContext &actx, bool is_unconditional) const throws
         let const is_plain_operand_file =
             cat_args[1]->kind() == Token::Kind::Word &&
             !raw_operand.is_empty() && raw_operand[0] != '-';
+
         if (name.has_value() && *name == "cat" &&
             !actx.functions.defined.contains(*name) &&
             !actx.functions.aliases.contains(*name) && is_plain_operand_file)
@@ -124,14 +131,17 @@ Pipeline::analyze(AnalysisContext &actx, bool is_unconditional) const throws
   for (usize i = 0; i + 1 < m_commands.count(); i++) {
     const SimpleCommand *stage = m_commands[i]->as_simple_command();
     const SimpleCommand *next  = m_commands[i + 1]->as_simple_command();
+
     if (stage == nullptr || next == nullptr) {
       continue;
     }
+
     if (stage->args().is_empty() || next->args().is_empty()) {
       continue;
     }
 
     let const output_override = find_pipe_overriding_redirection(stage, true);
+
     if (output_override != nullptr && output_override->target != nullptr) {
       actx.report_diagnostic(
           diagnostic_id::sc2260, output_override->target->source_location(),
@@ -139,6 +149,7 @@ Pipeline::analyze(AnalysisContext &actx, bool is_unconditional) const throws
     }
 
     let const input_override = find_pipe_overriding_redirection(next, false);
+
     if (input_override != nullptr && input_override->target != nullptr) {
       actx.report_diagnostic(
           diagnostic_id::sc2259, input_override->target->source_location(),
@@ -147,9 +158,11 @@ Pipeline::analyze(AnalysisContext &actx, bool is_unconditional) const throws
 
     let const stage_name = static_command_name(stage->args()[0]);
     let const next_name  = static_command_name(next->args()[0]);
+
     if (!stage_name.has_value() || !next_name.has_value()) {
       continue;
     }
+
     let const is_next_user_command =
         actx.functions.defined.contains(*next_name) ||
         actx.functions.aliases.contains(*next_name);
@@ -186,11 +199,13 @@ Pipeline::analyze(AnalysisContext &actx, bool is_unconditional) const throws
         let       count_flag_storage = String{heap_allocator()};
         let const count_flag =
             borrowed_token_text(next->args()[1], count_flag_storage);
+
         if (count_flag == "-c" || count_flag == "-m") {
           actx.report_diagnostic(diagnostic_id::sc2000,
                                  stage->args()[0]->source_location());
         }
       }
+
       break;
 
     case command_name_id::Find: {
@@ -205,6 +220,7 @@ Pipeline::analyze(AnalysisContext &actx, bool is_unconditional) const throws
 
       for (usize a = 1; a < next->args().count() && !has_null_flag; a++) {
         let const raw = borrowed_token_text(next->args()[a], raw_storage);
+
         if (raw == "-0" || raw == "--null") {
           has_null_flag = true;
         }
@@ -227,6 +243,7 @@ Pipeline::analyze(AnalysisContext &actx, bool is_unconditional) const throws
         actx.report_diagnostic(diagnostic_id::sc2012,
                                stage->args()[0]->source_location());
       }
+
       break;
 
     case command_name_id::Ps:
@@ -240,11 +257,13 @@ Pipeline::analyze(AnalysisContext &actx, bool is_unconditional) const throws
           next->args().count() == 2)
       {
         let flag_storage = String{heap_allocator()};
+
         if (borrowed_token_text(next->args()[1], flag_storage) == "-l") {
           actx.report_diagnostic(diagnostic_id::sc2126,
                                  stage->args()[0]->source_location());
         }
       }
+
       break;
 
     default: break;
@@ -255,10 +274,9 @@ Pipeline::analyze(AnalysisContext &actx, bool is_unconditional) const throws
 }
 
 fn
-Pipeline::append_presence_tested_command_names(
-    const AnalysisContext &actx,
-    HashSet               &names,
-    bool                   is_status_success) const throws -> void
+Pipeline::append_presence_tested_command_names(const AnalysisContext &actx,
+                                               HashSet               &names,
+                                               bool is_status_success) const throws -> void
 {
   if (m_commands.count() != 1) return;
 
@@ -280,12 +298,14 @@ CompoundList::has_single_test_command() const throws -> bool
   if (m_nodes.count() != 1) return false;
 
   let const simple = m_nodes[0]->command()->as_simple_command();
+
   if (simple == nullptr || simple->args().is_empty()) {
     return false;
   }
 
   let const name_token = simple->args()[0];
   let const name       = static_command_name(name_token);
+
   if (name.has_value()) return *name == StringView{"test"};
 
   return name_token->raw_view().value_or(StringView{}) == StringView{"["};
@@ -315,17 +335,21 @@ node_unclosed_test_bracket(const CompoundListCondition *node) wontthrow
     -> const Token *
 {
   const SimpleCommand *command = node->command()->as_simple_command();
+
   if (command == nullptr) return nullptr;
 
   let const &args = command->args();
+
   if (args.is_empty()) return nullptr;
 
   let const name = args[0]->raw_view();
+
   if (!name.has_value() || *name != StringView{"["}) {
     return nullptr;
   }
 
   let const closer = args.back()->raw_view();
+
   if (closer.has_value() && *closer == StringView{"]"}) {
     return nullptr;
   }
@@ -335,7 +359,8 @@ node_unclosed_test_bracket(const CompoundListCondition *node) wontthrow
 
 fn
 CompoundListCondition::analyze(AnalysisContext &actx,
-                               bool is_unconditional) const throws -> void
+                               bool             is_unconditional) const throws
+    -> void
 {
   ASSERT(m_cmd != nullptr);
 
@@ -344,9 +369,7 @@ CompoundListCondition::analyze(AnalysisContext &actx,
 
 fn
 CompoundListCondition::append_presence_tested_command_names(
-    const AnalysisContext &actx,
-    HashSet               &names,
-    bool                   is_status_success) const throws -> void
+    const AnalysisContext &actx, HashSet &names, bool is_status_success) const throws -> void
 {
   ASSERT(m_cmd != nullptr);
   m_cmd->append_presence_tested_command_names(actx, names, is_status_success);
@@ -368,22 +391,27 @@ node_inequality_left_operand(const CompoundListCondition *node) wontthrow
     -> const Token *
 {
   const SimpleCommand *command = node->command()->as_simple_command();
+
   if (command == nullptr) return nullptr;
 
   let const &args = command->args();
+
   if (args.count() != 5) return nullptr;
 
   let const name = args[0]->raw_view();
+
   if (!name.has_value() || *name != StringView{"["}) {
     return nullptr;
   }
 
   let const closer = args[4]->raw_view();
+
   if (!closer.has_value() || *closer != StringView{"]"}) {
     return nullptr;
   }
 
   let const op = args[2]->raw_view();
+
   if (!op.has_value() || *op != StringView{"!="}) {
     return nullptr;
   }
@@ -392,11 +420,11 @@ node_inequality_left_operand(const CompoundListCondition *node) wontthrow
 }
 
 fn
-CompoundList::analyze(AnalysisContext &actx, bool is_unconditional) const throws
-    -> void
+CompoundList::analyze(AnalysisContext &actx, bool is_unconditional) const throws -> void
 {
   top_level_sibling_carry *const carry = actx.stream_sibling_carry;
-  actx.stream_sibling_carry            = nullptr;
+
+  actx.stream_sibling_carry = nullptr;
   defer { actx.stream_sibling_carry = carry; };
 
   if (carry != nullptr && !m_nodes.is_empty()) {
@@ -406,6 +434,7 @@ CompoundList::analyze(AnalysisContext &actx, bool is_unconditional) const throws
 
     if (carry->pending_exec_replacement.has_value()) {
       let const next_command = m_nodes[0]->command();
+
       ASSERT(next_command != nullptr);
       actx.report_diagnostic(diagnostic_id::sc2093,
                              *carry->pending_exec_replacement, {},
@@ -416,6 +445,7 @@ CompoundList::analyze(AnalysisContext &actx, bool is_unconditional) const throws
       actx.report_diagnostic(diagnostic_id::sc2251,
                              *carry->pending_negated_command);
   }
+
   if (carry != nullptr) {
     carry->pending_unchecked_cd     = None;
     carry->pending_exec_replacement = None;
@@ -424,14 +454,15 @@ CompoundList::analyze(AnalysisContext &actx, bool is_unconditional) const throws
 
   Maybe<SourceLocation> first_directory_change =
       carry != nullptr ? carry->first_directory_change : None;
-  defer
-  {
+
+  defer {
     if (carry != nullptr)
       carry->first_directory_change = first_directory_change;
   };
 
   for (usize i = 0; i < m_nodes.count(); i++) {
     ASSERT(m_nodes[i] != nullptr);
+
     let const command = m_nodes[i]->command();
 
     if (actx.is_posix_sh_shebang && command->is_timed() &&
@@ -441,8 +472,10 @@ CompoundList::analyze(AnalysisContext &actx, bool is_unconditional) const throws
     }
 
     let const simple = command->as_simple_command();
+
     if (simple != nullptr && !simple->args().is_empty()) {
       let const name = static_command_name(simple->args()[0]);
+
       if (name.has_value() && !actx.functions.defined.contains(*name) &&
           !actx.functions.aliases.contains(*name))
       {
@@ -457,6 +490,7 @@ CompoundList::analyze(AnalysisContext &actx, bool is_unconditional) const throws
           }
 
           let is_return_trip = false;
+
           if (simple->args().count() == 2 &&
               simple->args()[1]->kind() == Token::Kind::Word)
           {
@@ -476,9 +510,11 @@ CompoundList::analyze(AnalysisContext &actx, bool is_unconditional) const throws
             first_directory_change = None;
           }
         }
+
         if (*name == "exec" && simple->args().count() > 1) {
           if (i + 1 < m_nodes.count()) {
             let const next_command = m_nodes[i + 1]->command();
+
             ASSERT(next_command != nullptr);
             actx.report_diagnostic(diagnostic_id::sc2093,
                                    simple->args()[0]->source_location(), {},
@@ -497,9 +533,11 @@ CompoundList::analyze(AnalysisContext &actx, bool is_unconditional) const throws
     {
       let const middle_simple   = m_nodes[i]->command()->as_simple_command();
       let       is_test_command = false;
+
       if (middle_simple != nullptr && !middle_simple->args().is_empty()) {
         let const middle_token = middle_simple->args()[0];
         let const middle_name  = static_command_name(middle_token);
+
         if (middle_name.has_value()) {
           is_test_command = get_analysis_command_info(*middle_name)
                                 .is_in_group(COMMAND_GROUP_TEST);
@@ -508,6 +546,7 @@ CompoundList::analyze(AnalysisContext &actx, bool is_unconditional) const throws
                             StringView{"["};
         }
       }
+
       if (!is_test_command)
         actx.report_diagnostic(diagnostic_id::sc2015,
                                m_nodes[i]->source_location());
@@ -521,8 +560,8 @@ CompoundList::analyze(AnalysisContext &actx, bool is_unconditional) const throws
       carry != nullptr ? carry->repeated_append_target.view() : StringView{}};
   SourceLocation repeated_append_location =
       carry != nullptr ? carry->repeated_append_location : SourceLocation{};
-  defer
-  {
+
+  defer {
     if (carry != nullptr) {
       carry->repeated_append_count    = repeated_append_count;
       carry->repeated_append_target   = String{repeated_append_target.view()};
@@ -534,6 +573,7 @@ CompoundList::analyze(AnalysisContext &actx, bool is_unconditional) const throws
     let const      simple = node->command()->as_simple_command();
     String         current_target{heap_allocator()};
     SourceLocation current_location{};
+
     if (simple != nullptr) {
       for (let const &redirection : simple->redirections()) {
         if (redirection.kind != Redirection::Kind::AppendOutput ||
@@ -546,6 +586,7 @@ CompoundList::analyze(AnalysisContext &actx, bool is_unconditional) const throws
         break;
       }
     }
+
     if (!current_target.is_empty() &&
         current_target.view() == repeated_append_target.view())
     {
@@ -555,6 +596,7 @@ CompoundList::analyze(AnalysisContext &actx, bool is_unconditional) const throws
       repeated_append_count    = repeated_append_target.is_empty() ? 0 : 1;
       repeated_append_location = current_location;
     }
+
     if (repeated_append_count == 3)
       actx.report_diagnostic(diagnostic_id::sc2129, repeated_append_location,
                              {}, current_location);
@@ -569,6 +611,7 @@ CompoundList::analyze(AnalysisContext &actx, bool is_unconditional) const throws
 
   for (usize i = 0; i < m_nodes.count(); i++) {
     let const node = m_nodes[i];
+
     ASSERT(node != nullptr);
 
     if (node->kind() == CompoundListCondition::Kind::None &&
@@ -585,6 +628,7 @@ CompoundList::analyze(AnalysisContext &actx, bool is_unconditional) const throws
         actx.generated_relative_executable_paths =
             conditional_chain_entry_generated_paths.clone();
       }
+
       has_conditional_chain = false;
     } else if (!has_conditional_chain) {
       conditional_chain_entry_occurrences = actx.occurrences.snapshot();
@@ -597,6 +641,7 @@ CompoundList::analyze(AnalysisContext &actx, bool is_unconditional) const throws
         node->kind() != CompoundListCondition::Kind::None)
     {
       const Token *unclosed_bracket = node_unclosed_test_bracket(previous_node);
+
       if (unclosed_bracket != nullptr) {
         actx.report_diagnostic(node->kind() == CompoundListCondition::Kind::And
                                    ? diagnostic_id::sc2107
@@ -617,9 +662,11 @@ CompoundList::analyze(AnalysisContext &actx, bool is_unconditional) const throws
 
         let const before = node_inequality_left_operand(previous_node);
         let const after  = node_inequality_left_operand(node);
+
         if (before != nullptr && after != nullptr) {
           let const before_view = before->raw_view();
           let const after_view  = after->raw_view();
+
           if (before_view.has_value() && after_view.has_value() &&
               *before_view == *after_view)
           {
@@ -660,6 +707,7 @@ CompoundList::analyze(AnalysisContext &actx, bool is_unconditional) const throws
         node->kind() != CompoundListCondition::Kind::None;
     let const was_command_status_observed =
         actx.walk.is_command_status_observed;
+
     actx.walk.is_command_status_observed =
         was_command_status_observed || is_next_node_joined;
     if (is_conditional_node) actx.conditional_branch_depth++;
@@ -674,15 +722,15 @@ CompoundList::analyze(AnalysisContext &actx, bool is_unconditional) const throws
     actx.generated_relative_executable_paths =
         steal(conditional_chain_entry_generated_paths);
   }
+
   if (!actx.walk.should_retain_tested_command_names)
     actx.tested_command_names = steal(saved_tested_command_names);
 }
 
 fn
-CompoundList::append_presence_tested_command_names(
-    const AnalysisContext &actx,
-    HashSet               &names,
-    bool                   is_status_success) const throws -> void
+CompoundList::append_presence_tested_command_names(const AnalysisContext &actx,
+                                                   HashSet               &names,
+                                                   bool is_status_success) const throws -> void
 {
   if (m_nodes.count() != 1 || m_nodes[0] == nullptr) {
     return;
@@ -702,16 +750,18 @@ CompoundList::try_static_condition_verdict(
 }
 
 fn
-IfStatement::analyze(AnalysisContext &actx, bool is_unconditional) const throws
-    -> void
+IfStatement::analyze(AnalysisContext &actx, bool is_unconditional) const throws -> void
 {
   ASSERT(m_condition != nullptr);
   ASSERT(m_then != nullptr);
 
   m_condition->analyze(actx, is_unconditional);
+
   let before_then = actx.occurrences.snapshot();
+
   actx.conditional_branch_depth++;
   m_then->analyze(actx, false);
+
   let const after_then = actx.occurrences.snapshot();
 
   actx.occurrences = steal(before_then);

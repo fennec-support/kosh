@@ -153,7 +153,7 @@ public:
   is_older_than(const Path &other) const wontthrow -> bool;
 
   hot mustuse pure fn
-  operator==(const Path &other) const wontthrow->bool;
+  operator==(const Path &other) const wontthrow -> bool;
 
   cold mustuse static fn
   current_directory() throws -> Path;
@@ -176,11 +176,13 @@ public:
     Symlink,
     Other,
   };
+
   struct DirectoryChild
   {
     String    name;
     EntryKind kind;
   };
+
   cold mustuse static fn
   read_directory_typed(const Path &dir) throws
       -> Maybe<ArrayList<DirectoryChild>>;

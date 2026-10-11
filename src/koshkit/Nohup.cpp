@@ -25,12 +25,12 @@ fn
 Nohup::execute(const ExecContext               &ec,
                EvalContext                     &cxt,
                const ArrayList<String>         &args,
-               const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+               const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (operands.is_empty()) return report_usage_error(ec, cxt, args[0].view());
+
   let command = ArrayList<String>{cxt.scratch_allocator()};
 
   for (let const &operand : operands)
@@ -38,10 +38,13 @@ Nohup::execute(const ExecContext               &ec,
 
   let const home_value = cxt.get_variable_value("HOME");
   let const home = home_value.has_value() ? home_value->view() : StringView{};
+
   cxt.prepare_child_environment();
+
   let const result = os::run_nohup(
       command, {ec.in_fd.value_or(KOSH_STDIN), ec.out_fd.value_or(KOSH_STDOUT),
                 ec.err_fd.value_or(KOSH_STDERR), home});
+
   if (!result.has_value()) {
     KOSHKIT_REPORT_PATH_ERROR_AT(operand_locations[0], "run", operands[0]);
 

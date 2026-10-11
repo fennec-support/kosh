@@ -27,14 +27,16 @@ String::String(const char *cstr) throws : m_allocator(heap_allocator())
   append(StringView{cstr});
 }
 
-String::String(StringView initial) throws : m_allocator(heap_allocator())
+String::String(StringView initial) throws
+    : m_allocator(heap_allocator())
 {
   reset_to_inline();
   append(initial);
 }
 
 cold
-String::String(const String &other) throws : m_allocator(other.m_allocator)
+String::String(const String &other) throws
+    : m_allocator(other.m_allocator)
 {
   reset_to_inline();
   append(other.view());
@@ -66,8 +68,11 @@ String::classify_ascii() const wontthrow -> void
 
   while (position + 4 * sizeof(byte_vector) <= m_length) {
     byte_vector lanes[4];
+
     __builtin_memcpy(lanes, m_data + position, sizeof(lanes));
+
     let const merged = lanes[0] | lanes[1] | lanes[2] | lanes[3];
+
     if (((merged[0] | merged[1]) & byte_scan::HIGH_BITS) != 0) {
       m_ascii_state = AsciiState::NonAscii;
 
@@ -123,7 +128,8 @@ String::move_to_allocator(Allocator allocator) throws -> void
   if (m_allocator == allocator) return;
 
   let moved = String{allocator, view()};
-  *this     = steal(moved);
+
+  *this = steal(moved);
 }
 
 fn
@@ -137,31 +143,38 @@ String::clear() wontthrow -> void
 cold fn
 String::reserve(usize needed) throws -> void
 {
-  if (needed < m_capacity) usually return;
-  if (needed == SIZE_MAX) rarely throw std::bad_alloc{};
+  if (needed < m_capacity) usually
+    return;
+  if (needed == SIZE_MAX) rarely
+    throw std::bad_alloc{};
 
   let const required_capacity = needed + 1;
   let       new_capacity      = required_capacity;
 
   if (!is_inline()) {
     let const growth = m_capacity < 64 ? usize{4} : usize{2};
-    new_capacity     = m_capacity > SIZE_MAX / growth ? required_capacity
-                                                      : m_capacity * growth;
+
+    new_capacity = m_capacity > SIZE_MAX / growth ? required_capacity
+                                                  : m_capacity * growth;
 
     while (new_capacity < required_capacity) {
       if (new_capacity > SIZE_MAX / 2) {
         new_capacity = required_capacity;
         break;
       }
+
       new_capacity *= 2;
     }
   }
 
   let       fresh            = m_allocator.alloc_array<char>(new_capacity);
   let const preserved_length = m_length;
+
   if (preserved_length > 0) std::memcpy(fresh, m_data, preserved_length);
-  fresh[preserved_length]   = '\0';
+  fresh[preserved_length] = '\0';
+
   let const preserved_state = m_ascii_state;
+
   free_storage();
   m_ascii_state = preserved_state;
   m_data        = fresh;
@@ -229,10 +242,13 @@ String::free_storage() wontthrow -> void
 }
 
 fn
-operator+(StringView left, StringView right) throws->String
+operator+(StringView left, StringView right) throws -> String
 {
-  if (right.length > SIZE_MAX - left.length) rarely throw std::bad_alloc{};
+  if (right.length > SIZE_MAX - left.length) rarely
+    throw std::bad_alloc{};
+
   let result = String{heap_allocator()};
+
   result.reserve(left.length + right.length);
   result.append(left);
   result.append(right);

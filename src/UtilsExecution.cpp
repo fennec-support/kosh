@@ -41,6 +41,7 @@ set_foreground_program_title(const ArrayList<String> &arguments,
   }
 
   let &command_title = cxt.job_table_store().foreground_program_title_buffer();
+
   command_title.clear();
 
   for (usize index = 0; index < arguments.count(); index++) {
@@ -52,13 +53,16 @@ set_foreground_program_title(const ArrayList<String> &arguments,
 }
 
 fn
-execute_context(ExecContext &&ec, EvalContext &cxt, execution_mode mode) throws
-    -> i32
+execute_context(ExecContext  &&ec,
+                EvalContext   &cxt,
+                execution_mode mode) throws -> i32
 {
   let const is_async = mode == execution_mode::Background;
+
   if (ec.is_builtin()) {
     if (is_async) {
       let contexts = ArrayList<ExecContext>{cxt.scratch_allocator()};
+
       contexts.push(steal(ec));
 
       return execute_contexts_with_pipes(steal(contexts), cxt, mode);
@@ -91,17 +95,24 @@ execute_context(ExecContext &&ec, EvalContext &cxt, execution_mode mode) throws
         let const sync_pipe = os::make_pipe();
 
         koshka::flush();
+
         let const forked_child = os::try_fork_job_process();
+
         if (forked_child.has_value()) {
           const os::process child = *forked_child;
+
           if (os::process_id_of(child) == 0) {
             if (sync_pipe.has_value()) {
               os::close_fd(sync_pipe->out);
+
               char handoff_byte = 0;
+
               (void) os::read_fd(sync_pipe->in, &handoff_byte, 1);
               os::close_fd(sync_pipe->in);
             }
+
             i32 status = 1;
+
             try {
               status =
                   cxt.run_mimicked_script(ec, *mode, script_isolation::Shared);
@@ -110,12 +121,14 @@ execute_context(ExecContext &&ec, EvalContext &cxt, execution_mode mode) throws
                   cxt.source_store().current_source_view(), &cxt));
               status = static_cast<i32>(error.command_status());
             } catch (...) {}
+
             os::exit_process_immediately(status);
           }
 
           if (sync_pipe.has_value()) {
             os::close_fd(sync_pipe->in);
           }
+
           os::give_controlling_terminal_to(child);
           if (sync_pipe.has_value()) {
             (void) os::write_fd(sync_pipe->out, "x", 1);
@@ -124,11 +137,13 @@ execute_context(ExecContext &&ec, EvalContext &cxt, execution_mode mode) throws
 
           let       was_stopped = false;
           const i32 status = os::wait_and_monitor_process(child, &was_stopped);
+
           os::reclaim_controlling_terminal();
 
           if (was_stopped) {
             const i32 id = cxt.job_table_store().register_stopped_job(
                 child, command, status, os::process_id_of(child));
+
             cxt.job_table_store().notify_stopped_job(id);
           }
 
@@ -162,16 +177,19 @@ execute_context(ExecContext &&ec, EvalContext &cxt, execution_mode mode) throws
       quit(126, farewell_policy::Silent);
     } catch (const Error &error) {
       let located = ErrorWithLocation{ec.source_location(), error.message()};
+
       located.set_command_status(error.command_status());
       show_message(
           located.to_string(cxt.source_store().current_source_view(), &cxt));
       quit(127, farewell_policy::Silent);
     }
+
     LOG(Debug, "running the file as a shell script in place");
     ec.in_fd.reset();
     ec.out_fd.reset();
     ec.err_fd.reset();
     const mimic_mood mode = cxt.runtime_state().get_mood();
+
     quit(cxt.run_program_fallback(ec, mode,
                                   should_replace_shell
                                       ? script_isolation::Shared
@@ -188,6 +206,7 @@ execute_context(ExecContext &&ec, EvalContext &cxt, execution_mode mode) throws
                                 os::shell_has_controlling_terminal();
 
   let command = String{heap_allocator()};
+
   if (is_async || is_foreground_job) {
     for (usize i = 0; i < ec.args().count(); i++) {
       if (i > 0) command += ' ';
@@ -199,8 +218,10 @@ execute_context(ExecContext &&ec, EvalContext &cxt, execution_mode mode) throws
       cxt.runtime_state().stats_enabled());
 
   let const source_view = cxt.source_store().current_source_view();
+
   cxt.prepare_child_environment();
   cxt.job_table_store().forget_waited_jobs();
+
   os::process p = os::execute_program(
       ec, os::program_execution_options{
               .source        = source_view,
@@ -210,6 +231,7 @@ execute_context(ExecContext &&ec, EvalContext &cxt, execution_mode mode) throws
                                : is_foreground_job
                                    ? os::process_group_mode::New
                                    : os::process_group_mode::Inherit});
+
   if (p == KOSH_INVALID_PROCESS) {
     LOG(Debug, "running the file as a shell script in this process");
     const mimic_mood mode = cxt.runtime_state().get_mood();
@@ -219,11 +241,14 @@ execute_context(ExecContext &&ec, EvalContext &cxt, execution_mode mode) throws
                                         ? script_isolation::Shared
                                         : script_isolation::Isolated);
   }
+
   if (is_async) {
     cxt.job_table_store().set_last_background_pid(os::process_id_of(p));
+
     let const process_group_id = os::process_id_of(p);
     const i32 id =
         cxt.job_table_store().register_job(p, command, process_group_id);
+
     if (cxt.execution_store().shell_is_interactive())
       koshka::print_error("[" + String::from(id, heap_allocator()) + "] " +
                           String::from(static_cast<u64>(os::process_id_of(p)),
@@ -234,23 +259,30 @@ execute_context(ExecContext &&ec, EvalContext &cxt, execution_mode mode) throws
   }
 
   LOG(Debug, "waiting for the foreground child to finish");
+
   let was_stopped = false;
   i32 foreground_status;
+
   if (is_foreground_job) {
     os::give_controlling_terminal_to(p);
     defer { os::reclaim_controlling_terminal(); };
+
     foreground_status = os::wait_and_monitor_process(p, &was_stopped);
   } else {
     foreground_status = os::wait_and_monitor_process(p);
   }
+
   if (was_stopped) {
     const i32 id = cxt.job_table_store().register_stopped_job(
         p, command, foreground_status, os::process_id_of(p));
+
     cxt.job_table_store().notify_stopped_job(id);
   }
+
   let const was_interrupt_to_reraise_for_completion =
       foreground_status == 130 &&
       cxt.execution_store().completion_function_running();
+
   if (was_interrupt_to_reraise_for_completion) os::INTERRUPT_REQUESTED = 1;
 
   return foreground_status;
@@ -274,8 +306,8 @@ terminate_and_reap_processes(const ArrayList<os::process> &processes,
 }
 
 static fn
-report_unresolved_stage(EvalContext &cxt, const ExecContext &stage) throws
-    -> void
+report_unresolved_stage(EvalContext       &cxt,
+                        const ExecContext &stage) throws -> void
 {
   let const should_error_follow_output =
       stage.should_duplicate_error_to_output &&
@@ -297,6 +329,7 @@ report_unresolved_stage(EvalContext &cxt, const ExecContext &stage) throws
   koshka::flush();
 
   let const saved = os::save_and_replace_descriptor(2, *target);
+
   defer { os::restore_descriptor(saved); };
 
   show_message(stage.get_unresolved_diagnostic());
@@ -336,6 +369,7 @@ execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs,
       is_async ? " in the background" : "");
 
   let job_command = String{heap_allocator()};
+
   if (is_async) {
     for (usize stage = 0; stage < ecs.count(); stage++) {
       if (stage > 0) job_command += " | ";
@@ -355,8 +389,8 @@ execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs,
   os::descriptor last_stdin       = KOSH_INVALID_FD;
   i64            process_group_id = 0;
   bool           should_reap_children_on_unwind = true;
-  defer
-  {
+
+  defer {
     if (should_reap_children_on_unwind) {
       for (ExecContext &pending_context : ecs)
         pending_context.close_fds();
@@ -368,6 +402,7 @@ execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs,
 
   let const stage_count  = ecs.count();
   let       stage_status = ArrayList<i32>{heap_allocator()};
+
   stage_status.reserve(stage_count);
 
   for (usize i = 0; i < stage_count; i++)
@@ -397,6 +432,7 @@ execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs,
       if (!pipe) {
         throw ErrorWithLocation{ec.source_location(), "Could not open a pipe"};
       }
+
       let const has_leading_error_dup = ec.should_duplicate_error_to_output &&
                                         ec.did_output_file_follow_error_dup;
       let const has_leading_output_dup = ec.should_duplicate_output_to_error &&
@@ -424,6 +460,7 @@ execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs,
       else
         os::close_fd(last_stdin);
     }
+
     if (!is_last) {
       last_stdin = pipe->in;
     }
@@ -435,6 +472,7 @@ execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs,
       cxt.evaluation_metrics_store().add_external_command_run(
           cxt.runtime_state().stats_enabled());
       cxt.prepare_child_environment();
+
       let const process_group =
           !is_async ? os::process_group_mode::Inherit
                     : os::background_process_group_mode(process_group_id);
@@ -444,9 +482,11 @@ execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs,
                   .process_group_id = process_group_id,
                   .fallback         = os::script_fallback_policy::Reject,
                   .process_group    = process_group});
+
       if (is_async && process_group_id == 0) {
         process_group_id = os::process_id_of(child);
       }
+
       children.push(child);
       child_stage.push(stage_index);
       last_child = child;
@@ -466,20 +506,24 @@ execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs,
       let preflight_status   = Maybe<i32>{};
       let preflight_location = SourceLocation{};
       let preflight_message  = String{cxt.scratch_allocator()};
+
       if (!forked_child.has_value()) {
         const usize utility_index = ec.program() == "koshkit" ? 1 : 0;
         bool        should_restore_environment = false;
+
         if (ec.builtin_kind() == Builtin::Kind::Koshkit &&
             utility_index < ec.args().count())
         {
           let const utility_kind =
               koshkit::find_util(ec.args()[utility_index].view());
+
           if (utility_kind.has_value()) {
             if (!is_async && *utility_kind == koshkit::Utility::Kind::Timeout) {
               preflight_status = koshkit::preflight_timeout_stage(
                   ec, cxt, utility_index, preflight_location,
                   preflight_message);
             }
+
             should_restore_environment =
                 *utility_kind == koshkit::Utility::Kind::Env;
           }
@@ -487,6 +531,7 @@ execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs,
 
         if (!preflight_status.has_value()) {
           let stage_source = String{cxt.scratch_allocator()};
+
           if (should_restore_environment) {
             static const StringView RESTORED_ENVIRONMENT_NAMES[] = {
                 "PWD",
@@ -504,6 +549,7 @@ execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs,
 
             for (let const name : RESTORED_ENVIRONMENT_NAMES) {
               let const value = os::get_environment_variable(name);
+
               if (value.has_value()) {
                 stage_source.append("export ");
                 stage_source.append(name);
@@ -516,6 +562,7 @@ execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs,
               stage_source.append("; ");
             }
           }
+
           if (ec.builtin_kind() == Builtin::Kind::Koshkit &&
               ec.program() != "koshkit")
           {
@@ -534,6 +581,7 @@ execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs,
 
           let stage_out = Maybe<os::descriptor>{};
           let stage_err = Maybe<os::descriptor>{};
+
           ec.apply_output_routing(
               [&]() { stage_out = ec.out_fd; },
               [&]() { stage_err = ec.err_fd; },
@@ -551,6 +599,7 @@ execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs,
                     .process_group_id  = process_group_id,
                     .evaluator     = cxt.make_child_evaluator_state(bootstrap),
                     .process_group = process_group});
+
             forked_child = launch.child;
           } catch (...) {
             ec.close_fds();
@@ -565,10 +614,13 @@ execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs,
         let const error =
             ErrorWithLocation{preflight_location, preflight_message.view()};
         let diagnostic = String{cxt.scratch_allocator()};
+
         diagnostic += error.to_string(source_view, &cxt);
         diagnostic.push('\n');
+
         let diagnostic_out = Maybe<os::descriptor>{};
         let diagnostic_err = Maybe<os::descriptor>{};
+
         ec.apply_output_routing(
             [&]() { diagnostic_out = ec.out_fd; },
             [&]() { diagnostic_err = ec.err_fd; },
@@ -579,9 +631,11 @@ execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs,
                            diagnostic.data(), diagnostic.count()))
         {
           let const saved_errno = errno;
+
           if (saved_errno == EPIPE) {
             throw BrokenPipeExit{};
           }
+
           throw Error{"Unable to write to stderr: " +
                       os::last_system_error_message()};
         }
@@ -590,11 +644,15 @@ execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs,
         ec.close_fds();
       } else if (!forked_child.has_value()) {
         cxt.job_table_store().set_in_pipeline_stage(true);
-        defer { cxt.job_table_store().set_in_pipeline_stage(false); };
+        defer {
+          cxt.job_table_store().set_in_pipeline_stage(false);
+        };
+
         ret                       = execute_builtin(steal(ec), cxt);
         stage_status[stage_index] = ret;
       } else {
         const os::process child = *forked_child;
+
         if (os::process_id_of(child) == 0) {
           ec.in_fd  = koshka::None;
           ec.out_fd = koshka::None;
@@ -611,7 +669,9 @@ execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs,
           cxt.enter_subshell();
           cxt.hide_coprocess_descriptors();
           cxt.job_table_store().inherit_parent_jobs(false);
+
           i32 child_status = 0;
+
           try {
             child_status = execute_builtin(steal(ec), cxt);
           } catch (const BrokenPipeExit &) {
@@ -628,6 +688,7 @@ execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs,
           } catch (...) {
             child_status = 1;
           }
+
           koshka::flush();
           os::exit_process_immediately(child_status);
         }
@@ -635,6 +696,7 @@ execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs,
         if (is_async && process_group_id == 0) {
           process_group_id = os::process_id_of(child);
         }
+
         ec.close_fds();
         children.push(child);
         child_stage.push(stage_index);
@@ -642,7 +704,9 @@ execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs,
       }
     } else {
       cxt.job_table_store().set_in_pipeline_stage(true);
-      defer { cxt.job_table_store().set_in_pipeline_stage(false); };
+      defer {
+        cxt.job_table_store().set_in_pipeline_stage(false);
+      };
       ret                       = execute_builtin(steal(ec), cxt);
       stage_status[stage_index] = ret;
     }
@@ -660,8 +724,10 @@ execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs,
     if (last_child != KOSH_INVALID_PROCESS) {
       cxt.job_table_store().set_last_background_pid(
           os::process_id_of(last_child));
+
       const i32 id = cxt.job_table_store().register_pipeline_job(
           children, last_child, job_command.view(), process_group_id);
+
       should_reap_children_on_unwind = false;
       if (cxt.execution_store().shell_is_interactive())
         koshka::print_error(
@@ -675,6 +741,7 @@ execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs,
   }
 
   usize waited_child_count = 0;
+
   try {
     for (; waited_child_count < children.count(); waited_child_count++)
       stage_status[child_stage[waited_child_count]] =
@@ -684,9 +751,11 @@ execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs,
     should_reap_children_on_unwind = false;
     throw;
   }
+
   should_reap_children_on_unwind = false;
 
   let pipe_status = ArrayList<String>{heap_allocator()};
+
   pipe_status.reserve(stage_count);
 
   for (usize i = 0; i < stage_count; i++)
@@ -728,15 +797,19 @@ print_memory_report() wontthrow -> void
         QUIT_CONTEXT->arena_store().parse_arena()->destructor_count(),
         QUIT_CONTEXT->arena_store().parse_arena()->destructor_capacity());
   }
+
   if (QUIT_CONTEXT != nullptr) {
     let const stats = QUIT_CONTEXT->function_storage_stats();
+
     std::fprintf(stderr,
                  "Function arenas: used %zu, reserved %zu, blocks %zu, "
                  "destructors %zu of %zu\n",
                  stats.bytes_used, stats.bytes_capacity, stats.block_count,
                  stats.destructor_count, stats.destructor_capacity);
   }
+
   os::malloc_heap_stats heap_stats{};
+
   if (os::read_malloc_heap_stats(heap_stats))
     std::fprintf(stderr,
                  "Malloc heap: in use %zu, total arena %zu, mmapped %zu\n",
@@ -748,6 +821,7 @@ wontreturn fn
 quit(i32 code, farewell_policy farewell) throws -> void
 {
   let const should_goodbye = farewell == farewell_policy::Goodbye;
+
   LOG(Info, "quitting with code %d", code);
 
   if (QUIT_CONTEXT != nullptr &&
@@ -766,6 +840,7 @@ quit(i32 code, farewell_policy farewell) throws -> void
                 ? QUIT_CONTEXT->variable_store().history_limit(
                       "KOSH_HISTORY_SIZE", 4096)
                 : 4096;
+
         toiletline::exit(history_size_limit);
       } catch (const Error &e) {
         show_message(e.to_string());
@@ -781,20 +856,24 @@ quit(i32 code, farewell_policy farewell) throws -> void
       {
         if (!farewell->is_empty()) {
           let message = String{heap_allocator(), farewell->view()};
+
           if (code != 0) {
             message += " (Code ";
             message += String::from(actual_code, heap_allocator());
             message += ')';
           }
+
           show_message(message);
         }
       } else {
         let message = String{heap_allocator(), "Goodbye :c"};
+
         if (code != 0) {
           message += " (Code ";
           message += String::from(actual_code, heap_allocator());
           message += ')';
         }
+
         show_message(message);
       }
     }

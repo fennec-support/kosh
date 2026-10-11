@@ -41,7 +41,8 @@ REGISTER_BUILTIN_FLAGS(CommandBuiltin);
 namespace koshka {
 
 fn
-CommandBuiltin::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
+CommandBuiltin::execute(ExecContext &ec, EvalContext &cxt) const throws
+    -> i32
 {
   let const args = PARSE_BUILTIN_ARGS(ec);
 
@@ -64,6 +65,7 @@ CommandBuiltin::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   let              default_resolver = Maybe<ProgramResolver>{};
   ProgramResolver *resolver         = &cxt.program_resolver();
+
   if (FLAG_COMMAND_DEFAULT_PATH.is_enabled()) {
     default_resolver =
         ProgramResolver{String{utils::DEFAULT_COMMAND_SEARCH_PATH}};
@@ -78,6 +80,7 @@ CommandBuiltin::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
          argument_index++)
     {
       let const &name = args[argument_index];
+
       LOG(Debug, "command resolving '%s' past shell functions", name.c_str());
 
       if (os::has_directory_separator(name.view())) {
@@ -85,6 +88,7 @@ CommandBuiltin::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
             resolver->search(name, ProgramResolver::SearchMode::First,
                              ProgramResolver::Requirement::Runnable,
                              ProgramResolver::CachePolicy::Bypass);
+
         if (!paths.is_empty()) {
           ec.print_to_stdout(is_verbose ? name + " is " + name + "\n"
                                         : name + "\n");
@@ -92,6 +96,7 @@ CommandBuiltin::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         } else if (is_verbose) {
           ec.print_to_stdout(name + ": not found\n");
         }
+
         continue;
       }
 
@@ -102,6 +107,7 @@ CommandBuiltin::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         did_find_any = true;
         continue;
       }
+
       if (let const alias = cxt.scope_store().get_alias(name.view());
           alias.has_value())
       {
@@ -112,6 +118,7 @@ CommandBuiltin::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         did_find_any = true;
         continue;
       }
+
       if (cxt.function_store().has_functions() &&
           cxt.function_store().find_function(name.view()).has_value())
       {
@@ -119,16 +126,20 @@ CommandBuiltin::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
           ec.print_to_stdout(name + "\n");
         } else {
           ec.print_to_stdout(name + " is a function\n");
+
           let const *function_source =
               cxt.function_store().find_source(name.view());
+
           if (function_source != nullptr && !function_source->is_empty()) {
             ec.print_to_stdout(function_source->view());
             if (function_source->back() != '\n') ec.print_to_stdout("\n");
           }
         }
+
         did_find_any = true;
         continue;
       }
+
       if (let const kind = search_builtin(name.view());
           kind.has_value() &&
           !builtin_is_hidden_by_mood(*kind, cxt.runtime_state().get_mood()))
@@ -138,6 +149,7 @@ CommandBuiltin::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         did_find_any = true;
         continue;
       }
+
       if (let const paths =
               resolver->search(name, ProgramResolver::SearchMode::First,
                                ProgramResolver::Requirement::Regular,
@@ -145,16 +157,19 @@ CommandBuiltin::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
           !paths.is_empty())
       {
         let resolved_text = String{cxt.scratch_allocator()};
+
         if (is_verbose) {
           resolved_text += name;
           resolved_text += " is ";
         }
+
         resolved_text += paths[0].text();
         resolved_text += "\n";
         ec.print_to_stdout(resolved_text);
         did_find_any = true;
         continue;
       }
+
       if (cxt.runtime_state().koshkit_utilities_are_reachable() &&
           koshkit::find_util(name.view()).has_value())
       {
@@ -163,6 +178,7 @@ CommandBuiltin::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         did_find_any = true;
         continue;
       }
+
       if (cxt.runtime_state().get_mood() == mimic_mood::Posix) {
         if (is_verbose) ec.print_to_stdout(name + ": not found\n");
         continue;
@@ -188,6 +204,7 @@ CommandBuiltin::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   }
 
   Maybe<ExecContext> sub;
+
   try {
     sub = ExecContext::make_from(
         ec.source_location(), cxt.source_store().current_source_view(),
@@ -202,6 +219,7 @@ CommandBuiltin::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
     return static_cast<i32>(resolution_error.command_status());
   }
+
   sub->is_called_through_command = true;
 
   return utils::execute_context(steal(*sub), cxt, execution_mode::Foreground);

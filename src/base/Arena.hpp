@@ -72,11 +72,13 @@ public:
   {
     return m_blocks.count();
   }
+
   fn
   destructor_count() const wontthrow -> usize
   {
     return m_destructor_count;
   }
+
   fn
   destructor_capacity() const wontthrow -> usize
   {
@@ -87,6 +89,7 @@ public:
 
     return total;
   }
+
   fn
   bytes_capacity() const wontthrow -> usize
   {
@@ -108,8 +111,10 @@ public:
   create(Args &&...args) throws -> T *
   {
     static_assert(std::is_nothrow_destructible_v<T>);
+
     let const saved   = mark();
     opaque   *storage = nullptr;
+
     try {
       storage = allocate(sizeof(T), alignof(T));
     } catch (...) {
@@ -118,6 +123,7 @@ public:
     }
 
     T *object = nullptr;
+
     try {
       object = new (storage) T(std::forward<Args>(args)...);
     } catch (...) {
@@ -129,6 +135,7 @@ public:
       if constexpr (requires { T::is_arena_destructor_noop; }) {
         if constexpr (T::is_arena_destructor_noop) return object;
       }
+
       try {
         push_destructor(PendingDestructor{object, [](opaque *pointer) noexcept {
                                             static_cast<T *>(pointer)->~T();
@@ -170,11 +177,13 @@ private:
   static constexpr usize FIRST_DESTRUCTOR_CHUNK_COUNT = 32;
   static constexpr usize DESTRUCTORS_PER_CHUNK =
       DEFAULT_BLOCK_SIZE / sizeof(PendingDestructor);
+
   static_assert(DESTRUCTORS_PER_CHUNK % FIRST_DESTRUCTOR_CHUNK_COUNT == 0 &&
                     (DESTRUCTORS_PER_CHUNK / FIRST_DESTRUCTOR_CHUNK_COUNT &
                      (DESTRUCTORS_PER_CHUNK / FIRST_DESTRUCTOR_CHUNK_COUNT -
                       1)) == 0,
                 "the chunk sizes double up to a power of two ratio");
+
   static constexpr usize DOUBLING_CHUNK_COUNT = static_cast<usize>(
       __builtin_ctzll(DESTRUCTORS_PER_CHUNK / FIRST_DESTRUCTOR_CHUNK_COUNT));
   static constexpr usize DOUBLED_DESTRUCTOR_COUNT =
@@ -196,6 +205,7 @@ private:
   {
     if (position >= DOUBLED_DESTRUCTOR_COUNT) {
       let const later_position = position - DOUBLED_DESTRUCTOR_COUNT;
+
       chunk_index =
           DOUBLING_CHUNK_COUNT + later_position / DESTRUCTORS_PER_CHUNK;
       position_in_chunk = later_position % DESTRUCTORS_PER_CHUNK;
@@ -203,7 +213,8 @@ private:
       return;
     }
 
-    let const scaled  = position / FIRST_DESTRUCTOR_CHUNK_COUNT + 1;
+    let const scaled = position / FIRST_DESTRUCTOR_CHUNK_COUNT + 1;
+
     chunk_index       = static_cast<usize>(63 - __builtin_clzll(scaled));
     position_in_chunk = position - FIRST_DESTRUCTOR_CHUNK_COUNT *
                                        ((usize{1} << chunk_index) - 1);

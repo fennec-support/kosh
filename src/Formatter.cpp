@@ -44,10 +44,8 @@ struct format_piece
                bool              is_at_line_start,
                bool              should_strip_tabs      = false,
                bool              should_keep_blank_line = false) wontthrow
-      : text{text},
-        source_position{static_cast<u32>(source_position)},
-        kind{kind},
-        is_at_line_start{is_at_line_start},
+      : text{text}, source_position{static_cast<u32>(source_position)},
+        kind{kind}, is_at_line_start{is_at_line_start},
         should_strip_tabs{should_strip_tabs},
         should_keep_blank_line{should_keep_blank_line}
   {}
@@ -154,9 +152,11 @@ pure fn
 is_format_operator_at(StringView source, usize position) wontthrow -> bool
 {
   let const byte = source[position];
+
   if (byte != '{' && byte != '}') {
     return is_format_operator_start(byte);
   }
+
   let const is_previous_boundary =
       position == 0 || is_format_blank(source[position - 1]) ||
       source[position - 1] == '\n' || source[position - 1] == ';' ||
@@ -181,16 +181,19 @@ scan_quoted_region(StringView source, usize &position, char quote) wontthrow
       position++;
       continue;
     }
+
     if (byte == quote) return;
   }
 }
 
 fn
-scan_balanced_region(StringView source, usize &position, char closing) throws
-    -> void
+scan_balanced_region(StringView source,
+                     usize     &position,
+                     char       closing) throws -> void
 {
   let const end = lexer::scan_balanced_shell_region(source, position, closing);
-  position      = end.value_or(source.length);
+
+  position = end.value_or(source.length);
 }
 
 fn
@@ -198,26 +201,31 @@ scan_format_word_end(StringView source, usize position) throws -> usize
 {
   while (position < source.length) {
     let const byte = source[position];
+
     if (byte == '\\' && position + 1 < source.length) {
       position += 2;
       continue;
     }
+
     if (byte == '\'' || byte == '"' || byte == '`') {
       scan_quoted_region(source, position, byte);
       continue;
     }
+
     if (byte == '$' && position + 1 < source.length) {
       if (source[position + 1] == '(') {
         position += 2;
         scan_balanced_region(source, position, ')');
         continue;
       }
+
       if (source[position + 1] == '{') {
         position += 2;
         scan_balanced_region(source, position, '}');
         continue;
       }
     }
+
     if ((byte == '@' || byte == '!' || byte == '?' || byte == '+' ||
          byte == '*') &&
         position + 1 < source.length && source[position + 1] == '(')
@@ -226,6 +234,7 @@ scan_format_word_end(StringView source, usize position) throws -> usize
       scan_balanced_region(source, position, ')');
       continue;
     }
+
     if (byte == '<' && position + 1 < source.length &&
         source[position + 1] == '(')
     {
@@ -233,6 +242,7 @@ scan_format_word_end(StringView source, usize position) throws -> usize
       scan_balanced_region(source, position, ')');
       continue;
     }
+
     if (byte == '>' && position + 1 < source.length &&
         source[position + 1] == '(')
     {
@@ -240,11 +250,13 @@ scan_format_word_end(StringView source, usize position) throws -> usize
       scan_balanced_region(source, position, ')');
       continue;
     }
+
     if (is_format_blank(byte) || byte == '\n' ||
         is_format_operator_at(source, position))
     {
       break;
     }
+
     position++;
   }
 
@@ -258,6 +270,7 @@ scan_format_operator_end(StringView source, usize position) wontthrow -> usize
   let const after_next =
       position + 2 < source.length ? source[position + 2] : '\0';
   usize length = 1;
+
   switch (source[position]) {
   case ';':
     if (next == ';')
@@ -265,29 +278,37 @@ scan_format_operator_end(StringView source, usize position) wontthrow -> usize
     else if (next == '&')
       length = 2;
     break;
+
   case '&':
     if (next == '>')
       length = after_next == '>' ? 3 : 2;
     else if (next == '&')
       length = 2;
     break;
+
   case '|':
     if (next == '|' || next == '&') {
       length = 2;
     }
+
     break;
+
   case '<':
     if (next == '<') {
       length = after_next == '-' || after_next == '<' ? 3 : 2;
     } else if (next == '&' || next == '>') {
       length = 2;
     }
+
     break;
+
   case '>':
     if (next == '>' || next == '&' || next == '|') {
       length = 2;
     }
+
     break;
+
   default: break;
   }
 
@@ -319,7 +340,9 @@ fn
 scan_format_pieces(StringView source) throws -> ArrayList<format_piece>
 {
   let pieces = ArrayList<format_piece>{heap_allocator()};
+
   pieces.reserve(source.length / 6 + 1);
+
   let   pending_heredocs = ArrayList<lexer::pending_heredoc>{heap_allocator()};
   usize position         = 0;
   usize line_start       = 0;
@@ -330,6 +353,7 @@ scan_format_pieces(StringView source) throws -> ArrayList<format_piece>
 
   while (position < source.length) {
     let const byte = source[position];
+
     if (byte == '\\' && position + 1 < source.length &&
         source[position + 1] == '\n')
     {
@@ -341,13 +365,16 @@ scan_format_pieces(StringView source) throws -> ArrayList<format_piece>
 
       continue;
     }
+
     if (is_format_blank(byte)) {
       position++;
       continue;
     }
+
     if (byte == '\n') {
       let deferred_heredoc_keyword = Maybe<format_piece>{};
       let deferred_heredoc_comment = Maybe<format_piece>{};
+
       if (!pending_heredocs.is_empty()) {
         usize keyword_position = pieces.count();
 
@@ -361,6 +388,7 @@ scan_format_pieces(StringView source) throws -> ArrayList<format_piece>
           let const  keyword_index = keyword_position - 1;
           let       &candidate     = pieces[keyword_index];
           let const &separator     = pieces[keyword_index - 1];
+
           if (candidate.kind == format_piece_kind::Word &&
               (candidate.text == "then" || candidate.text == "do") &&
               separator.kind == format_piece_kind::Operator &&
@@ -377,6 +405,7 @@ scan_format_pieces(StringView source) throws -> ArrayList<format_piece>
           }
         }
       }
+
       pieces.push(format_piece{
           StringView{"\n", 1},
           position, format_piece_kind::Newline,
@@ -396,6 +425,7 @@ scan_format_pieces(StringView source) throws -> ArrayList<format_piece>
           position++;
         }
       }
+
       has_code_on_line    = false;
       has_comment_on_line = false;
 
@@ -415,6 +445,7 @@ scan_format_pieces(StringView source) throws -> ArrayList<format_piece>
                   source.substring_of_length(position, line_end - position),
                   pending)
                   .is_terminator;
+
           position = line_end < source.length ? line_end + 1 : line_end;
           if (is_terminator) {
             did_find_terminator = true;
@@ -423,12 +454,14 @@ scan_format_pieces(StringView source) throws -> ArrayList<format_piece>
         }
 
         let const body_end = position;
+
         if (body_end > body_start) {
           pieces.push(format_piece{
               source.substring_of_length(body_start, body_end - body_start),
               body_start, format_piece_kind::Raw, true,
               pending.should_strip_tabs});
         }
+
         if (!did_find_terminator) break;
       }
 
@@ -442,9 +475,11 @@ scan_format_pieces(StringView source) throws -> ArrayList<format_piece>
             position, format_piece_kind::Newline, false
         });
       }
+
       line_start = position;
       continue;
     }
+
     if (byte == '#' && !has_code_on_line) {
       let end_position = position;
 
@@ -459,12 +494,14 @@ scan_format_pieces(StringView source) throws -> ArrayList<format_piece>
       position            = end_position;
       continue;
     }
+
     if (byte == '#') {
       let end_position = position;
 
       while (end_position < source.length && source[end_position] != '\n') {
         end_position++;
       }
+
       pieces.push(format_piece{
           source.substring_of_length(position, end_position - position),
           position, format_piece_kind::Comment, false});
@@ -472,6 +509,7 @@ scan_format_pieces(StringView source) throws -> ArrayList<format_piece>
       position            = end_position;
       continue;
     }
+
     if ((byte == '<' || byte == '>') && position + 1 < source.length &&
         source[position + 1] == '(')
     {
@@ -484,6 +522,7 @@ scan_format_pieces(StringView source) throws -> ArrayList<format_piece>
       position         = end_position;
       continue;
     }
+
     if (byte == '(' && position + 1 < source.length &&
         source[position + 1] == '(')
     {
@@ -496,6 +535,7 @@ scan_format_pieces(StringView source) throws -> ArrayList<format_piece>
       position         = end_position;
       continue;
     }
+
     if (is_format_operator_at(source, position)) {
       let const end_position = scan_format_operator_end(source, position);
       let const text =
@@ -504,6 +544,7 @@ scan_format_pieces(StringView source) throws -> ArrayList<format_piece>
         is_expecting_heredoc_delimiter    = true;
         should_pending_heredoc_strip_tabs = text == "<<-";
       }
+
       pieces.push(format_piece{text, position, format_piece_kind::Operator,
                                !has_code_on_line});
       has_code_on_line = true;
@@ -512,26 +553,32 @@ scan_format_pieces(StringView source) throws -> ArrayList<format_piece>
     }
 
     let end_position = scan_format_word_end(source, position);
+
     if (end_position == position) {
       position++;
       continue;
     }
+
     let const initial_word =
         source.substring_of_length(position, end_position - position);
+
     if (end_position < source.length && source[end_position] == '(' &&
         initial_word.find_character('=').has_value())
     {
       end_position++;
       scan_balanced_region(source, end_position, ')');
     }
+
     let const text = without_trailing_line_continuation(
         source.substring_of_length(position, end_position - position));
+
     if (is_expecting_heredoc_delimiter) {
       pending_heredocs.push(lexer::pending_heredoc{
           lexer::unquote_heredoc_delimiter(text, heap_allocator()),
           should_pending_heredoc_strip_tabs});
       is_expecting_heredoc_delimiter = false;
     }
+
     pieces.push(format_piece{text, position, format_piece_kind::Word,
                              !has_code_on_line});
     has_code_on_line = true;
@@ -563,11 +610,13 @@ piece_begins_redirection(const ArrayList<format_piece> &pieces,
   if (piece.kind == format_piece_kind::Operator)
     return is_redirection_operator(piece.text);
   if (piece.kind != format_piece_kind::Word) return false;
+
   let const is_descriptor_name =
       piece.text.length > 2 && piece.text[0] == '{' &&
       piece.text[piece.text.length - 1] == '}' &&
       lexer::word_is_variable_name(
           piece.text.substring_of_length(1, piece.text.length - 2));
+
   if (!piece.text.is_all_decimal_digits() && !is_descriptor_name) {
     return false;
   }
@@ -614,16 +663,19 @@ public:
     start_line();
     let const separator_length = m_has_line_text ? 1u : 0u;
     let const token_width      = toiletline::get_display_width(token);
+
     if (m_should_wrap &&
         m_column + separator_length + token_width > MAX_LINE_WIDTH &&
         m_has_line_text)
     {
       break_with_continuation(m_indent + 2);
     }
+
     if (m_has_line_text) {
       m_output.push(' ');
       m_column++;
     }
+
     m_output.append(token);
     let last_newline = Maybe<usize>{};
 
@@ -665,7 +717,8 @@ public:
   }
 
   fn
-  append_comment(StringView comment, bool is_at_line_start) throws -> void
+  append_comment(StringView comment, bool is_at_line_start) throws
+      -> void
   {
     if (is_at_line_start) {
       finish_line();
@@ -678,6 +731,7 @@ public:
       }
 
       let const text = comment.substring(text_position);
+
       start_line();
       m_output.append(text);
       m_has_line_text = !text.is_empty();
@@ -685,6 +739,7 @@ public:
 
       return;
     }
+
     if (m_has_line_text) m_output.push(' ');
     m_output.append(comment);
     m_column +=
@@ -733,6 +788,7 @@ public:
     {
       m_output.push('\n');
     }
+
     m_has_trailing_blank_line = should_keep_at_end;
   }
 
@@ -815,6 +871,7 @@ measure_word_layout(StringView word) throws -> word_layout
       segment_start = position;
       continue;
     }
+
     if (word[position] == '\n') measure.has_hard_newline = true;
     position++;
   }
@@ -826,8 +883,8 @@ measure_word_layout(StringView word) throws -> word_layout
 }
 
 fn
-collect_option_wrap_positions(const ArrayList<format_piece> &pieces) throws
-    -> ArrayList<option_wrap_position>
+collect_option_wrap_positions(const ArrayList<format_piece> &pieces)
+    throws -> ArrayList<option_wrap_position>
 {
   let   positions     = ArrayList<option_wrap_position>{heap_allocator()};
   usize segment_start = 0;
@@ -882,6 +939,7 @@ word_is_unbreakable(StringView word) wontthrow -> bool
   if (word[0] == '\'' || word[0] == '"') {
     return true;
   }
+
   if (word.find_character('\'').has_value() ||
       word.find_character('"').has_value())
   {
@@ -898,7 +956,7 @@ fn
 append_long_string_warnings(StringView                     source,
                             const ArrayList<format_piece> &pieces,
                             Maybe<StringView>              filename,
-                            ArrayList<String> &warnings) throws -> void
+                            ArrayList<String>             &warnings) throws -> void
 {
   for (let const &piece : pieces) {
     if (piece.kind != format_piece_kind::Word ||
@@ -917,6 +975,7 @@ append_long_string_warnings(StringView                     source,
         "Unbreakable word exceeds 78 columns; consider making it shorter or "
         "splitting it"
     };
+
     warnings.push(warning.to_string(source, nullptr));
   }
 }
@@ -948,8 +1007,10 @@ first_test_shadow_position(const ArrayList<format_piece> &pieces) throws
 
   for (usize index = 0; index < pieces.count(); index++) {
     let const &piece = pieces[index];
+
     if (piece.kind != format_piece_kind::Word) continue;
     let const introducer = SHADOW_INTRODUCERS.find(piece.text);
+
     if (!introducer.has_value()) continue;
 
     switch (*introducer) {
@@ -960,7 +1021,9 @@ first_test_shadow_position(const ArrayList<format_piece> &pieces) throws
       {
         return piece.source_position;
       }
+
       break;
+
     case shadow_introducer::Alias:
       if (index + 1 < pieces.count() &&
           pieces[index + 1].kind == format_piece_kind::Word &&
@@ -968,7 +1031,9 @@ first_test_shadow_position(const ArrayList<format_piece> &pieces) throws
       {
         return piece.source_position;
       }
+
       break;
+
     case shadow_introducer::Test:
       if (index + 2 < pieces.count() &&
           pieces[index + 1].kind == format_piece_kind::Operator &&
@@ -978,6 +1043,7 @@ first_test_shadow_position(const ArrayList<format_piece> &pieces) throws
       {
         return piece.source_position;
       }
+
       break;
     }
   }
@@ -989,7 +1055,7 @@ fn
 render_format_pieces(const ArrayList<format_piece> &pieces,
                      usize                          initial_indent,
                      usize                          recursion_depth,
-                     format_layout layout = {}) throws -> String;
+                     format_layout                  layout = {}) throws -> String;
 
 fn
 format_word_substitutions(StringView word,
@@ -998,6 +1064,7 @@ format_word_substitutions(StringView word,
 {
   static constexpr usize MAX_FORMAT_RECURSION_DEPTH = 64;
   if (recursion_depth >= MAX_FORMAT_RECURSION_DEPTH) return None;
+
   bool has_formattable_substitution = false;
 
   for (usize position = 0; position + 1 < word.length; position++) {
@@ -1022,6 +1089,7 @@ format_word_substitutions(StringView word,
     bool  is_function_substitution = false;
     usize opener_length            = 0;
     char  closing                  = ')';
+
     if (position + 1 < word.length && word[position] == '$' &&
         word[position + 1] == '(' &&
         (position + 2 >= word.length || word[position + 2] != '('))
@@ -1042,12 +1110,14 @@ format_word_substitutions(StringView word,
       is_substitution = true;
       opener_length   = 2;
     }
+
     if (!is_substitution) {
       output.push(word[position++]);
       continue;
     }
 
     let end = position + opener_length;
+
     scan_balanced_region(word, end, closing);
     if (end <= position + opener_length || end > word.length ||
         word[end - 1] != closing)
@@ -1055,8 +1125,10 @@ format_word_substitutions(StringView word,
       output.push(word[position++]);
       continue;
     }
+
     let inner_start = position + opener_length;
     let inner_end   = end - 1;
+
     if (is_function_substitution) {
       while (inner_start < inner_end && is_format_blank(word[inner_start])) {
         inner_start++;
@@ -1070,6 +1142,7 @@ format_word_substitutions(StringView word,
         inner_end--;
       }
     }
+
     let const inner =
         word.substring_of_length(inner_start, inner_end - inner_start);
     let const pieces = scan_format_pieces(inner);
@@ -1159,7 +1232,9 @@ render_format_pieces(const ArrayList<format_piece> &pieces,
       has_closed_test = true;
     }
   };
-  let const do_is_declaration_command = [&](usize start_index) throws -> bool {
+
+  let const do_is_declaration_command =
+      [&](usize start_index) throws -> bool {
     bool has_assignment                  = false;
     bool has_command                     = false;
     bool is_declaration_builtin          = false;
@@ -1170,34 +1245,41 @@ render_format_pieces(const ArrayList<format_piece> &pieces,
 
     for (usize index = start_index; index < pieces.count(); index++) {
       let const &piece = pieces[index];
+
       if (piece.kind == format_piece_kind::Comment) continue;
       if (piece.kind == format_piece_kind::Newline ||
           piece.kind == format_piece_kind::Raw)
       {
         break;
       }
+
       if (piece.kind == format_piece_kind::Operator) {
         let const operator_kind =
             FORMAT_OPERATORS.find(piece.text).value_or(format_operator::Other);
+
         if (operator_kind == format_operator::CommandEnd ||
             operator_kind == format_operator::Pipe ||
             operator_kind == format_operator::Continuation)
         {
           break;
         }
+
         if (is_redirection_operator(piece.text))
           should_skip_redirection_operand = true;
         continue;
       }
+
       if (should_skip_redirection_operand) {
         should_skip_redirection_operand = false;
         continue;
       }
+
       if (piece_begins_redirection(pieces, index)) continue;
       if (!has_command && lexer::word_looks_like_assignment(piece.text)) {
         has_assignment = true;
         continue;
       }
+
       if (!has_command) {
         has_command = true;
         is_declaration_builtin =
@@ -1207,10 +1289,12 @@ render_format_pieces(const ArrayList<format_piece> &pieces,
         if (!is_declaration_builtin) return false;
         continue;
       }
+
       if (is_scanning_options && piece.text == "--") {
         is_scanning_options = false;
         continue;
       }
+
       if (is_scanning_options && piece.text.starts_with("-")) {
         if (piece.text.find_character('f').has_value() ||
             piece.text.find_character('F').has_value() ||
@@ -1218,8 +1302,10 @@ render_format_pieces(const ArrayList<format_piece> &pieces,
         {
           has_reporting_option = true;
         }
+
         continue;
       }
+
       is_scanning_options = false;
       has_operand         = true;
     }
@@ -1227,14 +1313,16 @@ render_format_pieces(const ArrayList<format_piece> &pieces,
     return (!has_command && has_assignment) ||
            (is_declaration_builtin && has_operand && !has_reporting_option);
   };
-  let const do_begin_statement = [&](bool is_declaration, bool is_structural)
-                                     throws -> void {
+
+  let const do_begin_statement =
+      [&](bool is_declaration, bool is_structural) throws -> void {
     if (is_bash) {
       has_pending_declaration_separator = false;
       has_pending_structural_separator  = false;
 
       return;
     }
+
     if (!has_pending_declaration_separator && !has_pending_structural_separator)
     {
       return;
@@ -1244,9 +1332,11 @@ render_format_pieces(const ArrayList<format_piece> &pieces,
     {
       writer.ensure_blank_line();
     }
+
     has_pending_declaration_separator = false;
     has_pending_structural_separator  = false;
   };
+
   let const do_finish_command = [&]() throws {
     do_close_test();
     is_command_start                 = true;
@@ -1255,6 +1345,7 @@ render_format_pieces(const ArrayList<format_piece> &pieces,
     is_current_statement_declaration = false;
     has_classified_current_statement = false;
   };
+
   let const do_is_bash_join_keyword = [&](StringView word) wontthrow -> bool {
     if (should_pad_pending_line) return false;
     if (word == "then") return true;
@@ -1262,14 +1353,18 @@ render_format_pieces(const ArrayList<format_piece> &pieces,
     return word == "do" && !loop_do_join_states.is_empty() &&
            loop_do_join_states.back();
   };
-  let const do_flush_statement_end = [&](usize flush_index) throws -> void {
+
+  let const do_flush_statement_end =
+      [&](usize flush_index) throws -> void {
     did_join_pending_end = false;
     if (!has_pending_statement_end) return;
     has_pending_statement_end = false;
     if (!writer.has_line_text() && !should_pad_pending_line) {
       return;
     }
+
     let const &next = pieces[flush_index];
+
     if (next.kind == format_piece_kind::Operator && next.text == ";") {
       has_pending_statement_end = true;
 
@@ -1292,20 +1387,24 @@ render_format_pieces(const ArrayList<format_piece> &pieces,
       should_suppress_terminator = true;
       should_suppress_break      = true;
     }
+
     if (next.kind == format_piece_kind::Raw) should_suppress_terminator = true;
 
     if (next.kind == format_piece_kind::Operator) {
       let const operator_kind =
           FORMAT_OPERATORS.find(next.text).value_or(format_operator::Other);
+
       if (operator_kind == format_operator::CloseBrace ||
           operator_kind == format_operator::CaseTerminator)
       {
         should_suppress_terminator = true;
       }
+
       if (operator_kind == format_operator::CloseParen && subshell_depth > 0) {
         should_suppress_terminator = true;
         should_suppress_break      = true;
       }
+
       if (operator_kind == format_operator::Pipe ||
           operator_kind == format_operator::Continuation)
       {
@@ -1327,15 +1426,18 @@ render_format_pieces(const ArrayList<format_piece> &pieces,
 
       return;
     }
+
     writer.finish_line();
   };
 
   for (usize index = 0; index < pieces.count(); index++) {
     let const &piece = pieces[index];
     let const  text  = piece.text;
+
     if (is_bash && piece.kind != format_piece_kind::Newline) {
       do_flush_statement_end(index);
     }
+
     if (is_in_regex_operand) {
       let const is_operand_piece = piece.kind == format_piece_kind::Word ||
                                    piece.kind == format_piece_kind::Operator;
@@ -1343,6 +1445,7 @@ render_format_pieces(const ArrayList<format_piece> &pieces,
           !is_operand_piece ||
           (regex_paren_depth == 0 &&
            (text == "]]" || text == "&&" || text == "||" || text == ")"));
+
       if (!is_operand_end) {
         if (text == "(")
           regex_paren_depth++;
@@ -1356,8 +1459,10 @@ render_format_pieces(const ArrayList<format_piece> &pieces,
             piece.source_position + static_cast<u32>(text.length);
         continue;
       }
+
       is_in_regex_operand = false;
     }
+
     if (conditional_depth > 0 && text == "=~") {
       is_in_regex_operand = true;
       regex_paren_depth   = 0;
@@ -1370,6 +1475,7 @@ render_format_pieces(const ArrayList<format_piece> &pieces,
         writer.append_raw(text);
         continue;
       }
+
       if (piece.should_strip_tabs) {
         let   stripped   = String{heap_allocator()};
         usize line_start = 0;
@@ -1397,9 +1503,11 @@ render_format_pieces(const ArrayList<format_piece> &pieces,
       } else {
         writer.append_raw(text);
       }
+
       writer.ensure_blank_line(is_bash);
       continue;
     }
+
     if (piece.kind == format_piece_kind::Comment) {
       do_close_test();
       if (piece.is_at_line_start && (has_pending_declaration_separator ||
@@ -1416,6 +1524,7 @@ render_format_pieces(const ArrayList<format_piece> &pieces,
           {
             continue;
           }
+
           if (kind != format_piece_kind::Raw) has_following_statement = true;
           break;
         }
@@ -1423,9 +1532,11 @@ render_format_pieces(const ArrayList<format_piece> &pieces,
         if (has_following_statement) {
           writer.ensure_blank_line();
         }
+
         has_pending_declaration_separator = false;
         has_pending_structural_separator  = false;
       }
+
       writer.append_comment(text, piece.is_at_line_start);
       if (piece.source_position == 0 && text.starts_with("#!")) {
         writer.ensure_blank_line();
@@ -1433,28 +1544,33 @@ render_format_pieces(const ArrayList<format_piece> &pieces,
 
       continue;
     }
+
     if (piece.kind == format_piece_kind::Newline) {
       is_heredoc_line_open = false;
       if (piece.should_keep_blank_line) {
         writer.ensure_blank_line();
         continue;
       }
+
       if (!is_waiting_for_continued_statement) {
         if (is_current_statement_declaration ||
             has_continued_declaration_statement)
         {
           has_pending_declaration_separator = true;
         }
+
         if (has_completed_structural_statement)
           has_pending_structural_separator = true;
         has_completed_structural_statement  = false;
         has_continued_declaration_statement = false;
       }
+
       do_finish_command();
       if (is_bash) {
         if (writer.has_line_text()) has_pending_statement_end = true;
         continue;
       }
+
       writer.finish_line();
       continue;
     }
@@ -1484,6 +1600,7 @@ render_format_pieces(const ArrayList<format_piece> &pieces,
             option_wrap_positions[option_wrap_index].continuation_offset);
         option_wrap_index++;
       }
+
       if (should_attach_heredoc_delimiter || should_attach_redirection_operand)
       {
         let const is_separated_process_substitution_operand =
@@ -1493,6 +1610,7 @@ render_format_pieces(const ArrayList<format_piece> &pieces,
             (text.starts_with("<(") || text.starts_with(">("));
         let quoted_heredoc_delimiter = String{heap_allocator()};
         let rendered_operand         = text;
+
         if (is_bash && should_attach_heredoc_delimiter) {
           let const unquoted =
               lexer::unquote_heredoc_delimiter(text, heap_allocator());
@@ -1503,9 +1621,11 @@ render_format_pieces(const ArrayList<format_piece> &pieces,
             rendered_operand = quoted_heredoc_delimiter.view();
           }
         }
+
         let const should_join_strip_operator =
             should_attach_heredoc_delimiter && index > 0 &&
             pieces[index - 1].text == "<<" && rendered_operand.starts_with("-");
+
         if (is_separated_process_substitution_operand ||
             should_join_strip_operator ||
             (should_attach_redirection_operand &&
@@ -1515,6 +1635,7 @@ render_format_pieces(const ArrayList<format_piece> &pieces,
         } else {
           writer.append_attached(rendered_operand);
         }
+
         should_attach_heredoc_delimiter   = false;
         should_attach_redirection_operand = false;
         should_space_redirection_operand  = false;
@@ -1522,21 +1643,25 @@ render_format_pieces(const ArrayList<format_piece> &pieces,
         should_command_start_after_redirection = false;
         continue;
       }
+
       let formatted_word =
           format_word_substitutions(text, indent, recursion_depth);
       let const rendered_text =
           formatted_word.has_value() ? formatted_word->view() : text;
+
       if (is_command_start) is_waiting_for_continued_statement = false;
       if (has_completed_structural_statement && is_command_start &&
           FORMATTER_COMPOUND_OPENERS.contains(rendered_text))
       {
         has_completed_structural_statement = false;
       }
+
       if (rendered_text == "[[") {
         conditional_depth++;
       } else if (rendered_text == "]]" && conditional_depth > 0) {
         conditional_depth--;
       }
+
       let const is_case_pattern =
           !case_pattern_states.is_empty() && case_pattern_states.back();
       let const is_case_esac      = is_case_pattern && rendered_text == "esac";
@@ -1546,12 +1671,15 @@ render_format_pieces(const ArrayList<format_piece> &pieces,
       let const is_reserved_position =
           is_command_start && (!is_case_pattern || is_case_esac);
       u8 keyword_flags = 0;
+
       if (is_reserved_position) {
         if (let const found = FORMATTER_KEYWORDS.find(rendered_text);
             found.has_value())
           keyword_flags = *found;
       }
+
       let const is_case_in = is_expecting_case_in && rendered_text == "in";
+
       if ((keyword_flags & formatter_keyword_closes) != 0) {
         do_finish_command();
         writer.finish_line();
@@ -1562,12 +1690,14 @@ render_format_pieces(const ArrayList<format_piece> &pieces,
         if (indent >= indent_step_spaces) indent -= indent_step_spaces;
         writer.set_indent(indent);
       }
+
       if ((keyword_flags & formatter_keyword_vertical) != 0 || is_case_in) {
         do_begin_statement(false, true);
         if (!is_case_in) {
           do_finish_command();
           if (!did_join_pending_end) writer.finish_line();
         }
+
         writer.append_token(rendered_text);
         if (index + 1 < pieces.count() &&
             pieces[index + 1].kind == format_piece_kind::Comment &&
@@ -1576,14 +1706,17 @@ render_format_pieces(const ArrayList<format_piece> &pieces,
           index++;
           writer.append_comment(pieces[index].text, false);
         }
+
         let const is_compound_terminator =
             (keyword_flags & formatter_keyword_closes) != 0 &&
             (keyword_flags & formatter_keyword_indents) == 0;
         if (is_compound_terminator) has_completed_structural_statement = true;
+
         if (is_bash) {
           if (rendered_text == "done" && !loop_do_join_states.is_empty()) {
             loop_do_join_states.pop_back();
           }
+
           if (rendered_text == "fi" && !pending_fi_counts.is_empty()) {
             let const extra_count = pending_fi_counts.back();
             pending_fi_counts.pop_back();
@@ -1594,10 +1727,12 @@ render_format_pieces(const ArrayList<format_piece> &pieces,
               if (indent >= indent_step_spaces) {
                 indent -= indent_step_spaces;
               }
+
               writer.set_indent(indent);
               writer.append_token("fi");
             }
           }
+
           if (is_case_in) {
             writer.finish_padded_line();
           } else if (is_compound_terminator) {
@@ -1615,6 +1750,7 @@ render_format_pieces(const ArrayList<format_piece> &pieces,
         if ((keyword_flags & formatter_keyword_indents) != 0 || is_case_in) {
           indent += indent_step_spaces;
         }
+
         writer.set_indent(indent);
         is_expecting_case_in = false;
         if (is_case_in) case_pattern_states.push(true);
@@ -1623,8 +1759,10 @@ render_format_pieces(const ArrayList<format_piece> &pieces,
         {
           case_pattern_states.pop_back();
         }
+
         continue;
       }
+
       if ((keyword_flags & formatter_keyword_elif) != 0) {
         do_begin_statement(false, true);
         if (is_bash) {
@@ -1637,10 +1775,12 @@ render_format_pieces(const ArrayList<format_piece> &pieces,
           is_command_start = true;
           continue;
         }
+
         writer.append_token(rendered_text);
         is_command_start = true;
         continue;
       }
+
       if ((keyword_flags & formatter_keyword_case) != 0)
         is_expecting_case_in = true;
       if (is_bash && is_reserved_position) {
@@ -1669,31 +1809,37 @@ render_format_pieces(const ArrayList<format_piece> &pieces,
           }
         }
       }
+
       let should_rewrite_test =
           is_command_start && !is_case_pattern && rendered_text == "test" &&
           !has_prior_test_shadow(test_shadow_position, piece.source_position);
+
       if (should_rewrite_test && index + 1 < pieces.count() &&
           pieces[index + 1].text == "(")
       {
         should_rewrite_test = false;
       }
+
       if (is_command_start && !has_classified_current_statement) {
         is_current_statement_declaration = do_is_declaration_command(index);
         has_classified_current_statement = true;
         do_begin_statement(is_current_statement_declaration, false);
       }
+
       if (should_rewrite_test) {
         writer.append_token("[");
         is_test_command  = true;
         is_command_start = false;
         continue;
       }
+
       let const is_redirection_descriptor =
           conditional_depth == 0 && index + 1 < pieces.count() &&
           pieces[index + 1].kind == format_piece_kind::Operator &&
           is_redirection_operator(pieces[index + 1].text) &&
           piece.source_position + piece.text.count() ==
               pieces[index + 1].source_position;
+
       if (is_test_command && !has_closed_test && is_redirection_descriptor) {
         do_close_test();
       }
@@ -1704,6 +1850,7 @@ render_format_pieces(const ArrayList<format_piece> &pieces,
       } else {
         writer.append_token(rendered_text);
       }
+
       if ((keyword_flags & formatter_keyword_prefix) != 0) {
         is_command_start = true;
       } else if (!is_redirection_descriptor &&
@@ -1711,23 +1858,27 @@ render_format_pieces(const ArrayList<format_piece> &pieces,
       {
         is_command_start = false;
       }
+
       continue;
     }
 
     let const operator_kind =
         FORMAT_OPERATORS.find(text).value_or(format_operator::Other);
+
     switch (operator_kind) {
     case format_operator::OpenBrace: {
       let const is_coproc_body =
           index >= 2 && pieces[index - 1].kind == format_piece_kind::Word &&
           pieces[index - 2].kind == format_piece_kind::Word &&
           pieces[index - 2].text == "coproc";
+
       is_waiting_for_continued_statement = false;
       has_completed_structural_statement = false;
       do_begin_statement(false, false);
       if (!is_bash && !is_coproc_body) {
         writer.finish_line();
       }
+
       writer.append_token(text);
       if (is_bash) {
         has_pending_statement_end = true;
@@ -1735,6 +1886,7 @@ render_format_pieces(const ArrayList<format_piece> &pieces,
       } else if (!is_followed_by_inline_comment) {
         writer.finish_line();
       }
+
       indent += indent_step_spaces;
       writer.set_indent(indent);
       do_finish_command();
@@ -1745,11 +1897,13 @@ render_format_pieces(const ArrayList<format_piece> &pieces,
         writer.append_token(text);
         continue;
       }
+
       if (!case_pattern_states.is_empty() && case_pattern_states.back()) {
         writer.append_token(text);
         should_attach_case_pattern = true;
         continue;
       }
+
       if (!is_command_start) break;
       is_waiting_for_continued_statement = false;
       has_completed_structural_statement = false;
@@ -1760,6 +1914,7 @@ render_format_pieces(const ArrayList<format_piece> &pieces,
         do_finish_command();
         continue;
       }
+
       if (!is_followed_by_inline_comment) writer.finish_line();
       indent += indent_step_spaces;
       subshell_depth++;
@@ -1778,6 +1933,7 @@ render_format_pieces(const ArrayList<format_piece> &pieces,
         has_pending_statement_end = true;
         continue;
       }
+
       if (!is_followed_by_continuation && !is_followed_by_inline_comment &&
           !is_followed_by_redirection &&
           !(index + 1 < pieces.count() &&
@@ -1804,6 +1960,7 @@ render_format_pieces(const ArrayList<format_piece> &pieces,
         writer.append_token(text);
         continue;
       }
+
       fallthru;
     case format_operator::Continuation:
       do_close_test();
@@ -1815,6 +1972,7 @@ render_format_pieces(const ArrayList<format_piece> &pieces,
       {
         is_waiting_for_continued_statement = true;
       }
+
       do_finish_command();
       continue;
     case format_operator::CommandEnd:
@@ -1825,6 +1983,7 @@ render_format_pieces(const ArrayList<format_piece> &pieces,
       {
         has_pending_declaration_separator = true;
       }
+
       if (has_completed_structural_statement)
         has_pending_structural_separator = true;
       has_completed_structural_statement  = false;
@@ -1838,11 +1997,13 @@ render_format_pieces(const ArrayList<format_piece> &pieces,
         do_finish_command();
         continue;
       }
+
       if (is_bash) {
         if (writer.has_line_text()) has_pending_statement_end = true;
         do_finish_command();
         continue;
       }
+
       if (!is_followed_by_inline_comment) writer.finish_line();
       do_finish_command();
       continue;
@@ -1851,16 +2012,19 @@ render_format_pieces(const ArrayList<format_piece> &pieces,
         writer.append_token(text);
         continue;
       }
+
       let const is_case_pattern =
           !case_pattern_states.is_empty() && case_pattern_states.back();
       let const is_function_header_close =
           index > 0 && pieces[index - 1].kind == format_piece_kind::Operator &&
           pieces[index - 1].text == "(";
+
       if (is_case_pattern) {
         writer.append_attached(text);
         if (!is_followed_by_inline_comment) {
           writer.finish_line();
         }
+
         indent += indent_step_spaces;
         writer.set_indent(indent);
         case_pattern_states.back() = false;
@@ -1876,10 +2040,12 @@ render_format_pieces(const ArrayList<format_piece> &pieces,
           has_pending_statement_end          = true;
           continue;
         }
+
         writer.finish_line();
         if (indent >= indent_step_spaces) {
           indent -= indent_step_spaces;
         }
+
         subshell_depth--;
         writer.set_indent(indent);
         writer.append_token(text);
@@ -1891,6 +2057,7 @@ render_format_pieces(const ArrayList<format_piece> &pieces,
           should_pad_pending_line   = true;
         }
       }
+
       continue;
     }
     case format_operator::CloseConditional:
@@ -1901,6 +2068,7 @@ render_format_pieces(const ArrayList<format_piece> &pieces,
 
     let const is_redirection =
         conditional_depth == 0 && is_redirection_operator(text);
+
     if (is_test_command && !has_closed_test && is_redirection) {
       do_close_test();
     }
@@ -1916,7 +2084,9 @@ render_format_pieces(const ArrayList<format_piece> &pieces,
         has_classified_current_statement = true;
         do_begin_statement(is_current_statement_declaration, false);
       }
+
       should_command_start_after_redirection = is_command_start;
+
       bool is_attached_to_previous_word =
           index > 0 && pieces[index - 1].kind == format_piece_kind::Word &&
           pieces[index - 1].source_position + pieces[index - 1].text.count() ==
@@ -1928,6 +2098,7 @@ render_format_pieces(const ArrayList<format_piece> &pieces,
           index + 1 < pieces.count() &&
           (pieces[index + 1].text == "-" ||
            pieces[index + 1].text.is_all_decimal_digits());
+
       if (is_descriptor_duplication) {
         if (pieces[index + 1].text == "-") rendered_operator = StringView{">&"};
         let const has_explicit_descriptor =
@@ -1940,6 +2111,7 @@ render_format_pieces(const ArrayList<format_piece> &pieces,
           is_attached_to_previous_word = false;
         }
       }
+
       if (is_attached_to_previous_word)
         writer.append_attached(rendered_operator);
       else
@@ -1971,15 +2143,16 @@ validate_formatted_source(StringView         source,
   let const function_mark = function_arena != nullptr
                                 ? Maybe<BumpArena::Mark>{function_arena->mark()}
                                 : None;
-  defer
-  {
+  defer {
     arena.release(mark);
     if (function_mark.has_value()) function_arena->release(*function_mark);
   };
+
   let parser = Parser{
       Lexer{source, arena, None, mood}
   };
   let const *ast = parser.construct_ast(errors, nullptr);
+
   if (ast_output != nullptr && errors.is_empty()) {
     *ast_output = ast->to_ast_string();
   }
@@ -2000,6 +2173,7 @@ format_shell_source(StringView         source,
 {
   let normalized  = String{heap_allocator()};
   let source_view = source;
+
   if (source.find_character('\r').has_value()) {
     normalized = String{source};
     normalized.normalize_crlf_line_endings();
@@ -2009,10 +2183,14 @@ format_shell_source(StringView         source,
   if (!validate_formatted_source(source_view, arena, errors, ast_output,
                                  function_arena, mood))
     return None;
+
   let const pieces = scan_format_pieces(source_view);
+
   append_long_string_warnings(source_view, pieces, filename, errors);
+
   let formatted        = render_format_pieces(pieces);
   let formatted_errors = ArrayList<String>{heap_allocator()};
+
   if (!validate_formatted_source(formatted.view(), arena, formatted_errors,
                                  nullptr, function_arena, mood))
   {
@@ -2029,6 +2207,7 @@ format_bash_function_source(StringView source) throws -> String
 {
   let normalized  = String{heap_allocator()};
   let source_view = source;
+
   if (source.find_character('\r').has_value()) {
     normalized = String{source};
     normalized.normalize_crlf_line_endings();
@@ -2051,8 +2230,9 @@ format_bash_function_source(StringView source) throws -> String
 }
 
 fn
-select_nonconflicting_source_edits(ArrayList<const source_edit *> &&candidates)
-    throws -> ArrayList<const source_edit *>
+select_nonconflicting_source_edits(
+    ArrayList<const source_edit *> &&candidates) throws
+    -> ArrayList<const source_edit *>
 {
   let const sorted_candidates =
       steal(candidates)
@@ -2072,6 +2252,7 @@ select_nonconflicting_source_edits(ArrayList<const source_edit *> &&candidates)
   for (let const *candidate : sorted_candidates) {
     if (!unique.is_empty()) {
       let const *previous = unique.back();
+
       if (previous->start_position == candidate->start_position &&
           previous->end_position == candidate->end_position &&
           previous->expected == candidate->expected &&
@@ -2080,6 +2261,7 @@ select_nonconflicting_source_edits(ArrayList<const source_edit *> &&candidates)
         continue;
       }
     }
+
     unique.push(candidate);
   }
 
@@ -2088,8 +2270,8 @@ select_nonconflicting_source_edits(ArrayList<const source_edit *> &&candidates)
 
   let const do_starts_conflict_group =
       [](const source_edit &candidate, usize group_start_position,
-         usize group_end_position, bool is_group_led_by_insertion)
-          wontthrow -> bool {
+         usize group_end_position,
+         bool  is_group_led_by_insertion) wontthrow -> bool {
     if (candidate.start_position < group_end_position) return true;
     if (candidate.start_position != group_start_position) return false;
 
@@ -2139,6 +2321,7 @@ apply_source_fixes(StringView                   source,
       {
         return None;
       }
+
       if (source.substring_of_length(edit.start_position,
                                      edit.end_position - edit.start_position) !=
           edit.expected.view())
@@ -2176,15 +2359,18 @@ apply_source_fixes(StringView                   source,
 
   for (let const *selected_edit : nonconflicting) {
     let const &edit = *selected_edit;
+
     output_length -= edit.end_position - edit.start_position;
     output_length += edit.replacement.count();
   }
 
   output.reserve(output_length);
+
   usize source_position = 0;
 
   for (let const *selected_edit : nonconflicting) {
     let const &edit = *selected_edit;
+
     output.append(source.substring_of_length(
         source_position, edit.start_position - source_position));
     output.append(edit.replacement.view());
@@ -2198,12 +2384,15 @@ apply_source_fixes(StringView                   source,
 
 fn
 source_fixes_for_original_line_endings(
-    StringView source, const ArrayList<source_fix> &normalized_fixes) throws
+    StringView                   source,
+    const ArrayList<source_fix> &normalized_fixes) throws
     -> ArrayList<source_fix>
 {
   let original_positions = ArrayList<usize>{heap_allocator()};
+
   original_positions.reserve(source.count() + 1);
   original_positions.push(0);
+
   usize position = 0;
 
   while (position < source.length) {
@@ -2212,6 +2401,7 @@ source_fixes_for_original_line_endings(
     {
       position++;
     }
+
     position++;
     original_positions.push(position);
   }
@@ -2229,8 +2419,10 @@ source_fixes_for_original_line_endings(
         is_valid = false;
         break;
       }
+
       let const start = original_positions[edit.start_position];
       let const end   = original_positions[edit.end_position];
+
       edits.push(source_edit{
           start, end, String{source.substring_of_length(start, end - start)},
           edit.replacement.clone()});
@@ -2286,6 +2478,7 @@ is_plain_test_literal(StringView text) wontthrow -> bool
 
   for (usize position = 0; position < text.length; position++) {
     let const byte = text[position];
+
     if ((byte >= 'a' && byte <= 'z') || (byte >= 'A' && byte <= 'Z') ||
         (byte >= '0' && byte <= '9'))
     {
@@ -2310,7 +2503,8 @@ is_plain_test_literal(StringView text) wontthrow -> bool
 }
 
 static fn
-test_operand_without_x_prefix(StringView operand) throws -> Maybe<String>
+test_operand_without_x_prefix(StringView operand) throws
+    -> Maybe<String>
 {
   if (operand.length < 2 || operand[0] == '\'') {
     return None;
@@ -2320,6 +2514,7 @@ test_operand_without_x_prefix(StringView operand) throws -> Maybe<String>
       operand.length >= 3 && operand[1] == 'x')
   {
     let stripped = String{"\""};
+
     stripped.append(operand.substring(2));
 
     return stripped;
@@ -2339,37 +2534,45 @@ test_operand_without_x_prefix(StringView operand) throws -> Maybe<String>
 }
 
 static fn
-x_prefix_test_fix(StringView source, const SourceLocation &location) throws
+x_prefix_test_fix(StringView            source,
+                  const SourceLocation &location) throws
     -> Maybe<source_fix>
 {
   let const left =
       source.substring_of_length(location.position, location.length);
+
   if (left.length < 3) return None;
 
   let left_replacement = test_operand_without_x_prefix(left);
+
   if (!left_replacement.has_value()) return None;
 
   let const operator_start =
       skip_source_blanks(source, location.position + location.length);
+
   if (operator_start == location.position + location.length) return None;
 
   let const operator_end = source_word_end(source, operator_start);
   let const written_operator =
       source.substring_of_length(operator_start, operator_end - operator_start);
+
   if (written_operator != "=" && written_operator != "!=") {
     return None;
   }
 
   let const right_start = skip_source_blanks(source, operator_end);
+
   if (right_start == operator_end) return None;
 
   let const right_end = source_word_end(source, right_start);
   let const right =
       source.substring_of_length(right_start, right_end - right_start);
   let right_replacement = test_operand_without_x_prefix(right);
+
   if (!right_replacement.has_value()) return None;
 
   let edits = ArrayList<source_edit>{heap_allocator()};
+
   edits.push(source_edit{location.position, location.position + location.length,
                          String{left}, left_replacement.take()});
   edits.push(source_edit{right_start, right_end, String{right},
@@ -2395,9 +2598,11 @@ negated_test_operator_fix(diagnostic_id         diagnostic,
 
   let const operator_start =
       skip_source_blanks(source, location.position + location.length);
+
   if (operator_start == location.position + location.length) return None;
 
   let const operator_end = source_word_end(source, operator_start);
+
   if (source.substring_of_length(
           operator_start, operator_end - operator_start) != written_operator)
   {
@@ -2405,6 +2610,7 @@ negated_test_operator_fix(diagnostic_id         diagnostic,
   }
 
   let edits = ArrayList<source_edit>{heap_allocator()};
+
   edits.push(
       source_edit{location.position, operator_start,
                   String{source.substring_of_length(
@@ -2414,6 +2620,7 @@ negated_test_operator_fix(diagnostic_id         diagnostic,
                          String{replacement_operator}});
 
   let title = String{"Replace the negation with `"};
+
   title.append(replacement_operator);
   title.push('`');
 
@@ -2427,6 +2634,7 @@ source_fixes_for_diagnostic(diagnostic_id         diagnostic,
     -> ArrayList<source_fix>
 {
   let fixes = ArrayList<source_fix>{heap_allocator()};
+
   if (location.position + location.length > source.length) return fixes;
   let       replacement         = String{heap_allocator()};
   let       title               = StringView{};
@@ -2440,49 +2648,59 @@ source_fixes_for_diagnostic(diagnostic_id         diagnostic,
     title               = "Remove the byte-order mark";
     is_safe_for_fix_all = true;
     break;
+
   case diagnostic_id::sc1017:
     title               = "Remove the carriage return";
     is_safe_for_fix_all = true;
     break;
+
   case diagnostic_id::sc1018:
     title               = "Replace the separator with a space";
     replacement         = " ";
     is_safe_for_fix_all = true;
     break;
+
   case diagnostic_id::sc1100:
     title               = "Replace the dash with '-'";
     replacement         = "-";
     is_safe_for_fix_all = true;
     break;
+
   case diagnostic_id::sc1101:
     title       = "Remove whitespace after the continuation";
     replacement = "\\";
     break;
+
   case diagnostic_id::sc1084:
     title               = "Put '#' before '!'";
     replacement         = "#!";
     is_safe_for_fix_all = true;
     break;
+
   case diagnostic_id::sc1104:
     title               = "Add '#' before '!'";
     replacement         = "#!";
     is_safe_for_fix_all = true;
     break;
+
   case diagnostic_id::sc1113:
     title               = "Add '!' after '#'";
     replacement         = "#!";
     is_safe_for_fix_all = true;
     break;
+
   case diagnostic_id::sc1114:
   case diagnostic_id::sc1115:
     title               = "Remove whitespace from the shebang";
     is_safe_for_fix_all = true;
     break;
+
   case diagnostic_id::sc1029: {
     if (written.length < 2 || written[0] != '\\') {
       is_fixable = false;
       break;
     }
+
     title               = "Remove the unnecessary escape";
     replacement         = written.substring(1);
     is_safe_for_fix_all = true;
@@ -2493,26 +2711,31 @@ source_fixes_for_diagnostic(diagnostic_id         diagnostic,
     replacement         = "&&";
     is_safe_for_fix_all = true;
     break;
+
   case diagnostic_id::sc2110:
     title               = "Replace '-o' with '||'";
     replacement         = "||";
     is_safe_for_fix_all = true;
     break;
+
   case diagnostic_id::sc3014:
     title               = "Replace '==' with '='";
     replacement         = "=";
     is_safe_for_fix_all = true;
     break;
+
   case diagnostic_id::sc2196:
     title               = "Replace 'egrep' with 'grep -E'";
     replacement         = "grep -E";
     is_safe_for_fix_all = true;
     break;
+
   case diagnostic_id::sc2197:
     title               = "Replace 'fgrep' with 'grep -F'";
     replacement         = "grep -F";
     is_safe_for_fix_all = true;
     break;
+
   case diagnostic_id::sc2007: {
     if (written.length < 3 || !written.starts_with(StringView{"$["}) ||
         written[written.length - 1] != ']')
@@ -2520,13 +2743,16 @@ source_fixes_for_diagnostic(diagnostic_id         diagnostic,
       is_fixable = false;
       break;
     }
+
     let const inner = written.substring_of_length(2, written.length - 3);
+
     if (inner.find_character('[').has_value() ||
         inner.find_character(']').has_value())
     {
       is_fixable = false;
       break;
     }
+
     title       = "Replace '$[...]' with '$((...))'";
     replacement = "$((";
     replacement.append(inner);
@@ -2536,6 +2762,7 @@ source_fixes_for_diagnostic(diagnostic_id         diagnostic,
   }
   case diagnostic_id::sc2268: {
     let operand_fix = x_prefix_test_fix(source, location);
+
     if (operand_fix.has_value()) fixes.push(operand_fix.take());
 
     return fixes;
@@ -2543,6 +2770,7 @@ source_fixes_for_diagnostic(diagnostic_id         diagnostic,
   case diagnostic_id::sc2236:
   case diagnostic_id::sc2237: {
     let negation_fix = negated_test_operator_fix(diagnostic, source, location);
+
     if (negation_fix.has_value()) fixes.push(negation_fix.take());
 
     return fixes;
@@ -2552,9 +2780,11 @@ source_fixes_for_diagnostic(diagnostic_id         diagnostic,
       is_fixable = false;
       break;
     }
+
     title       = "Quote '$@'";
     replacement = "\"$@\"";
     break;
+
   case diagnostic_id::sc2071:
     if (written == ">") {
       title       = "Replace '>' with '-gt'";
@@ -2565,24 +2795,30 @@ source_fixes_for_diagnostic(diagnostic_id         diagnostic,
     } else {
       is_fixable = false;
     }
+
     break;
+
   case diagnostic_id::sc2086_expansion:
   case diagnostic_id::sc2086_test:
     if (written.is_empty()) {
       is_fixable = false;
       break;
     }
+
     title = "Quote the expansion";
     replacement.push('"');
     replacement.append(written);
     replacement.push('"');
     break;
+
   default: is_fixable = false; break;
   }
+
   if (!is_fixable) return fixes;
 
   let       edits    = ArrayList<source_edit>{heap_allocator()};
   let const edit_end = location.position + location.length;
+
   edits.push(source_edit{location.position, edit_end, String{written},
                          steal(replacement)});
   fixes.push(source_fix{String{title}, steal(edits), true, is_safe_for_fix_all,

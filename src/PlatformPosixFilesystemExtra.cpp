@@ -105,6 +105,7 @@ fill_bulk_file_status(const attribute_set_t &returned,
       ATTR_CMN_DEVID | ATTR_CMN_OBJTYPE | ATTR_CMN_MODTIME | ATTR_CMN_CHGTIME |
       ATTR_CMN_ACCTIME | ATTR_CMN_OWNERID | ATTR_CMN_GRPID |
       ATTR_CMN_ACCESSMASK | ATTR_CMN_FLAGS | ATTR_CMN_FILEID;
+
   if ((returned.commonattr & REQUIRED_COMMON) != REQUIRED_COMMON) return false;
 
   status.device_id   = static_cast<u64>(device);
@@ -123,6 +124,7 @@ fill_bulk_file_status(const attribute_set_t &returned,
   if (type == VDIR) {
     constexpr attrgroup_t REQUIRED_DIRECTORY =
         ATTR_DIR_LINKCOUNT | ATTR_DIR_ALLOCSIZE | ATTR_DIR_DATALENGTH;
+
     if ((returned.dirattr & REQUIRED_DIRECTORY) != REQUIRED_DIRECTORY)
       return false;
     status.link_count = directory_link_count;
@@ -133,6 +135,7 @@ fill_bulk_file_status(const attribute_set_t &returned,
     constexpr attrgroup_t REQUIRED_FILE =
         ATTR_FILE_LINKCOUNT | ATTR_FILE_TOTALSIZE | ATTR_FILE_ALLOCSIZE |
         ATTR_FILE_DEVTYPE;
+
     if ((returned.fileattr & REQUIRED_FILE) != REQUIRED_FILE) return false;
     status.link_count = file_link_count;
     status.size       = static_cast<u64>(file_byte_count);
@@ -149,10 +152,12 @@ list_directory_status_bulk(StringView dir, Allocator allocator) throws
 {
   const String dir_string{dir};
   let const    directory_descriptor = ::open(dir_string.c_str(), O_RDONLY);
+
   if (directory_descriptor < 0) return None;
   defer { ::close(directory_descriptor); };
 
   struct attrlist attributes{};
+
   attributes.bitmapcount = ATTR_BIT_MAP_COUNT;
   attributes.commonattr =
       ATTR_CMN_RETURNED_ATTRS | ATTR_CMN_NAME | ATTR_CMN_DEVID |
@@ -168,10 +173,10 @@ list_directory_status_bulk(StringView dir, Allocator allocator) throws
   alignas(8) char buffer[BUFFER_BYTE_COUNT];
   let             entries = ArrayList<directory_status_entry>{allocator};
 
-  loop
-  {
+  loop {
     let const entry_count = ::getattrlistbulk(directory_descriptor, &attributes,
-                                              buffer, sizeof(buffer), 0);
+                                                          buffer, sizeof(buffer), 0);
+
     if (entry_count < 0) return None;
     if (entry_count == 0) return entries;
 
@@ -179,6 +184,7 @@ list_directory_status_bulk(StringView dir, Allocator allocator) throws
 
     for (i32 index = 0; index < entry_count; index++) {
       u32 record_byte_count = 0;
+
       __builtin_memcpy(&record_byte_count, record, sizeof(record_byte_count));
       if (record_byte_count < sizeof(record_byte_count) ||
           record_byte_count >
@@ -214,76 +220,82 @@ list_directory_status_bulk(StringView dir, Allocator allocator) throws
 
       if (!read_bulk_attribute(field, end, returned) ||
           !read_returned_bulk_attribute(returned.commonattr, ATTR_CMN_ERROR,
-                                        field, end, error_number))
+                                                    field, end, error_number))
       {
         return None;
       }
+
       name_reference_field = field;
       if ((returned.commonattr & ATTR_CMN_NAME) == 0 ||
           !read_bulk_attribute(field, end, name_reference) ||
           !read_returned_bulk_attribute(returned.commonattr, ATTR_CMN_DEVID,
-                                        field, end, device) ||
+                                                    field, end, device) ||
           !read_returned_bulk_attribute(returned.commonattr, ATTR_CMN_OBJTYPE,
-                                        field, end, type) ||
+                                                    field, end, type) ||
           !read_returned_bulk_attribute(returned.commonattr, ATTR_CMN_MODTIME,
-                                        field, end, modification_time) ||
+                                                    field, end, modification_time) ||
           !read_returned_bulk_attribute(returned.commonattr, ATTR_CMN_CHGTIME,
-                                        field, end, change_time) ||
+                                                    field, end, change_time) ||
           !read_returned_bulk_attribute(returned.commonattr, ATTR_CMN_ACCTIME,
-                                        field, end, access_time) ||
+                                                    field, end, access_time) ||
           !read_returned_bulk_attribute(returned.commonattr, ATTR_CMN_OWNERID,
-                                        field, end, owner) ||
+                                                    field, end, owner) ||
           !read_returned_bulk_attribute(returned.commonattr, ATTR_CMN_GRPID,
-                                        field, end, group) ||
+                                                    field, end, group) ||
           !read_returned_bulk_attribute(returned.commonattr,
-                                        ATTR_CMN_ACCESSMASK, field, end,
-                                        access_mode) ||
+                                                    ATTR_CMN_ACCESSMASK, field, end,
+                                                    access_mode) ||
           !read_returned_bulk_attribute(returned.commonattr, ATTR_CMN_FLAGS,
-                                        field, end, flags) ||
+                                                    field, end, flags) ||
           !read_returned_bulk_attribute(returned.commonattr, ATTR_CMN_FILEID,
-                                        field, end, file_id) ||
+                                                    field, end, file_id) ||
           !read_returned_bulk_attribute(returned.dirattr, ATTR_DIR_LINKCOUNT,
-                                        field, end, directory_link_count) ||
+                                                    field, end, directory_link_count) ||
           !read_returned_bulk_attribute(returned.dirattr, ATTR_DIR_MOUNTSTATUS,
-                                        field, end, directory_mount_status) ||
+                                                    field, end, directory_mount_status) ||
           !read_returned_bulk_attribute(returned.dirattr, ATTR_DIR_ALLOCSIZE,
-                                        field, end,
-                                        directory_allocated_byte_count) ||
+                                                    field, end,
+                                                    directory_allocated_byte_count) ||
           !read_returned_bulk_attribute(returned.dirattr, ATTR_DIR_DATALENGTH,
-                                        field, end, directory_byte_count) ||
+                                                    field, end, directory_byte_count) ||
           !read_returned_bulk_attribute(returned.fileattr, ATTR_FILE_LINKCOUNT,
-                                        field, end, file_link_count) ||
+                                                    field, end, file_link_count) ||
           !read_returned_bulk_attribute(returned.fileattr, ATTR_FILE_TOTALSIZE,
-                                        field, end, file_byte_count) ||
+                                                    field, end, file_byte_count) ||
           !read_returned_bulk_attribute(returned.fileattr, ATTR_FILE_ALLOCSIZE,
-                                        field, end,
-                                        file_allocated_byte_count) ||
+                                                    field, end,
+                                                    file_allocated_byte_count) ||
           !read_returned_bulk_attribute(returned.fileattr, ATTR_FILE_DEVTYPE,
-                                        field, end, special_device))
+                                                    field, end, special_device))
       {
         return None;
       }
 
       let const name_start_offset =
           static_cast<usize>(name_reference_field - record);
+
       if (name_reference.attr_dataoffset < 0 ||
           static_cast<usize>(name_reference.attr_dataoffset) >
               record_byte_count - name_start_offset)
       {
         return None;
       }
+
       let const name_start =
           name_reference_field + name_reference.attr_dataoffset;
       let const available_name_byte_count = end - name_start;
+
       if (name_reference.attr_length == 0 ||
           name_reference.attr_length > available_name_byte_count)
       {
         return None;
       }
+
       let const name_length = name_start[name_reference.attr_length - 1] == '\0'
-                                  ? name_reference.attr_length - 1
-                                  : name_reference.attr_length;
-      let const name        = StringView{name_start, name_length};
+                                              ? name_reference.attr_length - 1
+                                              : name_reference.attr_length;
+      let const name = StringView{name_start, name_length};
+
       if (name == StringView{"."} || name == StringView{".."}) {
         record = end;
         continue;
@@ -293,6 +305,7 @@ list_directory_status_bulk(StringView dir, Allocator allocator) throws
           Path::DirectoryChild{String{allocator, name},
                                directory_kind_from_vnode_type(type)}
       };
+
       entry.has_status =
           error_number == 0 &&
           (directory_mount_status & DIR_MNTSTATUS_MNTPOINT) == 0 &&
@@ -304,13 +317,15 @@ list_directory_status_bulk(StringView dir, Allocator allocator) throws
               file_allocated_byte_count, special_device, entry.status);
       if (!entry.has_status) {
         struct stat info{};
+
         if (::fstatat(directory_descriptor, entry.child.name.c_str(), &info,
-                      AT_SYMLINK_NOFOLLOW) == 0)
+                                  AT_SYMLINK_NOFOLLOW) == 0)
         {
           fill_file_status(info, entry.status);
           entry.has_status = true;
         }
       }
+
       entries.push(steal(entry));
       record = end;
     }
@@ -323,12 +338,14 @@ find_path_from_file_id(StringView filesystem_path, u64 file_id) wontthrow
 {
   const String  filesystem_path_string{filesystem_path};
   struct statfs filesystem{};
+
   if (::statfs(filesystem_path_string.c_str(), &filesystem) != 0) return None;
 
   constexpr usize PATH_BUFFER_BYTE_COUNT = 8192;
   char            path_buffer[PATH_BUFFER_BYTE_COUNT];
   let const path_byte_count = ::fsgetpath(path_buffer, sizeof(path_buffer),
                                           &filesystem.f_fsid, file_id);
+
   if (path_byte_count <= 1) return None;
 
   return Path{
@@ -435,6 +452,7 @@ fill_native_filesystem_identity(const String      &path,
                                 filesystem_status &status) wontthrow -> void
 {
   struct statfs type_info{};
+
   if (::statfs(path.c_str(), &type_info) != 0) return;
 
   status.type_id = static_cast<u64>(type_info.f_type);
@@ -451,6 +469,7 @@ fill_native_filesystem_identity(const String      &path,
                                 filesystem_status &status) wontthrow -> void
 {
   struct statfs type_info{};
+
   if (::statfs(path.c_str(), &type_info) != 0) return;
 
   copy_type_name(status, StringView{type_info.f_fstypename});
@@ -470,6 +489,7 @@ stat_filesystem(StringView path, filesystem_status &status) wontthrow -> bool
 {
   const String   path_string{path};
   struct statvfs info{};
+
   if (::statvfs(path_string.c_str(), &info) != 0) return false;
   status.block_byte_count = info.f_bsize;
   status.fundamental_block_byte_count =
@@ -532,6 +552,7 @@ read_volume_identity(mounted_filesystem &filesystem) throws -> void
 {
   const String    target{filesystem.target.view()};
   struct attrlist attributes{};
+
   attributes.bitmapcount = ATTR_BIT_MAP_COUNT;
 
   struct volume_name_buffer
@@ -541,22 +562,27 @@ read_volume_identity(mounted_filesystem &filesystem) throws -> void
     char            storage[PATH_MAX];
   } __attribute__((aligned(4), packed));
   volume_name_buffer name{};
+
   attributes.volattr = ATTR_VOL_INFO | ATTR_VOL_NAME;
   if (::getattrlist(target.c_str(), &attributes, &name, sizeof(name), 0) == 0) {
     let const name_offset =
         static_cast<usize>(reinterpret_cast<const char *>(&name.reference) -
                            reinterpret_cast<const char *>(&name));
+
     if (name.reference.attr_dataoffset >= 0) {
       let const data_offset =
           name_offset + static_cast<usize>(name.reference.attr_dataoffset);
       let name_length = static_cast<usize>(name.reference.attr_length);
+
       if (data_offset <= sizeof(name) &&
           name_length <= sizeof(name) - data_offset)
       {
         let const data = reinterpret_cast<const char *>(&name) + data_offset;
+
         if (name_length > 0 && data[name_length - 1] == '\0') {
           name_length--;
         }
+
         filesystem.volume_name = String{
             StringView{data, name_length}
         };
@@ -570,9 +596,11 @@ read_volume_identity(mounted_filesystem &filesystem) throws -> void
     uuid_t value;
   } __attribute__((aligned(4), packed));
   volume_uuid_buffer uuid{};
+
   attributes.volattr = ATTR_VOL_INFO | ATTR_VOL_UUID;
   if (::getattrlist(target.c_str(), &attributes, &uuid, sizeof(uuid), 0) == 0) {
     uuid_string_t text{};
+
     uuid_unparse_lower(uuid.value, text);
     filesystem.volume_uuid = String{text};
   }
@@ -593,9 +621,11 @@ read_volume_identity(mounted_filesystem &filesystem) wontthrow -> void
 #if defined __linux__
 
 static fn
-decode_udev_filename(StringView filename, Allocator allocator) throws -> String
+decode_udev_filename(StringView filename, Allocator allocator) throws
+    -> String
 {
   let decoded = String{allocator};
+
   decoded.reserve(filename.length);
 
   for (usize position = 0; position < filename.length; position++) {
@@ -608,6 +638,7 @@ decode_udev_filename(StringView filename, Allocator allocator) throws -> String
 
     let const high = utils::hex_digit_value(filename[position + 2]);
     let const low  = utils::hex_digit_value(filename[position + 3]);
+
     if (!high.has_value() || !low.has_value()) {
       decoded.push(filename[position]);
       continue;
@@ -630,17 +661,21 @@ static fn
 populate_linux_volume_identity(ArrayList<mounted_filesystem> &filesystems,
                                const ArrayList<Path>         &canonical_sources,
                                StringView                     directory,
-                               volume_identity_kind kind) throws -> void
+                               volume_identity_kind           kind) throws -> void
 {
   let const allocator          = heap_allocator();
   let const identity_directory = Path{directory, allocator};
   let const entries = Path::read_directory(identity_directory, allocator);
+
   if (!entries.has_value()) return;
 
   for (let const &entry : *entries) {
     let identity_path = identity_directory.clone();
+
     identity_path.append(entry.view());
+
     let const canonical_identity = canonical_path(identity_path);
+
     if (!canonical_identity.has_value()) continue;
 
     for (usize index = 0; index < filesystems.count(); index++) {
@@ -655,11 +690,13 @@ populate_linux_volume_identity(ArrayList<mounted_filesystem> &filesystems,
         if (filesystems[index].volume_uuid.is_empty())
           filesystems[index].volume_uuid = entry.clone();
         break;
+
       case volume_identity_kind::Label:
         if (filesystems[index].volume_name.is_empty()) {
           filesystems[index].volume_name =
               decode_udev_filename(entry.view(), allocator);
         }
+
         break;
       }
     }
@@ -669,13 +706,16 @@ populate_linux_volume_identity(ArrayList<mounted_filesystem> &filesystems,
 #endif
 
 static fn
-append_mounted_filesystems(ArrayList<mounted_filesystem> &result) throws -> void
+append_mounted_filesystems(ArrayList<mounted_filesystem> &result) throws
+    -> void
 {
 #if defined __linux__
   let *mount_file = setmntent("/proc/self/mounts", "r");
+
   if (mount_file == nullptr) mount_file = setmntent("/etc/mtab", "r");
   if (mount_file == nullptr) return;
   defer { endmntent(mount_file); };
+
   mntent entry{};
   char   buffer[8192];
 
@@ -684,6 +724,7 @@ append_mounted_filesystems(ArrayList<mounted_filesystem> &result) throws -> void
         mounted_filesystem{String{entry.mnt_fsname}, String{entry.mnt_dir},
                            String{entry.mnt_type}, String{entry.mnt_opts}};
     let const source = filesystem.source.view();
+
     if (source.starts_with("UUID="))
       filesystem.volume_uuid = String{source.substring(5)};
     else if (source.starts_with("LABEL="))
@@ -692,10 +733,12 @@ append_mounted_filesystems(ArrayList<mounted_filesystem> &result) throws -> void
   }
 
   let canonical_sources = ArrayList<Path>{heap_allocator()};
+
   canonical_sources.reserve(result.count());
 
   for (let const &filesystem : result) {
     let const canonical_source = canonical_path(Path{filesystem.source.view()});
+
     canonical_sources.push(
         canonical_source.has_value() ? steal(*canonical_source) : Path{});
   }
@@ -714,6 +757,7 @@ append_mounted_filesystems(ArrayList<mounted_filesystem> &result) throws -> void
         String{entries[index].f_mntfromname},
         String{entries[index].f_mntonname}, String{entries[index].f_fstypename},
         describe_mount_flags(static_cast<u64>(entries[index].f_flags))};
+
     read_volume_identity(filesystem);
     result.push(steal(filesystem));
   }
@@ -728,6 +772,7 @@ fn
 mounted_filesystems() throws -> ArrayList<mounted_filesystem>
 {
   let result = ArrayList<mounted_filesystem>{heap_allocator()};
+
   append_mounted_filesystems(result);
 
   return result;
@@ -736,13 +781,15 @@ mounted_filesystems() throws -> ArrayList<mounted_filesystem>
 static fn
 find_mounted_filesystem(StringView                           path,
                         const ArrayList<mounted_filesystem> &filesystems,
-                        StringView required_type = {}) throws -> Maybe<usize>
+                        StringView                           required_type = {}) throws
+    -> Maybe<usize>
 {
   let const    absolute_path = Path{path}.to_absolute();
   Maybe<usize> selected_index;
 
   for (usize index = 0; index < filesystems.count(); index++) {
     let const &filesystem = filesystems[index];
+
     if (!required_type.is_empty() && filesystem.type != required_type) {
       continue;
     }
@@ -754,9 +801,11 @@ find_mounted_filesystem(StringView                           path,
     let const is_descendant = subject.starts_with(target) &&
                               subject.length > target.length &&
                               (is_root || subject[target.length] == '/');
+
     if (!is_same && !is_descendant) {
       continue;
     }
+
     if (!selected_index.has_value() ||
         target.length > filesystems[*selected_index].target.view().length)
     {
@@ -776,11 +825,14 @@ read_native_filesystem_error_counters(
   let const filesystems = mounted_filesystems();
   let const selected_index =
       find_mounted_filesystem(path, filesystems, "btrfs");
+
   if (!selected_index.has_value()) return false;
+
   let const &selected = filesystems[*selected_index];
 
   let const sysfs_root       = Path{"/sys/fs/btrfs"};
   let const filesystem_names = Path::read_directory(sysfs_root);
+
   if (!filesystem_names.has_value()) return false;
 
   let filesystem_root = Path{};
@@ -795,8 +847,11 @@ read_native_filesystem_error_counters(
     }
 
     let const device_name = Path{selected.source.view()}.filename();
+
     if (device_name.is_empty()) continue;
+
     let device_path = sysfs_root.clone();
+
     device_path.append(filesystem_name.view());
     device_path.append("devices");
     device_path.append(device_name);
@@ -809,8 +864,11 @@ read_native_filesystem_error_counters(
   if (filesystem_root.is_empty()) return false;
 
   let devinfo = filesystem_root.clone();
+
   devinfo.append("devinfo");
+
   let const device_ids = Path::read_directory(devinfo);
+
   if (!device_ids.has_value() || device_ids->is_empty()) {
     return false;
   }
@@ -827,6 +885,7 @@ read_native_filesystem_error_counters(
       {"corruption_errs", &filesystem_error_counters::corruption_count},
       {"generation_errs", &filesystem_error_counters::generation_count},
   };
+
   let const do_add = [](u64 &total, u64 value) wontthrow -> bool {
     if (value > UINT64_MAX - total) return false;
     total += value;
@@ -836,9 +895,12 @@ read_native_filesystem_error_counters(
 
   for (let const &device_id : *device_ids) {
     let stats_path = devinfo.clone();
+
     stats_path.append(device_id.view());
     stats_path.append("error_stats");
+
     let const contents = stats_path.read_entire_file();
+
     if (!contents.has_value()) return false;
 
     u8    seen_counters = 0;
@@ -849,13 +911,16 @@ read_native_filesystem_error_counters(
       usize     word_position = 0;
       let const name          = line.next_ascii_whitespace_word(word_position);
       let const value_text    = line.next_ascii_whitespace_word(word_position);
+
       if (name.is_empty() || value_text.is_empty()) {
         return false;
       }
 
       let const parsed =
           utils::parse_integer_in_base_u64(value_text, int_base::decimal);
+
       if (parsed.is_error()) return false;
+
       bool was_known = false;
 
       for (usize index = 0; index < countof(COUNTERS); index++) {
@@ -863,6 +928,7 @@ read_native_filesystem_error_counters(
         if (!do_add(counters.*COUNTERS[index].value, parsed.value())) {
           return false;
         }
+
         seen_counters |= static_cast<u8>(1u << index);
         was_known = true;
         break;
@@ -878,28 +944,35 @@ read_native_filesystem_error_counters(
 }
 
 static fn
-read_ext4_recorded_error_count(const mounted_filesystem &filesystem) throws
-    -> Maybe<u64>
+read_ext4_recorded_error_count(const mounted_filesystem &filesystem)
+    throws -> Maybe<u64>
 {
-  let const do_read_count = [](StringView device_name) throws -> Maybe<u64> {
+  let const do_read_count =
+      [](StringView device_name) throws -> Maybe<u64> {
     if (device_name.is_empty()) return None;
 
     let count_path = Path{"/sys/fs/ext4"};
+
     count_path.append(device_name);
     count_path.append("errors_count");
+
     let const contents = count_path.read_entire_file();
+
     if (!contents.has_value()) return None;
 
     let const text = contents->view().without_trailing_newline();
+
     if (!text.is_all_decimal_digits()) return None;
     let const parsed =
         utils::parse_integer_in_base_u64(text, int_base::decimal);
+
     if (parsed.is_error()) return None;
 
     return parsed.value();
   };
 
   let const source_path = Path{filesystem.source.view()};
+
   if (let const count = do_read_count(source_path.filename());
       count.has_value())
   {
@@ -907,6 +980,7 @@ read_ext4_recorded_error_count(const mounted_filesystem &filesystem) throws
   }
 
   let const canonical_source = canonical_path(source_path);
+
   if (!canonical_source.has_value()) return None;
 
   return do_read_count(canonical_source->filename());
@@ -918,11 +992,13 @@ read_filesystem_integrity_evidence(StringView path) throws
 {
   let const filesystems    = mounted_filesystems();
   let const selected_index = find_mounted_filesystem(path, filesystems);
+
   if (!selected_index.has_value()) return None;
   let const &filesystem = filesystems[*selected_index];
 
   if (filesystem.type == "btrfs") {
     filesystem_error_counters counters{};
+
     if (!read_native_filesystem_error_counters(path, counters)) return None;
 
     return filesystem_integrity_evidence{
@@ -931,10 +1007,12 @@ read_filesystem_integrity_evidence(StringView path) throws
 
   if (filesystem.type == "ext4") {
     let const count = read_ext4_recorded_error_count(filesystem);
+
     if (!count.has_value()) return None;
 
     filesystem_integrity_evidence evidence{
         filesystem_integrity_kind::Ext4RecordedErrors};
+
     evidence.recorded_error_count = *count;
 
     return evidence;
@@ -955,12 +1033,14 @@ read_filesystem_integrity_evidence(StringView) throws
 #endif
 
 fn
-verify_filesystem_integrity(StringView path, u64 timeout_nanoseconds) throws
+verify_filesystem_integrity(StringView path,
+                            u64        timeout_nanoseconds) throws
     -> filesystem_verification_result
 {
 #if defined __APPLE__
   let const filesystems    = mounted_filesystems();
   let const selected_index = find_mounted_filesystem(path, filesystems);
+
   if (!selected_index.has_value() ||
       filesystems[*selected_index].type != "apfs")
   {
@@ -968,19 +1048,24 @@ verify_filesystem_integrity(StringView path, u64 timeout_nanoseconds) throws
   }
 
   constexpr char DISKUTIL_PATH[] = "/usr/sbin/diskutil";
+
   if (::access(DISKUTIL_PATH, X_OK) != 0)
     return filesystem_verification_result::Unavailable;
 
   let const null_descriptor = ::open("/dev/null", O_RDWR);
+
   if (null_descriptor < 0) return filesystem_verification_result::Unavailable;
 
   posix_spawn_file_actions_t actions;
+
   if (posix_spawn_file_actions_init(&actions) != 0) {
     ::close(null_descriptor);
 
     return filesystem_verification_result::Unavailable;
   }
+
   defer { posix_spawn_file_actions_destroy(&actions); };
+
   let const did_prepare_actions =
       posix_spawn_file_actions_adddup2(&actions, null_descriptor,
                                        STDIN_FILENO) == 0 &&
@@ -989,6 +1074,7 @@ verify_filesystem_integrity(StringView path, u64 timeout_nanoseconds) throws
       posix_spawn_file_actions_adddup2(&actions, null_descriptor,
                                        STDERR_FILENO) == 0 &&
       posix_spawn_file_actions_addclose(&actions, null_descriptor) == 0;
+
   if (!did_prepare_actions) {
     ::close(null_descriptor);
 
@@ -1002,6 +1088,7 @@ verify_filesystem_integrity(StringView path, u64 timeout_nanoseconds) throws
   pid_t     child       = 0;
   let const spawn_result =
       posix_spawn(&child, DISKUTIL_PATH, &actions, nullptr, arguments, environ);
+
   ::close(null_descriptor);
   if (spawn_result != 0) return filesystem_verification_result::Unavailable;
 
@@ -1010,28 +1097,33 @@ verify_filesystem_integrity(StringView path, u64 timeout_nanoseconds) throws
 
     while (::waitpid(child, nullptr, 0) == -1 && errno == EINTR) {}
   };
+
   let const started_at = monotonic_nanos();
 
-  loop
-  {
+  loop {
     int       status = 0;
     let const waited = ::waitpid(child, &status, WNOHANG);
+
     if (waited == child) {
       return WIFEXITED(status) && WEXITSTATUS(status) == 0
                  ? filesystem_verification_result::Passed
                  : filesystem_verification_result::Failed;
     }
+
     if (waited == -1 && errno != EINTR) {
       do_stop_child();
 
       return filesystem_verification_result::Unavailable;
     }
+
     if (INTERRUPT_REQUESTED) {
       do_stop_child();
 
       return filesystem_verification_result::Interrupted;
     }
+
     let const now = monotonic_nanos();
+
     if (now - started_at >= timeout_nanoseconds) {
       do_stop_child();
 
@@ -1077,6 +1169,7 @@ sync_path(StringView path, sync_mode mode) wontthrow -> bool
 {
   const String path_string{path};
   let const    path_fd = ::open(path_string.c_str(), O_RDONLY | O_CLOEXEC);
+
   if (path_fd < 0) return false;
   defer { ::close(path_fd); };
 
@@ -1142,15 +1235,16 @@ static fn
 run_batched_transfer(batched_syscall_result &result,
                      Transfer                do_transfer) wontthrow -> void
 {
-  loop
-  {
+  loop {
     let const transferred_byte_count = do_transfer();
+
     if (transferred_byte_count >= 0) {
       result.transferred_byte_count =
           static_cast<usize>(transferred_byte_count);
 
       return;
     }
+
     if (errno != EINTR || INTERRUPT_REQUESTED) {
       result.error_number = errno;
 
@@ -1216,8 +1310,7 @@ execute_batched_syscall_direct(const batched_syscall  &operation,
                                  : 0;
     struct stat info{};
 
-    loop
-    {
+    loop {
       if (::fstatat(batch_operation_access::get_directory_descriptor(operation),
                     batch_operation_access::get_relative_name(operation), &info,
                     stat_flags) == 0)
@@ -1251,7 +1344,7 @@ execute_batched_syscall_direct(const batched_syscall  &operation,
 
 static pure fn
 find_directory_status_entry(const ArrayList<directory_status_entry> &entries,
-                            StringView name) wontthrow
+                            StringView                               name) wontthrow
     -> const directory_status_entry *
 {
   usize lower = 0;
@@ -1259,6 +1352,7 @@ find_directory_status_entry(const ArrayList<directory_status_entry> &entries,
 
   while (lower < upper) {
     let const middle = lower + (upper - lower) / 2;
+
     if (entries[middle].child.name.view() < name)
       lower = middle + 1;
     else
@@ -1291,6 +1385,7 @@ execute_getattrlistbulk_batch(const batched_syscall  *operations,
   try {
     let parent_paths                  = ArrayList<Path>{heap_allocator()};
     let collected_operation_positions = ArrayList<usize>{heap_allocator()};
+
     parent_paths.reserve(operation_count);
     collected_operation_positions.reserve(operation_count);
 
@@ -1305,6 +1400,7 @@ execute_getattrlistbulk_batch(const batched_syscall  *operations,
             .make_sorted([&](usize left, usize right) {
               let const left_parent  = parent_paths[left].view();
               let const right_parent = parent_paths[right].view();
+
               if (left_parent != right_parent)
                 return left_parent < right_parent;
 
@@ -1320,9 +1416,11 @@ execute_getattrlistbulk_batch(const batched_syscall  *operations,
 
       while (group_end < operation_count) {
         let const candidate_position = operation_positions[group_end];
+
         if (parent_paths[candidate_position].view() != group_parent.view()) {
           break;
         }
+
         group_end++;
       }
 
@@ -1335,6 +1433,7 @@ execute_getattrlistbulk_batch(const batched_syscall  *operations,
 
       let entries =
           list_directory_status_bulk(group_parent.view(), heap_allocator());
+
       if (entries.has_value()) {
         entries->sort([](const directory_status_entry &left,
                          const directory_status_entry &right) {
@@ -1348,18 +1447,22 @@ execute_getattrlistbulk_batch(const batched_syscall  *operations,
         let const  operation_position = operation_positions[group_position];
         let const &operation          = operations[operation_position];
         let       &result             = results[operation_position];
-        result                        = {operation.request_id, 0, 0};
+
+        result = {operation.request_id, 0, 0};
 
         bool has_status = false;
+
         if (entries.has_value()) {
           let const filename =
               batch_operation_access::get_path(operation)->filename();
           let const *entry = find_directory_status_entry(*entries, filename);
+
           if (entry != nullptr && entry->has_status) {
             *batch_operation_access::get_status(operation) = entry->status;
             has_status                                     = true;
           }
         }
+
         if (!has_status) execute_batched_syscall_direct(operation, result);
       }
 
@@ -1376,14 +1479,18 @@ static fn
 finish_suspended_aio(aiocb &control, batched_syscall_result &result) wontthrow
     -> bool
 {
-  errno                         = 0;
+  errno = 0;
+
   let const error_number        = ::aio_error(&control);
   let const status_error_number = errno;
+
   if (error_number == EINPROGRESS) return false;
 
-  errno                            = 0;
+  errno = 0;
+
   let const transferred_byte_count = ::aio_return(&control);
   let const return_error_number    = errno;
+
   if (transferred_byte_count >= 0) {
     result.transferred_byte_count = static_cast<usize>(transferred_byte_count);
   } else if (error_number > 0) {
@@ -1407,6 +1514,7 @@ execute_suspended_aio_batch(const batched_syscall  *operations,
 
   for (usize index = 0; index < operation_count; index++) {
     let const &operation = operations[index];
+
     switch (batch_operation_access::get_kind(operation)) {
     case batched_syscall_id::Read:
     case batched_syscall_id::Write:
@@ -1416,6 +1524,7 @@ execute_suspended_aio_batch(const batched_syscall  *operations,
       else
         aio_byte_count += operation.byte_count;
       break;
+
     case batched_syscall_id::WriteCurrent: return false;
     case batched_syscall_id::Lstat:
     case batched_syscall_id::Stat:
@@ -1446,6 +1555,7 @@ execute_suspended_aio_batch(const batched_syscall  *operations,
       let const &operation       = operations[operation_index];
       let       &result          = results[operation_index];
       let const  operation_kind  = batch_operation_access::get_kind(operation);
+
       result = {operation.request_id, 0, validate_batched_syscall(operation)};
       if (result.error_number != 0) continue;
 
@@ -1460,10 +1570,12 @@ execute_suspended_aio_batch(const batched_syscall  *operations,
       case batched_syscall_id::Read:
       case batched_syscall_id::Write:
       case batched_syscall_id::WriteCurrent: break;
-      case batched_syscall_id::Invalid:      continue;
+
+      case batched_syscall_id::Invalid: continue;
       }
 
-      let &control       = controls[chunk_index];
+      let &control = controls[chunk_index];
+
       control.aio_fildes = batch_operation_access::get_descriptor(operation);
       control.aio_offset = static_cast<off_t>(operation.byte_offset);
       control.aio_buf =
@@ -1477,12 +1589,14 @@ execute_suspended_aio_batch(const batched_syscall  *operations,
       let const submission_result = operation_kind == batched_syscall_id::Read
                                         ? ::aio_read(&control)
                                         : ::aio_write(&control);
+
       if (submission_result != 0) {
         if (errno == EAGAIN || errno == ENOSYS) {
           execute_batched_syscall_direct(operation, result);
         } else {
           result.error_number = errno;
         }
+
         continue;
       }
 
@@ -1490,12 +1604,14 @@ execute_suspended_aio_batch(const batched_syscall  *operations,
       queued_count++;
     }
 
-    usize     completed_count    = 0;
+    usize completed_count = 0;
+
     let const do_interrupt_batch = [&](i32 error_number) wontthrow -> void {
       for (usize chunk_index = 0; chunk_index < chunk_count; chunk_index++) {
         if (!is_queued[chunk_index] || is_completed[chunk_index]) {
           continue;
         }
+
         unused(::aio_cancel(controls[chunk_index].aio_fildes,
                             &controls[chunk_index]));
       }
@@ -1538,7 +1654,9 @@ execute_suspended_aio_batch(const batched_syscall  *operations,
         if (!is_queued[chunk_index] || is_completed[chunk_index]) {
           continue;
         }
+
         let &result = results[operation_start + chunk_index];
+
         if (finish_suspended_aio(controls[chunk_index], result)) {
           is_completed[chunk_index] = true;
           completed_count++;
@@ -1584,8 +1702,8 @@ execute_native_batch(const batched_syscall  *operations,
 #elif defined __linux__
 
 static fn
-fill_file_status(const struct statx &info, file_status &status) wontthrow
-    -> void
+fill_file_status(const struct statx &info, file_status &status)
+    wontthrow -> void
 {
   status.device_id =
       static_cast<u64>(makedev(info.stx_dev_major, info.stx_dev_minor));
@@ -1646,14 +1764,17 @@ close_io_uring_batch(io_uring_batch &ring) wontthrow -> void
     ::close(ring.descriptor);
     ring.descriptor = -1;
   }
+
   if (ring.entry_mapping != MAP_FAILED) {
     ::munmap(ring.entry_mapping, ring.entry_mapping_byte_count);
     ring.entry_mapping = MAP_FAILED;
   }
+
   if (ring.completion_mapping != MAP_FAILED && !ring.has_shared_mapping) {
     ::munmap(ring.completion_mapping, ring.completion_mapping_byte_count);
     ring.completion_mapping = MAP_FAILED;
   }
+
   if (ring.submission_mapping != MAP_FAILED) {
     ::munmap(ring.submission_mapping, ring.submission_mapping_byte_count);
     ring.submission_mapping = MAP_FAILED;
@@ -1689,6 +1810,7 @@ io_uring_supports(const io_uring_probe &probe, u8 opcode) wontthrow -> bool
 {
   for (u8 index = 0; index < probe.ops_len; index++) {
     let const &operation = probe.ops[index];
+
     if (operation.op == opcode &&
         (operation.flags & IO_URING_OP_SUPPORTED) != 0)
     {
@@ -1707,8 +1829,8 @@ enum class io_uring_open_result : u8
 };
 
 static pure fn
-classify_io_uring_open_failure(i32 error_number) wontthrow
-    -> io_uring_open_result
+classify_io_uring_open_failure(i32 error_number)
+    wontthrow -> io_uring_open_result
 {
   switch (error_number) {
   case EACCES:
@@ -1735,12 +1857,15 @@ open_io_uring_batch(io_uring_batch &ring) wontthrow -> io_uring_open_result
   let const probe_result =
       ::syscall(SYS_io_uring_register, ring.descriptor, IORING_REGISTER_PROBE,
                 &probe, static_cast<u32>(IORING_OP_LAST + 1));
+
   if (probe_result < 0) {
     let const error_number = errno;
+
     close_io_uring_batch(ring);
 
     return classify_io_uring_open_failure(error_number);
   }
+
   ring.has_read  = io_uring_supports(probe, IORING_OP_READ);
   ring.has_write = io_uring_supports(probe, IORING_OP_WRITE);
   ring.has_stat  = io_uring_supports(probe, IORING_OP_STATX);
@@ -1817,6 +1942,7 @@ open_io_uring_batch(io_uring_batch &ring) wontthrow -> io_uring_open_result
 
   let const is_usable = *ring.submission_count >= IO_URING_ENTRY_COUNT &&
                         *ring.completion_count >= IO_URING_ENTRY_COUNT;
+
   if (!is_usable) {
     close_io_uring_batch(ring);
 
@@ -1836,9 +1962,11 @@ io_uring_batch_supports_operations(const io_uring_batch  &ring,
     case batched_syscall_id::Read:
       if (!ring.has_read) return false;
       break;
+
     case batched_syscall_id::Write:
       if (!ring.has_write) return false;
       break;
+
     case batched_syscall_id::WriteCurrent:
       if (!ring.has_write ||
           (ring.parameters.features & IORING_FEAT_RW_CUR_POS) == 0)
@@ -1858,11 +1986,13 @@ io_uring_batch_supports_operations(const io_uring_batch  &ring,
       }
 
       break;
+
     case batched_syscall_id::Lstat:
     case batched_syscall_id::Stat:
     case batched_syscall_id::Exists:
       if (!ring.has_stat) return false;
       break;
+
     case batched_syscall_id::LstatAt:
     case batched_syscall_id::StatAt:  return false;
     case batched_syscall_id::Invalid: return false;
@@ -1882,12 +2012,14 @@ execute_io_uring_batch(const batched_syscall  *operations,
   for (usize index = 0; index < operation_count; index++) {
     let const &operation      = operations[index];
     let const  operation_kind = batch_operation_access::get_kind(operation);
+
     switch (operation_kind) {
     case batched_syscall_id::Read:
     case batched_syscall_id::Write:
     case batched_syscall_id::WriteCurrent:
       if (operation.byte_count > UINT32_MAX) return false;
       break;
+
     case batched_syscall_id::Lstat:
     case batched_syscall_id::Stat:
     case batched_syscall_id::Exists:
@@ -1900,18 +2032,22 @@ execute_io_uring_batch(const batched_syscall  *operations,
   static thread_local io_uring_batch ring{};
   static thread_local i64            unavailable_process_id = -1;
   let const                          process_id = get_current_process_id();
+
   if (ring.descriptor >= 0 && ring.owner_process_id != process_id) {
     close_io_uring_batch(ring);
   }
+
   if (ring.descriptor < 0) {
     if (unavailable_process_id == process_id) return false;
 
     let const open_result = open_io_uring_batch(ring);
+
     if (open_result == io_uring_open_result::Unavailable)
       unavailable_process_id = process_id;
     if (open_result != io_uring_open_result::Opened) return false;
     unavailable_process_id = -1;
   }
+
   if (!io_uring_batch_supports_operations(ring, operations, operation_count))
     return false;
 
@@ -1943,13 +2079,15 @@ execute_io_uring_batch(const batched_syscall  *operations,
     for (usize chunk_index = 0; chunk_index < chunk_count; chunk_index++) {
       let const  operation_index = operation_start + chunk_index;
       let const &operation       = operations[operation_index];
-      results[operation_index]   = {operation.request_id, 0,
-                                    validate_batched_syscall(operation)};
+
+      results[operation_index] = {operation.request_id, 0,
+                                  validate_batched_syscall(operation)};
       if (results[operation_index].error_number != 0) continue;
 
       let const submission_index =
           (initial_tail + queued_count) & *ring.submission_mask;
-      let &entry      = ring.submission_entries[submission_index];
+      let &entry = ring.submission_entries[submission_index];
+
       entry           = {};
       entry.user_data = operation_index;
       switch (batch_operation_access::get_kind(operation)) {
@@ -1961,6 +2099,7 @@ execute_io_uring_batch(const batched_syscall  *operations,
             batch_operation_access::get_output_buffer(operation));
         entry.len = static_cast<u32>(operation.byte_count);
         break;
+
       case batched_syscall_id::Write:
         entry.opcode = IORING_OP_WRITE;
         entry.fd     = batch_operation_access::get_descriptor(operation);
@@ -1969,6 +2108,7 @@ execute_io_uring_batch(const batched_syscall  *operations,
             batch_operation_access::get_input_buffer(operation));
         entry.len = static_cast<u32>(operation.byte_count);
         break;
+
       case batched_syscall_id::WriteCurrent:
         entry.opcode = IORING_OP_WRITE;
         entry.fd     = batch_operation_access::get_descriptor(operation);
@@ -1977,6 +2117,7 @@ execute_io_uring_batch(const batched_syscall  *operations,
             batch_operation_access::get_input_buffer(operation));
         entry.len = static_cast<u32>(operation.byte_count);
         break;
+
       case batched_syscall_id::Lstat:
       case batched_syscall_id::Stat:
       case batched_syscall_id::Exists:
@@ -1991,6 +2132,7 @@ execute_io_uring_batch(const batched_syscall  *operations,
                                 : 0;
         entry.addr2       = reinterpret_cast<u64>(&status_records[chunk_index]);
         break;
+
       case batched_syscall_id::LstatAt:
       case batched_syscall_id::StatAt:
         entry.opcode = IORING_OP_STATX;
@@ -2004,8 +2146,10 @@ execute_io_uring_batch(const batched_syscall  *operations,
                                 : 0;
         entry.addr2       = reinterpret_cast<u64>(&status_records[chunk_index]);
         break;
+
       case batched_syscall_id::Invalid: continue;
       }
+
       ring.submission_array[submission_index] = submission_index;
       was_queued[chunk_index]                 = true;
       queued_count++;
@@ -2017,7 +2161,9 @@ execute_io_uring_batch(const batched_syscall  *operations,
     }
 
     let const published_tail = initial_tail + queued_count;
+
     __atomic_store_n(ring.submission_tail, published_tail, __ATOMIC_RELEASE);
+
     let const do_fail_unfinished = [&](i32 error_number) wontthrow -> void {
       close_io_uring_batch(ring);
 
@@ -2044,14 +2190,17 @@ execute_io_uring_batch(const batched_syscall  *operations,
       let const pending_count   = published_tail - current_head;
       let const submitted_count = ::syscall(SYS_io_uring_enter, ring.descriptor,
                                             pending_count, 0, 0, nullptr, 0);
+
       if (submitted_count < 0 && errno == EINTR) {
         if (!INTERRUPT_REQUESTED) continue;
         do_fail_unfinished(EINTR);
 
         return true;
       }
+
       if (submitted_count < 0) {
         let const error_number = errno;
+
         do_fail_unfinished(error_number);
 
         return true;
@@ -2065,23 +2214,27 @@ execute_io_uring_batch(const batched_syscall  *operations,
           __atomic_load_n(ring.completion_head, __ATOMIC_ACQUIRE);
       let const completion_tail =
           __atomic_load_n(ring.completion_tail, __ATOMIC_ACQUIRE);
+
       if (completion_head == completion_tail) {
         let const wait_result =
             ::syscall(SYS_io_uring_enter, ring.descriptor, 0,
                       static_cast<u32>(queued_count - completed_count),
                       IORING_ENTER_GETEVENTS, nullptr, 0);
+
         if (wait_result < 0 && errno == EINTR) {
           if (!INTERRUPT_REQUESTED) continue;
           do_fail_unfinished(EINTR);
 
           return true;
         }
+
         if (wait_result < 0) {
           let const error_number = errno;
           do_fail_unfinished(error_number);
 
           return true;
         }
+
         continue;
       }
 
@@ -2095,12 +2248,15 @@ execute_io_uring_batch(const batched_syscall  *operations,
         let      &result          = results[operation_index];
         let const operation_kind =
             batch_operation_access::get_kind(operations[operation_index]);
+
         if (completion.res < 0) {
           let const error_number = -completion.res;
+
           switch (operation_kind) {
           case batched_syscall_id::Exists:
             execute_batched_syscall_direct(operations[operation_index], result);
             break;
+
           case batched_syscall_id::Read:
           case batched_syscall_id::Write:
           case batched_syscall_id::WriteCurrent:
@@ -2113,6 +2269,7 @@ execute_io_uring_batch(const batched_syscall  *operations,
               result.error_number = error_number;
             }
             break;
+
           case batched_syscall_id::Lstat:
           case batched_syscall_id::Stat:
           case batched_syscall_id::LstatAt:
@@ -2124,6 +2281,7 @@ execute_io_uring_batch(const batched_syscall  *operations,
               result.error_number = error_number;
             }
             break;
+
           case batched_syscall_id::Invalid:
             result.error_number = error_number;
             break;
@@ -2131,6 +2289,7 @@ execute_io_uring_batch(const batched_syscall  *operations,
         } else {
           switch (operation_kind) {
           case batched_syscall_id::Exists: result.is_existing = true; break;
+
           case batched_syscall_id::Lstat:
           case batched_syscall_id::Stat:
           case batched_syscall_id::LstatAt:
@@ -2138,15 +2297,19 @@ execute_io_uring_batch(const batched_syscall  *operations,
             fill_file_status(status_records[chunk_index],
                              *batch_operation_access::get_status(
                                  operations[operation_index]));
+
             break;
+
           case batched_syscall_id::Read:
           case batched_syscall_id::Write:
           case batched_syscall_id::WriteCurrent:
             result.transferred_byte_count = static_cast<usize>(completion.res);
             break;
+
           case batched_syscall_id::Invalid: break;
           }
         }
+
         was_completed[chunk_index] = true;
         completion_head++;
         completed_count++;
@@ -2196,6 +2359,7 @@ execute_batch_operations(const batched_syscall  *operations,
   }
 
   let const saved_error = errno;
+
   defer { errno = saved_error; };
 
   if (INTERRUPT_REQUESTED) {

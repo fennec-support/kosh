@@ -50,10 +50,11 @@ Parser::Parser(Lexer &&lexer) : m_lexer(steal(lexer)) {}
 Parser::~Parser() = default;
 
 alwaysinline fn
-Parser::next_token_of_kind(Token::Kind kind, StringView missing_message) throws
-    -> Token *
+Parser::next_token_of_kind(Token::Kind kind,
+                           StringView  missing_message) throws -> Token *
 {
   Token *token = m_lexer.next_shell_token();
+
   ASSERT(token != nullptr);
   if (token->kind() != kind) {
     throw ErrorWithLocation{token->source_location(), missing_message};
@@ -86,6 +87,7 @@ fn
 Parser::take_analysis_directives() throws -> analysis_directives
 {
   analysis_directives directives{};
+
   directives.shellcheck_suppressions = take_shellcheck_suppressions();
   directives.scope_definitions       = take_analysis_scope_definitions();
   directives.directive_spans         = take_shellcheck_directive_spans();
@@ -119,6 +121,7 @@ Parser::record_analysis_alias_definitions(
   }
 
   let const command_view = args[0]->raw_view();
+
   if (!command_view.has_value() || *command_view != "alias") {
     return;
   }
@@ -126,6 +129,7 @@ Parser::record_analysis_alias_definitions(
   for (usize i = 1; i < args.count(); i++) {
     let const text            = args[i]->raw_string();
     let const equals_position = text.find_character('=');
+
     if (equals_position.has_value() && *equals_position > 0) {
       record_analysis_scope_definition(
           StringView{text.data(), *equals_position},
@@ -164,7 +168,9 @@ internal::get_unquoted_word_text(const Token *token) wontthrow
   if (token == nullptr || token->kind() != Token::Kind::Word) {
     return nullptr;
   }
+
   let const &word = static_cast<const tokens::WordToken *>(token)->word();
+
   if (word.segments.count() != 1 ||
       word.segments[0].kind != WordSegment::Kind::UnquotedText)
   {
@@ -175,8 +181,8 @@ internal::get_unquoted_word_text(const Token *token) wontthrow
 }
 
 hot pure fn
-internal::is_unquoted_word(const Token *token, StringView text) wontthrow
-    -> bool
+internal::is_unquoted_word(const Token *token, StringView text)
+    wontthrow -> bool
 {
   let const *unquoted_text = get_unquoted_word_text(token);
 
@@ -209,10 +215,12 @@ find_standalone_keyword(StringView source, StringView keyword) wontthrow
 
   for (usize pos = 0; pos + keyword.length <= source.length; pos++) {
     if (source.substring_of_length(pos, keyword.length) != keyword) continue;
+
     let const end_position     = pos + keyword.length;
     let const is_left_boundary = pos == 0 || do_is_boundary(source[pos - 1]);
     let const is_right_boundary =
         end_position == source.length || do_is_boundary(source[end_position]);
+
     if (is_left_boundary && is_right_boundary) {
       return SourceLocation{pos, keyword.length};
     }
@@ -237,6 +245,7 @@ internal::throw_unterminated(const SourceLocation &opener,
         "this '" + keyword +
             "' was read as an argument, so put a ';' or a newline before it"};
   }
+
   fallback.source_name_index = opener.source_name_index;
   throw ErrorWithLocationAndDetails{opener, what, fallback,
                                     "expected '" + keyword + "'"};
@@ -320,7 +329,9 @@ Parser::construct_next_top_level_ast() throws -> Expression *
       analysis_metadata_collection_mode::Enabled)
     m_lexer.set_shellcheck_directive_collection_mode(
         shellcheck_directive_collection_mode::Enabled);
+
   let const first_token = m_lexer.peek_shell_token();
+
   if (m_analysis_metadata_collection_mode ==
       analysis_metadata_collection_mode::Enabled)
     m_lexer.set_shellcheck_directive_collection_mode(
@@ -349,15 +360,16 @@ Parser::skip_newlines_after_pipe() throws -> void
 fn
 Parser::skip_semicolons_and_newlines() throws -> void
 {
-  loop
-  {
+  loop {
     Token *t = m_lexer.peek_shell_token();
+
     ASSERT(t != nullptr);
     if (t->kind() != Token::Kind::Semicolon &&
         t->kind() != Token::Kind::Newline)
     {
       break;
     }
+
     m_lexer.advance_past_last_peek();
   }
 }
@@ -366,11 +378,12 @@ cold fn
 Parser::recover_to_next_statement() throws -> void
 {
   LOG(Debug, "skipping tokens to the next statement boundary");
+
   bool has_consumed_token = false;
 
-  loop
-  {
+  loop {
     Token *token = m_lexer.peek_shell_token();
+
     ASSERT(token != nullptr);
 
     if (token->kind() == Token::Kind::EndOfFile) return;
@@ -430,11 +443,11 @@ Parser::record_detailed_parse_error(
 }
 
 cold fn
-Parser::record_parse_error(const ErrorWithLocation      &error,
-                           ArrayList<String>            &errors,
-                           EvalContext                  *context,
-                           ArrayList<source_diagnostic> *diagnostic_sink) throws
-    -> void
+Parser::record_parse_error(
+    const ErrorWithLocation      &error,
+    ArrayList<String>            &errors,
+    EvalContext                  *context,
+    ArrayList<source_diagnostic> *diagnostic_sink) throws -> void
 {
   LOG(Debug, "recording a parse error and recovering: %s",
       error.message().c_str());
@@ -449,6 +462,7 @@ Parser::record_parse_error(const ErrorWithLocation      &error,
   if (diagnostic_sink == nullptr) return;
 
   let const location = error.location();
+
   diagnostic_sink->push(source_diagnostic{
       None, error_severity::error, location, get_location_filename(location),
       error.message().clone(), String{error.detail_message()}, None,
@@ -476,10 +490,10 @@ Parser::record_substitution_errors(
 }
 
 cold fn
-Parser::record_error(ArrayList<String>            &errors,
-                     EvalContext                  *context,
-                     ArrayList<source_diagnostic> *diagnostic_sink) throws
-    -> void
+Parser::record_error(
+    ArrayList<String>            &errors,
+    EvalContext                  *context,
+    ArrayList<source_diagnostic> *diagnostic_sink) throws -> void
 {
   record_substitution_errors(errors, context, diagnostic_sink);
 
@@ -501,11 +515,13 @@ Parser::peek_top_level_token(
   let const is_collecting_directives =
       m_analysis_metadata_collection_mode ==
       analysis_metadata_collection_mode::Enabled;
+
   if (is_collecting_directives)
     m_lexer.set_shellcheck_directive_collection_mode(
         shellcheck_directive_collection_mode::Enabled);
 
   Token *token = nullptr;
+
   try {
     token = m_lexer.peek_shell_token();
   } catch (const ErrorWithLocation &) {
@@ -521,26 +537,29 @@ Parser::peek_top_level_token(
 }
 
 cold fn
-Parser::construct_ast(ArrayList<String>            &errors,
-                      EvalContext                  *context,
-                      ArrayList<source_diagnostic> *diagnostic_sink) throws
+Parser::construct_ast(
+    ArrayList<String>            &errors,
+    EvalContext                  *context,
+    ArrayList<source_diagnostic> *diagnostic_sink) throws
     -> Expression *
 {
   Expression *first_piece            = nullptr;
   let         last_location          = SourceLocation{};
   usize       failed_statement_count = 0;
 
-  loop
-  {
+  loop {
     Token *token = peek_top_level_token(errors, context, diagnostic_sink);
+
     if (token == nullptr) break;
 
     last_location = token->source_location();
     if (token->kind() == Token::Kind::EndOfFile) break;
 
     let did_parse_fail = false;
+
     try {
       Expression *piece = parse_command_list(0);
+
       ASSERT(piece != nullptr);
       if (first_piece == nullptr) first_piece = piece;
       record_substitution_errors(errors, context, diagnostic_sink);
@@ -548,17 +567,20 @@ Parser::construct_ast(ArrayList<String>            &errors,
       record_error(errors, context, diagnostic_sink);
       did_parse_fail = true;
     }
+
     if (!did_parse_fail) continue;
 
     failed_statement_count++;
     if (failed_statement_count >= MAX_RECOVERED_STATEMENT_COUNT) break;
 
     let did_recovery_fail = false;
+
     try {
       recover_to_next_statement();
     } catch (const ErrorWithLocation &) {
       did_recovery_fail = true;
     }
+
     record_substitution_errors(errors, context, diagnostic_sink);
     if (did_recovery_fail) break;
   }
@@ -573,20 +595,22 @@ cold fn
 Parser::construct_next_top_level_ast(
     ArrayList<String>            &errors,
     EvalContext                  *context,
-    ArrayList<source_diagnostic> *diagnostic_sink) throws -> Expression *
+    ArrayList<source_diagnostic> *diagnostic_sink) throws
+    -> Expression *
 {
   m_should_stop_after_top_level_unit = true;
   defer { m_should_stop_after_top_level_unit = false; };
 
-  loop
-  {
+  loop {
     Token *token = peek_top_level_token(errors, context, diagnostic_sink);
+
     if (token == nullptr || token->kind() == Token::Kind::EndOfFile) {
       return nullptr;
     }
 
     try {
       Expression *piece = parse_command_list(0);
+
       ASSERT(piece != nullptr);
       record_substitution_errors(errors, context, diagnostic_sink);
 
@@ -596,11 +620,13 @@ Parser::construct_next_top_level_ast(
     }
 
     let did_recovery_fail = false;
+
     try {
       recover_to_next_statement();
     } catch (const ErrorWithLocation &) {
       did_recovery_fail = true;
     }
+
     record_substitution_errors(errors, context, diagnostic_sink);
     if (did_recovery_fail) return nullptr;
   }
@@ -610,7 +636,9 @@ fn
 Parser::reject_empty_loop_body(const Expression *body) throws -> void
 {
   if (!body->is_dummy()) return;
+
   Token *terminator = m_lexer.peek_shell_token();
+
   ASSERT(terminator != nullptr);
   throw koshka::ErrorWithLocationAndDetails{
       terminator->source_location(), "Unable to parse the loop",
@@ -624,6 +652,7 @@ Parser::parse_command_list(u64 terminator_mask) throws -> Expression *
   defer { m_command_depth--; };
   if (m_command_depth > MAX_COMMAND_DEPTH) {
     Token *token = m_lexer.peek_shell_token();
+
     ASSERT(token != nullptr);
     throw koshka::ErrorWithLocation{
         token->source_location(),
@@ -654,36 +683,42 @@ Parser::parse_command_list(u64 terminator_mask) throws -> Expression *
     active_shellcheck_suppression = None;
   };
 
-  let const do_finish_pending = [&](Command *pending, const Token *at) throws {
+  let const do_finish_pending = [&](Command     *pending,
+                                    const Token *at) throws {
     if (should_negate_pending) {
       pending->set_negated();
       should_negate_pending = false;
     }
+
     if (should_time_pending) {
       pending->set_timed(time_location, time_format, time_rss);
       should_time_pending = false;
       time_format         = time_format_mode::Default;
       time_rss            = time_rss_mode::Omit;
     }
+
     compound_list->append_node(m_lexer.arena().create<CompoundListCondition>(
         at->source_location(), next_cond, pending));
   };
 
-  loop
-  {
+  loop {
     if (should_parse_command) {
       Token *maybe_time = nullptr;
+
       if (m_analysis_metadata_collection_mode ==
           analysis_metadata_collection_mode::Enabled)
       {
         let const should_collect_directives =
             next_cond == CompoundListCondition::Kind::None;
+
         m_lexer.set_shellcheck_directive_collection_mode(
             should_collect_directives
                 ? shellcheck_directive_collection_mode::Enabled
                 : shellcheck_directive_collection_mode::Disabled);
-        maybe_time     = m_lexer.peek_shell_token();
+        maybe_time = m_lexer.peek_shell_token();
+
         let directives = m_lexer.take_shellcheck_directives();
+
         m_lexer.set_shellcheck_directive_collection_mode(
             shellcheck_directive_collection_mode::Disabled);
 
@@ -693,8 +728,10 @@ Parser::parse_command_list(u64 terminator_mask) throws -> Expression *
           m_lexer.advance_past_last_peek();
           m_lexer.set_shellcheck_directive_collection_mode(
               shellcheck_directive_collection_mode::Enabled);
-          maybe_time               = m_lexer.peek_shell_token();
+          maybe_time = m_lexer.peek_shell_token();
+
           let following_directives = m_lexer.take_shellcheck_directives();
+
           m_lexer.set_shellcheck_directive_collection_mode(
               shellcheck_directive_collection_mode::Disabled);
 
@@ -707,6 +744,7 @@ Parser::parse_command_list(u64 terminator_mask) throws -> Expression *
             maybe_time->kind() != Token::Kind::EndOfFile;
         let const is_first_source_command =
             is_source_command && !m_has_parsed_source_command;
+
         if (is_source_command) m_has_parsed_source_command = true;
         if (!directives.is_empty()) {
           let const source = m_lexer.source();
@@ -727,16 +765,21 @@ Parser::parse_command_list(u64 terminator_mask) throws -> Expression *
       } else {
         maybe_time = m_lexer.peek_shell_token();
       }
+
       ASSERT(maybe_time != nullptr);
       if (next_cond == CompoundListCondition::Kind::None) {
         and_or_start       = maybe_time->source_location();
         and_or_first_index = compound_list->node_count();
       }
+
       const Token *leading_command_token = nullptr;
+
       if (maybe_time->kind() == Token::Kind::Time) {
         time_location = maybe_time->source_location();
         m_lexer.advance_past_last_peek();
+
         Token *maybe_option = m_lexer.peek_shell_token();
+
         if (m_lexer.mood() == mimic_mood::Default &&
             is_unquoted_word(maybe_option, "--help"))
         {
@@ -744,8 +787,7 @@ Parser::parse_command_list(u64 terminator_mask) throws -> Expression *
         } else {
           should_time_pending = true;
 
-          loop
-          {
+          loop {
             if (is_unquoted_word(maybe_option, "-p") ||
                 is_unquoted_word(maybe_option, "--posix"))
             {
@@ -755,23 +797,28 @@ Parser::parse_command_list(u64 terminator_mask) throws -> Expression *
             } else {
               break;
             }
+
             m_lexer.advance_past_last_peek();
             maybe_option = m_lexer.peek_shell_token();
           }
         }
       }
+
       Token *maybe_negation = m_lexer.peek_shell_token();
+
       ASSERT(maybe_negation != nullptr);
       if (is_unquoted_word(maybe_negation, "!")) {
         m_lexer.advance_past_last_peek();
         should_negate_pending = true;
       }
+
       lhs = parse_simple_command(leading_command_token);
     } else {
       should_parse_command = true;
     }
 
     Token *token = m_lexer.peek_shell_token();
+
     ASSERT(token != nullptr);
 
     if (is_list_terminator(token, terminator_mask)) {
@@ -782,6 +829,7 @@ Parser::parse_command_list(u64 terminator_mask) throws -> Expression *
         throw koshka::ErrorWithLocation{token->source_location(),
                                         "Expected a command after an operator"};
       }
+
       if (compound_list->is_empty()) {
         return m_lexer.arena().create<DummyExpression>(
             token->source_location());
@@ -807,33 +855,41 @@ Parser::parse_command_list(u64 terminator_mask) throws -> Expression *
           }
 
           CompoundList *and_or_list = m_lexer.arena().create<CompoundList>();
+
           compound_list->move_nodes_from(and_or_first_index, *and_or_list);
+
           BraceGroup *group =
               m_lexer.arena().create<BraceGroup>(and_or_start, and_or_list);
+
           group->set_source_end_position(end_position);
           next_cond = CompoundListCondition::Kind::None;
           lhs       = group;
         }
+
         lhs->make_async();
       }
+
       fallthru;
     case Token::Kind::DoublePipe:
     case Token::Kind::DoubleAmpersand:
       if (lhs == nullptr) {
         let const ast = token->to_ast_string();
         String    msg = "Expected a command ";
+
         msg += compound_list->is_empty() ? "before" : "after";
         msg += " operator, found '";
         msg += ast.view();
         msg += "'";
         throw koshka::ErrorWithLocation{token->source_location(), msg};
       }
+
       fallthru;
     case Token::Kind::Newline:
     case Token::Kind::EndOfFile:
     case Token::Kind::Semicolon: {
       let const is_stray_semicolon = token->kind() == Token::Kind::Semicolon &&
                                      lhs == nullptr && !should_time_pending;
+
       if (is_stray_semicolon) {
         throw koshka::ErrorWithLocation{token->source_location(),
                                         "Expected a command before ';'"};
@@ -844,6 +900,7 @@ Parser::parse_command_list(u64 terminator_mask) throws -> Expression *
       {
         do_finish_shellcheck_suppression(token->source_location().position);
       }
+
       m_lexer.advance_past_last_peek();
 
       if (lhs != nullptr) {
@@ -883,21 +940,24 @@ Parser::parse_command_list(u64 terminator_mask) throws -> Expression *
 
       let const has_left_stderr_pipe =
           token->kind() == Token::Kind::PipeAmpersand;
+
       m_lexer.advance_past_last_peek();
       skip_newlines_after_pipe();
 
       Pipeline *pipeline =
           m_lexer.arena().create<Pipeline>(token->source_location());
+
       pipeline->append_command(
           has_left_stderr_pipe ? wrap_with_stderr_to_stdout(lhs) : lhs);
 
       Token *last_pipe_token = token;
 
-      loop
-      {
+      loop {
         Command *rhs = parse_simple_command();
+
         if (rhs == nullptr) {
           Token *after = m_lexer.peek_shell_token();
+
           if (m_lexer.is_posix_mode() &&
               after->kind() == Token::Kind::Ampersand &&
               after->source_location().position ==
@@ -910,6 +970,7 @@ Parser::parse_command_list(u64 terminator_mask) throws -> Expression *
                 "does not read",
                 "Use 2>&1 | instead"};
           }
+
           throw koshka::ErrorWithLocation{
               last_pipe_token->source_location(),
               "Unable to build the pipeline because no command follows the "
@@ -918,11 +979,13 @@ Parser::parse_command_list(u64 terminator_mask) throws -> Expression *
 
         last_pipe_token = m_lexer.peek_shell_token();
         ASSERT(last_pipe_token != nullptr);
+
         const bool has_another_pipe =
             last_pipe_token->kind() == Token::Kind::Pipe ||
             last_pipe_token->kind() == Token::Kind::PipeAmpersand;
         const bool should_pipe_standard_error =
             last_pipe_token->kind() == Token::Kind::PipeAmpersand;
+
         pipeline->append_command(has_another_pipe && should_pipe_standard_error
                                      ? wrap_with_stderr_to_stdout(rhs)
                                      : rhs);
@@ -931,6 +994,7 @@ Parser::parse_command_list(u64 terminator_mask) throws -> Expression *
           skip_newlines_after_pipe();
           continue;
         }
+
         break;
       }
 
@@ -953,6 +1017,7 @@ static fn
 stderr_to_stdout_dup() wontthrow -> expressions::Redirection
 {
   expressions::Redirection dup{};
+
   dup.fd     = 2;
   dup.target = nullptr;
   dup.kind   = expressions::Redirection::Kind::DuplicateOutput;
@@ -974,6 +1039,7 @@ Parser::build_file_or_dup_redirection(
   if (!first_location) first_location = op_location;
 
   expressions::Redirection redir{};
+
   redir.fd                       = fd;
   redir.target                   = nullptr;
   redir.dup_fd                   = -1;
@@ -981,7 +1047,9 @@ Parser::build_file_or_dup_redirection(
 
   {
     Token *after = m_lexer.peek_shell_token();
+
     ASSERT(after != nullptr);
+
     if (after->kind() == Token::Kind::Ampersand &&
         after->source_location().position ==
             op_location.position + op_location.length)
@@ -1009,8 +1077,10 @@ Parser::build_file_or_dup_redirection(
       let const descriptor_text =
           is_move ? literal.view().substring_of_length(0, literal.count() - 1)
                   : literal.view();
+
       if (descriptor_text.is_all_decimal_digits()) {
         let const parsed_descriptor = descriptor_text.to<i64>();
+
         if (parsed_descriptor.is_error()) {
           throw ErrorWithLocation{from->source_location(),
                                   parsed_descriptor.error().message()};
@@ -1043,7 +1113,9 @@ Parser::build_file_or_dup_redirection(
 
   {
     Token *after = m_lexer.peek_shell_token();
+
     ASSERT(after != nullptr);
+
     let const is_adjacent = after->source_location().position ==
                             op_location.position + op_location.length;
 
@@ -1074,20 +1146,25 @@ Parser::build_file_or_dup_redirection(
 
   Token *target = next_token_of_kind(Token::Kind::Word,
                                      "Expected a filename after the redir");
+
   switch (op_kind) {
   case Token::Kind::Greater:
     redir.kind = expressions::Redirection::Kind::TruncateOutput;
     break;
+
   case Token::Kind::DoubleGreater:
     redir.kind = expressions::Redirection::Kind::AppendOutput;
     break;
+
   case Token::Kind::Less:
     redir.kind = expressions::Redirection::Kind::ReadInput;
     break;
+
   default:
     unreachable("the file redirection builder received token kind %d",
                 ENUM(op_kind));
   }
+
   redir.target = target;
   out.push(redir);
 }
@@ -1119,6 +1196,7 @@ Parser::build_here_string_redirection(
   if (!first_location) first_location = op_location;
 
   expressions::Redirection redir{};
+
   redir.fd   = fd;
   redir.kind = expressions::Redirection::Kind::HereString;
   redir.target =
@@ -1133,6 +1211,7 @@ mustuse fn
 Parser::wrap_with_stderr_to_stdout(Command *command) throws -> Command *
 {
   ASSERT(command != nullptr);
+
   let const arena_allocator = bump_allocator(m_lexer.arena());
 
   if (command->is_simple_command()) {
@@ -1143,9 +1222,12 @@ Parser::wrap_with_stderr_to_stdout(Command *command) throws -> Command *
   }
 
   let redirections = ArrayList<expressions::Redirection>{arena_allocator};
+
   redirections.push(stderr_to_stdout_dup());
+
   let redirected = m_lexer.arena().create<RedirectedCommand>(
       command->source_location(), command, steal(redirections));
+
   redirected->set_source_end_position(command->source_end_position());
 
   return redirected;
@@ -1161,13 +1243,17 @@ Parser::build_heredoc_redirection(
   if (!first_location) first_location = op_location;
 
   Token *delimiter_token = m_lexer.next_shell_token();
+
   ASSERT(delimiter_token != nullptr);
+
   let is_separated_strip_operator = false;
+
   if (delimiter_token->kind() == Token::Kind::Word &&
       delimiter_token->source_location().position ==
           op_location.position + op_location.length)
   {
     let const &word = static_cast<tokens::WordToken *>(delimiter_token)->word();
+
     if (word.segments.count() == 1 &&
         word.segments[0].kind == WordSegment::Kind::UnquotedText &&
         word.segments[0].text.view() == "-")
@@ -1177,6 +1263,7 @@ Parser::build_heredoc_redirection(
       ASSERT(delimiter_token != nullptr);
     }
   }
+
   if (delimiter_token->kind() != Token::Kind::Word) {
     if (delimiter_token->kind() == Token::Kind::Less) {
       throw ErrorWithLocationAndDetails{
@@ -1185,9 +1272,11 @@ Parser::build_heredoc_redirection(
           "that POSIX mode does not read",
           "Use a heredoc instead"};
     }
+
     throw ErrorWithLocation{delimiter_token->source_location(),
                             "Expected a heredoc delimiter"};
   }
+
   const Word &delimiter_word =
       static_cast<tokens::WordToken *>(delimiter_token)->word();
 
@@ -1201,6 +1290,7 @@ Parser::build_heredoc_redirection(
       delimiter_word.segments[0].kind == WordSegment::Kind::UnquotedText &&
       !delimiter_word.segments[0].text.is_empty() &&
       delimiter_word.segments[0].text.view()[0] == '-';
+
   if (has_unquoted_leading_dash && !delimiter.is_empty() &&
       delimiter[0] == '-' &&
       delimiter_token->source_location().position ==
@@ -1223,6 +1313,7 @@ Parser::build_heredoc_redirection(
   }
 
   expressions::Redirection redir{};
+
   redir.fd                = fd;
   redir.kind              = expressions::Redirection::Kind::Heredoc;
   redir.target            = nullptr;
@@ -1244,8 +1335,11 @@ Parser::try_parse_descriptor_prefixed_redirection(
 {
   m_lexer.advance_past_last_peek();
   Token *next = m_lexer.peek_shell_token();
+
   ASSERT(next != nullptr);
-  let const nk                        = next->kind();
+
+  let const nk = next->kind();
+
   let const do_is_descriptor_in_range = [&]() throws -> bool {
     if (word_token->word().fd_allocation_name().has_value()) return true;
 
@@ -1253,6 +1347,7 @@ Parser::try_parse_descriptor_prefixed_redirection(
 
     return !parsed.is_error() && parsed.value() <= INT32_MAX;
   };
+
   if ((nk == Token::Kind::Greater || nk == Token::Kind::DoubleGreater ||
        nk == Token::Kind::Less || nk == Token::Kind::DoubleLess ||
        nk == Token::Kind::TripleLess) &&
@@ -1261,9 +1356,11 @@ Parser::try_parse_descriptor_prefixed_redirection(
       do_is_descriptor_in_range())
   {
     let const op_location = next->source_location();
+
     m_lexer.advance_past_last_peek();
 
     let const allocation_name = word_token->word().fd_allocation_name();
+
     if (allocation_name.has_value()) {
       if (nk == Token::Kind::DoubleLess) {
         build_heredoc_redirection(-1, op_location, first_location, out);
@@ -1282,11 +1379,14 @@ Parser::try_parse_descriptor_prefixed_redirection(
 
     let const literal           = word_token->word().to_literal_string();
     let const parsed_descriptor = literal.to<i64>();
+
     if (parsed_descriptor.is_error()) {
       throw ErrorWithLocation{word_location,
                               parsed_descriptor.error().message()};
     }
+
     let const fd = static_cast<i32>(parsed_descriptor.value());
+
     if (nk == Token::Kind::DoubleLess) {
       build_heredoc_redirection(fd, op_location, first_location, out);
     } else if (nk == Token::Kind::TripleLess) {
@@ -1357,14 +1457,17 @@ Parser::try_parse_trailing_redirection(
   Maybe<SourceLocation> ignored_first_location;
 
   Token *token = m_lexer.peek_shell_token();
+
   ASSERT(token != nullptr);
 
   if (try_build_operator_redirection(token, ignored_first_location, out)) {
     return true;
   }
+
   if (token->kind() != Token::Kind::Word) return false;
 
   const tokens::WordToken *word_token = static_cast<tokens::WordToken *>(token);
+
   if (!word_token->word().is_all_ascii_digits() &&
       !word_token->word().fd_allocation_name().has_value())
   {
@@ -1372,6 +1475,7 @@ Parser::try_parse_trailing_redirection(
   }
 
   let const word_location = token->source_location();
+
   if (try_parse_descriptor_prefixed_redirection(word_token, word_location,
                                                 ignored_first_location, out))
   {
@@ -1384,7 +1488,8 @@ Parser::try_parse_trailing_redirection(
 }
 
 mustuse fn
-Parser::attach_trailing_redirections(Command *compound) throws -> Command *
+Parser::attach_trailing_redirections(Command *compound) throws
+    -> Command *
 {
   ASSERT(compound != nullptr);
 
@@ -1398,6 +1503,7 @@ Parser::attach_trailing_redirections(Command *compound) throws -> Command *
 
   let redirected = m_lexer.arena().create<RedirectedCommand>(
       compound->source_location(), compound, steal(redirections));
+
   redirected->set_source_end_position(end_position);
 
   return redirected;
@@ -1414,7 +1520,8 @@ enum class command_position_word : u8
 };
 
 hot fn
-Parser::parse_simple_command(const Token *leading_token) throws -> Command *
+Parser::parse_simple_command(const Token *leading_token) throws
+    -> Command *
 {
   Maybe<SourceLocation>    source_location;
   let const                arena_allocator = bump_allocator(m_lexer.arena());
@@ -1441,6 +1548,7 @@ Parser::parse_simple_command(const Token *leading_token) throws -> Command *
 
     SimpleCommand *c = m_lexer.arena().create<SimpleCommand>(
         *source_location, steal(args_accumulator));
+
     if (local_vars.count() != 0) c->set_local_vars(steal(local_vars));
     if (!array_args.is_empty()) c->set_array_args(steal(array_args));
     if (!redirections.is_empty()) c->set_redirections(steal(redirections));
@@ -1449,40 +1557,50 @@ Parser::parse_simple_command(const Token *leading_token) throws -> Command *
     return c;
   };
 
-  loop
-  {
+  loop {
     Token *token = m_lexer.peek_shell_token();
+
     ASSERT(token != nullptr);
 
     if (!source_location) {
       let position_word = command_position_word::None;
+
       if (let const *text = get_unquoted_word_text(token); text != nullptr) {
         let const view = text->view();
+
         if (!view.is_empty()) {
           switch (view[0]) {
           case '{':
             if (view.length == 1)
               position_word = command_position_word::BraceOpen;
             break;
+
           case '}':
             if (view.length == 1)
               position_word = command_position_word::BraceClose;
             break;
+
           case '[':
             if (view.length == 2 && view[1] == '[') {
               position_word = command_position_word::Conditional;
             }
+
             break;
+
           case 's':
             if (view.length == 6 && view == "select") {
               position_word = command_position_word::Select;
             }
+
             break;
+
           case 'c':
             if (view.length == 6 && view == "coproc") {
               position_word = command_position_word::Coproc;
             }
+
             break;
+
           default: break;
           }
         }
@@ -1505,10 +1623,12 @@ Parser::parse_simple_command(const Token *leading_token) throws -> Command *
         if (m_lexer.is_bash_compatible())
           return attach_trailing_redirections(parse_select());
         break;
+
       case command_position_word::Coproc:
         if (m_lexer.bash_additions_enabled())
           return attach_trailing_redirections(parse_coproc());
         break;
+
       case command_position_word::None: break;
       }
 
@@ -1558,20 +1678,24 @@ Parser::parse_simple_command(const Token *leading_token) throws -> Command *
       if (token->kind() == Token::Kind::Word) {
         const tokens::WordToken *word_token =
             static_cast<tokens::WordToken *>(token);
+
         if (word_token->word().is_all_ascii_digits() ||
             word_token->word().fd_allocation_name().has_value())
         {
           let const word_location = token->source_location();
+
           if (try_parse_descriptor_prefixed_redirection(
                   word_token, word_location, source_location, redirections))
           {
             break;
           }
+
           if (!source_location) source_location = word_location;
           args_accumulator.push(token);
           break;
         }
       }
+
       m_lexer.advance_past_last_peek();
       if (!source_location) source_location = token->source_location();
       args_accumulator.push(token);
@@ -1583,6 +1707,7 @@ Parser::parse_simple_command(const Token *leading_token) throws -> Command *
 
         return parse_keyword_function_definition();
       }
+
       m_lexer.advance_past_last_peek();
       if (!source_location) source_location = token->source_location();
       args_accumulator.push(token);
@@ -1604,6 +1729,7 @@ Parser::parse_simple_command(const Token *leading_token) throws -> Command *
       Assignment *a = static_cast<Assignment *>(token);
 
       Token *next = m_lexer.peek_shell_token();
+
       ASSERT(next != nullptr);
 
       let const operator_length =
@@ -1618,18 +1744,21 @@ Parser::parse_simple_command(const Token *leading_token) throws -> Command *
       if (!args_accumulator.is_empty()) {
         if (is_array_assignment) {
           let const command_name = args_accumulator[0]->raw_string();
+
           if (classify_assignment_builtin(command_name.view()) !=
               assignment_builtin::None)
           {
             ArrayList<const Token *> elements = consume_bash_array_assignment();
             let const                assignment_end_position =
                 static_cast<u32>(m_lexer.cursor_position());
+
             array_args.push(array_builtin_assignment{
                 a->key().clone(), steal(elements), a->source_location(),
                 assignment_end_position, a->get_update_mode()});
             break;
           }
         }
+
         args_accumulator.push(token);
         break;
       }
@@ -1638,6 +1767,7 @@ Parser::parse_simple_command(const Token *leading_token) throws -> Command *
         ArrayList<const Token *> elements = consume_bash_array_assignment();
         let const                assignment_end_position =
             static_cast<u32>(m_lexer.cursor_position());
+
         array_args.push(array_builtin_assignment{
             a->key().clone(), steal(elements), a->source_location(),
             assignment_end_position, a->get_update_mode()});
@@ -1650,6 +1780,7 @@ Parser::parse_simple_command(const Token *leading_token) throws -> Command *
           (is_compound_list_separator(next->kind()) ||
            next->kind() == Token::Kind::EndOfFile ||
            is_compound_terminator(next->kind()));
+
       if (is_lone_assignment) {
         return m_lexer.arena().create<AssignCommand>(*source_location, a);
       } else {
@@ -1684,6 +1815,7 @@ Parser::finish_function_body(const SourceLocation &location,
 
   record_analysis_scope_definition(name,
                                    analysis_scope_definition_kind::Function);
+
   let const scope_mark = open_analysis_scope();
 
   let const rest_of_source = m_lexer.source().substring(location.position);
@@ -1693,11 +1825,15 @@ Parser::finish_function_body(const SourceLocation &location,
   let      &previous_arena      = m_lexer.arena();
   let const previous_arena_kind = m_lexer.arena_kind();
   Command  *body                = nullptr;
+
   {
     let const pending_heredoc_count = m_lexer.get_pending_heredoc_count();
+
     m_lexer.set_arena(*body_storage.get_arena(),
                       ParseSession::AllocationKind::FunctionBody);
-    defer { m_lexer.set_arena(previous_arena, previous_arena_kind); };
+    defer {
+      m_lexer.set_arena(previous_arena, previous_arena_kind);
+    };
     try {
       body = parse_simple_command();
     } catch (...) {
@@ -1710,10 +1846,12 @@ Parser::finish_function_body(const SourceLocation &location,
     throw ErrorWithLocation{location,
                             "Expected a compound command as the function body"};
   }
+
   body_storage.set_body(body);
 
   let definition = m_lexer.arena().create<FunctionDefinition>(
       location, name, steal(body_storage));
+
   definition->set_analysis_scope_definitions(close_analysis_scope(scope_mark));
   definition->set_source_end_position(body->source_end_position());
 
@@ -1721,9 +1859,11 @@ Parser::finish_function_body(const SourceLocation &location,
 }
 
 hot fn
-Parser::parse_function_definition(const Token *name_token) throws -> Command *
+Parser::parse_function_definition(const Token *name_token) throws
+    -> Command *
 {
   ASSERT(name_token != nullptr);
+
   let const location = name_token->source_location();
   let const name     = name_token->raw_string();
 
@@ -1747,6 +1887,7 @@ Parser::parse_keyword_function_definition() throws -> Command *
   LOG(Debug, "parsing a keyword function definition for '%s'", name.c_str());
 
   Token *after_name = m_lexer.peek_shell_token();
+
   ASSERT(after_name != nullptr);
   if (after_name->kind() == Token::Kind::LeftParen) {
     m_lexer.advance_past_last_peek();
@@ -1758,13 +1899,16 @@ Parser::parse_keyword_function_definition() throws -> Command *
 }
 
 fn
-Parser::consume_bash_array_assignment() throws -> ArrayList<const Token *>
+Parser::consume_bash_array_assignment() throws
+    -> ArrayList<const Token *>
 {
   Token *open = m_lexer.next_shell_token();
+
   ASSERT(open != nullptr);
   ASSERT(open->kind() == Token::Kind::LeftParen);
 
   ArrayList<const Token *> elements{heap_allocator()};
+
   m_lexer.set_is_lexing_array_literal(true);
   try {
     consume_bash_array_elements(open, elements);
@@ -1772,26 +1916,28 @@ Parser::consume_bash_array_assignment() throws -> ArrayList<const Token *>
     m_lexer.set_is_lexing_array_literal(false);
     throw;
   }
+
   m_lexer.set_is_lexing_array_literal(false);
 
   return elements;
 }
 
 fn
-Parser::consume_bash_array_elements(const Token              *open,
-                                    ArrayList<const Token *> &elements) throws
+Parser::consume_bash_array_elements(
+    const Token *open, ArrayList<const Token *> &elements) throws
     -> void
 {
-  loop
-  {
+  loop {
     Token *t = m_lexer.next_shell_token();
+
     ASSERT(t != nullptr);
     switch (t->kind()) {
     case Token::Kind::EndOfFile:
       throw ErrorWithLocation{open->source_location(),
                               "Unterminated array assignment, expected ')'"};
-    case Token::Kind::RightParen:               return;
-    case Token::Kind::Newline:                  break;
+    case Token::Kind::RightParen: return;
+    case Token::Kind::Newline:    break;
+
     case Token::Kind::LeftParen:
     case Token::Kind::Semicolon:
     case Token::Kind::DoubleSemicolon:
@@ -1815,11 +1961,13 @@ Parser::consume_bash_array_elements(const Token              *open,
       let const is_arithmetic_shape =
           elements.is_empty() && t->kind() == Token::Kind::LeftParen &&
           t->source_location().position == open->source_location().position + 1;
+
       if (is_arithmetic_shape) {
         throw ErrorWithLocationAndDetails{
             t->source_location(), message.view(),
             "Write `(( name = expression ))` to assign arithmetic"};
       }
+
       throw ErrorWithLocation{t->source_location(), message.view()};
     }
     default: elements.push(t); break;

@@ -76,6 +76,7 @@ fn
 Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let const &args = ec.args();
+
   ASSERT(!args.is_empty());
 
   let should_make_associative           = false;
@@ -102,62 +103,79 @@ Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   for (; i < args.count(); i++) {
     let const arg = args[i].view();
+
     if (arg.length < 1 || (arg[0] != '-' && arg[0] != '+')) {
       break;
     }
+
     if (arg == "--") {
       i++;
       break;
     }
+
     let const is_remove_form = arg[0] == '+';
 
     for (usize c = 1; c < arg.length; c++) {
       switch (arg[c]) {
       case 'A': should_make_associative = true; break;
+
       case 'a': should_make_indexed = true; break;
+
       case 'x':
         if (is_remove_form)
           should_unexport = true;
         else
           should_export = true;
         break;
+
       case 'p': should_print = true; break;
+
       case 'i':
         if (is_remove_form)
           should_unmark_integer_attribute = true;
         else
           should_mark_integer_attribute = true;
         break;
+
       case 'l':
         if (is_remove_form)
           should_unmark_lowercase_attribute = true;
         else
           should_mark_lowercase_attribute = true;
         break;
+
       case 'u':
         if (is_remove_form)
           should_unmark_uppercase_attribute = true;
         else
           should_mark_uppercase_attribute = true;
         break;
+
       case 'f': should_restrict_to_functions = true; break;
+
       case 'F':
         should_restrict_to_functions     = true;
         should_print_function_names_only = true;
         break;
+
       case 'r':
         if (!is_remove_form) should_mark_readonly = true;
         break;
+
       case 'g': should_be_global = true; break;
+
       case 'n':
         if (is_remove_form)
           should_unmark_nameref = true;
         else
           should_mark_nameref = true;
         break;
+
       case 't': has_trace_flag = true; break;
-      default:  {
+
+      default: {
         let invalid = String{cxt.scratch_allocator()};
+
         invalid += arg[0];
         invalid += arg[c];
         report_soft_builtin_error(ec, cxt, ec.arg_location_at(i),
@@ -186,9 +204,11 @@ Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   if (should_restrict_to_functions) {
     i32 status = 0;
+
     if (i >= args.count()) {
       for (let const &name : cxt.function_store().sorted_names()) {
         let line = String{cxt.scratch_allocator()};
+
         if (should_print_function_names_only) {
           line += "declare -f ";
           line.append(name.view());
@@ -198,18 +218,21 @@ Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         {
           line.append(format_bash_function_source(source->view()).view());
         }
+
         line += '\n';
         ec.print_to_stdout(line.view());
       }
 
       return 0;
     }
+
     let const should_set_function_attributes =
         !should_print_function_names_only &&
         (has_trace_flag || should_mark_readonly);
 
     for (; i < args.count(); i++) {
       let const name = args[i].view();
+
       if (should_set_function_attributes) {
         if (!cxt.function_store().find_function(name).has_value()) {
           status = 1;
@@ -228,8 +251,10 @@ Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         status = 1;
         continue;
       }
+
       if (should_print_function_names_only) {
         let line = String{cxt.scratch_allocator(), name};
+
         line += '\n';
         ec.print_to_stdout(line.view());
       } else if (const String *source = cxt.function_store().find_source(name);
@@ -238,6 +263,7 @@ Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         if (!source->is_empty()) {
           let line = String{cxt.scratch_allocator(),
                             format_bash_function_source(source->view()).view()};
+
           line += '\n';
           ec.print_to_stdout(line.view());
         }
@@ -249,6 +275,7 @@ Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   let const do_print_declaration = [&](StringView name) throws -> bool {
     let line = String{cxt.scratch_allocator()};
+
     if (!append_variable_declaration(cxt, name, line)) return false;
 
     ec.print_to_stdout(line.view());
@@ -261,6 +288,7 @@ Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       should_mark_integer_attribute || should_mark_lowercase_attribute ||
       should_mark_uppercase_attribute || should_mark_readonly ||
       should_mark_nameref;
+
   if ((should_print || has_attribute_filter) && i >= args.count() &&
       !ec.has_stripped_array_operands)
   {
@@ -270,19 +298,23 @@ Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       {
         return false;
       }
+
       if (should_mark_integer_attribute && !cxt.is_integer_variable(name)) {
         return false;
       }
+
       if (should_mark_lowercase_attribute &&
           !cxt.variable_store().attributes().is_lowercase(name))
       {
         return false;
       }
+
       if (should_mark_uppercase_attribute &&
           !cxt.variable_store().attributes().is_uppercase(name))
       {
         return false;
       }
+
       if (should_make_indexed &&
           !cxt.variable_store().indexed_arrays().find(name).has_value() &&
           !cxt.is_bash_directory_stack_special(name) &&
@@ -290,12 +322,15 @@ Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       {
         return false;
       }
+
       if (should_make_associative && !cxt.is_associative_array(name)) {
         return false;
       }
+
       if (should_mark_readonly && !cxt.is_readonly(name)) {
         return false;
       }
+
       if (should_mark_nameref &&
           !cxt.variable_store().attributes().is_nameref(name))
       {
@@ -314,8 +349,10 @@ Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         [&](StringView attributed_name) { names.add(attributed_name); });
 
     let collected_names = ArrayList<String>{cxt.scratch_allocator()};
+
     names.for_each(
         [&](StringView name) { collected_names.push_managed(name); });
+
     let const sorted_names =
         steal(collected_names).make_sorted(sort_order::ascending);
 
@@ -332,6 +369,7 @@ Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
     for (; i < args.count(); i++) {
       let const name = args[i].view();
+
       if (!do_print_declaration(name)) {
         report_soft_builtin_error(ec, cxt, ec.arg_location_at(i),
                                   StringView{"'"} + name + "' is not defined");
@@ -354,6 +392,7 @@ Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         equals.has_value() && !name.is_empty() && name[name.count() - 1] == '+'
             ? assignment_update_mode::Append
             : assignment_update_mode::Replace;
+
     if (update_mode == assignment_update_mode::Append)
       name = name.substring_of_length(0, name.count() - 1);
 
@@ -364,6 +403,7 @@ Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         has_subscript ? name.substring_of_length(*bracket + 1,
                                                  name.count() - *bracket - 2)
                       : StringView{};
+
     if (has_subscript) name = name.substring_of_length(0, *bracket);
 
     if (!name_is_valid_identifier(name)) {
@@ -406,6 +446,7 @@ Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       status = 1;
       continue;
     }
+
     if (should_make_indexed && cxt.is_associative_array(name)) {
       report_soft_builtin_error(ec, cxt, ec.arg_location_at(i),
                                 StringView{"Unable to convert '"} + name +
@@ -437,6 +478,7 @@ Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         !should_unmark_uppercase_attribute && !should_unmark_nameref &&
         !ec.has_stripped_array_operands &&
         cxt.scope_store().local_scope_depth() > 0;
+
     if (is_plain_global_assignment &&
         cxt.assign_global_beneath_locals(
             name, value, update_mode == assignment_update_mode::Append))
@@ -446,12 +488,12 @@ Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
     let attribute_name          = name;
     let resolved_attribute_name = Maybe<String>{};
+
     if (!should_mark_nameref && !should_unmark_nameref &&
         cxt.variable_store().attributes().is_nameref(name) &&
         !cxt.is_circular_nameref(name))
     {
-      rarely
-      {
+      rarely {
         resolved_attribute_name = cxt.resolve_nameref_base_for_write(name);
         attribute_name          = resolved_attribute_name->view();
         if ((should_mark_integer_attribute || should_unmark_integer_attribute ||
@@ -469,9 +511,11 @@ Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         }
       }
     }
+
     if (should_mark_integer_attribute) {
       cxt.variable_store().attributes().mark_integer(attribute_name);
     }
+
     if (should_unmark_integer_attribute)
       cxt.variable_store().attributes().unmark_integer(attribute_name);
     if (should_unmark_lowercase_attribute)
@@ -488,6 +532,7 @@ Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
     if (should_mark_nameref && !has_subscript) {
       let target = Maybe<String>{};
+
       if (equals.has_value())
         target = String{cxt.scratch_allocator(), value};
       else if (let const stored =
@@ -505,6 +550,7 @@ Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       {
         status = 1;
       }
+
       continue;
     }
 
@@ -530,10 +576,13 @@ Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     } else if (should_make_associative) {
       LOG(All, "declare making '%.*s' an associative array",
           static_cast<int>(name.length), name.data);
+
       let const was_associative = cxt.is_associative_array(name);
+
       if (equals.has_value()) {
         cxt.set_shell_variable(name, value);
       }
+
       cxt.declare_associative_array(name);
       if (!equals.has_value() && !has_subscript && !was_associative) {
         cxt.variable_store().attributes().mark_declared(name);
@@ -544,6 +593,7 @@ Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
           !cxt.is_bash_argument_array(name))
       {
         let values = ArrayList<String>{heap_allocator()};
+
         if (equals.has_value()) {
           values.push(String{heap_allocator(), value});
         } else if (let const scalar =
@@ -552,7 +602,9 @@ Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         {
           values.push(String{heap_allocator(), scalar->view()});
         }
+
         let const is_valueless = values.is_empty() && !has_subscript;
+
         cxt.set_indexed_array(name, steal(values));
         if (is_valueless) {
           cxt.variable_store().attributes().mark_declared(name);
@@ -561,23 +613,27 @@ Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     } else if (equals.has_value()) {
       if (update_mode == assignment_update_mode::Append) {
         let appended = String{cxt.scratch_allocator()};
+
         if (let const existing = cxt.get_variable_value(name)) {
           appended.append(existing->view());
         }
+
         let integer_name  = name;
         let resolved_name = Maybe<String>{};
+
         if (cxt.variable_store().attributes().is_nameref(name)) {
-          rarely
-          {
+          rarely {
             resolved_name = cxt.resolve_nameref_base_for_write(name);
             integer_name  = resolved_name->view();
           }
         }
+
         if (cxt.is_integer_variable(integer_name)) {
           cxt.append_integer_expression(appended, value);
         } else {
           appended.append(value);
         }
+
         cxt.set_shell_variable(name, appended.view());
       } else {
         cxt.set_shell_variable(name, value);
@@ -594,15 +650,17 @@ Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     {
       LOG(All, "declare exporting '%.*s' to the environment",
           static_cast<int>(name.length), name.data);
+
       let exported_name = name;
       let resolved_name = Maybe<String>{};
+
       if (cxt.variable_store().attributes().is_nameref(name)) {
-        rarely
-        {
+        rarely {
           resolved_name = cxt.resolve_nameref_for_write(name);
           exported_name = resolved_name->view();
         }
       }
+
       cxt.record_environment_change(exported_name);
       cxt.mark_exported(exported_name);
       if (let const stored = cxt.get_variable_value(exported_name)) {
@@ -615,12 +673,10 @@ Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     }
 
     if (should_mark_readonly) {
-      if (cxt.variable_store().attributes().is_nameref(name)) rarely
-        {
-          cxt.variable_store().attributes().mark_readonly(
-              cxt.resolve_nameref_base_for_write(name));
-        }
-      else
+      if (cxt.variable_store().attributes().is_nameref(name)) rarely {
+        cxt.variable_store().attributes().mark_readonly(
+            cxt.resolve_nameref_base_for_write(name));
+      } else
         cxt.variable_store().attributes().mark_readonly(name);
     }
   }

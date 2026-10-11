@@ -44,6 +44,7 @@ append_help_synopsis(String              &out,
                      help_synopsis_layout layout) throws -> void
 {
   let const should_prefix_name = layout == help_synopsis_layout::Summary;
+
   if (should_prefix_name) {
     out.append(name);
     out += ": ";
@@ -87,6 +88,7 @@ Help::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   for (usize i = 1; i < args.count(); i++) {
     let const &name     = args[i];
     let const  resolved = search_builtin(name.view());
+
     if (!resolved.has_value()) {
       report_soft_builtin_error(
           ec, cxt, get_operand_location(ec, operand_locations, i),
@@ -98,16 +100,20 @@ Help::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
     let const description = builtin_help_description(*resolved);
     let const synopsis    = builtin_help_synopsis(*resolved);
+
     if (FLAG_SHORT.is_enabled()) {
       let out = String{cxt.scratch_allocator(), name.view()};
+
       out += " - ";
       out.append(description);
       out.push('\n');
       ec.print_to_stdout(format_cli_help(out.view()));
       continue;
     }
+
     if (FLAG_MANPAGE.is_enabled() && synopsis != nullptr) {
       let out = String{cxt.scratch_allocator()};
+
       out += "NAME\n    ";
       out.append(name.view());
       out += " - ";
@@ -123,8 +129,10 @@ Help::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       ec.print_to_stdout(out);
       continue;
     }
+
     if (FLAG_SUMMARY.is_enabled() && synopsis != nullptr) {
       let out = String{cxt.scratch_allocator()};
+
       append_help_synopsis(out, name.view(), *synopsis,
                            help_synopsis_layout::Summary);
       ec.print_to_stdout(out);
@@ -132,12 +140,15 @@ Help::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     }
 
     let forwarded = ArrayList<String>{heap_allocator()};
+
     forwarded.push(String{heap_allocator(), name.view()});
     forwarded.push(String{"--help"});
+
     let forwarded_locations = ArrayList<SourceLocation>{heap_allocator()};
     let sub                 = ExecContext::make_from_resolved(
         ec.source_location(), ResolvedCommand::from_builtin(*resolved),
         steal(forwarded), steal(forwarded_locations));
+
     execute_builtin(steal(sub), cxt);
   }
 

@@ -110,6 +110,7 @@ bracketed_type_label(StringView path) wontthrow -> StringView
   };
   constexpr StaticStringMap TYPES{ENTRIES};
   let const                 found = TYPES.find(path);
+
   if (found.has_value()) return *found;
 
   constexpr static_string_entry<StringView> KIND_ENTRIES[] = {
@@ -119,8 +120,10 @@ bracketed_type_label(StringView path) wontthrow -> StringView
   };
   constexpr StaticStringMap KINDS{KIND_ENTRIES};
   let const                 colon = path.find_character(':');
+
   if (colon.has_value()) {
     let const kind = KINDS.find(path.substring_of_length(0, *colon));
+
     if (kind.has_value()) return *kind;
   }
 
@@ -143,17 +146,19 @@ struct socket_directory
 };
 
 pure fn
-parse_bracketed_inode(StringView path, StringView prefix) wontthrow
-    -> Maybe<u64>
+parse_bracketed_inode(StringView path, StringView prefix)
+    wontthrow -> Maybe<u64>
 {
   if (!path.starts_with(prefix)) return None;
 
   let const rest = path.substring(prefix.length);
+
   if (rest.length < 3 || rest[0] != '[' || rest[rest.length - 1] != ']') {
     return None;
   }
 
   let const parsed = rest.substring_of_length(1, rest.length - 2).to<u64>();
+
   if (parsed.is_error()) return None;
 
   return parsed.value();
@@ -161,9 +166,10 @@ parse_bracketed_inode(StringView path, StringView prefix) wontthrow
 
 fn
 describe_network_socket(const os::network_socket_entry &socket,
-                        Allocator allocator) throws -> String
+                        Allocator                       allocator) throws -> String
 {
   let endpoint = String{allocator};
+
   if (socket.protocol == os::network_socket_protocol::Unix) {
     endpoint += socket.local_address.view();
     if (socket.peer_identity != 0) {
@@ -196,8 +202,8 @@ describe_network_socket(const os::network_socket_entry &socket,
 }
 
 fn
-load_socket_directory(socket_directory &directory, Allocator allocator) throws
-    -> void
+load_socket_directory(socket_directory &directory,
+                      Allocator         allocator) throws -> void
 {
   directory.did_load = true;
   if (os::has_network_socket_listing()) {
@@ -206,6 +212,7 @@ load_socket_directory(socket_directory &directory, Allocator allocator) throws
 
     for (let const &socket : sockets) {
       let type = StringView{"unix"};
+
       if (socket.protocol != os::network_socket_protocol::Unix) {
         type =
             socket.family == os::network_address_family::IPv6 ? "IPv6" : "IPv4";
@@ -220,6 +227,7 @@ load_socket_directory(socket_directory &directory, Allocator allocator) throws
     let const type = kernel_socket.kind == os::kernel_socket_kind::Netlink
                          ? StringView{"netlink"}
                          : StringView{"packet"};
+
     directory.entries.push(
         socket_description{kernel_socket.identity, type, String{allocator}});
   }
@@ -242,6 +250,7 @@ find_socket_description(socket_directory &directory,
 
   while (low < high) {
     let const middle = low + ((high - low) / 2);
+
     if (directory.entries[middle].inode < inode)
       low = middle + 1;
     else
@@ -266,6 +275,7 @@ device_label(const os::file_status &status, Allocator allocator) throws
                               : status.device_id;
 
   let label = String::from(os::device_major(device_id), allocator);
+
   label += ",";
   label += String::from(os::device_minor(device_id), allocator).view();
 
@@ -273,8 +283,8 @@ device_label(const os::file_status &status, Allocator allocator) throws
 }
 
 fn
-descriptor_label(const os::process_open_file &file, Allocator allocator) throws
-    -> String
+descriptor_label(const os::process_open_file &file,
+                 Allocator                    allocator) throws -> String
 {
   switch (file.use) {
   case os::process_file_use::Cwd:        return String{allocator, "cwd"};
@@ -287,6 +297,7 @@ descriptor_label(const os::process_open_file &file, Allocator allocator) throws
   if (file.descriptor_number < 0) return String{allocator, "unk"};
 
   let label = String::from(static_cast<u64>(file.descriptor_number), allocator);
+
   label += StringView{&file.access, 1};
 
   return label;
@@ -296,6 +307,7 @@ fn
 widen(usize &width, const String &text) wontthrow -> void
 {
   let const cell_count = toiletline::get_display_width(text.view());
+
   if (cell_count > width) width = cell_count;
 }
 
@@ -330,6 +342,7 @@ matches_path_operands(StringView               path,
 
   for (let const &operand : operands) {
     let const wanted = operand.view();
+
     if (path == wanted) return true;
 
     if (path.starts_with(wanted) && wanted.length > 0 &&
@@ -354,8 +367,7 @@ fn
 EvilFiles::execute(const ExecContext               &ec,
                    EvalContext                     &cxt,
                    const ArrayList<String>         &args,
-                   const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+                   const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
@@ -370,9 +382,11 @@ EvilFiles::execute(const ExecContext               &ec,
 
   i64       wanted_pid     = 0;
   let const has_wanted_pid = FLAG_EVILFILES_PID.is_set();
+
   if (has_wanted_pid) {
     let const parsed = utils::parse_integer_in_base(FLAG_EVILFILES_PID.value(),
                                                     nullptr, int_base::decimal);
+
     if (parsed.is_error()) {
       KOSHKIT_REPORT_ERROR_AT(
           FLAG_EVILFILES_PID.value_location(),
@@ -387,11 +401,13 @@ EvilFiles::execute(const ExecContext               &ec,
   }
 
   Maybe<u32> wanted_owner = None;
+
   if (FLAG_EVILFILES_USER.is_set()) {
     wanted_owner = os::username_to_uid(FLAG_EVILFILES_USER.value());
     if (!wanted_owner.has_value()) {
       let const parsed = utils::parse_integer_in_base(
           FLAG_EVILFILES_USER.value(), nullptr, int_base::decimal);
+
       if (parsed.is_error()) {
         KOSHKIT_REPORT_ERROR_AT(
             FLAG_EVILFILES_USER.value_location(),
@@ -407,6 +423,7 @@ EvilFiles::execute(const ExecContext               &ec,
   }
 
   let const processes = os::enumerate_processes();
+
   if (processes.is_empty()) {
     report_soft_koshkit_error(ec, cxt, "the process listing is unavailable",
                               "this platform exposes no process table");
@@ -431,6 +448,7 @@ EvilFiles::execute(const ExecContext               &ec,
         FLAG_EVILFILES_TERSE.is_enabled()
             ? os::process_open_file_detail::PathsOnly
             : os::process_open_file_detail::Basic);
+
     if (files.is_empty()) continue;
 
     if (files.count() == 1 && files[0].is_inaccessible) {
@@ -447,6 +465,7 @@ EvilFiles::execute(const ExecContext               &ec,
         {
           continue;
         }
+
         if (!matches_path_operands(file.path.view(), operands)) continue;
 
         did_match              = true;
@@ -459,6 +478,7 @@ EvilFiles::execute(const ExecContext               &ec,
             String::from(static_cast<u64>(process.pid), allocator).view();
         terse_output += "\n";
       }
+
       continue;
     }
 
@@ -473,6 +493,7 @@ EvilFiles::execute(const ExecContext               &ec,
       {
         continue;
       }
+
       if (!matches_path_operands(files[file_position].path.view(), operands))
         continue;
 
@@ -482,9 +503,11 @@ EvilFiles::execute(const ExecContext               &ec,
 
     if (matching_positions.is_empty()) continue;
 
-    did_match          = true;
+    did_match = true;
+
     let file_statuses  = ArrayList<os::file_status>{allocator};
     let metadata_batch = os::Batch{allocator};
+
     file_statuses.reserve(matching_positions.count());
     metadata_batch.reserve(matching_positions.count());
 
@@ -506,6 +529,7 @@ EvilFiles::execute(const ExecContext               &ec,
       let const  did_stat = metadata_results[position].error_number == 0;
 
       let socket_index = Maybe<usize>{None};
+
       if (let const socket_inode =
               parse_bracketed_inode(file.path.view(), "socket:");
           socket_inode.has_value())
@@ -559,6 +583,7 @@ EvilFiles::execute(const ExecContext               &ec,
   }
 
   let warnings = String{allocator};
+
   if (inaccessible_process_count != 0) {
     warnings += "Skipped ";
     warnings += String::from(inaccessible_process_count, allocator).view();
@@ -581,6 +606,7 @@ EvilFiles::execute(const ExecContext               &ec,
   let const should_color     = koshkit_should_color();
   let       output           = String{allocator};
   usize     line_width_limit = SIZE_MAX;
+
   if (!FLAG_EVILFILES_WIDE.is_enabled()) {
     if (let const dimensions =
             os::get_terminal_dimensions(ec.out_fd.value_or(KOSH_STDOUT));
@@ -589,19 +615,25 @@ EvilFiles::execute(const ExecContext               &ec,
       line_width_limit = dimensions->columns;
     }
   }
+
   let const other_columns_width =
       2 + widths.pid + 2 + widths.user + 2 + widths.descriptor + 2 +
       widths.type + 2 + widths.mode + 2 + widths.state + 2 + widths.device + 2 +
       widths.size + 2 + widths.offset + 2 + widths.node + 2 + widths.endpoint +
       2;
+
   if (line_width_limit != SIZE_MAX) {
     let const fixed_width = other_columns_width + 3;
+
     if (line_width_limit > fixed_width + 4) {
       let const command_limit = line_width_limit - fixed_width;
+
       if (widths.command > command_limit) widths.command = command_limit;
     }
   }
+
   let table = ReportTable{allocator};
+
   table.add_heading("COMMAND");
   table.add_heading("PID", report_table_alignment::Right);
   table.add_heading("USER");
@@ -620,6 +652,7 @@ EvilFiles::execute(const ExecContext               &ec,
 
   for (let const &row : rows) {
     let command = String{allocator, row.command.view()};
+
     if (toiletline::get_display_width(command.view()) > widths.command &&
         widths.command > 3)
     {
@@ -627,11 +660,13 @@ EvilFiles::execute(const ExecContext               &ec,
       let const kept_byte_count =
           toiletline::get_byte_offset_at_or_before_display_cell(
               command.view(), widths.command - 3, actual_cells);
+
       command.truncate(kept_byte_count);
       command += "...";
     }
 
     let name = String{allocator, row.name.view()};
+
     if (line_width_limit != SIZE_MAX &&
         used_width + toiletline::get_display_width(name.view()) >
             line_width_limit)
@@ -641,6 +676,7 @@ EvilFiles::execute(const ExecContext               &ec,
         let const kept_byte_count =
             toiletline::get_byte_offset_at_or_before_display_cell(
                 name.view(), line_width_limit - used_width - 3, actual_cells);
+
         name.truncate(kept_byte_count);
         name += "...";
       } else {
@@ -649,6 +685,7 @@ EvilFiles::execute(const ExecContext               &ec,
     }
 
     let cells = ArrayList<report_table_cell_view>{allocator};
+
     cells.push({command.view(), colors::ansi::BOLD_GREEN});
     cells.push({row.pid.view(), colors::ansi::GREEN});
     cells.push({row.user.view(), colors::ansi::YELLOW});

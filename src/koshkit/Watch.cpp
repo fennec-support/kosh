@@ -58,6 +58,7 @@ fn
 append_one_decimal(String &output, f64 seconds) throws -> void
 {
   let const tenths = static_cast<u64>((seconds * 10.0) + 0.5);
+
   output += String::from(tenths / 10, output.allocator()).view();
   output += ".";
   output += String::from(tenths % 10, output.allocator()).view();
@@ -70,12 +71,14 @@ build_title(StringView command,
             Allocator  allocator) throws -> String
 {
   let left = String{allocator, "Every "};
+
   append_one_decimal(left, interval_seconds);
   left += "s: ";
   left += command;
 
   let       right = String{allocator};
   let const host  = os::get_hostname();
+
   if (host.has_value()) {
     right += host->view();
     right += ": ";
@@ -87,6 +90,7 @@ build_title(StringView command,
 
   let       title        = String{allocator};
   let const total_length = left.length() + right.length();
+
   if (total_length + 1 > column_count) {
     title += left.view();
     title += "\n";
@@ -106,8 +110,9 @@ build_title(StringView command,
 }
 
 fn
-append_truncated_lines(String &output, StringView body, u32 column_count) throws
-    -> void
+append_truncated_lines(String    &output,
+                       StringView body,
+                       u32        column_count) throws -> void
 {
   usize position = 0;
 
@@ -121,6 +126,7 @@ append_truncated_lines(String &output, StringView body, u32 column_count) throws
     let const line_length = line_end - position;
     let const kept_length =
         line_length > column_count ? column_count : line_length;
+
     output += body.substring_of_length(position, kept_length);
     output += "\n";
     position = line_end < body.length ? line_end + 1 : body.length;
@@ -133,8 +139,7 @@ fn
 Watch::execute(const ExecContext               &ec,
                EvalContext                     &cxt,
                const ArrayList<String>         &args,
-               const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+               const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
@@ -144,6 +149,7 @@ Watch::execute(const ExecContext               &ec,
 
   let const allocator        = cxt.scratch_allocator();
   f64       interval_seconds = DEFAULT_INTERVAL_SECONDS;
+
   if (FLAG_WATCH_INTERVAL.is_set()) {
     interval_seconds = parse_koshkit_duration_seconds(
         FLAG_WATCH_INTERVAL.value(), FLAG_WATCH_INTERVAL.value_location(),
@@ -166,22 +172,22 @@ Watch::execute(const ExecContext               &ec,
   let const should_color      = koshkit_should_color();
 
   let const saved_terminal_exec = cxt.execution_store().terminal_exec_allowed();
+
   cxt.execution_store().terminal_exec_allowed() = false;
-  defer
-  {
+  defer {
     cxt.execution_store().terminal_exec_allowed() = saved_terminal_exec;
   };
 
   bool is_alternate_screen_active = false;
+
   if (is_terminal) is_alternate_screen_active = enter_alternate_screen(ec);
-  defer
-  {
+  defer {
     if (is_alternate_screen_active) leave_alternate_screen(ec);
   };
 
-  loop
-  {
+  loop {
     u32 column_count = FALLBACK_COLUMN_COUNT;
+
     if (let const dimensions = os::get_terminal_dimensions())
       column_count = dimensions->columns;
 
@@ -190,10 +196,12 @@ Watch::execute(const ExecContext               &ec,
     let const command_status = cxt.execution_store().last_exit_status();
 
     let screen = String{allocator};
+
     if (is_terminal) screen += "\x1b[H\x1b[2J";
     if (!FLAG_WATCH_NO_TITLE.is_enabled()) {
       let const title = build_title(command.view(), interval_seconds,
                                     column_count, allocator);
+
       append_report_text(screen, title.view(), colors::ansi::BOLD_CYAN,
                          should_color);
       screen += "\n";

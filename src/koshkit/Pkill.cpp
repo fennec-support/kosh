@@ -35,7 +35,9 @@ resolve_koshkit_signal(StringView     spelled,
                        Allocator      allocator) throws -> i32
 {
   if (spelled.is_empty()) return SIGTERM;
+
   let const parsed = spelled.to<i64>();
+
   if (!parsed.is_error()) {
     if (parsed.value() < INT32_MIN || parsed.value() > INT32_MAX) {
       throw ErrorWithLocationAndDetails{
@@ -45,11 +47,16 @@ resolve_koshkit_signal(StringView     spelled,
 
     return static_cast<i32>(parsed.value());
   }
+
   let uppercased = String{allocator, spelled};
+
   uppercased.uppercase_ascii();
+
   let const named = os::signal_number_from_name(uppercased.view());
+
   if (!named.has_value()) {
     let const unknown_signal = String{allocator, spelled};
+
     throw ErrorWithLocationAndDetails{
         location, "unknown signal '" + unknown_signal + "'",
         "Use a signal name such as TERM or a number such as 15"};
@@ -62,8 +69,7 @@ fn
 Pkill::execute(const ExecContext               &ec,
                EvalContext                     &cxt,
                const ArrayList<String>         &args,
-               const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+               const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
@@ -82,6 +88,7 @@ Pkill::execute(const ExecContext               &ec,
   }
 
   let const pattern = operands[0].view();
+
   if (pattern.is_empty()) {
     KOSHKIT_REPORT_ERROR_AT(operand_locations[0],
                             "requires a non-empty pattern",
@@ -106,6 +113,7 @@ Pkill::execute(const ExecContext               &ec,
         did_signal_any = true;
       } else {
         let const reason = os::last_system_error_message();
+
         report_soft_koshkit_util_error(
             ec, cxt, args[0].view(),
             "killing pid " +

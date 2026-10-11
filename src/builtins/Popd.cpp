@@ -44,6 +44,7 @@ Popd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   if (FLAG_HELP.is_enabled()) SHOW_BUILTIN_HELP_AND_RETURN(ec);
 
   let &stack = cxt.variable_store().directory_stack();
+
   if (stack.is_empty()) {
     throw ErrorWithLocationAndDetails{
         ec.source_location(), "popd found the directory stack empty",
@@ -53,6 +54,7 @@ Popd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let const do_pop_top = [&]() throws -> i32 {
     let const target = String{cxt.scratch_allocator(), stack.back().view()};
     let const status = run_cd_to_directory(cxt, ec, target.view());
+
     if (status != 0) return status;
     stack.pop_back();
 
@@ -81,6 +83,7 @@ Popd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     } else {
       stack.remove(stack.count() - index);
     }
+
     print_directory_stack(cxt, ec, false, false, false);
 
     return 0;

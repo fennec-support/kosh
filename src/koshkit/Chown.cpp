@@ -55,12 +55,12 @@ fn
 Chown::execute(const ExecContext               &ec,
                EvalContext                     &cxt,
                const ArrayList<String>         &args,
-               const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+               const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (operands.count() < 2) return report_usage_error(ec, cxt, args[0].view());
+
   let const specification = operands[0].view();
   let const colon         = specification.find_character(':');
   let const owner_text    = colon.has_value()
@@ -68,6 +68,7 @@ Chown::execute(const ExecContext               &ec,
                                 : specification;
   let const group_text =
       colon.has_value() ? specification.substring(*colon + 1) : StringView{};
+
   if (owner_text.is_empty() && !colon.has_value()) {
     KOSHKIT_REPORT_ERROR_AT(operand_locations[0],
                             "invalid owner '" + operands[0] + "'",
@@ -75,6 +76,7 @@ Chown::execute(const ExecContext               &ec,
 
     return 1;
   }
+
   if (colon.has_value() && group_text.is_empty()) {
     KOSHKIT_REPORT_ERROR_AT(operand_locations[0],
                             "invalid specification '" + operands[0] + "'",
@@ -85,8 +87,10 @@ Chown::execute(const ExecContext               &ec,
 
   i64 owner_id = -1;
   i64 group_id = -1;
+
   if (!owner_text.is_empty()) {
     let const resolved = utils::resolve_user_id(owner_text);
+
     if (!resolved.has_value()) {
       KOSHKIT_REPORT_ERROR_AT(
           operand_locations[0],
@@ -95,10 +99,13 @@ Chown::execute(const ExecContext               &ec,
 
       return 1;
     }
+
     owner_id = *resolved;
   }
+
   if (!group_text.is_empty()) {
     let const resolved = utils::resolve_group_id(group_text);
+
     if (!resolved.has_value()) {
       KOSHKIT_REPORT_ERROR_AT(
           operand_locations[0],
@@ -107,6 +114,7 @@ Chown::execute(const ExecContext               &ec,
 
       return 1;
     }
+
     group_id = *resolved;
   }
 

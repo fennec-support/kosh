@@ -35,6 +35,7 @@ move_directory_across_devices(const ExecContext &ec,
   let const target_path = Path{target, allocator};
   let const temporary_directory =
       os::make_temp_directory(target_path.parent_or_current(), ".kosh_mv");
+
   if (!temporary_directory.has_value())
     throw Error{
         "unable to create a temporary directory beside '" +
@@ -43,8 +44,8 @@ move_directory_across_devices(const ExecContext &ec,
     };
 
   bool was_published = false;
-  defer
-  {
+
+  defer {
     if (!was_published)
       unused(remove_path(temporary_directory->view(), allocator,
                          removal_mode::Recursive));
@@ -86,6 +87,7 @@ move_across_devices(const ExecContext &ec,
 {
   let const source_path             = Path{source, allocator};
   let const is_source_symbolic_link = source_path.is_symbolic_link();
+
   if (!is_source_symbolic_link && source_path.is_directory()) {
     move_directory_across_devices(ec, cxt, utility_name, source, target,
                                   allocator);
@@ -96,16 +98,20 @@ move_across_devices(const ExecContext &ec,
   let const target_path    = Path{target, allocator};
   let       temporary_path = os::write_to_named_temp_file(target_path.parent(),
                                                           ".kosh_mv", StringView{});
+
   if (!temporary_path.has_value())
     throw Error{
         "unable to create a temporary file beside '" +
         String{allocator, target}
         + "': " + os::last_system_error_message()
     };
-  defer { unused(os::remove_file(temporary_path->text().view())); };
+  defer {
+    unused(os::remove_file(temporary_path->text().view()));
+  };
 
   if (is_source_symbolic_link) {
     let const link_target = os::read_symlink(source, allocator);
+
     if (!link_target.has_value())
       throw Error{
           "unable to read the symlink '" + String{allocator, source}
@@ -127,6 +133,7 @@ move_across_devices(const ExecContext &ec,
                        copy_force_mode::Normal, allocator);
 
     os::file_status source_status{};
+
     if (os::stat_path(source, source_status) &&
         !os::set_file_mode(temporary_path->text().view(), source_status.mode))
     {
@@ -159,7 +166,8 @@ fn
 Mv::execute(const ExecContext               &ec,
             EvalContext                     &cxt,
             const ArrayList<String>         &args,
-            const ArrayList<SourceLocation> &arg_locations) const throws -> i32
+            const ArrayList<SourceLocation> &arg_locations) const throws
+    -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
@@ -188,8 +196,10 @@ Mv::execute(const ExecContext               &ec,
   for (usize i = 0; i + 1 < operands.count(); i++) {
     let const source = operands[i].view();
     let       target = String{cxt.scratch_allocator(), destination};
+
     if (is_destination_directory) {
       let target_path = Path{destination, cxt.scratch_allocator()};
+
       target_path.append(Path{source, cxt.scratch_allocator()}.filename());
       target = target_path.text();
     }
@@ -215,6 +225,7 @@ Mv::execute(const ExecContext               &ec,
     try {
       if (!os::rename_path(source, target.view())) {
         let const rename_error_number = errno;
+
         if (rename_error_number != EXDEV ||
             !move_across_devices(ec, cxt, args[0].view(), source, target.view(),
                                  cxt.scratch_allocator()))
@@ -234,6 +245,7 @@ Mv::execute(const ExecContext               &ec,
       status = 1;
       continue;
     }
+
     if (FLAG_MV_VERBOSE.is_enabled())
       output += "renamed '" + String{cxt.scratch_allocator(), source} +
                 "' -> '" + target + "'\n";

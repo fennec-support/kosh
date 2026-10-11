@@ -73,9 +73,9 @@ parse_uniq_count(StringView text) wontthrow -> Maybe<usize>
 }
 
 static fn
-get_uniq_key(StringView line,
-             usize      skipped_fields,
-             usize      skipped_chars) wontthrow -> StringView
+get_uniq_key(StringView line, usize skipped_fields, usize skipped_chars)
+    wontthrow
+    -> StringView
 {
   usize position = 0;
 
@@ -105,48 +105,54 @@ fn
 Uniq::execute(const ExecContext               &ec,
               EvalContext                     &cxt,
               const ArrayList<String>         &args,
-              const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+              const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   let const source = operands.is_empty() ? StringView{"-"} : operands[0].view();
   let const input  = open_named_or_stdin(ec, source);
+
   if (!input.has_value())
     throw Error{path_error_message("read", source, cxt.scratch_allocator())};
-  defer
-  {
+  defer {
     if (input->mode == input_descriptor_mode::Owned)
       os::close_fd(input->descriptor);
   };
 
   usize skipped_fields = 0;
+
   if (FLAG_UNIQ_FIELDS.is_set()) {
     let const parsed = parse_uniq_count(FLAG_UNIQ_FIELDS.value());
+
     if (!parsed.has_value()) {
       KOSHKIT_REPORT_ERROR_AT(FLAG_UNIQ_FIELDS.value_location(),
                               "invalid number of fields to skip");
 
       return 1;
     }
+
     skipped_fields = *parsed;
   }
 
   usize skipped_chars = 0;
+
   if (FLAG_UNIQ_CHARS.is_set()) {
     let const parsed = parse_uniq_count(FLAG_UNIQ_CHARS.value());
+
     if (!parsed.has_value()) {
       KOSHKIT_REPORT_ERROR_AT(FLAG_UNIQ_CHARS.value_location(),
                               "invalid number of characters to skip");
 
       return 1;
     }
+
     skipped_chars = *parsed;
   }
 
   if (operands.count() > 2) return report_usage_error(ec, cxt, args[0].view());
 
   let output_descriptor = Maybe<os::descriptor>{};
+
   if (operands.count() == 2) {
     output_descriptor = os::open_file_descriptor(operands[1].view(),
                                                  os::file_open_mode::Truncate);
@@ -158,8 +164,8 @@ Uniq::execute(const ExecContext               &ec,
       return 1;
     }
   }
-  defer
-  {
+
+  defer {
     if (output_descriptor.has_value()) os::close_fd(*output_descriptor);
   };
 
@@ -210,8 +216,7 @@ Uniq::execute(const ExecContext               &ec,
   let reader =
       utils::BufferedLineReader{input->descriptor, cxt.scratch_allocator()};
 
-  loop
-  {
+  loop {
     let const result = reader.next();
     if (result == utils::BufferedLineReader::Result::End) break;
     if (result == utils::BufferedLineReader::Result::Error) {
@@ -223,13 +228,16 @@ Uniq::execute(const ExecContext               &ec,
 
       return 1;
     }
+
     let const line = reader.get_line();
+
     if (has_previous) {
       let const is_same =
           !has_skip ? line == previous.view()
                     : get_uniq_key(line, skipped_fields, skipped_chars) ==
                           get_uniq_key(previous.view(), skipped_fields,
                                        skipped_chars);
+
       if (is_same) {
         run_length++;
         continue;

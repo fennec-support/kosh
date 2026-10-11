@@ -79,6 +79,7 @@ static pure fn
 filename_offset(StringView text) wontthrow -> usize
 {
   let separator = text.find_last_character('/');
+
   if (os::IS_BACKSLASH_A_SEPARATOR) {
     if (let const backslash = text.find_last_character('\\');
         backslash.has_value() &&
@@ -108,6 +109,7 @@ Path::invocation_filename(StringView path, bool should_strip_marker) wontthrow
     -> StringView
 {
   let name = filename(path);
+
   if (should_strip_marker && !name.is_empty() && name[0] == '-') {
     return name.substring(1);
   }
@@ -119,6 +121,7 @@ fn
 Path::extension() const wontthrow -> StringView
 {
   let const name = filename();
+
   if (name == StringView{"."} || name == StringView{".."}) {
     return StringView{name.data + name.length, 0};
   }
@@ -133,6 +136,7 @@ fn
 Path::parent() const throws -> Path
 {
   let const end = filename_offset(m_text.view());
+
   if (end == 0) return Path{{}, allocator()};
   if (end == 1) return Path{m_text.substring_of_length(0, 1), allocator()};
 
@@ -143,6 +147,7 @@ fn
 Path::parent_or_current() const throws -> Path
 {
   let directory = parent();
+
   if (directory.text().is_empty()) return Path{".", allocator()};
 
   return directory;
@@ -157,6 +162,7 @@ append_path_component(String &text, StringView component) throws -> void
   {
     text.push(os::DIRECTORY_SEPARATOR);
   }
+
   text.append(component);
 }
 
@@ -207,12 +213,15 @@ Path::with_extension(StringView new_extension) const throws -> Path
 
   ASSERT(current_extension.length <= m_text.count(),
          "extension is a suffix of the path text");
+
   let const prefix_length = m_text.count() - current_extension.length;
 
   let result = Path{m_text.substring_of_length(0, prefix_length), allocator()};
+
   if (new_extension.length > 0 && new_extension.data[0] != '.') {
     result.m_text.push('.');
   }
+
   result.m_text.append(new_extension);
 
   return result;
@@ -231,6 +240,7 @@ Path::normalized() const throws -> Path
 
   while (i < m_text.count()) {
     let const component = next_component(i).text;
+
     if (component.is_empty()) break;
     if (component == StringView{"."}) continue;
     if (component == StringView{".."}) {
@@ -239,12 +249,15 @@ Path::normalized() const throws -> Path
       } else if (!is_absolute_path) {
         components.push(component);
       }
+
       continue;
     }
+
     components.push(component);
   }
 
   let normalized_text = String{allocator()};
+
   normalized_text.append(m_text.substring_of_length(0, root_length));
   if (!normalized_text.is_empty() && !components.is_empty() &&
       !os::is_directory_separator(normalized_text.back()))
@@ -286,26 +299,31 @@ Path::first_unavailable_component() const throws
         Path{m_text.substring_of_length(0, component.end), allocator()};
     let is_available = false;
     let is_directory = false;
+
     if (has_dot_component) {
-      let status   = os::file_status{};
+      let status = os::file_status{};
+
       is_available = os::stat_path_following(prefix.view(), status);
       is_directory = is_available && os::file_type_letter(status.mode) == 'd';
     } else {
       is_available = prefix.exists();
       is_directory = is_available && prefix.is_directory();
     }
+
     if (!is_available || !is_directory) {
       usize remaining_component_count = 0;
       usize remaining_position        = component.end;
 
       while (remaining_position < m_text.count()) {
         let const remaining_component = next_component(remaining_position);
+
         if (remaining_component.text.is_empty()) break;
         remaining_component_count++;
       }
 
       let const component_count =
           component_index + remaining_component_count + 1;
+
       if (!is_available)
         return unavailable_path_component{component.start, component.end,
                                           component_index, component_count,
@@ -314,6 +332,7 @@ Path::first_unavailable_component() const throws
       return unavailable_path_component{component.start, component.end,
                                         component_index, component_count, true};
     }
+
     component_index++;
   }
 
@@ -324,12 +343,14 @@ fn
 Path::to_absolute_without_normalizing() const throws -> Path
 {
   let result = Path{{}, allocator()};
+
   if (is_absolute()) {
     result = clone();
   } else if (let native = os::resolve_drive_relative_path(m_text.view())) {
     result = native.take();
   } else {
-    result       = current_directory();
+    result = current_directory();
+
     let relative = m_text.view();
 
     while (relative.length >= 2 && relative[0] == '.' &&
@@ -340,6 +361,7 @@ Path::to_absolute_without_normalizing() const throws -> Path
 
     if (!relative.is_empty()) result.append(relative);
   }
+
   result.m_text.move_to_allocator(allocator());
 
   let const root_length = os::path_root_length(result.m_text.view());
@@ -543,6 +565,7 @@ Path::read_entire_file() const throws -> Maybe<String>
 
   let const file =
       os::open_file_descriptor(text().view(), os::file_open_mode::Read);
+
   if (!file) return None;
   defer { os::close_fd(*file); };
 
@@ -565,13 +588,15 @@ Path::canonicalize(StringView path) throws -> Maybe<Path>
       path.length > 0 && path.data[path.length - 1] == '.';
   let status       = os::file_status{};
   let was_resolved = os::stat_path_following(candidate.view(), status);
+
   if (candidate.extension().is_empty() && !has_trailing_dot) {
     usize suffix_index = 0;
 
     while (!was_resolved && suffix_index < os::PROGRAM_SUFFIXES.count()) {
       let const &suffix = os::PROGRAM_SUFFIXES[suffix_index++];
-      candidate         = candidate.with_extension(suffix.text);
-      was_resolved      = os::stat_path_following(candidate.view(), status);
+
+      candidate    = candidate.with_extension(suffix.text);
+      was_resolved = os::stat_path_following(candidate.view(), status);
     }
   }
 
@@ -587,9 +612,12 @@ Path::detect_mimic_shell() const throws -> Maybe<mimic_mood>
 
   let const file =
       os::open_file_descriptor(text().view(), os::file_open_mode::Read);
+
   if (!file) return None;
+
   char      buffer[256];
   let const read_count = os::read_fd(*file, buffer, sizeof(buffer));
+
   os::close_fd(*file);
   if (!read_count || *read_count < 3) {
     return None;
