@@ -562,6 +562,7 @@ y y y y y
 A=1
 status=1
 FOO=bar
+empty-environment-status=0
 --- seq into head ---
 1
 2
@@ -716,6 +717,13 @@ uppercase-si-kilo=1
 status=1
 --- stat prints times before 1970 ---
 -315619200
+--- paste and expand stream an endless input ---
+y	y
+y	y
+a       b
+--- expand and unexpand count a carriage return as a column ---
+abR     c
+abRT   c
 --- comm reports unsorted input ---
 	a
 		b

@@ -3044,7 +3044,10 @@ printed. The
 .B \-i
 option starts with an empty environment, and each
 .B \-u
-option removes one variable.
+option removes one variable. The command receives exactly that environment
+and is found through its
+.BR PATH ,
+or through /usr/bin:/bin when it has none.
 .TP
 .B xargs
 Arguments read from standard input are appended to a command. The

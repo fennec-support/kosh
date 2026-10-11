@@ -280,6 +280,7 @@ echo "--- env clears and removes variables ---"
 "$BIN" -c 'koshkit env -i A=1 koshkit env | koshkit grep A=1'
 "$BIN" -c 'export FOO=bar; koshkit env -u FOO koshkit env | koshkit grep FOO; printf "status=%s\n" "$?"'
 "$BIN" -c 'export FOO=bar; koshkit env -u FOO true; printf "FOO=%s\n" "$FOO"'
+"$BIN" -c 'koshkit env -i env; printf "empty-environment-status=%s\n" "$?"'
 echo "--- seq into head ---"
 "$BIN" -c 'koshkit seq 5 | koshkit head -n 2'
 echo "--- head batches regular prefix reads ---"
@@ -408,6 +409,12 @@ echo "--- chmod accepts leading zeros up to 7777 ---"
 "$BIN" -c 'koshkit chmod 017777 chmod-zeros.txt 2>/dev/null; printf "status=%s\n" "$?"'
 echo "--- stat prints times before 1970 ---"
 TZ=UTC0 "$BIN" -c 'koshkit touch -t 196001010000 old-stamp && koshkit stat -c %Y old-stamp'
+echo "--- paste and expand stream an endless input ---"
+"$BIN" -c 'koshkit yes | koshkit paste - - | koshkit head -n 2'
+"$BIN" -c 'koshkit yes "$(printf "a\tb")" | koshkit expand | koshkit head -n 1'
+echo "--- expand and unexpand count a carriage return as a column ---"
+printf 'ab\r\tc\n' | "$BIN" -c 'koshkit expand' | tr '\r' R
+printf 'ab\r        c\n' | "$BIN" -c 'koshkit unexpand -a' | tr '\r\t' RT
 echo "--- comm reports unsorted input ---"
 printf 'b\na\n' > comm-unsorted-1.txt
 printf 'a\nb\n' > comm-unsorted-2.txt

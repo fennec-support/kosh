@@ -47,6 +47,8 @@ struct program_name_comparator
   }
 };
 
+inline constexpr StringView DEFAULT_COMMAND_SEARCH_PATH{"/usr/bin:/bin"};
+
 class ProgramResolver
 {
 public:

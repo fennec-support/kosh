@@ -23,7 +23,7 @@ namespace koshka::koshkit {
 
 static pure fn is_expand_control(char byte) wontthrow -> bool
 {
-  return byte == '\t' || byte == '\n' || byte == '\r' || byte == '\b';
+  return byte == '\t' || byte == '\n' || byte == '\b';
 }
 
 fn Expand::execute(const ExecContext &ec, EvalContext &cxt,
@@ -51,7 +51,7 @@ fn Expand::execute(const ExecContext &ec, EvalContext &cxt,
   let output = String{cxt.scratch_allocator()};
   i32 status = 0;
 
-  let const do_append_source = [&](StringView text) throws -> void {
+  let const do_append_line = [&](StringView text) throws -> void {
     usize column = 0;
     usize position = 0;
 
@@ -72,7 +72,6 @@ fn Expand::execute(const ExecContext &ec, EvalContext &cxt,
         continue;
 
       case '\n':
-      case '\r':
         output += byte;
         column = 0;
         position++;
@@ -98,15 +97,24 @@ fn Expand::execute(const ExecContext &ec, EvalContext &cxt,
     }
   };
 
-  let const visit = visit_ordered_sources(
-      ec, sources, cxt.scratch_allocator(),
-      [&](usize source_index, const Maybe<String> &content) throws {
-        if (content.has_value()) return do_append_source(content->view());
+  static constexpr usize OUTPUT_FLUSH_LENGTH = 64 * 1024;
+  let do_visit_line = [&](StringView line, bool is_terminated) throws -> void {
+    do_append_line(line);
+    if (is_terminated) output += '\n';
+    if (output.length() >= OUTPUT_FLUSH_LENGTH) {
+      ec.print_to_stdout(output);
+      output.clear();
+    }
+  };
 
-        KOSHKIT_REPORT_PATH_ERROR("read", sources[source_index]);
-        status = 1;
-      });
-  if (visit == source_visit_result::Interrupted) return 130;
+  for (let const source : sources) {
+    let const outcome = visit_source_lines(ec, source, do_visit_line);
+    if (outcome == source_line_outcome::Interrupted) return 130;
+    if (outcome == source_line_outcome::Failed) {
+      KOSHKIT_REPORT_PATH_ERROR("read", source);
+      status = 1;
+    }
+  }
 
   ec.print_to_stdout(output);
   return status;

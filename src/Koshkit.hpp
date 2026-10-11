@@ -620,6 +620,31 @@ struct input_descriptor
 
 fn open_named_or_stdin(const ExecContext &ec, StringView path) wontthrow
     -> Maybe<input_descriptor>;
+
+enum class source_line_outcome : u8
+{
+  Complete,
+  Failed,
+  Interrupted,
+};
+
+using source_line_visitor = void (*)(opaque *visitor, StringView line,
+                                     bool is_terminated);
+
+fn visit_source_lines_with(const ExecContext &ec, StringView source,
+                           opaque *visitor,
+                           source_line_visitor do_visit_line) throws
+    -> source_line_outcome;
+
+template <class Visit>
+fn visit_source_lines(const ExecContext &ec, StringView source,
+                      Visit &do_visit_line) throws -> source_line_outcome
+{
+  return visit_source_lines_with(
+      ec, source, &do_visit_line,
+      [](opaque *visitor, StringView line, bool is_terminated)
+          throws { (*static_cast<Visit *>(visitor))(line, is_terminated); });
+}
 fn file_crc32c(const ExecContext &ec, StringView path,
                Allocator allocator) throws -> Maybe<String>;
 

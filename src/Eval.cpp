@@ -481,6 +481,8 @@ fn EvalContext::materialize_kosh_identity() const throws -> Maybe<String>
 
 fn EvalContext::prepare_child_environment() const throws -> void
 {
+  if (execution_store().is_child_environment_fixed()) return;
+
   unused(materialize_kosh_identity());
   if (!is_exported(KOSHCONF_VARIABLE_NAME)) return;
 

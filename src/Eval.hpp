@@ -1076,6 +1076,14 @@ public:
   {
     return m_is_prompt_command_running;
   }
+  pure fn is_child_environment_fixed() const wontthrow -> bool
+  {
+    return m_is_child_environment_fixed;
+  }
+  fn set_child_environment_fixed(bool is_fixed) wontthrow -> void
+  {
+    m_is_child_environment_fixed = is_fixed;
+  }
   fn pending_subshell_end_position() wontthrow -> u32 &
   {
     return m_pending_subshell_end_position;
@@ -1140,6 +1148,7 @@ private:
   bool m_is_completion_function_running{false};
   bool m_should_mark_completion_directories{false};
   bool m_is_prompt_command_running{false};
+  bool m_is_child_environment_fixed{false};
   bool m_shell_is_interactive{false};
 };
 

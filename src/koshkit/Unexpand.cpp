@@ -66,7 +66,7 @@ fn Unexpand::execute(
   let output = String{cxt.scratch_allocator()};
   i32 status = 0;
 
-  let const do_append_source = [&](StringView content) throws -> void {
+  let const do_append_line = [&](StringView content) throws -> void {
     usize column = 0;
     usize blank_start_column = 0;
     bool has_pending_blanks = false;
@@ -98,30 +98,35 @@ fn Unexpand::execute(
 
       do_flush_blanks();
       output += byte;
-      if (byte == '\n' || byte == '\r') {
-        column = 0;
-        has_nonblank = false;
-      } else if (byte == '\b') {
+      if (byte == '\b') {
         if (column > 0) column--;
-        has_nonblank = true;
       } else {
         column++;
-        has_nonblank = true;
       }
+      has_nonblank = true;
     }
 
     do_flush_blanks();
   };
 
-  let const visit = visit_ordered_sources(
-      ec, sources, cxt.scratch_allocator(),
-      [&](usize source_index, const Maybe<String> &content) throws {
-        if (content.has_value()) return do_append_source(content->view());
+  static constexpr usize OUTPUT_FLUSH_LENGTH = 64 * 1024;
+  let do_visit_line = [&](StringView line, bool is_terminated) throws -> void {
+    do_append_line(line);
+    if (is_terminated) output += '\n';
+    if (output.length() >= OUTPUT_FLUSH_LENGTH) {
+      ec.print_to_stdout(output);
+      output.clear();
+    }
+  };
 
-        KOSHKIT_REPORT_PATH_ERROR("read", sources[source_index]);
-        status = 1;
-      });
-  if (visit == source_visit_result::Interrupted) return 130;
+  for (let const source : sources) {
+    let const outcome = visit_source_lines(ec, source, do_visit_line);
+    if (outcome == source_line_outcome::Interrupted) return 130;
+    if (outcome == source_line_outcome::Failed) {
+      KOSHKIT_REPORT_PATH_ERROR("read", source);
+      status = 1;
+    }
+  }
 
   ec.print_to_stdout(output);
   return status;

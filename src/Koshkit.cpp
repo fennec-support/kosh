@@ -890,6 +890,34 @@ fn open_named_or_stdin(const ExecContext &ec, StringView path) wontthrow
   return input_descriptor{*descriptor, input_descriptor_mode::Owned};
 }
 
+fn visit_source_lines_with(const ExecContext &ec, StringView source,
+                           opaque *visitor,
+                           source_line_visitor do_visit_line) throws
+    -> source_line_outcome
+{
+  let const input = open_named_or_stdin(ec, source);
+  if (!input.has_value()) return source_line_outcome::Failed;
+  defer
+  {
+    if (input->mode == input_descriptor_mode::Owned)
+      unused(os::close_fd(input->descriptor));
+  };
+
+  let reader = utils::BufferedLineReader{input->descriptor};
+  loop
+  {
+    let const result = reader.next();
+    if (result == utils::BufferedLineReader::Result::End)
+      return source_line_outcome::Complete;
+    if (result == utils::BufferedLineReader::Result::Error) {
+      return os::INTERRUPT_REQUESTED ? source_line_outcome::Interrupted
+                                     : source_line_outcome::Failed;
+    }
+
+    do_visit_line(visitor, reader.get_line(), reader.was_line_terminated());
+  }
+}
+
 fn file_crc32c(const ExecContext &ec, StringView path,
                Allocator allocator) throws -> Maybe<String>
 {

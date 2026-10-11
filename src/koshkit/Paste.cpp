@@ -72,75 +72,114 @@ fn Paste::execute(const ExecContext &ec, EvalContext &cxt,
       parse_paste_delimiters(delimiter_text, cxt.scratch_allocator());
   let const sources =
       source_list_from_operands(operands, cxt.scratch_allocator());
-  let contents = ArrayList<String>{cxt.scratch_allocator()};
-  contents.reserve(sources.count());
-  let lines = ArrayList<ArrayList<StringView>>{cxt.scratch_allocator()};
-  lines.reserve(sources.count());
   i32 status = 0;
 
-  let source_results =
-      read_named_or_stdin_batch(ec, sources, cxt.scratch_allocator());
-  if (os::INTERRUPT_REQUESTED) return 130;
+  struct paste_column
+  {
+    utils::BufferedLineReader *reader;
+    bool is_finished;
+  };
 
-  for (usize source_index = 0; source_index < sources.count(); source_index++) {
-    let &source_result = source_results[source_index];
-    if (!source_result.content.has_value()) {
-      os::set_last_system_error(source_result.error_number);
-      KOSHKIT_REPORT_PATH_ERROR("read", sources[source_index]);
-      status = 1;
-      contents.push(String{cxt.scratch_allocator()});
-      lines.push(ArrayList<StringView>{cxt.scratch_allocator()});
+  let &scratch_arena = cxt.expansion_store().scratch_arena();
+  let owned_inputs = ArrayList<os::descriptor>{cxt.scratch_allocator()};
+  defer
+  {
+    for (let const descriptor : owned_inputs)
+      os::close_fd(descriptor);
+  };
+  let columns = ArrayList<paste_column>{cxt.scratch_allocator()};
+  columns.reserve(sources.count());
+  utils::BufferedLineReader *stdin_reader = nullptr;
+  for (let const source : sources) {
+    if (source == "-" && stdin_reader != nullptr) {
+      columns.push(paste_column{stdin_reader, false});
       continue;
     }
 
-    contents.push(source_result.content.take());
-    let source_lines =
-        utils::split_lines(contents.back().view(), cxt.scratch_allocator(),
-                           utils::line_terminator_mode::Preserve);
-    for (let &line : source_lines)
-      line = line.without_trailing_newline();
-    lines.push(steal(source_lines));
+    let const input = open_named_or_stdin(ec, source);
+    if (!input.has_value()) {
+      KOSHKIT_REPORT_PATH_ERROR("read", source);
+      status = 1;
+      columns.push(paste_column{nullptr, true});
+      continue;
+    }
+
+    if (input->mode == input_descriptor_mode::Owned)
+      owned_inputs.push(input->descriptor);
+    let *const reader =
+        scratch_arena.create<utils::BufferedLineReader>(input->descriptor);
+    if (source == "-") stdin_reader = reader;
+    columns.push(paste_column{reader, false});
   }
 
-  let stdin_indices = ArrayList<usize>{cxt.scratch_allocator()};
-  for (usize source_index = 0; source_index < sources.count(); source_index++)
-    if (sources[source_index] == "-") stdin_indices.push(source_index);
-  if (!FLAG_PASTE_SERIAL.is_enabled() && stdin_indices.count() > 1) {
-    let const stdin_lines = steal(lines[stdin_indices[0]]);
-    for (let const index : stdin_indices)
-      lines[index] = ArrayList<StringView>{cxt.scratch_allocator()};
-    for (usize line_index = 0; line_index < stdin_lines.count(); line_index++)
-      lines[stdin_indices[line_index % stdin_indices.count()]].push(
-          stdin_lines[line_index]);
-  }
-
+  static constexpr usize OUTPUT_FLUSH_LENGTH = 64 * 1024;
   let output = String{cxt.scratch_allocator()};
+  let const do_read_line = [&](usize column_index) throws -> Maybe<StringView> {
+    let &column = columns[column_index];
+    if (column.is_finished) return None;
+
+    let const result = column.reader->next();
+    if (result == utils::BufferedLineReader::Result::Line)
+      return column.reader->get_line();
+
+    if (result == utils::BufferedLineReader::Result::Error &&
+        !os::INTERRUPT_REQUESTED)
+    {
+      KOSHKIT_REPORT_PATH_ERROR("read", sources[column_index]);
+      status = 1;
+    }
+    column.is_finished = true;
+    return None;
+  };
+
   if (FLAG_PASTE_SERIAL.is_enabled()) {
-    for (let const &source_lines : lines) {
-      for (usize line_index = 0; line_index < source_lines.count();
-           line_index++)
+    for (usize column_index = 0; column_index < columns.count(); column_index++)
+    {
+      usize line_index = 0;
+      loop
       {
+        let const line = do_read_line(column_index);
+        if (!line.has_value()) break;
+
         if (line_index != 0)
           append_paste_delimiter(output, delimiters.view(), line_index - 1);
-        output += source_lines[line_index];
+        output += *line;
+        line_index++;
+        if (output.length() >= OUTPUT_FLUSH_LENGTH) {
+          ec.print_to_stdout(output);
+          output.clear();
+        }
       }
+      if (os::INTERRUPT_REQUESTED) return 130;
       output += '\n';
     }
   } else {
-    usize max_line_count = 0;
-    for (let const &source_lines : lines)
-      if (source_lines.count() > max_line_count)
-        max_line_count = source_lines.count();
-
-    for (usize line_index = 0; line_index < max_line_count; line_index++) {
-      for (usize source_index = 0; source_index < lines.count(); source_index++)
+    loop
+    {
+      let const line_start = output.length();
+      bool did_read_line = false;
+      for (usize column_index = 0; column_index < columns.count();
+           column_index++)
       {
-        if (source_index != 0)
-          append_paste_delimiter(output, delimiters.view(), source_index - 1);
-        if (line_index < lines[source_index].count())
-          output += lines[source_index][line_index];
+        if (column_index != 0)
+          append_paste_delimiter(output, delimiters.view(), column_index - 1);
+        let const line = do_read_line(column_index);
+        if (!line.has_value()) continue;
+
+        output += *line;
+        did_read_line = true;
       }
+      if (os::INTERRUPT_REQUESTED) return 130;
+      if (!did_read_line) {
+        output.truncate(line_start);
+        break;
+      }
+
       output += '\n';
+      if (output.length() >= OUTPUT_FLUSH_LENGTH) {
+        ec.print_to_stdout(output);
+        output.clear();
+      }
     }
   }
 

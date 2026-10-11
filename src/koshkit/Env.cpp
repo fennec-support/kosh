@@ -55,6 +55,7 @@ fn Env::execute(const ExecContext &ec, EvalContext &cxt,
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
+  cxt.prepare_child_environment();
   ArrayList<String> saved_names{cxt.scratch_allocator()};
   ArrayList<String> saved_values{cxt.scratch_allocator()};
   ArrayList<bool> was_present{cxt.scratch_allocator()};
@@ -119,8 +120,11 @@ fn Env::execute(const ExecContext &ec, EvalContext &cxt,
     env_arg_locations.push(operand_locations[i]);
   }
 
+  let environment_path = os::get_environment_variable("PATH");
   let environment_resolver =
-      ProgramResolver{os::get_environment_variable("PATH")};
+      ProgramResolver{environment_path.has_value()
+                          ? steal(*environment_path)
+                          : String{utils::DEFAULT_COMMAND_SEARCH_PATH}};
   Maybe<ExecContext> sub;
   try {
     sub = ExecContext::make_from(
@@ -133,6 +137,12 @@ fn Env::execute(const ExecContext &ec, EvalContext &cxt,
         cxt.source_store().current_source_view(), &cxt));
     return static_cast<i32>(resolution_error.command_status());
   }
+
+  let &execution = cxt.execution_store();
+  let const was_child_environment_fixed =
+      execution.is_child_environment_fixed();
+  execution.set_child_environment_fixed(true);
+  defer { execution.set_child_environment_fixed(was_child_environment_fixed); };
 
   let snapshot = cxt.snapshot_state();
   cxt.enter_subshell();
