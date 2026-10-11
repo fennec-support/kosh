@@ -203,13 +203,13 @@ fn parse_dockerfile_format(const parser_format_input &input,
     }
 
     usize shell_end = line_start + line.length;
-    let continued = !line.is_empty() && line[line.length - 1] == '\\';
-    while (continued && position < input.source.length) {
+    let is_continued = !line.is_empty() && line[line.length - 1] == '\\';
+    while (is_continued && position < input.source.length) {
       let const continuation_start = position;
       let const continuation = input.source.next_line(position);
       shell_end = continuation_start + continuation.length;
-      continued = !continuation.is_empty() &&
-                  continuation[continuation.length - 1] == '\\';
+      is_continued = !continuation.is_empty() &&
+                     continuation[continuation.length - 1] == '\\';
     }
     let const fragment_count = document.fragments.count();
     parser_format_add_fragment(document, input.source,

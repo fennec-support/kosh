@@ -3978,20 +3978,21 @@ public:
 
   fn apply_strictness_for_mood() wontthrow -> void
   {
-    let const strict = runtime_state().get_mood() == mimic_mood::Default;
+    let const is_strict = runtime_state().get_mood() == mimic_mood::Default;
     let const is_completion_running =
         execution_store().completion_function_running();
-    if (strict || !runtime_state().was_error_unset_set_explicitly()) {
-      runtime_state().set_error_unset(strict && !is_completion_running);
+    if (is_strict || !runtime_state().was_error_unset_set_explicitly()) {
+      runtime_state().set_error_unset(is_strict && !is_completion_running);
     }
-    if (strict || !runtime_state().was_pipefail_set_explicitly()) {
-      runtime_state().set_pipefail(strict);
+    if (is_strict || !runtime_state().was_pipefail_set_explicitly()) {
+      runtime_state().set_pipefail(is_strict);
     }
-    if (strict || !runtime_state().was_failglob_set_explicitly()) {
-      runtime_state().set_failglob(strict && !is_completion_running);
+    if (is_strict || !runtime_state().was_failglob_set_explicitly()) {
+      runtime_state().set_failglob(is_strict && !is_completion_running);
     }
-    if (strict || !runtime_state().was_extended_arithmetic_set_explicitly()) {
-      runtime_state().set_extended_arithmetic(strict);
+    if (is_strict || !runtime_state().was_extended_arithmetic_set_explicitly())
+    {
+      runtime_state().set_extended_arithmetic(is_strict);
     }
   }
 

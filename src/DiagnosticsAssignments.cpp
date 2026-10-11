@@ -340,7 +340,7 @@ fn check_test_operand_lints(AnalysisContext &actx,
     if (view == "==" && i >= 2 && !is_previous_binary_operator) {
       actx.report_diagnostic(diagnostic_id::sc3014, args[i]->source_location());
     }
-    let const previous_is_bang = previous_literal.view() == "!";
+    let const is_previous_bang = previous_literal.view() == "!";
 
     if (view_looks_like_test_operator(view) && view[1] != '-' &&
         !is_known_test_operator_word(view))
@@ -446,7 +446,7 @@ fn check_test_operand_lints(AnalysisContext &actx,
       } else if (is_test_file_comparison_word(view) && is_operator_slot) {
         actx.report_diagnostic(diagnostic_id::sc3013,
                                args[i]->source_location(), {view});
-      } else if (view == "-a" && (i == 1 || previous_is_bang)) {
+      } else if (view == "-a" && (i == 1 || is_previous_bang)) {
         actx.report_diagnostic(diagnostic_id::sc3017,
                                args[i]->source_location());
       }
@@ -461,7 +461,7 @@ fn check_test_operand_lints(AnalysisContext &actx,
       }
     }
 
-    if (i >= 2 && !previous_is_bang && (view == "-a" || view == "-o")) {
+    if (i >= 2 && !is_previous_bang && (view == "-a" || view == "-o")) {
       actx.report_diagnostic(diagnostic_id::sc2166, args[i]->source_location());
     } else if (view == "!" && i + 1 < args.count() &&
                args[i + 1]->kind() == Token::Kind::Word)
@@ -649,18 +649,18 @@ fn check_prefix_assignment_reads(AnalysisContext &actx,
 
   if (input.local_vars.count() == 1 && !input.command_literal.is_empty()) {
     let const &value = input.local_vars[0].get_value();
-    let const value_is_bare_word =
+    let const is_bare_word_value =
         value.segments.count() == 1 &&
         (value.segments[0].kind == WordSegment::Kind::UnquotedText ||
          value.segments[0].kind == WordSegment::Kind::LiteralText);
-    if (value_is_bare_word) {
+    if (is_bare_word_value) {
       let const assigned = value.segments[0].text.view();
       let const name = input.local_vars[0].get_name();
-      let const value_names_a_command =
+      let const is_command_value =
           !COMMAND_VALUED_VARIABLES.contains(name) &&
           get_analysis_command_info(assigned).id != command_name_id::Unknown &&
           input.command_id() == command_name_id::Unknown;
-      if (input.command_literal[0] == '-' || value_names_a_command) {
+      if (input.command_literal[0] == '-' || is_command_value) {
         actx.report_diagnostic(diagnostic_id::sc2037,
                                input.local_vars[0].get_location(),
                                {name, input.command_literal});

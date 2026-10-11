@@ -474,9 +474,9 @@ fn ShellHighlightCache::spans_for(StringView source, usize line_start,
                                   usize line_end, EvalContext &context) throws
     -> const ArrayList<highlight_span> *
 {
-  let const source_changed =
+  let const has_source_changed =
       source.data != m_source.data || source.length != m_source.length;
-  if (source_changed) {
+  if (has_source_changed) {
     m_source = source;
     m_checkpoints.clear();
     m_lines.clear();

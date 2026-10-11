@@ -63,7 +63,8 @@ fn execute_context(ExecContext &&ec, EvalContext &cxt,
     return execute_builtin(steal(ec), cxt);
   }
 
-  let const can_replace_shell = cxt.can_replace_process() && !cxt.in_subshell();
+  let const should_replace_shell =
+      cxt.can_replace_process() && !cxt.in_subshell();
 
   if (cxt.runtime_state().is_mimicry_enabled() && !is_async) {
     if (Maybe<mimic_mood> mode = ec.program_path().detect_mimic_shell();
@@ -132,13 +133,13 @@ fn execute_context(ExecContext &&ec, EvalContext &cxt,
         }
       }
       return cxt.run_mimicked_script(ec, *mode,
-                                     can_replace_shell
+                                     should_replace_shell
                                          ? script_isolation::Shared
                                          : script_isolation::Isolated);
     }
   }
 
-  if (!is_async && can_replace_shell) {
+  if (!is_async && should_replace_shell) {
     LOG(Debug,
         "execute_context replacing the shell with the terminal command '%s'",
         ec.program().c_str());
@@ -163,7 +164,7 @@ fn execute_context(ExecContext &&ec, EvalContext &cxt,
     ec.err_fd.reset();
     const mimic_mood mode = cxt.runtime_state().get_mood();
     quit(cxt.run_program_fallback(ec, mode,
-                                  can_replace_shell
+                                  should_replace_shell
                                       ? script_isolation::Shared
                                       : script_isolation::Isolated),
          farewell_policy::Silent);
@@ -204,7 +205,7 @@ fn execute_context(ExecContext &&ec, EvalContext &cxt,
     LOG(Debug, "running the file as a shell script in this process");
     const mimic_mood mode = cxt.runtime_state().get_mood();
     return cxt.run_program_fallback(ec, mode,
-                                    can_replace_shell
+                                    should_replace_shell
                                         ? script_isolation::Shared
                                         : script_isolation::Isolated);
   }
@@ -262,13 +263,13 @@ fn terminate_and_reap_processes(const ArrayList<os::process> &processes,
 static fn report_unresolved_stage(EvalContext &cxt,
                                   const ExecContext &stage) throws -> void
 {
-  let const does_error_follow_output =
+  let const should_error_follow_output =
       stage.should_duplicate_error_to_output &&
       (!stage.should_duplicate_output_to_error ||
        stage.was_output_to_error_last);
-  let target = does_error_follow_output ? stage.out_fd : stage.err_fd;
+  let target = should_error_follow_output ? stage.out_fd : stage.err_fd;
 
-  if (does_error_follow_output && !target.has_value()) {
+  if (should_error_follow_output && !target.has_value()) {
     target = os::descriptor_for_shell_fd(1);
   }
 

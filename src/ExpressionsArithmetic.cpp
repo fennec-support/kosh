@@ -271,19 +271,19 @@ fn ConditionalCommand::analyze(AnalysisContext &actx,
                               .get_source_text(actx.source)
                               .value_or(StringView{});
       let const was_written_bare = written == operand.view();
-      let const follows_operand =
+      let const is_after_operand =
           i > 0 && conditional_element_ends_operand(m_elements[i - 1]);
 
       switch (*misuse) {
       case conditional_misuse_kind::AndOperator:
-        if (was_written_bare && follows_operand) {
+        if (was_written_bare && is_after_operand) {
           actx.report_diagnostic(diagnostic_id::sc2108,
                                  element.word->source_location());
         }
         break;
 
       case conditional_misuse_kind::OrOperator:
-        if (was_written_bare && follows_operand) {
+        if (was_written_bare && is_after_operand) {
           actx.report_diagnostic(diagnostic_id::sc2110,
                                  element.word->source_location());
         }

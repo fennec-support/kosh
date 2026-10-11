@@ -72,8 +72,8 @@ fn parse_sequence_integer(StringView text) wontthrow -> Maybe<sequence_integer>
                            : static_cast<i64>(magnitude);
   }
   let const digit_width = text.length - digit_start;
-  let const leading_zero = digit_width > 1 && text[digit_start] == '0';
-  return sequence_integer{value, text.length, leading_zero};
+  let const has_leading_zero = digit_width > 1 && text[digit_start] == '0';
+  return sequence_integer{value, text.length, has_leading_zero};
 }
 
 fn split_sequence_parts(StringView content, Allocator alloc) throws
@@ -473,19 +473,18 @@ hot fn EvalContext::process_args(const ArrayList<const Token *> &args,
                                  Bitset *subscript_flags) throws
     -> ArrayList<String>
 {
-  let const args_are_transient = lifetime == argument_lifetime::Transient;
+  let const is_transient = lifetime == argument_lifetime::Transient;
   let const is_associative_literal =
       context == argument_context::AssociativeLiteral;
   let const is_array_literal =
       context == argument_context::ArrayLiteral || is_associative_literal;
   LOG(Debug, "expanding %zu argument tokens", args.count());
-  let expanded_args = args_are_transient
-                          ? ArrayList<String>{scratch_allocator()}
-                          : ArrayList<String>{heap_allocator()};
+  let expanded_args = is_transient ? ArrayList<String>{scratch_allocator()}
+                                   : ArrayList<String>{heap_allocator()};
   expanded_args.reserve(args.count());
 
   if (expanded_locations != nullptr) {
-    *expanded_locations = args_are_transient
+    *expanded_locations = is_transient
                               ? ArrayList<SourceLocation>{scratch_allocator()}
                               : ArrayList<SourceLocation>{heap_allocator()};
     expanded_locations->reserve(args.count());
@@ -498,8 +497,7 @@ hot fn EvalContext::process_args(const ArrayList<const Token *> &args,
   let const fields_mark = expansion_store().scratch_arena().mark();
   defer
   {
-    if (!args_are_transient)
-      expansion_store().scratch_arena().release(fields_mark);
+    if (!is_transient) expansion_store().scratch_arena().release(fields_mark);
   };
 
   let is_declaration_command = false;

@@ -1525,11 +1525,11 @@ struct script_cursor
             ? steal(prefetched_script_contents)
             : script_path.read_entire_file();
     if (!contents) {
-      let const looks_like_command =
+      let const is_command_like =
           !FLAG_LINT.is_enabled() &&
           !file_name.view().find_character('/').has_value();
       let hint = String{heap_allocator()};
-      if (looks_like_command) hint = "Pass -c to run this as a command string";
+      if (is_command_like) hint = "Pass -c to run this as a command string";
       let const message = "Could not open '" + file_name.view() +
                           "': " + os::last_system_error_message();
       if (hint.is_empty()) {

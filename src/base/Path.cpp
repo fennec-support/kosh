@@ -467,11 +467,11 @@ fn Path::canonicalize(StringView path) throws -> Maybe<Path>
     candidate = candidate.to_absolute_without_normalizing();
   }
 
-  let const ends_with_dot =
+  let const has_trailing_dot =
       path.length > 0 && path.data[path.length - 1] == '.';
   let status = os::file_status{};
   let was_resolved = os::stat_path_following(candidate.view(), status);
-  if (candidate.extension().is_empty() && !ends_with_dot) {
+  if (candidate.extension().is_empty() && !has_trailing_dot) {
     usize suffix_index = 0;
     while (!was_resolved && suffix_index < os::PROGRAM_SUFFIXES.count()) {
       let const &suffix = os::PROGRAM_SUFFIXES[suffix_index++];

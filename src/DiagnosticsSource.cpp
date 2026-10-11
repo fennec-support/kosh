@@ -732,11 +732,11 @@ fn check_shebang(AnalysisContext &actx, StringView source,
   let const has_bang =
       has_hash && bang_at < first_line.length && first_line[bang_at] == '!';
 
-  let const does_open_here_document =
+  let const is_here_document_opener =
       !has_hash && first_line.find_substring("<<").has_value();
 
   if (!has_bang) {
-    if (!does_open_here_document && header_holds_shebang(source, line_end)) {
+    if (!is_here_document_opener && header_holds_shebang(source, line_end)) {
       actx.report_diagnostic(diagnostic_id::sc1128, SourceLocation{at, 1});
       return;
     }
@@ -781,7 +781,7 @@ fn check_shebang(AnalysisContext &actx, StringView source,
   }
 
   let const interpreter_name = path_base_name(interpreter);
-  let const names_env = interpreter_name == StringView{"env"};
+  let const is_env_interpreter = interpreter_name == StringView{"env"};
 
   usize parameter_count = 0;
   let shell_argument = StringView{};
@@ -807,14 +807,14 @@ fn check_shebang(AnalysisContext &actx, StringView source,
     parameter_count++;
   }
 
-  if (parameter_count > 1 && !(names_env && has_split_string_flag)) {
+  if (parameter_count > 1 && !(is_env_interpreter && has_split_string_flag)) {
     actx.report_diagnostic(diagnostic_id::sc2096, interpreter_location);
   }
 
   let const shell_name =
-      names_env ? path_base_name(shell_argument) : interpreter_name;
+      is_env_interpreter ? path_base_name(shell_argument) : interpreter_name;
   let const shell_name_location =
-      names_env ? shell_argument_location : interpreter_location;
+      is_env_interpreter ? shell_argument_location : interpreter_location;
 
   if (shell_name.is_empty()) return;
 

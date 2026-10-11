@@ -464,7 +464,8 @@ fn wait_for_fd_readable(os::descriptor fd, i64 timeout_nanos) wontthrow -> i32
         DWORD peeked_event_count = 0;
         let const did_peek = PeekConsoleInputA(fd, console_events, event_count,
                                                &peeked_event_count);
-        let const needs_complete_line = (console_mode & ENABLE_LINE_INPUT) != 0;
+        let const should_wait_for_complete_line =
+            (console_mode & ENABLE_LINE_INPUT) != 0;
         bool is_readable = false;
         if (did_peek != FALSE) {
           for (DWORD event_index = 0; event_index < peeked_event_count;
@@ -478,8 +479,8 @@ fn wait_for_fd_readable(os::descriptor fd, i64 timeout_nanos) wontthrow -> i32
             }
 
             let const character = event.Event.KeyEvent.uChar.UnicodeChar;
-            if ((!needs_complete_line && character != 0) ||
-                (needs_complete_line &&
+            if ((!should_wait_for_complete_line && character != 0) ||
+                (should_wait_for_complete_line &&
                  (character == '\r' || character == '\n' || character == 0x1a)))
             {
               is_readable = true;

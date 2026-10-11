@@ -133,11 +133,11 @@ fn AssignCommand::analyze(AnalysisContext &actx,
     actx.report_diagnostic(diagnostic_id::sc2147, source_location());
   }
 
-  let const prompt_has_control_escape =
+  let const has_prompt_control_escape =
       view_contains(raw_assignment.view(), StringView{"\\e"}) ||
       view_contains(raw_assignment.view(), StringView{"\\033"}) ||
       view_contains(raw_assignment.view(), StringView{"\\x1b"});
-  let const prompt_has_display_guards =
+  let const has_prompt_display_guards =
       view_contains(raw_assignment.view(), StringView{"\\["}) &&
       view_contains(raw_assignment.view(), StringView{"\\]"});
   constexpr PackedStringKey GUARDED_PROMPT_KEYS[] = {
@@ -147,7 +147,7 @@ fn AssignCommand::analyze(AnalysisContext &actx,
       SSK("RPS1"),
   };
   constexpr StaticStringSet GUARDED_PROMPTS{GUARDED_PROMPT_KEYS};
-  if (prompt_has_control_escape && !prompt_has_display_guards &&
+  if (has_prompt_control_escape && !has_prompt_display_guards &&
       GUARDED_PROMPTS.contains(m_assignment->key().view()))
   {
     actx.report_diagnostic(diagnostic_id::sc2025, source_location());

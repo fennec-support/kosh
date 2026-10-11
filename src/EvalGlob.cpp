@@ -149,8 +149,8 @@ fn EvalContext::expand_path_once(const glob_field &field,
   ASSERT(has_glob);
   ASSERT(!glob.is_empty());
 
-  let const pattern_leads_with_dot = glob[0] == '.';
-  if (pattern_leads_with_dot && !is_shopt_enabled("globskipdots")) {
+  let const is_dot_pattern = glob[0] == '.';
+  if (is_dot_pattern && !is_shopt_enabled("globskipdots")) {
     entries->push(
         Path::directory_child{String{"."}, Path::entry_kind::Directory});
     entries->push(
@@ -183,11 +183,11 @@ fn EvalContext::expand_path_once(const glob_field &field,
     let const filename = entry.name.view();
 
     if (filename == "." || filename == "..") {
-      if (!pattern_leads_with_dot) {
+      if (!is_dot_pattern) {
         return false;
       }
-    } else if (!pattern_leads_with_dot && !filename.is_empty() &&
-               filename[0] == '.' && !dotglob_is_on)
+    } else if (!is_dot_pattern && !filename.is_empty() && filename[0] == '.' &&
+               !dotglob_is_on)
     {
       return false;
     }

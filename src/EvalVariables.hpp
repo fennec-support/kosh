@@ -289,7 +289,7 @@ inline constexpr static_string_entry<shell_variable_description>
           "~/.kosh_history.",
           shell_variable_fact::Plain}                                        },
         {SSK("KOSH_HISTORY_SIZE"),
-         {"The value bounds the number of retained history events.",
+         {"The value limits the number of retained history events.",
           shell_variable_fact::Plain}                                        },
         {SSK("KOSH_CALC_HISTORY"),
          {"The value specifies the interactive calc history file.",

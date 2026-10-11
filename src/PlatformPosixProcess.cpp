@@ -136,9 +136,9 @@ hot fn execute_program(ExecContext &ec,
                        const program_execution_options &options) throws
     -> process
 {
-  let const allow_script_fallback =
+  let const should_allow_script_fallback =
       options.fallback == script_fallback_policy::Allow;
-  let const new_process_group =
+  let const should_create_process_group =
       options.process_group != process_group_mode::Inherit;
   let const should_hand_off_controlling_terminal_before_start =
       options.handoff == terminal_handoff::BeforeStart;
@@ -226,7 +226,7 @@ hot fn execute_program(ExecContext &ec,
       throw ErrorWithLocation{ec.source_location(),
                               "Could not read the program start outcome"};
     }
-    if (*outcome_read == 1 && outcome == 'f' && allow_script_fallback) {
+    if (*outcome_read == 1 && outcome == 'f' && should_allow_script_fallback) {
       os::reap_process_quietly(child);
       was_fds_handed_to_fallback = true;
       return KOSH_INVALID_PROCESS;
@@ -325,7 +325,7 @@ hot fn execute_program(ExecContext &ec,
   posix_spawnattr_setsigdefault(&attr, &default_signals);
 
   short spawn_flags = POSIX_SPAWN_SETSIGMASK | POSIX_SPAWN_SETSIGDEF;
-  if (new_process_group) {
+  if (should_create_process_group) {
     ASSERT(options.process_group != process_group_mode::Join ||
            options.process_group_id > 0);
     posix_spawnattr_setpgroup(&attr,
@@ -346,7 +346,7 @@ hot fn execute_program(ExecContext &ec,
                       ? const_cast<char *const *>(empty_environment)
                       : environ);
 
-  if (spawn_error == ENOEXEC && allow_script_fallback) {
+  if (spawn_error == ENOEXEC && should_allow_script_fallback) {
     was_fds_handed_to_fallback = true;
     return KOSH_INVALID_PROCESS;
   }
@@ -687,7 +687,7 @@ fn launch_process_substitution(const process_substitution_options &options)
   unused(options.should_trace_sources);
   unused(options.evaluator);
 
-  let const command_writes_pipe =
+  let const is_command_pipe_writer =
       options.direction == process_substitution_direction::CommandWrites;
 
   let const pipe = make_pipe();
@@ -704,22 +704,22 @@ fn launch_process_substitution(const process_substitution_options &options)
     }
   };
 
-  const process child = command_writes_pipe
+  const process child = is_command_pipe_writer
                             ? fork_compound_stage(None, pipe->out, None)
                             : fork_compound_stage(pipe->in, None, None);
   was_pipe_handed_off = true;
 
   if (child == 0) {
     return process_substitution_launch{
-        .child_close_fd = command_writes_pipe ? Maybe<descriptor>{pipe->in}
-                                              : Maybe<descriptor>{pipe->out},
+        .child_close_fd = is_command_pipe_writer ? Maybe<descriptor>{pipe->in}
+                                                 : Maybe<descriptor>{pipe->out},
         .child = child,
         .should_evaluate_child = true,
     };
   }
 
-  descriptor retained_fd = command_writes_pipe ? pipe->in : pipe->out;
-  close_fd(command_writes_pipe ? pipe->out : pipe->in);
+  descriptor retained_fd = is_command_pipe_writer ? pipe->in : pipe->out;
+  close_fd(is_command_pipe_writer ? pipe->out : pipe->in);
   if (let const moved_fd = move_descriptor_to_free_shell_fd(
           retained_fd, PROCESS_SUBSTITUTION_FD_FLOOR);
       moved_fd != -1)

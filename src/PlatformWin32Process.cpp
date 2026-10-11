@@ -577,14 +577,14 @@ restore_handle_inheritance(const inherited_handle_state &state) wontthrow
 static fn ensure_valid_standard_handles(STARTUPINFOW &startup_info,
                                         HANDLE &null_handle) wontthrow -> bool
 {
-  let const are_standard_handles_valid =
+  let const is_standard_handle_set_valid =
       startup_info.hStdInput != nullptr &&
       startup_info.hStdInput != INVALID_HANDLE_VALUE &&
       startup_info.hStdOutput != nullptr &&
       startup_info.hStdOutput != INVALID_HANDLE_VALUE &&
       startup_info.hStdError != nullptr &&
       startup_info.hStdError != INVALID_HANDLE_VALUE;
-  if (are_standard_handles_valid) return true;
+  if (is_standard_handle_set_valid) return true;
 
   SECURITY_ATTRIBUTES inheritable{sizeof(SECURITY_ATTRIBUTES), nullptr, TRUE};
   null_handle = CreateFileW(L"NUL", GENERIC_READ | GENERIC_WRITE,
@@ -944,7 +944,7 @@ static pure fn is_batch_program(StringView path) wontthrow -> bool
 fn execute_program(ExecContext &ec, const program_execution_options &options)
     -> process
 {
-  let const allow_script_fallback =
+  let const should_allow_script_fallback =
       options.fallback == script_fallback_policy::Allow;
   let const should_create_new_process_group =
       options.process_group == process_group_mode::New ||
@@ -1082,7 +1082,8 @@ fn execute_program(ExecContext &ec, const program_execution_options &options)
           creation_flags, environment_block, startup_info, inherited_handles,
           inherited_handle_count, process_info, &ec))
   {
-    if (allow_script_fallback && GetLastError() == ERROR_BAD_EXE_FORMAT) {
+    if (should_allow_script_fallback && GetLastError() == ERROR_BAD_EXE_FORMAT)
+    {
       if (!resolved_program_path_storage.is_empty())
         ec.set_program_path(Path{resolved_program_path_storage.view()});
       did_hand_handles_to_fallback = true;
@@ -3024,7 +3025,7 @@ run_measured_with_options(const ArrayList<String> &argv, measured_output output,
                           const windows_measured_launch_options &options) throws
     -> Maybe<measured_result>
 {
-  let const suppress_output = output == measured_output::Suppress;
+  let const should_suppress_output = output == measured_output::Suppress;
   if (argv.is_empty()) return None;
 
   measured_result result{};
@@ -3038,7 +3039,7 @@ run_measured_with_options(const ArrayList<String> &argv, measured_output output,
   startup.hStdError = options.error.value_or(GetStdHandle(STD_ERROR_HANDLE));
 
   HANDLE null_handle = INVALID_HANDLE_VALUE;
-  if (suppress_output) {
+  if (should_suppress_output) {
     SECURITY_ATTRIBUTES inherit_sa{};
     inherit_sa.nLength = sizeof(inherit_sa);
     inherit_sa.bInheritHandle = TRUE;
@@ -3061,15 +3062,15 @@ run_measured_with_options(const ArrayList<String> &argv, measured_output output,
   };
 
   PROCESS_INFORMATION process_info{};
-  let const standard_handles_are_valid =
+  let const is_standard_handle_set_valid =
       startup.hStdInput != nullptr &&
       startup.hStdInput != INVALID_HANDLE_VALUE &&
       startup.hStdOutput != nullptr &&
       startup.hStdOutput != INVALID_HANDLE_VALUE &&
       startup.hStdError != nullptr && startup.hStdError != INVALID_HANDLE_VALUE;
   let const should_use_standard_handles =
-      standard_handles_are_valid &&
-      (suppress_output || options.inherited_handle.has_value() ||
+      is_standard_handle_set_valid &&
+      (should_suppress_output || options.inherited_handle.has_value() ||
        options.input.has_value() || options.output.has_value() ||
        options.error.has_value());
   if (should_use_standard_handles) startup.dwFlags = STARTF_USESTDHANDLES;

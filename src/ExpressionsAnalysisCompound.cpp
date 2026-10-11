@@ -60,7 +60,7 @@ fn Pipeline::analyze(AnalysisContext &actx, bool is_unconditional) const throws
   }
 
   let const has_multiple_stages = m_commands.count() > 1;
-  let const stage_is_unconditional = is_unconditional && !has_multiple_stages;
+  let const is_unconditional_stage = is_unconditional && !has_multiple_stages;
   for (let const command : m_commands) {
     ASSERT(command != nullptr);
     let const was_direct_pipeline_stage = actx.walk.is_direct_pipeline_stage;
@@ -70,9 +70,9 @@ fn Pipeline::analyze(AnalysisContext &actx, bool is_unconditional) const throws
 
     if (has_multiple_stages) {
       let scope = AnalysisScopeGuard{actx, analysis_scope_mode::Pipeline};
-      command->analyze(actx, stage_is_unconditional);
+      command->analyze(actx, is_unconditional_stage);
     } else {
-      command->analyze(actx, stage_is_unconditional);
+      command->analyze(actx, is_unconditional_stage);
     }
 
     actx.walk.is_direct_pipeline_stage = was_direct_pipeline_stage;
@@ -104,12 +104,12 @@ fn Pipeline::analyze(AnalysisContext &actx, bool is_unconditional) const throws
         let raw_operand_storage = String{heap_allocator()};
         let const raw_operand =
             borrowed_token_text(cat_args[1], raw_operand_storage);
-        let const file_is_plain_operand =
+        let const is_plain_operand_file =
             cat_args[1]->kind() == Token::Kind::Word &&
             !raw_operand.is_empty() && raw_operand[0] != '-';
         if (name.has_value() && *name == "cat" &&
             !actx.functions.defined.contains(*name) &&
-            !actx.functions.aliases.contains(*name) && file_is_plain_operand)
+            !actx.functions.aliases.contains(*name) && is_plain_operand_file)
         {
           actx.report_diagnostic(diagnostic_id::sc2002,
                                  cat_args[0]->source_location());
@@ -147,18 +147,19 @@ fn Pipeline::analyze(AnalysisContext &actx, bool is_unconditional) const throws
     if (!stage_name.has_value() || !next_name.has_value()) {
       continue;
     }
-    let const next_is_user = actx.functions.defined.contains(*next_name) ||
-                             actx.functions.aliases.contains(*next_name);
-    let const stage_is_user = actx.functions.defined.contains(*stage_name) ||
+    let const is_next_user_command =
+        actx.functions.defined.contains(*next_name) ||
+        actx.functions.aliases.contains(*next_name);
+    let const is_user_stage = actx.functions.defined.contains(*stage_name) ||
                               actx.functions.aliases.contains(*stage_name);
     let const stage_info = get_analysis_command_info(*stage_name);
     let const next_info = get_analysis_command_info(*next_name);
     let const next_is_pattern_matcher =
         next_info.is_in_group(COMMAND_GROUP_PATTERN_MATCHER);
-    let const next_is_xargs =
-        next_info.id == command_name_id::Xargs && !next_is_user;
+    let const is_next_xargs =
+        next_info.id == command_name_id::Xargs && !is_next_user_command;
 
-    if (!next_is_user &&
+    if (!is_next_user_command &&
         next_info.is_in_group(COMMAND_GROUP_NON_STDIN_READER) &&
         !args_have_stdin_operand(next->args()))
     {
@@ -172,11 +173,11 @@ fn Pipeline::analyze(AnalysisContext &actx, bool is_unconditional) const throws
       }
     }
 
-    if (stage_is_user) continue;
+    if (is_user_stage) continue;
 
     switch (stage_info.id) {
     case command_name_id::Echo:
-      if (next_info.id == command_name_id::Wc && !next_is_user &&
+      if (next_info.id == command_name_id::Wc && !is_next_user_command &&
           stage->args().count() == 2 && next->args().count() == 2)
       {
         let count_flag_storage = String{heap_allocator()};
@@ -190,7 +191,7 @@ fn Pipeline::analyze(AnalysisContext &actx, bool is_unconditional) const throws
       break;
 
     case command_name_id::Find: {
-      if (!next_is_xargs) break;
+      if (!is_next_xargs) break;
 
       let has_null_flag = false;
       let raw_storage = String{heap_allocator()};
@@ -214,7 +215,7 @@ fn Pipeline::analyze(AnalysisContext &actx, bool is_unconditional) const throws
       if (next_is_pattern_matcher) {
         actx.report_diagnostic(diagnostic_id::sc2010,
                                next->args()[0]->source_location());
-      } else if (next_is_xargs) {
+      } else if (is_next_xargs) {
         actx.report_diagnostic(diagnostic_id::sc2011,
                                next->args()[0]->source_location());
       } else {
@@ -230,7 +231,7 @@ fn Pipeline::analyze(AnalysisContext &actx, bool is_unconditional) const throws
       break;
 
     case command_name_id::Grep:
-      if (next_info.id == command_name_id::Wc && !next_is_user &&
+      if (next_info.id == command_name_id::Wc && !is_next_user_command &&
           next->args().count() == 2)
       {
         let flag_storage = String{heap_allocator()};
@@ -612,12 +613,12 @@ fn CompoundList::analyze(AnalysisContext &actx,
       }
     }
 
-    let const next_node_joins =
+    let const is_next_node_joined =
         i + 1 < m_nodes.count() &&
         m_nodes[i + 1]->kind() != CompoundListCondition::Kind::None;
 
     if ((node->kind() != CompoundListCondition::Kind::None ||
-         next_node_joins) &&
+         is_next_node_joined) &&
         node->command() != nullptr && node->command()->as_subshell() != nullptr)
     {
       actx.report_diagnostic(diagnostic_id::sc2235,
@@ -625,8 +626,8 @@ fn CompoundList::analyze(AnalysisContext &actx,
     }
 
     if (!actx.walk.is_analyzing_condition && node->is_negated() &&
-        node->kind() == CompoundListCondition::Kind::None && !next_node_joins &&
-        node->command() != nullptr)
+        node->kind() == CompoundListCondition::Kind::None &&
+        !is_next_node_joined && node->command() != nullptr)
     {
       if (i + 1 < m_nodes.count()) {
         actx.report_diagnostic(diagnostic_id::sc2251,
@@ -636,16 +637,16 @@ fn CompoundList::analyze(AnalysisContext &actx,
       }
     }
 
-    let const node_unconditional =
+    let const is_unconditional_node =
         is_unconditional && node->kind() == CompoundListCondition::Kind::None;
     let const is_conditional_node =
         node->kind() != CompoundListCondition::Kind::None;
     let const was_command_status_observed =
         actx.walk.is_command_status_observed;
     actx.walk.is_command_status_observed =
-        was_command_status_observed || next_node_joins;
+        was_command_status_observed || is_next_node_joined;
     if (is_conditional_node) actx.conditional_branch_depth++;
-    node->analyze(actx, node_unconditional);
+    node->analyze(actx, is_unconditional_node);
     if (is_conditional_node) actx.conditional_branch_depth--;
     actx.walk.is_command_status_observed = was_command_status_observed;
     previous_node = node;

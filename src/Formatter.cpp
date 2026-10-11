@@ -152,16 +152,16 @@ pure fn is_format_operator_at(StringView source, usize position) wontthrow
   if (byte != '{' && byte != '}') {
     return is_format_operator_start(byte);
   }
-  let const previous_is_boundary =
+  let const is_previous_boundary =
       position == 0 || is_format_blank(source[position - 1]) ||
       source[position - 1] == '\n' || source[position - 1] == ';' ||
       source[position - 1] == ')';
-  let const next_is_boundary =
+  let const is_next_boundary =
       position + 1 == source.length || is_format_blank(source[position + 1]) ||
       source[position + 1] == '\n' || source[position + 1] == ';' ||
       source[position + 1] == '<' || source[position + 1] == '>';
 
-  return previous_is_boundary && next_is_boundary;
+  return is_previous_boundary && is_next_boundary;
 }
 
 fn scan_quoted_region(StringView source, usize &position, char quote) wontthrow
@@ -1256,11 +1256,11 @@ fn render_format_pieces(const ArrayList<format_piece> &pieces,
     if (is_in_regex_operand) {
       let const is_operand_piece = piece.kind == format_piece_kind::Word ||
                                    piece.kind == format_piece_kind::Operator;
-      let const ends_operand =
+      let const is_operand_end =
           !is_operand_piece ||
           (regex_paren_depth == 0 &&
            (text == "]]" || text == "&&" || text == "||" || text == ")"));
-      if (!ends_operand) {
+      if (!is_operand_end) {
         if (text == "(")
           regex_paren_depth++;
         else if (text == ")")
@@ -1414,11 +1414,11 @@ fn render_format_pieces(const ArrayList<format_piece> &pieces,
             rendered_operand = quoted_heredoc_delimiter.view();
           }
         }
-        let const would_join_strip_operator =
+        let const should_join_strip_operator =
             should_attach_heredoc_delimiter && index > 0 &&
             pieces[index - 1].text == "<<" && rendered_operand.starts_with("-");
         if (is_separated_process_substitution_operand ||
-            would_join_strip_operator ||
+            should_join_strip_operator ||
             (should_attach_redirection_operand &&
              should_space_redirection_operand))
         {
@@ -1764,7 +1764,7 @@ fn render_format_pieces(const ArrayList<format_piece> &pieces,
       }
       let const is_case_pattern =
           !case_pattern_states.is_empty() && case_pattern_states.back();
-      let const closes_function_header =
+      let const is_function_header_close =
           index > 0 && pieces[index - 1].kind == format_piece_kind::Operator &&
           pieces[index - 1].text == "(";
       if (is_case_pattern) {
@@ -1777,7 +1777,7 @@ fn render_format_pieces(const ArrayList<format_piece> &pieces,
         case_pattern_states.back() = false;
         should_attach_case_pattern = false;
         do_finish_command();
-      } else if (subshell_depth > 0 && !closes_function_header) {
+      } else if (subshell_depth > 0 && !is_function_header_close) {
         do_begin_statement(false, true);
         do_finish_command();
         if (is_bash) {
@@ -2260,10 +2260,10 @@ static fn negated_test_operator_fix(diagnostic_id diagnostic, StringView source,
                                     const SourceLocation &location) throws
     -> Maybe<source_fix>
 {
-  let const negated = diagnostic == diagnostic_id::sc2236;
-  let const written_operator = negated ? StringView{"-z"} : StringView{"-n"};
+  let const is_negated = diagnostic == diagnostic_id::sc2236;
+  let const written_operator = is_negated ? StringView{"-z"} : StringView{"-n"};
   let const replacement_operator =
-      negated ? StringView{"-n"} : StringView{"-z"};
+      is_negated ? StringView{"-n"} : StringView{"-z"};
 
   if (source.substring_of_length(location.position, location.length) != "!")
     return None;

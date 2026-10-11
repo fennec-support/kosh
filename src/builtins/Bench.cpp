@@ -384,8 +384,8 @@ fn sample_command(StringView shell_binary, StringView command,
   } else {
     usize start = 0;
     for (usize i = 0; i <= command.length; i++) {
-      let const at_end = i == command.length;
-      if (at_end || command[i] == ' ' || command[i] == '\t') {
+      let const is_at_end = i == command.length;
+      if (is_at_end || command[i] == ' ' || command[i] == '\t') {
         if (i > start)
           child_argv.push(
               String{allocator, command.substring_of_length(start, i - start)});

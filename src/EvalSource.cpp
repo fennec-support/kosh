@@ -174,7 +174,7 @@ fn EvalContext::run_program_fallback(ExecContext &ec, mimic_mood mode,
 fn EvalContext::run_mimicked_script(ExecContext &ec, mimic_mood mode,
                                     script_isolation isolation) throws -> i32
 {
-  let const isolated = isolation == script_isolation::Isolated;
+  let const is_isolated = isolation == script_isolation::Isolated;
   defer { ec.close_fds(); };
 
   if (source_store().mimicry_depth() >= MAX_MIMICRY_DEPTH)
@@ -232,9 +232,9 @@ fn EvalContext::run_mimicked_script(ExecContext &ec, mimic_mood mode,
   let source_scope = capture_source_scope();
   let const previous_location = source_scope.get_location();
   let isolated_snapshot = Maybe<eval_state_snapshot>{};
-  if (isolated) isolated_snapshot = snapshot_state();
+  if (is_isolated) isolated_snapshot = snapshot_state();
 
-  bool should_restore_isolated_state = isolated;
+  bool should_restore_isolated_state = is_isolated;
   let const do_restore_auxiliary_state = [&]() throws {
     source_scope.restore();
     previous_runtime.restore(*this);
@@ -256,7 +256,7 @@ fn EvalContext::run_mimicked_script(ExecContext &ec, mimic_mood mode,
 
   runtime_state().set_mood(mode);
   LOG(Debug, "mimicking the script '%s'%s", ec.program().c_str(),
-      isolated ? " in an isolated subshell" : "");
+      is_isolated ? " in an isolated subshell" : "");
   source_store().set_script_run(true);
 
   let const is_mimic_strict = mode == mimic_mood::Default;
@@ -412,7 +412,7 @@ fn EvalContext::run_mimicked_script(ExecContext &ec, mimic_mood mode,
     }
   };
 
-  if (!isolated) {
+  if (!is_isolated) {
     variable_store().positional_params() = steal(params);
     seed_shell_identity_variables(mode == mimic_mood::Bash
                                       ? shell_identity_mode::Bash
@@ -512,8 +512,8 @@ fn EvalContext::run_source(StringView source, StringView origin,
     source = cached_body->get_source()->view();
   }
 
-  let const consume_return = handling == return_handling::Consume;
-  let const reject_return = handling == return_handling::Reject;
+  let const should_consume_return = handling == return_handling::Consume;
+  let const should_reject_return = handling == return_handling::Reject;
   let const should_propagate_script_fatal = call_site.has_value();
   if (arena_store().parse_arena() == nullptr)
     throw Error{"Cannot run source outside of a parse"};
@@ -547,11 +547,11 @@ fn EvalContext::run_source(StringView source, StringView origin,
 
   let const parent_source =
       call_site ? source_store().current_source() : nullptr;
-  let const frame_is_sourced_file =
-      consume_return && filename.has_value() && !filename->is_empty();
+  let const is_sourced_file_frame =
+      should_consume_return && filename.has_value() && !filename->is_empty();
 
   let const untraced_debug_scope = UntracedTrapScope{
-      *this, UntracedTrapScope::Kind::Debug, frame_is_sourced_file};
+      *this, UntracedTrapScope::Kind::Debug, is_sourced_file_frame};
 
   source_store().source_frames().push(source_frame{
       String{origin},
@@ -559,20 +559,20 @@ fn EvalContext::run_source(StringView source, StringView origin,
       parent_source, source_generation_for(parent_source),
       filename.has_value() ? String{*filename}
       : String{heap_allocator()},
-      frame_is_sourced_file ? source_frame_kind::SourcedFile
+      is_sourced_file_frame ? source_frame_kind::SourcedFile
                             : source_frame_kind::Ordinary
   });
   source_store().source_frames().back().definition = definition;
   source_store().source_frames().back().should_defer_trace =
-      frame_is_sourced_file;
+      is_sourced_file_frame;
   source_store().source_frames().back().function_call_depth =
       function_store().call_frames().count();
-  if (reject_return)
+  if (should_reject_return)
     source_store().set_rejected_return_source_frames(
         source_store().rejected_return_source_frames() + 1);
   defer
   {
-    if (reject_return)
+    if (should_reject_return)
       source_store().set_rejected_return_source_frames(
           source_store().rejected_return_source_frames() - 1);
     let &frame = source_store().source_frames().back();
@@ -651,7 +651,7 @@ fn EvalContext::run_source(StringView source, StringView origin,
 
     let const source_scope = capture_source_scope();
     let const did_register_line_base =
-        call_site.has_value() && !frame_is_sourced_file &&
+        call_site.has_value() && !is_sourced_file_frame &&
         cached_body == nullptr &&
         register_embedded_source(StringView{}, *call_site, retained_source);
     if (did_register_line_base) {
@@ -684,7 +684,7 @@ fn EvalContext::run_source(StringView source, StringView origin,
 
     ast->evaluate(*this);
     did_complete_source = true;
-    if (consume_return && control_flow_store().has_pending() &&
+    if (should_consume_return && control_flow_store().has_pending() &&
         control_flow_store().pending().kind == control_flow::Kind::Return)
     {
       let const source_status =

@@ -368,10 +368,10 @@ fn IfClause::analyze(AnalysisContext &actx, bool is_unconditional) const throws
     is_first_branch = false;
   }
 
-  let const else_is_dead =
+  let const is_else_dead =
       has_folded_branch() && folded_branch_index() != m_branches.count();
   let const was_else_silenced = actx.effects.should_silence_unresolved_commands;
-  if (else_is_dead) actx.effects.should_silence_unresolved_commands = true;
+  if (is_else_dead) actx.effects.should_silence_unresolved_commands = true;
   actx.tested_command_names = steal(condition_failure_names);
   actx.conditional_branch_depth++;
   if (m_otherwise != nullptr) m_otherwise->analyze(actx, false);
@@ -383,7 +383,7 @@ fn IfClause::analyze(AnalysisContext &actx, bool is_unconditional) const throws
       m_otherwise != nullptr && m_otherwise->always_exits(actx);
   if (is_exiting_else) did_skip_exiting_branch = true;
 
-  if (!else_is_dead && !is_exiting_else) {
+  if (!is_else_dead && !is_exiting_else) {
     if (!has_merged_occurrence_exit) {
       merged_occurrences = steal(actx.occurrences);
       has_merged_occurrence_exit = true;
@@ -786,13 +786,14 @@ hot fn ForLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const
   let const values = m_has_in_clause ? cxt.process_args(m_words)
                                      : cxt.variable_store().positional_params();
 
-  let const scope_variable = !(cxt.runtime_state().is_bash_compatible() ||
-                               cxt.runtime_state().is_posix_mode());
+  let const should_scope_variable =
+      !(cxt.runtime_state().is_bash_compatible() ||
+        cxt.runtime_state().is_posix_mode());
   Maybe<String> saved_value =
-      scope_variable ? cxt.get_variable_value(m_variable_name) : None;
+      should_scope_variable ? cxt.get_variable_value(m_variable_name) : None;
   defer
   {
-    if (scope_variable && !cxt.is_readonly(m_variable_name)) {
+    if (should_scope_variable && !cxt.is_readonly(m_variable_name)) {
       try {
         if (saved_value.has_value())
           cxt.set_shell_variable(m_variable_name, saved_value->view());
@@ -890,7 +891,7 @@ fn ForLoop::analyze(AnalysisContext &actx, bool is_unconditional) const throws
       actx.active_loop_variables.erase(m_variable_name);
   };
 
-  let const word_list_holds_one_word = m_has_in_clause && m_words.count() == 1;
+  let const has_single_word_list = m_has_in_clause && m_words.count() == 1;
 
   for (let const t : m_words) {
     if (t->kind() != Token::Kind::Word) continue;
@@ -974,7 +975,7 @@ fn ForLoop::analyze(AnalysisContext &actx, bool is_unconditional) const throws
                              {source_text});
     }
 
-    if (word_list_holds_one_word && word_is_literal && !has_glob_character &&
+    if (has_single_word_list && word_is_literal && !has_glob_character &&
         !has_unquoted_brace && !source_text.is_empty())
     {
       actx.report_diagnostic(diagnostic_id::sc2043, t->source_location(),

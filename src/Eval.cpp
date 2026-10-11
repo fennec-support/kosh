@@ -1313,13 +1313,13 @@ fn EvalContext::initialize_bash_argument_arrays(
     let const has_source_arguments =
         is_source_frame &&
         context->has_flag(BashArgumentFrameFlag::HasSourceArguments);
-    let const uses_source_path = is_source_frame && !has_source_arguments;
+    let const should_use_source_path = is_source_frame && !has_source_arguments;
     let const argument_count =
-        uses_source_path ? usize{1}
-                         : variable_store().positional_params().count();
+        should_use_source_path ? usize{1}
+                               : variable_store().positional_params().count();
     values.reserve(argument_count);
     frame_counts.reserve(1);
-    if (uses_source_path) {
+    if (should_use_source_path) {
       values.push_managed(context->source_path);
     } else {
       for (let const &argument : variable_store().positional_params())

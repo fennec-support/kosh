@@ -88,7 +88,7 @@ fn check_trap_condition_operands(AnalysisContext &actx,
         uppercase.view().starts_with(StringView{"SIG"}) && view.length > 3;
     let const bare =
         has_sig_prefix ? uppercase.view().substring(3) : uppercase.view();
-    let const names_a_signal = bare == "EXIT" ||
+    let const is_signal_name = bare == "EXIT" ||
                                signal_name_is_unblockable(bare) ||
                                os::signal_number_from_name(bare).has_value();
 
@@ -99,12 +99,12 @@ fn check_trap_condition_operands(AnalysisContext &actx,
 
     if (!is_posix) continue;
 
-    if (has_sig_prefix && names_a_signal) {
+    if (has_sig_prefix && is_signal_name) {
       actx.report_diagnostic(diagnostic_id::sc3048, args[i]->source_location(),
                              {view});
     }
 
-    if (has_lowercase && names_a_signal) {
+    if (has_lowercase && is_signal_name) {
       actx.report_diagnostic(diagnostic_id::sc3049, args[i]->source_location(),
                              {view});
     }

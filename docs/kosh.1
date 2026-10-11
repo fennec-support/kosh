@@ -2284,7 +2284,7 @@ and
 reach the file. Recall, expansion, listing, and editing use the private
 branch. A command that duplicates the preceding private event is skipped. A
 multiline command is stored as one event, and its embedded newlines are
-preserved. KOSH_HISTORY_SIZE bounds retained and stored history and defaults to
+preserved. KOSH_HISTORY_SIZE limits retained and stored history and defaults to
 4096. A value of zero disables history retention and storage. A history file
 that exists and cannot be read is reported once at startup, and the session
 begins with an empty history.
@@ -2621,12 +2621,12 @@ option splits the line into a named indexed array. The
 option replaces the newline delimiter, and an empty value selects a NUL byte.
 The
 .B \-n
-option bounds the byte count. The
+option sets the maximum byte count. The
 .B \-N
-option reads exactly that many bytes, ignores the delimiter, and stores them
+option takes exactly that many bytes, ignores the delimiter, and stores them
 unsplit in the first name, leaving the rest empty. The
 .B \-t
-option bounds the wait in seconds. The
+option limits the wait in seconds. The
 .B \-p
 option prints a prompt at a terminal, and
 .B \-s
@@ -4426,7 +4426,7 @@ row identifies the active source and shows the available keys beside it, reading
 for the candidates of a token and
 .B incremental history search
 for a stable snapshot of the shared history file. Opening the search does not
-replace or merge the session's private history. The terminal height bounds the
+replace or merge the session's private history. The terminal height limits the
 number of rows, and a count row identifies the part that is drawn. A first row
 too
 long for the width wraps onto further rows between its items, each starting at
@@ -5236,7 +5236,7 @@ was inherited or is exported explicitly. HISTFILE itself has no effect on the
 history file.
 .TP
 .B KOSH_HISTORY_SIZE
-The value bounds the number of history events retained for recall, listing, and
+The value limits the number of history events retained for recall, listing, and
 storage. The default is 4096. A value of zero disables history retention and
 storage. A value inherited from the environment wins over
 editor.history.max_entries
@@ -5350,7 +5350,7 @@ is empty for a command that took under 5 milliseconds.
 The escapes are decoded before parameters and substitutions expand, so text an
 escape inserts is never expanded, and a backslash that a parameter or
 substitution yields is never decoded.
-A raw 001 or 002 byte in PS0, PS1, RPS1, or PS1_TRANSIENT bounds an invisible
+A raw 001 or 002 byte in PS0, PS1, RPS1, or PS1_TRANSIENT delimits an invisible
 region the way \\[ and \\] do: it is not drawn, and the escape sequences
 inside the region take no columns.
 The \\. escape emits a bullet, plain when the last exit status is zero and

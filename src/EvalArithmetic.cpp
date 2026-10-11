@@ -634,9 +634,9 @@ public:
       let const rhs_start = pos;
 
       if (op.kind == 'A' || op.kind == 'O') {
-        let const lhs_decides = (op.kind == 'A') == lhs.is_zero();
+        let const is_decided_by_lhs = (op.kind == 'A') == lhs.is_zero();
         let rhs = ArithmeticValue{};
-        if (lhs_decides) {
+        if (is_decided_by_lhs) {
           let const was_skipping = m_is_skipping;
           m_is_skipping = true;
           defer { m_is_skipping = was_skipping; };

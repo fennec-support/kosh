@@ -200,9 +200,9 @@ public:
       for (; element_index + 2 <= m_length; element_index += 2) {
         vector_type values;
         __builtin_memcpy(&values, m_data + element_index, sizeof(values));
-        let const matches = values == needles;
+        let const is_match = values == needles;
         u64 match_values[2];
-        __builtin_memcpy(match_values, &matches, sizeof(match_values));
+        __builtin_memcpy(match_values, &is_match, sizeof(match_values));
         if (match_values[0] != 0) return element_index;
         if (match_values[1] != 0) return element_index + 1;
       }

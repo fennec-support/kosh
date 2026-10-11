@@ -128,11 +128,11 @@ hot fn EvalContext::expand_word(const Word &word) throws
     if (has_tilde_after_separator) {
       tilde_expanded_segments = clone_word_segments(word, scratch);
       for (usize i = 0; i < tilde_expanded_segments.count(); i++) {
-        let const does_word_continue = i + 1 < tilde_expanded_segments.count();
+        let const is_word_continued = i + 1 < tilde_expanded_segments.count();
         if (do_starts_after_separator(i)) {
-          expand_tilde(tilde_expanded_segments[i], does_word_continue, true);
+          expand_tilde(tilde_expanded_segments[i], is_word_continued, true);
         }
-        expand_colon_tildes(tilde_expanded_segments[i], does_word_continue,
+        expand_colon_tildes(tilde_expanded_segments[i], is_word_continued,
                             i == 0 ? equals : None);
       }
       segments = &tilde_expanded_segments;
@@ -457,11 +457,11 @@ hot fn EvalContext::expand_word(const Word &word) throws
       let const is_positional_word =
           !segment_text.is_empty() &&
           (segment_text[0] == '@' || segment_text[0] == '*');
-      let const positional_test_has_colon = is_positional_word &&
+      let const has_positional_test_colon = is_positional_word &&
                                             segment_text.length > 1 &&
                                             segment_text[1] == ':';
       const usize positional_test_op_position =
-          positional_test_has_colon ? 2 : 1;
+          has_positional_test_colon ? 2 : 1;
       if (is_positional_word &&
           segment_text.length > positional_test_op_position &&
           is_colon_modifier_operator(segment_text[positional_test_op_position]))
@@ -471,16 +471,16 @@ hot fn EvalContext::expand_word(const Word &word) throws
         let const word =
             segment_text.substring(positional_test_op_position + 1);
         let const param_count = variable_store().positional_params().count();
-        let const positional_is_null =
+        let const is_positional_null =
             param_count == 0 ||
             (param_count == 1 &&
              variable_store().positional_params()[0].view().is_empty());
         let const is_posix = runtime_state().is_posix_mode();
         let const should_treat_as_unset =
             is_posix ? is_posix_positional_test_null(
-                           positional_test_has_colon, op,
+                           has_positional_test_colon, op,
                            segment.is_in_double_quotes && is_star)
-            : positional_test_has_colon ? positional_is_null
+            : has_positional_test_colon ? is_positional_null
                                         : param_count == 0;
         let const is_quoted_list = is_posix && segment.is_in_double_quotes;
 

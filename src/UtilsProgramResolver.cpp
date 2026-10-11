@@ -495,13 +495,13 @@ fn ProgramResolver::assign_path(Maybe<String> path) throws -> void
   let path_dirs =
       split_path_dirs(path.has_value() ? path->view() : StringView{});
   let index_path_dirs = deduplicate_path_dirs(path_dirs);
-  let const path_search_changed = get_index_path_dirs() != index_path_dirs;
+  let const has_path_search_changed = get_index_path_dirs() != index_path_dirs;
   m_path = steal(path);
   m_path_dirs = steal(path_dirs);
   m_index_path_dirs = steal(index_path_dirs);
   m_is_path_directory_list_valid = true;
   m_execution_cache.clear();
-  if (!path_search_changed) return;
+  if (!has_path_search_changed) return;
 
   clear_derived_indexes();
 }
@@ -892,9 +892,9 @@ fn ProgramResolver::revalidate_command_prefix(StringView prefix) throws -> void
           normalized_name.substring_of_length(0, name_info.stem_length);
       let const full_name_matches =
           smart_case_prefix_matches(normalized_name.view(), prefix);
-      let const stem_matches = stem.length != normalized_name.length() &&
-                               smart_case_prefix_matches(stem, prefix);
-      if (!full_name_matches && !stem_matches) {
+      let const is_stem_match = stem.length != normalized_name.length() &&
+                                smart_case_prefix_matches(stem, prefix);
+      if (!full_name_matches && !is_stem_match) {
         continue;
       }
 
@@ -918,9 +918,9 @@ fn ProgramResolver::revalidate_command_prefix(StringView prefix) throws -> void
           normalized_name.substring_of_length(0, name_info.stem_length);
       let const full_name_matches =
           smart_case_prefix_matches(normalized_name.view(), prefix);
-      let const stem_matches = stem.length != normalized_name.length() &&
-                               smart_case_prefix_matches(stem, prefix);
-      if (!full_name_matches && !stem_matches) {
+      let const is_stem_match = stem.length != normalized_name.length() &&
+                                smart_case_prefix_matches(stem, prefix);
+      if (!full_name_matches && !is_stem_match) {
         continue;
       }
 
@@ -942,11 +942,11 @@ fn ProgramResolver::revalidate_command_prefix(StringView prefix) throws -> void
         full_path->append(entry.name.view());
       }
 
-      if (stem_matches) regular_names.push(String{stem});
+      if (is_stem_match) regular_names.push(String{stem});
       if (full_name_matches) regular_names.push(String{normalized_name.view()});
 
       if (!full_path->is_executable()) continue;
-      if (stem_matches) command_names.push(String{stem});
+      if (is_stem_match) command_names.push(String{stem});
       if (full_name_matches) command_names.push(steal(normalized_name));
     }
   }

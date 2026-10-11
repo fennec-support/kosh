@@ -310,11 +310,11 @@ fn internal::rebuild_shell_syntax_candidate(
   let const is_last_quote_ansi_c = decoded_word.is_last_quote_ansi_c;
   if (decoded_candidate.starts_with(decoded_word.text.view())) {
     let const suffix = decoded_candidate.substring(decoded_word.text.length());
-    let const can_extend_closed_quote =
+    let const should_extend_closed_quote =
         decoded_word.quote_character == 0 &&
         decoded_word.last_quote_character != 0 && !raw_token.is_empty() &&
         raw_token[raw_token.length - 1] == decoded_word.last_quote_character;
-    if (can_extend_closed_quote) {
+    if (should_extend_closed_quote) {
       candidate.append(raw_token.substring_of_length(0, raw_token.length - 1));
       append_open_quote_candidate(candidate, suffix,
                                   decoded_word.last_quote_character,

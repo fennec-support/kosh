@@ -1834,41 +1834,47 @@ fn EvilIso::execute(const ExecContext &ec, EvalContext &cxt,
     return 1;
   }
 
-  let const any_selector =
+  let const has_selector =
       FLAG_EVILISO_NAMESPACES.is_enabled() ||
       FLAG_EVILISO_CGROUPS.is_enabled() || FLAG_EVILISO_SESSIONS.is_enabled() ||
       FLAG_EVILISO_REMOTE.is_enabled() || FLAG_EVILISO_RUNTIME.is_enabled() ||
       FLAG_EVILISO_KUBERNETES.is_enabled() ||
       FLAG_EVILISO_CONTAINER.is_enabled() ||
       FLAG_EVILISO_CONTAINERS.is_enabled();
-  let const show_namespaces =
-      !any_selector || FLAG_EVILISO_NAMESPACES.is_enabled();
-  let const show_cgroups = !any_selector || FLAG_EVILISO_CGROUPS.is_enabled();
-  let const show_sessions = !any_selector || FLAG_EVILISO_SESSIONS.is_enabled();
-  let const show_remote = !any_selector || FLAG_EVILISO_REMOTE.is_enabled();
+  let const should_show_namespaces =
+      !has_selector || FLAG_EVILISO_NAMESPACES.is_enabled();
+  let const should_show_cgroups =
+      !has_selector || FLAG_EVILISO_CGROUPS.is_enabled();
+  let const should_show_sessions =
+      !has_selector || FLAG_EVILISO_SESSIONS.is_enabled();
+  let const should_show_remote =
+      !has_selector || FLAG_EVILISO_REMOTE.is_enabled();
   let const detail = FLAG_EVILISO_ALL.is_enabled()
                          ? eviliso_detail_mode::All
                          : eviliso_detail_mode::Summary;
-  let const show_runtime = !any_selector || FLAG_EVILISO_RUNTIME.is_enabled();
-  let const show_kubernetes =
-      !any_selector || FLAG_EVILISO_KUBERNETES.is_enabled();
-  let const show_container = !any_selector ||
-                             FLAG_EVILISO_CONTAINER.is_enabled() ||
-                             FLAG_EVILISO_CONTAINERS.is_enabled();
+  let const should_show_runtime =
+      !has_selector || FLAG_EVILISO_RUNTIME.is_enabled();
+  let const should_show_kubernetes =
+      !has_selector || FLAG_EVILISO_KUBERNETES.is_enabled();
+  let const should_show_container = !has_selector ||
+                                    FLAG_EVILISO_CONTAINER.is_enabled() ||
+                                    FLAG_EVILISO_CONTAINERS.is_enabled();
   let const should_color = koshkit_should_color();
   let output = String{cxt.scratch_allocator()};
   let process_cgroups =
       ArrayList<process_cgroup_snapshot>{cxt.scratch_allocator()};
-  let const collection = show_cgroups || detail == eviliso_detail_mode::All ||
-                                 show_runtime || show_kubernetes ||
-                                 show_container
+  let const collection = should_show_cgroups ||
+                                 detail == eviliso_detail_mode::All ||
+                                 should_show_runtime ||
+                                 should_show_kubernetes || should_show_container
                              ? eviliso_collection_mode::Collect
                              : eviliso_collection_mode::Skip;
-  if (show_namespaces || collection == eviliso_collection_mode::Collect) {
+  if (should_show_namespaces || collection == eviliso_collection_mode::Collect)
+  {
     process_cgroups =
         collect_process_cgroup_snapshot(cxt.scratch_allocator(), collection);
   }
-  if (show_namespaces) {
+  if (should_show_namespaces) {
     let namespace_processes =
         ArrayList<namespace_process>{cxt.scratch_allocator()};
     let const self_process_id = os::get_current_process_id();
@@ -1882,22 +1888,22 @@ fn EvilIso::execute(const ExecContext &ec, EvalContext &cxt,
     append_namespace_report(output, should_color, steal(namespace_processes),
                             detail);
   }
-  if (show_cgroups)
+  if (should_show_cgroups)
     append_cgroup_report(output, should_color, process_cgroups, detail);
-  if (show_sessions)
+  if (should_show_sessions)
     append_session_report(output, should_color, cxt.scratch_allocator(),
                           detail);
-  if (show_remote)
+  if (should_show_remote)
     append_remote_report(output, should_color, process_cgroups,
                          cxt.scratch_allocator(),
                          eviliso_remote_rows_mode::Show, detail);
-  if (show_runtime)
+  if (should_show_runtime)
     append_runtime_evidence_report(output, should_color, process_cgroups,
                                    output.allocator(), detail);
-  if (show_container)
+  if (should_show_container)
     append_container_report(output, should_color, process_cgroups,
                             output.allocator(), detail);
-  if (show_kubernetes)
+  if (should_show_kubernetes)
     append_kubernetes_report(output, should_color, process_cgroups,
                              output.allocator(), detail);
   ec.print_to_stdout(output);

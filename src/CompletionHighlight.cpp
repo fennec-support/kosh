@@ -65,10 +65,10 @@ static fn first_word_resolves(StringView word, EvalContext &context) throws
   if (context.scope_store().find_alias(word).has_value()) return true;
 
   let const path_status = context.program_resolver().get_status(word);
-  let const resolves = path_status == ProgramResolver::Status::Runnable;
+  let const is_runnable = path_status == ProgramResolver::Status::Runnable;
   LOG(All, "the path search resolves '%.*s' to %s",
-      static_cast<int>(word.length), word.data, resolves ? "yes" : "no");
-  if (path_status != ProgramResolver::Status::Missing) return resolves;
+      static_cast<int>(word.length), word.data, is_runnable ? "yes" : "no");
+  if (path_status != ProgramResolver::Status::Missing) return is_runnable;
 
   return context.runtime_state().koshkit_utilities_are_reachable() &&
          koshkit::find_util(word).has_value();
@@ -725,10 +725,10 @@ static fn color_path_argument(usize word_start, StringView word,
       existing_end = do_prefix_is_valid(word.length, true) ? word.length : 0;
     }
   } else {
-    let const word_requires_directory =
+    let const is_directory_required =
         should_only_include_directories ||
         os::is_directory_separator(word[word.length - 1]);
-    if (do_prefix_is_valid(word.length, word_requires_directory)) {
+    if (do_prefix_is_valid(word.length, is_directory_required)) {
       existing_end = word.length;
     } else if (is_prefix_non_directory) {
       spans.push(highlight_span{word_start, word_start + word.length,
@@ -1334,10 +1334,11 @@ fn internal::scan_highlight_range(
           break;
         }
       }
-      let const closes_range = has_closer && parenthesis_depth == 0 &&
-                               should_stop_at_closing_parenthesis &&
-                               !is_case_pattern_expected;
-      if (!closes_range) do_push(operator_start, i, highlight_role::operator_);
+      let const is_range_closer = has_closer && parenthesis_depth == 0 &&
+                                  should_stop_at_closing_parenthesis &&
+                                  !is_case_pattern_expected;
+      if (!is_range_closer)
+        do_push(operator_start, i, highlight_role::operator_);
 
       if (has_separator || has_opener || has_closer) {
         do_commit_pending_assignments();
@@ -1462,7 +1463,7 @@ fn internal::scan_highlight_range(
     let const word_end = i;
     let const word =
         line.substring_of_length(word_start, word_end - word_start);
-    let const plain = word_spans.is_empty() && !word_has_shell_syntax;
+    let const is_plain = word_spans.is_empty() && !word_has_shell_syntax;
     let const is_assignment = lexer::word_looks_like_assignment(word);
     let const is_word_terminated =
         word_is_terminated_by_separator(line, word_end, end);
@@ -1602,7 +1603,7 @@ fn internal::scan_highlight_range(
 
     if (!is_command_position && highlight_command_word == "koshkit") {
       highlight_command_word = StringView{};
-      if (plain && !is_assignment) {
+      if (is_plain && !is_assignment) {
         do_push(word_start, word_end,
                 koshkit::find_util(word).has_value()
                     ? highlight_role::resolved_command
@@ -1667,7 +1668,7 @@ fn internal::scan_highlight_range(
             continue;
           }
         }
-      } else if (operand_role.has_value() && plain) {
+      } else if (operand_role.has_value() && is_plain) {
         let const name = variable_name_operand_of(word);
 
         if (!name.is_empty()) {
@@ -1687,7 +1688,7 @@ fn internal::scan_highlight_range(
       }
     }
 
-    if (plain && word == "]]" && !stack.is_empty() &&
+    if (is_plain && word == "]]" && !stack.is_empty() &&
         stack.back() == highlight_construct::conditional)
     {
       do_push(word_start, word_end, highlight_role::keyword);
@@ -1696,7 +1697,7 @@ fn internal::scan_highlight_range(
       continue;
     }
 
-    if (expecting_in && plain && word == "in") {
+    if (expecting_in && is_plain && word == "in") {
       do_push(word_start, word_end, highlight_role::keyword);
       expecting_in = false;
       for_variable_pending = false;
@@ -1713,7 +1714,7 @@ fn internal::scan_highlight_range(
     if (for_variable_pending) {
       for_variable_pending = false;
       is_command_position = false;
-      if (!plain || !lexer::word_is_variable_name(word)) {
+      if (!is_plain || !lexer::word_is_variable_name(word)) {
         do_push(word_start, word_end, highlight_role::invalid_syntax);
       } else {
         do_push(word_start, word_end, highlight_role::variable);
@@ -1725,7 +1726,7 @@ fn internal::scan_highlight_range(
     if (function_name_pending) {
       function_name_pending = false;
       is_command_position = false;
-      if (plain && word_is_function_name(word)) {
+      if (is_plain && word_is_function_name(word)) {
         do_push(word_start, word_end, highlight_role::function_name);
         line_functions.add(word);
       } else {
@@ -1743,7 +1744,7 @@ fn internal::scan_highlight_range(
       }
     }
 
-    if (is_command_position && !plain && !is_assignment &&
+    if (is_command_position && !is_plain && !is_assignment &&
         do_color_mixed_path(false))
     {
       pending_assignment_names.clear();
@@ -1764,12 +1765,12 @@ fn internal::scan_highlight_range(
       continue;
     }
 
-    if (is_case_pattern_expected && plain && word == "esac") {
+    if (is_case_pattern_expected && is_plain && word == "esac") {
       is_case_pattern_expected = false;
       is_command_position = true;
     }
 
-    if (is_command_position && plain && !is_assignment) {
+    if (is_command_position && is_plain && !is_assignment) {
       pending_assignment_names.clear();
 
       let is_keyword = true;
@@ -1847,7 +1848,7 @@ fn internal::scan_highlight_range(
       continue;
     }
 
-    if (!is_command_position && plain && !is_assignment) {
+    if (!is_command_position && is_plain && !is_assignment) {
       if (word_contains_url_scheme(word) ||
           word_looks_like_ssh_remote_path(word))
       {
@@ -1862,7 +1863,7 @@ fn internal::scan_highlight_range(
         }
       }
     }
-    if (!is_command_position && !plain && !is_assignment &&
+    if (!is_command_position && !is_plain && !is_assignment &&
         do_color_mixed_path(highlight_command_word == "cd"))
     {
       continue;

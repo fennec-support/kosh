@@ -398,9 +398,9 @@ fn EvalContext::setup_process_substitution(
   ASSERT(!text.is_empty());
 
   let const direction = text[0];
-  let const command_writes_the_pipe = direction == '<';
+  let const is_command_pipe_writer = direction == '<';
   LOG(Debug, "setting up a process substitution where the command %s the pipe",
-      command_writes_the_pipe ? "writes" : "reads");
+      is_command_pipe_writer ? "writes" : "reads");
 
   let const ast_mark = arena_store().parse_arena()->mark();
   defer { arena_store().parse_arena()->release(ast_mark); };
@@ -437,7 +437,7 @@ fn EvalContext::setup_process_substitution(
           .source = substitution_source.view(),
           .should_trace_sources = diagnostics_store().source_traces_enabled(),
           .evaluator = evaluator,
-          .direction = command_writes_the_pipe
+          .direction = is_command_pipe_writer
                            ? os::process_substitution_direction::CommandWrites
                            : os::process_substitution_direction::CommandReads});
     } catch (const ErrorBase &error) {

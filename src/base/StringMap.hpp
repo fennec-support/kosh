@@ -182,9 +182,9 @@ public:
     let const result = prepare_insertion(key, hash);
     if (result.found != NO_INDEX) {
       Value *existing = &m_slots[result.found].value;
-      let const buffer_is_wasteful =
+      let const is_buffer_wasteful =
           existing->count() > 256 && value.length < existing->count() / 2;
-      if (!buffer_is_wasteful) {
+      if (!is_buffer_wasteful) {
         existing->clear();
         existing->append(value);
         return existing;

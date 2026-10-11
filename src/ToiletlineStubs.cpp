@@ -452,9 +452,9 @@ static fn append_no_editor_history_records(no_editor_history_state &state,
                                            StringView records) -> usize
 {
   let const previous_branch_byte_count = state.branch_contents.count();
-  let const had_private_unterminated_record =
+  let const has_private_unterminated_record =
       state.trailing_record_start_byte_offset != previous_branch_byte_count;
-  if (had_private_unterminated_record) {
+  if (has_private_unterminated_record) {
     push_history_record_byte_offset(state,
                                     state.trailing_record_start_byte_offset,
                                     state.trailing_record_start_byte_offset);

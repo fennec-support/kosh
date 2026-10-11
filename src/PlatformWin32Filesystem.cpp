@@ -1132,12 +1132,12 @@ fn make_directory(StringView path, u32 mode) wontthrow -> bool
 
 fn set_file_mode(StringView path, u32 mode) wontthrow -> bool
 {
-  let const owner_is_writable = (mode & 0200u) != 0;
+  let const is_owner_writable = (mode & 0200u) != 0;
   let const wide_path = path_to_wide(path, heap_allocator());
   if (!wide_path.has_value()) return false;
   let attributes = GetFileAttributesW(wide_path->begin());
   if (attributes == INVALID_FILE_ATTRIBUTES) return false;
-  if (owner_is_writable)
+  if (is_owner_writable)
     attributes &= ~FILE_ATTRIBUTE_READONLY;
   else
     attributes |= FILE_ATTRIBUTE_READONLY;

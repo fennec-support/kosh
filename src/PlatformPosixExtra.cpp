@@ -573,7 +573,8 @@ static fn process_state_letter(char state) wontthrow -> char
 
 fn enumerate_processes(process_detail detail) throws -> ArrayList<process_entry>
 {
-  let const include_resource_stats = detail == process_detail::ResourceStats;
+  let const should_include_resource_stats =
+      detail == process_detail::ResourceStats;
   ArrayList<process_entry> processes{heap_allocator()};
   int name_mib[4] = {CTL_KERN, KERN_PROC, KERN_PROC_ALL, 0};
   constexpr usize LIST_ATTEMPT_COUNT = 8;
@@ -613,7 +614,7 @@ fn enumerate_processes(process_detail detail) throws -> ArrayList<process_entry>
         static_cast<u64>(record.kp_proc.p_starttime.tv_sec) * 1000000 +
         static_cast<u64>(record.kp_proc.p_starttime.tv_usec);
 
-    if (include_resource_stats) {
+    if (should_include_resource_stats) {
       char path_buffer[PROC_PIDPATHINFO_MAXSIZE];
       if (::proc_pidpath(record.kp_proc.p_pid, path_buffer,
                          sizeof(path_buffer)) > 0)
@@ -742,7 +743,8 @@ static fn linux_process_real_uid(StringView process_directory,
 
 fn enumerate_processes(process_detail detail) throws -> ArrayList<process_entry>
 {
-  let const include_resource_stats = detail == process_detail::ResourceStats;
+  let const should_include_resource_stats =
+      detail == process_detail::ResourceStats;
   ArrayList<process_entry> processes{heap_allocator()};
   DIR *proc_directory = ::opendir("/proc");
   if (proc_directory == nullptr) return processes;
@@ -798,7 +800,7 @@ fn enumerate_processes(process_detail detail) throws -> ArrayList<process_entry>
       process.command_line = "[" + process.name + "]";
     }
 
-    if (include_resource_stats) {
+    if (should_include_resource_stats) {
       unused(format_proc_pid_path(process_file, parsed_pid.value(), "/stat"));
       if (let stat = Path{process_file}.read_entire_file(); stat.has_value()) {
         let const text = stat->view();

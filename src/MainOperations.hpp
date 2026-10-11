@@ -448,14 +448,15 @@ static fn make_script_run_plan(EvalContext &context, bool has_precompiled_ast,
          !(state.is_bash_compatible() || state.is_posix_mode()) ||
          state.get_warning_level() > 0) &&
         !state.is_diagnostics_disabled()));
-  let const needs_whole_tree = has_out_ast ||
-                               (should_print_ast && state.show_ast()) ||
-                               state.show_lexed_words();
+  let const should_keep_whole_tree = has_out_ast ||
+                                     (should_print_ast && state.show_ast()) ||
+                                     state.show_lexed_words();
   let const should_stream_execution =
-      !has_precompiled_ast && !state.no_exec() && !needs_whole_tree;
+      !has_precompiled_ast && !state.no_exec() && !should_keep_whole_tree;
 
   return script_run_plan{
-      should_analyze, should_analyze && state.no_exec() && !needs_whole_tree,
+      should_analyze,
+      should_analyze && state.no_exec() && !should_keep_whole_tree,
       should_stream_execution, should_stream_execution && !should_analyze,
       run_options.is_whole_line};
 }

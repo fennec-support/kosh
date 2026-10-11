@@ -1262,16 +1262,16 @@ fn format_human_size(u64 bytes, Allocator allocator, u64 unit_step) throws
     unit++;
   }
 
-  let const does_round_to_next_unit = value >= step - 0.5;
-  if (does_round_to_next_unit && unit < sizeof(units)) {
+  let const should_round_to_next_unit = value >= step - 0.5;
+  if (should_round_to_next_unit && unit < sizeof(units)) {
     value /= step;
     unit++;
   }
 
   String out{allocator};
   let const tenths = static_cast<u64>(value * 10.0 + 0.5);
-  let const does_keep_one_decimal = value < 10.0 && tenths < 100;
-  if (does_keep_one_decimal) {
+  let const should_keep_one_decimal = value < 10.0 && tenths < 100;
+  if (should_keep_one_decimal) {
     out += String::from(tenths / 10, allocator);
     out += '.';
     out += String::from(tenths % 10, allocator);

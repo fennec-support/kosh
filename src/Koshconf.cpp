@@ -43,9 +43,9 @@ fn quote_for_value(StringView value) wontthrow -> Maybe<char>
   if (value.is_empty()) return None;
   let const first = value[0];
   let const last = value[value.count() - 1];
-  let const needs_quotes = first == '"' || first == '\'' || first == ' ' ||
+  let const should_quote = first == '"' || first == '\'' || first == ' ' ||
                            first == '\t' || last == ' ' || last == '\t';
-  if (!needs_quotes) return None;
+  if (!should_quote) return None;
   return value.find_character('"').has_value() ? '\'' : '"';
 }
 

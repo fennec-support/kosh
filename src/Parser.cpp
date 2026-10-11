@@ -197,10 +197,10 @@ cold pure static fn find_standalone_keyword(StringView source,
   for (usize pos = 0; pos + keyword.length <= source.length; pos++) {
     if (source.substring_of_length(pos, keyword.length) != keyword) continue;
     let const end_position = pos + keyword.length;
-    let const left_ok = pos == 0 || do_is_boundary(source[pos - 1]);
-    let const right_ok =
+    let const is_left_boundary = pos == 0 || do_is_boundary(source[pos - 1]);
+    let const is_right_boundary =
         end_position == source.length || do_is_boundary(source[end_position]);
-    if (left_ok && right_ok) {
+    if (is_left_boundary && is_right_boundary) {
       return SourceLocation{pos, keyword.length};
     }
   }

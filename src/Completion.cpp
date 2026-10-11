@@ -601,8 +601,9 @@ build_filesystem_candidate(StringView directory_part,
                            directory_suffix_mode suffix_mode,
                            path_text_mode text_mode) throws -> String
 {
-  let const inside_quote = text_mode != path_text_mode::ShellSyntax;
-  let const preserve_directory_spelling = raw_directory_part != directory_part;
+  let const is_inside_quote = text_mode != path_text_mode::ShellSyntax;
+  let const should_preserve_directory_spelling =
+      raw_directory_part != directory_part;
   let entry_name = String{completion_allocator()};
   if (text_mode == path_text_mode::Literal)
     append_with_quoted_controls(entry_name, name);
@@ -618,11 +619,11 @@ build_filesystem_candidate(StringView directory_part,
     }
   }
 
-  let const token_ends_with_closed_quote =
+  let const has_closed_quote_at_token_end =
       decoded_word.quote_character == 0 &&
       decoded_word.last_quote_character != 0 && !raw_token.is_empty() &&
       raw_token[raw_token.length - 1] == decoded_word.last_quote_character;
-  if (decoded_word.quote_character != 0 || token_ends_with_closed_quote) {
+  if (decoded_word.quote_character != 0 || has_closed_quote_at_token_end) {
     let decoded_candidate =
         String{completion_allocator(), directory_part} + entry_name;
     let candidate = rebuild_shell_syntax_candidate(raw_token, decoded_word,
@@ -631,8 +632,8 @@ build_filesystem_candidate(StringView directory_part,
     return candidate;
   }
 
-  if (preserve_directory_spelling) {
-    if (!inside_quote && path_candidate_needs_quoting(entry_name.view())) {
+  if (should_preserve_directory_spelling) {
+    if (!is_inside_quote && path_candidate_needs_quoting(entry_name.view())) {
       entry_name = quote_path_candidate(entry_name.view());
     }
 
@@ -645,21 +646,21 @@ build_filesystem_candidate(StringView directory_part,
   let candidate = String{completion_allocator(), directory_part};
   let const is_variable_prefixed =
       !directory_part.is_empty() && directory_part[0] == '$';
-  if (is_variable_prefixed && !inside_quote) {
+  if (is_variable_prefixed && !is_inside_quote) {
     if (path_candidate_needs_quoting(entry_name.view())) {
       entry_name = quote_path_candidate(entry_name.view());
     }
     candidate += entry_name;
-  } else if (decoded_word.leading.is_tilde_active && !inside_quote) {
+  } else if (decoded_word.leading.is_tilde_active && !is_inside_quote) {
     candidate = String{completion_allocator(), raw_directory_part};
     if (path_candidate_needs_quoting(entry_name.view())) {
       entry_name = quote_path_candidate(entry_name.view());
     }
     candidate += entry_name;
   } else {
-    if (!inside_quote && path_candidate_needs_quoting(entry_name.view())) {
+    if (!is_inside_quote && path_candidate_needs_quoting(entry_name.view())) {
       entry_name = quote_path_candidate(entry_name.view());
-    } else if (!inside_quote && candidate.is_empty() &&
+    } else if (!is_inside_quote && candidate.is_empty() &&
                entry_name.view().starts_with("~"))
     {
       candidate.push('\\');
@@ -679,13 +680,13 @@ static fn collect_filesystem_matches(
     directory_suffix_mode suffix_mode,
     utils::directory_validation validation) throws -> void
 {
-  let const inside_quote = text_mode != path_text_mode::ShellSyntax;
+  let const is_inside_quote = text_mode != path_text_mode::ShellSyntax;
   let listing = open_filesystem_listing(decoded_word, base_directory, context,
                                         validation);
   if (!listing.has_value()) return;
   let const &parts = listing->parts;
   let raw_directory_part = parts.directory_part;
-  if (!inside_quote && decoded_word.raw_directory_end > 0) {
+  if (!is_inside_quote && decoded_word.raw_directory_end > 0) {
     raw_directory_part =
         token.substring_of_length(0, decoded_word.raw_directory_end);
   }
@@ -1356,7 +1357,7 @@ fn complete(StringView line, usize cursor, EvalContext &context,
       static_cast<int>(stage_token.length), stage_token.data,
       is_command ? 1 : 0);
 
-  let const inline_glob = is_glob_token && cursor == token_end;
+  let const is_inline_glob = is_glob_token && cursor == token_end;
 
   let const command_word =
       is_command ? StringView{}
@@ -1401,7 +1402,7 @@ fn complete(StringView line, usize cursor, EvalContext &context,
              is_leading_tilde_active && !is_posix_completion)
   {
     candidates = complete_tilde_user(stage_token);
-  } else if (inline_glob) {
+  } else if (is_inline_glob) {
     candidates = complete_glob(token, base_directory, context, decoded_token,
                                filesystem_filter);
     if (!candidates.is_empty()) {

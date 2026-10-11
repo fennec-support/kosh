@@ -487,7 +487,7 @@ fn note_variable_target_operands(AnalysisContext &actx,
 {
   let const value_options = builtin_value_option_letters(command_id);
   let const binder = builtin_target_binder(command_id);
-  let const takes_one_named_operand = command_id == command_name_id::Getopts;
+  let const has_one_named_operand = command_id == command_name_id::Getopts;
 
   let should_skip_option_value = false;
   let is_array_option_value = false;
@@ -517,7 +517,7 @@ fn note_variable_target_operands(AnalysisContext &actx,
     }
 
     bare_operand_count++;
-    if (takes_one_named_operand && bare_operand_count != 2) {
+    if (has_one_named_operand && bare_operand_count != 2) {
       continue;
     }
 
@@ -564,7 +564,7 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
   let const leading_command_word =
       is_command_prefix ? m_args[0]->raw_view() : Maybe<StringView>{};
 
-  let const prefix_outlives_command =
+  let const is_prefix_persistent =
       !is_command_prefix || !leading_command_word.has_value() ||
       is_special_builtin_name(*leading_command_word);
 
@@ -590,7 +590,7 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
                               var.get_location(), var.get_update_mode(),
                               is_command_prefix, shape});
 
-    if (prefix_outlives_command) {
+    if (is_prefix_persistent) {
       let const name_location =
           var.get_location().subspan(0, var.get_name().length);
       actx.note_variable_occurrence(
@@ -1418,12 +1418,12 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
   has_explained_resolution_failure |=
       check_prefix_assignment_reads(actx, lint_input);
 
-  let const command_is_html_entity_tail =
+  let const is_html_entity_tail =
       name.has_value() && !is_command_shadowed &&
       command_info.is_in_group(COMMAND_GROUP_HTML_ENTITY_TAIL) &&
       !actx.tested_command_names.contains(*name);
 
-  if (command_is_html_entity_tail) {
+  if (is_html_entity_tail) {
     actx.report_diagnostic(diagnostic_id::sc1109, m_args[0]->source_location(),
                            {*name});
   }
@@ -1433,8 +1433,8 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
           ? diagnostic_id::unresolved_command_uncertain
           : diagnostic_id::unresolved_command;
   let const should_check_command_resolution =
-      name.has_value() && !is_command_shadowed &&
-      !command_is_html_entity_tail && !has_explained_resolution_failure &&
+      name.has_value() && !is_command_shadowed && !is_html_entity_tail &&
+      !has_explained_resolution_failure &&
       actx.should_report(resolution_diagnostic) &&
       !actx.should_silence_unresolved_command_at(
           m_args[0]->source_location().position);

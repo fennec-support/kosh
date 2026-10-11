@@ -550,9 +550,9 @@ public:
 
   fn compile_pattern() throws -> bool
   {
-    let const does_need_span_regex =
+    let const is_span_regex_needed =
         m_options.should_highlight && !m_should_use_literal_search;
-    if (!does_need_span_regex && (m_should_use_literal_search ||
+    if (!is_span_regex_needed && (m_should_use_literal_search ||
                                   (m_has_fast_matcher && !m_has_utf8_wildcard)))
     {
       return true;
@@ -561,7 +561,7 @@ public:
     let const sensitivity = m_options.should_ignore_case
                                 ? os::case_sensitivity::Insensitive
                                 : os::case_sensitivity::Sensitive;
-    if ((!m_has_fast_matcher || does_need_span_regex) &&
+    if ((!m_has_fast_matcher || is_span_regex_needed) &&
         (!m_options.is_utf8 || m_is_ascii_pattern))
     {
       if (!compile_regex_into(m_regex, sensitivity)) return false;

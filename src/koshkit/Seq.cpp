@@ -90,8 +90,8 @@ fn Seq::execute(const ExecContext &ec, EvalContext &cxt,
         ec.print_to_stdout(output);
         output.clear();
       }
-      let const would_step_overflow = value > INT64_MAX - increment;
-      if (would_step_overflow) break;
+      let const is_step_overflow = value > INT64_MAX - increment;
+      if (is_step_overflow) break;
     }
   else
     for (i64 value = first; value >= last; value += increment) {
@@ -101,8 +101,8 @@ fn Seq::execute(const ExecContext &ec, EvalContext &cxt,
         ec.print_to_stdout(output);
         output.clear();
       }
-      let const would_step_underflow = value < INT64_MIN - increment;
-      if (would_step_underflow) break;
+      let const is_step_underflow = value < INT64_MIN - increment;
+      if (is_step_underflow) break;
     }
 
   ec.print_to_stdout(output);

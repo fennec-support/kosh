@@ -776,11 +776,11 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
       shell_binary_name = command.substring(i);
       break;
     }
-  let const completes_shell_binary =
+  let const is_shell_binary_completion =
       !builtin_kind.has_value() && shell_binary_name == "kosh";
 
   let const previous_word = previous_settled_word(line, token_start);
-  let const wants_operand = token.is_empty() || token[0] != '-';
+  let const is_operand_wanted = token.is_empty() || token[0] != '-';
 
   let candidates = ArrayList<String>{heap_allocator()};
   let const do_push_matching = [&](StringView candidate) throws {
@@ -799,13 +799,13 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
     bool should_offer_util_names = false;
     if (is_koshkit_builtin) {
       if (previous_word == command) {
-        if (wants_operand) {
+        if (is_operand_wanted) {
           should_offer_util_names = true;
         }
       } else if (let const second = second_word_of(line); second.has_value()) {
         util_for_flags = koshkit::find_util(*second);
       }
-    } else if (!completes_shell_binary &&
+    } else if (!is_shell_binary_completion &&
                context.runtime_state().koshkit_utilities_are_reachable())
     {
       util_for_flags = koshkit::find_util(command);
@@ -826,8 +826,8 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
     }
 
     if (util_for_flags.has_value()) {
-      if (*util_for_flags == koshkit::Utility::Kind::Which && wants_operand &&
-          !os::has_directory_separator(token))
+      if (*util_for_flags == koshkit::Utility::Kind::Which &&
+          is_operand_wanted && !os::has_directory_separator(token))
       {
         if (token.is_empty() && mode != completion_mode::Listing) {
           return None;
@@ -839,11 +839,11 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
         return None;
       }
 
-      let const takes_signal_name =
+      let const is_signal_name_operand =
           *util_for_flags == koshkit::Utility::Kind::Timeout ||
           *util_for_flags == koshkit::Utility::Kind::Pkill ||
           *util_for_flags == koshkit::Utility::Kind::Killall;
-      if (takes_signal_name &&
+      if (is_signal_name_operand &&
           (previous_word == "-s" || previous_word == "--signal"))
       {
         do_push_signal_names();
@@ -885,7 +885,7 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
         }
       }
 
-      if (wants_operand) return None;
+      if (is_operand_wanted) return None;
       let const flags = koshkit::koshkit_util_flag_list(*util_for_flags);
       if (flags == nullptr) return None;
       let forms = ArrayList<String>{heap_allocator()};
@@ -895,15 +895,15 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
     }
   }
 
-  if (!builtin_kind.has_value() && !completes_shell_binary) {
+  if (!builtin_kind.has_value() && !is_shell_binary_completion) {
     return None;
   }
 
-  let const completes_set_builtin =
+  let const is_set_builtin_completion =
       builtin_kind.has_value() && *builtin_kind == Builtin::Kind::Set;
 
-  if (completes_set_builtin || completes_shell_binary) {
-    if (completes_set_builtin &&
+  if (is_set_builtin_completion || is_shell_binary_completion) {
+    if (is_set_builtin_completion &&
         (previous_word == "-o" || previous_word == "+o"))
     {
       for (let const name : shell_option_names())
@@ -918,7 +918,7 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
 
     let const is_mood_flag =
         MOOD_FLAGS.contains(previous_word) &&
-        (completes_shell_binary || !previous_word.starts_with("--"));
+        (is_shell_binary_completion || !previous_word.starts_with("--"));
     if (is_mood_flag) {
       for (mimic_mood mood : {mimic_mood::Default, mimic_mood::Bash,
                               mimic_mood::Posix, mimic_mood::BashPosix})
@@ -927,7 +927,7 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
       return None;
     }
 
-    if (completes_shell_binary && previous_word == "--tab-selector") {
+    if (is_shell_binary_completion && previous_word == "--tab-selector") {
       for (tab_selector_mode selector :
            {tab_selector_mode::Interactive, tab_selector_mode::External,
             tab_selector_mode::Plain})
@@ -937,7 +937,7 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
     }
 
 #if !defined NDEBUG
-    if (completes_shell_binary &&
+    if (is_shell_binary_completion &&
         (previous_word == "--debug-logging" || previous_word == "-X"))
     {
       for (let const level : {"info", "debug", "all"})
@@ -963,7 +963,7 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
 
     let const form = operands.is_empty() ? StringView{} : operands[0];
     let const is_set_value = operands.count() == 2 && form == "set";
-    if (!wants_operand && !is_set_value) {
+    if (!is_operand_wanted && !is_set_value) {
       do_push_matching("--help");
       if (form.is_empty() || form == "create") {
         do_push_matching("--force");
@@ -1053,7 +1053,7 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
   }
 
   if (builtin_kind.has_value() && *builtin_kind == Builtin::Kind::Shopt &&
-      wants_operand)
+      is_operand_wanted)
   {
     if (previous_word == "-o") {
       for (let const name : shell_option_names())
@@ -1067,7 +1067,7 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
     return None;
   }
 
-  if (builtin_kind.has_value() && wants_operand &&
+  if (builtin_kind.has_value() && is_operand_wanted &&
       (*builtin_kind == Builtin::Kind::Export ||
        *builtin_kind == Builtin::Kind::Readonly ||
        *builtin_kind == Builtin::Kind::Declare ||
@@ -1093,7 +1093,7 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
       return None;
     }
 
-    if (wants_operand) {
+    if (is_operand_wanted) {
       for (let const &background_job : context.job_table_store().jobs()) {
         let job_id = String{"%"};
         job_id += String::from(background_job.id, heap_allocator());
@@ -1105,7 +1105,7 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
   }
 
   if (builtin_kind.has_value() && *builtin_kind == Builtin::Kind::Trap &&
-      wants_operand && previous_word != command)
+      is_operand_wanted && previous_word != command)
   {
     for (let const condition : {"DEBUG", "ERR", "EXIT", "RETURN"})
       do_push_matching(condition);
@@ -1115,7 +1115,7 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
   }
 
   if (builtin_kind.has_value() && *builtin_kind == Builtin::Kind::Enable &&
-      wants_operand)
+      is_operand_wanted)
   {
     for (let const &name : builtin_names())
       do_push_matching(name.view());
@@ -1124,7 +1124,7 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
   }
 
   if (builtin_kind.has_value() && *builtin_kind == Builtin::Kind::Type &&
-      wants_operand)
+      is_operand_wanted)
   {
     if (token.is_empty() && mode != completion_mode::Listing) {
       return None;
@@ -1137,7 +1137,7 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
   }
 
   if (builtin_kind.has_value() && *builtin_kind == Builtin::Kind::Z &&
-      wants_operand)
+      is_operand_wanted)
   {
     let z_candidates = z_completion_candidates(token, heap_allocator());
     if (!z_candidates.is_empty()) return z_candidates;
@@ -1145,7 +1145,7 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
   }
 
   if (builtin_kind.has_value() &&
-      *builtin_kind == Builtin::Kind::CommandBuiltin && wants_operand &&
+      *builtin_kind == Builtin::Kind::CommandBuiltin && is_operand_wanted &&
       !os::has_directory_separator(token))
   {
     usize settled_word_count = 0;
@@ -1257,10 +1257,10 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
     return None;
   }
 
-  if (wants_operand) return None;
+  if (is_operand_wanted) return None;
 
   const ArrayList<String> *dash_candidates = dash_candidates_for(
-      completes_shell_binary ? Maybe<Builtin::Kind>{None} : builtin_kind);
+      is_shell_binary_completion ? Maybe<Builtin::Kind>{None} : builtin_kind);
   if (dash_candidates == nullptr) return None;
   for (let const &candidate : *dash_candidates)
     do_push_matching(candidate.view());
@@ -1499,11 +1499,11 @@ generate_spec_candidates(completion_spec &active_spec,
     }
   }
 
-  let const does_generate_file_names =
+  let const should_generate_file_names =
       glob_pattern.has_value() ||
       active_spec.has_action(compgen_action::Directory) ||
       active_spec.has_action(compgen_action::File);
-  if (does_generate_file_names) {
+  if (should_generate_file_names) {
     active_spec.option_mask |=
         completion_option_bit(completion_option::FileNames);
   }

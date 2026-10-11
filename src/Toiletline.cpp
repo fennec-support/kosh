@@ -804,11 +804,11 @@ fn completion_session::complete(const char *buffer, size_t cursor,
         context->program_resolver().end_explicit_completion();
     };
 
-    let const are_signal_keys_lent_to_completion_spec =
+    let const has_signal_keys_lent_to_completion_spec =
         is_explicit_completion && ::tl_set_signal_keys(1) == TL_SUCCESS;
     defer
     {
-      if (are_signal_keys_lent_to_completion_spec)
+      if (has_signal_keys_lent_to_completion_spec)
         unused(::tl_set_signal_keys(0));
       koshka::os::INTERRUPT_REQUESTED = 0;
     };
@@ -1148,12 +1148,12 @@ fn completion_session::idle(const char *buffer, size_t cursor) -> int
         should_show_diagnostics &&
         (!has_analyzed_line || analyzed_line.view() != line);
     if (should_analyze) {
-      let const had_finding = !analysis_finding.is_empty();
+      let const has_previous_finding = !analysis_finding.is_empty();
       analyzed_line = koshka::String{line};
       has_analyzed_line = true;
       unused(koshka::completion::describe_analysis_finding(line, *context,
                                                            analysis_finding));
-      if (had_finding || !analysis_finding.is_empty()) {
+      if (has_previous_finding || !analysis_finding.is_empty()) {
         outcome |= TL_IDLE_REFRESH;
       }
     }
@@ -3123,10 +3123,12 @@ struct prompt_cache
 
     for (let const &input : inputs) {
       let current = context.get_variable_value(input.name.view());
-      let const both_unset = !current.has_value() && !input.value.has_value();
-      let const both_equal = current.has_value() && input.value.has_value() &&
-                             current->view() == input.value->view();
-      if (!both_unset && !both_equal) {
+      let const is_unset_in_both =
+          !current.has_value() && !input.value.has_value();
+      let const is_equal_in_both = current.has_value() &&
+                                   input.value.has_value() &&
+                                   current->view() == input.value->view();
+      if (!is_unset_in_both && !is_equal_in_both) {
         return false;
       }
     }

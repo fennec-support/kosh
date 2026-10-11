@@ -61,7 +61,7 @@ static fn wait_for_process_until(os::process child, os::process process_group,
                                  wait_completion completion) throws
     -> supervision_wait_result
 {
-  let const wait_for_process_group =
+  let const should_wait_for_process_group =
       completion == wait_completion::ProcessGroupEmpty;
   let const has_deadline = timeout_nanos != 0 && timeout_nanos != UINT64_MAX;
   let const started_at_nanos = os::monotonic_nanos();
@@ -73,7 +73,7 @@ static fn wait_for_process_until(os::process child, os::process process_group,
       let const state = os::poll_process(child, status);
       has_child_exited = state == os::process_state::Exited;
     }
-    if (has_child_exited && (!wait_for_process_group ||
+    if (has_child_exited && (!should_wait_for_process_group ||
                              !os::process_group_has_members(process_group)))
     {
       return supervision_wait_result::Exited;

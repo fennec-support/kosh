@@ -480,13 +480,13 @@ fn JobTable::find_job_index_by_spec(StringView spec) throws -> Maybe<usize>
     return koshka::None;
   }
 
-  let const wants_substring_match = body[0] == '?';
-  if (wants_substring_match) body = body.substring(1);
+  let const is_substring_match = body[0] == '?';
+  if (is_substring_match) body = body.substring(1);
 
   if (body.is_empty()) return koshka::None;
 
   for (usize i = 0; i < m_jobs.count(); i++) {
-    if (wants_substring_match) {
+    if (is_substring_match) {
       if (m_jobs[i].command.find_substring(body).has_value()) return i;
     } else if (m_jobs[i].command.starts_with(body)) {
       return i;

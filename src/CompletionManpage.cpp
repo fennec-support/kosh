@@ -196,18 +196,18 @@ static fn manpath_argv_for(EvalContext &context) throws
       resolver.search("man", ProgramResolver::SearchMode::First,
                       ProgramResolver::Requirement::Runnable,
                       ProgramResolver::CachePolicy::Bypass);
-  let const manpath_present =
+  let const is_manpath_present =
       !man_paths.is_empty() &&
       os::directory_is_trusted_for_exec(man_paths[0].parent());
-  let const man_present =
+  let const is_man_present =
       !manbin_paths.is_empty() &&
       os::directory_is_trusted_for_exec(manbin_paths[0].parent());
-  if (!manpath_present && !man_present) {
+  if (!is_manpath_present && !is_man_present) {
     return None;
   }
 
   let argv = ArrayList<String>{heap_allocator()};
-  if (manpath_present) {
+  if (is_manpath_present) {
     argv.push(String{man_paths[0].view()});
   } else {
     argv.push(String{manbin_paths[0].view()});
@@ -836,10 +836,10 @@ static fn parse_manpage_option_entries(StringView text) throws
   let entries = ArrayList<help_entry>{heap_allocator()};
   let seen = HashSet{heap_allocator()};
   for (usize j = 0; j < view.length; j++) {
-    let const at_word_start = j == 0 || view[j - 1] == ' ' ||
-                              view[j - 1] == '\t' || view[j - 1] == '\n' ||
-                              view[j - 1] == '(' || view[j - 1] == '[';
-    if (view[j] != '-' || !at_word_start) {
+    let const is_at_word_start = j == 0 || view[j - 1] == ' ' ||
+                                 view[j - 1] == '\t' || view[j - 1] == '\n' ||
+                                 view[j - 1] == '(' || view[j - 1] == '[';
+    if (view[j] != '-' || !is_at_word_start) {
       continue;
     }
     let end = j;
@@ -1227,10 +1227,10 @@ static fn is_plausible_subcommand_name(StringView name) wontthrow -> bool
 {
   if (name.is_empty()) return false;
   let const first = name[0];
-  let const starts_word = (first >= 'a' && first <= 'z') ||
-                          (first >= 'A' && first <= 'Z') ||
-                          (first >= '0' && first <= '9');
-  if (!starts_word) return false;
+  let const is_word_start = (first >= 'a' && first <= 'z') ||
+                            (first >= 'A' && first <= 'Z') ||
+                            (first >= '0' && first <= '9');
+  if (!is_word_start) return false;
   for (usize i = 0; i < name.length; i++) {
     let const c = name[i];
     let const ok = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
