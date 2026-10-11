@@ -172,6 +172,18 @@ hot static fn arith_apply_binop(char kind, const ArithmeticValue &lhs,
                                 Maybe<u32> bc_scale = {}) throws
     -> ArithmeticValue;
 
+static pure fn is_plain_decimal_operand(StringView value) wontthrow -> bool
+{
+  if (value.is_empty() || value.length > 18) return false;
+  if (value[0] == '0') return value.length == 1;
+
+  for (usize index = 0; index < value.length; index++) {
+    if (value[index] < '0' || value[index] > '9') return false;
+  }
+
+  return true;
+}
+
 class ArithmeticParser
 {
 public:
@@ -299,6 +311,8 @@ public:
       if (let const literal = try_parse_single_integer_literal(value);
           literal.has_value())
         return ArithmeticValue{literal.value()};
+    } else if (is_plain_decimal_operand(value)) {
+      return ArithmeticValue::parse(value, 10, arena);
     }
 
     if (depth >= MAX_DEPTH)
@@ -1667,9 +1681,29 @@ static pure fn arith_op_is_complex(StringView t) wontthrow -> bool
   return COMPLEX_OPS.contains(t);
 }
 
+static pure fn arith_tokens_are_single_step(
+    const ArrayList<arith_token> &toks) wontthrow -> bool
+{
+  if (toks.count() != 2) return false;
+
+  let const &first = toks[0];
+  let const &second = toks[1];
+  let const do_is_step = [](const arith_token &token) {
+    return token.k == arith_token::kind::op &&
+           (token.text == "++" || token.text == "--");
+  };
+
+  if (do_is_step(first)) return second.k == arith_token::kind::name;
+
+  return first.k == arith_token::kind::name && do_is_step(second) &&
+         first.text.data + first.text.length == second.text.data;
+}
+
 static pure fn
 arith_tokens_are_simple(const ArrayList<arith_token> &toks) wontthrow -> bool
 {
+  if (arith_tokens_are_single_step(toks)) return true;
+
   for (let const &t : toks) {
     if (t.k == arith_token::kind::subscript) return false;
     if (t.k == arith_token::kind::number &&
@@ -1864,6 +1898,8 @@ static fn evaluate_named_value_operand(EvalContext *context, StringView value,
     if (let const literal = try_parse_single_integer_literal(value);
         literal.has_value())
       return ArithmeticValue{literal.value()};
+  } else if (is_plain_decimal_operand(value)) {
+    return ArithmeticValue::parse(value, 10, arena);
   }
 
   let const stable_value = String{bump_allocator(arena), value};
@@ -1986,9 +2022,34 @@ public:
     }
   }
 
+  fn run_single_step() throws -> ArithmeticValue
+  {
+    let const is_prefix = toks[0].k == arith_token::kind::op;
+    let const &step = is_prefix ? toks[0] : toks[1];
+    let const name = is_prefix ? toks[1].text : toks[0].text;
+    let const delta = step.text[0] == '+' ? i64{1} : i64{-1};
+
+    let const original = arith_read_variable(context, name, is_exact, arena);
+    let const updated = arith_apply_binop('+', original, ArithmeticValue{delta},
+                                          is_exact, arena);
+
+    if (context->variable_store().attributes().is_nameref(name) &&
+        context->is_circular_nameref(name))
+    {
+      context->warn_circular_nameref(name);
+      return is_prefix ? updated : original;
+    }
+
+    let const text = updated.to_string(context->scratch_allocator());
+    context->set_shell_variable(name, text.view());
+
+    return is_prefix ? updated : original;
+  }
+
   fn run() throws -> ArithmeticValue
   {
     if (toks.is_empty()) return ArithmeticValue{};
+    if (arith_tokens_are_single_step(toks)) return run_single_step();
     let const result = parse_binary(1);
     if (ti != toks.count()) {
       throw ErrorWithDetails{"Unexpected '" + String{toks[ti].text} +

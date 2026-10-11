@@ -1642,6 +1642,8 @@ protected:
       -> status_result override;
 
   StringView m_expression;
+
+  mutable arith_token_cache *m_cache{nullptr};
 };
 
 class CStyleForLoop : public CompoundCommand

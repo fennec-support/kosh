@@ -651,6 +651,26 @@ fn ArithmeticValue::parse(StringView text, u32 radix, BumpArena &arena) throws
     body = body.substring(1);
   }
 
+  if (radix == 10 && body.length > 0 && body.length <= 18) {
+    u64 small_magnitude = 0;
+    let is_all_digits = true;
+
+    for (usize index = 0; index < body.length; index++) {
+      let const byte = body[index];
+      if (byte < '0' || byte > '9') {
+        is_all_digits = false;
+        break;
+      }
+      small_magnitude = small_magnitude * 10 + static_cast<u64>(byte - '0');
+    }
+
+    if (is_all_digits) {
+      let const signed_magnitude = static_cast<i64>(small_magnitude);
+      return ArithmeticValue{is_negative ? -signed_magnitude
+                                         : signed_magnitude};
+    }
+  }
+
   let magnitude = ArrayList<u64>{allocator};
 
   if (radix == 10) {
