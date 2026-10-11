@@ -35,19 +35,25 @@ fn Yes::execute(const ExecContext &ec, EvalContext &cxt,
     }
   line += '\n';
 
+  static constexpr usize OUTPUT_BUFFER_LENGTH = 64 * 1024;
+  let output = String{cxt.scratch_allocator()};
+  output.reserve(OUTPUT_BUFFER_LENGTH);
+  do {
+    output += line;
+  } while (output.count() + line.count() <= OUTPUT_BUFFER_LENGTH);
+
   let const out_fd = ec.out_fd.value_or(KOSH_STDOUT);
   loop
   {
     if (os::INTERRUPT_REQUESTED) return 130;
 
-    usize written_count = 0;
-    while (written_count < line.count()) {
-      let const chunk = os::write_fd(out_fd, line.view().data + written_count,
-                                     line.count() - written_count);
-      if (!chunk.has_value())
-        return errno == EPIPE ? KOSH_BROKEN_PIPE_EXIT_STATUS : 0;
-      if (*chunk == 0) return 0;
-      written_count += *chunk;
+    if (!os::write_all(out_fd, output.data(), output.count())) {
+      if (errno == EPIPE) return KOSH_BROKEN_PIPE_EXIT_STATUS;
+
+      report_soft_koshkit_util_error(ec, cxt, args[0].view(),
+                                     "write error: " +
+                                         os::last_system_error_message());
+      return 1;
     }
   }
 }

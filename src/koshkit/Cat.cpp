@@ -142,15 +142,45 @@ fn Cat::execute(const ExecContext &ec, EvalContext &cxt,
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
-  let const sources =
+  let const operand_sources =
       source_list_from_operands(operands, cxt.scratch_allocator());
+
+  let const output_descriptor = ec.out_fd.value_or(KOSH_STDOUT);
+  let const output_size = os::regular_descriptor_file_size(output_descriptor);
+  let const do_is_output = [&](StringView source) wontthrow -> bool {
+    if (source == "-")
+      return os::descriptors_refer_to_same_file(ec.in_fd.value_or(KOSH_STDIN),
+                                                output_descriptor);
+
+    let const opened =
+        os::open_file_descriptor(source, os::file_open_mode::ReadNonblocking);
+    if (!opened.has_value()) return false;
+
+    let const is_output =
+        os::descriptors_refer_to_same_file(*opened, output_descriptor);
+    os::close_fd(*opened);
+    return is_output;
+  };
+
+  i32 input_status = 0;
+  let sources = ArrayList<StringView>{cxt.scratch_allocator()};
+  for (let const source : operand_sources) {
+    if (output_size.has_value() && *output_size > 0 && do_is_output(source)) {
+      report_soft_koshkit_util_error(
+          ec, cxt, args[0].view(),
+          String{cxt.scratch_allocator(), source} + ": input file is output file");
+      input_status = 1;
+      continue;
+    }
+    sources.push(source);
+  }
 
   let const should_highlight_output =
       FLAG_CAT_SYNTAX_HIGHLIGHTING.is_enabled() && colors::stdout_wants_color();
   if (!FLAG_CAT_NUMBER.is_enabled() && !should_highlight_output) {
     let reader = SourceBatchReader{ec, sources, cxt.scratch_allocator()};
     let chunks = ArrayList<SourceBatchReader::Chunk>{cxt.scratch_allocator()};
-    i32 status = 0;
+    i32 status = input_status;
 
     loop
     {
@@ -186,7 +216,7 @@ fn Cat::execute(const ExecContext &ec, EvalContext &cxt,
     let is_at_output_line_start = true;
     let is_at_source_output_line_start = true;
     usize source_start = 0;
-    i32 status = 0;
+    i32 status = input_status;
 
     loop
     {
@@ -234,7 +264,7 @@ fn Cat::execute(const ExecContext &ec, EvalContext &cxt,
   let output = String{cxt.scratch_allocator()};
   i64 line_number = 1;
   let is_at_output_line_start = true;
-  i32 status = 0;
+  i32 status = input_status;
 
   let const visit = visit_ordered_sources(
       ec, sources, cxt.scratch_allocator(),

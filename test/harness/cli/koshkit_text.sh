@@ -183,6 +183,10 @@ echo "--- grep long recursive flags ---"
 "$BIN" -c 'koshkit grep --recursive --line-number --no-filename hello grep-tree'
 echo "--- grep one file system changes nothing on one file system ---"
 "$BIN" -c 'koshkit grep -rn --one-file-system hello grep-tree'
+echo "--- grep -r names the file of a one-file tree ---"
+"$BIN" -c 'koshkit grep -rn again grep-tree/sub'
+echo "--- grep -r with no operand searches the working directory ---"
+(cd grep-tree/sub && "$BIN" -c 'koshkit grep -r again' < "$TEST_NULL_DEVICE")
 echo "--- grep stdin ---"
 printf 'pear\nplum\n' | "$BIN" -c 'koshkit grep plum'
 echo "--- grep repeated stdin ---"

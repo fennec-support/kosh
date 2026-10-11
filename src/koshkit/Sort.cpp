@@ -598,15 +598,24 @@ fn Sort::execute(const ExecContext &ec, EvalContext &cxt,
   };
 
   let output = String{cxt.scratch_allocator()};
+  bool did_write_fail = false;
   static constexpr usize OUTPUT_BUFFER_LENGTH = 64 * 1024;
   output.reserve(OUTPUT_BUFFER_LENGTH);
   let const do_flush = [&]() throws -> void {
     if (output.is_empty()) return;
 
-    if (output_descriptor.has_value())
-      unused(os::write_all(*output_descriptor, output.data(), output.count()));
-    else
+    if (output_descriptor.has_value()) {
+      if (!did_write_fail &&
+          !os::write_all(*output_descriptor, output.data(), output.count()))
+      {
+        did_write_fail = true;
+        report_soft_koshkit_util_error(ec, cxt, args[0].view(),
+                                       "write error: " +
+                                           os::last_system_error_message());
+      }
+    } else {
       ec.print_to_stdout(output);
+    }
 
     output.clear();
   };
@@ -632,7 +641,7 @@ fn Sort::execute(const ExecContext &ec, EvalContext &cxt,
 
   do_flush();
 
-  return status;
+  return did_write_fail ? 2 : status;
 }
 
 } /* namespace koshka::koshkit */

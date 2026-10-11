@@ -231,6 +231,10 @@ grep-tree/sub/b.txt:1:hello-again
 --- grep one file system changes nothing on one file system ---
 grep-tree/a.txt:1:hello
 grep-tree/sub/b.txt:1:hello-again
+--- grep -r names the file of a one-file tree ---
+grep-tree/sub/b.txt:1:hello-again
+--- grep -r with no operand searches the working directory ---
+b.txt:hello-again
 --- grep stdin ---
 plum
 --- grep repeated stdin ---

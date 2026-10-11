@@ -1105,14 +1105,24 @@ public:
 
   fn collect_sources(const ArrayList<String> &operands) throws -> void
   {
-    let const operand_sources =
+    let const is_recursive =
+        m_options.recursion_mode == grep_recursion_mode::Recursive;
+    let operand_sources =
         source_list_from_operands(operands, m_allocator, m_first_source_index);
-    if (m_options.recursion_mode == grep_recursion_mode::Recursive) {
+    let const is_working_directory_implied =
+        is_recursive && operands.count() <= m_first_source_index;
+    if (is_working_directory_implied) {
+      operand_sources.clear();
+      operand_sources.push(".");
+    }
+    bool has_directory_operand = false;
+    if (is_recursive) {
       for (let const source : operand_sources) {
         if (source == "-") {
           m_sources.push(source);
           continue;
         }
+        if (os::path_is_directory(source)) has_directory_operand = true;
         let const source_path = Path{source, m_allocator};
         collect_recursive_sources(
             m_ec, m_cxt, source_path, Path::entry_kind::Unknown, m_allocator,
@@ -1120,8 +1130,13 @@ public:
       }
 
       m_sources.reserve(m_recursive_storage.count() + 1);
-      for (let const &source : m_recursive_storage)
-        m_sources.push(source.view());
+      for (let const &source : m_recursive_storage) {
+        let const view = source.view();
+        if (is_working_directory_implied && view.starts_with("./"))
+          m_sources.push(view.substring(2));
+        else
+          m_sources.push(view);
+      }
 
       if (m_sources.is_empty() && operand_sources.count() == 1 &&
           operand_sources[0] == "-")
@@ -1133,7 +1148,8 @@ public:
     }
 
     m_should_print_names =
-        !m_options.should_suppress_names && m_sources.count() > 1;
+        !m_options.should_suppress_names &&
+        (m_sources.count() > 1 || has_directory_operand);
     if (m_options.should_print_line_numbers) {
       m_source_line_numbers.reserve(m_sources.count());
       for (usize index = 0; index < m_sources.count(); index++)

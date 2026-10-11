@@ -120,6 +120,20 @@ fn Split::execute(const ExecContext &ec, EvalContext &cxt,
     let const name =
         split_output_name(prefix, static_cast<usize>(suffix_length),
                           output_index++, cxt.scratch_allocator());
+    if (let const existing = os::open_file_descriptor(
+            name.view(), os::file_open_mode::ReadNonblocking);
+        existing.has_value())
+    {
+      let const is_input =
+          os::descriptors_refer_to_same_file(*existing, input->descriptor);
+      os::close_fd(*existing);
+      if (is_input) {
+        report_soft_koshkit_util_error(
+            ec, cxt, args[0].view(),
+            "'" + name + "' would overwrite the input; aborting");
+        return false;
+      }
+    }
     let const descriptor =
         os::open_file_descriptor(name.view(), os::file_open_mode::Truncate);
     if (!descriptor.has_value()) {

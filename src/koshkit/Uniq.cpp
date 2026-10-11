@@ -146,15 +146,24 @@ fn Uniq::execute(const ExecContext &ec, EvalContext &cxt,
   let const should_show_repeated = FLAG_UNIQ_REPEATED.is_enabled();
   let const should_show_unique = FLAG_UNIQ_UNIQUE.is_enabled();
   let output = String{cxt.scratch_allocator()};
+  bool did_write_fail = false;
   bool has_previous = false;
   let previous = String{heap_allocator()};
   u64 run_length = 0;
 
   let const do_write_output = [&]() throws -> void {
-    if (output_descriptor.has_value())
-      unused(os::write_all(*output_descriptor, output.data(), output.count()));
-    else
+    if (output_descriptor.has_value()) {
+      if (!did_write_fail &&
+          !os::write_all(*output_descriptor, output.data(), output.count()))
+      {
+        did_write_fail = true;
+        report_soft_koshkit_util_error(ec, cxt, args[0].view(),
+                                       "write error: " +
+                                           os::last_system_error_message());
+      }
+    } else {
       ec.print_to_stdout(output);
+    }
 
     output.clear();
   };
@@ -212,7 +221,7 @@ fn Uniq::execute(const ExecContext &ec, EvalContext &cxt,
   do_flush();
 
   do_write_output();
-  return 0;
+  return did_write_fail ? 1 : 0;
 }
 
 } /* namespace koshka::koshkit */

@@ -1,0 +1,29 @@
+--- split ---
+status=1
+1,2,3,4,
+--- cat ---
+stdin=1 lines=1
+operand=1 lines=1
+empty=0
+other=0 lines=2
+--- sort and uniq ---
+a,b,
+sort-full=2
+uniq-full=1
+yes-full=1
+--- head ---
+1
+2
+3
+4
+5
+2
+3
+4
+5
+1
+2|
+
+3
+4
+5
