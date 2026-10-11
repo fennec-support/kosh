@@ -470,32 +470,42 @@ class ProtocolReader
 public:
   fn read_message() throws -> Maybe<StringView>
   {
-    compact();
-    m_header_scan_position = m_offset;
-    usize header_end = 0;
-
     loop
     {
-      header_end = find_header_end();
-      if (header_end != static_cast<usize>(-1)) break;
-      if (!read_more()) return None;
-      if (m_buffer.count() - m_offset > MAX_HEADER_LENGTH) return None;
+      compact();
+      m_header_scan_position = m_offset;
+      usize header_end = 0;
+
+      loop
+      {
+        header_end = find_header_end();
+        if (header_end != static_cast<usize>(-1)) break;
+        if (!read_more()) return None;
+        if (m_buffer.count() - m_offset > MAX_HEADER_LENGTH) return None;
+      }
+
+      let const headers =
+          m_buffer.substring_of_length(m_offset, header_end - m_offset);
+      let content_length = parse_content_length(headers);
+      if (!content_length.has_value()) return None;
+
+      let const body_start = header_end + 4;
+      if (*content_length > MAX_MESSAGE_LENGTH) {
+        LOG(Info, "skipping a %zu byte message above the %zu byte limit",
+            *content_length, MAX_MESSAGE_LENGTH);
+        if (!skip_body(body_start, *content_length)) return None;
+        continue;
+      }
+
+      while (m_buffer.count() - body_start < *content_length)
+        if (!read_more()) return None;
+
+      let const body =
+          m_buffer.substring_of_length(body_start, *content_length);
+      m_offset = body_start + *content_length;
+
+      return body;
     }
-
-    let const headers =
-        m_buffer.substring_of_length(m_offset, header_end - m_offset);
-    let content_length = parse_content_length(headers);
-    if (!content_length.has_value() || *content_length > MAX_MESSAGE_LENGTH)
-      return None;
-    let const body_start = header_end + 4;
-
-    while (m_buffer.count() - body_start < *content_length)
-      if (!read_more()) return None;
-
-    let const body = m_buffer.substring_of_length(body_start, *content_length);
-    m_offset = body_start + *content_length;
-
-    return body;
   }
 
 private:
@@ -534,8 +544,7 @@ private:
           position++;
         if (position == line.length) return None;
         let const parsed = utils::parse_decimal_u64(line.substring(position));
-        if (parsed.is_error() || parsed.value() > MAX_MESSAGE_LENGTH)
-          return None;
+        if (parsed.is_error() || parsed.value() > SIZE_MAX) return None;
 
         return static_cast<usize>(parsed.value());
       }
@@ -544,6 +553,28 @@ private:
     }
 
     return None;
+  }
+
+  fn skip_body(usize body_start, usize length) throws -> bool
+  {
+    let const buffered_length = m_buffer.count() - body_start;
+    if (buffered_length >= length) {
+      m_offset = body_start + length;
+      return true;
+    }
+
+    let remaining_length = length - buffered_length;
+    m_offset = m_buffer.count();
+    char bytes[8192];
+    while (remaining_length > 0) {
+      let const wanted_length =
+          remaining_length < sizeof(bytes) ? remaining_length : sizeof(bytes);
+      let const count = os::read_fd(KOSH_STDIN, bytes, wanted_length);
+      if (!count.has_value() || *count == 0) return false;
+      remaining_length -= *count;
+    }
+
+    return true;
   }
 
   fn read_more() throws -> bool

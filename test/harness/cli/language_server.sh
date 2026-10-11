@@ -771,6 +771,20 @@ case $shift_output in
 *) printf 'shift-not-heredoc=missing\n' ;;
 esac
 
+oversized_output=$(
+  {
+    frame '{"jsonrpc":"2.0","id":80,"method":"initialize","params":{"capabilities":{}}}'
+    printf 'Content-Length: 16777217\r\n\r\n'
+    "$BIN_DIR/invoke-koshkit" yes | "$BIN_DIR/invoke-koshkit" head -c 16777217
+    frame '{"jsonrpc":"2.0","id":81,"method":"shutdown","params":null}'
+    frame '{"jsonrpc":"2.0","method":"exit"}'
+  } | "$BIN" --as-language-server
+)
+case $oversized_output in
+*'"id":81,"result":null'*) printf 'oversized-message-skipped=ok\n' ;;
+*) printf 'oversized-message-skipped=missing\n' ;;
+esac
+
 frame '{"jsonrpc":"2.0","method":"exit"}' |
   "$BIN" --as-language-server > /dev/null
 printf 'exit-without-shutdown-status=%s\n' "$?"
