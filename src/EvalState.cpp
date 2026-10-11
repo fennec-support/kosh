@@ -775,7 +775,7 @@ fn EvalContext::snapshot_state() throws -> eval_state_snapshot
 fn VariableStore::snapshot() const throws -> variable_snapshot
 {
   return variable_snapshot{
-      m_variables.clone(),
+      m_variables.share(),
       m_special_variable_definition_locations,
       m_associative_arrays,
       m_sparse_arrays,

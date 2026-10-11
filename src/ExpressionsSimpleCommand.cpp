@@ -408,7 +408,7 @@ fn AssignCommand::evaluate_assignment(EvalContext &cxt) const throws -> i64
     if (m_assignment->get_update_mode() == assignment_update_mode::Append &&
         do_is_plain_append_target())
     {
-      if (let stored = cxt.variable_store().shell_variables().find(
+      if (let stored = cxt.variable_store().shell_variables().find_for_write(
               assigned_name))
       {
         (*stored)->append(value.view());

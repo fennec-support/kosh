@@ -341,7 +341,7 @@ fn EvalContext::guard_restricted_path(StringView path,
 hot fn EvalContext::set_shell_variable(StringView name, StringView value) throws
     -> void
 {
-  let const entry = variable_store().find_variable(name);
+  let const entry = variable_store().find_variable_for_write(name);
   let const attribute_bits =
       entry.has_value() ? (*entry)->attribute_bits : u8{0};
   let const has_scalar = entry.has_value() && (*entry)->has_value;
@@ -736,7 +736,8 @@ fn EvalContext::set_indexed_array(StringView name,
 fn EvalContext::publish_pipe_statuses(ArrayList<String> values) throws -> void
 {
   if (is_readonly("PIPESTATUS")) {
-    if (let current = variable_store().indexed_arrays().find("PIPESTATUS");
+    if (let current =
+            variable_store().indexed_arrays().find_for_write("PIPESTATUS");
         current.has_value())
       *current.value() = steal(values);
 
@@ -750,8 +751,8 @@ fn EvalContext::publish_single_pipe_status(i32 status) throws -> void
 {
   let const entry = variable_store().variables().find_pipestatus();
   let existing = entry.has_value() && (*entry)->is_indexed_array
-                     ? Maybe<ArrayList<String> *>{&(*entry)->elements}
-                     : Maybe<ArrayList<String> *>{None};
+                     ? Maybe<const ArrayList<String> *>{&(*entry)->elements}
+                     : Maybe<const ArrayList<String> *>{None};
   if (!existing.has_value() && is_readonly("PIPESTATUS")) {
     return;
   }
@@ -767,8 +768,11 @@ fn EvalContext::publish_single_pipe_status(i32 status) throws -> void
     char status_text_buffer[32];
     let const status_text = utils::int_to_text_into(status, status_text_buffer,
                                                     sizeof(status_text_buffer));
-    if ((*existing.value())[0] != status_text)
-      (*existing.value())[0] = String{existing->allocator(), status_text};
+    if ((*existing.value())[0] != status_text) {
+      let &elements =
+          (*variable_store().variables().find_pipestatus_for_write())->elements;
+      elements[0] = String{elements.allocator(), status_text};
+    }
     return;
   }
 

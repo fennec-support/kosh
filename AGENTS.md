@@ -496,10 +496,15 @@ same encoding that every spawned process receives."
   `find().has_value()`.
 - `VariableTable` holds every scalar value and attribute byte in one
   `variable_entry` per name, indexed by a `StringMap` of pointers into a
-  `Hive`, so an entry keeps its address until the name loses both its value
-  and its attributes. `shell_variables()` and `attributes()` are views of
-  it. A hot path finds the entry once and passes it on instead of looking
-  the name up again, and a snapshot copies the table without hashing.
+  `Hive`. The index and the hive form one body behind `CopyOnWrite`, so a
+  snapshot shares the body and the first write after it clones the body
+  once. `find` returns a read-only entry and never clones; a write goes
+  through `find_for_write`, `get_or_create`, or a setter, and a check that
+  can skip its write reads first. An entry keeps its address until the
+  name loses both its value and its attributes or a write clones a shared
+  body, so a write pointer never outlives the next snapshot.
+  `shell_variables()` and `attributes()` are views of it. A hot path finds
+  the entry once and passes it on instead of looking the name up again.
 - `CompositeKeyArrays` stamps each associative element with an insertion
   sequence, and key and value listings sort by it, so the order of an
   associative array never depends on the hash table or on other arrays.

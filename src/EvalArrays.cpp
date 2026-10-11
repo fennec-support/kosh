@@ -323,13 +323,13 @@ fn EvalContext::set_array_element(StringView name, usize index,
       value = adjusted.view();
     }
 
-  let dense = variable_store().indexed_arrays().find(name);
+  let dense = variable_store().indexed_arrays().find_for_write(name);
   if (!dense.has_value()) {
     let elements = ArrayList<String>{heap_allocator()};
     if (let scalar = get_variable_value(name); scalar.has_value())
       elements.push(scalar.take());
     set_indexed_array(name, steal(elements));
-    dense = variable_store().indexed_arrays().find(name);
+    dense = variable_store().indexed_arrays().find_for_write(name);
   }
   ASSERT(dense.has_value());
 
@@ -710,7 +710,7 @@ fn EvalContext::unset_array_element(StringView name,
 
   if (variable_store().indexed_arrays().find(name).has_value()) {
     let const index = evaluate_array_index(*this, subscript);
-    let array = variable_store().indexed_arrays().find(name);
+    let array = variable_store().indexed_arrays().find_for_write(name);
     if (!array.has_value()) return;
 
     let const array_count = static_cast<i64>(array->count());

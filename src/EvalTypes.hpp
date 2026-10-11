@@ -216,77 +216,107 @@ private:
   {}
 };
 
+struct variable_table_body
+{
+  explicit variable_table_body(Allocator allocator) wontthrow
+      : index{allocator},
+        entries{allocator},
+        allocator{allocator}
+  {}
+  variable_table_body(variable_table_body &&other) wontthrow
+      : index{steal(other.index)},
+        entries{steal(other.entries)},
+        allocator{other.allocator},
+        pipestatus_entry{other.pipestatus_entry},
+        value_count{other.value_count},
+        indexed_array_count{other.indexed_array_count},
+        has_namerefs{other.has_namerefs},
+        has_declared_marks{other.has_declared_marks}
+  {
+    other.pipestatus_entry = nullptr;
+    other.value_count = 0;
+    other.indexed_array_count = 0;
+  }
+  variable_table_body(const variable_table_body &) = delete;
+  variable_table_body &operator=(const variable_table_body &) = delete;
+  variable_table_body &operator=(variable_table_body &&) = delete;
+
+  mustuse fn clone() const throws -> variable_table_body
+  {
+    let copy = variable_table_body{allocator};
+    copy.index = index.clone();
+    copy.value_count = value_count;
+    copy.indexed_array_count = indexed_array_count;
+    copy.has_namerefs = has_namerefs;
+    copy.has_declared_marks = has_declared_marks;
+    copy.index.for_each([&](StringView, variable_entry *&entry) throws {
+      entry = copy.entries.emplace(entry->clone());
+    });
+    return copy;
+  }
+
+  StringMap<variable_entry *> index;
+  Hive<variable_entry> entries;
+  Allocator allocator;
+  mutable variable_entry *pipestatus_entry{nullptr};
+  usize value_count{0};
+  usize indexed_array_count{0};
+  bool has_namerefs{false};
+  bool has_declared_marks{false};
+};
+
 class VariableTable
 {
 public:
-  explicit VariableTable(Allocator allocator) wontthrow
-      : m_index{allocator},
-        m_entries{allocator},
-        m_allocator{allocator}
-  {}
-  VariableTable(VariableTable &&other) wontthrow
-      : m_index{steal(other.m_index)},
-        m_entries{steal(other.m_entries)},
-        m_allocator{other.m_allocator},
-        m_pipestatus_entry{other.m_pipestatus_entry},
-        m_value_count{other.m_value_count},
-        m_indexed_array_count{other.m_indexed_array_count},
-        m_has_namerefs{other.m_has_namerefs},
-        m_has_declared_marks{other.m_has_declared_marks}
-  {
-    other.forget_moved_entries();
-  }
-  fn operator=(VariableTable &&other) wontthrow -> VariableTable &
-  {
-    if (this == &other) return *this;
-
-    m_index = steal(other.m_index);
-    m_entries = steal(other.m_entries);
-    m_allocator = other.m_allocator;
-    m_pipestatus_entry = other.m_pipestatus_entry;
-    m_value_count = other.m_value_count;
-    m_indexed_array_count = other.m_indexed_array_count;
-    m_has_namerefs = other.m_has_namerefs;
-    m_has_declared_marks = other.m_has_declared_marks;
-    other.forget_moved_entries();
-
-    return *this;
-  }
+  explicit VariableTable(Allocator allocator) wontthrow : m_body{allocator} {}
+  VariableTable(VariableTable &&other) wontthrow = default;
+  fn operator=(VariableTable &&other) wontthrow->VariableTable & = default;
 
   VariableTable(const VariableTable &) = delete;
   VariableTable &operator=(const VariableTable &) = delete;
 
   mustuse fn clone() const throws -> VariableTable
   {
-    let copy = VariableTable{m_allocator};
-    copy.m_index = m_index.clone();
-    copy.m_value_count = m_value_count;
-    copy.m_indexed_array_count = m_indexed_array_count;
-    copy.m_has_namerefs = m_has_namerefs;
-    copy.m_has_declared_marks = m_has_declared_marks;
-    copy.m_index.for_each([&](StringView, variable_entry *&entry) throws {
-      entry = copy.m_entries.emplace(entry->clone());
-    });
+    let copy = VariableTable{m_body.allocator()};
+    copy.m_body = m_body.clone();
     return copy;
   }
 
-  hot pure fn find(StringView name) const wontthrow -> Maybe<variable_entry *>
+  mustuse fn share() const wontthrow -> VariableTable
   {
-    let const found = m_index.find(name);
+    let copy = VariableTable{m_body.allocator()};
+    copy.m_body = m_body;
+    return copy;
+  }
+
+  hot pure fn find(StringView name) const wontthrow
+      -> Maybe<const variable_entry *>
+  {
+    if (m_body.is_empty()) return None;
+
+    let const found = m_body.read().index.find(name);
     if (!found.has_value()) return None;
     return *found.value();
   }
 
+  hot fn find_for_write(StringView name) throws -> Maybe<variable_entry *>
+  {
+    if (!find(name).has_value()) return None;
+
+    return *body().index.find(name).value();
+  }
+
   fn get_or_create(StringView name) throws -> variable_entry &
   {
-    if (let const found = m_index.find(name); found.has_value())
+    let &table = body();
+    if (let const found = table.index.find(name); found.has_value())
       return **found.value();
 
-    let *const created = m_entries.emplace(m_allocator);
+    let *const created = table.entries.emplace(table.allocator);
     try {
-      m_index.set(name, created);
+      table.index.set(name, created);
     } catch (...) {
-      m_entries.erase(created);
+      table.entries.erase(created);
       throw;
     }
     return *created;
@@ -299,16 +329,17 @@ public:
       return;
     }
 
-    if (&entry == m_pipestatus_entry) m_pipestatus_entry = nullptr;
-    m_index.erase(name);
-    m_entries.erase(&entry);
+    let &table = body();
+    if (&entry == table.pipestatus_entry) table.pipestatus_entry = nullptr;
+    table.index.erase(name);
+    table.entries.erase(&entry);
   }
 
   fn set_elements(StringView name, ArrayList<String> elements) throws
       -> ArrayList<String> *
   {
     let &entry = get_or_create(name);
-    if (!entry.is_indexed_array) m_indexed_array_count++;
+    if (!entry.is_indexed_array) body().indexed_array_count++;
     entry.is_indexed_array = true;
     entry.elements = steal(elements);
     return &entry.elements;
@@ -316,24 +347,42 @@ public:
 
   fn erase_elements(StringView name) throws -> void
   {
-    let const found = find(name);
-    if (!found.has_value() || !(*found)->is_indexed_array) {
+    let const current = find(name);
+    if (!current.has_value() || !(*current)->is_indexed_array) {
       return;
     }
 
-    (*found)->is_indexed_array = false;
-    (*found)->elements.clear();
-    m_indexed_array_count--;
-    release_if_unused(name, **found);
+    let &entry = *find_for_write(name).value();
+    entry.is_indexed_array = false;
+    entry.elements.clear();
+    body().indexed_array_count--;
+    release_if_unused(name, entry);
   }
 
-  fn find_pipestatus() throws -> Maybe<variable_entry *>
+  fn find_pipestatus() const wontthrow -> Maybe<const variable_entry *>
   {
-    if (m_pipestatus_entry != nullptr) return m_pipestatus_entry;
+    if (m_body.is_empty()) return None;
 
-    let const found = find(StringView{"PIPESTATUS", 10});
-    if (found.has_value()) m_pipestatus_entry = *found;
-    return found;
+    let const &table = m_body.read();
+    if (table.pipestatus_entry != nullptr) return table.pipestatus_entry;
+
+    let const found = table.index.find(StringView{"PIPESTATUS", 10});
+    if (!found.has_value()) return None;
+
+    table.pipestatus_entry = *found.value();
+    return table.pipestatus_entry;
+  }
+
+  fn find_pipestatus_for_write() throws -> Maybe<variable_entry *>
+  {
+    if (!find_pipestatus().has_value()) return None;
+
+    let &table = body();
+    if (table.pipestatus_entry == nullptr) {
+      table.pipestatus_entry =
+          *table.index.find(StringView{"PIPESTATUS", 10}).value();
+    }
+    return table.pipestatus_entry;
   }
 
   fn set_value(StringView name, StringView value) throws -> String *
@@ -343,12 +392,13 @@ public:
 
   fn assign_value(variable_entry &entry, StringView value) throws -> String *
   {
-    if (!entry.has_value) m_value_count++;
+    let &table = body();
+    if (!entry.has_value) table.value_count++;
     entry.has_value = true;
     let const is_buffer_wasteful = entry.value.count() > 256 &&
                                    value.length < entry.value.count() / 2;
     if (is_buffer_wasteful) {
-      entry.value = String{m_allocator, value};
+      entry.value = String{table.allocator, value};
       return &entry.value;
     }
     entry.value.clear();
@@ -358,25 +408,27 @@ public:
 
   fn erase_value(StringView name) throws -> void
   {
-    let const found = find(name);
-    if (!found.has_value() || !(*found)->has_value) {
+    let const current = find(name);
+    if (!current.has_value() || !(*current)->has_value) {
       return;
     }
 
-    (*found)->has_value = false;
-    (*found)->value.clear();
-    m_value_count--;
-    release_if_unused(name, **found);
+    let &entry = *find_for_write(name).value();
+    entry.has_value = false;
+    entry.value.clear();
+    body().value_count--;
+    release_if_unused(name, entry);
   }
 
   fn set_attribute_bits(StringView name, u8 bits) throws -> void
   {
     note_attribute_bits(bits);
     if (bits == 0) {
-      if (let const found = find(name); found.has_value()) {
-        (*found)->attribute_bits = 0;
-        release_if_unused(name, **found);
-      }
+      if (!find(name).has_value()) return;
+
+      let &entry = *find_for_write(name).value();
+      entry.attribute_bits = 0;
+      release_if_unused(name, entry);
       return;
     }
 
@@ -386,47 +438,55 @@ public:
   template <typename Callback>
   fn for_each(Callback do_callback) const throws -> void
   {
-    m_index.for_each([&](StringView name, variable_entry *const &entry) throws {
-      do_callback(name, *entry);
-    });
+    if (m_body.is_empty()) return;
+
+    m_body.read().index.for_each(
+        [&](StringView name, variable_entry *const &entry) throws {
+          do_callback(name, static_cast<const variable_entry &>(*entry));
+        });
   }
 
-  pure fn allocator() const wontthrow -> Allocator { return m_allocator; }
-  pure fn value_count() const wontthrow -> usize { return m_value_count; }
+  pure fn allocator() const wontthrow -> Allocator
+  {
+    return m_body.allocator();
+  }
+  pure fn value_count() const wontthrow -> usize
+  {
+    return m_body.is_empty() ? 0 : m_body.read().value_count;
+  }
   pure fn indexed_array_count() const wontthrow -> usize
   {
-    return m_indexed_array_count;
+    return m_body.is_empty() ? 0 : m_body.read().indexed_array_count;
   }
-  pure fn has_namerefs() const wontthrow -> bool { return m_has_namerefs; }
+  pure fn has_namerefs() const wontthrow -> bool
+  {
+    return !m_body.is_empty() && m_body.read().has_namerefs;
+  }
   pure fn has_declared_marks() const wontthrow -> bool
   {
-    return m_has_declared_marks;
+    return !m_body.is_empty() && m_body.read().has_declared_marks;
   }
-  fn note_attribute_bits(u8 bits) wontthrow -> void
+  fn note_attribute_bits(u8 bits) throws -> void
   {
-    if ((bits & static_cast<u8>(variable_attribute::Nameref)) != 0)
-      m_has_namerefs = true;
-    if ((bits & static_cast<u8>(variable_attribute::Declared)) != 0)
-      m_has_declared_marks = true;
+    let const is_nameref =
+        (bits & static_cast<u8>(variable_attribute::Nameref)) != 0;
+    let const is_declared =
+        (bits & static_cast<u8>(variable_attribute::Declared)) != 0;
+    if (is_nameref && !has_namerefs()) body().has_namerefs = true;
+    if (is_declared && !has_declared_marks()) body().has_declared_marks = true;
   }
 
 private:
-  fn forget_moved_entries() wontthrow -> void
+  fn body() throws -> variable_table_body &
   {
-    m_index.clear();
-    m_pipestatus_entry = nullptr;
-    m_value_count = 0;
-    m_indexed_array_count = 0;
+    if (m_body.is_empty()) {
+      m_body.assign(variable_table_body{m_body.allocator()});
+    }
+
+    return m_body.write();
   }
 
-  StringMap<variable_entry *> m_index;
-  Hive<variable_entry> m_entries;
-  Allocator m_allocator;
-  variable_entry *m_pipestatus_entry{nullptr};
-  usize m_value_count{0};
-  usize m_indexed_array_count{0};
-  bool m_has_namerefs{false};
-  bool m_has_declared_marks{false};
+  CopyOnWrite<variable_table_body> m_body;
 };
 
 struct glob_field

@@ -4,7 +4,8 @@
  *
  * This file implements a shared value that clones itself on the first write.
  * Copying the holder only counts another reader, so a snapshot of a value
- * that rarely changes costs no allocation until one side changes it.
+ * that rarely changes costs no allocation until one side changes it. A holder
+ * can start empty and allocate its value on the first assignment.
  */
 
 #pragma once
@@ -19,6 +20,10 @@ template <class T>
 class CopyOnWrite
 {
 public:
+  explicit CopyOnWrite(Allocator allocator) wontthrow : m_allocator{allocator},
+                                                        m_shared{nullptr}
+  {}
+
   CopyOnWrite(Allocator allocator, T value) throws
       : m_allocator{allocator},
         m_shared{create(allocator, steal(value))}
@@ -66,13 +71,26 @@ public:
 
   mustuse fn clone() const throws -> CopyOnWrite
   {
+    if (m_shared == nullptr) return CopyOnWrite{m_allocator};
+
     return CopyOnWrite{m_allocator, clone_value(read())};
   }
+
+  pure fn is_empty() const wontthrow -> bool { return m_shared == nullptr; }
+
+  pure fn allocator() const wontthrow -> Allocator { return m_allocator; }
 
   pure fn read() const wontthrow -> const T &
   {
     ASSERT(m_shared != nullptr);
     return m_shared->value;
+  }
+
+  fn assign(T value) throws -> void
+  {
+    let *const created = create(m_allocator, steal(value));
+    release();
+    m_shared = created;
   }
 
   fn write() throws -> T &

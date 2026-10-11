@@ -443,7 +443,25 @@ fn EvalContext::restore_trap_pipe_statuses(
       return;
     }
 
-    if (let current = variable_store().indexed_arrays().find("PIPESTATUS");
+    let const do_is_unchanged = [&](const ArrayList<String> &current)
+                                    wontthrow -> bool {
+      if (current.count() != saved_pipe_statuses.count()) return false;
+
+      for (usize index = 0; index < current.count(); index++) {
+        if (current[index] != saved_pipe_statuses[index]) return false;
+      }
+
+      return true;
+    };
+    if (let const current =
+            variable_store().indexed_arrays().find("PIPESTATUS");
+        current.has_value() && do_is_unchanged(**current))
+    {
+      return;
+    }
+
+    if (let current =
+            variable_store().indexed_arrays().find_for_write("PIPESTATUS");
         current.has_value())
     {
       *current.value() = steal(saved_pipe_statuses);

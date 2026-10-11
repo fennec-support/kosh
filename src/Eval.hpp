@@ -1589,13 +1589,11 @@ public:
     }
     return &(*entry)->value;
   }
-  hot fn find(StringView name) wontthrow -> Maybe<String *>
+  hot fn find_for_write(StringView name) throws -> Maybe<String *>
   {
-    let const entry = m_table->find(name);
-    if (!entry.has_value() || !(*entry)->has_value) {
-      return None;
-    }
-    return &(*entry)->value;
+    if (!find(name).has_value()) return None;
+
+    return &(*m_table->find_for_write(name))->value;
   }
   fn set(StringView name, StringView value) throws -> String *
   {
@@ -1630,13 +1628,11 @@ public:
     }
     return &(*entry)->elements;
   }
-  hot fn find(StringView name) wontthrow -> Maybe<ArrayList<String> *>
+  hot fn find_for_write(StringView name) throws -> Maybe<ArrayList<String> *>
   {
-    let const entry = m_table->find(name);
-    if (!entry.has_value() || !(*entry)->is_indexed_array) {
-      return None;
-    }
-    return &(*entry)->elements;
+    if (!find(name).has_value()) return None;
+
+    return &(*m_table->find_for_write(name))->elements;
   }
   fn set(StringView name, ArrayList<String> elements) throws
       -> ArrayList<String> *
@@ -1646,7 +1642,7 @@ public:
   fn get_or_create(StringView name, ArrayList<String> default_elements) throws
       -> ArrayList<String> &
   {
-    if (let const existing = find(name); existing.has_value())
+    if (let const existing = find_for_write(name); existing.has_value())
       return **existing;
 
     return *m_table->set_elements(name, steal(default_elements));
@@ -1705,11 +1701,11 @@ public:
       return;
     }
 
-    let const entry = m_table->find(name);
-    if (!entry.has_value()) return;
+    if (!m_table->find(name).has_value()) return;
 
-    (*entry)->attribute_bits &= static_cast<u8>(~mask);
-    m_table->release_if_unused(name, **entry);
+    let &entry = **m_table->find_for_write(name);
+    entry.attribute_bits &= static_cast<u8>(~mask);
+    m_table->release_if_unused(name, entry);
   }
 
   pure fn is_readonly(StringView name) const wontthrow -> bool
@@ -1882,9 +1878,14 @@ public:
     return &(*entry)->value;
   }
   hot pure fn find_variable(StringView name) const wontthrow
-      -> Maybe<variable_entry *>
+      -> Maybe<const variable_entry *>
   {
     return m_variables.find(name);
+  }
+  hot fn find_variable_for_write(StringView name) throws
+      -> Maybe<variable_entry *>
+  {
+    return m_variables.find_for_write(name);
   }
   pure fn is_pipestatus_scalar_possible() const wontthrow -> bool
   {
