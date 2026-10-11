@@ -3065,7 +3065,10 @@ option asks before each command runs, and
 .B \-t
 traces each command. The
 .B \-x
-option fails when a command does not fit in the size limit.
+option fails when a command does not fit in the size limit. Each command
+runs as soon as its arguments are read. The status is 123 when a command
+fails, 124 when one exits with 255, 125 when a signal ends one, and 126 or
+127 when one cannot run.
 .TP
 .B od
 Input bytes are written in the formats selected by

@@ -63,27 +63,84 @@ static fn parse_xargs_limit(const ExecContext &ec, EvalContext &cxt,
   return true;
 }
 
-static fn parse_xargs_items(StringView input, Allocator allocator) throws
-    -> ArrayList<xargs_item>
+enum class xargs_item_format : u8
 {
-  let items = ArrayList<xargs_item>{allocator};
-  usize position = 0;
-  usize line_number = 0;
-  while (position < input.length) {
-    while (position < input.length &&
-           (input[position] == ' ' || input[position] == '\t' ||
-            input[position] == '\n'))
-    {
-      if (input[position] == '\n') line_number++;
-      position++;
+  Quoted,
+  NullSeparated,
+  Lines,
+};
+
+class XargsReader
+{
+public:
+  XargsReader(os::descriptor fd, xargs_item_format format,
+              Allocator allocator) wontthrow
+      : m_fd{fd},
+        m_format{format},
+        m_buffer{allocator}
+  {}
+
+  fn next(Allocator allocator) throws -> Maybe<xargs_item>
+  {
+    switch (m_format) {
+    case xargs_item_format::Quoted: return next_quoted(allocator);
+    case xargs_item_format::NullSeparated: return next_null_separated(allocator);
+    case xargs_item_format::Lines: return next_line(allocator);
     }
-    if (position == input.length) break;
+    return None;
+  }
+
+  pure fn line_number() const wontthrow -> usize { return m_line_number; }
+
+private:
+  fn peek() throws -> Maybe<char>
+  {
+    if (m_position == m_buffer.count()) {
+      if (m_is_at_end) return None;
+
+      m_buffer.clear();
+      m_position = 0;
+      char chunk[65536];
+      let const read_count = os::read_fd(m_fd, chunk, sizeof(chunk));
+      if (!read_count.has_value())
+        throw Error{"read error: " + os::last_system_error_message()};
+      if (*read_count == 0) {
+        m_is_at_end = true;
+        return None;
+      }
+      m_buffer.append(StringView{chunk, *read_count});
+    }
+
+    return m_buffer[m_position];
+  }
+
+  fn take() throws -> Maybe<char>
+  {
+    let const byte = peek();
+    if (byte.has_value()) m_position++;
+    return byte;
+  }
+
+  fn next_quoted(Allocator allocator) throws -> Maybe<xargs_item>
+  {
+    loop
+    {
+      let const byte = peek();
+      if (!byte.has_value()) return None;
+      if (*byte != ' ' && *byte != '\t' && *byte != '\n') break;
+      if (*byte == '\n') m_line_number++;
+      m_position++;
+    }
 
     let value = String{allocator};
-    let const item_line = line_number;
+    let const item_line = m_line_number;
     char quote = '\0';
-    while (position < input.length) {
-      let const byte = input[position++];
+    loop
+    {
+      let const taken = take();
+      if (!taken.has_value()) break;
+
+      let const byte = *taken;
       if (quote != '\0') {
         if (byte == quote) {
           quote = '\0';
@@ -98,70 +155,70 @@ static fn parse_xargs_items(StringView input, Allocator allocator) throws
         continue;
       }
       if (byte == '\\') {
-        if (position == input.length) throw Error{"trailing backslash"};
-        let const escaped = input[position++];
-        if (escaped == '\n') {
-          line_number++;
-        } else {
-          value += escaped;
-        }
+        let const escaped = take();
+        if (!escaped.has_value()) throw Error{"trailing backslash"};
+        if (*escaped == '\n')
+          m_line_number++;
+        else
+          value += *escaped;
         continue;
       }
       if (byte == ' ' || byte == '\t' || byte == '\n') {
-        if (byte == '\n') line_number++;
+        if (byte == '\n') m_line_number++;
         break;
       }
       value += byte;
     }
     if (quote != '\0') throw Error{"unmatched quote"};
-    items.push(xargs_item{steal(value), item_line});
-  }
-  return items;
-}
 
-static fn parse_xargs_null_items(StringView input, Allocator allocator) throws
-    -> ArrayList<xargs_item>
-{
-  let items = ArrayList<xargs_item>{allocator};
-  usize position = 0;
-  while (position < input.length) {
-    let const remaining = input.substring(position);
-    let const item_length =
-        remaining.find_character('\0').value_or(remaining.length);
-    if (item_length > 0 || position + item_length < input.length) {
-      items.push(xargs_item{
-          String{allocator, remaining.substring_of_length(0, item_length)},
-          0
-      });
+    return xargs_item{steal(value), item_line};
+  }
+
+  fn next_null_separated(Allocator allocator) throws -> Maybe<xargs_item>
+  {
+    if (!peek().has_value()) return None;
+
+    let value = String{allocator};
+    loop
+    {
+      let const byte = take();
+      if (!byte.has_value() || *byte == '\0') break;
+      value += *byte;
     }
-    position += item_length + 1;
+
+    return xargs_item{steal(value), 0};
   }
 
-  return items;
-}
+  fn next_line(Allocator allocator) throws -> Maybe<xargs_item>
+  {
+    loop
+    {
+      if (!peek().has_value()) return None;
 
-static fn parse_xargs_lines(StringView input, Allocator allocator) throws
-    -> ArrayList<xargs_item>
-{
-  let items = ArrayList<xargs_item>{allocator};
-  usize position = 0;
-  usize line_number = 0;
-  while (position < input.length) {
-    let const remaining = input.substring(position);
-    let const line_length =
-        remaining.find_character('\n').value_or(remaining.length);
-    let const line =
-        remaining.substring_of_length(0, line_length).trim_blanks();
-    if (!line.is_empty())
-      items.push(xargs_item{
-          String{allocator, line},
-          line_number
-      });
-    position += line_length + (line_length < remaining.length ? 1 : 0);
-    line_number++;
+      let value = String{allocator};
+      let const item_line = m_line_number;
+      loop
+      {
+        let const byte = take();
+        if (!byte.has_value()) break;
+        if (*byte == '\n') {
+          m_line_number++;
+          break;
+        }
+        if (value.is_empty() && (*byte == ' ' || *byte == '\t')) continue;
+        value += *byte;
+      }
+      if (!value.is_empty()) return xargs_item{steal(value), item_line};
+    }
   }
-  return items;
-}
+
+  os::descriptor m_fd;
+  xargs_item_format m_format;
+  String m_buffer;
+  usize m_position{0};
+  usize m_line_number{0};
+  bool m_is_at_end{false};
+};
 
 static fn append_replaced(String &output, StringView source, StringView needle,
                           StringView replacement) throws -> void
@@ -214,27 +271,12 @@ fn Xargs::execute(const ExecContext &ec, EvalContext &cxt,
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (FLAG_XARGS_PROMPT.is_enabled()) FLAG_XARGS_TRACE.enable();
-  let const input = read_fd_to_string(ec.in_fd.value_or(KOSH_STDIN));
-  if (!input.has_value()) {
-    report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                   os::last_system_error_message());
-    return 1;
-  }
 
-  let items =
-      FLAG_XARGS_NULL.is_enabled()
-          ? parse_xargs_null_items(input->view(), cxt.scratch_allocator())
-      : FLAG_XARGS_REPLACE.is_set()
-          ? parse_xargs_lines(input->view(), cxt.scratch_allocator())
-          : parse_xargs_items(input->view(), cxt.scratch_allocator());
-  if (FLAG_XARGS_EOF.is_set()) {
-    usize kept_count = 0;
-    while (kept_count < items.count() &&
-           items[kept_count].value.view() != FLAG_XARGS_EOF.value())
-      kept_count++;
-    while (items.count() > kept_count)
-      items.pop_back();
-  }
+  let const format = FLAG_XARGS_NULL.is_enabled() ? xargs_item_format::NullSeparated
+                     : FLAG_XARGS_REPLACE.is_set() ? xargs_item_format::Lines
+                                                   : xargs_item_format::Quoted;
+  let reader = XargsReader{ec.in_fd.value_or(KOSH_STDIN), format,
+                           cxt.scratch_allocator()};
 
   let base = ArrayList<String>{cxt.scratch_allocator()};
   let base_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};
@@ -279,54 +321,107 @@ fn Xargs::execute(const ExecContext &ec, EvalContext &cxt,
     return 1;
   }
 
-  usize item_position = 0;
-  bool should_run_empty = items.is_empty() && !FLAG_XARGS_REPLACE.is_set() &&
-                          !FLAG_XARGS_NO_RUN_IF_EMPTY.is_enabled();
+  let deferred_value = String{heap_allocator()};
+  usize deferred_line_number = 0;
+  bool has_deferred_item = false;
+  bool has_reached_eof_item = false;
+  let const do_read_item = [&](Allocator allocator) throws -> Maybe<xargs_item> {
+    if (has_deferred_item) {
+      has_deferred_item = false;
+      return xargs_item{String{allocator, deferred_value.view()},
+                        deferred_line_number};
+    }
+    if (has_reached_eof_item) return None;
+
+    let item = reader.next(allocator);
+    if (item.has_value() && FLAG_XARGS_EOF.is_set() &&
+        item->value.view() == FLAG_XARGS_EOF.value())
+    {
+      has_reached_eof_item = true;
+      return None;
+    }
+    return item;
+  };
+  let const do_defer_item = [&](const xargs_item &item) throws -> void {
+    deferred_value.clear();
+    deferred_value.append(item.value.view());
+    deferred_line_number = item.line_number;
+    has_deferred_item = true;
+  };
+
+  let &scratch_arena = cxt.expansion_store().scratch_arena();
+  bool has_run_command = false;
   i32 status = 0;
-  while (item_position < items.count() || should_run_empty) {
-    should_run_empty = false;
+  loop
+  {
+    let const batch_mark = scratch_arena.mark();
+    defer { scratch_arena.release(batch_mark); };
+
     let command = base.clone();
     let command_locations = base_locations.clone();
     if (FLAG_XARGS_REPLACE.is_set()) {
-      let const replacement = items[item_position++].value.view();
+      let const item = do_read_item(cxt.scratch_allocator());
+      if (!item.has_value()) break;
+
       for (usize index = 1; index < command.count(); index++) {
         let replaced = String{cxt.scratch_allocator()};
         append_replaced(replaced, command[index].view(),
-                        FLAG_XARGS_REPLACE.value(), replacement);
+                        FLAG_XARGS_REPLACE.value(), item->value.view());
         command[index] = steal(replaced);
       }
     } else {
-      let const first_line = item_position < items.count()
-                                 ? items[item_position].line_number
-                                 : usize{0};
+      usize first_line = 0;
       let command_size = base_size;
       usize added_count = 0;
-      while (item_position < items.count() && added_count < maximum_arguments &&
-             items[item_position].line_number - first_line < maximum_lines)
+      loop
       {
-        let const argument_size = items[item_position].value.length();
+        if (added_count != 0 && !has_deferred_item &&
+            (added_count >= maximum_arguments ||
+             reader.line_number() - first_line >= maximum_lines))
+        {
+          break;
+        }
+
+        let const item = do_read_item(cxt.scratch_allocator());
+        if (!item.has_value()) break;
+
+        if (added_count == 0) first_line = item->line_number;
+        if (added_count >= maximum_arguments ||
+            item->line_number - first_line >= maximum_lines)
+        {
+          do_defer_item(*item);
+          break;
+        }
+
+        let const argument_size = item->value.length();
         let const candidate_size =
             command_size == SIZE_MAX ||
                     argument_size > SIZE_MAX - command_size - 1
                 ? SIZE_MAX
                 : command_size + argument_size + 1;
         if (candidate_size > maximum_size) {
-          if (added_count == 0) {
-            if (FLAG_XARGS_EXIT.is_enabled())
-              throw Error{"one argument exceeds the size limit"};
-            command.push(items[item_position].value.clone());
-            command_locations.push(ec.source_location());
-            item_position++;
+          if (added_count != 0) {
+            do_defer_item(*item);
+            break;
           }
+          if (FLAG_XARGS_EXIT.is_enabled())
+            throw Error{"one argument exceeds the size limit"};
+          command.push(item->value.clone());
+          command_locations.push(ec.source_location());
+          added_count++;
           break;
         }
-        command.push(items[item_position].value.clone());
+        command.push(item->value.clone());
         command_locations.push(ec.source_location());
         command_size = candidate_size;
-        item_position++;
         added_count++;
       }
+
+      if (added_count == 0 &&
+          (has_run_command || FLAG_XARGS_NO_RUN_IF_EMPTY.is_enabled()))
+        break;
     }
+    has_run_command = true;
 
     if (FLAG_XARGS_TRACE.is_enabled())
       trace_xargs_command(ec, command, cxt.scratch_allocator());
@@ -364,8 +459,15 @@ fn Xargs::execute(const ExecContext &ec, EvalContext &cxt,
     cxt.leave_subshell();
     cxt.restore_state(steal(snapshot));
 
-    if (command_status == 255) return 124;
-    if (command_status != 0) status = 1;
+    if (command_status == 255) {
+      report_soft_koshkit_util_error(
+          ec, cxt, args[0].view(),
+          "a command exited with status 255; stopping");
+      return 124;
+    }
+    if (command_status == 126 || command_status == 127) return command_status;
+    if (command_status > 128) return 125;
+    if (command_status != 0) status = 123;
   }
   return status;
 }

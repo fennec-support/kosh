@@ -543,6 +543,21 @@ héllo wor
 status=0
 ran
 status=0
+--- xargs batches, replacement, and statuses ---
+a b
+c d
+e
+a b
+c
+[x y ]
+[z]
+a
+aaa
+bbb
+ccc
+fails=123
+--- xargs runs each batch before the input ends ---
+y y y y y 
 --- env clears and removes variables ---
 A=1
 status=1

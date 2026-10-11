@@ -266,6 +266,16 @@ printf 'a b\0c d\0\0e' | "$BIN" -c 'koshkit xargs -0 printf "[%s]"'
 echo
 "$BIN" -c 'koshkit xargs -r echo ran </dev/null; printf "status=%s\n" "$?"'
 "$BIN" -c 'koshkit xargs echo ran </dev/null; printf "status=%s\n" "$?"'
+echo "--- xargs batches, replacement, and statuses ---"
+printf 'a b c d e\n' | "$BIN" -c 'koshkit xargs -n 2 echo'
+printf 'a\nb\nc\n' | "$BIN" -c 'koshkit xargs -L 2 echo'
+printf '  x y \nz\n' | "$BIN" -c "koshkit xargs -I{} echo '[{}]'"
+printf 'a stop b\n' | "$BIN" -c 'koshkit xargs -E stop echo'
+printf 'aaa bbb ccc\n' | "$BIN" -c 'koshkit xargs -s 12 echo'
+printf 'x\n' | "$BIN" -c 'koshkit xargs false; printf "fails=%s\n" "$?"'
+echo "--- xargs runs each batch before the input ends ---"
+"$BIN" -c 'koshkit yes | koshkit xargs echo | koshkit head -c 10'
+echo
 echo "--- env clears and removes variables ---"
 "$BIN" -c 'koshkit env -i A=1 koshkit env | koshkit grep A=1'
 "$BIN" -c 'export FOO=bar; koshkit env -u FOO koshkit env | koshkit grep FOO; printf "status=%s\n" "$?"'
