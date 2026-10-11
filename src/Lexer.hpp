@@ -12,6 +12,7 @@
 
 #include "Diagnostics.hpp"
 #include "Errors.hpp"
+#include "Heredoc.hpp"
 #include "MimicMood.hpp"
 #include "Tokens.hpp"
 #include "base/Common.hpp"

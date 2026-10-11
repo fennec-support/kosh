@@ -49,29 +49,26 @@ static fn highlight_line_with_lexical_state(
     while (line_end < line.length && line[line_end] != '\n')
       line_end++;
 
-    usize content_start = 0;
-    const shell_pending_heredoc *terminator = nullptr;
-    if (lexical_state->active_heredoc_index <
+    if (lexical_state->active_heredoc_index >=
         lexical_state->pending_heredocs.count())
     {
-      terminator =
-          &lexical_state->pending_heredocs[lexical_state->active_heredoc_index];
-      if (terminator->should_strip_tabs) {
-        while (content_start < line_end && line[content_start] == '\t')
-          content_start++;
-      }
-    }
-
-    let const content = lexer::heredoc_line_content(
-        line.substring_of_length(content_start, line_end - content_start));
-    if (terminator == nullptr || content != terminator->delimiter.view()) {
       spans.push(highlight_span{0, line.length, highlight_role::heredoc});
       return spans;
     }
 
-    if (content_start > 0)
-      spans.push(highlight_span{0, content_start, highlight_role::heredoc});
-    spans.push(highlight_span{content_start, content_start + content.length,
+    let const match = lexer::match_heredoc_line(
+        line.substring_of_length(0, line_end),
+        lexical_state->pending_heredocs[lexical_state->active_heredoc_index]);
+    if (!match.is_terminator) {
+      spans.push(highlight_span{0, line.length, highlight_role::heredoc});
+      return spans;
+    }
+
+    if (match.content_start > 0)
+      spans.push(
+          highlight_span{0, match.content_start, highlight_role::heredoc});
+    spans.push(highlight_span{match.content_start,
+                              match.content_start + match.content_length,
                               highlight_role::heredoc_delimiter});
 
     return spans;

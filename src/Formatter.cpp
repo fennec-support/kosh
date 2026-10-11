@@ -50,12 +50,6 @@ struct format_piece
   {}
 };
 
-struct pending_heredoc
-{
-  String delimiter;
-  bool should_strip_tabs{false};
-};
-
 enum formatter_keyword_flag : u8
 {
   formatter_keyword_closes = 1,
@@ -309,7 +303,7 @@ fn scan_format_pieces(StringView source) throws -> ArrayList<format_piece>
 {
   let pieces = ArrayList<format_piece>{heap_allocator()};
   pieces.reserve(source.length / 6 + 1);
-  let pending_heredocs = ArrayList<pending_heredoc>{heap_allocator()};
+  let pending_heredocs = ArrayList<lexer::pending_heredoc>{heap_allocator()};
   usize position = 0;
   usize line_start = 0;
   bool has_code_on_line = false;
@@ -388,14 +382,13 @@ fn scan_format_pieces(StringView source) throws -> ArrayList<format_piece>
           let line_end = position;
           while (line_end < source.length && source[line_end] != '\n')
             line_end++;
-          let candidate =
-              source.substring_of_length(position, line_end - position);
-          if (pending.should_strip_tabs) {
-            while (!candidate.is_empty() && candidate[0] == '\t')
-              candidate = candidate.substring(1);
-          }
+          let const is_terminator =
+              lexer::match_heredoc_line(
+                  source.substring_of_length(position, line_end - position),
+                  pending)
+                  .is_terminator;
           position = line_end < source.length ? line_end + 1 : line_end;
-          if (candidate == pending.delimiter.view()) {
+          if (is_terminator) {
             did_find_terminator = true;
             break;
           }
@@ -500,7 +493,7 @@ fn scan_format_pieces(StringView source) throws -> ArrayList<format_piece>
     let const text = without_trailing_line_continuation(
         source.substring_of_length(position, end_position - position));
     if (is_expecting_heredoc_delimiter) {
-      pending_heredocs.push(pending_heredoc{
+      pending_heredocs.push(lexer::pending_heredoc{
           lexer::unquote_heredoc_delimiter(text, heap_allocator()),
           should_pending_heredoc_strip_tabs});
       is_expecting_heredoc_delimiter = false;

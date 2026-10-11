@@ -1648,7 +1648,7 @@ static fn collect_shell_heredoc(StringView source, usize &position, usize end,
       state.pending_heredocs.allocator());
   if (!delimiter.is_empty())
     state.pending_heredocs.push(
-        shell_pending_heredoc{steal(delimiter), should_strip_tabs});
+        lexer::pending_heredoc{steal(delimiter), should_strip_tabs});
 }
 
 fn internal::advance_shell_lexical_state(
@@ -1716,13 +1716,10 @@ fn internal::advance_shell_lexical_state(
         break;
       }
 
-      let content_start = i;
-      if (heredoc.should_strip_tabs)
-        while (content_start < line_end && source[content_start] == '\t')
-          content_start++;
-      let const content = lexer::heredoc_line_content(
-          source.substring_of_length(content_start, line_end - content_start));
-      if (content == heredoc.delimiter.view()) {
+      if (lexer::match_heredoc_line(
+              source.substring_of_length(i, line_end - i), heredoc)
+              .is_terminator)
+      {
         state.active_heredoc_index++;
         if (state.active_heredoc_index == state.pending_heredocs.count()) {
           state.pending_heredocs.clear();

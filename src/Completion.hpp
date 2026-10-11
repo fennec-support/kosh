@@ -10,6 +10,7 @@
 
 #pragma once
 
+#include "Heredoc.hpp"
 #include "Highlight.hpp"
 #include "MimicMood.hpp"
 #include "base/Arena.hpp"
@@ -189,12 +190,6 @@ struct shell_lexical_frame
 
 static_assert(sizeof(usize) != 8 || sizeof(shell_lexical_frame) == 40);
 
-struct shell_pending_heredoc
-{
-  String delimiter;
-  bool should_strip_tabs;
-};
-
 struct shell_lexical_state
 {
   explicit shell_lexical_state(Allocator allocator)
@@ -203,7 +198,7 @@ struct shell_lexical_state
   {}
 
   ArrayList<shell_lexical_frame> frames;
-  ArrayList<shell_pending_heredoc> pending_heredocs;
+  ArrayList<lexer::pending_heredoc> pending_heredocs;
   ArrayList<shell_lexical_construct> constructs;
   HashSet known_function_names;
   shell_lexical_frame root_frame{0, 0, 0, 0, shell_lexical_frame_kind::command,

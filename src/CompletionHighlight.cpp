@@ -937,15 +937,9 @@ static fn color_arithmetic(StringView line, usize begin, usize end,
   return i;
 }
 
-struct heredoc_pending_highlight
-{
-  String delimiter;
-  bool should_strip_tabs;
-};
-
 static fn
 scan_heredoc_bodies(StringView line, usize position, usize end,
-                    const ArrayList<heredoc_pending_highlight> &pending,
+                    const ArrayList<lexer::pending_heredoc> &pending,
                     ArrayList<highlight_span> &spans) throws -> usize
 {
   let i = position;
@@ -959,18 +953,13 @@ scan_heredoc_bodies(StringView line, usize position, usize end,
       while (line_end < end && line[line_end] != '\n')
         line_end++;
 
-      let content_start = i;
-      if (heredoc.should_strip_tabs) {
-        while (content_start < line_end && line[content_start] == '\t')
-          content_start++;
-      }
-
-      let const content = lexer::heredoc_line_content(
-          line.substring_of_length(content_start, line_end - content_start));
-      let const content_end = content_start + content.length;
+      let const match = lexer::match_heredoc_line(
+          line.substring_of_length(i, line_end - i), heredoc);
+      let const content_start = i + match.content_start;
+      let const content_end = content_start + match.content_length;
       let const next = (line_end < end) ? line_end + 1 : line_end;
 
-      if (content == heredoc.delimiter.view()) {
+      if (match.is_terminator) {
         if (body_start < content_start)
           spans.push(highlight_span{body_start, content_start,
                                     highlight_role::heredoc});
@@ -1154,7 +1143,7 @@ fn internal::scan_highlight_range(
 
   let stack = ArrayList<highlight_construct>{bump_allocator(HIGHLIGHT_ARENA)};
   let pending_heredocs =
-      ArrayList<heredoc_pending_highlight>{bump_allocator(HIGHLIGHT_ARENA)};
+      ArrayList<lexer::pending_heredoc>{bump_allocator(HIGHLIGHT_ARENA)};
   let is_command_position = true;
   let is_time_option_pending = false;
   let highlight_command_word = StringView{};
@@ -1259,7 +1248,7 @@ fn internal::scan_highlight_range(
         let delimiter = lexer::unquote_heredoc_delimiter(
             delimiter_word, bump_allocator(HIGHLIGHT_ARENA));
         pending_heredocs.push(
-            heredoc_pending_highlight{steal(delimiter), should_strip_tabs});
+            lexer::pending_heredoc{steal(delimiter), should_strip_tabs});
       }
       continue;
     }

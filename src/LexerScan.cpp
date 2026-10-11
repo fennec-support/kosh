@@ -21,12 +21,6 @@ namespace koshka {
 
 namespace lexer {
 
-struct balanced_scan_heredoc
-{
-  String delimiter;
-  bool should_strip_tabs;
-};
-
 enum struct balanced_scan_keyword : u8
 {
   case_word,
@@ -131,21 +125,34 @@ pure fn balanced_scan_delimiter_end(StringView source, usize position) wontthrow
   return position;
 }
 
+pure fn match_heredoc_line(StringView line,
+                           const pending_heredoc &heredoc) wontthrow
+    -> heredoc_line_match
+{
+  usize content_start = 0;
+  if (heredoc.should_strip_tabs) {
+    while (content_start < line.length && line[content_start] == '\t')
+      content_start++;
+  }
+  let const content = heredoc_line_content(line.substring(content_start));
+
+  return {content_start, content.length, content == heredoc.delimiter.view()};
+}
+
 fn skip_balanced_scan_heredoc_bodies(
     StringView source, usize position,
-    const ArrayList<balanced_scan_heredoc> &pending) wontthrow -> usize
+    const ArrayList<pending_heredoc> &pending) wontthrow -> usize
 {
   for (let const &heredoc : pending) {
     while (position < source.length) {
       let const line_start = position;
       while (position < source.length && source[position] != '\n')
         position++;
-      let line = heredoc_line_content(
-          source.substring_of_length(line_start, position - line_start));
-      if (heredoc.should_strip_tabs)
-        while (!line.is_empty() && line[0] == '\t')
-          line = line.substring(1);
-      let const is_terminator = line == heredoc.delimiter.view();
+      let const is_terminator =
+          match_heredoc_line(
+              source.substring_of_length(line_start, position - line_start),
+              heredoc)
+              .is_terminator;
       if (position < source.length) position++;
       if (is_terminator) break;
     }
@@ -157,7 +164,7 @@ fn skip_balanced_scan_heredoc_bodies(
 fn scan_balanced_shell_region(StringView source, usize position,
                               char closing_byte) throws -> Maybe<usize>
 {
-  let pending_heredocs = ArrayList<balanced_scan_heredoc>{heap_allocator()};
+  let pending_heredocs = ArrayList<pending_heredoc>{heap_allocator()};
   let case_pattern_depths = ArrayList<usize>{heap_allocator()};
   usize depth = 1;
   char quote = 0;
@@ -323,7 +330,7 @@ fn scan_balanced_shell_region(StringView source, usize position,
             heap_allocator());
         if (!delimiter.is_empty()) {
           pending_heredocs.push(
-              balanced_scan_heredoc{steal(delimiter), should_strip_tabs});
+              pending_heredoc{steal(delimiter), should_strip_tabs});
         }
 
         previous_byte = position > 0 ? source[position - 1] : '<';

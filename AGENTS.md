@@ -272,7 +272,9 @@ same encoding that every spawned process receives."
   manpage, and cache sources.
 - Completion, highlighting, diagnostics, and koshkit cat share the tolerant
   scanner and semantic roles. Completion, highlighting, and command lookup
-  share directory indexes.
+  share directory indexes. Every reader of shell source unquotes a heredoc
+  delimiter with `lexer::unquote_heredoc_delimiter` and ends the body with
+  `lexer::match_heredoc_line` from `src/Heredoc.hpp`.
 - The interactive loop indexes the working directory before each prompt through
   `utils::warm_directory_index`. The ghost suggestion needs no tab. The ghost
   runs for any non-empty token. A directory is indexed as soon as its slash is
