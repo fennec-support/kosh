@@ -12,6 +12,7 @@
 #include "MimicMood.hpp"
 #include "base/ArrayList.hpp"
 #include "base/Maybe.hpp"
+#include "base/StaticStringMap.hpp"
 #include "base/String.hpp"
 #include "base/StringView.hpp"
 
@@ -229,6 +230,22 @@ pure fn parser_format_has_substring(StringView source,
 pure fn parser_format_filename(StringView path) wontthrow -> StringView;
 pure fn parser_format_ascii_equal(StringView left, StringView right) wontthrow
     -> bool;
+
+template <class Value, usize Count>
+fn parser_format_find_ascii_folded(const StaticStringMap<Value, Count> &map,
+                                   StringView text) throws -> Maybe<Value>
+{
+  char folded[32];
+  if (text.length > sizeof(folded)) return None;
+
+  for (usize position = 0; position < text.length; position++) {
+    let const byte = text[position];
+    folded[position] = byte >= 'A' && byte <= 'Z'
+                           ? static_cast<char>(byte + ('a' - 'A'))
+                           : byte;
+  }
+  return map.find(StringView{folded, text.length});
+}
 fn parser_format_add_fragment(
     parsed_format_document &document, StringView host_source, usize host_start,
     usize host_end, usize indent_length = 0,

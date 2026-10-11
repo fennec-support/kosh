@@ -11,24 +11,20 @@
 
 namespace koshka {
 
-static pure fn markdown_mood(StringView info) wontthrow -> Maybe<mimic_mood>
-{
-  info = info.trim_blanks();
-  if (parser_format_ascii_equal(info, "bash") ||
-      parser_format_ascii_equal(info, "shell") ||
-      parser_format_ascii_equal(info, "shellscript"))
-  {
-    return mimic_mood::Bash;
-  }
-  if (parser_format_ascii_equal(info, "sh") ||
-      parser_format_ascii_equal(info, "posix") ||
-      parser_format_ascii_equal(info, "dash"))
-  {
-    return mimic_mood::Posix;
-  }
-  if (parser_format_ascii_equal(info, "kosh")) return mimic_mood::Default;
+constexpr static_string_entry<mimic_mood> MARKDOWN_MOOD_ENTRIES[] = {
+    {SSK("bash"),        mimic_mood::Bash   },
+    {SSK("shell"),       mimic_mood::Bash   },
+    {SSK("shellscript"), mimic_mood::Bash   },
+    {SSK("sh"),          mimic_mood::Posix  },
+    {SSK("posix"),       mimic_mood::Posix  },
+    {SSK("dash"),        mimic_mood::Posix  },
+    {SSK("kosh"),        mimic_mood::Default},
+};
+constexpr StaticStringMap MARKDOWN_MOODS{MARKDOWN_MOOD_ENTRIES};
 
-  return None;
+static fn markdown_mood(StringView info) throws -> Maybe<mimic_mood>
+{
+  return parser_format_find_ascii_folded(MARKDOWN_MOODS, info.trim_blanks());
 }
 
 fn parse_markdown_format(const parser_format_input &input,

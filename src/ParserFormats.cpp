@@ -182,27 +182,13 @@ constexpr static_string_entry<parser_format_kind> FORMAT_FILENAME_ENTRIES[] = {
 };
 constexpr StaticStringMap FORMAT_FILENAMES{FORMAT_FILENAME_ENTRIES};
 
-static fn format_kind_of_filename(StringView filename) throws
-    -> Maybe<parser_format_kind>
-{
-  char folded[32];
-  if (filename.length > sizeof(folded)) return None;
-
-  for (usize position = 0; position < filename.length; position++) {
-    let const byte = filename[position];
-    folded[position] = byte >= 'A' && byte <= 'Z'
-                           ? static_cast<char>(byte + ('a' - 'A'))
-                           : byte;
-  }
-  return FORMAT_FILENAMES.find(StringView{folded, filename.length});
-}
-
 static fn detect_format_kind(const parser_format_input &input) throws
     -> parser_format_kind
 {
   let path = input.path.has_value() ? *input.path : StringView{};
   let const filename = parser_format_filename(path);
-  let const named_kind = format_kind_of_filename(filename);
+  let const named_kind =
+      parser_format_find_ascii_folded(FORMAT_FILENAMES, filename);
   let const source = input.source;
   let const language_id =
       input.language_id.has_value() ? *input.language_id : StringView{};
