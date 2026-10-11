@@ -492,18 +492,9 @@ fn ProgramResolver::assign_path(Maybe<String> path) throws -> void
     return;
   }
 
-  let path_dirs =
-      split_path_dirs(path.has_value() ? path->view() : StringView{});
-  let index_path_dirs = deduplicate_path_dirs(path_dirs);
-  let const has_path_search_changed = get_index_path_dirs() != index_path_dirs;
   m_path = steal(path);
-  m_path_dirs = steal(path_dirs);
-  m_index_path_dirs = steal(index_path_dirs);
-  m_is_path_directory_list_valid = true;
+  m_is_path_directory_list_valid = false;
   m_execution_cache.clear();
-  if (!has_path_search_changed) return;
-
-  clear_derived_indexes();
 }
 
 fn ProgramResolver::invalidate() throws -> void
@@ -569,8 +560,11 @@ fn ProgramResolver::get_path_dirs() throws -> const ArrayList<String> &
 
   m_path_dirs =
       split_path_dirs(m_path.has_value() ? m_path->view() : StringView{});
-  m_index_path_dirs = deduplicate_path_dirs(m_path_dirs);
+  let index_path_dirs = deduplicate_path_dirs(m_path_dirs);
+  let const has_path_search_changed = m_index_path_dirs != index_path_dirs;
+  m_index_path_dirs = steal(index_path_dirs);
   m_is_path_directory_list_valid = true;
+  if (has_path_search_changed) clear_derived_indexes();
 
   return m_path_dirs;
 }
