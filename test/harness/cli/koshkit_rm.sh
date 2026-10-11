@@ -76,10 +76,35 @@ unset KOSH_FLAGS
 dir=$(mktemp -d)
 : > "$dir/keep"
 echo "== rm -rf / is refused (count of the refusal):"
-"$BIN" -c "koshkit rm -rf --dry-run /" </dev/null 2>&1 | grep -c "refusing to remove the root"
+"$BIN" -c "koshkit rm -rf --dry-run /" </dev/null 2>&1 | grep -c "dangerous to operate recursively on '/';"
 echo "== rm -rf // is refused (count):"
-"$BIN" -c "koshkit rm -rf --dry-run //" </dev/null 2>&1 | grep -c "refusing to remove the root"
+"$BIN" -c "koshkit rm -rf --dry-run //" </dev/null 2>&1 | grep -c "on '//' (same as '/')"
+echo "== rm without -r reports a directory instead of refusing it:"
+"$BIN" -c "koshkit rm --dry-run /; echo status=\$?" </dev/null 2>&1 | grep -c -e "Is a directory" -e "status=1"
 echo "== a normal file is reported for removal under --dry-run, and survives:"
 "$BIN" -c "cd '$dir' || exit; koshkit rm --dry-run keep" </dev/null 2>&1
 "$BIN" -c "if [ -e '$dir/keep' ]; then echo keep-survives; else echo keep-removed; fi" </dev/null
+[ -n "$dir" ] && rm -rf "$dir"
+
+dir=$(mktemp -d)
+mkdir -p "$dir/tree/inner"
+: > "$dir/tree/inner/file"
+printf "text\\n" > "$dir/tree/full"
+: > "$dir/a" && : > "$dir/b" && : > "$dir/c" && : > "$dir/d"
+mkdir "$dir/single" && printf "text\\n" > "$dir/single/full"
+cd "$dir" || exit 1
+echo "== rm -I asks once for more than three operands:"
+printf "n\\n" | "$BIN" -c "koshkit rm -I --dry-run a b c d; echo status=\$?" 2>&1
+echo
+echo "== rm -I asks once for a recursive removal:"
+printf "n\\n" | "$BIN" -c "koshkit rm -rI --dry-run tree; echo status=\$?" 2>&1
+echo
+echo "== rm -i names the file type in its prompt:"
+printf "n\\n" | "$BIN" -c "koshkit rm -ri --dry-run tree; echo status=\$?" 2>&1 | tr "?" "\\n"
+printf "y\\nn\\ny\\n" | "$BIN" -c "koshkit rm -ri --dry-run single; echo status=\$?" 2>&1 | tr "?" "\\n"
+echo "== the last of -f and -i decides:"
+"$BIN" -c "koshkit rm -i -f --dry-run a" </dev/null 2>&1
+echo "== rm . without -r reports a directory:"
+"$BIN" -c "koshkit rm --dry-run .; echo status=\$?" </dev/null 2>&1 | grep -c -e "Is a directory" -e "refusing"
+cd / || exit 1
 [ -n "$dir" ] && rm -rf "$dir"

@@ -1261,31 +1261,88 @@ static fn remove_tree_entry(StringView path, BumpArena &arena,
   let const level_mark = arena.mark();
   defer { arena.release(level_mark); };
   let const allocator = bump_allocator(arena);
-  let const do_should_remove = [&]() throws -> bool {
-    return hooks == nullptr || hooks->should_remove == nullptr ||
-           hooks->should_remove(hooks->context, path);
+  let entry_file_status = file_status{};
+  let entry = tree_removal_entry{};
+  entry.path = path;
+  let const has_entry_hooks =
+      hooks != nullptr &&
+      (hooks->should_enter_directory != nullptr ||
+       hooks->should_remove != nullptr || hooks->report_removed != nullptr);
+  if (has_entry_hooks) {
+    if (!stat_path(path, entry_file_status)) {
+      report_tree_removal_failure(hooks, tree_removal_failure::Remove, path);
+      return false;
+    }
+    entry.status = &entry_file_status;
+    entry.is_write_protected =
+        hooks->should_remove != nullptr && !path_is_writable(path);
+  }
+  let const do_apply_choice =
+      [&](tree_removal_choice choice, bool should_keep_parents)
+          wontthrow -> Maybe<bool> {
+    if (choice == tree_removal_choice::Keep) {
+      if (should_keep_parents) is_kept = true;
+      return true;
+    }
+    if (choice == tree_removal_choice::Fail) return false;
+    return None;
+  };
+  let const do_choose_remove = [&]() throws -> tree_removal_choice {
+    if (hooks == nullptr || hooks->should_remove == nullptr) {
+      return tree_removal_choice::Proceed;
+    }
+    return hooks->should_remove(hooks->context, entry);
+  };
+  let const do_report_removed = [&]() throws -> void {
+    if (hooks != nullptr && hooks->report_removed != nullptr) {
+      hooks->report_removed(hooks->context, entry);
+    }
   };
 
   let const target = Path{path, allocator};
   if (target.is_symbolic_link() || !target.is_directory()) {
-    if (!do_should_remove()) {
-      is_kept = true;
+    if (let const outcome = do_apply_choice(do_choose_remove(), false);
+        outcome.has_value())
+    {
+      return *outcome;
+    }
+    if (remove_file(path)) {
+      do_report_removed();
       return true;
     }
-    if (remove_file(path)) return true;
     report_tree_removal_failure(hooks, tree_removal_failure::Remove, path);
     return false;
   }
 
-  if (hooks != nullptr && hooks->should_enter_directory != nullptr) {
-    let status = file_status{};
-    if (!stat_path(path, status)) {
-      report_tree_removal_failure(hooks, tree_removal_failure::Remove, path);
-      return false;
+  let const wide_path = path_to_wide(path, allocator);
+  if (!wide_path.has_value()) {
+    report_tree_removal_failure(hooks, tree_removal_failure::Remove, path);
+    return false;
+  }
+  HANDLE pinned_directory = CreateFileW(
+      wide_path->begin(), FILE_READ_ATTRIBUTES,
+      FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING,
+      FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT, nullptr);
+  if (pinned_directory == INVALID_HANDLE_VALUE) {
+    report_tree_removal_failure(hooks, tree_removal_failure::Remove, path);
+    return false;
+  }
+  defer
+  {
+    if (pinned_directory != INVALID_HANDLE_VALUE) {
+      CloseHandle(pinned_directory);
     }
-    if (!hooks->should_enter_directory(hooks->context, path, status)) {
-      return false;
+  };
+  BY_HANDLE_FILE_INFORMATION pinned_information{};
+  if (GetFileInformationByHandle(pinned_directory, &pinned_information) == 0 ||
+      (pinned_information.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0 ||
+      (pinned_information.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) != 0)
+  {
+    if (hooks != nullptr && hooks->report_failure != nullptr) {
+      hooks->report_failure(hooks->context, tree_removal_failure::Replaced,
+                            path, {});
     }
+    return false;
   }
 
   let const entries = list_directory_status(path, allocator);
@@ -1293,6 +1350,16 @@ static fn remove_tree_entry(StringView path, BumpArena &arena,
     report_tree_removal_failure(hooks, tree_removal_failure::ReadDirectory,
                                 path);
     return false;
+  }
+
+  entry.is_empty_directory = entries->is_empty();
+  if (hooks != nullptr && hooks->should_enter_directory != nullptr) {
+    if (let const outcome = do_apply_choice(
+            hooks->should_enter_directory(hooks->context, entry), true);
+        outcome.has_value())
+    {
+      return *outcome;
+    }
   }
 
   bool did_succeed = true;
@@ -1312,11 +1379,17 @@ static fn remove_tree_entry(StringView path, BumpArena &arena,
 
   if (!did_succeed) return false;
   if (is_kept) return true;
-  if (!do_should_remove()) {
-    is_kept = true;
+  if (let const outcome = do_apply_choice(do_choose_remove(), false);
+      outcome.has_value())
+  {
+    return *outcome;
+  }
+  CloseHandle(pinned_directory);
+  pinned_directory = INVALID_HANDLE_VALUE;
+  if (remove_directory(path)) {
+    do_report_removed();
     return true;
   }
-  if (remove_directory(path)) return true;
 
   report_tree_removal_failure(hooks, tree_removal_failure::Remove, path);
   return false;

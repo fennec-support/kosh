@@ -671,12 +671,31 @@ enum class tree_removal_failure : u8
   Replaced,
 };
 
+enum class tree_removal_choice : u8
+{
+  Proceed,
+  Keep,
+  Fail,
+};
+
+struct tree_removal_entry
+{
+  StringView path;
+  const file_status *status{nullptr};
+  bool is_write_protected{false};
+  bool is_empty_directory{false};
+};
+
 struct tree_removal_hooks
 {
   void *context{nullptr};
-  bool (*should_enter_directory)(void *context, StringView path,
-                                 const file_status &status){nullptr};
-  bool (*should_remove)(void *context, StringView path){nullptr};
+  tree_removal_choice (*should_enter_directory)(
+      void *context, const tree_removal_entry &entry){nullptr};
+  tree_removal_choice (*should_remove)(void *context,
+                                       const tree_removal_entry &entry){
+      nullptr};
+  void (*report_removed)(void *context,
+                         const tree_removal_entry &entry){nullptr};
   void (*report_failure)(void *context, tree_removal_failure failure,
                          StringView path, StringView reason){nullptr};
 };

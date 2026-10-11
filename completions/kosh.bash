@@ -418,7 +418,7 @@ _koshkit_util_flags ()
         "-c --clear -e --exit -i --ignore-case -s --squeeze -u --plain -n --lines -p --command -t --tag"
     ;;
     rm)
-      echo "-r -R -f -i -x --one-file-system --dry-run"
+      echo "-r --recursive -R -d --dir -f --force -i -I --interactive -v --verbose -x --one-file-system --preserve-root --no-preserve-root --dry-run"
     ;;
     rmdir)
       echo "-p"

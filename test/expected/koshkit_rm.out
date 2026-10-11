@@ -12,10 +12,10 @@ rm: would remove 'tree/sub'
 rm: would remove 'tree'
 tree still present
 == rm refuses '.' and the root directory, before any removal:
--c:1:1: error: koshkit rm: refusing to remove '.' or '..' directory: skipping '.'.
+-c:1:1: error: koshkit rm: cannot remove '.': Is a directory.
      1 |  koshkit rm --dry-run .
        |  ^~~~~~~~~~~~~~~~~~~~~~
--c:1:1: error: koshkit rm: refusing to remove the root directory: skipping '/'.
+-c:1:1: error: koshkit rm: cannot remove '/': Is a directory.
      1 |  koshkit rm --dry-run /
        |  ^~~~~~~~~~~~~~~~~~~~~~
 == -x and --one-file-system change nothing inside one file system:
@@ -29,6 +29,29 @@ keep-survives
 1
 == rm -rf // is refused (count):
 1
+== rm without -r reports a directory instead of refusing it:
+2
 == a normal file is reported for removal under --dry-run, and survives:
 rm: would remove 'keep'
 keep-survives
+== rm -I asks once for more than three operands:
+rm: remove 4 arguments? status=0
+
+== rm -I asks once for a recursive removal:
+rm: remove 1 argument recursively? status=0
+
+== rm -i names the file type in its prompt:
+rm: descend into directory 'tree'
+ status=0
+rm: descend into directory 'single'
+ rm: remove regular file 'single/full'
+ rm: remove directory 'single'
+ -c:1:1: error: koshkit rm: cannot remove 'single': Directory not empty.
+     1 |  koshkit rm -ri --dry-run single; echo status=$
+
+       |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+status=1
+== the last of -f and -i decides:
+rm: would remove 'a'
+== rm . without -r reports a directory:
+1
