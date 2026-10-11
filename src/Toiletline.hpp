@@ -8,6 +8,8 @@
  * while ToiletlineStubs.cpp supplies noninteractive builds.
  */
 
+#pragma once
+
 #include "Completion.hpp"
 #include "ToiletlineHistory.hpp"
 #include "base/ArrayList.hpp"
@@ -29,47 +31,48 @@ namespace toiletline {
 using koshka::String;
 using koshka::StringView;
 
-String get_default_prompt_template();
+fn get_default_prompt_template() -> String;
 
-String build_prompt(koshka::EvalContext &context);
+fn build_prompt(koshka::EvalContext &context) -> String;
 
-String build_right_prompt(koshka::EvalContext &context);
+fn build_right_prompt(koshka::EvalContext &context) -> String;
 
-String build_transient_prompt(koshka::EvalContext &context);
+fn build_transient_prompt(koshka::EvalContext &context) -> String;
 
-String expand_prompt_template(StringView prompt, koshka::EvalContext &context);
+fn expand_prompt_template(StringView prompt, koshka::EvalContext &context)
+    -> String;
 
-String render_ps0(koshka::EvalContext &context);
+fn render_ps0(koshka::EvalContext &context) -> String;
 
-void emit_command_end_mark(koshka::EvalContext &context, i32 exit_status);
+fn emit_command_end_mark(koshka::EvalContext &context, i32 exit_status) -> void;
 
-void emit_prompt_start_marks(koshka::EvalContext &context);
+fn emit_prompt_start_marks(koshka::EvalContext &context) -> void;
 
-void append_prompt_end_mark(koshka::EvalContext &context, String &prompt);
+fn append_prompt_end_mark(koshka::EvalContext &context, String &prompt) -> void;
 
-void emit_command_start_marks(koshka::EvalContext &context,
-                              StringView command_line);
+fn emit_command_start_marks(koshka::EvalContext &context,
+                            StringView command_line) -> void;
 
-void enable_completion(koshka::EvalContext &context);
-void disable_completion();
+fn enable_completion(koshka::EvalContext &context) -> void;
+fn disable_completion() -> void;
 
-bool is_completion_enabled();
+fn is_completion_enabled() -> bool;
 
-void enter_calc_history();
-void leave_calc_history();
+fn enter_calc_history() -> void;
+fn leave_calc_history() -> void;
 
-koshka::Maybe<koshka::Path> get_history_path();
-bool is_history_contents_valid(StringView contents);
-void encode_history_record(String &output, StringView command);
-koshka::ErrorOr<koshka::Ok> write_history();
-koshka::ErrorOr<koshka::Ok> read_history();
-koshka::ErrorOr<koshka::Ok> sync_history();
-koshka::ErrorOr<koshka::Ok> clear_history();
-koshka::ErrorOr<koshka::Ok> import_history(StringView contents);
-koshka::ErrorOr<koshka::Ok> append_unwritten_history();
-void set_history_persistent(bool should_persist);
-void set_history_enabled(bool is_enabled);
-void set_history_limit(usize entry_count);
+fn get_history_path() -> koshka::Maybe<koshka::Path>;
+fn is_history_contents_valid(StringView contents) -> bool;
+fn encode_history_record(String &output, StringView command) -> void;
+fn write_history() -> koshka::ErrorOr<koshka::Ok>;
+fn read_history() -> koshka::ErrorOr<koshka::Ok>;
+fn sync_history() -> koshka::ErrorOr<koshka::Ok>;
+fn clear_history() -> koshka::ErrorOr<koshka::Ok>;
+fn import_history(StringView contents) -> koshka::ErrorOr<koshka::Ok>;
+fn append_unwritten_history() -> koshka::ErrorOr<koshka::Ok>;
+fn set_history_persistent(bool should_persist) -> void;
+fn set_history_enabled(bool is_enabled) -> void;
+fn set_history_limit(usize entry_count) -> void;
 
 struct history_event
 {
@@ -77,45 +80,46 @@ struct history_event
   String command;
 };
 
-koshka::ErrorOr<koshka::ArrayList<history_event>>
-get_history_events(koshka::Allocator allocator,
-                   koshka::Maybe<usize> after_event_number = koshka::None);
-koshka::ErrorOr<koshka::Maybe<usize>> get_newest_history_event_number();
-koshka::Maybe<history_event> get_relative_history_event(
-    koshka::Allocator allocator, usize distance,
-    koshka::Maybe<usize> before_event_number = koshka::None);
-koshka::Maybe<history_event> get_numbered_history_event(
-    koshka::Allocator allocator, usize number,
-    koshka::Maybe<usize> before_event_number = koshka::None);
-koshka::Maybe<history_event> get_prefixed_history_event(
-    koshka::Allocator allocator, StringView prefix,
-    koshka::Maybe<usize> before_event_number = koshka::None);
-koshka::Maybe<history_event> get_containing_history_event(
+fn get_history_events(koshka::Allocator allocator,
+                      koshka::Maybe<usize> after_event_number = koshka::None)
+    -> koshka::ErrorOr<koshka::ArrayList<history_event>>;
+fn get_newest_history_event_number() -> koshka::ErrorOr<koshka::Maybe<usize>>;
+fn get_relative_history_event(koshka::Allocator allocator, usize distance,
+                              koshka::Maybe<usize> before_event_number =
+                                  koshka::None) -> koshka::Maybe<history_event>;
+fn get_numbered_history_event(koshka::Allocator allocator, usize number,
+                              koshka::Maybe<usize> before_event_number =
+                                  koshka::None) -> koshka::Maybe<history_event>;
+fn get_prefixed_history_event(koshka::Allocator allocator, StringView prefix,
+                              koshka::Maybe<usize> before_event_number =
+                                  koshka::None) -> koshka::Maybe<history_event>;
+fn get_containing_history_event(
     koshka::Allocator allocator, StringView text,
-    koshka::Maybe<usize> before_event_number = koshka::None);
-koshka::Maybe<usize> append_history_event(StringView command);
-bool rewrite_history_event(usize number, StringView expected,
-                           StringView replacement);
-bool rewrite_history_event(usize number, StringView expected,
-                           const koshka::ArrayList<String> &replacements);
+    koshka::Maybe<usize> before_event_number = koshka::None)
+    -> koshka::Maybe<history_event>;
+fn append_history_event(StringView command) -> koshka::Maybe<usize>;
+fn rewrite_history_event(usize number, StringView expected,
+                         StringView replacement) -> bool;
+fn rewrite_history_event(usize number, StringView expected,
+                         const koshka::ArrayList<String> &replacements) -> bool;
 
-void enable_job_notifications(koshka::EvalContext &context);
+fn enable_job_notifications(koshka::EvalContext &context) -> void;
 
-void set_ghost_enabled(bool is_enabled);
+fn set_ghost_enabled(bool is_enabled) -> void;
 
-void set_space_after_completion(u8 mode);
+fn set_space_after_completion(u8 mode) -> void;
 
-void set_history_prefix_search(bool is_enabled);
+fn set_history_prefix_search(bool is_enabled) -> void;
 
-void set_hint_row(bool should_show_hints, bool should_show_diagnostics);
+fn set_hint_row(bool should_show_hints, bool should_show_diagnostics) -> void;
 
-void set_auto_pair(bool is_enabled);
+fn set_auto_pair(bool is_enabled) -> void;
 
-void set_extended_keys(bool is_enabled);
+fn set_extended_keys(bool is_enabled) -> void;
 
-void set_highlight_enabled(bool is_enabled);
+fn set_highlight_enabled(bool is_enabled) -> void;
 
-void set_colors_enabled(bool is_enabled);
+fn set_colors_enabled(bool is_enabled) -> void;
 
 enum class edit_mode : u8
 {
@@ -123,32 +127,33 @@ enum class edit_mode : u8
   Vi,
 };
 
-void set_edit_mode(edit_mode mode);
+fn set_edit_mode(edit_mode mode) -> void;
 
-void set_tab_selector(koshka::tab_selector_mode selector);
+fn set_tab_selector(koshka::tab_selector_mode selector) -> void;
 
-usize get_utf8_length(const String &string,
-                      usize byte_count = static_cast<usize>(-1));
+fn get_utf8_length(const String &string,
+                   usize byte_count = static_cast<usize>(-1)) -> usize;
 
-usize get_utf8_length(const char *bytes, usize byte_count);
+fn get_utf8_length(const char *bytes, usize byte_count) -> usize;
 
-usize get_codepoint_byte_offset(const char *bytes, usize byte_length,
-                                usize codepoint_index);
+fn get_codepoint_byte_offset(const char *bytes, usize byte_length,
+                             usize codepoint_index) -> usize;
 
-usize get_display_width(StringView text);
+fn get_display_width(StringView text) -> usize;
 
-usize get_byte_offset_at_or_before_display_cell(StringView text,
-                                                usize cell_position,
-                                                usize &actual_cell_position);
+fn get_byte_offset_at_or_before_display_cell(StringView text,
+                                             usize cell_position,
+                                             usize &actual_cell_position)
+    -> usize;
 
-bool is_active();
+fn is_active() -> bool;
 
-void initialize();
+fn initialize() -> void;
 
-void exit(usize history_size_limit = 4096);
+fn exit(usize history_size_limit = 4096) -> void;
 
-void set_title(StringView title);
-void set_idle_title();
+fn set_title(StringView title) -> void;
+fn set_idle_title() -> void;
 
 struct input_result
 {
@@ -157,18 +162,18 @@ struct input_result
   koshka::Maybe<usize> history_event_number{koshka::None};
 };
 
-input_result get_input(const String &prompt);
-input_result get_input(const String &prompt, const String &right_prompt,
-                       const String &transient_prompt);
+fn get_input(const String &prompt) -> input_result;
+fn get_input(const String &prompt, const String &right_prompt,
+             const String &transient_prompt) -> input_result;
 
-void set_input(const String &input);
+fn set_input(const String &input) -> void;
 
-void enter_raw_mode();
+fn enter_raw_mode() -> void;
 
-void exit_raw_mode();
+fn exit_raw_mode() -> void;
 
-void restore_terminal_for_exit() noexcept;
+fn restore_terminal_for_exit() wontthrow -> void;
 
-void emit_newlines(StringView buffer);
+fn emit_newlines(StringView buffer) -> void;
 
 } /* namespace toiletline */
