@@ -116,30 +116,12 @@ struct removal_request
   }
 };
 
-static fn remove_path_impl(StringView path, Allocator allocator,
-                           removal_mode mode,
-                           Path::entry_kind known_kind) throws -> bool
-{
-  if (should_descend_into(path, allocator, mode, known_kind)) {
-    let names = os::list_directory_status(path, allocator);
-    if (names.has_value())
-      for (let const &entry : *names) {
-        if (os::INTERRUPT_REQUESTED) return false;
-        let child = Path{path, allocator};
-        child.append(entry.child.name.view());
-        if (!remove_path_impl(child.view(), allocator, mode,
-                              effective_entry_kind(entry)))
-          return false;
-      }
-    return os::remove_directory(path);
-  }
-  return os::remove_file(path);
-}
-
 fn remove_path(StringView path, Allocator allocator, removal_mode mode) throws
     -> bool
 {
-  return remove_path_impl(path, allocator, mode, Path::entry_kind::Unknown);
+  if (mode == removal_mode::Recursive) return os::remove_tree(path, allocator);
+
+  return os::remove_file(path);
 }
 
 static fn

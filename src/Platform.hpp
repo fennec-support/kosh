@@ -662,6 +662,7 @@ fn set_file_times(StringView path, const file_time_values &times) wontthrow
     -> bool;
 fn remove_directory(StringView path) wontthrow -> bool;
 fn remove_file(StringView path) wontthrow -> bool;
+fn remove_tree(StringView path, Allocator allocator) throws -> bool;
 fn rename_path(StringView from, StringView to) wontthrow -> bool;
 fn create_symlink(StringView target, StringView link_path) wontthrow -> bool;
 fn read_symlink(StringView path, Allocator allocator) wontthrow

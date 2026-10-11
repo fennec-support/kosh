@@ -884,6 +884,60 @@ fn remove_file(StringView path) wontthrow -> bool
   return did_succeed;
 }
 
+static fn remove_tree_entry(int parent_descriptor, const char *name,
+                            Allocator allocator) throws -> bool
+{
+  if (::unlinkat(parent_descriptor, name, 0) == 0) return true;
+  let const unlink_errno = errno;
+  if (unlink_errno != EISDIR && unlink_errno != EPERM) return false;
+
+  let const directory = ::openat(
+      parent_descriptor, name, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
+  if (directory < 0) {
+    if (errno == ENOTDIR) errno = unlink_errno;
+    return false;
+  }
+
+  let const handle = ::fdopendir(directory);
+  if (handle == nullptr) {
+    let const saved_errno = errno;
+    ::close(directory);
+    errno = saved_errno;
+    return false;
+  }
+  defer { ::closedir(handle); };
+
+  let child_names = ArrayList<String>{allocator};
+  loop
+  {
+    errno = 0;
+    let const entry = ::readdir(handle);
+    if (entry == nullptr) {
+      if (errno != 0) return false;
+      break;
+    }
+
+    let const child_name = StringView{entry->d_name};
+    if (child_name == StringView{"."} || child_name == StringView{".."})
+      continue;
+    child_names.push(String{allocator, child_name});
+  }
+
+  for (let const &child_name : child_names) {
+    if (INTERRUPT_REQUESTED) return false;
+    if (!remove_tree_entry(::dirfd(handle), child_name.c_str(), allocator))
+      return false;
+  }
+
+  return ::unlinkat(parent_descriptor, name, AT_REMOVEDIR) == 0;
+}
+
+fn remove_tree(StringView path, Allocator allocator) throws -> bool
+{
+  let const path_string = String{allocator, path};
+  return remove_tree_entry(AT_FDCWD, path_string.c_str(), allocator);
+}
+
 fn rename_path(StringView from, StringView to) wontthrow -> bool
 {
   bool did_succeed;

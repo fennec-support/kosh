@@ -1212,6 +1212,25 @@ fn remove_directory(StringView path) wontthrow -> bool
   return wide_path.has_value() && RemoveDirectoryW(wide_path->begin()) != 0;
 }
 
+fn remove_tree(StringView path, Allocator allocator) throws -> bool
+{
+  let const target = Path{path, allocator};
+  if (target.is_symbolic_link() || !target.is_directory())
+    return remove_file(path);
+
+  let const entries = list_directory_status(path, allocator);
+  if (!entries.has_value()) return false;
+
+  for (let const &entry : *entries) {
+    if (INTERRUPT_REQUESTED) return false;
+    let child = Path{path, allocator};
+    child.append(entry.child.name.view());
+    if (!remove_tree(child.view(), allocator)) return false;
+  }
+
+  return remove_directory(path);
+}
+
 fn remove_file(StringView path) wontthrow -> bool
 {
   let const wide_path = path_to_wide(path, heap_allocator());
