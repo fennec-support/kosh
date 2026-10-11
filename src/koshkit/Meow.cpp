@@ -60,7 +60,8 @@ constexpr usize STAR_LAYER_COUNT          = 3;
 constexpr f64   PI                        = 3.14159265358979323846;
 
 constexpr f64 DRIFT_COLUMNS_PER_SECOND   = 9.0;
-constexpr f64 DRIFT_ROWS_PER_SECOND      = 2.5;
+constexpr f64 DRIFT_ROWS_PER_SECOND      = 4.0;
+constexpr f64 CAT_HEAD_ROW               = 2.0;
 constexpr f64 CHASE_COLUMNS_PER_SECOND   = 15.0;
 constexpr f64 DASH_COLUMNS_PER_SECOND    = 36.0;
 constexpr f64 STEERING_PER_SECOND        = 1.6;
@@ -78,6 +79,15 @@ constexpr f64 DIZZY_SECONDS              = 1.2;
 constexpr f64 TUMBLE_SECONDS             = 0.12;
 constexpr f64 HISS_SECONDS               = 0.9;
 constexpr f64 WALL_COOLDOWN_SECONDS      = 0.7;
+constexpr f64 BOUNCE_COLUMNS_PER_SECOND  = 28.0;
+constexpr f64 BOUNCE_ROWS_PER_SECOND     = 8.0;
+constexpr f64 COLLISION_IMPULSE          = 22.0;
+constexpr f64 MAXIMUM_COLUMNS_PER_SECOND = 38.0;
+constexpr f64 MAXIMUM_ROWS_PER_SECOND    = 11.0;
+constexpr f64 COAST_STEERING_PER_SECOND  = 0.9;
+constexpr f64 YARN_DRIFT_PER_SECOND      = 5.0;
+constexpr f64 YARN_KICK_MINIMUM          = 45.0;
+constexpr f64 YARN_KICK_MAXIMUM          = 70.0;
 constexpr f64 CURL_RATE_PER_SECOND       = 0.05;
 constexpr f64 CHASE_RATE_PER_SECOND      = 0.2;
 constexpr f64 GROOM_SECONDS              = 1.8;
@@ -308,6 +318,7 @@ struct yarn_ball
   f64          columns_per_second{0.0};
   f64          rows_per_second{0.0};
   f64          spin_seconds{0.0};
+  f64          drift_radians{0.0};
   thread_point thread[YARN_THREAD_POINT_COUNT]{};
   usize        thread_head{0};
   f64          thread_sample_seconds{0.0};
@@ -557,29 +568,37 @@ keep_cat_inside(scene_state &scene, cat_state &cat) wontthrow -> void
   let const middle_row    = cat.row + (CAT_ROW_COUNT / 2.0);
   let const middle_column = cat.column + (CAT_PIXEL_WIDTH / 2.0);
 
+  let const do_bounce = [](f64 speed, f64 floor) wontthrow -> f64 {
+    return speed > 0.0 ? -floor : floor;
+  };
+
   if (cat.column >= last_column && cat.columns_per_second > 0.0) {
-    cat.column             = last_column;
-    cat.columns_per_second = -cat.columns_per_second * 0.9;
-    cat.wander_radians     = PI - cat.wander_radians;
+    cat.column = last_column;
+    cat.columns_per_second =
+        do_bounce(cat.columns_per_second, BOUNCE_COLUMNS_PER_SECOND);
+    cat.wander_radians = PI - cat.wander_radians;
     hit_wall(scene, cat, static_cast<f64>(scene.column_count) - 1.0,
              middle_row);
   } else if (cat.column <= 0.0 && cat.columns_per_second < 0.0) {
-    cat.column             = 0.0;
-    cat.columns_per_second = -cat.columns_per_second * 0.9;
-    cat.wander_radians     = PI - cat.wander_radians;
+    cat.column = 0.0;
+    cat.columns_per_second =
+        do_bounce(cat.columns_per_second, BOUNCE_COLUMNS_PER_SECOND);
+    cat.wander_radians = PI - cat.wander_radians;
     hit_wall(scene, cat, 0.0, middle_row);
   }
 
   if (cat.row >= last_row && cat.rows_per_second > 0.0) {
-    cat.row             = last_row;
-    cat.rows_per_second = -cat.rows_per_second * 0.9;
-    cat.wander_radians  = -cat.wander_radians;
+    cat.row = last_row;
+    cat.rows_per_second =
+        do_bounce(cat.rows_per_second, BOUNCE_ROWS_PER_SECOND);
+    cat.wander_radians = -cat.wander_radians;
     hit_wall(scene, cat, middle_column,
              static_cast<f64>(scene.row_count) - 1.0);
   } else if (cat.row <= 1.0 && cat.rows_per_second < 0.0) {
-    cat.row             = 1.0;
-    cat.rows_per_second = -cat.rows_per_second * 0.9;
-    cat.wander_radians  = -cat.wander_radians;
+    cat.row = 1.0;
+    cat.rows_per_second =
+        do_bounce(cat.rows_per_second, BOUNCE_ROWS_PER_SECOND);
+    cat.wander_radians = -cat.wander_radians;
     hit_wall(scene, cat, middle_column, 0.0);
   }
 
@@ -593,15 +612,17 @@ kick_yarn(scene_state &scene, cat_state &cat) wontthrow -> void
   let const direction = cat.is_facing_right ? 1.0 : -1.0;
 
   scene.yarn.columns_per_second =
-      direction * scene.noise.next_between(22.0, 40.0);
-  scene.yarn.rows_per_second = scene.noise.next_between(-7.0, 7.0);
+      direction *
+      scene.noise.next_between(YARN_KICK_MINIMUM, YARN_KICK_MAXIMUM);
+  scene.yarn.rows_per_second = scene.noise.next_between(-14.0, 14.0);
   cat.happy_seconds          = HAPPY_SECONDS;
+  cat.columns_per_second *= -0.4;
   say(cat, HAPPY_PHRASES[scene.noise.next_index(countof(HAPPY_PHRASES))]);
 
-  for (usize index = 0; index < 6; index++) {
+  for (usize index = 0; index < 10; index++) {
     spawn_particle(scene, particle_kind::Sparkle, scene.yarn.column,
-                   scene.yarn.row, scene.noise.next_between(-9.0, 9.0),
-                   scene.noise.next_between(-4.0, 4.0), 0.6, 226, '*');
+                   scene.yarn.row, scene.noise.next_between(-14.0, 14.0),
+                   scene.noise.next_between(-5.0, 5.0), 0.7, 226, '*');
   }
 }
 
@@ -618,9 +639,12 @@ advance_cat(scene_state &scene, cat_state &cat, f64 step_seconds) wontthrow
     cat.wall_cooldown_seconds -= step_seconds;
   }
 
-  let const head_column               = cat_head_column(cat);
-  let const yarn_columns              = scene.yarn.column - head_column;
-  let const yarn_rows                 = scene.yarn.row - (cat.row + 2.0);
+  let const head_column        = cat_head_column(cat);
+  let const yarn_columns       = scene.yarn.column - head_column;
+  let const reachable_yarn_row = std::fmax(
+      1.0 + CAT_HEAD_ROW,
+      std::fmin(cat_last_row(scene.row_count) + CAT_HEAD_ROW, scene.yarn.row));
+  let const yarn_rows = reachable_yarn_row - (cat.row + CAT_HEAD_ROW);
   let       target_columns_per_second = 0.0;
   let       target_rows_per_second    = 0.0;
   let       steering                  = STEERING_PER_SECOND;
@@ -713,17 +737,12 @@ advance_cat(scene_state &scene, cat_state &cat, f64 step_seconds) wontthrow
     break;
 
   case cat_activity::Dizzy:
-    steering                  = 0.4;
-    target_columns_per_second = cat.columns_per_second;
-    target_rows_per_second    = cat.rows_per_second;
-
-    if (cat.activity_seconds > cat.activity_limit_seconds) {
-      set_activity(cat, cat_activity::Floating, 0.0);
-    }
-    break;
-
   case cat_activity::Hissing:
-    steering = 3.0;
+    steering = COAST_STEERING_PER_SECOND;
+    target_columns_per_second =
+        std::cos(cat.wander_radians) * DRIFT_COLUMNS_PER_SECOND;
+    target_rows_per_second =
+        std::sin(cat.wander_radians) * DRIFT_ROWS_PER_SECOND;
 
     if (cat.activity_seconds > cat.activity_limit_seconds) {
       set_activity(cat, cat_activity::Floating, 0.0);
@@ -736,6 +755,12 @@ advance_cat(scene_state &scene, cat_state &cat, f64 step_seconds) wontthrow
                step_seconds);
   cat.rows_per_second = approach(cat.rows_per_second, target_rows_per_second,
                                  steering, step_seconds);
+  cat.columns_per_second =
+      std::fmax(-MAXIMUM_COLUMNS_PER_SECOND,
+                std::fmin(MAXIMUM_COLUMNS_PER_SECOND, cat.columns_per_second));
+  cat.rows_per_second =
+      std::fmax(-MAXIMUM_ROWS_PER_SECOND,
+                std::fmin(MAXIMUM_ROWS_PER_SECOND, cat.rows_per_second));
   cat.column += cat.columns_per_second * step_seconds;
   cat.row += cat.rows_per_second * step_seconds;
 
@@ -775,21 +800,45 @@ meet_cats(scene_state &scene) wontthrow -> void
       let const is_friendly   = scene.noise.next_index(2) == 0;
       let const middle_column = ((left_cat.column + right_cat.column) / 2.0) +
                                 (CAT_PIXEL_WIDTH / 2.0);
-      let const middle_row = (left_cat.row + right_cat.row) / 2.0;
+      let const middle_row    = (left_cat.row + right_cat.row) / 2.0;
+      let const apart_columns = right_cat.column - left_cat.column;
+      let const apart_rows    = (right_cat.row - left_cat.row) * 2.0;
+      let const apart_length  = std::sqrt((apart_columns * apart_columns) +
+                                          (apart_rows * apart_rows)) +
+                               0.001;
+      let const push_columns = COLLISION_IMPULSE * apart_columns / apart_length;
+      let const push_rows =
+          COLLISION_IMPULSE * apart_rows / apart_length * 0.5 +
+          scene.noise.next_between(-3.0, 3.0);
+
+      left_cat.columns_per_second -= push_columns;
+      left_cat.rows_per_second -= push_rows;
+      right_cat.columns_per_second += push_columns;
+      right_cat.rows_per_second += push_rows;
 
       for (let *cat : {&left_cat, &right_cat}) {
-        cat->columns_per_second = -cat->columns_per_second;
-        cat->wander_radians     = PI - cat->wander_radians;
+        cat->wander_radians =
+            std::atan2(cat->rows_per_second, cat->columns_per_second);
 
         if (is_friendly) {
           cat->happy_seconds = HAPPY_SECONDS;
           say(*cat,
               FRIEND_PHRASES[scene.noise.next_index(countof(FRIEND_PHRASES))]);
-          set_activity(*cat, cat_activity::Floating, 0.0);
+          set_activity(*cat, cat_activity::Dizzy, DIZZY_SECONDS * 0.6);
         } else {
           say(*cat, "hsss!");
           set_activity(*cat, cat_activity::Hissing, HISS_SECONDS);
         }
+      }
+
+      for (usize index = 0; index < 12; index++) {
+        let const angle = scene.noise.next_between(0.0, 2.0 * PI);
+        let const power = scene.noise.next_between(8.0, 22.0);
+
+        spawn_particle(
+            scene, particle_kind::Sparkle, middle_column, middle_row + 2.0,
+            std::cos(angle) * power, std::sin(angle) * power * 0.5, 0.7,
+            is_friendly ? HEART_COLOR : 226, "*+x"[scene.noise.next_index(3)]);
       }
 
       if (!is_friendly) continue;
@@ -819,17 +868,35 @@ advance_yarn(scene_state &scene, f64 step_seconds) wontthrow -> void
 
   yarn.columns_per_second *= damping;
   yarn.rows_per_second *= damping;
+  yarn.drift_radians +=
+      scene.noise.next_between(-1.0, 1.0) * 2.0 * step_seconds;
+
+  let const drift_speed =
+      std::sqrt((yarn.columns_per_second * yarn.columns_per_second) +
+                (4.0 * yarn.rows_per_second * yarn.rows_per_second));
+
+  if (drift_speed < YARN_DRIFT_PER_SECOND) {
+    yarn.columns_per_second =
+        approach(yarn.columns_per_second,
+                 std::cos(yarn.drift_radians) * YARN_DRIFT_PER_SECOND, 1.5,
+                 step_seconds);
+    yarn.rows_per_second =
+        approach(yarn.rows_per_second,
+                 std::sin(yarn.drift_radians) * YARN_DRIFT_PER_SECOND * 0.4,
+                 1.5, step_seconds);
+  }
 
   let const last_column = static_cast<f64>(scene.column_count) - 2.0;
-  let const last_row    = static_cast<f64>(scene.row_count) - 1.0;
+  let const first_row   = 1.0 + CAT_HEAD_ROW;
+  let const last_row    = cat_last_row(scene.row_count) + CAT_HEAD_ROW;
 
   if (yarn.column < 1.0 || yarn.column > last_column) {
     yarn.column = std::fmax(1.0, std::fmin(last_column, yarn.column));
     yarn.columns_per_second = -yarn.columns_per_second * 0.9;
   }
 
-  if (yarn.row < 1.0 || yarn.row > last_row) {
-    yarn.row             = std::fmax(1.0, std::fmin(last_row, yarn.row));
+  if (yarn.row < first_row || yarn.row > last_row) {
+    yarn.row             = std::fmax(first_row, std::fmin(last_row, yarn.row));
     yarn.rows_per_second = -yarn.rows_per_second * 0.9;
   }
 
