@@ -216,7 +216,7 @@ inline constexpr bool SHOULD_DISPATCH_BUILTIN_HELP[] = {
     KOSH_BUILTIN_KINDS(T__BUILTIN_HELP_DISPATCH)};
 #undef T__BUILTIN_HELP_DISPATCH
 
-Maybe<Builtin::Kind> search_builtin(StringView builtin_name) throws;
+fn search_builtin(StringView builtin_name) throws -> Maybe<Builtin::Kind>;
 
 pure fn builtin_is_hidden_by_mood(Builtin::Kind kind, mimic_mood mood) wontthrow
     -> bool;
@@ -226,7 +226,7 @@ pure fn name_is_keyword_in_mood(StringView name, mimic_mood mood) wontthrow
 
 fn is_special_builtin_name(StringView name) wontthrow -> bool;
 
-const ArrayList<String> &builtin_names() throws;
+fn builtin_names() throws -> const ArrayList<String> &;
 
 inline constexpr usize BUILTIN_KIND_COUNT =
     sizeof(BUILTIN_SECTIONS) / sizeof(BUILTIN_SECTIONS[0]);
@@ -244,10 +244,10 @@ fn builtin_help_synopsis(Builtin::Kind kind) wontthrow -> const SynopsisList *;
                                      &HELP_DESCRIPTION, &HELP_SYNOPSIS),       \
        0)
 
-void show_builtin_help_impl(const ExecContext &ec, StringView description,
-                            const SynopsisList &synopsis_lines,
-                            const FlagList &flags,
-                            StringView extra_sections = {}) throws;
+fn show_builtin_help_impl(const ExecContext &ec, StringView description,
+                          const SynopsisList &synopsis_lines,
+                          const FlagList &flags,
+                          StringView extra_sections = {}) throws -> void;
 fn builtin_error_context(StringView program) throws -> String;
 fn builtin_error_message(StringView program, StringView message) throws
     -> String;
@@ -284,7 +284,7 @@ fn builtin_error_message(StringView program, StringView message) throws
                   flag_parse_options{__VA_ARGS__});                            \
   defer { reset_flags(FLAG_LIST); }
 
-i32 execute_builtin(ExecContext &&ec, EvalContext &cxt) throws;
+fn execute_builtin(ExecContext &&ec, EvalContext &cxt) throws -> i32;
 
 fn query_shell_option(const EvalContext &cxt, StringView name) throws
     -> Maybe<bool>;
