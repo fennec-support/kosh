@@ -193,14 +193,12 @@ static_assert(sizeof(usize) != 8 || sizeof(shell_lexical_frame) == 40);
 struct shell_lexical_state
 {
   explicit shell_lexical_state(Allocator allocator)
-      : frames{allocator}, pending_heredocs{allocator}, constructs{allocator},
-        known_function_names{allocator}
+      : frames{allocator}, pending_heredocs{allocator}, constructs{allocator}
   {}
 
   ArrayList<shell_lexical_frame> frames;
   ArrayList<lexer::pending_heredoc> pending_heredocs;
   ArrayList<shell_lexical_construct> constructs;
-  HashSet known_function_names;
   shell_lexical_frame root_frame{0, 0, 0, 0, shell_lexical_frame_kind::command,
                                  0};
   usize source_position{0};
@@ -214,23 +212,21 @@ struct shell_lexical_state
 class ShellHighlightCache
 {
 public:
+  explicit ShellHighlightCache(Allocator allocator) wontthrow
+      : m_pieces{allocator},
+        m_line_spans{allocator},
+        m_allocator{allocator}
+  {}
+
   fn spans_for(StringView source, usize line_start, usize line_end,
                EvalContext &context) throws
       -> const ArrayList<highlight_span> *;
 
 private:
-  struct cached_line
-  {
-    usize start;
-    usize end;
-    ArrayList<highlight_span> spans{heap_allocator()};
-  };
-
   StringView m_source{};
-  ArrayList<shell_lexical_state> m_checkpoints{heap_allocator()};
-  shell_lexical_state m_sequential_state{heap_allocator()};
-  usize m_next_checkpoint_threshold{0};
-  ArrayList<cached_line> m_lines{heap_allocator()};
+  ArrayList<highlight_span> m_pieces;
+  ArrayList<highlight_span> m_line_spans;
+  Allocator m_allocator;
 };
 
 fn highlight_line(StringView line, EvalContext &context) throws

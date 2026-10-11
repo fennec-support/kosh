@@ -105,8 +105,7 @@ fn advance_shell_keyword_state(StringView word, usize frame_depth,
     -> Maybe<bool>;
 fn scan_highlight_range(StringView line, usize begin, usize end,
                         EvalContext &context, ArrayList<highlight_span> &spans,
-                        HashSet &line_variable_names,
-                        const HashSet *known_function_names,
+                        HashSet &line_variable_names, HashSet &function_names,
                         bool should_stop_at_closing_parenthesis = false) throws
     -> usize;
 

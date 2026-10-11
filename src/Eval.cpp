@@ -87,7 +87,7 @@ fn EvalContext::get_or_create_diagnostic_highlight_cache() throws
     if (cache == nullptr) throw std::bad_alloc{};
     try {
       diagnostics_store().runtime_diagnostic_highlight_cache() =
-          new (cache) completion::ShellHighlightCache{};
+          new (cache) completion::ShellHighlightCache{heap_allocator()};
     } catch (...) {
       heap_allocator().free_array(cache, 1);
       throw;

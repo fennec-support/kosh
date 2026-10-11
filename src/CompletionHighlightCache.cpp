@@ -2,11 +2,11 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file converts semantic scans into highlight spans and maintains
- * checkpoints for incremental multiline rescanning. It also renders ranges,
- * pairs the code bracket at the caret with its partner, and validates cached
- * diagnostics after source changes. The split confines
- * mutable cache state and rendering above the semantic classifier.
+ * This file converts semantic scans into highlight spans and caches one scan
+ * of a whole source split at its lines. It also renders ranges, pairs the code
+ * bracket at the caret with its partner, and validates cached diagnostics
+ * after source changes. The split confines mutable cache state and rendering
+ * above the semantic classifier.
  */
 
 #include "Builtin.hpp"
@@ -30,188 +30,26 @@ namespace completion {
 
 using namespace internal;
 
-static fn highlight_line_with_lexical_state(
-    StringView line, EvalContext &context,
-    const shell_lexical_state *lexical_state) throws
-    -> ArrayList<highlight_span>
+static fn scan_highlight_source(StringView source, EvalContext &context,
+                                ArrayList<highlight_span> &spans) throws -> void
 {
 #if !defined NDEBUG
-  DEBUG_HIGHLIGHT_INPUT_BYTE_COUNT += line.length;
+  DEBUG_HIGHLIGHT_INPUT_BYTE_COUNT += source.length;
 #endif
-  HIGHLIGHT_ARENA.reset();
   let const arena = bump_allocator(HIGHLIGHT_ARENA);
-  let spans = ArrayList<highlight_span>{arena};
   let line_variable_names = HashSet{arena};
-  if (lexical_state != nullptr && lexical_state->is_in_heredoc) {
-    if (line.is_empty()) return spans;
-
-    usize line_end = 0;
-    while (line_end < line.length && line[line_end] != '\n') {
-      line_end++;
-    }
-
-    if (lexical_state->active_heredoc_index >=
-        lexical_state->pending_heredocs.count())
-    {
-      spans.push(highlight_span{0, line.length, highlight_role::heredoc});
-      return spans;
-    }
-
-    let const match = lexer::match_heredoc_line(
-        line.substring_of_length(0, line_end),
-        lexical_state->pending_heredocs[lexical_state->active_heredoc_index]);
-    if (!match.is_terminator) {
-      spans.push(highlight_span{0, line.length, highlight_role::heredoc});
-      return spans;
-    }
-
-    if (match.content_start > 0)
-      spans.push(
-          highlight_span{0, match.content_start, highlight_role::heredoc});
-    spans.push(highlight_span{match.content_start,
-                              match.content_start + match.content_length,
-                              highlight_role::heredoc_delimiter});
-
-    return spans;
-  }
-
-  let synthetic_line = String{arena};
-  usize prefix_length = 0;
-  let const do_append_group_state = [&](const shell_lexical_frame &frame)
-                                        throws -> void {
-    for (usize group_index = 0; group_index < frame.group_depth; group_index++)
-      synthetic_line.append("( ");
-  };
-  let const do_append_construct_state = [&](usize frame_depth) throws -> void {
-    for (let const &construct : lexical_state->constructs) {
-      if (construct.frame_depth != frame_depth) continue;
-      switch (construct.kind) {
-      case highlight_construct::if_:
-        synthetic_line.append(construct.phase == highlight_construct_phase::body
-                                  ? "if :; then "
-                                  : "if :; ");
-        break;
-      case highlight_construct::while_until:
-        synthetic_line.append(construct.phase == highlight_construct_phase::body
-                                  ? "while :; do "
-                                  : "while :; ");
-        break;
-      case highlight_construct::for_:
-        switch (construct.phase) {
-        case highlight_construct_phase::for_variable:
-          synthetic_line.append("for ");
-          break;
-        case highlight_construct_phase::for_in:
-          synthetic_line.append("for x\n");
-          break;
-        case highlight_construct_phase::for_do:
-          synthetic_line.append("for x in a; ");
-          break;
-        default: synthetic_line.append("for x; do "); break;
-        }
-        break;
-      case highlight_construct::conditional:
-        synthetic_line.append("[[ x ");
-        break;
-      case highlight_construct::function:
-        synthetic_line.append(construct.phase ==
-                                      highlight_construct_phase::function_name
-                                  ? "function "
-                                  : "function f { ");
-        break;
-      case highlight_construct::case_: break;
-      }
-    }
-  };
-  let const do_append_frame_semantic_state =
-      [&](const shell_lexical_frame &frame) throws -> void {
-    if (frame.has_seen_case_keyword) {
-      synthetic_line.append("case x ");
-      return;
-    }
-
-    for (usize case_index = 0; case_index < frame.case_depth; case_index++) {
-      synthetic_line.append("case x in ");
-      if (case_index + 1 < frame.case_depth || !frame.is_case_pattern_expected)
-      {
-        synthetic_line.append("x) ");
-      }
-    }
-
-    if (!frame.is_command_position && !frame.is_case_pattern_expected) {
-      synthetic_line.append(": ");
-    }
-  };
-  if (lexical_state != nullptr &&
-      (!lexical_state->frames.is_empty() || lexical_state->quote != 0 ||
-       !lexical_state->constructs.is_empty() ||
-       !lexical_state->root_frame.is_command_position ||
-       lexical_state->root_frame.group_depth > 0 ||
-       lexical_state->root_frame.case_depth > 0 ||
-       lexical_state->root_frame.has_seen_case_keyword ||
-       lexical_state->root_frame.is_case_pattern_expected))
-  {
-    do_append_group_state(lexical_state->root_frame);
-    do_append_construct_state(0);
-    do_append_frame_semantic_state(lexical_state->root_frame);
-    for (usize frame_index = 0; frame_index < lexical_state->frames.count();
-         frame_index++)
-    {
-      let const &frame = lexical_state->frames[frame_index];
-      if (frame.parent_quote != 0) synthetic_line.push(frame.parent_quote);
-      switch (frame.kind) {
-      case shell_lexical_frame_kind::command:
-        synthetic_line.append("$(");
-        break;
-      case shell_lexical_frame_kind::backtick: synthetic_line.push('`'); break;
-      case shell_lexical_frame_kind::arithmetic:
-        synthetic_line.append("$((");
-        break;
-      case shell_lexical_frame_kind::bracket_arithmetic:
-        synthetic_line.append("$[");
-        break;
-      case shell_lexical_frame_kind::parameter:
-        synthetic_line.append("${");
-        break;
-      }
-      do_append_group_state(frame);
-      do_append_construct_state(frame_index + 1);
-      if (frame.kind == shell_lexical_frame_kind::command ||
-          frame.kind == shell_lexical_frame_kind::backtick)
-      {
-        do_append_frame_semantic_state(frame);
-      }
-    }
-    if (lexical_state->quote != 0) synthetic_line.push(lexical_state->quote);
-    prefix_length = synthetic_line.count();
-    synthetic_line.append(line);
-    line = synthetic_line.view();
-  }
-
-  scan_highlight_range(
-      line, 0, line.length, context, spans, line_variable_names,
-      lexical_state == nullptr ? nullptr
-                               : &lexical_state->known_function_names);
-  if (prefix_length == 0) return spans;
-
-  usize retained_span_count = 0;
-  for (usize span_index = 0; span_index < spans.count(); span_index++) {
-    let span = spans[span_index];
-    if (span.end <= prefix_length) continue;
-    if (span.start < prefix_length) span.start = prefix_length;
-    span.start -= prefix_length;
-    span.end -= prefix_length;
-    spans[retained_span_count++] = span;
-  }
-  while (spans.count() > retained_span_count)
-    spans.pop_back();
-  return spans;
+  let function_names = HashSet{arena};
+  scan_highlight_range(source, 0, source.length, context, spans,
+                       line_variable_names, function_names);
 }
 
 fn highlight_line(StringView line, EvalContext &context) throws
     -> ArrayList<highlight_span>
 {
-  return highlight_line_with_lexical_state(line, context, nullptr);
+  HIGHLIGHT_ARENA.reset();
+  let spans = ArrayList<highlight_span>{bump_allocator(HIGHLIGHT_ARENA)};
+  scan_highlight_source(line, context, spans);
+  return spans;
 }
 
 struct bracket_byte
@@ -451,7 +289,7 @@ fn append_highlighted_source(String &output, StringView source,
                              EvalContext &context,
                              const highlight_theme &theme) throws -> void
 {
-  let cache = ShellHighlightCache{};
+  let cache = ShellHighlightCache{output.allocator()};
   usize line_start = 0;
   while (line_start < source.length) {
     let line_end = line_start;
@@ -468,7 +306,61 @@ fn append_highlighted_source(String &output, StringView source,
   }
 }
 
-static constexpr usize DIAGNOSTIC_CHECKPOINT_BYTE_INTERVAL = 4096;
+static fn split_spans_at_lines(StringView source,
+                               ArrayList<highlight_span> &spans) throws -> void
+{
+  let const do_next_piece_end = [&](usize start, usize end) wontthrow -> usize {
+    let const newline =
+        source.substring_of_length(start, end - start).find_character('\n');
+    return newline.has_value() && start + *newline + 1 < end
+               ? start + *newline + 1
+               : end;
+  };
+
+  usize extra_piece_count = 0;
+  bool is_sorted = true;
+  for (usize index = 0; index < spans.count(); index++) {
+    let const &span = spans[index];
+    if (index > 0 && spans[index - 1].start > span.start) is_sorted = false;
+    for (usize start = do_next_piece_end(span.start, span.end);
+         start < span.end; start = do_next_piece_end(start, span.end))
+    {
+      extra_piece_count++;
+    }
+  }
+
+  let const span_count = spans.count();
+  spans.reserve(span_count + extra_piece_count);
+  for (usize index = 0; index < extra_piece_count; index++) {
+    spans.push(spans[0]);
+  }
+
+  usize write_position = spans.count();
+  for (usize index = span_count; index > 0; index--) {
+    let const span = spans[index - 1];
+    usize piece_count = 1;
+    for (usize start = do_next_piece_end(span.start, span.end);
+         start < span.end; start = do_next_piece_end(start, span.end))
+    {
+      piece_count++;
+    }
+
+    write_position -= piece_count;
+    usize start = span.start;
+    for (usize piece = 0; piece < piece_count; piece++) {
+      let const piece_end = do_next_piece_end(start, span.end);
+      spans[write_position + piece] =
+          highlight_span{start, piece_end, span.role};
+      start = piece_end;
+    }
+  }
+
+  if (!is_sorted) {
+    spans.sort([](const highlight_span &left, const highlight_span &right) {
+      return left.start < right.start;
+    });
+  }
+}
 
 fn ShellHighlightCache::spans_for(StringView source, usize line_start,
                                   usize line_end, EvalContext &context) throws
@@ -478,110 +370,40 @@ fn ShellHighlightCache::spans_for(StringView source, usize line_start,
       source.data != m_source.data || source.length != m_source.length;
   if (has_source_changed) {
     m_source = source;
-    m_checkpoints.clear();
-    m_lines.clear();
-    m_sequential_state = shell_lexical_state{heap_allocator()};
-
-    let state = shell_lexical_state{heap_allocator()};
-    m_checkpoints.push(state);
-    m_next_checkpoint_threshold = DIAGNOSTIC_CHECKPOINT_BYTE_INTERVAL;
+    m_pieces = ArrayList<highlight_span>{m_allocator};
+    HIGHLIGHT_ARENA.reset();
+    scan_highlight_source(source, context, m_pieces);
+    HIGHLIGHT_ARENA.reset();
+    split_spans_at_lines(source, m_pieces);
   }
 
-  usize cached_line_index = 0;
-  usize cached_line_limit = m_lines.count();
-  while (cached_line_index < cached_line_limit) {
-    let const middle =
-        cached_line_index + (cached_line_limit - cached_line_index) / 2;
-    let const &line = m_lines[middle];
-    if (line.start < line_start ||
-        (line.start == line_start && line.end < line_end))
-    {
-      cached_line_index = middle + 1;
+  usize first_piece = 0;
+  usize piece_limit = m_pieces.count();
+  while (first_piece < piece_limit) {
+    let const middle = first_piece + (piece_limit - first_piece) / 2;
+    if (m_pieces[middle].start < line_start) {
+      first_piece = middle + 1;
     } else {
-      cached_line_limit = middle;
+      piece_limit = middle;
     }
   }
-  if (cached_line_index < m_lines.count()) {
-    let &line = m_lines[cached_line_index];
-    if (line_start == line.start && line_end == line.end) {
-      return &line.spans;
-    }
+  if (first_piece > 0 && m_pieces[first_piece - 1].end > line_start) {
+    first_piece--;
   }
 
-  let const do_advance_with_checkpoints = [&](shell_lexical_state &state,
-                                              usize target) throws -> void {
-    while (m_next_checkpoint_threshold < source.length &&
-           m_next_checkpoint_threshold < target)
-    {
-      let const newline_position =
-          source.substring(m_next_checkpoint_threshold - 1)
-              .find_character('\n');
-      let const checkpoint_position =
-          newline_position.has_value()
-              ? m_next_checkpoint_threshold + *newline_position
-              : source.length;
-      if (checkpoint_position >= source.length) {
-        m_next_checkpoint_threshold = source.length;
-        break;
-      }
-      if (checkpoint_position > target) break;
-      advance_shell_lexical_state(source, checkpoint_position, state);
-      m_checkpoints.push(state);
-      m_next_checkpoint_threshold =
-          checkpoint_position + DIAGNOSTIC_CHECKPOINT_BYTE_INTERVAL;
+  m_line_spans.clear();
+  for (usize index = first_piece;
+       index < m_pieces.count() && m_pieces[index].start < line_end; index++)
+  {
+    let const &piece = m_pieces[index];
+    let const start = piece.start > line_start ? piece.start : line_start;
+    let const end = piece.end < line_end ? piece.end : line_end;
+    if (start < end) {
+      m_line_spans.push(
+          highlight_span{start - line_start, end - line_start, piece.role});
     }
-    advance_shell_lexical_state(source, target, state);
-  };
-
-  let lexical_state = shell_lexical_state{heap_allocator()};
-  const shell_lexical_state *line_state = &m_sequential_state;
-  if (m_sequential_state.source_position != line_start) {
-    usize checkpoint_index = 0;
-    usize checkpoint_limit = m_checkpoints.count();
-    while (checkpoint_index + 1 < checkpoint_limit) {
-      let const middle =
-          checkpoint_index + (checkpoint_limit - checkpoint_index) / 2;
-      if (m_checkpoints[middle].source_position <= line_start)
-        checkpoint_index = middle;
-      else
-        checkpoint_limit = middle;
-    }
-
-    lexical_state = m_checkpoints[checkpoint_index];
-    do_advance_with_checkpoints(lexical_state, line_start);
-    line_state = &lexical_state;
   }
-  let const source_line =
-      source.substring_of_length(line_start, line_end - line_start);
-#if !defined NDEBUG
-  LOG(All, "highlighting cached line at %zu with %zu frames and quote %d",
-      line_state->source_position, line_state->frames.count(),
-      line_state->quote);
-  for (let const &construct : line_state->constructs)
-    LOG(All, "reconstructing lexical construct %u in phase %u",
-        static_cast<unsigned>(construct.kind),
-        static_cast<unsigned>(construct.phase));
-#endif
-  let const generated =
-      highlight_line_with_lexical_state(source_line, context, line_state);
-  let cached = cached_line{line_start, line_end};
-  cached.spans.reserve(generated.count());
-  for (let const &span : generated)
-    cached.spans.push(span);
-  m_lines.push(steal(cached));
-  for (usize index = m_lines.count() - 1; index > cached_line_index; index--) {
-    let displaced = steal(m_lines[index]);
-    m_lines[index] = steal(m_lines[index - 1]);
-    m_lines[index - 1] = steal(displaced);
-  }
-  if (line_state != &m_sequential_state)
-    m_sequential_state = steal(lexical_state);
-  let state_target = line_end;
-  if (state_target < source.length && source[state_target] == '\n') {
-    state_target++;
-  }
-  do_advance_with_checkpoints(m_sequential_state, state_target);
-  return &m_lines[cached_line_index].spans;
+  return &m_line_spans;
 }
 
 #if !defined NDEBUG
@@ -592,7 +414,7 @@ pure fn debug_highlight_input_byte_count() wontthrow -> usize
 
 fn debug_diagnostic_cache_is_stable(EvalContext &context) throws -> bool
 {
-  let cache = ShellHighlightCache{};
+  let cache = ShellHighlightCache{heap_allocator()};
   let const source = String{
       "value=\"$(printf value\n) tail\"\nif true\nthen value='start\nend'; fi"};
   usize keyword_line_start = 0;
@@ -645,7 +467,7 @@ fn debug_diagnostic_cache_is_stable(EvalContext &context) throws -> bool
     }
   }
 
-  let function_cache = ShellHighlightCache{};
+  let function_cache = ShellHighlightCache{heap_allocator()};
   let const function_source = String{"finish() { :; }\nfinish"};
   let const function_call_start = function_source.view().find_character('\n');
   if (!function_call_start.has_value()) return false;

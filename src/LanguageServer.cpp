@@ -425,7 +425,7 @@ private:
   DocumentStore m_documents;
   AuxiliaryDiagnostics m_auxiliary_diagnostics;
   StringMap<String> m_shell_help_cache{heap_allocator()};
-  completion::ShellHighlightCache m_highlight_cache;
+  completion::ShellHighlightCache m_highlight_cache{heap_allocator()};
   Path m_workspace_root;
   client_capabilities m_client{};
   server_lifecycle m_lifecycle{server_lifecycle::Uninitialized};
@@ -575,7 +575,7 @@ fn Server::open_document(const JsonValue *params) throws -> Document *
   if (!uri.has_value() || !language_id.has_value() || !text.has_value()) {
     return nullptr;
   }
-  m_highlight_cache = completion::ShellHighlightCache{};
+  m_highlight_cache = completion::ShellHighlightCache{heap_allocator()};
 
   return m_documents.open(*uri, *language_id, *text, version.value_or(0));
 }
@@ -598,7 +598,7 @@ fn Server::change_document(const JsonValue *params) throws -> Document *
   let *document = m_documents.change(*uri, *text, version);
   if (document == nullptr) return nullptr;
 
-  m_highlight_cache = completion::ShellHighlightCache{};
+  m_highlight_cache = completion::ShellHighlightCache{heap_allocator()};
 
   return document;
 }

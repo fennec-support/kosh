@@ -1,0 +1,60 @@
+== echo {a..e} "x y"
+echo	resolved-command
+"x y"	string
+== echo "$(echo {a..e})" "x y"
+echo	resolved-command
+"	string
+echo	resolved-command
+"	string
+"x y"	string
+== { echo a; } | cat
+{	operator
+echo	resolved-command
+;	operator
+}	operator
+|	operator
+cat	resolved-command
+== function g { echo; }
+function	keyword
+g	function-name
+{	operator
+echo	resolved-command
+;	operator
+}	operator
+== x=$(\
+  A=1 \
+    cat)
+x	assignment-name
+A	assignment-name
+cat	resolved-command
+== myfn() { :; }; echo "$(myfn)" `myfn`
+myfn	function-name
+(	operator
+)	operator
+{	operator
+:	resolved-command
+;	operator
+}	operator
+;	operator
+echo	resolved-command
+"	string
+myfn	resolved-command
+"	string
+myfn	resolved-command
+== myfn() { :; }; unset -f myfn other; unset -v myfn
+myfn	function-name
+(	operator
+)	operator
+{	operator
+:	resolved-command
+;	operator
+}	operator
+;	operator
+unset	resolved-command
+-f	flag
+myfn	function-name
+other	unknown-command
+;	operator
+unset	resolved-command
+-v	flag
+myfn	unset-variable

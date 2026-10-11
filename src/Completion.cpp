@@ -1113,8 +1113,10 @@ static fn complete_variable(StringView token, EvalContext &context,
   if (!text_before_token.is_empty()) {
     let spans = ArrayList<highlight_span>{completion_allocator()};
     let assigned_names = HashSet{completion_allocator()};
+    let function_names = HashSet{completion_allocator()};
     unused(scan_highlight_range(text_before_token, 0, text_before_token.length,
-                                context, spans, assigned_names, nullptr));
+                                context, spans, assigned_names,
+                                function_names));
     LOG(Debug, "the text before the variable assigns %zu names",
         assigned_names.count());
     assigned_names.for_each([&](StringView name) { do_add_name(name); });

@@ -2065,9 +2065,6 @@ fn internal::advance_shell_lexical_state(
                      highlight_construct_phase::function_name &&
                  word != "function")
       {
-        if (word_is_function_name(word)) {
-          state.known_function_names.add(word);
-        }
         active_construct->phase = highlight_construct_phase::body;
         frame.is_command_position = false;
       } else if (is_active_construct_in_frame &&
@@ -2114,7 +2111,6 @@ fn internal::advance_shell_lexical_state(
       } else if (frame.is_command_position && word_is_function_name(word) &&
                  word_defines_function(source, word_end, end))
       {
-        state.known_function_names.add(word);
         frame.is_command_position = false;
       } else if (frame.is_command_position) {
         if (let const is_next_command =

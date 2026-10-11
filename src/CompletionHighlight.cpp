@@ -448,12 +448,10 @@ fn internal::advance_shell_keyword_state(StringView word, usize frame_depth,
   return None;
 }
 
-static fn color_arithmetic(StringView line, usize begin, usize end,
-                           EvalContext &context,
-                           ArrayList<highlight_span> &spans,
-                           HashSet &line_variable_names,
-                           const HashSet *known_function_names,
-                           bool is_bracket_form) throws -> usize;
+static fn
+color_arithmetic(StringView line, usize begin, usize end, EvalContext &context,
+                 ArrayList<highlight_span> &spans, HashSet &line_variable_names,
+                 HashSet &function_names, bool is_bracket_form) throws -> usize;
 
 enum class listed_path_state : u8
 {
@@ -842,7 +840,7 @@ static fn dollar_name_is_set(StringView name,
 static fn color_dollar(StringView line, usize i, usize end,
                        ArrayList<highlight_span> &spans, EvalContext &context,
                        HashSet &line_variable_names,
-                       const HashSet *known_function_names) throws -> usize
+                       HashSet &function_names) throws -> usize
 {
   static usize nesting_depth = 0;
   constexpr usize MAX_NESTING_DEPTH = 256;
@@ -857,21 +855,20 @@ static fn color_dollar(StringView line, usize i, usize end,
   if (i + 2 < end && line[i + 1] == '(' && line[i + 2] == '(') {
     let const inner_begin = i + 3 < end ? i + 3 : end;
     return color_arithmetic(line, inner_begin, end, context, spans,
-                            line_variable_names, known_function_names, false);
+                            line_variable_names, function_names, false);
   }
 
   if (i + 1 < end && line[i + 1] == '[' &&
       context.runtime_state().bash_additions_enabled())
   {
     return color_arithmetic(line, i + 2, end, context, spans,
-                            line_variable_names, known_function_names, true);
+                            line_variable_names, function_names, true);
   }
 
   if (i + 1 < end && line[i + 1] == '(') {
     let const inner_begin = i + 2 < end ? i + 2 : end;
     return scan_highlight_range(line, inner_begin, end, context, spans,
-                                line_variable_names, known_function_names,
-                                true);
+                                line_variable_names, function_names, true);
   }
   let const expansion_end = scan_dollar_expansion(line, i, end);
   if (expansion_end > i) {
@@ -887,12 +884,10 @@ static fn color_dollar(StringView line, usize i, usize end,
   return expansion_end;
 }
 
-static fn color_arithmetic(StringView line, usize begin, usize end,
-                           EvalContext &context,
-                           ArrayList<highlight_span> &spans,
-                           HashSet &line_variable_names,
-                           const HashSet *known_function_names,
-                           bool is_bracket_form) throws -> usize
+static fn
+color_arithmetic(StringView line, usize begin, usize end, EvalContext &context,
+                 ArrayList<highlight_span> &spans, HashSet &line_variable_names,
+                 HashSet &function_names, bool is_bracket_form) throws -> usize
 {
   usize i = begin;
   usize parenthesis_depth = 0;
@@ -902,7 +897,7 @@ static fn color_arithmetic(StringView line, usize begin, usize end,
 
     if (c == '$') {
       let const next = color_dollar(line, i, end, spans, context,
-                                    line_variable_names, known_function_names);
+                                    line_variable_names, function_names);
       i = next > i ? next : i + 1;
       continue;
     }
@@ -1174,8 +1169,8 @@ static pure fn variable_name_operand_of(StringView word) wontthrow -> StringView
 fn internal::scan_highlight_range(
     StringView line, usize begin, usize end, EvalContext &context,
     ArrayList<highlight_span> &spans, HashSet &line_variable_names,
-    const HashSet *known_function_names,
-    bool should_stop_at_closing_parenthesis) throws -> usize
+    HashSet &function_names, bool should_stop_at_closing_parenthesis) throws
+    -> usize
 {
   let const do_push = [&](usize start, usize stop, highlight_role role)
                           throws -> void {
@@ -1201,10 +1196,10 @@ fn internal::scan_highlight_range(
   let for_do_expected = false;
   let function_name_pending = false;
   let is_case_pattern_expected = false;
-  let line_functions = HashSet{bump_allocator(HIGHLIGHT_ARENA)};
   let decoded_command_word =
       utils::decoded_shell_word{bump_allocator(HIGHLIGHT_ARENA)};
   let is_in_array_value = false;
+  let is_unsetting_functions = false;
   usize parenthesis_depth = 0;
   usize array_value_parenthesis_depth = 0;
 
@@ -1226,13 +1221,23 @@ fn internal::scan_highlight_range(
     let const inner_end = position;
     if (position < end) position++;
     scan_highlight_range(line, inner_begin, inner_end, context, word_spans,
-                         line_variable_names, known_function_names);
+                         line_variable_names, function_names);
     return position;
   };
 
   let i = begin;
   while (i < end) {
     let const c = line[i];
+
+    if (c == '\\' && i + 1 < end && line[i + 1] == '\n') {
+      i += 2;
+      continue;
+    }
+    if (c == '\\' && i + 2 < end && line[i + 1] == '\r' && line[i + 2] == '\n')
+    {
+      i += 3;
+      continue;
+    }
 
     if (c == ' ' || c == '\t' || c == '\n' ||
         (c == '\r' && i + 1 < end && line[i + 1] == '\n'))
@@ -1266,7 +1271,7 @@ fn internal::scan_highlight_range(
     if (is_command_position && c == '(' && i + 1 < end && line[i + 1] == '(') {
       spans.push(highlight_span{i, i + 2, highlight_role::operator_});
       i = color_arithmetic(line, i + 2, end, context, spans,
-                           line_variable_names, known_function_names, false);
+                           line_variable_names, function_names, false);
       is_command_position = false;
       continue;
     }
@@ -1305,9 +1310,11 @@ fn internal::scan_highlight_range(
       continue;
     }
 
+    let const is_reserved_brace =
+        (c == '{' || c == '}') && is_command_position &&
+        (i + 1 >= end || position_is_highlight_word_break(line, i + 1, end));
     if (c == '|' || c == '&' || c == ';' || c == '<' || c == '>' || c == '(' ||
-
-        c == ')' || c == '{' || c == '}')
+        c == ')' || is_reserved_brace)
     {
       let const operator_start = i;
       let has_separator = false;
@@ -1410,7 +1417,7 @@ fn internal::scan_highlight_range(
               word_spans.push(
                   highlight_span{literal_start, i, highlight_role::string});
             i = color_dollar(line, i, end, word_spans, context,
-                             line_variable_names, known_function_names);
+                             line_variable_names, function_names);
             literal_start = i;
             continue;
           }
@@ -1445,7 +1452,7 @@ fn internal::scan_highlight_range(
             highlight_span{string_start, i, highlight_role::string});
       } else if (d == '$') {
         i = color_dollar(line, i, end, word_spans, context, line_variable_names,
-                         known_function_names);
+                         function_names);
       } else if (d == '\\' && i + 1 < end) {
         word_has_shell_syntax = true;
         i += 2;
@@ -1568,9 +1575,7 @@ fn internal::scan_highlight_range(
       return true;
     };
     let const do_names_known_function = [&](StringView command) throws -> bool {
-      return line_functions.contains(command) ||
-             (known_function_names != nullptr &&
-              known_function_names->contains(command));
+      return function_names.contains(command);
     };
     let const do_command_role = [&](StringView command)
                                     throws -> highlight_role {
@@ -1598,6 +1603,20 @@ fn internal::scan_highlight_range(
       do_push(word_start, word_end, highlight_role::flag);
       if (highlight_command_word == "koshkit")
         highlight_command_word = StringView{};
+      if (highlight_command_word == "unset" && word != "--" &&
+          word.find_character('f').has_value())
+      {
+        is_unsetting_functions = true;
+      }
+      continue;
+    }
+
+    if (!is_command_position && is_unsetting_functions && is_plain &&
+        highlight_command_word == "unset" && word_is_function_name(word))
+    {
+      do_push(word_start, word_end,
+              do_names_known_function(word) ? highlight_role::function_name
+                                            : highlight_role::unknown_command);
       continue;
     }
 
@@ -1663,7 +1682,7 @@ fn internal::scan_highlight_range(
         if (!name.is_empty()) {
           do_push(word_start, word_start + name.length,
                   highlight_role::function_name);
-          line_functions.add(name);
+          function_names.add(name);
           if (name.length == word.length) {
             continue;
           }
@@ -1725,10 +1744,10 @@ fn internal::scan_highlight_range(
 
     if (function_name_pending) {
       function_name_pending = false;
-      is_command_position = false;
+      is_command_position = true;
       if (is_plain && word_is_function_name(word)) {
         do_push(word_start, word_end, highlight_role::function_name);
-        line_functions.add(word);
+        function_names.add(word);
       } else {
         do_push(word_start, word_end, highlight_role::invalid_syntax);
       }
@@ -1830,11 +1849,12 @@ fn internal::scan_highlight_range(
       }
 
       highlight_command_word = word;
+      is_unsetting_functions = false;
       if (word == "~" && !is_word_terminated) {
         do_push(word_start, word_end, highlight_role::partial_path);
       } else if (word_defines_function(line, word_end, end)) {
         do_push(word_start, word_end, highlight_role::function_name);
-        line_functions.add(word);
+        function_names.add(word);
       } else if (os::has_directory_separator(word) &&
                  !word_has_erased_directory_separator(word) &&
                  !do_names_known_function(word))

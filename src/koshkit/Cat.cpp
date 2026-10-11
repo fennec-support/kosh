@@ -105,7 +105,7 @@ static fn append_cat_source(String &output, StringView source, i64 &line_number,
     return;
   }
 
-  let highlight_cache = completion::ShellHighlightCache{};
+  let highlight_cache = completion::ShellHighlightCache{output.allocator()};
   usize line_start = 0;
   while (line_start < source.length) {
     let const remaining = source.substring(line_start);
