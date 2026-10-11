@@ -916,6 +916,7 @@ hot fn Pipeline::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const
   {
     for (ExecContext &leftover : ecs)
       leftover.close_fds();
+    ecs.clear();
     cxt.expansion_store().scratch_arena().release(pipeline_mark);
   };
   ecs.reserve(m_commands.count());

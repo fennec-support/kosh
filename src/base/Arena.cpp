@@ -13,7 +13,31 @@
 #include "Containers.hpp"
 #include "Trace.hpp"
 
+#if defined KOSH_HAS_ADDRESS_SANITIZER
+#include <sanitizer/asan_interface.h>
+#endif
+
 namespace koshka {
+
+static fn poison_arena_bytes(const u8 *start, usize size) wontthrow -> void
+{
+#if defined KOSH_HAS_ADDRESS_SANITIZER
+  if (size != 0) ASAN_POISON_MEMORY_REGION(start, size);
+#else
+  unused(start);
+  unused(size);
+#endif
+}
+
+static fn unpoison_arena_bytes(const u8 *start, usize size) wontthrow -> void
+{
+#if defined KOSH_HAS_ADDRESS_SANITIZER
+  if (size != 0) ASAN_UNPOISON_MEMORY_REGION(start, size);
+#else
+  unused(start);
+  unused(size);
+#endif
+}
 
 static u32 NEXT_ARENA_INCARNATION = 1;
 static BumpArena *LIVE_ARENAS = nullptr;
@@ -76,8 +100,10 @@ BumpArena::~BumpArena()
   run_destructors_down_to(0);
   release_destructor_chunks(0);
 
-  for (block &block : m_blocks)
+  for (block &block : m_blocks) {
+    unpoison_arena_bytes(block.base, block.size);
     heap_allocator().free_array(block.base, block.size);
+  }
 
   unregister_live();
 }
@@ -103,14 +129,19 @@ fn BumpArena::unregister_live() wontthrow -> void
   m_next_live = nullptr;
 }
 
-fn BumpArena::owns_live_pointer(const opaque *pointer) wontthrow -> bool
+fn BumpArena::find_live_owner(const opaque *pointer) wontthrow -> BumpArena *
 {
-  if (pointer == nullptr) return false;
+  if (pointer == nullptr) return nullptr;
   let const lock = live_arenas_lock{};
   for (let *arena = LIVE_ARENAS; arena != nullptr; arena = arena->m_next_live) {
-    if (arena->owns(pointer)) return true;
+    if (arena->owns(pointer)) return arena;
   }
-  return false;
+  return nullptr;
+}
+
+fn BumpArena::owns_live_pointer(const opaque *pointer) wontthrow -> bool
+{
+  return find_live_owner(pointer) != nullptr;
 }
 
 fn BumpArena::push_destructor(pending_destructor pending) throws -> void
@@ -177,6 +208,7 @@ cold fn BumpArena::add_block(usize minimum_size, usize preferred_size) throws
     heap_allocator().free_array(base, size);
     throw;
   }
+  poison_arena_bytes(base, size);
 
   let const low = reinterpret_cast<uintptr>(base);
   if (low < m_lowest_address) m_lowest_address = low;
@@ -197,6 +229,7 @@ hot fn BumpArena::allocate(usize size, usize alignment) throws -> opaque *
 
           let const pointer = block.base + aligned;
           block.used = aligned + size;
+          unpoison_arena_bytes(pointer, size);
 
           return pointer;
         }
@@ -304,12 +337,18 @@ fn BumpArena::release(Mark saved) wontthrow -> void
     m_active_lifetime_slots.pop_back();
   }
 
-  for (usize i = saved.block_index + 1; i < m_blocks.count(); i++)
+  for (usize i = saved.block_index + 1; i < m_blocks.count(); i++) {
+    poison_arena_bytes(m_blocks[i].base, m_blocks[i].used);
     m_blocks[i].used = 0;
+  }
 
   if (saved.block_index < m_blocks.count()) {
-    ASSERT(saved.used_in_block <= m_blocks[saved.block_index].size);
-    m_blocks[saved.block_index].used = saved.used_in_block;
+    let &saved_block = m_blocks[saved.block_index];
+    ASSERT(saved.used_in_block <= saved_block.size);
+    if (saved_block.used > saved.used_in_block)
+      poison_arena_bytes(saved_block.base + saved.used_in_block,
+                         saved_block.used - saved.used_in_block);
+    saved_block.used = saved.used_in_block;
   }
 
   m_current_index = saved.block_index;
@@ -331,11 +370,16 @@ cold fn BumpArena::reset() wontthrow -> void
   }
   m_active_lifetime_slots.clear();
 
-  for (usize i = 1; i < m_blocks.count(); i++)
+  for (usize i = 1; i < m_blocks.count(); i++) {
+    unpoison_arena_bytes(m_blocks[i].base, m_blocks[i].size);
     heap_allocator().free_array(m_blocks[i].base, m_blocks[i].size);
+  }
   while (m_blocks.count() > 1)
     m_blocks.pop_back();
-  if (!m_blocks.is_empty()) m_blocks.front().used = 0;
+  if (!m_blocks.is_empty()) {
+    poison_arena_bytes(m_blocks.front().base, m_blocks.front().used);
+    m_blocks.front().used = 0;
+  }
 
   m_current_index = 0;
 }

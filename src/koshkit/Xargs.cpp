@@ -74,11 +74,13 @@ class XargsReader
 {
 public:
   XargsReader(os::descriptor fd, xargs_item_format format,
-              Allocator allocator) wontthrow
+              Allocator allocator) throws
       : m_fd{fd},
         m_format{format},
         m_buffer{allocator}
-  {}
+  {
+    m_buffer.reserve(READ_CHUNK_LENGTH);
+  }
 
   fn next(Allocator allocator) throws -> Maybe<xargs_item>
   {
@@ -100,7 +102,7 @@ private:
 
       m_buffer.clear();
       m_position = 0;
-      char chunk[65536];
+      char chunk[READ_CHUNK_LENGTH];
       let const read_count = os::read_fd(m_fd, chunk, sizeof(chunk));
       if (!read_count.has_value())
         throw Error{"read error: " + os::last_system_error_message()};
@@ -211,6 +213,8 @@ private:
       if (!value.is_empty()) return xargs_item{steal(value), item_line};
     }
   }
+
+  static constexpr usize READ_CHUNK_LENGTH = 65536;
 
   os::descriptor m_fd;
   xargs_item_format m_format;

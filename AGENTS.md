@@ -531,6 +531,11 @@ same encoding that every spawned process receives."
   `is_arena_destructor_noop` only when reachable resources have arena lifetime
   or need no cleanup. Destructor chunks hold 32 records first, double, and stay
   at 64 KiB. Arena blocks after the first grow fourfold up to 64 KiB.
+- Under AddressSanitizer an arena poisons every byte it has not handed out
+  and every byte a release or reset takes back, so a read of released arena
+  memory fails the debug suite. An object in an arena is destroyed before the
+  mark below it is released, and a segment cache record lives in the arena
+  that owns the segment.
 - `WordSegment` is 32 bytes on 64-bit targets. Two 32-bit units hold its span,
   kind, and flags. Parsed text, cache data, flattened values, and segment lists
   move into the token arena. Runtime copies own heap storage. Parsed word tokens
