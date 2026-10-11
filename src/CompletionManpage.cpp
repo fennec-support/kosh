@@ -914,43 +914,11 @@ fn internal::manpage_text_for(StringView page_name, EvalContext &context) throws
     return cached->view();
 
   let text = String{heap_allocator()};
-  let const man_paths = context.program_resolver().search(
-      "man", ProgramResolver::SearchMode::First,
-      ProgramResolver::Requirement::Runnable,
-      ProgramResolver::CachePolicy::Bypass);
-  if (man_paths.is_empty() ||
-      !command_directory_is_trusted(man_paths[0].view()))
-  {
-    LOG(Debug,
-        "skipping the man fork for '%.*s' because man is absent or untrusted",
-        static_cast<int>(page_name.length), page_name.data);
-
-    return MANPAGE_CACHE.text.set(page_name, steal(text))->view();
-  }
-
-  let locate_argv = ArrayList<String>{heap_allocator()};
-  locate_argv.push(String{man_paths[0].view()});
-  locate_argv.push(String{"-w"});
-  locate_argv.push(String{page_name});
-  let const location = capture_completion_program_output(context, locate_argv);
-  if (!location.has_value()) {
-    LOG(Debug,
-        "the man location fork for '%.*s' was killed or failed to start, "
-        "leaving the text cache unset",
-        static_cast<int>(page_name.length), page_name.data);
-
-    if (should_retry_killed_fork("man-text", page_name)) return StringView{};
-
-    return MANPAGE_CACHE.text.set(page_name, steal(text))->view();
-  }
-
-  if (!location->view().find_character('/').has_value())
+  let const argv = manpage_argv_for(page_name, context);
+  if (!argv.has_value())
     return MANPAGE_CACHE.text.set(page_name, steal(text))->view();
 
-  let argv = ArrayList<String>{heap_allocator()};
-  argv.push(String{man_paths[0].view()});
-  argv.push(String{page_name});
-  Maybe<String> page = capture_completion_program_output(context, argv);
+  Maybe<String> page = capture_completion_program_output(context, *argv);
   if (!page.has_value()) {
     LOG(Debug,
         "the man fork for '%.*s' was killed or failed to start, leaving the "
@@ -961,6 +929,9 @@ fn internal::manpage_text_for(StringView page_name, EvalContext &context) throws
 
     return MANPAGE_CACHE.text.set(page_name, steal(text))->view();
   }
+
+  if (!MANPAGE_CACHE.option_entries.find(page_name).has_value())
+    store_manpage_options(page_name, page->view());
 
   if (!page->is_empty()) {
     let const page_view = page->view();
