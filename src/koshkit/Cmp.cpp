@@ -51,6 +51,11 @@ static fn refill_readers(buffered_byte_reader &left,
                          buffered_byte_reader &right, os::Batch &batch,
                          ArrayList<os::batch_result> &results) throws -> bool
 {
+  let const do_has_bytes = [](const buffered_byte_reader &reader) -> bool {
+    return reader.position != reader.length || reader.has_ended;
+  };
+  if (do_has_bytes(left) && do_has_bytes(right)) return true;
+
   buffered_byte_reader *readers[] = {&left, &right};
   buffered_byte_reader *batched_readers[2]{};
   usize operation_count = 0;
@@ -173,6 +178,28 @@ fn Cmp::execute(const ExecContext &ec, EvalContext &cxt,
         report_soft_koshkit_util_error(ec, cxt, args[0].view(),
                                        os::last_system_error_message());
       return 2;
+    }
+
+    let const left_available = left.length - left.position;
+    let const right_available = right.length - right.position;
+    let const common_length =
+        left_available < right_available ? left_available : right_available;
+    if (common_length > 0) {
+      let const *left_bytes = left.buffer + left.position;
+      let const *right_bytes = right.buffer + right.position;
+      usize equal_length = common_length;
+      if (std::memcmp(left_bytes, right_bytes, common_length) != 0) {
+        equal_length = 0;
+        while (left_bytes[equal_length] == right_bytes[equal_length])
+          equal_length++;
+      }
+
+      for (usize index = 0; index < equal_length; index++)
+        line_number += left_bytes[index] == '\n' ? 1 : 0;
+      byte_position += equal_length;
+      left.position += equal_length;
+      right.position += equal_length;
+      if (equal_length == common_length) continue;
     }
 
     u8 left_byte = 0;
