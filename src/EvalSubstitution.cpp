@@ -821,6 +821,8 @@ fn EvalContext::run_captured_substitution(
 
   let const substitution_mark = expansion_store().scratch_arena().mark();
   defer { expansion_store().scratch_arena().release(substitution_mark); };
+  let const saved_command = execution_store().save_current_command();
+  defer { execution_store().restore_current_command(saved_command); };
 
   let frame = SubstitutionFrame{*this};
   if (call_site.has_value())
