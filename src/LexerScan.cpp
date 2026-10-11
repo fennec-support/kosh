@@ -27,25 +27,49 @@ enum struct balanced_scan_keyword : u8
   in_word,
   esac_word,
   command_word,
+  inert_word,
 };
 
 constexpr static_string_entry<balanced_scan_keyword>
     BALANCED_SCAN_KEYWORD_ENTRIES[] = {
-        {SSK("case"),   balanced_scan_keyword::case_word   },
-        {SSK("coproc"), balanced_scan_keyword::command_word},
-        {SSK("do"),     balanced_scan_keyword::command_word},
-        {SSK("elif"),   balanced_scan_keyword::command_word},
-        {SSK("else"),   balanced_scan_keyword::command_word},
-        {SSK("esac"),   balanced_scan_keyword::esac_word   },
-        {SSK("if"),     balanced_scan_keyword::command_word},
-        {SSK("in"),     balanced_scan_keyword::in_word     },
-        {SSK("then"),   balanced_scan_keyword::command_word},
-        {SSK("time"),   balanced_scan_keyword::command_word},
-        {SSK("until"),  balanced_scan_keyword::command_word},
-        {SSK("while"),  balanced_scan_keyword::command_word},
+        {SSK("case"),     balanced_scan_keyword::case_word   },
+        {SSK("coproc"),   balanced_scan_keyword::command_word},
+        {SSK("do"),       balanced_scan_keyword::command_word},
+        {SSK("done"),     balanced_scan_keyword::inert_word  },
+        {SSK("elif"),     balanced_scan_keyword::command_word},
+        {SSK("else"),     balanced_scan_keyword::command_word},
+        {SSK("esac"),     balanced_scan_keyword::esac_word   },
+        {SSK("fi"),       balanced_scan_keyword::inert_word  },
+        {SSK("for"),      balanced_scan_keyword::inert_word  },
+        {SSK("function"), balanced_scan_keyword::inert_word  },
+        {SSK("if"),       balanced_scan_keyword::command_word},
+        {SSK("in"),       balanced_scan_keyword::in_word     },
+        {SSK("then"),     balanced_scan_keyword::command_word},
+        {SSK("time"),     balanced_scan_keyword::command_word},
+        {SSK("until"),    balanced_scan_keyword::command_word},
+        {SSK("when"),     balanced_scan_keyword::inert_word  },
+        {SSK("while"),    balanced_scan_keyword::command_word},
 };
 
 constexpr StaticStringMap BALANCED_SCAN_KEYWORDS{BALANCED_SCAN_KEYWORD_ENTRIES};
+
+consteval fn every_lexer_keyword_has_a_balanced_scan_kind() wontthrow -> bool
+{
+  for (let const &keyword : KEYWORD_ENTRIES) {
+    bool has_kind = false;
+    for (let const &entry : BALANCED_SCAN_KEYWORD_ENTRIES) {
+      if (entry.key == keyword.key) has_kind = true;
+    }
+
+    if (!has_kind) return false;
+  }
+
+  return true;
+}
+
+static_assert(every_lexer_keyword_has_a_balanced_scan_kind(),
+              "A lexer keyword reaches the balanced scanner with no kind, so "
+              "the scanner cannot tell whether a command follows it.");
 
 fn unquote_heredoc_delimiter(StringView word, Allocator allocator) throws
     -> String
@@ -251,6 +275,10 @@ fn scan_balanced_shell_region(StringView source, usize position,
         case balanced_scan_keyword::command_word:
           did_match_keyword = is_command_position;
           is_next_command = did_match_keyword;
+          break;
+
+        case balanced_scan_keyword::inert_word:
+          did_match_keyword = false;
           break;
         }
       }
