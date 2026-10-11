@@ -58,7 +58,8 @@ consteval fn build_source_scan_table() -> source_scan_table
       SCAN_ACTS_DOUBLE_QUOTED;
   table.acting_states[static_cast<u8>('\'')] =
       SCAN_ACTS_NORMAL | SCAN_ACTS_SINGLE_QUOTED | SCAN_ACTS_ANSI_C_QUOTED;
-  table.acting_states[static_cast<u8>('$')] |= SCAN_ACTS_NORMAL;
+  table.acting_states[static_cast<u8>('$')] |=
+      SCAN_ACTS_NORMAL | SCAN_ACTS_DOUBLE_QUOTED;
   table.acting_states[static_cast<u8>('"')] =
       SCAN_ACTS_NORMAL | SCAN_ACTS_DOUBLE_QUOTED;
 
@@ -369,9 +370,19 @@ fn check_source_bytes(AnalysisContext &actx, StringView source) throws -> void
   usize comment_line_start = 0;
   usize line_start = 0;
   usize arithmetic_paren_depth = 0;
+  let quoted_substitution_ends = ArrayList<usize>{heap_allocator()};
   usize at = 0;
 
   while (at < source.length) {
+    if (!quoted_substitution_ends.is_empty() &&
+        at >= quoted_substitution_ends.back())
+    {
+      at = quoted_substitution_ends.back() + 1;
+      quoted_substitution_ends.pop_back();
+      state = source_scan_state::DoubleQuoted;
+      continue;
+    }
+
     let const byte = static_cast<u8>(source[at]);
 
     if (byte >= 0x80) {
@@ -534,6 +545,24 @@ fn check_source_bytes(AnalysisContext &actx, StringView source) throws -> void
       switch (byte) {
       case '"': state = source_scan_state::Normal; break;
       case '\\': at++; break;
+
+      case '$': {
+        if (at + 1 >= source.length || source[at + 1] != '(' ||
+            (at + 2 < source.length && source[at + 2] == '('))
+        {
+          break;
+        }
+
+        let const body_end =
+            lexer::scan_balanced_shell_region(source, at + 2, ')');
+        if (!body_end.has_value()) break;
+
+        quoted_substitution_ends.push(*body_end - 1);
+        state = source_scan_state::Normal;
+        is_command_position = true;
+        at++;
+        break;
+      }
 
       default:
         at = skip_plain_bytes(source, at, SCAN_ACTS_DOUBLE_QUOTED);

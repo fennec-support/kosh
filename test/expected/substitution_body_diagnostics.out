@@ -197,9 +197,9 @@ status=0
 == bare_read.sh
 status=0
 == escapes.sh
-escapes.sh:2:19: warning: The escape `\n` is read by the shell as a plain 'n'. (SC1012)
-     2 |  echo "$(printf "%s\n" a)"
-       |                    ^~
+escapes.sh:4:20: warning: The escape `\t` is read by the shell as a plain 't'. (SC1012)
+     4 |  echo "$(printf %s a\tb)"
+       |                     ^~
 note: Build the byte with `printf`, or write it inside `$'...'`.
 escapes.sh:2:1: error: An `echo` of a command substitution prints what the command already prints. (SC2005)
      2 |  echo "$(printf "%s\n" a)"
@@ -209,5 +209,9 @@ escapes.sh:3:26: warning: The `echo` operand is passed through the substitution 
      3 |  echo "$(printf %s "x" )" "$(echo y)"
        |                           ^~~~~~~~~~~
 note: Use the text directly without the command substitution.
-Encountered 2 warnings and 1 error.
+escapes.sh:4:1: error: An `echo` of a command substitution prints what the command already prints. (SC2005)
+     4 |  echo "$(printf %s a\tb)"
+       |  ^~~~
+note: Run the command on its own.
+Encountered 2 warnings and 2 errors.
 status=1

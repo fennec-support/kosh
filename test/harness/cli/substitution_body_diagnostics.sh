@@ -69,6 +69,7 @@ printf '#!/bin/bash\necho start\n# shellcheck disable=SC2002\nx=$(cat f | grep a
   printf '#!/bin/bash\n'
   printf 'echo "$(printf "%%s\\n" a)"\n'
   printf 'echo "$(printf %%s "x" )" "$(echo y)"\n'
+  printf 'echo "$(printf %%s a\\tb)"\n'
 } > escapes.sh
 
 check command.sh
