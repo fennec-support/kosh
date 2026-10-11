@@ -1096,6 +1096,25 @@ protected:
   SparseList<PrefixAssignment> m_local_vars{};
 };
 
+struct published_command_text
+{
+  Maybe<String> text{};
+  bool was_rendered_with_bash_additions{false};
+
+  template <typename Render>
+  fn get(bool has_bash_additions, Render do_render) throws -> StringView
+  {
+    if (!text.has_value() ||
+        was_rendered_with_bash_additions != has_bash_additions)
+    {
+      text = String{heap_allocator(), do_render().view()};
+      was_rendered_with_bash_additions = has_bash_additions;
+    }
+
+    return text->view();
+  }
+};
+
 class AssignCommand : public Command
 {
 public:
@@ -1123,8 +1142,7 @@ protected:
   fn evaluate_assignment(EvalContext &cxt) const throws -> i64;
 
   const Assignment *m_assignment;
-  mutable Maybe<String> m_published_command_text{};
-  mutable bool m_was_published_text_rendered_with_bash_additions{false};
+  mutable published_command_text m_published_command_text{};
 };
 
 class Redirection
@@ -1251,8 +1269,7 @@ protected:
     bool is_special{false};
   };
   mutable Maybe<LiteralCommandLookup> m_literal_command_lookup{};
-  mutable Maybe<String> m_published_command_text{};
-  mutable bool m_was_published_text_rendered_with_bash_additions{false};
+  mutable published_command_text m_published_command_text{};
 
   fn get_literal_command_lookup(const ArrayList<String> &program_args)
       const throws -> const LiteralCommandLookup *;
@@ -1619,6 +1636,7 @@ protected:
       -> status_result override;
 
   ArrayList<conditional_element> m_elements;
+  mutable published_command_text m_published_command_text{};
 };
 
 class ArithmeticCommand : public CompoundCommand
@@ -1644,6 +1662,7 @@ protected:
   StringView m_expression;
 
   mutable arith_token_cache *m_cache{nullptr};
+  mutable published_command_text m_published_command_text{};
 };
 
 class CStyleForLoop : public CompoundCommand
@@ -1683,6 +1702,9 @@ protected:
 
   mutable arith_token_cache *m_condition_cache{nullptr};
   mutable arith_token_cache *m_step_cache{nullptr};
+  mutable published_command_text m_published_init_text{};
+  mutable published_command_text m_published_condition_text{};
+  mutable published_command_text m_published_step_text{};
 
   static fn get_clause_cache(arith_token_cache *&slot) throws
       -> arith_token_cache &;

@@ -504,9 +504,12 @@ fn ConditionalCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode)
 
   let const should_run_conditional =
       publish_command_and_run_debug_trap(cxt, [&] {
-        return source_command_text(
-            cxt, source_location(), source_end_position(),
-            [&] { return conditional_command_text(m_elements); });
+        return m_published_command_text.get(
+            cxt.runtime_state().bash_additions_enabled(), [&] {
+              return source_command_text(
+                  cxt, source_location(), source_end_position(),
+                  [&] { return conditional_command_text(m_elements); });
+            });
       });
   if (!should_run_conditional) return cxt.execution_store().last_exit_status();
 
@@ -608,8 +611,10 @@ fn ArithmeticCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode)
 
   cxt.source_store().set_current_location(source_location());
 
-  let const should_run_clause = publish_command_and_run_debug_trap(
-      cxt, [&] { return arithmetic_clause_command_text(m_expression); });
+  let const should_run_clause = publish_command_and_run_debug_trap(cxt, [&] {
+    return m_published_command_text.get(
+        false, [&] { return arithmetic_clause_command_text(m_expression); });
+  });
   if (!should_run_clause) return cxt.execution_store().last_exit_status();
 
   if (is_blank_clause(m_expression)) {
@@ -783,7 +788,7 @@ fn CStyleForLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const
     cxt.source_store().set_current_location(source_location());
 
     return publish_command_and_run_debug_trap(
-        cxt, [&] { return arithmetic_clause_command_text(StringView{"1"}); });
+        cxt, [] { return StringView{"((1))"}; });
   };
 
   cxt.enter_loop();
@@ -794,8 +799,10 @@ fn CStyleForLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const
       return {cxt.execution_store().last_exit_status()};
   } else {
     let const should_run_init = publish_command_and_run_debug_trap(cxt, [&] {
-      return arithmetic_clause_command_text(
-          clause_without_leading_blanks(m_init));
+      return m_published_init_text.get(false, [&] {
+        return arithmetic_clause_command_text(
+            clause_without_leading_blanks(m_init));
+      });
     });
     if (!should_run_init) return {cxt.execution_store().last_exit_status()};
 
@@ -813,8 +820,10 @@ fn CStyleForLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const
 
     let const should_run_condition =
         publish_command_and_run_debug_trap(cxt, [&] {
-          return arithmetic_clause_command_text(
-              clause_without_leading_blanks(m_condition));
+          return m_published_condition_text.get(false, [&] {
+            return arithmetic_clause_command_text(
+                clause_without_leading_blanks(m_condition));
+          });
         });
     if (!should_run_condition) return false;
 
@@ -848,8 +857,10 @@ fn CStyleForLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const
       cxt.source_store().set_current_location(source_location());
 
       let const should_run_step = publish_command_and_run_debug_trap(cxt, [&] {
-        return arithmetic_clause_command_text(
-            clause_without_leading_blanks(m_step));
+        return m_published_step_text.get(false, [&] {
+          return arithmetic_clause_command_text(
+              clause_without_leading_blanks(m_step));
+        });
       });
       if (!should_run_step) break;
 
