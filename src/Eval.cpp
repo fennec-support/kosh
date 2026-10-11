@@ -70,24 +70,24 @@ fn DiagnosticsStore::reset_runtime_highlight_cache() wontthrow -> void
 {
   if (m_runtime_diagnostic_highlight_cache == nullptr) return;
 
-  m_runtime_diagnostic_highlight_cache->~shell_highlight_cache();
+  m_runtime_diagnostic_highlight_cache->~ShellHighlightCache();
   heap_allocator().free_array(m_runtime_diagnostic_highlight_cache, 1);
   m_runtime_diagnostic_highlight_cache = nullptr;
 }
 
 fn EvalContext::get_or_create_diagnostic_highlight_cache() throws
-    -> completion::shell_highlight_cache *
+    -> completion::ShellHighlightCache *
 {
   if (diagnostics_store().diagnostic_highlight_cache() != nullptr)
     return diagnostics_store().diagnostic_highlight_cache();
 
   if (diagnostics_store().runtime_diagnostic_highlight_cache() == nullptr) {
     let const cache =
-        heap_allocator().alloc_array<completion::shell_highlight_cache>(1);
+        heap_allocator().alloc_array<completion::ShellHighlightCache>(1);
     if (cache == nullptr) throw std::bad_alloc{};
     try {
       diagnostics_store().runtime_diagnostic_highlight_cache() =
-          new (cache) completion::shell_highlight_cache{};
+          new (cache) completion::ShellHighlightCache{};
     } catch (...) {
       heap_allocator().free_array(cache, 1);
       throw;

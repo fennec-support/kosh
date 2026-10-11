@@ -1667,9 +1667,9 @@ fn VariableStore::from_wire(subshell_bootstrap_reader &reader,
     return false;
   if (wire.has_bash_argument_context) {
     constexpr u8 VALID_FRAME_FLAG_MASK =
-        static_cast<u8>(BashArgumentFrameFlag::DidEnter) |
-        static_cast<u8>(BashArgumentFrameFlag::IsSource) |
-        static_cast<u8>(BashArgumentFrameFlag::HasSourceArguments);
+        static_cast<u8>(bash_argument_frame_flag::DidEnter) |
+        static_cast<u8>(bash_argument_frame_flag::IsSource) |
+        static_cast<u8>(bash_argument_frame_flag::HasSourceArguments);
     wire.bash_argument_context_flags = payload.read_u8();
     let const source_path = payload.read_text();
     if (!payload.is_valid || (wire.bash_argument_context_flags &

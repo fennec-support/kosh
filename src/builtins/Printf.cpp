@@ -509,7 +509,7 @@ fn append_conversion(String &out, String &spec, char conv,
     } else if (number.is_out_of_range && !is_missing_argument) {
       report_out_of_range(ec, cxt, arg, exit_status, allocator);
     }
-    let const scope = os::numeric_locale_scope{
+    let const scope = os::NumericLocaleScope{
         has_grouping_flag ? get_numeric_locale_name(numeric_locale, cxt)
                           : StringView{},
         true};
@@ -528,7 +528,7 @@ fn append_conversion(String &out, String &spec, char conv,
       report_out_of_range(ec, cxt, arg, exit_status, allocator);
     }
     let const should_group = has_grouping_flag && conv == 'u';
-    let const scope = os::numeric_locale_scope{
+    let const scope = os::NumericLocaleScope{
         should_group ? get_numeric_locale_name(numeric_locale, cxt)
                      : StringView{},
         true};
@@ -548,7 +548,7 @@ fn append_conversion(String &out, String &spec, char conv,
     let is_valid = true;
     {
       let const should_group = has_grouping_flag && conv != 'e' && conv != 'E';
-      let const scope = os::numeric_locale_scope{
+      let const scope = os::NumericLocaleScope{
           get_numeric_locale_name(numeric_locale, cxt), should_group};
       let const number = parse_printf_float(arg);
       is_valid = number.is_valid;

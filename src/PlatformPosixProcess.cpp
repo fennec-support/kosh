@@ -858,7 +858,7 @@ fn redirect_self(const ExecContext &ec) throws -> void
   if (ec.err_fd) check_syscall(dup2(*ec.err_fd, STDERR_FILENO));
 }
 
-fn make_pipe() wontthrow -> Maybe<Pipe>
+fn make_pipe() wontthrow -> Maybe<pipe_ends>
 {
   LOG(Debug, "opening a close-on-exec pipe");
 
@@ -893,7 +893,7 @@ fn make_pipe() wontthrow -> Maybe<Pipe>
     end = lifted;
   }
 
-  return Pipe{p[0], p[1]};
+  return pipe_ends{p[0], p[1]};
 }
 
 struct pooled_worker

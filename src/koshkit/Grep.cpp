@@ -569,7 +569,7 @@ public:
 
     if (!m_options.is_utf8) return true;
 
-    let const scope = os::regex_utf8_scope{true};
+    let const scope = os::RegexUtf8Scope{true};
     return compile_regex_into(m_utf8_regex, sensitivity);
   }
 
@@ -1173,7 +1173,7 @@ public:
 
   fn run() throws -> i32
   {
-    let const scope = os::regex_utf8_scope{m_has_utf8_regex};
+    let const scope = os::RegexUtf8Scope{m_has_utf8_regex};
     let const is_recursive =
         m_options.recursion_mode == grep_recursion_mode::Recursive;
     let reader = SourceBatchReader{

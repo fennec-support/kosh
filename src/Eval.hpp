@@ -598,7 +598,7 @@ namespace koshka {
 class EvalContext;
 
 namespace completion {
-class shell_highlight_cache;
+class ShellHighlightCache;
 } /* namespace completion */
 
 class RuntimeControlStore
@@ -1450,24 +1450,24 @@ RuntimeState::is_shopt_enabled(shopt_option_id option) const wontthrow -> bool
   }
 }
 
-enum class BashArgumentFrameFlag : u8
+enum class bash_argument_frame_flag : u8
 {
   DidEnter = 1 << 0,
   IsSource = 1 << 1,
   HasSourceArguments = 1 << 2,
 };
 
-struct BashArgumentFrameContext
+struct bash_argument_frame
 {
-  BashArgumentFrameContext *previous{nullptr};
+  bash_argument_frame *previous{nullptr};
   StringView source_path{};
   u8 flags{0};
 
-  pure fn has_flag(BashArgumentFrameFlag flag) const wontthrow -> bool
+  pure fn has_flag(bash_argument_frame_flag flag) const wontthrow -> bool
   {
     return (flags & static_cast<u8>(flag)) != 0;
   }
-  fn set_flag(BashArgumentFrameFlag flag) wontthrow -> void
+  fn set_flag(bash_argument_frame_flag flag) wontthrow -> void
   {
     flags |= static_cast<u8>(flag);
   }
@@ -1485,11 +1485,11 @@ public:
   {
     return m_frame_counts;
   }
-  pure fn get_context() const wontthrow -> BashArgumentFrameContext *
+  pure fn get_context() const wontthrow -> bash_argument_frame *
   {
     return m_context;
   }
-  fn set_context(BashArgumentFrameContext *context) wontthrow -> void
+  fn set_context(bash_argument_frame *context) wontthrow -> void
   {
     m_context = context;
   }
@@ -1570,8 +1570,8 @@ public:
 private:
   ArrayList<String> m_values{heap_allocator()};
   ArrayList<u32> m_frame_counts{heap_allocator()};
-  BashArgumentFrameContext *m_context{nullptr};
-  BashArgumentFrameContext m_inherited_context{};
+  bash_argument_frame *m_context{nullptr};
+  bash_argument_frame m_inherited_context{};
   String m_inherited_source_path{heap_allocator()};
   bool m_is_active{false};
 };
@@ -3114,20 +3114,20 @@ public:
   static fn from_wire(subshell_bootstrap_reader &reader,
                       bool &is_source_traces_enabled) wontthrow -> bool;
   fn diagnostic_highlight_cache() wontthrow
-      -> completion::shell_highlight_cache *&
+      -> completion::ShellHighlightCache *&
   {
     return m_diagnostic_highlight_cache;
   }
   fn runtime_diagnostic_highlight_cache() wontthrow
-      -> completion::shell_highlight_cache *&
+      -> completion::ShellHighlightCache *&
   {
     return m_runtime_diagnostic_highlight_cache;
   }
 
 private:
   bool m_is_source_traces_enabled{true};
-  completion::shell_highlight_cache *m_diagnostic_highlight_cache{nullptr};
-  completion::shell_highlight_cache *m_runtime_diagnostic_highlight_cache{
+  completion::ShellHighlightCache *m_diagnostic_highlight_cache{nullptr};
+  completion::ShellHighlightCache *m_runtime_diagnostic_highlight_cache{
       nullptr};
 };
 
@@ -3806,8 +3806,8 @@ public:
                              const FunctionBodyHandle &body_storage) throws
       -> void;
   fn pop_function_call_name() wontthrow -> void;
-  using BashArgumentFrameFlag = koshka::BashArgumentFrameFlag;
-  using BashArgumentFrameContext = koshka::BashArgumentFrameContext;
+  using BashArgumentFrameFlag = koshka::bash_argument_frame_flag;
+  using BashArgumentFrameContext = koshka::bash_argument_frame;
   fn enter_bash_function_argument_frame(
       BashArgumentFrameContext &frame_context,
       const ArrayList<String> &arguments) throws -> void;
@@ -3921,8 +3921,8 @@ public:
   fn print_source_backtrace(Maybe<SourceLocation> error_location = None,
                             bool should_defer_for_source_file = true,
                             bool is_replay = false) throws -> void;
-  fn set_diagnostic_highlight_cache(completion::shell_highlight_cache *cache)
-      wontthrow -> completion::shell_highlight_cache *
+  fn set_diagnostic_highlight_cache(completion::ShellHighlightCache *cache)
+      wontthrow -> completion::ShellHighlightCache *
   {
     let *previous = diagnostics_store().diagnostic_highlight_cache();
     diagnostics_store().diagnostic_highlight_cache() = cache;
@@ -3930,7 +3930,7 @@ public:
   }
 
   fn get_or_create_diagnostic_highlight_cache() throws
-      -> completion::shell_highlight_cache *;
+      -> completion::ShellHighlightCache *;
   fn reset_runtime_diagnostic_highlight_cache() wontthrow -> void;
 
   fn render_contained_substitution_error(const std::exception_ptr &error,

@@ -211,7 +211,7 @@ struct shell_lexical_state
   bool is_in_heredoc{false};
 };
 
-class shell_highlight_cache
+class ShellHighlightCache
 {
 public:
   fn spans_for(StringView source, usize line_start, usize line_end,

@@ -144,7 +144,7 @@ fn Read::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return os::read_fd(read_fd, &byte, 1);
   };
 
-  let terminal_echo = os::terminal_echo_guard{
+  let terminal_echo = os::TerminalEchoGuard{
       read_fd, FLAG_READ_SILENT.is_enabled() ? os::terminal_echo_mode::Disable
                                              : os::terminal_echo_mode::Keep};
   if (!terminal_echo.did_succeed()) {

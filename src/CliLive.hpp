@@ -109,7 +109,7 @@ private:
   os::descriptor m_input_fd;
   u64 m_sample_interval_nanoseconds{0};
   u64 m_refresh_interval_nanoseconds{0};
-  os::terminal_raw_input_guard m_raw_input;
+  os::TerminalRawInputGuard m_raw_input;
   bool m_is_terminal{false};
   bool m_is_alternate_screen_active{false};
   bool m_is_cursor_hidden{false};

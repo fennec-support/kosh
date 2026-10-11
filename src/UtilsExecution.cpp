@@ -357,7 +357,7 @@ fn execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs, EvalContext &cxt,
   let bootstrap = os::subshell_bootstrap{};
 
   for (ExecContext &ec : ecs) {
-    Maybe<os::Pipe> pipe;
+    Maybe<os::pipe_ends> pipe;
 
     let const is_last = (&ec == &ecs.back());
     let const should_fork_last_builtin =

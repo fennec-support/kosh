@@ -619,7 +619,7 @@ cold fn Pipeline::evaluate_with_compound_stages(EvalContext &cxt) const throws
   os::process last_child = KOSH_INVALID_PROCESS;
   os::descriptor last_stdin = KOSH_INVALID_FD;
   i64 process_group_id = 0;
-  let pending_pipe = Maybe<os::Pipe>{};
+  let pending_pipe = Maybe<os::pipe_ends>{};
   let parent_stage_status = Maybe<i32>{};
   bool was_pipeline_abandoned = false;
   let bootstrap = os::subshell_bootstrap{};
@@ -660,7 +660,7 @@ cold fn Pipeline::evaluate_with_compound_stages(EvalContext &cxt) const throws
 
       let stage_in = Maybe<os::descriptor>{};
       let stage_out = Maybe<os::descriptor>{};
-      let pipe = Maybe<os::Pipe>{};
+      let pipe = Maybe<os::pipe_ends>{};
 
       if (!is_last) {
         pipe = os::make_pipe();

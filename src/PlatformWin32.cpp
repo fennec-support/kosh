@@ -1183,8 +1183,8 @@ fn terminal_name(descriptor fd) throws -> Maybe<String>
   return String{"console"};
 }
 
-terminal_echo_guard::terminal_echo_guard(descriptor input,
-                                         terminal_echo_mode mode) wontthrow
+TerminalEchoGuard::TerminalEchoGuard(descriptor input,
+                                     terminal_echo_mode mode) wontthrow
     : m_input(input)
 {
   if (mode != terminal_echo_mode::Disable || !is_fd_a_tty(input)) {
@@ -1202,17 +1202,17 @@ terminal_echo_guard::terminal_echo_guard(descriptor input,
   m_should_restore = true;
 }
 
-terminal_echo_guard::~terminal_echo_guard()
+TerminalEchoGuard::~TerminalEchoGuard()
 {
   if (m_should_restore) unused(SetConsoleMode(m_input, m_original_mode));
 }
 
-pure fn terminal_echo_guard::did_succeed() const wontthrow -> bool
+pure fn TerminalEchoGuard::did_succeed() const wontthrow -> bool
 {
   return m_did_succeed;
 }
 
-terminal_raw_input_guard::terminal_raw_input_guard(descriptor input) wontthrow
+TerminalRawInputGuard::TerminalRawInputGuard(descriptor input) wontthrow
     : m_input(input)
 {
   if (!is_fd_a_tty(input)) return;
@@ -1225,12 +1225,12 @@ terminal_raw_input_guard::terminal_raw_input_guard(descriptor input) wontthrow
   m_should_restore = true;
 }
 
-terminal_raw_input_guard::~terminal_raw_input_guard()
+TerminalRawInputGuard::~TerminalRawInputGuard()
 {
   if (m_should_restore) unused(SetConsoleMode(m_input, m_original_mode));
 }
 
-pure fn terminal_raw_input_guard::is_active() const wontthrow -> bool
+pure fn TerminalRawInputGuard::is_active() const wontthrow -> bool
 {
   return m_should_restore;
 }
@@ -1248,13 +1248,13 @@ fn collate_compare(const String &left, const String &right) wontthrow -> int
   return right < left ? 1 : 0;
 }
 
-regex_utf8_scope::regex_utf8_scope(bool) wontthrow {}
+RegexUtf8Scope::RegexUtf8Scope(bool) wontthrow {}
 
-regex_utf8_scope::~regex_utf8_scope() {}
+RegexUtf8Scope::~RegexUtf8Scope() {}
 
-fn numeric_locale_scope::activate(StringView, bool) wontthrow -> void {}
+fn NumericLocaleScope::activate(StringView, bool) wontthrow -> void {}
 
-fn numeric_locale_scope::deactivate() wontthrow -> void {}
+fn NumericLocaleScope::deactivate() wontthrow -> void {}
 
 fn code_point_to_upper(u32 code_point) wontthrow -> u32
 {

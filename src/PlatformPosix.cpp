@@ -1416,8 +1416,8 @@ fn terminal_name(descriptor fd) throws -> Maybe<String>
   return String{buffer};
 }
 
-terminal_echo_guard::terminal_echo_guard(descriptor input,
-                                         terminal_echo_mode mode) wontthrow
+TerminalEchoGuard::TerminalEchoGuard(descriptor input,
+                                     terminal_echo_mode mode) wontthrow
     : m_input(input)
 {
   if (mode != terminal_echo_mode::Disable || !is_fd_a_tty(input)) {
@@ -1438,17 +1438,17 @@ terminal_echo_guard::terminal_echo_guard(descriptor input,
   m_should_restore = true;
 }
 
-terminal_echo_guard::~terminal_echo_guard()
+TerminalEchoGuard::~TerminalEchoGuard()
 {
   if (m_should_restore) unused(tcsetattr(m_input, TCSANOW, &m_original_mode));
 }
 
-pure fn terminal_echo_guard::did_succeed() const wontthrow -> bool
+pure fn TerminalEchoGuard::did_succeed() const wontthrow -> bool
 {
   return m_did_succeed;
 }
 
-terminal_raw_input_guard::terminal_raw_input_guard(descriptor input) wontthrow
+TerminalRawInputGuard::TerminalRawInputGuard(descriptor input) wontthrow
     : m_input(input)
 {
   if (!is_fd_a_tty(input)) return;
@@ -1463,12 +1463,12 @@ terminal_raw_input_guard::terminal_raw_input_guard(descriptor input) wontthrow
   m_should_restore = true;
 }
 
-terminal_raw_input_guard::~terminal_raw_input_guard()
+TerminalRawInputGuard::~TerminalRawInputGuard()
 {
   if (m_should_restore) unused(tcsetattr(m_input, TCSANOW, &m_original_mode));
 }
 
-pure fn terminal_raw_input_guard::is_active() const wontthrow -> bool
+pure fn TerminalRawInputGuard::is_active() const wontthrow -> bool
 {
   return m_should_restore;
 }
@@ -1551,7 +1551,7 @@ fn code_point_is_in_class(StringView class_name, u32 code_point) wontthrow
          iswctype_l(static_cast<wint_t>(code_point), kind, unicode_locale) != 0;
 }
 
-regex_utf8_scope::regex_utf8_scope(bool is_enabled) wontthrow
+RegexUtf8Scope::RegexUtf8Scope(bool is_enabled) wontthrow
 {
   if (!is_enabled) return;
 
@@ -1565,7 +1565,7 @@ regex_utf8_scope::regex_utf8_scope(bool is_enabled) wontthrow
   m_is_active = true;
 }
 
-regex_utf8_scope::~regex_utf8_scope()
+RegexUtf8Scope::~RegexUtf8Scope()
 {
   if (m_is_active) uselocale(static_cast<locale_t>(m_previous));
 }
@@ -1630,8 +1630,8 @@ static fn get_numeric_locale(StringView locale_name) wontthrow
   return &slot;
 }
 
-fn numeric_locale_scope::activate(StringView locale_name,
-                                  bool is_grouping) wontthrow -> void
+fn NumericLocaleScope::activate(StringView locale_name,
+                                bool is_grouping) wontthrow -> void
 {
   let const entry = get_numeric_locale(locale_name);
   if (entry == nullptr || entry->numeric_locale == nullptr) {
@@ -1649,7 +1649,7 @@ fn numeric_locale_scope::activate(StringView locale_name,
   m_is_active = true;
 }
 
-fn numeric_locale_scope::deactivate() wontthrow -> void
+fn NumericLocaleScope::deactivate() wontthrow -> void
 {
   uselocale(static_cast<locale_t>(m_previous));
 }

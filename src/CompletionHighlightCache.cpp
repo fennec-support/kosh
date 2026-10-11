@@ -451,7 +451,7 @@ fn append_highlighted_source(String &output, StringView source,
                              EvalContext &context,
                              const highlight_theme &theme) throws -> void
 {
-  let cache = shell_highlight_cache{};
+  let cache = ShellHighlightCache{};
   usize line_start = 0;
   while (line_start < source.length) {
     let line_end = line_start;
@@ -470,8 +470,8 @@ fn append_highlighted_source(String &output, StringView source,
 
 static constexpr usize DIAGNOSTIC_CHECKPOINT_BYTE_INTERVAL = 4096;
 
-fn shell_highlight_cache::spans_for(StringView source, usize line_start,
-                                    usize line_end, EvalContext &context) throws
+fn ShellHighlightCache::spans_for(StringView source, usize line_start,
+                                  usize line_end, EvalContext &context) throws
     -> const ArrayList<highlight_span> *
 {
   let const source_changed =
@@ -592,7 +592,7 @@ pure fn debug_highlight_input_byte_count() wontthrow -> usize
 
 fn debug_diagnostic_cache_is_stable(EvalContext &context) throws -> bool
 {
-  let cache = shell_highlight_cache{};
+  let cache = ShellHighlightCache{};
   let const source = String{
       "value=\"$(printf value\n) tail\"\nif true\nthen value='start\nend'; fi"};
   usize keyword_line_start = 0;
@@ -645,7 +645,7 @@ fn debug_diagnostic_cache_is_stable(EvalContext &context) throws -> bool
     }
   }
 
-  let function_cache = shell_highlight_cache{};
+  let function_cache = ShellHighlightCache{};
   let const function_source = String{"finish() { :; }\nfinish"};
   let const function_call_start = function_source.view().find_character('\n');
   if (!function_call_start.has_value()) return false;

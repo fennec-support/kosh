@@ -43,15 +43,15 @@ static u32 NEXT_ARENA_INCARNATION = 1;
 static BumpArena *LIVE_ARENAS = nullptr;
 static bool LIVE_ARENAS_LOCK = false;
 
-class live_arenas_lock
+class LiveArenasLock
 {
 public:
-  live_arenas_lock() wontthrow
+  LiveArenasLock() wontthrow
   {
     while (__atomic_test_and_set(&LIVE_ARENAS_LOCK, __ATOMIC_ACQUIRE)) {}
   }
 
-  ~live_arenas_lock() wontthrow
+  ~LiveArenasLock() wontthrow
   {
     __atomic_clear(&LIVE_ARENAS_LOCK, __ATOMIC_RELEASE);
   }
@@ -110,7 +110,7 @@ BumpArena::~BumpArena()
 
 fn BumpArena::register_live() wontthrow -> void
 {
-  let const lock = live_arenas_lock{};
+  let const lock = LiveArenasLock{};
   m_previous_live = nullptr;
   m_next_live = LIVE_ARENAS;
   if (m_next_live != nullptr) m_next_live->m_previous_live = this;
@@ -119,7 +119,7 @@ fn BumpArena::register_live() wontthrow -> void
 
 fn BumpArena::unregister_live() wontthrow -> void
 {
-  let const lock = live_arenas_lock{};
+  let const lock = LiveArenasLock{};
   if (m_previous_live != nullptr)
     m_previous_live->m_next_live = m_next_live;
   else if (LIVE_ARENAS == this)
@@ -132,7 +132,7 @@ fn BumpArena::unregister_live() wontthrow -> void
 fn BumpArena::find_live_owner(const opaque *pointer) wontthrow -> BumpArena *
 {
   if (pointer == nullptr) return nullptr;
-  let const lock = live_arenas_lock{};
+  let const lock = LiveArenasLock{};
   for (let *arena = LIVE_ARENAS; arena != nullptr; arena = arena->m_next_live) {
     if (arena->owns(pointer)) return arena;
   }

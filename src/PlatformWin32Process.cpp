@@ -2395,7 +2395,7 @@ fn redirect_self(const ExecContext &ec) -> void
       [&](i32 target_fd) { close_shell_fd(target_fd); });
 }
 
-fn make_pipe() wontthrow -> Maybe<Pipe>
+fn make_pipe() wontthrow -> Maybe<pipe_ends>
 {
   SECURITY_ATTRIBUTES attributes{};
 
@@ -2413,7 +2413,7 @@ fn make_pipe() wontthrow -> Maybe<Pipe>
     return koshka::None;
   }
 
-  return Pipe{in, out};
+  return pipe_ends{in, out};
 }
 
 struct thread_start_context

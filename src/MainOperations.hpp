@@ -597,7 +597,7 @@ static fn analyze_script(const script_run_input &input,
       followed_source_paths.add(canonical_root->text().view());
     }
   }
-  let highlight_cache = completion::shell_highlight_cache{};
+  let highlight_cache = completion::ShellHighlightCache{};
   let *previous_highlight_cache =
       context.set_diagnostic_highlight_cache(&highlight_cache);
   defer { context.set_diagnostic_highlight_cache(previous_highlight_cache); };

@@ -318,14 +318,14 @@ enum class terminal_echo_mode : u8
   Disable,
 };
 
-class terminal_echo_guard
+class TerminalEchoGuard
 {
 public:
-  terminal_echo_guard(descriptor input, terminal_echo_mode mode) wontthrow;
-  ~terminal_echo_guard();
+  TerminalEchoGuard(descriptor input, terminal_echo_mode mode) wontthrow;
+  ~TerminalEchoGuard();
 
-  terminal_echo_guard(const terminal_echo_guard &) = delete;
-  fn operator=(const terminal_echo_guard &)->terminal_echo_guard & = delete;
+  TerminalEchoGuard(const TerminalEchoGuard &) = delete;
+  fn operator=(const TerminalEchoGuard &)->TerminalEchoGuard & = delete;
 
   mustuse fn did_succeed() const wontthrow -> bool;
 
@@ -340,15 +340,14 @@ private:
   bool m_did_succeed{true};
 };
 
-class terminal_raw_input_guard
+class TerminalRawInputGuard
 {
 public:
-  explicit terminal_raw_input_guard(descriptor input) wontthrow;
-  ~terminal_raw_input_guard();
+  explicit TerminalRawInputGuard(descriptor input) wontthrow;
+  ~TerminalRawInputGuard();
 
-  terminal_raw_input_guard(const terminal_raw_input_guard &) = delete;
-  fn operator=(const terminal_raw_input_guard &)->terminal_raw_input_guard & =
-      delete;
+  TerminalRawInputGuard(const TerminalRawInputGuard &) = delete;
+  fn operator=(const TerminalRawInputGuard &)->TerminalRawInputGuard & = delete;
 
   mustuse fn is_active() const wontthrow -> bool;
 
@@ -458,13 +457,13 @@ inline fn normalize_windows_program_name(String &program_name) throws
           extension == program_extension::None ? length : length - 4};
 }
 
-struct Pipe
+struct pipe_ends
 {
   descriptor in{KOSH_INVALID_FD};
   descriptor out{KOSH_INVALID_FD};
 };
 
-fn make_pipe() wontthrow -> Maybe<Pipe>;
+fn make_pipe() wontthrow -> Maybe<pipe_ends>;
 
 struct thread
 {
@@ -1401,14 +1400,14 @@ fn collate_compare(const String &left, const String &right) wontthrow -> int;
 fn code_point_is_in_class(StringView class_name, u32 code_point) wontthrow
     -> bool;
 
-class regex_utf8_scope
+class RegexUtf8Scope
 {
 public:
-  explicit regex_utf8_scope(bool is_enabled) wontthrow;
-  ~regex_utf8_scope();
+  explicit RegexUtf8Scope(bool is_enabled) wontthrow;
+  ~RegexUtf8Scope();
 
-  regex_utf8_scope(const regex_utf8_scope &) = delete;
-  fn operator=(const regex_utf8_scope &)->regex_utf8_scope & = delete;
+  RegexUtf8Scope(const RegexUtf8Scope &) = delete;
+  fn operator=(const RegexUtf8Scope &)->RegexUtf8Scope & = delete;
 
 private:
   maybeunused opaque *m_previous{nullptr};
@@ -1420,10 +1419,10 @@ fn code_point_to_lower(u32 code_point) wontthrow -> u32;
 
 fn locale_is_available(StringView locale_name) wontthrow -> bool;
 
-class numeric_locale_scope
+class NumericLocaleScope
 {
 public:
-  numeric_locale_scope(StringView locale_name, bool is_grouping) wontthrow
+  NumericLocaleScope(StringView locale_name, bool is_grouping) wontthrow
   {
     if (locale_name.is_empty() || locale_name == "C" || locale_name == "POSIX")
     {
@@ -1432,13 +1431,13 @@ public:
 
     activate(locale_name, is_grouping);
   }
-  ~numeric_locale_scope()
+  ~NumericLocaleScope()
   {
     if (m_is_active) deactivate();
   }
 
-  numeric_locale_scope(const numeric_locale_scope &) = delete;
-  fn operator=(const numeric_locale_scope &)->numeric_locale_scope & = delete;
+  NumericLocaleScope(const NumericLocaleScope &) = delete;
+  fn operator=(const NumericLocaleScope &)->NumericLocaleScope & = delete;
 
   pure fn is_active() const wontthrow -> bool { return m_is_active; }
 
