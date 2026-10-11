@@ -52,6 +52,7 @@ static fn cdpath_search_applies(const String &operand) throws -> bool
   {
     return false;
   }
+
   return true;
 }
 
@@ -67,6 +68,7 @@ fn Cd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       !cxt.runtime_state().is_posix_mode() &&
       cxt.runtime_state().option_is_enabled(shell_option_id::Physical);
   usize operand_index = 1;
+
   while (operand_index < ec.args().count()) {
     let const option = ec.args()[operand_index].view();
     if (option == "--") {
@@ -78,11 +80,13 @@ fn Cd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       break;
     }
     let is_options = true;
+
     for (usize k = 1; k < option.length; k++)
       if (option[k] != 'L' && option[k] != 'P') {
         is_options = false;
         break;
       }
+
     if (!is_options) break;
 
     is_physical = option[option.length - 1] == 'P';
@@ -120,6 +124,7 @@ fn Cd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     {
       report_soft_builtin_error(ec, cxt, ec.arg_location_at(operand_index),
                                 "null directory");
+
       return 1;
     }
     arg_path.append(ec.args()[operand_index]);
@@ -142,25 +147,30 @@ fn Cd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     let logical_candidate = Path{raw_target.view().substring_of_length(
         0, os::path_root_length(raw_target.view()))};
     usize component_position = os::path_root_length(raw_target.view());
+
     while (component_position < raw_target.count()) {
       while (component_position < raw_target.count() &&
              os::is_directory_separator(raw_target.text()[component_position]))
       {
         component_position++;
       }
+
       if (component_position >= raw_target.count()) break;
       let const component_start = component_position;
+
       while (component_position < raw_target.count() &&
              !os::is_directory_separator(raw_target.text()[component_position]))
       {
         component_position++;
       }
+
       let const component = raw_target.view().substring_of_length(
           component_start, component_position - component_start);
       if (component == StringView{"."}) continue;
       if (component == StringView{".."}) {
         if (!logical_candidate.is_directory()) {
           did_fail_before_dotdot = true;
+
           return raw_target.clone();
         }
         logical_candidate.append(component);
@@ -169,6 +179,7 @@ fn Cd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       }
       logical_candidate.append(component);
     }
+
     return logical_candidate;
   };
 
@@ -177,12 +188,15 @@ fn Cd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     if (let const cdpath = cxt.get_variable_value("CDPATH")) {
       let const entries = cdpath->view();
       usize start = 0;
+
       while (start <= entries.length) {
         usize end = start;
+
         while (end < entries.length && entries.data[end] != os::PATH_DELIMITER)
         {
           end++;
         }
+
         let const entry = entries.substring_of_length(start, end - start);
         let candidate = entry.is_empty() ? Path{arg_path}
                                          : Path{entry}.append(arg_path.view());
@@ -300,6 +314,7 @@ fn Cd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     if (should_print_target) {
       ec.print_to_stdout(target.text() + "\n");
     }
+
     return 0;
   }
 

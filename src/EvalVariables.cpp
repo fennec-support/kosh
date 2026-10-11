@@ -81,6 +81,7 @@ fn EvalContext::next_random_u32() const wontthrow -> u32
       dynamic_runtime_store().random_state() << 25;
   dynamic_runtime_store().random_state() ^=
       dynamic_runtime_store().random_state() >> 27;
+
   return static_cast<u32>(
       (dynamic_runtime_store().random_state() * 0x2545f4914f6cdd1dULL) >> 32);
 }
@@ -258,6 +259,7 @@ pure fn is_bash_only_dynamic_variable_name(StringView name) wontthrow -> bool
 pure fn is_process_dynamic_variable_name(StringView name) wontthrow -> bool
 {
   let const info = BASH_DYNAMIC.find(name);
+
   return info.has_value() && info->is_process_sensitive;
 }
 
@@ -313,6 +315,7 @@ pure fn EvalContext::is_write_discarded_dynamic_variable(
   if (!runtime_state().bash_dynamic_variables_enabled()) return false;
 
   let const info = BASH_DYNAMIC.find(name);
+
   return info.has_value() && info->write == dynamic_write::Discarded;
 }
 
@@ -446,19 +449,23 @@ hot fn EvalContext::get_variable_value(StringView name) const throws
       }
       let joined = String{heap_allocator()};
       usize joined_length = 0;
+
       for (usize i = 0; i < variable_store().positional_params().count(); i++)
         joined_length += variable_store().positional_params()[i].count();
+
       if (has_separator && variable_store().positional_params().count() > 1) {
         joined_length += (variable_store().positional_params().count() - 1) *
                          separator.length;
       }
       joined.reserve(joined_length);
+
       for (usize i = 0; i < variable_store().positional_params().count(); i++) {
         if (i > 0 && has_separator) {
           joined.append(separator);
         }
         joined.append(variable_store().positional_params()[i].view());
       }
+
       return joined;
     }
 
@@ -474,8 +481,10 @@ hot fn EvalContext::get_variable_value(StringView name) const throws
       let const index = static_cast<usize>(parsed_index.value());
       if (index >= 1 && index <= variable_store().positional_params().count()) {
         ASSERT(index - 1 < variable_store().positional_params().count());
+
         return variable_store().positional_params()[index - 1];
       }
+
       return None;
     }
   }
@@ -485,6 +494,7 @@ hot fn EvalContext::get_variable_value(StringView name) const throws
       if (let const target = resolve_nameref(name); target.has_value()) {
         if (target->is_empty()) {
           warn_circular_nameref(name);
+
           return None;
         }
 
@@ -507,6 +517,7 @@ hot fn EvalContext::get_variable_value(StringView name) const throws
         array.has_value())
     {
       if (array->is_empty()) return koshka::None;
+
       return array->front();
     }
   if (is_associative_array(name)) return lookup_associative_element(name, "0");
@@ -542,6 +553,7 @@ hot fn EvalContext::get_variable_value(StringView name) const throws
                                                 ? ceiling_directories->view()
                                                 : StringView{});
         }
+
         return String{heap_allocator(), git_status_cache().get_branch()};
       }
       case dynamic_var::KOSH_GIT_AHEAD:
@@ -582,6 +594,7 @@ hot fn EvalContext::get_variable_value(StringView name) const throws
     if (first_byte == 'K' && name.starts_with("KOSH_ANSI_")) {
       if (let const escape = ansi_escape_for_color(name)) {
         if (!colors::stdout_wants_color()) return String{heap_allocator()};
+
         return String{heap_allocator(), *escape};
       }
     }
@@ -616,6 +629,7 @@ hot fn EvalContext::get_variable_value(StringView name) const throws
           std::snprintf(
               fraction, sizeof(fraction), "%06llu",
               static_cast<unsigned long long>(microseconds % 1000000ULL));
+
           return String::from(static_cast<i64>(microseconds / 1000000ULL),
                               heap_allocator()) +
                  "." + StringView{fraction};
@@ -654,6 +668,7 @@ hot fn EvalContext::get_variable_value(StringView name) const throws
         case dynamic_var::BASH_LINENO:
           if (bash_source_frame_count() > 0)
             return String::from(funcname_line_at(0), heap_allocator());
+
           return koshka::None;
         case dynamic_var::BASH_COMMAND:
           if (!execution_store().get_current_command().is_empty())
@@ -681,6 +696,7 @@ hot fn EvalContext::get_variable_value(StringView name) const throws
         case dynamic_var::HOSTNAME:
           if (let host = os::get_hostname(); host.has_value())
             return steal(*host);
+
           return String{heap_allocator()};
         case dynamic_var::HOSTTYPE: return os::machine_type();
         case dynamic_var::GROUPS:
@@ -691,6 +707,7 @@ hot fn EvalContext::get_variable_value(StringView name) const throws
         case dynamic_var::FUNCNAME:
           if (funcname_frame_count() > 0)
             return String{heap_allocator(), funcname_frame_at(0)};
+
           return koshka::None;
         default: break;
         }
@@ -700,6 +717,7 @@ hot fn EvalContext::get_variable_value(StringView name) const throws
 
   if (let const env = os::get_environment_variable(name))
     return String{heap_allocator(), env->view()};
+
   return koshka::None;
 }
 
@@ -729,6 +747,7 @@ fn EvalContext::resolve_nameref(StringView name) const throws -> Maybe<String>
   }
 
   let target = String{heap_allocator(), stored->view()};
+
   for (u32 depth_count = 0; depth_count < NAMEREF_DEPTH_LIMIT; depth_count++) {
     if (target.view() == name || !is_valid_nameref_target(target.view())) {
       return String{heap_allocator()};
@@ -875,6 +894,7 @@ fn EvalContext::bind_self_nameref(StringView name, bool is_local) throws -> void
   guard_nameref_name(name);
   if (is_local) {
     declare_self_reference(name);
+
     return;
   }
 
@@ -895,9 +915,11 @@ fn EvalContext::resolve_nameref_parameter(StringView spec) throws
   }
 
   let name_end = prefix_length + 1;
+
   while (name_end < spec.length && lexer::is_variable_name(spec[name_end])) {
     name_end++;
   }
+
   if (spec[0] == '!' && name_end == spec.length) {
     return None;
   }

@@ -52,12 +52,14 @@ fn Chown::execute(const ExecContext &ec, EvalContext &cxt,
     KOSHKIT_REPORT_ERROR_AT(operand_locations[0],
                             "invalid owner '" + operands[0] + "'",
                             "use an owner name or an unsigned decimal user id");
+
     return 1;
   }
   if (colon.has_value() && group_text.is_empty()) {
     KOSHKIT_REPORT_ERROR_AT(operand_locations[0],
                             "invalid specification '" + operands[0] + "'",
                             "use owner, owner:group, or :group");
+
     return 1;
   }
 
@@ -70,6 +72,7 @@ fn Chown::execute(const ExecContext &ec, EvalContext &cxt,
           operand_locations[0],
           "invalid owner '" + String{cxt.scratch_allocator(), owner_text} + "'",
           "use an owner name or an unsigned decimal user id");
+
       return 1;
     }
     owner_id = *resolved;
@@ -81,6 +84,7 @@ fn Chown::execute(const ExecContext &ec, EvalContext &cxt,
           operand_locations[0],
           "invalid group '" + String{cxt.scratch_allocator(), group_text} + "'",
           "use a group name or an unsigned decimal group id");
+
       return 1;
     }
     group_id = *resolved;

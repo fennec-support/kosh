@@ -176,13 +176,16 @@ static fn cached_id_name(u32 id, id_name_kind kind, id_name_cache &id_names,
 {
   let &cache =
       kind == id_name_kind::Owner ? id_names.uid_cache : id_names.gid_cache;
+
   for (let const &entry : cache)
     if (entry.id == id) return entry.name.view();
+
   let const looked_up = kind == id_name_kind::Owner ? os::uid_to_username(id)
                                                     : os::gid_to_groupname(id);
   let name = looked_up.has_value() ? String{allocator, looked_up->view()}
                                    : String::from(id, allocator);
   cache.push(id_name_entry{id, steal(name)});
+
   return cache.back().name.view();
 }
 
@@ -249,6 +252,7 @@ static pure fn decorated_width(const listing_entry &entry,
 {
   let const has_suffix =
       options.should_classify && listing_suffix(entry.type, options) != '\0';
+
   return entry.name.count() + (has_suffix ? 1 : 0);
 }
 
@@ -262,7 +266,7 @@ static fn set_entry_status(listing_entry &entry,
 
 static fn
 make_entry(const Path &path, StringView name, const listing_options &options,
-           Path::entry_kind kind, Allocator allocator,
+           Path::EntryKind kind, Allocator allocator,
            const os::directory_status_entry *known_entry = nullptr) throws
     -> listing_entry
 {
@@ -272,12 +276,14 @@ make_entry(const Path &path, StringView name, const listing_options &options,
   if (!options.should_load_full_status) {
     if (!options.should_load_type) return entry;
 
-    if (kind == Path::entry_kind::Directory) {
+    if (kind == Path::EntryKind::Directory) {
       entry.type = colors::file_entry_type::Directory;
+
       return entry;
     }
-    if (kind == Path::entry_kind::Symlink) {
+    if (kind == Path::EntryKind::Symlink) {
       entry.type = colors::file_entry_type::Symlink;
+
       return entry;
     }
     if (!options.should_classify && !options.should_color) {
@@ -289,6 +295,7 @@ make_entry(const Path &path, StringView name, const listing_options &options,
     if (!known_entry->has_status) return entry;
 
     set_entry_status(entry, known_entry->status);
+
     return entry;
   }
 
@@ -307,6 +314,7 @@ static fn prepare_entries(ArrayList<listing_entry> entries,
   if (options.should_color && !has_known_symlink_targets) {
     let symlink_paths = ArrayList<Path>{allocator};
     let symlink_statuses = ArrayList<os::file_status>{allocator};
+
     for (let const &entry : entries) {
       if (entry.type != colors::file_entry_type::Symlink) continue;
 
@@ -323,6 +331,7 @@ static fn prepare_entries(ArrayList<listing_entry> entries,
     if (!symlink_paths.is_empty()) {
       let batch = os::Batch{allocator};
       batch.reserve(symlink_paths.count());
+
       for (usize index = 0; index < symlink_paths.count(); index++) {
         batch.add(os::batch_operation::stat(symlink_paths[index],
                                             symlink_statuses[index]));
@@ -330,6 +339,7 @@ static fn prepare_entries(ArrayList<listing_entry> entries,
 
       let const results = batch.execute(os::batch_deduplication::Disabled);
       usize symlink_index = 0;
+
       for (listing_entry &entry : entries) {
         if (entry.type != colors::file_entry_type::Symlink) continue;
 
@@ -364,11 +374,11 @@ static fn collect_directory(const Path &directory,
     entries.reserve(children->count() + 2);
     if (options.is_listing_dot_and_dotdot) {
       entries.push(make_entry(directory, StringView{"."}, options,
-                              Path::entry_kind::Directory, allocator));
+                              Path::EntryKind::Directory, allocator));
       let parent = Path{directory_text, allocator};
       parent.append(StringView{".."});
       entries.push(make_entry(parent, StringView{".."}, options,
-                              Path::entry_kind::Directory, allocator));
+                              Path::EntryKind::Directory, allocator));
     }
 
     for (let const &child : *children) {
@@ -391,11 +401,11 @@ static fn collect_directory(const Path &directory,
 
   if (options.is_listing_dot_and_dotdot) {
     entries.push(make_entry(directory, StringView{"."}, options,
-                            Path::entry_kind::Directory, allocator));
+                            Path::EntryKind::Directory, allocator));
     let parent = Path{directory_text, allocator};
     parent.append(StringView{".."});
     entries.push(make_entry(parent, StringView{".."}, options,
-                            Path::entry_kind::Directory, allocator));
+                            Path::EntryKind::Directory, allocator));
   }
 
   for (let const &child : *children) {
@@ -436,6 +446,7 @@ static fn build_long_entry_or_sparse_row(const listing_entry &entry,
     row.group = "?";
     row.size = "?";
     row.time = "?";
+
     return row;
   }
 
@@ -457,6 +468,7 @@ static fn build_long_entry_or_sparse_row(const listing_entry &entry,
   row.time =
       utils::format_unix_timestamp(status.modification_time, "%b %e %H:%M");
   row.blocks = status.blocks;
+
   return row;
 }
 
@@ -468,6 +480,7 @@ static fn render_long_entries(const ArrayList<long_entry> &entries,
   usize owner_width = 0;
   usize group_width = 0;
   usize size_width = 0;
+
   for (let const &entry : entries) {
     if (entry.link_count.count() > link_width)
       link_width = entry.link_count.count();
@@ -503,12 +516,14 @@ static fn column_width(const ArrayList<usize> &widths, usize column_index,
 {
   let const count = widths.count();
   usize widest = 0;
+
   for (usize r = 0; r < rows; r++) {
     let const index = column_index * rows + r;
     if (index < count && widths[index] > widest) {
       widest = widths[index];
     }
   }
+
   return widest;
 }
 
@@ -524,6 +539,7 @@ static fn render_columns(const ArrayList<listing_entry> &entries,
       append_decorated_name(output, entry, options);
       output += '\n';
     }
+
     return;
   }
 
@@ -531,6 +547,7 @@ static fn render_columns(const ArrayList<listing_entry> &entries,
   ArrayList<usize> widths{allocator};
   cells.reserve(count);
   widths.reserve(count);
+
   for (let const &entry : entries) {
     let cell = String{allocator};
     append_decorated_name(cell, entry, options);
@@ -541,21 +558,26 @@ static fn render_columns(const ArrayList<listing_entry> &entries,
   const usize terminal_width = options.terminal_dimensions->columns;
 
   usize shortest_name_length = widths.front();
+
   for (let const width : widths)
     if (width < shortest_name_length) shortest_name_length = width;
+
   let const width_limited_columns =
       terminal_width / (shortest_name_length + COLUMN_GAP);
   let const bounded_columns =
       count < width_limited_columns ? count : width_limited_columns;
   let const max_columns = bounded_columns == 0 ? 1 : bounded_columns;
   usize best_columns = 1;
+
   for (usize columns = max_columns;; columns--) {
     let const rows = (count + columns - 1) / columns;
     usize total = 0;
+
     for (usize c = 0; c < columns; c++) {
       total += column_width(widths, c, rows);
       if (c + 1 < columns) total += COLUMN_GAP;
     }
+
     if (total <= terminal_width) {
       best_columns = columns;
       break;
@@ -566,6 +588,7 @@ static fn render_columns(const ArrayList<listing_entry> &entries,
   let const rows = (count + best_columns - 1) / best_columns;
   ArrayList<usize> column_widths{allocator};
   column_widths.reserve(best_columns);
+
   for (usize c = 0; c < best_columns; c++)
     column_widths.push(column_width(widths, c, rows));
 
@@ -580,6 +603,7 @@ static fn render_columns(const ArrayList<listing_entry> &entries,
         output.append_repeated(' ',
                                column_widths[c] + COLUMN_GAP - widths[index]);
     }
+
     output += '\n';
   }
 }
@@ -588,10 +612,13 @@ static fn long_total_in_1k_blocks(const ArrayList<long_entry> &entries,
                                   Allocator allocator) throws -> String
 {
   u64 total_512_blocks = 0;
+
   for (let const &entry : entries)
     total_512_blocks += entry.blocks;
+
   if (FLAG_LS_HUMAN.is_enabled())
     return "total " + format_human_size(total_512_blocks * 512, allocator);
+
   return "total " + String::from(total_512_blocks / 2, allocator);
 }
 
@@ -602,11 +629,13 @@ static fn render_entries(const ArrayList<listing_entry> &entries,
 {
   if (!options.is_long) {
     render_columns(entries, options, output, allocator);
+
     return;
   }
 
   ArrayList<long_entry> rows{allocator};
   rows.reserve(entries.count());
+
   for (let const &entry : entries)
     rows.push(
         build_long_entry_or_sparse_row(entry, options, id_names, allocator));
@@ -703,6 +732,7 @@ static fn render_directory_block(StringView directory,
                                    "cannot open directory '" +
                                        String{allocator, directory} + "'");
     run.status = 2;
+
     return;
   }
 
@@ -742,6 +772,7 @@ static fn resolve_color_mode(const ExecContext &ec, EvalContext &cxt,
   unused(ec);
   unused(cxt);
   out_should_color = koshkit_should_color();
+
   return true;
 }
 
@@ -759,11 +790,13 @@ static fn resolve_depth_limit(const ExecContext &ec, EvalContext &cxt,
         "invalid level '" +
             String{cxt.scratch_allocator(), FLAG_LS_LEVEL.value()} + "'",
         "the level is a positive whole number");
+
     return false;
   }
 
   options.has_depth_limit = true;
   options.max_depth = static_cast<usize>(parsed.value());
+
   return true;
 }
 
@@ -837,15 +870,18 @@ fn LS::execute(const ExecContext &ec, EvalContext &cxt,
   target_statuses.reserve(targets.count());
   target_is_broken_symlink.reserve(targets.count());
   target_batch.reserve(targets.count());
+
   for (let const target : targets) {
     target_paths.push(Path{target, allocator});
     target_statuses.push({});
     target_is_broken_symlink.push(false);
   }
+
   for (usize index = 0; index < targets.count(); index++) {
     target_batch.add(os::batch_operation::lstat(target_paths[index],
                                                 target_statuses[index]));
   }
+
   let const target_results = target_batch.execute();
 
   ArrayList<listing_entry> file_entries{allocator};
@@ -888,6 +924,7 @@ fn LS::execute(const ExecContext &ec, EvalContext &cxt,
     let follow_batch = os::Batch{allocator};
     followed_statuses.reserve(symlink_target_indices.count());
     follow_batch.reserve(symlink_target_indices.count());
+
     for (let const target_index : symlink_target_indices) {
       followed_statuses.push({});
       follow_batch.add(os::batch_operation::stat(target_paths[target_index],
@@ -895,6 +932,7 @@ fn LS::execute(const ExecContext &ec, EvalContext &cxt,
     }
 
     let const follow_results = follow_batch.execute();
+
     for (usize index = 0; index < symlink_target_indices.count(); index++) {
       let const target_index = symlink_target_indices[index];
       if (follow_results[index].error_number == 0 &&
@@ -913,6 +951,7 @@ fn LS::execute(const ExecContext &ec, EvalContext &cxt,
       steal(file_target_indices).make_sorted(sort_order::ascending);
   let const sorted_dir_targets =
       steal(dir_targets).make_sorted(sort_order::ascending);
+
   for (let const target_index : sorted_file_target_indices) {
     let entry = listing_entry{allocator};
     entry.name = String{allocator, targets[target_index]};
@@ -960,6 +999,7 @@ fn LS::execute(const ExecContext &ec, EvalContext &cxt,
 
   ec.print_to_stdout(run.output);
   if (os::INTERRUPT_REQUESTED) return 130;
+
   return run.status;
 }
 

@@ -23,6 +23,7 @@ pure fn detect_mimic_shell_from_extension(StringView extension) throws
       {SSK(".sh"),   mimic_mood::Posix  },
   };
   static constexpr StaticStringMap EXTENSIONS{EXTENSION_ENTRIES};
+
   return EXTENSIONS.find(extension);
 }
 
@@ -34,9 +35,11 @@ fn detect_mimic_shell_from_source(StringView source) throws -> Maybe<mimic_mood>
   let const source_limit =
       source.length < shebang_byte_limit ? source.length : shebang_byte_limit;
   usize line_end = 2;
+
   while (line_end < source_limit && source[line_end] != '\n') {
     line_end++;
   }
+
   if (line_end > 2 && source[line_end - 1] == '\r') {
     line_end--;
   }
@@ -44,8 +47,10 @@ fn detect_mimic_shell_from_source(StringView source) throws -> Maybe<mimic_mood>
 
   let const do_basename_of = [](StringView token) -> StringView {
     usize last_slash = token.length;
+
     for (usize position = 0; position < token.length; position++)
       if (token[position] == '/') last_slash = position;
+
     return last_slash == token.length ? token : token.substring(last_slash + 1);
   };
   usize position = 0;
@@ -55,12 +60,15 @@ fn detect_mimic_shell_from_source(StringView source) throws -> Maybe<mimic_mood>
     {
       position++;
     }
+
     let const start = position;
+
     while (position < line.length && line[position] != ' ' &&
            line[position] != '\t')
     {
       position++;
     }
+
     return line.substring_of_length(start, position - start);
   };
 
@@ -83,6 +91,7 @@ fn detect_mimic_shell_from_source(StringView source) throws -> Maybe<mimic_mood>
       {SSK("kosh"), mimic_mood::Default},
   };
   static constexpr StaticStringMap SHELL_MOODS{SHELL_ENTRIES};
+
   return SHELL_MOODS.find(shell);
 }
 

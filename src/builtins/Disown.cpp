@@ -47,6 +47,7 @@ fn Disown::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     if (should_keep_stopped) cxt.job_table_store().update_jobs();
 
     let ids = ArrayList<i32>{cxt.scratch_allocator()};
+
     for (let const &job : cxt.job_table_store().jobs()) {
       if (!should_keep_stopped || job.state == job::State::Running) {
         ids.push(job.id);
@@ -63,6 +64,7 @@ fn Disown::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     let const job = cxt.job_table_store().most_recent_job();
     if (job == nullptr) throw Error{"There is no such job"};
     cxt.job_table_store().remove_job(job->id);
+
     return 0;
   }
 

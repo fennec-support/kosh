@@ -26,12 +26,14 @@ fn Printenv::execute(
 
   if (operands.is_empty()) {
     print_environment(ec, cxt);
+
     return 0;
   }
 
   cxt.prepare_child_environment();
   let output = String{cxt.scratch_allocator()};
   i32 status = 0;
+
   for (let const &name : operands) {
     let const value = os::get_environment_variable(name.view());
     if (!value.has_value()) {
@@ -44,6 +46,7 @@ fn Printenv::execute(
   }
 
   ec.print_to_stdout(output);
+
   return status;
 }
 

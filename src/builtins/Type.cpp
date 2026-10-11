@@ -71,6 +71,7 @@ fn Type::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     if (is_posix_report) {
       out += name;
       out += ": not found\n";
+
       return;
     }
 
@@ -233,6 +234,7 @@ fn Type::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
           do_describe_resolution(word);
         }
       }
+
       for (let const &path :
            cxt.program_resolver().search(name, ProgramResolver::SearchMode::All,
                                          ProgramResolver::Requirement::Runnable,
@@ -251,6 +253,7 @@ fn Type::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
           out += "\n";
         }
       }
+
       if (!has_any) {
         if (!should_print_word && !should_print_path) {
           do_report_missing(name);

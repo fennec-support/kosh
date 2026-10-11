@@ -33,6 +33,7 @@ fn Continue::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   {
     LOG(All, "continue outside a loop does nothing");
     report_loop_control_without_loop(ec, cxt);
+
     return 0;
   }
 
@@ -51,6 +52,7 @@ fn Continue::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       if (!cxt.execution_store().shell_is_interactive()) {
         if (cxt.in_subshell()) {
           cxt.request_exit(2, ec.source_location());
+
           return 2;
         }
 
@@ -60,6 +62,7 @@ fn Continue::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
       cxt.request_break(static_cast<i64>(cxt.execution_store().loop_depth()),
                         ec.source_location());
+
       return 2;
     }
 
@@ -82,6 +85,7 @@ fn Continue::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                                   "' is not a valid loop count");
     cxt.request_break(static_cast<i64>(cxt.execution_store().loop_depth()),
                       ec.source_location());
+
     return 1;
   }
 
@@ -90,6 +94,7 @@ fn Continue::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   LOG(All, "continue skipping to the next iteration of %lld loops",
       static_cast<long long>(level));
   cxt.request_continue(level, ec.source_location());
+
   return 0;
 }
 

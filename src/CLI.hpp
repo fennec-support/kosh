@@ -72,6 +72,7 @@ public:
   {
     if (lines.size() > countof(m_lines))
       TRAP("the help synopsis exceeds its fixed capacity");
+
     for (let const line : lines)
       m_lines[m_count++] = line;
   }
@@ -85,6 +86,7 @@ public:
   pure fn operator[](usize index) const wontthrow->StringView
   {
     ASSERT(index < m_count);
+
     return m_lines[index];
   }
 
@@ -109,6 +111,7 @@ public:
   pure fn operator[](usize index) const wontthrow->Flag *
   {
     ASSERT(index < m_count);
+
     return m_flags[index];
   }
 
@@ -493,6 +496,7 @@ struct rolling_history
   fn trim(u64 window_start_nanoseconds) throws -> void
   {
     ASSERT(samples.count() == timestamps.count());
+
     while (timestamps.count() > 2 && timestamps[1] <= window_start_nanoseconds)
     {
       samples.remove(0);
@@ -507,6 +511,7 @@ struct rolling_history
     if (window_start_nanoseconds <= timestamps[0]) return {0, 0, timestamps[0]};
 
     usize before = 0;
+
     while (before + 1 < timestamps.count() &&
            timestamps[before + 1] <= window_start_nanoseconds)
     {
@@ -532,6 +537,7 @@ struct rolling_history
 
     let const elapsed = after_timestamp - before_timestamp;
     let const passed = boundary.timestamp - before_timestamp;
+
     return before_value +
            static_cast<u64>(static_cast<u128>(after_value - before_value) *
                             passed / elapsed);

@@ -178,6 +178,7 @@ fn CommandBuiltin::execute(ExecContext &ec, EvalContext &cxt) const throws
 
   let operand_args = ArrayList<String>{heap_allocator()};
   let operand_arg_locations = ArrayList<SourceLocation>{heap_allocator()};
+
   for (usize i = 1; i < args.count(); i++) {
     operand_args.push_managed(args[i]);
     operand_arg_locations.push(ec.arg_location_at(i));
@@ -195,6 +196,7 @@ fn CommandBuiltin::execute(ExecContext &ec, EvalContext &cxt) const throws
         resolution_error.message().c_str());
     show_message(resolution_error.to_string(
         cxt.source_store().current_source_view(), &cxt));
+
     return static_cast<i32>(resolution_error.command_status());
   }
   sub->is_called_through_command = true;

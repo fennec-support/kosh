@@ -41,9 +41,12 @@ fn shopt_status_line(StringView name, bool is_on, Allocator allocator) throws
 {
   constexpr usize NAME_FIELD_WIDTH = 20;
   let line = String{allocator, name};
+
   while (line.count() < NAME_FIELD_WIDTH)
     line += ' ';
+
   line += is_on ? "\ton\n" : "\toff\n";
+
   return line;
 }
 
@@ -53,6 +56,7 @@ fn format_option_names_help(Allocator allocator) throws -> String
   let const &names = shopt_option_name_list();
   utils::append_name_columns(section, names.count(),
                              [&](usize index) { return names[index]; });
+
   return section;
 }
 
@@ -72,6 +76,7 @@ fn shopt_reusable_line(StringView name, bool is_on, Allocator allocator,
     line += is_on ? "shopt -s " : "shopt -u ";
   line += name;
   line += '\n';
+
   return line;
 }
 
@@ -87,16 +92,20 @@ fn shopt_option_name_list() throws -> const ArrayList<StringView> &
 {
   static ArrayList<StringView> names = [] throws {
     let collected = ArrayList<StringView>{heap_allocator()};
+
     for (let const &option : get_option_registry())
       if (!option.shopt_name.is_empty()) collected.push(option.shopt_name);
+
     return collected;
   }();
+
   return names;
 }
 
 fn enabled_shopt_option_names(const EvalContext &cxt) throws -> String
 {
   let joined = String{heap_allocator()};
+
   for (let const &option : get_option_registry()) {
     if (option.shopt_name.is_empty() || !shopt_is_on(cxt, option)) {
       continue;
@@ -104,6 +113,7 @@ fn enabled_shopt_option_names(const EvalContext &cxt) throws -> String
     if (!joined.is_empty()) joined.push(':');
     joined.append(option.shopt_name);
   }
+
   return joined;
 }
 
@@ -126,6 +136,7 @@ fn Shopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let const should_print_reusable = FLAG_SHOPT_PRINT.is_enabled();
   let names = ArrayList<StringView>{cxt.scratch_allocator()};
   let name_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};
+
   for (usize i = 1; i < args.count(); i++) {
     names.push(args[i].view());
     name_locations.push(operand_locations[i]);
@@ -149,6 +160,7 @@ fn Shopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       report_soft_builtin_error(ec, cxt, location,
                                 StringView{"'"} + name +
                                     "' is not a valid shell option name");
+
     return nullptr;
   };
 
@@ -169,8 +181,10 @@ fn Shopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
           ec.print_to_stdout(do_format_status_line(name, *on).view());
         }
       }
+
       return 0;
     }
+
     for (usize n = 0; n < names.count(); n++) {
       let const &name = names[n];
       let const &location = name_locations[n];
@@ -200,6 +214,7 @@ fn Shopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         }
       }
     }
+
     return status;
   }
 
@@ -220,6 +235,7 @@ fn Shopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
               do_format_status_line(option.shopt_name, is_on).view());
         }
       }
+
       return 0;
     }
 
@@ -233,6 +249,7 @@ fn Shopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       write_option_number(cxt, *option, should_enable ? 1 : 0,
                           option_origin::Shopt);
     }
+
     return status;
   }
 
@@ -244,6 +261,7 @@ fn Shopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
               do_format_status_line(option.shopt_name, shopt_is_on(cxt, option))
                   .view());
     }
+
     return 0;
   }
 
@@ -255,6 +273,7 @@ fn Shopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     if (!is_quiet)
       ec.print_to_stdout(do_format_status_line(names[n], is_on).view());
   }
+
   return status;
 }
 

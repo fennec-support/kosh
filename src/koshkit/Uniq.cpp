@@ -35,10 +35,13 @@ static fn count_prefix(u64 run_length, Allocator allocator) throws -> String
 {
   let const digits = String::from(run_length, allocator);
   String prefix{allocator};
+
   for (usize i = digits.count(); i < 7; i++)
     prefix += ' ';
+
   prefix += digits.view();
   prefix += ' ';
+
   return prefix;
 }
 
@@ -47,6 +50,7 @@ static fn parse_uniq_count(StringView text) wontthrow -> Maybe<usize>
   if (text.is_empty()) return {};
 
   usize value = 0;
+
   for (usize i = 0; i < text.length; i++) {
     if (text[i] < '0') return {};
     if (text[i] > '9') return {};
@@ -107,6 +111,7 @@ fn Uniq::execute(const ExecContext &ec, EvalContext &cxt,
     if (!parsed.has_value()) {
       KOSHKIT_REPORT_ERROR_AT(FLAG_UNIQ_FIELDS.value_location(),
                               "invalid number of fields to skip");
+
       return 1;
     }
     skipped_fields = *parsed;
@@ -118,6 +123,7 @@ fn Uniq::execute(const ExecContext &ec, EvalContext &cxt,
     if (!parsed.has_value()) {
       KOSHKIT_REPORT_ERROR_AT(FLAG_UNIQ_CHARS.value_location(),
                               "invalid number of characters to skip");
+
       return 1;
     }
     skipped_chars = *parsed;
@@ -133,6 +139,7 @@ fn Uniq::execute(const ExecContext &ec, EvalContext &cxt,
       report_soft_koshkit_util_error(ec, cxt, args[0].view(),
                                      operands[1] + ": " +
                                          os::last_system_error_message());
+
       return 1;
     }
   }
@@ -187,6 +194,7 @@ fn Uniq::execute(const ExecContext &ec, EvalContext &cxt,
 
   let reader =
       utils::BufferedLineReader{input->descriptor, cxt.scratch_allocator()};
+
   loop
   {
     let const result = reader.next();
@@ -197,6 +205,7 @@ fn Uniq::execute(const ExecContext &ec, EvalContext &cxt,
                                      String{cxt.scratch_allocator(), source} +
                                          ": " +
                                          os::last_system_error_message());
+
       return 1;
     }
     let const line = reader.get_line();
@@ -222,6 +231,7 @@ fn Uniq::execute(const ExecContext &ec, EvalContext &cxt,
   do_flush();
 
   do_write_output();
+
   return did_write_fail ? 1 : 0;
 }
 

@@ -152,6 +152,7 @@ struct live_report_options
     options.title = title;
     options.refresh_interval_seconds = interval_seconds;
     options.should_color = should_color;
+
     return options;
   }
 
@@ -163,6 +164,7 @@ struct live_report_options
     options.window_seconds = window_seconds;
     options.sample_interval_seconds = interval_seconds;
     options.started_at_nanoseconds = started_at_nanoseconds;
+
     return options;
   }
 };
@@ -201,6 +203,7 @@ fn run_live_view(const ExecContext &ec, const live_view_options &options,
     live_view_input input{};
     if (!view.wait_for_input(wait_nanoseconds, input)) {
       os::INTERRUPT_REQUESTED = 0;
+
       return 130;
     }
 
@@ -292,6 +295,7 @@ fn update_retained_rows(ArrayList<Row> &retained, Items &observed,
   retained.reserve(retained.count() + observed.count());
   let index = ArrayList<index_entry>{index_allocator};
   index.reserve(retained.count());
+
   for (usize position = 0; position < retained.count(); position++)
     index.push(index_entry{do_get_key(retained[position]), position});
 
@@ -302,6 +306,7 @@ fn update_retained_rows(ArrayList<Row> &retained, Items &observed,
   let const do_find = [&](const key_type &key) -> Maybe<usize> {
     usize low = 0;
     usize high = index.count();
+
     while (low < high) {
       let const middle = low + (high - low) / 2;
       if (index[middle].key < key)
@@ -309,6 +314,7 @@ fn update_retained_rows(ArrayList<Row> &retained, Items &observed,
       else
         high = middle;
     }
+
     if (low < index.count() && !(key < index[low].key)) {
       return index[low].position;
     }
@@ -333,6 +339,7 @@ fn update_retained_rows(ArrayList<Row> &retained, Items &observed,
 
   let const window_start =
       rolling_window_start(now_nanoseconds, window_nanoseconds);
+
   for (usize remaining = retained.count(); remaining > 0; remaining--) {
     let const position = remaining - 1;
     let &row = retained[position];

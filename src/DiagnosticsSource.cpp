@@ -101,6 +101,7 @@ constexpr u64 BACKSLASHES = 0x5c5c5c5c5c5c5c5cULL;
 alwaysinline pure fn chunk_holds_byte(u64 chunk, u64 repeated) wontthrow -> u64
 {
   let const differences = chunk ^ repeated;
+
   return (differences - LOW_BITS) & ~differences & HIGH_BITS;
 }
 
@@ -113,6 +114,7 @@ alwaysinline pure fn chunk_holds_scanned_byte(u64 chunk) wontthrow -> bool
 pure fn source_holds_scanned_byte(StringView source) wontthrow -> bool
 {
   usize at = 0;
+
   while (at + sizeof(u64) <= source.length) {
     u64 chunk = 0;
     __builtin_memcpy(&chunk, source.data + at, sizeof(u64));
@@ -195,19 +197,23 @@ pure fn homoglyph_diagnostic(homoglyph_kind kind,
     {
       return diagnostic_id::sc1112;
     }
+
     return None;
 
   case homoglyph_kind::DoubleQuote:
     if (state == source_scan_state::Normal) return diagnostic_id::sc1110;
     if (state == source_scan_state::DoubleQuoted) return diagnostic_id::sc1111;
+
     return None;
 
   case homoglyph_kind::Dash:
     if (state == source_scan_state::Normal) return diagnostic_id::sc1100;
+
     return None;
 
   case homoglyph_kind::Space:
     if (state == source_scan_state::Normal) return diagnostic_id::sc1018;
+
     return None;
 
   default: return None;
@@ -219,6 +225,7 @@ fn codepoint_spelling(u32 codepoint) throws -> String
   constexpr char HEX_DIGITS[] = "0123456789ABCDEF";
 
   let spelling = String{"U+"};
+
   for (let shift = codepoint > 0xffff ? 20 : 12; shift >= 0; shift -= 4)
     spelling.push(HEX_DIGITS[(codepoint >> shift) & 0xf]);
 
@@ -283,9 +290,11 @@ pure fn skip_here_document(StringView source, usize at) wontthrow -> usize
     let const quote = source[cursor];
     cursor++;
     delimiter_start = cursor;
+
     while (cursor < source.length && source[cursor] != quote) {
       cursor++;
     }
+
     delimiter_end = cursor;
   } else {
     while (cursor < source.length &&
@@ -293,6 +302,7 @@ pure fn skip_here_document(StringView source, usize at) wontthrow -> usize
     {
       cursor++;
     }
+
     delimiter_end = cursor;
   }
 
@@ -309,11 +319,13 @@ pure fn skip_here_document(StringView source, usize at) wontthrow -> usize
     cursor++;
 
     usize line_start = cursor;
+
     while (line_start < source.length && source[line_start] == '\t') {
       line_start++;
     }
 
     usize line_end = line_start;
+
     while (line_end < source.length && source[line_end] != '\n') {
       line_end++;
     }
@@ -447,6 +459,7 @@ fn check_source_bytes(AnalysisContext &actx, StringView source) throws -> void
 
         if (escaped == ' ' || escaped == '\t') {
           usize blank_end = at + 1;
+
           while (blank_end < source.length &&
                  (source[blank_end] == ' ' || source[blank_end] == '\t'))
           {
@@ -485,6 +498,7 @@ fn check_source_bytes(AnalysisContext &actx, StringView source) throws -> void
         {
           at = skip_here_document(source, at);
           line_start = at;
+
           while (line_start > 0 && source[line_start - 1] != '\n') {
             line_start--;
           }
@@ -617,6 +631,7 @@ constexpr StaticStringSet KNOWN_SHELLS{KNOWN_SHELL_KEYS};
 pure fn path_base_name(StringView path) wontthrow -> StringView
 {
   usize at = path.length;
+
   while (at > 0 && path[at - 1] != '/') {
     at--;
   }
@@ -637,6 +652,7 @@ struct shebang_word_reader
     }
 
     word_start = at;
+
     while (at < line.length && !lexer::is_whitespace(line[at])) {
       at++;
     }
@@ -659,6 +675,7 @@ pure fn header_holds_shebang(StringView source, usize first_line_end) wontthrow
     at++;
 
     usize line_start = at;
+
     while (line_start < source.length &&
            lexer::is_whitespace(source[line_start]))
     {
@@ -691,6 +708,7 @@ fn check_shebang(AnalysisContext &actx, StringView source,
                  missing_shebang_policy shebang_policy) throws -> void
 {
   usize line_end = 0;
+
   while (line_end < source.length && source[line_end] != '\n') {
     line_end++;
   }
@@ -698,6 +716,7 @@ fn check_shebang(AnalysisContext &actx, StringView source,
   let const first_line = source.substring_of_length(0, line_end);
 
   usize at = 0;
+
   while (at < first_line.length && lexer::is_whitespace(first_line[at])) {
     at++;
   }
@@ -711,6 +730,7 @@ fn check_shebang(AnalysisContext &actx, StringView source,
 
     if (is_swapped) {
       actx.report_diagnostic(diagnostic_id::sc1084, SourceLocation{at, 2});
+
       return;
     }
 
@@ -723,6 +743,7 @@ fn check_shebang(AnalysisContext &actx, StringView source,
 
   let const has_hash = at < first_line.length && first_line[at] == '#';
   usize bang_at = has_hash ? at + 1 : at;
+
   while (bang_at < first_line.length &&
          lexer::is_whitespace(first_line[bang_at]))
   {
@@ -738,11 +759,13 @@ fn check_shebang(AnalysisContext &actx, StringView source,
   if (!has_bang) {
     if (!is_here_document_opener && header_holds_shebang(source, line_end)) {
       actx.report_diagnostic(diagnostic_id::sc1128, SourceLocation{at, 1});
+
       return;
     }
 
     if (has_hash && bang_at < first_line.length && first_line[bang_at] == '/') {
       actx.report_diagnostic(diagnostic_id::sc1113, SourceLocation{at, 1});
+
       return;
     }
 
@@ -821,6 +844,7 @@ fn check_shebang(AnalysisContext &actx, StringView source,
   if (!KNOWN_SHELLS.contains(shell_name)) {
     actx.report_diagnostic(diagnostic_id::sc1008, shell_name_location,
                            {shell_name});
+
     return;
   }
 
@@ -848,6 +872,7 @@ constexpr usize DIRECTIVE_KEYWORD_LENGTH = 10;
 pure fn find_line_start(StringView source, usize position) wontthrow -> usize
 {
   usize at = position;
+
   while (at > 0 && source[at - 1] != '\n') {
     at--;
   }
@@ -888,6 +913,7 @@ pure fn read_word_below_directive(StringView source, usize after) wontthrow
   }
 
   let const word_start = at;
+
   while (at < source.length && !lexer::is_whitespace(source[at]) &&
          source[at] != '\n')
   {
@@ -907,11 +933,13 @@ pure fn read_line_above_directive(StringView source, usize line_start) wontthrow
 
     let const start = find_line_start(source, end);
     usize content_start = start;
+
     while (content_start < end && lexer::is_whitespace(source[content_start])) {
       content_start++;
     }
 
     usize content_end = end;
+
     while (content_end > content_start &&
            lexer::is_whitespace(source[content_end - 1]))
     {
@@ -978,6 +1006,7 @@ fn check_directive_body(AnalysisContext &actx, StringView source,
     if (at >= comment_end) return;
 
     let const token_start = at;
+
     while (at < comment_end && !lexer::is_whitespace(source[at])) {
       at++;
     }
@@ -985,6 +1014,7 @@ fn check_directive_body(AnalysisContext &actx, StringView source,
     let const token = source.substring_of_length(token_start, at - token_start);
 
     usize separator_position = 0;
+
     while (separator_position < token.length &&
            token[separator_position] != '=')
     {
@@ -995,6 +1025,7 @@ fn check_directive_body(AnalysisContext &actx, StringView source,
       actx.report_diagnostic(diagnostic_id::sc1125,
                              SourceLocation{token_start, token.length},
                              {token});
+
       return;
     }
 
@@ -1003,6 +1034,7 @@ fn check_directive_body(AnalysisContext &actx, StringView source,
     if (!DIRECTIVE_KEYS.contains(key)) {
       actx.report_diagnostic(diagnostic_id::sc1107,
                              SourceLocation{token_start, key.length}, {key});
+
       return;
     }
   }
@@ -1021,11 +1053,13 @@ fn check_shellcheck_directives(
     previous_position = directive.position;
 
     usize body_position = 1;
+
     while (body_position < directive.length &&
            lexer::is_whitespace(source[directive.position + body_position]))
     {
       body_position++;
     }
+
     body_position += DIRECTIVE_KEYWORD_LENGTH;
 
     check_directive_body(actx, source, directive, body_position);
@@ -1121,6 +1155,7 @@ fn collect_shell_provided_variable_names(const AnalysisContext &actx,
   static constexpr PackedStringKey FIXED_VARIABLE_KEYS[] = {
       SSK("KOSH"),    SSK("KOSH_VERSION"),    SSK("KOSH_COMMIT"),
       SSK("KOSH_OS"), SSK("KOSH_BUILD_MODE"), SSK("OPTIND")};
+
   for (let const &key : FIXED_VARIABLE_KEYS) {
     let name = key.to_string();
     out_names.add(name.view());
@@ -1130,6 +1165,7 @@ fn collect_shell_provided_variable_names(const AnalysisContext &actx,
   if (actx.eval_context->runtime_state().get_mood() != mimic_mood::Posix) {
     static constexpr PackedStringKey BASH_IDENTITY_KEYS[] = {
         SSK("BASH"), SSK("BASH_VERSION"), SSK("BASH_VERSINFO")};
+
     for (let const &key : BASH_IDENTITY_KEYS) {
       let name = key.to_string();
       out_names.add(name.view());
@@ -1138,6 +1174,7 @@ fn collect_shell_provided_variable_names(const AnalysisContext &actx,
 
   let dynamic_names = ArrayList<StringView>{heap_allocator()};
   actx.eval_context->append_dynamic_variable_names(dynamic_names);
+
   for (let const name : dynamic_names)
     out_names.add(name);
 }
@@ -1159,6 +1196,7 @@ pure fn names_resemble_each_other(StringView left, StringView right) wontthrow
     while (at_left < left.length && left[at_left] == '_') {
       at_left++;
     }
+
     while (at_right < right.length && right[at_right] == '_') {
       at_right++;
     }
@@ -1180,6 +1218,7 @@ pure fn names_are_near_misspellings(StringView left, StringView right) wontthrow
     -> bool
 {
   let const budget = utils::suggestion_distance_budget(right.length);
+
   return utils::NameSuggestion::is_correction(
       utils::bounded_osa_distance(left, right, budget), right.length);
 }
@@ -1243,6 +1282,7 @@ fn check_unassigned_variable_reads(AnalysisContext &actx) throws -> void
 
       if (names_resemble_each_other(assigned, read.name)) {
         resembled = resembling_assignment{assigned, location, binder};
+
         return;
       }
 

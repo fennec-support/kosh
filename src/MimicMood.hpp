@@ -42,6 +42,7 @@ inline pure fn parse_mood_name(StringView name) throws -> Maybe<mimic_mood>
       {SSK("bash-posix"), mimic_mood::BashPosix},
   };
   static constexpr StaticStringMap MOODS{MOOD_ENTRIES};
+
   return MOODS.find(name);
 }
 
@@ -58,6 +59,7 @@ inline pure fn mood_name(mimic_mood mood) wontthrow -> StringView
   case mimic_mood::BashPosix: return "bash-posix";
   case mimic_mood::Default: return "kosh";
   }
+
   return "kosh";
 }
 

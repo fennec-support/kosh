@@ -61,6 +61,7 @@ static pure fn is_history_number(StringView text) wontthrow -> bool
 {
   if (text.is_empty()) return false;
   if (text[0] == '-') text = text.substring(1);
+
   return !text.is_empty() && text.is_all_decimal_digits();
 }
 
@@ -86,17 +87,20 @@ resolve_fc_selection(StringView specification,
     if (number < 0) {
       let index = last_eligible_index + number + 1;
       if (index < 0) index = 0;
+
       return fc_selection{index, fc_selection_error::None};
     }
     if (number == 0) {
       if (has_negative_sign) {
         if (!is_listing)
           return fc_selection{-1, fc_selection_error::OutOfRange};
+
         return fc_selection{active_index.has_value()
                                 ? static_cast<i64>(*active_index)
                                 : static_cast<i64>(events.count()) - 1,
                             fc_selection_error::None};
       }
+
       return fc_selection{last_eligible_index, fc_selection_error::None};
     }
 
@@ -105,6 +109,7 @@ resolve_fc_selection(StringView specification,
       return fc_selection{is_first ? 0 : last_eligible_index,
                           fc_selection_error::None};
     }
+
     return fc_selection{relative_number, fc_selection_error::None};
   }
 
@@ -125,6 +130,7 @@ static fn report_fc_selection_error(const ExecContext &ec, EvalContext &cxt,
   } else {
     report_soft_builtin_error(ec, cxt, location, "no command found");
   }
+
   return 1;
 }
 
@@ -136,10 +142,12 @@ static fn replace_all(StringView source, StringView pattern,
   if (pattern.is_empty()) {
     for (usize position = 0; position < source.length; position++)
       result.append(replacement);
+
     return result;
   }
 
   usize position = 0;
+
   while (position < source.length) {
     let const remaining = source.length - position;
     if (remaining >= pattern.length &&
@@ -160,8 +168,10 @@ static fn active_event_index(const ArrayList<toiletline::history_event> &events,
                              Maybe<usize> active_number) -> Maybe<usize>
 {
   if (!active_number.has_value()) return None;
+
   for (usize index = events.count(); index-- > 0;)
     if (events[index].number == *active_number) return index;
+
   return None;
 }
 
@@ -255,11 +265,13 @@ static fn execute_fc_command(const ExecContext &ec, EvalContext &cxt,
   {
     report_soft_builtin_error(ec, cxt, operand_locations[operand_position + 1],
                               "too many arguments");
+
     return 1;
   }
 
   let command = String{cxt.scratch_allocator(),
                        events[static_cast<usize>(selection.index)].command};
+
   for (let const &replacement : substitutions)
     command = replace_all(command.view(), replacement.pattern,
                           replacement.replacement, cxt.scratch_allocator());
@@ -271,8 +283,10 @@ static fn execute_fc_command(const ExecContext &ec, EvalContext &cxt,
   {
     report_soft_builtin_error(ec, cxt, ec.source_location(),
                               "cannot replace the history event");
+
     return 1;
   }
+
   return cxt.run_source(command.view(), "fc", ec.source_location(),
                         StringView{"fc"}, nullptr, nullptr,
                         return_handling::Reject);
@@ -300,6 +314,7 @@ static fn list_fc_commands(const ExecContext &ec, EvalContext &cxt,
   }
 
   ec.print_to_stdout(output.view());
+
   return 0;
 }
 
@@ -318,6 +333,7 @@ static fn editor_name(EvalContext &cxt, const fc_options &options) throws
   {
     return String{cxt.scratch_allocator(), value->view()};
   }
+
   return cxt.runtime_state().is_posix_option_on() ? String{"ed"} : String{"vi"};
 }
 
@@ -335,6 +351,7 @@ static fn edit_fc_commands(const ExecContext &ec, EvalContext &cxt,
   if (!temp_path.has_value()) {
     report_soft_builtin_error(ec, cxt, ec.source_location(),
                               "cannot create the editor file");
+
     return 1;
   }
   defer { unused(os::remove_file(temp_path->text().view())); };
@@ -365,11 +382,13 @@ static fn edit_fc_commands(const ExecContext &ec, EvalContext &cxt,
   if (!edited.has_value()) {
     report_soft_builtin_error(ec, cxt, ec.source_location(),
                               "cannot read the editor file");
+
     return 1;
   }
   if (!os::remove_file(temp_path->text().view())) {
     report_soft_builtin_error(ec, cxt, ec.source_location(),
                               "cannot remove the editor file");
+
     return 1;
   }
   if (edited->is_empty()) return 0;
@@ -419,6 +438,7 @@ static fn edit_fc_commands(const ExecContext &ec, EvalContext &cxt,
     {
       report_soft_builtin_error(ec, cxt, ec.source_location(),
                                 "Unable to replace the active history event");
+
       return 1;
     }
     cxt.history_recorder().set_event_number(None);
@@ -450,6 +470,7 @@ fn Fc::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     report_soft_builtin_error(ec, cxt, ec.source_location(),
                               StringView{"Unable to read the history file: "} +
                                   read_events.error().message());
+
     return 1;
   }
 
@@ -507,6 +528,7 @@ fn Fc::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   if (options.should_list)
     return list_fc_commands(ec, cxt, options, events, first_index, last_index);
+
   return edit_fc_commands(ec, cxt, options, events, active_index, first_index,
                           last_index);
 }

@@ -71,15 +71,18 @@ fn build_title(StringView command, f64 interval_seconds, u32 column_count,
   if (total_length + 1 > column_count) {
     title += left.view();
     title += "\n";
+
     return title;
   }
 
   title += left.view();
+
   for (usize index = total_length; index < column_count; index++)
     title += " ";
 
   title += right.view();
   title += "\n";
+
   return title;
 }
 
@@ -87,8 +90,10 @@ fn append_truncated_lines(String &output, StringView body,
                           u32 column_count) throws -> void
 {
   usize position = 0;
+
   while (position < body.length) {
     usize line_end = position;
+
     while (line_end < body.length && body[line_end] != '\n') {
       line_end++;
     }
@@ -125,6 +130,7 @@ fn Watch::execute(const ExecContext &ec, EvalContext &cxt,
   }
 
   let command = String{allocator};
+
   for (let const &operand : operands) {
     if (!command.is_empty()) command += " ";
 

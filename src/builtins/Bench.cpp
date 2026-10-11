@@ -105,7 +105,7 @@ constexpr extended_metric EXTENDED_METRICS[EXTENDED_METRIC_COUNT] = {
 struct bench_sample
 {
   double wall_nanos{0};
-  double peak_rss_bytes{0};
+  double peak_rss_byte_count{0};
   double cpu_cycles{0};
   double instructions{0};
   double cache_references{0};
@@ -148,6 +148,7 @@ fn compute_stats(const ArrayList<bench_sample> &samples,
   double sum = 0;
   double minimum = accessor(samples[0]);
   double maximum = accessor(samples[0]);
+
   for (usize i = 0; i < samples.count(); i++) {
     let const value = accessor(samples[i]);
     sum += value;
@@ -161,10 +162,12 @@ fn compute_stats(const ArrayList<bench_sample> &samples,
   stats.max = maximum;
 
   double variance_sum = 0;
+
   for (usize i = 0; i < samples.count(); i++) {
     let const delta = accessor(samples[i]) - stats.mean;
     variance_sum += delta * delta;
   }
+
   stats.std_dev =
       (samples.count() > 1) ? std::sqrt(variance_sum / (count - 1)) : 0.0;
 
@@ -225,6 +228,7 @@ cold fn format_metric(double value, metric_unit unit,
 
   char buffer[64];
   std::snprintf(buffer, sizeof(buffer), "%.3g%s", scaled, suffix);
+
   return String{allocator, buffer};
 }
 
@@ -252,6 +256,7 @@ fn make_metric_row(StringView name, const metric_stats &stats, metric_unit unit,
   row.std_dev = format_metric(stats.std_dev, unit, allocator);
   row.min = format_metric(stats.min, unit, allocator);
   row.max = format_metric(stats.max, unit, allocator);
+
   return row;
 }
 
@@ -300,6 +305,7 @@ fn append_relative_line(String &out, StringView name, const metric_stats &first,
 
   if (first.mean <= 0 || other.mean <= 0) {
     out += "n/a\n";
+
     return;
   }
 
@@ -333,6 +339,7 @@ fn parse_count_flag(const FlagString &flag, StringView flag_name) throws -> u64
                             " expects a number, got '" + flag.value() + "'"};
     relocate_error(error, flag.value_location());
   }
+
   return parsed.value();
 }
 
@@ -383,6 +390,7 @@ fn sample_command(StringView shell_binary, StringView command,
     child_argv.push(String{allocator, command});
   } else {
     usize start = 0;
+
     for (usize i = 0; i <= command.length; i++) {
       let const is_at_end = i == command.length;
       if (is_at_end || command[i] == ' ' || command[i] == '\t') {
@@ -465,7 +473,8 @@ fn sample_command(StringView shell_binary, StringView command,
 
     let sample = bench_sample{};
     sample.wall_nanos = static_cast<double>(measured->wall_nanos);
-    sample.peak_rss_bytes = static_cast<double>(measured->peak_rss_bytes);
+    sample.peak_rss_byte_count =
+        static_cast<double>(measured->peak_rss_byte_count);
     has_perf = has_perf && measured->has_perf;
     is_perf_system_wide = is_perf_system_wide || measured->is_perf_system_wide;
     if (measured->has_perf) {
@@ -503,7 +512,7 @@ fn sample_command(StringView shell_binary, StringView command,
   result.wall_time = compute_stats(
       samples, [](const bench_sample &s) { return s.wall_nanos; });
   result.peak_rss = compute_stats(
-      samples, [](const bench_sample &s) { return s.peak_rss_bytes; });
+      samples, [](const bench_sample &s) { return s.peak_rss_byte_count; });
   result.cpu_cycles = compute_stats(
       samples, [](const bench_sample &s) { return s.cpu_cycles; });
   result.instructions = compute_stats(
@@ -581,6 +590,7 @@ fn append_summary(String &out, const CommandResult &result, bool should_color,
 
   usize mean_width = 0;
   usize std_dev_width = 0;
+
   for (usize i = 0; i < rows.count(); i++) {
     if (rows[i].mean.length() > mean_width) mean_width = rows[i].mean.length();
     if (rows[i].std_dev.length() > std_dev_width)
@@ -676,6 +686,7 @@ cold fn Bench::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       arguments.count() - 1, static_cast<unsigned long long>(duration_millis));
 
   let results = ArrayList<CommandResult>{cxt.scratch_allocator()};
+
   for (usize i = 1; i < arguments.count(); i++) {
     bool was_interrupted = false;
     bool did_command_fail = false;
@@ -688,6 +699,7 @@ cold fn Bench::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
     if (was_interrupted) {
       os::INTERRUPT_REQUESTED = 0;
+
       return 130;
     }
 
@@ -698,11 +710,13 @@ cold fn Bench::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
               "` exited with status " +
               String::from(failure_status, cxt.scratch_allocator()),
           "Pass `--ignore-exit-code` to benchmark it regardless");
+
       return static_cast<i32>(failure_status);
     }
   }
 
   let out = String{cxt.scratch_allocator()};
+
   for (usize i = 0; i < results.count(); i++) {
     if (i > 0) out += "\n";
     append_summary(out, results[i], should_color, cxt, cxt.scratch_allocator());
@@ -710,11 +724,13 @@ cold fn Bench::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   if (results.count() > 1) {
     out += "\n";
+
     for (usize i = 1; i < results.count(); i++)
       append_comparison(out, results[0], results[i], should_color, cxt);
   }
 
   ec.print_to_stdout(out);
+
   return 0;
 }
 

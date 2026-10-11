@@ -62,6 +62,7 @@ hot fn EvalContext::get_glob_charset_for(StringView subject) const throws
 {
   usize position = 0;
   using byte_vector = u64 __attribute__((vector_size(16)));
+
   while (position + 4 * sizeof(byte_vector) <= subject.length) {
     byte_vector lanes[4];
     __builtin_memcpy(lanes, subject.data + position, sizeof(lanes));
@@ -132,6 +133,7 @@ fn EvalContext::expand_path_once(const glob_field &field,
     LOG(Debug,
         "the parent directory is unreadable, the glob '%.*s' yields no match",
         static_cast<int>(path.length), path.data);
+
     return expanded;
   }
 
@@ -140,6 +142,7 @@ fn EvalContext::expand_path_once(const glob_field &field,
     literal_field.text.append(field.text.view());
     literal_field.glob_active = field.glob_active;
     expanded.push(steal(literal_field));
+
     return expanded;
   }
 
@@ -152,9 +155,9 @@ fn EvalContext::expand_path_once(const glob_field &field,
   let const is_dot_pattern = glob[0] == '.';
   if (is_dot_pattern && !is_shopt_enabled("globskipdots")) {
     entries->push(
-        Path::directory_child{String{"."}, Path::entry_kind::Directory});
+        Path::DirectoryChild{String{"."}, Path::EntryKind::Directory});
     entries->push(
-        Path::directory_child{String{".."}, Path::entry_kind::Directory});
+        Path::DirectoryChild{String{".."}, Path::EntryKind::Directory});
   }
 
   let const dotglob_is_on = is_shopt_enabled("dotglob");
@@ -178,7 +181,7 @@ fn EvalContext::expand_path_once(const glob_field &field,
   }
   let const match_glob = nocaseglob_is_on ? lowered_glob.view() : glob;
 
-  let const do_entry_matches = [&](const Path::directory_child &entry)
+  let const do_entry_matches = [&](const Path::DirectoryChild &entry)
                                    throws -> bool {
     let const filename = entry.name.view();
 
@@ -222,17 +225,18 @@ fn EvalContext::expand_path_once(const glob_field &field,
   uncertain_positions.reserve(entries->count());
   uncertain_paths.reserve(entries->count());
   uncertain_statuses.reserve(entries->count());
+
   for (usize index = 0; index < entries->count(); index++) {
     let const &entry = (*entries)[index];
     should_include.push(false);
     if (!do_entry_matches(entry)) continue;
 
-    if (entry.kind == Path::entry_kind::Directory) {
+    if (entry.kind == Path::EntryKind::Directory) {
       should_include[index] = true;
       continue;
     }
-    if (entry.kind == Path::entry_kind::Regular ||
-        entry.kind == Path::entry_kind::Other)
+    if (entry.kind == Path::EntryKind::Regular ||
+        entry.kind == Path::EntryKind::Other)
     {
       continue;
     }
@@ -246,10 +250,13 @@ fn EvalContext::expand_path_once(const glob_field &field,
 
   let directory_batch = os::Batch{scratch};
   directory_batch.reserve(uncertain_paths.count());
+
   for (usize index = 0; index < uncertain_paths.count(); index++)
     directory_batch.add(os::batch_operation::stat(uncertain_paths[index],
                                                   uncertain_statuses[index]));
+
   let const directory_results = directory_batch.execute();
+
   for (usize index = 0; index < uncertain_paths.count(); index++)
     should_include[uncertain_positions[index]] =
         directory_results[index].error_number == 0 &&
@@ -265,6 +272,7 @@ hot pure fn first_active_glob(StringView text, const Bitset &mask,
                               extglob_mode mode) wontthrow -> Maybe<usize>
 {
   let open_bracket = Maybe<usize>{};
+
   for (usize i = 0; i < text.length; i++) {
     if (i >= mask.count() || !mask[i]) {
       continue;
@@ -287,6 +295,7 @@ hot pure fn first_active_glob(StringView text, const Bitset &mask,
       return open_bracket;
     }
   }
+
   return koshka::None;
 }
 
@@ -323,25 +332,26 @@ fn collect_globstar_paths(const Path &dir, StringView relative,
 
   usize uncertain_count = 0;
   usize unknown_count = 0;
+
   for (usize index = 0; index < entries->count(); index++) {
     let const &entry = (*entries)[index];
     let const name = entry.name.view();
     let const should_skip =
         !should_match_dotfiles && !name.is_empty() && name[0] == '.';
     switch (entry.kind) {
-    case Path::entry_kind::Directory: is_directory.set(index); break;
-    case Path::entry_kind::Symlink:
+    case Path::EntryKind::Directory: is_directory.set(index); break;
+    case Path::EntryKind::Symlink:
       is_symbolic_link.set(index);
       if (!should_skip) uncertain_count++;
       break;
-    case Path::entry_kind::Unknown:
+    case Path::EntryKind::Unknown:
       if (!should_skip) {
         uncertain_count++;
         unknown_count++;
       }
       break;
-    case Path::entry_kind::Regular:
-    case Path::entry_kind::Other: break;
+    case Path::EntryKind::Regular:
+    case Path::EntryKind::Other: break;
     }
   }
 
@@ -356,11 +366,11 @@ fn collect_globstar_paths(const Path &dir, StringView relative,
       continue;
     }
     switch (entry.kind) {
-    case Path::entry_kind::Symlink:
-    case Path::entry_kind::Unknown: break;
-    case Path::entry_kind::Directory:
-    case Path::entry_kind::Regular:
-    case Path::entry_kind::Other: continue;
+    case Path::EntryKind::Symlink:
+    case Path::EntryKind::Unknown: break;
+    case Path::EntryKind::Directory:
+    case Path::EntryKind::Regular:
+    case Path::EntryKind::Other: continue;
     }
 
     let child_path = dir;
@@ -372,18 +382,19 @@ fn collect_globstar_paths(const Path &dir, StringView relative,
 
   let lstat_batch = os::Batch{allocator};
   lstat_batch.reserve(unknown_count);
+
   for (usize index = 0; index < uncertain_paths.count(); index++)
-    if ((*entries)[uncertain_positions[index]].kind ==
-        Path::entry_kind::Unknown)
+    if ((*entries)[uncertain_positions[index]].kind == Path::EntryKind::Unknown)
     {
       lstat_batch.add(os::batch_operation::lstat(uncertain_paths[index],
                                                  uncertain_statuses[index]));
     }
+
   let const lstat_results = lstat_batch.execute();
   usize lstat_result_index = 0;
+
   for (usize index = 0; index < uncertain_paths.count(); index++) {
-    if ((*entries)[uncertain_positions[index]].kind !=
-        Path::entry_kind::Unknown)
+    if ((*entries)[uncertain_positions[index]].kind != Path::EntryKind::Unknown)
     {
       continue;
     }
@@ -397,10 +408,13 @@ fn collect_globstar_paths(const Path &dir, StringView relative,
 
   let stat_batch = os::Batch{allocator};
   stat_batch.reserve(uncertain_paths.count());
+
   for (usize index = 0; index < uncertain_paths.count(); index++)
     stat_batch.add(os::batch_operation::stat(uncertain_paths[index],
                                              uncertain_statuses[index]));
+
   let const stat_results = stat_batch.execute();
+
   for (usize index = 0; index < uncertain_paths.count(); index++)
     is_directory.set(uncertain_positions[index],
                      stat_results[index].error_number == 0 &&
@@ -450,6 +464,7 @@ fn EvalContext::expand_path_recurse(ArrayList<glob_field> fields) throws
   let glob_indices = ArrayList<Maybe<usize>>{scratch};
   glob_indices.reserve(fields.count());
   let should_batch_literals = !fields.is_empty();
+
   for (let const &field : fields) {
     let const glob_index = first_active_glob(
         field.text.view(), field.glob_active, get_extglob_mode());
@@ -460,13 +475,16 @@ fn EvalContext::expand_path_recurse(ArrayList<glob_field> fields) throws
   if (should_batch_literals) {
     let literal_paths = ArrayList<Path>{scratch};
     literal_paths.reserve(fields.count());
+
     for (let const &field : fields)
       literal_paths.push(Path{field.text.view(), scratch});
 
     let literal_batch = os::Batch{scratch};
     literal_batch.reserve(fields.count());
+
     for (usize index = 0; index < fields.count(); index++)
       literal_batch.add(os::batch_operation::exists(literal_paths[index]));
+
     let const literal_results = literal_batch.execute();
 
     for (usize index = 0; index < fields.count(); index++)
@@ -493,6 +511,7 @@ fn EvalContext::expand_path_recurse(ArrayList<glob_field> fields) throws
     ASSERT(field.glob_active.count() == text.length);
 
     let slash_after = Maybe<usize>{};
+
     for (usize k = *glob_index; k < text.length; k++) {
       if (text.data[k] == '/') {
         slash_after = k;
@@ -501,11 +520,13 @@ fn EvalContext::expand_path_recurse(ArrayList<glob_field> fields) throws
     }
 
     usize component_start = 0;
+
     for (usize k = *glob_index; k > 0; k--)
       if (text.data[k - 1] == '/') {
         component_start = k;
         break;
       }
+
     let const component_end = slash_after.value_or(text.length);
     let const is_globstar_component = component_end - component_start == 2 &&
                                       text.data[component_start] == '*' &&
@@ -540,17 +561,20 @@ fn EvalContext::expand_path_recurse(ArrayList<glob_field> fields) throws
           base_field.text.append(prefix);
           result.push(steal(base_field));
         }
+
         for (let const &relative : relatives) {
           let match_field = glob_field{scratch};
           match_field.text.append(prefix);
           match_field.text.append(relative.view());
           result.push(steal(match_field));
         }
+
         continue;
       }
 
       let const suffix = text.substring(*slash_after + 1);
       let rebuilt = ArrayList<glob_field>{scratch};
+
       for (let const &relative : relatives) {
         let candidate = glob_field{scratch};
         candidate.text.append(prefix);
@@ -561,34 +585,45 @@ fn EvalContext::expand_path_recurse(ArrayList<glob_field> fields) throws
         let const literal_length = candidate.text.count();
         candidate.text.append(suffix);
         if (candidate.text.is_empty()) continue;
+
         for (usize k = 0; k < literal_length; k++)
           candidate.glob_active.push(false);
+
         for (usize k = *slash_after + 1; k < field.glob_active.count(); k++)
           candidate.glob_active.push(field.glob_active[k]);
+
         rebuilt.push(steal(candidate));
       }
+
       let recursed = expand_path_recurse(steal(rebuilt));
+
       for (let &f : recursed)
         result.push(steal(f));
+
       continue;
     }
 
     if (!slash_after) {
       let expanded_files = expand_path_once(field, glob_expansion_mode::Files);
+
       for (let &f : expanded_files)
         result.push(steal(f));
+
       continue;
     }
 
     let const slash_offset = static_cast<std::ptrdiff_t>(*slash_after);
     let directory_component = glob_field{scratch};
     directory_component.text.append(StringView{text.data, *slash_after});
+
     for (std::ptrdiff_t k = 0; k < slash_offset; k++)
       directory_component.glob_active.push(
           field.glob_active[static_cast<usize>(k)]);
+
     let removed_suffix = glob_field{scratch};
     removed_suffix.text.append(
         StringView{text.data + *slash_after, text.length - *slash_after});
+
     for (usize k = static_cast<usize>(slash_offset);
          k < field.glob_active.count(); k++)
       removed_suffix.glob_active.push(field.glob_active[k]);
@@ -600,13 +635,16 @@ fn EvalContext::expand_path_recurse(ArrayList<glob_field> fields) throws
       let const matched_length = f.text.count();
       f.text.append(removed_suffix.text.view());
       f.glob_active.clear();
+
       for (usize k = 0; k < matched_length; k++)
         f.glob_active.push(false);
+
       for (usize k = 0; k < removed_suffix.glob_active.count(); k++)
         f.glob_active.push(removed_suffix.glob_active[k]);
     }
 
     let recursed_matches = expand_path_recurse(steal(expanded_directories));
+
     for (let &f : recursed_matches)
       result.push(steal(f));
   }
@@ -626,11 +664,13 @@ fn EvalContext::expand_tilde(WordSegment &leading_segment,
   }
 
   usize name_end = 1;
+
   while (name_end < text.length() && text[name_end] != '/' &&
          !(should_stop_at_colon && text[name_end] == ':'))
   {
     name_end++;
   }
+
   let const name = text.view().substring_of_length(1, name_end - 1);
 
   if (name_end == text.length() && is_word_continued) {
@@ -665,6 +705,7 @@ fn EvalContext::resolve_tilde_prefix(StringView name) const throws
   let const home =
       name.is_empty() ? os::get_home_directory() : os::get_home_for_user(name);
   if (!home) return koshka::None;
+
   return String{heap_allocator(), home->text().view()};
 }
 
@@ -678,17 +719,20 @@ fn EvalContext::expand_colon_tildes(WordSegment &segment,
   let rewritten = String{heap_allocator()};
   let was_changed = false;
   usize i = 0;
+
   while (i < view.length) {
     let const is_separator =
         view[i] == ':' ||
         (equals_position.has_value() && *equals_position == i);
     if (is_separator && i + 1 < view.length && view[i + 1] == '~') {
       usize prefix_end = i + 2;
+
       while (prefix_end < view.length && view[prefix_end] != '/' &&
              view[prefix_end] != ':')
       {
         prefix_end++;
       }
+
       if (!(prefix_end == view.length && is_word_continued)) {
         let const name = view.substring_of_length(i + 2, prefix_end - i - 2);
         if (let const directory = resolve_tilde_prefix(name)) {
@@ -703,6 +747,7 @@ fn EvalContext::expand_colon_tildes(WordSegment &segment,
     rewritten += view[i];
     i++;
   }
+
   if (was_changed) {
     LOG(All, "rewrote colon tilde prefixes in an assignment value");
     segment.text.assign_copy(heap_allocator(), rewritten.view());
@@ -723,6 +768,7 @@ fn parse_glob_ignore_patterns(StringView list, bool should_fold_case,
 {
   let patterns = ArrayList<glob_ignore_pattern>{allocator};
   usize entry_start = 0;
+
   while (entry_start <= list.length) {
     let const rest = list.substring(entry_start);
     let const colon = rest.find_character(':');
@@ -732,6 +778,7 @@ fn parse_glob_ignore_patterns(StringView list, bool should_fold_case,
     if (entry.is_empty()) continue;
 
     let pattern = glob_ignore_pattern{String{allocator}, Bitset{allocator}};
+
     for (usize index = 0; index < entry.length; index++) {
       let const is_escaped = entry[index] == '\\' && index + 1 < entry.length;
       if (is_escaped) index++;
@@ -739,6 +786,7 @@ fn parse_glob_ignore_patterns(StringView list, bool should_fold_case,
                                          : entry[index]);
       pattern.active.push(!is_escaped);
     }
+
     patterns.push(steal(pattern));
   }
 
@@ -753,6 +801,7 @@ fn glob_ignore_segments_match(const glob_ignore_pattern &pattern,
   let const pattern_text = pattern.text.view();
   usize pattern_start = 0;
   usize text_start = 0;
+
   while (true) {
     let const pattern_rest = pattern_text.substring_of_length(
         pattern_start, pattern_length - pattern_start);
@@ -819,6 +868,7 @@ hot fn EvalContext::expand_path(glob_field field,
   if (!has_glob) {
     let single_result = ArrayList<String>{scratch};
     single_result.push(steal(field.text));
+
     return steal(single_result).make_sorted(sort_order::ascending);
   }
 
@@ -856,6 +906,7 @@ hot fn EvalContext::expand_path(glob_field field,
         should_fold_case ? path.to_lower_ascii(scratch) : String{scratch};
     let const subject = should_fold_case ? folded_path.view() : path;
     let const charset = get_glob_charset_for(subject);
+
     for (let const &pattern : ignored_patterns) {
       if (glob_ignore_pattern_matches(pattern, subject, extglob, charset)) {
         return true;
@@ -864,6 +915,7 @@ hot fn EvalContext::expand_path(glob_field field,
 
     return false;
   };
+
   for (let &f : fields) {
     if (has_glob_ignore && do_is_ignored(f.text.view())) {
       continue;
@@ -918,6 +970,7 @@ fn EvalContext::expand_glob_lenient(StringView pattern) throws
   let field = glob_field{scratch};
   field.text.append(pattern);
   field.glob_active.reserve(pattern.length);
+
   for (usize i = 0; i < pattern.length; i++)
     field.glob_active.push(true);
 
@@ -928,14 +981,18 @@ fn EvalContext::expand_glob_lenient(StringView pattern) throws
     LOG(Debug, "compgen -G probe of '%.*s' has no glob, checking existence",
         static_cast<int>(pattern.length), pattern.data);
     if (Path{pattern, scratch}.exists()) values.push(String{scratch, pattern});
+
     return steal(values).make_sorted(sort_order::ascending);
   }
 
   let input = ArrayList<glob_field>{scratch};
   input.push(steal(field));
+
   for (let &f : expand_path_recurse(steal(input)))
     values.push(steal(f.text));
+
   LOG(Debug, "compgen -G probe matched %zu paths", values.count());
+
   return steal(values).make_sorted(sort_order::ascending);
 }
 

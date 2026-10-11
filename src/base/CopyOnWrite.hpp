@@ -83,6 +83,7 @@ public:
   pure fn read() const wontthrow -> const T &
   {
     ASSERT(m_shared != nullptr);
+
     return m_shared->value;
   }
 
@@ -106,16 +107,17 @@ public:
   }
 
 private:
-  struct shared
+  struct Shared
   {
     u32 reference_count;
     T value;
   };
 
-  static fn create(Allocator allocator, T value) throws -> shared *
+  static fn create(Allocator allocator, T value) throws -> Shared *
   {
-    let *const storage = allocator.alloc_array<shared>(1);
-    return new (storage) shared{1, steal(value)};
+    let *const storage = allocator.alloc_array<Shared>(1);
+
+    return new (storage) Shared{1, steal(value)};
   }
 
   fn release() wontthrow -> void
@@ -123,14 +125,14 @@ private:
     if (m_shared == nullptr) return;
 
     if (--m_shared->reference_count == 0) {
-      m_shared->~shared();
+      m_shared->~Shared();
       m_allocator.free_array(m_shared, 1);
     }
     m_shared = nullptr;
   }
 
   Allocator m_allocator;
-  shared *m_shared;
+  Shared *m_shared;
 };
 
 } /* namespace koshka */

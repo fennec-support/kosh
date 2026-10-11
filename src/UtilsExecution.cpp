@@ -41,10 +41,12 @@ fn set_foreground_program_title(const ArrayList<String> &arguments,
 
   let &command_title = cxt.job_table_store().foreground_program_title_buffer();
   command_title.clear();
+
   for (usize index = 0; index < arguments.count(); index++) {
     if (index > 0) command_title.push(' ');
     append_shell_quoted_arg(command_title, arguments[index]);
   }
+
   toiletline::set_title(command_title.view());
 }
 
@@ -56,10 +58,12 @@ fn execute_context(ExecContext &&ec, EvalContext &cxt,
     if (is_async) {
       let contexts = ArrayList<ExecContext>{cxt.scratch_allocator()};
       contexts.push(steal(ec));
+
       return execute_contexts_with_pipes(steal(contexts), cxt, mode);
     }
 
     LOG(Debug, "dispatching the builtin '%s'", ec.program().c_str());
+
     return execute_builtin(steal(ec), cxt);
   }
 
@@ -76,6 +80,7 @@ fn execute_context(ExecContext &&ec, EvalContext &cxt,
           os::shell_has_controlling_terminal())
       {
         let command = String{heap_allocator()};
+
         for (usize index = 0; index < ec.args().count(); index++) {
           if (index > 0) command.push(' ');
           append_shell_quoted_arg(command, ec.args()[index]);
@@ -124,6 +129,7 @@ fn execute_context(ExecContext &&ec, EvalContext &cxt,
                 child, command, status, os::process_id_of(child));
             cxt.job_table_store().notify_stopped_job(id);
           }
+
           return status;
         }
 
@@ -132,6 +138,7 @@ fn execute_context(ExecContext &&ec, EvalContext &cxt,
           os::close_fd(sync_pipe->out);
         }
       }
+
       return cxt.run_mimicked_script(ec, *mode,
                                      should_replace_shell
                                          ? script_isolation::Shared
@@ -204,6 +211,7 @@ fn execute_context(ExecContext &&ec, EvalContext &cxt,
   if (p == KOSH_INVALID_PROCESS) {
     LOG(Debug, "running the file as a shell script in this process");
     const mimic_mood mode = cxt.runtime_state().get_mood();
+
     return cxt.run_program_fallback(ec, mode,
                                     should_replace_shell
                                         ? script_isolation::Shared
@@ -219,6 +227,7 @@ fn execute_context(ExecContext &&ec, EvalContext &cxt,
                           String::from(static_cast<u64>(os::process_id_of(p)),
                                        heap_allocator()) +
                           "\n");
+
     return 0;
   }
 
@@ -241,6 +250,7 @@ fn execute_context(ExecContext &&ec, EvalContext &cxt,
       foreground_status == 130 &&
       cxt.execution_store().completion_function_running();
   if (was_interrupt_to_reraise_for_completion) os::INTERRUPT_REQUESTED = 1;
+
   return foreground_status;
 }
 
@@ -276,6 +286,7 @@ static fn report_unresolved_stage(EvalContext &cxt,
   if (!target.has_value()) {
     show_message(stage.get_unresolved_diagnostic());
     cxt.print_source_backtrace(stage.source_location());
+
     return;
   }
 
@@ -301,14 +312,17 @@ fn execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs, EvalContext &cxt,
       !cxt.execution_store().prompt_command_running())
   {
     let command = String{cxt.scratch_allocator()};
+
     for (usize stage = 0; stage < ecs.count(); stage++) {
       if (stage > 0) command += " | ";
+
       for (usize argument = 0; argument < ecs[stage].args().count(); argument++)
       {
         if (argument > 0) command.push(' ');
         append_shell_quoted_arg(command, ecs[stage].args()[argument]);
       }
     }
+
     toiletline::set_title(command.view());
   }
 
@@ -319,6 +333,7 @@ fn execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs, EvalContext &cxt,
   if (is_async) {
     for (usize stage = 0; stage < ecs.count(); stage++) {
       if (stage > 0) job_command += " | ";
+
       for (usize argument = 0; argument < ecs[stage].args().count(); argument++)
       {
         if (argument > 0) job_command += ' ';
@@ -339,6 +354,7 @@ fn execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs, EvalContext &cxt,
     if (should_reap_children_on_unwind) {
       for (ExecContext &pending_context : ecs)
         pending_context.close_fds();
+
       if (last_stdin != KOSH_INVALID_FD) os::close_fd(last_stdin);
       terminate_and_reap_processes(children);
     }
@@ -347,8 +363,10 @@ fn execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs, EvalContext &cxt,
   let const stage_count = ecs.count();
   let stage_status = ArrayList<i32>{heap_allocator()};
   stage_status.reserve(stage_count);
+
   for (usize i = 0; i < stage_count; i++)
     stage_status.push(0);
+
   let child_stage = ArrayList<usize>{heap_allocator()};
 
   let unresolved_stages = ArrayList<usize>{heap_allocator()};
@@ -477,6 +495,7 @@ fn execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs, EvalContext &cxt,
                 "PATH",
                 "NO_COLOR",
                 internal::SUPPRESS_ROOT_TRACE};
+
             for (let const name : RESTORED_ENVIRONMENT_NAMES) {
               let const value = os::get_environment_variable(name);
               if (value.has_value()) {
@@ -496,6 +515,7 @@ fn execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs, EvalContext &cxt,
           {
             stage_source.append("koshkit ");
           }
+
           for (usize argument_index = 0; argument_index < ec.args().count();
                argument_index++)
           {
@@ -644,6 +664,7 @@ fn execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs, EvalContext &cxt,
                          heap_allocator()) +
             "\n");
     }
+
     return ret;
   }
 
@@ -661,13 +682,16 @@ fn execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs, EvalContext &cxt,
 
   let pipe_status = ArrayList<String>{heap_allocator()};
   pipe_status.reserve(stage_count);
+
   for (usize i = 0; i < stage_count; i++)
     pipe_status.push(String::from(stage_status[i], heap_allocator()));
+
   cxt.publish_pipe_statuses(steal(pipe_status));
 
   if (cxt.runtime_state().pipefail()) {
     for (usize i = stage_count; i > 0; i--)
       if (stage_status[i - 1] != 0) return stage_status[i - 1];
+
     return 0;
   }
 
@@ -708,8 +732,8 @@ cold fn print_memory_report() wontthrow -> void
   if (os::read_malloc_heap_stats(heap_stats))
     std::fprintf(stderr,
                  "Malloc heap: in use %zu, total arena %zu, mmapped %zu\n",
-                 heap_stats.bytes_in_use, heap_stats.arena_bytes,
-                 heap_stats.mapped_bytes);
+                 heap_stats.bytes_in_use, heap_stats.arena_byte_count,
+                 heap_stats.mapped_byte_count);
 }
 
 wontreturn fn quit(i32 code, farewell_policy farewell) throws -> void

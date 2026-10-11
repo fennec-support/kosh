@@ -61,6 +61,7 @@ fn Pipeline::analyze(AnalysisContext &actx, bool is_unconditional) const throws
 
   let const has_multiple_stages = m_commands.count() > 1;
   let const is_unconditional_stage = is_unconditional && !has_multiple_stages;
+
   for (let const command : m_commands) {
     ASSERT(command != nullptr);
     let const was_direct_pipeline_stage = actx.walk.is_direct_pipeline_stage;
@@ -195,9 +196,11 @@ fn Pipeline::analyze(AnalysisContext &actx, bool is_unconditional) const throws
 
       let has_null_flag = false;
       let raw_storage = String{heap_allocator()};
+
       for (usize a = 1; a < stage->args().count() && !has_null_flag; a++)
         if (borrowed_token_text(stage->args()[a], raw_storage) == "-print0")
           has_null_flag = true;
+
       for (usize a = 1; a < next->args().count() && !has_null_flag; a++) {
         let const raw = borrowed_token_text(next->args()[a], raw_storage);
         if (raw == "-0" || raw == "--null") {
@@ -345,6 +348,7 @@ cold fn CompoundListCondition::try_static_condition_verdict(
   ASSERT(m_cmd != nullptr);
 
   if (m_kind != Kind::None) return koshka::None;
+
   return m_cmd->try_static_condition_verdict(actx);
 }
 
@@ -550,6 +554,7 @@ fn CompoundList::analyze(AnalysisContext &actx,
       actx.generated_relative_executable_paths.clone();
   let has_conditional_chain = false;
   const CompoundListCondition *previous_node = nullptr;
+
   for (usize i = 0; i < m_nodes.count(); i++) {
     let const node = m_nodes[i];
     ASSERT(node != nullptr);
@@ -651,6 +656,7 @@ fn CompoundList::analyze(AnalysisContext &actx,
     actx.walk.is_command_status_observed = was_command_status_observed;
     previous_node = node;
   }
+
   if (has_conditional_chain) {
     actx.occurrences.merge(conditional_chain_entry_occurrences);
     actx.generated_relative_executable_paths =
@@ -676,6 +682,7 @@ cold fn CompoundList::try_static_condition_verdict(
 {
   if (m_nodes.count() != 1) return koshka::None;
   ASSERT(m_nodes[0] != nullptr);
+
   return m_nodes[0]->try_static_condition_verdict(actx);
 }
 

@@ -38,6 +38,7 @@ fn Sync::execute(const ExecContext &ec, EvalContext &cxt,
       conflict_location = FLAG_SYNC_FILESYSTEM.value_location();
     KOSHKIT_REPORT_ERROR_AT(conflict_location, "cannot combine -d with -f",
                             "select one of the two modes");
+
     return 1;
   }
 
@@ -50,6 +51,7 @@ fn Sync::execute(const ExecContext &ec, EvalContext &cxt,
       report_soft_koshkit_util_error(ec, cxt, args[0].view(),
                                      "cannot flush the mounted filesystems: " +
                                          os::last_system_error_message());
+
       return 1;
     }
 
@@ -59,6 +61,7 @@ fn Sync::execute(const ExecContext &ec, EvalContext &cxt,
   i32 status = 0;
   let const mode = FLAG_SYNC_DATA.is_enabled() ? os::sync_mode::DataOnly
                                                : os::sync_mode::All;
+
   for (usize operand_index = 0; operand_index < operands.count();
        operand_index++)
   {

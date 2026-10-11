@@ -68,6 +68,7 @@ fn Strings::execute(const ExecContext &ec, EvalContext &cxt,
       KOSHKIT_REPORT_ERROR_AT(
           FLAG_STRINGS_MINIMUM.value_location(), "invalid minimum length",
           "use a positive decimal integer within the platform size limit");
+
       return 1;
     }
 
@@ -92,6 +93,7 @@ fn Strings::execute(const ExecContext &ec, EvalContext &cxt,
       KOSHKIT_REPORT_ERROR_AT(
           FLAG_STRINGS_RADIX.value_location(), "invalid offset radix",
           "use d for decimal, o for octal, or x for hexadecimal");
+
       return 1;
     }
 
@@ -121,22 +123,26 @@ fn Strings::execute(const ExecContext &ec, EvalContext &cxt,
 
     for (let const &chunk : chunks) {
       usize position = 0;
+
       while (position < chunk.content.length) {
         if (!is_strings_printable(static_cast<u8>(chunk.content[position]))) {
           if (!run.is_empty()) do_flush();
 
           let const separator_begin = position;
+
           while (
               position < chunk.content.length &&
               !is_strings_printable(static_cast<u8>(chunk.content[position])))
           {
             position++;
           }
+
           byte_offset += position - separator_begin;
           continue;
         }
 
         usize run_end = position;
+
         while (run_end < chunk.content.length &&
                is_strings_printable(static_cast<u8>(chunk.content[run_end])))
         {
@@ -181,6 +187,7 @@ fn Strings::execute(const ExecContext &ec, EvalContext &cxt,
   }
 
   ec.print_to_stdout(output);
+
   return status;
 }
 

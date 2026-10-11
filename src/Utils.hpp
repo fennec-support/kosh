@@ -99,12 +99,14 @@ fn merge_tokens_to_string(const ArrayList<const Token *> &tokens) throws
 inline fn merge_args_to_string(const ArrayList<String> &args) throws -> String
 {
   let result = String{heap_allocator()};
+
   for (usize i = 0; i < args.count(); i++) {
     result.append(args[i].view());
     if (i + 1 < args.count()) {
       result.push(' ');
     }
   }
+
   return result;
 }
 
@@ -113,10 +115,12 @@ fn append_name_columns(String &output, usize name_count,
                        GetName do_get_name) throws -> void
 {
   usize longest_length = 0;
+
   for (usize index = 0; index < name_count; index++) {
     let const name = do_get_name(index);
     if (name.length > longest_length) longest_length = name.length;
   }
+
   let const column_width = longest_length + 2;
   let const column_count = column_width >= 78 ? usize{1} : 78 / column_width;
 
@@ -182,6 +186,7 @@ pure alwaysinline fn ascii_to_lower(char ch) wontthrow -> char
   if (ch >= 'A' && ch <= 'Z') {
     return static_cast<char>(ch - 'A' + 'a');
   }
+
   return ch;
 }
 
@@ -197,6 +202,7 @@ struct text_position_range
   pure fn operator<(const text_position_range &other) const wontthrow->bool
   {
     if (first != other.first) return first < other.first;
+
     return last < other.last;
   }
 };
@@ -284,9 +290,9 @@ fn format_f64(f64 value, Allocator allocator) throws -> String;
 
 fn parse_timeout_seconds_to_nanos(StringView text) throws -> ErrorOr<i64>;
 
-fn int_to_text_into(i64 value, char *buffer, usize buffer_size) wontthrow
+fn int_to_text_into(i64 value, char *buffer, usize buffer_byte_count) wontthrow
     -> StringView;
-fn uint_to_text_into(u64 value, char *buffer, usize buffer_size) wontthrow
+fn uint_to_text_into(u64 value, char *buffer, usize buffer_byte_count) wontthrow
     -> StringView;
 
 fn format_minutes_seconds(double seconds, i32 decimal_count = 3) throws
@@ -309,7 +315,7 @@ enum class time_report_rss : u8
 
 fn format_time_report(const Maybe<String> &time_format, double real_seconds,
                       double user_seconds, double system_seconds,
-                      u64 peak_rss_bytes, time_report_layout layout,
+                      u64 peak_rss_byte_count, time_report_layout layout,
                       time_report_rss rss) throws -> String;
 
 struct source_line_position
@@ -383,6 +389,7 @@ private:
     if (a.length != b.length) return false;
 
     i32 counts[256] = {0};
+
     for (usize i = 0; i < a.length; i++) {
       counts[static_cast<u8>(a[i])]++;
       counts[static_cast<u8>(b[i])]--;
@@ -490,18 +497,18 @@ fn read_directory_cached(
     const Path &directory,
     directory_validation validation = directory_validation::Validate,
     directory_listing_order order = directory_listing_order::Unsorted) throws
-    -> const ArrayList<Path::directory_child> *;
+    -> const ArrayList<Path::DirectoryChild> *;
 fn warm_directory_index(const Path &directory) throws -> void;
 pure fn directory_listing_generation(const Path &directory) wontthrow -> u64;
 pure fn directory_entry_name_lower_bound(
-    const ArrayList<Path::directory_child> &entries, StringView name) wontthrow
+    const ArrayList<Path::DirectoryChild> &entries, StringView name) wontthrow
     -> usize;
 pure fn directory_entry_name_has_casefold_prefix(StringView name,
                                                  StringView prefix) wontthrow
     -> bool;
 fn directory_entry_kind(const Path &directory,
-                        const Path::directory_child &entry) throws
-    -> Path::entry_kind;
+                        const Path::DirectoryChild &entry) throws
+    -> Path::EntryKind;
 
 #if !defined NDEBUG
 pure fn debug_directory_stat_count() wontthrow -> usize;

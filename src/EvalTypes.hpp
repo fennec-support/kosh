@@ -67,6 +67,7 @@ public:
   pure fn sequence_of(StringView composite) const wontthrow -> u64
   {
     let const found = m_sequences.find(composite);
+
     return found.has_value() ? *found.value() : u64{0};
   }
 
@@ -252,6 +253,7 @@ struct variable_table_body
     copy.index.for_each([&](StringView, variable_entry *&entry) throws {
       entry = copy.entries.emplace(entry->clone());
     });
+
     return copy;
   }
 
@@ -279,6 +281,7 @@ public:
   {
     let copy = VariableTable{m_body.allocator()};
     copy.m_body = m_body.clone();
+
     return copy;
   }
 
@@ -286,6 +289,7 @@ public:
   {
     let copy = VariableTable{m_body.allocator()};
     copy.m_body = m_body;
+
     return copy;
   }
 
@@ -296,6 +300,7 @@ public:
 
     let const found = m_body.read().index.find(name);
     if (!found.has_value()) return None;
+
     return *found.value();
   }
 
@@ -319,6 +324,7 @@ public:
       table.entries.erase(created);
       throw;
     }
+
     return *created;
   }
 
@@ -342,6 +348,7 @@ public:
     if (!entry.is_indexed_array) body().indexed_array_count++;
     entry.is_indexed_array = true;
     entry.elements = steal(elements);
+
     return &entry.elements;
   }
 
@@ -370,6 +377,7 @@ public:
     if (!found.has_value()) return None;
 
     table.pipestatus_entry = *found.value();
+
     return table.pipestatus_entry;
   }
 
@@ -382,6 +390,7 @@ public:
       table.pipestatus_entry =
           *table.index.find(StringView{"PIPESTATUS", 10}).value();
     }
+
     return table.pipestatus_entry;
   }
 
@@ -399,10 +408,12 @@ public:
                                    value.length < entry.value.count() / 2;
     if (is_buffer_wasteful) {
       entry.value = String{table.allocator, value};
+
       return &entry.value;
     }
     entry.value.clear();
     entry.value.append(value);
+
     return &entry.value;
   }
 
@@ -429,6 +440,7 @@ public:
       let &entry = *find_for_write(name).value();
       entry.attribute_bits = 0;
       release_if_unused(name, entry);
+
       return;
     }
 
@@ -1068,6 +1080,7 @@ struct reporting_revisions
       fields |= static_cast<u8>(reporting_field::Diagnostics);
     if (annoying != prior.annoying)
       fields |= static_cast<u8>(reporting_field::Annoying);
+
     return fields;
   }
 

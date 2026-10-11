@@ -186,6 +186,7 @@ fn load_socket_directory(socket_directory &directory,
   if (os::has_network_socket_listing()) {
     let const sockets =
         os::network_sockets(os::network_socket_process_mode::WithoutProcesses);
+
     for (let const &socket : sockets) {
       let type = StringView{"unix"};
       if (socket.protocol != os::network_socket_protocol::Unix) {
@@ -219,6 +220,7 @@ fn find_socket_description(socket_directory &directory, u64 inode,
 
   usize low = 0;
   usize high = directory.entries.count();
+
   while (low < high) {
     let const middle = low + ((high - low) / 2);
     if (directory.entries[middle].inode < inode)
@@ -246,6 +248,7 @@ fn device_label(const os::file_status &status, Allocator allocator) throws
   let label = String::from(os::device_major(device_id), allocator);
   label += ",";
   label += String::from(os::device_minor(device_id), allocator).view();
+
   return label;
 }
 
@@ -264,6 +267,7 @@ fn descriptor_label(const os::process_open_file &file,
 
   let label = String::from(static_cast<u64>(file.descriptor_number), allocator);
   label += StringView{&file.access, 1};
+
   return label;
 }
 
@@ -331,6 +335,7 @@ fn EvilFiles::execute(
   if (!os::has_process_open_file_listing()) {
     report_soft_koshkit_error(ec, cxt, "open file listing is unavailable",
                               "this platform exposes no open file table");
+
     return 1;
   }
 
@@ -345,6 +350,7 @@ fn EvilFiles::execute(
           "invalid process id '" +
               String{allocator, FLAG_EVILFILES_PID.value()} + "'",
           "provide a decimal process id");
+
       return 1;
     }
 
@@ -363,6 +369,7 @@ fn EvilFiles::execute(
             "no such user '" + String{allocator, FLAG_EVILFILES_USER.value()} +
                 "'",
             "provide a user name or numeric uid");
+
         return 1;
       }
 
@@ -374,6 +381,7 @@ fn EvilFiles::execute(
   if (processes.is_empty()) {
     report_soft_koshkit_error(ec, cxt, "the process listing is unavailable",
                               "this platform exposes no process table");
+
     return 1;
   }
 
@@ -403,6 +411,7 @@ fn EvilFiles::execute(
 
     if (FLAG_EVILFILES_TERSE.is_enabled()) {
       bool did_match_this_process = false;
+
       for (let const &file : files) {
         if (FLAG_EVILFILES_NETWORK.is_enabled() &&
             !is_network_file(file.path.view()))
@@ -415,6 +424,7 @@ fn EvilFiles::execute(
         did_match_this_process = true;
         break;
       }
+
       if (did_match_this_process) {
         terse_output +=
             String::from(static_cast<u64>(process.pid), allocator).view();
@@ -425,6 +435,7 @@ fn EvilFiles::execute(
 
     let matching_positions = ArrayList<usize>{allocator};
     let matching_paths = ArrayList<Path>{allocator};
+
     for (usize file_position = 0; file_position < files.count();
          file_position++)
     {
@@ -439,6 +450,7 @@ fn EvilFiles::execute(
       matching_positions.push(file_position);
       matching_paths.push(Path{files[file_position].path.view(), allocator});
     }
+
     if (matching_positions.is_empty()) continue;
 
     did_match = true;
@@ -446,11 +458,14 @@ fn EvilFiles::execute(
     let metadata_batch = os::Batch{allocator};
     file_statuses.reserve(matching_positions.count());
     metadata_batch.reserve(matching_positions.count());
+
     for (usize position = 0; position < matching_positions.count(); position++)
       file_statuses.push({});
+
     for (usize position = 0; position < matching_positions.count(); position++)
       metadata_batch.add(os::batch_operation::stat(matching_paths[position],
                                                    file_statuses[position]));
+
     let const metadata_results = metadata_batch.execute();
     let const owner = os::process_owner_name(static_cast<u32>(process.pid),
                                              process.owner_id, allocator);
@@ -524,11 +539,13 @@ fn EvilFiles::execute(
 
   if (FLAG_EVILFILES_TERSE.is_enabled()) {
     ec.print_to_stdout(terse_output);
+
     return did_match ? 0 : 1;
   }
 
   if (rows.is_empty()) {
     if (!warnings.is_empty()) show_report_warning(warnings.view());
+
     return 1;
   }
 
@@ -571,16 +588,17 @@ fn EvilFiles::execute(
   table.add_heading("NAME");
 
   let const used_width = other_columns_width + 2 + widths.command;
+
   for (let const &row : rows) {
     let command = String{allocator, row.command.view()};
     if (toiletline::get_display_width(command.view()) > widths.command &&
         widths.command > 3)
     {
       usize actual_cells = 0;
-      let const kept_bytes =
+      let const kept_byte_count =
           toiletline::get_byte_offset_at_or_before_display_cell(
               command.view(), widths.command - 3, actual_cells);
-      command.truncate(kept_bytes);
+      command.truncate(kept_byte_count);
       command += "...";
     }
 
@@ -591,10 +609,10 @@ fn EvilFiles::execute(
     {
       if (line_width_limit > used_width + 4) {
         usize actual_cells = 0;
-        let const kept_bytes =
+        let const kept_byte_count =
             toiletline::get_byte_offset_at_or_before_display_cell(
                 name.view(), line_width_limit - used_width - 3, actual_cells);
-        name.truncate(kept_bytes);
+        name.truncate(kept_byte_count);
         name += "...";
       } else {
         name = String{allocator, "..."};
@@ -619,10 +637,12 @@ fn EvilFiles::execute(
     cells.push({name.view(), {}});
     table.add_row(cells);
   }
+
   append_titled_report_table(output, "Open files", table, should_color);
 
   ec.print_to_stdout(output);
   if (!warnings.is_empty()) show_report_warning(warnings.view());
+
   return 0;
 }
 

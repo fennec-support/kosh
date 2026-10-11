@@ -70,6 +70,7 @@ fn Fold::execute(const ExecContext &ec, EvalContext &cxt,
           "invalid width '" +
               String{cxt.scratch_allocator(), FLAG_FOLD_WIDTH.value()} + "'",
           "use a positive decimal width");
+
       return 1;
     }
     width_value = parsed.value();
@@ -82,11 +83,14 @@ fn Fold::execute(const ExecContext &ec, EvalContext &cxt,
 
   let const do_append_source = [&](StringView content) throws -> void {
     usize line_start = 0;
+
     while (line_start < content.length) {
       usize line_end = line_start;
+
       while (line_end < content.length && content[line_end] != '\n') {
         line_end++;
       }
+
       append_folded_line(
           output,
           content.substring_of_length(line_start, line_end - line_start), width,
@@ -108,6 +112,7 @@ fn Fold::execute(const ExecContext &ec, EvalContext &cxt,
   if (visit == source_visit_result::Interrupted) return 130;
 
   ec.print_to_stdout(output);
+
   return status;
 }
 

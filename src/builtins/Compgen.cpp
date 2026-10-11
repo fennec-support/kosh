@@ -103,8 +103,10 @@ static fn compile_filter(StringView raw_filter, StringView word,
     }
     if (character == '&') {
       compiled.pattern.append(word);
+
       for (usize i = 0; i < word.length; i++)
         compiled.active.push(false);
+
       continue;
     }
     compiled.pattern.push(character);
@@ -120,6 +122,7 @@ static fn candidate_is_excluded(StringView candidate,
   let const matches =
       utils::glob_matches(filter.pattern.view(), candidate, filter.active, 0,
                           filter.extglob, filter.charset);
+
   return filter.is_negated ? !matches : matches;
 }
 
@@ -212,12 +215,14 @@ static fn push_table_file_names(compgen_emitter &emitter, StringView path,
 
     usize position = 0;
     usize field_index = 0;
+
     while (position < body.length) {
       while (position < body.length && lexer::is_whitespace(body[position])) {
         position++;
       }
 
       let const field_start = position;
+
       while (position < body.length && !lexer::is_whitespace(body[position])) {
         position++;
       }
@@ -362,6 +367,7 @@ static fn run_compgen_actions(EvalContext &cxt, u32 action_mask,
       emitter.push_prefixed(name.view());
 
     static constexpr StringView RESERVED_SYMBOL_WORDS[] = {"in", "{", "}", "!"};
+
     for (let const word : RESERVED_SYMBOL_WORDS)
       emitter.push_prefixed(word);
 
@@ -391,6 +397,7 @@ static fn run_compgen_actions(EvalContext &cxt, u32 action_mask,
     emitter.push_prefixed("EXIT");
 
     let prefixed_name = String{cxt.scratch_allocator()};
+
     for (let const name : os::signal_names()) {
       prefixed_name.clear();
       prefixed_name.append("SIG");
@@ -467,6 +474,7 @@ fn completion::remove_compgen_filtered(EvalContext &context,
                      context.get_extglob_mode(), context.get_glob_charset());
 
   usize kept_count = 0;
+
   for (usize i = 0; i < candidates.count(); i++) {
     if (candidate_is_excluded(candidates[i].view(), filter)) continue;
 

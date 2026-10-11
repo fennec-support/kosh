@@ -20,7 +20,7 @@ class BumpArena
 {
 public:
   BumpArena();
-  explicit BumpArena(usize initial_block_size);
+  explicit BumpArena(usize initial_block_byte_count);
   ~BumpArena();
 
   BumpArena(const BumpArena &) = delete;
@@ -62,15 +62,19 @@ public:
   fn destructor_capacity() const wontthrow -> usize
   {
     usize total = 0;
+
     for (usize i = 0; i < m_destructor_chunks.count(); i++)
       total += destructor_chunk_capacity(i);
+
     return total;
   }
   fn bytes_capacity() const wontthrow -> usize
   {
     usize total = 0;
+
     for (let const &block : m_blocks)
       total += block.size;
+
     return total;
   }
 
@@ -103,37 +107,37 @@ public:
         if constexpr (T::is_arena_destructor_noop) return object;
       }
       try {
-        push_destructor(
-            pending_destructor{object, [](opaque *pointer) noexcept {
-                                 static_cast<T *>(pointer)->~T();
-                               }});
+        push_destructor(PendingDestructor{object, [](opaque *pointer) noexcept {
+                                            static_cast<T *>(pointer)->~T();
+                                          }});
       } catch (...) {
         object->~T();
         release(saved);
         throw;
       }
     }
+
     return object;
   }
 
 private:
-  struct block
+  struct Block
   {
     u8 *base;
     usize size;
     usize used;
   };
 
-  struct lifetime_slot
+  struct LifetimeSlot
   {
     Mark payload_end;
     u32 incarnation{0};
     u32 next_free_position{UINT32_MAX};
   };
 
-  static_assert(sizeof(usize) != 8 || sizeof(lifetime_slot) == 32);
+  static_assert(sizeof(usize) != 8 || sizeof(LifetimeSlot) == 32);
 
-  struct pending_destructor
+  struct PendingDestructor
   {
     opaque *object;
     void (*run)(opaque *) noexcept;
@@ -142,7 +146,7 @@ private:
   static constexpr usize DEFAULT_BLOCK_SIZE = 64 * 1024;
   static constexpr usize FIRST_DESTRUCTOR_CHUNK_COUNT = 32;
   static constexpr usize DESTRUCTORS_PER_CHUNK =
-      DEFAULT_BLOCK_SIZE / sizeof(pending_destructor);
+      DEFAULT_BLOCK_SIZE / sizeof(PendingDestructor);
   static_assert(DESTRUCTORS_PER_CHUNK % FIRST_DESTRUCTOR_CHUNK_COUNT == 0 &&
                     (DESTRUCTORS_PER_CHUNK / FIRST_DESTRUCTOR_CHUNK_COUNT &
                      (DESTRUCTORS_PER_CHUNK / FIRST_DESTRUCTOR_CHUNK_COUNT -
@@ -169,6 +173,7 @@ private:
       chunk_index =
           DOUBLING_CHUNK_COUNT + later_position / DESTRUCTORS_PER_CHUNK;
       position_in_chunk = later_position % DESTRUCTORS_PER_CHUNK;
+
       return;
     }
 
@@ -178,20 +183,21 @@ private:
                                        ((usize{1} << chunk_index) - 1);
   }
 
-  ArrayList<block> m_blocks{heap_allocator()};
+  ArrayList<Block> m_blocks{heap_allocator()};
   usize m_current_index{0};
   uintptr m_lowest_address{UINTPTR_MAX};
   uintptr m_highest_address{0};
-  ArrayList<pending_destructor *> m_destructor_chunks{heap_allocator()};
-  ArrayList<lifetime_slot> m_lifetime_slots{heap_allocator()};
+  ArrayList<PendingDestructor *> m_destructor_chunks{heap_allocator()};
+  ArrayList<LifetimeSlot> m_lifetime_slots{heap_allocator()};
   ArrayList<u32> m_active_lifetime_slots{heap_allocator()};
   usize m_destructor_count{0};
   usize m_reset_generation{0};
   u32 m_arena_incarnation{0};
   u32 m_first_free_lifetime_slot{UINT32_MAX};
 
-  fn add_block(usize minimum_size, usize preferred_size) throws -> void;
-  fn push_destructor(pending_destructor pending) throws -> void;
+  fn add_block(usize minimum_byte_count, usize preferred_byte_count) throws
+      -> void;
+  fn push_destructor(PendingDestructor pending) throws -> void;
   fn run_destructors_down_to(usize first) wontthrow -> void;
   fn release_destructor_chunks(usize kept_chunk_count) wontthrow -> void;
   fn register_live() wontthrow -> void;

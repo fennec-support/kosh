@@ -34,6 +34,7 @@ fn Date::execute(const ExecContext &ec, EvalContext &cxt,
     report_soft_koshkit_util_error(ec, cxt, operand_locations[0],
                                    args[0].view(),
                                    "setting the system clock is unsupported");
+
     return 1;
   }
 
@@ -43,6 +44,7 @@ fn Date::execute(const ExecContext &ec, EvalContext &cxt,
   if (broken_down == nullptr) {
     report_soft_koshkit_util_error(ec, cxt, args[0].view(),
                                    "cannot convert the current time");
+
     return 1;
   }
 
@@ -58,11 +60,13 @@ fn Date::execute(const ExecContext &ec, EvalContext &cxt,
     report_soft_koshkit_util_error(
         ec, cxt, location, args[0].view(),
         "formatted output exceeds the supported line length");
+
     return 1;
   }
 
   ec.print_to_stdout(StringView{buffer, length});
   ec.print_to_stdout("\n");
+
   return 0;
 }
 

@@ -67,18 +67,22 @@ static fn linux_socket_address(StringView encoded, Allocator allocator,
   if (family == network_address_family::IPv6) {
     if (encoded.length != 32) return None;
     u8 bytes[16]{};
+
     for (usize word_index = 0; word_index < 4; word_index++) {
       let const word = utils::parse_integer_in_base_u64(
           encoded.substring_of_length(word_index * 8, 8), int_base::hex);
       if (word.is_error()) return None;
       let const value = word.value();
+
       for (usize byte_index = 0; byte_index < 4; byte_index++)
         bytes[word_index * 4 + byte_index] =
             static_cast<u8>((value >> (byte_index * 8)) & 0xff);
     }
+
     char text[INET6_ADDRSTRLEN]{};
     if (::inet_ntop(AF_INET6, bytes, text, sizeof(text)) == nullptr)
       return None;
+
     return String{allocator, StringView{text}};
   }
 
@@ -89,6 +93,7 @@ static fn linux_socket_address(StringView encoded, Allocator allocator,
   char text[INET_ADDRSTRLEN]{};
   if (::inet_ntop(AF_INET, &address, text, sizeof(text)) == nullptr)
     return None;
+
   return String{allocator, StringView{text}};
 }
 
@@ -104,8 +109,8 @@ struct linux_unix_socket_peer
 {
   u64 identity{0};
   u64 peer_identity{0};
-  u32 receive_queue_bytes{0};
-  u32 send_queue_bytes{0};
+  u32 receive_queue_byte_count{0};
+  u32 send_queue_byte_count{0};
 };
 
 struct linux_unix_socket_peer_comparator
@@ -137,6 +142,7 @@ static fn linux_socket_proc_path(StringView suffix, Allocator allocator) throws
 {
   let path = String{allocator, "/proc"};
   path += suffix;
+
   return path;
 }
 
@@ -174,6 +180,7 @@ static fn linux_unix_socket_peers(Allocator allocator) throws
   let const deadline_nanos = monotonic_nanos() + 1000000000;
   bool is_done = false;
   bool is_valid = true;
+
   while (!is_done && is_valid) {
     let const now_nanos = monotonic_nanos();
     if (now_nanos == 0 || now_nanos >= deadline_nanos) {
@@ -204,6 +211,7 @@ static fn linux_unix_socket_peers(Allocator allocator) throws
       break;
     }
     u32 remaining = static_cast<u32>(received);
+
     for (let *header = reinterpret_cast<struct nlmsghdr *>(buffer);
          NLMSG_OK(header, remaining); header = NLMSG_NEXT(header, remaining))
     {
@@ -229,6 +237,7 @@ static fn linux_unix_socket_peers(Allocator allocator) throws
           header->nlmsg_len - NLMSG_LENGTH(sizeof(*diagnostic)));
       let *attribute = reinterpret_cast<struct rtattr *>(diagnostic + 1);
       linux_unix_socket_peer peer{diagnostic->udiag_ino, 0, 0, 0};
+
       for (; RTA_OK(attribute, attribute_length);
            attribute = RTA_NEXT(attribute, attribute_length))
       {
@@ -246,21 +255,24 @@ static fn linux_unix_socket_peers(Allocator allocator) throws
           struct unix_diag_rqlen queue_lengths{};
           std::memcpy(&queue_lengths, RTA_DATA(attribute),
                       sizeof(queue_lengths));
-          peer.receive_queue_bytes = queue_lengths.udiag_rqueue;
-          peer.send_queue_bytes = queue_lengths.udiag_wqueue;
+          peer.receive_queue_byte_count = queue_lengths.udiag_rqueue;
+          peer.send_queue_byte_count = queue_lengths.udiag_wqueue;
         }
       }
-      if (peer.peer_identity != 0 || peer.receive_queue_bytes != 0 ||
-          peer.send_queue_bytes != 0)
+
+      if (peer.peer_identity != 0 || peer.receive_queue_byte_count != 0 ||
+          peer.send_queue_byte_count != 0)
       {
         peers.push(peer);
       }
     }
   }
+
   if (!is_done || !is_valid) {
     return linux_unix_socket_peer_list{allocator,
                                        linux_unix_socket_peer_comparator{}};
   }
+
   return steal(peers).make_sorted(linux_unix_socket_peer_comparator{});
 }
 
@@ -270,6 +282,7 @@ static pure fn linux_unix_peer_record(const linux_unix_socket_peer_list &peers,
 {
   if (let const index = peers.find(identity); index.has_value())
     return peers[*index];
+
   return linux_unix_socket_peer{identity, 0, 0, 0};
 }
 
@@ -279,17 +292,20 @@ static fn linux_process_start_token(StringView process_directory) throws
   let const stat = Path{String{process_directory} + "/stat"}.read_entire_file();
   if (!stat.has_value()) return None;
   usize after_name_position = stat->count();
+
   for (usize position = stat->count(); position > 0; position--) {
     if (stat->view()[position - 1] == ')') {
       after_name_position = position;
       break;
     }
   }
+
   if (after_name_position >= stat->count()) return None;
   let const start_token =
       nth_space_field(stat->view().substring(after_name_position), 19)
           .to<u64>();
   if (start_token.is_error()) return None;
+
   return start_token.value();
 }
 
@@ -298,19 +314,24 @@ static pure fn linux_unix_socket_field(StringView text, usize index) wontthrow
 {
   usize field = 0;
   usize position = 0;
+
   while (position < text.length) {
     while (position < text.length && text[position] == ' ') {
       position++;
     }
+
     if (position >= text.length) break;
     let const start = position;
+
     while (position < text.length && text[position] != ' ') {
       position++;
     }
+
     if (field == index)
       return text.substring_of_length(start, position - start);
     field++;
   }
+
   return StringView{};
 }
 
@@ -325,6 +346,7 @@ static fn for_each_proc_net_row(StringView path, Row do_row) throws -> void
   let const text = contents->view();
   usize position = 0;
   bool is_header = true;
+
   while (position < text.length) {
     let const line = each_line(text, position);
     if (is_header) {
@@ -389,8 +411,8 @@ static fn linux_unix_sockets(const ArrayList<linux_socket_owner> *owners,
           String{allocator},
           inode.value(),
           peer.peer_identity,
-          peer.receive_queue_bytes,
-          peer.send_queue_bytes,
+          peer.receive_queue_byte_count,
+          peer.send_queue_byte_count,
           0,
           process_id,
           0,
@@ -435,6 +457,7 @@ static fn linux_socket_owners(Allocator allocator) throws
     if (descriptor_directory == nullptr) continue;
 
     let const descriptor_directory_fd = ::dirfd(descriptor_directory);
+
     for (struct dirent *descriptor = ::readdir(descriptor_directory);
          descriptor != nullptr; descriptor = ::readdir(descriptor_directory))
     {
@@ -456,12 +479,14 @@ static fn linux_socket_owners(Allocator allocator) throws
           target_view.substring_of_length(8, target_view.length - 9).to<u64>();
       if (inode.is_error()) continue;
       bool is_known = false;
+
       for (let const &owner : owners) {
         if (owner.inode == inode.value() && owner.pid == parsed_pid.value()) {
           is_known = true;
           break;
         }
       }
+
       if (!is_known) {
         if (!did_read_start_token) {
           start_token = linux_process_start_token(process_directory.view());
@@ -472,6 +497,7 @@ static fn linux_socket_owners(Allocator allocator) throws
                                        start_token.has_value()});
       }
     }
+
     ::closedir(descriptor_directory);
   }
 
@@ -601,6 +627,7 @@ static pure fn system_log_priority(StringView priority) wontthrow -> int
   let name = priority;
   if (let const separator = priority.find_character('.'); separator.has_value())
     name = priority.substring(*separator + 1);
+
   return PRIORITIES.find(name).value_or(LOG_NOTICE);
 }
 
@@ -613,6 +640,7 @@ fn write_system_log(const system_log_options &options) wontthrow -> bool
   openlog(tag_text.is_empty() ? nullptr : tag_text.c_str(), log_options, 0);
   syslog(system_log_priority(options.priority), "%s", message_text.c_str());
   closelog();
+
   return true;
 }
 
@@ -652,6 +680,7 @@ hot fn write_fd(os::descriptor fd, const opaque *buf, usize size) wontthrow
       continue;
     }
     if (written_count == -1) return koshka::None;
+
     return static_cast<usize>(written_count);
   }
 }
@@ -673,6 +702,7 @@ hot fn read_fd(os::descriptor fd, opaque *buf, usize size) wontthrow
       continue;
     }
     if (read_count == -1) return koshka::None;
+
     return static_cast<usize>(read_count);
   }
 }
@@ -723,6 +753,7 @@ hot fn wait_for_fd_readable(os::descriptor fd, i64 timeout_nanos) wontthrow
                                  : (UINT64_MAX - start_nanos < duration_nanos
                                         ? UINT64_MAX
                                         : start_nanos + duration_nanos);
+
   loop
   {
     int timeout_millis = -1;
@@ -748,6 +779,7 @@ hot fn wait_for_fd_readable(os::descriptor fd, i64 timeout_nanos) wontthrow
         if (INTERRUPT_REQUESTED) return -1;
         continue;
       }
+
       return -1;
     }
     if (ready == 0) {
@@ -756,6 +788,7 @@ hot fn wait_for_fd_readable(os::descriptor fd, i64 timeout_nanos) wontthrow
     }
     if ((watch.revents & POLLNVAL) != 0) return -1;
     if ((watch.revents & (POLLIN | POLLHUP)) != 0) return 1;
+
     return -1;
   }
 }
@@ -765,6 +798,7 @@ fn close_fd(os::descriptor fd) wontthrow -> bool
   const int prior_errno = errno;
   if (close(fd) == -1) return false;
   errno = prior_errno;
+
   return true;
 }
 
@@ -808,6 +842,7 @@ static fn highest_free_shell_fd() wontthrow -> int
   }
 
   int placement_fd = SHELL_BACKUP_FD_FLOOR;
+
   for (int candidate_fd = ceiling_fd; candidate_fd > SHELL_BACKUP_FD_FLOOR;
        candidate_fd--)
   {
@@ -853,6 +888,7 @@ static fn save_and_replace_descriptor_at(i32 shell_fd, os::descriptor target,
     saved_descriptor failed{};
     failed.shell_fd = shell_fd;
     failed.is_dup2_ok = false;
+
     return failed;
   }
 
@@ -884,6 +920,7 @@ fn restore_descriptor(const saved_descriptor &saved) wontthrow -> void
 {
   if (!saved.is_dup2_ok) {
     if (saved.was_open) close(saved.saved);
+
     return;
   }
 
@@ -989,10 +1026,12 @@ fn close_shell_fd(i32 shell_fd) wontthrow -> bool
 fn allocate_free_shell_fd(i32 floor_fd) wontthrow -> i32
 {
   const i32 probe_sources[] = {STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO};
+
   for (let const source : probe_sources) {
     const int allocated = fcntl(source, F_DUPFD_CLOEXEC, floor_fd);
     if (allocated != -1) {
       close(allocated);
+
       return allocated;
     }
   }
@@ -1016,6 +1055,7 @@ fn get_login_user() throws -> Maybe<String>
 {
   char name[256];
   if (getlogin_r(name, sizeof(name)) == 0) return String{name};
+
   return uid_to_username(static_cast<u32>(getuid()));
 }
 
@@ -1075,12 +1115,15 @@ fn default_network_interface(Allocator allocator) throws -> Maybe<String>
   if (!contents.has_value()) return None;
 
   usize position = 0;
+
   while (position < contents->length()) {
     let const line_start = position;
+
     while (position < contents->length() && contents->view()[position] != '\n')
     {
       position++;
     }
+
     let const line =
         contents->view().substring_of_length(line_start, position - line_start);
     if (position < contents->length()) position++;
@@ -1089,22 +1132,27 @@ fn default_network_interface(Allocator allocator) throws -> Maybe<String>
     StringView words[4]{};
     usize word_count = 0;
     usize word_position = 0;
+
     while (word_position < line.length && word_count < countof(words)) {
       while (word_position < line.length &&
              (line[word_position] == ' ' || line[word_position] == '\t'))
       {
         word_position++;
       }
+
       let const word_start = word_position;
+
       while (word_position < line.length && line[word_position] != ' ' &&
              line[word_position] != '\t')
       {
         word_position++;
       }
+
       if (word_position > word_start)
         words[word_count++] =
             line.substring_of_length(word_start, word_position - word_start);
     }
+
     let const has_up_flag =
         word_count >= 4 && words[3].length >= 4 &&
         (words[3][3] == '1' || words[3][3] == '3' || words[3][3] == '5' ||
@@ -1118,6 +1166,7 @@ fn default_network_interface(Allocator allocator) throws -> Maybe<String>
 #else
   unused(allocator);
 #endif
+
   return None;
 }
 
@@ -1187,8 +1236,10 @@ static fn socket_address(const struct in_sockinfo &info,
 fn has_network_socket_listing() wontthrow -> bool
 {
 #if defined __APPLE__ || defined __linux__
+
   return true;
 #else
+
   return false;
 #endif
 }
@@ -1200,21 +1251,24 @@ fn network_sockets(network_socket_process_mode process_mode) throws
 
 #if defined __APPLE__
   let const processes = enumerate_processes();
+
   for (let const &process : processes) {
     let const process_id = static_cast<pid_t>(process.pid);
-    let descriptor_bytes =
+    let descriptor_byte_count =
         ::proc_pidinfo(process_id, PROC_PIDLISTFDS, 0, nullptr, 0);
-    if (descriptor_bytes <= 0) continue;
+    if (descriptor_byte_count <= 0) continue;
 
     ArrayList<struct proc_fdinfo> descriptors{heap_allocator()};
-    descriptors.reserve(static_cast<usize>(descriptor_bytes) /
+    descriptors.reserve(static_cast<usize>(descriptor_byte_count) /
                         sizeof(struct proc_fdinfo));
-    descriptor_bytes = ::proc_pidinfo(process_id, PROC_PIDLISTFDS, 0,
-                                      descriptors.begin(), descriptor_bytes);
-    if (descriptor_bytes <= 0) continue;
+    descriptor_byte_count =
+        ::proc_pidinfo(process_id, PROC_PIDLISTFDS, 0, descriptors.begin(),
+                       descriptor_byte_count);
+    if (descriptor_byte_count <= 0) continue;
 
     let const descriptor_count =
-        static_cast<usize>(descriptor_bytes) / sizeof(struct proc_fdinfo);
+        static_cast<usize>(descriptor_byte_count) / sizeof(struct proc_fdinfo);
+
     for (usize index = 0; index < descriptor_count; index++) {
       let const &descriptor = descriptors.begin()[index];
       if (descriptor.proc_fdtype != PROX_FDTYPE_SOCKET) continue;
@@ -1271,6 +1325,7 @@ fn network_sockets(network_socket_process_mode process_mode) throws
       result.push(steal(entry));
     }
   }
+
 #elif defined __linux__
   let const allocator = heap_allocator();
   let owners = ArrayList<linux_socket_owner>{allocator};
@@ -1288,6 +1343,7 @@ fn network_sockets(network_socket_process_mode process_mode) throws
       {"/net/udp",  network_socket_protocol::Udp, network_address_family::IPv4},
       {"/net/udp6", network_socket_protocol::Udp, network_address_family::IPv6},
   };
+
   for (let const &source : SOURCES) {
     let const path = linux_socket_proc_path(source.suffix, allocator);
     let entries = linux_network_sockets_from_file(
@@ -1295,13 +1351,16 @@ fn network_sockets(network_socket_process_mode process_mode) throws
         process_mode == network_socket_process_mode::WithProcesses ? &owners
                                                                    : nullptr,
         allocator, source.family, process_mode);
+
     for (let &entry : entries)
       result.push(steal(entry));
   }
+
   let unix_entries = linux_unix_sockets(
       process_mode == network_socket_process_mode::WithProcesses ? &owners
                                                                  : nullptr,
       allocator, process_mode);
+
   for (let &entry : unix_entries)
     result.push(steal(entry));
 #else
@@ -1322,6 +1381,7 @@ fn get_processor_counts() wontthrow -> processor_counts
       affinity_processor_count(counts.online_count, counts.configured_count);
   if (counts.configured_count < counts.online_count)
     counts.configured_count = counts.online_count;
+
   return counts;
 }
 
@@ -1329,6 +1389,7 @@ fn get_home_directory() throws -> Maybe<Path>
 {
   if (let const home = get_environment_variable("HOME"); home.has_value())
     return Path{StringView{*home}};
+
   return koshka::None;
 }
 
@@ -1341,6 +1402,7 @@ static fn passwd_field(StringView line, usize index) wontthrow -> StringView
 {
   usize field_start_position = 0;
   usize field_index = 0;
+
   for (usize i = 0; i <= line.length; i++) {
     if (i != line.length && line[i] != ':') {
       continue;
@@ -1351,6 +1413,7 @@ static fn passwd_field(StringView line, usize index) wontthrow -> StringView
     field_index++;
     field_start_position = i + 1;
   }
+
   return StringView{};
 }
 
@@ -1362,12 +1425,15 @@ fn get_home_for_user(StringView username) throws -> Maybe<Path>
   if (!contents) return koshka::None;
 
   let const text = contents->view();
+
   for (let const &line : utils::split_lines(text)) {
     if (passwd_field(line, 0) != username) continue;
     let const home_field = passwd_field(line, 5);
     if (home_field.is_empty()) return koshka::None;
+
     return Path{home_field};
   }
+
   return koshka::None;
 }
 
@@ -1379,6 +1445,7 @@ static fn enumerate_first_fields(const Path &database) throws
   if (!contents) return names;
 
   let const text = contents->view();
+
   for (let const &line : utils::split_lines(text)) {
     let const name = passwd_field(line, 0);
     if (!name.is_empty() && line.find_character(':').has_value()) {
@@ -1413,6 +1480,7 @@ fn terminal_name(descriptor fd) throws -> Maybe<String>
 {
   char buffer[1024];
   if (ttyname_r(fd, buffer, sizeof(buffer)) != 0) return None;
+
   return String{buffer};
 }
 
@@ -1425,6 +1493,7 @@ TerminalEchoGuard::TerminalEchoGuard(descriptor input,
   }
   if (tcgetattr(input, &m_original_mode) != 0) {
     m_did_succeed = false;
+
     return;
   }
 
@@ -1432,6 +1501,7 @@ TerminalEchoGuard::TerminalEchoGuard(descriptor input,
   quiet_mode.c_lflag &= static_cast<tcflag_t>(~ECHO);
   if (tcsetattr(input, TCSANOW, &quiet_mode) != 0) {
     m_did_succeed = false;
+
     return;
   }
 
@@ -1484,6 +1554,7 @@ fn collate_compare(const String &left, const String &right) wontthrow -> int
 {
   static const int did_bind_collate = (setlocale(LC_COLLATE, ""), 0);
   unused(did_bind_collate);
+
   return strcoll(left.c_str(), right.c_str());
 }
 
@@ -1493,6 +1564,7 @@ static fn get_unicode_locale() wontthrow -> locale_t
     locale_t created = newlocale(LC_CTYPE_MASK, "C.UTF-8", nullptr);
     if (created == nullptr)
       created = newlocale(LC_CTYPE_MASK, "en_US.UTF-8", nullptr);
+
     return created;
   }();
 
@@ -1547,6 +1619,7 @@ fn code_point_is_in_class(StringView class_name, u32 code_point) wontthrow
   name[class_name.length] = '\0';
 
   let const kind = wctype_l(name, unicode_locale);
+
   return kind != 0 &&
          iswctype_l(static_cast<wint_t>(code_point), kind, unicode_locale) != 0;
 }
@@ -1671,6 +1744,7 @@ fn read_process_cpu_times() wontthrow -> cpu_times
           static_cast<double>(accounting.tms_cstime) / ticks;
     }
   }
+
   return result;
 }
 
@@ -1720,6 +1794,7 @@ fn get_resource_limit(resource_kind kind) wontthrow -> Maybe<resource_limit>
   result.hard = limit.rlim_max == RLIM_INFINITY
                     ? RESOURCE_UNLIMITED
                     : static_cast<u64>(limit.rlim_max);
+
   return result;
 }
 
@@ -1736,6 +1811,7 @@ fn set_resource_limit(const resource_limit &limit, resource_kind kind) wontthrow
   target.rlim_max = limit.hard == RESOURCE_UNLIMITED
                         ? RLIM_INFINITY
                         : static_cast<rlim_t>(limit.hard);
+
   return setrlimit(*which, &target) == 0;
 }
 
@@ -1755,6 +1831,7 @@ fn get_terminal_dimensions(descriptor output) wontthrow
   if (window.ws_col == 0 || window.ws_row == 0) {
     return None;
   }
+
   return terminal_dimensions{window.ws_col, window.ws_row};
 }
 
@@ -1814,6 +1891,7 @@ static pure fn terminal_speed_value(StringView text) wontthrow -> speed_t
 #endif
   };
   static constexpr StaticStringMap SPEEDS{SPEED_ENTRIES};
+
   return SPEEDS.find(text).value_or(static_cast<speed_t>(~speed_t{0}));
 }
 
@@ -1950,9 +2028,12 @@ fn terminal_settings(descriptor terminal, Allocator allocator,
     do_append_field(state.c_lflag);
     do_append_field(cfgetispeed(&state));
     do_append_field(cfgetospeed(&state));
+
     for (usize index = 0; index < NCCS; index++)
       do_append_field(state.c_cc[index]);
+
     output += '\n';
+
     return output;
   }
   output += "speed ";
@@ -1965,12 +2046,14 @@ fn terminal_settings(descriptor terminal, Allocator allocator,
     output += String::from(dimensions->columns, allocator);
     output += "; ";
   }
+
   for (let const &entry : TERMINAL_FLAG_ENTRIES) {
     let const &flag = entry.value;
     if ((state.*(flag.member) & flag.value) == 0) output += '-';
     output += flag.name;
     output += ' ';
   }
+
   if (mode == terminal_settings_output_mode::All) {
     for (let const &entry : TERMINAL_CONTROL_CHARACTER_ENTRIES) {
       let const &character = entry.value;
@@ -1981,6 +2064,7 @@ fn terminal_settings(descriptor terminal, Allocator allocator,
     }
   }
   output += '\n';
+
   return output;
 }
 
@@ -1992,15 +2076,18 @@ static fn restore_encoded_terminal_settings(termios &state,
   let do_read_field = [&](u64 &value) wontthrow -> bool {
     if (position > encoded.length) return false;
     usize end = position;
+
     while (end < encoded.length && encoded[end] != ':') {
       end++;
     }
+
     if (end == position) return false;
     let const parsed = utils::parse_integer_in_base_u64(
         encoded.substring_of_length(position, end - position), int_base::hex);
     if (parsed.is_error()) return false;
     value = parsed.value();
     position = end < encoded.length ? end + 1 : encoded.length + 1;
+
     return true;
   };
 
@@ -2053,18 +2140,22 @@ static fn parse_terminal_character(StringView text, cc_t &value) wontthrow
 {
   if (text == "undef" || text == "^-") {
     value = _POSIX_VDISABLE;
+
     return true;
   }
   if (text == "^?") {
     value = 127;
+
     return true;
   }
   if (text.length == 2 && text[0] == '^') {
     value = static_cast<cc_t>(text[1] & 31);
+
     return true;
   }
   if (text.length != 1) return false;
   value = static_cast<cc_t>(text[0]);
+
   return true;
 }
 
@@ -2082,11 +2173,13 @@ fn apply_terminal_settings(descriptor terminal,
       return {terminal_settings_apply_kind::InvalidSetting, 0};
     if (tcsetattr(terminal, TCSADRAIN, &state) != 0)
       return {terminal_settings_apply_kind::SystemError, 0};
+
     return {terminal_settings_apply_kind::Success, 0};
   }
 
   winsize window{};
   let has_window = ioctl(terminal, TIOCGWINSZ, &window) == 0;
+
   for (usize index = 0; index < settings.count(); index++) {
     let const setting = settings[index].view();
     let const is_disabled = setting.length > 1 && setting[0] == '-';
@@ -2250,6 +2343,7 @@ fn normalize_program_name(String &program_name) throws -> program_name_info
 fn has_environment_variable(StringView key) throws -> bool
 {
   const String key_string{key};
+
   return std::getenv(key_string.c_str()) != nullptr;
 }
 
@@ -2260,6 +2354,7 @@ fn get_environment_variable(StringView key) throws -> Maybe<String>
   const String key_string{key};
   const char *e = std::getenv(key_string.c_str());
   if (e != nullptr) return String{e};
+
   return koshka::None;
 }
 
@@ -2293,6 +2388,7 @@ fn for_each_environment_name(opaque *context,
                              environment_name_callback callback) throws -> void
 {
   if (environ == nullptr) return;
+
   for (char **entry = environ; *entry != nullptr; entry++) {
     StringView pair{*entry};
     let const equals = pair.find_character('=');
@@ -2308,6 +2404,7 @@ fn environment_names() throws -> ArrayList<String>
   for_each_environment_name(&names, [](opaque *context, StringView name) {
     static_cast<ArrayList<String> *>(context)->push(String{name});
   });
+
   return names;
 }
 
@@ -2358,8 +2455,10 @@ static fn make_sigset_impl(int first, ...) wontthrow -> sigset_t
   sigemptyset(&sm);
 
   va_start(va, first);
+
   for (int sig = first; sig != -1; sig = va_arg(va, int))
     sigaddset(&sm, sig);
+
   va_end(va);
 
   return sm;
@@ -2530,6 +2629,7 @@ fn install_fatal_exit_hook(void (*hook)()) throws -> void
   check_syscall(sigemptyset(&action.sa_mask));
   action.sa_flags = SA_SIGINFO;
   action.sa_sigaction = handle_fatal_signal;
+
   for (usize i = 0; i < countof(FATAL_SIGNALS); i++) {
     check_syscall(
         sigaction(FATAL_SIGNALS[i], &action, &FATAL_PREVIOUS_ACTIONS[i]));
@@ -2606,6 +2706,7 @@ fn set_trap_ignore(i32 signal_number) throws -> void
   LOG(Info, "ignoring signal %d", signal_number);
   if (signal_number == SIGCHLD) {
     install_child_state_handler();
+
     return;
   }
 
@@ -2624,6 +2725,7 @@ fn clear_trap_handler(i32 signal_number) throws -> void
 
   if (signal_number == SIGCHLD) {
     install_child_state_handler();
+
     return;
   }
 
@@ -2640,11 +2742,13 @@ static fn lookup_name_by_id(StringView database_path, u32 wanted_id,
   let const wanted =
       String::from(static_cast<u64>(wanted_id), heap_allocator());
   let const text = contents->view();
+
   for (let const &line : utils::split_lines(text)) {
     if (passwd_field(line, id_field_index) != wanted.view()) continue;
     let const name = passwd_field(line, 0);
     if (!name.is_empty()) return String{name};
   }
+
   return koshka::None;
 }
 
@@ -2653,6 +2757,7 @@ static fn lookup_id_by_name(StringView database_path, StringView wanted_name,
 {
   let const contents = Path{database_path}.read_entire_file();
   if (!contents) return koshka::None;
+
   for (let const &line : utils::split_lines(contents->view())) {
     if (passwd_field(line, 0) != wanted_name) continue;
     let const id = passwd_field(line, id_field_index).to<i64>();
@@ -2676,8 +2781,10 @@ fn uid_to_username(u32 uid) throws -> Maybe<String>
   {
     return None;
   }
+
   return String{result->pw_name};
 #else
+
   return lookup_name_by_id("/etc/passwd", uid, 2);
 #endif
 }
@@ -2694,6 +2801,7 @@ fn username_to_uid(StringView username) throws -> Maybe<u32>
   {
     return static_cast<u32>(get_real_user_id());
   }
+
   return lookup_id_by_name("/etc/passwd", username, 2);
 }
 
@@ -2873,6 +2981,7 @@ fn query_system_configuration(system_configuration_key key) wontthrow
   errno = 0;
   let const value = sysconf(native_key);
   if (value == -1) return failed_configuration_query();
+
   return {configuration_query_status::Value, static_cast<i64>(value)};
 }
 
@@ -2940,34 +3049,41 @@ fn query_string_configuration(string_configuration_key key,
   if (native_key < 0) return result;
 
   errno = 0;
-  usize required_size = confstr(native_key, nullptr, 0);
-  if (required_size == 0) {
+  usize required_byte_count = confstr(native_key, nullptr, 0);
+  if (required_byte_count == 0) {
     if (errno != 0) result.status = configuration_query_status::Error;
+
     return result;
   }
 
   ArrayList<char> buffer{allocator};
+
   for (usize attempt_count = 0; attempt_count < 4; attempt_count++) {
-    buffer.reserve(required_size);
+    buffer.reserve(required_byte_count);
     errno = 0;
-    let const actual_size = confstr(native_key, buffer.begin(), required_size);
-    if (actual_size == 0) {
+    let const actual_byte_count =
+        confstr(native_key, buffer.begin(), required_byte_count);
+    if (actual_byte_count == 0) {
       if (errno != 0) result.status = configuration_query_status::Error;
+
       return result;
     }
-    if (actual_size > required_size) {
-      required_size = actual_size;
+    if (actual_byte_count > required_byte_count) {
+      required_byte_count = actual_byte_count;
       continue;
     }
 
     result.status = configuration_query_status::Value;
     result.value = String{
-        allocator, StringView{buffer.begin(), actual_size - 1}
+        allocator, StringView{buffer.begin(), actual_byte_count - 1}
     };
+
     return result;
   }
+
   errno = EAGAIN;
   result.status = configuration_query_status::Error;
+
   return result;
 }
 
@@ -3024,6 +3140,7 @@ fn query_path_configuration(StringView path,
   errno = 0;
   let const value = pathconf(path_text.c_str(), native_key);
   if (value == -1) return failed_configuration_query();
+
   return {configuration_query_status::Value, static_cast<i64>(value)};
 }
 
@@ -3040,6 +3157,7 @@ fn sleep_for_seconds(double seconds) wontthrow -> void
   requested.tv_nsec = static_cast<long>(
       (seconds - static_cast<double>(requested.tv_sec)) * 1000000000.0);
   struct timespec remaining;
+
   while (nanosleep(&requested, &remaining) == -1 && errno == EINTR) {
     if (INTERRUPT_REQUESTED) break;
     requested = remaining;
@@ -3058,12 +3176,14 @@ namespace os {
 
 const ProgramSuffixList PROGRAM_SUFFIXES = []() {
   if (IsWindows()) return ProgramSuffixList{WINDOWS_PROGRAM_SUFFIXES};
+
   return ProgramSuffixList{POSIX_PROGRAM_SUFFIXES};
 }();
 
 fn normalize_program_name(String &program_name) -> program_name_info
 {
   if (!IsWindows()) return {program_extension::None, program_name.length()};
+
   return normalize_windows_program_name(program_name);
 }
 

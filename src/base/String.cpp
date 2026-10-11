@@ -60,12 +60,14 @@ cold fn String::classify_ascii() const wontthrow -> void
 {
   usize position = 0;
   using byte_vector = u64 __attribute__((vector_size(16)));
+
   while (position + 4 * sizeof(byte_vector) <= m_length) {
     byte_vector lanes[4];
     __builtin_memcpy(lanes, m_data + position, sizeof(lanes));
     let const merged = lanes[0] | lanes[1] | lanes[2] | lanes[3];
     if (((merged[0] | merged[1]) & byte_scan::HIGH_BITS) != 0) {
       m_ascii_state = AsciiState::NonAscii;
+
       return;
     }
 
@@ -75,6 +77,7 @@ cold fn String::classify_ascii() const wontthrow -> void
   for (; position < m_length; position++) {
     if (static_cast<u8>(m_data[position]) >= 0x80) {
       m_ascii_state = AsciiState::NonAscii;
+
       return;
     }
   }
@@ -94,6 +97,7 @@ fn String::operator=(const String &other) throws -> String &
     append(other.view());
     m_ascii_state = other.m_ascii_state;
   }
+
   return *this;
 }
 
@@ -104,6 +108,7 @@ fn String::operator=(String &&other) wontthrow -> String &
     m_allocator = other.m_allocator;
     adopt_storage_of(steal(other));
   }
+
   return *this;
 }
 
@@ -134,6 +139,7 @@ cold fn String::reserve(usize needed) throws -> void
     let const growth = m_capacity < 64 ? usize{4} : usize{2};
     new_capacity = m_capacity > SIZE_MAX / growth ? required_capacity
                                                   : m_capacity * growth;
+
     while (new_capacity < required_capacity) {
       if (new_capacity > SIZE_MAX / 2) {
         new_capacity = required_capacity;
@@ -173,12 +179,14 @@ fn String::strip_trailing_newlines() wontthrow -> void
 fn String::operator+=(StringView other) throws -> String &
 {
   append(other);
+
   return *this;
 }
 
 fn String::operator+=(char c) throws -> String &
 {
   push(c);
+
   return *this;
 }
 
@@ -211,6 +219,7 @@ fn operator+(StringView left, StringView right) throws->String
   result.reserve(left.length + right.length);
   result.append(left);
   result.append(right);
+
   return result;
 }
 

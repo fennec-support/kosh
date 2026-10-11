@@ -31,6 +31,7 @@ fn Sleep::execute(const ExecContext &ec, EvalContext &cxt,
 
   f64 total_seconds = 0.0;
   bool should_sleep_forever = false;
+
   for (usize operand_index = 0; operand_index < operands.count();
        operand_index++)
   {
@@ -54,6 +55,7 @@ fn Sleep::execute(const ExecContext &ec, EvalContext &cxt,
   if (should_sleep_forever) {
     while (!os::INTERRUPT_REQUESTED)
       os::sleep_for_seconds(60.0 * 60.0 * 24.0);
+
     return 130;
   }
 

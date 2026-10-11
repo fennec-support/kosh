@@ -52,6 +52,7 @@ static fn append_help_synopsis(String &out, StringView name,
       out.append(synopsis[index]);
     }
   }
+
   out.push('\n');
 }
 
@@ -64,15 +65,19 @@ fn Help::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   if (args.count() <= 1) {
     let out = String{cxt.scratch_allocator()};
+
     for (let const &name : builtin_names()) {
       out.append(name.view());
       out += '\n';
     }
+
     ec.print_to_stdout(out);
+
     return 0;
   }
 
   i32 status = 0;
+
   for (usize i = 1; i < args.count(); i++) {
     let const &name = args[i];
     let const resolved = search_builtin(name.view());

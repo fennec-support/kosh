@@ -59,6 +59,7 @@ fn option_is_on(const EvalContext &cxt, const option_descriptor &option) throws
   if (!option_is_available(cxt, option)) return false;
   if (option.storage == option_storage::WarningLevel)
     return cxt.runtime_state().get_warning_level() > 0;
+
   return read_option_number(cxt, option) != 0;
 }
 
@@ -73,6 +74,7 @@ fn apply_or_reject_option(EvalContext &cxt, const option_descriptor &option,
       step_warning_level(cxt, is_enabled);
     else
       write_option_number(cxt, option, is_enabled ? 1 : 0, option_origin::Set);
+
     return;
   }
   write_option_number(cxt, option, is_enabled ? 1 : 0, option_origin::Set);
@@ -168,6 +170,7 @@ fn find_retired_option_replacement(StringView name, bool is_enabled) throws
 fn list_options(const EvalContext &cxt) throws -> String
 {
   let out = String{heap_allocator()};
+
   for (let const &option : get_set_listing_order()) {
     if (!option.is_listed_by_set || !option_is_available(cxt, option)) {
       continue;
@@ -176,6 +179,7 @@ fn list_options(const EvalContext &cxt) throws -> String
     out += option.set_name;
     out += '\n';
   }
+
   return out;
 }
 
@@ -183,6 +187,7 @@ fn list_options_columnar(const EvalContext &cxt) throws -> String
 {
   const usize name_field_width = 15;
   let out = String{heap_allocator()};
+
   for (let const &option : get_set_listing_order()) {
     if (!option.is_listed_by_set || !option_is_available(cxt, option)) {
       continue;
@@ -195,6 +200,7 @@ fn list_options_columnar(const EvalContext &cxt) throws -> String
     out += option_is_on(cxt, option) ? "on" : "off";
     out.push('\n');
   }
+
   return out;
 }
 
@@ -205,6 +211,7 @@ fn apply_long_option_by_name(const ExecContext &ec, EvalContext &cxt,
   if (i + 1 >= args.count()) {
     ec.print_to_stdout(is_enabled ? list_options_columnar(cxt)
                                   : list_options(cxt));
+
     return;
   }
   let const &name = args[++i];
@@ -234,6 +241,7 @@ fn format_option_table() throws -> String
 {
   const usize name_field_width = 30;
   let out = String{heap_allocator()};
+
   for (let const &option : get_option_registry()) {
     if (!is_set_option(option)) continue;
     out += "  ";
@@ -254,6 +262,7 @@ fn format_option_table() throws -> String
     out += option.help;
     out.push('\n');
   }
+
   return out;
 }
 
@@ -266,12 +275,15 @@ fn format_option_switches_help() throws -> String
   section += format_option_table();
   section += "\n  The -o long names:\n";
   let listed_names = String{heap_allocator()};
+
   for (let const &option : get_set_listing_order()) {
     if (!listed_names.is_empty()) listed_names += ", ";
     listed_names += option.set_name;
   }
+
   section += wrap_text(listed_names.view(), 4, HELP_WRAP_WIDTH);
   section += '\n';
+
   return section;
 }
 
@@ -282,6 +294,7 @@ fn query_shell_option(const EvalContext &cxt, StringView name) throws
 {
   let const *option = find_option_by_set_name(name);
   if (option == nullptr) return None;
+
   return option_is_on(cxt, *option);
 }
 
@@ -289,10 +302,13 @@ fn shell_option_names() throws -> const ArrayList<StringView> &
 {
   static ArrayList<StringView> names = [] throws {
     let collected = ArrayList<StringView>{heap_allocator()};
+
     for (let const &option : get_set_listing_order())
       collected.push(option.set_name);
+
     return collected;
   }();
+
   return names;
 }
 
@@ -301,19 +317,23 @@ fn shell_option_letters() throws -> const String &
   static String letters = [] throws {
     let collected = String{heap_allocator()};
     let const order = get_shell_flag_letter_order();
+
     for (usize position = 0; position < order.count(); position++) {
       let const letter = order[position];
       collected.push(letter);
       if (letter == 'h') collected.push('r');
     }
+
     return collected;
   }();
+
   return letters;
 }
 
 fn enabled_shell_option_names(const EvalContext &cxt) throws -> String
 {
   let joined = String{heap_allocator()};
+
   for (let const &option : get_set_listing_order()) {
     if (!option.is_listed_by_set || !option_is_on(cxt, option)) {
       continue;
@@ -322,6 +342,7 @@ fn enabled_shell_option_names(const EvalContext &cxt) throws -> String
     if (!joined.is_empty()) joined.push(':');
     joined.append(option.set_name);
   }
+
   return joined;
 }
 
@@ -329,6 +350,7 @@ fn enabled_shell_option_letters(const EvalContext &cxt) throws -> String
 {
   let letters = String{heap_allocator()};
   let const order = get_shell_flag_letter_order();
+
   for (usize position = 0; position < order.count(); position++) {
     let const letter = order[position];
     let const *option = find_option_by_letter(letter);
@@ -345,11 +367,14 @@ fn enabled_shell_option_letters(const EvalContext &cxt) throws -> String
            warning_level < cxt.runtime_state().get_warning_level();
            warning_level++)
         letters.push('W');
+
       continue;
     }
     if (option_is_on(cxt, *option)) letters.push(letter);
   }
+
   if (cxt.execution_store().has_execution_string()) letters.push('c');
+
   return letters;
 }
 
@@ -361,6 +386,7 @@ fn apply_shell_option(EvalContext &cxt, StringView name, bool is_enabled) throws
     return false;
   }
   apply_or_reject_option(cxt, *option, is_enabled);
+
   return true;
 }
 
@@ -376,11 +402,14 @@ fn Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   if (args.count() == 1) {
     let out = String{cxt.scratch_allocator()};
+
     for (let const &assignment : cxt.sorted_variable_assignments()) {
       out += assignment.view();
       out += "\n";
     }
+
     ec.print_to_stdout(out);
+
     return 0;
   }
 
@@ -396,6 +425,7 @@ fn Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     if (i + 1 < args.count() && args[i + 1] != "--") {
       return args[++i].view();
     }
+
     return None;
   };
 
@@ -442,6 +472,7 @@ fn Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       let const value = do_read_option_value(arg);
       if (!value.has_value()) {
         let out = String{cxt.scratch_allocator()};
+
         for (mimic_mood listed : {mimic_mood::Default, mimic_mood::Posix,
                                   mimic_mood::Bash, mimic_mood::BashPosix})
         {
@@ -449,12 +480,14 @@ fn Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
           if (!out.is_empty()) out += " ";
           out += mood_name(listed);
         }
+
         out += "\n";
         ec.print_to_stdout(out);
         continue;
       }
       let moods = ArrayList<mimic_mood>{cxt.scratch_allocator()};
       usize name_start = 0;
+
       for (usize j = 0; j <= value->length; j++) {
         if (j != value->length && (*value)[j] != ',') {
           continue;
@@ -470,6 +503,7 @@ fn Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                   "', expected 'kosh', 'bash', 'sh', or 'bash-posix'");
         moods.push(*parsed);
       }
+
       let const previous_mood = cxt.runtime_state().get_mood();
       source_init_moods(cxt, moods, cxt.startup_store().is_login_shell(),
                         cxt.execution_store().shell_is_interactive());
@@ -505,6 +539,7 @@ fn Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
     if (arg.length() > 1 && (arg[0] == '-' || arg[0] == '+')) {
       let const is_enabled = arg[0] == '-';
+
       for (usize c = 1; c < arg.length(); c++) {
         let const letter = arg[c];
 
@@ -550,6 +585,7 @@ fn Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         }
         apply_or_reject_option(cxt, *option, is_enabled, true);
       }
+
       continue;
     }
 

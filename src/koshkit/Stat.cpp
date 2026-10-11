@@ -97,7 +97,7 @@ struct file_subject
   StringView display_name;
   String quoted_name;
   String mount_point;
-  u64 optimal_block_size{0};
+  u64 optimal_block_byte_count{0};
   bool has_optimal_block_size{false};
   bool has_mount_point{false};
 };
@@ -128,12 +128,14 @@ fn append_padded(String &output, StringView text, const directive_spec &spec,
 
   if (body.length >= spec.width) {
     output += body;
+
     return;
   }
 
   let const pad_length = spec.width - body.length;
   if (spec.is_left_aligned) {
     output += body;
+
     for (usize index = 0; index < pad_length; index++)
       output += " ";
 
@@ -141,6 +143,7 @@ fn append_padded(String &output, StringView text, const directive_spec &spec,
   }
 
   let const pad_text = spec.is_zero_padded && is_numeric ? "0" : " ";
+
   for (usize index = 0; index < pad_length; index++)
     output += pad_text;
 
@@ -165,6 +168,7 @@ fn octal_of(u64 value, Allocator allocator,
 
   let prefixed = String{allocator, "0"};
   prefixed += text.view();
+
   return prefixed;
 }
 
@@ -182,6 +186,7 @@ fn quote_name(StringView name, const os::file_status &status,
   text += " -> '";
   text += target->view();
   text += "'";
+
   return text;
 }
 
@@ -199,9 +204,11 @@ fn find_mount_point(StringView path, Allocator allocator) throws -> String
   absolute += path;
 
   let best = String{allocator, absolute.view()};
+
   loop
   {
     usize slash_position = best.length();
+
     while (slash_position > 0 && best.view()[slash_position - 1] != '/') {
       slash_position--;
     }
@@ -238,20 +245,24 @@ fn render_file_directive(String &output, const directive_spec &spec,
                                              : octal_prefix_mode::Bare)
                       .view(),
                   spec, stat_value_kind::Numeric);
+
     return;
 
   case 'A':
     append_padded(output, os::format_mode_string(status.mode).view(), spec,
                   stat_value_kind::Text);
+
     return;
 
   case 'b':
     append_padded(output, decimal_of(status.blocks, allocator).view(), spec,
                   stat_value_kind::Numeric);
+
     return;
 
   case 'B':
     append_padded(output, "512", spec, stat_value_kind::Numeric);
+
     return;
 
   case 'C': append_padded(output, "?", spec, stat_value_kind::Text); return;
@@ -262,6 +273,7 @@ fn render_file_directive(String &output, const directive_spec &spec,
           output,
           decimal_of(os::device_major(status.device_id), allocator).view(),
           spec, stat_value_kind::Numeric);
+
       return;
     }
 
@@ -270,30 +282,36 @@ fn render_file_directive(String &output, const directive_spec &spec,
           output,
           decimal_of(os::device_minor(status.device_id), allocator).view(),
           spec, stat_value_kind::Numeric);
+
       return;
     }
 
     append_padded(output, decimal_of(status.device_id, allocator).view(), spec,
                   stat_value_kind::Numeric);
+
     return;
 
   case 'D':
     append_padded(output, hex_of(status.device_id, allocator).view(), spec,
                   stat_value_kind::Numeric);
+
     return;
 
   case 'f':
     append_padded(output, hex_of(status.mode, allocator).view(), spec,
                   stat_value_kind::Numeric);
+
     return;
 
   case 'F':
     append_padded(output, file_type_name(status), spec, stat_value_kind::Text);
+
     return;
 
   case 'g':
     append_padded(output, decimal_of(status.group_id, allocator).view(), spec,
                   stat_value_kind::Numeric);
+
     return;
 
   case 'G': {
@@ -303,17 +321,20 @@ fn render_file_directive(String &output, const directive_spec &spec,
                       ? name->view()
                       : decimal_of(status.group_id, allocator).view(),
                   spec, stat_value_kind::Text);
+
     return;
   }
 
   case 'h':
     append_padded(output, decimal_of(status.link_count, allocator).view(), spec,
                   stat_value_kind::Numeric);
+
     return;
 
   case 'i':
     append_padded(output, decimal_of(status.file_id, allocator).view(), spec,
                   stat_value_kind::Numeric);
+
     return;
 
   case 'm':
@@ -324,10 +345,12 @@ fn render_file_directive(String &output, const directive_spec &spec,
 
     append_padded(output, subject.mount_point.view(), spec,
                   stat_value_kind::Text);
+
     return;
 
   case 'n':
     append_padded(output, subject.display_name, spec, stat_value_kind::Text);
+
     return;
 
   case 'N':
@@ -337,21 +360,23 @@ fn render_file_directive(String &output, const directive_spec &spec,
 
     append_padded(output, subject.quoted_name.view(), spec,
                   stat_value_kind::Text);
+
     return;
 
   case 'o':
     if (!subject.has_optimal_block_size) {
       os::filesystem_status filesystem{};
       if (os::stat_filesystem(subject.display_name, filesystem)) {
-        subject.optimal_block_size = filesystem.block_size;
+        subject.optimal_block_byte_count = filesystem.block_byte_count;
       }
 
       subject.has_optimal_block_size = true;
     }
 
-    append_padded(output,
-                  decimal_of(subject.optimal_block_size, allocator).view(),
-                  spec, stat_value_kind::Numeric);
+    append_padded(
+        output, decimal_of(subject.optimal_block_byte_count, allocator).view(),
+        spec, stat_value_kind::Numeric);
+
     return;
 
   case 'r':
@@ -361,6 +386,7 @@ fn render_file_directive(String &output, const directive_spec &spec,
           decimal_of(os::device_major(status.special_device_id), allocator)
               .view(),
           spec, stat_value_kind::Numeric);
+
       return;
     }
 
@@ -370,22 +396,26 @@ fn render_file_directive(String &output, const directive_spec &spec,
           decimal_of(os::device_minor(status.special_device_id), allocator)
               .view(),
           spec, stat_value_kind::Numeric);
+
       return;
     }
 
     append_padded(output,
                   decimal_of(status.special_device_id, allocator).view(), spec,
                   stat_value_kind::Numeric);
+
     return;
 
   case 'R':
     append_padded(output, hex_of(status.special_device_id, allocator).view(),
                   spec, stat_value_kind::Numeric);
+
     return;
 
   case 's':
     append_padded(output, decimal_of(status.size, allocator).view(), spec,
                   stat_value_kind::Numeric);
+
     return;
 
   case 't':
@@ -393,6 +423,7 @@ fn render_file_directive(String &output, const directive_spec &spec,
         output,
         hex_of(os::device_major(status.special_device_id), allocator).view(),
         spec, stat_value_kind::Numeric);
+
     return;
 
   case 'T':
@@ -400,11 +431,13 @@ fn render_file_directive(String &output, const directive_spec &spec,
         output,
         hex_of(os::device_minor(status.special_device_id), allocator).view(),
         spec, stat_value_kind::Numeric);
+
     return;
 
   case 'u':
     append_padded(output, decimal_of(status.owner_id, allocator).view(), spec,
                   stat_value_kind::Numeric);
+
     return;
 
   case 'U': {
@@ -414,6 +447,7 @@ fn render_file_directive(String &output, const directive_spec &spec,
                       ? name->view()
                       : decimal_of(status.owner_id, allocator).view(),
                   spec, stat_value_kind::Text);
+
     return;
   }
 
@@ -427,11 +461,13 @@ fn render_file_directive(String &output, const directive_spec &spec,
                                         status.access_nanoseconds, allocator)
                       .view(),
                   spec, stat_value_kind::Text);
+
     return;
 
   case 'X':
     append_padded(output, String::from(status.access_time, allocator).view(),
                   spec, stat_value_kind::Numeric);
+
     return;
 
   case 'y':
@@ -441,12 +477,14 @@ fn render_file_directive(String &output, const directive_spec &spec,
                                         allocator)
                       .view(),
                   spec, stat_value_kind::Text);
+
     return;
 
   case 'Y':
     append_padded(output,
                   String::from(status.modification_time, allocator).view(),
                   spec, stat_value_kind::Numeric);
+
     return;
 
   case 'z':
@@ -455,11 +493,13 @@ fn render_file_directive(String &output, const directive_spec &spec,
                                         status.change_nanoseconds, allocator)
                       .view(),
                   spec, stat_value_kind::Text);
+
     return;
 
   case 'Z':
     append_padded(output, String::from(status.change_time, allocator).view(),
                   spec, stat_value_kind::Numeric);
+
     return;
 
   default: break;
@@ -480,62 +520,76 @@ fn render_filesystem_directive(String &output, const directive_spec &spec,
     append_padded(output,
                   decimal_of(filesystem.available_blocks, allocator).view(),
                   spec, stat_value_kind::Numeric);
+
     return;
 
   case 'b':
     append_padded(output, decimal_of(filesystem.total_blocks, allocator).view(),
                   spec, stat_value_kind::Numeric);
+
     return;
 
   case 'c':
     append_padded(output, decimal_of(filesystem.total_files, allocator).view(),
                   spec, stat_value_kind::Numeric);
+
     return;
 
   case 'd':
     append_padded(output, decimal_of(filesystem.free_files, allocator).view(),
                   spec, stat_value_kind::Numeric);
+
     return;
 
   case 'f':
     append_padded(output, decimal_of(filesystem.free_blocks, allocator).view(),
                   spec, stat_value_kind::Numeric);
+
     return;
 
   case 'i':
     append_padded(output, hex_of(filesystem.filesystem_id, allocator).view(),
                   spec, stat_value_kind::Numeric);
+
     return;
 
   case 'l':
     append_padded(output, decimal_of(filesystem.name_max, allocator).view(),
                   spec, stat_value_kind::Numeric);
+
     return;
 
   case 'n':
     append_padded(output, display_name, spec, stat_value_kind::Text);
+
     return;
 
   case 's':
-    append_padded(output, decimal_of(filesystem.block_size, allocator).view(),
+    append_padded(output,
+                  decimal_of(filesystem.block_byte_count, allocator).view(),
                   spec, stat_value_kind::Numeric);
+
     return;
 
   case 'S':
     append_padded(
-        output, decimal_of(filesystem.fundamental_block_size, allocator).view(),
+        output,
+        decimal_of(filesystem.fundamental_block_byte_count, allocator).view(),
         spec, stat_value_kind::Numeric);
+
     return;
 
   case 't':
     append_padded(output, hex_of(filesystem.type_id, allocator).view(), spec,
                   stat_value_kind::Numeric);
+
     return;
 
   case 'T': {
     let const name = StringView{filesystem.type_name};
     if (!name.is_empty()) {
       append_padded(output, name, spec, stat_value_kind::Text);
+
       return;
     }
 
@@ -543,6 +597,7 @@ fn render_filesystem_directive(String &output, const directive_spec &spec,
     unknown += hex_of(filesystem.type_id, allocator).view();
     unknown += ")";
     append_padded(output, unknown.view(), spec, stat_value_kind::Text);
+
     return;
   }
 
@@ -575,6 +630,7 @@ fn parse_directive(StringView format, usize &position,
 
 flags_done:
   static constexpr usize MAXIMUM_FIELD_WIDTH = 65535;
+
   while (position < format.length && format[position] >= '0' &&
          format[position] <= '9')
   {
@@ -586,6 +642,7 @@ flags_done:
   if (position < format.length && format[position] == '.') {
     position++;
     spec.has_precision = true;
+
     while (position < format.length && format[position] >= '0' &&
            format[position] <= '9')
     {
@@ -608,12 +665,14 @@ flags_done:
 
   spec.letter = format[position];
   position++;
+
   return true;
 }
 
 fn append_escapes(String &output, StringView text) throws -> void
 {
   usize position = 0;
+
   while (position < text.length) {
     if (text[position] != '\\' || position + 1 >= text.length) {
       output += text.substring_of_length(position, 1);
@@ -644,11 +703,14 @@ fn render_format(String &output, StringView format, file_subject *subject,
                  StringView display_name, EvalContext &cxt) throws -> void
 {
   usize position = 0;
+
   while (position < format.length) {
     let const literal_start = position;
+
     while (position < format.length && format[position] != '%') {
       position++;
     }
+
     if (position != literal_start) {
       output +=
           format.substring_of_length(literal_start, position - literal_start);
@@ -659,6 +721,7 @@ fn render_format(String &output, StringView format, file_subject *subject,
     position++;
     if (position >= format.length) {
       output += "%";
+
       return;
     }
 
@@ -671,6 +734,7 @@ fn render_format(String &output, StringView format, file_subject *subject,
     directive_spec spec{};
     if (!parse_directive(format, position, spec)) {
       output += "%";
+
       return;
     }
 
@@ -689,12 +753,14 @@ fn resolve_format(String &format, bool &should_append_newline,
   if (FLAG_STAT_PRINTF.is_set()) {
     append_escapes(format, FLAG_STAT_PRINTF.value());
     should_append_newline = false;
+
     return;
   }
 
   if (FLAG_STAT_FORMAT.is_set()) {
     format += FLAG_STAT_FORMAT.value();
     should_append_newline = true;
+
     return;
   }
 
@@ -703,6 +769,7 @@ fn resolve_format(String &format, bool &should_append_newline,
   if (FLAG_STAT_TERSE.is_enabled()) {
     format += target == stat_target::Filesystem ? TERSE_FILESYSTEM_FORMAT
                                                 : TERSE_FILE_FORMAT;
+
     return;
   }
 
@@ -742,10 +809,12 @@ fn Stat::execute(const ExecContext &ec, EvalContext &cxt,
     operand_paths.reserve(operands.count());
     file_statuses.reserve(operands.count());
     batch.reserve(operands.count());
+
     for (let const &operand : operands) {
       operand_paths.push(Path{operand.view(), allocator});
       file_statuses.push({});
     }
+
     for (usize index = 0; index < operands.count(); index++) {
       if (should_follow) {
         batch.add(os::batch_operation::stat(operand_paths[index],
@@ -755,6 +824,7 @@ fn Stat::execute(const ExecContext &ec, EvalContext &cxt,
                                              file_statuses[index]));
       }
     }
+
     results = batch.execute(os::batch_deduplication::Disabled);
   }
 

@@ -45,10 +45,12 @@ fn Seq::execute(const ExecContext &ec, EvalContext &cxt,
           "invalid integer argument '" + operands[operand_position] + "'",
           "use a decimal integer from -9223372036854775808 through "
           "9223372036854775807");
+
       return false;
     }
 
     value = parsed.value();
+
     return true;
   };
 
@@ -68,6 +70,7 @@ fn Seq::execute(const ExecContext &ec, EvalContext &cxt,
     KOSHKIT_REPORT_ERROR_AT(
         operand_locations[3], "extra operand '" + operands[3] + "'",
         "use `seq LAST`, `seq FIRST LAST`, or `seq FIRST STEP LAST`");
+
     return 1;
   }
 
@@ -75,6 +78,7 @@ fn Seq::execute(const ExecContext &ec, EvalContext &cxt,
     KOSHKIT_REPORT_ERROR_AT(operand_locations[1],
                             "the increment must not be zero",
                             "use a nonzero step, such as `seq 1 2 10`");
+
     return 1;
   }
 
@@ -106,6 +110,7 @@ fn Seq::execute(const ExecContext &ec, EvalContext &cxt,
     }
 
   ec.print_to_stdout(output);
+
   return 0;
 }
 

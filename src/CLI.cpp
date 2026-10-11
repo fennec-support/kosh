@@ -180,30 +180,35 @@ pure fn FlagManyStrings::count() const wontthrow -> usize
 pure fn FlagManyStrings::get(usize i) const wontthrow -> StringView
 {
   ASSERT(i < m_values.count());
+
   return m_values[i].view();
 }
 
 pure fn FlagManyStrings::get_position(usize i) const wontthrow -> usize
 {
   ASSERT(i < m_positions.count());
+
   return m_positions[i];
 }
 
 pure fn FlagManyStrings::get_location(usize i) const wontthrow -> SourceLocation
 {
   ASSERT(i < m_locations.count());
+
   return m_locations[i];
 }
 
 pure fn FlagManyStrings::was_given_after_plus(usize i) const wontthrow -> bool
 {
   ASSERT(i < m_plus_markers.count());
+
   return m_plus_markers[i];
 }
 
 fn FlagManyStrings::take_next() wontthrow -> String
 {
   ASSERT(m_value_position < m_values.count());
+
   return steal(m_values[m_value_position++]);
 }
 
@@ -307,6 +312,7 @@ static fn find_flag(const FlagList &flags, const char *flag_start, bool is_long,
       if (flags[i]->short_name() == *flag_start) {
         *result_flag = flags[i];
         *value_start = flag_start + 1;
+
         return true;
       }
     } else {
@@ -383,6 +389,7 @@ static fn flag_name(const Flag *f, bool is_long) throws -> String
   } else {
     name.push(f->short_name());
   }
+
   return name;
 }
 
@@ -390,6 +397,7 @@ static fn prefixed_message(StringView program_name, StringView message) throws
     -> String
 {
   if (program_name.is_empty()) return String{heap_allocator(), message};
+
   return program_name + ": " + message;
 }
 
@@ -400,6 +408,7 @@ static fn suggest_long_flag(const FlagList &flags, StringView typed_name) throws
 
   let suggestion = utils::NameSuggestion{typed_name};
   Maybe<String> qualified_match{};
+
   for (let const *flag : flags) {
     let const candidate = flag->long_name();
     if (candidate.is_empty()) continue;
@@ -430,8 +439,10 @@ static fn argument_location(
   }
 
   usize caret_offset = 0;
+
   for (usize prior_index = 0; prior_index < argument_index; prior_index++)
     caret_offset += shell_quoted_arg_length(StringView{argv[prior_index]}) + 1;
+
   return SourceLocation{base_position + caret_offset,
                         std::strlen(argv[argument_index])};
 }
@@ -447,6 +458,7 @@ static fn attached_flag_value_location(
 
   location.position += static_cast<u32>(value - argv[argument_index]);
   location.length = static_cast<u32>(std::strlen(value));
+
   return location;
 }
 
@@ -959,9 +971,11 @@ pure fn shell_quoted_arg_length(StringView arg) wontthrow -> usize
 {
   if (!arg_needs_shell_quoting(arg)) return arg.length;
   usize count = 2;
+
   for (usize i = 0; i < arg.length; i++) {
     count += arg[i] == '\'' ? 4 : 1;
   }
+
   return count;
 }
 
@@ -970,25 +984,30 @@ fn append_shell_quoted_arg(String &out, StringView arg,
 {
   if (!should_always_quote && !arg_needs_shell_quoting(arg)) {
     out.append(arg);
+
     return;
   }
   out.push('\'');
+
   for (usize i = 0; i < arg.length; i++) {
     if (arg[i] == '\'')
       out += "'\\''";
     else
       out.push(arg[i]);
   }
+
   out.push('\'');
 }
 
 fn join_command_line(int argc, const char *const *argv) throws -> String
 {
   let s = String{heap_allocator()};
+
   for (int i = 0; i < argc; i++) {
     if (i > 0) s.push(' ');
     append_shell_quoted_arg(s, StringView{argv[i], std::strlen(argv[i])});
   }
+
   return s;
 }
 
@@ -1111,6 +1130,7 @@ cold fn wrap_text(StringView text, usize indent, usize width,
   usize line_used = 0;
   usize word_start = 0;
   bool is_line_started = false;
+
   for (usize i = 0; i <= text.length; i++) {
     let const is_at_end = i == text.length;
     if (!is_at_end && text[i] != ' ') {
@@ -1137,6 +1157,7 @@ cold fn wrap_text(StringView text, usize indent, usize width,
     }
     word_start = i + 1;
   }
+
   return out;
 }
 
@@ -1154,6 +1175,7 @@ fn parse_cli_color_mode(StringView text) wontthrow -> Maybe<cli_color_mode>
       {SSK("none"),   cli_color_mode::Never },
   };
   constexpr StaticStringMap MODES{MODE_ENTRIES};
+
   return MODES.find(text);
 }
 
@@ -1205,11 +1227,13 @@ fn ReportTable::add_row(const ArrayList<report_table_cell_view> &cells) throws
 {
   let row = ArrayList<report_table_cell>{m_grid_rows.allocator()};
   row.reserve(cells.count());
+
   for (let const &cell : cells)
     row.push({
         String{row.allocator(), cell.text},
         cell.style
     });
+
   m_grid_rows.push(steal(row));
 }
 
@@ -1244,6 +1268,7 @@ static fn append_report_grid(
 
   let widths = ArrayList<usize>{columns.allocator()};
   widths.reserve(column_count);
+
   for (usize index = 0; index < column_count; index++) {
     usize width = 0;
     if (index < columns.count())
@@ -1266,6 +1291,7 @@ static fn append_report_grid(
                                     &row) throws {
     usize pending_space_count = 0;
     bool did_write_indentation = false;
+
     for (usize index = 0; index < column_count; index++) {
       let const text =
           index < row.count() ? row[index].text.view() : StringView{};
@@ -1291,19 +1317,23 @@ static fn append_report_grid(
       if (!is_right_aligned) pending_space_count += padding_length;
       pending_space_count += column_gap_space_count;
     }
+
     output += '\n';
   };
 
   if (should_show_header && !columns.is_empty()) {
     let header = ArrayList<report_table_cell>{columns.allocator()};
     header.reserve(columns.count());
+
     for (let const &column : columns)
       header.push({
           String{header.allocator(), column.heading.view()},
           {}
       });
+
     do_append_row(header);
   }
+
   for (let const &row : rows)
     do_append_row(row);
 }
@@ -1316,6 +1346,7 @@ fn ReportTable::to_string(bool should_color,
 
   append_report_grid(output, m_columns, m_grid_rows, should_color, indentation,
                      m_should_show_header, m_column_gap_space_count);
+
   return output;
 }
 
@@ -1332,6 +1363,7 @@ fn append_titled_report_table(String &output, StringView title,
     while (!output.is_empty() && output.back() == '\n') {
       output.truncate(output.length() - 1);
     }
+
     output += "\n\n";
   }
   append_report_text(output, title, colors::ansi::BOLD_BLUE, should_color);
@@ -1343,6 +1375,7 @@ static pure fn report_indentation_width(StringView indentation) wontthrow
     -> usize
 {
   usize width = 0;
+
   for (usize index = 0; index < indentation.length; index++) {
     let const byte = indentation[index];
     if (byte == '\t') {
@@ -1352,6 +1385,7 @@ static pure fn report_indentation_width(StringView indentation) wontthrow
 
     width++;
   }
+
   return width;
 }
 
@@ -1365,6 +1399,7 @@ fn append_report_name_section(String &output, StringView title,
   output += '\n';
 
   usize longest_length = 0;
+
   for (let const name : names)
     if (name.length > longest_length) longest_length = name.length;
 
@@ -1375,6 +1410,7 @@ fn append_report_name_section(String &output, StringView title,
   let const column_count = column_width >= available_width
                                ? usize{1}
                                : available_width / column_width;
+
   for (usize index = 0; index < names.count(); index++) {
     let const name = names[index];
     if (index % column_count == 0) {
@@ -1390,6 +1426,7 @@ fn append_report_name_section(String &output, StringView title,
       output.append_repeated(' ', column_width - name.length);
     }
   }
+
   output += '\n';
 }
 
@@ -1407,21 +1444,26 @@ fn format_cli_help(StringView text, bool should_color) throws -> String
   let output = String{heap_allocator()};
   help_section section = help_section::Other;
   usize line_start = 0;
+
   while (line_start < text.length) {
     usize line_end = line_start;
+
     while (line_end < text.length && text[line_end] != '\n') {
       line_end++;
     }
+
     let const line =
         text.substring_of_length(line_start, line_end - line_start);
 
     bool is_heading = !line.is_empty();
     bool has_heading_letter = false;
+
     for (usize index = 0; index < line.length && is_heading; index++) {
       let const byte = line[index];
       has_heading_letter = has_heading_letter || (byte >= 'A' && byte <= 'Z');
       is_heading = byte == ' ' || (byte >= 'A' && byte <= 'Z');
     }
+
     is_heading = is_heading && has_heading_letter;
 
     if (is_heading) {
@@ -1489,18 +1531,23 @@ fn format_live_duration(f64 seconds, Allocator allocator) throws -> String
   u64 fraction = nanoseconds % 1000000000ULL;
   if (fraction != 0) {
     usize digit_count = 9;
+
     while (fraction % 10 == 0) {
       fraction /= 10;
       digit_count--;
     }
+
     let const fraction_text = String::from(fraction, allocator);
     result += ".";
+
     for (usize index = fraction_text.length(); index < digit_count; index++)
       result += "0";
+
     result += fraction_text.view();
   }
 
   result += "s";
+
   return result;
 }
 
@@ -1563,6 +1610,7 @@ cold fn make_flag_help(const FlagList &flags, bool should_color) throws
     let const flag_width = flag_name.length() + flag_value.length();
     if (flag_width + 2 > DESCRIPTION_COLUMN) {
       s += '\n';
+
       for (usize i = 0; i < DESCRIPTION_COLUMN; i++)
         s += ' ';
     } else {
@@ -1574,6 +1622,7 @@ cold fn make_flag_help(const FlagList &flags, bool should_color) throws
     let const description = f->description();
     usize line_used = 0;
     usize word_start = 0;
+
     for (usize i = 0; i <= description.length; i++) {
       let const is_at_end = i == description.length;
       if (!is_at_end && description[i] != ' ') {
@@ -1584,8 +1633,10 @@ cold fn make_flag_help(const FlagList &flags, bool should_color) throws
       if (word_length > 0) {
         if (line_used > 0 && line_used + 1 + word_length > TEXT_WIDTH) {
           description_text += '\n';
+
           for (usize j = 0; j < DESCRIPTION_COLUMN; j++)
             description_text += ' ';
+
           line_used = 0;
         }
         if (line_used > 0) {
@@ -1598,6 +1649,7 @@ cold fn make_flag_help(const FlagList &flags, bool should_color) throws
       }
       word_start = i + 1;
     }
+
     append_report_text(s, description_text.view(), {}, should_color);
   };
 
@@ -1606,8 +1658,10 @@ cold fn make_flag_help(const FlagList &flags, bool should_color) throws
       "BASH OPTIONS",      "COMPATIBILITY OPTIONS",
       "AUXILIARY OPTIONS", "KOSHKA OPTIONS",
       "LIVE OPTIONS",      "DEBUG OPTIONS"};
+
   for (u8 section = 0; section < countof(SECTION_HEADERS); section++) {
     bool was_header_printed = false;
+
     for (let const flag : flags) {
       if (static_cast<u8>(flag->section()) != section) continue;
       if (!was_header_printed) {
@@ -1632,6 +1686,7 @@ fn print(StringView text) throws -> void
 fn print_error(StringView text) throws -> void
 {
   usize written_count = 0;
+
   while (written_count < text.count()) {
     let const written = os::write_fd(KOSH_STDERR, text.data + written_count,
                                      text.count() - written_count);
@@ -1688,6 +1743,7 @@ fn show_report_warnings(const ArrayList<String> &warnings) throws -> void
   if (warnings.is_empty()) return;
 
   print_error("\n");
+
   for (let const &warning : warnings)
     show_warning(warning.view());
 }

@@ -32,12 +32,15 @@ using namespace internal;
 pure fn internal::split_path_token(StringView token) wontthrow -> path_token
 {
   let last_separator = token.length;
+
   for (usize i = 0; i < token.length; i++) {
     if (os::is_directory_separator(token[i])) last_separator = i;
   }
+
   if (last_separator == token.length) {
     return path_token{StringView{}, token};
   }
+
   return path_token{
       token.substring_of_length(0, last_separator + 1),
       token.substring(last_separator + 1),
@@ -86,6 +89,7 @@ static pure fn control_sequence_length(StringView text,
   }
 
   let const next_byte = static_cast<u8>(text[position + 1]);
+
   return next_byte >= 0x80 && next_byte < 0xa0 ? 2 : 0;
 }
 
@@ -135,8 +139,10 @@ static fn append_ansi_c_control_byte(String &quoted, char byte) throws -> void
 static fn append_ansi_c_quoted(String &quoted, StringView text) throws -> void
 {
   quoted += "$'";
+
   for (usize position = 0; position < text.length; position++) {
     let const sequence_length = control_sequence_length(text, position);
+
     for (usize offset = 0; offset < sequence_length; offset++)
       append_ansi_c_control_byte(quoted, text[position + offset]);
 
@@ -151,6 +157,7 @@ static fn append_ansi_c_quoted(String &quoted, StringView text) throws -> void
     }
     quoted.push(byte);
   }
+
   quoted.push('\'');
 }
 
@@ -159,10 +166,12 @@ fn internal::quote_path_candidate(StringView candidate) throws -> String
   let quoted = String{completion_allocator()};
   if (has_control_sequence(candidate)) {
     append_ansi_c_quoted(quoted, candidate);
+
     return quoted;
   }
 
   quoted.push('\'');
+
   for (usize position = 0; position < candidate.length; position++) {
     if (candidate[position] == '\'') {
       quoted += "'\"'\"'";
@@ -170,7 +179,9 @@ fn internal::quote_path_candidate(StringView candidate) throws -> String
     }
     quoted.push(candidate[position]);
   }
+
   quoted.push('\'');
+
   return quoted;
 }
 
@@ -179,6 +190,7 @@ fn internal::append_with_quoted_controls(String &candidate,
 {
   for (usize position = 0; position < text.length; position++) {
     usize run_length = 0;
+
     while (position + run_length < text.length) {
       let const sequence_length =
           control_sequence_length(text, position + run_length);
@@ -241,6 +253,7 @@ static fn open_quote_candidate_boundary(StringView typed, usize typed_boundary,
   let const is_case_sensitive = utils::token_has_uppercase(typed);
   usize typed_position = 0;
   usize candidate_position = 0;
+
   while (candidate_position < candidate.length &&
          typed_position < typed_boundary)
   {
@@ -252,7 +265,9 @@ static fn open_quote_candidate_boundary(StringView typed, usize typed_boundary,
     candidate_position++;
     if (is_equal) typed_position++;
   }
+
   if (typed_position == typed_boundary) return candidate_position;
+
   return typed_boundary < candidate.length ? typed_boundary : candidate.length;
 }
 
@@ -261,10 +276,12 @@ static fn append_candidate_suffix(String &candidate, StringView suffix,
 {
   if (!should_quote_words) {
     append_with_quoted_controls(candidate, suffix);
+
     return;
   }
 
   usize component_start = 0;
+
   for (usize position = 0; position <= suffix.length; position++) {
     let const is_separator = position < suffix.length &&
                              os::is_directory_separator(suffix[position]);
@@ -297,6 +314,7 @@ pure fn internal::shell_syntax_candidate_is_unchanged(
   if (!decoded_candidate.starts_with(raw_token)) return false;
 
   let const suffix = decoded_candidate.substring(raw_token.length);
+
   return should_quote_words ? !path_candidate_needs_quoting(suffix)
                             : !has_control_sequence(suffix);
 }
@@ -329,6 +347,7 @@ fn internal::rebuild_shell_syntax_candidate(
       candidate.append(raw_token);
       append_candidate_suffix(candidate, suffix, should_quote_words);
     }
+
     return candidate;
   }
 
@@ -339,6 +358,7 @@ fn internal::rebuild_shell_syntax_candidate(
       candidate.push('~');
       append_candidate_suffix(candidate, decoded_candidate.substring(1),
                               should_quote_words);
+
       return candidate;
     }
 
@@ -351,6 +371,7 @@ fn internal::rebuild_shell_syntax_candidate(
           candidate,
           decoded_candidate.substring(decoded_word.leading.variable_end),
           should_quote_words);
+
       return candidate;
     }
 
@@ -358,10 +379,12 @@ fn internal::rebuild_shell_syntax_candidate(
       candidate += "\\~";
       append_candidate_suffix(candidate, decoded_candidate.substring(1),
                               should_quote_words);
+
       return candidate;
     }
 
     append_candidate_suffix(candidate, decoded_candidate, should_quote_words);
+
     return candidate;
   }
 
@@ -386,6 +409,7 @@ fn internal::rebuild_shell_syntax_candidate(
                               is_ansi_c_quote);
   if (decoded_word.quote_character == 0)
     candidate.push(decoded_word.last_quote_character);
+
   return candidate;
 }
 
@@ -424,6 +448,7 @@ static fn expand_leading_variable_path(StringView directory_part,
 
   let expanded = String{completion_allocator(), value->view()};
   expanded.append(directory_part.substring(expansion_end));
+
   return expanded;
 }
 
@@ -448,6 +473,7 @@ fn internal::resolve_listing_directory(
       if (directory.is_absolute()) return directory;
       let resolved_path = base_directory.clone();
       resolved_path.append(expanded->view());
+
       return resolved_path;
     }
 
@@ -456,6 +482,7 @@ fn internal::resolve_listing_directory(
 
   let resolved_path = base_directory.clone();
   resolved_path.append(directory_part);
+
   return resolved_path;
 }
 

@@ -96,6 +96,7 @@ static fn replace_find_braces(StringView source, StringView path,
 {
   String replaced{allocator};
   usize position = 0;
+
   while (position < source.length) {
     if (source.substring(position).starts_with("{}")) {
       replaced += path;
@@ -160,14 +161,14 @@ static fn find_entry_matches(char type_letter, StringView filename, usize depth,
   return true;
 }
 
-static pure fn get_find_type_letter(Path::entry_kind kind) wontthrow -> char
+static pure fn get_find_type_letter(Path::EntryKind kind) wontthrow -> char
 {
   switch (kind) {
-  case Path::entry_kind::Directory: return 'd';
-  case Path::entry_kind::Regular: return '-';
-  case Path::entry_kind::Symlink: return 'l';
-  case Path::entry_kind::Other:
-  case Path::entry_kind::Unknown: return '?';
+  case Path::EntryKind::Directory: return 'd';
+  case Path::EntryKind::Regular: return '-';
+  case Path::EntryKind::Symlink: return 'l';
+  case Path::EntryKind::Other:
+  case Path::EntryKind::Unknown: return '?';
   }
 
   return '?';
@@ -240,20 +241,22 @@ public:
       discard_nonmatching_children(*children, child_depth);
     }
 
-    children->sort([](const Path::directory_child &left,
-                      const Path::directory_child &right) {
+    children->sort([](const Path::DirectoryChild &left,
+                      const Path::DirectoryChild &right) {
       return left.name.view() < right.name.view();
     });
 
     usize unknown_count = 0;
+
     for (let const &child : *children)
-      if (child.kind == Path::entry_kind::Unknown) unknown_count++;
+      if (child.kind == Path::EntryKind::Unknown) unknown_count++;
 
     if (unknown_count != 0) {
       resolve_unknown_children(*children, path_text, unknown_count);
     }
 
     let const is_every_child_matched = is_terminal_depth && unknown_count == 0;
+
     for (usize index = 0; index < children->count(); index++) {
       if (os::INTERRUPT_REQUESTED) return;
 
@@ -296,6 +299,7 @@ private:
   static pure fn get_filename(StringView path_text) wontthrow -> StringView
   {
     usize filename_end = path_text.length;
+
     while (filename_end > 0 &&
            os::is_directory_separator(path_text[filename_end - 1]))
     {
@@ -307,6 +311,7 @@ private:
     }
 
     usize filename_start = 0;
+
     for (usize index = filename_end; index > 0; index--) {
       if (os::is_directory_separator(path_text[index - 1])) {
         filename_start = index;
@@ -343,6 +348,7 @@ private:
       }
       m_output += '\n';
       flush_full_output();
+
       return;
     }
 
@@ -368,6 +374,7 @@ private:
         break;
       case find_action_kind::Execute: {
         let command = ArrayList<String>{m_allocator};
+
         for (let const &part : action.command)
           command.push(
               replace_find_braces(part.view(), path.view(), m_allocator));
@@ -392,10 +399,12 @@ private:
 
     let command = ArrayList<String>{m_allocator};
     let locations = ArrayList<SourceLocation>{m_allocator};
+
     for (usize index = 0; index + 1 < action.command.count(); index++) {
       command.push(action.command[index].clone());
       locations.push(action.command_locations[index]);
     }
+
     for (let &path : action.batch_paths) {
       command.push(steal(path));
       locations.push(m_ec.source_location());
@@ -412,6 +421,7 @@ private:
                  const ArrayList<SourceLocation> &locations) throws -> i32
   {
     let command_locations = ArrayList<SourceLocation>{m_allocator};
+
     for (usize index = 0; index < command.count(); index++)
       command_locations.push(index < locations.count()
                                  ? locations[index]
@@ -427,6 +437,7 @@ private:
     } catch (const CommandResolutionErrorWithLocation &resolution_error) {
       show_message(resolution_error.to_string(
           m_cxt.source_store().current_source_view(), &m_cxt));
+
       return static_cast<i32>(resolution_error.command_status());
     }
 
@@ -453,7 +464,7 @@ private:
   }
 
   fn walk_child(StringView path_text, StringView display,
-                const Path::directory_child &child_entry, usize child_depth,
+                const Path::DirectoryChild &child_entry, usize child_depth,
                 char child_type_letter) throws -> void
   {
     let const child_name = child_entry.name.view();
@@ -477,15 +488,16 @@ private:
          child_type_letter);
   }
 
-  fn discard_nonmatching_children(ArrayList<Path::directory_child> &children,
+  fn discard_nonmatching_children(ArrayList<Path::DirectoryChild> &children,
                                   usize child_depth) throws -> void
   {
     usize kept_count = 0;
+
     for (usize index = 0; index < children.count(); index++) {
       let const child_scratch = m_cxt.expansion_store().scratch_arena().mark();
       defer { m_cxt.expansion_store().scratch_arena().release(child_scratch); };
       let const &child = children[index];
-      if (child.kind != Path::entry_kind::Unknown &&
+      if (child.kind != Path::EntryKind::Unknown &&
           !find_entry_matches(get_find_type_letter(child.kind),
                               child.name.view(), child_depth, m_options,
                               m_allocator))
@@ -500,7 +512,7 @@ private:
     children.truncate(kept_count);
   }
 
-  fn resolve_unknown_children(ArrayList<Path::directory_child> &children,
+  fn resolve_unknown_children(ArrayList<Path::DirectoryChild> &children,
                               StringView path_text, usize unknown_count) throws
       -> void
   {
@@ -514,7 +526,7 @@ private:
     m_unknown_batch.reserve(wave_count);
 
     for (usize index = 0; index < children.count(); index++) {
-      if (children[index].kind != Path::entry_kind::Unknown) continue;
+      if (children[index].kind != Path::EntryKind::Unknown) continue;
 
       let child_path = Path{path_text, heap_allocator()};
       child_path.append(children[index].name.view());
@@ -528,18 +540,20 @@ private:
     resolve_unknown_wave(children);
   }
 
-  fn resolve_unknown_wave(ArrayList<Path::directory_child> &children) throws
+  fn resolve_unknown_wave(ArrayList<Path::DirectoryChild> &children) throws
       -> void
   {
     if (m_unknown_indices.is_empty()) return;
 
     m_unknown_batch.clear();
+
     for (usize index = 0; index < m_unknown_indices.count(); index++)
       m_unknown_batch.add(os::batch_operation::lstat(
           m_unknown_paths[index], m_unknown_statuses[index]));
 
     m_unknown_batch.execute(m_unknown_results,
                             os::batch_deduplication::Disabled);
+
     for (usize index = 0; index < m_unknown_indices.count(); index++) {
       let &kind = children[m_unknown_indices[index]].kind;
       if (m_unknown_results[index].error_number != 0) {
@@ -549,15 +563,15 @@ private:
             "'" + m_unknown_paths[index].text() +
                 "': " + os::last_system_error_message());
         m_exit_status = 1;
-        kind = Path::entry_kind::Other;
+        kind = Path::EntryKind::Other;
         continue;
       }
 
       switch (os::file_type_letter(m_unknown_statuses[index].mode)) {
-      case 'd': kind = Path::entry_kind::Directory; break;
-      case '-': kind = Path::entry_kind::Regular; break;
-      case 'l': kind = Path::entry_kind::Symlink; break;
-      default: kind = Path::entry_kind::Other; break;
+      case 'd': kind = Path::EntryKind::Directory; break;
+      case '-': kind = Path::EntryKind::Regular; break;
+      case 'l': kind = Path::EntryKind::Symlink; break;
+      default: kind = Path::EntryKind::Other; break;
       }
     }
 
@@ -597,6 +611,7 @@ fn Find::execute(const ExecContext &ec, EvalContext &cxt,
   ArrayList<find_action> actions{cxt.scratch_allocator()};
 
   usize index = 1;
+
   while (index < args.count()) {
     let const start_argument = args[index].view();
     if (!start_argument.is_empty() && start_argument[0] == '-') {
@@ -617,6 +632,7 @@ fn Find::execute(const ExecContext &ec, EvalContext &cxt,
                                   "'",
                               "Use `-name`, `-iname`, `-type`, `-maxdepth`, "
                               "`-mindepth`, `-xdev`, or `-print`");
+
       return 1;
     }
 
@@ -624,6 +640,7 @@ fn Find::execute(const ExecContext &ec, EvalContext &cxt,
     case find_predicate_kind::Help:
       print_util_help(ec, args[0].view(), HELP_SYNOPSIS[0], HELP_DESCRIPTION,
                       FLAG_LIST);
+
       return 0;
     case find_predicate_kind::Print:
     case find_predicate_kind::PrintNull: {
@@ -635,20 +652,24 @@ fn Find::execute(const ExecContext &ec, EvalContext &cxt,
     }
     case find_predicate_kind::Execute: {
       usize end_index = index + 1;
+
       while (end_index < args.count()) {
         if (args[end_index].view() == ";") break;
         if (args[end_index].view() == "+") break;
         end_index++;
       }
+
       if (end_index >= args.count() || end_index == index + 1) {
         KOSHKIT_REPORT_ERROR_AT(
             arg_locations[index], "-exec expects a command ended by `;` or `+`",
             "Write `-exec command {} \\;` or `-exec command {} +`");
+
         return 1;
       }
 
       actions.push(find_action{});
       let &action = actions.back();
+
       for (usize part_index = index + 1; part_index < end_index; part_index++) {
         action.command.push(args[part_index].clone());
         action.command_locations.push(arg_locations[part_index]);
@@ -659,6 +680,7 @@ fn Find::execute(const ExecContext &ec, EvalContext &cxt,
           KOSHKIT_REPORT_ERROR_AT(arg_locations[end_index],
                                   "-exec with `+` expects `{}` before it",
                                   "Put `{}` as the last command argument");
+
           return 1;
         }
         action.kind = find_action_kind::ExecuteBatch;
@@ -677,6 +699,7 @@ fn Find::execute(const ExecContext &ec, EvalContext &cxt,
             *predicate_kind == find_predicate_kind::Iname
                 ? StringView{"Pass a glob after `-iname`, e.g. `-iname '*.c'`"}
                 : StringView{"Pass a glob after `-name`, e.g. `-name '*.c'`"});
+
         return 1;
       }
       name_patterns.push(args[index + 1].view());
@@ -693,6 +716,7 @@ fn Find::execute(const ExecContext &ec, EvalContext &cxt,
         KOSHKIT_REPORT_ERROR_AT(arg_locations[index],
                                 "-type expects one of f, d, or l",
                                 "Pass `f`, `d`, or `l` after `-type`");
+
         return 1;
       }
       let const type = args[index + 1].view();
@@ -702,6 +726,7 @@ fn Find::execute(const ExecContext &ec, EvalContext &cxt,
         KOSHKIT_REPORT_ERROR_AT(arg_locations[index + 1],
                                 "-type expects one of f, d, or l",
                                 "Pass `f`, `d`, or `l` after `-type`");
+
         return 1;
       }
       options.type_filter = type[0];
@@ -715,6 +740,7 @@ fn Find::execute(const ExecContext &ec, EvalContext &cxt,
             arg_locations[index],
             String{cxt.scratch_allocator(), predicate} + " expects a number",
             "Pass a whole number greater than or equal to zero");
+
         return 1;
       }
       bool is_depth_out_of_range = false;
@@ -728,6 +754,7 @@ fn Find::execute(const ExecContext &ec, EvalContext &cxt,
             String{cxt.scratch_allocator(), predicate} +
                 " expects a non-negative number, got '" + args[index + 1] + "'",
             "Depth must be a whole number greater than or equal to zero");
+
         return 1;
       }
       if (*predicate_kind == find_predicate_kind::MaximumDepth) {
@@ -748,6 +775,7 @@ fn Find::execute(const ExecContext &ec, EvalContext &cxt,
     matcher_name_storage.reserve(name_patterns.count());
     matcher_name_patterns.reserve(name_patterns.count());
     matcher_name_masks.reserve(name_patterns.count());
+
     for (usize pattern_index = 0; pattern_index < name_patterns.count();
          pattern_index++)
     {
@@ -764,6 +792,7 @@ fn Find::execute(const ExecContext &ec, EvalContext &cxt,
       matcher_name_patterns.push(matcher_name_storage.back().view());
       matcher_name_masks.push(steal(decoded.glob_active));
     }
+
     options.name_patterns = &matcher_name_patterns;
     options.name_pattern_ignore_case = &name_pattern_ignore_case;
     options.name_pattern_masks = &matcher_name_masks;
@@ -779,14 +808,17 @@ fn Find::execute(const ExecContext &ec, EvalContext &cxt,
   root_paths.reserve(roots.count());
   root_statuses.reserve(roots.count());
   batch.reserve(roots.count());
+
   for (let const &root : roots) {
     root_paths.push(Path{root, allocator});
     root_statuses.push({});
   }
+
   for (usize root_index = 0; root_index < roots.count(); root_index++) {
     batch.add(os::batch_operation::lstat(root_paths[root_index],
                                          root_statuses[root_index]));
   }
+
   let const results = batch.execute();
 
   let output_arena = BumpArena{};
@@ -799,6 +831,7 @@ fn Find::execute(const ExecContext &ec, EvalContext &cxt,
   let walker = FindWalker{
       ec,     cxt,    options,  is_default_print ? nullptr : &actions,
       output, status, allocator};
+
   for (usize root_index = 0; root_index < roots.count(); root_index++) {
     let const root = roots[root_index];
     if (results[root_index].error_number != 0) {
@@ -813,12 +846,14 @@ fn Find::execute(const ExecContext &ec, EvalContext &cxt,
                 os::file_type_letter(root_statuses[root_index].mode));
     if (os::INTERRUPT_REQUESTED) {
       ec.print_to_stdout(output);
+
       return 130;
     }
   }
 
   walker.finish();
   ec.print_to_stdout(output);
+
   return status;
 }
 

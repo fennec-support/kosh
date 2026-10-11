@@ -40,6 +40,7 @@ fn Tee::execute(const ExecContext &ec, EvalContext &cxt,
   let batch = os::Batch{cxt.scratch_allocator()};
   let batch_results = ArrayList<os::batch_result>{cxt.scratch_allocator()};
   i32 status = 0;
+
   for (let const &operand : operands) {
     let const fd = os::open_file_descriptor(operand.view(), mode);
     if (!fd.has_value()) {
@@ -52,6 +53,7 @@ fn Tee::execute(const ExecContext &ec, EvalContext &cxt,
     output_descriptors.push(*fd);
     output_names.push(operand.view());
   }
+
   written_byte_counts.reserve(output_descriptors.count());
   output_positions.reserve(output_descriptors.count());
   batch.reserve(output_descriptors.count());
@@ -63,21 +65,24 @@ fn Tee::execute(const ExecContext &ec, EvalContext &cxt,
   };
 
   char buffer[65536];
+
   loop
   {
-    let const read_size =
+    let const read_byte_count =
         os::read_fd(ec.in_fd.value_or(KOSH_STDIN), buffer, sizeof(buffer));
-    if (!read_size.has_value()) {
+    if (!read_byte_count.has_value()) {
       if (os::INTERRUPT_REQUESTED) return 130;
       report_soft_koshkit_util_error(ec, cxt, args[0].view(),
                                      "read failed: " +
                                          os::last_system_error_message());
+
       return 1;
     }
-    if (*read_size == 0) break;
+    if (*read_byte_count == 0) break;
 
-    ec.print_to_stdout(StringView{buffer, *read_size});
+    ec.print_to_stdout(StringView{buffer, *read_byte_count});
     written_byte_counts.clear();
+
     for (usize index = 0; index < output_descriptors.count(); index++)
       written_byte_counts.push(0);
 
@@ -86,26 +91,29 @@ fn Tee::execute(const ExecContext &ec, EvalContext &cxt,
       batch.clear();
       output_positions.clear();
       usize output_index = output_descriptors.count();
+
       while (output_index > 0) {
         output_index--;
         let const written_byte_count = written_byte_counts[output_index];
-        if (written_byte_count == *read_size) continue;
+        if (written_byte_count == *read_byte_count) continue;
 
         batch.add(os::batch_operation::write_current(
             output_descriptors[output_index], buffer + written_byte_count,
-            *read_size - written_byte_count));
+            *read_byte_count - written_byte_count));
         output_positions.push(output_index);
       }
+
       if (batch.count() == 0) break;
 
       batch.execute(batch_results);
+
       for (usize result_index = 0; result_index < batch_results.count();
            result_index++)
       {
         let const output_position = output_positions[result_index];
         let const &result = batch_results[result_index];
         let const remaining_byte_count =
-            *read_size - written_byte_counts[output_position];
+            *read_byte_count - written_byte_counts[output_position];
         if (result.error_number == 0 && result.transferred_byte_count > 0 &&
             result.transferred_byte_count <= remaining_byte_count)
         {
@@ -130,6 +138,7 @@ fn Tee::execute(const ExecContext &ec, EvalContext &cxt,
         written_byte_counts.remove(output_position);
         status = 1;
       }
+
       if (os::INTERRUPT_REQUESTED) return 130;
     }
   }

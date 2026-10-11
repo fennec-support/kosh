@@ -89,6 +89,7 @@ static fn report_copy_error(const ExecContext &ec, EvalContext &cxt,
   if (error.detail_message().is_empty()) {
     report_soft_koshkit_util_error(ec, cxt, utility_name,
                                    error.message().view());
+
     return;
   }
 
@@ -123,6 +124,7 @@ static fn join_with_operand_separator(StringView parent, StringView name,
   }
 
   let separator = os::DIRECTORY_SEPARATOR;
+
   for (usize position = parent.length; position > 0; position--) {
     if (os::is_directory_separator(parent[position - 1])) {
       separator = parent[position - 1];
@@ -474,6 +476,7 @@ fn Cp::execute(const ExecContext &ec, EvalContext &cxt,
 
   ArrayList<cp_directory_identity> active_directories{cxt.scratch_allocator()};
   i32 status = 0;
+
   for (usize i = 0; i + 1 < operands.count(); i++) {
     let const source = operands[i].view();
     let target = String{cxt.scratch_allocator(), destination};

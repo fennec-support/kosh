@@ -26,6 +26,7 @@ fn False::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   unused(cxt);
 
   LOG(All, "false returning a failure status");
+
   return 1;
 }
 

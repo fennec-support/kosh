@@ -49,6 +49,7 @@ fn Df::execute(const ExecContext &ec, EvalContext &cxt,
   let filesystems = ArrayList<os::mounted_filesystem>{cxt.scratch_allocator()};
   if (operands.is_empty()) {
     let mounted = os::mounted_filesystems();
+
     for (let &filesystem : mounted)
       filesystems.push(os::mounted_filesystem{steal(filesystem.source),
                                               steal(filesystem.target)});
@@ -67,12 +68,13 @@ fn Df::execute(const ExecContext &ec, EvalContext &cxt,
     }
 
     let const total = scaled_filesystem_blocks(
-        filesystem.total_blocks, filesystem.fundamental_block_size,
+        filesystem.total_blocks, filesystem.fundamental_block_byte_count,
         output_unit);
     let const free = scaled_filesystem_blocks(
-        filesystem.free_blocks, filesystem.fundamental_block_size, output_unit);
+        filesystem.free_blocks, filesystem.fundamental_block_byte_count,
+        output_unit);
     let const available = scaled_filesystem_blocks(
-        filesystem.available_blocks, filesystem.fundamental_block_size,
+        filesystem.available_blocks, filesystem.fundamental_block_byte_count,
         output_unit);
     let const used = total > free ? total - free : 0;
     let const capacity = filesystem_usage_percent(used, available);

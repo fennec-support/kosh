@@ -36,6 +36,7 @@ pure fn word_has_brace_candidate(const Word &word) wontthrow -> bool
     if (segment.kind != WordSegment::Kind::UnquotedText) continue;
     if (segment.text.find_character('{').has_value()) return true;
   }
+
   return false;
 }
 
@@ -59,11 +60,13 @@ fn parse_sequence_integer(StringView text) wontthrow -> Maybe<sequence_integer>
   u64 magnitude = 0;
   let const maximum_magnitude = text[0] == '-' ? static_cast<u64>(INT64_MAX) + 1
                                                : static_cast<u64>(INT64_MAX);
+
   for (usize j = digit_start; j < text.length; j++) {
     let const digit = static_cast<u64>(text[j] - '0');
     if (magnitude > (maximum_magnitude - digit) / 10) return None;
     magnitude = magnitude * 10 + digit;
   }
+
   i64 value;
   if (text[0] == '-' && magnitude == static_cast<u64>(INT64_MAX) + 1) {
     value = INT64_MIN;
@@ -73,6 +76,7 @@ fn parse_sequence_integer(StringView text) wontthrow -> Maybe<sequence_integer>
   }
   let const digit_width = text.length - digit_start;
   let const has_leading_zero = digit_width > 1 && text[digit_start] == '0';
+
   return sequence_integer{value, text.length, has_leading_zero};
 }
 
@@ -82,6 +86,7 @@ fn split_sequence_parts(StringView content, Allocator alloc) throws
   let parts = ArrayList<StringView>{alloc};
   usize start = 0;
   usize i = 0;
+
   while (i + 1 < content.length) {
     if (content[i] == '.' && content[i + 1] == '.') {
       parts.push(content.substring_of_length(start, i - start));
@@ -91,7 +96,9 @@ fn split_sequence_parts(StringView content, Allocator alloc) throws
     }
     i++;
   }
+
   parts.push(content.substring(start));
+
   return parts;
 }
 
@@ -134,6 +141,7 @@ fn parse_brace_sequence(StringView content, Allocator alloc) throws
     let const element_count = distance / magnitude + 1;
     if (element_count > static_cast<u128>(static_cast<usize>(-1))) return None;
     elements.reserve(static_cast<usize>(element_count));
+
     for (i128 current = from; increment > 0 ? current <= to : current >= to;
          current += increment)
     {
@@ -146,14 +154,17 @@ fn parse_brace_sequence(StringView content, Allocator alloc) throws
         if (digits.length < digit_width) {
           let padded = String{alloc};
           if (is_negative) padded.push('-');
+
           for (usize z = digits.length; z < digit_width; z++)
             padded.push('0');
+
           padded.append(digits);
           number = steal(padded);
         }
       }
       elements.push(steal(number));
     }
+
     return elements;
   }
 
@@ -168,14 +179,17 @@ fn parse_brace_sequence(StringView content, Allocator alloc) throws
       let const increment = from <= to ? static_cast<i128>(magnitude)
                                        : -static_cast<i128>(magnitude);
       let elements = ArrayList<String>{alloc};
+
       for (i128 c = from; increment > 0 ? c <= to : c >= to; c += increment) {
         let element = String{alloc};
         element.push(static_cast<char>(c));
         elements.push(steal(element));
       }
+
       return elements;
     }
   }
+
   return None;
 }
 
@@ -184,6 +198,7 @@ fn brace_group_alternatives(StringView content, Allocator alloc) throws
 {
   usize depth = 0;
   let comma_positions = ArrayList<usize>{alloc};
+
   for (usize i = 0; i < content.length; i++) {
     let const c = content[i];
     if (c == '{') {
@@ -201,12 +216,15 @@ fn brace_group_alternatives(StringView content, Allocator alloc) throws
     let alternatives = ArrayList<String>{alloc};
     alternatives.reserve(comma_positions.count() + 1);
     usize start = 0;
+
     for (let const comma : comma_positions) {
       alternatives.push(
           String{alloc, content.substring_of_length(start, comma - start)});
       start = comma + 1;
     }
+
     alternatives.push_managed(content.substring(start));
+
     return alternatives;
   }
 
@@ -226,6 +244,7 @@ fn find_brace_group(StringView text, Allocator alloc) throws
   for (usize open = 0; open < text.length; open++) {
     if (text[open] != '{') continue;
     usize depth = 0;
+
     for (usize j = open; j < text.length; j++) {
       let const c = text[j];
       if (c == '{') {
@@ -238,6 +257,7 @@ fn find_brace_group(StringView text, Allocator alloc) throws
           if (alternatives.has_value()) {
             let group = brace_group{open, j, ArrayList<String>{alloc}};
             group.alternatives = steal(*alternatives);
+
             return group;
           }
           break;
@@ -245,6 +265,7 @@ fn find_brace_group(StringView text, Allocator alloc) throws
       }
     }
   }
+
   return None;
 }
 
@@ -257,6 +278,7 @@ fn brace_expand_text(StringView text, Allocator alloc, usize depth = 0) throws
   let const group = find_brace_group(text, alloc);
   if (!group.has_value() || depth >= MAX_BRACE_DEPTH) {
     results.push_managed(text);
+
     return results;
   }
 
@@ -276,6 +298,7 @@ fn brace_expand_text(StringView text, Allocator alloc, usize depth = 0) throws
       }
     }
   }
+
   return results;
 }
 
@@ -283,6 +306,7 @@ fn expand_braces(const Word &word, Allocator alloc) throws -> ArrayList<Word>
 {
   let opaque_segments = ArrayList<const WordSegment *>{alloc};
   let word_template = String{alloc};
+
   for (let const &segment : word.segments) {
     if (segment.kind == WordSegment::Kind::UnquotedText) {
       for (usize byte_index = 0; byte_index < segment.text.count();
@@ -306,9 +330,11 @@ fn expand_braces(const Word &word, Allocator alloc) throws -> ArrayList<Word>
 
   let words = ArrayList<Word>{alloc};
   words.reserve(expanded.count());
+
   for (let const &produced : expanded) {
     let out = Word{};
     let run = String{alloc};
+
     for (usize i = 0; i < produced.count(); i++) {
       let const c = produced[i];
       if (c == BRACE_OPAQUE_MARKER && i + 1 < produced.count() &&
@@ -326,6 +352,7 @@ fn expand_braces(const Word &word, Allocator alloc) throws -> ArrayList<Word>
                               produced[i + 1] == 'O';
       if (is_opaque_marker) {
         bool has_digit = false;
+
         while (marker_end < produced.count() && produced[marker_end] >= '0' &&
                produced[marker_end] <= '9')
         {
@@ -338,6 +365,7 @@ fn expand_braces(const Word &word, Allocator alloc) throws -> ArrayList<Word>
           opaque_index = opaque_index * 10 + digit;
           marker_end++;
         }
+
         is_opaque_marker &= has_digit && marker_end < produced.count() &&
                             produced[marker_end] == ';' &&
                             opaque_index < opaque_segments.count();
@@ -357,6 +385,7 @@ fn expand_braces(const Word &word, Allocator alloc) throws -> ArrayList<Word>
         run.push(c);
       }
     }
+
     if (!run.is_empty()) {
       out.segments.push(WordSegment{
           WordSegment::Kind::UnquotedText, SegmentText{alloc, run.view()},
@@ -376,11 +405,13 @@ fn expand_braces(const Word &word, Allocator alloc) throws -> ArrayList<Word>
       if (following.kind != WordSegment::Kind::UnquotedText) continue;
 
       usize taken = 0;
+
       while (taken < following.text.count() &&
              lexer::is_variable_name(following.text.view()[taken]))
       {
         taken++;
       }
+
       if (taken == 0) continue;
 
       let joined = String{alloc, reference.text.view()};
@@ -397,7 +428,9 @@ fn expand_braces(const Word &word, Allocator alloc) throws -> ArrayList<Word>
 
     words.push(steal(out));
   }
+
   LOG(Debug, "brace expansion produced %zu words", words.count());
+
   return words;
 }
 
@@ -427,6 +460,7 @@ static fn word_starts_array_subscript(const Word &word) wontthrow -> bool
     if (!segment_is_literal(segment)) continue;
 
     let const text = segment.text.view();
+
     for (usize i = 0; i < text.length; i++) {
       if (text[i] != ']') continue;
 
@@ -438,8 +472,10 @@ static fn word_starts_array_subscript(const Word &word) wontthrow -> bool
         if (!segment_is_literal(word.segments[next])) return false;
         let const next_text = word.segments[next].text.view();
         if (next_text.is_empty()) continue;
+
         return next_text[0] == '=';
       }
+
       return false;
     }
   }
@@ -614,8 +650,10 @@ hot fn EvalContext::process_args(const ArrayList<const Token *> &args,
             false
         });
         let const &value = assignment_token->value_word();
+
         for (let const &value_segment : value.segments)
           fallback_word->segments.push(value_segment);
+
         if (runtime_state().is_bash_compatible() &&
             !runtime_state().is_posix_mode())
         {
@@ -626,6 +664,7 @@ hot fn EvalContext::process_args(const ArrayList<const Token *> &args,
           {
             expand_tilde(segments[1], segments.count() > 2, true);
           }
+
           for (usize i = 1; i < segments.count(); i++)
             expand_colon_tildes(segments[i], i + 1 < segments.count());
         }
@@ -666,6 +705,7 @@ hot fn EvalContext::process_args(const ArrayList<const Token *> &args,
                                expandable.segments[0].text.view()};
 
           let should_split = false;
+
           for (usize i = 0; i < literal.count(); i++)
             if (variable_store().is_field_separator(literal[i])) {
               should_split = true;
@@ -689,12 +729,14 @@ hot fn EvalContext::process_args(const ArrayList<const Token *> &args,
                   String{expanded_args.allocator(), param.view()});
               do_record_location(location);
             }
+
             did_take_fast_path = true;
           }
         }
 
         if (!did_take_fast_path) {
           let is_single_field = !expandable.segments.is_empty();
+
           for (let const &segment : expandable.segments) {
             if (!is_single_field) break;
 
@@ -715,6 +757,7 @@ hot fn EvalContext::process_args(const ArrayList<const Token *> &args,
               let const spec = segment.text.view();
               let has_multi_field_marker = !segment.is_in_double_quotes;
 #pragma clang loop unroll_count(4)
+
               for (usize i = 0; !has_multi_field_marker && i < spec.length; i++)
               {
                 let const byte = spec[i];
@@ -722,6 +765,7 @@ hot fn EvalContext::process_args(const ArrayList<const Token *> &args,
                   has_multi_field_marker = true;
                 }
               }
+
               if (has_multi_field_marker) is_single_field = false;
             } break;
             default: is_single_field = false; break;
@@ -730,6 +774,7 @@ hot fn EvalContext::process_args(const ArrayList<const Token *> &args,
 
           if (is_single_field) {
             let value = String{expanded_args.allocator()};
+
             for (let const &segment : expandable.segments) {
               switch (segment.kind) {
               case WordSegment::Kind::VariableReference: {
@@ -737,8 +782,10 @@ hot fn EvalContext::process_args(const ArrayList<const Token *> &args,
                 let is_plain_name =
                     !spec.is_empty() && lexer::is_variable_name_start(spec[0]);
 #pragma clang loop unroll_count(4)
+
                 for (usize i = 1; is_plain_name && i < spec.length; i++)
                   if (!lexer::is_variable_name(spec[i])) is_plain_name = false;
+
                 if (is_plain_name)
                   if (let const stored =
                           variable_store().find_plain_scalar(spec);
@@ -760,6 +807,7 @@ hot fn EvalContext::process_args(const ArrayList<const Token *> &args,
               default: value += segment.text.view(); break;
               }
             }
+
             expanded_args.push(steal(value));
             do_record_location(location);
             did_take_fast_path = true;
@@ -777,6 +825,7 @@ hot fn EvalContext::process_args(const ArrayList<const Token *> &args,
               do_record_location(location);
               continue;
             }
+
             for (String &g : expand_path(steal(field), location)) {
               expanded_args.push_managed(StringView{g.c_str(), g.count()});
               do_record_location(location);
@@ -798,6 +847,7 @@ hot fn EvalContext::process_args(const ArrayList<const Token *> &args,
       relocate_if_unlocated(e, location);
     }
   }
+
   do_fill_subscript_flags();
 
   return expanded_args;
@@ -812,6 +862,7 @@ fn EvalContext::write_xtrace(StringView command) throws -> void
   if (!ps4.is_empty()) {
     for (usize i = 0; i < execution_store().subshell_depth(); i++)
       trace.push(ps4[0]);
+
     trace.append(ps4.view());
   }
   trace.append(command);
@@ -838,10 +889,12 @@ fn EvalContext::write_xtrace(const ArrayList<String> &args) throws -> void
   if (!runtime_state().should_echo_expanded()) return;
 
   let command = String{scratch_allocator()};
+
   for (usize i = 0; i < args.count(); i++) {
     if (i > 0) command.push(' ');
     append_shell_quoted_arg(command, args[i].view());
   }
+
   write_xtrace(command.view());
 }
 

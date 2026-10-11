@@ -29,6 +29,7 @@ static fn windows_priority_class(i32 priority) wontthrow -> DWORD
   if (priority < 0) return ABOVE_NORMAL_PRIORITY_CLASS;
   if (priority <= 5) return NORMAL_PRIORITY_CLASS;
   if (priority <= 10) return BELOW_NORMAL_PRIORITY_CLASS;
+
   return IDLE_PRIORITY_CLASS;
 }
 
@@ -65,6 +66,7 @@ fn get_priority(i64 id, priority_target target) wontthrow -> Maybe<i32>
 {
   if (target != priority_target::Process || id < 0 || id > UINT32_MAX) {
     SetLastError(ERROR_NOT_SUPPORTED);
+
     return None;
   }
   let const process_id =
@@ -83,6 +85,7 @@ fn set_priority(i64 id, i32 priority, priority_target target) wontthrow -> bool
 {
   if (target != priority_target::Process || id < 0 || id > UINT32_MAX) {
     SetLastError(ERROR_NOT_SUPPORTED);
+
     return false;
   }
   let const process_id =
@@ -90,6 +93,7 @@ fn set_priority(i64 id, i32 priority, priority_target target) wontthrow -> bool
   let const process = OpenProcess(PROCESS_SET_INFORMATION, FALSE, process_id);
   if (process == nullptr) return false;
   defer { CloseHandle(process); };
+
   return SetPriorityClass(process, windows_priority_class(priority)) != FALSE;
 }
 
@@ -109,6 +113,7 @@ fn run_nice(const ArrayList<String> &argv, i32 increment) throws -> Maybe<i32>
   let const result =
       run_measured_with_options(argv, measured_output::Inherit, options);
   if (!result.has_value()) return None;
+
   return static_cast<i32>(result->exit_status);
 }
 
@@ -168,6 +173,7 @@ fn run_nohup(const ArrayList<String> &argv, const nohup_options &options) throws
   let const result =
       run_measured_with_options(argv, measured_output::Inherit, launch_options);
   if (!result.has_value()) return None;
+
   return static_cast<i32>(result->exit_status);
 }
 
@@ -210,7 +216,7 @@ static fn fill_resource_usage(HANDLE process_handle,
   if (GetProcessMemoryInfo(process_handle, &memory_counters,
                            sizeof(memory_counters)) != FALSE)
   {
-    resources.peak_rss_bytes =
+    resources.peak_rss_byte_count =
         static_cast<u64>(memory_counters.PeakWorkingSetSize);
     resources.page_fault_count =
         static_cast<u64>(memory_counters.PageFaultCount);
@@ -229,6 +235,7 @@ fn read_own_resource_usage() wontthrow -> process_resource_usage
 {
   process_resource_usage resources{};
   fill_resource_usage(GetCurrentProcess(), resources);
+
   return resources;
 }
 
@@ -253,15 +260,17 @@ static fn record_child_process_usage(process child) wontthrow -> void
       FALSE)
     return;
 
-  let const peak_rss_bytes =
+  let const peak_rss_byte_count =
       static_cast<LONG64>(memory_counters.PeakWorkingSetSize);
-  let previous_peak_rss_bytes =
+  let previous_peak_rss_byte_count =
       InterlockedCompareExchange64(&CHILD_PEAK_RSS_BYTES, 0, 0);
-  while (peak_rss_bytes > previous_peak_rss_bytes) {
-    let const observed_peak_rss_bytes = InterlockedCompareExchange64(
-        &CHILD_PEAK_RSS_BYTES, peak_rss_bytes, previous_peak_rss_bytes);
-    if (observed_peak_rss_bytes == previous_peak_rss_bytes) break;
-    previous_peak_rss_bytes = observed_peak_rss_bytes;
+
+  while (peak_rss_byte_count > previous_peak_rss_byte_count) {
+    let const observed_peak_rss_byte_count =
+        InterlockedCompareExchange64(&CHILD_PEAK_RSS_BYTES, peak_rss_byte_count,
+                                     previous_peak_rss_byte_count);
+    if (observed_peak_rss_byte_count == previous_peak_rss_byte_count) break;
+    previous_peak_rss_byte_count = observed_peak_rss_byte_count;
   }
 }
 
@@ -327,6 +336,7 @@ fn ProgramCapture::start(const ArrayList<String> &argv,
                               resolved_program_path_storage.is_empty()
                                   ? argv[0].view()
                                   : resolved_program_path_storage.view());
+
     for (usize argument_position = 1; argument_position < argv.count();
          argument_position++)
     {
@@ -374,6 +384,7 @@ fn ProgramCapture::start(const ArrayList<String> &argv,
   capture.m_output = read_end;
   is_read_end_owned = false;
   capture.m_deadline_nanos = monotonic_nanos() + timeout_nanos;
+
   return capture;
 }
 
@@ -395,6 +406,7 @@ fn ProgramCapture::step() wontthrow -> State
     {
       if (GetLastError() != ERROR_BROKEN_PIPE) {
         abandon();
+
         return State::Failed;
       }
       do_close_output();
@@ -412,6 +424,7 @@ fn ProgramCapture::step() wontthrow -> State
     {
       if (GetLastError() != ERROR_BROKEN_PIPE) {
         abandon();
+
         return State::Failed;
       }
       do_close_output();
@@ -435,11 +448,13 @@ fn ProgramCapture::step() wontthrow -> State
     CloseHandle(m_child);
     m_child = KOSH_INVALID_PROCESS;
     m_captured.normalize_crlf_line_endings();
+
     return State::Finished;
   }
 
   if (monotonic_nanos() >= m_deadline_nanos) {
     abandon();
+
     return State::Failed;
   }
 
@@ -502,6 +517,7 @@ fn process_id_of(process p) wontthrow -> i64
 {
   if (process_is_pid_reference(p)) return pid_from_reference(p);
   if (process_is_group_reference(p)) p = process_from_group_reference(p);
+
   return static_cast<i64>(GetProcessId(p));
 }
 
@@ -561,6 +577,7 @@ static fn make_handle_inheritable(HANDLE handle,
   state.handle = handle;
   state.original_flags = flags;
   state.should_restore = true;
+
   return true;
 }
 
@@ -569,6 +586,7 @@ restore_handle_inheritance(const inherited_handle_state &state) wontthrow
     -> bool
 {
   if (!state.should_restore) return true;
+
   return SetHandleInformation(state.handle, HANDLE_FLAG_INHERIT,
                               state.original_flags & HANDLE_FLAG_INHERIT) !=
          FALSE;
@@ -606,6 +624,7 @@ static fn ensure_valid_standard_handles(STARTUPINFOW &startup_info,
   {
     startup_info.hStdError = null_handle;
   }
+
   return true;
 }
 
@@ -628,6 +647,7 @@ static fn create_process_utf8(StringView application_path,
        startup_info.hStdError == INVALID_HANDLE_VALUE))
   {
     SetLastError(ERROR_INVALID_HANDLE);
+
     return false;
   }
 
@@ -656,10 +676,13 @@ static fn create_process_utf8(StringView application_path,
     if (handle == nullptr || handle == INVALID_HANDLE_VALUE) {
       return;
     }
+
     for (let const existing : unique_handles)
       if (existing == handle) return;
+
     unique_handles.push(handle);
   };
+
   for (usize handle_position = 0; handle_position < inherited_handle_count;
        handle_position++)
     do_add_unique_handle(inherited_handles[handle_position]);
@@ -683,16 +706,20 @@ static fn create_process_utf8(StringView application_path,
   let inherited_fd_storage = ArrayList<u8>{heap_allocator()};
   if (highest_inherited_fd > 2) {
     let const inherited_fd_count = highest_inherited_fd + 1;
-    let const storage_size = sizeof(i32) +
-                             static_cast<usize>(inherited_fd_count) +
-                             sizeof(intptr_t) * inherited_fd_count;
-    if (storage_size > UINT16_MAX) {
+    let const storage_byte_count = sizeof(i32) +
+                                   static_cast<usize>(inherited_fd_count) +
+                                   sizeof(intptr_t) * inherited_fd_count;
+    if (storage_byte_count > UINT16_MAX) {
       SetLastError(ERROR_TOO_MANY_OPEN_FILES);
+
       return false;
     }
-    inherited_fd_storage.reserve(storage_size);
-    for (usize byte_position = 0; byte_position < storage_size; byte_position++)
+    inherited_fd_storage.reserve(storage_byte_count);
+
+    for (usize byte_position = 0; byte_position < storage_byte_count;
+         byte_position++)
       inherited_fd_storage.push(0);
+
     __builtin_memcpy(inherited_fd_storage.begin(), &inherited_fd_count,
                      sizeof(inherited_fd_count));
     let *flags = inherited_fd_storage.begin() + sizeof(inherited_fd_count);
@@ -756,9 +783,11 @@ static fn create_process_utf8(StringView application_path,
 
   let inheritance_states = ArrayList<inherited_handle_state>{heap_allocator()};
   inheritance_states.reserve(unique_handles.count());
+
   for (usize handle_position = 0; handle_position < unique_handles.count();
        handle_position++)
     inheritance_states.push(inherited_handle_state{});
+
   usize inheritable_handle_count = 0;
   DWORD preserved_error = ERROR_SUCCESS;
   bool did_restore_inheritance = false;
@@ -777,18 +806,20 @@ static fn create_process_utf8(StringView application_path,
     }
     if (preserved_error != ERROR_SUCCESS) SetLastError(preserved_error);
   };
+
   for (usize handle_position = 0; handle_position < unique_handles.count();
        handle_position++)
     if (!make_handle_inheritable(unique_handles[handle_position],
                                  inheritance_states[handle_position]))
     {
       preserved_error = GetLastError();
+
       return false;
     } else {
       inheritable_handle_count = handle_position + 1;
     }
 
-  SIZE_T attribute_size = 0;
+  SIZE_T attribute_byte_count = 0;
   LPPROC_THREAD_ATTRIBUTE_LIST attribute_list = nullptr;
   ArrayList<u8> attribute_storage{heap_allocator()};
   STARTUPINFOEXW extended_startup{};
@@ -812,18 +843,20 @@ static fn create_process_utf8(StringView application_path,
       DeleteProcThreadAttributeList(attribute_list);
   };
   if (!unique_handles.is_empty()) {
-    InitializeProcThreadAttributeList(nullptr, 1, 0, &attribute_size);
-    if (attribute_size == 0) {
+    InitializeProcThreadAttributeList(nullptr, 1, 0, &attribute_byte_count);
+    if (attribute_byte_count == 0) {
       preserved_error = GetLastError();
+
       return false;
     }
-    attribute_storage.reserve(static_cast<usize>(attribute_size));
+    attribute_storage.reserve(static_cast<usize>(attribute_byte_count));
     attribute_list = reinterpret_cast<LPPROC_THREAD_ATTRIBUTE_LIST>(
         attribute_storage.begin());
     if (InitializeProcThreadAttributeList(attribute_list, 1, 0,
-                                          &attribute_size) == FALSE)
+                                          &attribute_byte_count) == FALSE)
     {
       preserved_error = GetLastError();
+
       return false;
     }
     is_attribute_list_initialized = true;
@@ -833,6 +866,7 @@ static fn create_process_utf8(StringView application_path,
             nullptr, nullptr) == FALSE)
     {
       preserved_error = GetLastError();
+
       return false;
     }
     extended_startup.lpAttributeList = attribute_list;
@@ -853,6 +887,7 @@ static fn create_process_utf8(StringView application_path,
   if (!did_create) preserved_error = GetLastError();
 
   DWORD restoration_error = ERROR_SUCCESS;
+
   for (usize restore_position = 0; restore_position < inheritable_handle_count;
        restore_position++)
     if (!restore_handle_inheritance(inheritance_states[restore_position]) &&
@@ -860,6 +895,7 @@ static fn create_process_utf8(StringView application_path,
     {
       restoration_error = GetLastError();
     }
+
   did_restore_inheritance = true;
   if (restoration_error == ERROR_SUCCESS) return did_create;
 
@@ -871,6 +907,7 @@ static fn create_process_utf8(StringView application_path,
     process_info = PROCESS_INFORMATION{};
   }
   preserved_error = restoration_error;
+
   return false;
 }
 
@@ -891,6 +928,7 @@ static fn timeout_job_name(HANDLE process_handle, char (&name)[64]) wontthrow
   ::snprintf(name, sizeof(name), "kosh-timeout-%lu-%llu",
              static_cast<unsigned long>(GetProcessId(process_handle)),
              static_cast<unsigned long long>(creation_ticks));
+
   return true;
 }
 
@@ -936,6 +974,7 @@ static pure fn is_batch_program(StringView path) wontthrow -> bool
 {
   if (path.length < 4) return false;
   let const suffix = path.substring_of_length(path.length - 4, 4);
+
   return suffix[0] == '.' && utils::ascii_to_lower(suffix[1]) == 'b' &&
          utils::ascii_to_lower(suffix[2]) == 'a' &&
          utils::ascii_to_lower(suffix[3]) == 't';
@@ -982,6 +1021,7 @@ fn execute_program(ExecContext &ec, const program_execution_options &options)
                               resolved_program_path_storage.is_empty()
                                   ? ec.program_path().view()
                                   : resolved_program_path_storage.view());
+
     for (usize argument_index = 1; argument_index < ec.args().count();
          argument_index++)
     {
@@ -1087,6 +1127,7 @@ fn execute_program(ExecContext &ec, const program_execution_options &options)
       if (!resolved_program_path_storage.is_empty())
         ec.set_program_path(Path{resolved_program_path_storage.view()});
       did_hand_handles_to_fallback = true;
+
       return KOSH_INVALID_PROCESS;
     }
     throw ErrorWithLocation{ec.source_location(), last_system_error_message()};
@@ -1120,6 +1161,7 @@ fn execute_program(ExecContext &ec, const program_execution_options &options)
   }
 
   CloseHandle(process_info.hThread);
+
   return process_info.hProcess;
 }
 
@@ -1144,10 +1186,12 @@ static fn make_internal_pipe_path() throws -> String
                        heap_allocator()) +
           "-";
   constexpr char HEX_DIGITS[] = "0123456789abcdef";
+
   for (let const byte : random_bytes) {
     path.push(HEX_DIGITS[byte >> 4]);
     path.push(HEX_DIGITS[byte & 0xf]);
   }
+
   return path;
 }
 
@@ -1210,6 +1254,7 @@ static fn send_internal_pipe(StringView path, StringView content,
   let const wide_path = utf8_to_wide(path, heap_allocator());
   if (!wide_path.has_value()) return false;
   let const deadline = GetTickCount64() + 5000;
+
   for (;;) {
     if (WaitNamedPipeW(wide_path->begin(), 50) != FALSE) {
       let const client = CreateFileW(wide_path->begin(), GENERIC_WRITE, 0,
@@ -1221,11 +1266,13 @@ static fn send_internal_pipe(StringView path, StringView content,
           server_process_id != GetProcessId(child))
       {
         CloseHandle(client);
+
         return false;
       }
 
       let const was_written = write_all(client, content.data, content.length);
       CloseHandle(client);
+
       return was_written;
     }
     if (WaitForSingleObject(child, 0) == WAIT_OBJECT_0) return false;
@@ -1336,6 +1383,7 @@ static fn copy_relay_pipe_name(
 
   for (usize position = 0; position < name.length; position++)
     output[position] = static_cast<wchar_t>(static_cast<u8>(name[position]));
+
   output[name.length] = L'\0';
 
   return true;
@@ -1348,18 +1396,19 @@ static fn create_relay_instance(const substitution_relay &relay,
       relay.is_command_writes ? PIPE_ACCESS_DUPLEX : PIPE_ACCESS_INBOUND;
   let const first_flag =
       is_first ? static_cast<DWORD>(FILE_FLAG_FIRST_PIPE_INSTANCE) : 0;
-  let const inbound_bytes = relay.is_command_writes
-                                ? SUBSTITUTION_RELAY_CLIENT_BYTES
-                                : SUBSTITUTION_RELAY_INBOUND_BYTES;
+  let const inbound_byte_count = relay.is_command_writes
+                                     ? SUBSTITUTION_RELAY_CLIENT_BYTES
+                                     : SUBSTITUTION_RELAY_INBOUND_BYTES;
   let const pipe = create_private_pipe(
       relay.path, access | FILE_FLAG_OVERLAPPED | first_flag,
-      PIPE_UNLIMITED_INSTANCES, 0, inbound_bytes);
+      PIPE_UNLIMITED_INSTANCES, 0, inbound_byte_count);
   if (pipe == INVALID_HANDLE_VALUE) return pipe;
 
   if (CreateIoCompletionPort(pipe, relay.port, 0, 0) == nullptr) {
     let const error = GetLastError();
     CloseHandle(pipe);
     SetLastError(error);
+
     return INVALID_HANDLE_VALUE;
   }
 
@@ -1469,11 +1518,13 @@ static fn start_relay_listen(substitution_relay &relay,
   let const error = GetLastError();
   if (note_relay_operation(client.link, was_started)) {
     client.state = relay_client_state::Listening;
+
     return;
   }
 
   if (error == ERROR_PIPE_CONNECTED || error == ERROR_NO_DATA) {
     accept_relay_client(relay, position);
+
     return;
   }
 
@@ -1485,6 +1536,7 @@ static fn ensure_relay_listeners(substitution_relay &relay) wontthrow -> void
   if (relay.is_finishing) return;
 
   usize listener_count = 0;
+
   for (usize position = 0; position < SUBSTITUTION_RELAY_CLIENT_COUNT;
        position++)
   {
@@ -1514,6 +1566,7 @@ static fn ensure_relay_listeners(substitution_relay &relay) wontthrow -> void
 static fn start_relay_finish(substitution_relay &relay) wontthrow -> void
 {
   relay.is_finishing = true;
+
   for (let &client : relay.clients) {
     if (client.state == relay_client_state::Idle) close_relay_client(client);
     if (client.state == relay_client_state::Listening)
@@ -1531,6 +1584,7 @@ static fn finish_relay_connect(substitution_relay &relay, usize position,
       error != ERROR_NO_DATA)
   {
     close_relay_client(client);
+
     return;
   }
 
@@ -1560,16 +1614,19 @@ static fn finish_relay_client_read(substitution_relay &relay, usize position,
 
   if (error != ERROR_SUCCESS) {
     close_relay_client(client);
+
     return;
   }
 
   if (relay.is_command_writes || byte_count == 0) {
     start_relay_client_read(relay, position);
+
     return;
   }
 
   if (relay.is_body_finished) {
     close_relay_client(client);
+
     return;
   }
 
@@ -1604,6 +1661,7 @@ static fn forward_relay_input(substitution_relay &relay) wontthrow -> void
 {
   while (!relay.is_body_finished) {
     usize oldest = SUBSTITUTION_RELAY_CLIENT_COUNT;
+
     for (usize position = 0; position < SUBSTITUTION_RELAY_CLIENT_COUNT;
          position++)
     {
@@ -1648,6 +1706,7 @@ static fn start_relay_offer(substitution_relay &relay, usize position) wontthrow
     relay.was_offer_withdrawn = false;
     relay.offer_turn_end_ms =
         GetTickCount64() + SUBSTITUTION_RELAY_OFFER_TURN_MS;
+
     return;
   }
 
@@ -1714,6 +1773,7 @@ static fn finish_relay_offer(substitution_relay &relay, usize position,
 
   if (error != ERROR_SUCCESS) {
     if (error != ERROR_OPERATION_ABORTED) close_relay_client(client);
+
     return;
   }
 
@@ -1738,6 +1798,7 @@ static fn finish_relay_transfer(substitution_relay &relay, usize position,
 {
   if (relay.is_command_writes) {
     finish_relay_offer(relay, position, error);
+
     return;
   }
 
@@ -1745,6 +1806,7 @@ static fn finish_relay_transfer(substitution_relay &relay, usize position,
   if (error != ERROR_SUCCESS) {
     relay.is_body_finished = true;
     close_relay_client(client);
+
     return;
   }
 
@@ -1814,6 +1876,7 @@ static fn start_relay_writes(substitution_relay &relay) wontthrow -> void
   if (relay.active_client == SUBSTITUTION_RELAY_CLIENT_COUNT) return;
 
   let &client = relay.clients[relay.active_client];
+
   while (client.state == relay_client_state::Active &&
          relay.write_count < SUBSTITUTION_RELAY_WRITE_COUNT &&
          relay.posted < relay.tail)
@@ -1834,6 +1897,7 @@ static fn start_relay_writes(substitution_relay &relay) wontthrow -> void
         length, nullptr, overlapped);
     if (!note_relay_operation(write.operation, was_started)) {
       close_relay_client(client);
+
       return;
     }
 
@@ -1874,6 +1938,7 @@ static fn finish_relay_body_read(substitution_relay &relay, DWORD byte_count,
 {
   if (error != ERROR_SUCCESS) {
     relay.is_body_finished = true;
+
     return;
   }
 
@@ -1924,6 +1989,7 @@ static fn advance_relay_output(substitution_relay &relay) wontthrow -> void
       relay.head == relay.tail)
   {
     close_connected_relay_clients(relay);
+
     return;
   }
 
@@ -1936,6 +2002,7 @@ static fn advance_relay_output(substitution_relay &relay) wontthrow -> void
 
   if (relay.offering_client != SUBSTITUTION_RELAY_CLIENT_COUNT) {
     rotate_relay_offer(relay);
+
     return;
   }
 
@@ -1963,6 +2030,7 @@ static fn relay_is_finished(substitution_relay &relay) wontthrow -> bool
 
   if (relay.body_read.is_pending) {
     CancelIoEx(relay.body, &relay.body_read.overlapped);
+
     return false;
   }
 
@@ -2015,6 +2083,7 @@ static fn destroy_substitution_relay(substitution_relay *relay) wontthrow
 {
   for (let &client : relay->clients)
     if (client.pipe != INVALID_HANDLE_VALUE) CloseHandle(client.pipe);
+
   if (relay->body != INVALID_HANDLE_VALUE) CloseHandle(relay->body);
   if (relay->port != nullptr) CloseHandle(relay->port);
   relay->~substitution_relay();
@@ -2024,6 +2093,7 @@ static fn destroy_substitution_relay(substitution_relay *relay) wontthrow
 static fn run_substitution_relay(opaque *context) wontthrow -> void
 {
   let &relay = *static_cast<substitution_relay *>(context);
+
   while (advance_substitution_relay(relay)) {
     DWORD byte_count = 0;
     ULONG_PTR key = 0;
@@ -2042,6 +2112,7 @@ static fn run_substitution_relay(opaque *context) wontthrow -> void
 
     if (was_dequeued == FALSE) {
       signal_relay_listeners_closed(relay);
+
       return;
     }
 
@@ -2304,6 +2375,7 @@ static fn spawn_subshell_stage(StringView source, Maybe<descriptor> in_fd,
     }
   }
   should_terminate_child = false;
+
   return process_info.hProcess;
 }
 
@@ -2311,6 +2383,7 @@ fn try_fork_compound_stage(const fork_compound_stage_options &options)
     -> Maybe<process>
 {
   unused(options);
+
   return koshka::None;
 }
 
@@ -2364,6 +2437,7 @@ fn replace_process(ExecContext &&ec) -> void
   if (child == KOSH_INVALID_PROCESS) {
     redirect_self(ec);
     ec.close_fds();
+
     return;
   }
 
@@ -2430,6 +2504,7 @@ fn thread_trampoline(LPVOID raw_context) -> DWORD
   let const context = start->context;
   os::free_aligned(start);
   entry(context);
+
   return 0;
 }
 
@@ -2444,8 +2519,10 @@ fn start_thread(void (*entry)(opaque *), opaque *context) wontthrow
       CreateThread(nullptr, 0, thread_trampoline, start, 0, nullptr);
   if (handle == nullptr) {
     os::free_aligned(start);
+
     return koshka::None;
   }
+
   return thread{handle};
 }
 
@@ -2485,6 +2562,7 @@ fn reap_process_quietly(process p) -> i32
   note_child_reaped();
   DWORD code = 1;
   GetExitCodeProcess(p, &code);
+
   return static_cast<i32>(code);
 }
 
@@ -2497,6 +2575,7 @@ fn poll_process(process p, i32 &status_out,
   if (wait_result != WAIT_OBJECT_0) {
     status_out = 0;
     CloseHandle(p);
+
     return process_state::Exited;
   }
   record_child_process_usage(p);
@@ -2506,10 +2585,12 @@ fn poll_process(process p, i32 &status_out,
   if (GetExitCodeProcess(p, &code) == 0) {
     status_out = 0;
     CloseHandle(p);
+
     return process_state::Exited;
   }
   status_out = static_cast<i32>(code);
   CloseHandle(p);
+
   return process_state::Exited;
 }
 
@@ -2524,12 +2605,14 @@ fn signal_process(process p, i32 signal_number) wontthrow -> bool
     if (process_is_group_reference(p)) {
       let const has_members = process_group_has_members(p);
       if (!has_members) SetLastError(ERROR_NOT_FOUND);
+
       return has_members;
     }
     if (!process_is_pid_reference(p)) {
       let const wait_result = WaitForSingleObject(p, 0);
       if (wait_result == WAIT_TIMEOUT) return true;
       if (wait_result == WAIT_OBJECT_0) SetLastError(ERROR_NOT_FOUND);
+
       return false;
     }
 
@@ -2539,6 +2622,7 @@ fn signal_process(process p, i32 signal_number) wontthrow -> bool
     CloseHandle(target);
     if (wait_result == WAIT_TIMEOUT) return true;
     if (wait_result == WAIT_OBJECT_0) SetLastError(ERROR_NOT_FOUND);
+
     return false;
   }
 
@@ -2550,6 +2634,7 @@ fn signal_process(process p, i32 signal_number) wontthrow -> bool
 
   if (!is_process_signal_supported(signal_number)) {
     SetLastError(ERROR_NOT_SUPPORTED);
+
     return false;
   }
   let const exit_status = static_cast<UINT>(128 + signal_number);
@@ -2562,6 +2647,7 @@ fn signal_process(process p, i32 signal_number) wontthrow -> bool
     if (job == nullptr) return false;
     let const did_terminate = TerminateJobObject(job, exit_status) != FALSE;
     CloseHandle(job);
+
     return did_terminate;
   }
 
@@ -2573,6 +2659,7 @@ fn signal_process(process p, i32 signal_number) wontthrow -> bool
   if (target == nullptr) return false;
   let const did_terminate = TerminateProcess(target, exit_status) != 0;
   CloseHandle(target);
+
   return did_terminate;
 }
 
@@ -2592,6 +2679,7 @@ fn process_group_has_members(process group) wontthrow -> bool
       QueryInformationJobObject(job, JobObjectBasicAccountingInformation,
                                 &accounting, sizeof(accounting), nullptr);
   CloseHandle(job);
+
   return did_query != FALSE && accounting.ActiveProcesses > 0;
 }
 
@@ -2606,6 +2694,7 @@ fn process_from_pid(i64 pid) wontthrow -> process
     return nullptr;
   }
   let const encoded = (static_cast<uintptr_t>(pid) << 2u) | PID_REFERENCE_TAG;
+
   return reinterpret_cast<process>(encoded);
 }
 
@@ -2640,41 +2729,51 @@ fn signal_names() throws -> const ArrayList<StringView> &
 static fn append_windows_quoted_arg(String &out, StringView arg) -> void
 {
   bool should_quote_arg = arg.count() == 0;
+
   for (usize i = 0; i < arg.count() && !should_quote_arg; i++) {
     const char c = arg[i];
     if (c == ' ' || c == '\t' || c == '\n' || c == '\v' || c == '"') {
       should_quote_arg = true;
     }
   }
+
   if (!should_quote_arg) {
     out.append(arg);
+
     return;
   }
 
   out += '"';
+
   for (usize i = 0; i < arg.count();) {
     usize backslash_count = 0;
+
     while (i < arg.count() && arg[i] == '\\') {
       i++;
       backslash_count++;
     }
+
     if (i == arg.count()) {
       for (usize k = 0; k < backslash_count * 2; k++)
         out += '\\';
+
       break;
     }
     if (arg[i] == '"') {
       for (usize k = 0; k < backslash_count * 2 + 1; k++)
         out += '\\';
+
       out += '"';
       i++;
     } else {
       for (usize k = 0; k < backslash_count; k++)
         out += '\\';
+
       out += arg[i];
       i++;
     }
   }
+
   out += '"';
 }
 
@@ -2684,6 +2783,7 @@ fn make_os_args(const ArrayList<String> &args) -> os_args
 
   String command_line{heap_allocator()};
   append_windows_quoted_arg(command_line, args[0].view());
+
   for (usize i = 1; i < args.count(); i++) {
     command_line += ' ';
     append_windows_quoted_arg(command_line, args[i].view());
@@ -2720,6 +2820,7 @@ cold fn last_system_error_message() throws -> String
            StringView{" (Error message could not be converted to UTF-8)"};
   }
   let view = converted->view();
+
   while (view.length > 0) {
     let const last_byte = view[view.length - 1];
     if (last_byte != '.' && last_byte != ' ' && last_byte != '\r' &&
@@ -2731,6 +2832,7 @@ cold fn last_system_error_message() throws -> String
   }
 
   String err{heap_allocator()};
+
   for (usize i = 0; i < view.length; i++) {
     if (view[i] == '%' && i + 1 < view.length && view[i + 1] >= '0' &&
         view[i + 1] <= '9')
@@ -2756,6 +2858,7 @@ fn get_last_system_error_number() wontthrow -> i32
 fn last_system_error_is_missing_file() wontthrow -> bool
 {
   let const error = GetLastError();
+
   return error == ERROR_FILE_NOT_FOUND || error == ERROR_PATH_NOT_FOUND;
 }
 
@@ -2831,6 +2934,7 @@ fn monotonic_nanos() wontthrow -> u64
   static const LARGE_INTEGER frequency = [] {
     LARGE_INTEGER value{};
     QueryPerformanceFrequency(&value);
+
     return value;
   }();
   LARGE_INTEGER counter;
@@ -2838,6 +2942,7 @@ fn monotonic_nanos() wontthrow -> u64
   if (QueryPerformanceCounter(&counter) == 0) return 0;
   const u64 whole_seconds = counter.QuadPart / frequency.QuadPart;
   const u64 remainder = counter.QuadPart % frequency.QuadPart;
+
   return whole_seconds * 1000000000ULL +
          (remainder * 1000000000ULL) / static_cast<u64>(frequency.QuadPart);
 }
@@ -2853,6 +2958,7 @@ static fn query_parent_process_id() wontthrow -> i64
   if (Process32FirstW(snapshot, &entry) == FALSE) return 0;
 
   let const process_id = GetCurrentProcessId();
+
   do {
     if (entry.th32ProcessID == process_id)
       return static_cast<i64>(entry.th32ParentProcessID);
@@ -2864,6 +2970,7 @@ static fn query_parent_process_id() wontthrow -> i64
 fn get_parent_process_id() wontthrow -> i64
 {
   static const i64 parent_process_id = query_parent_process_id();
+
   return parent_process_id;
 }
 
@@ -2879,6 +2986,7 @@ fn get_supplementary_group_ids(Allocator allocator) throws -> ArrayList<u32>
 {
   let groups = ArrayList<u32>{allocator};
   groups.push(0);
+
   return groups;
 }
 
@@ -2911,8 +3019,10 @@ static fn windows_version() wontthrow -> OSVERSIONINFOW
     if (get_version != nullptr && get_version(&information) != 0) {
       information.dwMajorVersion = 0;
     }
+
     return information;
   }();
+
   return version;
 }
 
@@ -2920,6 +3030,7 @@ fn system_release_name() throws -> String
 {
   let const version = windows_version();
   if (version.dwMajorVersion == 0) return String{"unknown"};
+
   return String::from(version.dwMajorVersion, heap_allocator()) + "." +
          String::from(version.dwMinorVersion, heap_allocator()) + "." +
          String::from(version.dwBuildNumber, heap_allocator());
@@ -2929,6 +3040,7 @@ fn system_version_name() throws -> String
 {
   let const version = windows_version();
   if (version.dwMajorVersion == 0) return String{"unknown"};
+
   return String::from(version.dwBuildNumber, heap_allocator());
 }
 
@@ -2942,10 +3054,13 @@ fn ostype_name() wontthrow -> StringView { return "msys"; }
 fn executable_machine_name() throws -> String
 {
 #if defined _M_ARM64 || defined __aarch64__
+
   return String{"arm64"};
 #elif defined _M_X64 || defined __x86_64__
+
   return String{"x86_64"};
 #else
+
   return machine_type();
 #endif
 }
@@ -2957,6 +3072,7 @@ fn realtime_microseconds() wontthrow -> u64
   const u64 ticks = filetime_ticks(file_time);
   const u64 epoch_offset_100ns = 116444736000000000ULL;
   if (ticks < epoch_offset_100ns) return 0;
+
   return (ticks - epoch_offset_100ns) / 10ULL;
 }
 
@@ -2969,6 +3085,7 @@ fn format_local_time(StringView format, i64 epoch) throws -> String
   char buffer[512];
   let const written =
       strftime(buffer, sizeof(buffer), format_string.c_str(), &broken_down);
+
   return String{
       StringView{buffer, written}
   };
@@ -2983,6 +3100,7 @@ fn read_child_cpu_times() wontthrow -> child_cpu_times
   result.system_seconds = static_cast<double>(InterlockedCompareExchange64(
                               &CHILD_SYSTEM_TICKS, 0, 0)) /
                           10000000.0;
+
   return result;
 }
 
@@ -3017,6 +3135,7 @@ fn read_process_cpu_times() wontthrow -> cpu_times
 fn read_malloc_heap_stats(malloc_heap_stats &stats) wontthrow -> bool
 {
   unused(stats);
+
   return false;
 }
 
@@ -3105,7 +3224,7 @@ run_measured_with_options(const ArrayList<String> &argv, measured_output output,
   memory_counters.cb = sizeof(memory_counters);
   if (GetProcessMemoryInfo(process_info.hProcess, &memory_counters,
                            sizeof(memory_counters)) != 0)
-    result.peak_rss_bytes =
+    result.peak_rss_byte_count =
         static_cast<u64>(memory_counters.PeakWorkingSetSize);
 
   if (options.should_collect_resources)
@@ -3122,6 +3241,7 @@ fn run_measured(const ArrayList<String> &argv,
   windows_measured_launch_options options{};
   options.inherited_handle = inherited_handle;
   options.should_collect_resources = should_collect_resources;
+
   return run_measured_with_options(argv, output, options);
 }
 fn enumerate_processes(process_detail detail) throws -> ArrayList<process_entry>
@@ -3135,6 +3255,7 @@ fn enumerate_processes(process_detail detail) throws -> ArrayList<process_entry>
   PROCESSENTRY32W entry{};
   entry.dwSize = sizeof(entry);
   if (Process32FirstW(snapshot, &entry) == 0) return processes;
+
   do {
     let name = wide_to_utf8(entry.szExeFile,
                             static_cast<usize>(lstrlenW(entry.szExeFile)),
@@ -3174,6 +3295,7 @@ fn enumerate_processes(process_detail detail) throws -> ArrayList<process_entry>
     }
     processes.push(steal(process));
   } while (Process32NextW(snapshot, &entry) != 0);
+
   return processes;
 }
 
@@ -3184,6 +3306,7 @@ fn describe_processes(const ArrayList<u32> &pids) throws
   if (pids.is_empty()) return described;
 
   let all = enumerate_processes(process_detail::ResourceStats);
+
   for (let &process : all) {
     if (pids.find(static_cast<u32>(process.pid)).has_value())
       described.push(steal(process));
@@ -3213,6 +3336,7 @@ fn read_memory_status(memory_status &status) wontthrow -> bool
                             static_cast<u32>(memory_status_field::Free) |
                             static_cast<u32>(memory_status_field::SwapTotal) |
                             static_cast<u32>(memory_status_field::SwapFree);
+
   return true;
 }
 
@@ -3221,7 +3345,7 @@ fn read_swap_status(swap_status &status) wontthrow -> bool
   struct page_file_context
   {
     swap_status *status;
-    u64 page_bytes;
+    u64 page_byte_count;
   };
   SYSTEM_INFO system{};
   GetSystemInfo(&system);
@@ -3231,16 +3355,19 @@ fn read_swap_status(swap_status &status) wontthrow -> bool
                             LPCWSTR name) -> BOOL {
     unused(name);
     let *context = static_cast<page_file_context *>(raw_context);
-    context->status->total_bytes +=
-        static_cast<u64>(information->TotalSize) * context->page_bytes;
-    context->status->used_bytes +=
-        static_cast<u64>(information->TotalInUse) * context->page_bytes;
+    context->status->total_byte_count +=
+        static_cast<u64>(information->TotalSize) * context->page_byte_count;
+    context->status->used_byte_count +=
+        static_cast<u64>(information->TotalInUse) * context->page_byte_count;
+
     return TRUE;
   };
   if (EnumPageFilesW(do_collect, &context) == FALSE) return false;
-  status.free_bytes = status.total_bytes > status.used_bytes
-                          ? status.total_bytes - status.used_bytes
-                          : 0;
+  status.free_byte_count =
+      status.total_byte_count > status.used_byte_count
+          ? status.total_byte_count - status.used_byte_count
+          : 0;
+
   return true;
 }
 
@@ -3256,11 +3383,12 @@ fn read_process_io_status(i64 pid, process_io_status &status) wontthrow -> bool
 
   IO_COUNTERS counters{};
   if (GetProcessIoCounters(process, &counters) == FALSE) return false;
-  status.read_bytes = counters.ReadTransferCount;
-  status.written_bytes = counters.WriteTransferCount;
+  status.read_byte_count = counters.ReadTransferCount;
+  status.written_byte_count = counters.WriteTransferCount;
   status.read_operation_count = counters.ReadOperationCount;
   status.write_operation_count = counters.WriteOperationCount;
   status.has_operation_counts = true;
+
   return true;
 }
 
@@ -3272,6 +3400,7 @@ fn read_process_io_statuses(const ArrayList<i64> &process_ids,
   availability.clear();
   statuses.reserve(process_ids.count());
   availability.reserve(process_ids.count());
+
   for (let const process_id : process_ids) {
     process_io_status status{};
     let const is_available = read_process_io_status(process_id, status);
@@ -3302,6 +3431,7 @@ static fn hundred_nanosecond_units_to_nanoseconds(i64 units) wontthrow -> u64
 {
   if (units <= 0) return 0;
   let const unsigned_units = static_cast<u64>(units);
+
   return unsigned_units > UINT64_MAX / 100 ? UINT64_MAX : unsigned_units * 100;
 }
 
@@ -3369,10 +3499,11 @@ fn read_disk_io_snapshot(Allocator allocator) throws -> disk_io_snapshot
 fn processor_model_name(Allocator allocator) throws -> Maybe<String>
 {
   wchar_t name_buffer[256]{};
-  DWORD name_bytes = sizeof(name_buffer);
+  DWORD name_byte_count = sizeof(name_buffer);
   let const status = RegGetValueW(
       HKEY_LOCAL_MACHINE, L"HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0",
-      L"ProcessorNameString", RRF_RT_REG_SZ, nullptr, name_buffer, &name_bytes);
+      L"ProcessorNameString", RRF_RT_REG_SZ, nullptr, name_buffer,
+      &name_byte_count);
   if (status != ERROR_SUCCESS) return None;
 
   return wide_to_utf8(name_buffer, static_cast<usize>(lstrlenW(name_buffer)),
@@ -3387,6 +3518,7 @@ fn list_process_open_files(i64 pid, Allocator allocator,
 {
   unused(pid);
   unused(detail);
+
   return ArrayList<process_open_file>{allocator};
 }
 
@@ -3401,6 +3533,7 @@ static fn utf8_to_absolute_wide_path(StringView path,
       GetFullPathNameW(wide_path->begin(), 0, nullptr, nullptr);
   if (absolute_length == 0) return None;
   ArrayList<wchar_t> absolute_path{allocator};
+
   for (usize attempt_count = 0; attempt_count < 4; attempt_count++) {
     absolute_path.reserve(static_cast<usize>(absolute_length));
     let const written = GetFullPathNameW(wide_path->begin(), absolute_length,
@@ -3410,7 +3543,9 @@ static fn utf8_to_absolute_wide_path(StringView path,
     if (written == MAXDWORD) return None;
     absolute_length = written + 1;
   }
+
   SetLastError(ERROR_INSUFFICIENT_BUFFER);
+
   return None;
 }
 
@@ -3427,6 +3562,7 @@ fn scan_process_file_users(const ArrayList<process_file_query> &queries,
     let result = RmStartSession(&session_handle, 0, session_key);
     if (result != ERROR_SUCCESS) {
       SetLastError(result);
+
       return query.query_position;
     }
     defer { RmEndSession(session_handle); };
@@ -3436,6 +3572,7 @@ fn scan_process_file_users(const ArrayList<process_file_query> &queries,
                                  nullptr);
     if (result != ERROR_SUCCESS) {
       SetLastError(result);
+
       return query.query_position;
     }
 
@@ -3449,11 +3586,13 @@ fn scan_process_file_users(const ArrayList<process_file_query> &queries,
     }
     if (result != ERROR_MORE_DATA) {
       SetLastError(result);
+
       return query.query_position;
     }
 
     constexpr usize LIST_ATTEMPT_COUNT = 8;
     ArrayList<RM_PROCESS_INFO> process_infos{scratch};
+
     for (usize attempt_count = 0; attempt_count < LIST_ATTEMPT_COUNT;
          attempt_count++)
     {
@@ -3465,17 +3604,20 @@ fn scan_process_file_users(const ArrayList<process_file_query> &queries,
       if (result != ERROR_MORE_DATA || attempt_count + 1 == LIST_ATTEMPT_COUNT)
       {
         SetLastError(result);
+
         return query.query_position;
       }
     }
 
     let const query_user_start = users.count();
+
     for (UINT process_position = 0; process_position < process_count;
          process_position++)
     {
       let const pid =
           process_infos.begin()[process_position].Process.dwProcessId;
       bool is_duplicate = false;
+
       for (usize user_position = query_user_start;
            user_position < users.count(); user_position++)
       {
@@ -3485,6 +3627,7 @@ fn scan_process_file_users(const ArrayList<process_file_query> &queries,
           break;
         }
       }
+
       if (is_duplicate) continue;
       let use_mask = static_cast<u8>(process_file_use::File);
       let const process =
@@ -3514,6 +3657,7 @@ fn scan_process_file_users(const ArrayList<process_file_query> &queries,
       users.push(process_file_user{pid, 0, query.query_position, use_mask});
     }
   }
+
   return None;
 }
 
@@ -3578,6 +3722,7 @@ fn process_owner_name(u32 pid, u32 owner_id, Allocator allocator) throws
   let qualified_name = String{allocator, domain_name->view()};
   qualified_name += '\\';
   qualified_name += user_name->view();
+
   return qualified_name;
 }
 

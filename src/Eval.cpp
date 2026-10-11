@@ -146,11 +146,13 @@ fn EvalContext::record_history_event(StringView command) throws -> bool
 {
   if (history_recorder().has_transaction()) {
     history_recorder().append_to_transaction(command);
+
     return true;
   }
 
   toiletline::set_history_limit(
       variable_store().history_limit("KOSH_HISTORY_SIZE", 4096));
+
   return toiletline::append_history_event(command).has_value();
 }
 
@@ -252,6 +254,7 @@ fn EvalContext::begin_confined_variable_writes() wontthrow -> usize
   }
 
   environment_store().confined_write_depth()++;
+
   return environment_store().confined_write_log().count();
 }
 
@@ -359,6 +362,7 @@ hot fn EvalContext::set_shell_variable(StringView name, StringView value) throws
           mark_expansion_error(error, expansion_error_reach::LineOrPosixScript);
           throw;
         }
+
         return;
       }
 
@@ -369,10 +373,12 @@ hot fn EvalContext::set_shell_variable(StringView name, StringView value) throws
                              target.view().substring_of_length(
                                  *bracket + 1, target.count() - *bracket - 2),
                              value, assignment_update_mode::Replace);
+
         return;
       }
 
       set_shell_variable(target.view(), value);
+
       return;
     }
 
@@ -388,6 +394,7 @@ hot fn EvalContext::set_shell_variable(StringView name, StringView value) throws
       is_bash_special_array_active(bash_special_array_id::Aliases))
   {
     scope_store().set_alias("0", value);
+
     return;
   }
   if (is_bash_directory_stack_special(name)) return;
@@ -397,6 +404,7 @@ hot fn EvalContext::set_shell_variable(StringView name, StringView value) throws
        variable_store().associative_arrays().has(name)))
   {
     assign_array_element(name, "0", value, assignment_update_mode::Replace);
+
     return;
   }
 
@@ -421,6 +429,7 @@ hot fn EvalContext::set_shell_variable(StringView name, StringView value) throws
         }
       }
       assign_variable(name, result.view());
+
       return;
     }
   }
@@ -433,6 +442,7 @@ hot fn EvalContext::set_shell_variable(StringView name, StringView value) throws
       let adjusted = String{scratch_allocator(), value};
       variable_store().attributes().apply_case(name, adjusted);
       assign_variable(name, adjusted.view());
+
       return;
     }
   }
@@ -458,6 +468,7 @@ fn EvalContext::seed_shell_identity_variables(
     set_shell_variable("BASH", execution_store().get_shell_executable_path());
     if (!get_variable_value("COMP_WORDBREAKS").has_value())
       set_shell_variable("COMP_WORDBREAKS", StringView{" \t\n\"'><=;|&(:"});
+
     return;
   }
   case shell_identity_mode::Native: break;
@@ -480,6 +491,7 @@ fn EvalContext::materialize_kosh_identity() const throws -> Maybe<String>
   let const identity =
       utils::kosh_identity(execution_store().get_shell_executable_path());
   if (identity.has_value()) return String{heap_allocator(), *identity};
+
   return None;
 }
 
@@ -508,10 +520,12 @@ fn EvalContext::unset_shell_variable(StringView name) throws -> void
         unset_array_element(target.view().substring_of_length(0, *bracket),
                             target.view().substring_of_length(
                                 *bracket + 1, target.count() - *bracket - 2));
+
         return;
       }
       if (target.view() != name) {
         unset_shell_variable(target.view());
+
         return;
       }
     }
@@ -561,6 +575,7 @@ fn EvalContext::peel_caller_local_binding(StringView name) throws -> bool
        frame_index-- > 0;)
   {
     ArrayList<local_binding> &frame = scope_store().local_scopes()[frame_index];
+
     for (usize i = frame.count(); i-- > 0;) {
       let &binding = frame[i];
       if (binding.name.view() != name || binding.is_self_reference) {
@@ -572,9 +587,11 @@ fn EvalContext::peel_caller_local_binding(StringView name) throws -> bool
       restore_local_binding(binding);
 
       frame.remove(i);
+
       return true;
     }
   }
+
   return false;
 }
 
@@ -586,6 +603,7 @@ fn EvalContext::assign_caller_binding_of_circular_nameref(
   if (!is_circular_nameref(name)) return false;
 
   ArrayList<local_binding> &frame = scope_store().current_local_scope();
+
   for (usize i = frame.count(); i-- > 0;) {
     let &binding = frame[i];
     if (binding.name.view() != name || binding.is_self_reference) {
@@ -616,6 +634,7 @@ fn EvalContext::assign_global_beneath_locals(StringView name, StringView value,
        frame_index++)
   {
     ArrayList<local_binding> &frame = scope_store().local_scopes()[frame_index];
+
     for (let &binding : frame) {
       if (binding.name.view() != name || binding.is_self_reference) {
         continue;
@@ -675,15 +694,18 @@ fn EvalContext::restore_local_binding(local_binding &binding) throws -> void
       variable_store().attributes().erase(binding.name.view());
   };
   clear_sparse_array(binding.name.view());
+
   for (usize i = 0; i < binding.previous_sparse_indices.count(); i++)
     set_array_element(binding.name.view(), binding.previous_sparse_indices[i],
                       binding.previous_sparse_values[i].view());
+
   clear_associative_array(binding.name.view());
   if (binding.was_previously_associative)
     for (usize k = 0; k < binding.previous_associative_keys.count(); k++)
       set_associative_element(binding.name.view(),
                               binding.previous_associative_keys[k].view(),
                               binding.previous_associative_values[k].view());
+
   if (binding.was_previously_exported) {
     mark_exported(binding.name.view());
     if (binding.previous_value.has_value())
@@ -711,6 +733,7 @@ fn EvalContext::set_indexed_array(StringView name,
   if (is_bash_directory_stack_special(name)) {
     for (usize index = 0; index < values.count(); index++)
       set_bash_directory_stack_element(index, values[index].view());
+
     return;
   }
   variable_store().attributes().unmark_declared(name);
@@ -724,6 +747,7 @@ fn EvalContext::set_indexed_array(StringView name,
   if (is_integer_variable(name))
     for (let &value : values)
       value = evaluate_arithmetic_text(value.view());
+
   variable_store().shell_variables().erase(name);
   if (is_exported(name)) {
     record_environment_change(name);
@@ -773,6 +797,7 @@ fn EvalContext::publish_single_pipe_status(i32 status) throws -> void
           (*variable_store().variables().find_pipestatus_for_write())->elements;
       elements[0] = String{elements.allocator(), status_text};
     }
+
     return;
   }
 
@@ -815,6 +840,7 @@ cold fn EvalContext::show_runtime_warning_at(
         location.position > resolved_source.text->count())
     {
       show_message(WarningWithDetails{message, note}.to_string());
+
       return;
     }
     let warning = WarningWithLocationAndDetails{location, message, note};
@@ -839,6 +865,7 @@ cold fn EvalContext::show_runtime_error_at(SourceLocation location,
         location.position > resolved_source.text->count())
     {
       show_message(Error{message}.to_string());
+
       return;
     }
     let error = ErrorWithLocation{location, message};
@@ -872,6 +899,7 @@ pure fn EvalContext::locate_variable_reference(StringView name) const wontthrow
   if (scan_start >= source.length) return fallback;
 
   usize i = scan_start;
+
   while (i < source.length) {
     let const byte = source[i];
     if (byte == '\n' && (i == 0 || source[i - 1] != '\\')) {
@@ -895,6 +923,7 @@ pure fn EvalContext::locate_variable_reference(StringView name) const wontthrow
       {
         reference_end++;
       }
+
       return SourceLocation{i + absolute_shift, reference_end - i,
                             fallback.source_name_index};
     }
@@ -902,6 +931,7 @@ pure fn EvalContext::locate_variable_reference(StringView name) const wontthrow
   }
 
   usize k = scan_start;
+
   while (k + name.length <= source.length) {
     let const byte = source[k];
     if (byte == '\n' && (k == 0 || source[k - 1] != '\\')) {
@@ -917,6 +947,7 @@ pure fn EvalContext::locate_variable_reference(StringView name) const wontthrow
     }
     k++;
   }
+
   return fallback;
 }
 
@@ -934,6 +965,7 @@ fn EvalContext::mark_expansion_error(
   {
     error.set_script_fatal();
     error.set_line_discarding();
+
     return;
   }
 
@@ -1061,6 +1093,7 @@ pure fn EvalContext::special_variable_definition_location(
   let const location =
       variable_store().special_variable_definition_locations().find(name);
   if (!location.has_value()) return None;
+
   return *location.value();
 }
 
@@ -1112,6 +1145,7 @@ fn EvalContext::mark_exported(StringView name) throws -> void
       name.data);
   if constexpr (os::ENVIRONMENT_IS_CASE_SENSITIVE) {
     store_exported_name(variable_store().exported_names(), name, name);
+
     return;
   }
 
@@ -1125,6 +1159,7 @@ fn EvalContext::unmark_exported(StringView name) throws -> void
 {
   if constexpr (os::ENVIRONMENT_IS_CASE_SENSITIVE) {
     variable_store().exported_names().erase(name);
+
     return;
   }
 
@@ -1249,6 +1284,7 @@ fn EvalContext::sync_analysis_environment() throws -> void
 
   if (text.is_empty()) {
     os::unset_environment_variable(NAME);
+
     return;
   }
 
@@ -1279,6 +1315,7 @@ fn EvalContext::is_exported(StringView name) const throws -> bool
 
   char folded[EXPORTED_NAME_FOLD_BYTES];
   let spill = String{heap_allocator()};
+
   return variable_store()
       .exported_names()
       .find(fold_exported_name(name, folded, spill))
@@ -1425,8 +1462,10 @@ fn EvalContext::enter_function_scope() throws -> void
              .local_scopes()[scope_store().local_scope_depth()]
              .is_empty());
   let &saved_options = scope_store().saved_scope_shell_options();
+
   while (saved_options.count() <= scope_store().local_scope_depth())
     saved_options.push(None);
+
   saved_options[scope_store().local_scope_depth()] = None;
   scope_store().local_scope_depth()++;
   LOG(Debug, "entered function scope, local scope depth now %zu",
@@ -1442,10 +1481,12 @@ fn EvalContext::leave_function_scope() throws -> void
   let &scope = scope_store().current_local_scope();
   LOG(Debug, "leaving function scope, restoring %zu shadowed locals",
       scope.count());
+
   for (usize i = scope.count(); i > 0; i--) {
     ASSERT(i - 1 < scope.count());
     if (!scope[i - 1].is_self_reference) restore_local_binding(scope[i - 1]);
   }
+
   scope.clear();
   let &saved_options =
       scope_store()
@@ -1575,6 +1616,7 @@ pure fn EvalContext::merged_frame_at(usize index) const wontthrow -> MergedFrame
 fn EvalContext::funcname_frame_count() const wontthrow -> usize
 {
   if (function_store().call_frames().is_empty()) return 0;
+
   return bash_source_frame_count();
 }
 
@@ -1606,8 +1648,10 @@ fn EvalContext::line_number_at_location(
   Maybe<usize> site_depth_floor = None;
   usize preceding_line_count = 0;
   usize search_limit = line_bases.count();
+
   while (search_limit > 0) {
     usize found = search_limit;
+
     for (usize index = search_limit; index > 0; index--) {
       let const &base = line_bases[index - 1];
       if (base.body != nullptr && base.body == site_source &&
@@ -1617,6 +1661,7 @@ fn EvalContext::line_number_at_location(
         break;
       }
     }
+
     if (found == search_limit) break;
 
     let const &base = line_bases[found];
@@ -1634,12 +1679,14 @@ fn EvalContext::line_number_at_location(
       site_depth.has_value())
   {
     usize frame_limit = 0;
+
     while (frame_limit < source_store().source_frames().count() &&
            source_store().source_frames()[frame_limit].function_call_depth <=
                *site_depth)
     {
       frame_limit++;
     }
+
     site_depth_floor = source_depth_floor(frame_limit);
   }
 
@@ -1657,6 +1704,7 @@ fn EvalContext::line_number_at_location(
     line = static_cast<usize>(render_line + resolved_source.line_offset) +
            resolved_source.enclosing_line_count;
   }
+
   return line + preceding_line_count;
 }
 
@@ -1666,11 +1714,13 @@ fn EvalContext::funcname_line_at(usize index) const throws -> usize
   switch (frame.kind) {
   case MergedFrame::Kind::Function: {
     let const &call_frame = function_store().call_frames()[frame.storage_index];
+
     return line_number_at_location(call_frame.location, call_frame.source,
                                    frame.storage_index);
   }
   case MergedFrame::Kind::Source: {
     let const &source = source_store().source_frames()[frame.storage_index];
+
     return line_number_at_location(source.call_site,
                                    borrowed_frame_source(source),
                                    source.function_call_depth);
@@ -1749,6 +1799,7 @@ fn EvalContext::dynamic_array_element_count(DynamicArray which) const throws
                            : function_store().call_frames().is_empty();
     initialize_bash_argument_arrays(should_include_current_frame);
     ASSERT(variable_store().bash_arguments().is_active());
+
     return which == DynamicArray::ArgumentCount
                ? variable_store().bash_arguments().frame_counts().count()
                : variable_store().bash_arguments().values().count();
@@ -1772,6 +1823,7 @@ fn EvalContext::dynamic_array_element_text(
     let const &frame_counts = variable_store().bash_arguments().frame_counts();
     ASSERT(index < frame_counts.count());
     let const storage_index = frame_counts.count() - 1 - index;
+
     return String::from(frame_counts[storage_index], result_allocator);
   }
   case DynamicArray::ArgumentValue: {
@@ -1779,6 +1831,7 @@ fn EvalContext::dynamic_array_element_text(
     ASSERT(variable_store().bash_arguments().is_active());
     let const &values = variable_store().bash_arguments().values();
     ASSERT(index < values.count());
+
     return String{result_allocator, values[values.count() - 1 - index].view()};
   }
   case DynamicArray::FunctionName:
@@ -1807,6 +1860,7 @@ pure fn ExecContext::source_location() const wontthrow -> const SourceLocation &
 pure fn ExecContext::program() const wontthrow -> const String &
 {
   ASSERT(!m_args.is_empty());
+
   return m_args[0];
 }
 
@@ -1825,6 +1879,7 @@ pure fn ExecContext::arg_location_at(usize index) const wontthrow
     -> SourceLocation
 {
   if (index < m_arg_locations.count()) return m_arg_locations[index];
+
   return m_location;
 }
 
@@ -1841,18 +1896,21 @@ pure fn ExecContext::is_unresolved() const wontthrow -> bool
 pure fn ExecContext::get_unresolved_status() const wontthrow -> i32
 {
   ASSERT(is_unresolved());
+
   return m_kind.unresolved_status;
 }
 
 pure fn ExecContext::get_unresolved_diagnostic() const wontthrow -> StringView
 {
   ASSERT(is_unresolved());
+
   return m_unresolved_diagnostic.view();
 }
 
 pure fn ExecContext::program_path() const wontthrow -> const Path &
 {
   ASSERT(!is_builtin());
+
   return m_kind.program_path;
 }
 
@@ -1885,12 +1943,14 @@ fn ExecContext::close_fds() throws -> void
       os::close_fd(binding.file_fd);
     }
   }
+
   nonstandard_fds.clear();
 }
 
 pure fn ExecContext::builtin_kind() const wontthrow -> const Builtin::Kind &
 {
   ASSERT(is_builtin());
+
   return m_kind.builtin_kind;
 }
 
@@ -2037,6 +2097,7 @@ fn ExecContext::make_from(const SourceLocation &location, StringView source,
       args.push(steal(directory_operand));
       arg_locations.push(resolution_location);
       arg_locations.push(resolution_location);
+
       return {location, ResolvedCommand::from_builtin(Builtin::Kind::Cd),
               steal(args), steal(arg_locations)};
     }
@@ -2089,6 +2150,7 @@ fn ExecContext::make_from_resolved(
     ArrayList<SourceLocation> &&arg_locations) throws -> ExecContext
 {
   ASSERT(args.count() > 0);
+
   return {steal(location), steal(kind), steal(args), steal(arg_locations)};
 }
 

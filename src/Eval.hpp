@@ -50,6 +50,7 @@ public:
     ResolvedCommand resolved{};
     resolved.kind = Kind::Builtin;
     resolved.builtin_kind = chosen_builtin;
+
     return resolved;
   }
 
@@ -58,6 +59,7 @@ public:
     ResolvedCommand resolved{};
     resolved.kind = Kind::Program;
     resolved.program_path = steal(path);
+
     return resolved;
   }
 
@@ -66,6 +68,7 @@ public:
     ResolvedCommand resolved{};
     resolved.kind = Kind::Unresolved;
     resolved.unresolved_status = resolution_status;
+
     return resolved;
   }
 
@@ -479,6 +482,7 @@ private:
         (m_reporting.is_annoying_disabled
              ? u8{0}
              : static_cast<u8>(Flag::AnnoyingDiagnosticsEnabled));
+
     return static_cast<u8>((m_flags & ~REPORTING_FLAGS) | reporting_flags);
   }
   fn set_wire_flags(u8 flags) wontthrow -> void
@@ -768,6 +772,7 @@ public:
   {
     ASSERT(m_local_scope_depth != 0);
     ASSERT(m_local_scope_depth <= m_local_scopes.count());
+
     return m_local_scopes[m_local_scope_depth - 1];
   }
   pure fn current_local_scope() const wontthrow
@@ -775,49 +780,60 @@ public:
   {
     ASSERT(m_local_scope_depth != 0);
     ASSERT(m_local_scope_depth <= m_local_scopes.count());
+
     return m_local_scopes[m_local_scope_depth - 1];
   }
   pure fn has_current_local(StringView name) const wontthrow -> bool
   {
     if (m_local_scope_depth == 0) return false;
+
     for (let const &binding : current_local_scope())
       if (binding.name.view() == name) return !binding.is_self_reference;
+
     return false;
   }
   pure fn has_active_local(StringView name) const wontthrow -> bool
   {
     ASSERT(m_local_scope_depth <= m_local_scopes.count());
+
     for (usize frame_index = m_local_scope_depth; frame_index-- > 0;) {
       for (let const &binding : m_local_scopes[frame_index])
         if (binding.name.view() == name && !binding.is_self_reference) {
           return true;
         }
     }
+
     return false;
   }
   pure fn is_self_reference(StringView name) const wontthrow -> bool
   {
     ASSERT(m_local_scope_depth <= m_local_scopes.count());
+
     for (usize frame_index = m_local_scope_depth; frame_index-- > 0;) {
       for (let const &binding : m_local_scopes[frame_index])
         if (binding.name.view() == name) return binding.is_self_reference;
     }
+
     return false;
   }
   pure fn is_current_self_reference(StringView name) const wontthrow -> bool
   {
     if (m_local_scope_depth == 0) return false;
+
     for (let const &binding : current_local_scope())
       if (binding.name.view() == name) return binding.is_self_reference;
+
     return false;
   }
   fn forget_current_self_reference(StringView name) throws -> void
   {
     if (m_local_scope_depth == 0) return;
     let &scope = current_local_scope();
+
     for (usize i = 0; i < scope.count(); i++) {
       if (scope[i].name.view() != name) continue;
       if (scope[i].is_self_reference) scope.remove(i);
+
       return;
     }
   }
@@ -830,6 +846,7 @@ public:
   {
     if (!m_aliases.find(name).has_value()) return false;
     m_aliases.erase(name);
+
     return true;
   }
   pure fn has_aliases() const wontthrow -> bool
@@ -840,12 +857,14 @@ public:
   {
     if (let const value = m_aliases.find(name); value.has_value())
       return String{heap_allocator(), value->view()};
+
     return None;
   }
   pure fn find_alias(StringView name) const wontthrow -> Maybe<StringView>
   {
     if (let const value = m_aliases.find(name); value.has_value())
       return value->view();
+
     return None;
   }
   fn alias_definitions() const throws
@@ -858,6 +877,7 @@ public:
       append_shell_quoted_arg(definition, value.view());
       out.push(steal(definition));
     });
+
     return steal(out).make_sorted(sort_order::ascending);
   }
   fn alias_names() const throws -> HashSet
@@ -867,6 +887,7 @@ public:
       unused(value);
       out.add(key);
     });
+
     return out;
   }
   template <typename Callback>
@@ -1196,13 +1217,13 @@ public:
     return m_external_commands_run;
   }
 
-  fn end_command(usize live_ast_arena_bytes) wontthrow -> void
+  fn end_command(usize live_ast_arena_byte_count) wontthrow -> void
   {
     m_expansions_total += m_expansions_last;
     m_expressions_executed_total += m_expressions_executed_last;
     m_commands_evaluated++;
-    if (live_ast_arena_bytes > m_peak_ast_arena_bytes)
-      m_peak_ast_arena_bytes = live_ast_arena_bytes;
+    if (live_ast_arena_byte_count > m_peak_ast_arena_byte_count)
+      m_peak_ast_arena_byte_count = live_ast_arena_byte_count;
     m_expansions_last = 0;
     m_expressions_executed_last = 0;
   }
@@ -1234,7 +1255,7 @@ public:
   }
   pure fn peak_ast_arena_bytes() const wontthrow -> usize
   {
-    return m_peak_ast_arena_bytes;
+    return m_peak_ast_arena_byte_count;
   }
   pure fn command_evaluation_index() const wontthrow -> usize
   {
@@ -1251,7 +1272,7 @@ private:
   usize m_functions_run{0};
   usize m_external_commands_run{0};
   usize m_command_evaluation_index{0};
-  usize m_peak_ast_arena_bytes{0};
+  usize m_peak_ast_arena_byte_count{0};
 };
 
 class GitStatusCache
@@ -1531,6 +1552,7 @@ public:
     } catch (...) {
       while (m_values.count() > previous_value_count)
         m_values.pop_back();
+
       throw;
     }
     m_frame_counts.push(static_cast<u32>(arguments.count()));
@@ -1552,6 +1574,7 @@ public:
     let const argument_count = m_frame_counts.back();
     m_frame_counts.pop_back();
     ASSERT(argument_count <= m_values.count());
+
     for (u32 index = 0; index < argument_count; index++)
       m_values.pop_back();
   }
@@ -1561,8 +1584,10 @@ public:
     ASSERT(m_is_active);
     ASSERT(m_values.count() >= value_count);
     ASSERT(m_frame_counts.count() >= frame_count);
+
     while (m_values.count() > value_count)
       m_values.pop_back();
+
     while (m_frame_counts.count() > frame_count)
       m_frame_counts.pop_back();
   }
@@ -1587,6 +1612,7 @@ public:
     if (!entry.has_value() || !(*entry)->has_value) {
       return None;
     }
+
     return &(*entry)->value;
   }
   hot fn find_for_write(StringView name) throws -> Maybe<String *>
@@ -1626,6 +1652,7 @@ public:
     if (!entry.has_value() || !(*entry)->is_indexed_array) {
       return None;
     }
+
     return &(*entry)->elements;
   }
   hot fn find_for_write(StringView name) throws -> Maybe<ArrayList<String> *>
@@ -1674,6 +1701,7 @@ public:
   pure fn get_bits(StringView name) const wontthrow -> u8
   {
     let const entry = m_table->find(name);
+
     return entry.has_value() ? (*entry)->attribute_bits : u8{0};
   }
   fn set_bits(StringView name, u8 bits) throws -> void
@@ -1698,6 +1726,7 @@ public:
     if (is_enabled) {
       m_table->note_attribute_bits(mask);
       m_table->get_or_create(name).attribute_bits |= mask;
+
       return;
     }
 
@@ -1819,6 +1848,7 @@ public:
     for_each_name([&](StringView name) throws {
       marked.set(name, get_bits(name));
     });
+
     return marked;
   }
 
@@ -1841,10 +1871,12 @@ public:
   {
     for (u64 &bits : m_field_separator_bits)
       bits = 0;
+
     for (usize i = 0; i < value.length; i++) {
       let const byte = static_cast<u8>(value.data[i]);
       m_field_separator_bits[byte >> 6] |= u64{1} << (byte & 63);
     }
+
     if (value.data != m_field_separators.data()) {
       m_field_separators.clear();
       m_field_separators.append(value);
@@ -1911,6 +1943,7 @@ public:
     if (parsed.is_error() || parsed.value() < 0) {
       return fallback;
     }
+
     return static_cast<usize>(parsed.value());
   }
   fn special_variable_definition_locations() wontthrow
@@ -1927,6 +1960,7 @@ public:
   hot pure fn is_field_separator(char c) const wontthrow -> bool
   {
     let const byte = static_cast<u8>(c);
+
     return (m_field_separator_bits[byte >> 6] & (u64{1} << (byte & 63))) != 0;
   }
   hot pure fn has_non_ascii_field_separators() const wontthrow -> bool
@@ -2079,11 +2113,13 @@ public:
       -> const completion_spec *
   {
     let const &spec = get_slot(slot);
+
     return spec.has_value() ? &*spec : nullptr;
   }
   fn get_slot_spec(completion_spec_slot slot) wontthrow -> completion_spec *
   {
     let &spec = get_slot(slot);
+
     return spec.has_value() ? &*spec : nullptr;
   }
   fn remove_spec(StringView command) throws -> bool
@@ -2091,6 +2127,7 @@ public:
     if (!m_specs.find(command).has_value()) return false;
 
     m_specs.erase(command);
+
     return true;
   }
   fn remove_slot_spec(completion_spec_slot slot) wontthrow -> bool
@@ -2099,6 +2136,7 @@ public:
     if (!spec.has_value()) return false;
 
     spec.reset();
+
     return true;
   }
   fn remove_all_specs() wontthrow -> void
@@ -2183,6 +2221,7 @@ public:
   fn find_source(StringView name) const wontthrow -> const String *
   {
     let const storage = m_definitions.read().find(name);
+
     return storage.has_value() ? storage->get_source() : nullptr;
   }
   mustuse fn sorted_names() const throws
@@ -2191,11 +2230,13 @@ public:
     let out = ArrayList<String>{heap_allocator()};
     out.reserve(m_definitions.read().count());
     for_each_name([&](StringView name) { out.push_managed(name); });
+
     return steal(out).make_sorted(sort_order::ascending);
   }
   fn find_function(StringView name) const wontthrow -> Maybe<const Expression *>
   {
     let const storage = m_definitions.read().find(name);
+
     return storage.has_value() ? Maybe<const Expression *>{storage->get_body()}
                                : None;
   }
@@ -2220,12 +2261,14 @@ public:
     m_readonly.for_each([&](StringView name) {
       if (find_function(name).has_value()) out.push_managed(name);
     });
+
     return steal(out).make_sorted(sort_order::ascending);
   }
   fn names() const throws -> HashSet
   {
     let names = HashSet{heap_allocator()};
     for_each_name([&](StringView name) { names.add(name); });
+
     return names;
   }
   fn definitions() throws -> StringMap<FunctionBodyHandle> &
@@ -2488,6 +2531,7 @@ private:
     let previous = m_action_frame;
     m_action_frame.depth += 1;
     m_action_frame.saved_exit_status = saved_exit_status;
+
     return previous;
   }
   mustuse fn enter_condition_action(u8 condition_bit, usize trigger_line_number,
@@ -2501,6 +2545,7 @@ private:
     m_action_frame.trigger_line_number = trigger_line_number;
     m_action_frame.source_frame_count = source_frame_count;
     m_action_frame.function_depth = function_depth;
+
     return previous;
   }
   mustuse fn leave_action_for_subshell() wontthrow -> trap_action_frame
@@ -2509,6 +2554,7 @@ private:
     m_action_frame.depth = 0;
     m_action_frame.saved_exit_status = None;
     m_action_frame.running_conditions = 0;
+
     return previous;
   }
   fn restore_action_frame(const trap_action_frame &previous) wontthrow -> void
@@ -2760,6 +2806,7 @@ public:
       -> Maybe<StringView>
   {
     if (root != m_mark.root) return None;
+
     return m_mark.source;
   }
 
@@ -3654,7 +3701,7 @@ public:
                        SourceLocation definition_location) throws -> void;
   fn function_definition_info_of(StringView name) const wontthrow
       -> const function_definition_info *;
-  struct resolved_render_source
+  struct ResolvedRenderSource
   {
     const String *text{nullptr};
     bool is_windowed{false};
@@ -3687,7 +3734,7 @@ public:
       const SourceLocation &location, const String *fallback_source = nullptr,
       usize call_depth_limit = static_cast<usize>(-1),
       usize call_depth_floor = static_cast<usize>(-1)) const wontthrow
-      -> resolved_render_source;
+      -> ResolvedRenderSource;
   fn register_embedded_source(StringView inner,
                               const SourceLocation &parent_location,
                               const String *body = nullptr) throws -> bool;
@@ -3698,7 +3745,7 @@ public:
       -> const String *;
   pure fn resolve_current_function_window(
       StringView rendered_source,
-      const SourceLocation &location) const wontthrow -> resolved_render_source;
+      const SourceLocation &location) const wontthrow -> ResolvedRenderSource;
   pure fn source_text_in_span(const SourceLocation &location,
                               usize end_position) const wontthrow -> StringView;
   pure fn function_storage_stats() const wontthrow -> function_arena_stats;
@@ -3927,6 +3974,7 @@ public:
   {
     let *previous = diagnostics_store().diagnostic_highlight_cache();
     diagnostics_store().diagnostic_highlight_cache() = cache;
+
     return previous;
   }
 
@@ -3941,6 +3989,7 @@ public:
   {
     if (runtime_state().get_mood() == mimic_mood::Default)
       return runtime_state().get_warning_level() >= 3;
+
     return runtime_state().get_warning_level() >= 1;
   }
   fn report_unset_reference(StringView name) throws -> void;
@@ -3964,6 +4013,7 @@ public:
     if (is_enabled) {
       runtime_control_store().note_explicit_mood();
       select_mood(mimic_mood::BashPosix);
+
       return;
     }
     if (!runtime_state().is_posix_option_on()) return;
@@ -4004,6 +4054,7 @@ public:
     let const previous = RuntimeState::capture(*this);
     defining_state.apply_to(runtime_state());
     apply_strictness_for_mood();
+
     return function_runtime_state{previous, RuntimeState::capture(*this),
                                   runtime_control_store().get_mutations()};
   }
@@ -4019,6 +4070,7 @@ public:
           runtime_control_store().init_moods_sourcing_mask(),
           runtime_control_store().initialized_moods_mask(),
           state.entry_mutations);
+
       return;
     }
 
@@ -4039,6 +4091,7 @@ public:
       changed_options |=
           RuntimeState::option_mask(shell_option_id::ExtendedArithmetic);
     }
+
     for (u8 option = 0; option < static_cast<u8>(shell_option_id::Count);
          option++)
     {
@@ -4046,6 +4099,7 @@ public:
       if (options.touched_since(option_id, entry_option_revision))
         changed_options |= RuntimeState::option_mask(option_id);
     }
+
     let const merged_options =
         (state.previous.get_shell_options() & ~changed_options) |
         (finished.get_shell_options() & changed_options);
@@ -4121,6 +4175,7 @@ public:
     if (*index == shopt_option_index(shopt_option_id::ExpandAliases))
       return runtime_state().get_mood() != mimic_mood::Bash ||
              execution_store().shell_is_interactive();
+
     return shopt_default_is_on(name);
   }
   static pure fn shopt_default_is_on(StringView name) wontthrow -> bool;

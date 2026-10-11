@@ -38,6 +38,7 @@ fn Uname::execute(const ExecContext &ec, EvalContext &cxt,
   if (!operands.is_empty()) {
     KOSHKIT_REPORT_ERROR_AT(operand_locations[0],
                             "unexpected operand '" + operands[0] + "'");
+
     return 2;
   }
 
@@ -68,6 +69,7 @@ fn Uname::execute(const ExecContext &ec, EvalContext &cxt,
   if (should_machine) do_append(os::executable_machine_name().view());
   output += '\n';
   ec.print_to_stdout(output);
+
   return 0;
 }
 

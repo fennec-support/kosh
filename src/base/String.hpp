@@ -68,6 +68,7 @@ public:
       return from_signed_or_unsigned(value.value, T::base, allocator);
     } else {
       static_assert(std::is_integral_v<T>, "String::from takes an integer");
+
       return from_signed_or_unsigned(value, int_base::decimal, allocator);
     }
   }
@@ -81,6 +82,7 @@ public:
       let const is_negative = value < 0;
       let const magnitude =
           is_negative ? ~static_cast<u64>(value) + 1u : static_cast<u64>(value);
+
       return from_in_base(magnitude, is_negative, base, allocator);
     } else {
       return from_in_base(static_cast<u64>(value), false, base, allocator);
@@ -108,6 +110,7 @@ public:
   hot mustuse pure fn operator[](usize i) const wontthrow->char
   {
     ASSERT(i < m_length, "string index is past the end");
+
     return m_data[i];
   }
   hot fn lowercase_ascii() wontthrow -> void
@@ -169,6 +172,7 @@ public:
       {
         m_data[m_length++] = c;
         m_data[m_length] = '\0';
+
         return;
       }
     reserve(new_length);
@@ -186,6 +190,7 @@ public:
         std::memcpy(m_data + m_length, other.data, other.length);
         m_length = new_length;
         m_data[m_length] = '\0';
+
         return;
       }
     let const source_address = reinterpret_cast<uintptr>(other.data);
@@ -221,6 +226,7 @@ public:
   hot mustuse pure fn back() const wontthrow -> char
   {
     ASSERT(m_length > 0, "back() on an empty string");
+
     return m_data[m_length - 1];
   }
 
@@ -276,6 +282,7 @@ public:
   mustuse pure fn first_character() const wontthrow -> char
   {
     ASSERT(m_length > 0, "first_character() on an empty string");
+
     return m_data[0];
   }
 

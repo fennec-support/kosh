@@ -26,12 +26,14 @@ namespace koshka::koshkit {
 static pure fn is_manual_section(StringView value) wontthrow -> bool
 {
   if (value.is_empty()) return false;
+
   for (usize position = 0; position < value.length; position++)
     if ((value[position] < '0' || value[position] > '9') &&
         value[position] != 'p' && value[position] != 'n')
     {
       return false;
     }
+
   return true;
 }
 
@@ -40,6 +42,7 @@ static fn find_manual_page(StringView paths, StringView section,
     -> Maybe<String>
 {
   usize path_start = 0;
+
   while (path_start <= paths.length) {
     let const remaining = paths.substring(path_start);
     let const path_length =
@@ -47,6 +50,7 @@ static fn find_manual_page(StringView paths, StringView section,
     let const directory = path_length == 0
                               ? StringView{"."}
                               : remaining.substring_of_length(0, path_length);
+
     for (usize candidate_section = 1; candidate_section <= 9;
          candidate_section++)
     {
@@ -70,9 +74,11 @@ static fn find_manual_page(StringView paths, StringView section,
       if (os::stat_path_following(path.view(), status)) return path;
       if (!section.is_empty()) break;
     }
+
     if (path_length == remaining.length) break;
     path_start += path_length + 1;
   }
+
   return None;
 }
 
@@ -95,6 +101,7 @@ fn Man::execute(const ExecContext &ec, EvalContext &cxt,
     keyword.lowercase_ascii();
     let output = String{cxt.scratch_allocator()};
     usize path_start = 0;
+
     while (path_start <= paths.length) {
       let const remaining = paths.substring(path_start);
       let const path_length =
@@ -102,6 +109,7 @@ fn Man::execute(const ExecContext &ec, EvalContext &cxt,
       let const directory = path_length == 0
                                 ? StringView{"."}
                                 : remaining.substring_of_length(0, path_length);
+
       for (u32 section_number = 1; section_number <= 9; section_number++) {
         let manual_directory = String{cxt.scratch_allocator(), directory};
         if (!manual_directory.is_empty() && manual_directory.back() != '/') {
@@ -112,6 +120,7 @@ fn Man::execute(const ExecContext &ec, EvalContext &cxt,
         let entries = os::list_directory(manual_directory.view());
         if (!entries.has_value()) continue;
         entries->sort();
+
         for (let const &entry : *entries) {
           if (entry.length() < 3 || entry[entry.length() - 2] != '.' ||
               entry[entry.length() - 1] !=
@@ -146,10 +155,13 @@ fn Man::execute(const ExecContext &ec, EvalContext &cxt,
           output += '\n';
         }
       }
+
       if (path_length == remaining.length) break;
       path_start += path_length + 1;
     }
+
     ec.print_to_stdout(output);
+
     return output.is_empty() ? 1 : 0;
   }
 
@@ -161,6 +173,7 @@ fn Man::execute(const ExecContext &ec, EvalContext &cxt,
     name_position = 1;
   }
   i32 status = 0;
+
   for (; name_position < operands.count(); name_position++) {
     let const page =
         find_manual_page(paths, section, operands[name_position].view(),
@@ -180,6 +193,7 @@ fn Man::execute(const ExecContext &ec, EvalContext &cxt,
     }
     ec.print_to_stdout(content->view());
   }
+
   return status;
 }
 

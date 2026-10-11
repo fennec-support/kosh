@@ -50,12 +50,14 @@ static fn make_one(StringView path, u32 mode, mode_application application,
     if (should_set_exact_mode && !os::set_file_mode(path, mode)) {
       return false;
     }
+
     return true;
   }
 
   if (should_ignore_existing && Path{path}.is_directory()) {
     return true;
   }
+
   return false;
 }
 
@@ -92,6 +94,7 @@ fn Mkdir::execute(const ExecContext &ec, EvalContext &cxt,
       (0777u & ~os::get_file_creation_mask()) | owner_write_and_search_bits;
 
   i32 status = 0;
+
   for (let const &operand : operands) {
     if (should_make_parents) {
       let const text = operand.view();
@@ -136,6 +139,7 @@ fn Mkdir::execute(const ExecContext &ec, EvalContext &cxt,
       status = 1;
     }
   }
+
   return status;
 }
 

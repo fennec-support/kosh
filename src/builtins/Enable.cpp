@@ -51,18 +51,22 @@ fn Enable::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   if (FLAG_ALL.is_enabled()) {
     let out = String{cxt.scratch_allocator()};
+
     for (let const &name : builtin_names()) {
       out += "enable ";
       out += name;
       out += '\n';
     }
+
     ec.print_to_stdout(out);
+
     return 0;
   }
 
   if (args.count() == 1) return 0;
 
   i32 status = 0;
+
   for (usize i = 1; i < args.count(); i++) {
     let const &name = args[i];
     let const resolved = search_builtin(name.view());

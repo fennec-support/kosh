@@ -73,6 +73,7 @@ static fn append_od_character(String &output, u8 byte) throws -> void
   if (byte >= 0x20 && byte <= 0x7e) {
     output += "  ";
     output += static_cast<char>(byte);
+
     return;
   }
 
@@ -91,7 +92,7 @@ static fn od_base(char radix) wontthrow -> int_base
 struct od_format
 {
   int_base base;
-  usize unit_size_bytes;
+  usize unit_byte_count;
   usize width_columns;
   bool is_character;
   bool is_signed;
@@ -170,6 +171,7 @@ fn Od::execute(const ExecContext &ec, EvalContext &cxt,
     if (!is_valid_radix) {
       KOSHKIT_REPORT_ERROR_AT(FLAG_OD_ADDRESS.value_location(),
                               "the address radix must be d, o, x, or n");
+
       return 1;
     }
 
@@ -185,6 +187,7 @@ fn Od::execute(const ExecContext &ec, EvalContext &cxt,
                                   "'",
                               "use decimal, leading-zero octal, or 0x "
                               "hexadecimal, with optional b, k, or m units");
+
       return 1;
     }
 
@@ -199,6 +202,7 @@ fn Od::execute(const ExecContext &ec, EvalContext &cxt,
                                   "'",
                               "use decimal, leading-zero octal, or 0x "
                               "hexadecimal bytes");
+
       return 1;
     }
 
@@ -206,6 +210,7 @@ fn Od::execute(const ExecContext &ec, EvalContext &cxt,
   }
 
   let type_requests = ArrayList<od_type_request>{cxt.scratch_allocator()};
+
   for (usize type_index = 0; type_index < FLAG_OD_TYPE.count(); type_index++) {
     type_requests.push(od_type_request{FLAG_OD_TYPE.get_position(type_index),
                                        FLAG_OD_TYPE.get(type_index),
@@ -260,11 +265,13 @@ fn Od::execute(const ExecContext &ec, EvalContext &cxt,
           operand_locations[operand_count - 1],
           "invalid legacy offset '" + operands.back() + "'",
           "use [+]OCTAL, [+]DECIMAL., or either form followed by b");
+
       return 1;
     }
     skip_count = parsed.value() * multiplier;
     operand_count--;
   }
+
   for (usize index = 0; index < operand_count; index++)
     input_operands.push(operands[index].clone());
 
@@ -293,48 +300,50 @@ fn Od::execute(const ExecContext &ec, EvalContext &cxt,
           format_location, "unsupported output type '" + String{format} + "'",
           "use c, d, o, u, or x with an optional width of 1, 2, 4, 8, C, S, "
           "I, or L");
+
       return 1;
     }
 
     let const radix = format[0];
-    usize unit_size_bytes = sizeof(int);
+    usize unit_byte_count = sizeof(int);
     if (format.length == 2) {
       switch (format[1]) {
-      case '1': unit_size_bytes = 1; break;
-      case '2': unit_size_bytes = 2; break;
-      case '4': unit_size_bytes = 4; break;
-      case '8': unit_size_bytes = 8; break;
-      case 'C': unit_size_bytes = sizeof(char); break;
-      case 'S': unit_size_bytes = sizeof(short); break;
-      case 'I': unit_size_bytes = sizeof(int); break;
-      case 'L': unit_size_bytes = sizeof(long); break;
+      case '1': unit_byte_count = 1; break;
+      case '2': unit_byte_count = 2; break;
+      case '4': unit_byte_count = 4; break;
+      case '8': unit_byte_count = 8; break;
+      case 'C': unit_byte_count = sizeof(char); break;
+      case 'S': unit_byte_count = sizeof(short); break;
+      case 'I': unit_byte_count = sizeof(int); break;
+      case 'L': unit_byte_count = sizeof(long); break;
 
       default:
         KOSHKIT_REPORT_ERROR_AT(format_location,
                                 "unsupported integer width in '" +
                                     String{format} + "'",
                                 "use 1, 2, 4, 8, C, S, I, or L");
+
         return 1;
       }
     }
 
     int_base base = int_base::decimal;
-    usize width_columns = unit_size_bytes * 3;
+    usize width_columns = unit_byte_count * 3;
     bool is_signed = false;
     switch (radix) {
     case 'x':
       base = int_base::hex;
-      width_columns = unit_size_bytes * 2;
+      width_columns = unit_byte_count * 2;
       break;
 
     case 'o':
       base = int_base::octal;
-      width_columns = (unit_size_bytes * 8 + 2) / 3;
+      width_columns = (unit_byte_count * 8 + 2) / 3;
       break;
 
     case 'd':
       is_signed = true;
-      switch (unit_size_bytes) {
+      switch (unit_byte_count) {
       case 1: width_columns = 4; break;
       case 2: width_columns = 6; break;
       case 4: width_columns = 11; break;
@@ -344,7 +353,7 @@ fn Od::execute(const ExecContext &ec, EvalContext &cxt,
       break;
 
     case 'u':
-      switch (unit_size_bytes) {
+      switch (unit_byte_count) {
       case 1: width_columns = 3; break;
       case 2: width_columns = 5; break;
       case 4: width_columns = 10; break;
@@ -358,24 +367,27 @@ fn Od::execute(const ExecContext &ec, EvalContext &cxt,
           format_location, "unsupported output type '" + String{format} + "'",
           "use c, d, o, u, or x with an optional width of 1, 2, 4, 8, C, S, "
           "I, or L");
+
       return 1;
     }
     }
 
     formats.push(
-        od_format{base, unit_size_bytes, width_columns, false, is_signed});
+        od_format{base, unit_byte_count, width_columns, false, is_signed});
   }
 
   static constexpr usize OD_ROW_LENGTH = 16;
   usize row_width_columns = 0;
+
   for (let const &format : formats) {
-    let const field_count = OD_ROW_LENGTH / format.unit_size_bytes;
+    let const field_count = OD_ROW_LENGTH / format.unit_byte_count;
     let const format_row_width = (format.width_columns + 1) * field_count;
     if (format_row_width > row_width_columns)
       row_width_columns = format_row_width;
   }
+
   for (let &format : formats) {
-    let const field_count = OD_ROW_LENGTH / format.unit_size_bytes;
+    let const field_count = OD_ROW_LENGTH / format.unit_byte_count;
     format.pad_columns = row_width_columns - format.width_columns * field_count;
   }
 
@@ -395,6 +407,7 @@ fn Od::execute(const ExecContext &ec, EvalContext &cxt,
     {
       if (!did_suppress) output += "*\n";
       did_suppress = true;
+
       return;
     }
 
@@ -412,7 +425,7 @@ fn Od::execute(const ExecContext &ec, EvalContext &cxt,
       }
 
       let const &format = formats[format_index];
-      let const field_count = OD_ROW_LENGTH / format.unit_size_bytes;
+      let const field_count = OD_ROW_LENGTH / format.unit_byte_count;
       let const do_append_field_pad = [&](usize field_index) throws -> void {
         let const pad = format.pad_columns;
         let const remaining = field_count - field_index;
@@ -426,32 +439,33 @@ fn Od::execute(const ExecContext &ec, EvalContext &cxt,
         }
       } else {
         for (usize position = 0; position < row_length;
-             position += format.unit_size_bytes)
+             position += format.unit_byte_count)
         {
           u64 value = 0;
-          let const current_size =
-              row_length - position < format.unit_size_bytes
+          let const current_byte_count =
+              row_length - position < format.unit_byte_count
                   ? row_length - position
-                  : format.unit_size_bytes;
+                  : format.unit_byte_count;
 
-          for (usize byte_index = 0; byte_index < current_size; byte_index++)
+          for (usize byte_index = 0; byte_index < current_byte_count;
+               byte_index++)
             value |=
                 static_cast<u64>(static_cast<u8>(row[position + byte_index]))
                 << (byte_index * 8);
 
           bool is_negative = false;
           if (format.is_signed) {
-            let const bit_count = format.unit_size_bytes * 8;
+            let const bit_count = format.unit_byte_count * 8;
             let const sign_bit = u64{1} << (bit_count - 1);
             if ((value & sign_bit) != 0) {
               is_negative = true;
-              value = format.unit_size_bytes == sizeof(u64)
+              value = format.unit_byte_count == sizeof(u64)
                           ? ~value + 1
                           : (u64{1} << bit_count) - value;
             }
           }
 
-          do_append_field_pad(position / format.unit_size_bytes);
+          do_append_field_pad(position / format.unit_byte_count);
           append_od_padded(output, value, is_negative, format.width_columns,
                            format.base == int_base::decimal ? ' ' : '0',
                            format.base);
@@ -475,6 +489,7 @@ fn Od::execute(const ExecContext &ec, EvalContext &cxt,
   let const do_need_bytes = [&]() wontthrow -> bool {
     return skipped_count < skip_count || dumped_count < byte_limit;
   };
+
   for (let const source : sources) {
     if (!do_need_bytes()) break;
 
@@ -535,6 +550,7 @@ fn Od::execute(const ExecContext &ec, EvalContext &cxt,
     ec.print_to_stdout(output);
     report_soft_koshkit_util_error(ec, cxt, args[0].view(),
                                    "cannot skip past end of combined input");
+
     return 1;
   }
 
@@ -547,6 +563,7 @@ fn Od::execute(const ExecContext &ec, EvalContext &cxt,
     output += '\n';
   }
   ec.print_to_stdout(output);
+
   return status;
 }
 

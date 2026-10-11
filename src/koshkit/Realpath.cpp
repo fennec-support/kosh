@@ -54,21 +54,26 @@ static fn resolve_with_missing_components(StringView operand,
   bool is_missing = false;
   usize link_count = 0;
   usize position = 0;
+
   loop
   {
     let const text = remaining.view();
+
     while (position < text.length && os::is_directory_separator(text[position]))
     {
       position++;
     }
+
     if (position == text.length) return resolved;
 
     let const start = position;
+
     while (position < text.length &&
            !os::is_directory_separator(text[position]))
     {
       position++;
     }
+
     let const component = text.substring_of_length(start, position - start);
     if (is_missing && mode != realpath_mode::Missing) {
       return None;
@@ -138,6 +143,7 @@ cold fn Realpath::execute(
   let const allocator = cxt.scratch_allocator();
   let output = String{allocator};
   i32 status = 0;
+
   for (usize operand_index = 0; operand_index < operands.count();
        operand_index++)
   {
@@ -168,7 +174,9 @@ cold fn Realpath::execute(
     output += resolved->text().view();
     output += '\n';
   }
+
   ec.print_to_stdout(output);
+
   return status;
 }
 

@@ -46,6 +46,7 @@ static fn report_exec_resolution_error(ExecContext &ec, EvalContext &cxt,
   if (cxt.in_subshell() || cxt.job_table_store().is_in_pipeline_stage()) {
     if (cxt.in_subshell())
       cxt.request_exit(command_status, ec.source_location());
+
     return command_status;
   }
 
@@ -78,6 +79,7 @@ fn Exec::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       }
 
       let did_consume_value_word = false;
+
       for (usize k = 1; k < arg.length; k++) {
         let const option = arg[k];
         if (option == 'l') {
@@ -96,6 +98,7 @@ fn Exec::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
             report_soft_builtin_error(ec, cxt,
                                       ec.arg_location_at(command_index),
                                       "Option requires an argument -- a");
+
             return 2;
           }
 
@@ -108,6 +111,7 @@ fn Exec::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
               ec, cxt, ec.arg_location_at(command_index),
               StringView{"Invalid option -- "} + option_text,
               "Run 'exec --help' for the accepted options");
+
           return 2;
         }
       }
@@ -123,6 +127,7 @@ fn Exec::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     if (ec.out_fd.has_value()) cxt.snapshot_subshell_descriptor(1);
     if (ec.err_fd.has_value()) cxt.snapshot_subshell_descriptor(2);
     os::redirect_self(ec);
+
     return 0;
   }
 
@@ -196,6 +201,7 @@ fn Exec::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   let command_args = ArrayList<String>{heap_allocator()};
   let command_arg_locations = ArrayList<SourceLocation>{heap_allocator()};
+
   for (usize i = command_index; i < args.count(); i++) {
     command_args.push_managed(args[i]);
     command_arg_locations.push(ec.arg_location_at(i));
@@ -232,6 +238,7 @@ fn Exec::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     let const status =
         utils::execute_context(steal(command), cxt, execution_mode::Foreground);
     if (cxt.in_subshell()) cxt.request_exit(status, ec.source_location());
+
     return status;
   }
 
@@ -242,6 +249,7 @@ fn Exec::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     for (usize i = saved_descriptors.count(); i > 0; i--)
       os::restore_descriptor(saved_descriptors[i - 1]);
   };
+
   for (i32 shell_fd = 0; shell_fd < 3; shell_fd++) {
     let const saved_descriptor = os::save_descriptor(shell_fd);
     if (!saved_descriptor.is_dup2_ok) {

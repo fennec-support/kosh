@@ -42,6 +42,7 @@ static fn append_option_line(String &output, u32 option_mask,
                              StringView name) throws -> void
 {
   output += "compopt ";
+
   for (let const &entry : COMPLETION_OPTION_ENTRIES) {
     let const is_enabled =
         (option_mask & completion_option_bit(entry.value)) != 0;
@@ -49,6 +50,7 @@ static fn append_option_line(String &output, u32 option_mask,
     output += entry.key.to_string();
     output += ' ';
   }
+
   append_shell_quoted_arg(output, name);
   output += '\n';
 }
@@ -64,6 +66,7 @@ fn Compopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let has_empty_slot = false;
   let has_initial_slot = false;
   usize name_index = 1;
+
   for (; name_index < args.count(); name_index++) {
     let const argument = args[name_index].view();
     if (argument == "--") {
@@ -77,6 +80,7 @@ fn Compopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
     let const is_enabling = argument[0] == '-';
     let const argument_index = name_index;
+
     for (usize k = 1; k < argument.length; k++) {
       let const letter = argument[k];
       switch (letter) {
@@ -93,6 +97,7 @@ fn Compopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         report_soft_builtin_error(ec, cxt, ec.arg_location_at(argument_index),
                                   StringView{"'"} + invalid_option.view() +
                                       "' is not a valid option");
+
         return 2;
       }
 
@@ -112,6 +117,7 @@ fn Compopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         report_soft_builtin_error(
             ec, cxt, ec.arg_location_at(option_name_index),
             StringView{"'"} + option_name + "' is not a valid option name");
+
         return 2;
       }
 
@@ -152,6 +158,7 @@ fn Compopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       report_soft_builtin_error(ec, cxt,
                                 StringView{"The "} + slot_description +
                                     " completion specification was not found");
+
       return 1;
     }
 
@@ -171,6 +178,7 @@ fn Compopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       report_soft_builtin_error(ec, cxt,
                                 "No completion function is running. A command "
                                 "name or -D, -E, or -I is required");
+
       return 1;
     }
 
@@ -178,6 +186,7 @@ fn Compopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       append_option_line(output, execution.get_completion_option_mask(),
                          execution.get_completion_command_name());
       ec.print_to_stdout(output.view());
+
       return 0;
     }
 
@@ -192,10 +201,12 @@ fn Compopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     LOG(Debug, "compopt changing the current completion options");
     execution.set_completion_option_mask(
         do_apply(execution.get_completion_option_mask()));
+
     return 0;
   }
 
   i32 status = 0;
+
   for (; name_index < args.count(); name_index++) {
     let const name = args[name_index].view();
     let *spec = cxt.completion_store().lookup_spec(name);

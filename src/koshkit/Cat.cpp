@@ -48,6 +48,7 @@ static fn append_number_prefix(String &output, i64 line_number) throws -> void
   usize position = sizeof(prefix);
   prefix[--position] = '\t';
   let remaining = static_cast<u64>(line_number);
+
   loop
   {
     prefix[--position] = static_cast<char>('0' + remaining % 10);
@@ -56,6 +57,7 @@ static fn append_number_prefix(String &output, i64 line_number) throws -> void
   }
 
   let digit_count = sizeof(prefix) - position - 1;
+
   while (digit_count < 6) {
     prefix[--position] = ' ';
     digit_count++;
@@ -69,6 +71,7 @@ static fn append_numbered_chunk(String &output, StringView source,
                                 bool &is_at_output_line_start) throws -> void
 {
   usize position = 0;
+
   while (position < source.length) {
     if (is_at_output_line_start) {
       append_number_prefix(output, line_number);
@@ -95,6 +98,7 @@ static fn append_cat_source(String &output, StringView source, i64 &line_number,
       highlight_mode == cat_highlight_mode::Highlighted;
   if (!should_number && !should_highlight) {
     output += source;
+
     return;
   }
   if (!should_number) {
@@ -102,11 +106,13 @@ static fn append_cat_source(String &output, StringView source, i64 &line_number,
         output, source, context, colors::PRINTED_SOURCE_HIGHLIGHT_THEME);
     is_at_output_line_start =
         !source.is_empty() && source[source.length - 1] == '\n';
+
     return;
   }
 
   let highlight_cache = completion::ShellHighlightCache{output.allocator()};
   usize line_start = 0;
+
   while (line_start < source.length) {
     let const remaining = source.substring(line_start);
     let const newline_offset = remaining.find_character('\n');
@@ -146,7 +152,8 @@ fn Cat::execute(const ExecContext &ec, EvalContext &cxt,
       source_list_from_operands(operands, cxt.scratch_allocator());
 
   let const output_descriptor = ec.out_fd.value_or(KOSH_STDOUT);
-  let const output_size = os::regular_descriptor_file_size(output_descriptor);
+  let const output_byte_count =
+      os::regular_descriptor_file_size(output_descriptor);
   let const do_is_output = [&](StringView source) wontthrow -> bool {
     if (source == "-")
       return os::descriptors_refer_to_same_file(ec.in_fd.value_or(KOSH_STDIN),
@@ -159,13 +166,17 @@ fn Cat::execute(const ExecContext &ec, EvalContext &cxt,
     let const is_output =
         os::descriptors_refer_to_same_file(*opened, output_descriptor);
     os::close_fd(*opened);
+
     return is_output;
   };
 
   i32 input_status = 0;
   let sources = ArrayList<StringView>{cxt.scratch_allocator()};
+
   for (let const source : operand_sources) {
-    if (output_size.has_value() && *output_size > 0 && do_is_output(source)) {
+    if (output_byte_count.has_value() && *output_byte_count > 0 &&
+        do_is_output(source))
+    {
       report_soft_koshkit_util_error(
           ec, cxt, args[0].view(),
           String{cxt.scratch_allocator(), source} + ": input file is output file");
@@ -260,6 +271,7 @@ fn Cat::execute(const ExecContext &ec, EvalContext &cxt,
     }
 
     ec.print_to_stdout(output);
+
     return status;
   }
 
@@ -278,6 +290,7 @@ fn Cat::execute(const ExecContext &ec, EvalContext &cxt,
               String{cxt.scratch_allocator(), source} + ": " +
                   os::last_system_error_message());
           status = 1;
+
           return;
         }
 
@@ -298,6 +311,7 @@ fn Cat::execute(const ExecContext &ec, EvalContext &cxt,
   if (visit == source_visit_result::Interrupted) return 130;
 
   ec.print_to_stdout(output);
+
   return status;
 }
 

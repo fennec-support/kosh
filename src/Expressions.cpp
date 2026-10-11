@@ -90,6 +90,7 @@ static fn allocate_assignment_index_storage(usize count) throws
           allocation_length, alignof(assignment_index_storage)));
   new (storage) assignment_index_storage{};
   storage->allocation_count = count;
+
   return storage;
 }
 
@@ -115,6 +116,7 @@ fn AssignmentIndexSet::operator=(const AssignmentIndexSet &other) wontthrow
   release();
   m_storage = other.m_storage;
   retain();
+
   return *this;
 }
 
@@ -126,6 +128,7 @@ fn AssignmentIndexSet::operator=(AssignmentIndexSet &&other) noexcept
   release();
   m_storage = other.m_storage;
   other.m_storage = nullptr;
+
   return *this;
 }
 
@@ -134,6 +137,7 @@ fn AssignmentIndexSet::singleton(usize index) throws -> AssignmentIndexSet
   let *storage = allocate_assignment_index_storage(1);
   storage->element_count = 1;
   assignment_index_data(storage)[0] = index;
+
   return AssignmentIndexSet{storage};
 }
 
@@ -144,6 +148,7 @@ fn AssignmentIndexSet::merge(const AssignmentIndexSet &other) throws -> void
   }
   if (is_empty()) {
     *this = other;
+
     return;
   }
 
@@ -196,6 +201,7 @@ pure fn AssignmentIndexSet::is_empty() const wontthrow -> bool
 pure fn AssignmentIndexSet::operator[](usize index) const wontthrow -> usize
 {
   ASSERT(index < count());
+
   return assignment_index_data(m_storage)[index];
 }
 
@@ -320,6 +326,7 @@ fn VariableOccurrenceStateMap::operator=(
 
   let copy = VariableOccurrenceStateMap{other};
   *this = steal(copy);
+
   return *this;
 }
 
@@ -331,6 +338,7 @@ fn VariableOccurrenceStateMap::operator=(
   release_variable_occurrence_map_storage(m_head);
   m_head = other.m_head;
   other.m_head = nullptr;
+
   return *this;
 }
 
@@ -345,6 +353,7 @@ pure fn VariableOccurrenceStateMap::find(StringView name) const wontthrow
     -> const variable_occurrence_state *
 {
   let const hash = hash_bytes(name);
+
   for (let const *storage = m_head; storage != nullptr;
        storage = storage->parent)
   {
@@ -428,6 +437,7 @@ fn VariableOccurrenceStateMap::merge(
     let const *right_state = other.find(name);
     if (left_state == nullptr && right_state == nullptr) {
       result.erase(name);
+
       return;
     }
 
@@ -475,8 +485,10 @@ fn VariableOccurrenceStateMap::merge(
 fn expressions::internal::indent_for_layer(usize layer) throws -> String
 {
   let pad = String{heap_allocator()};
+
   for (usize i = 0; i < layer; i++)
     pad += EXPRESSION_AST_INDENT;
+
   return pad;
 }
 
@@ -572,6 +584,7 @@ fn analysis_reporter::flush(const analysis_report_site &site) throws -> void
   if (eval_context != nullptr && colors::stderr_wants_color()) {
     let collected_positions = ArrayList<usize>{heap_allocator()};
     collected_positions.reserve(pending.count() * 2);
+
     for (let const &warning : pending) {
       if (warning.location.position <= source.length)
         collected_positions.push(warning.location.position);
@@ -581,11 +594,13 @@ fn analysis_reporter::flush(const analysis_report_site &site) throws -> void
         collected_positions.push(warning.related_location->position);
       }
     }
+
     let const positions =
         steal(collected_positions).make_sorted(sort_order::ascending);
 
     let *cache = eval_context->get_or_create_diagnostic_highlight_cache();
     Maybe<usize> previous_line_start;
+
     for (let const position : positions) {
       let const line = utils::source_line_position_at(source, position);
       if (previous_line_start.has_value() &&
@@ -600,8 +615,10 @@ fn analysis_reporter::flush(const analysis_report_site &site) throws -> void
 
   let report_order = ArrayList<usize>{heap_allocator()};
   report_order.reserve(pending.count());
+
   for (usize index = 0; index < pending.count(); index++)
     report_order.push(index);
+
   report_order.sort([this](const usize &left, const usize &right) {
     let const &left_location = pending[left].location;
     let const &right_location = pending[right].location;
@@ -609,6 +626,7 @@ fn analysis_reporter::flush(const analysis_report_site &site) throws -> void
       return left_location.source_name_index < right_location.source_name_index;
     if (left_location.position != right_location.position)
       return left_location.position < right_location.position;
+
     return left < right;
   });
 
@@ -653,6 +671,7 @@ fn analysis_reporter::flush(const analysis_report_site &site) throws -> void
     if (eval_context != nullptr)
       eval_context->print_source_backtrace(warning.location);
   }
+
   pending.clear();
 }
 
@@ -816,12 +835,14 @@ fn analysis_reporter::fail(const analysis_report_site &site, diagnostic_id id,
     if (should_report(tier))
       warn(id, location, message, suggestion, tier, related_location,
            related_message);
+
     return;
   }
 
   if (tier == diagnostic_tier::Annoying) {
     warn(id, location, message, suggestion, tier, related_location,
          related_message);
+
     return;
   }
 
@@ -835,6 +856,7 @@ fn analysis_reporter::fail(const analysis_report_site &site, diagnostic_id id,
   if (options.warning_level >= demote_at_level) {
     warn(id, location, message, suggestion, tier, related_location,
          related_message);
+
     return;
   }
 
@@ -859,6 +881,7 @@ fn analysis_reporter::fail(const analysis_report_site &site, diagnostic_id id,
         steal(related_source_name), String{related_message},
         source_fixes_for_diagnostic(id, source, location)});
     has_fatal = true;
+
     return;
   }
 
@@ -1123,6 +1146,7 @@ fn AnalysisContext::apply_called_function(
       let const *state = occurrences.find(occurrence.name.view());
       if (state != nullptr && state->is_definitely_set) {
         occurrence.has_resolved_function_path = true;
+
         for (let const assignment_index : state->assignment_indices)
           symbol_records->variable_occurrences[assignment_index].is_unused =
               false;
@@ -1140,12 +1164,14 @@ fn AnalysisContext::apply_called_function(
 
     if (exit_state->is_definitely_set || exit_state->is_definitely_unset) {
       occurrences.replace(affected_name, *exit_state);
+
       return;
     }
 
     let const *caller_state = occurrences.find(affected_name);
     if (caller_state == nullptr) {
       occurrences.replace(affected_name, *exit_state);
+
       return;
     }
 
@@ -1214,6 +1240,7 @@ fn AnalysisContext::note_variable_scope(StringView name) throws -> void
   let const first_scope = variable_first_scopes.find(name);
   if (!first_scope.has_value()) {
     variable_first_scopes.set(name, scope);
+
     return;
   }
 
@@ -1292,6 +1319,7 @@ fn expressions::internal::window_function_body_error(
 
   error.set_location(rebased);
   error.set_line_offset(resolved.line_offset);
+
   return resolved.text->view();
 }
 
@@ -1381,6 +1409,7 @@ fn Expression::try_static_condition_verdict(
     const AnalysisContext &actx) const wontthrow -> Maybe<bool>
 {
   unused(actx);
+
   return koshka::None;
 }
 
@@ -1389,6 +1418,7 @@ fn Expression::can_evaluate_in_process_substitution(
 {
   unused(cxt);
   unused(active_functions);
+
   return false;
 }
 
@@ -1466,6 +1496,7 @@ fn expanded_command_path(StringView name, Allocator allocator) throws -> String
   {
     return String{allocator, expanded->view()};
   }
+
   return String{allocator, name};
 }
 
@@ -1497,11 +1528,13 @@ fn expressions::internal::wrapped_command_index(
     }
     if (*argument == "--") {
       argument_index++;
+
       return argument_index < args.count() ? Maybe<usize>{argument_index}
                                            : None;
     }
     if (*argument == "-p") continue;
     if (argument->starts_with("-")) return None;
+
     return argument_index;
   }
 
@@ -1572,6 +1605,7 @@ fn expressions::internal::analyze_followed_source(
   let const do_give_up_on_source = [&actx]() throws -> bool {
     actx.mark_path_unknown(false);
     actx.mark_working_directory_unknown();
+
     return false;
   };
 
@@ -1630,6 +1664,7 @@ fn expressions::internal::analyze_followed_source(
     apply_followed_source_effects(actx, *effects.value(),
                                   should_merge_parent_state,
                                   should_merge_parent_uncertainty);
+
     return should_merge_parent_state;
   }
 
@@ -1690,6 +1725,7 @@ fn expressions::internal::analyze_followed_source(
     effects.has_fatal = true;
     actx.followed_source_effects_cache->set(canonical_path->text().view(),
                                             steal(effects));
+
     return true;
   }
 
@@ -1761,6 +1797,7 @@ fn expressions::internal::command_resolves(
       raw_operand = *source_text;
     unavailable = utils::locate_first_unavailable_path_component(
         target, expanded.view(), raw_operand, location, heap_allocator());
+
     return false;
   }
 
@@ -1782,6 +1819,7 @@ fn expressions::internal::command_resolves(
   LOG(Debug, "scanning PATH for '%.*s', the command was %s",
       static_cast<int>(name.length), name.data,
       was_resolved ? "found" : "not found");
+
   return was_resolved;
 }
 
@@ -1916,6 +1954,7 @@ fn analyze_ast(const Expression *root, StringView source,
 
   if (unit_stream != nullptr) {
     let sibling_carry = top_level_sibling_carry{};
+
     loop
     {
       let const *unit = unit_stream->next_unit();
@@ -1984,6 +2023,7 @@ pure fn internal::analysis_source_text(const AnalysisContext &actx,
   {
     return {};
   }
+
   return actx.source.substring_of_length(location.position, location.length);
 }
 
@@ -2157,6 +2197,7 @@ static fn is_plain_substitution_word(const Token *token) throws -> bool
   }
 
   let const &word = static_cast<const tokens::WordToken *>(token)->word();
+
   for (let const &segment : word.segments) {
     switch (segment.kind) {
     case WordSegment::Kind::LiteralText:
@@ -2328,6 +2369,7 @@ fn internal::analyze_region_substitutions(AnalysisContext &actx,
 
   let const found = lexer::find_nested_substitutions(
       actx.source, region_position, region_length, is_heredoc, false);
+
   for (let const &body : found)
     analyze_substitution_body(actx, body, location, true, is_unconditional);
 }
@@ -2371,6 +2413,7 @@ fn internal::analyze_word_substitutions(AnalysisContext &actx, const Word &word,
       let const found = lexer::find_nested_substitutions(
           actx.source, position, text.length, false,
           segment.is_in_double_quotes != 0);
+
       for (let const &body : found)
         analyze_substitution_body(actx, body, location, true, is_unconditional);
       break;
@@ -2391,6 +2434,7 @@ fn internal::analyze_token_substitutions(AnalysisContext &actx,
     analyze_word_substitutions(
         actx, static_cast<const tokens::Assignment *>(token)->value_word(),
         token->source_location(), is_unconditional);
+
     return;
   }
 
@@ -2472,14 +2516,17 @@ pure fn internal::arithmetic_reads_external_input(
       continue;
     }
     let const start = position++;
+
     while (position < expression.length &&
            lexer::is_variable_name(expression[position]))
     {
       position++;
     }
+
     let const name = expression.substring_of_length(start, position - start);
     if (actx.external_input_names.contains(name)) return true;
   }
+
   return false;
 }
 

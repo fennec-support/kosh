@@ -65,6 +65,7 @@ fn FunctionBodyHandle::operator=(const FunctionBodyHandle &other)
   release();
   m_storage = other.m_storage;
   retain();
+
   return *this;
 }
 
@@ -76,26 +77,29 @@ fn FunctionBodyHandle::operator=(FunctionBodyHandle &&other) noexcept
   release();
   m_storage = other.m_storage;
   other.m_storage = nullptr;
+
   return *this;
 }
 
 fn FunctionBodyHandle::create(usize source_length_hint) throws
     -> FunctionBodyHandle
 {
-  let const wanted_size = FUNCTION_ARENA_FIXED_SIZE +
-                          (source_length_hint < MAXIMUM_FUNCTION_ARENA_SIZE
-                               ? source_length_hint
-                               : MAXIMUM_FUNCTION_ARENA_SIZE) *
-                              FUNCTION_ARENA_BYTES_PER_SOURCE_BYTE;
-  let const arena_size = wanted_size < MINIMUM_FUNCTION_ARENA_SIZE
-                             ? MINIMUM_FUNCTION_ARENA_SIZE
-                             : (wanted_size > MAXIMUM_FUNCTION_ARENA_SIZE
-                                    ? MAXIMUM_FUNCTION_ARENA_SIZE
-                                    : wanted_size);
+  let const wanted_byte_count =
+      FUNCTION_ARENA_FIXED_SIZE +
+      (source_length_hint < MAXIMUM_FUNCTION_ARENA_SIZE
+           ? source_length_hint
+           : MAXIMUM_FUNCTION_ARENA_SIZE) *
+          FUNCTION_ARENA_BYTES_PER_SOURCE_BYTE;
+  let const arena_byte_count =
+      wanted_byte_count < MINIMUM_FUNCTION_ARENA_SIZE
+          ? MINIMUM_FUNCTION_ARENA_SIZE
+          : (wanted_byte_count > MAXIMUM_FUNCTION_ARENA_SIZE
+                 ? MAXIMUM_FUNCTION_ARENA_SIZE
+                 : wanted_byte_count);
 
   let const arena_storage = heap_allocator().alloc_array<BumpArena>(1);
   try {
-    new (arena_storage) BumpArena{arena_size};
+    new (arena_storage) BumpArena{arena_byte_count};
   } catch (...) {
     heap_allocator().free_array(arena_storage, 1);
     throw;

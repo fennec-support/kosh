@@ -127,6 +127,7 @@ struct radix_digit_table
 
 inline constexpr radix_digit_table RADIX_DIGIT_TABLE = [] {
   radix_digit_table table{};
+
   for (u32 byte = 0; byte < 256; byte++) {
     u8 value = 64;
     if (byte >= '0' && byte <= '9') {
@@ -142,6 +143,7 @@ inline constexpr radix_digit_table RADIX_DIGIT_TABLE = [] {
     }
     table.values[byte] = value;
   }
+
   return table;
 }();
 
@@ -182,6 +184,7 @@ alwaysinline pure fn detect_radix_prefix(StringView body) wontthrow
   if (body.length >= 1 && body[0] == '0') {
     return {8, 0};
   }
+
   return {10, 0};
 }
 
@@ -213,6 +216,7 @@ alwaysinline fn consume(StringView source, usize &position,
 {
   if (!starts_with(source, position, operation)) return false;
   position += operation.length;
+
   return true;
 }
 

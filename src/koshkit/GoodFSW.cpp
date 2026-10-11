@@ -174,8 +174,10 @@ fn format_watch_timestamp(i64 seconds, u32 nanoseconds,
     text += ".";
     let const digits = String::from(nanoseconds, allocator);
     let fraction = String{allocator};
+
     for (usize index = digits.length(); index < 9; index++)
       fraction += "0";
+
     fraction += digits.view();
     text += fraction.substring_of_length(0, format.precision);
   }
@@ -189,6 +191,7 @@ fn format_watch_timestamp(i64 seconds, u32 nanoseconds,
         std::strftime(zone_buffer, sizeof(zone_buffer), "%z", broken_down);
     text += StringView{zone_buffer, zone_length};
   }
+
   return text;
 }
 
@@ -329,6 +332,7 @@ fn GoodFSW::execute(const ExecContext &ec, EvalContext &cxt,
                               "Invalid timestamp precision '" +
                                   FLAG_GOODFSW_PRECISION.value() + "'",
                               "use a number from 0 through 9");
+
       return 1;
     }
     timestamp_format.precision = static_cast<usize>(parsed.value());
@@ -342,6 +346,7 @@ fn GoodFSW::execute(const ExecContext &ec, EvalContext &cxt,
       KOSHKIT_REPORT_ERROR_AT(FLAG_GOODFSW_TIMEZONE.value_location(),
                               "Invalid timestamp timezone '" + value + "'",
                               "use local or utc");
+
       return 1;
     }
   }
@@ -356,28 +361,35 @@ fn GoodFSW::execute(const ExecContext &ec, EvalContext &cxt,
   operand_paths.reserve(operands.count());
   operand_statuses.reserve(operands.count());
   operand_batch.reserve(operands.count());
+
   for (let const &operand : operands) {
     operand_paths.push(Path{operand.view(), allocator});
     operand_statuses.push({});
   }
+
   for (usize index = 0; index < operands.count(); index++)
     operand_batch.add(os::batch_operation::lstat(operand_paths[index],
                                                  operand_statuses[index]));
+
   let const operand_results = operand_batch.execute();
+
   for (usize index = 0; index < operands.count(); index++) {
     if (operand_results[index].error_number != 0) {
       os::set_last_system_error(operand_results[index].error_number);
       KOSHKIT_REPORT_PATH_ERROR_AT(operand_locations[index], "watch",
                                    operands[index]);
+
       return 1;
     }
   }
 
   let collected_previous = ArrayList<watched_entry>{watch_allocator};
+
   for (usize index = 0; index < operands.count(); index++)
     scan_path(operands[index].view(), collected_previous, 0, watch_allocator,
               operand_statuses[index].device_id, &operand_statuses[index],
               traversal);
+
   if (take_interrupt_request()) return 130;
   let previous =
       steal(collected_previous).make_sorted(watched_entry_comparator{});
@@ -387,6 +399,7 @@ fn GoodFSW::execute(const ExecContext &ec, EvalContext &cxt,
   let const should_color = koshkit_should_color();
 
   bool was_interrupted = false;
+
   loop
   {
     os::sleep_for_seconds(latency_seconds);
@@ -397,6 +410,7 @@ fn GoodFSW::execute(const ExecContext &ec, EvalContext &cxt,
     }
 
     recycled_entries.clear();
+
     for (usize index = 0; index < operands.count(); index++) {
       if (os::INTERRUPT_REQUESTED) {
         was_interrupted = true;
@@ -405,6 +419,7 @@ fn GoodFSW::execute(const ExecContext &ec, EvalContext &cxt,
       scan_path(operands[index].view(), recycled_entries, 0, watch_allocator,
                 operand_statuses[index].device_id, nullptr, traversal);
     }
+
     if (was_interrupted) {
       os::INTERRUPT_REQUESTED = 0;
       break;
@@ -420,6 +435,7 @@ fn GoodFSW::execute(const ExecContext &ec, EvalContext &cxt,
 
     usize previous_position = 0;
     usize current_position = 0;
+
     while (previous_position < previous.count() ||
            current_position < current.count())
     {

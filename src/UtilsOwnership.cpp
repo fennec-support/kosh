@@ -27,6 +27,7 @@ static fn parse_numeric_id(StringView text) wontthrow -> Maybe<u32>
 {
   if (text.is_empty()) return None;
   u64 value = 0;
+
   for (usize position = 0; position < text.length; position++) {
     let const byte = text[position];
     if (byte < '0' || byte > '9') {
@@ -35,6 +36,7 @@ static fn parse_numeric_id(StringView text) wontthrow -> Maybe<u32>
     value = value * 10 + static_cast<u64>(byte - '0');
     if (value > UINT32_MAX) return None;
   }
+
   return static_cast<u32>(value);
 }
 
@@ -65,6 +67,7 @@ static fn change_path_ownership_recursive(
         ec, cxt,
         utility_name + ": cannot access '" + path.text() +
             "': " + os::last_system_error_message());
+
     return false;
   }
 
@@ -77,6 +80,7 @@ static fn change_path_ownership_recursive(
         ec, cxt,
         utility_name + ": cannot change ownership of '" + path.text() +
             "': " + os::last_system_error_message());
+
     return false;
   }
 
@@ -114,6 +118,7 @@ static fn change_path_ownership_recursive(
             ec, cxt,
             utility_name + ": recursive directory loop at '" + path.text() +
                 "'");
+
         return false;
       }
     }
@@ -135,6 +140,7 @@ static fn change_path_ownership_recursive(
         ec, cxt,
         utility_name + ": cannot read directory '" + path.text() +
             "': " + os::last_system_error_message());
+
     return false;
   }
 
@@ -159,7 +165,7 @@ static fn change_path_ownership_recursive(
     child_paths.push(steal(child));
 
     let const is_child_symlink =
-        child_entry.child.kind == Path::entry_kind::Symlink ||
+        child_entry.child.kind == Path::EntryKind::Symlink ||
         (child_entry.has_status &&
          os::file_type_letter(child_entry.status.mode) == 'l');
     if (!should_follow_nested_symlinks || !is_child_symlink) {
@@ -177,6 +183,7 @@ static fn change_path_ownership_recursive(
 
   bool did_succeed = true;
   usize followed_position = 0;
+
   for (usize child_position = 0; child_position < children->count();
        child_position++)
   {
@@ -219,6 +226,7 @@ fn resolve_user_id(StringView text) throws -> Maybe<u32>
 {
   if (let const numeric = parse_numeric_id(text); numeric.has_value())
     return numeric;
+
   return os::username_to_uid(text);
 }
 
@@ -226,6 +234,7 @@ fn resolve_group_id(StringView text) throws -> Maybe<u32>
 {
   if (let const numeric = parse_numeric_id(text); numeric.has_value())
     return numeric;
+
   return os::groupname_to_gid(text);
 }
 

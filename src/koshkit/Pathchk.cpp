@@ -66,6 +66,7 @@ fn Pathchk::execute(const ExecContext &ec, EvalContext &cxt,
       reason = "pathname too long";
     } else {
       usize position = 0;
+
       while (position < path.length) {
         let const component = Path::next_component(path, position);
         let component_length = component.text.length;

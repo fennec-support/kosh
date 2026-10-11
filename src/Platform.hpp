@@ -138,6 +138,7 @@ hot alwaysinline fn pack_little_endian_bytes(u64 *words, const char *bytes,
 #if defined __BYTE_ORDER__ && __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
   __builtin_memcpy(reinterpret_cast<char *>(words), bytes, count);
 #else
+
   for (usize index = 0; index < count; index++)
     words[index / 8] |= static_cast<u64>(static_cast<u8>(bytes[index]))
                         << (8 * (index % 8));
@@ -151,6 +152,7 @@ hot alwaysinline fn read_native_endian_bytes(const char *bytes,
 #if defined __BYTE_ORDER__ && __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
   __builtin_memcpy(&value, bytes, count);
 #else
+
   for (usize index = 0; index < count; index++)
     value = (value << 8) | static_cast<u8>(bytes[index]);
 #endif
@@ -250,8 +252,10 @@ pure constexpr fn background_process_group_mode(i64 process_group_id) wontthrow
 {
 #if KOSH_PLATFORM_IS KOSH_PLATFORM_WIN32
   unused(process_group_id);
+
   return process_group_mode::NewBackground;
 #else
+
   return process_group_id == 0 ? process_group_mode::NewBackground
                                : process_group_mode::Join;
 #endif
@@ -709,8 +713,8 @@ fn read_symlink(StringView path, Allocator allocator) wontthrow
 
 struct filesystem_status
 {
-  u64 block_size{0};
-  u64 fundamental_block_size{0};
+  u64 block_byte_count{0};
+  u64 fundamental_block_byte_count{0};
   u64 total_blocks{0};
   u64 free_blocks{0};
   u64 available_blocks{0};
@@ -836,11 +840,11 @@ fn read_memory_status(memory_status &status) wontthrow -> bool;
 
 struct swap_status
 {
-  u64 total_bytes{0};
-  u64 used_bytes{0};
-  u64 free_bytes{0};
-  u64 input_bytes{0};
-  u64 output_bytes{0};
+  u64 total_byte_count{0};
+  u64 used_byte_count{0};
+  u64 free_byte_count{0};
+  u64 input_byte_count{0};
+  u64 output_byte_count{0};
   bool has_activity{false};
   bool has_encryption_state{false};
   bool is_encrypted{false};
@@ -850,8 +854,8 @@ fn read_swap_status(swap_status &status) wontthrow -> bool;
 
 struct process_io_status
 {
-  u64 read_bytes{0};
-  u64 written_bytes{0};
+  u64 read_byte_count{0};
+  u64 written_byte_count{0};
   u64 read_operation_count{0};
   u64 write_operation_count{0};
   bool has_operation_counts{false};
@@ -901,8 +905,8 @@ struct system_activity_status
   u64 cpu_idle_units{0};
   u64 cpu_wait_units{0};
   u64 cpu_stolen_units{0};
-  u64 page_input_bytes{0};
-  u64 page_output_bytes{0};
+  u64 page_input_byte_count{0};
+  u64 page_output_byte_count{0};
   u64 page_fault_count{0};
   u64 major_page_fault_count{0};
   u64 runnable_process_count{0};
@@ -959,8 +963,8 @@ enum class disk_io_field : u32
 struct disk_io_status
 {
   String name{heap_allocator()};
-  u64 read_bytes{0};
-  u64 written_bytes{0};
+  u64 read_byte_count{0};
+  u64 written_byte_count{0};
   u64 read_operation_count{0};
   u64 write_operation_count{0};
   u64 read_time_nanoseconds{0};
@@ -1030,14 +1034,14 @@ static_assert(sizeof(usize) != 8 || sizeof(file_status) == 104);
 
 struct directory_status_entry
 {
-  Path::directory_child child;
+  Path::DirectoryChild child;
   file_status status{};
   bool has_status{false};
 };
 
 struct directory_batch_listing
 {
-  Maybe<ArrayList<Path::directory_child>> children;
+  Maybe<ArrayList<Path::DirectoryChild>> children;
   Maybe<descriptor> directory;
 };
 
@@ -1313,16 +1317,17 @@ fn write_fd(os::descriptor fd, const opaque *buf, usize size) wontthrow
 inline fn write_all(os::descriptor fd, const opaque *buf, usize size) wontthrow
     -> bool
 {
-  usize written_size = 0;
+  usize written_byte_count = 0;
 
-  while (written_size < size) {
-    let const result = write_fd(fd, static_cast<const u8 *>(buf) + written_size,
-                                size - written_size);
+  while (written_byte_count < size) {
+    let const result =
+        write_fd(fd, static_cast<const u8 *>(buf) + written_byte_count,
+                 size - written_byte_count);
     if (!result.has_value() || *result == 0) {
       return false;
     }
 
-    written_size += *result;
+    written_byte_count += *result;
   }
 
   return true;
@@ -1359,6 +1364,7 @@ public:
     if (this == &other) return *this;
     if (is_valid()) close_fd(m_descriptor);
     m_descriptor = other.take();
+
     return *this;
   }
   ~DirectoryReference()
@@ -1375,6 +1381,7 @@ public:
   {
     let const result = m_descriptor;
     m_descriptor = KOSH_INVALID_FD;
+
     return result;
   }
 
@@ -1587,14 +1594,14 @@ cold fn list_directory(StringView dir) throws -> Maybe<ArrayList<String>>;
 cold fn list_directory(StringView dir, Allocator allocator) throws
     -> Maybe<ArrayList<String>>;
 cold fn list_directory_typed(StringView dir) throws
-    -> Maybe<ArrayList<Path::directory_child>>;
+    -> Maybe<ArrayList<Path::DirectoryChild>>;
 cold fn list_directory_typed(StringView dir, Allocator allocator) throws
-    -> Maybe<ArrayList<Path::directory_child>>;
+    -> Maybe<ArrayList<Path::DirectoryChild>>;
 cold fn list_directory_for_batch(StringView dir, Allocator allocator) throws
     -> directory_batch_listing;
 #if defined __linux__
 cold fn list_directory_typed(descriptor directory, Allocator allocator) throws
-    -> Maybe<ArrayList<Path::directory_child>>;
+    -> Maybe<ArrayList<Path::DirectoryChild>>;
 #endif
 cold fn list_directory_status(StringView dir, Allocator allocator) throws
     -> Maybe<ArrayList<directory_status_entry>>;
@@ -1656,6 +1663,7 @@ pure inline fn is_environment_value_storable(StringView value) wontthrow -> bool
   if (value.length <= ENVIRONMENT_VALUE_MAX_UNIT_COUNT) return true;
 
   usize unit_count = 0;
+
   for (usize index = 0; index < value.length; index++) {
     let const byte = static_cast<u8>(value[index]);
     if ((byte & 0xC0) != 0x80) unit_count++;
@@ -1717,9 +1725,11 @@ pure fn is_directory_separator(char c) wontthrow -> bool;
 pure inline fn has_directory_separator(StringView path) wontthrow -> bool
 {
 #if KOSH_PLATFORM_IS KOSH_PLATFORM_WIN32
+
   return path.find_character('/').has_value() ||
          path.find_character('\\').has_value();
 #else
+
   return path.find_character('/').has_value();
 #endif
 }
@@ -1769,8 +1779,8 @@ enum class network_statistics_field : u32
 struct network_interface_statistics_entry
 {
   String interface_name{heap_allocator()};
-  u64 receive_bytes{0};
-  u64 transmit_bytes{0};
+  u64 receive_byte_count{0};
+  u64 transmit_byte_count{0};
   u64 receive_packet_count{0};
   u64 transmit_packet_count{0};
   u64 receive_error_count{0};
@@ -1895,8 +1905,8 @@ struct network_socket_entry
   String peer_address{heap_allocator()};
   u64 identity{0};
   u64 peer_identity{0};
-  u64 receive_queue_bytes{0};
-  u64 send_queue_bytes{0};
+  u64 receive_queue_byte_count{0};
+  u64 send_queue_byte_count{0};
   u64 owner_start_token{0};
   u32 process_id{0};
   u16 local_port{0};
@@ -2061,8 +2071,8 @@ fn children_peak_rss_bytes() wontthrow -> u64;
 struct malloc_heap_stats
 {
   usize bytes_in_use{0};
-  usize arena_bytes{0};
-  usize mapped_bytes{0};
+  usize arena_byte_count{0};
+  usize mapped_byte_count{0};
 };
 
 fn read_malloc_heap_stats(malloc_heap_stats &stats) wontthrow -> bool;
@@ -2080,7 +2090,7 @@ struct process_resource_usage
 {
   Maybe<u64> user_nanos{};
   Maybe<u64> system_nanos{};
-  Maybe<u64> peak_rss_bytes{};
+  Maybe<u64> peak_rss_byte_count{};
   Maybe<u64> voluntary_context_switch_count{};
   Maybe<u64> involuntary_context_switch_count{};
   Maybe<u64> minor_fault_count{};
@@ -2107,7 +2117,7 @@ fn get_process_launch_counts() wontthrow -> process_launch_counts;
 struct measured_result
 {
   u64 wall_nanos{0};
-  u64 peak_rss_bytes{0};
+  u64 peak_rss_byte_count{0};
   i64 exit_status{0};
   bool has_perf{false};
   bool is_perf_system_wide{false};

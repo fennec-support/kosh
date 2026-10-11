@@ -30,30 +30,36 @@ static pure fn directory_part_of(StringView path) wontthrow -> StringView
   if (path.is_empty()) return StringView{"."};
 
   bool has_only_separators = true;
+
   for (usize i = 0; i < path.length; i++) {
     if (!is_directory_separator(path[i])) {
       has_only_separators = false;
       break;
     }
   }
+
   if (has_only_separators) return StringView{"/"};
 
   usize end_position = path.length;
+
   while (end_position > 0 && is_directory_separator(path[end_position - 1])) {
     end_position--;
   }
 
   bool has_separator = false;
   usize last_separator_position = 0;
+
   for (usize i = 0; i < end_position; i++) {
     if (is_directory_separator(path[i])) {
       has_separator = true;
       last_separator_position = i;
     }
   }
+
   if (!has_separator) return StringView{"."};
 
   end_position = last_separator_position;
+
   while (end_position > 0 && is_directory_separator(path[end_position - 1])) {
     end_position--;
   }
@@ -71,14 +77,17 @@ cold fn Dirname::execute(
 
   if (operands.is_empty()) {
     report_usage_error(ec, cxt, args[0].view());
+
     return 1;
   }
 
   let output = String{cxt.scratch_allocator()};
+
   for (let const &operand : operands) {
     output.append(directory_part_of(operand.view()));
     output.push('\n');
   }
+
   ec.print_to_stdout(output);
 
   return 0;

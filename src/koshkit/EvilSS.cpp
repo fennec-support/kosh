@@ -118,6 +118,7 @@ fn unix_endpoint(StringView path, u64 identity, Allocator allocator) throws
   let result = String{allocator, path.is_empty() ? StringView{"*"} : path};
   result += ":";
   result += String::from(identity, allocator).view();
+
   return result;
 }
 
@@ -163,9 +164,11 @@ fn append_network_socket_report(String &output,
         owner_process_ids.push(socket.process_id);
       }
     }
+
     owner_process_ids.sort();
 
     usize unique_count = 0;
+
     for (let const process_id : owner_process_ids) {
       if (unique_count == 0 ||
           owner_process_ids[unique_count - 1] != process_id)
@@ -173,6 +176,7 @@ fn append_network_socket_report(String &output,
         owner_process_ids[unique_count++] = process_id;
       }
     }
+
     owner_process_ids.truncate(unique_count);
   }
   let const processes = os::describe_processes(owner_process_ids)
@@ -189,12 +193,14 @@ fn append_network_socket_report(String &output,
         owner_id, owner_name.has_value() ? String{allocator, owner_name->view()}
                                          : String::from(owner_id, allocator)
     });
+
     return String{allocator, owner_texts.back().text.view()};
   };
   let rows = ArrayList<socket_row>{allocator};
   u64 previous_identity = 0;
   u32 previous_process_id = 0;
   bool has_previous = false;
+
   for (let const &socket : sockets) {
     let const is_tcp = socket.protocol == os::network_socket_protocol::Tcp;
     let const is_udp = socket.protocol == os::network_socket_protocol::Udp;
@@ -252,8 +258,9 @@ fn append_network_socket_report(String &output,
         String{allocator, is_unix ? unix_protocol_name(socket.unix_type)
                                   : (is_tcp ? "tcp" : "udp")};
     row.state = String{allocator, network_socket_state_name(socket.state)};
-    row.receive_queue = String::from(socket.receive_queue_bytes, allocator);
-    row.send_queue = String::from(socket.send_queue_bytes, allocator);
+    row.receive_queue =
+        String::from(socket.receive_queue_byte_count, allocator);
+    row.send_queue = String::from(socket.send_queue_byte_count, allocator);
     row.local = is_unix ? unix_endpoint(socket.local_address.view(),
                                         socket.identity, allocator)
                         : format_socket_endpoint(socket.local_address.view(),
@@ -305,6 +312,7 @@ fn append_network_socket_report(String &output,
 
   let cells = ArrayList<report_table_cell_view>{allocator};
   cells.reserve(options.should_show_processes ? 9 : 6);
+
   for (let const &row : rows) {
     cells.clear();
     cells.push({row.protocol.view(), colors::ansi::BOLD_MAGENTA});
@@ -320,6 +328,7 @@ fn append_network_socket_report(String &output,
     }
     table.add_row(cells);
   }
+
   append_titled_report_table(output, "Sockets", table, should_color);
 
   return !rows.is_empty();
@@ -337,12 +346,14 @@ fn EvilSS::execute(const ExecContext &ec, EvalContext &cxt,
   if (!operands.is_empty()) {
     KOSHKIT_REPORT_ERROR_AT(operand_locations[0], "unexpected operand",
                             "this utility accepts no operands");
+
     return 1;
   }
 
   if (!os::has_network_socket_listing()) {
     report_soft_koshkit_error(ec, cxt, "socket listing is unavailable",
                               "this platform does not expose socket records");
+
     return 1;
   }
 
@@ -384,6 +395,7 @@ fn EvilSS::execute(const ExecContext &ec, EvalContext &cxt,
   append_network_socket_report(output, report_options, allocator, should_color);
 
   ec.print_to_stdout(output);
+
   return 0;
 }
 

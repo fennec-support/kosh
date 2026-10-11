@@ -56,12 +56,14 @@ fn parse_backoff_factor(StringView text, f64 &out_factor) throws -> bool
   }
 
   out_factor = parsed.value();
+
   return true;
 }
 
 fn sleep_interruptibly(f64 seconds) wontthrow -> bool
 {
   f64 remaining_seconds = seconds;
+
   while (remaining_seconds > 0.0) {
     if (os::INTERRUPT_REQUESTED) return false;
 
@@ -79,6 +81,7 @@ fn build_command_source(const ArrayList<String> &operands,
                         Allocator allocator) throws -> String
 {
   let source = String{allocator};
+
   for (usize index = 0; index < operands.count(); index++) {
     if (index > 0) source.push(' ');
 
@@ -115,6 +118,7 @@ fn Retry::execute(const ExecContext &ec, EvalContext &cxt,
           "invalid attempt count '" +
               String{allocator, FLAG_RETRY_ATTEMPTS.value()} + "'",
           "the value must be a positive attempt count");
+
       return 1;
     }
 
@@ -142,6 +146,7 @@ fn Retry::execute(const ExecContext &ec, EvalContext &cxt,
           "invalid backoff factor '" +
               String{allocator, FLAG_RETRY_BACKOFF.value()} + "'",
           "the value is a multiplier between one and sixty");
+
       return 1;
     }
   }
@@ -179,6 +184,7 @@ fn Retry::execute(const ExecContext &ec, EvalContext &cxt,
 
     if (delay_seconds > 0.0 && !sleep_interruptibly(delay_seconds)) {
       os::INTERRUPT_REQUESTED = 0;
+
       return 130;
     }
 

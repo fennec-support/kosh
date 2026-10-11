@@ -60,6 +60,7 @@ fn Cut::execute(const ExecContext &ec, EvalContext &cxt,
         "invalid position list '" + String{cxt.scratch_allocator(), list} + "'",
         "positions start at 1 and use N, N-M, -M, or N- separated by commas "
         "or blanks");
+
     return 1;
   }
 
@@ -68,6 +69,7 @@ fn Cut::execute(const ExecContext &ec, EvalContext &cxt,
     if (FLAG_CUT_DELIMITER.value().length != 1) {
       KOSHKIT_REPORT_ERROR_AT(FLAG_CUT_DELIMITER.value_location(),
                               "the delimiter must be one byte");
+
       return 1;
     }
     delimiter = FLAG_CUT_DELIMITER.value()[0];
@@ -89,6 +91,7 @@ fn Cut::execute(const ExecContext &ec, EvalContext &cxt,
       if (is_byte_mode) {
         if (should_keep_characters_whole) {
           usize byte_position = 0;
+
           while (byte_position < line_view.length) {
             let const decoded = utils::decode_utf8(line_view, byte_position, 0);
             if (utils::text_position_is_selected(byte_position + decoded.length,
@@ -169,8 +172,10 @@ fn Cut::execute(const ExecContext &ec, EvalContext &cxt,
 
     for (let const &chunk : chunks) {
       usize position = 0;
+
       while (position < chunk.content.length) {
         usize delimiter_position = position;
+
         while (delimiter_position < chunk.content.length &&
                chunk.content[delimiter_position] != '\n')
         {
@@ -203,6 +208,7 @@ fn Cut::execute(const ExecContext &ec, EvalContext &cxt,
   }
 
   ec.print_to_stdout(output);
+
   return status;
 }
 

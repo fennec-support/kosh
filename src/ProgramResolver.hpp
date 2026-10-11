@@ -52,7 +52,7 @@ inline constexpr StringView DEFAULT_COMMAND_SEARCH_PATH{"/usr/bin:/bin"};
 class ProgramResolver
 {
 public:
-  enum class program_path_kind : u8
+  enum class ProgramPathKind : u8
   {
     Full,
     Bare,
@@ -177,7 +177,7 @@ private:
   fn refresh_path_directory_generations() throws -> void;
   static fn
   probe_directory_entries(const Path &directory,
-                          const ArrayList<Path::directory_child> &entries,
+                          const ArrayList<Path::DirectoryChild> &entries,
                           DirectoryProbe &probe) throws -> void;
   fn rebuild_path_command_index(CompletionRefresh refresh) throws -> void;
   fn prepare_complete_path_cache(StringView validation_prefix,
@@ -191,7 +191,7 @@ private:
       -> ArrayList<Path>;
   fn cache_resolved_path(StringView name, const Path &full_path,
                          os::program_extension extension,
-                         program_path_kind kind) throws -> void;
+                         ProgramPathKind kind) throws -> void;
   pure fn find_cached_program_path(
       const CacheEntry &entry,
       os::program_extension wanted_extension) const wontthrow -> const Path *;

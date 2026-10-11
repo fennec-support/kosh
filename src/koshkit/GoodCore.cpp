@@ -63,10 +63,12 @@ fn run_tool(const Path &tool, ArrayList<String> arguments,
   let command = ArrayList<String>{heap_allocator()};
   command.reserve(arguments.count() + 1);
   command.push(tool.text().clone());
+
   for (let &argument : arguments)
     command.push(steal(argument));
 
   let const result = os::run_measured(command, {}, output);
+
   return result.has_value() && result->exit_status == 0;
 }
 
@@ -83,6 +85,7 @@ fn write_text_file(StringView path, StringView text) throws -> bool
 pure fn stripped_root(StringView path) wontthrow -> StringView
 {
   usize start_position = 0;
+
   while (start_position < path.length &&
          (path[start_position] == '/' || path[start_position] == '\\'))
   {
@@ -116,6 +119,7 @@ fn append_unique_path(ArrayList<String> &paths, StringView path,
   if (path.is_empty() || path[0] != '/') {
     return;
   }
+
   for (let const &existing : paths) {
     if (existing.view() == path) return;
   }
@@ -135,6 +139,7 @@ fn collect_paths_from_output(StringView output, ArrayList<String> &paths,
     if (!start.has_value()) continue;
 
     usize end_position = *start;
+
     while (end_position < view.length && view[end_position] != ' ' &&
            view[end_position] != '\t' && view[end_position] != ')' &&
            view[end_position] != '(')
@@ -161,6 +166,7 @@ fn infer_binary(EvalContext &cxt, StringView core, Allocator allocator) throws
   if (!output.has_value()) return None;
 
   constexpr StringView markers[] = {"execfn: '", "from '"};
+
   for (let const marker : markers) {
     let const marker_position = output->view().find_substring(marker);
     if (!marker_position.has_value()) continue;
@@ -252,12 +258,14 @@ fn GoodCore::execute(
       conflict_location = operand_locations[0];
     KOSHKIT_REPORT_ERROR_AT(conflict_location, "conflicting input",
                             "pass either one running pid or one core file");
+
     return 2;
   }
   if (operands.count() > 1) {
     KOSHKIT_REPORT_ERROR_AT(operand_locations[1],
                             "extra operand '" + operands[1] + "'",
                             "pass exactly one core file");
+
     return 2;
   }
 
@@ -271,6 +279,7 @@ fn GoodCore::execute(
     KOSHKIT_REPORT_ERROR_AT(
         conflict_location, "conflicting flags",
         "--binary applies only when packaging an existing core file");
+
     return 2;
   }
 
@@ -282,6 +291,7 @@ fn GoodCore::execute(
       KOSHKIT_REPORT_ERROR_AT(FLAG_GOODCORE_PID.value_location(),
                               "invalid process id",
                               "the process id must be a positive integer");
+
       return 1;
     }
     process_id = parsed.value();
@@ -320,6 +330,7 @@ fn GoodCore::execute(
     report_soft_koshkit_util_error(ec, cxt, error_location, args[0].view(),
                                    "executable not found",
                                    "pass its path with --binary");
+
     return 1;
   }
 
@@ -328,6 +339,7 @@ fn GoodCore::execute(
   if (!stage_directory.has_value()) {
     report_soft_koshkit_error(ec, cxt, "cannot create staging directory",
                               os::last_system_error_message());
+
     return 1;
   }
   let const stage = *stage_directory;
@@ -338,6 +350,7 @@ fn GoodCore::execute(
   if (!os::make_directory(dump_directory.view(), 0700)) {
     report_soft_koshkit_error(ec, cxt, "cannot create dump directory",
                               os::last_system_error_message());
+
     return 1;
   }
 
@@ -373,6 +386,7 @@ fn GoodCore::execute(
       report_soft_koshkit_error(
           ec, cxt, "capture failed",
           "install the platform debugger and check process permissions");
+
       return 1;
     }
     if (platform_tools.capture_mode == os::goodcore_capture_mode::Gcore) {
@@ -381,6 +395,7 @@ fn GoodCore::execute(
       if (!os::rename_path(captured_core.view(), core.view())) {
         report_soft_koshkit_error(ec, cxt, "capture failed",
                                   "the debugger produced no usable core file");
+
         return 1;
       }
     }
@@ -390,6 +405,7 @@ fn GoodCore::execute(
     if (!source.is_regular_file()) {
       report_soft_koshkit_error(ec, cxt, "core file not found",
                                 "the operand must refer to a regular file");
+
       return 1;
     }
 
@@ -399,6 +415,7 @@ fn GoodCore::execute(
     {
       report_soft_koshkit_error(ec, cxt, "cannot copy core file",
                                 os::last_system_error_message());
+
       return 1;
     }
   }
@@ -409,6 +426,7 @@ fn GoodCore::execute(
   {
     report_soft_koshkit_error(ec, cxt, "capture failed",
                               "the core file is missing or empty");
+
     return 1;
   }
 
@@ -421,11 +439,13 @@ fn GoodCore::execute(
 
   append_unique_path(paths, binary->view(), allocator);
   usize copied_path_count = 0;
+
   for (let const &path : paths) {
     print_progress(ec, String{"copying "} + path.view(), progress_mode);
     if (!copy_into_root(stage, path.view(), allocator)) {
       report_soft_koshkit_error(ec, cxt, "cannot copy required file",
                                 path.view());
+
       return 1;
     }
     copied_path_count++;
@@ -457,6 +477,7 @@ fn GoodCore::execute(
   if (!write_text_file(metadata_path.view(), metadata.view())) {
     report_soft_koshkit_error(ec, cxt, "cannot write metadata",
                               os::last_system_error_message());
+
     return 1;
   }
 
@@ -476,6 +497,7 @@ fn GoodCore::execute(
   {
     report_soft_koshkit_error(ec, cxt, "unsafe output path",
                               "the archive cannot replace an input file");
+
     return 1;
   }
 
@@ -483,6 +505,7 @@ fn GoodCore::execute(
   if (!tar.has_value()) {
     report_soft_koshkit_error(ec, cxt, "tar is unavailable",
                               "install tar or place it on PATH");
+
     return 1;
   }
 
@@ -491,6 +514,7 @@ fn GoodCore::execute(
   if (!temporary_output.has_value()) {
     report_soft_koshkit_error(ec, cxt, "cannot create temporary archive",
                               os::last_system_error_message());
+
     return 1;
   }
   defer { unused(os::remove_file(temporary_output->text().view())); };
@@ -514,6 +538,7 @@ fn GoodCore::execute(
     if (!temporary_tar.has_value()) {
       report_soft_koshkit_error(ec, cxt, "cannot create temporary archive",
                                 os::last_system_error_message());
+
       return 1;
     }
     defer { unused(os::remove_file(temporary_tar->text().view())); };
@@ -542,12 +567,14 @@ fn GoodCore::execute(
   if (!did_archive) {
     report_soft_koshkit_error(ec, cxt, "archive creation failed",
                               "the selected archiver returned a failure");
+
     return 1;
   }
 
   if (!os::rename_path(temporary_output->view(), output.view())) {
     report_soft_koshkit_error(ec, cxt, "cannot publish archive",
                               os::last_system_error_message());
+
     return 1;
   }
 

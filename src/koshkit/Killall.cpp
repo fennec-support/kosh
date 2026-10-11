@@ -33,6 +33,7 @@ fn Killall::execute(const ExecContext &ec, EvalContext &cxt,
 
   if (FLAG_KILLALL_LIST.is_enabled()) {
     ec.print_to_stdout(format_signal_list());
+
     return 0;
   }
 
@@ -40,6 +41,7 @@ fn Killall::execute(const ExecContext &ec, EvalContext &cxt,
   if (operands.count() != 1) {
     KOSHKIT_REPORT_ERROR_AT(operand_locations[1], "expects one process name",
                             "pass one name, e.g. `killall firefox`");
+
     return 1;
   }
 
@@ -51,6 +53,7 @@ fn Killall::execute(const ExecContext &ec, EvalContext &cxt,
   let const self_pid = os::get_shell_process_id();
   let const processes = os::enumerate_processes();
   bool has_signaled_any = false;
+
   for (let const &process : processes) {
     if (process.pid == self_pid) continue;
     if (process.name == wanted) {
@@ -64,6 +67,7 @@ fn Killall::execute(const ExecContext &ec, EvalContext &cxt,
                             String{cxt.scratch_allocator(), wanted} +
                                 ": no process found");
   }
+
   return has_signaled_any ? 0 : 1;
 }
 

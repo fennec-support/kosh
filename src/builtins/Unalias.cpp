@@ -33,6 +33,7 @@ fn Unalias::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   if (FLAG_ALL.is_enabled()) {
     LOG(Debug, "unalias removing every alias");
+
     for (let const &definition : cxt.scope_store().alias_definitions()) {
       let const equals_position = definition.find_character('=');
       let const name_length =
@@ -40,12 +41,14 @@ fn Unalias::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       let const name = definition.substring_of_length(0, name_length);
       cxt.scope_store().remove_alias(name);
     }
+
     return 0;
   }
 
   if (args.count() < 2) return report_usage_error(ec, cxt, ec.program());
 
   i32 status = 0;
+
   for (usize i = 1; i < args.count(); i++) {
     let const &name = args[i];
     LOG(All, "unalias removing alias '%s'", name.c_str());

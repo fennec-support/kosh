@@ -80,6 +80,7 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   usize i = 1;
   i32 status = 0;
+
   for (; i < args.count(); i++) {
     let const arg = args[i].view();
     if (arg.length < 1 || (arg[0] != '-' && arg[0] != '+')) {
@@ -90,6 +91,7 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       break;
     }
     let const is_remove_form = arg[0] == '+';
+
     for (usize c = 1; c < arg.length; c++) {
       switch (arg[c]) {
       case 'A': should_make_associative = true; break;
@@ -142,6 +144,7 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         report_soft_builtin_error(ec, cxt, ec.arg_location_at(i),
                                   "'" + invalid +
                                       "' is not a valid declare option");
+
         return 2;
       }
       }
@@ -151,6 +154,7 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   if (should_make_associative && should_make_indexed) {
     report_soft_builtin_error(ec, cxt, ec.source_location(),
                               "'-a' and '-A' cannot be used together");
+
     return 2;
   }
 
@@ -178,11 +182,13 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         line += '\n';
         ec.print_to_stdout(line.view());
       }
+
       return 0;
     }
     let const should_set_function_attributes =
         !should_print_function_names_only &&
         (has_trace_flag || should_mark_readonly);
+
     for (; i < args.count(); i++) {
       let const name = args[i].view();
       if (should_set_function_attributes) {
@@ -218,6 +224,7 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         }
       }
     }
+
     return status;
   }
 
@@ -275,12 +282,15 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       {
         return false;
       }
+
       return true;
     };
 
     let names = cxt.variable_names(cxt.scratch_allocator());
+
     for (let const &environment_name : os::environment_names())
       names.add(environment_name.view());
+
     cxt.variable_store().attributes().for_each_name(
         [&](StringView attributed_name) { names.add(attributed_name); });
 
@@ -300,6 +310,7 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   if (should_print) {
     i32 status = 0;
+
     for (; i < args.count(); i++) {
       let const name = args[i].view();
       if (!do_print_declaration(name)) {
@@ -308,6 +319,7 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         status = 1;
       }
     }
+
     return status;
   }
 

@@ -79,9 +79,11 @@ fn parse_printf_number(const String &arg, bool is_unsigned_conversion = false)
   }
 
   usize i = 0;
+
   while (i < arg.count() && (arg[i] == ' ' || arg[i] == '\t')) {
     i++;
   }
+
   let const number_start = i;
   if (i < arg.count() && (arg[i] == '+' || arg[i] == '-')) {
     i++;
@@ -95,6 +97,7 @@ fn parse_printf_number(const String &arg, bool is_unsigned_conversion = false)
   if (is_hexadecimal) {
     i += 2;
     digit_start = i;
+
     while (i < arg.count() && utils::hex_digit_value(arg[i]).has_value()) {
       i++;
     }
@@ -135,6 +138,7 @@ fn parse_printf_number(const String &arg, bool is_unsigned_conversion = false)
       value = static_cast<i64>(UINT64_MAX);
     }
   }
+
   return {value, has_digits && number_end == arg.count(), is_hexadecimal,
           is_out_of_range};
 }
@@ -191,6 +195,7 @@ fn get_numeric_locale_environment() throws -> const numeric_locale_environment &
   let const epoch = os::get_environment_epoch();
   if (!environment.is_filled || environment.epoch != epoch) {
     environment.inherited_name = {};
+
     for (usize name_index = countof(NUMERIC_LOCALE_VARIABLE_NAMES);
          name_index-- > 0;)
     {
@@ -307,6 +312,7 @@ fn append_escape(String &out, const String &fmt, usize &i,
   if (e >= '0' && e <= '7') {
     i32 value = e - '0';
     usize digit_count = 1;
+
     while (digit_count < 3 && i + 1 < fmt.length() && fmt[i + 1] >= '0' &&
            fmt[i + 1] <= '7')
     {
@@ -314,7 +320,9 @@ fn append_escape(String &out, const String &fmt, usize &i,
       value = value * 8 + (fmt[i] - '0');
       digit_count++;
     }
+
     out += static_cast<char>(value);
+
     return;
   }
 
@@ -323,6 +331,7 @@ fn append_escape(String &out, const String &fmt, usize &i,
   {
     i32 value = 0;
     usize digit_count = 0;
+
     while (digit_count < 2 && i + 1 < fmt.length() &&
            utils::hex_digit_value(fmt[i + 1]).has_value())
     {
@@ -330,7 +339,9 @@ fn append_escape(String &out, const String &fmt, usize &i,
       value = value * 16 + *utils::hex_digit_value(fmt[i]);
       digit_count++;
     }
+
     out += static_cast<char>(value);
+
     return;
   }
 
@@ -340,6 +351,7 @@ fn append_escape(String &out, const String &fmt, usize &i,
     usize max_digit_count = e == 'u' ? 4 : 8;
     u32 code_point = 0;
     usize digit_count = 0;
+
     while (digit_count < max_digit_count && i + 1 < fmt.length() &&
            utils::hex_digit_value(fmt[i + 1]).has_value())
     {
@@ -349,6 +361,7 @@ fn append_escape(String &out, const String &fmt, usize &i,
     }
 
     utils::append_utf8(out, code_point);
+
     return;
   }
 
@@ -371,6 +384,7 @@ fn append_b_argument(String &out, const String &arg,
       usize digit_index = i + 2;
       i32 value = 0;
       usize digit_count = 0;
+
       while (digit_count < 2 && digit_index < arg.length() &&
              utils::hex_digit_value(arg[digit_index]).has_value())
       {
@@ -378,6 +392,7 @@ fn append_b_argument(String &out, const String &arg,
         digit_index++;
         digit_count++;
       }
+
       out += static_cast<char>(value);
       i = digit_index - 1;
       continue;
@@ -395,6 +410,7 @@ fn append_b_argument(String &out, const String &arg,
       if (arg[digit_index] == '0') digit_index++;
       i32 value = 0;
       usize digit_count = 0;
+
       while (digit_count < 3 && digit_index < arg.length() &&
              arg[digit_index] >= '0' && arg[digit_index] <= '7')
       {
@@ -402,6 +418,7 @@ fn append_b_argument(String &out, const String &arg,
         digit_index++;
         digit_count++;
       }
+
       out += static_cast<char>(value);
       i = digit_index - 1;
       continue;
@@ -409,6 +426,7 @@ fn append_b_argument(String &out, const String &arg,
     i++;
     append_simple_escape(out, e, should_use_bash_escapes);
   }
+
   return false;
 }
 
@@ -579,6 +597,7 @@ fn Printf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     report_soft_builtin_error(
         ec, cxt, "A format operand is required",
         "The usage is printf [-v var] format [arguments]");
+
     return USAGE_STATUS;
   };
 
@@ -593,12 +612,14 @@ fn Printf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     if (ec.args().count() < 3) {
       report_soft_builtin_error(ec, cxt, ec.arg_location_at(1),
                                 "The option -v requires a variable name");
+
       return USAGE_STATUS;
     }
 
     if (!name_is_valid_assignment_target(ec.args()[2].view())) {
       report_invalid_identifier(ec, cxt, ec.arg_location_at(2),
                                 ec.args()[2].view());
+
       return USAGE_STATUS;
     }
 
@@ -609,6 +630,7 @@ fn Printf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   {
     report_soft_builtin_error(ec, cxt, ec.arg_location_at(1),
                               "'" + first_arg + "' is not a valid option");
+
     return USAGE_STATUS;
   }
 
@@ -647,6 +669,7 @@ fn Printf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   do {
     has_consumed_a_conversion = false;
+
     for (usize i = 0; i < fmt.length(); i++) {
       if (fmt[i] == '\\' && i + 1 < fmt.length()) {
         i++;
@@ -662,6 +685,7 @@ fn Printf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       i++;
 
       bool has_grouping_flag = false;
+
       while (i < fmt.length() && std::strchr("-+ 0#'", fmt[i]) != nullptr) {
         if (fmt[i] == '\'') {
           has_grouping_flag = true;
@@ -676,6 +700,7 @@ fn Printf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         if (i < fmt.length() && fmt[i] == '*') {
           do_consume_star(spec);
           i++;
+
           return;
         }
 
@@ -693,9 +718,11 @@ fn Printf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
           fmt[i] == '(')
       {
         usize close = i + 1;
+
         while (close < fmt.length() && fmt[close] != ')') {
           close++;
         }
+
         if (close + 1 < fmt.length() && fmt[close + 1] == 'T') {
           let const date_format =
               fmt.view().substring_of_length(i + 1, close - i - 1);
@@ -766,13 +793,16 @@ fn Printf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
           *open_bracket + 1, target.length - *open_bracket - 2);
       cxt.assign_array_element(array_name, subscript, out.view(),
                                assignment_update_mode::Replace);
+
       return exit_status;
     }
     cxt.set_shell_variable(target, out.view());
+
     return exit_status;
   }
 
   ec.print_to_stdout(out);
+
   return exit_status;
 }
 

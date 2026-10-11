@@ -37,6 +37,7 @@ fn resolve_koshkit_signal(StringView spelled, SourceLocation location,
           location, "signal number is out of range",
           "Use a signal name such as TERM or a number such as 15"};
     }
+
     return static_cast<i32>(parsed.value());
   }
   let uppercased = String{allocator, spelled};
@@ -48,6 +49,7 @@ fn resolve_koshkit_signal(StringView spelled, SourceLocation location,
         location, "unknown signal '" + unknown_signal + "'",
         "Use a signal name such as TERM or a number such as 15"};
   }
+
   return *named;
 }
 
@@ -60,6 +62,7 @@ fn Pkill::execute(const ExecContext &ec, EvalContext &cxt,
 
   if (FLAG_PKILL_LIST.is_enabled()) {
     ec.print_to_stdout(format_signal_list());
+
     return 0;
   }
 
@@ -67,6 +70,7 @@ fn Pkill::execute(const ExecContext &ec, EvalContext &cxt,
   if (operands.count() != 1) {
     KOSHKIT_REPORT_ERROR_AT(operand_locations[1], "expects one pattern",
                             "pass one pattern, e.g. `pkill ssh`");
+
     return 1;
   }
 
@@ -75,6 +79,7 @@ fn Pkill::execute(const ExecContext &ec, EvalContext &cxt,
     KOSHKIT_REPORT_ERROR_AT(operand_locations[0],
                             "requires a non-empty pattern",
                             "pass a pattern, e.g. `pkill ssh`");
+
     return 1;
   }
 
@@ -85,6 +90,7 @@ fn Pkill::execute(const ExecContext &ec, EvalContext &cxt,
   let const self_pid = os::get_shell_process_id();
   let const processes = os::enumerate_processes();
   bool did_signal_any = false;
+
   for (let const &process : processes) {
     if (process.pid == self_pid) continue;
     if (process.name.find_substring(pattern, 0).has_value()) {

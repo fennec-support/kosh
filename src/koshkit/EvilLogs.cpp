@@ -65,6 +65,7 @@ struct newest_named_entry_comparator
 fn trimmed_line(StringView text) wontthrow -> StringView
 {
   usize length = text.length;
+
   while (length > 0 && (text[length - 1] == '\n' || text[length - 1] == '\r')) {
     length--;
   }
@@ -155,11 +156,13 @@ fn program_of_dump(StringView name, Allocator allocator) throws -> String
     let const body = dot.has_value() ? name.substring_of_length(0, *dot) : name;
     let program = String{allocator};
     usize start = 0;
+
     for (usize index = 0; index < body.length; index++) {
       if (body[index] == '_') start = index + 1;
     }
 
     program += body.substring_of_length(start, body.length - start);
+
     return program;
   }
 
@@ -191,6 +194,7 @@ fn collect_dumps(StringView directory, Allocator allocator) throws
     return steal(dumps).make_sorted(newest_named_entry_comparator{});
 
   dumps.reserve(children->count());
+
   for (usize index = 0; index < children->count(); index++) {
     let const &child_entry = (*children)[index];
     if (!child_entry.has_status) continue;
@@ -241,6 +245,7 @@ fn append_kernel_settings(String &output, Allocator allocator,
   table.set_header_visible(false);
   table.add_column("");
   table.add_column("");
+
   for (let const setting : KERNEL_SETTINGS) {
     let const content = Path{setting}.read_entire_file();
     if (!content.has_value()) continue;
@@ -258,6 +263,7 @@ fn append_kernel_settings(String &output, Allocator allocator,
           output, "Core dump settings",
           "The kernel exposes no core dump settings on this platform",
           allocator, should_color);
+
       return;
     }
   }
@@ -271,6 +277,7 @@ fn append_core_dump_report(String &output, Allocator allocator,
   append_kernel_settings(output, allocator, should_color);
 
   let directories = ArrayList<String>{allocator};
+
   for (let const candidate : CORE_DUMP_DIRECTORIES)
     directories.push(String{allocator, candidate});
 
@@ -282,6 +289,7 @@ fn append_core_dump_report(String &output, Allocator allocator,
   }
 
   usize total_dump_count = 0;
+
   for (let const &owned_directory : directories) {
     let const directory = owned_directory.view();
     if (!os::path_is_directory(directory)) continue;
@@ -290,15 +298,16 @@ fn append_core_dump_report(String &output, Allocator allocator,
     if (dumps.is_empty()) continue;
 
     total_dump_count += dumps.count();
-    u64 total_size = 0;
+    u64 total_byte_count = 0;
+
     for (let const &dump : dumps)
-      total_size += dump.size;
+      total_byte_count += dump.size;
 
     let title = String{allocator, directory};
     title += ": ";
     title += String::from(dumps.count(), allocator).view();
     title += " dumps, ";
-    title += format_human_size(total_size, allocator).view();
+    title += format_human_size(total_byte_count, allocator).view();
 
     let table = ReportTable{allocator};
     table.add_heading("SIZE");
@@ -309,6 +318,7 @@ fn append_core_dump_report(String &output, Allocator allocator,
     let const shown_count = dumps.count() < DEFAULT_DUMP_COUNT
                                 ? dumps.count()
                                 : static_cast<usize>(DEFAULT_DUMP_COUNT);
+
     for (usize index = 0; index < shown_count; index++) {
       let const &dump = dumps[index];
       let const size = format_human_size(dump.size, allocator);
@@ -321,6 +331,7 @@ fn append_core_dump_report(String &output, Allocator allocator,
       cells.push({dump.name.view(), {}});
       table.add_row(cells);
     }
+
     append_titled_report_table(output, title.view(), table, should_color);
   }
 
@@ -438,11 +449,14 @@ fn collect_log_entries(StringView directory, Allocator allocator) throws
   results.reserve(FORMAT_BATCH_COUNT);
   let const do_flush_probes = [&]() throws -> void {
     batch.clear();
+
     for (usize index = 0; index < probe_count; index++) {
       batch.add(os::batch_operation::read(
           probes[index].descriptor, probes[index].bytes, MAGIC_BYTE_COUNT));
     }
+
     batch.execute(results);
+
     for (usize index = 0; index < probe_count; index++) {
       let const &result = results[index];
       if (result.error_number == 0) {
@@ -451,6 +465,7 @@ fn collect_log_entries(StringView directory, Allocator allocator) throws
       }
       unused(os::close_fd(probes[index].descriptor));
     }
+
     probe_count = 0;
   };
 
@@ -482,6 +497,7 @@ fn collect_log_entries(StringView directory, Allocator allocator) throws
     probe_count++;
     if (probe_count == FORMAT_BATCH_COUNT) do_flush_probes();
   }
+
   if (probe_count != 0) do_flush_probes();
 
   return steal(entries).make_sorted(newest_named_entry_comparator{});
@@ -491,6 +507,7 @@ fn append_log_report(String &output, Allocator allocator,
                      bool should_color) throws -> void
 {
   usize directory_count = 0;
+
   for (let const directory : LOG_DIRECTORIES) {
     if (!os::path_is_directory(directory)) continue;
 
@@ -499,15 +516,16 @@ fn append_log_report(String &output, Allocator allocator,
 
     directory_count++;
 
-    u64 total_size = 0;
+    u64 total_byte_count = 0;
+
     for (let const &entry : entries)
-      total_size += entry.size;
+      total_byte_count += entry.size;
 
     let title = String{allocator, directory};
     title += ": ";
     title += String::from(entries.count(), allocator).view();
     title += " entries, ";
-    title += format_human_size(total_size, allocator).view();
+    title += format_human_size(total_byte_count, allocator).view();
 
     let table = ReportTable{allocator};
     table.add_heading("SIZE");
@@ -518,6 +536,7 @@ fn append_log_report(String &output, Allocator allocator,
     let const shown_count = entries.count() < DEFAULT_LOG_ENTRY_COUNT
                                 ? entries.count()
                                 : static_cast<usize>(DEFAULT_LOG_ENTRY_COUNT);
+
     for (usize index = 0; index < shown_count; index++) {
       let const &entry = entries[index];
       let const size = format_human_size(entry.size, allocator);
@@ -530,6 +549,7 @@ fn append_log_report(String &output, Allocator allocator,
       cells.push({entry.name.view(), {}});
       table.add_row(cells);
     }
+
     append_titled_report_table(output, title.view(), table, should_color);
   }
 
@@ -551,6 +571,7 @@ fn EvilLogs::execute(
   if (!operands.is_empty()) {
     KOSHKIT_REPORT_ERROR_AT(operand_locations[0], "unexpected operand",
                             "this utility takes no operand");
+
     return 1;
   }
 
@@ -567,6 +588,7 @@ fn EvilLogs::execute(
   }
 
   ec.print_to_stdout(output);
+
   return 0;
 }
 

@@ -85,6 +85,7 @@ pure alwaysinline fn try_parse_single_integer_literal(StringView text) wontthrow
   }
 
   let const magnitude = fold_leading_digits(digits, detected.radix);
+
   return static_cast<i64>(is_negative ? -magnitude : magnitude);
 }
 
@@ -108,11 +109,13 @@ pure fn arithmetic_power(i64 base, i64 exponent) wontthrow -> i64
   let result = static_cast<u64>(1);
   let factor = static_cast<u64>(base);
   let remaining = static_cast<u64>(exponent);
+
   while (remaining > 0) {
     if ((remaining & 1u) != 0) result *= factor;
     factor *= factor;
     remaining >>= 1;
   }
+
   return static_cast<i64>(result);
 }
 
@@ -121,6 +124,7 @@ pure fn arithmetic_divide(i64 lhs, i64 rhs) wontthrow -> i64
   if (lhs == INT64_MIN && rhs == -1) {
     return INT64_MIN;
   }
+
   return lhs / rhs;
 }
 
@@ -129,12 +133,14 @@ pure fn arithmetic_modulo(i64 lhs, i64 rhs) wontthrow -> i64
   if (lhs == INT64_MIN && rhs == -1) {
     return 0;
   }
+
   return lhs % rhs;
 }
 
 pure fn arithmetic_shift_left(i64 lhs, i64 rhs) wontthrow -> i64
 {
   let const count = static_cast<u64>(rhs) & 63u;
+
   return static_cast<i64>(static_cast<u64>(lhs) << count);
 }
 
@@ -146,6 +152,7 @@ pure fn arithmetic_shift_right(i64 lhs, i64 rhs) wontthrow -> i64
   if (is_negative && count > 0) {
     value |= ~(~static_cast<u64>(0) >> count);
   }
+
   return static_cast<i64>(value);
 }
 
@@ -299,8 +306,10 @@ public:
         fail_at(name_position, name.length,
                 "The variable '" + String{name} + "' is not set");
       context->report_unset_reference(name);
+
       return ArithmeticValue{};
     }
+
     return evaluate_operand_value(value->view());
   }
 
@@ -323,6 +332,7 @@ public:
     ArithmeticParser nested{context,   stable_value.view(), is_exact, arena,
                             depth + 1, m_is_skipping,       bc_scale};
     nested.should_error_unset = should_error_unset;
+
     return nested.parse();
   }
 
@@ -333,9 +343,11 @@ public:
       return StringView{};
     }
     let const name_start = pos;
+
     while (pos < source.length && lexer::is_variable_name(source[pos])) {
       pos++;
     }
+
     return source.substring_of_length(name_start, pos - name_start);
   }
 
@@ -348,6 +360,7 @@ public:
         context->is_circular_nameref(name))
     {
       context->warn_circular_nameref(name);
+
       return;
     }
 
@@ -355,7 +368,7 @@ public:
     context->set_shell_variable(name, text.view());
   }
 
-  struct lvalue
+  struct Lvalue
   {
     StringView name;
     Maybe<StringView> subscript;
@@ -370,6 +383,7 @@ public:
     pos++;
     let const inner_start = pos;
     usize depth = 1;
+
     while (pos < source.length && depth > 0) {
       if (source[pos] == '[') {
         depth++;
@@ -378,6 +392,7 @@ public:
       }
       pos++;
     }
+
     if (depth != 0)
       fail("Expected ']' after an array subscript",
            "The subscript '[' was never closed");
@@ -385,19 +400,21 @@ public:
     let const subscript =
         source.substring_of_length(inner_start, pos - inner_start);
     pos++;
+
     return subscript;
   }
 
-  fn read_lvalue() throws -> lvalue
+  fn read_lvalue() throws -> Lvalue
   {
     skip_spaces();
     let const name_position = pos;
     let const name = read_lvalue_name();
-    if (name.is_empty()) return lvalue{name, None, name_position};
-    return lvalue{name, read_optional_subscript(), name_position};
+    if (name.is_empty()) return Lvalue{name, None, name_position};
+
+    return Lvalue{name, read_optional_subscript(), name_position};
   }
 
-  fn read_lvalue_value(const lvalue &target) throws -> ArithmeticValue
+  fn read_lvalue_value(const Lvalue &target) throws -> ArithmeticValue
   {
     if (m_is_skipping) return ArithmeticValue{};
 
@@ -405,12 +422,14 @@ public:
       ASSERT(context != nullptr);
       let const value = context->read_array_element_arithmetic_text(
           target.name, *target.subscript);
+
       return evaluate_operand_value(value.view());
     }
+
     return read_variable_value(target.name, target.name_position);
   }
 
-  fn write_lvalue(const lvalue &target,
+  fn write_lvalue(const Lvalue &target,
                   const ArithmeticValue &value) const throws -> void
   {
     if (m_is_skipping) return;
@@ -419,6 +438,7 @@ public:
       let const text = value.to_string(context->scratch_allocator());
       context->assign_array_element(target.name, *target.subscript, text.view(),
                                     assignment_update_mode::Replace);
+
       return;
     }
     write_variable(target.name, value);
@@ -426,7 +446,7 @@ public:
 
   fn prefix_step(i64 delta, usize operator_position) throws -> ArithmeticValue
   {
-    const lvalue target = read_lvalue();
+    const Lvalue target = read_lvalue();
     if (target.name.is_empty())
       fail_span(operator_position, operator_position + 2,
                 "Expected a variable after '++' or '--'",
@@ -435,15 +455,17 @@ public:
         arith_apply_binop('+', read_lvalue_value(target),
                           ArithmeticValue{delta}, is_exact, arena, bc_scale);
     write_lvalue(target, updated);
+
     return updated;
   }
 
-  fn postfix_step(const lvalue &target, i64 delta) throws -> ArithmeticValue
+  fn postfix_step(const Lvalue &target, i64 delta) throws -> ArithmeticValue
   {
     let const original = read_lvalue_value(target);
     write_lvalue(target,
                  arith_apply_binop('+', original, ArithmeticValue{delta},
                                    is_exact, arena, bc_scale));
+
     return original;
   }
 
@@ -458,14 +480,17 @@ public:
               "Unexpected '" + String{source.substring(pos)} +
                   "' after the expression",
               "An operator is missing between two values");
+
     return result;
   }
 
   fn parse_comma() throws -> ArithmeticValue
   {
     let result = parse_assignment();
+
     while (consume(","))
       result = parse_assignment();
+
     return result;
   }
 
@@ -477,11 +502,13 @@ public:
     skip_spaces();
     if (pos < source.length && lexer::is_variable_name_start(source[pos])) {
       let const name_start = pos;
+
       while (pos < source.length && lexer::is_variable_name(source[pos])) {
         pos++;
       }
+
       let const name = source.substring_of_length(name_start, pos - name_start);
-      const lvalue target{name, read_optional_subscript(), name_start};
+      const Lvalue target{name, read_optional_subscript(), name_start};
 
       struct compound_operator
       {
@@ -525,6 +552,7 @@ public:
                         error.detail_message());
             }
             write_lvalue(target, result);
+
             return result;
           }
         }
@@ -533,10 +561,12 @@ public:
         consume("=");
         let const rhs = parse_assignment();
         write_lvalue(target, rhs);
+
         return rhs;
       }
       pos = save;
     }
+
     return parse_ternary();
   }
 
@@ -546,6 +576,7 @@ public:
     let const was_skipping = m_is_skipping;
     m_is_skipping = true;
     defer { m_is_skipping = was_skipping; };
+
     return (this->*parse_branch)();
   }
 
@@ -559,25 +590,28 @@ public:
           fail("Expected ':' in a conditional", "A '?' needs a matching ':'");
         let const if_false = parse_skipped(&ArithmeticParser::parse_ternary);
         unused(if_false);
+
         return if_true;
       }
       let const if_true = parse_skipped(&ArithmeticParser::parse_assignment);
       unused(if_true);
       if (!consume(":"))
         fail("Expected ':' in a conditional", "A '?' needs a matching ':'");
+
       return parse_ternary();
     }
+
     return condition;
   }
 
-  struct binary_operator
+  struct BinaryOperator
   {
     char kind;
     u8 precedence;
     u8 length;
   };
 
-  fn peek_binary_operator() wontthrow -> binary_operator
+  fn peek_binary_operator() wontthrow -> BinaryOperator
   {
     skip_spaces();
     if (pos >= source.length) return {0, 0, 0};
@@ -587,49 +621,54 @@ public:
     switch (first_byte) {
     case '*':
       if (second_byte == '*') return {'P', 11, 2};
-      return second_byte == '=' ? binary_operator{0, 0, 0}
-                                : binary_operator{'*', 10, 1};
+
+      return second_byte == '=' ? BinaryOperator{0, 0, 0}
+                                : BinaryOperator{'*', 10, 1};
     case '/':
-      return second_byte == '=' ? binary_operator{0, 0, 0}
-                                : binary_operator{'/', 10, 1};
+      return second_byte == '=' ? BinaryOperator{0, 0, 0}
+                                : BinaryOperator{'/', 10, 1};
     case '%':
-      return second_byte == '=' ? binary_operator{0, 0, 0}
-                                : binary_operator{'%', 10, 1};
+      return second_byte == '=' ? BinaryOperator{0, 0, 0}
+                                : BinaryOperator{'%', 10, 1};
     case '+':
-      return second_byte == '=' ? binary_operator{0, 0, 0}
-                                : binary_operator{'+', 9, 1};
+      return second_byte == '=' ? BinaryOperator{0, 0, 0}
+                                : BinaryOperator{'+', 9, 1};
     case '-':
-      return second_byte == '=' ? binary_operator{0, 0, 0}
-                                : binary_operator{'-', 9, 1};
+      return second_byte == '=' ? BinaryOperator{0, 0, 0}
+                                : BinaryOperator{'-', 9, 1};
     case '<':
       if (second_byte == '<')
-        return third_byte == '=' ? binary_operator{0, 0, 0}
-                                 : binary_operator{'L', 8, 2};
+        return third_byte == '=' ? BinaryOperator{0, 0, 0}
+                                 : BinaryOperator{'L', 8, 2};
       if (second_byte == '=') return {'l', 7, 2};
+
       return {'<', 7, 1};
     case '>':
       if (second_byte == '>')
-        return third_byte == '=' ? binary_operator{0, 0, 0}
-                                 : binary_operator{'R', 8, 2};
+        return third_byte == '=' ? BinaryOperator{0, 0, 0}
+                                 : BinaryOperator{'R', 8, 2};
       if (second_byte == '=') return {'g', 7, 2};
+
       return {'>', 7, 1};
     case '=':
-      return second_byte == '=' ? binary_operator{'e', 6, 2}
-                                : binary_operator{0, 0, 0};
+      return second_byte == '=' ? BinaryOperator{'e', 6, 2}
+                                : BinaryOperator{0, 0, 0};
     case '!':
-      return second_byte == '=' ? binary_operator{'n', 6, 2}
-                                : binary_operator{0, 0, 0};
+      return second_byte == '=' ? BinaryOperator{'n', 6, 2}
+                                : BinaryOperator{0, 0, 0};
     case '&':
       if (second_byte == '&') return {'A', 2, 2};
-      return second_byte == '=' ? binary_operator{0, 0, 0}
-                                : binary_operator{'&', 5, 1};
+
+      return second_byte == '=' ? BinaryOperator{0, 0, 0}
+                                : BinaryOperator{'&', 5, 1};
     case '^':
-      return second_byte == '=' ? binary_operator{0, 0, 0}
-                                : binary_operator{'^', 4, 1};
+      return second_byte == '=' ? BinaryOperator{0, 0, 0}
+                                : BinaryOperator{'^', 4, 1};
     case '|':
       if (second_byte == '|') return {'O', 1, 2};
-      return second_byte == '=' ? binary_operator{0, 0, 0}
-                                : binary_operator{'|', 3, 1};
+
+      return second_byte == '=' ? BinaryOperator{0, 0, 0}
+                                : BinaryOperator{'|', 3, 1};
     default: return {0, 0, 0};
     }
   }
@@ -639,6 +678,7 @@ public:
     skip_spaces();
     let const lhs_start = pos;
     let lhs = parse_unary();
+
     loop
     {
       let const op = peek_binary_operator();
@@ -697,29 +737,34 @@ public:
       let const operator_position = pos;
       if (consume("++")) return prefix_step(1, operator_position);
       pos++;
+
       return parse_unary();
     }
     if (first == '-') {
       let const operator_position = pos;
       if (consume("--")) return prefix_step(-1, operator_position);
       pos++;
+
       return arith_apply_binop('-', ArithmeticValue{}, parse_unary(), is_exact,
                                arena, bc_scale);
     }
     if (first == '!') {
       pos++;
+
       return ArithmeticValue{parse_unary().is_zero() ? 1 : 0};
     }
     if (first == '~') {
       pos++;
       let const value = parse_unary();
+
       return is_exact ? ArithmeticValue::bit_not(value, arena)
                       : ArithmeticValue{~value.wrapped_i64()};
     }
+
     return parse_primary();
   }
 
-  enum class calculator_function : u8
+  enum class CalculatorFunction : u8
   {
     Abs,
     Atan,
@@ -747,10 +792,10 @@ public:
     Sqrt,
   };
 
-  struct calculator_argument : ArithmeticValue
+  struct CalculatorArgument : ArithmeticValue
   {
-    calculator_argument(ArithmeticValue value, usize start_position,
-                        usize end_position)
+    CalculatorArgument(ArithmeticValue value, usize start_position,
+                       usize end_position)
         : ArithmeticValue(steal(value)), start(start_position),
           end(end_position)
     {}
@@ -759,9 +804,9 @@ public:
   };
 
   fn calculator_function_arguments(StringView name) throws
-      -> ArrayList<calculator_argument>
+      -> ArrayList<CalculatorArgument>
   {
-    let arguments = ArrayList<calculator_argument>{bump_allocator(arena)};
+    let arguments = ArrayList<CalculatorArgument>{bump_allocator(arena)};
     if (consume(")")) return arguments;
 
     loop
@@ -769,7 +814,7 @@ public:
       skip_spaces();
       let const argument_start = pos;
       let argument = parse_assignment();
-      arguments.push(calculator_argument{steal(argument), argument_start, pos});
+      arguments.push(CalculatorArgument{steal(argument), argument_start, pos});
       if (consume(")")) return arguments;
       if (!consume(","))
         fail("Expected ',' or ')' after an argument",
@@ -778,7 +823,7 @@ public:
   }
 
   fn require_argument_count(StringView name,
-                            const ArrayList<calculator_argument> &arguments,
+                            const ArrayList<CalculatorArgument> &arguments,
                             usize minimum_count, usize maximum_count) throws
       -> void
   {
@@ -808,7 +853,7 @@ public:
   }
 
   fn require_integer_argument(StringView name,
-                              const calculator_argument &argument) throws -> i64
+                              const CalculatorArgument &argument) throws -> i64
   {
     if (!argument.has_integer_value(arena))
       fail_span(argument.start, argument.end,
@@ -829,11 +874,13 @@ public:
   {
     left = ArithmeticValue::absolute(left, arena);
     right = ArithmeticValue::absolute(right, arena);
+
     while (!right.is_zero()) {
       let const remainder = ArithmeticValue::modulo(left, right, arena);
       left = right;
       right = remainder;
     }
+
     return left;
   }
 
@@ -843,6 +890,7 @@ public:
     let next = ArithmeticValue{1};
     if (index == 0) return current;
     let bit = u64{1} << (63u - static_cast<u32>(__builtin_clzll(index)));
+
     while (bit != 0) {
       let const doubled_next = ArithmeticValue::add(next, next, arena);
       let const c = ArithmeticValue::multiply(
@@ -860,11 +908,12 @@ public:
       }
       bit >>= 1u;
     }
+
     return current;
   }
 
   fn calculator_requested_scale(
-      StringView name, const ArrayList<calculator_argument> &arguments) throws
+      StringView name, const ArrayList<CalculatorArgument> &arguments) throws
       -> u32
   {
     u32 requested_scale = 20;
@@ -877,12 +926,14 @@ public:
       }
       requested_scale = static_cast<u32>(parsed);
     }
+
     return requested_scale;
   }
 
   fn calculator_work_scale(u32 requested_scale) throws -> u32
   {
     if (requested_scale > ~u32{0} - 12) throw std::bad_alloc{};
+
     return requested_scale + 12;
   }
 
@@ -919,6 +970,7 @@ public:
     if (decimal_scale > prepared_scale) prepared_scale = decimal_scale;
     let const prepared =
         ArithmeticValue::rescale(left, prepared_scale, result_arena);
+
     return ArithmeticValue::rescale(
         ArithmeticValue::divide(prepared, right, result_arena), decimal_scale,
         result_arena);
@@ -937,6 +989,7 @@ public:
     usize state_position = 0;
     value = ArithmeticValue::add(value, ArithmeticValue{}, iteration_arenas[0]);
     u32 doubling_count = 0;
+
     while (value.compare(threshold, bump_allocator(arena)) > 0) {
       let const next_position = 1 - state_position;
       iteration_arenas[next_position].reset();
@@ -966,6 +1019,7 @@ public:
     let sum = term;
     state_position = 0;
     let const iteration_count = static_cast<usize>(work_scale) * 2 + 128;
+
     for (usize index = 1; index < iteration_count; index++) {
       let const next_position = 1 - state_position;
       iteration_arenas[next_position].reset();
@@ -985,11 +1039,14 @@ public:
       sum = next_sum;
       state_position = next_position;
     }
+
     sum = ArithmeticValue::add(sum, ArithmeticValue{}, arena);
+
     for (u32 count = 0; count < doubling_count; count++)
       sum = ArithmeticValue::add(sum, sum, arena);
     if (is_negative)
       sum = ArithmeticValue::subtract(ArithmeticValue{}, sum, arena);
+
     return ArithmeticValue::rescale(sum, requested_scale, arena);
   }
 
@@ -1029,6 +1086,7 @@ public:
     let sum = term;
     usize state_position = 0;
     let const iteration_count = static_cast<usize>(work_scale) * 2 + 128;
+
     for (usize index = 1; index < iteration_count; index++) {
       let const next_position = 1 - state_position;
       iteration_arenas[next_position].reset();
@@ -1049,9 +1107,12 @@ public:
       sum = next_sum;
       state_position = next_position;
     }
+
     sum = ArithmeticValue::add(sum, ArithmeticValue{}, arena);
+
     if (should_negate)
       sum = ArithmeticValue::subtract(ArithmeticValue{}, sum, arena);
+
     return ArithmeticValue::rescale(sum, requested_scale, arena);
   }
 
@@ -1068,6 +1129,7 @@ public:
     usize state_position = 0;
     value = ArithmeticValue::add(value, ArithmeticValue{}, iteration_arenas[0]);
     u32 squaring_count = 0;
+
     while (value.compare(reduction_limit, bump_allocator(arena)) > 0) {
       let const next_position = 1 - state_position;
       iteration_arenas[next_position].reset();
@@ -1079,6 +1141,7 @@ public:
         fail("The operand to 'exp' is too large",
              "Use an absolute value below 2 ** 4096");
     }
+
     value = ArithmeticValue::add(value, ArithmeticValue{}, arena);
     iteration_arenas[0].reset();
     iteration_arenas[1].reset();
@@ -1087,6 +1150,7 @@ public:
     let sum = term;
     state_position = 0;
     let const iteration_count = static_cast<usize>(work_scale) * 4 + 256;
+
     for (usize index = 1; index < iteration_count; index++) {
       let const next_position = 1 - state_position;
       iteration_arenas[next_position].reset();
@@ -1102,6 +1166,7 @@ public:
       sum = next_sum;
       state_position = next_position;
     }
+
     for (u32 count = 0; count < squaring_count; count++) {
       let const next_position = 1 - state_position;
       iteration_arenas[next_position].reset();
@@ -1109,8 +1174,10 @@ public:
                                       iteration_arenas[next_position]);
       state_position = next_position;
     }
+
     if (is_negative)
       sum = calculator_fixed_divide(ArithmeticValue{1}, sum, work_scale, arena);
+
     return ArithmeticValue::rescale(sum, requested_scale, arena);
   }
 
@@ -1127,6 +1194,7 @@ public:
     usize state_position = 0;
     value = ArithmeticValue::add(value, ArithmeticValue{}, iteration_arenas[0]);
     u32 root_count = 0;
+
     while (value.compare(lower, bump_allocator(arena)) < 0 ||
            value.compare(upper, bump_allocator(arena)) > 0)
     {
@@ -1138,6 +1206,7 @@ public:
       root_count++;
       if (root_count > 64) throw std::bad_alloc{};
     }
+
     value = ArithmeticValue::add(value, ArithmeticValue{}, arena);
     iteration_arenas[0].reset();
     iteration_arenas[1].reset();
@@ -1154,6 +1223,7 @@ public:
     let sum = term;
     state_position = 0;
     let const iteration_count = static_cast<usize>(work_scale) * 2 + 128;
+
     for (usize index = 1; index < iteration_count; index++) {
       let const next_position = 1 - state_position;
       iteration_arenas[next_position].reset();
@@ -1169,41 +1239,44 @@ public:
       sum = next_sum;
       state_position = next_position;
     }
+
     sum = ArithmeticValue::add(sum, ArithmeticValue{}, arena);
     sum = ArithmeticValue::add(sum, sum, arena);
+
     for (u32 count = 0; count < root_count; count++)
       sum = ArithmeticValue::add(sum, sum, arena);
+
     return ArithmeticValue::rescale(sum, requested_scale, arena);
   }
 
   fn apply_calculator_function(StringView name, usize name_position) throws
       -> ArithmeticValue
   {
-    static constexpr static_string_entry<calculator_function> ENTRIES[] = {
-        {SSK("abs"),    calculator_function::Abs   },
-        {SSK("atan"),   calculator_function::Atan  },
-        {SSK("ceil"),   calculator_function::Ceil  },
-        {SSK("cmp"),    calculator_function::Cmp   },
-        {SSK("cos"),    calculator_function::Cos   },
-        {SSK("exp"),    calculator_function::Exp   },
-        {SSK("fact"),   calculator_function::Fact  },
-        {SSK("fib"),    calculator_function::Fib   },
-        {SSK("floor"),  calculator_function::Floor },
-        {SSK("frac"),   calculator_function::Frac  },
-        {SSK("gcd"),    calculator_function::Gcd   },
-        {SSK("int"),    calculator_function::Int   },
-        {SSK("iseven"), calculator_function::IsEven},
-        {SSK("isint"),  calculator_function::IsInt },
-        {SSK("isodd"),  calculator_function::IsOdd },
-        {SSK("length"), calculator_function::Length},
-        {SSK("lcm"),    calculator_function::Lcm   },
-        {SSK("ln"),     calculator_function::Ln    },
-        {SSK("max"),    calculator_function::Max   },
-        {SSK("min"),    calculator_function::Min   },
-        {SSK("scale"),  calculator_function::Scale },
-        {SSK("sgn"),    calculator_function::Sgn   },
-        {SSK("sin"),    calculator_function::Sin   },
-        {SSK("sqrt"),   calculator_function::Sqrt  },
+    static constexpr static_string_entry<CalculatorFunction> ENTRIES[] = {
+        {SSK("abs"),    CalculatorFunction::Abs   },
+        {SSK("atan"),   CalculatorFunction::Atan  },
+        {SSK("ceil"),   CalculatorFunction::Ceil  },
+        {SSK("cmp"),    CalculatorFunction::Cmp   },
+        {SSK("cos"),    CalculatorFunction::Cos   },
+        {SSK("exp"),    CalculatorFunction::Exp   },
+        {SSK("fact"),   CalculatorFunction::Fact  },
+        {SSK("fib"),    CalculatorFunction::Fib   },
+        {SSK("floor"),  CalculatorFunction::Floor },
+        {SSK("frac"),   CalculatorFunction::Frac  },
+        {SSK("gcd"),    CalculatorFunction::Gcd   },
+        {SSK("int"),    CalculatorFunction::Int   },
+        {SSK("iseven"), CalculatorFunction::IsEven},
+        {SSK("isint"),  CalculatorFunction::IsInt },
+        {SSK("isodd"),  CalculatorFunction::IsOdd },
+        {SSK("length"), CalculatorFunction::Length},
+        {SSK("lcm"),    CalculatorFunction::Lcm   },
+        {SSK("ln"),     CalculatorFunction::Ln    },
+        {SSK("max"),    CalculatorFunction::Max   },
+        {SSK("min"),    CalculatorFunction::Min   },
+        {SSK("scale"),  CalculatorFunction::Scale },
+        {SSK("sgn"),    CalculatorFunction::Sgn   },
+        {SSK("sin"),    CalculatorFunction::Sin   },
+        {SSK("sqrt"),   CalculatorFunction::Sqrt  },
     };
     static constexpr StaticStringMap FUNCTIONS{ENTRIES};
     let const previous_function_position = calculator_function_position;
@@ -1218,46 +1291,52 @@ public:
 
     let const arguments = calculator_function_arguments(name);
     switch (*function) {
-    case calculator_function::Abs:
+    case CalculatorFunction::Abs:
       require_argument_count(name, arguments, 1, 1);
+
       return ArithmeticValue::absolute(arguments[0], arena);
-    case calculator_function::Atan:
+    case CalculatorFunction::Atan:
       require_argument_count(name, arguments, 1, 2);
+
       return calculator_atan(arguments[0],
                              calculator_requested_scale(name, arguments));
-    case calculator_function::Ceil:
-    case calculator_function::Floor:
-    case calculator_function::Frac:
-    case calculator_function::Int: {
+    case CalculatorFunction::Ceil:
+    case CalculatorFunction::Floor:
+    case CalculatorFunction::Frac:
+    case CalculatorFunction::Int: {
       require_argument_count(name, arguments, 1, 1);
       let const integer = ArithmeticValue::integer_part(arguments[0], arena);
-      if (*function == calculator_function::Int) return integer;
+      if (*function == CalculatorFunction::Int) return integer;
       let const fraction =
           ArithmeticValue::subtract(arguments[0], integer, arena);
-      if (*function == calculator_function::Frac) return fraction;
+      if (*function == CalculatorFunction::Frac) return fraction;
       if (fraction.is_zero()) return integer;
-      if (*function == calculator_function::Floor)
+      if (*function == CalculatorFunction::Floor)
         return arguments[0].is_negative()
                    ? ArithmeticValue::subtract(integer, ArithmeticValue{1},
                                                arena)
                    : integer;
+
       return arguments[0].is_negative()
                  ? integer
                  : ArithmeticValue::add(integer, ArithmeticValue{1}, arena);
     }
-    case calculator_function::Cmp:
+    case CalculatorFunction::Cmp:
       require_argument_count(name, arguments, 2, 2);
+
       return ArithmeticValue{
           arguments[0].compare(arguments[1], bump_allocator(arena))};
-    case calculator_function::Cos:
+    case CalculatorFunction::Cos:
       require_argument_count(name, arguments, 1, 2);
+
       return calculator_sin_cos(
           arguments[0], calculator_requested_scale(name, arguments), true);
-    case calculator_function::Exp:
+    case CalculatorFunction::Exp:
       require_argument_count(name, arguments, 1, 2);
+
       return calculator_exp(arguments[0],
                             calculator_requested_scale(name, arguments));
-    case calculator_function::Fact: {
+    case CalculatorFunction::Fact: {
       require_argument_count(name, arguments, 1, 1);
       let const count = require_integer_argument(name, arguments[0]);
       if (count < 0)
@@ -1265,22 +1344,25 @@ public:
                   "The argument to 'fact' is negative",
                   "Factorial requires a non-negative integer");
       let result = ArithmeticValue{1};
+
       for (i64 factor = 2; factor <= count; factor++)
         result =
             ArithmeticValue::multiply(result, ArithmeticValue{factor}, arena);
+
       return result;
     }
-    case calculator_function::Fib: {
+    case CalculatorFunction::Fib: {
       require_argument_count(name, arguments, 1, 1);
       let const index = require_integer_argument(name, arguments[0]);
       if (index < 0)
         fail_span(arguments[0].start, arguments[0].end,
                   "The argument to 'fib' is negative",
                   "Fibonacci requires a non-negative integer");
+
       return calculator_fibonacci(static_cast<u64>(index));
     }
-    case calculator_function::Gcd:
-    case calculator_function::Lcm: {
+    case CalculatorFunction::Gcd:
+    case CalculatorFunction::Lcm: {
       require_argument_count(name, arguments, 1, ~usize{0});
       if (!arguments[0].has_integer_value(arena))
         fail_span(arguments[0].start, arguments[0].end,
@@ -1288,6 +1370,7 @@ public:
                   "This function requires integer values");
       let result = ArithmeticValue::absolute(
           ArithmeticValue::integer_part(arguments[0], arena), arena);
+
       for (usize index = 1; index < arguments.count(); index++) {
         if (!arguments[index].has_integer_value(arena))
           fail_span(arguments[index].start, arguments[index].end,
@@ -1296,7 +1379,7 @@ public:
         let const argument =
             ArithmeticValue::integer_part(arguments[index], arena);
         let const divisor = calculator_gcd(result, argument);
-        if (*function == calculator_function::Gcd) {
+        if (*function == CalculatorFunction::Gcd) {
           result = divisor;
         } else if (result.is_zero() || argument.is_zero()) {
           result = ArithmeticValue{};
@@ -1308,10 +1391,11 @@ public:
               arena);
         }
       }
+
       return result;
     }
-    case calculator_function::IsEven:
-    case calculator_function::IsOdd: {
+    case CalculatorFunction::IsEven:
+    case CalculatorFunction::IsOdd: {
       require_argument_count(name, arguments, 1, 1);
       require_integer_argument(name, arguments[0]);
       let const remainder = ArithmeticValue::modulo(
@@ -1319,66 +1403,77 @@ public:
               ArithmeticValue::integer_part(arguments[0], arena), arena),
           ArithmeticValue{2}, arena);
       let const is_odd = !remainder.is_zero();
+
       return ArithmeticValue{
-          (*function == calculator_function::IsOdd) == is_odd ? 1 : 0};
+          (*function == CalculatorFunction::IsOdd) == is_odd ? 1 : 0};
     }
-    case calculator_function::IsInt:
+    case CalculatorFunction::IsInt:
       require_argument_count(name, arguments, 1, 1);
+
       return ArithmeticValue{arguments[0].has_integer_value(arena) ? 1 : 0};
-    case calculator_function::Length: {
+    case CalculatorFunction::Length: {
       require_argument_count(name, arguments, 1, 1);
       let const text = arguments[0].to_string(bump_allocator(arena));
       usize digit_count = 0;
+
       for (usize position = 0; position < text.count(); position++) {
         if (text[position] >= '0' && text[position] <= '9') {
           digit_count++;
         }
       }
+
       let const body_start = text[0] == '-' ? usize{1} : usize{0};
       if (text.count() > body_start + 1 && text[body_start] == '0' &&
           text[body_start + 1] == '.')
       {
         digit_count--;
       }
+
       return ArithmeticValue{static_cast<i64>(digit_count)};
     }
-    case calculator_function::Ln:
+    case CalculatorFunction::Ln:
       require_argument_count(name, arguments, 1, 2);
       if (arguments[0].is_zero() || arguments[0].is_negative()) {
         fail_span(arguments[0].start, arguments[0].end,
                   "Logarithm operand is not positive",
                   "ln requires a value greater than 0");
       }
+
       return calculator_ln(arguments[0],
                            calculator_requested_scale(name, arguments));
-    case calculator_function::Max:
-    case calculator_function::Min: {
+    case CalculatorFunction::Max:
+    case CalculatorFunction::Min: {
       require_argument_count(name, arguments, 1, ~usize{0});
       let result = arguments[0];
+
       for (usize index = 1; index < arguments.count(); index++) {
         let const ordering =
             result.compare(arguments[index], bump_allocator(arena));
-        if ((*function == calculator_function::Max && ordering < 0) ||
-            (*function == calculator_function::Min && ordering > 0))
+        if ((*function == CalculatorFunction::Max && ordering < 0) ||
+            (*function == CalculatorFunction::Min && ordering > 0))
         {
           result = arguments[index];
         }
       }
+
       return result;
     }
-    case calculator_function::Scale:
+    case CalculatorFunction::Scale:
       require_argument_count(name, arguments, 1, 1);
+
       return ArithmeticValue{
           static_cast<i64>(arguments[0].get_decimal_scale())};
-    case calculator_function::Sgn:
+    case CalculatorFunction::Sgn:
       require_argument_count(name, arguments, 1, 1);
+
       return ArithmeticValue{
           arguments[0].is_zero() ? 0 : (arguments[0].is_negative() ? -1 : 1)};
-    case calculator_function::Sin:
+    case CalculatorFunction::Sin:
       require_argument_count(name, arguments, 1, 2);
+
       return calculator_sin_cos(
           arguments[0], calculator_requested_scale(name, arguments), false);
-    case calculator_function::Sqrt: {
+    case CalculatorFunction::Sqrt: {
       require_argument_count(name, arguments, 1, 2);
       if (arguments[0].is_negative())
         fail_span(arguments[0].start, arguments[0].end,
@@ -1397,6 +1492,7 @@ public:
         }
         decimal_scale = static_cast<u32>(requested_scale);
       }
+
       return ArithmeticValue::square_root(arguments[0], decimal_scale, arena);
     }
     }
@@ -1417,9 +1513,11 @@ public:
     }
 
     usize end = pos;
+
     while (end < source.length && is_number_continuation(source[end])) {
       end++;
     }
+
     fail_span(number_start, end,
               "Invalid digit '" + String{source.substring_of_length(pos, 1)} +
                   "' in the number '" +
@@ -1442,6 +1540,7 @@ public:
     if (consume("(")) {
       let const value = parse_comma();
       if (!consume(")")) fail("Expected ')'", "An opening '(' is unmatched");
+
       return value;
     }
     let const has_leading_decimal_point =
@@ -1454,20 +1553,23 @@ public:
         let value = ArithmeticValue{};
         pos += lex_exact_arith_number(source.substring(pos), &value, arena);
         reject_invalid_digit(number_start);
+
         return value;
       }
       i64 value = 0;
       pos += lex_arith_number(source.substring(pos), &value);
       reject_invalid_digit(number_start);
+
       return ArithmeticValue{value};
     }
     if (pos < source.length && lexer::is_variable_name_start(source[pos])) {
-      const lvalue target = read_lvalue();
+      const Lvalue target = read_lvalue();
       if (should_error_unset && !target.subscript.has_value() && consume("(")) {
         return apply_calculator_function(target.name, target.name_position);
       }
       if (consume("++")) return postfix_step(target, 1);
       if (consume("--")) return postfix_step(target, -1);
+
       return read_lvalue_value(target);
     }
     if (pos >= source.length)
@@ -1511,12 +1613,14 @@ static fn lex_arith_number(StringView from, i64 *out_value) throws -> usize
     let const radix = explicit_base->radix;
     u64 value = 0;
     usize i = explicit_base->digit_start;
+
     while (i < from.length) {
       let const digit = arithmetic_internal::radix_digit_value(from[i], radix);
       if (digit >= radix) break;
       value = value * radix + digit;
       i++;
     }
+
     *out_value = static_cast<i64>(value);
     return i;
   }
@@ -1542,6 +1646,7 @@ static fn lex_exact_arith_number(StringView from, ArithmeticValue *out_value,
     *out_value =
         ArithmeticValue::parse(digits.substring_of_length(0, digit_count),
                                explicit_base->radix, arena);
+
     return explicit_base->digit_start + digit_count;
   }
 
@@ -1558,6 +1663,7 @@ static fn lex_exact_arith_number(StringView from, ArithmeticValue *out_value,
     let const consumed = decimal_integer_count + 1 + fractional_count;
     *out_value = ArithmeticValue::parse_decimal(
         from.substring_of_length(0, consumed), arena);
+
     return consumed;
   }
 
@@ -1571,6 +1677,7 @@ static fn lex_exact_arith_number(StringView from, ArithmeticValue *out_value,
   *out_value = ArithmeticValue::parse(
       from.substring_of_length(detected.prefix_length, digit_count),
       detected.radix, arena);
+
   return consumed;
 }
 
@@ -1585,6 +1692,7 @@ static fn tokenize_arithmetic(StringView src,
                               ArrayList<arith_token> &out) throws -> void
 {
   usize i = 0;
+
   while (i < src.length) {
     let const current_byte = src[i];
     if (current_byte == ' ' || current_byte == '\t' || current_byte == '\n' ||
@@ -1621,9 +1729,11 @@ static fn tokenize_arithmetic(StringView src,
     if (lexer::is_variable_name_start(current_byte)) {
       let const name_start = i;
       i++;
+
       while (i < src.length && lexer::is_variable_name(src[i])) {
         i++;
       }
+
       out.push(
           arith_token{arith_token::kind::name, 0,
                       src.substring_of_length(name_start, i - name_start)});
@@ -1631,6 +1741,7 @@ static fn tokenize_arithmetic(StringView src,
         i++;
         let const inner_start = i;
         usize depth = 1;
+
         while (i < src.length && depth > 0) {
           if (src[i] == '[') {
             depth++;
@@ -1639,6 +1750,7 @@ static fn tokenize_arithmetic(StringView src,
           }
           i++;
         }
+
         if (depth != 0) {
           throw ErrorWithDetails{"Expected ']' after an array subscript",
                                  "The subscript '[' was never closed"};
@@ -1651,6 +1763,7 @@ static fn tokenize_arithmetic(StringView src,
       continue;
     }
     bool is_matched = false;
+
     for (let const &op : ARITH_OPERATORS) {
       if (i + op.length <= src.length &&
           src.substring_of_length(i, op.length) == op)
@@ -1662,6 +1775,7 @@ static fn tokenize_arithmetic(StringView src,
         break;
       }
     }
+
     if (!is_matched) {
       out.push(
           arith_token{arith_token::kind::op, 0, src.substring_of_length(i, 1)});
@@ -1678,6 +1792,7 @@ static pure fn arith_op_is_complex(StringView t) wontthrow -> bool
       SSK(":"),  SSK(","),  SSK("++"), SSK("--"),  SSK("&&"),  SSK("||"),
   };
   static constexpr StaticStringSet COMPLEX_OPS{KEYS};
+
   return COMPLEX_OPS.contains(t);
 }
 
@@ -1715,6 +1830,7 @@ arith_tokens_are_simple(const ArrayList<arith_token> &toks) wontthrow -> bool
       return false;
     }
   }
+
   return true;
 }
 
@@ -1747,6 +1863,7 @@ static pure fn arith_classify_binop(StringView t) wontthrow -> arith_binop
   };
   static constexpr StaticStringMap BINOPS{ENTRIES};
   if (let const found = BINOPS.find(t); found.has_value()) return *found;
+
   return {0, 0};
 }
 
@@ -1766,6 +1883,7 @@ static fn bc_apply_binop(char kind, const ArithmeticValue &lhs,
     if (scale > desired_scale) desired_scale = scale;
     if (combined_scale < desired_scale)
       desired_scale = static_cast<u32>(combined_scale);
+
     return ArithmeticValue::rescale(ArithmeticValue::multiply(lhs, rhs, arena),
                                     desired_scale, arena);
   }
@@ -1773,6 +1891,7 @@ static fn bc_apply_binop(char kind, const ArithmeticValue &lhs,
     u32 prepared_scale = lhs.get_decimal_scale();
     if (scale > prepared_scale) prepared_scale = scale;
     let const prepared = ArithmeticValue::rescale(lhs, prepared_scale, arena);
+
     return ArithmeticValue::rescale(
         ArithmeticValue::divide(prepared, rhs, arena), scale, arena);
   }
@@ -1786,6 +1905,7 @@ static fn bc_apply_binop(char kind, const ArithmeticValue &lhs,
     let desired_scale = static_cast<u32>(desired_scale_wide);
     if (lhs.get_decimal_scale() > desired_scale)
       desired_scale = lhs.get_decimal_scale();
+
     return ArithmeticValue::rescale(remainder, desired_scale, arena);
   }
   case 'P': {
@@ -1805,6 +1925,7 @@ static fn bc_apply_binop(char kind, const ArithmeticValue &lhs,
         lhs.get_decimal_scale() > scale ? lhs.get_decimal_scale() : scale;
     if (combined_scale < desired_scale)
       desired_scale = static_cast<u32>(combined_scale);
+
     return ArithmeticValue::rescale(powered, desired_scale, arena);
   }
   default: return arith_apply_binop(kind, lhs, rhs, true, arena);
@@ -1825,13 +1946,16 @@ hot static fn arith_apply_binop(char kind, const ArithmeticValue &lhs,
         throw ErrorWithDetails{"Exponent less than 0",
                                "'**' requires a non-negative exponent"};
       }
+
       return ArithmeticValue{arithmetic_power(left, right)};
     case '*': return ArithmeticValue{arithmetic_multiply(left, right)};
     case '/':
       if (right == 0) throw_division_by_zero();
+
       return ArithmeticValue{arithmetic_divide(left, right)};
     case '%':
       if (right == 0) throw_division_by_zero();
+
       return ArithmeticValue{arithmetic_modulo(left, right)};
     case '+': return ArithmeticValue{arithmetic_add(left, right)};
     case '-': return ArithmeticValue{arithmetic_subtract(left, right)};
@@ -1904,6 +2028,7 @@ static fn evaluate_named_value_operand(EvalContext *context, StringView value,
 
   let const stable_value = String{bump_allocator(arena), value};
   ArithmeticParser nested{context, stable_value.view(), is_exact, arena};
+
   return nested.parse();
 }
 
@@ -1921,6 +2046,7 @@ static fn arith_read_variable(EvalContext *context, StringView name,
   let const value = context->get_variable_value(name);
   if (!value.has_value()) {
     context->report_unset_reference(name);
+
     return ArithmeticValue{};
   }
 
@@ -1962,20 +2088,24 @@ public:
 
     if (at_op("+")) {
       ti++;
+
       return parse_operand();
     }
     if (at_op("-")) {
       ti++;
+
       return arith_apply_binop('-', ArithmeticValue{}, parse_operand(),
                                is_exact, arena);
     }
     if (at_op("!")) {
       ti++;
+
       return ArithmeticValue{parse_operand().is_zero() ? 1 : 0};
     }
     if (at_op("~")) {
       ti++;
       let const value = parse_operand();
+
       return is_exact ? ArithmeticValue::bit_not(value, arena)
                       : ArithmeticValue{~value.wrapped_i64()};
     }
@@ -1986,17 +2116,20 @@ public:
         throw ErrorWithDetails{"Expected ')'", "An opening '(' is unmatched"};
       }
       ti++;
+
       return value;
     }
     if (ti < toks.count() && toks[ti].k == arith_token::kind::number) {
       let value = ArithmeticValue{toks[ti].value};
       if (is_exact) lex_exact_arith_number(toks[ti].text, &value, arena);
       ti++;
+
       return value;
     }
     if (ti < toks.count() && toks[ti].k == arith_token::kind::name) {
       let const name = toks[ti].text;
       ti++;
+
       return arith_read_variable(context, name, is_exact, arena);
     }
     if (ti >= toks.count())
@@ -2008,6 +2141,7 @@ public:
   fn parse_binary(u8 min_precedence) throws -> ArithmeticValue
   {
     let lhs = parse_operand();
+
     loop
     {
       if (ti >= toks.count() || toks[ti].k != arith_token::kind::op) {
@@ -2037,6 +2171,7 @@ public:
         context->is_circular_nameref(name))
     {
       context->warn_circular_nameref(name);
+
       return is_prefix ? updated : original;
     }
 
@@ -2056,6 +2191,7 @@ public:
                                  "' after the expression",
                              "An operator is missing between two values"};
     }
+
     return result;
   }
 };
@@ -2092,6 +2228,7 @@ fn evaluate_arithmetic_value(
                                   0,       false,      bc_scale};
     parser.should_error_unset = should_error_unset;
     if (expression_base != nullptr) parser.precise_base = *expression_base;
+
     return parser.parse();
   }
 
@@ -2102,6 +2239,7 @@ fn evaluate_arithmetic_value(
   let parser = ArithmeticParser{
       context, expanded_word.view(), is_exact, arena, 0, false, bc_scale};
   parser.should_error_unset = should_error_unset;
+
   return parser.parse();
 }
 
@@ -2119,6 +2257,7 @@ fn EvalContext::evaluate_arithmetic(StringView expression,
     let const value = evaluate_arithmetic_value(
         this, expression, expression_base, is_exact,
         expansion_store().scratch_arena(), arithmetic_text_kind::ShellSource);
+
     return is_exact ? value.checked_i64() : value.wrapped_i64();
   } catch (ErrorBase &error) {
     let const was_marked =
@@ -2145,6 +2284,7 @@ fn EvalContext::evaluate_arithmetic_text(StringView expression,
   let const value =
       evaluate_arithmetic_value(this, expression, expression_base, is_exact,
                                 expansion_store().scratch_arena(), text_kind);
+
   return value.to_string(heap_allocator());
 }
 
@@ -2160,6 +2300,7 @@ fn EvalContext::evaluate_calculator_arithmetic_text(
   let const value = evaluate_arithmetic_value(
       this, expression, base, true, expansion_store().scratch_arena(),
       arithmetic_text_kind::Value, true);
+
   return value.to_string(heap_allocator());
 }
 
@@ -2173,6 +2314,7 @@ fn EvalContext::evaluate_bc_arithmetic_text(StringView expression,
       evaluate_arithmetic_value(this, expression, &expression_base, true,
                                 expansion_store().scratch_arena(),
                                 arithmetic_text_kind::Value, true, scale);
+
   return value.to_string(heap_allocator());
 }
 
@@ -2183,6 +2325,7 @@ fn EvalContext::evaluate_arithmetic_nonzero(
   let const scratch = expansion_store().scratch_arena().mark();
   defer { expansion_store().scratch_arena().release(scratch); };
   let const is_exact = runtime_state().is_extended_arithmetic_enabled();
+
   return !evaluate_arithmetic_value(this, expression, expression_base, is_exact,
                                     expansion_store().scratch_arena(),
                                     text_kind)
@@ -2199,6 +2342,7 @@ fn EvalContext::compare_arithmetic(StringView left, StringView right) throws
       this, left, nullptr, is_exact, expansion_store().scratch_arena());
   let const right_value = evaluate_arithmetic_value(
       this, right, nullptr, is_exact, expansion_store().scratch_arena());
+
   return left_value.compare(right_value, scratch_allocator());
 }
 
@@ -2229,6 +2373,7 @@ fn evaluate_arithmetic_cached_value(EvalContext *context, StringView expression,
       tokens.clear();
       is_tokenized = true;
       is_simple = false;
+
       return evaluate_arithmetic_value(context, expression, source_location,
                                        is_exact, arena,
                                        arithmetic_text_kind::ShellSource);
@@ -2243,6 +2388,7 @@ fn evaluate_arithmetic_cached_value(EvalContext *context, StringView expression,
                                      arithmetic_text_kind::ShellSource);
 
   ArithmeticTokenEvaluator evaluator{context, tokens, is_exact, arena};
+
   return evaluator.run();
 }
 
@@ -2325,6 +2471,7 @@ fn EvalContext::evaluate_arithmetic_cached_clause_nonzero(
   let const scratch = expansion_store().scratch_arena().mark();
   defer { expansion_store().scratch_arena().release(scratch); };
   let const is_exact = runtime_state().is_extended_arithmetic_enabled();
+
   return !evaluate_arithmetic_cached_value(
               this, expression, tokens, is_tokenized, is_simple,
               source_location, is_exact, expansion_store().scratch_arena())
@@ -2348,6 +2495,7 @@ fn evaluate_constant_arithmetic(StringView expression) throws -> i64
   let const scratch = arena.mark();
   defer { arena.release(scratch); };
   let parser = ArithmeticParser{nullptr, expression, false, arena};
+
   return parser.parse().wrapped_i64();
 }
 
@@ -2358,6 +2506,7 @@ fn evaluate_constant_arithmetic_nonzero(StringView expression,
   let const scratch = arena.mark();
   defer { arena.release(scratch); };
   let parser = ArithmeticParser{nullptr, expression, is_exact, arena};
+
   return !parser.parse().is_zero();
 }
 
@@ -2368,6 +2517,7 @@ fn evaluate_constant_arithmetic_text(StringView expression,
   let const scratch = arena.mark();
   defer { arena.release(scratch); };
   let parser = ArithmeticParser{nullptr, expression, true, arena};
+
   return parser.parse().to_string(allocator);
 }
 
@@ -2377,9 +2527,11 @@ pure fn obvious_xor_power_operator_position(StringView expression) wontthrow
   usize position = 0;
   let const do_skip = [&](bool (*is_member)(char)) wontthrow -> usize {
     let const start_position = position;
+
     while (position < expression.length && is_member(expression[position])) {
       position++;
     }
+
     return position - start_position;
   };
 

@@ -329,8 +329,10 @@ static fn splice_environment_flags(command_line &line) throws -> void
     line.spliced_argv.reserve(static_cast<usize>(line.argc) +
                               line.flag_tokens.count());
     line.spliced_argv.push(line.argv[0]);
+
     for (let const &token : line.flag_tokens)
       line.spliced_argv.push(token.c_str());
+
     for (int i = 1; i < line.argc; i++)
       line.spliced_argv.push(line.argv[i]);
   }
@@ -392,10 +394,12 @@ static fn parse_command_line(command_line &line) throws -> Maybe<int>
 static fn is_debug_driver_run() wontthrow -> bool
 {
 #if !defined NDEBUG
+
   return FLAG_DEBUG_COMPLETE_AT.is_set() || FLAG_DEBUG_HIGHLIGHT_AT.is_set() ||
          FLAG_DEBUG_GHOST_AT.is_set() || FLAG_DEBUG_BRACKETS_AT.is_set() ||
          FLAG_DEBUG_HINT_AT.is_set();
 #else
+
   return false;
 #endif
 }
@@ -430,6 +434,7 @@ static fn parse_init_moods(ArrayList<mimic_mood> &moods) throws -> Maybe<int>
           "--init-moods ", *unknown_name,
           "Unknown --init-moods value, expected one of 'kosh', 'bash', or "
           "'sh'");
+
       return 2;
     }
   }
@@ -472,6 +477,7 @@ resolve_invocation_options(ArrayList<invocation_option> &options) throws
     if (option == nullptr) {
       show_unknown_flag_value(is_on ? "-o " : "+o ", name,
                               "Unknown -o option name");
+
       return 2;
     }
 
@@ -503,6 +509,7 @@ resolve_invocation_options(ArrayList<invocation_option> &options) throws
     if (option == nullptr) {
       show_unknown_flag_value(is_on ? "-O " : "+O ", name,
                               "Unknown -O option name");
+
       return 2;
     }
     if (option->is_read_only) continue;
@@ -521,6 +528,7 @@ static fn validate_invocation(const ArrayList<String> &operands,
     show_unknown_flag_value("--mood ", FLAG_MOOD.value(),
                             "Unknown --mood value, expected one of 'kosh', "
                             "'bash', 'sh', or 'bash-posix'");
+
     return 2;
   }
 
@@ -531,6 +539,7 @@ static fn validate_invocation(const ArrayList<String> &operands,
         "--tab-selector ", FLAG_TAB_SELECTOR.value(),
         "Unknown --tab-selector value, expected one of 'interactive', "
         "'external', or 'plain'");
+
     return 2;
   }
 
@@ -543,12 +552,14 @@ static fn validate_invocation(const ArrayList<String> &operands,
     show_message("The '--as-language-server' option does not accept '-s', "
                  "'-i', '--lint', '--format', '--apply', '-c', or file "
                  "operands.");
+
     return 2;
   }
   if (FLAG_APPLY.is_enabled() && !FLAG_LINT.is_enabled() &&
       !FLAG_FORMAT.is_enabled())
   {
     show_message("The '--apply' option requires '--lint' or '--format'.");
+
     return 2;
   }
   if (FLAG_APPLY.is_enabled() &&
@@ -556,16 +567,20 @@ static fn validate_invocation(const ArrayList<String> &operands,
        !FLAG_COMMAND.is_empty()))
   {
     show_message("The '--apply' option does not accept '-s', '-i', or '-c'.");
+
     return 2;
   }
   if (FLAG_APPLY.is_enabled()) {
     if (operands.is_empty()) {
       show_message("The '--apply' option requires named files.");
+
       return 2;
     }
+
     for (let const &operand : operands) {
       if (operand != "-") continue;
       show_message("The '--apply' option does not accept '-'.");
+
       return 2;
     }
   }
@@ -573,6 +588,7 @@ static fn validate_invocation(const ArrayList<String> &operands,
       operands.count() > 1)
   {
     show_message("The '--format' option accepts one file without '--apply'.");
+
     return 2;
   }
 
@@ -761,9 +777,11 @@ static fn apply_inherited_shell(inherited_shell &inherited,
       context.apply_subshell_bootstrap(steal(inherited.bootstrap));
     } catch (const Error &error) {
       show_message(error.to_string());
+
       return 1;
     } catch (const std::bad_alloc &) {
       show_message("Could not allocate inherited shell state");
+
       return 1;
     }
     context.runtime_state().set_show_ast(false);
@@ -793,6 +811,7 @@ is_kept_in_restricted_shell(const option_descriptor &option) wontthrow -> bool
 static fn keep_restricted_settings(koshconf_reading &reading) throws -> void
 {
   let kept = ArrayList<koshconf_setting>{heap_allocator()};
+
   for (let &setting : reading.settings) {
     if (is_kept_in_restricted_shell(*setting.option)) {
       kept.push(steal(setting));
@@ -803,6 +822,7 @@ static fn keep_restricted_settings(koshconf_reading &reading) throws -> void
                                   "' from the configuration files"}
                               .to_string());
   }
+
   reading.settings = steal(kept);
 }
 
@@ -849,12 +869,14 @@ static fn read_startup_configuration(const command_line &line,
       is_debug_driver_run();
   if (should_skip) {
     LOG(Info, "skipping the configuration files");
+
     return reading;
   }
   if (!inherited.bootstrap.payload.is_empty()) {
     LOG(Info, "a fresh evaluator applies only the inherited KOSHCONF");
     if (encoded.has_value())
       unused(read_koshconf_blob(encoded->view(), reading));
+
     return reading;
   }
 
@@ -874,8 +896,10 @@ static fn read_startup_configuration(const command_line &line,
                               .to_string());
   }
   if (identity.is_restricted_shell) keep_restricted_settings(reading);
+
   for (let const &warning : reading.warnings)
     show_message(warning.view());
+
   reading.warnings.clear();
 
   return reading;
@@ -915,6 +939,7 @@ static fn describe_init_moods(const ArrayList<mimic_mood> &init_moods) throws
     -> String
 {
   let text = String{heap_allocator()};
+
   for (let const mood : init_moods) {
     if (!text.is_empty()) text += ',';
     text += mood_name(mood);
@@ -992,6 +1017,7 @@ static fn apply_startup_configuration(
   let const is_kosh_mood =
       context.runtime_state().get_mood() == mimic_mood::Default;
   let unpinned = ArrayList<koshconf_setting>{heap_allocator()};
+
   for (let &setting : reading.settings) {
     if (is_pinned_by_invocation(*setting.option, invocation_options)) continue;
 
@@ -1012,12 +1038,15 @@ static fn apply_startup_configuration(
 
     unpinned.push(steal(setting));
   }
+
   reading.settings.clear();
 
   apply_koshconf_settings(context, unpinned, option_origin::Startup,
                           reading.warnings);
+
   for (let const &warning : reading.warnings)
     show_message(warning.view());
+
   reading.warnings.clear();
 
   for (let const &named : invocation_options) {
@@ -1026,6 +1055,7 @@ static fn apply_startup_configuration(
                           named.origin);
     } catch (const Error &error) {
       show_message(error.to_string());
+
       return 2;
     }
   }
@@ -1206,6 +1236,7 @@ static fn seed_session_variables(EvalContext &context,
   context.set_shell_variable("KOSH_COMMIT", KOSH_COMMIT_HASH);
   context.set_shell_variable("KOSH_BUILD_MODE", KOSH_BUILD_MODE);
   context.set_shell_variable("KOSH_OS", KOSH_OS_INFO);
+
   for (let const name : {StringView{"KOSH"}, StringView{"KOSH_VERSION"},
                          StringView{"KOSH_COMMIT"},
                          StringView{"KOSH_BUILD_MODE"}, StringView{"KOSH_OS"}})
@@ -1213,6 +1244,7 @@ static fn seed_session_variables(EvalContext &context,
     if (os::has_environment_variable(name))
       context.unexport_shell_variable(name);
   }
+
   if (!context.variable_store()
            .shell_variables()
            .find("KOSH_HISTORY_FILE")
@@ -1234,10 +1266,12 @@ static fn seed_session_variables(EvalContext &context,
   {
     identity_mode = shell_identity_mode::Bash;
   }
+
   for (let listed : init_moods)
     if (listed == mimic_mood::Bash || listed == mimic_mood::BashPosix) {
       identity_mode = shell_identity_mode::Bash;
     }
+
   context.seed_shell_identity_variables(identity_mode);
 
   if (!inherited.state.has_value()) seed_shell_level();
@@ -1313,6 +1347,7 @@ static fn run_startup(EvalContext &context, ArrayList<mimic_mood> &init_moods,
         : FLAG_CLEAN.is_enabled() ? "clean"
         : FLAG_LINT.is_enabled()  ? "lint"
                                   : "privileged");
+
     return;
   }
 
@@ -1389,6 +1424,7 @@ static fn take_script_operands(String program_name, ArrayList<String> &operands,
   }
 
   positional_params.reserve(operands.count() - first_param_index);
+
   for (usize i = first_param_index; i < operands.count(); i++) {
     if (should_retain_operands)
       positional_params.push(operands[i].clone());
@@ -1419,6 +1455,7 @@ static fn find_command_call_site(const command_line &line,
   let const parse_argv = line.get_parse_argv();
   usize seen_command_count = 0;
   usize flag_offset = 0;
+
   for (int a = 0; a < parse_argc; a++) {
     let const token_length = std::strlen(parse_argv[a]);
     const StringView token{parse_argv[a], token_length};
@@ -1428,6 +1465,7 @@ static fn find_command_call_site(const command_line &line,
       if (seen_command_count == consumed_command_index && a + 1 < parse_argc) {
         const usize argument_length = shell_quoted_arg_length(
             StringView{parse_argv[a + 1], std::strlen(parse_argv[a + 1])});
+
         return SourceLocation{flag_offset, quoted_length + 1 + argument_length};
       }
     }
@@ -1516,6 +1554,7 @@ struct script_cursor
         utils::quit(126, utils::farewell_policy::Goodbye);
       }
       chunk.should_analyze = false;
+
       return;
     }
 
@@ -1544,6 +1583,7 @@ struct script_cursor
         utils::quit(127, utils::farewell_policy::Goodbye);
       }
       chunk.should_analyze = false;
+
       return;
     }
 
@@ -1628,9 +1668,11 @@ static fn emit_prompt_line_break() throws -> void
     eol_marker += "\\n";
   }
   constexpr u32 EOL_GLYPH_COLUMN_COUNT = 2;
+
   for (u32 column = EOL_GLYPH_COLUMN_COUNT; column < dimensions->columns;
        column++)
     eol_marker.push(' ');
+
   eol_marker.push('\r');
   print(eol_marker);
   flush();
@@ -1833,6 +1875,7 @@ struct interactive_session
         }
       } catch (const Error &error) {
         show_message(error.message().view());
+
         return false;
       }
     }
@@ -1994,6 +2037,7 @@ fn kosh_main(int argc, char **argv) -> int
       {
         koshka::show_message("Unable to drop elevated ids: " +
                              koshka::os::last_system_error_message());
+
         return 1;
       }
       LOG(Info, "acting as the koshkit utility '%.*s' from argv[0]",
@@ -2010,6 +2054,7 @@ fn kosh_main(int argc, char **argv) -> int
 
       koshka::ArrayList<koshka::String> operands{koshka::heap_allocator()};
       operands.reserve(static_cast<usize>(argc - first_operand_index));
+
       for (int i = first_operand_index; i < argc; i++)
         operands.push(koshka::String{koshka::StringView{argv[i]}});
 
@@ -2042,6 +2087,7 @@ fn kosh_main(int argc, char **argv) -> int
   {
     koshka::show_message("Unable to drop elevated ids: " +
                          koshka::os::last_system_error_message());
+
     return 1;
   }
 
@@ -2069,18 +2115,21 @@ fn kosh_main(int argc, char **argv) -> int
         {"all",   koshka::verbosity::All  },
     };
     let is_known_level = false;
+
     for (let const &entry : LOG_LEVEL_NAMES)
       if (FLAG_LOG.value() == entry.name) {
         koshka::LOGGER_VERBOSITY = entry.level;
         is_known_level = true;
         break;
       }
+
     if (!is_known_level) {
       koshka::show_message(
           koshka::ErrorWithDetails{"Unknown debug logging level '" +
                                        koshka::String{FLAG_LOG.value()} + "'",
                                    "Pass `info`, `debug`, or `all` to `-X`"}
               .to_string());
+
       return 2;
     }
   }
@@ -2112,6 +2161,7 @@ fn kosh_main(int argc, char **argv) -> int
       return *code;
   } catch (const koshka::Error &error) {
     koshka::show_message(error.to_string());
+
     return 1;
   }
 
@@ -2196,6 +2246,7 @@ fn kosh_main(int argc, char **argv) -> int
           ast_arena, context, identity.session_mood);
     } catch (const koshka::Error &error) {
       koshka::show_message(error.to_string());
+
       return 1;
     }
   }

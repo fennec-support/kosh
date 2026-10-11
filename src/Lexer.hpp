@@ -212,6 +212,7 @@ pure inline fn skip_quoted_run(StringView text, usize position) wontthrow
   }
 
   usize closing = position + 1;
+
   while (closing < text.length && text[closing] != byte) {
     closing += byte == '"' && text[closing] == '\\' ? 2 : 1;
   }

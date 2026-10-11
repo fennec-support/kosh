@@ -30,6 +30,7 @@ fn EvalContext::run_completion_command(StringView command,
       static_cast<int>(word.length), word.data);
 
   let source = String{heap_allocator(), command};
+
   for (let const argument : {command_name, word, previous_word}) {
     source.push(' ');
     append_shell_quoted_arg(source, argument, true);
@@ -72,14 +73,17 @@ fn EvalContext::run_completion_command(StringView command,
   restore_state(steal(snapshot));
   if (was_interrupted) {
     os::INTERRUPT_REQUESTED = 1;
+
     return ArrayList<String>{heap_allocator()};
   }
 
   let candidates = ArrayList<String>{heap_allocator()};
   let const text = output.view();
   usize line_start = 0;
+
   while (line_start < text.length) {
     usize line_end = line_start;
+
     while (line_end < text.length && text[line_end] != '\n') {
       if (text[line_end] == '\\' && line_end + 1 < text.length &&
           text[line_end + 1] == '\n')
@@ -101,6 +105,7 @@ fn EvalContext::run_completion_command(StringView command,
 
   LOG(Info, "completion command '%.*s' returned %zu candidates",
       static_cast<int>(command.length), command.data, candidates.count());
+
   return candidates;
 }
 
@@ -161,6 +166,7 @@ fn EvalContext::run_completion_function(StringView function_name,
 
   let &comp_words = do_reset_array("COMP_WORDS");
   comp_words.reserve(words.count());
+
   for (let const &word : words)
     comp_words.push_managed(word.view());
 
@@ -240,6 +246,7 @@ fn EvalContext::run_completion_function(StringView function_name,
       result.count(),
       out_exit_status != nullptr ? *out_exit_status
                                  : execution_store().last_exit_status());
+
   return result;
 }
 

@@ -227,6 +227,7 @@ pure static fn find_sort_field_end(StringView line, usize start,
 {
   if (settings.has_separator) {
     let const found = line.substring(start).find_character(settings.separator);
+
     return found.has_value() ? start + *found : line.length;
   }
 
@@ -294,6 +295,7 @@ pure static fn compare_sort_numbers(StringView left, StringView right) wontthrow
     number.integer_start = position;
     position = skip_sort_digits(text, position);
     number.integer_end = position;
+
     while (number.integer_start < number.integer_end) {
       if (text[number.integer_start] != '0') break;
       number.integer_start++;
@@ -305,6 +307,7 @@ pure static fn compare_sort_numbers(StringView left, StringView right) wontthrow
       if (text[position] == '.') {
         number.fraction_start = position + 1;
         number.fraction_end = skip_sort_digits(text, position + 1);
+
         while (number.fraction_end > number.fraction_start) {
           if (text[number.fraction_end - 1] != '0') break;
           number.fraction_end--;
@@ -455,6 +458,7 @@ pure static fn compare_sort_entries(const sort_entry &left,
   if (is_last_resort_enabled) {
     if (left.line != right.line) {
       let const result = left.line < right.line ? -1 : 1;
+
       return settings.global.is_reversed ? -result : result;
     }
   }
@@ -485,6 +489,7 @@ fn Sort::execute(const ExecContext &ec, EvalContext &cxt,
     if (FLAG_SORT_SEPARATOR.value().length != 1) {
       KOSHKIT_REPORT_ERROR_AT(FLAG_SORT_SEPARATOR.value_location(),
                               "the separator must be one byte");
+
       return 2;
     }
     settings.has_separator = true;
@@ -500,6 +505,7 @@ fn Sort::execute(const ExecContext &ec, EvalContext &cxt,
               String{cxt.scratch_allocator(), FLAG_SORT_KEY.get(key_index)} +
               "'",
           "use F[.C][bdfinr][,F[.C][bdfinr]] with fields starting at 1");
+
       return 2;
     }
     settings.keys.push(key);
@@ -520,11 +526,13 @@ fn Sort::execute(const ExecContext &ec, EvalContext &cxt,
   if (os::INTERRUPT_REQUESTED) return 130;
 
   usize line_count = 0;
+
   for (let const &source_result : source_results) {
     if (!source_result.content.has_value()) continue;
 
     let const content = source_result.content->view();
     usize position = 0;
+
     while (position < content.length) {
       unused(content.next_line(position));
       line_count++;
@@ -545,6 +553,7 @@ fn Sort::execute(const ExecContext &ec, EvalContext &cxt,
 
     let const content = source_result.content->view();
     usize position = 0;
+
     while (position < content.length) {
       collected_lines.push(
           sort_entry{content.next_line(position), collected_lines.count()});
@@ -569,6 +578,7 @@ fn Sort::execute(const ExecContext &ec, EvalContext &cxt,
                 String::from(index + 1, cxt.scratch_allocator()) +
                 ": disorder: " + String{cxt.scratch_allocator(), current.line});
       }
+
       return 1;
     }
 
@@ -589,6 +599,7 @@ fn Sort::execute(const ExecContext &ec, EvalContext &cxt,
           ec, cxt, args[0].view(),
           String{cxt.scratch_allocator(), FLAG_SORT_OUTPUT.value()} + ": " +
               os::last_system_error_message());
+
       return 2;
     }
   }
@@ -632,6 +643,7 @@ fn Sort::execute(const ExecContext &ec, EvalContext &cxt,
   };
 
   const sort_entry *previous_printed = nullptr;
+
   for (usize index = 0; index < collected_lines.count(); index++) {
     if (!do_visit(index, previous_printed)) continue;
 

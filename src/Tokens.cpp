@@ -41,6 +41,7 @@ fn keyword_names() throws -> const ArrayList<String> &
 {
   static ArrayList<String> names = [] throws {
     let collected = ArrayList<String>{heap_allocator()};
+
     for (let const &entry : KEYWORD_ENTRIES)
       collected.push(entry.key.to_string());
 
@@ -161,6 +162,7 @@ pure fn Word::is_empty() const wontthrow -> bool { return segments.is_empty(); }
 hot fn Word::to_literal_string() const throws -> String
 {
   let result = String{heap_allocator()};
+
   for (let const &segment : segments) {
     switch (segment.kind) {
     case WordSegment::Kind::CommandSubstitution:
@@ -191,6 +193,7 @@ hot fn Word::to_literal_string() const throws -> String
     }
     result += segment.text;
   }
+
   return result;
 }
 
@@ -200,6 +203,7 @@ fn Word::plain_literal_kind() const wontthrow -> PlainLiteral
     m_cached_plain_kind = optimizer::classify_plain_literal(*this);
     m_has_cached_plain_kind = true;
   }
+
   return m_cached_plain_kind;
 }
 
@@ -209,6 +213,7 @@ fn Word::constant_value() const throws -> StringView
 
   if (m_constant_value_data == nullptr) {
     usize total_length = 0;
+
     for (let const &segment : segments)
       total_length += segment.text.count();
 
@@ -217,6 +222,7 @@ fn Word::constant_value() const throws -> StringView
 
     let buffer = segments.allocator().alloc_array<char>(total_length);
     usize write_position = 0;
+
     for (let const &segment : segments) {
       let const view = segment.text.view();
       __builtin_memcpy(buffer + write_position, view.data, view.length);
@@ -234,6 +240,7 @@ pure fn Word::is_all_ascii_digits() const wontthrow -> bool
 {
   if (segments.is_empty()) return false;
   bool has_seen_digit = false;
+
   for (let const &segment : segments) {
     switch (segment.kind) {
     case WordSegment::Kind::VariableReference:
@@ -251,6 +258,7 @@ pure fn Word::is_all_ascii_digits() const wontthrow -> bool
     if (!segment.text.is_all_decimal_digits()) return false;
     has_seen_digit = true;
   }
+
   return has_seen_digit;
 }
 
@@ -275,6 +283,7 @@ pure fn Word::get_fd_allocation_target() const wontthrow
   if (!lexer::is_variable_name_start(inner[0])) return None;
 
   usize name_length = 1;
+
   while (name_length < inner.length &&
          lexer::is_variable_name(inner[name_length]))
   {
@@ -289,6 +298,7 @@ pure fn Word::get_fd_allocation_target() const wontthrow
 
   usize position = name_length + 1;
   usize open_count = 1;
+
   while (position < inner.length && open_count > 0) {
     if (inner[position] == '[')
       open_count++;
@@ -335,12 +345,14 @@ pure fn Word::runs_substitution() const wontthrow -> bool
     case WordSegment::Kind::ArithmeticExpansion: break;
     }
   }
+
   return false;
 }
 
 cold fn Word::to_pretty_string() const throws -> String
 {
   let result = String{"[Word"};
+
   for (let const &segment : segments) {
     result += "\n  ";
     switch (segment.kind) {
@@ -365,7 +377,9 @@ cold fn Word::to_pretty_string() const throws -> String
     result += segment.text;
     result += '"';
   }
+
   result += "\n]";
+
   return result;
 }
 
@@ -388,16 +402,19 @@ static fn append_subscript_segment_source(const WordSegment &segment,
     out.append("${");
     out.append(segment.text.view());
     out.push('}');
+
     return true;
   case WordSegment::Kind::ArithmeticExpansion:
     out.append("$((");
     out.append(segment.text.view());
     out.append("))");
+
     return true;
   case WordSegment::Kind::CommandSubstitution:
     out.append("$(");
     out.append(segment.text.view());
     out.push(')');
+
     return true;
   default: return false;
   }
@@ -410,11 +427,13 @@ array_element_assignment_split(const ArrayList<WordSegment> &segments,
 {
   const WordSegment &first = segments[0];
   usize name_end = 1;
+
   while (name_end < first.text.count() &&
          lexer::is_variable_name(first.text[name_end]))
   {
     name_end++;
   }
+
   if (name_end >= first.text.count() || first.text[name_end] != '[') {
     return koshka::None;
   }
@@ -468,6 +487,7 @@ array_element_assignment_split(const ArrayList<WordSegment> &segments,
         SegmentText{heap_allocator(), after.substring(value_start)},
         false
     });
+
     for (usize j = i + 1; j < segments.count(); j++)
       value.segments.push(segments[j]);
 
@@ -480,14 +500,17 @@ array_element_assignment_split(const ArrayList<WordSegment> &segments,
 static fn find_assignment_equals(StringView text) wontthrow -> Maybe<usize>
 {
   usize cursor = 1;
+
   while (cursor < text.length && lexer::is_variable_name(text[cursor])) {
     cursor++;
   }
+
   if (cursor >= text.length || text[cursor] != '[') {
     return text.find_character('=');
   }
 
   usize depth = 0;
+
   for (usize position = cursor; position < text.length; position++) {
     let const byte = text[position];
     if (byte == '[') {
@@ -526,6 +549,7 @@ hot fn Word::get_assignment_split(Allocator allocator) const throws
     if (first.text.find_character('[').has_value())
       return array_element_assignment_split(segments,
                                             has_locale_translation_quote);
+
     return koshka::None;
   }
   if (*equals_position == 0) return koshka::None;
@@ -541,11 +565,13 @@ hot fn Word::get_assignment_split(Allocator allocator) const throws
   if (name_length == 0) return koshka::None;
 
   usize name_cursor = 1;
+
   while (name_cursor < name_length &&
          lexer::is_variable_name(first.text[name_cursor]))
   {
     name_cursor++;
   }
+
   if (name_cursor < name_length && first.text[name_cursor] == '[') {
     if (first.text[name_length - 1] != ']' || name_length - name_cursor < 3) {
       return koshka::None;
@@ -565,6 +591,7 @@ hot fn Word::get_assignment_split(Allocator allocator) const throws
       SegmentText{allocator, first.text.substring(*equals_position + 1)},
       false
   });
+
   for (usize i = 1; i < segments.count(); i++)
     value.segments.push(segments[i]);
 
@@ -618,6 +645,7 @@ cold fn Word::get_quoted_assignment_split() const throws
   if (!lexer::is_variable_name_start(prefix_view[0])) return koshka::None;
 
   usize name_cursor = 1;
+
   while (name_cursor < name_length &&
          lexer::is_variable_name(prefix_view[name_cursor]))
   {
@@ -643,6 +671,7 @@ cold fn Word::get_quoted_assignment_split() const throws
                   carrier.text.substring(equals_position + 1)},
       carrier.is_in_double_quotes != 0
   });
+
   for (usize i = equals_segment + 1; i < segments.count(); i++)
     value.segments.push(segments[i]);
 
@@ -655,6 +684,7 @@ cold fn SegmentText::grow_owned(usize needed) throws -> void
 {
   usize new_capacity =
       m_capacity == 0 ? needed : static_cast<usize>(m_capacity);
+
   while (new_capacity < needed) {
     if (new_capacity > MAXIMUM_TEXT_LENGTH / 2) {
       new_capacity = needed;
@@ -746,6 +776,7 @@ fn Assignment::raw_string() const throws -> String
   let result = m_key.clone();
   result += m_update_mode == assignment_update_mode::Append ? "+=" : "=";
   result += m_value.to_literal_string();
+
   return result;
 }
 

@@ -39,16 +39,19 @@ static fn finish_captured_output(String &captured,
       captured.view().find_character('\0').has_value();
   if (!should_drop_nul_bytes) {
     captured.strip_trailing_newlines();
+
     return;
   }
 
   let kept = String{heap_allocator()};
   kept.reserve(captured.count());
   let remaining = captured.view();
+
   while (let const nul = remaining.find_character('\0')) {
     kept.append(remaining.substring_of_length(0, *nul));
     remaining = remaining.substring(*nul + 1);
   }
+
   kept.append(remaining);
   kept.strip_trailing_newlines();
   captured = steal(kept);
@@ -117,6 +120,7 @@ fn EvalContext::register_embedded_source(StringView inner,
                        : StringView{};
   if (!span.is_empty() && !inner.is_empty()) {
     static constexpr usize PREFIX_LENGTHS[] = {2, 1, 0};
+
     for (let const prefix_length : PREFIX_LENGTHS) {
       if (span.length >= prefix_length &&
           span.substring(prefix_length).starts_with(inner))
@@ -136,6 +140,7 @@ fn EvalContext::register_embedded_source(StringView inner,
       function_store().call_frames().count(),
       source_depth_floor(source_store().source_frames().count()),
       inner_offset.has_value()});
+
   return true;
 }
 
@@ -189,8 +194,10 @@ fn EvalContext::map_embedded_site(StringView &rendered_source,
 {
   const String *mapped_parent = nullptr;
   usize remaining_steps = source_store().embedded_sources().count();
+
   while (remaining_steps-- > 0) {
     const embedded_source *match = nullptr;
+
     for (usize index = source_store().embedded_sources().count(); index > 0;
          index--)
     {
@@ -202,6 +209,7 @@ fn EvalContext::map_embedded_site(StringView &rendered_source,
         break;
       }
     }
+
     if (match == nullptr) break;
 
     location.position =
@@ -218,14 +226,17 @@ fn EvalContext::map_embedded_site(StringView &rendered_source,
 pure fn EvalContext::embedded_source_name_index() const wontthrow -> Maybe<u32>
 {
   const embedded_source *entry = nullptr;
+
   for (let const &candidate : source_store().embedded_sources()) {
     if (candidate.is_mapped) entry = &candidate;
   }
+
   if (entry == nullptr) return None;
 
   for (usize step = 0; step < source_store().embedded_sources().count(); step++)
   {
     const embedded_source *outer = nullptr;
+
     for (let const &candidate : source_store().embedded_sources()) {
       if (candidate.is_mapped &&
           candidate.text.data == entry->parent->view().data &&
@@ -234,6 +245,7 @@ pure fn EvalContext::embedded_source_name_index() const wontthrow -> Maybe<u32>
         outer = &candidate;
       }
     }
+
     if (outer == nullptr) break;
 
     entry = outer;
@@ -255,11 +267,13 @@ struct command_substitution_drain_context
 static fn drain_command_substitution_pipe(opaque *raw_context) wontthrow -> void
 {
   let drain = static_cast<command_substitution_drain_context *>(raw_context);
+
   loop
   {
     if (drain->length + DRAIN_CHUNK_LENGTH > drain->capacity) {
       usize grown_capacity =
           drain->capacity == 0 ? DRAIN_CHUNK_LENGTH * 2 : drain->capacity * 2;
+
       while (grown_capacity < drain->length + DRAIN_CHUNK_LENGTH)
         grown_capacity *= 2;
 
@@ -286,11 +300,13 @@ fn EvalContext::read_redirect_substitution(StringView source) throws
     -> Maybe<String>
 {
   usize i = 0;
+
   while (i < source.length &&
          (source[i] == ' ' || source[i] == '\t' || source[i] == '\n'))
   {
     i++;
   }
+
   if (i >= source.length || source[i] != '<') {
     return None;
   }
@@ -320,10 +336,12 @@ fn EvalContext::read_redirect_substitution(StringView source) throws
   if (!content.has_value()) {
     LOG(Debug, "the file read substitution of '%s' failed, expanding to empty",
         filename.c_str());
+
     return String{heap_allocator()};
   }
   let result = steal(*content);
   finish_captured_output(result, runtime_state());
+
   return result;
 }
 
@@ -433,6 +451,7 @@ fn EvalContext::setup_process_substitution(
       bootstrap.evaluation_mode = root_evaluation_mode::ContainedSubstitution;
       set_child_source_origin(bootstrap, substitution_source.view(),
                               SourceLocation{});
+
       return os::launch_process_substitution(os::process_substitution_options{
           .source = substitution_source.view(),
           .should_trace_sources = diagnostics_store().source_traces_enabled(),
@@ -460,10 +479,12 @@ fn EvalContext::setup_process_substitution(
   let launch = do_launch();
   if (launch.should_evaluate_child) {
     if (launch.child_close_fd.has_value()) os::close_fd(*launch.child_close_fd);
+
     for (let &pending : expansion_store().pending_process_substitutions()) {
       if (pending.shell_fd != KOSH_INVALID_FD) os::close_fd(pending.shell_fd);
       pending.shell_fd = KOSH_INVALID_FD;
     }
+
     enter_subshell();
     hide_coprocess_descriptors();
     job_table_store().inherit_parent_jobs(false);
@@ -498,6 +519,7 @@ fn EvalContext::setup_process_substitution(
 
   LOG(Debug, "the process substitution is reachable at '%s'",
       launch.path.c_str());
+
   return steal(launch.path);
 }
 
@@ -512,6 +534,7 @@ fn EvalContext::hold_process_substitutions(
 {
   let &pending = expansion_store().pending_process_substitutions();
   let &held = expansion_store().held_process_substitutions();
+
   for (usize i = mark.pending; i < pending.count(); i++) {
     process_substitution &sub = pending[i];
     if (sub.shell_fd != KOSH_INVALID_FD) os::close_fd(sub.shell_fd);
@@ -534,6 +557,7 @@ fn EvalContext::hold_process_substitutions(
 fn EvalContext::release_finished_held_process_substitutions() wontthrow -> void
 {
   let &held = expansion_store().held_process_substitutions();
+
   for (usize i = held.count(); i > 0; i--) {
     process_substitution &sub = held[i - 1];
     if (sub.child != KOSH_INVALID_PROCESS) {
@@ -579,6 +603,7 @@ fn EvalContext::wait_for_process_substitution(i64 process_id,
   };
 
   bool was_pending = false;
+
   for (process_substitution &sub :
        expansion_store().pending_process_substitutions())
   {
@@ -589,6 +614,7 @@ fn EvalContext::wait_for_process_substitution(i64 process_id,
   }
 
   let &held = expansion_store().held_process_substitutions();
+
   for (usize i = held.count(); !was_pending && i > 0; i--) {
     if (!do_reap_matching(held[i - 1])) continue;
 
@@ -626,6 +652,7 @@ fn EvalContext::cleanup_process_substitutions(
 
   LOG(Debug, "cleaning up %zu pending process substitutions",
       expansion_store().pending_process_substitutions().count() - mark.pending);
+
   for (usize i = mark.pending;
        i < expansion_store().pending_process_substitutions().count(); i++)
   {
@@ -680,6 +707,7 @@ fn EvalContext::cleanup_process_substitutions(
       }
     }
   }
+
   while (expansion_store().pending_process_substitutions().count() >
          mark.pending)
     expansion_store().pending_process_substitutions().remove(
@@ -755,6 +783,7 @@ fn EvalContext::push_substitution_source_frame(const WordSegment &segment,
   let const location = segment.get_source_location(
       source_store().current_location().source_name_index);
   if (!location.has_value()) return false;
+
   return push_substitution_source_frame(*location, origin);
 }
 
@@ -778,6 +807,7 @@ fn EvalContext::push_substitution_source_frame(const SourceLocation &location,
   source_store().source_frames().back().function_call_depth =
       function_store().call_frames().count();
   source_store().source_frames().back().is_source_changing = false;
+
   return true;
 }
 
@@ -934,6 +964,7 @@ fn EvalContext::run_captured_substitution(
         throw ErrorWithLocation{previous_location,
                                 "Could not read command substitution output"};
       finish_captured_output(*captured, runtime_state());
+
       return steal(*captured);
     }
   }
@@ -1063,6 +1094,7 @@ fn EvalContext::run_captured_substitution(
     }
 
     finish_captured_output(captured, runtime_state());
+
     return captured;
   };
 
@@ -1204,6 +1236,7 @@ fn EvalContext::run_function_substitution(const Expression *ast,
     }
 
     execution_store().set_shell_is_interactive(was_interactive);
+
     return body_error;
   };
   let const do_contain_error = [&](const std::exception_ptr
@@ -1265,6 +1298,7 @@ fn EvalContext::run_function_substitution(const Expression *ast,
   do_contain_error(error);
 
   finish_captured_output(captured, runtime_state());
+
   return captured;
 }
 

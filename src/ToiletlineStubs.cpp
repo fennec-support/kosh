@@ -61,6 +61,7 @@ enum class history_scan_outcome : u8
 static fn get_no_editor_history_state() -> no_editor_history_state &
 {
   static no_editor_history_state state;
+
   return state;
 }
 
@@ -79,6 +80,7 @@ static fn update_history_file_status(no_editor_history_state &state,
 {
   state.has_file_status =
       os::stat_path_following(path.view(), state.file_status);
+
   return state.has_file_status;
 }
 
@@ -95,6 +97,7 @@ static fn resolve_no_editor_history_path() -> Maybe<Path>
   if (!home.has_value()) return None;
   let path = home->clone();
   path.append(NO_EDITOR_HISTORY_FILE);
+
   return path;
 }
 
@@ -102,6 +105,7 @@ static fn get_history_record_byte_offset(const no_editor_history_state &state,
                                          usize record_index) -> usize
 {
   ASSERT(!state.record_byte_offsets.is_empty());
+
   return state.record_byte_offsets[(state.first_record_index + record_index) %
                                    state.record_byte_offsets.count()];
 }
@@ -111,6 +115,7 @@ get_history_durable_record_byte_offset(const no_editor_history_state &state,
                                        usize record_index) -> usize
 {
   ASSERT(!state.durable_record_byte_offsets.is_empty());
+
   return state
       .durable_record_byte_offsets[(state.first_record_index + record_index) %
                                    state.durable_record_byte_offsets.count()];
@@ -127,6 +132,7 @@ static fn get_history_record_span(const no_editor_history_state &state,
           ? get_history_record_byte_offset(state, record_index + 1)
           : state.trailing_record_start_byte_offset;
   ASSERT(start_byte_offset < end_byte_offset);
+
   return {start_byte_offset, end_byte_offset};
 }
 
@@ -139,6 +145,7 @@ static fn push_history_record_byte_offset(no_editor_history_state &state,
   if (state.record_byte_offsets.count() < state.entry_limit) {
     state.record_byte_offsets.push(byte_offset);
     state.durable_record_byte_offsets.push(durable_byte_offset);
+
     return;
   }
 
@@ -154,6 +161,7 @@ static fn next_history_record(StringView contents, usize &byte_offset,
 {
   span.start_byte_offset = byte_offset;
   bool is_escape_pending = false;
+
   while (byte_offset < contents.length) {
     let const byte = static_cast<u8>(contents[byte_offset]);
     byte_offset++;
@@ -168,6 +176,7 @@ static fn next_history_record(StringView contents, usize &byte_offset,
     }
     if (byte == '\n') {
       span.end_byte_offset = byte_offset;
+
       return true;
     }
     if (byte == '\r' || byte == '\t' || byte == '\v' || byte == '\f') {
@@ -175,6 +184,7 @@ static fn next_history_record(StringView contents, usize &byte_offset,
     }
     if (byte < 0x20 || byte == 0x7f) {
       is_valid = false;
+
       return false;
     }
   }
@@ -191,6 +201,7 @@ static fn decode_history_record(String &decoded, StringView contents,
                       ? encoded_byte_count
                       : NO_EDITOR_HISTORY_DECODED_MAX_BYTE_COUNT);
   bool is_escape_pending = false;
+
   for (usize byte_offset = span.start_byte_offset;
        byte_offset + 1 < span.end_byte_offset; byte_offset++)
   {
@@ -246,11 +257,13 @@ static fn scan_no_editor_history(const Path &path, StringView contents,
   usize byte_offset = 0;
   bool is_valid = true;
   history_record_span span{};
+
   while (next_history_record(contents, byte_offset, span, is_valid)) {
     push_history_record_byte_offset(state, span.start_byte_offset,
                                     span.start_byte_offset);
     state.total_count++;
   }
+
   if (!is_valid) return history_scan_outcome::Invalid;
 
   state.trailing_record_start_byte_offset = span.start_byte_offset;
@@ -265,6 +278,7 @@ static fn scan_no_editor_history(const Path &path, StringView contents,
       state.has_file_status && state.file_status.has_file_identity;
   state.is_file_bad = false;
   state.is_loaded = true;
+
   return history_scan_outcome::Loaded;
 }
 
@@ -327,6 +341,7 @@ static fn find_no_editor_history_event(Allocator allocator,
   let const retained_record_count = state.record_byte_offsets.count();
   let const first_number = state.total_count - retained_record_count + 1;
   let decoded = String{heap_allocator()};
+
   for (usize index = retained_record_count; index > 0; index--) {
     let const number = first_number + index - 1;
     if (before_event_number.has_value() && number >= *before_event_number) {
@@ -375,6 +390,7 @@ static fn rewrite_no_editor_history_event(usize wanted_number,
 
   let encoded_replacements = String{heap_allocator()};
   let replacement_byte_offsets = ArrayList<usize>{heap_allocator()};
+
   for (let const &replacement : replacements) {
     if (replacement.count() > NO_EDITOR_HISTORY_ENTRY_MAX_BYTE_COUNT ||
         !toiletline::is_history_contents_valid(replacement.view()))
@@ -396,16 +412,19 @@ static fn rewrite_no_editor_history_event(usize wanted_number,
   let durable_offsets = ArrayList<usize>{heap_allocator()};
   let const private_removed_byte_count =
       private_span.end_byte_offset - private_span.start_byte_offset;
+
   for (usize old_index = 0; old_index < retained_index; old_index++) {
     private_offsets.push(get_history_record_byte_offset(state, old_index));
     durable_offsets.push(
         get_history_durable_record_byte_offset(state, old_index));
   }
+
   for (let const replacement_byte_offset : replacement_byte_offsets) {
     private_offsets.push(private_span.start_byte_offset +
                          replacement_byte_offset);
     durable_offsets.push(toiletline::UNWRITTEN_HISTORY_RECORD_BYTE_OFFSET);
   }
+
   for (usize old_index = retained_index + 1; old_index < retained_record_count;
        old_index++)
   {
@@ -425,12 +444,14 @@ static fn rewrite_no_editor_history_event(usize wanted_number,
   let retained_durable_offsets = ArrayList<usize>{heap_allocator()};
   retained_private_offsets.reserve(retained_count);
   retained_durable_offsets.reserve(retained_count);
+
   for (usize new_index = first_retained_index;
        new_index < private_offsets.count(); new_index++)
   {
     retained_private_offsets.push(private_offsets[new_index]);
     retained_durable_offsets.push(durable_offsets[new_index]);
   }
+
   state.branch_contents = steal(private_rewritten);
   state.record_byte_offsets = steal(retained_private_offsets);
   state.durable_record_byte_offsets = steal(retained_durable_offsets);
@@ -439,12 +460,15 @@ static fn rewrite_no_editor_history_event(usize wanted_number,
   usize trailing_byte_offset = 0;
   history_record_span trailing_span{};
   bool is_trailing_valid = true;
+
   while (next_history_record(state.branch_contents.view(), trailing_byte_offset,
                              trailing_span, is_trailing_valid))
   {}
+
   ASSERT(is_trailing_valid);
   state.trailing_record_start_byte_offset = trailing_span.start_byte_offset;
   state.is_loaded = true;
+
   return true;
 }
 
@@ -466,6 +490,7 @@ static fn append_no_editor_history_records(no_editor_history_state &state,
   bool is_valid = true;
   history_record_span span{};
   let const first_record_byte_offset = state.branch_contents.count();
+
   while (next_history_record(records, byte_offset, span, is_valid)) {
     push_history_record_byte_offset(
         state, first_record_byte_offset + span.start_byte_offset,
@@ -476,6 +501,7 @@ static fn append_no_editor_history_records(no_editor_history_state &state,
   state.branch_contents.append(records);
   state.file_byte_count = state.branch_contents.count();
   state.trailing_record_start_byte_offset = state.file_byte_count;
+
   return state.total_count;
 }
 
@@ -531,6 +557,7 @@ fn write_history() -> koshka::ErrorOr<koshka::Ok>
   let written = String{koshka::heap_allocator()};
   let durable_offsets = koshka::ArrayList<usize>{koshka::heap_allocator()};
   durable_offsets.reserve(state.record_byte_offsets.count());
+
   for (usize index = 0; index < state.record_byte_offsets.count(); index++) {
     let const span = koshka::internal::get_history_record_span(state, index);
     durable_offsets.push(written.count());
@@ -549,6 +576,7 @@ fn write_history() -> koshka::ErrorOr<koshka::Ok>
                      state.durable_record_byte_offsets.count();
     state.durable_record_byte_offsets[slot] = durable_offsets[index];
   }
+
   state.is_file_bad = false;
   state.has_file_status =
       koshka::internal::update_history_file_status(state, *path);
@@ -556,6 +584,7 @@ fn write_history() -> koshka::ErrorOr<koshka::Ok>
       state.has_file_status && state.file_status.has_file_identity;
   if (!state.is_rewritable)
     return koshka::Error{"the file contains invalid data"};
+
   return koshka::Success;
 }
 
@@ -591,6 +620,7 @@ fn clear_history() -> koshka::ErrorOr<koshka::Ok>
   state.loaded_path = String{koshka::heap_allocator(), path->view()};
   state.entry_limit = entry_limit;
   state.is_loaded = true;
+
   return koshka::Success;
 }
 
@@ -609,6 +639,7 @@ fn import_history(StringView contents) -> koshka::ErrorOr<koshka::Ok>
   if (contents[contents.length - 1] != '\n') records.push('\n');
   unused(koshka::internal::append_no_editor_history_records(state,
                                                             records.view()));
+
   return koshka::Success;
 }
 
@@ -628,6 +659,7 @@ fn append_unwritten_history() -> koshka::ErrorOr<koshka::Ok>
   let unwritten_indexes = koshka::ArrayList<usize>{koshka::heap_allocator()};
   let unwritten_byte_offsets =
       koshka::ArrayList<usize>{koshka::heap_allocator()};
+
   for (usize index = 0; index < state.record_byte_offsets.count(); index++) {
     if (koshka::internal::get_history_durable_record_byte_offset(
             state, index) != UNWRITTEN_HISTORY_RECORD_BYTE_OFFSET)
@@ -680,6 +712,7 @@ fn append_unwritten_history() -> koshka::ErrorOr<koshka::Ok>
   if (!koshka::os::write_all(fd, written.data(), written.count())) {
     let const failure_message = koshka::os::last_system_error_message();
     unused(koshka::os::close_fd(fd));
+
     return koshka::Error{failure_message.view()};
   }
 
@@ -688,6 +721,7 @@ fn append_unwritten_history() -> koshka::ErrorOr<koshka::Ok>
 
   let const first_byte_offset =
       static_cast<usize>(file_byte_count) + (should_add_file_separator ? 1 : 0);
+
   for (usize index = 0; index < unwritten_indexes.count(); index++) {
     let const slot = (state.first_record_index + unwritten_indexes[index]) %
                      state.durable_record_byte_offsets.count();
@@ -727,6 +761,7 @@ fn set_history_limit(usize entry_count) -> void
   retained_offsets.reserve(new_record_count);
   retained_durable_offsets.reserve(new_record_count);
   let const first_retained_index = retained_record_count - new_record_count;
+
   for (usize index = first_retained_index; index < retained_record_count;
        index++)
   {
@@ -774,6 +809,7 @@ fn get_history_events(koshka::Allocator allocator,
   events.reserve(retained_record_count - (first_index < retained_record_count
                                               ? first_index
                                               : retained_record_count));
+
   for (usize index = first_index; index < retained_record_count; index++) {
     let const span = koshka::internal::get_history_record_span(state, index);
     let command = String{allocator};
@@ -794,6 +830,7 @@ fn get_relative_history_event(koshka::Allocator allocator, usize distance,
 {
   if (distance == 0) return koshka::None;
   usize remaining_event_count = distance;
+
   return koshka::internal::find_no_editor_history_event(
       allocator, before_event_number,
       [&](usize, StringView) { return --remaining_event_count == 0; });
@@ -875,6 +912,7 @@ fn rewrite_history_event(usize number, StringView expected,
   let replacements = koshka::ArrayList<String>{koshka::heap_allocator()};
   if (!replacement.is_empty())
     replacements.push(String{koshka::heap_allocator(), replacement});
+
   return rewrite_history_event(number, expected, replacements);
 }
 
@@ -929,6 +967,7 @@ fn get_input(const String &prompt, const String &right_prompt,
 {
   unused(right_prompt);
   unused(transient_prompt);
+
   return get_input(prompt);
 }
 
@@ -960,6 +999,7 @@ fn get_default_prompt_template() -> String
     template_string += "[\\u@\\h${KOSH_GIT_BRANCH:+ ($KOSH_GIT_BRANCH)} \\P";
   }
   template_string += "] ";
+
   return template_string;
 }
 
@@ -972,12 +1012,14 @@ fn build_prompt(koshka::EvalContext &context) -> String
 fn build_right_prompt(koshka::EvalContext &context) -> String
 {
   unused(context);
+
   return String{koshka::heap_allocator()};
 }
 
 fn build_transient_prompt(koshka::EvalContext &context) -> String
 {
   unused(context);
+
   return String{koshka::heap_allocator()};
 }
 
@@ -985,12 +1027,14 @@ fn expand_prompt_template(StringView prompt, koshka::EvalContext &context)
     -> String
 {
   unused(context);
+
   return String{prompt};
 }
 
 fn render_ps0(koshka::EvalContext &context) -> String
 {
   unused(context);
+
   return String{koshka::heap_allocator()};
 }
 

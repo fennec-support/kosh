@@ -86,6 +86,7 @@ fn report_usage(const ExecContext &ec, EvalContext &cxt,
 {
   report_soft_builtin_error(ec, cxt, location, message,
                             "Run `koshconf --help` for the forms");
+
   return 2;
 }
 
@@ -95,6 +96,7 @@ fn report_caught_error(const ExecContext &ec, EvalContext &cxt,
 {
   if (error.detail_message().is_empty()) {
     report_soft_builtin_error(ec, cxt, location, error.message().view());
+
     return;
   }
 
@@ -119,6 +121,7 @@ fn find_named_option(const ExecContext &ec, EvalContext &cxt,
         StringView{"Unknown option '"} + operands.values[index] + "'",
         StringView{"'"} + operands.values[index] + "' is the Bash name of '" +
             bash_option->koshconf_name + "'");
+
     return nullptr;
   }
   if (option != nullptr) return option;
@@ -131,6 +134,7 @@ fn find_named_option(const ExecContext &ec, EvalContext &cxt,
       suggestion.has_value()
           ? StringView{"Did you mean '"} + *suggestion + "'?"
           : String{"Run `koshconf list` for the option names"});
+
   return nullptr;
 }
 
@@ -143,6 +147,7 @@ fn require_user_path(const ExecContext &ec, EvalContext &cxt) throws
         ec, cxt,
         "Neither XDG_CONFIG_HOME nor HOME specifies a directory, so the user "
         "configuration file cannot be located");
+
   return path;
 }
 
@@ -174,6 +179,7 @@ fn run_create(const ExecContext &ec, EvalContext &cxt,
                               "The configuration file '" + path->text() +
                                   "' already exists",
                               "Pass --force to replace it");
+
     return 1;
   }
 
@@ -181,11 +187,13 @@ fn run_create(const ExecContext &ec, EvalContext &cxt,
     write_koshconf_file(*path, make_koshconf_preset(*preset).view());
   } catch (const Error &error) {
     report_caught_error(ec, cxt, ec.source_location(), error);
+
     return 1;
   }
 
   report_written_file(
       ec, cxt, StringView{"the "} + mood_name(*preset) + " preset", *path);
+
   return 0;
 }
 
@@ -207,6 +215,7 @@ fn run_set(const ExecContext &ec, EvalContext &cxt,
             "' option cannot be written with --persist",
         "Read-only, invocation-only, and session-dependent options are not "
         "written to the file");
+
     return 1;
   }
 
@@ -214,6 +223,7 @@ fn run_set(const ExecContext &ec, EvalContext &cxt,
       problem.has_value())
   {
     report_soft_builtin_error(ec, cxt, operands.locations[3], problem->view());
+
     return 1;
   }
 
@@ -228,6 +238,7 @@ fn run_set(const ExecContext &ec, EvalContext &cxt,
     } catch (const Error &error) {
       report_soft_builtin_error(ec, cxt, operands.locations[3],
                                 error.message().view());
+
       return 1;
     }
   }
@@ -236,6 +247,7 @@ fn run_set(const ExecContext &ec, EvalContext &cxt,
     write_option_text(cxt, *option, value, option_origin::Koshconf);
   } catch (const Error &error) {
     report_caught_error(ec, cxt, operands.locations[3], error);
+
     return 1;
   }
 
@@ -246,11 +258,13 @@ fn run_set(const ExecContext &ec, EvalContext &cxt,
     persist_koshconf_setting(*path, *option, persisted_value.view());
   } catch (const Error &error) {
     report_caught_error(ec, cxt, ec.source_location(), error);
+
     return 1;
   }
 
   report_written_file(
       ec, cxt, format_koshconf_line(*option, persisted_value.view()), *path);
+
   return 0;
 }
 
@@ -266,6 +280,7 @@ fn run_get(const ExecContext &ec, EvalContext &cxt,
   let line = read_option_text(cxt, *option);
   line += '\n';
   ec.print_to_stdout(line);
+
   return 0;
 }
 
@@ -278,12 +293,14 @@ fn run_list(const ExecContext &ec, EvalContext &cxt,
 
   let listed = ArrayList<const option_descriptor *>{cxt.scratch_allocator()};
   let set_only = ArrayList<const option_descriptor *>{cxt.scratch_allocator()};
+
   for (let const &option : get_option_registry()) {
     if (option.is_set_alias)
       set_only.push(&option);
     else
       listed.push(&option);
   }
+
   let const sorted =
       steal(listed).make_sorted([](const option_descriptor *left,
                                    const option_descriptor *right) {
@@ -294,6 +311,7 @@ fn run_list(const ExecContext &ec, EvalContext &cxt,
   let out = String{cxt.scratch_allocator()};
   out += LIST_HEADING;
   out += '\n';
+
   for (let const *option_pointer : sorted) {
     let const &option = *option_pointer;
     let const line = format_koshconf_display_line(
@@ -322,6 +340,7 @@ fn run_list(const ExecContext &ec, EvalContext &cxt,
     }
   }
   ec.print_to_stdout(out);
+
   return 0;
 }
 
@@ -340,14 +359,17 @@ fn run_load(const ExecContext &ec, EvalContext &cxt,
     report_soft_builtin_error(ec, cxt, operands.locations[2],
                               "The value is not a valid KOSHCONF encoding: " +
                                   *problem);
+
     return 1;
   }
   apply_koshconf_settings(cxt, reading.settings, option_origin::Koshconf,
                           reading.warnings);
+
   for (let const &warning : reading.warnings) {
     ec.print_to_stderr(warning.view());
     ec.print_to_stderr("\n");
   }
+
   return 0;
 }
 
@@ -362,6 +384,7 @@ fn run_save(const ExecContext &ec, EvalContext &cxt,
     let blob = encode_koshconf_blob(cxt);
     blob += '\n';
     ec.print_to_stdout(blob);
+
     return 0;
   }
 
@@ -372,10 +395,12 @@ fn run_save(const ExecContext &ec, EvalContext &cxt,
     write_koshconf_file(*path, make_koshconf_snapshot(cxt).view());
   } catch (const Error &error) {
     report_caught_error(ec, cxt, ec.source_location(), error);
+
     return 1;
   }
 
   report_written_file(ec, cxt, "the current settings", *path);
+
   return 0;
 }
 
@@ -396,8 +421,10 @@ fn Koshconf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let const command = KOSHCONF_COMMANDS.find(args[1]);
   if (!command.has_value()) {
     let suggestion = utils::NameSuggestion{args[1].view()};
+
     for (let const &entry : KOSHCONF_COMMAND_ENTRIES)
       suggestion.consider(entry.key.to_string().view());
+
     let const close_match = suggestion.take_suggestion();
     report_soft_builtin_error(
         ec, cxt, operand_locations[1],
@@ -406,6 +433,7 @@ fn Koshconf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         close_match.has_value()
             ? StringView{"Did you mean '"} + *close_match + "'?"
             : String{"Run `koshconf --help` for the forms"});
+
     return 2;
   }
   if (FLAG_ALL.is_enabled() && *command != koshconf_command::List) {
@@ -433,6 +461,7 @@ fn Koshconf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     report_soft_builtin_error(
         ec, cxt,
         "Changing settings with koshconf is forbidden in a restricted shell");
+
     return 1;
   }
 

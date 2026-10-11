@@ -101,6 +101,7 @@ fn resolve_sort_key(StringView value) throws -> Maybe<evilps_sort_key>
     return exact->key;
 
   Maybe<evilps_sort_key> match{};
+
   for (let const &entry : SORT_KEY_ENTRIES) {
     if (!StringView{entry.value.name}.starts_with(value)) continue;
     if (match.has_value()) return None;
@@ -178,6 +179,7 @@ fn update_cpu_history(ArrayList<tree_node> &nodes,
     live_process_cpu_row fresh{allocator};
     fresh.pid = node.pid;
     fresh.start_token = node.start_token;
+
     return fresh;
   };
   let const do_updated = [&](tree_node &node, live_process_cpu_row &row) {
@@ -261,6 +263,7 @@ fn append_cpu_value(String &output, const tree_node &node, Allocator allocator,
   if (sampling == report_sampling_mode::Rolling) {
     if (!node.has_cpu_percentage) {
       output += "-";
+
       return;
     }
     output += String::from(node.cpu_percentage_hundredths / 100, allocator);
@@ -270,6 +273,7 @@ fn append_cpu_value(String &output, const tree_node &node, Allocator allocator,
     output.append_repeated('0', 2 - fraction.length());
     output += fraction.view();
     output += "%";
+
     return;
   }
 
@@ -290,6 +294,7 @@ fn append_bounded_command(String &output, StringView command,
   if (line_width_limit == 0 || line_width_limit == SIZE_MAX) {
     output += " ";
     append_report_text(output, command, colors::ansi::DIM, should_color);
+
     return;
   }
 
@@ -305,23 +310,26 @@ fn append_bounded_command(String &output, StringView command,
   output += " ";
   if (toiletline::get_display_width(command) <= available) {
     append_report_text(output, command, colors::ansi::DIM, should_color);
+
     return;
   }
 
   if (available <= 3) {
     usize actual_cells = 0;
-    let const kept_bytes =
+    let const kept_byte_count =
         toiletline::get_byte_offset_at_or_before_display_cell(
             command, available, actual_cells);
-    append_report_text(output, command.substring_of_length(0, kept_bytes),
+    append_report_text(output, command.substring_of_length(0, kept_byte_count),
                        colors::ansi::DIM, should_color);
+
     return;
   }
 
   usize actual_cells = 0;
-  let const kept_bytes = toiletline::get_byte_offset_at_or_before_display_cell(
-      command, available - 3, actual_cells);
-  append_report_text(output, command.substring_of_length(0, kept_bytes),
+  let const kept_byte_count =
+      toiletline::get_byte_offset_at_or_before_display_cell(
+          command, available - 3, actual_cells);
+  append_report_text(output, command.substring_of_length(0, kept_byte_count),
                      colors::ansi::DIM, should_color);
   append_report_text(output, "...", colors::ansi::DIM, should_color);
 }
@@ -466,6 +474,7 @@ fn read_process_nodes(Allocator allocator,
           ? os::process_detail::ResourceStats
           : os::process_detail::Basic);
   ArrayList<tree_node> nodes{allocator};
+
   for (let const &process : processes) {
     tree_node node{};
     node.pid = process.pid;
@@ -490,6 +499,7 @@ fn mark_search_visibility(ArrayList<tree_node> &nodes, StringView search) throws
   let const parsed_pid =
       utils::parse_integer_in_base(search, nullptr, int_base::decimal);
   let const is_exact_pid = !parsed_pid.is_error() && parsed_pid.value() > 0;
+
   for (let &node : nodes) {
     node.is_search_visible =
         is_exact_pid
@@ -501,8 +511,10 @@ fn mark_search_visibility(ArrayList<tree_node> &nodes, StringView search) throws
   for (usize index = 0; index < nodes.count(); index++) {
     if (!nodes[index].is_search_visible) continue;
     let parent_pid = nodes[index].parent_pid;
+
     while (parent_pid > 0) {
       bool did_find_parent = false;
+
       for (let &candidate : nodes) {
         if (candidate.pid != parent_pid) continue;
         candidate.is_search_visible = true;
@@ -510,6 +522,7 @@ fn mark_search_visibility(ArrayList<tree_node> &nodes, StringView search) throws
         did_find_parent = true;
         break;
       }
+
       if (!did_find_parent) break;
     }
   }
@@ -526,6 +539,7 @@ fn render_process_snapshot(const ExecContext &ec, EvalContext &cxt,
   if (unordered_nodes.is_empty()) {
     report_soft_koshkit_error(ec, cxt, "the process listing is unavailable",
                               "this platform exposes no process table");
+
     return 1;
   }
 
@@ -540,6 +554,7 @@ fn render_process_snapshot(const ExecContext &ec, EvalContext &cxt,
     output.truncate(body_start);
     usize line_number = 0;
     usize position = 0;
+
     while (position < body.length()) {
       let const relative_end =
           body.view().substring(position).find_character('\n');
@@ -556,6 +571,7 @@ fn render_process_snapshot(const ExecContext &ec, EvalContext &cxt,
       line_number++;
       position = relative_end.has_value() ? line_end + 1 : body.length();
     }
+
     visible_line_count = line_number;
   };
   let hide_options = options;
@@ -565,8 +581,10 @@ fn render_process_snapshot(const ExecContext &ec, EvalContext &cxt,
 
   let nodes = sort_nodes(steal(unordered_nodes), options);
   defer { unordered_nodes = steal(nodes).into_array_list(); };
+
   for (let &node : nodes)
     node.was_rendered = false;
+
   mark_search_visibility(nodes, search);
 
   i64 root_pid = 1;
@@ -577,6 +595,7 @@ fn render_process_snapshot(const ExecContext &ec, EvalContext &cxt,
       report_soft_koshkit_util_error(ec, cxt, operand_locations[0], "evilps",
                                      "invalid process id '" + operands[0] + "'",
                                      "provide a decimal process id");
+
       return 1;
     }
 
@@ -584,6 +603,7 @@ fn render_process_snapshot(const ExecContext &ec, EvalContext &cxt,
   }
 
   usize root_position = nodes.count();
+
   for (usize position = 0; position < nodes.count(); position++) {
     if (nodes[position].pid != root_pid) continue;
 
@@ -609,6 +629,7 @@ fn render_process_snapshot(const ExecContext &ec, EvalContext &cxt,
     }
     visible_line_count = 1;
     if (viewport_rows != 0) do_window_body();
+
     return 0;
   }
 
@@ -616,6 +637,7 @@ fn render_process_snapshot(const ExecContext &ec, EvalContext &cxt,
     report_soft_koshkit_util_error(ec, cxt, operand_locations[0], "evilps",
                                    "no process has the id " + operands[0],
                                    "read the current identifiers with ps");
+
     return 1;
   }
 
@@ -637,6 +659,7 @@ fn render_process_snapshot(const ExecContext &ec, EvalContext &cxt,
     }
 
     bool has_visible_parent = false;
+
     for (let const &candidate : nodes) {
       if (candidate.pid != nodes[position].parent_pid) continue;
 
@@ -662,6 +685,7 @@ fn render_process_snapshot(const ExecContext &ec, EvalContext &cxt,
 
   visible_line_count = rendered_count;
   if (viewport_rows != 0) do_window_body();
+
   return 0;
 }
 
@@ -673,6 +697,7 @@ pure fn get_clamped_scroll_offset(usize scroll_offset, usize visible_line_count,
   if (visible_line_count <= body_line_count) return 0;
 
   let const maximum_offset = visible_line_count - body_line_count;
+
   return scroll_offset > maximum_offset ? maximum_offset : scroll_offset;
 }
 
@@ -715,19 +740,24 @@ fn evilps_live_state::handle_key(live_view_key key) throws
     input.clear();
     search.clear();
     scroll_offset = 0;
+
     return live_view_key_action::Redraw;
   case live_view_special_key::Up:
     do_scroll_up(1);
+
     return live_view_key_action::Redraw;
   case live_view_special_key::Down:
     if (scroll_offset != SIZE_MAX) scroll_offset++;
+
     return live_view_key_action::Redraw;
   case live_view_special_key::PageUp:
     do_scroll_up(LIVE_PAGE_SCROLL_LINE_COUNT);
+
     return live_view_key_action::Redraw;
   case live_view_special_key::PageDown:
     if (scroll_offset <= SIZE_MAX - LIVE_PAGE_SCROLL_LINE_COUNT)
       scroll_offset += LIVE_PAGE_SCROLL_LINE_COUNT;
+
     return live_view_key_action::Redraw;
   case live_view_special_key::None: break;
   }
@@ -760,6 +790,7 @@ fn evilps_live_state::handle_key(live_view_key key) throws
   case 'J':
   case ' ':
     if (scroll_offset != SIZE_MAX) scroll_offset++;
+
     return live_view_key_action::Redraw;
   case 'k':
   case 'K': do_scroll_up(1); return live_view_key_action::Redraw;
@@ -784,12 +815,14 @@ fn evilps_live_state::handle_key(live_view_key key) throws
     if (sort_key.has_value() && *sort_key == evilps_sort_key::Memory) {
       resource_mode = evilps_resource_mode::ResourceStats;
     }
+
     return live_view_key_action::Redraw;
   case '/':
     input.clear();
     input += '/';
     search.clear();
     scroll_offset = 0;
+
     return live_view_key_action::Redraw;
   default: return live_view_key_action::Unhandled;
   }
@@ -821,6 +854,7 @@ fn EvilPS::execute(const ExecContext &ec, EvalContext &cxt,
     {
       KOSHKIT_REPORT_ERROR_AT(operand_locations[0], "invalid process limit",
                               "the limit must be a positive integer");
+
       return 1;
     }
     output_limit = static_cast<usize>(parsed.value());
@@ -831,6 +865,7 @@ fn EvilPS::execute(const ExecContext &ec, EvalContext &cxt,
   if (operands.count() > 1) {
     KOSHKIT_REPORT_ERROR_AT(operand_locations[1], "too many operands",
                             "specify at most one process id");
+
     return 1;
   }
 
@@ -841,6 +876,7 @@ fn EvilPS::execute(const ExecContext &ec, EvalContext &cxt,
       KOSHKIT_REPORT_ERROR_AT(FLAG_EVILPS_SORT.value_location(),
                               "invalid sort key",
                               "use name, pid, cpu, or memory");
+
       return 1;
     }
   }
@@ -920,6 +956,7 @@ fn EvilPS::execute(const ExecContext &ec, EvalContext &cxt,
             requested_offset, *state.previous_visible_line_count,
             viewport_rows - 1);
       }
+
       for (usize pass_count = 0; pass_count < 2; pass_count++) {
         frame.truncate(body_start_length);
         frame += "SORT ";
@@ -958,6 +995,7 @@ fn EvilPS::execute(const ExecContext &ec, EvalContext &cxt,
 
         render_options.scroll_offset = clamped_offset;
       }
+
       return None;
     };
 
@@ -999,6 +1037,7 @@ fn EvilPS::execute(const ExecContext &ec, EvalContext &cxt,
       ec, cxt, allocator, output, nodes, operands, operand_locations,
       render_options, visible_line_count);
   if (status == 0) ec.print_to_stdout(output);
+
   return status;
 }
 

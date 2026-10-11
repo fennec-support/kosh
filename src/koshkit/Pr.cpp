@@ -84,6 +84,7 @@ struct pr_layout
     if (column == 0) return offset;
 
     let const merge_number_width = is_merge ? number_width : 0;
+
     return offset + column * (column_width + separator.length) +
            merge_number_width;
   }
@@ -114,6 +115,7 @@ public:
   {
     if (m_should_tabify) {
       m_pending_space_count = target > m_position ? target - m_position : 0;
+
       return;
     }
 
@@ -127,6 +129,7 @@ public:
   {
     if (m_should_tabify) {
       m_pending_space_count++;
+
       return;
     }
 
@@ -162,6 +165,7 @@ public:
   fn flush_spaces() throws -> void
   {
     let const goal = m_position + m_pending_space_count;
+
     loop
     {
       let const next_stop = (m_position / PR_TAB_WIDTH + 1) * PR_TAB_WIDTH;
@@ -169,10 +173,12 @@ public:
       m_output += '\t';
       m_position = next_stop;
     }
+
     while (m_position < goal) {
       m_output += ' ';
       m_position++;
     }
+
     m_pending_space_count = 0;
   }
 
@@ -197,14 +203,17 @@ static fn append_pr_number(PrRowWriter &writer, const pr_layout &layout,
       digits.length() > PR_NUMBER_DIGIT_COUNT
           ? digits.view().substring(digits.length() - PR_NUMBER_DIGIT_COUNT)
           : digits.view();
+
   for (usize position = shown.length; position < PR_NUMBER_DIGIT_COUNT;
        position++)
   {
     writer.add_space();
   }
+
   writer.add_text(shown);
   if (!layout.is_multicolumn) {
     writer.add_byte('\t');
+
     return;
   }
 
@@ -219,6 +228,7 @@ static fn append_pr_text(PrRowWriter &writer, const pr_layout &layout,
                          StringView text, usize input_position) throws -> void
 {
   let const has_width_limit = layout.is_aligned;
+
   for (usize index = 0; index < text.length; index++) {
     let const byte = text[index];
     if (byte == '\t') {
@@ -231,8 +241,10 @@ static fn append_pr_text(PrRowWriter &writer, const pr_layout &layout,
         writer.add_byte(byte);
         continue;
       }
+
       for (usize space = 0; space < width; space++)
         writer.add_space();
+
       continue;
     }
 
@@ -262,6 +274,7 @@ static fn append_pr_row(PrRowWriter &writer, const pr_layout &layout,
 {
   writer.begin_row();
   bool has_printed_column = false;
+
   for (usize column = 0; column < row.count(); column++) {
     let const &entry = row[column];
     if (!entry.is_present && !layout.is_merge) break;
@@ -295,6 +308,7 @@ static fn append_pr_row(PrRowWriter &writer, const pr_layout &layout,
     append_pr_text(writer, layout, entry.text, input_position);
     has_printed_column = true;
   }
+
   writer.end_row();
 }
 
@@ -313,6 +327,7 @@ fn Pr::execute(const ExecContext &ec, EvalContext &cxt,
   Maybe<SourceLocation> column_count_location;
   Maybe<StringView> attached_separator;
   bool has_ended_options = false;
+
   for (usize index = 1; index < args.count(); index++) {
     let const argument = args[index].view();
     if (has_ended_options || argument == "--") {
@@ -390,6 +405,7 @@ fn Pr::execute(const ExecContext &ec, EvalContext &cxt,
                       "colon and a last page that is not smaller"
                     : "use a positive decimal integer within the platform "
                       "size limit");
+
         return 1;
       }
 
@@ -407,6 +423,7 @@ fn Pr::execute(const ExecContext &ec, EvalContext &cxt,
     filtered_args.push(args[index].clone());
     filtered_locations.push(arg_locations[index]);
   }
+
   KOSHKIT_PARSE_OPERANDS_OR_HELP(filtered_args, filtered_locations);
 
   usize page_length = 66;
@@ -417,6 +434,7 @@ fn Pr::execute(const ExecContext &ec, EvalContext &cxt,
           FLAG_PR_LENGTH.value_location(),
           "invalid page length '" + FLAG_PR_LENGTH.value() + "'",
           "use a positive decimal integer within the platform size limit");
+
       return 1;
     }
 
@@ -431,6 +449,7 @@ fn Pr::execute(const ExecContext &ec, EvalContext &cxt,
           FLAG_PR_WIDTH.value_location(),
           "invalid page width '" + FLAG_PR_WIDTH.value() + "'",
           "use a positive decimal integer within the platform size limit");
+
       return 1;
     }
 
@@ -445,6 +464,7 @@ fn Pr::execute(const ExecContext &ec, EvalContext &cxt,
           FLAG_PR_OFFSET.value_location(),
           "invalid indentation '" + FLAG_PR_OFFSET.value() + "'",
           "use a nonnegative decimal integer within the platform size limit");
+
       return 1;
     }
 
@@ -456,11 +476,13 @@ fn Pr::execute(const ExecContext &ec, EvalContext &cxt,
     KOSHKIT_REPORT_ERROR_AT(*column_count_location,
                             "a column count cannot be combined with -m",
                             "drop the column count or -m");
+
     return 1;
   }
   if (is_merge && FLAG_PR_ACROSS.is_enabled()) {
     KOSHKIT_REPORT_ERROR_AT(FLAG_PR_ACROSS.value_location(),
                             "-a cannot be combined with -m", "drop -a or -m");
+
     return 1;
   }
 
@@ -493,6 +515,7 @@ fn Pr::execute(const ExecContext &ec, EvalContext &cxt,
     let const input = open_named_or_stdin(ec, source);
     if (!input.has_value()) {
       do_report_read_error(source);
+
       return nullptr;
     }
 
@@ -502,6 +525,7 @@ fn Pr::execute(const ExecContext &ec, EvalContext &cxt,
       opened_modification_time = input_status.modification_time;
     if (input->mode == input_descriptor_mode::Owned)
       owned_inputs.push(input->descriptor);
+
     return scratch_arena.create<utils::BufferedLineReader>(
         input->descriptor, bump_allocator(scratch_arena));
   };
@@ -535,6 +559,7 @@ fn Pr::execute(const ExecContext &ec, EvalContext &cxt,
       readers.push(reader);
       reader_sources.push(source);
     }
+
     if (readers.is_empty()) return status;
   }
 
@@ -572,6 +597,7 @@ fn Pr::execute(const ExecContext &ec, EvalContext &cxt,
     if (layout.column_width == 0) {
       KOSHKIT_REPORT_ERROR("the page width is too narrow for the columns",
                            "use a larger width with -w or fewer columns");
+
       return 1;
     }
   }
@@ -579,6 +605,7 @@ fn Pr::execute(const ExecContext &ec, EvalContext &cxt,
   if (rows_per_page > SIZE_MAX / effective_column_count) {
     KOSHKIT_REPORT_ERROR("the column count exceeds the page capacity",
                          "reduce the column count or the page length");
+
     return 1;
   }
 
@@ -615,11 +642,13 @@ fn Pr::execute(const ExecContext &ec, EvalContext &cxt,
 
     if (is_form_feed_page) {
       output += '\f';
+
       return;
     }
 
     for (usize line = emitted_line_count; line < page_line_capacity; line++)
       output += '\n';
+
     output += "\n\n\n\n\n";
   };
 
@@ -644,14 +673,17 @@ fn Pr::execute(const ExecContext &ec, EvalContext &cxt,
     usize page_number = 1;
     u64 row_number = 1;
     usize open_reader_count = readers.count();
+
     while (open_reader_count > 0 && page_number <= last_page) {
       let const page_mark = page_arena.mark();
       defer { page_arena.release(page_mark); };
       let rows = ArrayList<ArrayList<pr_row_entry>>{page_allocator};
+
       while (rows.count() < rows_per_page && open_reader_count > 0) {
         let row = ArrayList<pr_row_entry>{page_allocator};
         row.reserve(readers.count());
         bool has_line = false;
+
         for (usize column = 0; column < readers.count(); column++) {
           let entry = pr_row_entry{};
           entry.number = row_number;
@@ -675,10 +707,12 @@ fn Pr::execute(const ExecContext &ec, EvalContext &cxt,
           }
           row.push(steal(entry));
         }
+
         if (!has_line) break;
         row_number++;
         rows.push(steal(row));
       }
+
       if (rows.is_empty()) break;
 
       if (page_number < first_page) {
@@ -689,14 +723,17 @@ fn Pr::execute(const ExecContext &ec, EvalContext &cxt,
       if (has_page_frame)
         do_append_header(date_text.view(), title, page_number);
       usize emitted_line_count = 0;
+
       for (let const &row : rows)
         do_append_row(row, false, emitted_line_count);
+
       do_finish_page(emitted_line_count);
       page_number++;
       do_flush_output();
     }
 
     ec.print_to_stdout(output);
+
     return status;
   }
 
@@ -711,10 +748,12 @@ fn Pr::execute(const ExecContext &ec, EvalContext &cxt,
     usize page_number = 1;
     u64 line_number = 1;
     bool has_ended = false;
+
     while (!has_ended && page_number <= last_page) {
       let const page_mark = page_arena.mark();
       defer { page_arena.release(page_mark); };
       let lines = ArrayList<String>{page_allocator};
+
       while (!has_ended && lines.count() < page_entry_capacity) {
         let const result = reader.next();
         if (result == utils::BufferedLineReader::Result::Line) {
@@ -728,6 +767,7 @@ fn Pr::execute(const ExecContext &ec, EvalContext &cxt,
         }
         has_ended = true;
       }
+
       if (lines.is_empty()) return true;
 
       let const page_line_number = line_number;
@@ -746,6 +786,7 @@ fn Pr::execute(const ExecContext &ec, EvalContext &cxt,
       usize row_count = 0;
       if (column_count_on_page > 1 && !FLAG_PR_ACROSS.is_enabled()) {
         usize next_start = 0;
+
         for (usize column = 0; column < column_count_on_page; column++) {
           let const length =
               entry_count / column_count_on_page +
@@ -754,6 +795,7 @@ fn Pr::execute(const ExecContext &ec, EvalContext &cxt,
           column_lengths.push(length);
           next_start += length;
         }
+
         row_count = column_lengths[0];
       } else {
         row_count =
@@ -762,9 +804,11 @@ fn Pr::execute(const ExecContext &ec, EvalContext &cxt,
 
       usize emitted_line_count = 0;
       let row = ArrayList<pr_row_entry>{page_allocator};
+
       for (usize row_index = 0; row_index < row_count; row_index++) {
         row.clear();
         usize present_count = 0;
+
         for (usize column = 0; column < column_count_on_page; column++) {
           let entry = pr_row_entry{};
           let entry_index = usize{0};
@@ -791,10 +835,12 @@ fn Pr::execute(const ExecContext &ec, EvalContext &cxt,
             (!column_starts.is_empty() || present_count < column_count_on_page);
         do_append_row(row, is_input_exhausted, emitted_line_count);
       }
+
       do_finish_page(emitted_line_count);
       page_number++;
       do_flush_output();
     }
+
     return true;
   };
 
@@ -807,6 +853,7 @@ fn Pr::execute(const ExecContext &ec, EvalContext &cxt,
   }
 
   ec.print_to_stdout(output);
+
   return status;
 }
 

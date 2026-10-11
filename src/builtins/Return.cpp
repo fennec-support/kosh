@@ -37,6 +37,7 @@ fn Return::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   {
     report_soft_builtin_error(
         ec, cxt, "can only `return' from a function or sourced script");
+
     return 2;
   }
 
@@ -49,6 +50,7 @@ fn Return::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       report_soft_builtin_error(ec, cxt, ec.arg_location_at(1),
                                 ec.args()[1] + ": numeric argument required");
       cxt.request_return(2, ec.source_location());
+
       return 2;
     }
 
@@ -58,6 +60,7 @@ fn Return::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
           "return takes at most one status, e.g. `return 1`");
 
       cxt.request_return(2, ec.source_location());
+
       return 2;
     }
 
@@ -69,6 +72,7 @@ fn Return::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   LOG(Debug, "return stopping the enclosing scope with status %lld",
       static_cast<long long>(status));
   cxt.request_return(status, ec.source_location());
+
   return static_cast<i32>(status);
 }
 

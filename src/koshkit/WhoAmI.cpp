@@ -29,6 +29,7 @@ cold fn WhoAmI::execute(
   if (!operands.is_empty()) {
     KOSHKIT_REPORT_ERROR_AT(operand_locations[0],
                             "unexpected operand '" + operands[0] + "'");
+
     return 2;
   }
 
@@ -43,12 +44,14 @@ cold fn WhoAmI::execute(
     output.append(user->view());
     output += '\n';
     ec.print_to_stdout(output);
+
     return 0;
   }
 
   report_soft_koshkit_util_error(ec, cxt, args[0].view(),
                                  "cannot determine the effective user: " +
                                      os::last_system_error_message());
+
   return 1;
 }
 

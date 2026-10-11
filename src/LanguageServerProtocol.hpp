@@ -189,11 +189,13 @@ private:
       case 'u': {
         if (m_position + 4 > m_source.length) return None;
         u32 codepoint = 0;
+
         for (usize digit_index = 0; digit_index < 4; digit_index++) {
           let const digit = utils::hex_digit_value(m_source[m_position++]);
           if (!digit.has_value()) return None;
           codepoint = (codepoint << 4) | *digit;
         }
+
         if (codepoint >= 0xd800 && codepoint <= 0xdbff) {
           if (m_position + 6 > m_source.length ||
               m_source[m_position] != '\\' || m_source[m_position + 1] != 'u')
@@ -202,6 +204,7 @@ private:
           }
           m_position += 2;
           u32 low = 0;
+
           for (usize digit_index = 0; digit_index < 4; digit_index++) {
             let const digit = utils::hex_digit_value(m_source[m_position++]);
             if (!digit.has_value()) {
@@ -209,6 +212,7 @@ private:
             }
             low = (low << 4) | *digit;
           }
+
           if (low < 0xdc00 || low > 0xdfff) {
             return None;
           }
@@ -249,6 +253,7 @@ private:
       if (m_source[m_position] < '1' || m_source[m_position] > '9') {
         return nullptr;
       }
+
       while (m_position < m_source.length && m_source[m_position] >= '0' &&
              m_source[m_position] <= '9')
       {
@@ -262,6 +267,7 @@ private:
       {
         return nullptr;
       }
+
       while (m_position < m_source.length && m_source[m_position] >= '0' &&
              m_source[m_position] <= '9')
       {
@@ -282,6 +288,7 @@ private:
       {
         return nullptr;
       }
+
       while (m_position < m_source.length && m_source[m_position] >= '0' &&
              m_source[m_position] <= '9')
       {
@@ -303,6 +310,7 @@ private:
     skip_blanks();
     if (m_position < m_source.length && m_source[m_position] == ']') {
       m_position++;
+
       return value;
     }
 
@@ -316,6 +324,7 @@ private:
       if (m_position >= m_source.length) return nullptr;
       if (m_source[m_position] == ']') {
         m_position++;
+
         return value;
       }
       if (m_source[m_position++] != ',') return nullptr;
@@ -329,6 +338,7 @@ private:
     skip_blanks();
     if (m_position < m_source.length && m_source[m_position] == '}') {
       m_position++;
+
       return value;
     }
 
@@ -349,6 +359,7 @@ private:
       if (m_position >= m_source.length) return nullptr;
       if (m_source[m_position] == '}') {
         m_position++;
+
         return value;
       }
       if (m_source[m_position++] != ',') return nullptr;
@@ -387,6 +398,7 @@ fn append_json_string(String &output, StringView value) throws -> void
       }
     }
   }
+
   output.push('"');
 }
 
@@ -413,20 +425,24 @@ fn append_json_value(String &output, const JsonValue &value) throws -> void
   case json_kind::String: append_json_string(output, value.text.view()); break;
   case json_kind::Array:
     output.push('[');
+
     for (usize index = 0; index < value.array.count(); index++) {
       if (index != 0) output.push(',');
       append_json_value(output, *value.array[index]);
     }
+
     output.push(']');
     break;
   case json_kind::Object:
     output.push('{');
+
     for (usize index = 0; index < value.object.count(); index++) {
       if (index != 0) output.push(',');
       append_json_string(output, value.object[index].name.view());
       output.push(':');
       append_json_value(output, *value.object[index].value);
     }
+
     output.push('}');
     break;
   }
@@ -559,18 +575,22 @@ private:
 
     while (line_start <= headers.length) {
       usize line_end = line_start;
+
       while (line_end < headers.length && headers[line_end] != '\r') {
         line_end++;
       }
+
       let const line =
           headers.substring_of_length(line_start, line_end - line_start);
       if (line.starts_with(PREFIX)) {
         usize position = PREFIX.length;
+
         while (position < line.length &&
                (line[position] == ' ' || line[position] == '\t'))
         {
           position++;
         }
+
         if (position == line.length) return None;
         let const parsed = utils::parse_decimal_u64(line.substring(position));
         if (parsed.is_error() || parsed.value() > SIZE_MAX) {
@@ -591,12 +611,14 @@ private:
     let const buffered_length = m_buffer.count() - body_start;
     if (buffered_length >= length) {
       m_offset = body_start + length;
+
       return true;
     }
 
     let remaining_length = length - buffered_length;
     m_offset = m_buffer.count();
     char bytes[8192];
+
     while (remaining_length > 0) {
       let const wanted_length =
           remaining_length < sizeof(bytes) ? remaining_length : sizeof(bytes);
@@ -628,6 +650,7 @@ private:
     if (m_offset == m_buffer.count()) {
       m_buffer.clear();
       m_offset = 0;
+
       return;
     }
     if (m_offset < 64 * 1024) return;
@@ -665,6 +688,7 @@ pure fn json_array_holds(const JsonValue *value, StringView wanted) wontthrow
   if (value == nullptr || value->kind != json_kind::Array) {
     return false;
   }
+
   for (let const *element : value->array)
     if (element->kind == json_kind::String && element->text == wanted) {
       return true;
@@ -799,11 +823,13 @@ public:
       {
         return None;
       }
+
       return position;
     }
 
     usize position = start;
     usize units = 0;
+
     while (position < end && units < character) {
       let const decoded =
           utils::decode_utf8(normalized_source.view(), position, 0xfffd);
@@ -812,6 +838,7 @@ public:
       units += codepoint_units;
       position += decoded.length;
     }
+
     if (units != character) return None;
 
     return position;
@@ -825,6 +852,7 @@ public:
       byte_position = normalized_source.count();
     usize lower = 0;
     usize upper = line_starts.count();
+
     while (lower + 1 < upper) {
       let const middle = lower + (upper - lower) / 2;
       if (line_starts[middle] <= byte_position)
@@ -832,6 +860,7 @@ public:
       else
         upper = middle;
     }
+
     let const line = lower;
     let const start = line_starts[line];
     if (encoding == position_encoding::Utf8 || normalized_source.is_ascii()) {
@@ -844,12 +873,14 @@ public:
       units = m_cached_units;
       position = m_cached_unit_byte;
     }
+
     while (position < byte_position) {
       let const decoded =
           utils::decode_utf8(normalized_source.view(), position, 0xfffd);
       units += decoded.value > 0xffff ? 2 : 1;
       position += decoded.length;
     }
+
     m_cached_unit_line = line;
     m_cached_unit_byte = position;
     m_cached_units = units;
@@ -903,6 +934,7 @@ public:
         normalized_source.view(), path_view, language_id.view()});
     if (!format.is_host_format) {
       analysis_source = String{heap_allocator()};
+
       return;
     }
     analysis_source =
@@ -918,6 +950,7 @@ public:
   pure fn fragment_at(usize position) const wontthrow -> Maybe<usize>
   {
     if (!format.is_host_format) return usize{0};
+
     return parser_format_fragment_at(format, position);
   }
 

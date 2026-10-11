@@ -203,7 +203,7 @@ struct positioned_tail_state
 {
   usize source_index{0};
   os::descriptor descriptor{KOSH_INVALID_FD};
-  u64 file_size{0};
+  u64 file_byte_count{0};
   u64 scan_offset{0};
   u64 start_offset{0};
   u64 remaining_newline_count{0};
@@ -225,25 +225,28 @@ static fn find_tail_starts_from_end(ArrayList<positioned_tail_state> &states,
     batch.clear();
     results.clear();
     operation_states.clear();
+
     for (usize state_index = 0; state_index < states.count(); state_index++) {
       let &state = states[state_index];
       if (state.is_done || state.scan_offset == 0) {
         continue;
       }
 
-      let const block_size = state.scan_offset > TAIL_BLOCK_BYTE_COUNT
-                                 ? TAIL_BLOCK_BYTE_COUNT
-                                 : static_cast<usize>(state.scan_offset);
-      state.read_byte_count = block_size;
-      batch.add(os::batch_operation::read(state.descriptor,
-                                          state.buffer.begin(), block_size,
-                                          state.scan_offset - block_size));
+      let const block_byte_count = state.scan_offset > TAIL_BLOCK_BYTE_COUNT
+                                       ? TAIL_BLOCK_BYTE_COUNT
+                                       : static_cast<usize>(state.scan_offset);
+      state.read_byte_count = block_byte_count;
+      batch.add(os::batch_operation::read(
+          state.descriptor, state.buffer.begin(), block_byte_count,
+          state.scan_offset - block_byte_count));
       operation_states.push(state_index);
     }
+
     if (operation_states.is_empty()) break;
 
     batch.execute(results);
     if (os::INTERRUPT_REQUESTED) return;
+
     for (usize result_index = 0; result_index < results.count(); result_index++)
     {
       let &state = states[operation_states[result_index]];
@@ -261,11 +264,12 @@ static fn find_tail_starts_from_end(ArrayList<positioned_tail_state> &states,
       }
 
       let const block_offset = state.scan_offset - state.read_byte_count;
+
       for (usize position = transferred; position > 0; position--) {
         if (state.buffer.begin()[position - 1] != '\n') continue;
 
         let const absolute = block_offset + position - 1;
-        if (absolute + 1 == state.file_size) continue;
+        if (absolute + 1 == state.file_byte_count) continue;
 
         if (--state.remaining_newline_count == 0) {
           state.start_offset = absolute + 1;
@@ -292,30 +296,33 @@ static fn find_tail_starts_from_start(ArrayList<positioned_tail_state> &states,
     batch.clear();
     results.clear();
     operation_states.clear();
+
     for (usize state_index = 0; state_index < states.count(); state_index++) {
       let &state = states[state_index];
       if (state.is_done) continue;
 
-      if (state.scan_offset >= state.file_size) {
-        state.start_offset = state.file_size;
+      if (state.scan_offset >= state.file_byte_count) {
+        state.start_offset = state.file_byte_count;
         state.is_done = true;
         continue;
       }
 
-      let const remaining = state.file_size - state.scan_offset;
-      let const block_size = remaining > TAIL_BLOCK_BYTE_COUNT
-                                 ? TAIL_BLOCK_BYTE_COUNT
-                                 : static_cast<usize>(remaining);
-      state.read_byte_count = block_size;
+      let const remaining = state.file_byte_count - state.scan_offset;
+      let const block_byte_count = remaining > TAIL_BLOCK_BYTE_COUNT
+                                       ? TAIL_BLOCK_BYTE_COUNT
+                                       : static_cast<usize>(remaining);
+      state.read_byte_count = block_byte_count;
       batch.add(os::batch_operation::read(state.descriptor,
-                                          state.buffer.begin(), block_size,
-                                          state.scan_offset));
+                                          state.buffer.begin(),
+                                          block_byte_count, state.scan_offset));
       operation_states.push(state_index);
     }
+
     if (operation_states.is_empty()) break;
 
     batch.execute(results);
     if (os::INTERRUPT_REQUESTED) return;
+
     for (usize result_index = 0; result_index < results.count(); result_index++)
     {
       let &state = states[operation_states[result_index]];
@@ -327,6 +334,7 @@ static fn find_tail_starts_from_start(ArrayList<positioned_tail_state> &states,
       }
 
       let const transferred = result.transferred_byte_count;
+
       for (usize position = 0; position < transferred; position++) {
         if (state.buffer.begin()[position] != '\n') continue;
 
@@ -336,6 +344,7 @@ static fn find_tail_starts_from_start(ArrayList<positioned_tail_state> &states,
           break;
         }
       }
+
       if (state.is_done) continue;
 
       state.scan_offset += transferred;
@@ -376,19 +385,23 @@ fn Tail::execute(const ExecContext &ec, EvalContext &cxt,
   statuses.reserve(sources.count());
   metadata_errors.reserve(sources.count());
   metadata_batch.reserve(sources.count());
+
   for (let const &source : sources) {
     paths.push(Path{source, allocator});
     statuses.push({});
     metadata_errors.push(0);
   }
+
   for (usize source_index = 0; source_index < sources.count(); source_index++) {
     if (sources[source_index] == "-") continue;
     metadata_source_indices.push(source_index);
     metadata_batch.add(
         os::batch_operation::stat(paths[source_index], statuses[source_index]));
   }
+
   if (metadata_batch.count() != 0) {
     metadata_results = metadata_batch.execute();
+
     for (usize result_index = 0; result_index < metadata_results.count();
          result_index++)
       metadata_errors[metadata_source_indices[result_index]] =
@@ -405,6 +418,7 @@ fn Tail::execute(const ExecContext &ec, EvalContext &cxt,
   let const do_write_output = [&](StringView text) throws -> void {
     if (output.count() + text.length < TAIL_OUTPUT_FLUSH_BYTE_COUNT) {
       output += text;
+
       return;
     }
 
@@ -458,6 +472,7 @@ fn Tail::execute(const ExecContext &ec, EvalContext &cxt,
   if (options.is_following) {
     follow_entries.reserve(sources.count());
     buffered_byte_counts.reserve(sources.count());
+
     for (usize source_index = 0; source_index < sources.count(); source_index++)
     {
       follow_entries.push({});
@@ -484,31 +499,34 @@ fn Tail::execute(const ExecContext &ec, EvalContext &cxt,
     let const descriptor = os::open_file_descriptor(sources[source_index],
                                                     os::file_open_mode::Read);
     if (!descriptor.has_value()) return;
-    let const file_size = os::regular_descriptor_file_size(*descriptor);
-    if (!file_size.has_value()) {
+    let const file_byte_count = os::regular_descriptor_file_size(*descriptor);
+    if (!file_byte_count.has_value()) {
       unused(os::close_fd(*descriptor));
+
       return;
     }
 
     positioned_tail_state state{};
     state.source_index = source_index;
     state.descriptor = *descriptor;
-    state.file_size = *file_size;
+    state.file_byte_count = *file_byte_count;
     if (options.unit == tail_unit::Bytes) {
       if (options.origin == count_origin::FromEnd)
-        state.start_offset = *file_size > static_cast<u64>(options.count)
-                                 ? *file_size - static_cast<u64>(options.count)
-                                 : 0;
+        state.start_offset =
+            *file_byte_count > static_cast<u64>(options.count)
+                ? *file_byte_count - static_cast<u64>(options.count)
+                : 0;
       else if (options.count > 0)
-        state.start_offset = static_cast<u64>(options.count - 1) < *file_size
-                                 ? static_cast<u64>(options.count - 1)
-                                 : *file_size;
+        state.start_offset =
+            static_cast<u64>(options.count - 1) < *file_byte_count
+                ? static_cast<u64>(options.count - 1)
+                : *file_byte_count;
       state.is_done = true;
     } else if (options.origin == count_origin::FromEnd) {
-      state.scan_offset = *file_size;
+      state.scan_offset = *file_byte_count;
       state.remaining_newline_count = static_cast<u64>(options.count);
-      if (*file_size == 0 || options.count == 0) {
-        state.start_offset = *file_size;
+      if (*file_byte_count == 0 || options.count == 0) {
+        state.start_offset = *file_byte_count;
         state.is_done = true;
       }
     } else {
@@ -528,15 +546,16 @@ fn Tail::execute(const ExecContext &ec, EvalContext &cxt,
   let const do_write_positioned = [&](const positioned_tail_state &state)
                                       throws -> i32 {
     u64 offset = state.start_offset;
-    while (offset < state.file_size) {
-      let const remaining = state.file_size - offset;
-      let const block_size = remaining > TAIL_BLOCK_BYTE_COUNT
-                                 ? TAIL_BLOCK_BYTE_COUNT
-                                 : static_cast<usize>(remaining);
+
+    while (offset < state.file_byte_count) {
+      let const remaining = state.file_byte_count - offset;
+      let const block_byte_count = remaining > TAIL_BLOCK_BYTE_COUNT
+                                       ? TAIL_BLOCK_BYTE_COUNT
+                                       : static_cast<usize>(remaining);
       read_batch.clear();
       read_results.clear();
       read_batch.add(os::batch_operation::read(state.descriptor, block.begin(),
-                                               block_size, offset));
+                                               block_byte_count, offset));
       read_batch.execute(read_results);
       if (os::INTERRUPT_REQUESTED) return 0;
 
@@ -562,6 +581,7 @@ fn Tail::execute(const ExecContext &ec, EvalContext &cxt,
 
       do_report_error(source_index,
                       is_directory ? "cannot read '" : "cannot open '");
+
       return;
     }
 
@@ -580,10 +600,12 @@ fn Tail::execute(const ExecContext &ec, EvalContext &cxt,
       if (start > text.length) start = text.length;
     } else if (options.origin == count_origin::FromStart) {
       usize remaining_newline_count = options.count > 0 ? wanted_count - 1 : 0;
+
       while (start < text.length && remaining_newline_count > 0) {
         if (text[start] == '\n') remaining_newline_count--;
         start++;
       }
+
       if (remaining_newline_count > 0) start = text.length;
     } else if (wanted_count == 0) {
       start = text.length;
@@ -593,6 +615,7 @@ fn Tail::execute(const ExecContext &ec, EvalContext &cxt,
       if (start > 0 && text[start - 1] == '\n') {
         start--;
       }
+
       while (start > 0) {
         if (text[start - 1] == '\n' && --remaining_newline_count == 0) {
           break;
@@ -605,8 +628,10 @@ fn Tail::execute(const ExecContext &ec, EvalContext &cxt,
   };
 
   usize window_begin = 0;
+
   while (window_begin < sources.count()) {
     usize window_end = window_begin;
+
     while (window_end < sources.count() &&
            states.count() < TAIL_ACTIVE_SOURCE_COUNT)
     {
@@ -624,6 +649,7 @@ fn Tail::execute(const ExecContext &ec, EvalContext &cxt,
     if (os::INTERRUPT_REQUESTED) return 130;
 
     usize state_index = 0;
+
     for (usize source_index = window_begin; source_index < window_end;
          source_index++)
     {
@@ -654,16 +680,18 @@ fn Tail::execute(const ExecContext &ec, EvalContext &cxt,
 
     for (let &state : states) {
       if (options.is_following && state.error_number == 0 &&
-          os::seek_descriptor_from_start(state.descriptor, state.file_size))
+          os::seek_descriptor_from_start(state.descriptor,
+                                         state.file_byte_count))
       {
         follow_entries[state.source_index].descriptor = state.descriptor;
-        follow_entries[state.source_index].offset = state.file_size;
+        follow_entries[state.source_index].offset = state.file_byte_count;
       } else {
         unused(os::close_fd(state.descriptor));
       }
 
       state.descriptor = KOSH_INVALID_FD;
     }
+
     states.clear();
     window_begin = window_end;
   }
@@ -673,6 +701,7 @@ fn Tail::execute(const ExecContext &ec, EvalContext &cxt,
 
   usize active_count = 0;
   usize failed_open_count = 0;
+
   for (usize source_index = 0; source_index < sources.count(); source_index++) {
     let &entry = follow_entries[source_index];
     if (sources[source_index] == "-") {
@@ -740,6 +769,7 @@ fn Tail::execute(const ExecContext &ec, EvalContext &cxt,
 
     report_soft_koshkit_util_error(ec, cxt, args[0].view(),
                                    "no files remaining");
+
     return 1;
   }
 
@@ -782,6 +812,7 @@ fn Tail::execute(const ExecContext &ec, EvalContext &cxt,
       if (!read_count.has_value()) {
         do_report_error(source_index, "cannot read '");
         do_deactivate(source_index);
+
         return;
       }
 
@@ -804,6 +835,7 @@ fn Tail::execute(const ExecContext &ec, EvalContext &cxt,
       do_read_followed(source_index);
       if (!entry.is_active) {
         unused(os::close_fd(*descriptor));
+
         return;
       }
 
@@ -818,6 +850,7 @@ fn Tail::execute(const ExecContext &ec, EvalContext &cxt,
   };
 
   let watcher = os::FileWatcher{};
+
   for (usize source_index = 0; source_index < sources.count(); source_index++)
     if (follow_entries[source_index].is_active &&
         !follow_entries[source_index].is_standard_input)
@@ -828,6 +861,7 @@ fn Tail::execute(const ExecContext &ec, EvalContext &cxt,
   let const wait_seconds = options.sleep_seconds < TAIL_MINIMUM_WAIT_SECONDS
                                ? TAIL_MINIMUM_WAIT_SECONDS
                                : options.sleep_seconds;
+
   loop
   {
     let const is_watched_process_gone =
@@ -886,6 +920,7 @@ fn Tail::execute(const ExecContext &ec, EvalContext &cxt,
     if (active_count == 0) {
       report_soft_koshkit_util_error(ec, cxt, args[0].view(),
                                      "no files remaining");
+
       return 1;
     }
 

@@ -137,6 +137,7 @@ fn Parser::close_analysis_scope(usize scope_mark) throws
     -> ArrayList<analysis_scope_definition>
 {
   let harvested = ArrayList<analysis_scope_definition>{heap_allocator()};
+
   for (usize i = scope_mark; i < m_analysis_scope_definitions.count(); i++)
     harvested.push(steal(m_analysis_scope_definitions[i]));
 
@@ -168,6 +169,7 @@ hot pure fn internal::is_unquoted_word(const Token *token,
                                        StringView text) wontthrow -> bool
 {
   let const *unquoted_text = get_unquoted_word_text(token);
+
   return unquoted_text != nullptr && *unquoted_text == text;
 }
 
@@ -175,6 +177,7 @@ hot pure static fn is_list_terminator(const Token *token,
                                       u64 terminator_mask) wontthrow -> bool
 {
   ASSERT(token != nullptr);
+
   return (terminator_mask & (u64{1} << static_cast<u8>(token->kind()))) != 0 ||
          ((terminator_mask &
            (u64{1} << static_cast<u8>(Token::Kind::RightBracket))) != 0 &&
@@ -204,6 +207,7 @@ cold pure static fn find_standalone_keyword(StringView source,
       return SourceLocation{pos, keyword.length};
     }
   }
+
   return koshka::None;
 }
 
@@ -236,11 +240,13 @@ cold static fn unexpected_command_token_message(const Token *token) throws
   case Token::Kind::Elif:
   case Token::Kind::Fi: {
     let const ast = token->to_ast_string();
+
     return "'" + ast.view() + "' has no matching 'if'";
   }
   case Token::Kind::Do:
   case Token::Kind::Done: {
     let const ast = token->to_ast_string();
+
     return "'" + ast.view() + "' has no matching 'while', 'until', or 'for'";
   }
   case Token::Kind::Esac: return "'esac' has no matching 'case'";
@@ -251,6 +257,7 @@ cold static fn unexpected_command_token_message(const Token *token) throws
   case Token::Kind::Pipe: return "'|' has no command before it to pipe from";
   default: {
     let const ast = token->to_ast_string();
+
     return "Expected a command, found '" + ast.view() + "'";
   }
   }
@@ -340,6 +347,7 @@ cold fn Parser::recover_to_next_statement() throws -> void
 {
   LOG(Debug, "skipping tokens to the next statement boundary");
   bool has_consumed_token = false;
+
   loop
   {
     Token *token = m_lexer.peek_shell_token();
@@ -352,6 +360,7 @@ cold fn Parser::recover_to_next_statement() throws -> void
 
     if (is_boundary && has_consumed_token) {
       m_lexer.advance_past_last_peek();
+
       return;
     }
 
@@ -364,6 +373,7 @@ alwaysinline static fn
 get_location_filename(const SourceLocation &location) throws -> String
 {
   let const name = location.get_filename();
+
   return name.has_value() ? String{*name} : String{heap_allocator()};
 }
 
@@ -429,6 +439,7 @@ cold fn Parser::record_substitution_errors(
   if (!m_lexer.has_substitution_errors()) return;
 
   let const substitution_errors = m_lexer.take_substitution_errors();
+
   for (let const &error : substitution_errors) {
     if (error.details_message().is_empty()) {
       record_parse_error(error, errors, context, diagnostic_sink);
@@ -475,6 +486,7 @@ alwaysinline fn Parser::peek_top_level_token(
     m_lexer.set_shellcheck_directive_collection_mode(
         shellcheck_directive_collection_mode::Disabled);
   record_substitution_errors(errors, context, diagnostic_sink);
+
   return token;
 }
 
@@ -543,6 +555,7 @@ cold fn Parser::construct_next_top_level_ast(
       Expression *piece = parse_command_list(0);
       ASSERT(piece != nullptr);
       record_substitution_errors(errors, context, diagnostic_sink);
+
       return piece;
     } catch (const ErrorWithLocation &) {
       record_error(errors, context, diagnostic_sink);
@@ -637,6 +650,7 @@ hot fn Parser::parse_command_list(u64 terminator_mask) throws -> Expression *
         let directives = m_lexer.take_shellcheck_directives();
         m_lexer.set_shellcheck_directive_collection_mode(
             shellcheck_directive_collection_mode::Disabled);
+
         while (!directives.is_empty() &&
                maybe_time->kind() == Token::Kind::Newline)
         {
@@ -647,9 +661,11 @@ hot fn Parser::parse_command_list(u64 terminator_mask) throws -> Expression *
           let following_directives = m_lexer.take_shellcheck_directives();
           m_lexer.set_shellcheck_directive_collection_mode(
               shellcheck_directive_collection_mode::Disabled);
+
           for (let const &directive : following_directives)
             directives.push(directive);
         }
+
         let const is_source_command =
             maybe_time->kind() != Token::Kind::Newline &&
             maybe_time->kind() != Token::Kind::EndOfFile;
@@ -659,8 +675,10 @@ hot fn Parser::parse_command_list(u64 terminator_mask) throws -> Expression *
         if (!directives.is_empty()) {
           let const source = m_lexer.source();
           let selectors = ArrayList<shellcheck_selector>{heap_allocator()};
+
           for (let const &directive : directives)
             collect_shellcheck_selectors(source, directive, selectors);
+
           m_shellcheck_suppressions.push(shellcheck_suppression{
               maybe_time->source_location().position,
               is_first_source_command ? static_cast<usize>(-1)
@@ -689,6 +707,7 @@ hot fn Parser::parse_command_list(u64 terminator_mask) throws -> Expression *
           leading_command_token = maybe_time;
         } else {
           should_time_pending = true;
+
           loop
           {
             if (is_unquoted_word(maybe_option, "-p") ||
@@ -731,6 +750,7 @@ hot fn Parser::parse_command_list(u64 terminator_mask) throws -> Expression *
         return m_lexer.arena().create<DummyExpression>(
             token->source_location());
       }
+
       return compound_list;
     }
 
@@ -742,6 +762,7 @@ hot fn Parser::parse_command_list(u64 terminator_mask) throws -> Expression *
 
           let const source = m_lexer.source();
           let end_position = token->source_location().position;
+
           while (end_position > and_or_start.position &&
                  (source[end_position - 1] == ' ' ||
                   source[end_position - 1] == '\t'))
@@ -899,6 +920,7 @@ static fn stderr_to_stdout_dup() wontthrow -> expressions::Redirection
   dup.target = nullptr;
   dup.kind = expressions::Redirection::Kind::DuplicateOutput;
   dup.dup_fd = 1;
+
   return dup;
 }
 
@@ -938,6 +960,7 @@ fn Parser::build_file_or_dup_redirection(
       if (literal == "-") {
         redir.dup_fd = expressions::Redirection::DUP_FD_CLOSE;
         out.push(redir);
+
         return;
       }
 
@@ -973,6 +996,7 @@ fn Parser::build_file_or_dup_redirection(
           descriptor_spelling == redirection_descriptor_spelling::Implicit &&
           !m_lexer.is_posix_mode();
       out.push(redir);
+
       return;
     }
   }
@@ -991,6 +1015,7 @@ fn Parser::build_file_or_dup_redirection(
       redir.target = next_token_of_kind(Token::Kind::Word,
                                         "Expected a filename after '>|'");
       out.push(redir);
+
       return;
     }
 
@@ -1002,6 +1027,7 @@ fn Parser::build_file_or_dup_redirection(
       redir.target = next_token_of_kind(Token::Kind::Word,
                                         "Expected a filename after '<>'");
       out.push(redir);
+
       return;
     }
   }
@@ -1068,6 +1094,7 @@ mustuse fn Parser::wrap_with_stderr_to_stdout(Command *command) throws
   if (command->is_simple_command()) {
     static_cast<SimpleCommand *>(command)->append_redirection(
         stderr_to_stdout_dup(), arena_allocator);
+
     return command;
   }
 
@@ -1076,6 +1103,7 @@ mustuse fn Parser::wrap_with_stderr_to_stdout(Command *command) throws
   let redirected = m_lexer.arena().create<RedirectedCommand>(
       command->source_location(), command, steal(redirections));
   redirected->set_source_end_position(command->source_end_position());
+
   return redirected;
 }
 
@@ -1142,6 +1170,7 @@ fn Parser::build_heredoc_redirection(
       static_cast<int>(delimiter.length), delimiter.data);
 
   bool should_expand = true;
+
   for (let const &segment : delimiter_word.segments) {
     if (segment.kind != WordSegment::Kind::UnquotedText) {
       should_expand = false;
@@ -1175,6 +1204,7 @@ mustuse fn Parser::try_parse_descriptor_prefixed_redirection(
     if (word_token->word().fd_allocation_name().has_value()) return true;
 
     let const parsed = word_token->word().to_literal_string().to<i64>();
+
     return !parsed.is_error() && parsed.value() <= INT32_MAX;
   };
   if ((nk == Token::Kind::Greater || nk == Token::Kind::DoubleGreater ||
@@ -1200,6 +1230,7 @@ mustuse fn Parser::try_parse_descriptor_prefixed_redirection(
             -1, nk, op_location, first_location, out, word_token,
             redirection_descriptor_spelling::Explicit);
       }
+
       return true;
     }
 
@@ -1219,8 +1250,10 @@ mustuse fn Parser::try_parse_descriptor_prefixed_redirection(
                                     nullptr,
                                     redirection_descriptor_spelling::Explicit);
     }
+
     return true;
   }
+
   return false;
 }
 
@@ -1239,6 +1272,7 @@ alwaysinline fn Parser::try_build_operator_redirection(
     build_file_or_dup_redirection(op_kind == Token::Kind::Less ? 0 : 1, op_kind,
                                   op_location, first_location, out, nullptr,
                                   redirection_descriptor_spelling::Implicit);
+
     return true;
 
   case Token::Kind::AmpersandGreater:
@@ -1249,16 +1283,19 @@ alwaysinline fn Parser::try_build_operator_redirection(
                                            Token::Kind::AmpersandDoubleGreater
                                        ? assignment_update_mode::Append
                                        : assignment_update_mode::Replace);
+
     return true;
 
   case Token::Kind::DoubleLess:
     m_lexer.advance_past_last_peek();
     build_heredoc_redirection(0, op_location, first_location, out);
+
     return true;
 
   case Token::Kind::TripleLess:
     m_lexer.advance_past_last_peek();
     build_here_string_redirection(0, op_location, first_location, out);
+
     return true;
 
   default: return false;
@@ -1304,6 +1341,7 @@ mustuse fn Parser::attach_trailing_redirections(Command *compound) throws
 
   let end_position = compound->source_end_position();
   let redirections = ArrayList<expressions::Redirection>{heap_allocator()};
+
   while (try_parse_trailing_redirection(redirections))
     end_position = m_lexer.cursor_position();
 
@@ -1358,6 +1396,7 @@ hot fn Parser::parse_simple_command(const Token *leading_token) throws
     if (!array_args.is_empty()) c->set_array_args(steal(array_args));
     if (!redirections.is_empty()) c->set_redirections(steal(redirections));
     c->set_full_source_end_position(full_end_position);
+
     return c;
   };
 
@@ -1411,6 +1450,7 @@ hot fn Parser::parse_simple_command(const Token *leading_token) throws
                                   "the sh mood does not "
                                   "provide"};
         }
+
         return attach_trailing_redirections(parse_conditional_command());
       case command_position_word::Select:
         if (m_lexer.is_bash_compatible())
@@ -1491,6 +1531,7 @@ hot fn Parser::parse_simple_command(const Token *leading_token) throws
     case Token::Kind::Function:
       if (args_accumulator.is_empty() && local_vars.count() == 0) {
         m_lexer.advance_past_last_peek();
+
         return parse_keyword_function_definition();
       }
       m_lexer.advance_past_last_peek();
@@ -1504,6 +1545,7 @@ hot fn Parser::parse_simple_command(const Token *leading_token) throws
       {
         return parse_function_definition(args_accumulator[0]);
       }
+
       return do_build_command();
 
     case Token::Kind::Assignment: {
@@ -1624,6 +1666,7 @@ fn Parser::finish_function_body(const SourceLocation &location,
       location, name, steal(body_storage));
   definition->set_analysis_scope_definitions(close_analysis_scope(scope_mark));
   definition->set_source_end_position(body->source_end_position());
+
   return definition;
 }
 

@@ -119,6 +119,7 @@ append_completion_specification_line(String &output, StringView command,
                                      const completion_spec &spec) throws -> void
 {
   output += "complete ";
+
   for (let const &entry : COMPLETION_OPTION_ENTRIES) {
     if (!spec.has_option(entry.value)) continue;
 
@@ -245,6 +246,7 @@ fn Complete::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                                           ? FLAG_COMPLETE_WORDLIST.value()
                                           : StringView{}};
   u32 option_mask = 0;
+
   for (usize i = 0; i < FLAG_COMPLETE_OPTION.count(); i++) {
     let const name = FLAG_COMPLETE_OPTION.get(i);
     let const option = COMPLETION_OPTIONS.find(name);
@@ -300,6 +302,7 @@ fn Complete::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   let const should_print_specs = FLAG_COMPLETE_PRINT.is_enabled();
   let commands = ArrayList<String>{cxt.scratch_allocator()};
+
   for (usize i = 1; i < args.count(); i++)
     commands.push_managed(args[i].view());
 
@@ -309,21 +312,25 @@ fn Complete::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       let const *spec = cxt.completion_store().get_slot_spec(*slot);
       if (spec == nullptr) {
         report_missing_slot_spec(ec, cxt, *slot);
+
         return 1;
       }
       append_completion_specification_line(
           output, find_completion_slot_name(*slot).flag, *spec);
       ec.print_to_stdout(output.view());
+
       return 0;
     }
 
     if (commands.is_empty()) {
       ec.print_to_stdout(completion_specification_reusable_lines(cxt).view());
+
       return 0;
     }
 
     let output = String{cxt.scratch_allocator()};
     i32 print_status = 0;
+
     for (let const &command : commands) {
       let const *spec = cxt.completion_store().lookup_spec(command.view());
       if (spec == nullptr) {
@@ -335,7 +342,9 @@ fn Complete::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       }
       append_completion_specification_line(output, command.view(), *spec);
     }
+
     ec.print_to_stdout(output.view());
+
     return print_status;
   }
 
@@ -344,16 +353,19 @@ fn Complete::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       if (cxt.completion_store().remove_slot_spec(*slot)) return 0;
 
       report_missing_slot_spec(ec, cxt, *slot);
+
       return 1;
     }
 
     if (commands.is_empty()) {
       LOG(Debug, "complete removing every spec");
       cxt.completion_store().remove_all_specs();
+
       return 0;
     }
 
     i32 remove_status = 0;
+
     for (let const &command : commands) {
       if (cxt.completion_store().remove_spec(command.view())) continue;
 
@@ -362,6 +374,7 @@ fn Complete::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                                     "' has no completion specification");
       remove_status = 1;
     }
+
     return remove_status;
   }
 
@@ -392,6 +405,7 @@ fn Complete::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     spec.option_mask = option_mask;
     spec.argument_mask = argument_mask;
     spec.defining_state = definition_state::from(cxt.runtime_state());
+
     return spec;
   };
 
@@ -401,6 +415,7 @@ fn Complete::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         find_completion_slot_name(*slot).description.data,
         function_name.c_str());
     cxt.completion_store().register_slot_spec(*slot, do_make_spec());
+
     return 0;
   }
 
@@ -408,6 +423,7 @@ fn Complete::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     LOG(Debug, "complete registering spec for '%s'", command.c_str());
     cxt.completion_store().register_spec(command.view(), do_make_spec());
   }
+
   return 0;
 }
 

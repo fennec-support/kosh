@@ -293,11 +293,13 @@ pure fn without_trailing_line_continuation(StringView word) wontthrow
          word[word.length - 2] == '\\')
   {
     usize backslash_count = 0;
+
     while (backslash_count < word.length - 1 &&
            word[word.length - 2 - backslash_count] == '\\')
     {
       backslash_count++;
     }
+
     if (backslash_count % 2 == 0) break;
     word = word.substring_of_length(0, word.length - 2);
   }
@@ -323,9 +325,11 @@ fn scan_format_pieces(StringView source) throws -> ArrayList<format_piece>
         source[position + 1] == '\n')
     {
       position += 2;
+
       while (position < source.length && is_format_blank(source[position])) {
         position++;
       }
+
       continue;
     }
     if (is_format_blank(byte)) {
@@ -337,6 +341,7 @@ fn scan_format_pieces(StringView source) throws -> ArrayList<format_piece>
       let deferred_heredoc_comment = Maybe<format_piece>{};
       if (!pending_heredocs.is_empty()) {
         usize keyword_position = pieces.count();
+
         while (keyword_position > 0 &&
                pieces[keyword_position - 1].kind == format_piece_kind::Comment)
         {
@@ -377,6 +382,7 @@ fn scan_format_pieces(StringView source) throws -> ArrayList<format_piece>
             position, format_piece_kind::Newline, true,
             false, true
         });
+
         while (position < source.length && source[position] == '\n') {
           position++;
         }
@@ -390,9 +396,11 @@ fn scan_format_pieces(StringView source) throws -> ArrayList<format_piece>
 
         while (position < source.length) {
           let line_end = position;
+
           while (line_end < source.length && source[line_end] != '\n') {
             line_end++;
           }
+
           let const is_terminator =
               lexer::match_heredoc_line(
                   source.substring_of_length(position, line_end - position),
@@ -414,6 +422,7 @@ fn scan_format_pieces(StringView source) throws -> ArrayList<format_piece>
         }
         if (!did_find_terminator) break;
       }
+
       pending_heredocs.clear();
       if (deferred_heredoc_keyword.has_value()) {
         pieces.push(deferred_heredoc_keyword.take());
@@ -429,9 +438,11 @@ fn scan_format_pieces(StringView source) throws -> ArrayList<format_piece>
     }
     if (byte == '#' && !has_code_on_line) {
       let end_position = position;
+
       while (end_position < source.length && source[end_position] != '\n') {
         end_position++;
       }
+
       pieces.push(format_piece{
           source.substring_of_length(line_start, end_position - line_start),
           line_start, format_piece_kind::Comment, true});
@@ -441,6 +452,7 @@ fn scan_format_pieces(StringView source) throws -> ArrayList<format_piece>
     }
     if (byte == '#') {
       let end_position = position;
+
       while (end_position < source.length && source[end_position] != '\n') {
         end_position++;
       }
@@ -596,11 +608,13 @@ public:
     }
     m_output.append(token);
     let last_newline = Maybe<usize>{};
+
     for (usize position = token.length; position > 0; position--)
       if (token[position - 1] == '\n') {
         last_newline = position - 1;
         break;
       }
+
     if (last_newline.has_value())
       m_column =
           toiletline::get_display_width(token.substring(*last_newline + 1));
@@ -615,8 +629,10 @@ public:
     m_output.append(" \\\n");
     m_has_line_text = false;
     m_column = 0;
+
     for (usize position = 0; position < continuation_indent; position++)
       m_output.push(' ');
+
     m_column = continuation_indent;
   }
 
@@ -633,16 +649,19 @@ public:
     if (is_at_line_start) {
       finish_line();
       usize text_position = 0;
+
       while (text_position < comment.length &&
              (comment[text_position] == ' ' || comment[text_position] == '\t'))
       {
         text_position++;
       }
+
       let const text = comment.substring(text_position);
       start_line();
       m_output.append(text);
       m_has_line_text = !text.is_empty();
       m_column += toiletline::get_display_width(text);
+
       return;
     }
     if (m_has_line_text) m_output.push(' ');
@@ -697,6 +716,7 @@ public:
     while (!m_output.is_empty() && m_output[m_output.count() - 1] == '\n') {
       m_output.pop_back();
     }
+
     if (!m_output.is_empty()) {
       m_output.push('\n');
       if (m_has_trailing_blank_line) m_output.push('\n');
@@ -712,8 +732,10 @@ private:
     if (m_has_line_text || m_column != 0) {
       return;
     }
+
     for (usize position = 0; position < m_indent; position++)
       m_output.push(' ');
+
     m_column = m_indent;
   }
 
@@ -756,15 +778,18 @@ static fn measure_word_layout(StringView word) throws -> word_layout
           word.substring_of_length(segment_start, position - segment_start));
       measure.display_length++;
       position += 2;
+
       while (position < word.length && is_format_blank(word[position])) {
         position++;
       }
+
       segment_start = position;
       continue;
     }
     if (word[position] == '\n') measure.has_hard_newline = true;
     position++;
   }
+
   measure.display_length += toiletline::get_display_width(
       word.substring_of_length(segment_start, word.length - segment_start));
 
@@ -776,8 +801,10 @@ fn collect_option_wrap_positions(const ArrayList<format_piece> &pieces) throws
 {
   let positions = ArrayList<option_wrap_position>{heap_allocator()};
   usize segment_start = 0;
+
   while (segment_start < pieces.count()) {
     usize segment_end = segment_start;
+
     while (segment_end < pieces.count() &&
            pieces[segment_end].kind == format_piece_kind::Word)
     {
@@ -794,6 +821,7 @@ fn collect_option_wrap_positions(const ArrayList<format_piece> &pieces) throws
     if (is_plain_command) {
       usize line_width = 0;
       bool has_multiline_word = false;
+
       for (usize index = segment_start; index < segment_end; index++) {
         let const measure = measure_word_layout(pieces[index].text);
         line_width += measure.display_length;
@@ -804,6 +832,7 @@ fn collect_option_wrap_positions(const ArrayList<format_piece> &pieces) throws
       if (!has_multiline_word && line_width > FormatWriter::MAX_LINE_WIDTH) {
         let const continuation_offset =
             toiletline::get_display_width(command) + 1;
+
         for (usize index = segment_start + 1; index < segment_end; index++)
           if (word_looks_like_option(pieces[index].text))
             positions.push(option_wrap_position{index, continuation_offset});
@@ -827,8 +856,10 @@ pure fn word_is_unbreakable(StringView word) wontthrow -> bool
   {
     return true;
   }
+
   for (usize position = 0; position < word.length; position++)
     if (is_format_blank(word[position])) return false;
+
   return true;
 }
 
@@ -930,6 +961,7 @@ fn format_word_substitutions(StringView word, usize indent,
   static constexpr usize MAX_FORMAT_RECURSION_DEPTH = 64;
   if (recursion_depth >= MAX_FORMAT_RECURSION_DEPTH) return None;
   bool has_formattable_substitution = false;
+
   for (usize position = 0; position + 1 < word.length; position++) {
     if (((word[position] == '$' || word[position] == '<' ||
           word[position] == '>') &&
@@ -941,6 +973,7 @@ fn format_word_substitutions(StringView word, usize indent,
       break;
     }
   }
+
   if (!has_formattable_substitution) return None;
 
   let output = String{heap_allocator()};
@@ -990,9 +1023,11 @@ fn format_word_substitutions(StringView word, usize indent,
       while (inner_start < inner_end && is_format_blank(word[inner_start])) {
         inner_start++;
       }
+
       while (inner_end > inner_start && is_format_blank(word[inner_end - 1])) {
         inner_end--;
       }
+
       if (inner_end > inner_start && word[inner_end - 1] == ';') {
         inner_end--;
       }
@@ -1006,10 +1041,13 @@ fn format_word_substitutions(StringView word, usize indent,
         pieces.back().text[pieces.back().text.length - 1] == '\n';
     let formatted =
         render_format_pieces(pieces, indent + 2, recursion_depth + 1);
+
     while (!formatted.is_empty() && formatted[formatted.count() - 1] == '\n') {
       formatted.pop_back();
     }
+
     usize leading_indent_length = 0;
+
     while (leading_indent_length < formatted.count() &&
            (formatted[leading_indent_length] == ' ' ||
             formatted[leading_indent_length] == '\t'))
@@ -1154,6 +1192,7 @@ fn render_format_pieces(const ArrayList<format_piece> &pieces,
     if (is_bash) {
       has_pending_declaration_separator = false;
       has_pending_structural_separator = false;
+
       return;
     }
     if (!has_pending_declaration_separator && !has_pending_structural_separator)
@@ -1193,6 +1232,7 @@ fn render_format_pieces(const ArrayList<format_piece> &pieces,
     let const &next = pieces[flush_index];
     if (next.kind == format_piece_kind::Operator && next.text == ";") {
       has_pending_statement_end = true;
+
       return;
     }
 
@@ -1204,6 +1244,7 @@ fn render_format_pieces(const ArrayList<format_piece> &pieces,
     {
       writer.append_attached(";");
       did_join_pending_end = true;
+
       return;
     }
 
@@ -1236,12 +1277,14 @@ fn render_format_pieces(const ArrayList<format_piece> &pieces,
     if (!should_suppress_terminator) writer.append_attached(";");
     if (should_suppress_break) {
       should_pad_pending_line = false;
+
       return;
     }
 
     if (should_pad_pending_line) {
       should_pad_pending_line = false;
       writer.finish_padded_line();
+
       return;
     }
     writer.finish_line();
@@ -1291,13 +1334,17 @@ fn render_format_pieces(const ArrayList<format_piece> &pieces,
 
         while (line_start < text.length) {
           usize line_end = line_start;
+
           while (line_end < text.length && text[line_end] != '\n') {
             line_end++;
           }
+
           usize content_start = line_start;
+
           while (content_start < line_end && text[content_start] == '\t') {
             content_start++;
           }
+
           stripped.append(text.substring_of_length(content_start,
                                                    line_end - content_start));
           if (line_end < text.length) stripped.push('\n');
@@ -1864,6 +1911,7 @@ fn render_format_pieces(const ArrayList<format_piece> &pieces,
 
     writer.append_token(text);
   }
+
   do_finish_command();
 
   return writer.take();
@@ -1920,6 +1968,7 @@ fn format_shell_source(StringView source, BumpArena &arena,
                                  nullptr, function_arena, mood))
   {
     errors = steal(formatted_errors);
+
     return None;
   }
 
@@ -1939,10 +1988,12 @@ fn format_bash_function_source(StringView source) throws -> String
   let const pieces = scan_format_pieces(source_view);
   let formatted = render_format_pieces(pieces, 0, 0, format_layout{4, true});
   usize trailing_newline_count = 0;
+
   while (!formatted.is_empty() && formatted.back() == '\n') {
     formatted.pop_back();
     trailing_newline_count++;
   }
+
   for (usize index = 1; index < trailing_newline_count; index++)
     formatted += '\n';
 
@@ -1962,10 +2013,12 @@ fn select_nonconflicting_source_edits(
               return left->end_position < right->end_position;
             if (left->expected != right->expected)
               return left->expected < right->expected;
+
             return left->replacement < right->replacement;
           });
 
   let unique = ArrayList<const source_edit *>{heap_allocator()};
+
   for (let const *candidate : sorted_candidates) {
     if (!unique.is_empty()) {
       let const *previous = unique.back();
@@ -1979,6 +2032,7 @@ fn select_nonconflicting_source_edits(
     }
     unique.push(candidate);
   }
+
   let nonconflicting = ArrayList<const source_edit *>{heap_allocator()};
   usize candidate_index = 0;
 
@@ -1988,6 +2042,7 @@ fn select_nonconflicting_source_edits(
           wontthrow -> bool {
     if (candidate.start_position < group_end_position) return true;
     if (candidate.start_position != group_start_position) return false;
+
     return is_group_led_by_insertion ||
            candidate.start_position == candidate.end_position;
   };
@@ -1998,6 +2053,7 @@ fn select_nonconflicting_source_edits(
     usize overlap_end_position = unique[candidate_index]->end_position;
     let const is_group_led_by_insertion =
         group_start_position == unique[candidate_index]->end_position;
+
     while (group_end_position < unique.count() &&
            do_starts_conflict_group(*unique[group_end_position],
                                     group_start_position, overlap_end_position,
@@ -2007,6 +2063,7 @@ fn select_nonconflicting_source_edits(
         overlap_end_position = unique[group_end_position]->end_position;
       group_end_position++;
     }
+
     if (group_end_position == candidate_index + 1)
       nonconflicting.push(unique[candidate_index]);
     candidate_index = group_end_position;
@@ -2020,8 +2077,10 @@ fn apply_source_fixes(StringView source, const ArrayList<source_fix> &fixes,
     -> Maybe<String>
 {
   let candidates = ArrayList<const source_edit *>{heap_allocator()};
+
   for (let const &fix : fixes) {
     if (!fix.is_safe_for_fix_all) continue;
+
     for (let const &edit : fix.edits) {
       if (edit.end_position < edit.start_position ||
           edit.end_position > source.length)
@@ -2035,6 +2094,7 @@ fn apply_source_fixes(StringView source, const ArrayList<source_fix> &fixes,
       candidates.push(&edit);
     }
   }
+
   let const nonconflicting =
       select_nonconflicting_source_edits(steal(candidates));
 
@@ -2044,12 +2104,14 @@ fn apply_source_fixes(StringView source, const ArrayList<source_fix> &fixes,
       if (!fix.is_safe_for_fix_all) continue;
 
       bool was_applied = false;
+
       for (let const &edit : fix.edits) {
         for (let const *selected_edit : nonconflicting) {
           if (selected_edit != &edit) continue;
           was_applied = true;
           break;
         }
+
         if (was_applied) break;
       }
 
@@ -2059,13 +2121,16 @@ fn apply_source_fixes(StringView source, const ArrayList<source_fix> &fixes,
 
   let output = String{heap_allocator()};
   usize output_length = source.length;
+
   for (let const *selected_edit : nonconflicting) {
     let const &edit = *selected_edit;
     output_length -= edit.end_position - edit.start_position;
     output_length += edit.replacement.count();
   }
+
   output.reserve(output_length);
   usize source_position = 0;
+
   for (let const *selected_edit : nonconflicting) {
     let const &edit = *selected_edit;
     output.append(source.substring_of_length(
@@ -2073,6 +2138,7 @@ fn apply_source_fixes(StringView source, const ArrayList<source_fix> &fixes,
     output.append(edit.replacement.view());
     source_position = edit.end_position;
   }
+
   output.append(source.substring(source_position));
 
   return output;
@@ -2098,9 +2164,11 @@ fn source_fixes_for_original_line_endings(
   }
 
   let fixes = ArrayList<source_fix>{heap_allocator()};
+
   for (let const &fix : normalized_fixes) {
     let edits = ArrayList<source_edit>{heap_allocator()};
     bool is_valid = true;
+
     for (let const &edit : fix.edits) {
       if (edit.start_position >= original_positions.count() ||
           edit.end_position >= original_positions.count())
@@ -2114,6 +2182,7 @@ fn source_fixes_for_original_line_endings(
           start, end, String{source.substring_of_length(start, end - start)},
           edit.replacement.clone()});
     }
+
     if (!is_valid) continue;
     fixes.push(source_fix{fix.title.clone(), steal(edits), fix.is_preferred,
                           fix.is_safe_for_fix_all, fix.origin});

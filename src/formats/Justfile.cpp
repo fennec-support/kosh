@@ -17,6 +17,7 @@ fn parse_justfile_format(const parser_format_input &input,
   bool is_recipe = false;
   mimic_mood mood = mimic_mood::Posix;
   usize position = 0;
+
   while (position < input.source.length) {
     let const line_start = position;
     let const line = input.source.next_line(position);
@@ -32,11 +33,13 @@ fn parse_justfile_format(const parser_format_input &input,
     }
     if (!is_recipe) continue;
     usize shell_start = 0;
+
     while (shell_start < line.length &&
            (line[shell_start] == ' ' || line[shell_start] == '\t'))
     {
       shell_start++;
     }
+
     if (shell_start == line.length) continue;
     if (shell_start < line.length && line[shell_start] == '@') {
       shell_start++;

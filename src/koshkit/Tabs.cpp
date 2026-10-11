@@ -32,6 +32,7 @@ fn Tabs::execute(const ExecContext &ec, EvalContext &cxt,
     KOSHKIT_REPORT_ERROR_AT(
         operand_locations[1], "extra operand '" + operands[1] + "'",
         "provide one tab interval, stop list, or template name");
+
     return 1;
   }
   static constexpr static_string_entry<StringView> TEMPLATE_ENTRIES[] = {
@@ -59,13 +60,16 @@ fn Tabs::execute(const ExecContext &ec, EvalContext &cxt,
       KOSHKIT_REPORT_ERROR_AT(
           operand_locations[0], "invalid tab interval '" + operands[0] + "'",
           "use - followed by a decimal interval from 1 through 160");
+
       return 1;
     }
+
     for (u64 stop = parsed.value() + 1; stop <= 160; stop += parsed.value())
       stops.push(stop);
   } else {
     usize position = 0;
     u64 previous_stop = 0;
+
     while (position <= specification.length) {
       let const remaining = specification.substring(position);
       let const item_length =
@@ -79,6 +83,7 @@ fn Tabs::execute(const ExecContext &ec, EvalContext &cxt,
             operand_locations[0], "invalid tab stop in '" + operands[0] + "'",
             "use a template name or comma-separated positive decimal columns"
             ", with + for relative stops");
+
         return 1;
       }
       let stop = parsed.value();
@@ -95,6 +100,7 @@ fn Tabs::execute(const ExecContext &ec, EvalContext &cxt,
                 "'",
             "list each stop after the previous stop and no later than column "
             "160");
+
         return 1;
       }
       stops.push(stop);
@@ -105,13 +111,16 @@ fn Tabs::execute(const ExecContext &ec, EvalContext &cxt,
   }
   let output = String{cxt.scratch_allocator(), "\r\033[3g"};
   u64 column = 1;
+
   for (let const stop : stops) {
     output.append_repeated(' ', static_cast<usize>(stop - column));
     output += "\033H";
     column = stop;
   }
+
   output += '\r';
   ec.print_to_stdout(output);
+
   return 0;
 }
 

@@ -39,6 +39,7 @@ fn Tsort::execute(const ExecContext &ec, EvalContext &cxt,
   let const content = read_named_or_stdin(ec, source);
   if (!content.has_value()) {
     KOSHKIT_REPORT_PATH_ERROR("read", source);
+
     return 1;
   }
 
@@ -51,20 +52,24 @@ fn Tsort::execute(const ExecContext &ec, EvalContext &cxt,
     {
       position++;
     }
+
     if (position == content->length()) break;
 
     let const start = position;
+
     while (position < content->length() &&
            std::isspace(static_cast<u8>((*content)[position])) == 0)
     {
       position++;
     }
+
     tokens.push(content->view().substring_of_length(start, position - start));
   }
 
   if ((tokens.count() & 1u) != 0) {
     report_soft_koshkit_util_error(ec, cxt, args[0].view(),
                                    "input contains an odd number of tokens");
+
     return 1;
   }
 
@@ -78,6 +83,7 @@ fn Tsort::execute(const ExecContext &ec, EvalContext &cxt,
     vertices.push(tsort_vertex{name, ArrayList<usize>{cxt.scratch_allocator()},
                                0, false});
     vertex_indices.set(name, index);
+
     return index;
   };
 
@@ -91,22 +97,27 @@ fn Tsort::execute(const ExecContext &ec, EvalContext &cxt,
 
   let edge_marks = ArrayList<usize>{cxt.scratch_allocator()};
   edge_marks.reserve(vertices.count());
+
   for (usize index = 0; index < vertices.count(); index++)
     edge_marks.push(0);
+
   for (usize from = 0; from < vertices.count(); from++) {
     let deduplicated = ArrayList<usize>{cxt.scratch_allocator()};
     deduplicated.reserve(vertices[from].outgoing.count());
     let const edge_mark = from + 1;
+
     for (let const to : vertices[from].outgoing) {
       if (edge_marks[to] == edge_mark) continue;
       edge_marks[to] = edge_mark;
       deduplicated.push(to);
       vertices[to].incoming_count++;
     }
+
     vertices[from].outgoing = steal(deduplicated);
   }
 
   let ready = ArrayList<usize>{cxt.scratch_allocator()};
+
   for (usize index = 0; index < vertices.count(); index++)
     if (vertices[index].incoming_count == 0) ready.push(index);
 
@@ -145,6 +156,7 @@ fn Tsort::execute(const ExecContext &ec, EvalContext &cxt,
   }
 
   ec.print_to_stdout(output);
+
   return status;
 }
 

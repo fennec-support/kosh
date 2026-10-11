@@ -77,6 +77,7 @@ static fn decode_escaped_char(StringView set, usize position) wontthrow
   if (escaped >= '0' && escaped <= '7') {
     int value = 0;
     usize digit_count = 0;
+
     while (digit_count < 3 && position + 1 + digit_count < set.length) {
       let const digit = set[position + 1 + digit_count];
       if (digit < '0' || digit > '7') {
@@ -85,6 +86,7 @@ static fn decode_escaped_char(StringView set, usize position) wontthrow
       value = value * 8 + (digit - '0');
       digit_count++;
     }
+
     return {static_cast<unsigned char>(value), 1 + digit_count};
   }
 
@@ -101,6 +103,7 @@ static fn expand_posix_class(StringView set, usize position,
   }
 
   usize scan = position + 2;
+
   while (scan + 1 < set.length && !(set[scan] == ':' && set[scan + 1] == ']')) {
     scan++;
   }
@@ -129,6 +132,7 @@ static fn expand_set(StringView set, Allocator allocator,
   Maybe<usize> fill_position;
   Maybe<char> fill_byte;
   usize i = 0;
+
   while (i < set.length) {
     if (let const class_width = expand_posix_class(set, i, expanded);
         class_width > 0)
@@ -144,9 +148,11 @@ static fn expand_set(StringView set, Allocator allocator,
       let star = i + 1 + repeated.width_count;
       if (star < set.length && set[star] == '*') {
         usize close = star + 1;
+
         while (close < set.length && set[close] >= '0' && set[close] <= '9') {
           close++;
         }
+
         if (close < set.length && set[close] == ']') {
           let const digits = set.substring_of_length(star + 1, close - star - 1);
           let const base = !digits.is_empty() && digits[0] == '0'
@@ -167,6 +173,7 @@ static fn expand_set(StringView set, Allocator allocator,
             let const capped = count < *repeat_target_length
                                    ? count
                                    : *repeat_target_length;
+
             for (usize n = 0; n < capped; n++)
               expanded.push(static_cast<char>(repeated.byte));
           }
@@ -199,8 +206,10 @@ static fn expand_set(StringView set, Allocator allocator,
   if (fill_position.has_value() && *repeat_target_length > expanded.count()) {
     let filled = String{allocator};
     filled.append(expanded.view().substring_of_length(0, *fill_position));
+
     for (usize n = expanded.count(); n < *repeat_target_length; n++)
       filled.push(*fill_byte);
+
     filled.append(expanded.view().substring(*fill_position));
     expanded = steal(filled);
   }
@@ -243,18 +252,22 @@ fn Tr::execute(const ExecContext &ec, EvalContext &cxt,
     KOSHKIT_REPORT_ERROR_AT(
         operand_locations[0], "reverse range in set '" + operands[0] + "'",
         "order the endpoints from the lower byte to the higher byte");
+
     return 1;
   }
 
   if (is_complementing) {
     bool is_listed[256] = {};
+
     for (usize i = 0; i < set1->count(); i++)
       is_listed[static_cast<unsigned char>(set1->view()[i])] = true;
 
     let complement = String{cxt.scratch_allocator()};
+
     for (int byte = 0; byte < 256; byte++) {
       if (!is_listed[byte]) complement.push(static_cast<char>(byte));
     }
+
     set1 = steal(complement);
   }
 
@@ -266,6 +279,7 @@ fn Tr::execute(const ExecContext &ec, EvalContext &cxt,
       KOSHKIT_REPORT_ERROR_AT(
           operand_locations[1], "reverse range in set '" + operands[1] + "'",
           "order the endpoints from the lower byte to the higher byte");
+
       return 1;
     }
     set2 = steal(*expanded_set2);
@@ -274,6 +288,7 @@ fn Tr::execute(const ExecContext &ec, EvalContext &cxt,
   static constexpr usize BYTE_VALUE_COUNT = 256;
   bool is_in_set1[BYTE_VALUE_COUNT] = {};
   unsigned char translation[BYTE_VALUE_COUNT];
+
   for (usize i = 0; i < BYTE_VALUE_COUNT; i++)
     translation[i] = static_cast<unsigned char>(i);
 
@@ -289,6 +304,7 @@ fn Tr::execute(const ExecContext &ec, EvalContext &cxt,
   bool is_squeezed[BYTE_VALUE_COUNT] = {};
   if (is_squeezing) {
     let const &squeeze_source = operands.count() >= 2 ? set2 : *set1;
+
     for (usize i = 0; i < squeeze_source.count(); i++)
       is_squeezed[static_cast<unsigned char>(squeeze_source.view()[i])] = true;
   }
@@ -296,6 +312,7 @@ fn Tr::execute(const ExecContext &ec, EvalContext &cxt,
 
   char input[65536];
   char output[sizeof(input)];
+
   loop
   {
     let const read_count =
@@ -305,6 +322,7 @@ fn Tr::execute(const ExecContext &ec, EvalContext &cxt,
       report_soft_koshkit_util_error(ec, cxt, args[0].view(),
                                      "read failed: " +
                                          os::last_system_error_message());
+
       return 1;
     }
     if (*read_count == 0) break;
@@ -325,6 +343,7 @@ fn Tr::execute(const ExecContext &ec, EvalContext &cxt,
 
     if (is_squeezing) {
       usize kept_count = 0;
+
       for (usize i = 0; i < output_count; i++) {
         let const byte = static_cast<unsigned char>(output[i]);
         if (is_squeezed[byte]) {
@@ -334,6 +353,7 @@ fn Tr::execute(const ExecContext &ec, EvalContext &cxt,
         last_byte = byte;
         output[kept_count++] = static_cast<char>(byte);
       }
+
       output_count = kept_count;
     }
 

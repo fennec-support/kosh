@@ -59,6 +59,7 @@ fn id_name(u32 id, Allocator allocator, goodstat_identity_kind kind) throws
   result += " (";
   result += String::from(id, allocator).view();
   result += ")";
+
   return result;
 }
 
@@ -71,6 +72,7 @@ fn permission_text(u32 mode, Allocator allocator) throws -> String
   result.append_repeated('0', 4 - digits.length());
   result += digits.view();
   result += ")";
+
   return result;
 }
 
@@ -80,6 +82,7 @@ fn size_text(u64 size, Allocator allocator) throws -> String
   result += " (";
   result += String::from(size, allocator).view();
   result += size == 1 ? " byte)" : " bytes)";
+
   return result;
 }
 
@@ -92,6 +95,7 @@ fn percent_used(const os::filesystem_status &filesystem) wontthrow -> u64
                         : filesystem.free_blocks);
   let const whole_percent = used / filesystem.total_blocks;
   let const remainder = used % filesystem.total_blocks;
+
   return whole_percent * 100 +
          static_cast<u64>((static_cast<u128>(remainder) * 100 +
                            filesystem.total_blocks / 2) /
@@ -180,9 +184,10 @@ fn append_subject(String &output, StringView operand,
     if (os::stat_filesystem(operand, filesystem)) {
       do_append_field("Filesystem", StringView{filesystem.type_name},
                       colors::ansi::BOLD_CYAN);
-      do_append_field("Filesystem block size",
-                      String::from(filesystem.block_size, allocator).view(),
-                      colors::ansi::BOLD_CYAN);
+      do_append_field(
+          "Filesystem block size",
+          String::from(filesystem.block_byte_count, allocator).view(),
+          colors::ansi::BOLD_CYAN);
       do_append_field("Filesystem capacity",
                       String::from(percent_used(filesystem), allocator).view() +
                           "%",
@@ -244,10 +249,12 @@ fn GoodStat::execute(
   operand_paths.reserve(operands.count());
   file_statuses.reserve(operands.count());
   batch.reserve(operands.count());
+
   for (let const &operand : operands) {
     operand_paths.push(Path{operand.view(), allocator});
     file_statuses.push({});
   }
+
   for (usize index = 0; index < operands.count(); index++) {
     if (FLAG_GOODSTAT_DEREFERENCE.is_enabled()) {
       batch.add(os::batch_operation::stat(operand_paths[index],
@@ -257,6 +264,7 @@ fn GoodStat::execute(
                                            file_statuses[index]));
     }
   }
+
   let const results = batch.execute();
 
   for (usize index = 0; index < operands.count(); index++) {
@@ -274,6 +282,7 @@ fn GoodStat::execute(
   }
 
   ec.print_to_stdout(output);
+
   return status;
 }
 

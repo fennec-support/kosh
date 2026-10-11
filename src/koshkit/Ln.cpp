@@ -48,6 +48,7 @@ fn Ln::execute(const ExecContext &ec, EvalContext &cxt,
   }
 
   i32 status = 0;
+
   for (usize i = 0; i + 1 < operands.count(); i++) {
     let const target = operands[i].view();
     let link = String{cxt.scratch_allocator(), destination};

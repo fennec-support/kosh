@@ -59,6 +59,7 @@ static pure fn filename_offset(StringView text) wontthrow -> usize
       separator = backslash;
     }
   }
+
   return separator.has_value() ? *separator + 1 : 0;
 }
 
@@ -89,8 +90,10 @@ fn Path::extension() const wontthrow -> StringView
   if (name == StringView{"."} || name == StringView{".."}) {
     return StringView{name.data + name.length, 0};
   }
+
   for (usize i = name.length; i > 1; i--)
     if (name.data[i - 1] == '.') return name.substring(i - 1);
+
   return StringView{name.data + name.length, 0};
 }
 
@@ -99,6 +102,7 @@ fn Path::parent() const throws -> Path
   let const end = filename_offset(m_text.view());
   if (end == 0) return Path{{}, allocator()};
   if (end == 1) return Path{m_text.substring_of_length(0, 1), allocator()};
+
   return Path{m_text.substring_of_length(0, end - 1), allocator()};
 }
 
@@ -125,32 +129,36 @@ static fn append_path_component(String &text, StringView component) throws
 fn Path::append(StringView component) throws -> Path &
 {
   append_path_component(m_text, component);
+
   return *this;
 }
 
 fn Path::append_raw(StringView bytes) throws -> Path &
 {
   m_text.append(bytes);
+
   return *this;
 }
 
-fn Path::next_component(usize &position) const wontthrow -> component
+fn Path::next_component(usize &position) const wontthrow -> Component
 {
   return next_component(m_text.view(), position);
 }
 
-fn Path::next_component(StringView path, usize &position) wontthrow -> component
+fn Path::next_component(StringView path, usize &position) wontthrow -> Component
 {
   while (position < path.length && os::is_directory_separator(path[position])) {
     position++;
   }
+
   let const start = position;
+
   while (position < path.length && !os::is_directory_separator(path[position]))
   {
     position++;
   }
 
-  return component{path.substring_of_length(start, position - start), start,
+  return Component{path.substring_of_length(start, position - start), start,
                    position};
 }
 
@@ -180,6 +188,7 @@ cold fn Path::normalized() const throws -> Path
 
   let components = ArrayList<StringView>{allocator()};
   usize i = root_length;
+
   while (i < m_text.count()) {
     let const component = next_component(i).text;
     if (component.is_empty()) break;
@@ -202,14 +211,17 @@ cold fn Path::normalized() const throws -> Path
   {
     normalized_text.push(os::DIRECTORY_SEPARATOR);
   }
+
   for (usize i = 0; i < components.count(); i++) {
     if (i > 0) normalized_text.push(os::DIRECTORY_SEPARATOR);
     normalized_text.append(components[i]);
   }
+
   if (normalized_text.is_empty())
     normalized_text.append(is_absolute_path
                                ? StringView{&os::DIRECTORY_SEPARATOR, 1}
                                : StringView{"."});
+
   return Path{normalized_text.view(), allocator()};
 }
 
@@ -220,6 +232,7 @@ cold fn Path::first_unavailable_component() const throws
   usize component_index = 0;
   usize position = root_length;
   let has_dot_component = false;
+
   while (position < m_text.count()) {
     let const component = next_component(position);
     if (component.text.is_empty()) break;
@@ -243,17 +256,20 @@ cold fn Path::first_unavailable_component() const throws
     if (!is_available || !is_directory) {
       usize remaining_component_count = 0;
       usize remaining_position = component.end;
+
       while (remaining_position < m_text.count()) {
         let const remaining_component = next_component(remaining_position);
         if (remaining_component.text.is_empty()) break;
         remaining_component_count++;
       }
+
       let const component_count =
           component_index + remaining_component_count + 1;
       if (!is_available)
         return unavailable_path_component{component.start, component.end,
                                           component_index, component_count,
                                           false};
+
       return unavailable_path_component{component.start, component.end,
                                         component_index, component_count, true};
     }
@@ -273,21 +289,25 @@ fn Path::to_absolute_without_normalizing() const throws -> Path
   } else {
     result = current_directory();
     let relative = m_text.view();
+
     while (relative.length >= 2 && relative[0] == '.' &&
            os::is_directory_separator(relative[1]))
     {
       relative = relative.substring(2);
     }
+
     if (!relative.is_empty()) result.append(relative);
   }
   result.m_text.move_to_allocator(allocator());
 
   let const root_length = os::path_root_length(result.m_text.view());
+
   while (result.m_text.count() > root_length &&
          os::is_directory_separator(result.m_text.back()))
   {
     result.m_text.pop_back();
   }
+
   return result;
 }
 
@@ -428,13 +448,13 @@ cold fn Path::read_directory(const Path &dir, Allocator allocator) throws
 }
 
 cold fn Path::read_directory_typed(const Path &dir) throws
-    -> Maybe<ArrayList<directory_child>>
+    -> Maybe<ArrayList<DirectoryChild>>
 {
   return os::list_directory_typed(dir.view());
 }
 
 cold fn Path::read_directory_typed(const Path &dir, Allocator allocator) throws
-    -> Maybe<ArrayList<directory_child>>
+    -> Maybe<ArrayList<DirectoryChild>>
 {
   return os::list_directory_typed(dir.view(), allocator);
 }
@@ -473,6 +493,7 @@ fn Path::canonicalize(StringView path) throws -> Maybe<Path>
   let was_resolved = os::stat_path_following(candidate.view(), status);
   if (candidate.extension().is_empty() && !has_trailing_dot) {
     usize suffix_index = 0;
+
     while (!was_resolved && suffix_index < os::PROGRAM_SUFFIXES.count()) {
       let const &suffix = os::PROGRAM_SUFFIXES[suffix_index++];
       candidate = candidate.with_extension(suffix.text);
@@ -481,6 +502,7 @@ fn Path::canonicalize(StringView path) throws -> Maybe<Path>
   }
 
   if (!was_resolved) return koshka::None;
+
   return candidate;
 }
 

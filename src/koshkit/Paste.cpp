@@ -27,6 +27,7 @@ static fn parse_paste_delimiters(StringView text, Allocator allocator) throws
     -> String
 {
   String delimiters{allocator};
+
   for (usize position = 0; position < text.length; position++) {
     let byte = text[position];
     if (byte == '\\' && position + 1 < text.length) {
@@ -65,6 +66,7 @@ fn Paste::execute(const ExecContext &ec, EvalContext &cxt,
     KOSHKIT_REPORT_ERROR_AT(FLAG_PASTE_DELIMITERS.value_location(),
                             "delimiter list is empty",
                             "provide one or more delimiter characters");
+
     return 1;
   }
 
@@ -90,6 +92,7 @@ fn Paste::execute(const ExecContext &ec, EvalContext &cxt,
   let columns = ArrayList<paste_column>{cxt.scratch_allocator()};
   columns.reserve(sources.count());
   utils::BufferedLineReader *stdin_reader = nullptr;
+
   for (let const source : sources) {
     if (source == "-" && stdin_reader != nullptr) {
       columns.push(paste_column{stdin_reader, false});
@@ -129,6 +132,7 @@ fn Paste::execute(const ExecContext &ec, EvalContext &cxt,
       status = 1;
     }
     column.is_finished = true;
+
     return None;
   };
 
@@ -136,6 +140,7 @@ fn Paste::execute(const ExecContext &ec, EvalContext &cxt,
     for (usize column_index = 0; column_index < columns.count(); column_index++)
     {
       usize line_index = 0;
+
       loop
       {
         let const line = do_read_line(column_index);
@@ -150,6 +155,7 @@ fn Paste::execute(const ExecContext &ec, EvalContext &cxt,
           output.clear();
         }
       }
+
       if (os::INTERRUPT_REQUESTED) return 130;
       output += '\n';
     }
@@ -158,6 +164,7 @@ fn Paste::execute(const ExecContext &ec, EvalContext &cxt,
     {
       let const line_start = output.length();
       bool did_read_line = false;
+
       for (usize column_index = 0; column_index < columns.count();
            column_index++)
       {
@@ -169,6 +176,7 @@ fn Paste::execute(const ExecContext &ec, EvalContext &cxt,
         output += *line;
         did_read_line = true;
       }
+
       if (os::INTERRUPT_REQUESTED) return 130;
       if (!did_read_line) {
         output.truncate(line_start);
@@ -184,6 +192,7 @@ fn Paste::execute(const ExecContext &ec, EvalContext &cxt,
   }
 
   ec.print_to_stdout(output);
+
   return status;
 }
 

@@ -39,6 +39,7 @@ static fn duration_to_nanos(f64 seconds) wontthrow -> u64
 
   let const nanos = seconds * NANOS_PER_SECOND;
   if (nanos < 1.0) return 1;
+
   return static_cast<u64>(nanos);
 }
 
@@ -65,6 +66,7 @@ static fn wait_for_process_until(os::process child, os::process process_group,
       completion == wait_completion::ProcessGroupEmpty;
   let const has_deadline = timeout_nanos != 0 && timeout_nanos != UINT64_MAX;
   let const started_at_nanos = os::monotonic_nanos();
+
   loop
   {
     if (os::INTERRUPT_REQUESTED) return supervision_wait_result::Interrupted;
@@ -100,6 +102,7 @@ static fn signal_supervised_process(os::process child,
 {
   if (os::signal_process(process_group, signal_number)) return true;
   if (has_child_exited) return false;
+
   return os::signal_process(child, signal_number);
 }
 
@@ -108,6 +111,7 @@ static fn timeout_expiration_status(i32 command_status,
 {
   if (timeout_signal == 9) return 137;
   if (FLAG_TIMEOUT_PRESERVE_STATUS.is_enabled()) return command_status;
+
   return 124;
 }
 
@@ -128,6 +132,7 @@ static fn finish_interrupted_supervision(os::process child,
   signal_supervised_process(child, process_group, has_child_exited, 9);
   if (!has_child_exited) os::reap_process_quietly(child);
   os::INTERRUPT_REQUESTED = 0;
+
   return 130;
 }
 
@@ -139,8 +144,10 @@ static fn resolve_timeout_program(StringView program_name,
     if (typed_program_path.has_trailing_separator()) {
       let const normalized_program_path = typed_program_path.normalized();
       if (!normalized_program_path.exists()) return None;
+
       return normalized_program_path;
     }
+
     return Path::canonicalize(program_name);
   }
 
@@ -149,6 +156,7 @@ static fn resolve_timeout_program(StringView program_name,
       ProgramResolver::Requirement::Runnable,
       ProgramResolver::CachePolicy::Bypass);
   if (matches.is_empty()) return None;
+
   return matches[0];
 }
 
@@ -186,6 +194,7 @@ fn preflight_timeout_stage(const ExecContext &ec, EvalContext &cxt,
   let arg_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};
   args.reserve(ec.args().count() - name_index);
   arg_locations.reserve(ec.args().count() - name_index);
+
   for (usize argument_index = name_index; argument_index < ec.args().count();
        argument_index++)
   {
@@ -227,6 +236,7 @@ fn preflight_timeout_stage(const ExecContext &ec, EvalContext &cxt,
     } catch (const ErrorWithLocation &error) {
       error_location = error.location();
       error_message = "koshkit timeout: " + error.message();
+
       return static_cast<i32>(error.command_status());
     }
   } catch (const ErrorBase &) {
@@ -275,6 +285,7 @@ fn Timeout::execute(const ExecContext &ec, EvalContext &cxt,
     report_soft_koshkit_util_error(ec, cxt, operand_locations[1], "timeout",
                                    "command '" + operands[1] +
                                        "' was not found");
+
     return 127;
   }
 
@@ -282,6 +293,7 @@ fn Timeout::execute(const ExecContext &ec, EvalContext &cxt,
   let command_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};
   command_args.reserve(operands.count() - 1);
   command_locations.reserve(operands.count() - 1);
+
   for (usize operand_index = 1; operand_index < operands.count();
        operand_index++)
   {
@@ -321,6 +333,7 @@ fn Timeout::execute(const ExecContext &ec, EvalContext &cxt,
     fallback_locations.reserve(operands.count());
     fallback_args.push(String{cxt.scratch_allocator(), shell_path->view()});
     fallback_locations.push(ec.source_location());
+
     for (usize operand_index = 1; operand_index < operands.count();
          operand_index++)
     {
@@ -374,6 +387,7 @@ fn Timeout::execute(const ExecContext &ec, EvalContext &cxt,
     }
     signal_supervised_process(child, process_group, has_child_exited, 9);
     if (!has_child_exited) os::reap_process_quietly(child);
+
     return 125;
   }
 
@@ -402,9 +416,11 @@ fn Timeout::execute(const ExecContext &ec, EvalContext &cxt,
       {
         return timeout_expiration_status(status, timeout_signal);
       }
+
       return 125;
     }
     if (!has_child_exited) os::reap_process_quietly(child);
+
     return 137;
   }
 

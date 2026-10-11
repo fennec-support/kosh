@@ -36,8 +36,10 @@ namespace {
 fn open_current_directory_reference() wontthrow -> descriptor
 {
 #if defined __linux__
+
   return ::open(".", O_PATH | O_DIRECTORY | O_CLOEXEC);
 #else
+
   return ::open(".", O_RDONLY | O_DIRECTORY | O_CLOEXEC);
 #endif
 }
@@ -119,6 +121,7 @@ public:
     for (usize event_index = 0; event_index < PERF_EVENT_COUNT; event_index++) {
       perf_reading reading{};
       ssize_t read_count;
+
       do {
         read_count = read(event_fds[event_index], &reading, sizeof(reading));
       } while (read_count == -1 && errno == EINTR);
@@ -128,6 +131,7 @@ public:
           reading.running_nanos > reading.enabled_nanos)
       {
         counts = {};
+
         return false;
       }
 
@@ -138,6 +142,7 @@ public:
                                  reading.enabled_nanos / reading.running_nanos;
         if (scaled_value > UINT64_MAX) {
           counts = {};
+
           return false;
         }
         *destinations[event_index] = static_cast<u64>(scaled_value);
@@ -322,19 +327,23 @@ public:
         config_force_counters(config) != 0)
     {
       do_cleanup();
+
       return false;
     }
 
     for (usize event_index = 0; event_index < EVENT_COUNT; event_index++) {
       kpep_event *event = nullptr;
+
       for (usize name_index = 0; name_index < 3; name_index++) {
         let const name = EVENT_NAMES[event_index][name_index];
         if (name == nullptr) break;
         if (db_event(database, name, &event) == 0) break;
       }
+
       if (event == nullptr || config_add_event(config, &event, 1, nullptr) != 0)
       {
         do_cleanup();
+
         return false;
       }
     }
@@ -354,6 +363,7 @@ public:
     }
 
     do_cleanup();
+
     return did_succeed;
   }
 
@@ -388,9 +398,10 @@ public:
 
     counter_count = get_counter_count(counter_classes);
     int cpu_count = 0;
-    usize cpu_count_size = sizeof(cpu_count);
+    usize cpu_count_byte_count = sizeof(cpu_count);
     if (counter_count == 0 ||
-        sysctlbyname("hw.ncpu", &cpu_count, &cpu_count_size, nullptr, 0) != 0 ||
+        sysctlbyname("hw.ncpu", &cpu_count, &cpu_count_byte_count, nullptr,
+                     0) != 0 ||
         cpu_count <= 0 ||
         static_cast<usize>(cpu_count) > SIZE_MAX / counter_count)
     {
@@ -432,33 +443,40 @@ public:
     if (get_cpu_counters(true, counter_classes, nullptr, end_counters) != 0) {
       counts = {};
       restore();
+
       return false;
     }
 
     u64 *destinations[EVENT_COUNT] = {
         &counts.cpu_cycles, &counts.instructions, &counts.cache_references,
         &counts.cache_misses, &counts.branch_misses};
+
     for (usize event_index = 0; event_index < EVENT_COUNT; event_index++) {
       u128 total = 0;
+
       for (usize cpu_index = 0; cpu_index < logical_cpu_count; cpu_index++) {
         let const counter_index =
             cpu_index * counter_count + counter_map[event_index];
         if (end_counters[counter_index] < start_counters[counter_index]) {
           counts = {};
           restore();
+
           return false;
         }
         total += end_counters[counter_index] - start_counters[counter_index];
       }
+
       if (total > UINT64_MAX) {
         counts = {};
         restore();
+
         return false;
       }
       *destinations[event_index] = static_cast<u64>(total);
     }
 
     restore();
+
     return true;
   }
 
@@ -493,8 +511,10 @@ public:
 fn platform_peak_rss_bytes(long peak_rss) wontthrow -> u64
 {
 #if defined __linux__
+
   return static_cast<u64>(peak_rss) * 1024ULL;
 #else
+
   return static_cast<u64>(peak_rss);
 #endif
 }
@@ -507,15 +527,17 @@ fn affinity_processor_count(usize online_count,
 #if defined __linux__
   usize affinity_capacity = configured_count;
   if (affinity_capacity < CPU_SETSIZE) affinity_capacity = CPU_SETSIZE;
+
   for (usize attempt_count = 0; attempt_count < 8; attempt_count++) {
-    let const affinity_size = CPU_ALLOC_SIZE(affinity_capacity);
+    let const affinity_byte_count = CPU_ALLOC_SIZE(affinity_capacity);
     cpu_set_t *affinity = CPU_ALLOC(affinity_capacity);
     if (affinity == nullptr) break;
-    CPU_ZERO_S(affinity_size, affinity);
-    let const affinity_result = sched_getaffinity(0, affinity_size, affinity);
+    CPU_ZERO_S(affinity_byte_count, affinity);
+    let const affinity_result =
+        sched_getaffinity(0, affinity_byte_count, affinity);
     let const affinity_error = errno;
     if (affinity_result == 0) {
-      let const affinity_count = CPU_COUNT_S(affinity_size, affinity);
+      let const affinity_count = CPU_COUNT_S(affinity_byte_count, affinity);
       CPU_FREE(affinity);
       if (affinity_count > 0) return static_cast<usize>(affinity_count);
       break;
@@ -527,6 +549,7 @@ fn affinity_processor_count(usize online_count,
 #else
   unused(configured_count);
 #endif
+
   return online_count;
 }
 
@@ -581,6 +604,7 @@ fn enumerate_processes(process_detail detail) throws -> ArrayList<process_entry>
   ArrayList<struct kinfo_proc> records{heap_allocator()};
   usize byte_length = 0;
   bool did_list = false;
+
   for (usize attempt_count = 0; attempt_count < LIST_ATTEMPT_COUNT;
        attempt_count++)
   {
@@ -602,6 +626,7 @@ fn enumerate_processes(process_detail detail) throws -> ArrayList<process_entry>
   if (!did_list) return processes;
 
   let const entry_count = byte_length / sizeof(struct kinfo_proc);
+
   for (usize entry_index = 0; entry_index < entry_count; entry_index++) {
     let const &record = records.begin()[entry_index];
     process_entry process{};
@@ -662,20 +687,24 @@ static donteliminate fn nth_space_field(StringView text, usize index) wontthrow
 {
   usize field = 0;
   usize position = 0;
+
   while (position < text.length) {
     while (position < text.length &&
            (text[position] == ' ' || text[position] == '\n'))
     {
       position++;
     }
+
     if (position >= text.length) break;
 
     let const start_position = position;
+
     while (position < text.length && text[position] != ' ' &&
            text[position] != '\n')
     {
       position++;
     }
+
     if (field == index)
       return text.substring_of_length(start_position,
                                       position - start_position);
@@ -693,6 +722,7 @@ static fn leading_digits(StringView line, usize offset) wontthrow -> StringView
   }
 
   usize digit_end_position = offset;
+
   while (digit_end_position < line.length && line[digit_end_position] >= '0' &&
          line[digit_end_position] <= '9')
   {
@@ -711,6 +741,7 @@ static fn linux_process_real_uid(StringView process_directory,
   if (!status.has_value()) return None;
   let const text = status->view();
   usize line_start_position = 0;
+
   for (usize position = 0; position <= text.length; position++) {
     if (position != text.length && text[position] != '\n') {
       continue;
@@ -735,6 +766,7 @@ static fn linux_process_real_uid(StringView process_directory,
     }
 
     let const uid = leading_digits(line, 4).to<u32>();
+
     return uid.is_error() ? Maybe<u32>{None} : Maybe<u32>{uid.value()};
   }
 
@@ -770,6 +802,7 @@ fn enumerate_processes(process_detail detail) throws -> ArrayList<process_entry>
     }
     let command_name = Path{process_file}.read_entire_file();
     if (!command_name.has_value()) continue;
+
     while (!command_name->is_empty() && command_name->back() == '\n') {
       command_name->pop_back();
     }
@@ -788,6 +821,7 @@ fn enumerate_processes(process_detail detail) throws -> ArrayList<process_entry>
     {
       let normalized_command_line = String{heap_allocator()};
       normalized_command_line.reserve(command_line->count());
+
       for (usize position = 0; position < command_line->count(); position++) {
         let const byte = command_line->view()[position];
         if (byte != '\0')
@@ -795,6 +829,7 @@ fn enumerate_processes(process_detail detail) throws -> ArrayList<process_entry>
         else if (position + 1 < command_line->count())
           normalized_command_line.push(' ');
       }
+
       process.command_line = steal(normalized_command_line);
     } else {
       process.command_line = "[" + process.name + "]";
@@ -805,11 +840,13 @@ fn enumerate_processes(process_detail detail) throws -> ArrayList<process_entry>
       if (let stat = Path{process_file}.read_entire_file(); stat.has_value()) {
         let const text = stat->view();
         usize after_name_position = text.length;
+
         for (usize position = text.length; position > 0; position--)
           if (text[position - 1] == ')') {
             after_name_position = position;
             break;
           }
+
         if (after_name_position < text.length) {
           let const fields = text.substring(after_name_position);
           let const state = nth_space_field(fields, 0);
@@ -868,6 +905,7 @@ fn describe_processes(const ArrayList<u32> &pids) throws
     -> ArrayList<process_entry>
 {
   ArrayList<process_entry> described{heap_allocator()};
+
   for (let const pid : pids) {
     char process_directory[64];
     char process_file[64];
@@ -878,6 +916,7 @@ fn describe_processes(const ArrayList<u32> &pids) throws
     }
     let command_name = Path{process_file}.read_entire_file();
     if (!command_name.has_value()) continue;
+
     while (!command_name->is_empty() && command_name->back() == '\n') {
       command_name->pop_back();
     }
@@ -892,11 +931,13 @@ fn describe_processes(const ArrayList<u32> &pids) throws
     if (let stat = Path{process_file}.read_entire_file(); stat.has_value()) {
       let const text = stat->view();
       usize after_name_position = text.length;
+
       for (usize position = text.length; position > 0; position--)
         if (text[position - 1] == ')') {
           after_name_position = position;
           break;
         }
+
       if (after_name_position < text.length) {
         let const fields = text.substring(after_name_position);
         if (let const start_ticks = nth_space_field(fields, 19).to<i64>();
@@ -923,6 +964,7 @@ fn describe_processes(const ArrayList<u32> &pids) throws
 
   let const sorted_pids = pids.make_sorted(sort_order::ascending);
   let all = enumerate_processes(process_detail::ResourceStats);
+
   for (let &process : all) {
     if (sorted_pids.find(static_cast<u32>(process.pid)).has_value())
       described.push(steal(process));
@@ -943,6 +985,7 @@ fn scan_process_file_users(const ArrayList<process_file_query> &queries,
                                   const struct vinfo_stat &status) {
     if (query.should_match_device)
       return query.device_id == static_cast<u64>(status.vst_dev);
+
     return query.device_id == static_cast<u64>(status.vst_dev) &&
            query.file_id == static_cast<u64>(status.vst_ino);
   };
@@ -950,6 +993,7 @@ fn scan_process_file_users(const ArrayList<process_file_query> &queries,
                                    const struct stat &status) {
     if (query.should_match_device)
       return query.device_id == static_cast<u64>(status.st_dev);
+
     return query.device_id == static_cast<u64>(status.st_dev) &&
            query.file_id == static_cast<u64>(status.st_ino);
   };
@@ -967,6 +1011,7 @@ fn scan_process_file_users(const ArrayList<process_file_query> &queries,
           break;
         }
       }
+
     let const flags =
         query.should_match_device ? PROC_LISTPIDSPATH_PATH_IS_VOLUME : 0;
     let byte_count =
@@ -981,6 +1026,7 @@ fn scan_process_file_users(const ArrayList<process_file_query> &queries,
     if (byte_count < 0) return query.query_position;
 
     let const pid_count = static_cast<usize>(byte_count) / sizeof(pid_t);
+
     for (usize pid_position = 0; pid_position < pid_count; pid_position++) {
       let const pid = pids.begin()[pid_position];
       if (pid <= 0) continue;
@@ -1011,17 +1057,20 @@ fn scan_process_file_users(const ArrayList<process_file_query> &queries,
         }
       }
 
-      let descriptor_bytes =
+      let descriptor_byte_count =
           ::proc_pidinfo(pid, PROC_PIDLISTFDS, 0, nullptr, 0);
-      if (descriptor_bytes > 0) {
+      if (descriptor_byte_count > 0) {
         ArrayList<struct proc_fdinfo> descriptors{heap_allocator()};
-        descriptors.reserve(static_cast<usize>(descriptor_bytes) /
+        descriptors.reserve(static_cast<usize>(descriptor_byte_count) /
                             sizeof(struct proc_fdinfo));
-        descriptor_bytes = ::proc_pidinfo(
-            pid, PROC_PIDLISTFDS, 0, descriptors.begin(), descriptor_bytes);
-        if (descriptor_bytes > 0) {
+        descriptor_byte_count =
+            ::proc_pidinfo(pid, PROC_PIDLISTFDS, 0, descriptors.begin(),
+                           descriptor_byte_count);
+        if (descriptor_byte_count > 0) {
           let const descriptor_count =
-              static_cast<usize>(descriptor_bytes) / sizeof(struct proc_fdinfo);
+              static_cast<usize>(descriptor_byte_count) /
+              sizeof(struct proc_fdinfo);
+
           for (usize descriptor_position = 0;
                descriptor_position < descriptor_count; descriptor_position++)
           {
@@ -1041,6 +1090,7 @@ fn scan_process_file_users(const ArrayList<process_file_query> &queries,
       }
 
       u64 region_address = 0;
+
       loop
       {
         struct proc_regionwithpathinfo region{};
@@ -1063,6 +1113,7 @@ fn scan_process_file_users(const ArrayList<process_file_query> &queries,
                                      query.query_position, use_mask});
     }
   }
+
   return None;
 #elif defined __linux__
   DIR *proc_directory = ::opendir("/proc");
@@ -1073,6 +1124,7 @@ fn scan_process_file_users(const ArrayList<process_file_query> &queries,
                             const struct stat &status) {
     if (query.should_match_device)
       return query.device_id == static_cast<u64>(status.st_dev);
+
     return query.device_id == static_cast<u64>(status.st_dev) &&
            query.file_id == static_cast<u64>(status.st_ino);
   };
@@ -1087,6 +1139,7 @@ fn scan_process_file_users(const ArrayList<process_file_query> &queries,
 
   ArrayList<u8> use_masks{scratch};
   use_masks.reserve(queries.count());
+
   for (usize query_position = 0; query_position < queries.count();
        query_position++)
     use_masks.push(0);
@@ -1124,6 +1177,7 @@ fn scan_process_file_users(const ArrayList<process_file_query> &queries,
         {"cwd",  process_file_use::Cwd       },
         {"exe",  process_file_use::Executable},
     };
+
     for (let const &reference : references) {
       char reference_path[80];
       let const length = std::snprintf(
@@ -1148,6 +1202,7 @@ fn scan_process_file_users(const ArrayList<process_file_query> &queries,
       {
         defer { ::closedir(descriptor_directory); };
         let const descriptor_directory_fd = ::dirfd(descriptor_directory);
+
         for (struct dirent *descriptor = ::readdir(descriptor_directory);
              descriptor != nullptr;
              descriptor = ::readdir(descriptor_directory))
@@ -1171,15 +1226,19 @@ fn scan_process_file_users(const ArrayList<process_file_query> &queries,
       if (FILE *maps = std::fopen(maps_path, "r"); maps != nullptr) {
         defer { std::fclose(maps); };
         char line[4096];
+
         while (std::fgets(line, sizeof(line), maps) != nullptr) {
           char *field = line;
+
           for (usize field_position = 0; field_position < 3; field_position++) {
             while (*field != '\0' && *field != ' ') {
               field++;
             }
+
             while (*field == ' ')
               field++;
           }
+
           char *end = nullptr;
           let const major_id = std::strtoull(field, &end, 16);
           if (end == field || *end != ':') {
@@ -1191,8 +1250,10 @@ fn scan_process_file_users(const ArrayList<process_file_query> &queries,
             continue;
           }
           field = end;
+
           while (*field == ' ')
             field++;
+
           let const file_id = std::strtoull(field, &end, 10);
           if (end == field || file_id == 0) {
             continue;
@@ -1215,12 +1276,14 @@ fn scan_process_file_users(const ArrayList<process_file_query> &queries,
                                    use_masks[query_position]});
     }
   }
+
   return None;
 #else
   unused(scratch);
   unused(queries);
   unused(users);
   errno = ENOTSUP;
+
   return queries[0].query_position;
 #endif
 }
@@ -1231,6 +1294,7 @@ fn process_file_query_is_supported(const file_status &status,
 {
   unused(status);
   unused(scope);
+
   return true;
 }
 
@@ -1255,8 +1319,8 @@ fn read_malloc_heap_stats(malloc_heap_stats &stats) wontthrow -> bool
   if (mallinfo2 != nullptr) {
     let const info = mallinfo2();
     stats.bytes_in_use = static_cast<usize>(info.uordblks);
-    stats.arena_bytes = static_cast<usize>(info.arena);
-    stats.mapped_bytes = static_cast<usize>(info.hblkhd);
+    stats.arena_byte_count = static_cast<usize>(info.arena);
+    stats.mapped_byte_count = static_cast<usize>(info.hblkhd);
   } else
 #endif
   {
@@ -1266,20 +1330,24 @@ fn read_malloc_heap_stats(malloc_heap_stats &stats) wontthrow -> bool
 #pragma GCC diagnostic pop
     stats.bytes_in_use =
         info.uordblks < 0 ? 0 : static_cast<usize>(info.uordblks);
-    stats.arena_bytes = info.arena < 0 ? 0 : static_cast<usize>(info.arena);
-    stats.mapped_bytes = info.hblkhd < 0 ? 0 : static_cast<usize>(info.hblkhd);
+    stats.arena_byte_count =
+        info.arena < 0 ? 0 : static_cast<usize>(info.arena);
+    stats.mapped_byte_count =
+        info.hblkhd < 0 ? 0 : static_cast<usize>(info.hblkhd);
   }
+
   return true;
 #elif defined __APPLE__
   malloc_statistics_t default_zone_stats{};
   malloc_zone_statistics(malloc_default_zone(), &default_zone_stats);
   stats.bytes_in_use = default_zone_stats.size_in_use;
-  stats.arena_bytes = default_zone_stats.size_allocated;
-  stats.mapped_bytes = default_zone_stats.max_size_in_use;
+  stats.arena_byte_count = default_zone_stats.size_allocated;
+  stats.mapped_byte_count = default_zone_stats.max_size_in_use;
 
   return true;
 #else
   unused(stats);
+
   return false;
 #endif
 }
@@ -1294,6 +1362,7 @@ static fn read_small_file(const char *path, char *buffer,
   defer { ::close(file_fd); };
 
   usize total_length = 0;
+
   while (total_length + 1 < capacity) {
     let const read_length =
         ::read(file_fd, buffer + total_length, capacity - 1 - total_length);
@@ -1303,12 +1372,14 @@ static fn read_small_file(const char *path, char *buffer,
   }
 
   buffer[total_length] = '\0';
+
   return total_length;
 }
 
 static fn each_line(StringView text, usize &position) wontthrow -> StringView
 {
   let const start_position = position;
+
   while (position < text.length && text[position] != '\n') {
     position++;
   }
@@ -1325,6 +1396,7 @@ static fn parse_decimal_word(StringView word) wontthrow -> Maybe<u64>
   if (word.is_empty()) return None;
 
   u64 parsed = 0;
+
   for (usize index = 0; index < word.length; index++) {
     let const character = word[index];
     if (character < '0' || character > '9') {
@@ -1355,6 +1427,7 @@ static fn read_tcp_counter_rows(StringView text, StringView prefix,
   let has_statistics = false;
   StringView header;
   usize position = 0;
+
   while (position < text.length) {
     let const line = each_line(text, position);
     if (!line.starts_with(prefix)) continue;
@@ -1365,6 +1438,7 @@ static fn read_tcp_counter_rows(StringView text, StringView prefix,
 
     usize name_position = 0;
     usize value_position = prefix.length;
+
     while (name_position < header.length && value_position < line.length) {
       let const name = header.next_ascii_whitespace_word(name_position);
       let const value_word = line.next_ascii_whitespace_word(value_position);
@@ -1379,6 +1453,7 @@ static fn read_tcp_counter_rows(StringView text, StringView prefix,
         break;
       }
     }
+
     break;
   }
 
@@ -1390,6 +1465,7 @@ static fn parse_decimal_words(StringView text, u64 *values,
 {
   usize value_count = 0;
   usize position = 0;
+
   while (position < text.length && value_count < value_capacity) {
     let const word = text.next_ascii_whitespace_word(position);
     if (word.is_empty()) continue;
@@ -1414,6 +1490,7 @@ static fn read_pressure_totals(const char *path, u64 &some_microseconds,
 
   let const text = StringView{buffer, length};
   usize position = 0;
+
   while (position < text.length) {
     let const line = each_line(text, position);
     let const total_position = line.find_substring("total=");
@@ -1450,16 +1527,18 @@ fn read_system_activity_status(system_activity_status &status) wontthrow -> bool
     status.available_fields |= static_cast<u32>(system_activity_field::Cpu);
   }
 
-  vm_size_t page_bytes = 4096;
-  unused(host_page_size(host_port, &page_bytes));
+  vm_size_t page_byte_count = 4096;
+  unused(host_page_size(host_port, &page_byte_count));
   vm_statistics64_data_t vm{};
   mach_msg_type_number_t vm_count = HOST_VM_INFO64_COUNT;
   if (host_statistics64(host_port, HOST_VM_INFO64,
                         reinterpret_cast<host_info64_t>(&vm),
                         &vm_count) == KERN_SUCCESS)
   {
-    status.page_input_bytes = vm.pageins * static_cast<u64>(page_bytes);
-    status.page_output_bytes = vm.pageouts * static_cast<u64>(page_bytes);
+    status.page_input_byte_count =
+        vm.pageins * static_cast<u64>(page_byte_count);
+    status.page_output_byte_count =
+        vm.pageouts * static_cast<u64>(page_byte_count);
     status.page_fault_count = vm.faults;
     status.available_fields |=
         static_cast<u32>(system_activity_field::PageInput) |
@@ -1476,6 +1555,7 @@ fn read_system_activity_status(system_activity_status &status) wontthrow -> bool
   if (stat_length != 0) {
     let const text = StringView{stat_buffer, stat_length};
     usize position = 0;
+
     while (position < text.length) {
       let const line = each_line(text, position);
       if (line.starts_with("cpu ")) {
@@ -1533,6 +1613,7 @@ fn read_system_activity_status(system_activity_status &status) wontthrow -> bool
             {"softirq ",   &system_activity_status::soft_interrupt_count,
              system_activity_field::SoftInterrupts  },
         };
+
         for (let const &field : STAT_SCALAR_FIELDS) {
           if (!line.starts_with(field.name)) continue;
           let const value = leading_digits(line, field.name.length).to<u64>();
@@ -1552,6 +1633,7 @@ fn read_system_activity_status(system_activity_status &status) wontthrow -> bool
   if (vm_length != 0) {
     let const text = StringView{vm_buffer, vm_length};
     usize position = 0;
+
     while (position < text.length) {
       let const line = each_line(text, position);
       struct vm_field
@@ -1563,9 +1645,9 @@ fn read_system_activity_status(system_activity_status &status) wontthrow -> bool
         bool is_additive;
       };
       static constexpr vm_field FIELDS[] = {
-          {"pgpgin ",             &system_activity_status::page_input_bytes,       1024,
+          {"pgpgin ",             &system_activity_status::page_input_byte_count,  1024,
            system_activity_field::PageInput,       false},
-          {"pgpgout ",            &system_activity_status::page_output_bytes,      1024,
+          {"pgpgout ",            &system_activity_status::page_output_byte_count, 1024,
            system_activity_field::PageOutput,      false},
           {"pgfault ",            &system_activity_status::page_fault_count,       1,
            system_activity_field::Faults,          false},
@@ -1611,6 +1693,7 @@ fn read_system_activity_status(system_activity_status &status) wontthrow -> bool
         }
         continue;
       }
+
       for (let const &known : FIELDS) {
         if (!line.starts_with(known.name)) continue;
         let const value = leading_digits(line, known.name.length).to<u64>();
@@ -1673,6 +1756,7 @@ fn read_system_activity_status(system_activity_status &status) wontthrow -> bool
     errno = 0;
     u64 namespace_count = 0;
     bool is_bounded = true;
+
     for (struct dirent *entry = ::readdir(namespace_directory);
          entry != nullptr; entry = ::readdir(namespace_directory))
     {
@@ -1683,6 +1767,7 @@ fn read_system_activity_status(system_activity_status &status) wontthrow -> bool
       }
       namespace_count++;
     }
+
     if (is_bounded && errno == 0) {
       status.namespace_count = namespace_count;
       status.available_fields |=
@@ -1697,6 +1782,7 @@ fn read_system_activity_status(system_activity_status &status) wontthrow -> bool
     char cgroup_buffer[8192];
     usize cgroup_length = 0;
     bool has_complete_read = false;
+
     while (cgroup_length < sizeof(cgroup_buffer)) {
       let const read_length = ::read(cgroup_fd, cgroup_buffer + cgroup_length,
                                      sizeof(cgroup_buffer) - cgroup_length);
@@ -1710,6 +1796,7 @@ fn read_system_activity_status(system_activity_status &status) wontthrow -> bool
       }
       if (errno != EINTR) break;
     }
+
     if (has_complete_read && cgroup_length > 0 &&
         cgroup_buffer[cgroup_length - 1] == '\n')
     {
@@ -1717,6 +1804,7 @@ fn read_system_activity_status(system_activity_status &status) wontthrow -> bool
       usize position = 0;
       u64 membership_count = 0;
       bool is_valid = true;
+
       while (position < text.length) {
         let const line = each_line(text, position);
         let const first_colon = line.find_character(':');
@@ -1729,6 +1817,7 @@ fn read_system_activity_status(system_activity_status &status) wontthrow -> bool
         }
         membership_count++;
       }
+
       if (is_valid) {
         status.cgroup_membership_count = membership_count;
         status.available_fields |=
@@ -1740,6 +1829,7 @@ fn read_system_activity_status(system_activity_status &status) wontthrow -> bool
   return status.available_fields != 0;
 #else
   unused(status);
+
   return false;
 #endif
 }
@@ -1761,6 +1851,7 @@ fn read_network_interface_statistics() throws
   }
 
   usize position = 0;
+
   while (position + sizeof(if_msghdr) <= byte_length) {
     let const *header =
         reinterpret_cast<const if_msghdr *>(storage.begin() + position);
@@ -1814,6 +1905,7 @@ fn read_network_interface_statistics() throws
     }
     position += header->ifm_msglen;
   }
+
 #elif defined __linux__
   char buffer[65536];
   let const length = read_small_file("/proc/net/dev", buffer, sizeof(buffer));
@@ -1821,6 +1913,7 @@ fn read_network_interface_statistics() throws
 
   let const text = StringView{buffer, length};
   usize position = 0;
+
   while (position < text.length) {
     let const line = each_line(text, position);
     let const colon_position = line.find_character(':');
@@ -1858,6 +1951,7 @@ fn read_network_interface_statistics() throws
     });
   }
 #endif
+
   return result;
 }
 
@@ -1876,11 +1970,14 @@ append_kernel_socket_table(StringView table_path, kernel_socket_kind kind,
   if (!header_end.has_value()) return;
 
   usize position = *header_end + 1;
+
   while (position < text.length) {
     let line = text.next_line(position);
+
     while (!line.is_empty() && line[line.length - 1] == ' ') {
       line = line.substring_of_length(0, line.length - 1);
     }
+
     let const separator = line.find_last_character(' ');
     if (!separator.has_value()) continue;
 
@@ -1902,6 +1999,7 @@ fn kernel_sockets() throws -> ArrayList<kernel_socket_entry>
   append_kernel_socket_table("/proc/net/packet", kernel_socket_kind::Packet,
                              result);
 #endif
+
   return result;
 }
 
@@ -1938,6 +2036,7 @@ fn read_tcp_statistics(tcp_statistics &statistics) wontthrow -> bool
       static_cast<u32>(tcp_statistics_field::ReceiveMemoryDrops) |
       static_cast<u32>(tcp_statistics_field::ListenDrops) |
       static_cast<u32>(tcp_statistics_field::RetransmitTimeouts);
+
   return true;
 #elif defined __linux__
   char buffer[32768];
@@ -2005,6 +2104,7 @@ fn read_tcp_statistics(tcp_statistics &statistics) wontthrow -> bool
   return has_statistics;
 #else
   unused(statistics);
+
   return false;
 #endif
 }
@@ -2042,10 +2142,12 @@ fn read_disk_io_snapshot(Allocator allocator) throws -> disk_io_snapshot
       return false;
     }
     value = static_cast<u64>(signed_value);
+
     return true;
   };
 
   io_object_t service = IO_OBJECT_NULL;
+
   while ((service = IOIteratorNext(iterator)) != IO_OBJECT_NULL) {
     defer { IOObjectRelease(service); };
     let const raw_statistics = IORegistryEntryCreateCFProperty(
@@ -2090,9 +2192,9 @@ fn read_disk_io_snapshot(Allocator allocator) throws -> disk_io_snapshot
     };
     static constexpr disk_field FIELDS[] = {
         {kIOBlockStorageDriverStatisticsBytesReadKey,
-         &disk_io_status::read_bytes,             disk_io_field::ReadBytes     },
+         &disk_io_status::read_byte_count,        disk_io_field::ReadBytes     },
         {kIOBlockStorageDriverStatisticsBytesWrittenKey,
-         &disk_io_status::written_bytes,          disk_io_field::WrittenBytes  },
+         &disk_io_status::written_byte_count,     disk_io_field::WrittenBytes  },
         {kIOBlockStorageDriverStatisticsReadsKey,
          &disk_io_status::read_operation_count,   disk_io_field::ReadOperations},
         {kIOBlockStorageDriverStatisticsWritesKey,
@@ -2111,19 +2213,23 @@ fn read_disk_io_snapshot(Allocator allocator) throws -> disk_io_snapshot
         {kIOBlockStorageDriverStatisticsWriteRetriesKey,
          &disk_io_status::write_retry_count,      disk_io_field::WriteRetries  },
     };
+
     for (let const &field : FIELDS) {
       if (do_read_number(dictionary, field.name, status.*field.field)) {
         status.available_fields |= static_cast<u32>(field.capability);
       }
     }
+
     if (status.available_fields != 0) snapshot.disks.push(steal(status));
   }
+
 #elif defined __linux__
   let const contents = Path{"/proc/diskstats"}.read_entire_file();
   if (!contents.has_value()) return snapshot;
 
   let const text = contents->view();
   usize position = 0;
+
   while (position < text.length) {
     let const line = each_line(text, position);
     usize word_position = 0;
@@ -2138,6 +2244,7 @@ fn read_disk_io_snapshot(Allocator allocator) throws -> disk_io_snapshot
 
     let const do_scale = [](u64 value, u64 multiplier) wontthrow -> Maybe<u64> {
       if (value > UINT64_MAX / multiplier) return None;
+
       return value * multiplier;
     };
     let const read_bytes = do_scale(values[2], 512);
@@ -2182,6 +2289,7 @@ fn read_disk_io_snapshot(Allocator allocator) throws -> disk_io_snapshot
     });
   }
 #endif
+
   return snapshot;
 }
 
@@ -2205,6 +2313,7 @@ fn system_uptime_seconds() wontthrow -> Maybe<u64>
 
   return static_cast<u64>(std::strtoull(buffer, nullptr, 10));
 #else
+
   return None;
 #endif
 }
@@ -2212,20 +2321,20 @@ fn system_uptime_seconds() wontthrow -> Maybe<u64>
 fn read_memory_status(memory_status &status) wontthrow -> bool
 {
 #if defined __APPLE__
-  u64 memory_bytes = 0;
-  usize memory_bytes_length = sizeof(memory_bytes);
-  if (::sysctlbyname("hw.memsize", &memory_bytes, &memory_bytes_length, nullptr,
-                     0) != 0)
+  u64 memory_byte_count = 0;
+  usize memory_bytes_length = sizeof(memory_byte_count);
+  if (::sysctlbyname("hw.memsize", &memory_byte_count, &memory_bytes_length,
+                     nullptr, 0) != 0)
     return false;
-  status.total_kib = memory_bytes / 1024;
+  status.total_kib = memory_byte_count / 1024;
   status.available_fields |= static_cast<u32>(memory_status_field::Total);
 
   let const host_port = mach_host_self();
-  vm_size_t page_bytes = 0;
-  if (host_page_size(host_port, &page_bytes) != KERN_SUCCESS ||
-      page_bytes < 1024)
+  vm_size_t page_byte_count = 0;
+  if (host_page_size(host_port, &page_byte_count) != KERN_SUCCESS ||
+      page_byte_count < 1024)
   {
-    page_bytes = 4096;
+    page_byte_count = 4096;
   }
 
   vm_statistics64_data_t vm_stats{};
@@ -2234,7 +2343,7 @@ fn read_memory_status(memory_status &status) wontthrow -> bool
                         reinterpret_cast<host_info64_t>(&vm_stats),
                         &vm_stats_count) == KERN_SUCCESS)
   {
-    let const page_kib = static_cast<u64>(page_bytes) / 1024;
+    let const page_kib = static_cast<u64>(page_byte_count) / 1024;
     status.free_kib = static_cast<u64>(vm_stats.free_count) * page_kib;
     status.available_kib = (static_cast<u64>(vm_stats.free_count) +
                             static_cast<u64>(vm_stats.inactive_count) +
@@ -2296,12 +2405,14 @@ fn read_memory_status(memory_status &status) wontthrow -> bool
 
   let const text = StringView{buffer, length};
   usize position = 0;
+
   while (position < text.length) {
     let const line = each_line(text, position);
     let const colon_position = line.find_character(':');
     if (!colon_position.has_value()) continue;
 
     let const name = line.substring_of_length(0, *colon_position);
+
     for (let const &known : MEMINFO_FIELDS) {
       if (name != known.name) continue;
 
@@ -2322,9 +2433,11 @@ fn read_memory_status(memory_status &status) wontthrow -> bool
   {
     status.available_kib = status.free_kib;
   }
+
   return status.has_field(memory_status_field::Total);
 #else
   unused(status);
+
   return false;
 #endif
 }
@@ -2337,23 +2450,25 @@ fn read_swap_status(swap_status &status) wontthrow -> bool
   if (::sysctlbyname("vm.swapusage", &swap, &swap_length, nullptr, 0) != 0) {
     return false;
   }
-  status.total_bytes = swap.xsu_total;
-  status.used_bytes = swap.xsu_used;
-  status.free_bytes = swap.xsu_avail;
+  status.total_byte_count = swap.xsu_total;
+  status.used_byte_count = swap.xsu_used;
+  status.free_byte_count = swap.xsu_avail;
   status.has_encryption_state = true;
   status.is_encrypted = swap.xsu_encrypted != 0;
 
   let const host_port = mach_host_self();
-  vm_size_t page_bytes = 4096;
-  unused(host_page_size(host_port, &page_bytes));
+  vm_size_t page_byte_count = 4096;
+  unused(host_page_size(host_port, &page_byte_count));
   vm_statistics64_data_t vm_stats{};
   mach_msg_type_number_t vm_stats_count = HOST_VM_INFO64_COUNT;
   if (host_statistics64(host_port, HOST_VM_INFO64,
                         reinterpret_cast<host_info64_t>(&vm_stats),
                         &vm_stats_count) == KERN_SUCCESS)
   {
-    status.input_bytes = static_cast<u64>(vm_stats.swapins) * page_bytes;
-    status.output_bytes = static_cast<u64>(vm_stats.swapouts) * page_bytes;
+    status.input_byte_count =
+        static_cast<u64>(vm_stats.swapins) * page_byte_count;
+    status.output_byte_count =
+        static_cast<u64>(vm_stats.swapouts) * page_byte_count;
     status.has_activity = true;
   }
 
@@ -2366,11 +2481,12 @@ fn read_swap_status(swap_status &status) wontthrow -> bool
   {
     return false;
   }
-  status.total_bytes = memory.swap_total_kib * 1024;
-  status.free_bytes = memory.swap_free_kib * 1024;
-  status.used_bytes = status.total_bytes > status.free_bytes
-                          ? status.total_bytes - status.free_bytes
-                          : 0;
+  status.total_byte_count = memory.swap_total_kib * 1024;
+  status.free_byte_count = memory.swap_free_kib * 1024;
+  status.used_byte_count =
+      status.total_byte_count > status.free_byte_count
+          ? status.total_byte_count - status.free_byte_count
+          : 0;
 
   char buffer[16384];
   let const length = read_small_file("/proc/vmstat", buffer, sizeof(buffer));
@@ -2380,6 +2496,7 @@ fn read_swap_status(swap_status &status) wontthrow -> bool
   u64 output_pages = 0;
   let const text = StringView{buffer, length};
   usize position = 0;
+
   while (position < text.length) {
     let const line = each_line(text, position);
     if (line.starts_with("pswpin ")) {
@@ -2393,16 +2510,17 @@ fn read_swap_status(swap_status &status) wontthrow -> bool
     }
   }
 
-  let const page_bytes = ::sysconf(_SC_PAGESIZE);
-  if (page_bytes > 0) {
-    status.input_bytes = input_pages * static_cast<u64>(page_bytes);
-    status.output_bytes = output_pages * static_cast<u64>(page_bytes);
+  let const page_byte_count = ::sysconf(_SC_PAGESIZE);
+  if (page_byte_count > 0) {
+    status.input_byte_count = input_pages * static_cast<u64>(page_byte_count);
+    status.output_byte_count = output_pages * static_cast<u64>(page_byte_count);
     status.has_activity = true;
   }
 
   return true;
 #else
   unused(status);
+
   return false;
 #endif
 }
@@ -2418,15 +2536,17 @@ static fn parse_linux_process_io_status(StringView text,
     u64 process_io_status::*field;
   };
   static constexpr io_field FIELDS[] = {
-      {"read_bytes:",  &process_io_status::read_bytes           },
-      {"write_bytes:", &process_io_status::written_bytes        },
+      {"read_bytes:",  &process_io_status::read_byte_count      },
+      {"write_bytes:", &process_io_status::written_byte_count   },
       {"syscr:",       &process_io_status::read_operation_count },
       {"syscw:",       &process_io_status::write_operation_count},
   };
 
   usize position = 0;
+
   while (position < text.length) {
     let const line = each_line(text, position);
+
     for (let const &known : FIELDS) {
       if (!line.starts_with(known.name)) continue;
       if (let const parsed = leading_digits(line, known.name.length).to<u64>();
@@ -2450,8 +2570,9 @@ fn read_process_io_status(i64 pid, process_io_status &status) wontthrow -> bool
   {
     return false;
   }
-  status.read_bytes = usage.ri_diskio_bytesread;
-  status.written_bytes = usage.ri_diskio_byteswritten;
+  status.read_byte_count = usage.ri_diskio_bytesread;
+  status.written_byte_count = usage.ri_diskio_byteswritten;
+
   return true;
 #elif defined __linux__
   char path[64];
@@ -2467,6 +2588,7 @@ fn read_process_io_status(i64 pid, process_io_status &status) wontthrow -> bool
 #else
   unused(pid);
   unused(status);
+
   return false;
 #endif
 }
@@ -2479,6 +2601,7 @@ fn read_process_io_statuses(const ArrayList<i64> &process_ids,
   availability.clear();
   statuses.reserve(process_ids.count());
   availability.reserve(process_ids.count());
+
   for (usize index = 0; index < process_ids.count(); index++) {
     statuses.push({});
     availability.push(0);
@@ -2501,11 +2624,14 @@ fn read_process_io_statuses(const ArrayList<i64> &process_ids,
   results.reserve(PROCESS_IO_BATCH_COUNT);
   let const do_flush_probes = [&]() throws -> void {
     batch.clear();
+
     for (usize index = 0; index < probe_count; index++) {
       batch.add(batch_operation::read(probes[index].fd, probes[index].bytes,
                                       sizeof(probes[index].bytes)));
     }
+
     batch.execute(results);
+
     for (usize index = 0; index < probe_count; index++) {
       let const &result = results[index];
       if (result.error_number == 0 && result.transferred_byte_count != 0) {
@@ -2517,6 +2643,7 @@ fn read_process_io_statuses(const ArrayList<i64> &process_ids,
       }
       unused(close_fd(probes[index].fd));
     }
+
     probe_count = 0;
   };
 
@@ -2536,8 +2663,10 @@ fn read_process_io_statuses(const ArrayList<i64> &process_ids,
     probe_count++;
     if (probe_count == PROCESS_IO_BATCH_COUNT) do_flush_probes();
   }
+
   if (probe_count != 0) do_flush_probes();
 #else
+
   for (usize index = 0; index < process_ids.count(); index++) {
     availability[index] =
         read_process_io_status(process_ids[index], statuses[index]) ? 1 : 0;
@@ -2563,6 +2692,7 @@ fn processor_model_name(Allocator allocator) throws -> Maybe<String>
     return None;
 
   buffer.begin()[name_length] = '\0';
+
   return String{allocator, StringView{buffer.begin()}};
 #elif defined __linux__
   static constexpr StringView KNOWN_KEYS[] = {
@@ -2573,12 +2703,14 @@ fn processor_model_name(Allocator allocator) throws -> Maybe<String>
 
   let const text = StringView{buffer, length};
   usize position = 0;
+
   while (position < text.length) {
     let const line = each_line(text, position);
     let const colon_position = line.find_character(':');
     if (!colon_position.has_value()) continue;
 
     let name = line.substring_of_length(0, *colon_position);
+
     while (!name.is_empty() &&
            (name[name.length - 1] == ' ' || name[name.length - 1] == '\t'))
     {
@@ -2586,18 +2718,22 @@ fn processor_model_name(Allocator allocator) throws -> Maybe<String>
     }
 
     bool is_known = false;
+
     for (let const &known : KNOWN_KEYS) {
       if (name != known) continue;
 
       is_known = true;
       break;
     }
+
     if (!is_known) continue;
 
     let value = line.substring(*colon_position + 1);
+
     while (!value.is_empty() && (value[0] == ' ' || value[0] == '\t')) {
       value = value.substring(1);
     }
+
     if (value.is_empty()) continue;
 
     return String{allocator, value};
@@ -2606,6 +2742,7 @@ fn processor_model_name(Allocator allocator) throws -> Maybe<String>
   return None;
 #else
   unused(allocator);
+
   return None;
 #endif
 }
@@ -2628,8 +2765,10 @@ static pure fn open_flags_access(int open_flags) wontthrow -> char
 fn has_process_open_file_listing() wontthrow -> bool
 {
 #if defined __APPLE__ || defined __linux__
+
   return true;
 #else
+
   return false;
 #endif
 }
@@ -2681,19 +2820,21 @@ fn list_process_open_files(i64 pid, Allocator allocator,
     do_push(StringView{executable_path}, -1, 0, 0, 0, 0,
             process_file_use::Executable, 'r', false);
 
-  let descriptor_bytes =
+  let descriptor_byte_count =
       ::proc_pidinfo(process_id, PROC_PIDLISTFDS, 0, nullptr, 0);
-  if (descriptor_bytes <= 0) return files;
+  if (descriptor_byte_count <= 0) return files;
 
   ArrayList<struct proc_fdinfo> descriptors{allocator};
-  descriptors.reserve(static_cast<usize>(descriptor_bytes) /
+  descriptors.reserve(static_cast<usize>(descriptor_byte_count) /
                       sizeof(struct proc_fdinfo));
-  descriptor_bytes = ::proc_pidinfo(process_id, PROC_PIDLISTFDS, 0,
-                                    descriptors.begin(), descriptor_bytes);
-  if (descriptor_bytes <= 0) return files;
+  descriptor_byte_count =
+      ::proc_pidinfo(process_id, PROC_PIDLISTFDS, 0, descriptors.begin(),
+                     descriptor_byte_count);
+  if (descriptor_byte_count <= 0) return files;
 
   let const descriptor_count =
-      static_cast<usize>(descriptor_bytes) / sizeof(struct proc_fdinfo);
+      static_cast<usize>(descriptor_byte_count) / sizeof(struct proc_fdinfo);
+
   for (usize descriptor_position = 0; descriptor_position < descriptor_count;
        descriptor_position++)
   {
@@ -2780,11 +2921,13 @@ fn list_process_open_files(i64 pid, Allocator allocator,
       {
         did_read_mappings = true;
         usize line_position = 0;
+
         while (line_position < maps->length()) {
           let const line = each_line(maps->view(), line_position);
           usize field_position = 0;
           u64 file_id = 0;
           bool is_valid = true;
+
           for (usize field_index = 0; field_index < 5; field_index++) {
             while (
                 field_position < line.length &&
@@ -2792,12 +2935,15 @@ fn list_process_open_files(i64 pid, Allocator allocator,
             {
               field_position++;
             }
+
             let const field_start = field_position;
+
             while (field_position < line.length &&
                    line[field_position] != ' ' && line[field_position] != '\t')
             {
               field_position++;
             }
+
             if (field_start == field_position) {
               is_valid = false;
               break;
@@ -2814,12 +2960,15 @@ fn list_process_open_files(i64 pid, Allocator allocator,
               file_id = parsed.value();
             }
           }
+
           if (!is_valid) continue;
+
           while (field_position < line.length &&
                  (line[field_position] == ' ' || line[field_position] == '\t'))
           {
             field_position++;
           }
+
           if (field_position == line.length) continue;
 
           let path = line.substring(field_position);
@@ -2835,6 +2984,7 @@ fn list_process_open_files(i64 pid, Allocator allocator,
                                                    DELETED_SUFFIX.length);
 
           bool is_duplicate = false;
+
           for (let const &file : files) {
             if (file.use == process_file_use::Mapped &&
                 file.file_id == file_id && file.path.view() == path)
@@ -2843,6 +2993,7 @@ fn list_process_open_files(i64 pid, Allocator allocator,
               break;
             }
           }
+
           if (is_duplicate) continue;
 
           do_push(path, -1, 0, file_id, 0, 0, process_file_use::Mapped, 'r',
@@ -2869,11 +3020,13 @@ fn list_process_open_files(i64 pid, Allocator allocator,
           process_file_use::File, 'u', false, true
       });
     }
+
     return files;
   }
   defer { ::closedir(descriptor_directory); };
 
   let const descriptor_directory_fd = ::dirfd(descriptor_directory);
+
   for (struct dirent *entry = ::readdir(descriptor_directory); entry != nullptr;
        entry = ::readdir(descriptor_directory))
   {
@@ -2911,6 +3064,7 @@ fn list_process_open_files(i64 pid, Allocator allocator,
     if (info_length != 0) {
       let const info_text = StringView{info_buffer};
       usize info_position = 0;
+
       while (info_position < info_text.length) {
         let const line = each_line(info_text, info_position);
         if (line.length >= 4 &&
@@ -2951,6 +3105,7 @@ fn list_process_open_files(i64 pid, Allocator allocator,
 #else
   unused(pid);
   unused(detail);
+
   return files;
 #endif
 }
@@ -3007,6 +3162,7 @@ fn FileWatcher::watch(StringView path) wontthrow -> void
                     IN_CREATE | IN_DELETE | IN_MOVED_FROM | IN_MOVED_TO);
 #else
   usize slot = 0;
+
   while (slot < m_watched_paths.count() && m_watched_paths[slot].view() != path)
   {
     slot++;
@@ -3019,6 +3175,7 @@ fn FileWatcher::watch(StringView path) wontthrow -> void
   }
 
   const char *const watched_paths[2] = {file_path, directory_path};
+
   for (usize side = 0; side < 2; side++) {
     let &stored = m_watched_descriptors[slot * 2 + side];
     if (stored != KOSH_INVALID_FD) {
@@ -3055,6 +3212,7 @@ fn FileWatcher::watch(StringView path) wontthrow -> void
 fn FileWatcher::wait(f64 timeout_seconds) wontthrow -> void
 {
   f64 remaining_seconds = timeout_seconds;
+
   while (remaining_seconds > 0.0 && !INTERRUPT_REQUESTED) {
     let const slice_seconds = remaining_seconds < FILE_WATCHER_SLICE_SECONDS
                                   ? remaining_seconds
@@ -3073,6 +3231,7 @@ fn FileWatcher::wait(f64 timeout_seconds) wontthrow -> void
     }
 
     char events[4096];
+
     while (read(m_descriptor, events, sizeof(events)) > 0) {}
 
     return;

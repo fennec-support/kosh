@@ -41,6 +41,7 @@ static fn renice_identifier(StringView text, os::priority_target target) throws
     let const user = os::username_to_uid(text);
     if (user.has_value()) return *user;
   }
+
   return None;
 }
 
@@ -67,6 +68,7 @@ fn Renice::execute(const ExecContext &ec, EvalContext &cxt,
         FLAG_RENICE_INCREMENT.value_location(),
         "invalid increment '" + String{FLAG_RENICE_INCREMENT.value()} + "'",
         "use a decimal integer from -2147483648 through 2147483647");
+
     return 2;
   }
   let const increment = parsed.value();
@@ -75,6 +77,7 @@ fn Renice::execute(const ExecContext &ec, EvalContext &cxt,
       : FLAG_RENICE_USER.is_enabled() ? os::priority_target::User
                                       : os::priority_target::Process;
   i32 result = 0;
+
   for (usize operand_position = 0; operand_position < operands.count();
        operand_position++)
   {
@@ -105,6 +108,7 @@ fn Renice::execute(const ExecContext &ec, EvalContext &cxt,
       result = 1;
     }
   }
+
   return result;
 }
 

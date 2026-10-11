@@ -31,6 +31,7 @@ fn Let::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   if (ec.args().count() < 2) {
     report_soft_builtin_error(ec, cxt, ec.arg_location_at(0),
                               "expression expected");
+
     return 1;
   }
 
@@ -38,6 +39,7 @@ fn Let::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       ec.args().count() - 1);
 
   bool is_last_nonzero = false;
+
   for (usize i = 1; i < ec.args().count(); i++) {
     let expression_base = ec.arg_location_at(i);
     if (let const source = cxt.source_store().current_source();
@@ -72,6 +74,7 @@ fn Let::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
           report_soft_builtin_error(ec, cxt, error.location(),
                                     error.message().view(),
                                     error.detail_message());
+
         return 1;
       }
 
@@ -90,6 +93,7 @@ fn Let::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
           report_soft_builtin_error(ec, cxt, ec.arg_location_at(i),
                                     error.message().view(),
                                     error.detail_message());
+
         return 1;
       }
 

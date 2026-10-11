@@ -30,6 +30,7 @@ fn Logout::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     report_soft_builtin_error(ec, cxt, ec.source_location(),
                               "Cannot use 'logout' in a non-login shell",
                               "`exit` may be used instead");
+
     return 1;
   }
 

@@ -74,6 +74,7 @@ static pure fn magic_digit(char byte) wontthrow -> u8
   if (byte >= 'A' && byte <= 'F') {
     return static_cast<u8>(byte - 'A' + 10);
   }
+
   return 0xff;
 }
 
@@ -100,6 +101,7 @@ static fn parse_magic_number(StringView text) wontthrow -> Maybe<u64>
   if (position == text.length) return None;
 
   u64 parsed = 0;
+
   for (; position < text.length; position++) {
     let const digit = magic_digit(text[position]);
     if (digit >= base || parsed > (UINT64_MAX - digit) / base) {
@@ -145,6 +147,7 @@ static fn decode_magic_text(StringView encoded, String &decoded) throws -> void
     case 'x': {
       u8 value = 0;
       usize digit_count = 0;
+
       while (position + 1 < encoded.length && digit_count < 2) {
         let const digit = magic_digit(encoded[position + 1]);
         if (digit >= 16) break;
@@ -152,6 +155,7 @@ static fn decode_magic_text(StringView encoded, String &decoded) throws -> void
         position++;
         digit_count++;
       }
+
       if (digit_count == 0) {
         decoded += "\\x";
       } else {
@@ -163,12 +167,14 @@ static fn decode_magic_text(StringView encoded, String &decoded) throws -> void
       if (escaped >= '0' && escaped <= '7') {
         u8 value = static_cast<u8>(escaped - '0');
         usize digit_count = 1;
+
         while (position + 1 < encoded.length && digit_count < 3 &&
                encoded[position + 1] >= '0' && encoded[position + 1] <= '7')
         {
           value = static_cast<u8>(value * 8 + encoded[++position] - '0');
           digit_count++;
         }
+
         decoded.push(static_cast<char>(value));
       } else {
         decoded.push('\\');
@@ -187,12 +193,15 @@ static fn next_magic_field(StringView line, usize &position) wontthrow
   {
     position++;
   }
+
   let const start = position;
+
   while (position < line.length && line[position] != ' ' &&
          line[position] != '\t')
   {
     position++;
   }
+
   return line.substring_of_length(start, position - start);
 }
 
@@ -258,11 +267,13 @@ static fn parse_magic_type(StringView text, file_magic_rule &rule) throws
         break;
       default: {
         let const size_start = position;
+
         while (position < text.length && text[position] >= '0' &&
                text[position] <= '9')
         {
           position++;
         }
+
         if (size_start == position) return false;
         let const byte_count = parse_magic_number(
             text.substring_of_length(size_start, position - size_start));
@@ -285,8 +296,10 @@ static fn parse_magic_type(StringView text, file_magic_rule &rule) throws
     let const mask = parse_magic_number(text.substring(position));
     if (!mask.has_value()) return false;
     rule.mask = *mask;
+
     return true;
   }
+
   return position == text.length;
 }
 
@@ -302,11 +315,13 @@ static fn parse_magic_rule(StringView line, Allocator allocator,
   let offset = next_magic_field(line, position);
   let const type = next_magic_field(line, position);
   let value = next_magic_field(line, position);
+
   while (position < line.length &&
          (line[position] == ' ' || line[position] == '\t'))
   {
     position++;
   }
+
   let const message = line.substring(position);
   if (offset.is_empty() || type.is_empty() || value.is_empty() ||
       message.is_empty())
@@ -347,6 +362,7 @@ static fn parse_magic_rule(StringView line, Allocator allocator,
   }
 
   rule.message = String{allocator, message};
+
   return true;
 }
 
@@ -358,6 +374,7 @@ static fn append_magic_database(StringView path,
   if (!contents.has_value()) return false;
 
   usize position = 0;
+
   while (position < contents->count()) {
     let const line = contents->view().next_line(position);
     file_magic_rule rule{allocator};
@@ -415,6 +432,7 @@ static fn magic_rule_matches(const file_magic_rule &rule, StringView bytes,
   {
     return false;
   }
+
   return __builtin_memcmp(bytes.data + rule.offset, rule.expected_text.data(),
                           rule.expected_text.count()) == 0;
 }
@@ -425,6 +443,7 @@ static fn format_magic_message(const file_magic_rule &rule, u64 number,
   let output = String{allocator};
   let const message = rule.message.view();
   bool has_formatted_value = false;
+
   for (usize position = 0; position < message.length; position++) {
     if (message[position] != '%' || position + 1 == message.length) {
       output.push(message[position]);
@@ -471,6 +490,7 @@ static fn format_magic_message(const file_magic_rule &rule, u64 number,
       break;
     }
   }
+
   return output;
 }
 
@@ -497,6 +517,7 @@ static fn match_magic_rules(const ArrayList<file_magic_rule> &rules,
 
     return result;
   }
+
   return {};
 }
 
@@ -561,6 +582,7 @@ static pure fn file_content_description(StringView bytes) wontthrow
   {
     let const major_version = static_cast<u16>(static_cast<u8>(bytes[6]) << 8) |
                               static_cast<u8>(bytes[7]);
+
     return major_version >= 45 ? StringView{"Java class"}
                                : StringView{"Mach-O universal binary"};
   }
@@ -790,6 +812,7 @@ static pure fn file_content_description(StringView bytes) wontthrow
       (1U << '\b') | (1U << '\t') | (1U << '\n') | (1U << '\f') | (1U << '\r');
 
   bool is_text = true;
+
   for (usize position = 0; position < bytes.length; position++) {
     let const byte = static_cast<u8>(bytes[position]);
     if (byte < 0x20 && ((TEXT_CONTROL_MASK >> byte) & 1U) == 0) {
@@ -848,27 +871,33 @@ fn File::execute(const ExecContext &ec, EvalContext &cxt,
   let const allocator = cxt.scratch_allocator();
   i32 status = 0;
   ArrayList<file_magic_path> magic_paths{allocator};
+
   for (usize index = 0; index < FLAG_FILE_MAGIC.count(); index++)
     magic_paths.push(file_magic_path{FLAG_FILE_MAGIC.get_position(index),
                                      FLAG_FILE_MAGIC.get(index),
                                      FLAG_FILE_MAGIC.get_location(index)});
+
   for (usize index = 0; index < FLAG_FILE_MAGIC_ONLY.count(); index++)
     magic_paths.push(file_magic_path{FLAG_FILE_MAGIC_ONLY.get_position(index),
                                      FLAG_FILE_MAGIC_ONLY.get(index),
                                      FLAG_FILE_MAGIC_ONLY.get_location(index)});
+
   for (usize index = 1; index < magic_paths.count(); index++) {
     let current = magic_paths[index];
     usize destination = index;
+
     while (destination > 0 &&
            magic_paths[destination - 1].position > current.position)
     {
       magic_paths[destination] = magic_paths[destination - 1];
       destination--;
     }
+
     magic_paths[destination] = current;
   }
 
   ArrayList<file_magic_rule> magic_rules{allocator};
+
   for (let const &magic_path : magic_paths) {
     if (!append_magic_database(magic_path.path, magic_rules, allocator)) {
       KOSHKIT_REPORT_PATH_ERROR_AT(magic_path.location, "open",
@@ -889,16 +918,19 @@ fn File::execute(const ExecContext &ec, EvalContext &cxt,
   operand_paths.reserve(operands.count());
   file_statuses.reserve(operands.count());
   metadata_batch.reserve(operands.count());
+
   for (let const &operand : operands) {
     operand_paths.push(Path{operand.view(), allocator});
     file_statuses.push({});
   }
+
   for (usize operand_position = 0; operand_position < operands.count();
        operand_position++)
   {
     metadata_batch.add(os::batch_operation::lstat(
         operand_paths[operand_position], file_statuses[operand_position]));
   }
+
   let const metadata_results = metadata_batch.execute();
 
   let default_samples = ArrayList<String>{allocator};
@@ -907,11 +939,13 @@ fn File::execute(const ExecContext &ec, EvalContext &cxt,
       !FLAG_FILE_REGULAR_ONLY.is_enabled() && magic_rules.is_empty();
   if (should_batch_default_samples) {
     default_samples.reserve(operands.count());
+
     for (usize operand_position = 0; operand_position < operands.count();
          operand_position++)
     {
       default_samples.push(String{allocator});
     }
+
     default_sample_errors.reset(operands.count());
 
     file_content_probe probes[FILE_CONTENT_SAMPLE_BATCH_COUNT]{};
@@ -928,12 +962,15 @@ fn File::execute(const ExecContext &ec, EvalContext &cxt,
     };
     let const do_flush_probes = [&]() throws -> void {
       content_batch.clear();
+
       for (usize index = 0; index < probe_count; index++) {
         content_batch.add(os::batch_operation::read(
             probes[index].descriptor, probes[index].bytes,
             FILE_CONTENT_SAMPLE_BYTE_COUNT));
       }
+
       content_batch.execute(content_results);
+
       for (usize index = 0; index < probe_count; index++) {
         let const operand_position = probes[index].operand_position;
         let const &result = content_results[index];
@@ -950,6 +987,7 @@ fn File::execute(const ExecContext &ec, EvalContext &cxt,
         unused(os::close_fd(probes[index].descriptor));
         probes[index].descriptor = KOSH_INVALID_FD;
       }
+
       probe_count = 0;
     };
 
@@ -975,6 +1013,7 @@ fn File::execute(const ExecContext &ec, EvalContext &cxt,
       probe_count++;
       if (probe_count == FILE_CONTENT_SAMPLE_BATCH_COUNT) do_flush_probes();
     }
+
     if (probe_count != 0) do_flush_probes();
   }
 
@@ -989,17 +1028,20 @@ fn File::execute(const ExecContext &ec, EvalContext &cxt,
   if (should_batch_custom_samples) {
     custom_sample_descriptions.reserve(operands.count());
     custom_sample_error_numbers.reserve(operands.count());
+
     for (usize operand_position = 0; operand_position < operands.count();
          operand_position++)
     {
       custom_sample_descriptions.push(String{allocator});
       custom_sample_error_numbers.push(0);
     }
+
     custom_sample_ready.reset(operands.count());
     custom_sample_errors.reset(operands.count());
     custom_sample_open_errors.reset(operands.count());
 
     usize sample_byte_count = 1;
+
     for (let const &rule : magic_rules) {
       if (rule.offset > SIZE_MAX) continue;
 
@@ -1012,6 +1054,7 @@ fn File::execute(const ExecContext &ec, EvalContext &cxt,
       let const rule_end = offset + width;
       if (rule_end > sample_byte_count) sample_byte_count = rule_end;
     }
+
     if (should_apply_default_tests &&
         sample_byte_count < FILE_CONTENT_SAMPLE_BYTE_COUNT)
     {
@@ -1019,6 +1062,7 @@ fn File::execute(const ExecContext &ec, EvalContext &cxt,
     }
 
     metadata_batch.clear();
+
     for (usize operand_position = 0; operand_position < operands.count();
          operand_position++)
     {
@@ -1032,6 +1076,7 @@ fn File::execute(const ExecContext &ec, EvalContext &cxt,
       metadata_batch.add(os::batch_operation::stat(
           operand_paths[operand_position], file_statuses[operand_position]));
     }
+
     if (metadata_batch.count() != 0) {
       let follow_results = ArrayList<os::batch_result>{allocator};
       metadata_batch.execute(follow_results);
@@ -1039,6 +1084,7 @@ fn File::execute(const ExecContext &ec, EvalContext &cxt,
 
     let sample_sources = ArrayList<StringView>{allocator};
     let sample_operand_positions = ArrayList<usize>{allocator};
+
     for (usize operand_position = 0; operand_position < operands.count();
          operand_position++)
     {
@@ -1054,6 +1100,7 @@ fn File::execute(const ExecContext &ec, EvalContext &cxt,
 
     let source_results = ArrayList<source_read_result>{allocator};
     source_results.reserve(sample_sources.count());
+
     for (usize source_index = 0; source_index < sample_sources.count();
          source_index++)
     {
@@ -1067,9 +1114,10 @@ fn File::execute(const ExecContext &ec, EvalContext &cxt,
                           sample_sources,
                           allocator,
                           read_byte_count,
-                          SourceBatchReader::source_dash_mode::TreatAsPath,
-                          SourceBatchReader::source_kind_mode::KnownRegular};
+                          SourceBatchReader::SourceDashMode::TreatAsPath,
+                          SourceBatchReader::SourceKindMode::KnownRegular};
     let chunks = ArrayList<SourceBatchReader::Chunk>{allocator};
+
     loop
     {
       let const read_result = reader.read_next(chunks);
@@ -1223,6 +1271,7 @@ fn File::execute(const ExecContext &ec, EvalContext &cxt,
       if (!custom_sample_ready[operand_position]) {
         ASSERT(was_custom_sampling_interrupted,
                "custom file sample completed without a result");
+
         return 130;
       }
       description += custom_sample_descriptions[operand_position].view();

@@ -152,6 +152,7 @@ fn EvalContext::function_definition_info_of(StringView name) const wontthrow
     -> const function_definition_info *
 {
   let const storage = function_store().definitions().find(name);
+
   return storage.has_value() ? storage->get_definition_info() : nullptr;
 }
 
@@ -169,9 +170,9 @@ pure fn EvalContext::source_depth_floor(usize frame_limit) const wontthrow
 pure fn EvalContext::resolve_render_source(
     const SourceLocation &location, const String *fallback_source,
     usize call_depth_limit, usize call_depth_floor) const wontthrow
-    -> resolved_render_source
+    -> ResolvedRenderSource
 {
-  let resolved_source = resolved_render_source{};
+  let resolved_source = ResolvedRenderSource{};
   resolved_source.text = fallback_source != nullptr
                              ? fallback_source
                              : source_store().current_source();
@@ -188,6 +189,7 @@ pure fn EvalContext::resolve_render_source(
       call_depth_floor == static_cast<usize>(-1)
           ? source_depth_floor(source_store().source_frames().count())
           : call_depth_floor;
+
   for (usize depth = first_depth; depth > lowest_depth; depth--) {
     let const &storage = function_store().call_frames()[depth - 1].storage;
     let const *info = storage.get_definition_info();
@@ -231,6 +233,7 @@ pure fn EvalContext::resolve_render_source(
     resolved_source.line_offset = info->line_offset;
     resolved_source.enclosing_line_count = info->enclosing_line_count;
     resolved_source.source_name_index = info->source_name_index;
+
     return resolved_source;
   }
 
@@ -239,17 +242,17 @@ pure fn EvalContext::resolve_render_source(
 
 pure fn EvalContext::resolve_current_function_window(
     StringView rendered_source, const SourceLocation &location) const wontthrow
-    -> resolved_render_source
+    -> ResolvedRenderSource
 {
   let const *current = source_store().current_source();
   if (current == nullptr || rendered_source.data != current->view().data ||
       rendered_source.length != current->view().length)
   {
-    return resolved_render_source{};
+    return ResolvedRenderSource{};
   }
 
   let resolved_source = resolve_render_source(location);
-  if (!resolved_source.is_windowed) return resolved_render_source{};
+  if (!resolved_source.is_windowed) return ResolvedRenderSource{};
 
   return resolved_source;
 }
@@ -326,6 +329,7 @@ fn EvalContext::variable_names(Allocator result_allocator) const throws
   dynamic_runtime_store().debug_variable_name_enumeration_count() +=
       names.count();
 #endif
+
   return names;
 }
 
@@ -440,6 +444,7 @@ fn EvalContext::restore_trap_pipe_statuses(
   try {
     if (!has_saved_pipe_statuses) {
       variable_store().indexed_arrays().erase("PIPESTATUS");
+
       return;
     }
 
@@ -465,6 +470,7 @@ fn EvalContext::restore_trap_pipe_statuses(
         current.has_value())
     {
       *current.value() = steal(saved_pipe_statuses);
+
       return;
     }
 
@@ -486,6 +492,7 @@ fn EvalContext::run_return_trap(i32 status_before_return) throws -> void
 
   let action_control_flow = control_flow{};
   let did_action_return = false;
+
   while (true) {
     run_named_trap(StringView{"RETURN", 6});
     if (!control_flow_store().has_pending()) break;
@@ -593,6 +600,7 @@ fn EvalContext::set_trap(StringView condition, StringView action,
   if (is_signal_ignored_at_startup(condition)) {
     LOG(Info, "keeping '%.*s' ignored because the shell inherited it ignored",
         static_cast<int>(condition.length), condition.data);
+
     return;
   }
 
@@ -643,6 +651,7 @@ fn EvalContext::remove_trap(StringView condition) throws -> void
   if (is_signal_ignored_at_startup(condition)) {
     LOG(Info, "keeping '%.*s' ignored because the shell inherited it ignored",
         static_cast<int>(condition.length), condition.data);
+
     return;
   }
 
@@ -691,6 +700,7 @@ fn EvalContext::restore_untraced_trap(StringView condition,
   } catch (...) {
     LOG(Info, "the '%.*s' action of an untraced body could not be restored",
         static_cast<int>(condition.length), condition.data);
+
     return;
   }
 
@@ -939,6 +949,7 @@ fn EvalContext::clear_inherited_exit_trap() throws -> void
 {
   if (runtime_state().is_bash_compatible()) {
     trap_store().hold_exit_trap_for_listing();
+
     return;
   }
 
@@ -1066,6 +1077,7 @@ fn EvalContext::append_integer_expression(String &joined,
     -> void
 {
   joined += '+';
+
   for (usize i = 0; i < expression.length; i++) {
     let const character = expression[i];
     if (character != ' ' && character != '\t' && character != '\n' &&
@@ -1074,9 +1086,11 @@ fn EvalContext::append_integer_expression(String &joined,
       joined += '(';
       joined.append(expression.substring(i));
       joined += ')';
+
       return;
     }
   }
+
   joined += '0';
 }
 

@@ -62,6 +62,7 @@ static fn mimicked_error_status(const std::exception_ptr &error,
     std::rethrow_exception(error);
   } catch (const ErrorBase &caught_error) {
     let const status = caught_error.command_status();
+
     return static_cast<i32>(status == 1 &&
                                     mode == mimicked_error_status_mode::Posix &&
                                     caught_error.is_script_fatal()
@@ -86,6 +87,7 @@ fn EvalContext::run_program_fallback(ExecContext &ec, mimic_mood mode,
   if (ec.should_use_empty_environment) {
     let const environment_names = os::environment_names();
     saved_environment.reserve(environment_names.count());
+
     for (let const &name : environment_names) {
       if (let value = os::get_environment_variable(name.view())) {
         saved_environment.push(
@@ -120,6 +122,7 @@ fn EvalContext::run_program_fallback(ExecContext &ec, mimic_mood mode,
       diagnostics_store().source_traces_enabled());
   fallback_context.source_store().source_frames().reserve(
       source_store().source_frames().count());
+
   for (let const &frame : source_store().source_frames()) {
     fallback_context.source_store().source_frames().push(
         source_frame{String{frame.origin.view()}, frame.call_site,
@@ -138,6 +141,7 @@ fn EvalContext::run_program_fallback(ExecContext &ec, mimic_mood mode,
         .back()
         .deferred_trace_location = frame.deferred_trace_location;
   }
+
   defer
   {
     let const shared_frame_count =
@@ -145,6 +149,7 @@ fn EvalContext::run_program_fallback(ExecContext &ec, mimic_mood mode,
                 fallback_context.source_store().source_frames().count()
             ? source_store().source_frames().count()
             : fallback_context.source_store().source_frames().count();
+
     for (usize frame_index = 0; frame_index < shared_frame_count; frame_index++)
     {
       source_store().source_frames()[frame_index].was_printed =
@@ -168,6 +173,7 @@ fn EvalContext::run_program_fallback(ExecContext &ec, mimic_mood mode,
       }
     }
   };
+
   return fallback_context.run_mimicked_script(ec, mode, isolation);
 }
 
@@ -220,6 +226,7 @@ fn EvalContext::run_mimicked_script(ExecContext &ec, mimic_mood mode,
         "Cannot execute `" + ec.program_path().text() + "` as a shell script.",
         steal(details)}
                      .to_string(source_store().current_source_view(), this));
+
     return 126;
   }
 
@@ -294,6 +301,7 @@ fn EvalContext::run_mimicked_script(ExecContext &ec, mimic_mood mode,
 
   let params = ArrayList<String>{heap_allocator()};
   params.reserve(ec.args().count() - 1);
+
   for (usize i = 1; i < ec.args().count(); i++)
     params.push_managed(ec.args()[i].view());
 
@@ -302,6 +310,7 @@ fn EvalContext::run_mimicked_script(ExecContext &ec, mimic_mood mode,
   let const do_restore_fds = [&]() {
     for (usize i = saved_fds.count(); i > 0; i--)
       os::restore_descriptor(saved_fds[i - 1]);
+
     should_restore_fds = false;
   };
   defer
@@ -378,6 +387,7 @@ fn EvalContext::run_mimicked_script(ExecContext &ec, mimic_mood mode,
       do_render_error(error);
     }
     execution_store().set_last_exit_status(final_status);
+
     return is_interrupt;
   };
 
@@ -433,6 +443,7 @@ fn EvalContext::run_mimicked_script(ExecContext &ec, mimic_mood mode,
 
       return execution_store().last_exit_status();
     }
+
     return execution_store().last_exit_status();
   }
 
@@ -470,6 +481,7 @@ fn EvalContext::run_mimicked_script(ExecContext &ec, mimic_mood mode,
 
     return status;
   }
+
   return status;
 }
 
@@ -485,6 +497,7 @@ pure fn EvalContext::shopt_default_is_on(StringView name) wontthrow -> bool
       SSK("patsub_replacement"),
   };
   static constexpr StaticStringSet DEFAULT_ON_SHOPT_NAMES{KEYS};
+
   return DEFAULT_ON_SHOPT_NAMES.contains(name);
 }
 
@@ -598,6 +611,7 @@ fn EvalContext::run_source(StringView source, StringView origin,
     }
 
     error.set_command_status(1);
+
     return true;
   };
 
@@ -694,8 +708,10 @@ fn EvalContext::run_source(StringView source, StringView origin,
 
       control_flow_store().clear();
       execution_store().set_last_exit_status(source_status);
+
       return source_status;
     }
+
     return execution_store().last_exit_status();
   } catch (const InterruptErrorWithLocation &) {
     throw;
@@ -711,6 +727,7 @@ fn EvalContext::run_source(StringView source, StringView origin,
     }
     if (do_pass_line_discard(detailed_error)) throw;
     did_complete_source = true;
+
     return static_cast<i32>(detailed_error.command_status());
   } catch (ErrorWithLocation &located_error) {
     if (!located_error.was_rendered()) {
@@ -723,6 +740,7 @@ fn EvalContext::run_source(StringView source, StringView origin,
     }
     if (do_pass_line_discard(located_error)) throw;
     did_complete_source = true;
+
     return static_cast<i32>(located_error.command_status());
   } catch (Error &caught_error) {
     if (!caught_error.was_rendered()) {
@@ -735,6 +753,7 @@ fn EvalContext::run_source(StringView source, StringView origin,
     }
     if (do_pass_line_discard(caught_error)) throw;
     did_complete_source = true;
+
     return static_cast<i32>(caught_error.command_status());
   }
 }
@@ -782,6 +801,7 @@ fn EvalContext::clear_retained_sources() wontthrow -> void
       source_retention().count());
 
 #if !defined NDEBUG
+
   for (let const &frame : source_store().source_frames()) {
     if (frame.parent_source == nullptr) continue;
     ASSERT(!source_retention().owns(frame.parent_source),

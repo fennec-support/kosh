@@ -22,6 +22,7 @@ namespace koshka::koshkit {
 static fn basename_component(StringView path) wontthrow -> StringView
 {
   usize end_position = path.length;
+
   while (end_position > 0 && os::is_directory_separator(path[end_position - 1]))
   {
     end_position--;
@@ -29,10 +30,12 @@ static fn basename_component(StringView path) wontthrow -> StringView
 
   if (end_position == 0) {
     if (path.is_empty()) return path;
+
     return StringView{"/"};
   }
 
   usize start_position = end_position;
+
   while (start_position > 0 &&
          !os::is_directory_separator(path[start_position - 1]))
   {
@@ -54,6 +57,7 @@ cold fn Basename::execute(
     KOSHKIT_REPORT_ERROR_AT(
         operand_locations[2], "extra operand '" + operands[2] + "'",
         "basename takes a path and an optional suffix, e.g. `basename a.c .c`");
+
     return 1;
   }
 
@@ -69,6 +73,7 @@ cold fn Basename::execute(
   }
 
   ec.print_to_stdout(String{cxt.scratch_allocator(), name} + "\n");
+
   return 0;
 }
 

@@ -52,6 +52,7 @@ static pure fn cal_weekday(i64 year, usize month, usize day) wontthrow -> usize
                                               5, 1, 4, 6, 2, 4};
   if (month < 3) year--;
   let const adjusted_year = static_cast<u64>(year);
+
   return static_cast<usize>((adjusted_year % 7 + adjusted_year / 4 % 7 + 7 -
                              adjusted_year / 100 % 7 + adjusted_year / 400 % 7 +
                              MONTH_OFFSETS[month - 1] + day) %
@@ -67,8 +68,10 @@ static fn append_calendar_month(String &output, usize month, i64 year,
   title += ' ';
   title += String::from(year, allocator);
   let const left_padding = title.length() < 20 ? (20 - title.length()) / 2 : 0;
+
   for (usize position = 0; position < left_padding; position++)
     output += ' ';
+
   append_report_text(output, title.view(), colors::ansi::BOLD_BLUE,
                      should_color);
   output += '\n';
@@ -85,6 +88,7 @@ static fn append_calendar_month(String &output, usize month, i64 year,
   if (month == 2 && is_cal_leap_year(year)) {
     day_count++;
   }
+
   for (usize position = 0; position < first_column; position++)
     output += "   ";
 
@@ -124,6 +128,7 @@ fn Cal::execute(const ExecContext &ec, EvalContext &cxt,
     KOSHKIT_REPORT_ERROR_AT(operand_locations[2],
                             "extra operand '" + operands[2] + "'",
                             "use `cal [-a] [month] year`");
+
     return 1;
   }
 
@@ -146,6 +151,7 @@ fn Cal::execute(const ExecContext &ec, EvalContext &cxt,
       KOSHKIT_REPORT_ERROR_AT(operand_locations[0],
                               "invalid month '" + operands[0] + "'",
                               "use a month from 1 through 12");
+
       return 1;
     }
     if (parsed_year.is_error() || parsed_year.value() < 1 ||
@@ -154,6 +160,7 @@ fn Cal::execute(const ExecContext &ec, EvalContext &cxt,
       KOSHKIT_REPORT_ERROR_AT(
           operand_locations[1], "invalid year '" + operands[1] + "'",
           "use a positive decimal year no greater than 9223372036854775807");
+
       return 1;
     }
     month = static_cast<usize>(parsed_month.value());
@@ -166,6 +173,7 @@ fn Cal::execute(const ExecContext &ec, EvalContext &cxt,
       KOSHKIT_REPORT_ERROR_AT(
           operand_locations[0], "invalid year '" + operands[0] + "'",
           "use a positive decimal year no greater than 9223372036854775807");
+
       return 1;
     }
     year = static_cast<i64>(parsed_year.value());
@@ -204,6 +212,7 @@ fn Cal::execute(const ExecContext &ec, EvalContext &cxt,
   }
 
   ec.print_to_stdout(output);
+
   return 0;
 }
 

@@ -622,6 +622,7 @@ constexpr StaticStringSet COMMAND_VALUED_VARIABLES{
 pure fn prefix_value_is_own_name(const PrefixAssignment &var) wontthrow -> bool
 {
   let has_matching_reference = false;
+
   for (let const &segment : var.get_value().segments) {
     if (segment.kind == WordSegment::Kind::VariableReference) {
       if (has_matching_reference) return false;
@@ -672,16 +673,19 @@ fn check_prefix_assignment_reads(AnalysisContext &actx,
   for (usize i = 1; i < args.count(); i++) {
     if (args[i]->kind() != Token::Kind::Word) continue;
     let const &word = static_cast<const tokens::WordToken *>(args[i])->word();
+
     for (let const &segment : word.segments) {
       if (segment.kind != WordSegment::Kind::VariableReference) continue;
       const StringView referenced{segment.text.data(), segment.text.count()};
       bool has_name_prefix = false;
+
       for (let const &var : input.local_vars) {
         if (var.get_name() != referenced) continue;
 
         has_name_prefix = !prefix_value_is_own_name(var);
         break;
       }
+
       if (has_name_prefix) {
         actx.report_diagnostic(diagnostic_id::assignment_prefix_read,
                                args[i]->source_location(),
@@ -926,6 +930,7 @@ pure fn literal_run_length(const Word &case_word, usize start,
                            usize end) wontthrow -> usize
 {
   usize length = 0;
+
   for (usize i = start; i < end; i++)
     length += case_word.segments[i].text.view().length;
 
@@ -975,6 +980,7 @@ pure fn case_pattern_can_match_word(const Word &case_word,
   }
 
   usize at = first;
+
   while (at < last) {
     if (!segment_is_literal(case_word.segments[at])) {
       at++;
@@ -982,12 +988,14 @@ pure fn case_pattern_can_match_word(const Word &case_word,
     }
 
     usize run_end = at;
+
     while (run_end < last && segment_is_literal(case_word.segments[run_end])) {
       run_end++;
     }
 
     let const run_length = literal_run_length(case_word, at, run_end);
     let is_found = false;
+
     for (usize position = front; position + run_length <= back; position++) {
       if (!literal_run_matches_at(case_word, at, run_end, pattern, position))
         continue;
@@ -1032,6 +1040,7 @@ fn check_case_pattern_shape(AnalysisContext &actx, const case_lint_input &input,
 
   if (is_bare_pattern && pattern_word.segments[0].text.view() == "*") {
     tally.has_default_arm = true;
+
     return;
   }
 

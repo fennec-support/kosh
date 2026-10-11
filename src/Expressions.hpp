@@ -1245,17 +1245,17 @@ protected:
 
   mutable Maybe<bool> m_command_word_is_glob{};
 
-  struct literal_command_lookup
+  struct LiteralCommandLookup
   {
     Maybe<Builtin::Kind> builtin{};
     bool is_special{false};
   };
-  mutable Maybe<literal_command_lookup> m_literal_command_lookup{};
+  mutable Maybe<LiteralCommandLookup> m_literal_command_lookup{};
   mutable Maybe<String> m_published_command_text{};
   mutable bool m_was_published_text_rendered_with_bash_additions{false};
 
   fn get_literal_command_lookup(const ArrayList<String> &program_args)
-      const throws -> const literal_command_lookup *;
+      const throws -> const LiteralCommandLookup *;
 
   u32 m_full_source_end_position{0};
 

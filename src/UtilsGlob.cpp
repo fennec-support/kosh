@@ -49,6 +49,7 @@ public:
   {
     if (m_inline_count < countof(m_inline)) {
       m_inline[m_inline_count++] = alternative;
+
       return;
     }
     m_overflow.push(alternative);
@@ -62,6 +63,7 @@ public:
   pure fn get_at(usize index) const wontthrow -> const extglob_alternative &
   {
     if (index < m_inline_count) return m_inline[index];
+
     return m_overflow[index - m_inline_count];
   }
 
@@ -84,6 +86,7 @@ fn extglob_opens_group(StringView glob, const Bitset &mask, usize mask_offset,
   if (op != '?' && op != '*' && op != '+' && op != '@' && op != '!') {
     return false;
   }
+
   return glob[index + 1] == '(' && extglob_active(mask, mask_offset + index) &&
          extglob_active(mask, mask_offset + index + 1);
 }
@@ -92,6 +95,7 @@ fn extglob_group_close(StringView glob, const Bitset &mask,
                        usize mask_offset) wontthrow -> usize
 {
   usize depth = 0;
+
   for (usize i = 1; i < glob.count(); i++) {
     if (!extglob_active(mask, mask_offset + i)) continue;
 
@@ -102,6 +106,7 @@ fn extglob_group_close(StringView glob, const Bitset &mask,
       if (depth == 0) return i;
     }
   }
+
   return glob.count();
 }
 
@@ -133,12 +138,14 @@ fn get_bracket_span(StringView glob, const Bitset &mask,
         extglob_active(mask, mask_offset + scan))
     {
       usize class_scan = scan + 2;
+
       while (class_scan + 1 < glob.count() &&
              !(glob[class_scan] == ':' && glob[class_scan + 1] == ']') &&
              !do_is_close_at(class_scan))
       {
         class_scan++;
       }
+
       if (class_scan + 1 < glob.count() && glob[class_scan] == ':' &&
           glob[class_scan + 1] == ']')
       {
@@ -166,10 +173,12 @@ fn extglob_match_repetition(const ExtglobAlternatives &alternatives,
   {
     return true;
   }
+
   for (usize alternative_index = 0; alternative_index < alternatives.count();
        alternative_index++)
   {
     let const &alternative = alternatives.get_at(alternative_index);
+
     for (usize length = get_next_split(str, 0, charset); length <= str.count();
          length = get_next_split(str, length, charset))
     {
@@ -184,6 +193,7 @@ fn extglob_match_repetition(const ExtglobAlternatives &alternatives,
         return true;
     }
   }
+
   return false;
 }
 
@@ -206,6 +216,7 @@ fn extglob_full_match(StringView glob, StringView str, const Bitset &mask,
       let alternatives = ExtglobAlternatives{};
       usize depth = 0;
       usize start = 0;
+
       for (usize i = 0; i <= content.count(); i++) {
         let const is_active_byte =
             i < content.count() && extglob_active(mask, content_offset + i);
@@ -236,6 +247,7 @@ fn extglob_full_match(StringView glob, StringView str, const Bitset &mask,
              alternative_index < alternatives.count(); alternative_index++)
         {
           let const &alternative = alternatives.get_at(alternative_index);
+
           for (usize length = head == '?' ? 0 : get_next_split(str, 0, charset);
                length <= str.count();
                length = get_next_split(str, length, charset))
@@ -250,6 +262,7 @@ fn extglob_full_match(StringView glob, StringView str, const Bitset &mask,
             }
           }
         }
+
         return head == '?' &&
                extglob_full_match(suffix, str, mask, suffix_offset, charset);
       case '!':
@@ -257,6 +270,7 @@ fn extglob_full_match(StringView glob, StringView str, const Bitset &mask,
              length = get_next_split(str, length, charset))
         {
           bool has_matching_alternative = false;
+
           for (usize alternative_index = 0;
                alternative_index < alternatives.count(); alternative_index++)
           {
@@ -269,6 +283,7 @@ fn extglob_full_match(StringView glob, StringView str, const Bitset &mask,
               break;
             }
           }
+
           if (!has_matching_alternative &&
               extglob_full_match(suffix, str.substring(length), mask,
                                  suffix_offset, charset))
@@ -276,6 +291,7 @@ fn extglob_full_match(StringView glob, StringView str, const Bitset &mask,
             return true;
           }
         }
+
         return false;
       default: break;
       }
@@ -290,6 +306,7 @@ fn extglob_full_match(StringView glob, StringView str, const Bitset &mask,
                              mask_offset + 1, charset))
         return true;
     }
+
     return false;
   }
 
@@ -310,6 +327,7 @@ fn extglob_full_match(StringView glob, StringView str, const Bitset &mask,
                        str.substring_of_length(0, character_length), mask,
                        mask_offset, extglob_mode::Disabled, charset);
       if (!did_class_match) return false;
+
       return extglob_full_match(glob.substring(span),
                                 str.substring(character_length), mask,
                                 mask_offset + span, charset);
@@ -317,6 +335,7 @@ fn extglob_full_match(StringView glob, StringView str, const Bitset &mask,
   }
 
   if (str[0] != head) return false;
+
   return extglob_full_match(glob.substring(1), str.substring(1), mask,
                             mask_offset + 1, charset);
 }
@@ -345,6 +364,7 @@ fn byte_is_in_posix_class(StringView class_name, u8 byte) throws -> bool
   if (const Maybe<posix_class_test> test = POSIX_CLASSES.find(class_name);
       test.has_value())
     return (*test)(byte);
+
   return false;
 }
 
@@ -356,6 +376,7 @@ pure fn token_has_uppercase(StringView token) wontthrow -> bool
     if (token[position] >= 'A' && token[position] <= 'Z') {
       return true;
     }
+
   return false;
 }
 
@@ -425,6 +446,7 @@ static fn locale_codeset_is_utf8(StringView locale_name) wontthrow -> bool
   if (!dot.has_value()) return false;
 
   usize end = *dot + 1;
+
   while (end < locale_name.length && locale_name[end] != '@') {
     end++;
   }
@@ -468,6 +490,7 @@ fn lowercase_for_glob(StringView text, glob_charset charset,
   let result = String{allocator};
   result.reserve(text.length);
   usize position = 0;
+
   while (position < text.length) {
     let const decoded = decode_utf8(text, position, 0xfffd);
     let const original = text.substring_of_length(position, decoded.length);
@@ -491,6 +514,7 @@ fn lowercase_for_glob(StringView text, glob_charset charset,
 pure fn utf8_character_count(StringView text) wontthrow -> usize
 {
   usize character_count = 0;
+
   for (usize position = 0; position < text.length; character_count++) {
     position += utf8_character_length(text, position);
   }
@@ -541,6 +565,7 @@ hot flatten fn glob_matches(StringView glob, StringView str,
       {
         g++;
       }
+
       if (g >= glob.count()) return true;
       star_glob_position = g;
       star_string_position = s;
@@ -595,6 +620,7 @@ hot flatten fn glob_matches(StringView glob, StringView str,
         {
           return None;
         }
+
         for (usize scan = index + 2; scan + 1 < glob.count(); scan++) {
           if (glob[scan] == ':' && glob[scan + 1] == ']') {
             return scan + 2;
@@ -603,6 +629,7 @@ hot flatten fn glob_matches(StringView glob, StringView str,
             return None;
           }
         }
+
         return None;
       };
 
@@ -617,6 +644,7 @@ hot flatten fn glob_matches(StringView glob, StringView str,
         close_scan++;
       }
       bool has_closing_bracket = false;
+
       while (close_scan < glob.count()) {
         if (Maybe<usize> past_class = do_get_class_end_past(close_scan);
             past_class.has_value())
@@ -630,6 +658,7 @@ hot flatten fn glob_matches(StringView glob, StringView str,
         }
         close_scan++;
       }
+
       if (!has_closing_bracket) {
         if (do_get_byte_at(glob, g) != do_get_byte_at(str, s)) goto retry_star;
         g++;
@@ -648,6 +677,7 @@ hot flatten fn glob_matches(StringView glob, StringView str,
       }
 
       bool is_first_member = true;
+
       while (g < glob.count() && (is_first_member || !do_is_close_at(g))) {
         if (Maybe<usize> past_class = do_get_class_end_past(g);
             past_class.has_value())

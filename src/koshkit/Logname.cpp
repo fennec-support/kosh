@@ -28,16 +28,19 @@ fn Logname::execute(const ExecContext &ec, EvalContext &cxt,
     report_soft_koshkit_util_error(ec, cxt, operand_locations[0],
                                    args[0].view(),
                                    "unexpected operand '" + operands[0] + "'");
+
     return 2;
   }
   let const name = os::get_login_user();
   if (!name.has_value()) {
     report_soft_koshkit_util_error(ec, cxt, args[0].view(),
                                    "login name is unavailable");
+
     return 1;
   }
   ec.print_to_stdout(name->view());
   ec.print_to_stdout("\n");
+
   return 0;
 }
 

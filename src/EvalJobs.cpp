@@ -69,6 +69,7 @@ fn JobTable::take_snapshot() throws -> job_table_snapshot
   let finished_statuses =
       ArrayList<finished_process_status>{m_finished_statuses.allocator()};
   finished_statuses.reserve(m_finished_statuses.count());
+
   for (let const &entry : m_finished_statuses)
     finished_statuses.push(entry);
 
@@ -77,6 +78,7 @@ fn JobTable::take_snapshot() throws -> job_table_snapshot
       steal(m_detached_job_processes), steal(finished_statuses),
       m_next_finished_status_slot,     m_next_job_id};
   m_next_job_id = 1;
+
   return snapshot;
 }
 
@@ -98,12 +100,15 @@ fn JobTable::restore_snapshot(job_table_snapshot snapshot) throws -> void
   for (let const &child_job : m_jobs) {
     if (child_job.is_primary_process_active)
       m_detached_job_processes.push(child_job.pid);
+
     for (let const process : child_job.earlier_pipeline_processes)
       m_detached_job_processes.push(process);
   }
+
   snapshot.detached_job_processes.reserve(
       snapshot.detached_job_processes.count() +
       m_detached_job_processes.count());
+
   for (let const process : m_detached_job_processes)
     snapshot.detached_job_processes.push(process);
 
@@ -113,6 +118,7 @@ fn JobTable::restore_snapshot(job_table_snapshot snapshot) throws -> void
   m_next_finished_status_slot = snapshot.next_finished_status_slot;
   m_next_job_id = snapshot.next_job_id;
   m_has_waited_jobs = false;
+
   for (let const &restored : m_jobs)
     if (restored.was_waited) m_has_waited_jobs = true;
 }
@@ -122,6 +128,7 @@ fn JobTable::claim_job_id() throws -> i32
   forget_waited_jobs();
 
   i32 id = 1;
+
   for (let const &existing : m_jobs)
     if (existing.id >= id) id = existing.id + 1;
 
@@ -143,6 +150,7 @@ fn JobTable::register_job(os::process pid, StringView command,
   m_jobs.push(steal(new_job));
   ASSERT(!m_jobs.is_empty());
   LOG(Info, "registered job %d", m_jobs.back().id);
+
   return m_jobs.back().id;
 }
 
@@ -170,6 +178,7 @@ fn JobTable::register_pipeline_job(const ArrayList<os::process> &processes,
   m_jobs.push(steal(new_job));
   ASSERT(!m_jobs.is_empty());
   LOG(Info, "registered pipeline job %d", m_jobs.back().id);
+
   return m_jobs.back().id;
 }
 
@@ -181,6 +190,7 @@ fn JobTable::register_stopped_job(os::process pid, StringView command,
   job &registered = m_jobs.back();
   registered.state = job::State::Stopped;
   registered.stopped_status = status;
+
   return id;
 }
 
@@ -193,6 +203,7 @@ fn JobTable::notify_stopped_job(i32 id) throws -> void
     append_status_line(line, index, job_line_format{});
     line.push('\n');
     print_error(line);
+
     return;
   }
 }
@@ -271,6 +282,7 @@ static fn poll_owned_processes(ArrayList<os::process> &processes) wontthrow
     -> Maybe<i32>
 {
   let stopped_status = Maybe<i32>{None};
+
   for (usize process_position = processes.count(); process_position > 0;
        process_position--)
   {
@@ -346,10 +358,12 @@ fn JobTable::wait_for_job_processes(job &job, bool *was_stopped,
 {
   if (job.state == job::State::Done) {
     if (was_stopped != nullptr) *was_stopped = false;
+
     return job.last_status;
   }
   if (job.state == job::State::Stopped && !should_wait_for_termination) {
     if (was_stopped != nullptr) *was_stopped = true;
+
     return job.stopped_status;
   }
 
@@ -359,10 +373,12 @@ fn JobTable::wait_for_job_processes(job &job, bool *was_stopped,
       update_jobs();
       if (job.state == job::State::Done) {
         if (was_stopped != nullptr) *was_stopped = false;
+
         return job.last_status;
       }
       if (job.state == job::State::Stopped && !should_wait_for_termination) {
         if (was_stopped != nullptr) *was_stopped = true;
+
         return job.stopped_status;
       }
 
@@ -371,6 +387,7 @@ fn JobTable::wait_for_job_processes(job &job, bool *was_stopped,
       {
         LOG(Info, "signal %d interrupted the wait on job %d", number, job.id);
         if (was_stopped != nullptr) *was_stopped = false;
+
         return 128 + number;
       }
 
@@ -391,6 +408,7 @@ fn JobTable::wait_for_job_processes(job &job, bool *was_stopped,
       job.state = job::State::Stopped;
       job.stopped_status = process_status;
       if (was_stopped != nullptr) *was_stopped = true;
+
       return process_status;
     }
 
@@ -414,6 +432,7 @@ fn JobTable::wait_for_job_processes(job &job, bool *was_stopped,
     {
       job.state = job::State::Done;
       if (was_stopped != nullptr) *was_stopped = false;
+
       return job.last_status;
     }
   }
@@ -428,6 +447,7 @@ fn JobTable::wait_for_next_job(const ArrayList<i32> &job_ids,
     update_jobs();
 
     bool has_waitable_job = false;
+
     for (let const &entry : m_jobs) {
       if (entry.is_inherited || entry.was_waited ||
           (!job_ids.is_empty() && !job_ids.find(entry.id).has_value()))
@@ -448,6 +468,7 @@ fn JobTable::wait_for_next_job(const ArrayList<i32> &job_ids,
     if (let const number = os::peek_pending_signal_besides_child(); number != 0)
     {
       LOG(Info, "signal %d interrupted the wait for the next job", number);
+
       return next_job_wait{None, 0, 128 + number, true};
     }
 
@@ -500,6 +521,7 @@ fn JobTable::find_job_by_spec(StringView spec) throws -> job *
 {
   if (let const index = find_job_index_by_spec(spec); index.has_value())
     return &m_jobs[*index];
+
   return nullptr;
 }
 
@@ -509,12 +531,14 @@ fn JobTable::most_recent_job() wontthrow -> job *
     ASSERT(i - 1 < m_jobs.count());
     if (m_jobs[i - 1].state != job::State::Done) return &m_jobs[i - 1];
   }
+
   return nullptr;
 }
 
 fn JobTable::forget_done_jobs() throws -> void
 {
   let kept = ArrayList<job>{m_jobs.allocator()};
+
   for (job &job : m_jobs) {
     if (job.state == job::State::Done && !job.is_inherited) {
       if (!job.was_waited)
@@ -525,6 +549,7 @@ fn JobTable::forget_done_jobs() throws -> void
 
     kept.push(steal(job));
   }
+
   LOG(Debug, "dropping finished jobs, keeping %zu of %zu", kept.count(),
       m_jobs.count());
   m_jobs = steal(kept);
@@ -584,11 +609,13 @@ fn JobTable::forget_marked_waited_jobs() throws -> void
 fn JobTable::remove_job(i32 id) throws -> bool
 {
   let removed_index = Maybe<usize>{None};
+
   for (usize position = 0; position < m_jobs.count(); position++)
     if (m_jobs[position].id == id) {
       removed_index = position;
       break;
     }
+
   if (!removed_index.has_value()) return false;
 
   let &removed = m_jobs[*removed_index];
@@ -601,12 +628,15 @@ fn JobTable::remove_job(i32 id) throws -> bool
 
   if (removed.is_primary_process_active)
     m_detached_job_processes.push(removed.pid);
+
   for (let const process : removed.earlier_pipeline_processes)
     m_detached_job_processes.push(process);
+
   for (usize position = 0; position < m_jobs.count(); position++)
     if (position != *removed_index) kept.push(steal(m_jobs[position]));
 
   m_jobs = steal(kept);
+
   return true;
 }
 
@@ -616,6 +646,7 @@ fn JobTable::format_done_job_notifications(StringView line_ending,
   update_jobs();
 
   let out = String{heap_allocator()};
+
   for (usize i = 0; i < m_jobs.count(); i++) {
     let const &job = m_jobs[i];
     if (job.state != job::State::Done || job.was_waited) {
@@ -627,6 +658,7 @@ fn JobTable::format_done_job_notifications(StringView line_ending,
   }
 
   forget_done_jobs();
+
   return out;
 }
 

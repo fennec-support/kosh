@@ -52,10 +52,12 @@ static fn append_word_loop_header(EvalContext &cxt, String &header,
 
   if (!has_in_clause) {
     header += " in \"$@\"";
+
     return;
   }
 
   header += " in";
+
   for (usize index = 0; index < words.count(); index++) {
     ASSERT(words[index] != nullptr);
     header.push(' ');
@@ -243,6 +245,7 @@ cold fn IfClause::to_string() const throws -> String
 {
   let result = String{"IfClause"};
   append_ast_execution_flags(result);
+
   return result;
 }
 
@@ -251,6 +254,7 @@ cold fn IfClause::to_ast_string(usize layer) const throws -> String
   let const pad = indent_for_layer(layer);
   let const child_pad = pad + EXPRESSION_AST_INDENT;
   let s = pad + "[" + to_string() + "]";
+
   for (let const &[ condition, body ] : m_branches) {
     ASSERT(condition != nullptr);
     ASSERT(body != nullptr);
@@ -274,6 +278,7 @@ hot fn IfClause::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const
   if (is_fully_eliminated() && should_skip_condition_commands) {
     LOG(Debug, "running the fully eliminated if as a no-op");
     cxt.publish_single_pipe_status(1);
+
     return {static_cast<i32>(set_and_return_exit_status(cxt, 0)), 0};
   }
 
@@ -285,6 +290,7 @@ hot fn IfClause::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const
       return m_branches[*m_folded_branch].body->evaluate_status(cxt);
     if (m_otherwise != nullptr) return m_otherwise->evaluate_status(cxt);
     cxt.publish_single_pipe_status(1);
+
     return {static_cast<i32>(set_and_return_exit_status(cxt, 0)), 0};
   }
 
@@ -320,6 +326,7 @@ fn IfClause::analyze(AnalysisContext &actx, bool is_unconditional) const throws
   let has_merged_occurrence_exit = false;
   let did_skip_exiting_branch = false;
   let is_first_branch = true;
+
   for (usize i = 0; i < m_branches.count(); i++) {
     let const & [ condition, body ] = m_branches[i];
     ASSERT(condition != nullptr);
@@ -439,6 +446,7 @@ cold fn WhileLoop::to_string() const throws -> String
 {
   let result = String{is_until() ? "UntilLoop" : "WhileLoop"};
   append_ast_execution_flags(result);
+
   return result;
 }
 
@@ -452,6 +460,7 @@ cold fn WhileLoop::to_ast_string(usize layer) const throws -> String
   let s = pad + "[" + to_string() + "]";
   s += "\n" + child_pad + m_condition->to_ast_string(layer + 1);
   s += "\n" + child_pad + m_body->to_ast_string(layer + 1);
+
   return s;
 }
 
@@ -475,6 +484,7 @@ hot fn internal::resolve_loop_control(EvalContext &cxt) throws
     control.value -= 1;
     LOG(All, "the loop jump targets an outer loop, %lld levels stay pending",
         static_cast<long long>(control.value));
+
     return loop_disposition::StopLoop;
   }
 
@@ -482,6 +492,7 @@ hot fn internal::resolve_loop_control(EvalContext &cxt) throws
   cxt.control_flow_store().clear();
   LOG(All, "consuming the %s aimed at this loop",
       is_break ? "break" : "continue");
+
   return is_break ? loop_disposition::StopLoop : loop_disposition::RunNext;
 }
 
@@ -503,6 +514,7 @@ hot fn WhileLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const
       should_skip_condition_commands)
   {
     cxt.publish_single_pipe_status(is_until_loop ? 0 : 1);
+
     return {static_cast<i32>(set_and_return_exit_status(cxt, 0)), 0};
   }
 
@@ -513,6 +525,7 @@ hot fn WhileLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const
   defer { cxt.cleanup_loop_redirect_fds(redirect_fd_mark); };
 
   status_result result{};
+
   loop
   {
     i64 condition_status;
@@ -538,10 +551,12 @@ hot fn WhileLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const
 
   if (cxt.control_flow_store().has_pending()) {
     result.status = cxt.execution_store().last_exit_status();
+
     return result;
   }
 
   cxt.execution_store().set_last_exit_status(result.status);
+
   return result;
 }
 
@@ -638,6 +653,7 @@ cold fn SelectLoop::to_string() const throws -> String
 {
   let result = "SelectLoop \"" + m_variable_name + "\"";
   append_ast_execution_flags(result);
+
   return result;
 }
 
@@ -645,6 +661,7 @@ cold fn SelectLoop::to_ast_string(usize layer) const throws -> String
 {
   ASSERT(m_body != nullptr);
   let const pad = indent_for_layer(layer);
+
   return pad + "[" + to_string() + "]\n" + pad + EXPRESSION_AST_INDENT +
          m_body->to_ast_string(layer + 1);
 }
@@ -682,16 +699,19 @@ fn SelectLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const
 
   status_result result{};
   bool should_reprint_menu = true;
+
   loop
   {
     if (should_reprint_menu) {
       let menu = String{cxt.scratch_allocator()};
+
       for (usize i = 0; i < values.count(); i++) {
         menu += String::from(static_cast<i64>(i + 1), heap_allocator());
         menu += ") ";
         menu.append(values[i].view());
         menu += '\n';
       }
+
       koshka::print_error(menu.view());
       should_reprint_menu = false;
     }
@@ -730,10 +750,12 @@ fn SelectLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const
 
   if (cxt.control_flow_store().has_pending()) {
     result.status = cxt.execution_store().last_exit_status();
+
     return result;
   }
 
   cxt.execution_store().set_last_exit_status(result.status);
+
   return result;
 }
 
@@ -755,6 +777,7 @@ cold fn ForLoop::to_string() const throws -> String
   result += m_variable_name;
   result += "\"";
   append_ast_execution_flags(result);
+
   return result;
 }
 
@@ -765,6 +788,7 @@ cold fn ForLoop::to_ast_string(usize layer) const throws -> String
   let const pad = indent_for_layer(layer);
   let s = pad + "[" + to_string() + "]";
   s += "\n" + pad + EXPRESSION_AST_INDENT + m_body->to_ast_string(layer + 1);
+
   return s;
 }
 
@@ -777,6 +801,7 @@ hot fn ForLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const
 
   if (is_fully_eliminated()) {
     cxt.publish_single_pipe_status(0);
+
     return {static_cast<i32>(set_and_return_exit_status(cxt, 0)), 0};
   }
 
@@ -820,6 +845,7 @@ hot fn ForLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const
   defer { cxt.cleanup_loop_redirect_fds(redirect_fd_mark); };
 
   status_result result{};
+
   for (let const &value : values) {
     cxt.source_store().set_current_location(source_location());
 
@@ -852,10 +878,12 @@ hot fn ForLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const
 
   if (cxt.control_flow_store().has_pending()) {
     result.status = cxt.execution_store().last_exit_status();
+
     return result;
   }
 
   cxt.execution_store().set_last_exit_status(result.status);
+
   return result;
 }
 
@@ -930,6 +958,7 @@ fn ForLoop::analyze(AnalysisContext &actx, bool is_unconditional) const throws
 
         let const body = segment.text.view();
         usize start = 0;
+
         while (start < body.length &&
                (body[start] == ' ' || body[start] == '\t'))
         {
@@ -1030,6 +1059,7 @@ cold fn CaseClause::to_string() const throws -> String
 {
   let result = String{"CaseClause"};
   append_ast_execution_flags(result);
+
   return result;
 }
 
@@ -1038,10 +1068,12 @@ cold fn CaseClause::to_ast_string(usize layer) const throws -> String
   let const pad = indent_for_layer(layer);
   let const child_pad = pad + EXPRESSION_AST_INDENT;
   let s = pad + "[" + to_string() + "]";
+
   for (let const &item : m_items) {
     ASSERT(item.body != nullptr);
     s += "\n" + child_pad + item.body->to_ast_string(layer + 1);
   }
+
   return s;
 }
 
@@ -1057,6 +1089,7 @@ fn CaseClause::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const
     let header_text = String{heap_allocator(), "case "};
     append_word_source_text(cxt, header_text, *m_word);
     header_text += " in ";
+
     return header_text;
   });
   if (!should_run_case) return {cxt.execution_store().last_exit_status()};
@@ -1074,6 +1107,7 @@ fn CaseClause::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const
         relocate_if_unlocated(e, t->source_location());
       }
     }
+
     return t->raw_string();
   };
 
@@ -1101,6 +1135,7 @@ fn CaseClause::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const
   let const do_arm_matches = [&](const case_item &item) throws -> bool {
     let const arm_mark = scratch_arena.mark();
     defer { scratch_arena.release(arm_mark); };
+
     for (let const pattern_token : item.patterns) {
       if (pattern_token->kind() == Token::Kind::Word) {
         const Word &pattern_word =
@@ -1125,6 +1160,7 @@ fn CaseClause::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const
         }
       } else {
         pattern = pattern_token->raw_string();
+
         for (usize k = 0; k < pattern.count(); k++)
           pattern_active.push(true);
       }
@@ -1144,12 +1180,14 @@ fn CaseClause::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const
                               charset))
         return true;
     }
+
     return false;
   };
 
   status_result result{};
   bool did_run_a_body = false;
   usize i = 0;
+
   while (i < m_items.count()) {
     if (!do_arm_matches(m_items[i])) {
       i++;
@@ -1159,6 +1197,7 @@ fn CaseClause::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const
     LOG(All, "case arm %zu matched, running its body", i);
 
     bool should_resume_matching = false;
+
     loop
     {
       ASSERT(m_items[i].body != nullptr);
@@ -1179,7 +1218,9 @@ fn CaseClause::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const
       }
       break;
     }
+
     if (should_resume_matching) continue;
+
     return result;
   }
 
@@ -1187,6 +1228,7 @@ fn CaseClause::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const
     LOG(Debug, "no case arm matched the subject");
     cxt.execution_store().set_last_exit_status(0);
   }
+
   return result;
 }
 
@@ -1194,12 +1236,14 @@ fn CaseClause::analyze(AnalysisContext &actx,
                        bool is_unconditional) const throws -> void
 {
   analyze_token_substitutions(actx, m_word, is_unconditional);
+
   for (let const &item : m_items) {
     analyze_token_list_substitutions(actx, item.patterns, is_unconditional);
   }
 
   let const common_occurrences = actx.occurrences.snapshot();
   let has_unquoted_default_pattern = false;
+
   for (let const &item : m_items) {
     for (let const pattern : item.patterns) {
       if (pattern->kind() != Token::Kind::Word) continue;
@@ -1216,6 +1260,7 @@ fn CaseClause::analyze(AnalysisContext &actx,
       }
     }
   }
+
   let merged_occurrences = common_occurrences;
   let continued_occurrences = common_occurrences;
   let has_merged_occurrence_exit = !has_unquoted_default_pattern;
@@ -1305,6 +1350,7 @@ fn CaseClause::analyze(AnalysisContext &actx,
   let earlier_patterns = StringMap<SourceLocation>{heap_allocator()};
   let earlier_shadow_prefixes = ArrayList<String>{heap_allocator()};
   let earlier_shadow_locations = ArrayList<SourceLocation>{heap_allocator()};
+
   for (let const &item : m_items) {
     for (let const pattern : item.patterns) {
       if (pattern->kind() != Token::Kind::Word) continue;
@@ -1381,6 +1427,7 @@ cold fn BraceGroup::to_string() const throws -> String
 {
   let result = String{"BraceGroup"};
   append_ast_execution_flags(result);
+
   return result;
 }
 
@@ -1389,6 +1436,7 @@ cold fn BraceGroup::to_ast_string(usize layer) const throws -> String
   ASSERT(m_body != nullptr);
 
   let const pad = indent_for_layer(layer);
+
   return pad + "[" + to_string() + "]\n" + pad + EXPRESSION_AST_INDENT +
          m_body->to_ast_string(layer + 1);
 }
@@ -1402,6 +1450,7 @@ fn BraceGroup::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const
 
   if (is_fully_eliminated()) {
     cxt.publish_single_pipe_status(0);
+
     return {static_cast<i32>(set_and_return_exit_status(cxt, 0)), 0};
   }
 
@@ -1428,6 +1477,7 @@ cold fn CoprocCommand::to_string() const throws -> String
   let result = String{"Coproc "};
   result += m_name;
   append_ast_execution_flags(result);
+
   return result;
 }
 
@@ -1436,6 +1486,7 @@ cold fn CoprocCommand::to_ast_string(usize layer) const throws -> String
   ASSERT(m_body != nullptr);
 
   let const pad = indent_for_layer(layer);
+
   return pad + "[" + to_string() + "]\n" + pad + EXPRESSION_AST_INDENT +
          m_body->to_ast_string(layer + 1);
 }

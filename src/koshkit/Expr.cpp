@@ -38,6 +38,7 @@ public:
   {
     let result = parse_or();
     if (m_position != m_tokens.count()) throw Error{"syntax error"};
+
     return result;
   }
 
@@ -85,23 +86,27 @@ private:
   fn take() throws -> String
   {
     if (m_position == m_tokens.count()) throw Error{"missing operand"};
+
     return String{m_allocator, m_tokens[m_position++].view()};
   }
 
   fn parse_or() throws -> String
   {
     let left = parse_and();
+
     while (peek("|")) {
       m_position++;
       let right = parse_and();
       if (!expr_value_is_true(left.view())) left = steal(right);
     }
+
     return left;
   }
 
   fn parse_and() throws -> String
   {
     let left = parse_comparison();
+
     while (peek("&")) {
       m_position++;
       let right = parse_comparison();
@@ -110,12 +115,14 @@ private:
         left = String{m_allocator, "0"};
       }
     }
+
     return left;
   }
 
   fn parse_comparison() throws -> String
   {
     let left = parse_addition();
+
     loop
     {
       let const operation = peek_comparison_operator();
@@ -145,12 +152,14 @@ private:
       }
       left = String{m_allocator, matches ? "1" : "0"};
     }
+
     return left;
   }
 
   fn parse_addition() throws -> String
   {
     let left = parse_multiplication();
+
     while (peek("+") || peek("-")) {
       let const operation = take();
       let const right = parse_multiplication();
@@ -161,12 +170,14 @@ private:
                              : static_cast<i128>(left_number) - right_number;
       left = number_string(result);
     }
+
     return left;
   }
 
   fn parse_multiplication() throws -> String
   {
     let left = parse_match();
+
     while (peek("*") || peek("/") || peek("%")) {
       let const operation = take();
       let const right = parse_match();
@@ -192,12 +203,14 @@ private:
       }
       left = number_string(result);
     }
+
     return left;
   }
 
   fn parse_match() throws -> String
   {
     let left = parse_primary();
+
     while (peek(":")) {
       m_position++;
       let const pattern_position = m_position;
@@ -233,6 +246,7 @@ private:
                             m_allocator);
       }
     }
+
     return left;
   }
 
@@ -243,12 +257,15 @@ private:
       let result = parse_or();
       if (!peek(")")) throw Error{"missing closing parenthesis"};
       m_position++;
+
       return result;
     }
     if (peek("+")) {
       m_position++;
+
       return take();
     }
+
     return take();
   }
 
@@ -257,6 +274,7 @@ private:
     let const parsed = value.to<i64>();
     if (parsed.is_error())
       throw Error{"expected integer, got '" + String{value} + "'"};
+
     return parsed.value();
   }
 
@@ -265,6 +283,7 @@ private:
     if (value < INT64_MIN || value > INT64_MAX) {
       throw Error{"integer overflow"};
     }
+
     return String::from(static_cast<i64>(value), m_allocator);
   }
 
@@ -288,6 +307,7 @@ fn Expr::execute(const ExecContext &ec, EvalContext &cxt,
   let const status = expr_value_is_true(result.view()) ? 0 : 1;
   result += '\n';
   ec.print_to_stdout(result);
+
   return status;
 }
 

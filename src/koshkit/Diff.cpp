@@ -60,6 +60,7 @@ struct diff_lines
   {
     let const start = index == 0 ? 0 : end_positions[index - 1];
     let const end = end_positions[index];
+
     return contents.substring_of_length(start, end - start);
   }
 };
@@ -71,6 +72,7 @@ static fn split_diff_lines(StringView contents, Allocator allocator) throws
 
   let end_positions = ArrayList<u32>{allocator};
   usize scan_position = 0;
+
   while (scan_position < contents.length) {
     if (os::INTERRUPT_REQUESTED) break;
 
@@ -80,6 +82,7 @@ static fn split_diff_lines(StringView contents, Allocator allocator) throws
     scan_position += *newline + 1;
     end_positions.push(static_cast<u32>(scan_position));
   }
+
   if (!contents.is_empty() && contents[contents.length - 1] != '\n') {
     end_positions.push(static_cast<u32>(contents.length));
   }
@@ -95,6 +98,7 @@ static fn diff_lines_equal(StringView left, StringView right,
 
   usize left_position = 0;
   usize right_position = 0;
+
   loop
   {
     while (left_position < left.length &&
@@ -102,6 +106,7 @@ static fn diff_lines_equal(StringView left, StringView right,
     {
       left_position++;
     }
+
     while (right_position < right.length &&
            is_ascii_whitespace(right[right_position]))
     {
@@ -127,14 +132,17 @@ static fn append_replacement_edits(ArrayList<diff_edit> &edits,
     if (os::INTERRUPT_REQUESTED) return false;
     edits.push(diff_edit::Equal);
   }
+
   for (usize index = 0; index < left_middle_count; index++) {
     if (os::INTERRUPT_REQUESTED) return false;
     edits.push(diff_edit::Delete);
   }
+
   for (usize index = 0; index < right_middle_count; index++) {
     if (os::INTERRUPT_REQUESTED) return false;
     edits.push(diff_edit::Insert);
   }
+
   return true;
 }
 
@@ -145,6 +153,7 @@ static fn make_diff_edits(const diff_lines &left_lines,
 {
   let edits = ArrayList<diff_edit>{allocator};
   usize equal_prefix_count = 0;
+
   while (equal_prefix_count < left_lines.count() &&
          equal_prefix_count < right_lines.count() &&
          diff_lines_equal(left_lines.get(equal_prefix_count),
@@ -161,6 +170,7 @@ static fn make_diff_edits(const diff_lines &left_lines,
     if (!append_replacement_edits(edits, equal_prefix_count, left_middle_count,
                                   right_middle_count))
       return {steal(edits), true};
+
     return {steal(edits), false};
   }
 
@@ -179,12 +189,14 @@ static fn make_diff_edits(const diff_lines &left_lines,
       if (!append_replacement_edits(edits, equal_prefix_count,
                                     left_middle_count, right_middle_count))
         return {steal(edits), true};
+
       return {steal(edits), false};
     }
 
     next_frontier->clear();
     next_frontier->reserve(distance + 1);
     let const signed_distance = static_cast<i64>(distance);
+
     for (usize step = 0; step <= distance; step++) {
       let const diagonal = -signed_distance + static_cast<i64>(step) * 2;
       usize left_position = 0;
@@ -202,6 +214,7 @@ static fn make_diff_edits(const diff_lines &left_lines,
       let const right_signed = static_cast<i64>(left_position) - diagonal;
       ASSERT(right_signed >= 0);
       usize right_position = static_cast<usize>(right_signed);
+
       while (
           left_position < left_middle_count &&
           right_position < right_middle_count &&
@@ -234,6 +247,7 @@ static fn make_diff_edits(const diff_lines &left_lines,
   ASSERT(found_distance <= maximum_distance);
   usize left_position = left_middle_count;
   usize right_position = right_middle_count;
+
   for (usize distance = found_distance; distance > 0; distance--) {
     if (os::INTERRUPT_REQUESTED) return {steal(edits), true};
 
@@ -278,12 +292,14 @@ static fn make_diff_edits(const diff_lines &left_lines,
     left_position--;
     right_position--;
   }
+
   ASSERT(left_position == 0 && right_position == 0);
 
   for (usize index = 0; index < equal_prefix_count; index++) {
     if (os::INTERRUPT_REQUESTED) return {steal(edits), true};
     edits.push(diff_edit::Equal);
   }
+
   for (usize index = 0; index < edits.count() / 2; index++) {
     if (os::INTERRUPT_REQUESTED) return {steal(edits), true};
     let const opposite = edits.count() - index - 1;
@@ -360,6 +376,7 @@ static fn append_normal_diff(const ExecContext &ec, String &output,
   usize edit_position = 0;
   usize left_position = 0;
   usize right_position = 0;
+
   while (edit_position < edits.count()) {
     if (os::INTERRUPT_REQUESTED) return false;
 
@@ -370,11 +387,13 @@ static fn append_normal_diff(const ExecContext &ec, String &output,
       left_position++;
       right_position++;
     }
+
     if (edit_position == edits.count()) break;
 
     let const block_start = edit_position;
     let const left_start = left_position;
     let const right_start = right_position;
+
     while (edit_position < edits.count() &&
            edits[edit_position] != diff_edit::Equal)
     {
@@ -384,6 +403,7 @@ static fn append_normal_diff(const ExecContext &ec, String &output,
         right_position++;
       edit_position++;
     }
+
     let const left_count = left_position - left_start;
     let const right_count = right_position - right_start;
 
@@ -402,16 +422,19 @@ static fn append_normal_diff(const ExecContext &ec, String &output,
     flush_diff_output(ec, output);
 
     usize block_left = left_start;
+
     for (usize index = block_start; index < edit_position; index++) {
       if (os::INTERRUPT_REQUESTED) return false;
       if (edits[index] == diff_edit::Delete)
         append_diff_line(ec, output, palette.removed, "< ",
                          left_lines.get(block_left++));
     }
+
     if (left_count != 0 && right_count != 0) {
       output += "---\n";
     }
     usize block_right = right_start;
+
     for (usize index = block_start; index < edit_position; index++) {
       if (os::INTERRUPT_REQUESTED) return false;
       if (edits[index] == diff_edit::Insert)
@@ -479,6 +502,7 @@ static fn append_unified_diff(const ExecContext &ec, String &output,
   usize current_edit = 0;
   usize left_position = 0;
   usize right_position = 0;
+
   while (next_search < edits.count()) {
     if (os::INTERRUPT_REQUESTED) return false;
 
@@ -487,16 +511,19 @@ static fn append_unified_diff(const ExecContext &ec, String &output,
     {
       next_search++;
     }
+
     if (next_search == edits.count()) break;
 
     let const first_change = next_search;
     usize last_change = first_change;
+
     for (usize index = first_change + 1; index < edits.count(); index++) {
       if (os::INTERRUPT_REQUESTED) return false;
       if (edits[index] == diff_edit::Equal) continue;
       if (index - last_change > 7) break;
       last_change = index;
     }
+
     let const hunk_start = first_change > 3 ? first_change - 3 : 0;
     let const hunk_end =
         last_change + 4 < edits.count() ? last_change + 4 : edits.count();
@@ -510,6 +537,7 @@ static fn append_unified_diff(const ExecContext &ec, String &output,
     let const right_start = right_position;
     usize left_count = 0;
     usize right_count = 0;
+
     for (usize index = hunk_start; index < hunk_end; index++) {
       if (os::INTERRUPT_REQUESTED) return false;
       if (edits[index] != diff_edit::Insert) left_count++;
@@ -525,6 +553,7 @@ static fn append_unified_diff(const ExecContext &ec, String &output,
     if (!palette.hunk.is_empty()) output += colors::ansi::RESET;
     output += '\n';
     flush_diff_output(ec, output);
+
     while (current_edit < hunk_end) {
       if (os::INTERRUPT_REQUESTED) return false;
       switch (edits[current_edit]) {
@@ -544,6 +573,7 @@ static fn append_unified_diff(const ExecContext &ec, String &output,
       advance_diff_position(edits[current_edit], left_position, right_position);
       current_edit++;
     }
+
     next_search = hunk_end;
   }
 
@@ -588,6 +618,7 @@ fn Diff::execute(const ExecContext &ec, EvalContext &cxt,
       if (chunk.error_number != 0) {
         if (chunk.source_index == 0) {
           do_report_read_error(chunk.source_index, chunk.error_number);
+
           return 2;
         }
 
@@ -602,6 +633,7 @@ fn Diff::execute(const ExecContext &ec, EvalContext &cxt,
 
   if (right_error_number != 0) {
     do_report_read_error(1, right_error_number);
+
     return 2;
   }
 
@@ -618,6 +650,7 @@ fn Diff::execute(const ExecContext &ec, EvalContext &cxt,
     ec.print_to_stdout("Binary files " +
                        String{cxt.scratch_allocator(), left_name} + " and " +
                        right_name + " differ\n");
+
     return 1;
   }
 
@@ -634,6 +667,7 @@ fn Diff::execute(const ExecContext &ec, EvalContext &cxt,
   if (result.was_interrupted) return 130;
 
   bool has_difference = false;
+
   for (let const edit : result.edits) {
     if (os::INTERRUPT_REQUESTED) return 130;
     if (edit != diff_edit::Equal) {
@@ -641,6 +675,7 @@ fn Diff::execute(const ExecContext &ec, EvalContext &cxt,
       break;
     }
   }
+
   if (!has_difference) return 0;
 
   let output = String{cxt.scratch_allocator()};
@@ -673,6 +708,7 @@ fn Diff::execute(const ExecContext &ec, EvalContext &cxt,
   }
 
   ec.print_to_stdout(output);
+
   return 1;
 }
 

@@ -47,16 +47,19 @@ fn Who::execute(const ExecContext &ec, EvalContext &cxt,
       KOSHKIT_REPORT_ERROR_AT(operand_locations[0],
                               "unexpected operand '" + operands[0] + "'",
                               "the only operand form is `am i`");
+
       return 2;
     }
 
     if (operands.count() == 1) {
       KOSHKIT_REPORT_ERROR_AT(operand_locations[0], "expected 'i' after 'am'");
+
       return 2;
     }
 
     if (operands[1].view() != "i") {
       KOSHKIT_REPORT_ERROR_AT(operand_locations[1], "expected 'i' after 'am'");
+
       return 2;
     }
 
@@ -64,6 +67,7 @@ fn Who::execute(const ExecContext &ec, EvalContext &cxt,
       KOSHKIT_REPORT_ERROR_AT(operand_locations[2],
                               "unexpected operand '" + operands[2] + "'",
                               "the only operand form is `am i`");
+
       return 2;
     }
   }
@@ -84,11 +88,13 @@ fn Who::execute(const ExecContext &ec, EvalContext &cxt,
         output += session.user.view();
         output += ' ';
       }
+
       if (!sessions.is_empty()) output += '\n';
       output += "# users = ";
       output += String::from(sessions.count(), cxt.scratch_allocator());
       output += '\n';
       ec.print_to_stdout(output);
+
       return 0;
     }
     if (FLAG_WHO_HEADING.is_enabled()) output += "NAME LINE TIME\n";
@@ -108,6 +114,7 @@ fn Who::execute(const ExecContext &ec, EvalContext &cxt,
     }
 
     ec.print_to_stdout(output);
+
     return 0;
   }
 
@@ -120,6 +127,7 @@ fn Who::execute(const ExecContext &ec, EvalContext &cxt,
   ec.print_to_stdout(" ");
   ec.print_to_stdout(terminal->view());
   ec.print_to_stdout("\n");
+
   return 0;
 }
 

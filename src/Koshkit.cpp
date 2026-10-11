@@ -35,6 +35,7 @@ fn take_interrupt_request() wontthrow -> bool
   if (os::INTERRUPT_REQUESTED == 0) return false;
 
   os::INTERRUPT_REQUESTED = 0;
+
   return true;
 }
 
@@ -48,6 +49,7 @@ fn path_error_message(StringView verb, StringView path,
   message += path;
   message += "': ";
   message += reason.view();
+
   return message;
 }
 
@@ -61,6 +63,7 @@ fn report_unresolved_sort_key(const ExecContext &ec, EvalContext &cxt,
   if (match_count == 0) {
     report_soft_koshkit_util_error(ec, cxt, location, utility_name,
                                    "invalid sort key", invalid_note);
+
     return false;
   }
 
@@ -69,6 +72,7 @@ fn report_unresolved_sort_key(const ExecContext &ec, EvalContext &cxt,
   note += "; use a longer prefix";
   report_soft_koshkit_util_error(ec, cxt, location, utility_name,
                                  "ambiguous sort key", note.view());
+
   return false;
 }
 
@@ -101,6 +105,7 @@ fn resolve_koshkit_color_flag(bool is_enabled, bool has_value,
   if (!has_value) return stdout_wants_color(cli_color_mode::Auto);
 
   let const mode = parse_cli_color_mode(value);
+
   return mode.has_value() && stdout_wants_color(*mode);
 }
 
@@ -129,10 +134,13 @@ fn util_names() throws -> const ArrayList<String> &
 {
   static ArrayList<String> names = [] throws {
     let collected = ArrayList<String>{heap_allocator()};
+
     for (let const &entry : KOSHKIT_ENTRIES)
       collected.push(entry.key.to_string());
+
     return collected;
   }();
+
   return names;
 }
 
@@ -143,10 +151,13 @@ fn sorted_util_names() throws -> const ArrayList<String> &
 {
   static sorted_utility_name_list names = [] throws {
     let collected = ArrayList<String>{heap_allocator()};
+
     for (let const &utility_name : util_names())
       collected.push_managed(utility_name);
+
     return steal(collected).make_sorted(sort_order::ascending);
   }();
+
   return names;
 }
 
@@ -167,6 +178,7 @@ fn capture_util_program_output(const Path &program, ArrayList<String> arguments,
   let command = ArrayList<String>{heap_allocator()};
   command.reserve(arguments.count() + 1);
   command.push(program.text().clone());
+
   for (let &argument : arguments)
     command.push(steal(argument));
 
@@ -191,6 +203,7 @@ static fn get_exported_spelling(const Value &value,
 {
   if constexpr (os::ENVIRONMENT_IS_CASE_SENSITIVE) {
     unused(value);
+
     return environment_name;
   } else {
     return value.is_empty() ? environment_name : value.view();
@@ -202,6 +215,7 @@ fn print_environment(const ExecContext &ec, EvalContext &cxt) throws -> void
   cxt.prepare_child_environment();
   let output = String{cxt.scratch_allocator()};
   let printed_names = HashSet{cxt.scratch_allocator()};
+
   for (let const &name : os::environment_names()) {
     let display_name = name.view();
     if constexpr (!os::ENVIRONMENT_IS_CASE_SENSITIVE) {
@@ -223,6 +237,7 @@ fn print_environment(const ExecContext &ec, EvalContext &cxt) throws -> void
     if (value.has_value()) output += value->view();
     output += '\n';
   }
+
   ec.print_to_stdout(output);
 }
 
@@ -272,6 +287,7 @@ fn dispatch(const ExecContext &ec, EvalContext &cxt, usize name_index,
   shifted.reserve(ec.args().count() - name_index);
   let shifted_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};
   shifted_locations.reserve(ec.args().count() - name_index);
+
   for (usize i = name_index; i < ec.args().count(); i++) {
     shifted.push(String{cxt.scratch_allocator(), ec.args()[i].view()});
     shifted_locations.push(ec.arg_location_at(i));
@@ -345,6 +361,7 @@ fn copy_file_contents(StringView source, StringView destination,
   defer { unused(os::close_fd(*destination_descriptor)); };
 
   char buffer[64 * 1024];
+
   loop
   {
     let const read_count =
@@ -397,6 +414,7 @@ fn confirm_koshkit_action(const ExecContext &ec, StringView prompt) throws
 
   char first_byte = '\0';
   bool is_first_byte = true;
+
   loop
   {
     char byte = '\0';
@@ -422,15 +440,16 @@ fn read_named_or_stdin(const ExecContext &ec, StringView path) throws
   let const fd = os::open_file_descriptor(path, os::file_open_mode::Read);
   if (!fd.has_value()) return None;
   defer { os::close_fd(*fd); };
+
   return read_fd_to_string(*fd);
 }
 
 SourceBatchReader::SourceBatchReader(const ExecContext &ec,
                                      const ArrayList<StringView> &sources,
                                      Allocator allocator, usize read_byte_count,
-                                     source_dash_mode dash_mode,
-                                     source_kind_mode kind_mode,
-                                     source_read_mode read_mode) throws
+                                     SourceDashMode dash_mode,
+                                     SourceKindMode kind_mode,
+                                     SourceReadMode read_mode) throws
     : m_ec(ec),
       m_sources(sources),
       m_readers(allocator),
@@ -457,15 +476,16 @@ SourceBatchReader::~SourceBatchReader()
 {
   for (let &reader : m_readers)
     close_reader(reader);
+
   if (m_sequential_reader.has_value()) close_reader(*m_sequential_reader);
 }
 
 fn SourceBatchReader::close_reader(Reader &reader) wontthrow -> void
 {
-  if (reader.descriptor_mode == reader_descriptor_mode::Owned)
+  if (reader.descriptor_mode == ReaderDescriptorMode::Owned)
     os::close_fd(reader.descriptor);
-  reader.descriptor_mode = reader_descriptor_mode::Borrowed;
-  reader.state = reader_state::Complete;
+  reader.descriptor_mode = ReaderDescriptorMode::Borrowed;
+  reader.state = ReaderState::Complete;
 }
 
 fn SourceBatchReader::finish_source(usize source_index) wontthrow -> void
@@ -476,7 +496,8 @@ fn SourceBatchReader::finish_source(usize source_index) wontthrow -> void
     close_reader(reader);
     reader.pending_byte_count = 0;
     reader.pending_error_number = 0;
-    reader.chunk_state = reader_chunk_state::Empty;
+    reader.chunk_state = ReaderChunkState::Empty;
+
     return;
   }
 
@@ -486,7 +507,7 @@ fn SourceBatchReader::finish_source(usize source_index) wontthrow -> void
     close_reader(*m_sequential_reader);
     m_sequential_reader->pending_byte_count = 0;
     m_sequential_reader->pending_error_number = 0;
-    m_sequential_reader->chunk_state = reader_chunk_state::Empty;
+    m_sequential_reader->chunk_state = ReaderChunkState::Empty;
   }
 }
 
@@ -496,10 +517,12 @@ fn SourceBatchReader::set_source_read_byte_count(usize source_index,
 {
   let const bounded_count =
       byte_count < m_read_byte_count ? byte_count : m_read_byte_count;
+
   for (let &reader : m_readers) {
     if (reader.source_index != source_index) continue;
 
     reader.read_byte_count = bounded_count;
+
     return;
   }
 
@@ -517,16 +540,16 @@ fn SourceBatchReader::retire_completed_readers() throws -> void
   {
     let const reader_index = remaining_count - 1;
     let const &reader = m_readers[reader_index];
-    if (reader.state == reader_state::Complete &&
-        reader.chunk_state == reader_chunk_state::Empty)
+    if (reader.state == ReaderState::Complete &&
+        reader.chunk_state == ReaderChunkState::Empty)
     {
       m_readers.remove(reader_index);
     }
   }
 
   if (m_sequential_reader.has_value() &&
-      m_sequential_reader->state == reader_state::Complete &&
-      m_sequential_reader->chunk_state == reader_chunk_state::Empty)
+      m_sequential_reader->state == ReaderState::Complete &&
+      m_sequential_reader->chunk_state == ReaderChunkState::Empty)
   {
     m_sequential_reader.reset();
   }
@@ -536,18 +559,19 @@ fn SourceBatchReader::fill_readers() throws -> void
 {
   constexpr usize READER_COUNT = 16;
 
-  if (m_readers.is_empty()) m_defer_mode = source_defer_mode::Ready;
+  if (m_readers.is_empty()) m_defer_mode = SourceDeferMode::Ready;
 
-  metadata_window_mode metadata_mode = metadata_window_mode::Unloaded;
+  MetadataWindowMode metadata_mode = MetadataWindowMode::Unloaded;
   usize metadata_index = 0;
   let const reader_limit =
-      m_read_mode == source_read_mode::Sequential ? usize{1} : READER_COUNT;
+      m_read_mode == SourceReadMode::Sequential ? usize{1} : READER_COUNT;
+
   while (!m_sequential_reader.has_value() && m_readers.count() < reader_limit &&
          m_source_index < m_sources.count())
   {
     let const source_index = m_source_index;
     let const source = m_sources[source_index];
-    if (m_dash_mode == source_dash_mode::TreatAsStdin && source == "-") {
+    if (m_dash_mode == SourceDashMode::TreatAsStdin && source == "-") {
       Reader reader;
       reader.buffer.reserve(m_read_byte_count);
       reader.source_index = source_index;
@@ -559,37 +583,39 @@ fn SourceBatchReader::fill_readers() throws -> void
     }
 
     let const probe_mode =
-        !m_readers.is_empty() && m_kind_mode != source_kind_mode::KnownRegular
-            ? source_probe_mode::Nonblocking
-            : source_probe_mode::Blocking;
-    if (probe_mode == source_probe_mode::Nonblocking) {
-      if (m_defer_mode == source_defer_mode::Deferred) break;
+        !m_readers.is_empty() && m_kind_mode != SourceKindMode::KnownRegular
+            ? SourceProbeMode::Nonblocking
+            : SourceProbeMode::Blocking;
+    if (probe_mode == SourceProbeMode::Nonblocking) {
+      if (m_defer_mode == SourceDeferMode::Deferred) break;
 
-      if (metadata_mode == metadata_window_mode::Unloaded) {
+      if (metadata_mode == MetadataWindowMode::Unloaded) {
         m_batch.clear();
         m_metadata_paths.clear();
         m_metadata_statuses.clear();
         let const candidate_count = READER_COUNT - m_readers.count();
+
         for (usize candidate_index = m_source_index;
              candidate_index < m_sources.count() &&
              m_metadata_paths.count() < candidate_count;
              candidate_index++)
         {
           let const candidate = m_sources[candidate_index];
-          if (m_dash_mode == source_dash_mode::TreatAsStdin && candidate == "-")
-          {
+          if (m_dash_mode == SourceDashMode::TreatAsStdin && candidate == "-") {
             break;
           }
 
           m_metadata_paths.push(Path{candidate});
           m_metadata_statuses.push({});
         }
+
         for (usize index = 0; index < m_metadata_paths.count(); index++) {
           m_batch.add(os::batch_operation::stat(m_metadata_paths[index],
                                                 m_metadata_statuses[index]));
         }
+
         m_batch.execute(m_results);
-        metadata_mode = metadata_window_mode::Loaded;
+        metadata_mode = MetadataWindowMode::Loaded;
       }
 
       if (metadata_index >= m_results.count()) break;
@@ -597,43 +623,43 @@ fn SourceBatchReader::fill_readers() throws -> void
       if (m_results[metadata_index].error_number != 0 ||
           os::file_type_letter(m_metadata_statuses[metadata_index].mode) != '-')
       {
-        m_defer_mode = source_defer_mode::Deferred;
+        m_defer_mode = SourceDeferMode::Deferred;
         break;
       }
       metadata_index++;
     }
 
     let descriptor = os::open_file_descriptor(
-        source, probe_mode == source_probe_mode::Nonblocking
+        source, probe_mode == SourceProbeMode::Nonblocking
                     ? os::file_open_mode::ReadNonblocking
                     : os::file_open_mode::Read);
     if (!descriptor.has_value()) {
       if (os::last_system_error_is_descriptor_quota() && !m_readers.is_empty())
       {
-        m_defer_mode = source_defer_mode::Deferred;
+        m_defer_mode = SourceDeferMode::Deferred;
         break;
       }
 
       Reader reader;
       reader.source_index = source_index;
       reader.pending_error_number = os::get_last_system_error_number();
-      reader.state = reader_state::Complete;
-      reader.chunk_state = reader_chunk_state::Pending;
+      reader.state = ReaderState::Complete;
+      reader.chunk_state = ReaderChunkState::Pending;
       reader.open_state = source_open_state::Failed;
       m_readers.push(steal(reader));
       m_source_index++;
       break;
     }
 
-    let const seek_mode = m_kind_mode == source_kind_mode::KnownRegular ||
+    let const seek_mode = m_kind_mode == SourceKindMode::KnownRegular ||
                                   os::descriptor_is_seekable(*descriptor)
-                              ? source_seek_mode::Seekable
-                              : source_seek_mode::Sequential;
-    if (probe_mode == source_probe_mode::Nonblocking &&
-        seek_mode == source_seek_mode::Sequential)
+                              ? SourceSeekMode::Seekable
+                              : SourceSeekMode::Sequential;
+    if (probe_mode == SourceProbeMode::Nonblocking &&
+        seek_mode == SourceSeekMode::Sequential)
     {
       os::close_fd(*descriptor);
-      m_defer_mode = source_defer_mode::Deferred;
+      m_defer_mode = SourceDeferMode::Deferred;
       break;
     }
 
@@ -645,17 +671,17 @@ fn SourceBatchReader::fill_readers() throws -> void
     reader.source_index = source_index;
     reader.read_byte_count = m_read_byte_count;
     reader.descriptor = *descriptor;
-    reader.descriptor_mode = reader_descriptor_mode::Owned;
+    reader.descriptor_mode = ReaderDescriptorMode::Owned;
     reader.should_end_at_short_read =
         reported_byte_count.has_value() && *reported_byte_count > 0;
     m_source_index++;
 
-    if (m_read_mode == source_read_mode::Sequential) {
+    if (m_read_mode == SourceReadMode::Sequential) {
       m_sequential_reader = steal(reader);
       break;
     }
 
-    if (seek_mode == source_seek_mode::Sequential) {
+    if (seek_mode == SourceSeekMode::Sequential) {
       m_sequential_reader = steal(reader);
       break;
     }
@@ -668,17 +694,18 @@ fn SourceBatchReader::read_seekable() throws -> ReadResult
 {
   m_batch.clear();
   m_reader_positions.clear();
+
   for (usize reader_index = 0; reader_index < m_readers.count(); reader_index++)
   {
     let &reader = m_readers[reader_index];
-    if (reader.chunk_state == reader_chunk_state::Pending ||
-        reader.state == reader_state::Complete)
+    if (reader.chunk_state == ReaderChunkState::Pending ||
+        reader.state == ReaderState::Complete)
     {
       continue;
     }
     if (reader.read_byte_count == 0) {
       close_reader(reader);
-      reader.chunk_state = reader_chunk_state::Pending;
+      reader.chunk_state = ReaderChunkState::Pending;
       continue;
     }
 
@@ -687,6 +714,7 @@ fn SourceBatchReader::read_seekable() throws -> ReadResult
                                   reader.read_byte_count, reader.byte_offset));
     m_reader_positions.push(reader_index);
   }
+
   if (m_batch.count() == 0) return ReadResult::Chunks;
 
   m_batch.execute(m_results);
@@ -700,17 +728,17 @@ fn SourceBatchReader::read_seekable() throws -> ReadResult
     if (result.error_number != 0) {
       close_reader(reader);
       reader.pending_error_number = result.error_number;
-      reader.chunk_state = reader_chunk_state::Pending;
+      reader.chunk_state = ReaderChunkState::Pending;
       continue;
     }
     if (result.transferred_byte_count == 0) {
       close_reader(reader);
-      reader.chunk_state = reader_chunk_state::Pending;
+      reader.chunk_state = ReaderChunkState::Pending;
       continue;
     }
 
     reader.pending_byte_count = result.transferred_byte_count;
-    reader.chunk_state = reader_chunk_state::Pending;
+    reader.chunk_state = ReaderChunkState::Pending;
     reader.byte_offset += result.transferred_byte_count;
     if (reader.should_end_at_short_read &&
         result.transferred_byte_count < reader.read_byte_count)
@@ -725,14 +753,15 @@ fn SourceBatchReader::read_seekable() throws -> ReadResult
 fn SourceBatchReader::read_sequential() throws -> ReadResult
 {
   let &reader = *m_sequential_reader;
-  if (reader.chunk_state == reader_chunk_state::Pending ||
-      reader.state == reader_state::Complete)
+  if (reader.chunk_state == ReaderChunkState::Pending ||
+      reader.state == ReaderState::Complete)
   {
     return ReadResult::Chunks;
   }
   if (reader.read_byte_count == 0) {
     close_reader(reader);
-    reader.chunk_state = reader_chunk_state::Pending;
+    reader.chunk_state = ReaderChunkState::Pending;
+
     return ReadResult::Chunks;
   }
 
@@ -744,29 +773,32 @@ fn SourceBatchReader::read_sequential() throws -> ReadResult
     let const error_number = os::get_last_system_error_number();
     close_reader(reader);
     reader.pending_error_number = error_number;
-    reader.chunk_state = reader_chunk_state::Pending;
+    reader.chunk_state = ReaderChunkState::Pending;
+
     return ReadResult::Chunks;
   }
   if (*read_count == 0) {
     close_reader(reader);
-    reader.chunk_state = reader_chunk_state::Pending;
+    reader.chunk_state = ReaderChunkState::Pending;
+
     return ReadResult::Chunks;
   }
 
   reader.pending_byte_count = *read_count;
-  reader.chunk_state = reader_chunk_state::Pending;
+  reader.chunk_state = ReaderChunkState::Pending;
   if (reader.should_end_at_short_read && *read_count < reader.read_byte_count) {
     close_reader(reader);
   }
+
   return ReadResult::Chunks;
 }
 
 fn SourceBatchReader::append_pending_chunks(ArrayList<Chunk> &chunks,
-                                            chunk_emit_mode emit_mode) throws
+                                            ChunkEmitMode emit_mode) throws
     -> void
 {
   let const emit_capacity =
-      emit_mode == chunk_emit_mode::One
+      emit_mode == ChunkEmitMode::One
           ? usize{1}
           : m_readers.count() +
                 static_cast<usize>(m_readers.is_empty() &&
@@ -774,25 +806,26 @@ fn SourceBatchReader::append_pending_chunks(ArrayList<Chunk> &chunks,
   chunks.reserve(emit_capacity);
 
   let const do_append = [&](Reader &reader) throws -> bool {
-    if (reader.chunk_state != reader_chunk_state::Pending) return false;
+    if (reader.chunk_state != ReaderChunkState::Pending) return false;
 
     chunks.push({
         StringView{reader.buffer.begin(), reader.pending_byte_count},
         reader.source_index, reader.pending_error_number,
-        reader.state == reader_state::Complete
+        reader.state == ReaderState::Complete
             ? source_completion_state::Complete
             : source_completion_state::Pending,
         reader.open_state
     });
     reader.pending_byte_count = 0;
     reader.pending_error_number = 0;
-    reader.chunk_state = reader_chunk_state::Empty;
+    reader.chunk_state = ReaderChunkState::Empty;
+
     return true;
   };
 
   for (let &reader : m_readers) {
     if (!do_append(reader)) continue;
-    if (emit_mode == chunk_emit_mode::One) return;
+    if (emit_mode == ChunkEmitMode::One) return;
   }
 
   if (m_readers.is_empty() && m_sequential_reader.has_value()) {
@@ -801,7 +834,7 @@ fn SourceBatchReader::append_pending_chunks(ArrayList<Chunk> &chunks,
 }
 
 fn SourceBatchReader::read_next_internal(ArrayList<Chunk> &chunks,
-                                         chunk_emit_mode emit_mode) throws
+                                         ChunkEmitMode emit_mode) throws
     -> ReadResult
 {
   chunks.clear();
@@ -832,13 +865,13 @@ fn SourceBatchReader::read_next_internal(ArrayList<Chunk> &chunks,
 
 fn SourceBatchReader::read_next(ArrayList<Chunk> &chunks) throws -> ReadResult
 {
-  return read_next_internal(chunks, chunk_emit_mode::All);
+  return read_next_internal(chunks, ChunkEmitMode::All);
 }
 
 fn SourceBatchReader::read_next_ordered(ArrayList<Chunk> &chunks) throws
     -> ReadResult
 {
-  return read_next_internal(chunks, chunk_emit_mode::One);
+  return read_next_internal(chunks, ChunkEmitMode::One);
 }
 
 fn read_named_or_stdin_batch(const ExecContext &ec,
@@ -848,11 +881,13 @@ fn read_named_or_stdin_batch(const ExecContext &ec,
 {
   let results = ArrayList<source_read_result>{allocator};
   results.reserve(sources.count());
+
   for (usize source_index = 0; source_index < sources.count(); source_index++)
     results.push({None, 0, source_completion_state::Pending});
 
   let reader = SourceBatchReader{ec, sources, allocator};
   let chunks = ArrayList<SourceBatchReader::Chunk>{allocator};
+
   loop
   {
     let const read_result = reader.read_next(chunks);
@@ -899,6 +934,7 @@ fn open_named_or_stdin(const ExecContext &ec, StringView path) wontthrow
   let const descriptor =
       os::open_file_descriptor(path, os::file_open_mode::Read);
   if (!descriptor.has_value()) return None;
+
   return input_descriptor{*descriptor, input_descriptor_mode::Owned};
 }
 
@@ -916,6 +952,7 @@ fn visit_source_lines_with(const ExecContext &ec, StringView source,
   };
 
   let reader = utils::BufferedLineReader{input->descriptor, allocator};
+
   loop
   {
     let const result = reader.next();
@@ -943,6 +980,7 @@ fn file_crc32c(const ExecContext &ec, StringView path,
 
   u32 crc = 0xffffffffu;
   char buffer[65536];
+
   loop
   {
     let const read_count =
@@ -959,6 +997,7 @@ fn file_crc32c(const ExecContext &ec, StringView path,
     let padded = String{allocator};
     padded.append_repeated('0', 8 - digest.length());
     padded += digest.view();
+
     return padded;
   }
 
@@ -975,15 +1014,18 @@ fn source_list_from_operands(const ArrayList<String> &operands,
     sources.push(StringView{"-"});
   } else {
     sources.reserve(operands.count() - first_operand_index);
+
     for (usize i = first_operand_index; i < operands.count(); i++)
       sources.push(operands[i].view());
   }
+
   return sources;
 }
 
 fn parse_strict_count(StringView text) throws -> ErrorOr<u64>
 {
   usize start = 0;
+
   while (start < text.length && is_ascii_whitespace(text[start])) {
     start++;
   }
@@ -1015,6 +1057,7 @@ fn koshkit_util_synopsis(Utility::Kind) wontthrow -> const SynopsisList *
 fn util_names() throws -> const ArrayList<String> &
 {
   static const ArrayList<String> names{heap_allocator()};
+
   return names;
 }
 
@@ -1086,6 +1129,7 @@ fn run_as_multicall(StringView util_name, Maybe<Utility::Kind> chosen,
     if (operand == "--") break;
     if (operand == "--version") {
       show_version();
+
       return 0;
     }
   }
@@ -1097,6 +1141,7 @@ fn run_as_multicall(StringView util_name, Maybe<Utility::Kind> chosen,
   usize source_length = util_name.length;
   args.push(String{util_name});
   arg_locations.push(SourceLocation{0, util_name.length});
+
   for (String &operand : operands) {
     source_length++;
     arg_locations.push(SourceLocation{source_length, operand.length()});
@@ -1116,6 +1161,7 @@ fn run_as_multicall(StringView util_name, Maybe<Utility::Kind> chosen,
     }
 
     let const builtin = koshka::Koshkit{};
+
     return builtin.execute(ec, cxt);
   } catch (const BrokenPipeExit &) {
     return 141;
@@ -1124,20 +1170,25 @@ fn run_as_multicall(StringView util_name, Maybe<Utility::Kind> chosen,
     if (!chosen.has_value()) {
       show_message(
           render_multicall_error(e, e.message().view(), source.view(), cxt));
+
       return static_cast<i32>(e.command_status());
     }
 
     let const message = util_name + ": " + e.message();
     show_message(render_multicall_error(e, message.view(), source.view(), cxt));
+
     return 1;
   } catch (const Error &e) {
     show_message(e.to_string());
+
     return 1;
   } catch (const std::exception &e) {
     show_message(String{util_name} + ": " + e.what());
+
     return 1;
   } catch (...) {
     show_message(String{util_name} + ": unexpected error");
+
     return 1;
   }
 }
@@ -1146,6 +1197,7 @@ fn make_directories(const Path &directory, u32 mode) wontthrow -> bool
 {
   let const text = directory.view();
   let const root_length = os::path_root_length(text);
+
   for (usize position = root_length; position <= text.length; position++) {
     if (position < text.length && !os::is_directory_separator(text[position])) {
       continue;
@@ -1176,6 +1228,7 @@ fn format_signal_list() throws -> String
   static const usize NUMBER_WIDTH = 2;
 
   let collected = ArrayList<utils::signal_pair>{heap_allocator()};
+
   for (let const name : os::signal_names()) {
     if (let const number = os::signal_number_from_name(name);
         number.has_value())
@@ -1187,6 +1240,7 @@ fn format_signal_list() throws -> String
   let const numbered = steal(collected).make_sorted(signal_number_comparator{});
 
   let out = String{heap_allocator()};
+
   for (usize index = 0; index < numbered.count(); index++) {
     let const number = String::from(numbered[index].number, heap_allocator());
 
@@ -1257,6 +1311,7 @@ fn format_human_size(u64 bytes, Allocator allocator, u64 unit_step) throws
   let const step = static_cast<double>(unit_step);
   double value = static_cast<double>(bytes);
   usize unit = 0;
+
   while (value >= step && unit < sizeof(units)) {
     value /= step;
     unit++;
@@ -1279,15 +1334,16 @@ fn format_human_size(u64 bytes, Allocator allocator, u64 unit_step) throws
     out += String::from(static_cast<u64>(value + 0.5), allocator);
   }
   out.push(unit == 1 && unit_step == 1000 ? 'k' : units[unit - 1]);
+
   return out;
 }
 
 #if !defined KOSH_NO_KOSHKIT
 
-fn scaled_filesystem_blocks(u64 block_count, u64 block_size,
+fn scaled_filesystem_blocks(u64 block_count, u64 block_byte_count,
                             u64 output_unit) wontthrow -> u64
 {
-  let const byte_count = static_cast<u128>(block_count) * block_size;
+  let const byte_count = static_cast<u128>(block_count) * block_byte_count;
   let const rounded_byte_count = byte_count + output_unit - 1;
   let const high = static_cast<u64>(rounded_byte_count >> 64u);
   if (high >= output_unit) return UINT64_MAX;
@@ -1303,6 +1359,7 @@ fn filesystem_usage_percent(u64 used, u64 available) wontthrow -> u64
   if (capacity_base == 0) return 0;
 
   let const numerator = static_cast<u128>(used) * 100 + capacity_base - 1;
+
   return os::divide_u128_by_u64(static_cast<u64>(numerator >> 64u),
                                 static_cast<u64>(numerator),
                                 static_cast<u64>(capacity_base))
@@ -1333,12 +1390,14 @@ fn format_file_timestamp(i64 seconds, u32 nanoseconds,
   text += ".";
 
   let const digits = String::from(nanoseconds, allocator);
+
   for (usize index = digits.length(); index < 9; index++)
     text += "0";
 
   text += digits.view();
   text += " ";
   text += utils::format_unix_timestamp(seconds, "%z").view();
+
   return text;
 }
 
@@ -1378,6 +1437,7 @@ fn get_init_system_name(Allocator allocator) throws -> String
   let const body = Path{"/proc/1/comm"}.read_entire_file();
   if (body.has_value()) {
     let command = body->view();
+
     while (!command.is_empty() && (command[command.length - 1] == '\n' ||
                                    command[command.length - 1] == '\r'))
     {
@@ -1393,6 +1453,7 @@ fn get_init_system_name(Allocator allocator) throws -> String
   }
 
   let const processes = os::enumerate_processes();
+
   for (let const &process : processes) {
     if (process.pid != 1) continue;
 
@@ -1455,11 +1516,13 @@ cold static fn show_soft_koshkit_error(const ExecContext &ec, EvalContext &cxt,
       source != nullptr)
   {
     show_message(located.to_string(source->view(), &cxt));
+
     return;
   }
   if (ec.is_multicall) {
     let const source = utils::merge_args_to_string(ec.args());
     show_message(located.to_string(source.view(), &cxt));
+
     return;
   }
 
@@ -1477,6 +1540,7 @@ static fn koshkit_invocation_name(const ExecContext &ec,
   }
   if (!ec.args().is_empty())
     return String{allocator, "koshkit "} + ec.args()[0].view();
+
   return String{allocator, ec.program()};
 }
 

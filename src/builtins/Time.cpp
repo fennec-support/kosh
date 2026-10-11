@@ -40,6 +40,7 @@ cold fn Time::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   if (args.count() < 2) return 0;
 
   let command = String{cxt.scratch_allocator()};
+
   for (usize i = 1; i < args.count(); i++) {
     if (i > 1) command.push(' ');
     command.append(args[i].view());

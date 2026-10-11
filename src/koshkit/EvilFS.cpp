@@ -27,6 +27,7 @@ static fn format_filesystem_id(u64 value, Allocator allocator) throws -> String
 {
   let text = String{allocator, "0x"};
   text += String::from_in_base(value, false, int_base::hex, allocator).view();
+
   return text;
 }
 
@@ -40,6 +41,7 @@ fn EvilFS::execute(const ExecContext &ec, EvalContext &cxt,
   if (!operands.is_empty()) {
     KOSHKIT_REPORT_ERROR_AT(operand_locations[0], "unexpected operand",
                             "this utility accepts no operands");
+
     return 1;
   }
 
@@ -77,6 +79,7 @@ fn EvilFS::execute(const ExecContext &ec, EvalContext &cxt,
     table.add_heading("FREE FILES", report_table_alignment::Right);
     table.add_heading("NAME LIMIT", report_table_alignment::Right);
     table.add_heading("STATUS");
+
     for (let const &mount : mounts) {
       os::filesystem_status status{};
       let const is_metadata_available =
@@ -104,9 +107,9 @@ fn EvilFS::execute(const ExecContext &ec, EvalContext &cxt,
       if (is_metadata_available) {
         filesystem_id = format_filesystem_id(status.filesystem_id, allocator);
         type_id = format_filesystem_id(status.type_id, allocator);
-        block_size = format_human_size(status.block_size, allocator);
+        block_size = format_human_size(status.block_byte_count, allocator);
         fundamental_block_size =
-            format_human_size(status.fundamental_block_size, allocator);
+            format_human_size(status.fundamental_block_byte_count, allocator);
         total_blocks = String::from(status.total_blocks, allocator);
         free_blocks = String::from(status.free_blocks, allocator);
         available_blocks = String::from(status.available_blocks, allocator);
@@ -141,6 +144,7 @@ fn EvilFS::execute(const ExecContext &ec, EvalContext &cxt,
                                               : colors::ansi::BOLD_RED});
       table.add_row(cells);
     }
+
     append_titled_report_table(output, "Filesystems", table, should_color);
     if (skipped_permission_count != 0) {
       skipped_warning = "Skipped ";
@@ -153,6 +157,7 @@ fn EvilFS::execute(const ExecContext &ec, EvalContext &cxt,
     ec.print_to_stdout(output);
     if (!skipped_warning.is_empty())
       show_report_warning(skipped_warning.view());
+
     return mounts.is_empty() ? 1 : 0;
   }
 
@@ -161,6 +166,7 @@ fn EvilFS::execute(const ExecContext &ec, EvalContext &cxt,
   table.add_heading("TARGET");
   table.add_heading("TYPE");
   table.add_heading("OPTIONS");
+
   for (let const &mount : mounts) {
     let cells = ArrayList<report_table_cell_view>{allocator};
     cells.push({mount.source.view(), colors::ansi::GREEN});
@@ -169,9 +175,11 @@ fn EvilFS::execute(const ExecContext &ec, EvalContext &cxt,
     cells.push({mount.options.view(), colors::ansi::DIM});
     table.add_row(cells);
   }
+
   append_titled_report_table(output, "Filesystems", table, should_color);
 
   ec.print_to_stdout(output);
+
   return mounts.is_empty() ? 1 : 0;
 }
 

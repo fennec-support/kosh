@@ -41,6 +41,7 @@ public:
   mustuse fn clone() const throws -> Maybe
   {
     if (!m_has_value) return None;
+
     return Maybe{clone_value(reference())};
   }
 
@@ -53,6 +54,7 @@ public:
         m_has_value = true;
       }
     }
+
     return *this;
   }
   fn operator=(Maybe &&other) noexcept(std::is_nothrow_move_constructible_v<T>)
@@ -65,6 +67,7 @@ public:
         m_has_value = true;
       }
     }
+
     return *this;
   }
 
@@ -82,11 +85,13 @@ public:
   hot mustuse pure fn value() wontthrow -> T &
   {
     ASSERT(m_has_value);
+
     return reference();
   }
   hot mustuse pure fn value() const wontthrow -> const T &
   {
     ASSERT(m_has_value);
+
     return reference();
   }
   hot flatten mustuse pure fn operator*() wontthrow->T & { return value(); }
@@ -105,6 +110,7 @@ public:
     ASSERT(m_has_value);
     let taken_value = steal(reference());
     reset();
+
     return taken_value;
   }
 
@@ -174,11 +180,13 @@ public:
   hot mustuse pure fn value() wontthrow -> T *
   {
     ASSERT(m_value != nullptr);
+
     return m_value;
   }
   hot mustuse pure fn value() const wontthrow -> T *
   {
     ASSERT(m_value != nullptr);
+
     return m_value;
   }
   hot flatten mustuse pure fn operator*() wontthrow->T *& { return m_value; }
@@ -196,6 +204,7 @@ public:
   {
     let const taken_value = m_value;
     m_value = nullptr;
+
     return taken_value;
   }
 

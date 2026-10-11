@@ -332,6 +332,7 @@ fn append_numeric_configuration_row(
 {
   if (result.status == os::configuration_query_status::Undefined) {
     append_configuration_row(output, name, "undefined");
+
     return;
   }
   append_configuration_row(output, name, String::from(result.value, allocator));
@@ -346,6 +347,7 @@ fn report_configuration_query_error(const ExecContext &ec, EvalContext &cxt,
   report_soft_koshkit_util_error(ec, cxt, location, utility_name,
                                  "Cannot query variable '" + variable_name +
                                      "': " + reason);
+
   return 1;
 }
 
@@ -371,29 +373,34 @@ fn Getconf::execute(const ExecContext &ec, EvalContext &cxt,
         ec, cxt, FLAG_GETCONF_SPECIFICATION.value_location(), args[0].view(),
         "Unsupported specification '" +
             String{FLAG_GETCONF_SPECIFICATION.value()} + "'");
+
     return 2;
   }
 
   if (FLAG_GETCONF_ALL.is_enabled()) {
     let output = String{cxt.scratch_allocator()};
     let const error_location = FLAG_GETCONF_ALL.value_location();
+
     for (let const &entry : SYSTEM_CONFIGURATION_ENTRIES) {
       let const name = entry.key.to_string();
       let const result = os::query_system_configuration(entry.value);
       if (result.status == os::configuration_query_status::Error) {
         if (!output.is_empty()) ec.print_to_stdout(output);
+
         return report_configuration_query_error(ec, cxt, error_location,
                                                 args[0].view(), name.view());
       }
       append_numeric_configuration_row(output, name.view(), result,
                                        cxt.scratch_allocator());
     }
+
     for (let const &entry : STRING_CONFIGURATION_ENTRIES) {
       let const name = entry.key.to_string();
       let result =
           os::query_string_configuration(entry.value, cxt.scratch_allocator());
       if (result.status == os::configuration_query_status::Error) {
         if (!output.is_empty()) ec.print_to_stdout(output);
+
         return report_configuration_query_error(ec, cxt, error_location,
                                                 args[0].view(), name.view());
       }
@@ -403,19 +410,24 @@ fn Getconf::execute(const ExecContext &ec, EvalContext &cxt,
                                    ? result.value.view()
                                    : StringView{"undefined"});
     }
+
     let const path = operands.is_empty() ? StringView{"."} : operands[0].view();
+
     for (let const &entry : PATH_CONFIGURATION_ENTRIES) {
       let const name = entry.key.to_string();
       let const result = os::query_path_configuration(path, entry.value);
       if (result.status == os::configuration_query_status::Error) {
         if (!output.is_empty()) ec.print_to_stdout(output);
+
         return report_configuration_query_error(ec, cxt, error_location,
                                                 args[0].view(), name.view());
       }
       append_numeric_configuration_row(output, name.view(), result,
                                        cxt.scratch_allocator());
     }
+
     ec.print_to_stdout(output);
+
     return 0;
   }
 
@@ -437,6 +449,7 @@ fn Getconf::execute(const ExecContext &ec, EvalContext &cxt,
       ec.print_to_stdout(value.value.view());
       ec.print_to_stdout("\n");
     }
+
     return 0;
   }
 
@@ -457,6 +470,7 @@ fn Getconf::execute(const ExecContext &ec, EvalContext &cxt,
     report_soft_koshkit_util_error(ec, cxt, operand_locations[0],
                                    args[0].view(),
                                    "Unknown variable '" + operands[0] + "'");
+
     return 1;
   }
 
@@ -469,6 +483,7 @@ fn Getconf::execute(const ExecContext &ec, EvalContext &cxt,
   else
     ec.print_to_stdout(String::from(result.value, cxt.scratch_allocator()) +
                        "\n");
+
   return 0;
 }
 

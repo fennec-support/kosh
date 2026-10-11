@@ -51,6 +51,7 @@ fn Break::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   if (cxt.execution_store().loop_depth() == 0 && !is_posix_mode) {
     LOG(All, "break outside a loop does nothing");
     report_loop_control_without_loop(ec, cxt);
+
     return 0;
   }
 
@@ -91,6 +92,7 @@ fn Break::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   if (level < 1) {
     report_break_out_of_range(ec, cxt, ec.args()[1].view());
     cxt.request_break(1, ec.source_location());
+
     return 1;
   }
 
@@ -98,6 +100,7 @@ fn Break::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   LOG(All, "break leaving %lld enclosing loops", static_cast<long long>(level));
   cxt.request_break(level, ec.source_location());
+
   return 0;
 }
 

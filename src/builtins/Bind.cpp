@@ -46,6 +46,7 @@ fn Bind::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   if (FLAG_HELP.is_enabled()) SHOW_BUILTIN_HELP_AND_RETURN(ec);
 
   LOG(All, "bind accepted as a no-op with %zu operands", ec.args().count() - 1);
+
   return 0;
 }
 

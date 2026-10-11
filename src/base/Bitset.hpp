@@ -33,6 +33,7 @@ public:
       m_words = other.m_words;
       m_length = other.m_length;
     }
+
     return *this;
   }
   fn operator=(Bitset &&other) wontthrow->Bitset &
@@ -42,6 +43,7 @@ public:
       m_length = other.m_length;
       other.m_length = 0;
     }
+
     return *this;
   }
 
@@ -57,6 +59,7 @@ public:
   hot mustuse pure fn operator[](usize index) const wontthrow->bool
   {
     if (index >= m_length) return false;
+
     return ((m_words[index / BITS_PER_WORD] >> (index % BITS_PER_WORD)) & 1u) !=
            0;
   }
@@ -79,8 +82,10 @@ public:
     let const word_count =
         bit_count / BITS_PER_WORD + (bit_count % BITS_PER_WORD != 0 ? 1 : 0);
     m_words.reserve(word_count);
+
     for (usize i = 0; i < word_count; i++)
       m_words.push(0);
+
     m_length = bit_count;
   }
 
@@ -109,6 +114,7 @@ public:
   {
     for (usize i = 0; i < m_words.count(); i++)
       if (m_words[i] != 0) return true;
+
     return false;
   }
 

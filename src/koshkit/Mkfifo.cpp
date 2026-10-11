@@ -45,6 +45,7 @@ fn Mkfifo::execute(const ExecContext &ec, EvalContext &cxt,
   }
 
   i32 status = 0;
+
   for (let const &operand : operands) {
     if (!os::make_fifo(operand.view(), mode)) {
       KOSHKIT_REPORT_PATH_ERROR("create", operand);

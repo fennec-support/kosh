@@ -35,6 +35,7 @@ hot inline fn uncached_heap_alloc(usize length, usize alignment) wontthrow
   if (alignment > alignof(max_align_t)) {
     if (length > SIZE_MAX - (alignment - 1)) return nullptr;
     let const rounded_length = (length + alignment - 1) & ~(alignment - 1);
+
     return os::allocate_aligned(rounded_length, alignment);
   }
 
@@ -46,6 +47,7 @@ hot inline fn uncached_heap_free(opaque *pointer, usize alignment) wontthrow
 {
   if (alignment > alignof(max_align_t)) {
     os::free_aligned(pointer);
+
     return;
   }
 
@@ -65,6 +67,7 @@ public:
       let const reused = m_bins[class_index];
       m_bins[class_index] = reused->next;
       m_counts[class_index]--;
+
       return reused;
     }
 
@@ -83,6 +86,7 @@ public:
 
     let const target_length =
         new_shift <= MAX_CLASS_SHIFT ? (usize{1} << new_shift) : new_length;
+
     return std::realloc(pointer, target_length);
   }
 
@@ -93,6 +97,7 @@ public:
     let const shift = class_shift_for(length);
     if (shift > MAX_CLASS_SHIFT) {
       std::free(pointer);
+
       return;
     }
 
@@ -103,10 +108,11 @@ public:
         byte_limit < MAX_BLOCKS_PER_CLASS ? byte_limit : MAX_BLOCKS_PER_CLASS;
     if (m_counts[class_index] >= class_limit) {
       std::free(pointer);
+
       return;
     }
 
-    let const recycled = static_cast<node *>(pointer);
+    let const recycled = static_cast<Node *>(pointer);
     recycled->next = m_bins[class_index];
     m_bins[class_index] = recycled;
     m_counts[class_index]++;
@@ -119,12 +125,12 @@ private:
   static constexpr usize MAX_BLOCKS_PER_CLASS = 512;
   static constexpr usize MAX_RETAINED_BYTES_PER_CLASS = 64 * 1024;
 
-  struct node
+  struct Node
   {
-    node *next;
+    Node *next;
   };
 
-  node *m_bins[CLASS_COUNT] = {};
+  Node *m_bins[CLASS_COUNT] = {};
   u16 m_counts[CLASS_COUNT] = {};
 
   hot static fn class_shift_for(usize length) wontthrow -> usize
@@ -132,6 +138,7 @@ private:
     let const size = length <= (usize{1} << MIN_CLASS_SHIFT)
                          ? (usize{1} << MIN_CLASS_SHIFT)
                          : length;
+
     return static_cast<usize>(64 - __builtin_clzll(size - 1));
   }
 };
@@ -139,6 +146,7 @@ private:
 hot inline fn heap_pool_instance() wontthrow -> HeapPool &
 {
   static HeapPool pool;
+
   return pool;
 }
 
@@ -147,11 +155,14 @@ hot inline fn heap_alloc(usize length, usize alignment) wontthrow -> opaque *
   if (alignment > alignof(max_align_t)) {
     if (length > SIZE_MAX - (alignment - 1)) return nullptr;
     let const rounded_length = (length + alignment - 1) & ~(alignment - 1);
+
     return os::allocate_aligned(rounded_length, alignment);
   }
 #if defined KOSH_HAS_ADDRESS_SANITIZER
+
   return std::malloc(length);
 #else
+
   return heap_pool_instance().take(length);
 #endif
 }
@@ -160,8 +171,10 @@ hot inline fn heap_realloc(opaque *pointer, usize old_length,
 {
 #if defined KOSH_HAS_ADDRESS_SANITIZER
   unused(old_length);
+
   return std::realloc(pointer, new_length);
 #else
+
   return HeapPool::regrow(pointer, old_length, new_length);
 #endif
 }
@@ -171,6 +184,7 @@ hot inline fn heap_free(opaque *pointer, usize length,
 {
   if (alignment > alignof(max_align_t)) {
     os::free_aligned(pointer);
+
     return;
   }
 #if defined KOSH_HAS_ADDRESS_SANITIZER
@@ -243,16 +257,19 @@ public:
       if (replacement == nullptr && new_length != 0) {
         throw std::bad_alloc{};
       }
+
       return replacement;
     }
     if (new_length == 0) {
       raw_free(pointer, old_length, alignment);
+
       return nullptr;
     }
     if (alignment <= alignof(max_align_t)) {
       if (get_kind() == Kind::UncachedHeap) {
         let const replacement = std::realloc(pointer, new_length);
         if (replacement == nullptr) throw std::bad_alloc{};
+
         return replacement;
       }
 
@@ -260,6 +277,7 @@ public:
         let const replacement =
             allocators::heap_realloc(pointer, old_length, new_length);
         if (replacement == nullptr) throw std::bad_alloc{};
+
         return replacement;
       }
     }
@@ -269,6 +287,7 @@ public:
     std::memcpy(replacement, pointer,
                 old_length < new_length ? old_length : new_length);
     raw_free(pointer, old_length, alignment);
+
     return replacement;
   }
 
@@ -279,6 +298,7 @@ public:
     case Kind::Heap: allocators::heap_free(pointer, length, alignment); return;
     case Kind::UncachedHeap:
       allocators::uncached_heap_free(pointer, alignment);
+
       return;
     case Kind::Bump:
     case Kind::Fake: return;
@@ -299,6 +319,7 @@ public:
     if (result == nullptr && count != 0) {
       throw std::bad_alloc{};
     }
+
     return result;
   }
   template <class T>

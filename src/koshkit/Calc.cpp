@@ -68,12 +68,15 @@ fn evaluate_one(const ExecContext &ec, EvalContext &cxt, StringView expression,
         cxt.evaluate_calculator_arithmetic_text(expression, expression_base);
     result += '\n';
     ec.print_to_stdout(result);
+
     return 0;
   } catch (const ErrorWithLocation &error) {
     show_message(error.to_string(render_source, &cxt));
+
     return 1;
   } catch (const Error &error) {
     show_message(error.to_string());
+
     return 1;
   }
 }
@@ -82,17 +85,21 @@ fn try_define_unevaluated_assignment(EvalContext &cxt, StringView line) throws
     -> bool
 {
   usize i = 0;
+
   while (i < line.length && (line[i] == ' ' || line[i] == '\t')) {
     i++;
   }
+
   if (i >= line.length || !lexer::is_variable_name_start(line[i])) {
     return false;
   }
 
   let const name_start = i;
+
   while (i < line.length && lexer::is_variable_name(line[i])) {
     i++;
   }
+
   let const name = line.substring_of_length(name_start, i - name_start);
 
   while (i < line.length && (line[i] == ' ' || line[i] == '\t')) {
@@ -118,6 +125,7 @@ fn try_define_unevaluated_assignment(EvalContext &cxt, StringView line) throws
     };
 
   cxt.set_shell_variable(name, value);
+
   return true;
 }
 
@@ -194,6 +202,7 @@ fn run_repl(const ExecContext &ec, EvalContext &cxt,
           koshka::print("^D");
           koshka::flush();
           toiletline::emit_newlines(result.text);
+
           return 0;
         }
         toiletline::set_input(result.text);
@@ -242,6 +251,7 @@ fn run_repl(const ExecContext &ec, EvalContext &cxt,
   if (!should_use_editor && is_terminal) {
     koshka::print_error("\n");
   }
+
   return 0;
 }
 
@@ -266,6 +276,7 @@ fn Calc::execute(const ExecContext &ec, EvalContext &cxt,
   if (should_pipe || is_interactive) {
     let const input_mode = should_pipe ? calc_repl_input_mode::Pipe
                                        : calc_repl_input_mode::DetectTerminal;
+
     return run_repl(ec, cxt, input_mode);
   }
 
@@ -279,6 +290,7 @@ fn Calc::execute(const ExecContext &ec, EvalContext &cxt,
   LOG(Debug, "calc evaluating %zu arithmetic expressions", operands.count());
 
   String expression{cxt.scratch_allocator()};
+
   for (usize i = 0; i < operands.count(); i++) {
     if (i > 0) expression += ' ';
     expression += operands[i].view();

@@ -37,6 +37,7 @@ fn read_first_line(StringView path, Allocator allocator) throws -> Maybe<String>
 
   let const view = body->view();
   usize line_end = 0;
+
   while (line_end < view.length && view[line_end] != '\n') {
     line_end++;
   }
@@ -77,6 +78,7 @@ fn format_uptime(u64 seconds, Allocator allocator) throws -> String
 
   text += String::from(minutes, allocator).view();
   text += minutes == 1 ? " minute" : " minutes";
+
   return text;
 }
 
@@ -147,6 +149,7 @@ fn append_anomaly_report(field_section &section, EvalContext &cxt) throws
   };
   if (!os::has_process_open_file_listing()) {
     do_append_unavailable("not probed");
+
     return;
   }
 
@@ -155,6 +158,7 @@ fn append_anomaly_report(field_section &section, EvalContext &cxt) throws
       os::process_open_file_detail::IncludeMappings);
   let executable_path = StringView{};
   bool is_mapping_evidence_available = true;
+
   for (let const &file : files) {
     if (file.use == os::process_file_use::Executable && !file.is_inaccessible) {
       executable_path = file.path.view();
@@ -163,14 +167,17 @@ fn append_anomaly_report(field_section &section, EvalContext &cxt) throws
       is_mapping_evidence_available = false;
     }
   }
+
   if (!is_mapping_evidence_available) {
     do_append_unavailable("process mappings");
+
     return;
   }
 
   let families = ArrayList<mapped_library_family>{allocator};
   usize mixed_family_count = 0;
   usize deleted_mapping_count = 0;
+
   for (let const &file : files) {
     if (file.use != os::process_file_use::Mapped) continue;
 
@@ -186,11 +193,13 @@ fn append_anomaly_report(field_section &section, EvalContext &cxt) throws
     if (!marker.has_value()) continue;
 
     let version_end = *marker + 4;
+
     while (version_end < filename.length && filename[version_end] >= '0' &&
            filename[version_end] <= '9')
     {
       version_end++;
     }
+
     if (version_end == *marker + 4) continue;
     if (version_end < filename.length && filename[version_end] != '.') {
       continue;
@@ -202,11 +211,13 @@ fn append_anomaly_report(field_section &section, EvalContext &cxt) throws
 
     let const family = filename.substring_of_length(0, *marker);
     usize family_index = 0;
+
     while (family_index < families.count() &&
            families[family_index].family.view() != family)
     {
       family_index++;
     }
+
     if (family_index == families.count()) {
       families.push(mapped_library_family{
           String{allocator, family},
@@ -255,9 +266,9 @@ fn append_procfs_report(field_section &section) throws -> void
         {os::system_activity_field::MajorFaults,           "Major page faults",
          &os::system_activity_status::major_page_fault_count                                                                                         },
         {os::system_activity_field::PageInput,             "Page input bytes",
-         &os::system_activity_status::page_input_bytes                                                                                               },
+         &os::system_activity_status::page_input_byte_count                                                                                          },
         {os::system_activity_field::PageOutput,            "Page output bytes",
-         &os::system_activity_status::page_output_bytes                                                                                              },
+         &os::system_activity_status::page_output_byte_count                                                                                         },
         {os::system_activity_field::Runnable,              "Runnable processes",
          &os::system_activity_status::runnable_process_count                                                                                         },
         {os::system_activity_field::Blocked,               "Blocked processes",
@@ -301,6 +312,7 @@ fn append_procfs_report(field_section &section) throws -> void
         {os::system_activity_field::CgroupMembershipCount,
          "Current-process cgroup memberships",                                            &os::system_activity_status::cgroup_membership_count       },
     };
+
     for (let const &metric : METRICS) {
       if (!activity.has_field(metric.field)) continue;
       section.add(metric.label,
@@ -344,6 +356,7 @@ fn names_text(const ArrayList<String> &names, Allocator allocator) throws
   if (names.is_empty()) return None;
 
   let result = String{allocator};
+
   for (let const &name : names) {
     if (!result.is_empty()) result += ", ";
     result += name.view();
@@ -364,6 +377,7 @@ fn Evil::execute(const ExecContext &ec, EvalContext &cxt,
   if (!operands.is_empty()) {
     KOSHKIT_REPORT_ERROR_AT(operand_locations[0], "unexpected operand",
                             "this utility takes no operand");
+
     return 1;
   }
 
@@ -452,10 +466,12 @@ fn Evil::execute(const ExecContext &ec, EvalContext &cxt,
 
     let const supplementary_groups = os::get_supplementary_group_ids(allocator);
     let group_list = String{allocator};
+
     for (usize index = 0; index < supplementary_groups.count(); index++) {
       if (index != 0) group_list += ", ";
       group_list += String::from(supplementary_groups[index], allocator).view();
     }
+
     session.add("Supplementary groups", group_list.view());
 
     let const groups = names_text(os::enumerate_groups(), allocator);
@@ -488,6 +504,7 @@ fn Evil::execute(const ExecContext &ec, EvalContext &cxt,
 
   if (FLAG_EVIL_SHORT.is_enabled()) {
     do_append_report();
+
     return 0;
   }
 
@@ -531,9 +548,10 @@ fn Evil::execute(const ExecContext &ec, EvalContext &cxt,
               throws -> void {
         if (!memory.has_field(field)) return;
 
-        let const value_bytes =
+        let const value_byte_count =
             value_kib > UINT64_MAX / 1024 ? UINT64_MAX : value_kib * 1024;
-        resources.add(name, format_human_size(value_bytes, allocator).view());
+        resources.add(name,
+                      format_human_size(value_byte_count, allocator).view());
       };
 
       if (memory.has_field(os::memory_status_field::Available)) {
@@ -599,7 +617,7 @@ fn Evil::execute(const ExecContext &ec, EvalContext &cxt,
 
   os::filesystem_status root{};
   if (os::stat_filesystem("/", root) && root.total_blocks > 0) {
-    let const unit = root.fundamental_block_size;
+    let const unit = root.fundamental_block_byte_count;
     let const used_blocks = root.total_blocks - root.free_blocks;
     let root_line = format_human_size(used_blocks * unit, allocator);
     root_line += " used of ";
@@ -640,13 +658,16 @@ fn Evil::execute(const ExecContext &ec, EvalContext &cxt,
   let const addresses = os::network_interface_addresses();
   let interface_names_unsorted = ArrayList<StringView>{allocator};
   interface_names_unsorted.reserve(addresses.count());
+
   for (let const &address : addresses)
     interface_names_unsorted.push(address.interface_name.view());
+
   let const interface_names =
       steal(interface_names_unsorted).make_sorted(sort_order::ascending);
 
   usize interface_count = 0;
   StringView previous_interface;
+
   for (let const name : interface_names) {
     if (interface_count == 0 || name != previous_interface) {
       interface_count++;
@@ -682,6 +703,7 @@ fn Evil::execute(const ExecContext &ec, EvalContext &cxt,
   }
 
   do_append_report();
+
   return 0;
 }
 

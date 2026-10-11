@@ -36,6 +36,7 @@ fn Getopts::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let const &name = args[2];
   if (!name_is_valid_assignment_target(name.view())) {
     report_invalid_identifier(ec, cxt, ec.arg_location_at(2), name.view());
+
     return 1;
   }
   let const is_silent = !optstring.is_empty() && optstring[0] == ':';
@@ -75,11 +76,13 @@ fn Getopts::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                            String::from(optind, cxt.scratch_allocator()));
     cursor.char_index = char_index;
     cursor.last_optind = optind;
+
     return code;
   };
 
   if (optind < 1 || static_cast<usize>(optind) > operands.count()) {
     cxt.set_shell_variable(name, "?");
+
     return do_finish(1);
   }
 
@@ -88,6 +91,7 @@ fn Getopts::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   if (current.length() < 2 || current[0] != '-' || current == "--") {
     if (current == "--") optind++;
     cxt.set_shell_variable(name, "?");
+
     return do_finish(1);
   }
 
@@ -127,6 +131,7 @@ fn Getopts::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       cxt.unset_shell_variable("OPTARG");
       do_report_option_error("Illegal option -- ");
     }
+
     return do_finish(0);
   }
 
@@ -154,9 +159,11 @@ fn Getopts::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         cxt.unset_shell_variable("OPTARG");
         do_report_option_error("Option requires an argument -- ");
       }
+
       return do_finish(0);
     }
     cxt.set_shell_variable(name, option_as_string);
+
     return do_finish(0);
   }
 
@@ -164,6 +171,7 @@ fn Getopts::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   do_advance_letter();
   cxt.unset_shell_variable("OPTARG");
   cxt.set_shell_variable(name, option_as_string);
+
   return do_finish(0);
 }
 

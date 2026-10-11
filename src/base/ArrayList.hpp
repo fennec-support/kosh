@@ -65,6 +65,7 @@ public:
   ArrayList(std::initializer_list<T> elements) : ArrayList(heap_allocator())
   {
     reserve(elements.size());
+
     for (let const &element : elements)
       push(element);
   }
@@ -72,6 +73,7 @@ public:
   cold ArrayList(const ArrayList &other) : ArrayList(other.m_allocator)
   {
     reserve(other.m_length);
+
     for (usize i = 0; i < other.m_length; i++) {
       new (&m_data[m_length]) T(other.m_data[i]);
       m_length++;
@@ -101,6 +103,7 @@ public:
       other.m_length = 0;
       other.m_capacity = 0;
     }
+
     return *this;
   }
   cold fn operator=(const ArrayList &other) throws->ArrayList &
@@ -109,6 +112,7 @@ public:
       ArrayList copy{other};
       *this = steal(copy);
     }
+
     return *this;
   }
 
@@ -120,11 +124,13 @@ public:
   hot mustuse pure fn operator[](usize i) wontthrow->T &
   {
     ASSERT(i < m_length, "array index is past the end");
+
     return m_data[i];
   }
   hot mustuse pure fn operator[](usize i) const wontthrow->const T &
   {
     ASSERT(i < m_length, "array index is past the end");
+
     return m_data[i];
   }
 
@@ -141,6 +147,7 @@ public:
     } else {
       for (usize i = 0; i < m_length; i++)
         if (!(m_data[i] == other.m_data[i])) return false;
+
       return true;
     }
   }
@@ -171,18 +178,22 @@ public:
     {
       constexpr usize LANES = sizeof(u64) / sizeof(value_type);
       usize element_index = 0;
+
       for (; element_index + LANES <= m_length; element_index += LANES) {
         u64 match_mask = 0;
 #pragma clang loop unroll_count(8)
         for (usize lane = 0; lane < LANES; lane++)
           if (m_data[element_index + lane] == wanted)
             match_mask |= static_cast<u64>(1) << lane;
+
         if (match_mask != 0)
           return element_index +
                  static_cast<usize>(__builtin_ctzll(match_mask));
       }
+
       for (; element_index < m_length; element_index++)
         if (m_data[element_index] == wanted) return element_index;
+
       return None;
     }
 
@@ -197,6 +208,7 @@ public:
       let const scalar_wanted = static_cast<scalar_type>(wanted);
       vector_type needles = {scalar_wanted, scalar_wanted};
       usize element_index = 0;
+
       for (; element_index + 2 <= m_length; element_index += 2) {
         vector_type values;
         __builtin_memcpy(&values, m_data + element_index, sizeof(values));
@@ -206,8 +218,10 @@ public:
         if (match_values[0] != 0) return element_index;
         if (match_values[1] != 0) return element_index + 1;
       }
+
       for (; element_index < m_length; element_index++)
         if (m_data[element_index] == wanted) return element_index;
+
       return None;
     }
 #endif
@@ -215,6 +229,7 @@ public:
 #pragma clang loop unroll_count(4)
     for (usize element_index = 0; element_index < m_length; element_index++)
       if (m_data[element_index] == wanted) return element_index;
+
     return None;
   }
 
@@ -245,8 +260,10 @@ public:
     ASSERT(kept_count <= m_length, "truncate past the end of the list");
     if constexpr (std::is_trivially_destructible_v<T>) {
       m_length = kept_count;
+
       return;
     }
+
     while (m_length > kept_count) {
       m_length--;
       m_data[m_length].~T();
@@ -274,6 +291,7 @@ public:
     if constexpr (!std::is_trivially_destructible_v<T>)
       for (usize i = 0; i < m_length; i++)
         m_data[i].~T();
+
     m_length = 0;
   }
 
@@ -282,21 +300,25 @@ public:
   hot mustuse pure fn back() wontthrow -> T &
   {
     ASSERT(m_length > 0, "back() on an empty list");
+
     return m_data[m_length - 1];
   }
   hot mustuse pure fn back() const wontthrow -> const T &
   {
     ASSERT(m_length > 0, "back() on an empty list");
+
     return m_data[m_length - 1];
   }
   mustuse pure fn front() wontthrow -> T &
   {
     ASSERT(m_length > 0, "front() on an empty list");
+
     return m_data[0];
   }
   mustuse pure fn front() const wontthrow -> const T &
   {
     ASSERT(m_length > 0, "front() on an empty list");
+
     return m_data[0];
   }
 
@@ -322,6 +344,7 @@ public:
                          ? needed
                          : static_cast<usize>(m_capacity) * growth;
     }
+
     while (new_capacity < needed) {
       if (new_capacity > MAXIMUM_ELEMENT_COUNT / 2) {
         new_capacity = needed;
@@ -329,6 +352,7 @@ public:
       }
       new_capacity *= 2;
     }
+
     if (new_capacity > MAXIMUM_ELEMENT_COUNT)
       new_capacity = MAXIMUM_ELEMENT_COUNT;
 
@@ -353,6 +377,7 @@ public:
       m_data = nullptr;
       m_capacity = 0;
       m_allocator = allocator;
+
       return;
     }
 
@@ -377,6 +402,7 @@ public:
       if (m_data != nullptr) m_allocator.free_array(m_data, m_capacity);
       m_data = nullptr;
       m_capacity = 0;
+
       return;
     }
     let const fresh = m_allocator.alloc_array<T>(m_length);
@@ -398,10 +424,12 @@ public:
 
     if (m_length <= INSERTION_SORT_THRESHOLD) {
       insertion_sort_range(0, m_length, is_less);
+
       return;
     }
 
     usize allowed_unbalanced_count = 0;
+
     for (usize count = m_length; count > 1; count >>= 1)
       allowed_unbalanced_count++;
 
@@ -443,6 +471,7 @@ private:
     ASSERT(index <= m_length, "array insertion is past the end");
     if (index == m_length) {
       push(steal(value));
+
       return;
     }
 
@@ -453,9 +482,11 @@ private:
       m_data[index] = steal(value);
     } else {
       new (&m_data[m_length]) T(steal(m_data[m_length - 1]));
+
       for (usize element_index = m_length - 1; element_index > index;
            element_index--)
         m_data[element_index] = steal(m_data[element_index - 1]);
+
       m_data[index] = steal(value);
     }
     m_length++;
@@ -465,6 +496,7 @@ private:
   {
     if constexpr (std::is_trivially_copyable_v<T>) {
       if (m_length > 0) __builtin_memcpy(fresh, m_data, m_length * sizeof(T));
+
       return;
     }
     usize constructed_count = 0;
@@ -481,6 +513,7 @@ private:
     } catch (...) {
       for (usize i = 0; i < constructed_count; i++)
         fresh[i].~T();
+
       throw;
     }
 
@@ -529,6 +562,7 @@ private:
     T pivot = steal(m_data[first]);
     usize left = first;
     usize right = last;
+
     do {
       left++;
     } while (is_less(m_data[left], pivot));
@@ -545,11 +579,14 @@ private:
     }
 
     was_partitioned = left >= right;
+
     while (left < right) {
       swap_elements(left, right);
+
       do {
         left++;
       } while (is_less(m_data[left], pivot));
+
       do {
         right--;
       } while (!is_less(m_data[right], pivot));
@@ -558,6 +595,7 @@ private:
     let const pivot_position = left - 1;
     if (pivot_position != first) m_data[first] = steal(m_data[pivot_position]);
     m_data[pivot_position] = steal(pivot);
+
     return pivot_position;
   }
 
@@ -567,6 +605,7 @@ private:
     T pivot = steal(m_data[first]);
     usize left = first;
     usize right = last;
+
     do {
       right--;
     } while (is_less(pivot, m_data[right]));
@@ -584,9 +623,11 @@ private:
 
     while (left < right) {
       swap_elements(left, right);
+
       do {
         right--;
       } while (is_less(pivot, m_data[right]));
+
       do {
         left++;
       } while (!is_less(pivot, m_data[left]));
@@ -595,6 +636,7 @@ private:
     let const pivot_position = right;
     if (pivot_position != first) m_data[first] = steal(m_data[pivot_position]);
     m_data[pivot_position] = steal(pivot);
+
     return pivot_position;
   }
 
@@ -619,16 +661,19 @@ private:
                                   Compare &is_less) throws -> bool
   {
     usize moved_count = 0;
+
     for (usize i = first + 1; i < last; i++) {
       if (moved_count > PARTIAL_INSERTION_MOVE_LIMIT) return false;
       if (!is_less(m_data[i], m_data[i - 1])) continue;
 
       T key = steal(m_data[i]);
       usize j = i;
+
       do {
         m_data[j] = steal(m_data[j - 1]);
         j--;
       } while (j > first && is_less(key, m_data[j - 1]));
+
       m_data[j] = steal(key);
       moved_count += i - j;
     }
@@ -643,10 +688,12 @@ private:
     for (usize i = first + 1; i < last; i++) {
       T key = steal(m_data[i]);
       usize j = i;
+
       while (j > first && is_less(key, m_data[j - 1])) {
         m_data[j] = steal(m_data[j - 1]);
         j--;
       }
+
       m_data[j] = steal(key);
     }
   }
@@ -677,6 +724,7 @@ private:
   fn heap_sort_range(usize first, usize last, Compare &is_less) throws -> void
   {
     let const heap_length = last - first;
+
     for (usize parent = heap_length / 2; parent > 0; parent--)
       sift_down(first, parent - 1, heap_length, is_less);
 
@@ -707,6 +755,7 @@ private:
       if (left_length < balanced_length || right_length < balanced_length) {
         if (allowed_unbalanced_count == 0) {
           heap_sort_range(first, last, is_less);
+
           return;
         }
 
@@ -741,6 +790,7 @@ private:
     if constexpr (!std::is_trivially_destructible_v<T>)
       for (usize i = 0; i < m_length; i++)
         m_data[i].~T();
+
     if (m_data != nullptr) m_allocator.free_array(m_data, m_capacity);
     m_data = nullptr;
     m_length = 0;
@@ -797,6 +847,7 @@ public:
       Base::operator=(static_cast<const Base &>(other));
       m_compare = other.m_compare;
     }
+
     return *this;
   }
 
@@ -808,6 +859,7 @@ public:
       Base::operator=(steal(static_cast<Base &>(other)));
       m_compare = steal(other.m_compare);
     }
+
     return *this;
   }
 
@@ -828,6 +880,7 @@ public:
     if (index < Base::count() && !m_compare(wanted, Base::operator[](index))) {
       return index;
     }
+
     return None;
   }
 
@@ -849,6 +902,7 @@ public:
   {
     usize low = 0;
     usize high = Base::count();
+
     while (low < high) {
       let const middle = low + ((high - low) / 2);
       if (m_compare(Base::operator[](middle), wanted))
@@ -856,6 +910,7 @@ public:
       else
         high = middle;
     }
+
     return low;
   }
 
@@ -883,6 +938,7 @@ template <class T>
     throws -> SortedArrayList<T, std::decay_t<Compare>>
 {
   using sorted_type = SortedArrayList<T, std::decay_t<Compare>>;
+
   return sorted_type{steal(*this), steal(compare)};
 }
 
@@ -892,6 +948,7 @@ template <class T>
     & throws -> SortedArrayList<T, std::decay_t<Compare>>
 {
   using sorted_type = SortedArrayList<T, std::decay_t<Compare>>;
+
   return sorted_type{clone(), steal(compare)};
 }
 
@@ -917,6 +974,7 @@ public:
       m_list = other.m_list;
       other.m_list = nullptr;
     }
+
     return *this;
   }
 
@@ -924,6 +982,7 @@ public:
   {
     if (filled.is_empty()) {
       release();
+
       return;
     }
 
@@ -953,6 +1012,7 @@ public:
   hot mustuse pure fn operator[](usize i) const wontthrow->const T &
   {
     ASSERT(m_list != nullptr, "array index is past the end");
+
     return (*m_list)[i];
   }
 

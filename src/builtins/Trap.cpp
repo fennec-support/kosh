@@ -34,8 +34,10 @@ namespace {
 fn normalize_condition(StringView raw, Allocator allocator) throws -> String
 {
   let name = String{allocator};
+
   for (usize i = 0; i < raw.count(); i++)
     name.push(static_cast<char>(toupper(static_cast<unsigned char>(raw[i]))));
+
   if (name.starts_with("SIG") && name.count() > 3) {
     name = String{allocator, name.substring(3)};
   }
@@ -49,6 +51,7 @@ fn normalize_condition(StringView raw, Allocator allocator) throws -> String
         return *signal_name;
     }
   }
+
   return name;
 }
 
@@ -122,8 +125,10 @@ fn format_listed_condition(StringView condition, Allocator allocator,
   {
     let prefixed = String{allocator, "SIG"};
     prefixed += condition;
+
     return prefixed;
   }
+
   return String{allocator, condition};
 }
 
@@ -189,6 +194,7 @@ fn Trap::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
           ec, cxt, ec.arg_location_at(operand_index),
           "'-" + option + "' is not a valid trap option",
           "Use `--` before an operand that begins with a dash");
+
       return 2;
     }
 
@@ -197,6 +203,7 @@ fn Trap::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   if (should_list_signals) {
     ec.print_to_stdout(koshkit::format_signal_list());
+
     return 0;
   }
 
@@ -211,6 +218,7 @@ fn Trap::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     report_soft_builtin_error(ec, cxt, ec.arg_location_at(index),
                               args[index] + ": invalid signal specification",
                               "List the signal names with `trap -l`");
+
     return None;
   };
 
@@ -256,6 +264,7 @@ fn Trap::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       }
 
       ec.print_to_stdout(out);
+
       return has_invalid_operand ? 1 : 0;
     }
 
@@ -298,6 +307,7 @@ fn Trap::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       do_append_listing(listed[i].condition, listed[i].action);
 
     ec.print_to_stdout(out);
+
     return 0;
   }
 
@@ -314,6 +324,7 @@ fn Trap::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     LOG(Info, "trap resetting condition '%s' to its default",
         condition->c_str());
     cxt.remove_trap(*condition);
+
     return 0;
   }
 
@@ -321,6 +332,7 @@ fn Trap::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let const is_reset = action == "-";
 
   i32 status = 0;
+
   for (usize i = action_index + 1; i < args.count(); i++) {
     let const condition = do_read_condition(i);
     if (!condition.has_value()) {

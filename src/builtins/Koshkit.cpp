@@ -47,6 +47,7 @@ fn Koshkit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   report_soft_builtin_error(
       ec, cxt, "The bundled utilities are not included in this build");
+
   return 1;
 }
 
@@ -87,6 +88,7 @@ fn Koshkit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   if (cxt.runtime_state().option_is_enabled(shell_option_id::Restricted)) {
     report_soft_builtin_error(
         ec, cxt, "The bundled utilities are forbidden in a restricted shell");
+
     return 1;
   }
 
@@ -122,11 +124,14 @@ fn Koshkit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   if (FLAG_KOSHKIT_LIST.is_enabled()) {
     let names_output = String{cxt.scratch_allocator()};
+
     for (let const &name : sorted_names) {
       names_output += name.view();
       names_output += '\n';
     }
+
     ec.print_to_stdout(names_output);
+
     return 0;
   }
 
@@ -138,6 +143,7 @@ fn Koshkit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     if (!target.has_value()) {
       report_soft_builtin_error(
           ec, cxt, "Cannot resolve this binary's path to assimilate");
+
       return 1;
     }
 
@@ -147,10 +153,12 @@ fn Koshkit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
           "Cannot assimilate into '" +
               String{cxt.scratch_allocator(), FLAG_KOSHKIT_ASSIMILATE.value()} +
               "': not a directory");
+
       return 1;
     }
 
     i32 status = 0;
+
     for (let const &name : sorted_names) {
       let link = Path{FLAG_KOSHKIT_ASSIMILATE.value()};
       link.append(name.view());
@@ -162,6 +170,7 @@ fn Koshkit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         status = 1;
       }
     }
+
     return status;
   }
 
@@ -178,6 +187,7 @@ fn Koshkit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
     let posix_names = ArrayList<StringView>{cxt.scratch_allocator()};
     let koshka_names = ArrayList<StringView>{cxt.scratch_allocator()};
+
     for (let const &name : sorted_names) {
       let const kind = koshkit::find_util(name.view());
       ASSERT(kind.has_value());
@@ -195,6 +205,7 @@ fn Koshkit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     listing.pop_back();
 
     ec.print_to_stdout(format_cli_help(listing.view()));
+
     return 0;
   }
 

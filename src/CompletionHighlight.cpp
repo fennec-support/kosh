@@ -57,6 +57,7 @@ static fn first_word_resolves(StringView word, EvalContext &context) throws
     {
       return canonical->is_regular_file() || canonical->is_directory();
     }
+
     return false;
   }
 
@@ -117,6 +118,7 @@ fn command_word_resolves(StringView line, EvalContext &context) throws -> bool
 {
   let const word = command_word_of(line);
   if (word.is_empty()) return true;
+
   return first_word_resolves(word, context);
 }
 
@@ -157,6 +159,7 @@ pure fn internal::word_is_function_name(StringView word) wontthrow -> bool
   }
 
   usize brace_depth = 0;
+
   for (usize i = 1; i < word.length; i++) {
     let const byte = word[i];
     if (!is_highlight_function_name_char(byte)) return false;
@@ -187,17 +190,21 @@ pure fn internal::word_defines_function(StringView line, usize word_end,
                                         usize end) wontthrow -> bool
 {
   let i = word_end;
+
   while (i < end && (line[i] == ' ' || line[i] == '\t')) {
     i++;
   }
+
   if (i >= end || line[i] != '(') {
     return false;
   }
 
   i++;
+
   while (i < end && (line[i] == ' ' || line[i] == '\t')) {
     i++;
   }
+
   return i < end && line[i] == ')';
 }
 
@@ -237,6 +244,7 @@ static fn scan_dollar_expansion(StringView line, usize dollar,
     while (i < end && line[i] >= '0' && line[i] <= '9') {
       i++;
     }
+
     return i;
   }
   if (lexer::is_special_parameter_char(c)) return i + 1;
@@ -244,8 +252,10 @@ static fn scan_dollar_expansion(StringView line, usize dollar,
     while (i < end && is_highlight_name_char(line[i])) {
       i++;
     }
+
     return i;
   }
+
   return i;
 }
 
@@ -256,6 +266,7 @@ static pure fn word_contains_url_scheme(StringView word) wontthrow -> bool
       return true;
     }
   }
+
   return false;
 }
 
@@ -285,6 +296,7 @@ static pure fn word_looks_like_ssh_remote_path(StringView word) wontthrow
   {
     return false;
   }
+
   return true;
 }
 
@@ -374,6 +386,7 @@ consteval fn every_lexer_keyword_has_a_highlight_spec() wontthrow -> bool
 {
   for (let const &keyword : KEYWORD_ENTRIES) {
     bool has_spec = false;
+
     for (let const &spec : HIGHLIGHT_KEYWORD_ENTRIES) {
       if (spec.key == keyword.key) has_spec = true;
     }
@@ -413,6 +426,7 @@ fn internal::advance_shell_keyword_state(StringView word, usize frame_depth,
       phase = highlight_construct_phase::body;
     state.constructs.push(
         shell_lexical_construct{frame_depth, spec->construct, phase});
+
     return spec->is_next_command;
   }
 
@@ -427,6 +441,7 @@ fn internal::advance_shell_keyword_state(StringView word, usize frame_depth,
                                    : highlight_construct_phase::body;
       }
     }
+
     return true;
 
   case keyword_role::close:
@@ -439,6 +454,7 @@ fn internal::advance_shell_keyword_state(StringView word, usize frame_depth,
         state.constructs.pop_back();
       }
     }
+
     return true;
 
   case keyword_role::plain: return true;
@@ -471,6 +487,7 @@ static fn find_listed_path_state(StringView directory, StringView name) throws
   if (entries == nullptr) return listed_path_state::Unlisted;
 
   let entry_position = utils::directory_entry_name_lower_bound(*entries, name);
+
   for (; entry_position < entries->count(); entry_position++) {
     let const &entry = (*entries)[entry_position];
     if (entry.name.length() != name.length ||
@@ -485,11 +502,11 @@ static fn find_listed_path_state(StringView directory, StringView name) throws
     }
 
     switch (entry.kind) {
-    case Path::entry_kind::Directory: return listed_path_state::Directory;
-    case Path::entry_kind::Regular:
-    case Path::entry_kind::Other: return listed_path_state::NonDirectory;
-    case Path::entry_kind::Symlink:
-    case Path::entry_kind::Unknown: return listed_path_state::Unlisted;
+    case Path::EntryKind::Directory: return listed_path_state::Directory;
+    case Path::EntryKind::Regular:
+    case Path::EntryKind::Other: return listed_path_state::NonDirectory;
+    case Path::EntryKind::Symlink:
+    case Path::EntryKind::Unknown: return listed_path_state::Unlisted;
     }
   }
 
@@ -503,6 +520,7 @@ static fn word_names_existing_path(StringView word) throws -> bool
     if (Maybe<String> expanded = utils::expand_leading_tilde_path(word);
         expanded.has_value())
       return Path{expanded->view()}.exists();
+
     return false;
   }
   if (word == "." || word == "..") {
@@ -554,11 +572,13 @@ static fn path_partial_prefixes_entry(StringView word, usize existing_end,
 
   let const do_name_starts_with = [&](StringView name) wontthrow {
     if (name.starts_with(partial)) return true;
+
     return !os::FILESYSTEM_IS_CASE_SENSITIVE;
   };
 
   let entry_position =
       utils::directory_entry_name_lower_bound(*entries, partial);
+
   while (entry_position < entries->count() &&
          utils::directory_entry_name_has_casefold_prefix(
              (*entries)[entry_position].name.view(), partial))
@@ -567,7 +587,7 @@ static fn path_partial_prefixes_entry(StringView word, usize existing_end,
     if (do_name_starts_with(entry.name.view()) &&
         (!should_only_include_directories ||
          utils::directory_entry_kind(listing_directory, entry) ==
-             Path::entry_kind::Directory))
+             Path::EntryKind::Directory))
     {
       return true;
     }
@@ -603,6 +623,7 @@ static fn word_is_terminated_by_separator(StringView line, usize word_end,
 static fn word_has_erased_directory_separator(StringView word) wontthrow -> bool
 {
   char quote_character = 0;
+
   for (usize position = 0; position + 1 < word.length; position++) {
     let const byte = word[position];
     if (byte == '\\' && quote_character != '\'') {
@@ -653,6 +674,7 @@ static fn color_path_argument(usize word_start, StringView word,
         tilde_prefix_length = position;
         break;
       }
+
     let const tilde_prefix = word.substring_of_length(0, tilde_prefix_length);
     if (Maybe<String> expanded = utils::expand_leading_tilde_path(tilde_prefix))
       expanded_tilde_prefix = steal(*expanded);
@@ -677,17 +699,21 @@ static fn color_path_argument(usize word_start, StringView word,
 
     let const root_length = os::path_root_length(target);
     usize name_end = target.length;
+
     while (name_end > root_length &&
            os::is_directory_separator(target[name_end - 1]))
     {
       name_end--;
     }
+
     usize name_start = name_end;
+
     while (name_start > root_length &&
            !os::is_directory_separator(target[name_start - 1]))
     {
       name_start--;
     }
+
     let const name =
         target.substring_of_length(name_start, name_end - name_start);
     let const directory = name_start > 0
@@ -731,36 +757,43 @@ static fn color_path_argument(usize word_start, StringView word,
     } else if (is_prefix_non_directory) {
       spans.push(highlight_span{word_start, word_start + word.length,
                                 highlight_role::invalid_path});
+
       return true;
     } else {
       usize component_end = os::path_root_length(word);
       existing_end = component_end;
+
       while (component_end < word.length) {
         while (component_end < word.length &&
                os::is_directory_separator(word[component_end]))
         {
           component_end++;
         }
+
         if (component_end >= word.length) {
           existing_end = word.length;
           break;
         }
+
         while (component_end < word.length &&
                !os::is_directory_separator(word[component_end]))
         {
           component_end++;
         }
+
         let const should_be_directory =
             should_only_include_directories || component_end < word.length;
         if (!do_prefix_is_valid(component_end, should_be_directory)) {
           if (is_prefix_non_directory) {
             spans.push(highlight_span{word_start, word_start + word.length,
                                       highlight_role::invalid_path});
+
             return true;
           }
           break;
         }
         existing_end = component_end;
+
         while (existing_end < word.length &&
                os::is_directory_separator(word[existing_end]))
         {
@@ -777,6 +810,7 @@ static fn color_path_argument(usize word_start, StringView word,
   if (existing_end >= word.length) return true;
 
   usize segment_end = existing_end;
+
   while (segment_end < word.length &&
          !os::is_directory_separator(word[segment_end]))
   {
@@ -813,10 +847,13 @@ static fn simple_dollar_name(StringView line, usize i,
     }
     let inner = line.substring_of_length(i + 2, expansion_end - (i + 2) - 1);
     if (inner.is_empty()) return koshka::None;
+
     for (usize k = 0; k < inner.length; k++)
       if (!is_highlight_name_char(inner[k])) return koshka::None;
+
     return inner;
   }
+
   return line.substring_of_length(i + 1, expansion_end - (i + 1));
 }
 
@@ -834,6 +871,7 @@ static fn dollar_name_is_set(StringView name,
   if (line_variable_names.contains(name) || context.has_variable_name(name)) {
     return true;
   }
+
   return os::get_environment_variable(name).has_value();
 }
 
@@ -854,6 +892,7 @@ static fn color_dollar(StringView line, usize i, usize end,
 
   if (i + 2 < end && line[i + 1] == '(' && line[i + 2] == '(') {
     let const inner_begin = i + 3 < end ? i + 3 : end;
+
     return color_arithmetic(line, inner_begin, end, context, spans,
                             line_variable_names, function_names, false);
   }
@@ -867,6 +906,7 @@ static fn color_dollar(StringView line, usize i, usize end,
 
   if (i + 1 < end && line[i + 1] == '(') {
     let const inner_begin = i + 2 < end ? i + 2 : end;
+
     return scan_highlight_range(line, inner_begin, end, context, spans,
                                 line_variable_names, function_names, true);
   }
@@ -881,6 +921,7 @@ static fn color_dollar(StringView line, usize i, usize end,
     }
     spans.push(highlight_span{i, expansion_end, role});
   }
+
   return expansion_end;
 }
 
@@ -892,6 +933,7 @@ color_arithmetic(StringView line, usize begin, usize end, EvalContext &context,
   usize i = begin;
   usize parenthesis_depth = 0;
   usize bracket_depth = 0;
+
   while (i < end) {
     let const c = line[i];
 
@@ -937,9 +979,11 @@ color_arithmetic(StringView line, usize begin, usize end, EvalContext &context,
 
     if (is_highlight_name_start(c)) {
       let const name_start = i;
+
       while (i < end && is_highlight_name_char(line[i])) {
         i++;
       }
+
       let const name = line.substring_of_length(name_start, i - name_start);
       spans.push(
           highlight_span{name_start, i,
@@ -953,6 +997,7 @@ color_arithmetic(StringView line, usize begin, usize end, EvalContext &context,
       while (i < end && (is_highlight_name_char(line[i]) || line[i] == '.')) {
         i++;
       }
+
       continue;
     }
 
@@ -962,6 +1007,7 @@ color_arithmetic(StringView line, usize begin, usize end, EvalContext &context,
     }
 
     let const operator_start = i;
+
     while (i < end && line[i] != '$' && !is_highlight_name_start(line[i]) &&
            line[i] != '(' && line[i] != ')' &&
            !(line[i] >= '0' && line[i] <= '9') &&
@@ -970,6 +1016,7 @@ color_arithmetic(StringView line, usize begin, usize end, EvalContext &context,
     {
       i++;
     }
+
     spans.push(highlight_span{operator_start, i, highlight_role::operator_});
   }
 
@@ -989,6 +1036,7 @@ scan_heredoc_bodies(StringView line, usize position, usize end,
 
     while (i < end) {
       let line_end = i;
+
       while (line_end < end && line[line_end] != '\n') {
         line_end++;
       }
@@ -1084,11 +1132,13 @@ static fn static_koshkit_operand(StringView word, bool &is_valid) throws
     {
       let const quote = word[++position];
       let const body_start = position + 1;
+
       while (++position < word.length && word[position] != quote) {
         if (word[position] == '\\' && position + 1 < word.length) {
           position++;
         }
       }
+
       if (position == word.length) return None;
 
       let special_decoded = String{bump_allocator(HIGHLIGHT_ARENA)};
@@ -1140,6 +1190,7 @@ static fn static_koshkit_operand(StringView word, bool &is_valid) throws
   if (quote_character != 0) return None;
   is_valid = true;
   if (is_decoded_too_long) return None;
+
   return koshkit::find_util(StringView{decoded, decoded_length});
 }
 
@@ -1182,6 +1233,7 @@ fn internal::scan_highlight_range(
   let const do_commit_pending_assignments = [&]() throws -> void {
     for (let const &name : pending_assignment_names)
       line_variable_names.add(name);
+
     pending_assignment_names.clear();
   };
 
@@ -1208,6 +1260,7 @@ fn internal::scan_highlight_range(
           throws -> usize {
     let const inner_begin = backtick_position + 1;
     let position = inner_begin;
+
     while (position < end && line[position] != '`') {
       if (line[position] == '\\' && position + 1 < end &&
           (line[position + 1] == '`' || line[position + 1] == '$' ||
@@ -1218,14 +1271,17 @@ fn internal::scan_highlight_range(
         position++;
       }
     }
+
     let const inner_end = position;
     if (position < end) position++;
     scan_highlight_range(line, inner_begin, inner_end, context, word_spans,
                          line_variable_names, function_names);
+
     return position;
   };
 
   let i = begin;
+
   while (i < end) {
     let const c = line[i];
 
@@ -1260,9 +1316,11 @@ fn internal::scan_highlight_range(
 
     if (c == '#') {
       let comment_end = i;
+
       while (comment_end < end && line[comment_end] != '\n') {
         comment_end++;
       }
+
       do_push(i, comment_end, highlight_role::comment);
       i = comment_end;
       continue;
@@ -1293,6 +1351,7 @@ fn internal::scan_highlight_range(
       }
 
       let const delimiter_start = i;
+
       while (i < end && !position_is_highlight_word_break(line, i, end)) {
         i++;
       }
@@ -1321,6 +1380,7 @@ fn internal::scan_highlight_range(
       let has_redirect = false;
       let has_opener = false;
       let has_closer = false;
+
       while (i < end) {
         let const o = line[i];
         if (o == '|' || o == '&' || o == ';') {
@@ -1341,6 +1401,7 @@ fn internal::scan_highlight_range(
           break;
         }
       }
+
       let const is_range_closer = has_closer && parenthesis_depth == 0 &&
                                   should_stop_at_closing_parenthesis &&
                                   !is_case_pattern_expected;
@@ -1392,14 +1453,17 @@ fn internal::scan_highlight_range(
     let const word_start = i;
     let word_spans = ArrayList<highlight_span>{bump_allocator(HIGHLIGHT_ARENA)};
     let word_has_shell_syntax = false;
+
     while (i < end && !position_is_highlight_word_break(line, i, end)) {
       let const d = line[i];
       if (d == '\'') {
         let const string_start = i;
         i++;
+
         while (i < end && line[i] != '\'') {
           i++;
         }
+
         if (i < end) i++;
         word_spans.push(
             highlight_span{string_start, i, highlight_role::string});
@@ -1407,6 +1471,7 @@ fn internal::scan_highlight_range(
         let literal_start = i;
         if (d == '$') i++;
         i++;
+
         while (i < end && line[i] != '"') {
           if (line[i] == '\\' && i + 1 < end) {
             i += 2;
@@ -1431,6 +1496,7 @@ fn internal::scan_highlight_range(
           }
           i++;
         }
+
         if (i < end) i++;
         if (i > literal_start)
           word_spans.push(
@@ -1440,6 +1506,7 @@ fn internal::scan_highlight_range(
       } else if (d == '$' && i + 1 < end && line[i + 1] == '\'') {
         let const string_start = i;
         i += 2;
+
         while (i < end && line[i] != '\'') {
           if (line[i] == '\\' && i + 1 < end) {
             i += 2;
@@ -1447,6 +1514,7 @@ fn internal::scan_highlight_range(
           }
           i++;
         }
+
         if (i < end) i++;
         word_spans.push(
             highlight_span{string_start, i, highlight_role::string});
@@ -1467,6 +1535,7 @@ fn internal::scan_highlight_range(
         i++;
       }
     }
+
     let const word_end = i;
     let const word =
         line.substring_of_length(word_start, word_end - word_start);
@@ -1477,6 +1546,7 @@ fn internal::scan_highlight_range(
     let const do_color_mixed_path = [&](bool should_only_include_directories)
                                         throws -> bool {
       let string_coverage_end = word_start;
+
       for (let const &inner : word_spans) {
         if (inner.role != highlight_role::string ||
             inner.start > string_coverage_end)
@@ -1485,6 +1555,7 @@ fn internal::scan_highlight_range(
         }
         if (inner.end > string_coverage_end) string_coverage_end = inner.end;
       }
+
       if (string_coverage_end == word_end) {
         return false;
       }
@@ -1501,6 +1572,7 @@ fn internal::scan_highlight_range(
           ArrayList<highlight_span>{bump_allocator(HIGHLIGHT_ARENA)};
       if (decoded.glob_active.any()) {
         let mapped_start = word_start;
+
         for (let const &inner : word_spans) {
           if (inner.end <= mapped_start) continue;
           if (mapped_start < inner.start)
@@ -1508,6 +1580,7 @@ fn internal::scan_highlight_range(
                                            highlight_role::glob});
           if (inner.end > mapped_start) mapped_start = inner.end;
         }
+
         if (mapped_start < word_end)
           path_spans.push(
               highlight_span{mapped_start, word_end, highlight_role::glob});
@@ -1550,6 +1623,7 @@ fn internal::scan_highlight_range(
             if (inner.end > mapped_start) mapped_start = inner.end;
             if (mapped_start >= mapped_end) break;
           }
+
           if (mapped_start < mapped_end)
             path_spans.push(
                 highlight_span{mapped_start, mapped_end, decoded_span.role});
@@ -1558,6 +1632,7 @@ fn internal::scan_highlight_range(
 
       usize path_span_index = 0;
       usize word_span_index = 0;
+
       while (path_span_index < path_spans.count() ||
              word_span_index < word_spans.count())
       {
@@ -1588,6 +1663,7 @@ fn internal::scan_highlight_range(
         return highlight_role::resolved_command;
       }
       if (command_has_prefix) return highlight_role::partial_command;
+
       return highlight_role::unknown_command;
     };
 
@@ -1631,12 +1707,14 @@ fn internal::scan_highlight_range(
       }
       if (!is_assignment) {
         bool has_opaque_expansion = false;
+
         for (let const &inner : word_spans) {
           if (inner.role != highlight_role::string) {
             has_opaque_expansion = true;
             break;
           }
         }
+
         if (!has_opaque_expansion) {
           bool is_static_operand_valid = false;
           let const utility =
@@ -1888,8 +1966,10 @@ fn internal::scan_highlight_range(
     {
       continue;
     }
+
     for (let const &inner : word_spans)
       do_push(inner.start, inner.end, inner.role);
+
     if (is_command_position && !is_assignment) {
       pending_assignment_names.clear();
       is_command_position = false;
@@ -1897,6 +1977,7 @@ fn internal::scan_highlight_range(
   }
 
   do_commit_pending_assignments();
+
   return i;
 }
 

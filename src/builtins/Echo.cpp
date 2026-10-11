@@ -133,6 +133,7 @@ fn Echo::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
         i32 value = 0;
         usize digit_count = 0;
+
         while (digit_count < 2 && j + 1 < arg.length()) {
           let const digit = utils::hex_digit_value(arg[j + 1]);
           if (!digit.has_value()) break;
@@ -163,6 +164,7 @@ fn Echo::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         }
         i32 value = escaped - '0';
         usize digit_count = escaped == '0' ? 0 : 1;
+
         while (digit_count < 3 && j + 1 < arg.length() && arg[j + 1] >= '0' &&
                arg[j + 1] <= '7')
         {
@@ -170,6 +172,7 @@ fn Echo::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
           j++;
           digit_count++;
         }
+
         output += static_cast<char>(value);
       } break;
       default:

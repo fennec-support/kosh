@@ -77,7 +77,7 @@ public:
   {
     ASSERT(element != nullptr);
 
-    let *const erased_slot = reinterpret_cast<slot *>(element);
+    let *const erased_slot = reinterpret_cast<Slot *>(element);
     ASSERT(erased_slot->is_live);
     element->~T();
     erased_slot->is_live = false;
@@ -89,25 +89,26 @@ public:
   mustuse pure fn count() const wontthrow -> usize { return m_count; }
 
 private:
-  struct slot
+  struct Slot
   {
     alignas(T) unsigned char bytes[sizeof(T)];
-    slot *next_free;
+    Slot *next_free;
     bool is_live;
   };
-  static_assert(std::is_standard_layout_v<slot>);
+  static_assert(std::is_standard_layout_v<Slot>);
 
-  struct block
+  struct Block
   {
-    slot slots[BLOCK_SLOT_COUNT];
-    block *next;
+    Slot slots[BLOCK_SLOT_COUNT];
+    Block *next;
   };
 
   fn add_block() throws -> void
   {
-    let *const added = m_allocator.alloc_array<block>(1);
+    let *const added = m_allocator.alloc_array<Block>(1);
     added->next = m_blocks;
     m_blocks = added;
+
     for (usize i = BLOCK_SLOT_COUNT; i > 0; i--) {
       added->slots[i - 1].is_live = false;
       added->slots[i - 1].next_free = m_free;
@@ -119,18 +120,21 @@ private:
   {
     while (m_blocks != nullptr) {
       let *const next = m_blocks->next;
+
       for (let &each_slot : m_blocks->slots)
         if (each_slot.is_live) reinterpret_cast<T *>(each_slot.bytes)->~T();
+
       m_allocator.free_array(m_blocks, 1);
       m_blocks = next;
     }
+
     m_free = nullptr;
     m_count = 0;
   }
 
   Allocator m_allocator;
-  block *m_blocks{nullptr};
-  slot *m_free{nullptr};
+  Block *m_blocks{nullptr};
+  Slot *m_free{nullptr};
   usize m_count{0};
 };
 

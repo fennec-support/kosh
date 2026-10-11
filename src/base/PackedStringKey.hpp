@@ -28,9 +28,11 @@ public:
       -> PackedStringKey
   {
     PackedStringKey key{};
+
     for (usize i = 0; text[i] != '\0' && i < BYTE_CAPACITY; i++)
       key.words[i / 8] |= static_cast<u64>(static_cast<u8>(text[i]))
                           << (8 * (i % 8));
+
     return key;
   }
 
@@ -42,10 +44,12 @@ public:
 #if defined __BYTE_ORDER__ && __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
     if (count < 8) {
       key.words[0] = byte_scan::load_partial_word(text.data, count);
+
       return key;
     }
 #endif
     os::pack_little_endian_bytes(key.words, text.data, count);
+
     return key;
   }
 
@@ -57,6 +61,7 @@ public:
 #pragma clang loop unroll_count(4)
     for (usize i = 1; i < WORD_COUNT; i++)
       difference |= words[i] ^ other.words[i];
+
     return difference == 0;
   }
 
@@ -65,6 +70,7 @@ public:
   {
     for (usize i = 0; i < WORD_COUNT; i++)
       if (words[i] != other.words[i]) return words[i] < other.words[i];
+
     return false;
   }
 
@@ -75,6 +81,7 @@ public:
       let const z = (w - 0x0101010101010101ull) & ~w & 0x8080808080808080ull;
       if (z != 0) return (k * 8) + static_cast<usize>(__builtin_ctzll(z) >> 3);
     }
+
     return BYTE_CAPACITY;
   }
 
@@ -87,12 +94,14 @@ public:
   {
     char buffer[BYTE_CAPACITY];
     usize length = 0;
+
     for (; length < BYTE_CAPACITY; length++) {
       let const byte =
           static_cast<char>((words[length / 8] >> (8 * (length % 8))) & 0xFF);
       if (byte == '\0') break;
       buffer[length] = byte;
     }
+
     return String{
         StringView{buffer, length}
     };

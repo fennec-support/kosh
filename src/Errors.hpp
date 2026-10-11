@@ -91,6 +91,7 @@ struct SourceLocation
     if (position > source.length || length > source.length - position) {
       return None;
     }
+
     return source.substring_of_length(position, length);
   }
 
@@ -99,6 +100,7 @@ struct SourceLocation
   {
     ASSERT(relative_position <= length);
     ASSERT(relative_length <= length - relative_position);
+
     return SourceLocation{position + relative_position, relative_length,
                           source_name_index};
   }
@@ -118,6 +120,7 @@ struct SourceLocation
       return nullptr;
     }
     storage = subspan(mapped_offset, part.length);
+
     return &storage;
   }
 };

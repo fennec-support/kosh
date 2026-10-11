@@ -75,6 +75,7 @@ struct conditional_evaluator
           .to_literal_string();
     }
     if (e.word != nullptr) return e.word->raw_string();
+
     return String{heap_allocator()};
   }
 
@@ -89,6 +90,7 @@ struct conditional_evaluator
       }
     }
     if (e.word != nullptr) return e.word->raw_string();
+
     return String{heap_allocator()};
   }
 
@@ -105,8 +107,10 @@ struct conditional_evaluator
     }
     let raw =
         e.word != nullptr ? e.word->raw_string() : String{heap_allocator()};
+
     for (usize i = 0; i < raw.count(); i++)
       active.push(true);
+
     return raw;
   }
 
@@ -168,6 +172,7 @@ struct conditional_evaluator
         {SSK("-o"), UnaryOperatorKind::ShellOption        },
     };
     static constexpr StaticStringMap OPERATORS{ENTRIES};
+
     return OPERATORS.find(text);
   }
 
@@ -206,6 +211,7 @@ struct conditional_evaluator
         {SSK("-ot"), BinaryOperatorKind::OlderFile             },
     };
     static constexpr StaticStringMap OPERATORS{ENTRIES};
+
     return OPERATORS.find(text);
   }
 
@@ -225,6 +231,7 @@ struct conditional_evaluator
     }
 
     let escaped_pattern = String{cxt.scratch_allocator()};
+
     for (usize i = 0; i < pattern.length; i++) {
       let const is_literal = i < active.count() && !active[i];
       if (is_literal && is_regex_metacharacter(pattern[i])) {
@@ -244,6 +251,7 @@ struct conditional_evaluator
     if (match.result == os::regex_match_result::NoMatch) {
       cxt.set_indexed_array("BASH_REMATCH",
                             ArrayList<String>{heap_allocator()});
+
       return false;
     }
     if (match.result == os::regex_match_result::Error) {
@@ -253,6 +261,7 @@ struct conditional_evaluator
 
     let rematch = ArrayList<String>{heap_allocator()};
     rematch.reserve(match.spans.count());
+
     for (usize i = 0; i < match.spans.count(); i++) {
       if (match.spans[i].start < 0) {
         rematch.push(String{heap_allocator()});
@@ -263,7 +272,9 @@ struct conditional_evaluator
       rematch.push(String{heap_allocator(),
                           value.substring_of_length(start, end - start)});
     }
+
     cxt.set_indexed_array("BASH_REMATCH", steal(rematch));
+
     return true;
   }
 
@@ -297,6 +308,7 @@ struct conditional_evaluator
     case UnaryOperatorKind::NonemptyFile: {
       let const path = make_path(operand);
       let const size = path.file_size();
+
       return size.has_value() && size.value() > 0;
     }
     case UnaryOperatorKind::SymbolicLink:
@@ -349,6 +361,7 @@ struct conditional_evaluator
           return operand;
         }
       }
+
       return "0";
     };
     let const ordering =
@@ -409,6 +422,7 @@ struct conditional_evaluator
             saved_suppress_test_operand);
       };
       let const operand = operand_value(elements[pos - 1]);
+
       return eval_unary(*selected_unary_operator, operand.view());
     }
 
@@ -423,6 +437,7 @@ struct conditional_evaluator
         let const left = operand_value(elements[pos - 3]);
         let const right = operand_value(elements[pos - 1]);
         let const order = os::collate_compare(left, right);
+
         return next == Kind::Less ? order < 0 : order > 0;
       }
       if (next == Kind::Operand && elements[pos + 1].is_bare_unquoted) {
@@ -452,6 +467,7 @@ struct conditional_evaluator
             case BinaryOperatorKind::PatternNotEqual:
             case BinaryOperatorKind::Regex: return false;
             }
+
             return false;
           }();
           let const saved_suppress_test_operand =
@@ -482,6 +498,7 @@ struct conditional_evaluator
               let const is_matched = utils::glob_matches(
                   pattern.view(), left.view(), active, 0, pattern_extglob,
                   cxt.get_glob_charset_for(left.view()));
+
               return *selected_binary_operator ==
                              BinaryOperatorKind::PatternNotEqual
                          ? !is_matched
@@ -497,6 +514,7 @@ struct conditional_evaluator
             let const is_matched = utils::glob_matches(
                 match_pattern.view(), match_value.view(), active, 0,
                 pattern_extglob, cxt.get_glob_charset_for(match_value.view()));
+
             return *selected_binary_operator ==
                            BinaryOperatorKind::PatternNotEqual
                        ? !is_matched
@@ -516,6 +534,7 @@ struct conditional_evaluator
             }
           }
           let const right = operand_value(elements[pos - 1]);
+
           return eval_binary(left.view(), *selected_binary_operator,
                              right.view());
         }
@@ -525,6 +544,7 @@ struct conditional_evaluator
     pos++;
     if (is_skipping) return false;
     let const value = operand_value(elements[pos - 1]);
+
     return !value.is_empty();
   }
 
@@ -532,6 +552,7 @@ struct conditional_evaluator
   {
     if (!at_end() && kind_at(pos) == Kind::Not) {
       pos++;
+
       return !eval_term();
     }
     if (!at_end() && kind_at(pos) == Kind::OpenParen) {
@@ -541,14 +562,17 @@ struct conditional_evaluator
         throw Error{"Expected ')'"};
       }
       pos++;
+
       return is_inner_true;
     }
+
     return eval_primary();
   }
 
   fn eval_and() throws -> bool
   {
     let and_result = eval_term();
+
     while (!at_end() && kind_at(pos) == Kind::And) {
       pos++;
       let const was_skipping = is_skipping;
@@ -557,12 +581,14 @@ struct conditional_evaluator
       is_skipping = was_skipping;
       and_result = and_result && is_right_hand_side_true;
     }
+
     return and_result;
   }
 
   fn eval_or() throws -> bool
   {
     let or_result = eval_and();
+
     while (!at_end() && kind_at(pos) == Kind::Or) {
       pos++;
       let const was_skipping = is_skipping;
@@ -571,6 +597,7 @@ struct conditional_evaluator
       is_skipping = was_skipping;
       or_result = or_result || is_right_hand_side_true;
     }
+
     return or_result;
   }
 };
@@ -593,6 +620,7 @@ fn EvalContext::cached_compiled_regex(StringView pattern) throws
   {
     LOG(All, "regex cache hit for the pattern '%.*s'",
         static_cast<int>(pattern.length), pattern.data);
+
     return cached->get();
   }
 
@@ -617,6 +645,7 @@ fn EvalContext::cached_compiled_regex(StringView pattern) throws
     fail_conditional(reason.view(),
                      "The pattern must be a valid extended regular expression");
   }
+
   return expansion_store()
       .store_regex(key.view(), CompiledRegex{*compiled})
       ->get();
@@ -639,6 +668,7 @@ fn EvalContext::evaluate_conditional(
         "operator the shell does not support or a missing && or || "
         "between two tests");
   }
+
   return is_conditional_true;
 }
 

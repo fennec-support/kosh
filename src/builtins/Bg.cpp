@@ -49,6 +49,7 @@ fn Bg::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       throw ErrorWithDetails{"There is no such job", "List jobs with `jobs`"};
 
     resume_job_in_background(ec, cxt, job);
+
     return 0;
   }
 

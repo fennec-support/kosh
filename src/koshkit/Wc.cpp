@@ -150,6 +150,7 @@ static fn count_newlines(StringView content) wontthrow -> u64
 
   while (byte_position + LANE_COUNT <= content.length) {
     byte_vector lane_counts = {};
+
     for (usize round_count = 0; round_count < MAXIMUM_ROUND_COUNT &&
                                 byte_position + LANE_COUNT <= content.length;
          round_count++)
@@ -162,6 +163,7 @@ static fn count_newlines(StringView content) wontthrow -> u64
 
     u64 lane_words[2];
     __builtin_memcpy(lane_words, &lane_counts, sizeof(lane_words));
+
     for (let const lane_word : lane_words) {
       let const pair_sums =
           (lane_word & PAIR_LOW_BYTES) + ((lane_word >> 8) & PAIR_LOW_BYTES);
@@ -304,6 +306,7 @@ fn Wc::execute(const ExecContext &ec, EvalContext &cxt,
       source_list_from_operands(operands, cxt.scratch_allocator());
   let source_states = ArrayList<wc_source_state>{cxt.scratch_allocator()};
   source_states.reserve(sources.count());
+
   for (usize source_index = 0; source_index < sources.count(); source_index++)
     source_states.push({});
 
@@ -322,13 +325,14 @@ fn Wc::execute(const ExecContext &ec, EvalContext &cxt,
         let const descriptor =
             os::open_file_descriptor(source, os::file_open_mode::Read);
         if (descriptor.has_value()) {
-          let const file_size = os::regular_descriptor_file_size(*descriptor);
-          let const is_seekable =
-              file_size.has_value() && os::descriptor_is_seekable(*descriptor);
+          let const file_byte_count =
+              os::regular_descriptor_file_size(*descriptor);
+          let const is_seekable = file_byte_count.has_value() &&
+                                  os::descriptor_is_seekable(*descriptor);
           unused(os::close_fd(*descriptor));
 
           if (is_seekable) {
-            source_states[source_index].counts.byte_count = *file_size;
+            source_states[source_index].counts.byte_count = *file_byte_count;
             continue;
           }
         }
@@ -344,6 +348,7 @@ fn Wc::execute(const ExecContext &ec, EvalContext &cxt,
   if (!stream_sources.is_empty()) {
     let reader = SourceBatchReader{ec, stream_sources, cxt.scratch_allocator()};
     let chunks = ArrayList<SourceBatchReader::Chunk>{cxt.scratch_allocator()};
+
     loop
     {
       let const read_result = reader.read_next(chunks);
@@ -367,6 +372,7 @@ fn Wc::execute(const ExecContext &ec, EvalContext &cxt,
   ArrayList<wc_row> rows{cxt.scratch_allocator()};
   wc_counts totals;
   i32 status = 0;
+
   for (usize source_index = 0; source_index < sources.count(); source_index++) {
     let const &state = source_states[source_index];
     if (state.error_number != 0) {
@@ -388,6 +394,7 @@ fn Wc::execute(const ExecContext &ec, EvalContext &cxt,
   let const field_width = decimal_digit_count(totals.get_maximum(selection));
 
   let output = String{cxt.scratch_allocator()};
+
   for (let const &row : rows)
     append_counts(output, row.counts, row.name, field_width, selection);
 
@@ -395,6 +402,7 @@ fn Wc::execute(const ExecContext &ec, EvalContext &cxt,
     append_counts(output, totals, StringView{"total"}, field_width, selection);
 
   ec.print_to_stdout(output);
+
   return status;
 }
 

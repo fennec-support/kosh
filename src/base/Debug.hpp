@@ -99,6 +99,7 @@ fn t__strprintf(t__dump_state<StringT> &state, const char *format,
   unused(::snprintf(rendered, formatted_length + 1, format, args...));
 
   usize clang_indent = 0;
+
   while (rendered[clang_indent] == ' ')
     clang_indent++;
 
@@ -129,6 +130,7 @@ fn t__string_from_struct(const T &value, AllocatorT allocator) throws -> StringT
 {
   let state = t__dump_state<StringT>{StringT{allocator}, 0, true};
   __builtin_dump_struct(&value, t__strprintf<StringT>, state);
+
   return static_cast<StringT &&>(state.output);
 }
 

@@ -37,9 +37,11 @@ static fn split_output_name(StringView prefix, usize suffix_length,
     loop
     {
       u64 block_count = 25;
+
       for (usize position = 1; position < suffix_length && block_count != 0;
            position++)
         block_count = block_count > UINT64_MAX / 26 ? 0 : block_count * 26;
+
       if (block_count == 0 || index < block_count) {
         break;
       }
@@ -51,21 +53,27 @@ static fn split_output_name(StringView prefix, usize suffix_length,
   }
 
   char suffix[160];
+
   for (usize position = 0; position < widened_count; position++)
     suffix[position] = 'z';
+
   let const total_length = widened_count + suffix_length;
+
   for (usize position = widened_count; position < total_length; position++)
     suffix[position] = 'a';
+
   for (usize position = total_length; position > widened_count && index != 0;
        position--)
   {
     suffix[position - 1] = static_cast<char>('a' + index % 26);
     index /= 26;
   }
+
   if (index != 0) throw Error{"output file suffixes are exhausted"};
 
   String name{allocator, prefix};
   name += StringView{suffix, total_length};
+
   return name;
 }
 
@@ -93,10 +101,12 @@ fn Split::execute(const ExecContext &ec, EvalContext &cxt,
       KOSHKIT_REPORT_ERROR_AT(
           flag.value_location(),
           "invalid " + String{name} + " '" + String{flag.value()} + "'", note);
+
       return false;
     }
 
     value = parsed.value();
+
     return true;
   };
 
@@ -126,6 +136,7 @@ fn Split::execute(const ExecContext &ec, EvalContext &cxt,
   let const input = open_named_or_stdin(ec, source);
   if (!input.has_value()) {
     KOSHKIT_REPORT_PATH_ERROR("read", source);
+
     return 1;
   }
   defer
@@ -158,6 +169,7 @@ fn Split::execute(const ExecContext &ec, EvalContext &cxt,
         report_soft_koshkit_util_error(
             ec, cxt, args[0].view(),
             "'" + name + "' would overwrite the input; aborting");
+
         return false;
       }
     }
@@ -165,10 +177,12 @@ fn Split::execute(const ExecContext &ec, EvalContext &cxt,
         os::open_file_descriptor(name.view(), os::file_open_mode::Truncate);
     if (!descriptor.has_value()) {
       KOSHKIT_REPORT_PATH_ERROR("create", name);
+
       return false;
     }
     output_descriptor = *descriptor;
     output_unit_count = 0;
+
     return true;
   };
   let const do_rotate_output = [&]() wontthrow -> void {
@@ -177,6 +191,7 @@ fn Split::execute(const ExecContext &ec, EvalContext &cxt,
   };
 
   char buffer[65536];
+
   loop
   {
     let const read_count =
@@ -185,12 +200,14 @@ fn Split::execute(const ExecContext &ec, EvalContext &cxt,
       if (os::INTERRUPT_REQUESTED) return 130;
       report_soft_koshkit_util_error(ec, cxt, args[0].view(),
                                      os::last_system_error_message());
+
       return 1;
     }
     if (*read_count == 0) break;
 
     if (is_byte_mode) {
       usize position = 0;
+
       while (position < *read_count) {
         if (!do_open_output()) return 1;
         let const remaining = unit_limit - output_unit_count;
@@ -200,6 +217,7 @@ fn Split::execute(const ExecContext &ec, EvalContext &cxt,
         if (!os::write_all(output_descriptor, buffer + position, write_count)) {
           report_soft_koshkit_util_error(ec, cxt, args[0].view(),
                                          os::last_system_error_message());
+
           return 1;
         }
         position += write_count;
@@ -208,12 +226,14 @@ fn Split::execute(const ExecContext &ec, EvalContext &cxt,
       }
     } else {
       usize segment_start = 0;
+
       while (segment_start < *read_count) {
         if (!do_open_output()) return 1;
 
         let const wanted_line_count = unit_limit - output_unit_count;
         u64 line_count = 0;
         usize segment_end = *read_count;
+
         for (usize position = segment_start; position < *read_count; position++)
         {
           if (buffer[position] != '\n') continue;
@@ -229,6 +249,7 @@ fn Split::execute(const ExecContext &ec, EvalContext &cxt,
         {
           report_soft_koshkit_util_error(ec, cxt, args[0].view(),
                                          os::last_system_error_message());
+
           return 1;
         }
         segment_start = segment_end;

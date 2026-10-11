@@ -34,6 +34,7 @@ cold fn Nproc::execute(
     KOSHKIT_REPORT_ERROR_AT(operand_locations[0],
                             "unexpected operand '" + operands[0] + "'",
                             "nproc accepts flags without operands");
+
     return 1;
   }
 
@@ -46,6 +47,7 @@ cold fn Nproc::execute(
           "invalid number '" +
               String{cxt.scratch_allocator(), FLAG_NPROC_IGNORE.value()} + "'",
           "use an unsigned decimal count");
+
       return 1;
     }
     ignored_count = parsed.value();
@@ -62,6 +64,7 @@ cold fn Nproc::execute(
   let output = String::from(result_count, cxt.scratch_allocator());
   output += '\n';
   ec.print_to_stdout(output);
+
   return 0;
 }
 

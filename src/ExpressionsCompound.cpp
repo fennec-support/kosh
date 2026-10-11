@@ -103,6 +103,7 @@ fn CompoundList::move_nodes_from(usize first_index,
     m_location.length -= m_nodes[index]->source_location().length;
     destination.append_node(m_nodes[index]);
   }
+
   m_nodes.truncate(first_index);
 }
 
@@ -139,6 +140,7 @@ cold fn CompoundList::to_ast_string(usize layer) const throws -> String
   let const pad = indent_for_layer(layer);
 
   s += pad + "[" + to_string() + "]";
+
   for (let const n : m_nodes) {
     s += '\n';
     s += pad + EXPRESSION_AST_INDENT + n->to_ast_string(layer + 1);
@@ -181,6 +183,7 @@ hot fn CompoundList::evaluate_impl(EvalContext &cxt,
                                        wontthrow -> bool {
       let const source = cxt.execution_store().line_discard_source();
       let const command_position = n->command()->source_location().position;
+
       return n->kind() == CompoundListCondition::Kind::None &&
              separator_position < command_position &&
              command_position <= source.length &&
@@ -218,6 +221,7 @@ hot fn CompoundList::evaluate_impl(EvalContext &cxt,
           history_source.has_value())
       {
         usize history_end_index = index;
+
         while (history_end_index + 1 < m_nodes.count() &&
                m_nodes[history_end_index + 1]->kind() !=
                    CompoundListCondition::Kind::None)
@@ -266,6 +270,7 @@ hot fn CompoundList::evaluate_impl(EvalContext &cxt,
       };
       try {
         let const node_mode = index == 0 ? mode : root_evaluation_mode::Normal;
+
         return n->evaluate_root_status(cxt, node_mode);
       } catch (const InterruptErrorWithLocation &) {
         throw;
@@ -457,6 +462,7 @@ pure fn CompoundListCondition::command() const wontthrow -> const Command *
 pure fn CompoundListCondition::is_negated() const wontthrow -> bool
 {
   ASSERT(m_cmd != nullptr);
+
   return m_cmd->is_negated();
 }
 
@@ -469,6 +475,7 @@ cold fn CompoundListCondition::to_string() const throws -> String
   case Kind::Or: k = "||"; break;
   default: unreachable("invalid compound-list condition kind %d", ENUM(kind()));
   }
+
   return "CompoundListCondition, " + k;
 }
 
@@ -592,6 +599,7 @@ cold fn Pipeline::to_string() const throws -> String
 {
   let s = String{"Pipeline"};
   append_ast_execution_flags(s);
+
   return s;
 }
 
@@ -601,6 +609,7 @@ cold fn Pipeline::to_ast_string(usize layer) const throws -> String
   let const pad = indent_for_layer(layer);
 
   s += pad + "[" + to_string() + "]";
+
   for (let const e : m_commands) {
     s += '\n';
     s += pad + EXPRESSION_AST_INDENT + e->to_ast_string(layer + 1);
@@ -801,6 +810,7 @@ cold fn Pipeline::evaluate_with_compound_stages(EvalContext &cxt) const throws
                          heap_allocator()) +
             "\n");
     }
+
     return 0;
   }
 
@@ -816,6 +826,7 @@ cold fn Pipeline::evaluate_with_compound_stages(EvalContext &cxt) const throws
       stage_status.push(status);
       pipe_status.push(String::from(status, heap_allocator()));
     }
+
     if (parent_stage_status.has_value()) {
       stage_status.push(*parent_stage_status);
       pipe_status.push(String::from(*parent_stage_status, heap_allocator()));
@@ -829,6 +840,7 @@ cold fn Pipeline::evaluate_with_compound_stages(EvalContext &cxt) const throws
   i32 ret = stage_status.is_empty() ? 0 : stage_status.back();
   if (cxt.runtime_state().pipefail()) {
     ret = 0;
+
     for (usize i = stage_status.count(); i > 0; i--)
       if (stage_status[i - 1] != 0) {
         ret = stage_status[i - 1];
@@ -857,6 +869,7 @@ hot fn Pipeline::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const
   if (!m_has_compound_stage.has_value()) {
     bool has_compound_stage = false;
     bool has_assignment_only_stage = false;
+
     for (let const stage : m_commands) {
       if (!stage->is_simple_command()) {
         has_compound_stage = true;
@@ -874,6 +887,7 @@ hot fn Pipeline::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const
       has_compound_stage = true;
       break;
     }
+
     m_has_compound_stage = has_compound_stage;
     m_has_assignment_only_stage = has_assignment_only_stage;
   }
@@ -921,6 +935,7 @@ hot fn Pipeline::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const
   {
     for (ExecContext &leftover : ecs)
       leftover.close_fds();
+
     ecs.clear();
     cxt.expansion_store().scratch_arena().release(pipeline_mark);
   };
@@ -957,6 +972,7 @@ hot fn Pipeline::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const
       }
       was_unresolved_handed_off = true;
       ecs.push(steal(unresolved));
+
       return true;
     };
 

@@ -174,6 +174,7 @@ static fn wait_for_operands(ExecContext &ec, EvalContext &cxt) throws -> i32
 
     let other_pids = ArrayList<i64>{cxt.scratch_allocator()};
     let unknown_targets = ArrayList<usize>{cxt.scratch_allocator()};
+
     for (usize i = 1; i < args.count(); i++) {
       if (job *const matched = do_find_target_job(i); matched != nullptr) {
         job_ids.push(matched->id);
@@ -216,6 +217,7 @@ static fn wait_for_operands(ExecContext &ec, EvalContext &cxt) throws -> i32
 
     let const do_has_done_target_job = [&]() throws -> bool {
       table.update_jobs();
+
       for (let const &entry : table.jobs()) {
         if (entry.state == job::State::Done && !entry.was_waited &&
             job_ids.find(entry.id).has_value())
@@ -305,6 +307,7 @@ static fn wait_for_operands(ExecContext &ec, EvalContext &cxt) throws -> i32
       unused(cxt.wait_for_process_substitution(*last_background_pid));
 
     usize finished_before_position = 0;
+
     for (job &waited : table.jobs()) {
       if (finished_before_position < finished_before_ids.count() &&
           finished_before_ids[finished_before_position] == waited.id)
@@ -325,6 +328,7 @@ static fn wait_for_operands(ExecContext &ec, EvalContext &cxt) throws -> i32
   }
 
   i32 status = 0;
+
   for (usize i = 1; i < args.count(); i++) {
     LOG(Debug, "wait blocking on target '%s'", args[i].c_str());
 

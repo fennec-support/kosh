@@ -63,6 +63,7 @@ static fn nl_style_numbers(nl_style style, bool is_empty, u64 &blank_count,
   case nl_style::All:
     if (!is_empty) {
       blank_count = 0;
+
       return true;
     }
 
@@ -70,12 +71,14 @@ static fn nl_style_numbers(nl_style style, bool is_empty, u64 &blank_count,
     if (blank_count < blank_group) return false;
 
     blank_count = 0;
+
     return true;
 
   case nl_style::NonEmpty: break;
   }
 
   blank_count = 0;
+
   return !is_empty;
 }
 
@@ -125,6 +128,7 @@ fn Nl::execute(const ExecContext &ec, EvalContext &cxt,
         invalid_flag->value_location(),
         "unsupported numbering style '" + invalid_flag->value() + "'",
         "use a for all lines, t for nonempty lines, or n for no lines");
+
     return 1;
   }
 
@@ -143,6 +147,7 @@ fn Nl::execute(const ExecContext &ec, EvalContext &cxt,
                             "invalid number format '" + FLAG_NL_FORMAT.value() +
                                 "'",
                             "use ln, rn, or rz");
+
     return 1;
   }
 
@@ -154,6 +159,7 @@ fn Nl::execute(const ExecContext &ec, EvalContext &cxt,
           FLAG_NL_INCREMENT.value_location(),
           "invalid increment '" + FLAG_NL_INCREMENT.value() + "'",
           "use a decimal integer from 0 through 9223372036854775807");
+
       return 1;
     }
 
@@ -168,6 +174,7 @@ fn Nl::execute(const ExecContext &ec, EvalContext &cxt,
                               "invalid blank group '" +
                                   FLAG_NL_BLANK_GROUP.value() + "'",
                               "use a positive decimal integer");
+
       return 1;
     }
 
@@ -182,6 +189,7 @@ fn Nl::execute(const ExecContext &ec, EvalContext &cxt,
           FLAG_NL_WIDTH.value_location(),
           "invalid width '" + FLAG_NL_WIDTH.value() + "'",
           "use a positive decimal integer within the platform size limit");
+
       return 1;
     }
 
@@ -196,6 +204,7 @@ fn Nl::execute(const ExecContext &ec, EvalContext &cxt,
           FLAG_NL_START.value_location(),
           "invalid starting line number '" + FLAG_NL_START.value() + "'",
           "use a decimal integer from 0 through 9223372036854775807");
+
       return 1;
     }
 
@@ -209,6 +218,7 @@ fn Nl::execute(const ExecContext &ec, EvalContext &cxt,
   if (delimiter.length != 2) {
     KOSHKIT_REPORT_ERROR_AT(FLAG_NL_DELIMITER.value_location(),
                             "the section delimiter must be two bytes");
+
     return 1;
   }
 
@@ -216,6 +226,7 @@ fn Nl::execute(const ExecContext &ec, EvalContext &cxt,
   let const input = open_named_or_stdin(ec, source);
   if (!input.has_value()) {
     KOSHKIT_REPORT_PATH_ERROR("read", source);
+
     return 1;
   }
   defer
@@ -239,6 +250,7 @@ fn Nl::execute(const ExecContext &ec, EvalContext &cxt,
       if (os::INTERRUPT_REQUESTED) return 130;
       report_soft_koshkit_util_error(ec, cxt, args[0].view(),
                                      os::last_system_error_message());
+
       return 1;
     }
 
@@ -247,6 +259,7 @@ fn Nl::execute(const ExecContext &ec, EvalContext &cxt,
     bool is_section_delimiter =
         delimiter_count >= 1 && delimiter_count <= 3 &&
         line.length == delimiter_count * delimiter.length;
+
     for (usize position = 0; position < delimiter_count && is_section_delimiter;
          position++)
       is_section_delimiter =
@@ -285,6 +298,7 @@ fn Nl::execute(const ExecContext &ec, EvalContext &cxt,
   }
 
   ec.print_to_stdout(output);
+
   return 0;
 }
 

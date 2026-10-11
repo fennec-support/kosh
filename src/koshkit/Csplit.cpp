@@ -76,10 +76,13 @@ static fn csplit_output_name(const csplit_name_format &format, u64 index,
   }
 
   String name{allocator, format.prefix};
+
   for (usize position = digits.length(); position < format.digit_count;
        position++)
     name += '0';
+
   name += digits.view();
+
   return name;
 }
 
@@ -98,6 +101,7 @@ static fn write_csplit_part(const ExecContext &ec, EvalContext &cxt,
     report_soft_koshkit_util_error(ec, cxt, "csplit",
                                    "cannot create '" + name +
                                        "': " + os::last_system_error_message());
+
     return false;
   }
   bool is_output_tracked = false;
@@ -114,6 +118,7 @@ static fn write_csplit_part(const ExecContext &ec, EvalContext &cxt,
   is_output_tracked = true;
 
   u64 byte_count = 0;
+
   for (usize line_index = first; line_index < last; line_index++) {
     if (!os::write_all(*descriptor, lines[line_index].data,
                        lines[line_index].length))
@@ -121,6 +126,7 @@ static fn write_csplit_part(const ExecContext &ec, EvalContext &cxt,
       report_soft_koshkit_util_error(
           ec, cxt, "csplit",
           "cannot write '" + name + "': " + os::last_system_error_message());
+
       return false;
     }
     byte_count += lines[line_index].length;
@@ -129,6 +135,7 @@ static fn write_csplit_part(const ExecContext &ec, EvalContext &cxt,
   if (!has_csplit_policy(policy, csplit_write_policy::Silent))
     ec.print_to_stdout(String::from(byte_count, cxt.scratch_allocator()) +
                        "\n");
+
   return true;
 }
 
@@ -149,6 +156,7 @@ fn Csplit::execute(const ExecContext &ec, EvalContext &cxt,
           FLAG_CSPLIT_DIGITS.value_location(),
           "invalid suffix width '" + FLAG_CSPLIT_DIGITS.value() + "'",
           "use a positive decimal integer within the platform size limit");
+
       return 1;
     }
 
@@ -181,12 +189,14 @@ fn Csplit::execute(const ExecContext &ec, EvalContext &cxt,
     KOSHKIT_REPORT_ERROR_AT(
         location, "the output filename component is too long",
         "shorten the output prefix or reduce the suffix width");
+
     return 1;
   }
 
   let const content = read_named_or_stdin(ec, operands[0].view());
   if (!content.has_value()) {
     KOSHKIT_REPORT_PATH_ERROR("read", operands[0]);
+
     return 1;
   }
   let lines = utils::split_lines(content->view(), cxt.scratch_allocator(),
@@ -269,6 +279,7 @@ fn Csplit::execute(const ExecContext &ec, EvalContext &cxt,
         expression += byte;
         delimiter_position++;
       }
+
       if (delimiter_position >= pattern.length) {
         let note = String{cxt.scratch_allocator(),
                           "close the expression with the same "};
@@ -318,6 +329,7 @@ fn Csplit::execute(const ExecContext &ec, EvalContext &cxt,
           break;
         }
       }
+
       if (matched_line == SIZE_MAX) {
         if (exhaustion_mode == csplit_exhaustion_mode::Allow) {
           return false;
@@ -370,6 +382,7 @@ fn Csplit::execute(const ExecContext &ec, EvalContext &cxt,
     }
     current_line = target_line;
     has_applied_pattern = true;
+
     return true;
   };
 
@@ -428,6 +441,7 @@ fn Csplit::execute(const ExecContext &ec, EvalContext &cxt,
           write_policy))
     return 1;
   output_paths.clear();
+
   return 0;
 }
 

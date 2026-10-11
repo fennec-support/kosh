@@ -43,6 +43,7 @@ static fn owner_name_for_uid(u32 uid, ArrayList<uid_name_cache_entry> &cache,
   let name = looked_up.has_value() ? String{allocator, looked_up->view()}
                                    : String::from(uid, allocator);
   cache.push(uid_name_cache_entry{uid, name.clone()});
+
   return name;
 }
 
@@ -125,6 +126,7 @@ fn Ps::execute(const ExecContext &ec, EvalContext &cxt,
   bool should_show_aux = FLAG_PS_ALL.is_enabled() ||
                          FLAG_PS_USER_FMT.is_enabled() ||
                          FLAG_PS_NO_TTY.is_enabled();
+
   for (let const &operand : operands)
     if (operand.view() == "aux") should_show_aux = true;
 
@@ -137,10 +139,12 @@ fn Ps::execute(const ExecContext &ec, EvalContext &cxt,
     render_aux_without_sampled_columns(processes, output,
                                        cxt.scratch_allocator());
     ec.print_to_stdout(output);
+
     return 0;
   }
 
   output += "  PID CMD\n";
+
   for (let const &process : processes) {
     let const pid = String::from(process.pid, cxt.scratch_allocator());
     output.append_repeated(' ', pid.count() < 5 ? 5 - pid.count() : 0);
@@ -151,6 +155,7 @@ fn Ps::execute(const ExecContext &ec, EvalContext &cxt,
   }
 
   ec.print_to_stdout(output);
+
   return 0;
 }
 

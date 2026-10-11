@@ -22,8 +22,10 @@ inline pure fn encode_directory_descriptor(descriptor directory) wontthrow
     -> u64
 {
 #if KOSH_PLATFORM_IS KOSH_PLATFORM_WIN32
+
   return static_cast<u64>(reinterpret_cast<uintptr_t>(directory));
 #else
+
   return static_cast<u64>(directory);
 #endif
 }
@@ -32,8 +34,10 @@ inline pure fn decode_directory_descriptor(u64 byte_offset) wontthrow
     -> descriptor
 {
 #if KOSH_PLATFORM_IS KOSH_PLATFORM_WIN32
+
   return reinterpret_cast<descriptor>(static_cast<uintptr_t>(byte_offset));
 #else
+
   return static_cast<descriptor>(byte_offset);
 #endif
 }

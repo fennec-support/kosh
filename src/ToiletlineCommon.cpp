@@ -66,6 +66,7 @@ static fn codepoint_is_in(u32 codepoint, const codepoint_interval *intervals,
 {
   usize low = 0;
   usize high = interval_count;
+
   while (low < high) {
     let const middle = low + (high - low) / 2;
     if (codepoint < intervals[middle].first)
@@ -104,6 +105,7 @@ flatten static fn display_width_walk(StringView text, usize stop_after,
 {
   usize byte_offset = 0;
   let const ascii_limit = stop_after < text.length ? stop_after : text.length;
+
   while (byte_offset < ascii_limit &&
          static_cast<u8>(text[byte_offset]) - 0x20U < 0x5fU)
   {
@@ -111,22 +113,26 @@ flatten static fn display_width_walk(StringView text, usize stop_after,
   }
 
   usize width = byte_offset;
+
   while (byte_offset < text.length && text[byte_offset] != '\0') {
     if (static_cast<u8>(text[byte_offset]) == 0x1b) {
       byte_offset++;
       if (byte_offset >= text.length) break;
       if (text[byte_offset] == '[') {
         byte_offset++;
+
         while (byte_offset < text.length && text[byte_offset] != '\0' &&
                (text[byte_offset] < 0x40 || text[byte_offset] > 0x7e))
         {
           byte_offset++;
         }
+
         if (byte_offset < text.length && text[byte_offset] != '\0') {
           byte_offset++;
         }
       } else if (text[byte_offset] == ']') {
         byte_offset++;
+
         while (byte_offset < text.length && text[byte_offset] != '\0' &&
                static_cast<u8>(text[byte_offset]) != 0x07 &&
                !(byte_offset + 1 < text.length &&
@@ -135,6 +141,7 @@ flatten static fn display_width_walk(StringView text, usize stop_after,
         {
           byte_offset++;
         }
+
         if (byte_offset + 1 < text.length &&
             static_cast<u8>(text[byte_offset]) == 0x1b &&
             text[byte_offset + 1] == '\\')
@@ -159,6 +166,7 @@ flatten static fn display_width_walk(StringView text, usize stop_after,
   }
 
   if (out_byte_offset != nullptr) *out_byte_offset = byte_offset;
+
   return width;
 }
 
@@ -265,6 +273,7 @@ fn is_history_contents_valid(StringView contents) -> bool
 fn encode_history_record(String &output, StringView command) -> void
 {
   output.reserve(output.count() + command.length * 2 + 1);
+
   for (usize byte_offset = 0; byte_offset < command.length; byte_offset++) {
     let const byte = command[byte_offset];
     if (byte == '\\')
@@ -298,6 +307,7 @@ fn write_history_file_atomically(const koshka::Path &path,
       !koshka::os::rename_path(replacement->view(), target.view()))
   {
     unused(koshka::os::remove_file(replacement->view()));
+
     return false;
   }
 
@@ -308,6 +318,7 @@ fn get_utf8_length(const koshka::String &string, usize byte_count) -> usize
 {
   let const limited_length =
       byte_count < string.length() ? byte_count : string.length();
+
   return get_utf8_length(string.c_str(), limited_length);
 }
 
@@ -317,6 +328,7 @@ fn get_utf8_length(const char *bytes, usize byte_count) -> usize
   static constexpr u64 HIGH_BITS = 0x8080808080808080ULL;
   usize codepoint_count = 0;
   usize byte_offset = 0;
+
   while (byte_offset + sizeof(u64) <= byte_count) {
     u64 word;
     std::memcpy(&word, bytes + byte_offset, sizeof(word));
@@ -340,16 +352,19 @@ fn get_codepoint_byte_offset(const char *bytes, usize byte_length,
 {
   usize byte_offset = 0;
   usize seen_codepoints = 0;
+
   while (byte_offset < byte_length && seen_codepoints < codepoint_index) {
     if ((static_cast<unsigned char>(bytes[byte_offset]) & 0xC0) != 0x80)
       seen_codepoints += 1;
     byte_offset += 1;
   }
+
   while (byte_offset < byte_length &&
          (static_cast<unsigned char>(bytes[byte_offset]) & 0xC0) == 0x80)
   {
     byte_offset += 1;
   }
+
   return byte_offset;
 }
 
@@ -370,6 +385,7 @@ fn get_byte_offset_at_or_before_display_cell(StringView text,
   if (actual_cell_position <= cell_position) return byte_offset;
 
   usize previous_byte_offset = byte_offset - 1;
+
   while (previous_byte_offset > 0 &&
          (static_cast<u8>(text[previous_byte_offset]) & 0xc0) == 0x80)
   {
@@ -379,6 +395,7 @@ fn get_byte_offset_at_or_before_display_cell(StringView text,
   actual_cell_position = koshka::internal::display_width_walk(
       text.substring_of_length(0, previous_byte_offset), static_cast<usize>(-1),
       nullptr);
+
   return previous_byte_offset;
 }
 

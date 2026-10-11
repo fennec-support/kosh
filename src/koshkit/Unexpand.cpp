@@ -55,6 +55,7 @@ fn Unexpand::execute(
       KOSHKIT_REPORT_ERROR_AT(
           FLAG_UNEXPAND_TABS.value_location(), "invalid tab list",
           "use increasing positive columns separated by commas or blanks");
+
       return 1;
     }
 
@@ -130,6 +131,7 @@ fn Unexpand::execute(
   }
 
   ec.print_to_stdout(output);
+
   return status;
 }
 

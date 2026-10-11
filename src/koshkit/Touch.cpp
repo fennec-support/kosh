@@ -39,6 +39,7 @@ static fn parse_touch_pair(StringView text, usize position,
 
   value =
       static_cast<i32>((text[position] - '0') * 10 + text[position + 1] - '0');
+
   return true;
 }
 
@@ -130,6 +131,7 @@ fn Touch::execute(const ExecContext &ec, EvalContext &cxt,
             : FLAG_TOUCH_TIME.value_location();
     KOSHKIT_REPORT_ERROR_AT(conflict_location,
                             "-r and -t cannot be used together");
+
     return 1;
   }
 
@@ -139,6 +141,7 @@ fn Touch::execute(const ExecContext &ec, EvalContext &cxt,
   {
     KOSHKIT_REPORT_PATH_ERROR_AT(FLAG_TOUCH_REFERENCE.value_location(), "stat",
                                  FLAG_TOUCH_REFERENCE.value());
+
     return 1;
   }
 
@@ -150,6 +153,7 @@ fn Touch::execute(const ExecContext &ec, EvalContext &cxt,
           FLAG_TOUCH_TIME.value_location(),
           "invalid time '" + FLAG_TOUCH_TIME.value() + "'",
           "use a valid local calendar time in [[CC]YY]MMDDhhmm[.SS] format");
+
       return 1;
     }
   }
@@ -161,6 +165,7 @@ fn Touch::execute(const ExecContext &ec, EvalContext &cxt,
 
   let const allocator = cxt.scratch_allocator();
   i32 status = 0;
+
   for (let const &operand : operands) {
     if (!Path{operand.view(), allocator}.exists()) {
       if (FLAG_TOUCH_NO_CREATE.is_enabled()) continue;

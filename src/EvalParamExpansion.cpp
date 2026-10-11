@@ -66,6 +66,7 @@ static fn source_location_for_subview(
     -> const SourceLocation *
 {
   if (source_location == nullptr) return nullptr;
+
   return source_location->subspan_for_view(source, part, storage,
                                            source_location_offset);
 }
@@ -196,6 +197,7 @@ fn trim_matching(const EvalContext &cxt, Allocator result_allocator,
   bool has_other_glob_syntax = false;
   bool has_extglob_group = false;
   bool has_active_bracket = false;
+
   for (usize index = 0; index < pattern.length; index++) {
     let const character = pattern[index];
     if (mode == extglob_mode::Enabled && index + 1 < pattern.length &&
@@ -257,6 +259,7 @@ fn trim_matching(const EvalContext &cxt, Allocator result_allocator,
         while (let const next = value.find_substring(suffix, *match + 1))
           match = next;
       }
+
       return String{result_allocator, value.substring(*match + suffix.length)};
     }
 
@@ -291,6 +294,7 @@ fn trim_matching(const EvalContext &cxt, Allocator result_allocator,
       while (let const next = value.find_substring(literal, *match + 1))
         match = next;
     }
+
     return String{result_allocator, value.substring_of_length(0, *match)};
   }
 
@@ -360,6 +364,7 @@ fn trim_matching(const EvalContext &cxt, Allocator result_allocator,
       }
     }
   }
+
   return String{result_allocator, value};
 }
 
@@ -373,6 +378,7 @@ static fn trim_value_with_modifier(EvalContext &cxt, StringView value,
   let active = Bitset{cxt.scratch_allocator()};
   let const pattern =
       cxt.expand_modifier_word_masked(word, active, true, source_location);
+
   return trim_matching(cxt, cxt.scratch_allocator(), value, pattern.view(),
                        active, op == '#' ? trim_end::Prefix : trim_end::Suffix,
                        is_doubled ? pattern_match_extent::Longest
@@ -536,6 +542,7 @@ fn EvalContext::ModifierWordExpander::emit_field_elements(
 {
   if (!is_quoted()) {
     emit_unquoted_list(values, false, false, false);
+
     return;
   }
 
@@ -556,11 +563,13 @@ fn EvalContext::ModifierWordExpander::emit_field_slice(
   if (is_star && is_quoted()) {
     emit_run(m_context.join_list_slice(bounds, values, leading, true).view(),
              false);
+
     return;
   }
 
   if (!is_quoted()) {
     let slice = ArrayList<String>{m_context.scratch_allocator()};
+
     for (i64 index = bounds.start; index < bounds.end; index++) {
       let const position = static_cast<usize>(index);
       slice.push(String{m_context.scratch_allocator(),
@@ -568,7 +577,9 @@ fn EvalContext::ModifierWordExpander::emit_field_slice(
                             ? *leading
                             : values[position - leading_count].view()});
     }
+
     emit_unquoted_list(slice, is_star, false, true);
+
     return;
   }
 
@@ -589,6 +600,7 @@ fn EvalContext::ModifierWordExpander::emit_unquoted_list(
 {
   let const ifs = m_context.variable_store().field_separators();
   let has_space_separator = false;
+
   for (usize i = 0; i < ifs.length; i++)
     if (ifs[i] == ' ') has_space_separator = true;
 
@@ -615,10 +627,12 @@ fn EvalContext::ModifierWordExpander::emit_unquoted_list(
   }
 
   let joined = String{m_context.scratch_allocator()};
+
   for (usize i = 0; i < count; i++) {
     if (i > 0) joined.append(separator);
     joined.append(values[i].view());
   }
+
   if (!joined.is_empty()) emit_run(joined.view(), true);
 }
 
@@ -629,6 +643,7 @@ fn EvalContext::ModifierWordExpander::expand_field_reference(
 
   if (inner == "@") {
     emit_field_elements(m_context.variable_store().positional_params());
+
     return true;
   }
   if (is_quoted() && m_context.runtime_state().is_posix_mode() &&
@@ -643,6 +658,7 @@ fn EvalContext::ModifierWordExpander::expand_field_reference(
                             .is_empty();
     if (is_set) {
       emit_field_elements(m_context.variable_store().positional_params());
+
       return true;
     }
   }
@@ -651,6 +667,7 @@ fn EvalContext::ModifierWordExpander::expand_field_reference(
   {
     emit_unquoted_list(m_context.variable_store().positional_params(), true,
                        false, false);
+
     return true;
   }
   if (inner.length > 2 && (inner[0] == '@' || inner[0] == '*') &&
@@ -661,6 +678,7 @@ fn EvalContext::ModifierWordExpander::expand_field_reference(
         m_context.compute_list_slice_bounds(
             inner.substring(2), static_cast<i64>(params.count() + 1)),
         params, m_context.execution_store().get_shell_name(), inner[0] == '*');
+
     return true;
   }
 
@@ -668,6 +686,7 @@ fn EvalContext::ModifierWordExpander::expand_field_reference(
     let const fields = m_context.get_declaration_fields("@");
     if (fields.count() > 1) {
       emit_field_elements(fields);
+
       return true;
     }
   }
@@ -678,6 +697,7 @@ fn EvalContext::ModifierWordExpander::expand_field_reference(
     let const trimmed = m_context.trim_positional_fields(
         inner[0] == '*', is_quoted(), inner.substring(1));
     if (is_quoted()) m_did_quoted_at = true;
+
     for (usize i = 0; i < trimmed.count(); i++) {
       if (i > 0) start_field();
       emit_run(trimmed[i].view(), !is_quoted());
@@ -691,15 +711,18 @@ fn EvalContext::ModifierWordExpander::expand_field_reference(
   {
     emit_modified_elements(m_context.variable_store().positional_params(),
                            inner.substring(1), StringView{}, inner[0] == '*');
+
     return true;
   }
 
   usize name_length = 0;
+
   while (name_length < inner.length &&
          lexer::is_variable_name(inner[name_length]))
   {
     name_length++;
   }
+
   if (name_length == 0 || name_length + 3 > inner.length ||
       inner[name_length] != '[' ||
       (inner[name_length + 1] != '@' && inner[name_length + 1] != '*') ||
@@ -713,11 +736,13 @@ fn EvalContext::ModifierWordExpander::expand_field_reference(
   let const name = inner.substring_of_length(0, name_length);
   if (rest.is_empty() && !is_star) {
     emit_field_elements(m_context.collect_array_elements(name));
+
     return true;
   }
   if (rest.is_empty() && !is_quoted()) {
     emit_unquoted_list(m_context.collect_array_elements(name), true, false,
                        false);
+
     return true;
   }
   if (rest.length > 1 && rest[0] == ':' && !is_colon_modifier_operator(rest[1]))
@@ -727,12 +752,14 @@ fn EvalContext::ModifierWordExpander::expand_field_reference(
         m_context.compute_array_slice_bounds(
             name, rest.substring(1), static_cast<i64>(elements.count())),
         elements, None, is_star);
+
     return true;
   }
   if (!is_star && is_quoted() && rest == "@A") {
     let const fields = m_context.get_declaration_fields(name);
     if (fields.count() > 1) {
       emit_field_elements(fields);
+
       return true;
     }
   }
@@ -741,11 +768,13 @@ fn EvalContext::ModifierWordExpander::expand_field_reference(
   {
     let const elements = m_context.collect_array_elements(name);
     let is_every_element_empty = true;
+
     for (let const &element : elements)
       if (!element.is_empty()) {
         is_every_element_empty = false;
         break;
       }
+
     let const is_unset = rest[0] == ':'
                              ? is_every_element_empty && elements.count() <= 1
                              : elements.is_empty();
@@ -754,6 +783,7 @@ fn EvalContext::ModifierWordExpander::expand_field_reference(
         emit_field_elements(elements);
       else
         emit_unquoted_list(elements, is_star, false, false);
+
       return true;
     }
 
@@ -762,6 +792,7 @@ fn EvalContext::ModifierWordExpander::expand_field_reference(
   if (is_element_operator(rest) && rest != "@K") {
     emit_modified_elements(m_context.collect_array_elements(name), rest, name,
                            is_star);
+
     return true;
   }
 
@@ -797,6 +828,7 @@ fn EvalContext::ModifierWordExpander::emit_modified_elements(
   modified.reserve(values.count());
   if (modifier == "@k" && !name.is_empty()) {
     let const keys = m_context.collect_array_subscripts(name);
+
     for (usize i = 0; i < keys.count() && i < values.count(); i++) {
       modified.push(String{m_context.scratch_allocator(), keys[i].view()});
       modified.push(String{m_context.scratch_allocator(), values[i].view()});
@@ -822,6 +854,7 @@ fn EvalContext::ModifierWordExpander::emit_modified_elements(
         !name.is_empty() && (modifier[0] == '#' || modifier[0] == '%') &&
             m_context.variable_store().field_separators().is_empty(),
         modifier[0] != '@');
+
     return;
   }
 
@@ -832,6 +865,7 @@ fn EvalContext::ModifierWordExpander::emit_modified_elements(
                      modified, None, true)
                  .view(),
              false);
+
     return;
   }
 
@@ -854,6 +888,7 @@ fn EvalContext::ModifierWordExpander::emit_run(StringView bytes,
       }
       emit_byte(bytes[k], true);
     }
+
     return;
   }
 
@@ -881,6 +916,7 @@ fn EvalContext::ModifierWordExpander::toggle_quote_state() throws -> bool
   }
   if (m_should_remove_quotes && !is_quoted() && m_word[m_index] == '\'') {
     m_is_in_single_quote = !m_is_in_single_quote;
+
     return true;
   }
 
@@ -892,12 +928,14 @@ fn EvalContext::ModifierWordExpander::expand_backslash() throws -> void
   if (m_is_pattern_word && m_index + 1 < m_word.length) {
     emit_byte(m_word[m_index + 1], false);
     m_index++;
+
     return;
   }
   if (m_index + 1 < m_word.length) {
     let const next = m_word[m_index + 1];
     if (next == '\n') {
       m_index++;
+
       return;
     }
     if (m_should_strip_escaped_literals && m_should_remove_quotes &&
@@ -905,6 +943,7 @@ fn EvalContext::ModifierWordExpander::expand_backslash() throws -> void
     {
       emit_byte(next, false);
       m_index++;
+
       return;
     }
     if (m_should_strip_escaped_literals && m_should_remove_quotes &&
@@ -913,6 +952,7 @@ fn EvalContext::ModifierWordExpander::expand_backslash() throws -> void
     {
       emit_byte(next, false);
       m_index++;
+
       return;
     }
     if (next == '$' || next == '`' || next == '\\' ||
@@ -920,6 +960,7 @@ fn EvalContext::ModifierWordExpander::expand_backslash() throws -> void
     {
       emit_byte(next, false);
       m_index++;
+
       return;
     }
   }
@@ -950,6 +991,7 @@ fn EvalContext::ModifierWordExpander::expand_backquote() throws -> void
 {
   let inner = String{m_context.scratch_allocator()};
   usize j = m_index + 1;
+
   for (; j < m_word.length; j++) {
     if (m_word[j] == '\\' && j + 1 < m_word.length &&
         (m_word[j + 1] == '`' || m_word[j + 1] == '$' || m_word[j + 1] == '\\'))
@@ -969,6 +1011,7 @@ fn EvalContext::ModifierWordExpander::expand_ansi_c_quote() throws -> void
 {
   let body = String{m_context.scratch_allocator()};
   usize j = m_index + 2;
+
   while (j < m_word.length && m_word[j] != '\'') {
     body.push(m_word[j]);
     if (m_word[j] == '\\' && j + 1 < m_word.length) {
@@ -977,6 +1020,7 @@ fn EvalContext::ModifierWordExpander::expand_ansi_c_quote() throws -> void
     }
     j++;
   }
+
   let decoded = String{m_context.scratch_allocator()};
   utils::decode_ansi_c_escapes(decoded, body.view());
   emit_run(decoded.view(), false);
@@ -993,6 +1037,7 @@ fn EvalContext::ModifierWordExpander::copy_braced_quoted_byte(
   if (quote == '"' && ch == '\\' && position + 1 < m_word.length) {
     inner += m_word[++position];
     position++;
+
     return true;
   }
   if (ch == quote) quote = 0;
@@ -1006,6 +1051,7 @@ fn EvalContext::ModifierWordExpander::copy_braced_backquote(
 {
   inner += m_word[position];
   position++;
+
   while (position < m_word.length) {
     let const b = m_word[position];
     inner += b;
@@ -1037,6 +1083,7 @@ fn EvalContext::ModifierWordExpander::is_function_substitution_start()
   if (m_index + 2 >= m_word.length) return false;
 
   let const byte = m_word[m_index + 2];
+
   return byte == ' ' || byte == '\t' || byte == '\n' || byte == '|';
 }
 
@@ -1046,12 +1093,14 @@ fn EvalContext::ModifierWordExpander::expand_function_substitution() throws
   usize j = 0;
   let const inner = scan_braced_body(j, true);
   usize body_start = 0;
+
   while (body_start < inner.count() &&
          (inner[body_start] == ' ' || inner[body_start] == '\t' ||
           inner[body_start] == '\n'))
   {
     body_start++;
   }
+
   let const text = inner.view().substring(body_start);
 
   let body_location = SourceLocation{};
@@ -1080,6 +1129,7 @@ fn EvalContext::ModifierWordExpander::scan_braced_body(
   position = m_index + 2;
   i32 depth = 1;
   char quote = 0;
+
   while (position < m_word.length) {
     let const ch = m_word[position];
     if (copy_braced_quoted_byte(inner, position, quote)) continue;
@@ -1140,6 +1190,7 @@ fn EvalContext::ModifierWordExpander::expand_braced_parameter() throws -> void
   let const inner = scan_braced_body(j);
   if (expand_field_reference(inner.view())) {
     m_index = j;
+
     return;
   }
 
@@ -1164,9 +1215,11 @@ fn EvalContext::ModifierWordExpander::expand_plain_parameter() throws -> void
 {
   let name = String{m_context.scratch_allocator()};
   usize j = m_index + 1;
+
   while (j < m_word.length && lexer::is_variable_name(m_word[j])) {
     name += m_word[j++];
   }
+
   let const stored = m_context.variable_store().find_plain_scalar(name);
   if (stored.has_value()) {
     emit_run(stored->view(), !m_is_in_double_quote);
@@ -1186,6 +1239,7 @@ fn EvalContext::ModifierWordExpander::scan_arithmetic_body(
   position = m_index + (is_bracket_form ? 2 : 3);
   usize depth = 0;
   char quote = 0;
+
   for (; position < m_word.length; position++) {
     let const ch = m_word[position];
     if (quote != 0) {
@@ -1282,6 +1336,7 @@ fn EvalContext::ModifierWordExpander::is_process_substitution_start()
     const wontthrow -> bool
 {
   let const byte = m_word[m_index];
+
   return m_should_expand_process_substitution && !m_is_in_double_quote &&
          (byte == '<' || byte == '>') && m_index + 1 < m_word.length &&
          m_word[m_index + 1] == '(';
@@ -1317,6 +1372,7 @@ fn EvalContext::ModifierWordExpander::expand_special_parameter(char name) throws
     m_context.report_unset_reference(special_name);
   if ((name == '@' || name == '*') && expand_field_reference(special_name)) {
     m_index++;
+
     return;
   }
 
@@ -1333,6 +1389,7 @@ fn EvalContext::ModifierWordExpander::expand_dollar() throws -> void
       !(m_is_outer_quoted && state.is_posix_option_on()))
   {
     expand_ansi_c_quote();
+
     return;
   }
   if (next == '"' && m_should_remove_quotes && !m_is_in_double_quote) {
@@ -1370,6 +1427,7 @@ fn EvalContext::ModifierWordExpander::expand_leading_tilde() throws -> bool
   }
 
   usize prefix_end = 1;
+
   while (prefix_end < m_word.length && m_word[prefix_end] != '/' &&
          m_word[prefix_end] != ':')
   {
@@ -1588,6 +1646,7 @@ static pure fn find_balanced_subscript_close(
     StringView subscript_text) wontthrow -> Maybe<usize>
 {
   usize depth = 0;
+
   for (usize position = 0; position < subscript_text.length; position++) {
     let const byte = subscript_text[position];
     if (byte == '[') depth++;
@@ -1606,9 +1665,11 @@ static pure fn find_balanced_subscript_close(
 static fn find_indirect_name_end(StringView body) wontthrow -> usize
 {
   usize name_end = 0;
+
   while (name_end < body.length && lexer::is_variable_name(body[name_end])) {
     name_end++;
   }
+
   if (name_end > 0 && name_end < body.length && body[name_end] == '[') {
     if (let const close =
             find_balanced_subscript_close(body.substring(name_end)))
@@ -1630,6 +1691,7 @@ fn EvalContext::ParameterExpander::expand_word(
     StringView word, parameter_word_quoting quoting) throws -> String
 {
   let word_location = SourceLocation{};
+
   return m_context.expand_modifier_word(
       word, true, true, get_location_for(word, word_location),
       m_should_expand_process_substitution, quoting);
@@ -1680,6 +1742,7 @@ fn EvalContext::ParameterExpander::expand_indirect() throws -> String
     let suffix_location = SourceLocation{};
     let const *suffix_location_pointer =
         get_location_for(suffix, suffix_location);
+
     return m_context.apply_parameter_expansion(
         rewritten.view(), suffix_location_pointer, target_name.length,
         m_should_expand_process_substitution, m_quoting);
@@ -1702,6 +1765,7 @@ fn EvalContext::ParameterExpander::expand_element_length(StringView name,
   let subscript_location = SourceLocation{};
   let const element = m_context.apply_array_subscript(
       array_name, subscript, get_location_for(subscript, subscript_location));
+
   return String::from(get_character_count(m_context, element),
                       m_context.scratch_allocator());
 }
@@ -1731,6 +1795,7 @@ fn EvalContext::ParameterExpander::expand_length() throws -> String
                         m_context.scratch_allocator());
   let const value = m_context.get_variable_value(name);
   if (!value.has_value()) m_context.report_unset_reference(name);
+
   return String::from(value.has_value() ? get_character_count(m_context, *value)
                                         : 0,
                       m_context.scratch_allocator());
@@ -1785,15 +1850,18 @@ fn EvalContext::ParameterExpander::expand_element_test(
   switch (after) {
   case '-':
     if (should_treat_as_unset) return expand_word(word, m_quoting);
+
     return value;
   case '+':
     if (should_treat_as_unset) return String{m_context.scratch_allocator()};
+
     return expand_word(word, m_quoting);
   case '=': {
     if (!should_treat_as_unset) return value;
     let assigned = expand_word(word, m_quoting);
     m_context.assign_array_element(m_name, subscript, assigned.view(),
                                    assignment_update_mode::Replace);
+
     return assigned;
   }
   case '?':
@@ -1804,6 +1872,7 @@ fn EvalContext::ParameterExpander::expand_element_test(
       throw_script_fatal(m_name + "[" + subscript + "]: " +
                          expand_word(word, parameter_word_quoting::Unquoted));
     }
+
     return value;
   default: break;
   }
@@ -1821,6 +1890,7 @@ fn EvalContext::ParameterExpander::expand_element_operator(
   if (is_colon && !is_test_form) {
     let const substring_body = modifier.substring(1);
     let substring_location = SourceLocation{};
+
     return m_context.apply_substring_to_value(
         m_context.apply_array_subscript(m_name, subscript, subscript_location)
             .view(),
@@ -2000,9 +2070,11 @@ fn EvalContext::ParameterExpander::expand_list_operator(
 
     let modified = ArrayList<String>{heap_allocator()};
     modified.reserve(values.count());
+
     for (let const &value : values)
       modified.push(m_context.apply_value_modifier(value.view(), modifier,
                                                    modifier_location_pointer));
+
     if (is_operand_quoted_null(modified, is_star))
       return String{m_context.scratch_allocator()};
 
@@ -2143,6 +2215,7 @@ fn EvalContext::ParameterExpander::expand_list_transform(
     if (values.is_empty()) return out;
 
     out += "set --";
+
     for (let const &value : values) {
       out += ' ';
       utils::append_shell_quoted(out, value.view(),
@@ -2184,12 +2257,14 @@ fn EvalContext::ParameterExpander::expand_list_transform(
     if (op == 'K') {
       let const is_utf8_locale =
           m_context.get_glob_charset() == glob_charset::Utf8;
+
       for (usize i = 0; i < pair_count; i++) {
         if (i > 0) out += ' ';
         append_declare_key(out, keys[i].view(), is_utf8_locale);
         out += ' ';
         append_declare_value(out, values[i].view(), is_utf8_locale);
       }
+
       if (pair_count > 0 && m_context.is_associative_array(m_name)) {
         out += ' ';
       }
@@ -2198,12 +2273,14 @@ fn EvalContext::ParameterExpander::expand_list_transform(
     }
 
     transformed.reserve(pair_count * 2);
+
     for (usize i = 0; i < pair_count; i++) {
       transformed.push(String{heap_allocator(), keys[i].view()});
       transformed.push(String{heap_allocator(), values[i].view()});
     }
   } else {
     transformed.reserve(values.count());
+
     for (let const &value : values)
       transformed.push(m_context.apply_parameter_transform_to_value(
           value.view(), op, m_name));
@@ -2232,6 +2309,7 @@ fn EvalContext::ParameterExpander::expand_substring_form() throws -> String
 {
   let const substring_body = m_rest.substring(1);
   let substring_location = SourceLocation{};
+
   return m_context.apply_substring_expansion(
       m_name, substring_body,
       get_location_for(substring_body, substring_location));
@@ -2256,6 +2334,7 @@ fn EvalContext::ParameterExpander::expand_leading_form() throws -> Maybe<String>
   switch (m_rest[0]) {
   case '/': {
     let rest_location = SourceLocation{};
+
     return m_context.apply_pattern_replacement(
         m_name, m_rest, get_location_for(m_rest, rest_location));
   }
@@ -2263,6 +2342,7 @@ fn EvalContext::ParameterExpander::expand_leading_form() throws -> Maybe<String>
   case ',':
   case '~': {
     let rest_location = SourceLocation{};
+
     return m_context.apply_case_modification(
         m_name, m_rest, get_location_for(m_rest, rest_location));
   }
@@ -2290,15 +2370,19 @@ fn EvalContext::ParameterExpander::expand_test_operator(
   switch (op) {
   case '-':
     if (should_treat_as_unset) return expand_word(word, m_quoting);
+
     return take_value(current);
   case '=':
     if (should_treat_as_unset) return assign_word(word);
+
     return take_value(current);
   case '+':
     if (should_treat_as_unset) return String{m_context.scratch_allocator()};
+
     return expand_word(word, m_quoting);
   default:
     if (should_treat_as_unset) raise_unset_error(word);
+
     return take_value(current);
   }
 }
@@ -2307,6 +2391,7 @@ fn EvalContext::ParameterExpander::take_value(Maybe<String> &current) wontthrow
     -> String
 {
   ASSERT(current.has_value());
+
   return steal(*current);
 }
 
@@ -2325,6 +2410,7 @@ fn EvalContext::ParameterExpander::assign_word(StringView word) throws -> String
   }
 
   m_context.set_shell_variable(m_name, assigned);
+
   return assigned;
 }
 
@@ -2343,6 +2429,7 @@ wontreturn fn EvalContext::ParameterExpander::raise_bad_substitution(
   let const do_mark = [&](ErrorBase &error) throws {
     if (should_end_script) {
       error.set_script_fatal();
+
       return;
     }
 
@@ -2483,6 +2570,7 @@ fn EvalContext::ParameterExpander::expand_trim_operator(
   if (!current.has_value()) m_context.report_unset_reference(m_name);
 
   let const current_view = current.has_value() ? current->view() : StringView{};
+
   return trim_value_with_modifier(m_context, current_view, word, op, is_doubled,
                                   get_location_for(word, word_location));
 }
@@ -2653,6 +2741,7 @@ fn find_substring_length_separator(StringView body) wontthrow -> usize
 {
   usize paren_depth = 0;
   usize question_depth = 0;
+
   for (usize i = 0; i < body.length; i++) {
     let const character = body[i];
     if (character == '(') {
@@ -2671,6 +2760,7 @@ fn find_substring_length_separator(StringView body) wontthrow -> usize
       }
     }
   }
+
   return body.length;
 }
 
@@ -2692,6 +2782,7 @@ fn EvalContext::apply_substring_expansion(
 {
   let const current = get_variable_value_checked(name);
   let const current_view = current.has_value() ? current->view() : StringView{};
+
   return apply_substring_to_value(current_view, body, source_location);
 }
 
@@ -2813,6 +2904,7 @@ fn EvalContext::compute_array_slice_bounds(
   let const subscripts = collect_array_subscripts(name);
   let const do_index_at = [&subscripts](usize position) throws -> i64 {
     let const parsed = subscripts[position].to<i64>();
+
     return parsed.is_error() ? 0 : parsed.value();
   };
   let const last_index = do_index_at(subscripts.count() - 1);
@@ -2824,6 +2916,7 @@ fn EvalContext::compute_array_slice_bounds(
 
   do_check_length();
   i64 start = 0;
+
   while (start < element_count &&
          do_index_at(static_cast<usize>(start)) < offset)
   {
@@ -2850,6 +2943,7 @@ fn EvalContext::join_list_slice(substring_bounds bounds,
       is_star && !ifs.is_empty() ? first_field_separator() : StringView{" "};
 
   let joined = String{scratch_allocator()};
+
   for (i64 index = bounds.start; index < bounds.end; index++) {
     if (index > bounds.start && has_separator) {
       joined.append(separator);
@@ -2866,6 +2960,7 @@ fn EvalContext::join_list_slice(substring_bounds bounds,
 static fn find_replacement_separator(StringView body) wontthrow -> usize
 {
   char quote = 0;
+
   for (usize i = 0; i < body.length; i++) {
     let const character = body[i];
     if (quote == '\'') {
@@ -2886,6 +2981,7 @@ static fn find_replacement_separator(StringView body) wontthrow -> usize
     }
     if (character == '/') return i;
   }
+
   return body.length;
 }
 
@@ -2900,6 +2996,7 @@ pure static fn longest_possible_pattern_match(StringView pattern,
     return index < pattern_active.count() && pattern_active[index];
   };
   usize length = 0;
+
   for (usize i = 0; i < pattern.length; i++) {
     let const byte = pattern[i];
     if (!do_is_active(i)) {
@@ -2930,6 +3027,7 @@ pure static fn longest_possible_pattern_match(StringView pattern,
       if (close < pattern.length && pattern[close] == ']') {
         close++;
       }
+
       while (close < pattern.length && pattern[close] != ']') {
         if (pattern[close] == '[' && close + 1 < pattern.length &&
             (pattern[close + 1] == ':' || pattern[close + 1] == '.' ||
@@ -2939,6 +3037,7 @@ pure static fn longest_possible_pattern_match(StringView pattern,
         }
         close++;
       }
+
       if (close < pattern.length) {
         length += character_width;
         i = close;
@@ -2964,6 +3063,7 @@ longest_pattern_match_at(StringView pattern, const Bitset &pattern_active,
   if (longest_possible.has_value() && start + *longest_possible < first_end) {
     first_end = start + *longest_possible;
   }
+
   for (usize end = first_end; end >= start; end--) {
     if ((!is_utf8 || !splits_character(value, end, charset)) &&
         utils::glob_matches(pattern,
@@ -2974,6 +3074,7 @@ longest_pattern_match_at(StringView pattern, const Bitset &pattern_active,
     }
     if (end == start) break;
   }
+
   return None;
 }
 
@@ -2983,6 +3084,7 @@ fn EvalContext::apply_pattern_replacement(
 {
   let const current = get_variable_value_checked(name);
   let const current_view = current.has_value() ? current->view() : StringView{};
+
   return pattern_replace_value(current_view, spec, source_location);
 }
 
@@ -2993,12 +3095,14 @@ static fn append_pattern_replacement(String &out, StringView replacement,
 {
   if (!is_patsub_enabled) {
     out.append(replacement);
+
     return;
   }
 
   let const do_is_active = [&](usize index) wontthrow -> bool {
     return index < active.count() && active[index];
   };
+
   for (usize i = 0; i < replacement.length; i++) {
     if (!do_is_active(i)) {
       out.push(replacement[i]);
@@ -3093,6 +3197,7 @@ fn EvalContext::pattern_replace_value(
     } else {
       out.append(value);
     }
+
     return out;
   }
 
@@ -3104,10 +3209,13 @@ fn EvalContext::pattern_replace_value(
       {
         out.append(value.substring_of_length(0, start));
         do_append_replacement(value.substring(start));
+
         return out;
       }
     }
+
     out.append(value);
+
     return out;
   }
 
@@ -3117,6 +3225,7 @@ fn EvalContext::pattern_replace_value(
     {
       do_append_replacement(value.substring_of_length(0, *matched));
     }
+
     return out;
   }
 
@@ -3124,6 +3233,7 @@ fn EvalContext::pattern_replace_value(
       pattern.view(), pattern_active, extglob, charset);
   bool has_replaced = false;
   usize i = 0;
+
   while (i < value.length) {
     Maybe<usize> matched;
     if (!has_replaced || should_replace_all) {
@@ -3149,12 +3259,14 @@ fn EvalContext::pattern_replace_value(
       }
       if (!should_replace_all) {
         out.append(value.substring(i));
+
         return out;
       }
     } else {
       do_copy_character();
     }
   }
+
   return out;
 }
 
@@ -3190,6 +3302,7 @@ fn EvalContext::get_declaration_fields(StringView name) throws
 
     fields.push(String{heap_allocator(), "set"});
     fields.push(String{heap_allocator(), "--"});
+
     for (let const &value : variable_store().positional_params()) {
       let quoted = String{heap_allocator()};
       utils::append_shell_quoted(quoted, value.view(),
@@ -3207,6 +3320,7 @@ fn EvalContext::get_declaration_fields(StringView name) throws
   {
     fields.push(
         String{heap_allocator(), apply_parameter_transform(name, 'A').view()});
+
     return fields;
   }
 
@@ -3219,6 +3333,7 @@ fn EvalContext::get_declaration_fields(StringView name) throws
 
   let const view = declaration.view();
   let cursor = usize{0};
+
   for (usize field_index = 0; field_index < 2; field_index++) {
     let const space = view.substring(cursor).find_character(' ');
     if (!space.has_value() || !view.starts_with("declare ")) {
@@ -3229,6 +3344,7 @@ fn EvalContext::get_declaration_fields(StringView name) throws
         String{heap_allocator(), view.substring_of_length(cursor, *space)});
     cursor += *space + 1;
   }
+
   fields.push(String{heap_allocator(), view.substring(cursor)});
 
   return fields;
@@ -3249,6 +3365,7 @@ fn EvalContext::apply_parameter_transform_to_value(StringView text, char op,
   case 'k':
     utils::append_shell_quoted(
         out, text, get_glob_charset_for(text) == glob_charset::Utf8);
+
     return out;
   case 'P': return toiletline::expand_prompt_template(text, *this);
   case 'A': {
@@ -3273,6 +3390,7 @@ fn EvalContext::apply_parameter_transform_to_value(StringView text, char op,
     out += '=';
     utils::append_shell_quoted(
         out, text, get_glob_charset_for(text) == glob_charset::Utf8);
+
     return out;
   }
   case 'E': utils::decode_ansi_c_escapes(out, text); return out;
@@ -3291,6 +3409,7 @@ fn EvalContext::apply_parameter_transform_to_value(StringView text, char op,
     if (is_integer_variable(attribute_name)) out.push('i');
     if (is_readonly(attribute_name)) out.push('r');
     if (is_exported(attribute_name)) out.push('x');
+
     return out;
   }
   default: return expand_variable(name);
@@ -3303,6 +3422,7 @@ fn EvalContext::apply_case_modification(
 {
   let const current = get_variable_value_checked(name);
   let const current_view = current.has_value() ? current->view() : StringView{};
+
   return apply_case_modification_to_value(current_view, spec, source_location);
 }
 
@@ -3338,6 +3458,7 @@ fn EvalContext::apply_case_modification_to_value(
   let const charset = get_glob_charset_for(value);
   let out = String{scratch_allocator()};
   out.reserve(value.length);
+
   for (usize i = 0; i < value.length;) {
     let const step = utils::charset_character_length(value, i, charset);
     let const is_affected = should_modify_all || i == 0;
@@ -3385,6 +3506,7 @@ fn EvalContext::apply_case_modification_to_value(
     out.push(character);
     i += step;
   }
+
   return out;
 }
 
@@ -3402,11 +3524,13 @@ fn EvalContext::apply_value_modifier(
     let const is_doubled = modifier.length > 1 && modifier[1] == op;
     let const pattern_word = modifier.substring(is_doubled ? 2 : 1);
     let pattern_location = SourceLocation{};
+
     return trim_value_with_modifier(
         *this, value, pattern_word, op, is_doubled,
         source_location_for_subview(source_location, modifier, pattern_word,
                                     pattern_location));
   }
+
   return String{scratch_allocator(), value};
 }
 
@@ -3441,12 +3565,14 @@ fn EvalContext::trim_positional_fields(
   let fields = ArrayList<String>{scratch_allocator()};
   if (is_star && is_quoted) {
     let joined = String{scratch_allocator()};
+
     for (usize i = 0; i < params.count(); i++) {
       if (i > 0 && !ifs.is_empty()) {
         joined.append(first_field_separator());
       }
       joined.append(params[i].view());
     }
+
     if (!params.is_empty()) fields.push(steal(joined));
   } else {
     for (let const &param : params)
@@ -3475,6 +3601,7 @@ fn EvalContext::trim_positional_fields(
     if (is_doubled && do_matches(fields[0].view())) {
       fields.truncate(1);
       fields[0].clear();
+
       return fields;
     }
     fields[0] = trim_matching(*this, scratch_allocator(), fields[0].view(),
@@ -3496,10 +3623,12 @@ fn EvalContext::trim_positional_fields(
     if (trimmed.count() < fields[index].count()) {
       fields.truncate(index + 1);
       fields[index] = steal(trimmed);
+
       return fields;
     }
     if (is_doubled && is_empty_match) {
       fields.truncate(index + 1);
+
       return fields;
     }
   }

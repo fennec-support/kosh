@@ -29,6 +29,7 @@ fn True::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   unused(cxt);
 
   LOG(All, "true returning a success status");
+
   return 0;
 }
 

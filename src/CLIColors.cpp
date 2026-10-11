@@ -46,6 +46,7 @@ static fn make_shell_highlight_theme() wontthrow -> highlight_theme
   theme.set_style(highlight_role::glob, ansi::YELLOW);
   theme.set_style(highlight_role::matching_bracket,
                   ansi::BOLD_BLACK_ON_BRIGHT_BLACK);
+
   return theme;
 }
 
@@ -56,6 +57,7 @@ static fn make_noninteractive_highlight_theme() wontthrow -> highlight_theme
   theme.set_style(highlight_role::invalid_syntax, ansi::BOLD_BRIGHT_RED);
   theme.set_style(highlight_role::unknown_command, ansi::BRIGHT_RED);
   theme.set_style(highlight_role::invalid_path, ansi::BRIGHT_RED);
+
   return theme;
 }
 
@@ -68,6 +70,7 @@ static fn make_printed_source_highlight_theme() wontthrow -> highlight_theme
                   theme.style_for(highlight_role::resolved_command));
   theme.set_style(highlight_role::partial_command,
                   theme.style_for(highlight_role::resolved_command));
+
   return theme;
 }
 
@@ -75,6 +78,7 @@ static fn make_diagnostic_highlight_theme() wontthrow -> highlight_theme
 {
   let theme = make_printed_source_highlight_theme();
   theme.set_style(highlight_role::partial_path, ansi::BRIGHT_RED);
+
   return theme;
 }
 
@@ -92,6 +96,7 @@ static fn color_is_suppressed_by_environment() throws -> bool
       no_color.has_value() && !no_color->is_empty())
   {
     LOG(Info, "suppressing color because NO_COLOR is set");
+
     return true;
   }
 
@@ -99,6 +104,7 @@ static fn color_is_suppressed_by_environment() throws -> bool
       term.has_value() && term->view() == StringView{"dumb"})
   {
     LOG(Info, "suppressing color because TERM is dumb");
+
     return true;
   }
 

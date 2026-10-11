@@ -50,6 +50,7 @@ fn state_color(job::State state, jobs_color_mode color_mode) throws
   case job::State::Stopped: return colors::ansi::BOLD_YELLOW;
   case job::State::Done: return colors::ansi::DIM;
   }
+
   return StringView{};
 }
 
@@ -99,6 +100,7 @@ fn Jobs::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   }
 
   let out = String{cxt.scratch_allocator()};
+
   for (let index : selected) {
     job &job = jobs[index];
 
@@ -128,9 +130,11 @@ fn Jobs::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                         .color_reset = colors::ansi::RESET});
     out.push('\n');
   }
+
   ec.print_to_stdout(out);
 
   cxt.job_table_store().forget_done_jobs();
+
   return status;
 }
 

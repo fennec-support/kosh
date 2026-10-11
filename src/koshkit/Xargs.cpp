@@ -56,10 +56,12 @@ static fn parse_xargs_limit(const ExecContext &ec, EvalContext &cxt,
     report_soft_koshkit_util_error(
         ec, cxt, flag.value_location(), "xargs",
         "invalid " + String{name} + " '" + String{flag.value()} + "'", note);
+
     return false;
   }
 
   limit = static_cast<usize>(parsed.value());
+
   return true;
 }
 
@@ -89,6 +91,7 @@ public:
     case xargs_item_format::NullSeparated: return next_null_separated(allocator);
     case xargs_item_format::Lines: return next_line(allocator);
     }
+
     return None;
   }
 
@@ -108,6 +111,7 @@ private:
         throw Error{"read error: " + os::last_system_error_message()};
       if (*read_count == 0) {
         m_is_at_end = true;
+
         return None;
       }
       m_buffer.append(StringView{chunk, *read_count});
@@ -120,6 +124,7 @@ private:
   {
     let const byte = peek();
     if (byte.has_value()) m_position++;
+
     return byte;
   }
 
@@ -139,6 +144,7 @@ private:
     let value = String{allocator};
     let const item_line = m_line_number;
     char quote = '\0';
+
     loop
     {
       let const taken = take();
@@ -173,6 +179,7 @@ private:
       }
       value += byte;
     }
+
     if (quote != '\0') throw Error{"unmatched quote"};
 
     return xargs_item{steal(value), item_line};
@@ -183,6 +190,7 @@ private:
     if (!peek().has_value()) return None;
 
     let value = String{allocator};
+
     loop
     {
       let const byte = take();
@@ -203,6 +211,7 @@ private:
 
       let value = String{allocator};
       let const item_line = m_line_number;
+
       loop
       {
         let const byte = take();
@@ -216,6 +225,7 @@ private:
         }
         value += *byte;
       }
+
       if (!value.is_empty()) return xargs_item{steal(value), item_line};
     }
   }
@@ -235,9 +245,11 @@ static fn append_replaced(String &output, StringView source, StringView needle,
 {
   if (needle.is_empty()) {
     output += source;
+
     return;
   }
   usize position = 0;
+
   while (position + needle.length <= source.length) {
     if (source.substring_of_length(position, needle.length) == needle) {
       output += replacement;
@@ -246,6 +258,7 @@ static fn append_replaced(String &output, StringView source, StringView needle,
       output += source[position++];
     }
   }
+
   output += source.substring(position);
 }
 
@@ -253,10 +266,12 @@ static fn xargs_command_size(const ArrayList<String> &command) wontthrow
     -> usize
 {
   usize size = 0;
+
   for (let const &argument : command) {
     if (argument.length() > SIZE_MAX - size - 1) return SIZE_MAX;
     size += argument.length() + 1;
   }
+
   return size;
 }
 
@@ -265,10 +280,12 @@ static fn trace_xargs_command(const ExecContext &ec,
                               Allocator allocator) throws -> void
 {
   let output = String{allocator};
+
   for (usize index = 0; index < command.count(); index++) {
     if (index != 0) output += ' ';
     output += command[index].view();
   }
+
   output += '\n';
   ec.print_to_stderr(output);
 }
@@ -300,7 +317,7 @@ fn Xargs::execute(const ExecContext &ec, EvalContext &cxt,
       base_locations.push(operand_locations[index]);
     }
   }
-  let const base_size = xargs_command_size(base);
+  let const base_byte_count = xargs_command_size(base);
   usize maximum_arguments = SIZE_MAX;
   if (FLAG_XARGS_MAX_ARGUMENTS.is_set() &&
       !parse_xargs_limit(ec, cxt, FLAG_XARGS_MAX_ARGUMENTS, "argument count",
@@ -321,12 +338,12 @@ fn Xargs::execute(const ExecContext &ec, EvalContext &cxt,
     return 1;
   }
 
-  usize maximum_size = 131072;
+  usize maximum_byte_count = 131072;
   if (FLAG_XARGS_MAX_SIZE.is_set() &&
       !parse_xargs_limit(ec, cxt, FLAG_XARGS_MAX_SIZE, "byte count",
                          "use a positive decimal integer for the maximum "
                          "command size in bytes",
-                         maximum_size))
+                         maximum_byte_count))
   {
     return 1;
   }
@@ -338,6 +355,7 @@ fn Xargs::execute(const ExecContext &ec, EvalContext &cxt,
   let const do_read_item = [&](Allocator allocator) throws -> Maybe<xargs_item> {
     if (has_deferred_item) {
       has_deferred_item = false;
+
       return xargs_item{String{allocator, deferred_value.view()},
                         deferred_line_number};
     }
@@ -348,8 +366,10 @@ fn Xargs::execute(const ExecContext &ec, EvalContext &cxt,
         item->value.view() == FLAG_XARGS_EOF.value())
     {
       has_reached_eof_item = true;
+
       return None;
     }
+
     return item;
   };
   let const do_defer_item = [&](const xargs_item &item) throws -> void {
@@ -362,6 +382,7 @@ fn Xargs::execute(const ExecContext &ec, EvalContext &cxt,
   let &scratch_arena = cxt.expansion_store().scratch_arena();
   bool has_run_command = false;
   i32 status = 0;
+
   loop
   {
     let const batch_mark = scratch_arena.mark();
@@ -381,8 +402,9 @@ fn Xargs::execute(const ExecContext &ec, EvalContext &cxt,
       }
     } else {
       usize first_line = 0;
-      let command_size = base_size;
+      let command_byte_count = base_byte_count;
       usize added_count = 0;
+
       loop
       {
         if (added_count != 0 && !has_deferred_item &&
@@ -403,13 +425,13 @@ fn Xargs::execute(const ExecContext &ec, EvalContext &cxt,
           break;
         }
 
-        let const argument_size = item->value.length();
-        let const candidate_size =
-            command_size == SIZE_MAX ||
-                    argument_size > SIZE_MAX - command_size - 1
+        let const argument_byte_count = item->value.length();
+        let const candidate_byte_count =
+            command_byte_count == SIZE_MAX ||
+                    argument_byte_count > SIZE_MAX - command_byte_count - 1
                 ? SIZE_MAX
-                : command_size + argument_size + 1;
-        if (candidate_size > maximum_size) {
+                : command_byte_count + argument_byte_count + 1;
+        if (candidate_byte_count > maximum_byte_count) {
           if (added_count != 0) {
             do_defer_item(*item);
             break;
@@ -423,7 +445,7 @@ fn Xargs::execute(const ExecContext &ec, EvalContext &cxt,
         }
         command.push(item->value.clone());
         command_locations.push(ec.source_location());
-        command_size = candidate_size;
+        command_byte_count = candidate_byte_count;
         added_count++;
       }
 
@@ -449,6 +471,7 @@ fn Xargs::execute(const ExecContext &ec, EvalContext &cxt,
     } catch (const CommandResolutionErrorWithLocation &resolution_error) {
       show_message(resolution_error.to_string(
           cxt.source_store().current_source_view(), &cxt));
+
       return static_cast<i32>(resolution_error.command_status());
     }
 
@@ -475,6 +498,7 @@ fn Xargs::execute(const ExecContext &ec, EvalContext &cxt,
       report_soft_koshkit_util_error(
           ec, cxt, args[0].view(),
           "a command exited with status 255; stopping");
+
       return 124;
     }
     if (command_status == 126 || command_status == 127) {
@@ -483,6 +507,7 @@ fn Xargs::execute(const ExecContext &ec, EvalContext &cxt,
     if (command_status > 128) return 125;
     if (command_status != 0) status = 123;
   }
+
   return status;
 }
 

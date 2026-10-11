@@ -27,6 +27,7 @@ static fn docker_instruction(StringView line, usize &content_position) wontthrow
     -> docker_instruction_kind
 {
   usize position = 0;
+
   while (position < line.length &&
          (line[position] == ' ' || line[position] == '\t'))
   {
@@ -34,11 +35,13 @@ static fn docker_instruction(StringView line, usize &content_position) wontthrow
   }
 
   let const instruction_start = position;
+
   while (position < line.length && line[position] != ' ' &&
          line[position] != '\t')
   {
     position++;
   }
+
   let const instruction =
       line.substring_of_length(instruction_start, position - instruction_start);
   let kind = docker_instruction_kind::None;
@@ -79,6 +82,7 @@ static fn docker_instruction(StringView line, usize &content_position) wontthrow
   {
     position++;
   }
+
   content_position = position;
 
   return kind;
@@ -109,6 +113,7 @@ static fn read_docker_heredoc(StringView command) wontthrow
   }
 
   let const delimiter_start = position;
+
   while (position < command.length &&
          lexer::is_variable_name(command[position]))
   {
@@ -141,6 +146,7 @@ fn parse_dockerfile_format(const parser_format_input &input,
 {
   mimic_mood mood = mimic_mood::Posix;
   usize position = 0;
+
   while (position < input.source.length) {
     let const line_start = position;
     let const line = input.source.next_line(position);
@@ -184,6 +190,7 @@ fn parse_dockerfile_format(const parser_format_input &input,
     if (heredoc.has_value()) {
       let const body_start = position;
       usize body_end = position;
+
       while (position < input.source.length) {
         let const body_line_start = position;
         let body_line = input.source.next_line(position);
@@ -204,6 +211,7 @@ fn parse_dockerfile_format(const parser_format_input &input,
 
     usize shell_end = line_start + line.length;
     let is_continued = !line.is_empty() && line[line.length - 1] == '\\';
+
     while (is_continued && position < input.source.length) {
       let const continuation_start = position;
       let const continuation = input.source.next_line(position);
@@ -211,6 +219,7 @@ fn parse_dockerfile_format(const parser_format_input &input,
       is_continued = !continuation.is_empty() &&
                      continuation[continuation.length - 1] == '\\';
     }
+
     let const fragment_count = document.fragments.count();
     parser_format_add_fragment(document, input.source,
                                line_start + content_position, shell_end, 4,

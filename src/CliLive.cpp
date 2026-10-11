@@ -52,6 +52,7 @@ pure fn get_hint_prefix(StringView hints, usize entry_count) wontthrow
   if (entry_count == 0) return StringView{};
 
   usize separator_count = 0;
+
   for (usize index = 0; index < hints.length; index++) {
     if (hints[index] != '|') continue;
 
@@ -66,6 +67,7 @@ pure fn get_hint_prefix(StringView hints, usize entry_count) wontthrow
 pure fn get_hint_entry_count(StringView hints) wontthrow -> usize
 {
   usize entry_count = 1;
+
   for (usize index = 0; index < hints.length; index++) {
     if (hints[index] == '|') entry_count++;
   }
@@ -78,6 +80,7 @@ pure fn get_hints_length(StringView hints) wontthrow -> usize
   usize length = 0;
   usize entry_count = 0;
   usize position = 0;
+
   while (position <= hints.length) {
     let const rest = hints.substring(position);
     let const separator = rest.find_character('|');
@@ -119,6 +122,7 @@ fn append_hints(String &output, StringView hints, bool should_style) throws
     -> void
 {
   usize position = 0;
+
   while (position <= hints.length) {
     let const rest = hints.substring(position);
     let const separator = rest.find_character('|');
@@ -198,6 +202,7 @@ pure fn LiveView::get_wait_nanoseconds(
   let const until_sample = m_sample_interval_nanoseconds > sample_elapsed
                                ? m_sample_interval_nanoseconds - sample_elapsed
                                : 0;
+
   return until_sample < wait_nanoseconds ? until_sample : wait_nanoseconds;
 }
 
@@ -210,6 +215,7 @@ fn live_report_options::parse_window_seconds(
   if (seconds <= 0.0) {
     report_soft_koshkit_util_error(ec, cxt, location, utility_name, title,
                                    note);
+
     return None;
   }
 
@@ -227,6 +233,7 @@ fn live_report_options::parse_with_window(
   options.window_seconds = window_seconds;
   if (!live_flag.has_value()) {
     options.interval_seconds = DEFAULT_LIVE_INTERVAL_SECONDS;
+
     return options;
   }
 
@@ -236,6 +243,7 @@ fn live_report_options::parse_with_window(
   if (!interval.has_value()) return None;
 
   options.interval_seconds = *interval;
+
   return options;
 }
 
@@ -259,6 +267,7 @@ fn live_report_options::parse(const ExecContext &ec, EvalContext &cxt,
   if (!window.has_value()) return None;
 
   options->window_seconds = *window;
+
   return options;
 }
 
@@ -326,6 +335,7 @@ fn LiveView::wait_for_input(u64 wait_nanoseconds,
   }
 
   usize index = 0;
+
   while (index < *read_count && input.key_count < live_view_input::CAPACITY) {
     let const byte = buffer[index];
     index++;
@@ -345,6 +355,7 @@ fn LiveView::wait_for_input(u64 wait_nanoseconds,
 
     index++;
     char parameter = 0;
+
     while (index < *read_count && buffer[index] >= 0x30 &&
            buffer[index] <= 0x3f)
     {
@@ -413,6 +424,7 @@ fn LiveView::append_frame_start(String &frame,
   let const width = static_cast<usize>(dimensions.columns);
   header_fit fit{};
   fit.hint_entry_count = get_hint_entry_count(pieces.hints);
+
   while (get_header_length(pieces, fit) > width) {
     if (fit.has_labels) {
       fit.has_labels = false;
@@ -426,6 +438,7 @@ fn LiveView::append_frame_start(String &frame,
       break;
     }
   }
+
   let const shown_hints = get_hint_prefix(pieces.hints, fit.hint_entry_count);
 
   if (should_style) frame += BAR_BASE_STYLE;
@@ -457,6 +470,7 @@ fn LiveView::append_frame_start(String &frame,
     if (fit.hint_entry_count != 0) {
       let const hints_length = get_hints_length(shown_hints);
       let const gap_length = width - used_length - hints_length - 1;
+
       for (usize index = 0; index < gap_length; index++)
         frame += ' ';
 
@@ -468,6 +482,7 @@ fn LiveView::append_frame_start(String &frame,
   if (should_style) {
     for (usize index = used_length; index < width; index++)
       frame += ' ';
+
     frame += colors::ansi::RESET;
   }
   frame += "\n\n";
@@ -480,6 +495,7 @@ fn LiveView::write_frame(String &frame,
   if (m_is_terminal && dimensions.rows > 1) {
     usize line_count = 0;
     usize clip_length = frame.length();
+
     for (usize index = 0; index < frame.length(); index++) {
       if (frame[index] != '\n') continue;
 
@@ -489,6 +505,7 @@ fn LiveView::write_frame(String &frame,
         break;
       }
     }
+
     frame.truncate(clip_length);
   }
 

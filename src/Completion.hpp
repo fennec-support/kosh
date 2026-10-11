@@ -44,6 +44,7 @@ inline pure fn parse_tab_selector_name(StringView name) throws
           {SSK("plain"),       tab_selector_mode::Plain      },
   };
   static constexpr StaticStringMap TAB_SELECTORS{TAB_SELECTOR_ENTRIES};
+
   return TAB_SELECTORS.find(name);
 }
 
@@ -55,6 +56,7 @@ inline pure fn tab_selector_name(tab_selector_mode selector) wontthrow
   case tab_selector_mode::External: return "external";
   case tab_selector_mode::Plain: return "plain";
   }
+
   return "interactive";
 }
 

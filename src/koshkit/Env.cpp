@@ -81,6 +81,7 @@ fn Env::execute(const ExecContext &ec, EvalContext &cxt,
 
   if (FLAG_ENV_IGNORE.is_enabled()) {
     let const names = os::environment_names();
+
     for (let const &name : names)
       do_save_and_unset(name.view());
   }
@@ -90,6 +91,7 @@ fn Env::execute(const ExecContext &ec, EvalContext &cxt,
     do_save_and_unset(FLAG_ENV_UNSET.get(unset_index));
 
   usize first_command = 0;
+
   while (first_command < operands.count() &&
          is_assignment(operands[first_command].view()))
   {
@@ -110,11 +112,13 @@ fn Env::execute(const ExecContext &ec, EvalContext &cxt,
 
   if (first_command >= operands.count()) {
     print_environment(ec, cxt);
+
     return 0;
   }
 
   let env_args = ArrayList<String>{cxt.scratch_allocator()};
   let env_arg_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};
+
   for (usize i = first_command; i < operands.count(); i++) {
     env_args.push_managed(operands[i]);
     env_arg_locations.push(operand_locations[i]);
@@ -135,6 +139,7 @@ fn Env::execute(const ExecContext &ec, EvalContext &cxt,
   } catch (const CommandResolutionErrorWithLocation &resolution_error) {
     show_message(resolution_error.to_string(
         cxt.source_store().current_source_view(), &cxt));
+
     return static_cast<i32>(resolution_error.command_status());
   }
 

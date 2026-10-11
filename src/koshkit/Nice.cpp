@@ -43,20 +43,25 @@ fn Nice::execute(const ExecContext &ec, EvalContext &cxt,
           FLAG_NICE_INCREMENT.value_location(),
           "invalid increment '" + String{FLAG_NICE_INCREMENT.value()} + "'",
           "use a decimal integer from -2147483648 through 2147483647");
+
       return 2;
     }
     increment = parsed.value();
   }
 
   let command = ArrayList<String>{cxt.scratch_allocator()};
+
   for (let const &operand : operands)
     command.push(operand.clone());
+
   cxt.prepare_child_environment();
   let const result = os::run_nice(command, static_cast<i32>(increment));
   if (!result.has_value()) {
     KOSHKIT_REPORT_PATH_ERROR_AT(operand_locations[0], "run", operands[0]);
+
     return 126;
   }
+
   return *result;
 }
 

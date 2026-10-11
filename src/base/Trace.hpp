@@ -39,6 +39,7 @@ constexpr fn verbosity_to_string(verbosity verbosity) -> const char *
   case verbosity::Debug: return "DBG";
   case verbosity::All: return "ALL";
   }
+
   return "???";
 }
 
@@ -63,6 +64,7 @@ inline fn value_to_log_string(char value) -> String
 {
   String out{heap_allocator()};
   out.push(value);
+
   return out;
 }
 
@@ -79,6 +81,7 @@ fn value_to_log_string(T value) -> String
 {
   char buffer[64];
   std::snprintf(buffer, sizeof(buffer), "%g", static_cast<double>(value));
+
   return String{buffer};
 }
 
@@ -89,6 +92,7 @@ fn value_to_log_string(T value) -> String
   char buffer[32];
   std::snprintf(buffer, sizeof(buffer), "%p",
                 static_cast<const opaque *>(value));
+
   return String{buffer};
 }
 
@@ -109,17 +113,21 @@ fn format_named_values(StringView names, Args &&...args) -> String
       names = StringView{};
     }
     usize start = 0;
+
     while (start < name.length &&
            (name.data[start] == ' ' || name.data[start] == '\t'))
     {
       start++;
     }
+
     usize stop = name.length;
+
     while (stop > start &&
            (name.data[stop - 1] == ' ' || name.data[stop - 1] == '\t'))
     {
       stop--;
     }
+
     name = name.substring_of_length(start, stop - start);
 
     out.append(name);
@@ -129,6 +137,7 @@ fn format_named_values(StringView names, Args &&...args) -> String
   };
 
   (do_append_one(std::forward<Args>(args)), ...);
+
   return out;
 }
 

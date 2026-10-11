@@ -71,6 +71,7 @@ fn Logger::execute(const ExecContext &ec, EvalContext &cxt,
     if (!content.has_value()) {
       KOSHKIT_REPORT_PATH_ERROR_AT(FLAG_LOGGER_FILE.value_location(), "read",
                                    FLAG_LOGGER_FILE.value());
+
       return 1;
     }
     message = content->clone();
@@ -84,9 +85,11 @@ fn Logger::execute(const ExecContext &ec, EvalContext &cxt,
       message += operands[index].view();
     }
   }
+
   while (!message.is_empty() && message.back() == '\n') {
     message.pop_back();
   }
+
   let const tag =
       FLAG_LOGGER_TAG.is_set() ? FLAG_LOGGER_TAG.value() : StringView{"logger"};
   let const priority = FLAG_LOGGER_PRIORITY.is_set()
@@ -96,6 +99,7 @@ fn Logger::execute(const ExecContext &ec, EvalContext &cxt,
     report_soft_koshkit_util_error(
         ec, cxt, FLAG_LOGGER_PRIORITY.value_location(), args[0].view(),
         "invalid priority '" + String{priority} + "'");
+
     return 1;
   }
   if (!os::write_system_log({tag, priority, message.view(),
@@ -108,6 +112,7 @@ fn Logger::execute(const ExecContext &ec, EvalContext &cxt,
     report_soft_koshkit_util_error(ec, cxt, location, args[0].view(),
                                    "cannot write to the system log: " +
                                        os::last_system_error_message());
+
     return 1;
   }
 

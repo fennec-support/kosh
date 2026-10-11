@@ -30,11 +30,13 @@ fn Link::execute(const ExecContext &ec, EvalContext &cxt,
   if (operands.count() > 2) {
     KOSHKIT_REPORT_ERROR_AT(operand_locations[2],
                             "extra operand '" + operands[2] + "'");
+
     return 1;
   }
 
   if (os::create_hard_link(operands[0].view(), operands[1].view())) return 0;
   KOSHKIT_REPORT_PATH_ERROR_AT(operand_locations[1], "create", operands[1]);
+
   return 1;
 }
 

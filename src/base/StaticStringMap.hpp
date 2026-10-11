@@ -71,10 +71,12 @@ public:
     for (usize i = 1; i < Count; i++) {
       let const moved = entries[i];
       usize slot = i;
+
       while (slot > 0 && moved.key < entries[slot - 1].key) {
         entries[slot] = entries[slot - 1];
         slot--;
       }
+
       entries[slot] = moved;
     }
   }
@@ -86,6 +88,7 @@ public:
 
     usize low = 0;
     usize high = Count;
+
     while (low < high) {
       let const middle = low + ((high - low) / 2);
       if (entries[middle].key < wanted)
@@ -99,6 +102,7 @@ public:
     {
       return entries[low].value;
     }
+
     return None;
   }
 };
@@ -124,10 +128,12 @@ public:
     for (usize i = 1; i < Count; i++) {
       let const moved = keys[i];
       usize slot = i;
+
       while (slot > 0 && moved < keys[slot - 1]) {
         keys[slot] = keys[slot - 1];
         slot--;
       }
+
       keys[slot] = moved;
     }
   }
@@ -139,6 +145,7 @@ public:
 
     usize low = 0;
     usize high = Count;
+
     while (low < high) {
       let const middle = low + ((high - low) / 2);
       if (keys[middle] < wanted)
@@ -152,6 +159,7 @@ public:
     {
       return low;
     }
+
     return None;
   }
 

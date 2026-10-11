@@ -42,6 +42,7 @@ fn Suspend::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                                   : ec.arg_location_at(1),
                               "Suspend takes no arguments",
                               "Run `suspend --help` for the accepted options");
+
     return 2;
   }
 
@@ -49,6 +50,7 @@ fn Suspend::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     report_soft_builtin_error(ec, cxt, ec.source_location(),
                               "Cannot suspend a login shell",
                               "Pass '-f' to force the suspension");
+
     return 1;
   }
 
@@ -57,6 +59,7 @@ fn Suspend::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     report_soft_builtin_error(ec, cxt, ec.source_location(),
                               "Unable to suspend the shell",
                               "This platform does not support SIGSTOP");
+
     return 1;
   }
 
@@ -66,11 +69,13 @@ fn Suspend::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     report_soft_builtin_error(ec, cxt, ec.source_location(),
                               "Unable to suspend the shell",
                               os::last_system_error_message());
+
     return 1;
   }
 
   LOG(All, "suspend stopped the shell pid %lld",
       static_cast<long long>(self_pid));
+
   return 0;
 }
 

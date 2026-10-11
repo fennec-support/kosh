@@ -44,6 +44,7 @@ cold fn ConditionalCommand::to_string() const throws -> String
 {
   let result = String{"ConditionalCommand"};
   append_ast_execution_flags(result);
+
   return result;
 }
 
@@ -58,6 +59,7 @@ cold static fn conditional_word_is_literal(const Token *token) wontthrow -> bool
     return false;
   }
   let const &word = static_cast<const tokens::WordToken *>(token)->word();
+
   for (let const &segment : word.segments)
     if (segment.kind != WordSegment::Kind::LiteralText &&
         segment.kind != WordSegment::Kind::UnquotedText &&
@@ -65,6 +67,7 @@ cold static fn conditional_word_is_literal(const Token *token) wontthrow -> bool
     {
       return false;
     }
+
   return true;
 }
 
@@ -74,10 +77,12 @@ cold static fn conditional_word_has_glob(const Token *token) wontthrow -> bool
     return false;
   }
   let const &word = static_cast<const tokens::WordToken *>(token)->word();
+
   for (let const &segment : word.segments)
     if (segment.has_live_glob_chars() && segment.has_glob_metacharacter()) {
       return true;
     }
+
   return false;
 }
 
@@ -90,6 +95,7 @@ cold static fn conditional_word_is_numeric_literal(const Token *token) throws
   if (!view.is_empty() && (view[0] == '-' || view[0] == '+')) {
     view = view.substring(1);
   }
+
   return !view.is_empty() && view.is_all_decimal_digits();
 }
 
@@ -212,6 +218,7 @@ fn ConditionalCommand::analyze(AnalysisContext &actx,
     analyze_token_substitutions(actx, element.word, is_unconditional);
 
   using Kind = conditional_element::Kind;
+
   for (usize i = 0; i < m_elements.count(); i++) {
     let const &element = m_elements[i];
     if (element.kind == Kind::Less || element.kind == Kind::Greater) {
@@ -374,6 +381,7 @@ fn ConditionalCommand::analyze(AnalysisContext &actx,
     {
       let const &word =
           static_cast<const tokens::WordToken *>(element.word)->word();
+
       for (let const &segment : word.segments)
         if (segment.kind == WordSegment::Kind::UnquotedText &&
             segment.text.view().find_character('=').has_value())
@@ -468,6 +476,7 @@ conditional_command_text(const ArrayList<conditional_element> &elements) throws
     -> String
 {
   let command_text = String{heap_allocator(), "[["};
+
   for (let const &element : elements) {
     command_text.push(' ');
     switch (element.kind) {
@@ -484,6 +493,7 @@ conditional_command_text(const ArrayList<conditional_element> &elements) throws
     }
   }
   command_text += " ]]";
+
   return command_text;
 }
 
@@ -538,6 +548,7 @@ fn ArithmeticCommand::can_evaluate_in_process_substitution(
 {
   unused(cxt);
   unused(active_functions);
+
   return !is_async() && !is_timed();
 }
 
@@ -550,6 +561,7 @@ cold fn ArithmeticCommand::to_ast_string(usize layer) const throws -> String
 {
   let label = to_string() + " \"" + m_expression + "\"";
   append_ast_execution_flags(label);
+
   return indent_for_layer(layer) + "[" + label + "]";
 }
 
@@ -559,6 +571,7 @@ static pure fn is_blank_clause(StringView text) wontthrow -> bool
     if (text[i] != ' ' && text[i] != '\t' && text[i] != '\n') {
       return false;
     }
+
   return true;
 }
 
@@ -566,6 +579,7 @@ static pure fn clause_without_leading_blanks(StringView clause) wontthrow
     -> StringView
 {
   usize start = 0;
+
   while (start < clause.length &&
          (clause[start] == ' ' || clause[start] == '\t'))
   {
@@ -736,6 +750,7 @@ cold fn CStyleForLoop::to_ast_string(usize layer) const throws -> String
   let label =
       to_string() + " \"" + m_init + ";" + m_condition + ";" + m_step + "\"";
   append_ast_execution_flags(label);
+
   return pad + "[" + label + "]\n" + pad + EXPRESSION_AST_INDENT +
          m_body->to_ast_string(layer + 1);
 }
@@ -751,6 +766,7 @@ fn CStyleForLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const
   if (is_fully_eliminated() && should_skip_condition_commands) {
     LOG(Debug, "running the fully eliminated c-style for as a no-op");
     cxt.publish_single_pipe_status(0);
+
     return {static_cast<i32>(set_and_return_exit_status(cxt, 0)), 0};
   }
 
@@ -821,6 +837,7 @@ fn CStyleForLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const
   };
 
   status_result result{};
+
   while (do_test_condition()) {
     result = m_body->evaluate_status(cxt);
     if (cxt.runtime_state().no_exec()) break;
@@ -844,10 +861,12 @@ fn CStyleForLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const
 
   if (cxt.control_flow_store().has_pending()) {
     result.status = cxt.execution_store().last_exit_status();
+
     return result;
   }
 
   cxt.execution_store().set_last_exit_status(result.status);
+
   return result;
 }
 
@@ -983,6 +1002,7 @@ cold fn Subshell::to_string() const throws -> String
 {
   let result = String{"Subshell"};
   append_ast_execution_flags(result);
+
   return result;
 }
 
@@ -991,6 +1011,7 @@ cold fn Subshell::to_ast_string(usize layer) const throws -> String
   ASSERT(m_body != nullptr);
 
   let const pad = indent_for_layer(layer);
+
   return pad + "[" + to_string() + "]\n" + pad + EXPRESSION_AST_INDENT +
          m_body->to_ast_string(layer + 1);
 }
@@ -1099,6 +1120,7 @@ fn Subshell::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws
     let const end_position =
         cxt.execution_store().pending_subshell_end_position();
     cxt.execution_store().pending_subshell_end_position() = 0;
+
     return end_position;
   }();
   let const is_terminal_in_forked_child =
@@ -1107,6 +1129,7 @@ fn Subshell::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws
     let const should_elide =
         cxt.execution_store().should_elide_pending_subshell_fork();
     cxt.execution_store().should_elide_pending_subshell_fork() = false;
+
     return should_elide || is_terminal_in_forked_child;
   }();
   let const end_position = pending_end_position != 0
@@ -1245,11 +1268,13 @@ fn Subshell::analyze(AnalysisContext &actx, bool is_unconditional) const throws
     let body = actx.source.substring_of_length(
         source_location().position + 1,
         end_position - source_location().position - 2);
+
     while (!body.is_empty() &&
            (body[0] == ' ' || body[0] == '\t' || body[0] == '\n'))
     {
       body = body.substring(1);
     }
+
     while (!body.is_empty() &&
            (body[body.length - 1] == ' ' || body[body.length - 1] == '\t' ||
             body[body.length - 1] == '\n'))
@@ -1330,6 +1355,7 @@ cold fn FunctionDefinition::to_string() const throws -> String
   result += StringView{m_name};
   result += "\"";
   append_ast_execution_flags(result);
+
   return result;
 }
 
@@ -1338,6 +1364,7 @@ cold fn FunctionDefinition::to_ast_string(usize layer) const throws -> String
   ASSERT(m_body != nullptr);
 
   let const pad = indent_for_layer(layer);
+
   return pad + "[" + to_string() + "]\n" + pad + EXPRESSION_AST_INDENT +
          m_body->to_ast_string(layer + 1);
 }
@@ -1460,6 +1487,7 @@ cold fn RedirectedCommand::to_string() const throws -> String
 {
   let result = String{"RedirectedCommand"};
   append_ast_execution_flags(result);
+
   return result;
 }
 
@@ -1468,6 +1496,7 @@ cold fn RedirectedCommand::to_ast_string(usize layer) const throws -> String
   ASSERT(m_child != nullptr);
 
   let const pad = indent_for_layer(layer);
+
   return pad + "[" + to_string() + "]\n" + pad + EXPRESSION_AST_INDENT +
          m_child->to_ast_string(layer + 1);
 }
@@ -1549,6 +1578,7 @@ fn RedirectedCommand::evaluate_redirected(EvalContext &cxt) const throws
     let const should_elide =
         cxt.execution_store().should_elide_pending_subshell_fork();
     cxt.execution_store().should_elide_pending_subshell_fork() = false;
+
     return should_elide;
   }();
 
@@ -1567,6 +1597,7 @@ fn RedirectedCommand::evaluate_redirected(EvalContext &cxt) const throws
   defer
   {
     koshka::flush();
+
     for (usize i = saved_descriptors.count(); i > 0; i--)
       os::restore_descriptor(saved_descriptors[i - 1]);
   };

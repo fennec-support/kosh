@@ -32,11 +32,13 @@ static pure fn saturate_signed_magnitude(u64 magnitude, bool is_negative,
     if (has_overflowed || magnitude > static_cast<u64>(INT64_MAX) + 1) {
       return INT64_MIN;
     }
+
     return static_cast<i64>(~magnitude + 1u);
   }
   if (has_overflowed || magnitude > static_cast<u64>(INT64_MAX)) {
     return INT64_MAX;
   }
+
   return static_cast<i64>(magnitude);
 }
 
@@ -45,33 +47,38 @@ static fn not_an_integer_error(StringView text) throws -> Error
   return Error{"'" + text + "' is not a valid integer"};
 }
 
-fn int_to_text_into(i64 value, char *buffer, usize buffer_size) wontthrow
+fn int_to_text_into(i64 value, char *buffer, usize buffer_byte_count) wontthrow
     -> StringView
 {
-  ASSERT(buffer_size >= 21, "the buffer must hold a sign and twenty digits");
+  ASSERT(buffer_byte_count >= 21,
+         "the buffer must hold a sign and twenty digits");
   let const is_negative = value < 0;
   u64 magnitude =
       is_negative ? ~static_cast<u64>(value) + 1 : static_cast<u64>(value);
-  usize offset = buffer_size;
+  usize offset = buffer_byte_count;
+
   do {
     buffer[--offset] = static_cast<char>('0' + magnitude % 10);
     magnitude /= 10;
   } while (magnitude > 0);
+
   if (is_negative) buffer[--offset] = '-';
-  return StringView{buffer + offset, buffer_size - offset};
+
+  return StringView{buffer + offset, buffer_byte_count - offset};
 }
 
-fn uint_to_text_into(u64 value, char *buffer, usize buffer_size) wontthrow
+fn uint_to_text_into(u64 value, char *buffer, usize buffer_byte_count) wontthrow
     -> StringView
 {
-  ASSERT(buffer_size >= 20, "the buffer must hold twenty digits");
-  usize offset = buffer_size;
+  ASSERT(buffer_byte_count >= 20, "the buffer must hold twenty digits");
+  usize offset = buffer_byte_count;
+
   do {
     buffer[--offset] = static_cast<char>('0' + value % 10);
     value /= 10;
   } while (value > 0);
 
-  return StringView{buffer + offset, buffer_size - offset};
+  return StringView{buffer + offset, buffer_byte_count - offset};
 }
 
 fn format_minutes_seconds(double seconds, i32 decimal_count) throws -> String
@@ -82,6 +89,7 @@ fn format_minutes_seconds(double seconds, i32 decimal_count) throws -> String
   char buffer[64];
   std::snprintf(buffer, sizeof(buffer), "%ldm%.*fs", static_cast<long>(minutes),
                 static_cast<int>(decimal_count), remainder);
+
   return String{buffer};
 }
 
@@ -91,6 +99,7 @@ fn format_duration_nanoseconds(u64 nanoseconds, Allocator allocator) throws
   if (nanoseconds < 1000) {
     let result = String::from(nanoseconds, allocator);
     result += "ns";
+
     return result;
   }
 
@@ -108,6 +117,7 @@ fn format_duration_nanoseconds(u64 nanoseconds, Allocator allocator) throws
   result += ".";
   result += String::from(tenths % 10, allocator).view();
   result += suffix;
+
   return result;
 }
 
@@ -125,6 +135,7 @@ static fn format_time_report_posix(double real_seconds, double user_seconds,
   std::snprintf(buffer, sizeof(buffer), "sys %.2f\n",
                 system_seconds < 0.0 ? 0.0 : system_seconds);
   report += buffer;
+
   return report;
 }
 
@@ -239,12 +250,13 @@ static fn format_time_report_custom(StringView format, double real_seconds,
   }
 
   report.push('\n');
+
   return report;
 }
 
 fn format_time_report(const Maybe<String> &time_format, double real_seconds,
                       double user_seconds, double system_seconds,
-                      u64 peak_rss_bytes, time_report_layout layout,
+                      u64 peak_rss_byte_count, time_report_layout layout,
                       time_report_rss rss) throws -> String
 {
   let report = String{heap_allocator()};
@@ -268,7 +280,7 @@ fn format_time_report(const Maybe<String> &time_format, double real_seconds,
   }
 
   if (rss == time_report_rss::Include ||
-      (should_use_pretty_format && peak_rss_bytes > 0))
+      (should_use_pretty_format && peak_rss_byte_count > 0))
   {
     switch (layout) {
     case time_report_layout::Bash: report += "rss\t"; break;
@@ -276,7 +288,7 @@ fn format_time_report(const Maybe<String> &time_format, double real_seconds,
     case time_report_layout::Rich: report += "  rss    "; break;
     }
 
-    report += koshkit::format_human_size(peak_rss_bytes, heap_allocator());
+    report += koshkit::format_human_size(peak_rss_byte_count, heap_allocator());
     report += "\n";
   }
 
@@ -290,6 +302,7 @@ public:
   {
     let &indexed_source = indexed_source_for(source);
     indexed_source.set_last_use_tick(++m_use_tick);
+
     return indexed_source.locate(position);
   }
 
@@ -321,6 +334,7 @@ private:
       m_newline_offsets.reserve(count_newlines(indexable));
 
       usize scan_position = 0;
+
       while (scan_position < indexable_length) {
         let const remaining = indexable.substring(scan_position);
         let const newline = remaining.find_character('\n');
@@ -363,6 +377,7 @@ private:
     {
       usize low = 0;
       usize high = m_newline_offsets.count();
+
       while (low < high) {
         const usize mid = low + (high - low) / 2;
         if (m_newline_offsets[mid] < position)
@@ -375,6 +390,7 @@ private:
       const usize line_end = low == m_newline_offsets.count()
                                  ? m_source_length
                                  : m_newline_offsets[low];
+
       return source_line_position{low, line_start, line_end};
     }
 
@@ -390,6 +406,7 @@ private:
     {
       usize newline_count = 0;
       usize scan_position = 0;
+
       while (scan_position < text.count()) {
         let const newline = text.substring(scan_position).find_character('\n');
         if (!newline.has_value()) break;
@@ -409,6 +426,7 @@ private:
   fn indexed_source_for(StringView source) throws -> IndexedSource &
   {
     let *least_recent = &m_indexed_sources[0];
+
     for (let &indexed_source : m_indexed_sources) {
       if (indexed_source.is_built_for(source)) return indexed_source;
       if (indexed_source.get_last_use_tick() <
@@ -419,6 +437,7 @@ private:
     }
 
     least_recent->build_for(source);
+
     return *least_recent;
   }
 
@@ -483,6 +502,7 @@ fn parse_decimal_u64(StringView text) throws -> ErrorOr<u64>
   if (parsed.is_negative || parsed.has_overflowed) {
     return Error{"integer value out of range"};
   }
+
   return parsed.magnitude;
 }
 
@@ -497,11 +517,13 @@ fn parse_decimal_f64(const String &text) throws -> ErrorOr<f64>
   }
 
   let digits = start;
+
   while (*digits == ' ' || *digits == '\t' || *digits == '\n' ||
          *digits == '\r' || *digits == '\f' || *digits == '\v')
   {
     digits++;
   }
+
   if (*digits == '+' || *digits == '-') {
     digits++;
   }
@@ -550,6 +572,7 @@ fn parse_timeout_seconds_to_nanos(StringView text) throws -> ErrorOr<i64>
   u64 whole_seconds = 0;
   bool has_overflowed = false;
   bool has_digits = false;
+
   while (offset < text.length && text.data[offset] >= '0' &&
          text.data[offset] <= '9')
   {
@@ -566,6 +589,7 @@ fn parse_timeout_seconds_to_nanos(StringView text) throws -> ErrorOr<i64>
   if (offset < text.length && text.data[offset] == '.') {
     offset++;
     i64 digit_scale = 100'000'000;
+
     while (offset < text.length && text.data[offset] >= '0' &&
            text.data[offset] <= '9')
     {
@@ -647,6 +671,7 @@ static fn parse_magnitude_in_base(StringView text, int_base base) throws
   bool has_digits = false;
   bool has_overflowed = false;
   usize digit_count = 0;
+
   while (offset < text.length) {
     let const digit = digit_value_in_base(text.data[offset], radix);
     if (digit < 0) break;
@@ -691,6 +716,7 @@ fn parse_integer_in_base_u64(StringView text, int_base base) throws
   if (parsed.is_negative || parsed.has_overflowed) {
     return Error{"integer value out of range"};
   }
+
   return parsed.magnitude;
 }
 
@@ -709,12 +735,14 @@ fn expand_leading_tilde_path(StringView name) throws -> Maybe<String>
 
   let expanded = home.take();
   if (slash.has_value()) expanded.append(name.substring(*slash + 1));
+
   return String{expanded.view()};
 }
 
 fn decode_ansi_c_escapes(String &out, StringView body) throws -> void
 {
   usize i = 0;
+
   while (i < body.length) {
     let const c = body[i];
     i++;
@@ -747,6 +775,7 @@ fn decode_ansi_c_escapes(String &out, StringView body) throws -> void
     case 'x': {
       i32 value = 0;
       i32 digit_count = 0;
+
       while (digit_count < 2 && i < body.length) {
         let const digit = hex_digit_value(body[i]);
         if (!digit.has_value()) break;
@@ -754,6 +783,7 @@ fn decode_ansi_c_escapes(String &out, StringView body) throws -> void
         i++;
         digit_count++;
       }
+
       if (digit_count == 0) {
         out.push('\\');
         out.push('x');
@@ -785,6 +815,7 @@ fn decode_ansi_c_escapes(String &out, StringView body) throws -> void
       const i32 max_digit_count = e == 'u' ? 4 : 8;
       u32 codepoint = 0;
       i32 digit_count = 0;
+
       while (digit_count < max_digit_count && i < body.length) {
         let const digit = hex_digit_value(body[i]);
         if (!digit.has_value()) break;
@@ -792,6 +823,7 @@ fn decode_ansi_c_escapes(String &out, StringView body) throws -> void
         i++;
         digit_count++;
       }
+
       if (digit_count == 0) {
         out.push('\\');
         out.push(e);
@@ -803,6 +835,7 @@ fn decode_ansi_c_escapes(String &out, StringView body) throws -> void
       if (e >= '0' && e <= '7') {
         i32 value = e - '0';
         i32 digit_count = 1;
+
         while (digit_count < 3 && i < body.length && body[i] >= '0' &&
                body[i] <= '7')
         {
@@ -810,6 +843,7 @@ fn decode_ansi_c_escapes(String &out, StringView body) throws -> void
           i++;
           digit_count++;
         }
+
         out.push(static_cast<char>(value));
       } else {
         out.push('\\');
@@ -845,6 +879,7 @@ static fn get_printable_character_length(StringView text, usize position,
 fn should_ansi_c_quote(StringView text, bool is_utf8_locale) throws -> bool
 {
   usize position = 0;
+
   while (position < text.length) {
     let const length =
         get_printable_character_length(text, position, is_utf8_locale);
@@ -861,6 +896,7 @@ fn append_ansi_c_quoted(String &out, StringView text,
 {
   out += "$'";
   usize position = 0;
+
   while (position < text.length) {
     let const character = text[position];
     switch (character) {
@@ -892,6 +928,7 @@ fn append_ansi_c_quoted(String &out, StringView text,
     }
     position++;
   }
+
   out += "'";
 }
 
@@ -900,11 +937,13 @@ fn append_ansi_c_quote_if_needed(String &out, StringView arg,
 {
   if (arg.is_empty()) {
     out += "''";
+
     return true;
   }
   if (!should_ansi_c_quote(arg, is_utf8_locale)) return false;
 
   append_ansi_c_quoted(out, arg, is_utf8_locale);
+
   return true;
 }
 
@@ -914,12 +953,14 @@ fn append_shell_quoted(String &out, StringView arg, bool is_utf8_locale) throws
   if (append_ansi_c_quote_if_needed(out, arg, is_utf8_locale)) return;
 
   out.push('\'');
+
   for (usize i = 0; i < arg.length; i++) {
     if (arg[i] == '\'')
       out += "'\\''";
     else
       out.push(arg[i]);
   }
+
   out.push('\'');
 }
 

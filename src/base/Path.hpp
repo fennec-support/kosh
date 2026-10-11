@@ -33,7 +33,7 @@ struct unavailable_path_component
 class Path
 {
 public:
-  struct component
+  struct Component
   {
     StringView text;
     usize start;
@@ -62,9 +62,9 @@ public:
                                              bool should_strip_marker) wontthrow
       -> StringView;
   mustuse pure fn extension() const wontthrow -> StringView;
-  mustuse fn next_component(usize &position) const wontthrow -> component;
+  mustuse fn next_component(usize &position) const wontthrow -> Component;
   mustuse static fn next_component(StringView path, usize &position) wontthrow
-      -> component;
+      -> Component;
 
   mustuse pure fn is_absolute() const wontthrow -> bool;
   mustuse pure fn is_relative() const wontthrow -> bool;
@@ -117,7 +117,7 @@ public:
                                         Allocator allocator) throws
       -> Maybe<ArrayList<String>>;
 
-  enum class entry_kind : u8
+  enum class EntryKind : u8
   {
     Unknown,
     Directory,
@@ -125,16 +125,16 @@ public:
     Symlink,
     Other,
   };
-  struct directory_child
+  struct DirectoryChild
   {
     String name;
-    entry_kind kind;
+    EntryKind kind;
   };
   cold mustuse static fn read_directory_typed(const Path &dir) throws
-      -> Maybe<ArrayList<directory_child>>;
+      -> Maybe<ArrayList<DirectoryChild>>;
   cold mustuse static fn read_directory_typed(const Path &dir,
                                               Allocator allocator) throws
-      -> Maybe<ArrayList<directory_child>>;
+      -> Maybe<ArrayList<DirectoryChild>>;
 
   mustuse fn read_entire_file() const throws -> Maybe<String>;
 

@@ -33,16 +33,19 @@ fn Yes::execute(const ExecContext &ec, EvalContext &cxt,
       if (i > 0) line += ' ';
       line += operands[i].view();
     }
+
   line += '\n';
 
   static constexpr usize OUTPUT_BUFFER_LENGTH = 64 * 1024;
   let output = String{cxt.scratch_allocator()};
   output.reserve(OUTPUT_BUFFER_LENGTH);
+
   do {
     output += line;
   } while (output.count() + line.count() <= OUTPUT_BUFFER_LENGTH);
 
   let const out_fd = ec.out_fd.value_or(KOSH_STDOUT);
+
   loop
   {
     if (os::INTERRUPT_REQUESTED) return 130;
@@ -53,6 +56,7 @@ fn Yes::execute(const ExecContext &ec, EvalContext &cxt,
       report_soft_koshkit_util_error(ec, cxt, args[0].view(),
                                      "write error: " +
                                          os::last_system_error_message());
+
       return 1;
     }
   }

@@ -25,7 +25,8 @@ same encoding that every spawned process receives."
   type. Functions use `fn name(...) throws -> ret`.
 - Compare pointers with `nullptr`. Do not use pointer truthiness.
 - Boolean names start with `is_`, `should_`, `was_`, `did_`, or `has_`. Counts
-  end with `_count`. Measurements state their unit. Lambdas start with `do_`.
+  end with `_count`, and a number of bytes ends with `_byte_count`.
+  Measurements state their unit. Lambdas start with `do_`.
   Accessors start with `get_` or `set_`.
 - Free structs and enums use lower snake case. Classes and nested types use
   camel case. File operations accept `Path`.

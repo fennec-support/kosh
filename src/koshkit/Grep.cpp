@@ -132,6 +132,7 @@ static pure fn is_ascii_pattern(StringView pattern) wontthrow -> bool
 {
   for (usize index = 0; index < pattern.length; index++)
     if (static_cast<unsigned char>(pattern[index]) > 0x7f) return false;
+
   return true;
 }
 
@@ -139,6 +140,7 @@ static pure fn is_ascii_line(StringView line) wontthrow -> bool
 {
   constexpr u64 HIGH_BITS = 0x8080808080808080ULL;
   usize index = 0;
+
   for (; index + sizeof(u64) <= line.length; index += sizeof(u64)) {
     u64 word = 0;
     std::memcpy(&word, line.data + index, sizeof(word));
@@ -172,6 +174,7 @@ static fn find_required_regex_literal(StringView pattern,
   };
 
   usize index = 0;
+
   while (index < pattern.length) {
     let const character = pattern[index];
     if (character == '[') break;
@@ -239,12 +242,13 @@ static fn find_required_regex_literal(StringView pattern,
   }
 
   do_close_run();
+
   return required_literal;
 }
 
 static fn
 collect_recursive_sources(const ExecContext &ec, EvalContext &cxt,
-                          const Path &path, Path::entry_kind path_kind,
+                          const Path &path, Path::EntryKind path_kind,
                           Allocator allocator, ArrayList<Path> &storage,
                           i32 &status, bool should_report_errors,
                           const u64 *operand_device_id = nullptr) throws -> void
@@ -252,7 +256,7 @@ collect_recursive_sources(const ExecContext &ec, EvalContext &cxt,
   let const is_one_file_system = FLAG_GREP_ONE_FILE_SYSTEM.is_enabled();
   os::file_status file_status{};
   bool has_file_status = false;
-  if (path_kind == Path::entry_kind::Unknown) {
+  if (path_kind == Path::EntryKind::Unknown) {
     if (!os::stat_path(path.view(), file_status)) {
       if (should_report_errors) {
         report_soft_koshkit_util_error(ec, cxt, "grep",
@@ -260,20 +264,22 @@ collect_recursive_sources(const ExecContext &ec, EvalContext &cxt,
                                            os::last_system_error_message());
       }
       status = 2;
+
       return;
     }
 
     has_file_status = true;
 
     switch (os::file_type_letter(file_status.mode)) {
-    case 'd': path_kind = Path::entry_kind::Directory; break;
-    case '-': path_kind = Path::entry_kind::Regular; break;
-    default: path_kind = Path::entry_kind::Other; break;
+    case 'd': path_kind = Path::EntryKind::Directory; break;
+    case '-': path_kind = Path::EntryKind::Regular; break;
+    default: path_kind = Path::EntryKind::Other; break;
     }
   }
 
-  if (path_kind != Path::entry_kind::Directory) {
-    if (path_kind == Path::entry_kind::Regular) storage.push(path.clone());
+  if (path_kind != Path::EntryKind::Directory) {
+    if (path_kind == Path::EntryKind::Regular) storage.push(path.clone());
+
     return;
   }
 
@@ -302,23 +308,25 @@ collect_recursive_sources(const ExecContext &ec, EvalContext &cxt,
                                          os::last_system_error_message());
     }
     status = 2;
+
     return;
   }
-  children->sort([](const Path::directory_child &left,
-                    const Path::directory_child &right) {
-    return left.name.view() < right.name.view();
-  });
+  children->sort(
+      [](const Path::DirectoryChild &left, const Path::DirectoryChild &right) {
+        return left.name.view() < right.name.view();
+      });
 
   if (os::INTERRUPT_REQUESTED) return;
 
   let child_paths = ArrayList<Path>{allocator};
   child_paths.reserve(children->count());
   usize unknown_count = 0;
+
   for (let const &child : *children) {
     let child_path = path.clone();
     child_path.append(child.name.view());
     child_paths.push(steal(child_path));
-    if (child.kind == Path::entry_kind::Unknown) unknown_count++;
+    if (child.kind == Path::EntryKind::Unknown) unknown_count++;
   }
 
   if (unknown_count != 0) {
@@ -338,47 +346,51 @@ collect_recursive_sources(const ExecContext &ec, EvalContext &cxt,
       if (unknown_indices.is_empty()) return;
 
       batch.clear();
+
       for (usize index = 0; index < unknown_indices.count(); index++)
         batch.add(os::batch_operation::stat(child_paths[unknown_indices[index]],
                                             unknown_statuses[index]));
 
       batch.execute(results, os::batch_deduplication::Disabled);
+
       for (usize index = 0; index < unknown_indices.count(); index++) {
         let &kind = (*children)[unknown_indices[index]].kind;
         if (results[index].error_number != 0) {
-          kind = Path::entry_kind::Other;
+          kind = Path::EntryKind::Other;
           continue;
         }
 
         switch (os::file_type_letter(unknown_statuses[index].mode)) {
-        case 'd': kind = Path::entry_kind::Directory; break;
-        case '-': kind = Path::entry_kind::Regular; break;
-        default: kind = Path::entry_kind::Other; break;
+        case 'd': kind = Path::EntryKind::Directory; break;
+        case '-': kind = Path::EntryKind::Regular; break;
+        default: kind = Path::EntryKind::Other; break;
         }
       }
+
       unknown_statuses.clear();
       unknown_indices.clear();
     };
 
     for (usize index = 0; index < children->count(); index++) {
-      if ((*children)[index].kind != Path::entry_kind::Unknown) continue;
+      if ((*children)[index].kind != Path::EntryKind::Unknown) continue;
 
       unknown_statuses.push({});
       unknown_indices.push(index);
       if (unknown_indices.count() == GREP_UNKNOWN_BATCH_COUNT)
         do_flush_unknown();
     }
+
     do_flush_unknown();
   }
 
   for (usize index = 0; index < children->count(); index++) {
     if (os::INTERRUPT_REQUESTED) return;
     let const kind = (*children)[index].kind;
-    if (kind == Path::entry_kind::Directory)
+    if (kind == Path::EntryKind::Directory)
       collect_recursive_sources(ec, cxt, child_paths[index], kind, allocator,
                                 storage, status, should_report_errors,
                                 operand_device_id);
-    else if (kind == Path::entry_kind::Regular)
+    else if (kind == Path::EntryKind::Regular)
       storage.push(steal(child_paths[index]));
   }
 }
@@ -462,6 +474,7 @@ static fn apply_grep_color_capability(grep_palette &palette, StringView name,
 
   if (*capability == grep_color_capability::Reverse) {
     palette.is_reversed = true;
+
     return;
   }
   if (!has_value) return;
@@ -486,6 +499,7 @@ static fn parse_grep_colors(grep_palette &palette,
   usize name_start = 0;
   usize value_start = 0;
   bool has_value = false;
+
   for (usize index = 0;; index++) {
     let const byte = index < specification.length ? specification[index] : '\0';
     if (byte == ':' || byte == '\0') {
@@ -570,6 +584,7 @@ public:
     if (!m_options.is_utf8) return true;
 
     let const scope = os::RegexUtf8Scope{true};
+
     return compile_regex_into(m_utf8_regex, sensitivity);
   }
 
@@ -604,6 +619,7 @@ public:
 
     let const report = os::execute_regex(
         *selected.get(), os::regex_execution_options{value, m_allocator});
+
     return report.result == os::regex_match_result::Matched &&
            report.spans[0].start == 0 &&
            static_cast<usize>(report.spans[0].end) == value.length;
@@ -626,11 +642,13 @@ public:
 
         out_start = *start;
         out_end = *start + needle.length;
+
         return true;
       }
 
       for (usize start = from; start + needle.length <= value.length; start++) {
         usize offset = 0;
+
         while (offset < needle.length &&
                utils::ascii_to_lower(value[start + offset]) == needle[offset])
         {
@@ -640,6 +658,7 @@ public:
         if (offset == needle.length) {
           out_start = start;
           out_end = start + needle.length;
+
           return true;
         }
       }
@@ -661,6 +680,7 @@ public:
 
     out_start = from + static_cast<usize>(report.spans[0].start);
     out_end = from + static_cast<usize>(report.spans[0].end);
+
     return true;
   }
 
@@ -675,6 +695,7 @@ private:
     if (!compiled.has_value()) return false;
 
     target = CompiledRegex{*compiled};
+
     return true;
   }
 
@@ -684,6 +705,7 @@ private:
     if (length == 0) return;
 
     let has_wildcard = false;
+
     for (usize index = segment_start; index < m_fast_bytes.count(); index++)
       if (m_fast_bytes[index] == '\0') has_wildcard = true;
 
@@ -713,6 +735,7 @@ private:
     usize segment_start = 0;
     let did_fail = false;
     let has_single_wildcard = false;
+
     for (usize index = body_start; index < body_end; index++) {
       let const character = pattern[index];
       if (character == '.') {
@@ -763,6 +786,7 @@ private:
       m_fast_segments.clear();
       m_is_fast_start_anchored = false;
       m_is_fast_end_anchored = false;
+
       return;
     }
 
@@ -788,6 +812,7 @@ private:
   {
     let const needle =
         m_fast_bytes.view().substring_of_length(segment.start, segment.length);
+
     for (usize index = 0; index < segment.length; index++) {
       let const wanted = needle[index];
       if (wanted == '\0') continue;
@@ -813,10 +838,12 @@ private:
     if (!segment.has_wildcard && !m_options.should_ignore_case) {
       let const needle = m_fast_bytes.view().substring_of_length(
           segment.start, segment.length);
+
       return value.substring_of_length(0, limit).find_substring(needle, from);
     }
 
     let const last_start = limit - segment.length;
+
     for (usize start = from; start <= last_start; start++)
       if (does_fast_segment_match_at(segment, value, start)) return start;
 
@@ -920,6 +947,7 @@ private:
     }
 
     usize prefix_length = 0;
+
     for (usize index = 1; index < pattern.length; index++) {
       let const character = pattern[index];
       if (character == '*' || character == '\\' ||
@@ -976,6 +1004,7 @@ private:
 
     let const class_bits = static_cast<u8>(m_fast_regex_class);
     let const middle_end = value.length - m_fast_regex_suffix.length;
+
     for (usize index = m_fast_regex_prefix.length; index < middle_end; index++)
     {
       let const byte = static_cast<unsigned char>(value[index]);
@@ -1076,6 +1105,7 @@ public:
         m_line(m_allocator)
   {
     m_matchers.reserve(pattern_spans.count());
+
     for (let const &span : pattern_spans) {
       let matcher_options = m_options;
       matcher_options.pattern =
@@ -1131,11 +1161,12 @@ public:
         if (os::path_is_directory(source)) has_directory_operand = true;
         let const source_path = Path{source, m_allocator};
         collect_recursive_sources(
-            m_ec, m_cxt, source_path, Path::entry_kind::Unknown, m_allocator,
+            m_ec, m_cxt, source_path, Path::EntryKind::Unknown, m_allocator,
             m_recursive_storage, m_status, !m_options.should_suppress_messages);
       }
 
       m_sources.reserve(m_recursive_storage.count() + 1);
+
       for (let const &source : m_recursive_storage) {
         let const view = source.view();
         if (is_working_directory_implied && view.starts_with("./")) {
@@ -1159,6 +1190,7 @@ public:
         (m_sources.count() > 1 || has_directory_operand);
     if (m_options.should_print_line_numbers) {
       m_source_line_numbers.reserve(m_sources.count());
+
       for (usize index = 0; index < m_sources.count(); index++)
         m_source_line_numbers.push(1);
     }
@@ -1166,6 +1198,7 @@ public:
         m_options.output_mode == grep_output_mode::List)
     {
       m_source_match_counts.reserve(m_sources.count());
+
       for (usize index = 0; index < m_sources.count(); index++)
         m_source_match_counts.push(0);
     }
@@ -1181,11 +1214,11 @@ public:
         m_sources,
         m_allocator,
         GREP_READ_BYTE_COUNT,
-        SourceBatchReader::source_dash_mode::TreatAsStdin,
-        is_recursive ? SourceBatchReader::source_kind_mode::KnownRegular
-                     : SourceBatchReader::source_kind_mode::Probe,
-        is_recursive ? SourceBatchReader::source_read_mode::Sequential
-                     : SourceBatchReader::source_read_mode::Batched};
+        SourceBatchReader::SourceDashMode::TreatAsStdin,
+        is_recursive ? SourceBatchReader::SourceKindMode::KnownRegular
+                     : SourceBatchReader::SourceKindMode::Probe,
+        is_recursive ? SourceBatchReader::SourceReadMode::Sequential
+                     : SourceBatchReader::SourceReadMode::Batched};
     let chunks = ArrayList<SourceBatchReader::Chunk>{m_allocator};
     let const is_quiet = m_options.output_mode == grep_output_mode::Quiet;
 
@@ -1222,6 +1255,7 @@ private:
   {
     if (sgr.is_empty() || text.is_empty()) {
       m_output += text;
+
       return;
     }
 
@@ -1244,6 +1278,7 @@ private:
     let const name = source == "-" ? StringView{"(standard input)"} : source;
     if (m_options.should_color) {
       append_sgr_text(m_palette.file_name, name);
+
       return;
     }
 
@@ -1254,6 +1289,7 @@ private:
   {
     if (m_options.should_color) {
       append_sgr_text(m_palette.separator, ":");
+
       return;
     }
 
@@ -1267,6 +1303,7 @@ private:
         utils::uint_to_text_into(number, line_number, sizeof(line_number));
     if (m_options.should_color) {
       append_sgr_text(m_palette.line_number, text);
+
       return;
     }
 
@@ -1295,15 +1332,18 @@ private:
   {
     if (m_options.is_whole_line) {
       append_sgr_text(m_palette.selected_match, value);
+
       return;
     }
 
     usize position = 0;
     usize plain_start = 0;
+
     while (position <= value.length) {
       usize best_start = 0;
       usize best_end = 0;
       let did_find = false;
+
       for (let &matcher : m_matchers) {
         usize start = 0;
         usize end = 0;
@@ -1418,6 +1458,7 @@ private:
     }
 
     usize position = 0;
+
     while (position < lines.length) {
       let const line_end =
           position + *lines.substring(position).find_character('\n');
@@ -1449,6 +1490,7 @@ private:
     }
 
     let const lines_end = *last_newline + 1;
+
     while (position < lines_end) {
       let const hit = content.find_substring(m_candidate_literal, position);
       if (!hit.has_value() || *hit >= lines_end) {
@@ -1541,6 +1583,7 @@ private:
           m_ec, m_cxt, source_location, m_args[0].view(),
           String{m_cxt.scratch_allocator(), source} + ": " +
               os::last_system_error_message());
+
       return;
     }
 
@@ -1590,6 +1633,7 @@ fn Grep::execute(const ExecContext &ec, EvalContext &cxt,
   if (FLAG_GREP_EXTENDED.is_enabled() && FLAG_GREP_FIXED.is_enabled()) {
     report_soft_koshkit_util_error(ec, cxt, args[0].view(),
                                    "the -E and -F options conflict");
+
     return 2;
   }
 
@@ -1625,6 +1669,7 @@ fn Grep::execute(const ExecContext &ec, EvalContext &cxt,
     let const should_escape = options.is_fixed && options.should_ignore_case &&
                               !is_ascii_pattern(pattern);
     let const start = pattern_text.count();
+
     for (usize index = 0; index < pattern.length; index++) {
       if (should_escape && is_basic_regex_special(pattern[index])) {
         pattern_text += '\\';
@@ -1638,6 +1683,7 @@ fn Grep::execute(const ExecContext &ec, EvalContext &cxt,
   };
   let const do_add_pattern_list = [&](StringView list) throws -> void {
     usize start = 0;
+
     loop
     {
       let const newline = list.substring(start).find_character('\n');
@@ -1669,6 +1715,7 @@ fn Grep::execute(const ExecContext &ec, EvalContext &cxt,
           ec, cxt, FLAG_GREP_PATTERN_FILE.get_location(index), args[0].view(),
           String{cxt.scratch_allocator(), file_name} + ": " +
               os::last_system_error_message());
+
       return 2;
     }
 
@@ -1709,6 +1756,7 @@ fn Grep::execute(const ExecContext &ec, EvalContext &cxt,
         args[0].view(),
         "the pattern '" + String{cxt.scratch_allocator(), *invalid_pattern} +
             "' is not a valid regex");
+
     return 2;
   }
 

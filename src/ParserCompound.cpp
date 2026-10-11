@@ -108,6 +108,7 @@ hot fn Parser::parse_if() throws -> Command *
   let node =
       m_lexer.arena().create<IfClause>(location, steal(branches), otherwise);
   node->set_source_end_position(end_position);
+
   return node;
 }
 
@@ -137,6 +138,7 @@ hot fn Parser::parse_while_or_until(loop_kind kind) throws -> Command *
                                                     parsed_body.body, kind);
   loop_node->set_source_end_position(parsed_body.done_location.position +
                                      parsed_body.done_location.length);
+
   return loop_node;
 }
 
@@ -150,6 +152,7 @@ static fn double_paren_closes_adjacent(StringView source,
 {
   usize depth = 0;
   char quote = 0;
+
   for (usize i = body_start_position; i < source.length; i++) {
     let const c = source[i];
     if (quote == '\'') {
@@ -177,9 +180,11 @@ static fn double_paren_closes_adjacent(StringView source,
         depth--;
         continue;
       }
+
       return i + 1 < source.length && source[i + 1] == ')';
     }
   }
+
   return false;
 }
 
@@ -199,10 +204,12 @@ fn Parser::parse_optional_in_clause_words(
       error.set_command_status(2);
       throw error;
     }
+
     return false;
   }
 
   m_lexer.advance_past_last_peek();
+
   loop
   {
     Token *word = m_lexer.peek_shell_token();
@@ -224,6 +231,7 @@ fn Parser::parse_optional_in_clause_words(
     m_lexer.advance_past_last_peek();
     words.push(word);
   }
+
   return true;
 }
 
@@ -326,6 +334,7 @@ hot fn Parser::parse_for() throws -> Command *
       steal(header.words), header.has_in_clause, header.body.body);
   loop_node->set_source_end_position(header.body.done_location.position +
                                      header.body.done_location.length);
+
   return loop_node;
 }
 
@@ -345,6 +354,7 @@ hot fn Parser::parse_select() throws -> Command *
       steal(header.words), header.has_in_clause, header.body.body);
   loop_node->set_source_end_position(header.body.done_location.position +
                                      header.body.done_location.length);
+
   return loop_node;
 }
 
@@ -440,8 +450,10 @@ static fn word_token_from_assignment(BumpArena &arena,
       SegmentText{bump_allocator(arena), prefix.view()},
       false
   });
+
   for (let const &segment : a->value_word().segments)
     word.segments.push(segment.clone(bump_allocator(arena)));
+
   return tokens::create_word_token(arena, a->source_location(), steal(word));
 }
 
@@ -454,6 +466,7 @@ static fn word_token_from_raw(BumpArena &arena, StringView text,
       WordSegment::Kind::UnquotedText, SegmentText{bump_allocator(arena), text},
       false
   });
+
   return tokens::create_word_token(arena, steal(location), steal(word));
 }
 
@@ -585,6 +598,7 @@ hot fn Parser::parse_case() throws -> Command *
 
   let clause = m_lexer.arena().create<CaseClause>(location, word, steal(items));
   clause->set_source_end_position(end_position);
+
   return clause;
 }
 
@@ -618,6 +632,7 @@ hot fn Parser::parse_brace_group() throws -> Command *
   let const close_location = close->source_location();
   group->set_source_end_position(close_location.position +
                                  close_location.length);
+
   return group;
 }
 
@@ -637,6 +652,7 @@ hot fn Parser::parse_paren_command() throws -> Command *
   {
     return parse_arithmetic_command(open);
   }
+
   return parse_subshell(open);
 }
 
@@ -671,6 +687,7 @@ hot fn Parser::parse_subshell(Token *open) throws -> Command *
   let const close_location = close->source_location();
   subshell->set_source_end_position(close_location.position +
                                     close_location.length);
+
   return subshell;
 }
 
@@ -683,6 +700,7 @@ hot fn Parser::capture_double_paren_body(Token *open) throws -> StringView
 
   let const body_start_position = second->source_location().position + 1;
   usize depth = 0;
+
   loop
   {
     Token *t = m_lexer.next_shell_token();
@@ -705,6 +723,7 @@ hot fn Parser::capture_double_paren_body(Token *open) throws -> StringView
               t->source_location().position + 1)
       {
         m_lexer.advance_past_last_peek();
+
         return m_lexer.source().substring_of_length(
             body_start_position,
             t->source_location().position - body_start_position);
@@ -727,6 +746,7 @@ hot fn Parser::parse_arithmetic_command(Token *open) throws -> Command *
   let const open_location = open->source_location();
   const SourceLocation full_location{open_location.position, body.length + 4,
                                      open_location.source_name_index};
+
   return m_lexer.arena().create<expressions::ArithmeticCommand>(
       full_location, body.copy_to(bump_allocator(m_lexer.arena())));
 }
@@ -741,6 +761,7 @@ hot fn Parser::parse_c_style_for(const SourceLocation &location,
   usize separators[2] = {0, 0};
   usize separator_count = 0;
   usize depth = 0;
+
   for (usize i = 0; i < header.length; i++) {
     let const c = header[i];
     switch (c) {
@@ -756,6 +777,7 @@ hot fn Parser::parse_c_style_for(const SourceLocation &location,
     default: break;
     }
   }
+
   if (separator_count != 2) {
     throw ErrorWithLocation{
         location, "Expected '(( init; condition; step ))' in a C-style for"};
@@ -788,6 +810,7 @@ hot fn Parser::parse_c_style_for(const SourceLocation &location,
       parsed_body.body);
   loop_node->set_source_end_position(parsed_body.done_location.position +
                                      parsed_body.done_location.length);
+
   return loop_node;
 }
 
@@ -820,6 +843,7 @@ hot fn Parser::parse_conditional_command() throws -> Command *
 
   let elements = ArrayList<conditional_element>{heap_allocator()};
   usize close_end_position;
+
   loop
   {
     Token *t = m_lexer.next_shell_token();
@@ -886,6 +910,7 @@ hot fn Parser::parse_conditional_command() throws -> Command *
                   static_cast<const tokens::WordToken *>(tok)->word();
               regex_word.has_locale_translation_quote |=
                   word.has_locale_translation_quote;
+
               for (let const &segment : word.segments)
                 regex_word.segments.push(
                     segment.clone(bump_allocator(m_lexer.arena())));
@@ -906,6 +931,7 @@ hot fn Parser::parse_conditional_command() throws -> Command *
             }
           };
           do_append_segments(first);
+
           loop
           {
             Token *next = m_lexer.peek_shell_token();
@@ -939,6 +965,7 @@ hot fn Parser::parse_conditional_command() throws -> Command *
                            next->source_location().length;
             do_append_segments(next);
           }
+
           SourceLocation regex_location = first->source_location();
           regex_location.length =
               static_cast<u32>(end_position - regex_location.position);
@@ -959,6 +986,7 @@ hot fn Parser::parse_conditional_command() throws -> Command *
   let const node = m_lexer.arena().create<expressions::ConditionalCommand>(
       open->source_location(), steal(elements));
   node->set_source_end_position(close_end_position);
+
   return node;
 }
 

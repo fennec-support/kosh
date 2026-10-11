@@ -42,6 +42,7 @@ static fn id_user_text(u32 id, Allocator allocator,
   if (name_mode == id_name_mode::Name)
     if (let const name = os::uid_to_username(id); name.has_value())
       return *name;
+
   return String::from(id, allocator);
 }
 
@@ -51,6 +52,7 @@ static fn id_group_text(u32 id, Allocator allocator,
   if (name_mode == id_name_mode::Name)
     if (let const name = os::gid_to_groupname(id); name.has_value())
       return *name;
+
   return String::from(id, allocator);
 }
 
@@ -82,6 +84,7 @@ fn Id::execute(const ExecContext &ec, EvalContext &cxt,
       report_soft_koshkit_util_error(ec, cxt, operand_locations[0],
                                      args[0].view(),
                                      "unknown user '" + operands[0] + "'");
+
       return 1;
     }
     user_id = *resolved;
@@ -93,6 +96,7 @@ fn Id::execute(const ExecContext &ec, EvalContext &cxt,
                                         ? id_name_mode::Name
                                         : id_name_mode::Numeric) +
                        "\n");
+
     return 0;
   }
   if (FLAG_ID_GROUP.is_enabled()) {
@@ -101,12 +105,14 @@ fn Id::execute(const ExecContext &ec, EvalContext &cxt,
                                          ? id_name_mode::Name
                                          : id_name_mode::Numeric) +
                        "\n");
+
     return 0;
   }
 
   let groups = os::get_supplementary_group_ids(cxt.scratch_allocator());
   if (FLAG_ID_GROUPS.is_enabled()) {
     let output = String{cxt.scratch_allocator()};
+
     for (usize index = 0; index < groups.count(); index++) {
       if (index != 0) output += ' ';
       output +=
@@ -114,8 +120,10 @@ fn Id::execute(const ExecContext &ec, EvalContext &cxt,
                         FLAG_ID_NAME.is_enabled() ? id_name_mode::Name
                                                   : id_name_mode::Numeric);
     }
+
     output += '\n';
     ec.print_to_stdout(output);
+
     return 0;
   }
 
@@ -135,6 +143,7 @@ fn Id::execute(const ExecContext &ec, EvalContext &cxt,
     output += ')';
   }
   output += " groups=";
+
   for (usize index = 0; index < groups.count(); index++) {
     if (index != 0) output += ',';
     output += String::from(groups[index], cxt.scratch_allocator());
@@ -145,8 +154,10 @@ fn Id::execute(const ExecContext &ec, EvalContext &cxt,
       output += ')';
     }
   }
+
   output += '\n';
   ec.print_to_stdout(output);
+
   return 0;
 }
 

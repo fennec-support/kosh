@@ -60,28 +60,33 @@ public:
   hot mustuse pure fn value() wontthrow -> T &
   {
     ASSERT(!m_is_error);
+
     return value_reference();
   }
   hot mustuse pure fn value() const wontthrow -> const T &
   {
     ASSERT(!m_is_error);
+
     return value_reference();
   }
 
   mustuse pure fn error() wontthrow -> Error &
   {
     ASSERT(m_is_error);
+
     return error_reference();
   }
   mustuse pure fn error() const wontthrow -> const Error &
   {
     ASSERT(m_is_error);
+
     return error_reference();
   }
 
   hot mustuse fn take() throws -> T
   {
     ASSERT(!m_is_error);
+
     return steal(value_reference());
   }
 

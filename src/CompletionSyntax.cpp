@@ -51,6 +51,7 @@ static pure fn opens_dollar_quote(StringView line, usize position) wontthrow
 
   usize backslash_count = 0;
   usize k = position - 1;
+
   while (k > 0 && line[k - 1] == '\\') {
     backslash_count++;
     k--;
@@ -73,12 +74,14 @@ pure fn internal::quoted_run_end(StringView line, usize position) wontthrow
       opener == '"' || opens_dollar_quote(line, position);
 
   usize k = position + 1;
+
   while (k < line.length && line[k] != opener) {
     if (is_escaped_body && line[k] == '\\' && k + 1 < line.length) {
       k++;
     }
     k++;
   }
+
   return k < line.length ? k : line.length - 1;
 }
 
@@ -91,6 +94,7 @@ pure fn internal::token_has_glob_metacharacter(StringView token) wontthrow
       return true;
     }
   }
+
   return false;
 }
 
@@ -119,6 +123,7 @@ pure fn internal::find_token_bounds(StringView line, usize cursor) wontthrow
 {
   usize start = 0;
   usize i = 0;
+
   while (i < cursor && i < line.length) {
     let const c = line[i];
     if (c == '\\' || c == '\'' || c == '"') {
@@ -131,6 +136,7 @@ pure fn internal::find_token_bounds(StringView line, usize cursor) wontthrow
   }
 
   usize end = cursor;
+
   while (end < line.length) {
     let const c = line[end];
     if (c == '\\' || c == '\'' || c == '"') {
@@ -154,6 +160,7 @@ static pure fn is_transparent_command_prefix(StringView word) wontthrow -> bool
   {
     return true;
   }
+
   return TRANSPARENT_PREFIXES.contains(word);
 }
 
@@ -165,6 +172,7 @@ static fn next_completion_prefix_word(StringView line,
   if (position >= line.length) return None;
 
   let const start = position;
+
   while (position < line.length && line[position] != ' ' &&
          line[position] != '\t')
   {
@@ -194,9 +202,11 @@ static fn timeout_flag_takes_value(char short_name,
     if (!long_name.is_empty() && flag->long_name() != long_name) {
       continue;
     }
+
     return flag->kind() == Flag::Kind::String ||
            flag->kind() == Flag::Kind::ManyStrings;
   }
+
   return false;
 }
 
@@ -211,6 +221,7 @@ static fn timeout_option_takes_next_word(StringView word) wontthrow -> bool
     let const name_length =
         separator.has_value() ? *separator - 2 : word.length - 2;
     let const name = word.substring_of_length(2, name_length);
+
     return !separator.has_value() && timeout_flag_takes_value('\0', name);
   }
 
@@ -218,6 +229,7 @@ static fn timeout_option_takes_next_word(StringView word) wontthrow -> bool
     if (timeout_flag_takes_value(word[flag_index], {}))
       return flag_index + 1 == word.length;
   }
+
   return false;
 }
 
@@ -244,6 +256,7 @@ static fn timeout_managed_command_start(StringView line,
     -> Maybe<usize>
 {
   let should_skip_value = false;
+
   loop
   {
     let const word = next_completion_prefix_word(line, position);
@@ -265,6 +278,7 @@ static fn timeout_managed_command_start(StringView line,
     if (word_text == "--") {
       let const duration = next_completion_prefix_word(line, position);
       if (!duration.has_value()) return None;
+
       return skip_blanks(line, position);
     }
 
@@ -280,6 +294,7 @@ static fn timeout_managed_command_start(StringView line,
 static fn timeout_command_start(StringView line) wontthrow -> Maybe<usize>
 {
   usize position = 0;
+
   loop
   {
     let const word = next_completion_prefix_word(line, position);
@@ -308,6 +323,7 @@ static fn timeout_command_start(StringView line) wontthrow -> Maybe<usize>
 
       if (utility_text == "timeout")
         return timeout_managed_command_start(line, position);
+
       return None;
     }
 
@@ -327,6 +343,7 @@ fn internal::is_in_command_position(StringView line,
   let const is_active_option =
       token_start < line.length && line[token_start] == '-';
   usize position = command_segment_start(line, token_start);
+
   for (usize k = position; k < token_start; k++) {
     if (line[k] == '\'' || line[k] == '"' || line[k] == '\\') {
       k = quoted_run_end(line, k);
@@ -357,11 +374,13 @@ fn internal::command_word_of(StringView line) wontthrow -> StringView
   {
     usize position = *managed_start;
     let const command = next_completion_prefix_word(line, position);
+
     return command.has_value() ? *command : StringView{};
   }
 
   usize position = command_segment_start(line, line.length);
   let time_command = StringView{};
+
   loop
   {
     let const word = next_completion_prefix_word(line, position);
@@ -381,6 +400,7 @@ pure fn internal::command_segment_start(StringView line, usize cursor) wontthrow
   usize start = 0;
   usize open_paren_depth = 0;
   let const limit = cursor < line.length ? cursor : line.length;
+
   for (usize k = 0; k < limit; k++) {
     let const c = line[k];
     if (c == '\'' || c == '"' || c == '\\') {
@@ -400,6 +420,7 @@ pure fn internal::command_segment_start(StringView line, usize cursor) wontthrow
       start = k + 1;
     }
   }
+
   return start;
 }
 
@@ -407,6 +428,7 @@ fn internal::resolve_completion_alias(StringView command,
                                       EvalContext &context) throws -> String
 {
   let name = String{command};
+
   for (usize depth = 0; depth < 8; depth++) {
     let const expansion = context.scope_store().find_alias(name.view());
     if (!expansion.has_value()) break;
@@ -414,15 +436,18 @@ fn internal::resolve_completion_alias(StringView command,
     usize i = 0;
     i = skip_blanks(expanded, i);
     let const start = i;
+
     while (i < expanded.length && expanded[i] != ' ' && expanded[i] != '\t') {
       i++;
     }
+
     let const first = expanded.substring_of_length(start, i - start);
     if (first.is_empty() || first == name.view()) {
       break;
     }
     name = String{first};
   }
+
   return name;
 }
 
@@ -440,10 +465,12 @@ fn internal::resolve_completion_command(StringView command,
     {
       let resolved_name = String{canonical->filename()};
       let const name_info = os::normalize_program_name(resolved_name);
+
       return String{
           resolved_name.substring_of_length(0, name_info.stem_length)};
     }
   }
+
   return name;
 }
 
@@ -453,13 +480,16 @@ fn internal::split_completion_words(StringView line, usize cursor,
   let words = ArrayList<String>{completion_allocator()};
   usize i = 0;
   let is_found = false;
+
   while (i < line.length) {
     i = skip_blanks(line, i);
     if (i >= line.length) break;
     let const start = i;
+
     while (i < line.length && line[i] != ' ' && line[i] != '\t') {
       i++;
     }
+
     if (cursor >= start && cursor <= i) {
       cword = words.count();
       is_found = true;
@@ -467,10 +497,12 @@ fn internal::split_completion_words(StringView line, usize cursor,
     words.push(String{completion_allocator(),
                       line.substring_of_length(start, i - start)});
   }
+
   if (!is_found) {
     cword = words.count();
     words.push(String{completion_allocator()});
   }
+
   return words;
 }
 

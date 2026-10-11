@@ -91,6 +91,7 @@ public:
   pure const String &current() const wontthrow
   {
     ASSERT(pos < end);
+
     return args[pos];
   }
   pure bool at_end() const wontthrow { return pos >= end; }
@@ -112,6 +113,7 @@ public:
 
     if (op == "-s") {
       let const size = operand_path.file_size();
+
       return size.has_value() && size.value() > 0;
     }
     using file_predicate = bool (Path::*)() const;
@@ -142,12 +144,14 @@ public:
     if (op == "-t") {
       let const file_descriptor = parse_integer(operand.view());
       if (!file_descriptor.has_value()) return false;
+
       return os::shell_fd_is_a_tty(static_cast<int>(*file_descriptor));
     }
     fail(
         StringView{"'"} + op +
         "' is not a known unary operator, expected one of -z -n -e -f -d -s -r "
         "-w -x -L -h -b -c -p -S -g -u -k -O -G -t -R");
+
     return false;
   }
 
@@ -159,6 +163,7 @@ public:
       fail(StringView{"'"} + op +
            "' is not a known binary operator, expected one of = != < > -eq "
            "-ne -lt -le -gt -ge -ef -nt -ot");
+
       return false;
     }
 
@@ -166,8 +171,10 @@ public:
     case binary_operator::StringEqualBashism:
       if (!is_bash_compatible) {
         fail("'==' is a bashism, use = for string equality in POSIX mode");
+
         return false;
       }
+
       return left == right;
     case binary_operator::StringEqual: return left == right;
     case binary_operator::StringNotEqual: return left != right;
@@ -188,6 +195,7 @@ public:
       let const &not_a_number = left_number.has_value() ? right : left;
       fail(StringView{"Cannot compare with '"} + op + "', '" + not_a_number +
            "' is not an integer");
+
       return false;
     }
 
@@ -227,6 +235,7 @@ public:
   {
     if (index + 1 >= end) return true;
     if (index + 2 >= end) return false;
+
     return is_binary_operator(args[index + 1]);
   }
 
@@ -245,14 +254,17 @@ public:
   {
     if (at_end()) {
       fail("An argument is expected");
+
       return false;
     }
     if (current() == "!") {
       if (pos + 1 >= end) {
         pos++;
+
         return true;
       }
       pos++;
+
       return !parse_factor();
     }
     if (is_open_paren_token(pos)) {
@@ -263,12 +275,14 @@ public:
       } else {
         pos++;
       }
+
       return result;
     }
     if (is_unary_operator_token(pos)) {
       let const &op = args[pos];
       let const &operand = args[pos + 1];
       pos += 2;
+
       return evaluate_unary(op, operand);
     }
     if (pos + 1 < end && is_binary_operator(args[pos + 1])) {
@@ -276,44 +290,52 @@ public:
         fail(StringView{"An argument is expected after '"} + args[pos + 1] +
              "'");
         pos = end;
+
         return false;
       }
       let const &left = args[pos];
       let const &op = args[pos + 1];
       let const &right = args[pos + 2];
       pos += 3;
+
       return evaluate_binary(left, op, right);
     }
     let const result = !current().is_empty();
     pos++;
+
     return result;
   }
 
   bool parse_term() throws
   {
     let is_true = parse_factor();
+
     while (!at_end() && current() == "-a") {
       pos++;
       let const right = parse_factor();
       is_true = is_true && right;
     }
+
     return is_true;
   }
 
   bool parse_expression() throws
   {
     let is_true = parse_term();
+
     while (!at_end() && current() == "-o") {
       pos++;
       let const right = parse_term();
       is_true = is_true || right;
     }
+
     return is_true;
   }
 
   bool evaluate_with_posix_argument_count_rules() throws
   {
     let should_negate = false;
+
     loop
     {
       let const count = end - pos;
@@ -325,6 +347,7 @@ public:
         let const result =
             query_shell_option(cxt, args[pos + 1].view()).value_or(false);
         pos = end;
+
         return should_negate ? !result : result;
       }
 
@@ -332,6 +355,7 @@ public:
         let const result =
             evaluate_binary(args[pos], args[pos + 1], args[pos + 2]);
         pos = end;
+
         return should_negate ? !result : result;
       }
 
@@ -351,6 +375,7 @@ public:
     }
 
     let const result = parse_expression();
+
     return should_negate ? !result : result;
   }
 };
@@ -401,6 +426,7 @@ fn Test::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     error.set_command_status(2);
     throw error;
   }
+
   return result ? 0 : 1;
 }
 

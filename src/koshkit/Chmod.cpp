@@ -45,6 +45,7 @@ static fn change_mode(const ExecContext &ec, EvalContext &cxt, const Path &path,
     report_soft_koshkit_util_error(ec, cxt, "chmod",
                                    "cannot access '" + path.text() +
                                        "': " + os::last_system_error_message());
+
     return false;
   }
 
@@ -82,6 +83,7 @@ static fn change_mode(const ExecContext &ec, EvalContext &cxt, const Path &path,
     report_soft_koshkit_util_error(ec, cxt, "chmod",
                                    "cannot read directory '" + path.text() +
                                        "': " + os::last_system_error_message());
+
     return false;
   }
 
@@ -89,12 +91,13 @@ static fn change_mode(const ExecContext &ec, EvalContext &cxt, const Path &path,
       operand_device_id != nullptr ? *operand_device_id : status.device_id;
   let const *children_device_id =
       FLAG_CHMOD_ONE_FILE_SYSTEM.is_enabled() ? &root_device_id : nullptr;
+
   for (let const &child_entry : *children) {
     if (os::INTERRUPT_REQUESTED) return did_succeed;
     let const child_scratch = cxt.expansion_store().scratch_arena().mark();
     defer { cxt.expansion_store().scratch_arena().release(child_scratch); };
     let const is_child_symlink =
-        child_entry.child.kind == Path::entry_kind::Symlink ||
+        child_entry.child.kind == Path::EntryKind::Symlink ||
         (child_entry.has_status &&
          os::file_type_letter(child_entry.status.mode) == 'l');
     if (is_child_symlink) continue;
@@ -129,6 +132,7 @@ fn Chmod::execute(const ExecContext &ec, EvalContext &cxt,
     KOSHKIT_REPORT_ERROR_AT(
         operand_locations[0], "invalid mode '" + operands[0] + "'",
         "use an octal mode up to 7777 or symbolic clauses such as u+x,g-w");
+
     return 1;
   }
 

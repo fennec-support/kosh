@@ -60,6 +60,7 @@ fn internal::expand_command_aliases(
     let const &body_value = *body;
     let const body_location =
         !arg_locations.is_empty() ? arg_locations[0] : SourceLocation{};
+
     for (usize i = 0; i < body_value.count(); i++) {
       let const c = body_value[i];
       if (c == ' ' || c == '\t') {
@@ -74,6 +75,7 @@ fn internal::expand_command_aliases(
         current += c;
       }
     }
+
     if (!current.is_empty()) {
       rebuilt.push(String{
           heap_allocator(), StringView{current.data(), current.count()}
@@ -99,8 +101,10 @@ namespace {
 static fn command_word_is_glob(const Word &word) wontthrow -> bool
 {
   bool has_open_bracket = false;
+
   for (let const &segment : word.segments) {
     if (segment.kind != WordSegment::Kind::UnquotedText) continue;
+
     for (usize i = 0; i < segment.text.count(); i++) {
       let const c = segment.text[i];
       if (c == '*' || c == '?') {
@@ -112,6 +116,7 @@ static fn command_word_is_glob(const Word &word) wontthrow -> bool
       }
     }
   }
+
   return false;
 }
 
@@ -127,6 +132,7 @@ static fn command_runs_program(const ArrayList<String> &args,
                                            : search_builtin(args[0].view());
   if (builtin.has_value() && *builtin == Builtin::Kind::CommandBuiltin) {
     usize operand_index = 1;
+
     while (operand_index < args.count() && args[operand_index] == "-p") {
       operand_index++;
     }
@@ -145,7 +151,7 @@ static fn command_runs_program(const ArrayList<String> &args,
 
 hot fn SimpleCommand::get_literal_command_lookup(
     const ArrayList<String> &program_args) const throws
-    -> const literal_command_lookup *
+    -> const LiteralCommandLookup *
 {
   if (program_args.is_empty() || m_args.is_empty() ||
       m_args[0]->kind() != Token::Kind::Word)
@@ -169,7 +175,7 @@ hot fn SimpleCommand::get_literal_command_lookup(
   if (program_args[0].view() != literal_name) return nullptr;
 
   if (!m_literal_command_lookup.has_value()) {
-    m_literal_command_lookup = literal_command_lookup{
+    m_literal_command_lookup = LiteralCommandLookup{
         search_builtin(literal_name), is_special_builtin_name(literal_name)};
   }
 
@@ -257,9 +263,11 @@ hot fn SimpleCommand::evaluate_impl(EvalContext &cxt,
     if (!keyword_assignments.is_empty()) {
       filtered_argument_tokens.reserve(m_args.count() -
                                        keyword_assignments.count());
+
       for (let const token : m_args)
         if (token->kind() != Token::Kind::Assignment)
           filtered_argument_tokens.push(token);
+
       argument_tokens = &filtered_argument_tokens;
     }
   }
@@ -524,9 +532,11 @@ hot fn SimpleCommand::evaluate_impl(EvalContext &cxt,
       }
       }
     }
+
     discard_child_redirection_state(cxt, redirection_snapshot);
   } catch (const TrapAbandonedRedirection &) {
     discard_child_redirection_state(cxt, redirection_snapshot);
+
     return cxt.execution_store().last_exit_status();
   } catch (const ErrorWithLocation &redirection_error) {
     discard_child_redirection_state(cxt, redirection_snapshot);
@@ -545,6 +555,7 @@ hot fn SimpleCommand::evaluate_impl(EvalContext &cxt,
         cxt.runtime_state().is_bash_compatible() ? 1 : 2;
     cxt.execution_store().set_last_exit_status(redirection_status);
     cxt.publish_single_pipe_status(redirection_status);
+
     return redirection_status;
   }
 
@@ -584,10 +595,12 @@ hot fn SimpleCommand::evaluate_impl(EvalContext &cxt,
     let trace = String{cxt.scratch_allocator(), assignment.name.view()};
     trace +=
         assignment.update_mode == assignment_update_mode::Append ? "+=(" : "=(";
+
     for (usize i = 0; i < values.count(); i++) {
       if (i > 0) trace.push(' ');
       append_shell_quoted_arg(trace, values[i].view());
     }
+
     trace.push(')');
     cxt.write_xtrace(trace.view());
   };
@@ -639,6 +652,7 @@ hot fn SimpleCommand::evaluate_impl(EvalContext &cxt,
           } catch (const Error &error) {
             relocate_if_unlocated(error, assignment.source_location());
           }
+
           return;
         }
 
@@ -657,8 +671,10 @@ hot fn SimpleCommand::evaluate_impl(EvalContext &cxt,
   if (program_args.is_empty()) {
     for (let const &var : m_local_vars)
       do_apply_persistent_assignment(*var.token);
+
     for (let const assignment : keyword_assignments)
       do_apply_persistent_assignment(*assignment);
+
     for (let const &assignment : m_array_args) {
       if (!cxt.is_circular_nameref(assignment.name))
         do_reject_readonly_target(assignment.name);
@@ -673,6 +689,7 @@ hot fn SimpleCommand::evaluate_impl(EvalContext &cxt,
       cxt.assign_indexed_array_elements(
           assignment.name, values, assignment.update_mode, &subscript_flags);
     }
+
     let const do_token_ran_substitution = [&](const Token *token) {
       if (token == nullptr) return false;
       if (token->kind() == Token::Kind::Word)
@@ -683,19 +700,25 @@ hot fn SimpleCommand::evaluate_impl(EvalContext &cxt,
         return static_cast<const tokens::Assignment *>(token)
             ->value_word()
             .runs_substitution();
+
       return false;
     };
     let ran_substitution = false;
+
     for (let const token : m_args)
       ran_substitution = ran_substitution || do_token_ran_substitution(token);
+
     for (let const &var : m_local_vars)
       ran_substitution =
           ran_substitution || var.get_value().runs_substitution();
+
     for (let const &assignment : m_array_args)
       for (let const token : assignment.elements)
         ran_substitution = ran_substitution || do_token_ran_substitution(token);
+
     if (!ran_substitution) cxt.execution_store().set_last_exit_status(0);
     cxt.publish_single_pipe_status(cxt.execution_store().last_exit_status());
+
     return cxt.execution_store().last_exit_status();
   }
 
@@ -734,6 +757,7 @@ hot fn SimpleCommand::evaluate_impl(EvalContext &cxt,
             restore.name.view(), variable_attribute::Nameref, true);
       }
     }
+
     if (saved_program_resolver.has_value())
       cxt.program_resolver() = steal(*saved_program_resolver);
     if (was_ifs_assigned)
@@ -746,6 +770,7 @@ hot fn SimpleCommand::evaluate_impl(EvalContext &cxt,
       !m_local_vars.is_empty() || !keyword_assignments.is_empty();
   let const do_is_source_evaluating_name = [&]() throws -> bool {
     let const kind = search_builtin(program_args[0].view());
+
     return kind == Builtin::Kind::Eval || kind == Builtin::Kind::Source;
   };
   let const is_source_evaluating_builtin =
@@ -784,6 +809,7 @@ hot fn SimpleCommand::evaluate_impl(EvalContext &cxt,
             cxt.show_runtime_error_at(assignment.source_location(),
                                       "Unable to assign '" + name +
                                           "' because it is read only");
+
             return;
           }
 
@@ -817,6 +843,7 @@ hot fn SimpleCommand::evaluate_impl(EvalContext &cxt,
             os::set_environment_variable(name, expanded_value.view());
             cxt.mark_exported(name);
           }
+
           return;
         }
 
@@ -874,10 +901,13 @@ hot fn SimpleCommand::evaluate_impl(EvalContext &cxt,
         if (name == "IFS")
           cxt.variable_store().set_field_separators(expanded_value.view());
       };
+
   for (let const &var : m_local_vars)
     do_apply_environment_assignment(*var.token);
+
   for (let const assignment : keyword_assignments)
     do_apply_environment_assignment(*assignment);
+
   cxt.write_xtrace(program_args);
 
   ASSERT(!program_args.is_empty());
@@ -905,8 +935,10 @@ hot fn SimpleCommand::evaluate_impl(EvalContext &cxt,
     let const do_call_function = [&]() throws -> i64 {
       let call_params = ArrayList<String>{heap_allocator()};
       call_params.reserve(program_args.count() - 1);
+
       for (usize i = 1; i < program_args.count(); i++)
         call_params.push_managed(program_args[i]);
+
       let bash_argument_frame_context = EvalContext::BashArgumentFrameContext{};
       cxt.enter_bash_function_argument_frame(bash_argument_frame_context,
                                              call_params);
@@ -1086,6 +1118,7 @@ hot fn SimpleCommand::evaluate_impl(EvalContext &cxt,
       report_command_resolution_error(cxt, e);
       did_resolution_fail = true;
       resolution_failure_status = e.command_status();
+
       return ExecContext::make_from_unresolved(
           source_location(), static_cast<i32>(resolution_failure_status),
           StringView{});
@@ -1102,6 +1135,7 @@ hot fn SimpleCommand::evaluate_impl(EvalContext &cxt,
     cxt.execution_store().set_last_exit_status(
         static_cast<i32>(resolution_failure_status));
     cxt.publish_single_pipe_status(static_cast<i32>(resolution_failure_status));
+
     return resolution_failure_status;
   }
   ec.has_stripped_array_operands = !m_array_args.is_empty();
@@ -1175,6 +1209,7 @@ hot fn SimpleCommand::evaluate_impl(EvalContext &cxt,
     let should_unmark_uppercase = false;
     if (is_declare || is_local || is_readonly_kind) {
       let text_storage = String{heap_allocator()};
+
       for (let const arg : m_args) {
         let const text = borrowed_token_text(arg, text_storage);
         if (text.length < 2) continue;
@@ -1286,6 +1321,7 @@ hot fn SimpleCommand::evaluate_impl(EvalContext &cxt,
 
   cxt.execution_store().set_last_exit_status(static_cast<i32>(ret));
   cxt.publish_single_pipe_status(static_cast<i32>(ret));
+
   return ret;
 }
 

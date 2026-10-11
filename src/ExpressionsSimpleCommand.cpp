@@ -40,6 +40,7 @@ static pure fn is_process_dynamic_name(StringView text, usize position,
   }
 
   usize end_position = position;
+
   while (end_position < text.length &&
          lexer::is_variable_name(text[end_position]))
   {
@@ -195,6 +196,7 @@ fn AssignCommand::analyze(AnalysisContext &actx,
         "assignment",
         static_cast<int>(*bracket), name.view().data);
     actx.constant_variables.erase(base);
+
     return;
   }
 
@@ -246,6 +248,7 @@ fn AssignCommand::analyze(AnalysisContext &actx,
         "appends, or follows a runtime definer",
         name.c_str());
     actx.constant_variables.erase(name.view());
+
     return;
   }
 
@@ -350,6 +353,7 @@ fn AssignCommand::evaluate_assignment(EvalContext &cxt) const throws -> i64
       if (!value_ran_substitution)
         cxt.execution_store().set_last_exit_status(0);
       cxt.publish_single_pipe_status(cxt.execution_store().last_exit_status());
+
       return cxt.execution_store().last_exit_status();
     }
 
@@ -386,6 +390,7 @@ fn AssignCommand::evaluate_assignment(EvalContext &cxt) const throws -> i64
         cxt.execution_store().set_last_exit_status(0);
       }
       cxt.publish_single_pipe_status(cxt.execution_store().last_exit_status());
+
       return cxt.execution_store().last_exit_status();
     }
 
@@ -403,6 +408,7 @@ fn AssignCommand::evaluate_assignment(EvalContext &cxt) const throws -> i64
           return true;
         }
       }
+
       return false;
     };
     if (m_assignment->get_update_mode() == assignment_update_mode::Append &&
@@ -416,6 +422,7 @@ fn AssignCommand::evaluate_assignment(EvalContext &cxt) const throws -> i64
           cxt.execution_store().set_last_exit_status(0);
         cxt.publish_single_pipe_status(
             cxt.execution_store().last_exit_status());
+
         return cxt.execution_store().last_exit_status();
       }
     }
@@ -439,6 +446,7 @@ fn AssignCommand::evaluate_assignment(EvalContext &cxt) const throws -> i64
     }
     if (!value_ran_substitution) cxt.execution_store().set_last_exit_status(0);
     cxt.publish_single_pipe_status(cxt.execution_store().last_exit_status());
+
     return cxt.execution_store().last_exit_status();
   } catch (const Error &e) {
     relocate_if_unlocated(e, source_location());
@@ -449,6 +457,7 @@ cold fn AssignCommand::to_string() const throws -> String
 {
   let result = "Assign " + m_assignment->to_ast_string();
   append_ast_execution_flags(result);
+
   return result;
 }
 
@@ -456,6 +465,7 @@ fn AssignCommand::can_evaluate_in_process_substitution(
     const EvalContext &cxt, HashSet &active_functions) const throws -> bool
 {
   unused(active_functions);
+
   return !is_async() && !is_timed() &&
          word_is_safe_for_in_process_substitution(
              m_assignment->value_word(),
@@ -486,6 +496,7 @@ fn SimpleCommand::set_full_source_end_position(usize position) wontthrow -> void
 pure fn SimpleCommand::full_source_start_position() const wontthrow -> usize
 {
   let start_position = usize{m_location.position};
+
   for (let const &var : m_local_vars) {
     let const assignment_position = var.get_location().position;
     if (assignment_position < start_position)
@@ -499,6 +510,7 @@ pure fn SimpleCommand::assignments_source_end_position() const wontthrow
     -> usize
 {
   let end_position = source_end_position();
+
   for (let const &var : m_local_vars) {
     let const location = var.get_location();
     let const var_end_position = usize{location.position} + location.length;
@@ -550,6 +562,7 @@ fn SimpleCommand::can_evaluate_in_process_substitution(
   {
     if (!active_functions.add(*command_name)) return true;
     defer { active_functions.remove(*command_name); };
+
     return function_body->can_evaluate_in_process_substitution(
         cxt, active_functions);
   }
@@ -559,6 +572,7 @@ fn SimpleCommand::can_evaluate_in_process_substitution(
       SSK("local"), SSK("printf"), SSK("return"), SSK("true"),
   };
   constexpr StaticStringSet SAFE_BUILTINS{SAFE_BUILTIN_KEYS};
+
   return SAFE_BUILTINS.contains(*command_name);
 }
 
@@ -573,6 +587,7 @@ fn SimpleCommand::append_redirection(const Redirection &redirection,
 {
   ArrayList<Redirection> redirections{allocator};
   redirections.reserve(m_redirections.count() + 1);
+
   for (let const &existing : m_redirections) {
     redirections.push(existing);
   }
@@ -682,6 +697,7 @@ fn resolve_duplication(const Redirection &redir, EvalContext &cxt) throws
     throw ErrorWithLocation{redir.target->source_location(),
                             field + ": Bad file descriptor"};
   }
+
   return resolved_duplication{static_cast<i32>(parsed_descriptor.value()),
                               koshka::None};
 }
@@ -740,6 +756,7 @@ static fn redirection_can_change_state(const Redirection &redir) wontthrow
     }
 
     let const body = redir.heredoc->text.view();
+
     return view_contains(body, StringView{"${"}) ||
            view_contains(body, StringView{"$(("});
   }
@@ -865,6 +882,7 @@ fn internal::resolve_redirection(const Redirection &redir, EvalContext &cxt,
                               "Could not stage the heredoc body: " +
                                   os::last_system_error_message()};
     }
+
     return resolved_redirection{redirection_outcome::Heredoc, redir.fd,
                                 opened.take(), -1};
   }
@@ -889,9 +907,11 @@ fn internal::resolve_redirection(const Redirection &redir, EvalContext &cxt,
             "Could not open '" + *resolved_dup.both_streams_file + "': " +
                 redirection_open_error(*resolved_dup.both_streams_file)};
       }
+
       return resolved_redirection{redirection_outcome::BothStreams, 1,
                                   opened.take(), -1};
     }
+
     return resolved_redirection{
         redirection_outcome::Duplicate, redir.fd, {}, resolved_dup.fd};
   }
@@ -927,6 +947,7 @@ fn internal::resolve_redirection(const Redirection &redir, EvalContext &cxt,
   bool did_signal_arrive = false;
   let opened = os::open_file_descriptor_until_signal(target_path, mode,
                                                      did_signal_arrive);
+
   while (!opened && did_signal_arrive) {
     cxt.run_pending_traps();
     if (cxt.control_flow_store().has_pending() &&
@@ -1152,6 +1173,7 @@ static pure fn match_reprinted_redirection(StringView source, usize position,
     if (!is_token_start) return {};
 
     i64 parsed_fd = 0;
+
     while (scan < source.length && lexer::is_number(source[scan])) {
       parsed_fd = (parsed_fd * 10) + (source[scan] - '0');
 
@@ -1288,6 +1310,7 @@ static fn append_reprinted_source(String &out, StringView source,
 
     if (byte == '\'' || byte == '`') {
       let const start = position++;
+
       while (position < source.length && source[position] != byte) {
         position++;
       }
@@ -1613,6 +1636,7 @@ static fn append_redirection_descriptor(String &out, const Redirection &redir,
       out.push('{');
       out.append(*name);
       out.push('}');
+
       return;
     }
   }
@@ -1655,48 +1679,56 @@ static fn append_one_redirection(EvalContext &cxt, String &out,
     if (redir.is_both_streams_spelling) {
       out += "&> ";
       do_append_target();
+
       return;
     }
 
     append_redirection_descriptor(out, redir, 1);
     out += "> ";
     do_append_target();
+
     return;
 
   case Redirection::Kind::TruncateOutputOverride:
     append_redirection_descriptor(out, redir, 1);
     out += ">| ";
     do_append_target();
+
     return;
 
   case Redirection::Kind::AppendOutput:
     if (redir.is_both_streams_spelling) {
       out += "&>> ";
       do_append_target();
+
       return;
     }
 
     append_redirection_descriptor(out, redir, 1);
     out += ">> ";
     do_append_target();
+
     return;
 
   case Redirection::Kind::ReadInput:
     append_redirection_descriptor(out, redir, 0);
     out += "< ";
     do_append_target();
+
     return;
 
   case Redirection::Kind::ReadWrite:
     append_redirection_descriptor(out, redir, 0);
     out += "<> ";
     do_append_target();
+
     return;
 
   case Redirection::Kind::HereString:
     append_redirection_descriptor(out, redir, 0);
     out += "<<< ";
     do_append_target();
+
     return;
 
   case Redirection::Kind::Heredoc:
@@ -1704,6 +1736,7 @@ static fn append_one_redirection(EvalContext &cxt, String &out,
     out += "<<";
     if (redir.heredoc_delimiter != nullptr)
       append_word_source_text(cxt, out, *redir.heredoc_delimiter);
+
     return;
 
   case Redirection::Kind::DuplicateOutput:
@@ -1711,6 +1744,7 @@ static fn append_one_redirection(EvalContext &cxt, String &out,
     if (redir.dup_fd == Redirection::DUP_FD_CLOSE) {
       append_duplication_descriptor(out, redir);
       out += ">&-";
+
       return;
     }
 
@@ -1719,12 +1753,14 @@ static fn append_one_redirection(EvalContext &cxt, String &out,
       append_duplication_descriptor(out, redir);
       out += is_output ? ">&" : "<&";
       out += String::from(static_cast<i64>(redir.dup_fd), heap_allocator());
+
       return;
     }
 
     append_redirection_descriptor(out, redir, is_output ? 1 : 0);
     out += is_output ? ">&" : "<&";
     do_append_target();
+
     return;
   }
   }
@@ -1744,6 +1780,7 @@ fn internal::append_redirections_text(
 {
   bool should_drop_error_duplication = false;
   bool has_heredoc = false;
+
   for (let const &redir : redirections) {
     if (should_drop_error_duplication) {
       should_drop_error_duplication = false;
@@ -2010,6 +2047,7 @@ cold fn SimpleCommand::to_string() const throws -> String
 
   if (!m_args.is_empty()) {
     s += " \"" + m_args[0]->raw_string() + "\"";
+
     for (usize i = 1; i < m_args.count(); i++) {
       s += " \"";
       s += m_args[i]->raw_string();

@@ -97,28 +97,28 @@ static pure fn removal_type_name(const os::file_status &status) wontthrow
 }
 
 static pure fn effective_entry_kind(
-    const os::directory_status_entry &entry) wontthrow -> Path::entry_kind
+    const os::directory_status_entry &entry) wontthrow -> Path::EntryKind
 {
-  if (entry.child.kind != Path::entry_kind::Unknown || !entry.has_status) {
+  if (entry.child.kind != Path::EntryKind::Unknown || !entry.has_status) {
     return entry.child.kind;
   }
 
   switch (os::file_type_letter(entry.status.mode)) {
-  case 'd': return Path::entry_kind::Directory;
-  case '-': return Path::entry_kind::Regular;
-  case 'l': return Path::entry_kind::Symlink;
-  default: return Path::entry_kind::Other;
+  case 'd': return Path::EntryKind::Directory;
+  case '-': return Path::EntryKind::Regular;
+  case 'l': return Path::EntryKind::Symlink;
+  default: return Path::EntryKind::Other;
   }
 }
 
 static fn should_descend_into(StringView path, Allocator allocator,
                               removal_mode mode,
-                              Path::entry_kind known_kind) throws -> bool
+                              Path::EntryKind known_kind) throws -> bool
 {
   if (mode != removal_mode::Recursive) return false;
 
-  if (known_kind != Path::entry_kind::Unknown)
-    return known_kind == Path::entry_kind::Directory;
+  if (known_kind != Path::EntryKind::Unknown)
+    return known_kind == Path::EntryKind::Directory;
 
   let const target = Path{path, allocator};
 
@@ -170,6 +170,7 @@ struct removal_request
     }
     prompt += entry.path;
     prompt += "'? ";
+
     return confirm_koshkit_action(ec, prompt.view())
                ? os::tree_removal_choice::Proceed
                : os::tree_removal_choice::Keep;
@@ -214,7 +215,7 @@ struct removal_request
     return true;
   }
 
-  fn should_descend(StringView path, Path::entry_kind known_kind) const throws
+  fn should_descend(StringView path, Path::EntryKind known_kind) const throws
       -> bool
   {
     return should_descend_into(path, allocator, mode, known_kind);
@@ -235,6 +236,7 @@ struct removal_request
       entry.is_write_protected = os::file_type_letter(status.mode) != 'l' &&
                                  !os::path_is_writable(path);
     }
+
     return choose(entry, is_descending);
   }
 };
@@ -304,7 +306,7 @@ static fn remove_path_with_prompt(const removal_request &request,
                                   bool is_directory_mode) throws -> bool
 {
   let &cxt = request.cxt;
-  if (request.should_descend(path, Path::entry_kind::Unknown)) {
+  if (request.should_descend(path, Path::EntryKind::Unknown)) {
     let state = tree_removal_state{request, {}};
     let hooks = os::tree_removal_hooks{};
     hooks.context = &state;
@@ -315,6 +317,7 @@ static fn remove_path_with_prompt(const removal_request &request,
     if (is_asking) hooks.should_remove = choose_tree_removal;
     if (request.is_verbose) hooks.report_removed = report_tree_removed;
     hooks.report_failure = report_tree_removal_failure;
+
     return os::remove_tree(path, request.allocator, &hooks);
   }
 
@@ -322,6 +325,7 @@ static fn remove_path_with_prompt(const removal_request &request,
     report_soft_koshkit_util_error(request.ec, cxt, request.utility_name,
                                    "cannot remove '" + String{path} +
                                        "': " + reason);
+
     return false;
   };
   let const do_report_failure = [&]() throws -> bool {
@@ -355,6 +359,7 @@ static fn remove_path_with_prompt(const removal_request &request,
   if (!is_removed) return do_report_failure();
 
   request.report_removed(entry);
+
   return true;
 }
 
@@ -362,7 +367,7 @@ static fn
 report_dry_run_removal(const removal_request &request, StringView path,
                        bool is_directory_mode, bool &is_kept,
                        bool &is_left_behind,
-                       Path::entry_kind known_kind = Path::entry_kind::Unknown,
+                       Path::EntryKind known_kind = Path::EntryKind::Unknown,
                        const os::file_status *known_status = nullptr,
                        Maybe<u64> root_device_id = {}) throws -> bool
 {
@@ -371,6 +376,7 @@ report_dry_run_removal(const removal_request &request, StringView path,
     report_soft_koshkit_util_error(request.ec, cxt, request.utility_name,
                                    "cannot remove '" + String{path} +
                                        "': " + reason);
+
     return false;
   };
 
@@ -390,6 +396,7 @@ report_dry_run_removal(const removal_request &request, StringView path,
           request.ec, cxt, request.utility_name,
           "cannot read directory '" + String{path} +
               "': " + os::last_system_error_message());
+
       return false;
     }
 
@@ -397,8 +404,10 @@ report_dry_run_removal(const removal_request &request, StringView path,
         request.choose_path(path, true) == os::tree_removal_choice::Keep)
     {
       is_kept = true;
+
       return true;
     }
+
     for (let const &entry : *names) {
       if (os::INTERRUPT_REQUESTED) return false;
       let const child_scratch = cxt.expansion_store().scratch_arena().mark();
@@ -435,32 +444,38 @@ report_dry_run_removal(const removal_request &request, StringView path,
   if (!did_succeed) return false;
   if (has_kept_child) {
     is_kept = true;
+
     return true;
   }
   if (request.choose_path(path, false) == os::tree_removal_choice::Keep) {
     is_left_behind = true;
+
     return true;
   }
   if (has_left_child) return do_report_reason("Directory not empty");
 
   request.ec.print_to_stdout("rm: would remove '" +
                              String{cxt.scratch_allocator(), path} + "'\n");
+
   return true;
 }
 
 static fn names_dot_refused_under_force(StringView operand) wontthrow -> bool
 {
   usize end = operand.length;
+
   while (end > 1 && operand[end - 1] == '/') {
     end--;
   }
 
   usize start = end;
+
   while (start > 0 && operand[start - 1] != '/') {
     start--;
   }
 
   let const base = operand.substring_of_length(start, end - start);
+
   return base == StringView{"."} || base == StringView{".."};
 }
 
@@ -468,6 +483,7 @@ static fn is_same_file_as_root(StringView operand) wontthrow -> bool
 {
   let operand_status = os::file_status{};
   let root_status = os::file_status{};
+
   return os::stat_path(operand, operand_status) &&
          os::stat_path("/", root_status) &&
          operand_status.device_id == root_status.device_id &&
@@ -481,6 +497,7 @@ static fn is_on_other_device_than_parent(StringView operand,
   let parent_status = os::file_status{};
   let parent = Path{operand, allocator};
   parent.append("..");
+
   return os::stat_path(operand, operand_status) &&
          os::file_type_letter(operand_status.mode) == 'd' &&
          os::stat_path_following(parent.view(), parent_status) &&
@@ -526,6 +543,7 @@ fn Rm::execute(const ExecContext &ec, EvalContext &cxt,
                        ? Maybe<bool>{}
                        : Maybe<bool>{false}});
   }
+
   for (usize index = 1; index < settings.count(); index++) {
     for (usize slot = index;
          slot > 0 && settings[slot].position < settings[slot - 1].position;
@@ -536,6 +554,7 @@ fn Rm::execute(const ExecContext &ec, EvalContext &cxt,
       settings[slot - 1] = moved;
     }
   }
+
   for (let const &setting : settings) {
     interaction = setting.interaction;
     if (setting.should_ignore_missing.has_value()) {
@@ -566,6 +585,7 @@ fn Rm::execute(const ExecContext &ec, EvalContext &cxt,
 
   if (operands.is_empty()) {
     if (should_ignore_missing) return 0;
+
     return report_usage_error(ec, cxt, args[0].view());
   }
 
@@ -580,6 +600,7 @@ fn Rm::execute(const ExecContext &ec, EvalContext &cxt,
   }
 
   i32 status = 0;
+
   for (let const &operand : operands) {
     if (os::INTERRUPT_REQUESTED) return 130;
     if (is_recursive && names_dot_refused_under_force(operand.view())) {
@@ -644,6 +665,7 @@ fn Rm::execute(const ExecContext &ec, EvalContext &cxt,
     }
     if (os::INTERRUPT_REQUESTED) return 130;
   }
+
   return status;
 }
 

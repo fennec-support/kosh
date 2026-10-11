@@ -46,6 +46,7 @@ fn Dirs::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   if (FLAG_DIRS_CLEAR.is_enabled()) {
     LOG(Debug, "dirs clearing the directory stack");
     cxt.variable_store().directory_stack().clear();
+
     return 0;
   }
 
@@ -74,6 +75,7 @@ fn Dirs::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   print_directory_stack(cxt, ec, FLAG_DIRS_PER_LINE.is_enabled(),
                         FLAG_DIRS_NUMBERED.is_enabled(),
                         FLAG_DIRS_LONG.is_enabled(), selected_index);
+
   return 0;
 }
 

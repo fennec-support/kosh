@@ -19,6 +19,7 @@ pure fn get_diagnostic_definition(diagnostic_id id) wontthrow
 {
   let const index = static_cast<usize>(id);
   ASSERT(index < get_diagnostic_count());
+
   return DIAGNOSTIC_DEFINITIONS[index];
 }
 
@@ -85,6 +86,7 @@ static pure fn parse_diagnostic_code(StringView text) wontthrow -> Maybe<u16>
   if (!text.is_all_decimal_digits()) return None;
 
   u32 value = 0;
+
   for (usize position = 0; position < text.length; position++) {
     value = value * 10 + static_cast<u32>(text[position] - '0');
     if (value > UINT16_MAX) return None;
@@ -123,6 +125,7 @@ push_resolved_selector(StringView source, StringView text,
 {
   if (text == StringView{"all"}) {
     selectors.push(shellcheck_selector{shellcheck_selector_kind::All});
+
     return;
   }
 
@@ -131,6 +134,7 @@ push_resolved_selector(StringView source, StringView text,
         shellcheck_selector_kind::Code, {0, 0},
          *code, 0
     });
+
     return;
   }
 
@@ -145,6 +149,7 @@ push_resolved_selector(StringView source, StringView text,
           *range_start,
           *range_end
       });
+
       return;
     }
   }
@@ -161,11 +166,14 @@ static fn collect_comma_separated_selectors(
     ArrayList<shellcheck_selector> &selectors) throws -> void
 {
   usize component_start = 0;
+
   while (component_start <= value.length) {
     usize component_end = component_start;
+
     while (component_end < value.length && value[component_end] != ',') {
       component_end++;
     }
+
     push_resolved_selector(
         source,
         value.substring_of_length(component_start,
@@ -185,11 +193,13 @@ fn collect_shellcheck_selectors(
   let const comment =
       source.substring_of_length(comment_span.position, comment_span.length);
   usize position = 1;
+
   while (position < comment.length &&
          (comment[position] == ' ' || comment[position] == '\t'))
   {
     position++;
   }
+
   let const directive_text = comment.substring(position);
   if (!directive_text.starts_with(StringView{"shellcheck"}) ||
       (directive_text.length > 10 && directive_text[10] != ' ' &&
@@ -205,6 +215,7 @@ fn collect_shellcheck_selectors(
     {
       position++;
     }
+
     if (position >= comment.length || comment[position] == '#') {
       break;
     }
@@ -214,6 +225,7 @@ fn collect_shellcheck_selectors(
       {
         position++;
       }
+
       continue;
     }
     position += 8;
@@ -229,6 +241,7 @@ fn collect_shellcheck_selectors(
       while (position < comment.length && comment[position] != quote) {
         position++;
       }
+
       if (position == comment.length) return;
     } else {
       while (position < comment.length && comment[position] != ' ' &&

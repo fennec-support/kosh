@@ -169,6 +169,7 @@ cold fn view_has_decimal_fraction(StringView view) wontthrow -> bool
   }
 
   let const integer_start = position;
+
   while (position < view.length && lexer::is_number(view[position])) {
     position++;
   }
@@ -182,6 +183,7 @@ cold fn view_has_decimal_fraction(StringView view) wontthrow -> bool
   position++;
 
   let const fraction_start = position;
+
   while (position < view.length && lexer::is_number(view[position])) {
     position++;
   }
@@ -289,6 +291,7 @@ cold fn view_is_plain_substitution_script(StringView view) wontthrow -> bool
   }
 
   usize field_count = 1;
+
   for (usize position = 2; position < view.length; position++) {
     let const byte = view[position];
     if (byte == delimiter) {
@@ -355,6 +358,7 @@ cold fn find_echo_escape_sequence_outside_substitutions(
 
   let const base = token->source_location().position;
   usize cursor = 0;
+
   for (let const &segment :
        static_cast<const tokens::WordToken *>(token)->word().segments)
   {
@@ -390,6 +394,7 @@ cold fn view_settles_echo_escapes(StringView view) wontthrow -> bool
   }
 
   bool has_escape_letter = false;
+
   for (usize position = 1; position < view.length; position++) {
     switch (view[position]) {
     case 'e':
@@ -405,6 +410,7 @@ cold fn view_settles_echo_escapes(StringView view) wontthrow -> bool
 cold fn substitution_runs_pattern_matcher(StringView body) throws -> bool
 {
   usize position = 0;
+
   for (usize scan_position = 0; scan_position < body.length; scan_position++)
     if (body[scan_position] == '|') position = scan_position + 1;
 
@@ -424,6 +430,7 @@ cold fn word_is_fully_literal(const Word &word) wontthrow -> bool
     {
       return false;
     }
+
   return true;
 }
 
@@ -454,6 +461,7 @@ cold fn printf_consumed_argument_count(StringView format,
     -> usize
 {
   usize count = 0;
+
   for (usize i = 0; i < format.length; i++) {
     if (format[i] != '%' || i + 1 >= format.length) {
       continue;
@@ -467,6 +475,7 @@ cold fn printf_consumed_argument_count(StringView format,
     {
       i++;
     }
+
     if (i >= format.length) break;
     if (format[i] == '*') {
       count++;
@@ -487,16 +496,19 @@ cold fn printf_consumed_argument_count(StringView format,
         }
       }
     }
+
     while (i < format.length &&
            (format[i] == 'h' || format[i] == 'l' || format[i] == 'L' ||
             format[i] == 'j' || format[i] == 'z' || format[i] == 't'))
     {
       i++;
     }
+
     if (i < format.length && format[i] == '(') {
       while (i < format.length && format[i] != ')') {
         i++;
       }
+
       if (i + 1 < format.length) i++;
     }
     if (i < format.length && format[i] == 'q') {
@@ -512,6 +524,7 @@ cold fn printf_consumed_argument_count(StringView format,
 cold pure fn view_is_integer_literal(StringView view) wontthrow -> bool
 {
   usize start = view.length >= 1 && view[0] == '-' ? 1 : 0;
+
   return start < view.length && view.substring(start).is_all_decimal_digits();
 }
 
@@ -530,6 +543,7 @@ cold fn args_have_short_flag(const ArrayList<const Token *> &args,
       return true;
     }
   }
+
   return false;
 }
 
@@ -745,6 +759,7 @@ pure fn ssh_option_takes_value(char letter) wontthrow -> bool
 pure fn leading_command_word(StringView text) wontthrow -> StringView
 {
   usize position = 0;
+
   return text.next_ascii_whitespace_word(position);
 }
 
@@ -766,21 +781,25 @@ fn check_posix_parameter_expansion(AnalysisContext &actx,
 
     if (text.find_character('[').has_value()) {
       actx.report_diagnostic(diagnostic_id::sc3055, do_get_location(), {text});
+
       return;
     }
 
     let const last = text[text.length - 1];
     if (last == '*' || last == '@') {
       actx.report_diagnostic(diagnostic_id::sc3056, do_get_location(), {text});
+
       return;
     }
 
     actx.report_diagnostic(diagnostic_id::sc3053, do_get_location(), {text});
+
     return;
   }
 
   const usize name_start = text[0] == '#' ? 1 : 0;
   usize position = name_start;
+
   while (position < text.length && lexer::is_variable_name(text[position])) {
     position++;
   }
@@ -792,6 +811,7 @@ fn check_posix_parameter_expansion(AnalysisContext &actx,
       is_bash_only_dynamic_variable_name(name))
   {
     actx.report_diagnostic(diagnostic_id::sc3028, do_get_location(), {name});
+
     return;
   }
 
@@ -863,6 +883,7 @@ pure fn arithmetic_assignment_target(StringView expression,
   }
 
   let const end = at;
+
   while (at > 0 && lexer::is_variable_name(expression[at - 1])) {
     at--;
   }

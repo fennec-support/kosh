@@ -42,6 +42,7 @@ fn parse_package_json_format(const parser_format_input &input,
 {
   usize position = 0;
   usize object_depth = 0;
+
   while (position < input.source.length) {
     position = skip_json_space(input.source, position);
     if (position >= input.source.length) return;
@@ -76,6 +77,7 @@ fn parse_package_json_format(const parser_format_input &input,
     }
 
     position++;
+
     while (position < input.source.length) {
       position = skip_json_space(input.source, position);
       if (position >= input.source.length || input.source[position] == '}') {

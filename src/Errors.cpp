@@ -57,6 +57,7 @@ cold fn intern_source_name(StringView name) throws -> u32
                        ? source_identity_kind::CommandString
                        : source_identity_kind::File;
   let &table = get_source_name_table();
+
   for (usize row_index = 0; row_index < table.count(); row_index++) {
     let const &row = table[row_index];
     if (row.kind == kind && row.length == name.length &&
@@ -156,6 +157,7 @@ cold static fn append_diagnostic_message(String &out, StringView message,
       message[message.length - 1] == ')')
   {
     digit_start = message.length - 1;
+
     while (digit_start > 0 && message[digit_start - 1] >= '0' &&
            message[digit_start - 1] <= '9')
     {
@@ -169,6 +171,7 @@ cold static fn append_diagnostic_message(String &out, StringView message,
   out += color.message;
   if (!has_code_suffix) {
     out += message;
+
     return;
   }
 
@@ -184,10 +187,12 @@ template <class T>
 cold static fn number_string_length(T value) wontthrow -> usize
 {
   usize digit_count = 1;
+
   while (value >= 10) {
     digit_count++;
     value /= 10;
   }
+
   return digit_count;
 }
 
@@ -214,6 +219,7 @@ cold static fn get_context_pointing_to(
   {
     if (byte_position > line_position.line_start + LONG_LINE_CONTEXT_BYTES) {
       line_position.line_start = byte_position - LONG_LINE_CONTEXT_BYTES;
+
       while (line_position.line_start < byte_position &&
              (static_cast<u8>(source[line_position.line_start]) & 0xC0) == 0x80)
       {
@@ -227,6 +233,7 @@ cold static fn get_context_pointing_to(
             : byte_position + byte_count;
     if (line_position.line_end > caret_end_position + LONG_LINE_CONTEXT_BYTES) {
       line_position.line_end = caret_end_position + LONG_LINE_CONTEXT_BYTES;
+
       while (line_position.line_end > caret_end_position &&
              (static_cast<u8>(source[line_position.line_end]) & 0xC0) == 0x80)
       {
@@ -245,6 +252,7 @@ cold static fn get_context_pointing_to(
                            line_number_digit_count + BAR_SEPARATOR_WIDTH;
 
   let msg = String{heap_allocator()};
+
   for (usize i = 0; i < line_number_padding_length; i++) {
     msg += ' ';
   }
@@ -263,6 +271,7 @@ cold static fn get_context_pointing_to(
 
   static constexpr usize TAB_WIDTH = 4;
   usize tab_count = 0;
+
   for (usize i = 0; i < context.count(); i++) {
     if (context[i] != '\t') continue;
     tab_count++;
@@ -272,6 +281,7 @@ cold static fn get_context_pointing_to(
   let display_line = context;
   if (tab_count != 0) {
     expanded_line.reserve(context.count() + tab_count * (TAB_WIDTH - 1));
+
     for (usize i = 0; i < context.count(); i++) {
       if (context[i] == '\t') {
         expanded_line.append_repeated(' ', TAB_WIDTH);
@@ -279,6 +289,7 @@ cold static fn get_context_pointing_to(
         expanded_line += context[i];
       }
     }
+
     display_line = expanded_line.view();
   }
 
@@ -290,6 +301,7 @@ cold static fn get_context_pointing_to(
           context[caret_source_position] == '\t' ? TAB_WIDTH : 1;
       caret_source_position++;
     }
+
     return caret_expanded_position;
   };
 
@@ -328,13 +340,16 @@ cold static fn get_context_pointing_to(
             context[highlight_source_position] == '\t' ? TAB_WIDTH : 1;
         highlight_source_position++;
       }
+
       return highlight_expanded_position;
     };
+
     for (let const &span : *source_highlights) {
       expanded_highlights.push(
           highlight_span{do_advance_highlight_position(span.start),
                          do_advance_highlight_position(span.end), span.role});
     }
+
     line_highlights = &expanded_highlights;
   }
   let const display_cells = toiletline::get_display_width(display_line);
@@ -407,6 +422,7 @@ cold static fn get_context_pointing_to(
       sub_sat(caret_end < window_end ? caret_end : window_end, caret_column);
 
   msg += '\n';
+
   for (usize i = 0; i + 3 < gutter_width; i++)
     msg += ' ';
 
@@ -480,6 +496,7 @@ cold fn ErrorBase::to_string(StringView source,
   result += period;
   result += color.get_reset();
   result += trailing_details_to_string();
+
   return result;
 }
 
@@ -635,6 +652,7 @@ fn ErrorWithLocation::to_string(StringView source,
       get_context_pointing_to(source, byte_position, byte_count, line_position,
                               site.line_offset, None, color, context);
   result += trailing_details_to_string();
+
   return result;
 }
 
@@ -763,6 +781,7 @@ cold fn DetailsWithLocation::to_string(StringView source,
   result += get_context_pointing_to(source, byte_position, byte_count,
                                     details_line_position, site.line_offset,
                                     m_message.view(), color, context);
+
   return result;
 }
 
@@ -777,6 +796,7 @@ cold fn ErrorWithLocationAndDetails::details_to_string(
   if (result.is_empty()) return result;
 
   result += trailing_details_to_string();
+
   return result;
 }
 

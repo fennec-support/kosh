@@ -397,67 +397,67 @@ struct source_read_result
 class SourceBatchReader
 {
 public:
-  enum class source_dash_mode : u8
+  enum class SourceDashMode : u8
   {
     TreatAsStdin,
     TreatAsPath,
   };
 
-  enum class source_kind_mode : u8
+  enum class SourceKindMode : u8
   {
     Probe,
     KnownRegular,
   };
 
-  enum class source_read_mode : u8
+  enum class SourceReadMode : u8
   {
     Batched,
     Sequential,
   };
 
-  enum class chunk_emit_mode : u8
+  enum class ChunkEmitMode : u8
   {
     All,
     One,
   };
 
-  enum class metadata_window_mode : u8
+  enum class MetadataWindowMode : u8
   {
     Unloaded,
     Loaded,
   };
 
-  enum class source_defer_mode : u8
+  enum class SourceDeferMode : u8
   {
     Ready,
     Deferred,
   };
 
-  enum class source_probe_mode : u8
+  enum class SourceProbeMode : u8
   {
     Blocking,
     Nonblocking,
   };
 
-  enum class source_seek_mode : u8
+  enum class SourceSeekMode : u8
   {
     Seekable,
     Sequential,
   };
 
-  enum class reader_descriptor_mode : u8
+  enum class ReaderDescriptorMode : u8
   {
     Borrowed,
     Owned,
   };
 
-  enum class reader_state : u8
+  enum class ReaderState : u8
   {
     Active,
     Complete,
   };
 
-  enum class reader_chunk_state : u8
+  enum class ReaderChunkState : u8
   {
     Empty,
     Pending,
@@ -479,12 +479,11 @@ public:
     source_open_state open_state{source_open_state::Opened};
   };
 
-  SourceBatchReader(
-      const ExecContext &ec, const ArrayList<StringView> &sources,
-      Allocator allocator, usize read_byte_count = 64 * 1024,
-      source_dash_mode dash_mode = source_dash_mode::TreatAsStdin,
-      source_kind_mode kind_mode = source_kind_mode::Probe,
-      source_read_mode read_mode = source_read_mode::Batched) throws;
+  SourceBatchReader(const ExecContext &ec, const ArrayList<StringView> &sources,
+                    Allocator allocator, usize read_byte_count = 64 * 1024,
+                    SourceDashMode dash_mode = SourceDashMode::TreatAsStdin,
+                    SourceKindMode kind_mode = SourceKindMode::Probe,
+                    SourceReadMode read_mode = SourceReadMode::Batched) throws;
   ~SourceBatchReader();
 
   fn read_next(ArrayList<Chunk> &chunks) throws -> ReadResult;
@@ -507,9 +506,9 @@ private:
     os::descriptor descriptor{KOSH_INVALID_FD};
     i32 pending_error_number{0};
     bool should_end_at_short_read{false};
-    reader_descriptor_mode descriptor_mode{reader_descriptor_mode::Borrowed};
-    reader_state state{reader_state::Active};
-    reader_chunk_state chunk_state{reader_chunk_state::Empty};
+    ReaderDescriptorMode descriptor_mode{ReaderDescriptorMode::Borrowed};
+    ReaderState state{ReaderState::Active};
+    ReaderChunkState chunk_state{ReaderChunkState::Empty};
     source_open_state open_state{source_open_state::Opened};
   };
 
@@ -519,9 +518,9 @@ private:
   fn read_seekable() throws -> ReadResult;
   fn read_sequential() throws -> ReadResult;
   fn append_pending_chunks(ArrayList<Chunk> &chunks,
-                           chunk_emit_mode emit_mode) throws -> void;
+                           ChunkEmitMode emit_mode) throws -> void;
   fn read_next_internal(ArrayList<Chunk> &chunks,
-                        chunk_emit_mode emit_mode) throws -> ReadResult;
+                        ChunkEmitMode emit_mode) throws -> ReadResult;
 
   const ExecContext &m_ec;
   const ArrayList<StringView> &m_sources;
@@ -534,10 +533,10 @@ private:
   ArrayList<os::file_status> m_metadata_statuses;
   usize m_read_byte_count;
   usize m_source_index{0};
-  source_dash_mode m_dash_mode;
-  source_kind_mode m_kind_mode;
-  source_read_mode m_read_mode;
-  source_defer_mode m_defer_mode{source_defer_mode::Ready};
+  SourceDashMode m_dash_mode;
+  SourceKindMode m_kind_mode;
+  SourceReadMode m_read_mode;
+  SourceDeferMode m_defer_mode{SourceDeferMode::Ready};
 };
 
 fn read_named_or_stdin_batch(const ExecContext &ec,
@@ -560,12 +559,14 @@ fn visit_ordered_sources(const ExecContext &ec,
 {
   let results = ArrayList<source_read_result>{allocator};
   results.reserve(sources.count());
+
   for (usize source_index = 0; source_index < sources.count(); source_index++)
     results.push({None, 0, source_completion_state::Pending});
 
   let reader = SourceBatchReader{ec, sources, allocator};
   let chunks = ArrayList<SourceBatchReader::Chunk>{allocator};
   usize next_source_index = 0;
+
   loop
   {
     let const read_result = reader.read_next(chunks);
@@ -667,7 +668,7 @@ fn format_socket_endpoint(StringView address, u16 port,
                           Allocator allocator) throws -> String;
 fn format_human_size(u64 bytes, Allocator allocator,
                      u64 unit_step = 1024) throws -> String;
-fn scaled_filesystem_blocks(u64 block_count, u64 block_size,
+fn scaled_filesystem_blocks(u64 block_count, u64 block_byte_count,
                             u64 output_unit) wontthrow -> u64;
 fn filesystem_usage_percent(u64 used, u64 available) wontthrow -> u64;
 pure fn file_type_name(const os::file_status &status) wontthrow -> StringView;

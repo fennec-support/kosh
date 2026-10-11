@@ -37,10 +37,13 @@ static fn sorted_builtin_names() throws -> const sorted_builtin_name_list &
 {
   static sorted_builtin_name_list names = [] throws {
     let collected = ArrayList<String>{heap_allocator()};
+
     for (let const &builtin_name : builtin_names())
       collected.push_managed(builtin_name);
+
     return steal(collected).make_sorted(sort_order::ascending);
   }();
+
   return names;
 }
 
@@ -87,6 +90,7 @@ fn BuiltinBuiltin::execute(ExecContext &ec, EvalContext &cxt) const throws
   if (ec.args().count() < 2) {
     if (cxt.runtime_state().get_mood() == mimic_mood::Default)
       print_builtin_columns(ec, cxt.scratch_allocator());
+
     return 0;
   }
 
@@ -94,11 +98,14 @@ fn BuiltinBuiltin::execute(ExecContext &ec, EvalContext &cxt) const throws
   if (name == "--list") {
     let const &sorted = sorted_builtin_names();
     let out = String{cxt.scratch_allocator()};
+
     for (let const &builtin_name : sorted) {
       out += builtin_name.view();
       out += "\n";
     }
+
     ec.print_to_stdout(out.view());
+
     return 0;
   }
 
@@ -110,18 +117,22 @@ fn BuiltinBuiltin::execute(ExecContext &ec, EvalContext &cxt) const throws
     report_soft_builtin_error(ec, cxt, ec.arg_location_at(1),
                               StringView{"'"} + name +
                                   "' is not a shell builtin");
+
     return 1;
   }
 
   let forwarded = ArrayList<String>{heap_allocator()};
   let forwarded_locations = ArrayList<SourceLocation>{heap_allocator()};
+
   for (usize i = 1; i < ec.args().count(); i++) {
     forwarded.push_managed(ec.args()[i]);
     forwarded_locations.push(ec.arg_location_at(i));
   }
+
   let sub = ExecContext::make_from_resolved(
       ec.source_location(), ResolvedCommand::from_builtin(*target),
       steal(forwarded), steal(forwarded_locations));
+
   return execute_builtin(steal(sub), cxt);
 }
 

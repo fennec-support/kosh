@@ -55,6 +55,7 @@ static constexpr StaticStringMap LOCALE_KEYWORDS{LOCALE_KEYWORD_ENTRIES};
 static fn locale_environment_value(const char *name) wontthrow -> StringView
 {
   let const *value = std::getenv(name);
+
   return value == nullptr ? StringView{} : StringView{value};
 }
 
@@ -71,10 +72,12 @@ fn Locale::execute(const ExecContext &ec, EvalContext &cxt,
   }
   if (FLAG_LOCALE_ALL_LOCALES.is_enabled()) {
     ec.print_to_stdout("C\nPOSIX\n");
+
     return 0;
   }
   if (FLAG_LOCALE_CHARMAPS.is_enabled()) {
     ec.print_to_stdout("ANSI_X3.4-1968\nUTF-8\n");
+
     return 0;
   }
 
@@ -98,11 +101,13 @@ fn Locale::execute(const ExecContext &ec, EvalContext &cxt,
     output += locale_environment_value("LC_ALL");
     output += '\n';
     ec.print_to_stdout(output);
+
     return 0;
   }
 
   const char *active_locale = nullptr;
   struct lconv *locale_values = nullptr;
+
   for (usize operand_position = 0; operand_position < operands.count();
        operand_position++)
   {
@@ -112,6 +117,7 @@ fn Locale::execute(const ExecContext &ec, EvalContext &cxt,
       report_soft_koshkit_util_error(
           ec, cxt, operand_locations[operand_position], args[0].view(),
           "unknown name '" + operand + "'");
+
       return 1;
     }
     if ((keyword->value_kind == locale_value_kind::CharacterMap) &&
@@ -159,6 +165,7 @@ fn Locale::execute(const ExecContext &ec, EvalContext &cxt,
       ec.print_to_stdout("\n");
     }
   }
+
   return 0;
 }
 

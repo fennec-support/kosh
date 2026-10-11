@@ -55,6 +55,7 @@ fn Pushd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     if (status != 0) return status;
     stack.back() = String{heap_allocator(), pwd.view()};
     print_directory_stack(cxt, ec, false, false, false);
+
     return 0;
   }
 
@@ -63,6 +64,7 @@ fn Pushd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   if (FLAG_NO_CHANGE.is_enabled()) {
     stack.push(String{heap_allocator(), arg});
     print_directory_stack(cxt, ec, false, false, false);
+
     return 0;
   }
 
@@ -71,6 +73,7 @@ fn Pushd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   {
     ArrayList<String> ring{cxt.scratch_allocator()};
     ring.push(String{cxt.scratch_allocator(), pwd.view()});
+
     for (usize i = stack.count(); i > 0; i--)
       ring.push(String{cxt.scratch_allocator(), stack[i - 1].view()});
 
@@ -78,12 +81,15 @@ fn Pushd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     if (status != 0) return status;
 
     stack.clear();
+
     for (usize offset = ring.count() - 1; offset >= 1; offset--) {
       stack.push(String{heap_allocator(),
                         ring[(index + offset) % ring.count()].view()});
       if (offset == 1) break;
     }
+
     print_directory_stack(cxt, ec, false, false, false);
+
     return 0;
   }
 
@@ -91,6 +97,7 @@ fn Pushd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   if (status != 0) return status;
   stack.push(String{heap_allocator(), pwd.view()});
   print_directory_stack(cxt, ec, false, false, false);
+
   return 0;
 }
 

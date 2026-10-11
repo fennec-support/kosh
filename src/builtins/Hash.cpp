@@ -47,11 +47,13 @@ fn Hash::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   if (FLAG_TARGET.is_enabled()) {
     if (args.count() == 1) {
       report_soft_builtin_error(ec, cxt, "-t: option requires an argument");
+
       return 1;
     }
 
     i32 target_status = 0;
     let output = String{cxt.scratch_allocator()};
+
     for (usize i = 1; i < args.count(); i++) {
       let const *remembered =
           cxt.program_resolver().find_remembered_path(args[i].view());
@@ -69,7 +71,9 @@ fn Hash::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       output.append(remembered->text());
       output += '\n';
     }
+
     ec.print_to_stdout(output);
+
     return target_status;
   }
 
@@ -77,13 +81,16 @@ fn Hash::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     cxt.guard_restricted_path(FLAG_PATHNAME.value(),
                               FLAG_PATHNAME.value_location(),
                               restricted_path_use::Hash);
+
     for (usize i = 1; i < args.count(); i++)
       cxt.program_resolver().remember_path(args[i].view(),
                                            Path{FLAG_PATHNAME.value()});
+
     return 0;
   }
 
   i32 status = 0;
+
   for (usize i = 1; i < args.count(); i++) {
     let const &name = args[i];
 

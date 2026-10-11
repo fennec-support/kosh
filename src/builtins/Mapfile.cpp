@@ -50,10 +50,12 @@ fn Mapfile::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     let const parsed = flag.value().to<i64>();
     if (!parsed.is_error() && parsed.value() >= 0) {
       value = parsed.value();
+
       return true;
     }
     report_soft_builtin_error(ec, cxt, flag.value_location(),
                               flag.value() + label, note);
+
     return false;
   };
 
@@ -75,6 +77,7 @@ fn Mapfile::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     if (callback_quantum == 0)
       report_soft_builtin_error(ec, cxt, FLAG_MAPFILE_QUANTUM.value_location(),
                                 "0: invalid callback quantum");
+
     return 1;
   }
 
@@ -87,6 +90,7 @@ fn Mapfile::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       report_soft_builtin_error(ec, cxt, FLAG_MAPFILE_FD.value_location(),
                                 FLAG_MAPFILE_FD.value() +
                                     ": invalid file descriptor");
+
       return 1;
     }
     read_fd = os::descriptor_from_fd_number(parsed_fd.value());
@@ -96,6 +100,7 @@ fn Mapfile::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       args.count() > 1 ? args[1].view() : StringView{"MAPFILE"};
   if (!name_is_valid_identifier(array_name)) {
     report_invalid_identifier(ec, cxt, ec.arg_location_at(1), array_name);
+
     return 1;
   }
   let const should_strip_newline = FLAG_MAPFILE_TRIM.is_enabled();
@@ -116,6 +121,7 @@ fn Mapfile::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       report_soft_builtin_error(ec, cxt, ec.source_location(),
                                 StringView{"Unable to read mapfile input: "} +
                                     os::last_system_error_message());
+
       return 1;
     }
     if (!skipped_line.line.has_value()) break;
@@ -134,6 +140,7 @@ fn Mapfile::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   };
 
   usize read_count = 0;
+
   loop
   {
     if (max_lines > 0 && static_cast<i64>(read_count) >= max_lines) {
@@ -145,6 +152,7 @@ fn Mapfile::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       report_soft_builtin_error(ec, cxt, ec.source_location(),
                                 StringView{"Unable to read mapfile input: "} +
                                     os::last_system_error_message());
+
       return 1;
     }
     if (!read.line.has_value()) break;
@@ -199,6 +207,7 @@ fn Mapfile::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   } else {
     cxt.set_indexed_array(array_name, steal(lines));
   }
+
   return 0;
 }
 

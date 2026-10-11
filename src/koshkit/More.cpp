@@ -50,9 +50,11 @@ fn More::execute(const ExecContext &ec, EvalContext &cxt,
     if (!tags.has_value()) {
       report_soft_koshkit_util_error(ec, cxt, args[0].view(),
                                      "cannot read tags");
+
       return 1;
     }
     usize position = 0;
+
     while (position < tags->length()) {
       let const remaining = tags->view().substring(position);
       let const line_length =
@@ -80,10 +82,12 @@ fn More::execute(const ExecContext &ec, EvalContext &cxt,
       }
       position += line_length + (line_length < remaining.length ? 1 : 0);
     }
+
     if (tagged_source.is_empty()) {
       report_soft_koshkit_util_error(ec, cxt, args[0].view(),
                                      "tag not found '" +
                                          String{FLAG_MORE_TAG.value()} + "'");
+
       return 1;
     }
   }
@@ -97,6 +101,7 @@ fn More::execute(const ExecContext &ec, EvalContext &cxt,
                             FLAG_MORE_TAG.is_set() ||
                             FLAG_MORE_SQUEEZE.is_enabled();
   i32 status = 0;
+
   for (let const source : sources) {
     if (should_buffer) {
       let const input = read_named_or_stdin(ec, source);
@@ -109,6 +114,7 @@ fn More::execute(const ExecContext &ec, EvalContext &cxt,
       let line_number = usize{1};
       let const requested_line_number =
           FLAG_MORE_TAG.is_set() ? tagged_line_number : usize{1};
+
       while (line_number < requested_line_number &&
              output_start < input->length())
       {
@@ -121,6 +127,7 @@ fn More::execute(const ExecContext &ec, EvalContext &cxt,
         output_start += *newline + 1;
         line_number++;
       }
+
       if (FLAG_MORE_COMMAND.is_set()) {
         let command = FLAG_MORE_COMMAND.value();
         if (!command.is_empty() && command[0] == '/') {
@@ -129,6 +136,7 @@ fn More::execute(const ExecContext &ec, EvalContext &cxt,
         let pattern = String{cxt.scratch_allocator(), command};
         if (FLAG_MORE_CASE.is_enabled()) pattern.lowercase_ascii();
         usize search_position = output_start;
+
         while (search_position < input->length()) {
           let const remaining = input->view().substring(search_position);
           let const line_length =
@@ -153,6 +161,7 @@ fn More::execute(const ExecContext &ec, EvalContext &cxt,
       let squeezed = String{cxt.scratch_allocator()};
       bool was_blank = false;
       usize position = 0;
+
       while (position < selected.length) {
         let const remaining = selected.substring(position);
         let const line_length =
@@ -165,6 +174,7 @@ fn More::execute(const ExecContext &ec, EvalContext &cxt,
         was_blank = is_blank;
         position += line_length + (line_length < remaining.length ? 1 : 0);
       }
+
       ec.print_to_stdout(squeezed.view());
       continue;
     }
@@ -181,6 +191,7 @@ fn More::execute(const ExecContext &ec, EvalContext &cxt,
         os::close_fd(input->descriptor);
     };
     char buffer[65536];
+
     loop
     {
       let const count = os::read_fd(input->descriptor, buffer, sizeof(buffer));
@@ -192,6 +203,7 @@ fn More::execute(const ExecContext &ec, EvalContext &cxt,
       ec.print_to_stdout(StringView{buffer, *count});
     }
   }
+
   return status;
 }
 

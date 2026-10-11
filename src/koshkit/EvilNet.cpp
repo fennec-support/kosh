@@ -69,13 +69,13 @@ struct evilnet_sort_spec
 
 static constexpr evilnet_sort_spec EVILNET_SORT_SPECS[] = {
     {evilnet_sort_key::Name,            "name",       os::network_statistics_field::ReceiveBytes,
-     &os::network_interface_statistics_entry::receive_bytes        },
+     &os::network_interface_statistics_entry::receive_byte_count   },
     {evilnet_sort_key::ReceiveBytes,    "rx",
      os::network_statistics_field::ReceiveBytes,
-     &os::network_interface_statistics_entry::receive_bytes        },
+     &os::network_interface_statistics_entry::receive_byte_count   },
     {evilnet_sort_key::TransmitBytes,   "tx",
      os::network_statistics_field::TransmitBytes,
-     &os::network_interface_statistics_entry::transmit_bytes       },
+     &os::network_interface_statistics_entry::transmit_byte_count  },
     {evilnet_sort_key::ReceivePackets,  "rx-packets",
      os::network_statistics_field::ReceivePackets,
      &os::network_interface_statistics_entry::receive_packet_count },
@@ -115,6 +115,7 @@ struct evilnet_statistics_comparator
     if (left_available && left.*(spec.member) != right.*(spec.member)) {
       return left.*(spec.member) > right.*(spec.member);
     }
+
     return left.interface_name.view() < right.interface_name.view();
   }
 };
@@ -123,14 +124,17 @@ fn resolve_evilnet_sort_key(StringView value, Allocator allocator) throws
     -> koshkit_key_resolution<evilnet_sort_key>
 {
   koshkit_key_resolution<evilnet_sort_key> result{{}, 0, String{allocator}};
+
   for (let const &spec : EVILNET_SORT_SPECS) {
     if (spec.name == value) {
       result = {{}, 0, String{allocator}};
       result.add_match(spec.key, spec.name);
+
       return result;
     }
     if (spec.name.starts_with(value)) result.add_match(spec.key, spec.name);
   }
+
   return result;
 }
 
@@ -144,6 +148,7 @@ fn sort_network_statistics(
 {
   let const selected = sort_key.value_or(evilnet_sort_key::Name);
   let spec_index = Maybe<usize>{None};
+
   for (usize index = 0;
        index < sizeof(EVILNET_SORT_SPECS) / sizeof(EVILNET_SORT_SPECS[0]);
        index++)
@@ -153,6 +158,7 @@ fn sort_network_statistics(
       break;
     }
   }
+
   return steal(statistics)
       .make_sorted(evilnet_statistics_comparator{selected, spec_index});
 }
@@ -188,6 +194,7 @@ fn append_network_interface_report(String &output, bool should_color) throws
                    colors::ansi::BOLD_MAGENTA);
   table.add_column("ADDRESS", report_table_alignment::Left,
                    colors::ansi::RESET);
+
   for (let const &address : addresses) {
     let cells = ArrayList<report_table_cell_view>{addresses.allocator()};
     cells.push({address.interface_name.view(), colors::ansi::BOLD_GREEN});
@@ -195,6 +202,7 @@ fn append_network_interface_report(String &output, bool should_color) throws
     cells.push({address.address.view(), colors::ansi::RESET});
     table.add_row(cells);
   }
+
   append_titled_report_table(output, "Network interfaces", table, should_color);
 
   return addresses.count();
@@ -239,11 +247,13 @@ fn append_network_traffic_statistics_report(
       "TX QUEUE",
       "TX LIMIT",
   };
+
   for (let const heading : HEADERS)
     table.add_heading(heading, report_table_alignment::Right);
 
   let cells = ArrayList<report_table_cell_view>{allocator};
   cells.reserve(countof(HEADERS) + 1);
+
   for (let const &entry : statistics) {
     let const is_default =
         default_interface.has_value() &&
@@ -251,10 +261,10 @@ fn append_network_traffic_statistics_report(
     let values = ArrayList<String>{allocator};
     values.reserve(countof(HEADERS));
     values.push(entry.has_field(os::network_statistics_field::ReceiveBytes)
-                    ? format_human_size(entry.receive_bytes, allocator)
+                    ? format_human_size(entry.receive_byte_count, allocator)
                     : String{allocator, "-"});
     values.push(entry.has_field(os::network_statistics_field::TransmitBytes)
-                    ? format_human_size(entry.transmit_bytes, allocator)
+                    ? format_human_size(entry.transmit_byte_count, allocator)
                     : String{allocator, "-"});
     const u64 counters[] = {entry.receive_packet_count,
                             entry.transmit_packet_count,
@@ -278,6 +288,7 @@ fn append_network_traffic_statistics_report(
         os::network_statistics_field::TransmitQueueLength,
         os::network_statistics_field::TransmitQueueLimit,
     };
+
     for (usize index = 0; index < countof(counters); index++) {
       let value = String{allocator, "-"};
       if (entry.has_field(FIELDS[index])) {
@@ -294,9 +305,11 @@ fn append_network_traffic_statistics_report(
     cells.clear();
     cells.push({entry.interface_name.view(),
                 is_default ? colors::ansi::BOLD_GREEN : colors::ansi::GREEN});
+
     for (usize index = 0; index < values.count(); index++)
       cells.push({values[index].view(),
                   index < 2 ? colors::ansi::GREEN : colors::ansi::RESET});
+
     table.add_row(cells);
 
     let warning = String{allocator};
@@ -346,6 +359,7 @@ fn append_network_traffic_report(String &output, ArrayList<String> &warnings,
   let const statistics = sort_network_statistics(
       os::read_network_interface_statistics(), sort_key);
   let const default_interface = os::default_network_interface(allocator);
+
   return append_network_traffic_statistics_report(
       output, warnings, allocator, statistics, {}, default_interface,
       should_color);
@@ -520,6 +534,7 @@ fn append_tcp_report(String &output, ArrayList<String> &warnings,
       os::tcp_statistics_field::RetransmitFailures,
   };
   let warning = String{allocator};
+
   for (usize index = 0; index < countof(WARNING_NAMES); index++) {
     if (!statistics.has_field(WARNING_FIELDS[index]) ||
         warning_values[index] == 0)
@@ -532,6 +547,7 @@ fn append_tcp_report(String &output, ArrayList<String> &warnings,
     warning += " ";
     warning += String::from(warning_values[index], allocator).view();
   }
+
   if (!warning.is_empty()) {
     let message = String{allocator, "TCP counters include "};
     message += warning.view();
@@ -556,10 +572,13 @@ pure fn network_counter_reset(
         return before.has_field(field) && after.has_field(field) &&
                after.*member < before.*member;
       };
-  return did_reset(os::network_statistics_field::ReceiveBytes,
-                   &os::network_interface_statistics_entry::receive_bytes) ||
-         did_reset(os::network_statistics_field::TransmitBytes,
-                   &os::network_interface_statistics_entry::transmit_bytes) ||
+
+  return did_reset(
+             os::network_statistics_field::ReceiveBytes,
+             &os::network_interface_statistics_entry::receive_byte_count) ||
+         did_reset(
+             os::network_statistics_field::TransmitBytes,
+             &os::network_interface_statistics_entry::transmit_byte_count) ||
          did_reset(
              os::network_statistics_field::ReceivePackets,
              &os::network_interface_statistics_entry::receive_packet_count) ||
@@ -588,8 +607,10 @@ fn sample_network_statistics(
 {
   let sampled = ArrayList<os::network_interface_statistics_entry>{allocator};
   sampled.reserve(after.count());
+
   for (let const &entry : after) {
     let previous_index = Maybe<usize>{None};
+
     for (usize index = 0; index < before.count(); index++) {
       if (before[index].interface_name.view() == entry.interface_name.view()) {
         previous_index = index;
@@ -604,14 +625,14 @@ fn sample_network_statistics(
       if (entry.has_field(os::network_statistics_field::ReceiveBytes) &&
           previous.has_field(os::network_statistics_field::ReceiveBytes))
       {
-        result.receive_bytes =
-            network_counter_delta(previous.receive_bytes, entry.receive_bytes);
+        result.receive_byte_count = network_counter_delta(
+            previous.receive_byte_count, entry.receive_byte_count);
       }
       if (entry.has_field(os::network_statistics_field::TransmitBytes) &&
           previous.has_field(os::network_statistics_field::TransmitBytes))
       {
-        result.transmit_bytes = network_counter_delta(previous.transmit_bytes,
-                                                      entry.transmit_bytes);
+        result.transmit_byte_count = network_counter_delta(
+            previous.transmit_byte_count, entry.transmit_byte_count);
       }
       if (entry.has_field(os::network_statistics_field::ReceivePackets) &&
           previous.has_field(os::network_statistics_field::ReceivePackets))
@@ -652,6 +673,7 @@ fn sample_network_statistics(
     }
     sampled.push(steal(result));
   }
+
   return sampled;
 }
 
@@ -677,20 +699,22 @@ fn get_network_window_status(const live_network_row &row,
           u64 os::network_interface_statistics_entry::*member) {
         if (!before.has_field(field) || !after_boundary.has_field(field)) {
           sampled.available_fields &= ~static_cast<u32>(field);
+
           return;
         }
         let const baseline = row.history.interpolate(boundary, before.*member,
                                                      after_boundary.*member);
         if (!baseline.has_value()) {
           sampled.available_fields &= ~static_cast<u32>(field);
+
           return;
         }
         sampled.*member = network_counter_delta(*baseline, newest.*member);
       };
   do_sample(os::network_statistics_field::ReceiveBytes,
-            &os::network_interface_statistics_entry::receive_bytes);
+            &os::network_interface_statistics_entry::receive_byte_count);
   do_sample(os::network_statistics_field::TransmitBytes,
-            &os::network_interface_statistics_entry::transmit_bytes);
+            &os::network_interface_statistics_entry::transmit_byte_count);
   do_sample(os::network_statistics_field::ReceivePackets,
             &os::network_interface_statistics_entry::receive_packet_count);
   do_sample(os::network_statistics_field::TransmitPackets,
@@ -703,6 +727,7 @@ fn get_network_window_status(const live_network_row &row,
             &os::network_interface_statistics_entry::receive_drop_count);
   do_sample(os::network_statistics_field::TransmitDrops,
             &os::network_interface_statistics_entry::transmit_drop_count);
+
   return sampled;
 }
 
@@ -730,6 +755,7 @@ fn run_live_network_traffic(const ExecContext &ec, Allocator allocator,
       [&](const os::network_interface_statistics_entry &entry) {
         live_network_row row{};
         row.interface_name = String{allocator, entry.interface_name.view()};
+
         return row;
       };
   let baseline = os::read_network_interface_statistics();
@@ -752,10 +778,12 @@ fn run_live_network_traffic(const ExecContext &ec, Allocator allocator,
     statistics.reserve(retained.count());
     let const window_start =
         rolling_window_start(last_sample_nanoseconds, window_nanoseconds);
+
     for (let const &row : retained) {
       statistics.push(
           get_network_window_status(row, window_start, frame_allocator));
     }
+
     let const sorted_statistics =
         sort_network_statistics(steal(statistics), sort_key);
     let warnings = ArrayList<String>{frame_allocator};
@@ -763,10 +791,12 @@ fn run_live_network_traffic(const ExecContext &ec, Allocator allocator,
         output, warnings, frame_allocator, sorted_statistics,
         duration_suffix.view(), default_interface, should_color);
     if (!warnings.is_empty()) output += "\n";
+
     for (let const &warning : warnings) {
       output += Warning{warning.view()}.to_string().view();
       output += "\n";
     }
+
     return None;
   };
 
@@ -788,6 +818,7 @@ fn EvilNet::execute(const ExecContext &ec, EvalContext &cxt,
   if (!operands.is_empty()) {
     KOSHKIT_REPORT_ERROR_AT(operand_locations[0], "unexpected operand",
                             "this utility accepts no operands");
+
     return 1;
   }
 
@@ -811,6 +842,7 @@ fn EvilNet::execute(const ExecContext &ec, EvalContext &cxt,
     KOSHKIT_REPORT_ERROR_AT(FLAG_EVILNET_FAILURES.value_location(),
                             "conflicting flags",
                             "--failures cannot be combined with --live");
+
     return 2;
   }
   let const report_options =

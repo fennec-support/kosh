@@ -72,6 +72,7 @@ pure fn parser_format_has_substring(StringView source,
 pure fn parser_format_filename(StringView path) wontthrow -> StringView
 {
   usize start = 0;
+
   for (usize position = 0; position < path.length; position++)
     if (path[position] == '/' || path[position] == '\\') {
       start = position + 1;
@@ -402,16 +403,19 @@ fn parser_format_add_indented_fragment(parsed_format_document &document,
     if (line_start + line.length > host_end)
       line = host_source.substring_of_length(line_start, host_end - line_start);
     let removed = usize{0};
+
     while (removed < line.length && removed < indent_length &&
            line[removed] == ' ')
     {
       removed++;
     }
+
     deindented.append(line.substring(removed));
     if (position <= host_end && position > line_start + line.length) {
       deindented.push('\n');
     }
   }
+
   fragment.shell_source = steal(deindented);
 }
 
@@ -420,13 +424,16 @@ static fn yaml_key_match(StringView line, const StringView *keys,
     -> bool
 {
   usize position = 0;
+
   while (position < line.length &&
          (line[position] == ' ' || line[position] == '\t'))
   {
     position++;
   }
+
   if (position < line.length && line[position] == '-') {
     position++;
+
     while (position < line.length && line[position] == ' ') {
       position++;
     }
@@ -441,11 +448,13 @@ static fn yaml_key_match(StringView line, const StringView *keys,
     if (line.substring_of_length(position, key.length) != key) continue;
     if (line[position + key.length] != ':') continue;
     content_position = position + key.length + 1;
+
     while (content_position < line.length &&
            (line[content_position] == ' ' || line[content_position] == '\t'))
     {
       content_position++;
     }
+
     return true;
   }
 
@@ -455,9 +464,11 @@ static fn yaml_key_match(StringView line, const StringView *keys,
 static pure fn leading_spaces(StringView line) wontthrow -> usize
 {
   usize count = 0;
+
   while (count < line.length && line[count] == ' ') {
     count++;
   }
+
   return count;
 }
 
@@ -491,6 +502,7 @@ static pure fn yaml_key_position(StringView line) wontthrow -> usize
   usize position = leading_spaces(line);
   if (position < line.length && line[position] == '-') {
     position++;
+
     while (position < line.length && line[position] == ' ') {
       position++;
     }
@@ -522,9 +534,11 @@ static fn previous_line(StringView source, usize &position) wontthrow
     end--;
   }
   let start = end;
+
   while (start > 0 && source[start - 1] != '\n') {
     start--;
   }
+
   position = start;
 
   return source.substring_of_length(start, end - start);
@@ -564,6 +578,7 @@ static pure fn selected_workflow_mood(StringView source, usize line_start,
 {
   let const current_indent = leading_spaces(line);
   let scan_position = line_start;
+
   while (scan_position > 0) {
     let const previous = previous_line(source, scan_position);
     if (previous.trim_blanks().is_empty()) continue;
@@ -579,6 +594,7 @@ static pure fn selected_workflow_mood(StringView source, usize line_start,
   }
 
   scan_position = line_start;
+
   while (scan_position > 0) {
     let const previous = previous_line(source, scan_position);
     let const runner = yaml_line_value(previous, "runs-on");
@@ -613,6 +629,7 @@ fn parser_format_extract_yaml_keys(parsed_format_document &document,
     -> void
 {
   usize position = 0;
+
   while (position < source.length) {
     let const line_start = position;
     let const line = source.next_line(position);
@@ -631,6 +648,7 @@ fn parser_format_extract_yaml_keys(parsed_format_document &document,
       usize block_end = position;
       usize content_indent = 0;
       bool has_block_start = false;
+
       while (block_position < source.length) {
         let const next_start = block_position;
         let const next_line = source.next_line(block_position);
@@ -645,6 +663,7 @@ fn parser_format_extract_yaml_keys(parsed_format_document &document,
           has_block_start = true;
         }
       }
+
       if (content_indent > 0)
         parser_format_add_indented_fragment(document, source, block_start,
                                             block_end, content_indent, *mood);
@@ -658,6 +677,7 @@ fn parser_format_extract_yaml_keys(parsed_format_document &document,
     }
 
     let sequence_position = position;
+
     while (sequence_position < source.length) {
       let const item_start = sequence_position;
       let const item_line = source.next_line(sequence_position);
@@ -668,10 +688,12 @@ fn parser_format_extract_yaml_keys(parsed_format_document &document,
         continue;
       }
       item_content++;
+
       while (item_content < item_line.length && item_line[item_content] == ' ')
       {
         item_content++;
       }
+
       add_yaml_inline_fragment(document, source, item_start + item_content,
                                item_start + item_line.length, *mood);
     }
@@ -689,6 +711,7 @@ fn parser_format_add_json_fragment(parsed_format_document &document,
   let &fragment = document.fragments.back();
   let decoded = String{heap_allocator()};
   usize position = start;
+
   while (position < end) {
     let byte = source[position++];
     if (byte != '\\' || position >= end) {
@@ -708,6 +731,7 @@ fn parser_format_add_json_fragment(parsed_format_document &document,
       break;
     }
   }
+
   fragment.shell_source = steal(decoded);
   let masked = String{heap_allocator()};
   masked.reserve(end);
@@ -729,6 +753,7 @@ fn parser_format_add_json_fragment(parsed_format_document &document,
 
     masked.push(byte);
   }
+
   fragment.analysis_source = steal(masked);
 }
 
@@ -739,34 +764,40 @@ fn parser_format_extract_json_keys(parsed_format_document &document,
                                    mimic_mood default_mood) throws -> void
 {
   usize position = 0;
+
   while (position < source.length) {
     if (source[position] != '"') {
       position++;
       continue;
     }
     let const key_start = ++position;
+
     while (position < source.length && source[position] != '"') {
       if (source[position] == '\\' && position + 1 < source.length) {
         position++;
       }
       position++;
     }
+
     if (position >= source.length) break;
     let const key = source.substring_of_length(key_start, position - key_start);
     position++;
     if (key.is_empty()) continue;
+
     while (position < source.length &&
            (source[position] == ' ' || source[position] == '\t' ||
             source[position] == '\n' || source[position] == '\r'))
     {
       position++;
     }
+
     if (position >= source.length || source[position] != ':') {
       continue;
     }
     position++;
 
     const parser_format_json_key *matched_key = nullptr;
+
     for (usize key_index = 0; key_index < key_count; key_index++) {
       if (keys[key_index].name.is_empty()) continue;
       if (key[0] != keys[key_index].name[0]) continue;
@@ -774,23 +805,28 @@ fn parser_format_extract_json_keys(parsed_format_document &document,
       matched_key = &keys[key_index];
       break;
     }
+
     if (matched_key == nullptr) continue;
+
     while (position < source.length &&
            (source[position] == ' ' || source[position] == '\t' ||
             source[position] == '\n' || source[position] == '\r'))
     {
       position++;
     }
+
     if (position >= source.length || source[position] != '"') {
       continue;
     }
     let const value_start = ++position;
+
     while (position < source.length && source[position] != '"') {
       if (source[position] == '\\' && position + 1 < source.length) {
         position++;
       }
       position++;
     }
+
     let const fragment_count = document.fragments.count();
     parser_format_add_json_fragment(document, source, value_start, position,
                                     default_mood);
@@ -806,6 +842,7 @@ pure fn parser_format_fragment_at(const parsed_format_document &document,
 {
   usize lower = 0;
   usize upper = document.fragments.count();
+
   while (lower < upper) {
     let const middle = lower + (upper - lower) / 2;
     let const &fragment = document.fragments[middle];
@@ -841,11 +878,13 @@ constexpr StaticStringSet ARM_TERMINATORS{ARM_TERMINATOR_KEYS};
 pure static fn line_first_token(StringView line) wontthrow -> StringView
 {
   usize start = 0;
+
   while (start < line.length && (line[start] == ' ' || line[start] == '\t')) {
     start++;
   }
 
   usize end = start;
+
   while (end < line.length && line[end] != ' ' && line[end] != '\t') {
     end++;
   }
@@ -856,11 +895,13 @@ pure static fn line_first_token(StringView line) wontthrow -> StringView
 pure static fn line_last_token(StringView line) wontthrow -> StringView
 {
   usize end = line.length;
+
   while (end > 0 && (line[end - 1] == ' ' || line[end - 1] == '\t')) {
     end--;
   }
 
   usize start = end;
+
   while (start > 0 && line[start - 1] != ' ' && line[start - 1] != '\t') {
     start--;
   }
@@ -871,6 +912,7 @@ pure static fn line_last_token(StringView line) wontthrow -> StringView
 static fn trimmed_of_trailing_newlines(StringView text) wontthrow -> StringView
 {
   usize length = text.length;
+
   while (length > 0 && text[length - 1] == '\n') {
     length--;
   }
@@ -900,14 +942,17 @@ static fn encode_continued(const parser_format_fragment &fragment,
     let const is_wrapped = last == "\\";
     if (is_wrapped) {
       usize length = line.length;
+
       while (length > 0 && line[length - 1] == '\\') {
         length--;
       }
+
       while (length > 0 &&
              (line[length - 1] == ' ' || line[length - 1] == '\t'))
       {
         length--;
       }
+
       line = line.substring_of_length(0, length);
       last = line_last_token(line);
     }
@@ -964,11 +1009,13 @@ fn parser_format_encode(const parser_format_fragment &fragment,
       default: encoded.push(replacement[position]); break;
       }
     }
+
     return encoded;
   case parser_format_codec::Indented: break;
   }
 
   usize position = 0;
+
   while (position < replacement.length) {
     encoded.append_repeated(' ', fragment.indent_length);
     let const line_start = position;
@@ -992,6 +1039,7 @@ fn parser_format_apply_replacements(
           });
   let result = String{heap_allocator()};
   usize position = 0;
+
   for (let const &replacement : sorted_replacements) {
     if (replacement.start_position < position ||
         replacement.end_position < replacement.start_position ||
@@ -1004,6 +1052,7 @@ fn parser_format_apply_replacements(
     result.append(replacement.replacement.view());
     position = replacement.end_position;
   }
+
   result.append(source.substring(position));
 
   return result;
@@ -1017,12 +1066,14 @@ fn parser_format_analysis_source(const parsed_format_document &document,
   let result = String{heap_allocator()};
   result.reserve(host_source.length);
   usize fragment_index = 0;
+
   for (usize position = 0; position < host_source.length; position++) {
     while (fragment_index < document.fragments.count() &&
            position >= document.fragments[fragment_index].host_end)
     {
       fragment_index++;
     }
+
     if (fragment_index < document.fragments.count() &&
         document.fragments[fragment_index].contains(position))
     {

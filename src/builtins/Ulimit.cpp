@@ -141,6 +141,7 @@ fn selected_resource() throws -> resource_selection
         {"locks", os::resource_kind::FileLocks, 1},
         false
     };
+
   return {
       {"file(blocks)", os::resource_kind::FileBlocks, 512},
       false
@@ -152,6 +153,7 @@ fn render_limit(const os::resource_limit &limit, u64 divisor,
 {
   let const value = FLAG_HARD.is_enabled() ? limit.hard : limit.soft;
   if (value == os::RESOURCE_UNLIMITED) return String{allocator, "unlimited"};
+
   return String::from(value / divisor, allocator);
 }
 
@@ -167,6 +169,7 @@ cold fn Ulimit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   if (FLAG_ALL.is_enabled()) {
     let out = String{cxt.scratch_allocator()};
+
     for (let const &entry : RESOURCE_TABLE) {
       let const limit = os::get_resource_limit(entry.kind);
       if (!limit.has_value()) continue;
@@ -179,10 +182,12 @@ cold fn Ulimit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                           cxt.scratch_allocator());
       out.push('\n');
     }
+
     if (out.is_empty())
       throw Error{"Unable to read resource limits: " +
                   os::last_system_error_message()};
     ec.print_to_stdout(out);
+
     return 0;
   }
 
@@ -191,6 +196,7 @@ cold fn Ulimit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   if (is_pipe_pseudo) {
     if (args.count() < 2) {
       ec.print_to_stdout("8\n");
+
       return 0;
     }
 
@@ -213,6 +219,7 @@ cold fn Ulimit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                      block_factor(resource, cxt.runtime_state().get_mood()),
                      cxt.scratch_allocator()) +
         "\n");
+
     return 0;
   }
 
@@ -224,6 +231,7 @@ cold fn Ulimit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     report_soft_builtin_error(ec, cxt, ec.arg_location_at(2),
                               "Too many operands",
                               "The sh mood accepts one limit operand");
+
     return 2;
   }
 
@@ -236,6 +244,7 @@ cold fn Ulimit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       report_soft_builtin_error(
           ec, cxt, ec.arg_location_at(1), requested + ": invalid limit",
           "The limit must be a non-negative whole number");
+
       return is_posix ? 2 : 1;
     }
     let const is_out_of_range =
@@ -244,6 +253,7 @@ cold fn Ulimit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       report_soft_builtin_error(ec, cxt, ec.arg_location_at(1),
                                 requested + ": limit out of range",
                                 "Pass a smaller limit or `unlimited`");
+
       return 1;
     }
     value = parsed.value() * units;

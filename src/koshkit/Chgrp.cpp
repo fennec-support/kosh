@@ -46,6 +46,7 @@ fn Chgrp::execute(const ExecContext &ec, EvalContext &cxt,
     KOSHKIT_REPORT_ERROR_AT(operand_locations[0],
                             "invalid group '" + operands[0] + "'",
                             "use a group name or an unsigned decimal group id");
+
     return 1;
   }
 

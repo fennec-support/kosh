@@ -37,6 +37,7 @@ fn check_trap_condition_operands(AnalysisContext &actx,
                                  trap_condition_mode mode) throws -> void
 {
   let const is_posix = mode == trap_condition_mode::Posix;
+
   for (usize i = 2; i < args.count(); i++) {
     if (args[i]->kind() != Token::Kind::Word) continue;
 
@@ -56,6 +57,7 @@ fn check_trap_condition_operands(AnalysisContext &actx,
 
     if (view.is_all_decimal_digits() && view.length <= 3) {
       usize number = 0;
+
       for (usize position = 0; position < view.length; position++)
         number = number * 10 + static_cast<usize>(view[position] - '0');
 
@@ -123,6 +125,7 @@ fn check_command_name_lints(AnalysisContext &actx,
     for (usize i = 1; i < args.count(); i++) {
       if (args[i]->kind() != Token::Kind::Word) continue;
       let const &word = static_cast<const tokens::WordToken *>(args[i])->word();
+
       for (let const &segment : word.segments) {
         if (segment.kind == WordSegment::Kind::VariableReference &&
             segment.is_split_eligible() &&
@@ -204,6 +207,7 @@ fn check_command_name_lints(AnalysisContext &actx,
 
     let filled_name_index = args.count();
     let should_skip_option_operand = false;
+
     for (usize i = 1; i < args.count(); i++) {
       if (args[i]->kind() != Token::Kind::Word) continue;
 
@@ -325,6 +329,7 @@ fn check_command_name_lints(AnalysisContext &actx,
       let const &action =
           static_cast<const tokens::WordToken *>(args[1])->word();
       let action_expands_now = false;
+
       for (let const &segment : action.segments)
         if (segment.is_in_double_quotes &&
             (segment.kind == WordSegment::Kind::VariableReference ||
@@ -333,6 +338,7 @@ fn check_command_name_lints(AnalysisContext &actx,
           action_expands_now = true;
           break;
         }
+
       if (action_expands_now)
         actx.report_diagnostic(diagnostic_id::sc2064,
                                args[1]->source_location());
@@ -374,6 +380,7 @@ fn check_command_name_lints(AnalysisContext &actx,
     }
 
     usize format_index = 0;
+
     for (usize i = 1; i < args.count(); i++) {
       if (args[i]->kind() != Token::Kind::Word) {
         format_index = i;
@@ -397,6 +404,7 @@ fn check_command_name_lints(AnalysisContext &actx,
       let const &format =
           static_cast<const tokens::WordToken *>(args[format_index])->word();
       bool has_format_expansion = false;
+
       for (let const &segment : format.segments) {
         if (segment.kind == WordSegment::Kind::VariableReference ||
             segment.kind == WordSegment::Kind::CommandSubstitution)
@@ -405,6 +413,7 @@ fn check_command_name_lints(AnalysisContext &actx,
           break;
         }
       }
+
       if (has_format_expansion)
         actx.report_diagnostic(diagnostic_id::sc2059,
                                args[format_index]->source_location());
@@ -426,6 +435,7 @@ fn check_command_value_lints(AnalysisContext &actx,
   if (input.is_in_group(COMMAND_GROUP_ASSIGNMENT_BUILTIN)) {
     let has_reported_substitution_value = false;
     let has_array_declaration = false;
+
     for (usize i = 1; i < args.count(); i++) {
       if (args[i]->kind() == Token::Kind::Assignment) {
         let const *assignment =
@@ -436,11 +446,13 @@ fn check_command_value_lints(AnalysisContext &actx,
         if (has_reported_substitution_value) continue;
 
         let value_has_substitution = false;
+
         for (let const &segment : assignment->value_word().segments)
           if (segment.kind == WordSegment::Kind::CommandSubstitution) {
             value_has_substitution = true;
             break;
           }
+
         if (!value_has_substitution) continue;
 
         actx.report_diagnostic(diagnostic_id::sc2155,
@@ -496,12 +508,14 @@ fn check_command_value_lints(AnalysisContext &actx,
                                  args[i]->source_location(), {literal.view()});
       }
     }
+
     break;
 
   case command_name_id::Grep:
   case command_name_id::Egrep:
   case command_name_id::Fgrep: {
     let is_fixed_string_mode = input.command_id() == command_name_id::Fgrep;
+
     for (usize i = 1; i < args.count(); i++) {
       if (args[i]->kind() != Token::Kind::Word) continue;
       let const &word = static_cast<const tokens::WordToken *>(args[i])->word();
@@ -530,6 +544,7 @@ fn check_command_value_lints(AnalysisContext &actx,
       }
       break;
     }
+
     break;
   }
 
@@ -619,6 +634,7 @@ fn check_command_value_lints(AnalysisContext &actx,
       }
       break;
     }
+
     break;
 
   default: break;

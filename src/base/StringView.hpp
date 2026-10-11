@@ -30,6 +30,7 @@ hot inline fn load_word(const char *bytes) wontthrow -> u64
 {
   u64 word = 0;
   __builtin_memcpy(&word, bytes, 8);
+
   return word;
 }
 
@@ -41,6 +42,7 @@ hot inline fn load_partial_word(const char *bytes, usize byte_count) wontthrow
     u32 tail;
     __builtin_memcpy(&head, bytes, 4);
     __builtin_memcpy(&tail, bytes + byte_count - 4, 4);
+
     return static_cast<u64>(head) |
            (static_cast<u64>(tail) << ((byte_count - 4) * 8));
   }
@@ -49,6 +51,7 @@ hot inline fn load_partial_word(const char *bytes, usize byte_count) wontthrow
 
   let const middle = byte_count / 2;
   let const last = byte_count - 1;
+
   return static_cast<u64>(static_cast<u8>(bytes[0])) |
          (static_cast<u64>(static_cast<u8>(bytes[middle])) << (middle * 8)) |
          (static_cast<u64>(static_cast<u8>(bytes[last])) << (last * 8));
@@ -66,12 +69,14 @@ hot inline fn are_bytes_equal(const char *left, const char *right,
     __builtin_memcpy(&right_head, right, 4);
     __builtin_memcpy(&left_tail, left + byte_count - 4, 4);
     __builtin_memcpy(&right_tail, right + byte_count - 4, 4);
+
     return ((left_head ^ right_head) | (left_tail ^ right_tail)) == 0;
   }
 
   if (byte_count < 4) {
     let const middle = byte_count / 2;
     let const last = byte_count - 1;
+
     return left[0] == right[0] && left[middle] == right[middle] &&
            left[last] == right[last];
   }
@@ -96,11 +101,13 @@ hot inline fn find_byte(const char *bytes, usize byte_count,
 
 #if defined __BYTE_ORDER__ && __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
   let const broadcast = LOW_BITS * wanted;
+
   while (position + 8 <= byte_count) {
     let const word = load_word(bytes + position) ^ broadcast;
     let const marks = (word - LOW_BITS) & ~word & HIGH_BITS;
     if (marks != 0) {
       let const offset = static_cast<usize>(__builtin_ctzll(marks)) >> 3;
+
       return bytes + position + offset;
     }
 
@@ -123,6 +130,7 @@ hot inline fn find_last_byte(const char *bytes, usize byte_count,
 
 #if defined __BYTE_ORDER__ && __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
   let const broadcast = LOW_BITS * wanted;
+
   while (position >= 8) {
     position -= 8;
     let const word = load_word(bytes + position) ^ broadcast;
@@ -169,6 +177,7 @@ public:
   hot mustuse pure fn operator[](usize i) const wontthrow->char
   {
     ASSERT(i < length, "string-view index is past the end");
+
     return data[i];
   }
 
@@ -202,6 +211,7 @@ public:
     let const order = shared_length == 0
                           ? 0
                           : __builtin_memcmp(data, other.data, shared_length);
+
     return order < 0 || (order == 0 && length < other.length);
   }
 
@@ -230,6 +240,7 @@ public:
   fn for_each_ascii_whitespace_word(Callback do_word) const throws -> void
   {
     usize position = 0;
+
     while (position < length) {
       let const word = next_ascii_whitespace_word(position);
       if (!word.is_empty()) do_word(word);
@@ -245,6 +256,7 @@ public:
         return false;
       }
     }
+
     return true;
   }
 
@@ -252,9 +264,11 @@ public:
   {
     usize start = 0;
     usize end = length;
+
     while (start < end && (data[start] == ' ' || data[start] == '\t')) {
       start++;
     }
+
     while (end > start && (data[end - 1] == ' ' || data[end - 1] == '\t')) {
       end--;
     }
@@ -267,6 +281,7 @@ public:
     if (length > 0 && data[length - 1] == '\n') {
       return substring_of_length(0, length - 1);
     }
+
     return *this;
   }
 };
@@ -276,16 +291,19 @@ pure alwaysinline fn hash_bytes(StringView view) wontthrow -> u64
   u64 hash = view.length * 0x9e3779b97f4a7c15ull;
   usize i = 0;
 #pragma clang loop unroll_count(4)
+
   for (; i + 8 <= view.length; i += 8) {
     u64 chunk;
     __builtin_memcpy(&chunk, view.data + i, 8);
     hash = (hash ^ chunk) * 0x100000001b3ull;
   }
+
   let const tail = byte_scan::load_partial_word(view.data + i, view.length - i);
   hash = (hash ^ tail) * 0x100000001b3ull;
   hash ^= hash >> 32;
   hash *= 0xff51afd7ed558ccdull;
   hash ^= hash >> 31;
+
   return hash;
 }
 

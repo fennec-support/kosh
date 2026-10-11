@@ -64,10 +64,13 @@ static fn previous_settled_word(StringView line, usize token_start) wontthrow
     -> StringView
 {
   let end = token_start;
+
   while (end > 0 && (line[end - 1] == ' ' || line[end - 1] == '\t')) {
     end--;
   }
+
   let start = end;
+
   while (start > 0 && line[start - 1] != ' ' && line[start - 1] != '\t') {
     start--;
   }
@@ -94,6 +97,7 @@ static fn settled_option_value(StringView line, StringView option) throws
 {
   usize cword = 0;
   let const words = split_completion_words(line, line.length, cword);
+
   for (usize i = 1; i < words.count(); i++) {
     let const word = words[i].view();
     if (word == option && i + 1 < words.count() && i + 1 != cword) {
@@ -103,6 +107,7 @@ static fn settled_option_value(StringView line, StringView option) throws
       return String{word.substring(option.length)};
     }
   }
+
   return None;
 }
 
@@ -121,6 +126,7 @@ static fn make_target_is_artifact(StringView name, const Path &directory) throws
 
   let candidate = directory.clone();
   candidate.append(name);
+
   return candidate.exists();
 }
 
@@ -132,6 +138,7 @@ static fn parse_make_database_targets(StringView database,
   let in_files_section = false;
   let skip_next_rule = false;
   usize i = 0;
+
   while (i < database.length) {
     let const text = database.next_line(i);
 
@@ -163,6 +170,7 @@ static fn parse_make_database_targets(StringView database,
     if (make_target_is_artifact(name, directory)) continue;
     targets.push(String{name});
   }
+
   return targets;
 }
 
@@ -170,6 +178,7 @@ static fn parse_colon_led_names(StringView listing) throws -> ArrayList<String>
 {
   let names = ArrayList<String>{heap_allocator()};
   usize i = 0;
+
   while (i < listing.length) {
     let const text = listing.next_line(i);
     let const colon = text.find_character(':');
@@ -180,6 +189,7 @@ static fn parse_colon_led_names(StringView listing) throws -> ArrayList<String>
     if (name.find_character(' ').has_value()) continue;
     names.push(String{name});
   }
+
   return names;
 }
 
@@ -188,6 +198,7 @@ static fn parse_tsh_node_names(StringView listing) throws -> ArrayList<String>
   let names = ArrayList<String>{heap_allocator()};
   usize i = 0;
   let has_passed_rule = false;
+
   while (i < listing.length) {
     let const row = listing.next_line(i);
 
@@ -199,6 +210,7 @@ static fn parse_tsh_node_names(StringView listing) throws -> ArrayList<String>
     }
 
     usize field_end = 0;
+
     while (field_end < row.length && row[field_end] != ' ' &&
            row[field_end] != '\t')
     {
@@ -208,6 +220,7 @@ static fn parse_tsh_node_names(StringView listing) throws -> ArrayList<String>
     if (field_end > 0)
       names.push(String{row.substring_of_length(0, field_end)});
   }
+
   return names;
 }
 
@@ -217,6 +230,7 @@ static fn parse_package_json_scripts(StringView text) throws
   let scripts = ArrayList<String>{heap_allocator()};
   usize i = 0;
   usize object_depth = 0;
+
   while (i < text.length) {
     if (text[i] == '{') {
       object_depth++;
@@ -234,12 +248,14 @@ static fn parse_package_json_scripts(StringView text) throws
     }
 
     let const key_start = ++i;
+
     while (i < text.length && text[i] != '"') {
       if (text[i] == '\\' && i + 1 < text.length) {
         i++;
       }
       i++;
     }
+
     if (i >= text.length) return scripts;
 
     let const key_end = i++;
@@ -254,16 +270,19 @@ static fn parse_package_json_scripts(StringView text) throws
     {
       i++;
     }
+
     if (i >= text.length || text[i] != ':') {
       continue;
     }
 
     i++;
+
     while (i < text.length && (text[i] == ' ' || text[i] == '\t' ||
                                text[i] == '\n' || text[i] == '\r'))
     {
       i++;
     }
+
     if (i >= text.length || text[i] != '{') {
       continue;
     }
@@ -274,14 +293,17 @@ static fn parse_package_json_scripts(StringView text) throws
 
   usize depth = 1;
   let expecting_key = true;
+
   while (i < text.length && depth > 0) {
     let const byte = text[i];
     if (byte == '"') {
       let const start = ++i;
+
       while (i < text.length && text[i] != '"') {
         if (text[i] == '\\') i++;
         i++;
       }
+
       if (expecting_key && depth == 1) {
         scripts.push(String{text.substring_of_length(start, i - start)});
       }
@@ -295,6 +317,7 @@ static fn parse_package_json_scripts(StringView text) throws
     if (byte == '}') depth--;
     i++;
   }
+
   return scripts;
 }
 
@@ -318,11 +341,14 @@ static fn collect_ssh_hosts() throws -> ArrayList<String>
   {
     let const text = config->view();
     usize i = 0;
+
     while (i < text.length) {
       let row = text.next_line(i);
+
       while (!row.is_empty() && (row[0] == ' ' || row[0] == '\t')) {
         row = row.substring(1);
       }
+
       if (!(row.starts_with(StringView{"Host "}) ||
             row.starts_with(StringView{"Host\t"})))
       {
@@ -330,14 +356,18 @@ static fn collect_ssh_hosts() throws -> ArrayList<String>
       }
       row = row.substring(5);
       usize k = 0;
+
       while (k < row.length) {
         k = skip_blanks(row, k);
         let const start = k;
+
         while (k < row.length && row[k] != ' ' && row[k] != '\t') {
           k++;
         }
+
         let const name = row.substring_of_length(start, k - start);
         let is_pattern_host = false;
+
         for (usize position = 0; position < name.length; position++) {
           let const byte = name[position];
           if (byte == '*' || byte == '?' || byte == '!') {
@@ -358,18 +388,22 @@ static fn collect_ssh_hosts() throws -> ArrayList<String>
   {
     let const text = known->view();
     usize i = 0;
+
     while (i < text.length) {
       let const row = text.next_line(i);
       if (row.is_empty() || row[0] == '#' || row[0] == '|') {
         continue;
       }
       usize field_end = 0;
+
       while (field_end < row.length && row[field_end] != ' ' &&
              row[field_end] != '\t')
       {
         field_end++;
       }
+
       let field = row.substring_of_length(0, field_end);
+
       while (!field.is_empty()) {
         let const comma = field.find_character(',');
         let host =
@@ -383,6 +417,7 @@ static fn collect_ssh_hosts() throws -> ArrayList<String>
       }
     }
   }
+
   return hosts;
 }
 
@@ -400,6 +435,7 @@ static fn cached_targets_for(const Path &source_file, Collector collect) throws
     return &cached->targets;
   }
   let targets = collect();
+
   return &BUILD_TARGET_CACHE
               .set(key, cached_target_list{*mtime, steal(targets).make_sorted(
                                                        sort_order::ascending)})
@@ -444,6 +480,7 @@ fn internal::complete_from_process_arguments(StringView line, StringView token,
   let const processes = os::enumerate_processes();
   let candidates = ArrayList<String>{completion_allocator()};
   let seen = HashSet{completion_allocator()};
+
   for (let const &process : processes) {
     if (is_by_name) {
       let const name = process.name.view();
@@ -459,6 +496,7 @@ fn internal::complete_from_process_arguments(StringView line, StringView token,
   }
 
   if (candidates.is_empty()) return None;
+
   return candidates;
 }
 
@@ -490,8 +528,10 @@ fn internal::complete_from_tools_with_targets(StringView line, StringView token,
     if (resolved.is_empty()) return String{heap_allocator()};
     let argv = ArrayList<String>{heap_allocator()};
     argv.push(String{resolved[0].view()});
+
     for (usize i = 1; i < probe_argv.count(); i++)
       argv.push(String{probe_argv[i].view()});
+
     return os::capture_program_output(argv, probe_timeout_nanos)
         .value_or(String{heap_allocator()});
   };
@@ -520,6 +560,7 @@ fn internal::complete_from_tools_with_targets(StringView line, StringView token,
           break;
         }
       }
+
       if (!makefile_name.has_value()) return None;
     }
     let makefile_path = Path{directory.view()};
@@ -542,6 +583,7 @@ fn internal::complete_from_tools_with_targets(StringView line, StringView token,
           koshkit::collect_makefile_targets(context, makefile_path);
       let filtered = ArrayList<String>{heap_allocator()};
       let seen = HashSet{heap_allocator()};
+
       for (let const &name : intrinsic_targets) {
         if (make_target_is_artifact(name.view(), make_directory) ||
             !seen.add(name.view()))
@@ -550,6 +592,7 @@ fn internal::complete_from_tools_with_targets(StringView line, StringView token,
         }
         filtered.push(name.clone());
       }
+
       return filtered;
     });
     break;
@@ -568,6 +611,7 @@ fn internal::complete_from_tools_with_targets(StringView line, StringView token,
       probe.push(String{directory.view()});
       probe.push(String{"-t"});
       probe.push(String{"targets"});
+
       return parse_colon_led_names(do_capture(probe).view());
     });
     break;
@@ -589,6 +633,7 @@ fn internal::complete_from_tools_with_targets(StringView line, StringView token,
       let const help = do_capture(probe);
       let const text = help.view();
       usize i = 0;
+
       while (i < text.length) {
         let const row = text.next_line(i);
         if (!row.starts_with(StringView{"... "})) continue;
@@ -597,6 +642,7 @@ fn internal::complete_from_tools_with_targets(StringView line, StringView token,
           name = name.substring_of_length(0, *space);
         if (!name.is_empty()) names.push(String{name});
       }
+
       return names;
     });
     break;
@@ -606,6 +652,7 @@ fn internal::complete_from_tools_with_targets(StringView line, StringView token,
     let const package_path = Path{StringView{"package.json"}};
     cached_targets = cached_targets_for(package_path, [&]() throws {
       let const contents = package_path.read_entire_file();
+
       return contents.has_value() ? parse_package_json_scripts(contents->view())
                                   : ArrayList<String>{heap_allocator()};
     });
@@ -634,6 +681,7 @@ fn internal::complete_from_tools_with_targets(StringView line, StringView token,
   if (cached_targets.has_value()) {
     let const &sorted_targets = *cached_targets.value();
     let const first = sorted_targets.lower_bound(token);
+
     for (usize i = first; i < sorted_targets.count(); i++) {
       let const &target = sorted_targets[i];
       if (!target.view().starts_with(token)) break;
@@ -645,6 +693,7 @@ fn internal::complete_from_tools_with_targets(StringView line, StringView token,
         candidates.push(String{target.view()});
   }
   if (candidates.is_empty()) return None;
+
   return candidates;
 }
 
@@ -683,6 +732,7 @@ static fn dash_candidates_for(Maybe<Builtin::Kind> builtin_kind) throws
                         binary_candidates);
       was_binary_built = true;
     }
+
     return &binary_candidates;
   }
 
@@ -701,16 +751,19 @@ static fn dash_candidates_for(Maybe<Builtin::Kind> builtin_kind) throws
       append_flag_forms(*flags, StringView{}, *per_kind_candidates[index]);
       if (*builtin_kind == Builtin::Kind::Set) {
         const String &letters = shell_option_letters();
+
         for (usize i = 0; i < letters.count(); i++) {
           let switch_form = String{"-"};
           switch_form.push(letters[i]);
           per_kind_candidates[index]->push(steal(switch_form));
         }
+
         per_kind_candidates[index]->push(String{"-o"});
       }
     }
     was_per_kind_built[index] = true;
   }
+
   return &*per_kind_candidates[index];
 }
 
@@ -734,6 +787,7 @@ static fn push_variable_name_candidates(StringView token, EvalContext &context,
 
   let dynamic_names = ArrayList<StringView>{heap_allocator()};
   context.append_dynamic_variable_names(dynamic_names);
+
   for (let const name : dynamic_names)
     do_add_name(name);
 }
@@ -744,6 +798,7 @@ static fn declaration_flags_select_functions(StringView line,
   usize cword = 0;
   let const words = split_completion_words(
       line.substring_of_length(0, token_start), token_start, cword);
+
   for (usize i = 1; i < words.count(); i++) {
     let const word = words[i].view();
     if (word.length < 2 || word[0] != '-' || word[1] == '-') {
@@ -771,11 +826,13 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
 
   let const builtin_kind = search_builtin(command);
   let shell_binary_name = command;
+
   for (usize i = command.length; i > 0; i--)
     if (os::is_directory_separator(command[i - 1])) {
       shell_binary_name = command.substring(i);
       break;
     }
+
   let const is_shell_binary_completion =
       !builtin_kind.has_value() && shell_binary_name == "kosh";
 
@@ -819,9 +876,12 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
 
     if (should_offer_util_names) {
       let names = ArrayList<String>{heap_allocator()};
+
       for (let const &name : koshkit::util_names())
         if (name.view().starts_with(token)) names.push(String{name.view()});
+
       if (!names.is_empty()) return names;
+
       return None;
     }
 
@@ -836,6 +896,7 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
         let names = complete_command_names(token, context, nullptr,
                                            command_match_mode::Prefix);
         if (!names.is_empty()) return names;
+
         return None;
       }
 
@@ -848,6 +909,7 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
       {
         do_push_signal_names();
         if (!candidates.is_empty()) return candidates;
+
         return None;
       }
 
@@ -856,7 +918,9 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
       {
         for (let const entry_type : {"d", "f", "l"})
           do_push_matching(entry_type);
+
         if (!candidates.is_empty()) return candidates;
+
         return None;
       }
 
@@ -865,7 +929,9 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
       {
         for (let const candidate : DATE_FORMAT_CANDIDATES)
           do_push_matching(candidate);
+
         if (!candidates.is_empty()) return candidates;
+
         return None;
       }
 
@@ -891,6 +957,7 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
       let forms = ArrayList<String>{heap_allocator()};
       append_flag_forms(*flags, token, forms);
       if (forms.is_empty()) return None;
+
       return forms;
     }
   }
@@ -908,7 +975,9 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
     {
       for (let const name : shell_option_names())
         do_push_matching(name);
+
       if (!candidates.is_empty()) return candidates;
+
       return None;
     }
 
@@ -923,7 +992,9 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
       for (mimic_mood mood : {mimic_mood::Default, mimic_mood::Bash,
                               mimic_mood::Posix, mimic_mood::BashPosix})
         do_push_matching(mood_name(mood));
+
       if (!candidates.is_empty()) return candidates;
+
       return None;
     }
 
@@ -932,7 +1003,9 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
            {tab_selector_mode::Interactive, tab_selector_mode::External,
             tab_selector_mode::Plain})
         do_push_matching(tab_selector_name(selector));
+
       if (!candidates.is_empty()) return candidates;
+
       return None;
     }
 
@@ -942,7 +1015,9 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
     {
       for (let const level : {"info", "debug", "all"})
         do_push_matching(level);
+
       if (!candidates.is_empty()) return candidates;
+
       return None;
     }
 #endif
@@ -953,6 +1028,7 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
     let const words = split_completion_words(
         line.substring_of_length(0, token_start), token_start, cword);
     let operands = ArrayList<StringView>{heap_allocator()};
+
     for (usize i = 1; i < words.count(); i++) {
       let const word = words[i].view();
       let const is_value_word = operands.count() == 2 && operands[0] == "set";
@@ -975,6 +1051,7 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
         do_push_matching("--persist");
       }
       if (!candidates.is_empty()) return candidates;
+
       return None;
     }
 
@@ -991,6 +1068,7 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
     } else if (operands.count() == 1 && (form == "set" || form == "get")) {
       let names = ArrayList<StringView>{heap_allocator()};
       let aliases = ArrayList<String>{heap_allocator()};
+
       for (let const &option : get_option_registry()) {
         if (option.is_set_alias) {
           continue;
@@ -1001,6 +1079,7 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
           aliases.push(steal(*alias));
         }
       }
+
       for (let const &alias : aliases) {
         names.push(alias.view());
       }
@@ -1024,6 +1103,7 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
         let const listed_count = comma.has_value() ? *comma + 1 : 0;
         let const listed = token.substring_of_length(0, listed_count);
         let const typed = token.substring(listed_count);
+
         for (let const mood_value : {"kosh", "sh", "bash", "bash-posix"}) {
           let const mood_text = StringView{mood_value};
           if (!mood_text.starts_with(typed)) {
@@ -1049,6 +1129,7 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
     }
 
     if (!candidates.is_empty()) return candidates;
+
     return None;
   }
 
@@ -1064,6 +1145,7 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
     }
 
     if (!candidates.is_empty()) return candidates;
+
     return None;
   }
 
@@ -1090,6 +1172,7 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
     if (previous_word == "-s" || previous_word == "-n") {
       do_push_signal_names();
       if (!candidates.is_empty()) return candidates;
+
       return None;
     }
 
@@ -1099,7 +1182,9 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
         job_id += String::from(background_job.id, heap_allocator());
         do_push_matching(job_id.view());
       }
+
       if (!candidates.is_empty()) return candidates;
+
       return None;
     }
   }
@@ -1109,8 +1194,10 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
   {
     for (let const condition : {"DEBUG", "ERR", "EXIT", "RETURN"})
       do_push_matching(condition);
+
     do_push_signal_names();
     if (!candidates.is_empty()) return candidates;
+
     return None;
   }
 
@@ -1119,7 +1206,9 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
   {
     for (let const &name : builtin_names())
       do_push_matching(name.view());
+
     if (!candidates.is_empty()) return candidates;
+
     return None;
   }
 
@@ -1133,6 +1222,7 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
     let names = complete_command_names(token, context, nullptr,
                                        command_match_mode::Prefix);
     if (!names.is_empty()) return names;
+
     return None;
   }
 
@@ -1141,6 +1231,7 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
   {
     let z_candidates = z_completion_candidates(token, heap_allocator());
     if (!z_candidates.is_empty()) return z_candidates;
+
     return None;
   }
 
@@ -1163,6 +1254,7 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
             break;
           }
         }
+
         if (word == "--") continue;
         continue;
       }
@@ -1184,6 +1276,7 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
                                          command_match_mode::Prefix);
       if (!names.is_empty()) return names;
     }
+
     return None;
   }
 
@@ -1197,7 +1290,9 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
   if (is_option_name_word) {
     for (let const &entry : COMPLETION_OPTION_ENTRIES)
       do_push_matching(entry.key.to_string().view());
+
     if (!candidates.is_empty()) return candidates;
+
     return None;
   }
 
@@ -1206,6 +1301,7 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
   {
     push_variable_name_candidates(token, context, candidates);
     if (!candidates.is_empty()) return candidates;
+
     return None;
   }
 
@@ -1214,7 +1310,9 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
   {
     for (let const link_mood : {"bash", "dash", "kosh", "sh"})
       do_push_matching(link_mood);
+
     if (!candidates.is_empty()) return candidates;
+
     return None;
   }
 
@@ -1224,9 +1322,11 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
     let unsets_function = false;
     let const prefix = line.substring_of_length(0, token_start);
     usize scan_position = 0;
+
     while (scan_position < prefix.length) {
       scan_position = skip_blanks(prefix, scan_position);
       let const word_begin = scan_position;
+
       while (scan_position < prefix.length && prefix[scan_position] != ' ' &&
              prefix[scan_position] != '\t')
       {
@@ -1254,6 +1354,7 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
     }
 
     if (!candidates.is_empty()) return candidates;
+
     return None;
   }
 
@@ -1262,9 +1363,12 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
   const ArrayList<String> *dash_candidates = dash_candidates_for(
       is_shell_binary_completion ? Maybe<Builtin::Kind>{None} : builtin_kind);
   if (dash_candidates == nullptr) return None;
+
   for (let const &candidate : *dash_candidates)
     do_push_matching(candidate.view());
+
   if (candidates.is_empty()) return None;
+
   return candidates;
 }
 
@@ -1288,14 +1392,17 @@ static fn push_spec_candidate(StringView entry, ArrayList<String> &candidates,
       entry[entry.length - 1] == ')')
   {
     let name = entry.substring_of_length(0, *paren);
+
     while (!name.is_empty() && name[name.length - 1] == ' ') {
       name = name.substring_of_length(0, name.length - 1);
     }
+
     let const description =
         entry.substring_of_length(*paren + 1, entry.length - *paren - 2);
     if (!name.is_empty()) {
       candidates.push(String{completion_allocator(), name});
       if (!description.is_empty()) descriptions.set(name, description);
+
       return;
     }
   }
@@ -1371,6 +1478,7 @@ generate_spec_candidates(completion_spec &active_spec,
     if (slot_command_name.has_value()) return *slot_command_name;
 
     let const &words = do_completion_words();
+
     return words.is_empty() ? StringView{} : words[0].view();
   };
 
@@ -1408,6 +1516,7 @@ generate_spec_candidates(completion_spec &active_spec,
     let const definition_scope =
         DefinitionStateScope{context, active_spec.defining_state,
                              definition_state_exit::RestoreCaller};
+
     for (let const &word : context.expand_wordlist_to_fields(
              active_spec.word_list.view(), is_for_listing))
     {
@@ -1447,6 +1556,7 @@ generate_spec_candidates(completion_spec &active_spec,
         should_mark_file_names);
     active_spec.option_mask =
         context.execution_store().get_completion_option_mask();
+
     for (let const &entry : reply) {
       if (entry_is_unrequested_dash_word(entry.view(), should_offer_dash_words))
         continue;
@@ -1464,6 +1574,7 @@ generate_spec_candidates(completion_spec &active_spec,
                                   ? words[previous_index].view()
                                   : StringView{};
     notice_slow_gather();
+
     for (let const &entry : context.run_completion_command(
              active_spec.command.view(), do_command_name(), word, previous_word,
              line, cursor))
@@ -1617,6 +1728,7 @@ fn internal::complete_from_spec(StringView line, StringView token, usize cursor,
   }
 
   if (candidates.is_empty()) return None;
+
   return candidates;
 }
 
@@ -1700,6 +1812,7 @@ static fn collect_shell_heredoc(StringView source, usize &position, usize end,
     should_strip_tabs = true;
     position++;
   }
+
   while (position < end &&
          (source[position] == ' ' || source[position] == '\t'))
   {
@@ -1708,6 +1821,7 @@ static fn collect_shell_heredoc(StringView source, usize &position, usize end,
 
   let const word_start = position;
   char delimiter_quote = 0;
+
   while (position < end) {
     let const delimiter_byte = source[position];
     if (delimiter_byte == '\\' && delimiter_quote != '\'') {
@@ -1752,13 +1866,16 @@ fn internal::advance_shell_lexical_state(
   let const do_pop_frame = [&]() wontthrow -> shell_lexical_frame {
     let const frame_depth = state.frames.count();
     let const frame = state.frames.back();
+
     while (!state.constructs.is_empty() &&
            state.constructs.back().frame_depth >= frame_depth)
     {
       state.constructs.pop_back();
     }
+
     state.frames.pop_back();
     state.quote = frame.parent_quote;
+
     return frame;
   };
   let const do_close_group = [](shell_lexical_frame &frame) wontthrow -> void {
@@ -2011,6 +2128,7 @@ fn internal::advance_shell_lexical_state(
       if (i + word.length > end) return false;
       if (source.substring_of_length(i, word.length) != word) return false;
       let const word_end = i + word.length;
+
       return word_end == source.length ||
              lexer::is_whitespace(source[word_end]) ||
              lexer::is_shell_sentinel(source[word_end]) ||
@@ -2038,6 +2156,7 @@ fn internal::advance_shell_lexical_state(
         do_is_word_start())
     {
       let word_end = i;
+
       while (word_end < end && !lexer::is_whitespace(source[word_end]) &&
              !lexer::is_shell_sentinel(source[word_end]) &&
              !(source[word_end] == '\r' && word_end + 1 < end &&
@@ -2045,6 +2164,7 @@ fn internal::advance_shell_lexical_state(
       {
         word_end++;
       }
+
       let const word = source.substring_of_length(i, word_end - i);
       LOG(All, "scanning word '%.*s' at command position %d",
           static_cast<int>(word.length), word.data, frame.is_command_position);
@@ -2238,6 +2358,7 @@ fn internal::command_substitution_range(StringView line, usize cursor) throws
   };
 
   advance_shell_lexical_state(line, cursor, state, &target);
+
   for (usize frame_index = 0; frame_index < state.frames.count(); frame_index++)
     consider_shell_lexical_frame(state.frames[frame_index], line.length,
                                  frame_index + 1, &target);
@@ -2253,6 +2374,7 @@ fn internal::collect_case_pattern_ends(StringView line,
     -> void
 {
   let state = shell_lexical_state{heap_allocator()};
+
   for (usize position = 0; position < line.length; position++) {
     if (line[position] != ')') continue;
 
@@ -2291,6 +2413,7 @@ fn classify_typed_pair_byte(StringView line, usize cursor, char byte) throws
     let const is_substitution_opener = state.quote == '"' &&
                                        (byte == '(' || byte == '{') &&
                                        cursor > 0 && line[cursor - 1] == '$';
+
     return is_substitution_opener ? typed_pair_role::opens
                                   : typed_pair_role::none;
   }
@@ -2368,6 +2491,7 @@ fn describe_syntax_problem(StringView line, usize cursor, mimic_mood mood,
   append_sentence_tail(out, error.details_message().is_empty()
                                 ? error.detail_message()
                                 : error.details_message());
+
   return true;
 }
 
@@ -2409,6 +2533,7 @@ fn describe_analysis_finding(StringView line, EvalContext &context,
               directives, {}, {}, {nullptr, &diagnostics, nullptr});
 
   const source_diagnostic *first = nullptr;
+
   for (let const &diagnostic : diagnostics) {
     if (diagnostic.message.is_empty()) continue;
     if (first == nullptr ||
@@ -2417,11 +2542,13 @@ fn describe_analysis_finding(StringView line, EvalContext &context,
       first = &diagnostic;
     }
   }
+
   if (first == nullptr) return false;
 
   out.append(get_error_severity_word(first->severity));
   out.push('\n');
   out.append(first->message.view());
+
   return true;
 }
 

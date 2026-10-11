@@ -110,6 +110,7 @@ inline constexpr pure fn compgen_letter_action_mask(const bool (
     &is_action_enabled)[LETTER_COMPGEN_ACTION_COUNT]) wontthrow -> u32
 {
   u32 action_mask = 0;
+
   for (usize i = 0; i < LETTER_COMPGEN_ACTION_COUNT; i++) {
     if (is_action_enabled[i]) {
       action_mask |= compgen_action_bit(LETTER_COMPGEN_ACTIONS[i]);
@@ -225,6 +226,7 @@ struct completion_spec
     copy.option_mask = option_mask;
     copy.argument_mask = argument_mask;
     copy.defining_state = defining_state;
+
     return copy;
   }
 };
@@ -364,6 +366,7 @@ public:
       m_is_owned = other.m_is_owned;
       other.m_is_owned = false;
     }
+
     return *this;
   }
   CompiledRegex(const CompiledRegex &) = delete;

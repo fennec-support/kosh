@@ -47,6 +47,7 @@ static pure alwaysinline fn skip_blanks(StringView text, usize from) wontthrow
   while (from < text.length && is_blank(text[from])) {
     from++;
   }
+
   return from;
 }
 

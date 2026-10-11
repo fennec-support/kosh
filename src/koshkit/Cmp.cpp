@@ -43,6 +43,7 @@ struct buffered_byte_reader
     if (position == length) return byte_read_result::End;
 
     byte = static_cast<u8>(buffer[position++]);
+
     return byte_read_result::Byte;
   }
 };
@@ -86,9 +87,11 @@ static fn refill_readers(buffered_byte_reader &left,
   }
 
   batch.execute(results);
+
   for (usize index = 0; index < operation_count; index++) {
     if (results[index].error_number != 0) {
       os::set_last_system_error(results[index].error_number);
+
       return false;
     }
 
@@ -131,6 +134,7 @@ fn Cmp::execute(const ExecContext &ec, EvalContext &cxt,
   if (!left_input.has_value()) {
     if (!FLAG_CMP_SILENT.is_enabled())
       KOSHKIT_REPORT_PATH_ERROR("read", operands[0]);
+
     return 2;
   }
   defer
@@ -143,6 +147,7 @@ fn Cmp::execute(const ExecContext &ec, EvalContext &cxt,
   if (!right_input.has_value()) {
     if (!FLAG_CMP_SILENT.is_enabled())
       KOSHKIT_REPORT_PATH_ERROR("read", operands[1]);
+
     return 2;
   }
   defer
@@ -183,6 +188,7 @@ fn Cmp::execute(const ExecContext &ec, EvalContext &cxt,
       if (!FLAG_CMP_SILENT.is_enabled())
         report_soft_koshkit_util_error(ec, cxt, args[0].view(),
                                        os::last_system_error_message());
+
       return 2;
     }
 
@@ -196,12 +202,14 @@ fn Cmp::execute(const ExecContext &ec, EvalContext &cxt,
       usize equal_length = common_length;
       if (std::memcmp(left_bytes, right_bytes, common_length) != 0) {
         equal_length = 0;
+
         while (left_bytes[equal_length] == right_bytes[equal_length])
           equal_length++;
       }
 
       for (usize index = 0; index < equal_length; index++)
         line_number += left_bytes[index] == '\n' ? 1 : 0;
+
       byte_position += equal_length;
       left.position += equal_length;
       right.position += equal_length;
@@ -237,6 +245,7 @@ fn Cmp::execute(const ExecContext &ec, EvalContext &cxt,
             operands[0] + " " + operands[1] + " differ: byte " +
             String::from(byte_position, cxt.scratch_allocator()) + ", line " +
             String::from(line_number, cxt.scratch_allocator()) + "\n");
+
         return 1;
       }
 
@@ -257,6 +266,7 @@ fn Cmp::execute(const ExecContext &ec, EvalContext &cxt,
   }
 
   ec.print_to_stdout(output);
+
   return has_difference ? 1 : 0;
 }
 

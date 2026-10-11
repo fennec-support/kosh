@@ -109,6 +109,7 @@ fn builtin_flag_list(Builtin::Kind kind) wontthrow -> const FlagList *
 fn builtin_help_description(Builtin::Kind kind) wontthrow -> StringView
 {
   let const description = BUILTIN_HELP_DESCRIPTIONS[static_cast<usize>(kind)];
+
   return description != nullptr ? *description : StringView{};
 }
 
@@ -125,6 +126,7 @@ fn is_special_builtin_name(StringView name) wontthrow -> bool
       SSK("set"),  SSK("shift"), SSK("times"),  SSK("trap"),     SSK("unset"),
   };
   static constexpr StaticStringSet SPECIAL_BUILTINS{SPECIAL_BUILTIN_KEYS};
+
   return SPECIAL_BUILTINS.contains(name);
 }
 
@@ -132,10 +134,13 @@ fn builtin_names() throws -> const ArrayList<String> &
 {
   static ArrayList<String> names = [] throws {
     let collected = ArrayList<String>{heap_allocator()};
+
     for (let const &entry : BUILTIN_ENTRIES)
       collected.push(entry.key.to_string());
+
     return collected;
   }();
+
   return names;
 }
 
@@ -228,6 +233,7 @@ fn execute_builtin(ExecContext &&ec, EvalContext &cxt) throws -> i32
       show_builtin_help_impl(ec, builtin_help_description(ec.builtin_kind()),
                              *builtin_help_synopsis(ec.builtin_kind()),
                              *builtin_flag_list(ec.builtin_kind()));
+
       return 0;
     }
 
@@ -245,6 +251,7 @@ fn execute_builtin(ExecContext &&ec, EvalContext &cxt) throws -> i32
     if (!is_pipe_signal_ignored) return KOSH_BROKEN_PIPE_EXIT_STATUS;
 
     report_soft_builtin_error(ec, cxt, "write error: Broken pipe");
+
     return 1;
   } catch (const ErrorWithLocation &) {
     throw;
@@ -258,6 +265,7 @@ fn execute_builtin(ExecContext &&ec, EvalContext &cxt) throws -> i32
         report_soft_builtin_error(ec, cxt, e.message());
       if (is_declaration_builtin_kind(ec.builtin_kind()))
         return declaration_assignment_failure_status(cxt);
+
       return static_cast<i32>(e.command_status());
     }
 
@@ -360,6 +368,7 @@ fn report_usage_error(EvalContext &cxt, SourceLocation location,
     print_error(String{program_name} + ": Not enough arguments.\n");
   show_message(Note{String{"Try `"} + program_name + " --help` for more info"}
                    .to_string());
+
   return 2;
 }
 
@@ -372,10 +381,12 @@ fn bind_declared_self_nameref(const ExecContext &ec, EvalContext &cxt,
   } catch (const Error &error) {
     report_soft_builtin_error(ec, cxt, ec.arg_location_at(arg_index),
                               error.message().view());
+
     return false;
   }
 
   cxt.warn_circular_nameref(name);
+
   return true;
 }
 
@@ -395,11 +406,13 @@ fn declare_nameref(const ExecContext &ec, EvalContext &cxt, usize arg_index,
   } catch (const Error &error) {
     report_soft_builtin_error(ec, cxt, ec.arg_location_at(arg_index),
                               error.message().view());
+
     return false;
   }
 
   if (should_mark_readonly)
     cxt.variable_store().attributes().mark_readonly(name);
+
   return true;
 }
 
@@ -411,8 +424,10 @@ fn continue_job(job &job) throws -> void
   bool did_resume = true;
   if (job.is_primary_process_active)
     did_resume = os::signal_process(job.pid, *cont);
+
   for (let const process : job.earlier_pipeline_processes)
     if (!os::signal_process(process, *cont)) did_resume = false;
+
   if (!did_resume) throw Error{"Unable to continue the stopped job"};
   job.state = job::State::Running;
 }
@@ -434,6 +449,7 @@ fn finish_exit_builtin(const ExecContext &ec, EvalContext &cxt, i64 status,
         report_soft_builtin_error(ec, cxt, ec.arg_location_at(1), message,
                                   invalid_status_note);
       }
+
       return 2;
     }
 
@@ -455,6 +471,7 @@ fn finish_exit_builtin(const ExecContext &ec, EvalContext &cxt, i64 status,
   if (cxt.in_subshell()) {
     let const masked_status = status & 0xFF;
     cxt.request_exit(masked_status, ec.source_location());
+
     return static_cast<i32>(masked_status);
   }
 
@@ -483,6 +500,7 @@ fn make_error_for_arg(const ExecContext &ec, usize index,
                       StringView message) throws -> ErrorWithLocation
 {
   let const prefixed = builtin_error_message(ec.program(), message);
+
   return ErrorWithLocation{ec.arg_location_at(index), prefixed.view()};
 }
 
@@ -490,6 +508,7 @@ fn make_error_for_arg(const ExecContext &ec, usize index, StringView message,
                       StringView note) throws -> ErrorWithLocationAndDetails
 {
   let const prefixed = builtin_error_message(ec.program(), message);
+
   return ErrorWithLocationAndDetails{ec.arg_location_at(index), prefixed.view(),
                                      note};
 }
@@ -497,6 +516,7 @@ fn make_error_for_arg(const ExecContext &ec, usize index, StringView message,
 fn quote_for_declare(StringView value) throws -> String
 {
   let quoted = String{heap_allocator()};
+
   for (usize i = 0; i < value.length; i++) {
     const char c = value[i];
     if (c == '"' || c == '\\' || c == '$' || c == '`') {
@@ -504,6 +524,7 @@ fn quote_for_declare(StringView value) throws -> String
     }
     quoted += c;
   }
+
   return quoted;
 }
 
@@ -544,6 +565,7 @@ fn append_declare_value(String &out, StringView value,
 {
   if (utils::should_ansi_c_quote(value, is_utf8_locale)) {
     utils::append_ansi_c_quoted(out, value, is_utf8_locale);
+
     return;
   }
 
@@ -557,15 +579,18 @@ fn append_declare_key(String &out, StringView key, bool is_utf8_locale) throws
 {
   if (utils::should_ansi_c_quote(key, is_utf8_locale)) {
     utils::append_ansi_c_quoted(out, key, is_utf8_locale);
+
     return;
   }
 
   let is_plain = !key.is_empty() && key != "@";
+
   for (usize i = 0; i < key.length && is_plain; i++)
     is_plain = !is_declare_key_meta(key[i]);
 
   if (is_plain) {
     out.append(key);
+
     return;
   }
 
@@ -612,6 +637,7 @@ fn append_variable_declaration(EvalContext &cxt, StringView name,
       out += "=\"";
       out.append(name);
       out += "\"\n";
+
       return true;
     }
 
@@ -642,6 +668,7 @@ fn append_variable_declaration(EvalContext &cxt, StringView name,
       cxt.is_valueless_array(name))
   {
     append_valueless_array_declaration(cxt, name, 'a', out);
+
     return true;
   }
 
@@ -711,6 +738,7 @@ fn append_variable_declaration(EvalContext &cxt, StringView name,
 
   if (cxt.is_associative_array(name) && cxt.is_valueless_array(name)) {
     append_valueless_array_declaration(cxt, name, 'A', out);
+
     return true;
   }
 
@@ -797,6 +825,7 @@ fn parse_optional_integer_arg(const ExecContext &ec, i64 default_value) throws
   if (ec.args().count() <= 1) return default_value;
   let const parsed_value = ec.args()[1].to<i64>();
   if (parsed_value.is_error()) throw parsed_value.error();
+
   return parsed_value.value();
 }
 
@@ -824,6 +853,7 @@ fn run_cd_to_directory(EvalContext &cxt, const ExecContext &ec,
   let routed = ExecContext::make_from_resolved(
       ec.source_location(), ResolvedCommand::from_builtin(Builtin::Kind::Cd),
       steal(cd_args), steal(cd_arg_locations));
+
   return execute_builtin(steal(routed), cxt);
 }
 
@@ -839,6 +869,7 @@ static fn abbreviate_home_directory(StringView path, Allocator allocator) throws
     {
       let result = String{allocator, "~"};
       result.append(path.substring(home_view.length));
+
       return result;
     }
 
@@ -855,9 +886,11 @@ static fn abbreviate_home_directory(StringView path, Allocator allocator) throws
 
       let result = String{allocator, "~"};
       result.append(path.substring(position));
+
       return result;
     }
   }
+
   return String{allocator, path};
 }
 
@@ -883,6 +916,7 @@ fn parse_directory_stack_rotation(StringView arg, usize ring_count,
   }
 
   index_out = arg[0] == '+' ? number : ring_count - 1 - number;
+
   return true;
 }
 
@@ -915,6 +949,7 @@ fn print_directory_stack(EvalContext &cxt, const ExecContext &ec,
       selected_index.has_value() ? first_index + 1 : entry_count;
 
   let out = String{cxt.scratch_allocator()};
+
   for (usize i = first_index; i < end_index; i++) {
     let const entry = i == 0 ? pwd.view() : stack[stack.count() - i].view();
     if (should_print_numbers) {
@@ -934,6 +969,7 @@ fn print_directory_stack(EvalContext &cxt, const ExecContext &ec,
       out += ' ';
     }
   }
+
   ec.print_to_stdout(out);
 }
 

@@ -37,6 +37,7 @@ fn Stty::execute(const ExecContext &ec, EvalContext &cxt,
     report_soft_koshkit_util_error(ec, cxt, FLAG_STTY_ENCODE.value_location(),
                                    args[0].view(),
                                    "-a and -g cannot be used together");
+
     return 1;
   }
   let const should_report =
@@ -52,6 +53,7 @@ fn Stty::execute(const ExecContext &ec, EvalContext &cxt,
     if (!output.has_value()) {
       report_soft_koshkit_util_error(ec, cxt, args[0].view(),
                                      "standard input is not a terminal");
+
       return 1;
     }
     ec.print_to_stdout(output->view());
@@ -60,6 +62,7 @@ fn Stty::execute(const ExecContext &ec, EvalContext &cxt,
     if (!os::is_fd_a_tty(terminal)) {
       report_soft_koshkit_util_error(ec, cxt, args[0].view(),
                                      "standard input is not a terminal");
+
       return 1;
     }
 
@@ -67,6 +70,7 @@ fn Stty::execute(const ExecContext &ec, EvalContext &cxt,
     if (result.kind == os::terminal_settings_apply_kind::SystemError) {
       report_soft_koshkit_util_error(ec, cxt, args[0].view(),
                                      os::last_system_error_message());
+
       return 1;
     }
     if (result.kind == os::terminal_settings_apply_kind::InvalidSetting) {
@@ -74,9 +78,11 @@ fn Stty::execute(const ExecContext &ec, EvalContext &cxt,
           ec, cxt, operand_locations[result.setting_position], args[0].view(),
           "invalid terminal setting",
           "read the current terminal settings with `stty -a`");
+
       return 1;
     }
   }
+
   return 0;
 }
 

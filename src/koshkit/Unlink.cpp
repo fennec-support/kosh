@@ -30,6 +30,7 @@ cold fn Unlink::execute(
   if (operands.count() > 1) {
     KOSHKIT_REPORT_ERROR_AT(operand_locations[1],
                             "extra operand '" + operands[1] + "'");
+
     return 1;
   }
 
@@ -40,6 +41,7 @@ cold fn Unlink::execute(
   if (is_real_directory) {
     KOSHKIT_REPORT_ERROR_AT(operand_locations[0], "cannot unlink '" + target +
                                                       "': it is a directory");
+
     return 1;
   }
 
@@ -47,8 +49,10 @@ cold fn Unlink::execute(
                    removal_mode::SinglePath))
   {
     KOSHKIT_REPORT_PATH_ERROR_AT(operand_locations[0], "unlink", target);
+
     return 1;
   }
+
   return 0;
 }
 

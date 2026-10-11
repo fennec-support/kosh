@@ -35,6 +35,7 @@ static fn read_all(os::descriptor fd, Allocator allocator) throws
     -> Maybe<String>
 {
   if (os::INTERRUPT_REQUESTED) return String{allocator};
+
   return os::read_fd_to_string(fd, allocator);
 }
 
@@ -42,6 +43,7 @@ static fn line_prefix_length_dropping_last(StringView text,
                                            u64 drop_count) wontthrow -> usize
 {
   u64 total_line_count = 0;
+
   for (usize i = 0; i < text.length; i++) {
     if (text[i] == '\n') total_line_count++;
   }
@@ -54,6 +56,7 @@ static fn line_prefix_length_dropping_last(StringView text,
   let const keep_count = total_line_count - drop_count;
 
   u64 lines_seen = 0;
+
   for (usize i = 0; i < text.length; i++) {
     if (text[i] == '\n') {
       lines_seen++;
@@ -84,10 +87,11 @@ static fn read_all_but_last(os::descriptor fd, u64 drop_count,
           ? byte_prefix_length_dropping_last(text->view(), drop_count)
           : line_prefix_length_dropping_last(text->view(), drop_count);
   text->truncate(keep_length);
+
   return text;
 }
 
-static fn read_regular_all_but_last(os::descriptor fd, u64 file_size,
+static fn read_regular_all_but_last(os::descriptor fd, u64 file_byte_count,
                                     u64 drop_count, Allocator allocator,
                                     head_unit unit) throws -> Maybe<String>
 {
@@ -108,16 +112,19 @@ static fn read_regular_all_but_last(os::descriptor fd, u64 file_size,
     batch.clear();
     batch.add(os::batch_operation::read(fd, block, byte_count, offset));
     batch.execute(results);
+
     return results[0];
   };
 
-  u64 prefix_end = file_size;
+  u64 prefix_end = file_byte_count;
   if (unit == head_unit::Bytes) {
-    prefix_end = drop_count >= file_size ? 0 : file_size - drop_count;
+    prefix_end =
+        drop_count >= file_byte_count ? 0 : file_byte_count - drop_count;
   } else if (drop_count != 0) {
     u64 remaining_lines = drop_count;
-    u64 next_end = file_size;
+    u64 next_end = file_byte_count;
     prefix_end = 0;
+
     while (next_end != 0) {
       if (os::INTERRUPT_REQUESTED) return String{allocator};
 
@@ -128,6 +135,7 @@ static fn read_regular_all_but_last(os::descriptor fd, u64 file_size,
       let const read_result = do_read_block(offset, byte_count);
       if (read_result.error_number != 0) {
         os::set_last_system_error(read_result.error_number);
+
         return None;
       }
       if (read_result.transferred_byte_count != byte_count)
@@ -136,12 +144,13 @@ static fn read_regular_all_but_last(os::descriptor fd, u64 file_size,
       for (usize position = byte_count; position > 0; position--) {
         if (block[position - 1] != '\n') continue;
         let const absolute = offset + position - 1;
-        if (absolute + 1 == file_size) continue;
+        if (absolute + 1 == file_byte_count) continue;
         if (--remaining_lines == 0) {
           prefix_end = absolute + 1;
           break;
         }
       }
+
       if (remaining_lines == 0) break;
       next_end = offset;
     }
@@ -149,6 +158,7 @@ static fn read_regular_all_but_last(os::descriptor fd, u64 file_size,
 
   let result = String{allocator};
   u64 next_offset = 0;
+
   while (next_offset < prefix_end) {
     if (os::INTERRUPT_REQUESTED) return String{allocator};
 
@@ -156,6 +166,7 @@ static fn read_regular_all_but_last(os::descriptor fd, u64 file_size,
     results.clear();
     buffers.clear();
     byte_counts.clear();
+
     while (next_offset < prefix_end && byte_counts.count() < batch_block_count)
     {
       let const remaining = prefix_end - next_offset;
@@ -172,11 +183,13 @@ static fn read_regular_all_but_last(os::descriptor fd, u64 file_size,
 
     batch.execute(results);
     if (os::INTERRUPT_REQUESTED) return String{allocator};
+
     for (usize result_index = 0; result_index < results.count(); result_index++)
     {
       let const &read_result = results[result_index];
       if (read_result.error_number != 0) {
         os::set_last_system_error(read_result.error_number);
+
         return None;
       }
       if (read_result.transferred_byte_count != byte_counts[result_index])
@@ -248,6 +261,7 @@ fn Head::execute(const ExecContext &ec, EvalContext &cxt,
   let const do_write_output = [&](StringView text) throws -> void {
     if (output.count() + text.length < HEAD_OUTPUT_FLUSH_BYTE_COUNT) {
       output += text;
+
       return;
     }
 
@@ -299,11 +313,11 @@ fn Head::execute(const ExecContext &ec, EvalContext &cxt,
         was_opened = true;
       }
 
-      let const file_size =
+      let const file_byte_count =
           was_opened ? os::regular_descriptor_file_size(fd) : Maybe<u64>{};
       let const text =
-          file_size.has_value()
-              ? read_regular_all_but_last(fd, *file_size, count,
+          file_byte_count.has_value()
+              ? read_regular_all_but_last(fd, *file_byte_count, count,
                                           cxt.scratch_allocator(), unit)
               : read_all_but_last(fd, count, cxt.scratch_allocator(), unit);
       let const read_error = os::get_last_system_error_number();
@@ -323,6 +337,7 @@ fn Head::execute(const ExecContext &ec, EvalContext &cxt,
     }
 
     do_flush_output();
+
     return status;
   }
 
@@ -426,6 +441,7 @@ fn Head::execute(const ExecContext &ec, EvalContext &cxt,
   }
 
   do_flush_output();
+
   return status;
 }
 

@@ -85,6 +85,7 @@ fn drop_elevated_identity() wontthrow -> bool
   let const real_group_id = getgid();
   let const real_user_id = getuid();
   if (setregid(real_group_id, real_group_id) != 0) return false;
+
   return setreuid(real_user_id, real_user_id) == 0;
 }
 
@@ -229,10 +230,12 @@ hot fn execute_program(ExecContext &ec,
     if (*outcome_read == 1 && outcome == 'f' && should_allow_script_fallback) {
       os::reap_process_quietly(child);
       was_fds_handed_to_fallback = true;
+
       return KOSH_INVALID_PROCESS;
     }
 
     ec.close_fds();
+
     return child;
   }
 
@@ -348,6 +351,7 @@ hot fn execute_program(ExecContext &ec,
 
   if (spawn_error == ENOEXEC && should_allow_script_fallback) {
     was_fds_handed_to_fallback = true;
+
     return KOSH_INVALID_PROCESS;
   }
 
@@ -386,6 +390,7 @@ fn ProgramCapture::start(const ArrayList<String> &argv,
   if (devnull_fd < 0) {
     close(read_end);
     close(write_end);
+
     return None;
   }
 
@@ -419,6 +424,7 @@ fn ProgramCapture::start(const ArrayList<String> &argv,
   close(devnull_fd);
   if (spawn_result != 0) {
     close(read_end);
+
     return None;
   }
 
@@ -426,6 +432,7 @@ fn ProgramCapture::start(const ArrayList<String> &argv,
   capture.m_child = child_pid;
   capture.m_output = read_end;
   capture.m_deadline_nanos = monotonic_nanos() + timeout_nanos;
+
   return capture;
 }
 
@@ -446,6 +453,7 @@ fn ProgramCapture::step() wontthrow -> State
     }
     if (ready < 0) {
       abandon();
+
       return State::Failed;
     }
     if (ready == 0) break;
@@ -457,6 +465,7 @@ fn ProgramCapture::step() wontthrow -> State
     }
     if (read_count < 0) {
       abandon();
+
       return State::Failed;
     }
     if (read_count == 0) {
@@ -473,16 +482,19 @@ fn ProgramCapture::step() wontthrow -> State
         [&] { return waitpid(m_child, &wait_status, WNOHANG); });
     if (waited_pid == m_child) {
       m_child = KOSH_INVALID_PROCESS;
+
       return State::Finished;
     }
     if (waited_pid < 0) {
       m_child = KOSH_INVALID_PROCESS;
+
       return State::Failed;
     }
   }
 
   if (monotonic_nanos() >= m_deadline_nanos) {
     abandon();
+
     return State::Failed;
   }
 
@@ -500,6 +512,7 @@ fn ProgramCapture::wait(u64 wait_nanos) const wontthrow -> void
 
   if (m_output == KOSH_INVALID_FD) {
     poll(nullptr, 0, 1);
+
     return;
   }
 
@@ -656,10 +669,12 @@ static fn fork_job_process() throws -> process
     } catch (...) {
       exit_process_immediately(1);
     }
+
     return 0;
   }
 
   (void) setpgid(child_pid, child_pid);
+
   return child_pid;
 }
 
@@ -730,6 +745,7 @@ fn launch_process_substitution(const process_substitution_options &options)
 
   let path = String{"/dev/fd/"};
   path += String::from(static_cast<i64>(retained_fd), heap_allocator());
+
   return process_substitution_launch{
       .path = steal(path),
       .retained_fd = retained_fd,
@@ -745,6 +761,7 @@ fn finish_process_substitution(opaque *cleanup) wontthrow -> void
 fn release_finished_process_substitution(opaque *cleanup) wontthrow -> bool
 {
   unused(cleanup);
+
   return true;
 }
 
@@ -755,6 +772,7 @@ fn launch_compound_stage(const compound_stage_options &options) throws
       steal(options.in_fd), steal(options.out_fd), steal(options.err_fd),
       steal(options.location), options.diagnostic_source,
       options.process_group_id, options.process_group);
+
   return compound_stage_launch{
       .child = child,
       .should_evaluate_child = child == 0,
@@ -784,6 +802,7 @@ fn replace_process(ExecContext &&ec) throws -> void
     if (fd != target) {
       check_syscall(dup2(fd, target));
       check_syscall(close(fd));
+
       return;
     }
 
@@ -887,6 +906,7 @@ fn make_pipe() wontthrow -> Maybe<pipe_ends>
     if (lifted == -1) {
       close(p[0]);
       close(p[1]);
+
       return koshka::None;
     }
     close(end);
@@ -930,6 +950,7 @@ static fn pooled_worker_main(opaque *raw_worker) wontthrow -> opaque *
   pthread_sigmask(SIG_BLOCK, &blocked_signals, nullptr);
 
   pthread_mutex_lock(&worker->mutex);
+
   loop
   {
     while (!worker->has_job)
@@ -975,6 +996,7 @@ static fn create_worker() wontthrow -> pooled_worker *
       0)
   {
     os::free_aligned(worker);
+
     return nullptr;
   }
 
@@ -1006,8 +1028,10 @@ fn join_thread(thread t) wontthrow -> void
   let const worker = static_cast<pooled_worker *>(t.handle);
 
   pthread_mutex_lock(&worker->mutex);
+
   while (!worker->is_done)
     pthread_cond_wait(&worker->changed, &worker->mutex);
+
   worker->is_done = false;
   pthread_mutex_unlock(&worker->mutex);
 
@@ -1033,6 +1057,7 @@ fn wait_and_monitor_process(process pid, bool *was_stopped) throws -> i32
 
   if (was_stopped != nullptr && WIFSTOPPED(status)) {
     *was_stopped = true;
+
     return 128 + WSTOPSIG(status);
   }
 
@@ -1087,6 +1112,7 @@ fn reap_process_quietly(process pid) throws -> i32
   LOG(Debug, "quietly reaping process %lld", static_cast<long long>(pid));
 
   i32 status{};
+
   loop
   {
     const pid_t w = retry_interrupted([&] { return waitpid(pid, &status, 0); });
@@ -1100,6 +1126,7 @@ fn reap_process_quietly(process pid) throws -> i32
 
   if (WIFSIGNALED(status)) return 128 + WTERMSIG(status);
   if (WIFEXITED(status)) return WEXITSTATUS(status);
+
   return 1;
 }
 
@@ -1113,12 +1140,14 @@ fn poll_process(process p, i32 &status_out,
   if (result == 0) return process_state::Unchanged;
   if (result == -1) {
     status_out = 0;
+
     return process_state::Exited;
   }
 
   if (WIFSTOPPED(status)) {
     note_child_reaped();
     status_out = 128 + WSTOPSIG(status);
+
     return process_state::Stopped;
   }
   if (WIFCONTINUED(status)) return process_state::Running;
@@ -1135,6 +1164,7 @@ fn poll_process(process p, i32 &status_out,
     return process_state::Exited;
   }
   status_out = WEXITSTATUS(status);
+
   return process_state::Exited;
 }
 
@@ -1225,6 +1255,7 @@ static fn is_running_group_member(i64 process_id, pid_t group_id) wontthrow
 
   let const thread_count =
       stat_text.next_ascii_whitespace_word(position).to<i64>();
+
   return !thread_count.is_error() && thread_count.value() > 1;
 }
 
@@ -1256,12 +1287,14 @@ static fn process_group_has_running_member(pid_t group_id) wontthrow -> bool
           static_cast<int>(group_id), static_cast<int>(name.length), name.data);
       LAST_RUNNING_GROUP_ID = group_id;
       LAST_RUNNING_MEMBER_ID = process_id.value();
+
       return true;
     }
   }
 
   LOG(Debug, "process group %d holds only exited members",
       static_cast<int>(group_id));
+
   return false;
 }
 #endif
@@ -1271,8 +1304,10 @@ fn process_group_has_members(process group) wontthrow -> bool
   if (kill(group, 0) != 0) return errno == EPERM;
 
 #if defined __linux__
+
   return process_group_has_running_member(static_cast<pid_t>(-group));
 #else
+
   return true;
 #endif
 }
@@ -1357,6 +1392,7 @@ static fn build_signal_pairs(ArrayList<String> &names) throws
     pairs.push(SIGNAL_PAIRS[i]);
 
 #if defined SIGRTMIN && defined SIGRTMAX
+
   for (i32 number = lowest; number <= highest; number++) {
     let const from_lowest = number - lowest;
     let const from_highest = highest - number;
@@ -1438,6 +1474,7 @@ fn monotonic_nanos() wontthrow -> u64
 {
   struct timespec now{};
   if (clock_gettime(CLOCK_MONOTONIC, &now) != 0) return 0;
+
   return static_cast<u64>(now.tv_sec) * 1000000000ULL +
          static_cast<u64>(now.tv_nsec);
 }
@@ -1469,15 +1506,19 @@ fn get_supplementary_group_ids(Allocator allocator) throws -> ArrayList<u32>
 
   let native_groups = ArrayList<gid_t>{allocator};
   native_groups.reserve(static_cast<usize>(group_count));
+
   for (int index = 0; index < group_count; index++)
     native_groups.push(0);
+
   let const read_count = getgroups(group_count, native_groups.begin());
   if (read_count < 0) return groups;
+
   for (int index = 0; index < read_count; index++)
     groups.push(static_cast<u32>(native_groups[static_cast<usize>(index)]));
 
   let const effective_group = static_cast<u32>(getegid());
   if (!groups.find(effective_group).has_value()) groups.push(effective_group);
+
   return groups;
 }
 
@@ -1490,22 +1531,28 @@ fn machine_type() throws -> String
 #if defined __APPLE__
     if (machine == "arm64") return String{"aarch64"};
 #endif
+
     return String{machine};
   }();
+
   return cached;
 }
 
 fn executable_system_name() throws -> String
 {
 #if KOSH_PLATFORM_IS KOSH_PLATFORM_COSMO
+
   return String{"any"};
 #elif defined __APPLE__
+
   return String{"Darwin"};
 #elif defined __linux__
+
   return String{"Linux"};
 #else
   struct utsname info{};
   if (uname(&info) != 0) return String{"unknown"};
+
   return String{
       StringView{info.sysname, std::strlen(info.sysname)}
   };
@@ -1516,6 +1563,7 @@ fn system_release_name() throws -> String
 {
   struct utsname info{};
   if (uname(&info) != 0) return String{"unknown"};
+
   return String{info.release};
 }
 
@@ -1523,14 +1571,17 @@ fn system_version_name() throws -> String
 {
   struct utsname info{};
   if (uname(&info) != 0) return String{"unknown"};
+
   return String{info.version};
 }
 
 fn machine_target_name() throws -> String
 {
 #if defined __APPLE__
+
   return machine_type() + "-apple-darwin" + system_release_name();
 #else
+
   return machine_type() + "-unknown-" + ostype_name();
 #endif
 }
@@ -1538,10 +1589,13 @@ fn machine_target_name() throws -> String
 fn ostype_name() wontthrow -> StringView
 {
 #if defined __APPLE__
+
   return "darwin";
 #elif defined __GLIBC__
+
   return "linux-gnu";
 #else
+
   return "linux-musl";
 #endif
 }
@@ -1549,12 +1603,16 @@ fn ostype_name() wontthrow -> StringView
 fn executable_machine_name() throws -> String
 {
 #if KOSH_PLATFORM_IS KOSH_PLATFORM_COSMO
+
   return String{"any"};
 #elif defined __aarch64__ || defined __arm64__
+
   return String{"arm64"};
 #elif defined __x86_64__ || defined __amd64__
+
   return String{"x86_64"};
 #else
+
   return machine_type();
 #endif
 }
@@ -1563,6 +1621,7 @@ fn realtime_microseconds() wontthrow -> u64
 {
   struct timespec now{};
   if (clock_gettime(CLOCK_REALTIME, &now) != 0) return 0;
+
   return static_cast<u64>(now.tv_sec) * 1000000ULL +
          static_cast<u64>(now.tv_nsec) / 1000ULL;
 }
@@ -1577,6 +1636,7 @@ fn format_local_time(StringView format, i64 epoch) throws -> String
   char buffer[512];
   let const written =
       strftime(buffer, sizeof(buffer), format_string.c_str(), &broken_down);
+
   return String{
       StringView{buffer, written}
   };
@@ -1592,6 +1652,7 @@ fn read_child_cpu_times() wontthrow -> child_cpu_times
   result.system_seconds =
       static_cast<double>(usage.ru_stime.tv_sec) +
       static_cast<double>(usage.ru_stime.tv_usec) / 1000000.0;
+
   return result;
 }
 
@@ -1642,6 +1703,7 @@ fn spawn_measured_child(const ArrayList<String> &argv, measured_output output,
   if (pipe(start_descriptors) != 0) {
     close(ready_descriptors[0]);
     close(ready_descriptors[1]);
+
     return false;
   }
 
@@ -1652,6 +1714,7 @@ fn spawn_measured_child(const ArrayList<String> &argv, measured_output output,
     close(ready_descriptors[1]);
     close(start_descriptors[0]);
     close(start_descriptors[1]);
+
     return false;
   }
 
@@ -1692,10 +1755,12 @@ fn spawn_measured_child(const ArrayList<String> &argv, measured_output output,
   if (!is_ready) {
     close(start_descriptors[1]);
     reap_child(child_pid);
+
     return false;
   }
 
   child_out = {child_pid, start_descriptors[1]};
+
   return true;
 }
 
@@ -1710,7 +1775,7 @@ fn fill_usage_from_rusage(const struct rusage &usage,
 {
   resources.user_nanos = timeval_nanos(usage.ru_utime);
   resources.system_nanos = timeval_nanos(usage.ru_stime);
-  resources.peak_rss_bytes = platform_peak_rss_bytes(usage.ru_maxrss);
+  resources.peak_rss_byte_count = platform_peak_rss_bytes(usage.ru_maxrss);
   resources.voluntary_context_switch_count = static_cast<u64>(usage.ru_nvcsw);
   resources.involuntary_context_switch_count =
       static_cast<u64>(usage.ru_nivcsw);
@@ -1725,6 +1790,7 @@ fn open_proc_io_descriptor(pid_t pid) wontthrow -> int
 {
   char path[64];
   unused(format_proc_pid_path(path, pid, "/io"));
+
   return ::open(path, O_RDONLY | O_CLOEXEC);
 }
 
@@ -1753,8 +1819,10 @@ fn fill_usage_from_proc_io(int io_descriptor,
 
   let const text = StringView{buffer, static_cast<usize>(length)};
   usize position = 0;
+
   while (position < text.length) {
     let const line = each_line(text, position);
+
     for (let const &known : FIELDS) {
       if (!line.starts_with(known.name)) continue;
       if (let const parsed = leading_digits(line, known.name.length).to<u64>();
@@ -1792,6 +1860,7 @@ fn wait_for_measured_child(pid_t child_pid, i64 &status_out, u64 &peak_rss_out,
     if (waited == -1 && errno != ECHILD) {
       kill_and_reap(child_pid);
     }
+
     return false;
   }
 
@@ -1857,11 +1926,12 @@ fn run_measured(const ArrayList<String> &argv, const Maybe<descriptor> &,
   close(child.start_descriptor);
   if (!did_release) {
     kill_and_reap(child.pid);
+
     return None;
   }
 
   if (!wait_for_measured_child(
-          child.pid, result.exit_status, result.peak_rss_bytes,
+          child.pid, result.exit_status, result.peak_rss_byte_count,
           should_collect_resources ? &result.resources : nullptr,
           io_descriptor))
     return None;
@@ -1872,6 +1942,7 @@ fn run_measured(const ArrayList<String> &argv, const Maybe<descriptor> &,
     result.is_perf_system_wide =
         result.has_perf && perf_session.is_system_wide();
   }
+
   return result;
 }
 
@@ -1893,6 +1964,7 @@ fn get_priority(i64 id, priority_target target) wontthrow -> Maybe<i32>
   if (priority == -1 && errno != 0) {
     return None;
   }
+
   return priority;
 }
 
@@ -1914,6 +1986,7 @@ static fn run_through_error_pipe(const auto &raw_argv,
     close(exec_error_pipe[0]);
     close(exec_error_pipe[1]);
     errno = saved_errno;
+
     return None;
   }
 
@@ -1924,6 +1997,7 @@ static fn run_through_error_pipe(const auto &raw_argv,
     close(exec_error_pipe[0]);
     close(exec_error_pipe[1]);
     errno = saved_errno;
+
     return None;
   }
   if (child == 0) {
@@ -1949,14 +2023,17 @@ static fn run_through_error_pipe(const auto &raw_argv,
   if (waited != child) return None;
   if (error_length == -1) {
     errno = read_errno;
+
     return None;
   }
   if (error_length == static_cast<ssize_t>(sizeof(child_errno))) {
     errno = child_errno;
+
     return None;
   }
   if (WIFEXITED(status)) return WEXITSTATUS(status);
   if (WIFSIGNALED(status)) return 128 + WTERMSIG(status);
+
   return None;
 }
 

@@ -43,6 +43,7 @@ fn Pwd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   output.append(directory.text());
   output += '\n';
   ec.print_to_stdout(output);
+
   return 0;
 }
 

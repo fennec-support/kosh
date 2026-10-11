@@ -19,10 +19,13 @@ namespace os {
 pure fn goodcore_tools() wontthrow -> goodcore_platform_tools
 {
 #if defined __APPLE__
+
   return {"otool", "lldb", goodcore_capture_mode::Lldb, true};
 #elif defined __linux__
+
   return {"ldd", "gcore", goodcore_capture_mode::Gcore, false};
 #else
+
   return {{}, {}, goodcore_capture_mode::Unsupported, false};
 #endif
 }
@@ -30,8 +33,10 @@ pure fn goodcore_tools() wontthrow -> goodcore_platform_tools
 pure fn evildisk_tools() wontthrow -> evildisk_platform_tools
 {
 #if defined __APPLE__
+
   return {"diskutil", "info"};
 #else
+
   return {{}, {}};
 #endif
 }
@@ -40,6 +45,7 @@ fn system_configuration(system_configuration_key key) wontthrow -> Maybe<i64>
 {
   let const result = query_system_configuration(key);
   if (result.status != configuration_query_status::Value) return None;
+
   return result.value;
 }
 
@@ -48,6 +54,7 @@ fn path_configuration(StringView path, path_configuration_key key) wontthrow
 {
   let const result = query_path_configuration(path, key);
   if (result.status != configuration_query_status::Value) return None;
+
   return result.value;
 }
 
@@ -120,6 +127,7 @@ fn subshell_bootstrap::operator=(subshell_bootstrap &&other) noexcept
   other.evaluation_mode = root_evaluation_mode::Normal;
   other.is_process_owner = false;
   other.should_use_command_string_status = false;
+
   return *this;
 }
 
@@ -144,6 +152,7 @@ fn ProgramCapture::operator=(ProgramCapture &&other) noexcept
   m_captured = steal(other.m_captured);
   other.m_child = KOSH_INVALID_PROCESS;
   other.m_output = KOSH_INVALID_FD;
+
   return *this;
 }
 
@@ -197,6 +206,7 @@ static fn take_environment_variable(StringView key) throws -> Maybe<String>
 {
   let text = get_environment_variable(key);
   if (text.has_value()) unset_environment_variable(key);
+
   return text;
 }
 
@@ -270,6 +280,7 @@ fn subshell_bootstrap::close_owned_processes() wontthrow -> void
 
   for (let const process : processes)
     close_process_reference(process);
+
   is_process_owner = false;
 }
 
@@ -281,6 +292,7 @@ fn divide_u128_by_u64(u64 high, u64 low, u64 divisor) wontthrow
 #if defined _MSC_VER && defined _M_X64 && !defined __clang__
   u64 remainder = 0;
   let const quotient = _udiv128(high, low, divisor, &remainder);
+
   return {quotient, remainder};
 #elif defined _MSC_VER
   u64 quotient = 0;
@@ -298,6 +310,7 @@ fn divide_u128_by_u64(u64 high, u64 low, u64 divisor) wontthrow
   return {quotient, remainder};
 #else
   let const dividend = (static_cast<u128>(high) << 64u) | low;
+
   return {static_cast<u64>(dividend / divisor),
           static_cast<u64>(dividend % divisor)};
 #endif
@@ -313,9 +326,11 @@ fn take_pending_signal() wontthrow -> i32
   for (i32 number = 1; number < SIGNAL_FLAG_COUNT; number++) {
     if (PENDING_SIGNAL_FLAGS[number] != 0) {
       PENDING_SIGNAL_FLAGS[number] = 0;
+
       return number;
     }
   }
+
   return 0;
 }
 
@@ -443,6 +458,7 @@ fn execute_regex(compiled_regex &compiled,
   let const group_count = compiled.re.re_nsub + 1;
   let matches = ArrayList<regmatch_t>{options.scratch};
   matches.reserve(group_count);
+
   for (usize i = 0; i < group_count; i++)
     matches.push(regmatch_t{});
 
@@ -467,11 +483,13 @@ fn execute_regex(compiled_regex &compiled,
   let subject_text = String{options.scratch};
   subject_text.reserve(options.subject.length);
   let remaining = options.subject;
+
   while (let const nul = remaining.find_character('\0')) {
     subject_text.append(remaining.substring_of_length(0, *nul));
     subject_text.push('\n');
     remaining = remaining.substring(*nul + 1);
   }
+
   subject_text.append(remaining);
   const int match_result = regexec(&compiled.re, subject_text.c_str(),
                                    group_count, matches.begin(), execute_flags);
@@ -484,16 +502,19 @@ fn execute_regex(compiled_regex &compiled,
     regerror(match_result, &compiled.re, error_text, sizeof(error_text));
     report.error_message = String{options.scratch, StringView{error_text}};
     report.result = regex_match_result::Error;
+
     return report;
   }
 
   report.spans.reserve(group_count);
+
   for (usize i = 0; i < group_count; i++) {
     report.spans.push(regex_span{static_cast<i64>(matches[i].rm_so),
                                  static_cast<i64>(matches[i].rm_eo)});
   }
 
   report.result = regex_match_result::Matched;
+
   return report;
 }
 
@@ -510,14 +531,17 @@ fn regex_matches(compiled_regex &compiled, StringView subject) throws -> bool
   bounds[0].rm_eo = static_cast<regoff_t>(subject.length);
 #if defined KOSH_HAS_ADDRESS_SANITIZER
   const String null_terminated{heap_allocator(), subject};
+
   return regexec(&compiled.re, null_terminated.c_str(), 1, bounds,
                  REG_STARTEND) == 0;
 #else
+
   return regexec(&compiled.re, subject.data, 1, bounds, REG_STARTEND) == 0;
 #endif
 #else
   let null_terminated = String{heap_allocator()};
   null_terminated.reserve(subject.length);
+
   for (usize position = 0; position < subject.length; position++) {
     let const byte = subject[position];
     null_terminated.push(byte == '\0' ? '\n' : byte);
@@ -544,6 +568,7 @@ fn read_fd_to_string(os::descriptor fd, Allocator allocator) throws
 {
   let contents = String{allocator};
   char buffer[16384];
+
   loop
   {
     let const read_count = read_fd(fd, buffer, sizeof(buffer));
@@ -581,6 +606,7 @@ consteval fn apply_crc32c_shift_operator(const crc32c_shift_operator &shift,
                                          u32 value) -> u32
 {
   u32 result = 0;
+
   for (usize bit = 0; bit < 32; bit++) {
     if (((value >> bit) & 1) != 0) result ^= shift.columns[bit];
   }
@@ -591,10 +617,13 @@ consteval fn apply_crc32c_shift_operator(const crc32c_shift_operator &shift,
 consteval fn make_crc32c_shift_table(usize byte_length) -> crc32c_shift_table
 {
   let shift = crc32c_shift_operator{};
+
   for (usize bit = 0; bit < 32; bit++) {
     u32 value = u32{1} << bit;
+
     for (usize step = 0; step < 8; step++)
       value = (value >> 1) ^ ((value & 1) != 0 ? CRC32C_POLYNOMIAL : 0);
+
     shift.columns[bit] = value;
   }
 
@@ -602,13 +631,16 @@ consteval fn make_crc32c_shift_table(usize byte_length) -> crc32c_shift_table
        shifted_length *= 2)
   {
     let squared = crc32c_shift_operator{};
+
     for (usize bit = 0; bit < 32; bit++)
       squared.columns[bit] =
           apply_crc32c_shift_operator(shift, shift.columns[bit]);
+
     shift = squared;
   }
 
   let table = crc32c_shift_table{};
+
   for (usize byte_index = 0; byte_index < 4; byte_index++) {
     for (u32 byte = 0; byte < 256; byte++)
       table.entries[byte_index][byte] =
@@ -664,6 +696,7 @@ fn is_x86_sse42_available() wontthrow -> bool
   __asm__ volatile("cpuid" : "+a"(eax), "=b"(ebx), "=c"(ecx), "=d"(edx));
   unused(ebx);
   unused(edx);
+
   return (ecx & (1u << 20)) != 0;
 }
 #endif
@@ -692,6 +725,7 @@ fn is_aarch64_crc32c_available() wontthrow -> bool
 {
 #if defined __linux__
   let const crc32c_hardware_capability = 1UL << 7;
+
   return (getauxval(AT_HWCAP) & crc32c_hardware_capability) != 0;
 #elif defined __APPLE__
   int is_available = 0;
@@ -699,11 +733,14 @@ fn is_aarch64_crc32c_available() wontthrow -> bool
   if (sysctlbyname("hw.optional.armv8_crc32", &is_available, &value_length,
                    nullptr, 0) != 0)
     return false;
+
   return is_available != 0;
 #elif defined _WIN32 && defined PF_ARM_V8_CRC32_INSTRUCTIONS_AVAILABLE
+
   return IsProcessorFeaturePresent(PF_ARM_V8_CRC32_INSTRUCTIONS_AVAILABLE) !=
          FALSE;
 #else
+
   return false;
 #endif
 }
@@ -719,6 +756,7 @@ CRC32C_TARGETISA
   typename Instructions::accumulator middle_crc = 0;
   typename Instructions::accumulator last_crc = 0;
   typename Instructions::accumulator first_crc = crc;
+
   for (usize offset = 0; offset < block_length; offset += 8) {
     u64 first_word;
     u64 middle_word;
@@ -733,6 +771,7 @@ CRC32C_TARGETISA
 
   crc = shift_crc32c(table, static_cast<u32>(first_crc)) ^
         static_cast<u32>(middle_crc);
+
   return shift_crc32c(table, crc) ^ static_cast<u32>(last_crc);
 }
 
@@ -761,8 +800,10 @@ CRC32C_TARGETISA pure fn crc32c_update_hardware(u32 crc, const u8 *data,
     data += 8;
     length -= 8;
   }
+
   while (length-- > 0)
     crc = Instructions::update_byte(crc, *data++);
+
   return crc;
 }
 #endif
@@ -772,12 +813,14 @@ pure alwaysinline fn crc32c_update_software(u32 crc, const u8 *data,
 {
   for (usize position = 0; position < length; position++) {
     crc ^= data[position];
+
     for (int bit = 0; bit < 8; bit++) {
       let const mix =
           static_cast<u32>(-static_cast<i32>(crc & 1)) & 0x82f63b78u;
       crc = (crc >> 1) ^ mix;
     }
   }
+
   return crc;
 }
 

@@ -299,6 +299,7 @@ fn check_arithmetic_expression_lints(AnalysisContext &actx,
           lexer::is_variable_name_start(expression[name_start]);
 
       usize name_end = name_start;
+
       while (name_end < expression.length &&
              lexer::is_variable_name(expression[name_end]))
       {
@@ -354,6 +355,7 @@ fn check_arithmetic_expression_lints(AnalysisContext &actx,
       if (!lexer::is_variable_name(expression[position])) break;
 
       let const start = position;
+
       while (position + 1 < expression.length &&
              (lexer::is_variable_name(expression[position + 1]) ||
               expression[position + 1] == '.'))
@@ -365,6 +367,7 @@ fn check_arithmetic_expression_lints(AnalysisContext &actx,
           expression.substring_of_length(start, position + 1 - start);
       if (!lexer::is_number(word[0])) {
         usize after_name = position + 1;
+
         while (after_name < expression.length &&
                lexer::is_whitespace(expression[after_name]))
         {
@@ -547,6 +550,7 @@ fn check_posix_word_portability(AnalysisContext &actx,
 
   case WordSegment::Kind::CommandSubstitution: {
     usize position = 0;
+
     while (position < text.length &&
            (text[position] == ' ' || text[position] == '\t'))
     {
@@ -582,6 +586,7 @@ fn check_posix_word_portability(AnalysisContext &actx,
   case WordSegment::Kind::UnquotedText: {
     let has_extended_glob = false;
     let has_caret_bracket = false;
+
     for (usize position = 0; position + 1 < text.length; position++) {
       let const following = text[position + 1];
       if (following != '(' && following != '^') {
@@ -668,6 +673,7 @@ fn check_operand_lints_before_scan(AnalysisContext &actx,
     bool is_inside_exec_action = false;
     Maybe<SourceLocation> exec_location{};
     Maybe<SourceLocation> or_location{};
+
     for (usize i = 1; i < args.count(); i++) {
       let const literal = args[i]->raw_string();
       let const view = literal.view();
@@ -703,6 +709,7 @@ fn check_operand_lints_before_scan(AnalysisContext &actx,
 
       if (is_find_action(view)) has_action = true;
     }
+
     if (has_exec && !has_exec_terminator && exec_location.has_value()) {
       actx.report_diagnostic(diagnostic_id::sc2067, *exec_location);
     }
@@ -725,6 +732,7 @@ fn check_operand_lints_before_scan(AnalysisContext &actx,
                                args[i]->source_location());
       }
     }
+
     break;
 
   case command_name_id::Tr:
@@ -753,6 +761,7 @@ fn check_operand_lints_before_scan(AnalysisContext &actx,
                                args[i]->source_location(), {set_view});
       }
     }
+
     break;
 
   case command_name_id::Echo: {
@@ -768,6 +777,7 @@ fn check_operand_lints_before_scan(AnalysisContext &actx,
 
     StringView escape_sequence{};
     Maybe<SourceLocation> escape_location{};
+
     for (usize i = 1; i < args.count(); i++) {
       let const operand_text =
           analysis_source_text(actx, args[i]->source_location());
@@ -810,6 +820,7 @@ fn check_operand_lints_before_scan(AnalysisContext &actx,
 
       break;
     }
+
     break;
 
   default: break;
@@ -844,6 +855,7 @@ fn check_equals_bearing_command_name(AnalysisContext &actx,
 
   case '=': {
     bool is_all_equals = true;
+
     for (usize i = 0; i < command_literal.length; i += 1) {
       if (command_literal[i] != '=') {
         is_all_equals = false;
@@ -1013,6 +1025,7 @@ fn check_operand_lints_after_scan(AnalysisContext &actx,
   case command_name_id::Read: {
     let should_skip_option_operand = false;
     let should_take_array_target = false;
+
     for (usize i = 1; i < args.count(); i++) {
       if (args[i]->kind() != Token::Kind::Word) continue;
       let const &word = static_cast<const tokens::WordToken *>(args[i])->word();
@@ -1071,12 +1084,14 @@ fn check_operand_lints_after_scan(AnalysisContext &actx,
         if (!target.is_empty()) actx.external_input_names.add(target);
       }
     }
+
     break;
   }
 
   case command_name_id::Ssh: {
     let has_seen_host = false;
     let should_skip_option_value = false;
+
     for (usize i = 1; i < args.count(); i++) {
       if (args[i]->kind() != Token::Kind::Word) continue;
 
@@ -1107,12 +1122,14 @@ fn check_operand_lints_after_scan(AnalysisContext &actx,
           break;
         }
     }
+
     break;
   }
 
   case command_name_id::Su: {
     let is_command_value_next = false;
     let has_seen_user = false;
+
     for (usize i = 1; i < args.count(); i++) {
       if (args[i]->kind() != Token::Kind::Word) continue;
 
@@ -1148,11 +1165,13 @@ fn check_operand_lints_after_scan(AnalysisContext &actx,
       }
       break;
     }
+
     break;
   }
 
   case command_name_id::Export: {
     let const should_check_cdpath = !args_have_short_flag(args, 'n');
+
     for (usize i = 1; i < args.count(); i++) {
       let const raw = args[i]->raw_string();
       if (should_check_cdpath &&
@@ -1179,12 +1198,14 @@ fn check_operand_lints_after_scan(AnalysisContext &actx,
                                args[i]->source_location(), {name});
       }
     }
+
     break;
   }
 
   case command_name_id::Unset: {
     let is_function_mode = false;
     let has_ended_options = false;
+
     for (usize i = 1; i < args.count(); i++) {
       if (args[i]->kind() != Token::Kind::Word) continue;
       let const raw = args[i]->raw_string();
@@ -1199,6 +1220,7 @@ fn check_operand_lints_after_scan(AnalysisContext &actx,
     }
 
     has_ended_options = false;
+
     for (usize i = 1; i < args.count(); i++) {
       if (args[i]->kind() != Token::Kind::Word) continue;
       let const raw = args[i]->raw_string();
@@ -1235,6 +1257,7 @@ fn check_operand_lints_after_scan(AnalysisContext &actx,
                                args[i]->source_location());
       }
     }
+
     break;
   }
 
@@ -1274,6 +1297,7 @@ fn check_operand_lints_after_scan(AnalysisContext &actx,
         }
       }
     }
+
     break;
 
   case command_name_id::Tr:
@@ -1284,6 +1308,7 @@ fn check_operand_lints_after_scan(AnalysisContext &actx,
         actx.report_diagnostic(diagnostic_id::sc2060,
                                args[i]->source_location());
     }
+
     break;
 
   case command_name_id::Let:
@@ -1307,6 +1332,7 @@ fn check_operand_lints_after_scan(AnalysisContext &actx,
                                          args[i]->source_location());
       }
     }
+
     break;
 
   case command_name_id::Printf: {
@@ -1371,6 +1397,7 @@ fn check_operand_lints_after_scan(AnalysisContext &actx,
                                redirection.target->source_location());
 
     let has_seen_command_word = false;
+
     for (usize i = 1; i < args.count(); i++) {
       if (args[i]->kind() != Token::Kind::Word) continue;
 
@@ -1394,6 +1421,7 @@ fn check_operand_lints_after_scan(AnalysisContext &actx,
         actx.report_diagnostic(diagnostic_id::sc2232,
                                args[i]->source_location(), {view});
     }
+
     break;
   }
 

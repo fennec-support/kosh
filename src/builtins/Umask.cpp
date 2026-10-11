@@ -51,6 +51,7 @@ fn mask_to_symbolic(u32 mask, Allocator allocator) throws -> String
   const char groups[] = {'u', 'g', 'o'};
   const u32 shifts[] = {6, 3, 0};
   let out = String{allocator};
+
   for (usize g = 0; g < 3; g++) {
     if (g > 0) out.push(',');
     out.push(groups[g]);
@@ -60,6 +61,7 @@ fn mask_to_symbolic(u32 mask, Allocator allocator) throws -> String
     if (bits & 2u) out.push('w');
     if (bits & 1u) out.push('x');
   }
+
   return out;
 }
 
@@ -67,14 +69,17 @@ fn apply_symbolic_mask(StringView spec, u32 current_mask) throws -> Maybe<u32>
 {
   u32 allowed = (~current_mask) & PERMISSION_BITS;
   usize i = 0;
+
   while (i < spec.length) {
     u32 who = 0;
+
     while (i < spec.length && (spec[i] == 'u' || spec[i] == 'g' ||
                                spec[i] == 'o' || spec[i] == 'a'))
     {
       who |= group_mask(spec[i]);
       i++;
     }
+
     if (who == 0) who = PERMISSION_BITS;
 
     if (i >= spec.length) return None;
@@ -85,6 +90,7 @@ fn apply_symbolic_mask(StringView spec, u32 current_mask) throws -> Maybe<u32>
     i++;
 
     u32 permission = 0;
+
     while (i < spec.length &&
            (spec[i] == 'r' || spec[i] == 'w' || spec[i] == 'x'))
     {
@@ -111,6 +117,7 @@ fn apply_symbolic_mask(StringView spec, u32 current_mask) throws -> Maybe<u32>
       i++;
     }
   }
+
   return (~allowed) & PERMISSION_BITS;
 }
 
@@ -152,6 +159,7 @@ cold i32 Umask::execute(ExecContext &ec, EvalContext &cxt) const throws
     out.push('\n');
 
     ec.print_to_stdout(out);
+
     return 0;
   }
 
@@ -170,6 +178,7 @@ cold i32 Umask::execute(ExecContext &ec, EvalContext &cxt) const throws
               "' is not a valid octal mask");
     }
     os::set_file_creation_mask(static_cast<u32>(parsed.value()));
+
     return 0;
   }
 

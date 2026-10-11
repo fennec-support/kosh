@@ -39,7 +39,7 @@ struct cached_directory_listing
   usize alias_count{0};
   bool has_file_identity{false};
   bool is_sorted{false};
-  ArrayList<Path::directory_child> entries{heap_allocator()};
+  ArrayList<Path::DirectoryChild> entries{heap_allocator()};
 };
 
 struct cached_directory_alias
@@ -72,18 +72,20 @@ static fn begin_directory_validation_epoch() wontthrow -> void;
 
 fn ProgramResolver::cache_resolved_path(StringView name, const Path &full_path,
                                         os::program_extension extension,
-                                        program_path_kind kind) throws -> void
+                                        ProgramPathKind kind) throws -> void
 {
   let &entry = m_execution_cache.get_or_create(name, CacheEntry{});
+
   for (usize position = 0; position < entry.paths.count(); position++) {
     let &cached = entry.paths[position];
     if (cached.extension != extension) continue;
     cached.path = full_path;
-    if (kind == program_path_kind::Bare) entry.bare_path_position = position;
+    if (kind == ProgramPathKind::Bare) entry.bare_path_position = position;
+
     return;
   }
 
-  if (kind == program_path_kind::Bare) {
+  if (kind == ProgramPathKind::Bare) {
     entry.bare_path_position = entry.paths.count();
   }
   entry.paths.push({full_path, extension});
@@ -95,11 +97,13 @@ pure fn ProgramResolver::find_cached_program_path(
 {
   if (wanted_extension == os::program_extension::None) {
     if (!entry.bare_path_position.has_value()) return nullptr;
+
     return &entry.paths[*entry.bare_path_position].path;
   }
 
   for (let const &cached : entry.paths) {
     if (cached.extension != wanted_extension) continue;
+
     return &cached.path;
   }
 
@@ -113,6 +117,7 @@ static fn directory_identity_key(u64 device_id, u64 file_id) throws -> String
                         sizeof(device_id)});
   key.append(
       StringView{reinterpret_cast<const char *>(&file_id), sizeof(file_id)});
+
   return key;
 }
 
@@ -138,6 +143,7 @@ static fn set_directory_listing_alias(StringView key, usize position) throws
   if (existing.has_value() && existing->listing_position == position) {
     existing->validation_epoch = DIRECTORY_VALIDATION_EPOCH;
     existing->observed_generation = DIR_LISTINGS[position].generation;
+
     return;
   }
 
@@ -154,11 +160,13 @@ static fn allocate_directory_listing_position() throws -> usize
   if (!FREE_DIR_LISTING_POSITIONS.is_empty()) {
     let const position = FREE_DIR_LISTING_POSITIONS.back();
     FREE_DIR_LISTING_POSITIONS.pop_back();
+
     return position;
   }
 
   let const position = DIR_LISTINGS.count();
   DIR_LISTINGS.push({});
+
   return position;
 }
 
@@ -168,11 +176,13 @@ static pure fn directory_entry_folded_name_is_less(StringView left,
 {
   let const shared_length =
       left.length < right.length ? left.length : right.length;
+
   for (usize position = 0; position < shared_length; position++) {
     let const left_byte = ascii_to_lower(left[position]);
     let const right_byte = ascii_to_lower(right[position]);
     if (left_byte != right_byte) return left_byte < right_byte;
   }
+
   if (left.length != right.length) return left.length < right.length;
 
   return false;
@@ -188,11 +198,12 @@ static pure fn directory_entry_name_is_less(StringView left,
 }
 
 pure fn directory_entry_name_lower_bound(
-    const ArrayList<Path::directory_child> &entries, StringView name) wontthrow
+    const ArrayList<Path::DirectoryChild> &entries, StringView name) wontthrow
     -> usize
 {
   usize lower = 0;
   usize upper = entries.count();
+
   while (lower < upper) {
     let const middle = lower + (upper - lower) / 2;
     if (directory_entry_folded_name_is_less(entries[middle].name.view(), name))
@@ -219,11 +230,11 @@ pure fn directory_entry_name_has_casefold_prefix(StringView name,
 
 static fn apply_directory_listing_order(cached_directory_listing &listing,
                                         directory_listing_order order) throws
-    -> const ArrayList<Path::directory_child> *
+    -> const ArrayList<Path::DirectoryChild> *
 {
   if (order == directory_listing_order::FoldedName && !listing.is_sorted) {
-    listing.entries.sort([](const Path::directory_child &left,
-                            const Path::directory_child &right) {
+    listing.entries.sort([](const Path::DirectoryChild &left,
+                            const Path::DirectoryChild &right) {
       return directory_entry_name_is_less(left.name.view(), right.name.view());
     });
     listing.is_sorted = true;
@@ -235,7 +246,7 @@ static fn apply_directory_listing_order(cached_directory_listing &listing,
 static fn read_directory_cached_after_status(
     const Path &directory, const os::file_status &status, bool has_status,
     directory_listing_order order) throws
-    -> const ArrayList<Path::directory_child> *
+    -> const ArrayList<Path::DirectoryChild> *
 {
   let const key = directory.view();
   let physical_position = Maybe<usize>{};
@@ -256,6 +267,7 @@ static fn read_directory_cached_after_status(
         cached.size == status.size)
     {
       set_directory_listing_alias(key, *physical_position);
+
       return apply_directory_listing_order(cached, order);
     }
   }
@@ -267,8 +279,9 @@ static fn read_directory_cached_after_status(
   if (!entries.has_value()) return nullptr;
 
   usize unknown_count = 0;
+
   for (let const &child : *entries)
-    if (child.kind == Path::entry_kind::Unknown) unknown_count++;
+    if (child.kind == Path::EntryKind::Unknown) unknown_count++;
 
   if (unknown_count != 0) {
     constexpr usize UNKNOWN_STAT_WAVE_COUNT = 512;
@@ -288,22 +301,24 @@ static fn read_directory_cached_after_status(
       if (unknown_indices.is_empty()) return;
 
       batch.clear();
+
       for (usize index = 0; index < unknown_indices.count(); index++)
         batch.add(os::batch_operation::stat(unknown_paths[index],
                                             unknown_statuses[index]));
 
       let const results = batch.execute();
+
       for (usize index = 0; index < unknown_indices.count(); index++) {
         let &kind = (*entries)[unknown_indices[index]].kind;
         if (results[index].error_number != 0) {
-          kind = Path::entry_kind::Other;
+          kind = Path::EntryKind::Other;
           continue;
         }
 
         switch (os::file_type_letter(unknown_statuses[index].mode)) {
-        case 'd': kind = Path::entry_kind::Directory; break;
-        case '-': kind = Path::entry_kind::Regular; break;
-        default: kind = Path::entry_kind::Other; break;
+        case 'd': kind = Path::EntryKind::Directory; break;
+        case '-': kind = Path::EntryKind::Regular; break;
+        default: kind = Path::EntryKind::Other; break;
         }
       }
 
@@ -315,7 +330,7 @@ static fn read_directory_cached_after_status(
 
     for (usize index = 0; index < entries->count(); index++) {
       let const &child = (*entries)[index];
-      if (child.kind != Path::entry_kind::Unknown) continue;
+      if (child.kind != Path::EntryKind::Unknown) continue;
 
       let full_path = directory.clone();
       full_path.append(child.name.view());
@@ -360,7 +375,7 @@ static fn read_directory_cached_after_status(
 
 fn read_directory_cached(const Path &directory, directory_validation validation,
                          directory_listing_order order) throws
-    -> const ArrayList<Path::directory_child> *
+    -> const ArrayList<Path::DirectoryChild> *
 {
   let const key = directory.view();
   let alias = DIR_LISTING_ALIASES.find(key);
@@ -396,16 +411,17 @@ fn read_directory_cached(const Path &directory, directory_validation validation,
 }
 
 fn directory_entry_kind(const Path &directory,
-                        const Path::directory_child &entry) throws
-    -> Path::entry_kind
+                        const Path::DirectoryChild &entry) throws
+    -> Path::EntryKind
 {
-  if (entry.kind != Path::entry_kind::Symlink) return entry.kind;
+  if (entry.kind != Path::EntryKind::Symlink) return entry.kind;
 
   let full_path = directory.clone();
   full_path.append(entry.name.view());
-  if (full_path.is_directory()) return Path::entry_kind::Directory;
-  if (full_path.is_regular_file()) return Path::entry_kind::Regular;
-  return Path::entry_kind::Other;
+  if (full_path.is_directory()) return Path::EntryKind::Directory;
+  if (full_path.is_regular_file()) return Path::EntryKind::Regular;
+
+  return Path::EntryKind::Other;
 }
 
 fn warm_directory_index(const Path &directory) throws -> void
@@ -418,6 +434,7 @@ pure fn directory_listing_generation(const Path &directory) wontthrow -> u64
 {
   let const alias = DIR_LISTING_ALIASES.find(directory.view());
   if (!alias.has_value()) return 0;
+
   return DIR_LISTINGS[alias->listing_position].generation;
 }
 
@@ -426,6 +443,7 @@ static fn sort_and_deduplicate_names(ArrayList<String> names) throws
 {
   let sorted_names = steal(names).make_sorted(program_name_comparator{});
   usize unique_count = 0;
+
   for (usize index = 0; index < sorted_names.count(); index++) {
     if (unique_count > 0 &&
         sorted_names[unique_count - 1].view() == sorted_names[index].view())
@@ -437,7 +455,9 @@ static fn sort_and_deduplicate_names(ArrayList<String> names) throws
       sorted_names[unique_count] = steal(sorted_names[index]);
     unique_count++;
   }
+
   sorted_names.truncate(unique_count);
+
   return sorted_names;
 }
 
@@ -489,6 +509,7 @@ fn ProgramResolver::assign_path(Maybe<String> path) throws -> void
       (!m_path.has_value() || m_path->view() == path->view()))
   {
     m_execution_cache.clear();
+
     return;
   }
 
@@ -508,7 +529,7 @@ fn ProgramResolver::remember_path(StringView name, const Path &path) throws
     -> void
 {
   cache_resolved_path(name, path, os::program_extension::None,
-                      program_path_kind::Bare);
+                      ProgramPathKind::Bare);
 }
 
 fn ProgramResolver::find_remembered_path(StringView name) wontthrow
@@ -535,6 +556,7 @@ fn ProgramResolver::split_path_dirs(StringView path) throws -> ArrayList<String>
       current.push(byte);
     }
   }
+
   directories.push(current.is_empty() ? String{"."} : String{current.view()});
 
   return directories;
@@ -547,6 +569,7 @@ fn ProgramResolver::deduplicate_path_dirs(
   unique_directories.reserve(directories.count());
 
   let seen = HashSet{heap_allocator()};
+
   for (let const &directory : directories)
     if (seen.add(directory.view()))
       unique_directories.push(String{directory.view()});
@@ -584,6 +607,7 @@ fn ProgramResolver::working_directory_changed() throws -> void
     if (!Path{directory.view()}.is_absolute()) {
       m_execution_cache.clear();
       mark_derived_indexes_stale();
+
       return;
     }
 }
@@ -608,6 +632,7 @@ collect_directory_generations(const ArrayList<String> &directory_texts) throws
     batch.add(os::batch_operation::stat(directories[index], statuses[index]));
 
   let const results = batch.execute();
+
   for (let const &result : results)
     if (result.error_number == EINTR)
       throw InterruptErrorWithLocation{SourceLocation{}};
@@ -617,6 +642,7 @@ collect_directory_generations(const ArrayList<String> &directory_texts) throws
 #endif
   let generations = ArrayList<u64>{heap_allocator()};
   generations.reserve(directories.count());
+
   for (usize index = 0; index < directories.count(); index++) {
     let const entries = read_directory_cached_after_status(
         directories[index], statuses[index], results[index].error_number == 0,
@@ -638,12 +664,13 @@ fn ProgramResolver::refresh_path_directory_generations() throws -> void
 }
 
 fn ProgramResolver::probe_directory_entries(
-    const Path &directory, const ArrayList<Path::directory_child> &entries,
+    const Path &directory, const ArrayList<Path::DirectoryChild> &entries,
     DirectoryProbe &probe) throws -> void
 {
   usize symlink_count = 0;
+
   for (let const &entry : entries)
-    if (entry.kind == Path::entry_kind::Symlink) symlink_count++;
+    if (entry.kind == Path::EntryKind::Symlink) symlink_count++;
 
   let symlink_paths = ArrayList<Path>{heap_allocator()};
   let symlink_statuses = ArrayList<os::file_status>{heap_allocator()};
@@ -651,26 +678,30 @@ fn ProgramResolver::probe_directory_entries(
   symlink_paths.reserve(symlink_count);
   symlink_statuses.reserve(symlink_count);
   symlink_batch.reserve(symlink_count);
+
   for (let const &entry : entries) {
-    if (entry.kind != Path::entry_kind::Symlink) continue;
+    if (entry.kind != Path::EntryKind::Symlink) continue;
 
     let full_path = directory.clone();
     full_path.append(entry.name.view());
     symlink_paths.push(steal(full_path));
     symlink_statuses.push({});
   }
+
   for (usize position = 0; position < symlink_count; position++)
     symlink_batch.add(os::batch_operation::stat(symlink_paths[position],
                                                 symlink_statuses[position]));
+
   let symlink_results = ArrayList<os::batch_result>{heap_allocator()};
   if (symlink_count != 0) symlink_batch.execute(symlink_results);
 
   probe.regular_entries.reserve(entries.count());
   probe.executable_entries.reserve(entries.count());
   usize symlink_position = 0;
+
   for (let const &entry : entries) {
     Maybe<Path> full_path;
-    if (entry.kind == Path::entry_kind::Symlink) {
+    if (entry.kind == Path::EntryKind::Symlink) {
       let const position = symlink_position++;
       if (symlink_results[position].error_number != 0 ||
           os::file_type_letter(symlink_statuses[position].mode) != '-')
@@ -680,7 +711,7 @@ fn ProgramResolver::probe_directory_entries(
         continue;
       }
       full_path = steal(symlink_paths[position]);
-    } else if (entry.kind != Path::entry_kind::Regular) {
+    } else if (entry.kind != Path::EntryKind::Regular) {
       probe.regular_entries.push(false);
       probe.executable_entries.push(false);
       continue;
@@ -724,6 +755,7 @@ fn ProgramResolver::rebuild_path_command_index(CompletionRefresh refresh) throws
 
     let const generation = directory_listing_generation(directory);
     let is_listed_twice = false;
+
     for (let const &listed : m_directory_probes)
       if (listed.generation == generation) is_listed_twice = true;
 
@@ -733,6 +765,7 @@ fn ProgramResolver::rebuild_path_command_index(CompletionRefresh refresh) throws
     probe.directory = String{directory_text.view()};
     probe.generation = generation;
     let was_reused = false;
+
     for (let &previous : previous_probes) {
       if (previous.generation != probe.generation ||
           previous.regular_entries.count() != entries->count() ||
@@ -745,6 +778,7 @@ fn ProgramResolver::rebuild_path_command_index(CompletionRefresh refresh) throws
       was_reused = true;
       break;
     }
+
     if (!was_reused) probe_directory_entries(directory, *entries, probe);
 
     for (usize position = 0; position < entries->count(); position++) {
@@ -763,6 +797,7 @@ fn ProgramResolver::rebuild_path_command_index(CompletionRefresh refresh) throws
       if (stem.length != entry.name.length()) command_names.push(String{stem});
       command_names.push(steal(normalized_name));
     }
+
     m_directory_probes.push(steal(probe));
   }
 
@@ -844,6 +879,7 @@ fn ProgramResolver::validate_path_directory_generations() throws -> bool
       m_path_directory_generations.count() != get_index_path_dirs().count();
   let observed_generations =
       collect_directory_generations(get_index_path_dirs());
+
   for (usize directory_position = 0;
        directory_position < observed_generations.count(); directory_position++)
   {
@@ -854,6 +890,7 @@ fn ProgramResolver::validate_path_directory_generations() throws -> bool
       did_change = true;
     }
   }
+
   m_path_directory_generations = steal(observed_generations);
   m_is_path_generation_list_valid = true;
   m_path_directories_validation_epoch = DIRECTORY_VALIDATION_EPOCH;
@@ -877,8 +914,9 @@ fn ProgramResolver::revalidate_command_prefix(StringView prefix) throws -> void
     let symlink_paths = ArrayList<Path>{heap_allocator()};
     let symlink_statuses = ArrayList<os::file_status>{heap_allocator()};
     let symlink_batch = os::Batch{heap_allocator()};
+
     for (let const &entry : *entries) {
-      if (entry.kind != Path::entry_kind::Symlink) continue;
+      if (entry.kind != Path::EntryKind::Symlink) continue;
 
       let normalized_name = entry.name.clone();
       let const name_info = os::normalize_program_name(normalized_name);
@@ -897,14 +935,18 @@ fn ProgramResolver::revalidate_command_prefix(StringView prefix) throws -> void
       symlink_paths.push(steal(full_path));
       symlink_statuses.push({});
     }
+
     symlink_batch.reserve(symlink_paths.count());
+
     for (usize position = 0; position < symlink_paths.count(); position++)
       symlink_batch.add(os::batch_operation::stat(symlink_paths[position],
                                                   symlink_statuses[position]));
+
     let symlink_results = ArrayList<os::batch_result>{heap_allocator()};
     if (!symlink_paths.is_empty()) symlink_batch.execute(symlink_results);
 
     usize symlink_position = 0;
+
     for (let const &entry : *entries) {
       let normalized_name = entry.name.clone();
       let const name_info = os::normalize_program_name(normalized_name);
@@ -919,7 +961,7 @@ fn ProgramResolver::revalidate_command_prefix(StringView prefix) throws -> void
       }
 
       Maybe<Path> full_path;
-      if (entry.kind == Path::entry_kind::Symlink) {
+      if (entry.kind == Path::EntryKind::Symlink) {
         let const position = symlink_position++;
         if (symlink_results[position].error_number != 0 ||
             os::file_type_letter(symlink_statuses[position].mode) != '-')
@@ -927,7 +969,7 @@ fn ProgramResolver::revalidate_command_prefix(StringView prefix) throws -> void
           continue;
         }
         full_path = steal(symlink_paths[position]);
-      } else if (entry.kind != Path::entry_kind::Regular) {
+      } else if (entry.kind != Path::EntryKind::Regular) {
         continue;
       }
 
@@ -972,6 +1014,7 @@ fn ProgramResolver::prepare_complete_path_cache(
       } else {
         initialize_path_map();
       }
+
       return;
     }
 
@@ -995,6 +1038,7 @@ fn ProgramResolver::prepare_complete_path_cache(
     }
 
     revalidate_command_prefix(validation_prefix);
+
     return;
   }
   if (m_explicit_completion_depth == 0) return;
@@ -1006,6 +1050,7 @@ fn ProgramResolver::prepare_complete_path_cache(
   {
     m_is_command_name_list_valid = false;
     revalidate_command_prefix(validation_prefix);
+
     return;
   }
   rebuild_path_command_index(CompletionRefresh::Cached);
@@ -1030,6 +1075,7 @@ fn ProgramResolver::command_name_has_prefix(StringView prefix) throws -> bool
   if (token_has_uppercase(normalized_prefix_view)) {
     let const position = m_command_names.lower_bound(normalized_prefix_view);
     if (position >= m_command_names.count()) return false;
+
     return smart_case_prefix_matches(m_command_names[position].view(),
                                      normalized_prefix_view);
   }
@@ -1054,6 +1100,7 @@ fn ProgramResolver::get_status(StringView name, StatusLookup lookup) throws
                              CachePolicy::Bypass);
     if (paths.is_empty()) return Status::Missing;
     if (paths[0].is_executable()) return Status::Runnable;
+
     return Status::Blocked;
   }
 
@@ -1157,11 +1204,13 @@ fn ProgramResolver::resolve_along_path(StringView program_name,
     }
 
     candidate_batch.reserve(candidate_paths.count());
+
     for (usize index = 0; index < candidate_paths.count(); index++)
       candidate_batch.add(os::batch_operation::stat(candidate_paths[index],
                                                     candidate_statuses[index]));
 
     let const candidate_results = candidate_batch.execute();
+
     for (usize index = 0; index < candidate_paths.count(); index++) {
       if (candidate_results[index].error_number != 0 ||
           os::file_type_letter(candidate_statuses[index].mode) != '-')
@@ -1205,11 +1254,13 @@ fn ProgramResolver::resolve_along_path(StringView program_name,
     }
 
     candidate_batch.reserve(candidate_paths.count());
+
     for (usize index = 0; index < candidate_paths.count(); index++)
       candidate_batch.add(os::batch_operation::stat(candidate_paths[index],
                                                     candidate_statuses[index]));
 
     candidate_batch.execute(candidate_results);
+
     for (usize index = 0; index < candidate_paths.count(); index++) {
       if (candidate_results[index].error_number != 0 ||
           os::file_type_letter(candidate_statuses[index].mode) != '-')
@@ -1233,9 +1284,10 @@ fn ProgramResolver::resolve_along_path(StringView program_name,
         {
           cache_resolved_path(key, result.back(), extension,
                               name_info.extension == os::program_extension::None
-                                  ? program_path_kind::Bare
-                                  : program_path_kind::Full);
+                                  ? ProgramPathKind::Bare
+                                  : ProgramPathKind::Full);
         }
+
         return result;
       }
 
@@ -1269,6 +1321,7 @@ hot fn ProgramResolver::search(StringView program_name, SearchMode search_mode,
       return result;
     }
     result.push(candidate);
+
     return result;
   }
 
@@ -1293,10 +1346,12 @@ hot fn ProgramResolver::search(StringView program_name, SearchMode search_mode,
           (!path->is_regular_file() || !path->is_executable()))
       {
         m_execution_cache.erase(stem);
+
         return resolve_along_path(program_name, SearchMode::First, requirement,
                                   cache_policy, path_override);
       }
       result.push(*path);
+
       return result;
     }
   }

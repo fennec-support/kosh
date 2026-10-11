@@ -79,6 +79,7 @@ consteval fn make_entry(u16 id, option_text koshconf_name, option_type type,
   entry.posix_default_value = bash_default_value;
   entry.strict_value = default_value;
   entry.is_listed_by_set = !shape.set_name.is_empty();
+
   return entry;
 }
 
@@ -98,6 +99,7 @@ consteval fn posix_flag(u16 id, option_text koshconf_name,
 {
   let entry = flag(id, koshconf_name, category, shell_option, shape, is_on);
   entry.is_posix_set_option = true;
+
   return entry;
 }
 
@@ -130,12 +132,14 @@ consteval fn set_alias(option_text set_name, shell_option_id shell_option,
   entry.strict_value = is_on;
   entry.is_set_alias = true;
   entry.is_listed_by_set = true;
+
   return entry;
 }
 
 consteval fn posix_alias(option_descriptor entry) wontthrow -> option_descriptor
 {
   entry.is_posix_set_option = true;
+
   return entry;
 }
 
@@ -144,6 +148,7 @@ consteval fn set_only(option_descriptor entry) wontthrow -> option_descriptor
   entry.id = 0;
   entry.koshconf_name = {};
   entry.is_set_alias = true;
+
   return entry;
 }
 
@@ -151,6 +156,7 @@ consteval fn invocation_only(option_descriptor entry) wontthrow
     -> option_descriptor
 {
   entry.is_invocation_only = true;
+
   return entry;
 }
 
@@ -158,6 +164,7 @@ consteval fn kept_out_of_koshconf(option_descriptor entry) wontthrow
     -> option_descriptor
 {
   entry.is_kept_out_of_koshconf = true;
+
   return entry;
 }
 
@@ -165,6 +172,7 @@ consteval fn with_posix_default(option_descriptor entry, u8 value) wontthrow
     -> option_descriptor
 {
   entry.posix_default_value = value;
+
   return entry;
 }
 
@@ -173,6 +181,7 @@ consteval fn with_default_text(option_descriptor entry,
     -> option_descriptor
 {
   entry.default_text = default_text;
+
   return entry;
 }
 
@@ -180,6 +189,7 @@ consteval fn special(option_descriptor entry, option_storage storage) wontthrow
     -> option_descriptor
 {
   entry.storage = storage;
+
   return entry;
 }
 
@@ -187,6 +197,7 @@ consteval fn with_enum(option_descriptor entry,
                        option_enum_values values) wontthrow -> option_descriptor
 {
   entry.enum_values = values;
+
   return entry;
 }
 
@@ -195,18 +206,21 @@ consteval fn fixed_in_kosh(option_descriptor entry, u8 strict_value) wontthrow
 {
   entry.strict_value = strict_value;
   entry.is_fixed_in_kosh_mood = true;
+
   return entry;
 }
 
 consteval fn read_only(option_descriptor entry) wontthrow -> option_descriptor
 {
   entry.is_read_only = true;
+
   return entry;
 }
 
 consteval fn unlisted(option_descriptor entry) wontthrow -> option_descriptor
 {
   entry.is_listed_by_set = false;
+
   return entry;
 }
 
@@ -214,6 +228,7 @@ consteval fn session_dependent(option_descriptor entry) wontthrow
     -> option_descriptor
 {
   entry.is_session_dependent = true;
+
   return entry;
 }
 
@@ -221,6 +236,7 @@ consteval fn bash_default_follows_session(option_descriptor entry) wontthrow
     -> option_descriptor
 {
   entry.is_bash_default_session_dependent = true;
+
   return entry;
 }
 
@@ -893,17 +909,21 @@ consteval fn registry_text_is_before(option_text left,
 {
   let const shared_length =
       left.length < right.length ? left.length : right.length;
+
   for (usize position = 0; position < shared_length; position++)
     if (left.data[position] != right.data[position])
       return left.data[position] < right.data[position];
+
   return left.length < right.length;
 }
 
 consteval fn shopt_storage_count() wontthrow -> usize
 {
   usize result = 0;
+
   for (let const &entry : OPTION_REGISTRY)
     if (entry.storage == option_storage::Shopt) result++;
+
   return result;
 }
 
@@ -918,10 +938,12 @@ consteval fn make_shopt_keys() wontthrow
 {
   shopt_key_table<shopt_storage_count()> result{};
   usize position = 0;
+
   for (let const &entry : OPTION_REGISTRY)
     if (entry.storage == option_storage::Shopt)
       result.keys[position++] =
           PackedStringKey::from_literal(entry.shopt_name.data);
+
   return result;
 }
 
@@ -950,14 +972,17 @@ consteval fn name_of(const option_descriptor &entry, name_kind kind) wontthrow
   case name_kind::Set: return entry.set_name;
   case name_kind::Shopt: return entry.shopt_name;
   }
+
   return {};
 }
 
 consteval fn name_count(name_kind kind) wontthrow -> usize
 {
   usize result = 0;
+
   for (let const &entry : OPTION_REGISTRY)
     if (!name_of(entry, kind).is_empty()) result++;
+
   return result;
 }
 
@@ -966,12 +991,14 @@ consteval fn make_name_entries() wontthrow -> name_entry_table<name_count(Kind)>
 {
   name_entry_table<name_count(Kind)> result{};
   usize position = 0;
+
   for (usize index = 0; index < countof(OPTION_REGISTRY); index++) {
     let const name = name_of(OPTION_REGISTRY[index], Kind);
     if (!name.is_empty())
       result.entries[position++] = {PackedStringKey::from_literal(name.data),
                                     static_cast<u8>(index)};
   }
+
   return result;
 }
 
@@ -991,12 +1018,14 @@ names_are_unique(const static_string_entry<u8> (&entries)[Count]) wontthrow
   for (usize left = 0; left < Count; left++)
     for (usize right = left + 1; right < Count; right++)
       if (entries[left].key == entries[right].key) return false;
+
   return true;
 }
 
 consteval fn registry_is_valid() wontthrow -> bool
 {
   if (countof(OPTION_REGISTRY) > 0xff) return false;
+
   for (usize left = 0; left < countof(OPTION_REGISTRY); left++) {
     let const &entry = OPTION_REGISTRY[left];
     let const is_after_alias =
@@ -1013,9 +1042,11 @@ consteval fn registry_is_valid() wontthrow -> bool
     if (entry.koshconf_name.is_empty() || entry.id == 0) {
       return false;
     }
+
     for (let const name :
          {entry.koshconf_name, entry.set_name, entry.shopt_name})
       if (name.length > PackedStringKey::BYTE_CAPACITY) return false;
+
     if (entry.type != option_type::String && entry.enum_values.name_count == 0)
     {
       return false;
@@ -1034,21 +1065,26 @@ consteval fn registry_is_valid() wontthrow -> bool
     if (left > 0 && OPTION_REGISTRY[left - 1].id >= entry.id) {
       return false;
     }
+
     for (usize right = left + 1; right < countof(OPTION_REGISTRY); right++) {
       if (entry.letter != '\0' && entry.letter == OPTION_REGISTRY[right].letter)
       {
         return false;
       }
     }
+
     if (entry.letter != '\0') {
       bool is_ordered = false;
+
       for (let const ordered : SHELL_FLAG_LETTER_ORDER)
         if (ordered == entry.letter) is_ordered = true;
+
       if (!is_ordered && entry.letter != 'M') {
         return false;
       }
     }
   }
+
   return names_are_unique(KOSHCONF_NAME_ENTRIES.entries) &&
          names_are_unique(SET_NAME_ENTRIES.entries) &&
          names_are_unique(SHOPT_NAME_ENTRIES.entries);
@@ -1059,8 +1095,10 @@ static_assert(registry_is_valid());
 consteval fn set_listing_count() wontthrow -> usize
 {
   usize result = 0;
+
   for (let const &entry : OPTION_REGISTRY)
     if (!entry.set_name.is_empty()) result++;
+
   return result;
 }
 
@@ -1074,19 +1112,24 @@ consteval fn make_set_listing() wontthrow -> listing_table<set_listing_count()>
 {
   listing_table<set_listing_count()> result{};
   usize count = 0;
+
   for (let const &entry : OPTION_REGISTRY)
     if (!entry.set_name.is_empty()) result.entries[count++] = entry;
+
   for (usize position = 1; position < count; position++) {
     let const moved = result.entries[position];
     usize slot = position;
+
     while (slot > 0 && registry_text_is_before(
                            moved.set_name, result.entries[slot - 1].set_name))
     {
       result.entries[slot] = result.entries[slot - 1];
       slot--;
     }
+
     result.entries[slot] = moved;
   }
+
   return result;
 }
 
@@ -1100,13 +1143,16 @@ struct letter_table
 consteval fn make_letter_table() wontthrow -> letter_table
 {
   letter_table result{};
+
   for (usize position = 0; position < countof(result.positions); position++)
     result.positions[position] = 0xff;
+
   for (usize position = 0; position < countof(OPTION_REGISTRY); position++) {
     let const letter = OPTION_REGISTRY[position].letter;
     if (letter != '\0')
       result.positions[static_cast<u8>(letter)] = static_cast<u8>(position);
   }
+
   return result;
 }
 
@@ -1115,12 +1161,15 @@ constexpr auto OPTIONS_BY_LETTER = make_letter_table();
 consteval fn make_id_table() wontthrow -> letter_table
 {
   letter_table result{};
+
   for (usize position = 0; position < countof(result.positions); position++)
     result.positions[position] = 0xff;
+
   for (usize position = 0; position < countof(OPTION_REGISTRY); position++) {
     if (OPTION_REGISTRY[position].is_set_alias) continue;
     result.positions[OPTION_REGISTRY[position].id] = static_cast<u8>(position);
   }
+
   return result;
 }
 
@@ -1130,6 +1179,7 @@ consteval fn ids_fit_table() wontthrow -> bool
 {
   for (let const &entry : OPTION_REGISTRY)
     if (entry.id > 0xff) return false;
+
   return true;
 }
 
@@ -1144,6 +1194,7 @@ fn display_name(const option_descriptor &option, option_origin origin) wontthrow
   if (origin == option_origin::Shopt && !option.shopt_name.is_empty()) {
     return option.shopt_name;
   }
+
   return option.koshconf_name;
 }
 
@@ -1217,15 +1268,18 @@ fn write_boolean(EvalContext &cxt, const option_descriptor &option,
   switch (option.storage) {
   case option_storage::ShellOption:
     write_shell_option(cxt, option, is_enabled);
+
     return;
   case option_storage::Shopt:
     cxt.set_shopt_option(option.shopt_name, is_enabled);
+
     return;
   case option_storage::Failglob:
     cxt.runtime_control_store().option_mutations().note(
         shell_option_id::Failglob);
     state.set_failglob(is_enabled);
     state.set_failglob_set_explicitly(is_enabled);
+
     return;
   case option_storage::Posix: cxt.set_posix_mode_via_option(is_enabled); return;
   case option_storage::EditorMode:
@@ -1236,17 +1290,21 @@ fn write_boolean(EvalContext &cxt, const option_descriptor &option,
                            : shell_option_id::Vi,
                        false);
     }
+
     return;
   case option_storage::AnnoyingDiagnostics:
     cxt.runtime_control_store().note_annoying_diagnostics_option_mutation();
     state.set_annoying_diagnostics_enabled(is_enabled);
+
     return;
   case option_storage::Analysis:
     cxt.runtime_control_store().note_diagnostics_option_mutation();
     state.set_diagnostics_disabled(!is_enabled);
+
     return;
   case option_storage::SourceTraces:
     cxt.diagnostics_store().set_source_traces_enabled(is_enabled);
+
     return;
   case option_storage::Login:
   case option_storage::RestrictedShell:
@@ -1283,6 +1341,7 @@ pure fn find_option_by_id(u16 id) wontthrow -> const option_descriptor *
 {
   if (id > 0xff) return nullptr;
   let const position = OPTIONS_BY_ID.positions[id];
+
   return position == 0xff ? nullptr : &OPTION_REGISTRY[position];
 }
 
@@ -1290,6 +1349,7 @@ fn find_option_by_set_name(StringView name) wontthrow
     -> const option_descriptor *
 {
   let const position = OPTIONS_BY_SET_NAME.find(name);
+
   return position.has_value() ? &OPTION_REGISTRY[*position] : nullptr;
 }
 
@@ -1297,6 +1357,7 @@ fn find_option_by_shopt_name(StringView name) wontthrow
     -> const option_descriptor *
 {
   let const position = OPTIONS_BY_SHOPT_NAME.find(name);
+
   return position.has_value() ? &OPTION_REGISTRY[*position] : nullptr;
 }
 
@@ -1315,12 +1376,14 @@ fn get_legacy_koshconf_alias(const option_descriptor &option) throws
     alias +=
         option.is_posix_set_option ? POSIX_ALIAS_PREFIX : BASH_ALIAS_PREFIX;
     alias += option.set_name;
+
     return alias;
   }
   if (option.shopt_name.is_empty()) return None;
 
   alias += BASH_ALIAS_PREFIX;
   alias += option.shopt_name;
+
   return alias;
 }
 
@@ -1365,6 +1428,7 @@ pure fn find_option_by_letter(char letter) wontthrow
     -> const option_descriptor *
 {
   let const position = OPTIONS_BY_LETTER.positions[static_cast<u8>(letter)];
+
   return position == 0xff ? nullptr : &OPTION_REGISTRY[position];
 }
 
@@ -1372,6 +1436,7 @@ pure fn shopt_option_index(StringView name) wontthrow -> Maybe<u8>
 {
   let const index = SHOPT_STORAGE.find_index(name);
   if (!index.has_value()) return None;
+
   return Maybe<u8>{static_cast<u8>(*index)};
 }
 
@@ -1379,6 +1444,7 @@ consteval fn compact_shopt_option_index(PackedStringKey key) wontthrow -> u8
 {
   for (usize index = 0; index < countof(SHOPT_KEYS.keys); index++)
     if (SHOPT_STORAGE.keys[index] == key) return static_cast<u8>(index);
+
   return 0xff;
 }
 
@@ -1414,6 +1480,7 @@ pure fn shopt_option_index(shopt_option_id option) wontthrow -> u8
   case shopt_option_id::Sourcepath:
     return compact_shopt_option_index(SSK("sourcepath"));
   }
+
   return 0xff;
 }
 
@@ -1457,6 +1524,7 @@ fn format_option_number(const option_descriptor &option, u32 value) throws
 {
   if (value < option.enum_values.name_count)
     return String{StringView{option.enum_values.names[value]}};
+
   return String::from(static_cast<i64>(value), heap_allocator());
 }
 
@@ -1465,6 +1533,7 @@ fn read_option_text(const EvalContext &cxt,
 {
   if (option.storage == option_storage::Variable) {
     let value = cxt.get_variable_value(option.variable_name);
+
     return value.has_value() ? steal(*value) : String{heap_allocator()};
   }
   if (option.storage == option_storage::InitMoods)
@@ -1488,15 +1557,19 @@ fn parse_option_number(const option_descriptor &option, StringView text) throws
     static constexpr StaticStringMap BOOLEANS{BOOLEAN_SPELLINGS};
     let const parsed = BOOLEANS.find(text);
     if (!parsed.has_value()) return None;
+
     return Maybe<u32>{*parsed};
   }
+
   for (u8 value = 0; value < option.enum_values.name_count; value++)
     if (text == StringView{option.enum_values.names[value]})
       return Maybe<u32>{value};
+
   if (option.storage == option_storage::Mood) {
     let const mood = parse_mood_name(text);
     if (mood.has_value()) return Maybe<u32>{static_cast<u32>(*mood)};
   }
+
   return None;
 }
 
@@ -1505,6 +1578,7 @@ fn describe_option_values(const option_descriptor &option) throws -> String
   if (option.type == option_type::Boolean)
     return String{"'on', 'off', 'true', 'false', '1', or '0'"};
   let description = String{heap_allocator()};
+
   for (u8 value = 0; value < option.enum_values.name_count; value++) {
     let const is_last = value + 1 == option.enum_values.name_count;
     if (value > 0 && is_last) {
@@ -1516,6 +1590,7 @@ fn describe_option_values(const option_descriptor &option) throws -> String
     description += option.enum_values.names[value];
     description += '\'';
   }
+
   return description;
 }
 
@@ -1550,13 +1625,16 @@ fn write_option_number(EvalContext &cxt, const option_descriptor &option,
       state.set_warning_level(0);
       cxt.runtime_control_store().note_explicit_mood();
     }
+
     return;
   case option_storage::TabSelector:
     state.set_tab_selector(static_cast<tab_selector_mode>(value));
+
     return;
   case option_storage::WarningLevel:
     cxt.runtime_control_store().note_warning_option_mutation();
     state.set_warning_level(static_cast<u8>(value));
+
     return;
   case option_storage::Variable:
   case option_storage::InitMoods:
@@ -1571,11 +1649,13 @@ fn write_option_number(EvalContext &cxt, const option_descriptor &option,
       state.set_option(shell_option_id::Vi, false);
       state.set_option(shell_option_id::Emacs, true);
     }
+
     return;
   case option_storage::SpaceAfterCompletion:
     state.set_option(shell_option_id::SpaceAfterCompletion, value != 0);
     state.set_option(shell_option_id::SpaceAfterDirectoryCompletion,
                      value == 1);
+
     return;
   default: break;
   }
@@ -1588,10 +1668,12 @@ fn write_option_text(EvalContext &cxt, const option_descriptor &option,
 {
   if (option.storage == option_storage::Variable) {
     cxt.set_shell_variable(option.variable_name, text);
+
     return;
   }
   if (option.storage == option_storage::InitMoods) {
     cxt.startup_store().set_init_moods(text);
+
     return;
   }
 

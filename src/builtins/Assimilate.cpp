@@ -407,19 +407,24 @@ fn parse_transport_command(StringView spelling, ProgramResolver &resolver,
 {
   let arguments = ArrayList<String>{allocator};
   usize position = 0;
+
   while (position < spelling.count()) {
     while (position < spelling.count() && spelling[position] == ' ') {
       position++;
     }
+
     if (position == spelling.count()) break;
 
     let const start = position;
+
     while (position < spelling.count() && spelling[position] != ' ') {
       position++;
     }
+
     arguments.push(String{
         allocator, spelling.substring_of_length(start, position - start)});
   }
+
   if (arguments.is_empty()) return None;
 
   let const program = resolve_transfer_program(arguments[0].view(), resolver);
@@ -551,6 +556,7 @@ fn Assimilate::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   if (!executable.has_value()) {
     report_soft_builtin_error(ec, cxt,
                               "Cannot resolve this shell's executable path");
+
     return 1;
   }
 
@@ -565,6 +571,7 @@ fn Assimilate::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       cxt.program_resolver(), allocator);
   if (!scp_command.has_value() || !ssh_command.has_value()) {
     report_soft_builtin_error(ec, cxt, "Cannot find both scp and ssh in PATH");
+
     return 127;
   }
 
@@ -576,11 +583,13 @@ fn Assimilate::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   };
   constexpr StaticStringMap LINK_MOODS{LINK_MOOD_ENTRIES};
   let link_moods = String{allocator};
+
   for (usize flag_position = 0; flag_position < FLAG_LINK_MOOD.count();
        flag_position++)
   {
     let const spelling = FLAG_LINK_MOOD.get(flag_position);
     usize mood_start = 0;
+
     while (mood_start <= spelling.count()) {
       let const comma = spelling.substring(mood_start).find_character(',');
       let const mood_length =
@@ -600,6 +609,7 @@ fn Assimilate::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   if (!expected_identity.has_value()) {
     report_soft_builtin_error(ec, cxt,
                               "Cannot identify this shell's executable");
+
     return 1;
   }
 

@@ -129,6 +129,7 @@ public:
   {
     if (source.length == 0) {
       release();
+
       return;
     }
     if (source.length > MAXIMUM_TEXT_LENGTH) rarely throw std::bad_alloc{};
@@ -160,16 +161,19 @@ public:
   hot mustuse pure fn operator[](usize index) const wontthrow->char
   {
     ASSERT(index < m_length, "segment text index is past the end");
+
     return m_data[index];
   }
   mustuse pure fn back() const wontthrow -> char
   {
     ASSERT(m_length > 0, "back() on an empty segment text");
+
     return m_data[m_length - 1];
   }
   mustuse pure fn first_character() const wontthrow -> char
   {
     ASSERT(m_length > 0, "first_character() on an empty segment text");
+
     return m_data[0];
   }
 
@@ -433,6 +437,7 @@ public:
     if (position > MAXIMUM_SOURCE_POSITION || length > MAXIMUM_SOURCE_LENGTH) {
       source_position = 0;
       source_length = 0;
+
       return;
     }
 
@@ -444,6 +449,7 @@ public:
       -> Maybe<SourceLocation>
   {
     if (source_length == 0) return None;
+
     return SourceLocation{source_position, source_length, source_name_index};
   }
 
@@ -473,6 +479,7 @@ public:
         has_locale_translation_quote(other.has_locale_translation_quote)
   {
     segments.reserve(other.segments.count());
+
     for (let const &segment : other.segments)
       segments.push(segment.clone(heap_allocator()));
   }

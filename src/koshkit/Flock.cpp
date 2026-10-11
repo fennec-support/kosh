@@ -46,12 +46,14 @@ fn Flock::execute(const ExecContext &ec, EvalContext &cxt,
     keeper.push(String{"-c"});
     keeper.push(String{"koshkit flock \"$@\""});
     keeper.push(String{"kosh"});
+
     for (let const &operand : operands)
       keeper.push(operand.clone());
 
     cxt.prepare_child_environment();
     let const result =
         os::run_measured(keeper, {}, os::measured_output::Inherit);
+
     return result.has_value() ? static_cast<i32>(result->exit_status) : 126;
   }
 
@@ -59,18 +61,21 @@ fn Flock::execute(const ExecContext &ec, EvalContext &cxt,
   if (!lock.has_value()) {
     report_soft_builtin_error(ec, cxt, operand_locations[0],
                               "Cannot acquire directory lock");
+
     return 1;
   }
   defer { os::release_process_lock(*lock); };
 
   let command = ArrayList<String>{cxt.scratch_allocator()};
   command.reserve(operands.count() - 1);
+
   for (usize position = 1; position < operands.count(); position++)
     command.push(operands[position].clone());
 
   cxt.prepare_child_environment();
   let const result =
       os::run_measured(command, *lock, os::measured_output::Inherit);
+
   return result.has_value() ? static_cast<i32>(result->exit_status) : 126;
 }
 

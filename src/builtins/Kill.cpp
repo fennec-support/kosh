@@ -35,6 +35,7 @@ fn Kill::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   if (args.count() > 1 && (args[1] == "-l" || args[1] == "--list")) {
     if (args.count() == 2) {
       ec.print_to_stdout(koshkit::format_signal_list());
+
       return 0;
     }
 
@@ -78,6 +79,7 @@ fn Kill::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     }
 
     ec.print_to_stdout(listing);
+
     return status;
   }
 
@@ -125,6 +127,7 @@ fn Kill::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   cxt.job_table_store().forget_waited_jobs();
 
   i32 status = 0;
+
   for (usize i = first_target; i < args.count(); i++) {
     const String &target = args[i];
 
@@ -148,6 +151,7 @@ fn Kill::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         else
           signal_error = os::last_system_error_message();
       }
+
       for (let const process : job->earlier_pipeline_processes) {
         did_find_active_process = true;
         if (os::signal_process(process, signal_number))
@@ -155,6 +159,7 @@ fn Kill::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         else
           signal_error = os::last_system_error_message();
       }
+
       if (!did_signal_process) {
         let const reason = did_find_active_process
                                ? signal_error.view()

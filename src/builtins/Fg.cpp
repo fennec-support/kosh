@@ -52,6 +52,7 @@ fn Fg::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   if (job->state == job::State::Done) {
     let const done_status = job->last_status;
     cxt.job_table_store().forget_done_jobs();
+
     return done_status;
   }
 
@@ -88,6 +89,7 @@ fn Fg::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     job->state = job::State::Stopped;
     job->stopped_status = status;
     cxt.job_table_store().notify_stopped_job(job->id);
+
     return status;
   }
 

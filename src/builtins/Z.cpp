@@ -62,6 +62,7 @@ static fn frecency_store_path() throws -> Maybe<Path>
   if (!home.has_value()) return None;
   let path = home->clone();
   path.append(".kosh_directory_history");
+
   return path;
 }
 
@@ -75,6 +76,7 @@ static fn recency_weight(i64 age_seconds) wontthrow -> double
   if (age_seconds < 3600) return 4.0;
   if (age_seconds < 86400) return 2.0;
   if (age_seconds < 604800) return 0.5;
+
   return 0.25;
 }
 
@@ -89,6 +91,7 @@ static fn read_frecency_store(Allocator allocator) throws
 
   let const text = content->view();
   usize line_start = 0;
+
   for (usize i = 0; i <= text.length; i++) {
     if (i != text.length && text[i] != '\n') {
       continue;
@@ -116,6 +119,7 @@ static fn read_frecency_store(Allocator allocator) throws
         rank.value(), last.value()
     });
   }
+
   return entries;
 }
 
@@ -126,6 +130,7 @@ static fn write_frecency_store(const ArrayList<frecency_entry> &entries,
   if (!path) return;
 
   let out = String{allocator};
+
   for (let const &entry : entries) {
     out.append(entry.path.view());
     out += '\t';
@@ -147,16 +152,20 @@ static fn contains_ignore_case(StringView haystack, StringView needle) wontthrow
   let const do_lower = [](char c) wontthrow -> char {
     return c >= 'A' && c <= 'Z' ? static_cast<char>(c + 32) : c;
   };
+
   for (usize i = 0; i + needle.length <= haystack.length; i++) {
     let is_matched = true;
+
     for (usize j = 0; j < needle.length; j++) {
       if (do_lower(haystack[i + j]) != do_lower(needle[j])) {
         is_matched = false;
         break;
       }
     }
+
     if (is_matched) return true;
   }
+
   return false;
 }
 
@@ -182,10 +191,12 @@ fn z_completion_candidates(StringView query, Allocator allocator) throws
     if (left_score != right_score) return left_score > right_score;
     if (left.last_access != right.last_access)
       return left.last_access > right.last_access;
+
     return left.path.view() < right.path.view();
   });
 
   let candidates = ArrayList<String>{allocator};
+
   for (let const &entry : entries) {
     if (!query.is_empty() && !contains_ignore_case(entry.path.view(), query)) {
       continue;
@@ -195,6 +206,7 @@ fn z_completion_candidates(StringView query, Allocator allocator) throws
     if (!directory.is_directory()) continue;
     candidates.push(String{allocator, directory.c_str()});
   }
+
   return candidates;
 }
 
@@ -206,6 +218,7 @@ fn record_directory_access(StringView directory, Allocator allocator) throws
   let entries = read_frecency_store(allocator);
   let const now = now_epoch_seconds();
   let visited = Maybe<frecency_entry>{};
+
   for (usize i = 0; i < entries.count(); i++) {
     if (!os::paths_match_for_history(entries[i].path.view(), directory))
       continue;
@@ -216,6 +229,7 @@ fn record_directory_access(StringView directory, Allocator allocator) throws
     entries.remove(i);
     break;
   }
+
   if (!visited.has_value())
     visited = frecency_entry{String{allocator, directory}, 1, now};
 
@@ -224,6 +238,7 @@ fn record_directory_access(StringView directory, Allocator allocator) throws
         steal(entries).make_sorted(frecency_rank_comparator{});
     entries = ArrayList<frecency_entry>{allocator};
     entries.reserve(Z_FRECENCY_MAX);
+
     for (usize i = 0; i + 1 < Z_FRECENCY_MAX; i++)
       entries.push(frecency_entry{String{allocator, strongest[i].path.view()},
                                   strongest[i].rank, strongest[i].last_access});
@@ -259,6 +274,7 @@ fn Z::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   }
 
   let query = String{cxt.scratch_allocator()};
+
   for (usize i = 1; i < operands.count(); i++) {
     if (i > 1) query += ' ';
     query.append(operands[i]);
@@ -271,6 +287,7 @@ fn Z::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       if (status != 0) return status;
 
       ec.print_to_stdout(literal_directory.text() + "\n");
+
       return 0;
     }
   }
@@ -283,12 +300,14 @@ fn Z::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let const do_match_tier = [&](StringView path) wontthrow -> i32 {
     if (equals_ignore_case(path, query.view())) return 2;
     if (equals_ignore_case(Path::filename(path), query.view())) return 1;
+
     return 0;
   };
 
   const frecency_entry *best = nullptr;
   let best_score = -1.0;
   i32 best_tier = -1;
+
   for (let const &entry : entries) {
     if (!query.is_empty() &&
         !contains_ignore_case(entry.path.view(), query.view()))
@@ -319,6 +338,7 @@ fn Z::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   if (status != 0) return status;
 
   ec.print_to_stdout(target.text() + "\n");
+
   return 0;
 }
 

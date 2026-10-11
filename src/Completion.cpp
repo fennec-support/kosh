@@ -38,8 +38,10 @@ static fn all_active_glob_mask(usize length) throws -> Bitset
 {
   let mask = Bitset{completion_allocator()};
   mask.reserve(length);
+
   for (usize i = 0; i < length; i++)
     mask.push(true);
+
   return mask;
 }
 
@@ -64,6 +66,7 @@ static pure fn candidate_match(StringView token, StringView candidate,
       utils::ascii_to_lower(candidate[0]) == utils::ascii_to_lower(token[0]))
   {
     let is_prefix = true;
+
     for (usize i = 1; i < token.length; i++)
       if (utils::ascii_to_lower(candidate[i]) !=
           utils::ascii_to_lower(token[i]))
@@ -82,6 +85,7 @@ static pure fn candidate_match(StringView token, StringView candidate,
   usize matched_count = 0;
   if (is_case_sensitive) {
     usize position = 0;
+
     while (matched_count < token.length) {
       let const found =
           candidate.substring(position).find_character(token[matched_count]);
@@ -123,6 +127,7 @@ public:
   {
     for (usize tier = 0; tier < MATCH_TIER_COUNT; tier++)
       if (!by_tier[tier].is_empty()) return steal(by_tier[tier]);
+
     return ArrayList<String>{completion_allocator()};
   }
 
@@ -139,6 +144,7 @@ fn internal::best_tier_matches(StringView token,
 {
   let const is_case_sensitive = utils::token_has_uppercase(token);
   let candidates = TieredCandidates{};
+
   for (let const name : names)
     if (let const tier = candidate_match(token, name, is_case_sensitive);
         tier.has_value())
@@ -162,14 +168,14 @@ public:
   }
 
 private:
-  struct slot
+  struct Slot
   {
     StringView value{};
     u64 hash{0};
     bool is_occupied{false};
   };
 
-  fn place(ArrayList<slot> &destination, StringView value, u64 hash) wontthrow
+  fn place(ArrayList<Slot> &destination, StringView value, u64 hash) wontthrow
       -> bool
   {
     let const mask = destination.count() - 1;
@@ -186,25 +192,28 @@ private:
 
     destination[position] = {value, hash, true};
     entry_count++;
+
     return true;
   }
 
   fn grow() throws -> void
   {
-    let fresh = ArrayList<slot>{completion_allocator()};
+    let fresh = ArrayList<Slot>{completion_allocator()};
     let const capacity = slots.is_empty() ? 16 : slots.count() * 2;
     fresh.reserve(capacity);
+
     for (usize position = 0; position < capacity; position++)
       fresh.push({});
 
     entry_count = 0;
+
     for (let const &entry : slots)
       if (entry.is_occupied) place(fresh, entry.value, entry.hash);
 
     slots = steal(fresh);
   }
 
-  ArrayList<slot> slots{completion_allocator()};
+  ArrayList<Slot> slots{completion_allocator()};
   usize entry_count{0};
 };
 
@@ -217,8 +226,10 @@ static fn command_name_match(StringView name, StringView token,
     if (utils::glob_matches(token, name, glob_active, 0, extglob_mode::Disabled,
                             glob_charset::Utf8))
       return match_tier::exact_prefix;
+
     return None;
   }
+
   return candidate_match(token, name, is_case_sensitive);
 }
 
@@ -298,6 +309,7 @@ static pure fn common_prefix_length(StringView left, StringView right,
     -> usize
 {
   usize shared_length = 0;
+
   while (shared_length < limit && shared_length < left.length &&
          shared_length < right.length)
   {
@@ -310,6 +322,7 @@ static pure fn common_prefix_length(StringView left, StringView right,
     if (!bytes_match) break;
     shared_length++;
   }
+
   while (shared_length > 0 && shared_length < left.length &&
          (static_cast<unsigned char>(left[shared_length]) & 0xC0) == 0x80)
   {
@@ -330,6 +343,7 @@ public:
       best_tier = tier_index;
       prefix = String{completion_allocator(), name};
       match_count = 1;
+
       return;
     }
 
@@ -441,6 +455,7 @@ collect_command_names(StringView token, EvalContext &context,
     let const &fallback_path_names =
         context.program_resolver().get_command_names(
             {}, ProgramResolver::ValidationScope::All);
+
     for (let const &entry : fallback_path_names)
       do_add_path(entry.view());
   }
@@ -455,6 +470,7 @@ complete_command_name_prefix(StringView token, EvalContext &context,
   let collector = GhostPrefixCollector{};
   collect_command_names(token, context, collector, extra_command_names,
                         match_mode);
+
   return collector;
 }
 
@@ -465,12 +481,14 @@ static fn compute_longest_common_prefix(const ArrayList<String> &candidates,
   if (candidates.is_empty()) return String{candidates.allocator()};
   let const first = candidates[0].view();
   usize prefix_length = first.length;
+
   for (usize i = 1; i < candidates.count(); i++) {
     if (prefix_length == 0) break;
     let const candidate = candidates[i].view();
     prefix_length = common_prefix_length(first, candidate, prefix_length,
                                          should_ignore_ascii_case);
   }
+
   return String{candidates.allocator(),
                 first.substring_of_length(0, prefix_length)};
 }
@@ -487,6 +505,7 @@ fn complete_command_names(StringView token, EvalContext &context,
 
   collect_command_names(token, context, collector, extra_command_names,
                         match_mode);
+
   return collector.take();
 }
 
@@ -498,6 +517,7 @@ fn complete_command_names_by_prefix(StringView token,
 
   collect_command_names(token, context, collector, nullptr,
                         command_match_mode::Prefix);
+
   return collector.take();
 }
 
@@ -506,6 +526,7 @@ static fn entry_is_executable(const Path &directory, StringView name) throws
 {
   let full = directory.clone();
   full.append(name);
+
   return full.is_executable();
 }
 
@@ -533,7 +554,7 @@ struct filesystem_listing
 {
   path_token parts;
   Path directory;
-  const ArrayList<Path::directory_child> *entries;
+  const ArrayList<Path::DirectoryChild> *entries;
 };
 
 struct eligible_filesystem_entry
@@ -559,9 +580,9 @@ static fn open_filesystem_listing(const utils::decoded_shell_word &decoded_word,
 
 static fn
 check_filesystem_entry(const filesystem_listing &listing,
-                       const Path::directory_child &entry,
+                       const Path::DirectoryChild &entry,
                        filesystem_entry_filter filter,
-                       Maybe<Path::entry_kind> resolved_kind = None) throws
+                       Maybe<Path::EntryKind> resolved_kind = None) throws
     -> Maybe<eligible_filesystem_entry>
 {
   let const name = entry.name.view();
@@ -575,12 +596,12 @@ check_filesystem_entry(const filesystem_listing &listing,
   let entry_kind = entry.kind;
   if (resolved_kind.has_value()) {
     entry_kind = *resolved_kind;
-  } else if (entry_kind == Path::entry_kind::Symlink ||
-             entry_kind == Path::entry_kind::Unknown)
+  } else if (entry_kind == Path::EntryKind::Symlink ||
+             entry_kind == Path::EntryKind::Unknown)
   {
     entry_kind = utils::directory_entry_kind(listing.directory, entry);
   }
-  let const is_directory = entry_kind == Path::entry_kind::Directory;
+  let const is_directory = entry_kind == Path::EntryKind::Directory;
   if (filter == filesystem_entry_filter::DirectoriesOnly && !is_directory) {
     return None;
   }
@@ -629,6 +650,7 @@ build_filesystem_candidate(StringView directory_part,
     let candidate = rebuild_shell_syntax_candidate(raw_token, decoded_word,
                                                    decoded_candidate.view());
     if (directory_separator != 0) candidate.push(directory_separator);
+
     return candidate;
   }
 
@@ -640,6 +662,7 @@ build_filesystem_candidate(StringView directory_part,
     let candidate =
         String{completion_allocator(), raw_directory_part} + entry_name;
     if (directory_separator != 0) candidate.push(directory_separator);
+
     return candidate;
   }
 
@@ -669,6 +692,7 @@ build_filesystem_candidate(StringView directory_part,
   }
 
   if (directory_separator != 0) candidate.push(directory_separator);
+
   return candidate;
 }
 
@@ -718,7 +742,7 @@ static fn collect_filesystem_matches(
         for (let const &match : matches) {
           let const &entry = (*listing->entries)[match.position];
           result_positions.push(SIZE_MAX);
-          if (entry.kind != Path::entry_kind::Symlink) continue;
+          if (entry.kind != Path::EntryKind::Symlink) continue;
 
           let path = listing->directory.clone();
           path.append(entry.name.view());
@@ -726,6 +750,7 @@ static fn collect_filesystem_matches(
           paths.push(steal(path));
           statuses.push({});
         }
+
         for (usize position = 0; position < paths.count(); position++)
           batch.add(
               os::batch_operation::stat(paths[position], statuses[position]));
@@ -738,18 +763,18 @@ static fn collect_filesystem_matches(
         {
           let const &match = matches[match_position];
           let const &entry = (*listing->entries)[match.position];
-          let resolved_kind = Maybe<Path::entry_kind>{};
+          let resolved_kind = Maybe<Path::EntryKind>{};
           let const result_position = result_positions[match_position];
           if (result_position != SIZE_MAX) {
             if (result_position >= results.count() ||
                 results[result_position].error_number != 0)
             {
-              resolved_kind = Path::entry_kind::Other;
+              resolved_kind = Path::EntryKind::Other;
             } else {
               switch (os::file_type_letter(statuses[result_position].mode)) {
-              case 'd': resolved_kind = Path::entry_kind::Directory; break;
-              case '-': resolved_kind = Path::entry_kind::Regular; break;
-              default: resolved_kind = Path::entry_kind::Other; break;
+              case 'd': resolved_kind = Path::EntryKind::Directory; break;
+              case '-': resolved_kind = Path::EntryKind::Regular; break;
+              default: resolved_kind = Path::EntryKind::Other; break;
               }
             }
           }
@@ -789,6 +814,7 @@ static fn collect_filesystem_matches(
   let matches = ArrayList<matched_entry>{completion_allocator()};
   let entry_position = utils::directory_entry_name_lower_bound(
       *listing->entries, parts.basename_part);
+
   while (
       entry_position < listing->entries->count() &&
       utils::directory_entry_name_has_casefold_prefix(
@@ -801,12 +827,14 @@ static fn collect_filesystem_matches(
     if (tier.has_value()) matches.push({entry_position, *tier});
     entry_position++;
   }
+
   do_add_matches(matches);
   if (collector.has_prefix() || !collector.allows_fuzzy_fallback()) {
     return;
   }
 
   matches.clear();
+
   for (usize position = 0; position < listing->entries->count(); position++) {
     let const &entry = (*listing->entries)[position];
     if (!utils::directory_entry_name_has_casefold_prefix(entry.name.view(),
@@ -818,6 +846,7 @@ static fn collect_filesystem_matches(
       if (tier.has_value()) matches.push({position, *tier});
     }
   }
+
   do_add_matches(matches);
 }
 
@@ -856,6 +885,7 @@ static fn complete_filesystem(
   let collector = complete_filesystem_with<CommandListCollector>(
       token, base_directory, context, CommandListCollector{}, decoded,
       text_mode, filter, directory_suffix_mode::Marked);
+
   return collector.take();
 }
 
@@ -870,6 +900,7 @@ fn complete_filesystem_names_by_prefix(StringView token, EvalContext &context,
   let collector = complete_filesystem_with<PrefixListCollector>(
       token, base_directory, context, PrefixListCollector{}, nullptr,
       path_text_mode::Raw, filter, directory_suffix_mode::Bare);
+
   return collector.take();
 }
 
@@ -882,11 +913,14 @@ static fn visit_cdpath_directories(EvalContext &context,
 
   let const entries = cdpath->view();
   usize start = 0;
+
   while (start < entries.length) {
     usize end = start;
+
     while (end < entries.length && entries.data[end] != os::PATH_DELIMITER) {
       end++;
     }
+
     let const entry = entries.substring_of_length(start, end - start);
     start = end + 1;
     if (entry.is_empty()) continue;
@@ -969,9 +1003,11 @@ static fn complete_glob(StringView token, const Path &base_directory,
 
   let glob_active = Bitset{completion_allocator()};
   glob_active.reserve(parts.basename_part.length);
+
   for (usize position = parts.directory_part.length;
        position < decoded_word.glob_active.count(); position++)
     glob_active.push(decoded_word.glob_active[position]);
+
   let normalized_pattern = String{completion_allocator()};
   let match_pattern = parts.basename_part;
   if (!os::FILESYSTEM_IS_CASE_SENSITIVE) {
@@ -981,6 +1017,7 @@ static fn complete_glob(StringView token, const Path &base_directory,
   let candidate_name = String{completion_allocator()};
 
   let matched_positions = ArrayList<usize>{completion_allocator()};
+
   for (usize position = 0; position < listing->entries->count(); position++) {
     let const &entry = (*listing->entries)[position];
     let const name = entry.name.view();
@@ -1008,10 +1045,11 @@ static fn complete_glob(StringView token, const Path &base_directory,
   statuses.reserve(matched_positions.count());
   result_positions.reserve(matched_positions.count());
   batch.reserve(matched_positions.count());
+
   for (let const position : matched_positions) {
     let const &entry = (*listing->entries)[position];
     result_positions.push(SIZE_MAX);
-    if (entry.kind != Path::entry_kind::Symlink) continue;
+    if (entry.kind != Path::EntryKind::Symlink) continue;
 
     let path = listing->directory.clone();
     path.append(entry.name.view());
@@ -1019,6 +1057,7 @@ static fn complete_glob(StringView token, const Path &base_directory,
     paths.push(steal(path));
     statuses.push({});
   }
+
   for (usize position = 0; position < paths.count(); position++)
     batch.add(os::batch_operation::stat(paths[position], statuses[position]));
 
@@ -1030,18 +1069,18 @@ static fn complete_glob(StringView token, const Path &base_directory,
   {
     let const &entry = (*listing->entries)[matched_positions[match_position]];
     let const name = entry.name.view();
-    let resolved_kind = Maybe<Path::entry_kind>{};
+    let resolved_kind = Maybe<Path::EntryKind>{};
     let const result_position = result_positions[match_position];
     if (result_position != SIZE_MAX) {
       if (result_position >= results.count() ||
           results[result_position].error_number != 0)
       {
-        resolved_kind = Path::entry_kind::Other;
+        resolved_kind = Path::EntryKind::Other;
       } else {
         switch (os::file_type_letter(statuses[result_position].mode)) {
-        case 'd': resolved_kind = Path::entry_kind::Directory; break;
-        case '-': resolved_kind = Path::entry_kind::Regular; break;
-        default: resolved_kind = Path::entry_kind::Other; break;
+        case 'd': resolved_kind = Path::EntryKind::Directory; break;
+        case '-': resolved_kind = Path::EntryKind::Regular; break;
+        default: resolved_kind = Path::EntryKind::Other; break;
         }
       }
     }
@@ -1128,6 +1167,7 @@ static fn complete_variable(StringView token, EvalContext &context,
 
   let dynamic_names = ArrayList<StringView>{completion_allocator()};
   context.append_dynamic_variable_names(dynamic_names);
+
   for (let const &name : dynamic_names)
     do_add_name(name);
 
@@ -1147,6 +1187,7 @@ static fn complete_tilde_user(StringView token) throws -> ArrayList<String>
 {
   let candidates = ArrayList<String>{completion_allocator()};
   let const prefix = token.substring(1);
+
   for (let const &user : os::enumerate_users()) {
     if (!user.view().starts_with(prefix)) continue;
     let candidate = String{completion_allocator()};
@@ -1155,8 +1196,10 @@ static fn complete_tilde_user(StringView token) throws -> ArrayList<String>
     candidate.push('/');
     candidates.push(steal(candidate));
   }
+
   LOG(All, "%zu user names match tilde prefix '%.*s'", candidates.count(),
       static_cast<int>(prefix.length), prefix.data);
+
   return candidates;
 }
 
@@ -1165,6 +1208,7 @@ static pure fn file_extension_hint(StringView command) wontthrow
 {
   if (let const hint = FILE_EXTENSION_HINTS.find(command); hint.has_value())
     return StringView{*hint};
+
   return None;
 }
 
@@ -1179,6 +1223,7 @@ static pure fn candidate_extension_is_hinted(
   }
 
   usize dot = candidate.length;
+
   for (usize k = candidate.length; k > 0; k--) {
     if (os::is_directory_separator(candidate[k - 1])) break;
     if (candidate[k - 1] == '.') {
@@ -1186,13 +1231,16 @@ static pure fn candidate_extension_is_hinted(
       break;
     }
   }
+
   if (dot >= candidate.length) return false;
 
   let const extension = candidate.substring(dot + 1);
+
   for (let const wanted : hinted_extensions) {
     if (wanted.length != extension.length) continue;
 
     bool is_equal = true;
+
     for (usize i = 0; i < wanted.length; i++)
       if (utils::ascii_to_lower(extension[i]) !=
           utils::ascii_to_lower(wanted[i]))
@@ -1200,8 +1248,10 @@ static pure fn candidate_extension_is_hinted(
         is_equal = false;
         break;
       }
+
     if (is_equal) return true;
   }
+
   return false;
 }
 
@@ -1212,6 +1262,7 @@ static fn split_hint_extensions(StringView hint_list,
   let extensions = ArrayList<StringView>{allocator};
   hint_list.for_each_ascii_whitespace_word(
       [&](StringView extension) throws { extensions.push(extension); });
+
   return extensions;
 }
 
@@ -1247,6 +1298,7 @@ static fn keep_hinted_extension(ArrayList<String> candidates,
       split_hint_extensions(hint_list, candidates.allocator());
 
   let kept = ArrayList<String>{candidates.allocator()};
+
   for (usize i = 0; i < candidates.count(); i++) {
     let const candidate = candidates[i].view();
     let const is_directory =
@@ -1258,6 +1310,7 @@ static fn keep_hinted_extension(ArrayList<String> candidates,
       kept.push(steal(candidates[i]));
     }
   }
+
   return kept;
 }
 
@@ -1409,6 +1462,7 @@ fn complete(StringView line, usize cursor, EvalContext &context,
                                filesystem_filter);
     if (!candidates.is_empty()) {
       let joined = String{arena};
+
       for (usize i = 0; i < candidates.count(); i++) {
         if (i > 0) {
           joined += ' ';
@@ -1421,6 +1475,7 @@ fn complete(StringView line, usize cursor, EvalContext &context,
         }
         joined.append(match);
       }
+
       candidates.clear();
       candidates.push(steal(joined));
     } else if (is_command && !token_has_path_separator) {
@@ -1560,6 +1615,7 @@ fn complete(StringView line, usize cursor, EvalContext &context,
     if (is_for_listing) {
       let const do_drop_repeats = [](auto &listed) throws -> void {
         usize kept_count = 0;
+
         for (usize i = 0; i < listed.count(); i++) {
           if (kept_count > 0 &&
               listed[kept_count - 1].view() == listed[i].view())
@@ -1571,6 +1627,7 @@ fn complete(StringView line, usize cursor, EvalContext &context,
 
           kept_count++;
         }
+
         listed.truncate(kept_count);
       };
 
@@ -1605,6 +1662,7 @@ fn complete(StringView line, usize cursor, EvalContext &context,
 
             kept_count++;
           }
+
           candidates.truncate(kept_count);
 
           for (let &path : paths)
@@ -1636,6 +1694,7 @@ fn complete(StringView line, usize cursor, EvalContext &context,
           should_quote_words);
 
       let is_every_candidate_unchanged = true;
+
       for (let const &candidate : candidates)
         if (!shell_syntax_candidate_is_unchanged(token, decoded_token,
                                                  candidate.view(),
@@ -1649,6 +1708,7 @@ fn complete(StringView line, usize cursor, EvalContext &context,
         let rebuilt_descriptions = StringMap<String>{arena};
         if (descriptions.count() > 0)
           rebuilt_descriptions.reserve(descriptions.count());
+
         for (let &candidate : candidates) {
           let const description = descriptions.find(candidate.view());
           let rebuilt = rebuild_shell_syntax_candidate(
@@ -1657,6 +1717,7 @@ fn complete(StringView line, usize cursor, EvalContext &context,
             rebuilt_descriptions.set(rebuilt.view(), description->view());
           candidate = steal(rebuilt);
         }
+
         descriptions = steal(rebuilt_descriptions);
       }
     }
@@ -1686,6 +1747,7 @@ fn complete(StringView line, usize cursor, EvalContext &context,
 
   let const candidate_count =
       ghost_candidate_count > 0 ? ghost_candidate_count : candidates.count();
+
   return completion_result{
       steal(candidates),
       steal(descriptions),

@@ -32,6 +32,7 @@ fn Readlink::execute(
   let const should_end_lines =
       operands.count() > 1 || !FLAG_READLINK_NO_NEWLINE.is_enabled();
   i32 status = 0;
+
   for (usize i = 0; i < operands.count(); i++) {
     let target = os::read_symlink(operands[i].view(), cxt.scratch_allocator());
     if (!target.has_value()) {

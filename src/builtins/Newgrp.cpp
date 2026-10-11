@@ -39,6 +39,7 @@ fn Newgrp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   if (found.count() == 0) {
     report_soft_builtin_error(
         ec, cxt, "Unable to run newgrp because its program was not found");
+
     return 127;
   }
 
@@ -46,6 +47,7 @@ fn Newgrp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   command_args.push_managed("newgrp");
   let command_arg_locations = ArrayList<SourceLocation>{heap_allocator()};
   command_arg_locations.push(ec.source_location());
+
   for (usize i = 1; i < args.count(); i++) {
     command_args.push_managed(args[i]);
     command_arg_locations.push(ec.arg_location_at(i));
@@ -62,11 +64,13 @@ fn Newgrp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     os::replace_process(steal(command));
   } catch (const ErrorBase &error) {
     report_soft_builtin_error(ec, cxt, error.message());
+
     return 126;
   }
 
   report_soft_builtin_error(
       ec, cxt, "the file is not an executable and has no interpreter");
+
   return 126;
 }
 

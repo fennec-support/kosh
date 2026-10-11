@@ -33,16 +33,20 @@ fn Alias::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   if (args.count() == 1) {
     let out = String{cxt.scratch_allocator()};
+
     for (let const &definition : cxt.scope_store().alias_definitions()) {
       out += "alias ";
       out += definition;
       out += "\n";
     }
+
     ec.print_to_stdout(out);
+
     return 0;
   }
 
   i32 status = 0;
+
   for (usize i = 1; i < args.count(); i++) {
     let const &arg = args[i];
     let const parts = NameValueArg::from(arg);

@@ -77,6 +77,7 @@ extern "C" void *kosh_regex_reallocate(void *pointer, size_t length)
   if (pointer == nullptr) return kosh_regex_allocate(length);
   if (length == 0) {
     kosh_regex_release(pointer);
+
     return nullptr;
   }
 
@@ -90,6 +91,7 @@ extern "C" void *kosh_regex_reallocate(void *pointer, size_t length)
             alignof(regex_allocation_header)));
     header->allocation_length = allocation_length;
     header->payload_length = length;
+
     return header + 1;
   } catch (...) {
     return nullptr;
@@ -167,6 +169,7 @@ static fn note_shell_fd_closed(i32 shell_fd) wontthrow -> void
   set_shell_fd_close_on_exec(shell_fd, close_on_exec_mode::Disabled);
 
   if (shell_fd != HIGHEST_OPEN_SHELL_FD) return;
+
   while (HIGHEST_OPEN_SHELL_FD > 2 &&
          descriptor_from_fd_number(HIGHEST_OPEN_SHELL_FD) == KOSH_INVALID_FD)
   {
@@ -179,6 +182,7 @@ static fn utf8_to_wide(StringView text, Allocator allocator) throws
 {
   if (text.length > static_cast<usize>(INT_MAX)) {
     SetLastError(ERROR_FILENAME_EXCED_RANGE);
+
     return None;
   }
 
@@ -186,6 +190,7 @@ static fn utf8_to_wide(StringView text, Allocator allocator) throws
   if (text.is_empty()) {
     wide.reserve(1);
     wide.begin()[0] = L'\0';
+
     return wide;
   }
 
@@ -199,6 +204,7 @@ static fn utf8_to_wide(StringView text, Allocator allocator) throws
                           wide_length) != wide_length)
     return None;
   wide.begin()[wide_length] = L'\0';
+
   return wide;
 }
 
@@ -208,6 +214,7 @@ static fn wide_to_utf8(const wchar_t *text, usize length,
   if (length == 0) return String{allocator};
   if (length > static_cast<usize>(INT_MAX)) {
     SetLastError(ERROR_FILENAME_EXCED_RANGE);
+
     return None;
   }
   let const utf8_length = WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS,
@@ -220,6 +227,7 @@ static fn wide_to_utf8(const wchar_t *text, usize length,
                           static_cast<int>(length), utf8.begin(), utf8_length,
                           nullptr, nullptr) != utf8_length)
     return None;
+
   return String{
       allocator, StringView{utf8.begin(), static_cast<usize>(utf8_length)}
   };
@@ -265,6 +273,7 @@ fn logged_in_users() throws -> ArrayList<user_session>
   if (user.has_value() && terminal.has_value()) {
     result.push(user_session{steal(*user), steal(*terminal), 0});
   }
+
   return result;
 }
 
@@ -298,6 +307,7 @@ fn write_system_log(const system_log_options &options) wontthrow -> bool
   let const event_type_value = EVENT_TYPE_MAP.find(severity);
   if (!event_type_value.has_value()) {
     SetLastError(ERROR_INVALID_PARAMETER);
+
     return false;
   }
   event_type = *event_type_value;
@@ -320,10 +330,12 @@ fn write_system_log(const system_log_options &options) wontthrow -> bool
 fn write_fd(os::descriptor fd, const opaque *buf, usize size) wontthrow
     -> Maybe<usize>
 {
-  let const requested_size =
+  let const requested_byte_count =
       size > MAXDWORD ? MAXDWORD : static_cast<DWORD>(size);
-  DWORD written_size = 0;
-  if (WriteFile(fd, buf, requested_size, &written_size, nullptr) == FALSE) {
+  DWORD written_byte_count = 0;
+  if (WriteFile(fd, buf, requested_byte_count, &written_byte_count, nullptr) ==
+      FALSE)
+  {
     errno = EIO;
     switch (GetLastError()) {
     case ERROR_BROKEN_PIPE:
@@ -332,9 +344,11 @@ fn write_fd(os::descriptor fd, const opaque *buf, usize size) wontthrow
     case ERROR_NETNAME_DELETED: errno = EPIPE; break;
     default: break;
     }
+
     return koshka::None;
   }
-  return static_cast<usize>(written_size);
+
+  return static_cast<usize>(written_byte_count);
 }
 
 fn write_to_numbered_fd(i64 fd_number, const opaque *buf, usize size) wontthrow
@@ -342,15 +356,18 @@ fn write_to_numbered_fd(i64 fd_number, const opaque *buf, usize size) wontthrow
 {
   let const handle = descriptor_from_fd_number(fd_number);
   if (handle == INVALID_HANDLE_VALUE) return koshka::None;
+
   return write_fd(handle, buf, size);
 }
 
 fn read_fd(os::descriptor fd, opaque *buf, usize size) wontthrow -> Maybe<usize>
 {
-  let const requested_size =
+  let const requested_byte_count =
       size > MAXDWORD ? MAXDWORD : static_cast<DWORD>(size);
-  DWORD read_size = 0;
-  if (ReadFile(fd, buf, requested_size, &read_size, nullptr) == FALSE) {
+  DWORD read_byte_count = 0;
+  if (ReadFile(fd, buf, requested_byte_count, &read_byte_count, nullptr) ==
+      FALSE)
+  {
     let const error = GetLastError();
     if (error == ERROR_BROKEN_PIPE || error == ERROR_NO_DATA ||
         error == ERROR_PIPE_NOT_CONNECTED || error == ERROR_NETNAME_DELETED ||
@@ -358,15 +375,18 @@ fn read_fd(os::descriptor fd, opaque *buf, usize size) wontthrow -> Maybe<usize>
     {
       return 0;
     }
+
     return koshka::None;
   }
-  return static_cast<usize>(read_size);
+
+  return static_cast<usize>(read_byte_count);
 }
 
 fn descriptor_is_seekable(os::descriptor fd) wontthrow -> bool
 {
   if (GetFileType(fd) != FILE_TYPE_DISK) return false;
   LARGE_INTEGER distance{};
+
   return SetFilePointerEx(fd, distance, nullptr, FILE_CURRENT) != FALSE;
 }
 
@@ -386,6 +406,7 @@ fn rewind_descriptor(os::descriptor fd, usize byte_count) wontthrow -> bool
 {
   LARGE_INTEGER distance{};
   distance.QuadPart = -static_cast<LONGLONG>(byte_count);
+
   return SetFilePointerEx(fd, distance, nullptr, FILE_CURRENT) != FALSE;
 }
 
@@ -394,6 +415,7 @@ fn seek_descriptor_from_start(os::descriptor fd, u64 byte_offset) wontthrow
 {
   LARGE_INTEGER distance{};
   distance.QuadPart = static_cast<LONGLONG>(byte_offset);
+
   return SetFilePointerEx(fd, distance, nullptr, FILE_BEGIN) != FALSE;
 }
 
@@ -429,6 +451,7 @@ fn wait_for_fd_readable(os::descriptor fd, i64 timeout_nanos) wontthrow -> i32
         if (error == ERROR_BROKEN_PIPE || error == ERROR_NO_DATA) {
           return 1;
         }
+
         return -1;
       }
     } else if (file_type == FILE_TYPE_CHAR) {
@@ -507,6 +530,7 @@ fn close_fd(os::descriptor fd) wontthrow -> bool
   const DWORD prior_error = GetLastError();
   if (CloseHandle(fd) == FALSE) return false;
   SetLastError(prior_error);
+
   return true;
 }
 
@@ -546,8 +570,10 @@ static fn standard_handle_is_referenced(os::descriptor handle) wontthrow -> bool
 {
   static constexpr DWORD STANDARD_HANDLE_SLOTS[] = {
       STD_INPUT_HANDLE, STD_OUTPUT_HANDLE, STD_ERROR_HANDLE};
+
   for (let const slot : STANDARD_HANDLE_SLOTS)
     if (GetStdHandle(slot) == handle) return true;
+
   return false;
 }
 
@@ -556,6 +582,7 @@ static fn standard_handle_is_owned_by_runtime(os::descriptor handle) wontthrow
 {
   for (i32 shell_fd = 0; shell_fd <= 2; shell_fd++)
     if (descriptor_from_fd_number(shell_fd) == handle) return true;
+
   return false;
 }
 
@@ -571,6 +598,7 @@ fn save_and_replace_descriptor(i32 shell_fd, os::descriptor target) wontthrow
     if (!result.is_dup2_ok && result.was_open) {
       CloseHandle(result.saved);
     }
+
     return result;
   }
 
@@ -579,6 +607,7 @@ fn save_and_replace_descriptor(i32 shell_fd, os::descriptor target) wontthrow
 
   if (target == nullptr || target == INVALID_HANDLE_VALUE) {
     result.is_dup2_ok = false;
+
     return result;
   }
 
@@ -590,11 +619,13 @@ fn save_and_replace_descriptor(i32 shell_fd, os::descriptor target) wontthrow
   HANDLE duplicate = INVALID_HANDLE_VALUE;
   if (!duplicate_handle(target, duplicate, TRUE)) {
     result.is_dup2_ok = false;
+
     return result;
   }
   if (SetStdHandle(*slot, duplicate) == FALSE) {
     CloseHandle(duplicate);
     result.is_dup2_ok = false;
+
     return result;
   }
   result.is_dup2_ok = true;
@@ -614,11 +645,13 @@ fn restore_descriptor(const saved_descriptor &saved) wontthrow -> void
     } else {
       close_shell_fd(saved.shell_fd);
     }
+
     return;
   }
   let const replaced = GetStdHandle(*slot);
   if (saved.was_open && replaced == saved.original) {
     CloseHandle(saved.saved);
+
     return;
   }
   if (SetStdHandle(*slot, saved.was_open ? saved.saved
@@ -647,6 +680,7 @@ fn save_descriptor(i32 shell_fd) wontthrow -> saved_descriptor
     if (result.was_open && !duplicate_handle(original, result.saved, FALSE)) {
       result.is_dup2_ok = false;
     }
+
     return result;
   }
   let const original = GetStdHandle(*slot);
@@ -654,9 +688,11 @@ fn save_descriptor(i32 shell_fd) wontthrow -> saved_descriptor
   result.was_open = original != nullptr && original != INVALID_HANDLE_VALUE;
   if (result.was_open && !duplicate_handle(original, result.saved, FALSE)) {
     result.is_dup2_ok = false;
+
     return result;
   }
   result.is_dup2_ok = true;
+
   return result;
 }
 
@@ -697,6 +733,7 @@ fn descriptor_for_shell_fd(i32 shell_fd) wontthrow -> os::descriptor
   const Maybe<DWORD> slot = std_handle_slot_for_shell_fd(shell_fd);
   if (!slot.has_value()) return descriptor_from_fd_number(shell_fd);
   let const handle = GetStdHandle(*slot);
+
   return handle != nullptr ? handle : KOSH_INVALID_FD;
 }
 
@@ -757,6 +794,7 @@ fn descriptor_from_fd_number(i64 fd_number) wontthrow -> os::descriptor
           uintptr_t) {});
   defer { _set_thread_local_invalid_parameter_handler(previous_handler); };
 #endif
+
   return reinterpret_cast<os::descriptor>(
       _get_osfhandle(static_cast<int>(fd_number)));
 }
@@ -775,11 +813,13 @@ fn replace_descriptor(i32 shell_fd, os::descriptor target) wontthrow -> bool
         reinterpret_cast<intptr_t>(duplicate), O_BINARY | O_RDWR);
     if (temporary_fd == -1) {
       CloseHandle(duplicate);
+
       return false;
     }
     if (temporary_fd == shell_fd) {
       note_descriptor_rebound();
       note_shell_fd_opened(shell_fd);
+
       return true;
     }
     let const was_replaced = _dup2(temporary_fd, shell_fd) == 0;
@@ -788,6 +828,7 @@ fn replace_descriptor(i32 shell_fd, os::descriptor target) wontthrow -> bool
       note_descriptor_rebound();
       note_shell_fd_opened(shell_fd);
     }
+
     return was_replaced;
   }
 
@@ -797,6 +838,7 @@ fn replace_descriptor(i32 shell_fd, os::descriptor target) wontthrow -> bool
   let const previous = GetStdHandle(*slot);
   if (SetStdHandle(*slot, duplicate) == FALSE) {
     CloseHandle(duplicate);
+
     return false;
   }
   note_descriptor_rebound();
@@ -820,6 +862,7 @@ fn close_shell_fd(i32 shell_fd) wontthrow -> bool
       note_descriptor_rebound();
       note_shell_fd_closed(shell_fd);
     }
+
     return was_closed;
   }
   const os::descriptor handle = GetStdHandle(*slot);
@@ -836,8 +879,10 @@ fn close_shell_fd(i32 shell_fd) wontthrow -> bool
 fn allocate_free_shell_fd(i32 floor_fd) wontthrow -> i32
 {
   let const maximum_fd = _getmaxstdio();
+
   for (i32 shell_fd = floor_fd; shell_fd < maximum_fd; shell_fd++)
     if (descriptor_from_fd_number(shell_fd) == KOSH_INVALID_FD) return shell_fd;
+
   return -1;
 }
 
@@ -848,11 +893,14 @@ fn get_current_user() -> Maybe<String>
   if (GetLastError() == ERROR_INSUFFICIENT_BUFFER) {
     ArrayList<wchar_t> buffer{heap_allocator()};
     buffer.reserve(size);
+
     for (DWORD i = 0; i < size; i++)
       buffer.push(L'\0');
+
     if (GetUserNameW(buffer.begin(), &size))
       return wide_to_utf8(buffer.begin(), size - 1, heap_allocator());
   }
+
   return koshka::None;
 }
 
@@ -864,6 +912,7 @@ fn get_hostname() throws -> Maybe<String>
   DWORD size = countof(buffer);
   if (GetComputerNameW(buffer, &size))
     return wide_to_utf8(buffer, size, heap_allocator());
+
   return koshka::None;
 }
 
@@ -876,6 +925,7 @@ static fn ensure_winsock_started() wontthrow -> bool
   WSADATA data{};
   is_started = WSAStartup(MAKEWORD(2, 2), &data) == 0;
   did_try = true;
+
   return is_started;
 }
 
@@ -884,19 +934,20 @@ fn network_interface_addresses() throws -> ArrayList<network_interface_address>
   let result = ArrayList<network_interface_address>{heap_allocator()};
   if (!ensure_winsock_started()) return result;
 
-  ULONG buffer_bytes = 16384;
+  ULONG buffer_byte_count = 16384;
   ArrayList<u64> storage{heap_allocator()};
   IP_ADAPTER_ADDRESSES *adapters = nullptr;
   ULONG query_status = ERROR_BUFFER_OVERFLOW;
+
   for (usize attempt_count = 0; attempt_count < 4; attempt_count++) {
-    storage.reserve((static_cast<usize>(buffer_bytes) + sizeof(u64) - 1) /
+    storage.reserve((static_cast<usize>(buffer_byte_count) + sizeof(u64) - 1) /
                     sizeof(u64));
     adapters = reinterpret_cast<IP_ADAPTER_ADDRESSES *>(storage.begin());
     query_status =
         GetAdaptersAddresses(AF_UNSPEC,
                              GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST |
                                  GAA_FLAG_SKIP_DNS_SERVER,
-                             nullptr, adapters, &buffer_bytes);
+                             nullptr, adapters, &buffer_byte_count);
     if (query_status != ERROR_BUFFER_OVERFLOW) break;
   }
 
@@ -944,6 +995,7 @@ fn network_interface_addresses() throws -> ArrayList<network_interface_address>
 fn default_network_interface(Allocator allocator) throws -> Maybe<String>
 {
   unused(allocator);
+
   return None;
 }
 
@@ -970,6 +1022,7 @@ fn read_network_interface_statistics() throws
       static_cast<u32>(network_statistics_field::ReceiveLinkSpeed) |
       static_cast<u32>(network_statistics_field::TransmitLinkSpeed) |
       static_cast<u32>(network_statistics_field::TransmitQueueLength);
+
   for (ULONG index = 0; index < table->NumEntries; index++) {
     let const &row = table->Table[index];
     let const interface_name = wide_to_utf8(
@@ -1001,6 +1054,7 @@ fn read_tcp_statistics(tcp_statistics &statistics) wontthrow -> bool
 {
   bool has_statistics = false;
   constexpr ULONG FAMILIES[] = {AF_INET, AF_INET6};
+
   for (let const family : FAMILIES) {
     MIB_TCPSTATS native{};
     if (GetTcpStatisticsEx(&native, family) != NO_ERROR) continue;
@@ -1043,6 +1097,7 @@ fn network_sockets(network_socket_process_mode process_mode) throws
     -> ArrayList<network_socket_entry>
 {
   unused(process_mode);
+
   return ArrayList<network_socket_entry>{heap_allocator()};
 }
 
@@ -1062,6 +1117,7 @@ fn get_processor_counts() wontthrow -> processor_counts
     get_process_default_cpu_sets_fn function = nullptr;
     static_assert(sizeof(function) == sizeof(address));
     __builtin_memcpy(&function, &address, sizeof(function));
+
     return function;
   }();
   if (get_process_default_cpu_sets != nullptr)
@@ -1096,6 +1152,7 @@ fn get_processor_counts() wontthrow -> processor_counts
   }
   if (counts.configured_count < counts.online_count)
     counts.configured_count = counts.online_count;
+
   return counts;
 }
 
@@ -1105,6 +1162,7 @@ fn get_home_directory() -> Maybe<Path>
     return Path{StringView{*home}};
   if (Maybe<String> home = get_environment_variable("USERPROFILE"))
     return Path{StringView{*home}};
+
   return koshka::None;
 }
 
@@ -1127,6 +1185,7 @@ fn get_system_koshconf_path() throws -> Maybe<Path>
 
   path.append("kosh");
   path.append("kosh.conf");
+
   return path;
 }
 
@@ -1175,12 +1234,14 @@ fn is_stderr_a_tty() wontthrow -> bool { return is_fd_a_tty(KOSH_STDERR); }
 fn is_fd_a_tty(descriptor fd) wontthrow -> bool
 {
   DWORD console_mode = 0;
+
   return GetConsoleMode(fd, &console_mode) != FALSE;
 }
 
 fn terminal_name(descriptor fd) throws -> Maybe<String>
 {
   if (!is_fd_a_tty(fd)) return None;
+
   return String{"console"};
 }
 
@@ -1193,10 +1254,12 @@ TerminalEchoGuard::TerminalEchoGuard(descriptor input,
   }
   if (GetConsoleMode(input, &m_original_mode) == FALSE) {
     m_did_succeed = false;
+
     return;
   }
   if (SetConsoleMode(input, m_original_mode & ~ENABLE_ECHO_INPUT) == FALSE) {
     m_did_succeed = false;
+
     return;
   }
 
@@ -1246,6 +1309,7 @@ fn free_aligned(opaque *pointer) wontthrow -> void { _aligned_free(pointer); }
 fn collate_compare(const String &left, const String &right) wontthrow -> int
 {
   if (left < right) return -1;
+
   return right < left ? 1 : 0;
 }
 
@@ -1290,6 +1354,7 @@ fn code_point_is_in_class(StringView class_name, u32 code_point) wontthrow
   name[class_name.length] = '\0';
 
   let const kind = wctype(name);
+
   return kind != 0 && iswctype(static_cast<wint_t>(code_point), kind) != 0;
 }
 
@@ -1416,6 +1481,7 @@ windows_system_configuration_value(system_configuration_key key) wontthrow
   case system_configuration_key::XOpenVersion:
   case system_configuration_key::Count: return None;
   }
+
   return None;
 }
 
@@ -1424,6 +1490,7 @@ fn query_system_configuration(system_configuration_key key) wontthrow
 {
   let const value = windows_system_configuration_value(key);
   if (!value.has_value()) return {configuration_query_status::Undefined, 0};
+
   return {configuration_query_status::Value, *value};
 }
 
@@ -1460,6 +1527,7 @@ static fn windows_path_configuration_value(StringView path,
     {
       return None;
     }
+
     return static_cast<i64>(maximum_component_length);
   }
   case path_configuration_key::NoTrunc: return 1;
@@ -1478,6 +1546,7 @@ static fn windows_path_configuration_value(StringView path,
   case path_configuration_key::TimestampResolution:
   case path_configuration_key::Count: return None;
   }
+
   return None;
 }
 
@@ -1490,6 +1559,7 @@ fn query_path_configuration(StringView path,
   if (value.has_value()) return {configuration_query_status::Value, *value};
   if (GetLastError() != ERROR_SUCCESS)
     return {configuration_query_status::Error, 0};
+
   return {configuration_query_status::Undefined, 0};
 }
 
@@ -1504,6 +1574,7 @@ fn path_component_length(StringView component) wontthrow -> Maybe<usize>
 {
   if (component.length > static_cast<usize>(INT_MAX)) {
     SetLastError(ERROR_FILENAME_EXCED_RANGE);
+
     return None;
   }
   if (component.is_empty()) return 0;
@@ -1512,6 +1583,7 @@ fn path_component_length(StringView component) wontthrow -> Maybe<usize>
       MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, component.data,
                           static_cast<int>(component.length), nullptr, 0);
   if (wide_length <= 0) return None;
+
   return static_cast<usize>(wide_length);
 }
 
@@ -1519,6 +1591,7 @@ fn get_resource_limit(resource_kind kind) wontthrow -> Maybe<resource_limit>
 {
   unused(kind);
   SetLastError(ERROR_NOT_SUPPORTED);
+
   return None;
 }
 
@@ -1528,6 +1601,7 @@ fn set_resource_limit(const resource_limit &limit, resource_kind kind) wontthrow
   unused(kind);
   unused(limit);
   SetLastError(ERROR_NOT_SUPPORTED);
+
   return false;
 }
 fn shell_fd_is_a_tty(int shell_fd) wontthrow -> bool
@@ -1550,6 +1624,7 @@ fn get_terminal_dimensions(descriptor output) wontthrow
   if (width <= 0 || height <= 0) {
     return None;
   }
+
   return terminal_dimensions{static_cast<u32>(width), static_cast<u32>(height)};
 }
 
@@ -1562,6 +1637,7 @@ fn terminal_settings(descriptor terminal, Allocator allocator,
     char encoded[32];
     let const length = std::snprintf(encoded, sizeof(encoded), "win32:%08lx\n",
                                      static_cast<unsigned long>(console_mode));
+
     return String{
         allocator, StringView{encoded, static_cast<usize>(length)}
     };
@@ -1576,6 +1652,7 @@ fn terminal_settings(descriptor terminal, Allocator allocator,
   if (mode == terminal_settings_output_mode::All)
     output += "; rows 0; columns 0";
   output += '\n';
+
   return output;
 }
 
@@ -1592,6 +1669,7 @@ fn apply_terminal_settings(descriptor terminal,
   DWORD mode = 0;
   if (GetConsoleMode(terminal, &mode) == FALSE)
     return {terminal_settings_apply_kind::SystemError, 0};
+
   for (usize setting_position = 0; setting_position < settings.count();
        setting_position++)
   {
@@ -1621,8 +1699,10 @@ fn apply_terminal_settings(descriptor terminal,
     else
       mode |= *flag;
   }
+
   if (SetConsoleMode(terminal, mode) == FALSE)
     return {terminal_settings_apply_kind::SystemError, 0};
+
   return {terminal_settings_apply_kind::Success, 0};
 }
 
@@ -1634,6 +1714,7 @@ fn has_environment_variable(StringView key) -> bool
   SetLastError(ERROR_SUCCESS);
   let const required_size =
       GetEnvironmentVariableW(wide_key->begin(), nullptr, 0);
+
   return required_size != 0 || GetLastError() != ERROR_ENVVAR_NOT_FOUND;
 }
 
@@ -1663,6 +1744,7 @@ fn get_environment_variable(StringView key) -> Maybe<String>
   if (value_length == 0 || value_length >= required_size) {
     return koshka::None;
   }
+
   return wide_to_utf8(buffer.begin(), static_cast<usize>(value_length),
                       heap_allocator());
 }
@@ -1675,12 +1757,15 @@ static fn find_environment_spelling(const wchar_t *wide_key) throws
   defer { FreeEnvironmentStringsW(block); };
 
   let const key_length = static_cast<int>(wcslen(wide_key));
+
   for (wchar_t *entry = block; *entry != L'\0';) {
     usize pair_length = 0;
+
     while (entry[pair_length] != L'\0')
       pair_length++;
 
     usize name_length = 0;
+
     while (name_length < pair_length && entry[name_length] != L'=') {
       name_length++;
     }
@@ -1691,9 +1776,12 @@ static fn find_environment_spelling(const wchar_t *wide_key) throws
     {
       ArrayList<wchar_t> spelling{heap_allocator()};
       spelling.reserve(name_length + 1);
+
       for (usize index = 0; index < name_length; index++)
         spelling.push(entry[index]);
+
       spelling.push(L'\0');
+
       return spelling;
     }
 
@@ -1739,6 +1827,7 @@ fn get_environment_spelling(StringView key) -> String
   let const spelling =
       wide_to_utf8(existing_spelling->begin(), existing_spelling->count() - 1,
                    heap_allocator());
+
   return spelling.has_value() ? String{spelling->view()} : String{key};
 }
 
@@ -1779,14 +1868,17 @@ fn for_each_environment_name(opaque *context,
 
   for (wchar_t *entry = block; *entry != L'\0';) {
     usize pair_length = 0;
+
     while (entry[pair_length] != L'\0')
       pair_length++;
 
     if (entry[0] != L'=') {
       usize name_length = 0;
+
       while (name_length < pair_length && entry[name_length] != L'=') {
         name_length++;
       }
+
       let name = wide_to_utf8(entry, name_length, heap_allocator());
       if (name.has_value()) callback(context, name->view());
     }
@@ -1801,6 +1893,7 @@ fn environment_names() -> ArrayList<String>
   for_each_environment_name(&names, [](opaque *context, StringView name) {
     static_cast<ArrayList<String> *>(context)->push(String{name});
   });
+
   return names;
 }
 
@@ -1821,6 +1914,7 @@ fn FileWatcher::wait(f64 timeout_seconds) wontthrow -> void
   constexpr f64 SLICE_SECONDS = 0.1;
 
   f64 remaining_seconds = timeout_seconds;
+
   while (remaining_seconds > 0.0 && !INTERRUPT_REQUESTED) {
     let const slice_seconds =
         remaining_seconds < SLICE_SECONDS ? remaining_seconds : SLICE_SECONDS;
@@ -1863,9 +1957,11 @@ fn register_platform_flags(FlagList &flags) throws -> void { unused(flags); }
 static fn decode_subshell_transport_u32(const char *bytes) wontthrow -> u32
 {
   u32 value = 0;
+
   for (usize byte_position = 0; byte_position < sizeof(value); byte_position++)
     value |= static_cast<u32>(static_cast<u8>(bytes[byte_position]))
              << (byte_position * 8U);
+
   return value;
 }
 
@@ -1977,6 +2073,7 @@ static fn read_subshell_transport_exact(descriptor pipe, opaque *output,
 {
   let bytes = static_cast<char *>(output);
   usize position = 0;
+
   while (position < length) {
     let const read_count = read_fd(pipe, bytes + position, length - position);
     if (!read_count.has_value() || *read_count == 0) {
@@ -1984,15 +2081,18 @@ static fn read_subshell_transport_exact(descriptor pipe, opaque *output,
     }
     position += *read_count;
   }
+
   return true;
 }
 
 static fn decode_subshell_transport_u64(const char *bytes) wontthrow -> u64
 {
   u64 value = 0;
+
   for (usize byte_position = 0; byte_position < sizeof(value); byte_position++)
     value |= static_cast<u64>(static_cast<u8>(bytes[byte_position]))
              << (byte_position * 8U);
+
   return value;
 }
 
@@ -2049,6 +2149,7 @@ static fn build_owner_only_security(PINIT_ONCE, PVOID, PVOID *) -> BOOL
   security.attributes.lpSecurityDescriptor = &security.descriptor;
   security.attributes.bInheritHandle = FALSE;
   security.is_ready = true;
+
   return TRUE;
 }
 
@@ -2062,20 +2163,21 @@ static fn get_owner_only_security() wontthrow -> SECURITY_ATTRIBUTES *
 }
 
 static fn create_private_pipe(const wchar_t *path, DWORD open_mode,
-                              DWORD instance_count, DWORD outbound_bytes,
-                              DWORD inbound_bytes) wontthrow -> HANDLE
+                              DWORD instance_count, DWORD outbound_byte_count,
+                              DWORD inbound_byte_count) wontthrow -> HANDLE
 {
   let const security = get_owner_only_security();
   if (security == nullptr) {
     SetLastError(ERROR_INVALID_SECURITY_DESCR);
+
     return INVALID_HANDLE_VALUE;
   }
 
   return CreateNamedPipeW(path, open_mode,
                           PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT |
                               PIPE_REJECT_REMOTE_CLIENTS,
-                          instance_count, outbound_bytes, inbound_bytes, 0,
-                          security);
+                          instance_count, outbound_byte_count,
+                          inbound_byte_count, 0, security);
 }
 
 static fn receive_subshell_bootstrap() wontthrow -> void
@@ -2127,6 +2229,7 @@ static fn receive_subshell_bootstrap() wontthrow -> void
       output.reserve(length);
       char buffer[4096];
       usize remaining_length = length;
+
       while (remaining_length > 0) {
         let const requested_length = remaining_length < sizeof(buffer)
                                          ? remaining_length
@@ -2143,6 +2246,7 @@ static fn receive_subshell_bootstrap() wontthrow -> void
     do_read_bytes(SUBSHELL_BOOTSTRAP.source_origin, origin_length);
 
     SUBSHELL_BOOTSTRAP.processes.reserve(process_count);
+
     for (usize process_index = 0; process_index < process_count;
          process_index++)
     {
@@ -2157,6 +2261,7 @@ static fn receive_subshell_bootstrap() wontthrow -> void
       SUBSHELL_BOOTSTRAP.processes.push(
           reinterpret_cast<process>(static_cast<uintptr>(process_value)));
     }
+
     SUBSHELL_BOOTSTRAP.source_length = source_length;
     SUBSHELL_BOOTSTRAP.evaluation_mode =
         static_cast<root_evaluation_mode>(evaluation_mode);
@@ -2193,6 +2298,7 @@ fn initialize_platform_runtime() wontthrow -> void
   if (!is_internal_child) {
     SetEnvironmentVariableW(internal::STATE_NAMED_PIPE_WIDE, nullptr);
     inherited_subshell_state::clear_environment();
+
     return;
   }
 
@@ -2214,11 +2320,14 @@ fn wmain(int argc, wchar_t **wide_argv) -> int
   let narrow_arguments =
       koshka::ArrayList<koshka::String>{koshka::heap_allocator()};
   narrow_arguments.reserve(static_cast<usize>(argc));
+
   for (int argument_position = 0; argument_position < argc; argument_position++)
   {
     usize wide_length = 0;
+
     while (wide_argv[argument_position][wide_length] != L'\0')
       wide_length++;
+
     let utf8 = koshka::os::wide_to_utf8(wide_argv[argument_position],
                                         wide_length, koshka::heap_allocator());
     if (!utf8.has_value()) return 1;
@@ -2227,8 +2336,11 @@ fn wmain(int argc, wchar_t **wide_argv) -> int
 
   let narrow_argv = koshka::ArrayList<char *>{koshka::heap_allocator()};
   narrow_argv.reserve(static_cast<usize>(argc) + 1);
+
   for (koshka::String &argument : narrow_arguments)
     narrow_argv.push(const_cast<char *>(argument.c_str()));
+
   narrow_argv.push(nullptr);
+
   return kosh_main(argc, narrow_argv.begin());
 }

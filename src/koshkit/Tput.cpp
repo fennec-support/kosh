@@ -65,6 +65,7 @@ fn Tput::execute(const ExecContext &ec, EvalContext &cxt,
   if (let const value = STRING_CAPABILITIES.find(capability); value.has_value())
   {
     ec.print_to_stdout(*value);
+
     return 0;
   }
   if (capability == "longname") {
@@ -75,6 +76,7 @@ fn Tput::execute(const ExecContext &ec, EvalContext &cxt,
                                                        : StringView{"unknown"};
     ec.print_to_stdout(terminal_type);
     ec.print_to_stdout(" terminal\n");
+
     return 0;
   }
   if (capability == "cup") {
@@ -86,12 +88,14 @@ fn Tput::execute(const ExecContext &ec, EvalContext &cxt,
       KOSHKIT_REPORT_ERROR_AT(
           operand_locations[1], "invalid row '" + operands[1] + "'",
           "use a decimal integer from 0 through 18446744073709551614");
+
       return 1;
     }
     if (column.is_error() || column.value() == UINT64_MAX) {
       KOSHKIT_REPORT_ERROR_AT(
           operand_locations[2], "invalid column '" + operands[2] + "'",
           "use a decimal integer from 0 through 18446744073709551614");
+
       return 1;
     }
 
@@ -101,6 +105,7 @@ fn Tput::execute(const ExecContext &ec, EvalContext &cxt,
     output += String::from(column.value() + 1, cxt.scratch_allocator());
     output += 'H';
     ec.print_to_stdout(output);
+
     return 0;
   }
   if (capability == "cols" || capability == "lines") {
@@ -112,8 +117,10 @@ fn Tput::execute(const ExecContext &ec, EvalContext &cxt,
                               cxt.scratch_allocator());
     output += '\n';
     ec.print_to_stdout(output);
+
     return 0;
   }
+
   return 1;
 }
 

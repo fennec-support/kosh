@@ -72,6 +72,7 @@ fn EvalContext::set_subshell_depth(usize depth) wontthrow -> void
 fn EvalContext::leave_subshell() wontthrow -> void
 {
   ASSERT(execution_store().subshell_depth() > 0);
+
   while (!subshell_store().saved_descriptors().is_empty() &&
          subshell_store().saved_descriptors().back().depth ==
              execution_store().subshell_depth())
@@ -83,6 +84,7 @@ fn EvalContext::leave_subshell() wontthrow -> void
     subshell_store().saved_descriptors().remove(
         subshell_store().saved_descriptors().count() - 1);
   }
+
   execution_store().subshell_depth()--;
   lower_trap_depths_to_current();
   LOG(Debug, "left a subshell, depth now %zu",
@@ -92,6 +94,7 @@ fn EvalContext::leave_subshell() wontthrow -> void
 fn EvalContext::snapshot_subshell_descriptor(i32 shell_fd) throws -> void
 {
   if (execution_store().subshell_depth() == 0) return;
+
   for (let const &entry : subshell_store().saved_descriptors()) {
     if (entry.depth == execution_store().subshell_depth() &&
         entry.saved.shell_fd == shell_fd)
@@ -99,6 +102,7 @@ fn EvalContext::snapshot_subshell_descriptor(i32 shell_fd) throws -> void
       return;
     }
   }
+
   LOG(Debug,
       "backing up descriptor %d before a subshell exec moves it at depth %zu",
       shell_fd, execution_store().subshell_depth());
@@ -142,6 +146,7 @@ fn EvalContext::release_finished_coprocess() throws -> void
 
   let &table = job_table_store();
   table.update_jobs();
+
   for (let const &entry : table.jobs()) {
     if (entry.process_id == coprocess.process_id &&
         entry.state != job::State::Done)
@@ -149,10 +154,12 @@ fn EvalContext::release_finished_coprocess() throws -> void
       return;
     }
   }
+
   for (let const process : table.detached_job_processes())
     if (os::process_has_id(process, coprocess.process_id)) return;
 
   LOG(Debug, "releasing the finished coprocess '%s'", coprocess.name.c_str());
+
   for (let const shell_fd : {coprocess.read_fd, coprocess.write_fd}) {
     if (shell_fd >= 0) unused(os::close_shell_fd(shell_fd));
   }
@@ -172,6 +179,7 @@ fn EvalContext::hide_coprocess_descriptors() throws -> void
       execution_store().subshell_depth());
 
   let const coprocess = subshell_store().coprocess();
+
   for (let const shell_fd : {coprocess.read_fd, coprocess.write_fd}) {
     if (shell_fd >= 0) snapshot_subshell_descriptor(shell_fd);
   }
@@ -208,6 +216,7 @@ fn EvalContext::request_loop_control(control_flow::Kind kind, i64 level,
 {
   if (execution_store().loop_depth() == 0) {
     LOG(Debug, "loop control requested outside a loop, ignored");
+
     return;
   }
   LOG(All, "loop control requested, level %lld of depth %zu", (long long) level,
@@ -358,7 +367,7 @@ fn EvalContext::print_source_backtrace(Maybe<SourceLocation> error_location,
   }
 
   let const do_site_repeat_error = [&](SourceLocation site,
-                                       const resolved_render_source &resolved) {
+                                       const ResolvedRenderSource &resolved) {
     if (!error_location.has_value()) return false;
 
     if (!error_site.has_value() || resolved.text == nullptr) {
@@ -388,7 +397,7 @@ fn EvalContext::print_source_backtrace(Maybe<SourceLocation> error_location,
   };
   let entries = ArrayList<backtrace_entry>{heap_allocator()};
   let const do_add_site = [&](backtrace_entry entry,
-                              const resolved_render_source &resolved) {
+                              const ResolvedRenderSource &resolved) {
     if (resolved.text == nullptr) return;
 
     entry.text = resolved.text;
@@ -402,6 +411,7 @@ fn EvalContext::print_source_backtrace(Maybe<SourceLocation> error_location,
   usize deferral_index = static_cast<usize>(-1);
   usize frame_index = source_store().source_frames().count();
   usize call_index = function_store().call_frames().count();
+
   while (frame_index > 0 || call_index > 0) {
     let const is_call_next =
         call_index > 0 &&
@@ -696,6 +706,7 @@ fn EvalContext::retain_loop_redirect_fd(i32 target_fd, const String &path,
       target_fd, mode, String{heap_allocator(), path.view()},
         fd
   });
+
   return true;
 }
 
@@ -727,6 +738,7 @@ fn EvalContext::suggest_similar_variable_name(StringView name) const throws
 
   let dynamic_names = ArrayList<StringView>{heap_allocator()};
   append_dynamic_variable_names(dynamic_names);
+
   for (let const dynamic_name : dynamic_names)
     suggestion.consider(dynamic_name);
 
@@ -745,6 +757,7 @@ fn EvalContext::sorted_variable_assignments() const throws
         entry.append(value);
         assignments.push(steal(entry));
       });
+
   return steal(assignments).make_sorted(sort_order::ascending);
 }
 
@@ -979,6 +992,7 @@ static fn find_wire_source_name(ArrayList<u32> &names, u32 name_index) throws
   }
 
   names.push(name_index);
+
   return static_cast<u32>(names.count());
 }
 
@@ -986,6 +1000,7 @@ static fn append_wire_source_names(String &output,
                                    const ArrayList<u32> &names) throws -> void
 {
   append_subshell_bootstrap_u32(output, static_cast<u32>(names.count()));
+
   for (let const name_index : names) {
     let const kind = source_identity_kind_at(name_index);
     output.push(static_cast<char>(kind));
@@ -1070,10 +1085,13 @@ fn VariableStore::append_wire(String &output) const throws -> void
     if (m_bash_arguments.is_active()) {
       append_subshell_bootstrap_u32(
           payload, static_cast<u32>(m_bash_arguments.frame_counts().count()));
+
       for (let const argument_count : m_bash_arguments.frame_counts())
         append_subshell_bootstrap_u32(payload, argument_count);
+
       append_subshell_bootstrap_u32(
           payload, static_cast<u32>(m_bash_arguments.values().count()));
+
       for (let const &argument : m_bash_arguments.values())
         append_subshell_bootstrap_text(payload, argument.view());
     } else {
@@ -1112,6 +1130,7 @@ fn FunctionStore::append_wire(String &output) const throws -> void
     append_subshell_bootstrap_u64(payload, static_cast<u64>(m_call_depth));
     append_subshell_bootstrap_u32(payload,
                                   static_cast<u32>(m_call_frames.count()));
+
     for (let const &call_frame : m_call_frames)
       append_subshell_bootstrap_text(payload, call_frame.name.view());
 
@@ -1154,9 +1173,11 @@ fn ScopeStore::append_wire(String &output) const throws -> void
   append_wire_section(output, wire_section::Scopes, [&](String &payload) {
     append_subshell_bootstrap_u32(payload,
                                   static_cast<u32>(m_local_scope_depth));
+
     for (usize depth = 0; depth < m_local_scope_depth; depth++) {
       let const &frame = m_local_scopes[depth];
       append_subshell_bootstrap_u32(payload, static_cast<u32>(frame.count()));
+
       for (let const &binding : frame) {
         u8 flags = 0;
         if (binding.previous_value.has_value())
@@ -1180,6 +1201,7 @@ fn ScopeStore::append_wire(String &output) const throws -> void
           append_subshell_bootstrap_u32(
               payload,
               static_cast<u32>(binding.previous_indexed_array->count()));
+
           for (let const &element : *binding.previous_indexed_array)
             append_subshell_bootstrap_text(payload, element.view());
         }
@@ -1189,6 +1211,7 @@ fn ScopeStore::append_wire(String &output) const throws -> void
           append_subshell_bootstrap_u32(
               payload,
               static_cast<u32>(binding.previous_associative_keys.count()));
+
           for (usize index = 0;
                index < binding.previous_associative_keys.count(); index++)
           {
@@ -1202,6 +1225,7 @@ fn ScopeStore::append_wire(String &output) const throws -> void
                binding.previous_sparse_values.count());
         append_subshell_bootstrap_u32(
             payload, static_cast<u32>(binding.previous_sparse_indices.count()));
+
         for (usize index = 0; index < binding.previous_sparse_indices.count();
              index++)
         {
@@ -1237,6 +1261,7 @@ fn ProgramResolver::append_wire(String &output) const throws -> void
                            : NO_BARE_PROGRAM_PATH);
           append_subshell_bootstrap_u32(payload,
                                         static_cast<u32>(entry.paths.count()));
+
           for (let const &cached : entry.paths) {
             payload.push(static_cast<char>(cached.extension));
             append_subshell_bootstrap_text(payload, cached.path.view());
@@ -1293,6 +1318,7 @@ fn JobTable::append_wire(String &output,
       if (bootstrap.processes.count() >= UINT32_MAX) throw std::bad_alloc{};
       let const process_index = static_cast<u32>(bootstrap.processes.count());
       bootstrap.processes.push(process);
+
       return process_index;
     };
 
@@ -1302,6 +1328,7 @@ fn JobTable::append_wire(String &output,
     append_subshell_bootstrap_i32(payload, m_next_job_id);
 
     append_subshell_bootstrap_u32(payload, static_cast<u32>(m_jobs.count()));
+
     for (let const &child_job : m_jobs) {
       append_subshell_bootstrap_i32(payload, child_job.id);
       append_subshell_bootstrap_text(payload, child_job.command.view());
@@ -1322,12 +1349,14 @@ fn JobTable::append_wire(String &output,
       append_subshell_bootstrap_u32(
           payload,
           static_cast<u32>(child_job.earlier_pipeline_processes.count()));
+
       for (let const process : child_job.earlier_pipeline_processes)
         append_subshell_bootstrap_u32(payload, do_reference_process(process));
     }
 
     append_subshell_bootstrap_u32(
         payload, static_cast<u32>(m_detached_job_processes.count()));
+
     for (let const process : m_detached_job_processes)
       append_subshell_bootstrap_u32(payload, do_reference_process(process));
   });
@@ -1358,12 +1387,14 @@ struct subshell_bootstrap_reader
         length > get_remaining_length())
     {
       is_valid = false;
+
       return false;
     }
 
     payload =
         subshell_bootstrap_reader{bytes.substring_of_length(position, length)};
     position += length;
+
     return true;
   }
 
@@ -1371,6 +1402,7 @@ struct subshell_bootstrap_reader
   {
     if (!is_valid || get_remaining_length() < 1) {
       is_valid = false;
+
       return 0;
     }
 
@@ -1381,10 +1413,12 @@ struct subshell_bootstrap_reader
   {
     if (!is_valid || get_remaining_length() < sizeof(u32)) {
       is_valid = false;
+
       return 0;
     }
 
     u32 value = 0;
+
     for (usize byte_position = 0; byte_position < sizeof(value);
          byte_position++)
       value |= static_cast<u32>(static_cast<u8>(bytes[position++]))
@@ -1397,10 +1431,12 @@ struct subshell_bootstrap_reader
   {
     if (!is_valid || get_remaining_length() < sizeof(u64)) {
       is_valid = false;
+
       return 0;
     }
 
     u64 value = 0;
+
     for (usize byte_position = 0; byte_position < sizeof(value);
          byte_position++)
       value |= static_cast<u64>(static_cast<u8>(bytes[position++]))
@@ -1414,6 +1450,7 @@ struct subshell_bootstrap_reader
     let const bits = read_u32();
     i32 value = 0;
     __builtin_memcpy(&value, &bits, sizeof(value));
+
     return value;
   }
 
@@ -1422,6 +1459,7 @@ struct subshell_bootstrap_reader
     let const bits = read_u64();
     i64 value = 0;
     __builtin_memcpy(&value, &bits, sizeof(value));
+
     return value;
   }
 
@@ -1430,11 +1468,13 @@ struct subshell_bootstrap_reader
     let const text_length = static_cast<usize>(read_u32());
     if (!is_valid || text_length > get_remaining_length()) {
       is_valid = false;
+
       return {};
     }
 
     let const text = bytes.substring_of_length(position, text_length);
     position += text_length;
+
     return text;
   }
 };
@@ -1447,6 +1487,7 @@ static fn read_subshell_bootstrap_bool(subshell_bootstrap_reader &reader,
     return false;
   }
   value = encoded != 0;
+
   return true;
 }
 
@@ -1459,6 +1500,7 @@ static fn read_wire_source_names(subshell_bootstrap_reader &reader,
   }
 
   names.reserve(name_count);
+
   for (usize index = 0; index < name_count; index++) {
     let const kind = reader.read_u8();
     if (kind == static_cast<u8>(source_identity_kind::CommandString)) {
@@ -1489,6 +1531,7 @@ static fn read_wire_source_name(subshell_bootstrap_reader &reader,
   }
 
   name_index = position == 0 ? 0 : names[position - 1];
+
   return true;
 }
 
@@ -1501,6 +1544,7 @@ fn dynamic_clock_state::from_wire(subshell_bootstrap_reader &reader,
   clock.random_state = payload.read_u64();
   clock.shell_start_time = payload.read_i64();
   clock.seconds_base = payload.read_i64();
+
   return payload.is_fully_read();
 }
 
@@ -1519,6 +1563,7 @@ fn getopts_cursor::from_wire(subshell_bootstrap_reader &reader,
   }
 
   cursor.char_index = static_cast<usize>(char_index_bits);
+
   return true;
 }
 
@@ -1540,6 +1585,7 @@ fn definition_state::from_wire(subshell_bootstrap_reader &reader,
   state.mood = static_cast<mimic_mood>(mood);
   state.reporting = {warning_level, is_annoying_disabled,
                      is_diagnostics_disabled};
+
   return true;
 }
 
@@ -1573,6 +1619,7 @@ fn RuntimeState::from_wire(subshell_bootstrap_reader &reader,
   runtime.set_wire_flags(flags);
   runtime.m_shell_options = shell_options;
   runtime.m_shopt = shopt;
+
   return true;
 }
 
@@ -1585,6 +1632,7 @@ fn RuntimeControlStore::from_wire(subshell_bootstrap_reader &reader,
   wire.init_moods_sourcing = payload.read_u8();
   wire.initialized_moods = payload.read_u8();
   wire.suppressed_warnings = payload.read_u8();
+
   return payload.is_fully_read() &&
          (wire.init_moods_sourcing & ~VALID_MOOD_MASK) == 0 &&
          (wire.initialized_moods & ~VALID_MOOD_MASK) == 0 &&
@@ -1603,6 +1651,7 @@ fn ExecutionStore::from_wire(subshell_bootstrap_reader &reader,
   if (has_execution_string)
     wire.execution_string = String{heap_allocator(), payload.read_text()};
   wire.last_argument = String{heap_allocator(), payload.read_text()};
+
   return payload.is_fully_read();
 }
 
@@ -1640,12 +1689,14 @@ fn VariableStore::from_wire(subshell_bootstrap_reader &reader,
   }
   wire.bash_argument_frame_counts.reserve(frame_count);
   u64 value_count_from_frames = 0;
+
   for (usize index = 0; index < frame_count; index++) {
     let const argument_count = payload.read_u32();
     value_count_from_frames += argument_count;
     if (value_count_from_frames > UINT32_MAX) return false;
     wire.bash_argument_frame_counts.push(argument_count);
   }
+
   let const value_count = static_cast<usize>(payload.read_u32());
   if (!payload.is_valid || value_count != value_count_from_frames ||
       value_count > payload.get_remaining_length() / sizeof(u32))
@@ -1653,9 +1704,11 @@ fn VariableStore::from_wire(subshell_bootstrap_reader &reader,
     return false;
   }
   wire.bash_argument_values.reserve(value_count);
+
   for (usize index = 0; index < value_count; index++)
     wire.bash_argument_values.push(
         String{heap_allocator(), payload.read_text()});
+
   if (!wire.has_bash_argument_arrays &&
       (!wire.bash_argument_frame_counts.is_empty() ||
        !wire.bash_argument_values.is_empty()))
@@ -1695,6 +1748,7 @@ fn StartupStore::from_wire(subshell_bootstrap_reader &reader,
     return false;
   }
   wire.init_moods = String{heap_allocator(), payload.read_text()};
+
   return payload.is_fully_read();
 }
 
@@ -1724,6 +1778,7 @@ fn FunctionStore::from_wire(subshell_bootstrap_reader &reader,
   }
   wire.call_depth = static_cast<usize>(call_depth);
   wire.call_names.reserve(call_name_count);
+
   for (usize index = 0; index < call_name_count; index++)
     wire.call_names.push(String{heap_allocator(), payload.read_text()});
 
@@ -1815,11 +1870,13 @@ fn ScopeStore::from_wire(
   let const do_read_texts = [&](ArrayList<String> &texts, usize text_count)
                                 throws -> void {
     texts.reserve(text_count);
+
     for (usize index = 0; index < text_count; index++)
       texts.push(String{heap_allocator(), payload.read_text()});
   };
 
   local_scopes.reserve(depth);
+
   for (usize frame_index = 0; frame_index < depth; frame_index++) {
     let const binding_count = static_cast<usize>(payload.read_u32());
     if (!payload.is_valid || binding_count > payload.get_remaining_length() /
@@ -1830,6 +1887,7 @@ fn ScopeStore::from_wire(
 
     let frame = ArrayList<local_binding>{heap_allocator()};
     frame.reserve(binding_count);
+
     for (usize binding_index = 0; binding_index < binding_count;
          binding_index++)
     {
@@ -1890,6 +1948,7 @@ fn ScopeStore::from_wire(
         }
         binding.previous_associative_keys.reserve(pair_count);
         binding.previous_associative_values.reserve(pair_count);
+
         for (usize index = 0; index < pair_count; index++) {
           binding.previous_associative_keys.push(
               String{heap_allocator(), payload.read_text()});
@@ -1906,6 +1965,7 @@ fn ScopeStore::from_wire(
       }
       binding.previous_sparse_indices.reserve(sparse_count);
       binding.previous_sparse_values.reserve(sparse_count);
+
       for (usize index = 0; index < sparse_count; index++) {
         let const sparse_index = payload.read_u64();
         if (sparse_index > SIZE_MAX) return false;
@@ -1917,6 +1977,7 @@ fn ScopeStore::from_wire(
       if (!payload.is_valid) return false;
       frame.push(steal(binding));
     }
+
     local_scopes.push(steal(frame));
   }
 
@@ -1930,6 +1991,7 @@ fn TrapStore::from_wire(subshell_bootstrap_reader &reader,
   if (!reader.read_section(wire_section::Traps, payload)) return false;
 
   startup_ignored_signals = payload.read_u64();
+
   return payload.is_fully_read();
 }
 
@@ -1966,6 +2028,7 @@ fn ProgramResolver::from_wire(subshell_bootstrap_reader &reader,
     if (bare_path_position != NO_BARE_PROGRAM_PATH)
       entry.bare_path_position = static_cast<usize>(bare_path_position);
     entry.paths.reserve(path_count);
+
     for (usize path_index = 0; path_index < path_count; path_index++) {
       let const extension = payload.read_u8();
       let const path = payload.read_text();
@@ -1977,6 +2040,7 @@ fn ProgramResolver::from_wire(subshell_bootstrap_reader &reader,
       entry.paths.push(CachedPath{
           Path{path}, static_cast<os::program_extension>(extension)});
     }
+
     if (!execution_cache.insert(name, steal(entry))) return false;
   }
 
@@ -2025,6 +2089,7 @@ fn CompletionStore::from_wire(subshell_bootstrap_reader &reader,
     spec.action_mask = action_mask;
     spec.option_mask = option_mask;
     spec.argument_mask = argument_mask;
+
     return true;
   };
 
@@ -2138,12 +2203,14 @@ fn JobTable::from_wire(subshell_bootstrap_reader &reader,
     }
 
     child_job.earlier_pipeline_processes.reserve(earlier_process_count);
+
     for (usize process_index = 0; process_index < earlier_process_count;
          process_index++)
     {
       wire.process_references.push(payload.read_u32());
       child_job.earlier_pipeline_processes.push(KOSH_INVALID_PROCESS);
     }
+
     wire.jobs.push(steal(child_job));
   }
 
@@ -2154,6 +2221,7 @@ fn JobTable::from_wire(subshell_bootstrap_reader &reader,
     return false;
   }
   wire.detached_processes.reserve(detached_process_count);
+
   for (usize process_index = 0; process_index < detached_process_count;
        process_index++)
   {
@@ -2171,6 +2239,7 @@ fn job_table_wire::bind_processes(
 
   let referenced_processes = Bitset{heap_allocator()};
   referenced_processes.reset(bootstrap.processes.count());
+
   for (let const process_index : process_references) {
     if (process_index >= bootstrap.processes.count() ||
         referenced_processes[process_index])
@@ -2181,17 +2250,21 @@ fn job_table_wire::bind_processes(
   }
 
   usize process_reference_position = 0;
+
   for (let &child_job : jobs) {
     if (child_job.is_primary_process_active)
       child_job.pid =
           bootstrap.processes[process_references[process_reference_position++]];
+
     for (let &process : child_job.earlier_pipeline_processes)
       process =
           bootstrap.processes[process_references[process_reference_position++]];
   }
+
   for (let &process : detached_processes)
     process =
         bootstrap.processes[process_references[process_reference_position++]];
+
   ASSERT(process_reference_position == process_references.count());
 
   return true;
@@ -2291,6 +2364,7 @@ fn EvalContext::make_subshell_bootstrap() const throws -> os::subshell_bootstrap
       let const subscripts = collect_array_subscripts(name);
       let const values = collect_array_elements(name);
       ASSERT(subscripts.count() == values.count());
+
       for (usize index = 0; index < subscripts.count(); index++)
         do_append_assignment(name, subscripts[index].view(),
                              values[index].view());
@@ -2323,11 +2397,13 @@ fn EvalContext::make_subshell_bootstrap() const throws -> os::subshell_bootstrap
     source.append(function_source->view());
     source.push('\n');
   }
+
   for (let const &definition : scope_store().alias_definitions()) {
     source += "alias ";
     source.append(definition.view());
     source.push('\n');
   }
+
   trap_store().list(
       [&](StringView condition, const trap_definition &trap) throws {
         if (condition == "EXIT") return;
@@ -2339,10 +2415,12 @@ fn EvalContext::make_subshell_bootstrap() const throws -> os::subshell_bootstrap
       });
 
   source += "set --";
+
   for (let const &parameter : variable_store().positional_params()) {
     source.push(' ');
     append_shell_quoted_arg(source, parameter.view());
   }
+
   source.push('\n');
 
   let const working_directory = logical_working_directory(*this);
@@ -2351,6 +2429,7 @@ fn EvalContext::make_subshell_bootstrap() const throws -> os::subshell_bootstrap
     append_shell_quoted_arg(source,
                             variable_store().directory_stack()[0].view());
     source.push('\n');
+
     for (usize index = 1; index < variable_store().directory_stack().count();
          index++)
     {
@@ -2359,6 +2438,7 @@ fn EvalContext::make_subshell_bootstrap() const throws -> os::subshell_bootstrap
                               variable_store().directory_stack()[index].view());
       source += " >/dev/null\n";
     }
+
     source += "pushd ";
     append_shell_quoted_arg(source, working_directory.view());
     source += " >/dev/null\n";
@@ -2383,12 +2463,14 @@ fn EvalContext::make_subshell_bootstrap() const throws -> os::subshell_bootstrap
   source += "umask ";
   source += mask_text;
   source.push('\n');
+
   for (let const &stored_name : names) {
     if (!is_readonly(stored_name.view())) continue;
     source += "readonly ";
     source.append(stored_name.view());
     source.push('\n');
   }
+
   if (source.count() > UINT32_MAX) throw std::bad_alloc{};
   bootstrap.source_length = static_cast<u32>(source.count());
 
@@ -2413,6 +2495,7 @@ fn EvalContext::make_subshell_bootstrap() const throws -> os::subshell_bootstrap
   append_subshell_bootstrap_u32(source, SUBSHELL_BOOTSTRAP_VERSION);
   append_subshell_bootstrap_u32(source, static_cast<u32>(body.count()));
   source.append(body.view());
+
   return bootstrap;
 }
 
@@ -2463,6 +2546,7 @@ fn EvalContext::set_child_source_origin(
                                   find_wire_source_name(names, name_index));
     append_subshell_bootstrap_u32(output, static_cast<u32>(line));
     append_subshell_bootstrap_u32(output, static_cast<u32>(extra_line_count));
+
     return true;
   };
 
@@ -2540,6 +2624,7 @@ fn EvalContext::set_child_source_origin(
     append_subshell_bootstrap_text(output, before_body.substring(line_start));
     append_subshell_bootstrap_text(
         output, after_body.substring_of_length(0, suffix_length));
+
     return true;
   };
 
@@ -2590,6 +2675,7 @@ fn EvalContext::set_child_source_origin(
     append_subshell_bootstrap_u32(output, static_cast<u32>(length));
     append_subshell_bootstrap_text(
         output, text.substring_of_length(line_position.line_start, line_end));
+
     return true;
   };
 
@@ -2602,9 +2688,11 @@ fn EvalContext::set_child_source_origin(
   append_subshell_bootstrap_u32(frames, static_cast<u32>(call_frames.count()));
   append_subshell_bootstrap_u32(frames,
                                 static_cast<u32>(source_frames.count()));
+
   for (usize call_index = 0; call_index < call_frames.count(); call_index++) {
     let const &call_frame = call_frames[call_index];
     usize frame_limit = 0;
+
     while (frame_limit < source_frames.count() &&
            source_frames[frame_limit].function_call_depth <= call_index)
     {
@@ -2755,6 +2843,7 @@ fn EvalContext::register_inherited_source_origin(
     source_store().push_line_base(&window, usize{line_number} - 1);
     location = SourceLocation{column, length, name_index};
     do_register_extra_lines(window, extra_line_count, name_index, call_depth);
+
     return &window;
   };
 
@@ -2943,11 +3032,13 @@ fn EvalContext::apply_subshell_bootstrap(
   scope_store().apply_wire(steal(local_scopes));
   runtime_control_store().apply_wire(control);
   program_resolver().apply_wire(steal(execution_cache));
+
   for (let const &name : functions.call_names) {
     let const *storage = function_store().find_storage(name.view());
     push_function_call_name(
         name.view(), storage != nullptr ? *storage : FunctionBodyHandle{});
   }
+
   completion_store().restore(steal(completion));
   job_table_store().apply_wire(steal(jobs));
   job_table_store().inherit_parent_jobs(false);
@@ -2972,10 +3063,12 @@ fn EvalContext::apply_indirect_or_name_listing(StringView body) throws -> String
     let const array_name = body.substring_of_length(0, body.length - 3);
     let const subscripts = collect_array_subscripts(array_name);
     let out = String{scratch_allocator()};
+
     for (usize i = 0; i < subscripts.count(); i++) {
       if (i > 0) out.push(' ');
       out.append(subscripts[i].view());
     }
+
     return out;
   }
 
@@ -2984,10 +3077,12 @@ fn EvalContext::apply_indirect_or_name_listing(StringView body) throws -> String
     let const prefix = body.substring_of_length(0, body.length - 1);
     let const names = matching_prefix_names(prefix);
     let out = String{scratch_allocator()};
+
     for (usize i = 0; i < names.count(); i++) {
       if (i > 0) out.push(' ');
       out.append(names[i].view());
     }
+
     return out;
   }
 
@@ -2996,6 +3091,7 @@ fn EvalContext::apply_indirect_or_name_listing(StringView body) throws -> String
     if (runtime_state().error_unset())
       throw_script_fatal("Unable to expand '" + body +
                          "' because the parameter is not set");
+
     return String{scratch_allocator()};
   }
   let const target_view = target->view();
@@ -3009,6 +3105,7 @@ fn EvalContext::apply_indirect_or_name_listing(StringView body) throws -> String
   }
   if (!get_variable_value(target_view).has_value())
     report_unset_reference(*target);
+
   return expand_variable(target_view);
 }
 
@@ -3035,14 +3132,14 @@ cold fn EvalContext::make_stats_string() const throws -> String
     do_append_stat_line(name, value.view());
   };
 
-  const usize live_ast_arena_bytes =
+  const usize live_ast_arena_byte_count =
       arena_store().parse_arena() != nullptr
           ? arena_store().parse_arena()->bytes_used()
           : 0;
-  usize peak_ast_arena_bytes =
+  usize peak_ast_arena_byte_count =
       evaluation_metrics_store().peak_ast_arena_bytes();
-  if (live_ast_arena_bytes > peak_ast_arena_bytes)
-    peak_ast_arena_bytes = live_ast_arena_bytes;
+  if (live_ast_arena_byte_count > peak_ast_arena_byte_count)
+    peak_ast_arena_byte_count = live_ast_arena_byte_count;
 
   stats_text += "[Stats\n";
 
@@ -3061,8 +3158,8 @@ cold fn EvalContext::make_stats_string() const throws -> String
                        evaluation_metrics_store().total_expansion_count());
   do_append_count_line("Total nodes evaluated",
                        evaluation_metrics_store().total_expressions_executed());
-  do_append_size_line("AST arena used", live_ast_arena_bytes);
-  do_append_size_line("AST arena peak", peak_ast_arena_bytes);
+  do_append_size_line("AST arena used", live_ast_arena_byte_count);
+  do_append_size_line("AST arena peak", peak_ast_arena_byte_count);
   if (arena_store().parse_arena() != nullptr)
     do_append_size_line("AST arena capacity",
                         arena_store().parse_arena()->bytes_capacity());
@@ -3112,7 +3209,7 @@ cold fn EvalContext::make_stats_string() const throws -> String
   do_append_optional_count("Write calls", usage.write_call_count);
   do_append_optional_duration("User time", usage.user_nanos);
   do_append_optional_duration("System time", usage.system_nanos);
-  do_append_optional_size("Peak RSS", usage.peak_rss_bytes);
+  do_append_optional_size("Peak RSS", usage.peak_rss_byte_count);
   do_append_optional_count("Voluntary context switches",
                            usage.voluntary_context_switch_count);
   do_append_optional_count("Involuntary context switches",
@@ -3124,8 +3221,8 @@ cold fn EvalContext::make_stats_string() const throws -> String
   os::malloc_heap_stats heap_stats{};
   if (os::read_malloc_heap_stats(heap_stats)) {
     do_append_size_line("Malloc heap in use", heap_stats.bytes_in_use);
-    do_append_size_line("Malloc heap arena", heap_stats.arena_bytes);
-    do_append_size_line("Malloc heap mapped", heap_stats.mapped_bytes);
+    do_append_size_line("Malloc heap arena", heap_stats.arena_byte_count);
+    do_append_size_line("Malloc heap mapped", heap_stats.mapped_byte_count);
   }
 
   stats_text += "]";

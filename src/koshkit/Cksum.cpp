@@ -82,6 +82,7 @@ fn Cksum::execute(const ExecContext &ec, EvalContext &cxt,
       source_list_from_operands(operands, cxt.scratch_allocator());
   let source_states = ArrayList<checksum_source_state>{cxt.scratch_allocator()};
   source_states.reserve(sources.count());
+
   for (usize source_index = 0; source_index < sources.count(); source_index++)
     source_states.push({});
 
@@ -89,6 +90,7 @@ fn Cksum::execute(const ExecContext &ec, EvalContext &cxt,
   let chunks = ArrayList<SourceBatchReader::Chunk>{cxt.scratch_allocator()};
   usize next_output_index = 0;
   i32 status = 0;
+
   loop
   {
     let const read_result = reader.read_next(chunks);

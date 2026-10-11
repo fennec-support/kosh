@@ -30,13 +30,16 @@ pure fn is_constant_arithmetic_text(StringView text) wontthrow -> bool
     {
       bool is_member[256]{};
     } table;
+
     for (usize i = 0; i + 1 < sizeof(MEMBERS); i++)
       table.is_member[static_cast<u8>(MEMBERS[i])] = true;
+
     return table;
   }();
 
   static constexpr u64 MAXIMUM_FOLDED_GROWTH_OPERAND = 1024;
   usize growing_operator_count = 0;
+
   for (usize i = 0; i < text.length; i++) {
     if (!CONSTANT_BYTES.is_member[static_cast<u8>(text[i])]) return false;
 
@@ -50,6 +53,7 @@ pure fn is_constant_arithmetic_text(StringView text) wontthrow -> bool
     if (growing_operator_count > 1) return false;
 
     usize operand_position = i + 2;
+
     while (operand_position < text.length &&
            (text[operand_position] == ' ' || text[operand_position] == '\t'))
     {
@@ -58,6 +62,7 @@ pure fn is_constant_arithmetic_text(StringView text) wontthrow -> bool
 
     u64 operand = 0;
     usize digit_count = 0;
+
     while (operand_position < text.length && text[operand_position] >= '0' &&
            text[operand_position] <= '9')
     {
@@ -77,6 +82,7 @@ pure fn is_plain_integer_literal(StringView text) wontthrow -> bool
 {
   if (text.is_empty()) return false;
   let const start_position = text[0] == '-' ? usize{1} : usize{0};
+
   return text.substring(start_position).is_all_decimal_digits();
 }
 
@@ -90,6 +96,7 @@ pure fn is_split_eligible_variable_operand(const Token *token) wontthrow -> bool
   if (word.segments.count() != 1) return false;
 
   const WordSegment &segment = word.segments[0];
+
   return segment.kind == WordSegment::Kind::VariableReference &&
          segment.is_split_eligible();
 }
@@ -101,8 +108,10 @@ fn propagated_test_operand_value(const Token *token,
   if (is_split_eligible_variable_operand(token)) {
     LOG(All, "declining the test operand fold, the unquoted "
              "variable splits at run time");
+
     return None;
   }
+
   return propagated_literal_word_value(token, actx);
 }
 
@@ -116,6 +125,7 @@ fn constant_test_verdict(const ArrayList<const Token *> &args,
     let const value =
         propagated_test_operand_value(args[first_operand_index], actx);
     if (!value.has_value()) return None;
+
     return Maybe<bool>{!value->is_empty()};
   }
 
@@ -129,6 +139,7 @@ fn constant_test_verdict(const ArrayList<const Token *> &args,
     }
     if (*op == "-n") return Maybe<bool>{!arg->is_empty()};
     if (*op == "-z") return Maybe<bool>{arg->is_empty()};
+
     return None;
   }
 
@@ -144,6 +155,7 @@ fn constant_test_verdict(const ArrayList<const Token *> &args,
     }
     if (*op == "=") return Maybe<bool>{*lhs == *rhs};
     if (*op == "!=") return Maybe<bool>{*lhs != *rhs};
+
     return None;
   }
 
@@ -169,6 +181,7 @@ pure fn may_expand_assignment_tilde(StringView text) wontthrow -> bool
 fn literal_word_value(const Word &word) throws -> Maybe<String>
 {
   let value = String{heap_allocator()};
+
   for (let const &segment : word.segments) {
     switch (segment.kind) {
     case WordSegment::Kind::LiteralText:
@@ -179,6 +192,7 @@ fn literal_word_value(const Word &word) throws -> Maybe<String>
       for (usize i = 0; i < segment.text.count(); i++) {
         if (lexer::is_expandable_char(segment.text[i])) return None;
       }
+
       if (!segment.text.is_empty() && segment.text[0] == '~') {
         return None;
       }
@@ -192,6 +206,7 @@ fn literal_word_value(const Word &word) throws -> Maybe<String>
     default: return None;
     }
   }
+
   return value;
 }
 
@@ -200,6 +215,7 @@ fn literal_word_value(const Token *token) throws -> Maybe<String>
   ASSERT(token != nullptr);
 
   if (token->kind() != Token::Kind::Word) return None;
+
   return literal_word_value(
       static_cast<const tokens::WordToken *>(token)->word());
 }
@@ -214,6 +230,7 @@ fn command_word_literal(const Token *token) throws -> Maybe<String>
 
   let const &word = static_cast<const tokens::WordToken *>(token)->word();
   let name = String{heap_allocator()};
+
   for (let const &segment : word.segments) {
     if (segment.kind != WordSegment::Kind::LiteralText &&
         segment.kind != WordSegment::Kind::DoubleQuotedText &&
@@ -223,6 +240,7 @@ fn command_word_literal(const Token *token) throws -> Maybe<String>
     }
     name.append(segment.text.view());
   }
+
   return name;
 }
 
@@ -242,6 +260,7 @@ fn plain_variable_reference_name(const Token *token) wontthrow
   if (segment.kind != WordSegment::Kind::VariableReference) return None;
   let const name = segment.text.view();
   if (!lexer::word_is_variable_name(name)) return None;
+
   return name;
 }
 
@@ -259,8 +278,10 @@ fn propagated_literal_word_value(const Token *token,
   {
     LOG(All, "reading the recorded constant '%.*s' = '%s'",
         static_cast<int>(name->length), name->data, recorded->c_str());
+
     return recorded->clone();
   }
+
   return None;
 }
 
@@ -277,6 +298,7 @@ fn try_fold_constant_arithmetic(StringView expression) wontthrow -> Maybe<i64>
         "swallowed an arithmetic error while folding '%.*s', leaving the "
         "segment for the runtime path",
         static_cast<int>(expression.length), expression.data);
+
     return None;
   }
 }
@@ -295,6 +317,7 @@ fn try_fold_exact_constant_arithmetic(StringView expression) wontthrow
         "swallowed an exact arithmetic error while folding '%.*s', leaving "
         "the segment for the runtime path",
         static_cast<int>(expression.length), expression.data);
+
     return None;
   }
 }
@@ -309,6 +332,7 @@ fn try_fold_arithmetic_with_constants(StringView expression,
   try {
     let rewritten = String{heap_allocator()};
     usize i = 0;
+
     while (i < expression.length) {
       let const byte = expression[i];
       if (!lexer::is_variable_name_start(byte)) {
@@ -318,9 +342,11 @@ fn try_fold_arithmetic_with_constants(StringView expression,
       }
 
       usize start_position = i;
+
       while (i < expression.length && lexer::is_variable_name(expression[i])) {
         i++;
       }
+
       let const name =
           StringView{&expression.data[start_position], i - start_position};
 
@@ -329,6 +355,7 @@ fn try_fold_arithmetic_with_constants(StringView expression,
         LOG(All,
             "skipping the arithmetic fold, '%.*s' is not a recorded constant",
             static_cast<int>(name.length), name.data);
+
         return None;
       }
       if (!is_plain_integer_literal(recorded->view())) {
@@ -336,18 +363,21 @@ fn try_fold_arithmetic_with_constants(StringView expression,
             "skipping the arithmetic fold, the value of '%.*s' is not a plain "
             "integer",
             static_cast<int>(name.length), name.data);
+
         return None;
       }
       rewritten.append(recorded->view());
     }
 
     if (!is_constant_arithmetic_text(rewritten.view())) return None;
+
     return evaluate_constant_arithmetic_text(rewritten.view(),
                                              heap_allocator());
   } catch (const ErrorBase &) {
     LOG(All,
         "swallowed an arithmetic error while folding '%.*s' with constants",
         static_cast<int>(expression.length), expression.data);
+
     return None;
   }
 }
@@ -380,11 +410,13 @@ fn simple_command_static_verdict(const ArrayList<const Token *> &args,
   if (actx.functions.defined.contains(name->view())) {
     LOG(All, "declining the static verdict, a function shadows '%s'",
         name->c_str());
+
     return None;
   }
   if (actx.functions.aliases.contains(name->view())) {
     LOG(All, "declining the static verdict, an alias shadows '%s'",
         name->c_str());
+
     return None;
   }
 
@@ -396,10 +428,12 @@ fn simple_command_static_verdict(const ArrayList<const Token *> &args,
     if (args.count() != 1) return None;
     LOG(All, "the builtin '%s' always succeeds, verdict is true",
         name->c_str());
+
     return Maybe<bool>{true};
   case static_verdict_kind::always_false:
     if (args.count() != 1) return None;
     LOG(All, "the builtin 'false' always fails, verdict is false");
+
     return Maybe<bool>{false};
   case static_verdict_kind::test_like: {
     usize last_index = args.count();
@@ -410,6 +444,7 @@ fn simple_command_static_verdict(const ArrayList<const Token *> &args,
       }
       last_index -= 1;
     }
+
     return constant_test_verdict(args, 1, last_index - 1, actx);
   }
   }
@@ -458,6 +493,7 @@ pure fn classify_plain_literal(const Word &word) wontthrow -> Word::PlainLiteral
     }
     if (may_expand_assignment_tilde(only.text.view()))
       return Word::PlainLiteral::NotPlain;
+
     return Word::PlainLiteral::PlainUnquotedOneSegment;
   }
 
@@ -468,6 +504,7 @@ pure fn classify_plain_literal(const Word &word) wontthrow -> Word::PlainLiteral
       return Word::PlainLiteral::NotPlain;
     }
   }
+
   return Word::PlainLiteral::PlainNoSplit;
 }
 
@@ -497,6 +534,7 @@ pure fn arithmetic_has_side_effect(StringView text) wontthrow -> bool
       }
     }
   }
+
   return false;
 }
 
@@ -505,6 +543,7 @@ fn fold_constant_arithmetic_in_word(
     const SourceLocation &fallback_location) throws -> bool
 {
   bool did_fold = false;
+
   for (let const &segment : word.segments) {
     if (segment.kind != WordSegment::Kind::ArithmeticExpansion) continue;
     if (segment.has_optimizer_arithmetic_result()) continue;
@@ -539,6 +578,7 @@ fn fold_constant_arithmetic_in_word(
       }
     }
   }
+
   return did_fold;
 }
 
@@ -548,6 +588,7 @@ fn fold_constant_arithmetic_in_token(const Token *token,
   ASSERT(token != nullptr);
 
   if (token->kind() != Token::Kind::Word) return false;
+
   return fold_constant_arithmetic_in_word(
       static_cast<const tokens::WordToken *>(token)->word(), actx,
       token->source_location());
@@ -567,14 +608,17 @@ fn rule_fold_constant_arithmetic(const Expression *node,
       cmd != nullptr)
   {
     bool did_fold = false;
+
     for (let const t : cmd->args()) {
       if (fold_constant_arithmetic_in_token(t, actx)) did_fold = true;
     }
+
     for (let const &var : cmd->local_vars()) {
       if (fold_constant_arithmetic_in_word(var.get_value(), actx,
                                            node->source_location()))
         did_fold = true;
     }
+
     return did_fold;
   }
 
@@ -596,6 +640,7 @@ fn rule_dead_branch_elimination(const Expression *node,
           "the dead-branch fold stops, condition %zu is not statically "
           "decidable",
           i);
+
       return false;
     }
     if (*verdict) {
@@ -607,15 +652,18 @@ fn rule_dead_branch_elimination(const Expression *node,
         actx.report_diagnostic(diagnostic_id::optimizer_folded_branch,
                                node->source_location(), {index.view()});
       }
+
       return true;
     }
   }
+
   LOG(All, "every if condition is statically false, folding to the else body");
   clause->set_folded_branch(clause->branches().count());
   actx.optimizer_eliminated_count++;
   if (actx.options.should_report_optimizer_diagnostics)
     actx.report_diagnostic(diagnostic_id::optimizer_folded_else,
                            node->source_location());
+
   return true;
 }
 
@@ -631,6 +679,7 @@ fn rule_loop_elimination(const Expression *node, AnalysisContext &actx) throws
   if (!verdict.has_value()) {
     LOG(All,
         "the loop fold declines, the condition is not statically decidable");
+
     return false;
   }
 
@@ -638,6 +687,7 @@ fn rule_loop_elimination(const Expression *node, AnalysisContext &actx) throws
   if (body_would_run) {
     LOG(All,
         "the loop fold declines, the body would run under the static verdict");
+
     return false;
   }
 
@@ -649,6 +699,7 @@ fn rule_loop_elimination(const Expression *node, AnalysisContext &actx) throws
     actx.report_diagnostic(
         diagnostic_id::optimizer_folded_loop, node->source_location(),
         {loop_node->is_until() ? StringView{"until"} : StringView{"while"}});
+
   return true;
 }
 
@@ -670,6 +721,7 @@ fn rule_eliminate_compound_body(const Expression *node,
   if (actx.options.should_report_optimizer_diagnostics)
     actx.report_diagnostic(diagnostic_id::optimizer_eliminated_if,
                            node->source_location());
+
   return true;
 }
 
@@ -690,6 +742,7 @@ fn rule_eliminate_empty_for(const Expression *node,
   if (actx.options.should_report_optimizer_diagnostics)
     actx.report_diagnostic(diagnostic_id::optimizer_eliminated_for,
                            node->source_location());
+
   return true;
 }
 
@@ -732,6 +785,7 @@ fn rule_fold_cstyle_for(const Expression *node, AnalysisContext &actx) throws
       actx.report_diagnostic(diagnostic_id::optimizer_eliminated_cstyle_for,
                              node->source_location());
   }
+
   return true;
 }
 
@@ -753,15 +807,18 @@ fn optimize_node(const Expression *node, AnalysisContext &actx) throws -> void
 
   for (usize pass = 0; pass < MAX_OPTIMIZATION_PASSES; pass++) {
     bool did_any_rule_fire = false;
+
     for (let rule : OPTIMIZATION_RULES) {
       if (rule(node, actx)) did_any_rule_fire = true;
     }
+
     if (!did_any_rule_fire) return;
     LOG(All,
         "optimization pass %zu fired a rule, running another "
         "pass over the node",
         pass);
   }
+
   LOG(All, "the optimizer hit the pass cap of %zu on one node",
       MAX_OPTIMIZATION_PASSES);
 }

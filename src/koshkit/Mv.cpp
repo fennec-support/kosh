@@ -83,6 +83,7 @@ static fn move_across_devices(const ExecContext &ec, EvalContext &cxt,
   if (!is_source_symbolic_link && source_path.is_directory()) {
     move_directory_across_devices(ec, cxt, utility_name, source, target,
                                   allocator);
+
     return true;
   }
 
@@ -170,11 +171,13 @@ fn Mv::execute(const ExecContext &ec, EvalContext &cxt,
         ec, cxt, operand_locations[operands.count() - 1], args[0].view(),
         "the destination '" + String{cxt.scratch_allocator(), destination} +
             "' is not a directory, so it cannot hold several sources");
+
     return 1;
   }
 
   let output = String{cxt.scratch_allocator()};
   i32 status = 0;
+
   for (usize i = 0; i + 1 < operands.count(); i++) {
     let const source = operands[i].view();
     let target = String{cxt.scratch_allocator(), destination};
@@ -228,7 +231,9 @@ fn Mv::execute(const ExecContext &ec, EvalContext &cxt,
       output += "renamed '" + String{cxt.scratch_allocator(), source} +
                 "' -> '" + target + "'\n";
   }
+
   ec.print_to_stdout(output);
+
   return status;
 }
 

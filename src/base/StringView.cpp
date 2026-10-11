@@ -53,6 +53,7 @@ static fn narrow_integer(i64 value) throws -> ErrorOr<T>
     {
       return Error{"integer value out of range"};
     }
+
     return static_cast<T>(value);
   } else {
     if (value < 0 || static_cast<u64>(value) >
@@ -60,6 +61,7 @@ static fn narrow_integer(i64 value) throws -> ErrorOr<T>
     {
       return Error{"integer value out of range"};
     }
+
     return static_cast<T>(value);
   }
 }
@@ -137,6 +139,7 @@ fn StringView::find_substring(StringView needle, usize from) const wontthrow
   if (from > last_start) return None;
 
   let position = from;
+
   while (position <= last_start) {
     let const scan_length = last_start - position + 1;
     let const found =
@@ -157,6 +160,7 @@ fn StringView::substring(usize start) const wontthrow -> StringView
 {
   if (start >= length)
     return StringView{data == nullptr ? nullptr : data + length, 0};
+
   return StringView{data + start, length - start};
 }
 
@@ -188,7 +192,9 @@ fn StringView::next_ascii_whitespace_word(usize &position) const wontthrow
   while (position < length && is_ascii_whitespace(data[position])) {
     position++;
   }
+
   let const start_position = position;
+
   while (position < length && !is_ascii_whitespace(data[position])) {
     position++;
   }
@@ -199,6 +205,7 @@ fn StringView::next_ascii_whitespace_word(usize &position) const wontthrow
 fn StringView::starts_with(StringView prefix) const wontthrow -> bool
 {
   if (prefix.length > length) return false;
+
   return prefix.length == 0 ||
          byte_scan::are_bytes_equal(data, prefix.data, prefix.length);
 }

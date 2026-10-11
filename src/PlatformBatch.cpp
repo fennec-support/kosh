@@ -19,6 +19,7 @@ fn batch_operation::read(descriptor fd, char *buffer, usize byte_count,
   operation.m_primary.output_buffer = buffer;
   operation.byte_count = byte_count;
   operation.byte_offset = byte_offset;
+
   return operation;
 }
 
@@ -30,6 +31,7 @@ fn batch_operation::write(descriptor fd, const char *buffer, usize byte_count,
   operation.m_primary.input_buffer = buffer;
   operation.byte_count = byte_count;
   operation.byte_offset = byte_offset;
+
   return operation;
 }
 
@@ -40,6 +42,7 @@ fn batch_operation::write_current(descriptor fd, const char *buffer,
   operation.m_secondary.fd = fd;
   operation.m_primary.input_buffer = buffer;
   operation.byte_count = byte_count;
+
   return operation;
 }
 
@@ -49,6 +52,7 @@ fn batch_operation::lstat(const Path &path, file_status &status) wontthrow
   batch_operation operation{Kind::Lstat};
   operation.m_primary.path = &path;
   operation.m_secondary.status = &status;
+
   return operation;
 }
 
@@ -58,6 +62,7 @@ fn batch_operation::stat(const Path &path, file_status &status) wontthrow
   batch_operation operation{Kind::Stat};
   operation.m_primary.path = &path;
   operation.m_secondary.status = &status;
+
   return operation;
 }
 
@@ -65,6 +70,7 @@ fn batch_operation::exists(const Path &path) wontthrow -> batch_operation
 {
   batch_operation operation{Kind::Exists};
   operation.m_primary.path = &path;
+
   return operation;
 }
 
@@ -76,6 +82,7 @@ fn batch_operation::lstat_at(descriptor directory, const char *name,
   operation.m_secondary.status = &status;
   operation.byte_offset =
       batch_internal::encode_directory_descriptor(directory);
+
   return operation;
 }
 
@@ -134,6 +141,7 @@ static pure fn is_same_metadata_request(
         batch_internal::batch_operation_access::get_relative_name(left);
     let const *right_name =
         batch_internal::batch_operation_access::get_relative_name(right);
+
     return left_name != nullptr && right_name != nullptr &&
            std::strcmp(left_name, right_name) == 0;
   }
@@ -179,6 +187,7 @@ static fn find_canonical_operation_positions(
 {
   constexpr usize LINEAR_METADATA_LIMIT = 8;
   usize metadata_count = 0;
+
   for (let const &operation : operations)
     if (is_metadata_request(operation)) metadata_count++;
 
@@ -190,6 +199,7 @@ static fn find_canonical_operation_positions(
 
   if (metadata_count <= LINEAR_METADATA_LIMIT) {
     bool has_duplicate_metadata = false;
+
     for (usize left_index = 0; left_index < operations.count(); left_index++) {
       if (!is_metadata_request(operations[left_index])) continue;
 
@@ -203,6 +213,7 @@ static fn find_canonical_operation_positions(
           break;
         }
       }
+
       if (has_duplicate_metadata) break;
     }
 
@@ -211,20 +222,24 @@ static fn find_canonical_operation_positions(
 
   canonical_positions.clear();
   canonical_positions.reserve(operations.count());
+
   for (usize index = 0; index < operations.count(); index++)
     canonical_positions.push(index);
 
   usize bucket_count = 4;
+
   while (bucket_count < metadata_count * 2)
     bucket_count *= 2;
 
   buckets.clear();
   buckets.reserve(bucket_count);
+
   for (usize index = 0; index < bucket_count; index++)
     buckets.push(SIZE_MAX);
 
   bool has_repeated_request = false;
   usize unique_operation_count = operations.count() - metadata_count;
+
   for (usize index = 0; index < operations.count(); index++) {
     let const &operation = operations[index];
     if (!is_metadata_request(operation)) continue;
@@ -249,6 +264,7 @@ static fn find_canonical_operation_positions(
       request_hash ^= batch_internal::encode_directory_descriptor(directory);
     }
     usize bucket = static_cast<usize>(request_hash) & (bucket_count - 1);
+
     loop
     {
       let const existing_position = buckets[bucket];
@@ -283,11 +299,13 @@ fn Batch::execute(ArrayList<batch_result> &results,
   {
     results.clear();
     results.reserve(m_operations.count());
+
     for (usize index = 0; index < m_operations.count(); index++)
       results.push({});
 
     batch_internal::execute_batch_operations(
         m_operations.begin(), m_operations.count(), results.begin());
+
     return;
   }
 
@@ -296,15 +314,18 @@ fn Batch::execute(ArrayList<batch_result> &results,
   if (unique_operation_count == 0) {
     results.clear();
     results.reserve(m_operations.count());
+
     for (usize index = 0; index < m_operations.count(); index++)
       results.push({});
 
     batch_internal::execute_batch_operations(
         m_operations.begin(), m_operations.count(), results.begin());
+
     return;
   }
 
   m_optimized_operations.reserve(unique_operation_count);
+
   for (usize index = 0; index < m_operations.count(); index++) {
     let const canonical_position = m_canonical_positions[index];
     if (canonical_position != index) {
@@ -318,6 +339,7 @@ fn Batch::execute(ArrayList<batch_result> &results,
 
   results.clear();
   results.reserve(m_operations.count());
+
   for (usize index = 0; index < m_optimized_operations.count(); index++)
     results.push({});
 
@@ -327,6 +349,7 @@ fn Batch::execute(ArrayList<batch_result> &results,
 
   while (results.count() < m_operations.count())
     results.push({});
+
   for (usize remaining_count = m_operations.count(); remaining_count != 0;
        remaining_count--)
   {
@@ -354,6 +377,7 @@ fn Batch::execute(batch_deduplication deduplication) throws
 {
   let results = ArrayList<batch_result>{m_operations.allocator()};
   execute(results, deduplication);
+
   return results;
 }
 

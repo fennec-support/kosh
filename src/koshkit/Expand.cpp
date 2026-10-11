@@ -41,6 +41,7 @@ fn Expand::execute(const ExecContext &ec, EvalContext &cxt,
       KOSHKIT_REPORT_ERROR_AT(
           FLAG_EXPAND_TABS.value_location(), "invalid tab list",
           "use increasing positive columns separated by commas or blanks");
+
       return 1;
     }
     tab_stops = steal(*parsed);
@@ -88,6 +89,7 @@ fn Expand::execute(const ExecContext &ec, EvalContext &cxt,
       }
 
       usize run_end = position;
+
       while (run_end < text.length && !is_expand_control(text[run_end])) {
         run_end++;
       }
@@ -119,6 +121,7 @@ fn Expand::execute(const ExecContext &ec, EvalContext &cxt,
   }
 
   ec.print_to_stdout(output);
+
   return status;
 }
 

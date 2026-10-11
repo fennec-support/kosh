@@ -34,6 +34,7 @@ fn Shift::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     report_soft_builtin_error(ec, cxt, ec.arg_location_at(2),
                               "too many arguments",
                               "shift takes at most one count, e.g. `shift 2`");
+
     return 2;
   }
 
@@ -51,6 +52,7 @@ fn Shift::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     report_soft_builtin_error(ec, cxt, ec.arg_location_at(1),
                               "shift count out of range",
                               do_range_note().view());
+
     return 1;
   }
 
@@ -71,9 +73,12 @@ fn Shift::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   let shifted = ArrayList<String>{heap_allocator()};
   shifted.reserve(params.count() - static_cast<usize>(shift_count));
+
   for (usize i = static_cast<usize>(shift_count); i < params.count(); i++)
     shifted.push_managed(params[i]);
+
   cxt.variable_store().positional_params() = steal(shifted);
+
   return 0;
 }
 

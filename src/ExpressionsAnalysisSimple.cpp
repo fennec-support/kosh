@@ -63,6 +63,7 @@ pure fn has_multi_digit_positional_expansion(StringView source) wontthrow
     -> bool
 {
   shell_quote_state state = shell_quote_state::Normal;
+
   for (usize position = 0; position < source.length; position++) {
     let const byte = source[position];
     if (state == shell_quote_state::Single) {
@@ -142,6 +143,7 @@ fn update_generated_executable_paths(AnalysisContext &actx,
       actx.generated_relative_executable_paths.add(output->view());
       break;
     }
+
     return;
   }
 
@@ -158,6 +160,7 @@ fn update_generated_executable_paths(AnalysisContext &actx,
       if (source.has_value())
         actx.generated_relative_executable_paths.remove(source->view());
     }
+
     return;
   }
 
@@ -167,6 +170,7 @@ fn update_generated_executable_paths(AnalysisContext &actx,
     if (args.count() != 2) {
       actx.generated_relative_executable_paths =
           HashSet{heap_allocator(), SMALL_MAP_FIRST_CAPACITY};
+
       return;
     }
 
@@ -234,6 +238,7 @@ pure fn internal::reference_has_quoted_alternate_word(StringView spec) wontthrow
 
     usize nesting_depth = 0;
     let is_closed = false;
+
     while (position < spec.length && !is_closed) {
       let const byte = spec[position];
       if (byte == '\\') {
@@ -372,12 +377,14 @@ cold fn bare_glob_can_start_with_dash(const Word &word) wontthrow -> bool
   if (*close > 1 && (text[1] == '!' || text[1] == '^')) {
     return true;
   }
+
   for (usize position = 1; position < *close; position++)
     if (text[position] == '-' &&
         (position == 1 || position + 1 == *close || text[position - 1] == '\\'))
     {
       return true;
     }
+
   return false;
 }
 
@@ -389,10 +396,12 @@ cold pure fn internal::view_contains(StringView view,
   }
 
   let const last_start = view.length - needle.length;
+
   for (usize start = 0; start <= last_start; start++) {
     if (view[start] != needle[0]) continue;
 
     usize matched = 1;
+
     while (matched < needle.length && view[start + matched] == needle[matched])
     {
       matched++;
@@ -407,6 +416,7 @@ cold pure fn internal::view_contains(StringView view,
 cold pure fn substitution_body_is_bare_echo(StringView body) wontthrow -> bool
 {
   usize start = 0;
+
   while (start < body.length && (body[start] == ' ' || body[start] == '\t')) {
     start++;
   }
@@ -430,12 +440,14 @@ cold fn internal::args_have_stdin_operand(
     const ArrayList<const Token *> &args) throws -> bool
 {
   let storage = String{heap_allocator()};
+
   for (usize i = 1; i < args.count(); i++) {
     let const raw = borrowed_token_text(args[i], storage);
     if (raw == "-" || raw == "/dev/stdin") {
       return true;
     }
   }
+
   return false;
 }
 
@@ -445,9 +457,11 @@ fn internal::operand_target_name(StringView text) wontthrow -> StringView
     return StringView{};
   }
   usize end = 0;
+
   while (end < text.length && lexer::is_variable_name(text[end])) {
     end++;
   }
+
   return text.substring_of_length(0, end);
 }
 
@@ -551,10 +565,13 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
     analyze_word_substitutions(actx, var.get_value(), var.get_location(),
                                is_unconditional);
   }
+
   for (let const &assignment : m_array_args)
     analyze_token_list_substitutions(actx, assignment.elements,
                                      is_unconditional);
+
   analyze_token_list_substitutions(actx, m_args, is_unconditional);
+
   for (let const &redirection : m_redirections) {
     analyze_redirection_substitutions(actx, redirection, source_location(),
                                       is_unconditional);
@@ -630,6 +647,7 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
       let const &word = static_cast<const tokens::WordToken *>(element)->word();
       let has_unquoted_substitution = false;
       let has_unquoted_reference = false;
+
       for (let const &segment : word.segments) {
         if (segment.kind == WordSegment::Kind::VariableReference) {
           note_variable_reference(actx, segment, element->source_location());
@@ -764,6 +782,7 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
         command_id == command_name_id::Readonly && is_unconditional &&
         !actx.effects.has_seen_runtime_definer;
     let is_reporting_form = false;
+
     for (usize i = 1; i < m_args.count(); i++) {
       let flag_storage = String{heap_allocator()};
       let const flag_text = borrowed_token_text(m_args[i], flag_storage);
@@ -1263,6 +1282,7 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
             source_text.substring_of_length(2, source_text.length - 3);
         bool is_simple_name = !referenced.is_empty() &&
                               lexer::is_variable_name_start(referenced[0]);
+
         for (usize position = 1; position < referenced.length && is_simple_name;
              position++)
           is_simple_name = lexer::is_variable_name(referenced[position]);
@@ -1536,10 +1556,12 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
     if (m_args[i]->kind() != Token::Kind::Word) continue;
 
     let const &word = static_cast<const tokens::WordToken *>(m_args[i])->word();
+
     for (let const &segment : word.segments) {
       if (segment.kind != WordSegment::Kind::VariableReference) continue;
 
       let is_read_of_own_prefix = false;
+
       for (let const &var : m_local_vars) {
         if (var.get_name() != segment.text.view()) continue;
 
@@ -1619,6 +1641,7 @@ fn SimpleCommand::append_presence_tested_command_names(
   }
 
   bool has_presence_flag = is_type_or_hash;
+
   for (usize i = 1; i < m_args.count(); i++) {
     let const arg = static_command_name(m_args[i]);
     if (!arg.has_value()) break;

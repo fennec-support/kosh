@@ -171,6 +171,7 @@ fn find_inode(const Path &path, const os::file_status &status, u64 inode,
 {
   if (status.has_file_identity && status.file_id == inode) {
     found_path = path.text().clone();
+
     return true;
   }
   if (os::file_type_letter(status.mode) != 'd') return false;
@@ -217,6 +218,7 @@ fn GoodNode::execute(
 
   let const allocator = cxt.scratch_allocator();
   let paths = ArrayList<String>{allocator};
+
   for (let const &operand : operands)
     paths.push(String{allocator, operand.view()});
 
@@ -224,6 +226,7 @@ fn GoodNode::execute(
     KOSHKIT_REPORT_ERROR_AT(FLAG_GOODNODE_ROOT.value_location(),
                             "root requires an inode",
                             "pass --inode with --root");
+
     return 1;
   }
 
@@ -234,6 +237,7 @@ fn GoodNode::execute(
       KOSHKIT_REPORT_ERROR_AT(FLAG_GOODNODE_INODE.value_location(),
                               "invalid inode",
                               "the inode must be a non-negative integer");
+
       return 1;
     }
 
@@ -271,6 +275,7 @@ fn GoodNode::execute(
       KOSHKIT_REPORT_ERROR_AT(FLAG_GOODNODE_INODE.value_location(),
                               "inode was not found",
                               "choose a narrower or different search root");
+
       return 1;
     }
     paths.push(steal(found));
@@ -293,13 +298,16 @@ fn GoodNode::execute(
   report_paths.reserve(paths.count());
   report_statuses.reserve(paths.count());
   report_batch.reserve(paths.count());
+
   for (let const &path : paths) {
     report_paths.push(Path{path.view(), allocator});
     report_statuses.push({});
   }
+
   for (usize index = 0; index < paths.count(); index++)
     report_batch.add(os::batch_operation::lstat(report_paths[index],
                                                 report_statuses[index]));
+
   let const report_results = report_batch.execute();
 
   for (usize index = 0; index < paths.count(); index++) {
@@ -320,6 +328,7 @@ fn GoodNode::execute(
   }
 
   ec.print_to_stdout(output);
+
   return exit_status;
 }
 

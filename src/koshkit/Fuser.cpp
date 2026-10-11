@@ -53,6 +53,7 @@ fn Fuser::execute(const ExecContext &ec, EvalContext &cxt,
             : FLAG_FUSER_FILE.value_location();
     report_soft_koshkit_util_error(ec, cxt, conflict_location, args[0].view(),
                                    "-c and -f cannot be used together");
+
     return 2;
   }
 
@@ -63,16 +64,19 @@ fn Fuser::execute(const ExecContext &ec, EvalContext &cxt,
   operand_paths.reserve(operands.count());
   file_statuses.reserve(operands.count());
   batch.reserve(operands.count());
+
   for (let const &operand : operands) {
     operand_paths.push(Path{operand.view(), allocator});
     file_statuses.push({});
   }
+
   for (usize operand_position = 0; operand_position < operands.count();
        operand_position++)
   {
     batch.add(os::batch_operation::stat(operand_paths[operand_position],
                                         file_statuses[operand_position]));
   }
+
   let const results = batch.execute();
 
   let queries = ArrayList<os::process_file_query>{allocator};
@@ -80,6 +84,7 @@ fn Fuser::execute(const ExecContext &ec, EvalContext &cxt,
                               ? os::process_file_match_scope::Filesystem
                               : os::process_file_match_scope::File;
   i32 status = 0;
+
   for (usize operand_position = 0; operand_position < operands.count();
        operand_position++)
   {
@@ -125,6 +130,7 @@ fn Fuser::execute(const ExecContext &ec, EvalContext &cxt,
                                    args[0].view(),
                                    "unable to inspect running processes: " +
                                        os::last_system_error_message());
+
     return 1;
   }
   if (users.is_empty() && status == 0) {
@@ -135,6 +141,7 @@ fn Fuser::execute(const ExecContext &ec, EvalContext &cxt,
                                   const os::process_file_user &right) {
         if (left.query_position != right.query_position)
           return left.query_position < right.query_position;
+
         return left.pid < right.pid;
       });
 
@@ -146,6 +153,7 @@ fn Fuser::execute(const ExecContext &ec, EvalContext &cxt,
   let const is_combined =
       os::descriptors_refer_to_same_file(output_descriptor, error_descriptor);
   usize user_position = 0;
+
   for (usize operand_position = 0; operand_position < operands.count();
        operand_position++)
   {
@@ -182,6 +190,7 @@ fn Fuser::execute(const ExecContext &ec, EvalContext &cxt,
       }
       user_position++;
     }
+
     metadata_output.push('\n');
     if (!is_combined) standard_output.push('\n');
   }
@@ -192,6 +201,7 @@ fn Fuser::execute(const ExecContext &ec, EvalContext &cxt,
     ec.print_to_stdout(standard_output.view());
     ec.print_to_stderr(standard_error.view());
   }
+
   return status;
 }
 

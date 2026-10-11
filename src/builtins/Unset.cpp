@@ -48,6 +48,7 @@ fn Unset::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       has_error = true;
     }
   };
+
   for (usize i = 1; i < names.count(); i++) {
     let const &name = names[i];
     if (!should_unset_function && cxt.runtime_state().is_posix_mode() &&

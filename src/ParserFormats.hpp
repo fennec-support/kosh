@@ -65,6 +65,7 @@ inline pure fn parser_format_kind_name(parser_format_kind kind) wontthrow
 #undef PARSER_FORMAT_KIND_NAME
   };
   let const index = static_cast<usize>(kind);
+
   return index < PARSER_FORMAT_KIND_COUNT ? NAMES[index] : StringView{};
 }
 
@@ -244,6 +245,7 @@ fn parser_format_find_ascii_folded(const StaticStringMap<Value, Count> &map,
                            ? static_cast<char>(byte + ('a' - 'A'))
                            : byte;
   }
+
   return map.find(StringView{folded, text.length});
 }
 fn parser_format_add_fragment(

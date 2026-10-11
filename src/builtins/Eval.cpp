@@ -48,11 +48,13 @@ fn Eval::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       report_soft_builtin_error(ec, cxt, ec.arg_location_at(1),
                                 invalid_option + ": invalid option",
                                 note.view());
+
       return 2;
     }
   }
 
   let joined = String{cxt.scratch_allocator()};
+
   for (usize i = first; i < ec.args().count(); i++) {
     if (i > first) joined += ' ';
     joined.append(ec.args()[i].view());

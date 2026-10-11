@@ -57,6 +57,7 @@ consteval fn every_lexer_keyword_has_a_balanced_scan_kind() wontthrow -> bool
 {
   for (let const &keyword : KEYWORD_ENTRIES) {
     bool has_kind = false;
+
     for (let const &entry : BALANCED_SCAN_KEYWORD_ENTRIES) {
       if (entry.key == keyword.key) has_kind = true;
     }
@@ -172,9 +173,11 @@ fn skip_balanced_scan_heredoc_bodies(
   for (let const &heredoc : pending) {
     while (position < source.length) {
       let const line_start = position;
+
       while (position < source.length && source[position] != '\n') {
         position++;
       }
+
       let const is_terminator =
           match_heredoc_line(
               source.substring_of_length(line_start, position - line_start),
@@ -318,6 +321,7 @@ fn scan_balanced_shell_region(StringView source, usize position,
         while (position < source.length && source[position] != '\n') {
           position++;
         }
+
         previous_byte = '#';
         continue;
       }

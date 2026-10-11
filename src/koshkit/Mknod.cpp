@@ -56,6 +56,7 @@ fn parse_device_number(StringView text) throws -> Maybe<u64>
 {
   let const parsed = utils::parse_decimal_u64(text);
   if (parsed.is_error()) return None;
+
   return parsed.value();
 }
 
@@ -91,6 +92,7 @@ fn Mknod::execute(const ExecContext &ec, EvalContext &cxt,
             : FLAG_MKNOD_BLOCK.value_location(),
         "Conflicting node types",
         "choose one of --type, --fifo, --character, or --block");
+
     return 1;
   }
   if (FLAG_MKNOD_TYPE.is_set()) {
@@ -111,6 +113,7 @@ fn Mknod::execute(const ExecContext &ec, EvalContext &cxt,
   } else {
     KOSHKIT_REPORT_ERROR_AT(operand_locations[0], "Missing node type",
                             "use p, c, b, fifo, character, or block");
+
     return 1;
   }
 
@@ -120,6 +123,7 @@ fn Mknod::execute(const ExecContext &ec, EvalContext &cxt,
                             "Invalid node type '" +
                                 String{allocator, type_text} + "'",
                             "use p, c, b, fifo, character, or block");
+
     return 1;
   }
 
@@ -130,6 +134,7 @@ fn Mknod::execute(const ExecContext &ec, EvalContext &cxt,
                                   : FLAG_MKNOD_MINOR.value_location(),
         "Device numbers require a character or block node",
         "remove --major and --minor or choose a device node type");
+
     return 1;
   }
 
@@ -183,6 +188,7 @@ fn Mknod::execute(const ExecContext &ec, EvalContext &cxt,
     if (!has_major_text) {
       KOSHKIT_REPORT_ERROR_AT(type_location, "Missing major device number",
                               "provide a major device number");
+
       return 1;
     }
     major_number = parse_device_number(major_text);
@@ -191,6 +197,7 @@ fn Mknod::execute(const ExecContext &ec, EvalContext &cxt,
                               "Invalid major device number '" +
                                   String{allocator, major_text} + "'",
                               "use an unsigned decimal integer");
+
       return 1;
     }
     if (!has_minor_text && operands.count() > next_operand_index) {
@@ -201,6 +208,7 @@ fn Mknod::execute(const ExecContext &ec, EvalContext &cxt,
     if (!has_minor_text) {
       KOSHKIT_REPORT_ERROR_AT(type_location, "Missing minor device number",
                               "provide a minor device number");
+
       return 1;
     }
     minor_number = parse_device_number(minor_text);
@@ -209,6 +217,7 @@ fn Mknod::execute(const ExecContext &ec, EvalContext &cxt,
                               "Invalid minor device number '" +
                                   String{allocator, minor_text} + "'",
                               "use an unsigned decimal integer");
+
       return 1;
     }
     if (*major_number > 0xfffu) {
@@ -217,6 +226,7 @@ fn Mknod::execute(const ExecContext &ec, EvalContext &cxt,
                                   String{allocator, major_text} +
                                   "' is out of range",
                               "use a major device number that fits 12 bits");
+
       return 1;
     }
     if (*minor_number > 0xfffffu) {
@@ -225,6 +235,7 @@ fn Mknod::execute(const ExecContext &ec, EvalContext &cxt,
                                   String{allocator, minor_text} +
                                   "' is out of range",
                               "use a minor device number that fits 20 bits");
+
       return 1;
     }
   }
@@ -233,11 +244,13 @@ fn Mknod::execute(const ExecContext &ec, EvalContext &cxt,
     KOSHKIT_REPORT_ERROR_AT(operand_locations[next_operand_index],
                             "Too many operands",
                             "provide one name and one node specification");
+
     return 1;
   }
   if (name_operand_index == SIZE_MAX) {
     KOSHKIT_REPORT_ERROR_AT(type_location, "Missing node name",
                             "provide the path to create");
+
     return 1;
   }
   u32 mode = 0666;
@@ -247,6 +260,7 @@ fn Mknod::execute(const ExecContext &ec, EvalContext &cxt,
     if (!parsed.has_value()) {
       KOSHKIT_REPORT_ERROR_AT(FLAG_MKNOD_MODE.value_location(), "Invalid mode",
                               "use an octal or symbolic permission mode");
+
       return 1;
     }
     mode = *parsed;
@@ -265,6 +279,7 @@ fn Mknod::execute(const ExecContext &ec, EvalContext &cxt,
                                        "': " + os::last_system_error_message());
     status = 1;
   }
+
   return status;
 }
 

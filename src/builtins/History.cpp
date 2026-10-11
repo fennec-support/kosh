@@ -47,6 +47,7 @@ static fn report_history_file_failure(const ExecContext &ec, EvalContext &cxt,
     report_soft_builtin_error(ec, cxt, ec.source_location(),
                               StringView{"Unable to "} + action +
                                   " the history file: " + failure_message);
+
     return;
   }
 
@@ -104,6 +105,7 @@ static fn print_history_list(const ExecContext &ec, EvalContext &cxt,
       toiletline::get_history_events(cxt.scratch_allocator());
   if (read_events.is_error()) {
     report_history_file_failure(ec, cxt, "read", read_events.error().message());
+
     return false;
   }
 
@@ -115,6 +117,7 @@ static fn print_history_list(const ExecContext &ec, EvalContext &cxt,
   }
 
   let out = String{cxt.scratch_allocator()};
+
   for (usize i = first_index; i < events.count(); i++) {
     char number_buffer[24];
     let const number =
@@ -126,6 +129,7 @@ static fn print_history_list(const ExecContext &ec, EvalContext &cxt,
     out.append(events[i].command.view());
     out += '\n';
   }
+
   ec.print_to_stdout(out);
 
   return true;
@@ -186,6 +190,7 @@ struct history_import_state
 static fn get_history_import_state() -> history_import_state &
 {
   static history_import_state state;
+
   return state;
 }
 
@@ -228,6 +233,7 @@ enum class history_file_write_mode : u8
 static fn get_history_append_state() -> history_append_state &
 {
   static history_append_state state;
+
   return state;
 }
 
@@ -246,6 +252,7 @@ static fn write_history_to_file(EvalContext &cxt, const Path &target,
         TRY(toiletline::get_newest_history_event_number());
     append_state.identity = get_history_file_identity(target);
     append_state.event_number = appended_number.value_or(0);
+
     return Success;
   }
 
@@ -276,6 +283,7 @@ static fn write_history_to_file(EvalContext &cxt, const Path &target,
       toiletline::get_history_events(cxt.scratch_allocator(), written_above));
 
   let payload = String{cxt.scratch_allocator()};
+
   for (let const &event : read_events)
     toiletline::encode_history_record(payload, event.command.view());
 
@@ -285,6 +293,7 @@ static fn write_history_to_file(EvalContext &cxt, const Path &target,
 
     append_state.identity = get_history_file_identity(target);
     append_state.event_number = newest_number;
+
     return Success;
   }
 
@@ -303,6 +312,7 @@ static fn write_history_to_file(EvalContext &cxt, const Path &target,
 
   append_state.identity = get_history_file_identity(target);
   append_state.event_number = newest_number;
+
   return Success;
 }
 
@@ -320,6 +330,7 @@ static fn parse_history_selection(
   if (events.is_empty()) return None;
 
   Maybe<usize> separator{None};
+
   for (usize position = 1; position < specification.length; position++) {
     if (specification[position] != '-') continue;
     separator = position;
@@ -335,10 +346,12 @@ static fn parse_history_selection(
     if (parsed.value() < 0) {
       let const index = static_cast<i64>(events.count()) + parsed.value();
       if (index < 0) return None;
+
       return static_cast<usize>(index);
     }
 
     let const number = static_cast<usize>(parsed.value());
+
     for (usize index = 0; index < events.count(); index++)
       if (events[index].number == number) return index;
 
@@ -348,6 +361,7 @@ static fn parse_history_selection(
   if (!separator.has_value()) {
     let const index = do_resolve(specification);
     if (!index.has_value()) return None;
+
     return history_selection{*index, *index};
   }
 
@@ -378,6 +392,7 @@ fn History::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     LOG(Debug, "history clearing the list");
     if (let const result = toiletline::clear_history(); result.is_error()) {
       report_history_file_failure(ec, cxt, "clear", result.error().message());
+
       return 1;
     }
 
@@ -389,10 +404,12 @@ fn History::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     if (args.count() > 1) {
       report_soft_builtin_error(ec, cxt, ec.arg_location_at(1),
                                 "history sync takes no operand");
+
       return 1;
     }
     if (let const result = toiletline::sync_history(); result.is_error()) {
       report_history_file_failure(ec, cxt, "sync", result.error().message());
+
       return 1;
     }
 
@@ -415,6 +432,7 @@ fn History::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
             StringView{"cannot read history from '"} + args[1].view() +
                 "': " + os::last_system_error_message(),
             "Pass a readable history file, e.g. `history -r ~/.kosh_history`");
+
         return 1;
       }
       if (!toiletline::is_history_contents_valid(source_text->view())) {
@@ -423,6 +441,7 @@ fn History::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                                       args[1].view() +
                                       "': the file contains invalid data",
                                   "Pass a text history file");
+
         return 1;
       }
       let const source_identity = get_history_file_identity(source);
@@ -443,6 +462,7 @@ fn History::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
           result.is_error())
       {
         report_history_file_failure(ec, cxt, "read", result.error().message());
+
         return 1;
       }
 
@@ -452,6 +472,7 @@ fn History::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     } else if (let const result = toiletline::read_history(); result.is_error())
     {
       report_history_file_failure(ec, cxt, "read", result.error().message());
+
       return 1;
     }
 
@@ -476,17 +497,20 @@ fn History::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
             StringView{"cannot write history to '"} + args[1].view() +
                 "': " + result.error().message(),
             "Pass a writable path, e.g. `history -w ~/.kosh_history`");
+
         return 1;
       }
     } else if (FLAG_HISTORY_WRITE.is_enabled()) {
       if (let const result = toiletline::write_history(); result.is_error()) {
         report_history_file_failure(ec, cxt, "write", result.error().message());
+
         return 1;
       }
     } else if (let const result = toiletline::append_unwritten_history();
                result.is_error())
     {
       report_history_file_failure(ec, cxt, "append", result.error().message());
+
       return 1;
     }
 
@@ -495,10 +519,12 @@ fn History::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   if (FLAG_HISTORY_PRINT.is_enabled()) {
     let out = String{cxt.scratch_allocator()};
+
     for (usize i = 1; i < args.count(); i++) {
       out.append(args[i].view());
       out += '\n';
     }
+
     ec.print_to_stdout(out);
     did_maintain_list = true;
   }
@@ -509,6 +535,7 @@ fn History::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     if (read_events.is_error()) {
       report_history_file_failure(ec, cxt, "read",
                                   read_events.error().message());
+
       return 1;
     }
 
@@ -519,6 +546,7 @@ fn History::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       report_soft_builtin_error(ec, cxt, FLAG_HISTORY_DELETE.value_location(),
                                 FLAG_HISTORY_DELETE.value() +
                                     ": history position out of range");
+
       return 1;
     }
 
@@ -531,6 +559,7 @@ fn History::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       {
         report_soft_builtin_error(ec, cxt, FLAG_HISTORY_DELETE.value_location(),
                                   "Unable to delete the history event");
+
         return 1;
       }
     }
@@ -541,6 +570,7 @@ fn History::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   if (FLAG_HISTORY_STORE.is_enabled()) {
     if (args.count() > 1) {
       let event = String{cxt.scratch_allocator()};
+
       for (usize index = 1; index < args.count(); index++) {
         if (index > 1) event.push(' ');
         event.append(args[index].view());
@@ -549,6 +579,7 @@ fn History::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       if (!toiletline::append_history_event(event.view()).has_value()) {
         report_soft_builtin_error(ec, cxt, ec.source_location(),
                                   "Unable to store the history event");
+
         return 1;
       }
     }
@@ -565,6 +596,7 @@ fn History::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       report_soft_builtin_error(ec, cxt, ec.arg_location_at(1),
                                 StringView{"'"} + args[1].view() +
                                     "' is not a valid count");
+
       return 2;
     }
 
