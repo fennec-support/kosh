@@ -2,9 +2,9 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file implements the meow utility, a terminal screensaver. Pixel-art
- * cats drawn with half blocks walk, stalk and pounce on a ball of yarn, groom,
- * nap, hiss or nuzzle each other, and explode against the walls of the sky.
+ * This file implements the meow utility, a terminal screensaver. Round
+ * pixel-art cats drawn with half blocks float and paddle through space, chase
+ * a ball of yarn, curl up to nap, and explode against the walls of the sky.
  */
 
 #include "../CLI.hpp"
@@ -17,7 +17,7 @@
 #include <cmath>
 
 KOSHKIT_UTIL_DECL("[-f fps] [-s speed] [-n cats]",
-                  "The meow utility shows cats playing in a night sky until a "
+                  "The meow utility shows cats floating in a night sky until a "
                   "key other than a control key is pressed.");
 
 FLAG(MEOW_FPS,
@@ -48,10 +48,9 @@ constexpr f64   MINIMUM_SPEED             = 0.1;
 constexpr f64   MAXIMUM_SPEED             = 10.0;
 constexpr f64   SPEED_STEP                = 1.25;
 constexpr usize MAXIMUM_CAT_COUNT         = 8;
-constexpr usize CAT_PIXEL_WIDTH           = 24;
+constexpr usize CAT_PIXEL_WIDTH           = 28;
 constexpr usize CAT_PIXEL_HEIGHT          = 12;
 constexpr usize CAT_ROW_COUNT             = CAT_PIXEL_HEIGHT / 2;
-constexpr usize TRAIL_POINT_COUNT         = 36;
 constexpr usize YARN_THREAD_POINT_COUNT   = 24;
 constexpr usize PARTICLE_COUNT            = 320;
 constexpr usize EXPLOSION_COUNT           = 6;
@@ -60,28 +59,30 @@ constexpr usize SHOOTING_STAR_TAIL_COUNT  = 7;
 constexpr usize STAR_LAYER_COUNT          = 3;
 constexpr f64   PI                        = 3.14159265358979323846;
 
-constexpr f64 WALK_COLUMNS_PER_SECOND    = 13.0;
-constexpr f64 WALK_ROWS_PER_SECOND       = 3.5;
-constexpr f64 CHASE_COLUMNS_PER_SECOND   = 19.0;
-constexpr f64 POUNCE_COLUMNS_PER_SECOND  = 34.0;
-constexpr f64 STRIDE_COLUMNS             = 2.0;
-constexpr f64 TRAIL_SAMPLE_SECONDS       = 0.05;
-constexpr f64 TAIL_SWISH_SECONDS         = 0.4;
+constexpr f64 DRIFT_COLUMNS_PER_SECOND   = 9.0;
+constexpr f64 DRIFT_ROWS_PER_SECOND      = 2.5;
+constexpr f64 CHASE_COLUMNS_PER_SECOND   = 15.0;
+constexpr f64 DASH_COLUMNS_PER_SECOND    = 36.0;
+constexpr f64 STEERING_PER_SECOND        = 1.6;
+constexpr f64 WANDER_RADIANS_PER_SECOND  = 0.9;
+constexpr f64 PADDLE_SECONDS             = 0.32;
+constexpr f64 BOB_RADIANS_PER_SECOND     = 2.3;
+constexpr f64 TAIL_SWISH_SECONDS         = 0.45;
 constexpr f64 BLINK_PERIOD_SECONDS       = 3.4;
 constexpr f64 BLINK_SECONDS              = 0.14;
 constexpr f64 BUBBLE_SECONDS             = 1.3;
-constexpr f64 CROUCH_SECONDS             = 0.45;
-constexpr f64 POUNCE_SECONDS             = 0.55;
-constexpr f64 POUNCE_HEIGHT_PIXELS       = 6.0;
+constexpr f64 BRACE_SECONDS              = 0.5;
+constexpr f64 DASH_SECONDS               = 0.5;
 constexpr f64 HAPPY_SECONDS              = 1.1;
-constexpr f64 DIZZY_SECONDS              = 1.1;
+constexpr f64 DIZZY_SECONDS              = 1.2;
+constexpr f64 TUMBLE_SECONDS             = 0.12;
 constexpr f64 HISS_SECONDS               = 0.9;
 constexpr f64 WALL_COOLDOWN_SECONDS      = 0.7;
-constexpr f64 SIT_RATE_PER_SECOND        = 0.05;
+constexpr f64 CURL_RATE_PER_SECOND       = 0.05;
 constexpr f64 CHASE_RATE_PER_SECOND      = 0.2;
 constexpr f64 GROOM_SECONDS              = 1.8;
 constexpr f64 DOZE_AFTER_SECONDS         = 4.0;
-constexpr f64 YARN_FRICTION_PER_SECOND   = 0.7;
+constexpr f64 YARN_FRICTION_PER_SECOND   = 0.35;
 constexpr f64 YARN_THREAD_SAMPLE_SECONDS = 0.04;
 constexpr f64 EXPLOSION_SECONDS          = 0.85;
 constexpr f64 FIREBALL_SECONDS           = 0.4;
@@ -97,44 +98,51 @@ constexpr f64 SPEED_NOTICE_SECONDS       = 1.2;
 constexpr f64 LONGEST_STEP_SECONDS       = 0.1;
 
 constexpr StringView CAT_BODY_PIXELS[] = {
-    "..B...B.................", ".BIB.BIB................",
-    ".BBBBBBB................", "BBEBBBEBB...............",
-    "BBBBNBBBB...............", ".LLLLLLLB...............",
-    "..CCGCCBBBBBBBBBBBBBB...", "...BBBBDBBDBBDBBBBBB....",
-    "...BBBLLLLLLLLLLBBBB....",
+    "..B....B....................", ".BIB..BIB.....DDDDD.........",
+    ".BBBBBBBB..BBBBDBBBBBB......", "BBEBBBBEBBBBBBBDBBBBBBB.....",
+    "BBBBNNBBBBBBBBBBDBBBBBBB....", ".BLLLLLLBBBBBBBBDBBBBBBB....",
+    "..CCGCCBBBBBLLLLLLBBBBB.....", "...BBBBBBBBLLLLLLLLBBBB.....",
+    "....BBBBB..LLLLLLL.BBB......",
 };
 
-constexpr StringView CAT_SPIKE_PIXELS = "........D.D.D.D.D.......";
+constexpr StringView CAT_SPIKE_PIXELS = "...........D.D.D.D.D.D......";
+
+constexpr usize CAT_TAIL_COLUMN = 22;
 
 constexpr StringView CAT_TAIL_PIXELS[][6] = {
-    {"...DD.", "....DB", "....BD", "...DB.", "..BD..", ".B...."},
-    {".DD...", "DB....", "BD....", ".DB...", "..BD..", ".B...."},
+    {"...DD.", "....BD", "....DB", "...BD.", "..DB..", "BB...."},
+    {".DD...", "BD....", "DB....", ".BD...", "..DB..", "BB...."},
 };
 
-constexpr StringView CAT_LEG_PIXELS[][3] = {
-    {"...BB.BB......BB.BB.....", "...BB.BB......BB.BB.....",
-     "...DD.DD......DD.DD....."},
-    {"...BB..BB....BB...BB....", "..BB....BB..BB.....BB...",
-     "..DD....DD..DD.....DD..."},
-    {"...BB.BB......BB.BB.....", "...BB.BB......BB.BB.....",
-     "...DD.DD......DD.DD....."},
-    {"....BBBB......BBBB......", "....BBBB......BBBB......",
-     "....DDDD......DDDD......"},
+constexpr StringView CAT_PADDLE_PIXELS[][3] = {
+    {"..BB.................BB.....", ".DB...................BD....",
+     "............................"},
+    {"...BB...............BB......", "...DB...............BD......",
+     "............................"},
+    {"....BB.BB.........BB.BB.....", "....DD.DD.........DD.DD.....",
+     "............................"},
+    {"...BB...............BB......", "...DB...............BD......",
+     "............................"},
 };
 
-constexpr StringView CAT_LEAP_PIXELS[3] = {
-    "..BB..............BB....",
-    ".BB................BB...",
-    "DD..................DD..",
+constexpr StringView CAT_TUCKED_PIXELS[3] = {
+    ".....BBBB.........BBBB......",
+    ".....DDDD.........DDDD......",
+    "............................",
 };
 
-constexpr StringView CAT_SITTING_PIXELS[CAT_PIXEL_HEIGHT] = {
-    "..B...B.......", ".BIB.BIB......", ".BBBBBBB......", "BBEBBBEBB.....",
-    "BBBBNBBBB.....", ".LLLLLLLB.....", "..CCGCCBB.....", "..BBBLLBBB....",
-    "..BBLLLLBBB...", "..BBLLLLBBB.DD", "..BBBLLBBBBBBD", "...DD..DD.BBB.",
+constexpr StringView CAT_DASH_PIXELS[3] = {
+    "BB......................BB..",
+    "D........................BD.",
+    "............................",
 };
 
-constexpr usize CAT_TAIL_COLUMN = 17;
+constexpr StringView CAT_CURLED_PIXELS[] = {
+    "....BB..BB......", "...BIBBBIB......", "..BBBBBBBBBB....",
+    ".BBEBBBBEBBBBB..", ".BBBBNNBBBBBBBB.", ".BLLLLLLBBBDBBB.",
+    "..BBBBBBBBBBBDD.", "....BBBBBBBDD...",
+};
+
 constexpr usize CAT_HEAD_CENTER = 4;
 
 struct cat_palette
@@ -165,7 +173,6 @@ constexpr StringView WALL_PHRASES[]   = {"MEOW!", "mrrROW!", "yowl!", "MRAH!"};
 constexpr StringView HAPPY_PHRASES[]  = {"mrrp!", "nya~", "prrt!", "mew!"};
 constexpr StringView FRIEND_PHRASES[] = {"nya~", "mew", "prrr"};
 
-constexpr u8  RAINBOW_COLORS[] = {196, 208, 226, 46, 33, 129};
 constexpr u8  STAR_LAYER_COLORS[STAR_LAYER_COUNT]             = {238, 244, 252};
 constexpr f64 STAR_LAYER_COLUMNS_PER_SECOND[STAR_LAYER_COUNT] = {0.6, 1.5, 3.5};
 constexpr u64 STAR_LAYER_DENSITY[STAR_LAYER_COUNT]            = {29, 47, 89};
@@ -188,11 +195,11 @@ constexpr u16 OVERLAY_STYLE_BIT  = 0x200;
 
 enum class cat_activity : u8
 {
-  Walking,
+  Floating,
   Chasing,
-  Crouching,
-  Pouncing,
-  Sitting,
+  Bracing,
+  Dashing,
+  Curling,
   Dizzy,
   Hissing,
 };
@@ -239,7 +246,7 @@ struct noise_source
   }
 };
 
-struct trail_point
+struct thread_point
 {
   f64  column{0.0};
   f64  row{0.0};
@@ -250,22 +257,20 @@ struct cat_state
 {
   f64          column{0.0};
   f64          row{1.0};
-  f64          columns_per_second{WALK_COLUMNS_PER_SECOND};
-  f64          rows_per_second{WALK_ROWS_PER_SECOND};
+  f64          columns_per_second{0.0};
+  f64          rows_per_second{0.0};
+  f64          wander_radians{0.0};
+  f64          cruise_factor{1.0};
   bool         is_facing_right{true};
-  cat_activity activity{cat_activity::Walking};
+  cat_activity activity{cat_activity::Floating};
   f64          activity_seconds{0.0};
   f64          activity_limit_seconds{0.0};
-  f64          stride_columns{0.0};
   f64          phase_seconds{0.0};
   f64          happy_seconds{0.0};
   f64          wall_cooldown_seconds{0.0};
   f64          bubble_seconds{0.0};
   StringView   bubble_text{};
   usize        palette{0};
-  trail_point  trail[TRAIL_POINT_COUNT]{};
-  usize        trail_head{0};
-  f64          trail_sample_seconds{0.0};
 };
 
 struct particle
@@ -298,14 +303,14 @@ struct shooting_star
 
 struct yarn_ball
 {
-  f64         column{10.0};
-  f64         row{5.0};
-  f64         columns_per_second{0.0};
-  f64         rows_per_second{0.0};
-  f64         spin_seconds{0.0};
-  trail_point thread[YARN_THREAD_POINT_COUNT]{};
-  usize       thread_head{0};
-  f64         thread_sample_seconds{0.0};
+  f64          column{10.0};
+  f64          row{5.0};
+  f64          columns_per_second{0.0};
+  f64          rows_per_second{0.0};
+  f64          spin_seconds{0.0};
+  thread_point thread[YARN_THREAD_POINT_COUNT]{};
+  usize        thread_head{0};
+  f64          thread_sample_seconds{0.0};
 };
 
 struct scene_state
@@ -402,6 +407,12 @@ overlay(u16 style) wontthrow -> u16
 }
 
 pure fn
+approach(f64 value, f64 target, f64 rate, f64 step_seconds) wontthrow -> f64
+{
+  return target + ((value - target) * std::exp(-rate * step_seconds));
+}
+
+pure fn
 cat_last_column(usize column_count) wontthrow -> f64
 {
   return static_cast<f64>(sub_sat(column_count, CAT_PIXEL_WIDTH));
@@ -468,8 +479,7 @@ explode(scene_state &scene, f64 column, f64 row) wontthrow -> void
 
     spawn_particle(
         scene, particle_kind::Debris, column, row, std::cos(angle) * power,
-        (std::sin(angle) * power * 0.5) - 4.0,
-        scene.noise.next_between(0.8, 1.5),
+        std::sin(angle) * power * 0.5, scene.noise.next_between(0.8, 1.5),
         DEBRIS_COLORS[scene.noise.next_index(countof(DEBRIS_COLORS))],
         "#%*+"[scene.noise.next_index(4)]);
   }
@@ -479,7 +489,7 @@ explode(scene_state &scene, f64 column, f64 row) wontthrow -> void
                    column + scene.noise.next_between(-3.0, 3.0),
                    row + scene.noise.next_between(-1.0, 1.0),
                    scene.noise.next_between(-3.0, 3.0),
-                   scene.noise.next_between(-4.0, -1.5),
+                   scene.noise.next_between(-1.5, 1.5),
                    scene.noise.next_between(1.4, 2.4), SMOKE_COLORS[0], 'O');
   }
 }
@@ -510,19 +520,21 @@ place_cats(scene_state &scene) wontthrow -> void
     cat.column =
         scene.noise.next_between(0.0, cat_last_column(scene.column_count));
     cat.row = scene.noise.next_between(1.0, cat_last_row(scene.row_count));
-    cat.is_facing_right = scene.noise.next_index(2) == 0;
+    cat.wander_radians = scene.noise.next_between(0.0, 2.0 * PI);
+    cat.cruise_factor  = scene.noise.next_between(0.75, 1.3);
     cat.columns_per_second =
-        WALK_COLUMNS_PER_SECOND * scene.noise.next_between(0.75, 1.25);
-    cat.rows_per_second = WALK_ROWS_PER_SECOND *
-                          (scene.noise.next_index(2) == 0 ? 1.0 : -1.0) *
-                          scene.noise.next_between(0.6, 1.3);
-    cat.phase_seconds = scene.noise.next_between(0.0, BLINK_PERIOD_SECONDS);
+        std::cos(cat.wander_radians) * DRIFT_COLUMNS_PER_SECOND;
+    cat.rows_per_second = std::sin(cat.wander_radians) * DRIFT_ROWS_PER_SECOND;
+    cat.is_facing_right = cat.columns_per_second > 0.0;
+    cat.phase_seconds   = scene.noise.next_between(0.0, BLINK_PERIOD_SECONDS);
   }
 
   scene.yarn.column =
       scene.noise.next_between(4.0, static_cast<f64>(scene.column_count) - 4.0);
   scene.yarn.row =
       scene.noise.next_between(3.0, static_cast<f64>(scene.row_count) - 2.0);
+  scene.yarn.columns_per_second = scene.noise.next_between(-4.0, 4.0);
+  scene.yarn.rows_per_second    = scene.noise.next_between(-1.5, 1.5);
 }
 
 fn
@@ -540,37 +552,39 @@ hit_wall(scene_state &scene, cat_state &cat, f64 column, f64 row) wontthrow
 fn
 keep_cat_inside(scene_state &scene, cat_state &cat) wontthrow -> void
 {
-  let const last_column = cat_last_column(scene.column_count);
-  let const last_row    = cat_last_row(scene.row_count);
-  let const middle_row  = cat.row + (CAT_ROW_COUNT / 2.0);
+  let const last_column   = cat_last_column(scene.column_count);
+  let const last_row      = cat_last_row(scene.row_count);
+  let const middle_row    = cat.row + (CAT_ROW_COUNT / 2.0);
+  let const middle_column = cat.column + (CAT_PIXEL_WIDTH / 2.0);
 
-  if (cat.column >= last_column && cat.is_facing_right) {
-    cat.column          = last_column;
-    cat.is_facing_right = false;
+  if (cat.column >= last_column && cat.columns_per_second > 0.0) {
+    cat.column             = last_column;
+    cat.columns_per_second = -cat.columns_per_second * 0.9;
+    cat.wander_radians     = PI - cat.wander_radians;
     hit_wall(scene, cat, static_cast<f64>(scene.column_count) - 1.0,
              middle_row);
-  } else if (cat.column <= 0.0 && !cat.is_facing_right) {
-    cat.column          = 0.0;
-    cat.is_facing_right = true;
+  } else if (cat.column <= 0.0 && cat.columns_per_second < 0.0) {
+    cat.column             = 0.0;
+    cat.columns_per_second = -cat.columns_per_second * 0.9;
+    cat.wander_radians     = PI - cat.wander_radians;
     hit_wall(scene, cat, 0.0, middle_row);
   }
 
-  if (cat.column > last_column) cat.column = last_column;
-  if (cat.column < 0.0) cat.column = 0.0;
-
   if (cat.row >= last_row && cat.rows_per_second > 0.0) {
     cat.row             = last_row;
-    cat.rows_per_second = -cat.rows_per_second;
-    hit_wall(scene, cat, cat.column + (CAT_PIXEL_WIDTH / 2.0),
+    cat.rows_per_second = -cat.rows_per_second * 0.9;
+    cat.wander_radians  = -cat.wander_radians;
+    hit_wall(scene, cat, middle_column,
              static_cast<f64>(scene.row_count) - 1.0);
   } else if (cat.row <= 1.0 && cat.rows_per_second < 0.0) {
     cat.row             = 1.0;
-    cat.rows_per_second = -cat.rows_per_second;
-    hit_wall(scene, cat, cat.column + (CAT_PIXEL_WIDTH / 2.0), 0.0);
+    cat.rows_per_second = -cat.rows_per_second * 0.9;
+    cat.wander_radians  = -cat.wander_radians;
+    hit_wall(scene, cat, middle_column, 0.0);
   }
 
-  if (cat.row > last_row) cat.row = last_row;
-  if (cat.row < 1.0) cat.row = 1.0;
+  cat.column = std::fmax(0.0, std::fmin(last_column, cat.column));
+  cat.row    = std::fmax(1.0, std::fmin(last_row, cat.row));
 }
 
 fn
@@ -587,7 +601,7 @@ kick_yarn(scene_state &scene, cat_state &cat) wontthrow -> void
   for (usize index = 0; index < 6; index++) {
     spawn_particle(scene, particle_kind::Sparkle, scene.yarn.column,
                    scene.yarn.row, scene.noise.next_between(-9.0, 9.0),
-                   scene.noise.next_between(-6.0, 1.0), 0.6, 226, '*');
+                   scene.noise.next_between(-4.0, 4.0), 0.6, 226, '*');
   }
 }
 
@@ -604,56 +618,75 @@ advance_cat(scene_state &scene, cat_state &cat, f64 step_seconds) wontthrow
     cat.wall_cooldown_seconds -= step_seconds;
   }
 
-  let const head_column  = cat_head_column(cat);
-  let const yarn_columns = scene.yarn.column - head_column;
-  let const yarn_rows    = scene.yarn.row - (cat.row + 2.0);
-  let       column_speed = 0.0;
-  let       row_speed    = 0.0;
+  let const head_column               = cat_head_column(cat);
+  let const yarn_columns              = scene.yarn.column - head_column;
+  let const yarn_rows                 = scene.yarn.row - (cat.row + 2.0);
+  let       target_columns_per_second = 0.0;
+  let       target_rows_per_second    = 0.0;
+  let       steering                  = STEERING_PER_SECOND;
 
   switch (cat.activity) {
-  case cat_activity::Walking:
-    column_speed = cat.columns_per_second;
-    row_speed    = cat.rows_per_second;
+  case cat_activity::Floating:
+    cat.wander_radians += scene.noise.next_between(-1.0, 1.0) *
+                          WANDER_RADIANS_PER_SECOND * step_seconds * 3.0;
+    target_columns_per_second = std::cos(cat.wander_radians) *
+                                DRIFT_COLUMNS_PER_SECOND * cat.cruise_factor;
+    target_rows_per_second = std::sin(cat.wander_radians) *
+                             DRIFT_ROWS_PER_SECOND * cat.cruise_factor;
 
-    if (scene.noise.next_unit() < SIT_RATE_PER_SECOND * step_seconds) {
-      set_activity(cat, cat_activity::Sitting,
+    if (scene.noise.next_unit() < CURL_RATE_PER_SECOND * step_seconds) {
+      set_activity(cat, cat_activity::Curling,
                    scene.noise.next_between(3.0, 8.0));
     } else if (scene.noise.next_unit() < CHASE_RATE_PER_SECOND * step_seconds) {
       set_activity(cat, cat_activity::Chasing, 6.0);
     }
     break;
 
-  case cat_activity::Chasing:
-    cat.is_facing_right = yarn_columns > 0.0;
-    column_speed        = CHASE_COLUMNS_PER_SECOND;
-    row_speed           = std::fmax(-6.0, std::fmin(6.0, yarn_rows * 3.0));
+  case cat_activity::Chasing: {
+    let const distance = std::sqrt((yarn_columns * yarn_columns) +
+                                   (yarn_rows * yarn_rows * 4.0)) +
+                         0.001;
 
-    if (std::fabs(yarn_columns) < 14.0 && std::fabs(yarn_rows) < 2.0) {
-      set_activity(cat, cat_activity::Crouching, CROUCH_SECONDS);
+    target_columns_per_second =
+        CHASE_COLUMNS_PER_SECOND * yarn_columns / distance;
+    target_rows_per_second =
+        CHASE_COLUMNS_PER_SECOND * yarn_rows * 2.0 / distance * 0.5;
+
+    if (std::fabs(yarn_columns) < 16.0 && std::fabs(yarn_rows) < 2.5) {
+      set_activity(cat, cat_activity::Bracing, BRACE_SECONDS);
     } else if (cat.activity_seconds > cat.activity_limit_seconds) {
-      set_activity(cat, cat_activity::Walking, 0.0);
+      set_activity(cat, cat_activity::Floating, 0.0);
     }
     break;
+  }
 
-  case cat_activity::Crouching:
-    if (cat.activity_seconds > cat.activity_limit_seconds) {
-      set_activity(cat, cat_activity::Pouncing, POUNCE_SECONDS);
-    }
-    break;
-
-  case cat_activity::Pouncing:
-    column_speed = POUNCE_COLUMNS_PER_SECOND;
+  case cat_activity::Bracing:
+    steering = 4.0;
 
     if (cat.activity_seconds > cat.activity_limit_seconds) {
-      if (std::fabs(yarn_columns) < 8.0 && std::fabs(yarn_rows) < 3.0) {
-        kick_yarn(scene, cat);
-      }
-
-      set_activity(cat, cat_activity::Walking, 0.0);
+      cat.is_facing_right = yarn_columns > 0.0;
+      cat.columns_per_second =
+          (cat.is_facing_right ? 1.0 : -1.0) * DASH_COLUMNS_PER_SECOND;
+      cat.rows_per_second = yarn_rows * 3.0;
+      set_activity(cat, cat_activity::Dashing, DASH_SECONDS);
     }
     break;
 
-  case cat_activity::Sitting:
+  case cat_activity::Dashing:
+    target_columns_per_second = cat.columns_per_second;
+    target_rows_per_second    = cat.rows_per_second;
+
+    if (std::fabs(yarn_columns) < 6.0 && std::fabs(yarn_rows) < 3.0) {
+      kick_yarn(scene, cat);
+      set_activity(cat, cat_activity::Floating, 0.0);
+    } else if (cat.activity_seconds > cat.activity_limit_seconds) {
+      set_activity(cat, cat_activity::Floating, 0.0);
+    }
+    break;
+
+  case cat_activity::Curling:
+    steering = 1.0;
+
     if (cat.activity_seconds < GROOM_SECONDS && cat.bubble_seconds <= 0.0 &&
         scene.noise.next_unit() < 0.8 * step_seconds)
     {
@@ -674,43 +707,45 @@ advance_cat(scene_state &scene, cat_state &cat, f64 step_seconds) wontthrow
     }
 
     if (cat.activity_seconds > cat.activity_limit_seconds) {
-      cat.is_facing_right = scene.noise.next_index(2) == 0;
-      set_activity(cat, cat_activity::Walking, 0.0);
+      cat.wander_radians = scene.noise.next_between(0.0, 2.0 * PI);
+      set_activity(cat, cat_activity::Floating, 0.0);
     }
     break;
 
   case cat_activity::Dizzy:
-  case cat_activity::Hissing:
+    steering                  = 0.4;
+    target_columns_per_second = cat.columns_per_second;
+    target_rows_per_second    = cat.rows_per_second;
+
     if (cat.activity_seconds > cat.activity_limit_seconds) {
-      set_activity(cat, cat_activity::Walking, 0.0);
+      set_activity(cat, cat_activity::Floating, 0.0);
+    }
+    break;
+
+  case cat_activity::Hissing:
+    steering = 3.0;
+
+    if (cat.activity_seconds > cat.activity_limit_seconds) {
+      set_activity(cat, cat_activity::Floating, 0.0);
     }
     break;
   }
 
-  if (column_speed > 0.0) {
-    let const columns =
-        (cat.is_facing_right ? 1.0 : -1.0) * column_speed * step_seconds;
+  cat.columns_per_second =
+      approach(cat.columns_per_second, target_columns_per_second, steering,
+               step_seconds);
+  cat.rows_per_second = approach(cat.rows_per_second, target_rows_per_second,
+                                 steering, step_seconds);
+  cat.column += cat.columns_per_second * step_seconds;
+  cat.row += cat.rows_per_second * step_seconds;
 
-    cat.column += columns;
-    cat.stride_columns += std::fabs(columns);
+  if (cat.activity != cat_activity::Dizzy &&
+      std::fabs(cat.columns_per_second) > 0.8)
+  {
+    cat.is_facing_right = cat.columns_per_second > 0.0;
   }
 
-  cat.row += row_speed * step_seconds;
   keep_cat_inside(scene, cat);
-  cat.trail_sample_seconds += step_seconds;
-
-  if (column_speed > 0.0 && cat.trail_sample_seconds >= TRAIL_SAMPLE_SECONDS) {
-    cat.trail_sample_seconds = 0.0;
-    cat.trail_head           = (cat.trail_head + 1) % TRAIL_POINT_COUNT;
-
-    let &point = cat.trail[cat.trail_head];
-
-    point.column  = cat.is_facing_right
-                        ? cat.column + 2.0
-                        : cat.column + static_cast<f64>(CAT_PIXEL_WIDTH) - 4.0;
-    point.row     = cat.row + 2.0;
-    point.is_used = true;
-  }
 }
 
 fn
@@ -722,19 +757,20 @@ meet_cats(scene_state &scene) wontthrow -> void
       let &right_cat = scene.cats[second];
 
       let const are_close = std::fabs(left_cat.column - right_cat.column) <
-                                static_cast<f64>(CAT_PIXEL_WIDTH) - 6.0 &&
+                                static_cast<f64>(CAT_PIXEL_WIDTH) - 8.0 &&
                             std::fabs(left_cat.row - right_cat.row) <
                                 static_cast<f64>(CAT_ROW_COUNT) - 1.0;
 
       if (!are_close) continue;
 
-      let const are_facing =
-          (left_cat.column < right_cat.column && left_cat.is_facing_right &&
-           !right_cat.is_facing_right) ||
-          (left_cat.column > right_cat.column && !left_cat.is_facing_right &&
-           right_cat.is_facing_right);
+      let const are_approaching =
+          (right_cat.column - left_cat.column) *
+              (left_cat.columns_per_second - right_cat.columns_per_second) >
+          0.0;
 
-      if (!are_facing || left_cat.activity == cat_activity::Hissing) continue;
+      if (!are_approaching || left_cat.activity == cat_activity::Hissing) {
+        continue;
+      }
 
       let const is_friendly   = scene.noise.next_index(2) == 0;
       let const middle_column = ((left_cat.column + right_cat.column) / 2.0) +
@@ -742,13 +778,14 @@ meet_cats(scene_state &scene) wontthrow -> void
       let const middle_row = (left_cat.row + right_cat.row) / 2.0;
 
       for (let *cat : {&left_cat, &right_cat}) {
-        cat->is_facing_right = !cat->is_facing_right;
+        cat->columns_per_second = -cat->columns_per_second;
+        cat->wander_radians     = PI - cat->wander_radians;
 
         if (is_friendly) {
           cat->happy_seconds = HAPPY_SECONDS;
           say(*cat,
               FRIEND_PHRASES[scene.noise.next_index(countof(FRIEND_PHRASES))]);
-          set_activity(*cat, cat_activity::Walking, 0.0);
+          set_activity(*cat, cat_activity::Floating, 0.0);
         } else {
           say(*cat, "hsss!");
           set_activity(*cat, cat_activity::Hissing, HISS_SECONDS);
@@ -761,7 +798,7 @@ meet_cats(scene_state &scene) wontthrow -> void
         spawn_particle(scene, particle_kind::Heart,
                        middle_column + scene.noise.next_between(-3.0, 3.0),
                        middle_row, scene.noise.next_between(-2.0, 2.0),
-                       scene.noise.next_between(-4.0, -2.0), 1.6, HEART_COLOR,
+                       scene.noise.next_between(-3.0, -1.0), 1.8, HEART_COLOR,
                        '<');
       }
     }
@@ -775,7 +812,8 @@ advance_yarn(scene_state &scene, f64 step_seconds) wontthrow -> void
 
   yarn.column += yarn.columns_per_second * step_seconds;
   yarn.row += yarn.rows_per_second * step_seconds;
-  yarn.spin_seconds += step_seconds * std::fabs(yarn.columns_per_second) / 8.0;
+  yarn.spin_seconds +=
+      step_seconds * (1.0 + (std::fabs(yarn.columns_per_second) / 8.0));
 
   let const damping = std::exp(-YARN_FRICTION_PER_SECOND * step_seconds);
 
@@ -787,21 +825,17 @@ advance_yarn(scene_state &scene, f64 step_seconds) wontthrow -> void
 
   if (yarn.column < 1.0 || yarn.column > last_column) {
     yarn.column = std::fmax(1.0, std::fmin(last_column, yarn.column));
-    yarn.columns_per_second = -yarn.columns_per_second * 0.8;
+    yarn.columns_per_second = -yarn.columns_per_second * 0.9;
   }
 
   if (yarn.row < 1.0 || yarn.row > last_row) {
     yarn.row             = std::fmax(1.0, std::fmin(last_row, yarn.row));
-    yarn.rows_per_second = -yarn.rows_per_second * 0.8;
+    yarn.rows_per_second = -yarn.rows_per_second * 0.9;
   }
 
   yarn.thread_sample_seconds += step_seconds;
 
-  let const is_rolling =
-      std::fabs(yarn.columns_per_second) + std::fabs(yarn.rows_per_second) >
-      1.0;
-
-  if (is_rolling && yarn.thread_sample_seconds >= YARN_THREAD_SAMPLE_SECONDS) {
+  if (yarn.thread_sample_seconds >= YARN_THREAD_SAMPLE_SECONDS) {
     yarn.thread_sample_seconds = 0.0;
     yarn.thread_head = (yarn.thread_head + 1) % YARN_THREAD_POINT_COUNT;
 
@@ -835,17 +869,10 @@ advance_scene(scene_state &scene, f64 step_seconds) wontthrow -> void
 
     switch (each_particle.kind) {
     case particle_kind::Debris:
-      each_particle.rows_per_second += 14.0 * step_seconds;
-      each_particle.columns_per_second *= drag;
-      break;
-
+    case particle_kind::Sparkle:
     case particle_kind::Smoke:
       each_particle.columns_per_second *= drag;
       each_particle.rows_per_second *= drag;
-      break;
-
-    case particle_kind::Sparkle:
-      each_particle.rows_per_second += 9.0 * step_seconds;
       break;
 
     case particle_kind::Heart:
@@ -976,35 +1003,6 @@ draw_shooting_stars(scene_canvas &canvas, const scene_state &scene) wontthrow
 }
 
 fn
-draw_trails(scene_canvas &canvas, const scene_state &scene) wontthrow -> void
-{
-  let const shimmer =
-      static_cast<usize>(scene.elapsed_seconds / TRAIL_SAMPLE_SECONDS);
-
-  for (usize cat_index = 0; cat_index < scene.cat_count; cat_index++) {
-    let const &cat = scene.cats[cat_index];
-
-    for (usize age = 1; age < TRAIL_POINT_COUNT; age++) {
-      let const &point = cat.trail[(cat.trail_head + TRAIL_POINT_COUNT - age) %
-                                   TRAIL_POINT_COUNT];
-
-      if (!point.is_used) continue;
-
-      for (usize band = 0; band < 6; band++) {
-        let const color =
-            RAINBOW_COLORS[(band + shimmer + age) % countof(RAINBOW_COLORS)];
-
-        if (age > (TRAIL_POINT_COUNT * 2) / 3 && band % 2 == 1) continue;
-
-        canvas.put_pixel(static_cast<isize>(point.row * 2.0) +
-                             static_cast<isize>(band),
-                         static_cast<isize>(point.column), color);
-      }
-    }
-  }
-}
-
-fn
 draw_yarn(scene_canvas &canvas, const scene_state &scene) wontthrow -> void
 {
   let const &yarn = scene.yarn;
@@ -1016,19 +1014,20 @@ draw_yarn(scene_canvas &canvas, const scene_state &scene) wontthrow -> void
 
     if (!point.is_used) continue;
 
-    canvas.put_pixel(static_cast<isize>(point.row * 2.0) + 1,
+    let const wave =
+        std::sin((static_cast<f64>(age) * 0.7) + (scene.elapsed_seconds * 3.0));
+
+    canvas.put_pixel(static_cast<isize>((point.row * 2.0) + 1.0 + wave),
                      static_cast<isize>(point.column), THREAD_COLOR);
   }
 
   let const pixel_row = static_cast<isize>(yarn.row * 2.0);
   let const column    = static_cast<isize>(yarn.column);
-  let const shine     = static_cast<isize>(yarn.spin_seconds) % 3 - 1;
+  let const shine     = (static_cast<isize>(yarn.spin_seconds * 2.0) % 3) - 1;
 
   for (isize row_offset = 0; row_offset < 3; row_offset++) {
     for (isize column_offset = -1; column_offset <= 1; column_offset++) {
-      let const is_corner = row_offset != 1 && column_offset != 0;
-
-      if (is_corner) continue;
+      if (row_offset != 1 && column_offset != 0) continue;
 
       canvas.put_pixel(pixel_row + row_offset, column + column_offset,
                        column_offset == shine && row_offset == 1
@@ -1064,9 +1063,9 @@ cat_eye_color(const cat_state &cat) wontthrow -> u8
   case cat_activity::Dizzy:
     return static_cast<u64>(cat.activity_seconds / 0.12) % 2 == 0 ? 196 : 226;
 
-  case cat_activity::Hissing:   return 196;
-  case cat_activity::Crouching: return 46;
-  case cat_activity::Sitting:
+  case cat_activity::Hissing: return 196;
+  case cat_activity::Bracing: return 46;
+  case cat_activity::Curling:
     if (cat.activity_seconds > DOZE_AFTER_SECONDS ||
         cat.activity_seconds < GROOM_SECONDS)
     {
@@ -1074,9 +1073,9 @@ cat_eye_color(const cat_state &cat) wontthrow -> u8
     }
     break;
 
-  case cat_activity::Walking:
+  case cat_activity::Floating:
   case cat_activity::Chasing:
-  case cat_activity::Pouncing: break;
+  case cat_activity::Dashing:  break;
   }
 
   if (cat.happy_seconds > 0.0) return palette.dark;
@@ -1091,6 +1090,7 @@ fn
 draw_pixels(scene_canvas      &canvas,
             isize              pixel_row,
             isize              origin_column,
+            usize              sprite_width,
             usize              offset,
             StringView         text,
             bool               is_mirrored,
@@ -1104,8 +1104,8 @@ draw_pixels(scene_canvas      &canvas,
 
     let const sprite_column = offset + index;
     let const column =
-        is_mirrored ? origin_column + static_cast<isize>(CAT_PIXEL_WIDTH - 1 -
-                                                         sprite_column)
+        is_mirrored ? origin_column +
+                          static_cast<isize>(sprite_width - 1 - sprite_column)
                     : origin_column + static_cast<isize>(sprite_column);
 
     canvas.put_pixel(pixel_row, column, color);
@@ -1115,31 +1115,33 @@ draw_pixels(scene_canvas      &canvas,
 fn
 draw_cat(scene_canvas &canvas, const cat_state &cat) wontthrow -> void
 {
-  let const &palette     = CAT_PALETTES[cat.palette];
-  let const  eye_color   = cat_eye_color(cat);
-  let const  is_mirrored = cat.is_facing_right;
-  let const  column      = static_cast<isize>(cat.column);
-  let        pixel_row   = static_cast<isize>(cat.row * 2.0);
+  let const &palette   = CAT_PALETTES[cat.palette];
+  let const  eye_color = cat_eye_color(cat);
+  let const  is_tumbling =
+      cat.activity == cat_activity::Dizzy &&
+      static_cast<u64>(cat.activity_seconds / TUMBLE_SECONDS) % 2 == 1;
+  let const is_mirrored = cat.is_facing_right != is_tumbling;
+  let const column      = static_cast<isize>(cat.column);
+  let const bob_pixels  = static_cast<isize>(
+      std::lround(std::sin(cat.phase_seconds * BOB_RADIANS_PER_SECOND) * 1.2));
+  let const pixel_row = static_cast<isize>(cat.row * 2.0) + bob_pixels;
 
-  if (cat.activity == cat_activity::Pouncing) {
-    let const progress = cat.activity_seconds / POUNCE_SECONDS;
+  if (cat.activity == cat_activity::Curling) {
+    let const curled_width = CAT_CURLED_PIXELS[0].length;
+    let const curled_column =
+        column + static_cast<isize>((CAT_PIXEL_WIDTH - curled_width) / 2);
 
-    pixel_row -= static_cast<isize>(POUNCE_HEIGHT_PIXELS * 4.0 * progress *
-                                    (1.0 - progress));
-  }
-
-  if (cat.activity == cat_activity::Crouching) pixel_row += 3;
-
-  if (cat.activity == cat_activity::Sitting) {
-    for (usize index = 0; index < CAT_PIXEL_HEIGHT; index++)
-      draw_pixels(canvas, pixel_row + static_cast<isize>(index), column, 0,
-                  CAT_SITTING_PIXELS[index], is_mirrored, palette, eye_color);
+    for (usize index = 0; index < countof(CAT_CURLED_PIXELS); index++)
+      draw_pixels(canvas, pixel_row + 2 + static_cast<isize>(index),
+                  curled_column, curled_width, 0, CAT_CURLED_PIXELS[index],
+                  is_mirrored, palette, eye_color);
   } else {
     for (usize index = 0; index < countof(CAT_BODY_PIXELS); index++)
-      draw_pixels(canvas, pixel_row + static_cast<isize>(index), column, 0,
-                  CAT_BODY_PIXELS[index], is_mirrored, palette, eye_color);
+      draw_pixels(canvas, pixel_row + static_cast<isize>(index), column,
+                  CAT_PIXEL_WIDTH, 0, CAT_BODY_PIXELS[index], is_mirrored,
+                  palette, eye_color);
 
-    let const tail_speed = cat.activity == cat_activity::Crouching
+    let const tail_speed = cat.activity == cat_activity::Bracing
                                ? TAIL_SWISH_SECONDS / 4.0
                                : TAIL_SWISH_SECONDS;
     let const tail_frame =
@@ -1147,26 +1149,27 @@ draw_cat(scene_canvas &canvas, const cat_state &cat) wontthrow -> void
 
     for (usize index = 0; index < 6; index++)
       draw_pixels(canvas, pixel_row + static_cast<isize>(index), column,
-                  CAT_TAIL_COLUMN, CAT_TAIL_PIXELS[tail_frame][index],
-                  is_mirrored, palette, eye_color);
+                  CAT_PIXEL_WIDTH, CAT_TAIL_COLUMN,
+                  CAT_TAIL_PIXELS[tail_frame][index], is_mirrored, palette,
+                  eye_color);
 
     if (cat.activity == cat_activity::Hissing) {
-      draw_pixels(canvas, pixel_row + 5, column, 0, CAT_SPIKE_PIXELS,
-                  is_mirrored, palette, eye_color);
+      draw_pixels(canvas, pixel_row, column, CAT_PIXEL_WIDTH, 0,
+                  CAT_SPIKE_PIXELS, is_mirrored, palette, eye_color);
     }
 
-    let const leg_pixels =
-        cat.activity == cat_activity::Pouncing
-            ? CAT_LEAP_PIXELS
-            : CAT_LEG_PIXELS[static_cast<usize>(cat.stride_columns /
-                                                STRIDE_COLUMNS) %
-                             countof(CAT_LEG_PIXELS)];
+    let const *leg_pixels =
+        cat.activity == cat_activity::Dashing ? CAT_DASH_PIXELS
+        : cat.activity == cat_activity::Bracing
+            ? CAT_TUCKED_PIXELS
+            : CAT_PADDLE_PIXELS[static_cast<usize>(cat.phase_seconds /
+                                                   PADDLE_SECONDS) %
+                                countof(CAT_PADDLE_PIXELS)];
 
-    if (cat.activity != cat_activity::Crouching) {
-      for (usize index = 0; index < 3; index++)
-        draw_pixels(canvas, pixel_row + 9 + static_cast<isize>(index), column,
-                    0, leg_pixels[index], is_mirrored, palette, eye_color);
-    }
+    for (usize index = 0; index < 3; index++)
+      draw_pixels(canvas, pixel_row + 9 + static_cast<isize>(index), column,
+                  CAT_PIXEL_WIDTH, 0, leg_pixels[index], is_mirrored, palette,
+                  eye_color);
   }
 
   let const row = pixel_row / 2;
@@ -1174,8 +1177,8 @@ draw_cat(scene_canvas &canvas, const cat_state &cat) wontthrow -> void
   if (cat.activity == cat_activity::Dizzy) {
     let const angle = cat.activity_seconds * 9.0;
 
-    for (usize index = 0; index < 2; index++) {
-      let const orbit = angle + (PI * static_cast<f64>(index));
+    for (usize index = 0; index < 3; index++) {
+      let const orbit = angle + (2.0 * PI * static_cast<f64>(index) / 3.0);
 
       canvas.put(
           row - 1 + static_cast<isize>(std::sin(orbit) * 1.2),
@@ -1213,7 +1216,7 @@ draw_explosions(scene_canvas &canvas, const scene_state &scene)
         blast.age_seconds < FIREBALL_SECONDS
             ? std::fmin(blast.age_seconds * FIREBALL_GROWTH,
                         FIREBALL_MAXIMUM_RADIUS) *
-                  (1.0 - (blast.age_seconds / FIREBALL_SECONDS) * 0.5)
+                  (1.0 - ((blast.age_seconds / FIREBALL_SECONDS) * 0.5))
             : 0.0;
     let const reach = static_cast<isize>(shock_radius) + 2;
 
@@ -1366,7 +1369,6 @@ render_scene(String      &frame,
   draw_starfield(canvas, scene);
   draw_moon(canvas);
   draw_shooting_stars(canvas, scene);
-  draw_trails(canvas, scene);
   draw_yarn(canvas, scene);
 
   for (usize index = 0; index < scene.cat_count; index++)
@@ -1470,8 +1472,8 @@ print_still_cat(const ExecContext &ec, Allocator allocator) throws
   for (usize index = 0; index < countof(CAT_TAIL_PIXELS[0]); index++)
     do_stamp(index, CAT_TAIL_COLUMN, CAT_TAIL_PIXELS[0][index]);
 
-  for (usize index = 0; index < countof(CAT_LEG_PIXELS[0]); index++)
-    do_stamp(countof(CAT_BODY_PIXELS) + index, 0, CAT_LEG_PIXELS[0][index]);
+  for (usize index = 0; index < countof(CAT_PADDLE_PIXELS[0]); index++)
+    do_stamp(countof(CAT_BODY_PIXELS) + index, 0, CAT_PADDLE_PIXELS[0][index]);
 
   let text = String{allocator};
 
@@ -1480,9 +1482,11 @@ print_still_cat(const ExecContext &ec, Allocator allocator) throws
   for (usize row = 0; row < CAT_PIXEL_HEIGHT; row += 2) {
     usize kept_length = 0;
 
-    for (usize column = 0; column < CAT_PIXEL_WIDTH; column++)
-      if (is_filled[row][column] || is_filled[row + 1][column])
+    for (usize column = 0; column < CAT_PIXEL_WIDTH; column++) {
+      if (is_filled[row][column] || is_filled[row + 1][column]) {
         kept_length = column + 1;
+      }
+    }
 
     for (usize column = 0; column < kept_length; column++) {
       let const has_top    = is_filled[row][column];
