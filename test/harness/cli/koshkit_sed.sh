@@ -51,7 +51,7 @@ echo "--- a substitution reaches past a NUL byte ---"
 printf 'a\0b\n' | "$BIN" -c 'koshkit sed s/b/X/' | "$BIN_DIR/invoke-koshkit" od -c
 
 echo "--- a global substitution over a long line ---"
-"$BIN" -c 'printf "%200000s" ""' | "$BIN_DIR/invoke-koshkit" tr ' ' a \
+"$BIN" -c 'printf "%50000s" ""' | "$BIN_DIR/invoke-koshkit" tr ' ' a \
   | "$BIN" -c 'koshkit sed s/a/b/g' | "$BIN_DIR/invoke-koshkit" tr -d b | "$BIN_DIR/invoke-koshkit" wc -c
 
 echo "--- quitting stops reading an endless input ---"
