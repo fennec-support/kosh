@@ -27,3 +27,15 @@ nolog
 notify
 nounset
 == matched paren stays an argument:
+== quoted separator stays an argument:
+== quoted assignment prefix:
+export
+== arguments through a quoted assignment prefix:
+noclobber
+noexec
+noglob
+nolog
+notify
+nounset
+== subshell body:
+export

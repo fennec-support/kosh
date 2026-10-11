@@ -28,3 +28,11 @@ echo "== arguments through the case arm:"
 "$BIN" --debug-complete-at 'case $x in a) set -o no' </dev/null
 echo "== matched paren stays an argument:"
 "$BIN" --debug-complete-at 'echo $(ls) expor' </dev/null
+echo "== quoted separator stays an argument:"
+"$BIN" --debug-complete-at 'echo "a;b=c" expor' </dev/null
+echo "== quoted assignment prefix:"
+"$BIN" --debug-complete-at 'FOO="a b" expor' </dev/null
+echo "== arguments through a quoted assignment prefix:"
+"$BIN" --debug-complete-at 'FOO="a b" set -o no' </dev/null
+echo "== subshell body:"
+"$BIN" --debug-complete-at '( expor' </dev/null

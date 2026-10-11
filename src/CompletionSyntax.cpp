@@ -41,20 +41,6 @@ static pure fn is_command_separator(char c) wontthrow -> bool
   return c == ';' || c == '|' || c == '&' || c == '(' || c == '\n';
 }
 
-static pure fn is_unmatched_closing_paren(StringView line,
-                                          usize position) wontthrow -> bool
-{
-  usize depth = 0;
-  for (usize k = 0; k < position; k++) {
-    if (line[k] == '(') {
-      depth++;
-    } else if (line[k] == ')' && depth > 0) {
-      depth--;
-    }
-  }
-  return depth == 0;
-}
-
 static pure fn opens_dollar_quote(StringView line, usize position) wontthrow
     -> bool
 {
@@ -326,27 +312,28 @@ fn internal::is_in_command_position(StringView line,
 
   let const is_active_option =
       token_start < line.length && line[token_start] == '-';
-  let i = token_start;
-  loop
-  {
-    while (i > 0 && is_word_separator(line[i - 1]))
-      i--;
-    if (i == 0) return true;
-    if (is_command_separator(line[i - 1])) return true;
-    if (line[i - 1] == ')' && is_unmatched_closing_paren(line, i - 1)) {
-      return true;
+  usize position = command_segment_start(line, token_start);
+  for (usize k = position; k < token_start; k++) {
+    if (line[k] == '\'' || line[k] == '"' || line[k] == '\\') {
+      k = quoted_run_end(line, k);
+      continue;
     }
 
-    let word_start = i;
-    while (word_start > 0 && !is_word_separator(line[word_start - 1]) &&
-           !is_command_separator(line[word_start - 1]))
-      word_start--;
-    let const word = line.substring_of_length(word_start, i - word_start);
-    if (is_active_option && word == "time") return false;
-    if (!is_transparent_command_prefix(word)) return false;
-    i = word_start;
+    if (line[k] == '(') position = k + 1;
+  }
+
+  loop
+  {
+    position = skip_blanks(line, position);
+    if (position >= token_start) return true;
+
+    let const word = next_completion_prefix_word(line, position);
+    if (!word.has_value()) return true;
+    if (is_active_option && *word == "time") return false;
+    if (!is_transparent_command_prefix(*word)) return false;
   }
 }
+
 fn internal::command_word_of(StringView line) wontthrow -> StringView
 {
   if (let const managed_start = timeout_command_start(line);
@@ -357,39 +344,17 @@ fn internal::command_word_of(StringView line) wontthrow -> StringView
     return command.has_value() ? *command : StringView{};
   }
 
-  usize i = 0;
-  usize open_paren_depth = 0;
-  for (usize k = 0; k < line.length; k++) {
-    let const c = line[k];
-    if (c == '\'' || c == '"' || c == '\\') {
-      k = quoted_run_end(line, k);
-      continue;
-    }
-
-    if (c == '(') {
-      open_paren_depth++;
-    } else if (c == ')') {
-      if (open_paren_depth > 0)
-        open_paren_depth--;
-      else
-        i = k + 1;
-    } else if (c == ';' || c == '|' || c == '&') {
-      i = k + 1;
-    }
-  }
+  usize position = command_segment_start(line, line.length);
   let time_command = StringView{};
   loop
   {
-    i = skip_blanks(line, i);
-    let const start = i;
-    while (i < line.length && line[i] != ' ' && line[i] != '\t')
-      i++;
-    let const word = line.substring_of_length(start, i - start);
-    if (word.is_empty()) return time_command;
-    if (word == "time") {
-      time_command = word;
-    } else if (!is_transparent_command_prefix(word)) {
-      return word;
+    let const word = next_completion_prefix_word(line, position);
+    if (!word.has_value()) return time_command;
+
+    if (*word == "time") {
+      time_command = *word;
+    } else if (!is_transparent_command_prefix(*word)) {
+      return *word;
     }
   }
 }
