@@ -26,22 +26,44 @@ REGISTER_KOSHKIT_UTIL_FLAGS(Split);
 
 namespace koshka::koshkit {
 
-static fn split_output_name(StringView prefix, usize suffix_length, u64 index,
+static fn split_output_name(StringView prefix, usize suffix_length,
+                            bool is_suffix_widened, u64 index,
                             Allocator allocator) throws -> String
 {
   if (suffix_length > 64) throw Error{"suffix length is too large"};
 
-  char suffix[64];
-  for (usize position = 0; position < suffix_length; position++)
+  usize widened_count = 0;
+  if (is_suffix_widened) {
+    loop
+    {
+      u64 block_count = 25;
+      for (usize position = 1; position < suffix_length && block_count != 0;
+           position++)
+        block_count = block_count > UINT64_MAX / 26 ? 0 : block_count * 26;
+      if (block_count == 0 || index < block_count) break;
+
+      index -= block_count;
+      widened_count++;
+      suffix_length++;
+    }
+  }
+
+  char suffix[160];
+  for (usize position = 0; position < widened_count; position++)
+    suffix[position] = 'z';
+  let const total_length = widened_count + suffix_length;
+  for (usize position = widened_count; position < total_length; position++)
     suffix[position] = 'a';
-  for (usize position = suffix_length; position > 0 && index != 0; position--) {
+  for (usize position = total_length; position > widened_count && index != 0;
+       position--)
+  {
     suffix[position - 1] = static_cast<char>('a' + index % 26);
     index /= 26;
   }
   if (index != 0) throw Error{"output file suffixes are exhausted"};
 
   String name{allocator, prefix};
-  name += StringView{suffix, suffix_length};
+  name += StringView{suffix, total_length};
   return name;
 }
 
@@ -119,7 +141,8 @@ fn Split::execute(const ExecContext &ec, EvalContext &cxt,
     if (output_descriptor != KOSH_INVALID_FD) return true;
     let const name =
         split_output_name(prefix, static_cast<usize>(suffix_length),
-                          output_index++, cxt.scratch_allocator());
+                          !FLAG_SPLIT_SUFFIX_LENGTH.is_set(), output_index++,
+                          cxt.scratch_allocator());
     if (let const existing = os::open_file_descriptor(
             name.view(), os::file_open_mode::ReadNonblocking);
         existing.has_value())
@@ -181,29 +204,32 @@ fn Split::execute(const ExecContext &ec, EvalContext &cxt,
       }
     } else {
       usize segment_start = 0;
-      for (usize position = 0; position < *read_count; position++) {
-        if (buffer[position] != '\n') continue;
+      while (segment_start < *read_count) {
         if (!do_open_output()) return 1;
+
+        let const wanted_line_count = unit_limit - output_unit_count;
+        u64 line_count = 0;
+        usize segment_end = *read_count;
+        for (usize position = segment_start; position < *read_count; position++)
+        {
+          if (buffer[position] != '\n') continue;
+          line_count++;
+          if (line_count == wanted_line_count) {
+            segment_end = position + 1;
+            break;
+          }
+        }
+
         if (!os::write_all(output_descriptor, buffer + segment_start,
-                           position + 1 - segment_start))
+                           segment_end - segment_start))
         {
           report_soft_koshkit_util_error(ec, cxt, args[0].view(),
                                          os::last_system_error_message());
           return 1;
         }
-        segment_start = position + 1;
-        output_unit_count++;
+        segment_start = segment_end;
+        output_unit_count += line_count;
         if (output_unit_count == unit_limit) do_rotate_output();
-      }
-      if (segment_start < *read_count) {
-        if (!do_open_output()) return 1;
-        if (!os::write_all(output_descriptor, buffer + segment_start,
-                           *read_count - segment_start))
-        {
-          report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                         os::last_system_error_message());
-          return 1;
-        }
       }
     }
   }

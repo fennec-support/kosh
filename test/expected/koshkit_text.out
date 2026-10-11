@@ -724,6 +724,10 @@ a       b
 --- expand and unexpand count a carriage return as a column ---
 abR     c
 abRT   c
+--- split widens its suffixes past yz ---
+xyz
+xzaaa
+xzaab
 --- comm reports unsorted input ---
 	a
 		b

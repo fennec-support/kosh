@@ -415,6 +415,9 @@ echo "--- paste and expand stream an endless input ---"
 echo "--- expand and unexpand count a carriage return as a column ---"
 printf 'ab\r\tc\n' | "$BIN" -c 'koshkit expand' | tr '\r' R
 printf 'ab\r        c\n' | "$BIN" -c 'koshkit unexpand -a' | tr '\r\t' RT
+echo "--- split widens its suffixes past yz ---"
+mkdir split-widen
+(cd split-widen && "$BIN" -c 'koshkit seq 652 | koshkit split -l 1' && ls | tail -n 3)
 echo "--- comm reports unsorted input ---"
 printf 'b\na\n' > comm-unsorted-1.txt
 printf 'a\nb\n' > comm-unsorted-2.txt
