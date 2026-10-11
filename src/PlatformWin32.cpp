@@ -34,10 +34,11 @@ struct alignas(max_align_t) regex_allocation_header
   size_t payload_length;
 };
 
-extern "C" void *kosh_regex_allocate(size_t length)
+extern "C" void *
+kosh_regex_allocate(size_t length)
 {
   if (length > SIZE_MAX - sizeof(regex_allocation_header)) return nullptr;
-  let const allocation_length = sizeof(regex_allocation_header) + length;
+  let const allocation_length     = sizeof(regex_allocation_header) + length;
   regex_allocation_header *header = nullptr;
   try {
     header = static_cast<regex_allocation_header *>(
@@ -47,24 +48,26 @@ extern "C" void *kosh_regex_allocate(size_t length)
     return nullptr;
   }
   header->allocation_length = allocation_length;
-  header->payload_length = length;
+  header->payload_length    = length;
 
   return header + 1;
 }
 
-extern "C" void *kosh_regex_allocate_zeroed(size_t count, size_t length)
+extern "C" void *
+kosh_regex_allocate_zeroed(size_t count, size_t length)
 {
   if (length != 0 && count > SIZE_MAX / length) {
     return nullptr;
   }
   let const payload_length = count * length;
-  let pointer = kosh_regex_allocate(payload_length);
+  let       pointer        = kosh_regex_allocate(payload_length);
   if (pointer != nullptr) std::memset(pointer, 0, payload_length);
 
   return pointer;
 }
 
-extern "C" void kosh_regex_release(void *pointer)
+extern "C" void
+kosh_regex_release(void *pointer)
 {
   if (pointer == nullptr) return;
   let header = static_cast<regex_allocation_header *>(pointer) - 1;
@@ -72,7 +75,8 @@ extern "C" void kosh_regex_release(void *pointer)
                                              alignof(regex_allocation_header));
 }
 
-extern "C" void *kosh_regex_reallocate(void *pointer, size_t length)
+extern "C" void *
+kosh_regex_reallocate(void *pointer, size_t length)
 {
   if (pointer == nullptr) return kosh_regex_allocate(length);
   if (length == 0) {
@@ -82,7 +86,7 @@ extern "C" void *kosh_regex_reallocate(void *pointer, size_t length)
   }
 
   if (length > SIZE_MAX - sizeof(regex_allocation_header)) return nullptr;
-  let old_header = static_cast<regex_allocation_header *>(pointer) - 1;
+  let       old_header = static_cast<regex_allocation_header *>(pointer) - 1;
   let const allocation_length = sizeof(regex_allocation_header) + length;
   try {
     let header = static_cast<regex_allocation_header *>(
@@ -90,7 +94,7 @@ extern "C" void *kosh_regex_reallocate(void *pointer, size_t length)
             old_header, old_header->allocation_length, allocation_length,
             alignof(regex_allocation_header)));
     header->allocation_length = allocation_length;
-    header->payload_length = length;
+    header->payload_length    = length;
 
     return header + 1;
   } catch (...) {
@@ -102,12 +106,12 @@ namespace koshka {
 
 namespace os {
 
-static i32 HIGHEST_OPEN_SHELL_FD = 2;
+static i32  HIGHEST_OPEN_SHELL_FD           = 2;
 static bool HAS_SCANNED_INHERITED_SHELL_FDS = false;
 
-static constexpr i32 TRACKED_SHELL_FD_COUNT = 8192;
+static constexpr i32 TRACKED_SHELL_FD_COUNT     = 8192;
 static constexpr i32 TRACKED_SHELL_FDS_PER_WORD = 64;
-static u64 CLOSE_ON_EXEC_SHELL_FDS[TRACKED_SHELL_FD_COUNT /
+static u64           CLOSE_ON_EXEC_SHELL_FDS[TRACKED_SHELL_FD_COUNT /
                                    TRACKED_SHELL_FDS_PER_WORD];
 
 enum class close_on_exec_mode : u8
@@ -116,8 +120,9 @@ enum class close_on_exec_mode : u8
   Enabled,
 };
 
-static fn set_shell_fd_close_on_exec(i32 shell_fd,
-                                     close_on_exec_mode mode) wontthrow -> void
+static fn
+set_shell_fd_close_on_exec(i32 shell_fd, close_on_exec_mode mode) wontthrow
+    -> void
 {
   if (shell_fd < 0 || shell_fd >= TRACKED_SHELL_FD_COUNT) {
     return;
@@ -129,11 +134,12 @@ static fn set_shell_fd_close_on_exec(i32 shell_fd,
 
   switch (mode) {
   case close_on_exec_mode::Disabled: word &= ~mask; break;
-  case close_on_exec_mode::Enabled: word |= mask; break;
+  case close_on_exec_mode::Enabled:  word |= mask; break;
   }
 }
 
-static fn is_shell_fd_close_on_exec(i32 shell_fd) wontthrow -> bool
+static fn
+is_shell_fd_close_on_exec(i32 shell_fd) wontthrow -> bool
 {
   if (shell_fd < 0 || shell_fd >= TRACKED_SHELL_FD_COUNT) {
     return false;
@@ -146,25 +152,28 @@ static fn is_shell_fd_close_on_exec(i32 shell_fd) wontthrow -> bool
           mask) != 0;
 }
 
-static fn scan_inherited_shell_fds() wontthrow -> void
+static fn
+scan_inherited_shell_fds() wontthrow -> void
 {
   if (HAS_SCANNED_INHERITED_SHELL_FDS) return;
   HAS_SCANNED_INHERITED_SHELL_FDS = true;
-  let const maximum_fd = _getmaxstdio();
+  let const maximum_fd            = _getmaxstdio();
 
   for (i32 shell_fd = 3; shell_fd < maximum_fd; shell_fd++)
     if (descriptor_from_fd_number(shell_fd) != KOSH_INVALID_FD)
       HIGHEST_OPEN_SHELL_FD = shell_fd;
 }
 
-static fn note_shell_fd_opened(i32 shell_fd) wontthrow -> void
+static fn
+note_shell_fd_opened(i32 shell_fd) wontthrow -> void
 {
   set_shell_fd_close_on_exec(shell_fd, close_on_exec_mode::Disabled);
 
   if (shell_fd > HIGHEST_OPEN_SHELL_FD) HIGHEST_OPEN_SHELL_FD = shell_fd;
 }
 
-static fn note_shell_fd_closed(i32 shell_fd) wontthrow -> void
+static fn
+note_shell_fd_closed(i32 shell_fd) wontthrow -> void
 {
   set_shell_fd_close_on_exec(shell_fd, close_on_exec_mode::Disabled);
 
@@ -177,7 +186,8 @@ static fn note_shell_fd_closed(i32 shell_fd) wontthrow -> void
   }
 }
 
-static fn utf8_to_wide(StringView text, Allocator allocator) throws
+static fn
+utf8_to_wide(StringView text, Allocator allocator) throws
     -> Maybe<ArrayList<wchar_t>>
 {
   if (text.length > static_cast<usize>(INT_MAX)) {
@@ -208,8 +218,9 @@ static fn utf8_to_wide(StringView text, Allocator allocator) throws
   return wide;
 }
 
-static fn wide_to_utf8(const wchar_t *text, usize length,
-                       Allocator allocator) throws -> Maybe<String>
+static fn
+wide_to_utf8(const wchar_t *text, usize length, Allocator allocator) throws
+    -> Maybe<String>
 {
   if (length == 0) return String{allocator};
   if (length > static_cast<usize>(INT_MAX)) {
@@ -233,22 +244,25 @@ static fn wide_to_utf8(const wchar_t *text, usize length,
   };
 }
 
-static bool SHOULD_MAP_DEV_NULL = true;
+static bool SHOULD_MAP_DEV_NULL  = true;
 static bool SHOULD_MAP_SLASH_TMP = true;
 
-fn set_path_compatibility(bool should_map_dev_null,
-                          bool should_map_slash_tmp) wontthrow -> void
+fn
+set_path_compatibility(bool should_map_dev_null,
+                       bool should_map_slash_tmp) wontthrow -> void
 {
-  SHOULD_MAP_DEV_NULL = should_map_dev_null;
+  SHOULD_MAP_DEV_NULL  = should_map_dev_null;
   SHOULD_MAP_SLASH_TMP = should_map_slash_tmp;
 }
 
-static fn is_mapped_dev_null(StringView path) wontthrow -> bool
+static fn
+is_mapped_dev_null(StringView path) wontthrow -> bool
 {
   return SHOULD_MAP_DEV_NULL && path == StringView{"/dev/null"};
 }
 
-static fn path_to_wide(StringView path, Allocator allocator) throws
+static fn
+path_to_wide(StringView path, Allocator allocator) throws
     -> Maybe<ArrayList<wchar_t>>
 {
   constexpr StringView TEMPORARY_ROOT{"/tmp"};
@@ -265,10 +279,11 @@ static fn path_to_wide(StringView path, Allocator allocator) throws
   return utf8_to_wide(mapped.view(), allocator);
 }
 
-fn logged_in_users() throws -> ArrayList<user_session>
+fn
+logged_in_users() throws -> ArrayList<user_session>
 {
-  let result = ArrayList<user_session>{heap_allocator()};
-  let const user = get_current_user();
+  let       result   = ArrayList<user_session>{heap_allocator()};
+  let const user     = get_current_user();
   let const terminal = terminal_name(KOSH_STDIN);
   if (user.has_value() && terminal.has_value()) {
     result.push(user_session{steal(*user), steal(*terminal), 0});
@@ -277,7 +292,8 @@ fn logged_in_users() throws -> ArrayList<user_session>
   return result;
 }
 
-fn write_system_log(const system_log_options &options) wontthrow -> bool
+fn
+write_system_log(const system_log_options &options) wontthrow -> bool
 {
   let output = String{heap_allocator(), options.tag};
   if (options.should_include_pid) {
@@ -289,8 +305,8 @@ fn write_system_log(const system_log_options &options) wontthrow -> bool
   output += options.message;
   output += '\n';
 
-  WORD event_type = EVENTLOG_INFORMATION_TYPE;
-  let const dot = options.priority.find_character('.');
+  WORD      event_type = EVENTLOG_INFORMATION_TYPE;
+  let const dot        = options.priority.find_character('.');
   let const severity =
       dot.has_value() ? options.priority.substring(*dot + 1) : options.priority;
   static constexpr static_string_entry<WORD> EVENT_TYPES[] = {
@@ -327,7 +343,8 @@ fn write_system_log(const system_log_options &options) wontthrow -> bool
   return was_reported;
 }
 
-fn write_fd(os::descriptor fd, const opaque *buf, usize size) wontthrow
+fn
+write_fd(os::descriptor fd, const opaque *buf, usize size) wontthrow
     -> Maybe<usize>
 {
   let const requested_byte_count =
@@ -341,8 +358,8 @@ fn write_fd(os::descriptor fd, const opaque *buf, usize size) wontthrow
     case ERROR_BROKEN_PIPE:
     case ERROR_NO_DATA:
     case ERROR_PIPE_NOT_CONNECTED:
-    case ERROR_NETNAME_DELETED: errno = EPIPE; break;
-    default: break;
+    case ERROR_NETNAME_DELETED:    errno = EPIPE; break;
+    default:                       break;
     }
 
     return koshka::None;
@@ -351,7 +368,8 @@ fn write_fd(os::descriptor fd, const opaque *buf, usize size) wontthrow
   return static_cast<usize>(written_byte_count);
 }
 
-fn write_to_numbered_fd(i64 fd_number, const opaque *buf, usize size) wontthrow
+fn
+write_to_numbered_fd(i64 fd_number, const opaque *buf, usize size) wontthrow
     -> Maybe<usize>
 {
   let const handle = descriptor_from_fd_number(fd_number);
@@ -360,7 +378,8 @@ fn write_to_numbered_fd(i64 fd_number, const opaque *buf, usize size) wontthrow
   return write_fd(handle, buf, size);
 }
 
-fn read_fd(os::descriptor fd, opaque *buf, usize size) wontthrow -> Maybe<usize>
+fn
+read_fd(os::descriptor fd, opaque *buf, usize size) wontthrow -> Maybe<usize>
 {
   let const requested_byte_count =
       size > MAXDWORD ? MAXDWORD : static_cast<DWORD>(size);
@@ -382,7 +401,8 @@ fn read_fd(os::descriptor fd, opaque *buf, usize size) wontthrow -> Maybe<usize>
   return static_cast<usize>(read_byte_count);
 }
 
-fn descriptor_is_seekable(os::descriptor fd) wontthrow -> bool
+fn
+descriptor_is_seekable(os::descriptor fd) wontthrow -> bool
 {
   if (GetFileType(fd) != FILE_TYPE_DISK) return false;
   LARGE_INTEGER distance{};
@@ -390,7 +410,8 @@ fn descriptor_is_seekable(os::descriptor fd) wontthrow -> bool
   return SetFilePointerEx(fd, distance, nullptr, FILE_CURRENT) != FALSE;
 }
 
-fn regular_descriptor_file_size(os::descriptor fd) wontthrow -> Maybe<u64>
+fn
+regular_descriptor_file_size(os::descriptor fd) wontthrow -> Maybe<u64>
 {
   if (GetFileType(fd) != FILE_TYPE_DISK) return None;
 
@@ -402,7 +423,8 @@ fn regular_descriptor_file_size(os::descriptor fd) wontthrow -> Maybe<u64>
   return static_cast<u64>(size.QuadPart);
 }
 
-fn rewind_descriptor(os::descriptor fd, usize byte_count) wontthrow -> bool
+fn
+rewind_descriptor(os::descriptor fd, usize byte_count) wontthrow -> bool
 {
   LARGE_INTEGER distance{};
   distance.QuadPart = -static_cast<LONGLONG>(byte_count);
@@ -410,8 +432,8 @@ fn rewind_descriptor(os::descriptor fd, usize byte_count) wontthrow -> bool
   return SetFilePointerEx(fd, distance, nullptr, FILE_CURRENT) != FALSE;
 }
 
-fn seek_descriptor_from_start(os::descriptor fd, u64 byte_offset) wontthrow
-    -> bool
+fn
+seek_descriptor_from_start(os::descriptor fd, u64 byte_offset) wontthrow -> bool
 {
   LARGE_INTEGER distance{};
   distance.QuadPart = static_cast<LONGLONG>(byte_offset);
@@ -419,7 +441,8 @@ fn seek_descriptor_from_start(os::descriptor fd, u64 byte_offset) wontthrow
   return SetFilePointerEx(fd, distance, nullptr, FILE_BEGIN) != FALSE;
 }
 
-fn wait_for_fd_readable(os::descriptor fd, i64 timeout_nanos) wontthrow -> i32
+fn
+wait_for_fd_readable(os::descriptor fd, i64 timeout_nanos) wontthrow -> i32
 {
   let const file_type = GetFileType(fd);
   if (file_type == FILE_TYPE_UNKNOWN && GetLastError() != NO_ERROR) {
@@ -427,11 +450,11 @@ fn wait_for_fd_readable(os::descriptor fd, i64 timeout_nanos) wontthrow -> i32
   }
   if (file_type == FILE_TYPE_DISK) return 1;
 
-  let const has_timeout = timeout_nanos >= 0;
-  let const started_at = has_timeout ? monotonic_nanos() : 0;
-  let const timeout = has_timeout ? static_cast<u64>(timeout_nanos) : 0;
-  INPUT_RECORD *console_events = nullptr;
-  DWORD console_event_capacity = 0;
+  let const     has_timeout = timeout_nanos >= 0;
+  let const     started_at  = has_timeout ? monotonic_nanos() : 0;
+  let const     timeout     = has_timeout ? static_cast<u64>(timeout_nanos) : 0;
+  INPUT_RECORD *console_events         = nullptr;
+  DWORD         console_event_capacity = 0;
   defer
   {
     if (console_events != nullptr)
@@ -481,10 +504,10 @@ fn wait_for_fd_readable(os::descriptor fd, i64 timeout_nanos) wontthrow -> i32
                                 static_cast<usize>(event_count) *
                                     sizeof(INPUT_RECORD));
           if (resized == nullptr) return -1;
-          console_events = static_cast<INPUT_RECORD *>(resized);
+          console_events         = static_cast<INPUT_RECORD *>(resized);
           console_event_capacity = event_count;
         }
-        DWORD peeked_event_count = 0;
+        DWORD     peeked_event_count = 0;
         let const did_peek = PeekConsoleInputA(fd, console_events, event_count,
                                                &peeked_event_count);
         let const should_wait_for_complete_line =
@@ -525,7 +548,8 @@ fn wait_for_fd_readable(os::descriptor fd, i64 timeout_nanos) wontthrow -> i32
   }
 }
 
-fn close_fd(os::descriptor fd) wontthrow -> bool
+fn
+close_fd(os::descriptor fd) wontthrow -> bool
 {
   const DWORD prior_error = GetLastError();
   if (CloseHandle(fd) == FALSE) return false;
@@ -534,7 +558,8 @@ fn close_fd(os::descriptor fd) wontthrow -> bool
   return true;
 }
 
-fn redirect_stdout(os::descriptor target) wontthrow -> os::descriptor
+fn
+redirect_stdout(os::descriptor target) wontthrow -> os::descriptor
 {
   os::descriptor saved = GetStdHandle(STD_OUTPUT_HANDLE);
   SetStdHandle(STD_OUTPUT_HANDLE, target);
@@ -543,30 +568,34 @@ fn redirect_stdout(os::descriptor target) wontthrow -> os::descriptor
   return saved;
 }
 
-fn restore_stdout(os::descriptor saved) wontthrow -> void
+fn
+restore_stdout(os::descriptor saved) wontthrow -> void
 {
   SetStdHandle(STD_OUTPUT_HANDLE, saved);
   note_descriptor_rebound();
 }
 
-static fn duplicate_handle(HANDLE source, HANDLE &copy,
-                           BOOL is_inheritable) wontthrow -> bool
+static fn
+duplicate_handle(HANDLE source, HANDLE &copy, BOOL is_inheritable) wontthrow
+    -> bool
 {
   return DuplicateHandle(GetCurrentProcess(), source, GetCurrentProcess(),
                          &copy, 0, is_inheritable, DUPLICATE_SAME_ACCESS) != 0;
 }
 
-static fn std_handle_slot_for_shell_fd(i32 shell_fd) -> Maybe<DWORD>
+static fn
+std_handle_slot_for_shell_fd(i32 shell_fd) -> Maybe<DWORD>
 {
   switch (shell_fd) {
-  case 0: return STD_INPUT_HANDLE;
-  case 1: return STD_OUTPUT_HANDLE;
-  case 2: return STD_ERROR_HANDLE;
+  case 0:  return STD_INPUT_HANDLE;
+  case 1:  return STD_OUTPUT_HANDLE;
+  case 2:  return STD_ERROR_HANDLE;
   default: return koshka::None;
   }
 }
 
-static fn standard_handle_is_referenced(os::descriptor handle) wontthrow -> bool
+static fn
+standard_handle_is_referenced(os::descriptor handle) wontthrow -> bool
 {
   static constexpr DWORD STANDARD_HANDLE_SLOTS[] = {
       STD_INPUT_HANDLE, STD_OUTPUT_HANDLE, STD_ERROR_HANDLE};
@@ -577,8 +606,8 @@ static fn standard_handle_is_referenced(os::descriptor handle) wontthrow -> bool
   return false;
 }
 
-static fn standard_handle_is_owned_by_runtime(os::descriptor handle) wontthrow
-    -> bool
+static fn
+standard_handle_is_owned_by_runtime(os::descriptor handle) wontthrow -> bool
 {
   for (i32 shell_fd = 0; shell_fd <= 2; shell_fd++)
     if (descriptor_from_fd_number(shell_fd) == handle) return true;
@@ -586,7 +615,8 @@ static fn standard_handle_is_owned_by_runtime(os::descriptor handle) wontthrow
   return false;
 }
 
-fn save_and_replace_descriptor(i32 shell_fd, os::descriptor target) wontthrow
+fn
+save_and_replace_descriptor(i32 shell_fd, os::descriptor target) wontthrow
     -> saved_descriptor
 {
   const Maybe<DWORD> slot = std_handle_slot_for_shell_fd(shell_fd);
@@ -612,9 +642,9 @@ fn save_and_replace_descriptor(i32 shell_fd, os::descriptor target) wontthrow
   }
 
   let const original = GetStdHandle(*slot);
-  result.original = original;
-  result.was_open = original != nullptr && original != INVALID_HANDLE_VALUE;
-  result.saved = original;
+  result.original    = original;
+  result.was_open    = original != nullptr && original != INVALID_HANDLE_VALUE;
+  result.saved       = original;
 
   HANDLE duplicate = INVALID_HANDLE_VALUE;
   if (!duplicate_handle(target, duplicate, TRUE)) {
@@ -634,7 +664,8 @@ fn save_and_replace_descriptor(i32 shell_fd, os::descriptor target) wontthrow
   return result;
 }
 
-fn restore_descriptor(const saved_descriptor &saved) wontthrow -> void
+fn
+restore_descriptor(const saved_descriptor &saved) wontthrow -> void
 {
   if (!saved.is_dup2_ok) return;
   const Maybe<DWORD> slot = std_handle_slot_for_shell_fd(saved.shell_fd);
@@ -668,14 +699,15 @@ fn restore_descriptor(const saved_descriptor &saved) wontthrow -> void
   }
 }
 
-fn save_descriptor(i32 shell_fd) wontthrow -> saved_descriptor
+fn
+save_descriptor(i32 shell_fd) wontthrow -> saved_descriptor
 {
   saved_descriptor result{};
-  result.shell_fd = shell_fd;
+  result.shell_fd         = shell_fd;
   const Maybe<DWORD> slot = std_handle_slot_for_shell_fd(shell_fd);
   if (!slot.has_value()) {
     let const original = descriptor_for_shell_fd(shell_fd);
-    result.original = original;
+    result.original    = original;
     result.was_open = original != nullptr && original != INVALID_HANDLE_VALUE;
     if (result.was_open && !duplicate_handle(original, result.saved, FALSE)) {
       result.is_dup2_ok = false;
@@ -684,8 +716,8 @@ fn save_descriptor(i32 shell_fd) wontthrow -> saved_descriptor
     return result;
   }
   let const original = GetStdHandle(*slot);
-  result.original = original;
-  result.was_open = original != nullptr && original != INVALID_HANDLE_VALUE;
+  result.original    = original;
+  result.was_open    = original != nullptr && original != INVALID_HANDLE_VALUE;
   if (result.was_open && !duplicate_handle(original, result.saved, FALSE)) {
     result.is_dup2_ok = false;
 
@@ -696,19 +728,22 @@ fn save_descriptor(i32 shell_fd) wontthrow -> saved_descriptor
   return result;
 }
 
-fn save_and_replace_descriptor_out_of_reach(i32 shell_fd,
-                                            os::descriptor target) wontthrow
+fn
+save_and_replace_descriptor_out_of_reach(i32            shell_fd,
+                                         os::descriptor target) wontthrow
     -> saved_descriptor
 {
   return save_and_replace_descriptor(shell_fd, target);
 }
 
-fn save_descriptor_out_of_reach(i32 shell_fd) wontthrow -> saved_descriptor
+fn
+save_descriptor_out_of_reach(i32 shell_fd) wontthrow -> saved_descriptor
 {
   return save_descriptor(shell_fd);
 }
 
-fn reopen_terminal_as_stdin() wontthrow -> bool
+fn
+reopen_terminal_as_stdin() wontthrow -> bool
 {
   let const terminal = CreateFileW(L"CONIN$", GENERIC_READ | GENERIC_WRITE,
                                    FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr,
@@ -719,16 +754,28 @@ fn reopen_terminal_as_stdin() wontthrow -> bool
   return replace_descriptor(0, terminal) && shell_fd_is_a_tty(0);
 }
 
-fn shell_has_controlling_terminal() wontthrow -> bool { return false; }
-fn give_controlling_terminal_to(process p) wontthrow -> void { unused(p); }
-fn give_controlling_terminal_to_process_group(i64 process_group_id) wontthrow
+fn
+shell_has_controlling_terminal() wontthrow -> bool
+{
+  return false;
+}
+fn
+give_controlling_terminal_to(process p) wontthrow -> void
+{
+  unused(p);
+}
+fn
+give_controlling_terminal_to_process_group(i64 process_group_id) wontthrow
     -> void
 {
   unused(process_group_id);
 }
-fn reclaim_controlling_terminal() wontthrow -> void {}
+fn
+reclaim_controlling_terminal() wontthrow -> void
+{}
 
-fn descriptor_for_shell_fd(i32 shell_fd) wontthrow -> os::descriptor
+fn
+descriptor_for_shell_fd(i32 shell_fd) wontthrow -> os::descriptor
 {
   const Maybe<DWORD> slot = std_handle_slot_for_shell_fd(shell_fd);
   if (!slot.has_value()) return descriptor_from_fd_number(shell_fd);
@@ -737,7 +784,8 @@ fn descriptor_for_shell_fd(i32 shell_fd) wontthrow -> os::descriptor
   return handle != nullptr ? handle : KOSH_INVALID_FD;
 }
 
-fn duplicate_shell_fd(i32 shell_fd) wontthrow -> os::descriptor
+fn
+duplicate_shell_fd(i32 shell_fd) wontthrow -> os::descriptor
 {
   let const original = descriptor_for_shell_fd(shell_fd);
   if (original == nullptr || original == INVALID_HANDLE_VALUE) {
@@ -750,8 +798,9 @@ fn duplicate_shell_fd(i32 shell_fd) wontthrow -> os::descriptor
   return copy;
 }
 
-fn move_descriptor_to_free_shell_fd(os::descriptor source,
-                                    i32 floor_fd) wontthrow -> i32
+fn
+move_descriptor_to_free_shell_fd(os::descriptor source, i32 floor_fd) wontthrow
+    -> i32
 {
   let const shell_fd = allocate_free_shell_fd(floor_fd);
   if (shell_fd < 0) return -1;
@@ -765,8 +814,9 @@ fn move_descriptor_to_free_shell_fd(os::descriptor source,
   return shell_fd;
 }
 
-fn descriptors_refer_to_same_file(os::descriptor first,
-                                  os::descriptor second) wontthrow -> bool
+fn
+descriptors_refer_to_same_file(os::descriptor first,
+                               os::descriptor second) wontthrow -> bool
 {
   if (first == KOSH_INVALID_FD || second == KOSH_INVALID_FD) {
     return false;
@@ -786,7 +836,8 @@ fn descriptors_refer_to_same_file(os::descriptor first,
          first_info.nFileIndexLow == second_info.nFileIndexLow;
 }
 
-fn descriptor_from_fd_number(i64 fd_number) wontthrow -> os::descriptor
+fn
+descriptor_from_fd_number(i64 fd_number) wontthrow -> os::descriptor
 {
 #if defined(_MSC_VER)
   let const previous_handler = _set_thread_local_invalid_parameter_handler(
@@ -799,7 +850,8 @@ fn descriptor_from_fd_number(i64 fd_number) wontthrow -> os::descriptor
       _get_osfhandle(static_cast<int>(fd_number)));
 }
 
-fn replace_descriptor(i32 shell_fd, os::descriptor target) wontthrow -> bool
+fn
+replace_descriptor(i32 shell_fd, os::descriptor target) wontthrow -> bool
 {
   const Maybe<DWORD> slot = std_handle_slot_for_shell_fd(shell_fd);
   if (target == nullptr || target == INVALID_HANDLE_VALUE) {
@@ -853,7 +905,8 @@ fn replace_descriptor(i32 shell_fd, os::descriptor target) wontthrow -> bool
   return true;
 }
 
-fn close_shell_fd(i32 shell_fd) wontthrow -> bool
+fn
+close_shell_fd(i32 shell_fd) wontthrow -> bool
 {
   const Maybe<DWORD> slot = std_handle_slot_for_shell_fd(shell_fd);
   if (!slot.has_value()) {
@@ -876,7 +929,8 @@ fn close_shell_fd(i32 shell_fd) wontthrow -> bool
   return standard_handle_is_referenced(handle) || CloseHandle(handle) != FALSE;
 }
 
-fn allocate_free_shell_fd(i32 floor_fd) wontthrow -> i32
+fn
+allocate_free_shell_fd(i32 floor_fd) wontthrow -> i32
 {
   let const maximum_fd = _getmaxstdio();
 
@@ -886,7 +940,8 @@ fn allocate_free_shell_fd(i32 floor_fd) wontthrow -> i32
   return -1;
 }
 
-fn get_current_user() -> Maybe<String>
+fn
+get_current_user() -> Maybe<String>
 {
   DWORD size = 0;
   GetUserNameW(nullptr, &size);
@@ -904,40 +959,47 @@ fn get_current_user() -> Maybe<String>
   return koshka::None;
 }
 
-fn get_login_user() throws -> Maybe<String> { return get_current_user(); }
+fn
+get_login_user() throws -> Maybe<String>
+{
+  return get_current_user();
+}
 
-fn get_hostname() throws -> Maybe<String>
+fn
+get_hostname() throws -> Maybe<String>
 {
   wchar_t buffer[MAX_COMPUTERNAME_LENGTH + 1];
-  DWORD size = countof(buffer);
+  DWORD   size = countof(buffer);
   if (GetComputerNameW(buffer, &size))
     return wide_to_utf8(buffer, size, heap_allocator());
 
   return koshka::None;
 }
 
-static fn ensure_winsock_started() wontthrow -> bool
+static fn
+ensure_winsock_started() wontthrow -> bool
 {
   static bool is_started = false;
-  static bool did_try = false;
+  static bool did_try    = false;
   if (did_try) return is_started;
 
   WSADATA data{};
   is_started = WSAStartup(MAKEWORD(2, 2), &data) == 0;
-  did_try = true;
+  did_try    = true;
 
   return is_started;
 }
 
-fn network_interface_addresses() throws -> ArrayList<network_interface_address>
+fn
+network_interface_addresses() throws -> ArrayList<network_interface_address>
 {
   let result = ArrayList<network_interface_address>{heap_allocator()};
   if (!ensure_winsock_started()) return result;
 
-  ULONG buffer_byte_count = 16384;
-  ArrayList<u64> storage{heap_allocator()};
-  IP_ADAPTER_ADDRESSES *adapters = nullptr;
-  ULONG query_status = ERROR_BUFFER_OVERFLOW;
+  ULONG                 buffer_byte_count = 16384;
+  ArrayList<u64>        storage{heap_allocator()};
+  IP_ADAPTER_ADDRESSES *adapters     = nullptr;
+  ULONG                 query_status = ERROR_BUFFER_OVERFLOW;
 
   for (usize attempt_count = 0; attempt_count < 4; attempt_count++) {
     storage.reserve((static_cast<usize>(buffer_byte_count) + sizeof(u64) - 1) /
@@ -962,7 +1024,7 @@ fn network_interface_addresses() throws -> ArrayList<network_interface_address>
     if (!interface_name.has_value()) continue;
 
     for (let *unicast = adapter->FirstUnicastAddress; unicast != nullptr;
-         unicast = unicast->Next)
+         unicast      = unicast->Next)
     {
       if (unicast->Address.lpSockaddr == nullptr) continue;
 
@@ -992,14 +1054,16 @@ fn network_interface_addresses() throws -> ArrayList<network_interface_address>
   return result;
 }
 
-fn default_network_interface(Allocator allocator) throws -> Maybe<String>
+fn
+default_network_interface(Allocator allocator) throws -> Maybe<String>
 {
   unused(allocator);
 
   return None;
 }
 
-fn read_network_interface_statistics() throws
+fn
+read_network_interface_statistics() throws
     -> ArrayList<network_interface_statistics_entry>
 {
   let result = ArrayList<network_interface_statistics_entry>{heap_allocator()};
@@ -1024,8 +1088,8 @@ fn read_network_interface_statistics() throws
       static_cast<u32>(network_statistics_field::TransmitQueueLength);
 
   for (ULONG index = 0; index < table->NumEntries; index++) {
-    let const &row = table->Table[index];
-    let const interface_name = wide_to_utf8(
+    let const &row            = table->Table[index];
+    let const  interface_name = wide_to_utf8(
         row.Alias, static_cast<usize>(lstrlenW(row.Alias)), heap_allocator());
     if (!interface_name.has_value()) continue;
 
@@ -1050,10 +1114,11 @@ fn read_network_interface_statistics() throws
   return result;
 }
 
-fn read_tcp_statistics(tcp_statistics &statistics) wontthrow -> bool
+fn
+read_tcp_statistics(tcp_statistics &statistics) wontthrow -> bool
 {
-  bool has_statistics = false;
-  constexpr ULONG FAMILIES[] = {AF_INET, AF_INET6};
+  bool            has_statistics = false;
+  constexpr ULONG FAMILIES[]     = {AF_INET, AF_INET6};
 
   for (let const family : FAMILIES) {
     MIB_TCPSTATS native{};
@@ -1086,14 +1151,20 @@ fn read_tcp_statistics(tcp_statistics &statistics) wontthrow -> bool
   return has_statistics;
 }
 
-fn kernel_sockets() throws -> ArrayList<kernel_socket_entry>
+fn
+kernel_sockets() throws -> ArrayList<kernel_socket_entry>
 {
   return ArrayList<kernel_socket_entry>{heap_allocator()};
 }
 
-fn has_network_socket_listing() wontthrow -> bool { return false; }
+fn
+has_network_socket_listing() wontthrow -> bool
+{
+  return false;
+}
 
-fn network_sockets(network_socket_process_mode process_mode) throws
+fn
+network_sockets(network_socket_process_mode process_mode) throws
     -> ArrayList<network_socket_entry>
 {
   unused(process_mode);
@@ -1101,11 +1172,12 @@ fn network_sockets(network_socket_process_mode process_mode) throws
   return ArrayList<network_socket_entry>{heap_allocator()};
 }
 
-fn get_processor_counts() wontthrow -> processor_counts
+fn
+get_processor_counts() wontthrow -> processor_counts
 {
   processor_counts counts{};
-  let const online = GetActiveProcessorCount(ALL_PROCESSOR_GROUPS);
-  let const configured = GetMaximumProcessorCount(ALL_PROCESSOR_GROUPS);
+  let const        online     = GetActiveProcessorCount(ALL_PROCESSOR_GROUPS);
+  let const        configured = GetMaximumProcessorCount(ALL_PROCESSOR_GROUPS);
   if (online != 0) counts.online_count = static_cast<usize>(online);
   if (configured != 0) counts.configured_count = static_cast<usize>(configured);
   ULONG cpu_set_count = 0;
@@ -1130,11 +1202,11 @@ fn get_processor_counts() wontthrow -> processor_counts
   } else {
     USHORT group_count = 64;
     USHORT groups[64];
-    usize affinity_count = 0;
+    usize  affinity_count = 0;
     if (GetProcessGroupAffinity(GetCurrentProcess(), &group_count, groups)) {
       if (group_count == 1) {
         DWORD_PTR process_affinity = 0;
-        DWORD_PTR system_affinity = 0;
+        DWORD_PTR system_affinity  = 0;
         if (GetProcessAffinityMask(GetCurrentProcess(), &process_affinity,
                                    &system_affinity))
         {
@@ -1156,7 +1228,8 @@ fn get_processor_counts() wontthrow -> processor_counts
   return counts;
 }
 
-fn get_home_directory() -> Maybe<Path>
+fn
+get_home_directory() -> Maybe<Path>
 {
   if (Maybe<String> home = get_environment_variable("HOME"))
     return Path{StringView{*home}};
@@ -1166,9 +1239,10 @@ fn get_home_directory() -> Maybe<Path>
   return koshka::None;
 }
 
-fn get_system_koshconf_path() throws -> Maybe<Path>
+fn
+get_system_koshconf_path() throws -> Maybe<Path>
 {
-  PWSTR folder = nullptr;
+  PWSTR     folder = nullptr;
   let const result = SHGetKnownFolderPath(FOLDERID_ProgramData, KF_FLAG_DEFAULT,
                                           nullptr, &folder);
   defer { CoTaskMemFree(folder); };
@@ -1189,7 +1263,8 @@ fn get_system_koshconf_path() throws -> Maybe<Path>
   return path;
 }
 
-fn get_home_for_user(StringView username) throws -> Maybe<Path>
+fn
+get_home_for_user(StringView username) throws -> Maybe<Path>
 {
   let const current_user = get_current_user();
   if (!current_user.has_value() || current_user->count() != username.length) {
@@ -1204,16 +1279,18 @@ fn get_home_for_user(StringView username) throws -> Maybe<Path>
   return get_home_directory();
 }
 
-fn enumerate_users() throws -> ArrayList<String>
+fn
+enumerate_users() throws -> ArrayList<String>
 {
-  let users = ArrayList<String>{heap_allocator()};
+  let users        = ArrayList<String>{heap_allocator()};
   let current_user = get_current_user();
   if (current_user.has_value()) users.push(current_user.take());
 
   return users;
 }
 
-fn enumerate_groups() throws -> ArrayList<String>
+fn
+enumerate_groups() throws -> ArrayList<String>
 {
   return ArrayList<String>{heap_allocator()};
 }
@@ -1221,31 +1298,45 @@ fn enumerate_groups() throws -> ArrayList<String>
 static DWORD PARENT_SHELL_PID = GetCurrentProcessId();
 static DWORD PARENT_SHELL_PARENT_PID =
     static_cast<DWORD>(get_parent_process_id());
-static constexpr uintptr PROCESS_REFERENCE_MASK = 3u;
-static constexpr uintptr PID_REFERENCE_TAG = 1u;
+static constexpr uintptr PROCESS_REFERENCE_MASK      = 3u;
+static constexpr uintptr PID_REFERENCE_TAG           = 1u;
 static constexpr uintptr PROCESS_GROUP_REFERENCE_TAG = 3u;
 
-fn is_stdin_a_tty() wontthrow -> bool { return is_fd_a_tty(KOSH_STDIN); }
+fn
+is_stdin_a_tty() wontthrow -> bool
+{
+  return is_fd_a_tty(KOSH_STDIN);
+}
 
-fn is_stdout_a_tty() wontthrow -> bool { return is_fd_a_tty(KOSH_STDOUT); }
+fn
+is_stdout_a_tty() wontthrow -> bool
+{
+  return is_fd_a_tty(KOSH_STDOUT);
+}
 
-fn is_stderr_a_tty() wontthrow -> bool { return is_fd_a_tty(KOSH_STDERR); }
+fn
+is_stderr_a_tty() wontthrow -> bool
+{
+  return is_fd_a_tty(KOSH_STDERR);
+}
 
-fn is_fd_a_tty(descriptor fd) wontthrow -> bool
+fn
+is_fd_a_tty(descriptor fd) wontthrow -> bool
 {
   DWORD console_mode = 0;
 
   return GetConsoleMode(fd, &console_mode) != FALSE;
 }
 
-fn terminal_name(descriptor fd) throws -> Maybe<String>
+fn
+terminal_name(descriptor fd) throws -> Maybe<String>
 {
   if (!is_fd_a_tty(fd)) return None;
 
   return String{"console"};
 }
 
-TerminalEchoGuard::TerminalEchoGuard(descriptor input,
+TerminalEchoGuard::TerminalEchoGuard(descriptor         input,
                                      terminal_echo_mode mode) wontthrow
     : m_input(input)
 {
@@ -1271,7 +1362,8 @@ TerminalEchoGuard::~TerminalEchoGuard()
   if (m_should_restore) unused(SetConsoleMode(m_input, m_original_mode));
 }
 
-pure fn TerminalEchoGuard::did_succeed() const wontthrow -> bool
+pure fn
+TerminalEchoGuard::did_succeed() const wontthrow -> bool
 {
   return m_did_succeed;
 }
@@ -1294,19 +1386,26 @@ TerminalRawInputGuard::~TerminalRawInputGuard()
   if (m_should_restore) unused(SetConsoleMode(m_input, m_original_mode));
 }
 
-pure fn TerminalRawInputGuard::is_active() const wontthrow -> bool
+pure fn
+TerminalRawInputGuard::is_active() const wontthrow -> bool
 {
   return m_should_restore;
 }
 
-fn allocate_aligned(usize length, usize alignment) wontthrow -> opaque *
+fn
+allocate_aligned(usize length, usize alignment) wontthrow -> opaque *
 {
   return _aligned_malloc(length, alignment);
 }
 
-fn free_aligned(opaque *pointer) wontthrow -> void { _aligned_free(pointer); }
+fn
+free_aligned(opaque *pointer) wontthrow -> void
+{
+  _aligned_free(pointer);
+}
 
-fn collate_compare(const String &left, const String &right) wontthrow -> int
+fn
+collate_compare(const String &left, const String &right) wontthrow -> int
 {
   if (left < right) return -1;
 
@@ -1317,33 +1416,40 @@ RegexUtf8Scope::RegexUtf8Scope(bool) wontthrow {}
 
 RegexUtf8Scope::~RegexUtf8Scope() {}
 
-fn NumericLocaleScope::activate(StringView, bool) wontthrow -> void {}
+fn
+NumericLocaleScope::activate(StringView, bool) wontthrow -> void
+{}
 
-fn NumericLocaleScope::deactivate() wontthrow -> void {}
+fn
+NumericLocaleScope::deactivate() wontthrow -> void
+{}
 
-fn code_point_to_upper(u32 code_point) wontthrow -> u32
+fn
+code_point_to_upper(u32 code_point) wontthrow -> u32
 {
   if (code_point > 0xffff) return code_point;
 
   return static_cast<u32>(towupper(static_cast<wint_t>(code_point)));
 }
 
-fn code_point_to_lower(u32 code_point) wontthrow -> u32
+fn
+code_point_to_lower(u32 code_point) wontthrow -> u32
 {
   if (code_point > 0xffff) return code_point;
 
   return static_cast<u32>(towlower(static_cast<wint_t>(code_point)));
 }
 
-fn locale_is_available(StringView locale_name) wontthrow -> bool
+fn
+locale_is_available(StringView locale_name) wontthrow -> bool
 {
   unused(locale_name);
 
   return true;
 }
 
-fn code_point_is_in_class(StringView class_name, u32 code_point) wontthrow
-    -> bool
+fn
+code_point_is_in_class(StringView class_name, u32 code_point) wontthrow -> bool
 {
   char name[16];
   if (code_point > 0xffff || class_name.length >= sizeof(name)) {
@@ -1367,8 +1473,8 @@ windows_system_configuration_value(system_configuration_key key) wontthrow
   switch (key) {
   case system_configuration_key::AioListIoMax:
   case system_configuration_key::AioMax:
-  case system_configuration_key::AioPriorityDeltaMax: return None;
-  case system_configuration_key::ArgMax: return 32767;
+  case system_configuration_key::AioPriorityDeltaMax:     return None;
+  case system_configuration_key::ArgMax:                  return 32767;
   case system_configuration_key::AtExitMax:
   case system_configuration_key::BcBaseMax:
   case system_configuration_key::BcDimensionMax:
@@ -1387,13 +1493,13 @@ windows_system_configuration_value(system_configuration_key key) wontthrow
   case system_configuration_key::LoginNameMax:
   case system_configuration_key::MessageQueueOpenMax:
   case system_configuration_key::MessageQueuePriorityMax: return None;
-  case system_configuration_key::OpenMax: return _getmaxstdio();
+  case system_configuration_key::OpenMax:                 return _getmaxstdio();
   case system_configuration_key::PageSize:
     return static_cast<i64>(system_info.dwPageSize);
   case system_configuration_key::PasswordBufferSizeMax:
   case system_configuration_key::PasswordMax:
   case system_configuration_key::PhysicalPages:
-  case system_configuration_key::PosixVersion: return None;
+  case system_configuration_key::PosixVersion:          return None;
   case system_configuration_key::ProcessorConfigured:
   case system_configuration_key::ProcessorOnline:
     return static_cast<i64>(GetActiveProcessorCount(ALL_PROCESSOR_GROUPS));
@@ -1401,8 +1507,8 @@ windows_system_configuration_value(system_configuration_key key) wontthrow
   case system_configuration_key::RealtimeSignalMax:
   case system_configuration_key::SemaphoreCountMax:
   case system_configuration_key::SemaphoreValueMax:
-  case system_configuration_key::SignalQueueMax: return None;
-  case system_configuration_key::StreamMax: return _getmaxstdio();
+  case system_configuration_key::SignalQueueMax:                    return None;
+  case system_configuration_key::StreamMax:                         return _getmaxstdio();
   case system_configuration_key::SymbolicLinkLoopMax:
   case system_configuration_key::ThreadCountMax:
   case system_configuration_key::ThreadDestructorIterations:
@@ -1479,13 +1585,14 @@ windows_system_configuration_value(system_configuration_key key) wontthrow
   case system_configuration_key::XOpenUnix:
   case system_configuration_key::XOpenUucp:
   case system_configuration_key::XOpenVersion:
-  case system_configuration_key::Count: return None;
+  case system_configuration_key::Count:                             return None;
   }
 
   return None;
 }
 
-fn query_system_configuration(system_configuration_key key) wontthrow
+fn
+query_system_configuration(system_configuration_key key) wontthrow
     -> numeric_configuration_result
 {
   let const value = windows_system_configuration_value(key);
@@ -1494,8 +1601,9 @@ fn query_system_configuration(system_configuration_key key) wontthrow
   return {configuration_query_status::Value, *value};
 }
 
-static fn windows_path_configuration_value(StringView path,
-                                           path_configuration_key key) wontthrow
+static fn
+windows_path_configuration_value(StringView             path,
+                                 path_configuration_key key) wontthrow
     -> Maybe<i64>
 {
   let const path_text = path_to_wide(path, heap_allocator());
@@ -1506,14 +1614,14 @@ static fn windows_path_configuration_value(StringView path,
   }
   switch (key) {
   case path_configuration_key::AllocationSizeMin:
-  case path_configuration_key::AsyncIo: return None;
-  case path_configuration_key::ChownRestricted: return 1;
+  case path_configuration_key::AsyncIo:           return None;
+  case path_configuration_key::ChownRestricted:   return 1;
   case path_configuration_key::DisableCharacter:
-  case path_configuration_key::FileSizeBits: return None;
-  case path_configuration_key::LinkMax: return 1024;
+  case path_configuration_key::FileSizeBits:      return None;
+  case path_configuration_key::LinkMax:           return 1024;
   case path_configuration_key::MaxCanonical:
-  case path_configuration_key::MaxInput: return None;
-  case path_configuration_key::NameMax: {
+  case path_configuration_key::MaxInput:          return None;
+  case path_configuration_key::NameMax:           {
     wchar_t volume_path[MAX_PATH];
     if (GetVolumePathNameW(path_text->begin(), volume_path,
                            countof(volume_path)) == FALSE)
@@ -1530,8 +1638,8 @@ static fn windows_path_configuration_value(StringView path,
 
     return static_cast<i64>(maximum_component_length);
   }
-  case path_configuration_key::NoTrunc: return 1;
-  case path_configuration_key::PathMax: return 32767;
+  case path_configuration_key::NoTrunc:                          return 1;
+  case path_configuration_key::PathMax:                          return 32767;
   case path_configuration_key::PipeBuffer:
   case path_configuration_key::PriorityIo:
   case path_configuration_key::RecommendedIncrementTransferSize:
@@ -1544,14 +1652,14 @@ static fn windows_path_configuration_value(StringView path,
   case path_configuration_key::Fallocate:
   case path_configuration_key::TextDomainMax:
   case path_configuration_key::TimestampResolution:
-  case path_configuration_key::Count: return None;
+  case path_configuration_key::Count:                            return None;
   }
 
   return None;
 }
 
-fn query_path_configuration(StringView path,
-                            path_configuration_key key) wontthrow
+fn
+query_path_configuration(StringView path, path_configuration_key key) wontthrow
     -> numeric_configuration_result
 {
   SetLastError(ERROR_SUCCESS);
@@ -1563,14 +1671,15 @@ fn query_path_configuration(StringView path,
   return {configuration_query_status::Undefined, 0};
 }
 
-fn query_string_configuration(string_configuration_key,
-                              Allocator allocator) throws
+fn
+query_string_configuration(string_configuration_key, Allocator allocator) throws
     -> StringConfigurationResult
 {
   return StringConfigurationResult{allocator};
 }
 
-fn path_component_length(StringView component) wontthrow -> Maybe<usize>
+fn
+path_component_length(StringView component) wontthrow -> Maybe<usize>
 {
   if (component.length > static_cast<usize>(INT_MAX)) {
     SetLastError(ERROR_FILENAME_EXCED_RANGE);
@@ -1587,7 +1696,8 @@ fn path_component_length(StringView component) wontthrow -> Maybe<usize>
   return static_cast<usize>(wide_length);
 }
 
-fn get_resource_limit(resource_kind kind) wontthrow -> Maybe<resource_limit>
+fn
+get_resource_limit(resource_kind kind) wontthrow -> Maybe<resource_limit>
 {
   unused(kind);
   SetLastError(ERROR_NOT_SUPPORTED);
@@ -1595,7 +1705,8 @@ fn get_resource_limit(resource_kind kind) wontthrow -> Maybe<resource_limit>
   return None;
 }
 
-fn set_resource_limit(const resource_limit &limit, resource_kind kind) wontthrow
+fn
+set_resource_limit(const resource_limit &limit, resource_kind kind) wontthrow
     -> bool
 {
   unused(kind);
@@ -1604,22 +1715,25 @@ fn set_resource_limit(const resource_limit &limit, resource_kind kind) wontthrow
 
   return false;
 }
-fn shell_fd_is_a_tty(int shell_fd) wontthrow -> bool
+fn
+shell_fd_is_a_tty(int shell_fd) wontthrow -> bool
 {
   return is_fd_a_tty(reinterpret_cast<descriptor>(_get_osfhandle(shell_fd)));
 }
 
-pure fn is_directory_separator(char c) wontthrow -> bool
+pure fn
+is_directory_separator(char c) wontthrow -> bool
 {
   return c == '/' || c == '\\';
 }
 
-fn get_terminal_dimensions(descriptor output) wontthrow
+fn
+get_terminal_dimensions(descriptor output) wontthrow
     -> Maybe<terminal_dimensions>
 {
   CONSOLE_SCREEN_BUFFER_INFO info;
   if (GetConsoleScreenBufferInfo(output, &info) == 0) return None;
-  const i32 width = info.srWindow.Right - info.srWindow.Left + 1;
+  const i32 width  = info.srWindow.Right - info.srWindow.Left + 1;
   const i32 height = info.srWindow.Bottom - info.srWindow.Top + 1;
   if (width <= 0 || height <= 0) {
     return None;
@@ -1628,13 +1742,15 @@ fn get_terminal_dimensions(descriptor output) wontthrow
   return terminal_dimensions{static_cast<u32>(width), static_cast<u32>(height)};
 }
 
-fn terminal_settings(descriptor terminal, Allocator allocator,
-                     terminal_settings_output_mode mode) throws -> Maybe<String>
+fn
+terminal_settings(descriptor                    terminal,
+                  Allocator                     allocator,
+                  terminal_settings_output_mode mode) throws -> Maybe<String>
 {
   DWORD console_mode = 0;
   if (GetConsoleMode(terminal, &console_mode) == FALSE) return None;
   if (mode == terminal_settings_output_mode::Encoded) {
-    char encoded[32];
+    char      encoded[32];
     let const length = std::snprintf(encoded, sizeof(encoded), "win32:%08lx\n",
                                      static_cast<unsigned long>(console_mode));
 
@@ -1656,8 +1772,9 @@ fn terminal_settings(descriptor terminal, Allocator allocator,
   return output;
 }
 
-fn apply_terminal_settings(descriptor terminal,
-                           const ArrayList<String> &settings) wontthrow
+fn
+apply_terminal_settings(descriptor               terminal,
+                        const ArrayList<String> &settings) wontthrow
     -> terminal_settings_apply_result
 {
   static constexpr static_string_entry<DWORD> TERMINAL_FLAG_ENTRIES[] = {
@@ -1666,7 +1783,7 @@ fn apply_terminal_settings(descriptor terminal,
       {SSK("isig"),   ENABLE_PROCESSED_INPUT}
   };
   static constexpr StaticStringMap TERMINAL_FLAGS{TERMINAL_FLAG_ENTRIES};
-  DWORD mode = 0;
+  DWORD                            mode = 0;
   if (GetConsoleMode(terminal, &mode) == FALSE)
     return {terminal_settings_apply_kind::SystemError, 0};
 
@@ -1674,11 +1791,11 @@ fn apply_terminal_settings(descriptor terminal,
        setting_position++)
   {
     let const &setting_text = settings[setting_position];
-    let const setting = setting_text.view();
+    let const  setting      = setting_text.view();
     if (setting.starts_with(StringView{"win32:"})) {
       let const encoded = String{heap_allocator(), setting.substring(6)};
-      char *end = nullptr;
-      let const parsed = std::strtoul(encoded.c_str(), &end, 16);
+      char     *end     = nullptr;
+      let const parsed  = std::strtoul(encoded.c_str(), &end, 16);
       if (end == encoded.c_str() || *end != '\0' || parsed > MAXDWORD) {
         return {terminal_settings_apply_kind::InvalidSetting, setting_position};
       }
@@ -1686,10 +1803,10 @@ fn apply_terminal_settings(descriptor terminal,
       continue;
     }
     let is_disabled = false;
-    let name = setting;
+    let name        = setting;
     if (!name.is_empty() && name[0] == '-') {
       is_disabled = true;
-      name = name.substring(1);
+      name        = name.substring(1);
     }
     let const flag = TERMINAL_FLAGS.find(name);
     if (!flag.has_value())
@@ -1706,7 +1823,8 @@ fn apply_terminal_settings(descriptor terminal,
   return {terminal_settings_apply_kind::Success, 0};
 }
 
-fn has_environment_variable(StringView key) -> bool
+fn
+has_environment_variable(StringView key) -> bool
 {
   let const wide_key = utf8_to_wide(key, heap_allocator());
   if (!wide_key.has_value()) return false;
@@ -1718,7 +1836,8 @@ fn has_environment_variable(StringView key) -> bool
   return required_size != 0 || GetLastError() != ERROR_ENVVAR_NOT_FOUND;
 }
 
-fn get_environment_variable(StringView key) -> Maybe<String>
+fn
+get_environment_variable(StringView key) -> Maybe<String>
 {
   let const wide_key = utf8_to_wide(key, heap_allocator());
   if (!wide_key.has_value()) return None;
@@ -1749,7 +1868,8 @@ fn get_environment_variable(StringView key) -> Maybe<String>
                       heap_allocator());
 }
 
-static fn find_environment_spelling(const wchar_t *wide_key) throws
+static fn
+find_environment_spelling(const wchar_t *wide_key) throws
     -> Maybe<ArrayList<wchar_t>>
 {
   wchar_t *block = GetEnvironmentStringsW();
@@ -1791,17 +1911,18 @@ static fn find_environment_spelling(const wchar_t *wide_key) throws
   return None;
 }
 
-fn set_environment_variable(StringView key, StringView value) -> void
+fn
+set_environment_variable(StringView key, StringView value) -> void
 {
-  let const wide_key = utf8_to_wide(key, heap_allocator());
-  let wide_value = utf8_to_wide(value, heap_allocator());
+  let const wide_key   = utf8_to_wide(key, heap_allocator());
+  let       wide_value = utf8_to_wide(value, heap_allocator());
   if (!wide_key.has_value() || !wide_value.has_value()) {
     return;
   }
 
   if (!is_environment_value_storable(value)) {
-    usize kept_unit_count = ENVIRONMENT_VALUE_MAX_UNIT_COUNT;
-    let const last_kept = wide_value->begin()[kept_unit_count - 1];
+    usize     kept_unit_count = ENVIRONMENT_VALUE_MAX_UNIT_COUNT;
+    let const last_kept       = wide_value->begin()[kept_unit_count - 1];
     if (last_kept >= 0xD800 && last_kept <= 0xDBFF) {
       kept_unit_count--;
     }
@@ -1816,7 +1937,8 @@ fn set_environment_variable(StringView key, StringView value) -> void
   ENVIRONMENT_EPOCH++;
 }
 
-fn get_environment_spelling(StringView key) -> String
+fn
+get_environment_spelling(StringView key) -> String
 {
   let const wide_key = utf8_to_wide(key, heap_allocator());
   if (!wide_key.has_value()) return String{key};
@@ -1831,7 +1953,8 @@ fn get_environment_spelling(StringView key) -> String
   return spelling.has_value() ? String{spelling->view()} : String{key};
 }
 
-fn unset_environment_variable(StringView key) -> void
+fn
+unset_environment_variable(StringView key) -> void
 {
   let const wide_key = utf8_to_wide(key, heap_allocator());
   if (!wide_key.has_value()) return;
@@ -1840,9 +1963,10 @@ fn unset_environment_variable(StringView key) -> void
   ENVIRONMENT_EPOCH++;
 }
 
-fn signal_internal_diagnostic() wontthrow -> void
+fn
+signal_internal_diagnostic() wontthrow -> void
 {
-  wchar_t marker_path[MAX_PATH];
+  wchar_t   marker_path[MAX_PATH];
   let const marker_path_length = GetEnvironmentVariableW(
       internal::DIAGNOSTIC_MARKER_WIDE, marker_path, countof(marker_path));
   if (marker_path_length == 0 || marker_path_length >= countof(marker_path)) {
@@ -1859,8 +1983,9 @@ fn signal_internal_diagnostic() wontthrow -> void
   CloseHandle(marker);
 }
 
-fn for_each_environment_name(opaque *context,
-                             environment_name_callback callback) throws -> void
+fn
+for_each_environment_name(opaque                   *context,
+                          environment_name_callback callback) throws -> void
 {
   wchar_t *block = GetEnvironmentStringsW();
   if (block == nullptr) return;
@@ -1887,7 +2012,8 @@ fn for_each_environment_name(opaque *context,
   }
 }
 
-fn environment_names() -> ArrayList<String>
+fn
+environment_names() -> ArrayList<String>
 {
   ArrayList<String> names{heap_allocator()};
   for_each_environment_name(&names, [](opaque *context, StringView name) {
@@ -1897,7 +2023,8 @@ fn environment_names() -> ArrayList<String>
   return names;
 }
 
-fn sleep_for_seconds(double seconds) wontthrow -> void
+fn
+sleep_for_seconds(double seconds) wontthrow -> void
 {
   if (seconds <= 0.0) return;
   Sleep(static_cast<DWORD>(seconds * 1000.0));
@@ -1907,9 +2034,14 @@ FileWatcher::FileWatcher() wontthrow {}
 
 FileWatcher::~FileWatcher() {}
 
-fn FileWatcher::watch(StringView path) wontthrow -> void { unused(path); }
+fn
+FileWatcher::watch(StringView path) wontthrow -> void
+{
+  unused(path);
+}
 
-fn FileWatcher::wait(f64 timeout_seconds) wontthrow -> void
+fn
+FileWatcher::wait(f64 timeout_seconds) wontthrow -> void
 {
   constexpr f64 SLICE_SECONDS = 0.1;
 
@@ -1923,7 +2055,11 @@ fn FileWatcher::wait(f64 timeout_seconds) wontthrow -> void
   }
 }
 
-fn install_fatal_exit_hook(void (*hook)()) -> void { unused(hook); }
+fn
+install_fatal_exit_hook(void (*hook)()) -> void
+{
+  unused(hook);
+}
 
 } /* namespace os */
 
@@ -1935,7 +2071,8 @@ namespace os {
 
 const ProgramSuffixList PROGRAM_SUFFIXES{WINDOWS_PROGRAM_SUFFIXES};
 
-fn normalize_program_name(String &program_name) -> program_name_info
+fn
+normalize_program_name(String &program_name) -> program_name_info
 {
   return normalize_windows_program_name(program_name);
 }
@@ -1947,14 +2084,20 @@ fn normalize_program_name(String &program_name) -> program_name_info
 namespace koshka {
 namespace os {
 
-fn get_current_process_id() wontthrow -> i64
+fn
+get_current_process_id() wontthrow -> i64
 {
   return static_cast<i64>(GetCurrentProcessId());
 }
 
-fn register_platform_flags(FlagList &flags) throws -> void { unused(flags); }
+fn
+register_platform_flags(FlagList &flags) throws -> void
+{
+  unused(flags);
+}
 
-static fn decode_subshell_transport_u32(const char *bytes) wontthrow -> u32
+static fn
+decode_subshell_transport_u32(const char *bytes) wontthrow -> u32
 {
   u32 value = 0;
 
@@ -1965,8 +2108,8 @@ static fn decode_subshell_transport_u32(const char *bytes) wontthrow -> u32
   return value;
 }
 
-static fn append_subshell_transport_u32(String &output, u32 value) throws
-    -> void
+static fn
+append_subshell_transport_u32(String &output, u32 value) throws -> void
 {
   for (usize byte_position = 0; byte_position < sizeof(value); byte_position++)
     output.push(static_cast<char>((value >> (byte_position * 8U)) & 0xffU));
@@ -1974,9 +2117,9 @@ static fn append_subshell_transport_u32(String &output, u32 value) throws
 
 struct subshell_transport_header
 {
-  static constexpr u32 MAGIC = 0x4b535442U;
-  static constexpr u32 VERSION = 5U;
-  static constexpr usize ENCODED_LENGTH = 32;
+  static constexpr u32   MAGIC                    = 0x4b535442U;
+  static constexpr u32   VERSION                  = 5U;
+  static constexpr usize ENCODED_LENGTH           = 32;
   static constexpr usize MAXIMUM_TRANSPORT_LENGTH = 16 * 1024 * 1024;
 
   u32 payload_length{0};
@@ -1986,7 +2129,8 @@ struct subshell_transport_header
   u32 evaluation_mode{0};
   u32 should_use_command_string_status{0};
 
-  static fn from_bootstrap(const subshell_bootstrap &bootstrap) wontthrow
+  static fn
+  from_bootstrap(const subshell_bootstrap &bootstrap) wontthrow
       -> Maybe<subshell_transport_header>
   {
     if (bootstrap.payload.count() > MAXIMUM_TRANSPORT_LENGTH ||
@@ -2001,10 +2145,10 @@ struct subshell_transport_header
     }
 
     let const header = subshell_transport_header{
-        .payload_length = static_cast<u32>(bootstrap.payload.count()),
-        .source_length = bootstrap.source_length,
-        .origin_length = static_cast<u32>(bootstrap.source_origin.count()),
-        .process_count = static_cast<u32>(bootstrap.processes.count()),
+        .payload_length  = static_cast<u32>(bootstrap.payload.count()),
+        .source_length   = bootstrap.source_length,
+        .origin_length   = static_cast<u32>(bootstrap.source_origin.count()),
+        .process_count   = static_cast<u32>(bootstrap.processes.count()),
         .evaluation_mode = static_cast<u32>(bootstrap.evaluation_mode),
         .should_use_command_string_status =
             bootstrap.should_use_command_string_status ? 1U : 0U,
@@ -2014,7 +2158,8 @@ struct subshell_transport_header
     return header;
   }
 
-  static fn decode(const char (&bytes)[ENCODED_LENGTH]) wontthrow
+  static fn
+  decode(const char (&bytes)[ENCODED_LENGTH]) wontthrow
       -> Maybe<subshell_transport_header>
   {
     if (decode_subshell_transport_u32(bytes) != MAGIC ||
@@ -2024,10 +2169,10 @@ struct subshell_transport_header
     }
 
     let const header = subshell_transport_header{
-        .payload_length = decode_subshell_transport_u32(bytes + 8),
-        .source_length = decode_subshell_transport_u32(bytes + 12),
-        .origin_length = decode_subshell_transport_u32(bytes + 16),
-        .process_count = decode_subshell_transport_u32(bytes + 20),
+        .payload_length  = decode_subshell_transport_u32(bytes + 8),
+        .source_length   = decode_subshell_transport_u32(bytes + 12),
+        .origin_length   = decode_subshell_transport_u32(bytes + 16),
+        .process_count   = decode_subshell_transport_u32(bytes + 20),
         .evaluation_mode = decode_subshell_transport_u32(bytes + 24),
         .should_use_command_string_status =
             decode_subshell_transport_u32(bytes + 28),
@@ -2037,7 +2182,8 @@ struct subshell_transport_header
     return header;
   }
 
-  pure fn is_valid() const wontthrow -> bool
+  pure fn
+  is_valid() const wontthrow -> bool
   {
     return should_use_command_string_status <= 1U &&
            source_length <= payload_length &&
@@ -2053,7 +2199,8 @@ struct subshell_transport_header
                    sizeof(u64);
   }
 
-  fn encode(String &output) const throws -> void
+  fn
+  encode(String &output) const throws -> void
   {
     append_subshell_transport_u32(output, MAGIC);
     append_subshell_transport_u32(output, VERSION);
@@ -2068,10 +2215,12 @@ struct subshell_transport_header
 
 static subshell_bootstrap SUBSHELL_BOOTSTRAP{};
 
-static fn read_subshell_transport_exact(descriptor pipe, opaque *output,
-                                        usize length) wontthrow -> bool
+static fn
+read_subshell_transport_exact(descriptor pipe,
+                              opaque    *output,
+                              usize      length) wontthrow -> bool
 {
-  let bytes = static_cast<char *>(output);
+  let   bytes    = static_cast<char *>(output);
   usize position = 0;
 
   while (position < length) {
@@ -2085,7 +2234,8 @@ static fn read_subshell_transport_exact(descriptor pipe, opaque *output,
   return true;
 }
 
-static fn decode_subshell_transport_u64(const char *bytes) wontthrow -> u64
+static fn
+decode_subshell_transport_u64(const char *bytes) wontthrow -> u64
 {
   u64 value = 0;
 
@@ -2107,17 +2257,18 @@ struct owner_only_security
 };
 
 static owner_only_security OWNER_ONLY_SECURITY{};
-static INIT_ONCE OWNER_ONLY_SECURITY_ONCE = INIT_ONCE_STATIC_INIT;
+static INIT_ONCE           OWNER_ONLY_SECURITY_ONCE = INIT_ONCE_STATIC_INIT;
 
-static fn build_owner_only_security(PINIT_ONCE, PVOID, PVOID *) -> BOOL
+static fn
+build_owner_only_security(PINIT_ONCE, PVOID, PVOID *) -> BOOL
 {
-  let &security = OWNER_ONLY_SECURITY;
-  HANDLE token = nullptr;
+  let   &security = OWNER_ONLY_SECURITY;
+  HANDLE token    = nullptr;
   if (OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &token) == FALSE) {
     return TRUE;
   }
 
-  DWORD user_length = 0;
+  DWORD     user_length = 0;
   let const has_user =
       GetTokenInformation(token, TokenUser, security.user_bytes,
                           sizeof(security.user_bytes), &user_length) != FALSE;
@@ -2131,7 +2282,7 @@ static fn build_owner_only_security(PINIT_ONCE, PVOID, PVOID *) -> BOOL
   }
 
   let const user = reinterpret_cast<TOKEN_USER *>(security.user_bytes);
-  let const acl = reinterpret_cast<ACL *>(security.acl_bytes);
+  let const acl  = reinterpret_cast<ACL *>(security.acl_bytes);
   if (InitializeAcl(acl, sizeof(security.acl_bytes), ACL_REVISION) == FALSE ||
       AddAccessAllowedAce(acl, ACL_REVISION, FILE_ALL_ACCESS, user->User.Sid) ==
           FALSE ||
@@ -2145,15 +2296,16 @@ static fn build_owner_only_security(PINIT_ONCE, PVOID, PVOID *) -> BOOL
     return TRUE;
   }
 
-  security.attributes.nLength = sizeof(security.attributes);
+  security.attributes.nLength              = sizeof(security.attributes);
   security.attributes.lpSecurityDescriptor = &security.descriptor;
-  security.attributes.bInheritHandle = FALSE;
-  security.is_ready = true;
+  security.attributes.bInheritHandle       = FALSE;
+  security.is_ready                        = true;
 
   return TRUE;
 }
 
-static fn get_owner_only_security() wontthrow -> SECURITY_ATTRIBUTES *
+static fn
+get_owner_only_security() wontthrow -> SECURITY_ATTRIBUTES *
 {
   InitOnceExecuteOnce(&OWNER_ONLY_SECURITY_ONCE, build_owner_only_security,
                       nullptr, nullptr);
@@ -2162,9 +2314,12 @@ static fn get_owner_only_security() wontthrow -> SECURITY_ATTRIBUTES *
   return &OWNER_ONLY_SECURITY.attributes;
 }
 
-static fn create_private_pipe(const wchar_t *path, DWORD open_mode,
-                              DWORD instance_count, DWORD outbound_byte_count,
-                              DWORD inbound_byte_count) wontthrow -> HANDLE
+static fn
+create_private_pipe(const wchar_t *path,
+                    DWORD          open_mode,
+                    DWORD          instance_count,
+                    DWORD          outbound_byte_count,
+                    DWORD          inbound_byte_count) wontthrow -> HANDLE
 {
   let const security = get_owner_only_security();
   if (security == nullptr) {
@@ -2180,9 +2335,10 @@ static fn create_private_pipe(const wchar_t *path, DWORD open_mode,
                           inbound_byte_count, 0, security);
 }
 
-static fn receive_subshell_bootstrap() wontthrow -> void
+static fn
+receive_subshell_bootstrap() wontthrow -> void
 {
-  wchar_t path[256]{};
+  wchar_t   path[256]{};
   let const path_length = GetEnvironmentVariableW(
       internal::STATE_NAMED_PIPE_WIDE, path, countof(path));
   if (path_length == 0 || path_length >= countof(path)) {
@@ -2218,16 +2374,16 @@ static fn receive_subshell_bootstrap() wontthrow -> void
     CloseHandle(pipe);
     ExitProcess(1);
   }
-  let const payload_length = static_cast<usize>(header->payload_length);
-  let const source_length = header->source_length;
-  let const origin_length = static_cast<usize>(header->origin_length);
-  let const process_count = static_cast<usize>(header->process_count);
+  let const payload_length  = static_cast<usize>(header->payload_length);
+  let const source_length   = header->source_length;
+  let const origin_length   = static_cast<usize>(header->origin_length);
+  let const process_count   = static_cast<usize>(header->process_count);
   let const evaluation_mode = header->evaluation_mode;
 
   try {
     let const do_read_bytes = [&](String &output, usize length) throws {
       output.reserve(length);
-      char buffer[4096];
+      char  buffer[4096];
       usize remaining_length = length;
 
       while (remaining_length > 0) {
@@ -2273,7 +2429,7 @@ static fn receive_subshell_bootstrap() wontthrow -> void
     ExitProcess(1);
   }
 
-  char trailing_byte = 0;
+  char      trailing_byte   = 0;
   let const trailing_length = read_fd(pipe, &trailing_byte, 1);
   CloseHandle(pipe);
   if (!trailing_length.has_value() || *trailing_length != 0) {
@@ -2281,7 +2437,8 @@ static fn receive_subshell_bootstrap() wontthrow -> void
   }
 }
 
-fn initialize_platform_runtime() wontthrow -> void
+fn
+initialize_platform_runtime() wontthrow -> void
 {
   bool is_internal_child = false;
   try {
@@ -2305,7 +2462,8 @@ fn initialize_platform_runtime() wontthrow -> void
   receive_subshell_bootstrap();
 }
 
-fn take_subshell_bootstrap() wontthrow -> subshell_bootstrap
+fn
+take_subshell_bootstrap() wontthrow -> subshell_bootstrap
 {
   return steal(SUBSHELL_BOOTSTRAP);
 }
@@ -2313,9 +2471,11 @@ fn take_subshell_bootstrap() wontthrow -> subshell_bootstrap
 } /* namespace os */
 } /* namespace koshka */
 
-fn kosh_main(int argc, char **argv) -> int;
+fn
+kosh_main(int argc, char **argv) -> int;
 
-fn wmain(int argc, wchar_t **wide_argv) -> int
+fn
+wmain(int argc, wchar_t **wide_argv) -> int
 {
   let narrow_arguments =
       koshka::ArrayList<koshka::String>{koshka::heap_allocator()};

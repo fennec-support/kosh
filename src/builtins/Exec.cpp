@@ -23,21 +23,29 @@ HELP_DESCRIPTION_DECL(
     "The exec builtin replaces the shell with the specified command.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
-FLAG(EXEC_LOGIN, Bool, 'l', "",
+FLAG(EXEC_LOGIN,
+     Bool,
+     'l',
+     "",
      "Prefix the command's zeroth argument with a dash.");
-FLAG(EXEC_ARGV0, String, 'a', "",
-     "Pass the given name as the zeroth argument.");
-FLAG(EXEC_CLEAR_ENV, Bool, 'c', "",
+FLAG(
+    EXEC_ARGV0, String, 'a', "", "Pass the given name as the zeroth argument.");
+FLAG(EXEC_CLEAR_ENV,
+     Bool,
+     'c',
+     "",
      "Run the command with an empty environment.");
 
 REGISTER_BUILTIN_FLAGS(Exec);
 
 namespace koshka {
 
-static fn report_exec_resolution_error(ExecContext &ec, EvalContext &cxt,
-                                       SourceLocation location,
-                                       StringView message,
-                                       i32 command_status) throws -> i32
+static fn
+report_exec_resolution_error(ExecContext   &ec,
+                             EvalContext   &cxt,
+                             SourceLocation location,
+                             StringView     message,
+                             i32            command_status) throws -> i32
 {
   let error = ErrorWithLocation{steal(location), message};
   error.set_command_status(command_status);
@@ -55,16 +63,17 @@ static fn report_exec_resolution_error(ExecContext &ec, EvalContext &cxt,
   utils::quit(command_status, utils::farewell_policy::Goodbye);
 }
 
-fn Exec::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
+fn
+Exec::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let const &args = ec.args();
   ASSERT(!args.is_empty());
 
-  let should_be_login_shell = false;
-  let should_use_empty_environment = false;
-  let has_custom_argv0 = false;
-  let custom_argv0 = String{heap_allocator()};
-  usize command_index = 1;
+  let   should_be_login_shell        = false;
+  let   should_use_empty_environment = false;
+  let   has_custom_argv0             = false;
+  let   custom_argv0                 = String{heap_allocator()};
+  usize command_index                = 1;
 
   if (!cxt.runtime_state().is_posix_mode()) {
     while (command_index < args.count()) {
@@ -89,10 +98,10 @@ fn Exec::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         } else if (option == 'a') {
           if (k + 1 < arg.length) {
             has_custom_argv0 = true;
-            custom_argv0 = arg.substring(k + 1);
+            custom_argv0     = arg.substring(k + 1);
           } else if (command_index + 1 < args.count()) {
-            has_custom_argv0 = true;
-            custom_argv0 = args[command_index + 1];
+            has_custom_argv0       = true;
+            custom_argv0           = args[command_index + 1];
             did_consume_value_word = true;
           } else {
             report_soft_builtin_error(ec, cxt,
@@ -141,15 +150,15 @@ fn Exec::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let program_path = Path{};
   if (os::has_directory_separator(command_name.view())) {
     let const typed_program_path = Path{command_name.view()};
-    let resolved =
+    let       resolved =
         typed_program_path.has_trailing_separator()
-            ? os::canonical_path(
+                  ? os::canonical_path(
                   typed_program_path.to_absolute_without_normalizing())
-            : Path::canonicalize(command_name);
+                  : Path::canonicalize(command_name);
     if (!resolved) {
-      let error_location = ec.arg_location_at(command_index);
+      let error_location   = ec.arg_location_at(command_index);
       let reported_program = command_name.view();
-      let raw_program = command_name.view();
+      let raw_program      = command_name.view();
       if (let const *source = cxt.source_store().current_source();
           source != nullptr)
         if (let source_text = error_location.get_source_text(source->view()))
@@ -160,8 +169,8 @@ fn Exec::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
           cxt.scratch_allocator());
       let is_missing_directory = false;
       if (unavailable.has_value()) {
-        error_location = unavailable->location;
-        reported_program = unavailable->reported_prefix.view();
+        error_location       = unavailable->location;
+        reported_program     = unavailable->reported_prefix.view();
         is_missing_directory = !unavailable->is_final_component;
       }
 
@@ -199,7 +208,7 @@ fn Exec::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     program_path = found[0];
   }
 
-  let command_args = ArrayList<String>{heap_allocator()};
+  let command_args          = ArrayList<String>{heap_allocator()};
   let command_arg_locations = ArrayList<SourceLocation>{heap_allocator()};
 
   for (usize i = command_index; i < args.count(); i++) {
@@ -211,7 +220,7 @@ fn Exec::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   if (should_be_login_shell) {
     let dashed_argv0 = StringView{"-"} + command_args[0];
-    command_args[0] = steal(dashed_argv0);
+    command_args[0]  = steal(dashed_argv0);
   }
 
   let command = ExecContext::make_from_resolved(
@@ -230,7 +239,7 @@ fn Exec::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   command.did_error_file_follow_output_dup =
       ec.did_error_file_follow_output_dup;
   command.should_use_empty_environment = should_use_empty_environment;
-  command.should_use_fallback_argv0 = has_custom_argv0;
+  command.should_use_fallback_argv0    = has_custom_argv0;
 
   if (cxt.in_subshell() || cxt.job_table_store().is_in_pipeline_stage()) {
     LOG(Info, "exec runs '%s' as a child rather than replacing the shell",

@@ -18,16 +18,21 @@ KOSHKIT_UTIL_DECL(
     "[-n increment] utility [argument ...]",
     "The nice utility invokes a command with an adjusted scheduling priority.");
 
-FLAG(NICE_INCREMENT, String, 'n', "increment",
+FLAG(NICE_INCREMENT,
+     String,
+     'n',
+     "increment",
      "Add this value to the inherited priority.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Nice);
 
 namespace koshka::koshkit {
 
-fn Nice::execute(const ExecContext &ec, EvalContext &cxt,
-                 const ArrayList<String> &args,
-                 const ArrayList<SourceLocation> &arg_locations) const throws
+fn
+Nice::execute(const ExecContext               &ec,
+              EvalContext                     &cxt,
+              const ArrayList<String>         &args,
+              const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);

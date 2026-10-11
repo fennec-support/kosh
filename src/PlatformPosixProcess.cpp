@@ -22,31 +22,35 @@ namespace koshka {
 
 namespace os {
 
-static fn fork_job_process() throws -> process;
+static fn
+fork_job_process() throws -> process;
 
 static process_launch_counts PROCESS_LAUNCH_COUNTS{};
 
 static bool IS_TERMINAL_OWNER = true;
 
-static inline fn note_fork_launch() wontthrow -> void
+static inline fn
+note_fork_launch() wontthrow -> void
 {
   PROCESS_LAUNCH_COUNTS.fork_count++;
 }
 
-static inline fn note_exec_launch() wontthrow -> void
+static inline fn
+note_exec_launch() wontthrow -> void
 {
   PROCESS_LAUNCH_COUNTS.exec_count++;
 }
 
-static inline fn note_spawn_launch() wontthrow -> void
+static inline fn
+note_spawn_launch() wontthrow -> void
 {
   note_fork_launch();
   note_exec_launch();
 }
 
 template <typename Call>
-alwaysinline static fn retry_interrupted(Call do_call) wontthrow
-    -> decltype(do_call())
+alwaysinline static fn
+retry_interrupted(Call do_call) wontthrow -> decltype(do_call())
 {
   loop
   {
@@ -57,50 +61,75 @@ alwaysinline static fn retry_interrupted(Call do_call) wontthrow
   }
 }
 
-static fn reap_child(pid_t child) wontthrow -> void
+static fn
+reap_child(pid_t child) wontthrow -> void
 {
   unused(retry_interrupted([child] { return waitpid(child, nullptr, 0); }));
 }
 
-static fn kill_and_reap(pid_t child) wontthrow -> void
+static fn
+kill_and_reap(pid_t child) wontthrow -> void
 {
   kill(child, SIGKILL);
   reap_child(child);
 }
 
-fn get_process_launch_counts() wontthrow -> process_launch_counts
+fn
+get_process_launch_counts() wontthrow -> process_launch_counts
 {
   return PROCESS_LAUNCH_COUNTS;
 }
 
-fn is_child_process() wontthrow -> bool { return getpid() != PARENT_SHELL_PID; }
+fn
+is_child_process() wontthrow -> bool
+{
+  return getpid() != PARENT_SHELL_PID;
+}
 
-fn is_running_setuid() wontthrow -> bool
+fn
+is_running_setuid() wontthrow -> bool
 {
   return geteuid() != getuid() || getegid() != getgid();
 }
 
-fn drop_elevated_identity() wontthrow -> bool
+fn
+drop_elevated_identity() wontthrow -> bool
 {
   let const real_group_id = getgid();
-  let const real_user_id = getuid();
+  let const real_user_id  = getuid();
   if (setregid(real_group_id, real_group_id) != 0) return false;
 
   return setreuid(real_user_id, real_user_id) == 0;
 }
 
-fn process_id_of(process p) wontthrow -> i64 { return static_cast<i64>(p); }
-fn process_group_of(process p) throws -> process { return -p; }
-fn close_process_reference(process p) wontthrow -> void { unused(p); }
-fn process_has_id(process p, i64 id) wontthrow -> bool
+fn
+process_id_of(process p) wontthrow -> i64
+{
+  return static_cast<i64>(p);
+}
+fn
+process_group_of(process p) throws -> process
+{
+  return -p;
+}
+fn
+close_process_reference(process p) wontthrow -> void
+{
+  unused(p);
+}
+fn
+process_has_id(process p, i64 id) wontthrow -> bool
 {
   return p == static_cast<process>(id);
 }
 
-cold fn spawn_failure_child(SourceLocation location, const Path &program_path,
-                            int spawn_error, StringView source,
-                            i64 process_group_id,
-                            process_group_mode process_group) throws -> process
+cold fn
+spawn_failure_child(SourceLocation     location,
+                    const Path        &program_path,
+                    int                spawn_error,
+                    StringView         source,
+                    i64                process_group_id,
+                    process_group_mode process_group) throws -> process
 {
   LOG(Debug, "forking a child to report the spawn failure for '%s'",
       program_path.c_str());
@@ -114,7 +143,7 @@ cold fn spawn_failure_child(SourceLocation location, const Path &program_path,
                                    : 0;
       (void) setpgid(0, target_group);
     }
-    errno = spawn_error;
+    errno     = spawn_error;
     let error = ErrorWithLocation{steal(location),
                                   "Unable to execute `" + program_path.text() +
                                       "`: " + last_system_error_message()};
@@ -133,9 +162,9 @@ cold fn spawn_failure_child(SourceLocation location, const Path &program_path,
   return child_pid;
 }
 
-hot fn execute_program(ExecContext &ec,
-                       const program_execution_options &options) throws
-    -> process
+hot fn
+execute_program(ExecContext                     &ec,
+                const program_execution_options &options) throws -> process
 {
   let const should_allow_script_fallback =
       options.fallback == script_fallback_policy::Allow;
@@ -155,7 +184,7 @@ hot fn execute_program(ExecContext &ec,
   };
 
   if (should_hand_off_controlling_terminal_before_start) {
-    let const start_pipe = os::make_pipe();
+    let const start_pipe   = os::make_pipe();
     let const outcome_pipe = os::make_pipe();
     if (!start_pipe.has_value() || !outcome_pipe.has_value()) {
       if (start_pipe.has_value()) {
@@ -184,7 +213,7 @@ hot fn execute_program(ExecContext &ec,
     if (child == 0) {
       os::close_fd(start_pipe->out);
       os::close_fd(outcome_pipe->in);
-      char start_byte = 0;
+      char      start_byte = 0;
       let const start_read = os::read_fd(start_pipe->in, &start_byte, 1);
       os::close_fd(start_pipe->in);
       if (!start_read.has_value() || *start_read == 0) {
@@ -218,7 +247,7 @@ hot fn execute_program(ExecContext &ec,
                               "Could not release the program start gate"};
     }
 
-    char outcome = 0;
+    char      outcome      = 0;
     let const outcome_read = os::read_fd(outcome_pipe->in, &outcome, 1);
     os::close_fd(outcome_pipe->in);
     if (!outcome_read.has_value()) {
@@ -339,7 +368,7 @@ hot fn execute_program(ExecContext &ec,
   }
   posix_spawnattr_setflags(&attr, spawn_flags);
 
-  pid_t child_pid = 0;
+  pid_t       child_pid           = 0;
   char *const empty_environment[] = {nullptr};
   note_spawn_launch();
   const int spawn_error =
@@ -365,24 +394,27 @@ hot fn execute_program(ExecContext &ec,
   return child_pid;
 }
 
-fn shell_has_controlling_terminal() wontthrow -> bool
+fn
+shell_has_controlling_terminal() wontthrow -> bool
 {
   return IS_TERMINAL_OWNER && isatty(STDIN_FILENO) == 1;
 }
 
-static fn is_terminal_foreground_group() wontthrow -> bool
+static fn
+is_terminal_foreground_group() wontthrow -> bool
 {
   return tcgetpgrp(STDIN_FILENO) == getpgrp();
 }
 
-fn ProgramCapture::start(const ArrayList<String> &argv,
-                         u64 timeout_nanos) wontthrow -> Maybe<ProgramCapture>
+fn
+ProgramCapture::start(const ArrayList<String> &argv,
+                      u64 timeout_nanos) wontthrow -> Maybe<ProgramCapture>
 {
   if (argv.is_empty()) return None;
 
   int pipe_fds[2];
   if (pipe(pipe_fds) != 0) return None;
-  const int read_end = pipe_fds[0];
+  const int read_end  = pipe_fds[0];
   const int write_end = pipe_fds[1];
   fcntl(read_end, F_SETFD, FD_CLOEXEC);
 
@@ -428,15 +460,16 @@ fn ProgramCapture::start(const ArrayList<String> &argv,
     return None;
   }
 
-  let capture = ProgramCapture{};
-  capture.m_child = child_pid;
-  capture.m_output = read_end;
+  let capture              = ProgramCapture{};
+  capture.m_child          = child_pid;
+  capture.m_output         = read_end;
   capture.m_deadline_nanos = monotonic_nanos() + timeout_nanos;
 
   return capture;
 }
 
-fn ProgramCapture::step() wontthrow -> State
+fn
+ProgramCapture::step() wontthrow -> State
 {
   if (m_child == KOSH_INVALID_PROCESS) return State::Failed;
 
@@ -444,9 +477,9 @@ fn ProgramCapture::step() wontthrow -> State
        m_output != KOSH_INVALID_FD && step_read_count < 16; step_read_count++)
   {
     struct pollfd watch;
-    watch.fd = m_output;
-    watch.events = POLLIN;
-    watch.revents = 0;
+    watch.fd        = m_output;
+    watch.events    = POLLIN;
+    watch.revents   = 0;
     const int ready = poll(&watch, 1, 0);
     if (ready < 0 && errno == EINTR) {
       continue;
@@ -458,7 +491,7 @@ fn ProgramCapture::step() wontthrow -> State
     }
     if (ready == 0) break;
 
-    char buffer[4096];
+    char          buffer[4096];
     const ssize_t read_count = read(m_output, buffer, sizeof(buffer));
     if (read_count < 0 && errno == EINTR) {
       continue;
@@ -477,8 +510,8 @@ fn ProgramCapture::step() wontthrow -> State
   }
 
   if (m_output == KOSH_INVALID_FD) {
-    int wait_status = 0;
-    let const waited_pid = retry_interrupted(
+    int       wait_status = 0;
+    let const waited_pid  = retry_interrupted(
         [&] { return waitpid(m_child, &wait_status, WNOHANG); });
     if (waited_pid == m_child) {
       m_child = KOSH_INVALID_PROCESS;
@@ -502,10 +535,11 @@ fn ProgramCapture::step() wontthrow -> State
   return State::Running;
 }
 
-fn ProgramCapture::wait(u64 wait_nanos) const wontthrow -> void
+fn
+ProgramCapture::wait(u64 wait_nanos) const wontthrow -> void
 {
   let const now_nanos = monotonic_nanos();
-  let limit_nanos =
+  let       limit_nanos =
       m_deadline_nanos > now_nanos ? m_deadline_nanos - now_nanos : u64{0};
   if (wait_nanos < limit_nanos) limit_nanos = wait_nanos;
   int wait_millis = static_cast<int>(limit_nanos / 1'000'000);
@@ -518,13 +552,14 @@ fn ProgramCapture::wait(u64 wait_nanos) const wontthrow -> void
   }
 
   struct pollfd watch;
-  watch.fd = m_output;
-  watch.events = POLLIN;
+  watch.fd      = m_output;
+  watch.events  = POLLIN;
   watch.revents = 0;
   poll(&watch, 1, wait_millis);
 }
 
-fn ProgramCapture::abandon() wontthrow -> void
+fn
+ProgramCapture::abandon() wontthrow -> void
 {
   if (m_output != KOSH_INVALID_FD) {
     close(m_output);
@@ -536,7 +571,8 @@ fn ProgramCapture::abandon() wontthrow -> void
   m_child = KOSH_INVALID_PROCESS;
 }
 
-fn give_controlling_terminal_to(process p) wontthrow -> void
+fn
+give_controlling_terminal_to(process p) wontthrow -> void
 {
   if (!shell_has_controlling_terminal() || !is_terminal_foreground_group()) {
     return;
@@ -547,7 +583,8 @@ fn give_controlling_terminal_to(process p) wontthrow -> void
   signal(SIGTTOU, previous);
 }
 
-fn give_controlling_terminal_to_process_group(i64 process_group_id) wontthrow
+fn
+give_controlling_terminal_to_process_group(i64 process_group_id) wontthrow
     -> void
 {
   if (!shell_has_controlling_terminal() || process_group_id <= 0 ||
@@ -561,7 +598,8 @@ fn give_controlling_terminal_to_process_group(i64 process_group_id) wontthrow
   signal(SIGTTOU, previous);
 }
 
-fn reclaim_controlling_terminal() wontthrow -> void
+fn
+reclaim_controlling_terminal() wontthrow -> void
 {
   if (!shell_has_controlling_terminal()) return;
   void (*const previous)(int) = signal(SIGTTOU, SIG_IGN);
@@ -569,12 +607,15 @@ fn reclaim_controlling_terminal() wontthrow -> void
   signal(SIGTTOU, previous);
 }
 
-static fn fork_compound_stage(
-    Maybe<descriptor> in_fd, Maybe<descriptor> out_fd, Maybe<descriptor> err_fd,
-    SourceLocation location = {}, StringView source = {},
-    i64 process_group_id = 0,
-    process_group_mode process_group = process_group_mode::Inherit) throws
-    -> process
+static fn
+fork_compound_stage(Maybe<descriptor>  in_fd,
+                    Maybe<descriptor>  out_fd,
+                    Maybe<descriptor>  err_fd,
+                    SourceLocation     location         = {},
+                    StringView         source           = {},
+                    i64                process_group_id = 0,
+                    process_group_mode process_group =
+                        process_group_mode::Inherit) throws -> process
 {
   LOG(Debug, "forking a compound pipeline stage");
 
@@ -599,7 +640,7 @@ static fn fork_compound_stage(
       }
 
       let const do_lift_above_standard = [](Maybe<descriptor> &fd,
-                                            descriptor target) {
+                                            descriptor         target) {
         if (!fd || *fd > STDERR_FILENO || *fd == target) {
           return;
         }
@@ -652,7 +693,8 @@ static fn fork_compound_stage(
   return child_pid;
 }
 
-static fn fork_job_process() throws -> process
+static fn
+fork_job_process() throws -> process
 {
   LOG(Debug, "forking a mimicked job into its own process group");
 
@@ -679,7 +721,8 @@ static fn fork_job_process() throws -> process
   return child_pid;
 }
 
-fn try_fork_compound_stage(const fork_compound_stage_options &options) throws
+fn
+try_fork_compound_stage(const fork_compound_stage_options &options) throws
     -> Maybe<process>
 {
   return fork_compound_stage(options.in_fd, options.out_fd, options.err_fd,
@@ -687,17 +730,23 @@ fn try_fork_compound_stage(const fork_compound_stage_options &options) throws
                              options.process_group_id, options.process_group);
 }
 
-fn try_fork_job_process() throws -> Maybe<process>
+fn
+try_fork_job_process() throws -> Maybe<process>
 {
   return fork_job_process();
 }
 
-fn can_fork_evaluator() wontthrow -> bool { return true; }
+fn
+can_fork_evaluator() wontthrow -> bool
+{
+  return true;
+}
 
 static constexpr i32 PROCESS_SUBSTITUTION_FD_FLOOR = 63;
 
-fn launch_process_substitution(const process_substitution_options &options)
-    throws -> process_substitution_launch
+fn
+launch_process_substitution(const process_substitution_options &options) throws
+    -> process_substitution_launch
 {
   unused(options.source);
   unused(options.should_trace_sources);
@@ -729,7 +778,7 @@ fn launch_process_substitution(const process_substitution_options &options)
     return process_substitution_launch{
         .child_close_fd = is_command_pipe_writer ? Maybe<descriptor>{pipe->in}
                                                  : Maybe<descriptor>{pipe->out},
-        .child = child,
+        .child          = child,
         .should_evaluate_child = true,
     };
   }
@@ -748,25 +797,28 @@ fn launch_process_substitution(const process_substitution_options &options)
   path += String::from(static_cast<i64>(retained_fd), heap_allocator());
 
   return process_substitution_launch{
-      .path = steal(path),
+      .path        = steal(path),
       .retained_fd = retained_fd,
-      .child = child,
+      .child       = child,
   };
 }
 
-fn finish_process_substitution(opaque *cleanup) wontthrow -> void
+fn
+finish_process_substitution(opaque *cleanup) wontthrow -> void
 {
   unused(cleanup);
 }
 
-fn release_finished_process_substitution(opaque *cleanup) wontthrow -> bool
+fn
+release_finished_process_substitution(opaque *cleanup) wontthrow -> bool
 {
   unused(cleanup);
 
   return true;
 }
 
-fn launch_compound_stage(const compound_stage_options &options) throws
+fn
+launch_compound_stage(const compound_stage_options &options) throws
     -> compound_stage_launch
 {
   const process child = fork_compound_stage(
@@ -775,22 +827,25 @@ fn launch_compound_stage(const compound_stage_options &options) throws
       options.process_group_id, options.process_group);
 
   return compound_stage_launch{
-      .child = child,
+      .child                 = child,
       .should_evaluate_child = child == 0,
   };
 }
 
-fn take_subshell_bootstrap() wontthrow -> subshell_bootstrap
+fn
+take_subshell_bootstrap() wontthrow -> subshell_bootstrap
 {
   return subshell_bootstrap{};
 }
 
-wontreturn fn exit_process_immediately(i32 status) wontthrow -> void
+wontreturn fn
+exit_process_immediately(i32 status) wontthrow -> void
 {
   _exit(status);
 }
 
-fn replace_process(ExecContext &&ec) throws -> void
+fn
+replace_process(ExecContext &&ec) throws -> void
 {
   ASSERT(ec.args().count() > 0, "a program needs at least argv[0]");
 
@@ -832,11 +887,11 @@ fn replace_process(ExecContext &&ec) throws -> void
       },
       [&](i32 target_fd) { close(target_fd); });
 
-  sigset_t saved_signal_mask;
-  struct sigaction saved_sigchild_action = {};
-  struct sigaction saved_sigint_action = {};
-  struct sigaction saved_sigpipe_action = {};
-  let const saved_interrupt_requested = INTERRUPT_REQUESTED;
+  sigset_t         saved_signal_mask;
+  struct sigaction saved_sigchild_action     = {};
+  struct sigaction saved_sigint_action       = {};
+  struct sigaction saved_sigpipe_action      = {};
+  let const        saved_interrupt_requested = INTERRUPT_REQUESTED;
   check_syscall(sigprocmask(SIG_SETMASK, nullptr, &saved_signal_mask));
   check_syscall(sigaction(SIGCHLD, nullptr, &saved_sigchild_action));
   check_syscall(sigaction(SIGINT, nullptr, &saved_sigint_action));
@@ -862,23 +917,25 @@ fn replace_process(ExecContext &&ec) throws -> void
 
   let const exec_error = errno;
   if (exec_error == ENOEXEC) return;
-  errno = exec_error;
+  errno            = exec_error;
   let const reason = last_system_error_message();
-  let error = koshka::ErrorWithLocation{
+  let       error  = koshka::ErrorWithLocation{
       ec.source_location(),
       "Unable to execute `" + ec.program_path().text() + "`: " + reason};
   error.set_command_status(exec_error == ENOENT ? 127 : 126);
   throw error;
 }
 
-fn redirect_self(const ExecContext &ec) throws -> void
+fn
+redirect_self(const ExecContext &ec) throws -> void
 {
   if (ec.in_fd) check_syscall(dup2(*ec.in_fd, STDIN_FILENO));
   if (ec.out_fd) check_syscall(dup2(*ec.out_fd, STDOUT_FILENO));
   if (ec.err_fd) check_syscall(dup2(*ec.err_fd, STDERR_FILENO));
 }
 
-fn make_pipe() wontthrow -> Maybe<pipe_ends>
+fn
+make_pipe() wontthrow -> Maybe<pipe_ends>
 {
   LOG(Debug, "opening a close-on-exec pipe");
 
@@ -919,26 +976,28 @@ fn make_pipe() wontthrow -> Maybe<pipe_ends>
 
 struct pooled_worker
 {
-  pthread_t thread_id{};
-  pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-  pthread_cond_t changed = PTHREAD_COND_INITIALIZER;
+  pthread_t       thread_id{};
+  pthread_mutex_t mutex   = PTHREAD_MUTEX_INITIALIZER;
+  pthread_cond_t  changed = PTHREAD_COND_INITIALIZER;
   void (*entry)(opaque *){nullptr};
-  opaque *context{nullptr};
-  bool has_job{false};
-  bool is_done{false};
+  opaque        *context{nullptr};
+  bool           has_job{false};
+  bool           is_done{false};
   pooled_worker *next_idle{nullptr};
 };
 
 static pthread_mutex_t IDLE_WORKERS_MUTEX = PTHREAD_MUTEX_INITIALIZER;
-static pooled_worker *IDLE_WORKERS = nullptr;
+static pooled_worker  *IDLE_WORKERS       = nullptr;
 
-static fn forget_idle_workers_in_child() wontthrow -> void
+static fn
+forget_idle_workers_in_child() wontthrow -> void
 {
   IDLE_WORKERS = nullptr;
   pthread_mutex_init(&IDLE_WORKERS_MUTEX, nullptr);
 }
 
-static fn pooled_worker_main(opaque *raw_worker) wontthrow -> opaque *
+static fn
+pooled_worker_main(opaque *raw_worker) wontthrow -> opaque *
 {
   let const worker = static_cast<pooled_worker *>(raw_worker);
 
@@ -957,7 +1016,7 @@ static fn pooled_worker_main(opaque *raw_worker) wontthrow -> opaque *
     while (!worker->has_job)
       pthread_cond_wait(&worker->changed, &worker->mutex);
 
-    let const entry = worker->entry;
+    let const entry   = worker->entry;
     let const context = worker->context;
     pthread_mutex_unlock(&worker->mutex);
     entry(context);
@@ -971,7 +1030,8 @@ static fn pooled_worker_main(opaque *raw_worker) wontthrow -> opaque *
   return nullptr;
 }
 
-static fn take_idle_worker() wontthrow -> pooled_worker *
+static fn
+take_idle_worker() wontthrow -> pooled_worker *
 {
   pthread_mutex_lock(&IDLE_WORKERS_MUTEX);
   let const worker = IDLE_WORKERS;
@@ -981,7 +1041,8 @@ static fn take_idle_worker() wontthrow -> pooled_worker *
   return worker;
 }
 
-static fn create_worker() wontthrow -> pooled_worker *
+static fn
+create_worker() wontthrow -> pooled_worker *
 {
   static bool did_register_fork_handler = false;
   if (!did_register_fork_handler) {
@@ -1006,7 +1067,8 @@ static fn create_worker() wontthrow -> pooled_worker *
   return worker;
 }
 
-fn start_thread(void (*entry)(opaque *), opaque *context) wontthrow
+fn
+start_thread(void (*entry)(opaque *), opaque *context) wontthrow
     -> Maybe<thread>
 {
   let worker = take_idle_worker();
@@ -1014,7 +1076,7 @@ fn start_thread(void (*entry)(opaque *), opaque *context) wontthrow
   if (worker == nullptr) return koshka::None;
 
   pthread_mutex_lock(&worker->mutex);
-  worker->entry = entry;
+  worker->entry   = entry;
   worker->context = context;
   worker->is_done = false;
   worker->has_job = true;
@@ -1024,7 +1086,8 @@ fn start_thread(void (*entry)(opaque *), opaque *context) wontthrow
   return thread{worker};
 }
 
-fn join_thread(thread t) wontthrow -> void
+fn
+join_thread(thread t) wontthrow -> void
 {
   let const worker = static_cast<pooled_worker *>(t.handle);
 
@@ -1038,17 +1101,18 @@ fn join_thread(thread t) wontthrow -> void
 
   pthread_mutex_lock(&IDLE_WORKERS_MUTEX);
   worker->next_idle = IDLE_WORKERS;
-  IDLE_WORKERS = worker;
+  IDLE_WORKERS      = worker;
   pthread_mutex_unlock(&IDLE_WORKERS_MUTEX);
 }
 
-fn wait_and_monitor_process(process pid, bool *was_stopped) throws -> i32
+fn
+wait_and_monitor_process(process pid, bool *was_stopped) throws -> i32
 {
   ASSERT(pid >= 0);
 
   LOG(Debug, "waiting on process %lld", static_cast<long long>(pid));
 
-  i32 status{};
+  i32       status{};
   const int wait_flags = was_stopped != nullptr ? WUNTRACED : 0;
   let const changed_pid =
       retry_interrupted([&] { return waitpid(pid, &status, wait_flags); });
@@ -1063,8 +1127,8 @@ fn wait_and_monitor_process(process pid, bool *was_stopped) throws -> i32
   }
 
   if (WIFSIGNALED(status)) {
-    const i32 sig = WTERMSIG(status);
-    const char *sig_str = strsignal(sig);
+    const i32    sig     = WTERMSIG(status);
+    const char  *sig_str = strsignal(sig);
     const String sig_desc =
         (sig_str != nullptr) ? String{sig_str} : String{"Unknown"};
 
@@ -1087,7 +1151,8 @@ fn wait_and_monitor_process(process pid, bool *was_stopped) throws -> i32
   }
 }
 
-fn wait_for_child_state_change() wontthrow -> void
+fn
+wait_for_child_state_change() wontthrow -> void
 {
   sigset_t blocked_signals;
   sigemptyset(&blocked_signals);
@@ -1106,7 +1171,8 @@ fn wait_for_child_state_change() wontthrow -> void
   (void) sigprocmask(SIG_SETMASK, &previous_mask, nullptr);
 }
 
-fn reap_process_quietly(process pid) throws -> i32
+fn
+reap_process_quietly(process pid) throws -> i32
 {
   ASSERT(pid >= 0);
 
@@ -1131,10 +1197,12 @@ fn reap_process_quietly(process pid) throws -> i32
   return 1;
 }
 
-fn poll_process(process p, i32 &status_out,
-                process_termination *termination_out) wontthrow -> process_state
+fn
+poll_process(process              p,
+             i32                 &status_out,
+             process_termination *termination_out) wontthrow -> process_state
 {
-  i32 status = 0;
+  i32       status = 0;
   let const result = retry_interrupted(
       [&] { return waitpid(p, &status, WNOHANG | WUNTRACED | WCONTINUED); });
 
@@ -1169,21 +1237,24 @@ fn poll_process(process p, i32 &status_out,
   return process_state::Exited;
 }
 
-fn signal_process(process p, i32 signal_number) wontthrow -> bool
+fn
+signal_process(process p, i32 signal_number) wontthrow -> bool
 {
   return kill(p, signal_number) == 0;
 }
 
 #if defined __linux__
-static fn read_process_stat_after_command(i64 process_id, char (&buffer)[512],
-                                          StringView &text,
-                                          usize &position) wontthrow -> bool
+static fn
+read_process_stat_after_command(i64 process_id,
+                                char (&buffer)[512],
+                                StringView &text,
+                                usize      &position) wontthrow -> bool
 {
   char stat_path[64];
   if (!format_proc_pid_path(stat_path, process_id, "/stat")) return false;
 
   let const stat_length = read_small_file(stat_path, buffer, sizeof(buffer));
-  text = StringView{buffer, stat_length};
+  text                  = StringView{buffer, stat_length};
   let const command_end = text.find_last_character(')');
   if (!command_end.has_value()) return false;
 
@@ -1192,11 +1263,12 @@ static fn read_process_stat_after_command(i64 process_id, char (&buffer)[512],
   return true;
 }
 
-static fn is_zombie_process(pid_t process_id) wontthrow -> bool
+static fn
+is_zombie_process(pid_t process_id) wontthrow -> bool
 {
-  char stat_buffer[512];
+  char       stat_buffer[512];
   StringView stat_text;
-  usize position = 0;
+  usize      position = 0;
   if (!read_process_stat_after_command(process_id, stat_buffer, stat_text,
                                        position))
   {
@@ -1209,7 +1281,8 @@ static fn is_zombie_process(pid_t process_id) wontthrow -> bool
 }
 #endif
 
-fn process_is_running(process p) wontthrow -> bool
+fn
+process_is_running(process p) wontthrow -> bool
 {
   if (kill(p, 0) != 0 && errno != EPERM) {
     return false;
@@ -1225,15 +1298,15 @@ fn process_is_running(process p) wontthrow -> bool
 }
 
 #if defined __linux__
-static pid_t LAST_RUNNING_GROUP_ID = 0;
-static i64 LAST_RUNNING_MEMBER_ID = 0;
+static pid_t LAST_RUNNING_GROUP_ID  = 0;
+static i64   LAST_RUNNING_MEMBER_ID = 0;
 
-static fn is_running_group_member(i64 process_id, pid_t group_id) wontthrow
-    -> bool
+static fn
+is_running_group_member(i64 process_id, pid_t group_id) wontthrow -> bool
 {
-  char stat_buffer[512];
+  char       stat_buffer[512];
   StringView stat_text;
-  usize position = 0;
+  usize      position = 0;
   if (!read_process_stat_after_command(process_id, stat_buffer, stat_text,
                                        position))
   {
@@ -1260,7 +1333,8 @@ static fn is_running_group_member(i64 process_id, pid_t group_id) wontthrow
   return !thread_count.is_error() && thread_count.value() > 1;
 }
 
-static fn process_group_has_running_member(pid_t group_id) wontthrow -> bool
+static fn
+process_group_has_running_member(pid_t group_id) wontthrow -> bool
 {
   if (LAST_RUNNING_GROUP_ID == group_id &&
       is_running_group_member(LAST_RUNNING_MEMBER_ID, group_id))
@@ -1273,7 +1347,7 @@ static fn process_group_has_running_member(pid_t group_id) wontthrow -> bool
   defer { ::closedir(proc_directory); };
 
   for (struct dirent *entry = ::readdir(proc_directory); entry != nullptr;
-       entry = ::readdir(proc_directory))
+       entry                = ::readdir(proc_directory))
   {
     let const name = StringView{entry->d_name};
     if (name.is_empty() || !name.is_all_decimal_digits()) {
@@ -1286,7 +1360,7 @@ static fn process_group_has_running_member(pid_t group_id) wontthrow -> bool
     if (is_running_group_member(process_id.value(), group_id)) {
       LOG(Debug, "process group %d keeps running member %.*s",
           static_cast<int>(group_id), static_cast<int>(name.length), name.data);
-      LAST_RUNNING_GROUP_ID = group_id;
+      LAST_RUNNING_GROUP_ID  = group_id;
       LAST_RUNNING_MEMBER_ID = process_id.value();
 
       return true;
@@ -1300,7 +1374,8 @@ static fn process_group_has_running_member(pid_t group_id) wontthrow -> bool
 }
 #endif
 
-fn process_group_has_members(process group) wontthrow -> bool
+fn
+process_group_has_members(process group) wontthrow -> bool
 {
   if (kill(group, 0) != 0) return errno == EPERM;
 
@@ -1313,12 +1388,14 @@ fn process_group_has_members(process group) wontthrow -> bool
 #endif
 }
 
-fn is_process_signal_supported(i32 signal_number) wontthrow -> bool
+fn
+is_process_signal_supported(i32 signal_number) wontthrow -> bool
 {
   return signal_number >= 0 && signal_number < NSIG;
 }
 
-fn process_from_pid(i64 pid) wontthrow -> process
+fn
+process_from_pid(i64 pid) wontthrow -> process
 {
   if (pid > INT32_MAX || pid < INT32_MIN) {
     return static_cast<process>(INT32_MAX);
@@ -1373,14 +1450,15 @@ static const utils::signal_pair SIGNAL_PAIRS[] = {
 #endif
 };
 
-static fn build_signal_pairs(ArrayList<String> &names) throws
+static fn
+build_signal_pairs(ArrayList<String> &names) throws
     -> ArrayList<utils::signal_pair>
 {
   let pairs = ArrayList<utils::signal_pair>{heap_allocator()};
 
 #if defined SIGRTMIN && defined SIGRTMAX
-  let const lowest = static_cast<i32>(SIGRTMIN);
-  let const highest = static_cast<i32>(SIGRTMAX);
+  let const lowest          = static_cast<i32>(SIGRTMIN);
+  let const highest         = static_cast<i32>(SIGRTMAX);
   let const generated_count = static_cast<usize>(highest - lowest + 1);
 #else
   let const generated_count = usize{0};
@@ -1395,10 +1473,10 @@ static fn build_signal_pairs(ArrayList<String> &names) throws
 #if defined SIGRTMIN && defined SIGRTMAX
 
   for (i32 number = lowest; number <= highest; number++) {
-    let const from_lowest = number - lowest;
-    let const from_highest = highest - number;
+    let const from_lowest    = number - lowest;
+    let const from_highest   = highest - number;
     let const is_near_lowest = from_lowest <= from_highest;
-    let const offset = is_near_lowest ? from_lowest : from_highest;
+    let const offset         = is_near_lowest ? from_lowest : from_highest;
 
     let name = String{heap_allocator(), is_near_lowest ? StringView{"RTMIN"}
                                                        : StringView{"RTMAX"}};
@@ -1415,7 +1493,8 @@ static fn build_signal_pairs(ArrayList<String> &names) throws
   return pairs;
 }
 
-static fn signal_pairs() throws -> const ArrayList<utils::signal_pair> &
+static fn
+signal_pairs() throws -> const ArrayList<utils::signal_pair> &
 {
   static ArrayList<String> names = ArrayList<String>{heap_allocator()};
   static ArrayList<utils::signal_pair> pairs = build_signal_pairs(names);
@@ -1423,21 +1502,24 @@ static fn signal_pairs() throws -> const ArrayList<utils::signal_pair> &
   return pairs;
 }
 
-fn signal_number_from_name(StringView name) throws -> Maybe<i32>
+fn
+signal_number_from_name(StringView name) throws -> Maybe<i32>
 {
   let const &pairs = signal_pairs();
 
   return utils::find_signal_number(pairs.begin(), pairs.count(), name);
 }
 
-fn signal_name_from_number(i32 number) throws -> Maybe<String>
+fn
+signal_name_from_number(i32 number) throws -> Maybe<String>
 {
   let const &pairs = signal_pairs();
 
   return utils::find_signal_name(pairs.begin(), pairs.count(), number);
 }
 
-fn signal_description_from_number(i32 number) throws -> String
+fn
+signal_description_from_number(i32 number) throws -> String
 {
   let const description = strsignal(number);
   if (description == nullptr) {
@@ -1447,16 +1529,18 @@ fn signal_description_from_number(i32 number) throws -> String
   return String{description};
 }
 
-fn signal_names() throws -> const ArrayList<StringView> &
+fn
+signal_names() throws -> const ArrayList<StringView> &
 {
-  let const &pairs = signal_pairs();
+  let const                   &pairs = signal_pairs();
   static ArrayList<StringView> names =
       utils::collect_signal_names(pairs.begin(), pairs.count());
 
   return names;
 }
 
-hot fn make_os_args(const ArrayList<String> &args) throws -> os_args
+hot fn
+make_os_args(const ArrayList<String> &args) throws -> os_args
 {
   ASSERT(args.count() > 0, "argv must carry at least the program name");
 
@@ -1471,7 +1555,8 @@ hot fn make_os_args(const ArrayList<String> &args) throws -> os_args
   return result;
 }
 
-fn monotonic_nanos() wontthrow -> u64
+fn
+monotonic_nanos() wontthrow -> u64
 {
   struct timespec now{};
   if (clock_gettime(CLOCK_MONOTONIC, &now) != 0) return 0;
@@ -1480,28 +1565,40 @@ fn monotonic_nanos() wontthrow -> u64
          static_cast<u64>(now.tv_nsec);
 }
 
-fn get_parent_process_id() wontthrow -> i64
+fn
+get_parent_process_id() wontthrow -> i64
 {
   return static_cast<i64>(getppid());
 }
 
-fn get_real_user_id() wontthrow -> i64 { return static_cast<i64>(getuid()); }
+fn
+get_real_user_id() wontthrow -> i64
+{
+  return static_cast<i64>(getuid());
+}
 
-fn get_effective_user_id() wontthrow -> i64
+fn
+get_effective_user_id() wontthrow -> i64
 {
   return static_cast<i64>(geteuid());
 }
 
-fn get_real_group_id() wontthrow -> i64 { return static_cast<i64>(getgid()); }
+fn
+get_real_group_id() wontthrow -> i64
+{
+  return static_cast<i64>(getgid());
+}
 
-fn get_effective_group_id() wontthrow -> i64
+fn
+get_effective_group_id() wontthrow -> i64
 {
   return static_cast<i64>(getegid());
 }
 
-fn get_supplementary_group_ids(Allocator allocator) throws -> ArrayList<u32>
+fn
+get_supplementary_group_ids(Allocator allocator) throws -> ArrayList<u32>
 {
-  let groups = ArrayList<u32>{allocator};
+  let       groups      = ArrayList<u32>{allocator};
   let const group_count = getgroups(0, nullptr);
   if (group_count < 0) return groups;
 
@@ -1523,7 +1620,8 @@ fn get_supplementary_group_ids(Allocator allocator) throws -> ArrayList<u32>
   return groups;
 }
 
-fn machine_type() throws -> String
+fn
+machine_type() throws -> String
 {
   static const String cached = []() -> String {
     struct utsname info{};
@@ -1539,7 +1637,8 @@ fn machine_type() throws -> String
   return cached;
 }
 
-fn executable_system_name() throws -> String
+fn
+executable_system_name() throws -> String
 {
 #if KOSH_PLATFORM_IS KOSH_PLATFORM_COSMO
 
@@ -1560,7 +1659,8 @@ fn executable_system_name() throws -> String
 #endif
 }
 
-fn system_release_name() throws -> String
+fn
+system_release_name() throws -> String
 {
   struct utsname info{};
   if (uname(&info) != 0) return String{"unknown"};
@@ -1568,7 +1668,8 @@ fn system_release_name() throws -> String
   return String{info.release};
 }
 
-fn system_version_name() throws -> String
+fn
+system_version_name() throws -> String
 {
   struct utsname info{};
   if (uname(&info) != 0) return String{"unknown"};
@@ -1576,7 +1677,8 @@ fn system_version_name() throws -> String
   return String{info.version};
 }
 
-fn machine_target_name() throws -> String
+fn
+machine_target_name() throws -> String
 {
 #if defined __APPLE__
 
@@ -1587,7 +1689,8 @@ fn machine_target_name() throws -> String
 #endif
 }
 
-fn ostype_name() wontthrow -> StringView
+fn
+ostype_name() wontthrow -> StringView
 {
 #if defined __APPLE__
 
@@ -1601,7 +1704,8 @@ fn ostype_name() wontthrow -> StringView
 #endif
 }
 
-fn executable_machine_name() throws -> String
+fn
+executable_machine_name() throws -> String
 {
 #if KOSH_PLATFORM_IS KOSH_PLATFORM_COSMO
 
@@ -1618,7 +1722,8 @@ fn executable_machine_name() throws -> String
 #endif
 }
 
-fn realtime_microseconds() wontthrow -> u64
+fn
+realtime_microseconds() wontthrow -> u64
 {
   struct timespec now{};
   if (clock_gettime(CLOCK_REALTIME, &now) != 0) return 0;
@@ -1627,14 +1732,15 @@ fn realtime_microseconds() wontthrow -> u64
          static_cast<u64>(now.tv_nsec) / 1000ULL;
 }
 
-fn format_local_time(StringView format, i64 epoch) throws -> String
+fn
+format_local_time(StringView format, i64 epoch) throws -> String
 {
   const time_t when = static_cast<time_t>(epoch);
-  struct tm broken_down{};
+  struct tm    broken_down{};
   if (localtime_r(&when, &broken_down) == nullptr)
     return String{heap_allocator()};
   let const format_string = String{format};
-  char buffer[512];
+  char      buffer[512];
   let const written =
       strftime(buffer, sizeof(buffer), format_string.c_str(), &broken_down);
 
@@ -1643,10 +1749,11 @@ fn format_local_time(StringView format, i64 epoch) throws -> String
   };
 }
 
-fn read_child_cpu_times() wontthrow -> child_cpu_times
+fn
+read_child_cpu_times() wontthrow -> child_cpu_times
 {
   child_cpu_times result{};
-  struct rusage usage{};
+  struct rusage   usage{};
   if (getrusage(RUSAGE_CHILDREN, &usage) != 0) return result;
   result.user_seconds = static_cast<double>(usage.ru_utime.tv_sec) +
                         static_cast<double>(usage.ru_utime.tv_usec) / 1000000.0;
@@ -1657,7 +1764,8 @@ fn read_child_cpu_times() wontthrow -> child_cpu_times
   return result;
 }
 
-fn children_peak_rss_bytes() wontthrow -> u64
+fn
+children_peak_rss_bytes() wontthrow -> u64
 {
   struct rusage usage{};
   if (getrusage(RUSAGE_CHILDREN, &usage) != 0) return 0;
@@ -1670,7 +1778,7 @@ namespace {
 struct measured_child
 {
   pid_t pid;
-  int start_descriptor;
+  int   start_descriptor;
 };
 
 enum class barrier_transfer_direction : u8
@@ -1679,10 +1787,11 @@ enum class barrier_transfer_direction : u8
   Write,
 };
 
-fn transfer_barrier_byte(int descriptor,
-                         barrier_transfer_direction direction) wontthrow -> bool
+fn
+transfer_barrier_byte(int                        descriptor,
+                      barrier_transfer_direction direction) wontthrow -> bool
 {
-  char byte = 1;
+  char      byte           = 1;
   let const transfer_count = retry_interrupted([&] {
     return direction == barrier_transfer_direction::Write
                ? write(descriptor, &byte, 1)
@@ -1692,8 +1801,10 @@ fn transfer_barrier_byte(int descriptor,
   return transfer_count == 1;
 }
 
-fn spawn_measured_child(const ArrayList<String> &argv, measured_output output,
-                        measured_child &child_out) wontthrow -> bool
+fn
+spawn_measured_child(const ArrayList<String> &argv,
+                     measured_output          output,
+                     measured_child          &child_out) wontthrow -> bool
 {
   let const raw_argv = make_os_args(argv);
 
@@ -1765,29 +1876,32 @@ fn spawn_measured_child(const ArrayList<String> &argv, measured_output output,
   return true;
 }
 
-fn timeval_nanos(const timeval &value) wontthrow -> u64
+fn
+timeval_nanos(const timeval &value) wontthrow -> u64
 {
   return static_cast<u64>(value.tv_sec) * 1000000000ULL +
          static_cast<u64>(value.tv_usec) * 1000ULL;
 }
 
-fn fill_usage_from_rusage(const struct rusage &usage,
-                          process_resource_usage &resources) wontthrow -> void
+fn
+fill_usage_from_rusage(const struct rusage    &usage,
+                       process_resource_usage &resources) wontthrow -> void
 {
-  resources.user_nanos = timeval_nanos(usage.ru_utime);
-  resources.system_nanos = timeval_nanos(usage.ru_stime);
+  resources.user_nanos          = timeval_nanos(usage.ru_utime);
+  resources.system_nanos        = timeval_nanos(usage.ru_stime);
   resources.peak_rss_byte_count = platform_peak_rss_bytes(usage.ru_maxrss);
   resources.voluntary_context_switch_count = static_cast<u64>(usage.ru_nvcsw);
   resources.involuntary_context_switch_count =
       static_cast<u64>(usage.ru_nivcsw);
-  resources.minor_fault_count = static_cast<u64>(usage.ru_minflt);
-  resources.major_fault_count = static_cast<u64>(usage.ru_majflt);
-  resources.block_input_count = static_cast<u64>(usage.ru_inblock);
+  resources.minor_fault_count  = static_cast<u64>(usage.ru_minflt);
+  resources.major_fault_count  = static_cast<u64>(usage.ru_majflt);
+  resources.block_input_count  = static_cast<u64>(usage.ru_inblock);
   resources.block_output_count = static_cast<u64>(usage.ru_oublock);
 }
 
 #if defined __linux__
-fn open_proc_io_descriptor(pid_t pid) wontthrow -> int
+fn
+open_proc_io_descriptor(pid_t pid) wontthrow -> int
 {
   char path[64];
   unused(format_proc_pid_path(path, pid, "/io"));
@@ -1795,8 +1909,9 @@ fn open_proc_io_descriptor(pid_t pid) wontthrow -> int
   return ::open(path, O_RDONLY | O_CLOEXEC);
 }
 
-fn fill_usage_from_proc_io(int io_descriptor,
-                           process_resource_usage &resources) wontthrow -> void
+fn
+fill_usage_from_proc_io(int                     io_descriptor,
+                        process_resource_usage &resources) wontthrow -> void
 {
   struct io_field
   {
@@ -1812,14 +1927,14 @@ fn fill_usage_from_proc_io(int io_descriptor,
 
   if (io_descriptor < 0) return;
 
-  char buffer[2048];
+  char      buffer[2048];
   let const length = retry_interrupted(
       [&] { return ::pread(io_descriptor, buffer, sizeof(buffer), 0); });
 
   if (length <= 0) return;
 
-  let const text = StringView{buffer, static_cast<usize>(length)};
-  usize position = 0;
+  let const text     = StringView{buffer, static_cast<usize>(length)};
+  usize     position = 0;
 
   while (position < text.length) {
     let const line = each_line(text, position);
@@ -1835,9 +1950,12 @@ fn fill_usage_from_proc_io(int io_descriptor,
 }
 #endif
 
-fn wait_for_measured_child(pid_t child_pid, i64 &status_out, u64 &peak_rss_out,
-                           process_resource_usage *resources,
-                           int io_descriptor) wontthrow -> bool
+fn
+wait_for_measured_child(pid_t                   child_pid,
+                        i64                    &status_out,
+                        u64                    &peak_rss_out,
+                        process_resource_usage *resources,
+                        int                     io_descriptor) wontthrow -> bool
 {
 #if defined __linux__
   if (resources != nullptr) {
@@ -1852,9 +1970,9 @@ fn wait_for_measured_child(pid_t child_pid, i64 &status_out, u64 &peak_rss_out,
   unused(io_descriptor);
 #endif
 
-  int status = 0;
+  int           status = 0;
   struct rusage usage{};
-  let const waited =
+  let const     waited =
       retry_interrupted([&] { return wait4(child_pid, &status, 0, &usage); });
 
   if (waited != child_pid) {
@@ -1880,10 +1998,11 @@ fn wait_for_measured_child(pid_t child_pid, i64 &status_out, u64 &peak_rss_out,
 
 } /* namespace */
 
-fn read_own_resource_usage() wontthrow -> process_resource_usage
+fn
+read_own_resource_usage() wontthrow -> process_resource_usage
 {
   process_resource_usage resources{};
-  struct rusage usage{};
+  struct rusage          usage{};
   if (getrusage(RUSAGE_SELF, &usage) == 0)
     fill_usage_from_rusage(usage, resources);
 #if defined __linux__
@@ -1895,9 +2014,11 @@ fn read_own_resource_usage() wontthrow -> process_resource_usage
   return resources;
 }
 
-fn run_measured(const ArrayList<String> &argv, const Maybe<descriptor> &,
-                measured_output output, bool should_collect_resources) throws
-    -> Maybe<measured_result>
+fn
+run_measured(const ArrayList<String> &argv,
+             const Maybe<descriptor> &,
+             measured_output output,
+             bool should_collect_resources) throws -> Maybe<measured_result>
 {
   if (argv.is_empty()) return None;
 
@@ -1917,7 +2038,7 @@ fn run_measured(const ArrayList<String> &argv, const Maybe<descriptor> &,
   };
 
   PlatformPerfSession perf_session;
-  bool has_perf = perf_session.prepare(child.pid);
+  bool                has_perf = perf_session.prepare(child.pid);
   if (has_perf) has_perf = perf_session.start();
   if (!has_perf) perf_session.cancel();
 
@@ -1947,17 +2068,19 @@ fn run_measured(const ArrayList<String> &argv, const Maybe<descriptor> &,
   return result;
 }
 
-static pure fn native_priority_target(priority_target target) wontthrow -> int
+static pure fn
+native_priority_target(priority_target target) wontthrow -> int
 {
   switch (target) {
-  case priority_target::Process: return PRIO_PROCESS;
+  case priority_target::Process:      return PRIO_PROCESS;
   case priority_target::ProcessGroup: return PRIO_PGRP;
-  case priority_target::User: return PRIO_USER;
+  case priority_target::User:         return PRIO_USER;
   }
   unreachable();
 }
 
-fn get_priority(i64 id, priority_target target) wontthrow -> Maybe<i32>
+fn
+get_priority(i64 id, priority_target target) wontthrow -> Maybe<i32>
 {
   errno = 0;
   let const priority =
@@ -1969,16 +2092,17 @@ fn get_priority(i64 id, priority_target target) wontthrow -> Maybe<i32>
   return priority;
 }
 
-fn set_priority(i64 id, i32 priority, priority_target target) wontthrow -> bool
+fn
+set_priority(i64 id, i32 priority, priority_target target) wontthrow -> bool
 {
   return setpriority(native_priority_target(target), static_cast<id_t>(id),
                      priority) == 0;
 }
 
 template <typename PrepareChild>
-static fn run_through_error_pipe(const auto &raw_argv,
-                                 PrepareChild do_prepare_child) wontthrow
-    -> Maybe<i32>
+static fn
+run_through_error_pipe(const auto  &raw_argv,
+                       PrepareChild do_prepare_child) wontthrow -> Maybe<i32>
 {
   int exec_error_pipe[2];
   if (pipe(exec_error_pipe) != 0) return None;
@@ -2012,13 +2136,13 @@ static fn run_through_error_pipe(const auto &raw_argv,
   }
 
   close(exec_error_pipe[1]);
-  int child_errno = 0;
+  int       child_errno  = 0;
   let const error_length = retry_interrupted([&] {
     return read(exec_error_pipe[0], &child_errno, sizeof(child_errno));
   });
-  let const read_errno = errno;
+  let const read_errno   = errno;
   close(exec_error_pipe[0]);
-  int status = 0;
+  int       status = 0;
   let const waited =
       retry_interrupted([&] { return waitpid(child, &status, 0); });
   if (waited != child) return None;
@@ -2038,13 +2162,14 @@ static fn run_through_error_pipe(const auto &raw_argv,
   return None;
 }
 
-fn run_nice(const ArrayList<String> &argv, i32 increment) throws -> Maybe<i32>
+fn
+run_nice(const ArrayList<String> &argv, i32 increment) throws -> Maybe<i32>
 {
   if (argv.is_empty()) return None;
   let const raw_argv = make_os_args(argv);
 
   return run_through_error_pipe(raw_argv, [increment](int) {
-    errno = 0;
+    errno       = 0;
     let current = getpriority(PRIO_PROCESS, 0);
     if (current == -1 && errno != 0) {
       current = 0;
@@ -2056,12 +2181,13 @@ fn run_nice(const ArrayList<String> &argv, i32 increment) throws -> Maybe<i32>
   });
 }
 
-fn run_nohup(const ArrayList<String> &argv, const nohup_options &options) throws
+fn
+run_nohup(const ArrayList<String> &argv, const nohup_options &options) throws
     -> Maybe<i32>
 {
   if (argv.is_empty()) return None;
-  let const raw_argv = make_os_args(argv);
-  let home_output = String{heap_allocator(), options.home};
+  let const raw_argv    = make_os_args(argv);
+  let       home_output = String{heap_allocator(), options.home};
   if (!home_output.is_empty() && home_output.back() != '/') {
     home_output += '/';
   }
@@ -2069,10 +2195,10 @@ fn run_nohup(const ArrayList<String> &argv, const nohup_options &options) throws
 
   return run_through_error_pipe(raw_argv, [&](int error_descriptor) {
     signal(SIGHUP, SIG_IGN);
-    let child_input = options.input;
+    let child_input  = options.input;
     let child_output = options.output;
-    let child_error = options.error;
-    int null_input = -1;
+    let child_error  = options.error;
+    int null_input   = -1;
     int nohup_output = -1;
     if (isatty(child_input)) {
       null_input = open("/dev/null", O_RDONLY);
@@ -2105,6 +2231,11 @@ fn run_nohup(const ArrayList<String> &argv, const nohup_options &options) throws
 
 } /* namespace koshka */
 
-fn kosh_main(int argc, char **argv) -> int;
+fn
+kosh_main(int argc, char **argv) -> int;
 
-fn main(int argc, char **argv) -> int { return kosh_main(argc, argv); }
+fn
+main(int argc, char **argv) -> int
+{
+  return kosh_main(argc, argv);
+}

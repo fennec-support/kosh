@@ -27,9 +27,9 @@ namespace koshka {
 
 namespace utils {
 
-pure fn contains_case_insensitive_ascii(StringView value,
-                                        StringView folded_pattern) wontthrow
-    -> bool
+pure fn
+contains_case_insensitive_ascii(StringView value,
+                                StringView folded_pattern) wontthrow -> bool
 {
   if (folded_pattern.is_empty()) return true;
   if (folded_pattern.length > value.length) return false;
@@ -52,7 +52,8 @@ pure fn contains_case_insensitive_ascii(StringView value,
   return false;
 }
 
-static fn parse_positive_position(StringView text, usize &position) wontthrow
+static fn
+parse_positive_position(StringView text, usize &position) wontthrow
     -> Maybe<usize>
 {
   if (position == text.length || text[position] < '0' || text[position] > '9') {
@@ -75,14 +76,15 @@ static fn parse_positive_position(StringView text, usize &position) wontthrow
   return value;
 }
 
-fn parse_text_position_ranges(StringView text, Allocator allocator) throws
+fn
+parse_text_position_ranges(StringView text, Allocator allocator) throws
     -> Maybe<SortedArrayList<text_position_range,
                              order_comparator<text_position_range>>>
 {
   if (text.is_empty()) return None;
 
-  let parsed_ranges = ArrayList<text_position_range>{allocator};
-  usize position = 0;
+  let   parsed_ranges = ArrayList<text_position_range>{allocator};
+  usize position      = 0;
 
   while (position < text.length &&
          (text[position] == ' ' || text[position] == '\t'))
@@ -94,7 +96,7 @@ fn parse_text_position_ranges(StringView text, Allocator allocator) throws
 
   while (position < text.length) {
     usize first = 1;
-    usize last = SIZE_MAX;
+    usize last  = SIZE_MAX;
     if (text[position] == '-') {
       position++;
       let const parsed_last = parse_positive_position(text, position);
@@ -104,7 +106,7 @@ fn parse_text_position_ranges(StringView text, Allocator allocator) throws
       let const parsed_first = parse_positive_position(text, position);
       if (!parsed_first.has_value()) return None;
       first = *parsed_first;
-      last = first;
+      last  = first;
       if (position < text.length && text[position] == '-') {
         position++;
         if (position == text.length || text[position] == ',') {
@@ -137,7 +139,7 @@ fn parse_text_position_ranges(StringView text, Allocator allocator) throws
     if (text[position] == ',') return None;
   }
 
-  let ranges = steal(parsed_ranges).make_sorted(sort_order::ascending);
+  let   ranges       = steal(parsed_ranges).make_sorted(sort_order::ascending);
   usize output_count = 0;
 
   for (let const range : ranges) {
@@ -158,7 +160,8 @@ fn parse_text_position_ranges(StringView text, Allocator allocator) throws
   return ranges;
 }
 
-pure fn text_position_is_selected(
+pure fn
+text_position_is_selected(
     usize one_based_position,
     const SortedArrayList<text_position_range,
                           order_comparator<text_position_range>> &ranges)
@@ -172,10 +175,11 @@ pure fn text_position_is_selected(
   return false;
 }
 
-fn parse_tab_stop_list(StringView text, Allocator allocator) throws
+fn
+parse_tab_stop_list(StringView text, Allocator allocator) throws
     -> Maybe<ArrayList<usize>>
 {
-  let stops = ArrayList<usize>{allocator};
+  let   stops    = ArrayList<usize>{allocator};
   usize position = 0;
 
   while (position < text.length) {
@@ -207,8 +211,8 @@ fn parse_tab_stop_list(StringView text, Allocator allocator) throws
   return stops;
 }
 
-pure fn get_next_tab_column(usize column,
-                            const ArrayList<usize> &tab_stops) wontthrow
+pure fn
+get_next_tab_column(usize column, const ArrayList<usize> &tab_stops) wontthrow
     -> usize
 {
   if (tab_stops.is_empty()) return column + (8 - column % 8);
@@ -225,8 +229,9 @@ pure fn get_next_tab_column(usize column,
   return column;
 }
 
-static fn shell_word_expansion_end(StringView word,
-                                   usize expansion_start) wontthrow -> usize
+static fn
+shell_word_expansion_end(StringView word, usize expansion_start) wontthrow
+    -> usize
 {
   if (expansion_start >= word.length) return expansion_start;
 
@@ -251,7 +256,7 @@ static fn shell_word_expansion_end(StringView word,
 
   let const next_byte = word[expansion_start + 1];
   if (next_byte == '{') {
-    usize depth = 1;
+    usize depth    = 1;
     usize position = expansion_start + 2;
 
     while (position < word.length) {
@@ -270,8 +275,8 @@ static fn shell_word_expansion_end(StringView word,
   }
 
   if (next_byte == '(') {
-    usize depth = 0;
-    char quote_character = 0;
+    usize depth           = 0;
+    char  quote_character = 0;
 
     for (usize position = expansion_start + 1; position < word.length;
          position++)
@@ -355,8 +360,10 @@ static fn shell_word_expansion_end(StringView word,
   }
 }
 
-hot fn decode_shell_word(StringView word, Allocator allocator,
-                         shell_word_source_mapping mapping) throws
+hot fn
+decode_shell_word(StringView                word,
+                  Allocator                 allocator,
+                  shell_word_source_mapping mapping) throws
     -> decoded_shell_word
 {
   let decoded = decoded_shell_word{allocator};
@@ -369,19 +376,19 @@ hot fn decode_shell_word(StringView word, Allocator allocator,
     decoded.raw_positions.push(0);
   }
 
-  char quote_character = 0;
-  let is_scanning_tilde_prefix = false;
-  let is_scanning_leading_variable = false;
-  let leading_variable_is_braced = false;
-  let is_after_unconsumed_dollar = false;
-  let has_active_bracket = false;
-  usize glob_inert_end = 0;
+  char  quote_character              = 0;
+  let   is_scanning_tilde_prefix     = false;
+  let   is_scanning_leading_variable = false;
+  let   leading_variable_is_braced   = false;
+  let   is_after_unconsumed_dollar   = false;
+  let   has_active_bracket           = false;
+  usize glob_inert_end               = 0;
 
   for (usize position = 0; position < word.length; position++) {
     let const byte = word[position];
 
     let const was_after_unconsumed_dollar = is_after_unconsumed_dollar;
-    is_after_unconsumed_dollar = false;
+    is_after_unconsumed_dollar            = false;
 
     if (byte == '$' && quote_character != '\'' &&
         !was_after_unconsumed_dollar && position >= glob_inert_end &&
@@ -403,9 +410,9 @@ hot fn decode_shell_word(StringView word, Allocator allocator,
     if (is_unquoted_dollar && word[position + 1] == '\'') {
       decoded.has_shell_syntax = true;
 
-      let const body_start = position + 2;
-      usize body_end = body_start;
-      let is_terminated = false;
+      let const body_start    = position + 2;
+      usize     body_end      = body_start;
+      let       is_terminated = false;
 
       let has_length_changing_escape = false;
 
@@ -428,11 +435,11 @@ hot fn decode_shell_word(StringView word, Allocator allocator,
 
       if (is_scanning_tilde_prefix) {
         decoded.leading.is_tilde_active = false;
-        is_scanning_tilde_prefix = false;
+        is_scanning_tilde_prefix        = false;
       }
-      is_scanning_leading_variable = false;
-      decoded.last_quote_character = '\'';
-      decoded.is_last_quote_ansi_c = true;
+      is_scanning_leading_variable     = false;
+      decoded.last_quote_character     = '\'';
+      decoded.is_last_quote_ansi_c     = true;
       decoded.last_quote_content_start = body_start;
       decoded.last_quote_decoded_start = decoded.text.length();
       if (!is_terminated) {
@@ -469,16 +476,16 @@ hot fn decode_shell_word(StringView word, Allocator allocator,
       decoded.has_shell_syntax = true;
       if (is_scanning_tilde_prefix) {
         decoded.leading.is_tilde_active = false;
-        is_scanning_tilde_prefix = false;
+        is_scanning_tilde_prefix        = false;
       }
-      is_scanning_leading_variable = false;
-      quote_character = byte;
+      is_scanning_leading_variable     = false;
+      quote_character                  = byte;
       decoded.open_quote_content_start = position + 1;
       decoded.open_quote_decoded_start = decoded.text.length();
       decoded.last_quote_content_start = position + 1;
       decoded.last_quote_decoded_start = decoded.text.length();
-      decoded.last_quote_character = byte;
-      decoded.is_last_quote_ansi_c = false;
+      decoded.last_quote_character     = byte;
+      decoded.is_last_quote_ansi_c     = false;
       if (should_map_source) decoded.raw_positions.back() = position + 1;
       if (!decoded.text.is_empty() &&
           os::is_directory_separator(decoded.text.back()))
@@ -490,10 +497,10 @@ hot fn decode_shell_word(StringView word, Allocator allocator,
     if (byte == quote_character) {
       if (is_scanning_tilde_prefix) {
         decoded.leading.is_tilde_active = false;
-        is_scanning_tilde_prefix = false;
+        is_scanning_tilde_prefix        = false;
       }
-      is_scanning_leading_variable = false;
-      quote_character = 0;
+      is_scanning_leading_variable     = false;
+      quote_character                  = 0;
       decoded.open_quote_content_start = 0;
       decoded.open_quote_decoded_start = 0;
       if (!decoded.text.is_empty() &&
@@ -512,7 +519,7 @@ hot fn decode_shell_word(StringView word, Allocator allocator,
         decoded.has_shell_syntax = true;
         if (is_scanning_tilde_prefix) {
           decoded.leading.is_tilde_active = false;
-          is_scanning_tilde_prefix = false;
+          is_scanning_tilde_prefix        = false;
         }
         is_scanning_leading_variable = false;
         position++;
@@ -537,12 +544,12 @@ hot fn decode_shell_word(StringView word, Allocator allocator,
       decoded.leading.is_tilde_active = byte == '~' && quote_character == 0;
       decoded.leading.is_variable_active =
           byte == '$' && quote_character != '\'';
-      is_scanning_tilde_prefix = decoded.leading.is_tilde_active;
+      is_scanning_tilde_prefix     = decoded.leading.is_tilde_active;
       is_scanning_leading_variable = decoded.leading.is_variable_active;
       if (is_scanning_leading_variable) decoded.leading.variable_end = 1;
     } else if (is_scanning_leading_variable) {
       if (decoded.text.length() == 1 && byte == '{') {
-        leading_variable_is_braced = true;
+        leading_variable_is_braced   = true;
         decoded.leading.variable_end = decoded.text.length() + 1;
       } else if (lexer::is_variable_name(byte)) {
         decoded.leading.variable_end = decoded.text.length() + 1;
@@ -569,7 +576,7 @@ hot fn decode_shell_word(StringView word, Allocator allocator,
     if (should_map_source) decoded.raw_positions.push(position + 1);
     if (os::is_directory_separator(byte)) {
       decoded.raw_directory_end = position + 1;
-      is_scanning_tilde_prefix = false;
+      is_scanning_tilde_prefix  = false;
     }
 
     is_after_unconsumed_dollar =
@@ -580,7 +587,7 @@ hot fn decode_shell_word(StringView word, Allocator allocator,
 
   if (!should_map_source) return decoded;
 
-  char scan_quote = 0;
+  char  scan_quote       = 0;
   usize decoded_position = 0;
 
   for (usize raw_start = 0; raw_start < word.length; raw_start++) {
@@ -640,9 +647,9 @@ hot fn decode_shell_word(StringView word, Allocator allocator,
 struct path_source_component
 {
   StringView text;
-  usize decoded_start;
-  usize decoded_end;
-  bool is_opaque;
+  usize      decoded_start;
+  usize      decoded_end;
+  bool       is_opaque;
 };
 
 struct path_component_owner_range
@@ -651,13 +658,14 @@ struct path_component_owner_range
   usize end_component_index;
 };
 
-static fn split_path_source_components(StringView path,
-                                       const decoded_shell_word *decoded,
-                                       Allocator allocator) throws
+static fn
+split_path_source_components(StringView                path,
+                             const decoded_shell_word *decoded,
+                             Allocator                 allocator) throws
     -> ArrayList<path_source_component>
 {
-  let components = ArrayList<path_source_component>{allocator};
-  usize position = os::path_root_length(path);
+  let   components = ArrayList<path_source_component>{allocator};
+  usize position   = os::path_root_length(path);
   if (position == 0 && os::path_is_drive_relative(path)) {
     position = 2;
   }
@@ -670,8 +678,8 @@ static fn split_path_source_components(StringView path,
     let is_opaque = false;
     if (decoded != nullptr) {
       while (opaque_range_position < decoded->opaque_ranges.count()) {
-        let const &range = decoded->opaque_ranges[opaque_range_position];
-        let const range_end = range.decoded_start + range.decoded_length;
+        let const &range     = decoded->opaque_ranges[opaque_range_position];
+        let const  range_end = range.decoded_start + range.decoded_length;
         if (range_end <= component.start) {
           opaque_range_position++;
           continue;
@@ -691,13 +699,14 @@ static fn split_path_source_components(StringView path,
   return components;
 }
 
-static fn path_component_owner(
+static fn
+path_component_owner(
     const ArrayList<path_source_component> &raw_components,
     const ArrayList<path_source_component> &expanded_components,
-    usize expanded_component_index) wontthrow
+    usize                                   expanded_component_index) wontthrow
     -> Maybe<path_component_owner_range>
 {
-  usize raw_left_index = 0;
+  usize raw_left_index      = 0;
   usize expanded_left_index = 0;
 
   while (raw_left_index < raw_components.count() &&
@@ -712,7 +721,7 @@ static fn path_component_owner(
     expanded_left_index++;
   }
 
-  usize raw_right_index = raw_components.count();
+  usize raw_right_index      = raw_components.count();
   usize expanded_right_index = expanded_components.count();
 
   while (raw_right_index > raw_left_index &&
@@ -737,11 +746,12 @@ static fn path_component_owner(
   return None;
 }
 
-fn locate_first_unavailable_path_component(const Path &target,
-                                           StringView expanded_operand,
-                                           StringView raw_operand,
-                                           SourceLocation operand_location,
-                                           Allocator allocator) throws
+fn
+locate_first_unavailable_path_component(const Path    &target,
+                                        StringView     expanded_operand,
+                                        StringView     raw_operand,
+                                        SourceLocation operand_location,
+                                        Allocator      allocator) throws
     -> Maybe<unavailable_path_source_component>
 {
   let const unavailable = target.first_unavailable_component();
@@ -768,12 +778,12 @@ fn locate_first_unavailable_path_component(const Path &target,
         0, expanded_components[expanded_component_index].decoded_end));
   } else
     reported_prefix.append(expanded_operand);
-  let typed_prefix = String{allocator};
-  usize typed_component_start = 0;
-  bool has_single_raw_component = false;
+  let   typed_prefix             = String{allocator};
+  usize typed_component_start    = 0;
+  bool  has_single_raw_component = false;
   if (owner.has_value()) {
     let const &first_component = raw_components[owner->first_component_index];
-    let const &last_component = raw_components[owner->end_component_index - 1];
+    let const &last_component  = raw_components[owner->end_component_index - 1];
     typed_prefix.append(
         decoded.text.view().substring_of_length(0, last_component.decoded_end));
     operand_location.position +=
@@ -802,7 +812,8 @@ fn locate_first_unavailable_path_component(const Path &target,
                                            is_final_component};
 }
 
-fn file_content_identity(const Path &path, Allocator allocator) throws
+fn
+file_content_identity(const Path &path, Allocator allocator) throws
     -> Maybe<String>
 {
   let const file =
@@ -810,7 +821,7 @@ fn file_content_identity(const Path &path, Allocator allocator) throws
   if (!file.has_value()) return None;
   defer { os::close_fd(*file); };
 
-  u32 crc = 0xFFFFFFFF;
+  u32  crc = 0xFFFFFFFF;
   char buffer[65536];
 
   loop
@@ -821,9 +832,9 @@ fn file_content_identity(const Path &path, Allocator allocator) throws
     crc = os::crc32c_update(crc, buffer, *read_count);
   }
 
-  crc = ~crc;
+  crc                         = ~crc;
   constexpr char HEX_DIGITS[] = "0123456789abcdef";
-  let digest = String{allocator};
+  let            digest       = String{allocator};
   digest.reserve(8);
 
   for (usize position = 0; position < 8; position++) {
@@ -838,15 +849,16 @@ namespace {
 
 struct kosh_identity_cache
 {
-  Path path{};
+  Path            path{};
   os::file_status status{};
-  Maybe<String> identity{};
-  bool is_initialized{false};
+  Maybe<String>   identity{};
+  bool            is_initialized{false};
 };
 
 } /* namespace */
 
-fn kosh_identity(StringView fallback_path) throws -> Maybe<StringView>
+fn
+kosh_identity(StringView fallback_path) throws -> Maybe<StringView>
 {
   static kosh_identity_cache cache;
 
@@ -859,13 +871,13 @@ fn kosh_identity(StringView fallback_path) throws -> Maybe<StringView>
     }
   }
 
-  let path = Path{fallback_path};
-  let status = os::file_status{};
+  let  path       = Path{fallback_path};
+  let  status     = os::file_status{};
   bool has_status = false;
   if (let executable = os::current_executable_path(); executable.has_value()) {
     let executable_path = Path{executable->view()};
     if (os::stat_path_following(executable_path.text(), status)) {
-      path = steal(executable_path);
+      path       = steal(executable_path);
       has_status = true;
     }
   }
@@ -898,19 +910,19 @@ fn kosh_identity(StringView fallback_path) throws -> Maybe<StringView>
     return None;
   }
 
-  cache.path = steal(path);
-  cache.status = verified_status;
-  cache.identity = steal(identity);
+  cache.path           = steal(path);
+  cache.status         = verified_status;
+  cache.identity       = steal(identity);
   cache.is_initialized = true;
   os::set_environment_variable("KOSH_IDENTITY", cache.identity->view());
 
   return cache.identity->view();
 }
 
-fn merge_tokens_to_string(const ArrayList<const Token *> &tokens) throws
-    -> String
+fn
+merge_tokens_to_string(const ArrayList<const Token *> &tokens) throws -> String
 {
-  let result = String{heap_allocator()};
+  let   result       = String{heap_allocator()};
   usize total_length = 0;
 
   for (usize i = 0; i < tokens.count(); i++) {
@@ -934,15 +946,18 @@ fn merge_tokens_to_string(const ArrayList<const Token *> &tokens) throws
   return result;
 }
 
-pure fn strip_sig_prefix(StringView name) wontthrow -> StringView
+pure fn
+strip_sig_prefix(StringView name) wontthrow -> StringView
 {
   if (name.starts_with("SIG")) return name.substring(3);
 
   return name;
 }
 
-fn find_signal_number(const signal_pair *pairs, usize pair_count,
-                      StringView name) throws -> Maybe<i32>
+fn
+find_signal_number(const signal_pair *pairs,
+                   usize              pair_count,
+                   StringView         name) throws -> Maybe<i32>
 {
   if (name.is_all_decimal_digits()) {
     const ErrorOr<i64> parsed_value = name.to<i64>();
@@ -963,8 +978,9 @@ fn find_signal_number(const signal_pair *pairs, usize pair_count,
   return None;
 }
 
-fn find_signal_name(const signal_pair *pairs, usize pair_count,
-                    i32 number) throws -> Maybe<String>
+fn
+find_signal_name(const signal_pair *pairs, usize pair_count, i32 number) throws
+    -> Maybe<String>
 {
   for (usize i = 0; i < pair_count; i++)
     if (pairs[i].number == number) return String{pairs[i].name};
@@ -972,7 +988,8 @@ fn find_signal_name(const signal_pair *pairs, usize pair_count,
   return None;
 }
 
-fn collect_signal_names(const signal_pair *pairs, usize pair_count) throws
+fn
+collect_signal_names(const signal_pair *pairs, usize pair_count) throws
     -> ArrayList<StringView>
 {
   let collected = ArrayList<StringView>{heap_allocator()};
@@ -984,30 +1001,31 @@ fn collect_signal_names(const signal_pair *pairs, usize pair_count) throws
   return collected;
 }
 
-pure fn decode_utf8(StringView source, usize position,
-                    u32 invalid_codepoint) wontthrow -> decoded_codepoint
+pure fn
+decode_utf8(StringView source, usize position, u32 invalid_codepoint) wontthrow
+    -> decoded_codepoint
 {
   let const first = static_cast<u8>(source[position]);
   if (first < 0x80) return {first, 1};
 
   usize length = 0;
-  u32 value = 0;
+  u32   value  = 0;
   switch (first & 0xf8) {
   case 0xc0:
   case 0xc8:
   case 0xd0:
   case 0xd8:
     length = 2;
-    value = first & 0x1fu;
+    value  = first & 0x1fu;
     break;
   case 0xe0:
   case 0xe8:
     length = 3;
-    value = first & 0x0fu;
+    value  = first & 0x0fu;
     break;
   case 0xf0:
     length = 4;
-    value = first & 0x07u;
+    value  = first & 0x07u;
     break;
   default: return {invalid_codepoint, 1};
   }
@@ -1023,7 +1041,8 @@ pure fn decode_utf8(StringView source, usize position,
   return {value, length};
 }
 
-fn append_utf8(String &output, u32 codepoint) throws -> void
+fn
+append_utf8(String &output, u32 codepoint) throws -> void
 {
   if (codepoint <= 0x7f) {
     output.push(static_cast<char>(codepoint));
@@ -1042,17 +1061,19 @@ fn append_utf8(String &output, u32 codepoint) throws -> void
   }
 }
 
-fn split_lines(StringView text, Allocator allocator,
-               line_terminator_mode terminators) throws -> ArrayList<StringView>
+fn
+split_lines(StringView           text,
+            Allocator            allocator,
+            line_terminator_mode terminators) throws -> ArrayList<StringView>
 {
-  let lines = ArrayList<StringView>{allocator};
+  let       lines = ArrayList<StringView>{allocator};
   let const should_keep_newlines =
       terminators == line_terminator_mode::Preserve;
   usize position = 0;
 
   while (position < text.length) {
     let const line_start = position;
-    let line = text.next_line(position);
+    let       line       = text.next_line(position);
     if (should_keep_newlines && position > line_start + line.length) {
       line = text.substring_of_length(line_start, line.length + 1);
     }
@@ -1071,14 +1092,15 @@ fn split_lines(StringView text, Allocator allocator,
 static constexpr char BASE64_ALPHABET[] =
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
-fn encode_base64(StringView bytes) throws -> String
+fn
+encode_base64(StringView bytes) throws -> String
 {
   let encoded = String{heap_allocator()};
   encoded.reserve((bytes.count() + 2) / 3 * 4);
 
   for (usize position = 0; position < bytes.count(); position += 3) {
     let const remaining_count = bytes.count() - position;
-    u32 group = static_cast<u32>(static_cast<u8>(bytes[position])) << 16;
+    u32       group = static_cast<u32>(static_cast<u8>(bytes[position])) << 16;
     if (remaining_count > 1)
       group |= static_cast<u32>(static_cast<u8>(bytes[position + 1])) << 8;
     if (remaining_count > 2)
@@ -1093,7 +1115,8 @@ fn encode_base64(StringView bytes) throws -> String
   return encoded;
 }
 
-static pure fn decode_base64_digit(char digit) wontthrow -> i32
+static pure fn
+decode_base64_digit(char digit) wontthrow -> i32
 {
   if (digit >= 'A' && digit <= 'Z') {
     return digit - 'A';
@@ -1110,7 +1133,8 @@ static pure fn decode_base64_digit(char digit) wontthrow -> i32
   return -1;
 }
 
-fn decode_base64(StringView text) throws -> Maybe<String>
+fn
+decode_base64(StringView text) throws -> Maybe<String>
 {
   if (text.count() % 4 != 0) return None;
 
@@ -1119,8 +1143,8 @@ fn decode_base64(StringView text) throws -> Maybe<String>
 
   for (usize position = 0; position < text.count(); position += 4) {
     let const is_last_group = position + 4 == text.count();
-    usize padding_count = 0;
-    u32 group = 0;
+    usize     padding_count = 0;
+    u32       group         = 0;
 
     for (usize offset = 0; offset < 4; offset++) {
       let const digit = text[position + offset];
@@ -1150,12 +1174,14 @@ fn decode_base64(StringView text) throws -> Maybe<String>
   return decoded;
 }
 
-fn format_unix_timestamp(i64 unix_time, const char *format) throws -> String
+fn
+format_unix_timestamp(i64 unix_time, const char *format) throws -> String
 {
   return os::format_local_time(format, unix_time);
 }
 
-hot pure fn is_posix_reserved_word(StringView word) wontthrow -> bool
+hot pure fn
+is_posix_reserved_word(StringView word) wontthrow -> bool
 {
   static constexpr PackedStringKey RESERVED_WORD_KEYS[] = {
       SSK("!"),    SSK("{"),    SSK("}"),     SSK("case"),

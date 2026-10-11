@@ -2,6 +2,7 @@
 ---
 BasedOnStyle: LLVM
 BreakBeforeBraces: Custom
+BreakAfterReturnType: All
 BraceWrapping:
   AfterClass: true
   AfterStruct: true
@@ -15,6 +16,12 @@ BraceWrapping:
   SplitEmptyNamespace: false
 AlignArrayOfStructures: Left
 AlignConsecutiveMacros: true
+AlignConsecutiveAssignments: true
+BinPackParameters: OnePerLine
+AlignConsecutiveDeclarations:
+  Enabled: true
+AlignConsecutiveShortCaseStatements:
+  Enabled: true
 AllowShortBlocksOnASingleLine: Empty
 AllowShortIfStatementsOnASingleLine: WithoutElse
 AllowShortCaseLabelsOnASingleLine: true

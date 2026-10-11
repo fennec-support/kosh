@@ -23,7 +23,8 @@ struct ownership_directory_identity
   u64 file_id;
 };
 
-static fn parse_numeric_id(StringView text) wontthrow -> Maybe<u32>
+static fn
+parse_numeric_id(StringView text) wontthrow -> Maybe<u32>
 {
   if (text.is_empty()) return None;
   u64 value = 0;
@@ -40,18 +41,23 @@ static fn parse_numeric_id(StringView text) wontthrow -> Maybe<u32>
   return static_cast<u32>(value);
 }
 
-static fn change_path_ownership_recursive(
-    const ExecContext &ec, EvalContext &cxt, StringView utility_name,
-    const Path &path, i64 owner_id, i64 group_id,
+static fn
+change_path_ownership_recursive(
+    const ExecContext                       &ec,
+    EvalContext                             &cxt,
+    StringView                               utility_name,
+    const Path                              &path,
+    i64                                      owner_id,
+    i64                                      group_id,
     ArrayList<ownership_directory_identity> &active_directories,
-    const os::file_status *known_path_status = nullptr,
-    const os::file_status *known_followed_status = nullptr,
-    bool was_followed_status_queried = false,
+    const os::file_status                   *known_path_status     = nullptr,
+    const os::file_status                   *known_followed_status = nullptr,
+    bool                     was_followed_status_queried           = false,
     ownership_traversal_mode traversal_mode =
         ownership_traversal_mode::Recursive,
-    ownership_symlink_mode symlink_mode = ownership_symlink_mode::Follow,
+    ownership_symlink_mode symlink_mode        = ownership_symlink_mode::Follow,
     ownership_symlink_mode nested_symlink_mode = ownership_symlink_mode::Follow,
-    Maybe<u64> root_device_id = {}) throws -> bool
+    Maybe<u64>             root_device_id      = {}) throws -> bool
 {
   let const is_recursive =
       traversal_mode != ownership_traversal_mode::SinglePath;
@@ -71,7 +77,7 @@ static fn change_path_ownership_recursive(
     return false;
   }
 
-  let const is_symlink = os::file_type_letter(path_status.mode) == 'l';
+  let const is_symlink  = os::file_type_letter(path_status.mode) == 'l';
   let const follow_mode = !is_symlink || should_follow_symlink
                               ? os::symlink_follow_mode::Follow
                               : os::symlink_follow_mode::NoFollow;
@@ -144,7 +150,7 @@ static fn change_path_ownership_recursive(
     return false;
   }
 
-  let child_paths = ArrayList<Path>{cxt.scratch_allocator()};
+  let child_paths              = ArrayList<Path>{cxt.scratch_allocator()};
   let followed_child_positions = ArrayList<usize>{cxt.scratch_allocator()};
   let followed_child_statuses =
       ArrayList<os::file_status>{cxt.scratch_allocator()};
@@ -160,7 +166,7 @@ static fn change_path_ownership_recursive(
        child_position++)
   {
     let const &child_entry = (*children)[child_position];
-    let child = Path{path.view(), cxt.scratch_allocator()};
+    let        child       = Path{path.view(), cxt.scratch_allocator()};
     child.append(child_entry.child.name.view());
     child_paths.push(steal(child));
 
@@ -181,7 +187,7 @@ static fn change_path_ownership_recursive(
   let followed_results = ArrayList<os::batch_result>{cxt.scratch_allocator()};
   if (followed_batch.count() != 0) followed_batch.execute(followed_results);
 
-  bool did_succeed = true;
+  bool  did_succeed       = true;
   usize followed_position = 0;
 
   for (usize child_position = 0; child_position < children->count();
@@ -189,7 +195,7 @@ static fn change_path_ownership_recursive(
   {
     if (os::INTERRUPT_REQUESTED) return did_succeed;
     let const &child_entry = (*children)[child_position];
-    let const child_status =
+    let const  child_status =
         child_entry.has_status ? &child_entry.status : nullptr;
     let known_child_followed_status =
         static_cast<const os::file_status *>(nullptr);
@@ -222,7 +228,8 @@ static fn change_path_ownership_recursive(
 
 } /* namespace */
 
-fn resolve_user_id(StringView text) throws -> Maybe<u32>
+fn
+resolve_user_id(StringView text) throws -> Maybe<u32>
 {
   if (let const numeric = parse_numeric_id(text); numeric.has_value())
     return numeric;
@@ -230,7 +237,8 @@ fn resolve_user_id(StringView text) throws -> Maybe<u32>
   return os::username_to_uid(text);
 }
 
-fn resolve_group_id(StringView text) throws -> Maybe<u32>
+fn
+resolve_group_id(StringView text) throws -> Maybe<u32>
 {
   if (let const numeric = parse_numeric_id(text); numeric.has_value())
     return numeric;
@@ -238,10 +246,12 @@ fn resolve_group_id(StringView text) throws -> Maybe<u32>
   return os::groupname_to_gid(text);
 }
 
-fn change_operands_ownership(const ExecContext &ec, EvalContext &cxt,
-                             StringView utility_name,
-                             const ArrayList<String> &operands,
-                             const ownership_request &request) throws -> i32
+fn
+change_operands_ownership(const ExecContext       &ec,
+                          EvalContext             &cxt,
+                          StringView               utility_name,
+                          const ArrayList<String> &operands,
+                          const ownership_request &request) throws -> i32
 {
   let const traversal_mode =
       !request.is_recursive ? ownership_traversal_mode::SinglePath

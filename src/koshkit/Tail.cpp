@@ -21,7 +21,8 @@ KOSHKIT_UTIL_DECL("[-fFqv] [-n count] [-c count] [-s seconds] [--pid pid] "
                   "[file ...]",
                   "The tail utility writes the last lines of each file.");
 
-static pure fn is_tail_follow_mode(koshka::StringView value) wontthrow -> bool
+static pure fn
+is_tail_follow_mode(koshka::StringView value) wontthrow -> bool
 {
   return !value.is_empty() &&
          (koshka::StringView{"descriptor"}.starts_with(value) ||
@@ -30,16 +31,31 @@ static pure fn is_tail_follow_mode(koshka::StringView value) wontthrow -> bool
 
 FLAG(TAIL_LINES, String, 'n', "", "Write the last count lines.");
 FLAG(TAIL_BYTES, String, 'c', "", "Write the last count bytes.");
-FLAG(TAIL_FOLLOW, Bool, 'f', "",
+FLAG(TAIL_FOLLOW,
+     Bool,
+     'f',
+     "",
      "Keep each file open and write the bytes appended to it.");
-FLAG(TAIL_FOLLOW_NAME, Bool, 'F', "",
+FLAG(TAIL_FOLLOW_NAME,
+     Bool,
+     'F',
+     "",
      "Follow each file name and retry when the file is replaced or missing.");
-FLAG_OPTIONAL(TAIL_FOLLOW_MODE, '\0', "follow",
+FLAG_OPTIONAL(TAIL_FOLLOW_MODE,
+              '\0',
+              "follow",
               "Follow by descriptor or by name; the default is descriptor.",
-              is_tail_follow_mode, "descriptor|name");
-FLAG(TAIL_RETRY, Bool, '\0', "retry",
+              is_tail_follow_mode,
+              "descriptor|name");
+FLAG(TAIL_RETRY,
+     Bool,
+     '\0',
+     "retry",
      "Keep trying to open a file that is missing.");
-FLAG(TAIL_SLEEP, String, 's', "sleep-interval",
+FLAG(TAIL_SLEEP,
+     String,
+     's',
+     "sleep-interval",
      "Wait this many seconds between checks while following.");
 FLAG(TAIL_PID, String, '\0', "pid", "Stop following when this process exits.");
 FLAG(TAIL_QUIET, Bool, 'q', "quiet", "Never write file name headers.");
@@ -65,10 +81,11 @@ enum class tail_unit : u8
 struct parsed_tail_count
 {
   count_origin origin;
-  i64 count;
+  i64          count;
 };
 
-static fn parse_tail_count(StringView spec) throws -> Maybe<parsed_tail_count>
+static fn
+parse_tail_count(StringView spec) throws -> Maybe<parsed_tail_count>
 {
   let origin = count_origin::FromEnd;
   let digits = spec;
@@ -95,25 +112,26 @@ static fn parse_tail_count(StringView spec) throws -> Maybe<parsed_tail_count>
   return parsed_tail_count{origin, static_cast<i64>(clamped_count)};
 }
 
-constexpr usize TAIL_BLOCK_BYTE_COUNT = 64 * 1024;
-constexpr usize TAIL_ACTIVE_SOURCE_COUNT = 16;
+constexpr usize TAIL_BLOCK_BYTE_COUNT        = 64 * 1024;
+constexpr usize TAIL_ACTIVE_SOURCE_COUNT     = 16;
 constexpr usize TAIL_OUTPUT_FLUSH_BYTE_COUNT = 64 * 1024;
 
 constexpr f64 TAIL_DEFAULT_SLEEP_SECONDS = 1.0;
-constexpr f64 TAIL_MINIMUM_WAIT_SECONDS = 0.001;
+constexpr f64 TAIL_MINIMUM_WAIT_SECONDS  = 0.001;
 
 struct tail_options
 {
-  tail_unit unit{tail_unit::Lines};
-  i64 count{10};
+  tail_unit    unit{tail_unit::Lines};
+  i64          count{10};
   count_origin origin{count_origin::FromEnd};
-  bool is_following{false};
-  bool should_follow_name{false};
-  bool should_retry{false};
-  f64 sleep_seconds{TAIL_DEFAULT_SLEEP_SECONDS};
-  i64 watched_process_id{0};
+  bool         is_following{false};
+  bool         should_follow_name{false};
+  bool         should_retry{false};
+  f64          sleep_seconds{TAIL_DEFAULT_SLEEP_SECONDS};
+  i64          watched_process_id{0};
 
-  static fn parse(Allocator allocator) throws -> tail_options
+  static fn
+  parse(Allocator allocator) throws -> tail_options
   {
     tail_options options;
 
@@ -145,7 +163,7 @@ struct tail_options
       }
     }
     options.origin = parsed_count->origin;
-    options.count = parsed_count->count;
+    options.count  = parsed_count->count;
 
     options.should_follow_name = FLAG_TAIL_FOLLOW_NAME.is_enabled() ||
                                  (FLAG_TAIL_FOLLOW_MODE.has_value() &&
@@ -192,32 +210,33 @@ struct tail_options
 
 struct tail_follow_entry
 {
-  os::descriptor descriptor{KOSH_INVALID_FD};
+  os::descriptor  descriptor{KOSH_INVALID_FD};
   os::file_status identity{};
-  u64 offset{0};
-  bool is_active{false};
-  bool is_standard_input{false};
+  u64             offset{0};
+  bool            is_active{false};
+  bool            is_standard_input{false};
 };
 
 struct positioned_tail_state
 {
-  usize source_index{0};
-  os::descriptor descriptor{KOSH_INVALID_FD};
-  u64 file_byte_count{0};
-  u64 scan_offset{0};
-  u64 start_offset{0};
-  u64 remaining_newline_count{0};
-  usize read_byte_count{0};
-  i32 error_number{0};
-  bool is_done{false};
+  usize           source_index{0};
+  os::descriptor  descriptor{KOSH_INVALID_FD};
+  u64             file_byte_count{0};
+  u64             scan_offset{0};
+  u64             start_offset{0};
+  u64             remaining_newline_count{0};
+  usize           read_byte_count{0};
+  i32             error_number{0};
+  bool            is_done{false};
   ArrayList<char> buffer{heap_allocator()};
 };
 
-static fn find_tail_starts_from_end(ArrayList<positioned_tail_state> &states,
-                                    Allocator allocator) throws -> void
+static fn
+find_tail_starts_from_end(ArrayList<positioned_tail_state> &states,
+                          Allocator allocator) throws -> void
 {
-  let batch = os::Batch{allocator};
-  let results = ArrayList<os::batch_result>{allocator};
+  let batch            = os::Batch{allocator};
+  let results          = ArrayList<os::batch_result>{allocator};
   let operation_states = ArrayList<usize>{allocator};
 
   loop
@@ -235,7 +254,7 @@ static fn find_tail_starts_from_end(ArrayList<positioned_tail_state> &states,
       let const block_byte_count = state.scan_offset > TAIL_BLOCK_BYTE_COUNT
                                        ? TAIL_BLOCK_BYTE_COUNT
                                        : static_cast<usize>(state.scan_offset);
-      state.read_byte_count = block_byte_count;
+      state.read_byte_count      = block_byte_count;
       batch.add(os::batch_operation::read(
           state.descriptor, state.buffer.begin(), block_byte_count,
           state.scan_offset - block_byte_count));
@@ -249,11 +268,11 @@ static fn find_tail_starts_from_end(ArrayList<positioned_tail_state> &states,
 
     for (usize result_index = 0; result_index < results.count(); result_index++)
     {
-      let &state = states[operation_states[result_index]];
+      let       &state  = states[operation_states[result_index]];
       let const &result = results[result_index];
       if (result.error_number != 0) {
         state.error_number = result.error_number;
-        state.is_done = true;
+        state.is_done      = true;
         continue;
       }
 
@@ -273,7 +292,7 @@ static fn find_tail_starts_from_end(ArrayList<positioned_tail_state> &states,
 
         if (--state.remaining_newline_count == 0) {
           state.start_offset = absolute + 1;
-          state.is_done = true;
+          state.is_done      = true;
           break;
         }
       }
@@ -284,11 +303,12 @@ static fn find_tail_starts_from_end(ArrayList<positioned_tail_state> &states,
   }
 }
 
-static fn find_tail_starts_from_start(ArrayList<positioned_tail_state> &states,
-                                      Allocator allocator) throws -> void
+static fn
+find_tail_starts_from_start(ArrayList<positioned_tail_state> &states,
+                            Allocator allocator) throws -> void
 {
-  let batch = os::Batch{allocator};
-  let results = ArrayList<os::batch_result>{allocator};
+  let batch            = os::Batch{allocator};
+  let results          = ArrayList<os::batch_result>{allocator};
   let operation_states = ArrayList<usize>{allocator};
 
   loop
@@ -303,15 +323,15 @@ static fn find_tail_starts_from_start(ArrayList<positioned_tail_state> &states,
 
       if (state.scan_offset >= state.file_byte_count) {
         state.start_offset = state.file_byte_count;
-        state.is_done = true;
+        state.is_done      = true;
         continue;
       }
 
-      let const remaining = state.file_byte_count - state.scan_offset;
+      let const remaining        = state.file_byte_count - state.scan_offset;
       let const block_byte_count = remaining > TAIL_BLOCK_BYTE_COUNT
                                        ? TAIL_BLOCK_BYTE_COUNT
                                        : static_cast<usize>(remaining);
-      state.read_byte_count = block_byte_count;
+      state.read_byte_count      = block_byte_count;
       batch.add(os::batch_operation::read(state.descriptor,
                                           state.buffer.begin(),
                                           block_byte_count, state.scan_offset));
@@ -325,11 +345,11 @@ static fn find_tail_starts_from_start(ArrayList<positioned_tail_state> &states,
 
     for (usize result_index = 0; result_index < results.count(); result_index++)
     {
-      let &state = states[operation_states[result_index]];
+      let       &state  = states[operation_states[result_index]];
       let const &result = results[result_index];
       if (result.error_number != 0) {
         state.error_number = result.error_number;
-        state.is_done = true;
+        state.is_done      = true;
         continue;
       }
 
@@ -340,7 +360,7 @@ static fn find_tail_starts_from_start(ArrayList<positioned_tail_state> &states,
 
         if (--state.remaining_newline_count == 0) {
           state.start_offset = state.scan_offset + position + 1;
-          state.is_done = true;
+          state.is_done      = true;
           break;
         }
       }
@@ -350,15 +370,17 @@ static fn find_tail_starts_from_start(ArrayList<positioned_tail_state> &states,
       state.scan_offset += transferred;
       if (transferred < state.read_byte_count) {
         state.start_offset = state.scan_offset;
-        state.is_done = true;
+        state.is_done      = true;
       }
     }
   }
 }
 
-fn Tail::execute(const ExecContext &ec, EvalContext &cxt,
-                 const ArrayList<String> &args,
-                 const ArrayList<SourceLocation> &arg_locations) const throws
+fn
+Tail::execute(const ExecContext               &ec,
+              EvalContext                     &cxt,
+              const ArrayList<String>         &args,
+              const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
@@ -374,13 +396,13 @@ fn Tail::execute(const ExecContext &ec, EvalContext &cxt,
   let const sources =
       source_list_from_operands(operands, cxt.scratch_allocator());
 
-  let const allocator = cxt.scratch_allocator();
-  let paths = ArrayList<Path>{allocator};
-  let statuses = ArrayList<os::file_status>{allocator};
-  let metadata_errors = ArrayList<i32>{allocator};
-  let metadata_source_indices = ArrayList<usize>{allocator};
-  let metadata_results = ArrayList<os::batch_result>{allocator};
-  let metadata_batch = os::Batch{allocator};
+  let const allocator               = cxt.scratch_allocator();
+  let       paths                   = ArrayList<Path>{allocator};
+  let       statuses                = ArrayList<os::file_status>{allocator};
+  let       metadata_errors         = ArrayList<i32>{allocator};
+  let       metadata_source_indices = ArrayList<usize>{allocator};
+  let       metadata_results        = ArrayList<os::batch_result>{allocator};
+  let       metadata_batch          = os::Batch{allocator};
   paths.reserve(sources.count());
   statuses.reserve(sources.count());
   metadata_errors.reserve(sources.count());
@@ -408,7 +430,7 @@ fn Tail::execute(const ExecContext &ec, EvalContext &cxt,
           metadata_results[result_index].error_number;
   }
 
-  let output = String{allocator};
+  let       output          = String{allocator};
   let const do_flush_output = [&]() throws -> void {
     if (output.is_empty()) return;
 
@@ -431,7 +453,7 @@ fn Tail::execute(const ExecContext &ec, EvalContext &cxt,
       (sources.count() > 1 && !FLAG_TAIL_QUIET.is_enabled() &&
        !FLAG_TAIL_SILENT.is_enabled());
   Maybe<usize> last_header_source_index = None;
-  let const do_write_header = [&](usize source_index) throws -> void {
+  let const    do_write_header = [&](usize source_index) throws -> void {
     if (!should_print_headers) return;
 
     if (last_header_source_index.has_value() &&
@@ -444,11 +466,11 @@ fn Tail::execute(const ExecContext &ec, EvalContext &cxt,
     last_header_source_index = source_index;
     output += "==> ";
     output += sources[source_index] == "-" ? StringView{"standard input"}
-                                           : sources[source_index];
+                                              : sources[source_index];
     output += " <==\n";
   };
 
-  i32 status = 0;
+  i32       status          = 0;
   let const do_report_error = [&](usize source_index, StringView prefix)
                                   throws -> void {
     let const message = String{allocator, prefix} +
@@ -467,7 +489,7 @@ fn Tail::execute(const ExecContext &ec, EvalContext &cxt,
         unused(os::close_fd(state.descriptor));
   };
 
-  let follow_entries = ArrayList<tail_follow_entry>{allocator};
+  let follow_entries       = ArrayList<tail_follow_entry>{allocator};
   let buffered_byte_counts = ArrayList<u64>{allocator};
   if (options.is_following) {
     follow_entries.reserve(sources.count());
@@ -507,8 +529,8 @@ fn Tail::execute(const ExecContext &ec, EvalContext &cxt,
     }
 
     positioned_tail_state state{};
-    state.source_index = source_index;
-    state.descriptor = *descriptor;
+    state.source_index    = source_index;
+    state.descriptor      = *descriptor;
     state.file_byte_count = *file_byte_count;
     if (options.unit == tail_unit::Bytes) {
       if (options.origin == count_origin::FromEnd)
@@ -523,11 +545,11 @@ fn Tail::execute(const ExecContext &ec, EvalContext &cxt,
                 : *file_byte_count;
       state.is_done = true;
     } else if (options.origin == count_origin::FromEnd) {
-      state.scan_offset = *file_byte_count;
+      state.scan_offset             = *file_byte_count;
       state.remaining_newline_count = static_cast<u64>(options.count);
       if (*file_byte_count == 0 || options.count == 0) {
         state.start_offset = *file_byte_count;
-        state.is_done = true;
+        state.is_done      = true;
       }
     } else {
       state.remaining_newline_count =
@@ -541,14 +563,14 @@ fn Tail::execute(const ExecContext &ec, EvalContext &cxt,
 
   let block = ArrayList<char>{allocator};
   block.reserve(TAIL_BLOCK_BYTE_COUNT);
-  let read_batch = os::Batch{allocator};
-  let read_results = ArrayList<os::batch_result>{allocator};
+  let       read_batch          = os::Batch{allocator};
+  let       read_results        = ArrayList<os::batch_result>{allocator};
   let const do_write_positioned = [&](const positioned_tail_state &state)
                                       throws -> i32 {
     u64 offset = state.start_offset;
 
     while (offset < state.file_byte_count) {
-      let const remaining = state.file_byte_count - offset;
+      let const remaining        = state.file_byte_count - offset;
       let const block_byte_count = remaining > TAIL_BLOCK_BYTE_COUNT
                                        ? TAIL_BLOCK_BYTE_COUNT
                                        : static_cast<usize>(remaining);
@@ -589,9 +611,9 @@ fn Tail::execute(const ExecContext &ec, EvalContext &cxt,
     if (options.is_following)
       buffered_byte_counts[source_index] = content->length();
 
-    let const text = content->view();
+    let const text         = content->view();
     let const wanted_count = static_cast<usize>(options.count);
-    usize start = 0;
+    usize     start        = 0;
     if (options.unit == tail_unit::Bytes) {
       start =
           options.origin == count_origin::FromStart
@@ -610,7 +632,7 @@ fn Tail::execute(const ExecContext &ec, EvalContext &cxt,
     } else if (wanted_count == 0) {
       start = text.length;
     } else {
-      start = text.length;
+      start                         = text.length;
       usize remaining_newline_count = wanted_count;
       if (start > 0 && text[start - 1] == '\n') {
         start--;
@@ -684,7 +706,7 @@ fn Tail::execute(const ExecContext &ec, EvalContext &cxt,
                                          state.file_byte_count))
       {
         follow_entries[state.source_index].descriptor = state.descriptor;
-        follow_entries[state.source_index].offset = state.file_byte_count;
+        follow_entries[state.source_index].offset     = state.file_byte_count;
       } else {
         unused(os::close_fd(state.descriptor));
       }
@@ -699,7 +721,7 @@ fn Tail::execute(const ExecContext &ec, EvalContext &cxt,
   do_flush_output();
   if (!options.is_following) return status;
 
-  usize active_count = 0;
+  usize active_count      = 0;
   usize failed_open_count = 0;
 
   for (usize source_index = 0; source_index < sources.count(); source_index++) {
@@ -719,10 +741,10 @@ fn Tail::execute(const ExecContext &ec, EvalContext &cxt,
         continue;
       }
 
-      entry.descriptor = standard_input;
+      entry.descriptor        = standard_input;
       entry.is_standard_input = true;
-      entry.offset = entry.identity.size;
-      entry.is_active = true;
+      entry.offset            = entry.identity.size;
+      entry.is_active         = true;
       active_count++;
       continue;
     }
@@ -749,7 +771,7 @@ fn Tail::execute(const ExecContext &ec, EvalContext &cxt,
       }
 
       entry.descriptor = *descriptor;
-      entry.offset = buffered_byte_counts[source_index];
+      entry.offset     = buffered_byte_counts[source_index];
     }
 
     if (!os::stat_descriptor(entry.descriptor, entry.identity) ||
@@ -788,11 +810,11 @@ fn Tail::execute(const ExecContext &ec, EvalContext &cxt,
     }
 
     entry.descriptor = KOSH_INVALID_FD;
-    entry.is_active = false;
+    entry.is_active  = false;
     active_count--;
   };
   let const do_read_followed = [&](usize source_index) throws -> void {
-    let &entry = follow_entries[source_index];
+    let            &entry = follow_entries[source_index];
     os::file_status current{};
     if (os::stat_descriptor(entry.descriptor, current) &&
         current.size < entry.offset)
@@ -823,10 +845,10 @@ fn Tail::execute(const ExecContext &ec, EvalContext &cxt,
       entry.offset += *read_count;
     }
   };
-  let const do_reopen_followed = [&](usize source_index,
+  let const do_reopen_followed = [&](usize                  source_index,
                                      const os::file_status &named_status,
                                      StringView reason) throws -> void {
-    let &entry = follow_entries[source_index];
+    let      &entry      = follow_entries[source_index];
     let const descriptor = os::open_file_descriptor(sources[source_index],
                                                     os::file_open_mode::Read);
     if (!descriptor.has_value()) return;
@@ -843,8 +865,8 @@ fn Tail::execute(const ExecContext &ec, EvalContext &cxt,
     }
 
     entry.descriptor = *descriptor;
-    entry.identity = named_status;
-    entry.offset = 0;
+    entry.identity   = named_status;
+    entry.offset     = 0;
     do_report_follow_message(do_quote_source(source_index) + " has " + reason +
                              ";  following new file");
   };

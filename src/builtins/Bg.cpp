@@ -27,8 +27,9 @@ REGISTER_BUILTIN_FLAGS(Bg);
 
 namespace koshka {
 
-static fn resume_job_in_background(ExecContext &ec, EvalContext &cxt,
-                                   job *job) throws -> void
+static fn
+resume_job_in_background(ExecContext &ec, EvalContext &cxt, job *job) throws
+    -> void
 {
   LOG(Info, "bg resuming job %d in the background", job->id);
   continue_job(*job);
@@ -36,7 +37,8 @@ static fn resume_job_in_background(ExecContext &ec, EvalContext &cxt,
                      "] " + job->command + " &\n");
 }
 
-fn Bg::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
+fn
+Bg::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let const &args = ec.args();
   ASSERT(!args.is_empty());

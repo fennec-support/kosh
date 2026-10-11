@@ -48,42 +48,57 @@ public:
       new (&m_storage) T(steal(other.value_reference()));
   }
 
-  mustuse fn clone() const throws -> ErrorOr { return ErrorOr{*this}; }
+  mustuse fn
+  clone() const throws -> ErrorOr
+  {
+    return ErrorOr{*this};
+  }
 
-  ErrorOr &operator=(const ErrorOr &) = delete;
-  ErrorOr &operator=(ErrorOr &&) = delete;
+  ErrorOr &
+  operator=(const ErrorOr &) = delete;
+  ErrorOr &
+  operator=(ErrorOr &&) = delete;
 
   ~ErrorOr() { destroy(); }
 
-  hot mustuse pure fn is_error() const wontthrow -> bool { return m_is_error; }
+  hot mustuse pure fn
+  is_error() const wontthrow -> bool
+  {
+    return m_is_error;
+  }
 
-  hot mustuse pure fn value() wontthrow -> T &
+  hot mustuse pure fn
+  value() wontthrow -> T &
   {
     ASSERT(!m_is_error);
 
     return value_reference();
   }
-  hot mustuse pure fn value() const wontthrow -> const T &
+  hot mustuse pure fn
+  value() const wontthrow -> const T &
   {
     ASSERT(!m_is_error);
 
     return value_reference();
   }
 
-  mustuse pure fn error() wontthrow -> Error &
+  mustuse pure fn
+  error() wontthrow -> Error &
   {
     ASSERT(m_is_error);
 
     return error_reference();
   }
-  mustuse pure fn error() const wontthrow -> const Error &
+  mustuse pure fn
+  error() const wontthrow -> const Error &
   {
     ASSERT(m_is_error);
 
     return error_reference();
   }
 
-  hot mustuse fn take() throws -> T
+  hot mustuse fn
+  take() throws -> T
   {
     ASSERT(!m_is_error);
 
@@ -91,7 +106,8 @@ public:
   }
 
 private:
-  fn destroy() wontthrow -> void
+  fn
+  destroy() wontthrow -> void
   {
     if (m_is_error)
       error_reference().~Error();
@@ -99,19 +115,23 @@ private:
       value_reference().~T();
   }
 
-  hot flatten fn value_reference() wontthrow -> T &
+  hot flatten fn
+  value_reference() wontthrow -> T &
   {
     return *reinterpret_cast<T *>(&m_storage);
   }
-  hot flatten fn value_reference() const wontthrow -> const T &
+  hot flatten fn
+  value_reference() const wontthrow -> const T &
   {
     return *reinterpret_cast<const T *>(&m_storage);
   }
-  fn error_reference() wontthrow -> Error &
+  fn
+  error_reference() wontthrow -> Error &
   {
     return *reinterpret_cast<Error *>(&m_storage);
   }
-  fn error_reference() const wontthrow -> const Error &
+  fn
+  error_reference() const wontthrow -> const Error &
   {
     return *reinterpret_cast<const Error *>(&m_storage);
   }

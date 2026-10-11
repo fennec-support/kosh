@@ -20,12 +20,18 @@ HELP_SYNOPSIS_DECL("[-lnprs] [jobspec ...]");
 HELP_DESCRIPTION_DECL(
     "The jobs builtin lists the background jobs and their state.");
 
-FLAG(JOBS_LONG, Bool, 'l', "",
+FLAG(JOBS_LONG,
+     Bool,
+     'l',
+     "",
      "List the process id in addition to the normal information.");
 FLAG(JOBS_PIDS, Bool, 'p', "", "List process ids only.");
 FLAG(JOBS_RUNNING, Bool, 'r', "", "Restrict the output to running jobs.");
 FLAG(JOBS_STOPPED, Bool, 's', "", "Restrict the output to stopped jobs.");
-FLAG(JOBS_CHANGED, Bool, 'n', "",
+FLAG(JOBS_CHANGED,
+     Bool,
+     'n',
+     "",
      "List only jobs that changed state since the last notification.");
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 
@@ -41,20 +47,21 @@ enum class jobs_color_mode : u8
   Colored,
 };
 
-fn state_color(job::State state, jobs_color_mode color_mode) throws
-    -> StringView
+fn
+state_color(job::State state, jobs_color_mode color_mode) throws -> StringView
 {
   if (color_mode == jobs_color_mode::Plain) return StringView{};
   switch (state) {
   case job::State::Running: return colors::ansi::BOLD_GREEN;
   case job::State::Stopped: return colors::ansi::BOLD_YELLOW;
-  case job::State::Done: return colors::ansi::DIM;
+  case job::State::Done:    return colors::ansi::DIM;
   }
 
   return StringView{};
 }
 
-fn should_color_jobs(EvalContext &cxt) throws -> bool
+fn
+should_color_jobs(EvalContext &cxt) throws -> bool
 {
   return cxt.execution_store().shell_is_interactive() &&
          colors::stdout_wants_color();
@@ -62,7 +69,8 @@ fn should_color_jobs(EvalContext &cxt) throws -> bool
 
 } /* namespace */
 
-fn Jobs::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
+fn
+Jobs::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let const names = PARSE_BUILTIN_ARGS(ec);
 
@@ -74,12 +82,12 @@ fn Jobs::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   let const color_mode = should_color_jobs(cxt) ? jobs_color_mode::Colored
                                                 : jobs_color_mode::Plain;
-  let &jobs = cxt.job_table_store().jobs();
+  let      &jobs       = cxt.job_table_store().jobs();
 
   LOG(Debug, "jobs listing %zu registered jobs", jobs.count());
 
   let selected = ArrayList<usize>{cxt.scratch_allocator()};
-  i32 status = 0;
+  i32 status   = 0;
   if (names.count() > 1) {
     for (usize a = 1; a < names.count(); a++) {
       if (let const index =
@@ -125,7 +133,7 @@ fn Jobs::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     cxt.job_table_store().append_status_line(
         out, index,
         job_line_format{.should_show_process_id = FLAG_JOBS_LONG.is_enabled(),
-                        .is_posix = cxt.runtime_state().is_posix_option_on(),
+                        .is_posix    = cxt.runtime_state().is_posix_option_on(),
                         .state_color = state_color(job.state, color_mode),
                         .color_reset = colors::ansi::RESET});
     out.push('\n');

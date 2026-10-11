@@ -31,16 +31,17 @@ enum class head_unit : u8
   Bytes,
 };
 
-static fn read_all(os::descriptor fd, Allocator allocator) throws
-    -> Maybe<String>
+static fn
+read_all(os::descriptor fd, Allocator allocator) throws -> Maybe<String>
 {
   if (os::INTERRUPT_REQUESTED) return String{allocator};
 
   return os::read_fd_to_string(fd, allocator);
 }
 
-static fn line_prefix_length_dropping_last(StringView text,
-                                           u64 drop_count) wontthrow -> usize
+static fn
+line_prefix_length_dropping_last(StringView text, u64 drop_count) wontthrow
+    -> usize
 {
   u64 total_line_count = 0;
 
@@ -67,17 +68,20 @@ static fn line_prefix_length_dropping_last(StringView text,
   return text.length;
 }
 
-static fn byte_prefix_length_dropping_last(StringView text,
-                                           u64 drop_count) wontthrow -> usize
+static fn
+byte_prefix_length_dropping_last(StringView text, u64 drop_count) wontthrow
+    -> usize
 {
   if (drop_count >= text.length) return 0;
 
   return text.length - static_cast<usize>(drop_count);
 }
 
-static fn read_all_but_last(os::descriptor fd, u64 drop_count,
-                            Allocator allocator, head_unit unit) throws
-    -> Maybe<String>
+static fn
+read_all_but_last(os::descriptor fd,
+                  u64            drop_count,
+                  Allocator      allocator,
+                  head_unit      unit) throws -> Maybe<String>
 {
   let text = read_all(fd, allocator);
   if (!text.has_value()) return None;
@@ -91,23 +95,26 @@ static fn read_all_but_last(os::descriptor fd, u64 drop_count,
   return text;
 }
 
-static fn read_regular_all_but_last(os::descriptor fd, u64 file_byte_count,
-                                    u64 drop_count, Allocator allocator,
-                                    head_unit unit) throws -> Maybe<String>
+static fn
+read_regular_all_but_last(os::descriptor fd,
+                          u64            file_byte_count,
+                          u64            drop_count,
+                          Allocator      allocator,
+                          head_unit      unit) throws -> Maybe<String>
 {
-  constexpr usize block_byte_count = 64 * 1024;
+  constexpr usize block_byte_count  = 64 * 1024;
   constexpr usize batch_block_count = 16;
-  char block[block_byte_count];
-  let batch = os::Batch{allocator};
-  let results = ArrayList<os::batch_result>{allocator};
-  let buffers = ArrayList<ArrayList<char>>{allocator};
-  let byte_counts = ArrayList<usize>{allocator};
+  char            block[block_byte_count];
+  let             batch       = os::Batch{allocator};
+  let             results     = ArrayList<os::batch_result>{allocator};
+  let             buffers     = ArrayList<ArrayList<char>>{allocator};
+  let             byte_counts = ArrayList<usize>{allocator};
   batch.reserve(batch_block_count);
   results.reserve(batch_block_count);
   buffers.reserve(batch_block_count);
   byte_counts.reserve(batch_block_count);
 
-  let const do_read_block = [&](u64 offset,
+  let const do_read_block = [&](u64   offset,
                                 usize byte_count) -> os::batch_result {
     batch.clear();
     batch.add(os::batch_operation::read(fd, block, byte_count, offset));
@@ -122,16 +129,16 @@ static fn read_regular_all_but_last(os::descriptor fd, u64 file_byte_count,
         drop_count >= file_byte_count ? 0 : file_byte_count - drop_count;
   } else if (drop_count != 0) {
     u64 remaining_lines = drop_count;
-    u64 next_end = file_byte_count;
-    prefix_end = 0;
+    u64 next_end        = file_byte_count;
+    prefix_end          = 0;
 
     while (next_end != 0) {
       if (os::INTERRUPT_REQUESTED) return String{allocator};
 
-      let const byte_count = next_end > block_byte_count
-                                 ? block_byte_count
-                                 : static_cast<usize>(next_end);
-      let const offset = next_end - byte_count;
+      let const byte_count  = next_end > block_byte_count
+                                  ? block_byte_count
+                                  : static_cast<usize>(next_end);
+      let const offset      = next_end - byte_count;
       let const read_result = do_read_block(offset, byte_count);
       if (read_result.error_number != 0) {
         os::set_last_system_error(read_result.error_number);
@@ -156,7 +163,7 @@ static fn read_regular_all_but_last(os::descriptor fd, u64 file_byte_count,
     }
   }
 
-  let result = String{allocator};
+  let result      = String{allocator};
   u64 next_offset = 0;
 
   while (next_offset < prefix_end) {
@@ -169,7 +176,7 @@ static fn read_regular_all_but_last(os::descriptor fd, u64 file_byte_count,
 
     while (next_offset < prefix_end && byte_counts.count() < batch_block_count)
     {
-      let const remaining = prefix_end - next_offset;
+      let const remaining  = prefix_end - next_offset;
       let const byte_count = remaining > block_byte_count
                                  ? block_byte_count
                                  : static_cast<usize>(remaining);
@@ -204,9 +211,11 @@ static fn read_regular_all_but_last(os::descriptor fd, u64 file_byte_count,
   return result;
 }
 
-fn Head::execute(const ExecContext &ec, EvalContext &cxt,
-                 const ArrayList<String> &args,
-                 const ArrayList<SourceLocation> &arg_locations) const throws
+fn
+Head::execute(const ExecContext               &ec,
+              EvalContext                     &cxt,
+              const ArrayList<String>         &args,
+              const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
@@ -218,12 +227,12 @@ fn Head::execute(const ExecContext &ec, EvalContext &cxt,
                                                 FLAG_HEAD_LINES.position());
   let const unit = is_byte_mode ? head_unit::Bytes : head_unit::Lines;
 
-  u64 count = 10;
+  u64  count           = 10;
   bool is_all_but_last = false;
   if (is_byte_mode) {
-    let const raw = FLAG_HEAD_BYTES.value();
-    is_all_but_last = raw.length > 0 && raw[0] == '-';
-    let const magnitude = is_all_but_last ? raw.substring(1) : raw;
+    let const raw          = FLAG_HEAD_BYTES.value();
+    is_all_but_last        = raw.length > 0 && raw[0] == '-';
+    let const magnitude    = is_all_but_last ? raw.substring(1) : raw;
     let const parsed_value = parse_strict_count(magnitude);
     if (parsed_value.is_error()) {
       throw ErrorWithDetails{
@@ -234,9 +243,9 @@ fn Head::execute(const ExecContext &ec, EvalContext &cxt,
     }
     count = parsed_value.value();
   } else if (has_lines_flag) {
-    let const raw = FLAG_HEAD_LINES.value();
-    is_all_but_last = raw.length > 0 && raw[0] == '-';
-    let const magnitude = is_all_but_last ? raw.substring(1) : raw;
+    let const raw          = FLAG_HEAD_LINES.value();
+    is_all_but_last        = raw.length > 0 && raw[0] == '-';
+    let const magnitude    = is_all_but_last ? raw.substring(1) : raw;
     let const parsed_value = parse_strict_count(magnitude);
     if (parsed_value.is_error()) {
       throw ErrorWithDetails{
@@ -251,7 +260,7 @@ fn Head::execute(const ExecContext &ec, EvalContext &cxt,
   let const sources =
       source_list_from_operands(operands, cxt.scratch_allocator());
 
-  let output = String{cxt.scratch_allocator()};
+  let       output          = String{cxt.scratch_allocator()};
   let const do_flush_output = [&]() throws -> void {
     if (output.is_empty()) return;
 
@@ -270,13 +279,13 @@ fn Head::execute(const ExecContext &ec, EvalContext &cxt,
   };
 
   let const should_print_headers = sources.count() > 1;
-  let const do_print_header = [&](usize source_index) throws -> void {
+  let const do_print_header      = [&](usize source_index) throws -> void {
     if (!should_print_headers) return;
 
     if (source_index > 0) output += '\n';
     output += "==> ";
     output += sources[source_index] == "-" ? StringView{"standard input"}
-                                           : sources[source_index];
+                                                : sources[source_index];
     output += " <==\n";
   };
 
@@ -285,7 +294,7 @@ fn Head::execute(const ExecContext &ec, EvalContext &cxt,
     for (usize source_index = 0; source_index < sources.count(); source_index++)
     {
       os::descriptor fd;
-      bool was_opened = false;
+      bool           was_opened = false;
       if (sources[source_index] == "-") {
         fd = ec.in_fd.value_or(KOSH_STDIN);
       } else {
@@ -309,7 +318,7 @@ fn Head::execute(const ExecContext &ec, EvalContext &cxt,
           status = 1;
           continue;
         }
-        fd = *opened_fd;
+        fd         = *opened_fd;
         was_opened = true;
       }
 
@@ -350,11 +359,11 @@ fn Head::execute(const ExecContext &ec, EvalContext &cxt,
 
   let reader =
       SourceBatchReader{ec, sources, cxt.scratch_allocator(), read_byte_count};
-  let chunks = ArrayList<SourceBatchReader::Chunk>{cxt.scratch_allocator()};
+  let   chunks = ArrayList<SourceBatchReader::Chunk>{cxt.scratch_allocator()};
   usize current_source_index = sources.count();
-  u64 line_count = 0;
-  u64 byte_count = 0;
-  bool has_printed_header = false;
+  u64   line_count           = 0;
+  u64   byte_count           = 0;
+  bool  has_printed_header   = false;
 
   loop
   {
@@ -365,9 +374,9 @@ fn Head::execute(const ExecContext &ec, EvalContext &cxt,
     for (let const &chunk : chunks) {
       if (chunk.source_index != current_source_index) {
         current_source_index = chunk.source_index;
-        line_count = 0;
-        byte_count = 0;
-        has_printed_header = false;
+        line_count           = 0;
+        byte_count           = 0;
+        has_printed_header   = false;
       }
 
       if (chunk.error_number != 0) {

@@ -19,10 +19,16 @@ HELP_DESCRIPTION_DECL(
     "The readonly builtin marks each named variable read-only.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
-FLAG(READONLY_PRINT, Bool, 'p', "",
+FLAG(READONLY_PRINT,
+     Bool,
+     'p',
+     "",
      "List the read-only variables in a reusable form.");
 FLAG(READONLY_INDEXED, Bool, 'a', "", "Treat each name as an indexed array.");
-FLAG(READONLY_ASSOCIATIVE, Bool, 'A', "",
+FLAG(READONLY_ASSOCIATIVE,
+     Bool,
+     'A',
+     "",
      "Treat each name as an associative array.");
 FLAG(READONLY_FUNCTION, Bool, 'f', "", "Treat each name as a function.");
 
@@ -30,7 +36,8 @@ REGISTER_BUILTIN_FLAGS(Readonly);
 
 namespace koshka {
 
-fn Readonly::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
+fn
+Readonly::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let operand_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};
   let const args = PARSE_BUILTIN_ARGS_WITH_LOCATIONS(ec, operand_locations);
@@ -82,7 +89,7 @@ fn Readonly::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   if (args.count() == 1 && !ec.has_stripped_array_operands) {
     let const is_declare_form = cxt.runtime_state().is_bash_compatible();
-    let out = String{cxt.scratch_allocator()};
+    let       out             = String{cxt.scratch_allocator()};
 
     for (let const &name : cxt.readonly_names()) {
       out += is_declare_form ? "declare -r " : "readonly ";
@@ -109,8 +116,8 @@ fn Readonly::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let has_error = false;
 
   for (usize i = 1; i < args.count(); i++) {
-    let const &arg = args[i];
-    let const parts = NameValueArg::from(arg);
+    let const &arg   = args[i];
+    let const  parts = NameValueArg::from(arg);
 
     if (!name_is_valid_identifier(parts.get_name())) {
       report_invalid_identifier(

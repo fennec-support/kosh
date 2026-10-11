@@ -20,7 +20,10 @@ HELP_SYNOPSIS_DECL("[-f]");
 HELP_DESCRIPTION_DECL(
     "The suspend builtin stops the shell until a SIGCONT is received.");
 
-FLAG(FORCE, Bool, 'f', "\0",
+FLAG(FORCE,
+     Bool,
+     'f',
+     "\0",
      "Suspend even a login shell, which is refused by default.");
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 
@@ -28,7 +31,8 @@ REGISTER_BUILTIN_FLAGS(Suspend);
 
 namespace koshka {
 
-fn Suspend::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
+fn
+Suspend::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let operand_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};
   let const operands = PARSE_BUILTIN_ARGS_WITH_LOCATIONS(ec, operand_locations);
@@ -63,7 +67,7 @@ fn Suspend::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return 1;
   }
 
-  let const self_pid = os::get_shell_process_id();
+  let const self_pid     = os::get_shell_process_id();
   let const self_process = os::process_from_pid(self_pid);
   if (!os::signal_process(self_process, *signal_number)) {
     report_soft_builtin_error(ec, cxt, ec.source_location(),

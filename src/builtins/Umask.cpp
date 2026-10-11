@@ -21,9 +21,15 @@ HELP_DESCRIPTION_DECL(
     "The umask builtin prints or sets the file creation mask.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
-FLAG(UMASK_REUSABLE, Bool, 'p', "",
+FLAG(UMASK_REUSABLE,
+     Bool,
+     'p',
+     "",
      "Print the mask in a form reusable as input.");
-FLAG(UMASK_SYMBOLIC, Bool, 'S', "",
+FLAG(UMASK_SYMBOLIC,
+     Bool,
+     'S',
+     "",
      "Print the mask in symbolic form, the u=rwx,g=rx,o=rx style.");
 
 REGISTER_BUILTIN_FLAGS(Umask);
@@ -34,23 +40,25 @@ namespace {
 
 constexpr u32 PERMISSION_BITS = 0777u;
 
-pure fn group_mask(char who) wontthrow -> u32
+pure fn
+group_mask(char who) wontthrow -> u32
 {
   switch (who) {
   case 'u': return 0700u;
   case 'g': return 0070u;
   case 'o': return 0007u;
   case 'a': return 0777u;
-  default: return 0;
+  default:  return 0;
   }
 }
 
-fn mask_to_symbolic(u32 mask, Allocator allocator) throws -> String
+fn
+mask_to_symbolic(u32 mask, Allocator allocator) throws -> String
 {
-  let const allowed = (~mask) & PERMISSION_BITS;
+  let const  allowed  = (~mask) & PERMISSION_BITS;
   const char groups[] = {'u', 'g', 'o'};
-  const u32 shifts[] = {6, 3, 0};
-  let out = String{allocator};
+  const u32  shifts[] = {6, 3, 0};
+  let        out      = String{allocator};
 
   for (usize g = 0; g < 3; g++) {
     if (g > 0) out.push(',');
@@ -65,10 +73,11 @@ fn mask_to_symbolic(u32 mask, Allocator allocator) throws -> String
   return out;
 }
 
-fn apply_symbolic_mask(StringView spec, u32 current_mask) throws -> Maybe<u32>
+fn
+apply_symbolic_mask(StringView spec, u32 current_mask) throws -> Maybe<u32>
 {
-  u32 allowed = (~current_mask) & PERMISSION_BITS;
-  usize i = 0;
+  u32   allowed = (~current_mask) & PERMISSION_BITS;
+  usize i       = 0;
 
   while (i < spec.length) {
     u32 who = 0;
@@ -123,7 +132,8 @@ fn apply_symbolic_mask(StringView spec, u32 current_mask) throws -> Maybe<u32>
 
 } /* namespace */
 
-cold i32 Umask::execute(ExecContext &ec, EvalContext &cxt) const throws
+cold i32
+Umask::execute(ExecContext &ec, EvalContext &cxt) const throws
 {
   let operand_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};
   let const operands = PARSE_BUILTIN_ARGS_WITH_LOCATIONS(ec, operand_locations);
@@ -145,7 +155,7 @@ cold i32 Umask::execute(ExecContext &ec, EvalContext &cxt) const throws
 
   if (operands.count() < 2) {
     let const mask = os::get_file_creation_mask();
-    let out = String{cxt.scratch_allocator()};
+    let       out  = String{cxt.scratch_allocator()};
     if (should_print_reusable)
       out += should_print_symbolic ? "umask -S " : "umask ";
 

@@ -24,12 +24,14 @@ REGISTER_KOSHKIT_UTIL_FLAGS(Fuser);
 
 namespace koshka::koshkit {
 
-static pure fn has_use(u8 mask, os::process_file_use use) wontthrow -> bool
+static pure fn
+has_use(u8 mask, os::process_file_use use) wontthrow -> bool
 {
   return (mask & static_cast<u8>(use)) != 0;
 }
 
-static fn append_use_letters(String &output, u8 mask) throws -> void
+static fn
+append_use_letters(String &output, u8 mask) throws -> void
 {
   if (has_use(mask, os::process_file_use::Root)) output.push('r');
   if (has_use(mask, os::process_file_use::Cwd)) output.push('c');
@@ -38,9 +40,11 @@ static fn append_use_letters(String &output, u8 mask) throws -> void
   if (has_use(mask, os::process_file_use::File)) output.push('f');
 }
 
-fn Fuser::execute(const ExecContext &ec, EvalContext &cxt,
-                  const ArrayList<String> &args,
-                  const ArrayList<SourceLocation> &arg_locations) const throws
+fn
+Fuser::execute(const ExecContext               &ec,
+               EvalContext                     &cxt,
+               const ArrayList<String>         &args,
+               const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
@@ -57,10 +61,10 @@ fn Fuser::execute(const ExecContext &ec, EvalContext &cxt,
     return 2;
   }
 
-  let const allocator = cxt.scratch_allocator();
-  let operand_paths = ArrayList<Path>{allocator};
-  let file_statuses = ArrayList<os::file_status>{allocator};
-  let batch = os::Batch{allocator};
+  let const allocator     = cxt.scratch_allocator();
+  let       operand_paths = ArrayList<Path>{allocator};
+  let       file_statuses = ArrayList<os::file_status>{allocator};
+  let       batch         = os::Batch{allocator};
   operand_paths.reserve(operands.count());
   file_statuses.reserve(operands.count());
   batch.reserve(operands.count());
@@ -79,11 +83,11 @@ fn Fuser::execute(const ExecContext &ec, EvalContext &cxt,
 
   let const results = batch.execute();
 
-  let queries = ArrayList<os::process_file_query>{allocator};
+  let       queries     = ArrayList<os::process_file_query>{allocator};
   let const match_scope = FLAG_FUSER_FILESYSTEM.is_enabled()
                               ? os::process_file_match_scope::Filesystem
                               : os::process_file_match_scope::File;
-  i32 status = 0;
+  i32       status      = 0;
 
   for (usize operand_position = 0; operand_position < operands.count();
        operand_position++)
@@ -145,11 +149,11 @@ fn Fuser::execute(const ExecContext &ec, EvalContext &cxt,
         return left.pid < right.pid;
       });
 
-  let standard_output = String{cxt.scratch_allocator()};
-  let standard_error = String{cxt.scratch_allocator()};
-  let combined_output = String{cxt.scratch_allocator()};
+  let       standard_output   = String{cxt.scratch_allocator()};
+  let       standard_error    = String{cxt.scratch_allocator()};
+  let       combined_output   = String{cxt.scratch_allocator()};
   let const output_descriptor = ec.out_fd.value_or(KOSH_STDOUT);
-  let const error_descriptor = ec.err_fd.value_or(KOSH_STDERR);
+  let const error_descriptor  = ec.err_fd.value_or(KOSH_STDERR);
   let const is_combined =
       os::descriptors_refer_to_same_file(output_descriptor, error_descriptor);
   usize user_position = 0;
@@ -170,7 +174,7 @@ fn Fuser::execute(const ExecContext &ec, EvalContext &cxt,
            sorted_users[user_position].query_position == operand_position)
     {
       let const &user = sorted_users[user_position];
-      let pid = String::from(user.pid, cxt.scratch_allocator());
+      let        pid  = String::from(user.pid, cxt.scratch_allocator());
       if (is_combined) {
         metadata_output += pid.view();
       } else {

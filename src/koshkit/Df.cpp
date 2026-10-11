@@ -18,24 +18,31 @@ KOSHKIT_UTIL_DECL("[-hHkP] [file ...]",
 
 FLAG(DF_KIBIBYTES, Bool, 'k', "kilobytes", "Use 1024-byte units.");
 FLAG(DF_PORTABLE, Bool, 'P', "portability", "Use the POSIX output format.");
-FLAG(DF_HUMAN, Bool, 'h', "human-readable",
+FLAG(DF_HUMAN,
+     Bool,
+     'h',
+     "human-readable",
      "Print sizes in powers of 1024 with K, M, G, T, or P suffixes.");
-FLAG(DF_SI, Bool, 'H', "si",
+FLAG(DF_SI,
+     Bool,
+     'H',
+     "si",
      "Print sizes in powers of 1000 with K, M, G, T, or P suffixes.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Df);
 
 namespace koshka::koshkit {
 
-fn Df::execute(const ExecContext &ec, EvalContext &cxt,
-               const ArrayList<String> &args,
-               const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+fn
+Df::execute(const ExecContext               &ec,
+            EvalContext                     &cxt,
+            const ArrayList<String>         &args,
+            const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
-  let const is_human = FLAG_DF_HUMAN.is_enabled() || FLAG_DF_SI.is_enabled();
-  let const human_step = FLAG_DF_SI.is_enabled() ? 1000u : 1024u;
+  let const is_human    = FLAG_DF_HUMAN.is_enabled() || FLAG_DF_SI.is_enabled();
+  let const human_step  = FLAG_DF_SI.is_enabled() ? 1000u : 1024u;
   let const output_unit = is_human                         ? 1u
                           : FLAG_DF_KIBIBYTES.is_enabled() ? 1024u
                                                            : 512u;
@@ -76,8 +83,8 @@ fn Df::execute(const ExecContext &ec, EvalContext &cxt,
     let const available = scaled_filesystem_blocks(
         filesystem.available_blocks, filesystem.fundamental_block_byte_count,
         output_unit);
-    let const used = total > free ? total - free : 0;
-    let const capacity = filesystem_usage_percent(used, available);
+    let const used      = total > free ? total - free : 0;
+    let const capacity  = filesystem_usage_percent(used, available);
     let const do_format = [&](u64 value) throws -> String {
       return is_human
                  ? format_human_size(value, cxt.scratch_allocator(), human_step)

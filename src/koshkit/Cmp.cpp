@@ -31,14 +31,15 @@ enum class byte_read_result : u8
 struct buffered_byte_reader
 {
   os::descriptor descriptor;
-  u64 byte_offset{0};
-  usize position{0};
-  usize length{0};
-  bool is_seekable{false};
-  bool has_ended{false};
-  char buffer[65536];
+  u64            byte_offset{0};
+  usize          position{0};
+  usize          length{0};
+  bool           is_seekable{false};
+  bool           has_ended{false};
+  char           buffer[65536];
 
-  hot fn next(u8 &byte) wontthrow -> byte_read_result
+  hot fn
+  next(u8 &byte) wontthrow -> byte_read_result
   {
     if (position == length) return byte_read_result::End;
 
@@ -48,9 +49,11 @@ struct buffered_byte_reader
   }
 };
 
-static fn refill_readers(buffered_byte_reader &left,
-                         buffered_byte_reader &right, os::Batch &batch,
-                         ArrayList<os::batch_result> &results) throws -> bool
+static fn
+refill_readers(buffered_byte_reader        &left,
+               buffered_byte_reader        &right,
+               os::Batch                   &batch,
+               ArrayList<os::batch_result> &results) throws -> bool
 {
   let const do_has_bytes = [](const buffered_byte_reader &reader) -> bool {
     return reader.position != reader.length || reader.has_ended;
@@ -61,7 +64,7 @@ static fn refill_readers(buffered_byte_reader &left,
 
   buffered_byte_reader *readers[] = {&left, &right};
   buffered_byte_reader *batched_readers[2]{};
-  usize operation_count = 0;
+  usize                 operation_count = 0;
   batch.clear();
 
   for (let *reader : readers) {
@@ -73,8 +76,8 @@ static fn refill_readers(buffered_byte_reader &left,
       let const read_count = os::read_fd(reader->descriptor, reader->buffer,
                                          sizeof(reader->buffer));
       if (!read_count.has_value()) return false;
-      reader->position = 0;
-      reader->length = *read_count;
+      reader->position  = 0;
+      reader->length    = *read_count;
       reader->has_ended = *read_count == 0;
       continue;
     }
@@ -95,9 +98,9 @@ static fn refill_readers(buffered_byte_reader &left,
       return false;
     }
 
-    let &reader = *batched_readers[index];
+    let &reader     = *batched_readers[index];
     reader.position = 0;
-    reader.length = results[index].transferred_byte_count;
+    reader.length   = results[index].transferred_byte_count;
     reader.byte_offset += results[index].transferred_byte_count;
     reader.has_ended = results[index].transferred_byte_count == 0;
   }
@@ -105,8 +108,11 @@ static fn refill_readers(buffered_byte_reader &left,
   return true;
 }
 
-static fn append_padded_number(String &output, u64 value, usize width,
-                               int_base base) throws -> void
+static fn
+append_padded_number(String  &output,
+                     u64      value,
+                     usize    width,
+                     int_base base) throws -> void
 {
   let const digits =
       String::from_in_base(value, false, base, output.allocator());
@@ -117,10 +123,11 @@ static fn append_padded_number(String &output, u64 value, usize width,
   output += digits.view();
 }
 
-fn Cmp::execute(const ExecContext &ec, EvalContext &cxt,
-                const ArrayList<String> &args,
-                const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+fn
+Cmp::execute(const ExecContext               &ec,
+             EvalContext                     &cxt,
+             const ArrayList<String>         &args,
+             const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
@@ -171,13 +178,13 @@ fn Cmp::execute(const ExecContext &ec, EvalContext &cxt,
       os::descriptor_is_seekable(right_input->descriptor),
       false,
       {}};
-  u64 byte_position = 1;
-  u64 line_number = 1;
-  bool has_difference = false;
-  let const allocator = cxt.scratch_allocator();
-  let output = String{allocator};
-  let batch = os::Batch{allocator};
-  let results = ArrayList<os::batch_result>{allocator};
+  u64       byte_position  = 1;
+  u64       line_number    = 1;
+  bool      has_difference = false;
+  let const allocator      = cxt.scratch_allocator();
+  let       output         = String{allocator};
+  let       batch          = os::Batch{allocator};
+  let       results        = ArrayList<os::batch_result>{allocator};
   batch.reserve(2);
   results.reserve(2);
 
@@ -192,14 +199,14 @@ fn Cmp::execute(const ExecContext &ec, EvalContext &cxt,
       return 2;
     }
 
-    let const left_available = left.length - left.position;
+    let const left_available  = left.length - left.position;
     let const right_available = right.length - right.position;
     let const common_length =
         left_available < right_available ? left_available : right_available;
     if (common_length > 0) {
-      let const *left_bytes = left.buffer + left.position;
-      let const *right_bytes = right.buffer + right.position;
-      usize equal_length = common_length;
+      let const *left_bytes   = left.buffer + left.position;
+      let const *right_bytes  = right.buffer + right.position;
+      usize      equal_length = common_length;
       if (std::memcmp(left_bytes, right_bytes, common_length) != 0) {
         equal_length = 0;
 
@@ -216,9 +223,9 @@ fn Cmp::execute(const ExecContext &ec, EvalContext &cxt,
       if (equal_length == common_length) continue;
     }
 
-    u8 left_byte = 0;
-    u8 right_byte = 0;
-    let const left_result = left.next(left_byte);
+    u8        left_byte    = 0;
+    u8        right_byte   = 0;
+    let const left_result  = left.next(left_byte);
     let const right_result = right.next(right_byte);
 
     if (left_result == byte_read_result::End ||

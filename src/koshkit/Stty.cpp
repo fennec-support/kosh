@@ -23,16 +23,18 @@ REGISTER_KOSHKIT_UTIL_FLAGS(Stty);
 
 namespace koshka::koshkit {
 
-fn Stty::execute(const ExecContext &ec, EvalContext &cxt,
-                 const ArrayList<String> &args,
-                 const ArrayList<SourceLocation> &arg_locations) const throws
+fn
+Stty::execute(const ExecContext               &ec,
+              EvalContext                     &cxt,
+              const ArrayList<String>         &args,
+              const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations,
                                  {.should_accept_unknown_flag_operand = true});
 
   let const should_report_all = FLAG_STTY_ALL.is_enabled();
-  let const should_encode = FLAG_STTY_ENCODE.is_enabled();
+  let const should_encode     = FLAG_STTY_ENCODE.is_enabled();
   if (should_report_all && should_encode) {
     report_soft_koshkit_util_error(ec, cxt, FLAG_STTY_ENCODE.value_location(),
                                    args[0].view(),

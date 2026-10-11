@@ -33,7 +33,8 @@ namespace koshka {
 using sorted_builtin_name_list =
     SortedArrayList<String, order_comparator<String>>;
 
-static fn sorted_builtin_names() throws -> const sorted_builtin_name_list &
+static fn
+sorted_builtin_names() throws -> const sorted_builtin_name_list &
 {
   static sorted_builtin_name_list names = [] throws {
     let collected = ArrayList<String>{heap_allocator()};
@@ -47,28 +48,29 @@ static fn sorted_builtin_names() throws -> const sorted_builtin_name_list &
   return names;
 }
 
-static pure fn get_builtin_section(Builtin::Kind kind,
-                                   StringView name) wontthrow -> builtin_section
+static pure fn
+get_builtin_section(Builtin::Kind kind, StringView name) wontthrow
+    -> builtin_section
 {
   if (name == "source") return builtin_section::Bash;
 
   return BUILTIN_SECTIONS[static_cast<usize>(kind)];
 }
 
-static fn print_builtin_columns(ExecContext &ec, Allocator allocator) throws
-    -> void
+static fn
+print_builtin_columns(ExecContext &ec, Allocator allocator) throws -> void
 {
-  let const &sorted = sorted_builtin_names();
-  let posix_names = ArrayList<StringView>{allocator};
-  let bash_names = ArrayList<StringView>{allocator};
-  let koshka_names = ArrayList<StringView>{allocator};
+  let const &sorted       = sorted_builtin_names();
+  let        posix_names  = ArrayList<StringView>{allocator};
+  let        bash_names   = ArrayList<StringView>{allocator};
+  let        koshka_names = ArrayList<StringView>{allocator};
 
   for (let const &name : sorted) {
     let const kind = search_builtin(name.view());
     ASSERT(kind.has_value());
     switch (get_builtin_section(*kind, name.view())) {
-    case builtin_section::Posix: posix_names.push(name.view()); break;
-    case builtin_section::Bash: bash_names.push(name.view()); break;
+    case builtin_section::Posix:  posix_names.push(name.view()); break;
+    case builtin_section::Bash:   bash_names.push(name.view()); break;
     case builtin_section::Koshka: koshka_names.push(name.view()); break;
     }
   }
@@ -84,8 +86,8 @@ static fn print_builtin_columns(ExecContext &ec, Allocator allocator) throws
   ec.print_to_stdout(out.view());
 }
 
-fn BuiltinBuiltin::execute(ExecContext &ec, EvalContext &cxt) const throws
-    -> i32
+fn
+BuiltinBuiltin::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   if (ec.args().count() < 2) {
     if (cxt.runtime_state().get_mood() == mimic_mood::Default)
@@ -97,7 +99,7 @@ fn BuiltinBuiltin::execute(ExecContext &ec, EvalContext &cxt) const throws
   let const &name = ec.args()[1];
   if (name == "--list") {
     let const &sorted = sorted_builtin_names();
-    let out = String{cxt.scratch_allocator()};
+    let        out    = String{cxt.scratch_allocator()};
 
     for (let const &builtin_name : sorted) {
       out += builtin_name.view();
@@ -121,7 +123,7 @@ fn BuiltinBuiltin::execute(ExecContext &ec, EvalContext &cxt) const throws
     return 1;
   }
 
-  let forwarded = ArrayList<String>{heap_allocator()};
+  let forwarded           = ArrayList<String>{heap_allocator()};
   let forwarded_locations = ArrayList<SourceLocation>{heap_allocator()};
 
   for (usize i = 1; i < ec.args().count(); i++) {

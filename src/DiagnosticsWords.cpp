@@ -21,14 +21,14 @@ namespace koshka {
 
 namespace expressions::internal {
 
-fn check_posix_arithmetic_operators(AnalysisContext &actx,
-                                    StringView expression,
-                                    const SourceLocation &location) throws
-    -> void
+fn
+check_posix_arithmetic_operators(AnalysisContext      &actx,
+                                 StringView            expression,
+                                 const SourceLocation &location) throws -> void
 {
   let has_increment = false;
   let has_decrement = false;
-  let has_exponent = false;
+  let has_exponent  = false;
 
   for (usize position = 0; position + 1 < expression.length; position++) {
     let const byte = expression[position];
@@ -38,7 +38,7 @@ fn check_posix_arithmetic_operators(AnalysisContext &actx,
     case '+': has_increment = true; break;
     case '-': has_decrement = true; break;
     case '*': has_exponent = true; break;
-    default: continue;
+    default:  continue;
     }
 
     position++;
@@ -51,9 +51,9 @@ fn check_posix_arithmetic_operators(AnalysisContext &actx,
   if (has_exponent) actx.report_diagnostic(diagnostic_id::sc3019, location);
 }
 
-static pure fn arithmetic_expansion_assigns(StringView expression,
-                                            usize expansion_end) wontthrow
-    -> bool
+static pure fn
+arithmetic_expansion_assigns(StringView expression,
+                             usize      expansion_end) wontthrow -> bool
 {
   usize at = expansion_end;
 
@@ -91,10 +91,14 @@ static pure fn arithmetic_expansion_assigns(StringView expression,
   return at + 1 >= expression.length || expression[at + 1] != '=';
 }
 
-fn note_arithmetic_target_record(
-    AnalysisContext &actx, StringView expression, StringView target,
-    const SourceLocation &location, Maybe<usize> expression_base_position,
-    bool is_conditional, assignment_update_mode update_mode) throws -> void
+fn
+note_arithmetic_target_record(AnalysisContext       &actx,
+                              StringView             expression,
+                              StringView             target,
+                              const SourceLocation  &location,
+                              Maybe<usize>           expression_base_position,
+                              bool                   is_conditional,
+                              assignment_update_mode update_mode) throws -> void
 {
   if (!expression_base_position.has_value()) return;
 
@@ -110,43 +114,44 @@ fn note_arithmetic_target_record(
       target, name_location, assignment_binder::Arithmetic, is_conditional);
 }
 
-fn check_arithmetic_expression_lints(AnalysisContext &actx,
-                                     StringView expression,
-                                     const SourceLocation &location,
-                                     Maybe<usize> expression_base_position,
-                                     bool is_conditional) throws -> void
+fn
+check_arithmetic_expression_lints(AnalysisContext      &actx,
+                                  StringView            expression,
+                                  const SourceLocation &location,
+                                  Maybe<usize> expression_base_position,
+                                  bool         is_conditional) throws -> void
 {
-  let has_reported_test_operator = false;
-  let has_reported_decimal = false;
-  let has_reported_octal = false;
-  let has_reported_precision_loss = false;
-  let has_reported_xor_power = false;
-  let has_redundant_dollar = false;
-  let has_pending_division = false;
+  let       has_reported_test_operator  = false;
+  let       has_reported_decimal        = false;
+  let       has_reported_octal          = false;
+  let       has_reported_precision_loss = false;
+  let       has_reported_xor_power      = false;
+  let       has_redundant_dollar        = false;
+  let       has_pending_division        = false;
   let const obvious_power_position =
       obvious_xor_power_operator_position(expression);
 
   struct arithmetic_write
   {
-    StringView name;
-    usize end_position;
-    usize parenthesis_depth;
-    usize bracket_depth;
-    usize ternary_depth;
+    StringView             name;
+    usize                  end_position;
+    usize                  parenthesis_depth;
+    usize                  bracket_depth;
+    usize                  ternary_depth;
     assignment_update_mode update_mode;
-    bool has_fixed_end;
+    bool                   has_fixed_end;
   };
-  let pending_writes = ArrayList<arithmetic_write>{heap_allocator()};
-  usize parenthesis_depth = 0;
-  usize bracket_depth = 0;
-  usize ternary_depth = 0;
-  let const do_apply_write = [&]() throws -> void {
+  let       pending_writes    = ArrayList<arithmetic_write>{heap_allocator()};
+  usize     parenthesis_depth = 0;
+  usize     bracket_depth     = 0;
+  usize     ternary_depth     = 0;
+  let const do_apply_write    = [&]() throws -> void {
     let const write = pending_writes.back();
     pending_writes.pop_back();
     actx.note_variable_assignment(write.name, location, !is_conditional);
     note_arithmetic_target_record(actx, expression, write.name, location,
-                                  expression_base_position, is_conditional,
-                                  write.update_mode);
+                                     expression_base_position, is_conditional,
+                                     write.update_mode);
   };
   let const do_apply_fixed_writes = [&](usize end_position) throws -> void {
     while (!pending_writes.is_empty() && pending_writes.back().has_fixed_end &&
@@ -289,7 +294,7 @@ fn check_arithmetic_expression_lints(AnalysisContext &actx,
       has_pending_division = false;
 
       let const dollar_position = position;
-      usize name_start = position + 1;
+      usize     name_start      = position + 1;
       let const is_braced =
           name_start < expression.length && expression[name_start] == '{';
       if (is_braced) name_start++;
@@ -339,7 +344,7 @@ fn check_arithmetic_expression_lints(AnalysisContext &actx,
       let const referenced =
           expression.substring_of_length(name_start, name_end - name_start);
       if (!referenced.is_empty() && expression_base_position.has_value()) {
-        let const occurrence_start = dollar_position;
+        let const occurrence_start  = dollar_position;
         let const occurrence_length = expansion_end - occurrence_start;
         let const occurrence_location =
             SourceLocation{*expression_base_position + occurrence_start,
@@ -374,18 +379,18 @@ fn check_arithmetic_expression_lints(AnalysisContext &actx,
           after_name++;
         }
 
-        let is_assignment_target = false;
-        let is_compound_assignment = false;
-        let is_step_target = false;
-        let is_prefix_step_target = false;
-        usize operator_end = after_name;
+        let   is_assignment_target   = false;
+        let   is_compound_assignment = false;
+        let   is_step_target         = false;
+        let   is_prefix_step_target  = false;
+        usize operator_end           = after_name;
         if (start >= 2 &&
             (expression[start - 1] == '+' || expression[start - 1] == '-') &&
             expression[start - 2] == expression[start - 1])
         {
-          is_assignment_target = true;
+          is_assignment_target   = true;
           is_compound_assignment = true;
-          is_prefix_step_target = true;
+          is_prefix_step_target  = true;
         } else if (after_name < expression.length) {
           switch (expression[after_name]) {
           case '=':
@@ -412,9 +417,9 @@ fn check_arithmetic_expression_lints(AnalysisContext &actx,
                         expression[after_name] == '-') &&
                        expression[after_name + 1] == expression[after_name])
             {
-              is_assignment_target = true;
+              is_assignment_target   = true;
               is_compound_assignment = true;
-              is_step_target = true;
+              is_step_target         = true;
             }
             break;
 
@@ -499,10 +504,11 @@ fn check_arithmetic_expression_lints(AnalysisContext &actx,
     actx.report_diagnostic(diagnostic_id::sc2004, location);
 }
 
-fn check_numeric_comparison_operand(AnalysisContext &actx,
-                                    StringView operator_view,
-                                    const Token *operand_token,
-                                    bool should_prefer_string_comparison) throws
+fn
+check_numeric_comparison_operand(AnalysisContext &actx,
+                                 StringView       operator_view,
+                                 const Token     *operand_token,
+                                 bool should_prefer_string_comparison) throws
     -> void
 {
   if (operand_token == nullptr || operand_token->kind() != Token::Kind::Word) {
@@ -511,7 +517,7 @@ fn check_numeric_comparison_operand(AnalysisContext &actx,
 
   if (!is_test_numeric_operator_word(operator_view)) return;
 
-  let const location = operand_token->source_location();
+  let const  location = operand_token->source_location();
   let const &word =
       static_cast<const tokens::WordToken *>(operand_token)->word();
   if (!word_is_fully_literal(word)) return;
@@ -532,11 +538,12 @@ fn check_numeric_comparison_operand(AnalysisContext &actx,
   }
 }
 
-fn check_posix_word_portability(AnalysisContext &actx,
-                                const WordSegment &segment,
-                                SourceLocation fallback_location) throws -> void
+fn
+check_posix_word_portability(AnalysisContext   &actx,
+                             const WordSegment &segment,
+                             SourceLocation fallback_location) throws -> void
 {
-  let const text = segment.text.view();
+  let const text            = segment.text.view();
   let const do_get_location = [&]() -> SourceLocation {
     return expansion_location_with_sigil(
         actx, segment.get_source_location(fallback_location.source_name_index)
@@ -561,11 +568,11 @@ fn check_posix_word_portability(AnalysisContext &actx,
       break;
     }
 
-    let const location = do_get_location();
+    let const location    = do_get_location();
     let const source_text = analysis_source_text(actx, location);
-    let const spelling = !source_text.is_empty() && source_text[0] == '`'
-                             ? diagnostic_id::sc3035
-                             : diagnostic_id::sc3034;
+    let const spelling    = !source_text.is_empty() && source_text[0] == '`'
+                                ? diagnostic_id::sc3035
+                                : diagnostic_id::sc3034;
     actx.report_diagnostic(spelling, location);
     break;
   }
@@ -620,8 +627,10 @@ fn check_posix_word_portability(AnalysisContext &actx,
   }
 }
 
-fn check_posix_word_portability(AnalysisContext &actx, const Word &word,
-                                const SourceLocation &location) throws -> void
+fn
+check_posix_word_portability(AnalysisContext      &actx,
+                             const Word           &word,
+                             const SourceLocation &location) throws -> void
 {
   if (!actx.is_posix_sh_shebang) return;
 
@@ -632,9 +641,9 @@ fn check_posix_word_portability(AnalysisContext &actx, const Word &word,
     check_posix_word_portability(actx, segment, location);
 }
 
-fn check_operand_lints_before_scan(AnalysisContext &actx,
-                                   const command_lint_input &input) throws
-    -> void
+fn
+check_operand_lints_before_scan(AnalysisContext          &actx,
+                                const command_lint_input &input) throws -> void
 {
   if (input.is_command_shadowed) return;
 
@@ -663,20 +672,20 @@ fn check_operand_lints_before_scan(AnalysisContext &actx,
 
   switch (input.command_id()) {
   case command_name_id::Find: {
-    bool has_exec = false;
-    bool has_exec_terminator = false;
-    bool has_or = false;
-    bool has_group = false;
-    bool has_action = false;
-    bool has_path_operand = false;
-    bool is_before_path_operand = true;
-    bool is_inside_exec_action = false;
+    bool                  has_exec               = false;
+    bool                  has_exec_terminator    = false;
+    bool                  has_or                 = false;
+    bool                  has_group              = false;
+    bool                  has_action             = false;
+    bool                  has_path_operand       = false;
+    bool                  is_before_path_operand = true;
+    bool                  is_inside_exec_action  = false;
     Maybe<SourceLocation> exec_location{};
     Maybe<SourceLocation> or_location{};
 
     for (usize i = 1; i < args.count(); i++) {
       let const literal = args[i]->raw_string();
-      let const view = literal.view();
+      let const view    = literal.view();
       let const leading = view.is_empty() ? '\0' : view[0];
 
       if (is_before_path_operand && !is_find_leading_option(view)) {
@@ -687,13 +696,13 @@ fn check_operand_lints_before_scan(AnalysisContext &actx,
       }
 
       if (leading == '-' && (view == "-exec" || view == "-execdir")) {
-        has_exec = true;
+        has_exec              = true;
         is_inside_exec_action = true;
-        exec_location = args[i]->source_location();
+        exec_location         = args[i]->source_location();
       } else if (has_exec && view.length == 1 &&
                  (leading == ';' || leading == '+'))
       {
-        has_exec_terminator = true;
+        has_exec_terminator   = true;
         is_inside_exec_action = false;
       } else if (is_inside_exec_action &&
                  token_has_command_substitution(args[i]))
@@ -701,7 +710,7 @@ fn check_operand_lints_before_scan(AnalysisContext &actx,
         actx.report_diagnostic(diagnostic_id::sc2014,
                                args[i]->source_location());
       } else if (leading == '-' && view == "-o") {
-        has_or = true;
+        has_or      = true;
         or_location = args[i]->source_location();
       } else if (view.length == 1 && (leading == '(' || leading == ')')) {
         has_group = true;
@@ -737,7 +746,7 @@ fn check_operand_lints_before_scan(AnalysisContext &actx,
 
   case command_name_id::Tr:
     for (usize i = 1; i < args.count(); i++) {
-      let const literal = args[i]->raw_string();
+      let const literal  = args[i]->raw_string();
       let const set_view = literal.view();
 
       if (i <= 2 && literal.length() >= 5 && literal[0] == '[' &&
@@ -775,7 +784,7 @@ fn check_operand_lints_before_scan(AnalysisContext &actx,
       }
     }
 
-    StringView escape_sequence{};
+    StringView            escape_sequence{};
     Maybe<SourceLocation> escape_location{};
 
     for (usize i = 1; i < args.count(); i++) {
@@ -804,7 +813,7 @@ fn check_operand_lints_before_scan(AnalysisContext &actx,
 
   case command_name_id::Sed:
     for (usize i = 1; i < args.count(); i++) {
-      let const literal = args[i]->raw_string();
+      let const literal     = args[i]->raw_string();
       let const script_view = literal.view();
 
       if (script_view.starts_with(StringView{"-f"})) break;
@@ -827,11 +836,11 @@ fn check_operand_lints_before_scan(AnalysisContext &actx,
   }
 }
 
-fn check_equals_bearing_command_name(AnalysisContext &actx,
-                                     StringView command_literal,
-                                     usize equals_position,
-                                     const SourceLocation &location) throws
-    -> bool
+fn
+check_equals_bearing_command_name(AnalysisContext      &actx,
+                                  StringView            command_literal,
+                                  usize                 equals_position,
+                                  const SourceLocation &location) throws -> bool
 {
   switch (command_literal[0]) {
   case '$': {
@@ -908,13 +917,14 @@ fn check_equals_bearing_command_name(AnalysisContext &actx,
   return false;
 }
 
-fn check_command_word_shape(AnalysisContext &actx,
-                            const command_lint_input &input) throws -> bool
+fn
+check_command_word_shape(AnalysisContext          &actx,
+                         const command_lint_input &input) throws -> bool
 {
-  let const &args = input.args;
-  let const command_literal = input.command_literal;
-  let const location = input.command_location();
-  let has_explained_resolution_failure = false;
+  let const &args                             = input.args;
+  let const  command_literal                  = input.command_literal;
+  let const  location                         = input.command_location();
+  let        has_explained_resolution_failure = false;
 
   if (!command_literal.is_empty() && command_literal[0] == '-') {
     actx.report_diagnostic(diagnostic_id::sc2215, location);
@@ -954,7 +964,7 @@ fn check_command_word_shape(AnalysisContext &actx,
   if (command_literal.starts_with(StringView{"["}) && command_literal != "[" &&
       command_literal != "[[" && args.count() > 1)
   {
-    String last_storage{heap_allocator()};
+    String    last_storage{heap_allocator()};
     let const last_raw = borrowed_token_text(args.back(), last_storage);
     if (!last_raw.is_empty() && last_raw[last_raw.length - 1] == ']') {
       actx.report_diagnostic(diagnostic_id::sc1014, location);
@@ -988,9 +998,11 @@ fn check_command_word_shape(AnalysisContext &actx,
   return has_explained_resolution_failure;
 }
 
-fn note_formatted_target(AnalysisContext &actx, const command_lint_input &input,
-                         StringView name, const SourceLocation &location) throws
-    -> void
+fn
+note_formatted_target(AnalysisContext          &actx,
+                      const command_lint_input &input,
+                      StringView                name,
+                      const SourceLocation     &location) throws -> void
 {
   if (name.is_empty() || input.is_command_shadowed) {
     return;
@@ -1013,9 +1025,9 @@ constexpr PackedStringKey FIND_PATTERN_PREDICATE_KEYS[] = {
 
 constexpr StaticStringSet FIND_PATTERN_PREDICATES{FIND_PATTERN_PREDICATE_KEYS};
 
-fn check_operand_lints_after_scan(AnalysisContext &actx,
-                                  const command_lint_input &input) throws
-    -> void
+fn
+check_operand_lints_after_scan(AnalysisContext          &actx,
+                               const command_lint_input &input) throws -> void
 {
   if (input.is_command_shadowed) return;
 
@@ -1024,17 +1036,17 @@ fn check_operand_lints_after_scan(AnalysisContext &actx,
   switch (input.command_id()) {
   case command_name_id::Read: {
     let should_skip_option_operand = false;
-    let should_take_array_target = false;
+    let should_take_array_target   = false;
 
     for (usize i = 1; i < args.count(); i++) {
       if (args[i]->kind() != Token::Kind::Word) continue;
       let const &word = static_cast<const tokens::WordToken *>(args[i])->word();
-      let const literal = word.to_literal_string();
+      let const  literal = word.to_literal_string();
       if (should_skip_option_operand) {
         should_skip_option_operand = false;
         if (should_take_array_target) {
           should_take_array_target = false;
-          let const target = operand_target_name(literal.view());
+          let const target         = operand_target_name(literal.view());
           if (!target.is_empty()) {
             actx.add_array_valued_name(target);
             actx.external_input_names.add(target);
@@ -1047,7 +1059,7 @@ fn check_operand_lints_after_scan(AnalysisContext &actx,
         switch (literal.view()[1]) {
         case 'a':
           should_skip_option_operand = true;
-          should_take_array_target = true;
+          should_take_array_target   = true;
           continue;
 
         case 'd':
@@ -1089,15 +1101,15 @@ fn check_operand_lints_after_scan(AnalysisContext &actx,
   }
 
   case command_name_id::Ssh: {
-    let has_seen_host = false;
+    let has_seen_host            = false;
     let should_skip_option_value = false;
 
     for (usize i = 1; i < args.count(); i++) {
       if (args[i]->kind() != Token::Kind::Word) continue;
 
       let const &word = static_cast<const tokens::WordToken *>(args[i])->word();
-      let const literal = word.to_literal_string();
-      let const view = literal.view();
+      let const  literal = word.to_literal_string();
+      let const  view    = literal.view();
       if (should_skip_option_value) {
         should_skip_option_value = false;
         continue;
@@ -1128,7 +1140,7 @@ fn check_operand_lints_after_scan(AnalysisContext &actx,
 
   case command_name_id::Su: {
     let is_command_value_next = false;
-    let has_seen_user = false;
+    let has_seen_user         = false;
 
     for (usize i = 1; i < args.count(); i++) {
       if (args[i]->kind() != Token::Kind::Word) continue;
@@ -1203,12 +1215,12 @@ fn check_operand_lints_after_scan(AnalysisContext &actx,
   }
 
   case command_name_id::Unset: {
-    let is_function_mode = false;
+    let is_function_mode  = false;
     let has_ended_options = false;
 
     for (usize i = 1; i < args.count(); i++) {
       if (args[i]->kind() != Token::Kind::Word) continue;
-      let const raw = args[i]->raw_string();
+      let const raw      = args[i]->raw_string();
       let const raw_view = raw.view();
       if (!has_ended_options && raw_view == "--") {
         has_ended_options = true;
@@ -1223,7 +1235,7 @@ fn check_operand_lints_after_scan(AnalysisContext &actx,
 
     for (usize i = 1; i < args.count(); i++) {
       if (args[i]->kind() != Token::Kind::Word) continue;
-      let const raw = args[i]->raw_string();
+      let const raw      = args[i]->raw_string();
       let const raw_view = raw.view();
       if (!has_ended_options && raw_view == "--") {
         has_ended_options = true;
@@ -1263,7 +1275,7 @@ fn check_operand_lints_after_scan(AnalysisContext &actx,
 
   case command_name_id::Find:
     for (usize i = 1; i + 1 < args.count(); i++) {
-      let const predicate = args[i]->raw_string();
+      let const predicate      = args[i]->raw_string();
       let const predicate_view = predicate.view();
 
       if (FIND_PATTERN_PREDICATES.contains(predicate_view)) {
@@ -1286,7 +1298,7 @@ fn check_operand_lints_after_scan(AnalysisContext &actx,
 
         if (i + 3 < args.count()) {
           let const shell_flag = args[i + 2]->raw_string();
-          let const script = args[i + 3]->raw_string();
+          let const script     = args[i + 3]->raw_string();
           if ((action.view() == "sh" || action.view() == "bash") &&
               shell_flag.view() == "-c" &&
               view_contains(script.view(), StringView{"{}"}))
@@ -1319,9 +1331,9 @@ fn check_operand_lints_after_scan(AnalysisContext &actx,
                                args[i]->source_location());
 
       let const operand_location = args[i]->source_location();
-      let const base_position = operand_location.length == expression.count()
-                                    ? Maybe<usize>{operand_location.position}
-                                    : None;
+      let const base_position    = operand_location.length == expression.count()
+                                       ? Maybe<usize>{operand_location.position}
+                                       : None;
 
       check_arithmetic_expression_lints(actx, expression.view(),
                                         operand_location, base_position,
@@ -1339,7 +1351,7 @@ fn check_operand_lints_after_scan(AnalysisContext &actx,
     usize format_index = 1;
     if (format_index < args.count()) {
       let const leading = args[format_index]->raw_string();
-      let const view = leading.view();
+      let const view    = leading.view();
 
       if (view == "-v") {
         format_index += 2;
@@ -1349,8 +1361,8 @@ fn check_operand_lints_after_scan(AnalysisContext &actx,
                                 args[format_index - 1]->source_location());
         }
       } else if (view.length > 2 && view[0] == '-' && view[1] == 'v') {
-        let const name = operand_target_name(view.substring(2));
-        let const option_location = args[format_index]->source_location();
+        let const name             = operand_target_name(view.substring(2));
+        let const option_location  = args[format_index]->source_location();
         let const is_span_verbatim = option_location.length == view.length;
         note_formatted_target(actx, input, name,
                               is_span_verbatim
@@ -1368,8 +1380,8 @@ fn check_operand_lints_after_scan(AnalysisContext &actx,
       let const &format_word =
           static_cast<const tokens::WordToken *>(args[format_index])->word();
       if (word_is_fully_literal(format_word)) {
-        let const format = format_word.to_literal_string();
-        let has_quote_conversion = false;
+        let const format               = format_word.to_literal_string();
+        let       has_quote_conversion = false;
         let const consumed =
             printf_consumed_argument_count(format.view(), has_quote_conversion);
         let const available = args.count() - format_index - 1;
@@ -1410,7 +1422,7 @@ fn check_operand_lints_after_scan(AnalysisContext &actx,
       if (has_seen_command_word) continue;
 
       let const literal = word.to_literal_string();
-      let const view = literal.view();
+      let const view    = literal.view();
       if (view.is_empty() || view[0] == '-') {
         continue;
       }

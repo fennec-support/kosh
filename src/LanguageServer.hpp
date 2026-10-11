@@ -14,6 +14,7 @@
 
 namespace koshka::language_server {
 
-fn run(EvalContext &context, BumpArena &ast_arena) throws -> int;
+fn
+run(EvalContext &context, BumpArena &ast_arena) throws -> int;
 
 }

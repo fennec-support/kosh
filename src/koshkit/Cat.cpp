@@ -19,9 +19,15 @@ KOSHKIT_UTIL_DECL("[-nu] [--syntax-highlighting] [file ...]",
                   "The cat utility writes each file to standard output.");
 
 FLAG(CAT_NUMBER, Bool, 'n', "", "Number every output line, starting at one.");
-FLAG(CAT_UNBUFFERED, Bool, 'u', "",
+FLAG(CAT_UNBUFFERED,
+     Bool,
+     'u',
+     "",
      "Accepted for compatibility; output is never delayed past a read.");
-FLAG(CAT_SYNTAX_HIGHLIGHTING, Bool, '\0', "syntax-highlighting",
+FLAG(CAT_SYNTAX_HIGHLIGHTING,
+     Bool,
+     '\0',
+     "syntax-highlighting",
      "Highlight detected shell source on a terminal.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Cat);
@@ -42,12 +48,13 @@ enum class cat_highlight_mode : u8
   Highlighted,
 };
 
-static fn append_number_prefix(String &output, i64 line_number) throws -> void
+static fn
+append_number_prefix(String &output, i64 line_number) throws -> void
 {
-  char prefix[32];
-  usize position = sizeof(prefix);
+  char  prefix[32];
+  usize position     = sizeof(prefix);
   prefix[--position] = '\t';
-  let remaining = static_cast<u64>(line_number);
+  let remaining      = static_cast<u64>(line_number);
 
   loop
   {
@@ -66,9 +73,11 @@ static fn append_number_prefix(String &output, i64 line_number) throws -> void
   output.append(StringView{prefix + position, sizeof(prefix) - position});
 }
 
-static fn append_numbered_chunk(String &output, StringView source,
-                                i64 &line_number,
-                                bool &is_at_output_line_start) throws -> void
+static fn
+append_numbered_chunk(String    &output,
+                      StringView source,
+                      i64       &line_number,
+                      bool      &is_at_output_line_start) throws -> void
 {
   usize position = 0;
 
@@ -78,7 +87,7 @@ static fn append_numbered_chunk(String &output, StringView source,
       line_number++;
     }
 
-    let const remaining = source.substring(position);
+    let const remaining      = source.substring(position);
     let const newline_offset = remaining.find_character('\n');
     let const length =
         newline_offset.has_value() ? *newline_offset + 1 : remaining.length;
@@ -88,10 +97,14 @@ static fn append_numbered_chunk(String &output, StringView source,
   }
 }
 
-static fn append_cat_source(String &output, StringView source, i64 &line_number,
-                            bool &is_at_output_line_start, EvalContext &context,
-                            cat_number_mode number_mode,
-                            cat_highlight_mode highlight_mode) throws -> void
+static fn
+append_cat_source(String            &output,
+                  StringView         source,
+                  i64               &line_number,
+                  bool              &is_at_output_line_start,
+                  EvalContext       &context,
+                  cat_number_mode    number_mode,
+                  cat_highlight_mode highlight_mode) throws -> void
 {
   let const should_number = number_mode == cat_number_mode::Numbered;
   let const should_highlight =
@@ -110,15 +123,15 @@ static fn append_cat_source(String &output, StringView source, i64 &line_number,
     return;
   }
 
-  let highlight_cache = completion::ShellHighlightCache{output.allocator()};
-  usize line_start = 0;
+  let   highlight_cache = completion::ShellHighlightCache{output.allocator()};
+  usize line_start      = 0;
 
   while (line_start < source.length) {
-    let const remaining = source.substring(line_start);
+    let const remaining      = source.substring(line_start);
     let const newline_offset = remaining.find_character('\n');
-    let const line_end = newline_offset.has_value()
-                             ? line_start + *newline_offset + 1
-                             : source.length;
+    let const line_end       = newline_offset.has_value()
+                                   ? line_start + *newline_offset + 1
+                                   : source.length;
 
     if (is_at_output_line_start) {
       append_number_prefix(output, line_number);
@@ -137,14 +150,15 @@ static fn append_cat_source(String &output, StringView source, i64 &line_number,
       output += line;
     }
     is_at_output_line_start = !line.is_empty() && line[line.length - 1] == '\n';
-    line_start = line_end;
+    line_start              = line_end;
   }
 }
 
-fn Cat::execute(const ExecContext &ec, EvalContext &cxt,
-                const ArrayList<String> &args,
-                const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+fn
+Cat::execute(const ExecContext               &ec,
+             EvalContext                     &cxt,
+             const ArrayList<String>         &args,
+             const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
@@ -171,7 +185,7 @@ fn Cat::execute(const ExecContext &ec, EvalContext &cxt,
   };
 
   i32 input_status = 0;
-  let sources = ArrayList<StringView>{cxt.scratch_allocator()};
+  let sources      = ArrayList<StringView>{cxt.scratch_allocator()};
 
   for (let const source : operand_sources) {
     if (output_byte_count.has_value() && *output_byte_count > 0 &&
@@ -197,8 +211,8 @@ fn Cat::execute(const ExecContext &ec, EvalContext &cxt,
     {
       let const read_result = reader.read_next_ordered(chunks);
       switch (read_result) {
-      case SourceBatchReader::ReadResult::Chunks: break;
-      case SourceBatchReader::ReadResult::Complete: return status;
+      case SourceBatchReader::ReadResult::Chunks:      break;
+      case SourceBatchReader::ReadResult::Complete:    return status;
       case SourceBatchReader::ReadResult::Interrupted: return 130;
       }
 
@@ -221,15 +235,15 @@ fn Cat::execute(const ExecContext &ec, EvalContext &cxt,
   }
 
   if (FLAG_CAT_NUMBER.is_enabled() && !should_highlight_output) {
-    let output = String{cxt.scratch_allocator()};
-    let reader = SourceBatchReader{ec, sources, cxt.scratch_allocator()};
-    let chunks = ArrayList<SourceBatchReader::Chunk>{cxt.scratch_allocator()};
-    i64 line_number = 1;
-    i64 source_line_number = 1;
-    let is_at_output_line_start = true;
-    let is_at_source_output_line_start = true;
-    usize source_start = 0;
-    i32 status = input_status;
+    let   output = String{cxt.scratch_allocator()};
+    let   reader = SourceBatchReader{ec, sources, cxt.scratch_allocator()};
+    let   chunks = ArrayList<SourceBatchReader::Chunk>{cxt.scratch_allocator()};
+    i64   line_number                    = 1;
+    i64   source_line_number             = 1;
+    let   is_at_output_line_start        = true;
+    let   is_at_source_output_line_start = true;
+    usize source_start                   = 0;
+    i32   status                         = input_status;
 
     loop
     {
@@ -240,7 +254,7 @@ fn Cat::execute(const ExecContext &ec, EvalContext &cxt,
       for (let const &chunk : chunks) {
         if (chunk.error_number != 0) {
           output.truncate(source_start);
-          line_number = source_line_number;
+          line_number             = source_line_number;
           is_at_output_line_start = is_at_source_output_line_start;
 
           os::set_last_system_error(chunk.error_number);
@@ -257,14 +271,14 @@ fn Cat::execute(const ExecContext &ec, EvalContext &cxt,
         if (output.count() >= CAT_OUTPUT_FLUSH_BYTE_COUNT) {
           ec.print_to_stdout(output);
           output.clear();
-          source_start = 0;
-          source_line_number = line_number;
+          source_start                   = 0;
+          source_line_number             = line_number;
           is_at_source_output_line_start = is_at_output_line_start;
         }
 
         if (chunk.completion == source_completion_state::Complete) {
-          source_start = output.count();
-          source_line_number = line_number;
+          source_start                   = output.count();
+          source_line_number             = line_number;
           is_at_source_output_line_start = is_at_output_line_start;
         }
       }
@@ -275,10 +289,10 @@ fn Cat::execute(const ExecContext &ec, EvalContext &cxt,
     return status;
   }
 
-  let output = String{cxt.scratch_allocator()};
-  i64 line_number = 1;
+  let output                  = String{cxt.scratch_allocator()};
+  i64 line_number             = 1;
   let is_at_output_line_start = true;
-  i32 status = input_status;
+  i32 status                  = input_status;
 
   let const visit = visit_ordered_sources(
       ec, sources, cxt.scratch_allocator(),
@@ -298,9 +312,9 @@ fn Cat::execute(const ExecContext &ec, EvalContext &cxt,
             should_highlight_output &&
             Path{source}.is_shell_source(content->view()) &&
             !content->view().find_character('\0').has_value();
-        let const number_mode = FLAG_CAT_NUMBER.is_enabled()
-                                    ? cat_number_mode::Numbered
-                                    : cat_number_mode::Unnumbered;
+        let const number_mode    = FLAG_CAT_NUMBER.is_enabled()
+                                       ? cat_number_mode::Numbered
+                                       : cat_number_mode::Unnumbered;
         let const highlight_mode = should_highlight_source
                                        ? cat_highlight_mode::Highlighted
                                        : cat_highlight_mode::Plain;

@@ -16,26 +16,46 @@
 KOSHKIT_UTIL_DECL("[-hRx] [-H|-L|-P] group file ...",
                   "The chgrp utility changes file group ownership.");
 
-FLAG(CHGRP_NO_DEREFERENCE, Bool, 'h', "no-dereference",
+FLAG(CHGRP_NO_DEREFERENCE,
+     Bool,
+     'h',
+     "no-dereference",
      "Change a symbolic link instead of its target.");
-FLAG(CHGRP_RECURSIVE, Bool, 'R', "recursive",
+FLAG(CHGRP_RECURSIVE,
+     Bool,
+     'R',
+     "recursive",
      "Change directories and their contents recursively.");
-FLAG(CHGRP_COMMAND_LINE_FOLLOW, Bool, 'H', "dereference-arguments",
+FLAG(CHGRP_COMMAND_LINE_FOLLOW,
+     Bool,
+     'H',
+     "dereference-arguments",
      "Follow symbolic links named on the command line during recursion.");
-FLAG(CHGRP_FOLLOW, Bool, 'L', "dereference",
+FLAG(CHGRP_FOLLOW,
+     Bool,
+     'L',
+     "dereference",
      "Follow every symbolic link during recursion.");
-FLAG(CHGRP_PHYSICAL, Bool, 'P', "physical",
+FLAG(CHGRP_PHYSICAL,
+     Bool,
+     'P',
+     "physical",
      "Do not follow symbolic links during recursion.");
-FLAG(CHGRP_ONE_FILE_SYSTEM, Bool, 'x', "one-file-system",
+FLAG(CHGRP_ONE_FILE_SYSTEM,
+     Bool,
+     'x',
+     "one-file-system",
      "Do not descend into a directory on another file system.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Chgrp);
 
 namespace koshka::koshkit {
 
-fn Chgrp::execute(const ExecContext &ec, EvalContext &cxt,
-                  const ArrayList<String> &args,
-                  const ArrayList<SourceLocation> &arg_locations) const throws
+fn
+Chgrp::execute(const ExecContext               &ec,
+               EvalContext                     &cxt,
+               const ArrayList<String>         &args,
+               const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);

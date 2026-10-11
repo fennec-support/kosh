@@ -24,33 +24,38 @@ namespace koshka {
 
 namespace os {
 
-pure fn path_is_absolute(StringView path) wontthrow -> bool
+pure fn
+path_is_absolute(StringView path) wontthrow -> bool
 {
   if (path.length == 0) return false;
 
   return is_directory_separator(path.data[0]);
 }
 
-pure fn path_is_drive_relative(StringView path) wontthrow -> bool
+pure fn
+path_is_drive_relative(StringView path) wontthrow -> bool
 {
   unused(path);
 
   return false;
 }
 
-fn resolve_drive_relative_path(StringView path) throws -> Maybe<Path>
+fn
+resolve_drive_relative_path(StringView path) throws -> Maybe<Path>
 {
   unused(path);
 
   return None;
 }
 
-pure fn path_root_length(StringView path) wontthrow -> usize
+pure fn
+path_root_length(StringView path) wontthrow -> usize
 {
   return path_is_absolute(path) ? 1 : 0;
 }
 
-fn temp_directory_path() throws -> String
+fn
+temp_directory_path() throws -> String
 {
   if (const char *from_env = std::getenv("TMPDIR"); from_env != nullptr)
     return String{from_env};
@@ -58,9 +63,12 @@ fn temp_directory_path() throws -> String
   return String{"/tmp"};
 }
 
-fn set_path_compatibility(bool, bool) wontthrow -> void {}
+fn
+set_path_compatibility(bool, bool) wontthrow -> void
+{}
 
-cold fn path_exists(StringView path) wontthrow -> bool
+cold fn
+path_exists(StringView path) wontthrow -> bool
 {
   const String path_string{path};
   LOG(Debug, "probing whether '%s' exists", path_string.c_str());
@@ -69,97 +77,112 @@ cold fn path_exists(StringView path) wontthrow -> bool
   return ::stat(path_string.c_str(), &info) == 0;
 }
 
-static fn stat_path(StringView path, struct stat &info) wontthrow -> bool
+static fn
+stat_path(StringView path, struct stat &info) wontthrow -> bool
 {
   const String path_string{path};
 
   return ::stat(path_string.c_str(), &info) == 0;
 }
 
-static fn stat_matches_type(StringView path, mode_t expected_type) wontthrow
-    -> bool
+static fn
+stat_matches_type(StringView path, mode_t expected_type) wontthrow -> bool
 {
   struct stat info{};
 
   return stat_path(path, info) && (info.st_mode & S_IFMT) == expected_type;
 }
 
-cold fn path_is_directory(StringView path) wontthrow -> bool
+cold fn
+path_is_directory(StringView path) wontthrow -> bool
 {
   return stat_matches_type(path, S_IFDIR);
 }
 
-fn path_is_regular_file(StringView path) wontthrow -> bool
+fn
+path_is_regular_file(StringView path) wontthrow -> bool
 {
   return stat_matches_type(path, S_IFREG);
 }
 
-fn path_is_symbolic_link(StringView path) wontthrow -> bool
+fn
+path_is_symbolic_link(StringView path) wontthrow -> bool
 {
   const String path_string{path};
-  struct stat info{};
+  struct stat  info{};
   if (::lstat(path_string.c_str(), &info) != 0) return false;
 
   return S_ISLNK(info.st_mode);
 }
 
-fn path_is_block_device(StringView path) wontthrow -> bool
+fn
+path_is_block_device(StringView path) wontthrow -> bool
 {
   return stat_matches_type(path, S_IFBLK);
 }
 
-fn path_is_character_device(StringView path) wontthrow -> bool
+fn
+path_is_character_device(StringView path) wontthrow -> bool
 {
   return stat_matches_type(path, S_IFCHR);
 }
 
-fn path_is_fifo(StringView path) wontthrow -> bool
+fn
+path_is_fifo(StringView path) wontthrow -> bool
 {
   return stat_matches_type(path, S_IFIFO);
 }
 
-fn path_is_socket(StringView path) wontthrow -> bool
+fn
+path_is_socket(StringView path) wontthrow -> bool
 {
   return stat_matches_type(path, S_IFSOCK);
 }
 
-static fn stat_mode_has_bits(StringView path, mode_t bits) wontthrow -> bool
+static fn
+stat_mode_has_bits(StringView path, mode_t bits) wontthrow -> bool
 {
   struct stat info{};
 
   return stat_path(path, info) && (info.st_mode & bits) != 0;
 }
 
-fn path_has_setuid_bit(StringView path) wontthrow -> bool
+fn
+path_has_setuid_bit(StringView path) wontthrow -> bool
 {
   return stat_mode_has_bits(path, S_ISUID);
 }
 
-fn path_has_setgid_bit(StringView path) wontthrow -> bool
+fn
+path_has_setgid_bit(StringView path) wontthrow -> bool
 {
   return stat_mode_has_bits(path, S_ISGID);
 }
 
-fn path_has_sticky_bit(StringView path) wontthrow -> bool
+fn
+path_has_sticky_bit(StringView path) wontthrow -> bool
 {
   return stat_mode_has_bits(path, S_ISVTX);
 }
 
-fn path_is_owned_by_effective_user(StringView path) wontthrow -> bool
+fn
+path_is_owned_by_effective_user(StringView path) wontthrow -> bool
 {
   struct stat info{};
 
   return stat_path(path, info) && info.st_uid == ::geteuid();
 }
 
-fn path_is_owned_by_effective_group(StringView path) wontthrow -> bool
+fn
+path_is_owned_by_effective_group(StringView path) wontthrow -> bool
 {
   struct stat info{};
 
   return stat_path(path, info) && info.st_gid == ::getegid();
 }
 
-fn path_file_size(StringView path) wontthrow -> Maybe<u64>
+fn
+path_file_size(StringView path) wontthrow -> Maybe<u64>
 {
   struct stat info{};
   if (!stat_path(path, info) || !S_ISREG(info.st_mode)) {
@@ -169,7 +192,8 @@ fn path_file_size(StringView path) wontthrow -> Maybe<u64>
   return static_cast<u64>(info.st_size);
 }
 
-fn path_modification_time(StringView path) wontthrow -> Maybe<i64>
+fn
+path_modification_time(StringView path) wontthrow -> Maybe<i64>
 {
   struct stat info{};
   if (!stat_path(path, info)) return None;
@@ -177,7 +201,8 @@ fn path_modification_time(StringView path) wontthrow -> Maybe<i64>
   return static_cast<i64>(info.st_mtime);
 }
 
-fn paths_are_same_file(StringView first, StringView second) wontthrow -> bool
+fn
+paths_are_same_file(StringView first, StringView second) wontthrow -> bool
 {
   struct stat first_info{}, second_info{};
   if (!stat_path(first, first_info)) return false;
@@ -187,13 +212,14 @@ fn paths_are_same_file(StringView first, StringView second) wontthrow -> bool
          first_info.st_ino == second_info.st_ino;
 }
 
-fn paths_match_for_history(StringView first, StringView second) wontthrow
-    -> bool
+fn
+paths_match_for_history(StringView first, StringView second) wontthrow -> bool
 {
   return first == second;
 }
 
-fn path_is_newer_than(StringView first, StringView second) wontthrow -> bool
+fn
+path_is_newer_than(StringView first, StringView second) wontthrow -> bool
 {
   struct stat first_info{}, second_info{};
   if (!stat_path(first, first_info)) return false;
@@ -204,31 +230,36 @@ fn path_is_newer_than(StringView first, StringView second) wontthrow -> bool
   return first_info.st_mtim.tv_nsec > second_info.st_mtim.tv_nsec;
 }
 
-fn path_is_older_than(StringView first, StringView second) wontthrow -> bool
+fn
+path_is_older_than(StringView first, StringView second) wontthrow -> bool
 {
   return path_is_newer_than(second, first);
 }
 
-fn path_is_readable(StringView path) wontthrow -> bool
+fn
+path_is_readable(StringView path) wontthrow -> bool
 {
   const String path_string{path};
 
   return ::access(path_string.c_str(), R_OK) == 0;
 }
 
-fn path_is_writable(StringView path) wontthrow -> bool
+fn
+path_is_writable(StringView path) wontthrow -> bool
 {
   const String path_string{path};
 
   return ::access(path_string.c_str(), W_OK) == 0;
 }
 
-fn path_is_executable(const Path &path) wontthrow -> bool
+fn
+path_is_executable(const Path &path) wontthrow -> bool
 {
   return ::access(path.c_str(), X_OK) == 0;
 }
 
-cold fn read_current_directory() throws -> Path
+cold fn
+read_current_directory() throws -> Path
 {
   LOG(Debug, "reading the current working directory");
   char local_buffer[PATH_MAX];
@@ -237,7 +268,7 @@ cold fn read_current_directory() throws -> Path
     return Path{StringView{local_buffer}};
   if (errno != ERANGE) return Path{};
 
-  let buffer = ArrayList<char>{heap_allocator()};
+  let   buffer            = ArrayList<char>{heap_allocator()};
   usize buffer_byte_count = sizeof(local_buffer) * 2;
 
   loop
@@ -251,7 +282,8 @@ cold fn read_current_directory() throws -> Path
   }
 }
 
-fn change_current_directory(StringView path) throws -> ErrorOr<Ok>
+fn
+change_current_directory(StringView path) throws -> ErrorOr<Ok>
 {
   const String path_string{path};
   LOG(Info, "changing the current directory to '%s'", path_string.c_str());
@@ -261,30 +293,34 @@ fn change_current_directory(StringView path) throws -> ErrorOr<Ok>
   return Success;
 }
 
-fn reference_current_directory() wontthrow -> DirectoryReference
+fn
+reference_current_directory() wontthrow -> DirectoryReference
 {
   return DirectoryReference{open_current_directory_reference()};
 }
 
-fn restore_current_directory(const DirectoryReference &reference) wontthrow
-    -> bool
+fn
+restore_current_directory(const DirectoryReference &reference) wontthrow -> bool
 {
   return reference.is_valid() && ::fchdir(reference.get()) == 0;
 }
 
-static fn fill_file_status(const struct stat &info,
-                           file_status &status) wontthrow -> void;
+static fn
+fill_file_status(const struct stat &info, file_status &status) wontthrow
+    -> void;
 
-cold fn list_directory(StringView dir) throws -> Maybe<ArrayList<String>>
+cold fn
+list_directory(StringView dir) throws -> Maybe<ArrayList<String>>
 {
   return list_directory(dir, heap_allocator());
 }
 
-cold fn list_directory(StringView dir, Allocator allocator) throws
+cold fn
+list_directory(StringView dir, Allocator allocator) throws
     -> Maybe<ArrayList<String>>
 {
   const String dir_string{allocator, dir};
-  let entries = list_directory_typed(dir, allocator);
+  let          entries = list_directory_typed(dir, allocator);
   if (!entries.has_value()) return None;
   let names = ArrayList<String>{allocator};
   names.reserve(entries->count());
@@ -298,13 +334,15 @@ cold fn list_directory(StringView dir, Allocator allocator) throws
   return names;
 }
 
-cold fn list_directory_typed(StringView dir) throws
+cold fn
+list_directory_typed(StringView dir) throws
     -> Maybe<ArrayList<Path::DirectoryChild>>
 {
   return list_directory_typed(dir, heap_allocator());
 }
 
-static fn list_directory_typed_handle(DIR *handle, Allocator allocator) throws
+static fn
+list_directory_typed_handle(DIR *handle, Allocator allocator) throws
     -> Maybe<ArrayList<Path::DirectoryChild>>
 {
   defer { ::closedir(handle); };
@@ -313,7 +351,7 @@ static fn list_directory_typed_handle(DIR *handle, Allocator allocator) throws
 
   loop
   {
-    errno = 0;
+    errno           = 0;
     let const entry = ::readdir(handle);
     if (entry == nullptr) {
       if (errno != 0) return None;
@@ -327,11 +365,11 @@ static fn list_directory_typed_handle(DIR *handle, Allocator allocator) throws
 
     Path::EntryKind kind = Path::EntryKind::Unknown;
     switch (entry->d_type) {
-    case DT_DIR: kind = Path::EntryKind::Directory; break;
-    case DT_REG: kind = Path::EntryKind::Regular; break;
-    case DT_LNK: kind = Path::EntryKind::Symlink; break;
+    case DT_DIR:     kind = Path::EntryKind::Directory; break;
+    case DT_REG:     kind = Path::EntryKind::Regular; break;
+    case DT_LNK:     kind = Path::EntryKind::Symlink; break;
     case DT_UNKNOWN: kind = Path::EntryKind::Unknown; break;
-    default: kind = Path::EntryKind::Other; break;
+    default:         kind = Path::EntryKind::Other; break;
     }
 
     entries.push(Path::DirectoryChild{
@@ -343,22 +381,24 @@ static fn list_directory_typed_handle(DIR *handle, Allocator allocator) throws
   return entries;
 }
 
-cold fn list_directory_typed(StringView dir, Allocator allocator) throws
+cold fn
+list_directory_typed(StringView dir, Allocator allocator) throws
     -> Maybe<ArrayList<Path::DirectoryChild>>
 {
   const String dir_string{allocator, dir};
-  let const handle = ::opendir(dir_string.c_str());
+  let const    handle = ::opendir(dir_string.c_str());
   if (handle == nullptr) return None;
 
   return list_directory_typed_handle(handle, allocator);
 }
 
-cold fn list_directory_for_batch(StringView dir, Allocator allocator) throws
+cold fn
+list_directory_for_batch(StringView dir, Allocator allocator) throws
     -> directory_batch_listing
 {
 #if defined __linux__
   const String dir_string{allocator, dir};
-  int opened = -1;
+  int          opened = -1;
 
   loop
   {
@@ -371,7 +411,7 @@ cold fn list_directory_for_batch(StringView dir, Allocator allocator) throws
   if (opened < 0) return {None, None};
 
   let directory = DirectoryReference{opened};
-  let children = list_directory_typed(directory.get(), allocator);
+  let children  = list_directory_typed(directory.get(), allocator);
   if (!children.has_value()) return {None, None};
 
   return {steal(children), directory.take()};
@@ -383,7 +423,8 @@ cold fn list_directory_for_batch(StringView dir, Allocator allocator) throws
 
 #if defined __linux__
 
-cold fn list_directory_typed(descriptor directory, Allocator allocator) throws
+cold fn
+list_directory_typed(descriptor directory, Allocator allocator) throws
     -> Maybe<ArrayList<Path::DirectoryChild>>
 {
   let const duplicate = ::dup(directory);
@@ -400,12 +441,12 @@ cold fn list_directory_typed(descriptor directory, Allocator allocator) throws
 
 #endif
 
-cold static fn list_directory_status_fallback(StringView dir,
-                                              Allocator allocator) throws
+cold static fn
+list_directory_status_fallback(StringView dir, Allocator allocator) throws
     -> Maybe<ArrayList<directory_status_entry>>
 {
   const String dir_string{dir};
-  let const handle = ::opendir(dir_string.c_str());
+  let const    handle = ::opendir(dir_string.c_str());
   if (handle == nullptr) return None;
   defer { ::closedir(handle); };
 
@@ -413,7 +454,7 @@ cold static fn list_directory_status_fallback(StringView dir,
 
   loop
   {
-    errno = 0;
+    errno                  = 0;
     let const native_entry = ::readdir(handle);
     if (native_entry == nullptr) {
       if (errno != 0) return None;
@@ -427,11 +468,11 @@ cold static fn list_directory_status_fallback(StringView dir,
 
     Path::EntryKind kind = Path::EntryKind::Unknown;
     switch (native_entry->d_type) {
-    case DT_DIR: kind = Path::EntryKind::Directory; break;
-    case DT_REG: kind = Path::EntryKind::Regular; break;
-    case DT_LNK: kind = Path::EntryKind::Symlink; break;
+    case DT_DIR:     kind = Path::EntryKind::Directory; break;
+    case DT_REG:     kind = Path::EntryKind::Regular; break;
+    case DT_LNK:     kind = Path::EntryKind::Symlink; break;
     case DT_UNKNOWN: kind = Path::EntryKind::Unknown; break;
-    default: kind = Path::EntryKind::Other; break;
+    default:         kind = Path::EntryKind::Other; break;
     }
 
     directory_status_entry entry{
@@ -462,8 +503,9 @@ cold static fn list_directory_status_fallback(StringView dir,
   return entries;
 }
 
-static fn find_ownership_problem(const struct stat &status,
-                                 const Path &target) throws -> Maybe<String>
+static fn
+find_ownership_problem(const struct stat &status, const Path &target) throws
+    -> Maybe<String>
 {
   if (status.st_uid != 0) {
     return "is not owned by root; run `chown root '" + target.text() +
@@ -477,10 +519,11 @@ static fn find_ownership_problem(const struct stat &status,
   return None;
 }
 
-fn read_system_owned_file(const Path &path) throws -> system_file_reading
+fn
+read_system_owned_file(const Path &path) throws -> system_file_reading
 {
-  let reading = system_file_reading{};
-  let const fd = ::open(path.c_str(), O_RDONLY | O_CLOEXEC);
+  let       reading = system_file_reading{};
+  let const fd      = ::open(path.c_str(), O_RDONLY | O_CLOEXEC);
   if (fd < 0) {
     if (errno == ENOENT || errno == ENOTDIR) {
       return reading;
@@ -508,7 +551,7 @@ fn read_system_owned_file(const Path &path) throws -> system_file_reading
     return reading;
   }
 
-  let const directory = path.parent_or_current();
+  let const   directory = path.parent_or_current();
   struct stat directory_status{};
   if (::stat(directory.c_str(), &directory_status) != 0) {
     reading.rejection = "Unable to inspect '" + directory.text() +
@@ -534,10 +577,11 @@ fn read_system_owned_file(const Path &path) throws -> system_file_reading
   return reading;
 }
 
-fn canonical_path(const Path &path) wontthrow -> Maybe<Path>
+fn
+canonical_path(const Path &path) wontthrow -> Maybe<Path>
 {
   let const allocator = uncached_heap_allocator();
-  let resolved_path =
+  let       resolved_path =
       static_cast<char *>(allocator.raw_alloc(PATH_MAX, alignof(char)));
   if (resolved_path == nullptr) return None;
   defer { allocator.free_array(resolved_path, PATH_MAX); };
@@ -546,13 +590,14 @@ fn canonical_path(const Path &path) wontthrow -> Maybe<Path>
   return Path{StringView{resolved_path}};
 }
 
-fn glob_matches(StringView pattern, Allocator allocator) throws
+fn
+glob_matches(StringView pattern, Allocator allocator) throws
     -> ArrayList<String>
 {
   let matches = ArrayList<String>{allocator};
 
   const String pattern_string{allocator, pattern};
-  glob_t glob_result{};
+  glob_t       glob_result{};
   defer { globfree(&glob_result); };
   if (glob(pattern_string.c_str(), 0, nullptr, &glob_result) == 0) {
     for (usize i = 0; i < glob_result.gl_pathc; i++)
@@ -562,7 +607,8 @@ fn glob_matches(StringView pattern, Allocator allocator) throws
   return matches;
 }
 
-fn directory_is_trusted_for_exec(const Path &directory) wontthrow -> bool
+fn
+directory_is_trusted_for_exec(const Path &directory) wontthrow -> bool
 {
   struct stat directory_stat;
   if (stat(directory.c_str(), &directory_stat) != 0) {
@@ -593,9 +639,11 @@ fn directory_is_trusted_for_exec(const Path &directory) wontthrow -> bool
   return true;
 }
 
-static fn open_with_flags(StringView path, file_open_mode mode,
-                          bool should_return_on_signal,
-                          bool &did_signal_arrive) throws -> Maybe<descriptor>
+static fn
+open_with_flags(StringView     path,
+                file_open_mode mode,
+                bool           should_return_on_signal,
+                bool          &did_signal_arrive) throws -> Maybe<descriptor>
 {
   LOG(Debug, "opening '%.*s'", static_cast<int>(path.length), path.data);
   did_signal_arrive = false;
@@ -606,10 +654,10 @@ static fn open_with_flags(StringView path, file_open_mode mode,
   case file_open_mode::TruncateNoClobber:
     flags = O_WRONLY | O_CREAT | O_EXCL;
     break;
-  case file_open_mode::Append: flags = O_WRONLY | O_CREAT | O_APPEND; break;
-  case file_open_mode::Read: flags = O_RDONLY; break;
+  case file_open_mode::Append:          flags = O_WRONLY | O_CREAT | O_APPEND; break;
+  case file_open_mode::Read:            flags = O_RDONLY; break;
   case file_open_mode::ReadNonblocking: flags = O_RDONLY | O_NONBLOCK; break;
-  case file_open_mode::ReadWrite: flags = O_RDWR | O_CREAT; break;
+  case file_open_mode::ReadWrite:       flags = O_RDWR | O_CREAT; break;
   }
 
   const String path_string{path};
@@ -653,7 +701,7 @@ static fn open_with_flags(StringView path, file_open_mode mode,
     }
 
     if (fd <= STDERR_FILENO) {
-      let const lifted = ::fcntl(fd, F_DUPFD, STDERR_FILENO + 1);
+      let const lifted      = ::fcntl(fd, F_DUPFD, STDERR_FILENO + 1);
       let const saved_errno = errno;
       ::close(fd);
       if (lifted < 0) {
@@ -669,7 +717,8 @@ static fn open_with_flags(StringView path, file_open_mode mode,
   }
 }
 
-fn open_file_descriptor(StringView path, file_open_mode mode) throws
+fn
+open_file_descriptor(StringView path, file_open_mode mode) throws
     -> Maybe<descriptor>
 {
   bool did_signal_arrive = false;
@@ -677,17 +726,20 @@ fn open_file_descriptor(StringView path, file_open_mode mode) throws
   return open_with_flags(path, mode, false, did_signal_arrive);
 }
 
-fn open_file_descriptor_until_signal(StringView path, file_open_mode mode,
-                                     bool &did_signal_arrive) throws
+fn
+open_file_descriptor_until_signal(StringView     path,
+                                  file_open_mode mode,
+                                  bool          &did_signal_arrive) throws
     -> Maybe<descriptor>
 {
   return open_with_flags(path, mode, true, did_signal_arrive);
 }
 
-fn acquire_process_lock(StringView path) throws -> Maybe<descriptor>
+fn
+acquire_process_lock(StringView path) throws -> Maybe<descriptor>
 {
   const String path_string{path};
-  let const lock = ::open(path_string.c_str(), O_RDONLY | O_DIRECTORY);
+  let const    lock = ::open(path_string.c_str(), O_RDONLY | O_DIRECTORY);
   if (lock < 0) return None;
   if (::flock(lock, LOCK_EX) == 0) return lock;
   ::close(lock);
@@ -695,13 +747,15 @@ fn acquire_process_lock(StringView path) throws -> Maybe<descriptor>
   return None;
 }
 
-fn release_process_lock(descriptor lock) wontthrow -> void
+fn
+release_process_lock(descriptor lock) wontthrow -> void
 {
   unused(::flock(lock, LOCK_UN));
   unused(::close(lock));
 }
 
-fn write_to_temp_file(StringView content) throws -> Maybe<descriptor>
+fn
+write_to_temp_file(StringView content) throws -> Maybe<descriptor>
 {
   LOG(Debug, "writing %zu bytes into an anonymous temp file", content.count());
 
@@ -710,7 +764,7 @@ fn write_to_temp_file(StringView content) throws -> Maybe<descriptor>
   let path_template_path = Path{temp_dir.text()};
   path_template_path.append("kosh_heredoc_XXXXXX");
 
-  const String &path_template_text = path_template_path.text();
+  const String   &path_template_text = path_template_path.text();
   ArrayList<char> path_template{heap_allocator()};
   path_template.reserve(path_template_text.count() + 1);
 
@@ -739,8 +793,10 @@ fn write_to_temp_file(StringView content) throws -> Maybe<descriptor>
   return fd;
 }
 
-fn write_to_named_temp_file(const Path &directory, StringView prefix,
-                            StringView content) throws -> Maybe<Path>
+fn
+write_to_named_temp_file(const Path &directory,
+                         StringView  prefix,
+                         StringView  content) throws -> Maybe<Path>
 {
   if (prefix.find_character('/').has_value()) return None;
   let file_name = String{heap_allocator(), prefix};
@@ -774,7 +830,8 @@ fn write_to_named_temp_file(const Path &directory, StringView prefix,
   return Path{StringView{path_template.begin()}};
 }
 
-fn make_temp_directory(const Path &directory, StringView prefix) throws
+fn
+make_temp_directory(const Path &directory, StringView prefix) throws
     -> Maybe<Path>
 {
   if (prefix.find_character('/').has_value()) return None;
@@ -795,10 +852,11 @@ fn make_temp_directory(const Path &directory, StringView prefix) throws
   return Path{StringView{path_template.begin()}};
 }
 
-fn make_directory(StringView path, u32 mode) wontthrow -> bool
+fn
+make_directory(StringView path, u32 mode) wontthrow -> bool
 {
   bool did_succeed;
-  int saved_errno;
+  int  saved_errno;
   {
     const String path_string{path};
     did_succeed = ::mkdir(path_string.c_str(), mode) == 0;
@@ -809,10 +867,11 @@ fn make_directory(StringView path, u32 mode) wontthrow -> bool
   return did_succeed;
 }
 
-fn set_file_mode(StringView path, u32 mode) wontthrow -> bool
+fn
+set_file_mode(StringView path, u32 mode) wontthrow -> bool
 {
   bool did_succeed;
-  int saved_errno;
+  int  saved_errno;
   {
     const String path_string{path};
     did_succeed = ::chmod(path_string.c_str(), mode) == 0;
@@ -823,14 +882,17 @@ fn set_file_mode(StringView path, u32 mode) wontthrow -> bool
   return did_succeed;
 }
 
-fn set_file_owner(StringView path, i64 owner_id, i64 group_id,
-                  symlink_follow_mode follow_mode) wontthrow -> bool
+fn
+set_file_owner(StringView          path,
+               i64                 owner_id,
+               i64                 group_id,
+               symlink_follow_mode follow_mode) wontthrow -> bool
 {
   bool did_succeed;
-  int saved_errno;
+  int  saved_errno;
   {
     const String path_string{path};
-    let const owner =
+    let const    owner =
         owner_id < 0 ? static_cast<uid_t>(-1) : static_cast<uid_t>(owner_id);
     let const group =
         group_id < 0 ? static_cast<gid_t>(-1) : static_cast<gid_t>(group_id);
@@ -844,10 +906,11 @@ fn set_file_owner(StringView path, i64 owner_id, i64 group_id,
   return did_succeed;
 }
 
-fn create_hard_link(StringView target, StringView link_path) wontthrow -> bool
+fn
+create_hard_link(StringView target, StringView link_path) wontthrow -> bool
 {
   bool did_succeed;
-  int saved_errno;
+  int  saved_errno;
   {
     const String target_string{target};
     const String link_string{link_path};
@@ -859,10 +922,11 @@ fn create_hard_link(StringView target, StringView link_path) wontthrow -> bool
   return did_succeed;
 }
 
-fn make_fifo(StringView path, u32 mode) wontthrow -> bool
+fn
+make_fifo(StringView path, u32 mode) wontthrow -> bool
 {
   bool did_succeed;
-  int saved_errno;
+  int  saved_errno;
   {
     const String path_string{path};
     did_succeed = ::mkfifo(path_string.c_str(), static_cast<mode_t>(mode)) == 0;
@@ -873,11 +937,14 @@ fn make_fifo(StringView path, u32 mode) wontthrow -> bool
   return did_succeed;
 }
 
-fn make_device_node(StringView path, u32 mode, u32 major_number,
-                    u32 minor_number) wontthrow -> bool
+fn
+make_device_node(StringView path,
+                 u32        mode,
+                 u32        major_number,
+                 u32        minor_number) wontthrow -> bool
 {
   bool did_succeed;
-  int saved_errno;
+  int  saved_errno;
   {
     const String path_string{path};
 #if defined __linux__
@@ -888,7 +955,7 @@ fn make_device_node(StringView path, u32 mode, u32 major_number,
     unused(major_number);
     unused(minor_number);
     did_succeed = false;
-    errno = ENOTSUP;
+    errno       = ENOTSUP;
 #endif
     saved_errno = errno;
   }
@@ -897,10 +964,11 @@ fn make_device_node(StringView path, u32 mode, u32 major_number,
   return did_succeed;
 }
 
-fn touch_file_times(StringView path) wontthrow -> bool
+fn
+touch_file_times(StringView path) wontthrow -> bool
 {
   bool did_succeed;
-  int saved_errno;
+  int  saved_errno;
   {
     const String path_string{path};
     did_succeed = ::utimensat(AT_FDCWD, path_string.c_str(), nullptr, 0) == 0;
@@ -911,13 +979,13 @@ fn touch_file_times(StringView path) wontthrow -> bool
   return did_succeed;
 }
 
-fn set_file_times(StringView path, const file_time_values &times) wontthrow
-    -> bool
+fn
+set_file_times(StringView path, const file_time_values &times) wontthrow -> bool
 {
   bool did_succeed;
-  int saved_errno;
+  int  saved_errno;
   {
-    const String path_string{path};
+    const String          path_string{path};
     const struct timespec native_times[2] = {
         {static_cast<time_t>(times.access_time),
          static_cast<long>(times.access_nanoseconds)      },
@@ -933,10 +1001,11 @@ fn set_file_times(StringView path, const file_time_values &times) wontthrow
   return did_succeed;
 }
 
-fn remove_directory(StringView path) wontthrow -> bool
+fn
+remove_directory(StringView path) wontthrow -> bool
 {
   bool did_succeed;
-  int saved_errno;
+  int  saved_errno;
   {
     const String path_string{path};
     did_succeed = ::rmdir(path_string.c_str()) == 0;
@@ -947,10 +1016,11 @@ fn remove_directory(StringView path) wontthrow -> bool
   return did_succeed;
 }
 
-fn remove_file(StringView path) wontthrow -> bool
+fn
+remove_file(StringView path) wontthrow -> bool
 {
   bool did_succeed;
-  int saved_errno;
+  int  saved_errno;
   {
     const String path_string{path};
     did_succeed = ::unlink(path_string.c_str()) == 0;
@@ -966,7 +1036,7 @@ static constexpr usize REMOVE_TREE_HELD_DESCRIPTOR_DEPTH = 64;
 struct tree_removal_child
 {
   String name;
-  bool is_known_non_directory;
+  bool   is_known_non_directory;
 };
 
 class TreeRemovalWalk
@@ -974,13 +1044,16 @@ class TreeRemovalWalk
 public:
   TreeRemovalWalk(const tree_removal_hooks *hooks) wontthrow : m_hooks(hooks) {}
 
-  pure fn should_continue_after_failure() const wontthrow -> bool
+  pure fn
+  should_continue_after_failure() const wontthrow -> bool
   {
     return m_hooks != nullptr;
   }
 
-  fn report(tree_removal_failure failure, StringView path,
-            StringView reason) const throws -> void
+  fn
+  report(tree_removal_failure failure,
+         StringView           path,
+         StringView           reason) const throws -> void
   {
     if (m_hooks == nullptr || m_hooks->report_failure == nullptr) {
       return;
@@ -991,20 +1064,23 @@ public:
     errno = saved_errno;
   }
 
-  fn report_system_error(tree_removal_failure failure,
-                         StringView path) const throws -> void
+  fn
+  report_system_error(tree_removal_failure failure,
+                      StringView           path) const throws -> void
   {
     if (m_hooks == nullptr) return;
 
     report(failure, path, last_system_error_message().view());
   }
 
-  pure fn has_removal_choice() const wontthrow -> bool
+  pure fn
+  has_removal_choice() const wontthrow -> bool
   {
     return m_hooks != nullptr && m_hooks->should_remove != nullptr;
   }
 
-  fn choose_enter(const tree_removal_entry &entry) const throws
+  fn
+  choose_enter(const tree_removal_entry &entry) const throws
       -> tree_removal_choice
   {
     if (m_hooks == nullptr || m_hooks->should_enter_directory == nullptr) {
@@ -1014,7 +1090,8 @@ public:
     return m_hooks->should_enter_directory(m_hooks->context, entry);
   }
 
-  fn choose_remove(const tree_removal_entry &entry) const throws
+  fn
+  choose_remove(const tree_removal_entry &entry) const throws
       -> tree_removal_choice
   {
     if (m_hooks == nullptr || m_hooks->should_remove == nullptr) {
@@ -1024,7 +1101,8 @@ public:
     return m_hooks->should_remove(m_hooks->context, entry);
   }
 
-  fn report_removed(const tree_removal_entry &entry) const throws -> void
+  fn
+  report_removed(const tree_removal_entry &entry) const throws -> void
   {
     if (m_hooks == nullptr || m_hooks->report_removed == nullptr) {
       return;
@@ -1033,19 +1111,28 @@ public:
     m_hooks->report_removed(m_hooks->context, entry);
   }
 
-  fn arena() wontthrow -> BumpArena & { return m_arena; }
+  fn
+  arena() wontthrow -> BumpArena &
+  {
+    return m_arena;
+  }
 
 private:
   const tree_removal_hooks *m_hooks;
-  BumpArena m_arena{};
+  BumpArena                 m_arena{};
 };
 
-static fn remove_tree_entry(TreeRemovalWalk &walk, int &parent_descriptor,
-                            const struct stat &parent_status, const char *name,
-                            StringView path, bool is_known_non_directory,
-                            usize depth, bool &is_kept) throws -> bool
+static fn
+remove_tree_entry(TreeRemovalWalk   &walk,
+                  int               &parent_descriptor,
+                  const struct stat &parent_status,
+                  const char        *name,
+                  StringView         path,
+                  bool               is_known_non_directory,
+                  usize              depth,
+                  bool              &is_kept) throws -> bool
 {
-  let entry = tree_removal_entry{};
+  let entry  = tree_removal_entry{};
   entry.path = path;
   if (is_known_non_directory && !walk.has_removal_choice()) {
     if (::unlinkat(parent_descriptor, name, 0) == 0) {
@@ -1140,15 +1227,15 @@ static fn remove_tree_entry(TreeRemovalWalk &walk, int &parent_descriptor,
     return false;
   }
 
-  let &arena = walk.arena();
+  let      &arena      = walk.arena();
   let const level_mark = arena.mark();
   defer { arena.release(level_mark); };
-  let const allocator = bump_allocator(arena);
-  let children = ArrayList<tree_removal_child>{allocator};
-  bool did_succeed = true;
+  let const allocator   = bump_allocator(arena);
+  let       children    = ArrayList<tree_removal_child>{allocator};
+  bool      did_succeed = true;
   {
     let const listing = ::dup(directory);
-    let const handle = listing < 0 ? nullptr : ::fdopendir(listing);
+    let const handle  = listing < 0 ? nullptr : ::fdopendir(listing);
     if (handle == nullptr) {
       let const saved_errno = errno;
       if (listing >= 0) ::close(listing);
@@ -1161,7 +1248,7 @@ static fn remove_tree_entry(TreeRemovalWalk &walk, int &parent_descriptor,
 
     loop
     {
-      errno = 0;
+      errno           = 0;
       let const entry = ::readdir(handle);
       if (entry == nullptr) {
         if (errno != 0) {
@@ -1221,7 +1308,7 @@ static fn remove_tree_entry(TreeRemovalWalk &walk, int &parent_descriptor,
     let const reopened =
         ::openat(directory, "..", O_RDONLY | O_DIRECTORY | O_CLOEXEC);
     struct stat reopened_status{};
-    let const is_reopened = reopened >= 0 &&
+    let const   is_reopened = reopened >= 0 &&
                             ::fstat(reopened, &reopened_status) == 0 &&
                             reopened_status.st_dev == parent_status.st_dev &&
                             reopened_status.st_ino == parent_status.st_ino;
@@ -1264,23 +1351,26 @@ static fn remove_tree_entry(TreeRemovalWalk &walk, int &parent_descriptor,
   return false;
 }
 
-fn remove_tree(StringView path, Allocator allocator,
-               const tree_removal_hooks *hooks) throws -> bool
+fn
+remove_tree(StringView                path,
+            Allocator                 allocator,
+            const tree_removal_hooks *hooks) throws -> bool
 {
-  let const path_string = String{allocator, path};
-  let walk = TreeRemovalWalk{hooks};
-  int working_directory = AT_FDCWD;
+  let const   path_string       = String{allocator, path};
+  let         walk              = TreeRemovalWalk{hooks};
+  int         working_directory = AT_FDCWD;
   struct stat working_status{};
-  bool is_kept = false;
+  bool        is_kept = false;
 
   return remove_tree_entry(walk, working_directory, working_status,
                            path_string.c_str(), path, false, 0, is_kept);
 }
 
-fn rename_path(StringView from, StringView to) wontthrow -> bool
+fn
+rename_path(StringView from, StringView to) wontthrow -> bool
 {
   bool did_succeed;
-  int saved_errno;
+  int  saved_errno;
   {
     const String from_string{from};
     const String to_string{to};
@@ -1292,10 +1382,11 @@ fn rename_path(StringView from, StringView to) wontthrow -> bool
   return did_succeed;
 }
 
-fn create_symlink(StringView target, StringView link_path) wontthrow -> bool
+fn
+create_symlink(StringView target, StringView link_path) wontthrow -> bool
 {
   bool did_succeed;
-  int saved_errno;
+  int  saved_errno;
   {
     const String target_string{target};
     const String link_string{link_path};
@@ -1307,11 +1398,12 @@ fn create_symlink(StringView target, StringView link_path) wontthrow -> bool
   return did_succeed;
 }
 
-fn read_symlink(StringView path, Allocator allocator) wontthrow -> Maybe<String>
+fn
+read_symlink(StringView path, Allocator allocator) wontthrow -> Maybe<String>
 {
   const String path_string{path};
-  char inline_buffer[256];
-  let length =
+  char         inline_buffer[256];
+  let          length =
       ::readlink(path_string.c_str(), inline_buffer, sizeof(inline_buffer));
   if (length < 0) return koshka::None;
   if (static_cast<usize>(length) < sizeof(inline_buffer))
@@ -1319,7 +1411,7 @@ fn read_symlink(StringView path, Allocator allocator) wontthrow -> Maybe<String>
         allocator, StringView{inline_buffer, static_cast<usize>(length)}
     };
 
-  usize capacity = sizeof(inline_buffer) * 2;
+  usize           capacity = sizeof(inline_buffer) * 2;
   ArrayList<char> buffer{allocator};
 
   loop
@@ -1342,65 +1434,71 @@ fn read_symlink(StringView path, Allocator allocator) wontthrow -> Maybe<String>
   }
 }
 
-pure fn device_major(u64 device_id) wontthrow -> u32
+pure fn
+device_major(u64 device_id) wontthrow -> u32
 {
   return static_cast<u32>(major(static_cast<dev_t>(device_id)));
 }
 
-pure fn device_minor(u64 device_id) wontthrow -> u32
+pure fn
+device_minor(u64 device_id) wontthrow -> u32
 {
   return static_cast<u32>(minor(static_cast<dev_t>(device_id)));
 }
 
-fn sync_filesystems() wontthrow -> bool
+fn
+sync_filesystems() wontthrow -> bool
 {
   ::sync();
 
   return true;
 }
 
-static fn fill_file_status(const struct stat &info,
-                           file_status &status) wontthrow -> void
+static fn
+fill_file_status(const struct stat &info, file_status &status) wontthrow -> void
 {
-  status.device_id = static_cast<u64>(info.st_dev);
-  status.special_device_id = static_cast<u64>(info.st_rdev);
-  status.file_id = static_cast<u64>(info.st_ino);
-  status.has_file_identity = true;
-  status.mode = static_cast<u32>(info.st_mode);
-  status.link_count = static_cast<u64>(info.st_nlink);
-  status.owner_id = static_cast<u32>(info.st_uid);
-  status.group_id = static_cast<u32>(info.st_gid);
-  status.size = static_cast<u64>(info.st_size);
-  status.access_time = static_cast<i64>(info.st_atime);
-  status.access_nanoseconds = static_cast<u32>(info.st_atim.tv_nsec);
-  status.modification_time = static_cast<i64>(info.st_mtime);
+  status.device_id                = static_cast<u64>(info.st_dev);
+  status.special_device_id        = static_cast<u64>(info.st_rdev);
+  status.file_id                  = static_cast<u64>(info.st_ino);
+  status.has_file_identity        = true;
+  status.mode                     = static_cast<u32>(info.st_mode);
+  status.link_count               = static_cast<u64>(info.st_nlink);
+  status.owner_id                 = static_cast<u32>(info.st_uid);
+  status.group_id                 = static_cast<u32>(info.st_gid);
+  status.size                     = static_cast<u64>(info.st_size);
+  status.access_time              = static_cast<i64>(info.st_atime);
+  status.access_nanoseconds       = static_cast<u32>(info.st_atim.tv_nsec);
+  status.modification_time        = static_cast<i64>(info.st_mtime);
   status.modification_nanoseconds = static_cast<u32>(info.st_mtim.tv_nsec);
-  status.change_time = static_cast<i64>(info.st_ctime);
-  status.change_nanoseconds = static_cast<u32>(info.st_ctim.tv_nsec);
-  status.blocks = static_cast<u64>(info.st_blocks);
+  status.change_time              = static_cast<i64>(info.st_ctime);
+  status.change_nanoseconds       = static_cast<u32>(info.st_ctim.tv_nsec);
+  status.blocks                   = static_cast<u64>(info.st_blocks);
 }
 
-fn stat_path(StringView path, file_status &status) wontthrow -> bool
+fn
+stat_path(StringView path, file_status &status) wontthrow -> bool
 {
   const String path_string{path};
-  struct stat info{};
+  struct stat  info{};
   if (::lstat(path_string.c_str(), &info) != 0) return false;
   fill_file_status(info, status);
 
   return true;
 }
 
-fn stat_path_following(StringView path, file_status &status) wontthrow -> bool
+fn
+stat_path_following(StringView path, file_status &status) wontthrow -> bool
 {
   const String path_string{path};
-  struct stat info{};
+  struct stat  info{};
   if (::stat(path_string.c_str(), &info) != 0) return false;
   fill_file_status(info, status);
 
   return true;
 }
 
-fn stat_descriptor(os::descriptor fd, file_status &status) wontthrow -> bool
+fn
+stat_descriptor(os::descriptor fd, file_status &status) wontthrow -> bool
 {
   struct stat info{};
   if (::fstat(fd, &info) != 0) return false;
@@ -1409,7 +1507,8 @@ fn stat_descriptor(os::descriptor fd, file_status &status) wontthrow -> bool
   return true;
 }
 
-fn file_type_letter(u32 mode) wontthrow -> char
+fn
+file_type_letter(u32 mode) wontthrow -> char
 {
   const mode_t bits = static_cast<mode_t>(mode);
   if (S_ISDIR(bits)) return 'd';
@@ -1422,10 +1521,11 @@ fn file_type_letter(u32 mode) wontthrow -> char
   return '-';
 }
 
-fn format_mode_string(u32 mode) throws -> String
+fn
+format_mode_string(u32 mode) throws -> String
 {
   const mode_t bits = static_cast<mode_t>(mode);
-  String result{heap_allocator()};
+  String       result{heap_allocator()};
   result.push(file_type_letter(mode));
   result.push((bits & S_IRUSR) != 0 ? 'r' : '-');
   result.push((bits & S_IWUSR) != 0 ? 'w' : '-');

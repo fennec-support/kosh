@@ -88,8 +88,8 @@ inline constexpr static_string_entry<compgen_action> COMPGEN_ACTION_ENTRIES[] =
 
 inline constexpr StaticStringMap COMPGEN_ACTIONS{COMPGEN_ACTION_ENTRIES};
 
-inline constexpr pure fn compgen_action_bit(compgen_action action) wontthrow
-    -> u32
+inline constexpr pure fn
+compgen_action_bit(compgen_action action) wontthrow -> u32
 {
   return 1U << static_cast<u32>(action);
 }
@@ -106,7 +106,8 @@ inline constexpr compgen_action LETTER_COMPGEN_ACTIONS[] = {
 inline constexpr usize LETTER_COMPGEN_ACTION_COUNT =
     sizeof(LETTER_COMPGEN_ACTIONS) / sizeof(LETTER_COMPGEN_ACTIONS[0]);
 
-inline constexpr pure fn compgen_letter_action_mask(const bool (
+inline constexpr pure fn
+compgen_letter_action_mask(const bool (
     &is_action_enabled)[LETTER_COMPGEN_ACTION_COUNT]) wontthrow -> u32
 {
   u32 action_mask = 0;
@@ -151,7 +152,8 @@ inline constexpr static_string_entry<completion_option>
 
 inline constexpr StaticStringMap COMPLETION_OPTIONS{COMPLETION_OPTION_ENTRIES};
 
-inline pure fn completion_option_bit(completion_option option) wontthrow -> u32
+inline pure fn
+completion_option_bit(completion_option option) wontthrow -> u32
 {
   return 1U << static_cast<u32>(option);
 }
@@ -170,8 +172,8 @@ enum class completion_argument : u8
 inline constexpr u32 COMPLETION_ARGUMENT_COUNT =
     static_cast<u32>(completion_argument::Function) + 1;
 
-inline pure fn completion_argument_bit(completion_argument argument) wontthrow
-    -> u32
+inline pure fn
+completion_argument_bit(completion_argument argument) wontthrow -> u32
 {
   return 1U << static_cast<u32>(argument);
 }
@@ -185,46 +187,50 @@ enum class completion_spec_slot : u8
 
 struct completion_spec
 {
-  String function_name{heap_allocator()};
-  String word_list{heap_allocator()};
-  String glob_pattern{heap_allocator()};
-  String filter_pattern{heap_allocator()};
-  String prefix{heap_allocator()};
-  String suffix{heap_allocator()};
-  String command{heap_allocator()};
-  u32 action_mask{0};
-  u32 option_mask{0};
-  u32 argument_mask{0};
+  String           function_name{heap_allocator()};
+  String           word_list{heap_allocator()};
+  String           glob_pattern{heap_allocator()};
+  String           filter_pattern{heap_allocator()};
+  String           prefix{heap_allocator()};
+  String           suffix{heap_allocator()};
+  String           command{heap_allocator()};
+  u32              action_mask{0};
+  u32              option_mask{0};
+  u32              argument_mask{0};
   definition_state defining_state;
 
-  pure fn has_action(compgen_action action) const wontthrow -> bool
+  pure fn
+  has_action(compgen_action action) const wontthrow -> bool
   {
     return (action_mask & compgen_action_bit(action)) != 0;
   }
 
-  pure fn has_option(completion_option option) const wontthrow -> bool
+  pure fn
+  has_option(completion_option option) const wontthrow -> bool
   {
     return (option_mask & completion_option_bit(option)) != 0;
   }
 
-  pure fn has_argument(completion_argument argument) const wontthrow -> bool
+  pure fn
+  has_argument(completion_argument argument) const wontthrow -> bool
   {
     return (argument_mask & completion_argument_bit(argument)) != 0;
   }
 
-  fn clone(Allocator allocator) const throws -> completion_spec
+  fn
+  clone(Allocator allocator) const throws -> completion_spec
   {
-    let copy = completion_spec{};
-    copy.function_name = String{allocator, function_name.view()};
-    copy.word_list = String{allocator, word_list.view()};
-    copy.glob_pattern = String{allocator, glob_pattern.view()};
+    let copy            = completion_spec{};
+    copy.function_name  = String{allocator, function_name.view()};
+    copy.word_list      = String{allocator, word_list.view()};
+    copy.glob_pattern   = String{allocator, glob_pattern.view()};
     copy.filter_pattern = String{allocator, filter_pattern.view()};
-    copy.prefix = String{allocator, prefix.view()};
-    copy.suffix = String{allocator, suffix.view()};
-    copy.command = String{allocator, command.view()};
-    copy.action_mask = action_mask;
-    copy.option_mask = option_mask;
-    copy.argument_mask = argument_mask;
+    copy.prefix         = String{allocator, prefix.view()};
+    copy.suffix         = String{allocator, suffix.view()};
+    copy.command        = String{allocator, command.view()};
+    copy.action_mask    = action_mask;
+    copy.option_mask    = option_mask;
+    copy.argument_mask  = argument_mask;
     copy.defining_state = defining_state;
 
     return copy;
@@ -233,112 +239,112 @@ struct completion_spec
 
 struct variable_snapshot
 {
-  VariableTable variables;
+  VariableTable             variables;
   StringMap<SourceLocation> special_variable_definition_locations;
-  CompositeKeyArrays associative_arrays;
-  CompositeKeyArrays sparse_arrays;
-  ArrayList<String> positional_params;
-  ArrayList<String> directory_stack;
+  CompositeKeyArrays        associative_arrays;
+  CompositeKeyArrays        sparse_arrays;
+  ArrayList<String>         positional_params;
+  ArrayList<String>         directory_stack;
   CopyOnWrite<StringMap<exported_name_value>> exported_names;
-  u32 bash_argument_value_count;
-  u32 bash_argument_frame_count;
-  bool has_bash_argument_arrays;
-  u8 bash_argument_frame_context_flags;
-  u8 disabled_bash_special_arrays;
-  u8 unset_dynamic_readers;
+  u32                                         bash_argument_value_count;
+  u32                                         bash_argument_frame_count;
+  bool                                        has_bash_argument_arrays;
+  u8                                          bash_argument_frame_context_flags;
+  u8                                          disabled_bash_special_arrays;
+  u8                                          unset_dynamic_readers;
 };
 
 struct completion_snapshot
 {
   StringMap<completion_spec> specs;
-  Maybe<completion_spec> default_spec;
-  Maybe<completion_spec> empty_spec;
-  Maybe<completion_spec> initial_spec;
+  Maybe<completion_spec>     default_spec;
+  Maybe<completion_spec>     empty_spec;
+  Maybe<completion_spec>     initial_spec;
 };
 
 struct scope_snapshot
 {
-  StringMap<String> aliases;
+  StringMap<String>                   aliases;
   ArrayList<ArrayList<local_binding>> local_scopes;
-  usize local_scope_depth;
+  usize                               local_scope_depth;
 };
 
 struct execution_snapshot
 {
   String last_argument;
-  usize terminal_exec_subshell_depth;
-  bool terminal_exec_allowed;
+  usize  terminal_exec_subshell_depth;
+  bool   terminal_exec_allowed;
 };
 
 struct trap_snapshot
 {
   StringMap<trap_definition> traps;
-  trap_install_state install;
+  trap_install_state         install;
 };
 
 struct runtime_control_snapshot
 {
-  u8 init_moods_sourcing;
-  u8 initialized_moods;
+  u8                init_moods_sourcing;
+  u8                initialized_moods;
   control_mutations mutations;
 };
 
 struct runtime_control_wire
 {
-  u8 init_moods_sourcing{0};
-  u8 initialized_moods{0};
+  u8  init_moods_sourcing{0};
+  u8  initialized_moods{0};
   u32 suppressed_warnings{0};
 };
 
 struct eval_state_snapshot
 {
-  variable_snapshot variables;
-  completion_snapshot completion;
+  variable_snapshot                          variables;
+  completion_snapshot                        completion;
   CopyOnWrite<StringMap<FunctionBodyHandle>> functions;
-  scope_snapshot scopes;
-  execution_snapshot execution;
-  trap_snapshot traps;
-  runtime_control_snapshot control;
-  dynamic_clock_state clock;
-  job_table_snapshot jobs;
-  getopts_cursor getopts;
-  coprocess_descriptors coprocess;
-  usize environment_undo_mark;
-  RuntimeState runtime;
-  ProgramResolver program_resolver;
-  os::DirectoryReference working_directory;
-  u32 file_creation_mask;
+  scope_snapshot                             scopes;
+  execution_snapshot                         execution;
+  trap_snapshot                              traps;
+  runtime_control_snapshot                   control;
+  dynamic_clock_state                        clock;
+  job_table_snapshot                         jobs;
+  getopts_cursor                             getopts;
+  coprocess_descriptors                      coprocess;
+  usize                                      environment_undo_mark;
+  RuntimeState                               runtime;
+  ProgramResolver                            program_resolver;
+  os::DirectoryReference                     working_directory;
+  u32                                        file_creation_mask;
 };
 
 struct variable_wire
 {
-  u8 disabled_bash_special_arrays{0};
-  u8 unset_dynamic_readers{0};
-  bool has_bash_argument_arrays{false};
-  ArrayList<u32> bash_argument_frame_counts{heap_allocator()};
+  u8                disabled_bash_special_arrays{0};
+  u8                unset_dynamic_readers{0};
+  bool              has_bash_argument_arrays{false};
+  ArrayList<u32>    bash_argument_frame_counts{heap_allocator()};
   ArrayList<String> bash_argument_values{heap_allocator()};
-  bool has_bash_argument_context{false};
-  u8 bash_argument_context_flags{0};
-  String bash_argument_source_path{heap_allocator()};
+  bool              has_bash_argument_context{false};
+  u8                bash_argument_context_flags{0};
+  String            bash_argument_source_path{heap_allocator()};
 };
 
 struct execution_wire
 {
   Maybe<String> execution_string{None};
-  String last_argument{heap_allocator()};
+  String        last_argument{heap_allocator()};
 };
 
 struct startup_wire
 {
   String init_moods{heap_allocator()};
-  bool is_restricted_shell{false};
-  bool is_login_shell{false};
+  bool   is_restricted_shell{false};
+  bool   is_login_shell{false};
 };
 
 struct function_wire
 {
-  usize call_depth{0};
-  ArrayList<String> call_names{heap_allocator()};
+  usize                               call_depth{0};
+  ArrayList<String>                   call_names{heap_allocator()};
   StringMap<function_definition_info> definition_origins{heap_allocator()};
 };
 
@@ -358,25 +364,31 @@ public:
   {
     other.m_is_owned = false;
   }
-  fn operator=(CompiledRegex &&other) noexcept -> CompiledRegex &
+  fn
+  operator=(CompiledRegex &&other) noexcept -> CompiledRegex &
   {
     if (this != &other) {
       if (m_is_owned) os::free_regex(m_re);
-      m_re = other.m_re;
-      m_is_owned = other.m_is_owned;
+      m_re             = other.m_re;
+      m_is_owned       = other.m_is_owned;
       other.m_is_owned = false;
     }
 
     return *this;
   }
   CompiledRegex(const CompiledRegex &) = delete;
-  CompiledRegex &operator=(const CompiledRegex &) = delete;
+  CompiledRegex &
+  operator=(const CompiledRegex &) = delete;
 
-  fn get() wontthrow -> os::compiled_regex * { return &m_re; }
+  fn
+  get() wontthrow -> os::compiled_regex *
+  {
+    return &m_re;
+  }
 
 private:
   os::compiled_regex m_re{};
-  bool m_is_owned{false};
+  bool               m_is_owned{false};
 };
 
 } /* namespace koshka */

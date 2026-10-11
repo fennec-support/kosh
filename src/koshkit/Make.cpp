@@ -23,38 +23,77 @@ KOSHKIT_UTIL_DECL("[-BeiknpqrSst] [-j[jobs]] [-C directory] [-f makefile]... "
                   "[target ...]",
                   "The make utility runs the recipe of each requested target.");
 
-FLAG(MAKE_FILE, ManyStrings, 'f', "file",
+FLAG(MAKE_FILE,
+     ManyStrings,
+     'f',
+     "file",
      "Read the specified file instead of Makefile.");
-FLAG(MAKE_DIR, String, 'C', "directory",
+FLAG(MAKE_DIR,
+     String,
+     'C',
+     "directory",
      "Change to this directory before reading the Makefile.");
-FLAG(MAKE_ALWAYS_MAKE, Bool, 'B', "always-make",
+FLAG(MAKE_ALWAYS_MAKE,
+     Bool,
+     'B',
+     "always-make",
      "Rebuild every target unconditionally.");
-FLAG(MAKE_KEEP_GOING, Bool, 'k', "keep-going",
+FLAG(MAKE_KEEP_GOING,
+     Bool,
+     'k',
+     "keep-going",
      "Keep going after a target fails.");
-FLAG(MAKE_ENVIRONMENT_OVERRIDES, Bool, 'e', "environment-overrides",
+FLAG(MAKE_ENVIRONMENT_OVERRIDES,
+     Bool,
+     'e',
+     "environment-overrides",
      "Let environment variables override makefile assignments.");
-FLAG(MAKE_IGNORE_ERRORS, Bool, 'i', "ignore-errors",
+FLAG(MAKE_IGNORE_ERRORS,
+     Bool,
+     'i',
+     "ignore-errors",
      "Treat recipe errors as successful results.");
-FLAG(MAKE_STOP, Bool, 'S', "stop",
+FLAG(MAKE_STOP,
+     Bool,
+     'S',
+     "stop",
      "Stop after an error, cancelling keep-going mode.");
-FLAG(MAKE_DRY_RUN, Bool, 'n', "just-print",
+FLAG(MAKE_DRY_RUN,
+     Bool,
+     'n',
+     "just-print",
      "Print recipes without running them.");
-FLAG(MAKE_PRINT_DATABASE, Bool, 'p', "print-data-base",
+FLAG(MAKE_PRINT_DATABASE,
+     Bool,
+     'p',
+     "print-data-base",
      "Print macro definitions and target descriptions.");
-FLAG(MAKE_QUESTION, Bool, 'q', "question",
+FLAG(MAKE_QUESTION,
+     Bool,
+     'q',
+     "question",
      "Return whether any target is out of date without running recipes.");
-FLAG(MAKE_NO_BUILTINS, Bool, 'r', "no-builtin-rules",
+FLAG(MAKE_NO_BUILTINS,
+     Bool,
+     'r',
+     "no-builtin-rules",
      "Disable built-in inference rules.");
 FLAG(MAKE_SILENT, Bool, 's', "silent", "Do not print recipes before running.");
-FLAG(MAKE_TOUCH, Bool, 't', "touch",
+FLAG(MAKE_TOUCH,
+     Bool,
+     't',
+     "touch",
      "Update targets without running their recipes.");
 
-static pure fn is_make_job_count(koshka::StringView value) wontthrow -> bool
+static pure fn
+is_make_job_count(koshka::StringView value) wontthrow -> bool
 {
   return !value.is_empty() && value.is_all_decimal_digits();
 }
 FLAG_OPTIONAL(
-    MAKE_JOBS, 'j', "jobs",
+    MAKE_JOBS,
+    'j',
+    "jobs",
     "Accept an optional job count and propagate it through MAKEFLAGS.",
     is_make_job_count);
 
@@ -130,8 +169,8 @@ enum class make_function_kind : u8
 struct make_function_spec
 {
   make_function_kind kind;
-  u8 minimum_argument_count;
-  u8 maximum_argument_count;
+  u8                 minimum_argument_count;
+  u8                 maximum_argument_count;
 };
 
 constexpr static_string_entry<make_function_spec> MAKE_FUNCTION_ENTRIES[] = {
@@ -251,12 +290,14 @@ enum class make_variable_flavor : u8
 
 struct make_variable
 {
-  make_variable(String name, String value, make_variable_origin origin,
+  make_variable(String               name,
+                String               value,
+                make_variable_origin origin,
                 make_variable_flavor flavor)
       : name(steal(name)), value(steal(value)), origin(origin), flavor(flavor)
   {}
-  String name;
-  String value;
+  String               name;
+  String               value;
   make_variable_origin origin;
   make_variable_flavor flavor;
 };
@@ -268,7 +309,7 @@ struct make_pattern
   {}
   String prefix;
   String suffix;
-  bool has_wildcard{false};
+  bool   has_wildcard{false};
 };
 
 struct make_rule
@@ -277,7 +318,7 @@ struct make_rule
       : target(allocator), prerequisites(allocator), recipe_lines(allocator),
         variable_assignments(allocator)
   {}
-  String target;
+  String            target;
   ArrayList<String> prerequisites;
   ArrayList<String> recipe_lines;
   ArrayList<String> variable_assignments;
@@ -288,14 +329,14 @@ struct make_pattern_rule
   explicit make_pattern_rule(Allocator allocator)
       : rule(allocator), pattern(allocator)
   {}
-  make_rule rule;
+  make_rule    rule;
   make_pattern pattern;
 };
 
 struct make_source_document
 {
   String source;
-  u32 source_name_index;
+  u32    source_name_index;
 };
 
 struct makefile
@@ -309,30 +350,31 @@ struct makefile
         phony_targets(allocator), precious_targets(allocator),
         ignored_targets(allocator), silent_targets(allocator)
   {}
-  ArrayList<make_variable> variables;
-  ArrayList<make_rule> rules;
-  ArrayList<make_pattern_rule> pattern_rules;
-  String default_goal;
-  StringMap<usize> variable_index;
-  StringMap<usize> rule_index;
-  StringMap<bool> command_variable_names;
-  StringMap<bool> exported_variable_names;
-  StringMap<bool> unexported_variable_names;
-  ArrayList<String> suffixes;
-  StringMap<bool> phony_targets;
-  StringMap<bool> precious_targets;
-  StringMap<bool> ignored_targets;
-  StringMap<bool> silent_targets;
-  bool is_environment_overriding{false};
-  bool should_ignore_errors{false};
-  bool is_silent{false};
-  bool is_every_target_precious{false};
-  usize call_max_argument_count{0};
-  usize eval_depth{0};
-  u32 active_source_name_index{0};
+  ArrayList<make_variable>         variables;
+  ArrayList<make_rule>             rules;
+  ArrayList<make_pattern_rule>     pattern_rules;
+  String                           default_goal;
+  StringMap<usize>                 variable_index;
+  StringMap<usize>                 rule_index;
+  StringMap<bool>                  command_variable_names;
+  StringMap<bool>                  exported_variable_names;
+  StringMap<bool>                  unexported_variable_names;
+  ArrayList<String>                suffixes;
+  StringMap<bool>                  phony_targets;
+  StringMap<bool>                  precious_targets;
+  StringMap<bool>                  ignored_targets;
+  StringMap<bool>                  silent_targets;
+  bool                             is_environment_overriding{false};
+  bool                             should_ignore_errors{false};
+  bool                             is_silent{false};
+  bool                             is_every_target_precious{false};
+  usize                            call_max_argument_count{0};
+  usize                            eval_depth{0};
+  u32                              active_source_name_index{0};
   ArrayList<make_source_document> *source_documents{nullptr};
 
-  fn find_variable(StringView name) const throws -> const String *
+  fn
+  find_variable(StringView name) const throws -> const String *
   {
     if (let const index = variable_index.find(name); index.has_value())
       return &variables[*index.value()].value;
@@ -340,7 +382,8 @@ struct makefile
     return nullptr;
   }
 
-  fn find_variable_record(StringView name) const throws -> const make_variable *
+  fn
+  find_variable_record(StringView name) const throws -> const make_variable *
   {
     if (let const index = variable_index.find(name); index.has_value())
       return &variables[*index.value()];
@@ -348,21 +391,24 @@ struct makefile
     return nullptr;
   }
 
-  fn find_rule(StringView target) const throws -> const make_rule *
+  fn
+  find_rule(StringView target) const throws -> const make_rule *
   {
     let const index = rule_index.find(target);
 
     return index.has_value() ? &rules[*index.value()] : nullptr;
   }
 
-  fn find_mutable_rule(StringView target) throws -> make_rule *
+  fn
+  find_mutable_rule(StringView target) throws -> make_rule *
   {
     let const index = rule_index.find(target);
 
     return index.has_value() ? &rules[*index.value()] : nullptr;
   }
 
-  fn add_rule(make_rule &&rule) throws -> usize
+  fn
+  add_rule(make_rule &&rule) throws -> usize
   {
     let const index = rules.count();
     rule_index.set(rule.target.view(), index);
@@ -371,11 +417,12 @@ struct makefile
     return index;
   }
 
-  fn remove_variable(StringView name) throws -> void
+  fn
+  remove_variable(StringView name) throws -> void
   {
     let const stored_index = variable_index.find(name);
     if (!stored_index.has_value()) return;
-    let const index = *stored_index.value();
+    let const index      = *stored_index.value();
     let const last_index = variables.count() - 1;
     variable_index.erase(name);
     if (index != last_index) {
@@ -386,18 +433,23 @@ struct makefile
   }
 };
 
-static fn parse_makefile_into(EvalContext &cxt, makefile &mk,
-                              ArrayList<make_source_document> &sources,
-                              usize first_source_position) throws -> void;
-static fn make_expansion_end(StringView text, usize start_position,
-                             ArrayList<char> &close_stack) throws
-    -> Maybe<usize>;
+static fn
+parse_makefile_into(EvalContext                     &cxt,
+                    makefile                        &mk,
+                    ArrayList<make_source_document> &sources,
+                    usize first_source_position) throws -> void;
+static fn
+make_expansion_end(StringView       text,
+                   usize            start_position,
+                   ArrayList<char> &close_stack) throws -> Maybe<usize>;
 
-static fn automatic_path_part(StringView text, bool is_filename,
-                              Allocator allocator) throws -> String
+static fn
+automatic_path_part(StringView text,
+                    bool       is_filename,
+                    Allocator  allocator) throws -> String
 {
   String out{allocator};
-  usize word_position = 0;
+  usize  word_position = 0;
 
   while (word_position < text.length) {
     while (word_position < text.length &&
@@ -406,16 +458,16 @@ static fn automatic_path_part(StringView text, bool is_filename,
       word_position++;
     }
 
-    let const word_start = word_position;
-    usize separator_position = word_start;
-    bool has_separator = false;
+    let const word_start         = word_position;
+    usize     separator_position = word_start;
+    bool      has_separator      = false;
 
     while (word_position < text.length && text[word_position] != ' ' &&
            text[word_position] != '\t')
     {
       if (os::is_directory_separator(text[word_position])) {
         separator_position = word_position;
-        has_separator = true;
+        has_separator      = true;
       }
       word_position++;
     }
@@ -441,19 +493,25 @@ static fn automatic_path_part(StringView text, bool is_filename,
   return out;
 }
 
-static fn substitute_make_words(StringView source, StringView pattern_text,
-                                StringView replacement, Allocator allocator,
-                                bool is_suffix_without_wildcard) throws
-    -> String;
+static fn
+substitute_make_words(StringView source,
+                      StringView pattern_text,
+                      StringView replacement,
+                      Allocator  allocator,
+                      bool       is_suffix_without_wildcard) throws -> String;
 
-static fn substitute_automatic(StringView text, StringView target,
-                               StringView archive_member,
-                               StringView first_prereq, StringView all_prereqs,
-                               StringView repeated_prereqs,
-                               StringView newer_prereqs, StringView stem,
-                               Allocator allocator) throws -> String
+static fn
+substitute_automatic(StringView text,
+                     StringView target,
+                     StringView archive_member,
+                     StringView first_prereq,
+                     StringView all_prereqs,
+                     StringView repeated_prereqs,
+                     StringView newer_prereqs,
+                     StringView stem,
+                     Allocator  allocator) throws -> String
 {
-  String out{allocator};
+  String    out{allocator};
   let const do_value_for = [&](char name) -> StringView {
     switch (name) {
     case '@': return target;
@@ -463,7 +521,7 @@ static fn substitute_automatic(StringView text, StringView target,
     case '+': return repeated_prereqs;
     case '?': return newer_prereqs;
     case '*': return stem;
-    default: return StringView{};
+    default:  return StringView{};
     }
   };
   usize i = 0;
@@ -477,8 +535,8 @@ static fn substitute_automatic(StringView text, StringView target,
         continue;
       }
       if ((next == '(' || next == '{') && i + 3 < text.length) {
-        let const close = next == '(' ? ')' : '}';
-        usize close_position = i + 2;
+        let const close          = next == '(' ? ')' : '}';
+        usize     close_position = i + 2;
 
         while (close_position < text.length && text[close_position] != close) {
           close_position++;
@@ -491,7 +549,7 @@ static fn substitute_automatic(StringView text, StringView target,
               StringView{"@%<^+?*"}.find_character(contents[0]).has_value())
           {
             usize contents_position = 1;
-            let value = String{allocator, do_value_for(contents[0])};
+            let   value = String{allocator, do_value_for(contents[0])};
             if (contents_position < contents.length &&
                 (contents[contents_position] == 'D' ||
                  contents[contents_position] == 'F'))
@@ -536,15 +594,17 @@ static fn substitute_automatic(StringView text, StringView target,
   return out;
 }
 
-static fn is_blank(char c) wontthrow -> bool
+static fn
+is_blank(char c) wontthrow -> bool
 {
   return c == ' ' || c == '\t' || c == '\r';
 }
 
-static fn trim(StringView text) wontthrow -> StringView
+static fn
+trim(StringView text) wontthrow -> StringView
 {
   usize start = 0;
-  usize end = text.length;
+  usize end   = text.length;
 
   while (start < end && is_blank(text[start])) {
     start++;
@@ -557,11 +617,11 @@ static fn trim(StringView text) wontthrow -> StringView
   return text.substring_of_length(start, end - start);
 }
 
-static fn split_words(StringView text, Allocator allocator) throws
-    -> ArrayList<String>
+static fn
+split_words(StringView text, Allocator allocator) throws -> ArrayList<String>
 {
   ArrayList<String> words{allocator};
-  usize text_position = 0;
+  usize             text_position = 0;
 
   while (text_position < text.length) {
     let const word = text.next_ascii_whitespace_word(text_position);
@@ -571,11 +631,12 @@ static fn split_words(StringView text, Allocator allocator) throws
   return words;
 }
 
-static fn split_makeflags_words(StringView text, Allocator allocator) throws
+static fn
+split_makeflags_words(StringView text, Allocator allocator) throws
     -> ArrayList<String>
 {
   ArrayList<String> words{allocator};
-  usize text_position = 0;
+  usize             text_position = 0;
 
   while (text_position < text.length) {
     while (text_position < text.length && is_blank(text[text_position])) {
@@ -599,7 +660,8 @@ static fn split_makeflags_words(StringView text, Allocator allocator) throws
   return words;
 }
 
-static fn is_command_line_assignment(StringView operand) wontthrow -> bool;
+static fn
+is_command_line_assignment(StringView operand) wontthrow -> bool;
 
 struct make_runtime_flags
 {
@@ -615,8 +677,10 @@ struct make_runtime_flags
   bool should_touch{false};
 };
 
-static fn apply_makeflags(StringView text, make_runtime_flags &flags,
-                          Allocator allocator) throws -> void
+static fn
+apply_makeflags(StringView          text,
+                make_runtime_flags &flags,
+                Allocator           allocator) throws -> void
 {
   for (let const &word : split_makeflags_words(text, allocator)) {
     if (word.is_empty() || is_command_line_assignment(word.view())) {
@@ -645,15 +709,15 @@ static fn apply_makeflags(StringView text, make_runtime_flags &flags,
       case 'r': flags.should_disable_builtin_rules = true; break;
       case 's': flags.is_silent = true; break;
       case 't': flags.should_touch = true; break;
-      default: break;
+      default:  break;
       }
     }
   }
 }
 
-static fn archive_member_modification_time(const Path &archive,
-                                           StringView wanted_member) throws
-    -> Maybe<i64>
+static fn
+archive_member_modification_time(const Path &archive,
+                                 StringView  wanted_member) throws -> Maybe<i64>
 {
   enum class archive_special_member : u8
   {
@@ -675,7 +739,7 @@ static fn archive_member_modification_time(const Path &archive,
     return None;
   }
 
-  usize header_position = 8;
+  usize      header_position = 8;
   StringView long_names;
 
   while (header_position <= contents->view().length &&
@@ -687,8 +751,8 @@ static fn archive_member_modification_time(const Path &archive,
       return None;
     }
 
-    let member_name = header.substring_of_length(0, 16).trim_blanks();
-    let const timestamp = utils::parse_decimal_i64(
+    let       member_name = header.substring_of_length(0, 16).trim_blanks();
+    let const timestamp   = utils::parse_decimal_i64(
         header.substring_of_length(16, 12).trim_blanks());
     let const member_byte_count = utils::parse_decimal_u64(
         header.substring_of_length(48, 10).trim_blanks());
@@ -710,7 +774,7 @@ static fn archive_member_modification_time(const Path &archive,
         return None;
       }
       extended_name_length = parsed_name_length.value();
-      member_name = contents->view().substring_of_length(
+      member_name          = contents->view().substring_of_length(
           content_position, static_cast<usize>(extended_name_length));
     } else if (let const special = SPECIAL_MEMBERS.find(member_name);
                special.has_value())
@@ -730,7 +794,7 @@ static fn archive_member_modification_time(const Path &archive,
         return None;
       }
       let const name_start = static_cast<usize>(parsed_offset.value());
-      usize name_end = name_start;
+      usize     name_end   = name_start;
 
       while (name_end < long_names.length && long_names[name_end] != '\n') {
         name_end++;
@@ -761,42 +825,48 @@ static fn archive_member_modification_time(const Path &archive,
   return None;
 }
 
-static fn expand(EvalContext &cxt, makefile &mk, StringView text,
-                 usize depth) throws -> String;
+static fn
+expand(EvalContext &cxt, makefile &mk, StringView text, usize depth) throws
+    -> String;
 
 struct make_variable_lookup
 {
   explicit make_variable_lookup(Allocator allocator) : owned_value(allocator) {}
-  String owned_value;
-  StringView value;
+  String               owned_value;
+  StringView           value;
   make_variable_origin origin{make_variable_origin::Undefined};
   make_variable_flavor flavor{make_variable_flavor::Undefined};
-  bool is_value_owned{false};
+  bool                 is_value_owned{false};
 
-  fn set_owned_value(String value_to_own) wontthrow -> void
+  fn
+  set_owned_value(String value_to_own) wontthrow -> void
   {
-    owned_value = steal(value_to_own);
-    value = owned_value.view();
+    owned_value    = steal(value_to_own);
+    value          = owned_value.view();
     is_value_owned = true;
   }
 
-  fn set_borrowed_value(StringView value_to_borrow) wontthrow -> void
+  fn
+  set_borrowed_value(StringView value_to_borrow) wontthrow -> void
   {
-    value = value_to_borrow;
+    value          = value_to_borrow;
     is_value_owned = false;
   }
 
-  fn into_string(Allocator allocator) throws -> String
+  fn
+  into_string(Allocator allocator) throws -> String
   {
     return is_value_owned ? steal(owned_value) : String{allocator, value};
   }
 };
 
-static fn lookup_make_variable(EvalContext &cxt, const makefile &mk,
-                               StringView name) throws -> make_variable_lookup
+static fn
+lookup_make_variable(EvalContext    &cxt,
+                     const makefile &mk,
+                     StringView      name) throws -> make_variable_lookup
 {
   make_variable_lookup lookup{cxt.scratch_allocator()};
-  let const do_use_stored = [&](const make_variable &variable) {
+  let const            do_use_stored = [&](const make_variable &variable) {
     lookup.set_borrowed_value(variable.value.view());
     lookup.origin = variable.origin;
     lookup.flavor = variable.flavor;
@@ -892,8 +962,11 @@ static fn lookup_make_variable(EvalContext &cxt, const makefile &mk,
   return lookup;
 }
 
-static fn expand_variable(EvalContext &cxt, makefile &mk, StringView name,
-                          usize depth) throws -> String
+static fn
+expand_variable(EvalContext &cxt,
+                makefile    &mk,
+                StringView   name,
+                usize        depth) throws -> String
 {
   let lookup = lookup_make_variable(cxt, mk, name);
   if (lookup.flavor == make_variable_flavor::Simple)
@@ -905,36 +978,37 @@ static fn expand_variable(EvalContext &cxt, makefile &mk, StringView name,
   return expand(cxt, mk, recursive_value.view(), depth + 1);
 }
 
-static fn make_variable_origin_text(make_variable_origin origin) wontthrow
-    -> const char *
+static fn
+make_variable_origin_text(make_variable_origin origin) wontthrow -> const char *
 {
   switch (origin) {
-  case make_variable_origin::Automatic: return "automatic";
+  case make_variable_origin::Automatic:   return "automatic";
   case make_variable_origin::CommandLine: return "command line";
-  case make_variable_origin::Default: return "default";
+  case make_variable_origin::Default:     return "default";
   case make_variable_origin::Environment: return "environment";
-  case make_variable_origin::File: return "file";
-  case make_variable_origin::Undefined: return "undefined";
+  case make_variable_origin::File:        return "file";
+  case make_variable_origin::Undefined:   return "undefined";
   }
   unreachable();
 }
 
-static fn make_variable_flavor_text(make_variable_flavor flavor) wontthrow
-    -> const char *
+static fn
+make_variable_flavor_text(make_variable_flavor flavor) wontthrow -> const char *
 {
   switch (flavor) {
   case make_variable_flavor::Recursive: return "recursive";
-  case make_variable_flavor::Simple: return "simple";
+  case make_variable_flavor::Simple:    return "simple";
   case make_variable_flavor::Undefined: return "undefined";
   }
   unreachable();
 }
 
-static fn split_word_views(StringView text, Allocator allocator) throws
+static fn
+split_word_views(StringView text, Allocator allocator) throws
     -> ArrayList<StringView>
 {
   ArrayList<StringView> words{allocator};
-  usize text_position = 0;
+  usize                 text_position = 0;
 
   while (text_position < text.length) {
     let const word = text.next_ascii_whitespace_word(text_position);
@@ -944,16 +1018,16 @@ static fn split_word_views(StringView text, Allocator allocator) throws
   return words;
 }
 
-static fn append_make_word(String &result, StringView word,
-                           bool &has_word) throws -> void
+static fn
+append_make_word(String &result, StringView word, bool &has_word) throws -> void
 {
   if (has_word) result += ' ';
   result += word;
   has_word = true;
 }
 
-static pure fn recipe_references_make_variable(StringView recipe) wontthrow
-    -> bool
+static pure fn
+recipe_references_make_variable(StringView recipe) wontthrow -> bool
 {
   return recipe.find_substring("$(MAKE)").has_value() ||
          recipe.find_substring("${MAKE}").has_value();
@@ -962,16 +1036,16 @@ static pure fn recipe_references_make_variable(StringView recipe) wontthrow
 struct make_percent_text
 {
   explicit make_percent_text(Allocator allocator) : text(allocator) {}
-  String text;
+  String       text;
   Maybe<usize> wildcard_position;
 };
 
-static fn decode_make_percent_text(StringView source,
-                                   Allocator allocator) throws
+static fn
+decode_make_percent_text(StringView source, Allocator allocator) throws
     -> make_percent_text
 {
   make_percent_text decoded{allocator};
-  usize source_position = 0;
+  usize             source_position = 0;
 
   while (source_position < source.length) {
     if (source[source_position] == '%') {
@@ -1018,11 +1092,12 @@ static fn decode_make_percent_text(StringView source,
   return decoded;
 }
 
-static fn parse_make_pattern(StringView pattern, Allocator allocator) throws
+static fn
+parse_make_pattern(StringView pattern, Allocator allocator) throws
     -> make_pattern
 {
   make_pattern parsed{allocator};
-  let decoded = decode_make_percent_text(pattern, allocator);
+  let          decoded = decode_make_percent_text(pattern, allocator);
   if (decoded.wildcard_position.has_value()) {
     parsed.has_wildcard = true;
     parsed.prefix = String{allocator, decoded.text.view().substring_of_length(
@@ -1036,8 +1111,9 @@ static fn parse_make_pattern(StringView pattern, Allocator allocator) throws
   return parsed;
 }
 
-static fn match_make_pattern(const make_pattern &pattern,
-                             StringView word) wontthrow -> Maybe<StringView>
+static fn
+match_make_pattern(const make_pattern &pattern, StringView word) wontthrow
+    -> Maybe<StringView>
 {
   if (!pattern.has_wildcard)
     return word == pattern.prefix.view() ? Maybe<StringView>{StringView{}}
@@ -1054,9 +1130,11 @@ static fn match_make_pattern(const make_pattern &pattern,
                                       pattern.suffix.count());
 }
 
-static fn append_make_replacement(String &result, StringView replacement,
-                                  StringView stem, bool has_wildcard) throws
-    -> void
+static fn
+append_make_replacement(String    &result,
+                        StringView replacement,
+                        StringView stem,
+                        bool       has_wildcard) throws -> void
 {
   let decoded = decode_make_percent_text(replacement, result.allocator());
   if (has_wildcard && decoded.wildcard_position.has_value()) {
@@ -1069,14 +1147,16 @@ static fn append_make_replacement(String &result, StringView replacement,
   }
 }
 
-static fn substitute_make_words(StringView source, StringView pattern_text,
-                                StringView replacement, Allocator allocator,
-                                bool is_suffix_without_wildcard) throws
-    -> String
+static fn
+substitute_make_words(StringView source,
+                      StringView pattern_text,
+                      StringView replacement,
+                      Allocator  allocator,
+                      bool       is_suffix_without_wildcard) throws -> String
 {
-  let const pattern = parse_make_pattern(pattern_text, allocator);
-  let result = String{allocator};
-  bool has_word = false;
+  let const pattern  = parse_make_pattern(pattern_text, allocator);
+  let       result   = String{allocator};
+  bool      has_word = false;
 
   for (StringView word : split_word_views(source, allocator)) {
     if (has_word) result += ' ';
@@ -1111,40 +1191,43 @@ struct make_variable_snapshot
   explicit make_variable_snapshot(Allocator allocator)
       : name(allocator), value(allocator)
   {}
-  String name;
-  String value;
+  String               name;
+  String               value;
   make_variable_origin origin{make_variable_origin::Undefined};
   make_variable_flavor flavor{make_variable_flavor::Undefined};
-  bool was_present{false};
+  bool                 was_present{false};
 };
 
-static fn save_make_variable(const makefile &mk, StringView name,
-                             Allocator allocator) throws
-    -> make_variable_snapshot
+static fn
+save_make_variable(const makefile &mk,
+                   StringView      name,
+                   Allocator       allocator) throws -> make_variable_snapshot
 {
   make_variable_snapshot snapshot{allocator};
   snapshot.name = String{allocator, name};
   if (const make_variable *variable = mk.find_variable_record(name);
       variable != nullptr)
   {
-    snapshot.value = String{allocator, variable->value.view()};
-    snapshot.origin = variable->origin;
-    snapshot.flavor = variable->flavor;
+    snapshot.value       = String{allocator, variable->value.view()};
+    snapshot.origin      = variable->origin;
+    snapshot.flavor      = variable->flavor;
     snapshot.was_present = true;
   }
 
   return snapshot;
 }
 
-static fn set_scoped_make_variable(makefile &mk, StringView name,
-                                   StringView value, Allocator allocator) throws
-    -> void
+static fn
+set_scoped_make_variable(makefile  &mk,
+                         StringView name,
+                         StringView value,
+                         Allocator  allocator) throws -> void
 {
   if (let const index = mk.variable_index.find(name); index.has_value()) {
     make_variable &variable = mk.variables[*index.value()];
-    variable.value = String{allocator, value};
-    variable.origin = make_variable_origin::Automatic;
-    variable.flavor = make_variable_flavor::Simple;
+    variable.value          = String{allocator, value};
+    variable.origin         = make_variable_origin::Automatic;
+    variable.flavor         = make_variable_flavor::Simple;
 
     return;
   }
@@ -1157,9 +1240,10 @@ static fn set_scoped_make_variable(makefile &mk, StringView name,
   });
 }
 
-static fn restore_make_variable(makefile &mk,
-                                const make_variable_snapshot &snapshot,
-                                Allocator allocator) throws -> void
+static fn
+restore_make_variable(makefile                     &mk,
+                      const make_variable_snapshot &snapshot,
+                      Allocator                     allocator) throws -> void
 {
   if (!snapshot.was_present) {
     mk.remove_variable(snapshot.name.view());
@@ -1170,12 +1254,13 @@ static fn restore_make_variable(makefile &mk,
   let const index = mk.variable_index.find(snapshot.name.view());
   ASSERT(index.has_value());
   make_variable &variable = mk.variables[*index.value()];
-  variable.value = String{allocator, snapshot.value.view()};
-  variable.origin = snapshot.origin;
-  variable.flavor = snapshot.flavor;
+  variable.value          = String{allocator, snapshot.value.view()};
+  variable.origin         = snapshot.origin;
+  variable.flavor         = snapshot.flavor;
 }
 
-static fn make_wildcard(EvalContext &cxt, StringView patterns) throws -> String
+static fn
+make_wildcard(EvalContext &cxt, StringView patterns) throws -> String
 {
   let result = String{cxt.scratch_allocator()};
 
@@ -1191,8 +1276,10 @@ static fn make_wildcard(EvalContext &cxt, StringView patterns) throws -> String
   return result;
 }
 
-static fn run_make_shell_function(EvalContext &cxt, makefile &mk,
-                                  StringView command) throws -> String
+static fn
+run_make_shell_function(EvalContext &cxt,
+                        makefile    &mk,
+                        StringView   command) throws -> String
 {
   let source = String{cxt.scratch_allocator(), command};
   if (const String *shell_value = mk.find_variable("SHELL");
@@ -1232,9 +1319,11 @@ static fn run_make_shell_function(EvalContext &cxt, makefile &mk,
   return folded;
 }
 
-static fn try_substitution_reference(EvalContext &cxt, makefile &mk,
-                                     StringView name, usize depth) throws
-    -> Maybe<String>
+static fn
+try_substitution_reference(EvalContext &cxt,
+                           makefile    &mk,
+                           StringView   name,
+                           usize        depth) throws -> Maybe<String>
 {
   let const colon = name.find_character(':');
   if (!colon.has_value() || *colon == 0) {
@@ -1248,7 +1337,7 @@ static fn try_substitution_reference(EvalContext &cxt, makefile &mk,
     return None;
   }
 
-  let const rest = name.substring(*colon + 1);
+  let const rest   = name.substring(*colon + 1);
   let const equals = rest.find_character('=');
   if (!equals.has_value()) return None;
 
@@ -1263,9 +1352,10 @@ static fn try_substitution_reference(EvalContext &cxt, makefile &mk,
                                cxt.scratch_allocator(), true);
 }
 
-static fn split_make_function_arguments(StringView text,
-                                        u8 maximum_argument_count,
-                                        Allocator allocator) throws
+static fn
+split_make_function_arguments(StringView text,
+                              u8         maximum_argument_count,
+                              Allocator  allocator) throws
     -> ArrayList<StringView>
 {
   ArrayList<StringView> arguments{allocator};
@@ -1277,7 +1367,7 @@ static fn split_make_function_arguments(StringView text,
   }
 
   usize argument_start = 0;
-  usize nested_depth = 0;
+  usize nested_depth   = 0;
 
   for (usize position = 0; position < text.length; position++) {
     if (text[position] == '$' && position + 1 < text.length &&
@@ -1303,9 +1393,11 @@ static fn split_make_function_arguments(StringView text,
   return arguments;
 }
 
-static fn require_make_function_arguments(
-    StringView function_name, const make_function_spec &spec,
-    const ArrayList<StringView> &arguments) throws -> void
+static fn
+require_make_function_arguments(StringView                   function_name,
+                                const make_function_spec    &spec,
+                                const ArrayList<StringView> &arguments) throws
+    -> void
 {
   if (arguments.count() >= spec.minimum_argument_count &&
       arguments.count() <= spec.maximum_argument_count)
@@ -1316,8 +1408,8 @@ static fn require_make_function_arguments(
               "' received an invalid number of arguments"};
 }
 
-static fn make_word_number(StringView text, StringView function_name) throws
-    -> usize
+static fn
+make_word_number(StringView text, StringView function_name) throws -> usize
 {
   let const parsed = utils::parse_decimal_u64(trim(text));
   if (parsed.is_error() || parsed.value() == 0 ||
@@ -1330,7 +1422,8 @@ static fn make_word_number(StringView text, StringView function_name) throws
   return static_cast<usize>(parsed.value());
 }
 
-static fn last_path_separator(StringView path) wontthrow -> Maybe<usize>
+static fn
+last_path_separator(StringView path) wontthrow -> Maybe<usize>
 {
   Maybe<usize> separator = None;
 
@@ -1340,10 +1433,11 @@ static fn last_path_separator(StringView path) wontthrow -> Maybe<usize>
   return separator;
 }
 
-static fn last_suffix_position(StringView path) wontthrow -> Maybe<usize>
+static fn
+last_suffix_position(StringView path) wontthrow -> Maybe<usize>
 {
-  let const separator = last_path_separator(path);
-  Maybe<usize> suffix = None;
+  let const    separator = last_path_separator(path);
+  Maybe<usize> suffix    = None;
 
   for (usize position = separator.has_value() ? *separator + 1 : 0;
        position < path.length; position++)
@@ -1353,9 +1447,12 @@ static fn last_suffix_position(StringView path) wontthrow -> Maybe<usize>
 }
 
 static fn
-evaluate_make_function(EvalContext &cxt, makefile &mk, StringView function_name,
-                       const make_function_spec &spec,
-                       const ArrayList<StringView> &arguments, usize depth,
+evaluate_make_function(EvalContext                 &cxt,
+                       makefile                    &mk,
+                       StringView                   function_name,
+                       const make_function_spec    &spec,
+                       const ArrayList<StringView> &arguments,
+                       usize                        depth,
                        bool has_expanded_arguments = false) throws -> String
 {
   require_make_function_arguments(function_name, spec, arguments);
@@ -1370,10 +1467,10 @@ evaluate_make_function(EvalContext &cxt, makefile &mk, StringView function_name,
 
   switch (spec.kind) {
   case make_function_kind::Subst: {
-    let const from = do_expand(0);
-    let const to = do_expand(1);
+    let const from   = do_expand(0);
+    let const to     = do_expand(1);
     let const source = do_expand(2);
-    let result = String{allocator};
+    let       result = String{allocator};
     if (from.is_empty()) {
       result = source.clone();
       result += to.view();
@@ -1399,16 +1496,16 @@ evaluate_make_function(EvalContext &cxt, makefile &mk, StringView function_name,
   }
   case make_function_kind::Patsubst: {
     let const pattern_text = do_expand(0);
-    let const replacement = do_expand(1);
-    let const source = do_expand(2);
+    let const replacement  = do_expand(1);
+    let const source       = do_expand(2);
 
     return substitute_make_words(source.view(), pattern_text.view(),
                                  replacement.view(), allocator, false);
   }
   case make_function_kind::Strip: {
-    let const source = do_expand(0);
-    let result = String{allocator};
-    bool has_word = false;
+    let const source   = do_expand(0);
+    let       result   = String{allocator};
+    bool      has_word = false;
 
     for (StringView word : split_word_views(source.view(), allocator))
       append_make_word(result, word, has_word);
@@ -1425,10 +1522,10 @@ evaluate_make_function(EvalContext &cxt, makefile &mk, StringView function_name,
   }
   case make_function_kind::Filter:
   case make_function_kind::FilterOut: {
-    let const pattern_text = do_expand(0);
-    let const source = do_expand(1);
-    let literal_patterns = StringMap<bool>{allocator};
-    let wildcard_patterns = ArrayList<make_pattern>{allocator};
+    let const pattern_text      = do_expand(0);
+    let const source            = do_expand(1);
+    let       literal_patterns  = StringMap<bool>{allocator};
+    let       wildcard_patterns = ArrayList<make_pattern>{allocator};
 
     for (StringView pattern_text_value :
          split_word_views(pattern_text.view(), allocator))
@@ -1440,7 +1537,7 @@ evaluate_make_function(EvalContext &cxt, makefile &mk, StringView function_name,
         literal_patterns.set(pattern.prefix.view(), true);
     }
 
-    let result = String{allocator};
+    let  result   = String{allocator};
     bool has_word = false;
 
     for (StringView word : split_word_views(source.view(), allocator)) {
@@ -1460,11 +1557,11 @@ evaluate_make_function(EvalContext &cxt, makefile &mk, StringView function_name,
   }
   case make_function_kind::Sort: {
     let const source = do_expand(0);
-    let const words = split_word_views(source.view(), allocator)
+    let const words  = split_word_views(source.view(), allocator)
                           .make_sorted([](StringView left, StringView right) {
                             return left < right;
                           });
-    let result = String{allocator};
+    let  result   = String{allocator};
     bool has_word = false;
 
     for (usize word_index = 0; word_index < words.count(); word_index++) {
@@ -1480,12 +1577,12 @@ evaluate_make_function(EvalContext &cxt, makefile &mk, StringView function_name,
   case make_function_kind::Wordlist:
   case make_function_kind::Words:
   case make_function_kind::Firstword:
-  case make_function_kind::Lastword: {
+  case make_function_kind::Lastword:  {
     usize source_argument_index = 0;
     if (spec.kind == make_function_kind::Word) source_argument_index = 1;
     if (spec.kind == make_function_kind::Wordlist) source_argument_index = 2;
     let const source = do_expand(source_argument_index);
-    let const words = split_word_views(source.view(), allocator);
+    let const words  = split_word_views(source.view(), allocator);
     if (spec.kind == make_function_kind::Words) {
       return String::from(words.count(), allocator);
     }
@@ -1507,8 +1604,8 @@ evaluate_make_function(EvalContext &cxt, makefile &mk, StringView function_name,
     {
       return String{allocator};
     }
-    let result = String{allocator};
-    bool has_word = false;
+    let       result   = String{allocator};
+    bool      has_word = false;
     let const last_index =
         last_word_number < words.count() ? last_word_number : words.count();
 
@@ -1522,9 +1619,9 @@ evaluate_make_function(EvalContext &cxt, makefile &mk, StringView function_name,
   case make_function_kind::Notdir:
   case make_function_kind::Suffix:
   case make_function_kind::Basename: {
-    let const source = do_expand(0);
-    let result = String{allocator};
-    bool has_word = false;
+    let const source   = do_expand(0);
+    let       result   = String{allocator};
+    bool      has_word = false;
 
     for (StringView word : split_word_views(source.view(), allocator)) {
       if (spec.kind == make_function_kind::Dir) {
@@ -1556,10 +1653,10 @@ evaluate_make_function(EvalContext &cxt, makefile &mk, StringView function_name,
   }
   case make_function_kind::Addprefix:
   case make_function_kind::Addsuffix: {
-    let const affix = do_expand(0);
-    let const source = do_expand(1);
-    let result = String{allocator};
-    bool has_word = false;
+    let const affix    = do_expand(0);
+    let const source   = do_expand(1);
+    let       result   = String{allocator};
+    bool      has_word = false;
 
     for (StringView word : split_word_views(source.view(), allocator)) {
       let combined = String{allocator};
@@ -1572,13 +1669,13 @@ evaluate_make_function(EvalContext &cxt, makefile &mk, StringView function_name,
     return result;
   }
   case make_function_kind::Join: {
-    let const left_text = do_expand(0);
+    let const left_text  = do_expand(0);
     let const right_text = do_expand(1);
-    let const left = split_word_views(left_text.view(), allocator);
-    let const right = split_word_views(right_text.view(), allocator);
+    let const left       = split_word_views(left_text.view(), allocator);
+    let const right      = split_word_views(right_text.view(), allocator);
     let const joined_count =
         left.count() > right.count() ? left.count() : right.count();
-    let result = String{allocator};
+    let  result   = String{allocator};
     bool has_word = false;
 
     for (usize word_index = 0; word_index < joined_count; word_index++) {
@@ -1620,11 +1717,11 @@ evaluate_make_function(EvalContext &cxt, makefile &mk, StringView function_name,
   }
   case make_function_kind::Foreach: {
     let const variable_name_text = do_expand(0);
-    let const variable_name = trim(variable_name_text.view());
-    let const values = do_expand(1);
+    let const variable_name      = trim(variable_name_text.view());
+    let const values             = do_expand(1);
     let const snapshot = save_make_variable(mk, variable_name, allocator);
     defer { restore_make_variable(mk, snapshot, allocator); };
-    let result = String{allocator};
+    let  result    = String{allocator};
     bool has_value = false;
 
     for (StringView value : split_word_views(values.view(), allocator)) {
@@ -1635,9 +1732,9 @@ evaluate_make_function(EvalContext &cxt, makefile &mk, StringView function_name,
     return result;
   }
   case make_function_kind::Call: {
-    let const called_name_text = do_expand(0);
-    let const called_name = trim(called_name_text.view());
-    let expanded_arguments = ArrayList<String>{allocator};
+    let const called_name_text   = do_expand(0);
+    let const called_name        = trim(called_name_text.view());
+    let       expanded_arguments = ArrayList<String>{allocator};
     expanded_arguments.reserve(arguments.count());
     expanded_arguments.push(String{allocator, called_name});
 
@@ -1649,14 +1746,14 @@ evaluate_make_function(EvalContext &cxt, makefile &mk, StringView function_name,
     let const binding_count = arguments.count() > mk.call_max_argument_count
                                   ? arguments.count()
                                   : mk.call_max_argument_count;
-    let snapshots = ArrayList<make_variable_snapshot>{allocator};
+    let       snapshots     = ArrayList<make_variable_snapshot>{allocator};
     snapshots.reserve(binding_count);
 
     for (usize argument_index = 0; argument_index < binding_count;
          argument_index++)
     {
       let const numeric_name = String::from(argument_index, allocator);
-      let const name = numeric_name.view();
+      let const name         = numeric_name.view();
       snapshots.push(save_make_variable(mk, name, allocator));
       let const value = argument_index < expanded_arguments.count()
                             ? expanded_arguments[argument_index].view()
@@ -1692,8 +1789,8 @@ evaluate_make_function(EvalContext &cxt, makefile &mk, StringView function_name,
   case make_function_kind::Origin:
   case make_function_kind::Flavor: {
     let const variable_name_text = do_expand(0);
-    let const variable_name = trim(variable_name_text.view());
-    let lookup = lookup_make_variable(cxt, mk, variable_name);
+    let const variable_name      = trim(variable_name_text.view());
+    let       lookup             = lookup_make_variable(cxt, mk, variable_name);
     if (spec.kind == make_function_kind::Value)
       return lookup.into_string(allocator);
     if (spec.kind == make_function_kind::Origin)
@@ -1703,9 +1800,9 @@ evaluate_make_function(EvalContext &cxt, makefile &mk, StringView function_name,
   }
   case make_function_kind::Abspath:
   case make_function_kind::Realpath: {
-    let const source = do_expand(0);
-    let result = String{allocator};
-    bool has_word = false;
+    let const source   = do_expand(0);
+    let       result   = String{allocator};
+    bool      has_word = false;
 
     for (StringView word : split_word_views(source.view(), allocator)) {
       if (spec.kind == make_function_kind::Abspath) {
@@ -1736,7 +1833,7 @@ evaluate_make_function(EvalContext &cxt, makefile &mk, StringView function_name,
       throw Error{"Make eval calls exceed the supported nesting depth"};
 
     let evaluated_source = do_expand(0);
-    let source_name = String{allocator};
+    let source_name      = String{allocator};
     if (let const active_name = source_name_at(mk.active_source_name_index);
         active_name.has_value())
       source_name = String{allocator, *active_name};
@@ -1766,15 +1863,16 @@ evaluate_make_function(EvalContext &cxt, makefile &mk, StringView function_name,
   unreachable();
 }
 
-static fn expand(EvalContext &cxt, makefile &mk, StringView text,
-                 usize depth) throws -> String
+static fn
+expand(EvalContext &cxt, makefile &mk, StringView text, usize depth) throws
+    -> String
 {
   if (depth >= 128)
     throw Error{"Make variable expansion exceeds the supported depth"};
 
-  String result{cxt.scratch_allocator()};
+  String          result{cxt.scratch_allocator()};
   ArrayList<char> close_stack{cxt.scratch_allocator()};
-  usize text_position = 0;
+  usize           text_position = 0;
 
   while (text_position < text.length) {
     if (text[text_position] == '$' && text_position + 1 < text.length &&
@@ -1849,8 +1947,8 @@ static fn expand(EvalContext &cxt, makefile &mk, StringView text,
   return result;
 }
 
-static fn first_colon_not_followed_by_equals(StringView line) wontthrow
-    -> Maybe<usize>
+static fn
+first_colon_not_followed_by_equals(StringView line) wontthrow -> Maybe<usize>
 {
   usize token_start = 0;
 
@@ -1874,8 +1972,8 @@ static fn first_colon_not_followed_by_equals(StringView line) wontthrow
   return None;
 }
 
-static fn assignment_variable_name(StringView assignment) wontthrow
-    -> StringView
+static fn
+assignment_variable_name(StringView assignment) wontthrow -> StringView
 {
   let const equals = assignment.find_character('=');
   if (!equals.has_value()) return StringView{};
@@ -1890,7 +1988,8 @@ static fn assignment_variable_name(StringView assignment) wontthrow
   return trim(name);
 }
 
-static fn is_command_line_assignment(StringView operand) wontthrow -> bool
+static fn
+is_command_line_assignment(StringView operand) wontthrow -> bool
 {
   let const equals = operand.find_character('=');
   if (!equals.has_value() || *equals == 0) {
@@ -1904,8 +2003,8 @@ static fn is_command_line_assignment(StringView operand) wontthrow -> bool
   return true;
 }
 
-static fn is_target_variable_assignment(StringView after_colon) wontthrow
-    -> bool
+static fn
+is_target_variable_assignment(StringView after_colon) wontthrow -> bool
 {
   if (!after_colon.find_character('=').has_value()) return false;
   let const name = assignment_variable_name(after_colon);
@@ -1919,11 +2018,14 @@ static fn is_target_variable_assignment(StringView after_colon) wontthrow
   return true;
 }
 
-static fn apply_assignment(EvalContext &cxt, makefile &mk, StringView name_part,
-                           StringView operator_and_value,
-                           bool is_command_line = false) throws -> void
+static fn
+apply_assignment(EvalContext &cxt,
+                 makefile    &mk,
+                 StringView   name_part,
+                 StringView   operator_and_value,
+                 bool         is_command_line = false) throws -> void
 {
-  let value = operator_and_value.substring(1);
+  let  value              = operator_and_value.substring(1);
   char operator_character = ' ';
   if (!name_part.is_empty()) {
     let const last = name_part[name_part.length - 1];
@@ -1933,7 +2035,7 @@ static fn apply_assignment(EvalContext &cxt, makefile &mk, StringView name_part,
     }
   }
 
-  let const name = trim(name_part);
+  let const name          = trim(name_part);
   let const trimmed_value = trim(value);
   if (!is_command_line && mk.command_variable_names.find(name).has_value()) {
     return;
@@ -1955,7 +2057,7 @@ static fn apply_assignment(EvalContext &cxt, makefile &mk, StringView name_part,
           operator_character == ':'
               ? expand(cxt, mk, trimmed_value, 0)
               : String{cxt.scratch_allocator(), trimmed_value};
-      variable.value = String{cxt.scratch_allocator(), value_to_store.view()};
+      variable.value  = String{cxt.scratch_allocator(), value_to_store.view()};
       variable.origin = is_command_line ? make_variable_origin::CommandLine
                                         : make_variable_origin::File;
       variable.flavor = operator_character == ':'
@@ -1980,10 +2082,11 @@ static fn apply_assignment(EvalContext &cxt, makefile &mk, StringView name_part,
   });
 }
 
-static fn ends_with_odd_backslash_run(StringView line) wontthrow -> bool
+static fn
+ends_with_odd_backslash_run(StringView line) wontthrow -> bool
 {
   usize backslash_count = 0;
-  usize k = line.length;
+  usize k               = line.length;
 
   while (k > 0 && line[k - 1] == '\\') {
     backslash_count++;
@@ -1995,24 +2098,25 @@ static fn ends_with_odd_backslash_run(StringView line) wontthrow -> bool
 
 struct make_logical_line
 {
-  String text;
+  String         text;
   SourceLocation source_span;
 };
 
-static fn join_continuations(StringView source, u32 source_name_index,
-                             Allocator allocator) throws
-    -> ArrayList<make_logical_line>
+static fn
+join_continuations(StringView source,
+                   u32        source_name_index,
+                   Allocator  allocator) throws -> ArrayList<make_logical_line>
 {
   let const physical = utils::split_lines(
       source, allocator, utils::line_terminator_mode::Preserve);
   ArrayList<make_logical_line> logical{allocator};
-  usize i = 0;
+  usize                        i = 0;
 
   while (i < physical.count()) {
-    let const raw = physical[i].without_trailing_newline();
+    let const raw          = physical[i].without_trailing_newline();
     let const source_start = static_cast<usize>(raw.data - source.data);
-    usize source_end = source_start + raw.length;
-    let line = String{allocator, raw};
+    usize     source_end   = source_start + raw.length;
+    let       line         = String{allocator, raw};
 
     if (!raw.is_empty() && raw[0] == '\t') {
       while (ends_with_odd_backslash_run(line.view()) &&
@@ -2020,7 +2124,7 @@ static fn join_continuations(StringView source, u32 source_name_index,
       {
         line += '\n';
         i++;
-        let next = physical[i].without_trailing_newline();
+        let next   = physical[i].without_trailing_newline();
         source_end = static_cast<usize>(next.data - source.data) + next.length;
         if (!next.is_empty() && next[0] == '\t') {
           next = next.substring(1);
@@ -2052,9 +2156,10 @@ static fn join_continuations(StringView source, u32 source_name_index,
   return logical;
 }
 
-static fn make_expansion_end(StringView text, usize start_position,
-                             ArrayList<char> &close_stack) throws
-    -> Maybe<usize>
+static fn
+make_expansion_end(StringView       text,
+                   usize            start_position,
+                   ArrayList<char> &close_stack) throws -> Maybe<usize>
 {
   if (start_position + 1 >= text.length || text[start_position] != '$' ||
       (text[start_position + 1] != '(' && text[start_position + 1] != '{'))
@@ -2092,7 +2197,8 @@ static fn make_expansion_end(StringView text, usize start_position,
   return None;
 }
 
-static fn leading_word(StringView text) wontthrow -> StringView
+static fn
+leading_word(StringView text) wontthrow -> StringView
 {
   usize start = 0;
 
@@ -2109,8 +2215,8 @@ static fn leading_word(StringView text) wontthrow -> StringView
   return text.substring_of_length(start, end - start);
 }
 
-static fn makefile_without_comment(StringView line, Allocator allocator) throws
-    -> String
+static fn
+makefile_without_comment(StringView line, Allocator allocator) throws -> String
 {
   let uncommented = String{allocator};
 
@@ -2129,8 +2235,11 @@ static fn makefile_without_comment(StringView line, Allocator allocator) throws
   return uncommented;
 }
 
-static fn split_conditional_arguments_at_top_level_comma(
-    StringView rest, StringView &first, StringView &second) wontthrow -> bool
+static fn
+split_conditional_arguments_at_top_level_comma(StringView  rest,
+                                               StringView &first,
+                                               StringView &second) wontthrow
+    -> bool
 {
   rest = trim(rest);
   if (rest.is_empty() || rest[0] != '(') {
@@ -2145,9 +2254,9 @@ static fn split_conditional_arguments_at_top_level_comma(
 
   if (close <= 1) return false;
 
-  let const content = rest.substring_of_length(1, close - 2);
-  usize depth = 0;
-  Maybe<usize> comma = None;
+  let const    content = rest.substring_of_length(1, close - 2);
+  usize        depth   = 0;
+  Maybe<usize> comma   = None;
 
   for (usize k = 0; k < content.length; k++) {
     if (content[k] == '(') {
@@ -2162,19 +2271,21 @@ static fn split_conditional_arguments_at_top_level_comma(
 
   if (!comma.has_value()) return false;
 
-  first = trim(content.substring_of_length(0, *comma));
+  first  = trim(content.substring_of_length(0, *comma));
   second = trim(content.substring(*comma + 1));
 
   return true;
 }
 
-static fn evaluate_conditional(EvalContext &cxt, makefile &mk,
-                               StringView directive, StringView rest) throws
-    -> bool
+static fn
+evaluate_conditional(EvalContext &cxt,
+                     makefile    &mk,
+                     StringView   directive,
+                     StringView   rest) throws -> bool
 {
   if (directive == "ifdef" || directive == "ifndef") {
-    let const name = expand(cxt, mk, trim(rest), 0);
-    bool is_defined = false;
+    let const name       = expand(cxt, mk, trim(rest), 0);
+    bool      is_defined = false;
     if (const String *stored = mk.find_variable(name.view());
         stored != nullptr && !stored->is_empty())
     {
@@ -2189,13 +2300,13 @@ static fn evaluate_conditional(EvalContext &cxt, makefile &mk,
     return directive == "ifdef" ? is_defined : !is_defined;
   }
 
-  let first = StringView{};
+  let first  = StringView{};
   let second = StringView{};
   if (!split_conditional_arguments_at_top_level_comma(rest, first, second))
     return false;
-  let const expanded_first = expand(cxt, mk, first, 0);
+  let const expanded_first  = expand(cxt, mk, first, 0);
   let const expanded_second = expand(cxt, mk, second, 0);
-  let const is_equal = expanded_first.view() == expanded_second.view();
+  let const is_equal        = expanded_first.view() == expanded_second.view();
 
   return directive == "ifeq" ? is_equal : !is_equal;
 }
@@ -2214,19 +2325,21 @@ struct make_source_frame
       : lines(steal(new_lines)), include_depth(new_include_depth)
   {}
   ArrayList<make_logical_line> lines;
-  usize line_position{0};
-  usize include_depth{0};
+  usize                        line_position{0};
+  usize                        include_depth{0};
 };
 
-static fn parse_makefile_into(EvalContext &cxt, makefile &mk,
-                              ArrayList<make_source_document> &sources,
-                              usize first_source_position) throws -> void
+static fn
+parse_makefile_into(EvalContext                     &cxt,
+                    makefile                        &mk,
+                    ArrayList<make_source_document> &sources,
+                    usize first_source_position) throws -> void
 {
   let const saved_source_name_index = mk.active_source_name_index;
   defer { mk.active_source_name_index = saved_source_name_index; };
 
-  ArrayList<usize> current_rule_indices{cxt.scratch_allocator()};
-  ArrayList<usize> current_pattern_indices{cxt.scratch_allocator()};
+  ArrayList<usize>             current_rule_indices{cxt.scratch_allocator()};
+  ArrayList<usize>             current_pattern_indices{cxt.scratch_allocator()};
   ArrayList<conditional_state> conditionals{cxt.scratch_allocator()};
 
   let const do_is_active = [&]() -> bool {
@@ -2257,9 +2370,9 @@ static fn parse_makefile_into(EvalContext &cxt, makefile &mk,
 
       const make_logical_line &logical =
           source_frame.lines[source_frame.line_position++];
-      active_source_span = logical.source_span;
+      active_source_span          = logical.source_span;
       mk.active_source_name_index = logical.source_span.source_name_index;
-      let line = logical.text.view();
+      let line                    = logical.text.view();
 
       if (!line.is_empty() && line[0] == '\t') {
         if (do_is_active()) {
@@ -2275,7 +2388,7 @@ static fn parse_makefile_into(EvalContext &cxt, makefile &mk,
       }
 
       let uncommented = makefile_without_comment(line, cxt.scratch_allocator());
-      line = uncommented.view();
+      line            = uncommented.view();
 
       let const trimmed = trim(line);
       if (trimmed.is_empty()) {
@@ -2300,9 +2413,9 @@ static fn parse_makefile_into(EvalContext &cxt, makefile &mk,
       }
       if (directive == "else") {
         if (!conditionals.is_empty()) {
-          conditional_state &top = conditionals[conditionals.count() - 1];
-          let const rest = trim(trimmed.substring(directive.length));
-          let const else_directive = leading_word(rest);
+          conditional_state &top  = conditionals[conditionals.count() - 1];
+          let const          rest = trim(trimmed.substring(directive.length));
+          let const          else_directive = leading_word(rest);
           if (CONDITIONAL_DIRECTIVES.contains(else_directive)) {
             let const is_taken =
                 top.is_parent_active && !top.was_any_branch_taken &&
@@ -2334,7 +2447,7 @@ static fn parse_makefile_into(EvalContext &cxt, makefile &mk,
                                   "A define line must specify a variable"};
 
         String value{cxt.scratch_allocator()};
-        usize define_depth = 1;
+        usize  define_depth = 1;
 
         while (source_frame.line_position < source_frame.lines.count()) {
           let const definition_line =
@@ -2391,7 +2504,7 @@ static fn parse_makefile_into(EvalContext &cxt, makefile &mk,
              include_position > 0; include_position--)
         {
           let const &include_path = include_paths[include_position - 1];
-          let const included_source =
+          let const  included_source =
               Path{include_path.view(), cxt.scratch_allocator()}
                   .read_entire_file();
           if (!included_source.has_value())
@@ -2413,7 +2526,7 @@ static fn parse_makefile_into(EvalContext &cxt, makefile &mk,
       }
 
       let expanded_statement = String{cxt.scratch_allocator()};
-      let statement = trimmed;
+      let statement          = trimmed;
       if (directive == "override")
         statement = trim(statement.substring(directive.length));
 
@@ -2475,7 +2588,7 @@ static fn parse_makefile_into(EvalContext &cxt, makefile &mk,
           (statement[1] == '(' || statement[1] == '{'))
       {
         expanded_statement = expand(cxt, mk, statement, 0);
-        statement = trim(expanded_statement.view());
+        statement          = trim(expanded_statement.view());
         if (statement.is_empty()) {
           current_rule_indices.clear();
           current_pattern_indices.clear();
@@ -2483,7 +2596,7 @@ static fn parse_makefile_into(EvalContext &cxt, makefile &mk,
         }
       }
 
-      let const colon = first_colon_not_followed_by_equals(statement);
+      let const colon  = first_colon_not_followed_by_equals(statement);
       let const equals = statement.find_character('=');
       let const is_rule =
           colon.has_value() && (!equals.has_value() || *colon < *equals);
@@ -2503,7 +2616,7 @@ static fn parse_makefile_into(EvalContext &cxt, makefile &mk,
             if (rule == nullptr) {
               make_rule fresh{cxt.scratch_allocator()};
               fresh.target = target.clone();
-              rule = &mk.rules[mk.add_rule(steal(fresh))];
+              rule         = &mk.rules[mk.add_rule(steal(fresh))];
             }
             rule->variable_assignments.push(
                 String{cxt.scratch_allocator(), trim(after_colon)});
@@ -2515,12 +2628,12 @@ static fn parse_makefile_into(EvalContext &cxt, makefile &mk,
         let const targets =
             expand(cxt, mk, trim(statement.substring_of_length(0, *colon)), 0);
         let prerequisite_text = after_colon;
-        let inline_recipe = StringView{};
+        let inline_recipe     = StringView{};
         if (let const semicolon = after_colon.find_character(';');
             semicolon.has_value())
         {
           prerequisite_text = after_colon.substring_of_length(0, *semicolon);
-          inline_recipe = trim(after_colon.substring(*semicolon + 1));
+          inline_recipe     = trim(after_colon.substring(*semicolon + 1));
         }
         let const prerequisites = expand(cxt, mk, prerequisite_text, 0);
         current_rule_indices.clear();
@@ -2632,14 +2745,14 @@ static fn parse_makefile_into(EvalContext &cxt, makefile &mk,
 
           if (parsed_target.has_wildcard) {
             make_pattern_rule pattern_rule{cxt.scratch_allocator()};
-            pattern_rule.rule.target = target.clone();
+            pattern_rule.rule.target        = target.clone();
             pattern_rule.rule.prerequisites = steal(new_prerequisites);
-            pattern_rule.pattern = steal(parsed_target);
+            pattern_rule.pattern            = steal(parsed_target);
             mk.pattern_rules.push(steal(pattern_rule));
             current_pattern_indices.push(mk.pattern_rules.count() - 1);
           } else {
             make_rule rule{cxt.scratch_allocator()};
-            rule.target = steal(normalized_target);
+            rule.target        = steal(normalized_target);
             rule.prerequisites = steal(new_prerequisites);
             current_rule_indices.push(mk.add_rule(steal(rule)));
           }
@@ -2671,15 +2784,16 @@ static fn parse_makefile_into(EvalContext &cxt, makefile &mk,
   }
 }
 
-static fn parse_makefile(EvalContext &cxt,
-                         ArrayList<make_source_document> &sources,
-                         const ArrayList<String> &command_assignments,
-                         bool is_environment_overriding,
-                         bool should_use_builtin_rules,
-                         StringView initial_makeflags = {}) throws -> makefile
+static fn
+parse_makefile(EvalContext                     &cxt,
+               ArrayList<make_source_document> &sources,
+               const ArrayList<String>         &command_assignments,
+               bool                             is_environment_overriding,
+               bool                             should_use_builtin_rules,
+               StringView initial_makeflags = {}) throws -> makefile
 {
   makefile mk{cxt.scratch_allocator()};
-  mk.source_documents = &sources;
+  mk.source_documents          = &sources;
   mk.is_environment_overriding = is_environment_overriding;
   if (!initial_makeflags.is_empty()) {
     mk.variable_index.set("MAKEFLAGS", mk.variables.count());
@@ -2709,7 +2823,7 @@ static fn parse_makefile(EvalContext &cxt,
        pattern_position++)
   {
     make_pattern_rule &pattern_rule = mk.pattern_rules[pattern_position];
-    make_rule &pattern = pattern_rule.rule;
+    make_rule         &pattern      = pattern_rule.rule;
     if (pattern.recipe_lines.is_empty()) continue;
     bool is_canceled = false;
 
@@ -2780,7 +2894,7 @@ static fn parse_makefile(EvalContext &cxt,
 
 struct saved_recipe_environment
 {
-  String name;
+  String        name;
   Maybe<String> old_value;
 };
 
@@ -2796,11 +2910,12 @@ struct make_build_options
   bool should_touch;
 };
 
-static fn is_make_target_supplyable(EvalContext &cxt, makefile &mk,
-                                    StringView goal,
-                                    StringMap<bool> &active_targets,
-                                    StringMap<bool> &supplyability_cache) throws
-    -> bool
+static fn
+is_make_target_supplyable(EvalContext     &cxt,
+                          makefile        &mk,
+                          StringView       goal,
+                          StringMap<bool> &active_targets,
+                          StringMap<bool> &supplyability_cache) throws -> bool
 {
   if (active_targets.find(goal).has_value()) return false;
   if (let const cached = supplyability_cache.find(goal); cached.has_value())
@@ -2882,10 +2997,14 @@ static fn is_make_target_supplyable(EvalContext &cxt, makefile &mk,
   return false;
 }
 
-static fn build_target(const ExecContext &ec, EvalContext &cxt, makefile &mk,
-                       StringView goal, StringMap<bool> &active_targets,
-                       StringMap<bool> &completed_target_results,
-                       const make_build_options &options) throws -> bool
+static fn
+build_target(const ExecContext        &ec,
+             EvalContext              &cxt,
+             makefile                 &mk,
+             StringView                goal,
+             StringMap<bool>          &active_targets,
+             StringMap<bool>          &completed_target_results,
+             const make_build_options &options) throws -> bool
 {
   if (let const result = completed_target_results.find(goal);
       result.has_value())
@@ -2902,12 +3021,12 @@ static fn build_target(const ExecContext &ec, EvalContext &cxt, makefile &mk,
   ArrayList<String> prerequisites{cxt.scratch_allocator()};
   ArrayList<String> target_assignments{cxt.scratch_allocator()};
   ArrayList<String> explicit_prerequisites{cxt.scratch_allocator()};
-  String target_stem{cxt.scratch_allocator()};
-  String inferred_first_prerequisite{cxt.scratch_allocator()};
-  const make_rule *explicit_rule = mk.find_rule(goal);
-  bool has_explicit_rule = explicit_rule != nullptr;
-  String automatic_target{cxt.scratch_allocator(), goal};
-  String archive_member{cxt.scratch_allocator()};
+  String            target_stem{cxt.scratch_allocator()};
+  String            inferred_first_prerequisite{cxt.scratch_allocator()};
+  const make_rule  *explicit_rule     = mk.find_rule(goal);
+  bool              has_explicit_rule = explicit_rule != nullptr;
+  String            automatic_target{cxt.scratch_allocator(), goal};
+  String            archive_member{cxt.scratch_allocator()};
   if (let const open = goal.find_character('('); open.has_value() &&
                                                  goal.length > *open + 1 &&
                                                  goal[goal.length - 1] == ')')
@@ -2941,11 +3060,11 @@ static fn build_target(const ExecContext &ec, EvalContext &cxt, makefile &mk,
   }
 
   if (recipe_lines.is_empty()) {
-    StringMap<bool> supply_active_targets{cxt.scratch_allocator()};
-    StringMap<bool> supplyability_cache{cxt.scratch_allocator()};
+    StringMap<bool>   supply_active_targets{cxt.scratch_allocator()};
+    StringMap<bool>   supplyability_cache{cxt.scratch_allocator()};
     ArrayList<String> inferred_prerequisites{cxt.scratch_allocator()};
-    usize best_stem_length = ~usize{0};
-    let const pattern_rule_count = mk.pattern_rules.count();
+    usize             best_stem_length   = ~usize{0};
+    let const         pattern_rule_count = mk.pattern_rules.count();
 
     for (usize pattern_rule_position = 0;
          pattern_rule_position < pattern_rule_count; pattern_rule_position++)
@@ -2975,7 +3094,7 @@ static fn build_target(const ExecContext &ec, EvalContext &cxt, makefile &mk,
       }
 
       ArrayList<String> candidate{cxt.scratch_allocator()};
-      bool is_every_prerequisite_supplyable = true;
+      bool              is_every_prerequisite_supplyable = true;
 
       for (let const &prerequisite : pattern.prerequisites) {
         let substituted = String{cxt.scratch_allocator()};
@@ -3044,7 +3163,7 @@ static fn build_target(const ExecContext &ec, EvalContext &cxt, makefile &mk,
 
       for (let const &source_suffix_string : mk.suffixes) {
         let const source_suffix = source_suffix_string.view();
-        let rule_name = source_suffix_string.clone();
+        let       rule_name     = source_suffix_string.clone();
         rule_name += target_suffix;
         let const *suffix_rule = mk.find_rule(rule_name.view());
         if (suffix_rule == nullptr) continue;
@@ -3058,7 +3177,7 @@ static fn build_target(const ExecContext &ec, EvalContext &cxt, makefile &mk,
           let const member_path =
               Path{archive_member.view(), cxt.scratch_allocator()};
           let const member_extension = member_path.extension();
-          stem = String{
+          stem                       = String{
               cxt.scratch_allocator(),
               archive_member.view().substring_of_length(
                   0, archive_member.view().length - member_extension.length)};
@@ -3144,7 +3263,7 @@ static fn build_target(const ExecContext &ec, EvalContext &cxt, makefile &mk,
 
   ArrayList<String> normal_prerequisites{cxt.scratch_allocator()};
   ArrayList<String> order_only_prerequisites{cxt.scratch_allocator()};
-  bool is_order_only_section = false;
+  bool              is_order_only_section = false;
 
   for (let const &prerequisite : prerequisites) {
     if (prerequisite.view() == "|") {
@@ -3161,7 +3280,7 @@ static fn build_target(const ExecContext &ec, EvalContext &cxt, makefile &mk,
   active_targets.set(goal, true);
   defer { active_targets.erase(goal); };
   let has_outdated_prerequisite = false;
-  let did_prerequisite_fail = false;
+  let did_prerequisite_fail     = false;
 
   for (let const &prerequisite : normal_prerequisites) {
     try {
@@ -3202,7 +3321,7 @@ static fn build_target(const ExecContext &ec, EvalContext &cxt, makefile &mk,
   let const was_target_existing = archive_member.is_empty()
                                       ? target_path.exists()
                                       : archive_member_time.has_value();
-  let is_out_of_date = options.should_always_make ||
+  let       is_out_of_date      = options.should_always_make ||
                        mk.phony_targets.find(goal).has_value() ||
                        !was_target_existing || has_outdated_prerequisite;
   if (!is_out_of_date)
@@ -3212,7 +3331,7 @@ static fn build_target(const ExecContext &ec, EvalContext &cxt, makefile &mk,
       let is_prerequisite_newer = prerequisite_path.is_newer_than(target_path);
       if (!archive_member.is_empty()) {
         let const prerequisite_time = prerequisite_path.modification_time();
-        is_prerequisite_newer = prerequisite_time.has_value() &&
+        is_prerequisite_newer       = prerequisite_time.has_value() &&
                                 *prerequisite_time > *archive_member_time;
       }
       if (!prerequisite_path.exists() || is_prerequisite_newer) {
@@ -3250,15 +3369,15 @@ static fn build_target(const ExecContext &ec, EvalContext &cxt, makefile &mk,
       };
   }
 
-  let const first_prereq = !inferred_first_prerequisite.is_empty()
-                               ? inferred_first_prerequisite.view()
-                           : normal_prerequisites.is_empty()
-                               ? StringView{}
-                               : normal_prerequisites[0].view();
+  let const       first_prereq = !inferred_first_prerequisite.is_empty()
+                                     ? inferred_first_prerequisite.view()
+                                 : normal_prerequisites.is_empty()
+                                     ? StringView{}
+                                     : normal_prerequisites[0].view();
   StringMap<bool> seen_prerequisites{cxt.scratch_allocator()};
-  String all_prereqs{cxt.scratch_allocator()};
-  String repeated_prereqs{cxt.scratch_allocator()};
-  String newer_prereqs{cxt.scratch_allocator()};
+  String          all_prereqs{cxt.scratch_allocator()};
+  String          repeated_prereqs{cxt.scratch_allocator()};
+  String          newer_prereqs{cxt.scratch_allocator()};
 
   for (let const &prerequisite : normal_prerequisites) {
     if (!repeated_prereqs.is_empty()) repeated_prereqs += ' ';
@@ -3275,7 +3394,7 @@ static fn build_target(const ExecContext &ec, EvalContext &cxt, makefile &mk,
     let is_prerequisite_newer = prerequisite_path.is_newer_than(target_path);
     if (!archive_member.is_empty()) {
       let const prerequisite_time = prerequisite_path.modification_time();
-      is_prerequisite_newer = archive_member_time.has_value() &&
+      is_prerequisite_newer       = archive_member_time.has_value() &&
                               prerequisite_time.has_value() &&
                               *prerequisite_time > *archive_member_time;
     }
@@ -3326,10 +3445,10 @@ static fn build_target(const ExecContext &ec, EvalContext &cxt, makefile &mk,
       options.should_ignore_errors || mk.ignored_targets.find(goal).has_value();
 
   for (let const &recipe : recipe_lines) {
-    let body = recipe.view();
-    bool is_silent = false;
+    let  body                 = recipe.view();
+    bool is_silent            = false;
     bool should_ignore_errors = false;
-    bool should_force_run = false;
+    bool should_force_run     = false;
 
     while (!body.is_empty() &&
            (body[0] == '@' || body[0] == '-' || body[0] == '+'))
@@ -3436,19 +3555,20 @@ static fn build_target(const ExecContext &ec, EvalContext &cxt, makefile &mk,
 
 } /* namespace */
 
-fn parse_makefile_shell_sources(StringView source, Allocator allocator) throws
+fn
+parse_makefile_shell_sources(StringView source, Allocator allocator) throws
     -> SortedArrayList<make_shell_source_range,
                        order_comparator<make_shell_source_range>>
 {
-  let ranges = ArrayList<make_shell_source_range>{allocator};
-  let const logical_lines = join_continuations(source, 0, allocator);
-  bool has_current_rule = false;
-  usize define_depth = 0;
+  let       ranges           = ArrayList<make_shell_source_range>{allocator};
+  let const logical_lines    = join_continuations(source, 0, allocator);
+  bool      has_current_rule = false;
+  usize     define_depth     = 0;
 
   for (let const &logical : logical_lines) {
-    let const line = logical.text.view();
+    let const line         = logical.text.view();
     let const trimmed_line = trim(line);
-    let const directive = leading_word(trimmed_line);
+    let const directive    = leading_word(trimmed_line);
 
     if (define_depth != 0) {
       if (directive == "define")
@@ -3460,8 +3580,8 @@ fn parse_makefile_shell_sources(StringView source, Allocator allocator) throws
 
     if (!line.is_empty() && line[0] == '\t') {
       if (has_current_rule) {
-        usize start_position = logical.source_span.position + 1;
-        let const end_position = static_cast<usize>(
+        usize     start_position = logical.source_span.position + 1;
+        let const end_position   = static_cast<usize>(
             logical.source_span.position + logical.source_span.length);
 
         while (start_position < end_position &&
@@ -3479,7 +3599,7 @@ fn parse_makefile_shell_sources(StringView source, Allocator allocator) throws
     }
 
     let const uncommented = makefile_without_comment(line, allocator);
-    let const statement = trim(uncommented.view());
+    let const statement   = trim(uncommented.view());
     if (statement.is_empty()) {
       has_current_rule = false;
       continue;
@@ -3487,7 +3607,7 @@ fn parse_makefile_shell_sources(StringView source, Allocator allocator) throws
 
     let const statement_directive = leading_word(statement);
     if (statement_directive == "define") {
-      define_depth = 1;
+      define_depth     = 1;
       has_current_rule = false;
       continue;
     }
@@ -3498,7 +3618,7 @@ fn parse_makefile_shell_sources(StringView source, Allocator allocator) throws
       continue;
     }
 
-    let const colon = first_colon_not_followed_by_equals(statement);
+    let const colon  = first_colon_not_followed_by_equals(statement);
     let const equals = statement.find_character('=');
     if (colon.has_value() && (!equals.has_value() || *colon < *equals)) {
       let const after_colon = statement.substring(*colon + 1);
@@ -3507,7 +3627,7 @@ fn parse_makefile_shell_sources(StringView source, Allocator allocator) throws
         continue;
       }
 
-      has_current_rule = true;
+      has_current_rule   = true;
       let const raw_line = source.substring_of_length(
           logical.source_span.position, logical.source_span.length);
       let const raw_colon = first_colon_not_followed_by_equals(raw_line);
@@ -3535,14 +3655,14 @@ fn parse_makefile_shell_sources(StringView source, Allocator allocator) throws
     if (equals.has_value()) has_current_rule = false;
   }
 
-  let const recipe_range_count = ranges.count();
+  let const recipe_range_count  = ranges.count();
   let const do_is_inside_recipe = [&](usize source_position) {
     usize lower = 0;
     usize upper = recipe_range_count;
 
     while (lower < upper) {
-      let const middle = lower + (upper - lower) / 2;
-      let const &range = ranges[middle];
+      let const  middle = lower + (upper - lower) / 2;
+      let const &range  = ranges[middle];
       if (source_position < range.start_position)
         upper = middle;
       else if (source_position >= range.end_position)
@@ -3553,9 +3673,9 @@ fn parse_makefile_shell_sources(StringView source, Allocator allocator) throws
 
     return false;
   };
-  let close_stack = ArrayList<char>{allocator};
-  usize position = 0;
-  bool is_comment = false;
+  let   close_stack = ArrayList<char>{allocator};
+  usize position    = 0;
+  bool  is_comment  = false;
 
   while (position + 1 < source.length) {
     if (source[position] == '\n') {
@@ -3590,7 +3710,7 @@ fn parse_makefile_shell_sources(StringView source, Allocator allocator) throws
     }
 
     let const expression_start = position + 2;
-    usize name_end = expression_start;
+    usize     name_end         = expression_start;
 
     while (name_end < *expansion_end && !is_blank(source[name_end]) &&
            source[name_end] != ',')
@@ -3621,17 +3741,18 @@ fn parse_makefile_shell_sources(StringView source, Allocator allocator) throws
   return steal(ranges).make_sorted(sort_order::ascending);
 }
 
-fn makefile_shell_analysis_source(StringView source,
-                                  const make_shell_source_range &range) throws
+fn
+makefile_shell_analysis_source(StringView                     source,
+                               const make_shell_source_range &range) throws
     -> String
 {
   let analysis_source = String{heap_allocator()};
   analysis_source.reserve(range.end_position);
-  let close_stack = ArrayList<char>{heap_allocator()};
-  usize position = 0;
+  let   close_stack         = ArrayList<char>{heap_allocator()};
+  usize position            = 0;
   usize line_start_position = 0;
-  char quote_byte = '\0';
-  bool is_escaped = false;
+  char  quote_byte          = '\0';
+  bool  is_escaped          = false;
 
   while (position < range.end_position) {
     let const byte = source[position];
@@ -3695,21 +3816,23 @@ fn makefile_shell_analysis_source(StringView source,
   return analysis_source;
 }
 
-fn Make::execute(const ExecContext &ec, EvalContext &cxt,
-                 const ArrayList<String> &args,
-                 const ArrayList<SourceLocation> &arg_locations) const throws
+fn
+Make::execute(const ExecContext               &ec,
+              EvalContext                     &cxt,
+              const ArrayList<String>         &args,
+              const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  ArrayList<String> parse_arguments{cxt.scratch_allocator()};
+  ArrayList<String>         parse_arguments{cxt.scratch_allocator()};
   ArrayList<SourceLocation> parse_locations{cxt.scratch_allocator()};
-  ArrayList<String> requested_makefiles{cxt.scratch_allocator()};
+  ArrayList<String>         requested_makefiles{cxt.scratch_allocator()};
   ArrayList<SourceLocation> requested_makefile_locations{
       cxt.scratch_allocator()};
   ArrayList<String> command_assignments{cxt.scratch_allocator()};
-  let const do_argument_location = [&](usize argument_position) {
+  let const         do_argument_location = [&](usize argument_position) {
     return argument_position < arg_locations.count()
-               ? arg_locations[argument_position]
-               : ec.source_location();
+                       ? arg_locations[argument_position]
+                       : ec.source_location();
   };
   if (!args.is_empty()) {
     parse_arguments.push(args[0].clone());
@@ -3804,7 +3927,7 @@ fn Make::execute(const ExecContext &ec, EvalContext &cxt,
                                    FLAG_MAKE_NO_BUILTINS.is_enabled(),
                                    FLAG_MAKE_SILENT.is_enabled(),
                                    FLAG_MAKE_TOUCH.is_enabled()};
-  let const is_stop_enabled = FLAG_MAKE_STOP.is_enabled();
+  let const          is_stop_enabled = FLAG_MAKE_STOP.is_enabled();
 
   Maybe<Path> saved_directory;
   if (FLAG_MAKE_DIR.is_set()) {
@@ -3869,7 +3992,7 @@ fn Make::execute(const ExecContext &ec, EvalContext &cxt,
         steal(source), intern_source_name(makefile_path.view())});
   }
 
-  ArrayList<String> goals{cxt.scratch_allocator()};
+  ArrayList<String>         goals{cxt.scratch_allocator()};
   ArrayList<SourceLocation> goal_locations{cxt.scratch_allocator()};
   StringMap<bool> command_line_variable_names{cxt.scratch_allocator()};
 
@@ -4001,7 +4124,7 @@ fn Make::execute(const ExecContext &ec, EvalContext &cxt,
     }
     if (mk.unexported_variable_names.find(variable.name.view()).has_value())
       continue;
-    let old_value = os::get_environment_variable(variable.name.view());
+    let       old_value = os::get_environment_variable(variable.name.view());
     let const is_command_variable =
         mk.command_variable_names.find(variable.name.view()).has_value();
     let const is_command_line_variable =
@@ -4056,8 +4179,8 @@ fn Make::execute(const ExecContext &ec, EvalContext &cxt,
     }
 
     for (let const &pattern_rule : mk.pattern_rules) {
-      let const &rule = pattern_rule.rule;
-      let description = rule.target + ":";
+      let const &rule        = pattern_rule.rule;
+      let        description = rule.target + ":";
 
       for (let const &prerequisite : rule.prerequisites)
         description += " " + prerequisite;
@@ -4084,7 +4207,7 @@ fn Make::execute(const ExecContext &ec, EvalContext &cxt,
 
   StringMap<bool> active_targets{cxt.scratch_allocator()};
   StringMap<bool> completed_target_results{cxt.scratch_allocator()};
-  let const options = make_build_options{
+  let const       options = make_build_options{
       runtime_flags.should_always_make,
       runtime_flags.is_query,
       runtime_flags.should_ignore_errors || mk.should_ignore_errors,
@@ -4094,7 +4217,7 @@ fn Make::execute(const ExecContext &ec, EvalContext &cxt,
       runtime_flags.is_silent || mk.is_silent,
       runtime_flags.should_touch};
   let has_outdated_goal = false;
-  let did_fail = false;
+  let did_fail          = false;
   try {
     for (usize goal_position = 0; goal_position < goals.count();
          goal_position++)
@@ -4128,11 +4251,12 @@ fn Make::execute(const ExecContext &ec, EvalContext &cxt,
   return options.is_query && has_outdated_goal ? 1 : 0;
 }
 
-fn collect_makefile_targets(EvalContext &cxt, const Path &makefile) throws
+fn
+collect_makefile_targets(EvalContext &cxt, const Path &makefile) throws
     -> ArrayList<String>
 {
   let targets = ArrayList<String>{cxt.scratch_allocator()};
-  let source = makefile.read_entire_file();
+  let source  = makefile.read_entire_file();
   if (!source.has_value()) return targets;
 
   let const saved_suppressed = cxt.execution_store().make_shell_suppressed();
@@ -4140,7 +4264,7 @@ fn collect_makefile_targets(EvalContext &cxt, const Path &makefile) throws
   defer { cxt.execution_store().set_make_shell_suppressed(saved_suppressed); };
 
   let const command_assignments = ArrayList<String>{cxt.scratch_allocator()};
-  let sources = ArrayList<make_source_document>{cxt.scratch_allocator()};
+  let       sources = ArrayList<make_source_document>{cxt.scratch_allocator()};
   sources.push(make_source_document{steal(*source),
                                     intern_source_name(makefile.view())});
   let const mk = parse_makefile(cxt, sources, command_assignments, false, true);

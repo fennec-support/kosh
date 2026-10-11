@@ -18,10 +18,11 @@ REGISTER_KOSHKIT_UTIL_FLAGS(Yes);
 
 namespace koshka::koshkit {
 
-fn Yes::execute(const ExecContext &ec, EvalContext &cxt,
-                const ArrayList<String> &args,
-                const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+fn
+Yes::execute(const ExecContext               &ec,
+             EvalContext                     &cxt,
+             const ArrayList<String>         &args,
+             const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
@@ -37,7 +38,7 @@ fn Yes::execute(const ExecContext &ec, EvalContext &cxt,
   line += '\n';
 
   static constexpr usize OUTPUT_BUFFER_LENGTH = 64 * 1024;
-  let output = String{cxt.scratch_allocator()};
+  let                    output               = String{cxt.scratch_allocator()};
   output.reserve(OUTPUT_BUFFER_LENGTH);
 
   do {

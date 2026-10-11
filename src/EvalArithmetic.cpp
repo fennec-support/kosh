@@ -27,7 +27,8 @@ namespace {
 
 using arithmetic_internal::ArithmeticValue;
 
-pure fn fold_leading_digits(StringView text, u32 radix) wontthrow -> u64
+pure fn
+fold_leading_digits(StringView text, u32 radix) wontthrow -> u64
 {
   u64 magnitude = 0;
 
@@ -43,33 +44,35 @@ pure fn fold_leading_digits(StringView text, u32 radix) wontthrow -> u64
   return magnitude;
 }
 
-pure fn parse_arithmetic_operand(StringView text) wontthrow -> i64
+pure fn
+parse_arithmetic_operand(StringView text) wontthrow -> i64
 {
-  let body = text;
+  let body        = text;
   let is_negative = false;
   if (body.length > 0 && (body[0] == '+' || body[0] == '-')) {
     is_negative = body[0] == '-';
-    body = body.substring(1);
+    body        = body.substring(1);
   }
 
-  let const detected = arithmetic_internal::detect_radix_prefix(body);
+  let const detected  = arithmetic_internal::detect_radix_prefix(body);
   let const magnitude = fold_leading_digits(
       body.substring(detected.prefix_length), detected.radix);
 
   return static_cast<i64>(is_negative ? -magnitude : magnitude);
 }
 
-pure fn is_number_continuation(char c) wontthrow -> bool
+pure fn
+is_number_continuation(char c) wontthrow -> bool
 {
   return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') ||
          (c >= 'A' && c <= 'Z') || c == '_' || c == '@';
 }
 
-pure alwaysinline fn try_parse_single_integer_literal(StringView text) wontthrow
-    -> Maybe<i64>
+pure alwaysinline fn
+try_parse_single_integer_literal(StringView text) wontthrow -> Maybe<i64>
 {
-  usize i = 0;
-  let is_negative = false;
+  usize i           = 0;
+  let   is_negative = false;
   if (i < text.length && (text[i] == '+' || text[i] == '-')) {
     is_negative = text[i] == '-';
     i++;
@@ -89,25 +92,29 @@ pure alwaysinline fn try_parse_single_integer_literal(StringView text) wontthrow
   return static_cast<i64>(is_negative ? -magnitude : magnitude);
 }
 
-pure fn arithmetic_add(i64 lhs, i64 rhs) wontthrow -> i64
+pure fn
+arithmetic_add(i64 lhs, i64 rhs) wontthrow -> i64
 {
   return static_cast<i64>(static_cast<u64>(lhs) + static_cast<u64>(rhs));
 }
 
-pure fn arithmetic_subtract(i64 lhs, i64 rhs) wontthrow -> i64
+pure fn
+arithmetic_subtract(i64 lhs, i64 rhs) wontthrow -> i64
 {
   return static_cast<i64>(static_cast<u64>(lhs) - static_cast<u64>(rhs));
 }
 
-pure fn arithmetic_multiply(i64 lhs, i64 rhs) wontthrow -> i64
+pure fn
+arithmetic_multiply(i64 lhs, i64 rhs) wontthrow -> i64
 {
   return static_cast<i64>(static_cast<u64>(lhs) * static_cast<u64>(rhs));
 }
 
-pure fn arithmetic_power(i64 base, i64 exponent) wontthrow -> i64
+pure fn
+arithmetic_power(i64 base, i64 exponent) wontthrow -> i64
 {
-  let result = static_cast<u64>(1);
-  let factor = static_cast<u64>(base);
+  let result    = static_cast<u64>(1);
+  let factor    = static_cast<u64>(base);
   let remaining = static_cast<u64>(exponent);
 
   while (remaining > 0) {
@@ -119,7 +126,8 @@ pure fn arithmetic_power(i64 base, i64 exponent) wontthrow -> i64
   return static_cast<i64>(result);
 }
 
-pure fn arithmetic_divide(i64 lhs, i64 rhs) wontthrow -> i64
+pure fn
+arithmetic_divide(i64 lhs, i64 rhs) wontthrow -> i64
 {
   if (lhs == INT64_MIN && rhs == -1) {
     return INT64_MIN;
@@ -128,7 +136,8 @@ pure fn arithmetic_divide(i64 lhs, i64 rhs) wontthrow -> i64
   return lhs / rhs;
 }
 
-pure fn arithmetic_modulo(i64 lhs, i64 rhs) wontthrow -> i64
+pure fn
+arithmetic_modulo(i64 lhs, i64 rhs) wontthrow -> i64
 {
   if (lhs == INT64_MIN && rhs == -1) {
     return 0;
@@ -137,18 +146,20 @@ pure fn arithmetic_modulo(i64 lhs, i64 rhs) wontthrow -> i64
   return lhs % rhs;
 }
 
-pure fn arithmetic_shift_left(i64 lhs, i64 rhs) wontthrow -> i64
+pure fn
+arithmetic_shift_left(i64 lhs, i64 rhs) wontthrow -> i64
 {
   let const count = static_cast<u64>(rhs) & 63u;
 
   return static_cast<i64>(static_cast<u64>(lhs) << count);
 }
 
-pure fn arithmetic_shift_right(i64 lhs, i64 rhs) wontthrow -> i64
+pure fn
+arithmetic_shift_right(i64 lhs, i64 rhs) wontthrow -> i64
 {
-  let const count = static_cast<u64>(rhs) & 63u;
+  let const count       = static_cast<u64>(rhs) & 63u;
   let const is_negative = lhs < 0;
-  let value = static_cast<u64>(lhs) >> count;
+  let       value       = static_cast<u64>(lhs) >> count;
   if (is_negative && count > 0) {
     value |= ~(~static_cast<u64>(0) >> count);
   }
@@ -156,30 +167,37 @@ pure fn arithmetic_shift_right(i64 lhs, i64 rhs) wontthrow -> i64
   return static_cast<i64>(value);
 }
 
-wontreturn cold fn throw_division_by_zero() throws -> void
+wontreturn cold fn
+throw_division_by_zero() throws -> void
 {
   throw ErrorWithDetails{"Division by zero",
                          "The right operand evaluated to 0"};
 }
 
-static fn lex_arith_number(StringView from, i64 *out_value) throws -> usize;
-static fn lex_exact_arith_number(StringView from, ArithmeticValue *out_value,
-                                 BumpArena &arena) throws -> usize;
+static fn
+lex_arith_number(StringView from, i64 *out_value) throws -> usize;
+static fn
+lex_exact_arith_number(StringView       from,
+                       ArithmeticValue *out_value,
+                       BumpArena       &arena) throws -> usize;
 
-static pure fn is_leading_decimal_number(StringView source,
-                                         usize position) wontthrow -> bool
+static pure fn
+is_leading_decimal_number(StringView source, usize position) wontthrow -> bool
 {
   return position + 1 < source.length && source[position] == '.' &&
          lexer::is_number(source[position + 1]);
 }
 
-hot static fn arith_apply_binop(char kind, const ArithmeticValue &lhs,
-                                const ArithmeticValue &rhs, bool is_exact,
-                                BumpArena &arena,
-                                Maybe<u32> bc_scale = {}) throws
-    -> ArithmeticValue;
+hot static fn
+arith_apply_binop(char                   kind,
+                  const ArithmeticValue &lhs,
+                  const ArithmeticValue &rhs,
+                  bool                   is_exact,
+                  BumpArena             &arena,
+                  Maybe<u32> bc_scale = {}) throws -> ArithmeticValue;
 
-static pure fn is_plain_decimal_operand(StringView value) wontthrow -> bool
+static pure fn
+is_plain_decimal_operand(StringView value) wontthrow -> bool
 {
   if (value.is_empty() || value.length > 18) return false;
   if (value[0] == '0') return value.length == 1;
@@ -194,26 +212,30 @@ static pure fn is_plain_decimal_operand(StringView value) wontthrow -> bool
 class ArithmeticParser
 {
 public:
-  ArithmeticParser(EvalContext *context_value, StringView source_value,
-                   bool is_exact_value, BumpArena &arena_value,
-                   usize depth_value = 0, bool is_skipping = false,
-                   Maybe<u32> bc_scale_value = {})
+  ArithmeticParser(EvalContext *context_value,
+                   StringView   source_value,
+                   bool         is_exact_value,
+                   BumpArena   &arena_value,
+                   usize        depth_value    = 0,
+                   bool         is_skipping    = false,
+                   Maybe<u32>   bc_scale_value = {})
       : context{context_value}, source{source_value}, pos{0},
         is_exact{is_exact_value}, depth{depth_value},
         m_is_skipping{is_skipping}, bc_scale{bc_scale_value}, arena{arena_value}
   {}
 
   EvalContext *context;
-  StringView source;
-  usize pos;
-  bool is_exact{false};
+  StringView   source;
+  usize        pos;
+  bool         is_exact{false};
 
-  usize depth{0};
+  usize                  depth{0};
   static constexpr usize MAX_DEPTH = 128;
-  usize chain_depth{0};
+  usize                  chain_depth{0};
   static constexpr usize MAX_CHAIN_DEPTH = 4096;
 
-  fn enter_chain() throws -> void
+  fn
+  enter_chain() throws -> void
   {
     chain_depth++;
     if (chain_depth > MAX_CHAIN_DEPTH) {
@@ -223,19 +245,21 @@ public:
     }
   }
 
-  bool m_is_skipping{false};
-  bool should_error_unset{false};
+  bool       m_is_skipping{false};
+  bool       should_error_unset{false};
   Maybe<u32> bc_scale{};
 
   Maybe<SourceLocation> precise_base{};
-  BumpArena &arena;
-  u32 cached_pi_scale{0};
-  ArithmeticValue cached_pi{};
-  usize calculator_function_position{0};
+  BumpArena            &arena;
+  u32                   cached_pi_scale{0};
+  ArithmeticValue       cached_pi{};
+  usize                 calculator_function_position{0};
 
-  wontreturn cold fn fail_at(usize start_position, usize length,
-                             StringView message, StringView note = {}) throws
-      -> void
+  wontreturn cold fn
+  fail_at(usize      start_position,
+          usize      length,
+          StringView message,
+          StringView note = {}) throws -> void
   {
     if (precise_base.has_value()) {
       const SourceLocation location{precise_base->position + start_position,
@@ -248,8 +272,8 @@ public:
     throw ErrorWithDetails{message, note};
   }
 
-  wontreturn cold fn fail(StringView message, StringView note = {}) throws
-      -> void
+  wontreturn cold fn
+  fail(StringView message, StringView note = {}) throws -> void
   {
     let const error_position = should_error_unset    ? pos
                                : pos < source.length ? pos
@@ -258,9 +282,11 @@ public:
     fail_at(error_position, 1, message, note);
   }
 
-  wontreturn cold fn fail_span(usize start_position, usize end_position,
-                               StringView message, StringView note = {}) throws
-      -> void
+  wontreturn cold fn
+  fail_span(usize      start_position,
+            usize      end_position,
+            StringView message,
+            StringView note = {}) throws -> void
   {
     while (end_position > start_position && (source[end_position - 1] == ' ' ||
                                              source[end_position - 1] == '\t' ||
@@ -273,22 +299,26 @@ public:
     fail_at(start_position, end_position - start_position, message, note);
   }
 
-  fn skip_spaces() wontthrow -> void
+  fn
+  skip_spaces() wontthrow -> void
   {
     arithmetic_internal::skip_spaces(source, pos);
   }
 
-  fn starts_with(StringView op) wontthrow -> bool
+  fn
+  starts_with(StringView op) wontthrow -> bool
   {
     return arithmetic_internal::starts_with(source, pos, op);
   }
 
-  fn consume(StringView op) wontthrow -> bool
+  fn
+  consume(StringView op) wontthrow -> bool
   {
     return arithmetic_internal::consume(source, pos, op);
   }
 
-  fn read_variable_value(StringView name, usize name_position) throws
+  fn
+  read_variable_value(StringView name, usize name_position) throws
       -> ArithmeticValue
   {
     if (m_is_skipping) return ArithmeticValue{};
@@ -313,7 +343,8 @@ public:
     return evaluate_operand_value(value->view());
   }
 
-  fn evaluate_operand_value(StringView value) throws -> ArithmeticValue
+  fn
+  evaluate_operand_value(StringView value) throws -> ArithmeticValue
   {
     if (value.is_empty()) return ArithmeticValue{};
     if (!is_exact) {
@@ -328,7 +359,7 @@ public:
       fail("The variable value recurses too deeply",
            "A variable value refers back to itself");
 
-    let const stable_value = String{bump_allocator(arena), value};
+    let const        stable_value = String{bump_allocator(arena), value};
     ArithmeticParser nested{context,   stable_value.view(), is_exact, arena,
                             depth + 1, m_is_skipping,       bc_scale};
     nested.should_error_unset = should_error_unset;
@@ -336,7 +367,8 @@ public:
     return nested.parse();
   }
 
-  fn read_lvalue_name() wontthrow -> StringView
+  fn
+  read_lvalue_name() wontthrow -> StringView
   {
     skip_spaces();
     if (pos >= source.length || !lexer::is_variable_name_start(source[pos])) {
@@ -351,7 +383,8 @@ public:
     return source.substring_of_length(name_start, pos - name_start);
   }
 
-  fn write_variable(StringView name, const ArithmeticValue &value) const throws
+  fn
+  write_variable(StringView name, const ArithmeticValue &value) const throws
       -> void
   {
     if (m_is_skipping) return;
@@ -370,19 +403,20 @@ public:
 
   struct Lvalue
   {
-    StringView name;
+    StringView        name;
     Maybe<StringView> subscript;
-    usize name_position;
+    usize             name_position;
   };
 
-  fn read_optional_subscript() throws -> Maybe<StringView>
+  fn
+  read_optional_subscript() throws -> Maybe<StringView>
   {
     if (pos >= source.length || source[pos] != '[') {
       return None;
     }
     pos++;
     let const inner_start = pos;
-    usize depth = 1;
+    usize     depth       = 1;
 
     while (pos < source.length && depth > 0) {
       if (source[pos] == '[') {
@@ -404,17 +438,19 @@ public:
     return subscript;
   }
 
-  fn read_lvalue() throws -> Lvalue
+  fn
+  read_lvalue() throws -> Lvalue
   {
     skip_spaces();
     let const name_position = pos;
-    let const name = read_lvalue_name();
+    let const name          = read_lvalue_name();
     if (name.is_empty()) return Lvalue{name, None, name_position};
 
     return Lvalue{name, read_optional_subscript(), name_position};
   }
 
-  fn read_lvalue_value(const Lvalue &target) throws -> ArithmeticValue
+  fn
+  read_lvalue_value(const Lvalue &target) throws -> ArithmeticValue
   {
     if (m_is_skipping) return ArithmeticValue{};
 
@@ -429,8 +465,9 @@ public:
     return read_variable_value(target.name, target.name_position);
   }
 
-  fn write_lvalue(const Lvalue &target,
-                  const ArithmeticValue &value) const throws -> void
+  fn
+  write_lvalue(const Lvalue &target, const ArithmeticValue &value) const throws
+      -> void
   {
     if (m_is_skipping) return;
     if (target.subscript.has_value()) {
@@ -444,7 +481,8 @@ public:
     write_variable(target.name, value);
   }
 
-  fn prefix_step(i64 delta, usize operator_position) throws -> ArithmeticValue
+  fn
+  prefix_step(i64 delta, usize operator_position) throws -> ArithmeticValue
   {
     const Lvalue target = read_lvalue();
     if (target.name.is_empty())
@@ -459,7 +497,8 @@ public:
     return updated;
   }
 
-  fn postfix_step(const Lvalue &target, i64 delta) throws -> ArithmeticValue
+  fn
+  postfix_step(const Lvalue &target, i64 delta) throws -> ArithmeticValue
   {
     let const original = read_lvalue_value(target);
     write_lvalue(target,
@@ -469,7 +508,8 @@ public:
     return original;
   }
 
-  fn parse() throws -> ArithmeticValue
+  fn
+  parse() throws -> ArithmeticValue
   {
     skip_spaces();
     if (pos == source.length) return ArithmeticValue{};
@@ -484,7 +524,8 @@ public:
     return result;
   }
 
-  fn parse_comma() throws -> ArithmeticValue
+  fn
+  parse_comma() throws -> ArithmeticValue
   {
     let result = parse_assignment();
 
@@ -494,7 +535,8 @@ public:
     return result;
   }
 
-  fn parse_assignment() throws -> ArithmeticValue
+  fn
+  parse_assignment() throws -> ArithmeticValue
   {
     enter_chain();
     defer { chain_depth = chain_depth > 0 ? chain_depth - 1 : 0; };
@@ -513,7 +555,7 @@ public:
       struct compound_operator
       {
         StringView token;
-        char kind;
+        char       kind;
       };
       static const compound_operator compound_operators[] = {
           {"<<=", 'L'},
@@ -539,9 +581,9 @@ public:
           if (consume(op)) {
             skip_spaces();
             let const rhs_start = pos;
-            let const rhs = parse_assignment();
-            let const lhs = read_lvalue_value(target);
-            let result = ArithmeticValue{};
+            let const rhs       = parse_assignment();
+            let const lhs       = read_lvalue_value(target);
+            let       result    = ArithmeticValue{};
             try {
               result =
                   arith_apply_binop(kind, lhs, rhs, is_exact, arena, bc_scale);
@@ -570,17 +612,19 @@ public:
     return parse_ternary();
   }
 
-  fn parse_skipped(ArithmeticValue (ArithmeticParser::*parse_branch)()) throws
+  fn
+  parse_skipped(ArithmeticValue (ArithmeticParser::*parse_branch)()) throws
       -> ArithmeticValue
   {
     let const was_skipping = m_is_skipping;
-    m_is_skipping = true;
+    m_is_skipping          = true;
     defer { m_is_skipping = was_skipping; };
 
     return (this->*parse_branch)();
   }
 
-  fn parse_ternary() throws -> ArithmeticValue
+  fn
+  parse_ternary() throws -> ArithmeticValue
   {
     let const condition = parse_binary(1);
     if (consume("?")) {
@@ -607,17 +651,18 @@ public:
   struct BinaryOperator
   {
     char kind;
-    u8 precedence;
-    u8 length;
+    u8   precedence;
+    u8   length;
   };
 
-  fn peek_binary_operator() wontthrow -> BinaryOperator
+  fn
+  peek_binary_operator() wontthrow -> BinaryOperator
   {
     skip_spaces();
     if (pos >= source.length) return {0, 0, 0};
-    let const first_byte = source[pos];
+    let const first_byte  = source[pos];
     let const second_byte = pos + 1 < source.length ? source[pos + 1] : '\0';
-    let const third_byte = pos + 2 < source.length ? source[pos + 2] : '\0';
+    let const third_byte  = pos + 2 < source.length ? source[pos + 2] : '\0';
     switch (first_byte) {
     case '*':
       if (second_byte == '*') return {'P', 11, 2};
@@ -673,11 +718,12 @@ public:
     }
   }
 
-  fn parse_binary(u8 min_precedence) throws -> ArithmeticValue
+  fn
+  parse_binary(u8 min_precedence) throws -> ArithmeticValue
   {
     skip_spaces();
     let const lhs_start = pos;
-    let lhs = parse_unary();
+    let       lhs       = parse_unary();
 
     loop
     {
@@ -689,10 +735,10 @@ public:
 
       if (op.kind == 'A' || op.kind == 'O') {
         let const is_decided_by_lhs = (op.kind == 'A') == lhs.is_zero();
-        let rhs = ArithmeticValue{};
+        let       rhs               = ArithmeticValue{};
         if (is_decided_by_lhs) {
           let const was_skipping = m_is_skipping;
-          m_is_skipping = true;
+          m_is_skipping          = true;
           defer { m_is_skipping = was_skipping; };
           rhs = parse_binary(op.precedence + 1);
         } else {
@@ -727,7 +773,8 @@ public:
     }
   }
 
-  fn parse_unary() throws -> ArithmeticValue
+  fn
+  parse_unary() throws -> ArithmeticValue
   {
     enter_chain();
     defer { chain_depth = chain_depth > 0 ? chain_depth - 1 : 0; };
@@ -794,8 +841,9 @@ public:
 
   struct CalculatorArgument : ArithmeticValue
   {
-    CalculatorArgument(ArithmeticValue value, usize start_position,
-                       usize end_position)
+    CalculatorArgument(ArithmeticValue value,
+                       usize           start_position,
+                       usize           end_position)
         : ArithmeticValue(steal(value)), start(start_position),
           end(end_position)
     {}
@@ -803,7 +851,8 @@ public:
     usize end;
   };
 
-  fn calculator_function_arguments(StringView name) throws
+  fn
+  calculator_function_arguments(StringView name) throws
       -> ArrayList<CalculatorArgument>
   {
     let arguments = ArrayList<CalculatorArgument>{bump_allocator(arena)};
@@ -813,7 +862,7 @@ public:
     {
       skip_spaces();
       let const argument_start = pos;
-      let argument = parse_assignment();
+      let       argument       = parse_assignment();
       arguments.push(CalculatorArgument{steal(argument), argument_start, pos});
       if (consume(")")) return arguments;
       if (!consume(","))
@@ -822,10 +871,11 @@ public:
     }
   }
 
-  fn require_argument_count(StringView name,
-                            const ArrayList<CalculatorArgument> &arguments,
-                            usize minimum_count, usize maximum_count) throws
-      -> void
+  fn
+  require_argument_count(StringView                           name,
+                         const ArrayList<CalculatorArgument> &arguments,
+                         usize                                minimum_count,
+                         usize maximum_count) throws -> void
   {
     if (arguments.count() >= minimum_count &&
         arguments.count() <= maximum_count)
@@ -833,7 +883,7 @@ public:
       return;
     }
     let const allocator = bump_allocator(arena);
-    let detail = String{allocator, "The function accepts "};
+    let       detail    = String{allocator, "The function accepts "};
     if (maximum_count == ~usize{0}) {
       detail += "at least ";
       detail += String::from(minimum_count, allocator);
@@ -852,8 +902,9 @@ public:
               "Wrong number of arguments for '" + String{name} + "'", detail);
   }
 
-  fn require_integer_argument(StringView name,
-                              const CalculatorArgument &argument) throws -> i64
+  fn
+  require_integer_argument(StringView                name,
+                           const CalculatorArgument &argument) throws -> i64
   {
     if (!argument.has_integer_value(arena))
       fail_span(argument.start, argument.end,
@@ -869,31 +920,33 @@ public:
     }
   }
 
-  fn calculator_gcd(ArithmeticValue left, ArithmeticValue right) throws
+  fn
+  calculator_gcd(ArithmeticValue left, ArithmeticValue right) throws
       -> ArithmeticValue
   {
-    left = ArithmeticValue::absolute(left, arena);
+    left  = ArithmeticValue::absolute(left, arena);
     right = ArithmeticValue::absolute(right, arena);
 
     while (!right.is_zero()) {
       let const remainder = ArithmeticValue::modulo(left, right, arena);
-      left = right;
-      right = remainder;
+      left                = right;
+      right               = remainder;
     }
 
     return left;
   }
 
-  fn calculator_fibonacci(u64 index) throws -> ArithmeticValue
+  fn
+  calculator_fibonacci(u64 index) throws -> ArithmeticValue
   {
     let current = ArithmeticValue{};
-    let next = ArithmeticValue{1};
+    let next    = ArithmeticValue{1};
     if (index == 0) return current;
     let bit = u64{1} << (63u - static_cast<u32>(__builtin_clzll(index)));
 
     while (bit != 0) {
       let const doubled_next = ArithmeticValue::add(next, next, arena);
-      let const c = ArithmeticValue::multiply(
+      let const c            = ArithmeticValue::multiply(
           current, ArithmeticValue::subtract(doubled_next, current, arena),
           arena);
       let const d = ArithmeticValue::add(
@@ -901,10 +954,10 @@ public:
           ArithmeticValue::multiply(next, next, arena), arena);
       if ((index & bit) == 0) {
         current = c;
-        next = d;
+        next    = d;
       } else {
         current = d;
-        next = ArithmeticValue::add(c, d, arena);
+        next    = ArithmeticValue::add(c, d, arena);
       }
       bit >>= 1u;
     }
@@ -912,7 +965,8 @@ public:
     return current;
   }
 
-  fn calculator_requested_scale(
+  fn
+  calculator_requested_scale(
       StringView name, const ArrayList<CalculatorArgument> &arguments) throws
       -> u32
   {
@@ -930,39 +984,44 @@ public:
     return requested_scale;
   }
 
-  fn calculator_work_scale(u32 requested_scale) throws -> u32
+  fn
+  calculator_work_scale(u32 requested_scale) throws -> u32
   {
     if (requested_scale > ~u32{0} - 12) throw std::bad_alloc{};
 
     return requested_scale + 12;
   }
 
-  fn calculator_pi(u32 decimal_scale) throws -> ArithmeticValue
+  fn
+  calculator_pi(u32 decimal_scale) throws -> ArithmeticValue
   {
     if (cached_pi_scale < decimal_scale) {
       let const quarter_pi = calculator_atan(ArithmeticValue{1}, decimal_scale);
       let const half_pi = ArithmeticValue::add(quarter_pi, quarter_pi, arena);
-      cached_pi = ArithmeticValue::add(half_pi, half_pi, arena);
-      cached_pi_scale = decimal_scale;
+      cached_pi         = ArithmeticValue::add(half_pi, half_pi, arena);
+      cached_pi_scale   = decimal_scale;
     }
     if (cached_pi_scale == decimal_scale) return cached_pi;
 
     return ArithmeticValue::rescale(cached_pi, decimal_scale, arena);
   }
 
-  fn calculator_fixed_multiply(const ArithmeticValue &left,
-                               const ArithmeticValue &right, u32 decimal_scale,
-                               BumpArena &result_arena) throws
-      -> ArithmeticValue
+  fn
+  calculator_fixed_multiply(const ArithmeticValue &left,
+                            const ArithmeticValue &right,
+                            u32                    decimal_scale,
+                            BumpArena &result_arena) throws -> ArithmeticValue
   {
     return ArithmeticValue::rescale(
         ArithmeticValue::multiply(left, right, result_arena), decimal_scale,
         result_arena);
   }
 
-  fn calculator_fixed_divide(const ArithmeticValue &left,
-                             const ArithmeticValue &right, u32 decimal_scale,
-                             BumpArena &result_arena) throws -> ArithmeticValue
+  fn
+  calculator_fixed_divide(const ArithmeticValue &left,
+                          const ArithmeticValue &right,
+                          u32                    decimal_scale,
+                          BumpArena &result_arena) throws -> ArithmeticValue
   {
     if (right.is_zero())
       fail("Division by zero", "The right operand evaluated to 0");
@@ -976,17 +1035,18 @@ public:
         result_arena);
   }
 
-  fn calculator_atan(ArithmeticValue value, u32 requested_scale) throws
+  fn
+  calculator_atan(ArithmeticValue value, u32 requested_scale) throws
       -> ArithmeticValue
   {
-    let const work_scale = calculator_work_scale(requested_scale);
+    let const work_scale  = calculator_work_scale(requested_scale);
     let const is_negative = value.is_negative();
     value = ArithmeticValue::rescale(ArithmeticValue::absolute(value, arena),
                                      work_scale, arena);
     let const threshold = ArithmeticValue::rescale(
         ArithmeticValue::parse_decimal("0.1", arena), work_scale, arena);
     BumpArena iteration_arenas[2];
-    usize state_position = 0;
+    usize     state_position = 0;
     value = ArithmeticValue::add(value, ArithmeticValue{}, iteration_arenas[0]);
     u32 doubling_count = 0;
 
@@ -1016,8 +1076,8 @@ public:
         calculator_fixed_multiply(value, value, work_scale, arena);
     let term =
         ArithmeticValue::add(value, ArithmeticValue{}, iteration_arenas[0]);
-    let sum = term;
-    state_position = 0;
+    let sum                   = term;
+    state_position            = 0;
     let const iteration_count = static_cast<usize>(work_scale) * 2 + 128;
 
     for (usize index = 1; index < iteration_count; index++) {
@@ -1025,7 +1085,7 @@ public:
       iteration_arenas[next_position].reset();
       let next_term = calculator_fixed_multiply(
           term, square, work_scale, iteration_arenas[next_position]);
-      let const denominator = ArithmeticValue{static_cast<i64>(index * 2 + 1)};
+      let const denominator  = ArithmeticValue{static_cast<i64>(index * 2 + 1)};
       let const contribution = calculator_fixed_divide(
           next_term, denominator, work_scale, iteration_arenas[next_position]);
       if (contribution.is_zero()) break;
@@ -1035,8 +1095,8 @@ public:
                                           iteration_arenas[next_position])
               : ArithmeticValue::add(sum, contribution,
                                      iteration_arenas[next_position]);
-      term = next_term;
-      sum = next_sum;
+      term           = next_term;
+      sum            = next_sum;
       state_position = next_position;
     }
 
@@ -1050,16 +1110,18 @@ public:
     return ArithmeticValue::rescale(sum, requested_scale, arena);
   }
 
-  fn calculator_sin_cos(ArithmeticValue value, u32 requested_scale,
-                        bool is_cosine) throws -> ArithmeticValue
+  fn
+  calculator_sin_cos(ArithmeticValue value,
+                     u32             requested_scale,
+                     bool            is_cosine) throws -> ArithmeticValue
   {
     let const work_scale = calculator_work_scale(requested_scale);
-    value = ArithmeticValue::rescale(value, work_scale, arena);
-    let const pi = calculator_pi(work_scale);
+    value                = ArithmeticValue::rescale(value, work_scale, arena);
+    let const pi         = calculator_pi(work_scale);
     let const half_pi =
         calculator_fixed_divide(pi, ArithmeticValue{2}, work_scale, arena);
     let const two_pi = ArithmeticValue::add(pi, pi, arena);
-    value = ArithmeticValue::modulo(value, two_pi, arena);
+    value            = ArithmeticValue::modulo(value, two_pi, arena);
     if (value.compare(pi, bump_allocator(arena)) > 0)
       value = ArithmeticValue::subtract(value, two_pi, arena);
     let const negative_pi =
@@ -1068,13 +1130,13 @@ public:
       value = ArithmeticValue::add(value, two_pi, arena);
     let should_negate = false;
     if (value.compare(half_pi, bump_allocator(arena)) > 0) {
-      value = ArithmeticValue::subtract(pi, value, arena);
+      value         = ArithmeticValue::subtract(pi, value, arena);
       should_negate = is_cosine;
     } else {
       let const negative_half_pi =
           ArithmeticValue::subtract(ArithmeticValue{}, half_pi, arena);
       if (value.compare(negative_half_pi, bump_allocator(arena)) < 0) {
-        value = ArithmeticValue::subtract(negative_pi, value, arena);
+        value         = ArithmeticValue::subtract(negative_pi, value, arena);
         should_negate = is_cosine;
       }
     }
@@ -1083,28 +1145,28 @@ public:
     BumpArena iteration_arenas[2];
     let term = ArithmeticValue::add(is_cosine ? ArithmeticValue{1} : value,
                                     ArithmeticValue{}, iteration_arenas[0]);
-    let sum = term;
-    usize state_position = 0;
+    let       sum             = term;
+    usize     state_position  = 0;
     let const iteration_count = static_cast<usize>(work_scale) * 2 + 128;
 
     for (usize index = 1; index < iteration_count; index++) {
       let const next_position = 1 - state_position;
       iteration_arenas[next_position].reset();
-      let const first = is_cosine ? index * 2 - 1 : index * 2;
-      let const second = is_cosine ? index * 2 : index * 2 + 1;
+      let const first       = is_cosine ? index * 2 - 1 : index * 2;
+      let const second      = is_cosine ? index * 2 : index * 2 + 1;
       let const denominator = ArithmeticValue{static_cast<i64>(first * second)};
-      let next_term = calculator_fixed_divide(
+      let       next_term   = calculator_fixed_divide(
           calculator_fixed_multiply(term, square, work_scale,
-                                    iteration_arenas[next_position]),
+                                            iteration_arenas[next_position]),
           denominator, work_scale, iteration_arenas[next_position]);
       if (next_term.is_zero()) break;
-      let next_sum = (index & 1u) != 0
-                         ? ArithmeticValue::subtract(
+      let next_sum   = (index & 1u) != 0
+                           ? ArithmeticValue::subtract(
                                sum, next_term, iteration_arenas[next_position])
-                         : ArithmeticValue::add(
+                           : ArithmeticValue::add(
                                sum, next_term, iteration_arenas[next_position]);
-      term = next_term;
-      sum = next_sum;
+      term           = next_term;
+      sum            = next_sum;
       state_position = next_position;
     }
 
@@ -1116,17 +1178,18 @@ public:
     return ArithmeticValue::rescale(sum, requested_scale, arena);
   }
 
-  fn calculator_exp(ArithmeticValue value, u32 requested_scale) throws
+  fn
+  calculator_exp(ArithmeticValue value, u32 requested_scale) throws
       -> ArithmeticValue
   {
-    let const work_scale = calculator_work_scale(requested_scale);
+    let const work_scale  = calculator_work_scale(requested_scale);
     let const is_negative = value.is_negative();
     value = ArithmeticValue::rescale(ArithmeticValue::absolute(value, arena),
                                      work_scale, arena);
     let const reduction_limit = ArithmeticValue::rescale(
         ArithmeticValue::parse_decimal("0.5", arena), work_scale, arena);
     BumpArena iteration_arenas[2];
-    usize state_position = 0;
+    usize     state_position = 0;
     value = ArithmeticValue::add(value, ArithmeticValue{}, iteration_arenas[0]);
     u32 squaring_count = 0;
 
@@ -1145,9 +1208,9 @@ public:
     value = ArithmeticValue::add(value, ArithmeticValue{}, arena);
     iteration_arenas[0].reset();
     iteration_arenas[1].reset();
-    let term = ArithmeticValue::rescale(ArithmeticValue{1}, work_scale,
-                                        iteration_arenas[0]);
-    let sum = term;
+    let term       = ArithmeticValue::rescale(ArithmeticValue{1}, work_scale,
+                                              iteration_arenas[0]);
+    let sum        = term;
     state_position = 0;
     let const iteration_count = static_cast<usize>(work_scale) * 4 + 256;
 
@@ -1162,16 +1225,16 @@ public:
       if (next_term.is_zero()) break;
       let next_sum =
           ArithmeticValue::add(sum, next_term, iteration_arenas[next_position]);
-      term = next_term;
-      sum = next_sum;
+      term           = next_term;
+      sum            = next_sum;
       state_position = next_position;
     }
 
     for (u32 count = 0; count < squaring_count; count++) {
       let const next_position = 1 - state_position;
       iteration_arenas[next_position].reset();
-      sum = calculator_fixed_multiply(sum, sum, work_scale,
-                                      iteration_arenas[next_position]);
+      sum            = calculator_fixed_multiply(sum, sum, work_scale,
+                                                 iteration_arenas[next_position]);
       state_position = next_position;
     }
 
@@ -1181,17 +1244,18 @@ public:
     return ArithmeticValue::rescale(sum, requested_scale, arena);
   }
 
-  fn calculator_ln(ArithmeticValue value, u32 requested_scale) throws
+  fn
+  calculator_ln(ArithmeticValue value, u32 requested_scale) throws
       -> ArithmeticValue
   {
     let const work_scale = calculator_work_scale(requested_scale);
-    value = ArithmeticValue::rescale(value, work_scale, arena);
-    let const lower = ArithmeticValue::rescale(
+    value                = ArithmeticValue::rescale(value, work_scale, arena);
+    let const lower      = ArithmeticValue::rescale(
         ArithmeticValue::parse_decimal("0.8", arena), work_scale, arena);
     let const upper = ArithmeticValue::rescale(
         ArithmeticValue::parse_decimal("1.25", arena), work_scale, arena);
     BumpArena iteration_arenas[2];
-    usize state_position = 0;
+    usize     state_position = 0;
     value = ArithmeticValue::add(value, ArithmeticValue{}, iteration_arenas[0]);
     u32 root_count = 0;
 
@@ -1200,8 +1264,8 @@ public:
     {
       let const next_position = 1 - state_position;
       iteration_arenas[next_position].reset();
-      value = ArithmeticValue::square_root(value, work_scale,
-                                           iteration_arenas[next_position]);
+      value          = ArithmeticValue::square_root(value, work_scale,
+                                                    iteration_arenas[next_position]);
       state_position = next_position;
       root_count++;
       if (root_count > 64) throw std::bad_alloc{};
@@ -1220,8 +1284,8 @@ public:
         calculator_fixed_multiply(reduced, reduced, work_scale, arena);
     let term =
         ArithmeticValue::add(reduced, ArithmeticValue{}, iteration_arenas[0]);
-    let sum = term;
-    state_position = 0;
+    let sum                   = term;
+    state_position            = 0;
     let const iteration_count = static_cast<usize>(work_scale) * 2 + 128;
 
     for (usize index = 1; index < iteration_count; index++) {
@@ -1233,10 +1297,10 @@ public:
           next_term, ArithmeticValue{static_cast<i64>(index * 2 + 1)},
           work_scale, iteration_arenas[next_position]);
       if (contribution.is_zero()) break;
-      let next_sum = ArithmeticValue::add(sum, contribution,
-                                          iteration_arenas[next_position]);
-      term = next_term;
-      sum = next_sum;
+      let next_sum   = ArithmeticValue::add(sum, contribution,
+                                            iteration_arenas[next_position]);
+      term           = next_term;
+      sum            = next_sum;
       state_position = next_position;
     }
 
@@ -1249,7 +1313,8 @@ public:
     return ArithmeticValue::rescale(sum, requested_scale, arena);
   }
 
-  fn apply_calculator_function(StringView name, usize name_position) throws
+  fn
+  apply_calculator_function(StringView name, usize name_position) throws
       -> ArithmeticValue
   {
     static constexpr static_string_entry<CalculatorFunction> ENTRIES[] = {
@@ -1280,7 +1345,7 @@ public:
     };
     static constexpr StaticStringMap FUNCTIONS{ENTRIES};
     let const previous_function_position = calculator_function_position;
-    calculator_function_position = name_position;
+    calculator_function_position         = name_position;
     defer { calculator_function_position = previous_function_position; };
 
     let const function = FUNCTIONS.find(name);
@@ -1303,7 +1368,7 @@ public:
     case CalculatorFunction::Ceil:
     case CalculatorFunction::Floor:
     case CalculatorFunction::Frac:
-    case CalculatorFunction::Int: {
+    case CalculatorFunction::Int:   {
       require_argument_count(name, arguments, 1, 1);
       let const integer = ArithmeticValue::integer_part(arguments[0], arena);
       if (*function == CalculatorFunction::Int) return integer;
@@ -1395,7 +1460,7 @@ public:
       return result;
     }
     case CalculatorFunction::IsEven:
-    case CalculatorFunction::IsOdd: {
+    case CalculatorFunction::IsOdd:  {
       require_argument_count(name, arguments, 1, 1);
       require_integer_argument(name, arguments[0]);
       let const remainder = ArithmeticValue::modulo(
@@ -1413,8 +1478,8 @@ public:
       return ArithmeticValue{arguments[0].has_integer_value(arena) ? 1 : 0};
     case CalculatorFunction::Length: {
       require_argument_count(name, arguments, 1, 1);
-      let const text = arguments[0].to_string(bump_allocator(arena));
-      usize digit_count = 0;
+      let const text        = arguments[0].to_string(bump_allocator(arena));
+      usize     digit_count = 0;
 
       for (usize position = 0; position < text.count(); position++) {
         if (text[position] >= '0' && text[position] <= '9') {
@@ -1499,14 +1564,15 @@ public:
     unreachable();
   }
 
-  fn reject_invalid_digit(usize number_start) throws -> void
+  fn
+  reject_invalid_digit(usize number_start) throws -> void
   {
     if (pos >= source.length || !is_number_continuation(source[pos])) {
       return;
     }
 
     let const token = source.substring(number_start);
-    usize base = arithmetic_internal::detect_radix_prefix(token).radix;
+    usize     base  = arithmetic_internal::detect_radix_prefix(token).radix;
     if (let const hash = token.find_character('#'); hash.has_value()) {
       base = static_cast<usize>(
           parse_arithmetic_operand(token.substring_of_length(0, *hash)));
@@ -1528,7 +1594,8 @@ public:
                   String::from(base, bump_allocator(arena)));
   }
 
-  fn parse_primary() throws -> ArithmeticValue
+  fn
+  parse_primary() throws -> ArithmeticValue
   {
     depth++;
     defer { depth--; };
@@ -1581,12 +1648,12 @@ public:
 
 struct explicit_radix
 {
-  u32 radix;
+  u32   radix;
   usize digit_start;
 };
 
-alwaysinline static fn lex_explicit_radix(StringView from) throws
-    -> Maybe<explicit_radix>
+alwaysinline static fn
+lex_explicit_radix(StringView from) throws -> Maybe<explicit_radix>
 {
   let const base_length = arithmetic_internal::count_leading_digits(from, 10);
   if (base_length == 0 || base_length >= from.length ||
@@ -1605,14 +1672,15 @@ alwaysinline static fn lex_explicit_radix(StringView from) throws
   return explicit_radix{static_cast<u32>(base), base_length + 1};
 }
 
-static fn lex_arith_number(StringView from, i64 *out_value) throws -> usize
+static fn
+lex_arith_number(StringView from, i64 *out_value) throws -> usize
 {
   if (let const explicit_base = lex_explicit_radix(from);
       explicit_base.has_value())
   {
     let const radix = explicit_base->radix;
-    u64 value = 0;
-    usize i = explicit_base->digit_start;
+    u64       value = 0;
+    usize     i     = explicit_base->digit_start;
 
     while (i < from.length) {
       let const digit = arithmetic_internal::radix_digit_value(from[i], radix);
@@ -1626,7 +1694,7 @@ static fn lex_arith_number(StringView from, i64 *out_value) throws -> usize
   }
 
   let const detected = arithmetic_internal::detect_radix_prefix(from);
-  usize consumed = detected.prefix_length +
+  usize     consumed = detected.prefix_length +
                    arithmetic_internal::count_leading_digits(
                        from.substring(detected.prefix_length), detected.radix);
   if (consumed == 0) consumed = 1;
@@ -1634,8 +1702,10 @@ static fn lex_arith_number(StringView from, i64 *out_value) throws -> usize
   return consumed;
 }
 
-static fn lex_exact_arith_number(StringView from, ArithmeticValue *out_value,
-                                 BumpArena &arena) throws -> usize
+static fn
+lex_exact_arith_number(StringView       from,
+                       ArithmeticValue *out_value,
+                       BumpArena       &arena) throws -> usize
 {
   if (let const explicit_base = lex_explicit_radix(from);
       explicit_base.has_value())
@@ -1661,20 +1731,20 @@ static fn lex_exact_arith_number(StringView from, ArithmeticValue *out_value,
       return 0;
     }
     let const consumed = decimal_integer_count + 1 + fractional_count;
-    *out_value = ArithmeticValue::parse_decimal(
+    *out_value         = ArithmeticValue::parse_decimal(
         from.substring_of_length(0, consumed), arena);
 
     return consumed;
   }
 
-  let const detected = arithmetic_internal::detect_radix_prefix(from);
-  let digit_count = arithmetic_internal::count_leading_digits(
+  let const detected    = arithmetic_internal::detect_radix_prefix(from);
+  let       digit_count = arithmetic_internal::count_leading_digits(
       from.substring(detected.prefix_length), detected.radix);
   if (digit_count == 0 && detected.prefix_length == 0) {
     digit_count = 1;
   }
   let const consumed = detected.prefix_length + digit_count;
-  *out_value = ArithmeticValue::parse(
+  *out_value         = ArithmeticValue::parse(
       from.substring_of_length(detected.prefix_length, digit_count),
       detected.radix, arena);
 
@@ -1688,8 +1758,8 @@ static const StringView ARITH_OPERATORS[] = {
     "%",   "<",   ">",  "=",  "&",  "|",  "^",  "!",  "~",
 };
 
-static fn tokenize_arithmetic(StringView src,
-                              ArrayList<arith_token> &out) throws -> void
+static fn
+tokenize_arithmetic(StringView src, ArrayList<arith_token> &out) throws -> void
 {
   usize i = 0;
 
@@ -1703,7 +1773,7 @@ static fn tokenize_arithmetic(StringView src,
     }
     let const has_leading_decimal_point = is_leading_decimal_number(src, i);
     if (lexer::is_number(current_byte) || has_leading_decimal_point) {
-      i64 value = 0;
+      i64   value = 0;
       usize consumed;
       if (has_leading_decimal_point) {
         consumed = 1 + arithmetic_internal::count_leading_digits(
@@ -1740,7 +1810,7 @@ static fn tokenize_arithmetic(StringView src,
       if (i < src.length && src[i] == '[') {
         i++;
         let const inner_start = i;
-        usize depth = 1;
+        usize     depth       = 1;
 
         while (i < src.length && depth > 0) {
           if (src[i] == '[') {
@@ -1784,7 +1854,8 @@ static fn tokenize_arithmetic(StringView src,
   }
 }
 
-static pure fn arith_op_is_complex(StringView t) wontthrow -> bool
+static pure fn
+arith_op_is_complex(StringView t) wontthrow -> bool
 {
   static constexpr PackedStringKey KEYS[] = {
       SSK("="),  SSK("+="), SSK("-="), SSK("*="),  SSK("/="),  SSK("%="),
@@ -1796,14 +1867,15 @@ static pure fn arith_op_is_complex(StringView t) wontthrow -> bool
   return COMPLEX_OPS.contains(t);
 }
 
-static pure fn arith_tokens_are_single_step(
-    const ArrayList<arith_token> &toks) wontthrow -> bool
+static pure fn
+arith_tokens_are_single_step(const ArrayList<arith_token> &toks) wontthrow
+    -> bool
 {
   if (toks.count() != 2) return false;
 
-  let const &first = toks[0];
-  let const &second = toks[1];
-  let const do_is_step = [](const arith_token &token) {
+  let const &first      = toks[0];
+  let const &second     = toks[1];
+  let const  do_is_step = [](const arith_token &token) {
     return token.k == arith_token::kind::op &&
            (token.text == "++" || token.text == "--");
   };
@@ -1837,10 +1909,11 @@ arith_tokens_are_simple(const ArrayList<arith_token> &toks) wontthrow -> bool
 struct arith_binop
 {
   char kind;
-  u8 precedence;
+  u8   precedence;
 };
 
-static pure fn arith_classify_binop(StringView t) wontthrow -> arith_binop
+static pure fn
+arith_classify_binop(StringView t) wontthrow -> arith_binop
 {
   static constexpr static_string_entry<arith_binop> ENTRIES[] = {
       {SSK("**"), {'P', 11}},
@@ -1867,9 +1940,12 @@ static pure fn arith_classify_binop(StringView t) wontthrow -> arith_binop
   return {0, 0};
 }
 
-static fn bc_apply_binop(char kind, const ArithmeticValue &lhs,
-                         const ArithmeticValue &rhs, u32 scale,
-                         BumpArena &arena) throws -> ArithmeticValue
+static fn
+bc_apply_binop(char                   kind,
+               const ArithmeticValue &lhs,
+               const ArithmeticValue &rhs,
+               u32                    scale,
+               BumpArena             &arena) throws -> ArithmeticValue
 {
   if ((kind == '/' || kind == '%') && rhs.is_zero()) {
     throw_division_by_zero();
@@ -1896,8 +1972,8 @@ static fn bc_apply_binop(char kind, const ArithmeticValue &lhs,
         ArithmeticValue::divide(prepared, rhs, arena), scale, arena);
   }
   case '%': {
-    let const quotient = bc_apply_binop('/', lhs, rhs, scale, arena);
-    let const product = ArithmeticValue::multiply(quotient, rhs, arena);
+    let const quotient  = bc_apply_binop('/', lhs, rhs, scale, arena);
+    let const product   = ArithmeticValue::multiply(quotient, rhs, arena);
     let const remainder = ArithmeticValue::subtract(lhs, product, arena);
     let const desired_scale_wide =
         static_cast<u64>(scale) + rhs.get_decimal_scale();
@@ -1912,10 +1988,10 @@ static fn bc_apply_binop(char kind, const ArithmeticValue &lhs,
     if (!rhs.has_integer_value(arena))
       throw ErrorWithDetails{"Exponent is not an integer",
                              "'^' requires an integer exponent"};
-    let const exponent = ArithmeticValue::integer_part(rhs, arena);
+    let const exponent    = ArithmeticValue::integer_part(rhs, arena);
     let const is_negative = exponent.is_negative();
-    let const magnitude = ArithmeticValue::absolute(exponent, arena);
-    let const powered = ArithmeticValue::power(lhs, magnitude, arena);
+    let const magnitude   = ArithmeticValue::absolute(exponent, arena);
+    let const powered     = ArithmeticValue::power(lhs, magnitude, arena);
     if (is_negative)
       return bc_apply_binop('/', ArithmeticValue{1}, powered, scale, arena);
     let const exponent_count = magnitude.checked_i64();
@@ -1932,13 +2008,16 @@ static fn bc_apply_binop(char kind, const ArithmeticValue &lhs,
   }
 }
 
-hot static fn arith_apply_binop(char kind, const ArithmeticValue &lhs,
-                                const ArithmeticValue &rhs, bool is_exact,
-                                BumpArena &arena, Maybe<u32> bc_scale) throws
-    -> ArithmeticValue
+hot static fn
+arith_apply_binop(char                   kind,
+                  const ArithmeticValue &lhs,
+                  const ArithmeticValue &rhs,
+                  bool                   is_exact,
+                  BumpArena             &arena,
+                  Maybe<u32>             bc_scale) throws -> ArithmeticValue
 {
   if (!is_exact) {
-    let const left = lhs.wrapped_i64();
+    let const left  = lhs.wrapped_i64();
     let const right = rhs.wrapped_i64();
     switch (kind) {
     case 'P':
@@ -2013,9 +2092,11 @@ hot static fn arith_apply_binop(char kind, const ArithmeticValue &lhs,
   }
 }
 
-static fn evaluate_named_value_operand(EvalContext *context, StringView value,
-                                       bool is_exact, BumpArena &arena) throws
-    -> ArithmeticValue
+static fn
+evaluate_named_value_operand(EvalContext *context,
+                             StringView   value,
+                             bool         is_exact,
+                             BumpArena   &arena) throws -> ArithmeticValue
 {
   if (value.is_empty()) return ArithmeticValue{};
   if (!is_exact) {
@@ -2026,15 +2107,17 @@ static fn evaluate_named_value_operand(EvalContext *context, StringView value,
     return ArithmeticValue::parse(value, 10, arena);
   }
 
-  let const stable_value = String{bump_allocator(arena), value};
+  let const        stable_value = String{bump_allocator(arena), value};
   ArithmeticParser nested{context, stable_value.view(), is_exact, arena};
 
   return nested.parse();
 }
 
-static fn arith_read_variable(EvalContext *context, StringView name,
-                              bool is_exact, BumpArena &arena) throws
-    -> ArithmeticValue
+static fn
+arith_read_variable(EvalContext *context,
+                    StringView   name,
+                    bool         is_exact,
+                    BumpArena   &arena) throws -> ArithmeticValue
 {
   ASSERT(context != nullptr);
   if (let const stored = context->variable_store().find_plain_scalar(name);
@@ -2056,28 +2139,31 @@ static fn arith_read_variable(EvalContext *context, StringView name,
 class ArithmeticTokenEvaluator
 {
 public:
-  ArithmeticTokenEvaluator(EvalContext *context_value,
+  ArithmeticTokenEvaluator(EvalContext                  *context_value,
                            const ArrayList<arith_token> &tokens_value,
-                           bool is_exact_value, BumpArena &arena_value)
+                           bool                          is_exact_value,
+                           BumpArena                    &arena_value)
       : context{context_value}, toks{tokens_value}, is_exact{is_exact_value},
         arena{arena_value}
   {}
 
-  EvalContext *context;
+  EvalContext                  *context;
   const ArrayList<arith_token> &toks;
-  usize ti{0};
-  usize depth{0};
-  bool is_exact{false};
-  BumpArena &arena;
-  static constexpr usize MAX_DEPTH = 128;
+  usize                         ti{0};
+  usize                         depth{0};
+  bool                          is_exact{false};
+  BumpArena                    &arena;
+  static constexpr usize        MAX_DEPTH = 128;
 
-  pure fn at_op(StringView s) wontthrow -> bool
+  pure fn
+  at_op(StringView s) wontthrow -> bool
   {
     return ti < toks.count() && toks[ti].k == arith_token::kind::op &&
            toks[ti].text == s;
   }
 
-  hot flatten fn parse_operand() throws -> ArithmeticValue
+  hot flatten fn
+  parse_operand() throws -> ArithmeticValue
   {
     depth++;
     defer { depth--; };
@@ -2138,7 +2224,8 @@ public:
                            "This is not a valid operator or operand"};
   }
 
-  fn parse_binary(u8 min_precedence) throws -> ArithmeticValue
+  fn
+  parse_binary(u8 min_precedence) throws -> ArithmeticValue
   {
     let lhs = parse_operand();
 
@@ -2156,12 +2243,13 @@ public:
     }
   }
 
-  fn run_single_step() throws -> ArithmeticValue
+  fn
+  run_single_step() throws -> ArithmeticValue
   {
-    let const is_prefix = toks[0].k == arith_token::kind::op;
-    let const &step = is_prefix ? toks[0] : toks[1];
-    let const name = is_prefix ? toks[1].text : toks[0].text;
-    let const delta = step.text[0] == '+' ? i64{1} : i64{-1};
+    let const  is_prefix = toks[0].k == arith_token::kind::op;
+    let const &step      = is_prefix ? toks[0] : toks[1];
+    let const  name      = is_prefix ? toks[1].text : toks[0].text;
+    let const  delta     = step.text[0] == '+' ? i64{1} : i64{-1};
 
     let const original = arith_read_variable(context, name, is_exact, arena);
     let const updated = arith_apply_binop('+', original, ArithmeticValue{delta},
@@ -2181,7 +2269,8 @@ public:
     return is_prefix ? updated : original;
   }
 
-  fn run() throws -> ArithmeticValue
+  fn
+  run() throws -> ArithmeticValue
   {
     if (toks.is_empty()) return ArithmeticValue{};
     if (arith_tokens_are_single_step(toks)) return run_single_step();
@@ -2198,8 +2287,9 @@ public:
 
 } /* namespace */
 
-fn EvalContext::read_array_element_arithmetic_text(StringView name,
-                                                   StringView subscript) throws
+fn
+EvalContext::read_array_element_arithmetic_text(StringView name,
+                                                StringView subscript) throws
     -> String
 {
   return apply_array_subscript(name, subscript);
@@ -2207,12 +2297,16 @@ fn EvalContext::read_array_element_arithmetic_text(StringView name,
 
 namespace {
 
-fn evaluate_arithmetic_value(
-    EvalContext *context, StringView expression,
-    const SourceLocation *expression_base, bool is_exact, BumpArena &arena,
-    arithmetic_text_kind text_kind = arithmetic_text_kind::Value,
-    bool should_error_unset = false, Maybe<u32> bc_scale = {}) throws
-    -> ArithmeticValue
+fn
+evaluate_arithmetic_value(
+    EvalContext          *context,
+    StringView            expression,
+    const SourceLocation *expression_base,
+    bool                  is_exact,
+    BumpArena            &arena,
+    arithmetic_text_kind  text_kind          = arithmetic_text_kind::Value,
+    bool                  should_error_unset = false,
+    Maybe<u32>            bc_scale           = {}) throws -> ArithmeticValue
 {
   LOG(All, "evaluating the arithmetic expression of %zu bytes",
       expression.length);
@@ -2245,9 +2339,10 @@ fn evaluate_arithmetic_value(
 
 } /* namespace */
 
-fn EvalContext::evaluate_arithmetic(StringView expression,
-                                    const SourceLocation *expression_base,
-                                    bool should_discard_top_level_line) throws
+fn
+EvalContext::evaluate_arithmetic(StringView            expression,
+                                 const SourceLocation *expression_base,
+                                 bool should_discard_top_level_line) throws
     -> i64
 {
   let const scratch = expansion_store().scratch_arena().mark();
@@ -2273,9 +2368,10 @@ fn EvalContext::evaluate_arithmetic(StringView expression,
   }
 }
 
-fn EvalContext::evaluate_arithmetic_text(StringView expression,
-                                         const SourceLocation *expression_base,
-                                         arithmetic_text_kind text_kind) throws
+fn
+EvalContext::evaluate_arithmetic_text(StringView            expression,
+                                      const SourceLocation *expression_base,
+                                      arithmetic_text_kind  text_kind) throws
     -> String
 {
   let const scratch = expansion_store().scratch_arena().mark();
@@ -2288,14 +2384,15 @@ fn EvalContext::evaluate_arithmetic_text(StringView expression,
   return value.to_string(heap_allocator());
 }
 
-fn EvalContext::evaluate_calculator_arithmetic_text(
+fn
+EvalContext::evaluate_calculator_arithmetic_text(
     StringView expression, const SourceLocation *expression_base) throws
     -> String
 {
   let const scratch = expansion_store().scratch_arena().mark();
   defer { expansion_store().scratch_arena().release(scratch); };
   const SourceLocation synthetic_base{0, 0};
-  let const base =
+  let const            base =
       expression_base != nullptr ? expression_base : &synthetic_base;
   let const value = evaluate_arithmetic_value(
       this, expression, base, true, expansion_store().scratch_arena(),
@@ -2304,13 +2401,14 @@ fn EvalContext::evaluate_calculator_arithmetic_text(
   return value.to_string(heap_allocator());
 }
 
-fn EvalContext::evaluate_bc_arithmetic_text(StringView expression,
-                                            u32 scale) throws -> String
+fn
+EvalContext::evaluate_bc_arithmetic_text(StringView expression,
+                                         u32        scale) throws -> String
 {
   let const scratch = expansion_store().scratch_arena().mark();
   defer { expansion_store().scratch_arena().release(scratch); };
   const SourceLocation expression_base{0, 0};
-  let const value =
+  let const            value =
       evaluate_arithmetic_value(this, expression, &expression_base, true,
                                 expansion_store().scratch_arena(),
                                 arithmetic_text_kind::Value, true, scale);
@@ -2318,9 +2416,11 @@ fn EvalContext::evaluate_bc_arithmetic_text(StringView expression,
   return value.to_string(heap_allocator());
 }
 
-fn EvalContext::evaluate_arithmetic_nonzero(
-    StringView expression, const SourceLocation *expression_base,
-    arithmetic_text_kind text_kind) throws -> bool
+fn
+EvalContext::evaluate_arithmetic_nonzero(StringView            expression,
+                                         const SourceLocation *expression_base,
+                                         arithmetic_text_kind  text_kind) throws
+    -> bool
 {
   let const scratch = expansion_store().scratch_arena().mark();
   defer { expansion_store().scratch_arena().release(scratch); };
@@ -2332,12 +2432,12 @@ fn EvalContext::evaluate_arithmetic_nonzero(
               .is_zero();
 }
 
-fn EvalContext::compare_arithmetic(StringView left, StringView right) throws
-    -> i32
+fn
+EvalContext::compare_arithmetic(StringView left, StringView right) throws -> i32
 {
   let const scratch = expansion_store().scratch_arena().mark();
   defer { expansion_store().scratch_arena().release(scratch); };
-  let const is_exact = runtime_state().is_extended_arithmetic_enabled();
+  let const is_exact   = runtime_state().is_extended_arithmetic_enabled();
   let const left_value = evaluate_arithmetic_value(
       this, left, nullptr, is_exact, expansion_store().scratch_arena());
   let const right_value = evaluate_arithmetic_value(
@@ -2348,12 +2448,15 @@ fn EvalContext::compare_arithmetic(StringView left, StringView right) throws
 
 namespace {
 
-fn evaluate_arithmetic_cached_value(EvalContext *context, StringView expression,
-                                    ArrayList<arith_token> &tokens,
-                                    bool &is_tokenized, bool &is_simple,
-                                    const SourceLocation *source_location,
-                                    bool is_exact, BumpArena &arena) throws
-    -> ArithmeticValue
+fn
+evaluate_arithmetic_cached_value(EvalContext            *context,
+                                 StringView              expression,
+                                 ArrayList<arith_token> &tokens,
+                                 bool                   &is_tokenized,
+                                 bool                   &is_simple,
+                                 const SourceLocation   *source_location,
+                                 bool                    is_exact,
+                                 BumpArena &arena) throws -> ArithmeticValue
 {
   if (!is_tokenized) {
     if (expression.find_character('$').has_value() ||
@@ -2372,14 +2475,14 @@ fn evaluate_arithmetic_cached_value(EvalContext *context, StringView expression,
     } catch (...) {
       tokens.clear();
       is_tokenized = true;
-      is_simple = false;
+      is_simple    = false;
 
       return evaluate_arithmetic_value(context, expression, source_location,
                                        is_exact, arena,
                                        arithmetic_text_kind::ShellSource);
     }
     is_tokenized = true;
-    is_simple = arith_tokens_are_simple(tokens);
+    is_simple    = arith_tokens_are_simple(tokens);
   }
 
   if (!is_simple)
@@ -2394,8 +2497,9 @@ fn evaluate_arithmetic_cached_value(EvalContext *context, StringView expression,
 
 } /* namespace */
 
-fn EvalContext::evaluate_arithmetic_cached_text(
-    const WordSegment &segment) throws -> String
+fn
+EvalContext::evaluate_arithmetic_cached_text(const WordSegment &segment) throws
+    -> String
 {
   let const source_location = segment.get_source_location(
       source_store().current_location().source_name_index);
@@ -2464,9 +2568,13 @@ fn EvalContext::evaluate_arithmetic_cached_text(
   return result;
 }
 
-fn EvalContext::evaluate_arithmetic_cached_clause_nonzero(
-    StringView expression, ArrayList<arith_token> &tokens, bool &is_tokenized,
-    bool &is_simple, const SourceLocation *source_location) throws -> bool
+fn
+EvalContext::evaluate_arithmetic_cached_clause_nonzero(
+    StringView              expression,
+    ArrayList<arith_token> &tokens,
+    bool                   &is_tokenized,
+    bool                   &is_simple,
+    const SourceLocation   *source_location) throws -> bool
 {
   let const scratch = expansion_store().scratch_arena().mark();
   defer { expansion_store().scratch_arena().release(scratch); };
@@ -2480,7 +2588,8 @@ fn EvalContext::evaluate_arithmetic_cached_clause_nonzero(
 
 namespace {
 
-fn get_constant_arithmetic_arena() wontthrow -> BumpArena &
+fn
+get_constant_arithmetic_arena() wontthrow -> BumpArena &
 {
   static thread_local BumpArena arena;
 
@@ -2489,9 +2598,10 @@ fn get_constant_arithmetic_arena() wontthrow -> BumpArena &
 
 } /* namespace */
 
-fn evaluate_constant_arithmetic(StringView expression) throws -> i64
+fn
+evaluate_constant_arithmetic(StringView expression) throws -> i64
 {
-  let &arena = get_constant_arithmetic_arena();
+  let      &arena   = get_constant_arithmetic_arena();
   let const scratch = arena.mark();
   defer { arena.release(scratch); };
   let parser = ArithmeticParser{nullptr, expression, false, arena};
@@ -2499,10 +2609,11 @@ fn evaluate_constant_arithmetic(StringView expression) throws -> i64
   return parser.parse().wrapped_i64();
 }
 
-fn evaluate_constant_arithmetic_nonzero(StringView expression,
-                                        bool is_exact) throws -> bool
+fn
+evaluate_constant_arithmetic_nonzero(StringView expression,
+                                     bool       is_exact) throws -> bool
 {
-  let &arena = get_constant_arithmetic_arena();
+  let      &arena   = get_constant_arithmetic_arena();
   let const scratch = arena.mark();
   defer { arena.release(scratch); };
   let parser = ArithmeticParser{nullptr, expression, is_exact, arena};
@@ -2510,10 +2621,11 @@ fn evaluate_constant_arithmetic_nonzero(StringView expression,
   return !parser.parse().is_zero();
 }
 
-fn evaluate_constant_arithmetic_text(StringView expression,
-                                     Allocator allocator) throws -> String
+fn
+evaluate_constant_arithmetic_text(StringView expression,
+                                  Allocator  allocator) throws -> String
 {
-  let &arena = get_constant_arithmetic_arena();
+  let      &arena   = get_constant_arithmetic_arena();
   let const scratch = arena.mark();
   defer { arena.release(scratch); };
   let parser = ArithmeticParser{nullptr, expression, true, arena};
@@ -2521,11 +2633,12 @@ fn evaluate_constant_arithmetic_text(StringView expression,
   return parser.parse().to_string(allocator);
 }
 
-pure fn obvious_xor_power_operator_position(StringView expression) wontthrow
+pure fn
+obvious_xor_power_operator_position(StringView expression) wontthrow
     -> Maybe<usize>
 {
-  usize position = 0;
-  let const do_skip = [&](bool (*is_member)(char)) wontthrow -> usize {
+  usize     position = 0;
+  let const do_skip  = [&](bool (*is_member)(char)) wontthrow -> usize {
     let const start_position = position;
 
     while (position < expression.length && is_member(expression[position])) {

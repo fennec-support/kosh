@@ -33,8 +33,8 @@ struct arith_token
     op,
     subscript,
   };
-  kind k;
-  i64 value{0};
+  kind       k;
+  i64        value{0};
   StringView text{};
 };
 
@@ -45,19 +45,19 @@ struct arith_token_cache
   {}
 
   ArrayList<arith_token> tokens;
-  String exact_constant_text;
-  bool is_tokenized{false};
-  bool is_simple{false};
-  bool has_exact_constant_text{false};
+  String                 exact_constant_text;
+  bool                   is_tokenized{false};
+  bool                   is_simple{false};
+  bool                   has_exact_constant_text{false};
 };
 
 struct segment_eval_cache
 {
-  const Expression *substitution_ast{nullptr};
-  arith_token_cache *arith{nullptr};
+  const Expression           *substitution_ast{nullptr};
+  arith_token_cache          *arith{nullptr};
   BumpArena::LifetimeIdentity substitution_lifetime{};
   BumpArena::LifetimeIdentity arithmetic_lifetime{};
-  bool has_optimizer_arithmetic_result{false};
+  bool                        has_optimizer_arithmetic_result{false};
 };
 
 class SegmentText
@@ -75,17 +75,18 @@ public:
     if (suffix.length >= MAXIMUM_TEXT_LENGTH) rarely throw std::bad_alloc{};
 
     let const length = suffix.length + 1;
-    let const bytes = allocator.alloc_array<char>(length);
-    bytes[0] = prefix;
+    let const bytes  = allocator.alloc_array<char>(length);
+    bytes[0]         = prefix;
     if (suffix.length > 0) std::memcpy(bytes + 1, suffix.data, suffix.length);
-    m_data = bytes;
-    m_length = static_cast<u32>(length);
+    m_data     = bytes;
+    m_length   = static_cast<u32>(length);
     m_capacity = allocator.get_kind() == Allocator::Kind::Heap
                      ? static_cast<u32>(length)
                      : 0;
   }
 
-  cold SegmentText(const SegmentText &other) throws
+  cold
+  SegmentText(const SegmentText &other) throws
   {
     assign_copy(heap_allocator(), other.view());
   }
@@ -94,14 +95,15 @@ public:
                                                m_length{other.m_length},
                                                m_capacity{other.m_capacity}
   {
-    other.m_data = nullptr;
-    other.m_length = 0;
+    other.m_data     = nullptr;
+    other.m_length   = 0;
     other.m_capacity = 0;
   }
 
   ~SegmentText() { release(); }
 
-  cold fn operator=(const SegmentText &other) throws->SegmentText &
+  cold fn
+  operator=(const SegmentText &other) throws->SegmentText &
   {
     if (this == &other) return *this;
 
@@ -110,22 +112,24 @@ public:
     return *this;
   }
 
-  fn operator=(SegmentText &&other) wontthrow->SegmentText &
+  fn
+  operator=(SegmentText &&other) wontthrow->SegmentText &
   {
     if (this == &other) return *this;
 
     release();
-    m_data = other.m_data;
-    m_length = other.m_length;
-    m_capacity = other.m_capacity;
-    other.m_data = nullptr;
-    other.m_length = 0;
+    m_data           = other.m_data;
+    m_length         = other.m_length;
+    m_capacity       = other.m_capacity;
+    other.m_data     = nullptr;
+    other.m_length   = 0;
     other.m_capacity = 0;
 
     return *this;
   }
 
-  fn assign_copy(Allocator allocator, StringView source) throws -> void
+  fn
+  assign_copy(Allocator allocator, StringView source) throws -> void
   {
     if (source.length == 0) {
       release();
@@ -137,67 +141,85 @@ public:
     let const bytes = allocator.alloc_array<char>(source.length);
     std::memcpy(bytes, source.data, source.length);
     release();
-    m_data = bytes;
-    m_length = static_cast<u32>(source.length);
+    m_data     = bytes;
+    m_length   = static_cast<u32>(source.length);
     m_capacity = allocator.get_kind() == Allocator::Kind::Heap
                      ? static_cast<u32>(source.length)
                      : 0;
   }
 
-  hot mustuse pure fn view() const wontthrow -> StringView
+  hot mustuse pure fn
+  view() const wontthrow -> StringView
   {
     return StringView{m_data, m_length};
   }
   operator StringView() const wontthrow { return view(); }
 
-  hot mustuse pure fn count() const wontthrow -> usize { return m_length; }
-  mustuse pure fn length() const wontthrow -> usize { return m_length; }
-  hot mustuse pure fn is_empty() const wontthrow -> bool
+  hot mustuse pure fn
+  count() const wontthrow -> usize
+  {
+    return m_length;
+  }
+  mustuse pure fn
+  length() const wontthrow -> usize
+  {
+    return m_length;
+  }
+  hot mustuse pure fn
+  is_empty() const wontthrow -> bool
   {
     return m_length == 0;
   }
-  mustuse pure fn data() const wontthrow -> const char * { return m_data; }
+  mustuse pure fn
+  data() const wontthrow -> const char *
+  {
+    return m_data;
+  }
 
-  hot mustuse pure fn operator[](usize index) const wontthrow->char
+  hot mustuse pure fn
+  operator[](usize index) const wontthrow->char
   {
     ASSERT(index < m_length, "segment text index is past the end");
 
     return m_data[index];
   }
-  mustuse pure fn back() const wontthrow -> char
+  mustuse pure fn
+  back() const wontthrow -> char
   {
     ASSERT(m_length > 0, "back() on an empty segment text");
 
     return m_data[m_length - 1];
   }
-  mustuse pure fn first_character() const wontthrow -> char
+  mustuse pure fn
+  first_character() const wontthrow -> char
   {
     ASSERT(m_length > 0, "first_character() on an empty segment text");
 
     return m_data[0];
   }
 
-  flatten mustuse pure fn substring(usize start) const wontthrow -> StringView
+  flatten mustuse pure fn
+  substring(usize start) const wontthrow -> StringView
   {
     return view().substring(start);
   }
-  flatten mustuse pure fn substring_of_length(usize start,
-                                              usize count) const wontthrow
-      -> StringView
+  flatten mustuse pure fn
+  substring_of_length(usize start, usize count) const wontthrow -> StringView
   {
     return view().substring_of_length(start, count);
   }
-  flatten mustuse pure fn starts_with(StringView prefix) const wontthrow -> bool
+  flatten mustuse pure fn
+  starts_with(StringView prefix) const wontthrow -> bool
   {
     return view().starts_with(prefix);
   }
-  flatten mustuse pure fn find_character(char wanted) const wontthrow
-      -> Maybe<usize>
+  flatten mustuse pure fn
+  find_character(char wanted) const wontthrow -> Maybe<usize>
   {
     return view().find_character(wanted);
   }
-  mustuse pure fn find_last_character(char wanted) const wontthrow
-      -> Maybe<usize>
+  mustuse pure fn
+  find_last_character(char wanted) const wontthrow -> Maybe<usize>
   {
     for (usize index = m_length; index > 0; index--) {
       if (m_data[index - 1] == wanted) return index - 1;
@@ -205,8 +227,9 @@ public:
 
     return None;
   }
-  mustuse pure fn find_substring(StringView needle,
-                                 usize from = 0) const wontthrow -> Maybe<usize>
+  mustuse pure fn
+  find_substring(StringView needle, usize from = 0) const wontthrow
+      -> Maybe<usize>
   {
     if (needle.length == 0) return from <= m_length ? Maybe<usize>{from} : None;
     if (needle.length > m_length) return None;
@@ -218,27 +241,44 @@ public:
 
     return None;
   }
-  flatten mustuse pure fn is_all_decimal_digits() const wontthrow -> bool
+  flatten mustuse pure fn
+  is_all_decimal_digits() const wontthrow -> bool
   {
     return view().is_all_decimal_digits();
   }
 
-  hot mustuse pure fn operator==(StringView other) const wontthrow->bool
+  hot mustuse pure fn
+  operator==(StringView other) const wontthrow->bool
   {
     return view() == other;
   }
-  hot mustuse pure fn operator!=(StringView other) const wontthrow->bool
+  hot mustuse pure fn
+  operator!=(StringView other) const wontthrow->bool
   {
     return !(view() == other);
   }
 
-  fn clear() wontthrow -> void { m_length = 0; }
+  fn
+  clear() wontthrow -> void
+  {
+    m_length = 0;
+  }
 
-  fn append(StringView other) throws -> void;
-  fn append(char byte) throws -> void { append(StringView{&byte, 1}); }
-  fn push(char byte) throws -> void { append(StringView{&byte, 1}); }
+  fn
+  append(StringView other) throws -> void;
+  fn
+  append(char byte) throws -> void
+  {
+    append(StringView{&byte, 1});
+  }
+  fn
+  push(char byte) throws -> void
+  {
+    append(StringView{&byte, 1});
+  }
 
-  fn move_to_allocator(Allocator allocator) throws -> void
+  fn
+  move_to_allocator(Allocator allocator) throws -> void
   {
     if (allocator.get_kind() == Allocator::Kind::Heap || m_length == 0 ||
         allocator.owns(m_data))
@@ -250,7 +290,7 @@ public:
     std::memcpy(bytes, m_data, m_length);
     if (m_capacity != 0)
       heap_allocator().free_array(const_cast<char *>(m_data), m_capacity);
-    m_data = bytes;
+    m_data     = bytes;
     m_capacity = 0;
   }
 
@@ -258,22 +298,24 @@ private:
   static constexpr usize MAXIMUM_TEXT_LENGTH =
       static_cast<usize>(~static_cast<u32>(0));
 
-  cold fn grow_owned(usize needed) throws -> void;
+  cold fn
+  grow_owned(usize needed) throws -> void;
 
-  fn release() wontthrow -> void
+  fn
+  release() wontthrow -> void
   {
     if (m_capacity != 0) {
       heap_allocator().free_array(const_cast<char *>(m_data), m_capacity);
     }
 
-    m_data = nullptr;
-    m_length = 0;
+    m_data     = nullptr;
+    m_length   = 0;
     m_capacity = 0;
   }
 
   const char *m_data{nullptr};
-  u32 m_length{0};
-  u32 m_capacity{0};
+  u32         m_length{0};
+  u32         m_capacity{0};
 };
 
 static_assert(sizeof(usize) != 8 || sizeof(SegmentText) == 16);
@@ -293,15 +335,18 @@ public:
     FunctionSubstitution,
   };
 
-  WordSegment(Kind kind, SegmentText text, bool is_in_double_quotes = false,
-              bool is_greedy_name = false)
+  WordSegment(Kind        kind,
+              SegmentText text,
+              bool        is_in_double_quotes = false,
+              bool        is_greedy_name      = false)
       : kind{kind}, is_in_double_quotes{is_in_double_quotes},
         is_greedy_name{is_greedy_name}, text{steal(text)}
   {}
 
   ~WordSegment() { release_eval_cache(); }
 
-  cold WordSegment(const WordSegment &other) throws
+  cold
+  WordSegment(const WordSegment &other) throws
       : source_position{other.source_position},
         source_length{other.source_length},
         kind{other.kind},
@@ -314,11 +359,11 @@ public:
   {
     if (other.m_eval_cache != nullptr) {
       let const block = heap_allocator().alloc_array<segment_eval_cache>(1);
-      m_eval_cache = new (block) segment_eval_cache{*other.m_eval_cache};
-      m_eval_cache->substitution_ast = nullptr;
-      m_eval_cache->arith = nullptr;
+      m_eval_cache    = new (block) segment_eval_cache{*other.m_eval_cache};
+      m_eval_cache->substitution_ast      = nullptr;
+      m_eval_cache->arith                 = nullptr;
       m_eval_cache->substitution_lifetime = {};
-      m_eval_cache->arithmetic_lifetime = {};
+      m_eval_cache->arithmetic_lifetime   = {};
     }
   }
 
@@ -335,37 +380,39 @@ public:
         text{steal(other.text)},
         m_eval_cache{other.m_eval_cache}
   {
-    other.m_eval_cache = nullptr;
+    other.m_eval_cache           = nullptr;
     other.is_eval_cache_in_arena = false;
   }
 
-  cold fn operator=(const WordSegment &other) throws->WordSegment &
+  cold fn
+  operator=(const WordSegment &other) throws->WordSegment &
   {
     if (this == &other) return *this;
 
     let copy = WordSegment{other};
-    *this = steal(copy);
+    *this    = steal(copy);
 
     return *this;
   }
 
-  fn operator=(WordSegment &&other) wontthrow->WordSegment &
+  fn
+  operator=(WordSegment &&other) wontthrow->WordSegment &
   {
     if (this == &other) return *this;
 
     release_eval_cache();
-    kind = other.kind;
-    text = steal(other.text);
+    kind                = other.kind;
+    text                = steal(other.text);
     is_in_double_quotes = other.is_in_double_quotes;
-    is_greedy_name = other.is_greedy_name;
-    was_ansi_c_quoted = other.was_ansi_c_quoted;
+    is_greedy_name      = other.is_greedy_name;
+    was_ansi_c_quoted   = other.was_ansi_c_quoted;
     is_substitution_cache_in_function_arena =
         other.is_substitution_cache_in_function_arena;
-    is_eval_cache_in_arena = other.is_eval_cache_in_arena;
-    source_position = other.source_position;
-    source_length = other.source_length;
-    m_eval_cache = other.m_eval_cache;
-    other.m_eval_cache = nullptr;
+    is_eval_cache_in_arena       = other.is_eval_cache_in_arena;
+    source_position              = other.source_position;
+    source_length                = other.source_length;
+    m_eval_cache                 = other.m_eval_cache;
+    other.m_eval_cache           = nullptr;
     other.is_eval_cache_in_arena = false;
 
     return *this;
@@ -374,23 +421,27 @@ public:
   mutable u32 source_position{0};
 
   mutable u32 source_length : 24 {0};
-  Kind kind : 3;
-  u32 is_in_double_quotes : 1 {false};
-  u32 is_greedy_name : 1 {false};
-  u32 was_ansi_c_quoted : 1 {false};
-  u32 is_substitution_cache_in_function_arena : 1 {false};
+  Kind        kind : 3;
+  u32         is_in_double_quotes : 1 {false};
+  u32         is_greedy_name : 1 {false};
+  u32         was_ansi_c_quoted : 1 {false};
+  u32         is_substitution_cache_in_function_arena : 1 {false};
   mutable u32 is_eval_cache_in_arena : 1 {false};
 
   SegmentText text;
 
-  fn get_eval_cache(BumpArena *cache_arena) const throws
-      -> segment_eval_cache &;
+  fn
+  get_eval_cache(BumpArena *cache_arena) const throws -> segment_eval_cache &;
 
-  pure fn is_split_eligible() const wontthrow -> bool;
-  pure fn has_live_glob_chars() const wontthrow -> bool;
-  pure fn is_tilde_candidate() const wontthrow -> bool;
+  pure fn
+  is_split_eligible() const wontthrow -> bool;
+  pure fn
+  has_live_glob_chars() const wontthrow -> bool;
+  pure fn
+  is_tilde_candidate() const wontthrow -> bool;
 
-  cold fn clone(Allocator allocator) const throws -> WordSegment
+  cold fn
+  clone(Allocator allocator) const throws -> WordSegment
   {
     let copy = WordSegment(kind, SegmentText{allocator, text.view()},
                            is_in_double_quotes != 0, is_greedy_name != 0);
@@ -399,12 +450,12 @@ public:
         is_substitution_cache_in_function_arena;
     if (source_length > 0) copy.set_source_span(source_position, source_length);
     if (m_eval_cache != nullptr) {
-      let const block = allocator.alloc_array<segment_eval_cache>(1);
+      let const block   = allocator.alloc_array<segment_eval_cache>(1);
       copy.m_eval_cache = new (block) segment_eval_cache{*m_eval_cache};
-      copy.m_eval_cache->substitution_ast = nullptr;
-      copy.m_eval_cache->arith = nullptr;
+      copy.m_eval_cache->substitution_ast      = nullptr;
+      copy.m_eval_cache->arith                 = nullptr;
       copy.m_eval_cache->substitution_lifetime = {};
-      copy.m_eval_cache->arithmetic_lifetime = {};
+      copy.m_eval_cache->arithmetic_lifetime   = {};
       copy.is_eval_cache_in_arena =
           allocator.get_kind() == Allocator::Kind::Bump;
     }
@@ -412,40 +463,44 @@ public:
     return copy;
   }
 
-  hot pure fn has_optimizer_arithmetic_result() const wontthrow -> bool
+  hot pure fn
+  has_optimizer_arithmetic_result() const wontthrow -> bool
   {
     return m_eval_cache != nullptr &&
            m_eval_cache->has_optimizer_arithmetic_result;
   }
 
-  fn set_optimizer_arithmetic_result(StringView exact_text,
-                                     BumpArena *cache_arena) const throws
-      -> void
+  fn
+  set_optimizer_arithmetic_result(StringView exact_text,
+                                  BumpArena *cache_arena) const throws -> void
   {
-    let &cache = get_eval_cache(cache_arena);
+    let &cache                            = get_eval_cache(cache_arena);
     cache.has_optimizer_arithmetic_result = true;
     if (!exact_text.is_empty())
       set_exact_constant_arithmetic_text(exact_text, cache_arena);
   }
 
-  fn move_resources_to_arena(BumpArena &arena) throws -> void;
+  fn
+  move_resources_to_arena(BumpArena &arena) throws -> void;
 
-  fn set_source_span(usize position, usize length) wontthrow -> void
+  fn
+  set_source_span(usize position, usize length) wontthrow -> void
   {
     constexpr usize MAXIMUM_SOURCE_POSITION = ~static_cast<u32>(0);
-    constexpr usize MAXIMUM_SOURCE_LENGTH = (usize{1} << 24) - 1;
+    constexpr usize MAXIMUM_SOURCE_LENGTH   = (usize{1} << 24) - 1;
     if (position > MAXIMUM_SOURCE_POSITION || length > MAXIMUM_SOURCE_LENGTH) {
       source_position = 0;
-      source_length = 0;
+      source_length   = 0;
 
       return;
     }
 
     source_position = static_cast<u32>(position);
-    source_length = static_cast<u32>(length);
+    source_length   = static_cast<u32>(length);
   }
 
-  pure fn get_source_location(u32 source_name_index) const wontthrow
+  pure fn
+  get_source_location(u32 source_name_index) const wontthrow
       -> Maybe<SourceLocation>
   {
     if (source_length == 0) return None;
@@ -453,13 +508,16 @@ public:
     return SourceLocation{source_position, source_length, source_name_index};
   }
 
-  pure fn has_glob_metacharacter() const wontthrow -> bool;
+  pure fn
+  has_glob_metacharacter() const wontthrow -> bool;
 
 private:
-  fn set_exact_constant_arithmetic_text(StringView text,
-                                        BumpArena *cache_arena) const throws
+  fn
+  set_exact_constant_arithmetic_text(StringView text,
+                                     BumpArena *cache_arena) const throws
       -> void;
-  fn release_eval_cache() wontthrow -> void;
+  fn
+  release_eval_cache() wontthrow -> void;
 
   mutable segment_eval_cache *m_eval_cache{nullptr};
 };
@@ -474,7 +532,8 @@ public:
   Word() = default;
   ~Word() { release_constant_value(); }
 
-  cold Word(const Word &other) throws
+  cold
+  Word(const Word &other) throws
       : segments(heap_allocator()),
         has_locale_translation_quote(other.has_locale_translation_quote)
   {
@@ -492,58 +551,67 @@ public:
         m_has_cached_plain_kind(other.m_has_cached_plain_kind),
         has_locale_translation_quote(other.has_locale_translation_quote)
   {
-    other.m_constant_value_data = nullptr;
+    other.m_constant_value_data   = nullptr;
     other.m_constant_value_length = 0;
   }
 
-  cold fn operator=(const Word &other) throws->Word &
+  cold fn
+  operator=(const Word &other) throws->Word &
   {
     if (this == &other) return *this;
 
     segments = other.segments;
     release_constant_value();
-    m_cached_plain_kind = PlainLiteral::NotPlain;
-    m_has_cached_plain_kind = false;
+    m_cached_plain_kind          = PlainLiteral::NotPlain;
+    m_has_cached_plain_kind      = false;
     has_locale_translation_quote = other.has_locale_translation_quote;
 
     return *this;
   }
 
-  fn operator=(Word &&other) wontthrow->Word &
+  fn
+  operator=(Word &&other) wontthrow->Word &
   {
     if (this == &other) return *this;
 
     release_constant_value();
-    segments = steal(other.segments);
-    m_constant_value_data = other.m_constant_value_data;
-    m_constant_value_length = other.m_constant_value_length;
-    m_cached_plain_kind = other.m_cached_plain_kind;
-    m_has_cached_plain_kind = other.m_has_cached_plain_kind;
-    has_locale_translation_quote = other.has_locale_translation_quote;
-    other.m_constant_value_data = nullptr;
+    segments                      = steal(other.segments);
+    m_constant_value_data         = other.m_constant_value_data;
+    m_constant_value_length       = other.m_constant_value_length;
+    m_cached_plain_kind           = other.m_cached_plain_kind;
+    m_has_cached_plain_kind       = other.m_has_cached_plain_kind;
+    has_locale_translation_quote  = other.has_locale_translation_quote;
+    other.m_constant_value_data   = nullptr;
     other.m_constant_value_length = 0;
 
     return *this;
   }
 
-  pure fn is_empty() const wontthrow -> bool;
-  fn to_literal_string() const throws -> String;
-  fn to_pretty_string() const throws -> String;
+  pure fn
+  is_empty() const wontthrow -> bool;
+  fn
+  to_literal_string() const throws -> String;
+  fn
+  to_pretty_string() const throws -> String;
 
-  pure fn is_all_ascii_digits() const wontthrow -> bool;
+  pure fn
+  is_all_ascii_digits() const wontthrow -> bool;
 
-  pure fn fd_allocation_name() const wontthrow -> Maybe<StringView>;
+  pure fn
+  fd_allocation_name() const wontthrow -> Maybe<StringView>;
 
-  pure fn get_fd_allocation_target() const wontthrow
-      -> Maybe<fd_allocation_target>;
+  pure fn
+  get_fd_allocation_target() const wontthrow -> Maybe<fd_allocation_target>;
 
-  pure fn runs_substitution() const wontthrow -> bool;
+  pure fn
+  runs_substitution() const wontthrow -> bool;
 
-  fn get_assignment_split(Allocator allocator = heap_allocator()) const throws
+  fn
+  get_assignment_split(Allocator allocator = heap_allocator()) const throws
       -> Maybe<word_assignment_split>;
 
-  cold fn get_quoted_assignment_split() const throws
-      -> Maybe<word_assignment_split>;
+  cold fn
+  get_quoted_assignment_split() const throws -> Maybe<word_assignment_split>;
 
   enum class PlainLiteral : u8
   {
@@ -552,28 +620,32 @@ public:
     PlainUnquotedOneSegment,
   };
 
-  fn plain_literal_kind() const wontthrow -> PlainLiteral;
+  fn
+  plain_literal_kind() const wontthrow -> PlainLiteral;
 
-  fn constant_value() const throws -> StringView;
+  fn
+  constant_value() const throws -> StringView;
 
-  fn move_resources_to_arena(BumpArena &arena) throws -> void;
+  fn
+  move_resources_to_arena(BumpArena &arena) throws -> void;
 
 private:
-  fn release_constant_value() wontthrow -> void
+  fn
+  release_constant_value() wontthrow -> void
   {
     if (m_constant_value_data == nullptr) return;
 
     if (!is_arena_pointer(m_constant_value_data))
       heap_allocator().free_array(m_constant_value_data,
                                   m_constant_value_length);
-    m_constant_value_data = nullptr;
+    m_constant_value_data   = nullptr;
     m_constant_value_length = 0;
   }
 
-  mutable char *m_constant_value_data{nullptr};
-  mutable u32 m_constant_value_length{0};
+  mutable char        *m_constant_value_data{nullptr};
+  mutable u32          m_constant_value_length{0};
   mutable PlainLiteral m_cached_plain_kind{PlainLiteral::NotPlain};
-  mutable bool m_has_cached_plain_kind : 1 {false};
+  mutable bool         m_has_cached_plain_kind : 1 {false};
 
 public:
   bool has_locale_translation_quote : 1 {false};
@@ -583,8 +655,8 @@ static_assert(sizeof(usize) != 8 || sizeof(Word) == 40);
 
 struct word_assignment_split
 {
-  String name;
-  Word value;
+  String                 name;
+  Word                   value;
   assignment_update_mode update_mode;
 };
 
@@ -592,7 +664,7 @@ struct fd_allocation_target
 {
   StringView name;
   StringView subscript;
-  bool has_subscript;
+  bool       has_subscript;
 };
 
 class Token
@@ -658,31 +730,42 @@ public:
     Function,
   };
 
-  Token() = delete;
+  Token()          = delete;
   virtual ~Token() = default;
 
-  Token(const Token &) = delete;
+  Token(const Token &)     = delete;
   Token(Token &&) noexcept = delete;
-  Token &operator=(const Token &) = delete;
-  Token &operator=(Token &&) noexcept = delete;
+  Token &
+  operator=(const Token &) = delete;
+  Token &
+  operator=(Token &&) noexcept = delete;
 
-  pure alwaysinline fn kind() const wontthrow -> Kind { return m_kind; }
-  virtual fn raw_string() const throws -> String = 0;
+  pure alwaysinline fn
+  kind() const wontthrow -> Kind
+  {
+    return m_kind;
+  }
+  virtual fn
+  raw_string() const throws -> String = 0;
 
-  virtual fn raw_view() const wontthrow -> Maybe<StringView>;
+  virtual fn
+  raw_view() const wontthrow -> Maybe<StringView>;
 
-  virtual fn to_ast_string() const throws -> String;
+  virtual fn
+  to_ast_string() const throws -> String;
 
-  pure fn source_location() const wontthrow -> SourceLocation;
+  pure fn
+  source_location() const wontthrow -> SourceLocation;
 
-  static fn operator delete(opaque *pointer) wontthrow->void;
+  static fn
+  operator delete(opaque *pointer) wontthrow->void;
 
 protected:
   Token(SourceLocation location, Kind kind);
 
 private:
   SourceLocation m_location;
-  Kind m_kind;
+  Kind           m_kind;
 };
 
 static_assert(sizeof(usize) != 8 || sizeof(Token) == 24);
@@ -716,12 +799,14 @@ inline constexpr PackedStringKey BASH_KEYWORD_KEYS[] = {
 
 inline constexpr StaticStringSet BASH_KEYWORDS{BASH_KEYWORD_KEYS};
 
-pure inline fn token_kind_is_keyword(Token::Kind kind) wontthrow -> bool
+pure inline fn
+token_kind_is_keyword(Token::Kind kind) wontthrow -> bool
 {
   return kind >= Token::Kind::If && kind <= Token::Kind::Function;
 }
 
-const ArrayList<String> &keyword_names() throws;
+const ArrayList<String> &
+keyword_names() throws;
 
 /* clang-format off */
 #define KW_CASE(k)                                                             \
@@ -755,8 +840,10 @@ namespace tokens {
   public:                                                                      \
     t(SourceLocation location);                                                \
                                                                                \
-    String raw_string() const throws override;                                 \
-    Maybe<StringView> raw_view() const wontthrow override;                     \
+    String                                                                     \
+    raw_string() const throws override;                                        \
+    Maybe<StringView>                                                          \
+    raw_view() const wontthrow override;                                       \
   }
 
 TOKEN_STRUCT(If);
@@ -797,19 +884,25 @@ class Assignment : public Token
 public:
   static constexpr bool is_arena_destructor_noop = true;
 
-  Assignment(SourceLocation location, String key, Word value,
+  Assignment(SourceLocation         location,
+             String                 key,
+             Word                   value,
              assignment_update_mode update_mode);
 
-  fn raw_string() const throws -> String override;
+  fn
+  raw_string() const throws -> String override;
 
-  pure fn key() const wontthrow -> const String &;
-  pure fn value_word() const wontthrow -> const Word &;
+  pure fn
+  key() const wontthrow -> const String &;
+  pure fn
+  value_word() const wontthrow -> const Word &;
 
-  pure fn get_update_mode() const wontthrow -> assignment_update_mode;
+  pure fn
+  get_update_mode() const wontthrow -> assignment_update_mode;
 
 protected:
-  String m_key;
-  Word m_value;
+  String                 m_key;
+  Word                   m_value;
   assignment_update_mode m_update_mode;
 };
 
@@ -820,10 +913,13 @@ public:
 
   WordToken(SourceLocation location, Word word);
 
-  fn raw_string() const throws -> String override;
-  fn raw_view() const wontthrow -> Maybe<StringView> override;
+  fn
+  raw_string() const throws -> String override;
+  fn
+  raw_view() const wontthrow -> Maybe<StringView> override;
 
-  pure fn word() const wontthrow -> const Word &;
+  pure fn
+  word() const wontthrow -> const Word &;
 
 protected:
   Word m_word;
@@ -837,20 +933,24 @@ public:
   ExpandedWordToken(SourceLocation location, Word word);
   ~ExpandedWordToken() override;
 
-  fn raw_string() const throws -> String override;
-  fn raw_view() const wontthrow -> Maybe<StringView> override;
+  fn
+  raw_string() const throws -> String override;
+  fn
+  raw_view() const wontthrow -> Maybe<StringView> override;
 
 protected:
-  fn fill_literal() const throws -> void;
+  fn
+  fill_literal() const throws -> void;
 
   mutable char *m_literal_data{nullptr};
-  mutable u32 m_literal_length{0};
+  mutable u32   m_literal_length{0};
 };
 
 static_assert(sizeof(usize) != 8 || sizeof(ExpandedWordToken) == 80);
 
-fn create_word_token(BumpArena &arena, SourceLocation location,
-                     Word word) throws -> WordToken *;
+fn
+create_word_token(BumpArena &arena, SourceLocation location, Word word) throws
+    -> WordToken *;
 
 TOKEN_STRUCT(Plus);
 TOKEN_STRUCT(Minus);

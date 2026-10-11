@@ -27,9 +27,11 @@
 
 namespace koshka {
 
-fn compute_substring_bounds(i64 value_count, i64 offset, Maybe<i64> length,
-                            substring_subject subject) throws
-    -> substring_bounds
+fn
+compute_substring_bounds(i64               value_count,
+                         i64               offset,
+                         Maybe<i64>        length,
+                         substring_subject subject) throws -> substring_bounds
 {
   i64 start = offset < 0 && offset < -value_count ? -1
               : offset < 0                        ? value_count + offset
@@ -60,9 +62,12 @@ fn compute_substring_bounds(i64 value_count, i64 offset, Maybe<i64> length,
 
 namespace {
 
-static fn source_location_for_subview(
-    const SourceLocation *source_location, StringView source, StringView part,
-    SourceLocation &storage, usize source_location_offset = 0) wontthrow
+static fn
+source_location_for_subview(const SourceLocation *source_location,
+                            StringView            source,
+                            StringView            part,
+                            SourceLocation       &storage,
+                            usize source_location_offset = 0) wontthrow
     -> const SourceLocation *
 {
   if (source_location == nullptr) return nullptr;
@@ -73,17 +78,19 @@ static fn source_location_for_subview(
 
 struct substring_operands
 {
-  i64 offset;
+  i64        offset;
   Maybe<i64> length;
 };
 
-static fn parse_substring_operands(EvalContext &context, StringView body,
-                                   const SourceLocation *source_location) throws
+static fn
+parse_substring_operands(EvalContext          &context,
+                         StringView            body,
+                         const SourceLocation *source_location) throws
     -> substring_operands
 {
-  let const separator = find_substring_length_separator(body);
-  let const offset_text = body.substring_of_length(0, separator);
-  let offset_location = SourceLocation{};
+  let const separator       = find_substring_length_separator(body);
+  let const offset_text     = body.substring_of_length(0, separator);
+  let       offset_location = SourceLocation{};
   let const offset =
       offset_text.is_empty()
           ? i64{0}
@@ -94,8 +101,8 @@ static fn parse_substring_operands(EvalContext &context, StringView body,
 
   Maybe<i64> requested_length = None;
   if (separator < body.length) {
-    let const length_text = body.substring(separator + 1);
-    let length_location = SourceLocation{};
+    let const length_text     = body.substring(separator + 1);
+    let       length_location = SourceLocation{};
     requested_length =
         length_text.is_empty()
             ? i64{0}
@@ -120,8 +127,8 @@ enum class pattern_match_extent : u8
   Longest,
 };
 
-static fn should_drop_final_empty_element(StringView separators) wontthrow
-    -> bool
+static fn
+should_drop_final_empty_element(StringView separators) wontthrow -> bool
 {
   if (separators.is_empty()) return false;
 
@@ -131,8 +138,10 @@ static fn should_drop_final_empty_element(StringView separators) wontthrow
   return true;
 }
 
-alwaysinline static fn splits_character(StringView text, usize position,
-                                        glob_charset charset) wontthrow -> bool
+alwaysinline static fn
+splits_character(StringView   text,
+                 usize        position,
+                 glob_charset charset) wontthrow -> bool
 {
   if (charset != glob_charset::Utf8 || position == 0 || position >= text.length)
   {
@@ -149,8 +158,8 @@ alwaysinline static fn splits_character(StringView text, usize position,
   return false;
 }
 
-static fn get_character_count(const EvalContext &cxt,
-                              const String &value) throws -> usize
+static fn
+get_character_count(const EvalContext &cxt, const String &value) throws -> usize
 {
   if (cxt.get_glob_charset_for(value) == glob_charset::Bytes) {
     return value.length();
@@ -159,7 +168,8 @@ static fn get_character_count(const EvalContext &cxt,
   return utils::utf8_character_count(value.view());
 }
 
-static fn has_invalid_utf8(StringView text) wontthrow -> bool
+static fn
+has_invalid_utf8(StringView text) wontthrow -> bool
 {
   for (usize position = 0; position < text.length;) {
     let const decoded = utils::decode_utf8(text, position, 0xfffd);
@@ -172,8 +182,10 @@ static fn has_invalid_utf8(StringView text) wontthrow -> bool
   return false;
 }
 
-static fn get_byte_position_after(StringView value, usize byte_position,
-                                  usize character_count) wontthrow -> usize
+static fn
+get_byte_position_after(StringView value,
+                        usize      byte_position,
+                        usize      character_count) wontthrow -> usize
 {
   for (usize step = 0; step < character_count && byte_position < value.length;
        step++)
@@ -184,19 +196,24 @@ static fn get_byte_position_after(StringView value, usize byte_position,
   return byte_position;
 }
 
-fn trim_matching(const EvalContext &cxt, Allocator result_allocator,
-                 StringView value, StringView pattern, const Bitset &active,
-                 trim_end end, pattern_match_extent extent) throws -> String
+fn
+trim_matching(const EvalContext   &cxt,
+              Allocator            result_allocator,
+              StringView           value,
+              StringView           pattern,
+              const Bitset        &active,
+              trim_end             end,
+              pattern_match_extent extent) throws -> String
 {
   let const mode = cxt.get_extglob_mode();
   ASSERT(active.count() == pattern.length);
 
-  usize active_star_count = 0;
-  usize first_glob_position = pattern.length;
-  usize last_glob_position = 0;
-  bool has_other_glob_syntax = false;
-  bool has_extglob_group = false;
-  bool has_active_bracket = false;
+  usize active_star_count     = 0;
+  usize first_glob_position   = pattern.length;
+  usize last_glob_position    = 0;
+  bool  has_other_glob_syntax = false;
+  bool  has_extglob_group     = false;
+  bool  has_active_bracket    = false;
 
   for (usize index = 0; index < pattern.length; index++) {
     let const character = pattern[index];
@@ -206,7 +223,7 @@ fn trim_matching(const EvalContext &cxt, Allocator result_allocator,
          character == '@' || character == '!'))
     {
       has_other_glob_syntax = true;
-      has_extglob_group = true;
+      has_extglob_group     = true;
       break;
     }
 
@@ -302,9 +319,9 @@ fn trim_matching(const EvalContext &cxt, Allocator result_allocator,
   let const literal_head =
       has_extglob_group ? StringView{}
                         : pattern.substring_of_length(0, first_glob_position);
-  let const literal_tail = has_extglob_group || has_active_bracket
-                               ? StringView{}
-                               : pattern.substring(last_glob_position + 1);
+  let const literal_tail        = has_extglob_group || has_active_bracket
+                                      ? StringView{}
+                                      : pattern.substring(last_glob_position + 1);
   let const do_has_literal_tail = [&](StringView candidate) wontthrow -> bool {
     return literal_tail.length <= candidate.length &&
            candidate.substring(candidate.length - literal_tail.length) ==
@@ -337,7 +354,6 @@ fn trim_matching(const EvalContext &cxt, Allocator result_allocator,
         }
       }
     }
-
   } else {
     if (!do_has_literal_tail(value)) return String{result_allocator, value};
 
@@ -368,14 +384,17 @@ fn trim_matching(const EvalContext &cxt, Allocator result_allocator,
   return String{result_allocator, value};
 }
 
-static fn trim_value_with_modifier(EvalContext &cxt, StringView value,
-                                   StringView word, char op, bool is_doubled,
-                                   const SourceLocation *source_location) throws
-    -> String
+static fn
+trim_value_with_modifier(EvalContext          &cxt,
+                         StringView            value,
+                         StringView            word,
+                         char                  op,
+                         bool                  is_doubled,
+                         const SourceLocation *source_location) throws -> String
 {
   LOG(All, "trimming a value of %zu bytes with the pattern word '%.*s'",
       value.length, static_cast<int>(word.length), word.data);
-  let active = Bitset{cxt.scratch_allocator()};
+  let       active = Bitset{cxt.scratch_allocator()};
   let const pattern =
       cxt.expand_modifier_word_masked(word, active, true, source_location);
 
@@ -387,8 +406,11 @@ static fn trim_value_with_modifier(EvalContext &cxt, StringView value,
 
 } /* namespace */
 
-fn EvalContext::expand_modifier_word_masked(
-    StringView word, Bitset &active_out, bool should_remove_quotes,
+fn
+EvalContext::expand_modifier_word_masked(
+    StringView            word,
+    Bitset               &active_out,
+    bool                  should_remove_quotes,
     const SourceLocation *source_location) throws -> String
 {
   return expand_modifier_word_worker(word, &active_out, should_remove_quotes,
@@ -398,9 +420,12 @@ fn EvalContext::expand_modifier_word_masked(
 class EvalContext::ModifierWordExpander
 {
 public:
-  ModifierWordExpander(EvalContext &context, StringView word,
-                       Bitset *active_out, bool should_remove_quotes,
-                       bool is_pattern_word, bool should_strip_escaped_literals,
+  ModifierWordExpander(EvalContext          &context,
+                       StringView            word,
+                       Bitset               *active_out,
+                       bool                  should_remove_quotes,
+                       bool                  is_pattern_word,
+                       bool                  should_strip_escaped_literals,
                        const SourceLocation *source_location) throws
       : m_context(context),
         m_word(word),
@@ -412,55 +437,63 @@ public:
         m_should_strip_escaped_literals(should_strip_escaped_literals)
   {}
 
-  fn expand() throws -> String;
+  fn
+  expand() throws -> String;
 
-  fn enable_fields(ArrayList<usize> &break_out,
-                   ArrayList<quoted_empty_mark> &mark_out,
-                   bool is_outer_quoted) wontthrow -> void
+  fn
+  enable_fields(ArrayList<usize>             &break_out,
+                ArrayList<quoted_empty_mark> &mark_out,
+                bool                          is_outer_quoted) wontthrow -> void
   {
-    m_break_out = &break_out;
-    m_mark_out = &mark_out;
+    m_break_out       = &break_out;
+    m_mark_out        = &mark_out;
     m_is_outer_quoted = is_outer_quoted;
   }
 
-  fn enable_process_substitution() wontthrow -> void
+  fn
+  enable_process_substitution() wontthrow -> void
   {
     m_should_expand_process_substitution = true;
   }
 
-  fn set_outer_quoting(parameter_word_quoting quoting) wontthrow -> void
+  fn
+  set_outer_quoting(parameter_word_quoting quoting) wontthrow -> void
   {
-    m_is_outer_quoted = quoting != parameter_word_quoting::Unquoted;
+    m_is_outer_quoted       = quoting != parameter_word_quoting::Unquoted;
     m_is_here_document_word = quoting == parameter_word_quoting::HereDocument;
   }
 
 private:
-  EvalContext &m_context;
-  StringView m_word;
-  Bitset *m_active_out;
-  String m_out;
-  const SourceLocation *m_source_location;
-  ArrayList<usize> *m_break_out = nullptr;
-  ArrayList<quoted_empty_mark> *m_mark_out = nullptr;
-  usize m_index = 0;
-  bool m_should_remove_quotes;
-  bool m_is_pattern_word;
-  bool m_should_strip_escaped_literals;
-  bool m_is_in_single_quote = false;
-  bool m_is_in_double_quote = false;
-  bool m_is_outer_quoted = false;
-  bool m_is_here_document_word = false;
-  bool m_did_quoted_emit = false;
-  bool m_did_quoted_at = false;
-  bool m_should_expand_process_substitution = false;
+  EvalContext                  &m_context;
+  StringView                    m_word;
+  Bitset                       *m_active_out;
+  String                        m_out;
+  const SourceLocation         *m_source_location;
+  ArrayList<usize>             *m_break_out = nullptr;
+  ArrayList<quoted_empty_mark> *m_mark_out  = nullptr;
+  usize                         m_index     = 0;
+  bool                          m_should_remove_quotes;
+  bool                          m_is_pattern_word;
+  bool                          m_should_strip_escaped_literals;
+  bool                          m_is_in_single_quote                 = false;
+  bool                          m_is_in_double_quote                 = false;
+  bool                          m_is_outer_quoted                    = false;
+  bool                          m_is_here_document_word              = false;
+  bool                          m_did_quoted_emit                    = false;
+  bool                          m_did_quoted_at                      = false;
+  bool                          m_should_expand_process_substitution = false;
 
-  fn emit_byte(char byte, bool is_active) throws -> void;
-  fn emit_run(StringView bytes, bool is_active) throws -> void;
-  fn is_quoted() const wontthrow -> bool
+  fn
+  emit_byte(char byte, bool is_active) throws -> void;
+  fn
+  emit_run(StringView bytes, bool is_active) throws -> void;
+  fn
+  is_quoted() const wontthrow -> bool
   {
     return m_is_in_double_quote || m_is_outer_quoted;
   }
-  fn get_nested_quoting() const wontthrow -> parameter_word_quoting
+  fn
+  get_nested_quoting() const wontthrow -> parameter_word_quoting
   {
     if (!m_should_remove_quotes || m_is_here_document_word) {
       return parameter_word_quoting::HereDocument;
@@ -469,56 +502,92 @@ private:
     return is_quoted() ? parameter_word_quoting::DoubleQuoted
                        : parameter_word_quoting::Unquoted;
   }
-  fn mark_quoted_emit() wontthrow -> void;
-  fn mark_quoted_empty() throws -> void;
-  fn start_field() throws -> void;
-  fn emit_field_elements(const ArrayList<String> &values) throws -> void;
-  fn emit_unquoted_list(const ArrayList<String> &values, bool is_star,
-                        bool should_join_with_space, bool is_computed) throws
-      -> void;
-  fn emit_field_slice(substring_bounds bounds, const ArrayList<String> &values,
-                      Maybe<StringView> leading, bool is_star) throws -> void;
-  fn expand_field_reference(StringView inner) throws -> bool;
-  fn expand_leading_tilde() throws -> bool;
-  static fn is_element_operator(StringView modifier) wontthrow -> bool;
-  fn emit_modified_elements(const ArrayList<String> &values,
-                            StringView modifier, StringView name,
-                            bool is_star) throws -> void;
-  fn toggle_quote_state() throws -> bool;
-  fn expand_backslash() throws -> void;
-  fn expand_backquote() throws -> void;
-  fn expand_dollar() throws -> void;
-  fn expand_ansi_c_quote() throws -> void;
-  fn expand_braced_parameter() throws -> void;
-  fn expand_plain_parameter() throws -> void;
-  fn expand_arithmetic(bool is_bracket_form) throws -> void;
-  fn expand_command_substitution() throws -> void;
-  fn is_process_substitution_start() const wontthrow -> bool;
-  fn expand_process_substitution() throws -> void;
-  fn expand_special_parameter(char name) throws -> void;
-  fn emit_command_substitution(StringView body, usize end_index) throws -> void;
-  fn is_function_substitution_start() const wontthrow -> bool;
-  fn expand_function_substitution() throws -> void;
-  fn scan_braced_body(usize &position, bool is_command_body = false) throws
+  fn
+  mark_quoted_emit() wontthrow -> void;
+  fn
+  mark_quoted_empty() throws -> void;
+  fn
+  start_field() throws -> void;
+  fn
+  emit_field_elements(const ArrayList<String> &values) throws -> void;
+  fn
+  emit_unquoted_list(const ArrayList<String> &values,
+                     bool                     is_star,
+                     bool                     should_join_with_space,
+                     bool                     is_computed) throws -> void;
+  fn
+  emit_field_slice(substring_bounds         bounds,
+                   const ArrayList<String> &values,
+                   Maybe<StringView>        leading,
+                   bool                     is_star) throws -> void;
+  fn
+  expand_field_reference(StringView inner) throws -> bool;
+  fn
+  expand_leading_tilde() throws -> bool;
+  static fn
+  is_element_operator(StringView modifier) wontthrow -> bool;
+  fn
+  emit_modified_elements(const ArrayList<String> &values,
+                         StringView               modifier,
+                         StringView               name,
+                         bool                     is_star) throws -> void;
+  fn
+  toggle_quote_state() throws -> bool;
+  fn
+  expand_backslash() throws -> void;
+  fn
+  expand_backquote() throws -> void;
+  fn
+  expand_dollar() throws -> void;
+  fn
+  expand_ansi_c_quote() throws -> void;
+  fn
+  expand_braced_parameter() throws -> void;
+  fn
+  expand_plain_parameter() throws -> void;
+  fn
+  expand_arithmetic(bool is_bracket_form) throws -> void;
+  fn
+  expand_command_substitution() throws -> void;
+  fn
+  is_process_substitution_start() const wontthrow -> bool;
+  fn
+  expand_process_substitution() throws -> void;
+  fn
+  expand_special_parameter(char name) throws -> void;
+  fn
+  emit_command_substitution(StringView body, usize end_index) throws -> void;
+  fn
+  is_function_substitution_start() const wontthrow -> bool;
+  fn
+  expand_function_substitution() throws -> void;
+  fn
+  scan_braced_body(usize &position, bool is_command_body = false) throws
       -> String;
-  fn scan_arithmetic_body(bool is_bracket_form, usize &position) throws
-      -> String;
-  fn scan_command_body(usize start, usize &position) throws -> String;
-  fn copy_braced_backquote(String &inner, usize &position) throws -> void;
-  fn copy_braced_command(String &inner, usize &position) throws -> void;
-  fn copy_braced_quoted_byte(String &inner, usize &position, char &quote) throws
+  fn
+  scan_arithmetic_body(bool is_bracket_form, usize &position) throws -> String;
+  fn
+  scan_command_body(usize start, usize &position) throws -> String;
+  fn
+  copy_braced_backquote(String &inner, usize &position) throws -> void;
+  fn
+  copy_braced_command(String &inner, usize &position) throws -> void;
+  fn
+  copy_braced_quoted_byte(String &inner, usize &position, char &quote) throws
       -> bool;
 };
 
-fn EvalContext::ModifierWordExpander::emit_byte(char byte,
-                                                bool is_active) throws -> void
+fn
+EvalContext::ModifierWordExpander::emit_byte(char byte, bool is_active) throws
+    -> void
 {
   mark_quoted_emit();
   m_out += byte;
   if (m_active_out != nullptr) m_active_out->push(is_active);
 }
 
-fn EvalContext::ModifierWordExpander::mark_quoted_emit() wontthrow -> void
+fn
+EvalContext::ModifierWordExpander::mark_quoted_emit() wontthrow -> void
 {
   if (m_break_out == nullptr || !is_quoted()) {
     return;
@@ -527,17 +596,20 @@ fn EvalContext::ModifierWordExpander::mark_quoted_emit() wontthrow -> void
   m_did_quoted_emit = true;
 }
 
-fn EvalContext::ModifierWordExpander::mark_quoted_empty() throws -> void
+fn
+EvalContext::ModifierWordExpander::mark_quoted_empty() throws -> void
 {
   m_mark_out->push(quoted_empty_mark{m_break_out->count(), m_out.count()});
 }
 
-fn EvalContext::ModifierWordExpander::start_field() throws -> void
+fn
+EvalContext::ModifierWordExpander::start_field() throws -> void
 {
   m_break_out->push(m_out.count());
 }
 
-fn EvalContext::ModifierWordExpander::emit_field_elements(
+fn
+EvalContext::ModifierWordExpander::emit_field_elements(
     const ArrayList<String> &values) throws -> void
 {
   if (!is_quoted()) {
@@ -554,9 +626,12 @@ fn EvalContext::ModifierWordExpander::emit_field_elements(
   }
 }
 
-fn EvalContext::ModifierWordExpander::emit_field_slice(
-    substring_bounds bounds, const ArrayList<String> &values,
-    Maybe<StringView> leading, bool is_star) throws -> void
+fn
+EvalContext::ModifierWordExpander::emit_field_slice(
+    substring_bounds         bounds,
+    const ArrayList<String> &values,
+    Maybe<StringView>        leading,
+    bool                     is_star) throws -> void
 {
   let const leading_count = leading.has_value() ? usize{1} : usize{0};
 
@@ -594,12 +669,15 @@ fn EvalContext::ModifierWordExpander::emit_field_slice(
   }
 }
 
-fn EvalContext::ModifierWordExpander::emit_unquoted_list(
-    const ArrayList<String> &values, bool is_star, bool should_join_with_space,
-    bool is_computed) throws -> void
+fn
+EvalContext::ModifierWordExpander::emit_unquoted_list(
+    const ArrayList<String> &values,
+    bool                     is_star,
+    bool                     should_join_with_space,
+    bool                     is_computed) throws -> void
 {
-  let const ifs = m_context.variable_store().field_separators();
-  let has_space_separator = false;
+  let const ifs                 = m_context.variable_store().field_separators();
+  let       has_space_separator = false;
 
   for (usize i = 0; i < ifs.length; i++)
     if (ifs[i] == ' ') has_space_separator = true;
@@ -619,7 +697,7 @@ fn EvalContext::ModifierWordExpander::emit_unquoted_list(
   let const separator = is_star && !should_join_with_space && !ifs.is_empty()
                             ? m_context.first_field_separator()
                             : StringView{" "};
-  let count = values.count();
+  let       count     = values.count();
   if (is_computed && !is_star && !should_join_with_space && count > 0 &&
       values[count - 1].is_empty() && should_drop_final_empty_element(ifs))
   {
@@ -636,7 +714,8 @@ fn EvalContext::ModifierWordExpander::emit_unquoted_list(
   if (!joined.is_empty()) emit_run(joined.view(), true);
 }
 
-fn EvalContext::ModifierWordExpander::expand_field_reference(
+fn
+EvalContext::ModifierWordExpander::expand_field_reference(
     StringView inner) throws -> bool
 {
   if (m_break_out == nullptr) return false;
@@ -651,8 +730,8 @@ fn EvalContext::ModifierWordExpander::expand_field_reference(
       (inner[1] == '-' || inner.starts_with("@:-")))
   {
     let const is_colon = inner[1] == ':';
-    let const probe = is_colon ? StringView{"@:+x"} : StringView{"@+x"};
-    let const is_set = !m_context
+    let const probe    = is_colon ? StringView{"@:+x"} : StringView{"@+x"};
+    let const is_set   = !m_context
                             .apply_parameter_expansion(probe, nullptr, 0, false,
                                                        get_nested_quoting())
                             .is_empty();
@@ -732,8 +811,8 @@ fn EvalContext::ModifierWordExpander::expand_field_reference(
   }
 
   let const is_star = inner[name_length + 1] == '*';
-  let const rest = inner.substring(name_length + 3);
-  let const name = inner.substring_of_length(0, name_length);
+  let const rest    = inner.substring(name_length + 3);
+  let const name    = inner.substring_of_length(0, name_length);
   if (rest.is_empty() && !is_star) {
     emit_field_elements(m_context.collect_array_elements(name));
 
@@ -766,8 +845,8 @@ fn EvalContext::ModifierWordExpander::expand_field_reference(
   if ((!is_star || !is_quoted()) && rest.length > 1 &&
       (rest[0] == '-' || rest.starts_with(":-")))
   {
-    let const elements = m_context.collect_array_elements(name);
-    let is_every_element_empty = true;
+    let const elements               = m_context.collect_array_elements(name);
+    let       is_every_element_empty = true;
 
     for (let const &element : elements)
       if (!element.is_empty()) {
@@ -799,7 +878,8 @@ fn EvalContext::ModifierWordExpander::expand_field_reference(
   return false;
 }
 
-fn EvalContext::ModifierWordExpander::is_element_operator(
+fn
+EvalContext::ModifierWordExpander::is_element_operator(
     StringView modifier) wontthrow -> bool
 {
   if (modifier.is_empty()) return false;
@@ -820,9 +900,12 @@ fn EvalContext::ModifierWordExpander::is_element_operator(
   }
 }
 
-fn EvalContext::ModifierWordExpander::emit_modified_elements(
-    const ArrayList<String> &values, StringView modifier, StringView name,
-    bool is_star) throws -> void
+fn
+EvalContext::ModifierWordExpander::emit_modified_elements(
+    const ArrayList<String> &values,
+    StringView               modifier,
+    StringView               name,
+    bool                     is_star) throws -> void
 {
   let modified = ArrayList<String>{m_context.scratch_allocator()};
   modified.reserve(values.count());
@@ -872,8 +955,9 @@ fn EvalContext::ModifierWordExpander::emit_modified_elements(
   emit_field_elements(modified);
 }
 
-fn EvalContext::ModifierWordExpander::emit_run(StringView bytes,
-                                               bool is_active) throws -> void
+fn
+EvalContext::ModifierWordExpander::emit_run(StringView bytes,
+                                            bool       is_active) throws -> void
 {
   mark_quoted_emit();
   if (bytes.is_empty() && m_break_out != nullptr && is_quoted()) {
@@ -899,14 +983,15 @@ fn EvalContext::ModifierWordExpander::emit_run(StringView bytes,
   }
 }
 
-fn EvalContext::ModifierWordExpander::toggle_quote_state() throws -> bool
+fn
+EvalContext::ModifierWordExpander::toggle_quote_state() throws -> bool
 {
   if (m_should_remove_quotes && !m_is_in_single_quote && m_word[m_index] == '"')
   {
     m_is_in_double_quote = !m_is_in_double_quote;
     if (m_is_in_double_quote) {
       m_did_quoted_emit = false;
-      m_did_quoted_at = false;
+      m_did_quoted_at   = false;
     } else if (m_break_out != nullptr && !m_did_quoted_emit && !m_did_quoted_at)
     {
       mark_quoted_empty();
@@ -923,7 +1008,8 @@ fn EvalContext::ModifierWordExpander::toggle_quote_state() throws -> bool
   return false;
 }
 
-fn EvalContext::ModifierWordExpander::expand_backslash() throws -> void
+fn
+EvalContext::ModifierWordExpander::expand_backslash() throws -> void
 {
   if (m_is_pattern_word && m_index + 1 < m_word.length) {
     emit_byte(m_word[m_index + 1], false);
@@ -968,17 +1054,18 @@ fn EvalContext::ModifierWordExpander::expand_backslash() throws -> void
   emit_byte('\\', false);
 }
 
-fn EvalContext::ModifierWordExpander::emit_command_substitution(
+fn
+EvalContext::ModifierWordExpander::emit_command_substitution(
     StringView body, usize end_index) throws -> void
 {
-  let call_site = SourceLocation{};
+  let                   call_site         = SourceLocation{};
   const SourceLocation *call_site_pointer = nullptr;
-  let const call_site_length =
+  let const             call_site_length =
       end_index - m_index + (end_index < m_word.length);
   if (m_source_location != nullptr && m_index <= m_source_location->length &&
       call_site_length <= m_source_location->length - m_index)
   {
-    call_site = m_source_location->subspan(m_index, call_site_length);
+    call_site         = m_source_location->subspan(m_index, call_site_length);
     call_site_pointer = &call_site;
   }
   emit_run(
@@ -987,10 +1074,11 @@ fn EvalContext::ModifierWordExpander::emit_command_substitution(
   m_index = end_index;
 }
 
-fn EvalContext::ModifierWordExpander::expand_backquote() throws -> void
+fn
+EvalContext::ModifierWordExpander::expand_backquote() throws -> void
 {
-  let inner = String{m_context.scratch_allocator()};
-  usize j = m_index + 1;
+  let   inner = String{m_context.scratch_allocator()};
+  usize j     = m_index + 1;
 
   for (; j < m_word.length; j++) {
     if (m_word[j] == '\\' && j + 1 < m_word.length &&
@@ -1007,10 +1095,11 @@ fn EvalContext::ModifierWordExpander::expand_backquote() throws -> void
   emit_command_substitution(inner.view(), j);
 }
 
-fn EvalContext::ModifierWordExpander::expand_ansi_c_quote() throws -> void
+fn
+EvalContext::ModifierWordExpander::expand_ansi_c_quote() throws -> void
 {
-  let body = String{m_context.scratch_allocator()};
-  usize j = m_index + 2;
+  let   body = String{m_context.scratch_allocator()};
+  usize j    = m_index + 2;
 
   while (j < m_word.length && m_word[j] != '\'') {
     body.push(m_word[j]);
@@ -1027,8 +1116,11 @@ fn EvalContext::ModifierWordExpander::expand_ansi_c_quote() throws -> void
   m_index = j;
 }
 
-fn EvalContext::ModifierWordExpander::copy_braced_quoted_byte(
-    String &inner, usize &position, char &quote) throws -> bool
+fn
+EvalContext::ModifierWordExpander::copy_braced_quoted_byte(String &inner,
+                                                           usize  &position,
+                                                           char   &quote) throws
+    -> bool
 {
   let const ch = m_word[position];
   if (quote == 0) return false;
@@ -1046,8 +1138,10 @@ fn EvalContext::ModifierWordExpander::copy_braced_quoted_byte(
   return true;
 }
 
-fn EvalContext::ModifierWordExpander::copy_braced_backquote(
-    String &inner, usize &position) throws -> void
+fn
+EvalContext::ModifierWordExpander::copy_braced_backquote(String &inner,
+                                                         usize &position) throws
+    -> void
 {
   inner += m_word[position];
   position++;
@@ -1064,8 +1158,10 @@ fn EvalContext::ModifierWordExpander::copy_braced_backquote(
   }
 }
 
-fn EvalContext::ModifierWordExpander::copy_braced_command(
-    String &inner, usize &position) throws -> void
+fn
+EvalContext::ModifierWordExpander::copy_braced_command(String &inner,
+                                                       usize  &position) throws
+    -> void
 {
   inner += m_word[position];
   inner += m_word[position + 1];
@@ -1076,7 +1172,8 @@ fn EvalContext::ModifierWordExpander::copy_braced_command(
   }
 }
 
-fn EvalContext::ModifierWordExpander::is_function_substitution_start()
+fn
+EvalContext::ModifierWordExpander::is_function_substitution_start()
     const wontthrow -> bool
 {
   if (!m_context.runtime_state().bash_additions_enabled()) return false;
@@ -1087,12 +1184,12 @@ fn EvalContext::ModifierWordExpander::is_function_substitution_start()
   return byte == ' ' || byte == '\t' || byte == '\n' || byte == '|';
 }
 
-fn EvalContext::ModifierWordExpander::expand_function_substitution() throws
-    -> void
+fn
+EvalContext::ModifierWordExpander::expand_function_substitution() throws -> void
 {
-  usize j = 0;
-  let const inner = scan_braced_body(j, true);
-  usize body_start = 0;
+  usize     j          = 0;
+  let const inner      = scan_braced_body(j, true);
+  usize     body_start = 0;
 
   while (body_start < inner.count() &&
          (inner[body_start] == ' ' || inner[body_start] == '\t' ||
@@ -1103,9 +1200,9 @@ fn EvalContext::ModifierWordExpander::expand_function_substitution() throws
 
   let const text = inner.view().substring(body_start);
 
-  let body_location = SourceLocation{};
+  let                   body_location         = SourceLocation{};
   const SourceLocation *body_location_pointer = nullptr;
-  let const text_offset = m_index + 2 + body_start;
+  let const             text_offset           = m_index + 2 + body_start;
   if (m_source_location != nullptr &&
       text_offset <= m_source_location->length &&
       text.length <= m_source_location->length - text_offset)
@@ -1122,12 +1219,14 @@ fn EvalContext::ModifierWordExpander::expand_function_substitution() throws
   m_index = j;
 }
 
-fn EvalContext::ModifierWordExpander::scan_braced_body(
-    usize &position, bool is_command_body) throws -> String
+fn
+EvalContext::ModifierWordExpander::scan_braced_body(usize &position,
+                                                    bool is_command_body) throws
+    -> String
 {
-  let inner = String{m_context.scratch_allocator()};
-  position = m_index + 2;
-  i32 depth = 1;
+  let inner  = String{m_context.scratch_allocator()};
+  position   = m_index + 2;
+  i32  depth = 1;
   char quote = 0;
 
   while (position < m_word.length) {
@@ -1184,9 +1283,10 @@ fn EvalContext::ModifierWordExpander::scan_braced_body(
   return inner;
 }
 
-fn EvalContext::ModifierWordExpander::expand_braced_parameter() throws -> void
+fn
+EvalContext::ModifierWordExpander::expand_braced_parameter() throws -> void
 {
-  usize j = 0;
+  usize     j     = 0;
   let const inner = scan_braced_body(j);
   if (expand_field_reference(inner.view())) {
     m_index = j;
@@ -1194,7 +1294,7 @@ fn EvalContext::ModifierWordExpander::expand_braced_parameter() throws -> void
     return;
   }
 
-  let inner_location = SourceLocation{};
+  let                   inner_location         = SourceLocation{};
   const SourceLocation *inner_location_pointer = nullptr;
   if (m_source_location != nullptr &&
       m_index + 2 <= m_source_location->length &&
@@ -1211,10 +1311,11 @@ fn EvalContext::ModifierWordExpander::expand_braced_parameter() throws -> void
   m_index = j;
 }
 
-fn EvalContext::ModifierWordExpander::expand_plain_parameter() throws -> void
+fn
+EvalContext::ModifierWordExpander::expand_plain_parameter() throws -> void
 {
-  let name = String{m_context.scratch_allocator()};
-  usize j = m_index + 1;
+  let   name = String{m_context.scratch_allocator()};
+  usize j    = m_index + 1;
 
   while (j < m_word.length && lexer::is_variable_name(m_word[j])) {
     name += m_word[j++];
@@ -1232,13 +1333,15 @@ fn EvalContext::ModifierWordExpander::expand_plain_parameter() throws -> void
   m_index = j - 1;
 }
 
-fn EvalContext::ModifierWordExpander::scan_arithmetic_body(
-    bool is_bracket_form, usize &position) throws -> String
+fn
+EvalContext::ModifierWordExpander::scan_arithmetic_body(bool   is_bracket_form,
+                                                        usize &position) throws
+    -> String
 {
-  let inner = String{m_context.scratch_allocator()};
-  position = m_index + (is_bracket_form ? 2 : 3);
+  let inner   = String{m_context.scratch_allocator()};
+  position    = m_index + (is_bracket_form ? 2 : 3);
   usize depth = 0;
-  char quote = 0;
+  char  quote = 0;
 
   for (; position < m_word.length; position++) {
     let const ch = m_word[position];
@@ -1286,16 +1389,17 @@ fn EvalContext::ModifierWordExpander::scan_arithmetic_body(
   return inner;
 }
 
-fn EvalContext::ModifierWordExpander::expand_arithmetic(
+fn
+EvalContext::ModifierWordExpander::expand_arithmetic(
     bool is_bracket_form) throws -> void
 {
   m_context.enter_parameter_expansion();
   defer { m_context.leave_parameter_expansion(); };
 
-  usize j = 0;
-  let const inner = scan_arithmetic_body(is_bracket_form, j);
-  let inner_location = SourceLocation{};
-  let const inner_source = m_word.substring_of_length(
+  usize     j              = 0;
+  let const inner          = scan_arithmetic_body(is_bracket_form, j);
+  let       inner_location = SourceLocation{};
+  let const inner_source   = m_word.substring_of_length(
       m_index + (is_bracket_form ? 2 : 3), inner.count());
   try {
     emit_run(m_context.evaluate_arithmetic_text(
@@ -1312,27 +1416,29 @@ fn EvalContext::ModifierWordExpander::expand_arithmetic(
   m_index = j - 1;
 }
 
-fn EvalContext::ModifierWordExpander::scan_command_body(usize start,
-                                                        usize &position) throws
+fn
+EvalContext::ModifierWordExpander::scan_command_body(usize  start,
+                                                     usize &position) throws
     -> String
 {
-  let inner = String{m_context.scratch_allocator()};
-  let const end = lexer::scan_balanced_shell_region(m_word, start, ')');
-  position = end.has_value() ? *end - 1 : m_word.length;
+  let       inner = String{m_context.scratch_allocator()};
+  let const end   = lexer::scan_balanced_shell_region(m_word, start, ')');
+  position        = end.has_value() ? *end - 1 : m_word.length;
   inner.append(m_word.substring_of_length(start, position - start));
 
   return inner;
 }
 
-fn EvalContext::ModifierWordExpander::expand_command_substitution() throws
-    -> void
+fn
+EvalContext::ModifierWordExpander::expand_command_substitution() throws -> void
 {
-  usize j = 0;
+  usize     j     = 0;
   let const inner = scan_command_body(m_index + 2, j);
   emit_command_substitution(inner.view(), j);
 }
 
-fn EvalContext::ModifierWordExpander::is_process_substitution_start()
+fn
+EvalContext::ModifierWordExpander::is_process_substitution_start()
     const wontthrow -> bool
 {
   let const byte = m_word[m_index];
@@ -1342,12 +1448,12 @@ fn EvalContext::ModifierWordExpander::is_process_substitution_start()
          m_word[m_index + 1] == '(';
 }
 
-fn EvalContext::ModifierWordExpander::expand_process_substitution() throws
-    -> void
+fn
+EvalContext::ModifierWordExpander::expand_process_substitution() throws -> void
 {
-  usize j = 0;
+  usize     j    = 0;
   let const body = scan_command_body(m_index + 2, j);
-  let text = String{m_context.scratch_allocator()};
+  let       text = String{m_context.scratch_allocator()};
   text.push(m_word[m_index]);
   text.append(body.view());
 
@@ -1364,7 +1470,8 @@ fn EvalContext::ModifierWordExpander::expand_process_substitution() throws
   m_index = j;
 }
 
-fn EvalContext::ModifierWordExpander::expand_special_parameter(char name) throws
+fn
+EvalContext::ModifierWordExpander::expand_special_parameter(char name) throws
     -> void
 {
   let const special_name = StringView{&name, 1};
@@ -1380,9 +1487,10 @@ fn EvalContext::ModifierWordExpander::expand_special_parameter(char name) throws
   m_index++;
 }
 
-fn EvalContext::ModifierWordExpander::expand_dollar() throws -> void
+fn
+EvalContext::ModifierWordExpander::expand_dollar() throws -> void
 {
-  let const next = m_word[m_index + 1];
+  let const  next  = m_word[m_index + 1];
   let const &state = m_context.runtime_state();
   if (next == '\'' && m_should_remove_quotes && !m_is_in_double_quote &&
       !m_is_here_document_word && !state.is_posix_mode() &&
@@ -1420,7 +1528,8 @@ fn EvalContext::ModifierWordExpander::expand_dollar() throws -> void
   }
 }
 
-fn EvalContext::ModifierWordExpander::expand_leading_tilde() throws -> bool
+fn
+EvalContext::ModifierWordExpander::expand_leading_tilde() throws -> bool
 {
   if (!m_should_remove_quotes || is_quoted() || m_is_here_document_word) {
     return false;
@@ -1450,7 +1559,8 @@ fn EvalContext::ModifierWordExpander::expand_leading_tilde() throws -> bool
   return true;
 }
 
-fn EvalContext::ModifierWordExpander::expand() throws -> String
+fn
+EvalContext::ModifierWordExpander::expand() throws -> String
 {
   for (m_index = 0; m_index < m_word.length; m_index++) {
     if (toggle_quote_state()) continue;
@@ -1490,9 +1600,13 @@ fn EvalContext::ModifierWordExpander::expand() throws -> String
   return steal(m_out);
 }
 
-fn EvalContext::expand_modifier_word_worker(
-    StringView word, Bitset *active_out, bool should_remove_quotes,
-    bool is_pattern_word, bool should_strip_escaped_literals,
+fn
+EvalContext::expand_modifier_word_worker(
+    StringView            word,
+    Bitset               *active_out,
+    bool                  should_remove_quotes,
+    bool                  is_pattern_word,
+    bool                  should_strip_escaped_literals,
     const SourceLocation *source_location) throws -> String
 {
   LOG(All, "expanding a modifier word of %zu bytes", word.length);
@@ -1505,11 +1619,13 @@ fn EvalContext::expand_modifier_word_worker(
   return expander.expand();
 }
 
-fn EvalContext::expand_modifier_word(StringView word, bool should_remove_quotes,
-                                     bool should_strip_escaped_literals,
-                                     const SourceLocation *source_location,
-                                     bool should_expand_process_substitution,
-                                     parameter_word_quoting quoting) throws
+fn
+EvalContext::expand_modifier_word(StringView word,
+                                  bool       should_remove_quotes,
+                                  bool       should_strip_escaped_literals,
+                                  const SourceLocation *source_location,
+                                  bool should_expand_process_substitution,
+                                  parameter_word_quoting quoting) throws
     -> String
 {
   let expander =
@@ -1524,10 +1640,14 @@ fn EvalContext::expand_modifier_word(StringView word, bool should_remove_quotes,
   return expander.expand();
 }
 
-fn EvalContext::expand_modifier_word_fields(
-    StringView word, bool is_outer_quoted, Bitset &active_out,
-    ArrayList<usize> &break_out, ArrayList<quoted_empty_mark> &mark_out,
-    const SourceLocation *source_location) throws -> String
+fn
+EvalContext::expand_modifier_word_fields(
+    StringView                    word,
+    bool                          is_outer_quoted,
+    Bitset                       &active_out,
+    ArrayList<usize>             &break_out,
+    ArrayList<quoted_empty_mark> &mark_out,
+    const SourceLocation         *source_location) throws -> String
 {
   let expander = ModifierWordExpander{*this, word, &active_out,    true,
                                       false, true, source_location};
@@ -1540,10 +1660,11 @@ fn EvalContext::expand_modifier_word_fields(
 class EvalContext::ParameterExpander
 {
 public:
-  ParameterExpander(EvalContext &context, StringView spec,
-                    const SourceLocation *source_location,
-                    usize source_location_offset,
-                    bool should_expand_process_substitution,
+  ParameterExpander(EvalContext           &context,
+                    StringView             spec,
+                    const SourceLocation  *source_location,
+                    usize                  source_location_offset,
+                    bool                   should_expand_process_substitution,
                     parameter_word_quoting quoting) wontthrow
       : m_context(context),
         m_spec(spec),
@@ -1554,78 +1675,122 @@ public:
         m_quoting(quoting)
   {}
 
-  fn expand() throws -> String;
-  fn set_reference_target() wontthrow -> void { m_is_reference_target = true; }
+  fn
+  expand() throws -> String;
+  fn
+  set_reference_target() wontthrow -> void
+  {
+    m_is_reference_target = true;
+  }
 
 private:
-  EvalContext &m_context;
-  StringView m_spec;
-  const SourceLocation *m_source_location;
-  usize m_source_location_offset;
-  bool m_should_expand_process_substitution;
+  EvalContext           &m_context;
+  StringView             m_spec;
+  const SourceLocation  *m_source_location;
+  usize                  m_source_location_offset;
+  bool                   m_should_expand_process_substitution;
   parameter_word_quoting m_quoting;
-  bool m_is_reference_target = false;
-  StringView m_name;
-  StringView m_rest;
+  bool                   m_is_reference_target = false;
+  StringView             m_name;
+  StringView             m_rest;
 
-  fn get_location_for(StringView part, SourceLocation &storage) const wontthrow
+  fn
+  get_location_for(StringView part, SourceLocation &storage) const wontthrow
       -> const SourceLocation *;
-  fn expand_word(StringView word, parameter_word_quoting quoting) throws
-      -> String;
-  fn expand_indirect() throws -> String;
-  fn expand_length() throws -> String;
-  fn expand_element_length(StringView name, usize bracket) throws -> String;
-  fn split_name() wontthrow -> void;
-  fn expand_subscripted() throws -> Maybe<String>;
-  fn expand_element_operator(StringView subscript,
-                             const SourceLocation *subscript_location,
-                             StringView modifier, char modifier_op) throws
-      -> Maybe<String>;
-  fn expand_element_test(StringView subscript,
-                         const SourceLocation *subscript_location,
-                         StringView modifier, bool is_colon, char after) throws
-      -> Maybe<String>;
-  fn expand_element_transform(StringView subscript,
-                              const SourceLocation *subscript_location,
-                              char op) throws -> String;
-  fn expand_bare_reference() throws -> String;
-  fn expand_list_operator(const ArrayList<String> &values, bool is_star,
-                          StringView modifier) throws -> String;
-  fn expand_list_test(const ArrayList<String> &values, bool is_star,
-                      StringView modifier) throws -> String;
-  fn is_operand_quoted_null(const ArrayList<String> &values,
-                            bool is_star) const wontthrow -> bool;
-  fn should_join_with_ifs(bool is_star,
-                          bool is_trim_or_transform) const wontthrow -> bool;
-  fn should_drop_final_empty_of_computed_list(const ArrayList<String> &values,
-                                              bool is_star) const wontthrow
+  fn
+  expand_word(StringView word, parameter_word_quoting quoting) throws -> String;
+  fn
+  expand_indirect() throws -> String;
+  fn
+  expand_length() throws -> String;
+  fn
+  expand_element_length(StringView name, usize bracket) throws -> String;
+  fn
+  split_name() wontthrow -> void;
+  fn
+  expand_subscripted() throws -> Maybe<String>;
+  fn
+  expand_element_operator(StringView            subscript,
+                          const SourceLocation *subscript_location,
+                          StringView            modifier,
+                          char modifier_op) throws -> Maybe<String>;
+  fn
+  expand_element_test(StringView            subscript,
+                      const SourceLocation *subscript_location,
+                      StringView            modifier,
+                      bool                  is_colon,
+                      char                  after) throws -> Maybe<String>;
+  fn
+  expand_element_transform(StringView            subscript,
+                           const SourceLocation *subscript_location,
+                           char                  op) throws -> String;
+  fn
+  expand_bare_reference() throws -> String;
+  fn
+  expand_list_operator(const ArrayList<String> &values,
+                       bool                     is_star,
+                       StringView               modifier) throws -> String;
+  fn
+  expand_list_test(const ArrayList<String> &values,
+                   bool                     is_star,
+                   StringView               modifier) throws -> String;
+  fn
+  is_operand_quoted_null(const ArrayList<String> &values,
+                         bool is_star) const wontthrow -> bool;
+  fn
+  should_join_with_ifs(bool is_star, bool is_trim_or_transform) const wontthrow
       -> bool;
-  fn expand_list_transform(const ArrayList<String> &values, bool is_star,
-                           char op) throws -> String;
-  fn expand_operator() throws -> String;
-  fn expand_substring_form() throws -> String;
-  fn expand_positional_slice() throws -> String;
-  fn expand_leading_form() throws -> Maybe<String>;
-  fn take_value(Maybe<String> &current) wontthrow -> String;
-  fn assign_word(StringView word) throws -> String;
-  fn raise_unset_error(StringView word) throws -> void;
-  fn get_spec_before(StringView part) const wontthrow -> StringView;
+  fn
+  should_drop_final_empty_of_computed_list(const ArrayList<String> &values,
+                                           bool is_star) const wontthrow
+      -> bool;
+  fn
+  expand_list_transform(const ArrayList<String> &values,
+                        bool                     is_star,
+                        char                     op) throws -> String;
+  fn
+  expand_operator() throws -> String;
+  fn
+  expand_substring_form() throws -> String;
+  fn
+  expand_positional_slice() throws -> String;
+  fn
+  expand_leading_form() throws -> Maybe<String>;
+  fn
+  take_value(Maybe<String> &current) wontthrow -> String;
+  fn
+  assign_word(StringView word) throws -> String;
+  fn
+  raise_unset_error(StringView word) throws -> void;
+  fn
+  get_spec_before(StringView part) const wontthrow -> StringView;
   wontreturn fn
-  raise_bad_substitution(StringView part, StringView reason, StringView note,
+  raise_bad_substitution(StringView part,
+                         StringView reason,
+                         StringView note,
                          bool should_end_script = false) const throws -> void;
-  wontreturn fn raise_bare_colon(StringView colon) const throws -> void;
-  wontreturn fn raise_unknown_operator(StringView operator_text) const throws
-      -> void;
+  wontreturn fn
+  raise_bare_colon(StringView colon) const throws -> void;
+  wontreturn fn
+  raise_unknown_operator(StringView operator_text) const throws -> void;
   wontreturn fn
   raise_unknown_transformation(StringView transformation) const throws -> void;
-  wontreturn fn raise_invalid_name_start() const throws -> void;
-  fn expand_test_operator(char op, StringView word, Maybe<String> &current,
-                          bool should_treat_as_unset) throws -> String;
-  fn expand_trim_operator(char op, StringView word, bool is_doubled,
-                          const Maybe<String> &current) throws -> String;
+  wontreturn fn
+  raise_invalid_name_start() const throws -> void;
+  fn
+  expand_test_operator(char           op,
+                       StringView     word,
+                       Maybe<String> &current,
+                       bool           should_treat_as_unset) throws -> String;
+  fn
+  expand_trim_operator(char                 op,
+                       StringView           word,
+                       bool                 is_doubled,
+                       const Maybe<String> &current) throws -> String;
 };
 
-static pure fn is_transform_operator(char op) wontthrow -> bool
+static pure fn
+is_transform_operator(char op) wontthrow -> bool
 {
   switch (op) {
   case 'A':
@@ -1638,12 +1803,13 @@ static pure fn is_transform_operator(char op) wontthrow -> bool
   case 'a':
   case 'k':
   case 'u': return true;
-  default: return false;
+  default:  return false;
   }
 }
 
-static pure fn find_balanced_subscript_close(
-    StringView subscript_text) wontthrow -> Maybe<usize>
+static pure fn
+find_balanced_subscript_close(StringView subscript_text) wontthrow
+    -> Maybe<usize>
 {
   usize depth = 0;
 
@@ -1662,7 +1828,8 @@ static pure fn find_balanced_subscript_close(
   return None;
 }
 
-static fn find_indirect_name_end(StringView body) wontthrow -> usize
+static fn
+find_indirect_name_end(StringView body) wontthrow -> usize
 {
   usize name_end = 0;
 
@@ -1679,7 +1846,8 @@ static fn find_indirect_name_end(StringView body) wontthrow -> usize
   return name_end;
 }
 
-fn EvalContext::ParameterExpander::get_location_for(
+fn
+EvalContext::ParameterExpander::get_location_for(
     StringView part, SourceLocation &storage) const wontthrow
     -> const SourceLocation *
 {
@@ -1687,7 +1855,8 @@ fn EvalContext::ParameterExpander::get_location_for(
                                      m_source_location_offset);
 }
 
-fn EvalContext::ParameterExpander::expand_word(
+fn
+EvalContext::ParameterExpander::expand_word(
     StringView word, parameter_word_quoting quoting) throws -> String
 {
   let word_location = SourceLocation{};
@@ -1697,7 +1866,8 @@ fn EvalContext::ParameterExpander::expand_word(
       m_should_expand_process_substitution, quoting);
 }
 
-fn EvalContext::ParameterExpander::expand_indirect() throws -> String
+fn
+EvalContext::ParameterExpander::expand_indirect() throws -> String
 {
   let const body = m_spec.substring(1);
   if (m_context.scope_store().is_self_reference(body)) rarely
@@ -1731,15 +1901,15 @@ fn EvalContext::ParameterExpander::expand_indirect() throws -> String
       !(name_end == body.length - 1 &&
         (body[name_end] == '*' || body[name_end] == '@')))
   {
-    let const name = body.substring_of_length(0, name_end);
-    let const target = m_context.get_variable_value(name);
+    let const name        = body.substring_of_length(0, name_end);
+    let const target      = m_context.get_variable_value(name);
     let const target_name = target.has_value() ? target->view() : name;
-    let const suffix = body.substring(name_end);
-    let rewritten = String{m_context.scratch_allocator()};
+    let const suffix      = body.substring(name_end);
+    let       rewritten   = String{m_context.scratch_allocator()};
     rewritten.reserve(target_name.length + suffix.length);
     rewritten.append(target_name);
     rewritten.append(suffix);
-    let suffix_location = SourceLocation{};
+    let        suffix_location = SourceLocation{};
     let const *suffix_location_pointer =
         get_location_for(suffix, suffix_location);
 
@@ -1751,8 +1921,9 @@ fn EvalContext::ParameterExpander::expand_indirect() throws -> String
   return m_context.apply_indirect_or_name_listing(body);
 }
 
-fn EvalContext::ParameterExpander::expand_element_length(StringView name,
-                                                         usize bracket) throws
+fn
+EvalContext::ParameterExpander::expand_element_length(StringView name,
+                                                      usize      bracket) throws
     -> String
 {
   let const array_name = name.substring_of_length(0, bracket);
@@ -1762,15 +1933,16 @@ fn EvalContext::ParameterExpander::expand_element_length(StringView name,
     return String::from(m_context.array_element_count(array_name),
                         m_context.scratch_allocator());
   }
-  let subscript_location = SourceLocation{};
-  let const element = m_context.apply_array_subscript(
+  let       subscript_location = SourceLocation{};
+  let const element            = m_context.apply_array_subscript(
       array_name, subscript, get_location_for(subscript, subscript_location));
 
   return String::from(get_character_count(m_context, element),
                       m_context.scratch_allocator());
 }
 
-fn EvalContext::ParameterExpander::expand_length() throws -> String
+fn
+EvalContext::ParameterExpander::expand_length() throws -> String
 {
   let const name = m_spec.substring(1);
   if (name == "@" || name == "*") {
@@ -1801,7 +1973,8 @@ fn EvalContext::ParameterExpander::expand_length() throws -> String
                       m_context.scratch_allocator());
 }
 
-static fn find_variable_name_end(StringView spec) wontthrow -> usize
+static fn
+find_variable_name_end(StringView spec) wontthrow -> usize
 {
   usize name_end = 0;
 #pragma clang loop unroll_count(4)
@@ -1812,7 +1985,8 @@ static fn find_variable_name_end(StringView spec) wontthrow -> usize
   return name_end;
 }
 
-static fn find_number_end(StringView spec) wontthrow -> usize
+static fn
+find_number_end(StringView spec) wontthrow -> usize
 {
   usize name_end = 0;
 #pragma clang loop unroll_count(4)
@@ -1823,7 +1997,8 @@ static fn find_number_end(StringView spec) wontthrow -> usize
   return name_end;
 }
 
-fn EvalContext::ParameterExpander::split_name() wontthrow -> void
+fn
+EvalContext::ParameterExpander::split_name() wontthrow -> void
 {
   usize name_end = 1;
   if (lexer::is_variable_name_start(m_spec[0])) {
@@ -1836,14 +2011,18 @@ fn EvalContext::ParameterExpander::split_name() wontthrow -> void
   m_rest = m_spec.substring(name_end);
 }
 
-fn EvalContext::ParameterExpander::expand_element_test(
-    StringView subscript, const SourceLocation *subscript_location,
-    StringView modifier, bool is_colon, char after) throws -> Maybe<String>
+fn
+EvalContext::ParameterExpander::expand_element_test(
+    StringView            subscript,
+    const SourceLocation *subscript_location,
+    StringView            modifier,
+    bool                  is_colon,
+    char                  after) throws -> Maybe<String>
 {
   let const element_is_set = m_context.array_element_is_set(m_name, subscript);
-  let value = element_is_set ? m_context.apply_array_subscript(
+  let       value          = element_is_set ? m_context.apply_array_subscript(
                                    m_name, subscript, subscript_location)
-                             : String{m_context.scratch_allocator()};
+                                            : String{m_context.scratch_allocator()};
   let const should_treat_as_unset =
       is_colon ? value.is_empty() : !element_is_set;
   let const word = modifier.substring(is_colon ? 2 : 1);
@@ -1880,16 +2059,19 @@ fn EvalContext::ParameterExpander::expand_element_test(
   return None;
 }
 
-fn EvalContext::ParameterExpander::expand_element_operator(
-    StringView subscript, const SourceLocation *subscript_location,
-    StringView modifier, char modifier_op) throws -> Maybe<String>
+fn
+EvalContext::ParameterExpander::expand_element_operator(
+    StringView            subscript,
+    const SourceLocation *subscript_location,
+    StringView            modifier,
+    char                  modifier_op) throws -> Maybe<String>
 {
   let const is_colon = modifier_op == ':';
   let const after = is_colon && modifier.length > 1 ? modifier[1] : modifier_op;
   let const is_test_form = is_colon_modifier_operator(after);
   if (is_colon && !is_test_form) {
-    let const substring_body = modifier.substring(1);
-    let substring_location = SourceLocation{};
+    let const substring_body     = modifier.substring(1);
+    let       substring_location = SourceLocation{};
 
     return m_context.apply_substring_to_value(
         m_context.apply_array_subscript(m_name, subscript, subscript_location)
@@ -1909,9 +2091,11 @@ fn EvalContext::ParameterExpander::expand_element_operator(
   return None;
 }
 
-fn EvalContext::ParameterExpander::expand_element_transform(
-    StringView subscript, const SourceLocation *subscript_location,
-    char op) throws -> String
+fn
+EvalContext::ParameterExpander::expand_element_transform(
+    StringView            subscript,
+    const SourceLocation *subscript_location,
+    char                  op) throws -> String
 {
   if (op == 'a' && m_is_reference_target) {
     return String{m_context.scratch_allocator()};
@@ -1957,13 +2141,14 @@ fn EvalContext::ParameterExpander::expand_element_transform(
       op, m_name);
 }
 
-fn EvalContext::ParameterExpander::expand_subscripted() throws -> Maybe<String>
+fn
+EvalContext::ParameterExpander::expand_subscripted() throws -> Maybe<String>
 {
   let const close = find_balanced_subscript_close(m_rest);
   if (!close.has_value()) return None;
 
-  let const subscript = m_rest.substring_of_length(1, *close - 1);
-  let subscript_location = SourceLocation{};
+  let const  subscript          = m_rest.substring_of_length(1, *close - 1);
+  let        subscript_location = SourceLocation{};
   let const *subscript_location_pointer =
       get_location_for(subscript, subscript_location);
   let const do_read_element = [&]() throws -> String {
@@ -1980,8 +2165,8 @@ fn EvalContext::ParameterExpander::expand_subscripted() throws -> Maybe<String>
   };
   if (*close + 1 == m_rest.length) return do_read_element();
 
-  let const modifier = m_rest.substring(*close + 1);
-  let modifier_location = SourceLocation{};
+  let const  modifier          = m_rest.substring(*close + 1);
+  let        modifier_location = SourceLocation{};
   let const *modifier_location_pointer =
       get_location_for(modifier, modifier_location);
   let const modifier_op = modifier.is_empty() ? '\0' : modifier[0];
@@ -2019,9 +2204,9 @@ fn EvalContext::ParameterExpander::expand_subscripted() throws -> Maybe<String>
   if (modifier.length > 1 && modifier_op == ':' &&
       !is_colon_modifier_operator(modifier[1]))
   {
-    let const slice = modifier.substring(1);
-    let slice_location = SourceLocation{};
-    let const bounds = m_context.compute_array_slice_bounds(
+    let const slice          = modifier.substring(1);
+    let       slice_location = SourceLocation{};
+    let const bounds         = m_context.compute_array_slice_bounds(
         m_name, slice, static_cast<i64>(elements.count()),
         get_location_for(slice, slice_location));
 
@@ -2032,7 +2217,8 @@ fn EvalContext::ParameterExpander::expand_subscripted() throws -> Maybe<String>
   return expand_list_operator(elements, subscript == "*", modifier);
 }
 
-fn EvalContext::ParameterExpander::expand_list_operator(
+fn
+EvalContext::ParameterExpander::expand_list_operator(
     const ArrayList<String> &values, bool is_star, StringView modifier) throws
     -> String
 {
@@ -2053,7 +2239,7 @@ fn EvalContext::ParameterExpander::expand_list_operator(
   case '^':
   case ',':
   case '~': {
-    let modifier_location = SourceLocation{};
+    let        modifier_location = SourceLocation{};
     let const *modifier_location_pointer =
         get_location_for(modifier, modifier_location);
     if ((op == '#' || op == '%') && m_context.runtime_state().is_posix_mode() &&
@@ -2096,7 +2282,8 @@ fn EvalContext::ParameterExpander::expand_list_operator(
   }
 }
 
-fn EvalContext::ParameterExpander::should_join_with_ifs(
+fn
+EvalContext::ParameterExpander::should_join_with_ifs(
     bool is_star, bool is_trim_or_transform) const wontthrow -> bool
 {
   if (is_star) return true;
@@ -2110,7 +2297,8 @@ fn EvalContext::ParameterExpander::should_join_with_ifs(
          is_trim_or_transform;
 }
 
-fn EvalContext::ParameterExpander::should_drop_final_empty_of_computed_list(
+fn
+EvalContext::ParameterExpander::should_drop_final_empty_of_computed_list(
     const ArrayList<String> &values, bool is_star) const wontthrow -> bool
 {
   if (is_star || values.is_empty() || !values[values.count() - 1].is_empty()) {
@@ -2124,7 +2312,8 @@ fn EvalContext::ParameterExpander::should_drop_final_empty_of_computed_list(
       m_context.variable_store().field_separators());
 }
 
-fn EvalContext::ParameterExpander::is_operand_quoted_null(
+fn
+EvalContext::ParameterExpander::is_operand_quoted_null(
     const ArrayList<String> &values, bool is_star) const wontthrow -> bool
 {
   let const &store = m_context.expansion_store();
@@ -2143,14 +2332,15 @@ fn EvalContext::ParameterExpander::is_operand_quoted_null(
   return !ifs.is_empty() && ifs[0] != ' ' && ifs[0] != '\t' && ifs[0] != '\n';
 }
 
-fn EvalContext::ParameterExpander::expand_list_test(
+fn
+EvalContext::ParameterExpander::expand_list_test(
     const ArrayList<String> &values, bool is_star, StringView modifier) throws
     -> String
 {
   let const is_colon = modifier[0] == ':';
-  let const op = modifier[is_colon ? 1 : 0];
-  let const word = modifier.substring(is_colon ? 2 : 1);
-  let joined = m_context.join_list_slice(
+  let const op       = modifier[is_colon ? 1 : 0];
+  let const word     = modifier.substring(is_colon ? 2 : 1);
+  let       joined   = m_context.join_list_slice(
       substring_bounds{0, static_cast<i64>(values.count())}, values, None,
       is_star);
   let const is_quoted_null_list =
@@ -2172,9 +2362,9 @@ fn EvalContext::ParameterExpander::expand_list_test(
   }
 
   let const is_positional = m_name == "@" || m_name == "*";
-  let const list_name = is_positional
-                            ? String{m_context.scratch_allocator(), m_name}
-                            : m_name + (is_star ? "[*]" : "[@]");
+  let const list_name     = is_positional
+                                ? String{m_context.scratch_allocator(), m_name}
+                                : m_name + (is_star ? "[*]" : "[@]");
   switch (op) {
   case '-': return expand_word(word, m_quoting);
   case '+': return String{m_context.scratch_allocator()};
@@ -2206,11 +2396,12 @@ fn EvalContext::ParameterExpander::expand_list_test(
   }
 }
 
-fn EvalContext::ParameterExpander::expand_list_transform(
+fn
+EvalContext::ParameterExpander::expand_list_transform(
     const ArrayList<String> &values, bool is_star, char op) throws -> String
 {
   let const is_positional = m_name == "@" || m_name == "*";
-  let out = String{m_context.scratch_allocator()};
+  let       out           = String{m_context.scratch_allocator()};
   if (op == 'A' && is_positional) {
     if (values.is_empty()) return out;
 
@@ -2291,7 +2482,8 @@ fn EvalContext::ParameterExpander::expand_list_transform(
       None, should_join_with_ifs(is_star, true));
 }
 
-fn EvalContext::ParameterExpander::expand_bare_reference() throws -> String
+fn
+EvalContext::ParameterExpander::expand_bare_reference() throws -> String
 {
   if (let const stored = m_context.variable_store().find_plain_scalar(m_name);
       stored.has_value())
@@ -2305,22 +2497,24 @@ fn EvalContext::ParameterExpander::expand_bare_reference() throws -> String
   return String{m_context.scratch_allocator()};
 }
 
-fn EvalContext::ParameterExpander::expand_substring_form() throws -> String
+fn
+EvalContext::ParameterExpander::expand_substring_form() throws -> String
 {
-  let const substring_body = m_rest.substring(1);
-  let substring_location = SourceLocation{};
+  let const substring_body     = m_rest.substring(1);
+  let       substring_location = SourceLocation{};
 
   return m_context.apply_substring_expansion(
       m_name, substring_body,
       get_location_for(substring_body, substring_location));
 }
 
-fn EvalContext::ParameterExpander::expand_positional_slice() throws -> String
+fn
+EvalContext::ParameterExpander::expand_positional_slice() throws -> String
 {
-  let const slice = m_rest.substring(1);
-  let slice_location = SourceLocation{};
-  let const &params = m_context.variable_store().positional_params();
-  let const bounds = m_context.compute_list_slice_bounds(
+  let const  slice          = m_rest.substring(1);
+  let        slice_location = SourceLocation{};
+  let const &params         = m_context.variable_store().positional_params();
+  let const  bounds         = m_context.compute_list_slice_bounds(
       slice, static_cast<i64>(params.count() + 1),
       get_location_for(slice, slice_location));
 
@@ -2329,7 +2523,8 @@ fn EvalContext::ParameterExpander::expand_positional_slice() throws -> String
                                    should_join_with_ifs(m_name == "*", false));
 }
 
-fn EvalContext::ParameterExpander::expand_leading_form() throws -> Maybe<String>
+fn
+EvalContext::ParameterExpander::expand_leading_form() throws -> Maybe<String>
 {
   switch (m_rest[0]) {
   case '/': {
@@ -2363,9 +2558,12 @@ fn EvalContext::ParameterExpander::expand_leading_form() throws -> Maybe<String>
   return None;
 }
 
-fn EvalContext::ParameterExpander::expand_test_operator(
-    char op, StringView word, Maybe<String> &current,
-    bool should_treat_as_unset) throws -> String
+fn
+EvalContext::ParameterExpander::expand_test_operator(
+    char           op,
+    StringView     word,
+    Maybe<String> &current,
+    bool           should_treat_as_unset) throws -> String
 {
   switch (op) {
   case '-':
@@ -2387,7 +2585,8 @@ fn EvalContext::ParameterExpander::expand_test_operator(
   }
 }
 
-fn EvalContext::ParameterExpander::take_value(Maybe<String> &current) wontthrow
+fn
+EvalContext::ParameterExpander::take_value(Maybe<String> &current) wontthrow
     -> String
 {
   ASSERT(current.has_value());
@@ -2395,7 +2594,8 @@ fn EvalContext::ParameterExpander::take_value(Maybe<String> &current) wontthrow
   return steal(*current);
 }
 
-fn EvalContext::ParameterExpander::assign_word(StringView word) throws -> String
+fn
+EvalContext::ParameterExpander::assign_word(StringView word) throws -> String
 {
   let const assigned = expand_word(word, m_quoting);
   if (m_context.is_readonly(m_name)) {
@@ -2414,16 +2614,20 @@ fn EvalContext::ParameterExpander::assign_word(StringView word) throws -> String
   return assigned;
 }
 
-fn EvalContext::ParameterExpander::get_spec_before(
-    StringView part) const wontthrow -> StringView
+fn
+EvalContext::ParameterExpander::get_spec_before(StringView part) const wontthrow
+    -> StringView
 {
   return m_spec.substring_of_length(
       0, static_cast<usize>(part.data - m_spec.data));
 }
 
-wontreturn fn EvalContext::ParameterExpander::raise_bad_substitution(
-    StringView part, StringView reason, StringView note,
-    bool should_end_script) const throws -> void
+wontreturn fn
+EvalContext::ParameterExpander::raise_bad_substitution(
+    StringView part,
+    StringView reason,
+    StringView note,
+    bool       should_end_script) const throws -> void
 {
   let const message = "Unable to expand '${" + m_spec + "}' because " + reason;
   let const do_mark = [&](ErrorBase &error) throws {
@@ -2437,7 +2641,7 @@ wontreturn fn EvalContext::ParameterExpander::raise_bad_substitution(
                                    expansion_error_reach::LineOrPosixScript);
   };
 
-  let part_location = SourceLocation{};
+  let        part_location = SourceLocation{};
   let const *part_location_pointer =
       part.is_empty() ? nullptr : get_location_for(part, part_location);
   if (part_location_pointer != nullptr) {
@@ -2452,8 +2656,9 @@ wontreturn fn EvalContext::ParameterExpander::raise_bad_substitution(
   throw steal(error);
 }
 
-wontreturn fn EvalContext::ParameterExpander::raise_bare_colon(
-    StringView colon) const throws -> void
+wontreturn fn
+EvalContext::ParameterExpander::raise_bare_colon(StringView colon) const throws
+    -> void
 {
   let const before = get_spec_before(colon);
   raise_bad_substitution(colon,
@@ -2463,10 +2668,11 @@ wontreturn fn EvalContext::ParameterExpander::raise_bare_colon(
                              before + ":1} for a substring.");
 }
 
-wontreturn fn EvalContext::ParameterExpander::raise_unknown_operator(
+wontreturn fn
+EvalContext::ParameterExpander::raise_unknown_operator(
     StringView operator_text) const throws -> void
 {
-  let const first = operator_text[0];
+  let const first  = operator_text[0];
   let const reason = "'" + operator_text + "' is not an operator";
   if (first == '[' && !find_balanced_subscript_close(operator_text).has_value())
   {
@@ -2506,7 +2712,8 @@ wontreturn fn EvalContext::ParameterExpander::raise_unknown_operator(
                          ":? :+ # % / ^ , or @.");
 }
 
-wontreturn fn EvalContext::ParameterExpander::raise_unknown_transformation(
+wontreturn fn
+EvalContext::ParameterExpander::raise_unknown_transformation(
     StringView transformation) const throws -> void
 {
   let const note = "Use one of Q E P A K a u U L k, as in ${" +
@@ -2552,7 +2759,8 @@ EvalContext::ParameterExpander::raise_invalid_name_start() const throws -> void
   }
 }
 
-fn EvalContext::ParameterExpander::raise_unset_error(StringView word) throws
+fn
+EvalContext::ParameterExpander::raise_unset_error(StringView word) throws
     -> void
 {
   if (word.is_empty())
@@ -2562,8 +2770,11 @@ fn EvalContext::ParameterExpander::raise_unset_error(StringView word) throws
                      expand_word(word, parameter_word_quoting::Unquoted));
 }
 
-fn EvalContext::ParameterExpander::expand_trim_operator(
-    char op, StringView word, bool is_doubled,
+fn
+EvalContext::ParameterExpander::expand_trim_operator(
+    char                 op,
+    StringView           word,
+    bool                 is_doubled,
     const Maybe<String> &current) throws -> String
 {
   let word_location = SourceLocation{};
@@ -2575,10 +2786,11 @@ fn EvalContext::ParameterExpander::expand_trim_operator(
                                   get_location_for(word, word_location));
 }
 
-fn EvalContext::ParameterExpander::expand_operator() throws -> String
+fn
+EvalContext::ParameterExpander::expand_operator() throws -> String
 {
-  let const is_colon_form = m_rest[0] == ':';
-  const usize op_index = is_colon_form ? 1 : 0;
+  let const   is_colon_form = m_rest[0] == ':';
+  const usize op_index      = is_colon_form ? 1 : 0;
   if (op_index >= m_rest.length) raise_bare_colon(m_rest);
 
   let const is_all_parameters = m_name == "@" || m_name == "*";
@@ -2621,9 +2833,9 @@ fn EvalContext::ParameterExpander::expand_operator() throws -> String
        (op == '#' || op == '%'));
   let const word = m_rest.substring(op_index + (is_doubled ? 2 : 1));
 
-  let current = m_context.get_variable_value(m_name);
-  let const is_set = current.has_value();
-  let const is_empty = !is_set || current->is_empty();
+  let       current               = m_context.get_variable_value(m_name);
+  let const is_set                = current.has_value();
+  let const is_empty              = !is_set || current->is_empty();
   let const should_treat_as_unset = is_colon_form ? is_empty : !is_set;
 
   switch (op) {
@@ -2634,11 +2846,12 @@ fn EvalContext::ParameterExpander::expand_operator() throws -> String
     return expand_test_operator(op, word, current, should_treat_as_unset);
   case '#':
   case '%': return expand_trim_operator(op, word, is_doubled, current);
-  default: raise_unknown_operator(m_rest);
+  default:  raise_unknown_operator(m_rest);
   }
 }
 
-static fn is_operator_after_bang(char character) wontthrow -> bool
+static fn
+is_operator_after_bang(char character) wontthrow -> bool
 {
   switch (character) {
   case ':':
@@ -2649,11 +2862,12 @@ static fn is_operator_after_bang(char character) wontthrow -> bool
   case '/':
   case '^':
   case ',': return true;
-  default: return false;
+  default:  return false;
   }
 }
 
-static fn is_operator_after_hash(StringView spec) wontthrow -> bool
+static fn
+is_operator_after_hash(StringView spec) wontthrow -> bool
 {
   switch (spec[1]) {
   case ':':
@@ -2663,11 +2877,12 @@ static fn is_operator_after_hash(StringView spec) wontthrow -> bool
   case '%':
   case '/': return true;
   case '?': return spec.length > 2;
-  default: return false;
+  default:  return false;
   }
 }
 
-fn EvalContext::ParameterExpander::expand() throws -> String
+fn
+EvalContext::ParameterExpander::expand() throws -> String
 {
   if (m_spec.is_empty()) {
     raise_bad_substitution(m_spec, "the braces hold no parameter",
@@ -2705,10 +2920,13 @@ fn EvalContext::ParameterExpander::expand() throws -> String
   return expand_operator();
 }
 
-hot fn EvalContext::apply_parameter_expansion(
-    StringView spec, const SourceLocation *source_location,
-    usize source_location_offset, bool should_expand_process_substitution,
-    parameter_word_quoting quoting) throws -> String
+hot fn
+EvalContext::apply_parameter_expansion(StringView            spec,
+                                       const SourceLocation *source_location,
+                                       usize source_location_offset,
+                                       bool  should_expand_process_substitution,
+                                       parameter_word_quoting quoting) throws
+    -> String
 {
   LOG(All, "applying the parameter expansion '${%.*s}'",
       static_cast<int>(spec.length), spec.data);
@@ -2721,7 +2939,7 @@ hot fn EvalContext::apply_parameter_expansion(
     {
       resolved_spec = resolve_nameref_parameter(spec);
       if (resolved_spec.has_value()) {
-        spec = resolved_spec->view();
+        spec            = resolved_spec->view();
         source_location = nullptr;
       }
     }
@@ -2737,9 +2955,10 @@ hot fn EvalContext::apply_parameter_expansion(
   return expander.expand();
 }
 
-fn find_substring_length_separator(StringView body) wontthrow -> usize
+fn
+find_substring_length_separator(StringView body) wontthrow -> usize
 {
-  usize paren_depth = 0;
+  usize paren_depth    = 0;
   usize question_depth = 0;
 
   for (usize i = 0; i < body.length; i++) {
@@ -2764,7 +2983,8 @@ fn find_substring_length_separator(StringView body) wontthrow -> usize
   return body.length;
 }
 
-fn EvalContext::get_variable_value_checked(StringView name) const throws
+fn
+EvalContext::get_variable_value_checked(StringView name) const throws
     -> Maybe<String>
 {
   let current = get_variable_value(name);
@@ -2776,24 +2996,28 @@ fn EvalContext::get_variable_value_checked(StringView name) const throws
   return current;
 }
 
-fn EvalContext::apply_substring_expansion(
-    StringView name, StringView body,
+fn
+EvalContext::apply_substring_expansion(
+    StringView            name,
+    StringView            body,
     const SourceLocation *source_location) throws -> String
 {
-  let const current = get_variable_value_checked(name);
+  let const current      = get_variable_value_checked(name);
   let const current_view = current.has_value() ? current->view() : StringView{};
 
   return apply_substring_to_value(current_view, body, source_location);
 }
 
-fn EvalContext::apply_substring_to_value(
-    StringView value, StringView body,
+fn
+EvalContext::apply_substring_to_value(
+    StringView            value,
+    StringView            body,
     const SourceLocation *source_location) throws -> String
 {
   LOG(All, "taking the substring '%.*s' of a value of %zu bytes",
       static_cast<int>(body.length), body.data, value.length);
   let const operands = parse_substring_operands(*this, body, source_location);
-  let const offset = operands.offset;
+  let const offset   = operands.offset;
   let const requested_length = operands.length;
 
   let const is_forward_window =
@@ -2803,7 +3027,7 @@ fn EvalContext::apply_substring_to_value(
     let const start_limit =
         requested_offset < value.length ? requested_offset : value.length;
     let const remaining_length = value.length - start_limit;
-    let window_limit = start_limit;
+    let       window_limit     = start_limit;
     if (requested_length.has_value()) {
       let const window_length = static_cast<usize>(*requested_length);
       window_limit +=
@@ -2827,7 +3051,7 @@ fn EvalContext::apply_substring_to_value(
                                             end_position - start_position)};
   }
 
-  let const charset = get_glob_charset_for(value);
+  let const charset      = get_glob_charset_for(value);
   let const value_length = static_cast<i64>(
       charset == glob_charset::Utf8 ? utils::utf8_character_count(value)
                                     : value.length);
@@ -2851,8 +3075,10 @@ fn EvalContext::apply_substring_to_value(
                                 static_cast<usize>(bounds.end - bounds.start))};
 }
 
-fn EvalContext::compute_list_slice_bounds(
-    StringView slice, i64 value_count,
+fn
+EvalContext::compute_list_slice_bounds(
+    StringView            slice,
+    i64                   value_count,
     const SourceLocation *source_location) throws -> substring_bounds
 {
   let const operands = parse_substring_operands(*this, slice, source_location);
@@ -2861,8 +3087,11 @@ fn EvalContext::compute_list_slice_bounds(
                                   substring_subject::List);
 }
 
-fn EvalContext::compute_array_slice_bounds(
-    StringView name, StringView slice, i64 element_count,
+fn
+EvalContext::compute_array_slice_bounds(
+    StringView            name,
+    StringView            slice,
+    i64                   element_count,
     const SourceLocation *source_location) throws -> substring_bounds
 {
   let const is_associative = is_associative_array(name);
@@ -2901,7 +3130,7 @@ fn EvalContext::compute_array_slice_bounds(
                                        : start + taken_count};
   }
 
-  let const subscripts = collect_array_subscripts(name);
+  let const subscripts  = collect_array_subscripts(name);
   let const do_index_at = [&subscripts](usize position) throws -> i64 {
     let const parsed = subscripts[position].to<i64>();
 
@@ -2931,13 +3160,14 @@ fn EvalContext::compute_array_slice_bounds(
   return substring_bounds{start, end};
 }
 
-fn EvalContext::join_list_slice(substring_bounds bounds,
-                                const ArrayList<String> &values,
-                                Maybe<StringView> leading,
-                                bool is_star) const throws -> String
+fn
+EvalContext::join_list_slice(substring_bounds         bounds,
+                             const ArrayList<String> &values,
+                             Maybe<StringView>        leading,
+                             bool is_star) const throws -> String
 {
   let const leading_count = leading.has_value() ? usize{1} : usize{0};
-  let const ifs = variable_store().field_separators();
+  let const ifs           = variable_store().field_separators();
   let const has_separator = !is_star || !ifs.is_empty();
   let const separator =
       is_star && !ifs.is_empty() ? first_field_separator() : StringView{" "};
@@ -2957,7 +3187,8 @@ fn EvalContext::join_list_slice(substring_bounds bounds,
   return joined;
 }
 
-static fn find_replacement_separator(StringView body) wontthrow -> usize
+static fn
+find_replacement_separator(StringView body) wontthrow -> usize
 {
   char quote = 0;
 
@@ -2985,14 +3216,14 @@ static fn find_replacement_separator(StringView body) wontthrow -> usize
   return body.length;
 }
 
-pure static fn longest_possible_pattern_match(StringView pattern,
-                                              const Bitset &pattern_active,
-                                              extglob_mode mode,
-                                              glob_charset charset) wontthrow
-    -> Maybe<usize>
+pure static fn
+longest_possible_pattern_match(StringView    pattern,
+                               const Bitset &pattern_active,
+                               extglob_mode  mode,
+                               glob_charset  charset) wontthrow -> Maybe<usize>
 {
   let const character_width = charset == glob_charset::Utf8 ? usize{4} : 1;
-  let const do_is_active = [&](usize index) wontthrow -> bool {
+  let const do_is_active    = [&](usize index) wontthrow -> bool {
     return index < pattern_active.count() && pattern_active[index];
   };
   usize length = 0;
@@ -3051,13 +3282,18 @@ pure static fn longest_possible_pattern_match(StringView pattern,
   return length;
 }
 
-alwaysinline static fn longest_pattern_match_at(
-    StringView pattern, const Bitset &pattern_active, StringView value,
-    usize start, extglob_mode mode, glob_charset charset,
-    Maybe<usize> longest_possible = None) throws -> Maybe<usize>
+alwaysinline static fn
+longest_pattern_match_at(StringView    pattern,
+                         const Bitset &pattern_active,
+                         StringView    value,
+                         usize         start,
+                         extglob_mode  mode,
+                         glob_charset  charset,
+                         Maybe<usize>  longest_possible = None) throws
+    -> Maybe<usize>
 {
-  let const is_utf8 = charset == glob_charset::Utf8;
-  let first_end = value.length;
+  let const is_utf8   = charset == glob_charset::Utf8;
+  let       first_end = value.length;
   if (longest_possible.has_value() && start + *longest_possible < first_end) {
     first_end = start + *longest_possible;
   }
@@ -3076,20 +3312,24 @@ alwaysinline static fn longest_pattern_match_at(
   return None;
 }
 
-fn EvalContext::apply_pattern_replacement(
-    StringView name, StringView spec,
+fn
+EvalContext::apply_pattern_replacement(
+    StringView            name,
+    StringView            spec,
     const SourceLocation *source_location) throws -> String
 {
-  let const current = get_variable_value_checked(name);
+  let const current      = get_variable_value_checked(name);
   let const current_view = current.has_value() ? current->view() : StringView{};
 
   return pattern_replace_value(current_view, spec, source_location);
 }
 
-static fn append_pattern_replacement(String &out, StringView replacement,
-                                     const Bitset &active,
-                                     bool is_patsub_enabled,
-                                     StringView matched) throws -> void
+static fn
+append_pattern_replacement(String       &out,
+                           StringView    replacement,
+                           const Bitset &active,
+                           bool          is_patsub_enabled,
+                           StringView    matched) throws -> void
 {
   if (!is_patsub_enabled) {
     out.append(replacement);
@@ -3118,33 +3358,35 @@ static fn append_pattern_replacement(String &out, StringView replacement,
   }
 }
 
-fn EvalContext::pattern_replace_value(
-    StringView value, StringView spec,
-    const SourceLocation *source_location) throws -> String
+fn
+EvalContext::pattern_replace_value(StringView            value,
+                                   StringView            spec,
+                                   const SourceLocation *source_location) throws
+    -> String
 {
   LOG(All, "applying the pattern replacement '%.*s' to a value of %zu bytes",
       static_cast<int>(spec.length), spec.data, value.length);
-  StringView remainder = spec.substring(1);
-  bool should_replace_all = false;
-  bool is_anchored_at_start = false;
-  bool is_anchored_at_end = false;
+  StringView remainder            = spec.substring(1);
+  bool       should_replace_all   = false;
+  bool       is_anchored_at_start = false;
+  bool       is_anchored_at_end   = false;
   if (!remainder.is_empty() && remainder[0] == '/') {
     should_replace_all = true;
-    remainder = remainder.substring(1);
+    remainder          = remainder.substring(1);
   } else if (!remainder.is_empty() && remainder[0] == '#') {
     is_anchored_at_start = true;
-    remainder = remainder.substring(1);
+    remainder            = remainder.substring(1);
   } else if (!remainder.is_empty() && remainder[0] == '%') {
     is_anchored_at_end = true;
-    remainder = remainder.substring(1);
+    remainder          = remainder.substring(1);
   }
 
-  let const separator = find_replacement_separator(remainder);
-  let const pattern_word = remainder.substring_of_length(0, separator);
-  let pattern_location = SourceLocation{};
-  let pattern_active = Bitset{scratch_allocator()};
-  let guarded_pattern_word = String{scratch_allocator()};
-  let word_to_expand = pattern_word;
+  let const separator            = find_replacement_separator(remainder);
+  let const pattern_word         = remainder.substring_of_length(0, separator);
+  let       pattern_location     = SourceLocation{};
+  let       pattern_active       = Bitset{scratch_allocator()};
+  let       guarded_pattern_word = String{scratch_allocator()};
+  let       word_to_expand       = pattern_word;
   if ((is_anchored_at_start || is_anchored_at_end) &&
       pattern_word.starts_with("~"))
   {
@@ -3156,8 +3398,8 @@ fn EvalContext::pattern_replace_value(
       word_to_expand, pattern_active, true,
       source_location_for_subview(source_location, spec, pattern_word,
                                   pattern_location));
-  let replacement_location = SourceLocation{};
-  let replacement_active = Bitset{scratch_allocator()};
+  let       replacement_location = SourceLocation{};
+  let       replacement_active   = Bitset{scratch_allocator()};
   let const replacement =
       separator < remainder.length
           ? expand_modifier_word_worker(
@@ -3174,12 +3416,12 @@ fn EvalContext::pattern_replace_value(
     return String{scratch_allocator(), value};
   }
 
-  let out = String{scratch_allocator()};
+  let       out                   = String{scratch_allocator()};
   let const do_append_replacement = [&](StringView matched) throws -> void {
     append_pattern_replacement(out, replacement.view(), replacement_active,
                                is_patsub_enabled, matched);
   };
-  let const extglob = get_extglob_mode();
+  let const extglob       = get_extglob_mode();
   let const value_charset = get_glob_charset_for(value);
   let const charset =
       value_charset == glob_charset::Utf8 && has_invalid_utf8(pattern.view())
@@ -3229,8 +3471,8 @@ fn EvalContext::pattern_replace_value(
 
   let const longest_possible = longest_possible_pattern_match(
       pattern.view(), pattern_active, extglob, charset);
-  bool has_replaced = false;
-  usize i = 0;
+  bool  has_replaced = false;
+  usize i            = 0;
 
   while (i < value.length) {
     Maybe<usize> matched;
@@ -3268,7 +3510,8 @@ fn EvalContext::pattern_replace_value(
   return out;
 }
 
-fn EvalContext::apply_parameter_transform(StringView name, char op) throws
+fn
+EvalContext::apply_parameter_transform(StringView name, char op) throws
     -> String
 {
   let const value = get_variable_value_checked(name);
@@ -3291,8 +3534,8 @@ fn EvalContext::apply_parameter_transform(StringView name, char op) throws
   return apply_parameter_transform_to_value(value->view(), op, name);
 }
 
-fn EvalContext::get_declaration_fields(StringView name) throws
-    -> ArrayList<String>
+fn
+EvalContext::get_declaration_fields(StringView name) throws -> ArrayList<String>
 {
   let fields = ArrayList<String>{heap_allocator()};
   if (name == "@") {
@@ -3329,8 +3572,8 @@ fn EvalContext::get_declaration_fields(StringView name) throws
     declaration.pop_back();
   }
 
-  let const view = declaration.view();
-  let cursor = usize{0};
+  let const view   = declaration.view();
+  let       cursor = usize{0};
 
   for (usize field_index = 0; field_index < 2; field_index++) {
     let const space = view.substring(cursor).find_character(' ');
@@ -3348,8 +3591,10 @@ fn EvalContext::get_declaration_fields(StringView name) throws
   return fields;
 }
 
-fn EvalContext::apply_parameter_transform_to_value(StringView text, char op,
-                                                   StringView name) throws
+fn
+EvalContext::apply_parameter_transform_to_value(StringView text,
+                                                char       op,
+                                                StringView name) throws
     -> String
 {
   let out = String{scratch_allocator()};
@@ -3414,37 +3659,41 @@ fn EvalContext::apply_parameter_transform_to_value(StringView text, char op,
   }
 }
 
-fn EvalContext::apply_case_modification(
-    StringView name, StringView spec,
+fn
+EvalContext::apply_case_modification(
+    StringView            name,
+    StringView            spec,
     const SourceLocation *source_location) throws -> String
 {
-  let const current = get_variable_value_checked(name);
+  let const current      = get_variable_value_checked(name);
   let const current_view = current.has_value() ? current->view() : StringView{};
 
   return apply_case_modification_to_value(current_view, spec, source_location);
 }
 
-fn EvalContext::apply_case_modification_to_value(
-    StringView value, StringView spec,
+fn
+EvalContext::apply_case_modification_to_value(
+    StringView            value,
+    StringView            spec,
     const SourceLocation *source_location) throws -> String
 {
   LOG(All, "applying the case modification '%.*s' to a value of %zu bytes",
       static_cast<int>(spec.length), spec.data, value.length);
-  let const op = spec[0];
+  let const op                = spec[0];
   let const should_modify_all = spec.length > 1 && spec[1] == op;
-  let const pattern_word = spec.substring(should_modify_all ? 2 : 1);
+  let const pattern_word      = spec.substring(should_modify_all ? 2 : 1);
 
-  let pattern_active = Bitset{scratch_allocator()};
+  let    pattern_active = Bitset{scratch_allocator()};
   String pattern{scratch_allocator()};
   if (pattern_word.is_empty()) {
     pattern = String{scratch_allocator(), "?"};
     pattern_active.push(true);
   } else {
     let pattern_location = SourceLocation{};
-    pattern = expand_modifier_word_masked(
+    pattern              = expand_modifier_word_masked(
         pattern_word, pattern_active, true,
         source_location_for_subview(source_location, spec, pattern_word,
-                                    pattern_location));
+                                                 pattern_location));
   }
 
   let const pattern_matches_any = pattern_word.is_empty();
@@ -3454,11 +3703,11 @@ fn EvalContext::apply_case_modification_to_value(
        (pattern[0] != '*' && pattern[0] != '?' && pattern[0] != '['));
   let const extglob = get_extglob_mode();
   let const charset = get_glob_charset_for(value);
-  let out = String{scratch_allocator()};
+  let       out     = String{scratch_allocator()};
   out.reserve(value.length);
 
   for (usize i = 0; i < value.length;) {
-    let const step = utils::charset_character_length(value, i, charset);
+    let const step        = utils::charset_character_length(value, i, charset);
     let const is_affected = should_modify_all || i == 0;
     let const is_pattern_match =
         pattern_matches_any ||
@@ -3474,8 +3723,8 @@ fn EvalContext::apply_case_modification_to_value(
 
     if (step > 1) {
       let const code_point = utils::decode_utf8(value, i, 0xfffd).value;
-      let const upper = os::code_point_to_upper(code_point);
-      let mapped = code_point;
+      let const upper      = os::code_point_to_upper(code_point);
+      let       mapped     = code_point;
       if (op == '^') {
         mapped = upper;
       } else if (op == ',') {
@@ -3489,8 +3738,8 @@ fn EvalContext::apply_case_modification_to_value(
       continue;
     }
 
-    char character = value[i];
-    const unsigned char byte = static_cast<unsigned char>(character);
+    char                character = value[i];
+    const unsigned char byte      = static_cast<unsigned char>(character);
     if (op == '^') {
       character = static_cast<char>(std::toupper(byte));
     } else if (op == ',') {
@@ -3508,9 +3757,11 @@ fn EvalContext::apply_case_modification_to_value(
   return out;
 }
 
-fn EvalContext::apply_value_modifier(
-    StringView value, StringView modifier,
-    const SourceLocation *source_location) throws -> String
+fn
+EvalContext::apply_value_modifier(StringView            value,
+                                  StringView            modifier,
+                                  const SourceLocation *source_location) throws
+    -> String
 {
   if (modifier.is_empty()) return String{scratch_allocator(), value};
   let const op = modifier[0];
@@ -3519,9 +3770,9 @@ fn EvalContext::apply_value_modifier(
     return apply_case_modification_to_value(value, modifier, source_location);
   }
   if (op == '#' || op == '%') {
-    let const is_doubled = modifier.length > 1 && modifier[1] == op;
-    let const pattern_word = modifier.substring(is_doubled ? 2 : 1);
-    let pattern_location = SourceLocation{};
+    let const is_doubled       = modifier.length > 1 && modifier[1] == op;
+    let const pattern_word     = modifier.substring(is_doubled ? 2 : 1);
+    let       pattern_location = SourceLocation{};
 
     return trim_value_with_modifier(
         *this, value, pattern_word, op, is_doubled,
@@ -3532,8 +3783,10 @@ fn EvalContext::apply_value_modifier(
   return String{scratch_allocator(), value};
 }
 
-fn EvalContext::is_posix_positional_test_null(bool is_colon, char op,
-                                              bool should_test_joined) wontthrow
+fn
+EvalContext::is_posix_positional_test_null(bool is_colon,
+                                           char op,
+                                           bool should_test_joined) wontthrow
     -> bool
 {
   if (!is_colon) return false;
@@ -3554,13 +3807,16 @@ fn EvalContext::is_posix_positional_test_null(bool is_colon, char op,
   return true;
 }
 
-fn EvalContext::trim_positional_fields(
-    bool is_star, bool is_quoted, StringView modifier,
+fn
+EvalContext::trim_positional_fields(
+    bool                  is_star,
+    bool                  is_quoted,
+    StringView            modifier,
     const SourceLocation *source_location) throws -> ArrayList<String>
 {
   let const &params = variable_store().positional_params();
-  let const ifs = variable_store().field_separators();
-  let fields = ArrayList<String>{scratch_allocator()};
+  let const  ifs    = variable_store().field_separators();
+  let        fields = ArrayList<String>{scratch_allocator()};
   if (is_star && is_quoted) {
     let joined = String{scratch_allocator()};
 
@@ -3578,18 +3834,18 @@ fn EvalContext::trim_positional_fields(
   }
   if (fields.is_empty()) return fields;
 
-  let const op = modifier[0];
-  let const is_doubled = modifier.length > 1 && modifier[1] == op;
-  let const pattern_word = modifier.substring(is_doubled ? 2 : 1);
-  let pattern_location = SourceLocation{};
-  let active = Bitset{scratch_allocator()};
-  let const pattern = expand_modifier_word_masked(
+  let const op               = modifier[0];
+  let const is_doubled       = modifier.length > 1 && modifier[1] == op;
+  let const pattern_word     = modifier.substring(is_doubled ? 2 : 1);
+  let       pattern_location = SourceLocation{};
+  let       active           = Bitset{scratch_allocator()};
+  let const pattern          = expand_modifier_word_masked(
       pattern_word, active, true,
       source_location_for_subview(source_location, modifier, pattern_word,
-                                  pattern_location));
-  let const extent = is_doubled ? pattern_match_extent::Longest
-                                : pattern_match_extent::Shortest;
-  let const mode = get_extglob_mode();
+                                           pattern_location));
+  let const extent     = is_doubled ? pattern_match_extent::Longest
+                                    : pattern_match_extent::Shortest;
+  let const mode       = get_extglob_mode();
   let const do_matches = [&](StringView candidate) throws -> bool {
     return utils::glob_matches(pattern.view(), candidate, active, 0, mode,
                                get_glob_charset_for(candidate));
@@ -3615,7 +3871,7 @@ fn EvalContext::trim_positional_fields(
 
   for (usize step = 0; step < fields.count(); step++) {
     let const index = is_doubled ? step : fields.count() - 1 - step;
-    let trimmed =
+    let       trimmed =
         trim_matching(*this, scratch_allocator(), fields[index].view(),
                       pattern.view(), active, trim_end::Suffix, extent);
     if (trimmed.count() < fields[index].count()) {

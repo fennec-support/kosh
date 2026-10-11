@@ -21,34 +21,62 @@ Path::Path(StringView text) : m_text(text) {}
 
 Path::Path(StringView text, Allocator allocator) : m_text(allocator, text) {}
 
-hot fn Path::text() const wontthrow -> const String & { return m_text; }
+hot fn
+Path::text() const wontthrow -> const String &
+{
+  return m_text;
+}
 
-hot fn Path::view() const wontthrow -> StringView { return m_text.view(); }
+hot fn
+Path::view() const wontthrow -> StringView
+{
+  return m_text.view();
+}
 
-hot fn Path::c_str() const wontthrow -> const char * { return m_text.c_str(); }
+hot fn
+Path::c_str() const wontthrow -> const char *
+{
+  return m_text.c_str();
+}
 
-hot fn Path::allocator() const wontthrow -> Allocator
+hot fn
+Path::allocator() const wontthrow -> Allocator
 {
   return m_text.allocator();
 }
 
-hot fn Path::count() const wontthrow -> usize { return m_text.count(); }
+hot fn
+Path::count() const wontthrow -> usize
+{
+  return m_text.count();
+}
 
-hot fn Path::is_empty() const wontthrow -> bool { return m_text.is_empty(); }
+hot fn
+Path::is_empty() const wontthrow -> bool
+{
+  return m_text.is_empty();
+}
 
-hot fn Path::has_trailing_separator() const wontthrow -> bool
+hot fn
+Path::has_trailing_separator() const wontthrow -> bool
 {
   return !m_text.is_empty() && os::is_directory_separator(m_text.back());
 }
 
-fn Path::is_absolute() const wontthrow -> bool
+fn
+Path::is_absolute() const wontthrow -> bool
 {
   return os::path_is_absolute(m_text.view());
 }
 
-fn Path::is_relative() const wontthrow -> bool { return !is_absolute(); }
+fn
+Path::is_relative() const wontthrow -> bool
+{
+  return !is_absolute();
+}
 
-static pure fn filename_offset(StringView text) wontthrow -> usize
+static pure fn
+filename_offset(StringView text) wontthrow -> usize
 {
   let separator = text.find_last_character('/');
   if (os::IS_BACKSLASH_A_SEPARATOR) {
@@ -63,18 +91,21 @@ static pure fn filename_offset(StringView text) wontthrow -> usize
   return separator.has_value() ? *separator + 1 : 0;
 }
 
-fn Path::filename() const wontthrow -> StringView
+fn
+Path::filename() const wontthrow -> StringView
 {
   return filename(m_text.view());
 }
 
-fn Path::filename(StringView path) wontthrow -> StringView
+fn
+Path::filename(StringView path) wontthrow -> StringView
 {
   return path.substring(filename_offset(path));
 }
 
-fn Path::invocation_filename(StringView path,
-                             bool should_strip_marker) wontthrow -> StringView
+fn
+Path::invocation_filename(StringView path, bool should_strip_marker) wontthrow
+    -> StringView
 {
   let name = filename(path);
   if (should_strip_marker && !name.is_empty() && name[0] == '-') {
@@ -84,7 +115,8 @@ fn Path::invocation_filename(StringView path,
   return name;
 }
 
-fn Path::extension() const wontthrow -> StringView
+fn
+Path::extension() const wontthrow -> StringView
 {
   let const name = filename();
   if (name == StringView{"."} || name == StringView{".."}) {
@@ -97,7 +129,8 @@ fn Path::extension() const wontthrow -> StringView
   return StringView{name.data + name.length, 0};
 }
 
-fn Path::parent() const throws -> Path
+fn
+Path::parent() const throws -> Path
 {
   let const end = filename_offset(m_text.view());
   if (end == 0) return Path{{}, allocator()};
@@ -106,7 +139,8 @@ fn Path::parent() const throws -> Path
   return Path{m_text.substring_of_length(0, end - 1), allocator()};
 }
 
-fn Path::parent_or_current() const throws -> Path
+fn
+Path::parent_or_current() const throws -> Path
 {
   let directory = parent();
   if (directory.text().is_empty()) return Path{".", allocator()};
@@ -114,8 +148,8 @@ fn Path::parent_or_current() const throws -> Path
   return directory;
 }
 
-static fn append_path_component(String &text, StringView component) throws
-    -> void
+static fn
+append_path_component(String &text, StringView component) throws -> void
 {
   if (component.length == 0) return;
   if (!text.is_empty() && !os::is_directory_separator(text.back()) &&
@@ -126,26 +160,30 @@ static fn append_path_component(String &text, StringView component) throws
   text.append(component);
 }
 
-fn Path::append(StringView component) throws -> Path &
+fn
+Path::append(StringView component) throws -> Path &
 {
   append_path_component(m_text, component);
 
   return *this;
 }
 
-fn Path::append_raw(StringView bytes) throws -> Path &
+fn
+Path::append_raw(StringView bytes) throws -> Path &
 {
   m_text.append(bytes);
 
   return *this;
 }
 
-fn Path::next_component(usize &position) const wontthrow -> Component
+fn
+Path::next_component(usize &position) const wontthrow -> Component
 {
   return next_component(m_text.view(), position);
 }
 
-fn Path::next_component(StringView path, usize &position) wontthrow -> Component
+fn
+Path::next_component(StringView path, usize &position) wontthrow -> Component
 {
   while (position < path.length && os::is_directory_separator(path[position])) {
     position++;
@@ -162,7 +200,8 @@ fn Path::next_component(StringView path, usize &position) wontthrow -> Component
                    position};
 }
 
-fn Path::with_extension(StringView new_extension) const throws -> Path
+fn
+Path::with_extension(StringView new_extension) const throws -> Path
 {
   let const current_extension = extension();
 
@@ -179,15 +218,16 @@ fn Path::with_extension(StringView new_extension) const throws -> Path
   return result;
 }
 
-cold fn Path::normalized() const throws -> Path
+cold fn
+Path::normalized() const throws -> Path
 {
   LOG(Debug, "normalizing the path '%s'", m_text.c_str());
 
-  let const root_length = os::path_root_length(m_text.view());
+  let const root_length      = os::path_root_length(m_text.view());
   let const is_absolute_path = root_length > 0;
 
-  let components = ArrayList<StringView>{allocator()};
-  usize i = root_length;
+  let   components = ArrayList<StringView>{allocator()};
+  usize i          = root_length;
 
   while (i < m_text.count()) {
     let const component = next_component(i).text;
@@ -225,13 +265,14 @@ cold fn Path::normalized() const throws -> Path
   return Path{normalized_text.view(), allocator()};
 }
 
-cold fn Path::first_unavailable_component() const throws
+cold fn
+Path::first_unavailable_component() const throws
     -> Maybe<unavailable_path_component>
 {
-  const usize root_length = os::path_root_length(m_text.view());
-  usize component_index = 0;
-  usize position = root_length;
-  let has_dot_component = false;
+  const usize root_length       = os::path_root_length(m_text.view());
+  usize       component_index   = 0;
+  usize       position          = root_length;
+  let         has_dot_component = false;
 
   while (position < m_text.count()) {
     let const component = next_component(position);
@@ -246,7 +287,7 @@ cold fn Path::first_unavailable_component() const throws
     let is_available = false;
     let is_directory = false;
     if (has_dot_component) {
-      let status = os::file_status{};
+      let status   = os::file_status{};
       is_available = os::stat_path_following(prefix.view(), status);
       is_directory = is_available && os::file_type_letter(status.mode) == 'd';
     } else {
@@ -255,7 +296,7 @@ cold fn Path::first_unavailable_component() const throws
     }
     if (!is_available || !is_directory) {
       usize remaining_component_count = 0;
-      usize remaining_position = component.end;
+      usize remaining_position        = component.end;
 
       while (remaining_position < m_text.count()) {
         let const remaining_component = next_component(remaining_position);
@@ -279,7 +320,8 @@ cold fn Path::first_unavailable_component() const throws
   return None;
 }
 
-fn Path::to_absolute_without_normalizing() const throws -> Path
+fn
+Path::to_absolute_without_normalizing() const throws -> Path
 {
   let result = Path{{}, allocator()};
   if (is_absolute()) {
@@ -287,7 +329,7 @@ fn Path::to_absolute_without_normalizing() const throws -> Path
   } else if (let native = os::resolve_drive_relative_path(m_text.view())) {
     result = native.take();
   } else {
-    result = current_directory();
+    result       = current_directory();
     let relative = m_text.view();
 
     while (relative.length >= 2 && relative[0] == '.' &&
@@ -311,160 +353,191 @@ fn Path::to_absolute_without_normalizing() const throws -> Path
   return result;
 }
 
-fn Path::to_absolute() const throws -> Path
+fn
+Path::to_absolute() const throws -> Path
 {
   return to_absolute_without_normalizing().normalized();
 }
 
-hot fn Path::operator==(const Path &other) const wontthrow -> bool
+hot fn
+Path::operator==(const Path &other) const wontthrow -> bool
 {
   return m_text == other.m_text;
 }
 
-cold fn Path::exists() const wontthrow -> bool
+cold fn
+Path::exists() const wontthrow -> bool
 {
   return os::path_exists(m_text.view());
 }
 
-cold fn Path::is_directory() const wontthrow -> bool
+cold fn
+Path::is_directory() const wontthrow -> bool
 {
   return os::path_is_directory(m_text.view());
 }
 
-fn Path::is_regular_file() const wontthrow -> bool
+fn
+Path::is_regular_file() const wontthrow -> bool
 {
   return os::path_is_regular_file(m_text.view());
 }
 
-fn Path::is_symbolic_link() const wontthrow -> bool
+fn
+Path::is_symbolic_link() const wontthrow -> bool
 {
   return os::path_is_symbolic_link(m_text.view());
 }
 
-fn Path::is_block_device() const wontthrow -> bool
+fn
+Path::is_block_device() const wontthrow -> bool
 {
   return os::path_is_block_device(m_text.view());
 }
 
-fn Path::is_character_device() const wontthrow -> bool
+fn
+Path::is_character_device() const wontthrow -> bool
 {
   return os::path_is_character_device(m_text.view());
 }
 
-fn Path::is_fifo() const wontthrow -> bool
+fn
+Path::is_fifo() const wontthrow -> bool
 {
   return os::path_is_fifo(m_text.view());
 }
 
-fn Path::is_socket() const wontthrow -> bool
+fn
+Path::is_socket() const wontthrow -> bool
 {
   return os::path_is_socket(m_text.view());
 }
 
-fn Path::has_setuid_bit() const wontthrow -> bool
+fn
+Path::has_setuid_bit() const wontthrow -> bool
 {
   return os::path_has_setuid_bit(m_text.view());
 }
 
-fn Path::has_setgid_bit() const wontthrow -> bool
+fn
+Path::has_setgid_bit() const wontthrow -> bool
 {
   return os::path_has_setgid_bit(m_text.view());
 }
 
-fn Path::has_sticky_bit() const wontthrow -> bool
+fn
+Path::has_sticky_bit() const wontthrow -> bool
 {
   return os::path_has_sticky_bit(m_text.view());
 }
 
-fn Path::is_owned_by_effective_user() const wontthrow -> bool
+fn
+Path::is_owned_by_effective_user() const wontthrow -> bool
 {
   return os::path_is_owned_by_effective_user(m_text.view());
 }
 
-fn Path::is_owned_by_effective_group() const wontthrow -> bool
+fn
+Path::is_owned_by_effective_group() const wontthrow -> bool
 {
   return os::path_is_owned_by_effective_group(m_text.view());
 }
 
-fn Path::file_size() const wontthrow -> Maybe<u64>
+fn
+Path::file_size() const wontthrow -> Maybe<u64>
 {
   return os::path_file_size(m_text.view());
 }
 
-fn Path::modification_time() const wontthrow -> Maybe<i64>
+fn
+Path::modification_time() const wontthrow -> Maybe<i64>
 {
   return os::path_modification_time(m_text.view());
 }
 
-fn Path::is_same_file_as(const Path &other) const wontthrow -> bool
+fn
+Path::is_same_file_as(const Path &other) const wontthrow -> bool
 {
   return os::paths_are_same_file(m_text.view(), other.m_text.view());
 }
 
-fn Path::is_newer_than(const Path &other) const wontthrow -> bool
+fn
+Path::is_newer_than(const Path &other) const wontthrow -> bool
 {
   return os::path_is_newer_than(m_text.view(), other.m_text.view());
 }
 
-fn Path::is_older_than(const Path &other) const wontthrow -> bool
+fn
+Path::is_older_than(const Path &other) const wontthrow -> bool
 {
   return os::path_is_older_than(m_text.view(), other.m_text.view());
 }
 
-fn Path::is_readable() const wontthrow -> bool
+fn
+Path::is_readable() const wontthrow -> bool
 {
   return os::path_is_readable(m_text.view());
 }
 
-fn Path::is_writable() const wontthrow -> bool
+fn
+Path::is_writable() const wontthrow -> bool
 {
   return os::path_is_writable(m_text.view());
 }
 
-fn Path::is_executable() const wontthrow -> bool
+fn
+Path::is_executable() const wontthrow -> bool
 {
   return os::path_is_executable(*this);
 }
 
-cold fn Path::current_directory() throws -> Path
+cold fn
+Path::current_directory() throws -> Path
 {
   return os::read_current_directory();
 }
 
-fn Path::set_current_directory(const Path &path) throws -> ErrorOr<Ok>
+fn
+Path::set_current_directory(const Path &path) throws -> ErrorOr<Ok>
 {
   return os::change_current_directory(path.view());
 }
 
-cold fn Path::read_directory(const Path &dir) throws -> Maybe<ArrayList<String>>
+cold fn
+Path::read_directory(const Path &dir) throws -> Maybe<ArrayList<String>>
 {
   return os::list_directory(dir.view());
 }
 
-cold fn Path::read_directory(const Path &dir, Allocator allocator) throws
+cold fn
+Path::read_directory(const Path &dir, Allocator allocator) throws
     -> Maybe<ArrayList<String>>
 {
   return os::list_directory(dir.view(), allocator);
 }
 
-cold fn Path::read_directory_typed(const Path &dir) throws
+cold fn
+Path::read_directory_typed(const Path &dir) throws
     -> Maybe<ArrayList<DirectoryChild>>
 {
   return os::list_directory_typed(dir.view());
 }
 
-cold fn Path::read_directory_typed(const Path &dir, Allocator allocator) throws
+cold fn
+Path::read_directory_typed(const Path &dir, Allocator allocator) throws
     -> Maybe<ArrayList<DirectoryChild>>
 {
   return os::list_directory_typed(dir.view(), allocator);
 }
 
-fn Path::temp_directory() throws -> Path
+fn
+Path::temp_directory() throws -> Path
 {
   return Path{os::temp_directory_path().view()};
 }
 
-fn Path::read_entire_file() const throws -> Maybe<String>
+fn
+Path::read_entire_file() const throws -> Maybe<String>
 {
   LOG(Debug, "reading the entire file '%s'", c_str());
 
@@ -476,7 +549,8 @@ fn Path::read_entire_file() const throws -> Maybe<String>
   return os::read_fd_to_string(*file, heap_allocator());
 }
 
-fn Path::canonicalize(StringView path) throws -> Maybe<Path>
+fn
+Path::canonicalize(StringView path) throws -> Maybe<Path>
 {
   LOG(Debug, "canonicalizing the path '%.*s'", static_cast<int>(path.length),
       path.data);
@@ -489,15 +563,15 @@ fn Path::canonicalize(StringView path) throws -> Maybe<Path>
 
   let const has_trailing_dot =
       path.length > 0 && path.data[path.length - 1] == '.';
-  let status = os::file_status{};
+  let status       = os::file_status{};
   let was_resolved = os::stat_path_following(candidate.view(), status);
   if (candidate.extension().is_empty() && !has_trailing_dot) {
     usize suffix_index = 0;
 
     while (!was_resolved && suffix_index < os::PROGRAM_SUFFIXES.count()) {
       let const &suffix = os::PROGRAM_SUFFIXES[suffix_index++];
-      candidate = candidate.with_extension(suffix.text);
-      was_resolved = os::stat_path_following(candidate.view(), status);
+      candidate         = candidate.with_extension(suffix.text);
+      was_resolved      = os::stat_path_following(candidate.view(), status);
     }
   }
 
@@ -506,14 +580,15 @@ fn Path::canonicalize(StringView path) throws -> Maybe<Path>
   return candidate;
 }
 
-fn Path::detect_mimic_shell() const throws -> Maybe<mimic_mood>
+fn
+Path::detect_mimic_shell() const throws -> Maybe<mimic_mood>
 {
   LOG(Debug, "probing '%s' for a shell shebang to mimic", c_str());
 
   let const file =
       os::open_file_descriptor(text().view(), os::file_open_mode::Read);
   if (!file) return None;
-  char buffer[256];
+  char      buffer[256];
   let const read_count = os::read_fd(*file, buffer, sizeof(buffer));
   os::close_fd(*file);
   if (!read_count || *read_count < 3) {
@@ -523,7 +598,8 @@ fn Path::detect_mimic_shell() const throws -> Maybe<mimic_mood>
   return detect_mimic_shell_from_source(StringView{buffer, *read_count});
 }
 
-fn Path::is_shell_source(StringView source) const throws -> bool
+fn
+Path::is_shell_source(StringView source) const throws -> bool
 {
   return detect_mimic_shell_from_extension(extension()).has_value() ||
          detect_mimic_shell_from_source(source).has_value();

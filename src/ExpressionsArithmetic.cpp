@@ -33,14 +33,15 @@ namespace expressions {
 
 using namespace internal;
 
-ConditionalCommand::ConditionalCommand(SourceLocation location,
+ConditionalCommand::ConditionalCommand(SourceLocation                 location,
                                        ArrayList<conditional_element> elements)
     : CompoundCommand(steal(location)), m_elements(steal(elements))
 {}
 
 ConditionalCommand::~ConditionalCommand() = default;
 
-cold fn ConditionalCommand::to_string() const throws -> String
+cold fn
+ConditionalCommand::to_string() const throws -> String
 {
   let result = String{"ConditionalCommand"};
   append_ast_execution_flags(result);
@@ -48,12 +49,14 @@ cold fn ConditionalCommand::to_string() const throws -> String
   return result;
 }
 
-cold fn ConditionalCommand::to_ast_string(usize layer) const throws -> String
+cold fn
+ConditionalCommand::to_ast_string(usize layer) const throws -> String
 {
   return indent_for_layer(layer) + "[" + to_string() + "]";
 }
 
-cold static fn conditional_word_is_literal(const Token *token) wontthrow -> bool
+cold static fn
+conditional_word_is_literal(const Token *token) wontthrow -> bool
 {
   if (token == nullptr || token->kind() != Token::Kind::Word) {
     return false;
@@ -71,7 +74,8 @@ cold static fn conditional_word_is_literal(const Token *token) wontthrow -> bool
   return true;
 }
 
-cold static fn conditional_word_has_glob(const Token *token) wontthrow -> bool
+cold static fn
+conditional_word_has_glob(const Token *token) wontthrow -> bool
 {
   if (token == nullptr || token->kind() != Token::Kind::Word) {
     return false;
@@ -86,12 +90,12 @@ cold static fn conditional_word_has_glob(const Token *token) wontthrow -> bool
   return false;
 }
 
-cold static fn conditional_word_is_numeric_literal(const Token *token) throws
-    -> bool
+cold static fn
+conditional_word_is_numeric_literal(const Token *token) throws -> bool
 {
   if (!conditional_word_is_literal(token)) return false;
   let const literal = token->raw_string();
-  let view = literal.view();
+  let       view    = literal.view();
   if (!view.is_empty() && (view[0] == '-' || view[0] == '+')) {
     view = view.substring(1);
   }
@@ -107,7 +111,8 @@ constexpr PackedStringKey CONDITIONAL_BINARY_OPERATOR_KEYS[] = {
 constexpr StaticStringSet CONDITIONAL_BINARY_OPERATORS{
     CONDITIONAL_BINARY_OPERATOR_KEYS};
 
-cold static fn is_conditional_binary_operator(StringView op) wontthrow -> bool
+cold static fn
+is_conditional_binary_operator(StringView op) wontthrow -> bool
 {
   return CONDITIONAL_BINARY_OPERATORS.contains(op);
 }
@@ -118,10 +123,10 @@ conditional_operator_view(const conditional_element &element) wontthrow
 {
   using Kind = conditional_element::Kind;
   switch (element.kind) {
-  case Kind::Less: return StringView{"<"};
+  case Kind::Less:    return StringView{"<"};
   case Kind::Greater: return StringView{">"};
   case Kind::Operand: break;
-  default: return None;
+  default:            return None;
   }
 
   if (!element.is_bare_unquoted || element.word == nullptr) {
@@ -136,7 +141,8 @@ conditional_operator_view(const conditional_element &element) wontthrow
   return view;
 }
 
-cold static fn conditional_inequality_left_operand(
+cold static fn
+conditional_inequality_left_operand(
     const ArrayList<conditional_element> &elements,
     usize operator_index) wontthrow -> Maybe<StringView>
 {
@@ -193,7 +199,8 @@ constexpr PackedStringKey CONDITIONAL_EQUALITY_OPERATOR_KEYS[] = {
 constexpr StaticStringSet CONDITIONAL_EQUALITY_OPERATORS{
     CONDITIONAL_EQUALITY_OPERATOR_KEYS};
 
-cold static fn is_conditional_pattern_operator(StringView op) wontthrow -> bool
+cold static fn
+is_conditional_pattern_operator(StringView op) wontthrow -> bool
 {
   return op == StringView{"=~"} || CONDITIONAL_EQUALITY_OPERATORS.contains(op);
 }
@@ -211,8 +218,9 @@ conditional_element_ends_operand(const conditional_element &element) wontthrow
   return !conditional_operator_view(element).has_value();
 }
 
-fn ConditionalCommand::analyze(AnalysisContext &actx,
-                               bool is_unconditional) const throws -> void
+fn
+ConditionalCommand::analyze(AnalysisContext &actx,
+                            bool is_unconditional) const throws -> void
 {
   for (let const &element : m_elements)
     analyze_token_substitutions(actx, element.word, is_unconditional);
@@ -246,7 +254,7 @@ fn ConditionalCommand::analyze(AnalysisContext &actx,
 
     if (element.kind == Kind::Or && i >= 3) {
       let const before = conditional_inequality_left_operand(m_elements, i - 2);
-      let const after = conditional_inequality_left_operand(m_elements, i + 2);
+      let const after  = conditional_inequality_left_operand(m_elements, i + 2);
       if (before.has_value() && after.has_value() && *before == *after) {
         actx.report_diagnostic(diagnostic_id::sc2055,
                                m_elements[i + 1].word->source_location(),
@@ -416,7 +424,7 @@ fn ConditionalCommand::analyze(AnalysisContext &actx,
       continue;
     }
 
-    let const left = m_elements[i - 1].word;
+    let const left  = m_elements[i - 1].word;
     let const right = m_elements[i + 1].word;
     let const should_prefer_string_comparison =
         operand.view() == "-eq" || operand.view() == "-ne";
@@ -483,13 +491,13 @@ conditional_command_text(const ArrayList<conditional_element> &elements) throws
     case conditional_element::Kind::Operand:
       if (element.word != nullptr) command_text += element.word->raw_string();
       break;
-    case conditional_element::Kind::And: command_text += "&&"; break;
-    case conditional_element::Kind::Or: command_text += "||"; break;
-    case conditional_element::Kind::Not: command_text += "!"; break;
-    case conditional_element::Kind::OpenParen: command_text += "("; break;
+    case conditional_element::Kind::And:        command_text += "&&"; break;
+    case conditional_element::Kind::Or:         command_text += "||"; break;
+    case conditional_element::Kind::Not:        command_text += "!"; break;
+    case conditional_element::Kind::OpenParen:  command_text += "("; break;
     case conditional_element::Kind::CloseParen: command_text += ")"; break;
-    case conditional_element::Kind::Less: command_text += "<"; break;
-    case conditional_element::Kind::Greater: command_text += ">"; break;
+    case conditional_element::Kind::Less:       command_text += "<"; break;
+    case conditional_element::Kind::Greater:    command_text += ">"; break;
     }
   }
   command_text += " ]]";
@@ -497,8 +505,9 @@ conditional_command_text(const ArrayList<conditional_element> &elements) throws
   return command_text;
 }
 
-fn ConditionalCommand::evaluate_impl(EvalContext &cxt,
-                                     root_evaluation_mode) const throws
+fn
+ConditionalCommand::evaluate_impl(EvalContext &cxt,
+                                  root_evaluation_mode) const throws
     -> status_result
 {
   cxt.source_store().set_current_location(source_location());
@@ -535,7 +544,7 @@ fn ConditionalCommand::evaluate_impl(EvalContext &cxt,
 }
 
 ArithmeticCommand::ArithmeticCommand(SourceLocation location,
-                                     StringView expression)
+                                     StringView     expression)
     : CompoundCommand(steal(location)), m_expression(expression)
 {}
 
@@ -547,7 +556,8 @@ ArithmeticCommand::~ArithmeticCommand()
   heap_allocator().free_array(m_cache, 1);
 }
 
-fn ArithmeticCommand::can_evaluate_in_process_substitution(
+fn
+ArithmeticCommand::can_evaluate_in_process_substitution(
     const EvalContext &cxt, HashSet &active_functions) const throws -> bool
 {
   unused(cxt);
@@ -556,12 +566,14 @@ fn ArithmeticCommand::can_evaluate_in_process_substitution(
   return !is_async() && !is_timed();
 }
 
-cold fn ArithmeticCommand::to_string() const throws -> String
+cold fn
+ArithmeticCommand::to_string() const throws -> String
 {
   return "ArithmeticCommand";
 }
 
-cold fn ArithmeticCommand::to_ast_string(usize layer) const throws -> String
+cold fn
+ArithmeticCommand::to_ast_string(usize layer) const throws -> String
 {
   let label = to_string() + " \"" + m_expression + "\"";
   append_ast_execution_flags(label);
@@ -569,7 +581,8 @@ cold fn ArithmeticCommand::to_ast_string(usize layer) const throws -> String
   return indent_for_layer(layer) + "[" + label + "]";
 }
 
-static pure fn is_blank_clause(StringView text) wontthrow -> bool
+static pure fn
+is_blank_clause(StringView text) wontthrow -> bool
 {
   for (usize i = 0; i < text.length; i++)
     if (text[i] != ' ' && text[i] != '\t' && text[i] != '\n') {
@@ -579,8 +592,8 @@ static pure fn is_blank_clause(StringView text) wontthrow -> bool
   return true;
 }
 
-static pure fn clause_without_leading_blanks(StringView clause) wontthrow
-    -> StringView
+static pure fn
+clause_without_leading_blanks(StringView clause) wontthrow -> StringView
 {
   usize start = 0;
 
@@ -593,7 +606,8 @@ static pure fn clause_without_leading_blanks(StringView clause) wontthrow
   return clause.substring_of_length(start, clause.length - start);
 }
 
-static fn arithmetic_clause_command_text(StringView clause) throws -> String
+static fn
+arithmetic_clause_command_text(StringView clause) throws -> String
 {
   let command_text = String{heap_allocator()};
   command_text.reserve(clause.length + 4);
@@ -604,8 +618,9 @@ static fn arithmetic_clause_command_text(StringView clause) throws -> String
   return command_text;
 }
 
-fn ArithmeticCommand::evaluate_impl(EvalContext &cxt,
-                                    root_evaluation_mode) const throws
+fn
+ArithmeticCommand::evaluate_impl(EvalContext &cxt,
+                                 root_evaluation_mode) const throws
     -> status_result
 {
   LOG(Debug, "evaluating the arithmetic command '%.*s'",
@@ -630,7 +645,7 @@ fn ArithmeticCommand::evaluate_impl(EvalContext &cxt,
                                    source_location().source_name_index};
     if (m_cache == nullptr) {
       let const block = heap_allocator().alloc_array<arith_token_cache>(1);
-      m_cache = new (block) arith_token_cache{};
+      m_cache         = new (block) arith_token_cache{};
     }
 
     try {
@@ -651,8 +666,9 @@ fn ArithmeticCommand::evaluate_impl(EvalContext &cxt,
   SET_AND_RETURN_EXIT_STATUS(cxt, status);
 }
 
-fn ArithmeticCommand::analyze(AnalysisContext &actx,
-                              bool is_unconditional) const throws -> void
+fn
+ArithmeticCommand::analyze(AnalysisContext &actx,
+                           bool is_unconditional) const throws -> void
 {
   analyze_region_substitutions(
       actx, source_location(), source_location().position,
@@ -675,8 +691,9 @@ fn ArithmeticCommand::analyze(AnalysisContext &actx,
   actx.constant_variables.clear();
 }
 
-fn SelectLoop::analyze(AnalysisContext &actx,
-                       bool is_unconditional) const throws -> void
+fn
+SelectLoop::analyze(AnalysisContext &actx, bool is_unconditional) const throws
+    -> void
 {
   ASSERT(m_body != nullptr);
 
@@ -718,9 +735,12 @@ fn SelectLoop::analyze(AnalysisContext &actx,
   actx.occurrences = steal(loop_entry_occurrences);
 }
 
-CStyleForLoop::CStyleForLoop(SourceLocation location, usize header_position,
-                             StringView init, StringView condition,
-                             StringView step, const Expression *body)
+CStyleForLoop::CStyleForLoop(SourceLocation    location,
+                             usize             header_position,
+                             StringView        init,
+                             StringView        condition,
+                             StringView        step,
+                             const Expression *body)
     : CompoundCommand(steal(location)), m_header_position(header_position),
       m_init(init), m_condition(condition), m_step(step), m_body(body)
 {}
@@ -734,27 +754,30 @@ CStyleForLoop::~CStyleForLoop()
   }
 }
 
-fn CStyleForLoop::get_clause_cache(arith_token_cache *&slot) throws
+fn
+CStyleForLoop::get_clause_cache(arith_token_cache *&slot) throws
     -> arith_token_cache &
 {
   if (slot == nullptr) {
     let const block = heap_allocator().alloc_array<arith_token_cache>(1);
-    slot = new (block) arith_token_cache{};
+    slot            = new (block) arith_token_cache{};
   }
 
   return *slot;
 }
 
-cold fn CStyleForLoop::to_string() const throws -> String
+cold fn
+CStyleForLoop::to_string() const throws -> String
 {
   return "CStyleForLoop";
 }
 
-cold fn CStyleForLoop::to_ast_string(usize layer) const throws -> String
+cold fn
+CStyleForLoop::to_ast_string(usize layer) const throws -> String
 {
   ASSERT(m_body != nullptr);
   let const pad = indent_for_layer(layer);
-  let label =
+  let       label =
       to_string() + " \"" + m_init + ";" + m_condition + ";" + m_step + "\"";
   append_ast_execution_flags(label);
 
@@ -762,9 +785,9 @@ cold fn CStyleForLoop::to_ast_string(usize layer) const throws -> String
          m_body->to_ast_string(layer + 1);
 }
 
-fn CStyleForLoop::evaluate_impl(EvalContext &cxt,
-                                root_evaluation_mode) const throws
-    -> status_result
+fn
+CStyleForLoop::evaluate_impl(EvalContext &cxt,
+                             root_evaluation_mode) const throws -> status_result
 {
   ASSERT(m_body != nullptr);
 
@@ -884,8 +907,9 @@ fn CStyleForLoop::evaluate_impl(EvalContext &cxt,
   return result;
 }
 
-fn CStyleForLoop::analyze(AnalysisContext &actx,
-                          bool is_unconditional) const throws -> void
+fn
+CStyleForLoop::analyze(AnalysisContext &actx,
+                       bool             is_unconditional) const throws -> void
 {
   ASSERT(m_body != nullptr);
 
@@ -893,10 +917,10 @@ fn CStyleForLoop::analyze(AnalysisContext &actx,
 
   let const is_conditional =
       !is_unconditional || actx.effects.has_seen_runtime_definer;
-  let const init_position = m_header_position;
+  let const init_position      = m_header_position;
   let const condition_position = init_position + m_init.length + 1;
-  let const step_position = condition_position + m_condition.length + 1;
-  let const location = source_location();
+  let const step_position      = condition_position + m_condition.length + 1;
+  let const location           = source_location();
 
   analyze_region_substitutions(actx, location, init_position,
                                m_init.length + m_condition.length +
@@ -937,30 +961,35 @@ fn CStyleForLoop::analyze(AnalysisContext &actx,
   actx.occurrences = steal(condition_occurrences);
 }
 
-pure fn CStyleForLoop::condition_clause() const wontthrow -> StringView
+pure fn
+CStyleForLoop::condition_clause() const wontthrow -> StringView
 {
   return m_condition;
 }
 
-pure fn CStyleForLoop::init_clause() const wontthrow -> StringView
+pure fn
+CStyleForLoop::init_clause() const wontthrow -> StringView
 {
   return m_init;
 }
 
-fn CStyleForLoop::set_folded_condition(i64 compatibility_value,
-                                       bool is_exact_nonzero) const wontthrow
+fn
+CStyleForLoop::set_folded_condition(i64  compatibility_value,
+                                    bool is_exact_nonzero) const wontthrow
     -> void
 {
-  m_folded_condition = compatibility_value;
+  m_folded_condition                  = compatibility_value;
   m_is_exact_folded_condition_nonzero = is_exact_nonzero;
 }
 
-pure fn CStyleForLoop::has_folded_condition() const wontthrow -> bool
+pure fn
+CStyleForLoop::has_folded_condition() const wontthrow -> bool
 {
   return m_folded_condition.has_value();
 }
 
-fn CStyleForLoop::as_cstyle_for_loop() const wontthrow -> const CStyleForLoop *
+fn
+CStyleForLoop::as_cstyle_for_loop() const wontthrow -> const CStyleForLoop *
 {
   return this;
 }
@@ -971,9 +1000,14 @@ Subshell::Subshell(SourceLocation location, const Expression *body)
 
 Subshell::~Subshell() = default;
 
-fn Subshell::as_subshell() const wontthrow -> const Subshell * { return this; }
+fn
+Subshell::as_subshell() const wontthrow -> const Subshell *
+{
+  return this;
+}
 
-fn Subshell::error_report_location() const wontthrow -> SourceLocation
+fn
+Subshell::error_report_location() const wontthrow -> SourceLocation
 {
   let const location = source_location();
   if (source_end_position() <= location.position) return location;
@@ -982,7 +1016,8 @@ fn Subshell::error_report_location() const wontthrow -> SourceLocation
                         location.source_name_index};
 }
 
-fn Subshell::collapsed_body() const wontthrow -> const Expression *
+fn
+Subshell::collapsed_body() const wontthrow -> const Expression *
 {
   const Expression *current = m_body;
 
@@ -1012,7 +1047,8 @@ fn Subshell::collapsed_body() const wontthrow -> const Expression *
   return current;
 }
 
-cold fn Subshell::to_string() const throws -> String
+cold fn
+Subshell::to_string() const throws -> String
 {
   let result = String{"Subshell"};
   append_ast_execution_flags(result);
@@ -1020,7 +1056,8 @@ cold fn Subshell::to_string() const throws -> String
   return result;
 }
 
-cold fn Subshell::to_ast_string(usize layer) const throws -> String
+cold fn
+Subshell::to_ast_string(usize layer) const throws -> String
 {
   ASSERT(m_body != nullptr);
 
@@ -1030,13 +1067,14 @@ cold fn Subshell::to_ast_string(usize layer) const throws -> String
          m_body->to_ast_string(layer + 1);
 }
 
-static fn evaluate_subshell_in_process(const Expression *body, EvalContext &cxt,
-                                       bool should_allow_terminal_exec) throws
-    -> i64
+static fn
+evaluate_subshell_in_process(const Expression *body,
+                             EvalContext      &cxt,
+                             bool should_allow_terminal_exec) throws -> i64
 {
   ASSERT(body != nullptr);
 
-  let const saved_loop_depth = cxt.execution_store().loop_depth();
+  let const saved_loop_depth         = cxt.execution_store().loop_depth();
   cxt.execution_store().loop_depth() = 0;
   defer { cxt.execution_store().loop_depth() = saved_loop_depth; };
 
@@ -1045,11 +1083,11 @@ static fn evaluate_subshell_in_process(const Expression *body, EvalContext &cxt,
 
   LOG(Debug, "entering the snapshot subshell");
 
-  let snapshot = cxt.snapshot_state();
+  let       snapshot      = cxt.snapshot_state();
   let const subshell_mark = cxt.expansion_store().scratch_arena().mark();
   defer { cxt.expansion_store().scratch_arena().release(subshell_mark); };
   bool did_enter_subshell = false;
-  i64 ret = 0;
+  i64  ret                = 0;
   try {
     cxt.execution_store().terminal_exec_allowed() = false;
     cxt.enter_subshell();
@@ -1120,7 +1158,8 @@ static fn evaluate_subshell_in_process(const Expression *body, EvalContext &cxt,
   SET_AND_RETURN_EXIT_STATUS(cxt, ret);
 }
 
-fn Subshell::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws
+fn
+Subshell::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws
     -> status_result
 {
   ASSERT(m_body != nullptr);
@@ -1150,11 +1189,11 @@ fn Subshell::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws
                                ? static_cast<usize>(pending_end_position)
                                : source_end_position();
 
-  let const closing_location = error_report_location();
-  let const *body = collapsed_body();
+  let const  closing_location = error_report_location();
+  let const *body             = collapsed_body();
 
   let const *redirected_body = body->as_redirected_command();
-  let const should_elide_body_fork =
+  let const  should_elide_body_fork =
       redirected_body != nullptr && redirected_body->child() != nullptr &&
       redirected_body->child()->as_subshell() != nullptr;
 
@@ -1237,8 +1276,8 @@ fn Subshell::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws
     os::exit_process_immediately(status);
   }
 
-  let was_stopped = false;
-  let const status = os::wait_and_monitor_process(child, &was_stopped);
+  let       was_stopped = false;
+  let const status      = os::wait_and_monitor_process(child, &was_stopped);
   unused(was_stopped);
 
   do_publish_subshell();
@@ -1258,8 +1297,8 @@ subshell_body_is_conditional_expression(StringView body) wontthrow -> bool
   return false;
 }
 
-cold static fn subshell_body_is_bracket_test(const Expression *body) throws
-    -> bool
+cold static fn
+subshell_body_is_bracket_test(const Expression *body) throws -> bool
 {
   let const compound_list = body->as_compound_list();
   if (compound_list == nullptr) return false;
@@ -1267,13 +1306,14 @@ cold static fn subshell_body_is_bracket_test(const Expression *body) throws
   return compound_list->has_single_test_command();
 }
 
-fn Subshell::analyze(AnalysisContext &actx, bool is_unconditional) const throws
+fn
+Subshell::analyze(AnalysisContext &actx, bool is_unconditional) const throws
     -> void
 {
   ASSERT(m_body != nullptr);
 
   let const was_analyzing_condition = actx.walk.is_analyzing_condition;
-  actx.walk.is_analyzing_condition = false;
+  actx.walk.is_analyzing_condition  = false;
 
   let const end_position = source_end_position();
   if (end_position > source_location().position + 1 &&
@@ -1345,7 +1385,8 @@ fn Subshell::analyze(AnalysisContext &actx, bool is_unconditional) const throws
   actx.walk.is_analyzing_condition = was_analyzing_condition;
 }
 
-FunctionDefinition::FunctionDefinition(SourceLocation location, StringView name,
+FunctionDefinition::FunctionDefinition(SourceLocation     location,
+                                       StringView         name,
                                        FunctionBodyHandle body)
     : CompoundCommand(steal(location)), m_name(name),
       m_body_storage(steal(body)), m_body(m_body_storage.get_body())
@@ -1353,17 +1394,20 @@ FunctionDefinition::FunctionDefinition(SourceLocation location, StringView name,
 
 FunctionDefinition::~FunctionDefinition() = default;
 
-pure fn FunctionDefinition::name() const wontthrow -> const String &
+pure fn
+FunctionDefinition::name() const wontthrow -> const String &
 {
   return m_name;
 }
 
-pure fn FunctionDefinition::body() const wontthrow -> const Expression *
+pure fn
+FunctionDefinition::body() const wontthrow -> const Expression *
 {
   return m_body;
 }
 
-cold fn FunctionDefinition::to_string() const throws -> String
+cold fn
+FunctionDefinition::to_string() const throws -> String
 {
   let result = String{"FunctionDefinition \""};
   result += StringView{m_name};
@@ -1373,7 +1417,8 @@ cold fn FunctionDefinition::to_string() const throws -> String
   return result;
 }
 
-cold fn FunctionDefinition::to_ast_string(usize layer) const throws -> String
+cold fn
+FunctionDefinition::to_ast_string(usize layer) const throws -> String
 {
   ASSERT(m_body != nullptr);
 
@@ -1383,8 +1428,9 @@ cold fn FunctionDefinition::to_ast_string(usize layer) const throws -> String
          m_body->to_ast_string(layer + 1);
 }
 
-fn FunctionDefinition::evaluate_impl(EvalContext &cxt,
-                                     root_evaluation_mode) const throws
+fn
+FunctionDefinition::evaluate_impl(EvalContext &cxt,
+                                  root_evaluation_mode) const throws
     -> status_result
 {
   ASSERT(m_body != nullptr);
@@ -1420,8 +1466,9 @@ fn FunctionDefinition::evaluate_impl(EvalContext &cxt,
   SET_AND_RETURN_EXIT_STATUS(cxt, 0);
 }
 
-fn FunctionDefinition::analyze(AnalysisContext &actx,
-                               bool is_unconditional) const throws -> void
+fn
+FunctionDefinition::analyze(AnalysisContext &actx,
+                            bool is_unconditional) const throws -> void
 {
   ASSERT(m_body != nullptr);
 
@@ -1488,8 +1535,8 @@ fn FunctionDefinition::analyze(AnalysisContext &actx,
   actx.functions.latest_indices.set(m_name.view(), function_definition_index);
 }
 
-RedirectedCommand::RedirectedCommand(SourceLocation location,
-                                     const Command *child,
+RedirectedCommand::RedirectedCommand(SourceLocation           location,
+                                     const Command           *child,
                                      ArrayList<Redirection> &&redirections)
     : Command(steal(location)), m_child(child)
 {
@@ -1498,7 +1545,8 @@ RedirectedCommand::RedirectedCommand(SourceLocation location,
 
 RedirectedCommand::~RedirectedCommand() = default;
 
-cold fn RedirectedCommand::to_string() const throws -> String
+cold fn
+RedirectedCommand::to_string() const throws -> String
 {
   let result = String{"RedirectedCommand"};
   append_ast_execution_flags(result);
@@ -1506,7 +1554,8 @@ cold fn RedirectedCommand::to_string() const throws -> String
   return result;
 }
 
-cold fn RedirectedCommand::to_ast_string(usize layer) const throws -> String
+cold fn
+RedirectedCommand::to_ast_string(usize layer) const throws -> String
 {
   ASSERT(m_child != nullptr);
 
@@ -1516,8 +1565,9 @@ cold fn RedirectedCommand::to_ast_string(usize layer) const throws -> String
          m_child->to_ast_string(layer + 1);
 }
 
-fn RedirectedCommand::analyze(AnalysisContext &actx,
-                              bool is_unconditional) const throws -> void
+fn
+RedirectedCommand::analyze(AnalysisContext &actx,
+                           bool is_unconditional) const throws -> void
 {
   ASSERT(m_child != nullptr);
 
@@ -1529,9 +1579,9 @@ fn RedirectedCommand::analyze(AnalysisContext &actx,
 
   if (m_redirections.is_empty()) return;
 
-  let const no_args = ArrayList<const Token *>{heap_allocator()};
+  let const no_args               = ArrayList<const Token *>{heap_allocator()};
   let const no_prefix_assignments = SparseList<PrefixAssignment>{};
-  let const lint_input = command_lint_input{no_args,
+  let const lint_input            = command_lint_input{no_args,
                                             m_redirections,
                                             no_prefix_assignments,
                                             source_location(),
@@ -1543,25 +1593,29 @@ fn RedirectedCommand::analyze(AnalysisContext &actx,
   check_redirection_lints(actx, lint_input);
 }
 
-fn RedirectedCommand::as_redirected_command() const wontthrow
+fn
+RedirectedCommand::as_redirected_command() const wontthrow
     -> const RedirectedCommand *
 {
   return this;
 }
 
-fn RedirectedCommand::child() const wontthrow -> const Command *
+fn
+RedirectedCommand::child() const wontthrow -> const Command *
 {
   return m_child;
 }
 
-fn RedirectedCommand::redirections() const wontthrow
+fn
+RedirectedCommand::redirections() const wontthrow
     -> const SparseList<Redirection> &
 {
   return m_redirections;
 }
 
-fn RedirectedCommand::evaluate_impl(EvalContext &cxt,
-                                    root_evaluation_mode) const throws
+fn
+RedirectedCommand::evaluate_impl(EvalContext &cxt,
+                                 root_evaluation_mode) const throws
     -> status_result
 {
   if (is_async()) return {static_cast<i32>(evaluate_async(cxt)), 0};
@@ -1573,7 +1627,8 @@ fn RedirectedCommand::evaluate_impl(EvalContext &cxt,
   }
 }
 
-fn RedirectedCommand::evaluate_async_body(EvalContext &cxt) const throws -> i64
+fn
+RedirectedCommand::evaluate_async_body(EvalContext &cxt) const throws -> i64
 {
   try {
     return evaluate_redirected(cxt).status;
@@ -1582,7 +1637,8 @@ fn RedirectedCommand::evaluate_async_body(EvalContext &cxt) const throws -> i64
   }
 }
 
-fn RedirectedCommand::evaluate_redirected(EvalContext &cxt) const throws
+fn
+RedirectedCommand::evaluate_redirected(EvalContext &cxt) const throws
     -> status_result
 {
   ASSERT(m_child != nullptr);

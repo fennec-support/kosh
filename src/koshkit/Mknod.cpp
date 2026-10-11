@@ -23,7 +23,10 @@ KOSHKIT_UTIL_DECL(
     "mknod --block 1 2 device.");
 
 FLAG(MKNOD_MODE, String, 'm', "mode", "Set the node permission mode.");
-FLAG(MKNOD_TYPE, String, '\0', "type",
+FLAG(MKNOD_TYPE,
+     String,
+     '\0',
+     "type",
      "Choose fifo, character, or block node type.");
 FLAG(MKNOD_FIFO, Bool, '\0', "fifo", "Create a FIFO node.");
 FLAG(MKNOD_CHARACTER, Bool, '\0', "character", "Create a character node.");
@@ -37,9 +40,9 @@ namespace koshka::koshkit {
 
 namespace {
 
-static constexpr u32 FIFO_TYPE = 0010000;
+static constexpr u32 FIFO_TYPE      = 0010000;
 static constexpr u32 CHARACTER_TYPE = 0020000;
-static constexpr u32 BLOCK_TYPE = 0060000;
+static constexpr u32 BLOCK_TYPE     = 0060000;
 
 static constexpr static_string_entry<u32> NODE_TYPE_ENTRIES[] = {
     {SSK("b"),         BLOCK_TYPE    },
@@ -52,7 +55,8 @@ static constexpr static_string_entry<u32> NODE_TYPE_ENTRIES[] = {
 };
 static constexpr StaticStringMap NODE_TYPES{NODE_TYPE_ENTRIES};
 
-fn parse_device_number(StringView text) throws -> Maybe<u64>
+fn
+parse_device_number(StringView text) throws -> Maybe<u64>
 {
   let const parsed = utils::parse_decimal_u64(text);
   if (parsed.is_error()) return None;
@@ -60,24 +64,27 @@ fn parse_device_number(StringView text) throws -> Maybe<u64>
   return parsed.value();
 }
 
-pure fn node_type(StringView text) wontthrow -> Maybe<u32>
+pure fn
+node_type(StringView text) wontthrow -> Maybe<u32>
 {
   return NODE_TYPES.find(text);
 }
 
 } /* namespace */
 
-fn Mknod::execute(const ExecContext &ec, EvalContext &cxt,
-                  const ArrayList<String> &args,
-                  const ArrayList<SourceLocation> &arg_locations) const throws
+fn
+Mknod::execute(const ExecContext               &ec,
+               EvalContext                     &cxt,
+               const ArrayList<String>         &args,
+               const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (operands.is_empty()) return report_usage_error(ec, cxt, args[0].view());
-  let const allocator = cxt.scratch_allocator();
-  let type_text = StringView{};
-  let type_location = operand_locations[0];
+  let const allocator     = cxt.scratch_allocator();
+  let       type_text     = StringView{};
+  let       type_location = operand_locations[0];
   let const named_type_count =
       static_cast<usize>(FLAG_MKNOD_TYPE.is_set()) +
       static_cast<usize>(FLAG_MKNOD_FIFO.is_enabled()) +
@@ -96,19 +103,19 @@ fn Mknod::execute(const ExecContext &ec, EvalContext &cxt,
     return 1;
   }
   if (FLAG_MKNOD_TYPE.is_set()) {
-    type_text = FLAG_MKNOD_TYPE.value();
+    type_text     = FLAG_MKNOD_TYPE.value();
     type_location = FLAG_MKNOD_TYPE.value_location();
   } else if (FLAG_MKNOD_FIFO.is_enabled()) {
-    type_text = "fifo";
+    type_text     = "fifo";
     type_location = FLAG_MKNOD_FIFO.value_location();
   } else if (FLAG_MKNOD_CHARACTER.is_enabled()) {
-    type_text = "character";
+    type_text     = "character";
     type_location = FLAG_MKNOD_CHARACTER.value_location();
   } else if (FLAG_MKNOD_BLOCK.is_enabled()) {
-    type_text = "block";
+    type_text     = "block";
     type_location = FLAG_MKNOD_BLOCK.value_location();
   } else if (operands.count() >= 2) {
-    type_text = operands[1].view();
+    type_text     = operands[1].view();
     type_location = operand_locations[1];
   } else {
     KOSHKIT_REPORT_ERROR_AT(operand_locations[0], "Missing node type",
@@ -138,24 +145,24 @@ fn Mknod::execute(const ExecContext &ec, EvalContext &cxt,
     return 1;
   }
 
-  let const has_named_type = named_type_count != 0;
-  usize next_operand_index = has_named_type ? 1 : 2;
-  usize name_operand_index = 0;
-  StringView major_text{};
-  StringView minor_text{};
+  let const      has_named_type     = named_type_count != 0;
+  usize          next_operand_index = has_named_type ? 1 : 2;
+  usize          name_operand_index = 0;
+  StringView     major_text{};
+  StringView     minor_text{};
   SourceLocation major_location = type_location;
   SourceLocation minor_location = type_location;
-  bool has_major_text = false;
-  bool has_minor_text = false;
-  Maybe<u64> major_number;
-  Maybe<u64> minor_number;
+  bool           has_major_text = false;
+  bool           has_minor_text = false;
+  Maybe<u64>     major_number;
+  Maybe<u64>     minor_number;
   if (FLAG_MKNOD_MAJOR.is_set()) {
-    major_text = FLAG_MKNOD_MAJOR.value();
+    major_text     = FLAG_MKNOD_MAJOR.value();
     major_location = FLAG_MKNOD_MAJOR.value_location();
     has_major_text = true;
   }
   if (FLAG_MKNOD_MINOR.is_set()) {
-    minor_text = FLAG_MKNOD_MINOR.value();
+    minor_text     = FLAG_MKNOD_MINOR.value();
     minor_location = FLAG_MKNOD_MINOR.value_location();
     has_minor_text = true;
   }
@@ -165,14 +172,14 @@ fn Mknod::execute(const ExecContext &ec, EvalContext &cxt,
     name_operand_index = SIZE_MAX;
     next_operand_index = 0;
     if (!has_major_text) {
-      major_text = operands[next_operand_index].view();
+      major_text     = operands[next_operand_index].view();
       major_location = operand_locations[next_operand_index++];
       has_major_text = true;
     }
     if (!has_minor_text && next_operand_index < operands.count() &&
         parse_device_number(operands[next_operand_index].view()).has_value())
     {
-      minor_text = operands[next_operand_index].view();
+      minor_text     = operands[next_operand_index].view();
       minor_location = operand_locations[next_operand_index++];
       has_minor_text = true;
     }
@@ -181,7 +188,7 @@ fn Mknod::execute(const ExecContext &ec, EvalContext &cxt,
   }
   if (!is_fifo) {
     if (!has_major_text && operands.count() > next_operand_index) {
-      major_text = operands[next_operand_index].view();
+      major_text     = operands[next_operand_index].view();
       major_location = operand_locations[next_operand_index++];
       has_major_text = true;
     }
@@ -201,7 +208,7 @@ fn Mknod::execute(const ExecContext &ec, EvalContext &cxt,
       return 1;
     }
     if (!has_minor_text && operands.count() > next_operand_index) {
-      minor_text = operands[next_operand_index].view();
+      minor_text     = operands[next_operand_index].view();
       minor_location = operand_locations[next_operand_index++];
       has_minor_text = true;
     }
@@ -266,13 +273,13 @@ fn Mknod::execute(const ExecContext &ec, EvalContext &cxt,
     mode = *parsed;
   }
 
-  i32 status = 0;
-  let const &name = operands[name_operand_index];
-  let const did_create =
+  i32        status = 0;
+  let const &name   = operands[name_operand_index];
+  let const  did_create =
       is_fifo ? os::make_fifo(name.view(), mode)
-              : os::make_device_node(name.view(), mode | *type,
-                                     static_cast<u32>(*major_number),
-                                     static_cast<u32>(*minor_number));
+               : os::make_device_node(name.view(), mode | *type,
+                                      static_cast<u32>(*major_number),
+                                      static_cast<u32>(*minor_number));
   if (!did_create) {
     report_soft_koshkit_util_error(ec, cxt, args[0].view(),
                                    "Cannot create '" + name +

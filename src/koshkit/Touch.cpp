@@ -27,8 +27,8 @@ REGISTER_KOSHKIT_UTIL_FLAGS(Touch);
 
 namespace koshka::koshkit {
 
-static fn parse_touch_pair(StringView text, usize position,
-                           i32 &value) wontthrow -> bool
+static fn
+parse_touch_pair(StringView text, usize position, i32 &value) wontthrow -> bool
 {
   if (position + 2 > text.length || text[position] < '0' ||
       text[position] > '9' || text[position + 1] < '0' ||
@@ -43,10 +43,11 @@ static fn parse_touch_pair(StringView text, usize position,
   return true;
 }
 
-static fn parse_touch_time(StringView text) throws -> Maybe<i64>
+static fn
+parse_touch_time(StringView text) throws -> Maybe<i64>
 {
   let main_length = text.length;
-  i32 second = 0;
+  i32 second      = 0;
   if (main_length >= 3 && text[main_length - 3] == '.') {
     if (!parse_touch_pair(text, main_length - 2, second)) return None;
 
@@ -57,12 +58,12 @@ static fn parse_touch_time(StringView text) throws -> Maybe<i64>
     return None;
   }
 
-  let const now = std::time(nullptr);
+  let const  now     = std::time(nullptr);
   let const *current = std::localtime(&now);
   if (current == nullptr) throw Error{"cannot read the current time"};
 
-  struct tm value = *current;
-  usize position = 0;
+  struct tm value    = *current;
+  usize     position = 0;
   if (main_length == 12) {
     i32 century;
     i32 year;
@@ -99,12 +100,12 @@ static fn parse_touch_time(StringView text) throws -> Maybe<i64>
     return None;
   }
 
-  value.tm_mon = month - 1;
-  value.tm_mday = day;
-  value.tm_hour = hour;
-  value.tm_min = minute;
-  value.tm_sec = second;
-  value.tm_isdst = -1;
+  value.tm_mon        = month - 1;
+  value.tm_mday       = day;
+  value.tm_hour       = hour;
+  value.tm_min        = minute;
+  value.tm_sec        = second;
+  value.tm_isdst      = -1;
   let const timestamp = std::mktime(&value);
   if (timestamp == static_cast<time_t>(-1) || value.tm_mon != month - 1 ||
       value.tm_mday != day || value.tm_hour != hour || value.tm_min != minute ||
@@ -116,9 +117,11 @@ static fn parse_touch_time(StringView text) throws -> Maybe<i64>
   return static_cast<i64>(timestamp);
 }
 
-fn Touch::execute(const ExecContext &ec, EvalContext &cxt,
-                  const ArrayList<String> &args,
-                  const ArrayList<SourceLocation> &arg_locations) const throws
+fn
+Touch::execute(const ExecContext               &ec,
+               EvalContext                     &cxt,
+               const ArrayList<String>         &args,
+               const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
@@ -164,7 +167,7 @@ fn Touch::execute(const ExecContext &ec, EvalContext &cxt,
       FLAG_TOUCH_MODIFICATION.is_enabled() || !FLAG_TOUCH_ACCESS.is_enabled();
 
   let const allocator = cxt.scratch_allocator();
-  i32 status = 0;
+  i32       status    = 0;
 
   for (let const &operand : operands) {
     if (!Path{operand.view(), allocator}.exists()) {

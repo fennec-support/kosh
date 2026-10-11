@@ -22,7 +22,8 @@ namespace optimizer {
 
 namespace {
 
-pure fn is_constant_arithmetic_text(StringView text) wontthrow -> bool
+pure fn
+is_constant_arithmetic_text(StringView text) wontthrow -> bool
 {
   static constexpr let CONSTANT_BYTES = [] {
     constexpr char MEMBERS[] = "0123456789 \t\n\r()+-*/%&|^~!<>=?:";
@@ -38,7 +39,7 @@ pure fn is_constant_arithmetic_text(StringView text) wontthrow -> bool
   }();
 
   static constexpr u64 MAXIMUM_FOLDED_GROWTH_OPERAND = 1024;
-  usize growing_operator_count = 0;
+  usize                growing_operator_count        = 0;
 
   for (usize i = 0; i < text.length; i++) {
     if (!CONSTANT_BYTES.is_member[static_cast<u8>(text[i])]) return false;
@@ -59,7 +60,7 @@ pure fn is_constant_arithmetic_text(StringView text) wontthrow -> bool
       operand_position++;
     }
 
-    u64 operand = 0;
+    u64   operand     = 0;
     usize digit_count = 0;
 
     while (operand_position < text.length && text[operand_position] >= '0' &&
@@ -77,7 +78,8 @@ pure fn is_constant_arithmetic_text(StringView text) wontthrow -> bool
   return true;
 }
 
-pure fn is_plain_integer_literal(StringView text) wontthrow -> bool
+pure fn
+is_plain_integer_literal(StringView text) wontthrow -> bool
 {
   if (text.is_empty()) return false;
   let const start_position = text[0] == '-' ? usize{1} : usize{0};
@@ -85,7 +87,8 @@ pure fn is_plain_integer_literal(StringView text) wontthrow -> bool
   return text.substring(start_position).is_all_decimal_digits();
 }
 
-pure fn is_split_eligible_variable_operand(const Token *token) wontthrow -> bool
+pure fn
+is_split_eligible_variable_operand(const Token *token) wontthrow -> bool
 {
   ASSERT(token != nullptr);
 
@@ -100,8 +103,9 @@ pure fn is_split_eligible_variable_operand(const Token *token) wontthrow -> bool
          segment.is_split_eligible();
 }
 
-fn propagated_test_operand_value(const Token *token,
-                                 const AnalysisContext &actx) throws
+fn
+propagated_test_operand_value(const Token           *token,
+                              const AnalysisContext &actx) throws
     -> Maybe<String>
 {
   if (is_split_eligible_variable_operand(token)) {
@@ -114,9 +118,11 @@ fn propagated_test_operand_value(const Token *token,
   return propagated_literal_word_value(token, actx);
 }
 
-fn constant_test_verdict(const ArrayList<const Token *> &args,
-                         usize first_operand_index, usize operand_count,
-                         const AnalysisContext &actx) throws -> Maybe<bool>
+fn
+constant_test_verdict(const ArrayList<const Token *> &args,
+                      usize                           first_operand_index,
+                      usize                           operand_count,
+                      const AnalysisContext &actx) throws -> Maybe<bool>
 {
   if (operand_count == 0) return Maybe<bool>{false};
 
@@ -161,7 +167,8 @@ fn constant_test_verdict(const ArrayList<const Token *> &args,
   return None;
 }
 
-pure fn may_expand_assignment_tilde(StringView text) wontthrow -> bool
+pure fn
+may_expand_assignment_tilde(StringView text) wontthrow -> bool
 {
   if (!lexer::word_looks_like_assignment(text)) return false;
 
@@ -177,7 +184,8 @@ pure fn may_expand_assignment_tilde(StringView text) wontthrow -> bool
 
 } /* namespace */
 
-fn literal_word_value(const Word &word) throws -> Maybe<String>
+fn
+literal_word_value(const Word &word) throws -> Maybe<String>
 {
   let value = String{heap_allocator()};
 
@@ -209,7 +217,8 @@ fn literal_word_value(const Word &word) throws -> Maybe<String>
   return value;
 }
 
-fn literal_word_value(const Token *token) throws -> Maybe<String>
+fn
+literal_word_value(const Token *token) throws -> Maybe<String>
 {
   ASSERT(token != nullptr);
 
@@ -221,14 +230,15 @@ fn literal_word_value(const Token *token) throws -> Maybe<String>
 
 namespace {
 
-fn command_word_literal(const Token *token) throws -> Maybe<String>
+fn
+command_word_literal(const Token *token) throws -> Maybe<String>
 {
   ASSERT(token != nullptr);
 
   if (token->kind() != Token::Kind::Word) return None;
 
   let const &word = static_cast<const tokens::WordToken *>(token)->word();
-  let name = String{heap_allocator()};
+  let        name = String{heap_allocator()};
 
   for (let const &segment : word.segments) {
     if (segment.kind != WordSegment::Kind::LiteralText &&
@@ -245,8 +255,8 @@ fn command_word_literal(const Token *token) throws -> Maybe<String>
 
 } /* namespace */
 
-fn plain_variable_reference_name(const Token *token) wontthrow
-    -> Maybe<StringView>
+fn
+plain_variable_reference_name(const Token *token) wontthrow -> Maybe<StringView>
 {
   ASSERT(token != nullptr);
 
@@ -263,8 +273,9 @@ fn plain_variable_reference_name(const Token *token) wontthrow
   return name;
 }
 
-fn propagated_literal_word_value(const Token *token,
-                                 const AnalysisContext &actx) throws
+fn
+propagated_literal_word_value(const Token           *token,
+                              const AnalysisContext &actx) throws
     -> Maybe<String>
 {
   let literal = literal_word_value(token);
@@ -284,7 +295,8 @@ fn propagated_literal_word_value(const Token *token,
   return None;
 }
 
-fn try_fold_constant_arithmetic(StringView expression) wontthrow -> Maybe<i64>
+fn
+try_fold_constant_arithmetic(StringView expression) wontthrow -> Maybe<i64>
 {
   if (expression.length == 0 || !is_constant_arithmetic_text(expression)) {
     return None;
@@ -302,7 +314,8 @@ fn try_fold_constant_arithmetic(StringView expression) wontthrow -> Maybe<i64>
   }
 }
 
-fn try_fold_exact_constant_arithmetic(StringView expression) wontthrow
+fn
+try_fold_exact_constant_arithmetic(StringView expression) wontthrow
     -> Maybe<String>
 {
   if (expression.length == 0 || !is_constant_arithmetic_text(expression)) {
@@ -321,16 +334,17 @@ fn try_fold_exact_constant_arithmetic(StringView expression) wontthrow
   }
 }
 
-fn try_fold_arithmetic_with_constants(StringView expression,
-                                      const AnalysisContext &actx) wontthrow
+fn
+try_fold_arithmetic_with_constants(StringView             expression,
+                                   const AnalysisContext &actx) wontthrow
     -> Maybe<String>
 {
   if (expression.length == 0) return None;
   if (actx.constant_variables.count() == 0) return None;
 
   try {
-    let rewritten = String{heap_allocator()};
-    usize i = 0;
+    let   rewritten = String{heap_allocator()};
+    usize i         = 0;
 
     while (i < expression.length) {
       let const byte = expression[i];
@@ -397,9 +411,9 @@ constexpr static_string_entry<static_verdict_kind> STATIC_VERDICT_ENTRIES[] = {
 };
 constexpr StaticStringMap STATIC_VERDICT_KINDS{STATIC_VERDICT_ENTRIES};
 
-fn simple_command_static_verdict(const ArrayList<const Token *> &args,
-                                 const AnalysisContext &actx) throws
-    -> Maybe<bool>
+fn
+simple_command_static_verdict(const ArrayList<const Token *> &args,
+                              const AnalysisContext &actx) throws -> Maybe<bool>
 {
   if (args.is_empty()) return None;
 
@@ -451,8 +465,9 @@ fn simple_command_static_verdict(const ArrayList<const Token *> &args,
   return None;
 }
 
-pure fn word_segment_has_glob_metacharacter(
-    const WordSegment &segment) wontthrow -> bool
+pure fn
+word_segment_has_glob_metacharacter(const WordSegment &segment) wontthrow
+    -> bool
 {
   let const text = segment.text.view();
 
@@ -477,7 +492,8 @@ pure fn word_segment_has_glob_metacharacter(
   return false;
 }
 
-pure fn classify_plain_literal(const Word &word) wontthrow -> Word::PlainLiteral
+pure fn
+classify_plain_literal(const Word &word) wontthrow -> Word::PlainLiteral
 {
   if (word.segments.is_empty()) return Word::PlainLiteral::NotPlain;
 
@@ -509,7 +525,8 @@ pure fn classify_plain_literal(const Word &word) wontthrow -> Word::PlainLiteral
 
 namespace {
 
-pure fn arithmetic_has_side_effect(StringView text) wontthrow -> bool
+pure fn
+arithmetic_has_side_effect(StringView text) wontthrow -> bool
 {
   for (usize i = 0; i < text.length; i++) {
     if (i + 1 < text.length && ((text[i] == '+' && text[i + 1] == '+') ||
@@ -520,7 +537,7 @@ pure fn arithmetic_has_side_effect(StringView text) wontthrow -> bool
 
     if (text[i] == '=') {
       let const previous = i > 0 ? text[i - 1] : '\0';
-      let const next = i + 1 < text.length ? text[i + 1] : '\0';
+      let const next     = i + 1 < text.length ? text[i + 1] : '\0';
       if (i >= 2 && ((previous == '<' && text[i - 2] == '<') ||
                      (previous == '>' && text[i - 2] == '>')))
       {
@@ -537,9 +554,11 @@ pure fn arithmetic_has_side_effect(StringView text) wontthrow -> bool
   return false;
 }
 
-fn fold_constant_arithmetic_in_word(
-    const Word &word, AnalysisContext &actx,
-    const SourceLocation &fallback_location) throws -> bool
+fn
+fold_constant_arithmetic_in_word(const Word           &word,
+                                 AnalysisContext      &actx,
+                                 const SourceLocation &fallback_location) throws
+    -> bool
 {
   bool did_fold = false;
 
@@ -552,7 +571,7 @@ fn fold_constant_arithmetic_in_word(
       continue;
     }
 
-    let result = try_fold_exact_constant_arithmetic(segment.text.view());
+    let       result = try_fold_exact_constant_arithmetic(segment.text.view());
     let const is_direct_constant = result.has_value();
     if (!result.has_value())
       result = try_fold_arithmetic_with_constants(segment.text.view(), actx);
@@ -581,8 +600,9 @@ fn fold_constant_arithmetic_in_word(
   return did_fold;
 }
 
-fn fold_constant_arithmetic_in_token(const Token *token,
-                                     AnalysisContext &actx) throws -> bool
+fn
+fold_constant_arithmetic_in_token(const Token     *token,
+                                  AnalysisContext &actx) throws -> bool
 {
   ASSERT(token != nullptr);
 
@@ -593,8 +613,9 @@ fn fold_constant_arithmetic_in_token(const Token *token,
       token->source_location());
 }
 
-fn rule_fold_constant_arithmetic(const Expression *node,
-                                 AnalysisContext &actx) throws -> bool
+fn
+rule_fold_constant_arithmetic(const Expression *node,
+                              AnalysisContext  &actx) throws -> bool
 {
   if (const expressions::AssignCommand *assign = node->as_assign_command();
       assign != nullptr)
@@ -624,8 +645,9 @@ fn rule_fold_constant_arithmetic(const Expression *node,
   return false;
 }
 
-fn rule_dead_branch_elimination(const Expression *node,
-                                AnalysisContext &actx) throws -> bool
+fn
+rule_dead_branch_elimination(const Expression *node,
+                             AnalysisContext  &actx) throws -> bool
 {
   const expressions::IfClause *clause = node->as_if_clause();
   if (clause == nullptr) return false;
@@ -666,7 +688,8 @@ fn rule_dead_branch_elimination(const Expression *node,
   return true;
 }
 
-fn rule_loop_elimination(const Expression *node, AnalysisContext &actx) throws
+fn
+rule_loop_elimination(const Expression *node, AnalysisContext &actx) throws
     -> bool
 {
   const expressions::WhileLoop *loop_node = node->as_while_loop();
@@ -702,8 +725,9 @@ fn rule_loop_elimination(const Expression *node, AnalysisContext &actx) throws
   return true;
 }
 
-fn rule_eliminate_compound_body(const Expression *node,
-                                AnalysisContext &actx) throws -> bool
+fn
+rule_eliminate_compound_body(const Expression *node,
+                             AnalysisContext  &actx) throws -> bool
 {
   const expressions::IfClause *clause = node->as_if_clause();
   if (clause == nullptr) return false;
@@ -724,8 +748,9 @@ fn rule_eliminate_compound_body(const Expression *node,
   return true;
 }
 
-fn rule_eliminate_empty_for(const Expression *node,
-                            AnalysisContext &actx) throws -> bool
+fn
+rule_eliminate_empty_for(const Expression *node, AnalysisContext &actx) throws
+    -> bool
 {
   const expressions::ForLoop *loop_node = node->as_for_loop();
   if (loop_node == nullptr) return false;
@@ -745,7 +770,8 @@ fn rule_eliminate_empty_for(const Expression *node,
   return true;
 }
 
-fn rule_fold_cstyle_for(const Expression *node, AnalysisContext &actx) throws
+fn
+rule_fold_cstyle_for(const Expression *node, AnalysisContext &actx) throws
     -> bool
 {
   const expressions::CStyleForLoop *loop_node = node->as_cstyle_for_loop();
@@ -800,7 +826,8 @@ constexpr usize MAX_OPTIMIZATION_PASSES = 8;
 
 } /* namespace */
 
-fn optimize_node(const Expression *node, AnalysisContext &actx) throws -> void
+fn
+optimize_node(const Expression *node, AnalysisContext &actx) throws -> void
 {
   ASSERT(node != nullptr);
 

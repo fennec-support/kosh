@@ -27,36 +27,40 @@ public:
   {
     other.m_length = 0;
   }
-  fn operator=(const Bitset &other) throws->Bitset &
+  fn
+  operator=(const Bitset &other) throws->Bitset &
   {
     if (this != &other) {
-      m_words = other.m_words;
+      m_words  = other.m_words;
       m_length = other.m_length;
     }
 
     return *this;
   }
-  fn operator=(Bitset &&other) wontthrow->Bitset &
+  fn
+  operator=(Bitset &&other) wontthrow->Bitset &
   {
     if (this != &other) {
-      m_words = steal(other.m_words);
-      m_length = other.m_length;
+      m_words        = steal(other.m_words);
+      m_length       = other.m_length;
       other.m_length = 0;
     }
 
     return *this;
   }
 
-  hot fn push(bool is_set) throws -> void
+  hot fn
+  push(bool is_set) throws -> void
   {
     let const bit_position = m_length;
-    let const word_index = bit_position / BITS_PER_WORD;
+    let const word_index   = bit_position / BITS_PER_WORD;
     if (word_index >= m_words.count()) m_words.push(0);
     m_length++;
     if (is_set) m_words[word_index] |= u64{1} << (bit_position % BITS_PER_WORD);
   }
 
-  hot mustuse pure fn operator[](usize index) const wontthrow->bool
+  hot mustuse pure fn
+  operator[](usize index) const wontthrow->bool
   {
     if (index >= m_length) return false;
 
@@ -64,18 +68,20 @@ public:
            0;
   }
 
-  hot fn set(usize index, bool is_set = true) wontthrow -> void
+  hot fn
+  set(usize index, bool is_set = true) wontthrow -> void
   {
     ASSERT(index < m_length, "bit index is past the end");
     let const mask = u64{1} << (index % BITS_PER_WORD);
-    let &word = m_words[index / BITS_PER_WORD];
+    let      &word = m_words[index / BITS_PER_WORD];
     if (is_set)
       word |= mask;
     else
       word &= ~mask;
   }
 
-  fn reset(usize bit_count) throws -> void
+  fn
+  reset(usize bit_count) throws -> void
   {
     m_words.clear();
     m_length = 0;
@@ -89,28 +95,40 @@ public:
     m_length = bit_count;
   }
 
-  mustuse pure fn count() const wontthrow -> usize { return m_length; }
-  mustuse pure fn is_empty() const wontthrow -> bool { return m_length == 0; }
+  mustuse pure fn
+  count() const wontthrow -> usize
+  {
+    return m_length;
+  }
+  mustuse pure fn
+  is_empty() const wontthrow -> bool
+  {
+    return m_length == 0;
+  }
 
-  fn reserve(usize bit_count) throws -> void
+  fn
+  reserve(usize bit_count) throws -> void
   {
     let const word_count =
         bit_count / BITS_PER_WORD + (bit_count % BITS_PER_WORD != 0 ? 1 : 0);
     m_words.reserve(word_count);
   }
 
-  fn clear() wontthrow -> void
+  fn
+  clear() wontthrow -> void
   {
     m_words.clear();
     m_length = 0;
   }
 
-  pure fn allocator() const wontthrow -> Allocator
+  pure fn
+  allocator() const wontthrow -> Allocator
   {
     return m_words.allocator();
   }
 
-  hot mustuse pure fn any() const wontthrow -> bool
+  hot mustuse pure fn
+  any() const wontthrow -> bool
   {
     for (usize i = 0; i < m_words.count(); i++)
       if (m_words[i] != 0) return true;
@@ -120,7 +138,7 @@ public:
 
 private:
   ArrayList<u64> m_words;
-  usize m_length{0};
+  usize          m_length{0};
 };
 
 } /* namespace koshka */

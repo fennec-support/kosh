@@ -20,9 +20,11 @@ REGISTER_KOSHKIT_UTIL_FLAGS(Tabs);
 
 namespace koshka::koshkit {
 
-fn Tabs::execute(const ExecContext &ec, EvalContext &cxt,
-                 const ArrayList<String> &args,
-                 const ArrayList<SourceLocation> &arg_locations) const throws
+fn
+Tabs::execute(const ExecContext               &ec,
+              EvalContext                     &cxt,
+              const ArrayList<String>         &args,
+              const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations,
@@ -67,14 +69,14 @@ fn Tabs::execute(const ExecContext &ec, EvalContext &cxt,
     for (u64 stop = parsed.value() + 1; stop <= 160; stop += parsed.value())
       stops.push(stop);
   } else {
-    usize position = 0;
-    u64 previous_stop = 0;
+    usize position      = 0;
+    u64   previous_stop = 0;
 
     while (position <= specification.length) {
       let const remaining = specification.substring(position);
       let const item_length =
           remaining.find_character(',').value_or(remaining.length);
-      let item = remaining.substring_of_length(0, item_length);
+      let       item        = remaining.substring_of_length(0, item_length);
       let const is_relative = !item.is_empty() && item[0] == '+';
       if (is_relative) item = item.substring(1);
       let const parsed = utils::parse_decimal_u64(item);

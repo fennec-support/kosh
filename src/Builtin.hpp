@@ -106,7 +106,8 @@ public:
   };
 #undef T__BUILTIN_KIND
 
-  virtual i32 execute(ExecContext &ec, EvalContext &cxt) const throws = 0;
+  virtual i32
+  execute(ExecContext &ec, EvalContext &cxt) const throws = 0;
 
   virtual ~Builtin() = default;
 
@@ -199,7 +200,8 @@ inline constexpr StaticStringMap BUILTINS{BUILTIN_ENTRIES};
   class kind : public Builtin                                                  \
   {                                                                            \
   public:                                                                      \
-    i32 execute(ExecContext &ec, EvalContext &cxt) const throws override;      \
+    i32                                                                        \
+    execute(ExecContext &ec, EvalContext &cxt) const throws override;          \
   };
 
 KOSH_BUILTIN_KINDS(BUILTIN_STRUCT)
@@ -216,27 +218,36 @@ inline constexpr bool SHOULD_DISPATCH_BUILTIN_HELP[] = {
     KOSH_BUILTIN_KINDS(T__BUILTIN_HELP_DISPATCH)};
 #undef T__BUILTIN_HELP_DISPATCH
 
-fn search_builtin(StringView builtin_name) throws -> Maybe<Builtin::Kind>;
+fn
+search_builtin(StringView builtin_name) throws -> Maybe<Builtin::Kind>;
 
-pure fn builtin_is_hidden_by_mood(Builtin::Kind kind, mimic_mood mood) wontthrow
+pure fn
+builtin_is_hidden_by_mood(Builtin::Kind kind, mimic_mood mood) wontthrow
     -> bool;
 
-pure fn name_is_keyword_in_mood(StringView name, mimic_mood mood) wontthrow
-    -> bool;
+pure fn
+name_is_keyword_in_mood(StringView name, mimic_mood mood) wontthrow -> bool;
 
-fn is_special_builtin_name(StringView name) wontthrow -> bool;
+fn
+is_special_builtin_name(StringView name) wontthrow -> bool;
 
-fn builtin_names() throws -> const ArrayList<String> &;
+fn
+builtin_names() throws -> const ArrayList<String> &;
 
 inline constexpr usize BUILTIN_KIND_COUNT =
     sizeof(BUILTIN_SECTIONS) / sizeof(BUILTIN_SECTIONS[0]);
 
-fn register_builtin_help(Builtin::Kind kind, const FlagList *flags,
-                         const StringView *description,
-                         const SynopsisList *synopsis) wontthrow -> void;
-fn builtin_flag_list(Builtin::Kind kind) wontthrow -> const FlagList *;
-fn builtin_help_description(Builtin::Kind kind) wontthrow -> StringView;
-fn builtin_help_synopsis(Builtin::Kind kind) wontthrow -> const SynopsisList *;
+fn
+register_builtin_help(Builtin::Kind       kind,
+                      const FlagList     *flags,
+                      const StringView   *description,
+                      const SynopsisList *synopsis) wontthrow -> void;
+fn
+builtin_flag_list(Builtin::Kind kind) wontthrow -> const FlagList *;
+fn
+builtin_help_description(Builtin::Kind kind) wontthrow -> StringView;
+fn
+builtin_help_synopsis(Builtin::Kind kind) wontthrow -> const SynopsisList *;
 
 #define REGISTER_BUILTIN_FLAGS(kind)                                           \
   static uchar t__builtin_flag_registrar =                                     \
@@ -244,13 +255,16 @@ fn builtin_help_synopsis(Builtin::Kind kind) wontthrow -> const SynopsisList *;
                                      &HELP_DESCRIPTION, &HELP_SYNOPSIS),       \
        0)
 
-fn show_builtin_help_impl(const ExecContext &ec, StringView description,
-                          const SynopsisList &synopsis_lines,
-                          const FlagList &flags,
-                          StringView extra_sections = {}) throws -> void;
-fn builtin_error_context(StringView program) throws -> String;
-fn builtin_error_message(StringView program, StringView message) throws
-    -> String;
+fn
+show_builtin_help_impl(const ExecContext  &ec,
+                       StringView          description,
+                       const SynopsisList &synopsis_lines,
+                       const FlagList     &flags,
+                       StringView          extra_sections = {}) throws -> void;
+fn
+builtin_error_context(StringView program) throws -> String;
+fn
+builtin_error_message(StringView program, StringView message) throws -> String;
 
 #define SHOW_BUILTIN_HELP_AND_RETURN(ec)                                       \
   do {                                                                         \
@@ -284,105 +298,163 @@ fn builtin_error_message(StringView program, StringView message) throws
                   flag_parse_options{__VA_ARGS__});                            \
   defer { reset_flags(FLAG_LIST); }
 
-fn execute_builtin(ExecContext &&ec, EvalContext &cxt) throws -> i32;
+fn
+execute_builtin(ExecContext &&ec, EvalContext &cxt) throws -> i32;
 
-fn query_shell_option(const EvalContext &cxt, StringView name) throws
+fn
+query_shell_option(const EvalContext &cxt, StringView name) throws
     -> Maybe<bool>;
-fn apply_shell_option(EvalContext &cxt, StringView name, bool is_enabled) throws
+fn
+apply_shell_option(EvalContext &cxt, StringView name, bool is_enabled) throws
     -> bool;
 
-fn shell_option_names() throws -> const ArrayList<StringView> &;
-fn shell_option_letters() throws -> const String &;
-fn enabled_shell_option_names(const EvalContext &cxt) throws -> String;
-fn enabled_shell_option_letters(const EvalContext &cxt) throws -> String;
+fn
+shell_option_names() throws -> const ArrayList<StringView> &;
+fn
+shell_option_letters() throws -> const String &;
+fn
+enabled_shell_option_names(const EvalContext &cxt) throws -> String;
+fn
+enabled_shell_option_letters(const EvalContext &cxt) throws -> String;
 
-fn shopt_option_name_list() throws -> const ArrayList<StringView> &;
-fn enabled_shopt_option_names(const EvalContext &cxt) throws -> String;
+fn
+shopt_option_name_list() throws -> const ArrayList<StringView> &;
+fn
+enabled_shopt_option_names(const EvalContext &cxt) throws -> String;
 
-fn kosh_binary_flag_list() wontthrow -> const FlagList &;
+fn
+kosh_binary_flag_list() wontthrow -> const FlagList &;
 
-fn report_soft_builtin_error(const ExecContext &ec, EvalContext &cxt,
-                             StringView message) throws -> void;
+fn
+report_soft_builtin_error(const ExecContext &ec,
+                          EvalContext       &cxt,
+                          StringView         message) throws -> void;
 
-fn report_soft_builtin_error(const ExecContext &ec, EvalContext &cxt,
-                             StringView message, StringView note) throws
+fn
+report_soft_builtin_error(const ExecContext &ec,
+                          EvalContext       &cxt,
+                          StringView         message,
+                          StringView         note) throws -> void;
+
+fn
+declaration_assignment_failure_status(const EvalContext &cxt) wontthrow -> i32;
+
+fn
+report_soft_builtin_error(const ExecContext &ec,
+                          EvalContext       &cxt,
+                          SourceLocation     location,
+                          StringView         message) throws -> void;
+
+fn
+report_soft_builtin_error(const ExecContext &ec,
+                          EvalContext       &cxt,
+                          SourceLocation     location,
+                          StringView         message,
+                          StringView         note) throws -> void;
+
+fn
+report_loop_control_without_loop(const ExecContext &ec, EvalContext &cxt) throws
     -> void;
 
-fn declaration_assignment_failure_status(const EvalContext &cxt) wontthrow
-    -> i32;
+fn
+report_usage_error(const ExecContext &ec,
+                   EvalContext       &cxt,
+                   StringView         program_name) throws -> i32;
 
-fn report_soft_builtin_error(const ExecContext &ec, EvalContext &cxt,
-                             SourceLocation location, StringView message) throws
+fn
+continue_job(job &job) throws -> void;
+
+fn
+bind_declared_self_nameref(const ExecContext &ec,
+                           EvalContext       &cxt,
+                           usize              arg_index,
+                           StringView         name,
+                           bool               is_local) throws -> bool;
+fn
+declare_nameref(const ExecContext &ec,
+                EvalContext       &cxt,
+                usize              arg_index,
+                StringView         name,
+                Maybe<StringView>  target,
+                bool               should_mark_readonly) throws -> bool;
+
+fn
+finish_exit_builtin(const ExecContext &ec,
+                    EvalContext       &cxt,
+                    i64                status,
+                    StringView         invalid_status_note,
+                    StringView         too_many_message,
+                    StringView         too_many_note) throws -> i32;
+
+fn
+report_invalid_identifier(const ExecContext &ec,
+                          EvalContext       &cxt,
+                          SourceLocation     location,
+                          StringView         name) throws -> void;
+
+pure fn
+get_operand_location(const ExecContext               &ec,
+                     const ArrayList<SourceLocation> &operand_locations,
+                     usize index) wontthrow -> SourceLocation;
+
+fn
+report_usage_error(EvalContext   &cxt,
+                   SourceLocation location,
+                   StringView     program_name) throws -> i32;
+
+fn
+make_error_for_arg(const ExecContext &ec,
+                   usize              index,
+                   StringView         message) throws -> ErrorWithLocation;
+
+fn
+make_error_for_arg(const ExecContext &ec,
+                   usize              index,
+                   StringView         message,
+                   StringView note) throws -> ErrorWithLocationAndDetails;
+
+pure fn
+name_is_valid_identifier(StringView name) wontthrow -> bool;
+pure fn
+name_is_valid_assignment_target(StringView name) wontthrow -> bool;
+
+fn
+run_cd_to_directory(EvalContext       &cxt,
+                    const ExecContext &ec,
+                    StringView         target) throws -> i32;
+fn
+logical_working_directory(const EvalContext &cxt) throws -> Path;
+fn
+print_directory_stack(EvalContext       &cxt,
+                      const ExecContext &ec,
+                      bool               should_print_one_per_line,
+                      bool               should_print_numbers,
+                      bool               should_print_full_paths,
+                      Maybe<usize>       selected_index = None) throws -> void;
+
+fn
+parse_directory_stack_rotation(StringView     arg,
+                               usize          ring_count,
+                               SourceLocation location,
+                               usize         &index_out) throws -> bool;
+
+fn
+quote_for_declare(StringView value) throws -> String;
+
+fn
+append_declare_value(String &out, StringView value, bool is_utf8_locale) throws
+    -> void;
+fn
+append_declare_key(String &out, StringView key, bool is_utf8_locale) throws
     -> void;
 
-fn report_soft_builtin_error(const ExecContext &ec, EvalContext &cxt,
-                             SourceLocation location, StringView message,
-                             StringView note) throws -> void;
+fn
+append_variable_declaration(EvalContext &cxt,
+                            StringView   name,
+                            String      &out) throws -> bool;
 
-fn report_loop_control_without_loop(const ExecContext &ec,
-                                    EvalContext &cxt) throws -> void;
-
-fn report_usage_error(const ExecContext &ec, EvalContext &cxt,
-                      StringView program_name) throws -> i32;
-
-fn continue_job(job &job) throws -> void;
-
-fn bind_declared_self_nameref(const ExecContext &ec, EvalContext &cxt,
-                              usize arg_index, StringView name,
-                              bool is_local) throws -> bool;
-fn declare_nameref(const ExecContext &ec, EvalContext &cxt, usize arg_index,
-                   StringView name, Maybe<StringView> target,
-                   bool should_mark_readonly) throws -> bool;
-
-fn finish_exit_builtin(const ExecContext &ec, EvalContext &cxt, i64 status,
-                       StringView invalid_status_note,
-                       StringView too_many_message,
-                       StringView too_many_note) throws -> i32;
-
-fn report_invalid_identifier(const ExecContext &ec, EvalContext &cxt,
-                             SourceLocation location, StringView name) throws
-    -> void;
-
-pure fn get_operand_location(const ExecContext &ec,
-                             const ArrayList<SourceLocation> &operand_locations,
-                             usize index) wontthrow -> SourceLocation;
-
-fn report_usage_error(EvalContext &cxt, SourceLocation location,
-                      StringView program_name) throws -> i32;
-
-fn make_error_for_arg(const ExecContext &ec, usize index,
-                      StringView message) throws -> ErrorWithLocation;
-
-fn make_error_for_arg(const ExecContext &ec, usize index, StringView message,
-                      StringView note) throws -> ErrorWithLocationAndDetails;
-
-pure fn name_is_valid_identifier(StringView name) wontthrow -> bool;
-pure fn name_is_valid_assignment_target(StringView name) wontthrow -> bool;
-
-fn run_cd_to_directory(EvalContext &cxt, const ExecContext &ec,
-                       StringView target) throws -> i32;
-fn logical_working_directory(const EvalContext &cxt) throws -> Path;
-fn print_directory_stack(EvalContext &cxt, const ExecContext &ec,
-                         bool should_print_one_per_line,
-                         bool should_print_numbers,
-                         bool should_print_full_paths,
-                         Maybe<usize> selected_index = None) throws -> void;
-
-fn parse_directory_stack_rotation(StringView arg, usize ring_count,
-                                  SourceLocation location,
-                                  usize &index_out) throws -> bool;
-
-fn quote_for_declare(StringView value) throws -> String;
-
-fn append_declare_value(String &out, StringView value,
-                        bool is_utf8_locale) throws -> void;
-fn append_declare_key(String &out, StringView key, bool is_utf8_locale) throws
-    -> void;
-
-fn append_variable_declaration(EvalContext &cxt, StringView name,
-                               String &out) throws -> bool;
-
-fn parse_optional_integer_arg(const ExecContext &ec, i64 default_value) throws
+fn
+parse_optional_integer_arg(const ExecContext &ec, i64 default_value) throws
     -> i64;
 
 } /* namespace koshka */

@@ -23,7 +23,10 @@ KOSHKIT_UTIL_DECL(
 
 FLAG(GOODNODE_INODE, String, 'i', "inode", "Locate this inode.");
 FLAG(GOODNODE_ROOT, String, 'r', "root", "Search beneath this path.");
-FLAG(GOODNODE_VERIFY, Bool, '\0', "verify",
+FLAG(GOODNODE_VERIFY,
+     Bool,
+     '\0',
+     "verify",
      "Verify filesystem integrity when the platform supports it.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(GoodNode);
@@ -38,7 +41,8 @@ enum class goodnode_verification_mode : u8
   Verify,
 };
 
-fn filesystem_features(StringView filesystem_type) throws -> Maybe<StringView>
+fn
+filesystem_features(StringView filesystem_type) throws -> Maybe<StringView>
 {
   static constexpr static_string_entry<StringView> FEATURE_ENTRIES[] = {
       {SSK("NTFS"),           "transaction log, encryption, quotas, compression" },
@@ -53,12 +57,16 @@ fn filesystem_features(StringView filesystem_type) throws -> Maybe<StringView>
   return FEATURES.find(filesystem_type);
 }
 
-fn append_node_report(String &output, const ExecContext &ec, StringView path,
-                      const os::file_status &status, Allocator allocator,
-                      goodnode_verification_mode verification,
-                      bool should_color) throws -> void
+fn
+append_node_report(String                    &output,
+                   const ExecContext         &ec,
+                   StringView                 path,
+                   const os::file_status     &status,
+                   Allocator                  allocator,
+                   goodnode_verification_mode verification,
+                   bool                       should_color) throws -> void
 {
-  let table = ReportTable{allocator};
+  let       table           = ReportTable{allocator};
   let const do_append_field = [&](StringView name, StringView value) throws {
     table.add_field_row(name, value, colors::ansi::BOLD_CYAN);
   };
@@ -92,7 +100,7 @@ fn append_node_report(String &output, const ExecContext &ec, StringView path,
     switch (evidence->kind) {
     case os::filesystem_integrity_kind::BtrfsDeviceErrorCounters: {
       let const &errors = evidence->counters;
-      let const has_errors =
+      let const  has_errors =
           errors.read_count != 0 || errors.write_count != 0 ||
           errors.flush_count != 0 || errors.corruption_count != 0 ||
           errors.generation_count != 0;
@@ -133,7 +141,7 @@ fn append_node_report(String &output, const ExecContext &ec, StringView path,
 
   if (verification == goodnode_verification_mode::Verify) {
     constexpr u64 VERIFICATION_TIMEOUT_NANOSECONDS = 300'000'000'000;
-    let verification = StringView{"unavailable"};
+    let           verification                     = StringView{"unavailable"};
     switch (
         os::verify_filesystem_integrity(path, VERIFICATION_TIMEOUT_NANOSECONDS))
     {
@@ -166,8 +174,12 @@ fn append_node_report(String &output, const ExecContext &ec, StringView path,
   append_titled_report_table(output, path, table, should_color);
 }
 
-fn find_inode(const Path &path, const os::file_status &status, u64 inode,
-              String &found_path, Allocator allocator) throws -> bool
+fn
+find_inode(const Path            &path,
+           const os::file_status &status,
+           u64                    inode,
+           String                &found_path,
+           Allocator              allocator) throws -> bool
 {
   if (status.has_file_identity && status.file_id == inode) {
     found_path = path.text().clone();
@@ -193,10 +205,10 @@ fn find_inode(const Path &path, const os::file_status &status, u64 inode,
   return false;
 }
 
-pure fn path_is_beneath(const Path &root, const Path &candidate) wontthrow
-    -> bool
+pure fn
+path_is_beneath(const Path &root, const Path &candidate) wontthrow -> bool
 {
-  let const root_text = root.view();
+  let const root_text      = root.view();
   let const candidate_text = candidate.view();
   if (candidate_text == root_text) return true;
   if (root_text.is_empty() || !candidate_text.starts_with(root_text)) {
@@ -210,14 +222,17 @@ pure fn path_is_beneath(const Path &root, const Path &candidate) wontthrow
 
 } /* namespace */
 
-fn GoodNode::execute(
-    const ExecContext &ec, EvalContext &cxt, const ArrayList<String> &args,
-    const ArrayList<SourceLocation> &arg_locations) const throws -> i32
+fn
+GoodNode::execute(const ExecContext               &ec,
+                  EvalContext                     &cxt,
+                  const ArrayList<String>         &args,
+                  const ArrayList<SourceLocation> &arg_locations) const throws
+    -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   let const allocator = cxt.scratch_allocator();
-  let paths = ArrayList<String>{allocator};
+  let       paths     = ArrayList<String>{allocator};
 
   for (let const &operand : operands)
     paths.push(String{allocator, operand.view()});
@@ -241,11 +256,11 @@ fn GoodNode::execute(
       return 1;
     }
 
-    let found = String{allocator};
-    let const root = FLAG_GOODNODE_ROOT.is_set() ? FLAG_GOODNODE_ROOT.value()
-                                                 : StringView{"."};
+    let       found = String{allocator};
+    let const root  = FLAG_GOODNODE_ROOT.is_set() ? FLAG_GOODNODE_ROOT.value()
+                                                  : StringView{"."};
     let const root_path = Path{root, allocator};
-    let const inode = static_cast<u64>(parsed.value());
+    let const inode     = static_cast<u64>(parsed.value());
     if (let canonical_root = os::canonical_path(root_path);
         canonical_root.has_value() &&
         canonical_root->view() == root_path.view())
@@ -290,11 +305,11 @@ fn GoodNode::execute(
                                ? goodnode_verification_mode::Verify
                                : goodnode_verification_mode::Skip;
 
-  let output = String{allocator};
-  i32 exit_status = 0;
-  let report_paths = ArrayList<Path>{allocator};
+  let output          = String{allocator};
+  i32 exit_status     = 0;
+  let report_paths    = ArrayList<Path>{allocator};
   let report_statuses = ArrayList<os::file_status>{allocator};
-  let report_batch = os::Batch{allocator};
+  let report_batch    = os::Batch{allocator};
   report_paths.reserve(paths.count());
   report_statuses.reserve(paths.count());
   report_batch.reserve(paths.count());

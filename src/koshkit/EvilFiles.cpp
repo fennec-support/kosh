@@ -21,15 +21,27 @@ KOSHKIT_UTIL_DECL(
     "[-itw] [-p pid] [-u user] [-c command] [path ...]",
     "The evilfiles utility lists the files that running processes hold open.");
 
-FLAG(EVILFILES_TERSE, Bool, 't', "terse",
+FLAG(EVILFILES_TERSE,
+     Bool,
+     't',
+     "terse",
      "Print only the process ids, one on each line.");
 FLAG(EVILFILES_PID, String, 'p', "pid", "List only this process id.");
-FLAG(EVILFILES_USER, String, 'u', "user",
+FLAG(EVILFILES_USER,
+     String,
+     'u',
+     "user",
      "List only the processes of this owner.");
-FLAG(EVILFILES_COMMAND, String, 'c', "command",
+FLAG(EVILFILES_COMMAND,
+     String,
+     'c',
+     "command",
      "List only the processes whose name starts with this text.");
 FLAG(EVILFILES_NETWORK, Bool, 'i', "network", "List only socket descriptors.");
-FLAG(EVILFILES_WIDE, Bool, 'w', "wide",
+FLAG(EVILFILES_WIDE,
+     Bool,
+     'w',
+     "wide",
      "Do not truncate names to the terminal width.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(EvilFiles);
@@ -71,7 +83,8 @@ struct column_widths
   usize endpoint{8};
 };
 
-pure fn file_type_label(u32 mode) wontthrow -> StringView
+pure fn
+file_type_label(u32 mode) wontthrow -> StringView
 {
   switch (os::file_type_letter(mode)) {
   case 'd': return "DIR";
@@ -80,13 +93,14 @@ pure fn file_type_label(u32 mode) wontthrow -> StringView
   case 'b': return "BLK";
   case 'p': return "FIFO";
   case 's': return "unix";
-  default: break;
+  default:  break;
   }
 
   return "REG";
 }
 
-pure fn bracketed_type_label(StringView path) wontthrow -> StringView
+pure fn
+bracketed_type_label(StringView path) wontthrow -> StringView
 {
   constexpr static_string_entry<StringView> ENTRIES[] = {
       {SSK("[event]"),  "EVENT" },
@@ -95,7 +109,7 @@ pure fn bracketed_type_label(StringView path) wontthrow -> StringView
       {SSK("[socket]"), "unix"  },
   };
   constexpr StaticStringMap TYPES{ENTRIES};
-  let const found = TYPES.find(path);
+  let const                 found = TYPES.find(path);
   if (found.has_value()) return *found;
 
   constexpr static_string_entry<StringView> KIND_ENTRIES[] = {
@@ -104,7 +118,7 @@ pure fn bracketed_type_label(StringView path) wontthrow -> StringView
       {SSK("socket"),     "sock"   },
   };
   constexpr StaticStringMap KINDS{KIND_ENTRIES};
-  let const colon = path.find_character(':');
+  let const                 colon = path.find_character(':');
   if (colon.has_value()) {
     let const kind = KINDS.find(path.substring_of_length(0, *colon));
     if (kind.has_value()) return *kind;
@@ -115,9 +129,9 @@ pure fn bracketed_type_label(StringView path) wontthrow -> StringView
 
 struct socket_description
 {
-  u64 inode;
+  u64        inode;
   StringView type;
-  String endpoint;
+  String     endpoint;
 };
 
 struct socket_directory
@@ -125,10 +139,11 @@ struct socket_directory
   explicit socket_directory(Allocator allocator) : entries(allocator) {}
 
   ArrayList<socket_description> entries;
-  bool did_load{false};
+  bool                          did_load{false};
 };
 
-pure fn parse_bracketed_inode(StringView path, StringView prefix) wontthrow
+pure fn
+parse_bracketed_inode(StringView path, StringView prefix) wontthrow
     -> Maybe<u64>
 {
   if (!path.starts_with(prefix)) return None;
@@ -144,8 +159,9 @@ pure fn parse_bracketed_inode(StringView path, StringView prefix) wontthrow
   return parsed.value();
 }
 
-fn describe_network_socket(const os::network_socket_entry &socket,
-                           Allocator allocator) throws -> String
+fn
+describe_network_socket(const os::network_socket_entry &socket,
+                        Allocator allocator) throws -> String
 {
   let endpoint = String{allocator};
   if (socket.protocol == os::network_socket_protocol::Unix) {
@@ -179,8 +195,9 @@ fn describe_network_socket(const os::network_socket_entry &socket,
   return endpoint;
 }
 
-fn load_socket_directory(socket_directory &directory,
-                         Allocator allocator) throws -> void
+fn
+load_socket_directory(socket_directory &directory, Allocator allocator) throws
+    -> void
 {
   directory.did_load = true;
   if (os::has_network_socket_listing()) {
@@ -213,12 +230,14 @@ fn load_socket_directory(socket_directory &directory,
       });
 }
 
-fn find_socket_description(socket_directory &directory, u64 inode,
-                           Allocator allocator) throws -> Maybe<usize>
+fn
+find_socket_description(socket_directory &directory,
+                        u64               inode,
+                        Allocator         allocator) throws -> Maybe<usize>
 {
   if (!directory.did_load) load_socket_directory(directory, allocator);
 
-  usize low = 0;
+  usize low  = 0;
   usize high = directory.entries.count();
 
   while (low < high) {
@@ -237,13 +256,14 @@ fn find_socket_description(socket_directory &directory, u64 inode,
   return None;
 }
 
-fn device_label(const os::file_status &status, Allocator allocator) throws
+fn
+device_label(const os::file_status &status, Allocator allocator) throws
     -> String
 {
   let const type_letter = os::file_type_letter(status.mode);
-  let const device_id = type_letter == 'c' || type_letter == 'b'
-                            ? status.special_device_id
-                            : status.device_id;
+  let const device_id   = type_letter == 'c' || type_letter == 'b'
+                              ? status.special_device_id
+                              : status.device_id;
 
   let label = String::from(os::device_major(device_id), allocator);
   label += ",";
@@ -252,15 +272,16 @@ fn device_label(const os::file_status &status, Allocator allocator) throws
   return label;
 }
 
-fn descriptor_label(const os::process_open_file &file,
-                    Allocator allocator) throws -> String
+fn
+descriptor_label(const os::process_open_file &file, Allocator allocator) throws
+    -> String
 {
   switch (file.use) {
-  case os::process_file_use::Cwd: return String{allocator, "cwd"};
-  case os::process_file_use::Root: return String{allocator, "rtd"};
+  case os::process_file_use::Cwd:        return String{allocator, "cwd"};
+  case os::process_file_use::Root:       return String{allocator, "rtd"};
   case os::process_file_use::Executable: return String{allocator, "txt"};
-  case os::process_file_use::Mapped: return String{allocator, "mem"};
-  case os::process_file_use::File: break;
+  case os::process_file_use::Mapped:     return String{allocator, "mem"};
+  case os::process_file_use::File:       break;
   }
 
   if (file.descriptor_number < 0) return String{allocator, "unk"};
@@ -271,15 +292,18 @@ fn descriptor_label(const os::process_open_file &file,
   return label;
 }
 
-fn widen(usize &width, const String &text) wontthrow -> void
+fn
+widen(usize &width, const String &text) wontthrow -> void
 {
   let const cell_count = toiletline::get_display_width(text.view());
   if (cell_count > width) width = cell_count;
 }
 
-fn matches_filters(const os::process_entry &process, i64 wanted_pid,
-                   bool has_wanted_pid, Maybe<u32> wanted_owner) wontthrow
-    -> bool
+fn
+matches_filters(const os::process_entry &process,
+                i64                      wanted_pid,
+                bool                     has_wanted_pid,
+                Maybe<u32>               wanted_owner) wontthrow -> bool
 {
   if (has_wanted_pid && process.pid != wanted_pid) {
     return false;
@@ -298,8 +322,9 @@ fn matches_filters(const os::process_entry &process, i64 wanted_pid,
   return true;
 }
 
-fn matches_path_operands(StringView path,
-                         const ArrayList<String> &operands) wontthrow -> bool
+fn
+matches_path_operands(StringView               path,
+                      const ArrayList<String> &operands) wontthrow -> bool
 {
   if (operands.is_empty()) return true;
 
@@ -317,16 +342,20 @@ fn matches_path_operands(StringView path,
   return false;
 }
 
-pure fn is_network_file(StringView path) wontthrow -> bool
+pure fn
+is_network_file(StringView path) wontthrow -> bool
 {
   return path == "[socket]" || path.starts_with("socket:[");
 }
 
 } /* namespace */
 
-fn EvilFiles::execute(
-    const ExecContext &ec, EvalContext &cxt, const ArrayList<String> &args,
-    const ArrayList<SourceLocation> &arg_locations) const throws -> i32
+fn
+EvilFiles::execute(const ExecContext               &ec,
+                   EvalContext                     &cxt,
+                   const ArrayList<String>         &args,
+                   const ArrayList<SourceLocation> &arg_locations) const throws
+    -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
@@ -339,7 +368,7 @@ fn EvilFiles::execute(
     return 1;
   }
 
-  i64 wanted_pid = 0;
+  i64       wanted_pid     = 0;
   let const has_wanted_pid = FLAG_EVILFILES_PID.is_set();
   if (has_wanted_pid) {
     let const parsed = utils::parse_integer_in_base(FLAG_EVILFILES_PID.value(),
@@ -386,11 +415,11 @@ fn EvilFiles::execute(
   }
 
   ArrayList<open_file_row> rows{allocator};
-  column_widths widths{};
-  socket_directory sockets{allocator};
-  let terse_output = String{allocator};
-  bool did_match = false;
-  usize inaccessible_process_count = 0;
+  column_widths            widths{};
+  socket_directory         sockets{allocator};
+  let                      terse_output               = String{allocator};
+  bool                     did_match                  = false;
+  usize                    inaccessible_process_count = 0;
 
   for (let const &process : processes) {
     if (!matches_filters(process, wanted_pid, has_wanted_pid, wanted_owner)) {
@@ -420,7 +449,7 @@ fn EvilFiles::execute(
         }
         if (!matches_path_operands(file.path.view(), operands)) continue;
 
-        did_match = true;
+        did_match              = true;
         did_match_this_process = true;
         break;
       }
@@ -434,7 +463,7 @@ fn EvilFiles::execute(
     }
 
     let matching_positions = ArrayList<usize>{allocator};
-    let matching_paths = ArrayList<Path>{allocator};
+    let matching_paths     = ArrayList<Path>{allocator};
 
     for (usize file_position = 0; file_position < files.count();
          file_position++)
@@ -453,8 +482,8 @@ fn EvilFiles::execute(
 
     if (matching_positions.is_empty()) continue;
 
-    did_match = true;
-    let file_statuses = ArrayList<os::file_status>{allocator};
+    did_match          = true;
+    let file_statuses  = ArrayList<os::file_status>{allocator};
     let metadata_batch = os::Batch{allocator};
     file_statuses.reserve(matching_positions.count());
     metadata_batch.reserve(matching_positions.count());
@@ -472,9 +501,9 @@ fn EvilFiles::execute(
 
     for (usize position = 0; position < matching_positions.count(); position++)
     {
-      let const &file = files[matching_positions[position]];
-      let const &status = file_statuses[position];
-      let const did_stat = metadata_results[position].error_number == 0;
+      let const &file     = files[matching_positions[position]];
+      let const &status   = file_statuses[position];
+      let const  did_stat = metadata_results[position].error_number == 0;
 
       let socket_index = Maybe<usize>{None};
       if (let const socket_inode =
@@ -549,9 +578,9 @@ fn EvilFiles::execute(
     return 1;
   }
 
-  let const should_color = koshkit_should_color();
-  let output = String{allocator};
-  usize line_width_limit = SIZE_MAX;
+  let const should_color     = koshkit_should_color();
+  let       output           = String{allocator};
+  usize     line_width_limit = SIZE_MAX;
   if (!FLAG_EVILFILES_WIDE.is_enabled()) {
     if (let const dimensions =
             os::get_terminal_dimensions(ec.out_fd.value_or(KOSH_STDOUT));
@@ -594,7 +623,7 @@ fn EvilFiles::execute(
     if (toiletline::get_display_width(command.view()) > widths.command &&
         widths.command > 3)
     {
-      usize actual_cells = 0;
+      usize     actual_cells = 0;
       let const kept_byte_count =
           toiletline::get_byte_offset_at_or_before_display_cell(
               command.view(), widths.command - 3, actual_cells);
@@ -608,7 +637,7 @@ fn EvilFiles::execute(
             line_width_limit)
     {
       if (line_width_limit > used_width + 4) {
-        usize actual_cells = 0;
+        usize     actual_cells = 0;
         let const kept_byte_count =
             toiletline::get_byte_offset_at_or_before_display_cell(
                 name.view(), line_width_limit - used_width - 3, actual_cells);

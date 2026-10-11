@@ -11,8 +11,9 @@
 
 namespace koshka {
 
-fn parse_bitbucket_pipelines_format(const parser_format_input &input,
-                                    parsed_format_document &document) throws
+fn
+parse_bitbucket_pipelines_format(const parser_format_input &input,
+                                 parsed_format_document    &document) throws
     -> void
 {
   static const StringView KEYS[] = {"script", "after-script"};

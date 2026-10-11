@@ -19,16 +19,17 @@ template <class Value>
 struct static_string_entry
 {
   PackedStringKey key;
-  Value value;
+  Value           value;
 };
 
 struct static_string_prefilter
 {
-  u64 leading_byte_mask[4]{};
+  u64   leading_byte_mask[4]{};
   usize shortest_key_length{PackedStringKey::BYTE_CAPACITY};
   usize longest_key_length{0};
 
-  constexpr fn record(const PackedStringKey &key) wontthrow -> void
+  constexpr fn
+  record(const PackedStringKey &key) wontthrow -> void
   {
     let const key_length = key.packed_length();
     if (key_length < shortest_key_length) shortest_key_length = key_length;
@@ -38,8 +39,8 @@ struct static_string_prefilter
     leading_byte_mask[leading >> 6] |= 1ull << (leading & 63);
   }
 
-  hot mustuse pure constexpr fn might_contain(StringView text) const wontthrow
-      -> bool
+  hot mustuse pure constexpr fn
+  might_contain(StringView text) const wontthrow -> bool
   {
     if (text.length < shortest_key_length || text.length > longest_key_length) {
       return false;
@@ -58,7 +59,7 @@ class StaticStringMap
 {
 public:
   static_string_entry<Value> entries[Count]{};
-  static_string_prefilter prefilter{};
+  static_string_prefilter    prefilter{};
 
   consteval StaticStringMap(
       const static_string_entry<Value> (&table)[Count]) wontthrow
@@ -70,7 +71,7 @@ public:
 
     for (usize i = 1; i < Count; i++) {
       let const moved = entries[i];
-      usize slot = i;
+      usize     slot  = i;
 
       while (slot > 0 && moved.key < entries[slot - 1].key) {
         entries[slot] = entries[slot - 1];
@@ -81,12 +82,13 @@ public:
     }
   }
 
-  hot mustuse fn find(StringView text) const throws -> Maybe<Value>
+  hot mustuse fn
+  find(StringView text) const throws -> Maybe<Value>
   {
     if (!prefilter.might_contain(text)) return None;
     let const wanted = PackedStringKey::from_view(text);
 
-    usize low = 0;
+    usize low  = 0;
     usize high = Count;
 
     while (low < high) {
@@ -115,7 +117,7 @@ template <usize Count>
 class StaticStringSet
 {
 public:
-  PackedStringKey keys[Count]{};
+  PackedStringKey         keys[Count]{};
   static_string_prefilter prefilter{};
 
   consteval StaticStringSet(const PackedStringKey (&table)[Count]) wontthrow
@@ -127,7 +129,7 @@ public:
 
     for (usize i = 1; i < Count; i++) {
       let const moved = keys[i];
-      usize slot = i;
+      usize     slot  = i;
 
       while (slot > 0 && moved < keys[slot - 1]) {
         keys[slot] = keys[slot - 1];
@@ -138,12 +140,13 @@ public:
     }
   }
 
-  hot mustuse fn find_index(StringView text) const wontthrow -> Maybe<usize>
+  hot mustuse fn
+  find_index(StringView text) const wontthrow -> Maybe<usize>
   {
     if (!prefilter.might_contain(text)) return None;
     let const wanted = PackedStringKey::from_view(text);
 
-    usize low = 0;
+    usize low  = 0;
     usize high = Count;
 
     while (low < high) {
@@ -163,7 +166,8 @@ public:
     return None;
   }
 
-  hot mustuse fn contains(StringView text) const wontthrow -> bool
+  hot mustuse fn
+  contains(StringView text) const wontthrow -> bool
   {
     return find_index(text).has_value();
   }

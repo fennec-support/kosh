@@ -369,13 +369,13 @@ enum class diagnostic_id : u16
 
 struct diagnostic_definition
 {
-  const char *slug;
-  const char *summary;
-  const char *message_template;
+  const char         *slug;
+  const char         *summary;
+  const char         *message_template;
   Maybe<const char *> suggestion_template;
   Maybe<const char *> related_template;
-  Maybe<u16> shellcheck_code;
-  diagnostic_tier tier;
+  Maybe<u16>          shellcheck_code;
+  diagnostic_tier     tier;
   diagnostic_delivery delivery;
 };
 
@@ -394,8 +394,8 @@ enum class heredoc_miss_kind : u8
 
 struct heredoc_terminator_miss
 {
-  usize position;
-  usize length;
+  usize             position;
+  usize             length;
   heredoc_miss_kind kind;
 };
 
@@ -409,16 +409,16 @@ enum class shellcheck_selector_kind : u8
 
 struct shellcheck_selector
 {
-  shellcheck_selector_kind kind{shellcheck_selector_kind::All};
+  shellcheck_selector_kind  kind{shellcheck_selector_kind::All};
   shellcheck_directive_span slug{0, 0};
-  u16 code_start{0};
-  u16 code_end{0};
+  u16                       code_start{0};
+  u16                       code_end{0};
 };
 
 struct shellcheck_suppression
 {
-  usize start_position;
-  usize end_position;
+  usize                          start_position;
+  usize                          end_position;
   ArrayList<shellcheck_selector> selectors;
 };
 
@@ -430,36 +430,43 @@ enum class analysis_scope_definition_kind : u8
 
 struct analysis_scope_definition
 {
-  String name;
+  String                         name;
   analysis_scope_definition_kind kind;
 };
 
 extern const diagnostic_definition DIAGNOSTIC_DEFINITIONS[];
 
-pure fn get_diagnostic_definition(diagnostic_id id) wontthrow
+pure fn
+get_diagnostic_definition(diagnostic_id id) wontthrow
     -> const diagnostic_definition &;
-pure fn get_diagnostic_count() wontthrow -> usize;
-pure inline fn get_diagnostic_tier_name(diagnostic_tier tier) wontthrow
-    -> StringView
+pure fn
+get_diagnostic_count() wontthrow -> usize;
+pure inline fn
+get_diagnostic_tier_name(diagnostic_tier tier) wontthrow -> StringView
 {
   switch (tier) {
-  case diagnostic_tier::Strict: return "strict";
-  case diagnostic_tier::Lenient: return "lenient";
+  case diagnostic_tier::Strict:   return "strict";
+  case diagnostic_tier::Lenient:  return "lenient";
   case diagnostic_tier::Annoying: return "annoying";
   }
   unreachable("invalid diagnostic tier %d", ENUM(tier));
 }
-fn format_diagnostic_template(
-    const char *text_template,
+fn
+format_diagnostic_template(
+    const char                       *text_template,
     std::initializer_list<StringView> arguments = {}) throws -> String;
-fn append_diagnostic_code(String &message, Maybe<u16> shellcheck_code) throws
+fn
+append_diagnostic_code(String &message, Maybe<u16> shellcheck_code) throws
     -> void;
-fn collect_shellcheck_selectors(
-    StringView source, shellcheck_directive_span comment_span,
-    ArrayList<shellcheck_selector> &selectors) throws -> void;
-pure fn shellcheck_selector_disables(const shellcheck_selector &selector,
-                                     StringView source,
-                                     diagnostic_id id) wontthrow -> bool;
+fn
+collect_shellcheck_selectors(StringView                      source,
+                             shellcheck_directive_span       comment_span,
+                             ArrayList<shellcheck_selector> &selectors) throws
+    -> void;
+pure fn
+shellcheck_selector_disables(const shellcheck_selector &selector,
+                             StringView                 source,
+                             diagnostic_id              id) wontthrow -> bool;
 
 enum class command_name_id : u8
 {
@@ -542,34 +549,37 @@ enum class command_name_id : u8
   Xargs,
 };
 
-constexpr u32 COMMAND_GROUP_TEST = 1u << 0;
+constexpr u32 COMMAND_GROUP_TEST                = 1u << 0;
 constexpr u32 COMMAND_GROUP_DECLARATION_BUILTIN = 1u << 1;
-constexpr u32 COMMAND_GROUP_ASSIGNMENT_BUILTIN = 1u << 2;
-constexpr u32 COMMAND_GROUP_RUNTIME_DEFINER = 1u << 3;
-constexpr u32 COMMAND_GROUP_VARIABLE_PROBE = 1u << 4;
-constexpr u32 COMMAND_GROUP_VARIABLE_TARGET = 1u << 5;
-constexpr u32 COMMAND_GROUP_NON_STDIN_READER = 1u << 6;
+constexpr u32 COMMAND_GROUP_ASSIGNMENT_BUILTIN  = 1u << 2;
+constexpr u32 COMMAND_GROUP_RUNTIME_DEFINER     = 1u << 3;
+constexpr u32 COMMAND_GROUP_VARIABLE_PROBE      = 1u << 4;
+constexpr u32 COMMAND_GROUP_VARIABLE_TARGET     = 1u << 5;
+constexpr u32 COMMAND_GROUP_NON_STDIN_READER    = 1u << 6;
 constexpr u32 COMMAND_GROUP_ENVIRONMENT_NEUTRAL = 1u << 7;
-constexpr u32 COMMAND_GROUP_PATTERN_MATCHER = 1u << 8;
-constexpr u32 COMMAND_GROUP_HTML_ENTITY_TAIL = 1u << 9;
-constexpr u32 COMMAND_GROUP_NAME_AS_VALUE = 1u << 10;
+constexpr u32 COMMAND_GROUP_PATTERN_MATCHER     = 1u << 8;
+constexpr u32 COMMAND_GROUP_HTML_ENTITY_TAIL    = 1u << 9;
+constexpr u32 COMMAND_GROUP_NAME_AS_VALUE       = 1u << 10;
 
 struct analysis_command_info
 {
   command_name_id id;
-  u32 group_flags;
+  u32             group_flags;
 
-  mustuse pure fn is_in_group(u32 group) const wontthrow -> bool
+  mustuse pure fn
+  is_in_group(u32 group) const wontthrow -> bool
   {
     return (group_flags & group) != 0;
   }
 
-  mustuse pure static fn unknown() wontthrow -> analysis_command_info
+  mustuse pure static fn
+  unknown() wontthrow -> analysis_command_info
   {
     return analysis_command_info{command_name_id::Unknown, 0};
   }
 };
 
-fn get_analysis_command_info(StringView name) throws -> analysis_command_info;
+fn
+get_analysis_command_info(StringView name) throws -> analysis_command_info;
 
 } /* namespace koshka */

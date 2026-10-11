@@ -24,14 +24,20 @@ public:
   ~BumpArena();
 
   BumpArena(const BumpArena &) = delete;
-  BumpArena &operator=(const BumpArena &) = delete;
+  BumpArena &
+  operator=(const BumpArena &) = delete;
 
-  static fn owns_live_pointer(const opaque *pointer) wontthrow -> bool;
-  static fn find_live_owner(const opaque *pointer) wontthrow -> BumpArena *;
+  static fn
+  owns_live_pointer(const opaque *pointer) wontthrow -> bool;
+  static fn
+  find_live_owner(const opaque *pointer) wontthrow -> BumpArena *;
 
-  hot fn allocate(usize size, usize alignment) throws -> opaque *;
-  fn owns(const opaque *pointer) const wontthrow -> bool;
-  cold fn reset() wontthrow -> void;
+  hot fn
+  allocate(usize size, usize alignment) throws -> opaque *;
+  fn
+  owns(const opaque *pointer) const wontthrow -> bool;
+  cold fn
+  reset() wontthrow -> void;
 
   struct Mark
   {
@@ -47,19 +53,32 @@ public:
     u32 slot_incarnation{0};
   };
 
-  pure fn reset_generation() const wontthrow -> usize
+  pure fn
+  reset_generation() const wontthrow -> usize
   {
     return m_reset_generation;
   }
 
-  fn register_lifetime() throws -> LifetimeIdentity;
-  pure fn is_lifetime_valid(LifetimeIdentity identity) const wontthrow -> bool;
+  fn
+  register_lifetime() throws -> LifetimeIdentity;
+  pure fn
+  is_lifetime_valid(LifetimeIdentity identity) const wontthrow -> bool;
 
-  fn bytes_used() const wontthrow -> usize;
+  fn
+  bytes_used() const wontthrow -> usize;
 
-  fn block_count() const wontthrow -> usize { return m_blocks.count(); }
-  fn destructor_count() const wontthrow -> usize { return m_destructor_count; }
-  fn destructor_capacity() const wontthrow -> usize
+  fn
+  block_count() const wontthrow -> usize
+  {
+    return m_blocks.count();
+  }
+  fn
+  destructor_count() const wontthrow -> usize
+  {
+    return m_destructor_count;
+  }
+  fn
+  destructor_capacity() const wontthrow -> usize
   {
     usize total = 0;
 
@@ -68,7 +87,8 @@ public:
 
     return total;
   }
-  fn bytes_capacity() const wontthrow -> usize
+  fn
+  bytes_capacity() const wontthrow -> usize
   {
     usize total = 0;
 
@@ -78,15 +98,18 @@ public:
     return total;
   }
 
-  fn mark() const wontthrow -> Mark;
-  fn release(Mark saved) wontthrow -> void;
+  fn
+  mark() const wontthrow -> Mark;
+  fn
+  release(Mark saved) wontthrow -> void;
 
   template <class T, class... Args>
-  flatten alwaysinline fn create(Args &&...args) throws -> T *
+  flatten alwaysinline fn
+  create(Args &&...args) throws -> T *
   {
     static_assert(std::is_nothrow_destructible_v<T>);
-    let const saved = mark();
-    opaque *storage = nullptr;
+    let const saved   = mark();
+    opaque   *storage = nullptr;
     try {
       storage = allocate(sizeof(T), alignof(T));
     } catch (...) {
@@ -123,7 +146,7 @@ public:
 private:
   struct Block
   {
-    u8 *base;
+    u8   *base;
     usize size;
     usize used;
   };
@@ -131,8 +154,8 @@ private:
   struct LifetimeSlot
   {
     Mark payload_end;
-    u32 incarnation{0};
-    u32 next_free_position{UINT32_MAX};
+    u32  incarnation{0};
+    u32  next_free_position{UINT32_MAX};
   };
 
   static_assert(sizeof(usize) != 8 || sizeof(LifetimeSlot) == 32);
@@ -143,7 +166,7 @@ private:
     void (*run)(opaque *) noexcept;
   };
 
-  static constexpr usize DEFAULT_BLOCK_SIZE = 64 * 1024;
+  static constexpr usize DEFAULT_BLOCK_SIZE           = 64 * 1024;
   static constexpr usize FIRST_DESTRUCTOR_CHUNK_COUNT = 32;
   static constexpr usize DESTRUCTORS_PER_CHUNK =
       DEFAULT_BLOCK_SIZE / sizeof(PendingDestructor);
@@ -158,15 +181,18 @@ private:
       FIRST_DESTRUCTOR_CHUNK_COUNT * ((usize{1} << DOUBLING_CHUNK_COUNT) - 1);
   static constexpr usize KEPT_CHUNK_COUNT_ON_RESET = 3;
 
-  static fn destructor_chunk_capacity(usize chunk_index) wontthrow -> usize
+  static fn
+  destructor_chunk_capacity(usize chunk_index) wontthrow -> usize
   {
     return chunk_index >= DOUBLING_CHUNK_COUNT
                ? DESTRUCTORS_PER_CHUNK
                : FIRST_DESTRUCTOR_CHUNK_COUNT << chunk_index;
   }
 
-  static fn locate_destructor(usize position, usize &chunk_index,
-                              usize &position_in_chunk) wontthrow -> void
+  static fn
+  locate_destructor(usize  position,
+                    usize &chunk_index,
+                    usize &position_in_chunk) wontthrow -> void
   {
     if (position >= DOUBLED_DESTRUCTOR_COUNT) {
       let const later_position = position - DOUBLED_DESTRUCTOR_COUNT;
@@ -177,36 +203,43 @@ private:
       return;
     }
 
-    let const scaled = position / FIRST_DESTRUCTOR_CHUNK_COUNT + 1;
-    chunk_index = static_cast<usize>(63 - __builtin_clzll(scaled));
+    let const scaled  = position / FIRST_DESTRUCTOR_CHUNK_COUNT + 1;
+    chunk_index       = static_cast<usize>(63 - __builtin_clzll(scaled));
     position_in_chunk = position - FIRST_DESTRUCTOR_CHUNK_COUNT *
                                        ((usize{1} << chunk_index) - 1);
   }
 
-  ArrayList<Block> m_blocks{heap_allocator()};
-  usize m_current_index{0};
-  uintptr m_lowest_address{UINTPTR_MAX};
-  uintptr m_highest_address{0};
+  ArrayList<Block>               m_blocks{heap_allocator()};
+  usize                          m_current_index{0};
+  uintptr                        m_lowest_address{UINTPTR_MAX};
+  uintptr                        m_highest_address{0};
   ArrayList<PendingDestructor *> m_destructor_chunks{heap_allocator()};
-  ArrayList<LifetimeSlot> m_lifetime_slots{heap_allocator()};
-  ArrayList<u32> m_active_lifetime_slots{heap_allocator()};
-  usize m_destructor_count{0};
-  usize m_reset_generation{0};
-  u32 m_arena_incarnation{0};
-  u32 m_first_free_lifetime_slot{UINT32_MAX};
+  ArrayList<LifetimeSlot>        m_lifetime_slots{heap_allocator()};
+  ArrayList<u32>                 m_active_lifetime_slots{heap_allocator()};
+  usize                          m_destructor_count{0};
+  usize                          m_reset_generation{0};
+  u32                            m_arena_incarnation{0};
+  u32                            m_first_free_lifetime_slot{UINT32_MAX};
 
-  fn add_block(usize minimum_byte_count, usize preferred_byte_count) throws
+  fn
+  add_block(usize minimum_byte_count, usize preferred_byte_count) throws
       -> void;
-  fn push_destructor(PendingDestructor pending) throws -> void;
-  fn run_destructors_down_to(usize first) wontthrow -> void;
-  fn release_destructor_chunks(usize kept_chunk_count) wontthrow -> void;
-  fn register_live() wontthrow -> void;
-  fn unregister_live() wontthrow -> void;
+  fn
+  push_destructor(PendingDestructor pending) throws -> void;
+  fn
+  run_destructors_down_to(usize first) wontthrow -> void;
+  fn
+  release_destructor_chunks(usize kept_chunk_count) wontthrow -> void;
+  fn
+  register_live() wontthrow -> void;
+  fn
+  unregister_live() wontthrow -> void;
 
   BumpArena *m_previous_live{nullptr};
   BumpArena *m_next_live{nullptr};
 };
 
-fn is_arena_pointer(const opaque *pointer) wontthrow -> bool;
+fn
+is_arena_pointer(const opaque *pointer) wontthrow -> bool;
 
 } /* namespace koshka */

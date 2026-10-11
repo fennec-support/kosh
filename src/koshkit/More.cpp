@@ -30,9 +30,11 @@ REGISTER_KOSHKIT_UTIL_FLAGS(More);
 
 namespace koshka::koshkit {
 
-fn More::execute(const ExecContext &ec, EvalContext &cxt,
-                 const ArrayList<String> &args,
-                 const ArrayList<SourceLocation> &arg_locations) const throws
+fn
+More::execute(const ExecContext               &ec,
+              EvalContext                     &cxt,
+              const ArrayList<String>         &args,
+              const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
@@ -41,7 +43,7 @@ fn More::execute(const ExecContext &ec, EvalContext &cxt,
     return report_usage_error(ec, cxt, args[0].view());
   }
 
-  let tagged_source = String{cxt.scratch_allocator()};
+  let   tagged_source      = String{cxt.scratch_allocator()};
   usize tagged_line_number = 1;
   if (FLAG_MORE_TAG.is_set()) {
     if (!operands.is_empty())
@@ -59,7 +61,7 @@ fn More::execute(const ExecContext &ec, EvalContext &cxt,
       let const remaining = tags->view().substring(position);
       let const line_length =
           remaining.find_character('\n').value_or(remaining.length);
-      let const line = remaining.substring_of_length(0, line_length);
+      let const line      = remaining.substring_of_length(0, line_length);
       let const first_tab = line.find_character('\t');
       if (first_tab.has_value() &&
           line.substring_of_length(0, *first_tab) == FLAG_MORE_TAG.value())
@@ -110,8 +112,8 @@ fn More::execute(const ExecContext &ec, EvalContext &cxt,
         status = 1;
         continue;
       }
-      usize output_start = 0;
-      let line_number = usize{1};
+      usize     output_start = 0;
+      let       line_number  = usize{1};
       let const requested_line_number =
           FLAG_MORE_TAG.is_set() ? tagged_line_number : usize{1};
 
@@ -158,9 +160,9 @@ fn More::execute(const ExecContext &ec, EvalContext &cxt,
         ec.print_to_stdout(selected);
         continue;
       }
-      let squeezed = String{cxt.scratch_allocator()};
-      bool was_blank = false;
-      usize position = 0;
+      let   squeezed  = String{cxt.scratch_allocator()};
+      bool  was_blank = false;
+      usize position  = 0;
 
       while (position < selected.length) {
         let const remaining = selected.substring(position);

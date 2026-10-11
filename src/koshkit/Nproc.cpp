@@ -17,16 +17,22 @@ KOSHKIT_UTIL_DECL(
     "The nproc utility prints the number of available logical processors.");
 
 FLAG(NPROC_ALL, Bool, '\0', "all", "Print the configured processor count.");
-FLAG(NPROC_IGNORE, String, '\0', "ignore",
+FLAG(NPROC_IGNORE,
+     String,
+     '\0',
+     "ignore",
      "Exclude up to this many processors from the result.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Nproc);
 
 namespace koshka::koshkit {
 
-cold fn Nproc::execute(
-    const ExecContext &ec, EvalContext &cxt, const ArrayList<String> &args,
-    const ArrayList<SourceLocation> &arg_locations) const throws -> i32
+cold fn
+Nproc::execute(const ExecContext               &ec,
+               EvalContext                     &cxt,
+               const ArrayList<String>         &args,
+               const ArrayList<SourceLocation> &arg_locations) const throws
+    -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
@@ -53,7 +59,7 @@ cold fn Nproc::execute(
     ignored_count = parsed.value();
   }
 
-  let const counts = os::get_processor_counts();
+  let const counts          = os::get_processor_counts();
   let const processor_count = FLAG_NPROC_ALL.is_enabled()
                                   ? counts.configured_count
                                   : counts.online_count;

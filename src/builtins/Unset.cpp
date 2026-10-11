@@ -20,7 +20,10 @@ HELP_DESCRIPTION_DECL(
 
 FLAG(UNSET_FUNCTION, Bool, 'f', "", "Remove each named shell function.");
 FLAG(UNSET_VARIABLE, Bool, 'v', "", "Remove variables, the default.");
-FLAG(UNSET_NAMEREF, Bool, 'n', "",
+FLAG(UNSET_NAMEREF,
+     Bool,
+     'n',
+     "",
      "Remove a name reference itself rather than the variable it selects.");
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 
@@ -28,7 +31,8 @@ REGISTER_BUILTIN_FLAGS(Unset);
 
 namespace koshka {
 
-fn Unset::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
+fn
+Unset::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let const names = PARSE_BUILTIN_ARGS(ec);
 
@@ -37,14 +41,14 @@ fn Unset::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   if (FLAG_HELP.is_enabled()) SHOW_BUILTIN_HELP_AND_RETURN(ec);
 
   let const should_unset_function = FLAG_UNSET_FUNCTION.is_enabled();
-  let has_error = false;
-  let const do_try_unset = [&](usize index, auto &&attempt) -> void {
+  let       has_error             = false;
+  let const do_try_unset          = [&](usize index, auto &&attempt) -> void {
     try {
       attempt();
     } catch (const Error &error) {
       LOG(All, "unset swallowed an error: %s", error.message().c_str());
       report_soft_builtin_error(ec, cxt, ec.arg_location_at(index),
-                                error.message().view());
+                                         error.message().view());
       has_error = true;
     }
   };
@@ -90,7 +94,7 @@ fn Unset::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                bracket.has_value() && name.view()[name.count() - 1] == ']')
     {
       let const array_name = name.view().substring_of_length(0, *bracket);
-      let const subscript = name.view().substring_of_length(
+      let const subscript  = name.view().substring_of_length(
           *bracket + 1, name.count() - *bracket - 2);
       try {
         cxt.unset_array_element(array_name, subscript);

@@ -33,25 +33,29 @@ enum class ownership_symlink_mode : u8
   NoFollow,
 };
 
-fn resolve_user_id(StringView text) throws -> Maybe<u32>;
-fn resolve_group_id(StringView text) throws -> Maybe<u32>;
+fn
+resolve_user_id(StringView text) throws -> Maybe<u32>;
+fn
+resolve_group_id(StringView text) throws -> Maybe<u32>;
 
 struct ownership_request
 {
-  i64 owner_id;
-  i64 group_id;
-  bool is_recursive;
-  bool is_one_file_system;
-  bool should_change_symlink;
+  i64   owner_id;
+  i64   group_id;
+  bool  is_recursive;
+  bool  is_one_file_system;
+  bool  should_change_symlink;
   usize command_line_follow_position;
   usize follow_position;
   usize physical_position;
 };
 
-fn change_operands_ownership(const ExecContext &ec, EvalContext &cxt,
-                             StringView utility_name,
-                             const ArrayList<String> &operands,
-                             const ownership_request &request) throws -> i32;
+fn
+change_operands_ownership(const ExecContext       &ec,
+                          EvalContext             &cxt,
+                          StringView               utility_name,
+                          const ArrayList<String> &operands,
+                          const ownership_request &request) throws -> i32;
 
 } /* namespace utils */
 

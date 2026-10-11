@@ -16,36 +16,56 @@
 KOSHKIT_UTIL_DECL("[-hRx] [-H|-L|-P] owner[:group] file ...",
                   "The chown utility changes file owner and group.");
 
-FLAG(CHOWN_NO_DEREFERENCE, Bool, 'h', "no-dereference",
+FLAG(CHOWN_NO_DEREFERENCE,
+     Bool,
+     'h',
+     "no-dereference",
      "Change a symbolic link instead of its target.");
-FLAG(CHOWN_RECURSIVE, Bool, 'R', "recursive",
+FLAG(CHOWN_RECURSIVE,
+     Bool,
+     'R',
+     "recursive",
      "Change directories and their contents recursively.");
-FLAG(CHOWN_COMMAND_LINE_FOLLOW, Bool, 'H', "dereference-arguments",
+FLAG(CHOWN_COMMAND_LINE_FOLLOW,
+     Bool,
+     'H',
+     "dereference-arguments",
      "Follow symbolic links specified on the command line during recursion.");
-FLAG(CHOWN_FOLLOW, Bool, 'L', "dereference",
+FLAG(CHOWN_FOLLOW,
+     Bool,
+     'L',
+     "dereference",
      "Follow every symbolic link during recursion.");
-FLAG(CHOWN_PHYSICAL, Bool, 'P', "physical",
+FLAG(CHOWN_PHYSICAL,
+     Bool,
+     'P',
+     "physical",
      "Do not follow symbolic links during recursion.");
-FLAG(CHOWN_ONE_FILE_SYSTEM, Bool, 'x', "one-file-system",
+FLAG(CHOWN_ONE_FILE_SYSTEM,
+     Bool,
+     'x',
+     "one-file-system",
      "Do not descend into a directory on another file system.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Chown);
 
 namespace koshka::koshkit {
 
-fn Chown::execute(const ExecContext &ec, EvalContext &cxt,
-                  const ArrayList<String> &args,
-                  const ArrayList<SourceLocation> &arg_locations) const throws
+fn
+Chown::execute(const ExecContext               &ec,
+               EvalContext                     &cxt,
+               const ArrayList<String>         &args,
+               const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (operands.count() < 2) return report_usage_error(ec, cxt, args[0].view());
   let const specification = operands[0].view();
-  let const colon = specification.find_character(':');
-  let const owner_text = colon.has_value()
-                             ? specification.substring_of_length(0, *colon)
-                             : specification;
+  let const colon         = specification.find_character(':');
+  let const owner_text    = colon.has_value()
+                                ? specification.substring_of_length(0, *colon)
+                                : specification;
   let const group_text =
       colon.has_value() ? specification.substring(*colon + 1) : StringView{};
   if (owner_text.is_empty() && !colon.has_value()) {

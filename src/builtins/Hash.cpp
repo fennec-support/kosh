@@ -29,7 +29,8 @@ REGISTER_BUILTIN_FLAGS(Hash);
 
 namespace koshka {
 
-fn Hash::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
+fn
+Hash::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let const args = PARSE_BUILTIN_ARGS(ec);
 
@@ -52,7 +53,7 @@ fn Hash::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     }
 
     i32 target_status = 0;
-    let output = String{cxt.scratch_allocator()};
+    let output        = String{cxt.scratch_allocator()};
 
     for (usize i = 1; i < args.count(); i++) {
       let const *remembered =

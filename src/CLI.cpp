@@ -22,144 +22,227 @@
 namespace koshka {
 
 constexpr usize HELP_WRAP_WIDTH = 80;
-constexpr usize HELP_INDENT = 2;
+constexpr usize HELP_INDENT     = 2;
 
-Flag::Flag(Flag::Kind kind, char short_name, StringView long_name,
-           flag_section section, StringView description)
+Flag::Flag(Flag::Kind   kind,
+           char         short_name,
+           StringView   long_name,
+           flag_section section,
+           StringView   description)
     : m_kind(kind), m_short_name(short_name), m_section(section),
       m_long_name(long_name), m_description(description)
 {}
 
-pure fn Flag::kind() const wontthrow -> Flag::Kind { return m_kind; }
+pure fn
+Flag::kind() const wontthrow -> Flag::Kind
+{
+  return m_kind;
+}
 
-fn Flag::set_position(u32 position) throws -> void { m_position = position; }
+fn
+Flag::set_position(u32 position) throws -> void
+{
+  m_position = position;
+}
 
-pure fn Flag::position() const wontthrow -> usize { return m_position; }
+pure fn
+Flag::position() const wontthrow -> usize
+{
+  return m_position;
+}
 
-pure fn Flag::value_location() const wontthrow -> SourceLocation
+pure fn
+Flag::value_location() const wontthrow -> SourceLocation
 {
   return m_value_location;
 }
 
-fn Flag::set_value_location(SourceLocation location) wontthrow -> void
+fn
+Flag::set_value_location(SourceLocation location) wontthrow -> void
 {
   m_value_location = steal(location);
 }
 
-pure fn Flag::short_name() const wontthrow -> char { return m_short_name; }
+pure fn
+Flag::short_name() const wontthrow -> char
+{
+  return m_short_name;
+}
 
-pure fn Flag::long_name() const wontthrow -> StringView { return m_long_name; }
+pure fn
+Flag::long_name() const wontthrow -> StringView
+{
+  return m_long_name;
+}
 
-pure fn Flag::section() const wontthrow -> flag_section { return m_section; }
+pure fn
+Flag::section() const wontthrow -> flag_section
+{
+  return m_section;
+}
 
-pure fn Flag::description() const wontthrow -> StringView
+pure fn
+Flag::description() const wontthrow -> StringView
 {
   return m_description;
 }
 
-FlagBool::FlagBool(char short_name, StringView long_name, flag_section section,
-                   StringView description)
+FlagBool::FlagBool(char         short_name,
+                   StringView   long_name,
+                   flag_section section,
+                   StringView   description)
     : Flag(Flag::Kind::Bool, short_name, long_name, section, description)
 {}
 
-FlagBool::FlagBool(FlagList &flags, char short_name, StringView long_name,
-                   flag_section section, StringView description)
+FlagBool::FlagBool(FlagList    &flags,
+                   char         short_name,
+                   StringView   long_name,
+                   flag_section section,
+                   StringView   description)
     : FlagBool(short_name, long_name, section, description)
 {
   flags.push(this);
 }
 
-fn FlagBool::toggle() throws -> void { m_is_enabled = !m_is_enabled; }
-
-fn FlagBool::enable() wontthrow -> void { m_is_enabled = true; }
-
-fn FlagBool::disable() wontthrow -> void { m_is_enabled = false; }
-
-pure fn FlagBool::is_enabled() const wontthrow -> bool { return m_is_enabled; }
-
-fn FlagBool::reset() throws -> void
+fn
+FlagBool::toggle() throws -> void
 {
-  m_position = 0;
-  m_value_location = {};
+  m_is_enabled = !m_is_enabled;
+}
+
+fn
+FlagBool::enable() wontthrow -> void
+{
+  m_is_enabled = true;
+}
+
+fn
+FlagBool::disable() wontthrow -> void
+{
   m_is_enabled = false;
 }
 
-FlagRepeatedBool::FlagRepeatedBool(char short_name, StringView long_name,
-                                   flag_section section, StringView description)
-    : Flag(Flag::Kind::RepeatedBool, short_name, long_name, section,
-           description)
+pure fn
+FlagBool::is_enabled() const wontthrow -> bool
+{
+  return m_is_enabled;
+}
+
+fn
+FlagBool::reset() throws -> void
+{
+  m_position       = 0;
+  m_value_location = {};
+  m_is_enabled     = false;
+}
+
+FlagRepeatedBool::FlagRepeatedBool(char         short_name,
+                                   StringView   long_name,
+                                   flag_section section,
+                                   StringView   description)
+    : Flag(
+          Flag::Kind::RepeatedBool, short_name, long_name, section, description)
 {
   ASSERT(long_name.is_empty());
 }
 
-FlagRepeatedBool::FlagRepeatedBool(FlagList &flags, char short_name,
-                                   StringView long_name, flag_section section,
-                                   StringView description)
+FlagRepeatedBool::FlagRepeatedBool(FlagList    &flags,
+                                   char         short_name,
+                                   StringView   long_name,
+                                   flag_section section,
+                                   StringView   description)
     : FlagRepeatedBool(short_name, long_name, section, description)
 {
   flags.push(this);
 }
 
-fn FlagRepeatedBool::increment() throws -> void { m_count++; }
-
-pure fn FlagRepeatedBool::count() const wontthrow -> usize { return m_count; }
-
-fn FlagRepeatedBool::reset() throws -> void
+fn
+FlagRepeatedBool::increment() throws -> void
 {
-  m_position = 0;
-  m_value_location = {};
-  m_count = 0;
+  m_count++;
 }
 
-FlagString::FlagString(char short_name, StringView long_name,
-                       flag_section section, StringView description)
+pure fn
+FlagRepeatedBool::count() const wontthrow -> usize
+{
+  return m_count;
+}
+
+fn
+FlagRepeatedBool::reset() throws -> void
+{
+  m_position       = 0;
+  m_value_location = {};
+  m_count          = 0;
+}
+
+FlagString::FlagString(char         short_name,
+                       StringView   long_name,
+                       flag_section section,
+                       StringView   description)
     : Flag(Flag::Kind::String, short_name, long_name, section, description)
 {}
 
-FlagString::FlagString(FlagList &flags, char short_name, StringView long_name,
-                       flag_section section, StringView description)
+FlagString::FlagString(FlagList    &flags,
+                       char         short_name,
+                       StringView   long_name,
+                       flag_section section,
+                       StringView   description)
     : FlagString(short_name, long_name, section, description)
 {
   flags.push(this);
 }
 
-fn FlagString::set(StringView v) throws -> void
+fn
+FlagString::set(StringView v) throws -> void
 {
-  m_value = v;
+  m_value  = v;
   m_is_set = true;
 }
 
-pure fn FlagString::is_set() const wontthrow -> bool { return m_is_set; }
+pure fn
+FlagString::is_set() const wontthrow -> bool
+{
+  return m_is_set;
+}
 
-pure fn FlagString::value() const wontthrow -> StringView
+pure fn
+FlagString::value() const wontthrow -> StringView
 {
   return m_value.view();
 }
 
-fn FlagString::reset() throws -> void
+fn
+FlagString::reset() throws -> void
 {
-  m_position = 0;
+  m_position       = 0;
   m_value_location = {};
   m_value.clear();
   m_is_set = false;
 }
 
-FlagManyStrings::FlagManyStrings(char short_name, StringView long_name,
-                                 flag_section section, StringView description)
+FlagManyStrings::FlagManyStrings(char         short_name,
+                                 StringView   long_name,
+                                 flag_section section,
+                                 StringView   description)
     : Flag(Flag::Kind::ManyStrings, short_name, long_name, section, description)
 {}
 
-FlagManyStrings::FlagManyStrings(FlagList &flags, char short_name,
-                                 StringView long_name, flag_section section,
-                                 StringView description)
+FlagManyStrings::FlagManyStrings(FlagList    &flags,
+                                 char         short_name,
+                                 StringView   long_name,
+                                 flag_section section,
+                                 StringView   description)
     : FlagManyStrings(short_name, long_name, section, description)
 {
   flags.push(this);
 }
 
-fn FlagManyStrings::append(StringView v, usize position,
-                           SourceLocation location,
-                           bool was_given_after_plus) throws -> void
+fn
+FlagManyStrings::append(StringView     v,
+                        usize          position,
+                        SourceLocation location,
+                        bool           was_given_after_plus) throws -> void
 {
   m_values.push_managed(v);
   m_positions.push(position);
@@ -167,59 +250,68 @@ fn FlagManyStrings::append(StringView v, usize position,
   m_plus_markers.push(was_given_after_plus);
 }
 
-pure fn FlagManyStrings::is_empty() const wontthrow -> bool
+pure fn
+FlagManyStrings::is_empty() const wontthrow -> bool
 {
   return m_values.is_empty();
 }
 
-pure fn FlagManyStrings::count() const wontthrow -> usize
+pure fn
+FlagManyStrings::count() const wontthrow -> usize
 {
   return m_values.count();
 }
 
-pure fn FlagManyStrings::get(usize i) const wontthrow -> StringView
+pure fn
+FlagManyStrings::get(usize i) const wontthrow -> StringView
 {
   ASSERT(i < m_values.count());
 
   return m_values[i].view();
 }
 
-pure fn FlagManyStrings::get_position(usize i) const wontthrow -> usize
+pure fn
+FlagManyStrings::get_position(usize i) const wontthrow -> usize
 {
   ASSERT(i < m_positions.count());
 
   return m_positions[i];
 }
 
-pure fn FlagManyStrings::get_location(usize i) const wontthrow -> SourceLocation
+pure fn
+FlagManyStrings::get_location(usize i) const wontthrow -> SourceLocation
 {
   ASSERT(i < m_locations.count());
 
   return m_locations[i];
 }
 
-pure fn FlagManyStrings::was_given_after_plus(usize i) const wontthrow -> bool
+pure fn
+FlagManyStrings::was_given_after_plus(usize i) const wontthrow -> bool
 {
   ASSERT(i < m_plus_markers.count());
 
   return m_plus_markers[i];
 }
 
-fn FlagManyStrings::take_next() wontthrow -> String
+fn
+FlagManyStrings::take_next() wontthrow -> String
 {
   ASSERT(m_value_position < m_values.count());
 
   return steal(m_values[m_value_position++]);
 }
 
-pure fn FlagManyStrings::at_end() const wontthrow -> bool
+pure fn
+FlagManyStrings::at_end() const wontthrow -> bool
 {
   return m_value_position == count();
 }
 
-fn FlagManyStrings::reset() throws -> void
+fn
+FlagManyStrings::reset() throws -> void
 {
-  m_position = 0;
+  m_position       = 0;
   m_value_location = {};
   m_values.clear();
   m_positions.clear();
@@ -228,80 +320,101 @@ fn FlagManyStrings::reset() throws -> void
   m_value_position = 0;
 }
 
-FlagOptionalValue::FlagOptionalValue(char short_name, StringView long_name,
-                                     flag_section section,
-                                     StringView description,
+FlagOptionalValue::FlagOptionalValue(char           short_name,
+                                     StringView     long_name,
+                                     flag_section   section,
+                                     StringView     description,
                                      value_acceptor should_accept_value,
-                                     StringView value_name)
-    : Flag(Flag::Kind::OptionalValue, short_name, long_name, section,
+                                     StringView     value_name)
+    : Flag(Flag::Kind::OptionalValue,
+           short_name,
+           long_name,
+           section,
            description),
       m_should_accept_value(should_accept_value), m_value_name(value_name)
 {}
 
-FlagOptionalValue::FlagOptionalValue(FlagList &flags, char short_name,
-                                     StringView long_name, flag_section section,
-                                     StringView description,
+FlagOptionalValue::FlagOptionalValue(FlagList      &flags,
+                                     char           short_name,
+                                     StringView     long_name,
+                                     flag_section   section,
+                                     StringView     description,
                                      value_acceptor should_accept_value,
-                                     StringView value_name)
-    : FlagOptionalValue(short_name, long_name, section, description,
-                        should_accept_value, value_name)
+                                     StringView     value_name)
+    : FlagOptionalValue(short_name,
+                        long_name,
+                        section,
+                        description,
+                        should_accept_value,
+                        value_name)
 {
   flags.push(this);
 }
 
-fn FlagOptionalValue::enable() wontthrow -> void
+fn
+FlagOptionalValue::enable() wontthrow -> void
 {
   m_value.clear();
-  m_has_value = false;
+  m_has_value  = false;
   m_is_enabled = true;
 }
 
-fn FlagOptionalValue::set(StringView value) throws -> void
+fn
+FlagOptionalValue::set(StringView value) throws -> void
 {
-  m_value = value;
-  m_has_value = true;
+  m_value      = value;
+  m_has_value  = true;
   m_is_enabled = true;
 }
 
-pure fn FlagOptionalValue::is_enabled() const wontthrow -> bool
+pure fn
+FlagOptionalValue::is_enabled() const wontthrow -> bool
 {
   return m_is_enabled;
 }
 
-pure fn FlagOptionalValue::has_value() const wontthrow -> bool
+pure fn
+FlagOptionalValue::has_value() const wontthrow -> bool
 {
   return m_has_value;
 }
 
-pure fn FlagOptionalValue::value() const wontthrow -> StringView
+pure fn
+FlagOptionalValue::value() const wontthrow -> StringView
 {
   return m_value.view();
 }
 
-pure fn FlagOptionalValue::value_name() const wontthrow -> StringView
+pure fn
+FlagOptionalValue::value_name() const wontthrow -> StringView
 {
   return m_value_name;
 }
 
-pure fn FlagOptionalValue::should_accept_value(StringView value) const wontthrow
-    -> bool
+pure fn
+FlagOptionalValue::should_accept_value(StringView value) const wontthrow -> bool
 {
   return m_should_accept_value(value);
 }
 
-fn FlagOptionalValue::reset() throws -> void
+fn
+FlagOptionalValue::reset() throws -> void
 {
-  m_position = 0;
+  m_position       = 0;
   m_value_location = {};
   m_value.clear();
   m_is_enabled = false;
-  m_has_value = false;
+  m_has_value  = false;
 }
 
-static fn find_flag(const FlagList &flags, const char *flag_start, bool is_long,
-                    Flag **result_flag, const char **value_start) throws -> bool
+static fn
+find_flag(const FlagList &flags,
+          const char     *flag_start,
+          bool            is_long,
+          Flag          **result_flag,
+          const char    **value_start) throws -> bool
 {
-  usize longest_length = 0;
+  usize     longest_length    = 0;
   let const flag_start_length = std::strlen(flag_start);
 
   *value_start = nullptr;
@@ -329,8 +442,8 @@ static fn find_flag(const FlagList &flags, const char *flag_start, bool is_long,
                 0 &&
             (after_name == '\0' || after_name == '='))
         {
-          *result_flag = flags[i];
-          *value_start = flag_start + flag_length;
+          *result_flag   = flags[i];
+          *value_start   = flag_start + flag_length;
           longest_length = flag_length;
         }
       }
@@ -340,21 +453,24 @@ static fn find_flag(const FlagList &flags, const char *flag_start, bool is_long,
   return longest_length > 0;
 }
 
-fn parse_flags_vec(const FlagList &flags, const ArrayList<String> &args,
-                   usize base_position, const Flag *operand_value_flag,
-                   const ArrayList<SourceLocation> *arg_locations,
-                   ArrayList<SourceLocation> *operand_locations,
-                   StringView program_name, flag_parse_options parse_options,
-                   Allocator allocator,
-                   ArrayList<usize> *operand_indices) throws
-    -> ArrayList<String>
+fn
+parse_flags_vec(const FlagList                  &flags,
+                const ArrayList<String>         &args,
+                usize                            base_position,
+                const Flag                      *operand_value_flag,
+                const ArrayList<SourceLocation> *arg_locations,
+                ArrayList<SourceLocation>       *operand_locations,
+                StringView                       program_name,
+                flag_parse_options               parse_options,
+                Allocator                        allocator,
+                ArrayList<usize> *operand_indices) throws -> ArrayList<String>
 {
   reset_flags(flags);
 
   constexpr usize local_argument_capacity = 128;
-  const char *local_arguments[local_argument_capacity];
-  let overflow_arguments = ArrayList<const char *>{heap_allocator()};
-  const char **argument_data = local_arguments;
+  const char     *local_arguments[local_argument_capacity];
+  let          overflow_arguments = ArrayList<const char *>{heap_allocator()};
+  const char **argument_data      = local_arguments;
 
   if (args.count() > local_argument_capacity) {
     overflow_arguments.reserve(args.count());
@@ -379,7 +495,8 @@ fn parse_flags_vec(const FlagList &flags, const ArrayList<String> &args,
   }
 }
 
-static fn flag_name(const Flag *f, bool is_long) throws -> String
+static fn
+flag_name(const Flag *f, bool is_long) throws -> String
 {
   let name = String{heap_allocator()};
   name += "-";
@@ -393,20 +510,21 @@ static fn flag_name(const Flag *f, bool is_long) throws -> String
   return name;
 }
 
-static fn prefixed_message(StringView program_name, StringView message) throws
-    -> String
+static fn
+prefixed_message(StringView program_name, StringView message) throws -> String
 {
   if (program_name.is_empty()) return String{heap_allocator(), message};
 
   return program_name + ": " + message;
 }
 
-static fn suggest_long_flag(const FlagList &flags, StringView typed_name) throws
+static fn
+suggest_long_flag(const FlagList &flags, StringView typed_name) throws
     -> Maybe<String>
 {
   if (typed_name.is_empty()) return None;
 
-  let suggestion = utils::NameSuggestion{typed_name};
+  let           suggestion = utils::NameSuggestion{typed_name};
   Maybe<String> qualified_match{};
 
   for (let const *flag : flags) {
@@ -430,9 +548,12 @@ static fn suggest_long_flag(const FlagList &flags, StringView typed_name) throws
   return qualified_match;
 }
 
-static fn argument_location(
-    const char *const *argv, usize argument_index, usize base_position,
-    const ArrayList<SourceLocation> *arg_locations) throws -> SourceLocation
+static fn
+argument_location(const char *const               *argv,
+                  usize                            argument_index,
+                  usize                            base_position,
+                  const ArrayList<SourceLocation> *arg_locations) throws
+    -> SourceLocation
 {
   if (arg_locations != nullptr && argument_index < arg_locations->count()) {
     return (*arg_locations)[argument_index];
@@ -447,10 +568,13 @@ static fn argument_location(
                         std::strlen(argv[argument_index])};
 }
 
-static fn attached_flag_value_location(
-    const char *const *argv, usize argument_index, const char *value,
-    usize base_position, const ArrayList<SourceLocation> *arg_locations) throws
-    -> SourceLocation
+static fn
+attached_flag_value_location(
+    const char *const               *argv,
+    usize                            argument_index,
+    const char                      *value,
+    usize                            base_position,
+    const ArrayList<SourceLocation> *arg_locations) throws -> SourceLocation
 {
   let location =
       argument_location(argv, argument_index, base_position, arg_locations);
@@ -462,10 +586,14 @@ static fn attached_flag_value_location(
   return location;
 }
 
-static fn boolean_flag_location(
-    const char *const *argv, usize argument_index, const char *flag_offset,
-    bool is_long, usize base_position,
-    const ArrayList<SourceLocation> *arg_locations) throws -> SourceLocation
+static fn
+boolean_flag_location(const char *const               *argv,
+                      usize                            argument_index,
+                      const char                      *flag_offset,
+                      bool                             is_long,
+                      usize                            base_position,
+                      const ArrayList<SourceLocation> *arg_locations) throws
+    -> SourceLocation
 {
   let location =
       argument_location(argv, argument_index, base_position, arg_locations);
@@ -478,13 +606,18 @@ static fn boolean_flag_location(
   return location;
 }
 
-fn parse_flags(const FlagList &flags, int argc, const char *const *argv,
-               usize base_position, const Flag *operand_value_flag,
-               const ArrayList<SourceLocation> *arg_locations,
-               ArrayList<SourceLocation> *operand_locations,
-               StringView program_name, flag_parse_options parse_options,
-               Allocator allocator, ArrayList<usize> *operand_indices) throws
-    -> ArrayList<String>
+fn
+parse_flags(const FlagList                  &flags,
+            int                              argc,
+            const char *const               *argv,
+            usize                            base_position,
+            const Flag                      *operand_value_flag,
+            const ArrayList<SourceLocation> *arg_locations,
+            ArrayList<SourceLocation>       *operand_locations,
+            StringView                       program_name,
+            flag_parse_options               parse_options,
+            Allocator                        allocator,
+            ArrayList<usize> *operand_indices) throws -> ArrayList<String>
 {
   ASSERT(argc >= 0);
 
@@ -495,7 +628,7 @@ fn parse_flags(const FlagList &flags, int argc, const char *const *argv,
   LOG(Debug, "parsing %d command line arguments", argc);
 
   u32 position = 0;
-  let args = ArrayList<String>{allocator};
+  let args     = ArrayList<String>{allocator};
 
   let const do_record_operand =
       [argv, base_position, arg_locations, operand_locations,
@@ -508,10 +641,10 @@ fn parse_flags(const FlagList &flags, int argc, const char *const *argv,
   };
 
   Flag *previous_flag{};
-  bool should_take_next_argument_as_value = false;
-  bool was_previous_flag_long = false;
-  bool was_previous_flag_after_plus = false;
-  bool should_ignore_rest = false;
+  bool  should_take_next_argument_as_value = false;
+  bool  was_previous_flag_long             = false;
+  bool  was_previous_flag_after_plus       = false;
+  bool  should_ignore_rest                 = false;
 
   for (int i = 0; i < argc; i++) {
     ASSERT(argv[i] != nullptr);
@@ -523,9 +656,9 @@ fn parse_flags(const FlagList &flags, int argc, const char *const *argv,
           argv[i][1] != '\0')
       {
         let const is_long_token = argv[i][1] == '-';
-        let const token_offset = is_long_token ? &argv[i][2] : &argv[i][1];
+        let const token_offset  = is_long_token ? &argv[i][2] : &argv[i][1];
         if (*token_offset != '\0') {
-          Flag *probe_flag = nullptr;
+          Flag       *probe_flag  = nullptr;
           const char *probe_value = nullptr;
           if (find_flag(flags, token_offset, is_long_token, &probe_flag,
                         &probe_value) &&
@@ -566,9 +699,9 @@ fn parse_flags(const FlagList &flags, int argc, const char *const *argv,
                                 argv[i][0] == '+' && argv[i][1] != '\0';
     if (is_plus_cluster) {
       for (const char *letter = &argv[i][1]; *letter != '\0'; letter++) {
-        Flag *plus_flag = nullptr;
+        Flag       *plus_flag  = nullptr;
         const char *plus_value = nullptr;
-        let const is_known =
+        let const   is_known =
             parse_options.plus_letters.find_character(*letter).has_value() &&
             find_flag(flags, letter, false, &plus_flag, &plus_value);
         if (!is_known) {
@@ -605,9 +738,9 @@ fn parse_flags(const FlagList &flags, int argc, const char *const *argv,
           plus_flag->set_value_location(value_location);
         } else {
           should_take_next_argument_as_value = true;
-          previous_flag = plus_flag;
-          was_previous_flag_long = false;
-          was_previous_flag_after_plus = true;
+          previous_flag                      = plus_flag;
+          was_previous_flag_long             = false;
+          was_previous_flag_after_plus       = true;
           plus_flag->set_value_location(flag_location);
         }
         break;
@@ -640,14 +773,14 @@ fn parse_flags(const FlagList &flags, int argc, const char *const *argv,
       continue;
     }
 
-    bool is_long = false;
+    bool        is_long = false;
     const char *flag_offset{};
 
     if (argv[i][1] != '-') {
       flag_offset = &argv[i][1];
     } else {
       flag_offset = &argv[i][2];
-      is_long = true;
+      is_long     = true;
     }
 
     if (*flag_offset == '\0') {
@@ -664,7 +797,7 @@ fn parse_flags(const FlagList &flags, int argc, const char *const *argv,
 
     bool should_repeat = true;
 
-    Flag *flag{};
+    Flag       *flag{};
     const char *value_offset{};
 
     while (should_repeat) {
@@ -768,8 +901,8 @@ fn parse_flags(const FlagList &flags, int argc, const char *const *argv,
             LOG(All, "the flag '%s' expects the next argument as its value",
                 flag_name(flag, is_long).c_str());
             should_take_next_argument_as_value = true;
-            previous_flag = flag;
-            was_previous_flag_long = is_long;
+            previous_flag                      = flag;
+            was_previous_flag_long             = is_long;
             flag->set_value_location(argument_location(
                 argv, static_cast<usize>(i), base_position, arg_locations));
           } else {
@@ -855,15 +988,15 @@ fn parse_flags(const FlagList &flags, int argc, const char *const *argv,
           error_message += "Unknown flag '-";
 
           if (!is_long) {
-            let const flag_view = StringView{flag_offset};
-            let const decoded = utils::decode_utf8(flag_view, 0, 0);
+            let const flag_view  = StringView{flag_offset};
+            let const decoded    = utils::decode_utf8(flag_view, 0, 0);
             let const byte_count = decoded.length > 1 ? decoded.length : 1;
             error_message += flag_view.substring_of_length(0, byte_count);
           } else {
             error_message += "-";
 
-            const StringView flag_view = flag_offset;
-            let const equals_position = flag_view.find_character('=');
+            const StringView flag_view       = flag_offset;
+            let const        equals_position = flag_view.find_character('=');
 
             let const typed_name =
                 equals_position.has_value()
@@ -881,7 +1014,7 @@ fn parse_flags(const FlagList &flags, int argc, const char *const *argv,
           LOG(Debug, "rejecting the unknown flag in '%s'", argv[i]);
 
           let const arg_index = static_cast<usize>(i);
-          let error = ErrorWithLocationAndDetails{
+          let       error     = ErrorWithLocationAndDetails{
               argument_location(argv, arg_index, base_position, arg_locations),
               prefixed_message(program_name, error_message), details};
           error.set_command_status(2);
@@ -906,13 +1039,15 @@ fn parse_flags(const FlagList &flags, int argc, const char *const *argv,
   return args;
 }
 
-fn parse_util_operands(const FlagList &flags, const ArrayList<String> &args,
-                       Allocator allocator,
-                       const ArrayList<SourceLocation> *arg_locations,
-                       flag_parse_options parse_options) throws
+fn
+parse_util_operands(const FlagList                  &flags,
+                    const ArrayList<String>         &args,
+                    Allocator                        allocator,
+                    const ArrayList<SourceLocation> *arg_locations,
+                    flag_parse_options               parse_options) throws
     -> util_operands_result
 {
-  let operand_locations = ArrayList<SourceLocation>{allocator};
+  let operand_locations                  = ArrayList<SourceLocation>{allocator};
   parse_options.should_omit_program_name = true;
   let operands =
       parse_flags_vec(flags, args, 0, nullptr, arg_locations,
@@ -924,12 +1059,14 @@ fn parse_util_operands(const FlagList &flags, const ArrayList<String> &args,
   return util_operands_result{steal(operands), steal(operand_locations)};
 }
 
-fn parse_until_subcommand(const FlagList &flags, const ArrayList<String> &args,
-                          const ArrayList<SourceLocation> *arg_locations,
-                          ArrayList<SourceLocation> *operand_locations,
-                          StringView program_name) throws -> usize
+fn
+parse_until_subcommand(const FlagList                  &flags,
+                       const ArrayList<String>         &args,
+                       const ArrayList<SourceLocation> *arg_locations,
+                       ArrayList<SourceLocation>       *operand_locations,
+                       StringView program_name) throws -> usize
 {
-  let operand_indices = ArrayList<usize>{heap_allocator()};
+  let       operand_indices = ArrayList<usize>{heap_allocator()};
   let const operands =
       parse_flags_vec(flags, args, 0, nullptr, arg_locations, operand_locations,
                       program_name, {}, heap_allocator(), &operand_indices);
@@ -938,12 +1075,13 @@ fn parse_until_subcommand(const FlagList &flags, const ArrayList<String> &args,
   return operand_indices[1];
 }
 
-pure fn arg_needs_shell_quoting(StringView arg) wontthrow -> bool
+pure fn
+arg_needs_shell_quoting(StringView arg) wontthrow -> bool
 {
   if (arg.is_empty()) return true;
 
   for (usize i = 0; i < arg.length; i++) {
-    let const character = arg[i];
+    let const character             = arg[i];
     let const is_ascii_alphanumeric = (character >= 'a' && character <= 'z') ||
                                       (character >= 'A' && character <= 'Z') ||
                                       (character >= '0' && character <= '9');
@@ -967,7 +1105,8 @@ pure fn arg_needs_shell_quoting(StringView arg) wontthrow -> bool
   return false;
 }
 
-pure fn shell_quoted_arg_length(StringView arg) wontthrow -> usize
+pure fn
+shell_quoted_arg_length(StringView arg) wontthrow -> usize
 {
   if (!arg_needs_shell_quoting(arg)) return arg.length;
   usize count = 2;
@@ -979,8 +1118,10 @@ pure fn shell_quoted_arg_length(StringView arg) wontthrow -> usize
   return count;
 }
 
-fn append_shell_quoted_arg(String &out, StringView arg,
-                           bool should_always_quote) throws -> void
+fn
+append_shell_quoted_arg(String    &out,
+                        StringView arg,
+                        bool       should_always_quote) throws -> void
 {
   if (!should_always_quote && !arg_needs_shell_quoting(arg)) {
     out.append(arg);
@@ -999,7 +1140,8 @@ fn append_shell_quoted_arg(String &out, StringView arg,
   out.push('\'');
 }
 
-fn join_command_line(int argc, const char *const *argv) throws -> String
+fn
+join_command_line(int argc, const char *const *argv) throws -> String
 {
   let s = String{heap_allocator()};
 
@@ -1011,7 +1153,8 @@ fn join_command_line(int argc, const char *const *argv) throws -> String
   return s;
 }
 
-fn reset_flags(const FlagList &flags) throws -> void
+fn
+reset_flags(const FlagList &flags) throws -> void
 {
   for (let const flag : flags)
     switch (flag->kind()) {
@@ -1029,7 +1172,8 @@ fn reset_flags(const FlagList &flags) throws -> void
     }
 }
 
-cold fn append_version_triple(String &out, Allocator allocator) throws -> void
+cold fn
+append_version_triple(String &out, Allocator allocator) throws -> void
 {
   out += String::from(KOSH_VER_MAJOR, allocator);
   out += '.';
@@ -1039,7 +1183,8 @@ cold fn append_version_triple(String &out, Allocator allocator) throws -> void
   out += KOSH_VER_SUFFIX;
 }
 
-cold fn show_version() throws -> void
+cold fn
+show_version() throws -> void
 {
   let s = String{heap_allocator()};
   s += "Koshka Shell ";
@@ -1082,7 +1227,8 @@ cold fn show_version() throws -> void
   flush();
 }
 
-cold fn short_version_string(Allocator allocator) throws -> String
+cold fn
+short_version_string(Allocator allocator) throws -> String
 {
   let s = String{allocator};
   append_version_triple(s, allocator);
@@ -1094,7 +1240,8 @@ cold fn short_version_string(Allocator allocator) throws -> String
   return s;
 }
 
-cold fn show_short_version() throws -> void
+cold fn
+show_short_version() throws -> void
 {
   let s = short_version_string(heap_allocator());
   s += '\n';
@@ -1103,7 +1250,8 @@ cold fn show_short_version() throws -> void
   flush();
 }
 
-cold fn make_synopsis(StringView program_name, const SynopsisList &lines) throws
+cold fn
+make_synopsis(StringView program_name, const SynopsisList &lines) throws
     -> String
 {
   let s = String{heap_allocator()};
@@ -1121,15 +1269,18 @@ cold fn make_synopsis(StringView program_name, const SynopsisList &lines) throws
   return s;
 }
 
-cold fn wrap_text(StringView text, usize indent, usize width,
-                  const Maybe<usize> &continuation_indent) throws -> String
+cold fn
+wrap_text(StringView          text,
+          usize               indent,
+          usize               width,
+          const Maybe<usize> &continuation_indent) throws -> String
 {
-  let out = String{heap_allocator()};
-  let line_indent = indent;
-  let text_width = width > line_indent ? width - line_indent : 1;
-  usize line_used = 0;
-  usize word_start = 0;
-  bool is_line_started = false;
+  let   out             = String{heap_allocator()};
+  let   line_indent     = indent;
+  let   text_width      = width > line_indent ? width - line_indent : 1;
+  usize line_used       = 0;
+  usize word_start      = 0;
+  bool  is_line_started = false;
 
   for (usize i = 0; i <= text.length; i++) {
     let const is_at_end = i == text.length;
@@ -1141,9 +1292,9 @@ cold fn wrap_text(StringView text, usize indent, usize width,
       if (is_line_started && line_used + 1 + word_length > text_width) {
         out += '\n';
         is_line_started = false;
-        line_indent = continuation_indent.value_or(indent);
-        text_width = width > line_indent ? width - line_indent : 1;
-        line_used = 0;
+        line_indent     = continuation_indent.value_or(indent);
+        text_width      = width > line_indent ? width - line_indent : 1;
+        line_used       = 0;
       }
       if (!is_line_started) {
         out.append_repeated(' ', line_indent);
@@ -1161,7 +1312,8 @@ cold fn wrap_text(StringView text, usize indent, usize width,
   return out;
 }
 
-fn parse_cli_color_mode(StringView text) wontthrow -> Maybe<cli_color_mode>
+fn
+parse_cli_color_mode(StringView text) wontthrow -> Maybe<cli_color_mode>
 {
   constexpr static_string_entry<cli_color_mode> MODE_ENTRIES[] = {
       {SSK("auto"),   cli_color_mode::Auto  },
@@ -1179,25 +1331,30 @@ fn parse_cli_color_mode(StringView text) wontthrow -> Maybe<cli_color_mode>
   return MODES.find(text);
 }
 
-fn stdout_wants_color(cli_color_mode mode) throws -> bool
+fn
+stdout_wants_color(cli_color_mode mode) throws -> bool
 {
   switch (mode) {
   case cli_color_mode::Always: return true;
-  case cli_color_mode::Never: return false;
-  case cli_color_mode::Auto: return colors::stdout_wants_color();
+  case cli_color_mode::Never:  return false;
+  case cli_color_mode::Auto:   return colors::stdout_wants_color();
   }
 
   unreachable("invalid CLI color mode %d", ENUM(mode));
 }
 
-pure fn get_tree_connector(bool is_last) wontthrow -> tree_connector
+pure fn
+get_tree_connector(bool is_last) wontthrow -> tree_connector
 {
   return is_last ? tree_connector{"└── ", "    "}
                  : tree_connector{"├── ", "│   "};
 }
 
-fn append_report_text(String &output, StringView text, StringView style,
-                      bool should_color) throws -> void
+fn
+append_report_text(String    &output,
+                   StringView text,
+                   StringView style,
+                   bool       should_color) throws -> void
 {
   if (text.is_empty()) return;
 
@@ -1207,8 +1364,10 @@ fn append_report_text(String &output, StringView text, StringView style,
   if (is_styled) output += colors::ansi::RESET;
 }
 
-fn ReportTable::add_column(StringView heading, report_table_alignment alignment,
-                           StringView style) throws -> void
+fn
+ReportTable::add_column(StringView             heading,
+                        report_table_alignment alignment,
+                        StringView             style) throws -> void
 {
   m_columns.push({
       String{m_columns.allocator(), heading},
@@ -1216,13 +1375,15 @@ fn ReportTable::add_column(StringView heading, report_table_alignment alignment,
   });
 }
 
-fn ReportTable::add_heading(StringView heading,
-                            report_table_alignment alignment) throws -> void
+fn
+ReportTable::add_heading(StringView             heading,
+                         report_table_alignment alignment) throws -> void
 {
   add_column(heading, alignment, colors::ansi::BOLD_CYAN);
 }
 
-fn ReportTable::add_row(const ArrayList<report_table_cell_view> &cells) throws
+fn
+ReportTable::add_row(const ArrayList<report_table_cell_view> &cells) throws
     -> void
 {
   let row = ArrayList<report_table_cell>{m_grid_rows.allocator()};
@@ -1237,8 +1398,10 @@ fn ReportTable::add_row(const ArrayList<report_table_cell_view> &cells) throws
   m_grid_rows.push(steal(row));
 }
 
-fn ReportTable::add_field_row(StringView name, StringView value,
-                              StringView name_style) throws -> void
+fn
+ReportTable::add_field_row(StringView name,
+                           StringView value,
+                           StringView name_style) throws -> void
 {
   let row = ArrayList<report_table_cell>{m_grid_rows.allocator()};
   row.reserve(2);
@@ -1253,11 +1416,14 @@ fn ReportTable::add_field_row(StringView name, StringView value,
   m_grid_rows.push(steal(row));
 }
 
-static fn append_report_grid(
-    String &output, const ArrayList<report_table_column> &columns,
-    const ArrayList<ArrayList<report_table_cell>> &rows, bool should_color,
-    StringView indentation, bool should_show_header,
-    usize column_gap_space_count) throws -> void
+static fn
+append_report_grid(String                                        &output,
+                   const ArrayList<report_table_column>          &columns,
+                   const ArrayList<ArrayList<report_table_cell>> &rows,
+                   bool                                           should_color,
+                   StringView                                     indentation,
+                   bool  should_show_header,
+                   usize column_gap_space_count) throws -> void
 {
   let column_count = columns.count();
   if (column_count == 0) {
@@ -1289,8 +1455,8 @@ static fn append_report_grid(
 
   let const do_append_row =
       [&](const ArrayList<report_table_cell> &row) throws {
-        usize pending_space_count = 0;
-        bool did_write_indentation = false;
+        usize pending_space_count   = 0;
+        bool  did_write_indentation = false;
 
         for (usize index = 0; index < column_count; index++) {
           let const text =
@@ -1339,8 +1505,9 @@ static fn append_report_grid(
     do_append_row(row);
 }
 
-fn ReportTable::to_string(bool should_color,
-                          StringView indentation) const throws -> String
+fn
+ReportTable::to_string(bool should_color, StringView indentation) const throws
+    -> String
 {
   let output = String{m_columns.allocator()};
   if (m_grid_rows.is_empty()) return output;
@@ -1351,11 +1518,17 @@ fn ReportTable::to_string(bool should_color,
   return output;
 }
 
-fn ReportTable::to_string() const throws -> String { return to_string(false); }
+fn
+ReportTable::to_string() const throws -> String
+{
+  return to_string(false);
+}
 
-fn append_titled_report_table(String &output, StringView title,
-                              const ReportTable &table,
-                              bool should_color) throws -> void
+fn
+append_titled_report_table(String            &output,
+                           StringView         title,
+                           const ReportTable &table,
+                           bool               should_color) throws -> void
 {
   let const body = table.to_string(should_color, "  ");
   if (body.is_empty()) return;
@@ -1372,8 +1545,8 @@ fn append_titled_report_table(String &output, StringView title,
   output += body.view();
 }
 
-static pure fn report_indentation_width(StringView indentation) wontthrow
-    -> usize
+static pure fn
+report_indentation_width(StringView indentation) wontthrow -> usize
 {
   usize width = 0;
 
@@ -1390,10 +1563,12 @@ static pure fn report_indentation_width(StringView indentation) wontthrow
   return width;
 }
 
-fn append_report_name_section(String &output, StringView title,
-                              const ArrayList<StringView> &names,
-                              bool should_color, StringView indentation) throws
-    -> void
+fn
+append_report_name_section(String                      &output,
+                           StringView                   title,
+                           const ArrayList<StringView> &names,
+                           bool                         should_color,
+                           StringView indentation) throws -> void
 {
   output += indentation;
   append_report_text(output, title, colors::ansi::BOLD_BLUE, should_color);
@@ -1404,7 +1579,7 @@ fn append_report_name_section(String &output, StringView title,
   for (let const name : names)
     if (name.length > longest_length) longest_length = name.length;
 
-  let const column_width = longest_length + 2;
+  let const column_width      = longest_length + 2;
   let const indentation_width = report_indentation_width(indentation) + 2;
   let const available_width =
       indentation_width < 80 ? 80 - indentation_width : usize{1};
@@ -1431,7 +1606,8 @@ fn append_report_name_section(String &output, StringView title,
   output += '\n';
 }
 
-fn format_cli_help(StringView text, bool should_color) throws -> String
+fn
+format_cli_help(StringView text, bool should_color) throws -> String
 {
   if (!should_color) return String{text};
 
@@ -1442,9 +1618,9 @@ fn format_cli_help(StringView text, bool should_color) throws -> String
     Synopsis,
   };
 
-  let output = String{heap_allocator()};
-  help_section section = help_section::Other;
-  usize line_start = 0;
+  let          output     = String{heap_allocator()};
+  help_section section    = help_section::Other;
+  usize        line_start = 0;
 
   while (line_start < text.length) {
     usize line_end = line_start;
@@ -1456,13 +1632,13 @@ fn format_cli_help(StringView text, bool should_color) throws -> String
     let const line =
         text.substring_of_length(line_start, line_end - line_start);
 
-    bool is_heading = !line.is_empty();
+    bool is_heading         = !line.is_empty();
     bool has_heading_letter = false;
 
     for (usize index = 0; index < line.length && is_heading; index++) {
-      let const byte = line[index];
+      let const byte     = line[index];
       has_heading_letter = has_heading_letter || (byte >= 'A' && byte <= 'Z');
-      is_heading = byte == ' ' || (byte >= 'A' && byte <= 'Z');
+      is_heading         = byte == ' ' || (byte >= 'A' && byte <= 'Z');
     }
 
     is_heading = is_heading && has_heading_letter;
@@ -1491,13 +1667,15 @@ fn format_cli_help(StringView text, bool should_color) throws -> String
   return output;
 }
 
-fn format_cli_help(StringView text) throws -> String
+fn
+format_cli_help(StringView text) throws -> String
 {
   return format_cli_help(text, colors::stdout_wants_color());
 }
 
-static fn write_alternate_screen_sequence(const ExecContext &ec,
-                                          StringView sequence) wontthrow -> bool
+static fn
+write_alternate_screen_sequence(const ExecContext &ec,
+                                StringView         sequence) wontthrow -> bool
 {
   let descriptor = KOSH_STDOUT;
   if (ec.out_fd.has_value()) descriptor = *ec.out_fd;
@@ -1505,31 +1683,36 @@ static fn write_alternate_screen_sequence(const ExecContext &ec,
   return os::write_all(descriptor, sequence.data, sequence.length);
 }
 
-fn enter_alternate_screen(const ExecContext &ec) wontthrow -> bool
+fn
+enter_alternate_screen(const ExecContext &ec) wontthrow -> bool
 {
   return write_alternate_screen_sequence(ec, "\x1b[?1049h");
 }
 
-fn leave_alternate_screen(const ExecContext &ec) wontthrow -> void
+fn
+leave_alternate_screen(const ExecContext &ec) wontthrow -> void
 {
   unused(write_alternate_screen_sequence(ec, "\x1b[?1049l"));
 }
 
-fn hide_cursor(const ExecContext &ec) wontthrow -> bool
+fn
+hide_cursor(const ExecContext &ec) wontthrow -> bool
 {
   return write_alternate_screen_sequence(ec, "\x1b[?25l");
 }
 
-fn show_cursor(const ExecContext &ec) wontthrow -> void
+fn
+show_cursor(const ExecContext &ec) wontthrow -> void
 {
   unused(write_alternate_screen_sequence(ec, "\x1b[?25h"));
 }
 
-fn format_live_duration(f64 seconds, Allocator allocator) throws -> String
+fn
+format_live_duration(f64 seconds, Allocator allocator) throws -> String
 {
   let const nanoseconds = static_cast<u64>(seconds * 1000000000.0 + 0.5);
-  let result = String::from(nanoseconds / 1000000000ULL, allocator);
-  u64 fraction = nanoseconds % 1000000000ULL;
+  let       result      = String::from(nanoseconds / 1000000000ULL, allocator);
+  u64       fraction    = nanoseconds % 1000000000ULL;
   if (fraction != 0) {
     usize digit_count = 9;
 
@@ -1552,16 +1735,17 @@ fn format_live_duration(f64 seconds, Allocator allocator) throws -> String
   return result;
 }
 
-pure fn rolling_window_start(u64 now_nanoseconds,
-                             u64 window_nanoseconds) wontthrow -> u64
+pure fn
+rolling_window_start(u64 now_nanoseconds, u64 window_nanoseconds) wontthrow
+    -> u64
 {
   return now_nanoseconds > window_nanoseconds
              ? now_nanoseconds - window_nanoseconds
              : 0;
 }
 
-cold fn make_flag_help(const FlagList &flags, bool should_color) throws
-    -> String
+cold fn
+make_flag_help(const FlagList &flags, bool should_color) throws -> String
 {
   let s = String{heap_allocator()};
 
@@ -1571,7 +1755,7 @@ cold fn make_flag_help(const FlagList &flags, bool should_color) throws
   let const do_render_flag = [&](const koshka::Flag *f) throws {
     s += "\n";
 
-    let flag_name = String{heap_allocator()};
+    let flag_name  = String{heap_allocator()};
     let flag_value = String{heap_allocator()};
     if (f->short_name() != '\0') {
       flag_name += "  -";
@@ -1592,8 +1776,8 @@ cold fn make_flag_help(const FlagList &flags, bool should_color) throws
       flag_name += "--";
       flag_name += f->long_name();
       switch (f->kind()) {
-      case koshka::Flag::Kind::String: flag_value += "=<...>"; break;
-      case koshka::Flag::Kind::ManyStrings: flag_value += "=<.., ..>"; break;
+      case koshka::Flag::Kind::String:        flag_value += "=<...>"; break;
+      case koshka::Flag::Kind::ManyStrings:   flag_value += "=<.., ..>"; break;
       case koshka::Flag::Kind::OptionalValue: {
         flag_value += "[=<";
         flag_value += static_cast<const FlagOptionalValue *>(f)->value_name();
@@ -1619,10 +1803,10 @@ cold fn make_flag_help(const FlagList &flags, bool should_color) throws
         s += ' ';
     }
 
-    let description_text = String{heap_allocator()};
-    let const description = f->description();
-    usize line_used = 0;
-    usize word_start = 0;
+    let       description_text = String{heap_allocator()};
+    let const description      = f->description();
+    usize     line_used        = 0;
+    usize     word_start       = 0;
 
     for (usize i = 0; i <= description.length; i++) {
       let const is_at_end = i == description.length;
@@ -1677,14 +1861,16 @@ cold fn make_flag_help(const FlagList &flags, bool should_color) throws
   return s;
 }
 
-fn print(StringView text) throws -> void
+fn
+print(StringView text) throws -> void
 {
   if (!os::write_all(KOSH_STDOUT, text.data, text.count()))
     throw Error{"Unable to write to standard output: " +
                 os::last_system_error_message()};
 }
 
-fn print_error(StringView text) throws -> void
+fn
+print_error(StringView text) throws -> void
 {
   usize written_count = 0;
 
@@ -1698,7 +1884,8 @@ fn print_error(StringView text) throws -> void
   }
 }
 
-fn flush() throws -> void
+fn
+flush() throws -> void
 {
   if (std::fflush(stdout) != 0)
     throw Error{"Unable to flush standard output: " +
@@ -1707,12 +1894,14 @@ fn flush() throws -> void
 
 static thread_local bool ONE_SHOT_MESSAGE_LEADING_NEWLINE_ARMED = false;
 
-fn arm_message_leading_newline(bool is_armed) wontthrow -> void
+fn
+arm_message_leading_newline(bool is_armed) wontthrow -> void
 {
   ONE_SHOT_MESSAGE_LEADING_NEWLINE_ARMED = is_armed;
 }
 
-cold fn show_message(StringView err) throws -> void
+cold fn
+show_message(StringView err) throws -> void
 {
   if (err.is_empty()) return;
 
@@ -1726,12 +1915,14 @@ cold fn show_message(StringView err) throws -> void
   print_error("\n");
 }
 
-fn show_warning(StringView warning) throws -> void
+fn
+show_warning(StringView warning) throws -> void
 {
   show_message(Warning{warning}.to_string());
 }
 
-fn show_report_warning(StringView warning) throws -> void
+fn
+show_report_warning(StringView warning) throws -> void
 {
   if (warning.is_empty()) return;
 
@@ -1739,7 +1930,8 @@ fn show_report_warning(StringView warning) throws -> void
   show_warning(warning);
 }
 
-fn show_report_warnings(const ArrayList<String> &warnings) throws -> void
+fn
+show_report_warnings(const ArrayList<String> &warnings) throws -> void
 {
   if (warnings.is_empty()) return;
 

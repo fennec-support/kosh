@@ -24,20 +24,34 @@ KOSHKIT_UTIL_DECL(
 FLAG(EVILNET_ALL, Bool, 'a', "all", "Include interface traffic and TCP data.");
 FLAG(EVILNET_TRAFFIC, Bool, 't', "traffic", "Show interface traffic only.");
 FLAG(
-    EVILNET_SORT, String, '\0', "sort",
+    EVILNET_SORT,
+    String,
+    '\0',
+    "sort",
     "Sort traffic by a unique prefix of the interface name, receive, transmit, "
     "packet, "
     "error, or dropped packet counters.");
-FLAG_OPTIONAL(EVILNET_LIVE, 'l', "live", Live,
+FLAG_OPTIONAL(EVILNET_LIVE,
+              'l',
+              "live",
+              Live,
               "Sample and refresh live traffic every N seconds; the default "
               "is 0.5 seconds.",
-              koshka::koshkit::is_koshkit_sample_duration, "seconds");
-FLAG_OPTIONAL(EVILNET_CUMULATIVE, 'C', "cumulative", Live,
+              koshka::koshkit::is_koshkit_sample_duration,
+              "seconds");
+FLAG_OPTIONAL(EVILNET_CUMULATIVE,
+              'C',
+              "cumulative",
+              Live,
               "Report traffic over an M-second window; the default is one "
               "second. Without --live, wait M seconds first. With --live the "
               "window rolls and does not set the refresh rate.",
-              koshka::koshkit::is_koshkit_sample_duration, "seconds");
-FLAG(EVILNET_FAILURES, Bool, 'f', "failures",
+              koshka::koshkit::is_koshkit_sample_duration,
+              "seconds");
+FLAG(EVILNET_FAILURES,
+     Bool,
+     'f',
+     "failures",
      "Show only TCP failures and packet loss.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(EvilNet);
@@ -61,8 +75,8 @@ enum class evilnet_sort_key : u8
 
 struct evilnet_sort_spec
 {
-  evilnet_sort_key key;
-  StringView name;
+  evilnet_sort_key             key;
+  StringView                   name;
   os::network_statistics_field field;
   u64 os::network_interface_statistics_entry::*member;
 };
@@ -99,18 +113,19 @@ static constexpr evilnet_sort_spec EVILNET_SORT_SPECS[] = {
 struct evilnet_statistics_comparator
 {
   evilnet_sort_key selected;
-  Maybe<usize> spec_index;
+  Maybe<usize>     spec_index;
 
-  pure fn operator()(
+  pure fn
+  operator()(
       const os::network_interface_statistics_entry &left,
       const os::network_interface_statistics_entry &right) const wontthrow->bool
   {
     if (selected == evilnet_sort_key::Name || !spec_index.has_value()) {
       return left.interface_name.view() < right.interface_name.view();
     }
-    let const &spec = EVILNET_SORT_SPECS[*spec_index];
-    let const left_available = left.has_field(spec.field);
-    let const right_available = right.has_field(spec.field);
+    let const &spec            = EVILNET_SORT_SPECS[*spec_index];
+    let const  left_available  = left.has_field(spec.field);
+    let const  right_available = right.has_field(spec.field);
     if (left_available != right_available) return left_available;
     if (left_available && left.*(spec.member) != right.*(spec.member)) {
       return left.*(spec.member) > right.*(spec.member);
@@ -120,7 +135,8 @@ struct evilnet_statistics_comparator
   }
 };
 
-fn resolve_evilnet_sort_key(StringView value, Allocator allocator) throws
+fn
+resolve_evilnet_sort_key(StringView value, Allocator allocator) throws
     -> koshkit_key_resolution<evilnet_sort_key>
 {
   koshkit_key_resolution<evilnet_sort_key> result{{}, 0, String{allocator}};
@@ -142,12 +158,13 @@ using sorted_network_statistics =
     SortedArrayList<os::network_interface_statistics_entry,
                     evilnet_statistics_comparator>;
 
-fn sort_network_statistics(
+fn
+sort_network_statistics(
     ArrayList<os::network_interface_statistics_entry> statistics,
     Maybe<evilnet_sort_key> sort_key) throws -> sorted_network_statistics
 {
-  let const selected = sort_key.value_or(evilnet_sort_key::Name);
-  let spec_index = Maybe<usize>{None};
+  let const selected   = sort_key.value_or(evilnet_sort_key::Name);
+  let       spec_index = Maybe<usize>{None};
 
   for (usize index = 0;
        index < sizeof(EVILNET_SORT_SPECS) / sizeof(EVILNET_SORT_SPECS[0]);
@@ -163,7 +180,8 @@ fn sort_network_statistics(
       .make_sorted(evilnet_statistics_comparator{selected, spec_index});
 }
 
-pure fn family_name(os::network_address_family family) wontthrow -> StringView
+pure fn
+family_name(os::network_address_family family) wontthrow -> StringView
 {
   switch (family) {
   case os::network_address_family::IPv4: return "IPv4";
@@ -173,7 +191,8 @@ pure fn family_name(os::network_address_family family) wontthrow -> StringView
   unreachable("unknown network address family");
 }
 
-fn append_network_interface_report(String &output, bool should_color) throws
+fn
+append_network_interface_report(String &output, bool should_color) throws
     -> usize
 {
   let const addresses = os::network_interface_addresses().make_sorted(
@@ -208,23 +227,27 @@ fn append_network_interface_report(String &output, bool should_color) throws
   return addresses.count();
 }
 
-fn append_network_traffic_statistics_report(
-    String &output, ArrayList<String> &warnings, Allocator allocator,
+fn
+append_network_traffic_statistics_report(
+    String                                                  &output,
+    ArrayList<String>                                       &warnings,
+    Allocator                                                allocator,
     const ArrayList<os::network_interface_statistics_entry> &statistics,
-    StringView duration_suffix, const Maybe<String> &default_interface,
+    StringView                                               duration_suffix,
+    const Maybe<String>                                     &default_interface,
     bool should_color) throws -> usize
 {
   let table = ReportTable{allocator};
   table.set_column_gap(3);
   table.add_heading("NAME");
-  let receive_header = String{allocator, "RX"};
-  let transmit_header = String{allocator, "TX"};
-  let receive_packets_header = String{allocator, "RX PACKETS"};
+  let receive_header          = String{allocator, "RX"};
+  let transmit_header         = String{allocator, "TX"};
+  let receive_packets_header  = String{allocator, "RX PACKETS"};
   let transmit_packets_header = String{allocator, "TX PACKETS"};
-  let receive_errors_header = String{allocator, "RX ERRORS"};
-  let transmit_errors_header = String{allocator, "TX ERRORS"};
-  let receive_drops_header = String{allocator, "RX DROPS"};
-  let transmit_drops_header = String{allocator, "TX DROPS"};
+  let receive_errors_header   = String{allocator, "RX ERRORS"};
+  let transmit_errors_header  = String{allocator, "TX ERRORS"};
+  let receive_drops_header    = String{allocator, "RX DROPS"};
+  let transmit_drops_header   = String{allocator, "TX DROPS"};
   receive_header += duration_suffix;
   transmit_header += duration_suffix;
   receive_packets_header += duration_suffix;
@@ -312,7 +335,7 @@ fn append_network_traffic_statistics_report(
 
     table.add_row(cells);
 
-    let warning = String{allocator};
+    let       warning = String{allocator};
     let const do_append_nonzero =
         [&](StringView name, os::network_statistics_field field, u64 value)
             throws -> void {
@@ -351,10 +374,12 @@ fn append_network_traffic_statistics_report(
   return statistics.count();
 }
 
-fn append_network_traffic_report(String &output, ArrayList<String> &warnings,
-                                 Allocator allocator,
-                                 Maybe<evilnet_sort_key> sort_key,
-                                 bool should_color) throws -> usize
+fn
+append_network_traffic_report(String                 &output,
+                              ArrayList<String>      &warnings,
+                              Allocator               allocator,
+                              Maybe<evilnet_sort_key> sort_key,
+                              bool should_color) throws -> usize
 {
   let const statistics = sort_network_statistics(
       os::read_network_interface_statistics(), sort_key);
@@ -365,8 +390,11 @@ fn append_network_traffic_report(String &output, ArrayList<String> &warnings,
       should_color);
 }
 
-fn append_tcp_report(String &output, ArrayList<String> &warnings,
-                     Allocator allocator, bool should_color) throws -> bool
+fn
+append_tcp_report(String            &output,
+                  ArrayList<String> &warnings,
+                  Allocator          allocator,
+                  bool               should_color) throws -> bool
 {
   os::tcp_statistics statistics{};
   if (!os::read_tcp_statistics(statistics)) return false;
@@ -377,7 +405,7 @@ fn append_tcp_report(String &output, ArrayList<String> &warnings,
   table.add_heading("COUNT", report_table_alignment::Right);
   let cells = ArrayList<report_table_cell_view>{allocator};
   cells.reserve(3);
-  bool has_rows = false;
+  bool      has_rows = false;
   let const do_append_group =
       [&](StringView title, const StringView *names, const u64 *values,
           const os::tcp_statistics_field *fields, usize field_count) throws {
@@ -392,9 +420,9 @@ fn append_tcp_report(String &output, ArrayList<String> &warnings,
           has_rows = true;
         }
       };
-  constexpr StringView OPEN_NAMES[] = {"active", "passive"};
-  const u64 open_values[] = {statistics.active_open_count,
-                             statistics.passive_open_count};
+  constexpr StringView OPEN_NAMES[]  = {"active", "passive"};
+  const u64            open_values[] = {statistics.active_open_count,
+                                        statistics.passive_open_count};
   constexpr os::tcp_statistics_field OPEN_FIELDS[] = {
       os::tcp_statistics_field::ActiveOpens,
       os::tcp_statistics_field::PassiveOpens,
@@ -413,10 +441,10 @@ fn append_tcp_report(String &output, ArrayList<String> &warnings,
   };
   do_append_group("Connections", CONNECTION_NAMES, connection_values,
                   CONNECTION_FIELDS, countof(CONNECTION_NAMES));
-  constexpr StringView SEGMENT_NAMES[] = {"received", "sent", "retransmitted"};
-  const u64 segment_values[] = {statistics.received_segment_count,
-                                statistics.sent_segment_count,
-                                statistics.retransmitted_segment_count};
+  constexpr StringView SEGMENT_NAMES[]  = {"received", "sent", "retransmitted"};
+  const u64            segment_values[] = {statistics.received_segment_count,
+                                           statistics.sent_segment_count,
+                                           statistics.retransmitted_segment_count};
   constexpr os::tcp_statistics_field SEGMENT_FIELDS[] = {
       os::tcp_statistics_field::ReceivedSegments,
       os::tcp_statistics_field::SentSegments,
@@ -557,12 +585,14 @@ fn append_tcp_report(String &output, ArrayList<String> &warnings,
   return true;
 }
 
-pure fn network_counter_delta(u64 before, u64 after) wontthrow -> u64
+pure fn
+network_counter_delta(u64 before, u64 after) wontthrow -> u64
 {
   return after < before ? 0 : after - before;
 }
 
-pure fn network_counter_reset(
+pure fn
+network_counter_reset(
     const os::network_interface_statistics_entry &before,
     const os::network_interface_statistics_entry &after) wontthrow -> bool
 {
@@ -599,10 +629,11 @@ pure fn network_counter_reset(
              &os::network_interface_statistics_entry::transmit_drop_count);
 }
 
-fn sample_network_statistics(
+fn
+sample_network_statistics(
     const ArrayList<os::network_interface_statistics_entry> &before,
     const ArrayList<os::network_interface_statistics_entry> &after,
-    Allocator allocator) throws
+    Allocator                                                allocator) throws
     -> ArrayList<os::network_interface_statistics_entry>
 {
   let sampled = ArrayList<os::network_interface_statistics_entry>{allocator};
@@ -618,7 +649,7 @@ fn sample_network_statistics(
       }
     }
 
-    let result = entry;
+    let result            = entry;
     result.interface_name = String{allocator, entry.interface_name.view()};
     if (previous_index.has_value()) {
       let const &previous = before[*previous_index];
@@ -683,18 +714,19 @@ struct live_network_row
   rolling_history<os::network_interface_statistics_entry> history;
 };
 
-fn get_network_window_status(const live_network_row &row,
-                             u64 window_start_nanoseconds,
-                             Allocator allocator) throws
+fn
+get_network_window_status(const live_network_row &row,
+                          u64                     window_start_nanoseconds,
+                          Allocator               allocator) throws
     -> os::network_interface_statistics_entry
 {
-  let const boundary = row.history.get_boundary(window_start_nanoseconds);
-  let const &before = row.history.samples[boundary.before_index];
+  let const  boundary = row.history.get_boundary(window_start_nanoseconds);
+  let const &before   = row.history.samples[boundary.before_index];
   let const &after_boundary = row.history.samples[boundary.after_index];
-  let sampled = row.history.get_newest();
-  sampled.interface_name = String{allocator, row.interface_name.view()};
-  let const &newest = row.history.get_newest();
-  let const do_sample =
+  let        sampled        = row.history.get_newest();
+  sampled.interface_name    = String{allocator, row.interface_name.view()};
+  let const &newest         = row.history.get_newest();
+  let const  do_sample =
       [&](os::network_statistics_field field,
           u64 os::network_interface_statistics_entry::*member) {
         if (!before.has_field(field) || !after_boundary.has_field(field)) {
@@ -731,19 +763,21 @@ fn get_network_window_status(const live_network_row &row,
   return sampled;
 }
 
-fn run_live_network_traffic(const ExecContext &ec, Allocator allocator,
-                            const live_report_options &report_options,
-                            Maybe<evilnet_sort_key> sort_key,
-                            bool should_color) throws -> i32
+fn
+run_live_network_traffic(const ExecContext         &ec,
+                         Allocator                  allocator,
+                         const live_report_options &report_options,
+                         Maybe<evilnet_sort_key>    sort_key,
+                         bool                       should_color) throws -> i32
 {
-  let retained = ArrayList<live_network_row>{allocator};
-  let const window_nanoseconds = report_options.get_window_nanoseconds();
-  u64 last_sample_nanoseconds = os::monotonic_nanos();
-  let const started_at_nanoseconds = last_sample_nanoseconds;
+  let       retained                = ArrayList<live_network_row>{allocator};
+  let const window_nanoseconds      = report_options.get_window_nanoseconds();
+  u64       last_sample_nanoseconds = os::monotonic_nanos();
+  let const started_at_nanoseconds  = last_sample_nanoseconds;
   let const sample_label =
       format_live_duration(report_options.window_seconds, allocator);
   let const default_interface = os::default_network_interface(allocator);
-  let duration_suffix = String{allocator, "/"};
+  let       duration_suffix   = String{allocator, "/"};
   duration_suffix += sample_label.view();
   let const do_get_key = [](const auto &row) {
     return row.interface_name.view();
@@ -771,7 +805,7 @@ fn run_live_network_traffic(const ExecContext &ec, Allocator allocator,
 
     return None;
   };
-  let const do_render = [&](String &output, const live_view_dimensions &,
+  let const do_render = [&](String   &output, const live_view_dimensions &,
                             Allocator frame_allocator) -> Maybe<i32> {
     let statistics =
         ArrayList<os::network_interface_statistics_entry>{frame_allocator};
@@ -808,9 +842,11 @@ fn run_live_network_traffic(const ExecContext &ec, Allocator allocator,
 
 } /* namespace */
 
-fn EvilNet::execute(const ExecContext &ec, EvalContext &cxt,
-                    const ArrayList<String> &args,
-                    const ArrayList<SourceLocation> &arg_locations) const throws
+fn
+EvilNet::execute(const ExecContext               &ec,
+                 EvalContext                     &cxt,
+                 const ArrayList<String>         &args,
+                 const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
@@ -822,10 +858,10 @@ fn EvilNet::execute(const ExecContext &ec, EvalContext &cxt,
     return 1;
   }
 
-  let const allocator = cxt.scratch_allocator();
-  let output = String{allocator};
-  let warnings = ArrayList<String>{allocator};
-  let const should_color = koshkit_should_color();
+  let const               allocator    = cxt.scratch_allocator();
+  let                     output       = String{allocator};
+  let                     warnings     = ArrayList<String>{allocator};
+  let const               should_color = koshkit_should_color();
   Maybe<evilnet_sort_key> sort_key{};
   if (FLAG_EVILNET_SORT.is_set()) {
     let const resolved =
@@ -865,19 +901,19 @@ fn EvilNet::execute(const ExecContext &ec, EvalContext &cxt,
       should_show_interfaces
           ? append_network_interface_report(output, should_color)
           : 0;
-  usize traffic_count = 0;
-  bool has_tcp_statistics = false;
+  usize traffic_count      = 0;
+  bool  has_tcp_statistics = false;
   if (should_show_traffic && !should_show_failures) {
     if (report_options->is_cumulative) {
       let const before = os::read_network_interface_statistics();
       os::sleep_for_seconds(report_options->window_seconds);
       if (take_interrupt_request()) return 130;
-      let const after = os::read_network_interface_statistics();
-      let sampled = sample_network_statistics(before, after, allocator);
+      let const after   = os::read_network_interface_statistics();
+      let       sampled = sample_network_statistics(before, after, allocator);
       let const sorted_sampled =
           sort_network_statistics(steal(sampled), sort_key);
       let const default_interface = os::default_network_interface(allocator);
-      let duration_suffix = String{allocator, "/"};
+      let       duration_suffix   = String{allocator, "/"};
       duration_suffix +=
           format_live_duration(report_options->window_seconds, allocator)
               .view();

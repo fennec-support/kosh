@@ -13,7 +13,8 @@
 
 namespace koshka {
 
-pure fn detect_mimic_shell_from_extension(StringView extension) throws
+pure fn
+detect_mimic_shell_from_extension(StringView extension) throws
     -> Maybe<mimic_mood>
 {
   static constexpr static_string_entry<mimic_mood> EXTENSION_ENTRIES[] = {
@@ -27,12 +28,13 @@ pure fn detect_mimic_shell_from_extension(StringView extension) throws
   return EXTENSIONS.find(extension);
 }
 
-fn detect_mimic_shell_from_source(StringView source) throws -> Maybe<mimic_mood>
+fn
+detect_mimic_shell_from_source(StringView source) throws -> Maybe<mimic_mood>
 {
   if (!source.starts_with("#!")) return None;
 
   constexpr usize shebang_byte_limit = 256;
-  let const source_limit =
+  let const       source_limit =
       source.length < shebang_byte_limit ? source.length : shebang_byte_limit;
   usize line_end = 2;
 
@@ -53,7 +55,7 @@ fn detect_mimic_shell_from_source(StringView source) throws -> Maybe<mimic_mood>
 
     return last_slash == token.length ? token : token.substring(last_slash + 1);
   };
-  usize position = 0;
+  usize     position      = 0;
   let const do_next_token = [&]() -> StringView {
     while (position < line.length &&
            (line[position] == ' ' || line[position] == '\t'))

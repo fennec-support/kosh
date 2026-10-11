@@ -21,17 +21,21 @@ FLAG(CUT_CHARACTERS, String, 'c', "characters", "Select character positions.");
 FLAG(CUT_FIELDS, String, 'f', "fields", "Select delimiter-separated fields.");
 FLAG(CUT_DELIMITER, String, 'd', "delimiter", "Use this field delimiter.");
 FLAG(CUT_NO_SPLIT, Bool, 'n', "no-split", "Do not split multibyte characters.");
-FLAG(CUT_SUPPRESS, Bool, 's', "only-delimited",
+FLAG(CUT_SUPPRESS,
+     Bool,
+     's',
+     "only-delimited",
      "Suppress lines without a delimiter.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Cut);
 
 namespace koshka::koshkit {
 
-fn Cut::execute(const ExecContext &ec, EvalContext &cxt,
-                const ArrayList<String> &args,
-                const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+fn
+Cut::execute(const ExecContext               &ec,
+             EvalContext                     &cxt,
+             const ArrayList<String>         &args,
+             const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
@@ -77,13 +81,13 @@ fn Cut::execute(const ExecContext &ec, EvalContext &cxt,
 
   let const sources =
       source_list_from_operands(operands, cxt.scratch_allocator());
-  let output = String{cxt.scratch_allocator()};
-  let const is_field_mode = FLAG_CUT_FIELDS.is_set();
-  let const is_byte_mode = FLAG_CUT_BYTES.is_set();
+  let       output                       = String{cxt.scratch_allocator()};
+  let const is_field_mode                = FLAG_CUT_FIELDS.is_set();
+  let const is_byte_mode                 = FLAG_CUT_BYTES.is_set();
   let const should_keep_characters_whole = FLAG_CUT_NO_SPLIT.is_enabled();
-  let const should_suppress_undelimited = FLAG_CUT_SUPPRESS.is_enabled();
-  let line = String{cxt.scratch_allocator()};
-  let reader = SourceBatchReader{ec, sources, cxt.scratch_allocator()};
+  let const should_suppress_undelimited  = FLAG_CUT_SUPPRESS.is_enabled();
+  let       line                         = String{cxt.scratch_allocator()};
+  let       reader = SourceBatchReader{ec, sources, cxt.scratch_allocator()};
   let chunks = ArrayList<SourceBatchReader::Chunk>{cxt.scratch_allocator()};
   i32 status = 0;
   let const do_process_line = [&](StringView line_view) throws -> void {
@@ -108,7 +112,7 @@ fn Cut::execute(const ExecContext &ec, EvalContext &cxt,
               output += line_view[position];
         }
       } else {
-        usize byte_position = 0;
+        usize byte_position      = 0;
         usize character_position = 1;
 
         while (byte_position < line_view.length) {
@@ -130,9 +134,9 @@ fn Cut::execute(const ExecContext &ec, EvalContext &cxt,
           output += '\n';
         }
       } else {
-        usize field_start = 0;
-        usize field_number = 1;
-        bool has_output_field = false;
+        usize field_start      = 0;
+        usize field_number     = 1;
+        bool  has_output_field = false;
 
         for (usize position = *first_delimiter; position <= line_view.length;
              position++)

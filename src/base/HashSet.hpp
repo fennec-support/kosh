@@ -24,26 +24,45 @@ public:
       : m_map(allocator, first_capacity)
   {}
 
-  pure fn allocator() const wontthrow -> Allocator { return m_map.allocator(); }
+  pure fn
+  allocator() const wontthrow -> Allocator
+  {
+    return m_map.allocator();
+  }
 
-  hot fn add(StringView key) throws -> bool
+  hot fn
+  add(StringView key) throws -> bool
   {
     return m_map.insert(key, Nothing{});
   }
 
-  cold fn remove(StringView key) throws -> void { m_map.erase(key); }
+  cold fn
+  remove(StringView key) throws -> void
+  {
+    m_map.erase(key);
+  }
 
-  hot mustuse pure fn contains(StringView key) const wontthrow -> bool
+  hot mustuse pure fn
+  contains(StringView key) const wontthrow -> bool
   {
     return m_map.find(key).has_value();
   }
 
-  mustuse pure fn count() const wontthrow -> usize { return m_map.count(); }
+  mustuse pure fn
+  count() const wontthrow -> usize
+  {
+    return m_map.count();
+  }
 
-  mustuse cold fn clone() const throws -> HashSet { return HashSet{*this}; }
+  mustuse cold fn
+  clone() const throws -> HashSet
+  {
+    return HashSet{*this};
+  }
 
   template <class Fn>
-  fn for_each(Fn callback) const throws -> void
+  fn
+  for_each(Fn callback) const throws -> void
   {
     m_map.for_each(
         [&callback](StringView key, const Nothing &) { callback(key); });

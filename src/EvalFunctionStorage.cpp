@@ -15,11 +15,11 @@
 
 namespace koshka {
 
-static function_body_storage *LIVE_EVAL_FUNCTION_STORAGES = nullptr;
-static constexpr usize MINIMUM_FUNCTION_ARENA_SIZE = 1024;
-static constexpr usize MAXIMUM_FUNCTION_ARENA_SIZE = 4 * 1024;
-static constexpr usize FUNCTION_ARENA_FIXED_SIZE = 512;
-static constexpr usize FUNCTION_ARENA_BYTES_PER_SOURCE_BYTE = 24;
+static function_body_storage *LIVE_EVAL_FUNCTION_STORAGES          = nullptr;
+static constexpr usize        MINIMUM_FUNCTION_ARENA_SIZE          = 1024;
+static constexpr usize        MAXIMUM_FUNCTION_ARENA_SIZE          = 4 * 1024;
+static constexpr usize        FUNCTION_ARENA_FIXED_SIZE            = 512;
+static constexpr usize        FUNCTION_ARENA_BYTES_PER_SOURCE_BYTE = 24;
 
 function_body_storage::function_body_storage(BumpArena *owned_arena)
     : arena(owned_arena)
@@ -57,7 +57,8 @@ FunctionBodyHandle::FunctionBodyHandle(FunctionBodyHandle &&other) noexcept
 
 FunctionBodyHandle::~FunctionBodyHandle() { release(); }
 
-fn FunctionBodyHandle::operator=(const FunctionBodyHandle &other)
+fn
+FunctionBodyHandle::operator=(const FunctionBodyHandle &other)
     -> FunctionBodyHandle &
 {
   if (this == &other) return *this;
@@ -69,19 +70,21 @@ fn FunctionBodyHandle::operator=(const FunctionBodyHandle &other)
   return *this;
 }
 
-fn FunctionBodyHandle::operator=(FunctionBodyHandle &&other) noexcept
+fn
+FunctionBodyHandle::operator=(FunctionBodyHandle &&other) noexcept
     -> FunctionBodyHandle &
 {
   if (this == &other) return *this;
 
   release();
-  m_storage = other.m_storage;
+  m_storage       = other.m_storage;
   other.m_storage = nullptr;
 
   return *this;
 }
 
-fn FunctionBodyHandle::create(usize source_length_hint) throws
+fn
+FunctionBodyHandle::create(usize source_length_hint) throws
     -> FunctionBodyHandle
 {
   let const wanted_byte_count =
@@ -118,34 +121,40 @@ fn FunctionBodyHandle::create(usize source_length_hint) throws
   return FunctionBodyHandle{storage};
 }
 
-pure fn FunctionBodyHandle::get_arena() const wontthrow -> BumpArena *
+pure fn
+FunctionBodyHandle::get_arena() const wontthrow -> BumpArena *
 {
   return m_storage != nullptr ? m_storage->arena : nullptr;
 }
 
-pure fn FunctionBodyHandle::get_body() const wontthrow -> const Expression *
+pure fn
+FunctionBodyHandle::get_body() const wontthrow -> const Expression *
 {
   return m_storage != nullptr ? m_storage->body : nullptr;
 }
 
-pure fn FunctionBodyHandle::get_source() const wontthrow -> const String *
+pure fn
+FunctionBodyHandle::get_source() const wontthrow -> const String *
 {
   return m_storage != nullptr ? &m_storage->source : nullptr;
 }
 
-pure fn FunctionBodyHandle::get_definition_info() const wontthrow
+pure fn
+FunctionBodyHandle::get_definition_info() const wontthrow
     -> const function_definition_info *
 {
   return m_storage != nullptr ? &m_storage->definition_info : nullptr;
 }
 
-fn FunctionBodyHandle::set_body(const Expression *body) wontthrow -> void
+fn
+FunctionBodyHandle::set_body(const Expression *body) wontthrow -> void
 {
   ASSERT(m_storage != nullptr);
   m_storage->body = body;
 }
 
-fn FunctionBodyHandle::set_definition(
+fn
+FunctionBodyHandle::set_definition(
     StringView source, function_definition_info definition_info) const throws
     -> void
 {
@@ -155,16 +164,17 @@ fn FunctionBodyHandle::set_definition(
   utils::invalidate_line_number_cache_for(m_storage->source.view());
   utils::invalidate_line_number_cache_for(
       m_storage->definition_info.render_source.view());
-  m_storage->source = steal(owned_source);
+  m_storage->source          = steal(owned_source);
   m_storage->definition_info = steal(definition_info);
 }
 
-pure fn live_function_storage_stats() wontthrow -> function_arena_stats
+pure fn
+live_function_storage_stats() wontthrow -> function_arena_stats
 {
   function_arena_stats total{};
 
   for (let const *storage = LIVE_EVAL_FUNCTION_STORAGES; storage != nullptr;
-       storage = storage->next_live)
+       storage            = storage->next_live)
   {
     let const &arena = *storage->arena;
     total.bytes_used += arena.bytes_used();
@@ -177,12 +187,14 @@ pure fn live_function_storage_stats() wontthrow -> function_arena_stats
   return total;
 }
 
-fn FunctionBodyHandle::retain() wontthrow -> void
+fn
+FunctionBodyHandle::retain() wontthrow -> void
 {
   if (m_storage != nullptr) m_storage->reference_count++;
 }
 
-fn FunctionBodyHandle::release() wontthrow -> void
+fn
+FunctionBodyHandle::release() wontthrow -> void
 {
   if (m_storage == nullptr) return;
 

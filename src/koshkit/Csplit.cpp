@@ -28,8 +28,8 @@ namespace koshka::koshkit {
 
 enum class csplit_write_policy : u8
 {
-  None = 0,
-  Silent = 1,
+  None      = 0,
+  Silent    = 1,
   KeepFiles = 2,
 };
 
@@ -45,28 +45,32 @@ enum class csplit_exhaustion_mode : u8
   Allow,
 };
 
-constexpr fn operator|(csplit_write_policy left,
-                       csplit_write_policy right) wontthrow->csplit_write_policy
+constexpr fn
+operator|(csplit_write_policy left,
+          csplit_write_policy right) wontthrow->csplit_write_policy
 {
   return static_cast<csplit_write_policy>(static_cast<u8>(left) |
                                           static_cast<u8>(right));
 }
 
-constexpr fn has_csplit_policy(csplit_write_policy policy,
-                               csplit_write_policy value) wontthrow -> bool
+constexpr fn
+has_csplit_policy(csplit_write_policy policy,
+                  csplit_write_policy value) wontthrow -> bool
 {
   return (static_cast<u8>(policy) & static_cast<u8>(value)) != 0;
 }
 
 struct csplit_name_format
 {
-  StringView prefix;
-  usize digit_count;
+  StringView     prefix;
+  usize          digit_count;
   SourceLocation width_location;
 };
 
-static fn csplit_output_name(const csplit_name_format &format, u64 index,
-                             Allocator allocator) throws -> String
+static fn
+csplit_output_name(const csplit_name_format &format,
+                   u64                       index,
+                   Allocator                 allocator) throws -> String
 {
   let const digits = String::from(index, allocator);
   if (digits.length() > format.digit_count) {
@@ -86,12 +90,16 @@ static fn csplit_output_name(const csplit_name_format &format, u64 index,
   return name;
 }
 
-static fn write_csplit_part(const ExecContext &ec, EvalContext &cxt,
-                            const csplit_name_format &name_format,
-                            u64 output_index,
-                            const ArrayList<StringView> &lines, usize first,
-                            usize last, ArrayList<String> &output_paths,
-                            csplit_write_policy policy) throws -> bool
+static fn
+write_csplit_part(const ExecContext           &ec,
+                  EvalContext                 &cxt,
+                  const csplit_name_format    &name_format,
+                  u64                          output_index,
+                  const ArrayList<StringView> &lines,
+                  usize                        first,
+                  usize                        last,
+                  ArrayList<String>           &output_paths,
+                  csplit_write_policy          policy) throws -> bool
 {
   let const name =
       csplit_output_name(name_format, output_index, cxt.scratch_allocator());
@@ -139,9 +147,11 @@ static fn write_csplit_part(const ExecContext &ec, EvalContext &cxt,
   return true;
 }
 
-fn Csplit::execute(const ExecContext &ec, EvalContext &cxt,
-                   const ArrayList<String> &args,
-                   const ArrayList<SourceLocation> &arg_locations) const throws
+fn
+Csplit::execute(const ExecContext               &ec,
+                EvalContext                     &cxt,
+                const ArrayList<String>         &args,
+                const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
@@ -165,8 +175,8 @@ fn Csplit::execute(const ExecContext &ec, EvalContext &cxt,
 
   let const prefix = FLAG_CSPLIT_PREFIX.is_set() ? FLAG_CSPLIT_PREFIX.value()
                                                  : StringView{"xx"};
-  let const digit_count = static_cast<usize>(digit_count_value);
-  let const prefix_path = Path{prefix};
+  let const digit_count   = static_cast<usize>(digit_count_value);
+  let const prefix_path   = Path{prefix};
   let const prefix_parent = prefix_path.parent_or_current();
   let const name_limit =
       os::path_configuration(prefix_parent.view(),
@@ -199,11 +209,11 @@ fn Csplit::execute(const ExecContext &ec, EvalContext &cxt,
 
     return 1;
   }
-  let lines = utils::split_lines(content->view(), cxt.scratch_allocator(),
-                                 utils::line_terminator_mode::Preserve);
-  usize current_line = 0;
-  u64 output_index = 0;
-  let output_paths = ArrayList<String>{cxt.scratch_allocator()};
+  let       lines = utils::split_lines(content->view(), cxt.scratch_allocator(),
+                                       utils::line_terminator_mode::Preserve);
+  usize     current_line = 0;
+  u64       output_index = 0;
+  let       output_paths = ArrayList<String>{cxt.scratch_allocator()};
   let const write_policy =
       (FLAG_CSPLIT_SILENT.is_enabled() ? csplit_write_policy::Silent
                                        : csplit_write_policy::None) |
@@ -215,17 +225,17 @@ fn Csplit::execute(const ExecContext &ec, EvalContext &cxt,
       for (let const &path : output_paths)
         unused(os::remove_file(path.view()));
   };
-  let previous_pattern = String{cxt.scratch_allocator()};
+  let  previous_pattern               = String{cxt.scratch_allocator()};
   bool has_previous_nonrepeat_pattern = false;
-  bool has_applied_pattern = false;
+  bool has_applied_pattern            = false;
 
   let const do_apply_pattern =
       [&](StringView pattern, SourceLocation pattern_location,
-          csplit_repeat_mode repeat_mode,
+          csplit_repeat_mode     repeat_mode,
           csplit_exhaustion_mode exhaustion_mode) throws -> bool {
-    usize target_line = SIZE_MAX;
-    bool should_write_part = true;
-    let const numeric = utils::parse_decimal_u64(pattern);
+    usize     target_line       = SIZE_MAX;
+    bool      should_write_part = true;
+    let const numeric           = utils::parse_decimal_u64(pattern);
     if (!numeric.is_error()) {
       if (numeric.value() == 0) {
         throw ErrorWithLocationAndDetails{
@@ -259,9 +269,9 @@ fn Csplit::execute(const ExecContext &ec, EvalContext &cxt,
       target_line = static_cast<usize>(numeric_target);
     } else if (pattern.length >= 2 && (pattern[0] == '/' || pattern[0] == '%'))
     {
-      let const delimiter = pattern[0];
-      usize delimiter_position = 1;
-      let expression = String{cxt.scratch_allocator()};
+      let const delimiter          = pattern[0];
+      usize     delimiter_position = 1;
+      let       expression         = String{cxt.scratch_allocator()};
 
       while (delimiter_position < pattern.length) {
         let const byte = pattern[delimiter_position];
@@ -290,10 +300,10 @@ fn Csplit::execute(const ExecContext &ec, EvalContext &cxt,
       }
 
       should_write_part = pattern[0] == '/';
-      i64 offset = 0;
+      i64 offset        = 0;
       if (delimiter_position + 1 < pattern.length) {
-        bool is_offset_out_of_range = false;
-        let const parsed_offset = utils::parse_decimal_i64(
+        bool      is_offset_out_of_range = false;
+        let const parsed_offset          = utils::parse_decimal_i64(
             pattern.substring(delimiter_position + 1), &is_offset_out_of_range);
         if (parsed_offset.is_error() || is_offset_out_of_range) {
           throw ErrorWithLocationAndDetails{
@@ -380,7 +390,7 @@ fn Csplit::execute(const ExecContext &ec, EvalContext &cxt,
               write_policy))
         throw Error{"cannot write output"};
     }
-    current_line = target_line;
+    current_line        = target_line;
     has_applied_pattern = true;
 
     return true;
@@ -424,7 +434,7 @@ fn Csplit::execute(const ExecContext &ec, EvalContext &cxt,
       has_previous_nonrepeat_pattern = false;
       continue;
     }
-    previous_pattern = operands[pattern_index].clone();
+    previous_pattern               = operands[pattern_index].clone();
     has_previous_nonrepeat_pattern = true;
     unused(do_apply_pattern(pattern, operand_locations[pattern_index],
                             csplit_repeat_mode::Single,

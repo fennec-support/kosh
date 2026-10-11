@@ -18,9 +18,15 @@ KOSHKIT_UTIL_DECL("[-a|-m] | [-ck] [name ...]",
 
 FLAG(LOCALE_ALL_LOCALES, Bool, 'a', "all-locales", "List available locales.");
 FLAG(LOCALE_CHARMAPS, Bool, 'm', "charmaps", "List available charmaps.");
-FLAG(LOCALE_CATEGORY, Bool, 'c', "category-name",
+FLAG(LOCALE_CATEGORY,
+     Bool,
+     'c',
+     "category-name",
      "Write the category name for each selected keyword.");
-FLAG(LOCALE_KEYWORD, Bool, 'k', "keyword-name",
+FLAG(LOCALE_KEYWORD,
+     Bool,
+     'k',
+     "keyword-name",
      "Write each selected keyword name.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Locale);
@@ -37,7 +43,7 @@ enum class locale_value_kind : uchar
 
 struct locale_keyword
 {
-  StringView category;
+  StringView        category;
   locale_value_kind value_kind;
 };
 
@@ -52,16 +58,19 @@ static constexpr static_string_entry<locale_keyword> LOCALE_KEYWORD_ENTRIES[] =
 };
 static constexpr StaticStringMap LOCALE_KEYWORDS{LOCALE_KEYWORD_ENTRIES};
 
-static fn locale_environment_value(const char *name) wontthrow -> StringView
+static fn
+locale_environment_value(const char *name) wontthrow -> StringView
 {
   let const *value = std::getenv(name);
 
   return value == nullptr ? StringView{} : StringView{value};
 }
 
-fn Locale::execute(const ExecContext &ec, EvalContext &cxt,
-                   const ArrayList<String> &args,
-                   const ArrayList<SourceLocation> &arg_locations) const throws
+fn
+Locale::execute(const ExecContext               &ec,
+                EvalContext                     &cxt,
+                const ArrayList<String>         &args,
+                const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
@@ -105,14 +114,14 @@ fn Locale::execute(const ExecContext &ec, EvalContext &cxt,
     return 0;
   }
 
-  const char *active_locale = nullptr;
+  const char   *active_locale = nullptr;
   struct lconv *locale_values = nullptr;
 
   for (usize operand_position = 0; operand_position < operands.count();
        operand_position++)
   {
     let const &operand = operands[operand_position];
-    let const keyword = LOCALE_KEYWORDS.find(operand.view());
+    let const  keyword = LOCALE_KEYWORDS.find(operand.view());
     if (!keyword.has_value()) {
       report_soft_koshkit_util_error(
           ec, cxt, operand_locations[operand_position], args[0].view(),

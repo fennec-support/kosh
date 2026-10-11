@@ -24,9 +24,11 @@ REGISTER_KOSHKIT_UTIL_FLAGS(Tput);
 
 namespace koshka::koshkit {
 
-fn Tput::execute(const ExecContext &ec, EvalContext &cxt,
-                 const ArrayList<String> &args,
-                 const ArrayList<SourceLocation> &arg_locations) const throws
+fn
+Tput::execute(const ExecContext               &ec,
+              EvalContext                     &cxt,
+              const ArrayList<String>         &args,
+              const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
@@ -69,7 +71,7 @@ fn Tput::execute(const ExecContext &ec, EvalContext &cxt,
     return 0;
   }
   if (capability == "longname") {
-    let const configured = cxt.get_variable_value("TERM");
+    let const configured    = cxt.get_variable_value("TERM");
     let const terminal_type = FLAG_TPUT_TERMINAL.is_set()
                                   ? FLAG_TPUT_TERMINAL.value()
                               : configured.has_value() ? configured->view()
@@ -82,7 +84,7 @@ fn Tput::execute(const ExecContext &ec, EvalContext &cxt,
   if (capability == "cup") {
     if (operands.count() != 3)
       return report_usage_error(ec, cxt, args[0].view());
-    let const row = utils::parse_decimal_u64(operands[1].view());
+    let const row    = utils::parse_decimal_u64(operands[1].view());
     let const column = utils::parse_decimal_u64(operands[2].view());
     if (row.is_error() || row.value() == UINT64_MAX) {
       KOSHKIT_REPORT_ERROR_AT(

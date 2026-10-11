@@ -15,44 +15,53 @@
 KOSHKIT_UTIL_DECL("[-pP] pathname ...",
                   "The pathchk utility checks pathname portability.");
 
-FLAG(PATHCHK_PORTABLE, Bool, 'p', "portable",
+FLAG(PATHCHK_PORTABLE,
+     Bool,
+     'p',
+     "portable",
      "Use POSIX portable pathname limits and characters.");
-FLAG(PATHCHK_LEADING_HYPHEN, Bool, 'P', "leading-hyphen",
+FLAG(PATHCHK_LEADING_HYPHEN,
+     Bool,
+     'P',
+     "leading-hyphen",
      "Reject an empty pathname or a component beginning with a hyphen.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Pathchk);
 
 namespace koshka::koshkit {
 
-static pure fn is_portable_filename_byte(char byte) wontthrow -> bool
+static pure fn
+is_portable_filename_byte(char byte) wontthrow -> bool
 {
   return (byte >= 'a' && byte <= 'z') || (byte >= 'A' && byte <= 'Z') ||
          (byte >= '0' && byte <= '9') || byte == '.' || byte == '_' ||
          byte == '-';
 }
 
-fn Pathchk::execute(const ExecContext &ec, EvalContext &cxt,
-                    const ArrayList<String> &args,
-                    const ArrayList<SourceLocation> &arg_locations) const throws
+fn
+Pathchk::execute(const ExecContext               &ec,
+                 EvalContext                     &cxt,
+                 const ArrayList<String>         &args,
+                 const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (operands.is_empty()) return report_usage_error(ec, cxt, args[0].view());
   let const should_check_portable = FLAG_PATHCHK_PORTABLE.is_enabled();
-  let const should_check_hyphen = FLAG_PATHCHK_LEADING_HYPHEN.is_enabled();
-  i32 status = 0;
+  let const should_check_hyphen   = FLAG_PATHCHK_LEADING_HYPHEN.is_enabled();
+  i32       status                = 0;
 
   for (let const &operand : operands) {
-    let const path = operand.view();
-    i64 path_limit = 256;
-    i64 name_limit = 14;
+    let const path       = operand.view();
+    i64       path_limit = 256;
+    i64       name_limit = 14;
     if (!should_check_portable) {
       let const configuration_path = !path.is_empty() && path[0] == '/'
                                          ? StringView{"/"}
                                          : StringView{"."};
-      path_limit = os::path_configuration(configuration_path,
-                                          os::path_configuration_key::PathMax)
+      path_limit                   = os::path_configuration(configuration_path,
+                                                            os::path_configuration_key::PathMax)
                        .value_or(4096);
       name_limit = os::path_configuration(configuration_path,
                                           os::path_configuration_key::NameMax)
@@ -68,8 +77,8 @@ fn Pathchk::execute(const ExecContext &ec, EvalContext &cxt,
       usize position = 0;
 
       while (position < path.length) {
-        let const component = Path::next_component(path, position);
-        let component_length = component.text.length;
+        let const component        = Path::next_component(path, position);
+        let       component_length = component.text.length;
         if (!should_check_portable) {
           let const native_length = os::path_component_length(component.text);
           if (native_length.has_value()) {

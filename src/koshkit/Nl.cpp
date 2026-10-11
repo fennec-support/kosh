@@ -20,18 +20,33 @@ KOSHKIT_UTIL_DECL("[-p] [-b type] [-d delim] [-f type] [-h type] "
                   "The nl utility numbers input lines.");
 
 FLAG(NL_BODY, String, 'b', "body-numbering", "Select body line numbering.");
-FLAG(NL_DELIMITER, String, 'd', "section-delimiter",
+FLAG(NL_DELIMITER,
+     String,
+     'd',
+     "section-delimiter",
      "Use these section delimiter bytes.");
-FLAG(NL_FOOTER, String, 'f', "footer-numbering",
+FLAG(NL_FOOTER,
+     String,
+     'f',
+     "footer-numbering",
      "Select footer line numbering.");
-FLAG(NL_HEADER, String, 'h', "header-numbering",
+FLAG(NL_HEADER,
+     String,
+     'h',
+     "header-numbering",
      "Select header line numbering.");
 FLAG(NL_INCREMENT, String, 'i', "line-increment", "Increment by this value.");
-FLAG(NL_BLANK_GROUP, String, 'l', "join-blank-lines",
+FLAG(NL_BLANK_GROUP,
+     String,
+     'l',
+     "join-blank-lines",
      "Number this many adjacent blank lines as one.");
 FLAG(NL_FORMAT, String, 'n', "number-format", "Use ln, rn, or rz format.");
 FLAG(NL_NO_RESET, Bool, 'p', "no-renumber", "Do not reset at logical pages.");
-FLAG(NL_SEPARATOR, String, 's', "number-separator",
+FLAG(NL_SEPARATOR,
+     String,
+     's',
+     "number-separator",
      "Use this separator after numbers.");
 FLAG(NL_START, String, 'v', "starting-line-number", "Start at this number.");
 FLAG(NL_WIDTH, String, 'w', "number-width", "Use this number field width.");
@@ -54,8 +69,11 @@ static constexpr static_string_entry<nl_style> NL_STYLE_ENTRIES[] = {
 };
 static constexpr StaticStringMap NL_STYLES{NL_STYLE_ENTRIES};
 
-static fn nl_style_numbers(nl_style style, bool is_empty, u64 &blank_count,
-                           u64 blank_group) wontthrow -> bool
+static fn
+nl_style_numbers(nl_style style,
+                 bool     is_empty,
+                 u64     &blank_count,
+                 u64      blank_group) wontthrow -> bool
 {
   switch (style) {
   case nl_style::None: return false;
@@ -89,11 +107,14 @@ enum class nl_number_format : uchar
   Zero,
 };
 
-static fn append_nl_number(String &output, i64 number, usize width,
-                           StringView separator, nl_number_format format) throws
-    -> void
+static fn
+append_nl_number(String          &output,
+                 i64              number,
+                 usize            width,
+                 StringView       separator,
+                 nl_number_format format) throws -> void
 {
-  let const digits = String::from(number, output.allocator());
+  let const digits  = String::from(number, output.allocator());
   let const padding = width > digits.length() ? width - digits.length() : 0;
   if (format != nl_number_format::Left)
     output.append_repeated(format == nl_number_format::Zero ? '0' : ' ',
@@ -103,10 +124,11 @@ static fn append_nl_number(String &output, i64 number, usize width,
   output += separator;
 }
 
-fn Nl::execute(const ExecContext &ec, EvalContext &cxt,
-               const ArrayList<String> &args,
-               const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+fn
+Nl::execute(const ExecContext               &ec,
+            EvalContext                     &cxt,
+            const ArrayList<String>         &args,
+            const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
@@ -223,7 +245,7 @@ fn Nl::execute(const ExecContext &ec, EvalContext &cxt,
   }
 
   let const source = operands.is_empty() ? StringView{"-"} : operands[0].view();
-  let const input = open_named_or_stdin(ec, source);
+  let const input  = open_named_or_stdin(ec, source);
   if (!input.has_value()) {
     KOSHKIT_REPORT_PATH_ERROR("read", source);
 
@@ -237,10 +259,10 @@ fn Nl::execute(const ExecContext &ec, EvalContext &cxt,
 
   let reader =
       utils::BufferedLineReader{input->descriptor, cxt.scratch_allocator()};
-  let output = String{cxt.scratch_allocator()};
+  let      output        = String{cxt.scratch_allocator()};
   nl_style section_style = *body_style;
-  i64 number = static_cast<i64>(start_value);
-  u64 blank_count = 0;
+  i64      number        = static_cast<i64>(start_value);
+  u64      blank_count   = 0;
 
   loop
   {
@@ -254,9 +276,9 @@ fn Nl::execute(const ExecContext &ec, EvalContext &cxt,
       return 1;
     }
 
-    let const line = reader.get_line();
+    let const line            = reader.get_line();
     let const delimiter_count = line.length / delimiter.length;
-    bool is_section_delimiter =
+    bool      is_section_delimiter =
         delimiter_count >= 1 && delimiter_count <= 3 &&
         line.length == delimiter_count * delimiter.length;
 

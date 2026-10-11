@@ -34,7 +34,8 @@ using namespace internal;
 
 BumpArena internal::COMPLETION_ARENA{};
 
-static fn all_active_glob_mask(usize length) throws -> Bitset
+static fn
+all_active_glob_mask(usize length) throws -> Bitset
 {
   let mask = Bitset{completion_allocator()};
   mask.reserve(length);
@@ -48,15 +49,16 @@ static fn all_active_glob_mask(usize length) throws -> Bitset
 enum class match_tier : u8
 {
   exact_prefix = 0,
-  prefix = 1,
-  subsequence = 2,
+  prefix       = 1,
+  subsequence  = 2,
 };
 
 static constexpr usize MATCH_TIER_COUNT = 3;
 
-static pure fn candidate_match(StringView token, StringView candidate,
-                               bool is_case_sensitive) wontthrow
-    -> Maybe<match_tier>
+static pure fn
+candidate_match(StringView token,
+                StringView candidate,
+                bool       is_case_sensitive) wontthrow -> Maybe<match_tier>
 {
   if (candidate.starts_with(token)) return match_tier::exact_prefix;
 
@@ -113,17 +115,20 @@ class TieredCandidates
 public:
   TieredCandidates() = default;
 
-  fn add(match_tier tier, String candidate) throws -> void
+  fn
+  add(match_tier tier, String candidate) throws -> void
   {
     by_tier[static_cast<usize>(tier)].push(steal(candidate));
   }
 
-  pure fn has(match_tier tier) const wontthrow -> bool
+  pure fn
+  has(match_tier tier) const wontthrow -> bool
   {
     return !by_tier[static_cast<usize>(tier)].is_empty();
   }
 
-  mustuse fn best() throws -> ArrayList<String>
+  mustuse fn
+  best() throws -> ArrayList<String>
   {
     for (usize tier = 0; tier < MATCH_TIER_COUNT; tier++)
       if (!by_tier[tier].is_empty()) return steal(by_tier[tier]);
@@ -138,12 +143,13 @@ private:
       ArrayList<String>{completion_allocator()}};
 };
 
-fn internal::best_tier_matches(StringView token,
-                               const ArrayList<StringView> &names) throws
+fn
+internal::best_tier_matches(StringView                   token,
+                            const ArrayList<StringView> &names) throws
     -> ArrayList<String>
 {
   let const is_case_sensitive = utils::token_has_uppercase(token);
-  let candidates = TieredCandidates{};
+  let       candidates        = TieredCandidates{};
 
   for (let const name : names)
     if (let const tier = candidate_match(token, name, is_case_sensitive);
@@ -158,7 +164,8 @@ fn internal::best_tier_matches(StringView token,
 class BorrowedStringSet
 {
 public:
-  fn add(StringView value) throws -> bool
+  fn
+  add(StringView value) throws -> bool
   {
     if (slots.is_empty() || (entry_count + 1) * 4 >= slots.count() * 3) {
       grow();
@@ -171,15 +178,16 @@ private:
   struct Slot
   {
     StringView value{};
-    u64 hash{0};
-    bool is_occupied{false};
+    u64        hash{0};
+    bool       is_occupied{false};
   };
 
-  fn place(ArrayList<Slot> &destination, StringView value, u64 hash) wontthrow
+  fn
+  place(ArrayList<Slot> &destination, StringView value, u64 hash) wontthrow
       -> bool
   {
-    let const mask = destination.count() - 1;
-    let position = static_cast<usize>(hash) & mask;
+    let const mask     = destination.count() - 1;
+    let       position = static_cast<usize>(hash) & mask;
 
     while (destination[position].is_occupied) {
       if (destination[position].hash == hash &&
@@ -196,9 +204,10 @@ private:
     return true;
   }
 
-  fn grow() throws -> void
+  fn
+  grow() throws -> void
   {
-    let fresh = ArrayList<Slot>{completion_allocator()};
+    let       fresh    = ArrayList<Slot>{completion_allocator()};
     let const capacity = slots.is_empty() ? 16 : slots.count() * 2;
     fresh.reserve(capacity);
 
@@ -214,13 +223,15 @@ private:
   }
 
   ArrayList<Slot> slots{completion_allocator()};
-  usize entry_count{0};
+  usize           entry_count{0};
 };
 
-static fn command_name_match(StringView name, StringView token,
-                             bool is_glob_token, bool is_case_sensitive,
-                             const Bitset &glob_active) throws
-    -> Maybe<match_tier>
+static fn
+command_name_match(StringView    name,
+                   StringView    token,
+                   bool          is_glob_token,
+                   bool          is_case_sensitive,
+                   const Bitset &glob_active) throws -> Maybe<match_tier>
 {
   if (is_glob_token) {
     if (utils::glob_matches(token, name, glob_active, 0, extglob_mode::Disabled,
@@ -236,38 +247,69 @@ static fn command_name_match(StringView name, StringView token,
 class CommandListCollector
 {
 public:
-  fn add(StringView name, match_tier tier) throws -> void
+  fn
+  add(StringView name, match_tier tier) throws -> void
   {
     candidates.add(tier, String{completion_allocator(), name});
     materialized_count++;
   }
 
-  pure fn needs_name(match_tier) const wontthrow -> bool { return true; }
+  pure fn
+  needs_name(match_tier) const wontthrow -> bool
+  {
+    return true;
+  }
 
-  fn note_source_candidate() wontthrow -> void { source_scan_count++; }
+  fn
+  note_source_candidate() wontthrow -> void
+  {
+    source_scan_count++;
+  }
 
-  pure fn has_exact() const wontthrow -> bool
+  pure fn
+  has_exact() const wontthrow -> bool
   {
     return candidates.has(match_tier::exact_prefix);
   }
 
-  pure fn has_prefix() const wontthrow -> bool
+  pure fn
+  has_prefix() const wontthrow -> bool
   {
     return has_exact() || candidates.has(match_tier::prefix);
   }
 
-  pure fn allows_fuzzy_fallback() const wontthrow -> bool { return true; }
+  pure fn
+  allows_fuzzy_fallback() const wontthrow -> bool
+  {
+    return true;
+  }
 
-  pure fn wants_empty_token_listing() const wontthrow -> bool { return true; }
+  pure fn
+  wants_empty_token_listing() const wontthrow -> bool
+  {
+    return true;
+  }
 
-  fn take() throws -> ArrayList<String> { return candidates.best(); }
-  pure fn source_scans() const wontthrow -> usize { return source_scan_count; }
-  pure fn materialized() const wontthrow -> usize { return materialized_count; }
+  fn
+  take() throws -> ArrayList<String>
+  {
+    return candidates.best();
+  }
+  pure fn
+  source_scans() const wontthrow -> usize
+  {
+    return source_scan_count;
+  }
+  pure fn
+  materialized() const wontthrow -> usize
+  {
+    return materialized_count;
+  }
 
 private:
   TieredCandidates candidates{};
-  usize source_scan_count{0};
-  usize materialized_count{0};
+  usize            source_scan_count{0};
+  usize            materialized_count{0};
 };
 
 class PrefixListCollector
@@ -275,46 +317,79 @@ class PrefixListCollector
 public:
   PrefixListCollector() = default;
 
-  fn add(StringView name, match_tier tier) throws -> void
+  fn
+  add(StringView name, match_tier tier) throws -> void
   {
     if (tier != match_tier::exact_prefix) return;
 
     names.push(String{completion_allocator(), name});
   }
 
-  pure fn needs_name(match_tier tier) const wontthrow -> bool
+  pure fn
+  needs_name(match_tier tier) const wontthrow -> bool
   {
     return tier == match_tier::exact_prefix;
   }
 
-  fn note_source_candidate() wontthrow -> void {}
+  fn
+  note_source_candidate() wontthrow -> void
+  {}
 
-  pure fn has_exact() const wontthrow -> bool { return !names.is_empty(); }
-  pure fn has_prefix() const wontthrow -> bool { return !names.is_empty(); }
-  pure fn allows_fuzzy_fallback() const wontthrow -> bool { return false; }
+  pure fn
+  has_exact() const wontthrow -> bool
+  {
+    return !names.is_empty();
+  }
+  pure fn
+  has_prefix() const wontthrow -> bool
+  {
+    return !names.is_empty();
+  }
+  pure fn
+  allows_fuzzy_fallback() const wontthrow -> bool
+  {
+    return false;
+  }
 
-  pure fn wants_empty_token_listing() const wontthrow -> bool { return true; }
+  pure fn
+  wants_empty_token_listing() const wontthrow -> bool
+  {
+    return true;
+  }
 
-  fn take() throws -> ArrayList<String> { return steal(names); }
-  pure fn source_scans() const wontthrow -> usize { return 0; }
-  pure fn materialized() const wontthrow -> usize { return names.count(); }
+  fn
+  take() throws -> ArrayList<String>
+  {
+    return steal(names);
+  }
+  pure fn
+  source_scans() const wontthrow -> usize
+  {
+    return 0;
+  }
+  pure fn
+  materialized() const wontthrow -> usize
+  {
+    return names.count();
+  }
 
 private:
   ArrayList<String> names{completion_allocator()};
 };
 
-static pure fn common_prefix_length(StringView left, StringView right,
-                                    usize limit,
-                                    bool should_ignore_ascii_case) wontthrow
-    -> usize
+static pure fn
+common_prefix_length(StringView left,
+                     StringView right,
+                     usize      limit,
+                     bool       should_ignore_ascii_case) wontthrow -> usize
 {
   usize shared_length = 0;
 
   while (shared_length < limit && shared_length < left.length &&
          shared_length < right.length)
   {
-    let const left_byte = left[shared_length];
-    let const right_byte = right[shared_length];
+    let const left_byte   = left[shared_length];
+    let const right_byte  = right[shared_length];
     let const bytes_match = should_ignore_ascii_case
                                 ? utils::ascii_to_lower(left_byte) ==
                                       utils::ascii_to_lower(right_byte)
@@ -335,13 +410,14 @@ static pure fn common_prefix_length(StringView left, StringView right,
 class GhostPrefixCollector
 {
 public:
-  fn add(StringView name, match_tier tier) throws -> void
+  fn
+  add(StringView name, match_tier tier) throws -> void
   {
     let const tier_index = static_cast<usize>(tier);
     if (tier_index > best_tier) return;
     if (tier_index < best_tier) {
-      best_tier = tier_index;
-      prefix = String{completion_allocator(), name};
+      best_tier   = tier_index;
+      prefix      = String{completion_allocator(), name};
       match_count = 1;
 
       return;
@@ -350,41 +426,79 @@ public:
     match_count++;
   }
 
-  pure fn needs_name(match_tier tier) const wontthrow -> bool
+  pure fn
+  needs_name(match_tier tier) const wontthrow -> bool
   {
     return static_cast<usize>(tier) < best_tier;
   }
 
-  fn note_source_candidate() wontthrow -> void { source_scan_count++; }
+  fn
+  note_source_candidate() wontthrow -> void
+  {
+    source_scan_count++;
+  }
 
-  pure fn has_exact() const wontthrow -> bool { return best_tier == 0; }
-  pure fn has_prefix() const wontthrow -> bool { return best_tier <= 1; }
-  pure fn allows_fuzzy_fallback() const wontthrow -> bool { return false; }
-  pure fn wants_empty_token_listing() const wontthrow -> bool { return false; }
-  pure fn count() const wontthrow -> usize { return match_count; }
-  pure fn source_scans() const wontthrow -> usize { return source_scan_count; }
-  pure fn materialized() const wontthrow -> usize { return 0; }
-  fn take_prefix() wontthrow -> String { return steal(prefix); }
+  pure fn
+  has_exact() const wontthrow -> bool
+  {
+    return best_tier == 0;
+  }
+  pure fn
+  has_prefix() const wontthrow -> bool
+  {
+    return best_tier <= 1;
+  }
+  pure fn
+  allows_fuzzy_fallback() const wontthrow -> bool
+  {
+    return false;
+  }
+  pure fn
+  wants_empty_token_listing() const wontthrow -> bool
+  {
+    return false;
+  }
+  pure fn
+  count() const wontthrow -> usize
+  {
+    return match_count;
+  }
+  pure fn
+  source_scans() const wontthrow -> usize
+  {
+    return source_scan_count;
+  }
+  pure fn
+  materialized() const wontthrow -> usize
+  {
+    return 0;
+  }
+  fn
+  take_prefix() wontthrow -> String
+  {
+    return steal(prefix);
+  }
 
 private:
-  usize best_tier{MATCH_TIER_COUNT};
-  usize match_count{0};
-  usize source_scan_count{0};
+  usize  best_tier{MATCH_TIER_COUNT};
+  usize  match_count{0};
+  usize  source_scan_count{0};
   String prefix{completion_allocator()};
 };
 
 template <typename Collector>
 static fn
-collect_command_names(StringView token, EvalContext &context,
-                      Collector &collector,
+collect_command_names(StringView                   token,
+                      EvalContext                 &context,
+                      Collector                   &collector,
                       const ArrayList<StringView> *extra_command_names,
-                      command_match_mode match_mode) throws -> void
+                      command_match_mode           match_mode) throws -> void
 {
-  let const is_glob_token = match_mode == command_match_mode::Glob;
+  let const is_glob_token     = match_mode == command_match_mode::Glob;
   let const is_case_sensitive = utils::token_has_uppercase(token);
   let const glob_active = is_glob_token ? all_active_glob_mask(token.length)
                                         : Bitset{completion_allocator()};
-  let normalized_path_token = String{completion_allocator(), token};
+  let       normalized_path_token = String{completion_allocator(), token};
   unused(os::normalize_program_name(normalized_path_token));
   let const path_is_case_sensitive =
       utils::token_has_uppercase(normalized_path_token.view());
@@ -462,9 +576,10 @@ collect_command_names(StringView token, EvalContext &context,
 }
 
 static fn
-complete_command_name_prefix(StringView token, EvalContext &context,
+complete_command_name_prefix(StringView                   token,
+                             EvalContext                 &context,
                              const ArrayList<StringView> *extra_command_names,
-                             command_match_mode match_mode) throws
+                             command_match_mode           match_mode) throws
     -> GhostPrefixCollector
 {
   let collector = GhostPrefixCollector{};
@@ -474,28 +589,30 @@ complete_command_name_prefix(StringView token, EvalContext &context,
   return collector;
 }
 
-static fn compute_longest_common_prefix(const ArrayList<String> &candidates,
-                                        bool should_ignore_ascii_case) throws
-    -> String
+static fn
+compute_longest_common_prefix(const ArrayList<String> &candidates,
+                              bool should_ignore_ascii_case) throws -> String
 {
   if (candidates.is_empty()) return String{candidates.allocator()};
-  let const first = candidates[0].view();
-  usize prefix_length = first.length;
+  let const first         = candidates[0].view();
+  usize     prefix_length = first.length;
 
   for (usize i = 1; i < candidates.count(); i++) {
     if (prefix_length == 0) break;
     let const candidate = candidates[i].view();
-    prefix_length = common_prefix_length(first, candidate, prefix_length,
-                                         should_ignore_ascii_case);
+    prefix_length       = common_prefix_length(first, candidate, prefix_length,
+                                               should_ignore_ascii_case);
   }
 
   return String{candidates.allocator(),
                 first.substring_of_length(0, prefix_length)};
 }
 
-fn complete_command_names(StringView token, EvalContext &context,
-                          const ArrayList<StringView> *extra_command_names,
-                          command_match_mode match_mode) throws
+fn
+complete_command_names(StringView                   token,
+                       EvalContext                 &context,
+                       const ArrayList<StringView> *extra_command_names,
+                       command_match_mode           match_mode) throws
     -> ArrayList<String>
 {
   let collector = CommandListCollector{};
@@ -509,8 +626,8 @@ fn complete_command_names(StringView token, EvalContext &context,
   return collector.take();
 }
 
-fn complete_command_names_by_prefix(StringView token,
-                                    EvalContext &context) throws
+fn
+complete_command_names_by_prefix(StringView token, EvalContext &context) throws
     -> ArrayList<String>
 {
   let collector = PrefixListCollector{};
@@ -521,8 +638,8 @@ fn complete_command_names_by_prefix(StringView token,
   return collector.take();
 }
 
-static fn entry_is_executable(const Path &directory, StringView name) throws
-    -> bool
+static fn
+entry_is_executable(const Path &directory, StringView name) throws -> bool
 {
   let full = directory.clone();
   full.append(name);
@@ -552,8 +669,8 @@ enum class directory_suffix_mode : u8
 
 struct filesystem_listing
 {
-  path_token parts;
-  Path directory;
+  path_token                             parts;
+  Path                                   directory;
   const ArrayList<Path::DirectoryChild> *entries;
 };
 
@@ -562,14 +679,15 @@ struct eligible_filesystem_entry
   bool is_directory;
 };
 
-static fn open_filesystem_listing(const utils::decoded_shell_word &decoded_word,
-                                  const Path &base_directory,
-                                  EvalContext &context,
-                                  utils::directory_validation validation) throws
+static fn
+open_filesystem_listing(const utils::decoded_shell_word &decoded_word,
+                        const Path                      &base_directory,
+                        EvalContext                     &context,
+                        utils::directory_validation      validation) throws
     -> Maybe<filesystem_listing>
 {
-  let const parts = split_path_token(decoded_word.text.view());
-  let directory = resolve_listing_directory(
+  let const parts     = split_path_token(decoded_word.text.view());
+  let       directory = resolve_listing_directory(
       parts.directory_part, base_directory, context, decoded_word.leading);
   let const entries = utils::read_directory_cached(
       directory, validation, utils::directory_listing_order::FoldedName);
@@ -579,10 +697,10 @@ static fn open_filesystem_listing(const utils::decoded_shell_word &decoded_word,
 }
 
 static fn
-check_filesystem_entry(const filesystem_listing &listing,
+check_filesystem_entry(const filesystem_listing   &listing,
                        const Path::DirectoryChild &entry,
-                       filesystem_entry_filter filter,
-                       Maybe<Path::EntryKind> resolved_kind = None) throws
+                       filesystem_entry_filter     filter,
+                       Maybe<Path::EntryKind>      resolved_kind = None) throws
     -> Maybe<eligible_filesystem_entry>
 {
   let const name = entry.name.view();
@@ -615,11 +733,13 @@ check_filesystem_entry(const filesystem_listing &listing,
 }
 
 static fn
-build_filesystem_candidate(StringView directory_part,
-                           StringView raw_directory_part, StringView name,
-                           bool is_directory, StringView raw_token,
+build_filesystem_candidate(StringView                       directory_part,
+                           StringView                       raw_directory_part,
+                           StringView                       name,
+                           bool                             is_directory,
+                           StringView                       raw_token,
                            const utils::decoded_shell_word &decoded_word,
-                           directory_suffix_mode suffix_mode,
+                           directory_suffix_mode            suffix_mode,
                            path_text_mode text_mode) throws -> String
 {
   let const is_inside_quote = text_mode != path_text_mode::ShellSyntax;
@@ -666,7 +786,7 @@ build_filesystem_candidate(StringView directory_part,
     return candidate;
   }
 
-  let candidate = String{completion_allocator(), directory_part};
+  let       candidate = String{completion_allocator(), directory_part};
   let const is_variable_prefixed =
       !directory_part.is_empty() && directory_part[0] == '$';
   if (is_variable_prefixed && !is_inside_quote) {
@@ -697,19 +817,24 @@ build_filesystem_candidate(StringView directory_part,
 }
 
 template <typename Collector>
-static fn collect_filesystem_matches(
-    StringView token, const utils::decoded_shell_word &decoded_word,
-    const Path &base_directory, EvalContext &context, Collector &collector,
-    path_text_mode text_mode, filesystem_entry_filter filter,
-    directory_suffix_mode suffix_mode,
-    utils::directory_validation validation) throws -> void
+static fn
+collect_filesystem_matches(StringView                       token,
+                           const utils::decoded_shell_word &decoded_word,
+                           const Path                      &base_directory,
+                           EvalContext                     &context,
+                           Collector                       &collector,
+                           path_text_mode                   text_mode,
+                           filesystem_entry_filter          filter,
+                           directory_suffix_mode            suffix_mode,
+                           utils::directory_validation      validation) throws
+    -> void
 {
   let const is_inside_quote = text_mode != path_text_mode::ShellSyntax;
   let listing = open_filesystem_listing(decoded_word, base_directory, context,
                                         validation);
   if (!listing.has_value()) return;
-  let const &parts = listing->parts;
-  let raw_directory_part = parts.directory_part;
+  let const &parts              = listing->parts;
+  let        raw_directory_part = parts.directory_part;
   if (!is_inside_quote && decoded_word.raw_directory_end > 0) {
     raw_directory_part =
         token.substring_of_length(0, decoded_word.raw_directory_end);
@@ -724,16 +849,16 @@ static fn collect_filesystem_matches(
 
   struct matched_entry
   {
-    usize position;
+    usize      position;
     match_tier tier;
   };
 
   let const do_add_matches =
       [&](const ArrayList<matched_entry> &matches) throws {
-        let paths = ArrayList<Path>{completion_allocator()};
+        let paths    = ArrayList<Path>{completion_allocator()};
         let statuses = ArrayList<os::file_status>{completion_allocator()};
         let result_positions = ArrayList<usize>{completion_allocator()};
-        let batch = os::Batch{completion_allocator()};
+        let batch            = os::Batch{completion_allocator()};
         paths.reserve(matches.count());
         statuses.reserve(matches.count());
         result_positions.reserve(matches.count());
@@ -761,10 +886,10 @@ static fn collect_filesystem_matches(
         for (usize match_position = 0; match_position < matches.count();
              match_position++)
         {
-          let const &match = matches[match_position];
-          let const &entry = (*listing->entries)[match.position];
-          let resolved_kind = Maybe<Path::EntryKind>{};
-          let const result_position = result_positions[match_position];
+          let const &match           = matches[match_position];
+          let const &entry           = (*listing->entries)[match.position];
+          let        resolved_kind   = Maybe<Path::EntryKind>{};
+          let const  result_position = result_positions[match_position];
           if (result_position != SIZE_MAX) {
             if (result_position >= results.count() ||
                 results[result_position].error_number != 0)
@@ -774,7 +899,7 @@ static fn collect_filesystem_matches(
               switch (os::file_type_letter(statuses[result_position].mode)) {
               case 'd': resolved_kind = Path::EntryKind::Directory; break;
               case '-': resolved_kind = Path::EntryKind::Regular; break;
-              default: resolved_kind = Path::EntryKind::Other; break;
+              default:  resolved_kind = Path::EntryKind::Other; break;
               }
             }
           }
@@ -788,8 +913,8 @@ static fn collect_filesystem_matches(
             continue;
           }
 
-          let const name = entry.name.view();
-          let candidate = build_filesystem_candidate(
+          let const name      = entry.name.view();
+          let       candidate = build_filesystem_candidate(
               parts.directory_part, raw_directory_part, name,
               eligible_entry->is_directory, token, decoded_word, suffix_mode,
               text_mode);
@@ -811,7 +936,7 @@ static fn collect_filesystem_matches(
     }
   }
 
-  let matches = ArrayList<matched_entry>{completion_allocator()};
+  let matches        = ArrayList<matched_entry>{completion_allocator()};
   let entry_position = utils::directory_entry_name_lower_bound(
       *listing->entries, parts.basename_part);
 
@@ -851,12 +976,16 @@ static fn collect_filesystem_matches(
 }
 
 template <typename Collector>
-static fn complete_filesystem_with(
-    StringView token, const Path &base_directory, EvalContext &context,
-    Collector collector, const utils::decoded_shell_word *decoded = nullptr,
-    path_text_mode text_mode = path_text_mode::ShellSyntax,
-    filesystem_entry_filter filter = filesystem_entry_filter::All,
-    directory_suffix_mode suffix_mode = directory_suffix_mode::Marked,
+static fn
+complete_filesystem_with(
+    StringView                       token,
+    const Path                      &base_directory,
+    EvalContext                     &context,
+    Collector                        collector,
+    const utils::decoded_shell_word *decoded   = nullptr,
+    path_text_mode                   text_mode = path_text_mode::ShellSyntax,
+    filesystem_entry_filter          filter    = filesystem_entry_filter::All,
+    directory_suffix_mode       suffix_mode    = directory_suffix_mode::Marked,
     utils::directory_validation validation =
         utils::directory_validation::Cached) throws -> Collector
 {
@@ -875,10 +1004,13 @@ static fn complete_filesystem_with(
   return collector;
 }
 
-static fn complete_filesystem(
-    StringView token, const Path &base_directory, EvalContext &context,
-    const utils::decoded_shell_word *decoded = nullptr,
-    path_text_mode text_mode = path_text_mode::ShellSyntax,
+static fn
+complete_filesystem(
+    StringView                       token,
+    const Path                      &base_directory,
+    EvalContext                     &context,
+    const utils::decoded_shell_word *decoded   = nullptr,
+    path_text_mode                   text_mode = path_text_mode::ShellSyntax,
     filesystem_entry_filter filter = filesystem_entry_filter::All) throws
     -> ArrayList<String>
 {
@@ -889,15 +1021,17 @@ static fn complete_filesystem(
   return collector.take();
 }
 
-fn complete_filesystem_names_by_prefix(StringView token, EvalContext &context,
-                                       const Path &base_directory,
-                                       completion_filesystem_mode mode) throws
+fn
+complete_filesystem_names_by_prefix(StringView                 token,
+                                    EvalContext               &context,
+                                    const Path                &base_directory,
+                                    completion_filesystem_mode mode) throws
     -> ArrayList<String>
 {
-  let const filter = mode == completion_filesystem_mode::Directories
-                         ? filesystem_entry_filter::DirectoriesOnly
-                         : filesystem_entry_filter::All;
-  let collector = complete_filesystem_with<PrefixListCollector>(
+  let const filter    = mode == completion_filesystem_mode::Directories
+                            ? filesystem_entry_filter::DirectoriesOnly
+                            : filesystem_entry_filter::All;
+  let       collector = complete_filesystem_with<PrefixListCollector>(
       token, base_directory, context, PrefixListCollector{}, nullptr,
       path_text_mode::Raw, filter, directory_suffix_mode::Bare);
 
@@ -905,14 +1039,15 @@ fn complete_filesystem_names_by_prefix(StringView token, EvalContext &context,
 }
 
 template <typename Visitor>
-static fn visit_cdpath_directories(EvalContext &context,
-                                   Visitor &&do_visit) throws -> void
+static fn
+visit_cdpath_directories(EvalContext &context, Visitor &&do_visit) throws
+    -> void
 {
   let const cdpath = context.get_variable_value("CDPATH");
   if (!cdpath.has_value()) return;
 
   let const entries = cdpath->view();
-  usize start = 0;
+  usize     start   = 0;
 
   while (start < entries.length) {
     usize end = start;
@@ -922,7 +1057,7 @@ static fn visit_cdpath_directories(EvalContext &context,
     }
 
     let const entry = entries.substring_of_length(start, end - start);
-    start = end + 1;
+    start           = end + 1;
     if (entry.is_empty()) continue;
 
     do_visit(Path{entry});
@@ -930,10 +1065,14 @@ static fn visit_cdpath_directories(EvalContext &context,
 }
 
 template <typename Collector>
-static fn collect_directory_change_operand(
-    StringView token, const Path &base_directory, EvalContext &context,
-    const utils::decoded_shell_word &decoded, Collector collector,
-    utils::directory_validation cdpath_validation) throws -> Collector
+static fn
+collect_directory_change_operand(
+    StringView                       token,
+    const Path                      &base_directory,
+    EvalContext                     &context,
+    const utils::decoded_shell_word &decoded,
+    Collector                        collector,
+    utils::directory_validation      cdpath_validation) throws -> Collector
 {
   collector = complete_filesystem_with<Collector>(
       token, base_directory, context, steal(collector), &decoded,
@@ -956,7 +1095,8 @@ static fn collect_directory_change_operand(
   return collector;
 }
 
-fn warm_cdpath_indexes(EvalContext &context) throws -> void
+fn
+warm_cdpath_indexes(EvalContext &context) throws -> void
 {
   visit_cdpath_directories(context, [](const Path &directory) throws {
     unused(utils::read_directory_cached(
@@ -974,10 +1114,13 @@ ScopedCompletionScratch::~ScopedCompletionScratch()
   internal::COMPLETION_ARENA.release(m_saved);
 }
 
-static fn complete_filesystem_prefix(
-    StringView token, const Path &base_directory, EvalContext &context,
-    const utils::decoded_shell_word *decoded = nullptr,
-    path_text_mode text_mode = path_text_mode::ShellSyntax,
+static fn
+complete_filesystem_prefix(
+    StringView                       token,
+    const Path                      &base_directory,
+    EvalContext                     &context,
+    const utils::decoded_shell_word *decoded   = nullptr,
+    path_text_mode                   text_mode = path_text_mode::ShellSyntax,
     filesystem_entry_filter filter = filesystem_entry_filter::All) throws
     -> GhostPrefixCollector
 {
@@ -986,11 +1129,12 @@ static fn complete_filesystem_prefix(
       text_mode, filter, directory_suffix_mode::Marked);
 }
 
-static fn complete_glob(StringView token, const Path &base_directory,
-                        EvalContext &context,
-                        const utils::decoded_shell_word &decoded_word,
-                        filesystem_entry_filter filter) throws
-    -> ArrayList<String>
+static fn
+complete_glob(StringView                       token,
+              const Path                      &base_directory,
+              EvalContext                     &context,
+              const utils::decoded_shell_word &decoded_word,
+              filesystem_entry_filter filter) throws -> ArrayList<String>
 {
   let candidates = ArrayList<String>{completion_allocator()};
   let listing = open_filesystem_listing(decoded_word, base_directory, context,
@@ -1009,7 +1153,7 @@ static fn complete_glob(StringView token, const Path &base_directory,
     glob_active.push(decoded_word.glob_active[position]);
 
   let normalized_pattern = String{completion_allocator()};
-  let match_pattern = parts.basename_part;
+  let match_pattern      = parts.basename_part;
   if (!os::FILESYSTEM_IS_CASE_SENSITIVE) {
     normalized_pattern.assign_lowercase_ascii(match_pattern);
     match_pattern = normalized_pattern.view();
@@ -1020,7 +1164,7 @@ static fn complete_glob(StringView token, const Path &base_directory,
 
   for (usize position = 0; position < listing->entries->count(); position++) {
     let const &entry = (*listing->entries)[position];
-    let const name = entry.name.view();
+    let const  name  = entry.name.view();
 
     let match_name = name;
     if (!os::FILESYSTEM_IS_CASE_SENSITIVE) {
@@ -1037,10 +1181,10 @@ static fn complete_glob(StringView token, const Path &base_directory,
     matched_positions.push(position);
   }
 
-  let paths = ArrayList<Path>{completion_allocator()};
-  let statuses = ArrayList<os::file_status>{completion_allocator()};
+  let paths            = ArrayList<Path>{completion_allocator()};
+  let statuses         = ArrayList<os::file_status>{completion_allocator()};
   let result_positions = ArrayList<usize>{completion_allocator()};
-  let batch = os::Batch{completion_allocator()};
+  let batch            = os::Batch{completion_allocator()};
   paths.reserve(matched_positions.count());
   statuses.reserve(matched_positions.count());
   result_positions.reserve(matched_positions.count());
@@ -1068,9 +1212,9 @@ static fn complete_glob(StringView token, const Path &base_directory,
        match_position++)
   {
     let const &entry = (*listing->entries)[matched_positions[match_position]];
-    let const name = entry.name.view();
-    let resolved_kind = Maybe<Path::EntryKind>{};
-    let const result_position = result_positions[match_position];
+    let const  name  = entry.name.view();
+    let        resolved_kind   = Maybe<Path::EntryKind>{};
+    let const  result_position = result_positions[match_position];
     if (result_position != SIZE_MAX) {
       if (result_position >= results.count() ||
           results[result_position].error_number != 0)
@@ -1080,7 +1224,7 @@ static fn complete_glob(StringView token, const Path &base_directory,
         switch (os::file_type_letter(statuses[result_position].mode)) {
         case 'd': resolved_kind = Path::EntryKind::Directory; break;
         case '-': resolved_kind = Path::EntryKind::Regular; break;
-        default: resolved_kind = Path::EntryKind::Other; break;
+        default:  resolved_kind = Path::EntryKind::Other; break;
         }
       }
     }
@@ -1107,22 +1251,24 @@ static fn complete_glob(StringView token, const Path &base_directory,
   return candidates;
 }
 
-static pure fn token_is_variable(StringView token) wontthrow -> bool
+static pure fn
+token_is_variable(StringView token) wontthrow -> bool
 {
   return !token.is_empty() && token[0] == '$' &&
          !os::has_directory_separator(token);
 }
 
-static fn complete_variable(StringView token, EvalContext &context,
-                            const ArrayList<StringView> *extra_variable_names,
-                            StringView text_before_token) throws
-    -> ArrayList<String>
+static fn
+complete_variable(StringView                   token,
+                  EvalContext                 &context,
+                  const ArrayList<StringView> *extra_variable_names,
+                  StringView text_before_token) throws -> ArrayList<String>
 {
   let candidates = ArrayList<String>{completion_allocator()};
 
-  let has_brace = token.length >= 2 && token[1] == '{';
-  usize name_start = has_brace ? 2 : 1;
-  let const prefix = token.substring(name_start);
+  let       has_brace  = token.length >= 2 && token[1] == '{';
+  usize     name_start = has_brace ? 2 : 1;
+  let const prefix     = token.substring(name_start);
 
   LOG(Debug, "completing variable token '%.*s', prefix '%.*s', brace %d",
       static_cast<int>(token.length), token.data,
@@ -1150,7 +1296,7 @@ static fn complete_variable(StringView token, EvalContext &context,
   }
 
   if (!text_before_token.is_empty()) {
-    let spans = ArrayList<highlight_span>{completion_allocator()};
+    let spans          = ArrayList<highlight_span>{completion_allocator()};
     let assigned_names = HashSet{completion_allocator()};
     let function_names = HashSet{completion_allocator()};
     unused(scan_highlight_range(text_before_token, 0, text_before_token.length,
@@ -1178,16 +1324,18 @@ static fn complete_variable(StringView token, EvalContext &context,
   return candidates;
 }
 
-static fn token_is_tilde_user_prefix(StringView token) wontthrow -> bool
+static fn
+token_is_tilde_user_prefix(StringView token) wontthrow -> bool
 {
   return !token.is_empty() && token[0] == '~' &&
          !os::has_directory_separator(token);
 }
 
-static fn complete_tilde_user(StringView token) throws -> ArrayList<String>
+static fn
+complete_tilde_user(StringView token) throws -> ArrayList<String>
 {
-  let candidates = ArrayList<String>{completion_allocator()};
-  let const prefix = token.substring(1);
+  let       candidates = ArrayList<String>{completion_allocator()};
+  let const prefix     = token.substring(1);
 
   for (let const &user : os::enumerate_users()) {
     if (!user.view().starts_with(prefix)) continue;
@@ -1204,8 +1352,8 @@ static fn complete_tilde_user(StringView token) throws -> ArrayList<String>
   return candidates;
 }
 
-static pure fn file_extension_hint(StringView command) wontthrow
-    -> Maybe<StringView>
+static pure fn
+file_extension_hint(StringView command) wontthrow -> Maybe<StringView>
 {
   if (let const hint = FILE_EXTENSION_HINTS.find(command); hint.has_value())
     return StringView{*hint};
@@ -1213,8 +1361,9 @@ static pure fn file_extension_hint(StringView command) wontthrow
   return None;
 }
 
-static pure fn candidate_extension_is_hinted(
-    StringView candidate,
+static pure fn
+candidate_extension_is_hinted(
+    StringView                   candidate,
     const ArrayList<StringView> &hinted_extensions) wontthrow -> bool
 {
   if (!candidate.is_empty() &&
@@ -1256,8 +1405,8 @@ static pure fn candidate_extension_is_hinted(
   return false;
 }
 
-static fn split_hint_extensions(StringView hint_list,
-                                Allocator allocator) throws
+static fn
+split_hint_extensions(StringView hint_list, Allocator allocator) throws
     -> ArrayList<StringView>
 {
   let extensions = ArrayList<StringView>{allocator};
@@ -1267,9 +1416,9 @@ static fn split_hint_extensions(StringView hint_list,
   return extensions;
 }
 
-static fn partition_by_extension(ArrayList<String> candidates,
-                                 StringView hint_list) throws
-    -> ArrayList<String>
+static fn
+partition_by_extension(ArrayList<String> candidates,
+                       StringView        hint_list) throws -> ArrayList<String>
 {
   let const hinted_extensions =
       split_hint_extensions(hint_list, candidates.allocator());
@@ -1291,8 +1440,8 @@ static fn partition_by_extension(ArrayList<String> candidates,
   return ordered;
 }
 
-static fn keep_hinted_extension(ArrayList<String> candidates,
-                                StringView hint_list) throws
+static fn
+keep_hinted_extension(ArrayList<String> candidates, StringView hint_list) throws
     -> ArrayList<String>
 {
   let const hinted_extensions =
@@ -1315,12 +1464,15 @@ static fn keep_hinted_extension(ArrayList<String> candidates,
   return kept;
 }
 
-fn complete(StringView line, usize cursor, EvalContext &context,
-            const Path &base_directory,
-            const ArrayList<StringView> *extra_command_names,
-            bool should_complete_external_arguments_in_posix,
-            completion_mode mode,
-            const ArrayList<StringView> *extra_variable_names) throws
+fn
+complete(StringView                   line,
+         usize                        cursor,
+         EvalContext                 &context,
+         const Path                  &base_directory,
+         const ArrayList<StringView> *extra_command_names,
+         bool            should_complete_external_arguments_in_posix,
+         completion_mode mode,
+         const ArrayList<StringView> *extra_variable_names) throws
     -> completion_result
 {
   let const is_for_listing = mode == completion_mode::Listing;
@@ -1329,12 +1481,12 @@ fn complete(StringView line, usize cursor, EvalContext &context,
 
   if (cursor > line.length) cursor = line.length;
   let const is_line_empty = line.is_empty();
-  let const whole_line = line;
+  let const whole_line    = line;
 
-  let const command_range = command_substitution_range(line, cursor);
-  let completion_offset = command_range.start;
-  line = line.substring_of_length(command_range.start,
-                                  command_range.end - command_range.start);
+  let const command_range     = command_substitution_range(line, cursor);
+  let       completion_offset = command_range.start;
+  line                        = line.substring_of_length(command_range.start,
+                                                         command_range.end - command_range.start);
   cursor -= completion_offset;
 
   let const segment_start = command_segment_start(line, cursor);
@@ -1342,10 +1494,10 @@ fn complete(StringView line, usize cursor, EvalContext &context,
   line = line.substring(segment_start);
   cursor -= segment_start;
 
-  let const bounds = find_token_bounds(line, cursor);
-  let token_start = bounds.start;
-  let token_end = bounds.end;
-  let replacement_token_end = bounds.end;
+  let const bounds                = find_token_bounds(line, cursor);
+  let       token_start           = bounds.start;
+  let       token_end             = bounds.end;
+  let       replacement_token_end = bounds.end;
   let token = line.substring_of_length(token_start, token_end - token_start);
   let is_command = is_in_command_position(line, token_start);
 
@@ -1355,7 +1507,7 @@ fn complete(StringView line, usize cursor, EvalContext &context,
       utils::decode_shell_word(token_prefix, completion_allocator());
   if (decoded_prefix.quote_character != 0) {
     token_end = cursor;
-    token = line.substring_of_length(token_start, token_end - token_start);
+    token     = line.substring_of_length(token_start, token_end - token_start);
     replacement_token_end = cursor;
     let const quote_start =
         token_start + decoded_prefix.open_quote_content_start - 1;
@@ -1367,7 +1519,7 @@ fn complete(StringView line, usize cursor, EvalContext &context,
     }
   } else if (cursor < token_end) {
     token_end = cursor;
-    token = token_prefix;
+    token     = token_prefix;
   }
   let const line_end = replacement_token_end;
   if (cursor == token_start) replacement_token_end = cursor;
@@ -1389,7 +1541,7 @@ fn complete(StringView line, usize cursor, EvalContext &context,
   let const is_quote_closed_after_token =
       line_end < line.length && decoded_token.quote_character != 0 &&
       line[line_end] == decoded_token.quote_character;
-  line = line.substring_of_length(0, line_end);
+  line                     = line.substring_of_length(0, line_end);
   let const has_open_quote = decoded_token.quote_character != 0;
   let const open_quote_content_token =
       has_open_quote ? decoded_token.text.view().substring(
@@ -1427,18 +1579,18 @@ fn complete(StringView line, usize cursor, EvalContext &context,
   let const extension_hint =
       is_command ? Maybe<StringView>{} : file_extension_hint(command_word);
 
-  let candidates = ArrayList<String>{arena};
-  let descriptions = StringMap<String>{arena};
-  let ghost_prefix = String{arena};
-  usize ghost_candidate_count = 0;
-  usize source_candidate_scan_count = 0;
-  usize materialized_candidate_count = 0;
-  let should_rebuild_shell_syntax_candidates = false;
-  let should_close_generated_prefix_quote = false;
-  let should_ignore_common_prefix_case = false;
-  let is_tier_ranked = false;
-  let is_spec_candidates = false;
-  u32 spec_option_mask = 0;
+  let       candidates                             = ArrayList<String>{arena};
+  let       descriptions                           = StringMap<String>{arena};
+  let       ghost_prefix                           = String{arena};
+  usize     ghost_candidate_count                  = 0;
+  usize     source_candidate_scan_count            = 0;
+  usize     materialized_candidate_count           = 0;
+  let       should_rebuild_shell_syntax_candidates = false;
+  let       should_close_generated_prefix_quote    = false;
+  let       should_ignore_common_prefix_case       = false;
+  let       is_tier_ranked                         = false;
+  let       is_spec_candidates                     = false;
+  u32       spec_option_mask                       = 0;
   let const do_has_spec_option = [&](completion_option option) -> bool {
     return (spec_option_mask & completion_option_bit(option)) != 0;
   };
@@ -1495,9 +1647,9 @@ fn complete(StringView line, usize cursor, EvalContext &context,
     }
 
     if (from_initial_word.has_value()) {
-      candidates = steal(*from_initial_word);
-      is_spec_candidates = true;
-      replacement_token_end = cursor;
+      candidates                             = steal(*from_initial_word);
+      is_spec_candidates                     = true;
+      replacement_token_end                  = cursor;
       should_rebuild_shell_syntax_candidates = true;
     } else if (!stage_token.is_empty() || is_for_listing) {
       if (is_for_listing) {
@@ -1514,10 +1666,10 @@ fn complete(StringView line, usize cursor, EvalContext &context,
             stage_token, context, extra_command_names,
             is_glob_token ? command_match_mode::Glob
                           : command_match_mode::Prefix);
-        ghost_candidate_count = collector.count();
-        source_candidate_scan_count = collector.source_scans();
+        ghost_candidate_count        = collector.count();
+        source_candidate_scan_count  = collector.source_scans();
         materialized_candidate_count = collector.materialized();
-        ghost_prefix = collector.take_prefix();
+        ghost_prefix                 = collector.take_prefix();
       }
       should_rebuild_shell_syntax_candidates = true;
     }
@@ -1571,7 +1723,7 @@ fn complete(StringView line, usize cursor, EvalContext &context,
             ? path_text_mode::Literal
             : path_text_mode::ShellSyntax;
     if (from_stage.has_value()) {
-      candidates = steal(*from_stage);
+      candidates                             = steal(*from_stage);
       should_rebuild_shell_syntax_candidates = true;
     } else if (is_for_listing) {
       let const basename =
@@ -1591,18 +1743,18 @@ fn complete(StringView line, usize cursor, EvalContext &context,
                                     filesystem_filter);
       should_close_generated_prefix_quote = decoded_token.quote_character == 0;
     } else if (!decoded_token.text.is_empty()) {
-      let collector = is_directory_change_command
-                          ? collect_directory_change_operand(
+      let collector                = is_directory_change_command
+                                         ? collect_directory_change_operand(
                                 token, base_directory, context, decoded_token,
                                 GhostPrefixCollector{},
                                 utils::directory_validation::IndexOnly)
-                          : complete_filesystem_prefix(
+                                         : complete_filesystem_prefix(
                                 token, base_directory, context, &decoded_token,
                                 file_name_text_mode, filesystem_filter);
-      ghost_candidate_count = collector.count();
-      source_candidate_scan_count = collector.source_scans();
+      ghost_candidate_count        = collector.count();
+      source_candidate_scan_count  = collector.source_scans();
       materialized_candidate_count = collector.materialized();
-      ghost_prefix = collector.take_prefix();
+      ghost_prefix                 = collector.take_prefix();
     }
   }
 
@@ -1641,7 +1793,7 @@ fn complete(StringView line, usize cursor, EvalContext &context,
         candidates = steal(sorted_candidates).into_array_list();
 
         if (is_spec_candidates) {
-          let paths = ArrayList<String>{arena};
+          let   paths      = ArrayList<String>{arena};
           usize kept_count = 0;
 
           for (usize i = 0; i < candidates.count(); i++) {
@@ -1711,7 +1863,7 @@ fn complete(StringView line, usize cursor, EvalContext &context,
 
         for (let &candidate : candidates) {
           let const description = descriptions.find(candidate.view());
-          let rebuilt = rebuild_shell_syntax_candidate(
+          let       rebuilt     = rebuild_shell_syntax_candidate(
               token, decoded_token, candidate.view(), should_quote_words);
           if (description.has_value())
             rebuilt_descriptions.set(rebuilt.view(), description->view());
@@ -1727,8 +1879,8 @@ fn complete(StringView line, usize cursor, EvalContext &context,
         candidates.count() == 1 && !candidates[0].is_empty() &&
         !os::is_directory_separator(candidates[0][candidates[0].length() - 1]))
     {
-      let const description = descriptions.find(candidates[0].view());
-      let description_text = String{arena};
+      let const description      = descriptions.find(candidates[0].view());
+      let       description_text = String{arena};
       if (description.has_value()) description_text.append(description->view());
       candidates[0].push(open_quote);
       if (description.has_value()) {

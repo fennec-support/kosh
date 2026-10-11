@@ -19,21 +19,28 @@ namespace koshka {
 
 class EvalContext;
 
-fn evaluate_constant_arithmetic(StringView expression) throws -> i64;
-fn evaluate_constant_arithmetic_nonzero(StringView expression,
-                                        bool is_exact) throws -> bool;
-fn evaluate_constant_arithmetic_text(StringView expression,
-                                     Allocator allocator) throws -> String;
-pure fn obvious_xor_power_operator_position(StringView expression) wontthrow
+fn
+evaluate_constant_arithmetic(StringView expression) throws -> i64;
+fn
+evaluate_constant_arithmetic_nonzero(StringView expression,
+                                     bool       is_exact) throws -> bool;
+fn
+evaluate_constant_arithmetic_text(StringView expression,
+                                  Allocator  allocator) throws -> String;
+pure fn
+obvious_xor_power_operator_position(StringView expression) wontthrow
     -> Maybe<usize>;
 
-fn find_substring_length_separator(StringView body) wontthrow -> usize;
+fn
+find_substring_length_separator(StringView body) wontthrow -> usize;
 
-wontreturn fn throw_script_fatal(StringView message,
-                                 StringView note = {}) throws -> void;
+wontreturn fn
+throw_script_fatal(StringView message, StringView note = {}) throws -> void;
 
-fn source_init_moods(EvalContext &context, const ArrayList<mimic_mood> &moods,
-                     bool is_login_shell, bool should_be_interactive) throws
-    -> void;
+fn
+source_init_moods(EvalContext                 &context,
+                  const ArrayList<mimic_mood> &moods,
+                  bool                         is_login_shell,
+                  bool should_be_interactive) throws -> void;
 
 } /* namespace koshka */

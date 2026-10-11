@@ -24,19 +24,34 @@ KOSHKIT_UTIL_DECL(
     "The eviliso utility reports namespaces, cgroups, sessions, remote "
     "connections, container runtimes, containers, and Kubernetes.");
 
-FLAG(EVILISO_ALL, Bool, 'a', "all",
+FLAG(EVILISO_ALL,
+     Bool,
+     'a',
+     "all",
      "Include detailed rows for every selected section.");
 FLAG(EVILISO_NAMESPACES, Bool, 'n', "namespaces", "Report process namespaces.");
 FLAG(EVILISO_CGROUPS, Bool, 'c', "cgroups", "Report cgroup membership.");
 FLAG(EVILISO_SESSIONS, Bool, 's', "sessions", "Report login sessions.");
-FLAG(EVILISO_REMOTE, Bool, 'r', "remote",
+FLAG(EVILISO_REMOTE,
+     Bool,
+     'r',
+     "remote",
      "Select remote peers and socket summary.");
-FLAG(EVILISO_RUNTIME, Bool, 'k', "runtime",
+FLAG(EVILISO_RUNTIME,
+     Bool,
+     'k',
+     "runtime",
      "Report container runtime information.");
-FLAG(EVILISO_KUBERNETES, Bool, '\0', "kubernetes",
+FLAG(EVILISO_KUBERNETES,
+     Bool,
+     '\0',
+     "kubernetes",
      "Report Kubernetes information.");
 FLAG(EVILISO_CONTAINER, Bool, '\0', "container", "Report detected containers.");
-FLAG(EVILISO_CONTAINERS, Bool, '\0', "containers",
+FLAG(EVILISO_CONTAINERS,
+     Bool,
+     '\0',
+     "containers",
      "Report detected containers.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(EvilIso);
@@ -65,14 +80,16 @@ enum class eviliso_remote_rows_mode : u8
 
 struct namespace_process
 {
-  namespace_process(i64 process_id, StringView name, bool is_self,
-                    Allocator allocator)
+  namespace_process(i64        process_id,
+                    StringView name,
+                    bool       is_self,
+                    Allocator  allocator)
       : process_id(process_id), name(allocator, name), is_self(is_self)
   {}
 
-  i64 process_id{0};
+  i64    process_id{0};
   String name;
-  bool is_self{false};
+  bool   is_self{false};
 };
 
 struct namespace_relation
@@ -82,18 +99,19 @@ struct namespace_relation
   {}
 
   StringView type;
-  usize type_index{0};
-  String identifier;
-  u64 identifier_value{0};
-  i64 process_id{0};
-  String name;
-  String reason;
+  usize      type_index{0};
+  String     identifier;
+  u64        identifier_value{0};
+  i64        process_id{0};
+  String     name;
+  String     reason;
   StringView role;
-  bool is_identifier_numeric{false};
-  bool is_available{false};
+  bool       is_identifier_numeric{false};
+  bool       is_available{false};
 };
 
-fn eviliso_namespace_proc_path(StringView suffix, Allocator allocator) throws
+fn
+eviliso_namespace_proc_path(StringView suffix, Allocator allocator) throws
     -> String
 {
   let path = String{allocator, "/proc/"};
@@ -102,25 +120,28 @@ fn eviliso_namespace_proc_path(StringView suffix, Allocator allocator) throws
   return path;
 }
 
-fn namespace_identifier(StringView target, Allocator allocator) throws -> String
+fn
+namespace_identifier(StringView target, Allocator allocator) throws -> String
 {
   let const open = target.find_character('[');
   if (!open.has_value()) return String{allocator, target};
   let const after_open = target.substring(*open + 1);
-  let const close = after_open.find_character(']');
+  let const close      = after_open.find_character(']');
   if (!close.has_value()) return String{allocator, target};
 
   return String{allocator, after_open.substring_of_length(0, *close)};
 }
 
-fn append_namespace_report(String &output, bool should_color,
-                           ArrayList<namespace_process> processes,
-                           eviliso_detail_mode detail) throws -> void
+fn
+append_namespace_report(String                      &output,
+                        bool                         should_color,
+                        ArrayList<namespace_process> processes,
+                        eviliso_detail_mode          detail) throws -> void
 {
-  constexpr StringView names[] = {"cgroup", "ipc",  "mnt",  "net",
-                                  "pid",    "time", "user", "uts"};
-  constexpr usize NAME_COUNT = sizeof(names) / sizeof(*names);
-  let const allocator = processes.allocator();
+  constexpr StringView names[]    = {"cgroup", "ipc",  "mnt",  "net",
+                                     "pid",    "time", "user", "uts"};
+  constexpr usize      NAME_COUNT = sizeof(names) / sizeof(*names);
+  let const            allocator  = processes.allocator();
   let const namespace_path = eviliso_namespace_proc_path("self/ns", allocator);
   if (!Path{namespace_path.view(), allocator}.is_directory()) {
     processes.clear();
@@ -131,8 +152,8 @@ fn append_namespace_report(String &output, bool should_color,
   relations.reserve(processes.count() * NAME_COUNT);
 
   for (usize type_index = 0; type_index < NAME_COUNT; type_index++) {
-    let const type = names[type_index];
-    let self_suffix = String{allocator, "self/ns/"};
+    let const type        = names[type_index];
+    let       self_suffix = String{allocator, "self/ns/"};
     self_suffix += type;
     let const self_target = os::read_symlink(
         eviliso_namespace_proc_path(self_suffix.view(), allocator), allocator);
@@ -141,7 +162,7 @@ fn append_namespace_report(String &output, bool should_color,
                                         : os::last_system_error_message();
 
     for (let const &process : processes) {
-      let target = Maybe<String>{};
+      let target         = Maybe<String>{};
       let failure_reason = String{allocator};
       if (process.is_self) {
         if (self_target.has_value()) {
@@ -159,23 +180,23 @@ fn append_namespace_report(String &output, bool should_color,
           failure_reason = os::last_system_error_message();
       }
 
-      let identifier = target.has_value()
-                           ? namespace_identifier(target->view(), allocator)
-                           : String{allocator, "unavailable"};
+      let       identifier       = target.has_value()
+                                       ? namespace_identifier(target->view(), allocator)
+                                       : String{allocator, "unavailable"};
       let const identifier_value = identifier.view().to<u64>();
-      let relation = namespace_relation{allocator};
-      relation.type = type;
-      relation.type_index = type_index;
-      relation.identifier = steal(identifier);
+      let       relation         = namespace_relation{allocator};
+      relation.type              = type;
+      relation.type_index        = type_index;
+      relation.identifier        = steal(identifier);
       relation.identifier_value =
           identifier_value.is_error() ? 0 : identifier_value.value();
       relation.process_id = process.process_id;
-      relation.name = String{allocator, process.name.view()};
-      relation.reason = steal(failure_reason);
+      relation.name       = String{allocator, process.name.view()};
+      relation.reason     = steal(failure_reason);
       relation.role =
           process.is_self ? StringView{"self"} : StringView{"other"};
       relation.is_identifier_numeric = !identifier_value.is_error();
-      relation.is_available = target.has_value();
+      relation.is_available          = target.has_value();
       relations.push(steal(relation));
     }
   }
@@ -270,9 +291,9 @@ fn append_namespace_report(String &output, bool should_color,
   if (detail == eviliso_detail_mode::All) {
     for (let const &relation : sorted_relations) {
       if (relation.is_available) continue;
-      has_failure = true;
+      has_failure          = true;
       let const process_id = String::from(relation.process_id, allocator);
-      let cells = ArrayList<report_table_cell_view>{allocator};
+      let       cells      = ArrayList<report_table_cell_view>{allocator};
       cells.push({relation.type, colors::ansi::BOLD_MAGENTA});
       cells.push({process_id.view(), colors::ansi::BOLD_GREEN});
       cells.push({relation.name.view(), colors::ansi::RESET});
@@ -294,13 +315,13 @@ fn append_namespace_report(String &output, bool should_color,
       }
       let const reason = first.reason.is_empty() ? StringView{"unknown error"}
                                                  : first.reason.view();
-      usize group_end = relation_index + 1;
+      usize     group_end = relation_index + 1;
 
       while (group_end < sorted_relations.count()) {
-        let const &candidate = sorted_relations[group_end];
-        let const candidate_reason = candidate.reason.is_empty()
-                                         ? StringView{"unknown error"}
-                                         : candidate.reason.view();
+        let const &candidate        = sorted_relations[group_end];
+        let const  candidate_reason = candidate.reason.is_empty()
+                                          ? StringView{"unknown error"}
+                                          : candidate.reason.view();
         if (candidate.is_available || candidate.type != first.type ||
             candidate_reason != reason)
         {
@@ -328,19 +349,23 @@ fn append_namespace_report(String &output, bool should_color,
 
 struct cgroup_membership
 {
-  cgroup_membership(StringView hierarchy, u64 hierarchy_value,
-                    StringView controller, StringView path, Allocator allocator)
+  cgroup_membership(StringView hierarchy,
+                    u64        hierarchy_value,
+                    StringView controller,
+                    StringView path,
+                    Allocator  allocator)
       : hierarchy(allocator, hierarchy), hierarchy_value(hierarchy_value),
         controller(allocator, controller), path(allocator, path)
   {}
 
   String hierarchy;
-  u64 hierarchy_value{0};
+  u64    hierarchy_value{0};
   String controller;
   String path;
 };
 
-fn cgroup_proc_path(StringView suffix, Allocator allocator) throws -> String
+fn
+cgroup_proc_path(StringView suffix, Allocator allocator) throws -> String
 {
   let path = String{allocator, "/proc/"};
   path += suffix;
@@ -348,8 +373,8 @@ fn cgroup_proc_path(StringView suffix, Allocator allocator) throws -> String
   return path;
 }
 
-fn container_marker_path(StringView suffix, Allocator allocator) throws
-    -> String
+fn
+container_marker_path(StringView suffix, Allocator allocator) throws -> String
 {
   let path = String{allocator, "/"};
   path += suffix;
@@ -357,7 +382,8 @@ fn container_marker_path(StringView suffix, Allocator allocator) throws
   return path;
 }
 
-fn kubernetes_service_account_path(StringView name, Allocator allocator) throws
+fn
+kubernetes_service_account_path(StringView name, Allocator allocator) throws
     -> String
 {
   let path =
@@ -367,7 +393,8 @@ fn kubernetes_service_account_path(StringView name, Allocator allocator) throws
   return path;
 }
 
-fn parse_cgroup_memberships(StringView text, Allocator allocator) throws
+fn
+parse_cgroup_memberships(StringView text, Allocator allocator) throws
     -> ArrayList<cgroup_membership>
 {
   let memberships = ArrayList<cgroup_membership>{allocator};
@@ -375,12 +402,12 @@ fn parse_cgroup_memberships(StringView text, Allocator allocator) throws
   for (let const line : utils::split_lines(text)) {
     let const first_separator = line.find_character(':');
     if (!first_separator.has_value()) continue;
-    let const remainder = line.substring(*first_separator + 1);
+    let const remainder        = line.substring(*first_separator + 1);
     let const second_separator = remainder.find_character(':');
     if (!second_separator.has_value()) continue;
-    let const hierarchy = line.substring_of_length(0, *first_separator);
+    let const hierarchy  = line.substring_of_length(0, *first_separator);
     let const controller = remainder.substring_of_length(0, *second_separator);
-    let const path = remainder.substring(*second_separator + 1);
+    let const path       = remainder.substring(*second_separator + 1);
     if (hierarchy.is_empty() || path.is_empty()) {
       continue;
     }
@@ -419,8 +446,9 @@ enum class process_snapshot_status : u8
   Unverifiable,
 };
 
-pure fn process_snapshot_identity_is_valid(
-    process_snapshot_status status) wontthrow -> bool
+pure fn
+process_snapshot_identity_is_valid(process_snapshot_status status) wontthrow
+    -> bool
 {
   return status != process_snapshot_status::Exited &&
          status != process_snapshot_status::Reused &&
@@ -434,11 +462,11 @@ struct process_cgroup_snapshot
         evidence(allocator)
   {}
 
-  i64 process_id{0};
-  u64 start_token{0};
-  u32 owner_id{0};
-  String name;
-  String command;
+  i64                          process_id{0};
+  u64                          start_token{0};
+  u32                          owner_id{0};
+  String                       name;
+  String                       command;
   ArrayList<cgroup_membership> memberships;
   struct identity_evidence
   {
@@ -451,14 +479,15 @@ struct process_cgroup_snapshot
     String container_id;
     String pod_uid;
     String qos;
-    bool is_kubernetes{false};
+    bool   is_kubernetes{false};
     String path;
   };
   ArrayList<identity_evidence> evidence;
-  process_snapshot_status status{process_snapshot_status::Unavailable};
+  process_snapshot_status      status{process_snapshot_status::Unavailable};
 };
 
-pure fn is_hexadecimal_id(StringView text) wontthrow -> bool
+pure fn
+is_hexadecimal_id(StringView text) wontthrow -> bool
 {
   if (text.length != 64) return false;
 
@@ -474,13 +503,15 @@ pure fn is_hexadecimal_id(StringView text) wontthrow -> bool
   return true;
 }
 
-pure fn has_suffix(StringView text, StringView suffix) wontthrow -> bool
+pure fn
+has_suffix(StringView text, StringView suffix) wontthrow -> bool
 {
   return text.length >= suffix.length &&
          text.substring(text.length - suffix.length) == suffix;
 }
 
-pure fn scoped_container_id(StringView component, StringView prefix) wontthrow
+pure fn
+scoped_container_id(StringView component, StringView prefix) wontthrow
     -> Maybe<StringView>
 {
   constexpr StringView SUFFIX = ".scope";
@@ -494,8 +525,8 @@ pure fn scoped_container_id(StringView component, StringView prefix) wontthrow
   return is_hexadecimal_id(identifier) ? Maybe<StringView>{identifier} : None;
 }
 
-pure fn normalized_pod_uid(StringView component, Allocator allocator) throws
-    -> String
+pure fn
+normalized_pod_uid(StringView component, Allocator allocator) throws -> String
 {
   struct pod_component_form
   {
@@ -542,7 +573,8 @@ pure fn normalized_pod_uid(StringView component, Allocator allocator) throws
   return result;
 }
 
-fn parse_cgroup_identity(StringView path, Allocator allocator) throws
+fn
+parse_cgroup_identity(StringView path, Allocator allocator) throws
     -> process_cgroup_snapshot::identity_evidence
 {
   let result = process_cgroup_snapshot::identity_evidence{path, allocator};
@@ -554,8 +586,8 @@ fn parse_cgroup_identity(StringView path, Allocator allocator) throws
   };
   static constexpr StaticStringMap RUNTIME_ROOTS{RUNTIME_ENTRIES};
 
-  let previous = StringView{};
-  let remaining = path;
+  let  previous                 = StringView{};
+  let  remaining                = path;
   bool has_kubernetes_component = false;
 
   while (!remaining.is_empty()) {
@@ -588,7 +620,7 @@ fn parse_cgroup_identity(StringView path, Allocator allocator) throws
     for (let const &candidate : SCOPED_RUNTIMES) {
       let const identifier = scoped_container_id(component, candidate.prefix);
       if (!identifier.has_value()) continue;
-      result.runtime = String{allocator, candidate.runtime};
+      result.runtime      = String{allocator, candidate.runtime};
       result.container_id = String{allocator, *identifier};
       break;
     }
@@ -599,7 +631,7 @@ fn parse_cgroup_identity(StringView path, Allocator allocator) throws
       result.container_id = String{allocator, component};
     }
 
-    let pod_uid = normalized_pod_uid(component, allocator);
+    let       pod_uid     = normalized_pod_uid(component, allocator);
     let const has_pod_uid = pod_uid != "-";
     if (has_pod_uid) result.pod_uid = steal(pod_uid);
     if (component == "burstable" || component == "kubepods-burstable.slice" ||
@@ -613,7 +645,7 @@ fn parse_cgroup_identity(StringView path, Allocator allocator) throws
       result.qos = "besteffort";
     }
     if (component == "kubepods" || component == "kubepods.slice") {
-      result.is_kubernetes = true;
+      result.is_kubernetes     = true;
       has_kubernetes_component = true;
     }
     previous = component;
@@ -626,30 +658,31 @@ fn parse_cgroup_identity(StringView path, Allocator allocator) throws
   return result;
 }
 
-fn collect_process_cgroup_snapshot(Allocator allocator,
-                                   eviliso_collection_mode collection) throws
+fn
+collect_process_cgroup_snapshot(Allocator               allocator,
+                                eviliso_collection_mode collection) throws
     -> ArrayList<process_cgroup_snapshot>
 {
   let candidates = os::enumerate_processes(os::process_detail::ResourceStats);
-  let snapshot = ArrayList<process_cgroup_snapshot>{allocator};
+  let snapshot   = ArrayList<process_cgroup_snapshot>{allocator};
   snapshot.reserve(candidates.count());
   let const self_process_id = os::get_current_process_id();
 
   for (let const &process : candidates) {
-    let record = process_cgroup_snapshot{allocator};
-    record.process_id = process.pid;
+    let record         = process_cgroup_snapshot{allocator};
+    record.process_id  = process.pid;
     record.start_token = process.start_token;
-    record.owner_id = process.owner_id;
-    record.name = process.name.is_empty()
-                      ? String{allocator, "-"}
-                      : String{allocator, process.name.view()};
-    record.command = process.command_line.is_empty()
-                         ? String{allocator, "-"}
-                         : String{allocator, process.command_line.view()};
+    record.owner_id    = process.owner_id;
+    record.name        = process.name.is_empty()
+                             ? String{allocator, "-"}
+                             : String{allocator, process.name.view()};
+    record.command     = process.command_line.is_empty()
+                             ? String{allocator, "-"}
+                             : String{allocator, process.command_line.view()};
     if (collection == eviliso_collection_mode::Collect) {
-      let suffix = process.pid == self_process_id
-                       ? String{allocator, "self/cgroup"}
-                       : String::from(process.pid, allocator) + "/cgroup";
+      let       suffix = process.pid == self_process_id
+                             ? String{allocator, "self/cgroup"}
+                             : String::from(process.pid, allocator) + "/cgroup";
       let const contents =
           Path{cgroup_proc_path(suffix.view(), allocator), allocator}
               .read_entire_file();
@@ -721,10 +754,14 @@ fn collect_process_cgroup_snapshot(Allocator allocator,
 
 struct cgroup_report_row
 {
-  cgroup_report_row(StringView hierarchy, u64 hierarchy_value,
-                    StringView controller, StringView path,
-                    const process_cgroup_snapshot &process, StringView role,
-                    StringView status, Allocator allocator)
+  cgroup_report_row(StringView                     hierarchy,
+                    u64                            hierarchy_value,
+                    StringView                     controller,
+                    StringView                     path,
+                    const process_cgroup_snapshot &process,
+                    StringView                     role,
+                    StringView                     status,
+                    Allocator                      allocator)
       : hierarchy(allocator, hierarchy), hierarchy_value(hierarchy_value),
         controller(allocator, controller), path(allocator, path),
         process_id(String::from(process.process_id, allocator)),
@@ -733,29 +770,30 @@ struct cgroup_report_row
         name(allocator, process.name.view()), role(role), status(status)
   {}
 
-  String hierarchy;
-  u64 hierarchy_value{0};
-  String controller;
-  String path;
-  String process_id;
-  i64 process_id_value{0};
-  u64 process_start_token{0};
-  String name;
+  String     hierarchy;
+  u64        hierarchy_value{0};
+  String     controller;
+  String     path;
+  String     process_id;
+  i64        process_id_value{0};
+  u64        process_start_token{0};
+  String     name;
   StringView role;
   StringView status;
 };
 
-pure fn process_snapshot_status_name(process_snapshot_status status) wontthrow
+pure fn
+process_snapshot_status_name(process_snapshot_status status) wontthrow
     -> StringView
 {
   switch (status) {
-  case process_snapshot_status::Available: return "available";
+  case process_snapshot_status::Available:        return "available";
   case process_snapshot_status::PermissionDenied: return "permission denied";
-  case process_snapshot_status::Unavailable: return "unavailable";
-  case process_snapshot_status::Empty: return "empty";
-  case process_snapshot_status::Exited: return "exited";
-  case process_snapshot_status::Reused: return "PID reused";
-  case process_snapshot_status::Unverifiable: return "identity unavailable";
+  case process_snapshot_status::Unavailable:      return "unavailable";
+  case process_snapshot_status::Empty:            return "empty";
+  case process_snapshot_status::Exited:           return "exited";
+  case process_snapshot_status::Reused:           return "PID reused";
+  case process_snapshot_status::Unverifiable:     return "identity unavailable";
   }
   unreachable("unknown process snapshot status");
 }
@@ -766,13 +804,14 @@ enum class cgroup_failure_fallback : u8
   ReportUnavailable,
 };
 
-fn append_cgroup_failure_report(
-    String &output, bool should_color,
-    const ArrayList<process_cgroup_snapshot> &snapshot,
-    cgroup_failure_fallback fallback) throws -> void
+fn
+append_cgroup_failure_report(String &output,
+                             bool    should_color,
+                             const ArrayList<process_cgroup_snapshot> &snapshot,
+                             cgroup_failure_fallback fallback) throws -> void
 {
   let const allocator = snapshot.allocator();
-  let table = ReportTable{allocator};
+  let       table     = ReportTable{allocator};
   table.add_heading("PID", report_table_alignment::Right);
   table.add_heading("PROCESS");
   table.add_heading("STATUS");
@@ -782,9 +821,9 @@ fn append_cgroup_failure_report(
   for (let const &process : snapshot) {
     if (process.status == process_snapshot_status::Available) continue;
 
-    has_failure = true;
+    has_failure          = true;
     let const process_id = String::from(process.process_id, allocator);
-    let cells = ArrayList<report_table_cell_view>{allocator};
+    let       cells      = ArrayList<report_table_cell_view>{allocator};
     cells.push({process_id.view(), colors::ansi::BOLD_GREEN});
     cells.push({process.name.is_empty() ? StringView{"-"} : process.name.view(),
                 colors::ansi::RESET});
@@ -807,13 +846,15 @@ fn append_cgroup_failure_report(
   }
 }
 
-fn append_cgroup_report(String &output, bool should_color,
-                        const ArrayList<process_cgroup_snapshot> &snapshot,
-                        eviliso_detail_mode detail) throws -> void
+fn
+append_cgroup_report(String                                   &output,
+                     bool                                      should_color,
+                     const ArrayList<process_cgroup_snapshot> &snapshot,
+                     eviliso_detail_mode detail) throws -> void
 {
-  let const allocator = snapshot.allocator();
-  let table = ReportTable{allocator};
-  let self_index = Maybe<usize>{};
+  let const allocator       = snapshot.allocator();
+  let       table           = ReportTable{allocator};
+  let       self_index      = Maybe<usize>{};
   let const self_process_id = os::get_current_process_id();
 
   for (usize index = 0; index < snapshot.count(); index++) {
@@ -831,7 +872,7 @@ fn append_cgroup_report(String &output, bool should_color,
   }
 
   let const &self = snapshot[*self_index];
-  let rows = ArrayList<cgroup_report_row>{allocator};
+  let        rows = ArrayList<cgroup_report_row>{allocator};
 
   for (let const &membership : self.memberships) {
     rows.push(cgroup_report_row{
@@ -915,10 +956,13 @@ struct session_report_row
   String login_time;
 };
 
-fn append_session_report(String &output, bool should_color, Allocator allocator,
-                         eviliso_detail_mode detail) throws -> void
+fn
+append_session_report(String             &output,
+                      bool                should_color,
+                      Allocator           allocator,
+                      eviliso_detail_mode detail) throws -> void
 {
-  let sessions = os::logged_in_users();
+  let       sessions        = os::logged_in_users();
   let const sorted_sessions = steal(sessions).make_sorted(
       [](const os::user_session &left, const os::user_session &right) {
         if (left.user != right.user) return left.user < right.user;
@@ -939,9 +983,9 @@ fn append_session_report(String &output, bool should_color, Allocator allocator,
               : String{allocator, utils::format_unix_timestamp(
                                       session.login_time, "%Y-%m-%d %H:%M:%S")};
     }
-    let row = session_report_row{allocator};
-    row.user = String{allocator, session.user.view()};
-    row.terminal = String{allocator, session.terminal.view()};
+    let row        = session_report_row{allocator};
+    row.user       = String{allocator, session.user.view()};
+    row.terminal   = String{allocator, session.terminal.view()};
     row.login_time = steal(login_time);
     rows.push(steal(row));
   }
@@ -964,17 +1008,19 @@ fn append_session_report(String &output, bool should_color, Allocator allocator,
   append_titled_report_table(output, "Sessions", table, should_color);
 }
 
-pure fn is_remote_socket(const os::network_socket_entry &socket) wontthrow
-    -> bool
+pure fn
+is_remote_socket(const os::network_socket_entry &socket) wontthrow -> bool
 {
   return socket.protocol != os::network_socket_protocol::Unix &&
          !socket.peer_address.is_empty() && socket.peer_port != 0;
 }
 
-fn remote_table_text(StringView text, usize maximum_cells,
-                     Allocator allocator) throws -> String
+fn
+remote_table_text(StringView text,
+                  usize      maximum_cells,
+                  Allocator  allocator) throws -> String
 {
-  let result = String{allocator};
+  let       result     = String{allocator};
   let const byte_limit = maximum_cells * 8;
   let const copied_byte_count =
       text.length < byte_limit ? text.length : byte_limit;
@@ -1004,7 +1050,7 @@ fn remote_table_text(StringView text, usize maximum_cells,
   if (copied_byte_count < text.length ||
       toiletline::get_display_width(result.view()) > maximum_cells)
   {
-    usize actual_cells = 0;
+    usize     actual_cells = 0;
     let const kept_byte_count =
         toiletline::get_byte_offset_at_or_before_display_cell(
             result.view(), maximum_cells - 3, actual_cells);
@@ -1015,10 +1061,13 @@ fn remote_table_text(StringView text, usize maximum_cells,
   return result;
 }
 
-fn append_remote_report(String &output, bool should_color,
-                        const ArrayList<process_cgroup_snapshot> &snapshot,
-                        Allocator allocator, eviliso_remote_rows_mode rows_mode,
-                        eviliso_detail_mode detail) throws -> void
+fn
+append_remote_report(String                                   &output,
+                     bool                                      should_color,
+                     const ArrayList<process_cgroup_snapshot> &snapshot,
+                     Allocator                                 allocator,
+                     eviliso_remote_rows_mode                  rows_mode,
+                     eviliso_detail_mode detail) throws -> void
 {
   let table = ReportTable{allocator};
   if (!os::has_network_socket_listing()) {
@@ -1066,9 +1115,9 @@ fn append_remote_report(String &output, bool should_color,
         return left.process_id < right.process_id;
       });
 
-  let socket_identities_unsorted = ArrayList<u64>{allocator};
-  let remote_identities_unsorted = ArrayList<u64>{allocator};
-  usize zero_identity_count = 0;
+  let   socket_identities_unsorted = ArrayList<u64>{allocator};
+  let   remote_identities_unsorted = ArrayList<u64>{allocator};
+  usize zero_identity_count        = 0;
   usize remote_zero_identity_count = 0;
 
   for (let const &socket : sorted_sockets) {
@@ -1087,8 +1136,8 @@ fn append_remote_report(String &output, bool should_color,
   let const remote_identities =
       steal(remote_identities_unsorted).make_sorted(sort_order::ascending);
   let const do_count_unique = [](const ArrayList<u64> &identities) {
-    usize count = 0;
-    u64 previous = 0;
+    usize count    = 0;
+    u64   previous = 0;
 
     for (let const identity : identities) {
       if (count == 0 || identity != previous) {
@@ -1130,21 +1179,21 @@ fn append_remote_report(String &output, bool should_color,
     StringView family{};
     StringView protocol{};
     StringView state{};
-    String local;
-    String peer;
-    String socket_id;
-    String process_id;
-    String owner_id;
-    String user;
-    String name;
-    String command;
-    String net_namespace;
-    String orchestrator;
-    String runtime;
-    String container;
-    String cgroup;
-    u64 receive_queue_byte_count{0};
-    u64 send_queue_byte_count{0};
+    String     local;
+    String     peer;
+    String     socket_id;
+    String     process_id;
+    String     owner_id;
+    String     user;
+    String     name;
+    String     command;
+    String     net_namespace;
+    String     orchestrator;
+    String     runtime;
+    String     container;
+    String     cgroup;
+    u64        receive_queue_byte_count{0};
+    u64        send_queue_byte_count{0};
   };
 
   struct remote_process_context
@@ -1155,9 +1204,9 @@ fn append_remote_report(String &output, bool should_color,
           cgroups(allocator)
     {}
 
-    i64 process_id{0};
-    u64 start_token{0};
-    u32 owner_id{0};
+    i64    process_id{0};
+    u64    start_token{0};
+    u32    owner_id{0};
     String name;
     String command;
     String net_namespace;
@@ -1165,19 +1214,19 @@ fn append_remote_report(String &output, bool should_color,
     String runtime;
     String container;
     String cgroups;
-    bool is_available{false};
+    bool   is_available{false};
   };
 
   struct remote_user_context
   {
     explicit remote_user_context(Allocator allocator) : name(allocator) {}
 
-    u32 owner_id{0};
+    u32    owner_id{0};
     String name;
   };
 
-  let process_contexts = ArrayList<remote_process_context>{allocator};
-  let user_contexts = ArrayList<remote_user_context>{allocator};
+  let       process_contexts   = ArrayList<remote_process_context>{allocator};
+  let       user_contexts      = ArrayList<remote_user_context>{allocator};
   let const self_net_namespace = os::read_symlink(
       eviliso_namespace_proc_path("self/ns/net", allocator), allocator);
   let const do_get_user = [&](u32 process_id, u32 owner_id) throws -> String {
@@ -1194,18 +1243,18 @@ fn append_remote_report(String &output, bool should_color,
     {
       name = steal(*resolved);
     }
-    let context = remote_user_context{allocator};
+    let context      = remote_user_context{allocator};
     context.owner_id = owner_id;
-    context.name = steal(name);
+    context.name     = steal(name);
     user_contexts.push(steal(context));
 
     return String{allocator,
                   user_contexts[user_contexts.count() - 1].name.view()};
   };
-  let remote_rows = ArrayList<remote_peer_row>{allocator};
-  u64 previous_identity = 0;
-  u32 previous_process_id = 0;
-  bool has_previous_owner = false;
+  let  remote_rows         = ArrayList<remote_peer_row>{allocator};
+  u64  previous_identity   = 0;
+  u32  previous_process_id = 0;
+  bool has_previous_owner  = false;
 
   for (let const &socket : sorted_sockets) {
     if (!is_remote_socket(socket)) continue;
@@ -1215,9 +1264,9 @@ fn append_remote_report(String &output, bool should_color,
     {
       continue;
     }
-    previous_identity = socket.identity;
+    previous_identity   = socket.identity;
     previous_process_id = socket.process_id;
-    has_previous_owner = socket.identity != 0;
+    has_previous_owner  = socket.identity != 0;
 
     remote_peer_row row{allocator};
     row.family =
@@ -1230,28 +1279,28 @@ fn append_remote_report(String &output, bool should_color,
                                socket.family, allocator);
     row.peer = format_socket_endpoint(
         socket.peer_address.view(), socket.peer_port, socket.family, allocator);
-    row.socket_id = socket.identity == 0
-                        ? String{allocator, "-"}
-                        : String::from(socket.identity, allocator);
+    row.socket_id                = socket.identity == 0
+                                       ? String{allocator, "-"}
+                                       : String::from(socket.identity, allocator);
     row.receive_queue_byte_count = socket.receive_queue_byte_count;
-    row.send_queue_byte_count = socket.send_queue_byte_count;
+    row.send_queue_byte_count    = socket.send_queue_byte_count;
     if (detail == eviliso_detail_mode::All) {
-      row.process_id = socket.process_id == 0
-                           ? String{allocator, "-"}
-                           : String::from(socket.process_id, allocator);
-      row.owner_id = socket.has_owner_id
-                         ? String::from(socket.owner_id, allocator)
-                         : String{allocator, "-"};
-      row.user = "-";
-      row.name = "-";
-      row.command = "-";
+      row.process_id    = socket.process_id == 0
+                              ? String{allocator, "-"}
+                              : String::from(socket.process_id, allocator);
+      row.owner_id      = socket.has_owner_id
+                              ? String::from(socket.owner_id, allocator)
+                              : String{allocator, "-"};
+      row.user          = "-";
+      row.name          = "-";
+      row.command       = "-";
       row.net_namespace = self_net_namespace.has_value()
                               ? String{allocator, self_net_namespace->view()}
                               : String{allocator, "-"};
-      row.orchestrator = "-";
-      row.runtime = "-";
-      row.container = "-";
-      row.cgroup = "-";
+      row.orchestrator  = "-";
+      row.runtime       = "-";
+      row.container     = "-";
+      row.cgroup        = "-";
       if (socket.has_owner_id) {
         row.user = do_get_user(socket.process_id, socket.owner_id);
       }
@@ -1274,7 +1323,7 @@ fn append_remote_report(String &output, bool should_color,
           socket.has_owner_start_token)
       {
         remote_process_context context{allocator};
-        context.process_id = socket.process_id;
+        context.process_id  = socket.process_id;
         context.start_token = socket.owner_start_token;
 
         for (let const &process : snapshot) {
@@ -1301,7 +1350,7 @@ fn append_remote_report(String &output, bool should_color,
 
           for (usize index = 0; index < process.memberships.count(); index++) {
             let const &membership = process.memberships[index];
-            bool is_known = false;
+            bool       is_known   = false;
 
             for (usize known_index = 0; known_index < index; known_index++) {
               if (process.memberships[known_index].path == membership.path) {
@@ -1355,15 +1404,15 @@ fn append_remote_report(String &output, bool should_color,
           row.owner_id = String::from(process_context.owner_id, allocator);
           row.user = do_get_user(socket.process_id, process_context.owner_id);
         }
-        row.name = process_context.name;
+        row.name    = process_context.name;
         row.command = process_context.command;
         if (!process_context.net_namespace.is_empty()) {
           row.net_namespace = process_context.net_namespace;
         }
-        row.cgroup = process_context.cgroups;
+        row.cgroup       = process_context.cgroups;
         row.orchestrator = process_context.orchestrator;
-        row.runtime = process_context.runtime;
-        row.container = process_context.container;
+        row.runtime      = process_context.runtime;
+        row.container    = process_context.container;
       }
     }
     remote_rows.push(steal(row));
@@ -1393,8 +1442,8 @@ fn append_remote_report(String &output, bool should_color,
 
   for (let const &row : remote_rows) {
     let receive = String::from(row.receive_queue_byte_count, allocator);
-    let send = String::from(row.send_queue_byte_count, allocator);
-    let cells = ArrayList<report_table_cell_view>{allocator};
+    let send    = String::from(row.send_queue_byte_count, allocator);
+    let cells   = ArrayList<report_table_cell_view>{allocator};
     cells.push({row.family, colors::ansi::BOLD_MAGENTA});
     cells.push({row.protocol, colors::ansi::BOLD_MAGENTA});
     cells.push({row.state, colors::ansi::BOLD_GREEN});
@@ -1421,16 +1470,19 @@ fn append_remote_report(String &output, bool should_color,
   append_titled_report_table(output, "Remote peers", peer_table, should_color);
 }
 
-fn append_runtime_evidence_report(
-    String &output, bool should_color,
-    const ArrayList<process_cgroup_snapshot> &snapshot, Allocator allocator,
-    eviliso_detail_mode detail) throws -> void
+fn
+append_runtime_evidence_report(
+    String                                   &output,
+    bool                                      should_color,
+    const ArrayList<process_cgroup_snapshot> &snapshot,
+    Allocator                                 allocator,
+    eviliso_detail_mode                       detail) throws -> void
 {
   struct runtime_report_row
   {
     String runtime;
     String source;
-    i64 process_id_value{0};
+    i64    process_id_value{0};
     String process_id;
     String name;
     String role;
@@ -1442,7 +1494,7 @@ fn append_runtime_evidence_report(
     {}
   };
 
-  let rows = ArrayList<runtime_report_row>{allocator};
+  let       rows            = ArrayList<runtime_report_row>{allocator};
   let const self_process_id = os::get_current_process_id();
 
   for (let const &process : snapshot) {
@@ -1465,13 +1517,13 @@ fn append_runtime_evidence_report(
 
       if (is_duplicate) continue;
 
-      let row = runtime_report_row{allocator};
-      row.runtime = evidence.runtime.clone();
-      row.source = "cgroup";
+      let row              = runtime_report_row{allocator};
+      row.runtime          = evidence.runtime.clone();
+      row.source           = "cgroup";
       row.process_id_value = process.process_id;
-      row.process_id = String::from(process.process_id, allocator);
-      row.name = process.name.clone();
-      row.role = process.process_id == self_process_id ? "self" : "other";
+      row.process_id       = String::from(process.process_id, allocator);
+      row.name             = process.name.clone();
+      row.role     = process.process_id == self_process_id ? "self" : "other";
       row.evidence = evidence.path.clone();
       rows.push(steal(row));
     }
@@ -1490,13 +1542,13 @@ fn append_runtime_evidence_report(
   for (let const &marker : MARKERS) {
     let const path = container_marker_path(marker.path, allocator);
     if (!Path{path.view(), allocator}.is_regular_file()) continue;
-    let row = runtime_report_row{allocator};
-    row.runtime = marker.runtime;
-    row.source = "marker";
+    let row        = runtime_report_row{allocator};
+    row.runtime    = marker.runtime;
+    row.source     = "marker";
     row.process_id = "-";
-    row.name = "-";
-    row.role = "host";
-    row.evidence = path.view();
+    row.name       = "-";
+    row.role       = "host";
+    row.evidence   = path.view();
     rows.push(steal(row));
   }
 
@@ -1536,16 +1588,18 @@ fn append_runtime_evidence_report(
   append_titled_report_table(output, "Container runtimes", table, should_color);
 }
 
-fn append_container_report(String &output, bool should_color,
-                           const ArrayList<process_cgroup_snapshot> &snapshot,
-                           Allocator allocator,
-                           eviliso_detail_mode detail) throws -> void
+fn
+append_container_report(String                                   &output,
+                        bool                                      should_color,
+                        const ArrayList<process_cgroup_snapshot> &snapshot,
+                        Allocator                                 allocator,
+                        eviliso_detail_mode detail) throws -> void
 {
   struct container_summary_row
   {
     String runtime;
     String identifier;
-    usize process_count{0};
+    usize  process_count{0};
 
     explicit container_summary_row(Allocator allocator)
         : runtime(allocator), identifier(allocator)
@@ -1555,7 +1609,7 @@ fn append_container_report(String &output, bool should_color,
   {
     String runtime;
     String identifier;
-    i64 process_id_value{0};
+    i64    process_id_value{0};
     String process_id;
     String name;
     String role;
@@ -1567,8 +1621,8 @@ fn append_container_report(String &output, bool should_color,
     {}
   };
 
-  let summary_rows = ArrayList<container_summary_row>{allocator};
-  let detail_rows = ArrayList<container_detail_row>{allocator};
+  let       summary_rows    = ArrayList<container_summary_row>{allocator};
+  let       detail_rows     = ArrayList<container_detail_row>{allocator};
   let const self_process_id = os::get_current_process_id();
 
   for (let const &process : snapshot) {
@@ -1602,9 +1656,9 @@ fn append_container_report(String &output, bool should_color,
         }
 
         if (!is_known) {
-          let row = container_summary_row{allocator};
-          row.runtime = evidence.runtime.clone();
-          row.identifier = evidence.container_id.clone();
+          let row           = container_summary_row{allocator};
+          row.runtime       = evidence.runtime.clone();
+          row.identifier    = evidence.container_id.clone();
           row.process_count = 1;
           summary_rows.push(steal(row));
         }
@@ -1625,13 +1679,13 @@ fn append_container_report(String &output, bool should_color,
       }
 
       if (is_detail_duplicate) continue;
-      let row = container_detail_row{allocator};
-      row.runtime = evidence.runtime.clone();
-      row.identifier = evidence.container_id.clone();
+      let row              = container_detail_row{allocator};
+      row.runtime          = evidence.runtime.clone();
+      row.identifier       = evidence.container_id.clone();
       row.process_id_value = process.process_id;
-      row.process_id = String::from(process.process_id, allocator);
-      row.name = process.name.clone();
-      row.role = process.process_id == self_process_id ? "self" : "other";
+      row.process_id       = String::from(process.process_id, allocator);
+      row.name             = process.name.clone();
+      row.role   = process.process_id == self_process_id ? "self" : "other";
       row.cgroup = evidence.path.clone();
       detail_rows.push(steal(row));
     }
@@ -1695,10 +1749,11 @@ fn append_container_report(String &output, bool should_color,
 
 constexpr usize KUBERNETES_METADATA_BYTE_LIMIT = 256;
 
-fn sanitize_kubernetes_metadata(StringView text, Allocator allocator) throws
+fn
+sanitize_kubernetes_metadata(StringView text, Allocator allocator) throws
     -> String
 {
-  let result = String{allocator};
+  let       result     = String{allocator};
   let const byte_count = text.length < KUBERNETES_METADATA_BYTE_LIMIT
                              ? text.length
                              : KUBERNETES_METADATA_BYTE_LIMIT;
@@ -1716,8 +1771,8 @@ fn sanitize_kubernetes_metadata(StringView text, Allocator allocator) throws
   return String{allocator, result.view().trim_blanks()};
 }
 
-fn read_kubernetes_metadata(StringView name, Allocator allocator) throws
-    -> String
+fn
+read_kubernetes_metadata(StringView name, Allocator allocator) throws -> String
 {
   let const path = kubernetes_service_account_path(name, allocator);
   let const descriptor =
@@ -1725,7 +1780,7 @@ fn read_kubernetes_metadata(StringView name, Allocator allocator) throws
   if (!descriptor.has_value()) return String{allocator};
   defer { unused(os::close_fd(*descriptor)); };
 
-  char bytes[KUBERNETES_METADATA_BYTE_LIMIT]{};
+  char      bytes[KUBERNETES_METADATA_BYTE_LIMIT]{};
   let const read_count = os::read_fd(*descriptor, bytes, sizeof(bytes));
   if (!read_count.has_value() || *read_count == 0) {
     return String{allocator};
@@ -1735,19 +1790,21 @@ fn read_kubernetes_metadata(StringView name, Allocator allocator) throws
                                       allocator);
 }
 
-fn append_kubernetes_report(String &output, bool should_color,
-                            const ArrayList<process_cgroup_snapshot> &snapshot,
-                            Allocator allocator,
-                            eviliso_detail_mode detail) throws -> void
+fn
+append_kubernetes_report(String                                   &output,
+                         bool                                      should_color,
+                         const ArrayList<process_cgroup_snapshot> &snapshot,
+                         Allocator                                 allocator,
+                         eviliso_detail_mode detail) throws -> void
 {
   let const self_process_id = os::get_current_process_id();
-  let kubernetes_host = String{allocator};
+  let       kubernetes_host = String{allocator};
   if (let const value = os::get_environment_variable("KUBERNETES_SERVICE_HOST");
       value.has_value())
     kubernetes_host = sanitize_kubernetes_metadata(value->view(), allocator);
   let namespace_name = String{allocator};
-  namespace_name = read_kubernetes_metadata("namespace", allocator);
-  bool has_kubepods = false;
+  namespace_name     = read_kubernetes_metadata("namespace", allocator);
+  bool has_kubepods  = false;
 
   for (let const &process : snapshot) {
     for (let const &evidence : process.evidence)
@@ -1796,7 +1853,7 @@ fn append_kubernetes_report(String &output, bool should_color,
     String qos;
     String runtime;
     String container_id;
-    usize process_count{0};
+    usize  process_count{0};
 
     explicit kubernetes_row(Allocator allocator)
         : pod_uid(allocator), qos(allocator), runtime(allocator),
@@ -1840,11 +1897,11 @@ fn append_kubernetes_report(String &output, bool should_color,
       }
 
       if (!is_known) {
-        let row = kubernetes_row{allocator};
-        row.pod_uid = evidence.pod_uid.clone();
-        row.qos = evidence.qos.clone();
-        row.runtime = evidence.runtime.clone();
-        row.container_id = evidence.container_id.clone();
+        let row           = kubernetes_row{allocator};
+        row.pod_uid       = evidence.pod_uid.clone();
+        row.qos           = evidence.qos.clone();
+        row.runtime       = evidence.runtime.clone();
+        row.container_id  = evidence.container_id.clone();
         row.process_count = 1;
         rows.push(steal(row));
       }
@@ -1909,7 +1966,7 @@ fn append_kubernetes_report(String &output, bool should_color,
 
         if (is_duplicate) continue;
         let process_id = String::from(process.process_id, allocator);
-        let cells = ArrayList<report_table_cell_view>{allocator};
+        let cells      = ArrayList<report_table_cell_view>{allocator};
         cells.push({"cgroup", colors::ansi::RESET});
         cells.push({evidence.pod_uid.view(), colors::ansi::BOLD_GREEN});
         cells.push({evidence.qos.view(), colors::ansi::BOLD_MAGENTA});
@@ -1931,9 +1988,11 @@ fn append_kubernetes_report(String &output, bool should_color,
 
 } /* namespace */
 
-fn EvilIso::execute(const ExecContext &ec, EvalContext &cxt,
-                    const ArrayList<String> &args,
-                    const ArrayList<SourceLocation> &arg_locations) const throws
+fn
+EvilIso::execute(const ExecContext               &ec,
+                 EvalContext                     &cxt,
+                 const ArrayList<String>         &args,
+                 const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
@@ -1970,8 +2029,8 @@ fn EvilIso::execute(const ExecContext &ec, EvalContext &cxt,
                                     FLAG_EVILISO_CONTAINER.is_enabled() ||
                                     FLAG_EVILISO_CONTAINERS.is_enabled();
   let const should_color = koshkit_should_color();
-  let output = String{cxt.scratch_allocator()};
-  let process_cgroups =
+  let       output       = String{cxt.scratch_allocator()};
+  let       process_cgroups =
       ArrayList<process_cgroup_snapshot>{cxt.scratch_allocator()};
   let const collection = should_show_cgroups ||
                                  detail == eviliso_detail_mode::All ||

@@ -27,7 +27,8 @@ REGISTER_BUILTIN_FLAGS(Source);
 
 namespace koshka {
 
-fn Source::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
+fn
+Source::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   ASSERT(!ec.args().is_empty());
 
@@ -49,7 +50,7 @@ fn Source::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         ec.arg_location_at(path_index),
         "Unable to source the file '" + path + "': not found in PATH",
         "Pass an absolute path or add its directory to PATH"};
-  let source_path = resolved_source_path.take();
+  let       source_path = resolved_source_path.take();
   let const source_name = os::has_directory_separator(path.view())
                               ? path.view()
                               : source_path.text().view();
@@ -63,7 +64,7 @@ fn Source::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let const has_extra_args = !cxt.runtime_state().is_posix_mode() &&
                              ec.args().count() > path_index + 1;
   let saved_params = ArrayList<String>{heap_allocator()};
-  let params = ArrayList<String>{heap_allocator()};
+  let params       = ArrayList<String>{heap_allocator()};
   if (has_extra_args) {
     for (usize i = path_index + 1; i < ec.args().count(); i++)
       params.push_managed(ec.args()[i]);
@@ -79,7 +80,7 @@ fn Source::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   let const saved_command = cxt.execution_store().save_current_command();
 
-  i32 status = 0;
+  i32 status               = 0;
   let status_before_return = Maybe<i32>{None};
   {
     let bash_argument_frame_context = EvalContext::BashArgumentFrameContext{};

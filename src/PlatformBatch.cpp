@@ -11,62 +11,73 @@
 
 namespace koshka::os {
 
-fn batch_operation::read(descriptor fd, char *buffer, usize byte_count,
-                         u64 byte_offset) wontthrow -> batch_operation
+fn
+batch_operation::read(descriptor fd,
+                      char      *buffer,
+                      usize      byte_count,
+                      u64        byte_offset) wontthrow -> batch_operation
 {
   batch_operation operation{Kind::Read};
-  operation.m_secondary.fd = fd;
+  operation.m_secondary.fd          = fd;
   operation.m_primary.output_buffer = buffer;
-  operation.byte_count = byte_count;
-  operation.byte_offset = byte_offset;
+  operation.byte_count              = byte_count;
+  operation.byte_offset             = byte_offset;
 
   return operation;
 }
 
-fn batch_operation::write(descriptor fd, const char *buffer, usize byte_count,
-                          u64 byte_offset) wontthrow -> batch_operation
+fn
+batch_operation::write(descriptor  fd,
+                       const char *buffer,
+                       usize       byte_count,
+                       u64         byte_offset) wontthrow -> batch_operation
 {
   batch_operation operation{Kind::Write};
-  operation.m_secondary.fd = fd;
+  operation.m_secondary.fd         = fd;
   operation.m_primary.input_buffer = buffer;
-  operation.byte_count = byte_count;
-  operation.byte_offset = byte_offset;
+  operation.byte_count             = byte_count;
+  operation.byte_offset            = byte_offset;
 
   return operation;
 }
 
-fn batch_operation::write_current(descriptor fd, const char *buffer,
-                                  usize byte_count) wontthrow -> batch_operation
+fn
+batch_operation::write_current(descriptor  fd,
+                               const char *buffer,
+                               usize byte_count) wontthrow -> batch_operation
 {
   batch_operation operation{Kind::WriteCurrent};
-  operation.m_secondary.fd = fd;
+  operation.m_secondary.fd         = fd;
   operation.m_primary.input_buffer = buffer;
-  operation.byte_count = byte_count;
+  operation.byte_count             = byte_count;
 
   return operation;
 }
 
-fn batch_operation::lstat(const Path &path, file_status &status) wontthrow
+fn
+batch_operation::lstat(const Path &path, file_status &status) wontthrow
     -> batch_operation
 {
   batch_operation operation{Kind::Lstat};
-  operation.m_primary.path = &path;
+  operation.m_primary.path     = &path;
   operation.m_secondary.status = &status;
 
   return operation;
 }
 
-fn batch_operation::stat(const Path &path, file_status &status) wontthrow
+fn
+batch_operation::stat(const Path &path, file_status &status) wontthrow
     -> batch_operation
 {
   batch_operation operation{Kind::Stat};
-  operation.m_primary.path = &path;
+  operation.m_primary.path     = &path;
   operation.m_secondary.status = &status;
 
   return operation;
 }
 
-fn batch_operation::exists(const Path &path) wontthrow -> batch_operation
+fn
+batch_operation::exists(const Path &path) wontthrow -> batch_operation
 {
   batch_operation operation{Kind::Exists};
   operation.m_primary.path = &path;
@@ -74,12 +85,14 @@ fn batch_operation::exists(const Path &path) wontthrow -> batch_operation
   return operation;
 }
 
-fn batch_operation::lstat_at(descriptor directory, const char *name,
-                             file_status &status) wontthrow -> batch_operation
+fn
+batch_operation::lstat_at(descriptor   directory,
+                          const char  *name,
+                          file_status &status) wontthrow -> batch_operation
 {
   batch_operation operation{Kind::LstatAt};
   operation.m_primary.input_buffer = name;
-  operation.m_secondary.status = &status;
+  operation.m_secondary.status     = &status;
   operation.byte_offset =
       batch_internal::encode_directory_descriptor(directory);
 
@@ -91,37 +104,41 @@ Batch::Batch(Allocator allocator)
       m_buckets(allocator), m_optimized_operations(allocator)
 {}
 
-fn Batch::reserve(usize operation_count) throws -> void
+fn
+Batch::reserve(usize operation_count) throws -> void
 {
   m_operations.reserve(operation_count);
 }
 
-fn Batch::add(batch_operation operation) throws -> void
+fn
+Batch::add(batch_operation operation) throws -> void
 {
   switch (operation.syscall_id) {
   case batch_operation::Kind::Lstat:
   case batch_operation::Kind::Stat:
   case batch_operation::Kind::Exists:
   case batch_operation::Kind::LstatAt:
-  case batch_operation::Kind::StatAt: m_has_metadata_operations = true; break;
+  case batch_operation::Kind::StatAt:       m_has_metadata_operations = true; break;
   case batch_operation::Kind::Read:
   case batch_operation::Kind::Write:
   case batch_operation::Kind::WriteCurrent:
-  case batch_operation::Kind::Invalid: break;
+  case batch_operation::Kind::Invalid:      break;
   }
   operation.request_id = m_operations.count();
   m_operations.push(steal(operation));
 }
 
-fn Batch::clear() wontthrow -> void
+fn
+Batch::clear() wontthrow -> void
 {
   m_operations.clear();
   m_has_metadata_operations = false;
 }
 
-static pure fn is_same_metadata_request(
-    const batch_internal::batched_syscall &left,
-    const batch_internal::batched_syscall &right) wontthrow -> bool
+static pure fn
+is_same_metadata_request(const batch_internal::batched_syscall &left,
+                         const batch_internal::batched_syscall &right) wontthrow
+    -> bool
 {
   let const left_kind = batch_internal::batch_operation_access::get_kind(left);
   if (left_kind != batch_internal::batch_operation_access::get_kind(right))
@@ -129,9 +146,9 @@ static pure fn is_same_metadata_request(
   switch (left_kind) {
   case batch_operation::Kind::Lstat:
   case batch_operation::Kind::Stat:
-  case batch_operation::Kind::Exists: break;
+  case batch_operation::Kind::Exists:  break;
   case batch_operation::Kind::LstatAt:
-  case batch_operation::Kind::StatAt: {
+  case batch_operation::Kind::StatAt:  {
     let const left_directory =
         batch_internal::batch_operation_access::get_directory_descriptor(left);
     let const right_directory =
@@ -148,7 +165,7 @@ static pure fn is_same_metadata_request(
   case batch_operation::Kind::Read:
   case batch_operation::Kind::Write:
   case batch_operation::Kind::WriteCurrent:
-  case batch_operation::Kind::Invalid: return false;
+  case batch_operation::Kind::Invalid:      return false;
   }
   let const *left_path = batch_internal::batch_operation_access::get_path(left);
   let const *right_path =
@@ -160,8 +177,9 @@ static pure fn is_same_metadata_request(
   return left_path->text().view() == right_path->text().view();
 }
 
-static pure fn is_metadata_request(
-    const batch_internal::batched_syscall &operation) wontthrow -> bool
+static pure fn
+is_metadata_request(const batch_internal::batched_syscall &operation) wontthrow
+    -> bool
 {
   switch (batch_internal::batch_operation_access::get_kind(operation)) {
   case batch_operation::Kind::Lstat:
@@ -174,19 +192,20 @@ static pure fn is_metadata_request(
   case batch_operation::Kind::Read:
   case batch_operation::Kind::Write:
   case batch_operation::Kind::WriteCurrent:
-  case batch_operation::Kind::Invalid: return false;
+  case batch_operation::Kind::Invalid:      return false;
   }
 
   return false;
 }
 
-static fn find_canonical_operation_positions(
+static fn
+find_canonical_operation_positions(
     const ArrayList<batch_internal::batched_syscall> &operations,
-    ArrayList<usize> &canonical_positions, ArrayList<usize> &buckets) throws
-    -> usize
+    ArrayList<usize>                                 &canonical_positions,
+    ArrayList<usize>                                 &buckets) throws -> usize
 {
   constexpr usize LINEAR_METADATA_LIMIT = 8;
-  usize metadata_count = 0;
+  usize           metadata_count        = 0;
 
   for (let const &operation : operations)
     if (is_metadata_request(operation)) metadata_count++;
@@ -237,7 +256,7 @@ static fn find_canonical_operation_positions(
   for (usize index = 0; index < bucket_count; index++)
     buckets.push(SIZE_MAX);
 
-  bool has_repeated_request = false;
+  bool  has_repeated_request   = false;
   usize unique_operation_count = operations.count() - metadata_count;
 
   for (usize index = 0; index < operations.count(); index++) {
@@ -275,7 +294,7 @@ static fn find_canonical_operation_positions(
       }
       if (is_same_metadata_request(operations[existing_position], operation)) {
         canonical_positions[index] = existing_position;
-        has_repeated_request = true;
+        has_repeated_request       = true;
         break;
       }
 
@@ -286,8 +305,9 @@ static fn find_canonical_operation_positions(
   return has_repeated_request ? unique_operation_count : 0;
 }
 
-fn Batch::execute(ArrayList<batch_result> &results,
-                  batch_deduplication deduplication) throws -> void
+fn
+Batch::execute(ArrayList<batch_result> &results,
+               batch_deduplication      deduplication) throws -> void
 {
   m_canonical_positions.clear();
   m_buckets.clear();
@@ -353,13 +373,13 @@ fn Batch::execute(ArrayList<batch_result> &results,
   for (usize remaining_count = m_operations.count(); remaining_count != 0;
        remaining_count--)
   {
-    let const index = remaining_count - 1;
+    let const index              = remaining_count - 1;
     let const optimized_position = m_canonical_positions[index];
-    let result = results[optimized_position];
-    result.request_id = index;
-    results[index] = result;
+    let       result             = results[optimized_position];
+    result.request_id            = index;
+    results[index]               = result;
 
-    let const &operation = m_operations[index];
+    let const &operation           = m_operations[index];
     let const &optimized_operation = m_optimized_operations[optimized_position];
     let *status = batch_internal::batch_operation_access::get_status(operation);
     let *optimized_status =
@@ -372,7 +392,8 @@ fn Batch::execute(ArrayList<batch_result> &results,
   }
 }
 
-fn Batch::execute(batch_deduplication deduplication) throws
+fn
+Batch::execute(batch_deduplication deduplication) throws
     -> ArrayList<batch_result>
 {
   let results = ArrayList<batch_result>{m_operations.allocator()};
@@ -381,6 +402,10 @@ fn Batch::execute(batch_deduplication deduplication) throws
   return results;
 }
 
-pure fn Batch::count() const wontthrow -> usize { return m_operations.count(); }
+pure fn
+Batch::count() const wontthrow -> usize
+{
+  return m_operations.count();
+}
 
 } /* namespace koshka::os */

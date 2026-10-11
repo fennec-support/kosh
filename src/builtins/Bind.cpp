@@ -38,7 +38,8 @@ REGISTER_BUILTIN_FLAGS(Bind);
 
 namespace koshka {
 
-fn Bind::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
+fn
+Bind::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let operand_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};
   PARSE_BUILTIN_ARGS_WITH_LOCATIONS(ec, operand_locations);

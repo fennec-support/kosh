@@ -19,7 +19,8 @@
 FLAG_LIST_DECL();
 
 HELP_SYNOPSIS_DECL("[-c] [-d offset] [-r|-n|-a|-w] [-p arg ...] [count]",
-                   "-s [arg ...]", "-S|--sync");
+                   "-s [arg ...]",
+                   "-S|--sync");
 HELP_DESCRIPTION_DECL(
     "The history builtin lists and maintains the interactive command history.");
 
@@ -38,9 +39,11 @@ REGISTER_BUILTIN_FLAGS(History);
 
 namespace koshka {
 
-static fn report_history_file_failure(const ExecContext &ec, EvalContext &cxt,
-                                      StringView action,
-                                      StringView failure_message) throws -> void
+static fn
+report_history_file_failure(const ExecContext &ec,
+                            EvalContext       &cxt,
+                            StringView         action,
+                            StringView         failure_message) throws -> void
 {
   let const path = toiletline::get_history_path();
   if (!path.has_value()) {
@@ -56,8 +59,8 @@ static fn report_history_file_failure(const ExecContext &ec, EvalContext &cxt,
                                 path->text().view() + "': " + failure_message);
 }
 
-static fn history_target_needs_separator(const Path &target) throws
-    -> ErrorOr<bool>
+static fn
+history_target_needs_separator(const Path &target) throws -> ErrorOr<bool>
 {
   os::file_status status{};
   if (!os::stat_path_following(target.view(), status)) {
@@ -71,8 +74,8 @@ static fn history_target_needs_separator(const Path &target) throws
       os::open_file_descriptor(target.view(), os::file_open_mode::Read);
   if (!opened.has_value()) return Error{os::last_system_error_message()};
 
-  let const fd = opened.value();
-  char last_byte = '\0';
+  let const fd        = opened.value();
+  char      last_byte = '\0';
   if (!os::seek_descriptor_from_start(fd, status.size - 1)) {
     let const failure_message = os::last_system_error_message();
     unused(os::close_fd(fd));
@@ -98,8 +101,10 @@ static fn history_target_needs_separator(const Path &target) throws
   return last_byte != '\n';
 }
 
-static fn print_history_list(const ExecContext &ec, EvalContext &cxt,
-                             usize wanted_count) throws -> bool
+static fn
+print_history_list(const ExecContext &ec,
+                   EvalContext       &cxt,
+                   usize              wanted_count) throws -> bool
 {
   let const read_events =
       toiletline::get_history_events(cxt.scratch_allocator());
@@ -119,7 +124,7 @@ static fn print_history_list(const ExecContext &ec, EvalContext &cxt,
   let out = String{cxt.scratch_allocator()};
 
   for (usize i = first_index; i < events.count(); i++) {
-    char number_buffer[24];
+    char      number_buffer[24];
     let const number =
         utils::int_to_text_into(static_cast<i64>(events[i].number),
                                 number_buffer, sizeof(number_buffer));
@@ -138,20 +143,20 @@ static fn print_history_list(const ExecContext &ec, EvalContext &cxt,
 struct history_file_identity
 {
   String resolved_path{heap_allocator()};
-  u64 device_id{0};
-  u64 file_id{0};
-  bool is_set{false};
-  bool has_file_identity{false};
+  u64    device_id{0};
+  u64    file_id{0};
+  bool   is_set{false};
+  bool   has_file_identity{false};
 };
 
-static fn get_history_file_identity(const Path &path) throws
-    -> history_file_identity
+static fn
+get_history_file_identity(const Path &path) throws -> history_file_identity
 {
   let identity = history_file_identity{};
   if (let canonical = os::canonical_path(path); canonical.has_value()) {
     identity.resolved_path = canonical->text();
   } else {
-    let const absolute = path.to_absolute();
+    let const absolute     = path.to_absolute();
     identity.resolved_path = absolute.text();
   }
 
@@ -160,16 +165,16 @@ static fn get_history_file_identity(const Path &path) throws
       os::stat_path_following(path.view(), status) && status.has_file_identity;
   if (identity.has_file_identity) {
     identity.device_id = status.device_id;
-    identity.file_id = status.file_id;
+    identity.file_id   = status.file_id;
   }
   identity.is_set = true;
 
   return identity;
 }
 
-static fn history_file_identity_matches(const history_file_identity &left,
-                                        const history_file_identity &right)
-    -> bool
+static fn
+history_file_identity_matches(const history_file_identity &left,
+                              const history_file_identity &right) -> bool
 {
   if (!left.is_set || !right.is_set) {
     return false;
@@ -184,21 +189,24 @@ static fn history_file_identity_matches(const history_file_identity &left,
 struct history_import_state
 {
   history_file_identity identity{};
-  String imported_prefix{heap_allocator()};
+  String                imported_prefix{heap_allocator()};
 };
 
-static fn get_history_import_state() -> history_import_state &
+static fn
+get_history_import_state() -> history_import_state &
 {
   static history_import_state state;
 
   return state;
 }
 
-static fn write_history_contents(const Path &target, os::file_open_mode mode,
-                                 StringView contents) throws -> ErrorOr<Ok>
+static fn
+write_history_contents(const Path        &target,
+                       os::file_open_mode mode,
+                       StringView         contents) throws -> ErrorOr<Ok>
 {
   let const did_exist = target.exists();
-  let const opened = os::open_file_descriptor(target.view(), mode);
+  let const opened    = os::open_file_descriptor(target.view(), mode);
   if (!opened.has_value()) return Error{os::last_system_error_message()};
 
   if (!did_exist) unused(os::set_file_mode(target.view(), 0600));
@@ -221,7 +229,7 @@ static fn write_history_contents(const Path &target, os::file_open_mode mode,
 struct history_append_state
 {
   history_file_identity identity{};
-  usize event_number{0};
+  usize                 event_number{0};
 };
 
 enum class history_file_write_mode : u8
@@ -230,19 +238,21 @@ enum class history_file_write_mode : u8
   Append,
 };
 
-static fn get_history_append_state() -> history_append_state &
+static fn
+get_history_append_state() -> history_append_state &
 {
   static history_append_state state;
 
   return state;
 }
 
-static fn write_history_to_file(EvalContext &cxt, const Path &target,
-                                history_file_write_mode write_mode) throws
-    -> ErrorOr<Ok>
+static fn
+write_history_to_file(EvalContext            &cxt,
+                      const Path             &target,
+                      history_file_write_mode write_mode) throws -> ErrorOr<Ok>
 {
-  let &append_state = get_history_append_state();
-  let const source_path = toiletline::get_history_path();
+  let      &append_state = get_history_append_state();
+  let const source_path  = toiletline::get_history_path();
   if (write_mode == history_file_write_mode::Append &&
       source_path.has_value() && source_path->exists() && target.exists() &&
       source_path->is_same_file_as(target))
@@ -250,16 +260,16 @@ static fn write_history_to_file(EvalContext &cxt, const Path &target,
     TRY(toiletline::append_unwritten_history());
     let const appended_number =
         TRY(toiletline::get_newest_history_event_number());
-    append_state.identity = get_history_file_identity(target);
+    append_state.identity     = get_history_file_identity(target);
     append_state.event_number = appended_number.value_or(0);
 
     return Success;
   }
 
   let const target_identity = get_history_file_identity(target);
-  let const lock_target = Path{target_identity.resolved_path.view()};
-  let const lock_parent = lock_target.parent_or_current();
-  let lock = os::acquire_process_lock(lock_parent.view());
+  let const lock_target     = Path{target_identity.resolved_path.view()};
+  let const lock_parent     = lock_target.parent_or_current();
+  let       lock            = os::acquire_process_lock(lock_parent.view());
   if (!lock.has_value()) return Error{os::last_system_error_message()};
 
   defer { os::release_process_lock(lock.take()); };
@@ -267,7 +277,7 @@ static fn write_history_to_file(EvalContext &cxt, const Path &target,
   if (!history_file_identity_matches(append_state.identity, target_identity))
     append_state.event_number = 0;
 
-  usize newest_number = 0;
+  usize     newest_number  = 0;
   let const current_number = TRY(toiletline::get_newest_history_event_number());
   if (current_number.has_value()) {
     newest_number = *current_number;
@@ -291,14 +301,14 @@ static fn write_history_to_file(EvalContext &cxt, const Path &target,
     TRY(write_history_contents(target, os::file_open_mode::Truncate,
                                payload.view()));
 
-    append_state.identity = get_history_file_identity(target);
+    append_state.identity     = get_history_file_identity(target);
     append_state.event_number = newest_number;
 
     return Success;
   }
 
   let append_payload = String{cxt.scratch_allocator()};
-  let contents = payload.view();
+  let contents       = payload.view();
   if (!payload.is_empty()) {
     if (TRY(history_target_needs_separator(target))) {
       append_payload.reserve(payload.count() + 1);
@@ -310,7 +320,7 @@ static fn write_history_to_file(EvalContext &cxt, const Path &target,
 
   TRY(write_history_contents(target, os::file_open_mode::Append, contents));
 
-  append_state.identity = get_history_file_identity(target);
+  append_state.identity     = get_history_file_identity(target);
   append_state.event_number = newest_number;
 
   return Success;
@@ -322,10 +332,10 @@ struct history_selection
   usize last_index;
 };
 
-static fn parse_history_selection(
-    StringView specification,
-    const ArrayList<toiletline::history_event> &events) throws
-    -> Maybe<history_selection>
+static fn
+parse_history_selection(StringView specification,
+                        const ArrayList<toiletline::history_event> &events)
+    throws -> Maybe<history_selection>
 {
   if (events.is_empty()) return None;
 
@@ -377,7 +387,8 @@ static fn parse_history_selection(
   return history_selection{*first_index, *last_index};
 }
 
-fn History::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
+fn
+History::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let const args = PARSE_BUILTIN_ARGS(ec);
 
@@ -424,7 +435,7 @@ fn History::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                                 restricted_path_use::History);
 
     if (args.count() > 1) {
-      let const source = Path{args[1].view()};
+      let const source      = Path{args[1].view()};
       let const source_text = source.read_entire_file();
       if (!source_text.has_value()) {
         report_soft_builtin_error(
@@ -445,8 +456,8 @@ fn History::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         return 1;
       }
       let const source_identity = get_history_file_identity(source);
-      let &import_state = get_history_import_state();
-      let imported = source_text->view();
+      let      &import_state    = get_history_import_state();
+      let       imported        = source_text->view();
       if (FLAG_HISTORY_READ_NEW.is_enabled() &&
           history_file_identity_matches(import_state.identity,
                                         source_identity) &&
@@ -485,7 +496,7 @@ fn History::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     if (args.count() > 1) {
       cxt.guard_restricted_path(args[1].view(), ec.arg_location_at(1),
                                 restricted_path_use::History);
-      let const target = Path{args[1].view()};
+      let const target     = Path{args[1].view()};
       let const write_mode = FLAG_HISTORY_APPEND.is_enabled()
                                  ? history_file_write_mode::Append
                                  : history_file_write_mode::Replace;
@@ -540,7 +551,7 @@ fn History::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     }
 
     let const &events = read_events.value();
-    let const selection =
+    let const  selection =
         parse_history_selection(FLAG_HISTORY_DELETE.value(), events);
     if (!selection.has_value()) {
       report_soft_builtin_error(ec, cxt, FLAG_HISTORY_DELETE.value_location(),

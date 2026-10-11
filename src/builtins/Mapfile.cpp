@@ -25,7 +25,10 @@ HELP_DESCRIPTION_DECL(
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 FLAG(MAPFILE_TRIM, Bool, 't', "", "Strip the trailing newline from each line.");
-FLAG(MAPFILE_COUNT, String, 'n', "",
+FLAG(MAPFILE_COUNT,
+     String,
+     'n',
+     "",
      "Read at most count lines, or all of them when count is zero.");
 FLAG(MAPFILE_SKIP, String, 's', "", "Discard count lines before reading.");
 FLAG(MAPFILE_ORIGIN, String, 'O', "", "Begin storing at the array index.");
@@ -38,7 +41,8 @@ REGISTER_BUILTIN_FLAGS(Mapfile);
 
 namespace koshka {
 
-fn Mapfile::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
+fn
+Mapfile::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let const args = PARSE_BUILTIN_ARGS(ec);
 
@@ -59,9 +63,9 @@ fn Mapfile::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return false;
   };
 
-  i64 max_lines = 0;
-  i64 skip_count = 0;
-  i64 origin = 0;
+  i64 max_lines        = 0;
+  i64 skip_count       = 0;
+  i64 origin           = 0;
   i64 callback_quantum = 5000;
   if (!do_parse_count(FLAG_MAPFILE_COUNT, ": invalid line count",
                       "The -n count must be a whole number", max_lines) ||
@@ -104,13 +108,13 @@ fn Mapfile::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return 1;
   }
   let const should_strip_newline = FLAG_MAPFILE_TRIM.is_enabled();
-  let const has_origin = FLAG_MAPFILE_ORIGIN.is_set();
-  let const has_callback = FLAG_MAPFILE_CALLBACK.is_set();
-  let const delimiter = FLAG_MAPFILE_DELIMITER.is_set()
-                            ? (FLAG_MAPFILE_DELIMITER.value().is_empty()
-                                   ? '\0'
-                                   : FLAG_MAPFILE_DELIMITER.value()[0])
-                            : '\n';
+  let const has_origin           = FLAG_MAPFILE_ORIGIN.is_set();
+  let const has_callback         = FLAG_MAPFILE_CALLBACK.is_set();
+  let const delimiter            = FLAG_MAPFILE_DELIMITER.is_set()
+                                       ? (FLAG_MAPFILE_DELIMITER.value().is_empty()
+                                              ? '\0'
+                                              : FLAG_MAPFILE_DELIMITER.value()[0])
+                                       : '\n';
 
   LOG(Debug, "mapfile reading lines into array '%.*s'",
       static_cast<int>(array_name.length), array_name.data);
@@ -163,7 +167,7 @@ fn Mapfile::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     }
 
     let const array_index = origin + static_cast<i64>(read_count);
-    char index_text[24];
+    char      index_text[24];
     let const subscript =
         utils::int_to_text_into(array_index, index_text, sizeof(index_text));
     if (has_callback &&
@@ -196,7 +200,7 @@ fn Mapfile::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     for (usize element_index = 0; element_index < lines.count();
          element_index++)
     {
-      char index_text[24];
+      char      index_text[24];
       let const subscript =
           utils::int_to_text_into(origin + static_cast<i64>(element_index),
                                   index_text, sizeof(index_text));

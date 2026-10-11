@@ -17,10 +17,16 @@
 KOSHKIT_UTIL_DECL("[-p] [-m mode] directory ...",
                   "The mkdir utility creates each specified directory.");
 
-FLAG(MKDIR_PARENTS, Bool, 'p', "",
+FLAG(MKDIR_PARENTS,
+     Bool,
+     'p',
+     "",
      "Create the missing parent directories and ignore one that already "
      "exists.");
-FLAG(MKDIR_MODE, String, 'm', "",
+FLAG(MKDIR_MODE,
+     String,
+     'm',
+     "",
      "Set the file mode of the specified directory, an octal or symbolic "
      "operand.");
 
@@ -40,8 +46,11 @@ enum class existing_directory_policy : u8
   Accept,
 };
 
-static fn make_one(StringView path, u32 mode, mode_application application,
-                   existing_directory_policy existing_policy) throws -> bool
+static fn
+make_one(StringView                path,
+         u32                       mode,
+         mode_application          application,
+         existing_directory_policy existing_policy) throws -> bool
 {
   let const should_set_exact_mode = application == mode_application::Exact;
   let const should_ignore_existing =
@@ -61,9 +70,11 @@ static fn make_one(StringView path, u32 mode, mode_application application,
   return false;
 }
 
-fn Mkdir::execute(const ExecContext &ec, EvalContext &cxt,
-                  const ArrayList<String> &args,
-                  const ArrayList<SourceLocation> &arg_locations) const throws
+fn
+Mkdir::execute(const ExecContext               &ec,
+               EvalContext                     &cxt,
+               const ArrayList<String>         &args,
+               const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
@@ -90,7 +101,7 @@ fn Mkdir::execute(const ExecContext &ec, EvalContext &cxt,
   }
 
   constexpr u32 owner_write_and_search_bits = 0300;
-  let const intermediate_mode =
+  let const     intermediate_mode =
       (0777u & ~os::get_file_creation_mask()) | owner_write_and_search_bits;
 
   i32 status = 0;

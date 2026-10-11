@@ -37,10 +37,10 @@ namespace koshka {
 
 struct fc_options
 {
-  bool should_list{false};
-  bool should_number{true};
-  bool should_reverse{false};
-  bool should_execute{false};
+  bool              should_list{false};
+  bool              should_number{true};
+  bool              should_reverse{false};
+  bool              should_execute{false};
   Maybe<StringView> editor{None};
 };
 
@@ -53,11 +53,12 @@ enum class fc_selection_error : u8
 
 struct fc_selection
 {
-  i64 index{-1};
+  i64                index{-1};
   fc_selection_error error{fc_selection_error::None};
 };
 
-static pure fn is_history_number(StringView text) wontthrow -> bool
+static pure fn
+is_history_number(StringView text) wontthrow -> bool
 {
   if (text.is_empty()) return false;
   if (text[0] == '-') text = text.substring(1);
@@ -66,23 +67,25 @@ static pure fn is_history_number(StringView text) wontthrow -> bool
 }
 
 static fn
-resolve_fc_selection(StringView specification,
+resolve_fc_selection(StringView                                  specification,
                      const ArrayList<toiletline::history_event> &events,
-                     i64 last_eligible_index, bool is_listing, bool is_first,
+                     i64          last_eligible_index,
+                     bool         is_listing,
+                     bool         is_first,
                      Maybe<usize> active_index) throws -> fc_selection
 {
   if (last_eligible_index < 0)
     return fc_selection{-1, fc_selection_error::NotFound};
 
   if (is_history_number(specification)) {
-    bool was_out_of_range = false;
+    bool      was_out_of_range = false;
     let const parsed =
         utils::parse_decimal_i64(specification, &was_out_of_range);
     if (parsed.is_error() || was_out_of_range) {
       return fc_selection{-1, fc_selection_error::OutOfRange};
     }
 
-    let const number = parsed.value();
+    let const number            = parsed.value();
     let const has_negative_sign = specification[0] == '-';
     if (number < 0) {
       let index = last_eligible_index + number + 1;
@@ -120,9 +123,11 @@ resolve_fc_selection(StringView specification,
   return fc_selection{-1, fc_selection_error::NotFound};
 }
 
-static fn report_fc_selection_error(const ExecContext &ec, EvalContext &cxt,
-                                    const SourceLocation &location,
-                                    fc_selection_error error) throws -> i32
+static fn
+report_fc_selection_error(const ExecContext    &ec,
+                          EvalContext          &cxt,
+                          const SourceLocation &location,
+                          fc_selection_error    error) throws -> i32
 {
   if (error == fc_selection_error::OutOfRange) {
     report_soft_builtin_error(ec, cxt, location,
@@ -134,9 +139,11 @@ static fn report_fc_selection_error(const ExecContext &ec, EvalContext &cxt,
   return 1;
 }
 
-static fn replace_all(StringView source, StringView pattern,
-                      StringView replacement, Allocator allocator) throws
-    -> String
+static fn
+replace_all(StringView source,
+            StringView pattern,
+            StringView replacement,
+            Allocator  allocator) throws -> String
 {
   let result = String{allocator};
   if (pattern.is_empty()) {
@@ -164,8 +171,9 @@ static fn replace_all(StringView source, StringView pattern,
   return result;
 }
 
-static fn active_event_index(const ArrayList<toiletline::history_event> &events,
-                             Maybe<usize> active_number) -> Maybe<usize>
+static fn
+active_event_index(const ArrayList<toiletline::history_event> &events,
+                   Maybe<usize> active_number) -> Maybe<usize>
 {
   if (!active_number.has_value()) return None;
 
@@ -175,9 +183,11 @@ static fn active_event_index(const ArrayList<toiletline::history_event> &events,
   return None;
 }
 
-static fn remember_fc_command(
-    EvalContext &cxt, const ArrayList<toiletline::history_event> &events,
-    Maybe<usize> active_index, StringView command) throws -> bool
+static fn
+remember_fc_command(EvalContext                                &cxt,
+                    const ArrayList<toiletline::history_event> &events,
+                    Maybe<usize>                                active_index,
+                    StringView command) throws -> bool
 {
   if (command.is_empty()) return false;
   if (events.is_empty()) return false;
@@ -195,14 +205,17 @@ static fn remember_fc_command(
   return true;
 }
 
-static fn selected_source(const ArrayList<toiletline::history_event> &events,
-                          i64 first_index, i64 last_index, bool should_reverse,
-                          Allocator allocator) throws -> String
+static fn
+selected_source(const ArrayList<toiletline::history_event> &events,
+                i64                                         first_index,
+                i64                                         last_index,
+                bool                                        should_reverse,
+                Allocator allocator) throws -> String
 {
-  let source = String{allocator};
-  let index = should_reverse ? last_index : first_index;
+  let       source    = String{allocator};
+  let       index     = should_reverse ? last_index : first_index;
   let const end_index = should_reverse ? first_index : last_index;
-  let const step = should_reverse ? -1 : 1;
+  let const step      = should_reverse ? -1 : 1;
 
   for (; should_reverse ? index >= end_index : index <= end_index;
        index += step)
@@ -214,11 +227,13 @@ static fn selected_source(const ArrayList<toiletline::history_event> &events,
   return source;
 }
 
-static fn execute_fc_command(const ExecContext &ec, EvalContext &cxt,
-                             const ArrayList<String> &args,
-                             const ArrayList<SourceLocation> &operand_locations,
-                             const ArrayList<toiletline::history_event> &events,
-                             Maybe<usize> active_index) throws -> i32
+static fn
+execute_fc_command(const ExecContext               &ec,
+                   EvalContext                     &cxt,
+                   const ArrayList<String>         &args,
+                   const ArrayList<SourceLocation> &operand_locations,
+                   const ArrayList<toiletline::history_event> &events,
+                   Maybe<usize> active_index) throws -> i32
 {
   usize operand_position = 1;
   struct substitution
@@ -229,7 +244,7 @@ static fn execute_fc_command(const ExecContext &ec, EvalContext &cxt,
   let substitutions = ArrayList<substitution>{cxt.scratch_allocator()};
 
   while (operand_position < args.count()) {
-    let const operand = args[operand_position].view();
+    let const operand   = args[operand_position].view();
     let const separator = operand.find_character('=');
     if (!separator.has_value()) break;
     substitutions.push(substitution{operand.substring_of_length(0, *separator),
@@ -240,7 +255,7 @@ static fn execute_fc_command(const ExecContext &ec, EvalContext &cxt,
   let const last_eligible_index = active_index.has_value()
                                       ? static_cast<i64>(*active_index) - 1
                                       : static_cast<i64>(events.count()) - 1;
-  let selection =
+  let       selection =
       fc_selection{last_eligible_index, last_eligible_index < 0
                                             ? fc_selection_error::NotFound
                                             : fc_selection_error::None};
@@ -292,15 +307,18 @@ static fn execute_fc_command(const ExecContext &ec, EvalContext &cxt,
                         return_handling::Reject);
 }
 
-static fn list_fc_commands(const ExecContext &ec, EvalContext &cxt,
-                           const fc_options &options,
-                           const ArrayList<toiletline::history_event> &events,
-                           i64 first_index, i64 last_index) throws -> i32
+static fn
+list_fc_commands(const ExecContext                          &ec,
+                 EvalContext                                &cxt,
+                 const fc_options                           &options,
+                 const ArrayList<toiletline::history_event> &events,
+                 i64                                         first_index,
+                 i64 last_index) throws -> i32
 {
-  let output = String{cxt.scratch_allocator()};
-  let index = options.should_reverse ? last_index : first_index;
+  let       output    = String{cxt.scratch_allocator()};
+  let       index     = options.should_reverse ? last_index : first_index;
   let const end_index = options.should_reverse ? first_index : last_index;
-  let const step = options.should_reverse ? -1 : 1;
+  let const step      = options.should_reverse ? -1 : 1;
 
   for (; options.should_reverse ? index >= end_index : index <= end_index;
        index += step)
@@ -318,8 +336,8 @@ static fn list_fc_commands(const ExecContext &ec, EvalContext &cxt,
   return 0;
 }
 
-static fn editor_name(EvalContext &cxt, const fc_options &options) throws
-    -> String
+static fn
+editor_name(EvalContext &cxt, const fc_options &options) throws -> String
 {
   if (options.editor.has_value())
     return String{cxt.scratch_allocator(), *options.editor};
@@ -337,11 +355,14 @@ static fn editor_name(EvalContext &cxt, const fc_options &options) throws
   return cxt.runtime_state().is_posix_option_on() ? String{"ed"} : String{"vi"};
 }
 
-static fn edit_fc_commands(const ExecContext &ec, EvalContext &cxt,
-                           const fc_options &options,
-                           const ArrayList<toiletline::history_event> &events,
-                           Maybe<usize> active_index, i64 first_index,
-                           i64 last_index) throws -> i32
+static fn
+edit_fc_commands(const ExecContext                          &ec,
+                 EvalContext                                &cxt,
+                 const fc_options                           &options,
+                 const ArrayList<toiletline::history_event> &events,
+                 Maybe<usize>                                active_index,
+                 i64                                         first_index,
+                 i64 last_index) throws -> i32
 {
   let const source =
       selected_source(events, first_index, last_index, options.should_reverse,
@@ -394,7 +415,7 @@ static fn edit_fc_commands(const ExecContext &ec, EvalContext &cxt,
   if (edited->is_empty()) return 0;
 
   edited->normalize_crlf_line_endings();
-  let const ast_mark = cxt.arena_store().parse_arena()->mark();
+  let const ast_mark      = cxt.arena_store().parse_arena()->mark();
   let const function_mark = cxt.arena_store().function_arena()->mark();
   {
     defer
@@ -412,7 +433,7 @@ static fn edit_fc_commands(const ExecContext &ec, EvalContext &cxt,
   ec.print_to_stderr(edited->view());
   if (edited->back() != '\n') ec.print_to_stderr("\n");
 
-  let recorded_commands = ArrayList<String>{heap_allocator()};
+  let       recorded_commands = ArrayList<String>{heap_allocator()};
   let const should_replace_active =
       active_index.has_value() && !cxt.history_recorder().has_transaction();
   let should_end_transaction = should_replace_active;
@@ -447,10 +468,11 @@ static fn edit_fc_commands(const ExecContext &ec, EvalContext &cxt,
   return status;
 }
 
-fn Fc::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
+fn
+Fc::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let operand_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};
-  let const args = PARSE_BUILTIN_ARGS_WITH_OPTIONS(
+  let const args        = PARSE_BUILTIN_ARGS_WITH_OPTIONS(
       ec, operand_locations, .should_accept_negative_number_operand = true);
 
   if (FLAG_HELP.is_enabled()) SHOW_BUILTIN_HELP_AND_RETURN(ec);
@@ -475,7 +497,7 @@ fn Fc::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   }
 
   let const &events = read_events.value();
-  let const active_index =
+  let const  active_index =
       active_event_index(events, cxt.history_recorder().get_event_number());
 
   if (options.should_execute)
@@ -488,8 +510,8 @@ fn Fc::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                                       : static_cast<i64>(events.count()) - 1;
   if (last_eligible_index < 0) return 0;
 
-  i64 first_index = last_eligible_index;
-  i64 last_index = last_eligible_index;
+  i64   first_index      = last_eligible_index;
+  i64   last_index       = last_eligible_index;
   usize operand_position = 1;
 
   if (operand_position < args.count()) {
@@ -520,9 +542,9 @@ fn Fc::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   }
 
   if (last_index < first_index) {
-    let const saved_first = first_index;
-    first_index = last_index;
-    last_index = saved_first;
+    let const saved_first  = first_index;
+    first_index            = last_index;
+    last_index             = saved_first;
     options.should_reverse = true;
   }
 

@@ -27,14 +27,15 @@ REGISTER_BUILTIN_FLAGS(Times);
 
 namespace koshka {
 
-cold i32 Times::execute(ExecContext &ec, EvalContext &cxt) const throws
+cold i32
+Times::execute(ExecContext &ec, EvalContext &cxt) const throws
 {
   LOG(Debug, "times printing the shell and child process accounting");
 
   let const times = os::read_process_cpu_times();
 
   let const decimal_count = cxt.runtime_state().is_posix_mode() ? 6 : 3;
-  let const do_format = [&](double seconds) throws -> String {
+  let const do_format     = [&](double seconds) throws -> String {
     return utils::format_minutes_seconds(seconds, decimal_count);
   };
 

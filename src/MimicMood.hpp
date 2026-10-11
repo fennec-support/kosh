@@ -24,13 +24,15 @@ enum class mimic_mood : u8
   BashPosix,
 };
 
-fn detect_mimic_shell_from_source(StringView source) throws
+fn
+detect_mimic_shell_from_source(StringView source) throws -> Maybe<mimic_mood>;
+
+pure fn
+detect_mimic_shell_from_extension(StringView dotted_extension) throws
     -> Maybe<mimic_mood>;
 
-pure fn detect_mimic_shell_from_extension(StringView dotted_extension) throws
-    -> Maybe<mimic_mood>;
-
-inline pure fn parse_mood_name(StringView name) throws -> Maybe<mimic_mood>
+inline pure fn
+parse_mood_name(StringView name) throws -> Maybe<mimic_mood>
 {
   static constexpr static_string_entry<mimic_mood> MOOD_ENTRIES[] = {
       {SSK("kosh"),       mimic_mood::Default  },
@@ -46,18 +48,20 @@ inline pure fn parse_mood_name(StringView name) throws -> Maybe<mimic_mood>
   return MOODS.find(name);
 }
 
-inline pure fn warning_level_for_mood(mimic_mood mood) wontthrow -> u8
+inline pure fn
+warning_level_for_mood(mimic_mood mood) wontthrow -> u8
 {
   return mood == mimic_mood::Default ? 0 : 3;
 }
 
-inline pure fn mood_name(mimic_mood mood) wontthrow -> StringView
+inline pure fn
+mood_name(mimic_mood mood) wontthrow -> StringView
 {
   switch (mood) {
-  case mimic_mood::Bash: return "bash";
-  case mimic_mood::Posix: return "sh";
+  case mimic_mood::Bash:      return "bash";
+  case mimic_mood::Posix:     return "sh";
   case mimic_mood::BashPosix: return "bash-posix";
-  case mimic_mood::Default: return "kosh";
+  case mimic_mood::Default:   return "kosh";
   }
 
   return "kosh";

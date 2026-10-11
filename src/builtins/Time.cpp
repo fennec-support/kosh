@@ -29,7 +29,8 @@ REGISTER_BUILTIN_FLAGS(Time);
 
 namespace koshka {
 
-cold fn Time::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
+cold fn
+Time::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let const args = PARSE_BUILTIN_ARGS(ec);
 
@@ -48,10 +49,10 @@ cold fn Time::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   LOG(Debug, "time running command '%s' under the clock", command.c_str());
 
-  double user_before = 0, system_before = 0;
+  double    user_before = 0, system_before = 0;
   let const child_times_before = os::read_child_cpu_times();
-  user_before = child_times_before.user_seconds;
-  system_before = child_times_before.system_seconds;
+  user_before                  = child_times_before.user_seconds;
+  system_before                = child_times_before.system_seconds;
 
   let const saved_terminal_exec = cxt.execution_store().terminal_exec_allowed();
   cxt.execution_store().terminal_exec_allowed() = false;
@@ -68,15 +69,15 @@ cold fn Time::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   let const elapsed_nanos = os::monotonic_nanos() - start_nanos;
 
-  double user_after = 0, system_after = 0;
+  double    user_after = 0, system_after = 0;
   let const child_times_after = os::read_child_cpu_times();
-  user_after = child_times_after.user_seconds;
-  system_after = child_times_after.system_seconds;
-  let const rss_after = os::children_peak_rss_bytes();
+  user_after                  = child_times_after.user_seconds;
+  system_after                = child_times_after.system_seconds;
+  let const rss_after         = os::children_peak_rss_bytes();
 
   let const real_seconds = static_cast<double>(elapsed_nanos) / 1000000000.0;
-  let const user_cpu = user_after - user_before;
-  let const system_cpu = system_after - system_before;
+  let const user_cpu     = user_after - user_before;
+  let const system_cpu   = system_after - system_before;
 
   let const layout = FLAG_TIME_POSIX.is_enabled()
                          ? utils::time_report_layout::Posix
@@ -85,10 +86,10 @@ cold fn Time::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                          : utils::time_report_layout::Rich;
 
   let const time_format = cxt.get_variable_value("TIMEFORMAT");
-  let const report = utils::format_time_report(
+  let const report      = utils::format_time_report(
       time_format, real_seconds, user_cpu, system_cpu, rss_after, layout,
       FLAG_TIME_RSS.is_enabled() ? utils::time_report_rss::Include
-                                 : utils::time_report_rss::Omit);
+                                      : utils::time_report_rss::Omit);
 
   if (!report.is_empty()) {
     koshka::print_error(report);

@@ -26,14 +26,15 @@ REGISTER_BUILTIN_FLAGS(Getopts);
 
 namespace koshka {
 
-fn Getopts::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
+fn
+Getopts::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let const &args = ec.args();
 
   if (args.count() < 3) return report_usage_error(ec, cxt, ec.program());
 
   let const &optstring = args[1];
-  let const &name = args[2];
+  let const &name      = args[2];
   if (!name_is_valid_assignment_target(name.view())) {
     report_invalid_identifier(ec, cxt, ec.arg_location_at(2), name.view());
 
@@ -61,7 +62,7 @@ fn Getopts::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   i64 optind = 1;
   if (let value = cxt.get_variable_value("OPTIND"); value.has_value()) {
     let const parsed_value = (*value).to<i64>();
-    optind = parsed_value.is_error() ? 1 : parsed_value.value();
+    optind                 = parsed_value.is_error() ? 1 : parsed_value.value();
   }
 
   LOG(Debug, "getopts parsing into '%s' at OPTIND %lld of %zu operands",
@@ -74,7 +75,7 @@ fn Getopts::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let const do_finish = [&](i32 code) -> i32 {
     cxt.set_shell_variable("OPTIND",
                            String::from(optind, cxt.scratch_allocator()));
-    cursor.char_index = char_index;
+    cursor.char_index  = char_index;
     cursor.last_optind = optind;
 
     return code;
@@ -97,8 +98,8 @@ fn Getopts::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   if (char_index >= current.length()) char_index = 1;
   ASSERT(char_index < current.length());
-  let const option = current[char_index];
-  let option_as_string = String{cxt.scratch_allocator()};
+  let const option           = current[char_index];
+  let       option_as_string = String{cxt.scratch_allocator()};
   option_as_string.push(option);
   let const spec = optstring.find_character(option);
 

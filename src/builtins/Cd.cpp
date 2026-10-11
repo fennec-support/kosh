@@ -20,10 +20,16 @@ HELP_SYNOPSIS_DECL("[-L|-P] [dir]");
 
 HELP_DESCRIPTION_DECL("The cd builtin changes the working directory.");
 
-FLAG(LOGICAL, Bool, 'L', "",
+FLAG(LOGICAL,
+     Bool,
+     'L',
+     "",
      "Resolve '..' against the path as typed, keeping symbolic links. This is "
      "the default unless set -o physical is on.");
-FLAG(PHYSICAL, Bool, 'P', "",
+FLAG(PHYSICAL,
+     Bool,
+     'P',
+     "",
      "Resolve symbolic links first, so '..' leaves the directory a link "
      "points to.");
 FLAG(HELP, Bool, '\0', "help", "Display help.");
@@ -32,7 +38,8 @@ REGISTER_BUILTIN_FLAGS(Cd);
 
 namespace koshka {
 
-static fn cdpath_search_applies(const String &operand) throws -> bool
+static fn
+cdpath_search_applies(const String &operand) throws -> bool
 {
   if (operand.is_empty() || os::path_is_absolute(operand.view()) ||
       os::path_is_drive_relative(operand.view()))
@@ -56,7 +63,8 @@ static fn cdpath_search_applies(const String &operand) throws -> bool
   return true;
 }
 
-fn Cd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
+fn
+Cd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   ASSERT(!ec.args().is_empty());
 
@@ -139,12 +147,12 @@ fn Cd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   LOG(Info, "cd changing directory to '%s'", arg_path.c_str());
 
-  let target = Path{arg_path};
-  let old_directory = Path{};
-  let is_logical_target_available = true;
-  let const do_resolve_logical_target = [](const Path &raw_target,
-                                           bool &did_fail_before_dotdot) {
-    let logical_candidate = Path{raw_target.view().substring_of_length(
+  let       target                      = Path{arg_path};
+  let       old_directory               = Path{};
+  let       is_logical_target_available = true;
+  let const do_resolve_logical_target   = [](const Path &raw_target,
+                                           bool       &did_fail_before_dotdot) {
+    let   logical_candidate  = Path{raw_target.view().substring_of_length(
         0, os::path_root_length(raw_target.view()))};
     usize component_position = os::path_root_length(raw_target.view());
 
@@ -187,7 +195,7 @@ fn Cd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   if (!is_to_previous && operand_count > 0 && cdpath_search_applies(arg_path)) {
     if (let const cdpath = cxt.get_variable_value("CDPATH")) {
       let const entries = cdpath->view();
-      usize start = 0;
+      usize     start   = 0;
 
       while (start <= entries.length) {
         usize end = start;
@@ -197,11 +205,11 @@ fn Cd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
           end++;
         }
 
-        let const entry = entries.substring_of_length(start, end - start);
-        let candidate = entry.is_empty() ? Path{arg_path}
-                                         : Path{entry}.append(arg_path.view());
-        let resolved = candidate;
-        let is_candidate_available = true;
+        let const entry     = entries.substring_of_length(start, end - start);
+        let       candidate = entry.is_empty() ? Path{arg_path}
+                                               : Path{entry}.append(arg_path.view());
+        let       resolved  = candidate;
+        let       is_candidate_available = true;
         if (is_physical) {
           if (resolved.is_relative()) {
             let current_directory = Path::current_directory();
@@ -223,7 +231,7 @@ fn Cd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         if (is_candidate_available && resolved.is_directory()) {
           LOG(Info, "cd resolved '%s' through CDPATH entry '%.*s'",
               arg_path.c_str(), static_cast<int>(entry.length), entry.data);
-          target = steal(resolved);
+          target              = steal(resolved);
           should_print_target = !entry.is_empty();
           break;
         }
@@ -239,7 +247,7 @@ fn Cd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     if (let const directory_variable = cxt.get_variable_value(arg_path)) {
       arg_path.clear();
       arg_path.append(directory_variable->view());
-      target = Path{arg_path};
+      target              = Path{arg_path};
       should_print_target = true;
     }
   }
@@ -262,11 +270,11 @@ fn Cd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     }
   } else {
     let raw_logical_target = Path{};
-    let logical_operand = target.view();
+    let logical_operand    = target.view();
     if (target.is_absolute() || os::path_is_drive_relative(target.view())) {
       raw_logical_target = target.to_absolute_without_normalizing();
     } else {
-      old_directory = logical_working_directory(cxt);
+      old_directory      = logical_working_directory(cxt);
       raw_logical_target = Path{old_directory.view()};
       raw_logical_target.append(logical_operand);
     }
@@ -319,7 +327,7 @@ fn Cd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   }
 
   let operand_location = ec.arg_location_at(operand_index);
-  let raw_operand = arg_path.view();
+  let raw_operand      = arg_path.view();
   if (operand_index < ec.arg_locations().count()) {
     if (let const source = cxt.source_store().current_source();
         source != nullptr)

@@ -42,154 +42,369 @@ HELP_SYNOPSIS_DECL("[-OPTIONS] [--] <file> [argument ...]",
 /* clang-format on */
 
 FLAG(VERSION, Bool, '\0', "version", "Display program version and notices.");
-FLAG(SHORT_VERSION, Bool, 'V', "short-version",
+FLAG(SHORT_VERSION,
+     Bool,
+     'V',
+     "short-version",
      "Display version in a short form.");
 FLAG(HELP, Bool, '\0', "help", "Display help message.");
 
-FLAG(INTERACTIVE, Bool, 'i', "interactive", Posix,
+FLAG(INTERACTIVE,
+     Bool,
+     'i',
+     "interactive",
+     Posix,
      "Specify that the shell is interactive.");
 FLAG(STDIN, Bool, 's', "stdin", Posix, "Execute command from stdin and exit.");
-FLAG(COMMAND, ManyStrings, 'c', "command", Posix,
+FLAG(COMMAND,
+     ManyStrings,
+     'c',
+     "command",
+     Posix,
      "Execute specified command and exit. Can be used multiple times.");
 FLAG(ERROR_EXIT, Bool, 'e', "error-exit", Posix, "Die on first error.");
 FLAG(DISABLE_EXPANSION, Bool, 'f', "no-glob", Posix, "Disable path expansion.");
-FLAG(ONE_COMMAND, Bool, 't', "one-command", Posix,
+FLAG(ONE_COMMAND,
+     Bool,
+     't',
+     "one-command",
+     Posix,
      "Exit after executing one command.");
-FLAG(VERBOSE, Bool, 'v', "verbose", Posix,
+FLAG(VERBOSE,
+     Bool,
+     'v',
+     "verbose",
+     Posix,
      "Write input to standard error as it is read.");
-FLAG(EXPAND_VERBOSE, Bool, 'x', "xtrace", Posix,
+FLAG(EXPAND_VERBOSE,
+     Bool,
+     'x',
+     "xtrace",
+     Posix,
      "Write expanded input to standard error as it is read.");
-FLAG(EXPORT_ALL, Bool, 'a', "export-all", Posix,
+FLAG(EXPORT_ALL,
+     Bool,
+     'a',
+     "export-all",
+     Posix,
      "Mark every assigned variable for the environment.");
-FLAG(NO_CLOBBER, Bool, 'C', "no-clobber", Posix,
+FLAG(NO_CLOBBER,
+     Bool,
+     'C',
+     "no-clobber",
+     Posix,
      "Refuse to overwrite an existing file through '>'.");
-FLAG(NO_EXEC, Bool, 'n', "no-exec", Posix,
+FLAG(NO_EXEC,
+     Bool,
+     'n',
+     "no-exec",
+     Posix,
      "Parse and analyze the script but do not run it.");
-FLAG(NOUNSET, Bool, 'u', "no-unset", Posix,
+FLAG(NOUNSET,
+     Bool,
+     'u',
+     "no-unset",
+     Posix,
      "Treat an unset variable as an error.");
-FLAG(LOGIN, Bool, 'l', "login", Posix,
+FLAG(LOGIN,
+     Bool,
+     'l',
+     "login",
+     Posix,
      "Act as a login shell and source the profiles.");
 FLAG(IGNORED1, Bool, 'h', "\0", Posix, "Ignored, left for compatibility.");
 FLAG(IGNORED2, Bool, 'm', "\0", Posix, "Ignored, left for compatibility.");
-FLAG(SET_OPTION, ManyStrings, 'o', "\0", Posix,
+FLAG(SET_OPTION,
+     ManyStrings,
+     'o',
+     "\0",
+     Posix,
      "Turn on the set option NAME, or turn it off as +o NAME. A letter after "
      "a plus, such as +e, turns its option off.");
 
-FLAG(RCFILE, String, '\0', "rcfile", Bash,
+FLAG(RCFILE,
+     String,
+     '\0',
+     "rcfile",
+     Bash,
      "Source FILE as the interactive rc in place of the mood default.");
-FLAG(INIT_FILE, String, '\0', "init-file", Bash,
+FLAG(INIT_FILE,
+     String,
+     '\0',
+     "init-file",
+     Bash,
      "Alias for --rcfile, with the last occurrence taking precedence.");
-FLAG(NORC, Bool, '\0', "norc", Bash,
+FLAG(NORC,
+     Bool,
+     '\0',
+     "norc",
+     Bash,
      "Do not source the interactive bash rc or a custom rc file.");
-FLAG(RESTRICTED, Bool, 'r', "restricted", Bash,
+FLAG(RESTRICTED,
+     Bool,
+     'r',
+     "restricted",
+     Bash,
      "Start a restricted shell after the startup files finish.");
-FLAG(PRIVILEGED, Bool, 'p', "privileged", Bash,
+FLAG(PRIVILEGED,
+     Bool,
+     'p',
+     "privileged",
+     Bash,
      "Run privileged, suppressing BASH_ENV. Unequal ids skip startup files.");
-FLAG(SHOPT_OPTION, ManyStrings, 'O', "\0", Bash,
+FLAG(SHOPT_OPTION,
+     ManyStrings,
+     'O',
+     "\0",
+     Bash,
      "Turn on the shopt option NAME, or turn it off as +O NAME.");
-FLAG(CLEAN, Bool, 'Q', "no-init-files", Kosh,
+FLAG(CLEAN,
+     Bool,
+     'Q',
+     "no-init-files",
+     Kosh,
      "Start clean, reading no startup file and setting a minimal PATH.");
-FLAG(NO_CONFIG, Bool, '\0', "no-config", Kosh,
+FLAG(NO_CONFIG,
+     Bool,
+     '\0',
+     "no-config",
+     Kosh,
      "Read no kosh.conf file and ignore KOSHCONF, keeping PATH and the shell "
      "startup files.");
-FLAG(POSIX_COMPAT, Bool, '\0', "posix", Bash,
+FLAG(POSIX_COMPAT,
+     Bool,
+     '\0',
+     "posix",
+     Bash,
      "Run in bash POSIX mode, equivalent to --mood bash-posix.");
 
-FLAG(MOOD, String, 'M', "mood", Compat,
+FLAG(MOOD,
+     String,
+     'M',
+     "mood",
+     Compat,
      "Select the runtime mood, 'kosh' is strict with the analysis stage on, "
      "'bash' runs the extensions with it off, 'sh' behaves like dash, and "
      "'bash-posix' is bash with the posix identity reached by --posix.");
-FLAG(INIT_MOODS, ManyStrings, 'L', "init-moods", Compat,
+FLAG(INIT_MOODS,
+     ManyStrings,
+     'L',
+     "init-moods",
+     Compat,
      "Source the startup files for each listed mood, in order, comma separated "
      "or by repeating the flag. Defaults to init_moods in an "
      "interactive or login shell, then to --mood.");
-FLAG(MIMICRY, Bool, 'I', "enable-mimicry", Compat,
+FLAG(MIMICRY,
+     Bool,
+     'I',
+     "enable-mimicry",
+     Compat,
      "Mimic the shell specified by a script's shebang, running a known shell "
      "shebang "
      "in-process in the matching mode.");
-FLAG(DUMB, Bool, '\0', "dumb", Compat,
+FLAG(DUMB,
+     Bool,
+     '\0',
+     "dumb",
+     Compat,
      "Make the shell extremely dumb. Equivalent to --mood sh --no-completion "
      "--no-diagnostics --tab-selector plain.");
 
-FLAG(LINT, Bool, '\0', "lint", Auxiliary,
+FLAG(LINT,
+     Bool,
+     '\0',
+     "lint",
+     Auxiliary,
      "Analyze shell inputs without running them and enable every diagnostic "
      "tier at its normal severity.");
-FLAG(FORMAT, Bool, '\0', "format", Auxiliary,
+FLAG(FORMAT,
+     Bool,
+     '\0',
+     "format",
+     Auxiliary,
      "Format shell input without running it. Read one file or standard input.");
-FLAG(APPLY, Bool, '\0', "apply", Auxiliary,
+FLAG(APPLY,
+     Bool,
+     '\0',
+     "apply",
+     Auxiliary,
      "Apply lint fixes or formatted output to named files.");
-FLAG(LANGUAGE_SERVER, Bool, '\0', "as-language-server", Auxiliary,
+FLAG(LANGUAGE_SERVER,
+     Bool,
+     '\0',
+     "as-language-server",
+     Auxiliary,
      "Run the shell language server over standard input and standard output.");
-FLAG(WARNINGS, RepeatedBool, 'W', "", Kosh,
+FLAG(WARNINGS,
+     RepeatedBool,
+     'W',
+     "",
+     Kosh,
      "In the default mood, demote annoying, lenient, then strict diagnostics "
      "as W is repeated. In other moods, enable those tiers in reverse order.");
-FLAG(LIST_CHECKS, Bool, '\0', "list-diagnostics", Kosh,
+FLAG(LIST_CHECKS,
+     Bool,
+     '\0',
+     "list-diagnostics",
+     Kosh,
      "List the shellcheck-style checks the analysis stage reports, then exit.");
-FLAG(SUPPRESS_DIAGNOSTICS, Bool, '\0', "no-diagnostics", Kosh,
+FLAG(SUPPRESS_DIAGNOSTICS,
+     Bool,
+     '\0',
+     "no-diagnostics",
+     Kosh,
      "Skip the analysis stage. No warnings or pre-run diagnostics are "
      "reported.");
-FLAG(SUPPRESS_ANNOYING_DIAGNOSTICS, Bool, '\0', "no-annoying-diagnostics", Kosh,
+FLAG(SUPPRESS_ANNOYING_DIAGNOSTICS,
+     Bool,
+     '\0',
+     "no-annoying-diagnostics",
+     Kosh,
      "Suppress the annoying diagnostic tier while retaining strict and "
      "lenient analysis.");
-FLAG(SUPPRESS_INIT_DIAGNOSTICS, Bool, '\0', "no-init-diagnostics", Kosh,
+FLAG(SUPPRESS_INIT_DIAGNOSTICS,
+     Bool,
+     '\0',
+     "no-init-diagnostics",
+     Kosh,
      "Suppress diagnostics only while the startup files source, then restore "
      "them for the prompt.");
-FLAG(NO_TRACES, Bool, '\0', "no-traces", Kosh,
+FLAG(NO_TRACES,
+     Bool,
+     '\0',
+     "no-traces",
+     Kosh,
      "Suppress source backtraces for errors and warnings.");
-FLAG(NO_COMPLETION, Bool, 'T', "no-completion", Kosh,
+FLAG(NO_COMPLETION,
+     Bool,
+     'T',
+     "no-completion",
+     Kosh,
      "Disable interactive tab completion, ghost-text, and syntax coloring.");
-FLAG(NO_SYNTAX_HIGHLIGHTING, Bool, '\0', "no-syntax-highlighting", Kosh,
+FLAG(NO_SYNTAX_HIGHLIGHTING,
+     Bool,
+     '\0',
+     "no-syntax-highlighting",
+     Kosh,
      "Disable the syntax coloring and the ghost suggestion, leaving tab "
      "completion working.");
-FLAG(TAB_SELECTOR, String, '\0', "tab-selector", Kosh,
+FLAG(TAB_SELECTOR,
+     String,
+     '\0',
+     "tab-selector",
+     Kosh,
      "Select how several completion candidates are presented, 'interactive' "
      "draws the shell's own menu, 'external' launches the configured selector "
      "program, and 'plain' lists the candidates. --dumb selects 'plain'.");
-FLAG(ENABLE_KOSHKIT, Bool, '\0', "enable-koshkit", Kosh,
+FLAG(ENABLE_KOSHKIT,
+     Bool,
+     '\0',
+     "enable-koshkit",
+     Kosh,
      "Resolve the bundled koshkit utility names such as ls and mkdir directly "
      "as commands, the same as koshconf set "
      "interpreter.resolve_koshkit_applets_as_commands on.");
-FLAG(EXTENDED_ARITHMETIC, Bool, '\0', "enable-extended-arithmetic", Kosh,
+FLAG(EXTENDED_ARITHMETIC,
+     Bool,
+     '\0',
+     "enable-extended-arithmetic",
+     Kosh,
      "Use arbitrary-precision integers and finite decimal values, the same as "
      "koshconf set interpreter.arithmetic_uses_big_numbers on.");
 
-FLAG(AST, Bool, 'A', "show-ast", Debug,
+FLAG(AST,
+     Bool,
+     'A',
+     "show-ast",
+     Debug,
      "Print syntax trees before execution and during formatting or linting.");
-FLAG(OPTIMIZER_DIAGNOSTICS, Bool, '\0', "show-optimizer-diagnostics", Debug,
+FLAG(OPTIMIZER_DIAGNOSTICS,
+     Bool,
+     '\0',
+     "show-optimizer-diagnostics",
+     Debug,
      "Trace the optimizer prepass and report every folded and eliminated node "
      "as an analysis diagnostic.");
-FLAG(EXIT_CODE, Bool, '\0', "show-exit-code", Debug,
+FLAG(EXIT_CODE,
+     Bool,
+     '\0',
+     "show-exit-code",
+     Debug,
      "Show diagnostics for every non-zero exit code.");
-FLAG(ALL_EXIT_CODES, Bool, 'N', "show-all-exit-codes", Debug,
+FLAG(ALL_EXIT_CODES,
+     Bool,
+     'N',
+     "show-all-exit-codes",
+     Debug,
      "Show diagnostics for every exit code, including zero.");
-FLAG(ESCAPE_MAP, Bool, 'R', "show-lexed-words", Debug,
+FLAG(ESCAPE_MAP,
+     Bool,
+     'R',
+     "show-lexed-words",
+     Debug,
      "Print escape bitmap after each parsed command.");
 FLAG(
-    STATS, Bool, '\0', "show-stats", Debug,
+    STATS,
+    Bool,
+    '\0',
+    "show-stats",
+    Debug,
     "Print run statistics after each command, commands, expansions, nodes, and "
     "arena bytes.");
-FLAG(MEMORY, Bool, '\0', "show-memory", Debug,
+FLAG(MEMORY,
+     Bool,
+     '\0',
+     "show-memory",
+     Debug,
      "Print a memory report at exit, the arena bytes and the heap in use.");
 #if !defined NDEBUG
-FLAG(LOG, String, 'X', "debug-logging", Debug,
+FLAG(LOG,
+     String,
+     'X',
+     "debug-logging",
+     Debug,
      "Enable internal logging at the given level, one of 'info', 'debug', or "
      "'all'. An unknown spelling is an error.");
 FLAG(
-    DEBUG_OUTPUT_FILE, String, '\0', "debug-logging-file", Debug,
+    DEBUG_OUTPUT_FILE,
+    String,
+    '\0',
+    "debug-logging-file",
+    Debug,
     "Append the debug log to the named file, created when missing. The default "
     "is stderr.");
-FLAG(DEBUG_COMPLETE_AT, String, '\0', "debug-complete-at", Debug,
+FLAG(DEBUG_COMPLETE_AT,
+     String,
+     '\0',
+     "debug-complete-at",
+     Debug,
      "Print the completion candidates for the given line, then exit. The "
      "completion test driver.");
-FLAG(DEBUG_HIGHLIGHT_AT, String, '\0', "debug-highlight-at", Debug,
+FLAG(DEBUG_HIGHLIGHT_AT,
+     String,
+     '\0',
+     "debug-highlight-at",
+     Debug,
      "Print the highlight spans for the given line, then exit. The highlighter "
      "test driver.");
-FLAG(DEBUG_GHOST_AT, String, '\0', "debug-ghost-at", Debug,
+FLAG(DEBUG_GHOST_AT,
+     String,
+     '\0',
+     "debug-ghost-at",
+     Debug,
      "Print the ghost completion result and operation counts, then exit.");
-FLAG(DEBUG_BRACKETS_AT, String, '\0', "debug-brackets-at", Debug,
+FLAG(DEBUG_BRACKETS_AT,
+     String,
+     '\0',
+     "debug-brackets-at",
+     Debug,
      "Print the bracket pair matched at each caret offset of the given line, "
      "then exit. The bracket matching test driver.");
-FLAG(DEBUG_HINT_AT, String, '\0', "debug-hint-at", Debug,
+FLAG(DEBUG_HINT_AT,
+     String,
+     '\0',
+     "debug-hint-at",
+     Debug,
      "Print the inline hint row for the given line with the caret at its end, "
      "then exit. The hint row test driver.");
 #endif
@@ -200,17 +415,17 @@ namespace koshka {
 
 struct invocation_identity
 {
-  String program_path;
-  String executable_path;
+  String     program_path;
+  String     executable_path;
   mimic_mood invocation_mood;
   mimic_mood session_mood;
-  bool is_login_shell;
-  bool is_restricted_shell;
-  bool was_mood_named_on_command_line;
+  bool       is_login_shell;
+  bool       is_restricted_shell;
+  bool       was_mood_named_on_command_line;
 };
 
-static fn make_invocation_identity(String program_path) throws
-    -> invocation_identity
+static fn
+make_invocation_identity(String program_path) throws -> invocation_identity
 {
   let const is_login_name =
       !program_path.view().is_empty() && program_path.view()[0] == '-';
@@ -228,11 +443,11 @@ static fn make_invocation_identity(String program_path) throws
   if (!executable_path.is_empty() && executable_path.view() != "<unknown>" &&
       !os::has_directory_separator(executable_path.view()))
   {
-    let inherited_path = os::get_environment_variable("PATH");
-    let const found_paths = inherited_path.has_value()
-                                ? ProgramResolver{steal(inherited_path)}.search(
+    let       inherited_path = os::get_environment_variable("PATH");
+    let const found_paths    = inherited_path.has_value()
+                                   ? ProgramResolver{steal(inherited_path)}.search(
                                       executable_path.view())
-                                : ArrayList<Path>{heap_allocator()};
+                                   : ArrayList<Path>{heap_allocator()};
     if (found_paths.count() > 0) {
       executable_path = String{found_paths[0].text()};
     } else if (let running_path = os::current_executable_path();
@@ -283,27 +498,30 @@ static fn make_invocation_identity(String program_path) throws
 
 struct command_line
 {
-  int argc;
-  char **argv;
-  ArrayList<String> flag_tokens{heap_allocator()};
+  int                     argc;
+  char                  **argv;
+  ArrayList<String>       flag_tokens{heap_allocator()};
   ArrayList<const char *> spliced_argv{heap_allocator()};
-  ArrayList<String> operands{heap_allocator()};
-  bool is_login_invocation = false;
-  bool is_rescue_mode = false;
+  ArrayList<String>       operands{heap_allocator()};
+  bool                    is_login_invocation = false;
+  bool                    is_rescue_mode      = false;
 
-  fn get_parse_argc() const wontthrow -> int
+  fn
+  get_parse_argc() const wontthrow -> int
   {
     return spliced_argv.is_empty() ? argc
                                    : static_cast<int>(spliced_argv.count());
   }
 
-  fn get_parse_argv() const wontthrow -> const char *const *
+  fn
+  get_parse_argv() const wontthrow -> const char *const *
   {
     return spliced_argv.is_empty() ? argv : spliced_argv.begin();
   }
 };
 
-static fn splice_environment_flags(command_line &line) throws -> void
+static fn
+splice_environment_flags(command_line &line) throws -> void
 {
   if (Maybe<String> kosh_flags = os::get_environment_variable("KOSH_FLAGS");
       kosh_flags.has_value() && !kosh_flags->is_empty())
@@ -311,8 +529,8 @@ static fn splice_environment_flags(command_line &line) throws -> void
     static constexpr PackedStringKey IGNORED_KOSH_FLAG_KEYS[] = {
         SSK("--apply"), SSK("--format"), SSK("--as-language-server")};
     static constexpr StaticStringSet IGNORED_KOSH_FLAGS{IGNORED_KOSH_FLAG_KEYS};
-    let const view = kosh_flags->view();
-    bool should_skip_next_command_word = false;
+    let const                        view = kosh_flags->view();
+    bool                             should_skip_next_command_word = false;
 
     view.for_each_ascii_whitespace_word([&](StringView token) throws {
       if (should_skip_next_command_word) {
@@ -341,14 +559,16 @@ static fn splice_environment_flags(command_line &line) throws -> void
 static constexpr flag_parse_options INVOCATION_PARSE_OPTIONS{
     .plus_letters = "aCefhmnptuvxoO"};
 
-static fn parse_invocation_flags(int argc, const char *const *argv) throws
+static fn
+parse_invocation_flags(int argc, const char *const *argv) throws
     -> ArrayList<String>
 {
   return parse_flags(FLAG_LIST, argc, argv, 0, &FLAG_COMMAND, nullptr, nullptr,
                      StringView{}, INVOCATION_PARSE_OPTIONS);
 }
 
-static fn enter_rescue_mode(command_line &line) throws -> void
+static fn
+enter_rescue_mode(command_line &line) throws -> void
 {
   show_message("Entering rescue.");
   line.is_rescue_mode = true;
@@ -362,7 +582,8 @@ static fn enter_rescue_mode(command_line &line) throws -> void
   }
 }
 
-static fn parse_command_line(command_line &line) throws -> Maybe<int>
+static fn
+parse_command_line(command_line &line) throws -> Maybe<int>
 {
   splice_environment_flags(line);
   line.is_login_invocation = line.argc > 0 && line.argv[0][0] == '-';
@@ -373,7 +594,7 @@ static fn parse_command_line(command_line &line) throws -> Maybe<int>
     line.operands = parse_invocation_flags(parse_argc, parse_argv);
   } catch (const ErrorWithLocation &e) {
     let const source = join_command_line(parse_argc, parse_argv);
-    let highlight_context =
+    let       highlight_context =
         EvalContext{startup_options{}, String{parse_argv[0]}};
     show_message(e.to_string(source, &highlight_context));
     if (!line.is_login_invocation) {
@@ -391,7 +612,8 @@ static fn parse_command_line(command_line &line) throws -> Maybe<int>
   return None;
 }
 
-static fn is_debug_driver_run() wontthrow -> bool
+static fn
+is_debug_driver_run() wontthrow -> bool
 {
 #if !defined NDEBUG
 
@@ -406,16 +628,18 @@ static fn is_debug_driver_run() wontthrow -> bool
 
 struct input_plan
 {
-  bool should_read_stdin = false;
+  bool should_read_stdin       = false;
   bool should_execute_commands = false;
-  bool should_read_files = false;
-  bool should_be_interactive = false;
+  bool should_read_files       = false;
+  bool should_be_interactive   = false;
 };
 
-static fn show_unknown_flag_value(StringView flag_prefix, StringView value,
-                                  StringView message) throws -> void
+static fn
+show_unknown_flag_value(StringView flag_prefix,
+                        StringView value,
+                        StringView message) throws -> void
 {
-  String source = flag_prefix;
+  String    source         = flag_prefix;
   let const value_position = source.count();
   source += value;
   show_message(ErrorWithLocation{
@@ -425,7 +649,8 @@ static fn show_unknown_flag_value(StringView flag_prefix, StringView value,
                    .to_string(source.view()));
 }
 
-static fn parse_init_moods(ArrayList<mimic_mood> &moods) throws -> Maybe<int>
+static fn
+parse_init_moods(ArrayList<mimic_mood> &moods) throws -> Maybe<int>
 {
   for (usize i = 0; i < FLAG_INIT_MOODS.count(); i++) {
     let const unknown_name = parse_mood_list(FLAG_INIT_MOODS.get(i), moods);
@@ -445,11 +670,12 @@ static fn parse_init_moods(ArrayList<mimic_mood> &moods) throws -> Maybe<int>
 struct invocation_option
 {
   const option_descriptor *option;
-  option_origin origin;
-  bool is_on;
+  option_origin            origin;
+  bool                     is_on;
 };
 
-static fn find_letter_flag(char letter) wontthrow -> FlagBool *
+static fn
+find_letter_flag(char letter) wontthrow -> FlagBool *
 {
   switch (letter) {
   case 'a': return &FLAG_EXPORT_ALL;
@@ -462,7 +688,7 @@ static fn find_letter_flag(char letter) wontthrow -> FlagBool *
   case 'u': return &FLAG_NOUNSET;
   case 'v': return &FLAG_VERBOSE;
   case 'x': return &FLAG_EXPAND_VERBOSE;
-  default: return nullptr;
+  default:  return nullptr;
   }
 }
 
@@ -471,8 +697,8 @@ resolve_invocation_options(ArrayList<invocation_option> &options) throws
     -> Maybe<int>
 {
   for (usize i = 0; i < FLAG_SET_OPTION.count(); i++) {
-    let const name = FLAG_SET_OPTION.get(i);
-    let const is_on = !FLAG_SET_OPTION.was_given_after_plus(i);
+    let const  name   = FLAG_SET_OPTION.get(i);
+    let const  is_on  = !FLAG_SET_OPTION.was_given_after_plus(i);
     let const *option = find_option_by_set_name(name);
     if (option == nullptr) {
       show_unknown_flag_value(is_on ? "-o " : "+o ", name,
@@ -503,8 +729,8 @@ resolve_invocation_options(ArrayList<invocation_option> &options) throws
   }
 
   for (usize i = 0; i < FLAG_SHOPT_OPTION.count(); i++) {
-    let const name = FLAG_SHOPT_OPTION.get(i);
-    let const is_on = !FLAG_SHOPT_OPTION.was_given_after_plus(i);
+    let const  name   = FLAG_SHOPT_OPTION.get(i);
+    let const  is_on  = !FLAG_SHOPT_OPTION.was_given_after_plus(i);
     let const *option = find_option_by_shopt_name(name);
     if (option == nullptr) {
       show_unknown_flag_value(is_on ? "-O " : "+O ", name,
@@ -520,9 +746,9 @@ resolve_invocation_options(ArrayList<invocation_option> &options) throws
   return None;
 }
 
-static fn validate_invocation(const ArrayList<String> &operands,
-                              ArrayList<mimic_mood> &init_moods) throws
-    -> Maybe<int>
+static fn
+validate_invocation(const ArrayList<String> &operands,
+                    ArrayList<mimic_mood>   &init_moods) throws -> Maybe<int>
 {
   if (FLAG_MOOD.is_set() && !parse_mood_name(FLAG_MOOD.value())) {
     show_unknown_flag_value("--mood ", FLAG_MOOD.value(),
@@ -595,8 +821,8 @@ static fn validate_invocation(const ArrayList<String> &operands,
   return parse_init_moods(init_moods);
 }
 
-static fn select_input_source(const ArrayList<String> &operands) throws
-    -> input_plan
+static fn
+select_input_source(const ArrayList<String> &operands) throws -> input_plan
 {
   let plan = input_plan{};
   if (FLAG_LANGUAGE_SERVER.is_enabled() || FLAG_FORMAT.is_enabled()) {
@@ -619,7 +845,7 @@ static fn select_input_source(const ArrayList<String> &operands) throws
              (!FLAG_COMMAND.is_empty() || !operands.is_empty()))
   {
     plan.should_execute_commands = !FLAG_COMMAND.is_empty();
-    plan.should_read_files = !operands.is_empty();
+    plan.should_read_files       = !operands.is_empty();
   } else if (FLAG_LINT.is_enabled()) {
     plan.should_read_stdin = true;
   } else if (!FLAG_COMMAND.is_empty()) {
@@ -644,8 +870,8 @@ static fn select_input_source(const ArrayList<String> &operands) throws
   return plan;
 }
 
-static fn resolve_input_plan(const ArrayList<String> &operands) throws
-    -> input_plan
+static fn
+resolve_input_plan(const ArrayList<String> &operands) throws -> input_plan
 {
   if (FLAG_STDIN.is_enabled() && FLAG_INTERACTIVE.is_enabled()) {
     let const should_use_interactive =
@@ -670,7 +896,7 @@ static fn resolve_input_plan(const ArrayList<String> &operands) throws
   let plan = select_input_source(operands);
   if (is_debug_driver_run()) {
     plan.should_be_interactive = false;
-    plan.should_read_files = false;
+    plan.should_read_files     = false;
     if (!plan.should_execute_commands) plan.should_read_stdin = true;
   }
   LOG(Info, "the input source is %s",
@@ -682,9 +908,10 @@ static fn resolve_input_plan(const ArrayList<String> &operands) throws
   return plan;
 }
 
-static fn prefetch_script_shebang(invocation_identity &identity,
-                                  const input_plan &input,
-                                  const ArrayList<String> &operands) throws
+static fn
+prefetch_script_shebang(invocation_identity     &identity,
+                        const input_plan        &input,
+                        const ArrayList<String> &operands) throws
     -> Maybe<String>
 {
   Maybe<String> contents = None;
@@ -707,15 +934,15 @@ static fn prefetch_script_shebang(invocation_identity &identity,
   return contents;
 }
 
-static fn make_startup_options(const input_plan &input) wontthrow
-    -> startup_options
+static fn
+make_startup_options(const input_plan &input) wontthrow -> startup_options
 {
   startup_options options{};
   options.should_disable_path_expansion = FLAG_DISABLE_EXPANSION.is_enabled();
-  options.should_echo = FLAG_VERBOSE.is_enabled();
-  options.should_echo_expanded = FLAG_EXPAND_VERBOSE.is_enabled();
-  options.is_interactive = input.should_be_interactive;
-  options.should_error_exit = FLAG_ERROR_EXIT.is_enabled();
+  options.should_echo                   = FLAG_VERBOSE.is_enabled();
+  options.should_echo_expanded          = FLAG_EXPAND_VERBOSE.is_enabled();
+  options.is_interactive                = input.should_be_interactive;
+  options.should_error_exit             = FLAG_ERROR_EXIT.is_enabled();
 
   return options;
 }
@@ -723,27 +950,29 @@ static fn make_startup_options(const input_plan &input) wontthrow
 struct inherited_shell
 {
   decltype(os::take_subshell_bootstrap()) bootstrap;
-  root_evaluation_mode evaluation_mode;
-  String source_origin{heap_allocator()};
-  ArrayList<String> source_windows{heap_allocator()};
-  Maybe<os::inherited_subshell_state> state = None;
-  bool has_invalid_state = false;
-  bool should_suppress_root_source_trace = false;
-  bool should_use_command_string_status = false;
+  root_evaluation_mode                    evaluation_mode;
+  String                                  source_origin{heap_allocator()};
+  ArrayList<String>                       source_windows{heap_allocator()};
+  Maybe<os::inherited_subshell_state>     state             = None;
+  bool                                    has_invalid_state = false;
+  bool should_suppress_root_source_trace                    = false;
+  bool should_use_command_string_status                     = false;
 
-  fn take_evaluation_mode() wontthrow -> root_evaluation_mode
+  fn
+  take_evaluation_mode() wontthrow -> root_evaluation_mode
   {
-    let const mode = evaluation_mode;
+    let const mode  = evaluation_mode;
     evaluation_mode = root_evaluation_mode::Normal;
 
     return mode;
   }
 };
 
-static fn take_inherited_shell() throws -> inherited_shell
+static fn
+take_inherited_shell() throws -> inherited_shell
 {
   os::unset_environment_variable("KOSH_IDENTITY");
-  let bootstrap = os::take_subshell_bootstrap();
+  let       bootstrap       = os::take_subshell_bootstrap();
   let const evaluation_mode = bootstrap.evaluation_mode;
   let const should_use_command_string_status =
       bootstrap.should_use_command_string_status;
@@ -769,8 +998,9 @@ static fn take_inherited_shell() throws -> inherited_shell
   return inherited;
 }
 
-static fn apply_inherited_shell(inherited_shell &inherited,
-                                EvalContext &context) throws -> Maybe<int>
+static fn
+apply_inherited_shell(inherited_shell &inherited, EvalContext &context) throws
+    -> Maybe<int>
 {
   if (!inherited.bootstrap.payload.is_empty()) {
     try {
@@ -804,11 +1034,12 @@ is_kept_in_restricted_shell(const option_descriptor &option) wontthrow -> bool
   switch (option.storage) {
   case option_storage::Mood:
   case option_storage::Variable: return false;
-  default: return true;
+  default:                       return true;
   }
 }
 
-static fn keep_restricted_settings(koshconf_reading &reading) throws -> void
+static fn
+keep_restricted_settings(koshconf_reading &reading) throws -> void
 {
   let kept = ArrayList<koshconf_setting>{heap_allocator()};
 
@@ -826,7 +1057,8 @@ static fn keep_restricted_settings(koshconf_reading &reading) throws -> void
   reading.settings = steal(kept);
 }
 
-static fn find_system_koshconf_path() throws -> Maybe<Path>
+static fn
+find_system_koshconf_path() throws -> Maybe<Path>
 {
 #if defined KOSH_DEBUG_SYSTEM_KOSHCONF_OVERRIDE
   if (let const debug_path =
@@ -840,10 +1072,11 @@ static fn find_system_koshconf_path() throws -> Maybe<Path>
   return os::get_system_koshconf_path();
 }
 
-static fn read_startup_configuration(const command_line &line,
-                                     const inherited_shell &inherited,
-                                     const invocation_identity &identity,
-                                     bool has_elevated_identity) throws
+static fn
+read_startup_configuration(const command_line        &line,
+                           const inherited_shell     &inherited,
+                           const invocation_identity &identity,
+                           bool has_elevated_identity) throws
     -> koshconf_reading
 {
   let reading = koshconf_reading{};
@@ -905,8 +1138,9 @@ static fn read_startup_configuration(const command_line &line,
   return reading;
 }
 
-static fn apply_configured_mood(invocation_identity &identity,
-                                const koshconf_reading &reading) throws -> void
+static fn
+apply_configured_mood(invocation_identity    &identity,
+                      const koshconf_reading &reading) throws -> void
 {
   if (identity.was_mood_named_on_command_line) return;
 
@@ -918,10 +1152,10 @@ static fn apply_configured_mood(invocation_identity &identity,
   }
 }
 
-static fn apply_configured_init_moods(ArrayList<mimic_mood> &init_moods,
-                                      const koshconf_reading &reading,
-                                      bool should_source_session_files) throws
-    -> void
+static fn
+apply_configured_init_moods(ArrayList<mimic_mood>  &init_moods,
+                            const koshconf_reading &reading,
+                            bool should_source_session_files) throws -> void
 {
   if (FLAG_INIT_MOODS.count() != 0 || !should_source_session_files) {
     return;
@@ -935,8 +1169,8 @@ static fn apply_configured_init_moods(ArrayList<mimic_mood> &init_moods,
   }
 }
 
-static fn describe_init_moods(const ArrayList<mimic_mood> &init_moods) throws
-    -> String
+static fn
+describe_init_moods(const ArrayList<mimic_mood> &init_moods) throws -> String
 {
   let text = String{heap_allocator()};
 
@@ -948,8 +1182,9 @@ static fn describe_init_moods(const ArrayList<mimic_mood> &init_moods) throws
   return text;
 }
 
-static fn is_pinned_by_invocation(
-    const option_descriptor &option,
+static fn
+is_pinned_by_invocation(
+    const option_descriptor            &option,
     const ArrayList<invocation_option> &invocation_options) wontthrow -> bool
 {
   for (let const &named : invocation_options) {
@@ -975,11 +1210,11 @@ static fn is_pinned_by_invocation(
   case option_storage::Analysis:
     return FLAG_SUPPRESS_DIAGNOSTICS.is_enabled() || is_analysis_inherited;
   case option_storage::SourceTraces: return FLAG_NO_TRACES.is_enabled();
-  case option_storage::InitMoods: return FLAG_INIT_MOODS.count() != 0;
+  case option_storage::InitMoods:    return FLAG_INIT_MOODS.count() != 0;
   case option_storage::Variable:
     return os::has_environment_variable(option.variable_name);
   case option_storage::ShellOption: break;
-  default: return false;
+  default:                          return false;
   }
 
   switch (option.shell_option) {
@@ -996,13 +1231,13 @@ static fn is_pinned_by_invocation(
   case shell_option_id::Koshkit: return FLAG_ENABLE_KOSHKIT.is_enabled();
   case shell_option_id::Mimicry:
     return FLAG_MIMICRY.is_enabled() || is_analysis_inherited;
-  case shell_option_id::ShowAst: return FLAG_AST.is_enabled();
+  case shell_option_id::ShowAst:        return FLAG_AST.is_enabled();
   case shell_option_id::ShowLexedWords: return FLAG_ESCAPE_MAP.is_enabled();
-  case shell_option_id::ShowExitCode: return FLAG_EXIT_CODE.is_enabled();
+  case shell_option_id::ShowExitCode:   return FLAG_EXIT_CODE.is_enabled();
   case shell_option_id::ShowAllExitCodes:
     return FLAG_ALL_EXIT_CODES.is_enabled();
-  case shell_option_id::ShowStats: return FLAG_STATS.is_enabled();
-  case shell_option_id::ShowMemory: return FLAG_MEMORY.is_enabled();
+  case shell_option_id::ShowStats:     return FLAG_STATS.is_enabled();
+  case shell_option_id::ShowMemory:    return FLAG_MEMORY.is_enabled();
   case shell_option_id::TabCompletion: return FLAG_NO_COMPLETION.is_enabled();
   case shell_option_id::SyntaxHighlighting:
     return FLAG_NO_SYNTAX_HIGHLIGHTING.is_enabled();
@@ -1010,8 +1245,10 @@ static fn is_pinned_by_invocation(
   }
 }
 
-static fn apply_startup_configuration(
-    EvalContext &context, koshconf_reading &reading,
+static fn
+apply_startup_configuration(
+    EvalContext                        &context,
+    koshconf_reading                   &reading,
     const ArrayList<invocation_option> &invocation_options) throws -> Maybe<int>
 {
   let const is_kosh_mood =
@@ -1022,10 +1259,10 @@ static fn apply_startup_configuration(
     if (is_pinned_by_invocation(*setting.option, invocation_options)) continue;
 
     let const &option = *setting.option;
-    let const value = option.type == option_type::String
-                          ? Maybe<u32>{}
-                          : parse_option_number(option, setting.value.view());
-    let const is_held_by_kosh_mood =
+    let const  value  = option.type == option_type::String
+                            ? Maybe<u32>{}
+                            : parse_option_number(option, setting.value.view());
+    let const  is_held_by_kosh_mood =
         is_kosh_mood && option.is_fixed_in_kosh_mood && value.has_value() &&
         *value != option.strict_value;
     if (is_held_by_kosh_mood) {
@@ -1065,35 +1302,36 @@ static fn apply_startup_configuration(
 
 struct session_config
 {
-  mimic_mood mood;
-  tab_selector_mode tab_selector;
+  mimic_mood                 mood;
+  tab_selector_mode          tab_selector;
   inheritable_analysis_state analysis;
-  bool is_interactive;
-  bool is_login_shell;
-  bool is_restricted_shell;
-  bool has_custom_rcfile;
-  bool has_execution_string;
-  bool is_stats_enabled;
-  bool should_show_ast;
-  bool should_show_lexed_words;
-  bool should_show_exit_code;
-  bool should_show_all_exit_codes;
-  bool is_memory_stats_enabled;
-  bool has_source_traces;
-  bool is_tab_completion_enabled;
-  bool is_syntax_highlighting_enabled;
-  bool is_privileged;
-  bool is_one_command;
-  bool is_extended_arithmetic_enabled;
-  bool is_extended_arithmetic_explicit;
-  bool is_nounset_enabled;
-  bool is_no_clobber;
-  bool is_export_all;
-  bool is_no_exec;
-  bool is_koshkit_enabled;
+  bool                       is_interactive;
+  bool                       is_login_shell;
+  bool                       is_restricted_shell;
+  bool                       has_custom_rcfile;
+  bool                       has_execution_string;
+  bool                       is_stats_enabled;
+  bool                       should_show_ast;
+  bool                       should_show_lexed_words;
+  bool                       should_show_exit_code;
+  bool                       should_show_all_exit_codes;
+  bool                       is_memory_stats_enabled;
+  bool                       has_source_traces;
+  bool                       is_tab_completion_enabled;
+  bool                       is_syntax_highlighting_enabled;
+  bool                       is_privileged;
+  bool                       is_one_command;
+  bool                       is_extended_arithmetic_enabled;
+  bool                       is_extended_arithmetic_explicit;
+  bool                       is_nounset_enabled;
+  bool                       is_no_clobber;
+  bool                       is_export_all;
+  bool                       is_no_exec;
+  bool                       is_koshkit_enabled;
 };
 
-static fn read_analysis_state(const invocation_identity &identity) throws
+static fn
+read_analysis_state(const invocation_identity &identity) throws
     -> inheritable_analysis_state
 {
   let analysis = inheritable_analysis_state::from_environment();
@@ -1111,7 +1349,7 @@ static fn read_analysis_state(const invocation_identity &identity) throws
 
   if (FLAG_LINT.is_enabled()) {
     analysis.reporting.is_diagnostics_disabled = false;
-    analysis.reporting.is_annoying_disabled = false;
+    analysis.reporting.is_annoying_disabled    = false;
     analysis.reporting.warning_level =
         warning_level_for_mood(identity.session_mood);
   }
@@ -1119,8 +1357,9 @@ static fn read_analysis_state(const invocation_identity &identity) throws
   return analysis;
 }
 
-static fn read_session_config(const invocation_identity &identity,
-                              const input_plan &input) throws -> session_config
+static fn
+read_session_config(const invocation_identity &identity,
+                    const input_plan          &input) throws -> session_config
 {
   return session_config{identity.session_mood,
                         resolve_session_tab_selector(),
@@ -1151,8 +1390,9 @@ static fn read_session_config(const invocation_identity &identity,
                         FLAG_ENABLE_KOSHKIT.is_enabled()};
 }
 
-static fn apply_session_config(EvalContext &context,
-                               const session_config &config) throws -> void
+static fn
+apply_session_config(EvalContext &context, const session_config &config) throws
+    -> void
 {
   let &state = context.runtime_state();
   state.set_stats_enabled(config.is_stats_enabled);
@@ -1198,7 +1438,8 @@ static fn apply_session_config(EvalContext &context,
   state.set_option(shell_option_id::Monitor, config.is_interactive);
 }
 
-static fn seed_shell_level() throws -> void
+static fn
+seed_shell_level() throws -> void
 {
   i64 shell_level = 0;
   if (Maybe<String> inherited = os::get_environment_variable("SHLVL");
@@ -1216,11 +1457,12 @@ static fn seed_shell_level() throws -> void
                                String::from(shell_level + 1, heap_allocator()));
 }
 
-static fn seed_session_variables(EvalContext &context,
-                                 invocation_identity &identity,
-                                 const ArrayList<mimic_mood> &init_moods,
-                                 const inherited_shell &inherited,
-                                 bool is_interactive) throws -> void
+static fn
+seed_session_variables(EvalContext                 &context,
+                       invocation_identity         &identity,
+                       const ArrayList<mimic_mood> &init_moods,
+                       const inherited_shell       &inherited,
+                       bool is_interactive) throws -> void
 {
   context.execution_store().set_shell_executable_path(
       steal(identity.executable_path));
@@ -1301,9 +1543,9 @@ static fn seed_session_variables(EvalContext &context,
 struct init_diagnostics_scope
 {
   EvalContext &context;
-  bool should_restore;
-  bool was_diagnostics_disabled;
-  u64 saved_mutation_revision;
+  bool         should_restore;
+  bool         was_diagnostics_disabled;
+  u64          saved_mutation_revision;
 
   init_diagnostics_scope(EvalContext &target, bool should_suppress)
       : context{target}, should_restore{should_suppress},
@@ -1316,7 +1558,8 @@ struct init_diagnostics_scope
   }
 
   init_diagnostics_scope(const init_diagnostics_scope &) = delete;
-  fn operator=(const init_diagnostics_scope &) = delete;
+  fn
+  operator=(const init_diagnostics_scope &) = delete;
 
   ~init_diagnostics_scope()
   {
@@ -1330,12 +1573,14 @@ struct init_diagnostics_scope
   }
 };
 
-static fn run_startup(EvalContext &context, ArrayList<mimic_mood> &init_moods,
-                      const invocation_identity &identity,
-                      const command_line &line,
-                      const inherited_shell &inherited,
-                      bool has_elevated_identity, bool is_interactive) throws
-    -> void
+static fn
+run_startup(EvalContext               &context,
+            ArrayList<mimic_mood>     &init_moods,
+            const invocation_identity &identity,
+            const command_line        &line,
+            const inherited_shell     &inherited,
+            bool                       has_elevated_identity,
+            bool                       is_interactive) throws -> void
 {
   let const is_fresh_evaluator = !inherited.bootstrap.payload.is_empty();
   if (has_elevated_identity || line.is_rescue_mode || FLAG_CLEAN.is_enabled() ||
@@ -1362,10 +1607,11 @@ static fn run_startup(EvalContext &context, ArrayList<mimic_mood> &init_moods,
   }
 }
 
-static fn finish_startup(EvalContext &context,
-                         const invocation_identity &identity,
-                         inherited_shell &inherited, bool is_interactive) throws
-    -> Maybe<int>
+static fn
+finish_startup(EvalContext               &context,
+               const invocation_identity &identity,
+               inherited_shell           &inherited,
+               bool                       is_interactive) throws -> Maybe<int>
 {
   if (is_interactive && !context.get_variable_value("PS1").has_value()) {
     context.set_shell_variable("PS1",
@@ -1399,16 +1645,17 @@ static fn finish_startup(EvalContext &context,
 
 struct script_operands
 {
-  String shell_name;
+  String            shell_name;
   ArrayList<String> positional_params;
 };
 
-static fn take_script_operands(String program_name, ArrayList<String> &operands,
-                               const input_plan &input) throws
-    -> script_operands
+static fn
+take_script_operands(String             program_name,
+                     ArrayList<String> &operands,
+                     const input_plan  &input) throws -> script_operands
 {
-  let shell_name = steal(program_name);
-  let positional_params = ArrayList<String>{heap_allocator()};
+  let       shell_name        = steal(program_name);
+  let       positional_params = ArrayList<String>{heap_allocator()};
   let const should_retain_operands =
       input.should_read_files || FLAG_FORMAT.is_enabled();
 
@@ -1437,29 +1684,30 @@ static fn take_script_operands(String program_name, ArrayList<String> &operands,
 
 struct script_chunk
 {
-  String contents{heap_allocator()};
-  Maybe<StringView> filename = None;
-  Maybe<StringView> command_string_name = None;
-  Maybe<SourceLocation> root_frame_call_site = None;
-  Maybe<usize> history_event_number = None;
-  bool should_analyze = true;
-  bool is_fresh_evaluator_command = false;
-  bool should_use_command_string_status = true;
+  String                contents{heap_allocator()};
+  Maybe<StringView>     filename                         = None;
+  Maybe<StringView>     command_string_name              = None;
+  Maybe<SourceLocation> root_frame_call_site             = None;
+  Maybe<usize>          history_event_number             = None;
+  bool                  should_analyze                   = true;
+  bool                  is_fresh_evaluator_command       = false;
+  bool                  should_use_command_string_status = true;
 };
 
-static fn find_command_call_site(const command_line &line,
-                                 usize consumed_command_index) wontthrow
+static fn
+find_command_call_site(const command_line &line,
+                       usize               consumed_command_index) wontthrow
     -> Maybe<SourceLocation>
 {
-  let const parse_argc = line.get_parse_argc();
-  let const parse_argv = line.get_parse_argv();
-  usize seen_command_count = 0;
-  usize flag_offset = 0;
+  let const parse_argc         = line.get_parse_argc();
+  let const parse_argv         = line.get_parse_argv();
+  usize     seen_command_count = 0;
+  usize     flag_offset        = 0;
 
   for (int a = 0; a < parse_argc; a++) {
-    let const token_length = std::strlen(parse_argv[a]);
+    let const        token_length = std::strlen(parse_argv[a]);
     const StringView token{parse_argv[a], token_length};
-    let const quoted_length = shell_quoted_arg_length(token);
+    let const        quoted_length = shell_quoted_arg_length(token);
     if (token == "-c" || token == "--command") {
       seen_command_count++;
       if (seen_command_count == consumed_command_index && a + 1 < parse_argc) {
@@ -1477,16 +1725,17 @@ static fn find_command_call_site(const command_line &line,
 
 struct script_cursor
 {
-  const command_line &line;
-  const ArrayList<String> &operands;
-  const input_plan &input;
+  const command_line        &line;
+  const ArrayList<String>   &operands;
+  const input_plan          &input;
   const invocation_identity &identity;
-  const String &cli_invocation;
-  Maybe<String> &prefetched_script_contents;
-  bool should_quit;
-  usize next_file_index = 0;
+  const String              &cli_invocation;
+  Maybe<String>             &prefetched_script_contents;
+  bool                       should_quit;
+  usize                      next_file_index = 0;
 
-  fn read_whole_standard_input(script_chunk &chunk) const throws -> void
+  fn
+  read_whole_standard_input(script_chunk &chunk) const throws -> void
   {
     if (is_debug_driver_run()) return;
 
@@ -1494,16 +1743,19 @@ struct script_cursor
     chunk.contents = utils::read_entire_standard_input();
   }
 
-  fn read_standard_input(script_chunk &chunk) throws -> void
+  fn
+  read_standard_input(script_chunk &chunk) throws -> void
   {
     read_whole_standard_input(chunk);
     should_quit = true;
   }
 
-  fn read_next_command(EvalContext &context, script_chunk &chunk,
-                       bool is_fresh_evaluator) throws -> void
+  fn
+  read_next_command(EvalContext  &context,
+                    script_chunk &chunk,
+                    bool          is_fresh_evaluator) throws -> void
   {
-    chunk.contents = FLAG_COMMAND.take_next();
+    chunk.contents            = FLAG_COMMAND.take_next();
     chunk.command_string_name = COMMAND_STRING_SOURCE_NAME;
     if (!is_fresh_evaluator) {
       context.execution_store().set_execution_string(
@@ -1520,7 +1772,8 @@ struct script_cursor
     }
   }
 
-  fn read_next_file(EvalContext &context, script_chunk &chunk) throws -> void
+  fn
+  read_next_file(EvalContext &context, script_chunk &chunk) throws -> void
   {
     ASSERT(next_file_index < operands.count());
     const String &file_name = operands[next_file_index++];
@@ -1534,8 +1787,10 @@ struct script_cursor
         !FLAG_LINT.is_enabled() || next_file_index == operands.count();
   }
 
-  fn read_script_file(EvalContext &context, script_chunk &chunk,
-                      const String &file_name) throws -> void
+  fn
+  read_script_file(EvalContext  &context,
+                   script_chunk &chunk,
+                   const String &file_name) throws -> void
   {
     let const operand_offset = quoted_argv_offset_until(
         line.get_parse_argc(), line.get_parse_argv(), file_name.view());
@@ -1594,8 +1849,9 @@ struct script_cursor
     mimic_script_shell(context, chunk);
   }
 
-  fn mimic_script_shell(EvalContext &context,
-                        const script_chunk &chunk) const throws -> void
+  fn
+  mimic_script_shell(EvalContext        &context,
+                     const script_chunk &chunk) const throws -> void
   {
     if (!context.runtime_state().is_mimicry_enabled() ||
         identity.was_mood_named_on_command_line ||
@@ -1618,15 +1874,17 @@ struct script_cursor
   }
 };
 
-static fn enter_line_editor(EvalContext &context) throws -> void
+static fn
+enter_line_editor(EvalContext &context) throws -> void
 {
   toiletline::set_extended_keys(
       context.runtime_state().option_is_enabled(shell_option_id::ExtendedKeys));
   toiletline::enter_raw_mode();
 }
 
-static fn start_line_editor(EvalContext &context,
-                            const invocation_identity &identity) throws -> void
+static fn
+start_line_editor(EvalContext               &context,
+                  const invocation_identity &identity) throws -> void
 {
   if (toiletline::is_active()) return;
 
@@ -1651,7 +1909,8 @@ static fn start_line_editor(EvalContext &context,
   toiletline::exit_raw_mode();
 }
 
-static fn emit_prompt_line_break() throws -> void
+static fn
+emit_prompt_line_break() throws -> void
 {
   let const dimensions = os::get_terminal_dimensions();
   if (!dimensions.has_value() || dimensions->columns == 0) {
@@ -1678,7 +1937,8 @@ static fn emit_prompt_line_break() throws -> void
   flush();
 }
 
-static fn configure_line_editor(EvalContext &context) throws -> void
+static fn
+configure_line_editor(EvalContext &context) throws -> void
 {
   let const is_tab_completion_enabled =
       context.runtime_state().option_is_enabled(shell_option_id::TabCompletion);
@@ -1700,7 +1960,7 @@ static fn configure_line_editor(EvalContext &context) throws -> void
           : toiletline::edit_mode::Emacs);
   toiletline::set_tab_selector(context.runtime_state().get_tab_selector());
   let const &state = context.runtime_state();
-  let const should_space_after_completion =
+  let const  should_space_after_completion =
       state.option_is_enabled(shell_option_id::SpaceAfterCompletion);
   let const should_space_after_directory =
       state.option_is_enabled(shell_option_id::SpaceAfterDirectoryCompletion);
@@ -1722,14 +1982,18 @@ static fn configure_line_editor(EvalContext &context) throws -> void
 
 struct interactive_session
 {
-  bool did_seed_path_map = false;
-  bool did_prompt = false;
-  usize ignored_eof_count = 0;
+  bool                    did_seed_path_map = false;
+  bool                    did_prompt        = false;
+  usize                   ignored_eof_count = 0;
   history_expansion_state expansion_state{};
 
-  fn read_line(EvalContext &context, BumpArena &ast_arena,
-               const invocation_identity &identity, const command_line &line,
-               i32 exit_code, script_chunk &chunk) throws -> void
+  fn
+  read_line(EvalContext               &context,
+            BumpArena                 &ast_arena,
+            const invocation_identity &identity,
+            const command_line        &line,
+            i32                        exit_code,
+            script_chunk              &chunk) throws -> void
   {
     start_line_editor(context, identity);
 
@@ -1747,8 +2011,8 @@ struct interactive_session
 
     String prompt = toiletline::build_prompt(context);
     toiletline::append_prompt_end_mark(context, prompt);
-    let const right_prompt = toiletline::build_right_prompt(context);
-    let transient_prompt = String{heap_allocator()};
+    let const right_prompt     = toiletline::build_right_prompt(context);
+    let       transient_prompt = String{heap_allocator()};
     if (context.runtime_state().option_is_enabled(
             shell_option_id::TransientPrompt))
     {
@@ -1765,11 +2029,12 @@ struct interactive_session
     toiletline::exit_raw_mode();
   }
 
-  fn prepare_completion(EvalContext &context, const command_line &line) throws
+  fn
+  prepare_completion(EvalContext &context, const command_line &line) throws
       -> void
   {
     let const &state = context.runtime_state();
-    let const is_tab_completion_enabled =
+    let const  is_tab_completion_enabled =
         state.option_is_enabled(shell_option_id::TabCompletion);
     if (did_seed_path_map) {
       context.program_resolver().revalidate_for_prompt();
@@ -1787,10 +2052,14 @@ struct interactive_session
     }
   }
 
-  fn read_accepted_line(EvalContext &context, const command_line &line,
-                        const String &prompt, const String &right_prompt,
-                        const String &transient_prompt, i32 exit_code,
-                        script_chunk &chunk) throws -> void
+  fn
+  read_accepted_line(EvalContext        &context,
+                     const command_line &line,
+                     const String       &prompt,
+                     const String       &right_prompt,
+                     const String       &transient_prompt,
+                     i32                 exit_code,
+                     script_chunk       &chunk) throws -> void
   {
     loop
     {
@@ -1846,7 +2115,7 @@ struct interactive_session
       toiletline::emit_newlines(input);
 
       if (code == TL_PRESSED_ENTER && !input.is_empty()) {
-        chunk.contents = steal(input);
+        chunk.contents             = steal(input);
         chunk.history_event_number = accepted_history_event_number;
         break;
       }
@@ -1855,10 +2124,11 @@ struct interactive_session
     }
   }
 
-  fn prepare_history(EvalContext &context, script_chunk &chunk) throws -> bool
+  fn
+  prepare_history(EvalContext &context, script_chunk &chunk) throws -> bool
   {
     let const is_interactive = context.execution_store().shell_is_interactive();
-    bool should_execute = true;
+    bool      should_execute = true;
     if (is_interactive &&
         context.runtime_state().option_is_enabled(
             shell_option_id::Histexpand) &&
@@ -1894,25 +2164,29 @@ struct interactive_session
 
 struct lint_run
 {
-  bool did_input_fail = false;
+  bool                       did_input_fail = false;
   analysis_diagnostic_totals totals{};
 
-  fn analyze(const script_chunk &chunk, EvalContext &context,
-             BumpArena &ast_arena) throws -> i32
+  fn
+  analyze(const script_chunk &chunk,
+          EvalContext        &context,
+          BumpArena          &ast_arena) throws -> i32
   {
     return run_lint_document_contents(chunk.contents, context, ast_arena,
                                       chunk.filename, &totals, nullptr, nullptr,
                                       true, chunk.command_string_name);
   }
 
-  fn record(i32 exit_code, bool should_quit) wontthrow -> i32
+  fn
+  record(i32 exit_code, bool should_quit) wontthrow -> i32
   {
     did_input_fail = did_input_fail || exit_code != EXIT_SUCCESS;
 
     return should_quit && did_input_fail ? EXIT_FAILURE : exit_code;
   }
 
-  fn print_summary(EvalContext &context) throws -> void
+  fn
+  print_summary(EvalContext &context) throws -> void
   {
     if (context.runtime_state().memory_stats_enabled()) {
       utils::print_memory_report();
@@ -1922,16 +2196,19 @@ struct lint_run
   }
 };
 
-static fn run_chunk(script_chunk &chunk, EvalContext &context,
-                    BumpArena &ast_arena, lint_run &lint,
-                    root_evaluation_mode evaluation_mode) throws -> i32
+static fn
+run_chunk(script_chunk        &chunk,
+          EvalContext         &context,
+          BumpArena           &ast_arena,
+          lint_run            &lint,
+          root_evaluation_mode evaluation_mode) throws -> i32
 {
   if (!chunk.should_analyze) return EXIT_FAILURE;
 
   chunk.contents.normalize_crlf_line_endings();
   if (FLAG_LINT.is_enabled()) return lint.analyze(chunk, context, ast_arena);
 
-  let run_options = script_run_options{};
+  let run_options            = script_run_options{};
   run_options.should_analyze = !chunk.is_fresh_evaluator_command;
   run_options.should_use_command_string_status =
       chunk.should_use_command_string_status;
@@ -1950,8 +2227,9 @@ static fn run_chunk(script_chunk &chunk, EvalContext &context,
                              run_options, evaluation_mode);
 }
 
-static fn allow_terminal_exec_on_final_chunk(EvalContext &context,
-                                             bool should_quit) wontthrow -> void
+static fn
+allow_terminal_exec_on_final_chunk(EvalContext &context,
+                                   bool         should_quit) wontthrow -> void
 {
   let const should_print_post_run_trailer =
       context.runtime_state().show_exit_code() ||
@@ -1961,9 +2239,10 @@ static fn allow_terminal_exec_on_final_chunk(EvalContext &context,
       !context.has_exit_trap() && !should_print_post_run_trailer;
 }
 
-static fn should_exit_after_chunk(EvalContext &context,
-                                  const script_cursor &cursor,
-                                  i32 exit_code) wontthrow -> bool
+static fn
+should_exit_after_chunk(EvalContext         &context,
+                        const script_cursor &cursor,
+                        i32                  exit_code) wontthrow -> bool
 {
   return cursor.should_quit ||
          context.runtime_state().option_is_enabled(shell_option_id::Onecmd) ||
@@ -1972,8 +2251,10 @@ static fn should_exit_after_chunk(EvalContext &context,
           exit_code != 0);
 }
 
-wontreturn static fn exit_after_final_chunk(EvalContext &context, i32 exit_code,
-                                            lint_run &lint) throws -> void
+wontreturn static fn
+exit_after_final_chunk(EvalContext &context,
+                       i32          exit_code,
+                       lint_run    &lint) throws -> void
 {
 #if !defined NDEBUG
   if (FLAG_DEBUG_COMPLETE_AT.is_set() && !os::is_child_process()) {
@@ -2005,7 +2286,8 @@ wontreturn static fn exit_after_final_chunk(EvalContext &context, i32 exit_code,
 
 } /* namespace koshka */
 
-fn kosh_main(int argc, char **argv) -> int
+fn
+kosh_main(int argc, char **argv) -> int
 {
   koshka::os::initialize_platform_runtime();
   koshka::os::register_platform_flags(FLAG_LIST);
@@ -2013,21 +2295,21 @@ fn kosh_main(int argc, char **argv) -> int
   if (argc > 0) {
     koshka::StringView invocation =
         koshka::Path::invocation_filename(koshka::StringView{argv[0]}, true);
-    let invocation_name = koshka::String{invocation};
+    let       invocation_name = koshka::String{invocation};
     let const invocation_info =
         koshka::os::normalize_program_name(invocation_name);
     invocation =
         invocation_name.substring_of_length(0, invocation_info.stem_length);
     let const is_koshkit_invocation = invocation == "koshkit";
-    int first_operand_index = 1;
+    int       first_operand_index   = 1;
     if (is_koshkit_invocation && argc > 1) {
-      invocation = koshka::StringView{argv[1]};
+      invocation          = koshka::StringView{argv[1]};
       first_operand_index = 2;
     }
 
     let const chosen_utility = koshka::koshkit::find_util(invocation);
     if (is_koshkit_invocation && !chosen_utility.has_value()) {
-      invocation = koshka::StringView{"koshkit"};
+      invocation          = koshka::StringView{"koshkit"};
       first_operand_index = 1;
     }
 
@@ -2044,7 +2326,7 @@ fn kosh_main(int argc, char **argv) -> int
           static_cast<int>(invocation.length), invocation.data);
       koshka::os::set_default_signal_handlers(
           koshka::os::signal_profile::NonInteractive);
-      let ast_arena = koshka::BumpArena{};
+      let ast_arena      = koshka::BumpArena{};
       let function_arena = koshka::BumpArena{};
 
       let context = koshka::EvalContext{koshka::startup_options{},
@@ -2077,7 +2359,7 @@ fn kosh_main(int argc, char **argv) -> int
   {
     return *usage_status;
   }
-  let &file_names = line.operands;
+  let      &file_names = line.operands;
   let const parse_argc = line.get_parse_argc();
   let const parse_argv = line.get_parse_argv();
 
@@ -2106,7 +2388,7 @@ fn kosh_main(int argc, char **argv) -> int
   if (FLAG_LOG.is_set()) {
     struct log_level_name
     {
-      const char *name;
+      const char       *name;
       koshka::verbosity level;
     };
     static const log_level_name LOG_LEVEL_NAMES[] = {
@@ -2119,7 +2401,7 @@ fn kosh_main(int argc, char **argv) -> int
     for (let const &entry : LOG_LEVEL_NAMES)
       if (FLAG_LOG.value() == entry.name) {
         koshka::LOGGER_VERBOSITY = entry.level;
-        is_known_level = true;
+        is_known_level           = true;
         break;
       }
 
@@ -2260,7 +2542,7 @@ fn kosh_main(int argc, char **argv) -> int
     return *startup_status;
   }
 
-  let cursor = koshka::script_cursor{line,
+  let cursor    = koshka::script_cursor{line,
                                      file_names,
                                      input,
                                      identity,
@@ -2268,8 +2550,8 @@ fn kosh_main(int argc, char **argv) -> int
                                      prefetched_script_contents,
                                      FLAG_ONE_COMMAND.is_enabled() &&
                                          !FLAG_LINT.is_enabled()};
-  let session = koshka::interactive_session{};
-  let lint = koshka::lint_run{};
+  let session   = koshka::interactive_session{};
+  let lint      = koshka::lint_run{};
   i32 exit_code = EXIT_SUCCESS;
 
   loop
@@ -2277,7 +2559,7 @@ fn kosh_main(int argc, char **argv) -> int
     ASSERT(!koshka::os::can_fork_evaluator() ||
            !koshka::os::is_child_process());
 
-    let chunk = koshka::script_chunk{};
+    let  chunk               = koshka::script_chunk{};
     bool did_register_origin = false;
     defer
     {

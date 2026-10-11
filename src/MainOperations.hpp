@@ -15,8 +15,8 @@
 
 namespace koshka {
 
-static fn unrecognized_format_message(Maybe<StringView> filename) throws
-    -> String
+static fn
+unrecognized_format_message(Maybe<StringView> filename) throws -> String
 {
   let message = String{filename.has_value() ? *filename : StringView{"input"}};
   message.append(": error: The file format is not recognized.\n");
@@ -53,11 +53,16 @@ static fn unrecognized_format_message(Maybe<StringView> filename) throws
   return message;
 }
 
-fn kosh_binary_flag_list() wontthrow -> const FlagList & { return FLAG_LIST; }
+fn
+kosh_binary_flag_list() wontthrow -> const FlagList &
+{
+  return FLAG_LIST;
+}
 
 #if !defined NDEBUG
-static fn run_debug_completion_driver(StringView driver_line,
-                                      EvalContext &context) throws -> i32
+static fn
+run_debug_completion_driver(StringView driver_line, EvalContext &context) throws
+    -> i32
 {
   context.program_resolver().initialize_path_map();
   let const driver_result = completion::complete(
@@ -76,8 +81,9 @@ static fn run_debug_completion_driver(StringView driver_line,
   return 0;
 }
 
-static fn run_debug_highlight_driver(StringView driver_line,
-                                     EvalContext &context) throws -> i32
+static fn
+run_debug_highlight_driver(StringView driver_line, EvalContext &context) throws
+    -> i32
 {
   let const variable_name_visit_count_before =
       context.dynamic_runtime_store().debug_variable_name_enumeration_count();
@@ -87,8 +93,8 @@ static fn run_debug_highlight_driver(StringView driver_line,
   context.program_resolver().begin_explicit_completion(
       ProgramResolver::CompletionRefresh::Fresh);
   defer { context.program_resolver().end_explicit_completion(); };
-  let const spans = completion::highlight_line(driver_line, context);
-  let listing = String{heap_allocator()};
+  let const spans   = completion::highlight_line(driver_line, context);
+  let       listing = String{heap_allocator()};
 
   for (let const &span : spans) {
     listing +=
@@ -112,11 +118,12 @@ static fn run_debug_highlight_driver(StringView driver_line,
   return 0;
 }
 
-static fn run_debug_bracket_driver(StringView driver_line,
-                                   EvalContext &context) throws -> i32
+static fn
+run_debug_bracket_driver(StringView driver_line, EvalContext &context) throws
+    -> i32
 {
-  let const spans = completion::highlight_line(driver_line, context);
-  let listing = String{heap_allocator()};
+  let const spans           = completion::highlight_line(driver_line, context);
+  let       listing         = String{heap_allocator()};
   let const do_append_range = [&](usize start, usize end) throws -> void {
     listing += driver_line.substring_of_length(start, end - start);
     listing += '@';
@@ -142,8 +149,9 @@ static fn run_debug_bracket_driver(StringView driver_line,
   return 0;
 }
 
-static fn run_debug_hint_driver(StringView driver_line,
-                                EvalContext &context) throws -> i32
+static fn
+run_debug_hint_driver(StringView driver_line, EvalContext &context) throws
+    -> i32
 {
   let row = String{heap_allocator()};
   if (!completion::describe_syntax_problem(driver_line, driver_line.length,
@@ -176,8 +184,9 @@ static fn run_debug_hint_driver(StringView driver_line,
   return 0;
 }
 
-static fn run_debug_ghost_driver(StringView driver_line,
-                                 EvalContext &context) throws -> i32
+static fn
+run_debug_ghost_driver(StringView driver_line, EvalContext &context) throws
+    -> i32
 {
   let const directory_stat_count_before = utils::debug_directory_stat_count();
   let const directory_read_count_before = utils::debug_directory_read_count();
@@ -205,8 +214,8 @@ static fn run_debug_ghost_driver(StringView driver_line,
 }
 #endif
 
-pure static fn resolve_session_mood(mimic_mood invocation_mood) wontthrow
-    -> mimic_mood
+pure static fn
+resolve_session_mood(mimic_mood invocation_mood) wontthrow -> mimic_mood
 {
   if (FLAG_MOOD.is_set()) {
     if (Maybe<mimic_mood> parsed_mood = parse_mood_name(FLAG_MOOD.value());
@@ -223,7 +232,8 @@ pure static fn resolve_session_mood(mimic_mood invocation_mood) wontthrow
   return invocation_mood;
 }
 
-pure static fn resolve_session_tab_selector() wontthrow -> tab_selector_mode
+pure static fn
+resolve_session_tab_selector() wontthrow -> tab_selector_mode
 {
   if (FLAG_TAB_SELECTOR.is_set()) {
     if (Maybe<tab_selector_mode> parsed_selector =
@@ -241,7 +251,7 @@ pure static fn resolve_session_tab_selector() wontthrow -> tab_selector_mode
 }
 
 static fn
-append_listed_diagnostic(String &listing,
+append_listed_diagnostic(String                      &listing,
                          const diagnostic_definition &definition) throws -> void
 {
   let row = String{heap_allocator()};
@@ -257,8 +267,8 @@ append_listed_diagnostic(String &listing,
   row += get_diagnostic_tier_name(definition.tier);
   row += "): ";
 
-  let const summary = StringView{definition.summary};
-  usize capital_position = 0;
+  let const summary          = StringView{definition.summary};
+  usize     capital_position = 0;
 
   while (capital_position < summary.length &&
          (summary[capital_position] < 'a' || summary[capital_position] > 'z'))
@@ -278,7 +288,8 @@ append_listed_diagnostic(String &listing,
   listing += '\n';
 }
 
-static fn print_help_or_version_status(const String &program_path) -> Maybe<int>
+static fn
+print_help_or_version_status(const String &program_path) -> Maybe<int>
 {
   if (FLAG_HELP.is_enabled()) {
     let h = String{heap_allocator()};
@@ -342,13 +353,14 @@ static fn print_help_or_version_status(const String &program_path) -> Maybe<int>
   return None;
 }
 
-static fn report_escaped_control_flow(EvalContext &context,
-                                      const String &fallback_source) -> void
+static fn
+report_escaped_control_flow(EvalContext &context, const String &fallback_source)
+    -> void
 {
   if (!context.control_flow_store().has_pending()) return;
 
   const control_flow &control = context.control_flow_store().pending();
-  let what = String{heap_allocator()};
+  let                 what    = String{heap_allocator()};
   switch (control.kind) {
   case control_flow::Kind::Break:
     what = "'break' used outside of a loop";
@@ -381,14 +393,17 @@ static fn report_escaped_control_flow(EvalContext &context,
 class StreamedAnalysisUnits final : public AnalysisUnitStream
 {
 public:
-  StreamedAnalysisUnits(Parser &parser, BumpArena &arena,
-                        ArrayList<String> &parse_errors, EvalContext &context,
+  StreamedAnalysisUnits(Parser                       &parser,
+                        BumpArena                    &arena,
+                        ArrayList<String>            &parse_errors,
+                        EvalContext                  &context,
                         ArrayList<source_diagnostic> *diagnostic_sink)
       : m_parser{parser}, m_arena{arena}, m_parse_errors{parse_errors},
         m_context{context}, m_diagnostic_sink{diagnostic_sink}
   {}
 
-  fn next_unit() throws -> const Expression * override
+  fn
+  next_unit() throws -> const Expression * override
   {
     m_mark = m_arena.mark();
 
@@ -396,19 +411,20 @@ public:
                                                  m_diagnostic_sink);
   }
 
-  fn release_unit() throws -> void override
+  fn
+  release_unit() throws -> void override
   {
     m_parser.drop_lexer_peek_cache();
     m_arena.release(m_mark);
   }
 
 private:
-  Parser &m_parser;
-  BumpArena &m_arena;
-  ArrayList<String> &m_parse_errors;
-  EvalContext &m_context;
+  Parser                       &m_parser;
+  BumpArena                    &m_arena;
+  ArrayList<String>            &m_parse_errors;
+  EvalContext                  &m_context;
   ArrayList<source_diagnostic> *m_diagnostic_sink;
-  BumpArena::Mark m_mark{};
+  BumpArena::Mark               m_mark{};
 };
 
 struct script_run_options
@@ -421,8 +437,10 @@ struct script_run_options
   bool should_use_command_string_status{true};
 };
 
-static fn exit_status_for(const Error &error, EvalContext &context,
-                          bool is_command_string) wontthrow -> i32
+static fn
+exit_status_for(const Error &error,
+                EvalContext &context,
+                bool         is_command_string) wontthrow -> i32
 {
   if (error.command_status() != 1) {
     return static_cast<i32>(error.command_status());
@@ -449,19 +467,21 @@ struct script_run_plan
 
 struct script_run_input
 {
-  const String &contents;
-  Maybe<StringView> filename;
-  EvalContext &context;
-  BumpArena &arena;
+  const String                 &contents;
+  Maybe<StringView>             filename;
+  EvalContext                  &context;
+  BumpArena                    &arena;
   ArrayList<source_diagnostic> *diagnostic_sink;
 };
 
-static fn make_script_run_plan(EvalContext &context, bool has_precompiled_ast,
-                               bool has_out_ast,
-                               const script_run_options &run_options) wontthrow
+static fn
+make_script_run_plan(EvalContext              &context,
+                     bool                      has_precompiled_ast,
+                     bool                      has_out_ast,
+                     const script_run_options &run_options) wontthrow
     -> script_run_plan
 {
-  let &state = context.runtime_state();
+  let      &state            = context.runtime_state();
   let const should_print_ast = run_options.should_print_ast;
   let const should_analyze =
       run_options.should_analyze && !has_precompiled_ast &&
@@ -483,9 +503,9 @@ static fn make_script_run_plan(EvalContext &context, bool has_precompiled_ast,
       run_options.is_whole_line};
 }
 
-static fn report_parse_errors(const script_run_input &input,
-                              const ArrayList<String> &parse_errors) throws
-    -> bool
+static fn
+report_parse_errors(const script_run_input  &input,
+                    const ArrayList<String> &parse_errors) throws -> bool
 {
   if (parse_errors.is_empty()) return false;
 
@@ -498,9 +518,10 @@ static fn report_parse_errors(const script_run_input &input,
   return true;
 }
 
-static fn scan_analysis_metadata(const script_run_input &input,
-                                 ArrayList<String> &parse_errors,
-                                 analysis_directives &directives) throws -> bool
+static fn
+scan_analysis_metadata(const script_run_input &input,
+                       ArrayList<String>      &parse_errors,
+                       analysis_directives    &directives) throws -> bool
 {
   LOG(Debug, "scanning a chunk of %zu bytes for analysis scopes",
       input.contents.count());
@@ -518,8 +539,8 @@ static fn scan_analysis_metadata(const script_run_input &input,
 
   loop
   {
-    let const unit_mark = input.arena.mark();
-    let const *unit = scan_parser.construct_next_top_level_ast(
+    let const  unit_mark = input.arena.mark();
+    let const *unit      = scan_parser.construct_next_top_level_ast(
         parse_errors, &input.context, input.diagnostic_sink);
     if (unit == nullptr) break;
 
@@ -534,8 +555,9 @@ static fn scan_analysis_metadata(const script_run_input &input,
   return report_parse_errors(input, parse_errors);
 }
 
-static fn preflight_syntax(const script_run_input &input,
-                           ArrayList<String> &parse_errors) throws -> bool
+static fn
+preflight_syntax(const script_run_input &input,
+                 ArrayList<String>      &parse_errors) throws -> bool
 {
   LOG(Debug, "checking a chunk of %zu bytes before streamed execution",
       input.contents.count());
@@ -549,8 +571,8 @@ static fn preflight_syntax(const script_run_input &input,
 
   loop
   {
-    let const unit_mark = input.arena.mark();
-    let const *unit = preflight_parser.construct_next_top_level_ast(
+    let const  unit_mark = input.arena.mark();
+    let const *unit      = preflight_parser.construct_next_top_level_ast(
         parse_errors, &input.context, input.diagnostic_sink);
     if (unit == nullptr) {
       input.arena.release(unit_mark);
@@ -564,11 +586,13 @@ static fn preflight_syntax(const script_run_input &input,
   return report_parse_errors(input, parse_errors);
 }
 
-static fn parse_whole_script(const script_run_input &input,
-                             const script_run_plan &plan, bool should_print_ast,
-                             ArrayList<String> &parse_errors,
-                             analysis_directives &directives,
-                             Expression *&ast) throws -> bool
+static fn
+parse_whole_script(const script_run_input &input,
+                   const script_run_plan  &plan,
+                   bool                    should_print_ast,
+                   ArrayList<String>      &parse_errors,
+                   analysis_directives    &directives,
+                   Expression            *&ast) throws -> bool
 {
   EvalContext &context = input.context;
   LOG(Debug, "parsing a chunk of %zu bytes", input.contents.count());
@@ -606,16 +630,18 @@ static fn parse_whole_script(const script_run_input &input,
   return false;
 }
 
-static fn analyze_script(const script_run_input &input,
-                         const script_run_plan &plan, Expression *ast,
-                         ArrayList<String> &parse_errors,
-                         const analysis_directives &directives,
-                         const analysis_outputs &diagnostics,
-                         const script_run_options &run_options) throws -> bool
+static fn
+analyze_script(const script_run_input    &input,
+               const script_run_plan     &plan,
+               Expression                *ast,
+               ArrayList<String>         &parse_errors,
+               const analysis_directives &directives,
+               const analysis_outputs    &diagnostics,
+               const script_run_options  &run_options) throws -> bool
 {
-  EvalContext &context = input.context;
-  let followed_source_paths = HashSet{heap_allocator()};
-  let source_effects_cache =
+  EvalContext &context               = input.context;
+  let          followed_source_paths = HashSet{heap_allocator()};
+  let          source_effects_cache =
       StringMap<followed_source_effects>{heap_allocator()};
   if (input.filename.has_value()) {
     if (let canonical_root = os::canonical_path(Path{*input.filename});
@@ -624,7 +650,7 @@ static fn analyze_script(const script_run_input &input,
       followed_source_paths.add(canonical_root->text().view());
     }
   }
-  let highlight_cache = completion::ShellHighlightCache{heap_allocator()};
+  let  highlight_cache = completion::ShellHighlightCache{heap_allocator()};
   let *previous_highlight_cache =
       context.set_diagnostic_highlight_cache(&highlight_cache);
   defer { context.set_diagnostic_highlight_cache(previous_highlight_cache); };
@@ -662,14 +688,16 @@ static fn analyze_script(const script_run_input &input,
   return do_analyze(&units);
 }
 
-static fn evaluate_script(const script_run_input &input,
-                          const script_run_plan &plan, Expression *ast,
-                          BumpArena::Mark preflight_mark,
-                          Maybe<usize> history_event_number,
-                          root_evaluation_mode evaluation_mode) throws -> i32
+static fn
+evaluate_script(const script_run_input &input,
+                const script_run_plan  &plan,
+                Expression             *ast,
+                BumpArena::Mark         preflight_mark,
+                Maybe<usize>            history_event_number,
+                root_evaluation_mode    evaluation_mode) throws -> i32
 {
-  EvalContext &context = input.context;
-  i32 exit_code = EXIT_SUCCESS;
+  EvalContext &context   = input.context;
+  i32          exit_code = EXIT_SUCCESS;
 
   LOG(Debug, "evaluating the chunk");
   let previous_history_event_number =
@@ -733,8 +761,8 @@ static fn evaluate_script(const script_run_input &input,
 
     loop
     {
-      let const unit_mark = input.arena.mark();
-      let const *unit = execution_parser.construct_next_top_level_ast();
+      let const  unit_mark = input.arena.mark();
+      let const *unit      = execution_parser.construct_next_top_level_ast();
       if (unit == nullptr) {
         input.arena.release(unit_mark);
         break;
@@ -776,15 +804,20 @@ static fn evaluate_script(const script_run_input &input,
   return exit_code;
 }
 
-static fn run_script_contents(
-    const String &script_contents, EvalContext &context, BumpArena &ast_arena,
-    Maybe<StringView> filename = None, Expression *precompiled_ast = nullptr,
-    Expression **out_ast = nullptr, Maybe<usize> history_event_number = None,
-    const analysis_outputs &diagnostics = {},
-    const script_run_options &run_options = {},
+static fn
+run_script_contents(
+    const String             &script_contents,
+    EvalContext              &context,
+    BumpArena                &ast_arena,
+    Maybe<StringView>         filename             = None,
+    Expression               *precompiled_ast      = nullptr,
+    Expression              **out_ast              = nullptr,
+    Maybe<usize>              history_event_number = None,
+    const analysis_outputs   &diagnostics          = {},
+    const script_run_options &run_options          = {},
     root_evaluation_mode evaluation_mode = root_evaluation_mode::Normal) -> int
 {
-  let const diagnostic_sink = diagnostics.diagnostic_sink;
+  let const diagnostic_sink  = diagnostics.diagnostic_sink;
   let const should_print_ast = run_options.should_print_ast;
   let const is_contained_substitution =
       evaluation_mode == root_evaluation_mode::ContainedSubstitution;
@@ -801,15 +834,15 @@ static fn run_script_contents(
     ast_arena.reset();
     context.expansion_store().scratch_arena().reset();
 
-    let const plan = make_script_run_plan(context, precompiled_ast != nullptr,
-                                          out_ast != nullptr, run_options);
+    let const plan  = make_script_run_plan(context, precompiled_ast != nullptr,
+                                           out_ast != nullptr, run_options);
     let const input = script_run_input{script_contents, filename, context,
                                        ast_arena, diagnostic_sink};
-    let parse_errors = ArrayList<String>{heap_allocator()};
-    let directives = analysis_directives{};
+    let       parse_errors = ArrayList<String>{heap_allocator()};
+    let       directives   = analysis_directives{};
 
-    let const preflight_mark = ast_arena.mark();
-    Expression *ast = precompiled_ast;
+    let const   preflight_mark = ast_arena.mark();
+    Expression *ast            = precompiled_ast;
     if (plan.should_stream_units) {
       if (scan_analysis_metadata(input, parse_errors, directives))
         return SYNTAX_ERROR_STATUS;
@@ -897,13 +930,17 @@ static fn run_script_contents(
   return exit_code;
 }
 
-static fn run_lint_document_contents(
-    const String &source, EvalContext &context, BumpArena &ast_arena,
-    Maybe<StringView> filename,
-    analysis_diagnostic_totals *diagnostic_totals = nullptr,
-    ArrayList<source_diagnostic> *diagnostic_sink = nullptr,
-    bool *is_format_recognized = nullptr, bool should_print_ast = true,
-    Maybe<StringView> shell_source_name = None) throws -> int
+static fn
+run_lint_document_contents(
+    const String                 &source,
+    EvalContext                  &context,
+    BumpArena                    &ast_arena,
+    Maybe<StringView>             filename,
+    analysis_diagnostic_totals   *diagnostic_totals    = nullptr,
+    ArrayList<source_diagnostic> *diagnostic_sink      = nullptr,
+    bool                         *is_format_recognized = nullptr,
+    bool                          should_print_ast     = true,
+    Maybe<StringView>             shell_source_name    = None) throws -> int
 {
   let const document =
       parse_format_document(parser_format_input{source.view(), filename, None});
@@ -925,7 +962,7 @@ static fn run_lint_document_contents(
         {!has_shell_source_name, false, should_print_ast});
   }
 
-  let const saved_mood = context.runtime_state().get_mood();
+  let const saved_mood          = context.runtime_state().get_mood();
   let const saved_warning_level = context.runtime_state().get_warning_level();
   defer
   {
@@ -949,12 +986,14 @@ static fn run_lint_document_contents(
   return status;
 }
 
-static fn format_document_source(StringView source, Maybe<StringView> filename,
-                                 BumpArena &ast_arena,
-                                 ArrayList<String> &errors,
-                                 String *ast_output = nullptr,
-                                 BumpArena *function_arena = nullptr,
-                                 mimic_mood mood = mimic_mood::Posix) throws
+static fn
+format_document_source(StringView         source,
+                       Maybe<StringView>  filename,
+                       BumpArena         &ast_arena,
+                       ArrayList<String> &errors,
+                       String            *ast_output     = nullptr,
+                       BumpArena         *function_arena = nullptr,
+                       mimic_mood         mood = mimic_mood::Posix) throws
     -> Maybe<String>
 {
   let const document =
@@ -971,7 +1010,7 @@ static fn format_document_source(StringView source, Maybe<StringView> filename,
   let replacements = ArrayList<parser_format_replacement>{heap_allocator()};
 
   for (let const &fragment : document.fragments) {
-    let fragment_ast = String{heap_allocator()};
+    let       fragment_ast = String{heap_allocator()};
     let const formatted =
         format_shell_source(fragment.shell_source.view(), ast_arena, errors,
                             ast_output != nullptr ? &fragment_ast : nullptr,
@@ -990,11 +1029,12 @@ static fn format_document_source(StringView source, Maybe<StringView> filename,
   return parser_format_apply_replacements(source, steal(replacements));
 }
 
-static fn run_prompt_command(EvalContext &context, BumpArena &ast_arena) -> void
+static fn
+run_prompt_command(EvalContext &context, BumpArena &ast_arena) -> void
 {
   if (context.is_associative_array("PROMPT_COMMAND")) return;
 
-  let commands = context.collect_array_elements("PROMPT_COMMAND");
+  let   commands      = context.collect_array_elements("PROMPT_COMMAND");
   usize command_count = 0;
 
   for (let &command : commands) {
@@ -1004,12 +1044,12 @@ static fn run_prompt_command(EvalContext &context, BumpArena &ast_arena) -> void
 
   if (command_count == 0) return;
 
-  let &prompt_store = context.prompt_command_store();
-  let &execution = context.execution_store();
+  let      &prompt_store      = context.prompt_command_store();
+  let      &execution         = context.execution_store();
   let const saved_exit_status = execution.last_exit_status();
   let const saved_command_duration_nanos =
       execution.last_command_duration_nanos();
-  let const saved_last_argument = execution.get_last_argument().clone();
+  let const saved_last_argument      = execution.get_last_argument().clone();
   execution.prompt_command_running() = true;
   defer { execution.prompt_command_running() = false; };
 
@@ -1018,9 +1058,9 @@ static fn run_prompt_command(EvalContext &context, BumpArena &ast_arena) -> void
 
     LOG(Info, "running a PROMPT_COMMAND hook, %zu bytes", command.count());
     execution.set_last_exit_status(saved_exit_status);
-    let &cached_text = prompt_store.get_cached_text();
-    let const cached_ast = prompt_store.get_cached_ast();
-    i32 status = EXIT_SUCCESS;
+    let      &cached_text = prompt_store.get_cached_text();
+    let const cached_ast  = prompt_store.get_cached_ast();
+    i32       status      = EXIT_SUCCESS;
     if (command_count == 1 && cached_ast != nullptr &&
         cached_text.view() == command.view())
     {
@@ -1029,7 +1069,7 @@ static fn run_prompt_command(EvalContext &context, BumpArena &ast_arena) -> void
                                    nullptr, None, {}, {false});
     } else {
       prompt_store.set_cached_ast(nullptr);
-      cached_text = steal(command);
+      cached_text            = steal(command);
       Expression *parsed_ast = nullptr;
       status =
           run_script_contents(cached_text, context, prompt_store.get_arena(),
@@ -1051,11 +1091,11 @@ static fn run_prompt_command(EvalContext &context, BumpArena &ast_arena) -> void
   execution.set_last_command_duration_nanos(saved_command_duration_nanos);
 }
 
-static fn history_control_operator_byte_length(StringView source,
-                                               usize position) wontthrow
-    -> usize
+static fn
+history_control_operator_byte_length(StringView source,
+                                     usize      position) wontthrow -> usize
 {
-  let const byte = source[position];
+  let const byte      = source[position];
   let const next_byte = position + 1 < source.length ? source[position + 1] : 0;
   let const third_byte =
       position + 2 < source.length ? source[position + 2] : 0;
@@ -1082,7 +1122,8 @@ static fn history_control_operator_byte_length(StringView source,
   }
 }
 
-static fn next_history_word(StringView source, usize &position) throws
+static fn
+next_history_word(StringView source, usize &position) throws
     -> Maybe<StringView>
 {
   while (position < source.length && is_ascii_whitespace(source[position])) {
@@ -1094,7 +1135,7 @@ static fn next_history_word(StringView source, usize &position) throws
   }
 
   let const start_position = position;
-  let const first_byte = source[position];
+  let const first_byte     = source[position];
   let const is_process_substitution =
       (first_byte == '<' || first_byte == '>') &&
       position + 1 < source.length && source[position + 1] == '(';
@@ -1147,7 +1188,8 @@ static fn next_history_word(StringView source, usize &position) throws
   return source.substring_of_length(start_position, position - start_position);
 }
 
-static fn find_history_search_word(StringView command, StringView needle) throws
+static fn
+find_history_search_word(StringView command, StringView needle) throws
     -> Maybe<StringView>
 {
   usize position = 0;
@@ -1169,10 +1211,12 @@ throw_bad_history_word_specifier(StringView spelling) throws -> void
   throw Error{message.view()};
 }
 
-static fn select_history_words(StringView command, StringView designator,
-                               StringView spelling,
-                               Maybe<StringView> search_word,
-                               String &selected) throws -> StringView
+static fn
+select_history_words(StringView        command,
+                     StringView        designator,
+                     StringView        spelling,
+                     Maybe<StringView> search_word,
+                     String           &selected) throws -> StringView
 {
   if (designator.is_empty()) throw_bad_history_word_specifier(spelling);
   if (designator == "%") {
@@ -1181,7 +1225,7 @@ static fn select_history_words(StringView command, StringView designator,
     return *search_word;
   }
 
-  usize word_count = 0;
+  usize word_count    = 0;
   usize scan_position = 0;
 
   while (scan_position < command.length) {
@@ -1190,18 +1234,18 @@ static fn select_history_words(StringView command, StringView designator,
   }
 
   usize first_word_index = 0;
-  usize end_word_index = word_count;
+  usize end_word_index   = word_count;
 
   if (designator == "^") {
     first_word_index = 1;
-    end_word_index = 2;
+    end_word_index   = 2;
   } else if (designator == "$") {
     if (word_count == 0) throw_bad_history_word_specifier(spelling);
     first_word_index = word_count - 1;
   } else if (designator == "*") {
     first_word_index = word_count > 0 ? 1 : 0;
   } else {
-    usize separator_position = 0;
+    usize     separator_position  = 0;
     let const is_zero_based_range = designator[0] == '-';
     if (is_zero_based_range) {
       separator_position = 0;
@@ -1218,7 +1262,7 @@ static fn select_history_words(StringView command, StringView designator,
         throw_bad_history_word_specifier(spelling);
       }
       first_word_index = static_cast<usize>(parsed.value());
-      end_word_index = first_word_index + 1;
+      end_word_index   = first_word_index + 1;
     }
 
     if (separator_position < designator.length) {
@@ -1250,7 +1294,7 @@ static fn select_history_words(StringView command, StringView designator,
     throw_bad_history_word_specifier(spelling);
   }
 
-  scan_position = 0;
+  scan_position    = 0;
   usize word_index = 0;
   if (end_word_index == first_word_index + 1) {
     while (scan_position < command.length) {
@@ -1264,8 +1308,8 @@ static fn select_history_words(StringView command, StringView designator,
   }
 
   usize selected_byte_length = 0;
-  scan_position = 0;
-  word_index = 0;
+  scan_position              = 0;
+  word_index                 = 0;
 
   while (scan_position < command.length) {
     let const word = next_history_word(command, scan_position);
@@ -1279,7 +1323,7 @@ static fn select_history_words(StringView command, StringView designator,
 
   selected.reserve(selected_byte_length);
   scan_position = 0;
-  word_index = 0;
+  word_index    = 0;
 
   while (scan_position < command.length) {
     let const word = next_history_word(command, scan_position);
@@ -1302,7 +1346,7 @@ struct history_substitution
 
 struct history_expansion_state
 {
-  Maybe<String> last_search_word{};
+  Maybe<String>               last_search_word{};
   Maybe<history_substitution> last_substitution{};
 };
 
@@ -1313,8 +1357,8 @@ enum class history_substitution_scope : u8
   FirstPerWord,
 };
 
-cold wontreturn static fn throw_history_modifier_error(StringView spelling,
-                                                       StringView reason) throws
+cold wontreturn static fn
+throw_history_modifier_error(StringView spelling, StringView reason) throws
     -> void
 {
   let message = String{spelling};
@@ -1323,8 +1367,8 @@ cold wontreturn static fn throw_history_modifier_error(StringView spelling,
   throw Error{message.view()};
 }
 
-static pure fn apply_history_path_modifier(StringView text,
-                                           char modifier) wontthrow
+static pure fn
+apply_history_path_modifier(StringView text, char modifier) wontthrow
     -> StringView
 {
   if (modifier == 'h' || modifier == 't') {
@@ -1362,10 +1406,12 @@ static pure fn apply_history_path_modifier(StringView text,
   return text;
 }
 
-static fn parse_history_substitution_field(StringView source, usize &position,
-                                           char delimiter, Allocator allocator,
-                                           bool *did_find_delimiter) throws
-    -> String
+static fn
+parse_history_substitution_field(StringView source,
+                                 usize     &position,
+                                 char       delimiter,
+                                 Allocator  allocator,
+                                 bool      *did_find_delimiter) throws -> String
 {
   let field = String{allocator};
   if (did_find_delimiter != nullptr) *did_find_delimiter = false;
@@ -1388,10 +1434,10 @@ static fn parse_history_substitution_field(StringView source, usize &position,
   return field;
 }
 
-static fn append_history_substitution_replacement(String &output,
-                                                  StringView replacement,
-                                                  StringView matched) throws
-    -> void
+static fn
+append_history_substitution_replacement(String    &output,
+                                        StringView replacement,
+                                        StringView matched) throws -> void
 {
   for (usize position = 0; position < replacement.length; position++) {
     let const byte = replacement[position];
@@ -1408,16 +1454,18 @@ static fn append_history_substitution_replacement(String &output,
   }
 }
 
-static fn apply_history_substitution(StringView text, StringView old_text,
-                                     StringView replacement,
-                                     history_substitution_scope scope,
-                                     String &output) throws -> bool
+static fn
+apply_history_substitution(StringView                 text,
+                           StringView                 old_text,
+                           StringView                 replacement,
+                           history_substitution_scope scope,
+                           String                    &output) throws -> bool
 {
   if (old_text.is_empty()) return false;
 
   output.clear();
   output.reserve(text.length);
-  bool did_replace = false;
+  bool  did_replace     = false;
   usize copied_position = 0;
 
   if (scope == history_substitution_scope::FirstPerWord) {
@@ -1434,7 +1482,7 @@ static fn apply_history_substitution(StringView text, StringView old_text,
           copied_position, absolute_match_position - copied_position));
       append_history_substitution_replacement(output, replacement, old_text);
       copied_position = absolute_match_position + old_text.length;
-      did_replace = true;
+      did_replace     = true;
     }
   } else {
     usize search_position = 0;
@@ -1447,7 +1495,7 @@ static fn apply_history_substitution(StringView text, StringView old_text,
       append_history_substitution_replacement(output, replacement, old_text);
       copied_position = *match_position + old_text.length;
       search_position = copied_position;
-      did_replace = true;
+      did_replace     = true;
       if (scope == history_substitution_scope::First) break;
     }
   }
@@ -1458,8 +1506,9 @@ static fn apply_history_substitution(StringView text, StringView old_text,
   return true;
 }
 
-static fn quote_history_words(StringView text, bool should_split,
-                              String &output) throws -> void
+static fn
+quote_history_words(StringView text, bool should_split, String &output) throws
+    -> void
 {
   output.clear();
   if (!should_split) {
@@ -1478,7 +1527,8 @@ static fn quote_history_words(StringView text, bool should_split,
   }
 }
 
-static pure fn resolve_history_substitution_old_text(
+static pure fn
+resolve_history_substitution_old_text(
     StringView old_text, const history_expansion_state &state) wontthrow
     -> StringView
 {
@@ -1490,12 +1540,15 @@ static pure fn resolve_history_substitution_old_text(
   return {};
 }
 
-static fn apply_history_modifiers(StringView source, usize &position,
-                                  StringView selected,
-                                  history_expansion_state &state,
-                                  Allocator allocator, String &first_buffer,
-                                  String &second_buffer,
-                                  bool &should_execute) throws -> StringView
+static fn
+apply_history_modifiers(StringView               source,
+                        usize                   &position,
+                        StringView               selected,
+                        history_expansion_state &state,
+                        Allocator                allocator,
+                        String                  &first_buffer,
+                        String                  &second_buffer,
+                        bool &should_execute) throws -> StringView
 {
   bool should_use_first_buffer = true;
 
@@ -1504,7 +1557,7 @@ static fn apply_history_modifiers(StringView source, usize &position,
     if (position >= source.length)
       throw_history_modifier_error(":", "unrecognized history modifier");
 
-    let scope = history_substitution_scope::First;
+    let  scope                  = history_substitution_scope::First;
     bool has_substitution_scope = false;
     if (source[position] == 'g' || source[position] == 'a' ||
         source[position] == 'G')
@@ -1547,14 +1600,14 @@ static fn apply_history_modifiers(StringView source, usize &position,
 
     StringView old_text{};
     StringView replacement{};
-    let parsed_old_text = String{allocator};
-    let parsed_replacement = String{allocator};
+    let        parsed_old_text    = String{allocator};
+    let        parsed_replacement = String{allocator};
     if (modifier == 's') {
       if (position >= source.length)
         throw_history_modifier_error("s", "unrecognized history modifier");
-      let const delimiter = source[position++];
-      bool has_old_delimiter = false;
-      parsed_old_text = parse_history_substitution_field(
+      let const delimiter         = source[position++];
+      bool      has_old_delimiter = false;
+      parsed_old_text             = parse_history_substitution_field(
           source, position, delimiter, allocator, &has_old_delimiter);
       if (!has_old_delimiter)
         throw_history_modifier_error(
@@ -1572,7 +1625,7 @@ static fn apply_history_modifiers(StringView source, usize &position,
             source.substring_of_length(modifier_start_position,
                                        position - modifier_start_position),
             "substitution failed");
-      old_text = state.last_substitution->old_text.view();
+      old_text    = state.last_substitution->old_text.view();
       replacement = state.last_substitution->replacement_text.view();
     } else {
       throw_history_modifier_error(source.substring_of_length(position - 1, 1),
@@ -1603,11 +1656,12 @@ static fn apply_history_modifiers(StringView source, usize &position,
 struct interactive_history_expansion
 {
   String command;
-  bool should_execute;
+  bool   should_execute;
 };
 
-static fn is_history_expansion_inhibited(StringView source,
-                                         usize position) wontthrow -> bool
+static fn
+is_history_expansion_inhibited(StringView source, usize position) wontthrow
+    -> bool
 {
   let const rest = source.substring(position + 1);
   if (position > 0 && source[position - 1] == '[' &&
@@ -1625,31 +1679,32 @@ static fn is_history_expansion_inhibited(StringView source,
   return position > 1 && source[position - 1] == '$';
 }
 
-static fn expand_interactive_history(StringView source,
-                                     Maybe<usize> accepted_event_number,
-                                     history_expansion_state &state,
-                                     EvalContext &context) throws
+static fn
+expand_interactive_history(StringView               source,
+                           Maybe<usize>             accepted_event_number,
+                           history_expansion_state &state,
+                           EvalContext             &context) throws
     -> Maybe<interactive_history_expansion>
 {
   let const scratch_mark = context.expansion_store().scratch_arena().mark();
   defer { context.expansion_store().scratch_arena().release(scratch_mark); };
 
-  bool is_single_quoted = false;
-  bool is_double_quoted = false;
-  bool is_at_word_start = true;
-  bool did_expand = false;
-  bool should_execute = true;
-  usize copied_position = 0;
-  let expanded = String{heap_allocator()};
+  bool  is_single_quoted = false;
+  bool  is_double_quoted = false;
+  bool  is_at_word_start = true;
+  bool  did_expand       = false;
+  bool  should_execute   = true;
+  usize copied_position  = 0;
+  let   expanded         = String{heap_allocator()};
 
   if (!source.is_empty() && source[0] == '^') {
     let const selected_event = toiletline::get_relative_history_event(
         context.scratch_allocator(), 1, accepted_event_number);
     if (!selected_event.has_value()) throw Error{"!!: event not found"};
 
-    usize substitution_position = 1;
-    bool has_old_delimiter = false;
-    let const old_text = parse_history_substitution_field(
+    usize     substitution_position = 1;
+    bool      has_old_delimiter     = false;
+    let const old_text              = parse_history_substitution_field(
         source, substitution_position, '^', context.scratch_allocator(),
         &has_old_delimiter);
     let const replacement =
@@ -1677,9 +1732,9 @@ static fn expand_interactive_history(StringView source,
     };
     state.last_substitution = steal(next_substitution);
 
-    let first_modifier_buffer = String{context.scratch_allocator()};
+    let first_modifier_buffer  = String{context.scratch_allocator()};
     let second_modifier_buffer = String{context.scratch_allocator()};
-    let selected = substituted.view();
+    let selected               = substituted.view();
     if (substitution_position < source.length &&
         source[substitution_position] == ':')
     {
@@ -1740,12 +1795,12 @@ static fn expand_interactive_history(StringView source,
       continue;
     }
 
-    usize reference_end_position = position + 2;
+    usize      reference_end_position = position + 2;
     StringView replacement{};
-    let selected_event = Maybe<toiletline::history_event>{};
-    let current_line = String{context.scratch_allocator()};
-    let first_modifier_buffer = String{context.scratch_allocator()};
-    let second_modifier_buffer = String{context.scratch_allocator()};
+    let        selected_event         = Maybe<toiletline::history_event>{};
+    let        current_line           = String{context.scratch_allocator()};
+    let        first_modifier_buffer  = String{context.scratch_allocator()};
+    let        second_modifier_buffer = String{context.scratch_allocator()};
 
     if (next_byte == '#') {
       current_line.append(expanded.view());
@@ -1776,7 +1831,7 @@ static fn expand_interactive_history(StringView source,
         reference_end_position = *close_position < source.length
                                      ? *close_position + 1
                                      : *close_position;
-        selected_event = toiletline::get_containing_history_event(
+        selected_event         = toiletline::get_containing_history_event(
             context.scratch_allocator(), needle, accepted_event_number);
         if (selected_event.has_value()) {
           let const matched_word =
@@ -1836,9 +1891,9 @@ static fn expand_interactive_history(StringView source,
       }
 
       if (selected_event.has_value()) {
-        replacement = selected_event->command.view();
+        replacement                       = selected_event->command.view();
         let const selector_start_position = reference_end_position;
-        usize selector_end_position = selector_start_position;
+        usize     selector_end_position   = selector_start_position;
         if (selector_end_position < source.length &&
             source[selector_end_position] == ':')
         {
@@ -1922,8 +1977,8 @@ static fn expand_interactive_history(StringView source,
                                                position - copied_position));
     expanded.append(replacement);
     copied_position = reference_end_position;
-    position = reference_end_position - 1;
-    did_expand = true;
+    position        = reference_end_position - 1;
+    did_expand      = true;
   }
 
   if (!did_expand) return None;
@@ -1938,14 +1993,16 @@ enum class startup_file_requirement : u8
   Explicit,
 };
 
-static fn source_file(const Path &path, EvalContext &context,
-                      startup_file_requirement requirement =
-                          startup_file_requirement::Optional) -> bool
+static fn
+source_file(const Path              &path,
+            EvalContext             &context,
+            startup_file_requirement requirement =
+                startup_file_requirement::Optional) -> bool
 {
   Maybe<String> contents = path.read_entire_file();
   if (!contents) {
     let const is_missing = os::last_system_error_is_missing_file();
-    let const reason = os::last_system_error_message();
+    let const reason     = os::last_system_error_message();
     if (requirement == startup_file_requirement::Explicit && !is_missing) {
       show_message(
           Error{"Unable to read startup file '" + path.text() + "': " + reason}
@@ -1965,7 +2022,8 @@ static fn source_file(const Path &path, EvalContext &context,
   return true;
 }
 
-static pure fn selected_rcfile() wontthrow -> Maybe<StringView>
+static pure fn
+selected_rcfile() wontthrow -> Maybe<StringView>
 {
   if (!FLAG_RCFILE.is_set() && !FLAG_INIT_FILE.is_set()) {
     return None;
@@ -1980,8 +2038,8 @@ static pure fn selected_rcfile() wontthrow -> Maybe<StringView>
   return FLAG_RCFILE.value();
 }
 
-static fn source_custom_rcfile(StringView name, EvalContext &context) throws
-    -> void
+static fn
+source_custom_rcfile(StringView name, EvalContext &context) throws -> void
 {
   let path = String{context.scratch_allocator(), name};
   if (let home_expanded = utils::expand_leading_tilde_path(path.view());
@@ -1990,8 +2048,9 @@ static fn source_custom_rcfile(StringView name, EvalContext &context) throws
   source_file(Path{path.view()}, context, startup_file_requirement::Explicit);
 }
 
-static fn source_environment_file(StringView variable_name,
-                                  EvalContext &context) throws -> void
+static fn
+source_environment_file(StringView variable_name, EvalContext &context) throws
+    -> void
 {
   let const value = context.get_variable_value(variable_name);
   if (!value.has_value() || value->is_empty()) {
@@ -2007,7 +2066,8 @@ static fn source_environment_file(StringView variable_name,
               startup_file_requirement::Explicit);
 }
 
-static fn source_home_file(StringView name, EvalContext &context) throws -> void
+static fn
+source_home_file(StringView name, EvalContext &context) throws -> void
 {
   if (Maybe<Path> home = os::get_home_directory(); home.has_value()) {
     Path path = home->clone();
@@ -2016,9 +2076,10 @@ static fn source_home_file(StringView name, EvalContext &context) throws -> void
   }
 }
 
-static fn warn_about_retired_koshrc() throws -> void
+static fn
+warn_about_retired_koshrc() throws -> void
 {
-  let names = String{heap_allocator()};
+  let       names   = String{heap_allocator()};
   let const do_note = [&](const Path &path) throws {
     if (!os::path_exists(path.view())) return;
     if (!names.is_empty()) names += "' and '";
@@ -2037,14 +2098,16 @@ static fn warn_about_retired_koshrc() throws -> void
           .view());
 }
 
-static fn source_posix_login_files(EvalContext &context) throws -> void
+static fn
+source_posix_login_files(EvalContext &context) throws -> void
 {
   LOG(Info, "sourcing the posix login files");
   source_file(Path{"/etc/profile"}, context);
   source_home_file(".profile", context);
 }
 
-static fn source_bash_login_files(EvalContext &context) throws -> void
+static fn
+source_bash_login_files(EvalContext &context) throws -> void
 {
   LOG(Info, "sourcing the bash login files in bash order");
   source_file(Path{"/etc/profile"}, context);
@@ -2057,7 +2120,8 @@ static fn source_bash_login_files(EvalContext &context) throws -> void
   }
 }
 
-static fn source_bash_system_rc(EvalContext &context) throws -> void
+static fn
+source_bash_system_rc(EvalContext &context) throws -> void
 {
   LOG(Info, "looking for the system bashrc");
 
@@ -2065,7 +2129,8 @@ static fn source_bash_system_rc(EvalContext &context) throws -> void
     if (source_file(Path{path}, context)) break;
 }
 
-static fn ensure_bash_completion_loaded(EvalContext &context) throws -> void
+static fn
+ensure_bash_completion_loaded(EvalContext &context) throws -> void
 {
   if (context.completion_store().get_slot_spec(completion_spec_slot::Default) !=
       nullptr)
@@ -2082,18 +2147,20 @@ static fn ensure_bash_completion_loaded(EvalContext &context) throws -> void
     return;
   }
   LOG(Info, "sourcing the stock bash-completion script");
-  let bash_completion_state = definition_state::from(context.runtime_state());
+  let bash_completion_state  = definition_state::from(context.runtime_state());
   bash_completion_state.mood = mimic_mood::Bash;
   let const definition_scope = DefinitionStateScope{
       context, bash_completion_state, definition_state_exit::RestoreCaller};
   source_file(Path{"/usr/share/bash-completion/bash_completion"}, context);
 }
 
-fn source_init_moods(EvalContext &context, const ArrayList<mimic_mood> &moods,
-                     bool is_login_shell, bool should_be_interactive) throws
-    -> void
+fn
+source_init_moods(EvalContext                 &context,
+                  const ArrayList<mimic_mood> &moods,
+                  bool                         is_login_shell,
+                  bool should_be_interactive) throws -> void
 {
-  bool did_source_bash_rc = false;
+  bool did_source_bash_rc  = false;
   bool did_source_bash_env = false;
 
   for (let flavor : moods) {
@@ -2182,8 +2249,10 @@ fn source_init_moods(EvalContext &context, const ArrayList<mimic_mood> &moods,
   }
 }
 
-pure fn quoted_argv_offset_until(int argc, const char *const *argv,
-                                 StringView needle) wontthrow -> usize
+pure fn
+quoted_argv_offset_until(int                argc,
+                         const char *const *argv,
+                         StringView         needle) wontthrow -> usize
 {
   usize offset = 0;
 
@@ -2198,14 +2267,14 @@ pure fn quoted_argv_offset_until(int argc, const char *const *argv,
 
 struct apply_file_snapshot
 {
-  Path operand_path;
-  Path target_path;
+  Path            operand_path;
+  Path            target_path;
   os::file_status status;
-  String contents;
+  String          contents;
 };
 
-static fn read_apply_file(const Path &operand_path) throws
-    -> Maybe<apply_file_snapshot>
+static fn
+read_apply_file(const Path &operand_path) throws -> Maybe<apply_file_snapshot>
 {
   let target_path = os::canonical_path(operand_path);
   if (!target_path.has_value()) {
@@ -2227,7 +2296,7 @@ static fn read_apply_file(const Path &operand_path) throws
 
     return None;
   }
-  let contents = target_path->read_entire_file();
+  let contents        = target_path->read_entire_file();
   let verified_status = os::file_status{};
   if (!contents.has_value() ||
       !os::stat_path_following(target_path->text().view(), verified_status) ||
@@ -2243,8 +2312,9 @@ static fn read_apply_file(const Path &operand_path) throws
                              contents.take()};
 }
 
-static fn replace_file_contents(const apply_file_snapshot &snapshot,
-                                StringView replacement) throws -> bool
+static fn
+replace_file_contents(const apply_file_snapshot &snapshot,
+                      StringView                 replacement) throws -> bool
 {
   let replacement_path = os::write_to_named_temp_file(
       snapshot.target_path.parent(), ".kosh_apply", replacement);
@@ -2265,8 +2335,8 @@ static fn replace_file_contents(const apply_file_snapshot &snapshot,
     return false;
   }
 
-  let resolved_operand = os::canonical_path(snapshot.operand_path);
-  let current_status = os::file_status{};
+  let       resolved_operand = os::canonical_path(snapshot.operand_path);
+  let       current_status   = os::file_status{};
   let const current_contents = snapshot.target_path.read_entire_file();
   if (!resolved_operand.has_value() ||
       resolved_operand->text() != snapshot.target_path.text() ||
@@ -2294,14 +2364,15 @@ static fn replace_file_contents(const apply_file_snapshot &snapshot,
 
 struct applied_fix_tally
 {
-  diagnostic_id id;
+  diagnostic_id  id;
   error_severity severity;
-  usize count;
+  usize          count;
 };
 
-static fn record_applied_fix(ArrayList<applied_fix_tally> &tallies,
-                             diagnostic_id id, error_severity severity) throws
-    -> void
+static fn
+record_applied_fix(ArrayList<applied_fix_tally> &tallies,
+                   diagnostic_id                 id,
+                   error_severity                severity) throws -> void
 {
   for (let &tally : tallies) {
     if (tally.id != id || tally.severity != severity) {
@@ -2315,8 +2386,8 @@ static fn record_applied_fix(ArrayList<applied_fix_tally> &tallies,
   tallies.push(applied_fix_tally{id, severity, 1});
 }
 
-static fn append_applied_fix_label(String &label, diagnostic_id id) throws
-    -> void
+static fn
+append_applied_fix_label(String &label, diagnostic_id id) throws -> void
 {
   let const &definition = get_diagnostic_definition(id);
   label.append(definition.slug);
@@ -2328,7 +2399,8 @@ static fn append_applied_fix_label(String &label, diagnostic_id id) throws
   label.push(')');
 }
 
-cold static fn print_applied_fix_summary(
+cold static fn
+print_applied_fix_summary(
     ArrayList<applied_fix_tally> &&collected_tallies) throws -> void
 {
   if (collected_tallies.is_empty()) return;
@@ -2343,9 +2415,9 @@ cold static fn print_applied_fix_summary(
           });
 
   usize warning_count = 0;
-  usize error_count = 0;
-  usize label_width = 0;
-  let labels = ArrayList<String>{heap_allocator()};
+  usize error_count   = 0;
+  usize label_width   = 0;
+  let   labels        = ArrayList<String>{heap_allocator()};
 
   for (let const &tally : tallies) {
     if (tally.severity == error_severity::warning)
@@ -2359,7 +2431,7 @@ cold static fn print_applied_fix_summary(
     labels.push(steal(label));
   }
 
-  let const wants_color = colors::stderr_wants_color();
+  let const wants_color   = colors::stderr_wants_color();
   let const warning_color = wants_color ? colors::ansi::YELLOW : StringView{};
   let const error_color =
       wants_color ? colors::ansi::BOLD_BRIGHT_RED : StringView{};
@@ -2389,8 +2461,8 @@ cold static fn print_applied_fix_summary(
   show_message(summary.view());
 
   for (usize tally_index = 0; tally_index < tallies.count(); tally_index++) {
-    let const &tally = tallies[tally_index];
-    let const is_warning = tally.severity == error_severity::warning;
+    let const &tally      = tallies[tally_index];
+    let const  is_warning = tally.severity == error_severity::warning;
 
     let line = String{"  "};
     line.append(labels[tally_index].view());
@@ -2412,12 +2484,15 @@ cold static fn print_applied_fix_summary(
   }
 }
 
-static fn run_format_operation(const ArrayList<String> &file_names,
-                               bool should_apply, bool should_apply_lint_fixes,
-                               BumpArena &ast_arena, EvalContext &context,
-                               mimic_mood mood) throws -> int
+static fn
+run_format_operation(const ArrayList<String> &file_names,
+                     bool                     should_apply,
+                     bool                     should_apply_lint_fixes,
+                     BumpArena               &ast_arena,
+                     EvalContext             &context,
+                     mimic_mood               mood) throws -> int
 {
-  bool did_fail = false;
+  bool  did_fail    = false;
   usize input_count = file_names.count();
   if (!should_apply && input_count == 0) {
     input_count = 1;
@@ -2427,7 +2502,7 @@ static fn run_format_operation(const ArrayList<String> &file_names,
     let const is_standard_input =
         file_names.is_empty() || file_names[input_index] == "-";
     Maybe<apply_file_snapshot> snapshot;
-    let source = String{heap_allocator()};
+    let                        source = String{heap_allocator()};
     if (is_standard_input) {
       source = utils::read_entire_standard_input();
     } else if (should_apply) {
@@ -2438,8 +2513,8 @@ static fn run_format_operation(const ArrayList<String> &file_names,
       }
       source = snapshot->contents.clone();
     } else {
-      let const path = Path{file_names[input_index].view()};
-      let contents = path.read_entire_file();
+      let const path     = Path{file_names[input_index].view()};
+      let       contents = path.read_entire_file();
       if (!contents.has_value()) {
         show_message("Could not open '" + path.text() +
                      "': " + os::last_system_error_message());
@@ -2452,11 +2527,11 @@ static fn run_format_operation(const ArrayList<String> &file_names,
     if (should_apply_lint_fixes) {
       let normalized_source = source.clone();
       normalized_source.normalize_crlf_line_endings();
-      let diagnostics = ArrayList<source_diagnostic>{heap_allocator()};
+      let       diagnostics = ArrayList<source_diagnostic>{heap_allocator()};
       let const source_name = is_standard_input
                                   ? Maybe<StringView>{}
                                   : Maybe<StringView>{file_names[input_index]};
-      bool is_format_recognized = true;
+      bool      is_format_recognized = true;
       unused(run_lint_document_contents(normalized_source, context, ast_arena,
                                         source_name, nullptr, &diagnostics,
                                         &is_format_recognized, false));
@@ -2499,12 +2574,12 @@ static fn run_format_operation(const ArrayList<String> &file_names,
       source = fixed.take();
     }
 
-    let errors = ArrayList<String>{heap_allocator()};
+    let       errors      = ArrayList<String>{heap_allocator()};
     let const source_name = is_standard_input
                                 ? Maybe<StringView>{}
                                 : Maybe<StringView>{file_names[input_index]};
-    let ast_output = String{heap_allocator()};
-    let formatted = format_document_source(
+    let       ast_output  = String{heap_allocator()};
+    let       formatted   = format_document_source(
         source.view(), source_name, ast_arena, errors,
         context.runtime_state().show_ast() ? &ast_output : nullptr,
         context.arena_store().function_arena(), mood);
@@ -2544,24 +2619,26 @@ static fn run_format_operation(const ArrayList<String> &file_names,
   return did_fail ? EXIT_FAILURE : EXIT_SUCCESS;
 }
 
-static fn run_lint_apply_operation(const ArrayList<String> &file_names,
-                                   bool should_format, EvalContext &context,
-                                   BumpArena &ast_arena) throws -> int
+static fn
+run_lint_apply_operation(const ArrayList<String> &file_names,
+                         bool                     should_format,
+                         EvalContext             &context,
+                         BumpArena               &ast_arena) throws -> int
 {
-  bool did_fail = false;
-  let final_totals = analysis_diagnostic_totals{};
-  let applied_tallies = ArrayList<applied_fix_tally>{heap_allocator()};
+  bool did_fail        = false;
+  let  final_totals    = analysis_diagnostic_totals{};
+  let  applied_tallies = ArrayList<applied_fix_tally>{heap_allocator()};
 
   for (let const &file_name : file_names) {
-    let const path = Path{file_name.view()};
-    let snapshot = read_apply_file(path);
+    let const path     = Path{file_name.view()};
+    let       snapshot = read_apply_file(path);
     if (!snapshot.has_value()) {
       did_fail = true;
       continue;
     }
     let source = snapshot->contents.clone();
     source.normalize_crlf_line_endings();
-    let diagnostics = ArrayList<source_diagnostic>{heap_allocator()};
+    let  diagnostics          = ArrayList<source_diagnostic>{heap_allocator()};
     bool is_format_recognized = true;
     unused(run_lint_document_contents(source, context, ast_arena,
                                       file_name.view(), nullptr, &diagnostics,
@@ -2570,7 +2647,7 @@ static fn run_lint_apply_operation(const ArrayList<String> &file_names,
       did_fail = true;
       continue;
     }
-    let normalized_fixes = ArrayList<source_fix>{heap_allocator()};
+    let normalized_fixes    = ArrayList<source_fix>{heap_allocator()};
     let reported_severities = ArrayList<applied_fix_tally>{heap_allocator()};
 
     for (let const &diagnostic : diagnostics) {
@@ -2612,7 +2689,7 @@ static fn run_lint_apply_operation(const ArrayList<String> &file_names,
     }
     let final_source = fixed.take();
     if (should_format) {
-      let errors = ArrayList<String>{heap_allocator()};
+      let errors    = ArrayList<String>{heap_allocator()};
       let formatted = format_document_source(
           final_source.view(), file_name.view(), ast_arena, errors, nullptr,
           context.arena_store().function_arena(),

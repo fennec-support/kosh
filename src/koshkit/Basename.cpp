@@ -19,7 +19,8 @@ REGISTER_KOSHKIT_UTIL_FLAGS(Basename);
 
 namespace koshka::koshkit {
 
-static fn basename_component(StringView path) wontthrow -> StringView
+static fn
+basename_component(StringView path) wontthrow -> StringView
 {
   usize end_position = path.length;
 
@@ -46,9 +47,12 @@ static fn basename_component(StringView path) wontthrow -> StringView
                                   end_position - start_position);
 }
 
-cold fn Basename::execute(
-    const ExecContext &ec, EvalContext &cxt, const ArrayList<String> &args,
-    const ArrayList<SourceLocation> &arg_locations) const throws -> i32
+cold fn
+Basename::execute(const ExecContext               &ec,
+                  EvalContext                     &cxt,
+                  const ArrayList<String>         &args,
+                  const ArrayList<SourceLocation> &arg_locations) const throws
+    -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 

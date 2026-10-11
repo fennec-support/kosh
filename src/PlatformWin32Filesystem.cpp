@@ -30,7 +30,8 @@ enum class unc_trailing_separator_mode : u8
 };
 
 static pure fn
-unc_share_end(StringView path, usize position,
+unc_share_end(StringView                  path,
+              usize                       position,
               unc_trailing_separator_mode separator_mode) wontthrow -> usize
 {
   unused(Path::next_component(path, position));
@@ -44,43 +45,50 @@ unc_share_end(StringView path, usize position,
   return position;
 }
 
-static fn filetime_ticks(FILETIME time) wontthrow -> u64
+static fn
+filetime_ticks(FILETIME time) wontthrow -> u64
 {
   ULARGE_INTEGER ticks{};
-  ticks.LowPart = time.dwLowDateTime;
+  ticks.LowPart  = time.dwLowDateTime;
   ticks.HighPart = time.dwHighDateTime;
 
   return ticks.QuadPart;
 }
 
-static fn filetime_unix_seconds(FILETIME time) wontthrow -> i64
+static fn
+filetime_unix_seconds(FILETIME time) wontthrow -> i64
 {
   return static_cast<i64>(filetime_ticks(time) / 10000000ULL - 11644473600ULL);
 }
 
-static fn filetime_nanoseconds(FILETIME time) wontthrow -> u32
+static fn
+filetime_nanoseconds(FILETIME time) wontthrow -> u32
 {
   return static_cast<u32>(filetime_ticks(time) % 10000000ULL * 100ULL);
 }
 
-static fn fill_file_identity(const BY_HANDLE_FILE_INFORMATION &identity,
-                             file_status &status) wontthrow -> void
+static fn
+fill_file_identity(const BY_HANDLE_FILE_INFORMATION &identity,
+                   file_status                      &status) wontthrow -> void
 {
   status.device_id = identity.dwVolumeSerialNumber;
-  status.file_id = (static_cast<u64>(identity.nFileIndexHigh) << 32) |
+  status.file_id   = (static_cast<u64>(identity.nFileIndexHigh) << 32) |
                    identity.nFileIndexLow;
   status.has_file_identity = true;
 }
 
-static fn open_path_for_query(const wchar_t *wide_path, DWORD access,
-                              DWORD flags) wontthrow -> HANDLE
+static fn
+open_path_for_query(const wchar_t *wide_path,
+                    DWORD          access,
+                    DWORD          flags) wontthrow -> HANDLE
 {
   return CreateFileW(wide_path, access,
                      FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
                      nullptr, OPEN_EXISTING, flags, nullptr);
 }
 
-static fn path_attributes(StringView path) wontthrow -> DWORD
+static fn
+path_attributes(StringView path) wontthrow -> DWORD
 {
   let const wide_path = path_to_wide(path, heap_allocator());
   if (!wide_path.has_value()) return INVALID_FILE_ATTRIBUTES;
@@ -88,7 +96,8 @@ static fn path_attributes(StringView path) wontthrow -> DWORD
   return GetFileAttributesW(wide_path->begin());
 }
 
-static fn is_trusted_owner_sid(PSID sid) wontthrow -> bool
+static fn
+is_trusted_owner_sid(PSID sid) wontthrow -> bool
 {
   if (sid == nullptr || IsValidSid(sid) == FALSE) {
     return false;
@@ -115,8 +124,8 @@ static constexpr DWORD FILE_CHANGE_ACCESS_MASK =
 static constexpr DWORD DIRECTORY_REPLACE_ACCESS_MASK =
     FILE_DELETE_CHILD | DELETE | WRITE_DAC | WRITE_OWNER | GENERIC_ALL;
 
-static fn find_security_problem(PSID owner, PACL dacl,
-                                DWORD change_access_mask) wontthrow
+static fn
+find_security_problem(PSID owner, PACL dacl, DWORD change_access_mask) wontthrow
     -> Maybe<StringView>
 {
   if (!is_trusted_owner_sid(owner)) {
@@ -141,7 +150,7 @@ static fn find_security_problem(PSID owner, PACL dacl,
     case ACCESS_DENIED_OBJECT_ACE_TYPE:
     case ACCESS_DENIED_CALLBACK_ACE_TYPE:
     case ACCESS_DENIED_CALLBACK_OBJECT_ACE_TYPE: continue;
-    case ACCESS_ALLOWED_ACE_TYPE: break;
+    case ACCESS_ALLOWED_ACE_TYPE:                break;
     default:
       return StringView{"has an access control entry kosh cannot interpret"};
     }
@@ -159,9 +168,10 @@ static fn find_security_problem(PSID owner, PACL dacl,
   return None;
 }
 
-fn read_system_owned_file(const Path &path) throws -> system_file_reading
+fn
+read_system_owned_file(const Path &path) throws -> system_file_reading
 {
-  let reading = system_file_reading{};
+  let       reading   = system_file_reading{};
   let const wide_path = path_to_wide(path.view(), heap_allocator());
   if (!wide_path.has_value()) return reading;
 
@@ -178,10 +188,10 @@ fn read_system_owned_file(const Path &path) throws -> system_file_reading
   }
   defer { unused(close_fd(handle)); };
 
-  PSID owner = nullptr;
-  PACL dacl = nullptr;
+  PSID                 owner      = nullptr;
+  PACL                 dacl       = nullptr;
   PSECURITY_DESCRIPTOR descriptor = nullptr;
-  let const file_result =
+  let const            file_result =
       GetSecurityInfo(handle, SE_FILE_OBJECT,
                       OWNER_SECURITY_INFORMATION | DACL_SECURITY_INFORMATION,
                       &owner, nullptr, &dacl, nullptr, &descriptor);
@@ -202,14 +212,14 @@ fn read_system_owned_file(const Path &path) throws -> system_file_reading
     return reading;
   }
 
-  let const directory = path.parent_or_current();
+  let const directory      = path.parent_or_current();
   let const wide_directory = path_to_wide(directory.view(), heap_allocator());
   if (!wide_directory.has_value()) return reading;
 
-  PSID directory_owner = nullptr;
-  PACL directory_dacl = nullptr;
+  PSID                 directory_owner      = nullptr;
+  PACL                 directory_dacl       = nullptr;
   PSECURITY_DESCRIPTOR directory_descriptor = nullptr;
-  let const directory_result = GetNamedSecurityInfoW(
+  let const            directory_result     = GetNamedSecurityInfoW(
       wide_directory->begin(), SE_FILE_OBJECT,
       OWNER_SECURITY_INFORMATION | DACL_SECURITY_INFORMATION, &directory_owner,
       nullptr, &directory_dacl, nullptr, &directory_descriptor);
@@ -240,7 +250,8 @@ fn read_system_owned_file(const Path &path) throws -> system_file_reading
   return reading;
 }
 
-fn canonical_path(const Path &path) wontthrow -> Maybe<Path>
+fn
+canonical_path(const Path &path) wontthrow -> Maybe<Path>
 {
   let const text = path.view();
   if (text.is_empty()) return koshka::None;
@@ -264,7 +275,7 @@ fn canonical_path(const Path &path) wontthrow -> Maybe<Path>
     };
 
     constexpr DWORD path_format = FILE_NAME_NORMALIZED | VOLUME_NAME_DOS;
-    let const required =
+    let const       required =
         GetFinalPathNameByHandleW(handle, nullptr, 0, path_format);
     if (required == 0) return koshka::None;
     let buffer = ArrayList<wchar_t>{heap_allocator()};
@@ -292,8 +303,8 @@ fn canonical_path(const Path &path) wontthrow -> Maybe<Path>
     return Path{resolved};
   };
 
-  let has_dot_component = false;
-  usize scan_position = 0;
+  let   has_dot_component = false;
+  usize scan_position     = 0;
 
   while (scan_position < text.length) {
     while (scan_position < text.length &&
@@ -323,7 +334,7 @@ fn canonical_path(const Path &path) wontthrow -> Maybe<Path>
   if (!has_dot_component) return do_resolve_direct(path);
 
   usize position = 0;
-  let resolved = Path{};
+  let   resolved = Path{};
   if (text.length >= 7 && is_directory_separator(text[0]) &&
       is_directory_separator(text[1]) && text[2] == '?' &&
       is_directory_separator(text[3]) && text[5] == ':' &&
@@ -353,15 +364,15 @@ fn canonical_path(const Path &path) wontthrow -> Maybe<Path>
     position = 3;
   } else {
     wchar_t initial_input[4]{};
-    bool should_read_current_directory = false;
+    bool    should_read_current_directory = false;
     if (text.length >= 2 && text[1] == ':') {
       initial_input[0] = static_cast<wchar_t>(text[0]);
       initial_input[1] = L':';
       initial_input[2] = L'.';
-      position = 2;
+      position         = 2;
     } else if (is_directory_separator(text[0])) {
       initial_input[0] = static_cast<wchar_t>(text[0]);
-      position = 1;
+      position         = 1;
     } else {
       should_read_current_directory = true;
     }
@@ -419,9 +430,14 @@ fn canonical_path(const Path &path) wontthrow -> Maybe<Path>
   return resolved;
 }
 
-fn path_from_file_id(StringView, u64) wontthrow -> Maybe<Path> { return None; }
+fn
+path_from_file_id(StringView, u64) wontthrow -> Maybe<Path>
+{
+  return None;
+}
 
-fn glob_matches(StringView pattern, Allocator allocator) throws
+fn
+glob_matches(StringView pattern, Allocator allocator) throws
     -> ArrayList<String>
 {
   let matches = ArrayList<String>{allocator};
@@ -429,7 +445,7 @@ fn glob_matches(StringView pattern, Allocator allocator) throws
   let const wide_pattern = path_to_wide(pattern, heap_allocator());
   if (!wide_pattern.has_value()) return matches;
   WIN32_FIND_DATAW find_data;
-  const HANDLE handle = FindFirstFileW(wide_pattern->begin(), &find_data);
+  const HANDLE     handle = FindFirstFileW(wide_pattern->begin(), &find_data);
   if (handle == INVALID_HANDLE_VALUE) return matches;
   defer
   {
@@ -466,7 +482,8 @@ fn glob_matches(StringView pattern, Allocator allocator) throws
   return matches;
 }
 
-fn directory_is_trusted_for_exec(const Path &directory) wontthrow -> bool
+fn
+directory_is_trusted_for_exec(const Path &directory) wontthrow -> bool
 {
   /* PATH already grants programs in this directory execution authority. The
      POSIX writable-mode rejection has no faithful Windows equivalent because
@@ -475,7 +492,8 @@ fn directory_is_trusted_for_exec(const Path &directory) wontthrow -> bool
   return directory.is_directory();
 }
 
-pure fn path_is_absolute(StringView path) wontthrow -> bool
+pure fn
+path_is_absolute(StringView path) wontthrow -> bool
 {
   if (path.length == 0) return false;
   if (is_directory_separator(path.data[0])) return true;
@@ -484,13 +502,15 @@ pure fn path_is_absolute(StringView path) wontthrow -> bool
          is_directory_separator(path.data[2]);
 }
 
-pure fn path_is_drive_relative(StringView path) wontthrow -> bool
+pure fn
+path_is_drive_relative(StringView path) wontthrow -> bool
 {
   return path.length >= 2 && path[1] == ':' &&
          (path.length == 2 || !is_directory_separator(path[2]));
 }
 
-fn resolve_drive_relative_path(StringView path) throws -> Maybe<Path>
+fn
+resolve_drive_relative_path(StringView path) throws -> Maybe<Path>
 {
   if (!path_is_drive_relative(path)) return None;
 
@@ -515,7 +535,8 @@ fn resolve_drive_relative_path(StringView path) throws -> Maybe<Path>
   return result;
 }
 
-pure fn path_root_length(StringView path) wontthrow -> usize
+pure fn
+path_root_length(StringView path) wontthrow -> usize
 {
   if (path.length >= 7 && is_directory_separator(path[0]) &&
       is_directory_separator(path[1]) && path[2] == '?' &&
@@ -548,7 +569,8 @@ pure fn path_root_length(StringView path) wontthrow -> usize
   return 0;
 }
 
-fn temp_directory_path() throws -> String
+fn
+temp_directory_path() throws -> String
 {
   if (let from_environment = get_environment_variable("TEMP");
       from_environment.has_value())
@@ -557,12 +579,14 @@ fn temp_directory_path() throws -> String
   return String{"C:\\Windows\\Temp"};
 }
 
-static fn is_named_pipe_path(StringView path) wontthrow -> bool
+static fn
+is_named_pipe_path(StringView path) wontthrow -> bool
 {
   return path.starts_with(StringView{"\\\\.\\pipe\\"});
 }
 
-static fn named_pipe_exists(StringView path) wontthrow -> bool
+static fn
+named_pipe_exists(StringView path) wontthrow -> bool
 {
   let const wide_path = path_to_wide(path, heap_allocator());
   if (!wide_path.has_value()) return false;
@@ -572,7 +596,8 @@ static fn named_pipe_exists(StringView path) wontthrow -> bool
   return GetLastError() == ERROR_SEM_TIMEOUT;
 }
 
-cold fn path_exists(StringView path) wontthrow -> bool
+cold fn
+path_exists(StringView path) wontthrow -> bool
 {
   if (is_mapped_dev_null(path)) return true;
   if (is_named_pipe_path(path)) return named_pipe_exists(path);
@@ -580,7 +605,8 @@ cold fn path_exists(StringView path) wontthrow -> bool
   return path_attributes(path) != INVALID_FILE_ATTRIBUTES;
 }
 
-cold fn path_is_directory(StringView path) wontthrow -> bool
+cold fn
+path_is_directory(StringView path) wontthrow -> bool
 {
   let const attributes = path_attributes(path);
 
@@ -588,7 +614,8 @@ cold fn path_is_directory(StringView path) wontthrow -> bool
          (attributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
 }
 
-fn path_is_regular_file(StringView path) wontthrow -> bool
+fn
+path_is_regular_file(StringView path) wontthrow -> bool
 {
   if (is_named_pipe_path(path)) return false;
 
@@ -598,7 +625,8 @@ fn path_is_regular_file(StringView path) wontthrow -> bool
          (attributes & FILE_ATTRIBUTE_DIRECTORY) == 0;
 }
 
-fn path_is_symbolic_link(StringView path) wontthrow -> bool
+fn
+path_is_symbolic_link(StringView path) wontthrow -> bool
 {
   let const attributes = path_attributes(path);
 
@@ -606,30 +634,55 @@ fn path_is_symbolic_link(StringView path) wontthrow -> bool
          (attributes & FILE_ATTRIBUTE_REPARSE_POINT) != 0;
 }
 
-fn path_is_block_device(StringView) wontthrow -> bool { return false; }
-fn path_is_character_device(StringView path) wontthrow -> bool
+fn
+path_is_block_device(StringView) wontthrow -> bool
+{
+  return false;
+}
+fn
+path_is_character_device(StringView path) wontthrow -> bool
 {
   return is_mapped_dev_null(path);
 }
-fn path_is_fifo(StringView path) wontthrow -> bool
+fn
+path_is_fifo(StringView path) wontthrow -> bool
 {
   return is_named_pipe_path(path) && named_pipe_exists(path);
 }
-fn path_is_socket(StringView) wontthrow -> bool { return false; }
-
-fn path_has_setuid_bit(StringView) wontthrow -> bool { return false; }
-fn path_has_setgid_bit(StringView) wontthrow -> bool { return false; }
-fn path_has_sticky_bit(StringView) wontthrow -> bool { return false; }
-fn path_is_owned_by_effective_user(StringView) wontthrow -> bool
-{
-  return false;
-}
-fn path_is_owned_by_effective_group(StringView) wontthrow -> bool
+fn
+path_is_socket(StringView) wontthrow -> bool
 {
   return false;
 }
 
-fn path_file_size(StringView path) wontthrow -> Maybe<u64>
+fn
+path_has_setuid_bit(StringView) wontthrow -> bool
+{
+  return false;
+}
+fn
+path_has_setgid_bit(StringView) wontthrow -> bool
+{
+  return false;
+}
+fn
+path_has_sticky_bit(StringView) wontthrow -> bool
+{
+  return false;
+}
+fn
+path_is_owned_by_effective_user(StringView) wontthrow -> bool
+{
+  return false;
+}
+fn
+path_is_owned_by_effective_group(StringView) wontthrow -> bool
+{
+  return false;
+}
+
+fn
+path_file_size(StringView path) wontthrow -> Maybe<u64>
 {
   let const wide_path = path_to_wide(path, heap_allocator());
   if (!wide_path.has_value()) return None;
@@ -642,7 +695,8 @@ fn path_file_size(StringView path) wontthrow -> Maybe<u64>
   return (static_cast<u64>(data.nFileSizeHigh) << 32) | data.nFileSizeLow;
 }
 
-fn path_modification_time(StringView path) wontthrow -> Maybe<i64>
+fn
+path_modification_time(StringView path) wontthrow -> Maybe<i64>
 {
   let const wide_path = path_to_wide(path, heap_allocator());
   if (!wide_path.has_value()) return None;
@@ -660,7 +714,8 @@ fn path_modification_time(StringView path) wontthrow -> Maybe<i64>
                           10000000ULL);
 }
 
-fn paths_are_same_file(StringView first, StringView second) wontthrow -> bool
+fn
+paths_are_same_file(StringView first, StringView second) wontthrow -> bool
 {
   let const wide_first = path_to_wide(first, heap_allocator());
   if (!wide_first.has_value()) return false;
@@ -679,7 +734,7 @@ fn paths_are_same_file(StringView first, StringView second) wontthrow -> bool
     return false;
   }
   BY_HANDLE_FILE_INFORMATION first_info{}, second_info{};
-  let const both_read =
+  let const                  both_read =
       GetFileInformationByHandle(first_handle, &first_info) != 0 &&
       GetFileInformationByHandle(second_handle, &second_info) != 0;
   let const error = both_read ? ERROR_SUCCESS : GetLastError();
@@ -696,13 +751,14 @@ fn paths_are_same_file(StringView first, StringView second) wontthrow -> bool
          first_info.nFileIndexLow == second_info.nFileIndexLow;
 }
 
-fn paths_match_for_history(StringView first, StringView second) wontthrow
-    -> bool
+fn
+paths_match_for_history(StringView first, StringView second) wontthrow -> bool
 {
   return first == second || paths_are_same_file(first, second);
 }
 
-fn path_is_newer_than(StringView first, StringView second) wontthrow -> bool
+fn
+path_is_newer_than(StringView first, StringView second) wontthrow -> bool
 {
   let const wide_first = path_to_wide(first, heap_allocator());
   if (!wide_first.has_value()) return false;
@@ -720,12 +776,14 @@ fn path_is_newer_than(StringView first, StringView second) wontthrow -> bool
                          &second_data.ftLastWriteTime) > 0;
 }
 
-fn path_is_older_than(StringView first, StringView second) wontthrow -> bool
+fn
+path_is_older_than(StringView first, StringView second) wontthrow -> bool
 {
   return path_is_newer_than(second, first);
 }
 
-fn path_is_readable(StringView path) wontthrow -> bool
+fn
+path_is_readable(StringView path) wontthrow -> bool
 {
   if (is_named_pipe_path(path)) return named_pipe_exists(path);
 
@@ -734,7 +792,8 @@ fn path_is_readable(StringView path) wontthrow -> bool
   return wide_path.has_value() && _waccess(wide_path->begin(), 4) == 0;
 }
 
-fn path_is_writable(StringView path) wontthrow -> bool
+fn
+path_is_writable(StringView path) wontthrow -> bool
 {
   if (is_named_pipe_path(path)) return named_pipe_exists(path);
 
@@ -743,12 +802,14 @@ fn path_is_writable(StringView path) wontthrow -> bool
   return wide_path.has_value() && _waccess(wide_path->begin(), 2) == 0;
 }
 
-fn path_is_executable(const Path &path) wontthrow -> bool
+fn
+path_is_executable(const Path &path) wontthrow -> bool
 {
   return path_is_regular_file(path.view());
 }
 
-cold fn read_current_directory() throws -> Path
+cold fn
+read_current_directory() throws -> Path
 {
   let const required = GetCurrentDirectoryW(0, nullptr);
   if (required == 0) return Path{};
@@ -765,10 +826,11 @@ cold fn read_current_directory() throws -> Path
   return Path{path->view()};
 }
 
-fn change_current_directory(StringView path) throws -> ErrorOr<Ok>
+fn
+change_current_directory(StringView path) throws -> ErrorOr<Ok>
 {
   const String path_string{path};
-  let const wide_path = path_to_wide(path, heap_allocator());
+  let const    wide_path = path_to_wide(path, heap_allocator());
   if (!wide_path.has_value() || SetCurrentDirectoryW(wide_path->begin()) == 0) {
     return Error{"Could not change directory to '" + path_string +
                  "': " + os::last_system_error_message()};
@@ -777,19 +839,20 @@ fn change_current_directory(StringView path) throws -> ErrorOr<Ok>
   return Success;
 }
 
-fn reference_current_directory() wontthrow -> DirectoryReference
+fn
+reference_current_directory() wontthrow -> DirectoryReference
 {
   return DirectoryReference{
       open_path_for_query(L".", 0, FILE_FLAG_BACKUP_SEMANTICS)};
 }
 
-fn restore_current_directory(const DirectoryReference &reference) wontthrow
-    -> bool
+fn
+restore_current_directory(const DirectoryReference &reference) wontthrow -> bool
 {
   if (!reference.is_valid()) return false;
 
   constexpr DWORD path_format = FILE_NAME_NORMALIZED | VOLUME_NAME_DOS;
-  let const required =
+  let const       required =
       GetFinalPathNameByHandleW(reference.get(), nullptr, 0, path_format);
   if (required == 0) return false;
   let path = ArrayList<wchar_t>{heap_allocator()};
@@ -818,16 +881,18 @@ fn restore_current_directory(const DirectoryReference &reference) wontthrow
   return SetCurrentDirectoryW(restored_path) != 0;
 }
 
-cold fn list_directory(StringView dir) throws -> Maybe<ArrayList<String>>
+cold fn
+list_directory(StringView dir) throws -> Maybe<ArrayList<String>>
 {
   return list_directory(dir, heap_allocator());
 }
 
-cold fn list_directory(StringView dir, Allocator allocator) throws
+cold fn
+list_directory(StringView dir, Allocator allocator) throws
     -> Maybe<ArrayList<String>>
 {
   const String dir_string{allocator, dir};
-  let entries = list_directory_typed(dir, allocator);
+  let          entries = list_directory_typed(dir, allocator);
   if (!entries.has_value()) return None;
   let names = ArrayList<String>{allocator};
   names.reserve(entries->count());
@@ -841,24 +906,26 @@ cold fn list_directory(StringView dir, Allocator allocator) throws
   return names;
 }
 
-cold fn list_directory_typed(StringView dir) throws
+cold fn
+list_directory_typed(StringView dir) throws
     -> Maybe<ArrayList<Path::DirectoryChild>>
 {
   return list_directory_typed(dir, heap_allocator());
 }
 
-cold fn list_directory_typed(StringView dir, Allocator allocator) throws
+cold fn
+list_directory_typed(StringView dir, Allocator allocator) throws
     -> Maybe<ArrayList<Path::DirectoryChild>>
 {
   const String dir_string{allocator, dir};
-  let pattern = dir_string.clone();
+  let          pattern = dir_string.clone();
   pattern.push(DIRECTORY_SEPARATOR);
   pattern.push('*');
 
   let const wide_pattern = path_to_wide(pattern.view(), allocator);
   if (!wide_pattern.has_value()) return None;
   WIN32_FIND_DATAW data{};
-  let const handle = FindFirstFileW(wide_pattern->begin(), &data);
+  let const        handle = FindFirstFileW(wide_pattern->begin(), &data);
   if (handle == INVALID_HANDLE_VALUE) return None;
   defer
   {
@@ -891,13 +958,15 @@ cold fn list_directory_typed(StringView dir, Allocator allocator) throws
   return entries;
 }
 
-cold fn list_directory_for_batch(StringView dir, Allocator allocator) throws
+cold fn
+list_directory_for_batch(StringView dir, Allocator allocator) throws
     -> directory_batch_listing
 {
   return {list_directory_typed(dir, allocator), None};
 }
 
-cold fn list_directory_status(StringView dir, Allocator allocator) throws
+cold fn
+list_directory_status(StringView dir, Allocator allocator) throws
     -> Maybe<ArrayList<directory_status_entry>>
 {
   let children = list_directory_typed(dir, allocator);
@@ -931,8 +1000,8 @@ cold fn list_directory_status(StringView dir, Allocator allocator) throws
   return entries;
 }
 
-fn open_file_descriptor(StringView path, file_open_mode mode)
-    -> Maybe<descriptor>
+fn
+open_file_descriptor(StringView path, file_open_mode mode) -> Maybe<descriptor>
 {
   DWORD access =
       (mode == file_open_mode::Read || mode == file_open_mode::ReadNonblocking)
@@ -942,20 +1011,20 @@ fn open_file_descriptor(StringView path, file_open_mode mode)
   if (mode == file_open_mode::Append) access = FILE_APPEND_DATA;
   DWORD disposition = OPEN_EXISTING;
   switch (mode) {
-  case file_open_mode::Truncate: disposition = CREATE_ALWAYS; break;
+  case file_open_mode::Truncate:          disposition = CREATE_ALWAYS; break;
   case file_open_mode::TruncateNoClobber: disposition = CREATE_NEW; break;
-  case file_open_mode::Append: disposition = OPEN_ALWAYS; break;
-  case file_open_mode::Read: disposition = OPEN_EXISTING; break;
-  case file_open_mode::ReadNonblocking: disposition = OPEN_EXISTING; break;
-  case file_open_mode::ReadWrite: disposition = OPEN_ALWAYS; break;
+  case file_open_mode::Append:            disposition = OPEN_ALWAYS; break;
+  case file_open_mode::Read:              disposition = OPEN_EXISTING; break;
+  case file_open_mode::ReadNonblocking:   disposition = OPEN_EXISTING; break;
+  case file_open_mode::ReadWrite:         disposition = OPEN_ALWAYS; break;
   }
   let const is_named_pipe = is_named_pipe_path(path);
   if (is_named_pipe) disposition = OPEN_EXISTING;
 
   /* Non-inheritable, execute_program flips it only while spawning the child. */
   SECURITY_ATTRIBUTES att{};
-  att.nLength = sizeof(SECURITY_ATTRIBUTES);
-  att.bInheritHandle = FALSE;
+  att.nLength              = sizeof(SECURITY_ATTRIBUTES);
+  att.bInheritHandle       = FALSE;
   att.lpSecurityDescriptor = nullptr; /* NOLINT */
 
   let const path_text = is_mapped_dev_null(path) ? StringView{"NUL"} : path;
@@ -983,8 +1052,10 @@ fn open_file_descriptor(StringView path, file_open_mode mode)
   }
 }
 
-fn open_file_descriptor_until_signal(StringView path, file_open_mode mode,
-                                     bool &did_signal_arrive) throws
+fn
+open_file_descriptor_until_signal(StringView     path,
+                                  file_open_mode mode,
+                                  bool          &did_signal_arrive) throws
     -> Maybe<descriptor>
 {
   did_signal_arrive = false;
@@ -992,13 +1063,14 @@ fn open_file_descriptor_until_signal(StringView path, file_open_mode mode,
   return open_file_descriptor(path, mode);
 }
 
-fn acquire_process_lock(StringView path) throws -> Maybe<descriptor>
+fn
+acquire_process_lock(StringView path) throws -> Maybe<descriptor>
 {
   let const wide_path = path_to_wide(path, heap_allocator());
   if (!wide_path.has_value()) return None;
-  constexpr wchar_t LOCK_NAME[] = L".kosh-flock.lock";
-  constexpr usize LOCK_NAME_LENGTH = countof(LOCK_NAME) - 1;
-  let const required =
+  constexpr wchar_t LOCK_NAME[]      = L".kosh-flock.lock";
+  constexpr usize   LOCK_NAME_LENGTH = countof(LOCK_NAME) - 1;
+  let const         required =
       GetFullPathNameW(wide_path->begin(), 0, nullptr, nullptr);
   if (required == 0) return None;
   let absolute_path = ArrayList<wchar_t>{heap_allocator()};
@@ -1031,14 +1103,16 @@ fn acquire_process_lock(StringView path) throws -> Maybe<descriptor>
   }
 }
 
-fn release_process_lock(descriptor lock) wontthrow -> void
+fn
+release_process_lock(descriptor lock) wontthrow -> void
 {
   unused(close_fd(lock));
 }
 
-fn write_to_temp_file(StringView content) -> Maybe<descriptor>
+fn
+write_to_temp_file(StringView content) -> Maybe<descriptor>
 {
-  wchar_t temp_dir[MAX_PATH];
+  wchar_t   temp_dir[MAX_PATH];
   let const temp_directory_length = GetTempPathW(MAX_PATH, temp_dir);
   if (temp_directory_length == 0 || temp_directory_length >= MAX_PATH) {
     return koshka::None;
@@ -1075,8 +1149,10 @@ fn write_to_temp_file(StringView content) -> Maybe<descriptor>
   return handle;
 }
 
-fn write_to_named_temp_file(const Path &directory, StringView prefix,
-                            StringView content) -> Maybe<Path>
+fn
+write_to_named_temp_file(const Path &directory,
+                         StringView  prefix,
+                         StringView  content) -> Maybe<Path>
 {
   if (prefix.find_character('\\').has_value() ||
       prefix.find_character('/').has_value())
@@ -1088,13 +1164,13 @@ fn write_to_named_temp_file(const Path &directory, StringView prefix,
   if (!wide_directory.has_value()) return None;
   let const wide_prefix = utf8_to_wide(prefix, heap_allocator());
   if (!wide_prefix.has_value()) return None;
-  wchar_t prefix_text[4]{L'x', L'x', L'x', L'\0'};
+  wchar_t   prefix_text[4]{L'x', L'x', L'x', L'\0'};
   let const prefix_length = static_cast<usize>(lstrlenW(wide_prefix->begin()));
   std::memcpy(prefix_text, wide_prefix->begin(),
               (prefix_length < 3 ? prefix_length : 3) * sizeof(wchar_t));
 
   wchar_t temp_path[MAX_PATH];
-  HANDLE handle = INVALID_HANDLE_VALUE;
+  HANDLE  handle = INVALID_HANDLE_VALUE;
 
   for (u32 attempt = 1; attempt <= 256; attempt++) {
     let unique = static_cast<UINT>(
@@ -1142,7 +1218,8 @@ fn write_to_named_temp_file(const Path &directory, StringView prefix,
   return Path{path->view()};
 }
 
-fn make_temp_directory(const Path &directory, StringView prefix) throws
+fn
+make_temp_directory(const Path &directory, StringView prefix) throws
     -> Maybe<Path>
 {
   if (prefix.find_character('\\').has_value() ||
@@ -1176,7 +1253,8 @@ fn make_temp_directory(const Path &directory, StringView prefix) throws
   return None;
 }
 
-fn make_directory(StringView path, u32 mode) wontthrow -> bool
+fn
+make_directory(StringView path, u32 mode) wontthrow -> bool
 {
   unused(mode);
   let const wide_path = path_to_wide(path, heap_allocator());
@@ -1185,10 +1263,11 @@ fn make_directory(StringView path, u32 mode) wontthrow -> bool
          CreateDirectoryW(wide_path->begin(), nullptr) != 0;
 }
 
-fn set_file_mode(StringView path, u32 mode) wontthrow -> bool
+fn
+set_file_mode(StringView path, u32 mode) wontthrow -> bool
 {
   let const is_owner_writable = (mode & 0200u) != 0;
-  let const wide_path = path_to_wide(path, heap_allocator());
+  let const wide_path         = path_to_wide(path, heap_allocator());
   if (!wide_path.has_value()) return false;
   let attributes = GetFileAttributesW(wide_path->begin());
   if (attributes == INVALID_FILE_ATTRIBUTES) return false;
@@ -1200,14 +1279,16 @@ fn set_file_mode(StringView path, u32 mode) wontthrow -> bool
   return SetFileAttributesW(wide_path->begin(), attributes) != FALSE;
 }
 
-fn set_file_owner(StringView, i64, i64, symlink_follow_mode) wontthrow -> bool
+fn
+set_file_owner(StringView, i64, i64, symlink_follow_mode) wontthrow -> bool
 {
   SetLastError(ERROR_NOT_SUPPORTED);
 
   return false;
 }
 
-fn create_hard_link(StringView target, StringView link_path) wontthrow -> bool
+fn
+create_hard_link(StringView target, StringView link_path) wontthrow -> bool
 {
   let const wide_target = path_to_wide(target, heap_allocator());
   if (!wide_target.has_value()) return false;
@@ -1218,21 +1299,24 @@ fn create_hard_link(StringView target, StringView link_path) wontthrow -> bool
                          nullptr) != 0;
 }
 
-fn make_fifo(StringView, u32) wontthrow -> bool
+fn
+make_fifo(StringView, u32) wontthrow -> bool
 {
   SetLastError(ERROR_NOT_SUPPORTED);
 
   return false;
 }
 
-fn make_device_node(StringView, u32, u32, u32) wontthrow -> bool
+fn
+make_device_node(StringView, u32, u32, u32) wontthrow -> bool
 {
   SetLastError(ERROR_NOT_SUPPORTED);
 
   return false;
 }
 
-fn touch_file_times(StringView path) wontthrow -> bool
+fn
+touch_file_times(StringView path) wontthrow -> bool
 {
   let const wide_path = path_to_wide(path, heap_allocator());
   if (!wide_path.has_value()) return false;
@@ -1244,31 +1328,33 @@ fn touch_file_times(StringView path) wontthrow -> bool
   FILETIME now;
   GetSystemTimeAsFileTime(&now);
   let const did_set = SetFileTime(handle, nullptr, &now, &now) != 0;
-  let const error = did_set ? ERROR_SUCCESS : GetLastError();
+  let const error   = did_set ? ERROR_SUCCESS : GetLastError();
   CloseHandle(handle);
   if (!did_set) SetLastError(error);
 
   return did_set;
 }
 
-static fn unix_time_to_file_time(i64 seconds, u32 nanoseconds,
-                                 FILETIME &file_time) wontthrow -> bool
+static fn
+unix_time_to_file_time(i64       seconds,
+                       u32       nanoseconds,
+                       FILETIME &file_time) wontthrow -> bool
 {
   constexpr i64 WINDOWS_TO_UNIX_EPOCH_SECONDS = 11644473600LL;
-  let const windows_seconds = seconds + WINDOWS_TO_UNIX_EPOCH_SECONDS;
+  let const     windows_seconds = seconds + WINDOWS_TO_UNIX_EPOCH_SECONDS;
   if (windows_seconds < 0) return false;
 
   ULARGE_INTEGER ticks{};
   ticks.QuadPart =
       static_cast<u64>(windows_seconds) * 10000000ULL + nanoseconds / 100ULL;
-  file_time.dwLowDateTime = ticks.LowPart;
+  file_time.dwLowDateTime  = ticks.LowPart;
   file_time.dwHighDateTime = ticks.HighPart;
 
   return true;
 }
 
-fn set_file_times(StringView path, const file_time_values &times) wontthrow
-    -> bool
+fn
+set_file_times(StringView path, const file_time_values &times) wontthrow -> bool
 {
   FILETIME access_file_time{};
   FILETIME modification_file_time{};
@@ -1291,23 +1377,25 @@ fn set_file_times(StringView path, const file_time_values &times) wontthrow
 
   let const did_set = SetFileTime(handle, nullptr, &access_file_time,
                                   &modification_file_time) != 0;
-  let const error = did_set ? ERROR_SUCCESS : GetLastError();
+  let const error   = did_set ? ERROR_SUCCESS : GetLastError();
   CloseHandle(handle);
   if (!did_set) SetLastError(error);
 
   return did_set;
 }
 
-fn remove_directory(StringView path) wontthrow -> bool
+fn
+remove_directory(StringView path) wontthrow -> bool
 {
   let const wide_path = path_to_wide(path, heap_allocator());
 
   return wide_path.has_value() && RemoveDirectoryW(wide_path->begin()) != 0;
 }
 
-static fn report_tree_removal_failure(const tree_removal_hooks *hooks,
-                                      tree_removal_failure failure,
-                                      StringView path) throws -> void
+static fn
+report_tree_removal_failure(const tree_removal_hooks *hooks,
+                            tree_removal_failure      failure,
+                            StringView                path) throws -> void
 {
   if (hooks == nullptr || hooks->report_failure == nullptr) return;
 
@@ -1317,16 +1405,18 @@ static fn report_tree_removal_failure(const tree_removal_hooks *hooks,
   SetLastError(error);
 }
 
-static fn remove_tree_entry(StringView path, BumpArena &arena,
-                            const tree_removal_hooks *hooks,
-                            bool &is_kept) throws -> bool
+static fn
+remove_tree_entry(StringView                path,
+                  BumpArena                &arena,
+                  const tree_removal_hooks *hooks,
+                  bool                     &is_kept) throws -> bool
 {
   let const level_mark = arena.mark();
   defer { arena.release(level_mark); };
-  let const allocator = bump_allocator(arena);
-  let entry_file_status = file_status{};
-  let entry = tree_removal_entry{};
-  entry.path = path;
+  let const allocator         = bump_allocator(arena);
+  let       entry_file_status = file_status{};
+  let       entry             = tree_removal_entry{};
+  entry.path                  = path;
   let const has_entry_hooks =
       hooks != nullptr &&
       (hooks->should_enter_directory != nullptr ||
@@ -1471,23 +1561,26 @@ static fn remove_tree_entry(StringView path, BumpArena &arena,
   return false;
 }
 
-fn remove_tree(StringView path, Allocator allocator,
-               const tree_removal_hooks *hooks) throws -> bool
+fn
+remove_tree(StringView                path,
+            Allocator                 allocator,
+            const tree_removal_hooks *hooks) throws -> bool
 {
   unused(allocator);
   BumpArena arena{};
-  bool is_kept = false;
+  bool      is_kept = false;
 
   return remove_tree_entry(path, arena, hooks, is_kept);
 }
 
-fn remove_file(StringView path) wontthrow -> bool
+fn
+remove_file(StringView path) wontthrow -> bool
 {
   let const wide_path = path_to_wide(path, heap_allocator());
   if (!wide_path.has_value()) return false;
   if (DeleteFileW(wide_path->begin()) != 0) return true;
 
-  let const error = GetLastError();
+  let const error      = GetLastError();
   let const attributes = GetFileAttributesW(wide_path->begin());
   let const is_directory_link =
       attributes != INVALID_FILE_ATTRIBUTES &&
@@ -1502,7 +1595,8 @@ fn remove_file(StringView path) wontthrow -> bool
   return false;
 }
 
-fn rename_path(StringView from, StringView to) wontthrow -> bool
+fn
+rename_path(StringView from, StringView to) wontthrow -> bool
 {
   let const wide_from = path_to_wide(from, heap_allocator());
   if (!wide_from.has_value()) return false;
@@ -1513,7 +1607,8 @@ fn rename_path(StringView from, StringView to) wontthrow -> bool
                      MOVEFILE_REPLACE_EXISTING) != 0;
 }
 
-fn create_symlink(StringView target, StringView link_path) wontthrow -> bool
+fn
+create_symlink(StringView target, StringView link_path) wontthrow -> bool
 {
 /* An older mingw SDK omits these flags, defined here when absent. */
 #ifndef SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE
@@ -1538,7 +1633,7 @@ fn create_symlink(StringView target, StringView link_path) wontthrow -> bool
 
   /* A directory target needs the directory flag, the unprivileged flag avoids
      elevation on developer-mode Windows. */
-  DWORD flags = SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE;
+  DWORD flags      = SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE;
   DWORD attributes = INVALID_FILE_ATTRIBUTES;
   if (path_is_absolute(target) || path_is_drive_relative(target)) {
     attributes = GetFileAttributesW(wide_target->begin());
@@ -1570,29 +1665,30 @@ fn create_symlink(StringView target, StringView link_path) wontthrow -> bool
                              flags) != 0;
 }
 
-fn read_symlink(StringView path, Allocator allocator) wontthrow -> Maybe<String>
+fn
+read_symlink(StringView path, Allocator allocator) wontthrow -> Maybe<String>
 {
   struct symbolic_link_reparse_data
   {
-    u32 tag;
-    u16 data_length;
-    u16 reserved;
-    u16 substitute_name_offset;
-    u16 substitute_name_length;
-    u16 print_name_offset;
-    u16 print_name_length;
-    u32 flags;
+    u32   tag;
+    u16   data_length;
+    u16   reserved;
+    u16   substitute_name_offset;
+    u16   substitute_name_length;
+    u16   print_name_offset;
+    u16   print_name_length;
+    u32   flags;
     WCHAR path_buffer[1];
   };
   struct mount_point_reparse_data
   {
-    u32 tag;
-    u16 data_length;
-    u16 reserved;
-    u16 substitute_name_offset;
-    u16 substitute_name_length;
-    u16 print_name_offset;
-    u16 print_name_length;
+    u32   tag;
+    u16   data_length;
+    u16   reserved;
+    u16   substitute_name_offset;
+    u16   substitute_name_length;
+    u16   print_name_offset;
+    u16   print_name_length;
     WCHAR path_buffer[1];
   };
 
@@ -1610,17 +1706,17 @@ fn read_symlink(StringView path, Allocator allocator) wontthrow -> Maybe<String>
   };
 
   alignas(void *) u8 buffer[MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
-  DWORD bytes_returned = 0;
+  DWORD              bytes_returned = 0;
   if (DeviceIoControl(handle, FSCTL_GET_REPARSE_POINT, nullptr, 0, buffer,
                       sizeof(buffer), &bytes_returned, nullptr) == FALSE)
   {
     return koshka::None;
   }
 
-  const WCHAR *wide_target = nullptr;
-  usize wide_target_length = 0;
-  bool is_substitute_name = false;
-  let const do_select_target =
+  const WCHAR *wide_target        = nullptr;
+  usize        wide_target_length = 0;
+  bool         is_substitute_name = false;
+  let const    do_select_target =
       [&](usize path_buffer_position, u16 data_length,
           u16 substitute_name_offset, u16 substitute_name_length,
           u16 print_name_offset, u16 print_name_length) -> bool {
@@ -1704,8 +1800,8 @@ fn read_symlink(StringView path, Allocator allocator) wontthrow -> Maybe<String>
   }
 
   constexpr WCHAR UNC_NAMESPACE_PREFIX[] = L"\\??\\UNC\\";
-  constexpr WCHAR NAMESPACE_PREFIX[] = L"\\??\\";
-  bool is_unc_target = false;
+  constexpr WCHAR NAMESPACE_PREFIX[]     = L"\\??\\";
+  bool            is_unc_target          = false;
   if (is_substitute_name && wide_target_length >= 8 &&
       std::memcmp(wide_target, UNC_NAMESPACE_PREFIX, 8 * sizeof(WCHAR)) == 0)
   {
@@ -1728,7 +1824,8 @@ fn read_symlink(StringView path, Allocator allocator) wontthrow -> Maybe<String>
   return unc_target;
 }
 
-fn stat_filesystem(StringView path, filesystem_status &status) wontthrow -> bool
+fn
+stat_filesystem(StringView path, filesystem_status &status) wontthrow -> bool
 {
   let const wide_path = path_to_wide(path, heap_allocator());
   if (!wide_path.has_value()) return false;
@@ -1745,29 +1842,29 @@ fn stat_filesystem(StringView path, filesystem_status &status) wontthrow -> bool
   ULARGE_INTEGER free{};
   if (GetDiskFreeSpaceExW(volume_root, &available, &total, &free) == 0)
     return false;
-  constexpr u64 block_size = 512;
-  status.block_byte_count = block_size;
+  constexpr u64 block_size            = 512;
+  status.block_byte_count             = block_size;
   status.fundamental_block_byte_count = block_size;
-  status.total_blocks = total.QuadPart / block_size;
-  status.free_blocks = free.QuadPart / block_size;
-  status.available_blocks = available.QuadPart / block_size;
+  status.total_blocks                 = total.QuadPart / block_size;
+  status.free_blocks                  = free.QuadPart / block_size;
+  status.available_blocks             = available.QuadPart / block_size;
 
   wchar_t volume_name[MAX_PATH + 1]{};
   wchar_t filesystem_name[MAX_PATH + 1]{};
-  DWORD serial_number = 0;
-  DWORD component_length = 0;
-  DWORD volume_flags = 0;
+  DWORD   serial_number    = 0;
+  DWORD   component_length = 0;
+  DWORD   volume_flags     = 0;
   if (GetVolumeInformationW(volume_root, volume_name, MAX_PATH, &serial_number,
                             &component_length, &volume_flags, filesystem_name,
                             MAX_PATH) != 0)
   {
-    status.name_max = component_length;
+    status.name_max      = component_length;
     status.filesystem_id = serial_number;
-    let const converted = wide_to_utf8(
+    let const converted  = wide_to_utf8(
         filesystem_name, static_cast<usize>(lstrlenW(filesystem_name)),
         heap_allocator());
     if (converted.has_value()) {
-      let const name = converted->view();
+      let const name          = converted->view();
       let const copied_length = name.length < sizeof(status.type_name) - 1
                                     ? name.length
                                     : sizeof(status.type_name) - 1;
@@ -1780,36 +1877,40 @@ fn stat_filesystem(StringView path, filesystem_status &status) wontthrow -> bool
   return true;
 }
 
-pure fn device_major(u64 device_id) wontthrow -> u32
+pure fn
+device_major(u64 device_id) wontthrow -> u32
 {
   unused(device_id);
 
   return 0;
 }
 
-pure fn device_minor(u64 device_id) wontthrow -> u32
+pure fn
+device_minor(u64 device_id) wontthrow -> u32
 {
   return static_cast<u32>(device_id);
 }
 
-static pure fn drive_type_name(UINT drive_type) wontthrow -> StringView
+static pure fn
+drive_type_name(UINT drive_type) wontthrow -> StringView
 {
   switch (drive_type) {
   case DRIVE_REMOVABLE: return "removable";
-  case DRIVE_FIXED: return "fixed";
-  case DRIVE_REMOTE: return "remote";
-  case DRIVE_CDROM: return "cdrom";
-  case DRIVE_RAMDISK: return "ramdisk";
-  default: break;
+  case DRIVE_FIXED:     return "fixed";
+  case DRIVE_REMOTE:    return "remote";
+  case DRIVE_CDROM:     return "cdrom";
+  case DRIVE_RAMDISK:   return "ramdisk";
+  default:              break;
   }
 
   return "unknown";
 }
 
-fn mounted_filesystems() throws -> ArrayList<mounted_filesystem>
+fn
+mounted_filesystems() throws -> ArrayList<mounted_filesystem>
 {
-  let result = ArrayList<mounted_filesystem>{heap_allocator()};
-  wchar_t drives[512];
+  let       result = ArrayList<mounted_filesystem>{heap_allocator()};
+  wchar_t   drives[512];
   let const length = GetLogicalDriveStringsW(countof(drives), drives);
   if (length == 0 || length >= countof(drives)) {
     return result;
@@ -1822,9 +1923,9 @@ fn mounted_filesystems() throws -> ArrayList<mounted_filesystem>
     if (!drive.has_value()) return result;
     let target = drive.take();
 
-    let filesystem_type = String{heap_allocator()};
-    let volume_name = String{heap_allocator()};
-    let volume_uuid = String{heap_allocator()};
+    let     filesystem_type = String{heap_allocator()};
+    let     volume_name     = String{heap_allocator()};
+    let     volume_uuid     = String{heap_allocator()};
     wchar_t volume_name_buffer[MAX_PATH + 1]{};
     wchar_t type_buffer[MAX_PATH + 1]{};
     if (GetVolumeInformationW(drives + position, volume_name_buffer,
@@ -1849,8 +1950,8 @@ fn mounted_filesystems() throws -> ArrayList<mounted_filesystem>
                                           countof(volume_path)) != 0)
     {
       let const volume_path_length = static_cast<usize>(lstrlenW(volume_path));
-      usize uuid_start = 0;
-      usize uuid_end = volume_path_length;
+      usize     uuid_start         = 0;
+      usize     uuid_end           = volume_path_length;
 
       for (usize index = 0; index < volume_path_length; index++) {
         if (volume_path[index] == L'{') uuid_start = index + 1;
@@ -1880,7 +1981,8 @@ fn mounted_filesystems() throws -> ArrayList<mounted_filesystem>
   return result;
 }
 
-fn read_filesystem_integrity_evidence(StringView path) throws
+fn
+read_filesystem_integrity_evidence(StringView path) throws
     -> Maybe<filesystem_integrity_evidence>
 {
   let const wide_path = path_to_wide(path, heap_allocator());
@@ -1916,7 +2018,7 @@ fn read_filesystem_integrity_evidence(StringView path) throws
   if (volume == INVALID_HANDLE_VALUE) return None;
   defer { CloseHandle(volume); };
 
-  ULONG flags = 0;
+  ULONG flags               = 0;
   DWORD returned_byte_count = 0;
   if (DeviceIoControl(volume, FSCTL_IS_VOLUME_DIRTY, nullptr, 0, &flags,
                       sizeof(flags), &returned_byte_count, nullptr) == 0 ||
@@ -1932,31 +2034,33 @@ fn read_filesystem_integrity_evidence(StringView path) throws
   return evidence;
 }
 
-fn verify_filesystem_integrity(StringView, u64) throws
+fn
+verify_filesystem_integrity(StringView, u64) throws
     -> filesystem_verification_result
 {
   return filesystem_verification_result::Unsupported;
 }
 
-fn sync_filesystems() wontthrow -> bool
+fn
+sync_filesystems() wontthrow -> bool
 {
-  wchar_t drives[512];
+  wchar_t   drives[512];
   let const length = GetLogicalDriveStringsW(countof(drives), drives);
   if (length == 0 || length >= countof(drives)) {
     return false;
   }
 
-  bool was_any_flushed = false;
-  usize position = 0;
+  bool  was_any_flushed = false;
+  usize position        = 0;
 
   while (position < length && drives[position] != L'\0') {
     let const drive_length = static_cast<usize>(lstrlenW(drives + position));
     if (GetDriveTypeW(drives + position) == DRIVE_FIXED && drive_length >= 2) {
-      wchar_t volume_path[8] = {L'\\', L'\\', L'.', L'\\', drives[position],
-                                L':',  L'\0'};
-      let const volume = CreateFileW(volume_path, GENERIC_WRITE,
-                                     FILE_SHARE_READ | FILE_SHARE_WRITE,
-                                     nullptr, OPEN_EXISTING, 0, nullptr);
+      wchar_t   volume_path[8] = {L'\\', L'\\', L'.', L'\\', drives[position],
+                                  L':',  L'\0'};
+      let const volume         = CreateFileW(volume_path, GENERIC_WRITE,
+                                             FILE_SHARE_READ | FILE_SHARE_WRITE,
+                                             nullptr, OPEN_EXISTING, 0, nullptr);
       if (volume != INVALID_HANDLE_VALUE) {
         if (FlushFileBuffers(volume) != 0) was_any_flushed = true;
 
@@ -1970,7 +2074,8 @@ fn sync_filesystems() wontthrow -> bool
   return was_any_flushed;
 }
 
-fn sync_path(StringView path, sync_mode mode) wontthrow -> bool
+fn
+sync_path(StringView path, sync_mode mode) wontthrow -> bool
 {
   unused(mode);
   let const wide_path = path_to_wide(path, heap_allocator());
@@ -1985,10 +2090,11 @@ fn sync_path(StringView path, sync_mode mode) wontthrow -> bool
   return FlushFileBuffers(target) != 0;
 }
 
-fn current_executable_path() wontthrow -> Maybe<String>
+fn
+current_executable_path() wontthrow -> Maybe<String>
 {
   ArrayList<wchar_t> module_path{heap_allocator()};
-  DWORD capacity = MAX_PATH;
+  DWORD              capacity = MAX_PATH;
 
   loop
   {
@@ -2004,11 +2110,12 @@ fn current_executable_path() wontthrow -> Maybe<String>
   }
 }
 
-fn stat_path(StringView path, file_status &status) wontthrow -> bool
+fn
+stat_path(StringView path, file_status &status) wontthrow -> bool
 {
   if (is_mapped_dev_null(path)) {
-    status = {};
-    status.mode = 0020666u;
+    status            = {};
+    status.mode       = 0020666u;
     status.link_count = 1;
 
     return true;
@@ -2022,21 +2129,21 @@ fn stat_path(StringView path, file_status &status) wontthrow -> bool
     let const target = read_symlink(path, heap_allocator());
     if (!target.has_value()) return false;
 
-    status.device_id = 0;
-    status.file_id = 0;
-    status.has_file_identity = false;
-    status.mode = 0120000u | 0777u;
-    status.link_count = 1;
-    status.owner_id = 0;
-    status.group_id = 0;
-    status.size = target->length();
-    status.access_time = 0;
-    status.access_nanoseconds = 0;
-    status.modification_time = 0;
+    status.device_id                = 0;
+    status.file_id                  = 0;
+    status.has_file_identity        = false;
+    status.mode                     = 0120000u | 0777u;
+    status.link_count               = 1;
+    status.owner_id                 = 0;
+    status.group_id                 = 0;
+    status.size                     = target->length();
+    status.access_time              = 0;
+    status.access_nanoseconds       = 0;
+    status.modification_time        = 0;
     status.modification_nanoseconds = 0;
-    status.change_time = 0;
-    status.change_nanoseconds = 0;
-    status.blocks = (status.size + 511) / 512;
+    status.change_time              = 0;
+    status.change_nanoseconds       = 0;
+    status.blocks                   = (status.size + 511) / 512;
 
     let const handle = open_path_for_query(wide_path->begin(), 0,
                                            FILE_FLAG_OPEN_REPARSE_POINT |
@@ -2045,7 +2152,7 @@ fn stat_path(StringView path, file_status &status) wontthrow -> bool
       BY_HANDLE_FILE_INFORMATION identity{};
       if (GetFileInformationByHandle(handle, &identity)) {
         fill_file_identity(identity, status);
-        status.link_count = identity.nNumberOfLinks;
+        status.link_count  = identity.nNumberOfLinks;
         status.access_time = filetime_unix_seconds(identity.ftLastAccessTime);
         status.access_nanoseconds =
             filetime_nanoseconds(identity.ftLastAccessTime);
@@ -2053,7 +2160,7 @@ fn stat_path(StringView path, file_status &status) wontthrow -> bool
             filetime_unix_seconds(identity.ftLastWriteTime);
         status.modification_nanoseconds =
             filetime_nanoseconds(identity.ftLastWriteTime);
-        status.change_time = status.modification_time;
+        status.change_time        = status.modification_time;
         status.change_nanoseconds = status.modification_nanoseconds;
       }
       CloseHandle(handle);
@@ -2064,8 +2171,8 @@ fn stat_path(StringView path, file_status &status) wontthrow -> bool
 
   struct _stat64 info{};
   if (_wstat64(wide_path->begin(), &info) != 0) return false;
-  status.device_id = 0;
-  status.file_id = 0;
+  status.device_id         = 0;
+  status.file_id           = 0;
   status.has_file_identity = false;
   let const handle =
       open_path_for_query(wide_path->begin(), 0, FILE_FLAG_BACKUP_SEMANTICS);
@@ -2075,14 +2182,14 @@ fn stat_path(StringView path, file_status &status) wontthrow -> bool
       fill_file_identity(identity, status);
     CloseHandle(handle);
   }
-  status.mode = static_cast<u32>(info.st_mode);
-  status.link_count = static_cast<u64>(info.st_nlink);
-  status.owner_id = static_cast<u32>(info.st_uid);
-  status.group_id = static_cast<u32>(info.st_gid);
-  status.size = static_cast<u64>(info.st_size);
-  status.access_time = static_cast<i64>(info.st_atime);
+  status.mode              = static_cast<u32>(info.st_mode);
+  status.link_count        = static_cast<u64>(info.st_nlink);
+  status.owner_id          = static_cast<u32>(info.st_uid);
+  status.group_id          = static_cast<u32>(info.st_gid);
+  status.size              = static_cast<u64>(info.st_size);
+  status.access_time       = static_cast<i64>(info.st_atime);
   status.modification_time = static_cast<i64>(info.st_mtime);
-  status.change_time = status.modification_time;
+  status.change_time       = status.modification_time;
   WIN32_FILE_ATTRIBUTE_DATA attribute_data{};
   if (GetFileAttributesExW(wide_path->begin(), GetFileExInfoStandard,
                            &attribute_data) != 0)
@@ -2100,7 +2207,8 @@ fn stat_path(StringView path, file_status &status) wontthrow -> bool
   return true;
 }
 
-fn stat_descriptor(os::descriptor fd, file_status &status) wontthrow -> bool
+fn
+stat_descriptor(os::descriptor fd, file_status &status) wontthrow -> bool
 {
   BY_HANDLE_FILE_INFORMATION identity{};
   if (GetFileInformationByHandle(fd, &identity) == 0) return false;
@@ -2117,7 +2225,8 @@ fn stat_descriptor(os::descriptor fd, file_status &status) wontthrow -> bool
   return true;
 }
 
-fn stat_path_following(StringView path, file_status &status) wontthrow -> bool
+fn
+stat_path_following(StringView path, file_status &status) wontthrow -> bool
 {
   let const resolved = canonical_path(Path{path});
 
@@ -2126,7 +2235,8 @@ fn stat_path_following(StringView path, file_status &status) wontthrow -> bool
 
 namespace batch_internal {
 
-static fn execute_shared_positioned_file_operation(
+static fn
+execute_shared_positioned_file_operation(
     const batched_syscall &operation, batched_syscall_result &result) wontthrow
     -> void
 {
@@ -2180,12 +2290,12 @@ static fn execute_shared_positioned_file_operation(
 struct win32_batch_request
 {
   OVERLAPPED control{};
-  HANDLE positioned_handle{INVALID_HANDLE_VALUE};
-  bool is_submitted{false};
+  HANDLE     positioned_handle{INVALID_HANDLE_VALUE};
+  bool       is_submitted{false};
 };
 
-static fn close_win32_batch_request(win32_batch_request &request) wontthrow
-    -> void
+static fn
+close_win32_batch_request(win32_batch_request &request) wontthrow -> void
 {
   if (request.control.hEvent != nullptr) {
     unused(CloseHandle(request.control.hEvent));
@@ -2199,7 +2309,7 @@ static fn close_win32_batch_request(win32_batch_request &request) wontthrow
 }
 
 static fn
-submit_positioned_file_operation(const batched_syscall &operation,
+submit_positioned_file_operation(const batched_syscall  &operation,
                                  batched_syscall_result &result,
                                  win32_batch_request &request) wontthrow -> void
 {
@@ -2260,12 +2370,14 @@ enum class overlapped_wait_mode : u8
   Wait,
 };
 
-static fn finish_positioned_file_operation(
-    const batched_syscall &operation, batched_syscall_result &result,
-    win32_batch_request &request, overlapped_wait_mode wait_mode) wontthrow
+static fn
+finish_positioned_file_operation(const batched_syscall  &operation,
+                                 batched_syscall_result &result,
+                                 win32_batch_request    &request,
+                                 overlapped_wait_mode    wait_mode) wontthrow
     -> void
 {
-  DWORD transferred_byte_count = 0;
+  DWORD     transferred_byte_count = 0;
   let const should_wait =
       wait_mode == overlapped_wait_mode::Wait ? TRUE : FALSE;
   if (GetOverlappedResult(request.positioned_handle, &request.control,
@@ -2292,7 +2404,7 @@ static fn finish_positioned_file_operation(
 }
 
 static fn
-execute_current_file_operation(const batched_syscall &operation,
+execute_current_file_operation(const batched_syscall  &operation,
                                batched_syscall_result &result) wontthrow -> void
 {
   let const transferred =
@@ -2309,17 +2421,18 @@ execute_current_file_operation(const batched_syscall &operation,
   if (result.error_number == 0) result.error_number = ERROR_GEN_FAILURE;
 }
 
-fn execute_batch_operations(const batched_syscall *operations,
-                            usize operation_count,
-                            batched_syscall_result *results) wontthrow -> void
+fn
+execute_batch_operations(const batched_syscall  *operations,
+                         usize                   operation_count,
+                         batched_syscall_result *results) wontthrow -> void
 {
   if (operation_count == 0) return;
   if (operations == nullptr || results == nullptr) {
     return;
   }
 
-  constexpr usize REQUEST_COUNT = 64;
-  let const do_mark_remaining = [&](usize first_index) wontthrow -> void {
+  constexpr usize REQUEST_COUNT     = 64;
+  let const       do_mark_remaining = [&](usize first_index) wontthrow -> void {
     for (usize index = first_index; index < operation_count; index++)
       results[index] = {operations[index].request_id, 0,
                         ERROR_OPERATION_ABORTED};
@@ -2332,7 +2445,7 @@ fn execute_batch_operations(const batched_syscall *operations,
                                 ? REQUEST_COUNT
                                 : operation_count - operation_start;
     win32_batch_request requests[REQUEST_COUNT]{};
-    bool was_interrupted = false;
+    bool                was_interrupted = false;
 
     for (usize chunk_index = 0; chunk_index < chunk_count; chunk_index++) {
       let const operation_index = operation_start + chunk_index;
@@ -2342,10 +2455,10 @@ fn execute_batch_operations(const batched_syscall *operations,
         break;
       }
 
-      let const &operation = operations[operation_index];
-      let &result = results[operation_index];
-      let const operation_kind = batch_operation_access::get_kind(operation);
-      result = {operation.request_id, 0, 0};
+      let const &operation      = operations[operation_index];
+      let       &result         = results[operation_index];
+      let const  operation_kind = batch_operation_access::get_kind(operation);
+      result                    = {operation.request_id, 0, 0};
       if (operation.byte_count > static_cast<usize>(MAXDWORD) ||
           operation.byte_offset > 0x7fffffffffffffffULL)
       {
@@ -2439,8 +2552,8 @@ fn execute_batch_operations(const batched_syscall *operations,
     loop
     {
       HANDLE completion_events[REQUEST_COUNT]{};
-      usize request_positions[REQUEST_COUNT]{};
-      DWORD event_count = 0;
+      usize  request_positions[REQUEST_COUNT]{};
+      DWORD  event_count = 0;
 
       for (usize chunk_index = 0; chunk_index < chunk_count; chunk_index++) {
         let const &request = requests[chunk_index];
@@ -2478,7 +2591,7 @@ fn execute_batch_operations(const batched_syscall *operations,
         break;
       }
 
-      let const chunk_index = request_positions[event_index];
+      let const chunk_index     = request_positions[event_index];
       let const operation_index = operation_start + chunk_index;
       finish_positioned_file_operation(
           operations[operation_index], results[operation_index],
@@ -2498,7 +2611,7 @@ fn execute_batch_operations(const batched_syscall *operations,
         finish_positioned_file_operation(operations[operation_index],
                                          results[operation_index], request,
                                          overlapped_wait_mode::Wait);
-        results[operation_index].error_number = wait_error_number;
+        results[operation_index].error_number           = wait_error_number;
         results[operation_index].transferred_byte_count = 0;
       }
     }
@@ -2510,12 +2623,13 @@ fn execute_batch_operations(const batched_syscall *operations,
 
 } // namespace batch_internal
 
-fn format_mode_string(u32 mode) throws -> String
+fn
+format_mode_string(u32 mode) throws -> String
 {
   /* Windows stat exposes only the owner bits, mirrored across all three
    * triplets. */
-  let const is_readable = (mode & 0000400u) != 0;
-  let const is_writable = (mode & 0000200u) != 0;
+  let const is_readable   = (mode & 0000400u) != 0;
+  let const is_writable   = (mode & 0000200u) != 0;
   let const is_executable = (mode & 0000100u) != 0;
 
   String result{heap_allocator()};
@@ -2530,7 +2644,8 @@ fn format_mode_string(u32 mode) throws -> String
   return result;
 }
 
-fn file_type_letter(u32 mode) wontthrow -> char
+fn
+file_type_letter(u32 mode) wontthrow -> char
 {
   if ((mode & 0170000u) == 0120000u) return 'l';
   if ((mode & 0170000u) == 0020000u) return 'c';
@@ -2538,7 +2653,8 @@ fn file_type_letter(u32 mode) wontthrow -> char
   return (mode & 0040000u) != 0 ? 'd' : '-';
 }
 
-fn uid_to_username(u32 uid) throws -> Maybe<String>
+fn
+uid_to_username(u32 uid) throws -> Maybe<String>
 {
   if (uid != 0) return None;
 
@@ -2546,9 +2662,14 @@ fn uid_to_username(u32 uid) throws -> Maybe<String>
                             heap_allocator());
 }
 
-fn gid_to_groupname(u32) throws -> Maybe<String> { return koshka::None; }
+fn
+gid_to_groupname(u32) throws -> Maybe<String>
+{
+  return koshka::None;
+}
 
-fn username_to_uid(StringView username) throws -> Maybe<u32>
+fn
+username_to_uid(StringView username) throws -> Maybe<u32>
 {
   let const current = get_current_user();
   if (current.has_value() && current->view() == username) {
@@ -2558,7 +2679,11 @@ fn username_to_uid(StringView username) throws -> Maybe<u32>
   return None;
 }
 
-fn groupname_to_gid(StringView) throws -> Maybe<u32> { return koshka::None; }
+fn
+groupname_to_gid(StringView) throws -> Maybe<u32>
+{
+  return koshka::None;
+}
 
 } /* namespace os */
 

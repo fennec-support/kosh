@@ -24,7 +24,8 @@ REGISTER_BUILTIN_FLAGS(Continue);
 
 namespace koshka {
 
-fn Continue::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
+fn
+Continue::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   ASSERT(!ec.args().is_empty());
 

@@ -18,9 +18,15 @@ KOSHKIT_UTIL_DECL(
     "The realpath utility prints the absolute, normalized form of each path. "
     "Every component but the last must exist unless -e or -m is given.");
 
-FLAG(REALPATH_EXISTING, Bool, 'e', "canonicalize-existing",
+FLAG(REALPATH_EXISTING,
+     Bool,
+     'e',
+     "canonicalize-existing",
      "Require every component of the path to exist.");
-FLAG(REALPATH_MISSING, Bool, 'm', "canonicalize-missing",
+FLAG(REALPATH_MISSING,
+     Bool,
+     'm',
+     "canonicalize-missing",
      "Allow any component of the path to be missing.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Realpath);
@@ -34,10 +40,10 @@ enum class realpath_mode : u8
   Missing,
 };
 
-static fn resolve_with_missing_components(StringView operand,
-                                          realpath_mode mode,
-                                          Allocator allocator) throws
-    -> Maybe<Path>
+static fn
+resolve_with_missing_components(StringView    operand,
+                                realpath_mode mode,
+                                Allocator     allocator) throws -> Maybe<Path>
 {
   let absolute = Path{operand, allocator};
   if (!absolute.is_absolute()) {
@@ -46,14 +52,14 @@ static fn resolve_with_missing_components(StringView operand,
   }
 
   static constexpr usize MAXIMUM_LINK_COUNT = 40;
-  let const absolute_text = absolute.text().view();
-  let root_length = os::path_root_length(absolute_text);
-  let resolved =
+  let const              absolute_text      = absolute.text().view();
+  let                    root_length = os::path_root_length(absolute_text);
+  let                    resolved =
       Path{absolute_text.substring_of_length(0, root_length), allocator};
-  let remaining = String{allocator, absolute_text.substring(root_length)};
-  bool is_missing = false;
+  let   remaining  = String{allocator, absolute_text.substring(root_length)};
+  bool  is_missing = false;
   usize link_count = 0;
-  usize position = 0;
+  usize position   = 0;
 
   loop
   {
@@ -100,18 +106,18 @@ static fn resolve_with_missing_components(StringView operand,
               : Maybe<String>{};
       if (link_target.has_value()) {
         link_count++;
-        let const target = link_target->view();
+        let const target             = link_target->view();
         let const target_root_length = os::path_root_length(target);
         let spliced = String{allocator, target.substring(target_root_length)};
         spliced.push(os::DIRECTORY_SEPARATOR);
         spliced.append(text.substring(position));
         if (target_root_length > 0) {
-          resolved = Path{target.substring_of_length(0, target_root_length),
+          resolved    = Path{target.substring_of_length(0, target_root_length),
                           allocator};
           root_length = target_root_length;
         }
         remaining = steal(spliced);
-        position = 0;
+        position  = 0;
         continue;
       }
 
@@ -124,13 +130,16 @@ static fn resolve_with_missing_components(StringView operand,
     }
 
     is_missing = true;
-    resolved = steal(candidate);
+    resolved   = steal(candidate);
   }
 }
 
-cold fn Realpath::execute(
-    const ExecContext &ec, EvalContext &cxt, const ArrayList<String> &args,
-    const ArrayList<SourceLocation> &arg_locations) const throws -> i32
+cold fn
+Realpath::execute(const ExecContext               &ec,
+                  EvalContext                     &cxt,
+                  const ArrayList<String>         &args,
+                  const ArrayList<SourceLocation> &arg_locations) const throws
+    -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
@@ -141,8 +150,8 @@ cold fn Realpath::execute(
                        ? realpath_mode::Existing
                        : realpath_mode::AllButLast;
   let const allocator = cxt.scratch_allocator();
-  let output = String{allocator};
-  i32 status = 0;
+  let       output    = String{allocator};
+  i32       status    = 0;
 
   for (usize operand_index = 0; operand_index < operands.count();
        operand_index++)

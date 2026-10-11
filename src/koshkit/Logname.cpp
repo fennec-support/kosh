@@ -17,9 +17,11 @@ REGISTER_KOSHKIT_UTIL_FLAGS(Logname);
 
 namespace koshka::koshkit {
 
-fn Logname::execute(const ExecContext &ec, EvalContext &cxt,
-                    const ArrayList<String> &args,
-                    const ArrayList<SourceLocation> &arg_locations) const throws
+fn
+Logname::execute(const ExecContext               &ec,
+                 EvalContext                     &cxt,
+                 const ArrayList<String>         &args,
+                 const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);

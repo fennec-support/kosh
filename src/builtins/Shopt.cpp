@@ -23,9 +23,15 @@ HELP_DESCRIPTION_DECL(
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 FLAG(SHOPT_SET, Bool, 's', "", "Enable each named option.");
 FLAG(SHOPT_UNSET, Bool, 'u', "", "Disable each named option.");
-FLAG(SHOPT_QUIET, Bool, 'q', "",
+FLAG(SHOPT_QUIET,
+     Bool,
+     'q',
+     "",
      "Suppress status output in the scripted probe form.");
-FLAG(SHOPT_PRINT, Bool, 'p', "",
+FLAG(SHOPT_PRINT,
+     Bool,
+     'p',
+     "",
      "Print one shopt -s or -u command per line. With -o, print set -o or "
      "+o commands.");
 FLAG(SHOPT_SET_OPTIONS, Bool, 'o', "", "Operate on the set -o option names.");
@@ -36,11 +42,12 @@ namespace koshka {
 
 namespace {
 
-fn shopt_status_line(StringView name, bool is_on, Allocator allocator) throws
+fn
+shopt_status_line(StringView name, bool is_on, Allocator allocator) throws
     -> String
 {
   constexpr usize NAME_FIELD_WIDTH = 20;
-  let line = String{allocator, name};
+  let             line             = String{allocator, name};
 
   while (line.count() < NAME_FIELD_WIDTH)
     line += ' ';
@@ -50,10 +57,11 @@ fn shopt_status_line(StringView name, bool is_on, Allocator allocator) throws
   return line;
 }
 
-fn format_option_names_help(Allocator allocator) throws -> String
+fn
+format_option_names_help(Allocator allocator) throws -> String
 {
-  let section = String{allocator, "OPTION NAMES\n"};
-  let const &names = shopt_option_name_list();
+  let        section = String{allocator, "OPTION NAMES\n"};
+  let const &names   = shopt_option_name_list();
   utils::append_name_columns(section, names.count(),
                              [&](usize index) { return names[index]; });
 
@@ -66,8 +74,11 @@ enum class shopt_reusable_form : u8
   SetOption,
 };
 
-fn shopt_reusable_line(StringView name, bool is_on, Allocator allocator,
-                       shopt_reusable_form form) throws -> String
+fn
+shopt_reusable_line(StringView          name,
+                    bool                is_on,
+                    Allocator           allocator,
+                    shopt_reusable_form form) throws -> String
 {
   let line = String{allocator};
   if (form == shopt_reusable_form::SetOption)
@@ -80,7 +91,8 @@ fn shopt_reusable_line(StringView name, bool is_on, Allocator allocator,
   return line;
 }
 
-fn shopt_is_on(const EvalContext &cxt, const option_descriptor &option) throws
+fn
+shopt_is_on(const EvalContext &cxt, const option_descriptor &option) throws
     -> bool
 {
   return read_option_number(cxt, option) != 0;
@@ -88,7 +100,8 @@ fn shopt_is_on(const EvalContext &cxt, const option_descriptor &option) throws
 
 } /* namespace */
 
-fn shopt_option_name_list() throws -> const ArrayList<StringView> &
+fn
+shopt_option_name_list() throws -> const ArrayList<StringView> &
 {
   static ArrayList<StringView> names = [] throws {
     let collected = ArrayList<StringView>{heap_allocator()};
@@ -102,7 +115,8 @@ fn shopt_option_name_list() throws -> const ArrayList<StringView> &
   return names;
 }
 
-fn enabled_shopt_option_names(const EvalContext &cxt) throws -> String
+fn
+enabled_shopt_option_names(const EvalContext &cxt) throws -> String
 {
   let joined = String{heap_allocator()};
 
@@ -117,7 +131,8 @@ fn enabled_shopt_option_names(const EvalContext &cxt) throws -> String
   return joined;
 }
 
-fn Shopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
+fn
+Shopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let operand_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};
   let const args = PARSE_BUILTIN_ARGS_WITH_LOCATIONS(ec, operand_locations);
@@ -126,16 +141,16 @@ fn Shopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     SHOW_BUILTIN_HELP_EXTRA_AND_RETURN(
         ec, format_option_names_help(cxt.scratch_allocator()).view());
 
-  let const should_enable = FLAG_SHOPT_SET.is_enabled();
-  let const should_disable = FLAG_SHOPT_UNSET.is_enabled();
-  let const is_quiet = FLAG_SHOPT_QUIET.is_enabled();
+  let const should_enable                 = FLAG_SHOPT_SET.is_enabled();
+  let const should_disable                = FLAG_SHOPT_UNSET.is_enabled();
+  let const is_quiet                      = FLAG_SHOPT_QUIET.is_enabled();
   let const should_operate_on_set_options = FLAG_SHOPT_SET_OPTIONS.is_enabled();
-  let const reusable_form = should_operate_on_set_options
-                                ? shopt_reusable_form::SetOption
-                                : shopt_reusable_form::Shopt;
-  let const should_print_reusable = FLAG_SHOPT_PRINT.is_enabled();
-  let names = ArrayList<StringView>{cxt.scratch_allocator()};
-  let name_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};
+  let const reusable_form                 = should_operate_on_set_options
+                                                ? shopt_reusable_form::SetOption
+                                                : shopt_reusable_form::Shopt;
+  let const should_print_reusable         = FLAG_SHOPT_PRINT.is_enabled();
+  let       names          = ArrayList<StringView>{cxt.scratch_allocator()};
+  let       name_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};
 
   for (usize i = 1; i < args.count(); i++) {
     names.push(args[i].view());
@@ -149,7 +164,7 @@ fn Shopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                : shopt_status_line(name, is_on, cxt.scratch_allocator());
   };
 
-  i32 status = 0;
+  i32       status = 0;
   let const do_find_or_reject =
       [&](StringView name, const SourceLocation &location)
           throws -> const option_descriptor * {
@@ -186,7 +201,7 @@ fn Shopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     }
 
     for (usize n = 0; n < names.count(); n++) {
-      let const &name = names[n];
+      let const &name     = names[n];
       let const &location = name_locations[n];
       if (should_enable || should_disable) {
         if (!apply_shell_option(cxt, name, should_enable)) {

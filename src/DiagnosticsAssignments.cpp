@@ -20,9 +20,10 @@ namespace expressions::internal {
 
 namespace {
 
-fn check_posix_redirection_portability(AnalysisContext &actx,
-                                       const Redirection &redirection,
-                                       SourceLocation fallback_location) throws
+fn
+check_posix_redirection_portability(AnalysisContext   &actx,
+                                    const Redirection &redirection,
+                                    SourceLocation     fallback_location) throws
     -> void
 {
   let const do_get_location = [&]() -> SourceLocation {
@@ -72,7 +73,7 @@ fn check_posix_redirection_portability(AnalysisContext &actx,
   if (redirection.target == nullptr) return;
 
   if (redirection.target->kind() == Token::Kind::Word) {
-    let const target_location = redirection.target->source_location();
+    let const  target_location = redirection.target->source_location();
     let const &target_word =
         static_cast<const tokens::WordToken *>(redirection.target)->word();
 
@@ -96,35 +97,38 @@ fn check_posix_redirection_portability(AnalysisContext &actx,
   }
 }
 
-fn word_names_a_command_as_a_value(StringView word) throws -> bool
+fn
+word_names_a_command_as_a_value(StringView word) throws -> bool
 {
   return get_analysis_command_info(word).is_in_group(
       COMMAND_GROUP_NAME_AS_VALUE);
 }
 
-cold fn plain_output_redirection_spelling(Redirection::Kind kind) wontthrow
+cold fn
+plain_output_redirection_spelling(Redirection::Kind kind) wontthrow
     -> Maybe<StringView>
 {
   switch (kind) {
-  case Redirection::Kind::TruncateOutput: return StringView{">"};
+  case Redirection::Kind::TruncateOutput:         return StringView{">"};
   case Redirection::Kind::TruncateOutputOverride: return StringView{">|"};
-  case Redirection::Kind::AppendOutput: return StringView{">>"};
-  default: return None;
+  case Redirection::Kind::AppendOutput:           return StringView{">>"};
+  default:                                        return None;
   }
 }
 
 } /* namespace */
 
-fn check_redirection_lints(AnalysisContext &actx,
-                           const command_lint_input &input) throws -> void
+fn
+check_redirection_lints(AnalysisContext          &actx,
+                        const command_lint_input &input) throws -> void
 {
-  let saw_stderr_to_stdout = false;
-  String read_target{heap_allocator()};
+  let          saw_stderr_to_stdout = false;
+  String       read_target{heap_allocator()};
   const Token *read_token = nullptr;
-  let const is_test_command =
+  let const    is_test_command =
       input.is_in_group(COMMAND_GROUP_TEST) && !input.is_command_shadowed;
   SourceLocation claimed_fd_locations[10]{};
-  u16 claimed_fd_mask = 0;
+  u16            claimed_fd_mask = 0;
 
   for (let const &redirection : input.redirections) {
     if (redirection.kind == Redirection::Kind::DuplicateOutput &&
@@ -291,18 +295,19 @@ fn check_redirection_lints(AnalysisContext &actx,
     }
 }
 
-fn check_test_operand_lints(AnalysisContext &actx,
-                            const command_lint_input &input) throws -> void
+fn
+check_test_operand_lints(AnalysisContext          &actx,
+                         const command_lint_input &input) throws -> void
 {
   if (!input.is_in_group(COMMAND_GROUP_TEST) || input.is_command_shadowed) {
     return;
   }
 
-  let const &args = input.args;
-  let const is_posix = actx.is_posix_sh_shebang;
+  let const &args     = input.args;
+  let const  is_posix = actx.is_posix_sh_shebang;
 
-  usize operand_end = args.count();
-  bool is_bracket_form_closed = true;
+  usize operand_end            = args.count();
+  bool  is_bracket_form_closed = true;
   if (input.command_id() == command_name_id::SingleBracket ||
       input.command_id() == command_name_id::DoubleBracket)
   {
@@ -346,7 +351,7 @@ fn check_test_operand_lints(AnalysisContext &actx,
         !is_known_test_operator_word(view))
     {
       let const &word = static_cast<const tokens::WordToken *>(args[i])->word();
-      let const is_unary_slot =
+      let const  is_unary_slot =
           i == 1 || is_test_condition_opener_word(previous_literal.view());
       let is_string_operand = false;
       if (is_unary_slot && i + 1 < args.count() &&
@@ -384,7 +389,7 @@ fn check_test_operand_lints(AnalysisContext &actx,
       let const &right =
           static_cast<const tokens::WordToken *>(args[i + 1])->word();
       if (word_is_fully_literal(left) && word_is_fully_literal(right)) {
-        let const left_shape = classify_test_operand(left);
+        let const left_shape  = classify_test_operand(left);
         let const right_shape = classify_test_operand(right);
         let const is_expanded_before_test =
             left_shape.has_unquoted_glob || right_shape.has_unquoted_glob ||
@@ -402,7 +407,7 @@ fn check_test_operand_lints(AnalysisContext &actx,
 
     if (i < operand_end) {
       let const &word = static_cast<const tokens::WordToken *>(args[i])->word();
-      let const shape = classify_test_operand(word);
+      let const  shape = classify_test_operand(word);
 
       let const written =
           analysis_source_text(actx, args[i]->source_location());
@@ -454,7 +459,7 @@ fn check_test_operand_lints(AnalysisContext &actx,
 
     if (view == "-o" && i >= 3) {
       let const before = test_inequality_left_operand(args, i - 2, operand_end);
-      let const after = test_inequality_left_operand(args, i + 2, operand_end);
+      let const after  = test_inequality_left_operand(args, i + 2, operand_end);
       if (before.has_value() && after.has_value() && *before == *after) {
         actx.report_diagnostic(diagnostic_id::sc2056,
                                args[i]->source_location(), {*before});
@@ -501,11 +506,11 @@ fn check_test_operand_lints(AnalysisContext &actx,
       args[1]->kind() == Token::Kind::Word)
   {
     let const &word = static_cast<const tokens::WordToken *>(args[1])->word();
-    let const operand = word.to_literal_string();
-    let const view = operand.view();
-    let const location = args[1]->source_location();
-    let const is_literal = word_is_fully_literal(word);
-    let const constant = is_literal ? get_bracketed_constant_kind(view) : None;
+    let const  operand    = word.to_literal_string();
+    let const  view       = operand.view();
+    let const  location   = args[1]->source_location();
+    let const  is_literal = word_is_fully_literal(word);
+    let const  constant = is_literal ? get_bracketed_constant_kind(view) : None;
 
     if (constant.has_value()) {
       switch (*constant) {
@@ -539,8 +544,8 @@ fn check_test_operand_lints(AnalysisContext &actx,
   for (usize i = 1; i < operand_end; i++) {
     if (args[i]->kind() != Token::Kind::Word) continue;
     let const &word = static_cast<const tokens::WordToken *>(args[i])->word();
-    let const literal = word.to_literal_string();
-    let const view = literal.view();
+    let const  literal = word.to_literal_string();
+    let const  view    = literal.view();
 
     if ((view == "-z" || view == "-n") && i + 1 < operand_end &&
         args[i + 1]->kind() == Token::Kind::Word)
@@ -619,7 +624,8 @@ constexpr PackedStringKey COMMAND_VALUED_VARIABLE_KEYS[] = {
 constexpr StaticStringSet COMMAND_VALUED_VARIABLES{
     COMMAND_VALUED_VARIABLE_KEYS};
 
-pure fn prefix_value_is_own_name(const PrefixAssignment &var) wontthrow -> bool
+pure fn
+prefix_value_is_own_name(const PrefixAssignment &var) wontthrow -> bool
 {
   let has_matching_reference = false;
 
@@ -640,23 +646,24 @@ pure fn prefix_value_is_own_name(const PrefixAssignment &var) wontthrow -> bool
 
 } /* namespace */
 
-fn check_prefix_assignment_reads(AnalysisContext &actx,
-                                 const command_lint_input &input) throws -> bool
+fn
+check_prefix_assignment_reads(AnalysisContext          &actx,
+                              const command_lint_input &input) throws -> bool
 {
   if (input.local_vars.is_empty()) return false;
 
-  let const &args = input.args;
-  let has_explained_resolution_failure = false;
+  let const &args                             = input.args;
+  let        has_explained_resolution_failure = false;
 
   if (input.local_vars.count() == 1 && !input.command_literal.is_empty()) {
     let const &value = input.local_vars[0].get_value();
-    let const is_bare_word_value =
+    let const  is_bare_word_value =
         value.segments.count() == 1 &&
         (value.segments[0].kind == WordSegment::Kind::UnquotedText ||
          value.segments[0].kind == WordSegment::Kind::LiteralText);
     if (is_bare_word_value) {
       let const assigned = value.segments[0].text.view();
-      let const name = input.local_vars[0].get_name();
+      let const name     = input.local_vars[0].get_name();
       let const is_command_value =
           !COMMAND_VALUED_VARIABLES.contains(name) &&
           get_analysis_command_info(assigned).id != command_name_id::Unknown &&
@@ -677,7 +684,7 @@ fn check_prefix_assignment_reads(AnalysisContext &actx,
     for (let const &segment : word.segments) {
       if (segment.kind != WordSegment::Kind::VariableReference) continue;
       const StringView referenced{segment.text.data(), segment.text.count()};
-      bool has_name_prefix = false;
+      bool             has_name_prefix = false;
 
       for (let const &var : input.local_vars) {
         if (var.get_name() != referenced) continue;
@@ -700,8 +707,8 @@ fn check_prefix_assignment_reads(AnalysisContext &actx,
 
 namespace {
 
-pure fn value_is_self_arithmetic(StringView name, StringView value) wontthrow
-    -> bool
+pure fn
+value_is_self_arithmetic(StringView name, StringView value) wontthrow -> bool
 {
   usize position = 0;
   if (position < value.length && value[position] == '$') {
@@ -728,8 +735,9 @@ pure fn value_is_self_arithmetic(StringView name, StringView value) wontthrow
   return value.substring(position).is_all_decimal_digits();
 }
 
-pure fn assignment_value_is_own_name(StringView name,
-                                     StringView value) wontthrow -> bool
+pure fn
+assignment_value_is_own_name(StringView name, StringView value) wontthrow
+    -> bool
 {
   StringView inner = value;
   if (inner.length >= 2 && inner[0] == '"' && inner[inner.length - 1] == '"') {
@@ -747,7 +755,8 @@ pure fn assignment_value_is_own_name(StringView name,
   return inner.substring(1) == name;
 }
 
-pure fn value_has_written_escape(StringView value) wontthrow -> bool
+pure fn
+value_has_written_escape(StringView value) wontthrow -> bool
 {
   for (usize i = 0; i + 1 < value.length; i += 1) {
     if (value[i] != '\\') continue;
@@ -766,7 +775,8 @@ pure fn value_has_written_escape(StringView value) wontthrow -> bool
 
 } /* namespace */
 
-static pure fn segment_holds_literal_pattern(StringView text) wontthrow -> bool
+static pure fn
+segment_holds_literal_pattern(StringView text) wontthrow -> bool
 {
   if (text.find_character('*').has_value()) return true;
 
@@ -779,12 +789,14 @@ static pure fn segment_holds_literal_pattern(StringView text) wontthrow -> bool
   return text.substring(*open + *comma).find_character('}').has_value();
 }
 
-fn scan_assignment_value(AnalysisContext &actx, const Word &value_word,
-                         const SourceLocation &location) throws
+fn
+scan_assignment_value(AnalysisContext      &actx,
+                      const Word           &value_word,
+                      const SourceLocation &location) throws
     -> assignment_value_shape
 {
   assignment_value_shape shape{};
-  let has_reported_array_collapse = false;
+  let                    has_reported_array_collapse = false;
 
   check_posix_word_portability(actx, value_word, location);
 
@@ -823,9 +835,9 @@ fn scan_assignment_value(AnalysisContext &actx, const Word &value_word,
   return shape;
 }
 
-fn check_assignment_value_shape(AnalysisContext &actx,
-                                const assignment_lint_input &input) throws
-    -> void
+fn
+check_assignment_value_shape(AnalysisContext             &actx,
+                             const assignment_lint_input &input) throws -> void
 {
   let const equals = input.raw_assignment.find_character('=');
   if (!equals.has_value()) return;
@@ -897,7 +909,7 @@ fn check_assignment_value_shape(AnalysisContext &actx,
   }
 
   let const after_first = input.name.substring(*first_bracket + 1);
-  let const closer = after_first.find_character(']');
+  let const closer      = after_first.find_character(']');
   if (closer.has_value() &&
       after_first.substring(*closer + 1).find_character('[').has_value())
   {
@@ -907,7 +919,8 @@ fn check_assignment_value_shape(AnalysisContext &actx,
 
 namespace {
 
-pure fn option_letter_index(char letter) wontthrow -> u32
+pure fn
+option_letter_index(char letter) wontthrow -> u32
 {
   if (letter >= 'a' && letter <= 'z') {
     return static_cast<u32>(letter - 'a');
@@ -919,15 +932,17 @@ pure fn option_letter_index(char letter) wontthrow -> u32
   return 64;
 }
 
-pure fn segment_is_literal(const WordSegment &segment) wontthrow -> bool
+pure fn
+segment_is_literal(const WordSegment &segment) wontthrow -> bool
 {
   return segment.kind == WordSegment::Kind::LiteralText ||
          segment.kind == WordSegment::Kind::UnquotedText ||
          segment.kind == WordSegment::Kind::DoubleQuotedText;
 }
 
-pure fn literal_run_length(const Word &case_word, usize start,
-                           usize end) wontthrow -> usize
+pure fn
+literal_run_length(const Word &case_word, usize start, usize end) wontthrow
+    -> usize
 {
   usize length = 0;
 
@@ -937,9 +952,12 @@ pure fn literal_run_length(const Word &case_word, usize start,
   return length;
 }
 
-pure fn literal_run_matches_at(const Word &case_word, usize start, usize end,
-                               StringView pattern, usize position) wontthrow
-    -> bool
+pure fn
+literal_run_matches_at(const Word &case_word,
+                       usize       start,
+                       usize       end,
+                       StringView  pattern,
+                       usize       position) wontthrow -> bool
 {
   for (usize i = start; i < end; i++) {
     let const text = case_word.segments[i].text.view();
@@ -952,13 +970,14 @@ pure fn literal_run_matches_at(const Word &case_word, usize start, usize end,
   return true;
 }
 
-pure fn case_pattern_can_match_word(const Word &case_word,
-                                    StringView pattern) wontthrow -> bool
+pure fn
+case_pattern_can_match_word(const Word &case_word, StringView pattern) wontthrow
+    -> bool
 {
   usize first = 0;
-  usize last = case_word.segments.count();
+  usize last  = case_word.segments.count();
   usize front = 0;
-  usize back = pattern.length;
+  usize back  = pattern.length;
 
   while (first < last && segment_is_literal(case_word.segments[first])) {
     let const text = case_word.segments[first].text.view();
@@ -994,12 +1013,12 @@ pure fn case_pattern_can_match_word(const Word &case_word,
     }
 
     let const run_length = literal_run_length(case_word, at, run_end);
-    let is_found = false;
+    let       is_found   = false;
 
     for (usize position = front; position + run_length <= back; position++) {
       if (!literal_run_matches_at(case_word, at, run_end, pattern, position))
         continue;
-      front = position + run_length;
+      front    = position + run_length;
       is_found = true;
       break;
     }
@@ -1014,8 +1033,9 @@ pure fn case_pattern_can_match_word(const Word &case_word,
 
 } /* namespace */
 
-fn check_case_word_shape(AnalysisContext &actx,
-                         const case_lint_input &input) throws -> void
+fn
+check_case_word_shape(AnalysisContext       &actx,
+                      const case_lint_input &input) throws -> void
 {
   ASSERT(input.case_word != nullptr);
 
@@ -1027,12 +1047,14 @@ fn check_case_word_shape(AnalysisContext &actx,
   }
 }
 
-fn check_case_pattern_shape(AnalysisContext &actx, const case_lint_input &input,
-                            const Word &pattern_word,
-                            StringView pattern_literal,
-                            StringView pattern_source,
-                            const SourceLocation &pattern_location,
-                            case_arm_tally &tally) throws -> void
+fn
+check_case_pattern_shape(AnalysisContext       &actx,
+                         const case_lint_input &input,
+                         const Word            &pattern_word,
+                         StringView             pattern_literal,
+                         StringView             pattern_source,
+                         const SourceLocation  &pattern_location,
+                         case_arm_tally        &tally) throws -> void
 {
   let const is_bare_pattern =
       pattern_word.segments.count() == 1 &&
@@ -1047,7 +1069,7 @@ fn check_case_pattern_shape(AnalysisContext &actx, const case_lint_input &input,
   if (pattern_literal == "?") tally.has_question_arm = true;
 
   let has_glob_metacharacter = false;
-  let is_literal_pattern = true;
+  let is_literal_pattern     = true;
   let has_unquoted_expansion = false;
 
   for (let const &segment : pattern_word.segments) {
@@ -1101,14 +1123,15 @@ fn check_case_pattern_shape(AnalysisContext &actx, const case_lint_input &input,
   }
 }
 
-fn check_case_option_coverage(AnalysisContext &actx,
-                              const case_lint_input &input,
-                              const case_arm_tally &tally) throws -> void
+fn
+check_case_option_coverage(AnalysisContext       &actx,
+                           const case_lint_input &input,
+                           const case_arm_tally  &tally) throws -> void
 {
   if (!input.is_getopts_case) return;
 
   for (usize i = 0; i < input.getopts_optstring.length; i++) {
-    let const letter = input.getopts_optstring[i];
+    let const letter       = input.getopts_optstring[i];
     let const letter_index = option_letter_index(letter);
     if (letter_index == 64) continue;
     if ((tally.handled_option_letters & (u64{1} << letter_index)) != 0)

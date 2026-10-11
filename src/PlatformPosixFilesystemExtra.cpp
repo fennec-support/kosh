@@ -29,8 +29,9 @@ namespace os {
 #if defined __APPLE__
 
 template <class Value>
-static fn read_bulk_attribute(const char *&field, const char *end,
-                              Value &value) wontthrow -> bool
+static fn
+read_bulk_attribute(const char *&field, const char *end, Value &value) wontthrow
+    -> bool
 {
   if (static_cast<usize>(end - field) < sizeof(Value)) return false;
   __builtin_memcpy(&value, field, sizeof(Value));
@@ -40,50 +41,65 @@ static fn read_bulk_attribute(const char *&field, const char *end,
 }
 
 template <class Value>
-static fn read_returned_bulk_attribute(attrgroup_t returned,
-                                       attrgroup_t attribute,
-                                       const char *&field, const char *end,
-                                       Value &value) wontthrow -> bool
+static fn
+read_returned_bulk_attribute(attrgroup_t  returned,
+                             attrgroup_t  attribute,
+                             const char *&field,
+                             const char  *end,
+                             Value       &value) wontthrow -> bool
 {
   if ((returned & attribute) == 0) return true;
 
   return read_bulk_attribute(field, end, value);
 }
 
-static fn mode_from_vnode_type(fsobj_type_t type) wontthrow -> u32
+static fn
+mode_from_vnode_type(fsobj_type_t type) wontthrow -> u32
 {
   switch (type) {
-  case VREG: return S_IFREG;
-  case VDIR: return S_IFDIR;
-  case VBLK: return S_IFBLK;
-  case VCHR: return S_IFCHR;
-  case VLNK: return S_IFLNK;
+  case VREG:  return S_IFREG;
+  case VDIR:  return S_IFDIR;
+  case VBLK:  return S_IFBLK;
+  case VCHR:  return S_IFCHR;
+  case VLNK:  return S_IFLNK;
   case VSOCK: return S_IFSOCK;
   case VFIFO: return S_IFIFO;
-  default: return 0;
+  default:    return 0;
   }
 }
 
-static fn directory_kind_from_vnode_type(fsobj_type_t type) wontthrow
-    -> Path::EntryKind
+static fn
+directory_kind_from_vnode_type(fsobj_type_t type) wontthrow -> Path::EntryKind
 {
   switch (type) {
   case VDIR: return Path::EntryKind::Directory;
   case VREG: return Path::EntryKind::Regular;
   case VLNK: return Path::EntryKind::Symlink;
   case VNON: return Path::EntryKind::Unknown;
-  default: return Path::EntryKind::Other;
+  default:   return Path::EntryKind::Other;
   }
 }
 
-static fn fill_bulk_file_status(
-    const attribute_set_t &returned, fsobj_type_t type, dev_t device,
-    const timespec &modification_time, const timespec &change_time,
-    const timespec &access_time, uid_t owner, gid_t group, u32 access_mode,
-    u32 flags, u64 file_id, u32 directory_link_count,
-    off_t directory_allocated_byte_count, off_t directory_byte_count,
-    u32 file_link_count, off_t file_byte_count, off_t file_allocated_byte_count,
-    u32 special_device, file_status &status) wontthrow -> bool
+static fn
+fill_bulk_file_status(const attribute_set_t &returned,
+                      fsobj_type_t           type,
+                      dev_t                  device,
+                      const timespec        &modification_time,
+                      const timespec        &change_time,
+                      const timespec        &access_time,
+                      uid_t                  owner,
+                      gid_t                  group,
+                      u32                    access_mode,
+                      u32                    flags,
+                      u64                    file_id,
+                      u32                    directory_link_count,
+                      off_t                  directory_allocated_byte_count,
+                      off_t                  directory_byte_count,
+                      u32                    file_link_count,
+                      off_t                  file_byte_count,
+                      off_t                  file_allocated_byte_count,
+                      u32                    special_device,
+                      file_status           &status) wontthrow -> bool
 {
   constexpr attrgroup_t REQUIRED_COMMON =
       ATTR_CMN_DEVID | ATTR_CMN_OBJTYPE | ATTR_CMN_MODTIME | ATTR_CMN_CHGTIME |
@@ -91,18 +107,18 @@ static fn fill_bulk_file_status(
       ATTR_CMN_ACCESSMASK | ATTR_CMN_FLAGS | ATTR_CMN_FILEID;
   if ((returned.commonattr & REQUIRED_COMMON) != REQUIRED_COMMON) return false;
 
-  status.device_id = static_cast<u64>(device);
-  status.file_id = file_id;
-  status.mode = mode_from_vnode_type(type) | (access_mode & ~S_IFMT);
-  status.owner_id = static_cast<u32>(owner);
-  status.group_id = static_cast<u32>(group);
+  status.device_id   = static_cast<u64>(device);
+  status.file_id     = file_id;
+  status.mode        = mode_from_vnode_type(type) | (access_mode & ~S_IFMT);
+  status.owner_id    = static_cast<u32>(owner);
+  status.group_id    = static_cast<u32>(group);
   status.access_time = access_time.tv_sec;
-  status.access_nanoseconds = static_cast<u32>(access_time.tv_nsec);
-  status.modification_time = modification_time.tv_sec;
+  status.access_nanoseconds       = static_cast<u32>(access_time.tv_nsec);
+  status.modification_time        = modification_time.tv_sec;
   status.modification_nanoseconds = static_cast<u32>(modification_time.tv_nsec);
-  status.change_time = change_time.tv_sec;
-  status.change_nanoseconds = static_cast<u32>(change_time.tv_nsec);
-  status.has_file_identity = true;
+  status.change_time              = change_time.tv_sec;
+  status.change_nanoseconds       = static_cast<u32>(change_time.tv_nsec);
+  status.has_file_identity        = true;
 
   if (type == VDIR) {
     constexpr attrgroup_t REQUIRED_DIRECTORY =
@@ -110,7 +126,7 @@ static fn fill_bulk_file_status(
     if ((returned.dirattr & REQUIRED_DIRECTORY) != REQUIRED_DIRECTORY)
       return false;
     status.link_count = directory_link_count;
-    status.size = static_cast<u64>(directory_byte_count);
+    status.size       = static_cast<u64>(directory_byte_count);
     status.blocks =
         static_cast<u64>(directory_allocated_byte_count + 511) / 512;
   } else {
@@ -119,19 +135,20 @@ static fn fill_bulk_file_status(
         ATTR_FILE_DEVTYPE;
     if ((returned.fileattr & REQUIRED_FILE) != REQUIRED_FILE) return false;
     status.link_count = file_link_count;
-    status.size = static_cast<u64>(file_byte_count);
-    status.blocks = static_cast<u64>(file_allocated_byte_count + 511) / 512;
+    status.size       = static_cast<u64>(file_byte_count);
+    status.blocks     = static_cast<u64>(file_allocated_byte_count + 511) / 512;
     status.special_device_id = special_device;
   }
 
   return (flags & SF_FIRMLINK) == 0;
 }
 
-static fn list_directory_status_bulk(StringView dir, Allocator allocator) throws
+static fn
+list_directory_status_bulk(StringView dir, Allocator allocator) throws
     -> Maybe<ArrayList<directory_status_entry>>
 {
   const String dir_string{dir};
-  let const directory_descriptor = ::open(dir_string.c_str(), O_RDONLY);
+  let const    directory_descriptor = ::open(dir_string.c_str(), O_RDONLY);
   if (directory_descriptor < 0) return None;
   defer { ::close(directory_descriptor); };
 
@@ -149,7 +166,7 @@ static fn list_directory_status_bulk(StringView dir, Allocator allocator) throws
 
   constexpr usize BUFFER_BYTE_COUNT = 64 * 1024;
   alignas(8) char buffer[BUFFER_BYTE_COUNT];
-  let entries = ArrayList<directory_status_entry>{allocator};
+  let             entries = ArrayList<directory_status_entry>{allocator};
 
   loop
   {
@@ -170,30 +187,30 @@ static fn list_directory_status_bulk(StringView dir, Allocator allocator) throws
         return None;
       }
 
-      let const end = record + record_byte_count;
-      let field = record + sizeof(record_byte_count);
+      let const       end   = record + record_byte_count;
+      let             field = record + sizeof(record_byte_count);
       attribute_set_t returned{};
-      u32 error_number = 0;
+      u32             error_number = 0;
       attrreference_t name_reference{};
-      const char *name_reference_field = nullptr;
-      dev_t device = 0;
-      fsobj_type_t type = VNON;
-      timespec modification_time{};
-      timespec change_time{};
-      timespec access_time{};
-      uid_t owner = 0;
-      gid_t group = 0;
-      u32 access_mode = 0;
-      u32 flags = 0;
-      u64 file_id = 0;
-      u32 directory_link_count = 0;
-      u32 directory_mount_status = 0;
-      off_t directory_allocated_byte_count = 0;
-      off_t directory_byte_count = 0;
-      u32 file_link_count = 0;
-      off_t file_byte_count = 0;
-      off_t file_allocated_byte_count = 0;
-      u32 special_device = 0;
+      const char     *name_reference_field = nullptr;
+      dev_t           device               = 0;
+      fsobj_type_t    type                 = VNON;
+      timespec        modification_time{};
+      timespec        change_time{};
+      timespec        access_time{};
+      uid_t           owner                          = 0;
+      gid_t           group                          = 0;
+      u32             access_mode                    = 0;
+      u32             flags                          = 0;
+      u64             file_id                        = 0;
+      u32             directory_link_count           = 0;
+      u32             directory_mount_status         = 0;
+      off_t           directory_allocated_byte_count = 0;
+      off_t           directory_byte_count           = 0;
+      u32             file_link_count                = 0;
+      off_t           file_byte_count                = 0;
+      off_t           file_allocated_byte_count      = 0;
+      u32             special_device                 = 0;
 
       if (!read_bulk_attribute(field, end, returned) ||
           !read_returned_bulk_attribute(returned.commonattr, ATTR_CMN_ERROR,
@@ -266,7 +283,7 @@ static fn list_directory_status_bulk(StringView dir, Allocator allocator) throws
       let const name_length = name_start[name_reference.attr_length - 1] == '\0'
                                   ? name_reference.attr_length - 1
                                   : name_reference.attr_length;
-      let const name = StringView{name_start, name_length};
+      let const name        = StringView{name_start, name_length};
       if (name == StringView{"."} || name == StringView{".."}) {
         record = end;
         continue;
@@ -300,15 +317,16 @@ static fn list_directory_status_bulk(StringView dir, Allocator allocator) throws
   }
 }
 
-static fn find_path_from_file_id(StringView filesystem_path,
-                                 u64 file_id) wontthrow -> Maybe<Path>
+static fn
+find_path_from_file_id(StringView filesystem_path, u64 file_id) wontthrow
+    -> Maybe<Path>
 {
-  const String filesystem_path_string{filesystem_path};
+  const String  filesystem_path_string{filesystem_path};
   struct statfs filesystem{};
   if (::statfs(filesystem_path_string.c_str(), &filesystem) != 0) return None;
 
   constexpr usize PATH_BUFFER_BYTE_COUNT = 8192;
-  char path_buffer[PATH_BUFFER_BYTE_COUNT];
+  char            path_buffer[PATH_BUFFER_BYTE_COUNT];
   let const path_byte_count = ::fsgetpath(path_buffer, sizeof(path_buffer),
                                           &filesystem.f_fsid, file_id);
   if (path_byte_count <= 1) return None;
@@ -320,20 +338,23 @@ static fn find_path_from_file_id(StringView filesystem_path,
 
 #else
 
-static fn list_directory_status_bulk(StringView, Allocator) throws
+static fn
+list_directory_status_bulk(StringView, Allocator) throws
     -> Maybe<ArrayList<directory_status_entry>>
 {
   return None;
 }
 
-static fn find_path_from_file_id(StringView, u64) wontthrow -> Maybe<Path>
+static fn
+find_path_from_file_id(StringView, u64) wontthrow -> Maybe<Path>
 {
   return None;
 }
 
 #endif
 
-cold fn list_directory_status(StringView dir, Allocator allocator) throws
+cold fn
+list_directory_status(StringView dir, Allocator allocator) throws
     -> Maybe<ArrayList<directory_status_entry>>
 {
   if (let entries = list_directory_status_bulk(dir, allocator);
@@ -345,14 +366,15 @@ cold fn list_directory_status(StringView dir, Allocator allocator) throws
   return list_directory_status_fallback(dir, allocator);
 }
 
-fn path_from_file_id(StringView filesystem_path, u64 file_id) wontthrow
+fn
+path_from_file_id(StringView filesystem_path, u64 file_id) wontthrow
     -> Maybe<Path>
 {
   return find_path_from_file_id(filesystem_path, file_id);
 }
 
-static fn copy_type_name(filesystem_status &status, StringView name) wontthrow
-    -> void
+static fn
+copy_type_name(filesystem_status &status, StringView name) wontthrow -> void
 {
   let const copied_length = name.length < sizeof(status.type_name) - 1
                                 ? name.length
@@ -366,7 +388,8 @@ static fn copy_type_name(filesystem_status &status, StringView name) wontthrow
 
 #if defined __linux__
 
-static pure fn linux_filesystem_type_name(u64 type_id) wontthrow -> StringView
+static pure fn
+linux_filesystem_type_name(u64 type_id) wontthrow -> StringView
 {
   switch (type_id) {
   case 0x0000adf5u: return "adfs";
@@ -383,9 +406,9 @@ static pure fn linux_filesystem_type_name(u64 type_id) wontthrow -> StringView
   case 0x01021994u: return "tmpfs";
   case 0x01021997u: return "v9fs";
   case 0x0bad1deau: return "fuse";
-  case 0x1badface: return "bfs";
+  case 0x1badface:  return "bfs";
   case 0x2fc12fc1u: return "zfs";
-  case 0x4244u: return "hfs";
+  case 0x4244u:     return "hfs";
   case 0x52654973u: return "reiserfs";
   case 0x5346414fu: return "afs";
   case 0x53464846u: return "wslfs";
@@ -401,15 +424,15 @@ static pure fn linux_filesystem_type_name(u64 type_id) wontthrow -> StringView
   case 0x9123683eu: return "btrfs";
   case 0xf2f52010u: return "f2fs";
   case 0xf995e849u: return "hpfs";
-  default: break;
+  default:          break;
   }
 
   return "";
 }
 
-static fn fill_native_filesystem_identity(const String &path,
-                                          filesystem_status &status) wontthrow
-    -> void
+static fn
+fill_native_filesystem_identity(const String      &path,
+                                filesystem_status &status) wontthrow -> void
 {
   struct statfs type_info{};
   if (::statfs(path.c_str(), &type_info) != 0) return;
@@ -423,9 +446,9 @@ static fn fill_native_filesystem_identity(const String &path,
 
 #elif defined __APPLE__ || defined BSD
 
-static fn fill_native_filesystem_identity(const String &path,
-                                          filesystem_status &status) wontthrow
-    -> void
+static fn
+fill_native_filesystem_identity(const String      &path,
+                                filesystem_status &status) wontthrow -> void
 {
   struct statfs type_info{};
   if (::statfs(path.c_str(), &type_info) != 0) return;
@@ -435,27 +458,29 @@ static fn fill_native_filesystem_identity(const String &path,
 
 #else
 
-static fn fill_native_filesystem_identity(const String &,
-                                          filesystem_status &) wontthrow -> void
+static fn
+fill_native_filesystem_identity(const String &, filesystem_status &) wontthrow
+    -> void
 {}
 
 #endif
 
-fn stat_filesystem(StringView path, filesystem_status &status) wontthrow -> bool
+fn
+stat_filesystem(StringView path, filesystem_status &status) wontthrow -> bool
 {
-  const String path_string{path};
+  const String   path_string{path};
   struct statvfs info{};
   if (::statvfs(path_string.c_str(), &info) != 0) return false;
   status.block_byte_count = info.f_bsize;
   status.fundamental_block_byte_count =
       info.f_frsize == 0 ? info.f_bsize : info.f_frsize;
-  status.total_blocks = info.f_blocks;
-  status.free_blocks = info.f_bfree;
+  status.total_blocks     = info.f_blocks;
+  status.free_blocks      = info.f_bfree;
   status.available_blocks = info.f_bavail;
-  status.total_files = info.f_files;
-  status.free_files = info.f_ffree;
-  status.name_max = info.f_namemax;
-  status.filesystem_id = info.f_fsid;
+  status.total_files      = info.f_files;
+  status.free_files       = info.f_ffree;
+  status.name_max         = info.f_namemax;
+  status.filesystem_id    = info.f_fsid;
   fill_native_filesystem_identity(path_string, status);
 
   return true;
@@ -463,11 +488,12 @@ fn stat_filesystem(StringView path, filesystem_status &status) wontthrow -> bool
 
 #if defined __APPLE__ || defined BSD
 
-static fn describe_mount_flags(u64 flags) throws -> String
+static fn
+describe_mount_flags(u64 flags) throws -> String
 {
   struct named_mount_flag
   {
-    u64 bit;
+    u64        bit;
     StringView name;
   };
 
@@ -501,17 +527,18 @@ static fn describe_mount_flags(u64 flags) throws -> String
 
 #if defined __APPLE__
 
-static fn read_volume_identity(mounted_filesystem &filesystem) throws -> void
+static fn
+read_volume_identity(mounted_filesystem &filesystem) throws -> void
 {
-  const String target{filesystem.target.view()};
+  const String    target{filesystem.target.view()};
   struct attrlist attributes{};
   attributes.bitmapcount = ATTR_BIT_MAP_COUNT;
 
   struct volume_name_buffer
   {
-    u32 length;
+    u32             length;
     attrreference_t reference;
-    char storage[PATH_MAX];
+    char            storage[PATH_MAX];
   } __attribute__((aligned(4), packed));
   volume_name_buffer name{};
   attributes.volattr = ATTR_VOL_INFO | ATTR_VOL_NAME;
@@ -539,7 +566,7 @@ static fn read_volume_identity(mounted_filesystem &filesystem) throws -> void
 
   struct volume_uuid_buffer
   {
-    u32 length;
+    u32    length;
     uuid_t value;
   } __attribute__((aligned(4), packed));
   volume_uuid_buffer uuid{};
@@ -553,7 +580,8 @@ static fn read_volume_identity(mounted_filesystem &filesystem) throws -> void
 
 #else
 
-static fn read_volume_identity(mounted_filesystem &filesystem) wontthrow -> void
+static fn
+read_volume_identity(mounted_filesystem &filesystem) wontthrow -> void
 {
   unused(filesystem);
 }
@@ -564,8 +592,8 @@ static fn read_volume_identity(mounted_filesystem &filesystem) wontthrow -> void
 
 #if defined __linux__
 
-static fn decode_udev_filename(StringView filename, Allocator allocator) throws
-    -> String
+static fn
+decode_udev_filename(StringView filename, Allocator allocator) throws -> String
 {
   let decoded = String{allocator};
   decoded.reserve(filename.length);
@@ -579,7 +607,7 @@ static fn decode_udev_filename(StringView filename, Allocator allocator) throws
     }
 
     let const high = utils::hex_digit_value(filename[position + 2]);
-    let const low = utils::hex_digit_value(filename[position + 3]);
+    let const low  = utils::hex_digit_value(filename[position + 3]);
     if (!high.has_value() || !low.has_value()) {
       decoded.push(filename[position]);
       continue;
@@ -600,11 +628,11 @@ enum class volume_identity_kind : u8
 
 static fn
 populate_linux_volume_identity(ArrayList<mounted_filesystem> &filesystems,
-                               const ArrayList<Path> &canonical_sources,
-                               StringView directory,
+                               const ArrayList<Path>         &canonical_sources,
+                               StringView                     directory,
                                volume_identity_kind kind) throws -> void
 {
-  let const allocator = heap_allocator();
+  let const allocator          = heap_allocator();
   let const identity_directory = Path{directory, allocator};
   let const entries = Path::read_directory(identity_directory, allocator);
   if (!entries.has_value()) return;
@@ -649,7 +677,7 @@ append_mounted_filesystems(ArrayList<mounted_filesystem> &result) throws -> void
   if (mount_file == nullptr) return;
   defer { endmntent(mount_file); };
   mntent entry{};
-  char buffer[8192];
+  char   buffer[8192];
 
   while (getmntent_r(mount_file, &entry, buffer, sizeof(buffer)) != nullptr) {
     let filesystem =
@@ -678,8 +706,8 @@ append_mounted_filesystems(ArrayList<mounted_filesystem> &result) throws -> void
   populate_linux_volume_identity(result, canonical_sources, "/dev/disk/by-uuid",
                                  volume_identity_kind::Uuid);
 #elif defined __APPLE__ || defined BSD
-  struct statfs *entries = nullptr;
-  let const entry_count = getmntinfo(&entries, MNT_NOWAIT);
+  struct statfs *entries     = nullptr;
+  let const      entry_count = getmntinfo(&entries, MNT_NOWAIT);
 
   for (int index = 0; index < entry_count; index++) {
     let filesystem = mounted_filesystem{
@@ -696,7 +724,8 @@ append_mounted_filesystems(ArrayList<mounted_filesystem> &result) throws -> void
 #endif
 }
 
-fn mounted_filesystems() throws -> ArrayList<mounted_filesystem>
+fn
+mounted_filesystems() throws -> ArrayList<mounted_filesystem>
 {
   let result = ArrayList<mounted_filesystem>{heap_allocator()};
   append_mounted_filesystems(result);
@@ -705,11 +734,11 @@ fn mounted_filesystems() throws -> ArrayList<mounted_filesystem>
 }
 
 static fn
-find_mounted_filesystem(StringView path,
+find_mounted_filesystem(StringView                           path,
                         const ArrayList<mounted_filesystem> &filesystems,
                         StringView required_type = {}) throws -> Maybe<usize>
 {
-  let const absolute_path = Path{path}.to_absolute();
+  let const    absolute_path = Path{path}.to_absolute();
   Maybe<usize> selected_index;
 
   for (usize index = 0; index < filesystems.count(); index++) {
@@ -718,10 +747,10 @@ find_mounted_filesystem(StringView path,
       continue;
     }
 
-    let const target = filesystem.target.view();
-    let const subject = absolute_path.view();
-    let const is_root = target == "/";
-    let const is_same = subject == target;
+    let const target        = filesystem.target.view();
+    let const subject       = absolute_path.view();
+    let const is_root       = target == "/";
+    let const is_same       = subject == target;
     let const is_descendant = subject.starts_with(target) &&
                               subject.length > target.length &&
                               (is_root || subject[target.length] == '/');
@@ -740,7 +769,8 @@ find_mounted_filesystem(StringView path,
 
 #if defined __linux__
 
-static fn read_native_filesystem_error_counters(
+static fn
+read_native_filesystem_error_counters(
     StringView path, filesystem_error_counters &counters) throws -> bool
 {
   let const filesystems = mounted_filesystems();
@@ -749,7 +779,7 @@ static fn read_native_filesystem_error_counters(
   if (!selected_index.has_value()) return false;
   let const &selected = filesystems[*selected_index];
 
-  let const sysfs_root = Path{"/sys/fs/btrfs"};
+  let const sysfs_root       = Path{"/sys/fs/btrfs"};
   let const filesystem_names = Path::read_directory(sysfs_root);
   if (!filesystem_names.has_value()) return false;
 
@@ -811,14 +841,14 @@ static fn read_native_filesystem_error_counters(
     let const contents = stats_path.read_entire_file();
     if (!contents.has_value()) return false;
 
-    u8 seen_counters = 0;
-    usize position = 0;
+    u8    seen_counters = 0;
+    usize position      = 0;
 
     while (position < contents->length()) {
-      let const line = contents->view().next_line(position);
-      usize word_position = 0;
-      let const name = line.next_ascii_whitespace_word(word_position);
-      let const value_text = line.next_ascii_whitespace_word(word_position);
+      let const line          = contents->view().next_line(position);
+      usize     word_position = 0;
+      let const name          = line.next_ascii_whitespace_word(word_position);
+      let const value_text    = line.next_ascii_whitespace_word(word_position);
       if (name.is_empty() || value_text.is_empty()) {
         return false;
       }
@@ -882,10 +912,11 @@ read_ext4_recorded_error_count(const mounted_filesystem &filesystem) throws
   return do_read_count(canonical_source->filename());
 }
 
-fn read_filesystem_integrity_evidence(StringView path) throws
+fn
+read_filesystem_integrity_evidence(StringView path) throws
     -> Maybe<filesystem_integrity_evidence>
 {
-  let const filesystems = mounted_filesystems();
+  let const filesystems    = mounted_filesystems();
   let const selected_index = find_mounted_filesystem(path, filesystems);
   if (!selected_index.has_value()) return None;
   let const &filesystem = filesystems[*selected_index];
@@ -914,7 +945,8 @@ fn read_filesystem_integrity_evidence(StringView path) throws
 
 #else
 
-fn read_filesystem_integrity_evidence(StringView) throws
+fn
+read_filesystem_integrity_evidence(StringView) throws
     -> Maybe<filesystem_integrity_evidence>
 {
   return None;
@@ -922,11 +954,12 @@ fn read_filesystem_integrity_evidence(StringView) throws
 
 #endif
 
-fn verify_filesystem_integrity(StringView path, u64 timeout_nanoseconds) throws
+fn
+verify_filesystem_integrity(StringView path, u64 timeout_nanoseconds) throws
     -> filesystem_verification_result
 {
 #if defined __APPLE__
-  let const filesystems = mounted_filesystems();
+  let const filesystems    = mounted_filesystems();
   let const selected_index = find_mounted_filesystem(path, filesystems);
   if (!selected_index.has_value() ||
       filesystems[*selected_index].type != "apfs")
@@ -962,11 +995,11 @@ fn verify_filesystem_integrity(StringView path, u64 timeout_nanoseconds) throws
     return filesystem_verification_result::Unavailable;
   }
 
-  let const mount_path = filesystems[*selected_index].target.clone();
-  char *arguments[] = {const_cast<char *>(DISKUTIL_PATH),
-                       const_cast<char *>("verifyVolume"),
-                       const_cast<char *>(mount_path.c_str()), nullptr};
-  pid_t child = 0;
+  let const mount_path  = filesystems[*selected_index].target.clone();
+  char     *arguments[] = {const_cast<char *>(DISKUTIL_PATH),
+                           const_cast<char *>("verifyVolume"),
+                           const_cast<char *>(mount_path.c_str()), nullptr};
+  pid_t     child       = 0;
   let const spawn_result =
       posix_spawn(&child, DISKUTIL_PATH, &actions, nullptr, arguments, environ);
   ::close(null_descriptor);
@@ -981,7 +1014,7 @@ fn verify_filesystem_integrity(StringView path, u64 timeout_nanoseconds) throws
 
   loop
   {
-    int status = 0;
+    int       status = 0;
     let const waited = ::waitpid(child, &status, WNOHANG);
     if (waited == child) {
       return WIFEXITED(status) && WEXITSTATUS(status) == 0
@@ -1021,8 +1054,8 @@ fn verify_filesystem_integrity(StringView path, u64 timeout_nanoseconds) throws
 
 #if defined __APPLE__
 
-static fn sync_native_descriptor(descriptor fd, sync_mode mode) wontthrow
-    -> bool
+static fn
+sync_native_descriptor(descriptor fd, sync_mode mode) wontthrow -> bool
 {
   unused(mode);
 
@@ -1031,18 +1064,19 @@ static fn sync_native_descriptor(descriptor fd, sync_mode mode) wontthrow
 
 #else
 
-static fn sync_native_descriptor(descriptor fd, sync_mode mode) wontthrow
-    -> bool
+static fn
+sync_native_descriptor(descriptor fd, sync_mode mode) wontthrow -> bool
 {
   return (mode == sync_mode::DataOnly ? ::fdatasync(fd) : ::fsync(fd)) == 0;
 }
 
 #endif
 
-fn sync_path(StringView path, sync_mode mode) wontthrow -> bool
+fn
+sync_path(StringView path, sync_mode mode) wontthrow -> bool
 {
   const String path_string{path};
-  let const path_fd = ::open(path_string.c_str(), O_RDONLY | O_CLOEXEC);
+  let const    path_fd = ::open(path_string.c_str(), O_RDONLY | O_CLOEXEC);
   if (path_fd < 0) return false;
   defer { ::close(path_fd); };
 
@@ -1051,8 +1085,8 @@ fn sync_path(StringView path, sync_mode mode) wontthrow -> bool
 
 namespace batch_internal {
 
-static fn validate_batched_syscall(const batched_syscall &operation) wontthrow
-    -> i32
+static fn
+validate_batched_syscall(const batched_syscall &operation) wontthrow -> i32
 {
   if (operation.byte_count > static_cast<usize>(SSIZE_MAX) ||
       operation.byte_offset > 0x7fffffffffffffffULL)
@@ -1104,8 +1138,9 @@ static fn validate_batched_syscall(const batched_syscall &operation) wontthrow
 }
 
 template <typename Transfer>
-static fn run_batched_transfer(batched_syscall_result &result,
-                               Transfer do_transfer) wontthrow -> void
+static fn
+run_batched_transfer(batched_syscall_result &result,
+                     Transfer                do_transfer) wontthrow -> void
 {
   loop
   {
@@ -1125,7 +1160,7 @@ static fn run_batched_transfer(batched_syscall_result &result,
 }
 
 static fn
-execute_batched_syscall_direct(const batched_syscall &operation,
+execute_batched_syscall_direct(const batched_syscall  &operation,
                                batched_syscall_result &result) wontthrow -> void
 {
   result = {operation.request_id, 0, validate_batched_syscall(operation)};
@@ -1175,10 +1210,10 @@ execute_batched_syscall_direct(const batched_syscall &operation,
   case batched_syscall_id::StatAt:
 #if defined __linux__
   {
-    let const stat_flags = batch_operation_access::get_kind(operation) ==
+    let const   stat_flags = batch_operation_access::get_kind(operation) ==
                                    batched_syscall_id::LstatAt
-                               ? AT_SYMLINK_NOFOLLOW
-                               : 0;
+                                 ? AT_SYMLINK_NOFOLLOW
+                                 : 0;
     struct stat info{};
 
     loop
@@ -1214,8 +1249,9 @@ execute_batched_syscall_direct(const batched_syscall &operation,
 
 #if defined __APPLE__
 
-static pure fn find_directory_status_entry(
-    const ArrayList<directory_status_entry> &entries, StringView name) wontthrow
+static pure fn
+find_directory_status_entry(const ArrayList<directory_status_entry> &entries,
+                            StringView name) wontthrow
     -> const directory_status_entry *
 {
   usize lower = 0;
@@ -1237,8 +1273,8 @@ static pure fn find_directory_status_entry(
 }
 
 static fn
-execute_getattrlistbulk_batch(const batched_syscall *operations,
-                              usize operation_count,
+execute_getattrlistbulk_batch(const batched_syscall  *operations,
+                              usize                   operation_count,
                               batched_syscall_result *results) wontthrow -> bool
 {
   if (operation_count < 2) return false;
@@ -1253,7 +1289,7 @@ execute_getattrlistbulk_batch(const batched_syscall *operations,
   }
 
   try {
-    let parent_paths = ArrayList<Path>{heap_allocator()};
+    let parent_paths                  = ArrayList<Path>{heap_allocator()};
     let collected_operation_positions = ArrayList<usize>{heap_allocator()};
     parent_paths.reserve(operation_count);
     collected_operation_positions.reserve(operation_count);
@@ -1267,7 +1303,7 @@ execute_getattrlistbulk_batch(const batched_syscall *operations,
     let const operation_positions =
         steal(collected_operation_positions)
             .make_sorted([&](usize left, usize right) {
-              let const left_parent = parent_paths[left].view();
+              let const left_parent  = parent_paths[left].view();
               let const right_parent = parent_paths[right].view();
               if (left_parent != right_parent)
                 return left_parent < right_parent;
@@ -1278,9 +1314,9 @@ execute_getattrlistbulk_batch(const batched_syscall *operations,
     usize group_start = 0;
 
     while (group_start < operation_count) {
-      let const first_position = operation_positions[group_start];
-      let const &group_parent = parent_paths[first_position];
-      usize group_end = group_start + 1;
+      let const  first_position = operation_positions[group_start];
+      let const &group_parent   = parent_paths[first_position];
+      usize      group_end      = group_start + 1;
 
       while (group_end < operation_count) {
         let const candidate_position = operation_positions[group_end];
@@ -1309,10 +1345,10 @@ execute_getattrlistbulk_batch(const batched_syscall *operations,
       for (usize group_position = group_start; group_position < group_end;
            group_position++)
       {
-        let const operation_position = operation_positions[group_position];
-        let const &operation = operations[operation_position];
-        let &result = results[operation_position];
-        result = {operation.request_id, 0, 0};
+        let const  operation_position = operation_positions[group_position];
+        let const &operation          = operations[operation_position];
+        let       &result             = results[operation_position];
+        result                        = {operation.request_id, 0, 0};
 
         bool has_status = false;
         if (entries.has_value()) {
@@ -1321,7 +1357,7 @@ execute_getattrlistbulk_batch(const batched_syscall *operations,
           let const *entry = find_directory_status_entry(*entries, filename);
           if (entry != nullptr && entry->has_status) {
             *batch_operation_access::get_status(operation) = entry->status;
-            has_status = true;
+            has_status                                     = true;
           }
         }
         if (!has_status) execute_batched_syscall_direct(operation, result);
@@ -1336,17 +1372,18 @@ execute_getattrlistbulk_batch(const batched_syscall *operations,
   }
 }
 
-static fn finish_suspended_aio(aiocb &control,
-                               batched_syscall_result &result) wontthrow -> bool
+static fn
+finish_suspended_aio(aiocb &control, batched_syscall_result &result) wontthrow
+    -> bool
 {
-  errno = 0;
-  let const error_number = ::aio_error(&control);
+  errno                         = 0;
+  let const error_number        = ::aio_error(&control);
   let const status_error_number = errno;
   if (error_number == EINPROGRESS) return false;
 
-  errno = 0;
+  errno                            = 0;
   let const transferred_byte_count = ::aio_return(&control);
-  let const return_error_number = errno;
+  let const return_error_number    = errno;
   if (transferred_byte_count >= 0) {
     result.transferred_byte_count = static_cast<usize>(transferred_byte_count);
   } else if (error_number > 0) {
@@ -1359,14 +1396,14 @@ static fn finish_suspended_aio(aiocb &control,
   return true;
 }
 
-static fn execute_suspended_aio_batch(const batched_syscall *operations,
-                                      usize operation_count,
-                                      batched_syscall_result *results) wontthrow
-    -> bool
+static fn
+execute_suspended_aio_batch(const batched_syscall  *operations,
+                            usize                   operation_count,
+                            batched_syscall_result *results) wontthrow -> bool
 {
   constexpr usize MINIMUM_AIO_BYTE_COUNT = 1024 * 1024;
-  usize aio_operation_count = 0;
-  usize aio_byte_count = 0;
+  usize           aio_operation_count    = 0;
+  usize           aio_byte_count         = 0;
 
   for (usize index = 0; index < operation_count; index++) {
     let const &operation = operations[index];
@@ -1384,8 +1421,8 @@ static fn execute_suspended_aio_batch(const batched_syscall *operations,
     case batched_syscall_id::Stat:
     case batched_syscall_id::LstatAt:
     case batched_syscall_id::StatAt:
-    case batched_syscall_id::Exists: break;
-    case batched_syscall_id::Invalid: return false;
+    case batched_syscall_id::Exists:       break;
+    case batched_syscall_id::Invalid:      return false;
     }
   }
 
@@ -1399,16 +1436,16 @@ static fn execute_suspended_aio_batch(const batched_syscall *operations,
     let const chunk_count = operation_count - operation_start > AIO_LISTIO_MAX
                                 ? static_cast<usize>(AIO_LISTIO_MAX)
                                 : operation_count - operation_start;
-    aiocb controls[AIO_LISTIO_MAX]{};
-    bool is_queued[AIO_LISTIO_MAX]{};
-    bool is_completed[AIO_LISTIO_MAX]{};
-    usize queued_count = 0;
+    aiocb     controls[AIO_LISTIO_MAX]{};
+    bool      is_queued[AIO_LISTIO_MAX]{};
+    bool      is_completed[AIO_LISTIO_MAX]{};
+    usize     queued_count = 0;
 
     for (usize chunk_index = 0; chunk_index < chunk_count; chunk_index++) {
-      let const operation_index = operation_start + chunk_index;
-      let const &operation = operations[operation_index];
-      let &result = results[operation_index];
-      let const operation_kind = batch_operation_access::get_kind(operation);
+      let const  operation_index = operation_start + chunk_index;
+      let const &operation       = operations[operation_index];
+      let       &result          = results[operation_index];
+      let const  operation_kind  = batch_operation_access::get_kind(operation);
       result = {operation.request_id, 0, validate_batched_syscall(operation)};
       if (result.error_number != 0) continue;
 
@@ -1423,10 +1460,10 @@ static fn execute_suspended_aio_batch(const batched_syscall *operations,
       case batched_syscall_id::Read:
       case batched_syscall_id::Write:
       case batched_syscall_id::WriteCurrent: break;
-      case batched_syscall_id::Invalid: continue;
+      case batched_syscall_id::Invalid:      continue;
       }
 
-      let &control = controls[chunk_index];
+      let &control       = controls[chunk_index];
       control.aio_fildes = batch_operation_access::get_descriptor(operation);
       control.aio_offset = static_cast<off_t>(operation.byte_offset);
       control.aio_buf =
@@ -1434,7 +1471,7 @@ static fn execute_suspended_aio_batch(const batched_syscall *operations,
               ? batch_operation_access::get_output_buffer(operation)
               : const_cast<char *>(
                     batch_operation_access::get_input_buffer(operation));
-      control.aio_nbytes = operation.byte_count;
+      control.aio_nbytes                = operation.byte_count;
       control.aio_sigevent.sigev_notify = SIGEV_NONE;
 
       let const submission_result = operation_kind == batched_syscall_id::Read
@@ -1453,7 +1490,7 @@ static fn execute_suspended_aio_batch(const batched_syscall *operations,
       queued_count++;
     }
 
-    usize completed_count = 0;
+    usize     completed_count    = 0;
     let const do_interrupt_batch = [&](i32 error_number) wontthrow -> void {
       for (usize chunk_index = 0; chunk_index < chunk_count; chunk_index++) {
         if (!is_queued[chunk_index] || is_completed[chunk_index]) {
@@ -1468,7 +1505,7 @@ static fn execute_suspended_aio_batch(const batched_syscall *operations,
           continue;
         }
 
-        let &result = results[operation_start + chunk_index];
+        let         &result    = results[operation_start + chunk_index];
         const aiocb *pending[] = {&controls[chunk_index]};
 
         while (!finish_suspended_aio(controls[chunk_index], result))
@@ -1495,7 +1532,7 @@ static fn execute_suspended_aio_batch(const batched_syscall *operations,
       }
 
       const aiocb *pending[AIO_LISTIO_MAX]{};
-      usize pending_count = 0;
+      usize        pending_count = 0;
 
       for (usize chunk_index = 0; chunk_index < chunk_count; chunk_index++) {
         if (!is_queued[chunk_index] || is_completed[chunk_index]) {
@@ -1533,10 +1570,10 @@ static fn execute_suspended_aio_batch(const batched_syscall *operations,
   return true;
 }
 
-static fn execute_native_batch(const batched_syscall *operations,
-                               usize operation_count,
-                               batched_syscall_result *results) wontthrow
-    -> bool
+static fn
+execute_native_batch(const batched_syscall  *operations,
+                     usize                   operation_count,
+                     batched_syscall_result *results) wontthrow -> bool
 {
   if (execute_getattrlistbulk_batch(operations, operation_count, results))
     return true;
@@ -1546,27 +1583,28 @@ static fn execute_native_batch(const batched_syscall *operations,
 
 #elif defined __linux__
 
-static fn fill_file_status(const struct statx &info,
-                           file_status &status) wontthrow -> void
+static fn
+fill_file_status(const struct statx &info, file_status &status) wontthrow
+    -> void
 {
   status.device_id =
       static_cast<u64>(makedev(info.stx_dev_major, info.stx_dev_minor));
   status.special_device_id =
       static_cast<u64>(makedev(info.stx_rdev_major, info.stx_rdev_minor));
-  status.file_id = info.stx_ino;
-  status.link_count = info.stx_nlink;
-  status.size = info.stx_size;
-  status.access_time = info.stx_atime.tv_sec;
-  status.modification_time = info.stx_mtime.tv_sec;
-  status.change_time = info.stx_ctime.tv_sec;
-  status.blocks = info.stx_blocks;
-  status.mode = info.stx_mode;
-  status.owner_id = info.stx_uid;
-  status.group_id = info.stx_gid;
-  status.access_nanoseconds = info.stx_atime.tv_nsec;
+  status.file_id                  = info.stx_ino;
+  status.link_count               = info.stx_nlink;
+  status.size                     = info.stx_size;
+  status.access_time              = info.stx_atime.tv_sec;
+  status.modification_time        = info.stx_mtime.tv_sec;
+  status.change_time              = info.stx_ctime.tv_sec;
+  status.blocks                   = info.stx_blocks;
+  status.mode                     = info.stx_mode;
+  status.owner_id                 = info.stx_uid;
+  status.group_id                 = info.stx_gid;
+  status.access_nanoseconds       = info.stx_atime.tv_nsec;
   status.modification_nanoseconds = info.stx_mtime.tv_nsec;
-  status.change_nanoseconds = info.stx_ctime.tv_nsec;
-  status.has_file_identity = true;
+  status.change_nanoseconds       = info.stx_ctime.tv_nsec;
+  status.has_file_identity        = true;
 }
 
 static constexpr u32 IO_URING_ENTRY_COUNT = 512;
@@ -1574,34 +1612,35 @@ static constexpr u32 IO_URING_ENTRY_COUNT = 512;
 struct io_uring_batch
 {
   io_uring_params parameters{};
-  io_uring_sqe *submission_entries{nullptr};
-  io_uring_cqe *completion_entries{nullptr};
-  u32 *submission_head{nullptr};
-  u32 *submission_tail{nullptr};
-  u32 *submission_mask{nullptr};
-  u32 *submission_count{nullptr};
-  u32 *submission_array{nullptr};
-  u32 *completion_head{nullptr};
-  u32 *completion_tail{nullptr};
-  u32 *completion_mask{nullptr};
-  u32 *completion_count{nullptr};
-  opaque *submission_mapping{MAP_FAILED};
-  opaque *completion_mapping{MAP_FAILED};
-  opaque *entry_mapping{MAP_FAILED};
-  usize submission_mapping_byte_count{0};
-  usize completion_mapping_byte_count{0};
-  usize entry_mapping_byte_count{0};
-  i64 owner_process_id{-1};
-  i32 descriptor{-1};
-  bool has_shared_mapping{false};
-  bool has_read{false};
-  bool has_write{false};
-  bool has_stat{false};
+  io_uring_sqe   *submission_entries{nullptr};
+  io_uring_cqe   *completion_entries{nullptr};
+  u32            *submission_head{nullptr};
+  u32            *submission_tail{nullptr};
+  u32            *submission_mask{nullptr};
+  u32            *submission_count{nullptr};
+  u32            *submission_array{nullptr};
+  u32            *completion_head{nullptr};
+  u32            *completion_tail{nullptr};
+  u32            *completion_mask{nullptr};
+  u32            *completion_count{nullptr};
+  opaque         *submission_mapping{MAP_FAILED};
+  opaque         *completion_mapping{MAP_FAILED};
+  opaque         *entry_mapping{MAP_FAILED};
+  usize           submission_mapping_byte_count{0};
+  usize           completion_mapping_byte_count{0};
+  usize           entry_mapping_byte_count{0};
+  i64             owner_process_id{-1};
+  i32             descriptor{-1};
+  bool            has_shared_mapping{false};
+  bool            has_read{false};
+  bool            has_write{false};
+  bool            has_stat{false};
 
   ~io_uring_batch();
 };
 
-static fn close_io_uring_batch(io_uring_batch &ring) wontthrow -> void
+static fn
+close_io_uring_batch(io_uring_batch &ring) wontthrow -> void
 {
   if (ring.descriptor >= 0) {
     ::close(ring.descriptor);
@@ -1620,33 +1659,33 @@ static fn close_io_uring_batch(io_uring_batch &ring) wontthrow -> void
     ring.submission_mapping = MAP_FAILED;
   }
 
-  ring.parameters = {};
-  ring.submission_entries = nullptr;
-  ring.completion_entries = nullptr;
-  ring.submission_head = nullptr;
-  ring.submission_tail = nullptr;
-  ring.submission_mask = nullptr;
-  ring.submission_count = nullptr;
-  ring.submission_array = nullptr;
-  ring.completion_head = nullptr;
-  ring.completion_tail = nullptr;
-  ring.completion_mask = nullptr;
-  ring.completion_count = nullptr;
-  ring.completion_mapping = MAP_FAILED;
+  ring.parameters                    = {};
+  ring.submission_entries            = nullptr;
+  ring.completion_entries            = nullptr;
+  ring.submission_head               = nullptr;
+  ring.submission_tail               = nullptr;
+  ring.submission_mask               = nullptr;
+  ring.submission_count              = nullptr;
+  ring.submission_array              = nullptr;
+  ring.completion_head               = nullptr;
+  ring.completion_tail               = nullptr;
+  ring.completion_mask               = nullptr;
+  ring.completion_count              = nullptr;
+  ring.completion_mapping            = MAP_FAILED;
   ring.submission_mapping_byte_count = 0;
   ring.completion_mapping_byte_count = 0;
-  ring.entry_mapping_byte_count = 0;
-  ring.owner_process_id = -1;
-  ring.has_shared_mapping = false;
-  ring.has_read = false;
-  ring.has_write = false;
-  ring.has_stat = false;
+  ring.entry_mapping_byte_count      = 0;
+  ring.owner_process_id              = -1;
+  ring.has_shared_mapping            = false;
+  ring.has_read                      = false;
+  ring.has_write                     = false;
+  ring.has_stat                      = false;
 }
 
 io_uring_batch::~io_uring_batch() { close_io_uring_batch(*this); }
 
-static fn io_uring_supports(const io_uring_probe &probe, u8 opcode) wontthrow
-    -> bool
+static fn
+io_uring_supports(const io_uring_probe &probe, u8 opcode) wontthrow -> bool
 {
   for (u8 index = 0; index < probe.ops_len; index++) {
     let const &operation = probe.ops[index];
@@ -1667,7 +1706,8 @@ enum class io_uring_open_result : u8
   Unavailable,
 };
 
-static pure fn classify_io_uring_open_failure(i32 error_number) wontthrow
+static pure fn
+classify_io_uring_open_failure(i32 error_number) wontthrow
     -> io_uring_open_result
 {
   switch (error_number) {
@@ -1675,13 +1715,13 @@ static pure fn classify_io_uring_open_failure(i32 error_number) wontthrow
   case EINVAL:
   case ENOSYS:
   case EOPNOTSUPP:
-  case EPERM: return io_uring_open_result::Unavailable;
-  default: return io_uring_open_result::TransientFailure;
+  case EPERM:      return io_uring_open_result::Unavailable;
+  default:         return io_uring_open_result::TransientFailure;
   }
 }
 
-static fn open_io_uring_batch(io_uring_batch &ring) wontthrow
-    -> io_uring_open_result
+static fn
+open_io_uring_batch(io_uring_batch &ring) wontthrow -> io_uring_open_result
 {
   ring.descriptor = static_cast<i32>(
       ::syscall(SYS_io_uring_setup, IO_URING_ENTRY_COUNT, &ring.parameters));
@@ -1689,9 +1729,9 @@ static fn open_io_uring_batch(io_uring_batch &ring) wontthrow
   ring.owner_process_id = get_current_process_id();
 
   alignas(io_uring_probe)
-      u8 probe_storage[sizeof(io_uring_probe) +
+      u8    probe_storage[sizeof(io_uring_probe) +
                        (IORING_OP_LAST + 1) * sizeof(io_uring_probe_op)]{};
-  let &probe = *reinterpret_cast<io_uring_probe *>(probe_storage);
+  let      &probe = *reinterpret_cast<io_uring_probe *>(probe_storage);
   let const probe_result =
       ::syscall(SYS_io_uring_register, ring.descriptor, IORING_REGISTER_PROBE,
                 &probe, static_cast<u32>(IORING_OP_LAST + 1));
@@ -1701,9 +1741,9 @@ static fn open_io_uring_batch(io_uring_batch &ring) wontthrow
 
     return classify_io_uring_open_failure(error_number);
   }
-  ring.has_read = io_uring_supports(probe, IORING_OP_READ);
+  ring.has_read  = io_uring_supports(probe, IORING_OP_READ);
   ring.has_write = io_uring_supports(probe, IORING_OP_WRITE);
-  ring.has_stat = io_uring_supports(probe, IORING_OP_STATX);
+  ring.has_stat  = io_uring_supports(probe, IORING_OP_STATX);
 
   ring.submission_mapping_byte_count =
       ring.parameters.sq_off.array + ring.parameters.sq_entries * sizeof(u32);
@@ -1786,10 +1826,10 @@ static fn open_io_uring_batch(io_uring_batch &ring) wontthrow
   return io_uring_open_result::Opened;
 }
 
-static fn io_uring_batch_supports_operations(const io_uring_batch &ring,
-                                             const batched_syscall *operations,
-                                             usize operation_count) wontthrow
-    -> bool
+static fn
+io_uring_batch_supports_operations(const io_uring_batch  &ring,
+                                   const batched_syscall *operations,
+                                   usize operation_count) wontthrow -> bool
 {
   for (usize index = 0; index < operation_count; index++) {
     switch (batch_operation_access::get_kind(operations[index])) {
@@ -1824,7 +1864,7 @@ static fn io_uring_batch_supports_operations(const io_uring_batch &ring,
       if (!ring.has_stat) return false;
       break;
     case batched_syscall_id::LstatAt:
-    case batched_syscall_id::StatAt: return false;
+    case batched_syscall_id::StatAt:  return false;
     case batched_syscall_id::Invalid: return false;
     }
   }
@@ -1832,16 +1872,16 @@ static fn io_uring_batch_supports_operations(const io_uring_batch &ring,
   return true;
 }
 
-static fn execute_io_uring_batch(const batched_syscall *operations,
-                                 usize operation_count,
-                                 batched_syscall_result *results) wontthrow
-    -> bool
+static fn
+execute_io_uring_batch(const batched_syscall  *operations,
+                       usize                   operation_count,
+                       batched_syscall_result *results) wontthrow -> bool
 {
   if (operation_count < 32) return false;
 
   for (usize index = 0; index < operation_count; index++) {
-    let const &operation = operations[index];
-    let const operation_kind = batch_operation_access::get_kind(operation);
+    let const &operation      = operations[index];
+    let const  operation_kind = batch_operation_access::get_kind(operation);
     switch (operation_kind) {
     case batched_syscall_id::Read:
     case batched_syscall_id::Write:
@@ -1858,8 +1898,8 @@ static fn execute_io_uring_batch(const batched_syscall *operations,
   }
 
   static thread_local io_uring_batch ring{};
-  static thread_local i64 unavailable_process_id = -1;
-  let const process_id = get_current_process_id();
+  static thread_local i64            unavailable_process_id = -1;
+  let const                          process_id = get_current_process_id();
   if (ring.descriptor >= 0 && ring.owner_process_id != process_id) {
     close_io_uring_batch(ring);
   }
@@ -1894,46 +1934,46 @@ static fn execute_io_uring_batch(const batched_syscall *operations,
                                 ? available_count
                                 : operation_count - operation_start;
     struct statx status_records[IO_URING_ENTRY_COUNT]{};
-    bool was_queued[IO_URING_ENTRY_COUNT]{};
-    bool was_completed[IO_URING_ENTRY_COUNT]{};
-    let const initial_tail =
+    bool         was_queued[IO_URING_ENTRY_COUNT]{};
+    bool         was_completed[IO_URING_ENTRY_COUNT]{};
+    let const    initial_tail =
         __atomic_load_n(ring.submission_tail, __ATOMIC_ACQUIRE);
     u32 queued_count = 0;
 
     for (usize chunk_index = 0; chunk_index < chunk_count; chunk_index++) {
-      let const operation_index = operation_start + chunk_index;
-      let const &operation = operations[operation_index];
-      results[operation_index] = {operation.request_id, 0,
-                                  validate_batched_syscall(operation)};
+      let const  operation_index = operation_start + chunk_index;
+      let const &operation       = operations[operation_index];
+      results[operation_index]   = {operation.request_id, 0,
+                                    validate_batched_syscall(operation)};
       if (results[operation_index].error_number != 0) continue;
 
       let const submission_index =
           (initial_tail + queued_count) & *ring.submission_mask;
-      let &entry = ring.submission_entries[submission_index];
-      entry = {};
+      let &entry      = ring.submission_entries[submission_index];
+      entry           = {};
       entry.user_data = operation_index;
       switch (batch_operation_access::get_kind(operation)) {
       case batched_syscall_id::Read:
         entry.opcode = IORING_OP_READ;
-        entry.fd = batch_operation_access::get_descriptor(operation);
-        entry.off = operation.byte_offset;
-        entry.addr = reinterpret_cast<u64>(
+        entry.fd     = batch_operation_access::get_descriptor(operation);
+        entry.off    = operation.byte_offset;
+        entry.addr   = reinterpret_cast<u64>(
             batch_operation_access::get_output_buffer(operation));
         entry.len = static_cast<u32>(operation.byte_count);
         break;
       case batched_syscall_id::Write:
         entry.opcode = IORING_OP_WRITE;
-        entry.fd = batch_operation_access::get_descriptor(operation);
-        entry.off = operation.byte_offset;
-        entry.addr = reinterpret_cast<u64>(
+        entry.fd     = batch_operation_access::get_descriptor(operation);
+        entry.off    = operation.byte_offset;
+        entry.addr   = reinterpret_cast<u64>(
             batch_operation_access::get_input_buffer(operation));
         entry.len = static_cast<u32>(operation.byte_count);
         break;
       case batched_syscall_id::WriteCurrent:
         entry.opcode = IORING_OP_WRITE;
-        entry.fd = batch_operation_access::get_descriptor(operation);
-        entry.off = UINT64_MAX;
-        entry.addr = reinterpret_cast<u64>(
+        entry.fd     = batch_operation_access::get_descriptor(operation);
+        entry.off    = UINT64_MAX;
+        entry.addr   = reinterpret_cast<u64>(
             batch_operation_access::get_input_buffer(operation));
         entry.len = static_cast<u32>(operation.byte_count);
         break;
@@ -1941,15 +1981,15 @@ static fn execute_io_uring_batch(const batched_syscall *operations,
       case batched_syscall_id::Stat:
       case batched_syscall_id::Exists:
         entry.opcode = IORING_OP_STATX;
-        entry.fd = AT_FDCWD;
-        entry.addr = reinterpret_cast<u64>(
+        entry.fd     = AT_FDCWD;
+        entry.addr   = reinterpret_cast<u64>(
             batch_operation_access::get_path(operation)->c_str());
-        entry.len = STATX_BASIC_STATS;
+        entry.len         = STATX_BASIC_STATS;
         entry.statx_flags = batch_operation_access::get_kind(operation) ==
                                     batched_syscall_id::Lstat
                                 ? AT_SYMLINK_NOFOLLOW
                                 : 0;
-        entry.addr2 = reinterpret_cast<u64>(&status_records[chunk_index]);
+        entry.addr2       = reinterpret_cast<u64>(&status_records[chunk_index]);
         break;
       case batched_syscall_id::LstatAt:
       case batched_syscall_id::StatAt:
@@ -1957,17 +1997,17 @@ static fn execute_io_uring_batch(const batched_syscall *operations,
         entry.fd = batch_operation_access::get_directory_descriptor(operation);
         entry.addr = reinterpret_cast<u64>(
             batch_operation_access::get_relative_name(operation));
-        entry.len = STATX_BASIC_STATS;
+        entry.len         = STATX_BASIC_STATS;
         entry.statx_flags = batch_operation_access::get_kind(operation) ==
                                     batched_syscall_id::LstatAt
                                 ? AT_SYMLINK_NOFOLLOW
                                 : 0;
-        entry.addr2 = reinterpret_cast<u64>(&status_records[chunk_index]);
+        entry.addr2       = reinterpret_cast<u64>(&status_records[chunk_index]);
         break;
       case batched_syscall_id::Invalid: continue;
       }
       ring.submission_array[submission_index] = submission_index;
-      was_queued[chunk_index] = true;
+      was_queued[chunk_index]                 = true;
       queued_count++;
     }
 
@@ -2001,7 +2041,7 @@ static fn execute_io_uring_batch(const batched_syscall *operations,
     {
       let const current_head =
           __atomic_load_n(ring.submission_head, __ATOMIC_ACQUIRE);
-      let const pending_count = published_tail - current_head;
+      let const pending_count   = published_tail - current_head;
       let const submitted_count = ::syscall(SYS_io_uring_enter, ring.descriptor,
                                             pending_count, 0, 0, nullptr, 0);
       if (submitted_count < 0 && errno == EINTR) {
@@ -2051,8 +2091,8 @@ static fn execute_io_uring_batch(const batched_syscall *operations,
         let const &completion =
             ring.completion_entries[completion_head & *ring.completion_mask];
         let const operation_index = static_cast<usize>(completion.user_data);
-        let const chunk_index = operation_index - operation_start;
-        let &result = results[operation_index];
+        let const chunk_index     = operation_index - operation_start;
+        let      &result          = results[operation_index];
         let const operation_kind =
             batch_operation_access::get_kind(operations[operation_index]);
         if (completion.res < 0) {
@@ -2121,20 +2161,20 @@ static fn execute_io_uring_batch(const batched_syscall *operations,
   return true;
 }
 
-static fn execute_native_batch(const batched_syscall *operations,
-                               usize operation_count,
-                               batched_syscall_result *results) wontthrow
-    -> bool
+static fn
+execute_native_batch(const batched_syscall  *operations,
+                     usize                   operation_count,
+                     batched_syscall_result *results) wontthrow -> bool
 {
   return execute_io_uring_batch(operations, operation_count, results);
 }
 
 #else
 
-static fn execute_native_batch(const batched_syscall *operations,
-                               usize operation_count,
-                               batched_syscall_result *results) wontthrow
-    -> bool
+static fn
+execute_native_batch(const batched_syscall  *operations,
+                     usize                   operation_count,
+                     batched_syscall_result *results) wontthrow -> bool
 {
   unused(operations);
   unused(operation_count);
@@ -2145,9 +2185,10 @@ static fn execute_native_batch(const batched_syscall *operations,
 
 #endif
 
-fn execute_batch_operations(const batched_syscall *operations,
-                            usize operation_count,
-                            batched_syscall_result *results) wontthrow -> void
+fn
+execute_batch_operations(const batched_syscall  *operations,
+                         usize                   operation_count,
+                         batched_syscall_result *results) wontthrow -> void
 {
   if (operation_count == 0) return;
   if (operations == nullptr || results == nullptr) {

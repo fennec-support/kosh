@@ -16,14 +16,18 @@
 KOSHKIT_UTIL_DECL(
     "[-a]", "The evilfs utility reports the filesystems mounted on the host.");
 
-FLAG(EVILFS_ALL, Bool, 'a', "all",
+FLAG(EVILFS_ALL,
+     Bool,
+     'a',
+     "all",
      "Show volume identity and operating system metadata.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(EvilFS);
 
 namespace koshka::koshkit {
 
-static fn format_filesystem_id(u64 value, Allocator allocator) throws -> String
+static fn
+format_filesystem_id(u64 value, Allocator allocator) throws -> String
 {
   let text = String{allocator, "0x"};
   text += String::from_in_base(value, false, int_base::hex, allocator).view();
@@ -31,9 +35,11 @@ static fn format_filesystem_id(u64 value, Allocator allocator) throws -> String
   return text;
 }
 
-fn EvilFS::execute(const ExecContext &ec, EvalContext &cxt,
-                   const ArrayList<String> &args,
-                   const ArrayList<SourceLocation> &arg_locations) const throws
+fn
+EvilFS::execute(const ExecContext               &ec,
+                EvalContext                     &cxt,
+                const ArrayList<String>         &args,
+                const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
@@ -55,13 +61,13 @@ fn EvilFS::execute(const ExecContext &ec, EvalContext &cxt,
         return left.source.view() < right.source.view();
       });
 
-  let const allocator = cxt.scratch_allocator();
-  let output = String{allocator};
+  let const allocator    = cxt.scratch_allocator();
+  let       output       = String{allocator};
   let const should_color = koshkit_should_color();
   if (FLAG_EVILFS_ALL.is_enabled()) {
     usize skipped_permission_count = 0;
-    let skipped_warning = String{allocator};
-    let table = ReportTable{allocator};
+    let   skipped_warning          = String{allocator};
+    let   table                    = ReportTable{allocator};
     table.add_heading("SOURCE");
     table.add_heading("TARGET");
     table.add_heading("VOLUME");
@@ -82,7 +88,7 @@ fn EvilFS::execute(const ExecContext &ec, EvalContext &cxt,
 
     for (let const &mount : mounts) {
       os::filesystem_status status{};
-      let const is_metadata_available =
+      let const             is_metadata_available =
           os::stat_filesystem(mount.target.view(), status);
       let metadata_status = String{allocator, "Available"};
       if (!is_metadata_available) {
@@ -94,28 +100,28 @@ fn EvilFS::execute(const ExecContext &ec, EvalContext &cxt,
         }
       }
 
-      let filesystem_id = String{allocator, "-"};
-      let type_id = String{allocator, "-"};
-      let block_size = String{allocator, "-"};
+      let filesystem_id          = String{allocator, "-"};
+      let type_id                = String{allocator, "-"};
+      let block_size             = String{allocator, "-"};
       let fundamental_block_size = String{allocator, "-"};
-      let total_blocks = String{allocator, "-"};
-      let free_blocks = String{allocator, "-"};
-      let available_blocks = String{allocator, "-"};
-      let total_files = String{allocator, "-"};
-      let free_files = String{allocator, "-"};
-      let name_limit = String{allocator, "-"};
+      let total_blocks           = String{allocator, "-"};
+      let free_blocks            = String{allocator, "-"};
+      let available_blocks       = String{allocator, "-"};
+      let total_files            = String{allocator, "-"};
+      let free_files             = String{allocator, "-"};
+      let name_limit             = String{allocator, "-"};
       if (is_metadata_available) {
         filesystem_id = format_filesystem_id(status.filesystem_id, allocator);
-        type_id = format_filesystem_id(status.type_id, allocator);
-        block_size = format_human_size(status.block_byte_count, allocator);
+        type_id       = format_filesystem_id(status.type_id, allocator);
+        block_size    = format_human_size(status.block_byte_count, allocator);
         fundamental_block_size =
             format_human_size(status.fundamental_block_byte_count, allocator);
-        total_blocks = String::from(status.total_blocks, allocator);
-        free_blocks = String::from(status.free_blocks, allocator);
+        total_blocks     = String::from(status.total_blocks, allocator);
+        free_blocks      = String::from(status.free_blocks, allocator);
         available_blocks = String::from(status.available_blocks, allocator);
-        total_files = String::from(status.total_files, allocator);
-        free_files = String::from(status.free_files, allocator);
-        name_limit = String::from(status.name_max, allocator);
+        total_files      = String::from(status.total_files, allocator);
+        free_files       = String::from(status.free_files, allocator);
+        name_limit       = String::from(status.name_max, allocator);
       }
 
       let cells = ArrayList<report_table_cell_view>{allocator};

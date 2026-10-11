@@ -30,18 +30,20 @@ namespace utils {
 
 struct program_name_comparator
 {
-  pure fn operator()(const String &left,
-                     const String &right) const wontthrow->bool
+  pure fn
+  operator()(const String &left, const String &right) const wontthrow->bool
   {
     return left.view() < right.view();
   }
 
-  pure fn operator()(const String &left, StringView right) const wontthrow->bool
+  pure fn
+  operator()(const String &left, StringView right) const wontthrow->bool
   {
     return left.view() < right;
   }
 
-  pure fn operator()(StringView left, const String &right) const wontthrow->bool
+  pure fn
+  operator()(StringView left, const String &right) const wontthrow->bool
   {
     return left < right.view();
   }
@@ -107,50 +109,68 @@ public:
 
   struct CachedPath
   {
-    Path path;
+    Path                  path;
     os::program_extension extension{os::program_extension::None};
   };
 
   struct CacheEntry
   {
     ArrayList<CachedPath> paths{heap_allocator()};
-    Maybe<usize> bare_path_position{};
+    Maybe<usize>          bare_path_position{};
   };
 
   ProgramResolver();
   explicit ProgramResolver(Maybe<String> path);
 
-  fn append_wire(String &output) const throws -> void;
-  static fn from_wire(subshell_bootstrap_reader &reader,
-                      StringMap<CacheEntry> &execution_cache) throws -> bool;
-  fn apply_wire(StringMap<CacheEntry> execution_cache) wontthrow -> void
+  fn
+  append_wire(String &output) const throws -> void;
+  static fn
+  from_wire(subshell_bootstrap_reader &reader,
+            StringMap<CacheEntry>     &execution_cache) throws -> bool;
+  fn
+  apply_wire(StringMap<CacheEntry> execution_cache) wontthrow -> void
   {
     m_execution_cache = steal(execution_cache);
   }
 
-  fn assign_path(Maybe<String> path) throws -> void;
-  fn invalidate() throws -> void;
-  fn remember_path(StringView name, const Path &path) throws -> void;
-  fn find_remembered_path(StringView name) wontthrow -> const Path *;
-  fn working_directory_changed() throws -> void;
-  fn initialize_path_map() throws -> void;
-  fn revalidate_for_prompt() throws -> void;
-  fn begin_explicit_completion(CompletionRefresh refresh) throws -> void;
-  fn end_explicit_completion() wontthrow -> void;
-  fn search(StringView program_name, SearchMode search_mode = SearchMode::First,
-            Requirement requirement = Requirement::Runnable,
-            CachePolicy cache_policy = CachePolicy::Bypass,
-            const Maybe<StringView> &path_override = None) throws
+  fn
+  assign_path(Maybe<String> path) throws -> void;
+  fn
+  invalidate() throws -> void;
+  fn
+  remember_path(StringView name, const Path &path) throws -> void;
+  fn
+  find_remembered_path(StringView name) wontthrow -> const Path *;
+  fn
+  working_directory_changed() throws -> void;
+  fn
+  initialize_path_map() throws -> void;
+  fn
+  revalidate_for_prompt() throws -> void;
+  fn
+  begin_explicit_completion(CompletionRefresh refresh) throws -> void;
+  fn
+  end_explicit_completion() wontthrow -> void;
+  fn
+  search(StringView               program_name,
+         SearchMode               search_mode   = SearchMode::First,
+         Requirement              requirement   = Requirement::Runnable,
+         CachePolicy              cache_policy  = CachePolicy::Bypass,
+         const Maybe<StringView> &path_override = None) throws
       -> ArrayList<Path>;
-  fn get_status(StringView name,
-                StatusLookup lookup = StatusLookup::Cached) throws -> Status;
-  fn get_command_names(
-      StringView validation_prefix = {},
-      ValidationScope validation_scope = ValidationScope::Prefix) throws
-      -> const ArrayList<String> &;
-  fn command_name_has_prefix(StringView prefix) throws -> bool;
-  pure fn has_valid_command_names() const wontthrow -> bool;
-  fn for_each_command_name(auto callback) const throws -> void
+  fn
+  get_status(StringView name, StatusLookup lookup = StatusLookup::Cached) throws
+      -> Status;
+  fn
+  get_command_names(StringView      validation_prefix = {},
+                    ValidationScope validation_scope  = ValidationScope::Prefix)
+      throws -> const ArrayList<String> &;
+  fn
+  command_name_has_prefix(StringView prefix) throws -> bool;
+  pure fn
+  has_valid_command_names() const wontthrow -> bool;
+  fn
+  for_each_command_name(auto callback) const throws -> void
   {
     for (let const &name : m_command_names)
       callback(name);
@@ -160,61 +180,78 @@ private:
   struct DirectoryProbe
   {
     String directory{heap_allocator()};
-    u64 generation{0};
+    u64    generation{0};
     Bitset regular_entries{heap_allocator()};
     Bitset executable_entries{heap_allocator()};
   };
 
-  fn mark_command_name_indexes_stale() wontthrow -> void;
-  fn clear_command_name_indexes() wontthrow -> void;
-  fn mark_derived_indexes_stale() wontthrow -> void;
-  fn clear_derived_indexes() wontthrow -> void;
-  fn split_path_dirs(StringView path) throws -> ArrayList<String>;
-  fn deduplicate_path_dirs(const ArrayList<String> &directories) throws
+  fn
+  mark_command_name_indexes_stale() wontthrow -> void;
+  fn
+  clear_command_name_indexes() wontthrow -> void;
+  fn
+  mark_derived_indexes_stale() wontthrow -> void;
+  fn
+  clear_derived_indexes() wontthrow -> void;
+  fn
+  split_path_dirs(StringView path) throws -> ArrayList<String>;
+  fn
+  deduplicate_path_dirs(const ArrayList<String> &directories) throws
       -> ArrayList<String>;
-  fn get_path_dirs() throws -> const ArrayList<String> &;
-  fn get_index_path_dirs() throws -> const ArrayList<String> &;
-  fn refresh_path_directory_generations() throws -> void;
+  fn
+  get_path_dirs() throws -> const ArrayList<String> &;
+  fn
+  get_index_path_dirs() throws -> const ArrayList<String> &;
+  fn
+  refresh_path_directory_generations() throws -> void;
   static fn
-  probe_directory_entries(const Path &directory,
+  probe_directory_entries(const Path                            &directory,
                           const ArrayList<Path::DirectoryChild> &entries,
                           DirectoryProbe &probe) throws -> void;
-  fn rebuild_path_command_index(CompletionRefresh refresh) throws -> void;
-  fn prepare_complete_path_cache(StringView validation_prefix,
-                                 ValidationScope validation_scope) throws
-      -> void;
-  fn validate_path_directory_generations() throws -> bool;
-  fn revalidate_command_prefix(StringView prefix) throws -> void;
-  fn resolve_along_path(StringView program_name, SearchMode search_mode,
-                        Requirement requirement, CachePolicy cache_policy,
-                        Maybe<StringView> path_override) throws
-      -> ArrayList<Path>;
-  fn cache_resolved_path(StringView name, const Path &full_path,
-                         os::program_extension extension,
-                         ProgramPathKind kind) throws -> void;
-  pure fn find_cached_program_path(
-      const CacheEntry &entry,
+  fn
+  rebuild_path_command_index(CompletionRefresh refresh) throws -> void;
+  fn
+  prepare_complete_path_cache(StringView      validation_prefix,
+                              ValidationScope validation_scope) throws -> void;
+  fn
+  validate_path_directory_generations() throws -> bool;
+  fn
+  revalidate_command_prefix(StringView prefix) throws -> void;
+  fn
+  resolve_along_path(StringView        program_name,
+                     SearchMode        search_mode,
+                     Requirement       requirement,
+                     CachePolicy       cache_policy,
+                     Maybe<StringView> path_override) throws -> ArrayList<Path>;
+  fn
+  cache_resolved_path(StringView            name,
+                      const Path           &full_path,
+                      os::program_extension extension,
+                      ProgramPathKind       kind) throws -> void;
+  pure fn
+  find_cached_program_path(
+      const CacheEntry     &entry,
       os::program_extension wanted_extension) const wontthrow -> const Path *;
-  StringMap<CacheEntry> m_execution_cache{heap_allocator()};
-  StringMap<Status> m_command_statuses{heap_allocator()};
+  StringMap<CacheEntry>     m_execution_cache{heap_allocator()};
+  StringMap<Status>         m_command_statuses{heap_allocator()};
   ArrayList<DirectoryProbe> m_directory_probes{heap_allocator()};
   SortedArrayList<String, program_name_comparator> m_command_names{
       heap_allocator(), program_name_comparator{}};
   SortedArrayList<String, program_name_comparator> m_regular_names{
       heap_allocator(), program_name_comparator{}};
-  Maybe<String> m_path;
+  Maybe<String>     m_path;
   ArrayList<String> m_path_dirs{heap_allocator()};
   ArrayList<String> m_index_path_dirs{heap_allocator()};
-  ArrayList<u64> m_path_directory_generations{heap_allocator()};
-  String m_validated_prefix{heap_allocator()};
-  bool m_is_path_directory_list_valid{false};
-  bool m_is_path_generation_list_valid{false};
-  bool m_is_command_name_list_valid{false};
-  u64 m_path_directories_validation_epoch{0};
-  u64 m_command_names_validation_epoch{0};
-  u64 m_prefix_validation_epoch{0};
-  u64 m_statuses_validation_epoch{0};
-  usize m_explicit_completion_depth{0};
+  ArrayList<u64>    m_path_directory_generations{heap_allocator()};
+  String            m_validated_prefix{heap_allocator()};
+  bool              m_is_path_directory_list_valid{false};
+  bool              m_is_path_generation_list_valid{false};
+  bool              m_is_command_name_list_valid{false};
+  u64               m_path_directories_validation_epoch{0};
+  u64               m_command_names_validation_epoch{0};
+  u64               m_prefix_validation_epoch{0};
+  u64               m_statuses_validation_epoch{0};
+  usize             m_explicit_completion_depth{0};
 };
 
 } /* namespace utils */

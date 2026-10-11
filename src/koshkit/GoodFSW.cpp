@@ -22,25 +22,55 @@ KOSHKIT_UTIL_DECL(
     "The goodfsw utility reports changes under the paths it watches.");
 
 FLAG(GOODFSW_RECURSIVE, Bool, 'r', "recursive", "Watch every subdirectory.");
-FLAG(GOODFSW_HUMAN, Bool, 'h', "human-readable",
+FLAG(GOODFSW_HUMAN,
+     Bool,
+     'h',
+     "human-readable",
      "Use human-readable timestamps and descriptive event names.");
-FLAG(GOODFSW_MACHINE, Bool, 'm', "machine-readable",
+FLAG(GOODFSW_MACHINE,
+     Bool,
+     'm',
+     "machine-readable",
      "Use Unix timestamps and numeric event masks.");
-FLAG(GOODFSW_TIMESTAMP, Bool, 't', "timestamp",
+FLAG(GOODFSW_TIMESTAMP,
+     Bool,
+     't',
+     "timestamp",
      "Prefix every record with the Unix scan timestamp.");
-FLAG(GOODFSW_EVENT_FLAGS, Bool, '\0', "event-flags",
+FLAG(GOODFSW_EVENT_FLAGS,
+     Bool,
+     '\0',
+     "event-flags",
      "Append the event names to every record.");
-FLAG(GOODFSW_ONE_EVENT, Bool, '1', "one-event",
+FLAG(GOODFSW_ONE_EVENT,
+     Bool,
+     '1',
+     "one-event",
      "Report the first batch of changes and stop.");
-FLAG(GOODFSW_ONE_FILE_SYSTEM, Bool, 'x', "one-file-system",
+FLAG(GOODFSW_ONE_FILE_SYSTEM,
+     Bool,
+     'x',
+     "one-file-system",
      "Do not descend across filesystem devices.");
-FLAG(GOODFSW_LATENCY, String, 'l', "latency",
+FLAG(GOODFSW_LATENCY,
+     String,
+     'l',
+     "latency",
      "Wait this many seconds between scans. The default is one.");
-FLAG(GOODFSW_EXCLUDE, String, 'e', "exclude",
+FLAG(GOODFSW_EXCLUDE,
+     String,
+     'e',
+     "exclude",
      "Skip every path that contains this text.");
-FLAG(GOODFSW_TIMEZONE, String, '\0', "timezone",
+FLAG(GOODFSW_TIMEZONE,
+     String,
+     '\0',
+     "timezone",
      "Use local or UTC time for human timestamps.");
-FLAG(GOODFSW_PRECISION, String, '\0', "precision",
+FLAG(GOODFSW_PRECISION,
+     String,
+     '\0',
+     "precision",
      "Use zero to nine fractional timestamp digits.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(GoodFSW);
@@ -55,8 +85,8 @@ enum class goodfsw_traversal_mode : u8
   Recursive,
 };
 
-constexpr f64 DEFAULT_LATENCY_SECONDS = 1.0;
-constexpr usize MAXIMUM_SCAN_DEPTH = 64;
+constexpr f64   DEFAULT_LATENCY_SECONDS = 1.0;
+constexpr usize MAXIMUM_SCAN_DEPTH      = 64;
 
 enum class timestamp_timezone : u8
 {
@@ -66,42 +96,44 @@ enum class timestamp_timezone : u8
 
 struct watch_timestamp_format
 {
-  usize precision{9};
+  usize              precision{9};
   timestamp_timezone timezone{timestamp_timezone::Local};
 };
 
 enum class watch_event : u8
 {
-  Created = 1,
-  Removed = 2,
-  Updated = 4,
+  Created           = 1,
+  Removed           = 2,
+  Updated           = 4,
   AttributeModified = 8,
 };
 
 struct watched_entry
 {
   String path;
-  u64 device_id{0};
-  u64 size{0};
-  u64 file_id{0};
-  i64 modification_time{0};
-  u32 modification_nanoseconds{0};
-  u32 mode{0};
-  u32 owner_id{0};
-  u32 group_id{0};
+  u64    device_id{0};
+  u64    size{0};
+  u64    file_id{0};
+  i64    modification_time{0};
+  u32    modification_nanoseconds{0};
+  u32    mode{0};
+  u32    owner_id{0};
+  u32    group_id{0};
 };
 
 struct watched_entry_comparator
 {
-  pure fn operator()(const watched_entry &left,
-                     const watched_entry &right) const wontthrow->bool
+  pure fn
+  operator()(const watched_entry &left,
+             const watched_entry &right) const wontthrow->bool
   {
     return left.path.view() < right.path.view();
   }
 };
 
-pure fn is_same_content(const watched_entry &previous,
-                        const watched_entry &current) wontthrow -> bool
+pure fn
+is_same_content(const watched_entry &previous,
+                const watched_entry &current) wontthrow -> bool
 {
   return previous.size == current.size &&
          previous.modification_time == current.modification_time &&
@@ -110,34 +142,39 @@ pure fn is_same_content(const watched_entry &previous,
          previous.file_id == current.file_id;
 }
 
-pure fn is_same_attributes(const watched_entry &previous,
-                           const watched_entry &current) wontthrow -> bool
+pure fn
+is_same_attributes(const watched_entry &previous,
+                   const watched_entry &current) wontthrow -> bool
 {
   return previous.mode == current.mode &&
          previous.owner_id == current.owner_id &&
          previous.group_id == current.group_id;
 }
 
-pure fn event_style(watch_event event) wontthrow -> StringView
+pure fn
+event_style(watch_event event) wontthrow -> StringView
 {
   switch (event) {
-  case watch_event::Created: return colors::ansi::BOLD_GREEN;
-  case watch_event::Removed: return colors::ansi::BOLD_RED;
-  case watch_event::Updated: return colors::ansi::BOLD_CYAN;
+  case watch_event::Created:           return colors::ansi::BOLD_GREEN;
+  case watch_event::Removed:           return colors::ansi::BOLD_RED;
+  case watch_event::Updated:           return colors::ansi::BOLD_CYAN;
   case watch_event::AttributeModified: return colors::ansi::BOLD_YELLOW;
   }
 
   unreachable("unknown filesystem watch event");
 }
 
-fn append_event_names(String &output, const os::file_status &status,
-                      watch_event event, bool should_color) throws -> void
+fn
+append_event_names(String                &output,
+                   const os::file_status &status,
+                   watch_event            event,
+                   bool                   should_color) throws -> void
 {
   let event_name = StringView{};
   switch (event) {
-  case watch_event::Created: event_name = "Created"; break;
-  case watch_event::Removed: event_name = "Removed"; break;
-  case watch_event::Updated: event_name = "Updated"; break;
+  case watch_event::Created:           event_name = "Created"; break;
+  case watch_event::Removed:           event_name = "Removed"; break;
+  case watch_event::Updated:           event_name = "Updated"; break;
   case watch_event::AttributeModified: event_name = "AttributeModified"; break;
   }
   append_report_text(output, event_name, event_style(event), should_color);
@@ -145,35 +182,38 @@ fn append_event_names(String &output, const os::file_status &status,
   switch (os::file_type_letter(status.mode)) {
   case 'd': output += " IsDir"; break;
   case 'l': output += " IsSymLink"; break;
-  default: output += " IsFile"; break;
+  default:  output += " IsFile"; break;
   }
 }
 
-pure fn event_mask(watch_event event) wontthrow -> u8
+pure fn
+event_mask(watch_event event) wontthrow -> u8
 {
   return static_cast<u8>(event);
 }
 
-fn format_watch_timestamp(i64 seconds, u32 nanoseconds,
-                          const watch_timestamp_format &format,
-                          Allocator allocator) throws -> String
+fn
+format_watch_timestamp(i64                           seconds,
+                       u32                           nanoseconds,
+                       const watch_timestamp_format &format,
+                       Allocator                     allocator) throws -> String
 {
-  let const when = static_cast<time_t>(seconds);
+  let const  when        = static_cast<time_t>(seconds);
   let const *broken_down = format.timezone == timestamp_timezone::UTC
                                ? std::gmtime(&when)
                                : std::localtime(&when);
   if (broken_down == nullptr) return String{allocator};
 
-  char date_buffer[32];
+  char      date_buffer[32];
   let const date_length = std::strftime(date_buffer, sizeof(date_buffer),
                                         "%Y-%m-%d %H:%M:%S", broken_down);
-  let text = String{
+  let       text        = String{
       allocator, StringView{date_buffer, date_length}
   };
   if (format.precision != 0) {
     text += ".";
-    let const digits = String::from(nanoseconds, allocator);
-    let fraction = String{allocator};
+    let const digits   = String::from(nanoseconds, allocator);
+    let       fraction = String{allocator};
 
     for (usize index = digits.length(); index < 9; index++)
       fraction += "0";
@@ -186,7 +226,7 @@ fn format_watch_timestamp(i64 seconds, u32 nanoseconds,
   if (format.timezone == timestamp_timezone::UTC) {
     text += "+0000";
   } else {
-    char zone_buffer[16];
+    char      zone_buffer[16];
     let const zone_length =
         std::strftime(zone_buffer, sizeof(zone_buffer), "%z", broken_down);
     text += StringView{zone_buffer, zone_length};
@@ -195,10 +235,15 @@ fn format_watch_timestamp(i64 seconds, u32 nanoseconds,
   return text;
 }
 
-fn report_event(String &output, StringView path, const os::file_status &status,
-                watch_event event, i64 scan_time, u32 scan_nanoseconds,
-                const watch_timestamp_format &timestamp_format,
-                bool should_color) throws -> void
+fn
+report_event(String                       &output,
+             StringView                    path,
+             const os::file_status        &status,
+             watch_event                   event,
+             i64                           scan_time,
+             u32                           scan_nanoseconds,
+             const watch_timestamp_format &timestamp_format,
+             bool                          should_color) throws -> void
 {
   let const is_human =
       FLAG_GOODFSW_HUMAN.is_enabled() && !FLAG_GOODFSW_MACHINE.is_enabled();
@@ -232,17 +277,22 @@ fn report_event(String &output, StringView path, const os::file_status &status,
   output += "\n";
 }
 
-fn is_excluded(StringView path) wontthrow -> bool
+fn
+is_excluded(StringView path) wontthrow -> bool
 {
   if (!FLAG_GOODFSW_EXCLUDE.is_set()) return false;
 
   return path.find_substring(FLAG_GOODFSW_EXCLUDE.value()).has_value();
 }
 
-fn scan_path(StringView path, ArrayList<watched_entry> &entries, usize depth,
-             Allocator allocator, u64 root_device_id,
-             const os::file_status *known_status,
-             goodfsw_traversal_mode traversal) throws -> void
+fn
+scan_path(StringView                path,
+          ArrayList<watched_entry> &entries,
+          usize                     depth,
+          Allocator                 allocator,
+          u64                       root_device_id,
+          const os::file_status    *known_status,
+          goodfsw_traversal_mode    traversal) throws -> void
 {
   if (os::INTERRUPT_REQUESTED != 0) return;
 
@@ -266,14 +316,14 @@ fn scan_path(StringView path, ArrayList<watched_entry> &entries, usize depth,
   watched_entry entry{
       String{allocator, path}
   };
-  entry.device_id = known_status->device_id;
-  entry.size = known_status->size;
-  entry.file_id = known_status->file_id;
-  entry.modification_time = known_status->modification_time;
+  entry.device_id                = known_status->device_id;
+  entry.size                     = known_status->size;
+  entry.file_id                  = known_status->file_id;
+  entry.modification_time        = known_status->modification_time;
   entry.modification_nanoseconds = known_status->modification_nanoseconds;
-  entry.mode = known_status->mode;
-  entry.owner_id = known_status->owner_id;
-  entry.group_id = known_status->group_id;
+  entry.mode                     = known_status->mode;
+  entry.owner_id                 = known_status->owner_id;
+  entry.group_id                 = known_status->group_id;
   entries.push(steal(entry));
 
   if (os::file_type_letter(known_status->mode) != 'd') return;
@@ -303,9 +353,11 @@ fn scan_path(StringView path, ArrayList<watched_entry> &entries, usize depth,
 
 } /* namespace */
 
-fn GoodFSW::execute(const ExecContext &ec, EvalContext &cxt,
-                    const ArrayList<String> &args,
-                    const ArrayList<SourceLocation> &arg_locations) const throws
+fn
+GoodFSW::execute(const ExecContext               &ec,
+                 EvalContext                     &cxt,
+                 const ArrayList<String>         &args,
+                 const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
@@ -314,9 +366,9 @@ fn GoodFSW::execute(const ExecContext &ec, EvalContext &cxt,
     return report_usage_error(ec, cxt, args[0].view());
   }
 
-  let const allocator = cxt.scratch_allocator();
+  let const allocator       = cxt.scratch_allocator();
   let const watch_allocator = heap_allocator();
-  f64 latency_seconds = DEFAULT_LATENCY_SECONDS;
+  f64       latency_seconds = DEFAULT_LATENCY_SECONDS;
   if (FLAG_GOODFSW_LATENCY.is_set()) {
     latency_seconds = parse_koshkit_duration_seconds(
         FLAG_GOODFSW_LATENCY.value(), FLAG_GOODFSW_LATENCY.value_location(),
@@ -355,9 +407,9 @@ fn GoodFSW::execute(const ExecContext &ec, EvalContext &cxt,
                             ? goodfsw_traversal_mode::Recursive
                             : goodfsw_traversal_mode::SinglePath;
 
-  let operand_paths = ArrayList<Path>{allocator};
+  let operand_paths    = ArrayList<Path>{allocator};
   let operand_statuses = ArrayList<os::file_status>{allocator};
-  let operand_batch = os::Batch{allocator};
+  let operand_batch    = os::Batch{allocator};
   operand_paths.reserve(operands.count());
   operand_statuses.reserve(operands.count());
   operand_batch.reserve(operands.count());
@@ -394,7 +446,7 @@ fn GoodFSW::execute(const ExecContext &ec, EvalContext &cxt,
   let previous =
       steal(collected_previous).make_sorted(watched_entry_comparator{});
   let recycled_entries = ArrayList<watched_entry>{watch_allocator};
-  let output = String{watch_allocator};
+  let output           = String{watch_allocator};
 
   let const should_color = koshkit_should_color();
 
@@ -404,7 +456,7 @@ fn GoodFSW::execute(const ExecContext &ec, EvalContext &cxt,
   {
     os::sleep_for_seconds(latency_seconds);
     if (os::INTERRUPT_REQUESTED != 0) {
-      was_interrupted = true;
+      was_interrupted         = true;
       os::INTERRUPT_REQUESTED = 0;
       break;
     }
@@ -434,7 +486,7 @@ fn GoodFSW::execute(const ExecContext &ec, EvalContext &cxt,
     output.clear();
 
     usize previous_position = 0;
-    usize current_position = 0;
+    usize current_position  = 0;
 
     while (previous_position < previous.count() ||
            current_position < current.count())
@@ -448,7 +500,7 @@ fn GoodFSW::execute(const ExecContext &ec, EvalContext &cxt,
            previous[previous_position].path.view() <
                current[current_position].path.view()))
       {
-        let const &entry = previous[previous_position];
+        let const      &entry = previous[previous_position];
         os::file_status rendered{};
         rendered.mode = entry.mode;
         report_event(output, entry.path.view(), rendered, watch_event::Removed,
@@ -462,7 +514,7 @@ fn GoodFSW::execute(const ExecContext &ec, EvalContext &cxt,
           current[current_position].path.view() <
               previous[previous_position].path.view())
       {
-        let const &entry = current[current_position];
+        let const      &entry = current[current_position];
         os::file_status rendered{};
         rendered.mode = entry.mode;
         report_event(output, entry.path.view(), rendered, watch_event::Created,
@@ -472,8 +524,8 @@ fn GoodFSW::execute(const ExecContext &ec, EvalContext &cxt,
         continue;
       }
 
-      let const &previous_entry = previous[previous_position];
-      let const &current_entry = current[current_position];
+      let const      &previous_entry = previous[previous_position];
+      let const      &current_entry  = current[current_position];
       os::file_status rendered{};
       rendered.mode = current_entry.mode;
       if (!is_same_content(previous_entry, current_entry)) {
@@ -491,7 +543,7 @@ fn GoodFSW::execute(const ExecContext &ec, EvalContext &cxt,
     }
 
     recycled_entries = steal(previous).into_array_list();
-    previous = steal(current);
+    previous         = steal(current);
 
     if (output.is_empty()) continue;
 

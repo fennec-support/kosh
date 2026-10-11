@@ -30,22 +30,25 @@ namespace completion {
 
 using namespace internal;
 
-static fn scan_highlight_source(StringView source, EvalContext &context,
-                                ArrayList<highlight_span> &spans) throws -> void
+static fn
+scan_highlight_source(StringView                 source,
+                      EvalContext               &context,
+                      ArrayList<highlight_span> &spans) throws -> void
 {
   if (source.length > UINT32_MAX) return;
 
 #if !defined NDEBUG
   DEBUG_HIGHLIGHT_INPUT_BYTE_COUNT += source.length;
 #endif
-  let const arena = bump_allocator(HIGHLIGHT_ARENA);
-  let line_variable_names = HashSet{arena};
-  let function_names = HashSet{arena};
+  let const arena               = bump_allocator(HIGHLIGHT_ARENA);
+  let       line_variable_names = HashSet{arena};
+  let       function_names      = HashSet{arena};
   scan_highlight_range(source, 0, source.length, context, spans,
                        line_variable_names, function_names);
 }
 
-fn highlight_line(StringView line, EvalContext &context) throws
+fn
+highlight_line(StringView line, EvalContext &context) throws
     -> ArrayList<highlight_span>
 {
   HIGHLIGHT_ARENA.reset();
@@ -58,10 +61,11 @@ fn highlight_line(StringView line, EvalContext &context) throws
 struct bracket_byte
 {
   usize kind;
-  bool is_opening;
+  bool  is_opening;
 };
 
-static pure fn classify_bracket(char byte) wontthrow -> Maybe<bracket_byte>
+static pure fn
+classify_bracket(char byte) wontthrow -> Maybe<bracket_byte>
 {
   switch (byte) {
   case '(': return bracket_byte{0, true};
@@ -70,23 +74,24 @@ static pure fn classify_bracket(char byte) wontthrow -> Maybe<bracket_byte>
   case ']': return bracket_byte{1, false};
   case '{': return bracket_byte{2, true};
   case '}': return bracket_byte{2, false};
-  default: return None;
+  default:  return None;
   }
 }
 
-static pure fn role_is_literal(highlight_role role) wontthrow -> bool
+static pure fn
+role_is_literal(highlight_role role) wontthrow -> bool
 {
   switch (role) {
   case highlight_role::comment:
   case highlight_role::string:
   case highlight_role::heredoc:
   case highlight_role::heredoc_delimiter: return true;
-  default: return false;
+  default:                                return false;
   }
 }
 
-static pure fn byte_is_escaped(StringView line, usize position) wontthrow
-    -> bool
+static pure fn
+byte_is_escaped(StringView line, usize position) wontthrow -> bool
 {
   usize backslash_count = 0;
 
@@ -99,15 +104,16 @@ static pure fn byte_is_escaped(StringView line, usize position) wontthrow
   return backslash_count % 2 == 1;
 }
 
-static fn find_bracket_partner(StringView line,
-                               const ArrayList<highlight_span> &spans,
-                               const ArrayList<usize> &case_pattern_ends,
-                               usize position) throws -> Maybe<usize>
+static fn
+find_bracket_partner(StringView                       line,
+                     const ArrayList<highlight_span> &spans,
+                     const ArrayList<usize>          &case_pattern_ends,
+                     usize position) throws -> Maybe<usize>
 {
   let const origin = classify_bracket(line[position]);
   if (!origin.has_value()) return None;
 
-  usize depths[3] = {0, 0, 0};
+  usize     depths[3]             = {0, 0, 0};
   let const do_is_closing_partner = [&](usize scan, bracket_byte bracket,
                                         bool is_literal) throws -> bool {
     if (is_literal || byte_is_escaped(line, scan) ||
@@ -154,7 +160,7 @@ static fn find_bracket_partner(StringView line,
   usize span_index = spans.count();
 
   for (usize scan = position; scan > 0; scan--) {
-    let const at = scan - 1;
+    let const at      = scan - 1;
     let const bracket = classify_bracket(line[at]);
     if (!bracket.has_value()) continue;
 
@@ -170,9 +176,10 @@ static fn find_bracket_partner(StringView line,
   return None;
 }
 
-fn find_matching_bracket(StringView line,
-                         const ArrayList<highlight_span> &spans,
-                         usize cursor) throws -> Maybe<bracket_pair>
+fn
+find_matching_bracket(StringView                       line,
+                      const ArrayList<highlight_span> &spans,
+                      usize cursor) throws -> Maybe<bracket_pair>
 {
   if (cursor > line.length) return None;
 
@@ -241,8 +248,8 @@ fn find_matching_bracket(StringView line,
         find_bracket_partner(line, spans, case_pattern_ends, position);
     if (!partner.has_value()) continue;
 
-    let const open = position < *partner ? position : *partner;
-    let const close = position < *partner ? *partner : position;
+    let const open            = position < *partner ? position : *partner;
+    let const close           = position < *partner ? *partner : position;
     let const is_doubled_form = line[open] != '{';
     if (is_doubled_form && open + 2 < close && line[open + 1] == line[open] &&
         line[close - 1] == line[close] && do_pairs_with(open + 1, close - 1))
@@ -263,10 +270,13 @@ fn find_matching_bracket(StringView line,
   return None;
 }
 
-fn append_highlighted_range(String &output, StringView text,
-                            const ArrayList<highlight_span> &spans,
-                            usize range_start, usize range_end,
-                            const highlight_theme &theme) throws -> void
+fn
+append_highlighted_range(String                          &output,
+                         StringView                       text,
+                         const ArrayList<highlight_span> &spans,
+                         usize                            range_start,
+                         usize                            range_end,
+                         const highlight_theme           &theme) throws -> void
 {
   if (range_end > text.length) range_end = text.length;
   if (range_start > range_end) range_start = range_end;
@@ -296,11 +306,13 @@ fn append_highlighted_range(String &output, StringView text,
                                        range_end - rendered_position);
 }
 
-fn append_highlighted_source(String &output, StringView source,
-                             EvalContext &context,
-                             const highlight_theme &theme) throws -> void
+fn
+append_highlighted_source(String                &output,
+                          StringView             source,
+                          EvalContext           &context,
+                          const highlight_theme &theme) throws -> void
 {
-  let cache = ShellHighlightCache{output.allocator()};
+  let   cache      = ShellHighlightCache{output.allocator()};
   usize line_start = 0;
 
   while (line_start < source.length) {
@@ -313,15 +325,16 @@ fn append_highlighted_source(String &output, StringView source,
     if (line_end < source.length) line_end++;
 
     let const *spans = cache.spans_for(source, line_start, line_end, context);
-    let const line =
+    let const  line =
         source.substring_of_length(line_start, line_end - line_start);
     append_highlighted_range(output, line, *spans, 0, line.length, theme);
     line_start = line_end;
   }
 }
 
-static fn split_spans_at_lines(StringView source,
-                               ArrayList<highlight_span> &spans) throws -> void
+static fn
+split_spans_at_lines(StringView source, ArrayList<highlight_span> &spans) throws
+    -> void
 {
   let const do_next_piece_end = [&](usize start, usize end) wontthrow -> usize {
     let const newline =
@@ -333,13 +346,13 @@ static fn split_spans_at_lines(StringView source,
   };
 
   usize extra_piece_count = 0;
-  bool is_sorted = true;
+  bool  is_sorted         = true;
 
   for (usize index = 0; index < spans.count(); index++) {
     let const &span = spans[index];
     if (index > 0 && spans[index - 1].start > span.start) is_sorted = false;
 
-    for (usize start = do_next_piece_end(span.start, span.end);
+    for (usize start             = do_next_piece_end(span.start, span.end);
          start < span.end; start = do_next_piece_end(start, span.end))
     {
       extra_piece_count++;
@@ -356,10 +369,10 @@ static fn split_spans_at_lines(StringView source,
   usize write_position = spans.count();
 
   for (usize index = span_count; index > 0; index--) {
-    let const span = spans[index - 1];
-    usize piece_count = 1;
+    let const span        = spans[index - 1];
+    usize     piece_count = 1;
 
-    for (usize start = do_next_piece_end(span.start, span.end);
+    for (usize start             = do_next_piece_end(span.start, span.end);
          start < span.end; start = do_next_piece_end(start, span.end))
     {
       piece_count++;
@@ -383,8 +396,11 @@ static fn split_spans_at_lines(StringView source,
   }
 }
 
-fn ShellHighlightCache::spans_for(StringView source, usize line_start,
-                                  usize line_end, EvalContext &context) throws
+fn
+ShellHighlightCache::spans_for(StringView   source,
+                               usize        line_start,
+                               usize        line_end,
+                               EvalContext &context) throws
     -> const ArrayList<highlight_span> *
 {
   let const has_source_changed =
@@ -420,8 +436,8 @@ fn ShellHighlightCache::spans_for(StringView source, usize line_start,
        index < m_pieces.count() && m_pieces[index].start < line_end; index++)
   {
     let const &piece = m_pieces[index];
-    let const start = piece.start > line_start ? piece.start : line_start;
-    let const end = piece.end < line_end ? piece.end : line_end;
+    let const  start = piece.start > line_start ? piece.start : line_start;
+    let const  end   = piece.end < line_end ? piece.end : line_end;
     if (start < end) {
       m_line_spans.push(
           highlight_span{start - line_start, end - line_start, piece.role});
@@ -432,19 +448,21 @@ fn ShellHighlightCache::spans_for(StringView source, usize line_start,
 }
 
 #if !defined NDEBUG
-pure fn debug_highlight_input_byte_count() wontthrow -> usize
+pure fn
+debug_highlight_input_byte_count() wontthrow -> usize
 {
   return DEBUG_HIGHLIGHT_INPUT_BYTE_COUNT;
 }
 
-fn debug_diagnostic_cache_is_stable(EvalContext &context) throws -> bool
+fn
+debug_diagnostic_cache_is_stable(EvalContext &context) throws -> bool
 {
-  let cache = ShellHighlightCache{heap_allocator()};
+  let       cache  = ShellHighlightCache{heap_allocator()};
   let const source = String{
       "value=\"$(printf value\n) tail\"\nif true\nthen value='start\nend'; fi"};
   usize keyword_line_start = 0;
-  usize string_line_start = 0;
-  usize line_index = 0;
+  usize string_line_start  = 0;
+  usize line_index         = 0;
 
   for (usize position = 0; position < source.count(); position++) {
     if (source[position] != '\n') continue;
@@ -462,7 +480,7 @@ fn debug_diagnostic_cache_is_stable(EvalContext &context) throws -> bool
 
   let const *keyword_spans = cache.spans_for(source.view(), keyword_line_start,
                                              keyword_line_end, context);
-  let has_keyword_span = false;
+  let        has_keyword_span = false;
 
   for (let const &span : *keyword_spans) {
     LOG(All, "the cached diagnostic span covers %zu through %zu as role %u",
@@ -476,7 +494,7 @@ fn debug_diagnostic_cache_is_stable(EvalContext &context) throws -> bool
 
   if (!has_keyword_span) return false;
 
-  let const line_start = string_line_start;
+  let const  line_start = string_line_start;
   let const *first =
       cache.spans_for(source.view(), line_start, source.count(), context);
   let expected = ArrayList<highlight_span>{heap_allocator()};
@@ -499,8 +517,8 @@ fn debug_diagnostic_cache_is_stable(EvalContext &context) throws -> bool
     }
   }
 
-  let function_cache = ShellHighlightCache{heap_allocator()};
-  let const function_source = String{"finish() { :; }\nfinish"};
+  let       function_cache      = ShellHighlightCache{heap_allocator()};
+  let const function_source     = String{"finish() { :; }\nfinish"};
   let const function_call_start = function_source.view().find_character('\n');
   if (!function_call_start.has_value()) return false;
   let const *function_spans =
@@ -517,7 +535,7 @@ fn debug_diagnostic_cache_is_stable(EvalContext &context) throws -> bool
 
   if (!has_resolved_function_call) return false;
 
-  let const other_source = String{"echo ok"};
+  let const  other_source = String{"echo ok"};
   let const *invalidated =
       cache.spans_for(other_source.view(), 0, other_source.count(), context);
   if (invalidated->count() != expected.count()) return true;

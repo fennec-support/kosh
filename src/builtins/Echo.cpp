@@ -28,7 +28,8 @@ REGISTER_BUILTIN_FLAGS(Echo);
 
 namespace koshka {
 
-fn Echo::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
+fn
+Echo::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let const &args = ec.args();
   ASSERT(!args.is_empty());
@@ -42,8 +43,8 @@ fn Echo::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   LOG(All, "echo printing %zu arguments", args.count() - 1);
 
-  usize start = 1;
-  let should_suppress_newline = false;
+  usize     start                   = 1;
+  let       should_suppress_newline = false;
   let const is_windows_default =
       cxt.runtime_state().get_mood() == mimic_mood::Default &&
       os::DIRECTORY_SEPARATOR == '\\';
@@ -57,8 +58,8 @@ fn Echo::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       if (arg.length < 2 || arg[0] != '-') {
         break;
       }
-      let is_all_option_letters = true;
-      let candidate_suppress_newline = should_suppress_newline;
+      let is_all_option_letters       = true;
+      let candidate_suppress_newline  = should_suppress_newline;
       let candidate_interpret_escapes = should_interpret_escapes;
 
       for (usize k = 1; k < arg.length; k++) {
@@ -66,7 +67,7 @@ fn Echo::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         case 'n': candidate_suppress_newline = true; continue;
         case 'e': candidate_interpret_escapes = true; continue;
         case 'E': candidate_interpret_escapes = false; continue;
-        default: is_all_option_letters = false; break;
+        default:  is_all_option_letters = false; break;
         }
 
         break;
@@ -74,7 +75,7 @@ fn Echo::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
       if (!is_all_option_letters) break;
 
-      should_suppress_newline = candidate_suppress_newline;
+      should_suppress_newline  = candidate_suppress_newline;
       should_interpret_escapes = candidate_interpret_escapes;
       start++;
     }
@@ -85,7 +86,7 @@ fn Echo::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     }
   }
 
-  let output = String{cxt.scratch_allocator()};
+  let output      = String{cxt.scratch_allocator()};
   let should_stop = false;
 
   for (usize i = start; i < args.count() && !should_stop; i++) {
@@ -123,15 +124,15 @@ fn Echo::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         }
         break;
       case '\\': output += '\\'; break;
-      case 'c': should_stop = true; break;
-      case 'x': {
+      case 'c':  should_stop = true; break;
+      case 'x':  {
         if (cxt.runtime_state().is_posix_mode()) {
           output += '\\';
           output += escaped;
           break;
         }
 
-        i32 value = 0;
+        i32   value       = 0;
         usize digit_count = 0;
 
         while (digit_count < 2 && j + 1 < arg.length()) {
@@ -162,7 +163,7 @@ fn Echo::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
           output += escaped;
           break;
         }
-        i32 value = escaped - '0';
+        i32   value       = escaped - '0';
         usize digit_count = escaped == '0' ? 0 : 1;
 
         while (digit_count < 3 && j + 1 < arg.length() && arg[j + 1] >= '0' &&

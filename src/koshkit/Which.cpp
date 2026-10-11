@@ -26,16 +26,18 @@ REGISTER_KOSHKIT_UTIL_FLAGS(Which);
 
 namespace koshka::koshkit {
 
-fn Which::execute(const ExecContext &ec, EvalContext &cxt,
-                  const ArrayList<String> &args,
-                  const ArrayList<SourceLocation> &arg_locations) const throws
+fn
+Which::execute(const ExecContext               &ec,
+               EvalContext                     &cxt,
+               const ArrayList<String>         &args,
+               const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
-  let const is_quiet = FLAG_QUIET.is_enabled();
-  let output = String{cxt.scratch_allocator()};
-  bool has_missing_any = false;
+  let const is_quiet        = FLAG_QUIET.is_enabled();
+  let       output          = String{cxt.scratch_allocator()};
+  bool      has_missing_any = false;
 
   for (let const &program_name : operands) {
     LOG(Debug, "which resolving '%s' against builtins and PATH",

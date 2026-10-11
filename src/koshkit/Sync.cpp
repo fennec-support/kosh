@@ -18,16 +18,21 @@ KOSHKIT_UTIL_DECL(
     "The sync utility flushes pending writes to permanent storage.");
 
 FLAG(SYNC_DATA, Bool, 'd', "data", "Flush only the data of each operand.");
-FLAG(SYNC_FILESYSTEM, Bool, 'f', "file-system",
+FLAG(SYNC_FILESYSTEM,
+     Bool,
+     'f',
+     "file-system",
      "Flush the filesystem that holds each operand.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Sync);
 
 namespace koshka::koshkit {
 
-fn Sync::execute(const ExecContext &ec, EvalContext &cxt,
-                 const ArrayList<String> &args,
-                 const ArrayList<SourceLocation> &arg_locations) const throws
+fn
+Sync::execute(const ExecContext               &ec,
+              EvalContext                     &cxt,
+              const ArrayList<String>         &args,
+              const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
@@ -58,9 +63,9 @@ fn Sync::execute(const ExecContext &ec, EvalContext &cxt,
     return 0;
   }
 
-  i32 status = 0;
-  let const mode = FLAG_SYNC_DATA.is_enabled() ? os::sync_mode::DataOnly
-                                               : os::sync_mode::All;
+  i32       status = 0;
+  let const mode   = FLAG_SYNC_DATA.is_enabled() ? os::sync_mode::DataOnly
+                                                 : os::sync_mode::All;
 
   for (usize operand_index = 0; operand_index < operands.count();
        operand_index++)

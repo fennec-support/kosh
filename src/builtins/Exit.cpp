@@ -20,7 +20,8 @@ REGISTER_BUILTIN_FLAGS(Exit);
 
 namespace koshka {
 
-fn Exit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
+fn
+Exit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   ASSERT(!ec.args().is_empty());
 

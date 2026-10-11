@@ -12,8 +12,9 @@
 
 namespace koshka {
 
-fn parse_travis_ci_format(const parser_format_input &input,
-                          parsed_format_document &document) throws -> void
+fn
+parse_travis_ci_format(const parser_format_input &input,
+                       parsed_format_document    &document) throws -> void
 {
   static const StringView KEYS[] = {
       "before_install", "install",       "before_script", "script",

@@ -23,7 +23,8 @@ enum class docker_instruction_kind : u8
   Healthcheck,
 };
 
-static fn docker_instruction(StringView line, usize &content_position) wontthrow
+static fn
+docker_instruction(StringView line, usize &content_position) wontthrow
     -> docker_instruction_kind
 {
   usize position = 0;
@@ -91,11 +92,11 @@ static fn docker_instruction(StringView line, usize &content_position) wontthrow
 struct docker_heredoc
 {
   StringView delimiter;
-  bool is_shell_body;
+  bool       is_shell_body;
 };
 
-static fn read_docker_heredoc(StringView command) wontthrow
-    -> Maybe<docker_heredoc>
+static fn
+read_docker_heredoc(StringView command) wontthrow -> Maybe<docker_heredoc>
 {
   if (command.length < 3 || command[0] != '<' || command[1] != '<') {
     return None;
@@ -141,17 +142,18 @@ static fn read_docker_heredoc(StringView command) wontthrow
   return docker_heredoc{delimiter, position == command.length};
 }
 
-fn parse_dockerfile_format(const parser_format_input &input,
-                           parsed_format_document &document) throws -> void
+fn
+parse_dockerfile_format(const parser_format_input &input,
+                        parsed_format_document    &document) throws -> void
 {
-  mimic_mood mood = mimic_mood::Posix;
-  usize position = 0;
+  mimic_mood mood     = mimic_mood::Posix;
+  usize      position = 0;
 
   while (position < input.source.length) {
-    let const line_start = position;
-    let const line = input.source.next_line(position);
-    usize content_position = 0;
-    let const instruction = docker_instruction(line, content_position);
+    let const line_start       = position;
+    let const line             = input.source.next_line(position);
+    usize     content_position = 0;
+    let const instruction      = docker_instruction(line, content_position);
     if (instruction == docker_instruction_kind::Shell) {
       let const shell = line.substring(content_position);
       if (parser_format_has_substring(shell, "bash"))
@@ -168,8 +170,8 @@ fn parse_dockerfile_format(const parser_format_input &input,
         instruction == docker_instruction_kind::Command ||
         instruction == docker_instruction_kind::Entrypoint;
     if (instruction == docker_instruction_kind::Healthcheck) {
-      let const remainder = line.substring(content_position);
-      usize command_position = 0;
+      let const remainder        = line.substring(content_position);
+      usize     command_position = 0;
       if (docker_instruction(remainder, command_position) ==
           docker_instruction_kind::Command)
       {
@@ -189,11 +191,11 @@ fn parse_dockerfile_format(const parser_format_input &input,
             : None;
     if (heredoc.has_value()) {
       let const body_start = position;
-      usize body_end = position;
+      usize     body_end   = position;
 
       while (position < input.source.length) {
         let const body_line_start = position;
-        let body_line = input.source.next_line(position);
+        let       body_line       = input.source.next_line(position);
         if (!body_line.is_empty() && body_line[body_line.length - 1] == '\r') {
           body_line = body_line.substring_of_length(0, body_line.length - 1);
         }
@@ -209,14 +211,14 @@ fn parse_dockerfile_format(const parser_format_input &input,
       continue;
     }
 
-    usize shell_end = line_start + line.length;
-    let is_continued = !line.is_empty() && line[line.length - 1] == '\\';
+    usize shell_end    = line_start + line.length;
+    let   is_continued = !line.is_empty() && line[line.length - 1] == '\\';
 
     while (is_continued && position < input.source.length) {
       let const continuation_start = position;
-      let const continuation = input.source.next_line(position);
-      shell_end = continuation_start + continuation.length;
-      is_continued = !continuation.is_empty() &&
+      let const continuation       = input.source.next_line(position);
+      shell_end                    = continuation_start + continuation.length;
+      is_continued                 = !continuation.is_empty() &&
                      continuation[continuation.length - 1] == '\\';
     }
 

@@ -26,10 +26,11 @@ REGISTER_KOSHKIT_UTIL_FLAGS(Ln);
 
 namespace koshka::koshkit {
 
-fn Ln::execute(const ExecContext &ec, EvalContext &cxt,
-               const ArrayList<String> &args,
-               const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+fn
+Ln::execute(const ExecContext               &ec,
+            EvalContext                     &cxt,
+            const ArrayList<String>         &args,
+            const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
@@ -51,16 +52,16 @@ fn Ln::execute(const ExecContext &ec, EvalContext &cxt,
 
   for (usize i = 0; i + 1 < operands.count(); i++) {
     let const target = operands[i].view();
-    let link = String{cxt.scratch_allocator(), destination};
+    let       link   = String{cxt.scratch_allocator(), destination};
     if (is_destination_directory) {
       let link_path = Path{destination, cxt.scratch_allocator()};
       link_path.append(Path{target, cxt.scratch_allocator()}.filename());
       link = link_path.text();
     }
 
-    let target_status = os::file_status{};
-    let link_status = os::file_status{};
-    let const is_same_file = os::stat_path(target, target_status) &&
+    let       target_status = os::file_status{};
+    let       link_status   = os::file_status{};
+    let const is_same_file  = os::stat_path(target, target_status) &&
                              os::stat_path(link.view(), link_status) &&
                              target_status.has_file_identity &&
                              link_status.has_file_identity &&
@@ -77,7 +78,7 @@ fn Ln::execute(const ExecContext &ec, EvalContext &cxt,
 
     if (FLAG_LN_FORCE.is_enabled()) os::remove_file(link.view());
 
-    let link_target = target;
+    let         link_target = target;
     Maybe<Path> resolved_target;
     if (!FLAG_LN_SYMBOLIC.is_enabled() &&
         FLAG_LN_LOGICAL.position() > FLAG_LN_PHYSICAL.position())

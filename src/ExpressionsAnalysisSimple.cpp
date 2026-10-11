@@ -59,8 +59,8 @@ enum class shell_quote_state : u8
   Double,
 };
 
-pure fn has_multi_digit_positional_expansion(StringView source) wontthrow
-    -> bool
+pure fn
+has_multi_digit_positional_expansion(StringView source) wontthrow -> bool
 {
   shell_quote_state state = shell_quote_state::Normal;
 
@@ -94,7 +94,8 @@ pure fn has_multi_digit_positional_expansion(StringView source) wontthrow
   return false;
 }
 
-fn literal_generated_path(const Token *token, const AnalysisContext &) throws
+fn
+literal_generated_path(const Token *token, const AnalysisContext &) throws
     -> Maybe<String>
 {
   let literal = optimizer::literal_word_value(token);
@@ -103,12 +104,13 @@ fn literal_generated_path(const Token *token, const AnalysisContext &) throws
   return normalized_relative_executable_path(literal->view());
 }
 
-fn update_generated_executable_paths(AnalysisContext &actx,
-                                     const ArrayList<const Token *> &args,
-                                     Maybe<StringView> command_name,
-                                     command_name_id command_id,
-                                     bool is_command_shadowed,
-                                     bool is_unconditional) throws -> void
+fn
+update_generated_executable_paths(AnalysisContext                &actx,
+                                  const ArrayList<const Token *> &args,
+                                  Maybe<StringView>               command_name,
+                                  command_name_id                 command_id,
+                                  bool is_command_shadowed,
+                                  bool is_unconditional) throws -> void
 {
   if (is_command_shadowed || !is_unconditional || args.is_empty()) {
     return;
@@ -117,8 +119,8 @@ fn update_generated_executable_paths(AnalysisContext &actx,
   let is_driver = false;
   if (command_name.has_value()) {
     let const command_path = Path{*command_name};
-    let const filename = command_path.filename();
-    is_driver = GENERATED_EXECUTABLE_DRIVERS.contains(filename);
+    let const filename     = command_path.filename();
+    is_driver              = GENERATED_EXECUTABLE_DRIVERS.contains(filename);
   } else if (let variable_name =
                  optimizer::plain_variable_reference_name(args[0]);
              variable_name.has_value())
@@ -186,8 +188,8 @@ fn update_generated_executable_paths(AnalysisContext &actx,
 
 } /* namespace */
 
-pure fn internal::is_single_word_special_parameter(StringView name) wontthrow
-    -> bool
+pure fn
+internal::is_single_word_special_parameter(StringView name) wontthrow -> bool
 {
   if (name.length != 1) return false;
 
@@ -197,12 +199,12 @@ pure fn internal::is_single_word_special_parameter(StringView name) wontthrow
   case '$':
   case '!':
   case '-': return true;
-  default: return false;
+  default:  return false;
   }
 }
 
-pure fn internal::reference_has_quoted_alternate_word(StringView spec) wontthrow
-    -> bool
+pure fn
+internal::reference_has_quoted_alternate_word(StringView spec) wontthrow -> bool
 {
   usize position = 0;
   if (!spec.is_empty() && (spec[0] == '@' || spec[0] == '*')) {
@@ -237,7 +239,7 @@ pure fn internal::reference_has_quoted_alternate_word(StringView spec) wontthrow
     position++;
 
     usize nesting_depth = 0;
-    let is_closed = false;
+    let   is_closed     = false;
 
     while (position < spec.length && !is_closed) {
       let const byte = spec[position];
@@ -269,18 +271,20 @@ pure fn internal::reference_has_quoted_alternate_word(StringView spec) wontthrow
   return true;
 }
 
-pure fn is_split_exempt_variable_name(StringView name) wontthrow -> bool
+pure fn
+is_split_exempt_variable_name(StringView name) wontthrow -> bool
 {
   if (name.length != 1) return false;
 
   switch (name[0]) {
   case '@':
   case '*': return true;
-  default: return internal::is_single_word_special_parameter(name);
+  default:  return internal::is_single_word_special_parameter(name);
   }
 }
 
-pure fn reference_is_plain_scalar_name(StringView name) wontthrow -> bool
+pure fn
+reference_is_plain_scalar_name(StringView name) wontthrow -> bool
 {
   if (name.is_empty()) return false;
 
@@ -295,14 +299,16 @@ pure fn reference_is_plain_scalar_name(StringView name) wontthrow -> bool
   return !name.find_character('[').has_value();
 }
 
-cold fn internal::word_is_bare_glob(const Word &word) wontthrow -> bool
+cold fn
+internal::word_is_bare_glob(const Word &word) wontthrow -> bool
 {
   return word.segments.count() == 1 &&
          word.segments[0].kind == WordSegment::Kind::UnquotedText &&
          word.segments[0].has_glob_metacharacter();
 }
 
-cold static fn view_has_brace_expansion(StringView text) wontthrow -> bool
+cold static fn
+view_has_brace_expansion(StringView text) wontthrow -> bool
 {
   let const open = text.find_character('{');
   if (!open.has_value()) return false;
@@ -323,7 +329,8 @@ cold static fn view_has_brace_expansion(StringView text) wontthrow -> bool
   return false;
 }
 
-cold fn internal::classify_test_operand(const Word &word) wontthrow
+cold fn
+internal::classify_test_operand(const Word &word) wontthrow
     -> test_operand_shape
 {
   test_operand_shape shape;
@@ -362,7 +369,8 @@ cold fn internal::classify_test_operand(const Word &word) wontthrow
   return shape;
 }
 
-cold fn bare_glob_can_start_with_dash(const Word &word) wontthrow -> bool
+cold fn
+bare_glob_can_start_with_dash(const Word &word) wontthrow -> bool
 {
   if (!word_is_bare_glob(word)) return false;
   let const text = word.segments[0].text.view();
@@ -388,8 +396,8 @@ cold fn bare_glob_can_start_with_dash(const Word &word) wontthrow -> bool
   return false;
 }
 
-cold pure fn internal::view_contains(StringView view,
-                                     StringView needle) wontthrow -> bool
+cold pure fn
+internal::view_contains(StringView view, StringView needle) wontthrow -> bool
 {
   if (needle.length == 0 || needle.length > view.length) {
     return false;
@@ -413,7 +421,8 @@ cold pure fn internal::view_contains(StringView view,
   return false;
 }
 
-cold pure fn substitution_body_is_bare_echo(StringView body) wontthrow -> bool
+cold pure fn
+substitution_body_is_bare_echo(StringView body) wontthrow -> bool
 {
   usize start = 0;
 
@@ -436,8 +445,9 @@ cold pure fn substitution_body_is_bare_echo(StringView body) wontthrow -> bool
   return true;
 }
 
-cold fn internal::args_have_stdin_operand(
-    const ArrayList<const Token *> &args) throws -> bool
+cold fn
+internal::args_have_stdin_operand(const ArrayList<const Token *> &args) throws
+    -> bool
 {
   let storage = String{heap_allocator()};
 
@@ -451,7 +461,8 @@ cold fn internal::args_have_stdin_operand(
   return false;
 }
 
-fn internal::operand_target_name(StringView text) wontthrow -> StringView
+fn
+internal::operand_target_name(StringView text) wontthrow -> StringView
 {
   if (text.is_empty() || text[0] == '-') {
     return StringView{};
@@ -465,8 +476,8 @@ fn internal::operand_target_name(StringView text) wontthrow -> StringView
   return text.substring_of_length(0, end);
 }
 
-pure fn builtin_value_option_letters(command_name_id command_id) wontthrow
-    -> StringView
+pure fn
+builtin_value_option_letters(command_name_id command_id) wontthrow -> StringView
 {
   switch (command_id) {
   case command_name_id::Read: return StringView{"adinNptu"};
@@ -478,8 +489,8 @@ pure fn builtin_value_option_letters(command_name_id command_id) wontthrow
   }
 }
 
-pure fn builtin_target_binder(command_name_id command_id) wontthrow
-    -> assignment_binder
+pure fn
+builtin_target_binder(command_name_id command_id) wontthrow -> assignment_binder
 {
   switch (command_id) {
   case command_name_id::Read: return assignment_binder::ReadInput;
@@ -493,19 +504,20 @@ pure fn builtin_target_binder(command_name_id command_id) wontthrow
   }
 }
 
-fn note_variable_target_operands(AnalysisContext &actx,
-                                 command_name_id command_id,
-                                 const ArrayList<const Token *> &args,
-                                 bool should_note_assignment,
-                                 bool is_conditional) throws -> void
+fn
+note_variable_target_operands(AnalysisContext                &actx,
+                              command_name_id                 command_id,
+                              const ArrayList<const Token *> &args,
+                              bool should_note_assignment,
+                              bool is_conditional) throws -> void
 {
-  let const value_options = builtin_value_option_letters(command_id);
-  let const binder = builtin_target_binder(command_id);
+  let const value_options         = builtin_value_option_letters(command_id);
+  let const binder                = builtin_target_binder(command_id);
   let const has_one_named_operand = command_id == command_name_id::Getopts;
 
   let should_skip_option_value = false;
-  let is_array_option_value = false;
-  let bare_operand_count = usize{0};
+  let is_array_option_value    = false;
+  let bare_operand_count       = usize{0};
 
   for (usize i = 1; i < args.count(); i++) {
     let const literal = args[i]->kind() == Token::Kind::Word
@@ -513,7 +525,7 @@ fn note_variable_target_operands(AnalysisContext &actx,
                                   ->word()
                                   .to_literal_string()
                             : args[i]->raw_string();
-    let const view = literal.view();
+    let const view    = literal.view();
 
     if (should_skip_option_value) {
       should_skip_option_value = false;
@@ -556,8 +568,9 @@ fn note_variable_target_operands(AnalysisContext &actx,
   }
 }
 
-fn SimpleCommand::analyze(AnalysisContext &actx,
-                          bool is_unconditional) const throws -> void
+fn
+SimpleCommand::analyze(AnalysisContext &actx,
+                       bool             is_unconditional) const throws -> void
 {
   optimizer::optimize_node(this, actx);
 
@@ -645,8 +658,8 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
       if (element->kind() != Token::Kind::Word) continue;
 
       let const &word = static_cast<const tokens::WordToken *>(element)->word();
-      let has_unquoted_substitution = false;
-      let has_unquoted_reference = false;
+      let        has_unquoted_substitution = false;
+      let        has_unquoted_reference    = false;
 
       for (let const &segment : word.segments) {
         if (segment.kind == WordSegment::Kind::VariableReference) {
@@ -694,14 +707,14 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
   }
 
   ASSERT(m_args[0] != nullptr);
-  let const name = static_command_name(m_args[0]);
+  let const name                     = static_command_name(m_args[0]);
   let const borrowed_command_literal = m_args[0]->raw_view();
-  let const command_literal_storage = borrowed_command_literal.has_value()
-                                          ? String{heap_allocator()}
-                                          : m_args[0]->raw_string();
-  let const command_literal = borrowed_command_literal.has_value()
-                                  ? *borrowed_command_literal
-                                  : command_literal_storage.view();
+  let const command_literal_storage  = borrowed_command_literal.has_value()
+                                           ? String{heap_allocator()}
+                                           : m_args[0]->raw_string();
+  let const command_literal          = borrowed_command_literal.has_value()
+                                           ? *borrowed_command_literal
+                                           : command_literal_storage.view();
   let const command_is_defined_function =
       actx.functions.defined.contains(command_literal);
   let const is_command_shadowed =
@@ -735,7 +748,7 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
   }
 
   let const command_info = get_analysis_command_info(command_literal);
-  let const command_id = command_info.id;
+  let const command_id   = command_info.id;
   if (!is_command_shadowed &&
       (command_id == command_name_id::Cd || command_literal == "pushd" ||
        command_literal == "popd"))
@@ -749,11 +762,11 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
       command_info.is_in_group(COMMAND_GROUP_DECLARATION_BUILTIN))
   {
     for (usize i = 1; i < m_args.count(); i++) {
-      let const word = m_args[i]->kind() == Token::Kind::Word
-                           ? static_cast<const tokens::WordToken *>(m_args[i])
+      let const word        = m_args[i]->kind() == Token::Kind::Word
+                                  ? static_cast<const tokens::WordToken *>(m_args[i])
                                  ->word()
                                  .to_literal_string()
-                           : m_args[i]->raw_string();
+                                  : m_args[i]->raw_string();
       let const target_name = operand_target_name(word.view());
       if (target_name.is_empty()) continue;
 
@@ -784,8 +797,8 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
     let is_reporting_form = false;
 
     for (usize i = 1; i < m_args.count(); i++) {
-      let flag_storage = String{heap_allocator()};
-      let const flag_text = borrowed_token_text(m_args[i], flag_storage);
+      let       flag_storage = String{heap_allocator()};
+      let const flag_text    = borrowed_token_text(m_args[i], flag_storage);
       if (flag_text.length < 2 || flag_text[0] != '-') {
         continue;
       }
@@ -802,17 +815,17 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
     }
 
     for (usize i = 1; i < m_args.count(); i++) {
-      let split = Maybe<word_assignment_split>{None};
-      StringView recorded_name;
+      let         split = Maybe<word_assignment_split>{None};
+      StringView  recorded_name;
       const Word *recorded_value = nullptr;
-      let update_mode = assignment_update_mode::Replace;
+      let         update_mode    = assignment_update_mode::Replace;
 
       if (m_args[i]->kind() == Token::Kind::Assignment) {
         let const *assignment =
             static_cast<const tokens::Assignment *>(m_args[i]);
-        recorded_name = assignment->key().view();
+        recorded_name  = assignment->key().view();
         recorded_value = &assignment->value_word();
-        update_mode = assignment->get_update_mode();
+        update_mode    = assignment->get_update_mode();
       } else if (m_args[i]->kind() == Token::Kind::Word) {
         let const &word =
             static_cast<const tokens::WordToken *>(m_args[i])->word();
@@ -841,9 +854,9 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
           continue;
         }
 
-        recorded_name = split->name.view();
+        recorded_name  = split->name.view();
         recorded_value = &split->value;
-        update_mode = split->update_mode;
+        update_mode    = split->update_mode;
       } else {
         continue;
       }
@@ -851,7 +864,7 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
       if (let const bracket = recorded_name.find_character('[');
           bracket.has_value())
       {
-        recorded_name = recorded_name.substring_of_length(0, *bracket);
+        recorded_name  = recorded_name.substring_of_length(0, *bracket);
         recorded_value = nullptr;
       }
 
@@ -886,7 +899,7 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
   } else if (!is_command_shadowed) {
     let const wrapped_index = wrapped_command_index(command_id, m_args);
     if (wrapped_index.has_value()) {
-      let command_storage = String{heap_allocator()};
+      let       command_storage = String{heap_allocator()};
       let const wrapped_command =
           borrowed_token_text(m_args[*wrapped_index], command_storage);
       let const wrapped_command_id =
@@ -926,7 +939,7 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
 
   check_operand_lints_before_scan(actx, lint_input);
 
-  bool has_command_substitution_argument = false;
+  bool      has_command_substitution_argument = false;
   let const should_scan_for_useless_echo =
       actx.should_report(diagnostic_id::sc2116);
   let const should_scan_for_malformed_glob =
@@ -944,14 +957,14 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
   bool has_end_of_options = false;
 
   for (usize i = 0; i < m_args.count(); i++) {
-    let const arg = m_args[i];
-    let const arg_location = arg->source_location();
-    let const source_text = analysis_source_text(actx, arg_location);
-    let const is_operand = i >= 1;
-    const Word *word = nullptr;
-    const Word *locale_word = nullptr;
+    let const   arg          = m_args[i];
+    let const   arg_location = arg->source_location();
+    let const   source_text  = analysis_source_text(actx, arg_location);
+    let const   is_operand   = i >= 1;
+    const Word *word         = nullptr;
+    const Word *locale_word  = nullptr;
     if (arg->kind() == Token::Kind::Word) {
-      word = &static_cast<const tokens::WordToken *>(arg)->word();
+      word        = &static_cast<const tokens::WordToken *>(arg)->word();
       locale_word = word;
     } else if (arg->kind() == Token::Kind::Assignment) {
       locale_word = &static_cast<const tokens::Assignment *>(arg)->value_word();
@@ -963,21 +976,21 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
           word->get_quoted_assignment_split().has_value();
     }
 
-    bool has_dollar_bracket = false;
-    bool has_double_dot = false;
-    bool has_open_brace = false;
-    bool has_dollar_byte = false;
-    bool has_quote_break_for_dollar = false;
-    bool has_literal_dollar_in_quotes = false;
-    bool is_in_single_quote = false;
-    bool is_in_ansi_c_quote = false;
-    bool is_in_double_quote = false;
-    bool is_quote_escape_pending = false;
-    usize parameter_expansion_depth = 0;
+    bool  has_dollar_bracket           = false;
+    bool  has_double_dot               = false;
+    bool  has_open_brace               = false;
+    bool  has_dollar_byte              = false;
+    bool  has_quote_break_for_dollar   = false;
+    bool  has_literal_dollar_in_quotes = false;
+    bool  is_in_single_quote           = false;
+    bool  is_in_ansi_c_quote           = false;
+    bool  is_in_double_quote           = false;
+    bool  is_quote_escape_pending      = false;
+    usize parameter_expansion_depth    = 0;
 
     for (usize position = 0; position < source_text.length; position++) {
-      let const byte = source_text[position];
-      let const was_quote_escape_pending = is_quote_escape_pending;
+      let const byte                       = source_text[position];
+      let const was_quote_escape_pending   = is_quote_escape_pending;
       let const was_in_parameter_expansion = parameter_expansion_depth > 0;
 
       if (is_quote_escape_pending) {
@@ -998,7 +1011,7 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
         } else if (byte == '$' && position + 1 < source_text.length &&
                    source_text[position + 1] == '\'')
         {
-          is_in_ansi_c_quote = true;
+          is_in_ansi_c_quote      = true;
           is_quote_escape_pending = true;
         } else if (byte == '\'') {
           is_in_single_quote = true;
@@ -1013,7 +1026,7 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
                  position + 1 < source_text.length &&
                  source_text[position + 1] == '\'')
       {
-        is_in_ansi_c_quote = true;
+        is_in_ansi_c_quote      = true;
         is_quote_escape_pending = true;
       } else if (byte == '\'' && !is_in_double_quote) {
         is_in_single_quote = true;
@@ -1072,22 +1085,22 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
     if (has_dollar_bracket)
       actx.report_diagnostic(diagnostic_id::sc2007, arg_location);
 
-    bool has_external_arithmetic_read = false;
-    bool has_unquoted_command_substitution = false;
-    bool has_bare_star_reference = false;
-    bool has_spread_alone_unquoted = false;
-    bool has_spread_in_longer_word = false;
-    bool has_split_eligible_variable = false;
-    bool has_bracket_byte = false;
-    bool has_quote_sandwich = false;
-    u8 quote_sandwich_state = 0;
-    StringView quote_sandwich_word{};
-    usize echo_only_substitution_count = 0;
-    StringView lost_pipeline_name{};
-    StringView bare_array_name{};
-    StringView quoted_value_name{};
+    bool                    has_external_arithmetic_read      = false;
+    bool                    has_unquoted_command_substitution = false;
+    bool                    has_bare_star_reference           = false;
+    bool                    has_spread_alone_unquoted         = false;
+    bool                    has_spread_in_longer_word         = false;
+    bool                    has_split_eligible_variable       = false;
+    bool                    has_bracket_byte                  = false;
+    bool                    has_quote_sandwich                = false;
+    u8                      quote_sandwich_state              = 0;
+    StringView              quote_sandwich_word{};
+    usize                   echo_only_substitution_count = 0;
+    StringView              lost_pipeline_name{};
+    StringView              bare_array_name{};
+    StringView              quoted_value_name{};
     Maybe<SourceLocation *> quoted_value_assignment{};
-    SourceLocation split_eligible_location = arg_location;
+    SourceLocation          split_eligible_location = arg_location;
 
     if (word != nullptr) {
       check_posix_word_portability(actx, *word, arg_location);
@@ -1131,7 +1144,7 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
         }
 
         case WordSegment::Kind::CommandSubstitution:
-          quote_sandwich_state = 0;
+          quote_sandwich_state              = 0;
           has_command_substitution_argument = true;
           if (!segment.is_in_double_quotes)
             has_unquoted_command_substitution = true;
@@ -1155,7 +1168,7 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
         case WordSegment::Kind::UnquotedText:
           if (quote_sandwich_state == 1) {
             quote_sandwich_state = 2;
-            quote_sandwich_word = segment.text.view();
+            quote_sandwich_word  = segment.text.view();
           } else {
             quote_sandwich_state = 0;
           }
@@ -1209,7 +1222,7 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
               !internal::reference_has_quoted_alternate_word(referenced))
           {
             has_split_eligible_variable = true;
-            split_eligible_location = expansion_location_with_sigil(
+            split_eligible_location     = expansion_location_with_sigil(
                 actx,
                 segment.get_source_location(arg_location.source_name_index)
                     .value_or(arg_location));
@@ -1379,11 +1392,11 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
        command_id == command_name_id::Unset))
   {
     for (usize i = 1; i < m_args.count(); i++) {
-      let const word = m_args[i]->kind() == Token::Kind::Word
-                           ? static_cast<const tokens::WordToken *>(m_args[i])
+      let const word        = m_args[i]->kind() == Token::Kind::Word
+                                  ? static_cast<const tokens::WordToken *>(m_args[i])
                                  ->word()
                                  .to_literal_string()
-                           : m_args[i]->raw_string();
+                                  : m_args[i]->raw_string();
       let const target_name = operand_target_name(word.view());
       if (utils::environment_name_is_path(target_name))
         actx.mark_path_unknown(true);
@@ -1394,8 +1407,8 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
 
   check_operand_lints_after_scan(actx, lint_input);
 
-  let runtime_definer_name = String{command_literal};
-  let runtime_definer_id = command_id;
+  let  runtime_definer_name = String{command_literal};
+  let  runtime_definer_id   = command_id;
   bool is_runtime_definer =
       command_info.is_in_group(COMMAND_GROUP_RUNTIME_DEFINER);
 
@@ -1459,7 +1472,7 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
       !actx.should_silence_unresolved_command_at(
           m_args[0]->source_location().position);
 
-  let unavailable = Maybe<utils::unavailable_path_source_component>{};
+  let unavailable          = Maybe<utils::unavailable_path_source_component>{};
   let command_was_resolved = false;
   if (should_check_command_resolution) {
     command_was_resolved = command_resolves(*name, m_args[0]->source_location(),
@@ -1477,15 +1490,15 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
   if (should_check_command_resolution && !command_was_resolved &&
       !actx.tested_command_names.contains(*name))
   {
-    let reported_diagnostic = resolution_diagnostic;
-    let diagnostic_location = m_args[0]->source_location();
-    let reported_name = *name;
+    let reported_diagnostic  = resolution_diagnostic;
+    let diagnostic_location  = m_args[0]->source_location();
+    let reported_name        = *name;
     let is_missing_directory = false;
     if (unavailable.has_value() &&
         resolution_diagnostic == diagnostic_id::unresolved_command)
     {
-      diagnostic_location = unavailable->location;
-      reported_name = unavailable->reported_prefix.view();
+      diagnostic_location  = unavailable->location;
+      reported_name        = unavailable->reported_prefix.view();
       is_missing_directory = !unavailable->is_final_component;
       if (is_missing_directory)
         reported_diagnostic = diagnostic_id::unresolved_command_directory;
@@ -1584,9 +1597,11 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
   }
 }
 
-fn SimpleCommand::append_presence_tested_command_names(
-    const AnalysisContext &actx, HashSet &names,
-    bool is_status_success) const throws -> void
+fn
+SimpleCommand::append_presence_tested_command_names(
+    const AnalysisContext &actx,
+    HashSet               &names,
+    bool                   is_status_success) const throws -> void
 {
   if (is_status_success == is_negated() || m_args.is_empty()) {
     return;
@@ -1605,15 +1620,15 @@ fn SimpleCommand::append_presence_tested_command_names(
   {
     return;
   }
-  let const is_test_presence_form = *name == "test" && m_args.count() == 3;
-  bool is_bracket_presence_form = false;
+  let const is_test_presence_form    = *name == "test" && m_args.count() == 3;
+  bool      is_bracket_presence_form = false;
   if (*name == "[" && m_args.count() == 4) {
-    let const closing = static_command_name(m_args[3]);
+    let const closing        = static_command_name(m_args[3]);
     is_bracket_presence_form = closing.has_value() && *closing == "]";
   }
   if (is_test_presence_form || is_bracket_presence_form) {
-    let const option = static_command_name(m_args[1]);
-    bool is_zsh_presence_operand = false;
+    let const option                  = static_command_name(m_args[1]);
+    bool      is_zsh_presence_operand = false;
     if (m_args[2]->kind() == Token::Kind::Word) {
       let const &operand =
           static_cast<const tokens::WordToken *>(m_args[2])->word();
@@ -1654,7 +1669,8 @@ fn SimpleCommand::append_presence_tested_command_names(
   }
 }
 
-cold fn SimpleCommand::try_static_condition_verdict(
+cold fn
+SimpleCommand::try_static_condition_verdict(
     const AnalysisContext &actx) const wontthrow -> Maybe<bool>
 {
   if (!m_redirections.is_empty()) return koshka::None;

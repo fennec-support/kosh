@@ -21,23 +21,24 @@ REGISTER_KOSHKIT_UTIL_FLAGS(Seq);
 
 namespace koshka::koshkit {
 
-fn Seq::execute(const ExecContext &ec, EvalContext &cxt,
-                const ArrayList<String> &args,
-                const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+fn
+Seq::execute(const ExecContext               &ec,
+             EvalContext                     &cxt,
+             const ArrayList<String>         &args,
+             const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(
       args, arg_locations, {.should_accept_negative_number_operand = true});
 
   if (operands.is_empty()) return report_usage_error(ec, cxt, args[0].view());
 
-  i64 first = 1;
-  i64 increment = 1;
-  i64 last = 0;
+  i64       first            = 1;
+  i64       increment        = 1;
+  i64       last             = 0;
   let const do_parse_integer = [&](usize operand_position, i64 &value)
                                    throws -> bool {
-    bool is_out_of_range = false;
-    let const parsed = utils::parse_decimal_i64(
+    bool      is_out_of_range = false;
+    let const parsed          = utils::parse_decimal_i64(
         operands[operand_position].view(), &is_out_of_range);
     if (parsed.is_error() || is_out_of_range) {
       KOSHKIT_REPORT_ERROR_AT(
@@ -82,7 +83,7 @@ fn Seq::execute(const ExecContext &ec, EvalContext &cxt,
     return 1;
   }
 
-  let output = String{cxt.scratch_allocator()};
+  let                    output               = String{cxt.scratch_allocator()};
   static constexpr usize OUTPUT_BUFFER_LENGTH = 64 * 1024;
   output.reserve(OUTPUT_BUFFER_LENGTH);
   char value_text[21];

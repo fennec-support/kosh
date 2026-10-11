@@ -32,7 +32,8 @@ class String;
 namespace koshka {
 
 template <class P>
-constexpr bool t__is_dumpable_record_pointer()
+constexpr bool
+t__is_dumpable_record_pointer()
 {
   using Pointer = __remove_cvref(P);
 
@@ -50,12 +51,13 @@ template <class StringT>
 struct t__dump_state
 {
   StringT output;
-  usize base_indent{0};
-  bool is_at_line_start{true};
+  usize   base_indent{0};
+  bool    is_at_line_start{true};
 };
 
 template <class StringT>
-fn t__append_dump_text(t__dump_state<StringT> &state, const char *text) throws
+fn
+t__append_dump_text(t__dump_state<StringT> &state, const char *text) throws
     -> void
 {
   for (; *text != '\0'; text++) {
@@ -72,27 +74,31 @@ fn t__append_dump_text(t__dump_state<StringT> &state, const char *text) throws
 }
 
 template <class Last>
-fn t__last_dump_argument(Last &last) wontthrow -> Last &
+fn
+t__last_dump_argument(Last &last) wontthrow -> Last &
 {
   return last;
 }
 
 template <class First, class... Rest>
   requires(sizeof...(Rest) > 0)
-fn t__last_dump_argument(First &, Rest &...rest) wontthrow -> decltype(auto)
+fn
+t__last_dump_argument(First &, Rest &...rest) wontthrow -> decltype(auto)
 {
   return t__last_dump_argument(rest...);
 }
 
 template <class StringT, class... Args>
-fn t__strprintf(t__dump_state<StringT> &state, const char *format,
-                Args &&...args) throws -> void
+fn
+t__strprintf(t__dump_state<StringT> &state,
+             const char             *format,
+             Args &&...args) throws -> void
 {
   const int written = ::snprintf(nullptr, 0, format, args...);
   if (written < 0) return;
 
   const usize formatted_length = static_cast<usize>(written);
-  let allocator = state.output.allocator();
+  let         allocator        = state.output.allocator();
   char *rendered = allocator.template alloc_array<char>(formatted_length + 1);
   defer { allocator.free_array(rendered, formatted_length + 1); };
 
@@ -107,7 +113,7 @@ fn t__strprintf(t__dump_state<StringT> &state, const char *format,
 
   if constexpr (sizeof...(Args) > 0) {
     let pointer = t__last_dump_argument(args...);
-    using Last = decltype(pointer);
+    using Last  = decltype(pointer);
 
     if constexpr (t__is_dumpable_record_pointer<Last>()) {
       const bool is_pointer_value = ::strstr(format, "%p") != nullptr;
@@ -126,7 +132,8 @@ fn t__strprintf(t__dump_state<StringT> &state, const char *format,
 }
 
 template <class StringT, class T, class AllocatorT>
-fn t__string_from_struct(const T &value, AllocatorT allocator) throws -> StringT
+fn
+t__string_from_struct(const T &value, AllocatorT allocator) throws -> StringT
 {
   let state = t__dump_state<StringT>{StringT{allocator}, 0, true};
   __builtin_dump_struct(&value, t__strprintf<StringT>, state);

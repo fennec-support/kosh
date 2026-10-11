@@ -27,7 +27,8 @@ using internal::is_unquoted_word;
 using internal::throw_unterminated;
 using internal::token_kind_mask;
 
-hot fn Parser::parse_if() throws -> Command *
+hot fn
+Parser::parse_if() throws -> Command *
 {
   Token *if_token = m_lexer.next_shell_token();
   ASSERT(if_token != nullptr);
@@ -36,10 +37,10 @@ hot fn Parser::parse_if() throws -> Command *
 
   LOG(Debug, "parsing an if clause at byte %u", location.position);
 
-  let branches = ArrayList<if_branch>{heap_allocator()};
-  const Expression *otherwise = nullptr;
-  usize end_position = 0;
-  let const do_reject_empty = [](const Expression *part, const Token *next,
+  let               branches     = ArrayList<if_branch>{heap_allocator()};
+  const Expression *otherwise    = nullptr;
+  usize             end_position = 0;
+  let const do_reject_empty      = [](const Expression *part, const Token *next,
                                  const char *details) throws -> void {
     if (!part->is_dummy()) return;
 
@@ -81,7 +82,7 @@ hot fn Parser::parse_if() throws -> Command *
     switch (after->kind()) {
     case Token::Kind::Elif: continue;
     case Token::Kind::Else: {
-      otherwise = parse_command_list(token_kind_mask(Token::Kind::Fi));
+      otherwise       = parse_command_list(token_kind_mask(Token::Kind::Fi));
       Token *fi_token = m_lexer.next_shell_token();
       ASSERT(fi_token != nullptr);
       if (fi_token->kind() != Token::Kind::Fi) {
@@ -112,7 +113,8 @@ hot fn Parser::parse_if() throws -> Command *
   return node;
 }
 
-hot fn Parser::parse_while_or_until(loop_kind kind) throws -> Command *
+hot fn
+Parser::parse_while_or_until(loop_kind kind) throws -> Command *
 {
   Token *keyword = m_lexer.next_shell_token();
   ASSERT(keyword != nullptr);
@@ -122,7 +124,7 @@ hot fn Parser::parse_while_or_until(loop_kind kind) throws -> Command *
       kind == loop_kind::Until ? "until" : "while", location.position);
 
   Expression *condition = parse_command_list(token_kind_mask(Token::Kind::Do));
-  Token *do_token = m_lexer.next_shell_token();
+  Token      *do_token  = m_lexer.next_shell_token();
   ASSERT(do_token != nullptr);
   if (do_token->kind() != Token::Kind::Do) {
     let const detail = condition->is_dummy()
@@ -142,16 +144,16 @@ hot fn Parser::parse_while_or_until(loop_kind kind) throws -> Command *
   return loop_node;
 }
 
-static fn word_token_from_assignment(BumpArena &arena,
-                                     const Assignment *a) throws
+static fn
+word_token_from_assignment(BumpArena &arena, const Assignment *a) throws
     -> tokens::WordToken *;
 
-static fn double_paren_closes_adjacent(StringView source,
-                                       usize body_start_position) wontthrow
-    -> bool
+static fn
+double_paren_closes_adjacent(StringView source,
+                             usize      body_start_position) wontthrow -> bool
 {
   usize depth = 0;
-  char quote = 0;
+  char  quote = 0;
 
   for (usize i = body_start_position; i < source.length; i++) {
     let const c = source[i];
@@ -188,12 +190,14 @@ static fn double_paren_closes_adjacent(StringView source,
   return false;
 }
 
-static fn word_token_from_raw(BumpArena &arena, StringView text,
-                              SourceLocation location) throws
-    -> tokens::WordToken *;
+static fn
+word_token_from_raw(BumpArena     &arena,
+                    StringView     text,
+                    SourceLocation location) throws -> tokens::WordToken *;
 
-fn Parser::parse_optional_in_clause_words(
-    ArrayList<const Token *> &words) throws -> bool
+fn
+Parser::parse_optional_in_clause_words(ArrayList<const Token *> &words) throws
+    -> bool
 {
   Token *peeked = m_lexer.peek_shell_token();
   ASSERT(peeked != nullptr);
@@ -235,10 +239,13 @@ fn Parser::parse_optional_in_clause_words(
   return true;
 }
 
-alwaysinline fn Parser::parse_loop_header(
-    const SourceLocation &location, StringView keyword,
-    StringView unterminated_message, StringView missing_do_detail,
-    StringView missing_do_without_in_detail) throws -> parsed_loop_header
+alwaysinline fn
+Parser::parse_loop_header(const SourceLocation &location,
+                          StringView            keyword,
+                          StringView            unterminated_message,
+                          StringView            missing_do_detail,
+                          StringView missing_do_without_in_detail) throws
+    -> parsed_loop_header
 {
   Token *name_token = m_lexer.next_shell_token();
   ASSERT(name_token != nullptr);
@@ -246,8 +253,8 @@ alwaysinline fn Parser::parse_loop_header(
       token_kind_is_keyword(name_token->kind()))
   {
     let const raw = name_token->raw_string();
-    name_token = word_token_from_raw(m_lexer.arena(), raw.view(),
-                                     name_token->source_location());
+    name_token    = word_token_from_raw(m_lexer.arena(), raw.view(),
+                                        name_token->source_location());
   }
   if (name_token->kind() != Token::Kind::Word) {
     if (keyword == "for" && m_lexer.is_posix_mode() &&
@@ -299,7 +306,8 @@ alwaysinline fn Parser::parse_loop_header(
                             parse_loop_body(location, unterminated_message)};
 }
 
-hot fn Parser::parse_for() throws -> Command *
+hot fn
+Parser::parse_for() throws -> Command *
 {
   Token *keyword = m_lexer.next_shell_token();
   ASSERT(keyword != nullptr);
@@ -312,7 +320,7 @@ hot fn Parser::parse_for() throws -> Command *
     ASSERT(peeked != nullptr);
     if (peeked->kind() == Token::Kind::LeftParen) {
       Token *first_paren = m_lexer.next_shell_token();
-      Token *second = m_lexer.peek_shell_token();
+      Token *second      = m_lexer.peek_shell_token();
       ASSERT(second != nullptr);
       if (second->kind() == Token::Kind::LeftParen &&
           second->source_location().position ==
@@ -338,7 +346,8 @@ hot fn Parser::parse_for() throws -> Command *
   return loop_node;
 }
 
-hot fn Parser::parse_select() throws -> Command *
+hot fn
+Parser::parse_select() throws -> Command *
 {
   Token *keyword = m_lexer.next_shell_token();
   ASSERT(keyword != nullptr);
@@ -358,8 +367,8 @@ hot fn Parser::parse_select() throws -> Command *
   return loop_node;
 }
 
-hot pure static fn token_opens_compound_command(const Token *token) wontthrow
-    -> bool
+hot pure static fn
+token_opens_compound_command(const Token *token) wontthrow -> bool
 {
   if (token == nullptr) return false;
 
@@ -370,7 +379,7 @@ hot pure static fn token_opens_compound_command(const Token *token) wontthrow
   case Token::Kind::For:
   case Token::Kind::Case:
   case Token::Kind::LeftParen: return true;
-  default: break;
+  default:                     break;
   }
 
   let const *unquoted_text = get_unquoted_word_text(token);
@@ -384,11 +393,12 @@ hot pure static fn token_opens_compound_command(const Token *token) wontthrow
   case '[': return text == "[[";
   case 's': return text == "select";
   case 'c': return text == "coproc";
-  default: return false;
+  default:  return false;
   }
 }
 
-hot fn Parser::parse_coproc() throws -> Command *
+hot fn
+Parser::parse_coproc() throws -> Command *
 {
   Token *keyword = m_lexer.next_shell_token();
   ASSERT(keyword != nullptr);
@@ -397,13 +407,13 @@ hot fn Parser::parse_coproc() throws -> Command *
 
   LOG(Debug, "parsing a coprocess at byte %u", location.position);
 
-  let name = StringView{"COPROC"};
+  let    name          = StringView{"COPROC"};
   Token *leading_token = nullptr;
 
   Token *candidate = m_lexer.peek_shell_token();
   if (candidate != nullptr && candidate->kind() == Token::Kind::Word) {
     let const &word = static_cast<const tokens::WordToken *>(candidate)->word();
-    let is_plain_name =
+    let        is_plain_name =
         word.segments.count() == 1 &&
         word.segments[0].kind == WordSegment::Kind::UnquotedText;
     if (is_plain_name) {
@@ -426,7 +436,7 @@ hot fn Parser::parse_coproc() throws -> Command *
     throw ErrorWithLocation{location, "Expected a command after 'coproc'"};
   }
 
-  let end_position = body->source_end_position();
+  let       end_position         = body->source_end_position();
   let const keyword_end_position = location.position + location.length;
   if (end_position < keyword_end_position) end_position = keyword_end_position;
 
@@ -436,8 +446,8 @@ hot fn Parser::parse_coproc() throws -> Command *
   return node;
 }
 
-static fn word_token_from_assignment(BumpArena &arena,
-                                     const Assignment *a) throws
+static fn
+word_token_from_assignment(BumpArena &arena, const Assignment *a) throws
     -> tokens::WordToken *
 {
   let word = Word{};
@@ -457,9 +467,10 @@ static fn word_token_from_assignment(BumpArena &arena,
   return tokens::create_word_token(arena, a->source_location(), steal(word));
 }
 
-static fn word_token_from_raw(BumpArena &arena, StringView text,
-                              SourceLocation location) throws
-    -> tokens::WordToken *
+static fn
+word_token_from_raw(BumpArena     &arena,
+                    StringView     text,
+                    SourceLocation location) throws -> tokens::WordToken *
 {
   let word = Word{};
   word.segments.push(WordSegment{
@@ -470,7 +481,8 @@ static fn word_token_from_raw(BumpArena &arena, StringView text,
   return tokens::create_word_token(arena, steal(location), steal(word));
 }
 
-hot fn Parser::parse_case() throws -> Command *
+hot fn
+Parser::parse_case() throws -> Command *
 {
   Token *keyword = m_lexer.next_shell_token();
   ASSERT(keyword != nullptr);
@@ -486,8 +498,8 @@ hot fn Parser::parse_case() throws -> Command *
   } else if (word->kind() != Token::Kind::Word) {
     if (token_kind_is_keyword(word->kind())) {
       let const raw = word->raw_string();
-      word = word_token_from_raw(m_lexer.arena(), raw.view(),
-                                 word->source_location());
+      word          = word_token_from_raw(m_lexer.arena(), raw.view(),
+                                          word->source_location());
     } else {
       throw ErrorWithLocation{word->source_location(),
                               "Expected a word to match on after 'case'"};
@@ -506,7 +518,7 @@ hot fn Parser::parse_case() throws -> Command *
     throw error;
   }
 
-  let items = ArrayList<case_item>{heap_allocator()};
+  let   items        = ArrayList<case_item>{heap_allocator()};
   usize end_position = location.position + location.length;
 
   loop
@@ -541,7 +553,7 @@ hot fn Parser::parse_case() throws -> Command *
             m_lexer.arena(), static_cast<Assignment *>(pattern));
       } else if (pattern->kind() != Token::Kind::Word) {
         let const pattern_location = pattern->source_location();
-        let const text = m_lexer.source().substring_of_length(
+        let const text             = m_lexer.source().substring_of_length(
             pattern_location.position, pattern_location.length);
         if (token_kind_is_keyword(pattern->kind())) {
           pattern =
@@ -571,7 +583,7 @@ hot fn Parser::parse_case() throws -> Command *
 
     Token *after = m_lexer.peek_shell_token();
     ASSERT(after != nullptr);
-    let terminator = case_terminator::Break;
+    let terminator  = case_terminator::Break;
     let is_last_arm = false;
     switch (after->kind()) {
     case Token::Kind::DoubleSemicolon: m_lexer.advance_past_last_peek(); break;
@@ -602,7 +614,8 @@ hot fn Parser::parse_case() throws -> Command *
   return clause;
 }
 
-hot fn Parser::parse_brace_group() throws -> Command *
+hot fn
+Parser::parse_brace_group() throws -> Command *
 {
   Token *open = m_lexer.next_shell_token();
   ASSERT(open != nullptr);
@@ -636,7 +649,8 @@ hot fn Parser::parse_brace_group() throws -> Command *
   return group;
 }
 
-hot fn Parser::parse_paren_command() throws -> Command *
+hot fn
+Parser::parse_paren_command() throws -> Command *
 {
   Token *open = m_lexer.next_shell_token();
   ASSERT(open != nullptr);
@@ -656,14 +670,15 @@ hot fn Parser::parse_paren_command() throws -> Command *
   return parse_subshell(open);
 }
 
-hot fn Parser::parse_subshell(Token *open) throws -> Command *
+hot fn
+Parser::parse_subshell(Token *open) throws -> Command *
 {
   ASSERT(open != nullptr);
   ASSERT(open->kind() == Token::Kind::LeftParen);
 
   LOG(Debug, "parsing a subshell at byte %u", open->source_location().position);
 
-  let const scope_mark = open_analysis_scope();
+  let const   scope_mark = open_analysis_scope();
   Expression *body =
       parse_command_list(token_kind_mask(Token::Kind::RightParen));
 
@@ -691,7 +706,8 @@ hot fn Parser::parse_subshell(Token *open) throws -> Command *
   return subshell;
 }
 
-hot fn Parser::capture_double_paren_body(Token *open) throws -> StringView
+hot fn
+Parser::capture_double_paren_body(Token *open) throws -> StringView
 {
   ASSERT(open != nullptr);
   Token *second = m_lexer.next_shell_token();
@@ -699,7 +715,7 @@ hot fn Parser::capture_double_paren_body(Token *open) throws -> StringView
   ASSERT(second->kind() == Token::Kind::LeftParen);
 
   let const body_start_position = second->source_location().position + 1;
-  usize depth = 0;
+  usize     depth               = 0;
 
   loop
   {
@@ -710,7 +726,7 @@ hot fn Parser::capture_double_paren_body(Token *open) throws -> StringView
       throw ErrorWithLocationAndDetails{open->source_location(),
                                         "Unterminated '(('",
                                         t->source_location(), "expected '))'"};
-    case Token::Kind::LeftParen: depth++; continue;
+    case Token::Kind::LeftParen:  depth++; continue;
     case Token::Kind::RightParen: {
       if (depth > 0) {
         depth--;
@@ -737,13 +753,14 @@ hot fn Parser::capture_double_paren_body(Token *open) throws -> StringView
   }
 }
 
-hot fn Parser::parse_arithmetic_command(Token *open) throws -> Command *
+hot fn
+Parser::parse_arithmetic_command(Token *open) throws -> Command *
 {
   LOG(Debug, "parsing an arithmetic command at byte %u",
       open->source_location().position);
 
-  let const body = capture_double_paren_body(open);
-  let const open_location = open->source_location();
+  let const            body          = capture_double_paren_body(open);
+  let const            open_location = open->source_location();
   const SourceLocation full_location{open_location.position, body.length + 4,
                                      open_location.source_name_index};
 
@@ -751,16 +768,17 @@ hot fn Parser::parse_arithmetic_command(Token *open) throws -> Command *
       full_location, body.copy_to(bump_allocator(m_lexer.arena())));
 }
 
-hot fn Parser::parse_c_style_for(const SourceLocation &location,
-                                 Token *open) throws -> Command *
+hot fn
+Parser::parse_c_style_for(const SourceLocation &location, Token *open) throws
+    -> Command *
 {
   LOG(Debug, "parsing a c-style for header at byte %u", location.position);
 
   let const header = capture_double_paren_body(open);
 
-  usize separators[2] = {0, 0};
+  usize separators[2]   = {0, 0};
   usize separator_count = 0;
-  usize depth = 0;
+  usize depth           = 0;
 
   for (usize i = 0; i < header.length; i++) {
     let const c = header[i];
@@ -814,12 +832,13 @@ hot fn Parser::parse_c_style_for(const SourceLocation &location,
   return loop_node;
 }
 
-fn Parser::parse_loop_body(const SourceLocation &location,
-                           StringView unterminated_message) throws
+fn
+Parser::parse_loop_body(const SourceLocation &location,
+                        StringView            unterminated_message) throws
     -> parsed_loop_body
 {
   Expression *body = parse_command_list(token_kind_mask(Token::Kind::Done));
-  Token *done_token = m_lexer.peek_shell_token();
+  Token      *done_token = m_lexer.peek_shell_token();
   ASSERT(done_token != nullptr);
   if (done_token->kind() != Token::Kind::Done) {
     throw_unterminated(location, unterminated_message, m_lexer.source(), "done",
@@ -832,7 +851,8 @@ fn Parser::parse_loop_body(const SourceLocation &location,
   return parsed_loop_body{body, done_token->source_location()};
 }
 
-hot fn Parser::parse_conditional_command() throws -> Command *
+hot fn
+Parser::parse_conditional_command() throws -> Command *
 {
   Token *open = m_lexer.next_shell_token();
   ASSERT(open != nullptr);
@@ -841,7 +861,7 @@ hot fn Parser::parse_conditional_command() throws -> Command *
   LOG(Debug, "parsing a conditional command at byte %u",
       open->source_location().position);
 
-  let elements = ArrayList<conditional_element>{heap_allocator()};
+  let   elements = ArrayList<conditional_element>{heap_allocator()};
   usize close_end_position;
 
   loop
@@ -880,7 +900,7 @@ hot fn Parser::parse_conditional_command() throws -> Command *
       elements.push({nullptr, t->source_location(), Kind::Greater, false});
       break;
     case Token::Kind::Newline: continue;
-    case Token::Kind::Word: {
+    case Token::Kind::Word:    {
       let const is_bare_unquoted =
           static_cast<tokens::WordToken *>(t)->word().plain_literal_kind() ==
           Word::PlainLiteral::PlainUnquotedOneSegment;
@@ -899,11 +919,11 @@ hot fn Parser::parse_conditional_command() throws -> Command *
             peek->kind() != Token::Kind::RightParen)
         {
           m_lexer.advance_past_last_peek();
-          Token *const first = peek;
-          usize end_position = first->source_location().position +
+          Token *const first        = peek;
+          usize        end_position = first->source_location().position +
                                first->source_location().length;
-          usize regex_parenthesis_depth = 0;
-          Word regex_word{};
+          usize     regex_parenthesis_depth = 0;
+          Word      regex_word{};
           let const do_append_segments = [&](Token *tok) throws {
             if (tok->kind() == Token::Kind::Word) {
               let const &word =

@@ -15,9 +15,15 @@ KOSHKIT_UTIL_DECL(
     "[-v specification] system-variable | path-variable path | -a [path]",
     "The getconf utility writes configuration values.");
 
-FLAG(GETCONF_SPECIFICATION, String, 'v', "specification",
+FLAG(GETCONF_SPECIFICATION,
+     String,
+     'v',
+     "specification",
      "Use this POSIX specification.");
-FLAG(GETCONF_ALL, Bool, 'a', "all",
+FLAG(GETCONF_ALL,
+     Bool,
+     'a',
+     "all",
      "Write every known variable, using path for pathname variables.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Getconf);
@@ -316,8 +322,10 @@ inline constexpr static_string_entry<os::path_configuration_key>
 inline constexpr StaticStringMap PATH_CONFIGURATIONS{
     PATH_CONFIGURATION_ENTRIES};
 
-fn append_configuration_row(String &output, StringView name,
-                            StringView value) throws -> void
+fn
+append_configuration_row(String    &output,
+                         StringView name,
+                         StringView value) throws -> void
 {
   output += name;
   output += ' ';
@@ -325,10 +333,11 @@ fn append_configuration_row(String &output, StringView name,
   output += '\n';
 }
 
-fn append_numeric_configuration_row(
-    String &output, StringView name,
-    const os::numeric_configuration_result &result, Allocator allocator) throws
-    -> void
+fn
+append_numeric_configuration_row(String                                 &output,
+                                 StringView                              name,
+                                 const os::numeric_configuration_result &result,
+                                 Allocator allocator) throws -> void
 {
   if (result.status == os::configuration_query_status::Undefined) {
     append_configuration_row(output, name, "undefined");
@@ -338,10 +347,12 @@ fn append_numeric_configuration_row(
   append_configuration_row(output, name, String::from(result.value, allocator));
 }
 
-fn report_configuration_query_error(const ExecContext &ec, EvalContext &cxt,
-                                    SourceLocation location,
-                                    StringView utility_name,
-                                    StringView variable_name) throws -> i32
+fn
+report_configuration_query_error(const ExecContext &ec,
+                                 EvalContext       &cxt,
+                                 SourceLocation     location,
+                                 StringView         utility_name,
+                                 StringView         variable_name) throws -> i32
 {
   let const reason = os::last_system_error_message();
   report_soft_koshkit_util_error(ec, cxt, location, utility_name,
@@ -351,9 +362,11 @@ fn report_configuration_query_error(const ExecContext &ec, EvalContext &cxt,
   return 1;
 }
 
-fn Getconf::execute(const ExecContext &ec, EvalContext &cxt,
-                    const ArrayList<String> &args,
-                    const ArrayList<SourceLocation> &arg_locations) const throws
+fn
+Getconf::execute(const ExecContext               &ec,
+                 EvalContext                     &cxt,
+                 const ArrayList<String>         &args,
+                 const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
@@ -378,11 +391,11 @@ fn Getconf::execute(const ExecContext &ec, EvalContext &cxt,
   }
 
   if (FLAG_GETCONF_ALL.is_enabled()) {
-    let output = String{cxt.scratch_allocator()};
+    let       output         = String{cxt.scratch_allocator()};
     let const error_location = FLAG_GETCONF_ALL.value_location();
 
     for (let const &entry : SYSTEM_CONFIGURATION_ENTRIES) {
-      let const name = entry.key.to_string();
+      let const name   = entry.key.to_string();
       let const result = os::query_system_configuration(entry.value);
       if (result.status == os::configuration_query_status::Error) {
         if (!output.is_empty()) ec.print_to_stdout(output);
@@ -396,7 +409,7 @@ fn Getconf::execute(const ExecContext &ec, EvalContext &cxt,
 
     for (let const &entry : STRING_CONFIGURATION_ENTRIES) {
       let const name = entry.key.to_string();
-      let result =
+      let       result =
           os::query_string_configuration(entry.value, cxt.scratch_allocator());
       if (result.status == os::configuration_query_status::Error) {
         if (!output.is_empty()) ec.print_to_stdout(output);
@@ -414,7 +427,7 @@ fn Getconf::execute(const ExecContext &ec, EvalContext &cxt,
     let const path = operands.is_empty() ? StringView{"."} : operands[0].view();
 
     for (let const &entry : PATH_CONFIGURATION_ENTRIES) {
-      let const name = entry.key.to_string();
+      let const name   = entry.key.to_string();
       let const result = os::query_path_configuration(path, entry.value);
       if (result.status == os::configuration_query_status::Error) {
         if (!output.is_empty()) ec.print_to_stdout(output);

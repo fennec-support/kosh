@@ -11,8 +11,9 @@
 
 namespace koshka {
 
-fn parse_circle_ci_format(const parser_format_input &input,
-                          parsed_format_document &document) throws -> void
+fn
+parse_circle_ci_format(const parser_format_input &input,
+                       parsed_format_document    &document) throws -> void
 {
   static const StringView KEYS[] = {"run", "command"};
   parser_format_extract_yaml_keys(document, input.source, KEYS, 2,

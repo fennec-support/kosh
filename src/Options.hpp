@@ -64,61 +64,68 @@ enum class option_origin : u8
 struct option_text
 {
   const char *data{nullptr};
-  usize length{0};
+  usize       length{0};
 
   constexpr option_text() = default;
   template <usize Count>
   consteval option_text(const char (&text)[Count])
       : data(text), length(Count - 1)
   {}
-  constexpr operator StringView() const wontthrow
+  constexpr
+  operator StringView() const wontthrow
   {
     return StringView{data, length};
   }
-  constexpr fn is_empty() const wontthrow -> bool { return length == 0; }
+  constexpr fn
+  is_empty() const wontthrow -> bool
+  {
+    return length == 0;
+  }
 };
 
 struct option_enum_values
 {
   const option_text *names{nullptr};
-  u8 name_count{0};
+  u8                 name_count{0};
 };
 
 struct option_descriptor
 {
-  option_text koshconf_name;
-  option_text set_name;
-  option_text shopt_name;
-  option_text variable_name;
-  option_text help;
-  option_text default_text;
+  option_text        koshconf_name;
+  option_text        set_name;
+  option_text        shopt_name;
+  option_text        variable_name;
+  option_text        help;
+  option_text        default_text;
   option_enum_values enum_values;
-  u16 id;
-  option_type type;
-  option_class category;
-  option_storage storage;
-  shell_option_id shell_option;
-  char letter;
-  u8 default_value;
-  u8 bash_default_value;
-  u8 posix_default_value;
-  u8 strict_value;
-  bool is_fixed_in_kosh_mood;
-  bool is_read_only;
-  bool is_session_dependent;
-  bool is_bash_default_session_dependent;
-  bool is_invocation_only;
-  bool is_kept_out_of_koshconf;
-  bool is_set_alias;
-  bool is_listed_by_set;
-  bool is_posix_set_option;
+  u16                id;
+  option_type        type;
+  option_class       category;
+  option_storage     storage;
+  shell_option_id    shell_option;
+  char               letter;
+  u8                 default_value;
+  u8                 bash_default_value;
+  u8                 posix_default_value;
+  u8                 strict_value;
+  bool               is_fixed_in_kosh_mood;
+  bool               is_read_only;
+  bool               is_session_dependent;
+  bool               is_bash_default_session_dependent;
+  bool               is_invocation_only;
+  bool               is_kept_out_of_koshconf;
+  bool               is_set_alias;
+  bool               is_listed_by_set;
+  bool               is_posix_set_option;
 
-  pure fn is_configurable() const wontthrow -> bool
+  pure fn
+  is_configurable() const wontthrow -> bool
   {
     return !is_set_alias && !is_read_only && !is_invocation_only &&
            !is_session_dependent;
   }
-  pure fn is_serialized() const wontthrow -> bool
+  pure fn
+  is_serialized() const wontthrow -> bool
   {
     return is_configurable() && !is_kept_out_of_koshconf &&
            (category == option_class::Interactive ||
@@ -129,53 +136,80 @@ struct option_descriptor
 struct option_registry_view
 {
   const option_descriptor *entries;
-  usize entry_count;
+  usize                    entry_count;
 
-  pure fn begin() const wontthrow -> const option_descriptor *
+  pure fn
+  begin() const wontthrow -> const option_descriptor *
   {
     return entries;
   }
-  pure fn end() const wontthrow -> const option_descriptor *
+  pure fn
+  end() const wontthrow -> const option_descriptor *
   {
     return entries + entry_count;
   }
-  pure fn count() const wontthrow -> usize { return entry_count; }
-  pure fn operator[](usize index) const wontthrow->const option_descriptor &
+  pure fn
+  count() const wontthrow -> usize
+  {
+    return entry_count;
+  }
+  pure fn
+  operator[](usize index) const wontthrow->const option_descriptor &
   {
     return entries[index];
   }
 };
 
-pure fn get_option_registry() wontthrow -> option_registry_view;
-pure fn find_option_by_id(u16 id) wontthrow -> const option_descriptor *;
-fn find_option_by_koshconf_name(StringView name) wontthrow
+pure fn
+get_option_registry() wontthrow -> option_registry_view;
+pure fn
+find_option_by_id(u16 id) wontthrow -> const option_descriptor *;
+fn
+find_option_by_koshconf_name(StringView name) wontthrow
     -> const option_descriptor *;
-fn get_legacy_koshconf_alias(const option_descriptor &option) throws
+fn
+get_legacy_koshconf_alias(const option_descriptor &option) throws
     -> Maybe<String>;
-fn find_option_by_set_name(StringView name) wontthrow
+fn
+find_option_by_set_name(StringView name) wontthrow -> const option_descriptor *;
+fn
+find_option_by_shopt_name(StringView name) wontthrow
     -> const option_descriptor *;
-fn find_option_by_shopt_name(StringView name) wontthrow
-    -> const option_descriptor *;
-pure fn find_option_by_letter(char letter) wontthrow
-    -> const option_descriptor *;
-pure fn get_set_listing_order() wontthrow -> option_registry_view;
-pure fn get_shell_flag_letter_order() wontthrow -> StringView;
+pure fn
+find_option_by_letter(char letter) wontthrow -> const option_descriptor *;
+pure fn
+get_set_listing_order() wontthrow -> option_registry_view;
+pure fn
+get_shell_flag_letter_order() wontthrow -> StringView;
 
-fn option_is_available(const EvalContext &cxt,
-                       const option_descriptor &option) wontthrow -> bool;
-fn read_option_number(const EvalContext &cxt,
-                      const option_descriptor &option) throws -> u32;
-fn read_option_text(const EvalContext &cxt,
-                    const option_descriptor &option) throws -> String;
-fn format_option_number(const option_descriptor &option, u32 value) throws
+fn
+option_is_available(const EvalContext       &cxt,
+                    const option_descriptor &option) wontthrow -> bool;
+fn
+read_option_number(const EvalContext       &cxt,
+                   const option_descriptor &option) throws -> u32;
+fn
+read_option_text(const EvalContext &cxt, const option_descriptor &option) throws
     -> String;
-fn parse_option_number(const option_descriptor &option, StringView text) throws
+fn
+format_option_number(const option_descriptor &option, u32 value) throws
+    -> String;
+fn
+parse_option_number(const option_descriptor &option, StringView text) throws
     -> Maybe<u32>;
-fn describe_option_values(const option_descriptor &option) throws -> String;
-fn write_option_number(EvalContext &cxt, const option_descriptor &option,
-                       u32 value, option_origin origin) throws -> void;
-fn write_option_text(EvalContext &cxt, const option_descriptor &option,
-                     StringView text, option_origin origin) throws -> void;
-fn step_warning_level(EvalContext &cxt, bool should_raise) throws -> void;
+fn
+describe_option_values(const option_descriptor &option) throws -> String;
+fn
+write_option_number(EvalContext             &cxt,
+                    const option_descriptor &option,
+                    u32                      value,
+                    option_origin            origin) throws -> void;
+fn
+write_option_text(EvalContext             &cxt,
+                  const option_descriptor &option,
+                  StringView               text,
+                  option_origin            origin) throws -> void;
+fn
+step_warning_level(EvalContext &cxt, bool should_raise) throws -> void;
 
 } /* namespace koshka */

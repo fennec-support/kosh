@@ -14,16 +14,22 @@
 KOSHKIT_UTIL_DECL("[-n] file ...",
                   "The readlink utility prints the target of a symbolic link.");
 
-FLAG(READLINK_NO_NEWLINE, Bool, 'n', "",
+FLAG(READLINK_NO_NEWLINE,
+     Bool,
+     'n',
+     "",
      "Do not print a trailing newline after a single file.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Readlink);
 
 namespace koshka::koshkit {
 
-fn Readlink::execute(
-    const ExecContext &ec, EvalContext &cxt, const ArrayList<String> &args,
-    const ArrayList<SourceLocation> &arg_locations) const throws -> i32
+fn
+Readlink::execute(const ExecContext               &ec,
+                  EvalContext                     &cxt,
+                  const ArrayList<String>         &args,
+                  const ArrayList<SourceLocation> &arg_locations) const throws
+    -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 

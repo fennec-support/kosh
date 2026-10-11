@@ -23,11 +23,17 @@ KOSHKIT_UTIL_DECL("[-q] [-b executable] [-o archive] [--no-compress] "
                   "its executable, mapped libraries, and host metadata.");
 
 FLAG(GOODCORE_PID, String, 'p', "pid", "Capture this running process.");
-FLAG(GOODCORE_BINARY, String, 'b', "binary",
+FLAG(GOODCORE_BINARY,
+     String,
+     'b',
+     "binary",
      "Use this executable for an existing core dump.");
 FLAG(GOODCORE_OUTPUT, String, 'o', "output", "Write the archive to this path.");
 FLAG(GOODCORE_QUIET, Bool, 'q', "quiet", "Print only errors.");
-FLAG(GOODCORE_NO_COMPRESS, Bool, '\0', "no-compress",
+FLAG(GOODCORE_NO_COMPRESS,
+     Bool,
+     '\0',
+     "no-compress",
      "Create an uncompressed tar archive.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(GoodCore);
@@ -42,13 +48,15 @@ enum class goodcore_progress_mode : u8
   Visible,
 };
 
-fn print_progress(const ExecContext &ec, StringView message,
-                  goodcore_progress_mode mode) throws -> void
+fn
+print_progress(const ExecContext     &ec,
+               StringView             message,
+               goodcore_progress_mode mode) throws -> void
 {
   if (mode == goodcore_progress_mode::Hidden) return;
-  let const is_terminal = colors::stderr_is_a_terminal();
+  let const is_terminal  = colors::stderr_is_a_terminal();
   let const should_color = colors::stderr_wants_color();
-  let output = String{heap_allocator()};
+  let       output       = String{heap_allocator()};
   if (is_terminal) output += "\r\x1b[2K";
   append_report_text(output, "goodcore: ", colors::ansi::BOLD_CYAN,
                      should_color);
@@ -57,8 +65,10 @@ fn print_progress(const ExecContext &ec, StringView message,
   ec.print_to_stderr(output);
 }
 
-fn run_tool(const Path &tool, ArrayList<String> arguments,
-            os::measured_output output) throws -> bool
+fn
+run_tool(const Path         &tool,
+         ArrayList<String>   arguments,
+         os::measured_output output) throws -> bool
 {
   let command = ArrayList<String>{heap_allocator()};
   command.reserve(arguments.count() + 1);
@@ -72,7 +82,8 @@ fn run_tool(const Path &tool, ArrayList<String> arguments,
   return result.has_value() && result->exit_status == 0;
 }
 
-fn write_text_file(StringView path, StringView text) throws -> bool
+fn
+write_text_file(StringView path, StringView text) throws -> bool
 {
   let const descriptor =
       os::open_file_descriptor(path, os::file_open_mode::Truncate);
@@ -82,7 +93,8 @@ fn write_text_file(StringView path, StringView text) throws -> bool
   return os::write_all(*descriptor, text.data, text.length);
 }
 
-pure fn stripped_root(StringView path) wontthrow -> StringView
+pure fn
+stripped_root(StringView path) wontthrow -> StringView
 {
   usize start_position = 0;
 
@@ -95,8 +107,9 @@ pure fn stripped_root(StringView path) wontthrow -> StringView
   return path.substring_of_length(start_position, path.length - start_position);
 }
 
-fn copy_into_root(const Path &stage, StringView source,
-                  Allocator allocator) throws -> bool
+fn
+copy_into_root(const Path &stage, StringView source, Allocator allocator) throws
+    -> bool
 {
   if (!Path{source, allocator}.is_regular_file()) return false;
 
@@ -113,8 +126,10 @@ fn copy_into_root(const Path &stage, StringView source,
          copy_file_result::Success;
 }
 
-fn append_unique_path(ArrayList<String> &paths, StringView path,
-                      Allocator allocator) throws -> void
+fn
+append_unique_path(ArrayList<String> &paths,
+                   StringView         path,
+                   Allocator          allocator) throws -> void
 {
   if (path.is_empty() || path[0] != '/') {
     return;
@@ -128,13 +143,15 @@ fn append_unique_path(ArrayList<String> &paths, StringView path,
     paths.push(String{allocator, path});
 }
 
-fn collect_paths_from_output(StringView output, ArrayList<String> &paths,
-                             Allocator allocator) throws -> void
+fn
+collect_paths_from_output(StringView         output,
+                          ArrayList<String> &paths,
+                          Allocator          allocator) throws -> void
 {
   for (let view : utils::split_lines(output, allocator,
                                      utils::line_terminator_mode::Discard))
   {
-    view = view.trim_blanks();
+    view            = view.trim_blanks();
     let const start = view.find_character('/');
     if (!start.has_value()) continue;
 
@@ -153,7 +170,8 @@ fn collect_paths_from_output(StringView output, ArrayList<String> &paths,
   }
 }
 
-fn infer_binary(EvalContext &cxt, StringView core, Allocator allocator) throws
+fn
+infer_binary(EvalContext &cxt, StringView core, Allocator allocator) throws
     -> Maybe<String>
 {
   let const file = resolve_util_program(cxt, "file");
@@ -172,7 +190,7 @@ fn infer_binary(EvalContext &cxt, StringView core, Allocator allocator) throws
     if (!marker_position.has_value()) continue;
 
     let const start_position = *marker_position + marker.length;
-    let const remainder = output->view().substring_of_length(
+    let const remainder      = output->view().substring_of_length(
         start_position, output->length() - start_position);
     let const end_position = remainder.find_character('\'');
     if (!end_position.has_value()) continue;
@@ -192,9 +210,12 @@ fn infer_binary(EvalContext &cxt, StringView core, Allocator allocator) throws
   return None;
 }
 
-fn collect_core_libraries(EvalContext &cxt, StringView core, StringView binary,
-                          ArrayList<String> &paths, Allocator allocator) throws
-    -> void
+fn
+collect_core_libraries(EvalContext       &cxt,
+                       StringView         core,
+                       StringView         binary,
+                       ArrayList<String> &paths,
+                       Allocator          allocator) throws -> void
 {
   if (let const gdb = resolve_util_program(cxt, "gdb")) {
     let arguments = ArrayList<String>{heap_allocator()};
@@ -222,21 +243,25 @@ fn collect_core_libraries(EvalContext &cxt, StringView core, StringView binary,
   }
 }
 
-fn remove_stage(const Path &stage, Allocator allocator) throws -> void
+fn
+remove_stage(const Path &stage, Allocator allocator) throws -> void
 {
   unused(remove_path(stage.view(), allocator, removal_mode::Recursive));
 }
 
 } /* namespace */
 
-fn GoodCore::execute(
-    const ExecContext &ec, EvalContext &cxt, const ArrayList<String> &args,
-    const ArrayList<SourceLocation> &arg_locations) const throws -> i32
+fn
+GoodCore::execute(const ExecContext               &ec,
+                  EvalContext                     &cxt,
+                  const ArrayList<String>         &args,
+                  const ArrayList<SourceLocation> &arg_locations) const throws
+    -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
-  let const allocator = cxt.scratch_allocator();
-  let const has_pid = FLAG_GOODCORE_PID.is_set();
+  let const allocator     = cxt.scratch_allocator();
+  let const has_pid       = FLAG_GOODCORE_PID.is_set();
   let const progress_mode = FLAG_GOODCORE_QUIET.is_enabled()
                                 ? goodcore_progress_mode::Hidden
                                 : goodcore_progress_mode::Visible;
@@ -298,7 +323,7 @@ fn GoodCore::execute(
   }
 
   let binary = Maybe<String>{};
-  let paths = ArrayList<String>{allocator};
+  let paths  = ArrayList<String>{allocator};
   if (has_pid) {
     for (let const &file : os::list_process_open_files(
              process_id, allocator, os::process_open_file_detail::PathsOnly))
@@ -359,7 +384,7 @@ fn GoodCore::execute(
   if (has_pid) {
     print_progress(ec, "capturing process core", progress_mode);
     let const platform_tools = os::goodcore_tools();
-    let debugger = Maybe<Path>{};
+    let       debugger       = Maybe<Path>{};
     if (!platform_tools.debugger_program.is_empty())
       debugger = resolve_util_program(cxt, platform_tools.debugger_program);
     let capture_arguments = ArrayList<String>{heap_allocator()};
@@ -484,13 +509,13 @@ fn GoodCore::execute(
   let const zstd = FLAG_GOODCORE_NO_COMPRESS.is_enabled()
                        ? Maybe<Path>{None}
                        : resolve_util_program(cxt, "zstd");
-  let output =
+  let       output =
       FLAG_GOODCORE_OUTPUT.is_set()
-          ? Path{FLAG_GOODCORE_OUTPUT.value(), allocator}.to_absolute()
-          : Path{String{"goodcore-"} + core.filename() +
+                ? Path{FLAG_GOODCORE_OUTPUT.value(), allocator}.to_absolute()
+                : Path{String{"goodcore-"} + core.filename() +
                  (FLAG_GOODCORE_NO_COMPRESS.is_enabled() ? StringView{".tar"}
-                  : zstd.has_value() ? StringView{".tar.zst"}
-                                     : StringView{".tar.gz"})}
+                        : zstd.has_value() ? StringView{".tar.zst"}
+                                           : StringView{".tar.gz"})}
                 .to_absolute();
   if (output.is_same_file_as(Path{binary->view(), allocator}) ||
       (!has_pid && output.is_same_file_as(Path{operands[0].view(), allocator})))
@@ -580,8 +605,8 @@ fn GoodCore::execute(
 
   if (!FLAG_GOODCORE_QUIET.is_enabled()) {
     let const should_color = koshkit_should_color();
-    let table = ReportTable{allocator};
-    let cells = ArrayList<report_table_cell_view>{allocator};
+    let       table        = ReportTable{allocator};
+    let       cells        = ArrayList<report_table_cell_view>{allocator};
     cells.reserve(2);
     cells.push({"Archive", colors::ansi::BOLD_CYAN});
     cells.push({output.view(), colors::ansi::GREEN});

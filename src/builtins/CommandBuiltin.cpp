@@ -27,9 +27,12 @@ HELP_DESCRIPTION_DECL(
     "same name.");
 
 FLAG(SHOW, Bool, 'v', "", "Print the resolution of the name in a terse form.");
-FLAG(SHOW_VERBOSE, Bool, 'V', "",
-     "Print the resolution of the name verbosely.");
-FLAG(COMMAND_DEFAULT_PATH, Bool, 'p', "",
+FLAG(
+    SHOW_VERBOSE, Bool, 'V', "", "Print the resolution of the name verbosely.");
+FLAG(COMMAND_DEFAULT_PATH,
+     Bool,
+     'p',
+     "",
      "Resolve against a default PATH that finds the standard utilities.");
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 
@@ -37,8 +40,8 @@ REGISTER_BUILTIN_FLAGS(CommandBuiltin);
 
 namespace koshka {
 
-fn CommandBuiltin::execute(ExecContext &ec, EvalContext &cxt) const throws
-    -> i32
+fn
+CommandBuiltin::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let const args = PARSE_BUILTIN_ARGS(ec);
 
@@ -59,8 +62,8 @@ fn CommandBuiltin::execute(ExecContext &ec, EvalContext &cxt) const throws
                               restricted_path_use::Command);
   }
 
-  let default_resolver = Maybe<ProgramResolver>{};
-  ProgramResolver *resolver = &cxt.program_resolver();
+  let              default_resolver = Maybe<ProgramResolver>{};
+  ProgramResolver *resolver         = &cxt.program_resolver();
   if (FLAG_COMMAND_DEFAULT_PATH.is_enabled()) {
     default_resolver =
         ProgramResolver{String{utils::DEFAULT_COMMAND_SEARCH_PATH}};
@@ -68,8 +71,8 @@ fn CommandBuiltin::execute(ExecContext &ec, EvalContext &cxt) const throws
   }
 
   if (FLAG_SHOW.is_enabled() || FLAG_SHOW_VERBOSE.is_enabled()) {
-    let const is_verbose = FLAG_SHOW_VERBOSE.is_enabled();
-    bool did_find_any = false;
+    let const is_verbose   = FLAG_SHOW_VERBOSE.is_enabled();
+    bool      did_find_any = false;
 
     for (usize argument_index = 1; argument_index < args.count();
          argument_index++)
@@ -176,7 +179,7 @@ fn CommandBuiltin::execute(ExecContext &ec, EvalContext &cxt) const throws
     return cxt.runtime_state().get_mood() == mimic_mood::Posix ? 127 : 1;
   }
 
-  let operand_args = ArrayList<String>{heap_allocator()};
+  let operand_args          = ArrayList<String>{heap_allocator()};
   let operand_arg_locations = ArrayList<SourceLocation>{heap_allocator()};
 
   for (usize i = 1; i < args.count(); i++) {

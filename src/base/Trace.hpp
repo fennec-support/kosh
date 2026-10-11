@@ -26,18 +26,20 @@ inline verbosity LOGGER_VERBOSITY = verbosity::Nothing;
 
 inline std::FILE *LOGGER_OUTPUT = nullptr;
 
-inline fn log_output_stream() -> std::FILE *
+inline fn
+log_output_stream() -> std::FILE *
 {
   return LOGGER_OUTPUT != nullptr ? LOGGER_OUTPUT : stderr;
 }
 
-constexpr fn verbosity_to_string(verbosity verbosity) -> const char *
+constexpr fn
+verbosity_to_string(verbosity verbosity) -> const char *
 {
   switch (verbosity) {
   case verbosity::Nothing: return "OFF";
-  case verbosity::Info: return "INF";
-  case verbosity::Debug: return "DBG";
-  case verbosity::All: return "ALL";
+  case verbosity::Info:    return "INF";
+  case verbosity::Debug:   return "DBG";
+  case verbosity::All:     return "ALL";
   }
 
   return "???";
@@ -45,22 +47,26 @@ constexpr fn verbosity_to_string(verbosity verbosity) -> const char *
 
 namespace log_detail {
 
-inline fn value_to_log_string(StringView value) -> String
+inline fn
+value_to_log_string(StringView value) -> String
 {
   return String{value};
 }
 
-inline fn value_to_log_string(const char *value) -> String
+inline fn
+value_to_log_string(const char *value) -> String
 {
   return value != nullptr ? String{value} : String{"(null)"};
 }
 
-inline fn value_to_log_string(bool is_true) -> String
+inline fn
+value_to_log_string(bool is_true) -> String
 {
   return is_true ? String{"true"} : String{"false"};
 }
 
-inline fn value_to_log_string(char value) -> String
+inline fn
+value_to_log_string(char value) -> String
 {
   String out{heap_allocator()};
   out.push(value);
@@ -70,14 +76,16 @@ inline fn value_to_log_string(char value) -> String
 
 template <class T>
   requires std::is_integral_v<T>
-fn value_to_log_string(T value) -> String
+fn
+value_to_log_string(T value) -> String
 {
   return String::from(value, heap_allocator());
 }
 
 template <class T>
   requires std::is_floating_point_v<T>
-fn value_to_log_string(T value) -> String
+fn
+value_to_log_string(T value) -> String
 {
   char buffer[64];
   std::snprintf(buffer, sizeof(buffer), "%g", static_cast<double>(value));
@@ -87,7 +95,8 @@ fn value_to_log_string(T value) -> String
 
 template <class T>
   requires std::is_pointer_v<T>
-fn value_to_log_string(T value) -> String
+fn
+value_to_log_string(T value) -> String
 {
   char buffer[32];
   std::snprintf(buffer, sizeof(buffer), "%p",
@@ -97,17 +106,18 @@ fn value_to_log_string(T value) -> String
 }
 
 template <class... Args>
-fn format_named_values(StringView names, Args &&...args) -> String
+fn
+format_named_values(StringView names, Args &&...args) -> String
 {
-  String out{heap_allocator()};
-  usize index = 0;
+  String      out{heap_allocator()};
+  usize       index       = 0;
   const usize value_count = sizeof...(Args);
 
   let do_append_one = [&](auto &&value) {
-    StringView name = names;
+    StringView   name           = names;
     Maybe<usize> comma_position = names.find_character(',');
     if (comma_position.has_value()) {
-      name = names.substring_of_length(0, comma_position.value());
+      name  = names.substring_of_length(0, comma_position.value());
       names = names.substring(comma_position.value() + 1);
     } else {
       names = StringView{};

@@ -18,23 +18,23 @@ namespace koshka::koshkit {
 
 namespace {
 
-inline const StringView BAR_BASE_STYLE = "\x1b[0;48;5;236;38;5;252m";
+inline const StringView BAR_BASE_STYLE  = "\x1b[0;48;5;236;38;5;252m";
 inline const StringView BAR_TITLE_STYLE = "\x1b[1;38;5;81m";
-inline const StringView BAR_LIVE_STYLE = "\x1b[1;38;5;114m";
+inline const StringView BAR_LIVE_STYLE  = "\x1b[1;38;5;114m";
 inline const StringView BAR_CLOCK_STYLE = "\x1b[22;38;5;252m";
 inline const StringView BAR_LABEL_STYLE = "\x1b[22;38;5;245m";
-inline const StringView BAR_KEY_STYLE = "\x1b[1;38;5;255m";
-inline const StringView BAR_HINT_STYLE = "\x1b[22;38;5;245m";
-inline const StringView LIVE_INDICATOR = "LIVE";
-inline const StringView SEGMENT_GAP = "  ";
+inline const StringView BAR_KEY_STYLE   = "\x1b[1;38;5;255m";
+inline const StringView BAR_HINT_STYLE  = "\x1b[22;38;5;245m";
+inline const StringView LIVE_INDICATOR  = "LIVE";
+inline const StringView SEGMENT_GAP     = "  ";
 
-constexpr u64 NANOSECONDS_PER_SECOND = 1000000000ULL;
+constexpr u64 NANOSECONDS_PER_SECOND        = 1000000000ULL;
 constexpr f64 DEFAULT_LIVE_INTERVAL_SECONDS = 0.5;
 
 struct header_fit
 {
-  bool has_labels{true};
-  bool has_clock{true};
+  bool  has_labels{true};
+  bool  has_clock{true};
   usize hint_entry_count{SIZE_MAX};
 };
 
@@ -46,8 +46,8 @@ struct header_pieces
   StringView hints;
 };
 
-pure fn get_hint_prefix(StringView hints, usize entry_count) wontthrow
-    -> StringView
+pure fn
+get_hint_prefix(StringView hints, usize entry_count) wontthrow -> StringView
 {
   if (entry_count == 0) return StringView{};
 
@@ -64,7 +64,8 @@ pure fn get_hint_prefix(StringView hints, usize entry_count) wontthrow
   return hints;
 }
 
-pure fn get_hint_entry_count(StringView hints) wontthrow -> usize
+pure fn
+get_hint_entry_count(StringView hints) wontthrow -> usize
 {
   usize entry_count = 1;
 
@@ -75,15 +76,16 @@ pure fn get_hint_entry_count(StringView hints) wontthrow -> usize
   return entry_count;
 }
 
-pure fn get_hints_length(StringView hints) wontthrow -> usize
+pure fn
+get_hints_length(StringView hints) wontthrow -> usize
 {
-  usize length = 0;
+  usize length      = 0;
   usize entry_count = 0;
-  usize position = 0;
+  usize position    = 0;
 
   while (position <= hints.length) {
-    let const rest = hints.substring(position);
-    let const separator = rest.find_character('|');
+    let const rest         = hints.substring(position);
+    let const separator    = rest.find_character('|');
     let const entry_length = separator.has_value() ? *separator : rest.length;
     length += entry_length;
     entry_count++;
@@ -95,7 +97,8 @@ pure fn get_hints_length(StringView hints) wontthrow -> usize
   return length + (entry_count - 1) * SEGMENT_GAP.length;
 }
 
-pure fn get_header_length(const header_pieces &pieces, header_fit fit) wontthrow
+pure fn
+get_header_length(const header_pieces &pieces, header_fit fit) wontthrow
     -> usize
 {
   usize length =
@@ -111,24 +114,27 @@ pure fn get_header_length(const header_pieces &pieces, header_fit fit) wontthrow
   return length + 2;
 }
 
-fn append_styled(String &output, StringView text, StringView style,
-                 bool should_style) throws -> void
+fn
+append_styled(String    &output,
+              StringView text,
+              StringView style,
+              bool       should_style) throws -> void
 {
   if (should_style) output += style;
   output += text;
 }
 
-fn append_hints(String &output, StringView hints, bool should_style) throws
-    -> void
+fn
+append_hints(String &output, StringView hints, bool should_style) throws -> void
 {
   usize position = 0;
 
   while (position <= hints.length) {
-    let const rest = hints.substring(position);
+    let const rest      = hints.substring(position);
     let const separator = rest.find_character('|');
     let const entry =
         separator.has_value() ? rest.substring_of_length(0, *separator) : rest;
-    let const key_end = entry.find_character(' ');
+    let const key_end    = entry.find_character(' ');
     let const key_length = key_end.has_value() ? *key_end : entry.length;
     if (position != 0) output += SEGMENT_GAP;
 
@@ -144,7 +150,7 @@ fn append_hints(String &output, StringView hints, bool should_style) throws
 
 } /* namespace */
 
-LiveView::LiveView(const ExecContext &ec,
+LiveView::LiveView(const ExecContext       &ec,
                    const live_view_options &options) wontthrow
     : m_ec(ec),
       m_options(options),
@@ -164,7 +170,7 @@ LiveView::LiveView(const ExecContext &ec,
   if (!m_is_terminal) return;
 
   m_is_alternate_screen_active = enter_alternate_screen(m_ec);
-  m_is_cursor_hidden = hide_cursor(m_ec);
+  m_is_cursor_hidden           = hide_cursor(m_ec);
 }
 
 LiveView::~LiveView()
@@ -173,43 +179,54 @@ LiveView::~LiveView()
   if (m_is_alternate_screen_active) leave_alternate_screen(m_ec);
 }
 
-pure fn LiveView::get_started_at_nanoseconds() const wontthrow -> u64
+pure fn
+LiveView::get_started_at_nanoseconds() const wontthrow -> u64
 {
   return m_options.started_at_nanoseconds;
 }
 
-pure fn LiveView::get_sample_interval_nanoseconds() const wontthrow -> u64
+pure fn
+LiveView::get_sample_interval_nanoseconds() const wontthrow -> u64
 {
   return m_sample_interval_nanoseconds;
 }
 
-pure fn LiveView::get_refresh_interval_nanoseconds() const wontthrow -> u64
+pure fn
+LiveView::get_refresh_interval_nanoseconds() const wontthrow -> u64
 {
   return m_refresh_interval_nanoseconds;
 }
 
-pure fn LiveView::get_wait_nanoseconds(
-    u64 now_nanoseconds, u64 last_sample_nanoseconds,
-    u64 last_refresh_nanoseconds) const wontthrow -> u64
+pure fn
+LiveView::get_wait_nanoseconds(u64 now_nanoseconds,
+                               u64 last_sample_nanoseconds,
+                               u64 last_refresh_nanoseconds) const wontthrow
+    -> u64
 {
-  let const refresh_elapsed = now_nanoseconds - last_refresh_nanoseconds;
-  let wait_nanoseconds = m_refresh_interval_nanoseconds > refresh_elapsed
-                             ? m_refresh_interval_nanoseconds - refresh_elapsed
-                             : 0;
+  let const refresh_elapsed  = now_nanoseconds - last_refresh_nanoseconds;
+  let       wait_nanoseconds = m_refresh_interval_nanoseconds > refresh_elapsed
+                                   ? m_refresh_interval_nanoseconds - refresh_elapsed
+                                   : 0;
   if (m_sample_interval_nanoseconds == 0) return wait_nanoseconds;
 
   let const sample_elapsed = now_nanoseconds - last_sample_nanoseconds;
-  let const until_sample = m_sample_interval_nanoseconds > sample_elapsed
-                               ? m_sample_interval_nanoseconds - sample_elapsed
-                               : 0;
+  let const until_sample   = m_sample_interval_nanoseconds > sample_elapsed
+                                 ? m_sample_interval_nanoseconds - sample_elapsed
+                                 : 0;
 
   return until_sample < wait_nanoseconds ? until_sample : wait_nanoseconds;
 }
 
-fn live_report_options::parse_window_seconds(
-    const ExecContext &ec, EvalContext &cxt, StringView utility_name,
-    StringView text, SourceLocation location, StringView title, StringView note,
-    Allocator allocator) throws -> Maybe<f64>
+fn
+live_report_options::parse_window_seconds(const ExecContext &ec,
+                                          EvalContext       &cxt,
+                                          StringView         utility_name,
+                                          StringView         text,
+                                          SourceLocation     location,
+                                          StringView         title,
+                                          StringView         note,
+                                          Allocator          allocator) throws
+    -> Maybe<f64>
 {
   let const seconds = parse_koshkit_duration_seconds(text, location, allocator);
   if (seconds <= 0.0) {
@@ -222,14 +239,19 @@ fn live_report_options::parse_window_seconds(
   return seconds;
 }
 
-fn live_report_options::parse_with_window(
-    const ExecContext &ec, EvalContext &cxt, StringView utility_name,
-    const FlagOptionalValue &live_flag, bool is_cumulative, f64 window_seconds,
-    Allocator allocator) throws -> Maybe<live_report_options>
+fn
+live_report_options::parse_with_window(const ExecContext       &ec,
+                                       EvalContext             &cxt,
+                                       StringView               utility_name,
+                                       const FlagOptionalValue &live_flag,
+                                       bool                     is_cumulative,
+                                       f64                      window_seconds,
+                                       Allocator allocator) throws
+    -> Maybe<live_report_options>
 {
   live_report_options options{};
-  options.is_live = live_flag.is_enabled();
-  options.is_cumulative = is_cumulative;
+  options.is_live        = live_flag.is_enabled();
+  options.is_cumulative  = is_cumulative;
   options.window_seconds = window_seconds;
   if (!live_flag.has_value()) {
     options.interval_seconds = DEFAULT_LIVE_INTERVAL_SECONDS;
@@ -247,11 +269,13 @@ fn live_report_options::parse_with_window(
   return options;
 }
 
-fn live_report_options::parse(const ExecContext &ec, EvalContext &cxt,
-                              StringView utility_name,
-                              const FlagOptionalValue &live_flag,
-                              const FlagOptionalValue &cumulative_flag,
-                              Allocator allocator) throws
+fn
+live_report_options::parse(const ExecContext       &ec,
+                           EvalContext             &cxt,
+                           StringView               utility_name,
+                           const FlagOptionalValue &live_flag,
+                           const FlagOptionalValue &cumulative_flag,
+                           Allocator                allocator) throws
     -> Maybe<live_report_options>
 {
   let options = parse_with_window(ec, cxt, utility_name, live_flag,
@@ -271,25 +295,27 @@ fn live_report_options::parse(const ExecContext &ec, EvalContext &cxt,
   return options;
 }
 
-fn LiveView::get_dimensions() const wontthrow -> live_view_dimensions
+fn
+LiveView::get_dimensions() const wontthrow -> live_view_dimensions
 {
   live_view_dimensions dimensions{};
   dimensions.is_terminal = m_is_terminal;
   if (!m_is_terminal) return dimensions;
 
   dimensions.columns = 80;
-  dimensions.rows = 24;
+  dimensions.rows    = 24;
   if (let const queried = os::get_terminal_dimensions(m_output_fd);
       queried.has_value())
   {
     dimensions.columns = queried->columns;
-    dimensions.rows = queried->rows;
+    dimensions.rows    = queried->rows;
   }
 
   return dimensions;
 }
 
-fn LiveView::get_default_key_action(live_view_key key) const wontthrow
+fn
+LiveView::get_default_key_action(live_view_key key) const wontthrow
     -> live_view_key_action
 {
   if (key.special == live_view_special_key::None &&
@@ -301,8 +327,9 @@ fn LiveView::get_default_key_action(live_view_key key) const wontthrow
   return live_view_key_action::Consumed;
 }
 
-fn LiveView::wait_for_input(u64 wait_nanoseconds,
-                            live_view_input &input) wontthrow -> bool
+fn
+LiveView::wait_for_input(u64 wait_nanoseconds, live_view_input &input) wontthrow
+    -> bool
 {
   input.key_count = 0;
   if (os::INTERRUPT_REQUESTED != 0) return false;
@@ -326,7 +353,7 @@ fn LiveView::wait_for_input(u64 wait_nanoseconds,
   }
   if (readiness == 0) return true;
 
-  char buffer[128];
+  char      buffer[128];
   let const read_count = os::read_fd(m_input_fd, buffer, sizeof(buffer));
   if (!read_count.has_value() || *read_count == 0) {
     m_has_input = false;
@@ -341,14 +368,14 @@ fn LiveView::wait_for_input(u64 wait_nanoseconds,
     index++;
     live_view_key key{};
     if (byte != 27) {
-      key.character = byte;
+      key.character                 = byte;
       input.keys[input.key_count++] = key;
       continue;
     }
 
     if (index >= *read_count || (buffer[index] != '[' && buffer[index] != 'O'))
     {
-      key.special = live_view_special_key::Escape;
+      key.special                   = live_view_special_key::Escape;
       input.keys[input.key_count++] = key;
       continue;
     }
@@ -381,9 +408,10 @@ fn LiveView::wait_for_input(u64 wait_nanoseconds,
   return true;
 }
 
-fn LiveView::append_frame_start(String &frame,
-                                const live_view_dimensions &dimensions,
-                                Allocator allocator) const throws -> void
+fn
+LiveView::append_frame_start(String                     &frame,
+                             const live_view_dimensions &dimensions,
+                             Allocator allocator) const throws -> void
 {
   if (m_is_terminal) frame += "\x1b[H\x1b[2J";
 
@@ -421,7 +449,7 @@ fn LiveView::append_frame_start(String &frame,
     return;
   }
 
-  let const width = static_cast<usize>(dimensions.columns);
+  let const  width = static_cast<usize>(dimensions.columns);
   header_fit fit{};
   fit.hint_entry_count = get_hint_entry_count(pieces.hints);
 
@@ -469,7 +497,7 @@ fn LiveView::append_frame_start(String &frame,
     }
     if (fit.hint_entry_count != 0) {
       let const hints_length = get_hints_length(shown_hints);
-      let const gap_length = width - used_length - hints_length - 1;
+      let const gap_length   = width - used_length - hints_length - 1;
 
       for (usize index = 0; index < gap_length; index++)
         frame += ' ';
@@ -488,12 +516,13 @@ fn LiveView::append_frame_start(String &frame,
   frame += "\n\n";
 }
 
-fn LiveView::write_frame(String &frame,
-                         const live_view_dimensions &dimensions) const throws
+fn
+LiveView::write_frame(String                     &frame,
+                      const live_view_dimensions &dimensions) const throws
     -> void
 {
   if (m_is_terminal && dimensions.rows > 1) {
-    usize line_count = 0;
+    usize line_count  = 0;
     usize clip_length = frame.length();
 
     for (usize index = 0; index < frame.length(); index++) {

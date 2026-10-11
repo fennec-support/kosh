@@ -21,11 +21,20 @@ HELP_DESCRIPTION_DECL(
     "The assimilate builtin installs this shell on a remote SSH target.");
 
 FLAG(TRACE, Bool, 'x', "trace", "Trace the remote installation commands.");
-FLAG(SSH_COMMAND, String, '\0', "ssh-command",
+FLAG(SSH_COMMAND,
+     String,
+     '\0',
+     "ssh-command",
      "Use this space-separated command instead of ssh.");
-FLAG(SCP_COMMAND, String, '\0', "scp-command",
+FLAG(SCP_COMMAND,
+     String,
+     '\0',
+     "scp-command",
      "Use this space-separated command instead of scp.");
-FLAG(LINK_MOOD, ManyStrings, '\0', "link-mood",
+FLAG(LINK_MOOD,
+     ManyStrings,
+     '\0',
+     "link-mood",
      "Link this binary as bash, dash, sh, or kosh. Commas are accepted.");
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 
@@ -41,7 +50,7 @@ enum class trace_output : u8
   Enabled,
 };
 
-constexpr char REMOTE_TRANSACTION_TEXT[] = R"SH(set -eu
+constexpr char       REMOTE_TRANSACTION_TEXT[] = R"SH(set -eu
 [ "${5-0}" -eq 0 ] || set -x
 umask 077
 upload=$1
@@ -335,7 +344,7 @@ printf '%s\n' "$target"
 constexpr StringView REMOTE_TRANSACTION{REMOTE_TRANSACTION_TEXT,
                                         sizeof(REMOTE_TRANSACTION_TEXT) - 1};
 
-constexpr char REMOTE_PREFLIGHT_TEXT[] = R"SH(set -eu
+constexpr char       REMOTE_PREFLIGHT_TEXT[] = R"SH(set -eu
 [ "$1" -eq 0 ] || set -x
 expected_system=$2
 expected_machine=$3
@@ -368,8 +377,9 @@ fi
 constexpr StringView REMOTE_PREFLIGHT{REMOTE_PREFLIGHT_TEXT,
                                       sizeof(REMOTE_PREFLIGHT_TEXT) - 1};
 
-fn trace_stage(const ExecContext &ec, trace_output trace,
-               StringView stage) throws -> void
+fn
+trace_stage(const ExecContext &ec, trace_output trace, StringView stage) throws
+    -> void
 {
   if (trace != trace_output::Enabled) return;
 
@@ -379,8 +389,11 @@ fn trace_stage(const ExecContext &ec, trace_output trace,
   ec.print_to_stderr(message.view());
 }
 
-fn run_program(const ArrayList<String> &arguments, const ExecContext &ec,
-               trace_output trace, StringView stage) throws -> i32
+fn
+run_program(const ArrayList<String> &arguments,
+            const ExecContext       &ec,
+            trace_output             trace,
+            StringView               stage) throws -> i32
 {
   trace_stage(ec, trace, stage);
   let const result =
@@ -390,7 +403,8 @@ fn run_program(const ArrayList<String> &arguments, const ExecContext &ec,
   return static_cast<i32>(result->exit_status);
 }
 
-fn resolve_transfer_program(StringView name, ProgramResolver &resolver) throws
+fn
+resolve_transfer_program(StringView name, ProgramResolver &resolver) throws
     -> Maybe<Path>
 {
   let const matches = resolver.search(name, ProgramResolver::SearchMode::First,
@@ -401,12 +415,13 @@ fn resolve_transfer_program(StringView name, ProgramResolver &resolver) throws
   return matches[0].clone();
 }
 
-fn parse_transport_command(StringView spelling, ProgramResolver &resolver,
-                           Allocator allocator) throws
-    -> Maybe<ArrayList<String>>
+fn
+parse_transport_command(StringView       spelling,
+                        ProgramResolver &resolver,
+                        Allocator allocator) throws -> Maybe<ArrayList<String>>
 {
-  let arguments = ArrayList<String>{allocator};
-  usize position = 0;
+  let   arguments = ArrayList<String>{allocator};
+  usize position  = 0;
 
   while (position < spelling.count()) {
     while (position < spelling.count() && spelling[position] == ' ') {
@@ -434,21 +449,26 @@ fn parse_transport_command(StringView spelling, ProgramResolver &resolver,
   return arguments;
 }
 
-fn append_arguments(ArrayList<String> &destination,
-                    const ArrayList<String> &source) throws -> void
+fn
+append_arguments(ArrayList<String>       &destination,
+                 const ArrayList<String> &source) throws -> void
 {
   for (let const &argument : source)
     destination.push(argument.clone());
 }
 
-fn remote_command(StringView upload_name, StringView transaction_id,
-                  StringView expected_identity, StringView link_moods,
-                  trace_output trace, Allocator allocator) throws -> String
+fn
+remote_command(StringView   upload_name,
+               StringView   transaction_id,
+               StringView   expected_identity,
+               StringView   link_moods,
+               trace_output trace,
+               Allocator    allocator) throws -> String
 {
   let const should_trace = trace == trace_output::Enabled;
-  let command = String{allocator};
+  let       command      = String{allocator};
   command += "exec ";
-  let const upload_path = String{allocator, "./"} + upload_name;
+  let const upload_path        = String{allocator, "./"} + upload_name;
   let const do_append_argument = [&](StringView argument) throws {
     append_shell_quoted_arg(command, argument);
     command += ' ';
@@ -478,9 +498,11 @@ fn remote_command(StringView upload_name, StringView transaction_id,
   return command;
 }
 
-fn preflight_command(StringView executable_system,
-                     StringView executable_machine, trace_output trace,
-                     Allocator allocator) throws -> String
+fn
+preflight_command(StringView   executable_system,
+                  StringView   executable_machine,
+                  trace_output trace,
+                  Allocator    allocator) throws -> String
 {
   let command = String{allocator, "set -- "};
   append_shell_quoted_arg(command, trace == trace_output::Enabled
@@ -498,15 +520,16 @@ fn preflight_command(StringView executable_system,
 
 } /* namespace */
 
-fn Assimilate::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
+fn
+Assimilate::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let const arguments = PARSE_BUILTIN_ARGS(ec);
   if (FLAG_HELP.is_enabled()) SHOW_BUILTIN_HELP_AND_RETURN(ec);
 
-  bool has_invalid_target_character = false;
-  bool is_inside_host_literal = false;
-  bool has_host_literal = false;
-  usize host_literal_start = 0;
+  bool  has_invalid_target_character = false;
+  bool  is_inside_host_literal       = false;
+  bool  has_host_literal             = false;
+  usize host_literal_start           = 0;
   if (arguments.count() == 2) {
     for (usize character_position = 0;
          character_position < arguments[1].count(); character_position++)
@@ -524,9 +547,9 @@ fn Assimilate::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         {
           has_invalid_target_character = true;
         }
-        has_host_literal = true;
+        has_host_literal       = true;
         is_inside_host_literal = true;
-        host_literal_start = character_position;
+        host_literal_start     = character_position;
         break;
       case ']':
         if (!is_inside_host_literal ||
@@ -582,13 +605,13 @@ fn Assimilate::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       {SSK("kosh"), true},
   };
   constexpr StaticStringMap LINK_MOODS{LINK_MOOD_ENTRIES};
-  let link_moods = String{allocator};
+  let                       link_moods = String{allocator};
 
   for (usize flag_position = 0; flag_position < FLAG_LINK_MOOD.count();
        flag_position++)
   {
-    let const spelling = FLAG_LINK_MOOD.get(flag_position);
-    usize mood_start = 0;
+    let const spelling   = FLAG_LINK_MOOD.get(flag_position);
+    usize     mood_start = 0;
 
     while (mood_start <= spelling.count()) {
       let const comma = spelling.substring(mood_start).find_character(',');
@@ -613,9 +636,9 @@ fn Assimilate::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return 1;
   }
 
-  let const executable_system = os::executable_system_name();
-  let const executable_machine = os::executable_machine_name();
-  let preflight_arguments = ArrayList<String>{allocator};
+  let const executable_system   = os::executable_system_name();
+  let const executable_machine  = os::executable_machine_name();
+  let       preflight_arguments = ArrayList<String>{allocator};
   append_arguments(preflight_arguments, *ssh_command);
   preflight_arguments.push(String{"--"});
   preflight_arguments.push(arguments[1].clone());

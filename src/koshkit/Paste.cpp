@@ -15,7 +15,10 @@
 KOSHKIT_UTIL_DECL("[-s] [-d list] [file ...]",
                   "The paste utility merges corresponding or serial lines.");
 
-FLAG(PASTE_DELIMITERS, String, 'd', "delimiters",
+FLAG(PASTE_DELIMITERS,
+     String,
+     'd',
+     "delimiters",
      "Cycle through these delimiters.");
 FLAG(PASTE_SERIAL, Bool, 's', "serial", "Paste one file at a time.");
 
@@ -23,8 +26,8 @@ REGISTER_KOSHKIT_UTIL_FLAGS(Paste);
 
 namespace koshka::koshkit {
 
-static fn parse_paste_delimiters(StringView text, Allocator allocator) throws
-    -> String
+static fn
+parse_paste_delimiters(StringView text, Allocator allocator) throws -> String
 {
   String delimiters{allocator};
 
@@ -45,16 +48,20 @@ static fn parse_paste_delimiters(StringView text, Allocator allocator) throws
   return delimiters;
 }
 
-static fn append_paste_delimiter(String &output, StringView delimiters,
-                                 usize delimiter_position) throws -> void
+static fn
+append_paste_delimiter(String    &output,
+                       StringView delimiters,
+                       usize      delimiter_position) throws -> void
 {
   let const delimiter = delimiters[delimiter_position % delimiters.length];
   if (delimiter != '\0') output += delimiter;
 }
 
-fn Paste::execute(const ExecContext &ec, EvalContext &cxt,
-                  const ArrayList<String> &args,
-                  const ArrayList<SourceLocation> &arg_locations) const throws
+fn
+Paste::execute(const ExecContext               &ec,
+               EvalContext                     &cxt,
+               const ArrayList<String>         &args,
+               const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
@@ -79,11 +86,11 @@ fn Paste::execute(const ExecContext &ec, EvalContext &cxt,
   struct paste_column
   {
     utils::BufferedLineReader *reader;
-    bool is_finished;
+    bool                       is_finished;
   };
 
   let &scratch_arena = cxt.expansion_store().scratch_arena();
-  let owned_inputs = ArrayList<os::descriptor>{cxt.scratch_allocator()};
+  let  owned_inputs  = ArrayList<os::descriptor>{cxt.scratch_allocator()};
   defer
   {
     for (let const descriptor : owned_inputs)
@@ -116,7 +123,7 @@ fn Paste::execute(const ExecContext &ec, EvalContext &cxt,
   }
 
   static constexpr usize OUTPUT_FLUSH_LENGTH = 64 * 1024;
-  let output = String{cxt.scratch_allocator()};
+  let                    output              = String{cxt.scratch_allocator()};
   let const do_read_line = [&](usize column_index) throws -> Maybe<StringView> {
     let &column = columns[column_index];
     if (column.is_finished) return None;
@@ -162,8 +169,8 @@ fn Paste::execute(const ExecContext &ec, EvalContext &cxt,
   } else {
     loop
     {
-      let const line_start = output.length();
-      bool did_read_line = false;
+      let const line_start    = output.length();
+      bool      did_read_line = false;
 
       for (usize column_index = 0; column_index < columns.count();
            column_index++)

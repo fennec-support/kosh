@@ -61,10 +61,12 @@ static constexpr codepoint_interval WIDE_INTERVALS[] = {
 static_assert(ZERO_WIDTH_INTERVALS[0].first >= NARROW_CODEPOINT_LIMIT);
 static_assert(WIDE_INTERVALS[0].first >= NARROW_CODEPOINT_LIMIT);
 
-static fn codepoint_is_in(u32 codepoint, const codepoint_interval *intervals,
-                          usize interval_count) -> bool
+static fn
+codepoint_is_in(u32                       codepoint,
+                const codepoint_interval *intervals,
+                usize                     interval_count) -> bool
 {
-  usize low = 0;
+  usize low  = 0;
   usize high = interval_count;
 
   while (low < high) {
@@ -80,7 +82,8 @@ static fn codepoint_is_in(u32 codepoint, const codepoint_interval *intervals,
   return false;
 }
 
-static fn codepoint_display_width(u32 codepoint) -> usize
+static fn
+codepoint_display_width(u32 codepoint) -> usize
 {
   if (codepoint == '\t') return 1;
   if (codepoint < 0x20 || (codepoint >= 0x7f && codepoint < 0xa0)) {
@@ -100,10 +103,11 @@ static fn codepoint_display_width(u32 codepoint) -> usize
   return 1;
 }
 
-flatten static fn display_width_walk(StringView text, usize stop_after,
-                                     usize *out_byte_offset) -> usize
+flatten static fn
+display_width_walk(StringView text, usize stop_after, usize *out_byte_offset)
+    -> usize
 {
-  usize byte_offset = 0;
+  usize     byte_offset = 0;
   let const ascii_limit = stop_after < text.length ? stop_after : text.length;
 
   while (byte_offset < ascii_limit &&
@@ -174,17 +178,18 @@ flatten static fn display_width_walk(StringView text, usize stop_after,
 
 namespace toiletline {
 
-fn is_history_contents_valid(StringView contents) -> bool
+fn
+is_history_contents_valid(StringView contents) -> bool
 {
   usize decoded_byte_count = 0;
-  bool is_escape_pending = false;
+  bool  is_escape_pending  = false;
 
   for (usize byte_offset = 0; byte_offset < contents.length;) {
     let const byte = static_cast<u8>(contents[byte_offset]);
     switch (byte) {
     case '\n':
       decoded_byte_count = 0;
-      is_escape_pending = false;
+      is_escape_pending  = false;
       byte_offset++;
       continue;
     case '\r':
@@ -224,16 +229,16 @@ fn is_history_contents_valid(StringView contents) -> bool
     }
 
     usize codepoint_byte_count = 0;
-    u32 codepoint = 0;
+    u32   codepoint            = 0;
     if (byte >= 0xc2 && byte <= 0xdf) {
       codepoint_byte_count = 2;
-      codepoint = byte & 0x1f;
+      codepoint            = byte & 0x1f;
     } else if (byte >= 0xe0 && byte <= 0xef) {
       codepoint_byte_count = 3;
-      codepoint = byte & 0x0f;
+      codepoint            = byte & 0x0f;
     } else if (byte >= 0xf0 && byte <= 0xf4) {
       codepoint_byte_count = 4;
-      codepoint = byte & 0x07;
+      codepoint            = byte & 0x07;
     } else {
       return false;
     }
@@ -250,9 +255,9 @@ fn is_history_contents_valid(StringView contents) -> bool
 
     u32 minimum_codepoint = 0;
     switch (codepoint_byte_count) {
-    case 2: minimum_codepoint = 0x80u; break;
-    case 3: minimum_codepoint = 0x800u; break;
-    case 4: minimum_codepoint = 0x10000u; break;
+    case 2:  minimum_codepoint = 0x80u; break;
+    case 3:  minimum_codepoint = 0x800u; break;
+    case 4:  minimum_codepoint = 0x10000u; break;
     default: return false;
     }
     if (codepoint < minimum_codepoint || codepoint > 0x10ffffu ||
@@ -270,7 +275,8 @@ fn is_history_contents_valid(StringView contents) -> bool
   return true;
 }
 
-fn encode_history_record(String &output, StringView command) -> void
+fn
+encode_history_record(String &output, StringView command) -> void
 {
   output.reserve(output.count() + command.length * 2 + 1);
 
@@ -287,15 +293,16 @@ fn encode_history_record(String &output, StringView command) -> void
   output.push('\n');
 }
 
-fn write_history_file_atomically(const koshka::Path &path,
-                                 StringView name_prefix,
-                                 StringView contents) throws -> bool
+fn
+write_history_file_atomically(const koshka::Path &path,
+                              StringView          name_prefix,
+                              StringView          contents) throws -> bool
 {
   let target = koshka::Path{path.view()};
   if (let resolved = koshka::os::canonical_path(path); resolved.has_value())
     target = steal(*resolved);
 
-  let status = koshka::os::file_status{};
+  let       status     = koshka::os::file_status{};
   let const has_status = koshka::os::stat_path_following(target.view(), status);
   let const replacement = koshka::os::write_to_named_temp_file(
       target.parent_or_current(), name_prefix, contents);
@@ -314,7 +321,8 @@ fn write_history_file_atomically(const koshka::Path &path,
   return true;
 }
 
-fn get_utf8_length(const koshka::String &string, usize byte_count) -> usize
+fn
+get_utf8_length(const koshka::String &string, usize byte_count) -> usize
 {
   let const limited_length =
       byte_count < string.length() ? byte_count : string.length();
@@ -322,12 +330,13 @@ fn get_utf8_length(const koshka::String &string, usize byte_count) -> usize
   return get_utf8_length(string.c_str(), limited_length);
 }
 
-fn get_utf8_length(const char *bytes, usize byte_count) -> usize
+fn
+get_utf8_length(const char *bytes, usize byte_count) -> usize
 {
-  static constexpr u64 LOW_BITS = 0x0101010101010101ULL;
-  static constexpr u64 HIGH_BITS = 0x8080808080808080ULL;
-  usize codepoint_count = 0;
-  usize byte_offset = 0;
+  static constexpr u64 LOW_BITS        = 0x0101010101010101ULL;
+  static constexpr u64 HIGH_BITS       = 0x8080808080808080ULL;
+  usize                codepoint_count = 0;
+  usize                byte_offset     = 0;
 
   while (byte_offset + sizeof(u64) <= byte_count) {
     u64 word;
@@ -348,10 +357,12 @@ fn get_utf8_length(const char *bytes, usize byte_count) -> usize
   return codepoint_count;
 }
 
-fn get_codepoint_byte_offset(const char *bytes, usize byte_length,
-                             usize codepoint_index) -> usize
+fn
+get_codepoint_byte_offset(const char *bytes,
+                          usize       byte_length,
+                          usize       codepoint_index) -> usize
 {
-  usize byte_offset = 0;
+  usize byte_offset     = 0;
   usize seen_codepoints = 0;
 
   while (byte_offset < byte_length && seen_codepoints < codepoint_index) {
@@ -369,16 +380,17 @@ fn get_codepoint_byte_offset(const char *bytes, usize byte_length,
   return byte_offset;
 }
 
-fn get_display_width(StringView text) -> usize
+fn
+get_display_width(StringView text) -> usize
 {
   return koshka::internal::display_width_walk(text, static_cast<usize>(-1),
                                               nullptr);
 }
 
-fn get_byte_offset_at_or_before_display_cell(StringView text,
-                                             usize cell_position,
-                                             usize &actual_cell_position)
-    -> usize
+fn
+get_byte_offset_at_or_before_display_cell(StringView text,
+                                          usize      cell_position,
+                                          usize &actual_cell_position) -> usize
 {
   usize byte_offset = 0;
   actual_cell_position =

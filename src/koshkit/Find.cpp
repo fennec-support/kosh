@@ -31,14 +31,14 @@ namespace koshka::koshkit {
 struct find_options
 {
   const ArrayList<StringView> *name_patterns{nullptr};
-  const ArrayList<bool> *name_pattern_ignore_case{nullptr};
-  const ArrayList<Bitset> *name_pattern_masks{nullptr};
-  glob_charset name_charset{glob_charset::Bytes};
-  bool has_case_insensitive_name_pattern{false};
-  char type_filter{0};
-  i64 max_depth{-1};
-  i64 min_depth{0};
-  bool should_stay_on_device{false};
+  const ArrayList<bool>       *name_pattern_ignore_case{nullptr};
+  const ArrayList<Bitset>     *name_pattern_masks{nullptr};
+  glob_charset                 name_charset{glob_charset::Bytes};
+  bool                         has_case_insensitive_name_pattern{false};
+  char                         type_filter{0};
+  i64                          max_depth{-1};
+  i64                          min_depth{0};
+  bool                         should_stay_on_device{false};
 };
 
 enum class find_action_kind : uchar
@@ -51,11 +51,11 @@ enum class find_action_kind : uchar
 
 struct find_action
 {
-  find_action_kind kind{find_action_kind::Print};
-  ArrayList<String> command{heap_allocator()};
+  find_action_kind          kind{find_action_kind::Print};
+  ArrayList<String>         command{heap_allocator()};
   ArrayList<SourceLocation> command_locations{heap_allocator()};
-  ArrayList<String> batch_paths{heap_allocator()};
-  usize batch_byte_count{0};
+  ArrayList<String>         batch_paths{heap_allocator()};
+  usize                     batch_byte_count{0};
 };
 
 enum class find_predicate_kind : uchar
@@ -87,15 +87,17 @@ static constexpr static_string_entry<find_predicate_kind>
         {SSK("-mount"),    find_predicate_kind::StayOnDevice},
 };
 static constexpr StaticStringMap FIND_PREDICATES{FIND_PREDICATE_ENTRIES};
-constexpr usize FIND_OUTPUT_BUFFER_BYTE_COUNT = 64 * 1024;
-constexpr usize FIND_UNKNOWN_BATCH_COUNT = 512;
-constexpr usize FIND_BATCH_BYTE_LIMIT = 128 * 1024;
+constexpr usize                  FIND_OUTPUT_BUFFER_BYTE_COUNT = 64 * 1024;
+constexpr usize                  FIND_UNKNOWN_BATCH_COUNT      = 512;
+constexpr usize                  FIND_BATCH_BYTE_LIMIT         = 128 * 1024;
 
-static fn replace_find_braces(StringView source, StringView path,
-                              Allocator allocator) throws -> String
+static fn
+replace_find_braces(StringView source,
+                    StringView path,
+                    Allocator  allocator) throws -> String
 {
   String replaced{allocator};
-  usize position = 0;
+  usize  position = 0;
 
   while (position < source.length) {
     if (source.substring(position).starts_with("{}")) {
@@ -110,9 +112,12 @@ static fn replace_find_braces(StringView source, StringView path,
   return replaced;
 }
 
-static fn find_entry_matches(char type_letter, StringView filename, usize depth,
-                             const find_options &options,
-                             Allocator allocator) throws -> bool
+static fn
+find_entry_matches(char                type_letter,
+                   StringView          filename,
+                   usize               depth,
+                   const find_options &options,
+                   Allocator           allocator) throws -> bool
 {
   if (static_cast<i64>(depth) < options.min_depth) return false;
   if (options.max_depth >= 0 && static_cast<i64>(depth) > options.max_depth) {
@@ -133,7 +138,7 @@ static fn find_entry_matches(char type_letter, StringView filename, usize depth,
   }
 
   let const original_filename = filename;
-  String locale_independent_folded_filename{allocator};
+  String    locale_independent_folded_filename{allocator};
   if (options.has_case_insensitive_name_pattern) {
     locale_independent_folded_filename.reserve(filename.length);
     locale_independent_folded_filename.assign_lowercase_ascii(filename);
@@ -161,14 +166,15 @@ static fn find_entry_matches(char type_letter, StringView filename, usize depth,
   return true;
 }
 
-static pure fn get_find_type_letter(Path::EntryKind kind) wontthrow -> char
+static pure fn
+get_find_type_letter(Path::EntryKind kind) wontthrow -> char
 {
   switch (kind) {
   case Path::EntryKind::Directory: return 'd';
-  case Path::EntryKind::Regular: return '-';
-  case Path::EntryKind::Symlink: return 'l';
+  case Path::EntryKind::Regular:   return '-';
+  case Path::EntryKind::Symlink:   return 'l';
   case Path::EntryKind::Other:
-  case Path::EntryKind::Unknown: return '?';
+  case Path::EntryKind::Unknown:   return '?';
   }
 
   return '?';
@@ -177,14 +183,19 @@ static pure fn get_find_type_letter(Path::EntryKind kind) wontthrow -> char
 class FindWalker
 {
 public:
-  FindWalker(const ExecContext &ec, EvalContext &cxt,
-             const find_options &options, ArrayList<find_action> *actions,
-             String &output, i32 &exit_status, Allocator allocator)
+  FindWalker(const ExecContext      &ec,
+             EvalContext            &cxt,
+             const find_options     &options,
+             ArrayList<find_action> *actions,
+             String                 &output,
+             i32                    &exit_status,
+             Allocator               allocator)
       : m_ec(ec), m_cxt(cxt), m_options(options), m_actions(actions),
         m_output(output), m_exit_status(exit_status), m_allocator(allocator)
   {}
 
-  fn finish() throws -> void
+  fn
+  finish() throws -> void
   {
     if (m_actions == nullptr) return;
 
@@ -193,10 +204,13 @@ public:
     }
   }
 
-  fn walk(StringView path_text, StringView display, usize depth,
-          char type_letter) throws -> void
+  fn
+  walk(StringView path_text,
+       StringView display,
+       usize      depth,
+       char       type_letter) throws -> void
   {
-    let &scratch_arena = m_cxt.expansion_store().scratch_arena();
+    let      &scratch_arena     = m_cxt.expansion_store().scratch_arena();
     let const directory_scratch = scratch_arena.mark();
     defer { scratch_arena.release(directory_scratch); };
 
@@ -262,9 +276,9 @@ public:
 
       let const child_scratch = scratch_arena.mark();
       defer { scratch_arena.release(child_scratch); };
-      let const &child_entry = (*children)[index];
-      let const child_type_letter = get_find_type_letter(child_entry.kind);
-      let const should_descend_child =
+      let const &child_entry       = (*children)[index];
+      let const  child_type_letter = get_find_type_letter(child_entry.kind);
+      let const  should_descend_child =
           child_type_letter == 'd' &&
           (m_options.max_depth < 0 ||
            static_cast<i64>(child_depth) < m_options.max_depth);
@@ -286,7 +300,8 @@ public:
   }
 
 private:
-  fn is_on_root_device(StringView path_text, usize depth) wontthrow -> bool
+  fn
+  is_on_root_device(StringView path_text, usize depth) wontthrow -> bool
   {
     os::file_status status{};
     if (!os::stat_path(path_text, status)) return true;
@@ -296,7 +311,8 @@ private:
     return status.device_id == m_root_device_id;
   }
 
-  static pure fn get_filename(StringView path_text) wontthrow -> StringView
+  static pure fn
+  get_filename(StringView path_text) wontthrow -> StringView
   {
     usize filename_end = path_text.length;
 
@@ -323,7 +339,8 @@ private:
                                          filename_end - filename_start);
   }
 
-  fn flush_full_output() throws -> void
+  fn
+  flush_full_output() throws -> void
   {
     if (m_output.length() < FIND_OUTPUT_BUFFER_BYTE_COUNT) return;
 
@@ -331,12 +348,14 @@ private:
     m_output.clear();
   }
 
-  fn emit_child(StringView display, StringView child_name) throws -> void
+  fn
+  emit_child(StringView display, StringView child_name) throws -> void
   {
     report_match(display, child_name);
   }
 
-  fn report_match(StringView display, StringView child_name) throws -> void
+  fn
+  report_match(StringView display, StringView child_name) throws -> void
   {
     if (m_actions == nullptr) {
       m_output += display;
@@ -393,11 +412,12 @@ private:
     }
   }
 
-  fn run_batch(find_action &action) throws -> void
+  fn
+  run_batch(find_action &action) throws -> void
   {
     if (action.batch_paths.is_empty()) return;
 
-    let command = ArrayList<String>{m_allocator};
+    let command   = ArrayList<String>{m_allocator};
     let locations = ArrayList<SourceLocation>{m_allocator};
 
     for (usize index = 0; index + 1 < action.command.count(); index++) {
@@ -417,8 +437,9 @@ private:
     if (run_command(steal(command), locations) != 0) m_exit_status = 1;
   }
 
-  fn run_command(ArrayList<String> command,
-                 const ArrayList<SourceLocation> &locations) throws -> i32
+  fn
+  run_command(ArrayList<String>                command,
+              const ArrayList<SourceLocation> &locations) throws -> i32
   {
     let command_locations = ArrayList<SourceLocation>{m_allocator};
 
@@ -463,12 +484,15 @@ private:
     return command_status;
   }
 
-  fn walk_child(StringView path_text, StringView display,
-                const Path::DirectoryChild &child_entry, usize child_depth,
-                char child_type_letter) throws -> void
+  fn
+  walk_child(StringView                  path_text,
+             StringView                  display,
+             const Path::DirectoryChild &child_entry,
+             usize                       child_depth,
+             char                        child_type_letter) throws -> void
   {
     let const child_name = child_entry.name.view();
-    String child_display{m_allocator, display};
+    String    child_display{m_allocator, display};
     let const has_separator =
         !child_display.is_empty() && child_display.back() != '/';
     let const separator_length = has_separator ? usize{1} : usize{0};
@@ -488,8 +512,9 @@ private:
          child_type_letter);
   }
 
-  fn discard_nonmatching_children(ArrayList<Path::DirectoryChild> &children,
-                                  usize child_depth) throws -> void
+  fn
+  discard_nonmatching_children(ArrayList<Path::DirectoryChild> &children,
+                               usize child_depth) throws -> void
   {
     usize kept_count = 0;
 
@@ -512,9 +537,10 @@ private:
     children.truncate(kept_count);
   }
 
-  fn resolve_unknown_children(ArrayList<Path::DirectoryChild> &children,
-                              StringView path_text, usize unknown_count) throws
-      -> void
+  fn
+  resolve_unknown_children(ArrayList<Path::DirectoryChild> &children,
+                           StringView                       path_text,
+                           usize unknown_count) throws -> void
   {
     let const wave_count = unknown_count < FIND_UNKNOWN_BATCH_COUNT
                                ? unknown_count
@@ -540,8 +566,8 @@ private:
     resolve_unknown_wave(children);
   }
 
-  fn resolve_unknown_wave(ArrayList<Path::DirectoryChild> &children) throws
-      -> void
+  fn
+  resolve_unknown_wave(ArrayList<Path::DirectoryChild> &children) throws -> void
   {
     if (m_unknown_indices.is_empty()) return;
 
@@ -563,7 +589,7 @@ private:
             "'" + m_unknown_paths[index].text() +
                 "': " + os::last_system_error_message());
         m_exit_status = 1;
-        kind = Path::EntryKind::Other;
+        kind          = Path::EntryKind::Other;
         continue;
       }
 
@@ -571,7 +597,7 @@ private:
       case 'd': kind = Path::EntryKind::Directory; break;
       case '-': kind = Path::EntryKind::Regular; break;
       case 'l': kind = Path::EntryKind::Symlink; break;
-      default: kind = Path::EntryKind::Other; break;
+      default:  kind = Path::EntryKind::Other; break;
       }
     }
 
@@ -581,33 +607,35 @@ private:
     m_unknown_indices.clear();
   }
 
-  const ExecContext &m_ec;
-  EvalContext &m_cxt;
-  const find_options &m_options;
-  ArrayList<find_action> *m_actions;
-  String &m_output;
-  i32 &m_exit_status;
-  Allocator m_allocator;
-  u64 m_root_device_id{0};
-  ArrayList<Path> m_unknown_paths{heap_allocator()};
-  ArrayList<os::file_status> m_unknown_statuses{heap_allocator()};
-  ArrayList<usize> m_unknown_indices{heap_allocator()};
+  const ExecContext          &m_ec;
+  EvalContext                &m_cxt;
+  const find_options         &m_options;
+  ArrayList<find_action>     *m_actions;
+  String                     &m_output;
+  i32                        &m_exit_status;
+  Allocator                   m_allocator;
+  u64                         m_root_device_id{0};
+  ArrayList<Path>             m_unknown_paths{heap_allocator()};
+  ArrayList<os::file_status>  m_unknown_statuses{heap_allocator()};
+  ArrayList<usize>            m_unknown_indices{heap_allocator()};
   ArrayList<os::batch_result> m_unknown_results{heap_allocator()};
-  os::Batch m_unknown_batch{heap_allocator()};
+  os::Batch                   m_unknown_batch{heap_allocator()};
 };
 
-fn Find::execute(const ExecContext &ec, EvalContext &cxt,
-                 const ArrayList<String> &args,
-                 const ArrayList<SourceLocation> &arg_locations) const throws
+fn
+Find::execute(const ExecContext               &ec,
+              EvalContext                     &cxt,
+              const ArrayList<String>         &args,
+              const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
-  ArrayList<StringView> roots{cxt.scratch_allocator()};
-  ArrayList<StringView> name_patterns{cxt.scratch_allocator()};
-  ArrayList<bool> name_pattern_ignore_case{cxt.scratch_allocator()};
-  ArrayList<String> matcher_name_storage{cxt.scratch_allocator()};
-  ArrayList<StringView> matcher_name_patterns{cxt.scratch_allocator()};
-  ArrayList<Bitset> matcher_name_masks{cxt.scratch_allocator()};
-  find_options options{};
+  ArrayList<StringView>  roots{cxt.scratch_allocator()};
+  ArrayList<StringView>  name_patterns{cxt.scratch_allocator()};
+  ArrayList<bool>        name_pattern_ignore_case{cxt.scratch_allocator()};
+  ArrayList<String>      matcher_name_storage{cxt.scratch_allocator()};
+  ArrayList<StringView>  matcher_name_patterns{cxt.scratch_allocator()};
+  ArrayList<Bitset>      matcher_name_masks{cxt.scratch_allocator()};
+  find_options           options{};
   ArrayList<find_action> actions{cxt.scratch_allocator()};
 
   usize index = 1;
@@ -623,7 +651,7 @@ fn Find::execute(const ExecContext &ec, EvalContext &cxt,
   }
 
   for (; index < args.count(); index++) {
-    let const predicate = args[index].view();
+    let const predicate      = args[index].view();
     let const predicate_kind = FIND_PREDICATES.find(predicate);
     if (!predicate_kind.has_value()) {
       KOSHKIT_REPORT_ERROR_AT(arg_locations[index],
@@ -743,7 +771,7 @@ fn Find::execute(const ExecContext &ec, EvalContext &cxt,
 
         return 1;
       }
-      bool is_depth_out_of_range = false;
+      bool      is_depth_out_of_range = false;
       let const parsed_depth = utils::parse_decimal_i64(args[index + 1].view(),
                                                         &is_depth_out_of_range);
       if (parsed_depth.is_error() || is_depth_out_of_range ||
@@ -793,18 +821,18 @@ fn Find::execute(const ExecContext &ec, EvalContext &cxt,
       matcher_name_masks.push(steal(decoded.glob_active));
     }
 
-    options.name_patterns = &matcher_name_patterns;
+    options.name_patterns            = &matcher_name_patterns;
     options.name_pattern_ignore_case = &name_pattern_ignore_case;
-    options.name_pattern_masks = &matcher_name_masks;
-    options.name_charset = cxt.get_glob_charset();
+    options.name_pattern_masks       = &matcher_name_masks;
+    options.name_charset             = cxt.get_glob_charset();
   }
 
   if (roots.is_empty()) roots.push(StringView{"."});
 
-  let const allocator = cxt.scratch_allocator();
-  let root_paths = ArrayList<Path>{allocator};
-  let root_statuses = ArrayList<os::file_status>{allocator};
-  let batch = os::Batch{allocator};
+  let const allocator     = cxt.scratch_allocator();
+  let       root_paths    = ArrayList<Path>{allocator};
+  let       root_statuses = ArrayList<os::file_status>{allocator};
+  let       batch         = os::Batch{allocator};
   root_paths.reserve(roots.count());
   root_statuses.reserve(roots.count());
   batch.reserve(roots.count());
@@ -821,10 +849,10 @@ fn Find::execute(const ExecContext &ec, EvalContext &cxt,
 
   let const results = batch.execute();
 
-  let output_arena = BumpArena{};
+  let       output_arena     = BumpArena{};
   let const output_allocator = bump_allocator(output_arena);
-  let output = String{output_allocator};
-  i32 status = 0;
+  let       output           = String{output_allocator};
+  i32       status           = 0;
   let const is_default_print =
       actions.is_empty() ||
       (actions.count() == 1 && actions[0].kind == find_action_kind::Print);

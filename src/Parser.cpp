@@ -29,8 +29,8 @@ using internal::is_unquoted_word;
 using internal::throw_unterminated;
 using internal::token_kind_mask;
 
-hot pure static fn get_sequence_kind(Token::Kind tk) wontthrow
-    -> CompoundListCondition::Kind
+hot pure static fn
+get_sequence_kind(Token::Kind tk) wontthrow -> CompoundListCondition::Kind
 {
   switch (tk) {
   case Token::Kind::Newline:
@@ -39,7 +39,7 @@ hot pure static fn get_sequence_kind(Token::Kind tk) wontthrow
   case Token::Kind::Semicolon:
   case Token::Kind::DoubleSemicolon: return CompoundListCondition::Kind::None;
   case Token::Kind::DoubleAmpersand: return CompoundListCondition::Kind::And;
-  case Token::Kind::DoublePipe: return CompoundListCondition::Kind::Or;
+  case Token::Kind::DoublePipe:      return CompoundListCondition::Kind::Or;
 
   default: unreachable("Invalid shell sequence token: %d", ENUM(tk));
   }
@@ -49,8 +49,8 @@ Parser::Parser(Lexer &&lexer) : m_lexer(steal(lexer)) {}
 
 Parser::~Parser() = default;
 
-alwaysinline fn Parser::next_token_of_kind(Token::Kind kind,
-                                           StringView missing_message) throws
+alwaysinline fn
+Parser::next_token_of_kind(Token::Kind kind, StringView missing_message) throws
     -> Token *
 {
   Token *token = m_lexer.next_shell_token();
@@ -62,36 +62,41 @@ alwaysinline fn Parser::next_token_of_kind(Token::Kind kind,
   return token;
 }
 
-pure fn Parser::debug_words() const wontthrow -> const ArrayList<Word> &
+pure fn
+Parser::debug_words() const wontthrow -> const ArrayList<Word> &
 {
   return m_lexer.debug_words();
 }
 
-fn Parser::take_shellcheck_suppressions() throws
+fn
+Parser::take_shellcheck_suppressions() throws
     -> ArrayList<shellcheck_suppression>
 {
   return steal(m_shellcheck_suppressions);
 }
 
-fn Parser::take_analysis_scope_definitions() throws
+fn
+Parser::take_analysis_scope_definitions() throws
     -> ArrayList<analysis_scope_definition>
 {
   return steal(m_analysis_scope_definitions);
 }
 
-fn Parser::take_analysis_directives() throws -> analysis_directives
+fn
+Parser::take_analysis_directives() throws -> analysis_directives
 {
   analysis_directives directives{};
   directives.shellcheck_suppressions = take_shellcheck_suppressions();
-  directives.scope_definitions = take_analysis_scope_definitions();
-  directives.directive_spans = take_shellcheck_directive_spans();
-  directives.heredoc_misses = take_heredoc_terminator_misses();
-  directives.source_name_index = m_lexer.source_name_index();
+  directives.scope_definitions       = take_analysis_scope_definitions();
+  directives.directive_spans         = take_shellcheck_directive_spans();
+  directives.heredoc_misses          = take_heredoc_terminator_misses();
+  directives.source_name_index       = m_lexer.source_name_index();
 
   return directives;
 }
 
-fn Parser::record_analysis_scope_definition(
+fn
+Parser::record_analysis_scope_definition(
     StringView name, analysis_scope_definition_kind kind) throws -> void
 {
   if (m_analysis_scope_collection_mode !=
@@ -102,7 +107,8 @@ fn Parser::record_analysis_scope_definition(
       analysis_scope_definition{String{name}, kind});
 }
 
-fn Parser::record_analysis_alias_definitions(
+fn
+Parser::record_analysis_alias_definitions(
     const ArrayList<const Token *> &args) throws -> void
 {
   if (m_analysis_scope_collection_mode !=
@@ -118,7 +124,7 @@ fn Parser::record_analysis_alias_definitions(
   }
 
   for (usize i = 1; i < args.count(); i++) {
-    let const text = args[i]->raw_string();
+    let const text            = args[i]->raw_string();
     let const equals_position = text.find_character('=');
     if (equals_position.has_value() && *equals_position > 0) {
       record_analysis_scope_definition(
@@ -128,12 +134,14 @@ fn Parser::record_analysis_alias_definitions(
   }
 }
 
-mustuse fn Parser::open_analysis_scope() const wontthrow -> usize
+mustuse fn
+Parser::open_analysis_scope() const wontthrow -> usize
 {
   return m_analysis_scope_definitions.count();
 }
 
-fn Parser::close_analysis_scope(usize scope_mark) throws
+fn
+Parser::close_analysis_scope(usize scope_mark) throws
     -> ArrayList<analysis_scope_definition>
 {
   let harvested = ArrayList<analysis_scope_definition>{heap_allocator()};
@@ -149,7 +157,8 @@ fn Parser::close_analysis_scope(usize scope_mark) throws
 
 static_assert(static_cast<u8>(Token::Kind::Function) < 64);
 
-hot pure fn internal::get_unquoted_word_text(const Token *token) wontthrow
+hot pure fn
+internal::get_unquoted_word_text(const Token *token) wontthrow
     -> const SegmentText *
 {
   if (token == nullptr || token->kind() != Token::Kind::Word) {
@@ -165,16 +174,17 @@ hot pure fn internal::get_unquoted_word_text(const Token *token) wontthrow
   return &word.segments[0].text;
 }
 
-hot pure fn internal::is_unquoted_word(const Token *token,
-                                       StringView text) wontthrow -> bool
+hot pure fn
+internal::is_unquoted_word(const Token *token, StringView text) wontthrow
+    -> bool
 {
   let const *unquoted_text = get_unquoted_word_text(token);
 
   return unquoted_text != nullptr && *unquoted_text == text;
 }
 
-hot pure static fn is_list_terminator(const Token *token,
-                                      u64 terminator_mask) wontthrow -> bool
+hot pure static fn
+is_list_terminator(const Token *token, u64 terminator_mask) wontthrow -> bool
 {
   ASSERT(token != nullptr);
 
@@ -184,8 +194,8 @@ hot pure static fn is_list_terminator(const Token *token,
           is_unquoted_word(token, "}"));
 }
 
-cold pure static fn find_standalone_keyword(StringView source,
-                                            StringView keyword) wontthrow
+cold pure static fn
+find_standalone_keyword(StringView source, StringView keyword) wontthrow
     -> Maybe<SourceLocation>
 {
   let const do_is_boundary = [](char c) {
@@ -199,7 +209,7 @@ cold pure static fn find_standalone_keyword(StringView source,
 
   for (usize pos = 0; pos + keyword.length <= source.length; pos++) {
     if (source.substring_of_length(pos, keyword.length) != keyword) continue;
-    let const end_position = pos + keyword.length;
+    let const end_position     = pos + keyword.length;
     let const is_left_boundary = pos == 0 || do_is_boundary(source[pos - 1]);
     let const is_right_boundary =
         end_position == source.length || do_is_boundary(source[end_position]);
@@ -211,9 +221,12 @@ cold pure static fn find_standalone_keyword(StringView source,
   return koshka::None;
 }
 
-cold wontreturn fn internal::throw_unterminated(
-    const SourceLocation &opener, StringView what, StringView source,
-    StringView keyword, SourceLocation fallback) throws -> void
+cold wontreturn fn
+internal::throw_unterminated(const SourceLocation &opener,
+                             StringView            what,
+                             StringView            source,
+                             StringView            keyword,
+                             SourceLocation        fallback) throws -> void
 {
   if (Maybe<SourceLocation> found = find_standalone_keyword(source, keyword);
       found.has_value())
@@ -229,8 +242,8 @@ cold wontreturn fn internal::throw_unterminated(
                                     "expected '" + keyword + "'"};
 }
 
-cold static fn unexpected_command_token_message(const Token *token) throws
-    -> String
+cold static fn
+unexpected_command_token_message(const Token *token) throws -> String
 {
   ASSERT(token != nullptr);
   if (is_unquoted_word(token, "}")) return "'}' has no matching '{'";
@@ -238,7 +251,7 @@ cold static fn unexpected_command_token_message(const Token *token) throws
   case Token::Kind::Then:
   case Token::Kind::Else:
   case Token::Kind::Elif:
-  case Token::Kind::Fi: {
+  case Token::Kind::Fi:   {
     let const ast = token->to_ast_string();
 
     return "'" + ast.view() + "' has no matching 'if'";
@@ -252,10 +265,10 @@ cold static fn unexpected_command_token_message(const Token *token) throws
   case Token::Kind::Esac: return "'esac' has no matching 'case'";
   case Token::Kind::DoubleSemicolon:
     return "';;' is only valid between the arms of a 'case'";
-  case Token::Kind::RightParen: return "')' has no matching '('";
+  case Token::Kind::RightParen:   return "')' has no matching '('";
   case Token::Kind::RightBracket: return "'}' has no matching '{'";
-  case Token::Kind::Pipe: return "'|' has no command before it to pipe from";
-  default: {
+  case Token::Kind::Pipe:         return "'|' has no command before it to pipe from";
+  default:                        {
     let const ast = token->to_ast_string();
 
     return "Expected a command, found '" + ast.view() + "'";
@@ -263,7 +276,8 @@ cold static fn unexpected_command_token_message(const Token *token) throws
   }
 }
 
-hot pure static fn is_compound_terminator(Token::Kind kind) wontthrow -> bool
+hot pure static fn
+is_compound_terminator(Token::Kind kind) wontthrow -> bool
 {
   switch (kind) {
   case Token::Kind::RightParen:
@@ -275,30 +289,32 @@ hot pure static fn is_compound_terminator(Token::Kind kind) wontthrow -> bool
   case Token::Kind::Fi:
   case Token::Kind::Else:
   case Token::Kind::Elif:
-  case Token::Kind::Esac: return true;
-  default: return false;
+  case Token::Kind::Esac:            return true;
+  default:                           return false;
   }
 }
 
-hot pure static fn is_compound_list_separator(Token::Kind kind) wontthrow
-    -> bool
+hot pure static fn
+is_compound_list_separator(Token::Kind kind) wontthrow -> bool
 {
   switch (kind) {
   case Token::Kind::Newline:
   case Token::Kind::Semicolon:
   case Token::Kind::Ampersand:
   case Token::Kind::DoubleAmpersand:
-  case Token::Kind::DoublePipe: return true;
-  default: return false;
+  case Token::Kind::DoublePipe:      return true;
+  default:                           return false;
   }
 }
 
-flatten fn Parser::construct_ast() throws -> Expression *
+flatten fn
+Parser::construct_ast() throws -> Expression *
 {
   return parse_command_list(0);
 }
 
-fn Parser::construct_next_top_level_ast() throws -> Expression *
+fn
+Parser::construct_next_top_level_ast() throws -> Expression *
 {
   if (m_analysis_metadata_collection_mode ==
       analysis_metadata_collection_mode::Enabled)
@@ -317,18 +333,21 @@ fn Parser::construct_next_top_level_ast() throws -> Expression *
   return parse_command_list(0);
 }
 
-pure fn Parser::is_at_end() const wontthrow -> bool
+pure fn
+Parser::is_at_end() const wontthrow -> bool
 {
   return m_lexer.is_at_source_end();
 }
 
-fn Parser::skip_newlines_after_pipe() throws -> void
+fn
+Parser::skip_newlines_after_pipe() throws -> void
 {
   while (m_lexer.peek_shell_token()->kind() == Token::Kind::Newline)
     m_lexer.advance_past_last_peek();
 }
 
-fn Parser::skip_semicolons_and_newlines() throws -> void
+fn
+Parser::skip_semicolons_and_newlines() throws -> void
 {
   loop
   {
@@ -343,7 +362,8 @@ fn Parser::skip_semicolons_and_newlines() throws -> void
   }
 }
 
-cold fn Parser::recover_to_next_statement() throws -> void
+cold fn
+Parser::recover_to_next_statement() throws -> void
 {
   LOG(Debug, "skipping tokens to the next statement boundary");
   bool has_consumed_token = false;
@@ -377,10 +397,12 @@ get_location_filename(const SourceLocation &location) throws -> String
   return name.has_value() ? String{*name} : String{heap_allocator()};
 }
 
-cold fn Parser::record_detailed_parse_error(
-    const ErrorWithLocationAndDetails &error, ArrayList<String> &errors,
-    EvalContext *context, ArrayList<source_diagnostic> *diagnostic_sink) throws
-    -> void
+cold fn
+Parser::record_detailed_parse_error(
+    const ErrorWithLocationAndDetails &error,
+    ArrayList<String>                 &errors,
+    EvalContext                       *context,
+    ArrayList<source_diagnostic>      *diagnostic_sink) throws -> void
 {
   LOG(Debug, "recording a detailed parse error and recovering: %s",
       error.message().c_str());
@@ -394,7 +416,7 @@ cold fn Parser::record_detailed_parse_error(
   errors.push(error.details_to_string(m_lexer.source(), context));
   if (diagnostic_sink == nullptr) return;
 
-  let const location = error.location();
+  let const location         = error.location();
   let const details_location = error.details_location();
   let const related_location = error.details_message().is_empty()
                                    ? Maybe<SourceLocation>{None}
@@ -407,9 +429,11 @@ cold fn Parser::record_detailed_parse_error(
       ArrayList<source_fix>{heap_allocator()}});
 }
 
-cold fn Parser::record_parse_error(
-    const ErrorWithLocation &error, ArrayList<String> &errors,
-    EvalContext *context, ArrayList<source_diagnostic> *diagnostic_sink) throws
+cold fn
+Parser::record_parse_error(const ErrorWithLocation      &error,
+                           ArrayList<String>            &errors,
+                           EvalContext                  *context,
+                           ArrayList<source_diagnostic> *diagnostic_sink) throws
     -> void
 {
   LOG(Debug, "recording a parse error and recovering: %s",
@@ -432,8 +456,10 @@ cold fn Parser::record_parse_error(
       ArrayList<source_fix>{heap_allocator()}});
 }
 
-cold fn Parser::record_substitution_errors(
-    ArrayList<String> &errors, EvalContext *context,
+cold fn
+Parser::record_substitution_errors(
+    ArrayList<String>            &errors,
+    EvalContext                  *context,
     ArrayList<source_diagnostic> *diagnostic_sink) throws -> void
 {
   if (!m_lexer.has_substitution_errors()) return;
@@ -449,9 +475,11 @@ cold fn Parser::record_substitution_errors(
   }
 }
 
-cold fn Parser::record_error(
-    ArrayList<String> &errors, EvalContext *context,
-    ArrayList<source_diagnostic> *diagnostic_sink) throws -> void
+cold fn
+Parser::record_error(ArrayList<String>            &errors,
+                     EvalContext                  *context,
+                     ArrayList<source_diagnostic> *diagnostic_sink) throws
+    -> void
 {
   record_substitution_errors(errors, context, diagnostic_sink);
 
@@ -464,8 +492,10 @@ cold fn Parser::record_error(
   }
 }
 
-alwaysinline fn Parser::peek_top_level_token(
-    ArrayList<String> &errors, EvalContext *context,
+alwaysinline fn
+Parser::peek_top_level_token(
+    ArrayList<String>            &errors,
+    EvalContext                  *context,
     ArrayList<source_diagnostic> *diagnostic_sink) throws -> Token *
 {
   let const is_collecting_directives =
@@ -490,13 +520,15 @@ alwaysinline fn Parser::peek_top_level_token(
   return token;
 }
 
-cold fn Parser::construct_ast(
-    ArrayList<String> &errors, EvalContext *context,
-    ArrayList<source_diagnostic> *diagnostic_sink) throws -> Expression *
+cold fn
+Parser::construct_ast(ArrayList<String>            &errors,
+                      EvalContext                  *context,
+                      ArrayList<source_diagnostic> *diagnostic_sink) throws
+    -> Expression *
 {
-  Expression *first_piece = nullptr;
-  let last_location = SourceLocation{};
-  usize failed_statement_count = 0;
+  Expression *first_piece            = nullptr;
+  let         last_location          = SourceLocation{};
+  usize       failed_statement_count = 0;
 
   loop
   {
@@ -537,8 +569,10 @@ cold fn Parser::construct_ast(
   return first_piece;
 }
 
-cold fn Parser::construct_next_top_level_ast(
-    ArrayList<String> &errors, EvalContext *context,
+cold fn
+Parser::construct_next_top_level_ast(
+    ArrayList<String>            &errors,
+    EvalContext                  *context,
     ArrayList<source_diagnostic> *diagnostic_sink) throws -> Expression *
 {
   m_should_stop_after_top_level_unit = true;
@@ -572,7 +606,8 @@ cold fn Parser::construct_next_top_level_ast(
   }
 }
 
-fn Parser::reject_empty_loop_body(const Expression *body) throws -> void
+fn
+Parser::reject_empty_loop_body(const Expression *body) throws -> void
 {
   if (!body->is_dummy()) return;
   Token *terminator = m_lexer.peek_shell_token();
@@ -582,7 +617,8 @@ fn Parser::reject_empty_loop_body(const Expression *body) throws -> void
       "The body between 'do' and 'done' is empty, a command is required"};
 }
 
-hot fn Parser::parse_command_list(u64 terminator_mask) throws -> Expression *
+hot fn
+Parser::parse_command_list(u64 terminator_mask) throws -> Expression *
 {
   m_command_depth++;
   defer { m_command_depth--; };
@@ -600,16 +636,16 @@ hot fn Parser::parse_command_list(u64 terminator_mask) throws -> Expression *
 
   CompoundList *compound_list = m_lexer.arena().create<CompoundList>();
   CompoundListCondition::Kind next_cond = CompoundListCondition::Kind::None;
-  SourceLocation and_or_start{};
-  usize and_or_first_index = 0;
+  SourceLocation              and_or_start{};
+  usize                       and_or_first_index = 0;
 
-  bool should_parse_command = true;
-  bool should_negate_pending = false;
-  bool should_time_pending = false;
-  time_format_mode time_format = time_format_mode::Default;
-  time_rss_mode time_rss = time_rss_mode::Omit;
-  SourceLocation time_location{};
-  Maybe<usize> active_shellcheck_suppression{};
+  bool             should_parse_command  = true;
+  bool             should_negate_pending = false;
+  bool             should_time_pending   = false;
+  time_format_mode time_format           = time_format_mode::Default;
+  time_rss_mode    time_rss              = time_rss_mode::Omit;
+  SourceLocation   time_location{};
+  Maybe<usize>     active_shellcheck_suppression{};
 
   let const do_finish_shellcheck_suppression = [&](usize end_position) {
     if (!active_shellcheck_suppression.has_value()) return;
@@ -626,8 +662,8 @@ hot fn Parser::parse_command_list(u64 terminator_mask) throws -> Expression *
     if (should_time_pending) {
       pending->set_timed(time_location, time_format, time_rss);
       should_time_pending = false;
-      time_format = time_format_mode::Default;
-      time_rss = time_rss_mode::Omit;
+      time_format         = time_format_mode::Default;
+      time_rss            = time_rss_mode::Omit;
     }
     compound_list->append_node(m_lexer.arena().create<CompoundListCondition>(
         at->source_location(), next_cond, pending));
@@ -646,7 +682,7 @@ hot fn Parser::parse_command_list(u64 terminator_mask) throws -> Expression *
             should_collect_directives
                 ? shellcheck_directive_collection_mode::Enabled
                 : shellcheck_directive_collection_mode::Disabled);
-        maybe_time = m_lexer.peek_shell_token();
+        maybe_time     = m_lexer.peek_shell_token();
         let directives = m_lexer.take_shellcheck_directives();
         m_lexer.set_shellcheck_directive_collection_mode(
             shellcheck_directive_collection_mode::Disabled);
@@ -657,7 +693,7 @@ hot fn Parser::parse_command_list(u64 terminator_mask) throws -> Expression *
           m_lexer.advance_past_last_peek();
           m_lexer.set_shellcheck_directive_collection_mode(
               shellcheck_directive_collection_mode::Enabled);
-          maybe_time = m_lexer.peek_shell_token();
+          maybe_time               = m_lexer.peek_shell_token();
           let following_directives = m_lexer.take_shellcheck_directives();
           m_lexer.set_shellcheck_directive_collection_mode(
               shellcheck_directive_collection_mode::Disabled);
@@ -674,7 +710,7 @@ hot fn Parser::parse_command_list(u64 terminator_mask) throws -> Expression *
         if (is_source_command) m_has_parsed_source_command = true;
         if (!directives.is_empty()) {
           let const source = m_lexer.source();
-          let selectors = ArrayList<shellcheck_selector>{heap_allocator()};
+          let selectors    = ArrayList<shellcheck_selector>{heap_allocator()};
 
           for (let const &directive : directives)
             collect_shellcheck_selectors(source, directive, selectors);
@@ -693,7 +729,7 @@ hot fn Parser::parse_command_list(u64 terminator_mask) throws -> Expression *
       }
       ASSERT(maybe_time != nullptr);
       if (next_cond == CompoundListCondition::Kind::None) {
-        and_or_start = maybe_time->source_location();
+        and_or_start       = maybe_time->source_location();
         and_or_first_index = compound_list->node_count();
       }
       const Token *leading_command_token = nullptr;
@@ -760,8 +796,8 @@ hot fn Parser::parse_command_list(u64 terminator_mask) throws -> Expression *
         if (next_cond != CompoundListCondition::Kind::None) {
           do_finish_pending(lhs, token);
 
-          let const source = m_lexer.source();
-          let end_position = token->source_location().position;
+          let const source       = m_lexer.source();
+          let       end_position = token->source_location().position;
 
           while (end_position > and_or_start.position &&
                  (source[end_position - 1] == ' ' ||
@@ -776,7 +812,7 @@ hot fn Parser::parse_command_list(u64 terminator_mask) throws -> Expression *
               m_lexer.arena().create<BraceGroup>(and_or_start, and_or_list);
           group->set_source_end_position(end_position);
           next_cond = CompoundListCondition::Kind::None;
-          lhs = group;
+          lhs       = group;
         }
         lhs->make_async();
       }
@@ -785,7 +821,7 @@ hot fn Parser::parse_command_list(u64 terminator_mask) throws -> Expression *
     case Token::Kind::DoubleAmpersand:
       if (lhs == nullptr) {
         let const ast = token->to_ast_string();
-        String msg = "Expected a command ";
+        String    msg = "Expected a command ";
         msg += compound_list->is_empty() ? "before" : "after";
         msg += " operator, found '";
         msg += ast.view();
@@ -913,30 +949,34 @@ hot fn Parser::parse_command_list(u64 terminator_mask) throws -> Expression *
       "the command-list parser loop terminated without returning or throwing");
 }
 
-static fn stderr_to_stdout_dup() wontthrow -> expressions::Redirection
+static fn
+stderr_to_stdout_dup() wontthrow -> expressions::Redirection
 {
   expressions::Redirection dup{};
-  dup.fd = 2;
+  dup.fd     = 2;
   dup.target = nullptr;
-  dup.kind = expressions::Redirection::Kind::DuplicateOutput;
+  dup.kind   = expressions::Redirection::Kind::DuplicateOutput;
   dup.dup_fd = 1;
 
   return dup;
 }
 
-fn Parser::build_file_or_dup_redirection(
-    i32 fd, Token::Kind op_kind, const SourceLocation &op_location,
-    Maybe<SourceLocation> &first_location,
+fn
+Parser::build_file_or_dup_redirection(
+    i32                                  fd,
+    Token::Kind                          op_kind,
+    const SourceLocation                &op_location,
+    Maybe<SourceLocation>               &first_location,
     ArrayList<expressions::Redirection> &out,
-    const Token *fd_allocation_name_token,
-    redirection_descriptor_spelling descriptor_spelling) throws -> void
+    const Token                         *fd_allocation_name_token,
+    redirection_descriptor_spelling      descriptor_spelling) throws -> void
 {
   if (!first_location) first_location = op_location;
 
   expressions::Redirection redir{};
-  redir.fd = fd;
-  redir.target = nullptr;
-  redir.dup_fd = -1;
+  redir.fd                       = fd;
+  redir.target                   = nullptr;
+  redir.dup_fd                   = -1;
   redir.fd_allocation_name_token = fd_allocation_name_token;
 
   {
@@ -947,8 +987,8 @@ fn Parser::build_file_or_dup_redirection(
             op_location.position + op_location.length)
     {
       m_lexer.advance_past_last_peek();
-      Token *from = next_token_of_kind(Token::Kind::Word,
-                                       "Expected a descriptor after '&'");
+      Token     *from      = next_token_of_kind(Token::Kind::Word,
+                                                "Expected a descriptor after '&'");
       let const &from_word = static_cast<tokens::WordToken *>(from)->word();
 
       redir.kind = (op_kind == Token::Kind::Less)
@@ -980,7 +1020,7 @@ fn Parser::build_file_or_dup_redirection(
           redir.dup_fd = static_cast<i32>(parsed_descriptor.value());
           out.push(redir);
           if (is_move) {
-            redir.fd = redir.dup_fd;
+            redir.fd     = redir.dup_fd;
             redir.dup_fd = expressions::Redirection::DUP_FD_CLOSE;
             redir.fd_allocation_name_token = nullptr;
             out.push(redir);
@@ -1011,7 +1051,7 @@ fn Parser::build_file_or_dup_redirection(
         is_adjacent)
     {
       m_lexer.advance_past_last_peek();
-      redir.kind = expressions::Redirection::Kind::TruncateOutputOverride;
+      redir.kind   = expressions::Redirection::Kind::TruncateOutputOverride;
       redir.target = next_token_of_kind(Token::Kind::Word,
                                         "Expected a filename after '>|'");
       out.push(redir);
@@ -1023,7 +1063,7 @@ fn Parser::build_file_or_dup_redirection(
         is_adjacent)
     {
       m_lexer.advance_past_last_peek();
-      redir.kind = expressions::Redirection::Kind::ReadWrite;
+      redir.kind   = expressions::Redirection::Kind::ReadWrite;
       redir.target = next_token_of_kind(Token::Kind::Word,
                                         "Expected a filename after '<>'");
       out.push(redir);
@@ -1052,10 +1092,12 @@ fn Parser::build_file_or_dup_redirection(
   out.push(redir);
 }
 
-fn Parser::build_both_streams_redirection(
-    const SourceLocation &op_location, Maybe<SourceLocation> &first_location,
+fn
+Parser::build_both_streams_redirection(
+    const SourceLocation                &op_location,
+    Maybe<SourceLocation>               &first_location,
     ArrayList<expressions::Redirection> &out,
-    assignment_update_mode update_mode) throws -> void
+    assignment_update_mode               update_mode) throws -> void
 {
   build_file_or_dup_redirection(1,
                                 update_mode == assignment_update_mode::Append
@@ -1067,26 +1109,28 @@ fn Parser::build_both_streams_redirection(
   out.push(stderr_to_stdout_dup());
 }
 
-fn Parser::build_here_string_redirection(
-    i32 fd, const SourceLocation &op_location,
-    Maybe<SourceLocation> &first_location,
+fn
+Parser::build_here_string_redirection(
+    i32                                  fd,
+    const SourceLocation                &op_location,
+    Maybe<SourceLocation>               &first_location,
     ArrayList<expressions::Redirection> &out) throws -> void
 {
   if (!first_location) first_location = op_location;
 
   expressions::Redirection redir{};
-  redir.fd = fd;
+  redir.fd   = fd;
   redir.kind = expressions::Redirection::Kind::HereString;
   redir.target =
       next_token_of_kind(Token::Kind::Word, "Expected a word after '<<<'");
-  redir.dup_fd = -1;
-  redir.heredoc = nullptr;
+  redir.dup_fd                = -1;
+  redir.heredoc               = nullptr;
   redir.should_expand_heredoc = false;
   out.push(redir);
 }
 
-mustuse fn Parser::wrap_with_stderr_to_stdout(Command *command) throws
-    -> Command *
+mustuse fn
+Parser::wrap_with_stderr_to_stdout(Command *command) throws -> Command *
 {
   ASSERT(command != nullptr);
   let const arena_allocator = bump_allocator(m_lexer.arena());
@@ -1107,9 +1151,11 @@ mustuse fn Parser::wrap_with_stderr_to_stdout(Command *command) throws
   return redirected;
 }
 
-fn Parser::build_heredoc_redirection(
-    i32 fd, const SourceLocation &op_location,
-    Maybe<SourceLocation> &first_location,
+fn
+Parser::build_heredoc_redirection(
+    i32                                  fd,
+    const SourceLocation                &op_location,
+    Maybe<SourceLocation>               &first_location,
     ArrayList<expressions::Redirection> &out) throws -> void
 {
   if (!first_location) first_location = op_location;
@@ -1127,7 +1173,7 @@ fn Parser::build_heredoc_redirection(
         word.segments[0].text.view() == "-")
     {
       is_separated_strip_operator = true;
-      delimiter_token = m_lexer.next_shell_token();
+      delimiter_token             = m_lexer.next_shell_token();
       ASSERT(delimiter_token != nullptr);
     }
   }
@@ -1145,12 +1191,12 @@ fn Parser::build_heredoc_redirection(
   const Word &delimiter_word =
       static_cast<tokens::WordToken *>(delimiter_token)->word();
 
-  let const delimiter_literal = delimiter_word.to_literal_string();
-  let delimiter = delimiter_literal.view();
-  heredoc_tab_policy tab_policy = is_separated_strip_operator
-                                      ? heredoc_tab_policy::Strip
-                                      : heredoc_tab_policy::Preserve;
-  let const has_unquoted_leading_dash =
+  let const          delimiter_literal = delimiter_word.to_literal_string();
+  let                delimiter         = delimiter_literal.view();
+  heredoc_tab_policy tab_policy        = is_separated_strip_operator
+                                             ? heredoc_tab_policy::Strip
+                                             : heredoc_tab_policy::Preserve;
+  let const          has_unquoted_leading_dash =
       !is_separated_strip_operator && !delimiter_word.segments.is_empty() &&
       delimiter_word.segments[0].kind == WordSegment::Kind::UnquotedText &&
       !delimiter_word.segments[0].text.is_empty() &&
@@ -1161,7 +1207,7 @@ fn Parser::build_heredoc_redirection(
           op_location.position + op_location.length)
   {
     tab_policy = heredoc_tab_policy::Strip;
-    delimiter = delimiter.substring(1);
+    delimiter  = delimiter.substring(1);
   }
 
   LOG(Debug, "registering a heredoc redirection with delimiter '%.*s'",
@@ -1177,27 +1223,29 @@ fn Parser::build_heredoc_redirection(
   }
 
   expressions::Redirection redir{};
-  redir.fd = fd;
-  redir.kind = expressions::Redirection::Kind::Heredoc;
-  redir.target = nullptr;
+  redir.fd                = fd;
+  redir.kind              = expressions::Redirection::Kind::Heredoc;
+  redir.target            = nullptr;
   redir.heredoc_delimiter = delimiter_token;
-  redir.dup_fd = -1;
+  redir.dup_fd            = -1;
   redir.heredoc =
       m_lexer.register_heredoc(delimiter, tab_policy, should_expand);
-  redir.should_expand_heredoc = should_expand;
+  redir.should_expand_heredoc     = should_expand;
   redir.should_strip_heredoc_tabs = tab_policy == heredoc_tab_policy::Strip;
   out.push(redir);
 }
 
-mustuse fn Parser::try_parse_descriptor_prefixed_redirection(
-    const tokens::WordToken *word_token, const SourceLocation &word_location,
-    Maybe<SourceLocation> &first_location,
+mustuse fn
+Parser::try_parse_descriptor_prefixed_redirection(
+    const tokens::WordToken             *word_token,
+    const SourceLocation                &word_location,
+    Maybe<SourceLocation>               &first_location,
     ArrayList<expressions::Redirection> &out) throws -> bool
 {
   m_lexer.advance_past_last_peek();
   Token *next = m_lexer.peek_shell_token();
   ASSERT(next != nullptr);
-  let const nk = next->kind();
+  let const nk                        = next->kind();
   let const do_is_descriptor_in_range = [&]() throws -> bool {
     if (word_token->word().fd_allocation_name().has_value()) return true;
 
@@ -1232,7 +1280,7 @@ mustuse fn Parser::try_parse_descriptor_prefixed_redirection(
       return true;
     }
 
-    let const literal = word_token->word().to_literal_string();
+    let const literal           = word_token->word().to_literal_string();
     let const parsed_descriptor = literal.to<i64>();
     if (parsed_descriptor.is_error()) {
       throw ErrorWithLocation{word_location,
@@ -1255,11 +1303,13 @@ mustuse fn Parser::try_parse_descriptor_prefixed_redirection(
   return false;
 }
 
-alwaysinline fn Parser::try_build_operator_redirection(
-    const Token *token, Maybe<SourceLocation> &first_location,
+alwaysinline fn
+Parser::try_build_operator_redirection(
+    const Token                         *token,
+    Maybe<SourceLocation>               &first_location,
     ArrayList<expressions::Redirection> &out) throws -> bool
 {
-  let const op_kind = token->kind();
+  let const op_kind     = token->kind();
   let const op_location = token->source_location();
 
   switch (op_kind) {
@@ -1300,7 +1350,8 @@ alwaysinline fn Parser::try_build_operator_redirection(
   }
 }
 
-mustuse fn Parser::try_parse_trailing_redirection(
+mustuse fn
+Parser::try_parse_trailing_redirection(
     ArrayList<expressions::Redirection> &out) throws -> bool
 {
   Maybe<SourceLocation> ignored_first_location;
@@ -1332,8 +1383,8 @@ mustuse fn Parser::try_parse_trailing_redirection(
       "A compound command takes no extra words before its terminator"};
 }
 
-mustuse fn Parser::attach_trailing_redirections(Command *compound) throws
-    -> Command *
+mustuse fn
+Parser::attach_trailing_redirections(Command *compound) throws -> Command *
 {
   ASSERT(compound != nullptr);
 
@@ -1362,15 +1413,15 @@ enum class command_position_word : u8
   Coproc,
 };
 
-hot fn Parser::parse_simple_command(const Token *leading_token) throws
-    -> Command *
+hot fn
+Parser::parse_simple_command(const Token *leading_token) throws -> Command *
 {
-  Maybe<SourceLocation> source_location;
-  let const arena_allocator = bump_allocator(m_lexer.arena());
+  Maybe<SourceLocation>    source_location;
+  let const                arena_allocator = bump_allocator(m_lexer.arena());
   ArrayList<const Token *> args_accumulator{arena_allocator};
-  let local_vars = ArrayList<PrefixAssignment>{arena_allocator};
-  let array_args = ArrayList<array_builtin_assignment>{arena_allocator};
-  let redirections = ArrayList<expressions::Redirection>{arena_allocator};
+  let local_vars        = ArrayList<PrefixAssignment>{arena_allocator};
+  let array_args        = ArrayList<array_builtin_assignment>{arena_allocator};
+  let redirections      = ArrayList<expressions::Redirection>{arena_allocator};
   let full_end_position = usize{0};
 
   if (leading_token != nullptr) {
@@ -1469,7 +1520,7 @@ hot fn Parser::parse_simple_command(const Token *leading_token) throws
       case Token::Kind::Until:
         return attach_trailing_redirections(
             parse_while_or_until(loop_kind::Until));
-      case Token::Kind::For: return attach_trailing_redirections(parse_for());
+      case Token::Kind::For:  return attach_trailing_redirections(parse_for());
       case Token::Kind::Case: return attach_trailing_redirections(parse_case());
       case Token::Kind::LeftParen:
         return attach_trailing_redirections(parse_paren_command());
@@ -1503,7 +1554,7 @@ hot fn Parser::parse_simple_command(const Token *leading_token) throws
     case Token::Kind::Case:
     case Token::Kind::Esac:
     case Token::Kind::Time:
-    case Token::Kind::When: {
+    case Token::Kind::When:  {
       if (token->kind() == Token::Kind::Word) {
         const tokens::WordToken *word_token =
             static_cast<tokens::WordToken *>(token);
@@ -1571,7 +1622,7 @@ hot fn Parser::parse_simple_command(const Token *leading_token) throws
               assignment_builtin::None)
           {
             ArrayList<const Token *> elements = consume_bash_array_assignment();
-            let const assignment_end_position =
+            let const                assignment_end_position =
                 static_cast<u32>(m_lexer.cursor_position());
             array_args.push(array_builtin_assignment{
                 a->key().clone(), steal(elements), a->source_location(),
@@ -1585,7 +1636,7 @@ hot fn Parser::parse_simple_command(const Token *leading_token) throws
 
       if (is_array_assignment) {
         ArrayList<const Token *> elements = consume_bash_array_assignment();
-        let const assignment_end_position =
+        let const                assignment_end_position =
             static_cast<u32>(m_lexer.cursor_position());
         array_args.push(array_builtin_assignment{
             a->key().clone(), steal(elements), a->source_location(),
@@ -1625,8 +1676,9 @@ hot fn Parser::parse_simple_command(const Token *leading_token) throws
   unreachable("the simple-command parser loop terminated without returning");
 }
 
-fn Parser::finish_function_body(const SourceLocation &location,
-                                StringView name) throws -> Command *
+fn
+Parser::finish_function_body(const SourceLocation &location,
+                             StringView            name) throws -> Command *
 {
   skip_newlines_after_pipe();
 
@@ -1635,12 +1687,12 @@ fn Parser::finish_function_body(const SourceLocation &location,
   let const scope_mark = open_analysis_scope();
 
   let const rest_of_source = m_lexer.source().substring(location.position);
-  let const line_length = rest_of_source.find_character('\n');
-  let body_storage = FunctionBodyHandle::create(
+  let const line_length    = rest_of_source.find_character('\n');
+  let       body_storage   = FunctionBodyHandle::create(
       line_length.has_value() ? line_length.value() : rest_of_source.length);
-  let &previous_arena = m_lexer.arena();
+  let      &previous_arena      = m_lexer.arena();
   let const previous_arena_kind = m_lexer.arena_kind();
-  Command *body = nullptr;
+  Command  *body                = nullptr;
   {
     let const pending_heredoc_count = m_lexer.get_pending_heredoc_count();
     m_lexer.set_arena(*body_storage.get_arena(),
@@ -1668,12 +1720,12 @@ fn Parser::finish_function_body(const SourceLocation &location,
   return definition;
 }
 
-hot fn Parser::parse_function_definition(const Token *name_token) throws
-    -> Command *
+hot fn
+Parser::parse_function_definition(const Token *name_token) throws -> Command *
 {
   ASSERT(name_token != nullptr);
   let const location = name_token->source_location();
-  let const name = name_token->raw_string();
+  let const name     = name_token->raw_string();
 
   LOG(Debug, "parsing a function definition for '%s'", name.c_str());
 
@@ -1684,12 +1736,13 @@ hot fn Parser::parse_function_definition(const Token *name_token) throws
   return finish_function_body(location, name.view());
 }
 
-fn Parser::parse_keyword_function_definition() throws -> Command *
+fn
+Parser::parse_keyword_function_definition() throws -> Command *
 {
   Token *name_token = next_token_of_kind(
       Token::Kind::Word, "Expected a name after the 'function' keyword");
   let const location = name_token->source_location();
-  let const name = name_token->raw_string();
+  let const name     = name_token->raw_string();
 
   LOG(Debug, "parsing a keyword function definition for '%s'", name.c_str());
 
@@ -1704,7 +1757,8 @@ fn Parser::parse_keyword_function_definition() throws -> Command *
   return finish_function_body(location, name.view());
 }
 
-fn Parser::consume_bash_array_assignment() throws -> ArrayList<const Token *>
+fn
+Parser::consume_bash_array_assignment() throws -> ArrayList<const Token *>
 {
   Token *open = m_lexer.next_shell_token();
   ASSERT(open != nullptr);
@@ -1723,8 +1777,10 @@ fn Parser::consume_bash_array_assignment() throws -> ArrayList<const Token *>
   return elements;
 }
 
-fn Parser::consume_bash_array_elements(
-    const Token *open, ArrayList<const Token *> &elements) throws -> void
+fn
+Parser::consume_bash_array_elements(const Token              *open,
+                                    ArrayList<const Token *> &elements) throws
+    -> void
 {
   loop
   {
@@ -1734,8 +1790,8 @@ fn Parser::consume_bash_array_elements(
     case Token::Kind::EndOfFile:
       throw ErrorWithLocation{open->source_location(),
                               "Unterminated array assignment, expected ')'"};
-    case Token::Kind::RightParen: return;
-    case Token::Kind::Newline: break;
+    case Token::Kind::RightParen:               return;
+    case Token::Kind::Newline:                  break;
     case Token::Kind::LeftParen:
     case Token::Kind::Semicolon:
     case Token::Kind::DoubleSemicolon:
@@ -1752,8 +1808,8 @@ fn Parser::consume_bash_array_elements(
     case Token::Kind::DoubleLess:
     case Token::Kind::TripleLess:
     case Token::Kind::AmpersandGreater:
-    case Token::Kind::AmpersandDoubleGreater: {
-      let const ast = t->to_ast_string();
+    case Token::Kind::AmpersandDoubleGreater:   {
+      let const ast     = t->to_ast_string();
       let const message = "Unexpected '" + ast.view() +
                           "' in an array assignment, expected a word";
       let const is_arithmetic_shape =

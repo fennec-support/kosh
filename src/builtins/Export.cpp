@@ -21,18 +21,28 @@ HELP_DESCRIPTION_DECL(
     "The export builtin moves a variable into the environment.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
-FLAG(EXPORT_PRINT, Bool, 'p', "",
+FLAG(EXPORT_PRINT,
+     Bool,
+     'p',
+     "",
      "List the exported variables in a reusable form.");
-FLAG(EXPORT_UNMARK, Bool, 'n', "",
+FLAG(EXPORT_UNMARK,
+     Bool,
+     'n',
+     "",
      "Remove the export attribute, keeping the variable in the shell.");
-FLAG(EXPORT_FUNCTION, Bool, 'f', "",
+FLAG(EXPORT_FUNCTION,
+     Bool,
+     'f',
+     "",
      "Export a function into the environment for a child shell.");
 
 REGISTER_BUILTIN_FLAGS(Export);
 
 namespace koshka {
 
-fn Export::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
+fn
+Export::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let operand_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};
   let const args = PARSE_BUILTIN_ARGS_WITH_LOCATIONS(ec, operand_locations);
@@ -45,7 +55,7 @@ fn Export::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     let has_error = false;
 
     for (usize i = 1; i < args.count(); i++) {
-      let const name = String{cxt.scratch_allocator(), args[i].view()};
+      let const  name   = String{cxt.scratch_allocator(), args[i].view()};
       let const *source = cxt.function_store().find_source(name.view());
       if (source == nullptr) {
         report_soft_builtin_error(
@@ -55,8 +65,8 @@ fn Export::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         continue;
       }
 
-      let const src = source->view();
-      usize body_start = 0;
+      let const src        = source->view();
+      usize     body_start = 0;
       if (let const close_paren = src.find_character(')');
           close_paren.has_value())
         body_start = close_paren.value() + 1;
@@ -97,7 +107,7 @@ fn Export::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   if (args.count() == 1 && !ec.has_stripped_array_operands) {
     let const is_declare_form = cxt.runtime_state().is_bash_compatible();
-    let const do_is_array = [&cxt](StringView name) wontthrow -> bool {
+    let const do_is_array     = [&cxt](StringView name) wontthrow -> bool {
       let const &store = cxt.variable_store();
 
       return store.indexed_arrays().find(name).has_value() ||
@@ -148,7 +158,7 @@ fn Export::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
     for (usize i = 1; i < args.count(); i++) {
       let const parts = NameValueArg::from(args[i]);
-      let const name = String{cxt.scratch_allocator(), parts.get_name()};
+      let const name  = String{cxt.scratch_allocator(), parts.get_name()};
       if (!name_is_valid_identifier(name.view())) {
         report_invalid_identifier(
             ec, cxt, get_operand_location(ec, operand_locations, i), args[i]);
@@ -166,22 +176,22 @@ fn Export::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return has_error ? 1 : 0;
   }
 
-  let has_error = false;
+  let has_error            = false;
   let has_assignment_error = false;
 
   for (usize i = 1; i < args.count(); i++) {
-    let const &arg = args[i];
-    let const parts = NameValueArg::from(arg);
+    let const &arg   = args[i];
+    let const  parts = NameValueArg::from(arg);
 
-    let name = String{cxt.scratch_allocator()};
-    let value = String{cxt.scratch_allocator()};
+    let       name          = String{cxt.scratch_allocator()};
+    let       value         = String{cxt.scratch_allocator()};
     let const has_new_value = parts.get_value().has_value();
     if (!has_new_value) {
       name = arg;
       value =
           cxt.get_variable_value(arg).value_or(String{cxt.scratch_allocator()});
     } else {
-      name = String{cxt.scratch_allocator(), parts.get_name()};
+      name  = String{cxt.scratch_allocator(), parts.get_name()};
       value = String{cxt.scratch_allocator(), *parts.get_value()};
     }
 
@@ -213,7 +223,7 @@ fn Export::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         report_soft_builtin_error(
             ec, cxt, get_operand_location(ec, operand_locations, i),
             StringView{"'"} + name + "' is read-only");
-        has_error = true;
+        has_error            = true;
         has_assignment_error = true;
         continue;
       }

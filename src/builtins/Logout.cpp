@@ -22,7 +22,8 @@ REGISTER_BUILTIN_FLAGS(Logout);
 
 namespace koshka {
 
-fn Logout::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
+fn
+Logout::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   ASSERT(!ec.args().is_empty());
 

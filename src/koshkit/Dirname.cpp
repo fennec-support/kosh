@@ -20,12 +20,14 @@ REGISTER_KOSHKIT_UTIL_FLAGS(Dirname);
 
 namespace koshka::koshkit {
 
-static pure fn is_directory_separator(char c) wontthrow -> bool
+static pure fn
+is_directory_separator(char c) wontthrow -> bool
 {
   return os::is_directory_separator(c);
 }
 
-static pure fn directory_part_of(StringView path) wontthrow -> StringView
+static pure fn
+directory_part_of(StringView path) wontthrow -> StringView
 {
   if (path.is_empty()) return StringView{"."};
 
@@ -46,12 +48,12 @@ static pure fn directory_part_of(StringView path) wontthrow -> StringView
     end_position--;
   }
 
-  bool has_separator = false;
+  bool  has_separator           = false;
   usize last_separator_position = 0;
 
   for (usize i = 0; i < end_position; i++) {
     if (is_directory_separator(path[i])) {
-      has_separator = true;
+      has_separator           = true;
       last_separator_position = i;
     }
   }
@@ -69,9 +71,12 @@ static pure fn directory_part_of(StringView path) wontthrow -> StringView
   return path.substring_of_length(0, end_position);
 }
 
-cold fn Dirname::execute(
-    const ExecContext &ec, EvalContext &cxt, const ArrayList<String> &args,
-    const ArrayList<SourceLocation> &arg_locations) const throws -> i32
+cold fn
+Dirname::execute(const ExecContext               &ec,
+                 EvalContext                     &cxt,
+                 const ArrayList<String>         &args,
+                 const ArrayList<SourceLocation> &arg_locations) const throws
+    -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 

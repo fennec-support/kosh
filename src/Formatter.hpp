@@ -20,43 +20,52 @@ namespace koshka {
 
 struct source_edit
 {
-  usize start_position;
-  usize end_position;
+  usize  start_position;
+  usize  end_position;
   String expected;
   String replacement;
 };
 
 struct source_fix
 {
-  String title;
+  String                 title;
   ArrayList<source_edit> edits;
-  bool is_preferred{true};
-  bool is_safe_for_fix_all{false};
-  Maybe<diagnostic_id> origin{None};
+  bool                   is_preferred{true};
+  bool                   is_safe_for_fix_all{false};
+  Maybe<diagnostic_id>   origin{None};
 };
 
-fn format_shell_source(StringView source, BumpArena &arena,
-                       ArrayList<String> &errors, String *ast_output,
-                       BumpArena *function_arena, mimic_mood mood,
-                       Maybe<StringView> filename = None) throws
+fn
+format_shell_source(StringView         source,
+                    BumpArena         &arena,
+                    ArrayList<String> &errors,
+                    String            *ast_output,
+                    BumpArena         *function_arena,
+                    mimic_mood         mood,
+                    Maybe<StringView>  filename = None) throws -> Maybe<String>;
+
+fn
+format_bash_function_source(StringView source) throws -> String;
+
+fn
+apply_source_fixes(StringView                   source,
+                   const ArrayList<source_fix> &fixes,
+                   ArrayList<diagnostic_id> *applied_origins = nullptr) throws
     -> Maybe<String>;
 
-fn format_bash_function_source(StringView source) throws -> String;
+fn
+select_nonconflicting_source_edits(ArrayList<const source_edit *> &&candidates)
+    throws -> ArrayList<const source_edit *>;
 
-fn apply_source_fixes(StringView source, const ArrayList<source_fix> &fixes,
-                      ArrayList<diagnostic_id> *applied_origins =
-                          nullptr) throws -> Maybe<String>;
-
-fn select_nonconflicting_source_edits(
-    ArrayList<const source_edit *> &&candidates) throws
-    -> ArrayList<const source_edit *>;
-
-fn source_fixes_for_original_line_endings(
+fn
+source_fixes_for_original_line_endings(
     StringView source, const ArrayList<source_fix> &normalized_fixes) throws
     -> ArrayList<source_fix>;
 
-fn source_fixes_for_diagnostic(diagnostic_id diagnostic, StringView source,
-                               const SourceLocation &location) throws
+fn
+source_fixes_for_diagnostic(diagnostic_id         diagnostic,
+                            StringView            source,
+                            const SourceLocation &location) throws
     -> ArrayList<source_fix>;
 
 } /* namespace koshka */

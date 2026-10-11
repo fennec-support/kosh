@@ -25,10 +25,16 @@ HELP_DESCRIPTION_DECL("The koshkit builtin runs a bundled utility.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help and list the utilities.");
 FLAG(KOSHKIT_LIST, Bool, '\0', "list", "List the utility names, one per line.");
-FLAG(KOSHKIT_ASSIMILATE, String, '\0', "assimilate",
+FLAG(KOSHKIT_ASSIMILATE,
+     String,
+     '\0',
+     "assimilate",
      "Install a symlink to this binary for each utility into the given "
      "directory.");
-FLAG(KOSHKIT_COLOR, String, '\0', "color",
+FLAG(KOSHKIT_COLOR,
+     String,
+     '\0',
+     "color",
      "Set utility color output to always, auto, or never.");
 
 REGISTER_BUILTIN_FLAGS(Koshkit);
@@ -37,7 +43,8 @@ namespace koshka {
 
 #if defined KOSH_NO_KOSHKIT
 
-fn Koshkit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
+fn
+Koshkit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   parse_until_subcommand(FLAG_LIST, ec.args(), &ec.arg_locations(), nullptr,
                          ec.program());
@@ -59,8 +66,8 @@ enum class utility_section : u8
   Koshka,
 };
 
-static pure fn get_utility_section(koshkit::Utility::Kind kind) wontthrow
-    -> utility_section
+static pure fn
+get_utility_section(koshkit::Utility::Kind kind) wontthrow -> utility_section
 {
   switch (kind) {
   case koshkit::Utility::Kind::Evil:
@@ -76,12 +83,13 @@ static pure fn get_utility_section(koshkit::Utility::Kind kind) wontthrow
   case koshkit::Utility::Kind::EvilIso:
   case koshkit::Utility::Kind::GoodCore:
   case koshkit::Utility::Kind::EvilSS:
-  case koshkit::Utility::Kind::GoodFSW: return utility_section::Koshka;
-  default: return utility_section::Posix;
+  case koshkit::Utility::Kind::GoodFSW:   return utility_section::Koshka;
+  default:                                return utility_section::Posix;
   }
 }
 
-fn Koshkit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
+fn
+Koshkit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   ASSERT(!ec.args().is_empty());
 
@@ -185,14 +193,14 @@ fn Koshkit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     listing += "  koshkit --assimilate DIR\n";
     listing += "\nUTILITIES\n\n";
 
-    let posix_names = ArrayList<StringView>{cxt.scratch_allocator()};
+    let posix_names  = ArrayList<StringView>{cxt.scratch_allocator()};
     let koshka_names = ArrayList<StringView>{cxt.scratch_allocator()};
 
     for (let const &name : sorted_names) {
       let const kind = koshkit::find_util(name.view());
       ASSERT(kind.has_value());
       switch (get_utility_section(*kind)) {
-      case utility_section::Posix: posix_names.push(name.view()); break;
+      case utility_section::Posix:  posix_names.push(name.view()); break;
       case utility_section::Koshka: koshka_names.push(name.view()); break;
       }
     }

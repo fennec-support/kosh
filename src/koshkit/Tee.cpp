@@ -24,22 +24,23 @@ REGISTER_KOSHKIT_UTIL_FLAGS(Tee);
 
 namespace koshka::koshkit {
 
-fn Tee::execute(const ExecContext &ec, EvalContext &cxt,
-                const ArrayList<String> &args,
-                const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+fn
+Tee::execute(const ExecContext               &ec,
+             EvalContext                     &cxt,
+             const ArrayList<String>         &args,
+             const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   let const mode = FLAG_TEE_APPEND.is_enabled() ? os::file_open_mode::Append
                                                 : os::file_open_mode::Truncate;
-  let output_descriptors = ArrayList<os::descriptor>{cxt.scratch_allocator()};
-  let output_names = ArrayList<StringView>{cxt.scratch_allocator()};
+  let output_descriptors  = ArrayList<os::descriptor>{cxt.scratch_allocator()};
+  let output_names        = ArrayList<StringView>{cxt.scratch_allocator()};
   let written_byte_counts = ArrayList<usize>{cxt.scratch_allocator()};
-  let output_positions = ArrayList<usize>{cxt.scratch_allocator()};
-  let batch = os::Batch{cxt.scratch_allocator()};
+  let output_positions    = ArrayList<usize>{cxt.scratch_allocator()};
+  let batch               = os::Batch{cxt.scratch_allocator()};
   let batch_results = ArrayList<os::batch_result>{cxt.scratch_allocator()};
-  i32 status = 0;
+  i32 status        = 0;
 
   for (let const &operand : operands) {
     let const fd = os::open_file_descriptor(operand.view(), mode);
@@ -110,9 +111,9 @@ fn Tee::execute(const ExecContext &ec, EvalContext &cxt,
       for (usize result_index = 0; result_index < batch_results.count();
            result_index++)
       {
-        let const output_position = output_positions[result_index];
-        let const &result = batch_results[result_index];
-        let const remaining_byte_count =
+        let const  output_position = output_positions[result_index];
+        let const &result          = batch_results[result_index];
+        let const  remaining_byte_count =
             *read_byte_count - written_byte_counts[output_position];
         if (result.error_number == 0 && result.transferred_byte_count > 0 &&
             result.transferred_byte_count <= remaining_byte_count)

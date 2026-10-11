@@ -97,16 +97,16 @@
 
 /* clang-format on */
 
-using u8 = uint8_t;
-using u16 = uint16_t;
-using u32 = uint32_t;
-using u64 = uint64_t;
+using u8   = uint8_t;
+using u16  = uint16_t;
+using u32  = uint32_t;
+using u64  = uint64_t;
 using u128 = __uint128_t;
 
-using i8 = int8_t;
-using i16 = int16_t;
-using i32 = int32_t;
-using i64 = int64_t;
+using i8   = int8_t;
+using i16  = int16_t;
+using i32  = int32_t;
+using i64  = int64_t;
 using i128 = __int128_t;
 
 using f64 = double;
@@ -114,8 +114,8 @@ using f64 = double;
 using uchar = u8;
 using ichar = i8;
 
-using usize = size_t;
-using isize = ptrdiff_t;
+using usize   = size_t;
+using isize   = ptrdiff_t;
 using uintptr = uintptr_t;
 
 using opaque = void;
@@ -154,14 +154,16 @@ public:
 
 private:
   T m_lambda;
-  t__exit_scope &operator=(const t__exit_scope &);
+  t__exit_scope &
+  operator=(const t__exit_scope &);
 };
 
 class t__exit_scope_help
 {
 public:
   template <typename T>
-  t__exit_scope<T> operator+(T t)
+  t__exit_scope<T>
+  operator+(T t)
   {
     return t;
   }
@@ -226,7 +228,7 @@ public:
 #endif
 
 namespace koshka {
-constexpr const char *EXPRESSION_AST_INDENT = " ";
+constexpr const char *EXPRESSION_AST_INDENT        = " ";
 constexpr const char *EXPRESSION_DOUBLE_AST_INDENT = "  ";
 
 enum class root_evaluation_mode : u8
@@ -239,23 +241,27 @@ enum class root_evaluation_mode : u8
 
 enum class int_base : u8
 {
-  binary = 2,
-  octal = 8,
+  binary  = 2,
+  octal   = 8,
   decimal = 10,
-  hex = 16
+  hex     = 16
 };
 
 template <int_base TagBase, class T>
 struct tagged_int
 {
-  using underlying = T;
+  using underlying               = T;
   static constexpr int_base base = TagBase;
 
   T value{0};
 
   constexpr tagged_int() wontthrow = default;
   constexpr tagged_int(T initial) wontthrow : value(initial) {}
-  constexpr operator T() const wontthrow { return value; }
+  constexpr
+  operator T() const wontthrow
+  {
+    return value;
+  }
 };
 
 template <class T>
@@ -278,7 +284,8 @@ concept is_plainly_copyable =
     !std::is_member_pointer_v<T>;
 
 template <class T>
-mustuse fn clone_value(const T &value) throws -> T
+mustuse fn
+clone_value(const T &value) throws -> T
 {
   static_assert(is_cloneable<T> || is_plainly_copyable<T>,
                 "a type that owns resources or is a pointer needs a clone()");

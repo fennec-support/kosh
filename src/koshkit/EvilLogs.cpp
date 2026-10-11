@@ -45,15 +45,15 @@ struct dump_entry
 {
   String name{heap_allocator()};
   String program{heap_allocator()};
-  u64 size{0};
-  i64 modification_time{0};
+  u64    size{0};
+  i64    modification_time{0};
 };
 
 struct newest_named_entry_comparator
 {
   template <class Entry>
-  pure fn operator()(const Entry &left,
-                     const Entry &right) const wontthrow->bool
+  pure fn
+  operator()(const Entry &left, const Entry &right) const wontthrow->bool
   {
     if (left.modification_time != right.modification_time)
       return left.modification_time > right.modification_time;
@@ -62,7 +62,8 @@ struct newest_named_entry_comparator
   }
 };
 
-fn trimmed_line(StringView text) wontthrow -> StringView
+fn
+trimmed_line(StringView text) wontthrow -> StringView
 {
   usize length = text.length;
 
@@ -73,7 +74,8 @@ fn trimmed_line(StringView text) wontthrow -> StringView
   return text.substring_of_length(0, length);
 }
 
-pure fn is_year_marker(StringView name, usize position) wontthrow -> bool
+pure fn
+is_year_marker(StringView name, usize position) wontthrow -> bool
 {
   if (position + 5 > name.length) return false;
 
@@ -90,7 +92,8 @@ pure fn is_year_marker(StringView name, usize position) wontthrow -> bool
   return true;
 }
 
-pure fn dump_suffix(StringView name) wontthrow -> StringView
+pure fn
+dump_suffix(StringView name) wontthrow -> StringView
 {
   for (usize position = name.length; position > 0; position--) {
     if (name[position - 1] == '.') {
@@ -107,8 +110,10 @@ enum class dump_entry_kind : u8
   Directory,
 };
 
-pure fn is_dump_entry(StringView directory, StringView name,
-                      dump_entry_kind kind) wontthrow -> bool
+pure fn
+is_dump_entry(StringView      directory,
+              StringView      name,
+              dump_entry_kind kind) wontthrow -> bool
 {
   if (name.is_empty()) return false;
   let const is_directory = kind == dump_entry_kind::Directory;
@@ -140,11 +145,12 @@ pure fn is_dump_entry(StringView directory, StringView name,
          directory.find_substring("WER/ReportQueue").has_value();
 }
 
-fn program_of_dump(StringView name, Allocator allocator) throws -> String
+fn
+program_of_dump(StringView name, Allocator allocator) throws -> String
 {
   if (name.starts_with("core.")) {
     let const rest = name.substring_of_length(5, name.length - 5);
-    let const dot = rest.find_character('.');
+    let const dot  = rest.find_character('.');
     if (dot.has_value())
       return String{allocator, rest.substring_of_length(0, *dot)};
 
@@ -152,10 +158,10 @@ fn program_of_dump(StringView name, Allocator allocator) throws -> String
   }
 
   if (name.starts_with("_")) {
-    let const dot = name.find_character('.');
+    let const dot  = name.find_character('.');
     let const body = dot.has_value() ? name.substring_of_length(0, *dot) : name;
-    let program = String{allocator};
-    usize start = 0;
+    let       program = String{allocator};
+    usize     start   = 0;
 
     for (usize index = 0; index < body.length; index++) {
       if (body[index] == '_') start = index + 1;
@@ -185,10 +191,11 @@ fn program_of_dump(StringView name, Allocator allocator) throws -> String
   return String{allocator, "-"};
 }
 
-fn collect_dumps(StringView directory, Allocator allocator) throws
+fn
+collect_dumps(StringView directory, Allocator allocator) throws
     -> SortedArrayList<dump_entry, newest_named_entry_comparator>
 {
-  let dumps = ArrayList<dump_entry>{allocator};
+  let       dumps    = ArrayList<dump_entry>{allocator};
   let const children = os::list_directory_status(directory, allocator);
   if (!children.has_value())
     return steal(dumps).make_sorted(newest_named_entry_comparator{});
@@ -199,17 +206,17 @@ fn collect_dumps(StringView directory, Allocator allocator) throws
     let const &child_entry = (*children)[index];
     if (!child_entry.has_status) continue;
 
-    let const &child = child_entry.child;
+    let const &child  = child_entry.child;
     let const &status = child_entry.status;
-    let const kind = os::file_type_letter(status.mode) == 'd'
-                         ? dump_entry_kind::Directory
-                         : dump_entry_kind::File;
+    let const  kind   = os::file_type_letter(status.mode) == 'd'
+                            ? dump_entry_kind::Directory
+                            : dump_entry_kind::File;
     if (!is_dump_entry(directory, child.name.view(), kind)) continue;
 
-    let dump = dump_entry{};
-    dump.name = String{allocator, child.name.view()};
-    dump.program = program_of_dump(child.name.view(), allocator);
-    dump.size = status.size;
+    let dump               = dump_entry{};
+    dump.name              = String{allocator, child.name.view()};
+    dump.program           = program_of_dump(child.name.view(), allocator);
+    dump.size              = status.size;
     dump.modification_time = status.modification_time;
     dumps.push(steal(dump));
   }
@@ -217,8 +224,12 @@ fn collect_dumps(StringView directory, Allocator allocator) throws
   return steal(dumps).make_sorted(newest_named_entry_comparator{});
 }
 
-fn append_titled_message(String &output, StringView title, StringView message,
-                         Allocator allocator, bool should_color) throws -> void
+fn
+append_titled_message(String    &output,
+                      StringView title,
+                      StringView message,
+                      Allocator  allocator,
+                      bool       should_color) throws -> void
 {
   let table = ReportTable{allocator};
   table.set_header_visible(false);
@@ -229,8 +240,11 @@ fn append_titled_message(String &output, StringView title, StringView message,
   append_titled_report_table(output, title, table, should_color);
 }
 
-fn append_setting_row(ReportTable &table, Allocator allocator, StringView name,
-                      StringView value) throws -> void
+fn
+append_setting_row(ReportTable &table,
+                   Allocator    allocator,
+                   StringView   name,
+                   StringView   value) throws -> void
 {
   let cells = ArrayList<report_table_cell_view>{allocator};
   cells.push({name, colors::ansi::BOLD_CYAN});
@@ -238,8 +252,10 @@ fn append_setting_row(ReportTable &table, Allocator allocator, StringView name,
   table.add_row(cells);
 }
 
-fn append_kernel_settings(String &output, Allocator allocator,
-                          bool should_color) throws -> void
+fn
+append_kernel_settings(String   &output,
+                       Allocator allocator,
+                       bool      should_color) throws -> void
 {
   let table = ReportTable{allocator};
   table.set_header_visible(false);
@@ -271,8 +287,10 @@ fn append_kernel_settings(String &output, Allocator allocator,
   append_titled_report_table(output, "Core dump settings", table, should_color);
 }
 
-fn append_core_dump_report(String &output, Allocator allocator,
-                           bool should_color) throws -> void
+fn
+append_core_dump_report(String   &output,
+                        Allocator allocator,
+                        bool      should_color) throws -> void
 {
   append_kernel_settings(output, allocator, should_color);
 
@@ -320,11 +338,11 @@ fn append_core_dump_report(String &output, Allocator allocator,
                                 : static_cast<usize>(DEFAULT_DUMP_COUNT);
 
     for (usize index = 0; index < shown_count; index++) {
-      let const &dump = dumps[index];
-      let const size = format_human_size(dump.size, allocator);
-      let const modified = utils::format_unix_timestamp(dump.modification_time,
-                                                        "%Y-%m-%d %H:%M");
-      let cells = ArrayList<report_table_cell_view>{allocator};
+      let const &dump     = dumps[index];
+      let const  size     = format_human_size(dump.size, allocator);
+      let const  modified = utils::format_unix_timestamp(dump.modification_time,
+                                                         "%Y-%m-%d %H:%M");
+      let        cells    = ArrayList<report_table_cell_view>{allocator};
       cells.push({size.view(), colors::ansi::GREEN});
       cells.push({modified.view(), colors::ansi::DIM});
       cells.push({dump.program.view(), colors::ansi::BOLD_MAGENTA});
@@ -341,9 +359,9 @@ fn append_core_dump_report(String &output, Allocator allocator,
   }
 }
 
-constexpr i64 DEFAULT_LOG_ENTRY_COUNT = 5;
-constexpr usize MAGIC_BYTE_COUNT = 8;
-constexpr usize FORMAT_BATCH_COUNT = 64;
+constexpr i64   DEFAULT_LOG_ENTRY_COUNT = 5;
+constexpr usize MAGIC_BYTE_COUNT        = 8;
+constexpr usize FORMAT_BATCH_COUNT      = 64;
 
 constexpr StringView LOG_DIRECTORIES[] = {
     "/var/log",       "/var/log/journal", "/run/log/journal",
@@ -353,14 +371,14 @@ constexpr StringView LOG_DIRECTORIES[] = {
 
 struct log_entry
 {
-  String name{heap_allocator()};
-  u64 size{0};
-  i64 modification_time{0};
+  String     name{heap_allocator()};
+  u64        size{0};
+  i64        modification_time{0};
   StringView format_label;
 };
 
-pure fn label_of_magic(const char *bytes, usize byte_count) wontthrow
-    -> StringView
+pure fn
+label_of_magic(const char *bytes, usize byte_count) wontthrow -> StringView
 {
   if (byte_count == 0) return "empty";
 
@@ -428,23 +446,24 @@ pure fn label_of_magic(const char *bytes, usize byte_count) wontthrow
 struct format_probe
 {
   os::descriptor descriptor{KOSH_INVALID_FD};
-  usize entry_position{0};
-  char bytes[MAGIC_BYTE_COUNT]{};
+  usize          entry_position{0};
+  char           bytes[MAGIC_BYTE_COUNT]{};
 };
 
-fn collect_log_entries(StringView directory, Allocator allocator) throws
+fn
+collect_log_entries(StringView directory, Allocator allocator) throws
     -> SortedArrayList<log_entry, newest_named_entry_comparator>
 {
-  let entries = ArrayList<log_entry>{allocator};
+  let       entries  = ArrayList<log_entry>{allocator};
   let const children = os::list_directory_status(directory, allocator);
   if (!children.has_value())
     return steal(entries).make_sorted(newest_named_entry_comparator{});
 
   entries.reserve(children->count());
   format_probe probes[FORMAT_BATCH_COUNT]{};
-  usize probe_count = 0;
-  let batch = os::Batch{allocator};
-  let results = ArrayList<os::batch_result>{allocator};
+  usize        probe_count = 0;
+  let          batch       = os::Batch{allocator};
+  let          results     = ArrayList<os::batch_result>{allocator};
   batch.reserve(FORMAT_BATCH_COUNT);
   results.reserve(FORMAT_BATCH_COUNT);
   let const do_flush_probes = [&]() throws -> void {
@@ -473,13 +492,13 @@ fn collect_log_entries(StringView directory, Allocator allocator) throws
     let const &child_entry = (*children)[index];
     if (!child_entry.has_status) continue;
 
-    let const &child = child_entry.child;
-    let child_path = Path{directory, allocator};
+    let const &child      = child_entry.child;
+    let        child_path = Path{directory, allocator};
     child_path.append(child.name.view());
 
-    let entry = log_entry{};
-    entry.name = String{allocator, child.name.view()};
-    entry.size = child_entry.status.size;
+    let entry               = log_entry{};
+    entry.name              = String{allocator, child.name.view()};
+    entry.size              = child_entry.status.size;
     entry.modification_time = child_entry.status.modification_time;
     let const is_directory =
         os::file_type_letter(child_entry.status.mode) == 'd';
@@ -492,7 +511,7 @@ fn collect_log_entries(StringView directory, Allocator allocator) throws
         os::open_file_descriptor(child_path.text(), os::file_open_mode::Read);
     if (!opened.has_value()) continue;
 
-    probes[probe_count].descriptor = *opened;
+    probes[probe_count].descriptor     = *opened;
     probes[probe_count].entry_position = entries.count() - 1;
     probe_count++;
     if (probe_count == FORMAT_BATCH_COUNT) do_flush_probes();
@@ -503,8 +522,9 @@ fn collect_log_entries(StringView directory, Allocator allocator) throws
   return steal(entries).make_sorted(newest_named_entry_comparator{});
 }
 
-fn append_log_report(String &output, Allocator allocator,
-                     bool should_color) throws -> void
+fn
+append_log_report(String &output, Allocator allocator, bool should_color) throws
+    -> void
 {
   usize directory_count = 0;
 
@@ -538,11 +558,11 @@ fn append_log_report(String &output, Allocator allocator,
                                 : static_cast<usize>(DEFAULT_LOG_ENTRY_COUNT);
 
     for (usize index = 0; index < shown_count; index++) {
-      let const &entry = entries[index];
-      let const size = format_human_size(entry.size, allocator);
+      let const &entry   = entries[index];
+      let const  size    = format_human_size(entry.size, allocator);
       let const modified = utils::format_unix_timestamp(entry.modification_time,
                                                         "%Y-%m-%d %H:%M");
-      let cells = ArrayList<report_table_cell_view>{allocator};
+      let       cells    = ArrayList<report_table_cell_view>{allocator};
       cells.push({size.view(), colors::ansi::GREEN});
       cells.push({entry.format_label, colors::ansi::BOLD_MAGENTA});
       cells.push({modified.view(), colors::ansi::DIM});
@@ -562,9 +582,12 @@ fn append_log_report(String &output, Allocator allocator,
 
 } /* namespace */
 
-fn EvilLogs::execute(
-    const ExecContext &ec, EvalContext &cxt, const ArrayList<String> &args,
-    const ArrayList<SourceLocation> &arg_locations) const throws -> i32
+fn
+EvilLogs::execute(const ExecContext               &ec,
+                  EvalContext                     &cxt,
+                  const ArrayList<String>         &args,
+                  const ArrayList<SourceLocation> &arg_locations) const throws
+    -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
@@ -575,8 +598,8 @@ fn EvilLogs::execute(
     return 1;
   }
 
-  let const allocator = cxt.scratch_allocator();
-  let output = String{allocator};
+  let const allocator    = cxt.scratch_allocator();
+  let       output       = String{allocator};
   let const should_color = koshkit_should_color();
   let const has_filter =
       FLAG_EVILLOGS_CORES.is_enabled() || FLAG_EVILLOGS_LOGS.is_enabled();

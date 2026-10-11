@@ -30,18 +30,27 @@ HELP_DESCRIPTION_DECL(
     "The compgen builtin writes the completion candidates for a word.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
-FLAG(COMPGEN_WORDLIST, String, 'W', "",
+FLAG(COMPGEN_WORDLIST,
+     String,
+     'W',
+     "",
      "Expand the word list the way the shell does and filter to the entries "
      "that start with the word.");
 FLAG(COMPGEN_GLOB, String, 'G', "", "Probe the filesystem with the glob.");
 FLAG(COMPGEN_FILE, Bool, 'f', "", "List matching filenames.");
 FLAG(COMPGEN_ACTION, String, 'A', "", "List the candidates of the action.");
-FLAG(COMPGEN_VARIABLE_NAME, String, 'V', "",
+FLAG(COMPGEN_VARIABLE_NAME,
+     String,
+     'V',
+     "",
      "Store the candidates in the specified indexed array and write nothing to "
      "standard output.");
 FLAG(COMPGEN_PREFIX, String, 'P', "", "Prepend the prefix to each candidate.");
 FLAG(COMPGEN_SUFFIX, String, 'S', "", "Append the suffix to each candidate.");
-FLAG(COMPGEN_FILTER, String, 'X', "",
+FLAG(COMPGEN_FILTER,
+     String,
+     'X',
+     "",
      "Remove matching candidates, with leading ! reversing the filter and "
      "unescaped & expanding to the completion word.");
 FLAG(COMPGEN_FUNCTION, String, 'F', "", "Accepted without effect.");
@@ -69,18 +78,21 @@ struct compgen_filter
       : pattern(allocator), active(allocator)
   {}
 
-  String pattern;
-  Bitset active;
-  bool is_negated{false};
+  String       pattern;
+  Bitset       active;
+  bool         is_negated{false};
   extglob_mode extglob{extglob_mode::Disabled};
   glob_charset charset{glob_charset::Bytes};
 };
 
-static fn compile_filter(StringView raw_filter, StringView word,
-                         Allocator allocator, extglob_mode extglob,
-                         glob_charset charset) throws -> compgen_filter
+static fn
+compile_filter(StringView   raw_filter,
+               StringView   word,
+               Allocator    allocator,
+               extglob_mode extglob,
+               glob_charset charset) throws -> compgen_filter
 {
-  let compiled = compgen_filter{allocator};
+  let compiled     = compgen_filter{allocator};
   compiled.extglob = extglob;
   compiled.charset = charset;
 
@@ -116,8 +128,9 @@ static fn compile_filter(StringView raw_filter, StringView word,
   return compiled;
 }
 
-static fn candidate_is_excluded(StringView candidate,
-                                const compgen_filter &filter) throws -> bool
+static fn
+candidate_is_excluded(StringView candidate, const compgen_filter &filter) throws
+    -> bool
 {
   let const matches =
       utils::glob_matches(filter.pattern.view(), candidate, filter.active, 0,
@@ -134,13 +147,16 @@ enum class compgen_sink_mode : u8
 
 struct compgen_sink
 {
-  compgen_sink(Allocator text_allocator, compgen_sink_mode mode,
-               StringView prefix, StringView suffix)
+  compgen_sink(Allocator         text_allocator,
+               compgen_sink_mode mode,
+               StringView        prefix,
+               StringView        suffix)
       : text(text_allocator), values(heap_allocator()), mode(mode),
         prefix(prefix), suffix(suffix)
   {}
 
-  fn push_candidate(StringView candidate) throws -> void
+  fn
+  push_candidate(StringView candidate) throws -> void
   {
     has_any_matched = true;
 
@@ -163,21 +179,22 @@ struct compgen_sink
     text.push('\n');
   }
 
-  String text;
+  String            text;
   ArrayList<String> values;
   compgen_sink_mode mode;
-  StringView prefix;
-  StringView suffix;
-  bool has_any_matched{false};
+  StringView        prefix;
+  StringView        suffix;
+  bool              has_any_matched{false};
 };
 
 struct compgen_emitter
 {
-  compgen_sink &sink;
-  StringView word;
+  compgen_sink                &sink;
+  StringView                   word;
   const Maybe<compgen_filter> &filter;
 
-  fn push_filtered(StringView candidate) throws -> void
+  fn
+  push_filtered(StringView candidate) throws -> void
   {
     if (filter.has_value() && candidate_is_excluded(candidate, *filter)) {
       return;
@@ -186,7 +203,8 @@ struct compgen_emitter
     sink.push_candidate(candidate);
   }
 
-  fn push_prefixed(StringView candidate) throws -> void
+  fn
+  push_prefixed(StringView candidate) throws -> void
   {
     if (!candidate.starts_with(word)) return;
 
@@ -200,20 +218,22 @@ enum class table_field_mode : u8
   FieldsAfterFirst,
 };
 
-static fn push_table_file_names(compgen_emitter &emitter, StringView path,
-                                table_field_mode mode,
-                                Allocator allocator) throws -> void
+static fn
+push_table_file_names(compgen_emitter &emitter,
+                      StringView       path,
+                      table_field_mode mode,
+                      Allocator        allocator) throws -> void
 {
   let const contents = Path{path}.read_entire_file();
   if (!contents.has_value()) return;
 
   for (let const &line : utils::split_lines(contents->view(), allocator)) {
     let const comment_start = line.find_character('#');
-    let const body = comment_start.has_value()
-                         ? line.substring_of_length(0, *comment_start)
-                         : line;
+    let const body          = comment_start.has_value()
+                                  ? line.substring_of_length(0, *comment_start)
+                                  : line;
 
-    usize position = 0;
+    usize position    = 0;
     usize field_index = 0;
 
     while (position < body.length) {
@@ -242,8 +262,10 @@ static fn push_table_file_names(compgen_emitter &emitter, StringView path,
   }
 }
 
-static fn run_compgen_actions(EvalContext &cxt, u32 action_mask,
-                              compgen_emitter &emitter) throws -> void
+static fn
+run_compgen_actions(EvalContext     &cxt,
+                    u32              action_mask,
+                    compgen_emitter &emitter) throws -> void
 {
   let const do_wants = [&](compgen_action action) wontthrow -> bool {
     return (action_mask & compgen_action_bit(action)) != 0;
@@ -422,9 +444,11 @@ static fn run_compgen_actions(EvalContext &cxt, u32 action_mask,
   }
 }
 
-static fn run_compgen_generators(EvalContext &cxt, u32 action_mask,
-                                 Maybe<StringView> glob_pattern,
-                                 compgen_emitter &emitter) throws -> void
+static fn
+run_compgen_generators(EvalContext      &cxt,
+                       u32               action_mask,
+                       Maybe<StringView> glob_pattern,
+                       compgen_emitter  &emitter) throws -> void
 {
   if (action_mask != 0) {
     LOG(Debug, "compgen collecting actions 0x%x for prefix '%.*s'", action_mask,
@@ -442,16 +466,18 @@ static fn run_compgen_generators(EvalContext &cxt, u32 action_mask,
   }
 }
 
-fn completion::collect_compgen_candidates(EvalContext &context, u32 action_mask,
-                                          Maybe<StringView> glob_pattern,
-                                          StringView word) throws
+fn
+completion::collect_compgen_candidates(EvalContext      &context,
+                                       u32               action_mask,
+                                       Maybe<StringView> glob_pattern,
+                                       StringView        word) throws
     -> ArrayList<String>
 {
   let const scratch = context.expansion_store().scratch_arena().mark();
   defer { context.expansion_store().scratch_arena().release(scratch); };
 
   let const no_filter = Maybe<compgen_filter>{None};
-  let sink =
+  let       sink =
       compgen_sink{context.scratch_allocator(), compgen_sink_mode::Collect,
                    StringView{}, StringView{}};
   let emitter = compgen_emitter{sink, word, no_filter};
@@ -460,10 +486,11 @@ fn completion::collect_compgen_candidates(EvalContext &context, u32 action_mask,
   return steal(sink.values);
 }
 
-fn completion::remove_compgen_filtered(EvalContext &context,
-                                       StringView filter_pattern,
-                                       StringView word,
-                                       ArrayList<String> &candidates) throws
+fn
+completion::remove_compgen_filtered(EvalContext       &context,
+                                    StringView         filter_pattern,
+                                    StringView         word,
+                                    ArrayList<String> &candidates) throws
     -> void
 {
   let const scratch = context.expansion_store().scratch_arena().mark();
@@ -485,7 +512,8 @@ fn completion::remove_compgen_filtered(EvalContext &context,
   candidates.truncate(kept_count);
 }
 
-fn Compgen::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
+fn
+Compgen::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let const args = PARSE_BUILTIN_ARGS(ec);
 
@@ -530,7 +558,7 @@ fn Compgen::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
        FLAG_COMPGEN_USER.is_enabled(), FLAG_COMPGEN_VARIABLE.is_enabled()});
 
   if (FLAG_COMPGEN_ACTION.is_set()) {
-    let const name = FLAG_COMPGEN_ACTION.value();
+    let const name     = FLAG_COMPGEN_ACTION.value();
     let const resolved = COMPGEN_ACTIONS.find(name);
     if (!resolved.has_value()) {
       report_soft_builtin_error(ec, cxt, FLAG_COMPGEN_ACTION.value_location(),
@@ -543,9 +571,9 @@ fn Compgen::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     action_mask |= compgen_action_bit(*resolved);
   }
 
-  let const wordlist = FLAG_COMPGEN_WORDLIST.is_set()
-                           ? Maybe<StringView>{FLAG_COMPGEN_WORDLIST.value()}
-                           : None;
+  let const wordlist     = FLAG_COMPGEN_WORDLIST.is_set()
+                               ? Maybe<StringView>{FLAG_COMPGEN_WORDLIST.value()}
+                               : None;
   let const glob_pattern = FLAG_COMPGEN_GLOB.is_set()
                                ? Maybe<StringView>{FLAG_COMPGEN_GLOB.value()}
                                : None;

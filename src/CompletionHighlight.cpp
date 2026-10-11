@@ -35,20 +35,20 @@ BumpArena internal::HIGHLIGHT_ARENA{};
 usize internal::DEBUG_HIGHLIGHT_INPUT_BYTE_COUNT = 0;
 #endif
 
-static fn first_word_resolves(StringView word, EvalContext &context) throws
-    -> bool
+static fn
+first_word_resolves(StringView word, EvalContext &context) throws -> bool
 {
   if (word == "!") return true;
   if (KEYWORDS.find(word).has_value()) return true;
 
   if (os::has_directory_separator(word)) {
-    let target = word;
+    let           target = word;
     Maybe<String> expanded;
     if (!word.is_empty() && word[0] == '~') {
       if (Maybe<String> home_expanded = utils::expand_leading_tilde_path(word))
       {
         expanded = steal(*home_expanded);
-        target = expanded->view();
+        target   = expanded->view();
       } else
         return false;
     }
@@ -75,8 +75,8 @@ static fn first_word_resolves(StringView word, EvalContext &context) throws
          koshkit::find_util(word).has_value();
 }
 
-static fn command_word_prefixes_any(StringView word,
-                                    EvalContext &context) throws -> bool
+static fn
+command_word_prefixes_any(StringView word, EvalContext &context) throws -> bool
 {
   if (word.is_empty()) return false;
   if (os::has_directory_separator(word)) return false;
@@ -114,7 +114,8 @@ static fn command_word_prefixes_any(StringView word,
   return false;
 }
 
-fn command_word_resolves(StringView line, EvalContext &context) throws -> bool
+fn
+command_word_resolves(StringView line, EvalContext &context) throws -> bool
 {
   let const word = command_word_of(line);
   if (word.is_empty()) return true;
@@ -122,17 +123,20 @@ fn command_word_resolves(StringView line, EvalContext &context) throws -> bool
   return first_word_resolves(word, context);
 }
 
-static pure fn is_highlight_name_start(char c) wontthrow -> bool
+static pure fn
+is_highlight_name_start(char c) wontthrow -> bool
 {
   return lexer::is_variable_name_start(c);
 }
 
-static pure fn is_highlight_name_char(char c) wontthrow -> bool
+static pure fn
+is_highlight_name_char(char c) wontthrow -> bool
 {
   return lexer::is_variable_name(c);
 }
 
-static pure fn is_highlight_function_name_char(char c) wontthrow -> bool
+static pure fn
+is_highlight_function_name_char(char c) wontthrow -> bool
 {
   if (is_highlight_name_char(c)) return true;
 
@@ -152,7 +156,8 @@ static pure fn is_highlight_function_name_char(char c) wontthrow -> bool
   }
 }
 
-pure fn internal::word_is_function_name(StringView word) wontthrow -> bool
+pure fn
+internal::word_is_function_name(StringView word) wontthrow -> bool
 {
   if (word.is_empty() || !is_highlight_name_start(word[0])) {
     return false;
@@ -186,8 +191,10 @@ pure fn internal::word_is_function_name(StringView word) wontthrow -> bool
   return brace_depth == 0;
 }
 
-pure fn internal::word_defines_function(StringView line, usize word_end,
-                                        usize end) wontthrow -> bool
+pure fn
+internal::word_defines_function(StringView line,
+                                usize      word_end,
+                                usize      end) wontthrow -> bool
 {
   let i = word_end;
 
@@ -208,8 +215,10 @@ pure fn internal::word_defines_function(StringView line, usize word_end,
   return i < end && line[i] == ')';
 }
 
-static pure fn position_is_highlight_word_break(StringView line, usize position,
-                                                usize end) wontthrow -> bool
+static pure fn
+position_is_highlight_word_break(StringView line,
+                                 usize      position,
+                                 usize      end) wontthrow -> bool
 {
   let const c = line[position];
   switch (c) {
@@ -222,14 +231,14 @@ static pure fn position_is_highlight_word_break(StringView line, usize position,
   case '<':
   case '>':
   case '(':
-  case ')': return true;
+  case ')':  return true;
   case '\r': return position + 1 < end && line[position + 1] == '\n';
-  default: return false;
+  default:   return false;
   }
 }
 
-static fn scan_dollar_expansion(StringView line, usize dollar, usize end) throws
-    -> usize
+static fn
+scan_dollar_expansion(StringView line, usize dollar, usize end) throws -> usize
 {
   let i = dollar + 1;
   if (i >= end) return i;
@@ -259,7 +268,8 @@ static fn scan_dollar_expansion(StringView line, usize dollar, usize end) throws
   return i;
 }
 
-static pure fn word_contains_url_scheme(StringView word) wontthrow -> bool
+static pure fn
+word_contains_url_scheme(StringView word) wontthrow -> bool
 {
   for (usize i = 0; i + 2 < word.length; i++) {
     if (word[i] == ':' && word[i + 1] == '/' && word[i + 2] == '/') {
@@ -270,8 +280,8 @@ static pure fn word_contains_url_scheme(StringView word) wontthrow -> bool
   return false;
 }
 
-static pure fn word_looks_like_ssh_remote_path(StringView word) wontthrow
-    -> bool
+static pure fn
+word_looks_like_ssh_remote_path(StringView word) wontthrow -> bool
 {
   let const colon_position = word.find_character(':');
   if (!colon_position.has_value() || *colon_position == 0) {
@@ -313,46 +323,46 @@ enum class keyword_role : u8
 
 struct keyword_spec
 {
-  keyword_role role;
-  highlight_construct construct = highlight_construct::if_;
-  highlight_construct construct_alt = highlight_construct::if_;
-  bool has_alt = false;
-  bool is_next_command = false;
-  bool should_expect_in = false;
-  bool should_expect_for_variable = false;
-  bool should_set_function_pending = false;
-  bool is_non_posix_only = false;
+  keyword_role        role;
+  highlight_construct construct                   = highlight_construct::if_;
+  highlight_construct construct_alt               = highlight_construct::if_;
+  bool                has_alt                     = false;
+  bool                is_next_command             = false;
+  bool                should_expect_in            = false;
+  bool                should_expect_for_variable  = false;
+  bool                should_set_function_pending = false;
+  bool                is_non_posix_only           = false;
 };
 
 constexpr static_string_entry<keyword_spec> HIGHLIGHT_KEYWORD_ENTRIES[] = {
     {SSK("if"),
-     {.role = keyword_role::open,
-      .construct = highlight_construct::if_,
+     {.role            = keyword_role::open,
+      .construct       = highlight_construct::if_,
       .is_next_command = true}                                                },
     {SSK("while"),
-     {.role = keyword_role::open,
-      .construct = highlight_construct::while_until,
+     {.role            = keyword_role::open,
+      .construct       = highlight_construct::while_until,
       .is_next_command = true}                                                },
     {SSK("until"),
-     {.role = keyword_role::open,
-      .construct = highlight_construct::while_until,
+     {.role            = keyword_role::open,
+      .construct       = highlight_construct::while_until,
       .is_next_command = true}                                                },
     {SSK("for"),
-     {.role = keyword_role::open,
-      .construct = highlight_construct::for_,
-      .should_expect_in = true,
+     {.role                       = keyword_role::open,
+      .construct                  = highlight_construct::for_,
+      .should_expect_in           = true,
       .should_expect_for_variable = true}                                     },
     {SSK("case"),
-     {.role = keyword_role::open,
-      .construct = highlight_construct::case_,
+     {.role             = keyword_role::open,
+      .construct        = highlight_construct::case_,
       .should_expect_in = true}                                               },
     {SSK("[["),
-     {.role = keyword_role::open,
-      .construct = highlight_construct::conditional,
+     {.role              = keyword_role::open,
+      .construct         = highlight_construct::conditional,
       .is_non_posix_only = true}                                              },
     {SSK("function"),
-     {.role = keyword_role::open,
-      .construct = highlight_construct::function,
+     {.role                        = keyword_role::open,
+      .construct                   = highlight_construct::function,
       .should_set_function_pending = true}                                    },
     {SSK("then"),
      {.role = keyword_role::check, .construct = highlight_construct::if_}     },
@@ -361,17 +371,17 @@ constexpr static_string_entry<keyword_spec> HIGHLIGHT_KEYWORD_ENTRIES[] = {
     {SSK("elif"),
      {.role = keyword_role::check, .construct = highlight_construct::if_}     },
     {SSK("do"),
-     {.role = keyword_role::check,
-      .construct = highlight_construct::while_until,
+     {.role          = keyword_role::check,
+      .construct     = highlight_construct::while_until,
       .construct_alt = highlight_construct::for_,
-      .has_alt = true}                                                        },
+      .has_alt       = true}                                                  },
     {SSK("fi"),
      {.role = keyword_role::close, .construct = highlight_construct::if_}     },
     {SSK("done"),
-     {.role = keyword_role::close,
-      .construct = highlight_construct::while_until,
+     {.role          = keyword_role::close,
+      .construct     = highlight_construct::while_until,
       .construct_alt = highlight_construct::for_,
-      .has_alt = true}                                                        },
+      .has_alt       = true}                                                  },
     {SSK("esac"),
      {.role = keyword_role::close, .construct = highlight_construct::case_}   },
     {SSK("time"),     {.role = keyword_role::plain}                           },
@@ -382,7 +392,8 @@ constexpr static_string_entry<keyword_spec> HIGHLIGHT_KEYWORD_ENTRIES[] = {
 
 constexpr StaticStringMap HIGHLIGHT_KEYWORDS{HIGHLIGHT_KEYWORD_ENTRIES};
 
-consteval fn every_lexer_keyword_has_a_highlight_spec() wontthrow -> bool
+consteval fn
+every_lexer_keyword_has_a_highlight_spec() wontthrow -> bool
 {
   for (let const &keyword : KEYWORD_ENTRIES) {
     bool has_spec = false;
@@ -403,8 +414,10 @@ static_assert(every_lexer_keyword_has_a_highlight_spec(),
 
 } /* namespace */
 
-fn internal::advance_shell_keyword_state(StringView word, usize frame_depth,
-                                         shell_lexical_state &state) throws
+fn
+internal::advance_shell_keyword_state(StringView           word,
+                                      usize                frame_depth,
+                                      shell_lexical_state &state) throws
     -> Maybe<bool>
 {
   let const spec = HIGHLIGHT_KEYWORDS.find(word);
@@ -457,7 +470,7 @@ fn internal::advance_shell_keyword_state(StringView word, usize frame_depth,
 
     return true;
 
-  case keyword_role::plain: return true;
+  case keyword_role::plain:        return true;
   case keyword_role::misplaced_in: return false;
   }
 
@@ -465,9 +478,14 @@ fn internal::advance_shell_keyword_state(StringView word, usize frame_depth,
 }
 
 static fn
-color_arithmetic(StringView line, usize begin, usize end, EvalContext &context,
-                 ArrayList<highlight_span> &spans, HashSet &line_variable_names,
-                 HashSet &function_names, bool is_bracket_form) throws -> usize;
+color_arithmetic(StringView                 line,
+                 usize                      begin,
+                 usize                      end,
+                 EvalContext               &context,
+                 ArrayList<highlight_span> &spans,
+                 HashSet                   &line_variable_names,
+                 HashSet                   &function_names,
+                 bool                       is_bracket_form) throws -> usize;
 
 enum class listed_path_state : u8
 {
@@ -477,11 +495,12 @@ enum class listed_path_state : u8
   Unlisted,
 };
 
-static fn find_listed_path_state(StringView directory, StringView name) throws
+static fn
+find_listed_path_state(StringView directory, StringView name) throws
     -> listed_path_state
 {
   let const listing_directory = Path{directory};
-  let const entries = utils::read_directory_cached(
+  let const entries           = utils::read_directory_cached(
       listing_directory, utils::directory_validation::Cached,
       utils::directory_listing_order::FoldedName);
   if (entries == nullptr) return listed_path_state::Unlisted;
@@ -504,16 +523,17 @@ static fn find_listed_path_state(StringView directory, StringView name) throws
     switch (entry.kind) {
     case Path::EntryKind::Directory: return listed_path_state::Directory;
     case Path::EntryKind::Regular:
-    case Path::EntryKind::Other: return listed_path_state::NonDirectory;
+    case Path::EntryKind::Other:     return listed_path_state::NonDirectory;
     case Path::EntryKind::Symlink:
-    case Path::EntryKind::Unknown: return listed_path_state::Unlisted;
+    case Path::EntryKind::Unknown:   return listed_path_state::Unlisted;
     }
   }
 
   return listed_path_state::Missing;
 }
 
-static fn word_names_existing_path(StringView word) throws -> bool
+static fn
+word_names_existing_path(StringView word) throws -> bool
 {
   if (word.is_empty()) return false;
   if (word[0] == '~') {
@@ -528,20 +548,23 @@ static fn word_names_existing_path(StringView word) throws -> bool
   }
 
   switch (find_listed_path_state(".", word)) {
-  case listed_path_state::Missing: return false;
+  case listed_path_state::Missing:      return false;
   case listed_path_state::Directory:
   case listed_path_state::NonDirectory: return true;
-  case listed_path_state::Unlisted: return Path{word}.exists();
+  case listed_path_state::Unlisted:     return Path{word}.exists();
   }
 
   return false;
 }
 
-static fn path_partial_prefixes_entry(StringView word, usize existing_end,
-                                      StringView partial, bool has_tilde,
-                                      bool should_only_include_directories,
-                                      StringView expanded_tilde_prefix,
-                                      usize tilde_prefix_length) throws -> bool
+static fn
+path_partial_prefixes_entry(StringView word,
+                            usize      existing_end,
+                            StringView partial,
+                            bool       has_tilde,
+                            bool       should_only_include_directories,
+                            StringView expanded_tilde_prefix,
+                            usize      tilde_prefix_length) throws -> bool
 {
   if (partial.is_empty()) return false;
 
@@ -565,7 +588,7 @@ static fn path_partial_prefixes_entry(StringView word, usize existing_end,
   }
 
   let const listing_directory = Path{directory.view()};
-  let const entries = utils::read_directory_cached(
+  let const entries           = utils::read_directory_cached(
       listing_directory, utils::directory_validation::Cached,
       utils::directory_listing_order::FoldedName);
   if (entries == nullptr) return false;
@@ -597,8 +620,10 @@ static fn path_partial_prefixes_entry(StringView word, usize existing_end,
   return false;
 }
 
-static fn word_is_terminated_by_separator(StringView line, usize word_end,
-                                          usize line_length) wontthrow -> bool
+static fn
+word_is_terminated_by_separator(StringView line,
+                                usize      word_end,
+                                usize      line_length) wontthrow -> bool
 {
   if (word_end >= line_length) return false;
 
@@ -612,7 +637,7 @@ static fn word_is_terminated_by_separator(StringView line, usize word_end,
   case '<':
   case '>':
   case '(':
-  case ')': return true;
+  case ')':  return true;
 
   case '\r': return word_end + 1 < line_length && line[word_end + 1] == '\n';
 
@@ -620,7 +645,8 @@ static fn word_is_terminated_by_separator(StringView line, usize word_end,
   }
 }
 
-static fn word_has_erased_directory_separator(StringView word) wontthrow -> bool
+static fn
+word_has_erased_directory_separator(StringView word) wontthrow -> bool
 {
   char quote_character = 0;
 
@@ -628,7 +654,7 @@ static fn word_has_erased_directory_separator(StringView word) wontthrow -> bool
     let const byte = word[position];
     if (byte == '\\' && quote_character != '\'') {
       let const escaped_byte = word[position + 1];
-      let const is_escape = quote_character != '"' || escaped_byte == '$' ||
+      let const is_escape    = quote_character != '"' || escaped_byte == '$' ||
                             escaped_byte == '`' || escaped_byte == '"' ||
                             escaped_byte == '\\' || escaped_byte == '\n';
       if (!is_escape) continue;
@@ -650,24 +676,26 @@ static fn word_has_erased_directory_separator(StringView word) wontthrow -> bool
   return false;
 }
 
-static fn color_path_argument(usize word_start, StringView word,
-                              bool is_word_terminated,
-                              bool should_only_include_directories,
-                              bool is_leading_tilde_active,
-                              ArrayList<highlight_span> &spans) throws -> bool
+static fn
+color_path_argument(usize                      word_start,
+                    StringView                 word,
+                    bool                       is_word_terminated,
+                    bool                       should_only_include_directories,
+                    bool                       is_leading_tilde_active,
+                    ArrayList<highlight_span> &spans) throws -> bool
 {
   if (word.is_empty() || word[0] == '-') {
     return false;
   }
 
-  let const has_separator = os::has_directory_separator(word);
-  let const has_tilde = is_leading_tilde_active;
+  let const has_separator  = os::has_directory_separator(word);
+  let const has_tilde      = is_leading_tilde_active;
   let const has_dot_prefix = word.length >= 2 && word[0] == '.' &&
                              (os::is_directory_separator(word[1]) ||
                               (word.length >= 3 && word[1] == '.' &&
                                os::is_directory_separator(word[2])));
-  let expanded_tilde_prefix = String{bump_allocator(HIGHLIGHT_ARENA)};
-  usize tilde_prefix_length = word.length;
+  let   expanded_tilde_prefix = String{bump_allocator(HIGHLIGHT_ARENA)};
+  usize tilde_prefix_length   = word.length;
   if (has_tilde) {
     for (usize position = 1; position < word.length; position++)
       if (os::is_directory_separator(word[position])) {
@@ -685,11 +713,11 @@ static fn color_path_argument(usize word_start, StringView word,
     expanded_path.append(word.substring(tilde_prefix_length));
   }
 
-  let is_prefix_non_directory = false;
+  let       is_prefix_non_directory = false;
   let const do_prefix_is_valid = [&](usize prefix_end, bool should_be_directory)
                                      throws -> bool {
     is_prefix_non_directory = false;
-    let target = word.substring_of_length(0, prefix_end);
+    let target              = word.substring_of_length(0, prefix_end);
     if (has_tilde) {
       if (expanded_tilde_prefix.is_empty()) return false;
       ASSERT(prefix_end >= tilde_prefix_length);
@@ -698,7 +726,7 @@ static fn color_path_argument(usize word_start, StringView word,
     }
 
     let const root_length = os::path_root_length(target);
-    usize name_end = target.length;
+    usize     name_end    = target.length;
 
     while (name_end > root_length &&
            os::is_directory_separator(target[name_end - 1]))
@@ -761,7 +789,7 @@ static fn color_path_argument(usize word_start, StringView word,
       return true;
     } else {
       usize component_end = os::path_root_length(word);
-      existing_end = component_end;
+      existing_end        = component_end;
 
       while (component_end < word.length) {
         while (component_end < word.length &&
@@ -837,8 +865,9 @@ static fn color_path_argument(usize word_start, StringView word,
   return true;
 }
 
-static fn simple_dollar_name(StringView line, usize i,
-                             usize expansion_end) wontthrow -> Maybe<StringView>
+static fn
+simple_dollar_name(StringView line, usize i, usize expansion_end) wontthrow
+    -> Maybe<StringView>
 {
   if (i + 1 >= expansion_end) return koshka::None;
   if (line[i + 1] == '{') {
@@ -857,9 +886,10 @@ static fn simple_dollar_name(StringView line, usize i,
   return line.substring_of_length(i + 1, expansion_end - (i + 1));
 }
 
-static fn dollar_name_is_set(StringView name,
-                             const HashSet &line_variable_names,
-                             EvalContext &context) throws -> bool
+static fn
+dollar_name_is_set(StringView     name,
+                   const HashSet &line_variable_names,
+                   EvalContext   &context) throws -> bool
 {
   if (name.is_empty()) return true;
   if (name.length == 1 && !is_highlight_name_start(name[0])) {
@@ -875,12 +905,16 @@ static fn dollar_name_is_set(StringView name,
   return os::get_environment_variable(name).has_value();
 }
 
-static fn color_dollar(StringView line, usize i, usize end,
-                       ArrayList<highlight_span> &spans, EvalContext &context,
-                       HashSet &line_variable_names,
-                       HashSet &function_names) throws -> usize
+static fn
+color_dollar(StringView                 line,
+             usize                      i,
+             usize                      end,
+             ArrayList<highlight_span> &spans,
+             EvalContext               &context,
+             HashSet                   &line_variable_names,
+             HashSet                   &function_names) throws -> usize
 {
-  static usize nesting_depth = 0;
+  static usize    nesting_depth     = 0;
   constexpr usize MAX_NESTING_DEPTH = 256;
   if (nesting_depth >= MAX_NESTING_DEPTH) return end;
 
@@ -926,13 +960,18 @@ static fn color_dollar(StringView line, usize i, usize end,
 }
 
 static fn
-color_arithmetic(StringView line, usize begin, usize end, EvalContext &context,
-                 ArrayList<highlight_span> &spans, HashSet &line_variable_names,
-                 HashSet &function_names, bool is_bracket_form) throws -> usize
+color_arithmetic(StringView                 line,
+                 usize                      begin,
+                 usize                      end,
+                 EvalContext               &context,
+                 ArrayList<highlight_span> &spans,
+                 HashSet                   &line_variable_names,
+                 HashSet                   &function_names,
+                 bool                       is_bracket_form) throws -> usize
 {
-  usize i = begin;
+  usize i                 = begin;
   usize parenthesis_depth = 0;
-  usize bracket_depth = 0;
+  usize bracket_depth     = 0;
 
   while (i < end) {
     let const c = line[i];
@@ -940,7 +979,7 @@ color_arithmetic(StringView line, usize begin, usize end, EvalContext &context,
     if (c == '$') {
       let const next = color_dollar(line, i, end, spans, context,
                                     line_variable_names, function_names);
-      i = next > i ? next : i + 1;
+      i              = next > i ? next : i + 1;
       continue;
     }
 
@@ -1023,15 +1062,18 @@ color_arithmetic(StringView line, usize begin, usize end, EvalContext &context,
   return i;
 }
 
-static fn scan_heredoc_bodies(StringView line, usize position, usize end,
-                              const ArrayList<lexer::pending_heredoc> &pending,
-                              ArrayList<highlight_span> &spans) throws -> usize
+static fn
+scan_heredoc_bodies(StringView                               line,
+                    usize                                    position,
+                    usize                                    end,
+                    const ArrayList<lexer::pending_heredoc> &pending,
+                    ArrayList<highlight_span> &spans) throws -> usize
 {
   let i = position;
 
   for (let const &heredoc : pending) {
     let const body_start = i;
-    let was_closed = false;
+    let       was_closed = false;
 
     while (i < end) {
       let line_end = i;
@@ -1043,8 +1085,8 @@ static fn scan_heredoc_bodies(StringView line, usize position, usize end,
       let const match = lexer::match_heredoc_line(
           line.substring_of_length(i, line_end - i), heredoc);
       let const content_start = i + match.content_start;
-      let const content_end = content_start + match.content_length;
-      let const next = (line_end < end) ? line_end + 1 : line_end;
+      let const content_end   = content_start + match.content_length;
+      let const next          = (line_end < end) ? line_end + 1 : line_end;
 
       if (match.is_terminator) {
         if (body_start < content_start)
@@ -1053,7 +1095,7 @@ static fn scan_heredoc_bodies(StringView line, usize position, usize end,
         if (content_start < content_end)
           spans.push(highlight_span{content_start, content_end,
                                     highlight_role::heredoc_delimiter});
-        i = next;
+        i          = next;
         was_closed = true;
         break;
       }
@@ -1101,7 +1143,8 @@ static constexpr PackedStringKey TIME_OPTION_KEYS[] = {
 };
 static constexpr StaticStringSet TIME_OPTIONS{TIME_OPTION_KEYS};
 
-static pure fn command_name_operand_of(StringView word) wontthrow -> StringView
+static pure fn
+command_name_operand_of(StringView word) wontthrow -> StringView
 {
   let name = word;
   if (Maybe<usize> assignment_position = name.find_character('=');
@@ -1111,7 +1154,8 @@ static pure fn command_name_operand_of(StringView word) wontthrow -> StringView
   return word_is_function_name(name) ? name : StringView{};
 }
 
-static fn static_koshkit_operand(StringView word, bool &is_valid) throws
+static fn
+static_koshkit_operand(StringView word, bool &is_valid) throws
     -> Maybe<koshkit::Utility::Kind>
 {
   constexpr usize CAPACITY =
@@ -1119,17 +1163,17 @@ static fn static_koshkit_operand(StringView word, bool &is_valid) throws
   static_assert(CAPACITY > 0);
 
   is_valid = false;
-  char decoded[CAPACITY];
-  usize decoded_length = 0;
-  char quote_character = 0;
-  bool is_decoded_too_long = false;
+  char  decoded[CAPACITY];
+  usize decoded_length      = 0;
+  char  quote_character     = 0;
+  bool  is_decoded_too_long = false;
 
   for (usize position = 0; position < word.length; position++) {
     let byte = word[position];
     if (quote_character == 0 && byte == '$' && position + 1 < word.length &&
         (word[position + 1] == '\'' || word[position + 1] == '"'))
     {
-      let const quote = word[++position];
+      let const quote      = word[++position];
       let const body_start = position + 1;
 
       while (++position < word.length && word[position] != quote) {
@@ -1140,7 +1184,7 @@ static fn static_koshkit_operand(StringView word, bool &is_valid) throws
 
       if (position == word.length) return None;
 
-      let special_decoded = String{bump_allocator(HIGHLIGHT_ARENA)};
+      let       special_decoded = String{bump_allocator(HIGHLIGHT_ARENA)};
       let const body =
           word.substring_of_length(body_start, position - body_start);
       if (quote == '\'')
@@ -1193,7 +1237,8 @@ static fn static_koshkit_operand(StringView word, bool &is_valid) throws
   return koshkit::find_util(StringView{decoded, decoded_length});
 }
 
-static pure fn variable_name_operand_of(StringView word) wontthrow -> StringView
+static pure fn
+variable_name_operand_of(StringView word) wontthrow -> StringView
 {
   let name = word;
 
@@ -1216,10 +1261,15 @@ static pure fn variable_name_operand_of(StringView word) wontthrow -> StringView
   return lexer::word_is_variable_name(name) ? name : StringView{};
 }
 
-fn internal::scan_highlight_range(
-    StringView line, usize begin, usize end, EvalContext &context,
-    ArrayList<highlight_span> &spans, HashSet &line_variable_names,
-    HashSet &function_names, bool should_stop_at_closing_parenthesis) throws
+fn
+internal::scan_highlight_range(StringView                 line,
+                               usize                      begin,
+                               usize                      end,
+                               EvalContext               &context,
+                               ArrayList<highlight_span> &spans,
+                               HashSet                   &line_variable_names,
+                               HashSet                   &function_names,
+                               bool should_stop_at_closing_parenthesis) throws
     -> usize
 {
   let const do_push = [&](usize start, usize stop, highlight_role role)
@@ -1239,26 +1289,26 @@ fn internal::scan_highlight_range(
   let stack = ArrayList<highlight_construct>{bump_allocator(HIGHLIGHT_ARENA)};
   let pending_heredocs =
       ArrayList<lexer::pending_heredoc>{bump_allocator(HIGHLIGHT_ARENA)};
-  let is_command_position = true;
-  let is_time_option_pending = false;
-  let highlight_command_word = StringView{};
-  let expecting_in = false;
-  let for_variable_pending = false;
-  let for_do_expected = false;
-  let function_name_pending = false;
+  let is_command_position      = true;
+  let is_time_option_pending   = false;
+  let highlight_command_word   = StringView{};
+  let expecting_in             = false;
+  let for_variable_pending     = false;
+  let for_do_expected          = false;
+  let function_name_pending    = false;
   let is_case_pattern_expected = false;
   let decoded_command_word =
       utils::decoded_shell_word{bump_allocator(HIGHLIGHT_ARENA)};
-  let is_in_array_value = false;
-  let is_unsetting_functions = false;
-  usize parenthesis_depth = 0;
+  let   is_in_array_value             = false;
+  let   is_unsetting_functions        = false;
+  usize parenthesis_depth             = 0;
   usize array_value_parenthesis_depth = 0;
 
   let const do_color_backtick =
       [&](usize backtick_position, ArrayList<highlight_span> &word_spans)
           throws -> usize {
     let const inner_begin = backtick_position + 1;
-    let position = inner_begin;
+    let       position    = inner_begin;
 
     while (position < end && line[position] != '`') {
       if (line[position] == '\\' && position + 1 < end &&
@@ -1299,7 +1349,7 @@ fn internal::scan_highlight_range(
     {
       if (c == '\n') {
         do_commit_pending_assignments();
-        is_command_position = !is_case_pattern_expected;
+        is_command_position    = !is_case_pattern_expected;
         is_time_option_pending = false;
         highlight_command_word = StringView{};
         i++;
@@ -1327,8 +1377,8 @@ fn internal::scan_highlight_range(
 
     if (is_command_position && c == '(' && i + 1 < end && line[i + 1] == '(') {
       spans.push(highlight_span{i, i + 2, highlight_role::operator_});
-      i = color_arithmetic(line, i + 2, end, context, spans,
-                           line_variable_names, function_names, false);
+      i                   = color_arithmetic(line, i + 2, end, context, spans,
+                                             line_variable_names, function_names, false);
       is_command_position = false;
       continue;
     }
@@ -1375,10 +1425,10 @@ fn internal::scan_highlight_range(
         c == ')' || is_reserved_brace)
     {
       let const operator_start = i;
-      let has_separator = false;
-      let has_redirect = false;
-      let has_opener = false;
-      let has_closer = false;
+      let       has_separator  = false;
+      let       has_redirect   = false;
+      let       has_opener     = false;
+      let       has_closer     = false;
 
       while (i < end) {
         let const o = line[i];
@@ -1417,7 +1467,7 @@ fn internal::scan_highlight_range(
             stack.back() == highlight_construct::case_)
         {
           is_case_pattern_expected = false;
-          is_command_position = true;
+          is_command_position      = true;
         } else if (parenthesis_depth > 0) {
           parenthesis_depth--;
         } else if (should_stop_at_closing_parenthesis) {
@@ -1441,10 +1491,10 @@ fn internal::scan_highlight_range(
       if (!is_in_array_value && !is_case_pattern_expected &&
           (has_opener || (has_separator && !has_redirect)))
       {
-        is_command_position = true;
+        is_command_position    = true;
         is_time_option_pending = false;
         highlight_command_word = StringView{};
-        expecting_in = false;
+        expecting_in           = false;
       }
       continue;
     }
@@ -1480,8 +1530,8 @@ fn internal::scan_highlight_range(
             if (i > literal_start)
               word_spans.push(
                   highlight_span{literal_start, i, highlight_role::string});
-            i = color_dollar(line, i, end, word_spans, context,
-                             line_variable_names, function_names);
+            i             = color_dollar(line, i, end, word_spans, context,
+                                         line_variable_names, function_names);
             literal_start = i;
             continue;
           }
@@ -1489,7 +1539,7 @@ fn internal::scan_highlight_range(
             if (i > literal_start)
               word_spans.push(
                   highlight_span{literal_start, i, highlight_role::string});
-            i = do_color_backtick(i, word_spans);
+            i             = do_color_backtick(i, word_spans);
             literal_start = i;
             continue;
           }
@@ -1527,7 +1577,7 @@ fn internal::scan_highlight_range(
                  line[i + 1] == '(')
       {
         word_has_shell_syntax = true;
-        let const group_end = lexer::scan_balanced_shell_region(
+        let const group_end   = lexer::scan_balanced_shell_region(
             line.substring_of_length(0, end), i + 2, ')');
         i = group_end.value_or(end);
       } else {
@@ -1538,7 +1588,7 @@ fn internal::scan_highlight_range(
     let const word_end = i;
     let const word =
         line.substring_of_length(word_start, word_end - word_start);
-    let const is_plain = word_spans.is_empty() && !word_has_shell_syntax;
+    let const is_plain      = word_spans.is_empty() && !word_has_shell_syntax;
     let const is_assignment = lexer::word_looks_like_assignment(word);
     let const is_word_terminated =
         word_is_terminated_by_separator(line, word_end, end);
@@ -1715,7 +1765,7 @@ fn internal::scan_highlight_range(
         }
 
         if (!has_opaque_expansion) {
-          bool is_static_operand_valid = false;
+          bool      is_static_operand_valid = false;
           let const utility =
               static_koshkit_operand(word, is_static_operand_valid);
           if (is_static_operand_valid) {
@@ -1742,9 +1792,9 @@ fn internal::scan_highlight_range(
     if (is_assignment && word[word.length - 1] == '=' && word_end < end &&
         line[word_end] == '(')
     {
-      is_in_array_value = true;
+      is_in_array_value             = true;
       array_value_parenthesis_depth = parenthesis_depth;
-      is_command_position = false;
+      is_command_position           = false;
     }
 
     if (!is_command_position) {
@@ -1795,9 +1845,9 @@ fn internal::scan_highlight_range(
 
     if (expecting_in && is_plain && word == "in") {
       do_push(word_start, word_end, highlight_role::keyword);
-      expecting_in = false;
+      expecting_in         = false;
       for_variable_pending = false;
-      is_command_position = false;
+      is_command_position  = false;
       if (!stack.is_empty() && stack.back() == highlight_construct::for_) {
         for_do_expected = true;
       }
@@ -1809,7 +1859,7 @@ fn internal::scan_highlight_range(
 
     if (for_variable_pending) {
       for_variable_pending = false;
-      is_command_position = false;
+      is_command_position  = false;
       if (!is_plain || !lexer::word_is_variable_name(word)) {
         do_push(word_start, word_end, highlight_role::invalid_syntax);
       } else {
@@ -1821,7 +1871,7 @@ fn internal::scan_highlight_range(
 
     if (function_name_pending) {
       function_name_pending = false;
-      is_command_position = true;
+      is_command_position   = true;
       if (is_plain && word_is_function_name(word)) {
         do_push(word_start, word_end, highlight_role::function_name);
         function_names.add(word);
@@ -1863,16 +1913,16 @@ fn internal::scan_highlight_range(
 
     if (is_case_pattern_expected && is_plain && word == "esac") {
       is_case_pattern_expected = false;
-      is_command_position = true;
+      is_command_position      = true;
     }
 
     if (is_command_position && is_plain && !is_assignment) {
       pending_assignment_names.clear();
 
-      let is_keyword = true;
-      let keyword_ok = true;
-      let is_next_command = true;
-      let should_expect_in = false;
+      let is_keyword                 = true;
+      let keyword_ok                 = true;
+      let is_next_command            = true;
+      let should_expect_in           = false;
       let should_expect_for_variable = false;
       if (Maybe<keyword_spec> spec = HIGHLIGHT_KEYWORDS.find(word);
           spec.has_value() && !(spec.value().is_non_posix_only &&
@@ -1882,10 +1932,10 @@ fn internal::scan_highlight_range(
         switch (keyword.role) {
         case keyword_role::open:
           stack.push(keyword.construct);
-          is_next_command = keyword.is_next_command;
-          should_expect_in = keyword.should_expect_in;
+          is_next_command            = keyword.is_next_command;
+          should_expect_in           = keyword.should_expect_in;
           should_expect_for_variable = keyword.should_expect_for_variable;
-          function_name_pending = keyword.should_set_function_pending;
+          function_name_pending      = keyword.should_set_function_pending;
           break;
 
         case keyword_role::check:
@@ -1906,7 +1956,7 @@ fn internal::scan_highlight_range(
         case keyword_role::plain: break;
 
         case keyword_role::misplaced_in:
-          keyword_ok = false;
+          keyword_ok      = false;
           is_next_command = false;
           break;
         }
@@ -1918,7 +1968,7 @@ fn internal::scan_highlight_range(
         do_push(word_start, word_end,
                 keyword_ok ? highlight_role::keyword
                            : highlight_role::invalid_syntax);
-        is_command_position = is_next_command;
+        is_command_position    = is_next_command;
         is_time_option_pending = word == "time";
         if (should_expect_in) expecting_in = true;
         if (should_expect_for_variable) for_variable_pending = true;

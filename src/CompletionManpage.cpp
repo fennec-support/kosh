@@ -39,9 +39,10 @@ struct help_entry
   String forms{heap_allocator()};
 };
 
-static fn matches_from_help_entries(const ArrayList<help_entry> &entries,
-                                    StringView token,
-                                    StringMap<String> &descriptions) throws
+static fn
+matches_from_help_entries(const ArrayList<help_entry> &entries,
+                          StringView                   token,
+                          StringMap<String>           &descriptions) throws
     -> ArrayList<String>
 {
   let matches = ArrayList<String>{heap_allocator()};
@@ -58,7 +59,8 @@ static fn matches_from_help_entries(const ArrayList<help_entry> &entries,
 
 static const ArrayList<help_entry> EMPTY_HELP_ENTRIES{heap_allocator()};
 
-static fn manpage_name_for(StringView command) throws -> String
+static fn
+manpage_name_for(StringView command) throws -> String
 {
   if (Maybe<const char *> alias = MANPAGE_ALIASES.find(command);
       alias.has_value())
@@ -78,28 +80,31 @@ struct cached_subcommand_list
 class ManpageCache
 {
 public:
-  StringMap<ArrayList<help_entry>> option_entries{heap_allocator()};
+  StringMap<ArrayList<help_entry>>  option_entries{heap_allocator()};
   StringMap<cached_subcommand_list> subcommand_index{heap_allocator()};
-  StringMap<String> page_file_paths{heap_allocator()};
-  sorted_subcommand_array sorted_page_names{heap_allocator(),
+  StringMap<String>                 page_file_paths{heap_allocator()};
+  sorted_subcommand_array           sorted_page_names{heap_allocator(),
                                             sort_order::ascending};
-  StringMap<bool> subcommand_page_validity{heap_allocator()};
-  StringMap<String> text{heap_allocator()};
-  StringMap<String> synopses{heap_allocator()};
-  StringMap<String> hint_pages{heap_allocator()};
-  String manpath_output{heap_allocator()};
-  ArrayList<Path> scan_directories{heap_allocator()};
-  usize scanned_directory_count{0};
-  bool is_subcommand_index_built{false};
-  bool is_subcommand_scan_running{false};
-  bool was_scan_root_set_complete{false};
-  bool was_manpath_settled{false};
+  StringMap<bool>                   subcommand_page_validity{heap_allocator()};
+  StringMap<String>                 text{heap_allocator()};
+  StringMap<String>                 synopses{heap_allocator()};
+  StringMap<String>                 hint_pages{heap_allocator()};
+  String                            manpath_output{heap_allocator()};
+  ArrayList<Path>                   scan_directories{heap_allocator()};
+  usize                             scanned_directory_count{0};
+  bool                              is_subcommand_index_built{false};
+  bool                              is_subcommand_scan_running{false};
+  bool                              was_scan_root_set_complete{false};
+  bool                              was_manpath_settled{false};
 
-  fn build_subcommand_index(EvalContext &context) throws -> void;
-  fn scan_next_subcommand_directory(EvalContext &context) throws -> void;
+  fn
+  build_subcommand_index(EvalContext &context) throws -> void;
+  fn
+  scan_next_subcommand_directory(EvalContext &context) throws -> void;
 
 private:
-  fn finish_subcommand_index() throws -> void;
+  fn
+  finish_subcommand_index() throws -> void;
 };
 
 class HelpOutputCache
@@ -107,24 +112,27 @@ class HelpOutputCache
 public:
   StringMap<ArrayList<help_entry>> option_entries{heap_allocator()};
   StringMap<ArrayList<help_entry>> subcommand_entries{heap_allocator()};
-  HashSet parsed_keys{heap_allocator()};
-  StringMap<String> text{heap_allocator()};
-  StringMap<String> usages{heap_allocator()};
-  StringMap<u32> killed_fork_attempts{heap_allocator()};
+  HashSet                          parsed_keys{heap_allocator()};
+  StringMap<String>                text{heap_allocator()};
+  StringMap<String>                usages{heap_allocator()};
+  StringMap<u32>                   killed_fork_attempts{heap_allocator()};
 
-  fn ensure_parsed(EvalContext &context, StringView command,
-                   StringView subcommand = {}) throws -> void;
-  fn store(StringView command, StringView key, const Maybe<String> &text) throws
+  fn
+  ensure_parsed(EvalContext &context,
+                StringView   command,
+                StringView   subcommand = {}) throws -> void;
+  fn
+  store(StringView command, StringView key, const Maybe<String> &text) throws
       -> void;
 };
 
-static ManpageCache MANPAGE_CACHE{};
+static ManpageCache    MANPAGE_CACHE{};
 static HelpOutputCache HELP_OUTPUT_CACHE{};
 
 static constexpr u64 HELP_FORK_TIMEOUT_NANOS = 1'000'000'000;
 
 static constexpr u64 HELP_FORK_BATCH_TIMEOUT_NANOS = 8'000'000'000;
-static constexpr u64 SUBCOMMAND_SCAN_SLICE_NANOS = 8'000'000;
+static constexpr u64 SUBCOMMAND_SCAN_SLICE_NANOS   = 8'000'000;
 
 enum class idle_load_kind : u8
 {
@@ -133,19 +141,24 @@ enum class idle_load_kind : u8
   Help,
 };
 
-static fn adopt_idle_load(idle_load_kind kind, StringView key,
-                          EvalContext &context) throws -> bool;
+static fn
+adopt_idle_load(idle_load_kind kind,
+                StringView     key,
+                EvalContext   &context) throws -> bool;
 
-static fn defer_idle_load(idle_load_kind kind, StringView key,
-                          StringView command, StringView hint_key,
-                          const Maybe<ArrayList<String>> &argv) throws -> void;
+static fn
+defer_idle_load(idle_load_kind                  kind,
+                StringView                      key,
+                StringView                      command,
+                StringView                      hint_key,
+                const Maybe<ArrayList<String>> &argv) throws -> void;
 
 static bool IS_DEFERRING_DOCUMENTATION = false;
 
 static constexpr u32 KILLED_FORK_ATTEMPT_LIMIT = 2;
 
-static fn should_retry_killed_fork(StringView kind, StringView name) throws
-    -> bool
+static fn
+should_retry_killed_fork(StringView kind, StringView name) throws -> bool
 {
   let key = String{kind};
   key += " ";
@@ -158,7 +171,8 @@ static fn should_retry_killed_fork(StringView kind, StringView name) throws
   return attempt_count < KILLED_FORK_ATTEMPT_LIMIT;
 }
 
-static fn completion_fork_timeout_nanos(EvalContext &context) wontthrow -> u64
+static fn
+completion_fork_timeout_nanos(EvalContext &context) wontthrow -> u64
 {
   return context.execution_store().shell_is_interactive()
              ? HELP_FORK_TIMEOUT_NANOS
@@ -166,7 +180,7 @@ static fn completion_fork_timeout_nanos(EvalContext &context) wontthrow -> u64
 }
 
 static fn
-capture_completion_program_output(EvalContext &context,
+capture_completion_program_output(EvalContext             &context,
                                   const ArrayList<String> &arguments) wontthrow
     -> Maybe<String>
 {
@@ -185,13 +199,13 @@ capture_completion_program_output(EvalContext &context,
   return output;
 }
 
-static fn manpage_section1_directories(EvalContext &context) throws
-    -> ArrayList<Path>;
+static fn
+manpage_section1_directories(EvalContext &context) throws -> ArrayList<Path>;
 
-static fn manpath_argv_for(EvalContext &context) throws
-    -> Maybe<ArrayList<String>>
+static fn
+manpath_argv_for(EvalContext &context) throws -> Maybe<ArrayList<String>>
 {
-  let &resolver = context.program_resolver();
+  let      &resolver = context.program_resolver();
   let const man_paths =
       resolver.search("manpath", ProgramResolver::SearchMode::First,
                       ProgramResolver::Requirement::Runnable,
@@ -221,10 +235,11 @@ static fn manpath_argv_for(EvalContext &context) throws
   return argv;
 }
 
-static fn settle_manpath_output(Maybe<String> output) throws -> void
+static fn
+settle_manpath_output(Maybe<String> output) throws -> void
 {
   if (output.has_value()) {
-    MANPAGE_CACHE.manpath_output = steal(*output);
+    MANPAGE_CACHE.manpath_output      = steal(*output);
     MANPAGE_CACHE.was_manpath_settled = true;
 
     return;
@@ -241,7 +256,8 @@ static fn settle_manpath_output(Maybe<String> output) throws -> void
   MANPAGE_CACHE.was_manpath_settled = true;
 }
 
-static fn manpath_command_output(EvalContext &context) throws -> StringView
+static fn
+manpath_command_output(EvalContext &context) throws -> StringView
 {
   if (MANPAGE_CACHE.was_manpath_settled)
     return MANPAGE_CACHE.manpath_output.view();
@@ -266,11 +282,11 @@ static fn manpath_command_output(EvalContext &context) throws -> StringView
   return MANPAGE_CACHE.manpath_output.view();
 }
 
-static fn manpage_section1_directories(EvalContext &context) throws
-    -> ArrayList<Path>
+static fn
+manpage_section1_directories(EvalContext &context) throws -> ArrayList<Path>
 {
   let directories = ArrayList<Path>{heap_allocator()};
-  let seen_roots = HashSet{heap_allocator()};
+  let seen_roots  = HashSet{heap_allocator()};
 
   let const do_push_man1_of_root = [&](StringView root) {
     if (!seen_roots.add(root)) return;
@@ -283,8 +299,8 @@ static fn manpage_section1_directories(EvalContext &context) throws
     do_push_man1_of_root("/usr/share/man");
   };
   let const do_push_command_roots = [&]() {
-    let const view = manpath_command_output(context);
-    usize segment_start = 0;
+    let const view          = manpath_command_output(context);
+    usize     segment_start = 0;
 
     for (usize i = 0; i <= view.length; i++) {
       if (i != view.length && view[i] != os::PATH_DELIMITER &&
@@ -310,8 +326,8 @@ static fn manpage_section1_directories(EvalContext &context) throws
     return directories;
   }
 
-  let const value = manpath->view();
-  usize segment_start = 0;
+  let const value         = manpath->view();
+  usize     segment_start = 0;
 
   for (usize i = 0; i <= value.length; i++) {
     if (i != value.length && value[i] != os::PATH_DELIMITER) {
@@ -335,7 +351,8 @@ static const StringView COMPRESSION_SUFFIXES[] = {
     StringView{".gz"}, StringView{".xz"}, StringView{".zst"},
     StringView{".bz2"}};
 
-static pure fn has_compression_suffix(StringView name) wontthrow -> bool
+static pure fn
+has_compression_suffix(StringView name) wontthrow -> bool
 {
   for (let const tail : COMPRESSION_SUFFIXES) {
     if (name.length > tail.length &&
@@ -348,7 +365,8 @@ static pure fn has_compression_suffix(StringView name) wontthrow -> bool
   return false;
 }
 
-static pure fn double_space_gap(StringView row, usize from) wontthrow -> usize
+static pure fn
+double_space_gap(StringView row, usize from) wontthrow -> usize
 {
   for (usize j = from; j + 1 < row.length; j++) {
     if (row[j] == ' ' && row[j + 1] == ' ') {
@@ -359,8 +377,8 @@ static pure fn double_space_gap(StringView row, usize from) wontthrow -> usize
   return row.length;
 }
 
-static pure fn strip_man1_suffix(StringView entry) wontthrow
-    -> Maybe<StringView>
+static pure fn
+strip_man1_suffix(StringView entry) wontthrow -> Maybe<StringView>
 {
   let name = entry;
 
@@ -380,19 +398,21 @@ static pure fn strip_man1_suffix(StringView entry) wontthrow
   return None;
 }
 
-fn ManpageCache::build_subcommand_index(EvalContext &context) throws -> void
+fn
+ManpageCache::build_subcommand_index(EvalContext &context) throws -> void
 {
   do {
     scan_next_subcommand_directory(context);
   } while (is_subcommand_scan_running);
 }
 
-fn ManpageCache::scan_next_subcommand_directory(EvalContext &context) throws
+fn
+ManpageCache::scan_next_subcommand_directory(EvalContext &context) throws
     -> void
 {
   if (!is_subcommand_scan_running) {
-    scan_directories = manpage_section1_directories(context);
-    scanned_directory_count = 0;
+    scan_directories           = manpage_section1_directories(context);
+    scanned_directory_count    = 0;
     was_scan_root_set_complete = was_manpath_settled;
     is_subcommand_scan_running = true;
   }
@@ -425,7 +445,8 @@ fn ManpageCache::scan_next_subcommand_directory(EvalContext &context) throws
   finish_subcommand_index();
 }
 
-fn ManpageCache::finish_subcommand_index() throws -> void
+fn
+ManpageCache::finish_subcommand_index() throws -> void
 {
   subcommand_index.clear();
   let page_names = ArrayList<String>{heap_allocator()};
@@ -449,24 +470,25 @@ fn ManpageCache::finish_subcommand_index() throws -> void
         .values.push_managed(tail);
   });
 
-  is_subcommand_index_built = was_scan_root_set_complete;
+  is_subcommand_index_built  = was_scan_root_set_complete;
   is_subcommand_scan_running = false;
   scan_directories.clear();
   LOG(Info, "indexed %zu section-1 pages", page_file_paths.count());
 }
 
-static fn cleaned_synopsis_of_page(StringView source) throws -> String
+static fn
+cleaned_synopsis_of_page(StringView source) throws -> String
 {
-  let synopsis = String{heap_allocator()};
-  let is_inside_synopsis = false;
-  usize line_start = 0;
+  let   synopsis           = String{heap_allocator()};
+  let   is_inside_synopsis = false;
+  usize line_start         = 0;
 
   for (usize i = 0; i <= source.length; i++) {
     if (i != source.length && source[i] != '\n') {
       continue;
     }
     let const line = source.substring_of_length(line_start, i - line_start);
-    line_start = i + 1;
+    line_start     = i + 1;
     if (line.starts_with(".SH") || line.starts_with(".Sh")) {
       let const is_synopsis_heading =
           line.find_substring(StringView{"SYNOPSIS"}).has_value();
@@ -514,7 +536,8 @@ static fn cleaned_synopsis_of_page(StringView source) throws -> String
 
 static constexpr usize HINT_SYNOPSIS_MAX_BYTES = 400;
 
-static fn rendered_synopsis_of_page(StringView text) throws -> String
+static fn
+rendered_synopsis_of_page(StringView text) throws -> String
 {
   let clean = String{heap_allocator()};
   clean.reserve(text.length);
@@ -527,12 +550,12 @@ static fn rendered_synopsis_of_page(StringView text) throws -> String
     clean += text[i];
   }
 
-  let synopsis = String{heap_allocator()};
-  let is_inside_synopsis = false;
-  usize position = 0;
+  let   synopsis           = String{heap_allocator()};
+  let   is_inside_synopsis = false;
+  usize position           = 0;
 
   while (position < clean.length()) {
-    let const raw = clean.view().next_line(position);
+    let const raw    = clean.view().next_line(position);
     let const indent = skip_blanks(raw, 0);
     if (indent >= raw.length) continue;
     if (indent == 0) {
@@ -554,7 +577,8 @@ static fn rendered_synopsis_of_page(StringView text) throws -> String
   return synopsis;
 }
 
-static fn usage_line_of_help(StringView text) throws -> String
+static fn
+usage_line_of_help(StringView text) throws -> String
 {
   usize position = 0;
 
@@ -580,9 +604,10 @@ static fn usage_line_of_help(StringView text) throws -> String
   return String{heap_allocator()};
 }
 
-static fn man_subcommand_page_is_valid(StringView command,
-                                       StringView subcommand,
-                                       bool is_read_allowed) throws -> bool
+static fn
+man_subcommand_page_is_valid(StringView command,
+                             StringView subcommand,
+                             bool       is_read_allowed) throws -> bool
 {
   let page_name = String{command};
   page_name.push('-');
@@ -614,8 +639,8 @@ static fn man_subcommand_page_is_valid(StringView command,
     return true;
   }
   if (source->view().starts_with(".so ")) {
-    let const rest = source->view().substring(4);
-    usize target_end = 0;
+    let const rest       = source->view().substring(4);
+    usize     target_end = 0;
 
     while (target_end < rest.length && rest[target_end] != '\n' &&
            rest[target_end] != ' ')
@@ -634,7 +659,7 @@ static fn man_subcommand_page_is_valid(StringView command,
   }
 
   let const synopsis = cleaned_synopsis_of_page(source->view());
-  let needle = String{command};
+  let       needle   = String{command};
   needle.push(' ');
   needle.append(subcommand);
   let const valid = synopsis.find_substring(needle.view()).has_value();
@@ -643,8 +668,8 @@ static fn man_subcommand_page_is_valid(StringView command,
   return valid;
 }
 
-static fn is_first_argument_token(StringView line, usize token_start) wontthrow
-    -> bool
+static fn
+is_first_argument_token(StringView line, usize token_start) wontthrow -> bool
 {
   let const command = command_word_of(line);
   if (command.is_empty()) return false;
@@ -660,14 +685,15 @@ static fn is_first_argument_token(StringView line, usize token_start) wontthrow
   return true;
 }
 
-fn internal::second_word_of(StringView line) wontthrow -> Maybe<StringView>
+fn
+internal::second_word_of(StringView line) wontthrow -> Maybe<StringView>
 {
   let const command = command_word_of(line);
   if (command.is_empty()) return None;
   let const command_end =
       static_cast<usize>(command.data - line.data) + command.length;
-  let position = command_end;
-  let const word = line.next_ascii_whitespace_word(position);
+  let       position = command_end;
+  let const word     = line.next_ascii_whitespace_word(position);
   if (position >= line.length) return None;
   if (word.is_empty() || word[0] == '-') {
     return None;
@@ -676,10 +702,12 @@ fn internal::second_word_of(StringView line) wontthrow -> Maybe<StringView>
   return word;
 }
 
-fn internal::complete_from_man_subcommands(StringView line, StringView token,
-                                           usize token_start,
-                                           EvalContext &context,
-                                           completion_mode mode) throws
+fn
+internal::complete_from_man_subcommands(StringView      line,
+                                        StringView      token,
+                                        usize           token_start,
+                                        EvalContext    &context,
+                                        completion_mode mode) throws
     -> Maybe<ArrayList<String>>
 {
   let const is_for_listing = mode == completion_mode::Listing;
@@ -697,7 +725,7 @@ fn internal::complete_from_man_subcommands(StringView line, StringView token,
     return None;
   }
 
-  let const second_word = second_word_of(line);
+  let const second_word    = second_word_of(line);
   let const is_koshkit_man = surface_command == "koshkit" &&
                              second_word.has_value() && *second_word == "man";
   let is_koshkit_man_argument = false;
@@ -742,7 +770,7 @@ fn internal::complete_from_man_subcommands(StringView line, StringView token,
   let const command = resolved_name.view();
 
   if (is_koshkit_man || command == "man" || command == "mandoc") {
-    let matches = ArrayList<String>{heap_allocator()};
+    let        matches    = ArrayList<String>{heap_allocator()};
     let const &page_names = MANPAGE_CACHE.sorted_page_names;
 
     for (usize i = page_names.lower_bound(token); i < page_names.count(); i++) {
@@ -763,9 +791,9 @@ fn internal::complete_from_man_subcommands(StringView line, StringView token,
     return None;
   }
 
-  let matches = ArrayList<String>{heap_allocator()};
+  let        matches            = ArrayList<String>{heap_allocator()};
   let const &sorted_subcommands = subcommands->values;
-  let const first = sorted_subcommands.lower_bound(token);
+  let const  first              = sorted_subcommands.lower_bound(token);
 
   for (usize i = first; i < sorted_subcommands.count(); i++) {
     let const &subcommand = sorted_subcommands[i];
@@ -783,10 +811,11 @@ fn internal::complete_from_man_subcommands(StringView line, StringView token,
   return matches;
 }
 
-static fn extract_dash_flags(StringView option_part) throws -> ArrayList<String>
+static fn
+extract_dash_flags(StringView option_part) throws -> ArrayList<String>
 {
-  let flags = ArrayList<String>{heap_allocator()};
-  usize k = 0;
+  let   flags = ArrayList<String>{heap_allocator()};
+  usize k     = 0;
 
   while (k < option_part.length) {
     while (k < option_part.length &&
@@ -815,7 +844,8 @@ static fn extract_dash_flags(StringView option_part) throws -> ArrayList<String>
   return flags;
 }
 
-static fn parse_manpage_option_entries(StringView text) throws
+static fn
+parse_manpage_option_entries(StringView text) throws
 
     -> ArrayList<help_entry>
 {
@@ -832,12 +862,12 @@ static fn parse_manpage_option_entries(StringView text) throws
 
   let const view = clean.view();
 
-  let descriptions = StringMap<String>{heap_allocator()};
-  let forms = StringMap<String>{heap_allocator()};
-  let pending_flags = ArrayList<String>{heap_allocator()};
-  usize pending_indent = 0;
-  let pending_description = String{heap_allocator()};
-  let pending_forms = StringView{};
+  let   descriptions        = StringMap<String>{heap_allocator()};
+  let   forms               = StringMap<String>{heap_allocator()};
+  let   pending_flags       = ArrayList<String>{heap_allocator()};
+  usize pending_indent      = 0;
+  let   pending_description = String{heap_allocator()};
+  let   pending_forms       = StringView{};
 
   let const do_finalize_pending = [&]() throws -> void {
     if (pending_flags.is_empty()) return;
@@ -879,12 +909,12 @@ static fn parse_manpage_option_entries(StringView text) throws
     do_finalize_pending();
     if (raw[indent] != '-') continue;
 
-    let const gap = double_space_gap(raw, indent);
+    let const gap         = double_space_gap(raw, indent);
     let const option_part = raw.substring_of_length(indent, gap - indent);
-    pending_flags = extract_dash_flags(option_part);
-    pending_forms = option_part.trim_blanks();
-    pending_indent = indent;
-    pending_description = String{heap_allocator()};
+    pending_flags         = extract_dash_flags(option_part);
+    pending_forms         = option_part.trim_blanks();
+    pending_indent        = indent;
+    pending_description   = String{heap_allocator()};
     if (gap < raw.length)
       pending_description.append(
           raw.substring_of_length(gap, raw.length - gap).trim_blanks());
@@ -893,7 +923,7 @@ static fn parse_manpage_option_entries(StringView text) throws
   do_finalize_pending();
 
   let entries = ArrayList<help_entry>{heap_allocator()};
-  let seen = HashSet{heap_allocator()};
+  let seen    = HashSet{heap_allocator()};
 
   for (usize j = 0; j < view.length; j++) {
     let const is_at_word_start = j == 0 || view[j - 1] == ' ' ||
@@ -910,8 +940,8 @@ static fn parse_manpage_option_entries(StringView text) throws
       end++;
     }
 
-    let const flag = view.substring_of_length(j, end - j);
-    let has_letter = false;
+    let const flag       = view.substring_of_length(j, end - j);
+    let       has_letter = false;
 
     for (usize k = 0; k < flag.length; k++)
       if (flag[k] != '-') {
@@ -921,7 +951,7 @@ static fn parse_manpage_option_entries(StringView text) throws
 
     if (flag.length >= 2 && has_letter && seen.add(flag)) {
       let const description = descriptions.find(flag);
-      let const flag_forms = forms.find(flag);
+      let const flag_forms  = forms.find(flag);
       entries.push(
           help_entry{String{flag},
                      description.has_value() ? String{description->view()}
@@ -937,7 +967,8 @@ static fn parse_manpage_option_entries(StringView text) throws
   return entries;
 }
 
-static fn command_prefers_help_over_manpage(StringView command) throws -> bool
+static fn
+command_prefers_help_over_manpage(StringView command) throws -> bool
 
 {
   let argument = HELP_ALLOWLIST.find(command);
@@ -945,9 +976,11 @@ static fn command_prefers_help_over_manpage(StringView command) throws -> bool
   return argument.has_value() && StringView{*argument} != StringView{"--help"};
 }
 
-static fn command_directory_is_trusted(StringView absolute_path) throws -> bool;
+static fn
+command_directory_is_trusted(StringView absolute_path) throws -> bool;
 
-static fn manpage_argv_for(StringView page_name, EvalContext &context) throws
+static fn
+manpage_argv_for(StringView page_name, EvalContext &context) throws
     -> Maybe<ArrayList<String>>
 {
   let const man_paths = context.program_resolver().search(
@@ -971,7 +1004,8 @@ static fn manpage_argv_for(StringView page_name, EvalContext &context) throws
   return argv;
 }
 
-static fn store_manpage_options(StringView page_name, StringView page) throws
+static fn
+store_manpage_options(StringView page_name, StringView page) throws
     -> const ArrayList<help_entry> &
 {
   MANPAGE_CACHE.synopses.set(page_name, rendered_synopsis_of_page(page));
@@ -980,7 +1014,8 @@ static fn store_manpage_options(StringView page_name, StringView page) throws
                                            parse_manpage_option_entries(page));
 }
 
-static fn manpage_options_for(StringView page_name, EvalContext &context) throws
+static fn
+manpage_options_for(StringView page_name, EvalContext &context) throws
     -> const ArrayList<help_entry> &
 {
   if (let const cached = MANPAGE_CACHE.option_entries.find(page_name);
@@ -995,8 +1030,8 @@ static fn manpage_options_for(StringView page_name, EvalContext &context) throws
     return EMPTY_HELP_ENTRIES;
   }
 
-  let parsed_options = ArrayList<help_entry>{heap_allocator()};
-  let const argv = manpage_argv_for(page_name, context);
+  let       parsed_options = ArrayList<help_entry>{heap_allocator()};
+  let const argv           = manpage_argv_for(page_name, context);
   if (IS_DEFERRING_DOCUMENTATION)
     defer_idle_load(idle_load_kind::Manpage, page_name, page_name, page_name,
                     argv);
@@ -1018,13 +1053,14 @@ static fn manpage_options_for(StringView page_name, EvalContext &context) throws
   return store_manpage_options(page_name, page->view());
 }
 
-fn internal::manpage_text_for(StringView page_name, EvalContext &context) throws
+fn
+internal::manpage_text_for(StringView page_name, EvalContext &context) throws
     -> StringView
 {
   if (let const cached = MANPAGE_CACHE.text.find(page_name); cached.has_value())
     return cached->view();
 
-  let text = String{heap_allocator()};
+  let       text = String{heap_allocator()};
   let const argv = manpage_argv_for(page_name, context);
   if (!argv.has_value())
     return MANPAGE_CACHE.text.set(page_name, steal(text))->view();
@@ -1073,10 +1109,12 @@ fn internal::manpage_text_for(StringView page_name, EvalContext &context) throws
   return MANPAGE_CACHE.text.set(page_name, steal(text))->view();
 }
 
-fn internal::complete_from_manpage(StringView line, StringView token,
-                                   EvalContext &context,
-                                   StringMap<String> &descriptions,
-                                   completion_mode mode) throws
+fn
+internal::complete_from_manpage(StringView         line,
+                                StringView         token,
+                                EvalContext       &context,
+                                StringMap<String> &descriptions,
+                                completion_mode    mode) throws
     -> Maybe<ArrayList<String>>
 {
   let const is_for_listing = mode == completion_mode::Listing;
@@ -1098,7 +1136,7 @@ fn internal::complete_from_manpage(StringView line, StringView token,
   if (command_prefers_help_over_manpage(command)) return None;
 
   let page_name = manpage_name_for(command);
-  let hint_key = resolve_completion_alias(surface_command, context);
+  let hint_key  = resolve_completion_alias(surface_command, context);
   if (let const subcommand_word = second_word_of(line);
       subcommand_word.has_value())
   {
@@ -1124,14 +1162,16 @@ fn internal::complete_from_manpage(StringView line, StringView token,
   return matches;
 }
 
-static fn command_directory_is_trusted(StringView absolute_path) throws -> bool
+static fn
+command_directory_is_trusted(StringView absolute_path) throws -> bool
 {
   return os::directory_is_trusted_for_exec(Path{absolute_path}.parent());
 }
 
-static fn help_argv_for(EvalContext &context, StringView command,
-                        StringView subcommand) throws
-    -> Maybe<ArrayList<String>>
+static fn
+help_argv_for(EvalContext &context,
+              StringView   command,
+              StringView   subcommand) throws -> Maybe<ArrayList<String>>
 {
   let help_argument = HELP_ALLOWLIST.find(command);
   if (!help_argument.has_value()) return None;
@@ -1171,8 +1211,10 @@ static fn help_argv_for(EvalContext &context, StringView command,
   return None;
 }
 
-static fn help_text_for(EvalContext &context, StringView command,
-                        StringView subcommand = {}) throws -> Maybe<String>
+static fn
+help_text_for(EvalContext &context,
+              StringView   command,
+              StringView   subcommand = {}) throws -> Maybe<String>
 {
   let const argv = help_argv_for(context, command, subcommand);
   if (argv.has_value()) {
@@ -1197,7 +1239,8 @@ static fn help_text_for(EvalContext &context, StringView command,
   return String{heap_allocator()};
 }
 
-fn internal::help_text_of(StringView command, EvalContext &context) throws
+fn
+internal::help_text_of(StringView command, EvalContext &context) throws
     -> StringView
 {
   if (let const cached = HELP_OUTPUT_CACHE.text.find(command);
@@ -1210,12 +1253,12 @@ fn internal::help_text_of(StringView command, EvalContext &context) throws
   return HELP_OUTPUT_CACHE.text.set(command, steal(*text))->view();
 }
 
-static fn parse_help_option_entries(StringView text) throws
-    -> ArrayList<help_entry>
+static fn
+parse_help_option_entries(StringView text) throws -> ArrayList<help_entry>
 {
-  let entries = ArrayList<help_entry>{heap_allocator()};
-  let seen = HashSet{heap_allocator()};
-  usize i = 0;
+  let   entries = ArrayList<help_entry>{heap_allocator()};
+  let   seen    = HashSet{heap_allocator()};
+  usize i       = 0;
 
   while (i < text.length) {
     let const raw = text.next_line(i);
@@ -1225,7 +1268,7 @@ static fn parse_help_option_entries(StringView text) throws
       continue;
     }
 
-    let const gap = double_space_gap(raw, start);
+    let const gap         = double_space_gap(raw, start);
     let const option_part = raw.substring_of_length(start, gap - start);
 
     let description = StringView{};
@@ -1243,11 +1286,12 @@ static fn parse_help_option_entries(StringView text) throws
   return entries;
 }
 
-static fn parse_help_subcommands(StringView text, StringView command) throws
+static fn
+parse_help_subcommands(StringView text, StringView command) throws
     -> ArrayList<help_entry>;
 
-static fn help_cache_key(StringView command, StringView subcommand) throws
-    -> String
+static fn
+help_cache_key(StringView command, StringView subcommand) throws -> String
 {
   if (subcommand.is_empty()) return String{command};
   let key = String{command};
@@ -1257,8 +1301,10 @@ static fn help_cache_key(StringView command, StringView subcommand) throws
   return key;
 }
 
-fn HelpOutputCache::ensure_parsed(EvalContext &context, StringView command,
-                                  StringView subcommand) throws -> void
+fn
+HelpOutputCache::ensure_parsed(EvalContext &context,
+                               StringView   command,
+                               StringView   subcommand) throws -> void
 {
   let const key = help_cache_key(command, subcommand);
   if (parsed_keys.contains(key.view())) return;
@@ -1270,8 +1316,10 @@ fn HelpOutputCache::ensure_parsed(EvalContext &context, StringView command,
   store(command, key.view(), help_text_for(context, command, subcommand));
 }
 
-fn HelpOutputCache::store(StringView command, StringView key,
-                          const Maybe<String> &text) throws -> void
+fn
+HelpOutputCache::store(StringView           command,
+                       StringView           key,
+                       const Maybe<String> &text) throws -> void
 {
   let const parsed = text.has_value() ? text->view() : StringView{};
   option_entries.set(key, parse_help_option_entries(parsed));
@@ -1282,9 +1330,11 @@ fn HelpOutputCache::store(StringView command, StringView key,
   }
 }
 
-static fn help_entries_for(StringMap<ArrayList<help_entry>> &cache,
-                           EvalContext &context, StringView command,
-                           StringView subcommand = {}) throws
+static fn
+help_entries_for(StringMap<ArrayList<help_entry>> &cache,
+                 EvalContext                      &context,
+                 StringView                        command,
+                 StringView                        subcommand = {}) throws
     -> const ArrayList<help_entry> &
 {
   HELP_OUTPUT_CACHE.ensure_parsed(context, command, subcommand);
@@ -1292,25 +1342,28 @@ static fn help_entries_for(StringMap<ArrayList<help_entry>> &cache,
   return *cache.find(help_cache_key(command, subcommand).view()).value();
 }
 
-static fn help_options_for(EvalContext &context, StringView command,
-                           StringView subcommand = {}) throws
+static fn
+help_options_for(EvalContext &context,
+                 StringView   command,
+                 StringView   subcommand = {}) throws
     -> const ArrayList<help_entry> &
 {
   return help_entries_for(HELP_OUTPUT_CACHE.option_entries, context, command,
                           subcommand);
 }
 
-static fn is_plausible_subcommand_name(StringView name) wontthrow -> bool
+static fn
+is_plausible_subcommand_name(StringView name) wontthrow -> bool
 {
   if (name.is_empty()) return false;
-  let const first = name[0];
+  let const first         = name[0];
   let const is_word_start = (first >= 'a' && first <= 'z') ||
                             (first >= 'A' && first <= 'Z') ||
                             (first >= '0' && first <= '9');
   if (!is_word_start) return false;
 
   for (usize i = 0; i < name.length; i++) {
-    let const c = name[i];
+    let const c  = name[i];
     let const ok = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
                    (c >= '0' && c <= '9') || c == '-' || c == '_';
     if (!ok) return false;
@@ -1319,7 +1372,8 @@ static fn is_plausible_subcommand_name(StringView name) wontthrow -> bool
   return true;
 }
 
-static fn line_opens_subcommand_section(StringView trimmed) wontthrow -> bool
+static fn
+line_opens_subcommand_section(StringView trimmed) wontthrow -> bool
 {
   if (trimmed.is_empty()) return false;
   let const do_ends_with_ignoring_case = [&](StringView suffix) {
@@ -1364,7 +1418,7 @@ static fn line_opens_subcommand_section(StringView trimmed) wontthrow -> bool
           continue;
         }
         let const candidate = trimmed.substring_of_length(i, needle.length);
-        let const is_equal = [&]() {
+        let const is_equal  = [&]() {
           for (usize j = 0; j < needle.length; j++) {
             let a = candidate[j];
             let b = needle[j];
@@ -1405,7 +1459,8 @@ static fn line_opens_subcommand_section(StringView trimmed) wontthrow -> bool
           do_equal_ignoring_case(StringView{"subcommands"}));
 }
 
-static fn line_is_subcommand_group_header(StringView trimmed) wontthrow -> bool
+static fn
+line_is_subcommand_group_header(StringView trimmed) wontthrow -> bool
 {
   if (trimmed.is_empty()) return false;
   if (line_opens_subcommand_section(trimmed)) return true;
@@ -1418,30 +1473,31 @@ static fn line_is_subcommand_group_header(StringView trimmed) wontthrow -> bool
          do_contains(StringView{"see also:"});
 }
 
-static fn parse_help_subcommands(StringView text, StringView command) throws
+static fn
+parse_help_subcommands(StringView text, StringView command) throws
     -> ArrayList<help_entry>
 {
-  let subcommands = ArrayList<help_entry>{heap_allocator()};
-  let seen = HashSet{heap_allocator()};
-  let in_section = false;
-  let saw_entry_in_section = false;
-  usize i = 0;
+  let   subcommands          = ArrayList<help_entry>{heap_allocator()};
+  let   seen                 = HashSet{heap_allocator()};
+  let   in_section           = false;
+  let   saw_entry_in_section = false;
+  usize i                    = 0;
 
   while (i < text.length) {
     let const raw = text.next_line(i);
 
     let const trim_start = skip_blanks(raw, 0);
-    let const trimmed = raw.trim_blanks();
+    let const trimmed    = raw.trim_blanks();
 
     if (line_opens_subcommand_section(trimmed)) {
       LOG(Debug, "help parse opens a subcommand section at '%.*s'",
           static_cast<int>(trimmed.length), trimmed.data);
-      in_section = true;
+      in_section           = true;
       saw_entry_in_section = false;
       continue;
     }
     if (trim_start == 0 && line_is_subcommand_group_header(trimmed)) {
-      in_section = true;
+      in_section           = true;
       saw_entry_in_section = false;
       continue;
     }
@@ -1485,8 +1541,8 @@ static fn parse_help_subcommands(StringView text, StringView command) throws
               .substring_of_length(column_end, entry_text.length - column_end)
               .trim_blanks();
 
-    let const column = entry_text.substring_of_length(0, column_end);
-    usize alias_start = 0;
+    let const column      = entry_text.substring_of_length(0, column_end);
+    usize     alias_start = 0;
 
     while (alias_start < column.length) {
       let alias_end = alias_start;
@@ -1513,17 +1569,21 @@ static fn parse_help_subcommands(StringView text, StringView command) throws
   return subcommands;
 }
 
-static fn help_subcommands_for(EvalContext &context, StringView command,
-                               StringView subcommand = {}) throws
+static fn
+help_subcommands_for(EvalContext &context,
+                     StringView   command,
+                     StringView   subcommand = {}) throws
     -> const ArrayList<help_entry> &
 {
   return help_entries_for(HELP_OUTPUT_CACHE.subcommand_entries, context,
                           command, subcommand);
 }
 
-static fn is_known_help_subcommand(EvalContext &context, StringView command,
-                                   StringView subcommand_prefix,
-                                   StringView word) throws -> bool
+static fn
+is_known_help_subcommand(EvalContext &context,
+                         StringView   command,
+                         StringView   subcommand_prefix,
+                         StringView   word) throws -> bool
 {
   for (let const &entry :
        help_subcommands_for(context, command, subcommand_prefix))
@@ -1534,9 +1594,11 @@ static fn is_known_help_subcommand(EvalContext &context, StringView command,
 
 static constexpr usize MAX_SUBCOMMAND_DEPTH = 4;
 
-static fn settled_subcommand_chain(EvalContext &context,
-                                   StringView resolved_command, StringView line,
-                                   usize token_start) throws -> String
+static fn
+settled_subcommand_chain(EvalContext &context,
+                         StringView   resolved_command,
+                         StringView   line,
+                         usize        token_start) throws -> String
 {
   let chain = String{heap_allocator()};
 
@@ -1544,7 +1606,7 @@ static fn settled_subcommand_chain(EvalContext &context,
   if (surface_command.is_empty()) return chain;
 
   usize depth_count = 0;
-  usize position = static_cast<usize>(surface_command.data - line.data) +
+  usize position    = static_cast<usize>(surface_command.data - line.data) +
                    surface_command.length;
 
   while (depth_count < MAX_SUBCOMMAND_DEPTH) {
@@ -1568,10 +1630,13 @@ static fn settled_subcommand_chain(EvalContext &context,
   return chain;
 }
 
-fn internal::complete_from_help(StringView line, StringView token,
-                                usize token_start, EvalContext &context,
-                                StringMap<String> &descriptions,
-                                completion_mode mode) throws
+fn
+internal::complete_from_help(StringView         line,
+                             StringView         token,
+                             usize              token_start,
+                             EvalContext       &context,
+                             StringMap<String> &descriptions,
+                             completion_mode    mode) throws
     -> Maybe<ArrayList<String>>
 {
   let const is_for_listing = mode == completion_mode::Listing;
@@ -1601,11 +1666,13 @@ fn internal::complete_from_help(StringView line, StringView token,
   return matches;
 }
 
-fn internal::complete_from_help_subcommands(StringView line, StringView token,
-                                            usize token_start,
-                                            EvalContext &context,
-                                            StringMap<String> &descriptions,
-                                            completion_mode mode) throws
+fn
+internal::complete_from_help_subcommands(StringView         line,
+                                         StringView         token,
+                                         usize              token_start,
+                                         EvalContext       &context,
+                                         StringMap<String> &descriptions,
+                                         completion_mode    mode) throws
     -> Maybe<ArrayList<String>>
 {
   let const is_for_listing = mode == completion_mode::Listing;
@@ -1655,9 +1722,9 @@ fn internal::complete_from_help_subcommands(StringView line, StringView token,
 
 static StringMap<String> HINT_SYNOPSIS_ROWS{heap_allocator()};
 
-static pure fn find_synopsis_form(const SynopsisList &synopsis,
-                                  StringView subcommand_word) wontthrow
-    -> StringView
+static pure fn
+find_synopsis_form(const SynopsisList &synopsis,
+                   StringView          subcommand_word) wontthrow -> StringView
 {
   constexpr StringView FORM_SEPARATOR{" | "};
 
@@ -1666,7 +1733,7 @@ static pure fn find_synopsis_form(const SynopsisList &synopsis,
 
     while (form_start <= line.length) {
       let const separator = line.find_substring(FORM_SEPARATOR, form_start);
-      let const form_end = separator.has_value() ? *separator : line.length;
+      let const form_end  = separator.has_value() ? *separator : line.length;
       let const form =
           line.substring_of_length(form_start, form_end - form_start);
       if (form.starts_with(subcommand_word) &&
@@ -1685,9 +1752,11 @@ static pure fn find_synopsis_form(const SynopsisList &synopsis,
   return StringView{};
 }
 
-static fn synopsis_row_of(StringView key, StringView display_name,
-                          const SynopsisList *synopsis,
-                          StringView subcommand_word = {}) throws -> StringView
+static fn
+synopsis_row_of(StringView          key,
+                StringView          display_name,
+                const SynopsisList *synopsis,
+                StringView          subcommand_word = {}) throws -> StringView
 {
   if (let const cached = HINT_SYNOPSIS_ROWS.find(key); cached.has_value())
     return cached->view();
@@ -1711,16 +1780,20 @@ static fn synopsis_row_of(StringView key, StringView display_name,
   return HINT_SYNOPSIS_ROWS.set(key, steal(row))->view();
 }
 
-static fn append_flag_row(String &out, StringView flag_forms,
-                          StringView description) throws -> void
+static fn
+append_flag_row(String    &out,
+                StringView flag_forms,
+                StringView description) throws -> void
 {
   out.append(flag_forms);
   out.append(StringView{": "});
   out.append(description);
 }
 
-static fn describe_registered_flag(const FlagList &flags, StringView flag,
-                                   String &out) throws -> bool
+static fn
+describe_registered_flag(const FlagList &flags,
+                         StringView      flag,
+                         String         &out) throws -> bool
 {
   for (let const *candidate : flags) {
     let const is_short = flag.length == 2 && flag[1] != '-' &&
@@ -1770,8 +1843,10 @@ static fn describe_registered_flag(const FlagList &flags, StringView flag,
   return false;
 }
 
-static fn describe_cached_flag(const ArrayList<help_entry> &entries,
-                               StringView flag, String &out) throws -> bool
+static fn
+describe_cached_flag(const ArrayList<help_entry> &entries,
+                     StringView                   flag,
+                     String                      &out) throws -> bool
 {
   for (let const &entry : entries) {
     if (entry.name.view() != flag || entry.description.is_empty()) {
@@ -1788,15 +1863,18 @@ static fn describe_cached_flag(const ArrayList<help_entry> &entries,
 
 struct hint_source
 {
-  StringView header{};
-  StringView synopsis{};
-  const FlagList *flags{nullptr};
+  StringView                   header{};
+  StringView                   synopsis{};
+  const FlagList              *flags{nullptr};
   const ArrayList<help_entry> *manpage_entries{nullptr};
   const ArrayList<help_entry> *help_entries{nullptr};
 };
 
-static fn flag_under_caret(StringView token, usize cursor_in_token,
-                           String &whole, String &letter) throws -> void
+static fn
+flag_under_caret(StringView token,
+                 usize      cursor_in_token,
+                 String    &whole,
+                 String    &letter) throws -> void
 {
   let const equals = token.find_character('=');
   whole = String{equals.has_value() ? token.substring_of_length(0, *equals)
@@ -1815,21 +1893,21 @@ struct hint_target
   StringView token;
   StringView between;
   StringView first_word;
-  usize cursor_in_token{0};
+  usize      cursor_in_token{0};
 };
 
-static fn locate_hint_target(StringView line, usize cursor) throws
-    -> Maybe<hint_target>
+static fn
+locate_hint_target(StringView line, usize cursor) throws -> Maybe<hint_target>
 {
   if (cursor > line.length) cursor = line.length;
 
   let const substitution = command_substitution_range(line, cursor);
-  line = line.substring_of_length(substitution.start,
-                                  substitution.end - substitution.start);
+  line                   = line.substring_of_length(substitution.start,
+                                                    substitution.end - substitution.start);
   cursor -= substitution.start;
 
-  let const segment_start = command_segment_start(line, cursor);
-  let const segment = line.substring(segment_start);
+  let const segment_start     = command_segment_start(line, cursor);
+  let const segment           = line.substring(segment_start);
   let const cursor_in_segment = cursor - segment_start;
   let const command =
       command_word_of(segment.substring_of_length(0, cursor_in_segment));
@@ -1844,7 +1922,7 @@ static fn locate_hint_target(StringView line, usize cursor) throws
   let const bounds = find_token_bounds(segment, cursor_in_segment);
   if (bounds.start < command_end) return None;
 
-  let target = hint_target{};
+  let target     = hint_target{};
   target.command = command;
   target.token =
       segment.substring_of_length(bounds.start, bounds.end - bounds.start);
@@ -1866,16 +1944,17 @@ static constexpr StringView UTILITY_HINT_HEADER{"utility synopsis\n"};
 static constexpr StringView COMMAND_HINT_HEADER{"command synopsis\n"};
 static constexpr StringView SUBCOMMAND_HINT_HEADER{"subcommand synopsis\n"};
 
-static fn describe_function(StringView name, EvalContext &context,
-                            String &out) throws -> bool
+static fn
+describe_function(StringView name, EvalContext &context, String &out) throws
+    -> bool
 {
   if (context.function_store().find_storage(name) == nullptr) return false;
 
   out.append(FUNCTION_HINT_HEADER);
-  let const *info = context.function_definition_info_of(name);
-  let const source_name = info != nullptr
-                              ? source_name_at(info->source_name_index)
-                              : Maybe<StringView>{None};
+  let const *info        = context.function_definition_info_of(name);
+  let const  source_name = info != nullptr
+                               ? source_name_at(info->source_name_index)
+                               : Maybe<StringView>{None};
   if (!source_name.has_value() || source_name->is_empty() ||
       source_identity_kind_at(info->source_name_index) !=
           source_identity_kind::File)
@@ -1913,25 +1992,28 @@ static fn describe_function(StringView name, EvalContext &context,
   return true;
 }
 
-fn compose_command_hint(StringView line, usize cursor, EvalContext &context,
-                        String &out) throws -> bool
+fn
+compose_command_hint(StringView   line,
+                     usize        cursor,
+                     EvalContext &context,
+                     String      &out) throws -> bool
 {
   out.clear();
 
   let const scratch = ScopedCompletionScratch{};
-  let const target = locate_hint_target(line, cursor);
+  let const target  = locate_hint_target(line, cursor);
   if (!target.has_value()) return false;
 
-  let const command = target->command;
-  let const token = target->token;
-  let const between = target->between;
+  let const command    = target->command;
+  let const token      = target->token;
+  let const between    = target->between;
   let const first_word = target->first_word;
   let const has_subcommand_word =
       !first_word.is_empty() && first_word[0] != '-';
 
-  let const is_flag = token.length >= 2 && token[0] == '-';
-  let whole_flag = String{heap_allocator()};
-  let letter_flag = String{heap_allocator()};
+  let const is_flag     = token.length >= 2 && token[0] == '-';
+  let       whole_flag  = String{heap_allocator()};
+  let       letter_flag = String{heap_allocator()};
   if (is_flag)
     flag_under_caret(token, target->cursor_in_token, whole_flag, letter_flag);
 
@@ -1950,17 +2032,17 @@ fn compose_command_hint(StringView line, usize cursor, EvalContext &context,
     if (bundled.has_value()) {
       let key = String{"k:"};
       key.append(first_word);
-      source.header = UTILITY_HINT_HEADER;
+      source.header   = UTILITY_HINT_HEADER;
       source.synopsis = synopsis_row_of(
           key.view(), first_word, koshkit::koshkit_util_synopsis(*bundled));
       source.flags = koshkit::koshkit_util_flag_list(*bundled);
     } else {
       let const *synopsis = builtin_help_synopsis(*builtin_kind);
-      let const subcommand_word =
+      let const  subcommand_word =
           has_subcommand_word && synopsis != nullptr &&
                   !find_synopsis_form(*synopsis, first_word).is_empty()
-              ? first_word
-              : StringView{};
+               ? first_word
+               : StringView{};
       let key = String{"b:"};
       key.append(name.view());
       if (!subcommand_word.is_empty()) {
@@ -1973,15 +2055,15 @@ fn compose_command_hint(StringView line, usize cursor, EvalContext &context,
       source.flags = builtin_flag_list(*builtin_kind);
     }
   } else {
-    let page_key = String{name.view()};
-    let has_manpage = false;
+    let page_key           = String{name.view()};
+    let has_manpage        = false;
     let is_subcommand_page = false;
     if (has_subcommand_word) {
       let subcommand_key = String{name.view()};
       subcommand_key.push(' ');
       subcommand_key.append(first_word);
       if (MANPAGE_CACHE.hint_pages.find(subcommand_key.view()).has_value()) {
-        page_key = steal(subcommand_key);
+        page_key           = steal(subcommand_key);
         is_subcommand_page = true;
       }
     }
@@ -2003,9 +2085,9 @@ fn compose_command_hint(StringView line, usize cursor, EvalContext &context,
       }
     }
 
-    let chain = String{heap_allocator()};
+    let   chain          = String{heap_allocator()};
     usize chain_position = 0;
-    usize depth_count = 0;
+    usize depth_count    = 0;
 
     while (depth_count < MAX_SUBCOMMAND_DEPTH) {
       let const word = between.next_ascii_whitespace_word(chain_position);
@@ -2052,7 +2134,7 @@ fn compose_command_hint(StringView line, usize cursor, EvalContext &context,
       {
         let key = String{"k:"};
         key.append(name.view());
-        source.header = UTILITY_HINT_HEADER;
+        source.header   = UTILITY_HINT_HEADER;
         source.synopsis = synopsis_row_of(
             key.view(), name.view(), koshkit::koshkit_util_synopsis(*bundled));
         source.flags = koshkit::koshkit_util_flag_list(*bundled);
@@ -2120,17 +2202,18 @@ fn compose_command_hint(StringView line, usize cursor, EvalContext &context,
 
 struct idle_load
 {
-  idle_load_kind kind;
-  String key;
-  String command;
-  String hint_key;
+  idle_load_kind     kind;
+  String             key;
+  String             command;
+  String             hint_key;
   os::ProgramCapture capture;
 };
 
 static Maybe<idle_load> IDLE_LOAD{};
 
-static fn finish_idle_load(idle_load &load,
-                           os::ProgramCapture::State state) throws -> void
+static fn
+finish_idle_load(idle_load &load, os::ProgramCapture::State state) throws
+    -> void
 {
   let const did_finish = state == os::ProgramCapture::State::Finished;
   if (load.kind == idle_load_kind::Manpath) {
@@ -2157,17 +2240,20 @@ static fn finish_idle_load(idle_load &load,
     return;
   }
 
-  let const page = load.capture.take_output();
-  let const &options = store_manpage_options(load.key.view(), page.view());
-  let const synopsis = MANPAGE_CACHE.synopses.find(load.key.view());
+  let const  page     = load.capture.take_output();
+  let const &options  = store_manpage_options(load.key.view(), page.view());
+  let const  synopsis = MANPAGE_CACHE.synopses.find(load.key.view());
   if (!options.is_empty() || (synopsis.has_value() && !synopsis->is_empty())) {
     MANPAGE_CACHE.hint_pages.set(load.hint_key.view(), String{load.key.view()});
   }
 }
 
-static fn start_idle_load(idle_load_kind kind, StringView key,
-                          StringView command, StringView hint_key,
-                          const ArrayList<String> &argv) throws -> bool
+static fn
+start_idle_load(idle_load_kind           kind,
+                StringView               key,
+                StringView               command,
+                StringView               hint_key,
+                const ArrayList<String> &argv) throws -> bool
 {
   let capture = os::ProgramCapture::start(argv, HELP_FORK_BATCH_TIMEOUT_NANOS);
   if (!capture.has_value()) return false;
@@ -2180,8 +2266,10 @@ static fn start_idle_load(idle_load_kind kind, StringView key,
   return true;
 }
 
-static fn adopt_idle_load(idle_load_kind kind, StringView key,
-                          EvalContext &context) throws -> bool
+static fn
+adopt_idle_load(idle_load_kind kind,
+                StringView     key,
+                EvalContext   &context) throws -> bool
 {
   if (!IDLE_LOAD.has_value() || IDLE_LOAD->kind != kind ||
       IDLE_LOAD->key.view() != key)
@@ -2217,9 +2305,12 @@ static fn adopt_idle_load(idle_load_kind kind, StringView key,
   return true;
 }
 
-static fn defer_idle_load(idle_load_kind kind, StringView key,
-                          StringView command, StringView hint_key,
-                          const Maybe<ArrayList<String>> &argv) throws -> void
+static fn
+defer_idle_load(idle_load_kind                  kind,
+                StringView                      key,
+                StringView                      command,
+                StringView                      hint_key,
+                const Maybe<ArrayList<String>> &argv) throws -> void
 {
   if (IDLE_LOAD.has_value() && IDLE_LOAD->kind == kind &&
       IDLE_LOAD->key.view() == key)
@@ -2247,23 +2338,26 @@ ScopedDocumentationDeferral::~ScopedDocumentationDeferral()
 
 static slow_gather_notice SLOW_GATHER_NOTICE = nullptr;
 
-fn set_slow_gather_notice(slow_gather_notice notice) wontthrow -> void
+fn
+set_slow_gather_notice(slow_gather_notice notice) wontthrow -> void
 {
   SLOW_GATHER_NOTICE = notice;
 }
 
-fn notice_slow_gather() wontthrow -> void
+fn
+notice_slow_gather() wontthrow -> void
 {
   if (IS_DEFERRING_DOCUMENTATION && SLOW_GATHER_NOTICE != nullptr) {
     SLOW_GATHER_NOTICE();
   }
 }
 
-static fn start_next_idle_load(StringView line, usize cursor,
-                               EvalContext &context) throws -> bool
+static fn
+start_next_idle_load(StringView line, usize cursor, EvalContext &context) throws
+    -> bool
 {
   let const scratch = ScopedCompletionScratch{};
-  let const target = locate_hint_target(line, cursor);
+  let const target  = locate_hint_target(line, cursor);
   if (!target.has_value()) return false;
 
   let const name = resolve_completion_alias(target->command, context);
@@ -2279,13 +2373,13 @@ static fn start_next_idle_load(StringView line, usize cursor,
     return false;
   }
 
-  let const command = resolve_completion_command(name.view(), context);
+  let const command    = resolve_completion_command(name.view(), context);
   let const first_word = target->first_word;
   let const has_subcommand_word =
       !first_word.is_empty() && first_word[0] != '-';
 
   let const prefers_help = command_prefers_help_over_manpage(command.view());
-  let const page_name = manpage_name_for(command.view());
+  let const page_name    = manpage_name_for(command.view());
   if (!prefers_help &&
       !MANPAGE_CACHE.option_entries.find(page_name.view()).has_value())
   {
@@ -2387,8 +2481,11 @@ static fn start_next_idle_load(StringView line, usize cursor,
   return false;
 }
 
-fn step_idle_documentation(StringView line, usize cursor, EvalContext &context,
-                           bool should_start_load) throws
+fn
+step_idle_documentation(StringView   line,
+                        usize        cursor,
+                        EvalContext &context,
+                        bool         should_start_load) throws
     -> idle_documentation_progress
 {
   let progress = idle_documentation_progress{};
@@ -2419,7 +2516,8 @@ fn step_idle_documentation(StringView line, usize cursor, EvalContext &context,
   return progress;
 }
 
-fn abandon_idle_documentation() throws -> void
+fn
+abandon_idle_documentation() throws -> void
 {
   if (!IDLE_LOAD.has_value()) return;
 

@@ -26,20 +26,24 @@ namespace koshka::koshkit {
 
 constexpr usize STRINGS_OUTPUT_FLUSH_BYTE_COUNT = 64 * 1024;
 
-static pure fn is_strings_printable(u8 byte) wontthrow -> bool
+static pure fn
+is_strings_printable(u8 byte) wontthrow -> bool
 {
   return (byte >= 0x20 && byte <= 0x7e) || byte == '\t';
 }
 
-static fn append_strings_record(String &output, StringView text, u64 offset,
-                                char radix) throws -> void
+static fn
+append_strings_record(String    &output,
+                      StringView text,
+                      u64        offset,
+                      char       radix) throws -> void
 {
   if (radix != '\0') {
     int_base base = int_base::decimal;
     switch (radix) {
     case 'o': base = int_base::octal; break;
     case 'x': base = int_base::hex; break;
-    default: break;
+    default:  break;
     }
 
     let const digits =
@@ -54,9 +58,11 @@ static fn append_strings_record(String &output, StringView text, u64 offset,
   output += '\n';
 }
 
-fn Strings::execute(const ExecContext &ec, EvalContext &cxt,
-                    const ArrayList<String> &args,
-                    const ArrayList<SourceLocation> &arg_locations) const throws
+fn
+Strings::execute(const ExecContext               &ec,
+                 EvalContext                     &cxt,
+                 const ArrayList<String>         &args,
+                 const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
@@ -76,8 +82,8 @@ fn Strings::execute(const ExecContext &ec, EvalContext &cxt,
   }
   char radix = '\0';
   if (FLAG_STRINGS_RADIX.is_set()) {
-    let const radix_value = FLAG_STRINGS_RADIX.value();
-    let is_valid_radix = false;
+    let const radix_value    = FLAG_STRINGS_RADIX.value();
+    let       is_valid_radix = false;
 
     if (radix_value.length == 1) {
       switch (radix_value[0]) {
@@ -103,12 +109,12 @@ fn Strings::execute(const ExecContext &ec, EvalContext &cxt,
   let const sources =
       source_list_from_operands(operands, cxt.scratch_allocator());
   let output = String{cxt.scratch_allocator()};
-  let run = String{cxt.scratch_allocator()};
+  let run    = String{cxt.scratch_allocator()};
   let reader = SourceBatchReader{ec, sources, cxt.scratch_allocator()};
   let chunks = ArrayList<SourceBatchReader::Chunk>{cxt.scratch_allocator()};
-  u64 byte_offset = 0;
-  u64 run_offset = 0;
-  i32 status = 0;
+  u64 byte_offset    = 0;
+  u64 run_offset     = 0;
+  i32 status         = 0;
   let const do_flush = [&]() throws -> void {
     if (run.length() >= minimum_length)
       append_strings_record(output, run.view(), run_offset, radix);

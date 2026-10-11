@@ -23,13 +23,25 @@ KOSHKIT_UTIL_DECL("[-shxT] [--tree] [path ...]",
                   "The du utility prints the disk usage of each path.");
 
 FLAG(DU_SUMMARY, Bool, 's', "", "Print only the total for each path.");
-FLAG(DU_HUMAN, Bool, 'h', "",
+FLAG(DU_HUMAN,
+     Bool,
+     'h',
+     "",
      "Print the size in a human-readable form such as 4.0K or 1.5M.");
-FLAG(DU_TREE, Bool, '\0', "tree",
+FLAG(DU_TREE,
+     Bool,
+     '\0',
+     "tree",
      "Print the entries as a tree, largest children first.");
-FLAG(DU_ONE_FILE_SYSTEM, Bool, 'x', "one-file-system",
+FLAG(DU_ONE_FILE_SYSTEM,
+     Bool,
+     'x',
+     "one-file-system",
      "Skip entries on file systems other than each path's file system.");
-FLAG(DU_TOP, Bool, 'T', "top-largest",
+FLAG(DU_TOP,
+     Bool,
+     'T',
+     "top-largest",
      "Print a human-readable tree of only the largest entries and their "
      "ancestors in at most 36 lines.");
 
@@ -41,39 +53,39 @@ static constexpr usize TOP_ROW_LIMIT = 36;
 
 struct du_output_row
 {
-  u64 byte_count;
-  String path;
+  u64                     byte_count;
+  String                  path;
   colors::file_entry_type type;
 };
 
 struct du_sort_key
 {
-  u64 byte_count;
+  u64        byte_count;
   StringView path_suffix;
-  usize row_index;
+  usize      row_index;
 };
 
 struct du_size_result
 {
-  u64 byte_count;
+  u64  byte_count;
   bool should_emit;
 };
 
 struct du_directory_frame
 {
-  Path path;
+  Path  path;
   usize parent_index{SIZE_MAX};
-  u64 total_byte_count{0};
+  u64   total_byte_count{0};
   usize pending_directory_count{0};
-  bool is_enumerated{false};
-  bool has_failure{false};
-  bool is_complete{false};
+  bool  is_enumerated{false};
+  bool  has_failure{false};
+  bool  is_complete{false};
 };
 
 struct du_stat_work
 {
-  const char *name{nullptr};
-  usize parent_index{SIZE_MAX};
+  const char     *name{nullptr};
+  usize           parent_index{SIZE_MAX};
   os::file_status status{};
 };
 
@@ -86,23 +98,23 @@ struct du_operand_span
 
 struct du_tree_node
 {
-  StringView path;
-  StringView name;
-  u64 byte_count{0};
-  u64 child_total_byte_count{0};
-  usize parent_index{SIZE_MAX};
-  usize first_child{0};
-  usize child_count{0};
+  StringView              path;
+  StringView              name;
+  u64                     byte_count{0};
+  u64                     child_total_byte_count{0};
+  usize                   parent_index{SIZE_MAX};
+  usize                   first_child{0};
+  usize                   child_count{0};
   colors::file_entry_type type{colors::file_entry_type::Directory};
-  bool has_size{false};
-  bool is_kept{false};
+  bool                    has_size{false};
+  bool                    is_kept{false};
 };
 
 struct du_tree_order_key
 {
-  usize node_index;
-  usize parent_index;
-  u64 byte_count;
+  usize      node_index;
+  usize      parent_index;
+  u64        byte_count;
   StringView path;
 };
 
@@ -116,17 +128,20 @@ struct du_tree_cursor
 
 struct du_tree_request
 {
-  const ArrayList<du_output_row> &rows;
+  const ArrayList<du_output_row>   &rows;
   const ArrayList<du_operand_span> &spans;
-  const ArrayList<Path> &targets;
-  bool is_human;
-  usize row_limit;
-  bool should_color;
+  const ArrayList<Path>            &targets;
+  bool                              is_human;
+  usize                             row_limit;
+  bool                              should_color;
 };
 
-fn append_output_row(ArrayList<du_output_row> &rows, u64 size, StringView path,
-                     colors::file_entry_type type, Allocator allocator) throws
-    -> void
+fn
+append_output_row(ArrayList<du_output_row> &rows,
+                  u64                       size,
+                  StringView                path,
+                  colors::file_entry_type   type,
+                  Allocator                 allocator) throws -> void
 {
   rows.push({
       size, String{allocator, path},
@@ -134,10 +149,15 @@ fn append_output_row(ArrayList<du_output_row> &rows, u64 size, StringView path,
   });
 }
 
-static fn total_size(const ExecContext &ec, EvalContext &cxt, const Path &path,
-                     bool &has_failure, ArrayList<du_output_row> *output_rows,
-                     HashSet &seen_links, Allocator allocator,
-                     const os::file_status *known_status = nullptr) throws
+static fn
+total_size(const ExecContext        &ec,
+           EvalContext              &cxt,
+           const Path               &path,
+           bool                     &has_failure,
+           ArrayList<du_output_row> *output_rows,
+           HashSet                  &seen_links,
+           Allocator                 allocator,
+           const os::file_status    *known_status = nullptr) throws
     -> Maybe<du_size_result>
 {
   os::file_status queried_status{};
@@ -154,9 +174,9 @@ static fn total_size(const ExecContext &ec, EvalContext &cxt, const Path &path,
     known_status = &queried_status;
   }
 
-  let const root_device_id = known_status->device_id;
+  let const root_device_id     = known_status->device_id;
   let const is_one_file_system = FLAG_DU_ONE_FILE_SYSTEM.is_enabled();
-  let const type_letter = os::file_type_letter(known_status->mode);
+  let const type_letter        = os::file_type_letter(known_status->mode);
   if (type_letter != 'd' && known_status->has_file_identity &&
       known_status->link_count > 1)
   {
@@ -185,19 +205,19 @@ static fn total_size(const ExecContext &ec, EvalContext &cxt, const Path &path,
     return du_size_result{allocated_byte_count, true};
   }
 
-  let wave_arena = BumpArena{};
-  let const wave_allocator = bump_allocator(wave_arena);
-  let list_arena = BumpArena{};
-  let const list_allocator = bump_allocator(list_arena);
-  let frames = ArrayList<du_directory_frame>{allocator};
-  let directory_queue = ArrayList<usize>{allocator};
-  let reusable_frame_indices = ArrayList<usize>{allocator};
-  let stat_work = ArrayList<du_stat_work>{allocator};
-  let stat_batch = os::Batch{allocator};
-  let batch_results = ArrayList<os::batch_result>{allocator};
-  let fallback_paths = ArrayList<Path>{allocator};
-  let fallback_batch = os::Batch{allocator};
-  let fallback_results = ArrayList<os::batch_result>{allocator};
+  let       wave_arena             = BumpArena{};
+  let const wave_allocator         = bump_allocator(wave_arena);
+  let       list_arena             = BumpArena{};
+  let const list_allocator         = bump_allocator(list_arena);
+  let       frames                 = ArrayList<du_directory_frame>{allocator};
+  let       directory_queue        = ArrayList<usize>{allocator};
+  let       reusable_frame_indices = ArrayList<usize>{allocator};
+  let       stat_work              = ArrayList<du_stat_work>{allocator};
+  let       stat_batch             = os::Batch{allocator};
+  let       batch_results          = ArrayList<os::batch_result>{allocator};
+  let       fallback_paths         = ArrayList<Path>{allocator};
+  let       fallback_batch         = os::Batch{allocator};
+  let       fallback_results       = ArrayList<os::batch_result>{allocator};
   frames.reserve(32);
   directory_queue.reserve(32);
   stat_work.reserve(512);
@@ -212,7 +232,7 @@ static fn total_size(const ExecContext &ec, EvalContext &cxt, const Path &path,
       false, false, false
   });
   directory_queue.push(0);
-  bool is_root_complete = false;
+  bool           is_root_complete = false;
   du_size_result root_result{0, false};
 
   let const do_try_complete = [&](usize frame_index) throws -> void {
@@ -236,7 +256,7 @@ static fn total_size(const ExecContext &ec, EvalContext &cxt, const Path &path,
                             colors::file_entry_type::Directory, allocator);
         if (frame.parent_index == SIZE_MAX) {
           is_root_complete = true;
-          root_result = du_size_result{frame.total_byte_count, true};
+          root_result      = du_size_result{frame.total_byte_count, true};
 
           return;
         }
@@ -247,7 +267,7 @@ static fn total_size(const ExecContext &ec, EvalContext &cxt, const Path &path,
                                          "cannot read '" + frame.path.text() +
                                              "': the total size is too large");
           parent.has_failure = true;
-          has_failure = true;
+          has_failure        = true;
         } else {
           parent.total_byte_count += frame.total_byte_count;
         }
@@ -262,7 +282,7 @@ static fn total_size(const ExecContext &ec, EvalContext &cxt, const Path &path,
       }
 
       let const parent_index = frame.parent_index;
-      let &parent = frames[parent_index];
+      let      &parent       = frames[parent_index];
       if (parent.pending_directory_count != 0) parent.pending_directory_count--;
       frame.path = Path{};
       reusable_frame_indices.push(frame_index);
@@ -272,7 +292,7 @@ static fn total_size(const ExecContext &ec, EvalContext &cxt, const Path &path,
 
   let const do_process_stat_work = [&](du_stat_work &work, i32 error_number)
                                        throws -> void {
-    let const parent_index = work.parent_index;
+    let const parent_index       = work.parent_index;
     let const do_make_child_path = [&]() throws -> Path {
       let child_path = Path{frames[parent_index].path.view(), wave_allocator};
       child_path.append(StringView{work.name});
@@ -288,7 +308,7 @@ static fn total_size(const ExecContext &ec, EvalContext &cxt, const Path &path,
           "cannot read '" + child_path.text() +
               "': " + os::last_system_error_message());
       frames[parent_index].has_failure = true;
-      has_failure = true;
+      has_failure                      = true;
 
       return;
     }
@@ -313,7 +333,7 @@ static fn total_size(const ExecContext &ec, EvalContext &cxt, const Path &path,
                                      "cannot read '" + child_path.text() +
                                          "': the total size is too large");
       frames[parent_index].has_failure = true;
-      has_failure = true;
+      has_failure                      = true;
 
       return;
     }
@@ -351,7 +371,7 @@ static fn total_size(const ExecContext &ec, EvalContext &cxt, const Path &path,
                                      "cannot read '" + child_path.text() +
                                          "': the total size is too large");
       frames[parent_index].has_failure = true;
-      has_failure = true;
+      has_failure                      = true;
 
       return;
     }
@@ -422,7 +442,7 @@ static fn total_size(const ExecContext &ec, EvalContext &cxt, const Path &path,
       let const list_mark = list_arena.mark();
       defer { list_arena.release(list_mark); };
       let const frame_index = directory_queue[directory_index];
-      let const listing = os::list_directory_for_batch(
+      let const listing     = os::list_directory_for_batch(
           frames[frame_index].path.view(), list_allocator);
       let const directory = listing.directory;
       defer
@@ -435,9 +455,9 @@ static fn total_size(const ExecContext &ec, EvalContext &cxt, const Path &path,
             ec, cxt, "du",
             "cannot read '" + frames[frame_index].path.text() +
                 "': " + os::last_system_error_message());
-        frames[frame_index].has_failure = true;
+        frames[frame_index].has_failure   = true;
         frames[frame_index].is_enumerated = true;
-        has_failure = true;
+        has_failure                       = true;
         do_try_complete(frame_index);
         continue;
       }
@@ -464,12 +484,14 @@ static fn total_size(const ExecContext &ec, EvalContext &cxt, const Path &path,
   return root_result;
 }
 
-static fn build_tree_nodes(const du_tree_request &request, Allocator allocator,
-                           ArrayList<du_tree_node> &nodes,
-                           ArrayList<usize> &root_indices) throws -> bool
+static fn
+build_tree_nodes(const du_tree_request   &request,
+                 Allocator                allocator,
+                 ArrayList<du_tree_node> &nodes,
+                 ArrayList<usize>        &root_indices) throws -> bool
 {
   for (let const &span : request.spans) {
-    let const target = request.targets[span.target_index].view();
+    let const target     = request.targets[span.target_index].view();
     let const root_index = nodes.count();
     nodes.push(du_tree_node{target, target});
     root_indices.push(root_index);
@@ -482,8 +504,8 @@ static fn build_tree_nodes(const du_tree_request &request, Allocator allocator,
       let const do_get_or_create_child =
           [&](usize parent_index, usize component_end, usize component_start)
               throws -> usize {
-        let const key = path.substring_of_length(0, component_end);
-        let &slot = node_by_path.get_or_create(key, SIZE_MAX);
+        let const key  = path.substring_of_length(0, component_end);
+        let      &slot = node_by_path.get_or_create(key, SIZE_MAX);
         if (slot != SIZE_MAX) return slot;
 
         let const child_index = nodes.count();
@@ -491,7 +513,7 @@ static fn build_tree_nodes(const du_tree_request &request, Allocator allocator,
             key, path.substring_of_length(component_start,
                                           component_end - component_start)});
         nodes[child_index].parent_index = parent_index;
-        slot = child_index;
+        slot                            = child_index;
 
         return child_index;
       };
@@ -546,10 +568,10 @@ static fn build_tree_nodes(const du_tree_request &request, Allocator allocator,
             do_get_or_create_child(parent_index, last_end, last_start);
       }
 
-      let const &row = request.rows[span.first_row + offset];
+      let const &row                  = request.rows[span.first_row + offset];
       nodes[current_index].byte_count = row.byte_count;
-      nodes[current_index].type = row.type;
-      nodes[current_index].has_size = true;
+      nodes[current_index].type       = row.type;
+      nodes[current_index].has_size   = true;
     }
   }
 
@@ -568,8 +590,9 @@ static fn build_tree_nodes(const du_tree_request &request, Allocator allocator,
   return true;
 }
 
-static fn is_tree_key_before(const du_tree_order_key &left,
-                             const du_tree_order_key &right) wontthrow -> bool
+static fn
+is_tree_key_before(const du_tree_order_key &left,
+                   const du_tree_order_key &right) wontthrow -> bool
 {
   if (left.byte_count != right.byte_count)
     return left.byte_count > right.byte_count;
@@ -577,9 +600,10 @@ static fn is_tree_key_before(const du_tree_order_key &left,
   return left.path < right.path;
 }
 
-static fn order_tree_children(ArrayList<du_tree_node> &nodes,
-                              ArrayList<usize> &child_order,
-                              Allocator allocator) throws -> void
+static fn
+order_tree_children(ArrayList<du_tree_node> &nodes,
+                    ArrayList<usize>        &child_order,
+                    Allocator                allocator) throws -> void
 {
   let keys = ArrayList<du_tree_order_key>{allocator};
   keys.reserve(nodes.count());
@@ -609,10 +633,11 @@ static fn order_tree_children(ArrayList<du_tree_node> &nodes,
   }
 }
 
-static fn keep_largest_tree_nodes(ArrayList<du_tree_node> &nodes,
-                                  const ArrayList<usize> &root_indices,
-                                  usize row_limit, Allocator allocator) throws
-    -> void
+static fn
+keep_largest_tree_nodes(ArrayList<du_tree_node> &nodes,
+                        const ArrayList<usize>  &root_indices,
+                        usize                    row_limit,
+                        Allocator                allocator) throws -> void
 {
   let const top_count =
       row_limit > root_indices.count() ? row_limit - root_indices.count() : 0;
@@ -633,9 +658,9 @@ static fn keep_largest_tree_nodes(ArrayList<du_tree_node> &nodes,
       if (!is_tree_key_before(heap[index], heap[worst])) break;
 
       let const displaced = heap[index];
-      heap[index] = heap[worst];
-      heap[worst] = displaced;
-      index = worst;
+      heap[index]         = heap[worst];
+      heap[worst]         = displaced;
+      index               = worst;
     }
   };
 
@@ -651,7 +676,7 @@ static fn keep_largest_tree_nodes(ArrayList<du_tree_node> &nodes,
 
       while (child != 0 && is_tree_key_before(heap[(child - 1) / 2], key)) {
         heap[child] = heap[(child - 1) / 2];
-        child = (child - 1) / 2;
+        child       = (child - 1) / 2;
       }
 
       heap[child] = key;
@@ -664,8 +689,8 @@ static fn keep_largest_tree_nodes(ArrayList<du_tree_node> &nodes,
   for (let const root_index : root_indices)
     nodes[root_index].is_kept = true;
 
-  usize kept_row_count = root_indices.count();
-  let const selected_keys = steal(heap).make_sorted(is_tree_key_before);
+  usize     kept_row_count = root_indices.count();
+  let const selected_keys  = steal(heap).make_sorted(is_tree_key_before);
 
   for (let const &selected : selected_keys) {
     usize added_row_count = 0;
@@ -690,11 +715,13 @@ static fn keep_largest_tree_nodes(ArrayList<du_tree_node> &nodes,
   }
 }
 
-static fn render_tree(const ArrayList<du_tree_node> &nodes,
-                      const ArrayList<usize> &child_order,
-                      const ArrayList<usize> &sorted_roots,
-                      const du_tree_request &request, const ExecContext &ec,
-                      Allocator allocator) throws -> bool
+static fn
+render_tree(const ArrayList<du_tree_node> &nodes,
+            const ArrayList<usize>        &child_order,
+            const ArrayList<usize>        &sorted_roots,
+            const du_tree_request         &request,
+            const ExecContext             &ec,
+            Allocator                      allocator) throws -> bool
 {
   let rendered_sizes = ArrayList<String>{allocator};
   rendered_sizes.reserve(nodes.count());
@@ -714,7 +741,7 @@ static fn render_tree(const ArrayList<du_tree_node> &nodes,
     rendered_sizes.push(steal(rendered_size));
   }
 
-  let const should_color = request.should_color;
+  let const should_color       = request.should_color;
   let const do_find_last_shown = [&](usize node_index) wontthrow -> usize {
     let const &node = nodes[node_index];
 
@@ -726,9 +753,9 @@ static fn render_tree(const ArrayList<du_tree_node> &nodes,
     return SIZE_MAX;
   };
 
-  let output = String{allocator};
-  let prefix = String{allocator};
-  let cursors = ArrayList<du_tree_cursor>{allocator};
+  let       output         = String{allocator};
+  let       prefix         = String{allocator};
+  let       cursors        = ArrayList<du_tree_cursor>{allocator};
   let const do_append_line = [&](usize node_index, StringView connector,
                                  bool has_shown_children) throws -> void {
     let const size_text = rendered_sizes[node_index].view();
@@ -767,7 +794,7 @@ static fn render_tree(const ArrayList<du_tree_node> &nodes,
     while (!cursors.is_empty()) {
       if (os::INTERRUPT_REQUESTED) return false;
 
-      let &cursor = cursors.back();
+      let       &cursor = cursors.back();
       let const &parent = nodes[cursor.node_index];
 
       while (cursor.next_position < parent.child_count &&
@@ -782,8 +809,8 @@ static fn render_tree(const ArrayList<du_tree_node> &nodes,
         continue;
       }
 
-      let const position = cursor.next_position;
-      let const is_last = position == cursor.last_shown_position;
+      let const position    = cursor.next_position;
+      let const is_last     = position == cursor.last_shown_position;
       let const child_index = child_order[parent.first_child + position];
       cursor.next_position++;
       prefix.truncate(cursor.prefix_length);
@@ -803,13 +830,14 @@ static fn render_tree(const ArrayList<du_tree_node> &nodes,
   return true;
 }
 
-static fn print_tree_report(const du_tree_request &request,
-                            const ExecContext &ec, Allocator allocator) throws
-    -> bool
+static fn
+print_tree_report(const du_tree_request &request,
+                  const ExecContext     &ec,
+                  Allocator              allocator) throws -> bool
 {
-  let nodes = ArrayList<du_tree_node>{allocator};
+  let nodes        = ArrayList<du_tree_node>{allocator};
   let root_indices = ArrayList<usize>{allocator};
-  let child_order = ArrayList<usize>{allocator};
+  let child_order  = ArrayList<usize>{allocator};
   nodes.reserve(request.rows.count() + request.spans.count());
   if (!build_tree_nodes(request, allocator, nodes, root_indices)) return false;
 
@@ -830,7 +858,7 @@ static fn print_tree_report(const du_tree_request &request,
                                      nodes[root_index].path});
 
   let const sorted_root_keys = steal(root_keys).make_sorted(is_tree_key_before);
-  let sorted_roots = ArrayList<usize>{allocator};
+  let       sorted_roots     = ArrayList<usize>{allocator};
 
   for (let const &key : sorted_root_keys)
     sorted_roots.push(key.node_index);
@@ -838,17 +866,18 @@ static fn print_tree_report(const du_tree_request &request,
   return render_tree(nodes, child_order, sorted_roots, request, ec, allocator);
 }
 
-fn Du::execute(const ExecContext &ec, EvalContext &cxt,
-               const ArrayList<String> &args,
-               const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+fn
+Du::execute(const ExecContext               &ec,
+            EvalContext                     &cxt,
+            const ArrayList<String>         &args,
+            const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
-  let const allocator = cxt.scratch_allocator();
-  let targets = ArrayList<Path>{allocator};
-  let target_statuses = ArrayList<os::file_status>{allocator};
-  let is_target_status_known = ArrayList<bool>{allocator};
+  let const allocator              = cxt.scratch_allocator();
+  let       targets                = ArrayList<Path>{allocator};
+  let       target_statuses        = ArrayList<os::file_status>{allocator};
+  let       is_target_status_known = ArrayList<bool>{allocator};
   if (operands.is_empty()) {
     targets.push(Path{".", allocator});
   } else {
@@ -874,14 +903,14 @@ fn Du::execute(const ExecContext &ec, EvalContext &cxt,
   for (let const &result : target_results)
     is_target_status_known.push(result.error_number == 0);
 
-  let const is_top = FLAG_DU_TOP.is_enabled();
-  let const is_tree = is_top || FLAG_DU_TREE.is_enabled();
-  let operand_spans = ArrayList<du_operand_span>{allocator};
-  let output_rows = ArrayList<du_output_row>{allocator};
+  let const is_top        = FLAG_DU_TOP.is_enabled();
+  let const is_tree       = is_top || FLAG_DU_TREE.is_enabled();
+  let       operand_spans = ArrayList<du_operand_span>{allocator};
+  let       output_rows   = ArrayList<du_output_row>{allocator};
   output_rows.reserve(targets.count());
-  let seen_links = HashSet{allocator};
-  i32 status = 0;
-  bool has_failure = false;
+  let  seen_links      = HashSet{allocator};
+  i32  status          = 0;
+  bool has_failure     = false;
   bool was_interrupted = false;
 
   for (usize index = 0; index < targets.count(); index++) {
@@ -944,7 +973,7 @@ fn Du::execute(const ExecContext &ec, EvalContext &cxt,
 
   usize shared_path_prefix_length = 0;
   if (!output_rows.is_empty()) {
-    let const first_path = output_rows[0].path.view();
+    let const first_path      = output_rows[0].path.view();
     shared_path_prefix_length = first_path.length;
 
     for (usize row_index = 1; row_index < output_rows.count(); row_index++) {
@@ -984,9 +1013,9 @@ fn Du::execute(const ExecContext &ec, EvalContext &cxt,
             return left.path_suffix < right.path_suffix;
           });
 
-  let const is_human = FLAG_DU_HUMAN.is_enabled();
-  let rendered_sizes = ArrayList<String>{allocator};
-  usize size_width = 0;
+  let const is_human       = FLAG_DU_HUMAN.is_enabled();
+  let       rendered_sizes = ArrayList<String>{allocator};
+  usize     size_width     = 0;
   if (is_human) {
     rendered_sizes.reserve(output_order.count());
 
@@ -1001,12 +1030,12 @@ fn Du::execute(const ExecContext &ec, EvalContext &cxt,
   }
 
   let const should_color = koshkit_should_color();
-  let output = String{allocator};
+  let       output       = String{allocator};
 
   for (usize index = 0; index < output_order.count(); index++) {
-    let const &sort_key = output_order[index];
-    let const &row = output_rows[sort_key.row_index];
-    let rendered_size = String{allocator};
+    let const &sort_key      = output_order[index];
+    let const &row           = output_rows[sort_key.row_index];
+    let        rendered_size = String{allocator};
     if (!is_human) rendered_size = String::from(sort_key.byte_count, allocator);
 
     let const size_text =

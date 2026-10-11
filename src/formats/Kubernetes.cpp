@@ -11,8 +11,9 @@
 
 namespace koshka {
 
-fn parse_kubernetes_format(const parser_format_input &input,
-                           parsed_format_document &document) throws -> void
+fn
+parse_kubernetes_format(const parser_format_input &input,
+                        parsed_format_document    &document) throws -> void
 {
   if (!parser_format_has_substring(input.source, "-c") &&
       !parser_format_has_substring(input.source, "- c"))
@@ -20,20 +21,20 @@ fn parse_kubernetes_format(const parser_format_input &input,
     return;
   }
 
-  bool has_explicit_shell = false;
-  mimic_mood mood = mimic_mood::Posix;
+  bool       has_explicit_shell = false;
+  mimic_mood mood               = mimic_mood::Posix;
   if (parser_format_has_substring(input.source, "/bin/bash") ||
       parser_format_has_substring(input.source, "- bash"))
   {
     has_explicit_shell = true;
-    mood = mimic_mood::Bash;
+    mood               = mimic_mood::Bash;
   } else if (parser_format_has_substring(input.source, "/bin/sh") ||
              parser_format_has_substring(input.source, "- sh"))
   {
     has_explicit_shell = true;
   } else if (parser_format_has_substring(input.source, "kosh")) {
     has_explicit_shell = true;
-    mood = mimic_mood::Default;
+    mood               = mimic_mood::Default;
   }
   if (!has_explicit_shell) return;
 

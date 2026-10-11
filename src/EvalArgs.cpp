@@ -30,7 +30,8 @@ namespace {
 
 constexpr char BRACE_OPAQUE_MARKER = '\x01';
 
-pure fn word_has_brace_candidate(const Word &word) wontthrow -> bool
+pure fn
+word_has_brace_candidate(const Word &word) wontthrow -> bool
 {
   for (let const &segment : word.segments) {
     if (segment.kind != WordSegment::Kind::UnquotedText) continue;
@@ -42,12 +43,13 @@ pure fn word_has_brace_candidate(const Word &word) wontthrow -> bool
 
 struct sequence_integer
 {
-  i64 value;
+  i64   value;
   usize field_width;
-  bool has_leading_zero;
+  bool  has_leading_zero;
 };
 
-fn parse_sequence_integer(StringView text) wontthrow -> Maybe<sequence_integer>
+fn
+parse_sequence_integer(StringView text) wontthrow -> Maybe<sequence_integer>
 {
   if (text.is_empty()) return None;
   usize i = 0;
@@ -57,7 +59,7 @@ fn parse_sequence_integer(StringView text) wontthrow -> Maybe<sequence_integer>
   let const digit_start = i;
   if (!text.substring(digit_start).is_all_decimal_digits()) return None;
 
-  u64 magnitude = 0;
+  u64       magnitude         = 0;
   let const maximum_magnitude = text[0] == '-' ? static_cast<u64>(INT64_MAX) + 1
                                                : static_cast<u64>(INT64_MAX);
 
@@ -74,18 +76,19 @@ fn parse_sequence_integer(StringView text) wontthrow -> Maybe<sequence_integer>
     value = text[0] == '-' ? -static_cast<i64>(magnitude)
                            : static_cast<i64>(magnitude);
   }
-  let const digit_width = text.length - digit_start;
+  let const digit_width      = text.length - digit_start;
   let const has_leading_zero = digit_width > 1 && text[digit_start] == '0';
 
   return sequence_integer{value, text.length, has_leading_zero};
 }
 
-fn split_sequence_parts(StringView content, Allocator alloc) throws
+fn
+split_sequence_parts(StringView content, Allocator alloc) throws
     -> ArrayList<StringView>
 {
-  let parts = ArrayList<StringView>{alloc};
+  let   parts = ArrayList<StringView>{alloc};
   usize start = 0;
-  usize i = 0;
+  usize i     = 0;
 
   while (i + 1 < content.length) {
     if (content[i] == '.' && content[i + 1] == '.') {
@@ -102,7 +105,8 @@ fn split_sequence_parts(StringView content, Allocator alloc) throws
   return parts;
 }
 
-fn parse_brace_sequence(StringView content, Allocator alloc) throws
+fn
+parse_brace_sequence(StringView content, Allocator alloc) throws
     -> Maybe<ArrayList<String>>
 {
   let const parts = split_sequence_parts(content, alloc);
@@ -121,23 +125,23 @@ fn parse_brace_sequence(StringView content, Allocator alloc) throws
       step < 0 ? static_cast<u64>(-(step + 1)) + 1 : static_cast<u64>(step);
 
   let const start_int = parse_sequence_integer(parts[0]);
-  let const end_int = parse_sequence_integer(parts[1]);
+  let const end_int   = parse_sequence_integer(parts[1]);
   if (start_int.has_value() && end_int.has_value()) {
-    let const from = start_int->value;
-    let const to = end_int->value;
-    let const increment = from <= to ? static_cast<i128>(magnitude)
-                                     : -static_cast<i128>(magnitude);
+    let const  from      = start_int->value;
+    let const  to        = end_int->value;
+    let const  increment = from <= to ? static_cast<i128>(magnitude)
+                                      : -static_cast<i128>(magnitude);
     const bool should_pad =
         start_int->has_leading_zero || end_int->has_leading_zero;
-    let const width = should_pad
-                          ? (start_int->field_width > end_int->field_width
-                                 ? start_int->field_width
-                                 : end_int->field_width)
-                          : 0;
-    let elements = ArrayList<String>{alloc};
-    let const distance = from <= to
-                             ? static_cast<u128>(static_cast<i128>(to) - from)
-                             : static_cast<u128>(static_cast<i128>(from) - to);
+    let const width         = should_pad
+                                  ? (start_int->field_width > end_int->field_width
+                                         ? start_int->field_width
+                                         : end_int->field_width)
+                                  : 0;
+    let       elements      = ArrayList<String>{alloc};
+    let const distance      = from <= to
+                                  ? static_cast<u128>(static_cast<i128>(to) - from)
+                                  : static_cast<u128>(static_cast<i128>(from) - to);
     let const element_count = distance / magnitude + 1;
     if (element_count > static_cast<u128>(static_cast<usize>(-1))) return None;
     elements.reserve(static_cast<usize>(element_count));
@@ -147,10 +151,10 @@ fn parse_brace_sequence(StringView content, Allocator alloc) throws
     {
       String number = String::from(static_cast<i64>(current), heap_allocator());
       if (should_pad) {
-        const bool is_negative = !number.is_empty() && number.view()[0] == '-';
-        let const digits = number.view().substring(is_negative ? 1 : 0);
+        const bool  is_negative = !number.is_empty() && number.view()[0] == '-';
+        let const   digits      = number.view().substring(is_negative ? 1 : 0);
         const usize sign_length = is_negative ? 1 : 0;
-        let const digit_width = width > sign_length ? width - sign_length : 0;
+        let const   digit_width = width > sign_length ? width - sign_length : 0;
         if (digits.length < digit_width) {
           let padded = String{alloc};
           if (is_negative) padded.push('-');
@@ -169,8 +173,8 @@ fn parse_brace_sequence(StringView content, Allocator alloc) throws
   }
 
   if (parts[0].length == 1 && parts[1].length == 1) {
-    let const from = parts[0][0];
-    let const to = parts[1][0];
+    let const  from = parts[0][0];
+    let const  to   = parts[1][0];
     const bool is_from_alpha =
         (from >= 'a' && from <= 'z') || (from >= 'A' && from <= 'Z');
     const bool is_to_alpha =
@@ -178,7 +182,7 @@ fn parse_brace_sequence(StringView content, Allocator alloc) throws
     if (is_from_alpha && is_to_alpha) {
       let const increment = from <= to ? static_cast<i128>(magnitude)
                                        : -static_cast<i128>(magnitude);
-      let elements = ArrayList<String>{alloc};
+      let       elements  = ArrayList<String>{alloc};
 
       for (i128 c = from; increment > 0 ? c <= to : c >= to; c += increment) {
         let element = String{alloc};
@@ -193,11 +197,12 @@ fn parse_brace_sequence(StringView content, Allocator alloc) throws
   return None;
 }
 
-fn brace_group_alternatives(StringView content, Allocator alloc) throws
+fn
+brace_group_alternatives(StringView content, Allocator alloc) throws
     -> Maybe<ArrayList<String>>
 {
-  usize depth = 0;
-  let comma_positions = ArrayList<usize>{alloc};
+  usize depth           = 0;
+  let   comma_positions = ArrayList<usize>{alloc};
 
   for (usize i = 0; i < content.length; i++) {
     let const c = content[i];
@@ -233,13 +238,13 @@ fn brace_group_alternatives(StringView content, Allocator alloc) throws
 
 struct brace_group
 {
-  usize open;
-  usize close;
+  usize             open;
+  usize             close;
   ArrayList<String> alternatives{heap_allocator()};
 };
 
-fn find_brace_group(StringView text, Allocator alloc) throws
-    -> Maybe<brace_group>
+fn
+find_brace_group(StringView text, Allocator alloc) throws -> Maybe<brace_group>
 {
   for (usize open = 0; open < text.length; open++) {
     if (text[open] != '{') continue;
@@ -255,7 +260,7 @@ fn find_brace_group(StringView text, Allocator alloc) throws
           let alternatives = brace_group_alternatives(
               text.substring_of_length(open + 1, j - open - 1), alloc);
           if (alternatives.has_value()) {
-            let group = brace_group{open, j, ArrayList<String>{alloc}};
+            let group          = brace_group{open, j, ArrayList<String>{alloc}};
             group.alternatives = steal(*alternatives);
 
             return group;
@@ -271,19 +276,20 @@ fn find_brace_group(StringView text, Allocator alloc) throws
 
 constexpr usize MAX_BRACE_DEPTH = 256;
 
-fn brace_expand_text(StringView text, Allocator alloc, usize depth = 0) throws
+fn
+brace_expand_text(StringView text, Allocator alloc, usize depth = 0) throws
     -> ArrayList<String>
 {
-  let results = ArrayList<String>{alloc};
-  let const group = find_brace_group(text, alloc);
+  let       results = ArrayList<String>{alloc};
+  let const group   = find_brace_group(text, alloc);
   if (!group.has_value() || depth >= MAX_BRACE_DEPTH) {
     results.push_managed(text);
 
     return results;
   }
 
-  let const preamble = text.substring_of_length(0, group->open);
-  let const postamble = text.substring(group->close + 1);
+  let const preamble        = text.substring_of_length(0, group->open);
+  let const postamble       = text.substring(group->close + 1);
   let const post_expansions = brace_expand_text(postamble, alloc, depth + 1);
 
   for (let const &alternative : group->alternatives) {
@@ -302,10 +308,11 @@ fn brace_expand_text(StringView text, Allocator alloc, usize depth = 0) throws
   return results;
 }
 
-fn expand_braces(const Word &word, Allocator alloc) throws -> ArrayList<Word>
+fn
+expand_braces(const Word &word, Allocator alloc) throws -> ArrayList<Word>
 {
   let opaque_segments = ArrayList<const WordSegment *>{alloc};
-  let word_template = String{alloc};
+  let word_template   = String{alloc};
 
   for (let const &segment : word.segments) {
     if (segment.kind == WordSegment::Kind::UnquotedText) {
@@ -345,9 +352,9 @@ fn expand_braces(const Word &word, Allocator alloc) throws -> ArrayList<Word>
         continue;
       }
 
-      usize marker_end = i + 2;
-      usize opaque_index = 0;
-      bool is_opaque_marker = c == BRACE_OPAQUE_MARKER &&
+      usize marker_end       = i + 2;
+      usize opaque_index     = 0;
+      bool  is_opaque_marker = c == BRACE_OPAQUE_MARKER &&
                               i + 2 < produced.count() &&
                               produced[i + 1] == 'O';
       if (is_opaque_marker) {
@@ -356,7 +363,7 @@ fn expand_braces(const Word &word, Allocator alloc) throws -> ArrayList<Word>
         while (marker_end < produced.count() && produced[marker_end] >= '0' &&
                produced[marker_end] <= '9')
         {
-          has_digit = true;
+          has_digit       = true;
           let const digit = static_cast<usize>(produced[marker_end] - '0');
           if (opaque_index > (static_cast<usize>(-1) - digit) / 10) {
             is_opaque_marker = false;
@@ -436,13 +443,15 @@ fn expand_braces(const Word &word, Allocator alloc) throws -> ArrayList<Word>
 
 } /* namespace */
 
-static pure fn segment_is_literal(const WordSegment &segment) wontthrow -> bool
+static pure fn
+segment_is_literal(const WordSegment &segment) wontthrow -> bool
 {
   return segment.kind == WordSegment::Kind::LiteralText ||
          segment.kind == WordSegment::Kind::UnquotedText;
 }
 
-static fn word_starts_array_subscript(const Word &word) wontthrow -> bool
+static fn
+word_starts_array_subscript(const Word &word) wontthrow -> bool
 {
   if (word.segments.is_empty()) return false;
 
@@ -485,10 +494,10 @@ static fn word_starts_array_subscript(const Word &word) wontthrow -> bool
 
 enum declaration_command_flag : u8
 {
-  declaration_flag_local = 1 << 0,
-  declaration_flag_declare = 1 << 1,
+  declaration_flag_local       = 1 << 0,
+  declaration_flag_declare     = 1 << 1,
   declaration_flag_declaration = 1 << 2,
-  declaration_flag_test = 1 << 3,
+  declaration_flag_test        = 1 << 3,
 };
 
 constexpr static_string_entry<u8> DECLARATION_COMMAND_ENTRIES[] = {
@@ -502,12 +511,12 @@ constexpr static_string_entry<u8> DECLARATION_COMMAND_ENTRIES[] = {
 };
 constexpr StaticStringMap DECLARATION_COMMANDS{DECLARATION_COMMAND_ENTRIES};
 
-hot fn EvalContext::process_args(const ArrayList<const Token *> &args,
-                                 ArrayList<SourceLocation> *expanded_locations,
-                                 argument_lifetime lifetime,
-                                 argument_context context,
-                                 Bitset *subscript_flags) throws
-    -> ArrayList<String>
+hot fn
+EvalContext::process_args(const ArrayList<const Token *> &args,
+                          ArrayList<SourceLocation>      *expanded_locations,
+                          argument_lifetime               lifetime,
+                          argument_context                context,
+                          Bitset *subscript_flags) throws -> ArrayList<String>
 {
   let const is_transient = lifetime == argument_lifetime::Transient;
   let const is_associative_literal =
@@ -537,19 +546,19 @@ hot fn EvalContext::process_args(const ArrayList<const Token *> &args,
   };
 
   let is_declaration_command = false;
-  let is_local_command = false;
-  let is_declare_command = false;
-  let is_test_command = false;
+  let is_local_command       = false;
+  let is_declare_command     = false;
+  let is_test_command        = false;
   if (!args.is_empty() && args[0]->kind() == Token::Kind::Word) {
     const Word &command_word =
         static_cast<const tokens::WordToken *>(args[0])->word();
     if (command_word.plain_literal_kind() != Word::PlainLiteral::NotPlain) {
       let const flags =
           DECLARATION_COMMANDS.find(command_word.constant_value()).value_or(0);
-      is_local_command = (flags & declaration_flag_local) != 0;
-      is_declare_command = (flags & declaration_flag_declare) != 0;
+      is_local_command       = (flags & declaration_flag_local) != 0;
+      is_declare_command     = (flags & declaration_flag_declare) != 0;
       is_declaration_command = (flags & declaration_flag_declaration) != 0;
-      is_test_command = (flags & declaration_flag_test) != 0;
+      is_test_command        = (flags & declaration_flag_test) != 0;
     } else if (command_word.segments.count() == 1 &&
                command_word.segments[0].kind ==
                    WordSegment::Kind::UnquotedText &&
@@ -587,8 +596,8 @@ hot fn EvalContext::process_args(const ArrayList<const Token *> &args,
     let const location = token->source_location();
     do_fill_subscript_flags();
     try {
-      let fallback_word = Maybe<Word>{};
-      const Word *word = nullptr;
+      let         fallback_word = Maybe<Word>{};
+      const Word *word          = nullptr;
       if (token->kind() == Token::Kind::Word) {
         word = &static_cast<const tokens::WordToken *>(token)->word();
       } else if (token->kind() == Token::Kind::Assignment) {
@@ -619,13 +628,13 @@ hot fn EvalContext::process_args(const ArrayList<const Token *> &args,
                 assignment_token->value_word(), true);
             let const is_append = assignment_token->get_update_mode() ==
                                   assignment_update_mode::Append;
-            let integer_name = assignment_token->key().view();
+            let integer_name  = assignment_token->key().view();
             let resolved_name = Maybe<String>{};
             if (is_append &&
                 variable_store().attributes().is_nameref(integer_name))
             {
               resolved_name = resolve_nameref_base_for_write(integer_name);
-              integer_name = resolved_name->view();
+              integer_name  = resolved_name->view();
             }
             if (is_append && is_integer_variable(integer_name)) {
               append_integer_expression(assignment, expanded_value.view());
@@ -642,7 +651,7 @@ hot fn EvalContext::process_args(const ArrayList<const Token *> &args,
             assignment_update_mode::Append)
           key_literal += "+";
         key_literal += "=";
-        fallback_word = Word{};
+        fallback_word           = Word{};
         fallback_word->segments = ArrayList<WordSegment>{scratch_allocator()};
         fallback_word->segments.push(WordSegment{
             WordSegment::Kind::LiteralText,
@@ -670,7 +679,7 @@ hot fn EvalContext::process_args(const ArrayList<const Token *> &args,
         }
         word = &*fallback_word;
       } else {
-        fallback_word = Word{};
+        fallback_word           = Word{};
         fallback_word->segments = ArrayList<WordSegment>{scratch_allocator()};
         fallback_word->segments.push(WordSegment{
             WordSegment::Kind::UnquotedText,
@@ -693,8 +702,8 @@ hot fn EvalContext::process_args(const ArrayList<const Token *> &args,
 
       let const do_expand_one_word = [&](const Word &expandable)
                                          throws -> void {
-        let const plain_kind = expandable.plain_literal_kind();
-        let did_take_fast_path = false;
+        let const plain_kind         = expandable.plain_literal_kind();
+        let       did_take_fast_path = false;
         if (plain_kind == Word::PlainLiteral::PlainNoSplit) {
           expanded_args.push(
               String{expanded_args.allocator(), expandable.constant_value()});
@@ -754,8 +763,8 @@ hot fn EvalContext::process_args(const ArrayList<const Token *> &args,
               if (!segment.is_in_double_quotes) is_single_field = false;
               break;
             case WordSegment::Kind::VariableReference: {
-              let const spec = segment.text.view();
-              let has_multi_field_marker = !segment.is_in_double_quotes;
+              let const spec                   = segment.text.view();
+              let       has_multi_field_marker = !segment.is_in_double_quotes;
 #pragma clang loop unroll_count(4)
 
               for (usize i = 0; !has_multi_field_marker && i < spec.length; i++)
@@ -779,7 +788,7 @@ hot fn EvalContext::process_args(const ArrayList<const Token *> &args,
               switch (segment.kind) {
               case WordSegment::Kind::VariableReference: {
                 let const spec = segment.text.view();
-                let is_plain_name =
+                let       is_plain_name =
                     !spec.is_empty() && lexer::is_variable_name_start(spec[0]);
 #pragma clang loop unroll_count(4)
 
@@ -853,12 +862,13 @@ hot fn EvalContext::process_args(const ArrayList<const Token *> &args,
   return expanded_args;
 }
 
-fn EvalContext::write_xtrace(StringView command) throws -> void
+fn
+EvalContext::write_xtrace(StringView command) throws -> void
 {
   if (!runtime_state().should_echo_expanded()) return;
 
-  let trace = String{scratch_allocator()};
-  let const ps4 = get_variable_value("PS4").value_or(String{"+ "});
+  let       trace = String{scratch_allocator()};
+  let const ps4   = get_variable_value("PS4").value_or(String{"+ "});
   if (!ps4.is_empty()) {
     for (usize i = 0; i < execution_store().subshell_depth(); i++)
       trace.push(ps4[0]);
@@ -884,7 +894,8 @@ fn EvalContext::write_xtrace(StringView command) throws -> void
     koshka::print_error(trace);
 }
 
-fn EvalContext::write_xtrace(const ArrayList<String> &args) throws -> void
+fn
+EvalContext::write_xtrace(const ArrayList<String> &args) throws -> void
 {
   if (!runtime_state().should_echo_expanded()) return;
 

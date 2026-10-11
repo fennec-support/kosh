@@ -17,16 +17,23 @@
 KOSHKIT_UTIL_DECL("[-i] [-u name]... [NAME=value ...] [command [argument ...]]",
                   "The env utility runs a command in a modified environment.");
 
-FLAG(ENV_IGNORE, Bool, 'i', "ignore-environment",
+FLAG(ENV_IGNORE,
+     Bool,
+     'i',
+     "ignore-environment",
      "Start with an empty environment.");
-FLAG(ENV_UNSET, ManyStrings, 'u', "unset",
+FLAG(ENV_UNSET,
+     ManyStrings,
+     'u',
+     "unset",
      "Remove this variable from the environment.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Env);
 
 namespace koshka::koshkit {
 
-static fn is_assignment(StringView text) wontthrow -> bool
+static fn
+is_assignment(StringView text) wontthrow -> bool
 {
   let const equals = text.find_character('=');
   if (!equals.has_value() || *equals == 0) {
@@ -35,7 +42,7 @@ static fn is_assignment(StringView text) wontthrow -> bool
 
   for (usize i = 0; i < *equals; i++) {
     let const character = text[i];
-    let const is_name = (character >= 'a' && character <= 'z') ||
+    let const is_name   = (character >= 'a' && character <= 'z') ||
                         (character >= 'A' && character <= 'Z') ||
                         (character >= '0' && character <= '9') ||
                         character == '_';
@@ -48,22 +55,23 @@ static fn is_assignment(StringView text) wontthrow -> bool
   return true;
 }
 
-fn Env::execute(const ExecContext &ec, EvalContext &cxt,
-                const ArrayList<String> &args,
-                const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+fn
+Env::execute(const ExecContext               &ec,
+             EvalContext                     &cxt,
+             const ArrayList<String>         &args,
+             const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   cxt.prepare_child_environment();
   ArrayList<String> saved_names{cxt.scratch_allocator()};
   ArrayList<String> saved_values{cxt.scratch_allocator()};
-  ArrayList<bool> was_present{cxt.scratch_allocator()};
-  let const do_save_and_unset = [&](StringView name) throws -> void {
+  ArrayList<bool>   was_present{cxt.scratch_allocator()};
+  let const         do_save_and_unset = [&](StringView name) throws -> void {
     let const previous = os::get_environment_variable(name);
     saved_names.push(String{cxt.scratch_allocator(), name});
     saved_values.push(previous.has_value() ? previous->clone()
-                                           : String{cxt.scratch_allocator()});
+                                                   : String{cxt.scratch_allocator()});
     was_present.push(previous.has_value());
     os::unset_environment_variable(name);
   };
@@ -95,10 +103,10 @@ fn Env::execute(const ExecContext &ec, EvalContext &cxt,
   while (first_command < operands.count() &&
          is_assignment(operands[first_command].view()))
   {
-    let const text = operands[first_command].view();
+    let const text   = operands[first_command].view();
     let const equals = *text.find_character('=');
-    let const name = text.substring_of_length(0, equals);
-    let const value = text.substring(equals + 1);
+    let const name   = text.substring_of_length(0, equals);
+    let const value  = text.substring(equals + 1);
 
     let const previous = os::get_environment_variable(name);
     saved_names.push(String{cxt.scratch_allocator(), name});
@@ -116,7 +124,7 @@ fn Env::execute(const ExecContext &ec, EvalContext &cxt,
     return 0;
   }
 
-  let env_args = ArrayList<String>{cxt.scratch_allocator()};
+  let env_args          = ArrayList<String>{cxt.scratch_allocator()};
   let env_arg_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};
 
   for (usize i = first_command; i < operands.count(); i++) {
@@ -143,7 +151,7 @@ fn Env::execute(const ExecContext &ec, EvalContext &cxt,
     return static_cast<i32>(resolution_error.command_status());
   }
 
-  let &execution = cxt.execution_store();
+  let      &execution = cxt.execution_store();
   let const was_child_environment_fixed =
       execution.is_child_environment_fixed();
   execution.set_child_environment_fixed(true);

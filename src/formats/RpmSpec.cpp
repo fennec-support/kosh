@@ -11,7 +11,8 @@
 
 namespace koshka {
 
-static pure fn is_script_section(StringView line) wontthrow -> bool
+static pure fn
+is_script_section(StringView line) wontthrow -> bool
 {
   static const StringView SECTIONS[] = {
       "%prep",      "%build",     "%install",   "%check",        "%clean",
@@ -24,8 +25,9 @@ static pure fn is_script_section(StringView line) wontthrow -> bool
   return false;
 }
 
-fn parse_rpm_spec_format(const parser_format_input &input,
-                         parsed_format_document &document) throws -> void
+fn
+parse_rpm_spec_format(const parser_format_input &input,
+                      parsed_format_document    &document) throws -> void
 {
   usize position = 0;
 
@@ -33,11 +35,11 @@ fn parse_rpm_spec_format(const parser_format_input &input,
     let const line = input.source.next_line(position);
     if (!is_script_section(line)) continue;
     let const shell_start = position;
-    usize shell_end = input.source.length;
+    usize     shell_end   = input.source.length;
 
     while (position < input.source.length) {
       let const next_start = position;
-      let const next_line = input.source.next_line(position);
+      let const next_line  = input.source.next_line(position);
       if (!next_line.is_empty() && next_line[0] == '%' &&
           !next_line.starts_with("%%"))
       {

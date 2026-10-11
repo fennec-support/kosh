@@ -20,12 +20,21 @@ KOSHKIT_UTIL_DECL("[-dhiL] [-m file] [-M file] [file ...]",
 
 FLAG(FILE_DEFAULT_TESTS, Bool, 'd', "default-tests", "Apply default tests.");
 FLAG(FILE_NO_FOLLOW, Bool, 'h', "no-dereference", "Classify symbolic links.");
-FLAG(FILE_REGULAR_ONLY, Bool, 'i', "regular-only",
+FLAG(FILE_REGULAR_ONLY,
+     Bool,
+     'i',
+     "regular-only",
      "Identify regular files without content tests.");
 FLAG(FILE_FOLLOW, Bool, 'L', "dereference", "Follow symbolic links.");
-FLAG(FILE_MAGIC, ManyStrings, 'm', "magic-file",
+FLAG(FILE_MAGIC,
+     ManyStrings,
+     'm',
+     "magic-file",
      "Add position-sensitive tests from this file.");
-FLAG(FILE_MAGIC_ONLY, ManyStrings, 'M', "magic-only",
+FLAG(FILE_MAGIC_ONLY,
+     ManyStrings,
+     'M',
+     "magic-only",
      "Use position-sensitive tests from this file.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(File);
@@ -45,25 +54,26 @@ struct file_magic_rule
       : expected_text(allocator), message(allocator)
   {}
 
-  u64 offset{0};
-  u64 expected_number{0};
-  u64 mask{~static_cast<u64>(0)};
-  usize byte_count{0};
-  char comparison{'='};
-  bool is_continuation{false};
+  u64             offset{0};
+  u64             expected_number{0};
+  u64             mask{~static_cast<u64>(0)};
+  usize           byte_count{0};
+  char            comparison{'='};
+  bool            is_continuation{false};
   file_magic_kind kind{file_magic_kind::String};
-  String expected_text;
-  String message;
+  String          expected_text;
+  String          message;
 };
 
 struct file_magic_path
 {
-  usize position;
-  StringView path;
+  usize          position;
+  StringView     path;
   SourceLocation location;
 };
 
-static pure fn magic_digit(char byte) wontthrow -> u8
+static pure fn
+magic_digit(char byte) wontthrow -> u8
 {
   if (byte >= '0' && byte <= '9') {
     return static_cast<u8>(byte - '0');
@@ -78,11 +88,12 @@ static pure fn magic_digit(char byte) wontthrow -> u8
   return 0xff;
 }
 
-static fn parse_magic_number(StringView text) wontthrow -> Maybe<u64>
+static fn
+parse_magic_number(StringView text) wontthrow -> Maybe<u64>
 {
   if (text.is_empty()) return None;
-  usize position = 0;
-  bool is_negative = false;
+  usize position    = 0;
+  bool  is_negative = false;
   if (text[position] == '-') {
     is_negative = true;
     position++;
@@ -113,12 +124,13 @@ static fn parse_magic_number(StringView text) wontthrow -> Maybe<u64>
   return is_negative ? 0 - parsed : parsed;
 }
 
-static fn decode_magic_text(StringView encoded, String &decoded) throws -> void
+static fn
+decode_magic_text(StringView encoded, String &decoded) throws -> void
 {
   for (usize position = 0; position < encoded.length; position++) {
     let const byte = encoded[position];
     if (byte != '\\') {
-      let const remaining = encoded.substring(position);
+      let const remaining   = encoded.substring(position);
       let const next_escape = remaining.find_character('\\');
       let const run_length =
           next_escape.has_value() ? *next_escape : remaining.length;
@@ -136,16 +148,16 @@ static fn decode_magic_text(StringView encoded, String &decoded) throws -> void
     let const escaped = encoded[++position];
     switch (escaped) {
     case '\\': decoded.push('\\'); break;
-    case 'a': decoded.push('\a'); break;
-    case 'b': decoded.push('\b'); break;
-    case 'f': decoded.push('\f'); break;
-    case 'n': decoded.push('\n'); break;
-    case 'r': decoded.push('\r'); break;
-    case 't': decoded.push('\t'); break;
-    case 'v': decoded.push('\v'); break;
-    case ' ': decoded.push(' '); break;
-    case 'x': {
-      u8 value = 0;
+    case 'a':  decoded.push('\a'); break;
+    case 'b':  decoded.push('\b'); break;
+    case 'f':  decoded.push('\f'); break;
+    case 'n':  decoded.push('\n'); break;
+    case 'r':  decoded.push('\r'); break;
+    case 't':  decoded.push('\t'); break;
+    case 'v':  decoded.push('\v'); break;
+    case ' ':  decoded.push(' '); break;
+    case 'x':  {
+      u8    value       = 0;
       usize digit_count = 0;
 
       while (position + 1 < encoded.length && digit_count < 2) {
@@ -165,7 +177,7 @@ static fn decode_magic_text(StringView encoded, String &decoded) throws -> void
     }
     default:
       if (escaped >= '0' && escaped <= '7') {
-        u8 value = static_cast<u8>(escaped - '0');
+        u8    value       = static_cast<u8>(escaped - '0');
         usize digit_count = 1;
 
         while (position + 1 < encoded.length && digit_count < 3 &&
@@ -185,8 +197,8 @@ static fn decode_magic_text(StringView encoded, String &decoded) throws -> void
   }
 }
 
-static fn next_magic_field(StringView line, usize &position) wontthrow
-    -> StringView
+static fn
+next_magic_field(StringView line, usize &position) wontthrow -> StringView
 {
   while (position < line.length &&
          (line[position] == ' ' || line[position] == '\t'))
@@ -205,39 +217,39 @@ static fn next_magic_field(StringView line, usize &position) wontthrow
   return line.substring_of_length(start, position - start);
 }
 
-static fn parse_magic_type(StringView text, file_magic_rule &rule) throws
-    -> bool
+static fn
+parse_magic_type(StringView text, file_magic_rule &rule) throws -> bool
 {
   usize position = 0;
   switch (text[0]) {
   case 's':
     if (text.starts_with("string")) {
       rule.kind = file_magic_kind::String;
-      position = 6;
+      position  = 6;
     } else if (text.starts_with("short")) {
-      rule.kind = file_magic_kind::Signed;
+      rule.kind       = file_magic_kind::Signed;
       rule.byte_count = 2;
-      position = 5;
+      position        = 5;
     } else {
       rule.kind = file_magic_kind::String;
-      position = 1;
+      position  = 1;
     }
     break;
 
   case 'b':
     if (!text.starts_with("byte")) return false;
 
-    rule.kind = file_magic_kind::Signed;
+    rule.kind       = file_magic_kind::Signed;
     rule.byte_count = 1;
-    position = 4;
+    position        = 4;
     break;
 
   case 'l':
     if (!text.starts_with("long")) return false;
 
-    rule.kind = file_magic_kind::Signed;
+    rule.kind       = file_magic_kind::Signed;
     rule.byte_count = 4;
-    position = 4;
+    position        = 4;
     break;
 
   case 'd':
@@ -303,18 +315,20 @@ static fn parse_magic_type(StringView text, file_magic_rule &rule) throws
   return position == text.length;
 }
 
-static fn parse_magic_rule(StringView line, Allocator allocator,
-                           file_magic_rule &rule) throws -> bool
+static fn
+parse_magic_rule(StringView       line,
+                 Allocator        allocator,
+                 file_magic_rule &rule) throws -> bool
 {
   line = line.trim_blanks();
   if (line.is_empty() || line[0] == '#') {
     return false;
   }
 
-  usize position = 0;
-  let offset = next_magic_field(line, position);
-  let const type = next_magic_field(line, position);
-  let value = next_magic_field(line, position);
+  usize     position = 0;
+  let       offset   = next_magic_field(line, position);
+  let const type     = next_magic_field(line, position);
+  let       value    = next_magic_field(line, position);
 
   while (position < line.length &&
          (line[position] == ' ' || line[position] == '\t'))
@@ -331,7 +345,7 @@ static fn parse_magic_rule(StringView line, Allocator allocator,
 
   if (offset[0] == '>') {
     rule.is_continuation = true;
-    offset = offset.substring(1);
+    offset               = offset.substring(1);
   }
   if (offset.is_empty() || offset[0] == '-') {
     return false;
@@ -349,10 +363,10 @@ static fn parse_magic_rule(StringView line, Allocator allocator,
         value[0] == '&' || value[0] == '^')
     {
       rule.comparison = value[0];
-      value = value.substring(1);
+      value           = value.substring(1);
     } else if (value == "x") {
       rule.comparison = 'x';
-      value = {};
+      value           = {};
     }
     if (rule.comparison != 'x') {
       let const expected_number = parse_magic_number(value);
@@ -366,9 +380,10 @@ static fn parse_magic_rule(StringView line, Allocator allocator,
   return true;
 }
 
-static fn append_magic_database(StringView path,
-                                ArrayList<file_magic_rule> &rules,
-                                Allocator allocator) throws -> bool
+static fn
+append_magic_database(StringView                  path,
+                      ArrayList<file_magic_rule> &rules,
+                      Allocator                   allocator) throws -> bool
 {
   let const contents = Path{path, allocator}.read_entire_file();
   if (!contents.has_value()) return false;
@@ -376,7 +391,7 @@ static fn append_magic_database(StringView path,
   usize position = 0;
 
   while (position < contents->count()) {
-    let const line = contents->view().next_line(position);
+    let const       line = contents->view().next_line(position);
     file_magic_rule rule{allocator};
     if (parse_magic_rule(line, allocator, rule)) rules.push(steal(rule));
   }
@@ -384,8 +399,10 @@ static fn append_magic_database(StringView path,
   return true;
 }
 
-static fn read_magic_number(const file_magic_rule &rule, StringView bytes,
-                            u64 &value) wontthrow -> bool
+static fn
+read_magic_number(const file_magic_rule &rule,
+                  StringView             bytes,
+                  u64                   &value) wontthrow -> bool
 {
   if (rule.byte_count == 0 || rule.byte_count > 8 ||
       rule.offset > bytes.length ||
@@ -418,12 +435,14 @@ static fn read_magic_number(const file_magic_rule &rule, StringView bytes,
   case '&': return (value & rule.expected_number) == rule.expected_number;
   case '^': return (rule.expected_number & ~value) != 0;
   case 'x': return true;
-  default: return false;
+  default:  return false;
   }
 }
 
-static fn magic_rule_matches(const file_magic_rule &rule, StringView bytes,
-                             u64 &number) wontthrow -> bool
+static fn
+magic_rule_matches(const file_magic_rule &rule,
+                   StringView             bytes,
+                   u64                   &number) wontthrow -> bool
 {
   if (rule.kind != file_magic_kind::String)
     return read_magic_number(rule, bytes, number);
@@ -437,12 +456,14 @@ static fn magic_rule_matches(const file_magic_rule &rule, StringView bytes,
                           rule.expected_text.count()) == 0;
 }
 
-static fn format_magic_message(const file_magic_rule &rule, u64 number,
-                               Allocator allocator) throws -> String
+static fn
+format_magic_message(const file_magic_rule &rule,
+                     u64                    number,
+                     Allocator              allocator) throws -> String
 {
-  let output = String{allocator};
-  let const message = rule.message.view();
-  bool has_formatted_value = false;
+  let       output              = String{allocator};
+  let const message             = rule.message.view();
+  bool      has_formatted_value = false;
 
   for (usize position = 0; position < message.length; position++) {
     if (message[position] != '%' || position + 1 == message.length) {
@@ -494,9 +515,10 @@ static fn format_magic_message(const file_magic_rule &rule, u64 number,
   return output;
 }
 
-static fn match_magic_rules(const ArrayList<file_magic_rule> &rules,
-                            StringView bytes, Allocator allocator) throws
-    -> Maybe<String>
+static fn
+match_magic_rules(const ArrayList<file_magic_rule> &rules,
+                  StringView                        bytes,
+                  Allocator allocator) throws -> Maybe<String>
 {
   for (usize index = 0; index < rules.count(); index++) {
     let const &rule = rules[index];
@@ -523,16 +545,16 @@ static fn match_magic_rules(const ArrayList<file_magic_rule> &rules,
 
 struct builtin_file_signature
 {
-  usize offset;
+  usize      offset;
   StringView bytes;
   StringView description;
 };
 
 template <usize byte_count>
-consteval fn make_builtin_file_signature(usize offset,
-                                         const char (&bytes)[byte_count],
-                                         StringView description)
-    -> builtin_file_signature
+consteval fn
+make_builtin_file_signature(usize offset,
+                            const char (&bytes)[byte_count],
+                            StringView description) -> builtin_file_signature
 {
   return {
       offset, StringView{bytes, byte_count - 1},
@@ -540,7 +562,8 @@ consteval fn make_builtin_file_signature(usize offset,
   };
 }
 
-static pure fn matches_builtin_file_signature(
+static pure fn
+matches_builtin_file_signature(
     StringView bytes, const builtin_file_signature &signature) wontthrow -> bool
 {
   if (signature.offset > bytes.length ||
@@ -559,8 +582,8 @@ static pure fn matches_builtin_file_signature(
                                     signature.bytes.length - 1);
 }
 
-static pure fn file_content_description(StringView bytes) wontthrow
-    -> StringView
+static pure fn
+file_content_description(StringView bytes) wontthrow -> StringView
 {
   if (bytes.is_empty()) return "empty";
 
@@ -626,7 +649,7 @@ static pure fn file_content_description(StringView bytes) wontthrow
       bytes.substring_of_length(0, 4) == StringView{"\x1a\x45\xdf\xa3", 4})
   {
     let const header_length = bytes.length < 256 ? bytes.length : 256;
-    let const header = bytes.substring_of_length(4, header_length - 4);
+    let const header        = bytes.substring_of_length(4, header_length - 4);
     if (header.find_substring("matroska").has_value()) return "Matroska video";
     if (header.find_substring("webm").has_value()) return "WebM video";
   }
@@ -824,11 +847,13 @@ static pure fn file_content_description(StringView bytes) wontthrow
   return is_text ? StringView{"text"} : StringView{"data"};
 }
 
-constexpr usize FILE_CONTENT_SAMPLE_BYTE_COUNT = 8192;
+constexpr usize FILE_CONTENT_SAMPLE_BYTE_COUNT  = 8192;
 constexpr usize FILE_CONTENT_SAMPLE_BATCH_COUNT = 32;
 
-fn describe_file_type(StringView path, const os::file_status &status,
-                      Allocator allocator) throws -> Maybe<String>
+fn
+describe_file_type(StringView             path,
+                   const os::file_status &status,
+                   Allocator              allocator) throws -> Maybe<String>
 {
   switch (os::file_type_letter(status.mode)) {
   case 'd': return String{allocator, "directory"};
@@ -837,7 +862,7 @@ fn describe_file_type(StringView path, const os::file_status &status,
   case 's': return String{allocator, "socket"};
   case 'b': return String{allocator, "block special file"};
   case 'c': return String{allocator, "character special file"};
-  default: break;
+  default:  break;
   }
 
   let const descriptor =
@@ -845,7 +870,7 @@ fn describe_file_type(StringView path, const os::file_status &status,
   if (!descriptor.has_value()) return None;
   defer { os::close_fd(*descriptor); };
 
-  char buffer[FILE_CONTENT_SAMPLE_BYTE_COUNT];
+  char      buffer[FILE_CONTENT_SAMPLE_BYTE_COUNT];
   let const read_count = os::read_fd(*descriptor, buffer, sizeof(buffer));
   if (!read_count.has_value()) return None;
 
@@ -856,20 +881,22 @@ fn describe_file_type(StringView path, const os::file_status &status,
 struct file_content_probe
 {
   os::descriptor descriptor{KOSH_INVALID_FD};
-  usize operand_position{0};
-  char bytes[FILE_CONTENT_SAMPLE_BYTE_COUNT]{};
+  usize          operand_position{0};
+  char           bytes[FILE_CONTENT_SAMPLE_BYTE_COUNT]{};
 };
 
-fn File::execute(const ExecContext &ec, EvalContext &cxt,
-                 const ArrayList<String> &args,
-                 const ArrayList<SourceLocation> &arg_locations) const throws
+fn
+File::execute(const ExecContext               &ec,
+              EvalContext                     &cxt,
+              const ArrayList<String>         &args,
+              const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (operands.is_empty()) return report_usage_error(ec, cxt, args[0].view());
-  let const allocator = cxt.scratch_allocator();
-  i32 status = 0;
+  let const                  allocator = cxt.scratch_allocator();
+  i32                        status    = 0;
   ArrayList<file_magic_path> magic_paths{allocator};
 
   for (usize index = 0; index < FLAG_FILE_MAGIC.count(); index++)
@@ -883,7 +910,7 @@ fn File::execute(const ExecContext &ec, EvalContext &cxt,
                                      FLAG_FILE_MAGIC_ONLY.get_location(index)});
 
   for (usize index = 1; index < magic_paths.count(); index++) {
-    let current = magic_paths[index];
+    let   current     = magic_paths[index];
     usize destination = index;
 
     while (destination > 0 &&
@@ -912,8 +939,8 @@ fn File::execute(const ExecContext &ec, EvalContext &cxt,
       !FLAG_FILE_NO_FOLLOW.is_enabled() ||
       FLAG_FILE_FOLLOW.position() > FLAG_FILE_NO_FOLLOW.position();
 
-  let operand_paths = ArrayList<Path>{allocator};
-  let file_statuses = ArrayList<os::file_status>{allocator};
+  let operand_paths  = ArrayList<Path>{allocator};
+  let file_statuses  = ArrayList<os::file_status>{allocator};
   let metadata_batch = os::Batch{allocator};
   operand_paths.reserve(operands.count());
   file_statuses.reserve(operands.count());
@@ -933,8 +960,8 @@ fn File::execute(const ExecContext &ec, EvalContext &cxt,
 
   let const metadata_results = metadata_batch.execute();
 
-  let default_samples = ArrayList<String>{allocator};
-  let default_sample_errors = Bitset{allocator};
+  let       default_samples       = ArrayList<String>{allocator};
+  let       default_sample_errors = Bitset{allocator};
   let const should_batch_default_samples =
       !FLAG_FILE_REGULAR_ONLY.is_enabled() && magic_rules.is_empty();
   if (should_batch_default_samples) {
@@ -949,9 +976,9 @@ fn File::execute(const ExecContext &ec, EvalContext &cxt,
     default_sample_errors.reset(operands.count());
 
     file_content_probe probes[FILE_CONTENT_SAMPLE_BATCH_COUNT]{};
-    usize probe_count = 0;
-    let content_batch = os::Batch{allocator};
-    let content_results = ArrayList<os::batch_result>{allocator};
+    usize              probe_count     = 0;
+    let                content_batch   = os::Batch{allocator};
+    let                content_results = ArrayList<os::batch_result>{allocator};
     content_batch.reserve(FILE_CONTENT_SAMPLE_BATCH_COUNT);
     content_results.reserve(FILE_CONTENT_SAMPLE_BATCH_COUNT);
     defer
@@ -972,8 +999,8 @@ fn File::execute(const ExecContext &ec, EvalContext &cxt,
       content_batch.execute(content_results);
 
       for (usize index = 0; index < probe_count; index++) {
-        let const operand_position = probes[index].operand_position;
-        let const &result = content_results[index];
+        let const  operand_position = probes[index].operand_position;
+        let const &result           = content_results[index];
         if (result.error_number == 0) {
           default_samples[operand_position] =
               String{allocator,
@@ -1008,7 +1035,7 @@ fn File::execute(const ExecContext &ec, EvalContext &cxt,
         continue;
       }
 
-      probes[probe_count].descriptor = *descriptor;
+      probes[probe_count].descriptor       = *descriptor;
       probes[probe_count].operand_position = operand_position;
       probe_count++;
       if (probe_count == FILE_CONTENT_SAMPLE_BATCH_COUNT) do_flush_probes();
@@ -1017,12 +1044,12 @@ fn File::execute(const ExecContext &ec, EvalContext &cxt,
     if (probe_count != 0) do_flush_probes();
   }
 
-  let custom_sample_descriptions = ArrayList<String>{allocator};
-  let custom_sample_error_numbers = ArrayList<i32>{allocator};
-  let custom_sample_ready = Bitset{allocator};
-  let custom_sample_errors = Bitset{allocator};
-  let custom_sample_open_errors = Bitset{allocator};
-  bool was_custom_sampling_interrupted = false;
+  let       custom_sample_descriptions      = ArrayList<String>{allocator};
+  let       custom_sample_error_numbers     = ArrayList<i32>{allocator};
+  let       custom_sample_ready             = Bitset{allocator};
+  let       custom_sample_errors            = Bitset{allocator};
+  let       custom_sample_open_errors       = Bitset{allocator};
+  bool      was_custom_sampling_interrupted = false;
   let const should_batch_custom_samples =
       !FLAG_FILE_REGULAR_ONLY.is_enabled() && !magic_rules.is_empty();
   if (should_batch_custom_samples) {
@@ -1046,9 +1073,9 @@ fn File::execute(const ExecContext &ec, EvalContext &cxt,
       if (rule.offset > SIZE_MAX) continue;
 
       let const offset = static_cast<usize>(rule.offset);
-      let const width = rule.kind == file_magic_kind::String
-                            ? rule.expected_text.count()
-                            : rule.byte_count;
+      let const width  = rule.kind == file_magic_kind::String
+                             ? rule.expected_text.count()
+                             : rule.byte_count;
       if (width > SIZE_MAX - offset) continue;
 
       let const rule_end = offset + width;
@@ -1082,7 +1109,7 @@ fn File::execute(const ExecContext &ec, EvalContext &cxt,
       metadata_batch.execute(follow_results);
     }
 
-    let sample_sources = ArrayList<StringView>{allocator};
+    let sample_sources           = ArrayList<StringView>{allocator};
     let sample_operand_positions = ArrayList<usize>{allocator};
 
     for (usize operand_position = 0; operand_position < operands.count();
@@ -1120,8 +1147,8 @@ fn File::execute(const ExecContext &ec, EvalContext &cxt,
 
     loop
     {
-      let const read_result = reader.read_next(chunks);
-      bool is_reader_complete = false;
+      let const read_result        = reader.read_next(chunks);
+      bool      is_reader_complete = false;
       switch (read_result) {
       case SourceBatchReader::ReadResult::Chunks: break;
       case SourceBatchReader::ReadResult::Complete:
@@ -1133,7 +1160,7 @@ fn File::execute(const ExecContext &ec, EvalContext &cxt,
       }
 
       for (let const &chunk : chunks) {
-        let &result = source_results[chunk.source_index];
+        let &result       = source_results[chunk.source_index];
         result.completion = chunk.completion;
         if (chunk.error_number != 0) {
           result.content.reset();
@@ -1204,8 +1231,8 @@ fn File::execute(const ExecContext &ec, EvalContext &cxt,
   for (usize operand_position = 0; operand_position < operands.count();
        operand_position++)
   {
-    let const &operand = operands[operand_position];
-    let &file_status = file_statuses[operand_position];
+    let const &operand     = operands[operand_position];
+    let       &file_status = file_statuses[operand_position];
     if (metadata_results[operand_position].error_number != 0) {
       os::set_last_system_error(
           metadata_results[operand_position].error_number);
@@ -1229,8 +1256,8 @@ fn File::execute(const ExecContext &ec, EvalContext &cxt,
       }
     }
 
-    let description = String{allocator};
-    let const is_regular = os::file_type_letter(file_status.mode) == '-';
+    let       description = String{allocator};
+    let const is_regular  = os::file_type_letter(file_status.mode) == '-';
     if (is_regular && FLAG_FILE_REGULAR_ONLY.is_enabled()) {
       description += "regular file";
     } else if (is_regular && magic_rules.is_empty() &&

@@ -19,13 +19,13 @@ namespace koshka {
 class PackedStringKey
 {
 public:
-  static constexpr usize WORD_COUNT = 8;
+  static constexpr usize WORD_COUNT    = 8;
   static constexpr usize BYTE_CAPACITY = WORD_COUNT * 8;
 
   u64 words[WORD_COUNT]{};
 
-  static consteval fn from_literal(const char *text) wontthrow
-      -> PackedStringKey
+  static consteval fn
+  from_literal(const char *text) wontthrow -> PackedStringKey
   {
     PackedStringKey key{};
 
@@ -36,10 +36,11 @@ public:
     return key;
   }
 
-  hot static fn from_view(StringView text) wontthrow -> PackedStringKey
+  hot static fn
+  from_view(StringView text) wontthrow -> PackedStringKey
   {
     PackedStringKey key{};
-    let const count =
+    let const       count =
         text.count() < BYTE_CAPACITY ? text.count() : BYTE_CAPACITY;
 #if defined __BYTE_ORDER__ && __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
     if (count < 8) {
@@ -74,7 +75,8 @@ public:
     return false;
   }
 
-  hot mustuse pure constexpr fn packed_length() const wontthrow -> usize
+  hot mustuse pure constexpr fn
+  packed_length() const wontthrow -> usize
   {
     for (usize k = 0; k < WORD_COUNT; k++) {
       let const w = words[k];
@@ -85,14 +87,16 @@ public:
     return BYTE_CAPACITY;
   }
 
-  mustuse pure constexpr fn leading_byte() const wontthrow -> u8
+  mustuse pure constexpr fn
+  leading_byte() const wontthrow -> u8
   {
     return static_cast<u8>(words[0] & 0xFF);
   }
 
-  cold mustuse fn to_string() const throws -> String
+  cold mustuse fn
+  to_string() const throws -> String
   {
-    char buffer[BYTE_CAPACITY];
+    char  buffer[BYTE_CAPACITY];
     usize length = 0;
 
     for (; length < BYTE_CAPACITY; length++) {

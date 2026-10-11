@@ -25,7 +25,10 @@ HELP_DESCRIPTION_DECL(
     "and "
     "with -N it counts from the bottom.");
 
-FLAG(NO_CHANGE, Bool, 'n', "",
+FLAG(NO_CHANGE,
+     Bool,
+     'n',
+     "",
      "Add dir below the current directory without changing to it.");
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 
@@ -33,16 +36,17 @@ REGISTER_BUILTIN_FLAGS(Pushd);
 
 namespace koshka {
 
-fn Pushd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
+fn
+Pushd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let operand_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};
-  let const args = PARSE_BUILTIN_ARGS_WITH_OPTIONS(
+  let const args        = PARSE_BUILTIN_ARGS_WITH_OPTIONS(
       ec, operand_locations, .should_accept_negative_number_operand = true);
 
   if (FLAG_HELP.is_enabled()) SHOW_BUILTIN_HELP_AND_RETURN(ec);
 
-  let &stack = cxt.variable_store().directory_stack();
-  let const pwd = logical_working_directory(cxt).text().clone();
+  let      &stack = cxt.variable_store().directory_stack();
+  let const pwd   = logical_working_directory(cxt).text().clone();
 
   if (args.count() <= 1) {
     if (stack.is_empty()) {

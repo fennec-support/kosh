@@ -23,10 +23,16 @@ HELP_DESCRIPTION_DECL(
     "the top, and a -N operand selects from the bottom.");
 
 FLAG(DIRS_CLEAR, Bool, 'c', "", "Clear the directory stack.");
-FLAG(DIRS_LONG, Bool, 'l', "",
+FLAG(DIRS_LONG,
+     Bool,
+     'l',
+     "",
      "Print full paths rather than abbreviating the home directory to ~.");
 FLAG(DIRS_PER_LINE, Bool, 'p', "", "Print one entry per line.");
-FLAG(DIRS_NUMBERED, Bool, 'v', "",
+FLAG(DIRS_NUMBERED,
+     Bool,
+     'v',
+     "",
      "Print one entry per line, each numbered from the top.");
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 
@@ -34,10 +40,11 @@ REGISTER_BUILTIN_FLAGS(Dirs);
 
 namespace koshka {
 
-fn Dirs::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
+fn
+Dirs::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let operand_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};
-  let const args = PARSE_BUILTIN_ARGS_WITH_OPTIONS(
+  let const args        = PARSE_BUILTIN_ARGS_WITH_OPTIONS(
       ec, operand_locations, .should_accept_negative_number_operand = true,
       .should_allow_options_after_operands = true);
 

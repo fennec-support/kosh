@@ -20,9 +20,12 @@ REGISTER_KOSHKIT_UTIL_FLAGS(Unlink);
 
 namespace koshka::koshkit {
 
-cold fn Unlink::execute(
-    const ExecContext &ec, EvalContext &cxt, const ArrayList<String> &args,
-    const ArrayList<SourceLocation> &arg_locations) const throws -> i32
+cold fn
+Unlink::execute(const ExecContext               &ec,
+                EvalContext                     &cxt,
+                const ArrayList<String>         &args,
+                const ArrayList<SourceLocation> &arg_locations) const throws
+    -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
@@ -34,9 +37,9 @@ cold fn Unlink::execute(
     return 1;
   }
 
-  let const &target = operands[0];
-  let const target_path = Path{target.view(), cxt.scratch_allocator()};
-  let const is_real_directory =
+  let const &target      = operands[0];
+  let const  target_path = Path{target.view(), cxt.scratch_allocator()};
+  let const  is_real_directory =
       target_path.is_directory() && !target_path.is_symbolic_link();
   if (is_real_directory) {
     KOSHKIT_REPORT_ERROR_AT(operand_locations[0], "cannot unlink '" + target +

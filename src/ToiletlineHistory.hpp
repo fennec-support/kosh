@@ -25,8 +25,9 @@ inline constexpr int HISTORY_RACE_ATTEMPT_COUNT = 3;
 inline constexpr usize HISTORY_RECORD_MAX_DECODED_BYTE_COUNT =
     koshka::os::HISTORY_RECORD_MAX_DECODED_BYTE_COUNT;
 
-fn write_history_file_atomically(const koshka::Path &path,
-                                 koshka::StringView name_prefix,
-                                 koshka::StringView contents) throws -> bool;
+fn
+write_history_file_atomically(const koshka::Path &path,
+                              koshka::StringView  name_prefix,
+                              koshka::StringView  contents) throws -> bool;
 
 } /* namespace toiletline */

@@ -39,32 +39,57 @@ using exported_name_value =
 class CompositeKeyArrays
 {
 public:
-  pure fn has(StringView name) const wontthrow -> bool
+  pure fn
+  has(StringView name) const wontthrow -> bool
   {
     return m_names.contains(name);
   }
-  fn declare(StringView name) throws -> void { m_names.add(name); }
-  fn forget(StringView name) throws -> void { m_names.remove(name); }
-  fn names() wontthrow -> HashSet & { return m_names; }
-  pure fn names() const wontthrow -> const HashSet & { return m_names; }
-  fn values() wontthrow -> StringMap<String> & { return m_values; }
-  pure fn values() const wontthrow -> const StringMap<String> &
+  fn
+  declare(StringView name) throws -> void
+  {
+    m_names.add(name);
+  }
+  fn
+  forget(StringView name) throws -> void
+  {
+    m_names.remove(name);
+  }
+  fn
+  names() wontthrow -> HashSet &
+  {
+    return m_names;
+  }
+  pure fn
+  names() const wontthrow -> const HashSet &
+  {
+    return m_names;
+  }
+  fn
+  values() wontthrow -> StringMap<String> &
+  {
+    return m_values;
+  }
+  pure fn
+  values() const wontthrow -> const StringMap<String> &
   {
     return m_values;
   }
 
-  fn put_ordered(StringView composite, StringView value) throws -> void
+  fn
+  put_ordered(StringView composite, StringView value) throws -> void
   {
     if (!m_values.find(composite).has_value())
       m_sequences.set(composite, m_next_sequence++);
     m_values.set(composite, value);
   }
-  fn erase_ordered(StringView composite) throws -> void
+  fn
+  erase_ordered(StringView composite) throws -> void
   {
     m_values.erase(composite);
     m_sequences.erase(composite);
   }
-  pure fn sequence_of(StringView composite) const wontthrow -> u64
+  pure fn
+  sequence_of(StringView composite) const wontthrow -> u64
   {
     let const found = m_sequences.find(composite);
 
@@ -72,10 +97,10 @@ public:
   }
 
 private:
-  HashSet m_names{heap_allocator()};
+  HashSet           m_names{heap_allocator()};
   StringMap<String> m_values{heap_allocator()};
-  StringMap<u64> m_sequences{heap_allocator()};
-  u64 m_next_sequence{1};
+  StringMap<u64>    m_sequences{heap_allocator()};
+  u64               m_next_sequence{1};
 };
 
 enum class argument_lifetime : u8
@@ -136,7 +161,7 @@ enum class source_tilde_expansion : u8
 
 enum class status_flag : u32
 {
-  ErrResolved = 1U << 0,
+  ErrResolved      = 1U << 0,
   ExitCodeReported = 1U << 1,
 };
 
@@ -151,12 +176,14 @@ struct status_result
         flags{status_flags}
   {}
 
-  pure fn has(status_flag flag) const wontthrow -> bool
+  pure fn
+  has(status_flag flag) const wontthrow -> bool
   {
     return (flags & static_cast<u32>(flag)) != 0;
   }
 
-  fn set(status_flag flag) wontthrow -> void
+  fn
+  set(status_flag flag) wontthrow -> void
   {
     flags |= static_cast<u32>(flag);
   }
@@ -174,12 +201,12 @@ enum class restricted_path_use : u8
 
 enum class variable_attribute : u8
 {
-  Readonly = 1U << 0,
-  Integer = 1U << 1,
+  Readonly  = 1U << 0,
+  Integer   = 1U << 1,
   Lowercase = 1U << 2,
   Uppercase = 1U << 3,
-  Declared = 1U << 4,
-  Nameref = 1U << 5,
+  Declared  = 1U << 4,
+  Nameref   = 1U << 5,
 };
 
 struct variable_entry
@@ -188,26 +215,31 @@ struct variable_entry
                                                            elements{allocator}
   {}
   variable_entry(const variable_entry &) = delete;
-  variable_entry &operator=(const variable_entry &) = delete;
+  variable_entry &
+  operator=(const variable_entry &) = delete;
   variable_entry(variable_entry &&) = default;
-  variable_entry &operator=(variable_entry &&) = default;
+  variable_entry &
+  operator=(variable_entry &&) = default;
 
-  mustuse fn clone() const throws -> variable_entry
+  mustuse fn
+  clone() const throws -> variable_entry
   {
     return variable_entry{value.clone(), elements.clone(), attribute_bits,
                           has_value, is_indexed_array};
   }
 
-  String value;
+  String            value;
   ArrayList<String> elements;
-  u8 attribute_bits{0};
-  bool has_value{false};
-  bool is_indexed_array{false};
+  u8                attribute_bits{0};
+  bool              has_value{false};
+  bool              is_indexed_array{false};
 
 private:
-  variable_entry(String cloned_value, ArrayList<String> cloned_elements,
-                 u8 cloned_attribute_bits, bool has_cloned_value,
-                 bool is_cloned_indexed_array) wontthrow
+  variable_entry(String            cloned_value,
+                 ArrayList<String> cloned_elements,
+                 u8                cloned_attribute_bits,
+                 bool              has_cloned_value,
+                 bool              is_cloned_indexed_array) wontthrow
       : value{steal(cloned_value)},
         elements{steal(cloned_elements)},
         attribute_bits{cloned_attribute_bits},
@@ -233,22 +265,25 @@ struct variable_table_body
         has_namerefs{other.has_namerefs},
         has_declared_marks{other.has_declared_marks}
   {
-    other.pipestatus_entry = nullptr;
-    other.value_count = 0;
+    other.pipestatus_entry    = nullptr;
+    other.value_count         = 0;
     other.indexed_array_count = 0;
   }
   variable_table_body(const variable_table_body &) = delete;
-  variable_table_body &operator=(const variable_table_body &) = delete;
-  variable_table_body &operator=(variable_table_body &&) = delete;
+  variable_table_body &
+  operator=(const variable_table_body &) = delete;
+  variable_table_body &
+  operator=(variable_table_body &&) = delete;
 
-  mustuse fn clone() const throws -> variable_table_body
+  mustuse fn
+  clone() const throws -> variable_table_body
   {
-    let copy = variable_table_body{allocator};
-    copy.index = index.clone();
-    copy.value_count = value_count;
+    let copy                 = variable_table_body{allocator};
+    copy.index               = index.clone();
+    copy.value_count         = value_count;
     copy.indexed_array_count = indexed_array_count;
-    copy.has_namerefs = has_namerefs;
-    copy.has_declared_marks = has_declared_marks;
+    copy.has_namerefs        = has_namerefs;
+    copy.has_declared_marks  = has_declared_marks;
     copy.index.for_each([&](StringView, variable_entry *&entry) throws {
       entry = copy.entries.emplace(entry->clone());
     });
@@ -257,13 +292,13 @@ struct variable_table_body
   }
 
   StringMap<variable_entry *> index;
-  Hive<variable_entry> entries;
-  Allocator allocator;
-  mutable variable_entry *pipestatus_entry{nullptr};
-  usize value_count{0};
-  usize indexed_array_count{0};
-  bool has_namerefs{false};
-  bool has_declared_marks{false};
+  Hive<variable_entry>        entries;
+  Allocator                   allocator;
+  mutable variable_entry     *pipestatus_entry{nullptr};
+  usize                       value_count{0};
+  usize                       indexed_array_count{0};
+  bool                        has_namerefs{false};
+  bool                        has_declared_marks{false};
 };
 
 class VariableTable
@@ -271,22 +306,26 @@ class VariableTable
 public:
   explicit VariableTable(Allocator allocator) wontthrow : m_body{allocator} {}
   VariableTable(VariableTable &&other) wontthrow = default;
-  fn operator=(VariableTable &&other) wontthrow->VariableTable & = default;
+  fn
+  operator=(VariableTable &&other) wontthrow->VariableTable & = default;
 
   VariableTable(const VariableTable &) = delete;
-  VariableTable &operator=(const VariableTable &) = delete;
+  VariableTable &
+  operator=(const VariableTable &) = delete;
 
-  mustuse fn clone() const throws -> VariableTable
+  mustuse fn
+  clone() const throws -> VariableTable
   {
-    let copy = VariableTable{m_body.allocator()};
+    let copy    = VariableTable{m_body.allocator()};
     copy.m_body = m_body.clone();
 
     return copy;
   }
 
-  mustuse fn share() const wontthrow -> VariableTable
+  mustuse fn
+  share() const wontthrow -> VariableTable
   {
-    let copy = VariableTable{m_body.allocator()};
+    let copy    = VariableTable{m_body.allocator()};
     copy.m_body = m_body;
 #if !defined NDEBUG
     copy.m_debug_shared_checksum = debug_checksum();
@@ -295,7 +334,8 @@ public:
     return copy;
   }
 
-  pure fn is_unchanged_since_share() const wontthrow -> bool
+  pure fn
+  is_unchanged_since_share() const wontthrow -> bool
   {
 #if !defined NDEBUG
     return !m_debug_shared_checksum.has_value() ||
@@ -305,8 +345,8 @@ public:
 #endif
   }
 
-  hot pure fn find(StringView name) const wontthrow
-      -> Maybe<const variable_entry *>
+  hot pure fn
+  find(StringView name) const wontthrow -> Maybe<const variable_entry *>
   {
     if (m_body.is_empty()) return None;
 
@@ -316,14 +356,16 @@ public:
     return *found.value();
   }
 
-  hot fn find_for_write(StringView name) throws -> Maybe<variable_entry *>
+  hot fn
+  find_for_write(StringView name) throws -> Maybe<variable_entry *>
   {
     if (!find(name).has_value()) return None;
 
     return *body().index.find(name).value();
   }
 
-  fn get_or_create(StringView name) throws -> variable_entry &
+  fn
+  get_or_create(StringView name) throws -> variable_entry &
   {
     let &table = body();
     if (let const found = table.index.find(name); found.has_value())
@@ -340,7 +382,8 @@ public:
     return *created;
   }
 
-  fn release_if_unused(StringView name, variable_entry &entry) throws -> void
+  fn
+  release_if_unused(StringView name, variable_entry &entry) throws -> void
   {
     if (entry.has_value || entry.is_indexed_array || entry.attribute_bits != 0)
     {
@@ -353,32 +396,35 @@ public:
     table.entries.erase(&entry);
   }
 
-  fn set_elements(StringView name, ArrayList<String> elements) throws
+  fn
+  set_elements(StringView name, ArrayList<String> elements) throws
       -> ArrayList<String> *
   {
     let &entry = get_or_create(name);
     if (!entry.is_indexed_array) body().indexed_array_count++;
     entry.is_indexed_array = true;
-    entry.elements = steal(elements);
+    entry.elements         = steal(elements);
 
     return &entry.elements;
   }
 
-  fn erase_elements(StringView name) throws -> void
+  fn
+  erase_elements(StringView name) throws -> void
   {
     let const current = find(name);
     if (!current.has_value() || !(*current)->is_indexed_array) {
       return;
     }
 
-    let &entry = *find_for_write(name).value();
+    let &entry             = *find_for_write(name).value();
     entry.is_indexed_array = false;
     entry.elements.clear();
     body().indexed_array_count--;
     release_if_unused(name, entry);
   }
 
-  fn find_pipestatus() const wontthrow -> Maybe<const variable_entry *>
+  fn
+  find_pipestatus() const wontthrow -> Maybe<const variable_entry *>
   {
     if (m_body.is_empty()) return None;
 
@@ -393,7 +439,8 @@ public:
     return table.pipestatus_entry;
   }
 
-  fn find_pipestatus_for_write() throws -> Maybe<variable_entry *>
+  fn
+  find_pipestatus_for_write() throws -> Maybe<variable_entry *>
   {
     if (!find_pipestatus().has_value()) return None;
 
@@ -406,12 +453,14 @@ public:
     return table.pipestatus_entry;
   }
 
-  fn set_value(StringView name, StringView value) throws -> String *
+  fn
+  set_value(StringView name, StringView value) throws -> String *
   {
     return assign_value(get_or_create(name), value);
   }
 
-  fn assign_value(variable_entry &entry, StringView value) throws -> String *
+  fn
+  assign_value(variable_entry &entry, StringView value) throws -> String *
   {
     let &table = body();
     if (!entry.has_value) table.value_count++;
@@ -429,27 +478,29 @@ public:
     return &entry.value;
   }
 
-  fn erase_value(StringView name) throws -> void
+  fn
+  erase_value(StringView name) throws -> void
   {
     let const current = find(name);
     if (!current.has_value() || !(*current)->has_value) {
       return;
     }
 
-    let &entry = *find_for_write(name).value();
+    let &entry      = *find_for_write(name).value();
     entry.has_value = false;
     entry.value.clear();
     body().value_count--;
     release_if_unused(name, entry);
   }
 
-  fn set_attribute_bits(StringView name, u8 bits) throws -> void
+  fn
+  set_attribute_bits(StringView name, u8 bits) throws -> void
   {
     note_attribute_bits(bits);
     if (bits == 0) {
       if (!find(name).has_value()) return;
 
-      let &entry = *find_for_write(name).value();
+      let &entry           = *find_for_write(name).value();
       entry.attribute_bits = 0;
       release_if_unused(name, entry);
 
@@ -460,7 +511,8 @@ public:
   }
 
   template <typename Callback>
-  fn for_each(Callback do_callback) const throws -> void
+  fn
+  for_each(Callback do_callback) const throws -> void
   {
     if (m_body.is_empty()) return;
 
@@ -470,27 +522,33 @@ public:
         });
   }
 
-  pure fn allocator() const wontthrow -> Allocator
+  pure fn
+  allocator() const wontthrow -> Allocator
   {
     return m_body.allocator();
   }
-  pure fn value_count() const wontthrow -> usize
+  pure fn
+  value_count() const wontthrow -> usize
   {
     return m_body.is_empty() ? 0 : m_body.read().value_count;
   }
-  pure fn indexed_array_count() const wontthrow -> usize
+  pure fn
+  indexed_array_count() const wontthrow -> usize
   {
     return m_body.is_empty() ? 0 : m_body.read().indexed_array_count;
   }
-  pure fn has_namerefs() const wontthrow -> bool
+  pure fn
+  has_namerefs() const wontthrow -> bool
   {
     return !m_body.is_empty() && m_body.read().has_namerefs;
   }
-  pure fn has_declared_marks() const wontthrow -> bool
+  pure fn
+  has_declared_marks() const wontthrow -> bool
   {
     return !m_body.is_empty() && m_body.read().has_declared_marks;
   }
-  fn note_attribute_bits(u8 bits) throws -> void
+  fn
+  note_attribute_bits(u8 bits) throws -> void
   {
     let const is_nameref =
         (bits & static_cast<u8>(variable_attribute::Nameref)) != 0;
@@ -501,7 +559,8 @@ public:
   }
 
 private:
-  fn body() throws -> variable_table_body &
+  fn
+  body() throws -> variable_table_body &
   {
     if (m_body.is_empty()) {
       m_body.assign(variable_table_body{m_body.allocator()});
@@ -513,10 +572,11 @@ private:
   CopyOnWrite<variable_table_body> m_body;
 
 #if !defined NDEBUG
-  pure fn debug_checksum() const wontthrow -> u64
+  pure fn
+  debug_checksum() const wontthrow -> u64
   {
-    u64 checksum = 14695981039346656037ULL;
-    let const do_mix = [&](StringView bytes) wontthrow {
+    u64       checksum = 14695981039346656037ULL;
+    let const do_mix   = [&](StringView bytes) wontthrow {
       for (usize index = 0; index < bytes.length; index++) {
         checksum ^= static_cast<u8>(bytes[index]);
         checksum *= 1099511628211ULL;
@@ -556,7 +616,7 @@ struct glob_field
 
   String text;
   Bitset glob_active;
-  bool has_literal_glob{false};
+  bool   has_literal_glob{false};
 };
 
 enum class glob_expansion_mode : u8
@@ -577,10 +637,13 @@ enum class glob_charset : u8
   Utf8,
 };
 
-hot pure fn first_active_glob(StringView text, const Bitset &mask,
-                              extglob_mode mode) wontthrow -> Maybe<usize>;
+hot pure fn
+first_active_glob(StringView    text,
+                  const Bitset &mask,
+                  extglob_mode  mode) wontthrow -> Maybe<usize>;
 
-inline pure fn is_colon_modifier_operator(char c) wontthrow -> bool
+inline pure fn
+is_colon_modifier_operator(char c) wontthrow -> bool
 {
   return c == '-' || c == '+' || c == '=' || c == '?';
 }
@@ -605,17 +668,20 @@ struct conditional_element
     Greater,
   };
 
-  const Token *word{nullptr};
+  const Token   *word{nullptr};
   SourceLocation location{};
-  Kind kind;
-  bool is_bare_unquoted{false};
+  Kind           kind;
+  bool           is_bare_unquoted{false};
 };
 
 static_assert(sizeof(usize) != 8 || sizeof(conditional_element) == 24);
 
-pure fn is_runtime_dynamic_variable_name(StringView name) wontthrow -> bool;
-pure fn is_bash_only_dynamic_variable_name(StringView name) wontthrow -> bool;
-pure fn is_process_dynamic_variable_name(StringView name) wontthrow -> bool;
+pure fn
+is_runtime_dynamic_variable_name(StringView name) wontthrow -> bool;
+pure fn
+is_bash_only_dynamic_variable_name(StringView name) wontthrow -> bool;
+pure fn
+is_process_dynamic_variable_name(StringView name) wontthrow -> bool;
 
 struct control_flow
 {
@@ -628,11 +694,11 @@ struct control_flow
     Exit,
   };
 
-  i64 value{0};
-  const String *source{nullptr};
-  String origin{heap_allocator()};
+  i64            value{0};
+  const String  *source{nullptr};
+  String         origin{heap_allocator()};
   SourceLocation location{0, 0};
-  Kind kind{Kind::Normal};
+  Kind           kind{Kind::Normal};
 };
 
 static constexpr u64 EXTERNAL_SOURCE_GENERATION = UINT64_MAX;
@@ -646,24 +712,25 @@ enum class source_frame_kind : u8
 
 struct trap_definition
 {
-  String action_text;
-  String line_source;
+  String         action_text;
+  String         line_source;
   SourceLocation location;
-  isize line_offset{0};
-  bool has_location{false};
+  isize          line_offset{0};
+  bool           has_location{false};
 };
 
 struct trap_action_frame
 {
-  usize trigger_line_number{0};
-  usize source_frame_count{0};
-  usize function_depth{0};
+  usize      trigger_line_number{0};
+  usize      source_frame_count{0};
+  usize      function_depth{0};
   Maybe<i32> saved_exit_status{None};
-  u32 depth{0};
-  u8 running_conditions{0};
+  u32        depth{0};
+  u8         running_conditions{0};
 
-  pure fn get_trigger_line_number(usize current_source_frame_count,
-                                  usize current_function_depth) const wontthrow
+  pure fn
+  get_trigger_line_number(usize current_source_frame_count,
+                          usize current_function_depth) const wontthrow
       -> Maybe<usize>
   {
     if (depth == 0) return None;
@@ -685,12 +752,13 @@ struct startup_options
 
 struct coprocess_descriptors
 {
-  i32 read_fd{-1};
-  i32 write_fd{-1};
-  i64 process_id{-1};
+  i32    read_fd{-1};
+  i32    write_fd{-1};
+  i64    process_id{-1};
   String name{heap_allocator()};
 
-  pure fn has_any() const wontthrow -> bool
+  pure fn
+  has_any() const wontthrow -> bool
   {
     return read_fd >= 0 || write_fd >= 0;
   }
@@ -700,73 +768,77 @@ struct trap_install_state
 {
   usize debug_active_depth{0};
   usize err_active_depth{0};
-  bool did_reset_inherited_signal_traps{false};
+  bool  did_reset_inherited_signal_traps{false};
 };
 
 struct embedded_source
 {
-  StringView text;
-  const String *parent;
+  StringView     text;
+  const String  *parent;
   SourceLocation parent_location;
-  usize inner_offset;
-  const String *body{nullptr};
-  usize function_call_depth{0};
-  usize call_depth_floor{0};
-  bool is_mapped{true};
+  usize          inner_offset;
+  const String  *body{nullptr};
+  usize          function_call_depth{0};
+  usize          call_depth_floor{0};
+  bool           is_mapped{true};
 };
 
 struct source_line_base
 {
   const String *source;
-  usize preceding_line_count;
+  usize         preceding_line_count;
 };
 
 struct source_frame
 {
-  source_frame(String origin, SourceLocation call_site,
-               const String *parent_source, u64 parent_source_generation,
-               String source_path, source_frame_kind kind)
+  source_frame(String            origin,
+               SourceLocation    call_site,
+               const String     *parent_source,
+               u64               parent_source_generation,
+               String            source_path,
+               source_frame_kind kind)
       : origin(steal(origin)), source_path(steal(source_path)),
         parent_source(parent_source),
         parent_source_generation(parent_source_generation),
         call_site(steal(call_site)), kind(kind)
   {}
 
-  pure fn has_bash_source_row() const wontthrow -> bool
+  pure fn
+  has_bash_source_row() const wontthrow -> bool
   {
     return kind == source_frame_kind::SourcedFile;
   }
 
-  String origin;
-  String source_path;
-  const String *parent_source;
-  u64 parent_source_generation;
+  String                 origin;
+  String                 source_path;
+  const String          *parent_source;
+  u64                    parent_source_generation;
   const trap_definition *definition{nullptr};
-  usize function_call_depth{0};
-  SourceLocation call_site;
-  Maybe<SourceLocation> deferred_trace_location;
-  source_frame_kind kind;
-  bool was_printed{false};
-  bool was_definition_printed{false};
-  bool is_source_changing : 1 {true};
-  bool should_defer_trace : 1 {false};
-  bool has_deferred_trace : 1 {false};
+  usize                  function_call_depth{0};
+  SourceLocation         call_site;
+  Maybe<SourceLocation>  deferred_trace_location;
+  source_frame_kind      kind;
+  bool                   was_printed{false};
+  bool                   was_definition_printed{false};
+  bool                   is_source_changing : 1 {true};
+  bool                   should_defer_trace : 1 {false};
+  bool                   has_deferred_trace : 1 {false};
 };
 
 struct local_binding
 {
-  String name;
-  Maybe<String> previous_value;
-  Maybe<SourceLocation> previous_special_definition_location;
+  String                   name;
+  Maybe<String>            previous_value;
+  Maybe<SourceLocation>    previous_special_definition_location;
   Maybe<ArrayList<String>> previous_indexed_array;
-  ArrayList<String> previous_associative_keys{heap_allocator()};
-  ArrayList<String> previous_associative_values{heap_allocator()};
-  ArrayList<usize> previous_sparse_indices{heap_allocator()};
-  ArrayList<String> previous_sparse_values{heap_allocator()};
-  u8 previous_attributes{0};
-  bool was_previously_associative{false};
-  bool was_previously_exported{false};
-  bool is_self_reference{false};
+  ArrayList<String>        previous_associative_keys{heap_allocator()};
+  ArrayList<String>        previous_associative_values{heap_allocator()};
+  ArrayList<usize>         previous_sparse_indices{heap_allocator()};
+  ArrayList<String>        previous_sparse_values{heap_allocator()};
+  u8                       previous_attributes{0};
+  bool                     was_previously_associative{false};
+  bool                     was_previously_exported{false};
+  bool                     is_self_reference{false};
 };
 
 static_assert(sizeof(usize) != 8 || sizeof(local_binding) == 272);
@@ -785,26 +857,26 @@ struct job
     Done,
   };
 
-  ArrayList<os::process> earlier_pipeline_processes{heap_allocator()};
-  String command{heap_allocator()};
-  i64 process_id{0};
-  i64 process_group_id{0};
-  i32 id{0};
-  os::process pid{KOSH_INVALID_PROCESS};
-  i32 last_status{0};
-  i32 stopped_status{0};
+  ArrayList<os::process>  earlier_pipeline_processes{heap_allocator()};
+  String                  command{heap_allocator()};
+  i64                     process_id{0};
+  i64                     process_group_id{0};
+  i32                     id{0};
+  os::process             pid{KOSH_INVALID_PROCESS};
+  i32                     last_status{0};
+  i32                     stopped_status{0};
   os::process_termination termination{};
-  State state{State::Running};
-  bool is_primary_process_active{true};
-  bool has_unreported_state_change{false};
-  bool is_inherited{false};
-  bool was_waited{false};
+  State                   state{State::Running};
+  bool                    is_primary_process_active{true};
+  bool                    has_unreported_state_change{false};
+  bool                    is_inherited{false};
+  bool                    was_waited{false};
 };
 
 struct job_line_format
 {
-  bool should_show_process_id{false};
-  bool is_posix{false};
+  bool       should_show_process_id{false};
+  bool       is_posix{false};
   StringView state_color{};
   StringView color_reset{};
 };
@@ -818,32 +890,33 @@ struct finished_process_status
 struct next_job_wait
 {
   Maybe<i32> job_id{None};
-  i64 process_id{0};
-  i32 status{127};
-  bool was_interrupted{false};
+  i64        process_id{0};
+  i32        status{127};
+  bool       was_interrupted{false};
 };
 
 struct job_table_snapshot
 {
-  Maybe<i64> last_background_pid;
-  ArrayList<job> jobs;
-  ArrayList<os::process> detached_job_processes;
+  Maybe<i64>                         last_background_pid;
+  ArrayList<job>                     jobs;
+  ArrayList<os::process>             detached_job_processes;
   ArrayList<finished_process_status> finished_statuses;
-  usize next_finished_status_slot;
-  i32 next_job_id;
+  usize                              next_finished_status_slot;
+  i32                                next_job_id;
 };
 
 struct subshell_bootstrap_reader;
 
 struct job_table_wire
 {
-  Maybe<i64> last_background_pid{None};
-  i32 next_job_id{1};
-  ArrayList<job> jobs{heap_allocator()};
+  Maybe<i64>             last_background_pid{None};
+  i32                    next_job_id{1};
+  ArrayList<job>         jobs{heap_allocator()};
   ArrayList<os::process> detached_processes{heap_allocator()};
-  ArrayList<u32> process_references{heap_allocator()};
+  ArrayList<u32>         process_references{heap_allocator()};
 
-  fn bind_processes(const os::subshell_bootstrap &bootstrap) wontthrow -> bool;
+  fn
+  bind_processes(const os::subshell_bootstrap &bootstrap) wontthrow -> bool;
 };
 
 class JobTable
@@ -856,89 +929,145 @@ public:
         m_detached_job_processes(allocator)
   {}
 
-  fn set_last_background_pid(i64 pid) wontthrow -> void;
-  fn remember_finished_status(i64 process_id, i32 status) wontthrow -> void;
-  pure fn find_finished_status(i64 process_id) const wontthrow -> Maybe<i32>;
-  fn forget_finished_statuses() wontthrow -> void;
-  fn register_job(os::process pid, StringView command,
-                  i64 process_group_id) throws -> i32;
-  fn register_pipeline_job(const ArrayList<os::process> &processes,
-                           os::process primary_process, StringView command,
-                           i64 process_group_id) throws -> i32;
-  fn register_stopped_job(os::process pid, StringView command, i32 status,
-                          i64 process_group_id) throws -> i32;
-  fn notify_stopped_job(i32 id) throws -> void;
-  fn append_status_line(String &out, usize index,
-                        const job_line_format &format) const throws -> void;
-  fn update_jobs() throws -> void;
-  fn wait_for_job_processes(job &entry, bool *was_stopped = nullptr,
-                            bool should_wait_for_termination = false) throws
+  fn
+  set_last_background_pid(i64 pid) wontthrow -> void;
+  fn
+  remember_finished_status(i64 process_id, i32 status) wontthrow -> void;
+  pure fn
+  find_finished_status(i64 process_id) const wontthrow -> Maybe<i32>;
+  fn
+  forget_finished_statuses() wontthrow -> void;
+  fn
+  register_job(os::process pid, StringView command, i64 process_group_id) throws
       -> i32;
-  fn wait_for_next_job(const ArrayList<i32> &job_ids,
-                       bool should_wait_for_termination) throws
-      -> next_job_wait;
-  fn find_job_index_by_spec(StringView spec) throws -> Maybe<usize>;
-  fn find_job_by_spec(StringView spec) throws -> job *;
-  fn most_recent_job() wontthrow -> job *;
-  fn forget_done_jobs() throws -> void;
-  fn forget_done_job(i32 id) throws -> void;
-  fn mark_job_waited(i32 id, bool should_remember_status) wontthrow -> void;
-  fn mark_job_waited(job &entry, bool should_remember_status) wontthrow -> void;
-  fn forget_waited_jobs() throws -> void
+  fn
+  register_pipeline_job(const ArrayList<os::process> &processes,
+                        os::process                   primary_process,
+                        StringView                    command,
+                        i64 process_group_id) throws -> i32;
+  fn
+  register_stopped_job(os::process pid,
+                       StringView  command,
+                       i32         status,
+                       i64         process_group_id) throws -> i32;
+  fn
+  notify_stopped_job(i32 id) throws -> void;
+  fn
+  append_status_line(String                &out,
+                     usize                  index,
+                     const job_line_format &format) const throws -> void;
+  fn
+  update_jobs() throws -> void;
+  fn
+  wait_for_job_processes(job  &entry,
+                         bool *was_stopped                 = nullptr,
+                         bool  should_wait_for_termination = false) throws
+      -> i32;
+  fn
+  wait_for_next_job(const ArrayList<i32> &job_ids,
+                    bool should_wait_for_termination) throws -> next_job_wait;
+  fn
+  find_job_index_by_spec(StringView spec) throws -> Maybe<usize>;
+  fn
+  find_job_by_spec(StringView spec) throws -> job *;
+  fn
+  most_recent_job() wontthrow -> job *;
+  fn
+  forget_done_jobs() throws -> void;
+  fn
+  forget_done_job(i32 id) throws -> void;
+  fn
+  mark_job_waited(i32 id, bool should_remember_status) wontthrow -> void;
+  fn
+  mark_job_waited(job &entry, bool should_remember_status) wontthrow -> void;
+  fn
+  forget_waited_jobs() throws -> void
   {
     if (m_has_waited_jobs) forget_marked_waited_jobs();
   }
-  fn inherit_parent_jobs(bool should_keep_finished_statuses) wontthrow -> void;
-  fn remove_job(i32 id) throws -> bool;
-  fn format_done_job_notifications(StringView line_ending, bool is_posix) throws
+  fn
+  inherit_parent_jobs(bool should_keep_finished_statuses) wontthrow -> void;
+  fn
+  remove_job(i32 id) throws -> bool;
+  fn
+  format_done_job_notifications(StringView line_ending, bool is_posix) throws
       -> String;
-  fn take_snapshot() throws -> job_table_snapshot;
-  fn restore_snapshot(job_table_snapshot snapshot) throws -> void;
-  fn append_wire(String &output, os::subshell_bootstrap &bootstrap) const throws
+  fn
+  take_snapshot() throws -> job_table_snapshot;
+  fn
+  restore_snapshot(job_table_snapshot snapshot) throws -> void;
+  fn
+  append_wire(String &output, os::subshell_bootstrap &bootstrap) const throws
       -> void;
-  static fn from_wire(subshell_bootstrap_reader &reader,
-                      job_table_wire &wire) throws -> bool;
-  fn apply_wire(job_table_wire wire) wontthrow -> void;
+  static fn
+  from_wire(subshell_bootstrap_reader &reader, job_table_wire &wire) throws
+      -> bool;
+  fn
+  apply_wire(job_table_wire wire) wontthrow -> void;
 
-  fn last_background_pid() wontthrow -> Maybe<i64> &
+  fn
+  last_background_pid() wontthrow -> Maybe<i64> &
   {
     return m_last_background_pid;
   }
-  pure fn last_background_pid() const wontthrow -> const Maybe<i64> &
+  pure fn
+  last_background_pid() const wontthrow -> const Maybe<i64> &
   {
     return m_last_background_pid;
   }
-  fn jobs() wontthrow -> ArrayList<job> & { return m_jobs; }
-  pure fn jobs() const wontthrow -> const ArrayList<job> & { return m_jobs; }
-  fn detached_job_processes() wontthrow -> ArrayList<os::process> &
+  fn
+  jobs() wontthrow -> ArrayList<job> &
+  {
+    return m_jobs;
+  }
+  pure fn
+  jobs() const wontthrow -> const ArrayList<job> &
+  {
+    return m_jobs;
+  }
+  fn
+  detached_job_processes() wontthrow -> ArrayList<os::process> &
   {
     return m_detached_job_processes;
   }
-  pure fn detached_job_processes() const wontthrow
-      -> const ArrayList<os::process> &
+  pure fn
+  detached_job_processes() const wontthrow -> const ArrayList<os::process> &
   {
     return m_detached_job_processes;
   }
-  fn next_job_id() wontthrow -> i32 & { return m_next_job_id; }
-  pure fn next_job_id() const wontthrow -> i32 { return m_next_job_id; }
+  fn
+  next_job_id() wontthrow -> i32 &
+  {
+    return m_next_job_id;
+  }
+  pure fn
+  next_job_id() const wontthrow -> i32
+  {
+    return m_next_job_id;
+  }
 
-  fn foreground_program_title_buffer() wontthrow -> String &
+  fn
+  foreground_program_title_buffer() wontthrow -> String &
   {
     return m_foreground_program_title_buffer;
   }
-  fn set_in_pipeline_stage(bool is_in_stage) wontthrow -> void
+  fn
+  set_in_pipeline_stage(bool is_in_stage) wontthrow -> void
   {
     m_is_in_pipeline_stage = is_in_stage;
   }
-  pure fn is_in_pipeline_stage() const wontthrow -> bool
+  pure fn
+  is_in_pipeline_stage() const wontthrow -> bool
   {
     return m_is_in_pipeline_stage;
   }
-  fn set_stage_boundary_published(bool was_published) wontthrow -> void
+  fn
+  set_stage_boundary_published(bool was_published) wontthrow -> void
   {
     m_was_stage_boundary_published = was_published;
   }
-  pure fn was_stage_boundary_published() const wontthrow -> bool
+  pure fn
+  was_stage_boundary_published() const wontthrow -> bool
   {
     return m_was_stage_boundary_published;
   }
@@ -946,36 +1075,38 @@ public:
 private:
   static constexpr usize REMEMBERED_FINISHED_STATUS_COUNT = 1024;
 
-  fn claim_job_id() throws -> i32;
-  fn forget_marked_waited_jobs() throws -> void;
+  fn
+  claim_job_id() throws -> i32;
+  fn
+  forget_marked_waited_jobs() throws -> void;
 
-  Maybe<i64> m_last_background_pid{};
+  Maybe<i64>                         m_last_background_pid{};
   ArrayList<finished_process_status> m_finished_statuses;
-  usize m_next_finished_status_slot{0};
-  ArrayList<job> m_jobs;
-  ArrayList<os::process> m_detached_job_processes;
-  i32 m_next_job_id{1};
+  usize                              m_next_finished_status_slot{0};
+  ArrayList<job>                     m_jobs;
+  ArrayList<os::process>             m_detached_job_processes;
+  i32                                m_next_job_id{1};
   String m_foreground_program_title_buffer{heap_allocator()};
-  bool m_is_in_pipeline_stage{false};
-  bool m_was_stage_boundary_published{false};
-  bool m_has_waited_jobs{false};
+  bool   m_is_in_pipeline_stage{false};
+  bool   m_was_stage_boundary_published{false};
+  bool   m_has_waited_jobs{false};
 };
 
 struct environment_undo_entry
 {
-  String name;
-  Maybe<String> previous_value;
+  String                name;
+  Maybe<String>         previous_value;
   Maybe<SourceLocation> previous_special_definition_location;
 };
 
 struct process_substitution
 {
   os::descriptor shell_fd;
-  os::process child;
-  i64 process_id;
-  opaque *platform_cleanup;
+  os::process    child;
+  i64            process_id;
+  opaque        *platform_cleanup;
   SourceLocation location;
-  StringView source;
+  StringView     source;
 };
 
 struct process_substitution_mark
@@ -985,10 +1116,10 @@ struct process_substitution_mark
 
 struct loop_redirect_fd
 {
-  i32 target_fd{-1};
+  i32                target_fd{-1};
   os::file_open_mode mode{};
-  String path;
-  os::descriptor fd{};
+  String             path;
+  os::descriptor     fd{};
 };
 
 struct loop_redirect_fd_mark
@@ -998,24 +1129,24 @@ struct loop_redirect_fd_mark
 
 struct subshell_saved_descriptor
 {
-  usize depth;
+  usize                depth;
   os::saved_descriptor saved;
 };
 
 struct function_definition_info
 {
-  usize body_start_position{0};
-  usize header_length{0};
-  usize definition_line{0};
-  isize line_offset{0};
-  usize enclosing_line_count{0};
-  u32 source_name_index{0};
-  u32 body_name_index{0};
-  String line_prefix{heap_allocator()};
-  String line_suffix{heap_allocator()};
-  mutable String render_source{heap_allocator()};
-  mutable bool has_render_source{false};
-  bool is_numbered_apart{false};
+  usize            body_start_position{0};
+  usize            header_length{0};
+  usize            definition_line{0};
+  isize            line_offset{0};
+  usize            enclosing_line_count{0};
+  u32              source_name_index{0};
+  u32              body_name_index{0};
+  String           line_prefix{heap_allocator()};
+  String           line_suffix{heap_allocator()};
+  mutable String   render_source{heap_allocator()};
+  mutable bool     has_render_source{false};
+  bool             is_numbered_apart{false};
   definition_state defining_state;
 };
 
@@ -1033,16 +1164,17 @@ struct function_body_storage
   explicit function_body_storage(BumpArena *arena);
   ~function_body_storage();
 
-  BumpArena *arena{nullptr};
-  const Expression *body{nullptr};
-  String source{heap_allocator()};
+  BumpArena               *arena{nullptr};
+  const Expression        *body{nullptr};
+  String                   source{heap_allocator()};
   function_definition_info definition_info;
-  u32 reference_count{1};
-  function_body_storage *previous_live{nullptr};
-  function_body_storage *next_live{nullptr};
+  u32                      reference_count{1};
+  function_body_storage   *previous_live{nullptr};
+  function_body_storage   *next_live{nullptr};
 };
 
-pure fn live_function_storage_stats() wontthrow -> function_arena_stats;
+pure fn
+live_function_storage_stats() wontthrow -> function_arena_stats;
 
 class FunctionBodyHandle
 {
@@ -1052,29 +1184,43 @@ public:
   FunctionBodyHandle(FunctionBodyHandle &&other) noexcept;
   ~FunctionBodyHandle();
 
-  fn operator=(const FunctionBodyHandle &other)->FunctionBodyHandle &;
-  fn operator=(FunctionBodyHandle &&other) noexcept -> FunctionBodyHandle &;
+  fn
+  operator=(const FunctionBodyHandle &other)
+      ->FunctionBodyHandle &;
+  fn
+  operator=(FunctionBodyHandle &&other) noexcept -> FunctionBodyHandle &;
 
-  static fn create(usize source_length_hint) throws -> FunctionBodyHandle;
+  static fn
+  create(usize source_length_hint) throws -> FunctionBodyHandle;
 
-  pure fn has_value() const wontthrow -> bool { return m_storage != nullptr; }
-  pure fn get_arena() const wontthrow -> BumpArena *;
-  pure fn get_body() const wontthrow -> const Expression *;
-  pure fn get_source() const wontthrow -> const String *;
-  pure fn get_definition_info() const wontthrow
-      -> const function_definition_info *;
-  fn set_body(const Expression *body) wontthrow -> void;
-  fn set_definition(StringView source,
-                    function_definition_info definition_info) const throws
-      -> void;
+  pure fn
+  has_value() const wontthrow -> bool
+  {
+    return m_storage != nullptr;
+  }
+  pure fn
+  get_arena() const wontthrow -> BumpArena *;
+  pure fn
+  get_body() const wontthrow -> const Expression *;
+  pure fn
+  get_source() const wontthrow -> const String *;
+  pure fn
+  get_definition_info() const wontthrow -> const function_definition_info *;
+  fn
+  set_body(const Expression *body) wontthrow -> void;
+  fn
+  set_definition(StringView               source,
+                 function_definition_info definition_info) const throws -> void;
 
 private:
   explicit FunctionBodyHandle(function_body_storage *storage)
       : m_storage(storage)
   {}
 
-  fn retain() wontthrow -> void;
-  fn release() wontthrow -> void;
+  fn
+  retain() wontthrow -> void;
+  fn
+  release() wontthrow -> void;
 
   function_body_storage *m_storage{nullptr};
 
@@ -1086,14 +1232,16 @@ struct shell_option_mutations
   u64 revision{0};
   u64 last_revision[static_cast<usize>(shell_option_id::Count)]{};
 
-  fn note(shell_option_id option) wontthrow -> void
+  fn
+  note(shell_option_id option) wontthrow -> void
   {
     revision++;
     last_revision[static_cast<usize>(option)] = revision;
   }
 
-  pure fn touched_since(shell_option_id option,
-                        u64 prior_revision) const wontthrow -> bool
+  pure fn
+  touched_since(shell_option_id option, u64 prior_revision) const wontthrow
+      -> bool
   {
     return last_revision[static_cast<usize>(option)] > prior_revision;
   }
@@ -1101,22 +1249,22 @@ struct shell_option_mutations
 
 enum class reporting_field : u8
 {
-  Mood = 1U << 0,
-  Warning = 1U << 1,
+  Mood        = 1U << 0,
+  Warning     = 1U << 1,
   Diagnostics = 1U << 2,
-  Annoying = 1U << 3,
+  Annoying    = 1U << 3,
 };
 
 struct reporting_revisions
 {
   bool was_mood_set_explicitly{false};
-  u64 mood{0};
-  u64 warning{0};
-  u64 diagnostics{0};
-  u64 annoying{0};
+  u64  mood{0};
+  u64  warning{0};
+  u64  diagnostics{0};
+  u64  annoying{0};
 
-  pure fn changed_fields_since(const reporting_revisions &prior) const wontthrow
-      -> u8
+  pure fn
+  changed_fields_since(const reporting_revisions &prior) const wontthrow -> u8
   {
     u8 fields = 0;
     if (mood != prior.mood) fields |= static_cast<u8>(reporting_field::Mood);
@@ -1130,8 +1278,8 @@ struct reporting_revisions
     return fields;
   }
 
-  static constexpr pure fn has_field(u8 fields, reporting_field field) wontthrow
-      -> bool
+  static constexpr pure fn
+  has_field(u8 fields, reporting_field field) wontthrow -> bool
   {
     return (fields & static_cast<u8>(field)) != 0;
   }
@@ -1139,7 +1287,7 @@ struct reporting_revisions
 
 struct control_mutations
 {
-  reporting_revisions reporting;
+  reporting_revisions    reporting;
   shell_option_mutations options;
 };
 
@@ -1151,20 +1299,22 @@ enum class definition_state_exit : u8
 
 struct function_runtime_state
 {
-  RuntimeState previous;
-  RuntimeState entered;
+  RuntimeState      previous;
+  RuntimeState      entered;
   control_mutations entry_mutations;
 };
 
 struct saved_frame_trap
 {
   Maybe<trap_definition> definition;
-  usize active_depth{0};
+  usize                  active_depth{0};
 };
 
-fn record_directory_access(StringView directory, Allocator allocator) throws
+fn
+record_directory_access(StringView directory, Allocator allocator) throws
     -> void;
-fn z_completion_candidates(StringView query, Allocator allocator) throws
+fn
+z_completion_candidates(StringView query, Allocator allocator) throws
     -> ArrayList<String>;
 
 enum class suppressible_warning : u8

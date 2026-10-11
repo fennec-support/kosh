@@ -26,7 +26,8 @@ REGISTER_BUILTIN_FLAGS(Shift);
 
 namespace koshka {
 
-fn Shift::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
+fn
+Shift::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   ASSERT(!ec.args().is_empty());
 

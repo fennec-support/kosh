@@ -16,7 +16,10 @@ KOSHKIT_UTIL_DECL(
     "[-l] [-s signal] name",
     "The killall utility sends a signal to each process by exact name.");
 
-FLAG(KILLALL_SIGNAL, String, 's', "signal",
+FLAG(KILLALL_SIGNAL,
+     String,
+     's',
+     "signal",
      "The signal to send, a name such as TERM or a number such as 15.");
 FLAG(KILLALL_LIST, Bool, 'l', "list", "List the signal names and exit.");
 
@@ -24,9 +27,11 @@ REGISTER_KOSHKIT_UTIL_FLAGS(Killall);
 
 namespace koshka::koshkit {
 
-fn Killall::execute(const ExecContext &ec, EvalContext &cxt,
-                    const ArrayList<String> &args,
-                    const ArrayList<SourceLocation> &arg_locations) const throws
+fn
+Killall::execute(const ExecContext               &ec,
+                 EvalContext                     &cxt,
+                 const ArrayList<String>         &args,
+                 const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
@@ -45,14 +50,14 @@ fn Killall::execute(const ExecContext &ec, EvalContext &cxt,
     return 1;
   }
 
-  let const wanted = operands[0].view();
+  let const wanted        = operands[0].view();
   let const signal_number = resolve_koshkit_signal(
       FLAG_KILLALL_SIGNAL.is_set() ? FLAG_KILLALL_SIGNAL.value() : StringView{},
       FLAG_KILLALL_SIGNAL.value_location(), cxt.scratch_allocator());
 
-  let const self_pid = os::get_shell_process_id();
-  let const processes = os::enumerate_processes();
-  bool has_signaled_any = false;
+  let const self_pid         = os::get_shell_process_id();
+  let const processes        = os::enumerate_processes();
+  bool      has_signaled_any = false;
 
   for (let const &process : processes) {
     if (process.pid == self_pid) continue;

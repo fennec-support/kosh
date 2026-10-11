@@ -23,8 +23,11 @@ REGISTER_KOSHKIT_UTIL_FLAGS(Comm);
 
 namespace koshka::koshkit {
 
-static fn append_comm_line(String &output, usize column, StringView line,
-                           const bool should_show[3]) throws -> void
+static fn
+append_comm_line(String    &output,
+                 usize      column,
+                 StringView line,
+                 const bool should_show[3]) throws -> void
 {
   if (!should_show[column]) return;
 
@@ -35,9 +38,11 @@ static fn append_comm_line(String &output, usize column, StringView line,
   output += '\n';
 }
 
-fn Comm::execute(const ExecContext &ec, EvalContext &cxt,
-                 const ArrayList<String> &args,
-                 const ArrayList<SourceLocation> &arg_locations) const throws
+fn
+Comm::execute(const ExecContext               &ec,
+              EvalContext                     &cxt,
+              const ArrayList<String>         &args,
+              const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
@@ -68,29 +73,29 @@ fn Comm::execute(const ExecContext &ec, EvalContext &cxt,
       os::close_fd(right_input->descriptor);
   };
 
-  let left_reader = utils::BufferedLineReader{left_input->descriptor,
+  let        left_reader    = utils::BufferedLineReader{left_input->descriptor,
                                               cxt.scratch_allocator()};
-  let right_reader = utils::BufferedLineReader{right_input->descriptor,
+  let        right_reader   = utils::BufferedLineReader{right_input->descriptor,
                                                cxt.scratch_allocator()};
-  let left_result = left_reader.next();
-  let right_result = right_reader.next();
+  let        left_result    = left_reader.next();
+  let        right_result   = right_reader.next();
   bool const should_show[3] = {!FLAG_COMM_HIDE_FIRST.is_enabled(),
                                !FLAG_COMM_HIDE_SECOND.is_enabled(),
                                !FLAG_COMM_HIDE_COMMON.is_enabled()};
-  let output = String{cxt.scratch_allocator()};
+  let        output         = String{cxt.scratch_allocator()};
 
-  String previous_lines[2] = {String{cxt.scratch_allocator()},
-                              String{cxt.scratch_allocator()}};
-  bool has_previous_line[2] = {false, false};
-  bool was_disorder_reported[2] = {false, false};
-  bool has_seen_unpairable_line = false;
+  String    previous_lines[2]        = {String{cxt.scratch_allocator()},
+                                        String{cxt.scratch_allocator()}};
+  bool      has_previous_line[2]     = {false, false};
+  bool      was_disorder_reported[2] = {false, false};
+  bool      has_seen_unpairable_line = false;
   let const do_advance = [&](usize side, utils::BufferedLineReader &reader,
                              utils::BufferedLineReader::Result &result)
                              throws -> void {
     previous_lines[side].clear();
     previous_lines[side].append(reader.get_line());
     has_previous_line[side] = true;
-    result = reader.next();
+    result                  = reader.next();
     if (result != utils::BufferedLineReader::Result::Line ||
         !has_seen_unpairable_line || was_disorder_reported[side] ||
         !(reader.get_line() < previous_lines[side].view()))
@@ -132,7 +137,7 @@ fn Comm::execute(const ExecContext &ec, EvalContext &cxt,
       has_seen_unpairable_line = true;
       do_advance(0, left_reader, left_result);
     } else {
-      let const left_line = left_reader.get_line();
+      let const left_line  = left_reader.get_line();
       let const right_line = right_reader.get_line();
       if (left_line == right_line) {
         append_comm_line(output, 2, left_line, should_show);

@@ -35,7 +35,7 @@ struct disk_row
   String available{heap_allocator()};
   String use{heap_allocator()};
   String target{heap_allocator()};
-  u64 use_percent{0};
+  u64    use_percent{0};
 };
 
 struct smart_row
@@ -52,10 +52,11 @@ struct smart_statistic_field
 {
   StringView report_name;
   StringView label;
-  bool should_warn;
+  bool       should_warn;
 };
 
-fn usage_style(u64 percent) wontthrow -> StringView
+fn
+usage_style(u64 percent) wontthrow -> StringView
 {
   if (percent >= 90) return colors::ansi::BOLD_RED;
   if (percent >= 75) return colors::ansi::BOLD_YELLOW;
@@ -63,8 +64,11 @@ fn usage_style(u64 percent) wontthrow -> StringView
   return colors::ansi::BOLD_GREEN;
 }
 
-fn report_value(StringView report, const StringView *names, usize name_count,
-                Allocator allocator) throws -> String
+fn
+report_value(StringView        report,
+             const StringView *names,
+             usize             name_count,
+             Allocator         allocator) throws -> String
 {
   usize position = 0;
 
@@ -85,7 +89,8 @@ fn report_value(StringView report, const StringView *names, usize name_count,
   return String{allocator};
 }
 
-pure fn is_nonzero_smart_counter(StringView value) wontthrow -> bool
+pure fn
+is_nonzero_smart_counter(StringView value) wontthrow -> bool
 {
   bool is_nonzero = false;
 
@@ -101,9 +106,11 @@ pure fn is_nonzero_smart_counter(StringView value) wontthrow -> bool
   return is_nonzero;
 }
 
-fn append_smart_statistic(String &statistics, String &warning_statistics,
-                          const smart_statistic_field &field,
-                          StringView value) throws -> void
+fn
+append_smart_statistic(String                      &statistics,
+                       String                      &warning_statistics,
+                       const smart_statistic_field &field,
+                       StringView                   value) throws -> void
 {
   if (value.is_empty()) return;
 
@@ -120,8 +127,10 @@ fn append_smart_statistic(String &statistics, String &warning_statistics,
   }
 }
 
-fn append_ata_smart_statistics(StringView report, String &statistics,
-                               String &warning_statistics) throws -> void
+fn
+append_ata_smart_statistics(StringView report,
+                            String    &statistics,
+                            String    &warning_statistics) throws -> void
 {
   static constexpr static_string_entry<smart_statistic_field> FIELD_ENTRIES[] =
       {
@@ -135,15 +144,15 @@ fn append_ata_smart_statistics(StringView report, String &statistics,
           {SSK("199"), {"", "CRC errors", true}     },
   };
   static constexpr StaticStringMap FIELDS{FIELD_ENTRIES};
-  constexpr usize METADATA_WORD_COUNT = 7;
+  constexpr usize                  METADATA_WORD_COUNT = 7;
 
   usize position = 0;
 
   while (position < report.length) {
-    let const line = report.next_line(position).trim_blanks();
-    usize word_position = 0;
-    let const attribute_id = line.next_ascii_whitespace_word(word_position);
-    let const field = FIELDS.find(attribute_id);
+    let const line          = report.next_line(position).trim_blanks();
+    usize     word_position = 0;
+    let const attribute_id  = line.next_ascii_whitespace_word(word_position);
+    let const field         = FIELDS.find(attribute_id);
     if (!field.has_value()) continue;
     if (line.next_ascii_whitespace_word(word_position).is_empty()) continue;
 
@@ -162,8 +171,10 @@ fn append_ata_smart_statistics(StringView report, String &statistics,
   }
 }
 
-fn format_smart_statistics(StringView report, String &warning_statistics,
-                           Allocator allocator) throws -> String
+fn
+format_smart_statistics(StringView report,
+                        String    &warning_statistics,
+                        Allocator  allocator) throws -> String
 {
   static constexpr smart_statistic_field REPORT_FIELDS[] = {
       {"Temperature",                     "temperature",      false},
@@ -188,7 +199,8 @@ fn format_smart_statistics(StringView report, String &warning_statistics,
   return statistics;
 }
 
-pure fn smart_status_is_healthy(StringView status) wontthrow -> bool
+pure fn
+smart_status_is_healthy(StringView status) wontthrow -> bool
 {
   static constexpr PackedStringKey HEALTHY_STATUS_KEYS[] = {
       SSK("Verified"), SSK("PASSED"), SSK("OK"), SSK("0x00")};
@@ -197,15 +209,18 @@ pure fn smart_status_is_healthy(StringView status) wontthrow -> bool
   return HEALTHY_STATUSES.contains(status);
 }
 
-fn parse_smart_report(StringView report, StringView fallback_device,
-                      smart_row &row, Allocator allocator) throws -> bool
+fn
+parse_smart_report(StringView report,
+                   StringView fallback_device,
+                   smart_row &row,
+                   Allocator  allocator) throws -> bool
 {
   static constexpr StringView DEVICE_NAMES[] = {"Device Identifier"};
   static constexpr StringView STATUS_NAMES[] = {
       "SMART Status", "SMART overall-health self-assessment test result",
       "SMART Health Status", "Critical Warning"};
-  static constexpr StringView MODEL_NAMES[] = {"Device / Media Name",
-                                               "Device Model", "Model Number"};
+  static constexpr StringView MODEL_NAMES[]    = {"Device / Media Name",
+                                                  "Device Model", "Model Number"};
   static constexpr StringView PROTOCOL_NAMES[] = {"Protocol",
                                                   "Transport protocol"};
 
@@ -228,12 +243,13 @@ fn parse_smart_report(StringView report, StringView fallback_device,
   return true;
 }
 
-fn read_smart_rows(EvalContext &cxt,
-                   const ArrayList<os::mounted_filesystem> &filesystems,
-                   Allocator allocator) throws -> ArrayList<smart_row>
+fn
+read_smart_rows(EvalContext                             &cxt,
+                const ArrayList<os::mounted_filesystem> &filesystems,
+                Allocator allocator) throws -> ArrayList<smart_row>
 {
-  let rows = ArrayList<smart_row>{allocator};
-  let const smartctl = resolve_util_program(cxt, "smartctl");
+  let       rows           = ArrayList<smart_row>{allocator};
+  let const smartctl       = resolve_util_program(cxt, "smartctl");
   let const platform_tools = os::evildisk_tools();
   let const smart_fallback =
       platform_tools.smart_fallback_program.is_empty()
@@ -241,7 +257,7 @@ fn read_smart_rows(EvalContext &cxt,
           : resolve_util_program(cxt, platform_tools.smart_fallback_program);
 
   for (let const &filesystem : filesystems) {
-    let row = smart_row{};
+    let  row     = smart_row{};
     bool has_row = false;
     if (smartctl.has_value() && filesystem.source.starts_with("/dev/")) {
       let arguments = ArrayList<String>{allocator};
@@ -281,14 +297,17 @@ fn read_smart_rows(EvalContext &cxt,
 
 } /* namespace */
 
-fn EvilDisk::execute(
-    const ExecContext &ec, EvalContext &cxt, const ArrayList<String> &args,
-    const ArrayList<SourceLocation> &arg_locations) const throws -> i32
+fn
+EvilDisk::execute(const ExecContext               &ec,
+                  EvalContext                     &cxt,
+                  const ArrayList<String>         &args,
+                  const ArrayList<SourceLocation> &arg_locations) const throws
+    -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   let const should_color = koshkit_should_color();
-  let const allocator = cxt.scratch_allocator();
+  let const allocator    = cxt.scratch_allocator();
 
   let filesystems = ArrayList<os::mounted_filesystem>{allocator};
   if (operands.is_empty()) {
@@ -310,13 +329,13 @@ fn EvilDisk::execute(
   }
   let rows = ArrayList<disk_row>{allocator};
   rows.reserve(filesystems.count());
-  i32 status = 0;
+  i32   status                   = 0;
   usize skipped_permission_count = 0;
 
   for (usize filesystem_index = 0; filesystem_index < filesystems.count();
        filesystem_index++)
   {
-    let const &mounted = filesystems[filesystem_index];
+    let const            &mounted = filesystems[filesystem_index];
     os::filesystem_status filesystem{};
     if (!os::stat_filesystem(mounted.target.view(), filesystem)) {
       if (operands.is_empty() && os::last_system_error_is_permission_denied()) {
@@ -338,22 +357,22 @@ fn EvilDisk::execute(
     let const available =
         scaled_filesystem_blocks(filesystem.available_blocks,
                                  filesystem.fundamental_block_byte_count, 1);
-    let const used = total > free ? total - free : 0;
+    let const used        = total > free ? total - free : 0;
     let const use_percent = filesystem_usage_percent(used, available);
-    let row = disk_row{};
-    row.source = String{allocator, mounted.source.view()};
-    row.type = mounted.type.is_empty() ? String{allocator, "-"}
-                                       : String{allocator, mounted.type.view()};
-    row.size = format_human_size(total, allocator);
-    row.used = format_human_size(used, allocator);
-    row.available = format_human_size(available, allocator);
-    row.use = String::from(use_percent, allocator) + "%";
-    row.target = String{allocator, mounted.target.view()};
-    row.use_percent = use_percent;
+    let       row         = disk_row{};
+    row.source            = String{allocator, mounted.source.view()};
+    row.type              = mounted.type.is_empty() ? String{allocator, "-"}
+                                                    : String{allocator, mounted.type.view()};
+    row.size              = format_human_size(total, allocator);
+    row.used              = format_human_size(used, allocator);
+    row.available         = format_human_size(available, allocator);
+    row.use               = String::from(use_percent, allocator) + "%";
+    row.target            = String{allocator, mounted.target.view()};
+    row.use_percent       = use_percent;
     rows.push(steal(row));
   }
 
-  let output = String{allocator};
+  let output   = String{allocator};
   let warnings = ArrayList<String>{allocator};
   if (skipped_permission_count != 0) {
     let warning = String{allocator, "Skipped "};
@@ -365,7 +384,7 @@ fn EvilDisk::execute(
   }
 
   let unavailable_sections = ArrayList<StringView>{allocator};
-  let capacity_table = ReportTable{allocator};
+  let capacity_table       = ReportTable{allocator};
   capacity_table.add_heading("FILESYSTEM");
   capacity_table.add_heading("TYPE");
   capacity_table.add_heading("SIZE", report_table_alignment::Right);
@@ -389,7 +408,7 @@ fn EvilDisk::execute(
   append_titled_report_table(output, "Filesystem capacity", capacity_table,
                              should_color);
 
-  let disk_snapshot = os::read_disk_io_snapshot(allocator);
+  let       disk_snapshot = os::read_disk_io_snapshot(allocator);
   let const sorted_disks =
       steal(disk_snapshot.disks)
           .make_sorted([](const os::disk_io_status &left,
@@ -515,12 +534,12 @@ fn EvilDisk::execute(
     constexpr StringView SUPPORTED_TYPES[] = {"btrfs", "ext4", "ntfs", "ntfs3"};
 
     for (let const &filesystem : filesystems) {
-      let status = StringView{"unsupported"};
-      let read_count = String{allocator, "-"};
-      let write_count = String{allocator, "-"};
-      let flush_count = String{allocator, "-"};
-      let corruption_count = String{allocator, "-"};
-      let generation_count = String{allocator, "-"};
+      let status               = StringView{"unsupported"};
+      let read_count           = String{allocator, "-"};
+      let write_count          = String{allocator, "-"};
+      let flush_count          = String{allocator, "-"};
+      let corruption_count     = String{allocator, "-"};
+      let generation_count     = String{allocator, "-"};
       let recorded_error_count = String{allocator, "-"};
       if (let const evidence =
               os::read_filesystem_integrity_evidence(filesystem.target.view());
@@ -528,8 +547,8 @@ fn EvilDisk::execute(
       {
         switch (evidence->kind) {
         case os::filesystem_integrity_kind::BtrfsDeviceErrorCounters:
-          status = "device counters";
-          read_count = String::from(evidence->counters.read_count, allocator);
+          status      = "device counters";
+          read_count  = String::from(evidence->counters.read_count, allocator);
           write_count = String::from(evidence->counters.write_count, allocator);
           flush_count = String::from(evidence->counters.flush_count, allocator);
           corruption_count =
@@ -586,7 +605,7 @@ fn EvilDisk::execute(
 
       for (let const &row : smart_rows) {
         let const is_healthy = smart_status_is_healthy(row.status.view());
-        let cells = ArrayList<report_table_cell_view>{allocator};
+        let       cells      = ArrayList<report_table_cell_view>{allocator};
         cells.push({row.device.view(), colors::ansi::BOLD_GREEN});
         cells.push({row.status.view(), is_healthy ? colors::ansi::BOLD_GREEN
                                                   : colors::ansi::BOLD_YELLOW});

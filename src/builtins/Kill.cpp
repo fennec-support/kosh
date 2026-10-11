@@ -27,7 +27,8 @@ REGISTER_BUILTIN_FLAGS(Kill);
 
 namespace koshka {
 
-fn Kill::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
+fn
+Kill::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let const &args = ec.args();
   ASSERT(!args.is_empty());
@@ -40,17 +41,17 @@ fn Kill::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     }
 
     let listing = String{cxt.scratch_allocator()};
-    i32 status = 0;
+    i32 status  = 0;
 
     for (usize i = 2; i < args.count(); i++) {
       let const &spec = args[i];
 
       if (StringView{spec}.is_all_decimal_digits()) {
-        let const parsed = StringView{spec}.to<i64>();
-        Maybe<String> name = koshka::None;
+        let const     parsed = StringView{spec}.to<i64>();
+        Maybe<String> name   = koshka::None;
         if (!parsed.is_error() && parsed.value() <= INT32_MAX) {
           let const number = static_cast<i32>(parsed.value());
-          name = os::signal_name_from_number(number);
+          name             = os::signal_name_from_number(number);
           if (!name.has_value() && number > 128) {
             name = os::signal_name_from_number(number - 128);
           }
@@ -83,8 +84,8 @@ fn Kill::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return status;
   }
 
-  usize first_target = 1;
-  let signal_number = os::signal_number_from_name("TERM").value_or(15);
+  usize first_target  = 1;
+  let   signal_number = os::signal_number_from_name("TERM").value_or(15);
 
   let const do_resolve_signal = [&ec](StringView spec, usize index)
                                     throws -> i32 {
@@ -114,10 +115,10 @@ fn Kill::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       }
 
       signal_number = do_resolve_signal(args[2], 2);
-      first_target = 3;
+      first_target  = 3;
     } else if (args[1].length() > 1 && args[1][0] == '-') {
       signal_number = do_resolve_signal(args[1].substring(1), 1);
-      first_target = 2;
+      first_target  = 2;
     }
   }
 
@@ -142,8 +143,8 @@ fn Kill::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         continue;
       }
       let did_find_active_process = false;
-      let did_signal_process = false;
-      let signal_error = String{cxt.scratch_allocator()};
+      let did_signal_process      = false;
+      let signal_error            = String{cxt.scratch_allocator()};
       if (job->is_primary_process_active) {
         did_find_active_process = true;
         if (os::signal_process(job->pid, signal_number))

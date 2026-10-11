@@ -20,15 +20,17 @@ namespace koshka::koshkit {
 
 struct tsort_vertex
 {
-  StringView name;
+  StringView       name;
   ArrayList<usize> outgoing;
-  usize incoming_count{0};
-  bool is_emitted{false};
+  usize            incoming_count{0};
+  bool             is_emitted{false};
 };
 
-fn Tsort::execute(const ExecContext &ec, EvalContext &cxt,
-                  const ArrayList<String> &args,
-                  const ArrayList<SourceLocation> &arg_locations) const throws
+fn
+Tsort::execute(const ExecContext               &ec,
+               EvalContext                     &cxt,
+               const ArrayList<String>         &args,
+               const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
@@ -43,7 +45,7 @@ fn Tsort::execute(const ExecContext &ec, EvalContext &cxt,
     return 1;
   }
 
-  let tokens = ArrayList<StringView>{cxt.scratch_allocator()};
+  let   tokens   = ArrayList<StringView>{cxt.scratch_allocator()};
   usize position = 0;
 
   while (position < content->length()) {
@@ -73,8 +75,8 @@ fn Tsort::execute(const ExecContext &ec, EvalContext &cxt,
     return 1;
   }
 
-  let vertex_indices = StringMap<usize>{cxt.scratch_allocator()};
-  let vertices = ArrayList<tsort_vertex>{cxt.scratch_allocator()};
+  let       vertex_indices  = StringMap<usize>{cxt.scratch_allocator()};
+  let       vertices        = ArrayList<tsort_vertex>{cxt.scratch_allocator()};
   let const do_vertex_index = [&](StringView name) throws -> usize {
     if (let const found = vertex_indices.find(name); found.has_value())
       return *found.value();
@@ -89,7 +91,7 @@ fn Tsort::execute(const ExecContext &ec, EvalContext &cxt,
 
   for (usize token_index = 0; token_index < tokens.count(); token_index += 2) {
     let const from = do_vertex_index(tokens[token_index]);
-    let const to = do_vertex_index(tokens[token_index + 1]);
+    let const to   = do_vertex_index(tokens[token_index + 1]);
     if (from == to) continue;
 
     vertices[from].outgoing.push(to);
@@ -121,13 +123,13 @@ fn Tsort::execute(const ExecContext &ec, EvalContext &cxt,
   for (usize index = 0; index < vertices.count(); index++)
     if (vertices[index].incoming_count == 0) ready.push(index);
 
-  let output = String{cxt.scratch_allocator()};
+  let   output         = String{cxt.scratch_allocator()};
   usize ready_position = 0;
-  usize emitted_count = 0;
+  usize emitted_count  = 0;
 
   while (ready_position < ready.count()) {
-    let const index = ready[ready_position++];
-    let &vertex = vertices[index];
+    let const index  = ready[ready_position++];
+    let      &vertex = vertices[index];
     if (vertex.is_emitted) continue;
 
     vertex.is_emitted = true;

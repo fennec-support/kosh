@@ -19,22 +19,32 @@ KOSHKIT_UTIL_DECL(
     "The uniq utility collapses each run of adjacent equal lines into one.");
 
 FLAG(UNIQ_COUNT, Bool, 'c', "", "Prefix each line with the count of its run.");
-FLAG(UNIQ_REPEATED, Bool, 'd', "",
+FLAG(UNIQ_REPEATED,
+     Bool,
+     'd',
+     "",
      "Write one copy of each line that has a repeat.");
 FLAG(UNIQ_UNIQUE, Bool, 'u', "", "Write only lines that occur once.");
-FLAG(UNIQ_FIELDS, String, 'f', "",
+FLAG(UNIQ_FIELDS,
+     String,
+     'f',
+     "",
      "Ignore this many leading blank separated fields.");
-FLAG(UNIQ_CHARS, String, 's', "",
+FLAG(UNIQ_CHARS,
+     String,
+     's',
+     "",
      "Ignore this many characters after the skipped fields.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Uniq);
 
 namespace koshka::koshkit {
 
-static fn count_prefix(u64 run_length, Allocator allocator) throws -> String
+static fn
+count_prefix(u64 run_length, Allocator allocator) throws -> String
 {
   let const digits = String::from(run_length, allocator);
-  String prefix{allocator};
+  String    prefix{allocator};
 
   for (usize i = digits.count(); i < 7; i++)
     prefix += ' ';
@@ -45,7 +55,8 @@ static fn count_prefix(u64 run_length, Allocator allocator) throws -> String
   return prefix;
 }
 
-static fn parse_uniq_count(StringView text) wontthrow -> Maybe<usize>
+static fn
+parse_uniq_count(StringView text) wontthrow -> Maybe<usize>
 {
   if (text.is_empty()) return {};
 
@@ -61,8 +72,10 @@ static fn parse_uniq_count(StringView text) wontthrow -> Maybe<usize>
   return value;
 }
 
-static fn get_uniq_key(StringView line, usize skipped_fields,
-                       usize skipped_chars) wontthrow -> StringView
+static fn
+get_uniq_key(StringView line,
+             usize      skipped_fields,
+             usize      skipped_chars) wontthrow -> StringView
 {
   usize position = 0;
 
@@ -88,15 +101,17 @@ static fn get_uniq_key(StringView line, usize skipped_fields,
   return line.substring(position);
 }
 
-fn Uniq::execute(const ExecContext &ec, EvalContext &cxt,
-                 const ArrayList<String> &args,
-                 const ArrayList<SourceLocation> &arg_locations) const throws
+fn
+Uniq::execute(const ExecContext               &ec,
+              EvalContext                     &cxt,
+              const ArrayList<String>         &args,
+              const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   let const source = operands.is_empty() ? StringView{"-"} : operands[0].view();
-  let const input = open_named_or_stdin(ec, source);
+  let const input  = open_named_or_stdin(ec, source);
   if (!input.has_value())
     throw Error{path_error_message("read", source, cxt.scratch_allocator())};
   defer
@@ -148,15 +163,15 @@ fn Uniq::execute(const ExecContext &ec, EvalContext &cxt,
     if (output_descriptor.has_value()) os::close_fd(*output_descriptor);
   };
 
-  let const has_skip = skipped_fields != 0 || skipped_chars != 0;
-  let const should_show_count = FLAG_UNIQ_COUNT.is_enabled();
+  let const has_skip             = skipped_fields != 0 || skipped_chars != 0;
+  let const should_show_count    = FLAG_UNIQ_COUNT.is_enabled();
   let const should_show_repeated = FLAG_UNIQ_REPEATED.is_enabled();
-  let const should_show_unique = FLAG_UNIQ_UNIQUE.is_enabled();
-  let output = String{cxt.scratch_allocator()};
-  bool did_write_fail = false;
-  bool has_previous = false;
-  let previous = String{heap_allocator()};
-  u64 run_length = 0;
+  let const should_show_unique   = FLAG_UNIQ_UNIQUE.is_enabled();
+  let       output               = String{cxt.scratch_allocator()};
+  bool      did_write_fail       = false;
+  bool      has_previous         = false;
+  let       previous             = String{heap_allocator()};
+  u64       run_length           = 0;
 
   let const do_write_output = [&]() throws -> void {
     if (output_descriptor.has_value()) {
@@ -224,7 +239,7 @@ fn Uniq::execute(const ExecContext &ec, EvalContext &cxt,
     do_flush();
     previous.clear();
     previous.append(line);
-    run_length = 1;
+    run_length   = 1;
     has_previous = true;
   }
 

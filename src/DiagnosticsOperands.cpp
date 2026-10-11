@@ -30,7 +30,8 @@ constexpr static_string_entry<StringView> NEGATED_TEST_OPERATOR_ENTRIES[] = {
 };
 constexpr StaticStringMap NEGATED_TEST_OPERATORS{NEGATED_TEST_OPERATOR_ENTRIES};
 
-cold fn negated_test_operator(StringView op) wontthrow -> Maybe<StringView>
+cold fn
+negated_test_operator(StringView op) wontthrow -> Maybe<StringView>
 {
   return NEGATED_TEST_OPERATORS.find(op);
 }
@@ -42,7 +43,8 @@ constexpr PackedStringKey TEST_BINARY_OPERATOR_KEYS[] = {
 };
 constexpr StaticStringSet TEST_BINARY_OPERATORS{TEST_BINARY_OPERATOR_KEYS};
 
-cold fn is_test_binary_operator_word(StringView op) wontthrow -> bool
+cold fn
+is_test_binary_operator_word(StringView op) wontthrow -> bool
 {
   return TEST_BINARY_OPERATORS.contains(op);
 }
@@ -54,7 +56,8 @@ constexpr PackedStringKey TEST_FILE_COMPARISON_KEYS[] = {
 };
 constexpr StaticStringSet TEST_FILE_COMPARISONS{TEST_FILE_COMPARISON_KEYS};
 
-cold fn is_test_file_comparison_word(StringView op) wontthrow -> bool
+cold fn
+is_test_file_comparison_word(StringView op) wontthrow -> bool
 {
   return TEST_FILE_COMPARISONS.contains(op);
 }
@@ -64,7 +67,8 @@ constexpr PackedStringKey TEST_NUMERIC_OPERATOR_KEYS[] = {
 };
 constexpr StaticStringSet TEST_NUMERIC_OPERATORS{TEST_NUMERIC_OPERATOR_KEYS};
 
-cold fn is_test_numeric_operator_word(StringView op) wontthrow -> bool
+cold fn
+is_test_numeric_operator_word(StringView op) wontthrow -> bool
 {
   return TEST_NUMERIC_OPERATORS.contains(op);
 }
@@ -77,7 +81,8 @@ constexpr PackedStringKey TEST_UNARY_OPERATOR_KEYS[] = {
 };
 constexpr StaticStringSet TEST_UNARY_OPERATORS{TEST_UNARY_OPERATOR_KEYS};
 
-cold fn is_known_test_operator_word(StringView op) wontthrow -> bool
+cold fn
+is_known_test_operator_word(StringView op) wontthrow -> bool
 {
   return TEST_UNARY_OPERATORS.contains(op) ||
          TEST_BINARY_OPERATORS.contains(op);
@@ -91,12 +96,14 @@ constexpr PackedStringKey TEST_PATH_UNARY_OPERATOR_KEYS[] = {
 constexpr StaticStringSet TEST_PATH_UNARY_OPERATORS{
     TEST_PATH_UNARY_OPERATOR_KEYS};
 
-cold fn is_test_path_unary_operator_word(StringView op) wontthrow -> bool
+cold fn
+is_test_path_unary_operator_word(StringView op) wontthrow -> bool
 {
   return TEST_PATH_UNARY_OPERATORS.contains(op);
 }
 
-cold fn is_test_unary_operator_word(StringView op) wontthrow -> bool
+cold fn
+is_test_unary_operator_word(StringView op) wontthrow -> bool
 {
   return TEST_UNARY_OPERATORS.contains(op);
 }
@@ -109,7 +116,8 @@ constexpr PackedStringKey TEST_CONDITION_OPENER_KEYS[] = {
 };
 constexpr StaticStringSet TEST_CONDITION_OPENERS{TEST_CONDITION_OPENER_KEYS};
 
-cold fn is_test_condition_opener_word(StringView word) wontthrow -> bool
+cold fn
+is_test_condition_opener_word(StringView word) wontthrow -> bool
 {
   return TEST_CONDITION_OPENERS.contains(word);
 }
@@ -123,16 +131,17 @@ constexpr static_string_entry<bracketed_constant_kind>
 };
 constexpr StaticStringMap BRACKETED_CONSTANTS{BRACKETED_CONSTANT_ENTRIES};
 
-cold fn get_bracketed_constant_kind(StringView word) wontthrow
+cold fn
+get_bracketed_constant_kind(StringView word) wontthrow
     -> Maybe<bracketed_constant_kind>
 {
   return BRACKETED_CONSTANTS.find(word);
 }
 
-cold fn test_inequality_left_operand(const ArrayList<const Token *> &args,
-                                     usize operator_index,
-                                     usize operand_end) wontthrow
-    -> Maybe<StringView>
+cold fn
+test_inequality_left_operand(const ArrayList<const Token *> &args,
+                             usize                           operator_index,
+                             usize operand_end) wontthrow -> Maybe<StringView>
 {
   if (operator_index == 0 || operator_index + 1 >= operand_end) {
     return None;
@@ -146,7 +155,8 @@ cold fn test_inequality_left_operand(const ArrayList<const Token *> &args,
   return args[operator_index - 1]->raw_view();
 }
 
-cold fn view_looks_like_test_operator(StringView view) wontthrow -> bool
+cold fn
+view_looks_like_test_operator(StringView view) wontthrow -> bool
 {
   if (view.length < 2 || view[0] != '-') {
     return false;
@@ -157,14 +167,15 @@ cold fn view_looks_like_test_operator(StringView view) wontthrow -> bool
   return lexer::is_variable_name_start(byte) && byte != '_';
 }
 
-cold fn view_has_decimal_fraction(StringView view) wontthrow -> bool
+cold fn
+view_has_decimal_fraction(StringView view) wontthrow -> bool
 {
   usize position = 0;
   if (position < view.length) {
     switch (view[position]) {
     case '-':
     case '+': position++; break;
-    default: break;
+    default:  break;
     }
   }
 
@@ -191,7 +202,8 @@ cold fn view_has_decimal_fraction(StringView view) wontthrow -> bool
   return position > fraction_start && position == view.length;
 }
 
-static pure fn is_arithmetic_operand_byte(char byte) wontthrow -> bool
+static pure fn
+is_arithmetic_operand_byte(char byte) wontthrow -> bool
 {
   if (lexer::is_variable_name(byte)) return true;
 
@@ -199,11 +211,12 @@ static pure fn is_arithmetic_operand_byte(char byte) wontthrow -> bool
   case '$':
   case '}':
   case ')': return true;
-  default: return false;
+  default:  return false;
   }
 }
 
-cold fn view_has_arithmetic_operator(StringView view) wontthrow -> bool
+cold fn
+view_has_arithmetic_operator(StringView view) wontthrow -> bool
 {
   for (usize position = 1; position + 1 < view.length; position++) {
     switch (view[position]) {
@@ -211,7 +224,7 @@ cold fn view_has_arithmetic_operator(StringView view) wontthrow -> bool
     case '*':
     case '/':
     case '%': break;
-    default: continue;
+    default:  continue;
     }
 
     if (!is_arithmetic_operand_byte(view[position - 1])) continue;
@@ -224,7 +237,8 @@ cold fn view_has_arithmetic_operator(StringView view) wontthrow -> bool
   return false;
 }
 
-cold fn view_repeats_a_letter(StringView view) wontthrow -> bool
+cold fn
+view_repeats_a_letter(StringView view) wontthrow -> bool
 {
   u32 seen_lowercase = 0;
   u32 seen_uppercase = 0;
@@ -249,7 +263,8 @@ cold fn view_repeats_a_letter(StringView view) wontthrow -> bool
   return false;
 }
 
-cold fn view_is_glob_shaped_pattern(StringView view) wontthrow -> bool
+cold fn
+view_is_glob_shaped_pattern(StringView view) wontthrow -> bool
 {
   bool has_repetition = false;
 
@@ -272,14 +287,15 @@ cold fn view_is_glob_shaped_pattern(StringView view) wontthrow -> bool
     case '?':
     case '|':
     case '\\': return false;
-    default: break;
+    default:   break;
     }
   }
 
   return has_repetition;
 }
 
-cold fn view_is_plain_substitution_script(StringView view) wontthrow -> bool
+cold fn
+view_is_plain_substitution_script(StringView view) wontthrow -> bool
 {
   if (view.length < 4 || view[0] != 's') {
     return false;
@@ -320,14 +336,15 @@ cold fn view_is_plain_substitution_script(StringView view) wontthrow -> bool
     case '|':
     case '&':
     case '\\': return false;
-    default: break;
+    default:   break;
     }
   }
 
   return field_count == 3;
 }
 
-cold fn find_echo_escape_sequence(StringView view) wontthrow -> StringView
+cold fn
+find_echo_escape_sequence(StringView view) wontthrow -> StringView
 {
   for (usize position = 0; position + 1 < view.length; position++) {
     if (view[position] != '\\') continue;
@@ -342,22 +359,24 @@ cold fn find_echo_escape_sequence(StringView view) wontthrow -> StringView
     case 't':
     case 'v':
     case '0': return view.substring_of_length(position, 2);
-    default: position++;
+    default:  position++;
     }
   }
 
   return {};
 }
 
-cold fn find_echo_escape_sequence_outside_substitutions(
-    StringView operand_text, const Token *token) wontthrow -> StringView
+cold fn
+find_echo_escape_sequence_outside_substitutions(StringView   operand_text,
+                                                const Token *token) wontthrow
+    -> StringView
 {
   if (token->kind() != Token::Kind::Word) {
     return find_echo_escape_sequence(operand_text);
   }
 
-  let const base = token->source_location().position;
-  usize cursor = 0;
+  let const base   = token->source_location().position;
+  usize     cursor = 0;
 
   for (let const &segment :
        static_cast<const tokens::WordToken *>(token)->word().segments)
@@ -366,13 +385,13 @@ cold fn find_echo_escape_sequence_outside_substitutions(
     case WordSegment::Kind::CommandSubstitution:
     case WordSegment::Kind::ProcessSubstitution:
     case WordSegment::Kind::FunctionSubstitution: break;
-    default: continue;
+    default:                                      continue;
     }
 
     if (segment.source_position < base) continue;
 
     let const start = segment.source_position - base;
-    let const end = start + segment.source_length;
+    let const end   = start + segment.source_length;
     if (start < cursor || end > operand_text.length) {
       continue;
     }
@@ -387,7 +406,8 @@ cold fn find_echo_escape_sequence_outside_substitutions(
   return find_echo_escape_sequence(operand_text.substring(cursor));
 }
 
-cold fn view_settles_echo_escapes(StringView view) wontthrow -> bool
+cold fn
+view_settles_echo_escapes(StringView view) wontthrow -> bool
 {
   if (view.length < 2 || view[0] != '-') {
     return false;
@@ -400,14 +420,15 @@ cold fn view_settles_echo_escapes(StringView view) wontthrow -> bool
     case 'e':
     case 'E': has_escape_letter = true; break;
     case 'n': break;
-    default: return false;
+    default:  return false;
     }
   }
 
   return has_escape_letter;
 }
 
-cold fn substitution_runs_pattern_matcher(StringView body) throws -> bool
+cold fn
+substitution_runs_pattern_matcher(StringView body) throws -> bool
 {
   usize position = 0;
 
@@ -421,7 +442,8 @@ cold fn substitution_runs_pattern_matcher(StringView body) throws -> bool
       COMMAND_GROUP_PATTERN_MATCHER);
 }
 
-cold fn word_is_fully_literal(const Word &word) wontthrow -> bool
+cold fn
+word_is_fully_literal(const Word &word) wontthrow -> bool
 {
   for (let const &segment : word.segments)
     if (segment.kind != WordSegment::Kind::LiteralText &&
@@ -434,7 +456,8 @@ cold fn word_is_fully_literal(const Word &word) wontthrow -> bool
   return true;
 }
 
-cold fn token_has_command_substitution(const Token *token) wontthrow -> bool
+cold fn
+token_has_command_substitution(const Token *token) wontthrow -> bool
 {
   if (token->kind() != Token::Kind::Word) return false;
 
@@ -445,7 +468,8 @@ cold fn token_has_command_substitution(const Token *token) wontthrow -> bool
   return false;
 }
 
-cold fn token_has_ansi_c_quote(const Token *token) wontthrow -> bool
+cold fn
+token_has_ansi_c_quote(const Token *token) wontthrow -> bool
 {
   if (token->kind() != Token::Kind::Word) return false;
 
@@ -456,9 +480,9 @@ cold fn token_has_ansi_c_quote(const Token *token) wontthrow -> bool
   return false;
 }
 
-cold fn printf_consumed_argument_count(StringView format,
-                                       bool &has_quote_conversion) wontthrow
-    -> usize
+cold fn
+printf_consumed_argument_count(StringView format,
+                               bool &has_quote_conversion) wontthrow -> usize
 {
   usize count = 0;
 
@@ -521,15 +545,17 @@ cold fn printf_consumed_argument_count(StringView format,
   return count;
 }
 
-cold pure fn view_is_integer_literal(StringView view) wontthrow -> bool
+cold pure fn
+view_is_integer_literal(StringView view) wontthrow -> bool
 {
   usize start = view.length >= 1 && view[0] == '-' ? 1 : 0;
 
   return start < view.length && view.substring(start).is_all_decimal_digits();
 }
 
-cold fn args_have_short_flag(const ArrayList<const Token *> &args,
-                             char letter) throws -> bool
+cold fn
+args_have_short_flag(const ArrayList<const Token *> &args, char letter) throws
+    -> bool
 {
   for (usize i = 1; i < args.count(); i++) {
     if (args[i]->kind() != Token::Kind::Word) continue;
@@ -547,7 +573,8 @@ cold fn args_have_short_flag(const ArrayList<const Token *> &args,
   return false;
 }
 
-cold fn single_literal_file_operand(const ArrayList<const Token *> &args) throws
+cold fn
+single_literal_file_operand(const ArrayList<const Token *> &args) throws
     -> Maybe<const Token *>
 {
   const Token *lone_operand = nullptr;
@@ -559,7 +586,7 @@ cold fn single_literal_file_operand(const ArrayList<const Token *> &args) throws
     if (!word_is_fully_literal(word)) return None;
 
     let const literal = word.to_literal_string();
-    let const view = literal.view();
+    let const view    = literal.view();
     if (view.is_empty()) return None;
 
     if (view[0] == '-') {
@@ -588,7 +615,8 @@ constexpr PackedStringKey SYSTEM_DIRECTORY_KEYS[] = {
 };
 constexpr StaticStringSet SYSTEM_DIRECTORIES{SYSTEM_DIRECTORY_KEYS};
 
-pure fn is_system_directory(StringView path) wontthrow -> bool
+pure fn
+is_system_directory(StringView path) wontthrow -> bool
 {
   return SYSTEM_DIRECTORIES.contains(path);
 }
@@ -600,7 +628,8 @@ constexpr PackedStringKey FIND_ACTION_KEYS[] = {
     SSK("-printf"), SSK("-prune"),   SSK("-quit"),    SSK("-used")};
 constexpr StaticStringSet FIND_ACTIONS{FIND_ACTION_KEYS};
 
-pure fn is_find_action(StringView word) wontthrow -> bool
+pure fn
+is_find_action(StringView word) wontthrow -> bool
 {
   return FIND_ACTIONS.contains(word);
 }
@@ -610,7 +639,8 @@ constexpr PackedStringKey FIND_LEADING_OPTION_KEYS[] = {
     SSK("-d"), SSK("-s"), SSK("-x"), SSK("-X")};
 constexpr StaticStringSet FIND_LEADING_OPTIONS{FIND_LEADING_OPTION_KEYS};
 
-pure fn is_find_leading_option(StringView word) wontthrow -> bool
+pure fn
+is_find_leading_option(StringView word) wontthrow -> bool
 {
   return FIND_LEADING_OPTIONS.contains(word);
 }
@@ -681,7 +711,8 @@ constexpr PackedStringKey SHELL_MAINTAINED_VARIABLE_KEYS[] = {
 constexpr StaticStringSet SHELL_MAINTAINED_VARIABLES{
     SHELL_MAINTAINED_VARIABLE_KEYS};
 
-pure fn is_shell_maintained_variable(StringView name) wontthrow -> bool
+pure fn
+is_shell_maintained_variable(StringView name) wontthrow -> bool
 {
   if (is_runtime_dynamic_variable_name(name)) return true;
 
@@ -723,12 +754,14 @@ constexpr PackedStringKey SHELL_ONLY_BUILTIN_KEYS[] = {
 };
 constexpr StaticStringSet SHELL_ONLY_BUILTINS{SHELL_ONLY_BUILTIN_KEYS};
 
-pure fn is_shell_only_builtin(StringView name) wontthrow -> bool
+pure fn
+is_shell_only_builtin(StringView name) wontthrow -> bool
 {
   return SHELL_ONLY_BUILTINS.contains(name);
 }
 
-pure fn ssh_option_takes_value(char letter) wontthrow -> bool
+pure fn
+ssh_option_takes_value(char letter) wontthrow -> bool
 {
   switch (letter) {
   case 'B':
@@ -752,21 +785,23 @@ pure fn ssh_option_takes_value(char letter) wontthrow -> bool
   case 'S':
   case 'W':
   case 'w': return true;
-  default: return false;
+  default:  return false;
   }
 }
 
-pure fn leading_command_word(StringView text) wontthrow -> StringView
+pure fn
+leading_command_word(StringView text) wontthrow -> StringView
 {
   usize position = 0;
 
   return text.next_ascii_whitespace_word(position);
 }
 
-fn check_posix_parameter_expansion(AnalysisContext &actx,
-                                   const WordSegment &segment, StringView text,
-                                   SourceLocation fallback_location) throws
-    -> void
+fn
+check_posix_parameter_expansion(AnalysisContext   &actx,
+                                const WordSegment &segment,
+                                StringView         text,
+                                SourceLocation fallback_location) throws -> void
 {
   if (text.is_empty()) return;
 
@@ -798,7 +833,7 @@ fn check_posix_parameter_expansion(AnalysisContext &actx,
   }
 
   const usize name_start = text[0] == '#' ? 1 : 0;
-  usize position = name_start;
+  usize       position   = name_start;
 
   while (position < text.length && lexer::is_variable_name(text[position])) {
     position++;
@@ -841,9 +876,9 @@ fn check_posix_parameter_expansion(AnalysisContext &actx,
   }
 }
 
-pure fn arithmetic_assignment_target(StringView expression,
-                                     usize equals_position) wontthrow
-    -> StringView
+pure fn
+arithmetic_assignment_target(StringView expression,
+                             usize      equals_position) wontthrow -> StringView
 {
   if (equals_position == 0) return {};
   if (equals_position + 1 < expression.length &&

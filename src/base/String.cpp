@@ -33,32 +33,35 @@ String::String(StringView initial) throws : m_allocator(heap_allocator())
   append(initial);
 }
 
-cold String::String(const String &other) throws : m_allocator(other.m_allocator)
+cold
+String::String(const String &other) throws : m_allocator(other.m_allocator)
 {
   reset_to_inline();
   append(other.view());
   m_ascii_state = other.m_ascii_state;
 }
 
-hot fn String::adopt_storage_of(String &&other) wontthrow -> void
+hot fn
+String::adopt_storage_of(String &&other) wontthrow -> void
 {
   m_ascii_state = other.m_ascii_state;
   if (other.is_inline()) {
     std::memcpy(m_inline, other.m_inline, other.m_length + 1);
-    m_data = m_inline;
-    m_length = other.m_length;
+    m_data     = m_inline;
+    m_length   = other.m_length;
     m_capacity = INLINE_CAPACITY;
   } else {
-    m_data = other.m_data;
-    m_length = other.m_length;
+    m_data     = other.m_data;
+    m_length   = other.m_length;
     m_capacity = other.m_capacity;
     other.reset_to_inline();
   }
 }
 
-cold fn String::classify_ascii() const wontthrow -> void
+cold fn
+String::classify_ascii() const wontthrow -> void
 {
-  usize position = 0;
+  usize position    = 0;
   using byte_vector = u64 __attribute__((vector_size(16)));
 
   while (position + 4 * sizeof(byte_vector) <= m_length) {
@@ -90,7 +93,8 @@ String::String(String &&other) wontthrow : m_allocator(other.m_allocator)
   adopt_storage_of(steal(other));
 }
 
-fn String::operator=(const String &other) throws -> String &
+fn
+String::operator=(const String &other) throws -> String &
 {
   if (this != &other) {
     clear();
@@ -101,7 +105,8 @@ fn String::operator=(const String &other) throws -> String &
   return *this;
 }
 
-fn String::operator=(String &&other) wontthrow -> String &
+fn
+String::operator=(String &&other) wontthrow -> String &
 {
   if (this != &other) {
     free_storage();
@@ -112,33 +117,36 @@ fn String::operator=(String &&other) wontthrow -> String &
   return *this;
 }
 
-fn String::move_to_allocator(Allocator allocator) throws -> void
+fn
+String::move_to_allocator(Allocator allocator) throws -> void
 {
   if (m_allocator == allocator) return;
 
   let moved = String{allocator, view()};
-  *this = steal(moved);
+  *this     = steal(moved);
 }
 
-fn String::clear() wontthrow -> void
+fn
+String::clear() wontthrow -> void
 {
-  m_length = 0;
+  m_length      = 0;
   m_ascii_state = AsciiState::Ascii;
-  m_data[0] = '\0';
+  m_data[0]     = '\0';
 }
 
-cold fn String::reserve(usize needed) throws -> void
+cold fn
+String::reserve(usize needed) throws -> void
 {
   if (needed < m_capacity) usually return;
   if (needed == SIZE_MAX) rarely throw std::bad_alloc{};
 
   let const required_capacity = needed + 1;
-  let new_capacity = required_capacity;
+  let       new_capacity      = required_capacity;
 
   if (!is_inline()) {
     let const growth = m_capacity < 64 ? usize{4} : usize{2};
-    new_capacity = m_capacity > SIZE_MAX / growth ? required_capacity
-                                                  : m_capacity * growth;
+    new_capacity     = m_capacity > SIZE_MAX / growth ? required_capacity
+                                                      : m_capacity * growth;
 
     while (new_capacity < required_capacity) {
       if (new_capacity > SIZE_MAX / 2) {
@@ -149,19 +157,20 @@ cold fn String::reserve(usize needed) throws -> void
     }
   }
 
-  let fresh = m_allocator.alloc_array<char>(new_capacity);
+  let       fresh            = m_allocator.alloc_array<char>(new_capacity);
   let const preserved_length = m_length;
   if (preserved_length > 0) std::memcpy(fresh, m_data, preserved_length);
-  fresh[preserved_length] = '\0';
+  fresh[preserved_length]   = '\0';
   let const preserved_state = m_ascii_state;
   free_storage();
   m_ascii_state = preserved_state;
-  m_data = fresh;
-  m_length = preserved_length;
-  m_capacity = new_capacity;
+  m_data        = fresh;
+  m_length      = preserved_length;
+  m_capacity    = new_capacity;
 }
 
-fn String::pop_back() wontthrow -> void
+fn
+String::pop_back() wontthrow -> void
 {
   ASSERT(m_length > 0, "pop_back on empty string");
   m_ascii_state = AsciiState::Unknown;
@@ -169,50 +178,58 @@ fn String::pop_back() wontthrow -> void
   m_data[m_length] = '\0';
 }
 
-fn String::strip_trailing_newlines() wontthrow -> void
+fn
+String::strip_trailing_newlines() wontthrow -> void
 {
   while (m_length != 0 && m_data[m_length - 1] == '\n') {
     m_data[--m_length] = '\0';
   }
 }
 
-fn String::operator+=(StringView other) throws -> String &
+fn
+String::operator+=(StringView other) throws -> String &
 {
   append(other);
 
   return *this;
 }
 
-fn String::operator+=(char c) throws -> String &
+fn
+String::operator+=(char c) throws -> String &
 {
   push(c);
 
   return *this;
 }
 
-hot fn String::operator<(const String &other) const wontthrow -> bool
+hot fn
+String::operator<(const String &other) const wontthrow -> bool
 {
   return view() < other.view();
 }
 
-fn String::find_substring(StringView needle, usize from) const wontthrow
+fn
+String::find_substring(StringView needle, usize from) const wontthrow
     -> Maybe<usize>
 {
   return view().find_substring(needle, from);
 }
 
-fn String::find_last_character(char wanted) const wontthrow -> Maybe<usize>
+fn
+String::find_last_character(char wanted) const wontthrow -> Maybe<usize>
 {
   return view().find_last_character(wanted);
 }
 
-cold fn String::free_storage() wontthrow -> void
+cold fn
+String::free_storage() wontthrow -> void
 {
   if (m_data != m_inline) m_allocator.free_array(m_data, m_capacity);
   reset_to_inline();
 }
 
-fn operator+(StringView left, StringView right) throws->String
+fn
+operator+(StringView left, StringView right) throws->String
 {
   if (right.length > SIZE_MAX - left.length) rarely throw std::bad_alloc{};
   let result = String{heap_allocator()};
@@ -224,19 +241,22 @@ fn operator+(StringView left, StringView right) throws->String
 }
 
 template <class T>
-fn String::to() const throws -> ErrorOr<T>
+fn
+String::to() const throws -> ErrorOr<T>
 {
   return view().to<T>();
 }
 
 template <>
-fn String::to<f64>() const throws -> ErrorOr<f64>
+fn
+String::to<f64>() const throws -> ErrorOr<f64>
 {
   return utils::parse_decimal_f64(*this);
 }
 
 template <>
-fn String::from<f64>(f64 value, Allocator allocator) throws -> String
+fn
+String::from<f64>(f64 value, Allocator allocator) throws -> String
 {
   return utils::format_f64(value, allocator);
 }

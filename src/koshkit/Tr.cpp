@@ -19,11 +19,20 @@ KOSHKIT_UTIL_DECL(
     "set2.");
 
 FLAG(TR_DELETE, Bool, 'd', "", "Delete the bytes in set1.");
-FLAG(TR_COMPLEMENT, Bool, 'c', "",
+FLAG(TR_COMPLEMENT,
+     Bool,
+     'c',
+     "",
      "Use every byte that is not in set1, in byte order.");
-FLAG(TR_COMPLEMENT_VALUES, Bool, 'C', "",
+FLAG(TR_COMPLEMENT_VALUES,
+     Bool,
+     'C',
+     "",
      "Use every byte that is not in set1, in byte order.");
-FLAG(TR_SQUEEZE, Bool, 's', "",
+FLAG(TR_SQUEEZE,
+     Bool,
+     's',
+     "",
      "Collapse each run of one repeated byte from the final set into one.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Tr);
@@ -52,11 +61,11 @@ constexpr StaticStringMap TR_POSIX_CLASSES{TR_POSIX_CLASS_ENTRIES};
 struct decoded_char
 {
   unsigned char byte;
-  usize width_count;
+  usize         width_count;
 };
 
-static fn decode_escaped_char(StringView set, usize position) wontthrow
-    -> decoded_char
+static fn
+decode_escaped_char(StringView set, usize position) wontthrow -> decoded_char
 {
   if (set[position] != '\\' || position + 1 >= set.length) {
     return {static_cast<unsigned char>(set[position]), 1};
@@ -64,18 +73,18 @@ static fn decode_escaped_char(StringView set, usize position) wontthrow
 
   let const escaped = set[position + 1];
   switch (escaped) {
-  case 'a': return {'\a', 2};
-  case 'b': return {'\b', 2};
-  case 'f': return {'\f', 2};
-  case 'n': return {'\n', 2};
-  case 'r': return {'\r', 2};
-  case 't': return {'\t', 2};
-  case 'v': return {'\v', 2};
+  case 'a':  return {'\a', 2};
+  case 'b':  return {'\b', 2};
+  case 'f':  return {'\f', 2};
+  case 'n':  return {'\n', 2};
+  case 'r':  return {'\r', 2};
+  case 't':  return {'\t', 2};
+  case 'v':  return {'\v', 2};
   case '\\': return {'\\', 2};
   }
 
   if (escaped >= '0' && escaped <= '7') {
-    int value = 0;
+    int   value       = 0;
     usize digit_count = 0;
 
     while (digit_count < 3 && position + 1 + digit_count < set.length) {
@@ -93,8 +102,9 @@ static fn decode_escaped_char(StringView set, usize position) wontthrow
   return {static_cast<unsigned char>(escaped), 2};
 }
 
-static fn expand_posix_class(StringView set, usize position,
-                             String &expanded) throws -> usize
+static fn
+expand_posix_class(StringView set, usize position, String &expanded) throws
+    -> usize
 {
   if (set[position] != '[' || position + 1 >= set.length ||
       set[position + 1] != ':')
@@ -114,7 +124,7 @@ static fn expand_posix_class(StringView set, usize position,
 
   let const name_start = position + 2;
   let const class_name = set.substring_of_length(name_start, scan - name_start);
-  let const test = TR_POSIX_CLASSES.find(class_name);
+  let const test       = TR_POSIX_CLASSES.find(class_name);
   if (!test.has_value()) return 0;
 
   for (int byte = 0; byte < 256; byte++) {
@@ -124,14 +134,15 @@ static fn expand_posix_class(StringView set, usize position,
   return scan + 2 - position;
 }
 
-static fn expand_set(StringView set, Allocator allocator,
-                     Maybe<usize> repeat_target_length = None) throws
-    -> Maybe<String>
+static fn
+expand_set(StringView   set,
+           Allocator    allocator,
+           Maybe<usize> repeat_target_length = None) throws -> Maybe<String>
 {
-  String expanded{allocator};
+  String       expanded{allocator};
   Maybe<usize> fill_position;
-  Maybe<char> fill_byte;
-  usize i = 0;
+  Maybe<char>  fill_byte;
+  usize        i = 0;
 
   while (i < set.length) {
     if (let const class_width = expand_posix_class(set, i, expanded);
@@ -144,7 +155,7 @@ static fn expand_set(StringView set, Allocator allocator,
     if (repeat_target_length.has_value() && set[i] == '[' && i + 1 < set.length)
     {
       let const repeated = decode_escaped_char(set, i + 1);
-      let star = i + 1 + repeated.width_count;
+      let       star     = i + 1 + repeated.width_count;
       if (star < set.length && set[star] == '*') {
         usize close = star + 1;
 
@@ -155,20 +166,20 @@ static fn expand_set(StringView set, Allocator allocator,
         if (close < set.length && set[close] == ']') {
           let const digits =
               set.substring_of_length(star + 1, close - star - 1);
-          let const base = !digits.is_empty() && digits[0] == '0'
-                               ? int_base::octal
-                               : int_base::decimal;
-          let count = usize{0};
+          let const base  = !digits.is_empty() && digits[0] == '0'
+                                ? int_base::octal
+                                : int_base::decimal;
+          let       count = usize{0};
           if (!digits.is_empty()) {
             let const parsed = utils::parse_integer_in_base_u64(digits, base);
-            count = parsed.is_error() ? *repeat_target_length
-                                      : static_cast<usize>(parsed.value());
+            count            = parsed.is_error() ? *repeat_target_length
+                                                 : static_cast<usize>(parsed.value());
           }
           if (count == 0) {
             if (fill_position.has_value()) return None;
 
             fill_position = expanded.count();
-            fill_byte = static_cast<char>(repeated.byte);
+            fill_byte     = static_cast<char>(repeated.byte);
           } else {
             let const capped =
                 count < *repeat_target_length ? count : *repeat_target_length;
@@ -216,14 +227,15 @@ static fn expand_set(StringView set, Allocator allocator,
   return expanded;
 }
 
-fn Tr::execute(const ExecContext &ec, EvalContext &cxt,
-               const ArrayList<String> &args,
-               const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+fn
+Tr::execute(const ExecContext               &ec,
+            EvalContext                     &cxt,
+            const ArrayList<String>         &args,
+            const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
-  let const is_deleting = FLAG_TR_DELETE.is_enabled();
+  let const is_deleting  = FLAG_TR_DELETE.is_enabled();
   let const is_squeezing = FLAG_TR_SQUEEZE.is_enabled();
   let const is_complementing =
       FLAG_TR_COMPLEMENT.is_enabled() || FLAG_TR_COMPLEMENT_VALUES.is_enabled();
@@ -284,18 +296,18 @@ fn Tr::execute(const ExecContext &ec, EvalContext &cxt,
     set2 = steal(*expanded_set2);
   }
 
-  static constexpr usize BYTE_VALUE_COUNT = 256;
-  bool is_in_set1[BYTE_VALUE_COUNT] = {};
-  unsigned char translation[BYTE_VALUE_COUNT];
+  static constexpr usize BYTE_VALUE_COUNT             = 256;
+  bool                   is_in_set1[BYTE_VALUE_COUNT] = {};
+  unsigned char          translation[BYTE_VALUE_COUNT];
 
   for (usize i = 0; i < BYTE_VALUE_COUNT; i++)
     translation[i] = static_cast<unsigned char>(i);
 
   for (usize i = 0; i < set1->count(); i++) {
-    let const from = static_cast<unsigned char>(set1->view()[i]);
+    let const from   = static_cast<unsigned char>(set1->view()[i]);
     is_in_set1[from] = true;
     if (!is_deleting && set2.count() > 0) {
-      let const index = i < set2.count() ? i : set2.count() - 1;
+      let const index   = i < set2.count() ? i : set2.count() - 1;
       translation[from] = static_cast<unsigned char>(set2.view()[index]);
     }
   }
@@ -349,7 +361,7 @@ fn Tr::execute(const ExecContext &ec, EvalContext &cxt,
           if (byte == last_byte) continue;
         }
 
-        last_byte = byte;
+        last_byte            = byte;
         output[kept_count++] = static_cast<char>(byte);
       }
 

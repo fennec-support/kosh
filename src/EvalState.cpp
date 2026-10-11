@@ -30,8 +30,8 @@
 
 namespace koshka {
 
-fn EvalContext::set_shopt_option(StringView name, bool is_enabled) throws
-    -> void
+fn
+EvalContext::set_shopt_option(StringView name, bool is_enabled) throws -> void
 {
   let const index = shopt_option_index(name);
   ASSERT(index.has_value(), "unknown shopt option");
@@ -54,7 +54,8 @@ fn EvalContext::set_shopt_option(StringView name, bool is_enabled) throws
   }
 }
 
-fn EvalContext::enter_subshell() wontthrow -> void
+fn
+EvalContext::enter_subshell() wontthrow -> void
 {
   execution_store().subshell_depth()++;
   dynamic_runtime_store().is_random_reseed_pending() = true;
@@ -62,14 +63,16 @@ fn EvalContext::enter_subshell() wontthrow -> void
       execution_store().subshell_depth());
 }
 
-fn EvalContext::set_subshell_depth(usize depth) wontthrow -> void
+fn
+EvalContext::set_subshell_depth(usize depth) wontthrow -> void
 {
   execution_store().subshell_depth() = depth;
   if (depth > 0) dynamic_runtime_store().is_random_reseed_pending() = true;
   lower_trap_depths_to_current();
 }
 
-fn EvalContext::leave_subshell() wontthrow -> void
+fn
+EvalContext::leave_subshell() wontthrow -> void
 {
   ASSERT(execution_store().subshell_depth() > 0);
 
@@ -91,7 +94,8 @@ fn EvalContext::leave_subshell() wontthrow -> void
       execution_store().subshell_depth());
 }
 
-fn EvalContext::snapshot_subshell_descriptor(i32 shell_fd) throws -> void
+fn
+EvalContext::snapshot_subshell_descriptor(i32 shell_fd) throws -> void
 {
   if (execution_store().subshell_depth() == 0) return;
 
@@ -111,9 +115,11 @@ fn EvalContext::snapshot_subshell_descriptor(i32 shell_fd) throws -> void
                                 os::save_descriptor_out_of_reach(shell_fd)});
 }
 
-fn EvalContext::set_coprocess_descriptors(i32 read_fd, i32 write_fd,
-                                          i64 process_id,
-                                          StringView name) throws -> void
+fn
+EvalContext::set_coprocess_descriptors(i32        read_fd,
+                                       i32        write_fd,
+                                       i64        process_id,
+                                       StringView name) throws -> void
 {
   LOG(Debug, "the live coprocess is read on %d and written on %d", read_fd,
       write_fd);
@@ -122,7 +128,8 @@ fn EvalContext::set_coprocess_descriptors(i32 read_fd, i32 write_fd,
   };
 }
 
-fn EvalContext::forget_coprocess_descriptor(i32 shell_fd) throws -> void
+fn
+EvalContext::forget_coprocess_descriptor(i32 shell_fd) throws -> void
 {
   let &coprocess = subshell_store().coprocess();
   if (shell_fd < 0 || coprocess.process_id < 0) {
@@ -139,7 +146,8 @@ fn EvalContext::forget_coprocess_descriptor(i32 shell_fd) throws -> void
   }
 }
 
-fn EvalContext::release_finished_coprocess() throws -> void
+fn
+EvalContext::release_finished_coprocess() throws -> void
 {
   let &coprocess = subshell_store().coprocess();
   if (coprocess.process_id < 0) return;
@@ -164,14 +172,15 @@ fn EvalContext::release_finished_coprocess() throws -> void
     if (shell_fd >= 0) unused(os::close_shell_fd(shell_fd));
   }
 
-  let name = steal(coprocess.name);
+  let name  = steal(coprocess.name);
   coprocess = coprocess_descriptors{};
   unset_shell_variable(name.view());
   name += "_PID";
   unset_shell_variable(name.view());
 }
 
-fn EvalContext::hide_coprocess_descriptors() throws -> void
+fn
+EvalContext::hide_coprocess_descriptors() throws -> void
 {
   if (!subshell_store().coprocess().has_any()) return;
 
@@ -191,12 +200,14 @@ fn EvalContext::hide_coprocess_descriptors() throws -> void
   subshell_store().coprocess() = coprocess_descriptors{};
 }
 
-pure fn EvalContext::in_subshell() const wontthrow -> bool
+pure fn
+EvalContext::in_subshell() const wontthrow -> bool
 {
   return execution_store().subshell_depth() > 0;
 }
 
-pure fn EvalContext::can_replace_process() const wontthrow -> bool
+pure fn
+EvalContext::can_replace_process() const wontthrow -> bool
 {
   let const has_trap_to_run =
       trap_store().count() > 0 &&
@@ -211,8 +222,10 @@ pure fn EvalContext::can_replace_process() const wontthrow -> bool
          !runtime_state().memory_stats_enabled();
 }
 
-fn EvalContext::request_loop_control(control_flow::Kind kind, i64 level,
-                                     SourceLocation location) throws -> void
+fn
+EvalContext::request_loop_control(control_flow::Kind kind,
+                                  i64                level,
+                                  SourceLocation     location) throws -> void
 {
   if (execution_store().loop_depth() == 0) {
     LOG(Debug, "loop control requested outside a loop, ignored");
@@ -226,19 +239,20 @@ fn EvalContext::request_loop_control(control_flow::Kind kind, i64 level,
       source_store().current_source(), source_store().current_origin());
 }
 
-fn EvalContext::request_break(i64 level, SourceLocation location) throws -> void
+fn
+EvalContext::request_break(i64 level, SourceLocation location) throws -> void
 {
   request_loop_control(control_flow::Kind::Break, level, location);
 }
 
-fn EvalContext::request_continue(i64 level, SourceLocation location) throws
-    -> void
+fn
+EvalContext::request_continue(i64 level, SourceLocation location) throws -> void
 {
   request_loop_control(control_flow::Kind::Continue, level, location);
 }
 
-fn EvalContext::request_return(i64 status, SourceLocation location) throws
-    -> void
+fn
+EvalContext::request_return(i64 status, SourceLocation location) throws -> void
 {
   LOG(Debug, "return requested, status %lld", (long long) status);
   trap_store().status_before_return() = execution_store().last_exit_status();
@@ -247,7 +261,8 @@ fn EvalContext::request_return(i64 status, SourceLocation location) throws
                                       source_store().current_origin());
 }
 
-fn EvalContext::request_exit(i64 status, SourceLocation location) throws -> void
+fn
+EvalContext::request_exit(i64 status, SourceLocation location) throws -> void
 {
   LOG(Debug, "exit requested, status %lld", (long long) status);
   control_flow_store().request_exit(status, location,
@@ -255,15 +270,17 @@ fn EvalContext::request_exit(i64 status, SourceLocation location) throws -> void
                                     source_store().current_origin());
 }
 
-fn EvalContext::set_current_source(const String *source,
-                                   String origin) wontthrow -> void
+fn
+EvalContext::set_current_source(const String *source, String origin) wontthrow
+    -> void
 {
   reset_runtime_diagnostic_highlight_cache();
   source_store().set_current_source(source, steal(origin),
                                     scan_source_generation(source));
 }
 
-fn EvalContext::set_fresh_source(const String *source, String origin) wontthrow
+fn
+EvalContext::set_fresh_source(const String *source, String origin) wontthrow
     -> void
 {
   set_current_source(source, steal(origin));
@@ -277,13 +294,15 @@ SourceScope::SourceScope(EvalContext &context) wontthrow
       m_location(context.source_store().current_location())
 {}
 
-SourceScope::SourceScope(EvalContext &context, const String *source,
-                         String origin) wontthrow : SourceScope(context)
+SourceScope::SourceScope(EvalContext  &context,
+                         const String *source,
+                         String        origin) wontthrow : SourceScope(context)
 {
   context.set_current_source(source, steal(origin));
 }
 
-fn SourceScope::restore() wontthrow -> void
+fn
+SourceScope::restore() wontthrow -> void
 {
   if (!m_is_armed) return;
 
@@ -292,9 +311,10 @@ fn SourceScope::restore() wontthrow -> void
   m_context->source_store().current_location() = m_location;
 }
 
-fn EvalContext::push_root_source_frame(const String *parent_source,
-                                       SourceLocation call_site,
-                                       source_frame_kind kind) throws -> void
+fn
+EvalContext::push_root_source_frame(const String     *parent_source,
+                                    SourceLocation    call_site,
+                                    source_frame_kind kind) throws -> void
 {
   ASSERT(kind != source_frame_kind::Ordinary);
 
@@ -307,7 +327,8 @@ fn EvalContext::push_root_source_frame(const String *parent_source,
   });
 }
 
-fn EvalContext::pop_root_source_frame() wontthrow -> void
+fn
+EvalContext::pop_root_source_frame() wontthrow -> void
 {
   if (!source_store().source_frames().is_empty())
     source_store().source_frames().pop_back();
@@ -316,19 +337,20 @@ fn EvalContext::pop_root_source_frame() wontthrow -> void
 struct backtrace_entry
 {
   SourceLocation location{};
-  const String *text{nullptr};
-  isize line_offset{0};
-  bool *was_printed{nullptr};
-  source_frame *frame{nullptr};
-  usize call_index{0};
-  usize repeat_count{0};
-  bool is_definition{false};
-  bool is_repeat{false};
+  const String  *text{nullptr};
+  isize          line_offset{0};
+  bool          *was_printed{nullptr};
+  source_frame  *frame{nullptr};
+  usize          call_index{0};
+  usize          repeat_count{0};
+  bool           is_definition{false};
+  bool           is_repeat{false};
 };
 
-fn EvalContext::print_source_backtrace(Maybe<SourceLocation> error_location,
-                                       bool should_defer_for_source_file,
-                                       bool is_replay) throws -> void
+fn
+EvalContext::print_source_backtrace(Maybe<SourceLocation> error_location,
+                                    bool should_defer_for_source_file,
+                                    bool is_replay) throws -> void
 {
   if (!diagnostics_store().source_traces_enabled()) return;
   if (source_store().source_frames().is_empty() &&
@@ -360,13 +382,13 @@ fn EvalContext::print_source_backtrace(Maybe<SourceLocation> error_location,
            left.length == right.length;
   };
   let const *error_source = source_store().current_source();
-  let error_site = Maybe<rendered_site>{};
+  let        error_site   = Maybe<rendered_site>{};
   if (error_location.has_value() && error_source != nullptr) {
     error_site = resolve_rendered_site(error_source->view(), *error_location, 0,
                                        false, this);
   }
 
-  let const do_site_repeat_error = [&](SourceLocation site,
+  let const do_site_repeat_error = [&](SourceLocation              site,
                                        const ResolvedRenderSource &resolved) {
     if (!error_location.has_value()) return false;
 
@@ -384,7 +406,7 @@ fn EvalContext::print_source_backtrace(Maybe<SourceLocation> error_location,
   };
   let const do_frame_identity_match = [&](const source_frame &left,
                                           const source_frame &right) {
-    let const *left_source = borrowed_frame_source(left);
+    let const *left_source  = borrowed_frame_source(left);
     let const *right_source = borrowed_frame_source(right);
 
     return left.kind == right.kind &&
@@ -395,22 +417,22 @@ fn EvalContext::print_source_backtrace(Maybe<SourceLocation> error_location,
             (left_source != nullptr && right_source != nullptr &&
              left_source->view() == right_source->view()));
   };
-  let entries = ArrayList<backtrace_entry>{heap_allocator()};
-  let const do_add_site = [&](backtrace_entry entry,
+  let       entries     = ArrayList<backtrace_entry>{heap_allocator()};
+  let const do_add_site = [&](backtrace_entry             entry,
                               const ResolvedRenderSource &resolved) {
     if (resolved.text == nullptr) return;
 
-    entry.text = resolved.text;
+    entry.text        = resolved.text;
     entry.line_offset = resolved.line_offset;
-    entry.location = resolved.rebase(entry.location);
+    entry.location    = resolved.rebase(entry.location);
     if (entry.location.position > resolved.text->count()) return;
 
     entries.push(entry);
   };
 
   usize deferral_index = static_cast<usize>(-1);
-  usize frame_index = source_store().source_frames().count();
-  usize call_index = function_store().call_frames().count();
+  usize frame_index    = source_store().source_frames().count();
+  usize call_index     = function_store().call_frames().count();
 
   while (frame_index > 0 || call_index > 0) {
     let const is_call_next =
@@ -420,8 +442,8 @@ fn EvalContext::print_source_backtrace(Maybe<SourceLocation> error_location,
                                               .function_call_depth);
     if (is_call_next) {
       call_index--;
-      let &call_frame = function_store().call_frames()[call_index];
-      let const call_site = call_frame.location;
+      let      &call_frame = function_store().call_frames()[call_index];
+      let const call_site  = call_frame.location;
       if (call_frame.source == nullptr) continue;
 
       let const resolved =
@@ -429,9 +451,9 @@ fn EvalContext::print_source_backtrace(Maybe<SourceLocation> error_location,
                                 source_depth_floor(frame_index));
       if (do_site_repeat_error(call_site, resolved)) continue;
 
-      let entry = backtrace_entry{};
-      entry.location = call_site;
-      entry.call_index = call_index;
+      let entry         = backtrace_entry{};
+      entry.location    = call_site;
+      entry.call_index  = call_index;
       entry.was_printed = &call_frame.was_printed;
       do_add_site(entry, resolved);
       continue;
@@ -442,12 +464,12 @@ fn EvalContext::print_source_backtrace(Maybe<SourceLocation> error_location,
     if (&frame == deferring_frame) deferral_index = entries.count();
 
     if (frame.definition != nullptr) {
-      let entry = backtrace_entry{};
-      entry.location = frame.definition->location;
-      entry.line_offset = frame.definition->line_offset;
-      entry.text = &frame.definition->line_source;
-      entry.was_printed = &frame.was_definition_printed;
-      entry.frame = &frame;
+      let entry           = backtrace_entry{};
+      entry.location      = frame.definition->location;
+      entry.line_offset   = frame.definition->line_offset;
+      entry.text          = &frame.definition->line_source;
+      entry.was_printed   = &frame.was_definition_printed;
+      entry.frame         = &frame;
       entry.is_definition = true;
       entries.push(entry);
     }
@@ -460,9 +482,9 @@ fn EvalContext::print_source_backtrace(Maybe<SourceLocation> error_location,
                                                source_depth_floor(frame_index));
     if (do_site_repeat_error(frame.call_site, resolved)) continue;
 
-    let entry = backtrace_entry{};
-    entry.location = frame.call_site;
-    entry.frame = &frame;
+    let entry         = backtrace_entry{};
+    entry.location    = frame.call_site;
+    entry.frame       = &frame;
     entry.was_printed = &frame.was_printed;
     do_add_site(entry, resolved);
   }
@@ -530,11 +552,11 @@ fn EvalContext::print_source_backtrace(Maybe<SourceLocation> error_location,
       continue;
     }
 
-    let const location = entry.location;
-    let mapped_location = location;
-    let mapped_text = entry.text->view();
+    let const location        = entry.location;
+    let       mapped_location = location;
+    let       mapped_text     = entry.text->view();
     unused(map_embedded_site(mapped_text, mapped_location));
-    let const mapped_name = source_name_at(mapped_location.source_name_index);
+    let const mapped_name  = source_name_at(mapped_location.source_name_index);
     let const is_eval_text = mapped_name.has_value() && *mapped_name == "eval";
     let const should_hide_filename =
         !is_eval_text && last_name_index.has_value() &&
@@ -560,18 +582,20 @@ fn EvalContext::print_source_backtrace(Maybe<SourceLocation> error_location,
   }
 
   if (deferring_frame != nullptr) {
-    deferring_frame->has_deferred_trace = true;
+    deferring_frame->has_deferred_trace      = true;
     deferring_frame->deferred_trace_location = error_location;
   }
 }
 
-static constexpr usize MAX_SOURCE_DEPTH = 400;
-static constexpr usize MAX_FUNCTION_CALL_DEPTH = 900;
+static constexpr usize MAX_SOURCE_DEPTH              = 400;
+static constexpr usize MAX_FUNCTION_CALL_DEPTH       = 900;
 static constexpr usize MAX_PARAMETER_EXPANSION_DEPTH = 256;
 
-static fn guard_located_depth(usize current_depth, usize cap,
-                              maybeunused const char *what,
-                              const SourceLocation &location) throws -> void
+static fn
+guard_located_depth(usize                   current_depth,
+                    usize                   cap,
+                    maybeunused const char *what,
+                    const SourceLocation   &location) throws -> void
 {
   if (current_depth >= cap) {
     LOG(Debug, "%s depth %zu exceeds cap %zu", what, current_depth, cap);
@@ -580,21 +604,23 @@ static fn guard_located_depth(usize current_depth, usize cap,
   }
 }
 
-fn EvalContext::enter_source(const SourceLocation &location) throws -> void
+fn
+EvalContext::enter_source(const SourceLocation &location) throws -> void
 {
   guard_located_depth(source_store().source_depth(), MAX_SOURCE_DEPTH, "source",
                       location);
   source_store().set_source_depth(source_store().source_depth() + 1);
 }
 
-fn EvalContext::leave_source() wontthrow -> void
+fn
+EvalContext::leave_source() wontthrow -> void
 {
   ASSERT(source_store().source_depth() > 0);
   source_store().set_source_depth(source_store().source_depth() - 1);
 }
 
-fn EvalContext::enter_function_call(const SourceLocation &location) throws
-    -> void
+fn
+EvalContext::enter_function_call(const SourceLocation &location) throws -> void
 {
   guard_located_depth(function_store().call_depth(), MAX_FUNCTION_CALL_DEPTH,
                       "function call", location);
@@ -603,14 +629,16 @@ fn EvalContext::enter_function_call(const SourceLocation &location) throws
   LOG(Debug, "entered function call depth %zu", function_store().call_depth());
 }
 
-fn EvalContext::leave_function_call() wontthrow -> void
+fn
+EvalContext::leave_function_call() wontthrow -> void
 {
   ASSERT(function_store().call_depth() > 0);
   function_store().call_depth()--;
   lower_trap_depths_to_current();
 }
 
-fn EvalContext::enter_substitution() throws -> void
+fn
+EvalContext::enter_substitution() throws -> void
 {
   if (expansion_store().substitution_depth() >=
       lexer::MAX_SUBSTITUTION_NESTING_DEPTH)
@@ -623,14 +651,16 @@ fn EvalContext::enter_substitution() throws -> void
   expansion_store().substitution_depth()++;
 }
 
-fn EvalContext::leave_substitution() wontthrow -> void
+fn
+EvalContext::leave_substitution() wontthrow -> void
 {
   ASSERT(expansion_store().substitution_depth() > 0);
   expansion_store().substitution_depth()--;
   lower_trap_depths_to_current();
 }
 
-fn EvalContext::enter_parameter_expansion() throws -> void
+fn
+EvalContext::enter_parameter_expansion() throws -> void
 {
   if (expansion_store().parameter_expansion_depth() >=
       MAX_PARAMETER_EXPANSION_DEPTH)
@@ -643,18 +673,21 @@ fn EvalContext::enter_parameter_expansion() throws -> void
   expansion_store().parameter_expansion_depth()++;
 }
 
-fn EvalContext::leave_parameter_expansion() wontthrow -> void
+fn
+EvalContext::leave_parameter_expansion() wontthrow -> void
 {
   ASSERT(expansion_store().parameter_expansion_depth() > 0);
   expansion_store().parameter_expansion_depth()--;
 }
 
-fn EvalContext::enter_loop() wontthrow -> void
+fn
+EvalContext::enter_loop() wontthrow -> void
 {
   execution_store().loop_depth()++;
 }
 
-fn EvalContext::leave_loop() wontthrow -> void
+fn
+EvalContext::leave_loop() wontthrow -> void
 {
   ASSERT(execution_store().loop_depth() > 0);
   execution_store().loop_depth()--;
@@ -662,13 +695,14 @@ fn EvalContext::leave_loop() wontthrow -> void
 
 static constexpr usize MAX_LOOP_REDIRECT_FDS = 16;
 
-fn EvalContext::mark_loop_redirect_fds() const wontthrow
-    -> loop_redirect_fd_mark
+fn
+EvalContext::mark_loop_redirect_fds() const wontthrow -> loop_redirect_fd_mark
 {
   return {expansion_store().loop_redirect_fds().count()};
 }
 
-fn EvalContext::cleanup_loop_redirect_fds(loop_redirect_fd_mark mark) wontthrow
+fn
+EvalContext::cleanup_loop_redirect_fds(loop_redirect_fd_mark mark) wontthrow
     -> void
 {
   for (usize i = expansion_store().loop_redirect_fds().count(); i > mark.count;
@@ -680,8 +714,10 @@ fn EvalContext::cleanup_loop_redirect_fds(loop_redirect_fd_mark mark) wontthrow
         expansion_store().loop_redirect_fds().count() - 1);
 }
 
-fn EvalContext::find_loop_redirect_fd(i32 target_fd, const String &path,
-                                      os::file_open_mode mode) const wontthrow
+fn
+EvalContext::find_loop_redirect_fd(i32                target_fd,
+                                   const String      &path,
+                                   os::file_open_mode mode) const wontthrow
     -> Maybe<os::descriptor>
 {
   for (let const &entry : expansion_store().loop_redirect_fds()) {
@@ -695,9 +731,11 @@ fn EvalContext::find_loop_redirect_fd(i32 target_fd, const String &path,
   return None;
 }
 
-fn EvalContext::retain_loop_redirect_fd(i32 target_fd, const String &path,
-                                        os::file_open_mode mode,
-                                        os::descriptor fd) throws -> bool
+fn
+EvalContext::retain_loop_redirect_fd(i32                target_fd,
+                                     const String      &path,
+                                     os::file_open_mode mode,
+                                     os::descriptor     fd) throws -> bool
 {
   if (expansion_store().loop_redirect_fds().count() >= MAX_LOOP_REDIRECT_FDS)
     return false;
@@ -710,7 +748,8 @@ fn EvalContext::retain_loop_redirect_fd(i32 target_fd, const String &path,
   return true;
 }
 
-fn EvalContext::suggest_similar_variable_name(StringView name) const throws
+fn
+EvalContext::suggest_similar_variable_name(StringView name) const throws
     -> Maybe<String>
 {
   if (name.is_empty()) return None;
@@ -745,7 +784,8 @@ fn EvalContext::suggest_similar_variable_name(StringView name) const throws
   return suggestion.take_suggestion();
 }
 
-fn EvalContext::sorted_variable_assignments() const throws
+fn
+EvalContext::sorted_variable_assignments() const throws
     -> SortedArrayList<String, order_comparator<String>>
 {
   let assignments = ArrayList<String>{heap_allocator()};
@@ -761,7 +801,8 @@ fn EvalContext::sorted_variable_assignments() const throws
   return steal(assignments).make_sorted(sort_order::ascending);
 }
 
-fn EvalContext::snapshot_state() throws -> eval_state_snapshot
+fn
+EvalContext::snapshot_state() throws -> eval_state_snapshot
 {
   let working_directory = os::reference_current_directory();
   if (!working_directory.is_valid())
@@ -785,7 +826,8 @@ fn EvalContext::snapshot_state() throws -> eval_state_snapshot
                              os::get_file_creation_mask()};
 }
 
-fn VariableStore::snapshot() const throws -> variable_snapshot
+fn
+VariableStore::snapshot() const throws -> variable_snapshot
 {
   return variable_snapshot{
       m_variables.share(),
@@ -805,16 +847,17 @@ fn VariableStore::snapshot() const throws -> variable_snapshot
       m_unset_dynamic_readers};
 }
 
-fn VariableStore::restore(variable_snapshot snapshot) throws -> void
+fn
+VariableStore::restore(variable_snapshot snapshot) throws -> void
 {
   ASSERT(snapshot.variables.is_unchanged_since_share());
-  m_variables = steal(snapshot.variables);
+  m_variables                     = steal(snapshot.variables);
   m_is_pipestatus_scalar_possible = true;
   m_special_variable_definition_locations =
       steal(snapshot.special_variable_definition_locations);
   m_associative_arrays = steal(snapshot.associative_arrays);
-  m_sparse_arrays = steal(snapshot.sparse_arrays);
-  m_positional_params = steal(snapshot.positional_params);
+  m_sparse_arrays      = steal(snapshot.sparse_arrays);
+  m_positional_params  = steal(snapshot.positional_params);
   if (!snapshot.has_bash_argument_arrays) {
     m_bash_arguments.reset();
   } else {
@@ -824,10 +867,10 @@ fn VariableStore::restore(variable_snapshot snapshot) throws -> void
   if (m_bash_arguments.get_context() != nullptr)
     m_bash_arguments.get_context()->flags =
         snapshot.bash_argument_frame_context_flags;
-  m_directory_stack = steal(snapshot.directory_stack);
+  m_directory_stack              = steal(snapshot.directory_stack);
   m_disabled_bash_special_arrays = snapshot.disabled_bash_special_arrays;
-  m_unset_dynamic_readers = snapshot.unset_dynamic_readers;
-  m_exported_names = steal(snapshot.exported_names);
+  m_unset_dynamic_readers        = snapshot.unset_dynamic_readers;
+  m_exported_names               = steal(snapshot.exported_names);
 
   if (let const ifs = shell_variables().find(StringView{"IFS", 3});
       ifs.has_value())
@@ -836,7 +879,8 @@ fn VariableStore::restore(variable_snapshot snapshot) throws -> void
     set_field_separators(" \t\n");
 }
 
-fn EnvironmentStore::restore(usize undo_mark) wontthrow -> void
+fn
+EnvironmentStore::restore(usize undo_mark) wontthrow -> void
 {
   while (m_environment_undo_log.count() > undo_mark) {
     let const &entry = m_environment_undo_log.back();
@@ -849,7 +893,8 @@ fn EnvironmentStore::restore(usize undo_mark) wontthrow -> void
   }
 }
 
-fn EvalContext::restore_state(eval_state_snapshot snapshot) throws -> void
+fn
+EvalContext::restore_state(eval_state_snapshot snapshot) throws -> void
 {
   LOG(Debug, "restoring the evaluator state after a subshell or substitution");
   variable_store().restore(steal(snapshot.variables));
@@ -889,43 +934,43 @@ fn EvalContext::restore_state(eval_state_snapshot snapshot) throws -> void
   environment_store().restore(snapshot.environment_undo_mark);
 }
 
-static constexpr u32 SUBSHELL_BOOTSTRAP_MAGIC = 0x4b534842U;
+static constexpr u32 SUBSHELL_BOOTSTRAP_MAGIC   = 0x4b534842U;
 static constexpr u32 SUBSHELL_BOOTSTRAP_VERSION = 21U;
-static constexpr u32 NO_BOOTSTRAP_PROCESS = UINT32_MAX;
-static constexpr u32 NO_BARE_PROGRAM_PATH = UINT32_MAX;
+static constexpr u32 NO_BOOTSTRAP_PROCESS       = UINT32_MAX;
+static constexpr u32 NO_BARE_PROGRAM_PATH       = UINT32_MAX;
 
-static fn append_subshell_bootstrap_u32(String &output, u32 value) throws
-    -> void
+static fn
+append_subshell_bootstrap_u32(String &output, u32 value) throws -> void
 {
   for (usize byte_position = 0; byte_position < sizeof(value); byte_position++)
     output.push(static_cast<char>((value >> (byte_position * 8U)) & 0xffU));
 }
 
-static fn append_subshell_bootstrap_u64(String &output, u64 value) throws
-    -> void
+static fn
+append_subshell_bootstrap_u64(String &output, u64 value) throws -> void
 {
   for (usize byte_position = 0; byte_position < sizeof(value); byte_position++)
     output.push(static_cast<char>((value >> (byte_position * 8U)) & 0xffU));
 }
 
-static fn append_subshell_bootstrap_i32(String &output, i32 value) throws
-    -> void
+static fn
+append_subshell_bootstrap_i32(String &output, i32 value) throws -> void
 {
   u32 bits = 0;
   __builtin_memcpy(&bits, &value, sizeof(bits));
   append_subshell_bootstrap_u32(output, bits);
 }
 
-static fn append_subshell_bootstrap_i64(String &output, i64 value) throws
-    -> void
+static fn
+append_subshell_bootstrap_i64(String &output, i64 value) throws -> void
 {
   u64 bits = 0;
   __builtin_memcpy(&bits, &value, sizeof(bits));
   append_subshell_bootstrap_u64(output, bits);
 }
 
-static fn append_subshell_bootstrap_text(String &output, StringView text) throws
-    -> void
+static fn
+append_subshell_bootstrap_text(String &output, StringView text) throws -> void
 {
   if (text.length > UINT32_MAX) throw std::bad_alloc{};
   append_subshell_bootstrap_u32(output, static_cast<u32>(text.length));
@@ -953,10 +998,10 @@ enum class wire_section : u8
 
 enum class local_binding_wire_flag : u8
 {
-  HasValue = 1U << 0,
+  HasValue        = 1U << 0,
   HasIndexedArray = 1U << 1,
-  WasAssociative = 1U << 2,
-  WasExported = 1U << 3,
+  WasAssociative  = 1U << 2,
+  WasExported     = 1U << 3,
   IsSelfReference = 1U << 4,
 };
 
@@ -964,8 +1009,8 @@ static constexpr u8 ALL_LOCAL_BINDING_WIRE_FLAGS = (1U << 5) - 1U;
 
 enum class inherited_frame_wire_flag : u8
 {
-  HasSite = 1U << 0,
-  WasPrinted = 1U << 1,
+  HasSite          = 1U << 0,
+  WasPrinted       = 1U << 1,
   IsSourceChanging = 1U << 2,
   ShouldDeferTrace = 1U << 3,
 };
@@ -973,8 +1018,10 @@ enum class inherited_frame_wire_flag : u8
 static constexpr u8 ALL_INHERITED_FRAME_WIRE_FLAGS = (1U << 4) - 1U;
 
 template <class WriteFn>
-static fn append_wire_section(String &output, wire_section section,
-                              WriteFn do_write) throws -> void
+static fn
+append_wire_section(String      &output,
+                    wire_section section,
+                    WriteFn      do_write) throws -> void
 {
   let payload = String{heap_allocator()};
   do_write(payload);
@@ -984,8 +1031,8 @@ static fn append_wire_section(String &output, wire_section section,
   output.append(payload.view());
 }
 
-static fn find_wire_source_name(ArrayList<u32> &names, u32 name_index) throws
-    -> u32
+static fn
+find_wire_source_name(ArrayList<u32> &names, u32 name_index) throws -> u32
 {
   if (name_index == 0) return 0;
   if (let const found = names.find(name_index); found.has_value()) {
@@ -997,8 +1044,9 @@ static fn find_wire_source_name(ArrayList<u32> &names, u32 name_index) throws
   return static_cast<u32>(names.count());
 }
 
-static fn append_wire_source_names(String &output,
-                                   const ArrayList<u32> &names) throws -> void
+static fn
+append_wire_source_names(String &output, const ArrayList<u32> &names) throws
+    -> void
 {
   append_subshell_bootstrap_u32(output, static_cast<u32>(names.count()));
 
@@ -1011,7 +1059,8 @@ static fn append_wire_source_names(String &output,
   }
 }
 
-fn dynamic_clock_state::append_wire(String &output) const throws -> void
+fn
+dynamic_clock_state::append_wire(String &output) const throws -> void
 {
   append_wire_section(output, wire_section::Clock, [&](String &payload) {
     append_subshell_bootstrap_u64(payload, random_state);
@@ -1020,7 +1069,8 @@ fn dynamic_clock_state::append_wire(String &output) const throws -> void
   });
 }
 
-fn getopts_cursor::append_wire(String &output) const throws -> void
+fn
+getopts_cursor::append_wire(String &output) const throws -> void
 {
   append_wire_section(output, wire_section::Getopts, [&](String &payload) {
     append_subshell_bootstrap_u64(payload, static_cast<u64>(char_index));
@@ -1028,7 +1078,8 @@ fn getopts_cursor::append_wire(String &output) const throws -> void
   });
 }
 
-fn definition_state::append_wire(String &output) const throws -> void
+fn
+definition_state::append_wire(String &output) const throws -> void
 {
   output.push(static_cast<char>(mood));
   output.push(static_cast<char>(reporting.warning_level));
@@ -1036,7 +1087,8 @@ fn definition_state::append_wire(String &output) const throws -> void
   output.push(static_cast<char>(reporting.is_diagnostics_disabled));
 }
 
-fn RuntimeState::append_wire(String &output) const throws -> void
+fn
+RuntimeState::append_wire(String &output) const throws -> void
 {
   append_wire_section(output, wire_section::Runtime, [&](String &payload) {
     payload.push(static_cast<char>(m_mood));
@@ -1057,7 +1109,8 @@ static constexpr u32 VALID_SUPPRESSED_WARNING_MASK =
     1U;
 static_assert(VALID_SUPPRESSED_WARNING_MASK <= UINT8_MAX);
 
-fn RuntimeControlStore::append_wire(String &output) const throws -> void
+fn
+RuntimeControlStore::append_wire(String &output) const throws -> void
 {
   ASSERT((m_suppressed_warnings & ~VALID_SUPPRESSED_WARNING_MASK) == 0);
   append_wire_section(output, wire_section::Control, [&](String &payload) {
@@ -1067,7 +1120,8 @@ fn RuntimeControlStore::append_wire(String &output) const throws -> void
   });
 }
 
-fn ExecutionStore::append_wire(String &output) const throws -> void
+fn
+ExecutionStore::append_wire(String &output) const throws -> void
 {
   append_wire_section(output, wire_section::Execution, [&](String &payload) {
     payload.push(static_cast<char>(m_execution_string.has_value()));
@@ -1077,7 +1131,8 @@ fn ExecutionStore::append_wire(String &output) const throws -> void
   });
 }
 
-fn VariableStore::append_wire(String &output) const throws -> void
+fn
+VariableStore::append_wire(String &output) const throws -> void
 {
   append_wire_section(output, wire_section::Variables, [&](String &payload) {
     payload.push(static_cast<char>(m_disabled_bash_special_arrays));
@@ -1109,7 +1164,8 @@ fn VariableStore::append_wire(String &output) const throws -> void
   });
 }
 
-fn StartupStore::append_wire(String &output) const throws -> void
+fn
+StartupStore::append_wire(String &output) const throws -> void
 {
   append_wire_section(output, wire_section::Startup, [&](String &payload) {
     payload.push(static_cast<char>(m_is_restricted_shell));
@@ -1118,14 +1174,16 @@ fn StartupStore::append_wire(String &output) const throws -> void
   });
 }
 
-fn DiagnosticsStore::append_wire(String &output) const throws -> void
+fn
+DiagnosticsStore::append_wire(String &output) const throws -> void
 {
   append_wire_section(output, wire_section::Diagnostics, [&](String &payload) {
     payload.push(static_cast<char>(m_is_source_traces_enabled));
   });
 }
 
-fn FunctionStore::append_wire(String &output) const throws -> void
+fn
+FunctionStore::append_wire(String &output) const throws -> void
 {
   append_wire_section(output, wire_section::Functions, [&](String &payload) {
     append_subshell_bootstrap_u64(payload, static_cast<u64>(m_call_depth));
@@ -1135,12 +1193,12 @@ fn FunctionStore::append_wire(String &output) const throws -> void
     for (let const &call_frame : m_call_frames)
       append_subshell_bootstrap_text(payload, call_frame.name.view());
 
-    let names = ArrayList<u32>{heap_allocator()};
-    let records = String{heap_allocator()};
+    let names        = ArrayList<u32>{heap_allocator()};
+    let records      = String{heap_allocator()};
     u32 record_count = 0;
     m_definitions.read().for_each(
         [&](StringView name, const FunctionBodyHandle &storage) throws {
-          let const *info = storage.get_definition_info();
+          let const *info   = storage.get_definition_info();
           let const *source = storage.get_source();
           if (info == nullptr || source == nullptr || source->is_empty() ||
               info->line_offset < 0 || info->line_offset > INT32_MAX ||
@@ -1169,7 +1227,8 @@ fn FunctionStore::append_wire(String &output) const throws -> void
   });
 }
 
-fn ScopeStore::append_wire(String &output) const throws -> void
+fn
+ScopeStore::append_wire(String &output) const throws -> void
 {
   append_wire_section(output, wire_section::Scopes, [&](String &payload) {
     append_subshell_bootstrap_u32(payload,
@@ -1241,14 +1300,16 @@ fn ScopeStore::append_wire(String &output) const throws -> void
   });
 }
 
-fn TrapStore::append_wire(String &output) const throws -> void
+fn
+TrapStore::append_wire(String &output) const throws -> void
 {
   append_wire_section(output, wire_section::Traps, [&](String &payload) {
     append_subshell_bootstrap_u64(payload, m_startup_ignored_signals);
   });
 }
 
-fn ProgramResolver::append_wire(String &output) const throws -> void
+fn
+ProgramResolver::append_wire(String &output) const throws -> void
 {
   append_wire_section(output, wire_section::Programs, [&](String &payload) {
     append_subshell_bootstrap_u32(payload,
@@ -1271,7 +1332,8 @@ fn ProgramResolver::append_wire(String &output) const throws -> void
   });
 }
 
-fn CompletionStore::append_wire(String &output) const throws -> void
+fn
+CompletionStore::append_wire(String &output) const throws -> void
 {
   append_wire_section(output, wire_section::Completion, [&](String &payload) {
     let collected_names = ArrayList<String>{heap_allocator()};
@@ -1311,8 +1373,9 @@ fn CompletionStore::append_wire(String &output) const throws -> void
   });
 }
 
-fn JobTable::append_wire(String &output,
-                         os::subshell_bootstrap &bootstrap) const throws -> void
+fn
+JobTable::append_wire(String                 &output,
+                      os::subshell_bootstrap &bootstrap) const throws -> void
 {
   append_wire_section(output, wire_section::Jobs, [&](String &payload) {
     let const do_reference_process = [&](os::process process) throws -> u32 {
@@ -1366,24 +1429,27 @@ fn JobTable::append_wire(String &output,
 struct subshell_bootstrap_reader
 {
   StringView bytes;
-  usize position{0};
-  bool is_valid{true};
+  usize      position{0};
+  bool       is_valid{true};
 
-  pure fn get_remaining_length() const wontthrow -> usize
+  pure fn
+  get_remaining_length() const wontthrow -> usize
   {
     return position <= bytes.length ? bytes.length - position : 0;
   }
 
-  pure fn is_fully_read() const wontthrow -> bool
+  pure fn
+  is_fully_read() const wontthrow -> bool
   {
     return is_valid && position == bytes.length;
   }
 
-  fn read_section(wire_section section,
-                  subshell_bootstrap_reader &payload) wontthrow -> bool
+  fn
+  read_section(wire_section               section,
+               subshell_bootstrap_reader &payload) wontthrow -> bool
   {
     let const identity = read_u8();
-    let const length = static_cast<usize>(read_u32());
+    let const length   = static_cast<usize>(read_u32());
     if (!is_valid || identity != static_cast<u8>(section) ||
         length > get_remaining_length())
     {
@@ -1399,7 +1465,8 @@ struct subshell_bootstrap_reader
     return true;
   }
 
-  fn read_u8() wontthrow -> u8
+  fn
+  read_u8() wontthrow -> u8
   {
     if (!is_valid || get_remaining_length() < 1) {
       is_valid = false;
@@ -1410,7 +1477,8 @@ struct subshell_bootstrap_reader
     return static_cast<u8>(bytes[position++]);
   }
 
-  fn read_u32() wontthrow -> u32
+  fn
+  read_u32() wontthrow -> u32
   {
     if (!is_valid || get_remaining_length() < sizeof(u32)) {
       is_valid = false;
@@ -1428,7 +1496,8 @@ struct subshell_bootstrap_reader
     return value;
   }
 
-  fn read_u64() wontthrow -> u64
+  fn
+  read_u64() wontthrow -> u64
   {
     if (!is_valid || get_remaining_length() < sizeof(u64)) {
       is_valid = false;
@@ -1446,25 +1515,28 @@ struct subshell_bootstrap_reader
     return value;
   }
 
-  fn read_i32() wontthrow -> i32
+  fn
+  read_i32() wontthrow -> i32
   {
-    let const bits = read_u32();
-    i32 value = 0;
+    let const bits  = read_u32();
+    i32       value = 0;
     __builtin_memcpy(&value, &bits, sizeof(value));
 
     return value;
   }
 
-  fn read_i64() wontthrow -> i64
+  fn
+  read_i64() wontthrow -> i64
   {
-    let const bits = read_u64();
-    i64 value = 0;
+    let const bits  = read_u64();
+    i64       value = 0;
     __builtin_memcpy(&value, &bits, sizeof(value));
 
     return value;
   }
 
-  fn read_text() wontthrow -> StringView
+  fn
+  read_text() wontthrow -> StringView
   {
     let const text_length = static_cast<usize>(read_u32());
     if (!is_valid || text_length > get_remaining_length()) {
@@ -1480,8 +1552,9 @@ struct subshell_bootstrap_reader
   }
 };
 
-static fn read_subshell_bootstrap_bool(subshell_bootstrap_reader &reader,
-                                       bool &value) wontthrow -> bool
+static fn
+read_subshell_bootstrap_bool(subshell_bootstrap_reader &reader,
+                             bool                      &value) wontthrow -> bool
 {
   let const encoded = reader.read_u8();
   if (!reader.is_valid || encoded > 1) {
@@ -1492,8 +1565,9 @@ static fn read_subshell_bootstrap_bool(subshell_bootstrap_reader &reader,
   return true;
 }
 
-static fn read_wire_source_names(subshell_bootstrap_reader &reader,
-                                 ArrayList<u32> &names) throws -> bool
+static fn
+read_wire_source_names(subshell_bootstrap_reader &reader,
+                       ArrayList<u32>            &names) throws -> bool
 {
   let const name_count = static_cast<usize>(reader.read_u32());
   if (!reader.is_valid || name_count > reader.get_remaining_length()) {
@@ -1522,9 +1596,10 @@ static fn read_wire_source_names(subshell_bootstrap_reader &reader,
   return reader.is_valid;
 }
 
-static fn read_wire_source_name(subshell_bootstrap_reader &reader,
-                                const ArrayList<u32> &names,
-                                u32 &name_index) wontthrow -> bool
+static fn
+read_wire_source_name(subshell_bootstrap_reader &reader,
+                      const ArrayList<u32>      &names,
+                      u32                       &name_index) wontthrow -> bool
 {
   let const position = static_cast<usize>(reader.read_u32());
   if (!reader.is_valid || position > names.count()) {
@@ -1536,27 +1611,29 @@ static fn read_wire_source_name(subshell_bootstrap_reader &reader,
   return true;
 }
 
-fn dynamic_clock_state::from_wire(subshell_bootstrap_reader &reader,
-                                  dynamic_clock_state &clock) wontthrow -> bool
+fn
+dynamic_clock_state::from_wire(subshell_bootstrap_reader &reader,
+                               dynamic_clock_state &clock) wontthrow -> bool
 {
   subshell_bootstrap_reader payload;
   if (!reader.read_section(wire_section::Clock, payload)) return false;
 
-  clock.random_state = payload.read_u64();
+  clock.random_state     = payload.read_u64();
   clock.shell_start_time = payload.read_i64();
-  clock.seconds_base = payload.read_i64();
+  clock.seconds_base     = payload.read_i64();
 
   return payload.is_fully_read();
 }
 
-fn getopts_cursor::from_wire(subshell_bootstrap_reader &reader,
-                             getopts_cursor &cursor) wontthrow -> bool
+fn
+getopts_cursor::from_wire(subshell_bootstrap_reader &reader,
+                          getopts_cursor            &cursor) wontthrow -> bool
 {
   subshell_bootstrap_reader payload;
   if (!reader.read_section(wire_section::Getopts, payload)) return false;
 
   let const char_index_bits = payload.read_u64();
-  cursor.last_optind = payload.read_i64();
+  cursor.last_optind        = payload.read_i64();
   if (!payload.is_fully_read() || char_index_bits == 0 ||
       char_index_bits > SIZE_MAX)
   {
@@ -1568,13 +1645,14 @@ fn getopts_cursor::from_wire(subshell_bootstrap_reader &reader,
   return true;
 }
 
-fn definition_state::from_wire(subshell_bootstrap_reader &reader,
-                               definition_state &state) wontthrow -> bool
+fn
+definition_state::from_wire(subshell_bootstrap_reader &reader,
+                            definition_state          &state) wontthrow -> bool
 {
-  let const mood = reader.read_u8();
-  let const warning_level = reader.read_u8();
-  bool is_annoying_disabled = false;
-  bool is_diagnostics_disabled = false;
+  let const mood                    = reader.read_u8();
+  let const warning_level           = reader.read_u8();
+  bool      is_annoying_disabled    = false;
+  bool      is_diagnostics_disabled = false;
   if (!reader.is_valid || mood > static_cast<u8>(mimic_mood::BashPosix) ||
       warning_level > 3 ||
       !read_subshell_bootstrap_bool(reader, is_annoying_disabled) ||
@@ -1583,25 +1661,26 @@ fn definition_state::from_wire(subshell_bootstrap_reader &reader,
     return false;
   }
 
-  state.mood = static_cast<mimic_mood>(mood);
+  state.mood      = static_cast<mimic_mood>(mood);
   state.reporting = {warning_level, is_annoying_disabled,
                      is_diagnostics_disabled};
 
   return true;
 }
 
-fn RuntimeState::from_wire(subshell_bootstrap_reader &reader,
-                           RuntimeState &runtime) wontthrow -> bool
+fn
+RuntimeState::from_wire(subshell_bootstrap_reader &reader,
+                        RuntimeState              &runtime) wontthrow -> bool
 {
   subshell_bootstrap_reader payload;
   if (!reader.read_section(wire_section::Runtime, payload)) return false;
 
-  let const mood = payload.read_u8();
+  let const mood          = payload.read_u8();
   let const warning_level = payload.read_u8();
-  let const tab_selector = payload.read_u8();
-  let const flags = payload.read_u8();
+  let const tab_selector  = payload.read_u8();
+  let const flags         = payload.read_u8();
   let const shell_options = payload.read_u64();
-  let const shopt = shopt_state{payload.read_u64(), payload.read_u64()};
+  let const shopt         = shopt_state{payload.read_u64(), payload.read_u64()};
   static_assert(static_cast<u8>(shell_option_id::Count) < 64);
   let const valid_shell_options =
       (u64{1} << static_cast<u8>(shell_option_id::Count)) - 1U;
@@ -1614,24 +1693,25 @@ fn RuntimeState::from_wire(subshell_bootstrap_reader &reader,
     return false;
   }
 
-  runtime.m_mood = static_cast<mimic_mood>(mood);
+  runtime.m_mood                    = static_cast<mimic_mood>(mood);
   runtime.m_reporting.warning_level = warning_level;
   runtime.m_tab_selector = static_cast<tab_selector_mode>(tab_selector);
   runtime.set_wire_flags(flags);
   runtime.m_shell_options = shell_options;
-  runtime.m_shopt = shopt;
+  runtime.m_shopt         = shopt;
 
   return true;
 }
 
-fn RuntimeControlStore::from_wire(subshell_bootstrap_reader &reader,
-                                  runtime_control_wire &wire) wontthrow -> bool
+fn
+RuntimeControlStore::from_wire(subshell_bootstrap_reader &reader,
+                               runtime_control_wire &wire) wontthrow -> bool
 {
   subshell_bootstrap_reader payload;
   if (!reader.read_section(wire_section::Control, payload)) return false;
 
   wire.init_moods_sourcing = payload.read_u8();
-  wire.initialized_moods = payload.read_u8();
+  wire.initialized_moods   = payload.read_u8();
   wire.suppressed_warnings = payload.read_u8();
 
   return payload.is_fully_read() &&
@@ -1640,8 +1720,9 @@ fn RuntimeControlStore::from_wire(subshell_bootstrap_reader &reader,
          (wire.suppressed_warnings & ~VALID_SUPPRESSED_WARNING_MASK) == 0;
 }
 
-fn ExecutionStore::from_wire(subshell_bootstrap_reader &reader,
-                             execution_wire &wire) throws -> bool
+fn
+ExecutionStore::from_wire(subshell_bootstrap_reader &reader,
+                          execution_wire            &wire) throws -> bool
 {
   subshell_bootstrap_reader payload;
   if (!reader.read_section(wire_section::Execution, payload)) return false;
@@ -1656,14 +1737,15 @@ fn ExecutionStore::from_wire(subshell_bootstrap_reader &reader,
   return payload.is_fully_read();
 }
 
-fn VariableStore::from_wire(subshell_bootstrap_reader &reader,
-                            variable_wire &wire) throws -> bool
+fn
+VariableStore::from_wire(subshell_bootstrap_reader &reader,
+                         variable_wire             &wire) throws -> bool
 {
   subshell_bootstrap_reader payload;
   if (!reader.read_section(wire_section::Variables, payload)) return false;
 
   wire.disabled_bash_special_arrays = payload.read_u8();
-  wire.unset_dynamic_readers = payload.read_u8();
+  wire.unset_dynamic_readers        = payload.read_u8();
   static_assert(static_cast<u8>(bash_special_array_id::Count) <= 8);
   constexpr u8 VALID_BASH_SPECIAL_ARRAY_MASK =
       (1U << static_cast<u8>(bash_special_array_id::Count)) - 1U;
@@ -1725,7 +1807,7 @@ fn VariableStore::from_wire(subshell_bootstrap_reader &reader,
         static_cast<u8>(bash_argument_frame_flag::IsSource) |
         static_cast<u8>(bash_argument_frame_flag::HasSourceArguments);
     wire.bash_argument_context_flags = payload.read_u8();
-    let const source_path = payload.read_text();
+    let const source_path            = payload.read_text();
     if (!payload.is_valid || (wire.bash_argument_context_flags &
                               static_cast<u8>(~VALID_FRAME_FLAG_MASK)) != 0)
     {
@@ -1737,8 +1819,9 @@ fn VariableStore::from_wire(subshell_bootstrap_reader &reader,
   return payload.is_fully_read();
 }
 
-fn StartupStore::from_wire(subshell_bootstrap_reader &reader,
-                           startup_wire &wire) throws -> bool
+fn
+StartupStore::from_wire(subshell_bootstrap_reader &reader,
+                        startup_wire              &wire) throws -> bool
 {
   subshell_bootstrap_reader payload;
   if (!reader.read_section(wire_section::Startup, payload)) return false;
@@ -1753,8 +1836,9 @@ fn StartupStore::from_wire(subshell_bootstrap_reader &reader,
   return payload.is_fully_read();
 }
 
-fn DiagnosticsStore::from_wire(subshell_bootstrap_reader &reader,
-                               bool &is_source_traces_enabled) wontthrow -> bool
+fn
+DiagnosticsStore::from_wire(subshell_bootstrap_reader &reader,
+                            bool &is_source_traces_enabled) wontthrow -> bool
 {
   subshell_bootstrap_reader payload;
   if (!reader.read_section(wire_section::Diagnostics, payload)) return false;
@@ -1763,13 +1847,14 @@ fn DiagnosticsStore::from_wire(subshell_bootstrap_reader &reader,
          payload.is_fully_read();
 }
 
-fn FunctionStore::from_wire(subshell_bootstrap_reader &reader,
-                            function_wire &wire) throws -> bool
+fn
+FunctionStore::from_wire(subshell_bootstrap_reader &reader,
+                         function_wire             &wire) throws -> bool
 {
   subshell_bootstrap_reader payload;
   if (!reader.read_section(wire_section::Functions, payload)) return false;
 
-  let const call_depth = payload.read_u64();
+  let const call_depth      = payload.read_u64();
   let const call_name_count = static_cast<usize>(payload.read_u32());
   if (!payload.is_valid || call_depth > MAX_FUNCTION_CALL_DEPTH ||
       call_name_count > call_depth ||
@@ -1797,34 +1882,35 @@ fn FunctionStore::from_wire(subshell_bootstrap_reader &reader,
 
   for (usize index = 0; index < record_count; index++) {
     let const name = payload.read_text();
-    let info = function_definition_info{};
+    let       info = function_definition_info{};
     if (!read_wire_source_name(payload, names, info.source_name_index)) {
       return false;
     }
 
-    let const line_offset = payload.read_u32();
+    let const line_offset          = payload.read_u32();
     let const enclosing_line_count = payload.read_u32();
-    let const definition_line = payload.read_u32();
-    let const line_prefix = payload.read_text();
-    let const line_suffix = payload.read_text();
+    let const definition_line      = payload.read_u32();
+    let const line_prefix          = payload.read_text();
+    let const line_suffix          = payload.read_text();
     if (!payload.is_valid || name.is_empty() || line_offset > INT32_MAX ||
         enclosing_line_count > INT32_MAX)
     {
       return false;
     }
 
-    info.line_offset = static_cast<isize>(line_offset);
+    info.line_offset          = static_cast<isize>(line_offset);
     info.enclosing_line_count = usize{enclosing_line_count};
-    info.definition_line = usize{definition_line};
-    info.line_prefix = String{heap_allocator(), line_prefix};
-    info.line_suffix = String{heap_allocator(), line_suffix};
+    info.definition_line      = usize{definition_line};
+    info.line_prefix          = String{heap_allocator(), line_prefix};
+    info.line_suffix          = String{heap_allocator(), line_suffix};
     wire.definition_origins.set(name, steal(info));
   }
 
   return payload.is_fully_read();
 }
 
-fn FunctionStore::apply_wire_definitions(function_wire &wire) throws -> void
+fn
+FunctionStore::apply_wire_definitions(function_wire &wire) throws -> void
 {
   wire.definition_origins.for_each(
       [&](StringView name, function_definition_info &origin) throws {
@@ -1832,22 +1918,23 @@ fn FunctionStore::apply_wire_definitions(function_wire &wire) throws -> void
         if (!storage.has_value()) return;
 
         let const *replayed = storage->get_definition_info();
-        let const *source = storage->get_source();
+        let const *source   = storage->get_source();
         if (replayed == nullptr || source == nullptr) {
           return;
         }
 
         origin.body_start_position = replayed->body_start_position;
-        origin.header_length = replayed->header_length;
-        origin.body_name_index = replayed->body_name_index;
-        origin.defining_state = replayed->defining_state;
+        origin.header_length       = replayed->header_length;
+        origin.body_name_index     = replayed->body_name_index;
+        origin.defining_state      = replayed->defining_state;
         storage->set_definition(source->view(), steal(origin));
       });
 }
 
-fn ScopeStore::from_wire(
-    subshell_bootstrap_reader &reader,
-    ArrayList<ArrayList<local_binding>> &local_scopes) throws -> bool
+fn
+ScopeStore::from_wire(subshell_bootstrap_reader           &reader,
+                      ArrayList<ArrayList<local_binding>> &local_scopes) throws
+    -> bool
 {
   subshell_bootstrap_reader payload;
   if (!reader.read_section(wire_section::Scopes, payload)) return false;
@@ -1859,9 +1946,9 @@ fn ScopeStore::from_wire(
     return false;
   }
 
-  constexpr usize MINIMUM_LOCAL_BINDING_BYTES = 10;
+  constexpr usize MINIMUM_LOCAL_BINDING_BYTES  = 10;
   constexpr usize MINIMUM_SPARSE_ELEMENT_BYTES = 12;
-  constexpr u8 VALID_ATTRIBUTE_MASK =
+  constexpr u8    VALID_ATTRIBUTE_MASK =
       static_cast<u8>(variable_attribute::Readonly) |
       static_cast<u8>(variable_attribute::Integer) |
       static_cast<u8>(variable_attribute::Lowercase) |
@@ -1893,20 +1980,20 @@ fn ScopeStore::from_wire(
          binding_index++)
     {
       let binding = local_binding{
-          .name = String{heap_allocator(), payload.read_text()},
+          .name           = String{heap_allocator(), payload.read_text()},
           .previous_value = None,
           .previous_special_definition_location = None,
-          .previous_indexed_array = None,
-          .previous_associative_keys = ArrayList<String>{heap_allocator()},
+          .previous_indexed_array               = None,
+          .previous_associative_keys   = ArrayList<String>{heap_allocator()},
           .previous_associative_values = ArrayList<String>{heap_allocator()},
-          .previous_sparse_indices = ArrayList<usize>{heap_allocator()},
-          .previous_sparse_values = ArrayList<String>{heap_allocator()},
-          .previous_attributes = 0,
-          .was_previously_associative = false,
-          .was_previously_exported = false,
-          .is_self_reference = false,
+          .previous_sparse_indices     = ArrayList<usize>{heap_allocator()},
+          .previous_sparse_values      = ArrayList<String>{heap_allocator()},
+          .previous_attributes         = 0,
+          .was_previously_associative  = false,
+          .was_previously_exported     = false,
+          .is_self_reference           = false,
       };
-      let const flags = payload.read_u8();
+      let const flags             = payload.read_u8();
       binding.previous_attributes = payload.read_u8();
       if (!payload.is_valid ||
           (flags & static_cast<u8>(~ALL_LOCAL_BINDING_WIRE_FLAGS)) != 0 ||
@@ -1985,8 +2072,9 @@ fn ScopeStore::from_wire(
   return payload.is_fully_read();
 }
 
-fn TrapStore::from_wire(subshell_bootstrap_reader &reader,
-                        u64 &startup_ignored_signals) wontthrow -> bool
+fn
+TrapStore::from_wire(subshell_bootstrap_reader &reader,
+                     u64 &startup_ignored_signals) wontthrow -> bool
 {
   subshell_bootstrap_reader payload;
   if (!reader.read_section(wire_section::Traps, payload)) return false;
@@ -1996,14 +2084,15 @@ fn TrapStore::from_wire(subshell_bootstrap_reader &reader,
   return payload.is_fully_read();
 }
 
-fn ProgramResolver::from_wire(subshell_bootstrap_reader &reader,
-                              StringMap<CacheEntry> &execution_cache) throws
+fn
+ProgramResolver::from_wire(subshell_bootstrap_reader &reader,
+                           StringMap<CacheEntry>     &execution_cache) throws
     -> bool
 {
   subshell_bootstrap_reader payload;
   if (!reader.read_section(wire_section::Programs, payload)) return false;
 
-  let const entry_count = static_cast<usize>(payload.read_u32());
+  let const       entry_count = static_cast<usize>(payload.read_u32());
   constexpr usize MINIMUM_CACHE_ENTRY_BYTES = 12;
   constexpr usize MINIMUM_CACHED_PATH_BYTES = 5;
   if (!payload.is_valid ||
@@ -2013,9 +2102,9 @@ fn ProgramResolver::from_wire(subshell_bootstrap_reader &reader,
   }
 
   for (usize entry_index = 0; entry_index < entry_count; entry_index++) {
-    let const name = payload.read_text();
+    let const name               = payload.read_text();
     let const bare_path_position = payload.read_u32();
-    let const path_count = static_cast<usize>(payload.read_u32());
+    let const path_count         = static_cast<usize>(payload.read_u32());
     if (!payload.is_valid ||
         path_count >
             payload.get_remaining_length() / MINIMUM_CACHED_PATH_BYTES ||
@@ -2032,7 +2121,7 @@ fn ProgramResolver::from_wire(subshell_bootstrap_reader &reader,
 
     for (usize path_index = 0; path_index < path_count; path_index++) {
       let const extension = payload.read_u8();
-      let const path = payload.read_text();
+      let const path      = payload.read_text();
       if (!payload.is_valid ||
           extension > static_cast<u8>(os::program_extension::Bat))
       {
@@ -2048,13 +2137,14 @@ fn ProgramResolver::from_wire(subshell_bootstrap_reader &reader,
   return payload.is_fully_read();
 }
 
-fn CompletionStore::from_wire(subshell_bootstrap_reader &reader,
-                              completion_snapshot &wire) throws -> bool
+fn
+CompletionStore::from_wire(subshell_bootstrap_reader &reader,
+                           completion_snapshot       &wire) throws -> bool
 {
   subshell_bootstrap_reader payload;
   if (!reader.read_section(wire_section::Completion, payload)) return false;
 
-  let const spec_count = static_cast<usize>(payload.read_u32());
+  let const       spec_count = static_cast<usize>(payload.read_u32());
   constexpr usize MINIMUM_COMPLETION_SPEC_BYTES = 48;
   if (!payload.is_valid || spec_count > payload.get_remaining_length() /
                                             MINIMUM_COMPLETION_SPEC_BYTES)
@@ -2063,16 +2153,16 @@ fn CompletionStore::from_wire(subshell_bootstrap_reader &reader,
   }
   wire.specs.reserve(spec_count);
   let const do_read_spec = [&](completion_spec &spec) throws -> bool {
-    let const function_name = payload.read_text();
-    let const word_list = payload.read_text();
-    let const glob_pattern = payload.read_text();
+    let const function_name  = payload.read_text();
+    let const word_list      = payload.read_text();
+    let const glob_pattern   = payload.read_text();
     let const filter_pattern = payload.read_text();
-    let const prefix = payload.read_text();
-    let const suffix = payload.read_text();
-    let const command = payload.read_text();
-    let const action_mask = payload.read_u32();
-    let const option_mask = payload.read_u32();
-    let const argument_mask = payload.read_u32();
+    let const prefix         = payload.read_text();
+    let const suffix         = payload.read_text();
+    let const command        = payload.read_text();
+    let const action_mask    = payload.read_u32();
+    let const option_mask    = payload.read_u32();
+    let const argument_mask  = payload.read_u32();
     if (!payload.is_valid || (action_mask >> COMPGEN_ACTION_COUNT) != 0 ||
         (option_mask >> COMPLETION_OPTION_COUNT) != 0 ||
         (argument_mask >> COMPLETION_ARGUMENT_COUNT) != 0 ||
@@ -2080,23 +2170,23 @@ fn CompletionStore::from_wire(subshell_bootstrap_reader &reader,
     {
       return false;
     }
-    spec.function_name = String{heap_allocator(), function_name};
-    spec.word_list = String{heap_allocator(), word_list};
-    spec.glob_pattern = String{heap_allocator(), glob_pattern};
+    spec.function_name  = String{heap_allocator(), function_name};
+    spec.word_list      = String{heap_allocator(), word_list};
+    spec.glob_pattern   = String{heap_allocator(), glob_pattern};
     spec.filter_pattern = String{heap_allocator(), filter_pattern};
-    spec.prefix = String{heap_allocator(), prefix};
-    spec.suffix = String{heap_allocator(), suffix};
-    spec.command = String{heap_allocator(), command};
-    spec.action_mask = action_mask;
-    spec.option_mask = option_mask;
-    spec.argument_mask = argument_mask;
+    spec.prefix         = String{heap_allocator(), prefix};
+    spec.suffix         = String{heap_allocator(), suffix};
+    spec.command        = String{heap_allocator(), command};
+    spec.action_mask    = action_mask;
+    spec.option_mask    = option_mask;
+    spec.argument_mask  = argument_mask;
 
     return true;
   };
 
   for (usize spec_index = 0; spec_index < spec_count; spec_index++) {
     let const command = payload.read_text();
-    let spec = completion_spec{};
+    let       spec    = completion_spec{};
     if (!payload.is_valid || !do_read_spec(spec) ||
         wire.specs.find(command).has_value())
     {
@@ -2120,8 +2210,9 @@ fn CompletionStore::from_wire(subshell_bootstrap_reader &reader,
   return payload.is_fully_read();
 }
 
-fn JobTable::from_wire(subshell_bootstrap_reader &reader,
-                       job_table_wire &wire) throws -> bool
+fn
+JobTable::from_wire(subshell_bootstrap_reader &reader,
+                    job_table_wire            &wire) throws -> bool
 {
   subshell_bootstrap_reader payload;
   if (!reader.read_section(wire_section::Jobs, payload)) return false;
@@ -2132,7 +2223,7 @@ fn JobTable::from_wire(subshell_bootstrap_reader &reader,
   if (has_last_background_pid) wire.last_background_pid = payload.read_i64();
   wire.next_job_id = payload.read_i32();
 
-  let const job_count = static_cast<usize>(payload.read_u32());
+  let const       job_count         = static_cast<usize>(payload.read_u32());
   constexpr usize MINIMUM_JOB_BYTES = 48;
   if (!payload.is_valid || wire.next_job_id < 1 ||
       job_count > payload.get_remaining_length() / MINIMUM_JOB_BYTES)
@@ -2143,14 +2234,14 @@ fn JobTable::from_wire(subshell_bootstrap_reader &reader,
   i32 previous_job_id = 0;
 
   for (usize job_index = 0; job_index < job_count; job_index++) {
-    let child_job = job{wire.jobs.allocator()};
-    child_job.id = payload.read_i32();
-    let const command = payload.read_text();
-    child_job.command = String{wire.jobs.allocator(), command};
-    child_job.process_id = payload.read_i64();
+    let child_job              = job{wire.jobs.allocator()};
+    child_job.id               = payload.read_i32();
+    let const command          = payload.read_text();
+    child_job.command          = String{wire.jobs.allocator(), command};
+    child_job.process_id       = payload.read_i64();
     child_job.process_group_id = payload.read_i64();
-    child_job.last_status = payload.read_i32();
-    child_job.stopped_status = payload.read_i32();
+    child_job.last_status      = payload.read_i32();
+    child_job.stopped_status   = payload.read_i32();
     child_job.termination.signal_number = payload.read_i32();
     if (!read_subshell_bootstrap_bool(payload,
                                       child_job.termination.did_dump_core))
@@ -2158,9 +2249,9 @@ fn JobTable::from_wire(subshell_bootstrap_reader &reader,
       return false;
     }
 
-    let const state = payload.read_u8();
-    bool is_primary_process_active = false;
-    bool has_unreported_state_change = false;
+    let const state                       = payload.read_u8();
+    bool      is_primary_process_active   = false;
+    bool      has_unreported_state_change = false;
     if (child_job.termination.signal_number < 0 ||
         child_job.termination.signal_number > 127 ||
         !read_subshell_bootstrap_bool(payload, is_primary_process_active) ||
@@ -2171,9 +2262,9 @@ fn JobTable::from_wire(subshell_bootstrap_reader &reader,
     {
       return false;
     }
-    previous_job_id = child_job.id;
-    child_job.state = static_cast<job::State>(state);
-    child_job.is_primary_process_active = is_primary_process_active;
+    previous_job_id                       = child_job.id;
+    child_job.state                       = static_cast<job::State>(state);
+    child_job.is_primary_process_active   = is_primary_process_active;
     child_job.has_unreported_state_change = has_unreported_state_change;
 
     let const primary_process_index = payload.read_u32();
@@ -2233,7 +2324,8 @@ fn JobTable::from_wire(subshell_bootstrap_reader &reader,
   return payload.is_fully_read();
 }
 
-fn job_table_wire::bind_processes(
+fn
+job_table_wire::bind_processes(
     const os::subshell_bootstrap &bootstrap) wontthrow -> bool
 {
   if (process_references.count() != bootstrap.processes.count()) return false;
@@ -2271,24 +2363,27 @@ fn job_table_wire::bind_processes(
   return true;
 }
 
-fn JobTable::apply_wire(job_table_wire wire) wontthrow -> void
+fn
+JobTable::apply_wire(job_table_wire wire) wontthrow -> void
 {
-  m_last_background_pid = wire.last_background_pid;
-  m_jobs = steal(wire.jobs);
+  m_last_background_pid    = wire.last_background_pid;
+  m_jobs                   = steal(wire.jobs);
   m_detached_job_processes = steal(wire.detached_processes);
-  m_next_job_id = wire.next_job_id;
+  m_next_job_id            = wire.next_job_id;
 }
 
-wontreturn static fn invalid_subshell_bootstrap() throws -> void
+wontreturn static fn
+invalid_subshell_bootstrap() throws -> void
 {
   throw Error{"Invalid inherited shell state"};
 }
 
-fn EvalContext::make_subshell_bootstrap() const throws -> os::subshell_bootstrap
+fn
+EvalContext::make_subshell_bootstrap() const throws -> os::subshell_bootstrap
 {
-  let bootstrap = os::subshell_bootstrap{};
-  String &source = bootstrap.payload;
-  let collected_names = ArrayList<String>{heap_allocator()};
+  let     bootstrap       = os::subshell_bootstrap{};
+  String &source          = bootstrap.payload;
+  let     collected_names = ArrayList<String>{heap_allocator()};
   variable_names().for_each(
       [&](StringView name) { collected_names.push_managed(name); });
   let const names = steal(collected_names).make_sorted(sort_order::ascending);
@@ -2322,14 +2417,14 @@ fn EvalContext::make_subshell_bootstrap() const throws -> os::subshell_bootstrap
       source.push('\n');
       continue;
     }
-    let const is_integer = is_integer_variable(name);
+    let const is_integer   = is_integer_variable(name);
     let const is_lowercase = variable_store().attributes().is_lowercase(name);
     let const is_uppercase = variable_store().attributes().is_uppercase(name);
     let const is_read_only = is_readonly(name);
     let const is_exported_value = is_exported(name);
-    let const indexed = variable_store().indexed_arrays().find(name);
-    let const is_associative = is_associative_array(name);
-    let const value = get_variable_value(name);
+    let const indexed           = variable_store().indexed_arrays().find(name);
+    let const is_associative    = is_associative_array(name);
+    let const value             = get_variable_value(name);
     if (!indexed.has_value() && !is_associative && is_exported_value &&
         !is_integer && !is_lowercase && !is_uppercase && !is_read_only)
     {
@@ -2363,7 +2458,7 @@ fn EvalContext::make_subshell_bootstrap() const throws -> os::subshell_bootstrap
 
     if (indexed.has_value() || is_associative) {
       let const subscripts = collect_array_subscripts(name);
-      let const values = collect_array_elements(name);
+      let const values     = collect_array_elements(name);
       ASSERT(subscripts.count() == values.count());
 
       for (usize index = 0; index < subscripts.count(); index++)
@@ -2500,7 +2595,8 @@ fn EvalContext::make_subshell_bootstrap() const throws -> os::subshell_bootstrap
   return bootstrap;
 }
 
-fn EvalContext::make_child_evaluator_state(
+fn
+EvalContext::make_child_evaluator_state(
     os::subshell_bootstrap &bootstrap) const throws -> os::child_evaluator_state
 {
   prepare_child_environment();
@@ -2511,27 +2607,29 @@ fn EvalContext::make_child_evaluator_state(
   }
 
   return os::child_evaluator_state{
-      .bootstrap = should_launch_fresh_evaluator ? &bootstrap : nullptr,
+      .bootstrap  = should_launch_fresh_evaluator ? &bootstrap : nullptr,
       .shell_name = execution_store().get_shell_name(),
       .inherited =
           os::inherited_subshell_state{
-                                       .previous_exit_status = execution_store().last_exit_status(),
-                                       .shell_process_id = os::get_shell_process_id(),
+                                       .previous_exit_status    = execution_store().last_exit_status(),
+                                       .shell_process_id        = os::get_shell_process_id(),
                                        .shell_parent_process_id = os::get_shell_parent_process_id(),
-                                       .subshell_depth = execution_store().subshell_depth() + 1,
+                                       .subshell_depth          = execution_store().subshell_depth() + 1,
                                        },
       .mood = runtime_state().get_mood(),
   };
 }
 
-fn EvalContext::set_child_source_origin(
-    os::subshell_bootstrap &bootstrap, StringView child_source,
-    const SourceLocation &launch_location) const throws -> void
+fn
+EvalContext::set_child_source_origin(
+    os::subshell_bootstrap &bootstrap,
+    StringView              child_source,
+    const SourceLocation   &launch_location) const throws -> void
 {
   bootstrap.source_origin.clear();
   if (bootstrap.payload.is_empty()) return;
 
-  let names = ArrayList<u32>{heap_allocator()};
+  let       names          = ArrayList<u32>{heap_allocator()};
   let const do_append_line = [&](String &output, u32 name_index,
                                  isize line_number, Maybe<usize> counted_line)
                                  throws -> bool {
@@ -2539,7 +2637,7 @@ fn EvalContext::set_child_source_origin(
       return false;
     }
 
-    let const line = static_cast<usize>(line_number);
+    let const line    = static_cast<usize>(line_number);
     let const counted = counted_line.value_or(line);
     let const extra_line_count =
         counted > line && counted - line <= UINT32_MAX ? counted - line : 0;
@@ -2554,13 +2652,13 @@ fn EvalContext::set_child_source_origin(
   let const do_append_origin = [&](String &output) throws -> bool {
     if (child_source.is_empty()) return false;
 
-    let rendered_source = child_source;
-    let location = SourceLocation{0, child_source.length};
-    let line_offset = isize{0};
-    let counted_line = Maybe<usize>{None};
-    let const *current = source_store().current_source();
-    let const owner = resolve_render_source(launch_location);
-    let const is_inside_owner =
+    let        rendered_source = child_source;
+    let        location        = SourceLocation{0, child_source.length};
+    let        line_offset     = isize{0};
+    let        counted_line    = Maybe<usize>{None};
+    let const *current         = source_store().current_source();
+    let const  owner           = resolve_render_source(launch_location);
+    let const  is_inside_owner =
         owner.text != nullptr && child_source.data >= owner.text->view().data &&
         child_source.data + child_source.length <=
             owner.text->view().data + owner.text->view().length;
@@ -2605,8 +2703,8 @@ fn EvalContext::set_child_source_origin(
     }
 
     let const body_position = usize{site.location.position};
-    let const before_body = site.source.substring_of_length(0, body_position);
-    let const last_newline = before_body.find_last_character('\n');
+    let const before_body   = site.source.substring_of_length(0, body_position);
+    let const last_newline  = before_body.find_last_character('\n');
     let const line_start =
         last_newline.has_value() ? *last_newline + 1 : usize{0};
     let const after_body =
@@ -2642,10 +2740,10 @@ fn EvalContext::set_child_source_origin(
     let const location = resolved.rebase(call_site);
     if (location.position > resolved.text->count()) return false;
 
-    let const site = resolve_rendered_site(resolved.text->view(), location,
-                                           resolved.line_offset, true, this);
-    let const text = site.source;
-    usize position = site.location.position;
+    let const site     = resolve_rendered_site(resolved.text->view(), location,
+                                               resolved.line_offset, true, this);
+    let const text     = site.source;
+    usize     position = site.location.position;
     if (text.data == nullptr || position > text.count()) {
       return false;
     }
@@ -2667,11 +2765,11 @@ fn EvalContext::set_child_source_origin(
       return false;
     }
 
-    let const column = position - line_position.line_start;
+    let const column   = position - line_position.line_start;
     let const line_end = line_position.line_end - line_position.line_start;
-    let const length = usize{site.location.length} < line_end - column
-                           ? usize{site.location.length}
-                           : line_end - column;
+    let const length   = usize{site.location.length} < line_end - column
+                             ? usize{site.location.length}
+                             : line_end - column;
     append_subshell_bootstrap_u32(output, static_cast<u32>(column));
     append_subshell_bootstrap_u32(output, static_cast<u32>(length));
     append_subshell_bootstrap_text(
@@ -2680,19 +2778,19 @@ fn EvalContext::set_child_source_origin(
     return true;
   };
 
-  let origin = String{heap_allocator()};
+  let       origin     = String{heap_allocator()};
   let const has_origin = do_append_origin(origin);
 
-  let const &call_frames = function_store().call_frames();
+  let const &call_frames   = function_store().call_frames();
   let const &source_frames = source_store().source_frames();
-  let frames = String{heap_allocator()};
+  let        frames        = String{heap_allocator()};
   append_subshell_bootstrap_u32(frames, static_cast<u32>(call_frames.count()));
   append_subshell_bootstrap_u32(frames,
                                 static_cast<u32>(source_frames.count()));
 
   for (usize call_index = 0; call_index < call_frames.count(); call_index++) {
-    let const &call_frame = call_frames[call_index];
-    usize frame_limit = 0;
+    let const &call_frame  = call_frames[call_index];
+    usize      frame_limit = 0;
 
     while (frame_limit < source_frames.count() &&
            source_frames[frame_limit].function_call_depth <= call_index)
@@ -2700,7 +2798,7 @@ fn EvalContext::set_child_source_origin(
       frame_limit++;
     }
 
-    let site = String{heap_allocator()};
+    let       site = String{heap_allocator()};
     let const has_site =
         call_frame.source != nullptr &&
         do_append_frame_site(site, call_frame.location, call_frame.source,
@@ -2719,10 +2817,10 @@ fn EvalContext::set_child_source_origin(
   for (usize frame_index = 0; frame_index < source_frames.count();
        frame_index++)
   {
-    let const &frame = source_frames[frame_index];
+    let const &frame        = source_frames[frame_index];
     let const *frame_source = borrowed_frame_source(frame);
-    let site = String{heap_allocator()};
-    let const has_site =
+    let        site         = String{heap_allocator()};
+    let const  has_site =
         frame_source != nullptr &&
         do_append_frame_site(
             site, frame.call_site, frame_source, frame.function_call_depth,
@@ -2758,17 +2856,20 @@ fn EvalContext::set_child_source_origin(
       });
 }
 
-fn EvalContext::register_inherited_source_origin(
-    StringView origin, const String &contents, ArrayList<String> &windows,
+fn
+EvalContext::register_inherited_source_origin(
+    StringView         origin,
+    const String      &contents,
+    ArrayList<String> &windows,
     Maybe<StringView> &source_name) throws -> bool
 {
   if (origin.is_empty()) return false;
 
-  let reader = subshell_bootstrap_reader{origin};
-  let payload = subshell_bootstrap_reader{StringView{}};
-  let names = ArrayList<u32>{heap_allocator()};
+  let  reader        = subshell_bootstrap_reader{origin};
+  let  payload       = subshell_bootstrap_reader{StringView{}};
+  let  names         = ArrayList<u32>{heap_allocator()};
   bool is_script_run = false;
-  bool has_origin = false;
+  bool has_origin    = false;
   if (!reader.read_section(wire_section::Origin, payload) ||
       !reader.is_fully_read() || !read_wire_source_names(payload, names) ||
       !read_subshell_bootstrap_bool(payload, is_script_run) ||
@@ -2777,23 +2878,23 @@ fn EvalContext::register_inherited_source_origin(
     invalid_subshell_bootstrap();
   }
 
-  u32 origin_name_index = 0;
-  u32 origin_line_number = 0;
+  u32 origin_name_index       = 0;
+  u32 origin_line_number      = 0;
   u32 origin_extra_line_count = 0;
-  let origin_prefix = StringView{};
-  let origin_suffix = StringView{};
+  let origin_prefix           = StringView{};
+  let origin_suffix           = StringView{};
   if (has_origin) {
     if (!read_wire_source_name(payload, names, origin_name_index)) {
       invalid_subshell_bootstrap();
     }
 
-    origin_line_number = payload.read_u32();
+    origin_line_number      = payload.read_u32();
     origin_extra_line_count = payload.read_u32();
-    origin_prefix = payload.read_text();
-    origin_suffix = payload.read_text();
+    origin_prefix           = payload.read_text();
+    origin_suffix           = payload.read_text();
   }
 
-  let const call_count = static_cast<usize>(payload.read_u32());
+  let const call_count         = static_cast<usize>(payload.read_u32());
   let const source_frame_count = static_cast<usize>(payload.read_u32());
   if (!payload.is_valid || (has_origin && origin_line_number == 0) ||
       call_count > function_store().call_frames().count() ||
@@ -2805,7 +2906,7 @@ fn EvalContext::register_inherited_source_origin(
   ASSERT(windows.is_empty());
   windows.reserve(call_count + source_frame_count + 2);
   windows.push(String{heap_allocator()});
-  let &extra_lines = windows.back();
+  let      &extra_lines             = windows.back();
   let const do_register_extra_lines = [&](const String &window,
                                           u32 extra_line_count, u32 name_index,
                                           usize call_depth) throws -> void {
@@ -2828,11 +2929,11 @@ fn EvalContext::register_inherited_source_origin(
       invalid_subshell_bootstrap();
     }
 
-    let const line_number = payload.read_u32();
+    let const line_number      = payload.read_u32();
     let const extra_line_count = payload.read_u32();
-    let const column = payload.read_u32();
-    let const length = payload.read_u32();
-    let const line_text = payload.read_text();
+    let const column           = payload.read_u32();
+    let const length           = payload.read_u32();
+    let const line_text        = payload.read_text();
     if (!payload.is_valid || line_number == 0 || column > line_text.length ||
         length > line_text.length - column)
     {
@@ -2858,8 +2959,8 @@ fn EvalContext::register_inherited_source_origin(
   };
 
   for (usize call_index = 0; call_index < call_count; call_index++) {
-    let const flags = do_read_flags();
-    let &call_frame = function_store().call_frames()[call_index];
+    let const flags      = do_read_flags();
+    let      &call_frame = function_store().call_frames()[call_index];
     call_frame.was_printed =
         (flags & static_cast<u8>(inherited_frame_wire_flag::WasPrinted)) != 0;
     if ((flags & static_cast<u8>(inherited_frame_wire_flag::HasSite)) != 0)
@@ -2867,11 +2968,11 @@ fn EvalContext::register_inherited_source_origin(
   }
 
   for (usize frame_index = 0; frame_index < source_frame_count; frame_index++) {
-    let const flags = do_read_flags();
-    let const kind = payload.read_u8();
+    let const flags               = do_read_flags();
+    let const kind                = payload.read_u8();
     let const function_call_depth = static_cast<usize>(payload.read_u32());
-    let const frame_origin = payload.read_text();
-    let const source_path = payload.read_text();
+    let const frame_origin        = payload.read_text();
+    let const source_path         = payload.read_text();
     let const previous_depth =
         source_store().source_frames().is_empty()
             ? usize{0}
@@ -2884,19 +2985,19 @@ fn EvalContext::register_inherited_source_origin(
       invalid_subshell_bootstrap();
     }
 
-    let call_site = SourceLocation{};
+    let           call_site     = SourceLocation{};
     const String *parent_source = nullptr;
     if ((flags & static_cast<u8>(inherited_frame_wire_flag::HasSite)) != 0)
       parent_source = do_read_site(function_call_depth, call_site);
 
     let const parent_source_generation = source_generation_for(parent_source);
-    let frame_origin_text = String{heap_allocator(), frame_origin};
-    let frame_source_path = String{heap_allocator(), source_path};
+    let       frame_origin_text        = String{heap_allocator(), frame_origin};
+    let       frame_source_path        = String{heap_allocator(), source_path};
     source_store().source_frames().push(
         source_frame{steal(frame_origin_text), call_site, parent_source,
                      parent_source_generation, steal(frame_source_path),
                      static_cast<source_frame_kind>(kind)});
-    let &frame = source_store().source_frames().back();
+    let &frame                = source_store().source_frames().back();
     frame.function_call_depth = function_call_depth;
     frame.was_printed =
         (flags & static_cast<u8>(inherited_frame_wire_flag::WasPrinted)) != 0;
@@ -2941,8 +3042,9 @@ fn EvalContext::register_inherited_source_origin(
   return true;
 }
 
-fn EvalContext::apply_subshell_bootstrap(
-    os::subshell_bootstrap bootstrap) throws -> void
+fn
+EvalContext::apply_subshell_bootstrap(os::subshell_bootstrap bootstrap) throws
+    -> void
 {
   if (bootstrap.source_length > bootstrap.payload.count())
     invalid_subshell_bootstrap();
@@ -2959,20 +3061,20 @@ fn EvalContext::apply_subshell_bootstrap(
     invalid_subshell_bootstrap();
   }
 
-  let execution = execution_wire{};
-  let jobs = job_table_wire{};
-  let clock = dynamic_clock_state{};
-  let getopts = getopts_cursor{};
-  let runtime = RuntimeState{};
-  let variables = variable_wire{};
-  let startup = startup_wire{};
+  let  execution                = execution_wire{};
+  let  jobs                     = job_table_wire{};
+  let  clock                    = dynamic_clock_state{};
+  let  getopts                  = getopts_cursor{};
+  let  runtime                  = RuntimeState{};
+  let  variables                = variable_wire{};
+  let  startup                  = startup_wire{};
   bool is_source_traces_enabled = true;
-  let functions = function_wire{};
-  let local_scopes = ArrayList<ArrayList<local_binding>>{heap_allocator()};
-  let completion = completion_snapshot{
+  let  functions                = function_wire{};
+  let  local_scopes = ArrayList<ArrayList<local_binding>>{heap_allocator()};
+  let  completion   = completion_snapshot{
       StringMap<completion_spec>{heap_allocator()}, None, None, None};
   u64 startup_ignored_signals = 0;
-  let control = runtime_control_wire{};
+  let control                 = runtime_control_wire{};
   let execution_cache =
       StringMap<ProgramResolver::CacheEntry>{heap_allocator()};
   if (!ExecutionStore::from_wire(reader, execution) ||
@@ -3046,12 +3148,14 @@ fn EvalContext::apply_subshell_bootstrap(
   bootstrap.release_process_ownership();
 }
 
-fn EvalContext::option_flags_string() const throws -> String
+fn
+EvalContext::option_flags_string() const throws -> String
 {
   return enabled_shell_option_letters(*this);
 }
 
-fn EvalContext::apply_indirect_or_name_listing(StringView body) throws -> String
+fn
+EvalContext::apply_indirect_or_name_listing(StringView body) throws -> String
 {
   LOG(All, "applying the indirect expansion '${!%.*s}'",
       static_cast<int>(body.length), body.data);
@@ -3063,7 +3167,7 @@ fn EvalContext::apply_indirect_or_name_listing(StringView body) throws -> String
   {
     let const array_name = body.substring_of_length(0, body.length - 3);
     let const subscripts = collect_array_subscripts(array_name);
-    let out = String{scratch_allocator()};
+    let       out        = String{scratch_allocator()};
 
     for (usize i = 0; i < subscripts.count(); i++) {
       if (i > 0) out.push(' ');
@@ -3076,8 +3180,8 @@ fn EvalContext::apply_indirect_or_name_listing(StringView body) throws -> String
   let const last = body[body.length - 1];
   if (last == '*' || last == '@') {
     let const prefix = body.substring_of_length(0, body.length - 1);
-    let const names = matching_prefix_names(prefix);
-    let out = String{scratch_allocator()};
+    let const names  = matching_prefix_names(prefix);
+    let       out    = String{scratch_allocator()};
 
     for (usize i = 0; i < names.count(); i++) {
       if (i > 0) out.push(' ');
@@ -3110,10 +3214,11 @@ fn EvalContext::apply_indirect_or_name_listing(StringView body) throws -> String
   return expand_variable(target_view);
 }
 
-cold fn EvalContext::make_stats_string() const throws -> String
+cold fn
+EvalContext::make_stats_string() const throws -> String
 {
-  let const allocator = heap_allocator();
-  let stats_text = String{allocator};
+  let const allocator  = heap_allocator();
+  let       stats_text = String{allocator};
 
   let const do_append_stat_line = [&](StringView name,
                                       StringView value) throws {
@@ -3187,18 +3292,18 @@ cold fn EvalContext::make_stats_string() const throws -> String
   do_append_count_line("Forks", static_cast<usize>(launch_counts.fork_count));
   do_append_count_line("Execs", static_cast<usize>(launch_counts.exec_count));
 
-  let const usage = os::read_own_resource_usage();
-  let const do_append_optional_count = [&](StringView name,
+  let const usage                    = os::read_own_resource_usage();
+  let const do_append_optional_count = [&](StringView        name,
                                            const Maybe<u64> &value) throws {
     if (value.has_value())
       do_append_count_line(name, static_cast<usize>(*value));
   };
-  let const do_append_optional_size = [&](StringView name,
+  let const do_append_optional_size = [&](StringView        name,
                                           const Maybe<u64> &value) throws {
     if (value.has_value())
       do_append_size_line(name, static_cast<usize>(*value));
   };
-  let const do_append_optional_duration = [&](StringView name,
+  let const do_append_optional_duration = [&](StringView        name,
                                               const Maybe<u64> &value) throws {
     if (value.has_value())
       do_append_stat_line(

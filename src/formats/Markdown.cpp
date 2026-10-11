@@ -22,20 +22,22 @@ constexpr static_string_entry<mimic_mood> MARKDOWN_MOOD_ENTRIES[] = {
 };
 constexpr StaticStringMap MARKDOWN_MOODS{MARKDOWN_MOOD_ENTRIES};
 
-static fn markdown_mood(StringView info) throws -> Maybe<mimic_mood>
+static fn
+markdown_mood(StringView info) throws -> Maybe<mimic_mood>
 {
   return parser_format_find_ascii_folded(MARKDOWN_MOODS, info.trim_blanks());
 }
 
-fn parse_markdown_format(const parser_format_input &input,
-                         parsed_format_document &document) throws -> void
+fn
+parse_markdown_format(const parser_format_input &input,
+                      parsed_format_document    &document) throws -> void
 {
   usize position = 0;
 
   while (position < input.source.length) {
     let const opener_start = position;
-    let const line = input.source.next_line(position);
-    usize fence_start = 0;
+    let const line         = input.source.next_line(position);
+    usize     fence_start  = 0;
 
     while (fence_start < line.length && fence_start < 4 &&
            line[fence_start] == ' ')
@@ -48,8 +50,8 @@ fn parse_markdown_format(const parser_format_input &input,
     {
       continue;
     }
-    let const fence_byte = line[fence_start];
-    usize fence_length = 0;
+    let const fence_byte   = line[fence_start];
+    usize     fence_length = 0;
 
     while (fence_start + fence_length < line.length &&
            line[fence_start + fence_length] == fence_byte)
@@ -62,12 +64,12 @@ fn parse_markdown_format(const parser_format_input &input,
     if (!mood.has_value()) continue;
 
     let const shell_start = position;
-    usize shell_end = input.source.length;
+    usize     shell_end   = input.source.length;
 
     while (position < input.source.length) {
-      let const closer_start = position;
-      let const closer = input.source.next_line(position);
-      usize closer_indent = 0;
+      let const closer_start  = position;
+      let const closer        = input.source.next_line(position);
+      usize     closer_indent = 0;
 
       while (closer_indent < closer.length && closer_indent < 4 &&
              closer[closer_indent] == ' ')

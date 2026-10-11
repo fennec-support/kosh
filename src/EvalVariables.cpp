@@ -31,27 +31,30 @@
 
 namespace koshka {
 
-fn GitStatusCache::refresh_branch(usize command_index,
-                                  StringView ceiling_directories) const throws
+fn
+GitStatusCache::refresh_branch(usize      command_index,
+                               StringView ceiling_directories) const throws
     -> void
 {
-  m_branch = utils::current_git_branch(ceiling_directories);
+  m_branch               = utils::current_git_branch(ceiling_directories);
   m_branch_command_index = command_index;
 }
 
-fn GitStatusCache::refresh_status(usize command_index,
-                                  StringView ceiling_directories) const throws
+fn
+GitStatusCache::refresh_status(usize      command_index,
+                               StringView ceiling_directories) const throws
     -> void
 {
-  let status = utils::git_status(ceiling_directories, heap_allocator());
-  m_branch = steal(status.branch);
-  m_ahead_count = status.ahead_count;
+  let status     = utils::git_status(ceiling_directories, heap_allocator());
+  m_branch       = steal(status.branch);
+  m_ahead_count  = status.ahead_count;
   m_behind_count = status.behind_count;
   m_branch_command_index = command_index;
   m_counts_command_index = command_index;
 }
 
-fn EvalContext::next_random_u32() const wontthrow -> u32
+fn
+EvalContext::next_random_u32() const wontthrow -> u32
 {
   if (dynamic_runtime_store().random_state() == 0) {
     dynamic_runtime_store().random_state() =
@@ -126,7 +129,8 @@ constexpr StaticStringMap KOSH_ANSI_COLORS{KOSH_ANSI_COLOR_ENTRIES};
 
 #undef ANSI_COLOR_VARIABLE
 
-static fn ansi_escape_for_color(StringView name) throws -> Maybe<StringView>
+static fn
+ansi_escape_for_color(StringView name) throws -> Maybe<StringView>
 {
   let const found = KOSH_ANSI_COLORS.find(name);
   if (!found.has_value()) return None;
@@ -181,9 +185,9 @@ enum class dynamic_write : u8
 
 struct dynamic_variable_info
 {
-  StringView name;
-  dynamic_var kind;
-  bool is_process_sensitive;
+  StringView    name;
+  dynamic_var   kind;
+  bool          is_process_sensitive;
   dynamic_write write;
 };
 
@@ -212,8 +216,8 @@ constexpr static_string_entry<dynamic_variable_info> BASH_DYNAMIC_ENTRIES[] = {
     DYNAMIC_VARIABLE("BASH_ARGC", BASH_ARGC, false, Discarded),
     DYNAMIC_VARIABLE("BASH_ARGV", BASH_ARGV, false, Discarded),
     DYNAMIC_VARIABLE("BASH_COMMAND", BASH_COMMAND, false, Discarded),
-    DYNAMIC_VARIABLE("BASH_EXECUTION_STRING", BASH_EXECUTION_STRING, false,
-                     Settable),
+    DYNAMIC_VARIABLE(
+        "BASH_EXECUTION_STRING", BASH_EXECUTION_STRING, false, Settable),
     DYNAMIC_VARIABLE("BASH_LINENO", BASH_LINENO, false, Discarded),
     DYNAMIC_VARIABLE("BASH_MONOSECONDS", BASH_MONOSECONDS, false, Discarded),
     DYNAMIC_VARIABLE("BASHOPTS", BASHOPTS, false, Settable),
@@ -242,7 +246,8 @@ constexpr StaticStringMap BASH_DYNAMIC{BASH_DYNAMIC_ENTRIES};
 
 #undef DYNAMIC_VARIABLE
 
-pure fn is_runtime_dynamic_variable_name(StringView name) wontthrow -> bool
+pure fn
+is_runtime_dynamic_variable_name(StringView name) wontthrow -> bool
 {
   return ALWAYS_DYNAMIC.find(name).has_value() ||
          BASH_DYNAMIC.find(name).has_value() ||
@@ -250,20 +255,23 @@ pure fn is_runtime_dynamic_variable_name(StringView name) wontthrow -> bool
          name == BASH_ALIASES_VARIABLE || name == DIRSTACK_VARIABLE;
 }
 
-pure fn is_bash_only_dynamic_variable_name(StringView name) wontthrow -> bool
+pure fn
+is_bash_only_dynamic_variable_name(StringView name) wontthrow -> bool
 {
   return BASH_DYNAMIC.find(name).has_value() || name == BASH_ALIASES_VARIABLE ||
          name == DIRSTACK_VARIABLE;
 }
 
-pure fn is_process_dynamic_variable_name(StringView name) wontthrow -> bool
+pure fn
+is_process_dynamic_variable_name(StringView name) wontthrow -> bool
 {
   let const info = BASH_DYNAMIC.find(name);
 
   return info.has_value() && info->is_process_sensitive;
 }
 
-constexpr pure fn is_dynamic_first_byte(char c) wontthrow -> bool
+constexpr pure fn
+is_dynamic_first_byte(char c) wontthrow -> bool
 {
   switch (c) {
   case 'B':
@@ -281,12 +289,13 @@ constexpr pure fn is_dynamic_first_byte(char c) wontthrow -> bool
   case 'R':
   case 'S':
   case 'U': return true;
-  default: return false;
+  default:  return false;
   }
 }
 
-pure fn EvalContext::variable_requires_dynamic_lookup(
-    StringView name) const wontthrow -> bool
+pure fn
+EvalContext::variable_requires_dynamic_lookup(StringView name) const wontthrow
+    -> bool
 {
   if (name.is_empty() || !is_dynamic_first_byte(name[0])) {
     return false;
@@ -302,7 +311,8 @@ pure fn EvalContext::variable_requires_dynamic_lookup(
          !is_dynamic_reader_unset(name) && BASH_DYNAMIC.find(name).has_value();
 }
 
-pure fn EvalContext::is_write_discarded_dynamic_variable(
+pure fn
+EvalContext::is_write_discarded_dynamic_variable(
     StringView name) const wontthrow -> bool
 {
   if (name.is_empty() || !is_dynamic_first_byte(name[0])) {
@@ -319,8 +329,8 @@ pure fn EvalContext::is_write_discarded_dynamic_variable(
   return info.has_value() && info->write == dynamic_write::Discarded;
 }
 
-static pure fn dynamic_reader_of(StringView name) wontthrow
-    -> Maybe<dynamic_reader_id>
+static pure fn
+dynamic_reader_of(StringView name) wontthrow -> Maybe<dynamic_reader_id>
 {
   if (name.is_empty()) return None;
 
@@ -339,8 +349,8 @@ static pure fn dynamic_reader_of(StringView name) wontthrow
   return None;
 }
 
-pure fn EvalContext::is_dynamic_reader_unset(StringView name) const wontthrow
-    -> bool
+pure fn
+EvalContext::is_dynamic_reader_unset(StringView name) const wontthrow -> bool
 {
   if (variable_store().unset_dynamic_readers() == 0) return false;
 
@@ -350,7 +360,8 @@ pure fn EvalContext::is_dynamic_reader_unset(StringView name) const wontthrow
                             dynamic_reader_mask(*id)) != 0;
 }
 
-fn EvalContext::unset_dynamic_reader(StringView name) wontthrow -> void
+fn
+EvalContext::unset_dynamic_reader(StringView name) wontthrow -> void
 {
   let const id = dynamic_reader_of(name);
   if (!id.has_value()) return;
@@ -360,8 +371,8 @@ fn EvalContext::unset_dynamic_reader(StringView name) wontthrow -> void
   variable_store().unset_dynamic_readers() |= dynamic_reader_mask(*id);
 }
 
-pure fn EvalContext::is_dynamic_write_owner(StringView name) const wontthrow
-    -> bool
+pure fn
+EvalContext::is_dynamic_write_owner(StringView name) const wontthrow -> bool
 {
   if (!runtime_state().bash_dynamic_variables_enabled()) return false;
 
@@ -371,8 +382,9 @@ pure fn EvalContext::is_dynamic_write_owner(StringView name) const wontthrow
                             dynamic_reader_mask(*id)) == 0;
 }
 
-hot fn EvalContext::write_dynamic_variable(StringView name,
-                                           StringView value) throws -> bool
+hot fn
+EvalContext::write_dynamic_variable(StringView name, StringView value) throws
+    -> bool
 {
   if (!runtime_state().bash_dynamic_variables_enabled()) return false;
 
@@ -383,7 +395,7 @@ hot fn EvalContext::write_dynamic_variable(StringView name,
     return false;
   if (scope_store().has_active_local(name)) return false;
 
-  let const parsed = value.to<i64>();
+  let const parsed   = value.to<i64>();
   let const assigned = parsed.is_error() ? i64{0} : parsed.value();
 
   if (*id == dynamic_reader_id::Random) {
@@ -408,8 +420,8 @@ hot fn EvalContext::write_dynamic_variable(StringView name,
   return true;
 }
 
-hot fn EvalContext::get_variable_value(StringView name) const throws
-    -> Maybe<String>
+hot fn
+EvalContext::get_variable_value(StringView name) const throws -> Maybe<String>
 {
   let const first_byte = name.is_empty() ? '\0' : name[0];
 
@@ -436,7 +448,7 @@ hot fn EvalContext::get_variable_value(StringView name) const throws
 
     case '*':
     case '@': {
-      let separator = StringView{" "};
+      let separator     = StringView{" "};
       let has_separator = true;
       if (first_byte == '*' || runtime_state().is_posix_mode()) {
         let const ifs = variable_store().field_separators();
@@ -447,7 +459,7 @@ hot fn EvalContext::get_variable_value(StringView name) const throws
                                                  get_glob_charset_for(ifs)));
         }
       }
-      let joined = String{heap_allocator()};
+      let   joined        = String{heap_allocator()};
       usize joined_length = 0;
 
       for (usize i = 0; i < variable_store().positional_params().count(); i++)
@@ -586,8 +598,8 @@ hot fn EvalContext::get_variable_value(StringView name) const throws
         }
       }
       case dynamic_var::KOSH_IDENTITY: return materialize_kosh_identity();
-      case dynamic_var::KOSHCONF: return encode_koshconf_blob(*this);
-      default: break;
+      case dynamic_var::KOSHCONF:      return encode_koshconf_blob(*this);
+      default:                         break;
       }
     }
 
@@ -612,7 +624,7 @@ hot fn EvalContext::get_variable_value(StringView name) const throws
                                   dynamic_runtime_store().shell_start_time() +
                                   dynamic_runtime_store().seconds_base(),
                               heap_allocator());
-        case dynamic_var::BASHOPTS: return enabled_shopt_option_names(*this);
+        case dynamic_var::BASHOPTS:  return enabled_shopt_option_names(*this);
         case dynamic_var::SHELLOPTS: {
           return enabled_shell_option_names(*this);
         }
@@ -625,7 +637,7 @@ hot fn EvalContext::get_variable_value(StringView name) const throws
                               heap_allocator());
         case dynamic_var::EPOCHREALTIME: {
           let const microseconds = os::realtime_microseconds();
-          char fraction[8];
+          char      fraction[8];
           std::snprintf(
               fraction, sizeof(fraction), "%06llu",
               static_cast<unsigned long long>(microseconds % 1000000ULL));
@@ -723,7 +735,8 @@ hot fn EvalContext::get_variable_value(StringView name) const throws
 
 static constexpr u32 NAMEREF_DEPTH_LIMIT = 8;
 
-static pure fn is_valid_nameref_target(StringView target) wontthrow -> bool
+static pure fn
+is_valid_nameref_target(StringView target) wontthrow -> bool
 {
   let base = target;
   if (let const bracket = target.find_character('['); bracket.has_value()) {
@@ -737,7 +750,8 @@ static pure fn is_valid_nameref_target(StringView target) wontthrow -> bool
   return lexer::word_is_variable_name(base);
 }
 
-fn EvalContext::resolve_nameref(StringView name) const throws -> Maybe<String>
+fn
+EvalContext::resolve_nameref(StringView name) const throws -> Maybe<String>
 {
   if (!variable_store().attributes().is_nameref(name)) return None;
 
@@ -765,7 +779,8 @@ fn EvalContext::resolve_nameref(StringView name) const throws -> Maybe<String>
   return String{heap_allocator()};
 }
 
-pure fn EvalContext::is_bound_nameref(StringView name) const wontthrow -> bool
+pure fn
+EvalContext::is_bound_nameref(StringView name) const wontthrow -> bool
 {
   if (scope_store().is_self_reference(name)) return true;
 
@@ -774,33 +789,36 @@ pure fn EvalContext::is_bound_nameref(StringView name) const wontthrow -> bool
           has_generated_value(name));
 }
 
-pure fn EvalContext::has_generated_value(StringView name) const wontthrow
-    -> bool
+pure fn
+EvalContext::has_generated_value(StringView name) const wontthrow -> bool
 {
   return is_dynamic_write_owner(name) && !scope_store().has_active_local(name);
 }
 
-pure fn EvalContext::is_generated_nameref(StringView name) const wontthrow
-    -> bool
+pure fn
+EvalContext::is_generated_nameref(StringView name) const wontthrow -> bool
 {
   return variable_store().attributes().is_nameref(name) &&
          has_generated_value(name);
 }
 
-fn EvalContext::warn_circular_nameref(StringView name) const throws -> void
+fn
+EvalContext::warn_circular_nameref(StringView name) const throws -> void
 {
   show_message(
       Warning{"The name reference '" + name + "' is circular"}.to_string());
 }
 
-fn EvalContext::is_circular_nameref(StringView name) const throws -> bool
+fn
+EvalContext::is_circular_nameref(StringView name) const throws -> bool
 {
   let const target = resolve_nameref(name);
 
   return target.has_value() && target->is_empty();
 }
 
-fn EvalContext::unbind_circular_nameref(StringView name) throws -> bool
+fn
+EvalContext::unbind_circular_nameref(StringView name) throws -> bool
 {
   if (!variable_store().attributes().is_nameref(name) ||
       !is_circular_nameref(name))
@@ -814,7 +832,8 @@ fn EvalContext::unbind_circular_nameref(StringView name) throws -> bool
   return true;
 }
 
-fn EvalContext::resolve_nameref_for_write(StringView name) throws -> String
+fn
+EvalContext::resolve_nameref_for_write(StringView name) throws -> String
 {
   if (is_generated_nameref(name)) rarely
     {
@@ -832,7 +851,8 @@ fn EvalContext::resolve_nameref_for_write(StringView name) throws -> String
   return target.take();
 }
 
-fn EvalContext::resolve_nameref_base_for_write(StringView name) throws -> String
+fn
+EvalContext::resolve_nameref_base_for_write(StringView name) throws -> String
 {
   let target = resolve_nameref_for_write(name);
   if (let const bracket = target.view().find_character('[');
@@ -845,7 +865,8 @@ fn EvalContext::resolve_nameref_base_for_write(StringView name) throws -> String
   return target;
 }
 
-fn EvalContext::resolve_nameref_whole_variable_for_write(
+fn
+EvalContext::resolve_nameref_whole_variable_for_write(
     StringView name, bool should_discard_line) throws -> String
 {
   let target = resolve_nameref_for_write(name);
@@ -860,7 +881,8 @@ fn EvalContext::resolve_nameref_whole_variable_for_write(
   return target;
 }
 
-fn EvalContext::guard_nameref_name(StringView name) const throws -> void
+fn
+EvalContext::guard_nameref_name(StringView name) const throws -> void
 {
   if (is_readonly(name))
     throw Error{"Unable to assign '" + name + "' because it is read only"};
@@ -874,7 +896,8 @@ fn EvalContext::guard_nameref_name(StringView name) const throws -> void
   }
 }
 
-fn EvalContext::bind_nameref(StringView name, StringView target) throws -> void
+fn
+EvalContext::bind_nameref(StringView name, StringView target) throws -> void
 {
   guard_nameref_name(name);
   if (!is_valid_nameref_target(target)) {
@@ -889,7 +912,8 @@ fn EvalContext::bind_nameref(StringView name, StringView target) throws -> void
   assign_variable(name, target);
 }
 
-fn EvalContext::bind_self_nameref(StringView name, bool is_local) throws -> void
+fn
+EvalContext::bind_self_nameref(StringView name, bool is_local) throws -> void
 {
   guard_nameref_name(name);
   if (is_local) {
@@ -902,8 +926,8 @@ fn EvalContext::bind_self_nameref(StringView name, bool is_local) throws -> void
   assign_variable(name, name);
 }
 
-fn EvalContext::resolve_nameref_parameter(StringView spec) throws
-    -> Maybe<String>
+fn
+EvalContext::resolve_nameref_parameter(StringView spec) throws -> Maybe<String>
 {
   let const prefix_length =
       !spec.is_empty() && (spec[0] == '!' || spec[0] == '#') ? usize{1}
@@ -954,7 +978,8 @@ fn EvalContext::resolve_nameref_parameter(StringView spec) throws
   return rewritten;
 }
 
-fn EvalContext::append_dynamic_variable_names(
+fn
+EvalContext::append_dynamic_variable_names(
     ArrayList<StringView> &out) const throws -> void
 {
   for (let const &entry : ALWAYS_DYNAMIC.entries)

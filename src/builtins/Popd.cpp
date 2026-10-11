@@ -22,7 +22,10 @@ HELP_DESCRIPTION_DECL(
     "for +N and from the bottom for -N, and changes directory only when the "
     "current entry is removed.");
 
-FLAG(NO_CHANGE, Bool, 'n', "",
+FLAG(NO_CHANGE,
+     Bool,
+     'n',
+     "",
      "Remove the entry below the current directory without changing "
      "directory.");
 FLAG(HELP, Bool, '\0', "help", "Display help.");
@@ -31,10 +34,11 @@ REGISTER_BUILTIN_FLAGS(Popd);
 
 namespace koshka {
 
-fn Popd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
+fn
+Popd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let operand_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};
-  let const args = PARSE_BUILTIN_ARGS_WITH_OPTIONS(
+  let const args        = PARSE_BUILTIN_ARGS_WITH_OPTIONS(
       ec, operand_locations, .should_accept_negative_number_operand = true);
 
   if (FLAG_HELP.is_enabled()) SHOW_BUILTIN_HELP_AND_RETURN(ec);

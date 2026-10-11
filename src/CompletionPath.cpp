@@ -29,7 +29,8 @@ namespace completion {
 
 using namespace internal;
 
-pure fn internal::split_path_token(StringView token) wontthrow -> path_token
+pure fn
+internal::split_path_token(StringView token) wontthrow -> path_token
 {
   let last_separator = token.length;
 
@@ -47,7 +48,8 @@ pure fn internal::split_path_token(StringView token) wontthrow -> path_token
   };
 }
 
-static pure fn byte_needs_quoting(char byte) wontthrow -> bool
+static pure fn
+byte_needs_quoting(char byte) wontthrow -> bool
 {
   switch (byte) {
   case ' ':
@@ -72,13 +74,13 @@ static pure fn byte_needs_quoting(char byte) wontthrow -> bool
   case '>':
   case '\\':
   case '!':
-  case '#': return true;
-  default: return false;
+  case '#':  return true;
+  default:   return false;
   }
 }
 
-static pure fn control_sequence_length(StringView text,
-                                       usize position) wontthrow -> usize
+static pure fn
+control_sequence_length(StringView text, usize position) wontthrow -> usize
 {
   let const byte = static_cast<u8>(text[position]);
   if (byte < 0x20 || byte == 0x7f) {
@@ -93,7 +95,8 @@ static pure fn control_sequence_length(StringView text,
   return next_byte >= 0x80 && next_byte < 0xa0 ? 2 : 0;
 }
 
-static pure fn has_control_sequence(StringView text) wontthrow -> bool
+static pure fn
+has_control_sequence(StringView text) wontthrow -> bool
 {
   for (usize i = 0; i < text.length; i++)
     if (control_sequence_length(text, i) != 0) return true;
@@ -101,8 +104,8 @@ static pure fn has_control_sequence(StringView text) wontthrow -> bool
   return false;
 }
 
-pure fn internal::path_candidate_needs_quoting(StringView candidate) wontthrow
-    -> bool
+pure fn
+internal::path_candidate_needs_quoting(StringView candidate) wontthrow -> bool
 {
   for (usize i = 0; i < candidate.length; i++)
     if (byte_needs_quoting(candidate[i])) return true;
@@ -110,24 +113,26 @@ pure fn internal::path_candidate_needs_quoting(StringView candidate) wontthrow
   return has_control_sequence(candidate);
 }
 
-static pure fn byte_needs_double_quote_escape(char byte) wontthrow -> bool
+static pure fn
+byte_needs_double_quote_escape(char byte) wontthrow -> bool
 {
   return byte == '"' || byte == '\\' || byte == '$' || byte == '`';
 }
 
-static fn append_ansi_c_control_byte(String &quoted, char byte) throws -> void
+static fn
+append_ansi_c_control_byte(String &quoted, char byte) throws -> void
 {
   static constexpr StringView HEX_DIGITS{"0123456789abcdef"};
   switch (byte) {
-  case '\a': quoted += "\\a"; return;
-  case '\b': quoted += "\\b"; return;
-  case '\t': quoted += "\\t"; return;
-  case '\n': quoted += "\\n"; return;
-  case '\v': quoted += "\\v"; return;
-  case '\f': quoted += "\\f"; return;
-  case '\r': quoted += "\\r"; return;
+  case '\a':   quoted += "\\a"; return;
+  case '\b':   quoted += "\\b"; return;
+  case '\t':   quoted += "\\t"; return;
+  case '\n':   quoted += "\\n"; return;
+  case '\v':   quoted += "\\v"; return;
+  case '\f':   quoted += "\\f"; return;
+  case '\r':   quoted += "\\r"; return;
   case '\x1b': quoted += "\\e"; return;
-  default: break;
+  default:     break;
   }
 
   let const value = static_cast<u8>(byte);
@@ -136,7 +141,8 @@ static fn append_ansi_c_control_byte(String &quoted, char byte) throws -> void
   quoted.push(HEX_DIGITS[value & 0x0f]);
 }
 
-static fn append_ansi_c_quoted(String &quoted, StringView text) throws -> void
+static fn
+append_ansi_c_quoted(String &quoted, StringView text) throws -> void
 {
   quoted += "$'";
 
@@ -161,7 +167,8 @@ static fn append_ansi_c_quoted(String &quoted, StringView text) throws -> void
   quoted.push('\'');
 }
 
-fn internal::quote_path_candidate(StringView candidate) throws -> String
+fn
+internal::quote_path_candidate(StringView candidate) throws -> String
 {
   let quoted = String{completion_allocator()};
   if (has_control_sequence(candidate)) {
@@ -185,8 +192,9 @@ fn internal::quote_path_candidate(StringView candidate) throws -> String
   return quoted;
 }
 
-fn internal::append_with_quoted_controls(String &candidate,
-                                         StringView text) throws -> void
+fn
+internal::append_with_quoted_controls(String &candidate, StringView text) throws
+    -> void
 {
   for (usize position = 0; position < text.length; position++) {
     usize run_length = 0;
@@ -210,12 +218,14 @@ fn internal::append_with_quoted_controls(String &candidate,
   }
 }
 
-static fn append_open_quote_candidate(String &candidate, StringView text,
-                                      char quote_character,
-                                      bool is_ansi_c_quote) throws -> void
+static fn
+append_open_quote_candidate(String    &candidate,
+                            StringView text,
+                            char       quote_character,
+                            bool       is_ansi_c_quote) throws -> void
 {
   for (usize position = 0; position < text.length; position++) {
-    let const byte = text[position];
+    let const byte            = text[position];
     let const sequence_length = control_sequence_length(text, position);
     if (sequence_length != 0) {
       candidate.push(quote_character);
@@ -247,12 +257,14 @@ static fn append_open_quote_candidate(String &candidate, StringView text,
   }
 }
 
-static fn open_quote_candidate_boundary(StringView typed, usize typed_boundary,
-                                        StringView candidate) wontthrow -> usize
+static fn
+open_quote_candidate_boundary(StringView typed,
+                              usize      typed_boundary,
+                              StringView candidate) wontthrow -> usize
 {
-  let const is_case_sensitive = utils::token_has_uppercase(typed);
-  usize typed_position = 0;
-  usize candidate_position = 0;
+  let const is_case_sensitive  = utils::token_has_uppercase(typed);
+  usize     typed_position     = 0;
+  usize     candidate_position = 0;
 
   while (candidate_position < candidate.length &&
          typed_position < typed_boundary)
@@ -271,8 +283,10 @@ static fn open_quote_candidate_boundary(StringView typed, usize typed_boundary,
   return typed_boundary < candidate.length ? typed_boundary : candidate.length;
 }
 
-static fn append_candidate_suffix(String &candidate, StringView suffix,
-                                  bool should_quote_words) throws -> void
+static fn
+append_candidate_suffix(String    &candidate,
+                        StringView suffix,
+                        bool       should_quote_words) throws -> void
 {
   if (!should_quote_words) {
     append_with_quoted_controls(candidate, suffix);
@@ -301,9 +315,12 @@ static fn append_candidate_suffix(String &candidate, StringView suffix,
   }
 }
 
-pure fn internal::shell_syntax_candidate_is_unchanged(
-    StringView raw_token, const utils::decoded_shell_word &decoded_word,
-    StringView decoded_candidate, bool should_quote_words) wontthrow -> bool
+pure fn
+internal::shell_syntax_candidate_is_unchanged(
+    StringView                       raw_token,
+    const utils::decoded_shell_word &decoded_word,
+    StringView                       decoded_candidate,
+    bool                             should_quote_words) wontthrow -> bool
 {
   if (decoded_word.quote_character != 0 ||
       decoded_word.last_quote_character != 0)
@@ -319,12 +336,15 @@ pure fn internal::shell_syntax_candidate_is_unchanged(
                             : !has_control_sequence(suffix);
 }
 
-fn internal::rebuild_shell_syntax_candidate(
-    StringView raw_token, const utils::decoded_shell_word &decoded_word,
-    StringView decoded_candidate, bool should_quote_words) throws -> String
+fn
+internal::rebuild_shell_syntax_candidate(
+    StringView                       raw_token,
+    const utils::decoded_shell_word &decoded_word,
+    StringView                       decoded_candidate,
+    bool                             should_quote_words) throws -> String
 {
-  let candidate = String{completion_allocator()};
-  let const content_start = decoded_word.last_quote_content_start;
+  let       candidate            = String{completion_allocator()};
+  let const content_start        = decoded_word.last_quote_content_start;
   let const is_last_quote_ansi_c = decoded_word.is_last_quote_ansi_c;
   if (decoded_candidate.starts_with(decoded_word.text.view())) {
     let const suffix = decoded_candidate.substring(decoded_word.text.length());
@@ -412,10 +432,10 @@ fn internal::rebuild_shell_syntax_candidate(
   return candidate;
 }
 
-static fn expand_leading_variable_path(StringView directory_part,
-                                       usize expansion_end,
-                                       EvalContext &context) throws
-    -> Maybe<String>
+static fn
+expand_leading_variable_path(StringView   directory_part,
+                             usize        expansion_end,
+                             EvalContext &context) throws -> Maybe<String>
 {
   if (directory_part.is_empty() || directory_part[0] != '$' ||
       expansion_end > directory_part.length)
@@ -425,7 +445,7 @@ static fn expand_leading_variable_path(StringView directory_part,
 
   let const expansion = directory_part.substring_of_length(0, expansion_end);
 
-  usize name_start = 1;
+  usize     name_start = 1;
   let const is_braced =
       name_start < expansion.length && expansion[name_start] == '{';
   if (is_braced) name_start++;
@@ -451,8 +471,11 @@ static fn expand_leading_variable_path(StringView directory_part,
   return expanded;
 }
 
-fn internal::resolve_listing_directory(
-    StringView directory_part, const Path &base_directory, EvalContext &context,
+fn
+internal::resolve_listing_directory(
+    StringView                      directory_part,
+    const Path                     &base_directory,
+    EvalContext                    &context,
     const utils::leading_expansion &leading) throws -> Path
 {
   if (directory_part.is_empty()) return base_directory;

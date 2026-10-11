@@ -19,7 +19,10 @@ KOSHKIT_UTIL_DECL("[-is] [-f file] [-p priority] [-t tag] [message ...]",
 
 FLAG(LOGGER_PID, Bool, 'i', "id", "Include the process identifier.");
 FLAG(LOGGER_FILE, String, 'f', "file", "Read the message from this file.");
-FLAG(LOGGER_PRIORITY, String, 'p', "priority",
+FLAG(LOGGER_PRIORITY,
+     String,
+     'p',
+     "priority",
      "Use this facility and severity.");
 FLAG(LOGGER_STDERR, Bool, 's', "stderr", "Copy the message to standard error.");
 FLAG(LOGGER_TAG, String, 't', "tag", "Use this message tag.");
@@ -42,22 +45,25 @@ constexpr PackedStringKey LOGGER_SEVERITY_KEYS[] = {
 
 constexpr StaticStringSet LOGGER_SEVERITIES{LOGGER_SEVERITY_KEYS};
 
-static pure fn logger_priority_is_valid(StringView priority) wontthrow -> bool
+static pure fn
+logger_priority_is_valid(StringView priority) wontthrow -> bool
 {
   let severity = priority;
   if (let const separator = priority.find_character('.'); separator.has_value())
   {
     let const facility = priority.substring_of_length(0, *separator);
-    severity = priority.substring(*separator + 1);
+    severity           = priority.substring(*separator + 1);
     if (!LOGGER_FACILITIES.contains(facility)) return false;
   }
 
   return LOGGER_SEVERITIES.contains(severity);
 }
 
-fn Logger::execute(const ExecContext &ec, EvalContext &cxt,
-                   const ArrayList<String> &args,
-                   const ArrayList<SourceLocation> &arg_locations) const throws
+fn
+Logger::execute(const ExecContext               &ec,
+                EvalContext                     &cxt,
+                const ArrayList<String>         &args,
+                const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);

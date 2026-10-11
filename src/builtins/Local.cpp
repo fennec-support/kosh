@@ -24,26 +24,48 @@ HELP_DESCRIPTION_DECL(
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 FLAG(LOCAL_INDEXED, Bool, 'a', "", "Declare an indexed array.");
 FLAG(LOCAL_ASSOCIATIVE, Bool, 'A', "", "Declare an associative array.");
-FLAG(LOCAL_INTEGER, Bool, 'i', "",
+FLAG(LOCAL_INTEGER,
+     Bool,
+     'i',
+     "",
      "Mark an integer whose every assignment evaluates as arithmetic.");
-FLAG(LOCAL_LOWERCASE, Bool, 'l', "",
+FLAG(LOCAL_LOWERCASE,
+     Bool,
+     'l',
+     "",
      "Convert every assigned value to lowercase in this scope.");
-FLAG(LOCAL_NAMEREF, Bool, 'n', "",
+FLAG(LOCAL_NAMEREF,
+     Bool,
+     'n',
+     "",
      "Make the local a reference to the variable its value selects.");
-FLAG(LOCAL_PRINT, Bool, 'p', "",
+FLAG(LOCAL_PRINT,
+     Bool,
+     'p',
+     "",
      "Print the reusable declaration of each named local.");
-FLAG(LOCAL_READONLY, Bool, 'r', "",
+FLAG(LOCAL_READONLY,
+     Bool,
+     'r',
+     "",
      "Make the local variable read-only after its initial assignment.");
-FLAG(LOCAL_UPPERCASE, Bool, 'u', "",
+FLAG(LOCAL_UPPERCASE,
+     Bool,
+     'u',
+     "",
      "Convert every assigned value to uppercase in this scope.");
-FLAG(LOCAL_EXPORT, Bool, 'x', "",
+FLAG(LOCAL_EXPORT,
+     Bool,
+     'x',
+     "",
      "Export the local into the environment, visible to a child process.");
 
 REGISTER_BUILTIN_FLAGS(Local);
 
 namespace koshka {
 
-fn Local::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
+fn
+Local::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let const &args = ec.args();
   ASSERT(!args.is_empty());
@@ -52,11 +74,11 @@ fn Local::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       cxt.runtime_state().get_mood() == mimic_mood::Posix)
   {
     for (usize i = 1; i < args.count(); i++) {
-      let const arg = args[i].view();
+      let const arg             = args[i].view();
       let const equals_position = arg.find_character('=');
-      let const name = equals_position.has_value()
-                           ? arg.substring_of_length(0, *equals_position)
-                           : arg;
+      let const name            = equals_position.has_value()
+                                      ? arg.substring_of_length(0, *equals_position)
+                                      : arg;
       if (name == "-" || name_is_valid_identifier(name)) {
         continue;
       }
@@ -74,17 +96,17 @@ fn Local::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         "Unable to declare a local variable outside a function",
         "`local` only works inside a function body"};
 
-  bool should_make_indexed = false;
-  bool should_make_associative = false;
-  bool should_mark_integer = false;
-  bool should_mark_lowercase = false;
-  bool should_mark_readonly = false;
-  bool should_mark_uppercase = false;
-  bool should_mark_export = false;
-  bool should_mark_nameref = false;
-  bool should_print_declaration = false;
-  usize first_name = 1;
-  let const do_save_shell_options = [&]() wontthrow {
+  bool      should_make_indexed      = false;
+  bool      should_make_associative  = false;
+  bool      should_mark_integer      = false;
+  bool      should_mark_lowercase    = false;
+  bool      should_mark_readonly     = false;
+  bool      should_mark_uppercase    = false;
+  bool      should_mark_export       = false;
+  bool      should_mark_nameref      = false;
+  bool      should_print_declaration = false;
+  usize     first_name               = 1;
+  let const do_save_shell_options    = [&]() wontthrow {
     let &saved_options =
         cxt.scope_store()
             .saved_scope_shell_options()[cxt.scope_store().local_scope_depth() -
@@ -118,7 +140,7 @@ fn Local::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       case 'u': should_mark_uppercase = true; break;
       case 'x': should_mark_export = true; break;
       case 'n': should_mark_nameref = true; break;
-      default: {
+      default:  {
         let invalid = String{heap_allocator()};
         invalid += arg[c];
         let bad_option = make_error_for_arg(
@@ -136,7 +158,7 @@ fn Local::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   }
 
   if (should_print_declaration && first_name >= args.count()) {
-    let listing = String{cxt.scratch_allocator()};
+    let        listing     = String{cxt.scratch_allocator()};
     let const &local_scope = cxt.scope_store().current_local_scope();
 
     for (let const &binding : local_scope)
@@ -158,9 +180,9 @@ fn Local::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
     let const equals_position = arg.find_character('=');
 
-    let name = equals_position.has_value()
-                   ? arg.substring_of_length(0, *equals_position)
-                   : arg.view();
+    let       name        = equals_position.has_value()
+                                ? arg.substring_of_length(0, *equals_position)
+                                : arg.view();
     let const update_mode = !name.is_empty() && name[name.count() - 1] == '+'
                                 ? assignment_update_mode::Append
                                 : assignment_update_mode::Replace;

@@ -39,8 +39,8 @@ enum class script_exit_context : u8
   Subshell,
 };
 
-static fn mimicked_error_is_interrupt(const std::exception_ptr &error) throws
-    -> bool
+static fn
+mimicked_error_is_interrupt(const std::exception_ptr &error) throws -> bool
 {
   if (error == nullptr) return false;
 
@@ -53,8 +53,9 @@ static fn mimicked_error_is_interrupt(const std::exception_ptr &error) throws
   }
 }
 
-static fn mimicked_error_status(const std::exception_ptr &error,
-                                mimicked_error_status_mode mode) throws -> i32
+static fn
+mimicked_error_status(const std::exception_ptr  &error,
+                      mimicked_error_status_mode mode) throws -> i32
 {
   ASSERT(error != nullptr);
 
@@ -73,8 +74,10 @@ static fn mimicked_error_status(const std::exception_ptr &error,
   }
 }
 
-fn EvalContext::run_program_fallback(ExecContext &ec, mimic_mood mode,
-                                     script_isolation isolation) throws -> i32
+fn
+EvalContext::run_program_fallback(ExecContext     &ec,
+                                  mimic_mood       mode,
+                                  script_isolation isolation) throws -> i32
 {
   struct saved_environment_variable
   {
@@ -177,8 +180,10 @@ fn EvalContext::run_program_fallback(ExecContext &ec, mimic_mood mode,
   return fallback_context.run_mimicked_script(ec, mode, isolation);
 }
 
-fn EvalContext::run_mimicked_script(ExecContext &ec, mimic_mood mode,
-                                    script_isolation isolation) throws -> i32
+fn
+EvalContext::run_mimicked_script(ExecContext     &ec,
+                                 mimic_mood       mode,
+                                 script_isolation isolation) throws -> i32
 {
   let const is_isolated = isolation == script_isolation::Isolated;
   defer { ec.close_fds(); };
@@ -201,11 +206,11 @@ fn EvalContext::run_mimicked_script(ExecContext &ec, mimic_mood mode,
                                 "' because the script could not be read"};
 
   const usize binary_scan_limit = 128;
-  let const head = contents->view();
-  let const scan_length =
+  let const   head              = contents->view();
+  let const   scan_length =
       head.length < binary_scan_limit ? head.length : binary_scan_limit;
-  let const sample = head.substring_of_length(0, scan_length);
-  let const first_line_break = sample.find_character('\n');
+  let const sample            = head.substring_of_length(0, scan_length);
+  let const first_line_break  = sample.find_character('\n');
   let const first_line_length = first_line_break.value_or(sample.length);
   if (sample.substring_of_length(0, first_line_length)
           .find_character('\0')
@@ -232,17 +237,17 @@ fn EvalContext::run_mimicked_script(ExecContext &ec, mimic_mood mode,
 
   contents->normalize_crlf_line_endings();
 
-  let const previous_runtime = runtime_state();
+  let const previous_runtime     = runtime_state();
   let const was_restricted_shell = startup_store().is_restricted_shell();
-  let const previous_script_run = source_store().is_script_run();
-  let previous_shell_name = String{execution_store().get_shell_name()};
-  let source_scope = capture_source_scope();
-  let const previous_location = source_scope.get_location();
-  let isolated_snapshot = Maybe<eval_state_snapshot>{};
+  let const previous_script_run  = source_store().is_script_run();
+  let       previous_shell_name  = String{execution_store().get_shell_name()};
+  let       source_scope         = capture_source_scope();
+  let const previous_location    = source_scope.get_location();
+  let       isolated_snapshot    = Maybe<eval_state_snapshot>{};
   if (is_isolated) isolated_snapshot = snapshot_state();
 
-  bool should_restore_isolated_state = is_isolated;
-  let const do_restore_auxiliary_state = [&]() throws {
+  bool      should_restore_isolated_state = is_isolated;
+  let const do_restore_auxiliary_state    = [&]() throws {
     source_scope.restore();
     previous_runtime.restore(*this);
     startup_store().set_restricted_shell(was_restricted_shell);
@@ -305,9 +310,9 @@ fn EvalContext::run_mimicked_script(ExecContext &ec, mimic_mood mode,
   for (usize i = 1; i < ec.args().count(); i++)
     params.push_managed(ec.args()[i].view());
 
-  let saved_fds = ArrayList<os::saved_descriptor>{heap_allocator()};
-  bool should_restore_fds = true;
-  let const do_restore_fds = [&]() {
+  let       saved_fds = ArrayList<os::saved_descriptor>{heap_allocator()};
+  bool      should_restore_fds = true;
+  let const do_restore_fds     = [&]() {
     for (usize i = saved_fds.count(); i > 0; i--)
       os::restore_descriptor(saved_fds[i - 1]);
 
@@ -347,8 +352,8 @@ fn EvalContext::run_mimicked_script(ExecContext &ec, mimic_mood mode,
   let const do_finish_script =
       [&](std::exception_ptr &error, script_exit_context exit_context)
           throws -> bool {
-    let is_interrupt = mimicked_error_is_interrupt(error);
-    i32 final_status = execution_store().last_exit_status();
+    let  is_interrupt       = mimicked_error_is_interrupt(error);
+    i32  final_status       = execution_store().last_exit_status();
     bool was_error_rendered = false;
     if (error && !is_interrupt) {
       final_status = mimicked_error_status(
@@ -373,7 +378,7 @@ fn EvalContext::run_mimicked_script(ExecContext &ec, mimic_mood mode,
         }
       } catch (...) {
         if (!error) {
-          error = std::current_exception();
+          error        = std::current_exception();
           is_interrupt = mimicked_error_is_interrupt(error);
           if (!is_interrupt)
             final_status = mimicked_error_status(
@@ -472,7 +477,7 @@ fn EvalContext::run_mimicked_script(ExecContext &ec, mimic_mood mode,
   should_leave_mimicry = false;
   do_restore_fds();
 
-  let const status = execution_store().last_exit_status();
+  let const status              = execution_store().last_exit_status();
   should_restore_isolated_state = false;
   restore_state(steal(*isolated_snapshot));
   do_restore_auxiliary_state();
@@ -485,7 +490,8 @@ fn EvalContext::run_mimicked_script(ExecContext &ec, mimic_mood mode,
   return status;
 }
 
-pure fn EvalContext::shopt_default_is_on(StringView name) wontthrow -> bool
+pure fn
+EvalContext::shopt_default_is_on(StringView name) wontthrow -> bool
 {
   static constexpr PackedStringKey KEYS[] = {
       SSK("progcomp"),           SSK("promptvars"),
@@ -501,14 +507,17 @@ pure fn EvalContext::shopt_default_is_on(StringView name) wontthrow -> bool
   return DEFAULT_ON_SHOPT_NAMES.contains(name);
 }
 
-fn EvalContext::run_source(StringView source, StringView origin,
-                           Maybe<SourceLocation> call_site,
-                           Maybe<StringView> filename,
-                           Maybe<i32> *status_before_return,
-                           const FunctionBodyHandle *cached_body,
-                           return_handling handling, history_recording history,
-                           const trap_definition *definition,
-                           syntax_error_reach syntax_reach) throws -> i32
+fn
+EvalContext::run_source(StringView                source,
+                        StringView                origin,
+                        Maybe<SourceLocation>     call_site,
+                        Maybe<StringView>         filename,
+                        Maybe<i32>               *status_before_return,
+                        const FunctionBodyHandle *cached_body,
+                        return_handling           handling,
+                        history_recording         history,
+                        const trap_definition    *definition,
+                        syntax_error_reach        syntax_reach) throws -> i32
 {
   if (cached_body != nullptr && (cached_body->get_body() == nullptr ||
                                  cached_body->get_source() == nullptr))
@@ -526,13 +535,13 @@ fn EvalContext::run_source(StringView source, StringView origin,
   }
 
   let const should_consume_return = handling == return_handling::Consume;
-  let const should_reject_return = handling == return_handling::Reject;
+  let const should_reject_return  = handling == return_handling::Reject;
   let const should_propagate_script_fatal = call_site.has_value();
   if (arena_store().parse_arena() == nullptr)
     throw Error{"Cannot run source outside of a parse"};
 
-  let *parse_arena = arena_store().parse_arena();
-  let const parse_mark = parse_arena->mark();
+  let      *parse_arena    = arena_store().parse_arena();
+  let const parse_mark     = parse_arena->mark();
   let const retention_mark = source_retention().get_mark();
   let const process_substitution_count =
       expansion_store().pending_process_substitutions().count();
@@ -616,11 +625,11 @@ fn EvalContext::run_source(StringView source, StringView origin,
   };
 
   try {
-    const Expression *ast = nullptr;
-    const String *retained_source = nullptr;
+    const Expression *ast             = nullptr;
+    const String     *retained_source = nullptr;
 
     if (cached_body != nullptr) {
-      ast = cached_body->get_body();
+      ast             = cached_body->get_body();
       retained_source = cached_body->get_source();
     } else {
       let parser = Parser{
@@ -653,7 +662,7 @@ fn EvalContext::run_source(StringView source, StringView origin,
         throw;
       }
       source_retention().retain(owned_source, parsed_ast);
-      ast = parsed_ast;
+      ast             = parsed_ast;
       retained_source = owned_source;
     }
     source = retained_source->view();
@@ -685,13 +694,13 @@ fn EvalContext::run_source(StringView source, StringView origin,
     let const previous_line_discard_status =
         execution_store().line_discard_status();
     if (should_hold_line_discard) {
-      execution_store().line_discard_root() = ast;
+      execution_store().line_discard_root()   = ast;
       execution_store().line_discard_source() = source;
       execution_store().line_discard_status() = i64{1};
     }
     defer
     {
-      execution_store().line_discard_root() = previous_line_discard_root;
+      execution_store().line_discard_root()   = previous_line_discard_root;
       execution_store().line_discard_source() = previous_line_discard_source;
       execution_store().line_discard_status() = previous_line_discard_status;
     };
@@ -758,17 +767,18 @@ fn EvalContext::run_source(StringView source, StringView origin,
   }
 }
 
-fn EvalContext::resolve_source_path(
-    StringView path, source_tilde_expansion tilde_expansion) throws
+fn
+EvalContext::resolve_source_path(StringView             path,
+                                 source_tilde_expansion tilde_expansion) throws
     -> Maybe<Path>
 {
   let expanded_path = String{heap_allocator(), path};
   if (tilde_expansion == source_tilde_expansion::Enabled &&
       path.starts_with("~"))
   {
-    let const slash = path.find_character('/');
+    let const slash      = path.find_character('/');
     let const prefix_end = slash.value_or(path.length);
-    let const prefix = path.substring_of_length(1, prefix_end - 1);
+    let const prefix     = path.substring_of_length(1, prefix_end - 1);
     if (let directory = resolve_tilde_prefix(prefix); directory.has_value()) {
       expanded_path = directory.take();
       if (slash.has_value()) {
@@ -795,7 +805,8 @@ fn EvalContext::resolve_source_path(
   return source_path;
 }
 
-fn EvalContext::clear_retained_sources() wontthrow -> void
+fn
+EvalContext::clear_retained_sources() wontthrow -> void
 {
   LOG(All, "dropping %zu retained sources and their asts",
       source_retention().count());
@@ -812,12 +823,12 @@ fn EvalContext::clear_retained_sources() wontthrow -> void
   for (process_substitution &sub :
        expansion_store().pending_process_substitutions())
   {
-    sub.source = StringView{};
+    sub.source   = StringView{};
     sub.location = SourceLocation{};
   }
 
   if (control_flow_store().has_pending()) {
-    control_flow_store().pending().source = nullptr;
+    control_flow_store().pending().source   = nullptr;
     control_flow_store().pending().location = SourceLocation{};
   }
 
@@ -825,12 +836,13 @@ fn EvalContext::clear_retained_sources() wontthrow -> void
 
   reset_runtime_diagnostic_highlight_cache();
 
-  source_store().current_source() = nullptr;
+  source_store().current_source()            = nullptr;
   source_store().current_source_generation() = EXTERNAL_SOURCE_GENERATION;
   source_store().current_origin().clear();
 }
 
-fn SourceRetention::free_sources_from(usize first) wontthrow -> void
+fn
+SourceRetention::free_sources_from(usize first) wontthrow -> void
 {
   for (usize index = first; index < m_sources.count(); index++) {
     String *retained = m_sources[index];
@@ -842,14 +854,16 @@ fn SourceRetention::free_sources_from(usize first) wontthrow -> void
   m_sources.truncate(first);
 }
 
-fn SourceRetention::release_to(source_retention_mark mark) wontthrow -> void
+fn
+SourceRetention::release_to(source_retention_mark mark) wontthrow -> void
 {
   m_asts.truncate(mark.ast_count);
   free_sources_from(mark.source_count);
   if (mark.source_count == 0) m_generation++;
 }
 
-fn SourceRetention::clear() wontthrow -> void
+fn
+SourceRetention::clear() wontthrow -> void
 {
   m_asts.clear();
   free_sources_from(0);
@@ -862,8 +876,8 @@ EvalContext::scan_source_generation(const String *source) const wontthrow -> u64
   return source_retention().generation_of(source);
 }
 
-pure fn EvalContext::source_generation_for(const String *source) const wontthrow
-    -> u64
+pure fn
+EvalContext::source_generation_for(const String *source) const wontthrow -> u64
 {
   if (source == source_store().current_source())
     return source_store().current_source_generation();
@@ -871,8 +885,9 @@ pure fn EvalContext::source_generation_for(const String *source) const wontthrow
   return scan_source_generation(source);
 }
 
-pure fn EvalContext::borrowed_frame_source(
-    const source_frame &frame) const wontthrow -> const String *
+pure fn
+EvalContext::borrowed_frame_source(const source_frame &frame) const wontthrow
+    -> const String *
 {
   if (source_retention().is_stale_generation(frame.parent_source_generation))
     return nullptr;
@@ -880,8 +895,10 @@ pure fn EvalContext::borrowed_frame_source(
   return frame.parent_source;
 }
 
-fn EvalContext::expand_heredoc_body(
-    StringView body, const SourceLocation *source_location) throws -> String
+fn
+EvalContext::expand_heredoc_body(StringView            body,
+                                 const SourceLocation *source_location) throws
+    -> String
 {
   LOG(Debug, "expanding a heredoc body of %zu bytes", body.length);
   let const was_expanding_here_document =

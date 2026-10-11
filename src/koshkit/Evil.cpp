@@ -20,7 +20,10 @@ KOSHKIT_UTIL_DECL(
     "The evil utility reports what the machine is and how it is running.");
 
 FLAG(EVIL_ALL, Bool, 'a', "all", "Print additional system details.");
-FLAG(EVIL_SHORT, Bool, 's', "short",
+FLAG(EVIL_SHORT,
+     Bool,
+     's',
+     "short",
      "Print system identity without resource usage.");
 FLAG(EVIL_USERS, Bool, 'u', "users", "Print every local user account.");
 
@@ -30,13 +33,14 @@ namespace koshka::koshkit {
 
 namespace {
 
-fn read_first_line(StringView path, Allocator allocator) throws -> Maybe<String>
+fn
+read_first_line(StringView path, Allocator allocator) throws -> Maybe<String>
 {
   let const body = Path{path, allocator}.read_entire_file();
   if (!body.has_value()) return None;
 
-  let const view = body->view();
-  usize line_end = 0;
+  let const view     = body->view();
+  usize     line_end = 0;
 
   while (line_end < view.length && view[line_end] != '\n') {
     line_end++;
@@ -45,7 +49,8 @@ fn read_first_line(StringView path, Allocator allocator) throws -> Maybe<String>
   return String{allocator, view.substring_of_length(0, line_end)};
 }
 
-fn detect_container(Allocator allocator) throws -> Maybe<String>
+fn
+detect_container(Allocator allocator) throws -> Maybe<String>
 {
   if (os::path_exists("/.dockerenv")) return String{allocator, "docker"};
 
@@ -59,11 +64,12 @@ fn detect_container(Allocator allocator) throws -> Maybe<String>
   return None;
 }
 
-fn format_uptime(u64 seconds, Allocator allocator) throws -> String
+fn
+format_uptime(u64 seconds, Allocator allocator) throws -> String
 {
-  let text = String{allocator};
-  let const days = seconds / 86400;
-  let const hours = (seconds % 86400) / 3600;
+  let       text    = String{allocator};
+  let const days    = seconds / 86400;
+  let const hours   = (seconds % 86400) / 3600;
   let const minutes = (seconds % 3600) / 60;
 
   if (days > 0) {
@@ -82,7 +88,8 @@ fn format_uptime(u64 seconds, Allocator allocator) throws -> String
   return text;
 }
 
-fn format_limit_value(u64 value, Allocator allocator) throws -> String
+fn
+format_limit_value(u64 value, Allocator allocator) throws -> String
 {
   if (value == os::RESOURCE_UNLIMITED) return String{allocator, "unlimited"};
 
@@ -92,7 +99,7 @@ fn format_limit_value(u64 value, Allocator allocator) throws -> String
 struct field_section
 {
   ReportTable table;
-  Allocator allocator;
+  Allocator   allocator;
 
   explicit field_section(Allocator section_allocator)
       : table(section_allocator), allocator(section_allocator)
@@ -102,14 +109,17 @@ struct field_section
     table.add_column("");
   }
 
-  fn add(StringView name, StringView value) throws -> void
+  fn
+  add(StringView name, StringView value) throws -> void
   {
     if (!value.is_empty()) table.add_field_row(name, value, {});
   }
 };
 
-fn append_resource_limit(field_section &section, StringView name,
-                         os::resource_kind kind) throws -> void
+fn
+append_resource_limit(field_section    &section,
+                      StringView        name,
+                      os::resource_kind kind) throws -> void
 {
   let const limit = os::get_resource_limit(kind);
   if (!limit.has_value()) return;
@@ -121,8 +131,10 @@ fn append_resource_limit(field_section &section, StringView name,
   section.add(name, value.view());
 }
 
-fn append_system_configuration(field_section &section, StringView name,
-                               os::system_configuration_key key) throws -> void
+fn
+append_system_configuration(field_section               &section,
+                            StringView                   name,
+                            os::system_configuration_key key) throws -> void
 {
   let const value = os::system_configuration(key);
   if (!value.has_value()) return;
@@ -133,14 +145,14 @@ fn append_system_configuration(field_section &section, StringView name,
 struct mapped_library_family
 {
   String family;
-  u64 abi_version{0};
-  bool has_version_mix{false};
+  u64    abi_version{0};
+  bool   has_version_mix{false};
 };
 
-fn append_anomaly_report(field_section &section, EvalContext &cxt) throws
-    -> void
+fn
+append_anomaly_report(field_section &section, EvalContext &cxt) throws -> void
 {
-  let const allocator = cxt.scratch_allocator();
+  let const allocator             = cxt.scratch_allocator();
   let const do_append_unavailable = [&](StringView cost) throws -> void {
     section.add("Mixed library ABIs", "unavailable");
     section.add("Deleted code mappings", "unavailable");
@@ -156,7 +168,7 @@ fn append_anomaly_report(field_section &section, EvalContext &cxt) throws
   let const files = os::list_process_open_files(
       os::get_current_process_id(), allocator,
       os::process_open_file_detail::IncludeMappings);
-  let executable_path = StringView{};
+  let  executable_path               = StringView{};
   bool is_mapping_evidence_available = true;
 
   for (let const &file : files) {
@@ -174,17 +186,17 @@ fn append_anomaly_report(field_section &section, EvalContext &cxt) throws
     return;
   }
 
-  let families = ArrayList<mapped_library_family>{allocator};
-  usize mixed_family_count = 0;
+  let   families              = ArrayList<mapped_library_family>{allocator};
+  usize mixed_family_count    = 0;
   usize deleted_mapping_count = 0;
 
   for (let const &file : files) {
     if (file.use != os::process_file_use::Mapped) continue;
 
-    let const path = Path{file.path.view(), allocator};
-    let const filename = path.filename();
+    let const path                 = Path{file.path.view(), allocator};
+    let const filename             = path.filename();
     let const shared_object_marker = filename.find_substring(".so");
-    let const marker = filename.find_substring(".so.");
+    let const marker               = filename.find_substring(".so.");
     if (file.is_deleted && (shared_object_marker.has_value() ||
                             file.path.view() == executable_path))
     {
@@ -209,8 +221,8 @@ fn append_anomaly_report(field_section &section, EvalContext &cxt) throws
             .to<u64>();
     if (abi_version.is_error()) continue;
 
-    let const family = filename.substring_of_length(0, *marker);
-    usize family_index = 0;
+    let const family       = filename.substring_of_length(0, *marker);
+    usize     family_index = 0;
 
     while (family_index < families.count() &&
            families[family_index].family.view() != family)
@@ -239,15 +251,16 @@ fn append_anomaly_report(field_section &section, EvalContext &cxt) throws
   section.add("Cost", "process mappings");
 }
 
-fn append_procfs_report(field_section &section) throws -> void
+fn
+append_procfs_report(field_section &section) throws -> void
 {
-  let const allocator = section.allocator;
+  let const                  allocator = section.allocator;
   os::system_activity_status activity{};
   if (os::read_system_activity_status(activity)) {
     struct activity_metric
     {
       os::system_activity_field field;
-      StringView label;
+      StringView                label;
       u64 os::system_activity_status::*value;
     };
     static constexpr activity_metric METRICS[] = {
@@ -350,7 +363,8 @@ fn append_procfs_report(field_section &section) throws -> void
               String::from(processors.online_count, allocator).view());
 }
 
-fn names_text(const ArrayList<String> &names, Allocator allocator) throws
+fn
+names_text(const ArrayList<String> &names, Allocator allocator) throws
     -> Maybe<String>
 {
   if (names.is_empty()) return None;
@@ -367,9 +381,11 @@ fn names_text(const ArrayList<String> &names, Allocator allocator) throws
 
 } /* namespace */
 
-fn Evil::execute(const ExecContext &ec, EvalContext &cxt,
-                 const ArrayList<String> &args,
-                 const ArrayList<SourceLocation> &arg_locations) const throws
+fn
+Evil::execute(const ExecContext               &ec,
+              EvalContext                     &cxt,
+              const ArrayList<String>         &args,
+              const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
@@ -384,19 +400,19 @@ fn Evil::execute(const ExecContext &ec, EvalContext &cxt,
   let const should_color = koshkit_should_color();
 
   let const allocator = cxt.scratch_allocator();
-  let output = String{allocator};
-  let identity = field_section{allocator};
-  let session = field_section{allocator};
-  let accounts = field_section{allocator};
-  let resources = field_section{allocator};
-  let limits = field_section{allocator};
-  let activity = field_section{allocator};
-  let anomalies = field_section{allocator};
+  let       output    = String{allocator};
+  let       identity  = field_section{allocator};
+  let       session   = field_section{allocator};
+  let       accounts  = field_section{allocator};
+  let       resources = field_section{allocator};
+  let       limits    = field_section{allocator};
+  let       activity  = field_section{allocator};
+  let       anomalies = field_section{allocator};
 
   let const host = os::get_hostname();
   identity.add("Host", host.has_value() ? host->view() : "unknown");
 
-  let system_line = String{allocator, os::executable_system_name().view()};
+  let system_line   = String{allocator, os::executable_system_name().view()};
   let const release = os::system_release_name();
   if (!release.is_empty()) {
     system_line += " ";
@@ -465,7 +481,7 @@ fn Evil::execute(const ExecContext &ec, EvalContext &cxt,
     session.add("Group IDs", group_ids.view());
 
     let const supplementary_groups = os::get_supplementary_group_ids(allocator);
-    let group_list = String{allocator};
+    let       group_list           = String{allocator};
 
     for (usize index = 0; index < supplementary_groups.count(); index++) {
       if (index != 0) group_list += ", ";
@@ -512,9 +528,9 @@ fn Evil::execute(const ExecContext &ec, EvalContext &cxt,
   if (uptime.has_value())
     resources.add("Uptime", format_uptime(*uptime, allocator).view());
 
-  let const processors = os::get_processor_counts();
-  let processor_line = String{allocator};
-  let const model = os::processor_model_name(allocator);
+  let const processors     = os::get_processor_counts();
+  let       processor_line = String{allocator};
+  let const model          = os::processor_model_name(allocator);
   if (model.has_value() && !model->is_empty()) {
     processor_line += model->view();
     processor_line += ", ";
@@ -537,7 +553,7 @@ fn Evil::execute(const ExecContext &ec, EvalContext &cxt,
       let const used_kib = memory.total_kib > memory.available_kib
                                ? memory.total_kib - memory.available_kib
                                : 0;
-      memory_line = format_human_size(used_kib * 1024, allocator);
+      memory_line        = format_human_size(used_kib * 1024, allocator);
       memory_line += " used of ";
     }
     memory_line += format_human_size(memory.total_kib * 1024, allocator).view();
@@ -617,9 +633,9 @@ fn Evil::execute(const ExecContext &ec, EvalContext &cxt,
 
   os::filesystem_status root{};
   if (os::stat_filesystem("/", root) && root.total_blocks > 0) {
-    let const unit = root.fundamental_block_byte_count;
+    let const unit        = root.fundamental_block_byte_count;
     let const used_blocks = root.total_blocks - root.free_blocks;
-    let root_line = format_human_size(used_blocks * unit, allocator);
+    let       root_line   = format_human_size(used_blocks * unit, allocator);
     root_line += " used of ";
     root_line += format_human_size(root.total_blocks * unit, allocator).view();
     root_line += " on ";
@@ -655,8 +671,8 @@ fn Evil::execute(const ExecContext &ec, EvalContext &cxt,
   let const mounts = os::mounted_filesystems();
   resources.add("Filesystems", String::from(mounts.count(), allocator).view());
 
-  let const addresses = os::network_interface_addresses();
-  let interface_names_unsorted = ArrayList<StringView>{allocator};
+  let const addresses                = os::network_interface_addresses();
+  let       interface_names_unsorted = ArrayList<StringView>{allocator};
   interface_names_unsorted.reserve(addresses.count());
 
   for (let const &address : addresses)
@@ -665,7 +681,7 @@ fn Evil::execute(const ExecContext &ec, EvalContext &cxt,
   let const interface_names =
       steal(interface_names_unsorted).make_sorted(sort_order::ascending);
 
-  usize interface_count = 0;
+  usize      interface_count = 0;
   StringView previous_interface;
 
   for (let const name : interface_names) {

@@ -23,7 +23,8 @@ REGISTER_KOSHKIT_UTIL_FLAGS(Man);
 
 namespace koshka::koshkit {
 
-static pure fn is_manual_section(StringView value) wontthrow -> bool
+static pure fn
+is_manual_section(StringView value) wontthrow -> bool
 {
   if (value.is_empty()) return false;
 
@@ -37,9 +38,11 @@ static pure fn is_manual_section(StringView value) wontthrow -> bool
   return true;
 }
 
-static fn find_manual_page(StringView paths, StringView section,
-                           StringView name, Allocator allocator) throws
-    -> Maybe<String>
+static fn
+find_manual_page(StringView paths,
+                 StringView section,
+                 StringView name,
+                 Allocator  allocator) throws -> Maybe<String>
 {
   usize path_start = 0;
 
@@ -54,10 +57,10 @@ static fn find_manual_page(StringView paths, StringView section,
     for (usize candidate_section = 1; candidate_section <= 9;
          candidate_section++)
     {
-      let current_section = section;
-      char section_byte = '\0';
+      let  current_section = section;
+      char section_byte    = '\0';
       if (current_section.is_empty()) {
-        section_byte = static_cast<char>('0' + candidate_section);
+        section_byte    = static_cast<char>('0' + candidate_section);
         current_section = StringView{&section_byte, 1};
       }
       let path = String{allocator, directory};
@@ -82,10 +85,11 @@ static fn find_manual_page(StringView paths, StringView section,
   return None;
 }
 
-fn Man::execute(const ExecContext &ec, EvalContext &cxt,
-                const ArrayList<String> &args,
-                const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+fn
+Man::execute(const ExecContext               &ec,
+             EvalContext                     &cxt,
+             const ArrayList<String>         &args,
+             const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
@@ -99,7 +103,7 @@ fn Man::execute(const ExecContext &ec, EvalContext &cxt,
       return report_usage_error(ec, cxt, args[0].view());
     let keyword = String{cxt.scratch_allocator(), FLAG_MAN_KEYWORD.value()};
     keyword.lowercase_ascii();
-    let output = String{cxt.scratch_allocator()};
+    let   output     = String{cxt.scratch_allocator()};
     usize path_start = 0;
 
     while (path_start <= paths.length) {
@@ -166,10 +170,10 @@ fn Man::execute(const ExecContext &ec, EvalContext &cxt,
   }
 
   if (operands.is_empty()) return report_usage_error(ec, cxt, args[0].view());
-  usize name_position = 0;
+  usize      name_position = 0;
   StringView section;
   if (operands.count() > 1 && is_manual_section(operands[0].view())) {
-    section = operands[0].view();
+    section       = operands[0].view();
     name_position = 1;
   }
   i32 status = 0;

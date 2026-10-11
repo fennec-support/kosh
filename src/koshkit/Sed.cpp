@@ -17,7 +17,10 @@ KOSHKIT_UTIL_DECL("[-En] [-e script]... [-f script-file]... [script] "
                   "[file ...]",
                   "The sed utility edits text streams.");
 
-FLAG(SED_EXTENDED, Bool, 'E', "extended-regexp",
+FLAG(SED_EXTENDED,
+     Bool,
+     'E',
+     "extended-regexp",
      "Use extended regular expressions.");
 FLAG(SED_EXPRESSION, ManyStrings, 'e', "expression", "Add an editing script.");
 FLAG(SED_FILE, ManyStrings, 'f', "file", "Read an editing script from a file.");
@@ -56,33 +59,33 @@ enum class sed_regex_mode : u8
 
 struct sed_address
 {
-  sed_address_kind kind{sed_address_kind::Every};
-  u64 line_number{0};
+  sed_address_kind   kind{sed_address_kind::Every};
+  u64                line_number{0};
   os::compiled_regex expression{};
-  bool has_expression{false};
+  bool               has_expression{false};
 };
 
 struct sed_command
 {
-  sed_address address;
-  sed_address second_address;
-  sed_command_kind kind;
+  sed_address        address;
+  sed_address        second_address;
+  sed_command_kind   kind;
   os::compiled_regex expression{};
-  bool has_expression{false};
-  String replacement;
-  bool is_global{false};
-  bool should_print{false};
-  bool is_negated{false};
-  bool has_second_address{false};
-  bool is_range_active{false};
+  bool               has_expression{false};
+  String             replacement;
+  bool               is_global{false};
+  bool               should_print{false};
+  bool               is_negated{false};
+  bool               has_second_address{false};
+  bool               is_range_active{false};
 };
 
 struct sed_script_part
 {
-  usize start_position;
-  usize end_position;
+  usize          start_position;
+  usize          end_position;
   SourceLocation location;
-  bool is_expression;
+  bool           is_expression;
 };
 
 class SedParseError : public ErrorWithDetails
@@ -92,13 +95,18 @@ public:
       : ErrorWithDetails(message, note), m_position(position)
   {}
 
-  pure fn get_position() const wontthrow -> usize { return m_position; }
+  pure fn
+  get_position() const wontthrow -> usize
+  {
+    return m_position;
+  }
 
 private:
   usize m_position;
 };
 
-static fn free_sed_address(sed_address &address) wontthrow -> void
+static fn
+free_sed_address(sed_address &address) wontthrow -> void
 {
   if (!address.has_expression) return;
 
@@ -106,7 +114,8 @@ static fn free_sed_address(sed_address &address) wontthrow -> void
   address.has_expression = false;
 }
 
-static fn free_sed_command(sed_command &command) wontthrow -> void
+static fn
+free_sed_command(sed_command &command) wontthrow -> void
 {
   free_sed_address(command.address);
   free_sed_address(command.second_address);
@@ -116,9 +125,11 @@ static fn free_sed_command(sed_command &command) wontthrow -> void
   command.has_expression = false;
 }
 
-static fn parse_sed_delimited(StringView script, usize &position,
-                              char delimiter, Allocator allocator) throws
-    -> String
+static fn
+parse_sed_delimited(StringView script,
+                    usize     &position,
+                    char       delimiter,
+                    Allocator  allocator) throws -> String
 {
   String text{allocator};
 
@@ -146,9 +157,10 @@ static fn parse_sed_delimited(StringView script, usize &position,
                       "close the expression with the delimiter that opened it"};
 }
 
-static fn compile_sed_expression(StringView expression, usize position,
-                                 sed_regex_mode regex_mode) throws
-    -> os::compiled_regex
+static fn
+compile_sed_expression(StringView     expression,
+                       usize          position,
+                       sed_regex_mode regex_mode) throws -> os::compiled_regex
 {
   let const result =
       regex_mode == sed_regex_mode::Extended
@@ -166,9 +178,12 @@ static fn compile_sed_expression(StringView expression, usize position,
   return *result;
 }
 
-static fn parse_sed_address(StringView script, usize &position,
-                            Allocator allocator, sed_address &address,
-                            sed_regex_mode regex_mode) throws -> bool
+static fn
+parse_sed_address(StringView     script,
+                  usize         &position,
+                  Allocator      allocator,
+                  sed_address   &address,
+                  sed_regex_mode regex_mode) throws -> bool
 {
   if (position == script.length) return false;
   if (script[position] >= '0' && script[position] <= '9') {
@@ -178,7 +193,7 @@ static fn parse_sed_address(StringView script, usize &position,
            script[position] <= '9')
     {
       let const digit_position = position;
-      let const digit = static_cast<u64>(script[position++] - '0');
+      let const digit          = static_cast<u64>(script[position++] - '0');
       if (line_number > (UINT64_MAX - digit) / 10)
         throw SedParseError{
             digit_position, "line address is too large",
@@ -189,7 +204,7 @@ static fn parse_sed_address(StringView script, usize &position,
     if (line_number == 0)
       throw SedParseError{position - 1, "line addresses begin at one",
                           "use a positive decimal line number"};
-    address.kind = sed_address_kind::Line;
+    address.kind        = sed_address_kind::Line;
     address.line_number = line_number;
 
     return true;
@@ -205,7 +220,7 @@ static fn parse_sed_address(StringView script, usize &position,
     let const expression_position = position;
     let const expression =
         parse_sed_delimited(script, position, '/', allocator);
-    address.kind = sed_address_kind::Regex;
+    address.kind       = sed_address_kind::Regex;
     address.expression = compile_sed_expression(
         expression.view(), expression_position, regex_mode);
     address.has_expression = true;
@@ -216,9 +231,11 @@ static fn parse_sed_address(StringView script, usize &position,
   return false;
 }
 
-static fn parse_sed_script(StringView script, Allocator allocator,
-                           ArrayList<sed_command> &commands,
-                           sed_regex_mode regex_mode) throws -> void
+static fn
+parse_sed_script(StringView              script,
+                 Allocator               allocator,
+                 ArrayList<sed_command> &commands,
+                 sed_regex_mode          regex_mode) throws -> void
 {
   usize position = 0;
 
@@ -276,8 +293,8 @@ static fn parse_sed_script(StringView script, Allocator allocator,
                           "write a sed command after the address"};
     }
 
-    let const command_position = position;
-    let const command_byte = script[position++];
+    let const   command_position = position;
+    let const   command_byte     = script[position++];
     sed_command command{steal(address),
                         steal(second_address),
                         sed_command_kind::Print,
@@ -289,7 +306,7 @@ static fn parse_sed_script(StringView script, Allocator allocator,
                         is_negated,
                         has_second_address,
                         false};
-    address.has_expression = false;
+    address.has_expression        = false;
     second_address.has_expression = false;
     defer { free_sed_command(command); };
     switch (command_byte) {
@@ -348,7 +365,7 @@ static fn parse_sed_script(StringView script, Allocator allocator,
         throw SedParseError{
             position, "substitution lacks a delimiter",
             "write a delimiter, a pattern, and a replacement after s"};
-      let const delimiter = script[position++];
+      let const delimiter           = script[position++];
       let const expression_position = position;
       let const expression =
           parse_sed_delimited(script, position, delimiter, allocator);
@@ -391,14 +408,15 @@ static fn parse_sed_script(StringView script, Allocator allocator,
     }
 
     commands.push(steal(command));
-    command.address.has_expression = false;
+    command.address.has_expression        = false;
     command.second_address.has_expression = false;
-    command.has_expression = false;
+    command.has_expression                = false;
   }
 }
 
-static fn get_sed_script_location(const ArrayList<sed_script_part> &parts,
-                                  usize position) wontthrow -> SourceLocation
+static fn
+get_sed_script_location(const ArrayList<sed_script_part> &parts,
+                        usize position) wontthrow -> SourceLocation
 {
   ASSERT(!parts.is_empty());
 
@@ -411,13 +429,16 @@ static fn get_sed_script_location(const ArrayList<sed_script_part> &parts,
   return parts.back().location;
 }
 
-static fn sed_address_matches(sed_address &address, StringView line,
-                              u64 line_number, bool is_last) throws -> bool
+static fn
+sed_address_matches(sed_address &address,
+                    StringView   line,
+                    u64          line_number,
+                    bool         is_last) throws -> bool
 {
   switch (address.kind) {
   case sed_address_kind::Every: return true;
-  case sed_address_kind::Line: return line_number == address.line_number;
-  case sed_address_kind::Last: return is_last;
+  case sed_address_kind::Line:  return line_number == address.line_number;
+  case sed_address_kind::Last:  return is_last;
   case sed_address_kind::Regex:
     return os::regex_matches(address.expression, line);
   }
@@ -425,8 +446,11 @@ static fn sed_address_matches(sed_address &address, StringView line,
   return false;
 }
 
-static fn sed_command_matches(sed_command &command, StringView line,
-                              u64 line_number, bool is_last) throws -> bool
+static fn
+sed_command_matches(sed_command &command,
+                    StringView   line,
+                    u64          line_number,
+                    bool         is_last) throws -> bool
 {
   if (!command.has_second_address)
     return sed_address_matches(command.address, line, line_number, is_last);
@@ -447,10 +471,11 @@ static fn sed_command_matches(sed_command &command, StringView line,
   return true;
 }
 
-static fn append_sed_replacement(String &output, StringView replacement,
-                                 StringView subject,
-                                 const ArrayList<os::regex_span> &spans) throws
-    -> void
+static fn
+append_sed_replacement(String                          &output,
+                       StringView                       replacement,
+                       StringView                       subject,
+                       const ArrayList<os::regex_span> &spans) throws -> void
 {
   for (usize position = 0; position < replacement.length; position++) {
     let const byte = replacement[position];
@@ -476,29 +501,33 @@ static fn append_sed_replacement(String &output, StringView replacement,
   }
 }
 
-static fn append_sed_pattern_space(String &output, StringView line,
-                                   bool has_terminating_newline) throws -> void
+static fn
+append_sed_pattern_space(String    &output,
+                         StringView line,
+                         bool       has_terminating_newline) throws -> void
 {
   output += line;
   if (has_terminating_newline) output += '\n';
 }
 
-static fn apply_sed_substitution(sed_command &command, String &line,
-                                 Allocator allocator) throws -> bool
+static fn
+apply_sed_substitution(sed_command &command,
+                       String      &line,
+                       Allocator    allocator) throws -> bool
 {
   String result{allocator};
-  usize consumed = 0;
-  bool did_replace = false;
-  bool did_previous_match_consume = false;
+  usize  consumed                   = 0;
+  bool   did_replace                = false;
+  bool   did_previous_match_consume = false;
 
   while (consumed <= line.length()) {
     let const subject = line.view().substring(consumed);
-    let const match = os::execute_regex(
+    let const match   = os::execute_regex(
         command.expression,
         os::regex_execution_options{subject, allocator,
                                     consumed != 0
-                                        ? os::regex_start_position::NotBeginning
-                                        : os::regex_start_position::Beginning});
+                                          ? os::regex_start_position::NotBeginning
+                                          : os::regex_start_position::Beginning});
     if (match.result == os::regex_match_result::Error)
       throw Error{"" + match.error_message};
     if (match.result == os::regex_match_result::NoMatch) {
@@ -508,7 +537,7 @@ static fn apply_sed_substitution(sed_command &command, String &line,
 
     ASSERT(!match.spans.is_empty());
     let const match_start = static_cast<usize>(match.spans[0].start);
-    let const match_end = static_cast<usize>(match.spans[0].end);
+    let const match_end   = static_cast<usize>(match.spans[0].end);
     result += subject.substring_of_length(0, match_start);
 
     if (match_start == 0 && match_end == 0 && did_previous_match_consume) {
@@ -541,15 +570,16 @@ static fn apply_sed_substitution(sed_command &command, String &line,
   return did_replace;
 }
 
-fn Sed::execute(const ExecContext &ec, EvalContext &cxt,
-                const ArrayList<String> &args,
-                const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+fn
+Sed::execute(const ExecContext               &ec,
+             EvalContext                     &cxt,
+             const ArrayList<String>         &args,
+             const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   String script{cxt.scratch_allocator()};
-  let script_parts = ArrayList<sed_script_part>{cxt.scratch_allocator()};
+  let    script_parts = ArrayList<sed_script_part>{cxt.scratch_allocator()};
   script_parts.reserve(FLAG_SED_EXPRESSION.count() + FLAG_SED_FILE.count() + 1);
   let do_append_script = [&](StringView addition, SourceLocation location,
                              bool is_expression) throws -> void {
@@ -565,7 +595,7 @@ fn Sed::execute(const ExecContext &ec, EvalContext &cxt,
   };
 
   usize expression_index = 0;
-  usize file_index = 0;
+  usize file_index       = 0;
 
   while (expression_index < FLAG_SED_EXPRESSION.count() ||
          file_index < FLAG_SED_FILE.count())
@@ -628,30 +658,30 @@ fn Sed::execute(const ExecContext &ec, EvalContext &cxt,
       operands, cxt.scratch_allocator(), source_start);
   i32 status = 0;
 
-  let output = String{heap_allocator()};
-  let has_written_output = false;
-  let did_written_output_end_in_newline = true;
+  let       output                            = String{heap_allocator()};
+  let       has_written_output                = false;
+  let       did_written_output_end_in_newline = true;
   let const do_flush_output = [&](bool should_flush_all) throws {
     if (output.is_empty() || (!should_flush_all && output.count() < 65536)) {
       return;
     }
 
     ec.print_to_stdout(output);
-    has_written_output = true;
+    has_written_output                = true;
     did_written_output_end_in_newline = output[output.length() - 1] == '\n';
     output.clear();
   };
 
-  bool should_quit = false;
-  u64 line_number = 0;
+  bool      should_quit     = false;
+  u64       line_number     = 0;
   let const do_process_line = [&](StringView source_line,
-                                  bool has_terminating_newline,
-                                  bool is_last_line) throws {
+                                  bool       has_terminating_newline,
+                                  bool       is_last_line) throws {
     let const line_mark = cxt.expansion_store().scratch_arena().mark();
     defer { cxt.expansion_store().scratch_arena().release(line_mark); };
     String line{heap_allocator(), source_line};
     String appended_text{heap_allocator()};
-    bool should_delete = false;
+    bool   should_delete = false;
     line_number++;
 
     for (let &command : commands) {
@@ -697,7 +727,7 @@ fn Sed::execute(const ExecContext &ec, EvalContext &cxt,
         break;
       case sed_command_kind::Translate: {
         let const source_length = command.replacement.length() / 2;
-        char translation[256];
+        char      translation[256];
 
         for (u16 byte = 0; byte < 256; byte++)
           translation[byte] = static_cast<char>(byte);
@@ -736,8 +766,8 @@ fn Sed::execute(const ExecContext &ec, EvalContext &cxt,
     do_flush_output(false);
   };
 
-  let held_line = String{heap_allocator()};
-  let has_held_line = false;
+  let held_line                = String{heap_allocator()};
+  let has_held_line            = false;
   let was_held_line_terminated = false;
 
   for (usize source_index = 0; source_index < sources.count() && !should_quit;
@@ -771,7 +801,7 @@ fn Sed::execute(const ExecContext &ec, EvalContext &cxt,
       held_line.clear();
       held_line.append(reader.get_line());
       was_held_line_terminated = reader.was_line_terminated();
-      has_held_line = true;
+      has_held_line            = true;
     }
   }
 

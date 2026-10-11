@@ -23,21 +23,24 @@
 
 namespace koshka {
 
-fn builtin_error_context(StringView program) throws -> String
+fn
+builtin_error_context(StringView program) throws -> String
 {
   return StringView{"Builtin `"} + program + "`";
 }
 
-fn builtin_error_message(StringView program, StringView message) throws
-    -> String
+fn
+builtin_error_message(StringView program, StringView message) throws -> String
 {
   return builtin_error_context(program) + ": " + message;
 }
 
-cold fn show_builtin_help_impl(const ExecContext &ec, StringView description,
-                               const SynopsisList &synopsis_lines,
-                               const FlagList &flags,
-                               StringView extra_sections) throws -> void
+cold fn
+show_builtin_help_impl(const ExecContext  &ec,
+                       StringView          description,
+                       const SynopsisList &synopsis_lines,
+                       const FlagList     &flags,
+                       StringView          extra_sections) throws -> void
 {
   ASSERT(!ec.args().is_empty());
 
@@ -59,22 +62,22 @@ cold fn show_builtin_help_impl(const ExecContext &ec, StringView description,
   ec.print_to_stdout(format_cli_help(help_text.view(), should_color));
 }
 
-flatten fn search_builtin(StringView builtin_name) throws
-    -> Maybe<Builtin::Kind>
+flatten fn
+search_builtin(StringView builtin_name) throws -> Maybe<Builtin::Kind>
 {
   return BUILTINS.find(builtin_name);
 }
 
-pure fn builtin_is_hidden_by_mood(Builtin::Kind kind, mimic_mood mood) wontthrow
-    -> bool
+pure fn
+builtin_is_hidden_by_mood(Builtin::Kind kind, mimic_mood mood) wontthrow -> bool
 {
   if (mood != mimic_mood::Posix) return false;
 
   return kind == Builtin::Kind::Let || kind == Builtin::Kind::Time;
 }
 
-pure fn name_is_keyword_in_mood(StringView name, mimic_mood mood) wontthrow
-    -> bool
+pure fn
+name_is_keyword_in_mood(StringView name, mimic_mood mood) wontthrow -> bool
 {
   if (utils::is_posix_reserved_word(name)) return true;
 
@@ -87,38 +90,44 @@ pure fn name_is_keyword_in_mood(StringView name, mimic_mood mood) wontthrow
   return !is_posix && BASH_KEYWORDS.contains(name);
 }
 
-static const FlagList *BUILTIN_FLAG_LISTS[BUILTIN_KIND_COUNT] = {};
-static const StringView *BUILTIN_HELP_DESCRIPTIONS[BUILTIN_KIND_COUNT] = {};
-static const SynopsisList *BUILTIN_HELP_SYNOPSES[BUILTIN_KIND_COUNT] = {};
+static const FlagList     *BUILTIN_FLAG_LISTS[BUILTIN_KIND_COUNT]        = {};
+static const StringView   *BUILTIN_HELP_DESCRIPTIONS[BUILTIN_KIND_COUNT] = {};
+static const SynopsisList *BUILTIN_HELP_SYNOPSES[BUILTIN_KIND_COUNT]     = {};
 
-fn register_builtin_help(Builtin::Kind kind, const FlagList *flags,
-                         const StringView *description,
-                         const SynopsisList *synopsis) wontthrow -> void
+fn
+register_builtin_help(Builtin::Kind       kind,
+                      const FlagList     *flags,
+                      const StringView   *description,
+                      const SynopsisList *synopsis) wontthrow -> void
 {
-  let const index = static_cast<usize>(kind);
-  BUILTIN_FLAG_LISTS[index] = flags;
+  let const index                  = static_cast<usize>(kind);
+  BUILTIN_FLAG_LISTS[index]        = flags;
   BUILTIN_HELP_DESCRIPTIONS[index] = description;
-  BUILTIN_HELP_SYNOPSES[index] = synopsis;
+  BUILTIN_HELP_SYNOPSES[index]     = synopsis;
 }
 
-fn builtin_flag_list(Builtin::Kind kind) wontthrow -> const FlagList *
+fn
+builtin_flag_list(Builtin::Kind kind) wontthrow -> const FlagList *
 {
   return BUILTIN_FLAG_LISTS[static_cast<usize>(kind)];
 }
 
-fn builtin_help_description(Builtin::Kind kind) wontthrow -> StringView
+fn
+builtin_help_description(Builtin::Kind kind) wontthrow -> StringView
 {
   let const description = BUILTIN_HELP_DESCRIPTIONS[static_cast<usize>(kind)];
 
   return description != nullptr ? *description : StringView{};
 }
 
-fn builtin_help_synopsis(Builtin::Kind kind) wontthrow -> const SynopsisList *
+fn
+builtin_help_synopsis(Builtin::Kind kind) wontthrow -> const SynopsisList *
 {
   return BUILTIN_HELP_SYNOPSES[static_cast<usize>(kind)];
 }
 
-fn is_special_builtin_name(StringView name) wontthrow -> bool
+fn
+is_special_builtin_name(StringView name) wontthrow -> bool
 {
   static constexpr PackedStringKey SPECIAL_BUILTIN_KEYS[] = {
       SSK(":"),    SSK("."),     SSK("break"),  SSK("continue"), SSK("eval"),
@@ -130,7 +139,8 @@ fn is_special_builtin_name(StringView name) wontthrow -> bool
   return SPECIAL_BUILTINS.contains(name);
 }
 
-fn builtin_names() throws -> const ArrayList<String> &
+fn
+builtin_names() throws -> const ArrayList<String> &
 {
   static ArrayList<String> names = [] throws {
     let collected = ArrayList<String>{heap_allocator()};
@@ -146,25 +156,27 @@ fn builtin_names() throws -> const ArrayList<String> &
 
 static constexpr i32 STAGE_ASSIGNMENT_FAILURE_STATUS = 4;
 
-fn declaration_assignment_failure_status(const EvalContext &cxt) wontthrow
-    -> i32
+fn
+declaration_assignment_failure_status(const EvalContext &cxt) wontthrow -> i32
 {
   return cxt.job_table_store().is_in_pipeline_stage()
              ? STAGE_ASSIGNMENT_FAILURE_STATUS
              : 1;
 }
 
-static pure fn is_declaration_builtin_kind(Builtin::Kind kind) wontthrow -> bool
+static pure fn
+is_declaration_builtin_kind(Builtin::Kind kind) wontthrow -> bool
 {
   switch (kind) {
   case Builtin::Kind::Declare:
   case Builtin::Kind::Export:
   case Builtin::Kind::Readonly: return true;
-  default: return false;
+  default:                      return false;
   }
 }
 
-fn execute_builtin(ExecContext &&ec, EvalContext &cxt) throws -> i32
+fn
+execute_builtin(ExecContext &&ec, EvalContext &cxt) throws -> i32
 {
   ASSERT(!ec.args().is_empty());
 
@@ -285,9 +297,9 @@ fn execute_builtin(ExecContext &&ec, EvalContext &cxt) throws -> i32
   unreachable("execute_builtin reached the end without dispatching");
 }
 
-static fn builtin_error_ends_posix_script(const ExecContext &ec,
-                                          const EvalContext &cxt) wontthrow
-    -> bool
+static fn
+builtin_error_ends_posix_script(const ExecContext &ec,
+                                const EvalContext &cxt) wontthrow -> bool
 {
   if (!cxt.runtime_state().is_posix_mode()) return false;
   if (ec.builtin_kind() == Builtin::Kind::Trap) return false;
@@ -296,22 +308,29 @@ static fn builtin_error_ends_posix_script(const ExecContext &ec,
          is_special_builtin_name(ec.program());
 }
 
-fn report_soft_builtin_error(const ExecContext &ec, EvalContext &cxt,
-                             StringView message) throws -> void
+fn
+report_soft_builtin_error(const ExecContext &ec,
+                          EvalContext       &cxt,
+                          StringView         message) throws -> void
 {
   report_soft_builtin_error(ec, cxt, ec.source_location(), message);
 }
 
-fn report_soft_builtin_error(const ExecContext &ec, EvalContext &cxt,
-                             StringView message, StringView note) throws -> void
+fn
+report_soft_builtin_error(const ExecContext &ec,
+                          EvalContext       &cxt,
+                          StringView         message,
+                          StringView         note) throws -> void
 {
   report_soft_builtin_error(ec, cxt, message);
   show_message(Note{String{note}}.to_string());
 }
 
-fn report_soft_builtin_error(const ExecContext &ec, EvalContext &cxt,
-                             SourceLocation location, StringView message) throws
-    -> void
+fn
+report_soft_builtin_error(const ExecContext &ec,
+                          EvalContext       &cxt,
+                          SourceLocation     location,
+                          StringView         message) throws -> void
 {
   ErrorWithLocation located{location,
                             builtin_error_message(ec.program(), message)};
@@ -329,16 +348,20 @@ fn report_soft_builtin_error(const ExecContext &ec, EvalContext &cxt,
     print_error(builtin_error_message(ec.program(), message) + "\n");
 }
 
-fn report_soft_builtin_error(const ExecContext &ec, EvalContext &cxt,
-                             SourceLocation location, StringView message,
-                             StringView note) throws -> void
+fn
+report_soft_builtin_error(const ExecContext &ec,
+                          EvalContext       &cxt,
+                          SourceLocation     location,
+                          StringView         message,
+                          StringView         note) throws -> void
 {
   report_soft_builtin_error(ec, cxt, steal(location), message);
   show_message(Note{String{note}}.to_string());
 }
 
-fn report_loop_control_without_loop(const ExecContext &ec,
-                                    EvalContext &cxt) throws -> void
+fn
+report_loop_control_without_loop(const ExecContext &ec, EvalContext &cxt) throws
+    -> void
 {
   if (!cxt.runtime_state().is_bash_compatible() ||
       cxt.runtime_state().is_posix_option_on())
@@ -350,14 +373,18 @@ fn report_loop_control_without_loop(const ExecContext &ec,
       ec, cxt, "only meaningful in a `for', `while', or `until' loop");
 }
 
-fn report_usage_error(const ExecContext &ec, EvalContext &cxt,
-                      StringView program_name) throws -> i32
+fn
+report_usage_error(const ExecContext &ec,
+                   EvalContext       &cxt,
+                   StringView         program_name) throws -> i32
 {
   return report_usage_error(cxt, ec.source_location(), program_name);
 }
 
-fn report_usage_error(EvalContext &cxt, SourceLocation location,
-                      StringView program_name) throws -> i32
+fn
+report_usage_error(EvalContext   &cxt,
+                   SourceLocation location,
+                   StringView     program_name) throws -> i32
 {
   const ErrorWithLocation located{
       steal(location), String{program_name} + ": Not enough arguments"};
@@ -372,9 +399,12 @@ fn report_usage_error(EvalContext &cxt, SourceLocation location,
   return 2;
 }
 
-fn bind_declared_self_nameref(const ExecContext &ec, EvalContext &cxt,
-                              usize arg_index, StringView name,
-                              bool is_local) throws -> bool
+fn
+bind_declared_self_nameref(const ExecContext &ec,
+                           EvalContext       &cxt,
+                           usize              arg_index,
+                           StringView         name,
+                           bool               is_local) throws -> bool
 {
   try {
     cxt.bind_self_nameref(name, is_local);
@@ -390,9 +420,13 @@ fn bind_declared_self_nameref(const ExecContext &ec, EvalContext &cxt,
   return true;
 }
 
-fn declare_nameref(const ExecContext &ec, EvalContext &cxt, usize arg_index,
-                   StringView name, Maybe<StringView> target,
-                   bool should_mark_readonly) throws -> bool
+fn
+declare_nameref(const ExecContext &ec,
+                EvalContext       &cxt,
+                usize              arg_index,
+                StringView         name,
+                Maybe<StringView>  target,
+                bool               should_mark_readonly) throws -> bool
 {
   try {
     if (target.has_value()) {
@@ -416,7 +450,8 @@ fn declare_nameref(const ExecContext &ec, EvalContext &cxt, usize arg_index,
   return true;
 }
 
-fn continue_job(job &job) throws -> void
+fn
+continue_job(job &job) throws -> void
 {
   let const cont = os::signal_number_from_name("CONT");
   if (!cont.has_value())
@@ -432,10 +467,13 @@ fn continue_job(job &job) throws -> void
   job.state = job::State::Running;
 }
 
-fn finish_exit_builtin(const ExecContext &ec, EvalContext &cxt, i64 status,
-                       StringView invalid_status_note,
-                       StringView too_many_message,
-                       StringView too_many_note) throws -> i32
+fn
+finish_exit_builtin(const ExecContext &ec,
+                    EvalContext       &cxt,
+                    i64                status,
+                    StringView         invalid_status_note,
+                    StringView         too_many_message,
+                    StringView         too_many_note) throws -> i32
 {
   if (ec.args().count() > 1) {
     let const parsed_status = ec.args()[1].to<i64>();
@@ -479,33 +517,41 @@ fn finish_exit_builtin(const ExecContext &ec, EvalContext &cxt, i64 status,
   utils::quit(static_cast<i32>(status), utils::farewell_policy::Goodbye);
 }
 
-fn report_invalid_identifier(const ExecContext &ec, EvalContext &cxt,
-                             SourceLocation location, StringView name) throws
-    -> void
+fn
+report_invalid_identifier(const ExecContext &ec,
+                          EvalContext       &cxt,
+                          SourceLocation     location,
+                          StringView         name) throws -> void
 {
   report_soft_builtin_error(ec, cxt, location,
                             StringView{"'"} + name +
                                 "' is not a valid identifier");
 }
 
-pure fn get_operand_location(const ExecContext &ec,
-                             const ArrayList<SourceLocation> &operand_locations,
-                             usize index) wontthrow -> SourceLocation
+pure fn
+get_operand_location(const ExecContext               &ec,
+                     const ArrayList<SourceLocation> &operand_locations,
+                     usize index) wontthrow -> SourceLocation
 {
   return index < operand_locations.count() ? operand_locations[index]
                                            : ec.source_location();
 }
 
-fn make_error_for_arg(const ExecContext &ec, usize index,
-                      StringView message) throws -> ErrorWithLocation
+fn
+make_error_for_arg(const ExecContext &ec,
+                   usize              index,
+                   StringView         message) throws -> ErrorWithLocation
 {
   let const prefixed = builtin_error_message(ec.program(), message);
 
   return ErrorWithLocation{ec.arg_location_at(index), prefixed.view()};
 }
 
-fn make_error_for_arg(const ExecContext &ec, usize index, StringView message,
-                      StringView note) throws -> ErrorWithLocationAndDetails
+fn
+make_error_for_arg(const ExecContext &ec,
+                   usize              index,
+                   StringView         message,
+                   StringView note) throws -> ErrorWithLocationAndDetails
 {
   let const prefixed = builtin_error_message(ec.program(), message);
 
@@ -513,7 +559,8 @@ fn make_error_for_arg(const ExecContext &ec, usize index, StringView message,
                                      note};
 }
 
-fn quote_for_declare(StringView value) throws -> String
+fn
+quote_for_declare(StringView value) throws -> String
 {
   let quoted = String{heap_allocator()};
 
@@ -528,7 +575,8 @@ fn quote_for_declare(StringView value) throws -> String
   return quoted;
 }
 
-static pure fn is_declare_key_meta(char c) wontthrow -> bool
+static pure fn
+is_declare_key_meta(char c) wontthrow -> bool
 {
   switch (c) {
   case ' ':
@@ -553,15 +601,16 @@ static pure fn is_declare_key_meta(char c) wontthrow -> bool
   case '?':
   case '^':
   case '~':
-  case '#': return true;
+  case '#':  return true;
   default:
     return static_cast<unsigned char>(c) < 0x20 ||
            static_cast<unsigned char>(c) == 0x7f;
   }
 }
 
-fn append_declare_value(String &out, StringView value,
-                        bool is_utf8_locale) throws -> void
+fn
+append_declare_value(String &out, StringView value, bool is_utf8_locale) throws
+    -> void
 {
   if (utils::should_ansi_c_quote(value, is_utf8_locale)) {
     utils::append_ansi_c_quoted(out, value, is_utf8_locale);
@@ -574,7 +623,8 @@ fn append_declare_value(String &out, StringView value,
   out += '"';
 }
 
-fn append_declare_key(String &out, StringView key, bool is_utf8_locale) throws
+fn
+append_declare_key(String &out, StringView key, bool is_utf8_locale) throws
     -> void
 {
   if (utils::should_ansi_c_quote(key, is_utf8_locale)) {
@@ -599,8 +649,10 @@ fn append_declare_key(String &out, StringView key, bool is_utf8_locale) throws
   out += '"';
 }
 
-static fn append_value_attribute_letters(EvalContext &cxt, StringView name,
-                                         String &out) throws -> void
+static fn
+append_value_attribute_letters(EvalContext &cxt,
+                               StringView   name,
+                               String      &out) throws -> void
 {
   if (cxt.is_integer_variable(name)) out += 'i';
   if (cxt.variable_store().attributes().is_lowercase(name)) out += 'l';
@@ -608,16 +660,20 @@ static fn append_value_attribute_letters(EvalContext &cxt, StringView name,
   if (cxt.variable_store().attributes().is_uppercase(name)) out += 'u';
 }
 
-static fn append_array_attribute_letters(EvalContext &cxt, StringView name,
-                                         String &out) throws -> void
+static fn
+append_array_attribute_letters(EvalContext &cxt,
+                               StringView   name,
+                               String      &out) throws -> void
 {
   append_value_attribute_letters(cxt, name, out);
   if (cxt.is_exported(name)) out += 'x';
 }
 
-static fn append_valueless_array_declaration(EvalContext &cxt, StringView name,
-                                             char kind, String &out) throws
-    -> void
+static fn
+append_valueless_array_declaration(EvalContext &cxt,
+                                   StringView   name,
+                                   char         kind,
+                                   String      &out) throws -> void
 {
   out += "declare -";
   out += kind;
@@ -627,8 +683,10 @@ static fn append_valueless_array_declaration(EvalContext &cxt, StringView name,
   out += '\n';
 }
 
-fn append_variable_declaration(EvalContext &cxt, StringView name,
-                               String &out) throws -> bool
+fn
+append_variable_declaration(EvalContext &cxt,
+                            StringView   name,
+                            String      &out) throws -> bool
 {
   if (cxt.scope_store().is_self_reference(name)) rarely
     {
@@ -659,9 +717,9 @@ fn append_variable_declaration(EvalContext &cxt, StringView name,
       return true;
     }
 
-  let const is_utf8_locale = cxt.get_glob_charset() == glob_charset::Utf8;
+  let const is_utf8_locale     = cxt.get_glob_charset() == glob_charset::Utf8;
   let const is_directory_stack = cxt.is_bash_directory_stack_special(name);
-  let const is_argument_array = cxt.is_bash_argument_array(name);
+  let const is_argument_array  = cxt.is_bash_argument_array(name);
   let const elements = cxt.variable_store().indexed_arrays().find(name);
 
   if (elements.has_value() && !is_directory_stack && !is_argument_array &&
@@ -679,12 +737,12 @@ fn append_variable_declaration(EvalContext &cxt, StringView name,
     line.append(name);
     line += "=(";
 
-    let subscripts = ArrayList<String>{cxt.scratch_allocator()};
-    let values = ArrayList<String>{cxt.scratch_allocator()};
+    let subscripts    = ArrayList<String>{cxt.scratch_allocator()};
+    let values        = ArrayList<String>{cxt.scratch_allocator()};
     let element_count = usize{0};
     if (elements.has_value()) {
       subscripts = cxt.collect_array_subscripts(name);
-      values = cxt.collect_array_elements(name);
+      values     = cxt.collect_array_elements(name);
       ASSERT(subscripts.count() == values.count());
       element_count = subscripts.count();
     }
@@ -710,8 +768,8 @@ fn append_variable_declaration(EvalContext &cxt, StringView name,
       line += "]=";
 
       let directory_stack_element = Maybe<String>{};
-      let argument_array_element = String{cxt.scratch_allocator()};
-      let element = StringView{};
+      let argument_array_element  = String{cxt.scratch_allocator()};
+      let element                 = StringView{};
       if (is_directory_stack) {
         directory_stack_element =
             cxt.get_bash_directory_stack_element(e, cxt.scratch_allocator());
@@ -743,9 +801,9 @@ fn append_variable_declaration(EvalContext &cxt, StringView name,
   }
 
   if (cxt.is_associative_array(name)) {
-    let const keys = cxt.associative_keys(name);
+    let const keys   = cxt.associative_keys(name);
     let const values = cxt.associative_values(name);
-    let line = String{cxt.scratch_allocator(), "declare -A"};
+    let       line   = String{cxt.scratch_allocator(), "declare -A"};
     append_array_attribute_letters(cxt, name, line);
     line += ' ';
     line.append(name);
@@ -819,7 +877,8 @@ fn append_variable_declaration(EvalContext &cxt, StringView name,
   return false;
 }
 
-fn parse_optional_integer_arg(const ExecContext &ec, i64 default_value) throws
+fn
+parse_optional_integer_arg(const ExecContext &ec, i64 default_value) throws
     -> i64
 {
   if (ec.args().count() <= 1) return default_value;
@@ -829,12 +888,14 @@ fn parse_optional_integer_arg(const ExecContext &ec, i64 default_value) throws
   return parsed_value.value();
 }
 
-pure fn name_is_valid_identifier(StringView name) wontthrow -> bool
+pure fn
+name_is_valid_identifier(StringView name) wontthrow -> bool
 {
   return lexer::word_is_variable_name(name);
 }
 
-pure fn name_is_valid_assignment_target(StringView name) wontthrow -> bool
+pure fn
+name_is_valid_assignment_target(StringView name) wontthrow -> bool
 {
   let const bracket = name.find_character('[');
   if (!bracket.has_value()) return lexer::word_is_variable_name(name);
@@ -843,22 +904,24 @@ pure fn name_is_valid_assignment_target(StringView name) wontthrow -> bool
          lexer::word_is_variable_name(name.substring_of_length(0, *bracket));
 }
 
-fn run_cd_to_directory(EvalContext &cxt, const ExecContext &ec,
-                       StringView target) throws -> i32
+fn
+run_cd_to_directory(EvalContext       &cxt,
+                    const ExecContext &ec,
+                    StringView         target) throws -> i32
 {
   ArrayList<String> cd_args{heap_allocator()};
   cd_args.push(String{"cd"});
   cd_args.push(String{target});
   let cd_arg_locations = ArrayList<SourceLocation>{heap_allocator()};
-  let routed = ExecContext::make_from_resolved(
+  let routed           = ExecContext::make_from_resolved(
       ec.source_location(), ResolvedCommand::from_builtin(Builtin::Kind::Cd),
       steal(cd_args), steal(cd_arg_locations));
 
   return execute_builtin(steal(routed), cxt);
 }
 
-static fn abbreviate_home_directory(StringView path, Allocator allocator) throws
-    -> String
+static fn
+abbreviate_home_directory(StringView path, Allocator allocator) throws -> String
 {
   let const home = os::get_home_directory();
   if (home.has_value()) {
@@ -894,9 +957,11 @@ static fn abbreviate_home_directory(StringView path, Allocator allocator) throws
   return String{allocator, path};
 }
 
-fn parse_directory_stack_rotation(StringView arg, usize ring_count,
-                                  SourceLocation location,
-                                  usize &index_out) throws -> bool
+fn
+parse_directory_stack_rotation(StringView     arg,
+                               usize          ring_count,
+                               SourceLocation location,
+                               usize         &index_out) throws -> bool
 {
   if (arg.length < 2 || (arg[0] != '+' && arg[0] != '-')) {
     return false;
@@ -920,10 +985,11 @@ fn parse_directory_stack_rotation(StringView arg, usize ring_count,
   return true;
 }
 
-fn logical_working_directory(const EvalContext &cxt) throws -> Path
+fn
+logical_working_directory(const EvalContext &cxt) throws -> Path
 {
-  let physical_directory = Path::current_directory();
-  let const logical_pwd = cxt.get_variable_value("PWD");
+  let       physical_directory = Path::current_directory();
+  let const logical_pwd        = cxt.get_variable_value("PWD");
   if (logical_pwd.has_value() && !logical_pwd->is_empty() &&
       os::path_is_absolute(logical_pwd->view()))
   {
@@ -935,17 +1001,19 @@ fn logical_working_directory(const EvalContext &cxt) throws -> Path
   return physical_directory;
 }
 
-fn print_directory_stack(EvalContext &cxt, const ExecContext &ec,
-                         bool should_print_one_per_line,
-                         bool should_print_numbers,
-                         bool should_print_full_paths,
-                         Maybe<usize> selected_index) throws -> void
+fn
+print_directory_stack(EvalContext       &cxt,
+                      const ExecContext &ec,
+                      bool               should_print_one_per_line,
+                      bool               should_print_numbers,
+                      bool               should_print_full_paths,
+                      Maybe<usize>       selected_index) throws -> void
 {
-  let const &stack = cxt.variable_store().directory_stack();
-  let const pwd = logical_working_directory(cxt).text().clone();
-  let const entry_count = stack.count() + 1;
-  let const first_index = selected_index.value_or(0);
-  let const end_index =
+  let const &stack       = cxt.variable_store().directory_stack();
+  let const  pwd         = logical_working_directory(cxt).text().clone();
+  let const  entry_count = stack.count() + 1;
+  let const  first_index = selected_index.value_or(0);
+  let const  end_index =
       selected_index.has_value() ? first_index + 1 : entry_count;
 
   let out = String{cxt.scratch_allocator()};

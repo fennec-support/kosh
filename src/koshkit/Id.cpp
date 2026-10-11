@@ -36,8 +36,9 @@ enum class id_name_mode : u8
 
 }
 
-static fn id_user_text(u32 id, Allocator allocator,
-                       id_name_mode name_mode) throws -> String
+static fn
+id_user_text(u32 id, Allocator allocator, id_name_mode name_mode) throws
+    -> String
 {
   if (name_mode == id_name_mode::Name)
     if (let const name = os::uid_to_username(id); name.has_value())
@@ -46,8 +47,9 @@ static fn id_user_text(u32 id, Allocator allocator,
   return String::from(id, allocator);
 }
 
-static fn id_group_text(u32 id, Allocator allocator,
-                        id_name_mode name_mode) throws -> String
+static fn
+id_group_text(u32 id, Allocator allocator, id_name_mode name_mode) throws
+    -> String
 {
   if (name_mode == id_name_mode::Name)
     if (let const name = os::gid_to_groupname(id); name.has_value())
@@ -56,10 +58,11 @@ static fn id_group_text(u32 id, Allocator allocator,
   return String::from(id, allocator);
 }
 
-fn Id::execute(const ExecContext &ec, EvalContext &cxt,
-               const ArrayList<String> &args,
-               const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+fn
+Id::execute(const ExecContext               &ec,
+            EvalContext                     &cxt,
+            const ArrayList<String>         &args,
+            const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 

@@ -18,7 +18,10 @@ KOSHKIT_UTIL_DECL(
     "The pkill utility sends a signal to each process whose name matches a "
     "pattern.");
 
-FLAG(PKILL_SIGNAL, String, 's', "signal",
+FLAG(PKILL_SIGNAL,
+     String,
+     's',
+     "signal",
      "The signal to send, a name such as TERM or a number such as 15.");
 FLAG(PKILL_LIST, Bool, 'l', "list", "List the signal names and exit.");
 
@@ -26,8 +29,10 @@ REGISTER_KOSHKIT_UTIL_FLAGS(Pkill);
 
 namespace koshka::koshkit {
 
-fn resolve_koshkit_signal(StringView spelled, SourceLocation location,
-                          Allocator allocator) throws -> i32
+fn
+resolve_koshkit_signal(StringView     spelled,
+                       SourceLocation location,
+                       Allocator      allocator) throws -> i32
 {
   if (spelled.is_empty()) return SIGTERM;
   let const parsed = spelled.to<i64>();
@@ -53,9 +58,11 @@ fn resolve_koshkit_signal(StringView spelled, SourceLocation location,
   return *named;
 }
 
-fn Pkill::execute(const ExecContext &ec, EvalContext &cxt,
-                  const ArrayList<String> &args,
-                  const ArrayList<SourceLocation> &arg_locations) const throws
+fn
+Pkill::execute(const ExecContext               &ec,
+               EvalContext                     &cxt,
+               const ArrayList<String>         &args,
+               const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
@@ -87,9 +94,9 @@ fn Pkill::execute(const ExecContext &ec, EvalContext &cxt,
       FLAG_PKILL_SIGNAL.is_set() ? FLAG_PKILL_SIGNAL.value() : StringView{},
       FLAG_PKILL_SIGNAL.value_location(), cxt.scratch_allocator());
 
-  let const self_pid = os::get_shell_process_id();
-  let const processes = os::enumerate_processes();
-  bool did_signal_any = false;
+  let const self_pid       = os::get_shell_process_id();
+  let const processes      = os::enumerate_processes();
+  bool      did_signal_any = false;
 
   for (let const &process : processes) {
     if (process.pid == self_pid) continue;

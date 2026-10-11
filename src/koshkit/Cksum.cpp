@@ -23,7 +23,8 @@ struct checksum_table
   u32 values[256];
 };
 
-static consteval fn make_checksum_table() -> checksum_table
+static consteval fn
+make_checksum_table() -> checksum_table
 {
   checksum_table table{};
 
@@ -42,8 +43,9 @@ static consteval fn make_checksum_table() -> checksum_table
 
 inline constexpr checksum_table CHECKSUM_TABLE = make_checksum_table();
 
-static t__forceinline fn update_checksum(u32 checksum, const char *bytes,
-                                         usize byte_count) wontthrow -> u32
+static t__forceinline fn
+update_checksum(u32 checksum, const char *bytes, usize byte_count) wontthrow
+    -> u32
 {
   for (usize position = 0; position < byte_count; position++) {
     let const byte = static_cast<u8>(bytes[position]);
@@ -55,13 +57,14 @@ static t__forceinline fn update_checksum(u32 checksum, const char *bytes,
 
 struct checksum_source_state
 {
-  u32 checksum{0};
-  u64 byte_count{0};
-  i32 error_number{0};
+  u32                     checksum{0};
+  u64                     byte_count{0};
+  i32                     error_number{0};
   source_completion_state completion{source_completion_state::Pending};
 };
 
-static fn finish_checksum(u32 checksum, u64 byte_count) wontthrow -> u32
+static fn
+finish_checksum(u32 checksum, u64 byte_count) wontthrow -> u32
 {
   for (u64 length = byte_count; length != 0; length >>= 8) {
     let const byte = static_cast<u8>(length);
@@ -71,9 +74,11 @@ static fn finish_checksum(u32 checksum, u64 byte_count) wontthrow -> u32
   return ~checksum;
 }
 
-fn Cksum::execute(const ExecContext &ec, EvalContext &cxt,
-                  const ArrayList<String> &args,
-                  const ArrayList<SourceLocation> &arg_locations) const throws
+fn
+Cksum::execute(const ExecContext               &ec,
+               EvalContext                     &cxt,
+               const ArrayList<String>         &args,
+               const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
@@ -86,10 +91,10 @@ fn Cksum::execute(const ExecContext &ec, EvalContext &cxt,
   for (usize source_index = 0; source_index < sources.count(); source_index++)
     source_states.push({});
 
-  let reader = SourceBatchReader{ec, sources, cxt.scratch_allocator()};
-  let chunks = ArrayList<SourceBatchReader::Chunk>{cxt.scratch_allocator()};
+  let   reader = SourceBatchReader{ec, sources, cxt.scratch_allocator()};
+  let   chunks = ArrayList<SourceBatchReader::Chunk>{cxt.scratch_allocator()};
   usize next_output_index = 0;
-  i32 status = 0;
+  i32   status            = 0;
 
   loop
   {
@@ -100,7 +105,7 @@ fn Cksum::execute(const ExecContext &ec, EvalContext &cxt,
       let &state = source_states[chunk.source_index];
       if (chunk.error_number != 0) {
         state.error_number = chunk.error_number;
-        state.completion = source_completion_state::Complete;
+        state.completion   = source_completion_state::Complete;
         continue;
       }
 
@@ -114,8 +119,8 @@ fn Cksum::execute(const ExecContext &ec, EvalContext &cxt,
            source_states[next_output_index].completion ==
                source_completion_state::Complete)
     {
-      let const &state = source_states[next_output_index];
-      let const source = sources[next_output_index];
+      let const &state  = source_states[next_output_index];
+      let const  source = sources[next_output_index];
       if (state.error_number != 0) {
         os::set_last_system_error(state.error_number);
         KOSHKIT_REPORT_PATH_ERROR("read", source);

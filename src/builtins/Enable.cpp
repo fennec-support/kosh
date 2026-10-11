@@ -32,7 +32,8 @@ REGISTER_BUILTIN_FLAGS(Enable);
 
 namespace koshka {
 
-fn Enable::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
+fn
+Enable::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let operand_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};
   let const args = PARSE_BUILTIN_ARGS_WITH_LOCATIONS(ec, operand_locations);
@@ -68,8 +69,8 @@ fn Enable::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   i32 status = 0;
 
   for (usize i = 1; i < args.count(); i++) {
-    let const &name = args[i];
-    let const resolved = search_builtin(name.view());
+    let const &name     = args[i];
+    let const  resolved = search_builtin(name.view());
     if (!resolved.has_value()) {
       report_soft_builtin_error(
           ec, cxt, get_operand_location(ec, operand_locations, i),

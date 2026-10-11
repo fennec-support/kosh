@@ -28,8 +28,8 @@ namespace utils {
 
 /* Inspiration taken from https://github.com/tsoding/glob.h :3
  * This fragment is under MIT License (c) Alexey Kutepov <reximkut@gmail.com> */
-static pure fn is_glob_char_active(const Bitset &glob_active,
-                                   usize index) wontthrow -> bool
+static pure fn
+is_glob_char_active(const Bitset &glob_active, usize index) wontthrow -> bool
 {
   return index < glob_active.count() && glob_active[index];
 }
@@ -39,13 +39,14 @@ namespace {
 struct extglob_alternative
 {
   StringView pattern;
-  usize mask_offset;
+  usize      mask_offset;
 };
 
 class ExtglobAlternatives
 {
 public:
-  fn push(extglob_alternative alternative) throws -> void
+  fn
+  push(extglob_alternative alternative) throws -> void
   {
     if (m_inline_count < countof(m_inline)) {
       m_inline[m_inline_count++] = alternative;
@@ -55,12 +56,14 @@ public:
     m_overflow.push(alternative);
   }
 
-  pure fn count() const wontthrow -> usize
+  pure fn
+  count() const wontthrow -> usize
   {
     return m_inline_count + m_overflow.count();
   }
 
-  pure fn get_at(usize index) const wontthrow -> const extglob_alternative &
+  pure fn
+  get_at(usize index) const wontthrow -> const extglob_alternative &
   {
     if (index < m_inline_count) return m_inline[index];
 
@@ -68,18 +71,22 @@ public:
   }
 
 private:
-  extglob_alternative m_inline[8]{};
-  usize m_inline_count{0};
+  extglob_alternative            m_inline[8]{};
+  usize                          m_inline_count{0};
   ArrayList<extglob_alternative> m_overflow{heap_allocator()};
 };
 
-hot fn extglob_active(const Bitset &mask, usize index) wontthrow -> bool
+hot fn
+extglob_active(const Bitset &mask, usize index) wontthrow -> bool
 {
   return index < mask.count() ? mask[index] : true;
 }
 
-fn extglob_opens_group(StringView glob, const Bitset &mask, usize mask_offset,
-                       usize index) wontthrow -> bool
+fn
+extglob_opens_group(StringView    glob,
+                    const Bitset &mask,
+                    usize         mask_offset,
+                    usize         index) wontthrow -> bool
 {
   if (index + 1 >= glob.count()) return false;
   let const op = glob[index];
@@ -91,8 +98,10 @@ fn extglob_opens_group(StringView glob, const Bitset &mask, usize mask_offset,
          extglob_active(mask, mask_offset + index + 1);
 }
 
-fn extglob_group_close(StringView glob, const Bitset &mask,
-                       usize mask_offset) wontthrow -> usize
+fn
+extglob_group_close(StringView    glob,
+                    const Bitset &mask,
+                    usize         mask_offset) wontthrow -> usize
 {
   usize depth = 0;
 
@@ -110,14 +119,17 @@ fn extglob_group_close(StringView glob, const Bitset &mask,
   return glob.count();
 }
 
-pure fn get_next_split(StringView str, usize position,
-                       glob_charset charset) wontthrow -> usize
+pure fn
+get_next_split(StringView str, usize position, glob_charset charset) wontthrow
+    -> usize
 {
   return position + charset_character_length(str, position, charset);
 }
 
-fn get_bracket_span(StringView glob, const Bitset &mask,
-                    usize mask_offset) wontthrow -> usize
+fn
+get_bracket_span(StringView    glob,
+                 const Bitset &mask,
+                 usize         mask_offset) wontthrow -> usize
 {
   let const do_is_close_at = [&](usize index) wontthrow -> bool {
     return glob[index] == ']' && extglob_active(mask, mask_offset + index);
@@ -160,13 +172,21 @@ fn get_bracket_span(StringView glob, const Bitset &mask,
   return 0;
 }
 
-fn extglob_full_match(StringView glob, StringView str, const Bitset &mask,
-                      usize mask_offset, glob_charset charset) throws -> bool;
+fn
+extglob_full_match(StringView    glob,
+                   StringView    str,
+                   const Bitset &mask,
+                   usize         mask_offset,
+                   glob_charset  charset) throws -> bool;
 
-fn extglob_match_repetition(const ExtglobAlternatives &alternatives,
-                            StringView suffix, usize suffix_offset,
-                            StringView str, const Bitset &mask, usize min_reps,
-                            glob_charset charset) throws -> bool
+fn
+extglob_match_repetition(const ExtglobAlternatives &alternatives,
+                         StringView                 suffix,
+                         usize                      suffix_offset,
+                         StringView                 str,
+                         const Bitset              &mask,
+                         usize                      min_reps,
+                         glob_charset               charset) throws -> bool
 {
   if (min_reps == 0 &&
       extglob_full_match(suffix, str, mask, suffix_offset, charset))
@@ -180,7 +200,7 @@ fn extglob_match_repetition(const ExtglobAlternatives &alternatives,
     let const &alternative = alternatives.get_at(alternative_index);
 
     for (usize length = get_next_split(str, 0, charset); length <= str.count();
-         length = get_next_split(str, length, charset))
+         length       = get_next_split(str, length, charset))
     {
       if (!extglob_full_match(alternative.pattern,
                               str.substring_of_length(0, length), mask,
@@ -197,25 +217,29 @@ fn extglob_match_repetition(const ExtglobAlternatives &alternatives,
   return false;
 }
 
-fn extglob_full_match(StringView glob, StringView str, const Bitset &mask,
-                      usize mask_offset, glob_charset charset) throws -> bool
+fn
+extglob_full_match(StringView    glob,
+                   StringView    str,
+                   const Bitset &mask,
+                   usize         mask_offset,
+                   glob_charset  charset) throws -> bool
 {
   if (glob.is_empty()) return str.is_empty();
 
   let const is_active = extglob_active(mask, mask_offset);
-  let const head = glob[0];
+  let const head      = glob[0];
 
   if (extglob_opens_group(glob, mask, mask_offset, 0)) {
     const usize close = extglob_group_close(glob, mask, mask_offset);
     if (close < glob.count()) {
-      const StringView content = glob.substring_of_length(2, close - 2);
-      const usize content_offset = mask_offset + 2;
-      const StringView suffix = glob.substring(close + 1);
-      const usize suffix_offset = mask_offset + close + 1;
+      const StringView content        = glob.substring_of_length(2, close - 2);
+      const usize      content_offset = mask_offset + 2;
+      const StringView suffix         = glob.substring(close + 1);
+      const usize      suffix_offset  = mask_offset + close + 1;
 
-      let alternatives = ExtglobAlternatives{};
-      usize depth = 0;
-      usize start = 0;
+      let   alternatives = ExtglobAlternatives{};
+      usize depth        = 0;
+      usize start        = 0;
 
       for (usize i = 0; i <= content.count(); i++) {
         let const is_active_byte =
@@ -267,7 +291,7 @@ fn extglob_full_match(StringView glob, StringView str, const Bitset &mask,
                extglob_full_match(suffix, str, mask, suffix_offset, charset);
       case '!':
         for (usize length = 0; length <= str.count();
-             length = get_next_split(str, length, charset))
+             length       = get_next_split(str, length, charset))
         {
           bool has_matching_alternative = false;
 
@@ -300,7 +324,7 @@ fn extglob_full_match(StringView glob, StringView str, const Bitset &mask,
 
   if (is_active && head == '*') {
     for (usize eaten = 0; eaten <= str.count();
-         eaten = get_next_split(str, eaten, charset))
+         eaten       = get_next_split(str, eaten, charset))
     {
       if (extglob_full_match(glob.substring(1), str.substring(eaten), mask,
                              mask_offset + 1, charset))
@@ -359,7 +383,8 @@ constexpr static_string_entry<posix_class_test> POSIX_CLASS_ENTRIES[] = {
 
 constexpr StaticStringMap POSIX_CLASSES{POSIX_CLASS_ENTRIES};
 
-fn byte_is_in_posix_class(StringView class_name, u8 byte) throws -> bool
+fn
+byte_is_in_posix_class(StringView class_name, u8 byte) throws -> bool
 {
   if (const Maybe<posix_class_test> test = POSIX_CLASSES.find(class_name);
       test.has_value())
@@ -370,7 +395,8 @@ fn byte_is_in_posix_class(StringView class_name, u8 byte) throws -> bool
 
 } /* namespace */
 
-pure fn token_has_uppercase(StringView token) wontthrow -> bool
+pure fn
+token_has_uppercase(StringView token) wontthrow -> bool
 {
   for (usize position = 0; position < token.length; position++)
     if (token[position] >= 'A' && token[position] <= 'Z') {
@@ -380,9 +406,10 @@ pure fn token_has_uppercase(StringView token) wontthrow -> bool
   return false;
 }
 
-pure fn smart_case_prefix_matches(StringView candidate, StringView prefix,
-                                  bool is_prefix_case_sensitive) wontthrow
-    -> bool
+pure fn
+smart_case_prefix_matches(StringView candidate,
+                          StringView prefix,
+                          bool       is_prefix_case_sensitive) wontthrow -> bool
 {
   if (candidate.starts_with(prefix)) return true;
 
@@ -397,8 +424,9 @@ pure fn smart_case_prefix_matches(StringView candidate, StringView prefix,
   return true;
 }
 
-pure fn smart_case_prefix_matches(StringView candidate,
-                                  StringView prefix) wontthrow -> bool
+pure fn
+smart_case_prefix_matches(StringView candidate, StringView prefix) wontthrow
+    -> bool
 {
   if (candidate.starts_with(prefix)) return true;
 
@@ -409,15 +437,16 @@ pure fn smart_case_prefix_matches(StringView candidate,
 struct locale_availability_entry
 {
   char name[48];
-  u8 name_length;
+  u8   name_length;
   bool is_available;
 };
 
-static fn locale_is_installed(StringView locale_name) wontthrow -> bool
+static fn
+locale_is_installed(StringView locale_name) wontthrow -> bool
 {
-  constexpr usize CACHE_ENTRY_COUNT = 4;
+  constexpr usize                               CACHE_ENTRY_COUNT = 4;
   static thread_local locale_availability_entry cache[CACHE_ENTRY_COUNT]{};
-  static thread_local usize next_slot = 0;
+  static thread_local usize                     next_slot = 0;
 
   if (locale_name.length >= sizeof(cache[0].name)) {
     return os::locale_is_available(locale_name);
@@ -434,13 +463,14 @@ static fn locale_is_installed(StringView locale_name) wontthrow -> bool
   let &slot = cache[next_slot];
   next_slot = (next_slot + 1) % CACHE_ENTRY_COUNT;
   std::memcpy(slot.name, locale_name.data, locale_name.length);
-  slot.name_length = static_cast<u8>(locale_name.length);
+  slot.name_length  = static_cast<u8>(locale_name.length);
   slot.is_available = os::locale_is_available(locale_name);
 
   return slot.is_available;
 }
 
-static fn locale_codeset_is_utf8(StringView locale_name) wontthrow -> bool
+static fn
+locale_codeset_is_utf8(StringView locale_name) wontthrow -> bool
 {
   let const dot = locale_name.find_character('.');
   if (!dot.has_value()) return false;
@@ -464,7 +494,8 @@ static fn locale_codeset_is_utf8(StringView locale_name) wontthrow -> bool
          codeset[4] == '8';
 }
 
-fn locale_name_is_utf8(StringView locale_name) wontthrow -> bool
+fn
+locale_name_is_utf8(StringView locale_name) wontthrow -> bool
 {
   if (!locale_codeset_is_utf8(locale_name)) return false;
   if (locale_name == "C.UTF-8" || locale_name == "C.utf8") {
@@ -474,16 +505,18 @@ fn locale_name_is_utf8(StringView locale_name) wontthrow -> bool
   return locale_is_installed(locale_name);
 }
 
-pure fn utf8_character_length(StringView text, usize position) wontthrow
-    -> usize
+pure fn
+utf8_character_length(StringView text, usize position) wontthrow -> usize
 {
   if (static_cast<u8>(text[position]) < 0x80) return 1;
 
   return decode_utf8(text, position, 0xfffd).length;
 }
 
-fn lowercase_for_glob(StringView text, glob_charset charset,
-                      Allocator allocator) throws -> String
+fn
+lowercase_for_glob(StringView   text,
+                   glob_charset charset,
+                   Allocator    allocator) throws -> String
 {
   if (charset != glob_charset::Utf8) return text.to_lower_ascii(allocator);
 
@@ -492,7 +525,7 @@ fn lowercase_for_glob(StringView text, glob_charset charset,
   usize position = 0;
 
   while (position < text.length) {
-    let const decoded = decode_utf8(text, position, 0xfffd);
+    let const decoded  = decode_utf8(text, position, 0xfffd);
     let const original = text.substring_of_length(position, decoded.length);
     position += decoded.length;
 
@@ -511,7 +544,8 @@ fn lowercase_for_glob(StringView text, glob_charset charset,
   return result;
 }
 
-pure fn utf8_character_count(StringView text) wontthrow -> usize
+pure fn
+utf8_character_count(StringView text) wontthrow -> usize
 {
   usize character_count = 0;
 
@@ -522,10 +556,13 @@ pure fn utf8_character_count(StringView text) wontthrow -> usize
   return character_count;
 }
 
-hot flatten fn glob_matches(StringView glob, StringView str,
-                            const Bitset &glob_active, usize mask_offset,
-                            extglob_mode mode, glob_charset charset) throws
-    -> bool
+hot flatten fn
+glob_matches(StringView    glob,
+             StringView    str,
+             const Bitset &glob_active,
+             usize         mask_offset,
+             extglob_mode  mode,
+             glob_charset  charset) throws -> bool
 {
   let const is_utf8 = charset == glob_charset::Utf8;
 
@@ -537,9 +574,9 @@ hot flatten fn glob_matches(StringView glob, StringView str,
     }
   }
 
-  usize s = 0;
-  usize g = 0;
-  usize star_glob_position = static_cast<usize>(-1);
+  usize s                    = 0;
+  usize g                    = 0;
+  usize star_glob_position   = static_cast<usize>(-1);
   usize star_string_position = 0;
 
   while (s < str.count()) {
@@ -567,12 +604,12 @@ hot flatten fn glob_matches(StringView glob, StringView str,
       }
 
       if (g >= glob.count()) return true;
-      star_glob_position = g;
+      star_glob_position   = g;
       star_string_position = s;
     } break;
 
     case '[': {
-      bool is_matched = false;
+      bool is_matched    = false;
       bool should_negate = false;
 
       /* clang-format off */
@@ -690,12 +727,12 @@ hot flatten fn glob_matches(StringView glob, StringView str,
                                            static_cast<u8>(subject.value))
                   : subject.value < 0x110000 &&
                         os::code_point_is_in_class(class_name, subject.value);
-          g = *past_class;
+          g               = *past_class;
           is_first_member = false;
           continue;
         }
 
-        let const lower = do_get_character_at(glob, g);
+        let const lower      = do_get_character_at(glob, g);
         let const range_dash = g + lower.length;
         if (glob[g] != '-' && range_dash + 1 < glob.count() &&
             glob[range_dash] == '-' && do_is_active(range_dash) &&

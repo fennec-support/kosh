@@ -24,10 +24,16 @@ KOSHKIT_UTIL_DECL(
 
 FLAG(PR_ACROSS, Bool, 'a', "across", "Write columns across each row.");
 FLAG(PR_DOUBLE_SPACE, Bool, 'd', "double-space", "Double-space output lines.");
-FLAG(PR_DATE_FORMAT, String, 'D', "date-format",
+FLAG(PR_DATE_FORMAT,
+     String,
+     'D',
+     "date-format",
      "Format the header date with this strftime format.");
 FLAG(PR_FORM_FEED, Bool, 'F', "form-feed", "Use form feeds between pages.");
-FLAG(PR_FORM_FEED_ALIAS, Bool, 'f', "form-feed-alias",
+FLAG(PR_FORM_FEED_ALIAS,
+     Bool,
+     'f',
+     "form-feed-alias",
      "Use form feeds between pages.");
 FLAG(PR_HEADER, String, 'h', "header", "Use this page header.");
 FLAG(PR_LENGTH, String, 'l', "length", "Use this page length.");
@@ -36,15 +42,16 @@ FLAG(PR_NUMBER, Bool, 'n', "number-lines", "Number output lines.");
 FLAG(PR_OFFSET, String, 'o', "indent", "Indent each output line.");
 FLAG(PR_NO_ERRORS, Bool, 'r', "no-file-warnings", "Suppress file warnings.");
 FLAG(PR_NO_HEADER, Bool, 't', "omit-header", "Omit page headers and trailers.");
-FLAG(PR_SEPARATOR, String, 's', "separator",
-     "Separate columns with this text.");
+FLAG(
+    PR_SEPARATOR, String, 's', "separator", "Separate columns with this text.");
 FLAG(PR_WIDTH, String, 'w', "width", "Use this page width.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Pr);
 
 namespace koshka::koshkit {
 
-static fn parse_pr_number(StringView text) wontthrow -> Maybe<usize>
+static fn
+parse_pr_number(StringView text) wontthrow -> Maybe<usize>
 {
   let const parsed = utils::parse_decimal_u64(text);
 
@@ -55,31 +62,33 @@ static fn parse_pr_number(StringView text) wontthrow -> Maybe<usize>
   return static_cast<usize>(parsed.value());
 }
 
-static fn append_pr_indent(String &output, usize offset) throws -> void
+static fn
+append_pr_indent(String &output, usize offset) throws -> void
 {
   for (usize position = 0; position < offset; position++)
     output += ' ';
 }
 
-static constexpr usize PR_FRAME_LINE_COUNT = 10;
-static constexpr usize PR_TAB_WIDTH = 8;
+static constexpr usize PR_FRAME_LINE_COUNT   = 10;
+static constexpr usize PR_TAB_WIDTH          = 8;
 static constexpr usize PR_NUMBER_DIGIT_COUNT = 5;
 static constexpr usize PR_NUMBER_FIELD_WIDTH = 8;
 
 struct pr_layout
 {
-  usize offset{0};
-  usize column_count{1};
-  usize column_width{0};
-  usize number_width{0};
+  usize      offset{0};
+  usize      column_count{1};
+  usize      column_width{0};
+  usize      number_width{0};
   StringView separator{};
-  bool is_multicolumn{false};
-  bool is_aligned{false};
-  bool is_merge{false};
-  bool is_numbered{false};
-  bool should_expand_tabs{false};
+  bool       is_multicolumn{false};
+  bool       is_aligned{false};
+  bool       is_merge{false};
+  bool       is_numbered{false};
+  bool       should_expand_tabs{false};
 
-  pure fn get_column_start(usize column) const wontthrow -> usize
+  pure fn
+  get_column_start(usize column) const wontthrow -> usize
   {
     if (column == 0) return offset;
 
@@ -93,8 +102,8 @@ struct pr_layout
 struct pr_row_entry
 {
   StringView text{};
-  u64 number{0};
-  bool is_present{false};
+  u64        number{0};
+  bool       is_present{false};
 };
 
 class PrRowWriter
@@ -105,13 +114,15 @@ public:
         m_should_tabify(should_tabify)
   {}
 
-  fn begin_row() wontthrow -> void
+  fn
+  begin_row() wontthrow -> void
   {
-    m_position = 0;
+    m_position            = 0;
     m_pending_space_count = 0;
   }
 
-  fn pad_to(usize target) throws -> void
+  fn
+  pad_to(usize target) throws -> void
   {
     if (m_should_tabify) {
       m_pending_space_count = target > m_position ? target - m_position : 0;
@@ -125,7 +136,8 @@ public:
     }
   }
 
-  fn add_space() throws -> void
+  fn
+  add_space() throws -> void
   {
     if (m_should_tabify) {
       m_pending_space_count++;
@@ -137,7 +149,8 @@ public:
     m_position++;
   }
 
-  fn add_byte(char byte) throws -> void
+  fn
+  add_byte(char byte) throws -> void
   {
     flush_spaces();
     m_output += byte;
@@ -149,7 +162,8 @@ public:
     }
   }
 
-  fn add_text(StringView text) throws -> void
+  fn
+  add_text(StringView text) throws -> void
   {
     for (usize index = 0; index < text.length; index++) {
       if (text[index] == ' ') {
@@ -160,9 +174,14 @@ public:
     }
   }
 
-  fn discard_spaces() wontthrow -> void { m_pending_space_count = 0; }
+  fn
+  discard_spaces() wontthrow -> void
+  {
+    m_pending_space_count = 0;
+  }
 
-  fn flush_spaces() throws -> void
+  fn
+  flush_spaces() throws -> void
   {
     let const goal = m_position + m_pending_space_count;
 
@@ -182,7 +201,8 @@ public:
     m_pending_space_count = 0;
   }
 
-  fn end_row() throws -> void
+  fn
+  end_row() throws -> void
   {
     m_pending_space_count = 0;
     m_output += '\n';
@@ -190,13 +210,16 @@ public:
 
 private:
   String &m_output;
-  usize m_position{0};
-  usize m_pending_space_count{0};
-  bool m_should_tabify;
+  usize   m_position{0};
+  usize   m_pending_space_count{0};
+  bool    m_should_tabify;
 };
 
-static fn append_pr_number(PrRowWriter &writer, const pr_layout &layout,
-                           u64 number, Allocator allocator) throws -> void
+static fn
+append_pr_number(PrRowWriter     &writer,
+                 const pr_layout &layout,
+                 u64              number,
+                 Allocator        allocator) throws -> void
 {
   let const digits = String::from(number, allocator);
   let const shown =
@@ -224,8 +247,11 @@ static fn append_pr_number(PrRowWriter &writer, const pr_layout &layout,
   }
 }
 
-static fn append_pr_text(PrRowWriter &writer, const pr_layout &layout,
-                         StringView text, usize input_position) throws -> void
+static fn
+append_pr_text(PrRowWriter     &writer,
+               const pr_layout &layout,
+               StringView       text,
+               usize            input_position) throws -> void
 {
   let const has_width_limit = layout.is_aligned;
 
@@ -268,9 +294,11 @@ static fn append_pr_text(PrRowWriter &writer, const pr_layout &layout,
   }
 }
 
-static fn append_pr_row(PrRowWriter &writer, const pr_layout &layout,
-                        const ArrayList<pr_row_entry> &row,
-                        Allocator allocator) throws -> void
+static fn
+append_pr_row(PrRowWriter                   &writer,
+              const pr_layout               &layout,
+              const ArrayList<pr_row_entry> &row,
+              Allocator                      allocator) throws -> void
 {
   writer.begin_row();
   bool has_printed_column = false;
@@ -280,7 +308,7 @@ static fn append_pr_row(PrRowWriter &writer, const pr_layout &layout,
     if (!entry.is_present && !layout.is_merge) break;
 
     if (layout.is_aligned) {
-      let const start = layout.get_column_start(column);
+      let const start           = layout.get_column_start(column);
       let const separator_width = column == 0 ? 0 : layout.separator.length;
       writer.pad_to(start > separator_width ? start - separator_width : 0);
     } else if (column == 0) {
@@ -312,21 +340,22 @@ static fn append_pr_row(PrRowWriter &writer, const pr_layout &layout,
   writer.end_row();
 }
 
-fn Pr::execute(const ExecContext &ec, EvalContext &cxt,
-               const ArrayList<String> &args,
-               const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+fn
+Pr::execute(const ExecContext               &ec,
+            EvalContext                     &cxt,
+            const ArrayList<String>         &args,
+            const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
-  let filtered_args = ArrayList<String>{cxt.scratch_allocator()};
+  let filtered_args      = ArrayList<String>{cxt.scratch_allocator()};
   let filtered_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};
   filtered_args.push(args[0].clone());
   filtered_locations.push(arg_locations[0]);
-  usize column_count = 1;
-  usize first_page = 1;
-  usize last_page = SIZE_MAX;
+  usize                 column_count = 1;
+  usize                 first_page   = 1;
+  usize                 last_page    = SIZE_MAX;
   Maybe<SourceLocation> column_count_location;
-  Maybe<StringView> attached_separator;
-  bool has_ended_options = false;
+  Maybe<StringView>     attached_separator;
+  bool                  has_ended_options = false;
 
   for (usize index = 1; index < args.count(); index++) {
     let const argument = args[index].view();
@@ -342,9 +371,9 @@ fn Pr::execute(const ExecContext &ec, EvalContext &cxt,
       continue;
     }
 
-    let numeric = argument;
-    bool is_page = false;
-    bool is_column = false;
+    let   numeric        = argument;
+    bool  is_page        = false;
+    bool  is_column      = false;
     usize consumed_count = 0;
     if (numeric.length > 1 && numeric[0] == '+') {
       is_page = true;
@@ -353,34 +382,34 @@ fn Pr::execute(const ExecContext &ec, EvalContext &cxt,
                numeric[1] <= '9')
     {
       is_column = true;
-      numeric = numeric.substring(1);
+      numeric   = numeric.substring(1);
     } else if (argument.starts_with("--pages") ||
                argument.starts_with("--columns"))
     {
       let const name_length =
           argument.starts_with("--pages") ? usize{7} : usize{9};
-      is_page = name_length == 7;
+      is_page   = name_length == 7;
       is_column = !is_page;
       if (argument.length > name_length && argument[name_length] == '=') {
         numeric = argument.substring(name_length + 1);
       } else if (argument.length == name_length && index + 1 < args.count()) {
-        numeric = args[index + 1].view();
+        numeric        = args[index + 1].view();
         consumed_count = 1;
       } else {
-        is_page = false;
+        is_page   = false;
         is_column = false;
       }
     }
     if (is_page || is_column) {
-      let page_text = numeric;
+      let page_text      = numeric;
       let last_page_text = StringView{};
       if (is_page) {
         if (let const colon = numeric.find_character(':'); colon.has_value()) {
-          page_text = numeric.substring_of_length(0, *colon);
+          page_text      = numeric.substring_of_length(0, *colon);
           last_page_text = numeric.substring(*colon + 1);
         }
       }
-      let const parsed = parse_pr_number(page_text);
+      let const parsed      = parse_pr_number(page_text);
       let const parsed_last = last_page_text.is_empty()
                                   ? Maybe<usize>{}
                                   : parse_pr_number(last_page_text);
@@ -411,9 +440,9 @@ fn Pr::execute(const ExecContext &ec, EvalContext &cxt,
 
       if (is_page) {
         first_page = *parsed;
-        last_page = parsed_last.has_value() ? *parsed_last : SIZE_MAX;
+        last_page  = parsed_last.has_value() ? *parsed_last : SIZE_MAX;
       } else {
-        column_count = *parsed;
+        column_count          = *parsed;
         column_count_location = arg_locations[index];
       }
 
@@ -488,10 +517,10 @@ fn Pr::execute(const ExecContext &ec, EvalContext &cxt,
 
   let const sources =
       source_list_from_operands(operands, cxt.scratch_allocator());
-  let output = String{cxt.scratch_allocator()};
-  i32 status = 0;
+  let                    output              = String{cxt.scratch_allocator()};
+  i32                    status              = 0;
   static constexpr usize OUTPUT_FLUSH_LENGTH = 64 * 1024;
-  let const do_flush_output = [&]() throws -> void {
+  let const              do_flush_output     = [&]() throws -> void {
     if (output.length() < OUTPUT_FLUSH_LENGTH) return;
     ec.print_to_stdout(output);
     output.clear();
@@ -503,14 +532,14 @@ fn Pr::execute(const ExecContext &ec, EvalContext &cxt,
   };
 
   let &scratch_arena = cxt.expansion_store().scratch_arena();
-  let owned_inputs = ArrayList<os::descriptor>{cxt.scratch_allocator()};
+  let  owned_inputs  = ArrayList<os::descriptor>{cxt.scratch_allocator()};
   defer
   {
     for (let const descriptor : owned_inputs)
       os::close_fd(descriptor);
   };
-  i64 opened_modification_time = 0;
-  let const do_open_reader = [&](StringView source)
+  i64       opened_modification_time = 0;
+  let const do_open_reader           = [&](StringView source)
                                  throws -> utils::BufferedLineReader * {
     let const input = open_named_or_stdin(ec, source);
     if (!input.has_value()) {
@@ -520,7 +549,7 @@ fn Pr::execute(const ExecContext &ec, EvalContext &cxt,
     }
 
     opened_modification_time = os::current_unix_seconds();
-    let input_status = os::file_status{};
+    let input_status         = os::file_status{};
     if (source != "-" && os::stat_descriptor(input->descriptor, input_status))
       opened_modification_time = input_status.modification_time;
     if (input->mode == input_descriptor_mode::Owned)
@@ -535,9 +564,9 @@ fn Pr::execute(const ExecContext &ec, EvalContext &cxt,
   let const body_line_count =
       has_page_frame ? page_length - PR_FRAME_LINE_COUNT : page_length;
   let const is_double_space = FLAG_PR_DOUBLE_SPACE.is_enabled();
-  let const rows_per_page = !is_double_space      ? body_line_count
-                            : body_line_count < 2 ? 1
-                                                  : body_line_count / 2;
+  let const rows_per_page   = !is_double_space      ? body_line_count
+                              : body_line_count < 2 ? 1
+                                                    : body_line_count / 2;
   let const page_line_capacity =
       is_double_space ? rows_per_page * 2 : body_line_count;
   let const is_numbered = FLAG_PR_NUMBER.is_enabled();
@@ -548,7 +577,7 @@ fn Pr::execute(const ExecContext &ec, EvalContext &cxt,
   let const separator_text = attached_separator.has_value()
                                  ? *attached_separator
                                  : FLAG_PR_SEPARATOR.value();
-  let const start_time = os::current_unix_seconds();
+  let const start_time     = os::current_unix_seconds();
 
   let readers = ArrayList<utils::BufferedLineReader *>{cxt.scratch_allocator()};
   let reader_sources = ArrayList<StringView>{cxt.scratch_allocator()};
@@ -564,7 +593,7 @@ fn Pr::execute(const ExecContext &ec, EvalContext &cxt,
   }
 
   let const effective_column_count = is_merge ? readers.count() : column_count;
-  let const is_multicolumn = effective_column_count > 1;
+  let const is_multicolumn         = effective_column_count > 1;
   let const is_aligned =
       is_multicolumn && (FLAG_PR_WIDTH.is_set() || !has_separator_option);
   let separator = StringView{};
@@ -577,20 +606,20 @@ fn Pr::execute(const ExecContext &ec, EvalContext &cxt,
     separator = separator_text.is_empty() ? StringView{"\t"} : separator_text;
   }
 
-  let layout = pr_layout{};
-  layout.offset = offset;
-  layout.column_count = effective_column_count;
-  layout.separator = separator;
-  layout.is_multicolumn = is_multicolumn;
-  layout.is_aligned = is_aligned;
-  layout.is_merge = is_merge;
-  layout.is_numbered = is_numbered;
+  let layout                = pr_layout{};
+  layout.offset             = offset;
+  layout.column_count       = effective_column_count;
+  layout.separator          = separator;
+  layout.is_multicolumn     = is_multicolumn;
+  layout.is_aligned         = is_aligned;
+  layout.is_merge           = is_merge;
+  layout.is_numbered        = is_numbered;
   layout.should_expand_tabs = is_multicolumn && separator != "\t";
-  layout.number_width = is_numbered ? PR_NUMBER_FIELD_WIDTH : 0;
+  layout.number_width       = is_numbered ? PR_NUMBER_FIELD_WIDTH : 0;
   if (is_multicolumn) {
     let const merge_number_width = is_merge ? layout.number_width : 0;
     let const separator_width = (effective_column_count - 1) * separator.length;
-    let const used_width = separator_width + merge_number_width;
+    let const used_width      = separator_width + merge_number_width;
     layout.column_width = page_width > used_width ? (page_width - used_width) /
                                                         effective_column_count
                                                   : 0;
@@ -609,7 +638,7 @@ fn Pr::execute(const ExecContext &ec, EvalContext &cxt,
     return 1;
   }
 
-  let writer = PrRowWriter{output, is_multicolumn};
+  let       writer = PrRowWriter{output, is_multicolumn};
   BumpArena page_arena{};
   let const page_allocator = bump_allocator(page_arena);
 
@@ -653,7 +682,7 @@ fn Pr::execute(const ExecContext &ec, EvalContext &cxt,
   };
 
   let const do_append_row = [&](const ArrayList<pr_row_entry> &row,
-                                bool is_input_exhausted,
+                                bool   is_input_exhausted,
                                 usize &emitted_line_count) throws -> void {
     append_pr_row(writer, layout, row, page_allocator);
     emitted_line_count++;
@@ -670,8 +699,8 @@ fn Pr::execute(const ExecContext &ec, EvalContext &cxt,
     let const date_text = os::format_local_time(date_format, start_time);
     let const title =
         FLAG_PR_HEADER.is_set() ? FLAG_PR_HEADER.value() : StringView{};
-    usize page_number = 1;
-    u64 row_number = 1;
+    usize page_number       = 1;
+    u64   row_number        = 1;
     usize open_reader_count = readers.count();
 
     while (open_reader_count > 0 && page_number <= last_page) {
@@ -685,7 +714,7 @@ fn Pr::execute(const ExecContext &ec, EvalContext &cxt,
         bool has_line = false;
 
         for (usize column = 0; column < readers.count(); column++) {
-          let entry = pr_row_entry{};
+          let entry    = pr_row_entry{};
           entry.number = row_number;
           if (readers[column] != nullptr) {
             let const result = readers[column]->next();
@@ -695,7 +724,7 @@ fn Pr::execute(const ExecContext &ec, EvalContext &cxt,
                                                readers[column]->get_line())
                                ->view();
               entry.is_present = true;
-              has_line = true;
+              has_line         = true;
             } else {
               if (result == utils::BufferedLineReader::Result::Error) {
                 if (os::INTERRUPT_REQUESTED) return 130;
@@ -738,16 +767,16 @@ fn Pr::execute(const ExecContext &ec, EvalContext &cxt,
   }
 
   let const page_entry_capacity = rows_per_page * effective_column_count;
-  let const do_append_source = [&](StringView source,
+  let const do_append_source    = [&](StringView                 source,
                                    utils::BufferedLineReader &reader,
                                    i64 modification_time) throws -> bool {
     let const date_text = os::format_local_time(date_format, modification_time);
-    let const title = FLAG_PR_HEADER.is_set() ? FLAG_PR_HEADER.value()
-                      : source == "-"         ? StringView{}
-                                              : source;
-    usize page_number = 1;
-    u64 line_number = 1;
-    bool has_ended = false;
+    let const title     = FLAG_PR_HEADER.is_set() ? FLAG_PR_HEADER.value()
+                             : source == "-"         ? StringView{}
+                                                     : source;
+    usize     page_number = 1;
+    u64       line_number = 1;
+    bool      has_ended   = false;
 
     while (!has_ended && page_number <= last_page) {
       let const page_mark = page_arena.mark();
@@ -779,11 +808,11 @@ fn Pr::execute(const ExecContext &ec, EvalContext &cxt,
 
       if (has_page_frame)
         do_append_header(date_text.view(), title, page_number);
-      let const entry_count = lines.count();
+      let const entry_count          = lines.count();
       let const column_count_on_page = effective_column_count;
-      let column_starts = ArrayList<usize>{page_allocator};
-      let column_lengths = ArrayList<usize>{page_allocator};
-      usize row_count = 0;
+      let       column_starts        = ArrayList<usize>{page_allocator};
+      let       column_lengths       = ArrayList<usize>{page_allocator};
+      usize     row_count            = 0;
       if (column_count_on_page > 1 && !FLAG_PR_ACROSS.is_enabled()) {
         usize next_start = 0;
 
@@ -803,26 +832,26 @@ fn Pr::execute(const ExecContext &ec, EvalContext &cxt,
       }
 
       usize emitted_line_count = 0;
-      let row = ArrayList<pr_row_entry>{page_allocator};
+      let   row                = ArrayList<pr_row_entry>{page_allocator};
 
       for (usize row_index = 0; row_index < row_count; row_index++) {
         row.clear();
         usize present_count = 0;
 
         for (usize column = 0; column < column_count_on_page; column++) {
-          let entry = pr_row_entry{};
+          let entry       = pr_row_entry{};
           let entry_index = usize{0};
-          let is_present = false;
+          let is_present  = false;
           if (column_starts.is_empty()) {
             entry_index = row_index * column_count_on_page + column;
-            is_present = entry_index < entry_count;
+            is_present  = entry_index < entry_count;
           } else {
             entry_index = column_starts[column] + row_index;
-            is_present = row_index < column_lengths[column];
+            is_present  = row_index < column_lengths[column];
           }
           if (is_present) {
-            entry.text = lines[entry_index].view();
-            entry.number = page_line_number + entry_index;
+            entry.text       = lines[entry_index].view();
+            entry.number     = page_line_number + entry_index;
             entry.is_present = true;
             present_count++;
           }

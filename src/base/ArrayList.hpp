@@ -29,8 +29,8 @@ struct order_comparator
 
   explicit order_comparator(sort_order order) : order(order) {}
 
-  mustuse pure fn operator()(const T &left,
-                             const T &right) const wontthrow->bool
+  mustuse pure fn
+  operator()(const T &left, const T &right) const wontthrow->bool
   {
     return order == sort_order::ascending ? left < right : right < left;
   }
@@ -70,7 +70,9 @@ public:
       push(element);
   }
 
-  cold ArrayList(const ArrayList &other) : ArrayList(other.m_allocator)
+  cold
+  ArrayList(const ArrayList &other)
+      : ArrayList(other.m_allocator)
   {
     reserve(other.m_length);
 
@@ -80,33 +82,39 @@ public:
     }
   }
 
-  mustuse cold fn clone() const throws -> ArrayList { return ArrayList{*this}; }
+  mustuse cold fn
+  clone() const throws -> ArrayList
+  {
+    return ArrayList{*this};
+  }
 
   ArrayList(ArrayList &&other) noexcept
       : m_allocator(other.m_allocator), m_data(other.m_data),
         m_length(other.m_length), m_capacity(other.m_capacity)
   {
-    other.m_data = nullptr;
-    other.m_length = 0;
+    other.m_data     = nullptr;
+    other.m_length   = 0;
     other.m_capacity = 0;
   }
 
-  fn operator=(ArrayList &&other) wontthrow->ArrayList &
+  fn
+  operator=(ArrayList &&other) wontthrow->ArrayList &
   {
     if (this != &other) {
       destroy_all();
-      m_allocator = other.m_allocator;
-      m_data = other.m_data;
-      m_length = other.m_length;
-      m_capacity = other.m_capacity;
-      other.m_data = nullptr;
-      other.m_length = 0;
+      m_allocator      = other.m_allocator;
+      m_data           = other.m_data;
+      m_length         = other.m_length;
+      m_capacity       = other.m_capacity;
+      other.m_data     = nullptr;
+      other.m_length   = 0;
       other.m_capacity = 0;
     }
 
     return *this;
   }
-  cold fn operator=(const ArrayList &other) throws->ArrayList &
+  cold fn
+  operator=(const ArrayList &other) throws->ArrayList &
   {
     if (this != &other) {
       ArrayList copy{other};
@@ -118,16 +126,30 @@ public:
 
   ~ArrayList() { destroy_all(); }
 
-  hot mustuse pure fn count() const wontthrow -> usize { return m_length; }
-  mustuse pure fn capacity() const wontthrow -> usize { return m_capacity; }
-  mustuse pure fn is_empty() const wontthrow -> bool { return m_length == 0; }
-  hot mustuse pure fn operator[](usize i) wontthrow->T &
+  hot mustuse pure fn
+  count() const wontthrow -> usize
+  {
+    return m_length;
+  }
+  mustuse pure fn
+  capacity() const wontthrow -> usize
+  {
+    return m_capacity;
+  }
+  mustuse pure fn
+  is_empty() const wontthrow -> bool
+  {
+    return m_length == 0;
+  }
+  hot mustuse pure fn
+  operator[](usize i) wontthrow->T &
   {
     ASSERT(i < m_length, "array index is past the end");
 
     return m_data[i];
   }
-  hot mustuse pure fn operator[](usize i) const wontthrow->const T &
+  hot mustuse pure fn
+  operator[](usize i) const wontthrow->const T &
   {
     ASSERT(i < m_length, "array index is past the end");
 
@@ -157,18 +179,32 @@ public:
     return !(*this == other);
   }
 
-  hot mustuse pure fn begin() wontthrow -> T * { return m_data; }
-  hot mustuse pure fn end() wontthrow -> T * { return m_data + m_length; }
-  hot mustuse pure fn begin() const wontthrow -> const T * { return m_data; }
-  hot mustuse pure fn end() const wontthrow -> const T *
+  hot mustuse pure fn
+  begin() wontthrow -> T *
+  {
+    return m_data;
+  }
+  hot mustuse pure fn
+  end() wontthrow -> T *
+  {
+    return m_data + m_length;
+  }
+  hot mustuse pure fn
+  begin() const wontthrow -> const T *
+  {
+    return m_data;
+  }
+  hot mustuse pure fn
+  end() const wontthrow -> const T *
   {
     return m_data + m_length;
   }
 
   template <class Wanted>
-  hot mustuse pure fn find(const Wanted &wanted) const throws -> Maybe<usize>
+  hot mustuse pure fn
+  find(const Wanted &wanted) const throws -> Maybe<usize>
   {
-    using value_type = std::remove_cv_t<T>;
+    using value_type  = std::remove_cv_t<T>;
     using wanted_type = std::remove_cv_t<Wanted>;
 
     if constexpr (std::is_same_v<value_type, wanted_type> &&
@@ -176,8 +212,8 @@ public:
                    std::is_enum_v<value_type>) &&
                   sizeof(value_type) < sizeof(u64))
     {
-      constexpr usize LANES = sizeof(u64) / sizeof(value_type);
-      usize element_index = 0;
+      constexpr usize LANES         = sizeof(u64) / sizeof(value_type);
+      usize           element_index = 0;
 
       for (; element_index + LANES <= m_length; element_index += LANES) {
         u64 match_mask = 0;
@@ -205,15 +241,15 @@ public:
     {
       using scalar_type = typename array_list_find_scalar<value_type>::type;
       typedef scalar_type vector_type __attribute__((vector_size(16)));
-      let const scalar_wanted = static_cast<scalar_type>(wanted);
-      vector_type needles = {scalar_wanted, scalar_wanted};
-      usize element_index = 0;
+      let const           scalar_wanted = static_cast<scalar_type>(wanted);
+      vector_type         needles       = {scalar_wanted, scalar_wanted};
+      usize               element_index = 0;
 
       for (; element_index + 2 <= m_length; element_index += 2) {
         vector_type values;
         __builtin_memcpy(&values, m_data + element_index, sizeof(values));
         let const is_match = values == needles;
-        u64 match_values[2];
+        u64       match_values[2];
         __builtin_memcpy(match_values, &is_match, sizeof(match_values));
         if (match_values[0] != 0) return element_index;
         if (match_values[1] != 0) return element_index + 1;
@@ -233,29 +269,37 @@ public:
     return None;
   }
 
-  hot fn push(T value) throws -> void
+  hot fn
+  push(T value) throws -> void
   {
     if (m_length == m_capacity) rarely reserve(m_length + 1);
     new (&m_data[m_length]) T(steal(value));
     m_length++;
   }
 
-  pure fn allocator() const wontthrow -> Allocator { return m_allocator; }
+  pure fn
+  allocator() const wontthrow -> Allocator
+  {
+    return m_allocator;
+  }
 
   template <typename... Args>
-  hot fn push_managed(Args &&...args) throws -> void
+  hot fn
+  push_managed(Args &&...args) throws -> void
   {
     push(T{m_allocator, static_cast<Args &&>(args)...});
   }
 
-  fn pop_back() wontthrow -> void
+  fn
+  pop_back() wontthrow -> void
   {
     ASSERT(m_length > 0, "pop_back on an empty list");
     m_length--;
     if constexpr (!std::is_trivially_destructible_v<T>) m_data[m_length].~T();
   }
 
-  fn truncate(usize kept_count) wontthrow -> void
+  fn
+  truncate(usize kept_count) wontthrow -> void
   {
     ASSERT(kept_count <= m_length, "truncate past the end of the list");
     if constexpr (std::is_trivially_destructible_v<T>) {
@@ -270,7 +314,8 @@ public:
     }
   }
 
-  fn remove(usize index) throws -> void
+  fn
+  remove(usize index) throws -> void
   {
     ASSERT(index < m_length, "remove past the end of the list");
     if constexpr (std::is_trivially_copyable_v<T>) {
@@ -286,7 +331,8 @@ public:
     if constexpr (!std::is_trivially_destructible_v<T>) m_data[m_length].~T();
   }
 
-  fn clear() wontthrow -> void
+  fn
+  clear() wontthrow -> void
   {
     if constexpr (!std::is_trivially_destructible_v<T>)
       for (usize i = 0; i < m_length; i++)
@@ -295,39 +341,48 @@ public:
     m_length = 0;
   }
 
-  fn release() wontthrow -> void { destroy_all(); }
+  fn
+  release() wontthrow -> void
+  {
+    destroy_all();
+  }
 
-  hot mustuse pure fn back() wontthrow -> T &
+  hot mustuse pure fn
+  back() wontthrow -> T &
   {
     ASSERT(m_length > 0, "back() on an empty list");
 
     return m_data[m_length - 1];
   }
-  hot mustuse pure fn back() const wontthrow -> const T &
+  hot mustuse pure fn
+  back() const wontthrow -> const T &
   {
     ASSERT(m_length > 0, "back() on an empty list");
 
     return m_data[m_length - 1];
   }
-  mustuse pure fn front() wontthrow -> T &
+  mustuse pure fn
+  front() wontthrow -> T &
   {
     ASSERT(m_length > 0, "front() on an empty list");
 
     return m_data[0];
   }
-  mustuse pure fn front() const wontthrow -> const T &
+  mustuse pure fn
+  front() const wontthrow -> const T &
   {
     ASSERT(m_length > 0, "front() on an empty list");
 
     return m_data[0];
   }
 
-  cold fn reserve(usize needed) throws -> void
+  cold fn
+  reserve(usize needed) throws -> void
   {
     if (needed <= m_capacity) return;
     if (needed > MAXIMUM_ELEMENT_COUNT) rarely throw std::bad_alloc{};
 
-    constexpr usize INITIAL_ALLOCATION_BYTES = 64;
+    constexpr usize INITIAL_ALLOCATION_BYTES      = 64;
     constexpr usize MAXIMUM_INITIAL_ELEMENT_COUNT = 16;
     constexpr usize INITIAL_ELEMENT_COUNT =
         sizeof(T) >= INITIAL_ALLOCATION_BYTES
@@ -364,18 +419,19 @@ public:
       throw;
     }
     if (m_data != nullptr) m_allocator.free_array(m_data, m_capacity);
-    m_data = fresh;
+    m_data     = fresh;
     m_capacity = static_cast<u32>(new_capacity);
   }
 
-  cold fn move_to_allocator(Allocator allocator) throws -> void
+  cold fn
+  move_to_allocator(Allocator allocator) throws -> void
   {
     if (m_allocator == allocator) return;
 
     if (m_length == 0) {
       if (m_data != nullptr) m_allocator.free_array(m_data, m_capacity);
-      m_data = nullptr;
-      m_capacity = 0;
+      m_data      = nullptr;
+      m_capacity  = 0;
       m_allocator = allocator;
 
       return;
@@ -391,16 +447,17 @@ public:
 
     m_allocator.free_array(m_data, m_capacity);
     m_allocator = allocator;
-    m_data = fresh;
-    m_capacity = m_length;
+    m_data      = fresh;
+    m_capacity  = m_length;
   }
 
-  cold fn shrink_to_fit() throws -> void
+  cold fn
+  shrink_to_fit() throws -> void
   {
     if (m_length == m_capacity) return;
     if (m_length == 0) {
       if (m_data != nullptr) m_allocator.free_array(m_data, m_capacity);
-      m_data = nullptr;
+      m_data     = nullptr;
       m_capacity = 0;
 
       return;
@@ -413,12 +470,13 @@ public:
       throw;
     }
     m_allocator.free_array(m_data, m_capacity);
-    m_data = fresh;
+    m_data     = fresh;
     m_capacity = m_length;
   }
 
   template <typename Compare>
-  fn sort(Compare is_less) throws -> void
+  fn
+  sort(Compare is_less) throws -> void
   {
     if (m_length < 2) return;
 
@@ -436,23 +494,28 @@ public:
     intro_sort_range(0, m_length, allowed_unbalanced_count, true, is_less);
   }
 
-  fn sort() throws -> void
+  fn
+  sort() throws -> void
   {
     sort([](const T &a, const T &b) { return a < b; });
   }
 
   template <class Compare>
-      mustuse cold fn make_sorted(Compare compare) &&
+      mustuse cold fn
+      make_sorted(Compare compare) &&
       throws -> SortedArrayList<T, std::decay_t<Compare>>;
 
   template <class Compare>
-      mustuse cold fn make_sorted(Compare compare) const
+      mustuse cold fn
+      make_sorted(Compare compare) const
       & throws -> SortedArrayList<T, std::decay_t<Compare>>;
 
-  mustuse cold fn make_sorted(sort_order order) &&
+  mustuse cold fn
+      make_sorted(sort_order order) &&
       throws -> SortedArrayList<T, order_comparator<T>>;
 
-  mustuse cold fn make_sorted(sort_order order) const
+  mustuse cold fn
+      make_sorted(sort_order order) const
       & throws -> SortedArrayList<T, order_comparator<T>>;
 
 private:
@@ -462,11 +525,12 @@ private:
   friend class SortedArrayList;
   ArrayList() : m_allocator(fake_allocator()) {}
 
-  static constexpr usize INSERTION_SORT_THRESHOLD = 16;
-  static constexpr usize NINTHER_THRESHOLD = 128;
+  static constexpr usize INSERTION_SORT_THRESHOLD     = 16;
+  static constexpr usize NINTHER_THRESHOLD            = 128;
   static constexpr usize PARTIAL_INSERTION_MOVE_LIMIT = 8;
 
-  fn insert_at(usize index, T value) throws -> void
+  fn
+  insert_at(usize index, T value) throws -> void
   {
     ASSERT(index <= m_length, "array insertion is past the end");
     if (index == m_length) {
@@ -492,7 +556,8 @@ private:
     m_length++;
   }
 
-  fn relocate_to(T *fresh) throws -> void
+  fn
+  relocate_to(T *fresh) throws -> void
   {
     if constexpr (std::is_trivially_copyable_v<T>) {
       if (m_length > 0) __builtin_memcpy(fresh, m_data, m_length * sizeof(T));
@@ -521,17 +586,19 @@ private:
       m_data[i].~T();
   }
 
-  alwaysinline fn swap_elements(usize first, usize second) throws -> void
+  alwaysinline fn
+  swap_elements(usize first, usize second) throws -> void
   {
     if (first == second) return;
 
-    T temporary = steal(m_data[first]);
-    m_data[first] = steal(m_data[second]);
+    T temporary    = steal(m_data[first]);
+    m_data[first]  = steal(m_data[second]);
     m_data[second] = steal(temporary);
   }
 
   template <typename Compare>
-  fn sort_three(usize first, usize middle, usize last, Compare &is_less) throws
+  fn
+  sort_three(usize first, usize middle, usize last, Compare &is_less) throws
       -> void
   {
     if (is_less(m_data[middle], m_data[first])) swap_elements(middle, first);
@@ -540,7 +607,8 @@ private:
   }
 
   template <typename Compare>
-  fn select_pivot(usize first, usize last, Compare &is_less) throws -> void
+  fn
+  select_pivot(usize first, usize last, Compare &is_less) throws -> void
   {
     let const length = last - first;
     let const middle = first + length / 2;
@@ -556,11 +624,14 @@ private:
   }
 
   template <typename Compare>
-  fn partition_right(usize first, usize last, Compare &is_less,
-                     bool &was_partitioned) throws -> usize
+  fn
+  partition_right(usize    first,
+                  usize    last,
+                  Compare &is_less,
+                  bool    &was_partitioned) throws -> usize
   {
-    T pivot = steal(m_data[first]);
-    usize left = first;
+    T     pivot = steal(m_data[first]);
+    usize left  = first;
     usize right = last;
 
     do {
@@ -600,10 +671,11 @@ private:
   }
 
   template <typename Compare>
-  fn partition_left(usize first, usize last, Compare &is_less) throws -> usize
+  fn
+  partition_left(usize first, usize last, Compare &is_less) throws -> usize
   {
-    T pivot = steal(m_data[first]);
-    usize left = first;
+    T     pivot = steal(m_data[first]);
+    usize left  = first;
     usize right = last;
 
     do {
@@ -640,7 +712,8 @@ private:
     return pivot_position;
   }
 
-  fn break_partition_patterns(usize first, usize last) throws -> void
+  fn
+  break_partition_patterns(usize first, usize last) throws -> void
   {
     let const length = last - first;
     if (length < INSERTION_SORT_THRESHOLD) return;
@@ -657,8 +730,9 @@ private:
   }
 
   template <typename Compare>
-  fn partial_insertion_sort_range(usize first, usize last,
-                                  Compare &is_less) throws -> bool
+  fn
+  partial_insertion_sort_range(usize first, usize last, Compare &is_less) throws
+      -> bool
   {
     usize moved_count = 0;
 
@@ -666,8 +740,8 @@ private:
       if (moved_count > PARTIAL_INSERTION_MOVE_LIMIT) return false;
       if (!is_less(m_data[i], m_data[i - 1])) continue;
 
-      T key = steal(m_data[i]);
-      usize j = i;
+      T     key = steal(m_data[i]);
+      usize j   = i;
 
       do {
         m_data[j] = steal(m_data[j - 1]);
@@ -682,12 +756,12 @@ private:
   }
 
   template <typename Compare>
-  fn insertion_sort_range(usize first, usize last, Compare &is_less) throws
-      -> void
+  fn
+  insertion_sort_range(usize first, usize last, Compare &is_less) throws -> void
   {
     for (usize i = first + 1; i < last; i++) {
-      T key = steal(m_data[i]);
-      usize j = i;
+      T     key = steal(m_data[i]);
+      usize j   = i;
 
       while (j > first && is_less(key, m_data[j - 1])) {
         m_data[j] = steal(m_data[j - 1]);
@@ -699,13 +773,14 @@ private:
   }
 
   template <typename Compare>
-  fn sift_down(usize first, usize root, usize heap_length,
-               Compare &is_less) throws -> void
+  fn
+  sift_down(usize first, usize root, usize heap_length, Compare &is_less) throws
+      -> void
   {
     while (root < heap_length / 2) {
-      let const left = 2 * root + 1;
-      let const right = left + 1;
-      usize largest = root;
+      let const left    = 2 * root + 1;
+      let const right   = left + 1;
+      usize     largest = root;
       if (is_less(m_data[first + largest], m_data[first + left]))
         largest = left;
       if (right < heap_length &&
@@ -721,7 +796,8 @@ private:
   }
 
   template <typename Compare>
-  fn heap_sort_range(usize first, usize last, Compare &is_less) throws -> void
+  fn
+  heap_sort_range(usize first, usize last, Compare &is_less) throws -> void
   {
     let const heap_length = last - first;
 
@@ -735,8 +811,12 @@ private:
   }
 
   template <typename Compare>
-  fn intro_sort_range(usize first, usize last, usize allowed_unbalanced_count,
-                      bool is_leftmost, Compare &is_less) throws -> void
+  fn
+  intro_sort_range(usize    first,
+                   usize    last,
+                   usize    allowed_unbalanced_count,
+                   bool     is_leftmost,
+                   Compare &is_less) throws -> void
   {
     while (last - first > INSERTION_SORT_THRESHOLD) {
       select_pivot(first, last, is_less);
@@ -746,11 +826,11 @@ private:
         continue;
       }
 
-      bool was_partitioned = false;
+      bool      was_partitioned = false;
       let const pivot_position =
           partition_right(first, last, is_less, was_partitioned);
-      let const left_length = pivot_position - first;
-      let const right_length = last - pivot_position - 1;
+      let const left_length     = pivot_position - first;
+      let const right_length    = last - pivot_position - 1;
       let const balanced_length = (last - first) / 8;
       if (left_length < balanced_length || right_length < balanced_length) {
         if (allowed_unbalanced_count == 0) {
@@ -773,7 +853,7 @@ private:
       if (left_length < right_length) {
         intro_sort_range(first, pivot_position, allowed_unbalanced_count,
                          is_leftmost, is_less);
-        first = pivot_position + 1;
+        first       = pivot_position + 1;
         is_leftmost = false;
       } else {
         intro_sort_range(pivot_position + 1, last, allowed_unbalanced_count,
@@ -785,22 +865,23 @@ private:
     insertion_sort_range(first, last, is_less);
   }
 
-  fn destroy_all() wontthrow -> void
+  fn
+  destroy_all() wontthrow -> void
   {
     if constexpr (!std::is_trivially_destructible_v<T>)
       for (usize i = 0; i < m_length; i++)
         m_data[i].~T();
 
     if (m_data != nullptr) m_allocator.free_array(m_data, m_capacity);
-    m_data = nullptr;
-    m_length = 0;
+    m_data     = nullptr;
+    m_length   = 0;
     m_capacity = 0;
   }
 
   Allocator m_allocator;
-  T *m_data{nullptr};
-  u32 m_length{0};
-  u32 m_capacity{0};
+  T        *m_data{nullptr};
+  u32       m_length{0};
+  u32       m_capacity{0};
 };
 
 static_assert(sizeof(usize) != 8 || sizeof(ArrayList<int>) == 24);
@@ -841,7 +922,8 @@ public:
         m_compare(steal(other.m_compare))
   {}
 
-  fn operator=(const SortedArrayList &other) throws->SortedArrayList &
+  fn
+  operator=(const SortedArrayList &other) throws->SortedArrayList &
   {
     if (this != &other) {
       Base::operator=(static_cast<const Base &>(other));
@@ -851,7 +933,8 @@ public:
     return *this;
   }
 
-  fn operator=(SortedArrayList &&other) noexcept(
+  fn
+  operator=(SortedArrayList &&other) noexcept(
       std::is_nothrow_move_assignable_v<Compare>)
       ->SortedArrayList &
   {
@@ -863,18 +946,21 @@ public:
     return *this;
   }
 
-  mustuse cold fn clone() const throws -> SortedArrayList
+  mustuse cold fn
+  clone() const throws -> SortedArrayList
   {
     return SortedArrayList{*this};
   }
 
-  mustuse cold fn into_array_list() && noexcept -> ArrayList<T>
+  mustuse cold fn
+  into_array_list() && noexcept -> ArrayList<T>
   {
     return steal(static_cast<Base &>(*this));
   }
 
   template <class Wanted>
-  hot mustuse pure fn find(const Wanted &wanted) const throws -> Maybe<usize>
+  hot mustuse pure fn
+  find(const Wanted &wanted) const throws -> Maybe<usize>
   {
     let const index = lower_bound(wanted);
     if (index < Base::count() && !m_compare(wanted, Base::operator[](index))) {
@@ -884,23 +970,30 @@ public:
     return None;
   }
 
-  hot fn push(T value) throws -> void
+  hot fn
+  push(T value) throws -> void
   {
     Base::insert_at(lower_bound(value), steal(value));
   }
 
   template <typename... Args>
-  hot fn push_managed(Args &&...args) throws -> void
+  hot fn
+  push_managed(Args &&...args) throws -> void
   {
     push(T{Base::allocator(), static_cast<Args &&>(args)...});
   }
 
-  hot fn sort() throws -> void { Base::sort(m_compare); }
+  hot fn
+  sort() throws -> void
+  {
+    Base::sort(m_compare);
+  }
 
   template <class Wanted>
-  pure fn lower_bound(const Wanted &wanted) const throws -> usize
+  pure fn
+  lower_bound(const Wanted &wanted) const throws -> usize
   {
-    usize low = 0;
+    usize low  = 0;
     usize high = Base::count();
 
     while (low < high) {
@@ -919,14 +1012,16 @@ private:
 };
 
 template <class T>
-    mustuse cold auto ArrayList<T>::make_sorted(sort_order order) &&
+    mustuse cold auto
+    ArrayList<T>::make_sorted(sort_order order) &&
     throws -> SortedArrayList<T, order_comparator<T>>
 {
   return SortedArrayList<T, order_comparator<T>>{steal(*this), order};
 }
 
 template <class T>
-    mustuse cold auto ArrayList<T>::make_sorted(sort_order order) const
+    mustuse cold auto
+    ArrayList<T>::make_sorted(sort_order order) const
     & throws -> SortedArrayList<T, order_comparator<T>>
 {
   return SortedArrayList<T, order_comparator<T>>{clone(), order};
@@ -934,7 +1029,8 @@ template <class T>
 
 template <class T>
     template <class Compare>
-    mustuse cold auto ArrayList<T>::make_sorted(Compare compare) &&
+    mustuse cold auto
+    ArrayList<T>::make_sorted(Compare compare) &&
     throws -> SortedArrayList<T, std::decay_t<Compare>>
 {
   using sorted_type = SortedArrayList<T, std::decay_t<Compare>>;
@@ -944,7 +1040,8 @@ template <class T>
 
 template <class T>
     template <class Compare>
-    mustuse cold auto ArrayList<T>::make_sorted(Compare compare) const
+    mustuse cold auto
+    ArrayList<T>::make_sorted(Compare compare) const
     & throws -> SortedArrayList<T, std::decay_t<Compare>>
 {
   using sorted_type = SortedArrayList<T, std::decay_t<Compare>>;
@@ -960,25 +1057,28 @@ public:
   ~SparseList() { release(); }
 
   SparseList(const SparseList &) = delete;
-  SparseList &operator=(const SparseList &) = delete;
+  SparseList &
+  operator=(const SparseList &) = delete;
 
   SparseList(SparseList &&other) noexcept : m_list(other.m_list)
   {
     other.m_list = nullptr;
   }
 
-  fn operator=(SparseList &&other) wontthrow->SparseList &
+  fn
+  operator=(SparseList &&other) wontthrow->SparseList &
   {
     if (this != &other) {
       release();
-      m_list = other.m_list;
+      m_list       = other.m_list;
       other.m_list = nullptr;
     }
 
     return *this;
   }
 
-  fn fill(ArrayList<T> &&filled) throws -> void
+  fn
+  fill(ArrayList<T> &&filled) throws -> void
   {
     if (filled.is_empty()) {
       release();
@@ -992,41 +1092,51 @@ public:
     }
     if (m_list == nullptr) {
       let const block = allocator.template alloc_array<ArrayList<T>>(1);
-      m_list = new (block) ArrayList<T>{allocator};
+      m_list          = new (block) ArrayList<T>{allocator};
     }
 
     *m_list = steal(filled);
     if (allocator.get_kind() == Allocator::Kind::Heap) m_list->shrink_to_fit();
   }
 
-  fn clear() wontthrow -> void { release(); }
+  fn
+  clear() wontthrow -> void
+  {
+    release();
+  }
 
-  hot mustuse pure fn is_empty() const wontthrow -> bool
+  hot mustuse pure fn
+  is_empty() const wontthrow -> bool
   {
     return m_list == nullptr;
   }
-  hot mustuse pure fn count() const wontthrow -> usize
+  hot mustuse pure fn
+  count() const wontthrow -> usize
   {
     return m_list == nullptr ? 0 : m_list->count();
   }
-  hot mustuse pure fn operator[](usize i) const wontthrow->const T &
+  hot mustuse pure fn
+  operator[](usize i) const wontthrow->const T &
   {
     ASSERT(m_list != nullptr, "array index is past the end");
 
     return (*m_list)[i];
   }
 
-  hot mustuse pure fn begin() const wontthrow -> const T *
+  hot mustuse pure fn
+  begin() const wontthrow -> const T *
   {
     return m_list == nullptr ? nullptr : m_list->begin();
   }
-  hot mustuse pure fn end() const wontthrow -> const T *
+  hot mustuse pure fn
+  end() const wontthrow -> const T *
   {
     return m_list == nullptr ? nullptr : m_list->end();
   }
 
 private:
-  fn release() wontthrow -> void
+  fn
+  release() wontthrow -> void
   {
     if (m_list == nullptr) return;
 

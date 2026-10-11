@@ -21,14 +21,17 @@ REGISTER_KOSHKIT_UTIL_FLAGS(Expand);
 
 namespace koshka::koshkit {
 
-static pure fn is_expand_control(char byte) wontthrow -> bool
+static pure fn
+is_expand_control(char byte) wontthrow -> bool
 {
   return byte == '\t' || byte == '\n' || byte == '\b';
 }
 
-fn Expand::execute(const ExecContext &ec, EvalContext &cxt,
-                   const ArrayList<String> &args,
-                   const ArrayList<SourceLocation> &arg_locations) const throws
+fn
+Expand::execute(const ExecContext               &ec,
+                EvalContext                     &cxt,
+                const ArrayList<String>         &args,
+                const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
@@ -53,7 +56,7 @@ fn Expand::execute(const ExecContext &ec, EvalContext &cxt,
   i32 status = 0;
 
   let const do_append_line = [&](StringView text) throws -> void {
-    usize column = 0;
+    usize column   = 0;
     usize position = 0;
 
     while (position < text.length) {

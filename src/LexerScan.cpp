@@ -53,7 +53,8 @@ constexpr static_string_entry<balanced_scan_keyword>
 
 constexpr StaticStringMap BALANCED_SCAN_KEYWORDS{BALANCED_SCAN_KEYWORD_ENTRIES};
 
-consteval fn every_lexer_keyword_has_a_balanced_scan_kind() wontthrow -> bool
+consteval fn
+every_lexer_keyword_has_a_balanced_scan_kind() wontthrow -> bool
 {
   for (let const &keyword : KEYWORD_ENTRIES) {
     bool has_kind = false;
@@ -72,11 +73,11 @@ static_assert(every_lexer_keyword_has_a_balanced_scan_kind(),
               "A lexer keyword reaches the balanced scanner with no kind, so "
               "the scanner cannot tell whether a command follows it.");
 
-fn unquote_heredoc_delimiter(StringView word, Allocator allocator) throws
-    -> String
+fn
+unquote_heredoc_delimiter(StringView word, Allocator allocator) throws -> String
 {
-  let delimiter = String{allocator};
-  char quote = 0;
+  let  delimiter = String{allocator};
+  char quote     = 0;
 
   for (usize position = 0; position < word.length; position++) {
     let const byte = word[position];
@@ -102,7 +103,8 @@ fn unquote_heredoc_delimiter(StringView word, Allocator allocator) throws
   return delimiter;
 }
 
-pure fn heredoc_line_content(StringView line) wontthrow -> StringView
+pure fn
+heredoc_line_content(StringView line) wontthrow -> StringView
 {
   if (!line.is_empty() && line[line.length - 1] == '\r') {
     return line.substring_of_length(0, line.length - 1);
@@ -111,7 +113,8 @@ pure fn heredoc_line_content(StringView line) wontthrow -> StringView
   return line;
 }
 
-pure fn balanced_scan_delimiter_end(StringView source, usize position) wontthrow
+pure fn
+balanced_scan_delimiter_end(StringView source, usize position) wontthrow
     -> usize
 {
   char quote = 0;
@@ -143,16 +146,16 @@ pure fn balanced_scan_delimiter_end(StringView source, usize position) wontthrow
     case '&':
     case ';':
     case '<':
-    case '>': return position;
-    default: position++; continue;
+    case '>':  return position;
+    default:   position++; continue;
     }
   }
 
   return position;
 }
 
-pure fn match_heredoc_line(StringView line,
-                           const pending_heredoc &heredoc) wontthrow
+pure fn
+match_heredoc_line(StringView line, const pending_heredoc &heredoc) wontthrow
     -> heredoc_line_match
 {
   usize content_start = 0;
@@ -166,8 +169,10 @@ pure fn match_heredoc_line(StringView line,
   return {content_start, content.length, content == heredoc.delimiter.view()};
 }
 
-fn skip_balanced_scan_heredoc_bodies(
-    StringView source, usize position,
+fn
+skip_balanced_scan_heredoc_bodies(
+    StringView                        source,
+    usize                             position,
     const ArrayList<pending_heredoc> &pending) wontthrow -> usize
 {
   for (let const &heredoc : pending) {
@@ -191,19 +196,21 @@ fn skip_balanced_scan_heredoc_bodies(
   return position;
 }
 
-fn scan_balanced_shell_region(StringView source, usize position,
-                              char closing_byte) throws -> Maybe<usize>
+fn
+scan_balanced_shell_region(StringView source,
+                           usize      position,
+                           char       closing_byte) throws -> Maybe<usize>
 {
-  let pending_heredocs = ArrayList<pending_heredoc>{heap_allocator()};
-  let case_pattern_depths = ArrayList<usize>{heap_allocator()};
-  usize depth = 1;
-  char quote = 0;
-  char previous_byte = 0;
-  bool has_seen_case_keyword = false;
-  bool is_case_pattern_expected = false;
-  bool is_command_position = true;
-  bool is_ansi_c_quote = false;
-  let const opening_byte = closing_byte == ')' ? '(' : '{';
+  let       pending_heredocs    = ArrayList<pending_heredoc>{heap_allocator()};
+  let       case_pattern_depths = ArrayList<usize>{heap_allocator()};
+  usize     depth               = 1;
+  char      quote               = 0;
+  char      previous_byte       = 0;
+  bool      has_seen_case_keyword    = false;
+  bool      is_case_pattern_expected = false;
+  bool      is_command_position      = true;
+  bool      is_ansi_c_quote          = false;
+  let const opening_byte             = closing_byte == ')' ? '(' : '{';
 
   while (position < source.length) {
     let const byte = source[position++];
@@ -221,7 +228,7 @@ fn scan_balanced_shell_region(StringView source, usize position,
         let const nested =
             scan_balanced_shell_region(source, position + 1, ')');
         if (!nested.has_value()) return None;
-        position = *nested;
+        position      = *nested;
         previous_byte = ')';
         continue;
       }
@@ -232,7 +239,7 @@ fn scan_balanced_shell_region(StringView source, usize position,
         let const nested =
             scan_balanced_shell_region(source, position + 1, '}');
         if (!nested.has_value()) return None;
-        position = *nested;
+        position      = *nested;
         previous_byte = '}';
         continue;
       }
@@ -246,17 +253,17 @@ fn scan_balanced_shell_region(StringView source, usize position,
          is_shell_sentinel(previous_byte)))
     {
       let const word_start = position - 1;
-      let const word_end = balanced_scan_delimiter_end(source, word_start);
+      let const word_end   = balanced_scan_delimiter_end(source, word_start);
       let const word =
           source.substring_of_length(word_start, word_end - word_start);
-      let const keyword = BALANCED_SCAN_KEYWORDS.find(word);
-      bool did_match_keyword = keyword.has_value();
-      bool is_next_command = false;
+      let const keyword           = BALANCED_SCAN_KEYWORDS.find(word);
+      bool      did_match_keyword = keyword.has_value();
+      bool      is_next_command   = false;
 
       if (did_match_keyword) {
         switch (*keyword) {
         case balanced_scan_keyword::case_word:
-          did_match_keyword = is_command_position;
+          did_match_keyword     = is_command_position;
           has_seen_case_keyword = did_match_keyword;
           break;
 
@@ -280,7 +287,7 @@ fn scan_balanced_shell_region(StringView source, usize position,
 
         case balanced_scan_keyword::command_word:
           did_match_keyword = is_command_position;
-          is_next_command = did_match_keyword;
+          is_next_command   = did_match_keyword;
           break;
 
         case balanced_scan_keyword::inert_word:
@@ -290,8 +297,8 @@ fn scan_balanced_shell_region(StringView source, usize position,
       }
 
       if (did_match_keyword) {
-        position = word_end;
-        previous_byte = source[word_end - 1];
+        position            = word_end;
+        previous_byte       = source[word_end - 1];
         is_command_position = is_next_command;
         continue;
       }
@@ -309,9 +316,9 @@ fn scan_balanced_shell_region(StringView source, usize position,
     case '\'':
     case '"':
     case '`':
-      quote = byte;
+      quote           = byte;
       is_ansi_c_quote = byte == '\'' && previous_byte == '$';
-      previous_byte = byte;
+      previous_byte   = byte;
       continue;
 
     case '#':
@@ -333,7 +340,7 @@ fn scan_balanced_shell_region(StringView source, usize position,
                                                      pending_heredocs);
         pending_heredocs.clear();
       }
-      previous_byte = '\n';
+      previous_byte       = '\n';
       is_command_position = true;
       continue;
 
@@ -360,7 +367,7 @@ fn scan_balanced_shell_region(StringView source, usize position,
         }
 
         let const delimiter_start = position;
-        position = balanced_scan_delimiter_end(source, position);
+        position      = balanced_scan_delimiter_end(source, position);
         let delimiter = unquote_heredoc_delimiter(
             source.substring_of_length(delimiter_start,
                                        position - delimiter_start),
@@ -386,8 +393,8 @@ fn scan_balanced_shell_region(StringView source, usize position,
           depth == case_pattern_depths.back())
       {
         is_case_pattern_expected = false;
-        is_command_position = true;
-        previous_byte = byte;
+        is_command_position      = true;
+        previous_byte            = byte;
         continue;
       }
 

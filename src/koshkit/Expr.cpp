@@ -19,7 +19,8 @@ REGISTER_KOSHKIT_UTIL_FLAGS(Expr);
 
 namespace koshka::koshkit {
 
-static pure fn expr_value_is_true(StringView value) wontthrow -> bool
+static pure fn
+expr_value_is_true(StringView value) wontthrow -> bool
 {
   return !value.is_empty() && value != "0";
 }
@@ -27,14 +28,15 @@ static pure fn expr_value_is_true(StringView value) wontthrow -> bool
 class ExprParser
 {
 public:
-  ExprParser(const ArrayList<String> &tokens,
+  ExprParser(const ArrayList<String>         &tokens,
              const ArrayList<SourceLocation> &token_locations,
-             Allocator allocator)
+             Allocator                        allocator)
       : m_tokens(tokens), m_token_locations(token_locations),
         m_allocator(allocator)
   {}
 
-  fn parse() throws -> String
+  fn
+  parse() throws -> String
   {
     let result = parse_or();
     if (m_position != m_tokens.count()) throw Error{"syntax error"};
@@ -53,8 +55,8 @@ private:
     GreaterEqual,
   };
 
-  pure fn peek_comparison_operator() const wontthrow
-      -> Maybe<ComparisonOperatorKind>
+  pure fn
+  peek_comparison_operator() const wontthrow -> Maybe<ComparisonOperatorKind>
   {
     if (m_position == m_tokens.count()) return None;
     let const token = m_tokens[m_position].view();
@@ -63,7 +65,7 @@ private:
       case '=': return ComparisonOperatorKind::Equal;
       case '<': return ComparisonOperatorKind::Less;
       case '>': return ComparisonOperatorKind::Greater;
-      default: return None;
+      default:  return None;
       }
     }
     if (token.length != 2 || token[1] != '=') {
@@ -73,24 +75,27 @@ private:
     case '!': return ComparisonOperatorKind::NotEqual;
     case '<': return ComparisonOperatorKind::LessEqual;
     case '>': return ComparisonOperatorKind::GreaterEqual;
-    default: return None;
+    default:  return None;
     }
   }
 
-  pure fn peek(StringView token) const wontthrow -> bool
+  pure fn
+  peek(StringView token) const wontthrow -> bool
   {
     return m_position < m_tokens.count() &&
            m_tokens[m_position].view() == token;
   }
 
-  fn take() throws -> String
+  fn
+  take() throws -> String
   {
     if (m_position == m_tokens.count()) throw Error{"missing operand"};
 
     return String{m_allocator, m_tokens[m_position++].view()};
   }
 
-  fn parse_or() throws -> String
+  fn
+  parse_or() throws -> String
   {
     let left = parse_and();
 
@@ -103,7 +108,8 @@ private:
     return left;
   }
 
-  fn parse_and() throws -> String
+  fn
+  parse_and() throws -> String
   {
     let left = parse_comparison();
 
@@ -119,7 +125,8 @@ private:
     return left;
   }
 
-  fn parse_comparison() throws -> String
+  fn
+  parse_comparison() throws -> String
   {
     let left = parse_addition();
 
@@ -128,10 +135,10 @@ private:
       let const operation = peek_comparison_operator();
       if (!operation.has_value()) break;
       m_position++;
-      let right = parse_addition();
-      let const left_number = left.view().to<i64>();
+      let       right        = parse_addition();
+      let const left_number  = left.view().to<i64>();
       let const right_number = right.view().to<i64>();
-      int order = 0;
+      int       order        = 0;
       if (!left_number.is_error() && !right_number.is_error()) {
         order = (left_number.value() > right_number.value()) -
                 (left_number.value() < right_number.value());
@@ -143,11 +150,11 @@ private:
 
       bool matches = false;
       switch (*operation) {
-      case ComparisonOperatorKind::Equal: matches = order == 0; break;
-      case ComparisonOperatorKind::NotEqual: matches = order != 0; break;
-      case ComparisonOperatorKind::Less: matches = order < 0; break;
-      case ComparisonOperatorKind::LessEqual: matches = order <= 0; break;
-      case ComparisonOperatorKind::Greater: matches = order > 0; break;
+      case ComparisonOperatorKind::Equal:        matches = order == 0; break;
+      case ComparisonOperatorKind::NotEqual:     matches = order != 0; break;
+      case ComparisonOperatorKind::Less:         matches = order < 0; break;
+      case ComparisonOperatorKind::LessEqual:    matches = order <= 0; break;
+      case ComparisonOperatorKind::Greater:      matches = order > 0; break;
       case ComparisonOperatorKind::GreaterEqual: matches = order >= 0; break;
       }
       left = String{m_allocator, matches ? "1" : "0"};
@@ -156,33 +163,35 @@ private:
     return left;
   }
 
-  fn parse_addition() throws -> String
+  fn
+  parse_addition() throws -> String
   {
     let left = parse_multiplication();
 
     while (peek("+") || peek("-")) {
-      let const operation = take();
-      let const right = parse_multiplication();
-      let const left_number = require_number(left.view());
+      let const operation    = take();
+      let const right        = parse_multiplication();
+      let const left_number  = require_number(left.view());
       let const right_number = require_number(right.view());
-      let const result = operation.view() == "+"
-                             ? static_cast<i128>(left_number) + right_number
-                             : static_cast<i128>(left_number) - right_number;
-      left = number_string(result);
+      let const result       = operation.view() == "+"
+                                   ? static_cast<i128>(left_number) + right_number
+                                   : static_cast<i128>(left_number) - right_number;
+      left                   = number_string(result);
     }
 
     return left;
   }
 
-  fn parse_multiplication() throws -> String
+  fn
+  parse_multiplication() throws -> String
   {
     let left = parse_match();
 
     while (peek("*") || peek("/") || peek("%")) {
-      let const operation = take();
-      let const right = parse_match();
-      let const left_number = require_number(left.view());
-      let const right_number = require_number(right.view());
+      let const operation     = take();
+      let const right         = parse_match();
+      let const left_number   = require_number(left.view());
+      let const right_number  = require_number(right.view());
       let const operator_byte = operation.view()[0];
       if ((operator_byte == '/' || operator_byte == '%') && right_number == 0) {
         throw Error{"division by zero"};
@@ -207,15 +216,16 @@ private:
     return left;
   }
 
-  fn parse_match() throws -> String
+  fn
+  parse_match() throws -> String
   {
     let left = parse_primary();
 
     while (peek(":")) {
       m_position++;
       let const pattern_position = m_position;
-      let const pattern = parse_primary();
-      String anchored{m_allocator, "^"};
+      let const pattern          = parse_primary();
+      String    anchored{m_allocator, "^"};
       anchored += pattern.view();
       let compiled = os::compile_basic_regex(anchored.view(),
                                              os::case_sensitivity::Sensitive);
@@ -250,7 +260,8 @@ private:
     return left;
   }
 
-  fn parse_primary() throws -> String
+  fn
+  parse_primary() throws -> String
   {
     if (peek("(")) {
       m_position++;
@@ -269,7 +280,8 @@ private:
     return take();
   }
 
-  fn require_number(StringView value) const throws -> i64
+  fn
+  require_number(StringView value) const throws -> i64
   {
     let const parsed = value.to<i64>();
     if (parsed.is_error())
@@ -278,7 +290,8 @@ private:
     return parsed.value();
   }
 
-  fn number_string(i128 value) const throws -> String
+  fn
+  number_string(i128 value) const throws -> String
   {
     if (value < INT64_MIN || value > INT64_MAX) {
       throw Error{"integer overflow"};
@@ -287,15 +300,17 @@ private:
     return String::from(static_cast<i64>(value), m_allocator);
   }
 
-  const ArrayList<String> &m_tokens;
+  const ArrayList<String>         &m_tokens;
   const ArrayList<SourceLocation> &m_token_locations;
-  Allocator m_allocator;
-  usize m_position{0};
+  Allocator                        m_allocator;
+  usize                            m_position{0};
 };
 
-fn Expr::execute(const ExecContext &ec, EvalContext &cxt,
-                 const ArrayList<String> &args,
-                 const ArrayList<SourceLocation> &arg_locations) const throws
+fn
+Expr::execute(const ExecContext               &ec,
+              EvalContext                     &cxt,
+              const ArrayList<String>         &args,
+              const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(
@@ -303,8 +318,8 @@ fn Expr::execute(const ExecContext &ec, EvalContext &cxt,
 
   if (operands.is_empty()) return report_usage_error(ec, cxt, args[0].view());
   ExprParser parser{operands, operand_locations, cxt.scratch_allocator()};
-  let result = parser.parse();
-  let const status = expr_value_is_true(result.view()) ? 0 : 1;
+  let        result = parser.parse();
+  let const  status = expr_value_is_true(result.view()) ? 0 : 1;
   result += '\n';
   ec.print_to_stdout(result);
 

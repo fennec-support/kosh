@@ -33,9 +33,9 @@ namespace expressions {
 
 using namespace internal;
 
-pure fn internal::full_source_text(const EvalContext &cxt,
-                                   const Expression &node) wontthrow
-    -> StringView
+pure fn
+internal::full_source_text(const EvalContext &cxt,
+                           const Expression  &node) wontthrow -> StringView
 {
   let const location = node.source_location();
   let span = SourceLocation{location.position, 0, location.source_name_index};
@@ -52,8 +52,10 @@ pure fn internal::full_source_text(const EvalContext &cxt,
   return cxt.source_text_in_span(span, end_position);
 }
 
-static fn is_line_discard_root(EvalContext &cxt, const ErrorBase &error,
-                               const Expression *list) wontthrow -> bool
+static fn
+is_line_discard_root(EvalContext      &cxt,
+                     const ErrorBase  &error,
+                     const Expression *list) wontthrow -> bool
 {
   if (error.is_top_level_line_discarding()) {
     return cxt.execution_store().top_level_line_discard_root() == list;
@@ -66,7 +68,8 @@ CompoundList::CompoundList() : Expression({0, 0}) {}
 
 CompoundList::~CompoundList() = default;
 
-fn CompoundList::can_evaluate_in_process_substitution(
+fn
+CompoundList::can_evaluate_in_process_substitution(
     const EvalContext &cxt, HashSet &active_functions) const throws -> bool
 {
   for (let const node : m_nodes)
@@ -76,12 +79,14 @@ fn CompoundList::can_evaluate_in_process_substitution(
   return true;
 }
 
-pure fn CompoundList::is_empty() const wontthrow -> bool
+pure fn
+CompoundList::is_empty() const wontthrow -> bool
 {
   return m_nodes.is_empty();
 }
 
-fn CompoundList::append_node(const CompoundListCondition *node) throws -> void
+fn
+CompoundList::append_node(const CompoundListCondition *node) throws -> void
 {
   ASSERT(node != nullptr);
 
@@ -89,13 +94,15 @@ fn CompoundList::append_node(const CompoundListCondition *node) throws -> void
   m_nodes.push(node);
 }
 
-pure fn CompoundList::node_count() const wontthrow -> usize
+pure fn
+CompoundList::node_count() const wontthrow -> usize
 {
   return m_nodes.count();
 }
 
-fn CompoundList::move_nodes_from(usize first_index,
-                                 CompoundList &destination) throws -> void
+fn
+CompoundList::move_nodes_from(usize         first_index,
+                              CompoundList &destination) throws -> void
 {
   ASSERT(first_index <= m_nodes.count());
 
@@ -107,8 +114,8 @@ fn CompoundList::move_nodes_from(usize first_index,
   m_nodes.truncate(first_index);
 }
 
-fn CompoundList::single_unconditional_command() const wontthrow
-    -> const Command *
+fn
+CompoundList::single_unconditional_command() const wontthrow -> const Command *
 {
   if (m_nodes.count() != 1) return nullptr;
 
@@ -129,14 +136,16 @@ fn CompoundList::single_unconditional_command() const wontthrow
   return command;
 }
 
-cold fn CompoundList::to_string() const throws -> String
+cold fn
+CompoundList::to_string() const throws -> String
 {
   return "CompoundList";
 }
 
-cold fn CompoundList::to_ast_string(usize layer) const throws -> String
+cold fn
+CompoundList::to_ast_string(usize layer) const throws -> String
 {
-  let s = String{heap_allocator()};
+  let       s   = String{heap_allocator()};
   let const pad = indent_for_layer(layer);
 
   s += pad + "[" + to_string() + "]";
@@ -149,8 +158,9 @@ cold fn CompoundList::to_ast_string(usize layer) const throws -> String
   return s;
 }
 
-hot fn CompoundList::evaluate_impl(EvalContext &cxt,
-                                   root_evaluation_mode mode) const throws
+hot fn
+CompoundList::evaluate_impl(EvalContext         &cxt,
+                            root_evaluation_mode mode) const throws
     -> status_result
 {
   ASSERT(m_nodes.count() > 0);
@@ -167,8 +177,8 @@ hot fn CompoundList::evaluate_impl(EvalContext &cxt,
     cxt.execution_store().terminal_exec_allowed() = was_terminal_exec_allowed;
   };
 
-  bool is_discarding_line = false;
-  bool did_discard_line = false;
+  bool  is_discarding_line           = false;
+  bool  did_discard_line             = false;
   usize discarded_separator_position = 0;
 
   for (usize index = 0; index < m_nodes.count(); index++) {
@@ -181,7 +191,7 @@ hot fn CompoundList::evaluate_impl(EvalContext &cxt,
 
     let const do_starts_new_line = [&](usize separator_position)
                                        wontthrow -> bool {
-      let const source = cxt.execution_store().line_discard_source();
+      let const source           = cxt.execution_store().line_discard_source();
       let const command_position = n->command()->source_location().position;
 
       return n->kind() == CompoundListCondition::Kind::None &&
@@ -229,7 +239,7 @@ hot fn CompoundList::evaluate_impl(EvalContext &cxt,
           history_end_index++;
         }
 
-        let const first_command = n->command();
+        let const first_command  = n->command();
         let const start_position = first_command->source_location().position;
         let const end_position =
             m_nodes[history_end_index]->source_end_position();
@@ -252,15 +262,15 @@ hot fn CompoundList::evaluate_impl(EvalContext &cxt,
     cxt.execution_store().terminal_exec_allowed() =
         was_terminal_exec_allowed && is_last_node;
 
-    bool did_execute = false;
+    bool       did_execute = false;
     const bool is_end_of_and_or_chain =
         index + 1 >= m_nodes.count() ||
         m_nodes[index + 1]->kind() == CompoundListCondition::Kind::None;
     const bool should_ignore_errexit =
         !is_end_of_and_or_chain || n->is_negated();
     const bool was_err_trapped = cxt.trap_store().has_err_trap();
-    let const is_async_node = n->command()->is_async();
-    let const is_contained_async_node =
+    let const  is_async_node   = n->command()->is_async();
+    let const  is_contained_async_node =
         is_async_node && cxt.runtime_state().get_mood() != mimic_mood::Default;
     let const do_run_node = [&]() throws -> status_result {
       if (should_ignore_errexit) cxt.execution_store().condition_depth()++;
@@ -343,28 +353,28 @@ hot fn CompoundList::evaluate_impl(EvalContext &cxt,
     };
     switch (n->kind()) {
     case CompoundListCondition::Kind::None:
-      ret = do_run_node();
+      ret         = do_run_node();
       did_execute = true;
       break;
 
     case CompoundListCondition::Kind::Or:
       if (ret.status != 0) {
-        ret = do_run_node();
+        ret         = do_run_node();
         did_execute = true;
       }
       break;
 
     case CompoundListCondition::Kind::And:
       if (ret.status == 0) {
-        ret = do_run_node();
+        ret         = do_run_node();
         did_execute = true;
       }
       break;
     }
 
     if (did_discard_line) {
-      did_discard_line = false;
-      is_discarding_line = true;
+      did_discard_line             = false;
+      is_discarding_line           = true;
       discarded_separator_position = n->source_location().position;
       continue;
     }
@@ -436,7 +446,8 @@ hot fn CompoundList::evaluate_impl(EvalContext &cxt,
   return ret;
 }
 
-CompoundListCondition::CompoundListCondition(SourceLocation location, Kind kind,
+CompoundListCondition::CompoundListCondition(SourceLocation location,
+                                             Kind           kind,
                                              const Command *expr)
     : Expression(steal(location)), m_kind(kind), m_cmd(expr)
 {
@@ -445,45 +456,54 @@ CompoundListCondition::CompoundListCondition(SourceLocation location, Kind kind,
 
 CompoundListCondition::~CompoundListCondition() = default;
 
-fn CompoundListCondition::can_evaluate_in_process_substitution(
+fn
+CompoundListCondition::can_evaluate_in_process_substitution(
     const EvalContext &cxt, HashSet &active_functions) const throws -> bool
 {
   return !m_cmd->is_async() &&
          m_cmd->can_evaluate_in_process_substitution(cxt, active_functions);
 }
 
-pure fn CompoundListCondition::kind() const wontthrow -> Kind { return m_kind; }
+pure fn
+CompoundListCondition::kind() const wontthrow -> Kind
+{
+  return m_kind;
+}
 
-pure fn CompoundListCondition::command() const wontthrow -> const Command *
+pure fn
+CompoundListCondition::command() const wontthrow -> const Command *
 {
   return m_cmd;
 }
 
-pure fn CompoundListCondition::is_negated() const wontthrow -> bool
+pure fn
+CompoundListCondition::is_negated() const wontthrow -> bool
 {
   ASSERT(m_cmd != nullptr);
 
   return m_cmd->is_negated();
 }
 
-cold fn CompoundListCondition::to_string() const throws -> String
+cold fn
+CompoundListCondition::to_string() const throws -> String
 {
   String k{heap_allocator()};
   switch (kind()) {
   case Kind::None: k = "None"; break;
-  case Kind::And: k = "&&"; break;
-  case Kind::Or: k = "||"; break;
-  default: unreachable("invalid compound-list condition kind %d", ENUM(kind()));
+  case Kind::And:  k = "&&"; break;
+  case Kind::Or:   k = "||"; break;
+  default:         unreachable("invalid compound-list condition kind %d", ENUM(kind()));
   }
 
   return "CompoundListCondition, " + k;
 }
 
-cold fn CompoundListCondition::to_ast_string(usize layer) const throws -> String
+cold fn
+CompoundListCondition::to_ast_string(usize layer) const throws -> String
 {
   ASSERT(m_cmd != nullptr);
 
-  let s = String{heap_allocator()};
+  let       s   = String{heap_allocator()};
   let const pad = indent_for_layer(layer);
 
   s += pad + "[" + to_string() + "]\n";
@@ -492,8 +512,10 @@ cold fn CompoundListCondition::to_ast_string(usize layer) const throws -> String
   return s;
 }
 
-hot fn CompoundListCondition::evaluate_impl(
-    EvalContext &cxt, root_evaluation_mode mode) const throws -> status_result
+hot fn
+CompoundListCondition::evaluate_impl(EvalContext         &cxt,
+                                     root_evaluation_mode mode) const throws
+    -> status_result
 {
   ASSERT(m_cmd != nullptr);
   cxt.evaluation_metrics_store().begin_command_evaluation();
@@ -502,29 +524,29 @@ hot fn CompoundListCondition::evaluate_impl(
     cxt.execution_store().terminal_exec_allowed() = false;
   }
 
-  double user_before = 0.0;
+  double user_before   = 0.0;
   double system_before = 0.0;
-  u64 start_nanos = 0;
+  u64    start_nanos   = 0;
   if (m_cmd->is_timed()) {
     let const child_times = os::read_child_cpu_times();
-    user_before = child_times.user_seconds;
-    system_before = child_times.system_seconds;
-    start_nanos = os::monotonic_nanos();
+    user_before           = child_times.user_seconds;
+    system_before         = child_times.system_seconds;
+    start_nanos           = os::monotonic_nanos();
   }
 
   let result = m_cmd->evaluate_root_status(cxt, mode);
 
   if (m_cmd->is_timed()) {
     let const elapsed_nanos = os::monotonic_nanos() - start_nanos;
-    double user_after = 0.0;
-    double system_after = 0.0;
-    let const child_times = os::read_child_cpu_times();
-    user_after = child_times.user_seconds;
-    system_after = child_times.system_seconds;
-    let const rss_after = os::children_peak_rss_bytes();
+    double    user_after    = 0.0;
+    double    system_after  = 0.0;
+    let const child_times   = os::read_child_cpu_times();
+    user_after              = child_times.user_seconds;
+    system_after            = child_times.system_seconds;
+    let const    rss_after  = os::children_peak_rss_bytes();
     const double real_seconds =
         static_cast<double>(elapsed_nanos) / 1000000000.0;
-    let const user_cpu = user_after - user_before;
+    let const user_cpu   = user_after - user_before;
     let const system_cpu = system_after - system_before;
 
     let const layout = m_cmd->get_time_format_mode() == time_format_mode::Posix
@@ -534,11 +556,11 @@ hot fn CompoundListCondition::evaluate_impl(
                            : utils::time_report_layout::Rich;
 
     let const time_format = cxt.get_variable_value("TIMEFORMAT");
-    let const report = utils::format_time_report(
+    let const report      = utils::format_time_report(
         time_format, real_seconds, user_cpu, system_cpu, rss_after, layout,
         m_cmd->get_time_rss_mode() == time_rss_mode::Include
-            ? utils::time_report_rss::Include
-            : utils::time_report_rss::Omit);
+                 ? utils::time_report_rss::Include
+                 : utils::time_report_rss::Omit);
 
     if (!report.is_empty()) {
       print_error(report);
@@ -558,14 +580,15 @@ Pipeline::Pipeline(SourceLocation location) : Command(steal(location)) {}
 
 Pipeline::~Pipeline() = default;
 
-pure fn Pipeline::is_empty() const wontthrow -> bool
+pure fn
+Pipeline::is_empty() const wontthrow -> bool
 {
   return m_commands.is_empty();
 }
 
-static pure fn pipeline_stage_error_status(const EvalContext &cxt,
-                                           const ErrorBase &error) wontthrow
-    -> i32
+static pure fn
+pipeline_stage_error_status(const EvalContext &cxt,
+                            const ErrorBase   &error) wontthrow -> i32
 {
   if (cxt.runtime_state().is_bash_compatible() && error.is_line_discarding() &&
       !error.is_script_fatal())
@@ -576,7 +599,8 @@ static pure fn pipeline_stage_error_status(const EvalContext &cxt,
   return 1;
 }
 
-fn Pipeline::append_command(const Command *node) throws -> void
+fn
+Pipeline::append_command(const Command *node) throws -> void
 {
   ASSERT(node != nullptr);
 
@@ -584,7 +608,8 @@ fn Pipeline::append_command(const Command *node) throws -> void
   m_commands.push(node);
 }
 
-fn Pipeline::error_report_location() const wontthrow -> SourceLocation
+fn
+Pipeline::error_report_location() const wontthrow -> SourceLocation
 {
   for (usize index = m_commands.count(); index > 0; index--) {
     let const *simple = m_commands[index - 1]->as_simple_command();
@@ -594,7 +619,8 @@ fn Pipeline::error_report_location() const wontthrow -> SourceLocation
   return source_location();
 }
 
-cold fn Pipeline::to_string() const throws -> String
+cold fn
+Pipeline::to_string() const throws -> String
 {
   let s = String{"Pipeline"};
   append_ast_execution_flags(s);
@@ -602,9 +628,10 @@ cold fn Pipeline::to_string() const throws -> String
   return s;
 }
 
-cold fn Pipeline::to_ast_string(usize layer) const throws -> String
+cold fn
+Pipeline::to_ast_string(usize layer) const throws -> String
 {
-  let s = String{heap_allocator()};
+  let       s   = String{heap_allocator()};
   let const pad = indent_for_layer(layer);
 
   s += pad + "[" + to_string() + "]";
@@ -617,21 +644,21 @@ cold fn Pipeline::to_ast_string(usize layer) const throws -> String
   return s;
 }
 
-cold fn Pipeline::evaluate_with_compound_stages(EvalContext &cxt) const throws
-    -> i64
+cold fn
+Pipeline::evaluate_with_compound_stages(EvalContext &cxt) const throws -> i64
 {
   LOG(Debug, "forking %zu pipeline stages, one child per stage",
       m_commands.count());
 
-  let children = ArrayList<os::process>{cxt.scratch_allocator()};
-  os::process last_child = KOSH_INVALID_PROCESS;
+  let            children   = ArrayList<os::process>{cxt.scratch_allocator()};
+  os::process    last_child = KOSH_INVALID_PROCESS;
   os::descriptor last_stdin = KOSH_INVALID_FD;
-  i64 process_group_id = 0;
-  let pending_pipe = Maybe<os::pipe_ends>{};
-  let parent_stage_status = Maybe<i32>{};
-  bool was_pipeline_abandoned = false;
-  let bootstrap = os::subshell_bootstrap{};
-  let const child_evaluator = cxt.make_child_evaluator_state(bootstrap);
+  i64            process_group_id       = 0;
+  let            pending_pipe           = Maybe<os::pipe_ends>{};
+  let            parent_stage_status    = Maybe<i32>{};
+  bool           was_pipeline_abandoned = false;
+  let            bootstrap              = os::subshell_bootstrap{};
+  let const      child_evaluator = cxt.make_child_evaluator_state(bootstrap);
 
   try {
     for (usize stage_index = 0; stage_index < m_commands.count(); stage_index++)
@@ -643,7 +670,7 @@ cold fn Pipeline::evaluate_with_compound_stages(EvalContext &cxt) const throws
           cxt.runtime_state().stats_enabled());
 
       let const is_first = (stage_index == 0);
-      let const is_last = (stage_index + 1 == m_commands.count());
+      let const is_last  = (stage_index + 1 == m_commands.count());
       let const should_run_in_parent =
           is_last && !is_async() && cxt.runtime_state().is_bash_compatible() &&
           cxt.runtime_state().is_shopt_enabled(shopt_option_id::Lastpipe) &&
@@ -666,9 +693,9 @@ cold fn Pipeline::evaluate_with_compound_stages(EvalContext &cxt) const throws
                                  ? root_evaluation_mode::PreparedPipelineStage
                                  : root_evaluation_mode::Normal;
 
-      let stage_in = Maybe<os::descriptor>{};
+      let stage_in  = Maybe<os::descriptor>{};
       let stage_out = Maybe<os::descriptor>{};
-      let pipe = Maybe<os::pipe_ends>{};
+      let pipe      = Maybe<os::pipe_ends>{};
 
       if (!is_last) {
         pipe = os::make_pipe();
@@ -676,7 +703,7 @@ cold fn Pipeline::evaluate_with_compound_stages(EvalContext &cxt) const throws
           throw ErrorWithLocation{stage->source_location(),
                                   "Could not open a pipe"};
         }
-        stage_out = pipe->out;
+        stage_out    = pipe->out;
         pending_pipe = pipe;
       }
       if (!is_first) stage_in = last_stdin;
@@ -704,9 +731,9 @@ cold fn Pipeline::evaluate_with_compound_stages(EvalContext &cxt) const throws
       }
 
       let const stage_location = stage->source_location();
-      let const stage_text = os::can_fork_evaluator()
-                                 ? StringView{}
-                                 : full_source_text(cxt, *stage);
+      let const stage_text     = os::can_fork_evaluator()
+                                     ? StringView{}
+                                     : full_source_text(cxt, *stage);
 
       let const process_group =
           !is_async() ? os::process_group_mode::Inherit
@@ -714,15 +741,15 @@ cold fn Pipeline::evaluate_with_compound_stages(EvalContext &cxt) const throws
       bootstrap.evaluation_mode = stage_mode;
       cxt.set_child_source_origin(bootstrap, stage_text, stage_location);
       let const launch = os::launch_compound_stage(os::compound_stage_options{
-          .source = stage_text,
-          .in_fd = stage_in,
-          .out_fd = stage_out,
-          .location = stage_location,
+          .source            = stage_text,
+          .in_fd             = stage_in,
+          .out_fd            = stage_out,
+          .location          = stage_location,
           .diagnostic_source = cxt.source_store().current_source_view(),
-          .process_group_id = process_group_id,
-          .evaluator = child_evaluator,
-          .process_group = process_group});
-      let const child = launch.child;
+          .process_group_id  = process_group_id,
+          .evaluator         = child_evaluator,
+          .process_group     = process_group});
+      let const child  = launch.child;
 
       if (launch.should_evaluate_child) {
         if (pipe.has_value()) os::close_fd(pipe->in);
@@ -854,8 +881,8 @@ cold fn Pipeline::evaluate_with_compound_stages(EvalContext &cxt) const throws
   SET_AND_RETURN_EXIT_STATUS(cxt, ret);
 }
 
-hot fn Pipeline::evaluate_impl(EvalContext &cxt,
-                               root_evaluation_mode) const throws
+hot fn
+Pipeline::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws
     -> status_result
 {
   ASSERT(m_commands.count() > 1);
@@ -867,7 +894,7 @@ hot fn Pipeline::evaluate_impl(EvalContext &cxt,
   cxt.release_finished_coprocess();
 
   if (!m_has_compound_stage.has_value()) {
-    bool has_compound_stage = false;
+    bool has_compound_stage        = false;
     bool has_assignment_only_stage = false;
 
     for (let const stage : m_commands) {
@@ -888,7 +915,7 @@ hot fn Pipeline::evaluate_impl(EvalContext &cxt,
       break;
     }
 
-    m_has_compound_stage = has_compound_stage;
+    m_has_compound_stage        = has_compound_stage;
     m_has_assignment_only_stage = has_assignment_only_stage;
   }
 
@@ -930,7 +957,7 @@ hot fn Pipeline::evaluate_impl(EvalContext &cxt,
   };
 
   let const pipeline_mark = cxt.expansion_store().scratch_arena().mark();
-  let ecs = ArrayList<ExecContext>{cxt.scratch_allocator()};
+  let       ecs           = ArrayList<ExecContext>{cxt.scratch_allocator()};
   defer
   {
     for (ExecContext &leftover : ecs)
@@ -958,8 +985,8 @@ hot fn Pipeline::evaluate_impl(EvalContext &cxt,
 
     let const do_push_unresolved_stage = [&](i32 status, StringView rendered)
                                              throws -> bool {
-      let unresolved = ExecContext::make_from_unresolved(e->source_location(),
-                                                         status, rendered);
+      let  unresolved = ExecContext::make_from_unresolved(e->source_location(),
+                                                          status, rendered);
       bool was_unresolved_handed_off = false;
       defer
       {
@@ -1052,7 +1079,7 @@ hot fn Pipeline::evaluate_impl(EvalContext &cxt,
       }
       continue;
     }
-    let ec = stage_ec.take();
+    let  ec                            = stage_ec.take();
     bool was_stage_redirect_handed_off = false;
     defer
     {

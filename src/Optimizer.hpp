@@ -22,33 +22,42 @@ class AnalysisContext;
 
 namespace optimizer {
 
-fn try_fold_constant_arithmetic(StringView expression) wontthrow -> Maybe<i64>;
+fn
+try_fold_constant_arithmetic(StringView expression) wontthrow -> Maybe<i64>;
 
-fn simple_command_static_verdict(const ArrayList<const Token *> &args,
-                                 const AnalysisContext &actx) throws
+fn
+simple_command_static_verdict(const ArrayList<const Token *> &args,
+                              const AnalysisContext          &actx) throws
     -> Maybe<bool>;
 
-pure fn word_segment_has_glob_metacharacter(
-    const WordSegment &segment) wontthrow -> bool;
+pure fn
+word_segment_has_glob_metacharacter(const WordSegment &segment) wontthrow
+    -> bool;
 
-pure fn classify_plain_literal(const Word &word) wontthrow
-    -> Word::PlainLiteral;
+pure fn
+classify_plain_literal(const Word &word) wontthrow -> Word::PlainLiteral;
 
-fn literal_word_value(const Word &word) throws -> Maybe<String>;
-fn literal_word_value(const Token *token) throws -> Maybe<String>;
+fn
+literal_word_value(const Word &word) throws -> Maybe<String>;
+fn
+literal_word_value(const Token *token) throws -> Maybe<String>;
 
-fn plain_variable_reference_name(const Token *token) wontthrow
+fn
+plain_variable_reference_name(const Token *token) wontthrow
     -> Maybe<StringView>;
 
-fn propagated_literal_word_value(const Token *token,
-                                 const AnalysisContext &actx) throws
+fn
+propagated_literal_word_value(const Token           *token,
+                              const AnalysisContext &actx) throws
     -> Maybe<String>;
 
-fn try_fold_arithmetic_with_constants(StringView expression,
-                                      const AnalysisContext &actx) wontthrow
+fn
+try_fold_arithmetic_with_constants(StringView             expression,
+                                   const AnalysisContext &actx) wontthrow
     -> Maybe<String>;
 
-fn optimize_node(const Expression *node, AnalysisContext &actx) throws -> void;
+fn
+optimize_node(const Expression *node, AnalysisContext &actx) throws -> void;
 
 } /* namespace optimizer */
 

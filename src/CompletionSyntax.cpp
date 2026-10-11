@@ -31,18 +31,20 @@ namespace completion {
 
 using namespace internal;
 
-static pure fn is_word_separator(char c) wontthrow -> bool
+static pure fn
+is_word_separator(char c) wontthrow -> bool
 {
   return lexer::is_whitespace(c) || c == '\n';
 }
 
-static pure fn is_command_separator(char c) wontthrow -> bool
+static pure fn
+is_command_separator(char c) wontthrow -> bool
 {
   return c == ';' || c == '|' || c == '&' || c == '(' || c == '\n';
 }
 
-static pure fn opens_dollar_quote(StringView line, usize position) wontthrow
-    -> bool
+static pure fn
+opens_dollar_quote(StringView line, usize position) wontthrow -> bool
 {
   if (position == 0 || line[position] != '\'') {
     return false;
@@ -50,7 +52,7 @@ static pure fn opens_dollar_quote(StringView line, usize position) wontthrow
   if (line[position - 1] != '$') return false;
 
   usize backslash_count = 0;
-  usize k = position - 1;
+  usize k               = position - 1;
 
   while (k > 0 && line[k - 1] == '\\') {
     backslash_count++;
@@ -60,8 +62,8 @@ static pure fn opens_dollar_quote(StringView line, usize position) wontthrow
   return backslash_count % 2 == 0;
 }
 
-pure fn internal::quoted_run_end(StringView line, usize position) wontthrow
-    -> usize
+pure fn
+internal::quoted_run_end(StringView line, usize position) wontthrow -> usize
 {
   let const opener = line[position];
   if (opener == '\\')
@@ -85,8 +87,8 @@ pure fn internal::quoted_run_end(StringView line, usize position) wontthrow
   return k < line.length ? k : line.length - 1;
 }
 
-pure fn internal::token_has_glob_metacharacter(StringView token) wontthrow
-    -> bool
+pure fn
+internal::token_has_glob_metacharacter(StringView token) wontthrow -> bool
 {
   for (usize i = 0; i < token.length; i++) {
     let const c = token[i];
@@ -98,13 +100,15 @@ pure fn internal::token_has_glob_metacharacter(StringView token) wontthrow
   return false;
 }
 
-static pure fn is_token_boundary(char c) wontthrow -> bool
+static pure fn
+is_token_boundary(char c) wontthrow -> bool
 {
   return is_word_separator(c) || is_command_separator(c);
 }
 
-pure fn internal::is_active_token_boundary(StringView line,
-                                           usize position) wontthrow -> bool
+pure fn
+internal::is_active_token_boundary(StringView line, usize position) wontthrow
+    -> bool
 {
   let const c = line[position];
   if (!is_token_boundary(c)) return false;
@@ -118,11 +122,12 @@ pure fn internal::is_active_token_boundary(StringView line,
   return true;
 }
 
-pure fn internal::find_token_bounds(StringView line, usize cursor) wontthrow
+pure fn
+internal::find_token_bounds(StringView line, usize cursor) wontthrow
     -> token_bounds
 {
   usize start = 0;
-  usize i = 0;
+  usize i     = 0;
 
   while (i < cursor && i < line.length) {
     let const c = line[i];
@@ -151,7 +156,8 @@ pure fn internal::find_token_bounds(StringView line, usize cursor) wontthrow
   return token_bounds{start, end};
 }
 
-static pure fn is_transparent_command_prefix(StringView word) wontthrow -> bool
+static pure fn
+is_transparent_command_prefix(StringView word) wontthrow -> bool
 {
   if (word.is_empty()) return false;
   if (word[0] == '-') return true;
@@ -164,8 +170,8 @@ static pure fn is_transparent_command_prefix(StringView word) wontthrow -> bool
   return TRANSPARENT_PREFIXES.contains(word);
 }
 
-static fn next_completion_prefix_word(StringView line,
-                                      usize &position) wontthrow
+static fn
+next_completion_prefix_word(StringView line, usize &position) wontthrow
     -> Maybe<StringView>
 {
   position = skip_blanks(line, position);
@@ -188,8 +194,9 @@ static fn next_completion_prefix_word(StringView line,
   return line.substring_of_length(start, position - start);
 }
 
-static fn timeout_flag_takes_value(char short_name,
-                                   StringView long_name) wontthrow -> bool
+static fn
+timeout_flag_takes_value(char short_name, StringView long_name) wontthrow
+    -> bool
 {
   let const flags =
       koshkit::koshkit_util_flag_list(koshkit::Utility::Kind::Timeout);
@@ -210,7 +217,8 @@ static fn timeout_flag_takes_value(char short_name,
   return false;
 }
 
-static fn timeout_option_takes_next_word(StringView word) wontthrow -> bool
+static fn
+timeout_option_takes_next_word(StringView word) wontthrow -> bool
 {
   if (word.length < 2 || word[0] != '-') {
     return false;
@@ -233,7 +241,8 @@ static fn timeout_option_takes_next_word(StringView word) wontthrow -> bool
   return false;
 }
 
-static pure fn word_decodes_to_itself(StringView word) wontthrow -> bool
+static pure fn
+word_decodes_to_itself(StringView word) wontthrow -> bool
 {
   for (usize position = 0; position < word.length; position++) {
     switch (word[position]) {
@@ -242,7 +251,7 @@ static pure fn word_decodes_to_itself(StringView word) wontthrow -> bool
     case '\\':
     case '$':
     case '`':
-    case '~': return false;
+    case '~':  return false;
 
     default: break;
     }
@@ -251,8 +260,8 @@ static pure fn word_decodes_to_itself(StringView word) wontthrow -> bool
   return true;
 }
 
-static fn timeout_managed_command_start(StringView line,
-                                        usize position) wontthrow
+static fn
+timeout_managed_command_start(StringView line, usize position) wontthrow
     -> Maybe<usize>
 {
   let should_skip_value = false;
@@ -291,7 +300,8 @@ static fn timeout_managed_command_start(StringView line,
   }
 }
 
-static fn timeout_command_start(StringView line) wontthrow -> Maybe<usize>
+static fn
+timeout_command_start(StringView line) wontthrow -> Maybe<usize>
 {
   usize position = 0;
 
@@ -331,8 +341,9 @@ static fn timeout_command_start(StringView line) wontthrow -> Maybe<usize>
   }
 }
 
-fn internal::is_in_command_position(StringView line,
-                                    usize token_start) wontthrow -> bool
+fn
+internal::is_in_command_position(StringView line, usize token_start) wontthrow
+    -> bool
 {
   if (let const managed_start = timeout_command_start(line);
       managed_start.has_value())
@@ -367,19 +378,20 @@ fn internal::is_in_command_position(StringView line,
   }
 }
 
-fn internal::command_word_of(StringView line) wontthrow -> StringView
+fn
+internal::command_word_of(StringView line) wontthrow -> StringView
 {
   if (let const managed_start = timeout_command_start(line);
       managed_start.has_value())
   {
-    usize position = *managed_start;
-    let const command = next_completion_prefix_word(line, position);
+    usize     position = *managed_start;
+    let const command  = next_completion_prefix_word(line, position);
 
     return command.has_value() ? *command : StringView{};
   }
 
-  usize position = command_segment_start(line, line.length);
-  let time_command = StringView{};
+  usize position     = command_segment_start(line, line.length);
+  let   time_command = StringView{};
 
   loop
   {
@@ -394,12 +406,13 @@ fn internal::command_word_of(StringView line) wontthrow -> StringView
   }
 }
 
-pure fn internal::command_segment_start(StringView line, usize cursor) wontthrow
+pure fn
+internal::command_segment_start(StringView line, usize cursor) wontthrow
     -> usize
 {
-  usize start = 0;
-  usize open_paren_depth = 0;
-  let const limit = cursor < line.length ? cursor : line.length;
+  usize     start            = 0;
+  usize     open_paren_depth = 0;
+  let const limit            = cursor < line.length ? cursor : line.length;
 
   for (usize k = 0; k < limit; k++) {
     let const c = line[k];
@@ -424,8 +437,9 @@ pure fn internal::command_segment_start(StringView line, usize cursor) wontthrow
   return start;
 }
 
-fn internal::resolve_completion_alias(StringView command,
-                                      EvalContext &context) throws -> String
+fn
+internal::resolve_completion_alias(StringView   command,
+                                   EvalContext &context) throws -> String
 {
   let name = String{command};
 
@@ -433,9 +447,9 @@ fn internal::resolve_completion_alias(StringView command,
     let const expansion = context.scope_store().find_alias(name.view());
     if (!expansion.has_value()) break;
     let const expanded = *expansion;
-    usize i = 0;
-    i = skip_blanks(expanded, i);
-    let const start = i;
+    usize     i        = 0;
+    i                  = skip_blanks(expanded, i);
+    let const start    = i;
 
     while (i < expanded.length && expanded[i] != ' ' && expanded[i] != '\t') {
       i++;
@@ -451,10 +465,11 @@ fn internal::resolve_completion_alias(StringView command,
   return name;
 }
 
-fn internal::resolve_completion_command(StringView command,
-                                        EvalContext &context) throws -> String
+fn
+internal::resolve_completion_command(StringView   command,
+                                     EvalContext &context) throws -> String
 {
-  let name = resolve_completion_alias(command, context);
+  let       name    = resolve_completion_alias(command, context);
   let const located = context.program_resolver().search(
       name.view(), ProgramResolver::SearchMode::First,
       ProgramResolver::Requirement::Runnable,
@@ -463,8 +478,8 @@ fn internal::resolve_completion_command(StringView command,
     if (let const canonical = os::canonical_path(located.front());
         canonical.has_value())
     {
-      let resolved_name = String{canonical->filename()};
-      let const name_info = os::normalize_program_name(resolved_name);
+      let       resolved_name = String{canonical->filename()};
+      let const name_info     = os::normalize_program_name(resolved_name);
 
       return String{
           resolved_name.substring_of_length(0, name_info.stem_length)};
@@ -474,12 +489,14 @@ fn internal::resolve_completion_command(StringView command,
   return name;
 }
 
-fn internal::split_completion_words(StringView line, usize cursor,
-                                    usize &cword) throws -> ArrayList<String>
+fn
+internal::split_completion_words(StringView line,
+                                 usize      cursor,
+                                 usize     &cword) throws -> ArrayList<String>
 {
-  let words = ArrayList<String>{completion_allocator()};
-  usize i = 0;
-  let is_found = false;
+  let   words    = ArrayList<String>{completion_allocator()};
+  usize i        = 0;
+  let   is_found = false;
 
   while (i < line.length) {
     i = skip_blanks(line, i);
@@ -491,7 +508,7 @@ fn internal::split_completion_words(StringView line, usize cursor,
     }
 
     if (cursor >= start && cursor <= i) {
-      cword = words.count();
+      cword    = words.count();
       is_found = true;
     }
     words.push(String{completion_allocator(),

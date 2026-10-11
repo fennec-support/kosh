@@ -23,35 +23,71 @@ KOSHKIT_UTIL_DECL("[-aA1dgFhklnoprRSt] [-L level] [--tree] "
                   "The ls utility lists the names in each directory.");
 
 FLAG(LS_ALL, Bool, 'a', "", "List entries whose name starts with a dot.");
-FLAG(LS_ALMOST_ALL, Bool, 'A', "",
+FLAG(LS_ALMOST_ALL,
+     Bool,
+     'A',
+     "",
      "List dot entries but not the . and .. directory entries.");
 FLAG(LS_ONE, Bool, '1', "", "List one entry per line.");
-FLAG(LS_LONG, Bool, 'l', "",
+FLAG(LS_LONG,
+     Bool,
+     'l',
+     "",
      "Print the mode, owner, group, size, and time before each name.");
-FLAG(LS_HUMAN, Bool, 'h', "",
+FLAG(LS_HUMAN,
+     Bool,
+     'h',
+     "",
      "With -l, print the size in a human-readable form such as 4.0K.");
-FLAG(LS_CLASSIFY, Bool, 'F', "classify",
+FLAG(LS_CLASSIFY,
+     Bool,
+     'F',
+     "classify",
      "Append a type indicator to each name, one of /, *, @, |, and =.");
-FLAG(LS_DIRECTORY, Bool, 'd', "",
+FLAG(LS_DIRECTORY,
+     Bool,
+     'd',
+     "",
      "List a directory operand as itself instead of its contents.");
-FLAG(LS_MARK_DIRECTORIES, Bool, 'p', "",
+FLAG(LS_MARK_DIRECTORIES,
+     Bool,
+     'p',
+     "",
      "Append a slash to the name of each directory.");
-FLAG(LS_NUMERIC, Bool, 'n', "",
+FLAG(LS_NUMERIC,
+     Bool,
+     'n',
+     "",
      "With -l, print the numeric owner and group identifiers.");
 FLAG(LS_NO_GROUP, Bool, 'g', "", "Like -l, but print no owner.");
 FLAG(LS_NO_OWNER, Bool, 'o', "", "Like -l, but print no group.");
-FLAG(LS_KIBIBYTES, Bool, 'k', "",
+FLAG(LS_KIBIBYTES,
+     Bool,
+     'k',
+     "",
      "Accepted for compatibility; sizes are never scaled to blocks.");
 FLAG(LS_SORT_TIME, Bool, 't', "", "Sort by modification time, newest first.");
 FLAG(LS_SORT_SIZE, Bool, 'S', "", "Sort by size, largest first.");
 FLAG(LS_REVERSE, Bool, 'r', "", "Reverse the sort order.");
-FLAG(LS_RECURSIVE, Bool, 'R', "recursive",
+FLAG(LS_RECURSIVE,
+     Bool,
+     'R',
+     "recursive",
      "List every subdirectory reached while descending.");
-FLAG(LS_TREE, Bool, '\0', "tree",
+FLAG(LS_TREE,
+     Bool,
+     '\0',
+     "tree",
      "Draw each reached subdirectory as an indented tree.");
-FLAG(LS_LEVEL, String, 'L', "level",
+FLAG(LS_LEVEL,
+     String,
+     'L',
+     "level",
      "Descend at most this many levels with -R and --tree.");
-FLAG(LS_ONE_FILE_SYSTEM, Bool, '\0', "one-file-system",
+FLAG(LS_ONE_FILE_SYSTEM,
+     Bool,
+     '\0',
+     "one-file-system",
      "Do not descend into directories on other file systems with -R and "
      "--tree.");
 
@@ -71,42 +107,43 @@ enum class ls_sort_key : u8
 struct listing_options
 {
   Maybe<os::terminal_dimensions> terminal_dimensions{};
-  ls_sort_key key{ls_sort_key::Name};
-  usize max_depth{0};
-  bool has_depth_limit{false};
-  bool is_reversed{false};
-  bool should_color{false};
-  bool should_classify{false};
-  bool is_long{false};
-  bool is_directory_marker_only{false};
-  bool is_numeric_ids{false};
-  bool should_hide_owner{false};
-  bool should_hide_group{false};
-  bool is_one_per_line{false};
-  bool is_recursive{false};
-  bool is_tree{false};
-  bool is_showing_dot_names{false};
-  bool is_listing_dot_and_dotdot{false};
-  bool should_load_full_status{false};
-  bool should_load_type{false};
+  ls_sort_key                    key{ls_sort_key::Name};
+  usize                          max_depth{0};
+  bool                           has_depth_limit{false};
+  bool                           is_reversed{false};
+  bool                           should_color{false};
+  bool                           should_classify{false};
+  bool                           is_long{false};
+  bool                           is_directory_marker_only{false};
+  bool                           is_numeric_ids{false};
+  bool                           should_hide_owner{false};
+  bool                           should_hide_group{false};
+  bool                           is_one_per_line{false};
+  bool                           is_recursive{false};
+  bool                           is_tree{false};
+  bool                           is_showing_dot_names{false};
+  bool                           is_listing_dot_and_dotdot{false};
+  bool                           should_load_full_status{false};
+  bool                           should_load_type{false};
 };
 
 struct listing_entry
 {
   explicit listing_entry(Allocator allocator) : name(allocator) {}
-  String name;
-  os::file_status status{};
+  String                  name;
+  os::file_status         status{};
   colors::file_entry_type type{colors::file_entry_type::Regular};
-  bool has_status{false};
+  bool                    has_status{false};
 };
 
 struct listing_entry_comparator
 {
   ls_sort_key key;
-  sort_order order;
+  sort_order  order;
 
-  pure fn is_less(const listing_entry &left,
-                  const listing_entry &right) const wontthrow -> bool
+  pure fn
+  is_less(const listing_entry &left, const listing_entry &right) const wontthrow
+      -> bool
   {
     switch (key) {
     case ls_sort_key::Time:
@@ -124,8 +161,9 @@ struct listing_entry_comparator
     return left.name.view() < right.name.view();
   }
 
-  pure fn operator()(const listing_entry &left,
-                     const listing_entry &right) const wontthrow->bool
+  pure fn
+  operator()(const listing_entry &left,
+             const listing_entry &right) const wontthrow->bool
   {
     return order == sort_order::ascending ? is_less(left, right)
                                           : is_less(right, left);
@@ -145,13 +183,13 @@ struct long_entry
   String size;
   String time;
   String name;
-  u64 blocks{0};
+  u64    blocks{0};
 };
 
 struct id_name_entry
 {
   id_name_entry(u32 id, String name) : id(id), name(steal(name)) {}
-  u32 id;
+  u32    id;
   String name;
 };
 
@@ -171,8 +209,11 @@ struct id_name_cache
   ArrayList<id_name_entry> gid_cache;
 };
 
-static fn cached_id_name(u32 id, id_name_kind kind, id_name_cache &id_names,
-                         Allocator allocator) throws -> StringView
+static fn
+cached_id_name(u32            id,
+               id_name_kind   kind,
+               id_name_cache &id_names,
+               Allocator      allocator) throws -> StringView
 {
   let &cache =
       kind == id_name_kind::Owner ? id_names.uid_cache : id_names.gid_cache;
@@ -182,22 +223,26 @@ static fn cached_id_name(u32 id, id_name_kind kind, id_name_cache &id_names,
 
   let const looked_up = kind == id_name_kind::Owner ? os::uid_to_username(id)
                                                     : os::gid_to_groupname(id);
-  let name = looked_up.has_value() ? String{allocator, looked_up->view()}
-                                   : String::from(id, allocator);
+  let       name = looked_up.has_value() ? String{allocator, looked_up->view()}
+                                         : String::from(id, allocator);
   cache.push(id_name_entry{id, steal(name)});
 
   return cache.back().name.view();
 }
 
-static fn append_padded(String &output, StringView field, usize width,
-                        bool should_pad_on_left) throws -> void
+static fn
+append_padded(String    &output,
+              StringView field,
+              usize      width,
+              bool       should_pad_on_left) throws -> void
 {
   if (should_pad_on_left) output.append_repeated(' ', width - field.length);
   output += field;
   if (!should_pad_on_left) output.append_repeated(' ', width - field.length);
 }
 
-static pure fn classify_suffix(colors::file_entry_type type) wontthrow -> char
+static pure fn
+classify_suffix(colors::file_entry_type type) wontthrow -> char
 {
   switch (type) {
   case colors::file_entry_type::Directory: return '/';
@@ -218,8 +263,9 @@ static pure fn classify_suffix(colors::file_entry_type type) wontthrow -> char
   return '\0';
 }
 
-static pure fn listing_suffix(colors::file_entry_type type,
-                              const listing_options &options) wontthrow -> char
+static pure fn
+listing_suffix(colors::file_entry_type type,
+               const listing_options  &options) wontthrow -> char
 {
   let const suffix = classify_suffix(type);
   if (!options.is_directory_marker_only) return suffix;
@@ -227,8 +273,10 @@ static pure fn listing_suffix(colors::file_entry_type type,
   return suffix == '/' ? '/' : '\0';
 }
 
-static fn append_decorated_name(String &output, const listing_entry &entry,
-                                const listing_options &options) throws -> void
+static fn
+append_decorated_name(String                &output,
+                      const listing_entry   &entry,
+                      const listing_options &options) throws -> void
 {
   let const color = options.should_color ? colors::file_entry_color(entry.type)
                                          : StringView{};
@@ -246,9 +294,9 @@ static fn append_decorated_name(String &output, const listing_entry &entry,
   if (suffix != '\0') output.push(suffix);
 }
 
-static pure fn decorated_width(const listing_entry &entry,
-                               const listing_options &options) wontthrow
-    -> usize
+static pure fn
+decorated_width(const listing_entry   &entry,
+                const listing_options &options) wontthrow -> usize
 {
   let const has_suffix =
       options.should_classify && listing_suffix(entry.type, options) != '\0';
@@ -256,17 +304,21 @@ static pure fn decorated_width(const listing_entry &entry,
   return entry.name.count() + (has_suffix ? 1 : 0);
 }
 
-static fn set_entry_status(listing_entry &entry,
-                           const os::file_status &status) wontthrow -> void
+static fn
+set_entry_status(listing_entry &entry, const os::file_status &status) wontthrow
+    -> void
 {
-  entry.status = status;
+  entry.status     = status;
   entry.has_status = true;
-  entry.type = colors::file_entry_type_of_mode(entry.status.mode);
+  entry.type       = colors::file_entry_type_of_mode(entry.status.mode);
 }
 
 static fn
-make_entry(const Path &path, StringView name, const listing_options &options,
-           Path::EntryKind kind, Allocator allocator,
+make_entry(const Path                       &path,
+           StringView                        name,
+           const listing_options            &options,
+           Path::EntryKind                   kind,
+           Allocator                         allocator,
            const os::directory_status_entry *known_entry = nullptr) throws
     -> listing_entry
 {
@@ -305,14 +357,17 @@ make_entry(const Path &path, StringView name, const listing_options &options,
   return entry;
 }
 
-static fn prepare_entries(ArrayList<listing_entry> entries,
-                          const listing_options &options, StringView directory,
-                          bool is_name_path, Allocator allocator,
-                          bool has_known_symlink_targets = false) throws
+static fn
+prepare_entries(ArrayList<listing_entry> entries,
+                const listing_options   &options,
+                StringView               directory,
+                bool                     is_name_path,
+                Allocator                allocator,
+                bool has_known_symlink_targets = false) throws
     -> SortedArrayList<listing_entry, listing_entry_comparator>
 {
   if (options.should_color && !has_known_symlink_targets) {
-    let symlink_paths = ArrayList<Path>{allocator};
+    let symlink_paths    = ArrayList<Path>{allocator};
     let symlink_statuses = ArrayList<os::file_status>{allocator};
 
     for (let const &entry : entries) {
@@ -338,7 +393,7 @@ static fn prepare_entries(ArrayList<listing_entry> entries,
       }
 
       let const results = batch.execute(os::batch_deduplication::Disabled);
-      usize symlink_index = 0;
+      usize     symlink_index = 0;
 
       for (listing_entry &entry : entries) {
         if (entry.type != colors::file_entry_type::Symlink) continue;
@@ -356,12 +411,13 @@ static fn prepare_entries(ArrayList<listing_entry> entries,
       options.is_reversed ? sort_order::descending : sort_order::ascending});
 }
 
-static fn collect_directory(const Path &directory,
-                            const listing_options &options,
-                            Allocator allocator) throws
+static fn
+collect_directory(const Path            &directory,
+                  const listing_options &options,
+                  Allocator              allocator) throws
     -> Maybe<SortedArrayList<listing_entry, listing_entry_comparator>>
 {
-  let entries = ArrayList<listing_entry>{allocator};
+  let       entries        = ArrayList<listing_entry>{allocator};
   let const directory_text = directory.view();
   let const should_collect_status =
       options.should_load_full_status ||
@@ -430,29 +486,29 @@ static fn collect_directory(const Path &directory,
                          allocator);
 }
 
-static fn build_long_entry_or_sparse_row(const listing_entry &entry,
-                                         const listing_options &options,
-                                         id_name_cache &id_names,
-                                         Allocator allocator) throws
-    -> long_entry
+static fn
+build_long_entry_or_sparse_row(const listing_entry   &entry,
+                               const listing_options &options,
+                               id_name_cache         &id_names,
+                               Allocator allocator) throws -> long_entry
 {
   long_entry row{allocator};
   append_decorated_name(row.name, entry, options);
 
   if (!entry.has_status) {
     row.mode_string = "??????????";
-    row.link_count = "?";
-    row.owner = "?";
-    row.group = "?";
-    row.size = "?";
-    row.time = "?";
+    row.link_count  = "?";
+    row.owner       = "?";
+    row.group       = "?";
+    row.size        = "?";
+    row.time        = "?";
 
     return row;
   }
 
   const os::file_status &status = entry.status;
-  row.mode_string = os::format_mode_string(status.mode);
-  row.link_count = String::from(status.link_count, allocator);
+  row.mode_string               = os::format_mode_string(status.mode);
+  row.link_count                = String::from(status.link_count, allocator);
   if (options.is_numeric_ids) {
     row.owner = String::from(status.owner_id, allocator);
     row.group = String::from(status.group_id, allocator);
@@ -472,14 +528,15 @@ static fn build_long_entry_or_sparse_row(const listing_entry &entry,
   return row;
 }
 
-static fn render_long_entries(const ArrayList<long_entry> &entries,
-                              const listing_options &options,
-                              String &output) throws -> void
+static fn
+render_long_entries(const ArrayList<long_entry> &entries,
+                    const listing_options       &options,
+                    String                      &output) throws -> void
 {
-  usize link_width = 0;
+  usize link_width  = 0;
   usize owner_width = 0;
   usize group_width = 0;
-  usize size_width = 0;
+  usize size_width  = 0;
 
   for (let const &entry : entries) {
     if (entry.link_count.count() > link_width)
@@ -511,11 +568,13 @@ static fn render_long_entries(const ArrayList<long_entry> &entries,
   }
 }
 
-static fn column_width(const ArrayList<usize> &widths, usize column_index,
-                       usize rows) wontthrow -> usize
+static fn
+column_width(const ArrayList<usize> &widths,
+             usize                   column_index,
+             usize                   rows) wontthrow -> usize
 {
-  let const count = widths.count();
-  usize widest = 0;
+  let const count  = widths.count();
+  usize     widest = 0;
 
   for (usize r = 0; r < rows; r++) {
     let const index = column_index * rows + r;
@@ -527,9 +586,11 @@ static fn column_width(const ArrayList<usize> &widths, usize column_index,
   return widest;
 }
 
-static fn render_columns(const ArrayList<listing_entry> &entries,
-                         const listing_options &options, String &output,
-                         Allocator allocator) throws -> void
+static fn
+render_columns(const ArrayList<listing_entry> &entries,
+               const listing_options          &options,
+               String                         &output,
+               Allocator                       allocator) throws -> void
 {
   let const count = entries.count();
   if (count == 0) return;
@@ -544,7 +605,7 @@ static fn render_columns(const ArrayList<listing_entry> &entries,
   }
 
   ArrayList<String> cells{allocator};
-  ArrayList<usize> widths{allocator};
+  ArrayList<usize>  widths{allocator};
   cells.reserve(count);
   widths.reserve(count);
 
@@ -566,12 +627,12 @@ static fn render_columns(const ArrayList<listing_entry> &entries,
       terminal_width / (shortest_name_length + COLUMN_GAP);
   let const bounded_columns =
       count < width_limited_columns ? count : width_limited_columns;
-  let const max_columns = bounded_columns == 0 ? 1 : bounded_columns;
-  usize best_columns = 1;
+  let const max_columns  = bounded_columns == 0 ? 1 : bounded_columns;
+  usize     best_columns = 1;
 
   for (usize columns = max_columns;; columns--) {
-    let const rows = (count + columns - 1) / columns;
-    usize total = 0;
+    let const rows  = (count + columns - 1) / columns;
+    usize     total = 0;
 
     for (usize c = 0; c < columns; c++) {
       total += column_width(widths, c, rows);
@@ -585,7 +646,7 @@ static fn render_columns(const ArrayList<listing_entry> &entries,
     if (columns == 1) break;
   }
 
-  let const rows = (count + best_columns - 1) / best_columns;
+  let const        rows = (count + best_columns - 1) / best_columns;
   ArrayList<usize> column_widths{allocator};
   column_widths.reserve(best_columns);
 
@@ -608,8 +669,9 @@ static fn render_columns(const ArrayList<listing_entry> &entries,
   }
 }
 
-static fn long_total_in_1k_blocks(const ArrayList<long_entry> &entries,
-                                  Allocator allocator) throws -> String
+static fn
+long_total_in_1k_blocks(const ArrayList<long_entry> &entries,
+                        Allocator                    allocator) throws -> String
 {
   u64 total_512_blocks = 0;
 
@@ -622,10 +684,13 @@ static fn long_total_in_1k_blocks(const ArrayList<long_entry> &entries,
   return "total " + String::from(total_512_blocks / 2, allocator);
 }
 
-static fn render_entries(const ArrayList<listing_entry> &entries,
-                         const listing_options &options,
-                         bool should_print_total, id_name_cache &id_names,
-                         String &output, Allocator allocator) throws -> void
+static fn
+render_entries(const ArrayList<listing_entry> &entries,
+               const listing_options          &options,
+               bool                            should_print_total,
+               id_name_cache                  &id_names,
+               String                         &output,
+               Allocator                       allocator) throws -> void
 {
   if (!options.is_long) {
     render_columns(entries, options, output, allocator);
@@ -648,13 +713,16 @@ static fn render_entries(const ArrayList<listing_entry> &entries,
   render_long_entries(rows, options, output);
 }
 
-static pure fn is_dot_or_dotdot(StringView name) wontthrow -> bool
+static pure fn
+is_dot_or_dotdot(StringView name) wontthrow -> bool
 {
   return name == StringView{"."} || name == StringView{".."};
 }
 
-static fn is_on_operand_device(const Path &path, const listing_entry &entry,
-                               const u64 *operand_device_id) wontthrow -> bool
+static fn
+is_on_operand_device(const Path          &path,
+                     const listing_entry &entry,
+                     const u64           *operand_device_id) wontthrow -> bool
 {
   if (operand_device_id == nullptr) return true;
 
@@ -666,10 +734,14 @@ static fn is_on_operand_device(const Path &path, const listing_entry &entry,
   return status.device_id == *operand_device_id;
 }
 
-static fn render_tree_level(StringView directory,
-                            const listing_options &options, usize depth,
-                            const u64 *operand_device_id, String &prefix,
-                            String &output, Allocator allocator) throws -> void
+static fn
+render_tree_level(StringView             directory,
+                  const listing_options &options,
+                  usize                  depth,
+                  const u64             *operand_device_id,
+                  String                &prefix,
+                  String                &output,
+                  Allocator              allocator) throws -> void
 {
   if (os::INTERRUPT_REQUESTED) return;
   let const entries =
@@ -678,9 +750,9 @@ static fn render_tree_level(StringView directory,
 
   for (usize index = 0; index < entries->count(); index++) {
     if (os::INTERRUPT_REQUESTED) return;
-    let const &entry = (*entries)[index];
-    let const is_last = index + 1 == entries->count();
-    let const connector = get_tree_connector(is_last);
+    let const &entry     = (*entries)[index];
+    let const  is_last   = index + 1 == entries->count();
+    let const  connector = get_tree_connector(is_last);
 
     output += prefix.view();
     output += connector.branch;
@@ -711,18 +783,21 @@ struct ls_run
   {}
 
   const ExecContext &ec;
-  EvalContext &cxt;
-  id_name_cache id_names;
-  String output;
-  i32 status{0};
-  bool has_printed_block{false};
+  EvalContext       &cxt;
+  id_name_cache      id_names;
+  String             output;
+  i32                status{0};
+  bool               has_printed_block{false};
 };
 
-static fn render_directory_block(StringView directory,
-                                 const listing_options &options, usize depth,
-                                 const u64 *operand_device_id,
-                                 bool should_print_header, ls_run &run,
-                                 Allocator allocator) throws -> void
+static fn
+render_directory_block(StringView             directory,
+                       const listing_options &options,
+                       usize                  depth,
+                       const u64             *operand_device_id,
+                       bool                   should_print_header,
+                       ls_run                &run,
+                       Allocator              allocator) throws -> void
 {
   if (os::INTERRUPT_REQUESTED) return;
   let const entries =
@@ -766,8 +841,10 @@ static fn render_directory_block(StringView directory,
   }
 }
 
-static fn resolve_color_mode(const ExecContext &ec, EvalContext &cxt,
-                             bool &out_should_color) throws -> bool
+static fn
+resolve_color_mode(const ExecContext &ec,
+                   EvalContext       &cxt,
+                   bool              &out_should_color) throws -> bool
 {
   unused(ec);
   unused(cxt);
@@ -776,9 +853,11 @@ static fn resolve_color_mode(const ExecContext &ec, EvalContext &cxt,
   return true;
 }
 
-static fn resolve_depth_limit(const ExecContext &ec, EvalContext &cxt,
-                              StringView utility_name,
-                              listing_options &options) throws -> bool
+static fn
+resolve_depth_limit(const ExecContext &ec,
+                    EvalContext       &cxt,
+                    StringView         utility_name,
+                    listing_options   &options) throws -> bool
 {
   if (!FLAG_LS_LEVEL.is_set()) return true;
 
@@ -795,15 +874,16 @@ static fn resolve_depth_limit(const ExecContext &ec, EvalContext &cxt,
   }
 
   options.has_depth_limit = true;
-  options.max_depth = static_cast<usize>(parsed.value());
+  options.max_depth       = static_cast<usize>(parsed.value());
 
   return true;
 }
 
-fn LS::execute(const ExecContext &ec, EvalContext &cxt,
-               const ArrayList<String> &args,
-               const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+fn
+LS::execute(const ExecContext               &ec,
+            EvalContext                     &cxt,
+            const ArrayList<String>         &args,
+            const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
@@ -815,16 +895,16 @@ fn LS::execute(const ExecContext &ec, EvalContext &cxt,
   options.should_classify =
       FLAG_LS_CLASSIFY.is_enabled() || FLAG_LS_MARK_DIRECTORIES.is_enabled();
   options.is_directory_marker_only = !FLAG_LS_CLASSIFY.is_enabled();
-  options.is_numeric_ids = FLAG_LS_NUMERIC.is_enabled();
-  options.should_hide_owner = FLAG_LS_NO_GROUP.is_enabled();
-  options.should_hide_group = FLAG_LS_NO_OWNER.is_enabled();
+  options.is_numeric_ids           = FLAG_LS_NUMERIC.is_enabled();
+  options.should_hide_owner        = FLAG_LS_NO_GROUP.is_enabled();
+  options.should_hide_group        = FLAG_LS_NO_OWNER.is_enabled();
   options.is_long = FLAG_LS_LONG.is_enabled() || FLAG_LS_NUMERIC.is_enabled() ||
                     FLAG_LS_NO_GROUP.is_enabled() ||
                     FLAG_LS_NO_OWNER.is_enabled();
   options.is_one_per_line = FLAG_LS_ONE.is_enabled();
-  options.is_recursive = FLAG_LS_RECURSIVE.is_enabled();
-  options.is_tree = FLAG_LS_TREE.is_enabled();
-  options.is_reversed = FLAG_LS_REVERSE.is_enabled();
+  options.is_recursive    = FLAG_LS_RECURSIVE.is_enabled();
+  options.is_tree         = FLAG_LS_TREE.is_enabled();
+  options.is_reversed     = FLAG_LS_REVERSE.is_enabled();
 
   if (FLAG_LS_SORT_TIME.is_enabled() && FLAG_LS_SORT_SIZE.is_enabled()) {
     options.key = FLAG_LS_SORT_TIME.position() > FLAG_LS_SORT_SIZE.position()
@@ -851,7 +931,7 @@ fn LS::execute(const ExecContext &ec, EvalContext &cxt,
     options.terminal_dimensions = os::get_terminal_dimensions();
   }
 
-  let const allocator = cxt.scratch_allocator();
+  let const             allocator = cxt.scratch_allocator();
   ArrayList<StringView> unsorted_targets{allocator};
   if (operands.is_empty())
     unsorted_targets.push(StringView{"."});
@@ -862,10 +942,10 @@ fn LS::execute(const ExecContext &ec, EvalContext &cxt,
   let const targets =
       steal(unsorted_targets).make_sorted(sort_order::ascending);
 
-  let target_paths = ArrayList<Path>{allocator};
-  let target_statuses = ArrayList<os::file_status>{allocator};
+  let target_paths             = ArrayList<Path>{allocator};
+  let target_statuses          = ArrayList<os::file_status>{allocator};
   let target_is_broken_symlink = ArrayList<bool>{allocator};
-  let target_batch = os::Batch{allocator};
+  let target_batch             = os::Batch{allocator};
   target_paths.reserve(targets.count());
   target_statuses.reserve(targets.count());
   target_is_broken_symlink.reserve(targets.count());
@@ -885,10 +965,10 @@ fn LS::execute(const ExecContext &ec, EvalContext &cxt,
   let const target_results = target_batch.execute();
 
   ArrayList<listing_entry> file_entries{allocator};
-  ArrayList<usize> file_target_indices{allocator};
-  ArrayList<usize> symlink_target_indices{allocator};
-  ArrayList<StringView> dir_targets{allocator};
-  ls_run run{ec, cxt, allocator};
+  ArrayList<usize>         file_target_indices{allocator};
+  ArrayList<usize>         symlink_target_indices{allocator};
+  ArrayList<StringView>    dir_targets{allocator};
+  ls_run                   run{ec, cxt, allocator};
 
   for (usize index = 0; index < targets.count(); index++) {
     let const target = targets[index];
@@ -921,7 +1001,7 @@ fn LS::execute(const ExecContext &ec, EvalContext &cxt,
 
   if (!symlink_target_indices.is_empty()) {
     let followed_statuses = ArrayList<os::file_status>{allocator};
-    let follow_batch = os::Batch{allocator};
+    let follow_batch      = os::Batch{allocator};
     followed_statuses.reserve(symlink_target_indices.count());
     follow_batch.reserve(symlink_target_indices.count());
 
@@ -953,7 +1033,7 @@ fn LS::execute(const ExecContext &ec, EvalContext &cxt,
       steal(dir_targets).make_sorted(sort_order::ascending);
 
   for (let const target_index : sorted_file_target_indices) {
-    let entry = listing_entry{allocator};
+    let entry  = listing_entry{allocator};
     entry.name = String{allocator, targets[target_index]};
     set_entry_status(entry, target_statuses[target_index]);
     if (target_is_broken_symlink[target_index])
@@ -976,7 +1056,7 @@ fn LS::execute(const ExecContext &ec, EvalContext &cxt,
   for (let const &target : sorted_dir_targets) {
     if (os::INTERRUPT_REQUESTED) break;
     os::file_status operand_status{};
-    let const has_operand_device =
+    let const       has_operand_device =
         FLAG_LS_ONE_FILE_SYSTEM.is_enabled() &&
         os::stat_path_following(target, operand_status);
     let const *operand_device_id =

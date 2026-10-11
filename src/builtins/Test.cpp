@@ -30,10 +30,11 @@ namespace koshka {
 
 namespace {
 
-fn parse_integer(StringView text) throws -> Maybe<i64>
+fn
+parse_integer(StringView text) throws -> Maybe<i64>
 {
-  bool is_out_of_range = false;
-  let const parsed = utils::parse_decimal_i64(text, &is_out_of_range);
+  bool      is_out_of_range = false;
+  let const parsed          = utils::parse_decimal_i64(text, &is_out_of_range);
   if (parsed.is_error() || is_out_of_range) {
     return None;
   }
@@ -80,30 +81,37 @@ constexpr StaticStringMap BINARY_OPERATORS{BINARY_OPERATOR_ENTRIES};
 class TestEvaluator
 {
 public:
-  const ExecContext &ec;
-  const EvalContext &cxt;
+  const ExecContext       &ec;
+  const EvalContext       &cxt;
   const ArrayList<String> &args;
-  usize pos;
-  usize end;
-  bool is_bash_compatible;
-  bool has_name_reference_test;
+  usize                    pos;
+  usize                    end;
+  bool                     is_bash_compatible;
+  bool                     has_name_reference_test;
 
-  pure const String &current() const wontthrow
+  pure const String &
+  current() const wontthrow
   {
     ASSERT(pos < end);
 
     return args[pos];
   }
-  pure bool at_end() const wontthrow { return pos >= end; }
+  pure bool
+  at_end() const wontthrow
+  {
+    return pos >= end;
+  }
 
-  void fail(StringView message) throws
+  void
+  fail(StringView message) throws
   {
     let error = make_error_for_arg(ec, pos, message);
     error.set_command_status(2);
     throw error;
   }
 
-  bool evaluate_unary(const String &op, const String &operand) throws
+  bool
+  evaluate_unary(const String &op, const String &operand) throws
   {
     if (op == "-z") return operand.is_empty();
     if (op == "-n") return !operand.is_empty();
@@ -155,8 +163,10 @@ public:
     return false;
   }
 
-  bool evaluate_binary(const String &left, const String &op,
-                       const String &right) throws
+  bool
+  evaluate_binary(const String &left,
+                  const String &op,
+                  const String &right) throws
   {
     let const found = BINARY_OPERATORS.find(op.view());
     if (!found.has_value()) {
@@ -176,10 +186,10 @@ public:
       }
 
       return left == right;
-    case binary_operator::StringEqual: return left == right;
+    case binary_operator::StringEqual:    return left == right;
     case binary_operator::StringNotEqual: return left != right;
-    case binary_operator::StringLess: return left < right;
-    case binary_operator::StringGreater: return right < left;
+    case binary_operator::StringLess:     return left < right;
+    case binary_operator::StringGreater:  return right < left;
     case binary_operator::SameFile:
       return Path{left}.is_same_file_as(Path{right});
     case binary_operator::NewerFile:
@@ -189,7 +199,7 @@ public:
     default: break;
     }
 
-    let const left_number = parse_integer(left);
+    let const left_number  = parse_integer(left);
     let const right_number = parse_integer(right);
     if (!left_number.has_value() || !right_number.has_value()) {
       let const &not_a_number = left_number.has_value() ? right : left;
@@ -200,17 +210,18 @@ public:
     }
 
     switch (*found) {
-    case binary_operator::IntegerEqual: return *left_number == *right_number;
+    case binary_operator::IntegerEqual:    return *left_number == *right_number;
     case binary_operator::IntegerNotEqual: return *left_number != *right_number;
-    case binary_operator::IntegerLess: return *left_number < *right_number;
+    case binary_operator::IntegerLess:     return *left_number < *right_number;
     case binary_operator::IntegerLessOrEqual:
       return *left_number <= *right_number;
     case binary_operator::IntegerGreater: return *left_number > *right_number;
-    default: return *left_number >= *right_number;
+    default:                              return *left_number >= *right_number;
     }
   }
 
-  pure fn is_unary_operator(const String &s) const wontthrow -> bool
+  pure fn
+  is_unary_operator(const String &s) const wontthrow -> bool
   {
     static constexpr PackedStringKey KEYS[] = {
         SSK("-z"), SSK("-n"), SSK("-e"), SSK("-f"), SSK("-d"), SSK("-s"),
@@ -226,12 +237,14 @@ public:
     return UNARY_OPS.contains(s.view());
   }
 
-  pure fn is_binary_operator(const String &s) const wontthrow -> bool
+  pure fn
+  is_binary_operator(const String &s) const wontthrow -> bool
   {
     return BINARY_OPERATORS.find(s.view()).has_value();
   }
 
-  pure bool is_unary_in_operand_position(usize index) const wontthrow
+  pure bool
+  is_unary_in_operand_position(usize index) const wontthrow
   {
     if (index + 1 >= end) return true;
     if (index + 2 >= end) return false;
@@ -239,18 +252,21 @@ public:
     return is_binary_operator(args[index + 1]);
   }
 
-  pure bool is_open_paren_token(usize index) const wontthrow
+  pure bool
+  is_open_paren_token(usize index) const wontthrow
   {
     return args[index] == "(" && index + 1 < end;
   }
 
-  pure bool is_unary_operator_token(usize index) const wontthrow
+  pure bool
+  is_unary_operator_token(usize index) const wontthrow
   {
     return is_unary_operator(args[index]) &&
            !is_unary_in_operand_position(index);
   }
 
-  bool parse_factor() throws
+  bool
+  parse_factor() throws
   {
     if (at_end()) {
       fail("An argument is expected");
@@ -279,7 +295,7 @@ public:
       return result;
     }
     if (is_unary_operator_token(pos)) {
-      let const &op = args[pos];
+      let const &op      = args[pos];
       let const &operand = args[pos + 1];
       pos += 2;
 
@@ -293,8 +309,8 @@ public:
 
         return false;
       }
-      let const &left = args[pos];
-      let const &op = args[pos + 1];
+      let const &left  = args[pos];
+      let const &op    = args[pos + 1];
       let const &right = args[pos + 2];
       pos += 3;
 
@@ -306,33 +322,36 @@ public:
     return result;
   }
 
-  bool parse_term() throws
+  bool
+  parse_term() throws
   {
     let is_true = parse_factor();
 
     while (!at_end() && current() == "-a") {
       pos++;
       let const right = parse_factor();
-      is_true = is_true && right;
+      is_true         = is_true && right;
     }
 
     return is_true;
   }
 
-  bool parse_expression() throws
+  bool
+  parse_expression() throws
   {
     let is_true = parse_term();
 
     while (!at_end() && current() == "-o") {
       pos++;
       let const right = parse_term();
-      is_true = is_true || right;
+      is_true         = is_true || right;
     }
 
     return is_true;
   }
 
-  bool evaluate_with_posix_argument_count_rules() throws
+  bool
+  evaluate_with_posix_argument_count_rules() throws
   {
     let should_negate = false;
 
@@ -382,7 +401,8 @@ public:
 
 } /* namespace */
 
-fn Test::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
+fn
+Test::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let const &arguments = ec.args();
   ASSERT(!arguments.is_empty());
@@ -408,14 +428,14 @@ fn Test::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   LOG(All, "test evaluating %zu operands", expression_end - 1);
 
-  let evaluator = TestEvaluator{ec,
+  let       evaluator = TestEvaluator{ec,
                                 cxt,
                                 arguments,
                                 1,
                                 expression_end,
                                 cxt.runtime_state().is_bash_compatible(),
                                 cxt.runtime_state().bash_additions_enabled()};
-  let const result = evaluator.evaluate_with_posix_argument_count_rules();
+  let const result    = evaluator.evaluate_with_posix_argument_count_rules();
   if (evaluator.pos != evaluator.end) {
     ASSERT(evaluator.pos < evaluator.end);
     let error = make_error_for_arg(

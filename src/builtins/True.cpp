@@ -23,7 +23,8 @@ REGISTER_BUILTIN_FLAGS(True);
 
 namespace koshka {
 
-fn True::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
+fn
+True::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   unused(ec);
   unused(cxt);

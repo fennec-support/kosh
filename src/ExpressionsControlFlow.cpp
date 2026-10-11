@@ -33,11 +33,13 @@ namespace expressions {
 
 using namespace internal;
 
-static fn append_word_loop_header(EvalContext &cxt, String &header,
-                                  StringView keyword, StringView variable_name,
-                                  bool has_in_clause,
-                                  const ArrayList<const Token *> &words) throws
-    -> void
+static fn
+append_word_loop_header(EvalContext                    &cxt,
+                        String                         &header,
+                        StringView                      keyword,
+                        StringView                      variable_name,
+                        bool                            has_in_clause,
+                        const ArrayList<const Token *> &words) throws -> void
 {
   if (!cxt.runtime_state().should_echo_expanded() &&
       !cxt.runtime_state().bash_dynamic_variables_enabled() &&
@@ -69,8 +71,10 @@ CompoundCommand::CompoundCommand(SourceLocation location)
     : Command(steal(location))
 {}
 
-static fn does_async_child_use_command_string_status(
-    const EvalContext &cxt, const Command &command) wontthrow -> bool
+static fn
+does_async_child_use_command_string_status(const EvalContext &cxt,
+                                           const Command     &command) wontthrow
+    -> bool
 {
   let const filename = command.source_location().get_filename();
 
@@ -81,9 +85,10 @@ static fn does_async_child_use_command_string_status(
          filename->data == COMMAND_STRING_SOURCE_NAME.data;
 }
 
-static fn async_error_status(const EvalContext &cxt, const ErrorBase &error,
-                             bool should_use_command_string_status) wontthrow
-    -> i32
+static fn
+async_error_status(const EvalContext &cxt,
+                   const ErrorBase   &error,
+                   bool should_use_command_string_status) wontthrow -> i32
 {
   if (should_use_command_string_status && error.is_script_fatal() &&
       error.command_status() == 1)
@@ -98,12 +103,14 @@ static fn async_error_status(const EvalContext &cxt, const ErrorBase &error,
   return static_cast<i32>(error.command_status());
 }
 
-fn Command::evaluate_async_body(EvalContext &cxt) const throws -> i64
+fn
+Command::evaluate_async_body(EvalContext &cxt) const throws -> i64
 {
   return evaluate_impl(cxt, root_evaluation_mode::Normal).status;
 }
 
-fn Command::evaluate_async(EvalContext &cxt) const throws -> i64
+fn
+Command::evaluate_async(EvalContext &cxt) const throws -> i64
 {
   let const do_evaluate_body = [](void *context, EvalContext &body_cxt) -> i64 {
     return static_cast<const Command *>(context)->evaluate_async_body(body_cxt);
@@ -113,9 +120,11 @@ fn Command::evaluate_async(EvalContext &cxt) const throws -> i64
                              const_cast<Command *>(this));
 }
 
-fn Command::evaluate_async_with(EvalContext &cxt, async_body body,
-                                void *context,
-                                StringView expanded_child_source) const throws
+fn
+Command::evaluate_async_with(EvalContext &cxt,
+                             async_body   body,
+                             void        *context,
+                             StringView   expanded_child_source) const throws
     -> i64
 {
   if (!cxt.job_table_store().jobs().is_empty())
@@ -128,22 +137,22 @@ fn Command::evaluate_async_with(EvalContext &cxt, async_body body,
 
   let const child_source =
       expanded_child_source.is_empty() ? command_text : expanded_child_source;
-  let bootstrap = os::subshell_bootstrap{};
+  let       bootstrap = os::subshell_bootstrap{};
   let const should_use_command_string_status =
       does_async_child_use_command_string_status(cxt, *this);
   let const evaluator = cxt.make_child_evaluator_state(bootstrap);
   bootstrap.should_use_command_string_status = should_use_command_string_status;
   cxt.set_child_source_origin(bootstrap, child_source, source_location());
   let const launch = os::launch_compound_stage(os::compound_stage_options{
-      .source = child_source,
-      .location = source_location(),
+      .source            = child_source,
+      .location          = source_location(),
       .diagnostic_source = source_view,
-      .evaluator = evaluator,
-      .process_group = os::process_group_mode::NewBackground});
-  let const child = launch.child;
+      .evaluator         = evaluator,
+      .process_group     = os::process_group_mode::NewBackground});
+  let const child  = launch.child;
 
   if (launch.should_evaluate_child) {
-    i32 status = 1;
+    i32       status                       = 1;
     let const do_run_exit_trap_after_error = [&](i32 error_status) {
       if ((!is_simple_command() && !is_assignment()) ||
           !cxt.runtime_state().is_bash_compatible())
@@ -200,30 +209,35 @@ fn Command::evaluate_async_with(EvalContext &cxt, async_body body,
   SET_AND_RETURN_EXIT_STATUS(cxt, 0);
 }
 
-fn CompoundCommand::is_compound_command() const wontthrow -> bool
+fn
+CompoundCommand::is_compound_command() const wontthrow -> bool
 {
   return true;
 }
 
-fn CompoundCommand::set_fully_eliminated() const wontthrow -> void
+fn
+CompoundCommand::set_fully_eliminated() const wontthrow -> void
 {
   set_execution_flag(ExecutionFlag::FullyEliminated);
 }
 
-pure fn CompoundCommand::is_fully_eliminated() const wontthrow -> bool
+pure fn
+CompoundCommand::is_fully_eliminated() const wontthrow -> bool
 {
   return has_execution_flag(ExecutionFlag::FullyEliminated);
 }
 
-IfClause::IfClause(SourceLocation location, ArrayList<if_branch> &&branches,
-                   const Expression *otherwise)
+IfClause::IfClause(SourceLocation         location,
+                   ArrayList<if_branch> &&branches,
+                   const Expression      *otherwise)
     : CompoundCommand(steal(location)), m_branches(steal(branches)),
       m_otherwise(otherwise)
 {}
 
 IfClause::~IfClause() = default;
 
-fn IfClause::can_evaluate_in_process_substitution(
+fn
+IfClause::can_evaluate_in_process_substitution(
     const EvalContext &cxt, HashSet &active_functions) const throws -> bool
 {
   for (let const &branch : m_branches) {
@@ -241,7 +255,8 @@ fn IfClause::can_evaluate_in_process_substitution(
                                                            active_functions);
 }
 
-cold fn IfClause::to_string() const throws -> String
+cold fn
+IfClause::to_string() const throws -> String
 {
   let result = String{"IfClause"};
   append_ast_execution_flags(result);
@@ -249,11 +264,12 @@ cold fn IfClause::to_string() const throws -> String
   return result;
 }
 
-cold fn IfClause::to_ast_string(usize layer) const throws -> String
+cold fn
+IfClause::to_ast_string(usize layer) const throws -> String
 {
-  let const pad = indent_for_layer(layer);
+  let const pad       = indent_for_layer(layer);
   let const child_pad = pad + EXPRESSION_AST_INDENT;
-  let s = pad + "[" + to_string() + "]";
+  let       s         = pad + "[" + to_string() + "]";
 
   for (let const &[ condition, body ] : m_branches) {
     ASSERT(condition != nullptr);
@@ -269,8 +285,8 @@ cold fn IfClause::to_ast_string(usize layer) const throws -> String
   return s;
 }
 
-hot fn IfClause::evaluate_impl(EvalContext &cxt,
-                               root_evaluation_mode) const throws
+hot fn
+IfClause::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws
     -> status_result
 {
   cxt.execution_store().terminal_exec_allowed() = false;
@@ -316,17 +332,18 @@ hot fn IfClause::evaluate_impl(EvalContext &cxt,
   return {static_cast<i32>(set_and_return_exit_status(cxt, 0)), 0};
 }
 
-fn IfClause::analyze(AnalysisContext &actx, bool is_unconditional) const throws
+fn
+IfClause::analyze(AnalysisContext &actx, bool is_unconditional) const throws
     -> void
 {
   optimizer::optimize_node(this, actx);
 
   let saved_tested_command_names = actx.tested_command_names.clone();
-  let condition_failure_names = saved_tested_command_names.clone();
-  let merged_occurrences = variable_occurrence_pair{};
+  let condition_failure_names    = saved_tested_command_names.clone();
+  let merged_occurrences         = variable_occurrence_pair{};
   let has_merged_occurrence_exit = false;
-  let did_skip_exiting_branch = false;
-  let is_first_branch = true;
+  let did_skip_exiting_branch    = false;
+  let is_first_branch            = true;
 
   for (usize i = 0; i < m_branches.count(); i++) {
     let const & [ condition, body ] = m_branches[i];
@@ -338,7 +355,7 @@ fn IfClause::analyze(AnalysisContext &actx, bool is_unconditional) const throws
         actx.walk.should_retain_tested_command_names;
     actx.walk.should_retain_tested_command_names = true;
     let const was_analyzing_condition = actx.walk.is_analyzing_condition;
-    actx.walk.is_analyzing_condition = true;
+    actx.walk.is_analyzing_condition  = true;
     if (!is_first_branch) actx.conditional_branch_depth++;
     condition->analyze(actx, is_unconditional && is_first_branch);
     if (!is_first_branch) actx.conditional_branch_depth--;
@@ -347,7 +364,7 @@ fn IfClause::analyze(AnalysisContext &actx, bool is_unconditional) const throws
         was_retaining_tested_command_names;
     let const is_dead_branch =
         has_folded_branch() && folded_branch_index() != i;
-    let condition_failure_occurrences = actx.occurrences.snapshot();
+    let       condition_failure_occurrences = actx.occurrences.snapshot();
     let const was_silenced = actx.effects.should_silence_unresolved_commands;
     if (is_dead_branch) actx.effects.should_silence_unresolved_commands = true;
     actx.conditional_branch_depth++;
@@ -360,7 +377,7 @@ fn IfClause::analyze(AnalysisContext &actx, bool is_unconditional) const throws
 
     if (!is_dead_branch && !is_exiting_branch) {
       if (!has_merged_occurrence_exit) {
-        merged_occurrences = steal(actx.occurrences);
+        merged_occurrences         = steal(actx.occurrences);
         has_merged_occurrence_exit = true;
       } else {
         merged_occurrences.merge(actx.occurrences);
@@ -373,7 +390,7 @@ fn IfClause::analyze(AnalysisContext &actx, bool is_unconditional) const throws
     condition->append_presence_tested_command_names(
         actx, actx.tested_command_names, false);
     condition_failure_names = steal(actx.tested_command_names);
-    is_first_branch = false;
+    is_first_branch         = false;
   }
 
   let const is_else_dead =
@@ -393,7 +410,7 @@ fn IfClause::analyze(AnalysisContext &actx, bool is_unconditional) const throws
 
   if (!is_else_dead && !is_exiting_else) {
     if (!has_merged_occurrence_exit) {
-      merged_occurrences = steal(actx.occurrences);
+      merged_occurrences         = steal(actx.occurrences);
       has_merged_occurrence_exit = true;
     } else {
       merged_occurrences.merge(actx.occurrences);
@@ -407,35 +424,46 @@ fn IfClause::analyze(AnalysisContext &actx, bool is_unconditional) const throws
   actx.constant_variables.clear();
 }
 
-pure fn IfClause::branches() const wontthrow -> const ArrayList<if_branch> &
+pure fn
+IfClause::branches() const wontthrow -> const ArrayList<if_branch> &
 {
   return m_branches;
 }
 
-pure fn IfClause::otherwise() const wontthrow -> const Expression *
+pure fn
+IfClause::otherwise() const wontthrow -> const Expression *
 {
   return m_otherwise;
 }
 
-fn IfClause::set_folded_branch(usize index) const wontthrow -> void
+fn
+IfClause::set_folded_branch(usize index) const wontthrow -> void
 {
   m_folded_branch = index;
 }
 
-pure fn IfClause::has_folded_branch() const wontthrow -> bool
+pure fn
+IfClause::has_folded_branch() const wontthrow -> bool
 {
   return m_folded_branch.has_value();
 }
 
-pure fn IfClause::folded_branch_index() const wontthrow -> usize
+pure fn
+IfClause::folded_branch_index() const wontthrow -> usize
 {
   return *m_folded_branch;
 }
 
-fn IfClause::as_if_clause() const wontthrow -> const IfClause * { return this; }
+fn
+IfClause::as_if_clause() const wontthrow -> const IfClause *
+{
+  return this;
+}
 
-WhileLoop::WhileLoop(SourceLocation location, const Expression *condition,
-                     const Expression *body, loop_kind kind)
+WhileLoop::WhileLoop(SourceLocation    location,
+                     const Expression *condition,
+                     const Expression *body,
+                     loop_kind         kind)
     : CompoundCommand(steal(location)), m_condition(condition), m_body(body)
 {
   set_execution_flag(ExecutionFlag::UntilLoop, kind == loop_kind::Until);
@@ -443,7 +471,8 @@ WhileLoop::WhileLoop(SourceLocation location, const Expression *condition,
 
 WhileLoop::~WhileLoop() = default;
 
-cold fn WhileLoop::to_string() const throws -> String
+cold fn
+WhileLoop::to_string() const throws -> String
 {
   let result = String{is_until() ? "UntilLoop" : "WhileLoop"};
   append_ast_execution_flags(result);
@@ -451,22 +480,23 @@ cold fn WhileLoop::to_string() const throws -> String
   return result;
 }
 
-cold fn WhileLoop::to_ast_string(usize layer) const throws -> String
+cold fn
+WhileLoop::to_ast_string(usize layer) const throws -> String
 {
   ASSERT(m_condition != nullptr);
   ASSERT(m_body != nullptr);
 
-  let const pad = indent_for_layer(layer);
+  let const pad       = indent_for_layer(layer);
   let const child_pad = pad + EXPRESSION_AST_INDENT;
-  let s = pad + "[" + to_string() + "]";
+  let       s         = pad + "[" + to_string() + "]";
   s += "\n" + child_pad + m_condition->to_ast_string(layer + 1);
   s += "\n" + child_pad + m_body->to_ast_string(layer + 1);
 
   return s;
 }
 
-hot fn internal::resolve_loop_control(EvalContext &cxt) throws
-    -> loop_disposition
+hot fn
+internal::resolve_loop_control(EvalContext &cxt) throws -> loop_disposition
 {
   if (!cxt.runtime_state().is_posix_mode())
     cxt.job_table_store().forget_waited_jobs();
@@ -497,8 +527,8 @@ hot fn internal::resolve_loop_control(EvalContext &cxt) throws
   return is_break ? loop_disposition::StopLoop : loop_disposition::RunNext;
 }
 
-hot fn WhileLoop::evaluate_impl(EvalContext &cxt,
-                                root_evaluation_mode) const throws
+hot fn
+WhileLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws
     -> status_result
 {
   ASSERT(m_condition != nullptr);
@@ -506,7 +536,7 @@ hot fn WhileLoop::evaluate_impl(EvalContext &cxt,
 
   cxt.execution_store().terminal_exec_allowed() = false;
 
-  let const is_until_loop = is_until();
+  let const is_until_loop     = is_until();
   let const is_folded_to_skip = this->is_folded_to_skip();
   LOG(Debug, "entering the %s loop%s", is_until_loop ? "until" : "while",
       is_folded_to_skip ? ", folded to skip the body" : "");
@@ -562,7 +592,8 @@ hot fn WhileLoop::evaluate_impl(EvalContext &cxt,
   return result;
 }
 
-fn WhileLoop::analyze(AnalysisContext &actx, bool is_unconditional) const throws
+fn
+WhileLoop::analyze(AnalysisContext &actx, bool is_unconditional) const throws
     -> void
 {
   ASSERT(m_condition != nullptr);
@@ -572,14 +603,14 @@ fn WhileLoop::analyze(AnalysisContext &actx, bool is_unconditional) const throws
 
   optimizer::optimize_node(this, actx);
 
-  let const saved_walk = actx.walk;
-  let saved_tested_command_names = actx.tested_command_names.clone();
-  actx.walk.is_inside_loop_condition = true;
-  actx.walk.has_input_reading_loop_condition = false;
+  let const saved_walk                 = actx.walk;
+  let       saved_tested_command_names = actx.tested_command_names.clone();
+  actx.walk.is_inside_loop_condition   = true;
+  actx.walk.has_input_reading_loop_condition   = false;
   actx.walk.should_retain_tested_command_names = true;
-  let const saved_getopts = actx.active_getopts;
-  actx.active_getopts = {};
-  actx.walk.is_analyzing_condition = true;
+  let const saved_getopts                      = actx.active_getopts;
+  actx.active_getopts                          = {};
+  actx.walk.is_analyzing_condition             = true;
   actx.loop_body_depth++;
   m_condition->analyze(actx, is_unconditional);
   actx.loop_body_depth--;
@@ -593,7 +624,7 @@ fn WhileLoop::analyze(AnalysisContext &actx, bool is_unconditional) const throws
         actx, actx.tested_command_names, false);
   }
 
-  let condition_occurrences = actx.occurrences.snapshot();
+  let       condition_occurrences = actx.occurrences.snapshot();
   let const was_silenced = actx.effects.should_silence_unresolved_commands;
   if (has_input_reading_loop_condition) actx.walk.is_inside_read_loop = true;
   if (is_folded_to_skip())
@@ -605,43 +636,49 @@ fn WhileLoop::analyze(AnalysisContext &actx, bool is_unconditional) const throws
   actx.loop_body_depth--;
 
   condition_occurrences.merge(actx.occurrences);
-  actx.occurrences = steal(condition_occurrences);
+  actx.occurrences              = steal(condition_occurrences);
   actx.walk.is_inside_read_loop = saved_walk.is_inside_read_loop;
   actx.effects.should_silence_unresolved_commands = was_silenced;
   actx.tested_command_names = steal(saved_tested_command_names);
-  actx.active_getopts = saved_getopts;
+  actx.active_getopts       = saved_getopts;
 }
 
-pure fn WhileLoop::condition() const wontthrow -> const Expression *
+pure fn
+WhileLoop::condition() const wontthrow -> const Expression *
 {
   return m_condition;
 }
 
-pure fn WhileLoop::is_until() const wontthrow -> bool
+pure fn
+WhileLoop::is_until() const wontthrow -> bool
 {
   return has_execution_flag(ExecutionFlag::UntilLoop);
 }
 
-fn WhileLoop::set_folded_to_skip() const wontthrow -> void
+fn
+WhileLoop::set_folded_to_skip() const wontthrow -> void
 {
   set_execution_flag(ExecutionFlag::FoldedLoopToSkip);
 }
 
-pure fn WhileLoop::is_folded_to_skip() const wontthrow -> bool
+pure fn
+WhileLoop::is_folded_to_skip() const wontthrow -> bool
 {
   return has_execution_flag(ExecutionFlag::FoldedLoopToSkip);
 }
 
-fn WhileLoop::as_while_loop() const wontthrow -> const WhileLoop *
+fn
+WhileLoop::as_while_loop() const wontthrow -> const WhileLoop *
 {
   return this;
 }
 
-SelectLoop::SelectLoop(SourceLocation location,
-                       SourceLocation variable_location,
-                       StringView variable_name,
-                       ArrayList<const Token *> &&words, bool has_in_clause,
-                       const Expression *body)
+SelectLoop::SelectLoop(SourceLocation             location,
+                       SourceLocation             variable_location,
+                       StringView                 variable_name,
+                       ArrayList<const Token *> &&words,
+                       bool                       has_in_clause,
+                       const Expression          *body)
     : CompoundCommand(steal(location)), m_variable_name(variable_name),
       m_body(body), m_variable_location(steal(variable_location)),
       m_has_in_clause(has_in_clause)
@@ -651,7 +688,8 @@ SelectLoop::SelectLoop(SourceLocation location,
 
 SelectLoop::~SelectLoop() = default;
 
-cold fn SelectLoop::to_string() const throws -> String
+cold fn
+SelectLoop::to_string() const throws -> String
 {
   let result = "SelectLoop \"" + m_variable_name + "\"";
   append_ast_execution_flags(result);
@@ -659,7 +697,8 @@ cold fn SelectLoop::to_string() const throws -> String
   return result;
 }
 
-cold fn SelectLoop::to_ast_string(usize layer) const throws -> String
+cold fn
+SelectLoop::to_ast_string(usize layer) const throws -> String
 {
   ASSERT(m_body != nullptr);
   let const pad = indent_for_layer(layer);
@@ -668,8 +707,9 @@ cold fn SelectLoop::to_ast_string(usize layer) const throws -> String
          m_body->to_ast_string(layer + 1);
 }
 
-fn SelectLoop::evaluate_impl(EvalContext &cxt,
-                             root_evaluation_mode) const throws -> status_result
+fn
+SelectLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws
+    -> status_result
 {
   ASSERT(m_body != nullptr);
 
@@ -700,7 +740,7 @@ fn SelectLoop::evaluate_impl(EvalContext &cxt,
   defer { cxt.cleanup_loop_redirect_fds(redirect_fd_mark); };
 
   status_result result{};
-  bool should_reprint_menu = true;
+  bool          should_reprint_menu = true;
 
   loop
   {
@@ -761,9 +801,12 @@ fn SelectLoop::evaluate_impl(EvalContext &cxt,
   return result;
 }
 
-ForLoop::ForLoop(SourceLocation location, SourceLocation variable_location,
-                 StringView variable_name, ArrayList<const Token *> &&words,
-                 bool has_in_clause, const Expression *body)
+ForLoop::ForLoop(SourceLocation             location,
+                 SourceLocation             variable_location,
+                 StringView                 variable_name,
+                 ArrayList<const Token *> &&words,
+                 bool                       has_in_clause,
+                 const Expression          *body)
     : CompoundCommand(steal(location)), m_variable_name(variable_name),
       m_body(body), m_variable_location(steal(variable_location)),
       m_has_in_clause(has_in_clause)
@@ -773,7 +816,8 @@ ForLoop::ForLoop(SourceLocation location, SourceLocation variable_location,
 
 ForLoop::~ForLoop() = default;
 
-cold fn ForLoop::to_string() const throws -> String
+cold fn
+ForLoop::to_string() const throws -> String
 {
   let result = String{"ForLoop \""};
   result += m_variable_name;
@@ -783,19 +827,20 @@ cold fn ForLoop::to_string() const throws -> String
   return result;
 }
 
-cold fn ForLoop::to_ast_string(usize layer) const throws -> String
+cold fn
+ForLoop::to_ast_string(usize layer) const throws -> String
 {
   ASSERT(m_body != nullptr);
 
   let const pad = indent_for_layer(layer);
-  let s = pad + "[" + to_string() + "]";
+  let       s   = pad + "[" + to_string() + "]";
   s += "\n" + pad + EXPRESSION_AST_INDENT + m_body->to_ast_string(layer + 1);
 
   return s;
 }
 
-hot fn ForLoop::evaluate_impl(EvalContext &cxt,
-                              root_evaluation_mode) const throws
+hot fn
+ForLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws
     -> status_result
 {
   ASSERT(m_body != nullptr);
@@ -890,7 +935,8 @@ hot fn ForLoop::evaluate_impl(EvalContext &cxt,
   return result;
 }
 
-fn ForLoop::analyze(AnalysisContext &actx, bool is_unconditional) const throws
+fn
+ForLoop::analyze(AnalysisContext &actx, bool is_unconditional) const throws
     -> void
 {
   ASSERT(m_body != nullptr);
@@ -908,8 +954,8 @@ fn ForLoop::analyze(AnalysisContext &actx, bool is_unconditional) const throws
                            {m_variable_name}, m_variable_location);
   }
 
-  let const had_outer_loop_variable = outer_loop_location.has_value();
-  let saved_outer_loop_location = SourceLocation{};
+  let const had_outer_loop_variable   = outer_loop_location.has_value();
+  let       saved_outer_loop_location = SourceLocation{};
   if (had_outer_loop_variable)
     saved_outer_loop_location = *outer_loop_location.value();
   actx.active_loop_variables.set(m_variable_name, m_variable_location);
@@ -926,15 +972,15 @@ fn ForLoop::analyze(AnalysisContext &actx, bool is_unconditional) const throws
 
   for (let const t : m_words) {
     if (t->kind() != Token::Kind::Word) continue;
-    let const &word = static_cast<const tokens::WordToken *>(t)->word();
-    let const source_text = analysis_source_text(actx, t->source_location());
+    let const &word        = static_cast<const tokens::WordToken *>(t)->word();
+    let const  source_text = analysis_source_text(actx, t->source_location());
 
     check_posix_word_portability(actx, word, t->source_location());
 
-    let word_is_literal = true;
-    let has_glob_character = false;
-    let has_unquoted_glob = false;
-    let has_unquoted_brace = false;
+    let word_is_literal        = true;
+    let has_glob_character     = false;
+    let has_unquoted_glob      = false;
+    let has_unquoted_brace     = false;
     let has_unquoted_expansion = false;
 
     for (let const &segment : word.segments) {
@@ -947,7 +993,7 @@ fn ForLoop::analyze(AnalysisContext &actx, bool is_unconditional) const throws
       case WordSegment::Kind::UnquotedText: {
         if (segment.has_glob_metacharacter()) {
           has_glob_character = true;
-          has_unquoted_glob = true;
+          has_unquoted_glob  = true;
         }
         if (segment.text.view().find_character('{').has_value())
           has_unquoted_brace = true;
@@ -959,8 +1005,8 @@ fn ForLoop::analyze(AnalysisContext &actx, bool is_unconditional) const throws
         if (segment.is_in_double_quotes) break;
         has_unquoted_expansion = true;
 
-        let const body = segment.text.view();
-        usize start = 0;
+        let const body  = segment.text.view();
+        usize     start = 0;
 
         while (start < body.length &&
                (body[start] == ' ' || body[start] == '\t'))
@@ -1037,19 +1083,26 @@ fn ForLoop::analyze(AnalysisContext &actx, bool is_unconditional) const throws
   actx.occurrences = steal(loop_entry_occurrences);
 }
 
-fn ForLoop::as_for_loop() const wontthrow -> const ForLoop * { return this; }
+fn
+ForLoop::as_for_loop() const wontthrow -> const ForLoop *
+{
+  return this;
+}
 
-pure fn ForLoop::has_in_clause() const wontthrow -> bool
+pure fn
+ForLoop::has_in_clause() const wontthrow -> bool
 {
   return m_has_in_clause;
 }
 
-pure fn ForLoop::words() const wontthrow -> const ArrayList<const Token *> &
+pure fn
+ForLoop::words() const wontthrow -> const ArrayList<const Token *> &
 {
   return m_words;
 }
 
-CaseClause::CaseClause(SourceLocation location, const Token *word,
+CaseClause::CaseClause(SourceLocation         location,
+                       const Token           *word,
                        ArrayList<case_item> &&items)
     : CompoundCommand(steal(location)), m_word(word)
 {
@@ -1058,7 +1111,8 @@ CaseClause::CaseClause(SourceLocation location, const Token *word,
 
 CaseClause::~CaseClause() = default;
 
-cold fn CaseClause::to_string() const throws -> String
+cold fn
+CaseClause::to_string() const throws -> String
 {
   let result = String{"CaseClause"};
   append_ast_execution_flags(result);
@@ -1066,11 +1120,12 @@ cold fn CaseClause::to_string() const throws -> String
   return result;
 }
 
-cold fn CaseClause::to_ast_string(usize layer) const throws -> String
+cold fn
+CaseClause::to_ast_string(usize layer) const throws -> String
 {
-  let const pad = indent_for_layer(layer);
+  let const pad       = indent_for_layer(layer);
   let const child_pad = pad + EXPRESSION_AST_INDENT;
-  let s = pad + "[" + to_string() + "]";
+  let       s         = pad + "[" + to_string() + "]";
 
   for (let const &item : m_items) {
     ASSERT(item.body != nullptr);
@@ -1080,8 +1135,9 @@ cold fn CaseClause::to_ast_string(usize layer) const throws -> String
   return s;
 }
 
-fn CaseClause::evaluate_impl(EvalContext &cxt,
-                             root_evaluation_mode) const throws -> status_result
+fn
+CaseClause::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws
+    -> status_result
 {
   ASSERT(m_word != nullptr);
 
@@ -1114,9 +1170,9 @@ fn CaseClause::evaluate_impl(EvalContext &cxt,
     return t->raw_string();
   };
 
-  let &scratch_arena = cxt.expansion_store().scratch_arena();
-  let const subject_mark = scratch_arena.mark();
-  let subject = String{heap_allocator()};
+  let      &scratch_arena = cxt.expansion_store().scratch_arena();
+  let const subject_mark  = scratch_arena.mark();
+  let       subject       = String{heap_allocator()};
   try {
     subject.append(do_expand_no_glob(m_word).view());
   } catch (...) {
@@ -1127,8 +1183,8 @@ fn CaseClause::evaluate_impl(EvalContext &cxt,
 
   LOG(Debug, "the case subject expanded to '%s'", subject.c_str());
 
-  let const extglob = cxt.get_extglob_mode();
-  let const charset = cxt.get_glob_charset_for(subject.view());
+  let const extglob             = cxt.get_extglob_mode();
+  let const charset             = cxt.get_glob_charset_for(subject.view());
   let const is_case_insensitive = cxt.is_shopt_enabled("nocasematch");
   let const folded_subject =
       is_case_insensitive
@@ -1152,7 +1208,7 @@ fn CaseClause::evaluate_impl(EvalContext &cxt,
       }
 
       let pattern_active = Bitset{cxt.scratch_allocator()};
-      let pattern = String{cxt.scratch_allocator()};
+      let pattern        = String{cxt.scratch_allocator()};
       if (pattern_token->kind() == Token::Kind::Word) {
         try {
           pattern = cxt.expand_case_pattern_masked(
@@ -1188,8 +1244,8 @@ fn CaseClause::evaluate_impl(EvalContext &cxt,
   };
 
   status_result result{};
-  bool did_run_a_body = false;
-  usize i = 0;
+  bool          did_run_a_body = false;
+  usize         i              = 0;
 
   while (i < m_items.count()) {
     if (!do_arm_matches(m_items[i])) {
@@ -1235,8 +1291,9 @@ fn CaseClause::evaluate_impl(EvalContext &cxt,
   return result;
 }
 
-fn CaseClause::analyze(AnalysisContext &actx,
-                       bool is_unconditional) const throws -> void
+fn
+CaseClause::analyze(AnalysisContext &actx, bool is_unconditional) const throws
+    -> void
 {
   analyze_token_substitutions(actx, m_word, is_unconditional);
 
@@ -1244,8 +1301,8 @@ fn CaseClause::analyze(AnalysisContext &actx,
     analyze_token_list_substitutions(actx, item.patterns, is_unconditional);
   }
 
-  let const common_occurrences = actx.occurrences.snapshot();
-  let has_unquoted_default_pattern = false;
+  let const common_occurrences           = actx.occurrences.snapshot();
+  let       has_unquoted_default_pattern = false;
 
   for (let const &item : m_items) {
     for (let const pattern : item.patterns) {
@@ -1264,9 +1321,9 @@ fn CaseClause::analyze(AnalysisContext &actx,
     }
   }
 
-  let merged_occurrences = common_occurrences;
-  let continued_occurrences = common_occurrences;
-  let has_merged_occurrence_exit = !has_unquoted_default_pattern;
+  let merged_occurrences            = common_occurrences;
+  let continued_occurrences         = common_occurrences;
+  let has_merged_occurrence_exit    = !has_unquoted_default_pattern;
   let has_continued_occurrence_path = false;
 
   ASSERT(m_word != nullptr);
@@ -1306,13 +1363,13 @@ fn CaseClause::analyze(AnalysisContext &actx,
     item.body->analyze(actx, false);
     actx.conditional_branch_depth--;
 
-    let const has_later_item = i + 1 < m_items.count();
+    let const has_later_item  = i + 1 < m_items.count();
     let const is_exiting_item = item.body->always_exits(actx);
     if (!is_exiting_item &&
         (item.terminator != case_terminator::FallThrough || !has_later_item))
     {
       if (!has_merged_occurrence_exit) {
-        merged_occurrences = actx.occurrences.snapshot();
+        merged_occurrences         = actx.occurrences.snapshot();
         has_merged_occurrence_exit = true;
       } else {
         merged_occurrences.merge(actx.occurrences);
@@ -1327,7 +1384,7 @@ fn CaseClause::analyze(AnalysisContext &actx,
 
   actx.occurrences = steal(merged_occurrences);
 
-  let case_input = case_lint_input{};
+  let case_input           = case_lint_input{};
   case_input.case_location = m_word->source_location();
   case_input.case_word_source =
       analysis_source_text(actx, case_input.case_location);
@@ -1343,15 +1400,15 @@ fn CaseClause::analyze(AnalysisContext &actx,
         case_word.segments[0].kind == WordSegment::Kind::VariableReference &&
         case_word.segments[0].text.view() == actx.active_getopts.variable_name)
     {
-      case_input.is_getopts_case = true;
+      case_input.is_getopts_case   = true;
       case_input.getopts_optstring = actx.active_getopts.optstring;
-      case_input.getopts_location = actx.active_getopts.location;
+      case_input.getopts_location  = actx.active_getopts.location;
     }
   }
 
-  let tally = case_arm_tally{};
-  let earlier_patterns = StringMap<SourceLocation>{heap_allocator()};
-  let earlier_shadow_prefixes = ArrayList<String>{heap_allocator()};
+  let tally                    = case_arm_tally{};
+  let earlier_patterns         = StringMap<SourceLocation>{heap_allocator()};
+  let earlier_shadow_prefixes  = ArrayList<String>{heap_allocator()};
   let earlier_shadow_locations = ArrayList<SourceLocation>{heap_allocator()};
 
   for (let const &item : m_items) {
@@ -1359,9 +1416,9 @@ fn CaseClause::analyze(AnalysisContext &actx,
       if (pattern->kind() != Token::Kind::Word) continue;
       let const &pattern_word =
           static_cast<const tokens::WordToken *>(pattern)->word();
-      let const literal = pattern_word.to_literal_string();
-      let const raw_pattern = pattern->raw_string();
-      let is_duplicate = false;
+      let const literal      = pattern_word.to_literal_string();
+      let const raw_pattern  = pattern->raw_string();
+      let       is_duplicate = false;
       if (let const earlier_location =
               earlier_patterns.find(raw_pattern.view());
           earlier_location.has_value())
@@ -1415,18 +1472,21 @@ BraceGroup::BraceGroup(SourceLocation location, const Expression *body)
 
 BraceGroup::~BraceGroup() = default;
 
-fn BraceGroup::always_exits(const AnalysisContext &actx) const wontthrow -> bool
+fn
+BraceGroup::always_exits(const AnalysisContext &actx) const wontthrow -> bool
 {
   return m_body->always_exits(actx);
 }
 
-fn BraceGroup::can_evaluate_in_process_substitution(
+fn
+BraceGroup::can_evaluate_in_process_substitution(
     const EvalContext &cxt, HashSet &active_functions) const throws -> bool
 {
   return m_body->can_evaluate_in_process_substitution(cxt, active_functions);
 }
 
-cold fn BraceGroup::to_string() const throws -> String
+cold fn
+BraceGroup::to_string() const throws -> String
 {
   let result = String{"BraceGroup"};
   append_ast_execution_flags(result);
@@ -1434,7 +1494,8 @@ cold fn BraceGroup::to_string() const throws -> String
   return result;
 }
 
-cold fn BraceGroup::to_ast_string(usize layer) const throws -> String
+cold fn
+BraceGroup::to_ast_string(usize layer) const throws -> String
 {
   ASSERT(m_body != nullptr);
 
@@ -1444,8 +1505,9 @@ cold fn BraceGroup::to_ast_string(usize layer) const throws -> String
          m_body->to_ast_string(layer + 1);
 }
 
-fn BraceGroup::evaluate_impl(EvalContext &cxt,
-                             root_evaluation_mode) const throws -> status_result
+fn
+BraceGroup::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws
+    -> status_result
 {
   ASSERT(m_body != nullptr);
 
@@ -1460,22 +1522,25 @@ fn BraceGroup::evaluate_impl(EvalContext &cxt,
   return m_body->evaluate_status(cxt);
 }
 
-fn BraceGroup::analyze(AnalysisContext &actx,
-                       bool is_unconditional) const throws -> void
+fn
+BraceGroup::analyze(AnalysisContext &actx, bool is_unconditional) const throws
+    -> void
 {
   ASSERT(m_body != nullptr);
 
   m_body->analyze(actx, is_unconditional);
 }
 
-CoprocCommand::CoprocCommand(SourceLocation location, StringView name,
+CoprocCommand::CoprocCommand(SourceLocation    location,
+                             StringView        name,
                              const Expression *body)
     : CompoundCommand(steal(location)), m_name(name), m_body(body)
 {}
 
 CoprocCommand::~CoprocCommand() = default;
 
-cold fn CoprocCommand::to_string() const throws -> String
+cold fn
+CoprocCommand::to_string() const throws -> String
 {
   let result = String{"Coproc "};
   result += m_name;
@@ -1484,7 +1549,8 @@ cold fn CoprocCommand::to_string() const throws -> String
   return result;
 }
 
-cold fn CoprocCommand::to_ast_string(usize layer) const throws -> String
+cold fn
+CoprocCommand::to_ast_string(usize layer) const throws -> String
 {
   ASSERT(m_body != nullptr);
 
@@ -1494,8 +1560,9 @@ cold fn CoprocCommand::to_ast_string(usize layer) const throws -> String
          m_body->to_ast_string(layer + 1);
 }
 
-fn CoprocCommand::analyze(AnalysisContext &actx,
-                          bool is_unconditional) const throws -> void
+fn
+CoprocCommand::analyze(AnalysisContext &actx,
+                       bool             is_unconditional) const throws -> void
 {
   ASSERT(m_body != nullptr);
 
@@ -1504,9 +1571,9 @@ fn CoprocCommand::analyze(AnalysisContext &actx,
 
 static constexpr i32 COPROCESS_FD_FLOOR = 10;
 
-fn CoprocCommand::evaluate_impl(EvalContext &cxt,
-                                root_evaluation_mode) const throws
-    -> status_result
+fn
+CoprocCommand::evaluate_impl(EvalContext &cxt,
+                             root_evaluation_mode) const throws -> status_result
 {
   ASSERT(m_body != nullptr);
 
@@ -1537,19 +1604,19 @@ fn CoprocCommand::evaluate_impl(EvalContext &cxt,
   LOG(Debug, "launching the coprocess '%.*s'", static_cast<int>(m_name.length),
       m_name.data);
 
-  let bootstrap = os::subshell_bootstrap{};
+  let       bootstrap = os::subshell_bootstrap{};
   let const evaluator = cxt.make_child_evaluator_state(bootstrap);
   cxt.set_child_source_origin(bootstrap, body_text, body_location);
 
   let const launch = os::launch_compound_stage(os::compound_stage_options{
-      .source = body_text,
-      .in_fd = toward_child->in,
-      .out_fd = away_from_child->out,
-      .location = source_location(),
+      .source            = body_text,
+      .in_fd             = toward_child->in,
+      .out_fd            = away_from_child->out,
+      .location          = source_location(),
       .diagnostic_source = source_view,
-      .evaluator = evaluator,
-      .process_group = os::process_group_mode::NewBackground});
-  let const child = launch.child;
+      .evaluator         = evaluator,
+      .process_group     = os::process_group_mode::NewBackground});
+  let const child  = launch.child;
 
   if (launch.should_evaluate_child) {
     os::close_fd(toward_child->out);
@@ -1585,8 +1652,8 @@ fn CoprocCommand::evaluate_impl(EvalContext &cxt,
   os::close_fd(toward_child->in);
   os::close_fd(away_from_child->out);
 
-  let const read_fd = os::move_descriptor_to_free_shell_fd(away_from_child->in,
-                                                           COPROCESS_FD_FLOOR);
+  let const read_fd  = os::move_descriptor_to_free_shell_fd(away_from_child->in,
+                                                            COPROCESS_FD_FLOOR);
   let const write_fd = os::move_descriptor_to_free_shell_fd(toward_child->out,
                                                             COPROCESS_FD_FLOOR);
   if (read_fd < 0 || write_fd < 0) {

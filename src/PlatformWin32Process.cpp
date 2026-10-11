@@ -23,7 +23,8 @@
 namespace koshka {
 namespace os {
 
-static fn windows_priority_class(i32 priority) wontthrow -> DWORD
+static fn
+windows_priority_class(i32 priority) wontthrow -> DWORD
 {
   if (priority <= -10) return HIGH_PRIORITY_CLASS;
   if (priority < 0) return ABOVE_NORMAL_PRIORITY_CLASS;
@@ -33,24 +34,24 @@ static fn windows_priority_class(i32 priority) wontthrow -> DWORD
   return IDLE_PRIORITY_CLASS;
 }
 
-static fn priority_from_windows_class(DWORD priority_class) wontthrow
-    -> Maybe<i32>
+static fn
+priority_from_windows_class(DWORD priority_class) wontthrow -> Maybe<i32>
 {
   switch (priority_class) {
-  case REALTIME_PRIORITY_CLASS: return -20;
-  case HIGH_PRIORITY_CLASS: return -10;
+  case REALTIME_PRIORITY_CLASS:     return -20;
+  case HIGH_PRIORITY_CLASS:         return -10;
   case ABOVE_NORMAL_PRIORITY_CLASS: return -1;
-  case NORMAL_PRIORITY_CLASS: return 0;
+  case NORMAL_PRIORITY_CLASS:       return 0;
   case BELOW_NORMAL_PRIORITY_CLASS: return 10;
-  case IDLE_PRIORITY_CLASS: return 19;
-  default: return None;
+  case IDLE_PRIORITY_CLASS:         return 19;
+  default:                          return None;
   }
 }
 
 struct windows_measured_launch_options
 {
-  DWORD creation_flags{};
-  bool should_collect_resources{false};
+  DWORD             creation_flags{};
+  bool              should_collect_resources{false};
   Maybe<descriptor> inherited_handle;
   Maybe<descriptor> input;
   Maybe<descriptor> output;
@@ -58,11 +59,13 @@ struct windows_measured_launch_options
 };
 
 static fn
-run_measured_with_options(const ArrayList<String> &argv, measured_output output,
+run_measured_with_options(const ArrayList<String>               &argv,
+                          measured_output                        output,
                           const windows_measured_launch_options &options) throws
     -> Maybe<measured_result>;
 
-fn get_priority(i64 id, priority_target target) wontthrow -> Maybe<i32>
+fn
+get_priority(i64 id, priority_target target) wontthrow -> Maybe<i32>
 {
   if (target != priority_target::Process || id < 0 || id > UINT32_MAX) {
     SetLastError(ERROR_NOT_SUPPORTED);
@@ -81,7 +84,8 @@ fn get_priority(i64 id, priority_target target) wontthrow -> Maybe<i32>
   return priority_from_windows_class(priority_class);
 }
 
-fn set_priority(i64 id, i32 priority, priority_target target) wontthrow -> bool
+fn
+set_priority(i64 id, i32 priority, priority_target target) wontthrow -> bool
 {
   if (target != priority_target::Process || id < 0 || id > UINT32_MAX) {
     SetLastError(ERROR_NOT_SUPPORTED);
@@ -97,7 +101,8 @@ fn set_priority(i64 id, i32 priority, priority_target target) wontthrow -> bool
   return SetPriorityClass(process, windows_priority_class(priority)) != FALSE;
 }
 
-fn run_nice(const ArrayList<String> &argv, i32 increment) throws -> Maybe<i32>
+fn
+run_nice(const ArrayList<String> &argv, i32 increment) throws -> Maybe<i32>
 {
   let const current_priority_class = GetPriorityClass(GetCurrentProcess());
   if (current_priority_class == 0) return None;
@@ -117,19 +122,20 @@ fn run_nice(const ArrayList<String> &argv, i32 increment) throws -> Maybe<i32>
   return static_cast<i32>(result->exit_status);
 }
 
-fn run_nohup(const ArrayList<String> &argv, const nohup_options &options) throws
+fn
+run_nohup(const ArrayList<String> &argv, const nohup_options &options) throws
     -> Maybe<i32>
 {
   if (argv.is_empty()) return None;
 
   SECURITY_ATTRIBUTES inheritable{};
-  inheritable.nLength = sizeof(inheritable);
+  inheritable.nLength        = sizeof(inheritable);
   inheritable.bInheritHandle = TRUE;
-  HANDLE null_input = INVALID_HANDLE_VALUE;
-  HANDLE nohup_output = INVALID_HANDLE_VALUE;
-  let child_input = options.input;
-  let child_output = options.output;
-  let child_error = options.error;
+  HANDLE null_input          = INVALID_HANDLE_VALUE;
+  HANDLE nohup_output        = INVALID_HANDLE_VALUE;
+  let    child_input         = options.input;
+  let    child_output        = options.output;
+  let    child_error         = options.error;
   defer
   {
     if (null_input != INVALID_HANDLE_VALUE) CloseHandle(null_input);
@@ -167,9 +173,9 @@ fn run_nohup(const ArrayList<String> &argv, const nohup_options &options) throws
   if (is_fd_a_tty(child_error)) child_error = child_output;
   windows_measured_launch_options launch_options{};
   launch_options.creation_flags = CREATE_NEW_PROCESS_GROUP;
-  launch_options.input = child_input;
-  launch_options.output = child_output;
-  launch_options.error = child_error;
+  launch_options.input          = child_input;
+  launch_options.output         = child_output;
+  launch_options.error          = child_error;
   let const result =
       run_measured_with_options(argv, measured_output::Inherit, launch_options);
   if (!result.has_value()) return None;
@@ -179,26 +185,27 @@ fn run_nohup(const ArrayList<String> &argv, const nohup_options &options) throws
 
 volatile sig_atomic_t INTERRUPT_REQUESTED = 0;
 volatile sig_atomic_t CHILD_STATE_CHANGED = 0;
-volatile sig_atomic_t SIGNAL_PENDING = 0;
+volatile sig_atomic_t SIGNAL_PENDING      = 0;
 
-static constexpr i32 SIGNAL_FLAG_COUNT = 128;
-static constexpr i32 CHILD_SIGNAL_NUMBER = 0;
+static constexpr i32         SIGNAL_FLAG_COUNT                       = 128;
+static constexpr i32         CHILD_SIGNAL_NUMBER                     = 0;
 static volatile sig_atomic_t PENDING_SIGNAL_FLAGS[SIGNAL_FLAG_COUNT] = {};
-static volatile LONG64 CHILD_USER_TICKS = 0;
-static volatile LONG64 CHILD_SYSTEM_TICKS = 0;
-static volatile LONG64 CHILD_PEAK_RSS_BYTES = 0;
-static volatile LONG INTERNAL_PIPE_SEQUENCE = 0;
+static volatile LONG64       CHILD_USER_TICKS                        = 0;
+static volatile LONG64       CHILD_SYSTEM_TICKS                      = 0;
+static volatile LONG64       CHILD_PEAK_RSS_BYTES                    = 0;
+static volatile LONG         INTERNAL_PIPE_SEQUENCE                  = 0;
 
 static process_launch_counts PROCESS_LAUNCH_COUNTS{};
 
-fn get_process_launch_counts() wontthrow -> process_launch_counts
+fn
+get_process_launch_counts() wontthrow -> process_launch_counts
 {
   return PROCESS_LAUNCH_COUNTS;
 }
 
-static fn fill_resource_usage(HANDLE process_handle,
-                              process_resource_usage &resources) wontthrow
-    -> void
+static fn
+fill_resource_usage(HANDLE                  process_handle,
+                    process_resource_usage &resources) wontthrow -> void
 {
   FILETIME creation_time{};
   FILETIME exit_time{};
@@ -207,7 +214,7 @@ static fn fill_resource_usage(HANDLE process_handle,
   if (GetProcessTimes(process_handle, &creation_time, &exit_time, &kernel_time,
                       &user_time) != FALSE)
   {
-    resources.user_nanos = filetime_ticks(user_time) * 100ULL;
+    resources.user_nanos   = filetime_ticks(user_time) * 100ULL;
     resources.system_nanos = filetime_ticks(kernel_time) * 100ULL;
   }
 
@@ -224,14 +231,15 @@ static fn fill_resource_usage(HANDLE process_handle,
 
   IO_COUNTERS io_counters{};
   if (GetProcessIoCounters(process_handle, &io_counters) != FALSE) {
-    resources.read_call_count = io_counters.ReadOperationCount;
-    resources.write_call_count = io_counters.WriteOperationCount;
-    resources.read_byte_count = io_counters.ReadTransferCount;
+    resources.read_call_count    = io_counters.ReadOperationCount;
+    resources.write_call_count   = io_counters.WriteOperationCount;
+    resources.read_byte_count    = io_counters.ReadTransferCount;
     resources.written_byte_count = io_counters.WriteTransferCount;
   }
 }
 
-fn read_own_resource_usage() wontthrow -> process_resource_usage
+fn
+read_own_resource_usage() wontthrow -> process_resource_usage
 {
   process_resource_usage resources{};
   fill_resource_usage(GetCurrentProcess(), resources);
@@ -239,7 +247,8 @@ fn read_own_resource_usage() wontthrow -> process_resource_usage
   return resources;
 }
 
-static fn record_child_process_usage(process child) wontthrow -> void
+static fn
+record_child_process_usage(process child) wontthrow -> void
 {
   FILETIME creation_time{};
   FILETIME exit_time{};
@@ -281,27 +290,33 @@ namespace koshka {
 
 namespace os {
 
-static fn append_windows_quoted_arg(String &out, StringView arg) throws -> void;
+static fn
+append_windows_quoted_arg(String &out, StringView arg) throws -> void;
 
-static pure fn is_batch_program(StringView path) wontthrow -> bool;
+static pure fn
+is_batch_program(StringView path) wontthrow -> bool;
 
 static fn
-create_process_utf8(StringView application_path, StringView command_line,
-                    StringView working_directory, DWORD creation_flags,
-                    LPVOID environment_block, const STARTUPINFOW &startup_info,
-                    const HANDLE *inherited_handles,
-                    usize inherited_handle_count,
+create_process_utf8(StringView           application_path,
+                    StringView           command_line,
+                    StringView           working_directory,
+                    DWORD                creation_flags,
+                    LPVOID               environment_block,
+                    const STARTUPINFOW  &startup_info,
+                    const HANDLE        *inherited_handles,
+                    usize                inherited_handle_count,
                     PROCESS_INFORMATION &process_info,
                     const ExecContext *stage_context = nullptr) throws -> bool;
 
-fn ProgramCapture::start(const ArrayList<String> &argv,
-                         u64 timeout_nanos) wontthrow -> Maybe<ProgramCapture>
+fn
+ProgramCapture::start(const ArrayList<String> &argv,
+                      u64 timeout_nanos) wontthrow -> Maybe<ProgramCapture>
 {
   if (argv.is_empty()) return None;
 
   SECURITY_ATTRIBUTES inheritable{sizeof(SECURITY_ATTRIBUTES), nullptr, TRUE};
-  HANDLE read_end = INVALID_HANDLE_VALUE;
-  HANDLE write_end = INVALID_HANDLE_VALUE;
+  HANDLE              read_end  = INVALID_HANDLE_VALUE;
+  HANDLE              write_end = INVALID_HANDLE_VALUE;
   if (CreatePipe(&read_end, &write_end, &inheritable, 0) == FALSE) return None;
   bool is_read_end_owned = true;
   defer
@@ -321,15 +336,15 @@ fn ProgramCapture::start(const ArrayList<String> &argv,
   if (null_input == INVALID_HANDLE_VALUE) return None;
   defer { CloseHandle(null_input); };
 
-  let application_path = argv[0].c_str();
+  let application_path              = argv[0].c_str();
   let resolved_program_path_storage = String{heap_allocator()};
   if (let resolved_program_path = canonical_path(Path{argv[0].view()})) {
     resolved_program_path_storage = resolved_program_path->text().clone();
-    application_path = resolved_program_path_storage.c_str();
+    application_path              = resolved_program_path_storage.c_str();
   }
 
   let application_path_storage = String{heap_allocator()};
-  let command_line = make_os_args(argv);
+  let command_line             = make_os_args(argv);
   if (is_batch_program(argv[0].view())) {
     let batch_command = String{heap_allocator()};
     append_windows_quoted_arg(batch_command,
@@ -344,11 +359,11 @@ fn ProgramCapture::start(const ArrayList<String> &argv,
       append_windows_quoted_arg(batch_command, argv[argument_position].view());
     }
 
-    let command_processor = get_environment_variable("COMSPEC");
-    application_path_storage = command_processor.has_value()
-                                   ? command_processor.take()
-                                   : String{"cmd.exe"};
-    application_path = application_path_storage.c_str();
+    let command_processor      = get_environment_variable("COMSPEC");
+    application_path_storage   = command_processor.has_value()
+                                     ? command_processor.take()
+                                     : String{"cmd.exe"};
+    application_path           = application_path_storage.c_str();
     let processor_command_line = String{heap_allocator()};
     append_windows_quoted_arg(processor_command_line,
                               application_path_storage.view());
@@ -361,14 +376,14 @@ fn ProgramCapture::start(const ArrayList<String> &argv,
       application_path, command_line.c_str());
 
   STARTUPINFOW startup_info{};
-  startup_info.cb = sizeof(startup_info);
-  startup_info.dwFlags = STARTF_USESTDHANDLES;
-  startup_info.hStdInput = null_input;
+  startup_info.cb         = sizeof(startup_info);
+  startup_info.dwFlags    = STARTF_USESTDHANDLES;
+  startup_info.hStdInput  = null_input;
   startup_info.hStdOutput = write_end;
-  startup_info.hStdError = write_end;
+  startup_info.hStdError  = write_end;
 
   PROCESS_INFORMATION process_info{};
-  HANDLE inherited_handles[] = {null_input, write_end};
+  HANDLE              inherited_handles[] = {null_input, write_end};
   if (!create_process_utf8(StringView{application_path}, command_line.view(),
                            {}, CREATE_NO_WINDOW, nullptr, startup_info,
                            inherited_handles, 2, process_info))
@@ -379,16 +394,17 @@ fn ProgramCapture::start(const ArrayList<String> &argv,
   CloseHandle(write_end);
   write_end = INVALID_HANDLE_VALUE;
 
-  let capture = ProgramCapture{};
-  capture.m_child = process_info.hProcess;
-  capture.m_output = read_end;
-  is_read_end_owned = false;
+  let capture              = ProgramCapture{};
+  capture.m_child          = process_info.hProcess;
+  capture.m_output         = read_end;
+  is_read_end_owned        = false;
   capture.m_deadline_nanos = monotonic_nanos() + timeout_nanos;
 
   return capture;
 }
 
-fn ProgramCapture::step() wontthrow -> State
+fn
+ProgramCapture::step() wontthrow -> State
 {
   if (m_child == KOSH_INVALID_PROCESS) return State::Failed;
 
@@ -414,11 +430,11 @@ fn ProgramCapture::step() wontthrow -> State
     }
     if (available_byte_count == 0) break;
 
-    char buffer[4096];
+    char      buffer[4096];
     let const requested_count = available_byte_count < sizeof(buffer)
                                     ? available_byte_count
                                     : sizeof(buffer);
-    DWORD read_count = 0;
+    DWORD     read_count      = 0;
     if (ReadFile(m_output, buffer, requested_count, &read_count, nullptr) ==
         FALSE)
     {
@@ -465,13 +481,15 @@ fn ProgramCapture::step() wontthrow -> State
   return State::Running;
 }
 
-fn ProgramCapture::wait(u64 wait_nanos) const wontthrow -> void
+fn
+ProgramCapture::wait(u64 wait_nanos) const wontthrow -> void
 {
   unused(wait_nanos);
   Sleep(1);
 }
 
-fn ProgramCapture::abandon() wontthrow -> void
+fn
+ProgramCapture::abandon() wontthrow -> void
 {
   if (m_output != KOSH_INVALID_FD) {
     CloseHandle(m_output);
@@ -485,39 +503,53 @@ fn ProgramCapture::abandon() wontthrow -> void
   CloseHandle(m_child);
   m_child = KOSH_INVALID_PROCESS;
 }
-static pure fn process_is_pid_reference(process p) wontthrow -> bool
+static pure fn
+process_is_pid_reference(process p) wontthrow -> bool
 {
   return (reinterpret_cast<uintptr_t>(p) & PROCESS_REFERENCE_MASK) ==
          PID_REFERENCE_TAG;
 }
 
-static pure fn process_is_group_reference(process p) wontthrow -> bool
+static pure fn
+process_is_group_reference(process p) wontthrow -> bool
 {
   return p != INVALID_HANDLE_VALUE &&
          (reinterpret_cast<uintptr_t>(p) & PROCESS_REFERENCE_MASK) ==
              PROCESS_GROUP_REFERENCE_TAG;
 }
 
-static pure fn pid_from_reference(process p) wontthrow -> DWORD
+static pure fn
+pid_from_reference(process p) wontthrow -> DWORD
 {
   return static_cast<DWORD>(reinterpret_cast<uintptr_t>(p) >> 2u);
 }
 
-static pure fn process_from_group_reference(process p) wontthrow -> process
+static pure fn
+process_from_group_reference(process p) wontthrow -> process
 {
   return reinterpret_cast<process>(reinterpret_cast<uintptr>(p) &
                                    ~PROCESS_REFERENCE_MASK);
 }
 
-fn is_child_process() wontthrow -> bool
+fn
+is_child_process() wontthrow -> bool
 {
   return GetCurrentProcessId() != PARENT_SHELL_PID;
 }
 
-fn is_running_setuid() wontthrow -> bool { return false; }
-fn drop_elevated_identity() wontthrow -> bool { return true; }
+fn
+is_running_setuid() wontthrow -> bool
+{
+  return false;
+}
+fn
+drop_elevated_identity() wontthrow -> bool
+{
+  return true;
+}
 
-fn process_id_of(process p) wontthrow -> i64
+fn
+process_id_of(process p) wontthrow -> i64
 {
   if (process_is_pid_reference(p)) return pid_from_reference(p);
   if (process_is_group_reference(p)) p = process_from_group_reference(p);
@@ -525,13 +557,14 @@ fn process_id_of(process p) wontthrow -> i64
   return static_cast<i64>(GetProcessId(p));
 }
 
-fn process_group_of(process p) throws -> process
+fn
+process_group_of(process p) throws -> process
 {
   HANDLE duplicate = INVALID_HANDLE_VALUE;
   if (!duplicate_handle(p, duplicate, FALSE)) {
-    let message = last_system_error_message();
-    let const group = reinterpret_cast<process>(reinterpret_cast<uintptr>(p) |
-                                                PROCESS_GROUP_REFERENCE_TAG);
+    let       message = last_system_error_message();
+    let const group   = reinterpret_cast<process>(reinterpret_cast<uintptr>(p) |
+                                                  PROCESS_GROUP_REFERENCE_TAG);
     signal_process(group, 9);
     throw Error{"Could not retain the timeout process group: " + message};
   }
@@ -540,7 +573,8 @@ fn process_group_of(process p) throws -> process
                                    PROCESS_GROUP_REFERENCE_TAG);
 }
 
-fn close_process_reference(process p) wontthrow -> void
+fn
+close_process_reference(process p) wontthrow -> void
 {
   if (p == nullptr || p == INVALID_HANDLE_VALUE || process_is_pid_reference(p))
   {
@@ -551,7 +585,8 @@ fn close_process_reference(process p) wontthrow -> void
   CloseHandle(p);
 }
 
-fn process_has_id(process p, i64 id) wontthrow -> bool
+fn
+process_has_id(process p, i64 id) wontthrow -> bool
 {
   return process_id_of(p) == id;
 }
@@ -559,12 +594,12 @@ fn process_has_id(process p, i64 id) wontthrow -> bool
 struct inherited_handle_state
 {
   HANDLE handle{INVALID_HANDLE_VALUE};
-  DWORD original_flags{0};
-  bool should_restore{false};
+  DWORD  original_flags{0};
+  bool   should_restore{false};
 };
 
-static fn make_handle_inheritable(HANDLE handle,
-                                  inherited_handle_state &state) wontthrow
+static fn
+make_handle_inheritable(HANDLE handle, inherited_handle_state &state) wontthrow
     -> bool
 {
   if (handle == nullptr || handle == INVALID_HANDLE_VALUE) {
@@ -578,7 +613,7 @@ static fn make_handle_inheritable(HANDLE handle,
       FALSE)
     return false;
 
-  state.handle = handle;
+  state.handle         = handle;
   state.original_flags = flags;
   state.should_restore = true;
 
@@ -596,8 +631,9 @@ restore_handle_inheritance(const inherited_handle_state &state) wontthrow
          FALSE;
 }
 
-static fn ensure_valid_standard_handles(STARTUPINFOW &startup_info,
-                                        HANDLE &null_handle) wontthrow -> bool
+static fn
+ensure_valid_standard_handles(STARTUPINFOW &startup_info,
+                              HANDLE       &null_handle) wontthrow -> bool
 {
   let const is_standard_handle_set_valid =
       startup_info.hStdInput != nullptr &&
@@ -632,15 +668,17 @@ static fn ensure_valid_standard_handles(STARTUPINFOW &startup_info,
   return true;
 }
 
-static fn create_process_utf8(StringView application_path,
-                              StringView command_line,
-                              StringView working_directory,
-                              DWORD creation_flags, LPVOID environment_block,
-                              const STARTUPINFOW &startup_info,
-                              const HANDLE *inherited_handles,
-                              usize inherited_handle_count,
-                              PROCESS_INFORMATION &process_info,
-                              const ExecContext *stage_context) throws -> bool
+static fn
+create_process_utf8(StringView           application_path,
+                    StringView           command_line,
+                    StringView           working_directory,
+                    DWORD                creation_flags,
+                    LPVOID               environment_block,
+                    const STARTUPINFOW  &startup_info,
+                    const HANDLE        *inherited_handles,
+                    usize                inherited_handle_count,
+                    PROCESS_INFORMATION &process_info,
+                    const ExecContext   *stage_context) throws -> bool
 {
   if ((startup_info.dwFlags & STARTF_USESTDHANDLES) != 0 &&
       (startup_info.hStdInput == nullptr ||
@@ -726,10 +764,10 @@ static fn create_process_utf8(StringView application_path,
 
     __builtin_memcpy(inherited_fd_storage.begin(), &inherited_fd_count,
                      sizeof(inherited_fd_count));
-    let *flags = inherited_fd_storage.begin() + sizeof(inherited_fd_count);
+    let *flags   = inherited_fd_storage.begin() + sizeof(inherited_fd_count);
     let *handles = flags + inherited_fd_count;
 
-    let const do_place_inherited_fd = [&](i32 shell_fd,
+    let const do_place_inherited_fd = [&](i32    shell_fd,
                                           HANDLE handle) wontthrow {
       if (shell_fd < 0 || shell_fd >= inherited_fd_count) {
         return;
@@ -793,8 +831,8 @@ static fn create_process_utf8(StringView application_path,
     inheritance_states.push(inherited_handle_state{});
 
   usize inheritable_handle_count = 0;
-  DWORD preserved_error = ERROR_SUCCESS;
-  bool did_restore_inheritance = false;
+  DWORD preserved_error          = ERROR_SUCCESS;
+  bool  did_restore_inheritance  = false;
   defer
   {
     if (!did_restore_inheritance) {
@@ -823,18 +861,18 @@ static fn create_process_utf8(StringView application_path,
       inheritable_handle_count = handle_position + 1;
     }
 
-  SIZE_T attribute_byte_count = 0;
-  LPPROC_THREAD_ATTRIBUTE_LIST attribute_list = nullptr;
-  ArrayList<u8> attribute_storage{heap_allocator()};
-  STARTUPINFOEXW extended_startup{};
-  extended_startup.StartupInfo.cb = unique_handles.is_empty()
-                                        ? sizeof(STARTUPINFOW)
-                                        : sizeof(extended_startup);
-  extended_startup.StartupInfo.dwFlags = startup_info.dwFlags;
+  SIZE_T                       attribute_byte_count = 0;
+  LPPROC_THREAD_ATTRIBUTE_LIST attribute_list       = nullptr;
+  ArrayList<u8>                attribute_storage{heap_allocator()};
+  STARTUPINFOEXW               extended_startup{};
+  extended_startup.StartupInfo.cb          = unique_handles.is_empty()
+                                                 ? sizeof(STARTUPINFOW)
+                                                 : sizeof(extended_startup);
+  extended_startup.StartupInfo.dwFlags     = startup_info.dwFlags;
   extended_startup.StartupInfo.wShowWindow = startup_info.wShowWindow;
-  extended_startup.StartupInfo.hStdInput = startup_info.hStdInput;
-  extended_startup.StartupInfo.hStdOutput = startup_info.hStdOutput;
-  extended_startup.StartupInfo.hStdError = startup_info.hStdError;
+  extended_startup.StartupInfo.hStdInput   = startup_info.hStdInput;
+  extended_startup.StartupInfo.hStdOutput  = startup_info.hStdOutput;
+  extended_startup.StartupInfo.hStdError   = startup_info.hStdError;
   if (!inherited_fd_storage.is_empty()) {
     extended_startup.StartupInfo.cbReserved2 =
         static_cast<WORD>(inherited_fd_storage.count());
@@ -915,8 +953,8 @@ static fn create_process_utf8(StringView application_path,
   return false;
 }
 
-static fn timeout_job_name(HANDLE process_handle, char (&name)[64]) wontthrow
-    -> bool
+static fn
+timeout_job_name(HANDLE process_handle, char (&name)[64]) wontthrow -> bool
 {
   FILETIME creation_time;
   FILETIME exit_time;
@@ -942,8 +980,9 @@ enum class timeout_job_lifetime : u8
   LeaderOwned,
 };
 
-static fn attach_timeout_job(const PROCESS_INFORMATION &process_info,
-                             timeout_job_lifetime lifetime) throws -> void
+static fn
+attach_timeout_job(const PROCESS_INFORMATION &process_info,
+                   timeout_job_lifetime       lifetime) throws -> void
 {
   char job_name[64];
   if (!timeout_job_name(process_info.hProcess, job_name))
@@ -974,7 +1013,8 @@ static fn attach_timeout_job(const PROCESS_INFORMATION &process_info,
     throw Error{last_system_error_message()};
 }
 
-static pure fn is_batch_program(StringView path) wontthrow -> bool
+static pure fn
+is_batch_program(StringView path) wontthrow -> bool
 {
   if (path.length < 4) return false;
   let const suffix = path.substring_of_length(path.length - 4, 4);
@@ -984,7 +1024,8 @@ static pure fn is_batch_program(StringView path) wontthrow -> bool
          utils::ascii_to_lower(suffix[3]) == 't';
 }
 
-fn execute_program(ExecContext &ec, const program_execution_options &options)
+fn
+execute_program(ExecContext &ec, const program_execution_options &options)
     -> process
 {
   let const should_allow_script_fallback =
@@ -1008,17 +1049,17 @@ fn execute_program(ExecContext &ec, const program_execution_options &options)
   LOG(Debug, "spawning '%s' with %zu arguments", ec.program_path().c_str(),
       ec.args().count());
 
-  let application_path = ec.program_path().c_str();
+  let    application_path = ec.program_path().c_str();
   String resolved_program_path_storage{heap_allocator()};
   if (let resolved_program_path = canonical_path(ec.program_path())) {
     resolved_program_path_storage = resolved_program_path->text().clone();
-    application_path = resolved_program_path_storage.c_str();
+    application_path              = resolved_program_path_storage.c_str();
   }
 
-  String application_path_storage{heap_allocator()};
-  String working_directory_storage{heap_allocator()};
+  String      application_path_storage{heap_allocator()};
+  String      working_directory_storage{heap_allocator()};
   const char *working_directory = nullptr;
-  String command_line = make_os_args(ec.args());
+  String      command_line      = make_os_args(ec.args());
   if (is_batch_program(ec.program_path().view())) {
     let batch_command = String{heap_allocator()};
     append_windows_quoted_arg(batch_command,
@@ -1034,11 +1075,11 @@ fn execute_program(ExecContext &ec, const program_execution_options &options)
                                 ec.args()[argument_index].view());
     }
 
-    let command_processor = get_environment_variable("COMSPEC");
-    application_path_storage = command_processor.has_value()
-                                   ? command_processor.take()
-                                   : String{"cmd.exe"};
-    application_path = application_path_storage.c_str();
+    let command_processor      = get_environment_variable("COMSPEC");
+    application_path_storage   = command_processor.has_value()
+                                     ? command_processor.take()
+                                     : String{"cmd.exe"};
+    application_path           = application_path_storage.c_str();
     let processor_command_line = String{heap_allocator()};
     append_windows_quoted_arg(processor_command_line,
                               application_path_storage.view());
@@ -1047,8 +1088,8 @@ fn execute_program(ExecContext &ec, const program_execution_options &options)
     processor_command_line += '"';
     command_line = steal(processor_command_line);
 
-    let const current_directory = read_current_directory();
-    let current_directory_text = current_directory.view();
+    let const current_directory      = read_current_directory();
+    let       current_directory_text = current_directory.view();
     if (current_directory_text.length >= 7 &&
         current_directory_text.starts_with(StringView{"\\\\?\\"}) &&
         current_directory_text[5] == ':' &&
@@ -1061,12 +1102,12 @@ fn execute_program(ExecContext &ec, const program_execution_options &options)
   }
 
   PROCESS_INFORMATION process_info{};
-  STARTUPINFOW startup_info{};
+  STARTUPINFOW        startup_info{};
 
-  startup_info.cb = sizeof(startup_info);
-  startup_info.hStdInput = ec.in_fd.value_or(GetStdHandle(STD_INPUT_HANDLE));
+  startup_info.cb         = sizeof(startup_info);
+  startup_info.hStdInput  = ec.in_fd.value_or(GetStdHandle(STD_INPUT_HANDLE));
   startup_info.hStdOutput = GetStdHandle(STD_OUTPUT_HANDLE);
-  startup_info.hStdError = GetStdHandle(STD_ERROR_HANDLE);
+  startup_info.hStdError  = GetStdHandle(STD_ERROR_HANDLE);
 
   ec.apply_output_routing(
       [&]() {
@@ -1107,7 +1148,7 @@ fn execute_program(ExecContext &ec, const program_execution_options &options)
   }
 
   wchar_t empty_environment_block[] = {L'\0', L'\0'};
-  LPVOID environment_block =
+  LPVOID  environment_block =
       ec.should_use_empty_environment ? empty_environment_block : nullptr;
 
   DWORD creation_flags =
@@ -1169,15 +1210,17 @@ fn execute_program(ExecContext &ec, const program_execution_options &options)
   return process_info.hProcess;
 }
 
-static fn spawn_subshell_stage(StringView source, Maybe<descriptor> in_fd,
-                               Maybe<descriptor> out_fd,
-                               Maybe<descriptor> err_fd,
-                               bool should_trace_sources,
-                               const child_evaluator_state &evaluator,
-                               process_group_mode process_group) throws
-    -> Maybe<process>;
+static fn
+spawn_subshell_stage(StringView                   source,
+                     Maybe<descriptor>            in_fd,
+                     Maybe<descriptor>            out_fd,
+                     Maybe<descriptor>            err_fd,
+                     bool                         should_trace_sources,
+                     const child_evaluator_state &evaluator,
+                     process_group_mode process_group) throws -> Maybe<process>;
 
-static fn make_internal_pipe_path() throws -> String
+static fn
+make_internal_pipe_path() throws -> String
 {
   u8 random_bytes[16];
   if (RtlGenRandom(random_bytes, sizeof(random_bytes)) == FALSE)
@@ -1199,15 +1242,16 @@ static fn make_internal_pipe_path() throws -> String
   return path;
 }
 
-static fn append_subshell_transport_u64(String &output, u64 value) throws
-    -> void
+static fn
+append_subshell_transport_u64(String &output, u64 value) throws -> void
 {
   for (usize byte_position = 0; byte_position < sizeof(value); byte_position++)
     output.push(static_cast<char>((value >> (byte_position * 8U)) & 0xffU));
 }
 
-static fn make_subshell_transport(const subshell_bootstrap &bootstrap,
-                                  process child) throws -> Maybe<String>
+static fn
+make_subshell_transport(const subshell_bootstrap &bootstrap,
+                        process                   child) throws -> Maybe<String>
 {
   let const header = subshell_transport_header::from_bootstrap(bootstrap);
   if (!header.has_value()) return koshka::None;
@@ -1224,8 +1268,8 @@ static fn make_subshell_transport(const subshell_bootstrap &bootstrap,
       return koshka::None;
     }
 
-    HANDLE source_process = inherited_process;
-    uintptr process_tag = 0;
+    HANDLE  source_process = inherited_process;
+    uintptr process_tag    = 0;
     if (process_is_pid_reference(inherited_process)) {
       append_subshell_transport_u64(
           transport,
@@ -1234,7 +1278,7 @@ static fn make_subshell_transport(const subshell_bootstrap &bootstrap,
     }
     if (process_is_group_reference(inherited_process)) {
       source_process = process_from_group_reference(inherited_process);
-      process_tag = PROCESS_GROUP_REFERENCE_TAG;
+      process_tag    = PROCESS_GROUP_REFERENCE_TAG;
     }
     HANDLE duplicated_process = INVALID_HANDLE_VALUE;
     if (DuplicateHandle(GetCurrentProcess(), source_process, child,
@@ -1252,8 +1296,9 @@ static fn make_subshell_transport(const subshell_bootstrap &bootstrap,
   return transport;
 }
 
-static fn send_internal_pipe(StringView path, StringView content,
-                             process child) throws -> bool
+static fn
+send_internal_pipe(StringView path, StringView content, process child) throws
+    -> bool
 {
   let const wide_path = utf8_to_wide(path, heap_allocator());
   if (!wide_path.has_value()) return false;
@@ -1285,18 +1330,18 @@ static fn send_internal_pipe(StringView path, StringView content,
   }
 }
 
-static constexpr usize SUBSTITUTION_RELAY_CLIENT_COUNT = 64;
-static constexpr usize SUBSTITUTION_RELAY_SPARE_LISTENER_COUNT = 4;
-static constexpr usize SUBSTITUTION_RELAY_WRITE_COUNT = 16;
-static constexpr u64 SUBSTITUTION_RELAY_RING_BYTES = 262144;
-static constexpr u64 SUBSTITUTION_RELAY_CHUNK_BYTES = 65536;
-static constexpr DWORD SUBSTITUTION_RELAY_CLIENT_BYTES = 4096;
-static constexpr DWORD SUBSTITUTION_RELAY_INBOUND_BYTES = 65536;
-static constexpr DWORD SUBSTITUTION_RELAY_BODY_BYTES = 262144;
-static constexpr usize SUBSTITUTION_RELAY_PATH_LENGTH = 128;
-static constexpr ULONG_PTR SUBSTITUTION_RELAY_FINISH_KEY = 1;
-static constexpr DWORD SUBSTITUTION_RELAY_FINISH_WAIT_MS = 5000;
-static constexpr u64 SUBSTITUTION_RELAY_OFFER_TURN_MS = 20;
+static constexpr usize     SUBSTITUTION_RELAY_CLIENT_COUNT         = 64;
+static constexpr usize     SUBSTITUTION_RELAY_SPARE_LISTENER_COUNT = 4;
+static constexpr usize     SUBSTITUTION_RELAY_WRITE_COUNT          = 16;
+static constexpr u64       SUBSTITUTION_RELAY_RING_BYTES           = 262144;
+static constexpr u64       SUBSTITUTION_RELAY_CHUNK_BYTES          = 65536;
+static constexpr DWORD     SUBSTITUTION_RELAY_CLIENT_BYTES         = 4096;
+static constexpr DWORD     SUBSTITUTION_RELAY_INBOUND_BYTES        = 65536;
+static constexpr DWORD     SUBSTITUTION_RELAY_BODY_BYTES           = 262144;
+static constexpr usize     SUBSTITUTION_RELAY_PATH_LENGTH          = 128;
+static constexpr ULONG_PTR SUBSTITUTION_RELAY_FINISH_KEY           = 1;
+static constexpr DWORD     SUBSTITUTION_RELAY_FINISH_WAIT_MS       = 5000;
+static constexpr u64       SUBSTITUTION_RELAY_OFFER_TURN_MS        = 20;
 
 enum class relay_client_state : u8
 {
@@ -1320,66 +1365,67 @@ enum class relay_operation_kind : u8
 
 struct relay_operation
 {
-  OVERLAPPED overlapped{};
+  OVERLAPPED           overlapped{};
   relay_operation_kind kind{relay_operation_kind::Read};
-  bool is_pending{false};
-  bool was_immediate{false};
-  usize owner{0};
+  bool                 is_pending{false};
+  bool                 was_immediate{false};
+  usize                owner{0};
 };
 
 struct substitution_relay_client
 {
-  HANDLE pipe{INVALID_HANDLE_VALUE};
-  relay_operation link{};
-  relay_operation transfer{};
-  u64 offer_position{0};
-  u64 sequence{0};
-  DWORD held_byte_count{0};
+  HANDLE             pipe{INVALID_HANDLE_VALUE};
+  relay_operation    link{};
+  relay_operation    transfer{};
+  u64                offer_position{0};
+  u64                sequence{0};
+  DWORD              held_byte_count{0};
   relay_client_state state{relay_client_state::Closed};
-  char bytes[SUBSTITUTION_RELAY_CLIENT_BYTES];
+  char               bytes[SUBSTITUTION_RELAY_CLIENT_BYTES];
 };
 
 struct substitution_relay_write
 {
   relay_operation operation{};
-  u64 start{0};
-  u64 end{0};
-  DWORD transferred_byte_count{0};
-  bool is_done{false};
-  bool did_succeed{false};
+  u64             start{0};
+  u64             end{0};
+  DWORD           transferred_byte_count{0};
+  bool            is_done{false};
+  bool            did_succeed{false};
 };
 
 struct substitution_relay
 {
-  wchar_t path[SUBSTITUTION_RELAY_PATH_LENGTH]{};
-  wchar_t body_path[SUBSTITUTION_RELAY_PATH_LENGTH]{};
-  HANDLE port{nullptr};
-  HANDLE body{INVALID_HANDLE_VALUE};
-  HANDLE listeners_closed{nullptr};
-  relay_operation body_read{};
-  thread worker{};
-  u64 head{0};
-  u64 posted{0};
-  u64 tail{0};
-  u64 next_sequence{0};
-  u64 offer_turn_end_ms{0};
-  usize active_client{SUBSTITUTION_RELAY_CLIENT_COUNT};
-  usize offering_client{SUBSTITUTION_RELAY_CLIENT_COUNT};
-  usize next_offer_client{0};
-  usize oldest_write{0};
-  usize write_count{0};
-  bool is_command_writes{false};
-  bool is_finishing{false};
-  bool is_body_finished{false};
-  bool is_bulk{false};
-  bool has_active_failed{false};
-  bool was_offer_withdrawn{false};
+  wchar_t                   path[SUBSTITUTION_RELAY_PATH_LENGTH]{};
+  wchar_t                   body_path[SUBSTITUTION_RELAY_PATH_LENGTH]{};
+  HANDLE                    port{nullptr};
+  HANDLE                    body{INVALID_HANDLE_VALUE};
+  HANDLE                    listeners_closed{nullptr};
+  relay_operation           body_read{};
+  thread                    worker{};
+  u64                       head{0};
+  u64                       posted{0};
+  u64                       tail{0};
+  u64                       next_sequence{0};
+  u64                       offer_turn_end_ms{0};
+  usize                     active_client{SUBSTITUTION_RELAY_CLIENT_COUNT};
+  usize                     offering_client{SUBSTITUTION_RELAY_CLIENT_COUNT};
+  usize                     next_offer_client{0};
+  usize                     oldest_write{0};
+  usize                     write_count{0};
+  bool                      is_command_writes{false};
+  bool                      is_finishing{false};
+  bool                      is_body_finished{false};
+  bool                      is_bulk{false};
+  bool                      has_active_failed{false};
+  bool                      was_offer_withdrawn{false};
   substitution_relay_client clients[SUBSTITUTION_RELAY_CLIENT_COUNT];
-  substitution_relay_write writes[SUBSTITUTION_RELAY_WRITE_COUNT];
-  char ring[SUBSTITUTION_RELAY_RING_BYTES];
+  substitution_relay_write  writes[SUBSTITUTION_RELAY_WRITE_COUNT];
+  char                      ring[SUBSTITUTION_RELAY_RING_BYTES];
 };
 
-static fn copy_relay_pipe_name(
+static fn
+copy_relay_pipe_name(
     StringView name,
     wchar_t (&output)[SUBSTITUTION_RELAY_PATH_LENGTH]) wontthrow -> bool
 {
@@ -1393,8 +1439,9 @@ static fn copy_relay_pipe_name(
   return true;
 }
 
-static fn create_relay_instance(const substitution_relay &relay,
-                                bool is_first) wontthrow -> HANDLE
+static fn
+create_relay_instance(const substitution_relay &relay, bool is_first) wontthrow
+    -> HANDLE
 {
   let const access =
       relay.is_command_writes ? PIPE_ACCESS_DUPLEX : PIPE_ACCESS_INBOUND;
@@ -1403,7 +1450,7 @@ static fn create_relay_instance(const substitution_relay &relay,
   let const inbound_byte_count = relay.is_command_writes
                                      ? SUBSTITUTION_RELAY_CLIENT_BYTES
                                      : SUBSTITUTION_RELAY_INBOUND_BYTES;
-  let const pipe = create_private_pipe(
+  let const pipe               = create_private_pipe(
       relay.path, access | FILE_FLAG_OVERLAPPED | first_flag,
       PIPE_UNLIMITED_INSTANCES, 0, inbound_byte_count);
   if (pipe == INVALID_HANDLE_VALUE) return pipe;
@@ -1419,8 +1466,9 @@ static fn create_relay_instance(const substitution_relay &relay,
   return pipe;
 }
 
-static fn note_relay_operation(relay_operation &operation,
-                               BOOL was_started) wontthrow -> bool
+static fn
+note_relay_operation(relay_operation &operation, BOOL was_started) wontthrow
+    -> bool
 {
   operation.was_immediate = was_started != FALSE;
   operation.is_pending =
@@ -1429,19 +1477,21 @@ static fn note_relay_operation(relay_operation &operation,
   return operation.is_pending;
 }
 
-static fn prepare_relay_operation(relay_operation &operation,
-                                  relay_operation_kind kind,
-                                  usize owner) wontthrow -> OVERLAPPED *
+static fn
+prepare_relay_operation(relay_operation     &operation,
+                        relay_operation_kind kind,
+                        usize                owner) wontthrow -> OVERLAPPED *
 {
-  operation = relay_operation{};
-  operation.kind = kind;
+  operation       = relay_operation{};
+  operation.kind  = kind;
   operation.owner = owner;
 
   return &operation.overlapped;
 }
 
-static fn relay_client_is_busy(const substitution_relay &relay,
-                               usize position) wontthrow -> bool
+static fn
+relay_client_is_busy(const substitution_relay &relay, usize position) wontthrow
+    -> bool
 {
   let const &client = relay.clients[position];
   if (client.link.is_pending || client.transfer.is_pending) {
@@ -1451,8 +1501,8 @@ static fn relay_client_is_busy(const substitution_relay &relay,
   return relay.active_client == position && relay.write_count > 0;
 }
 
-static fn close_relay_client(substitution_relay_client &client) wontthrow
-    -> void
+static fn
+close_relay_client(substitution_relay_client &client) wontthrow -> void
 {
   if (client.state == relay_client_state::Closed ||
       client.state == relay_client_state::Closing)
@@ -1464,7 +1514,8 @@ static fn close_relay_client(substitution_relay_client &client) wontthrow
   client.state = relay_client_state::Closing;
 }
 
-static fn reap_relay_clients(substitution_relay &relay) wontthrow -> void
+static fn
+reap_relay_clients(substitution_relay &relay) wontthrow -> void
 {
   for (usize position = 0; position < SUBSTITUTION_RELAY_CLIENT_COUNT;
        position++)
@@ -1477,21 +1528,22 @@ static fn reap_relay_clients(substitution_relay &relay) wontthrow -> void
     }
 
     CloseHandle(client.pipe);
-    client.pipe = INVALID_HANDLE_VALUE;
+    client.pipe  = INVALID_HANDLE_VALUE;
     client.state = relay_client_state::Closed;
     if (relay.active_client != position) continue;
 
-    relay.active_client = SUBSTITUTION_RELAY_CLIENT_COUNT;
-    relay.posted = relay.head;
-    relay.is_bulk = false;
+    relay.active_client     = SUBSTITUTION_RELAY_CLIENT_COUNT;
+    relay.posted            = relay.head;
+    relay.is_bulk           = false;
     relay.has_active_failed = false;
   }
 }
 
-static fn start_relay_client_read(substitution_relay &relay,
-                                  usize position) wontthrow -> void
+static fn
+start_relay_client_read(substitution_relay &relay, usize position) wontthrow
+    -> void
 {
-  let &client = relay.clients[position];
+  let      &client     = relay.clients[position];
   let const overlapped = prepare_relay_operation(
       client.link, relay_operation_kind::Read, position);
   let const was_started =
@@ -1502,24 +1554,24 @@ static fn start_relay_client_read(substitution_relay &relay,
   }
 }
 
-static fn accept_relay_client(substitution_relay &relay,
-                              usize position) wontthrow -> void
+static fn
+accept_relay_client(substitution_relay &relay, usize position) wontthrow -> void
 {
-  let &client = relay.clients[position];
-  client.state = relay_client_state::Connected;
-  client.sequence = relay.next_sequence++;
+  let &client            = relay.clients[position];
+  client.state           = relay_client_state::Connected;
+  client.sequence        = relay.next_sequence++;
   client.held_byte_count = 0;
   start_relay_client_read(relay, position);
 }
 
-static fn start_relay_listen(substitution_relay &relay,
-                             usize position) wontthrow -> void
+static fn
+start_relay_listen(substitution_relay &relay, usize position) wontthrow -> void
 {
-  let &client = relay.clients[position];
+  let      &client     = relay.clients[position];
   let const overlapped = prepare_relay_operation(
       client.link, relay_operation_kind::Connect, position);
   let const was_started = ConnectNamedPipe(client.pipe, overlapped);
-  let const error = GetLastError();
+  let const error       = GetLastError();
   if (note_relay_operation(client.link, was_started)) {
     client.state = relay_client_state::Listening;
 
@@ -1535,7 +1587,8 @@ static fn start_relay_listen(substitution_relay &relay,
   close_relay_client(client);
 }
 
-static fn ensure_relay_listeners(substitution_relay &relay) wontthrow -> void
+static fn
+ensure_relay_listeners(substitution_relay &relay) wontthrow -> void
 {
   if (relay.is_finishing) return;
 
@@ -1567,7 +1620,8 @@ static fn ensure_relay_listeners(substitution_relay &relay) wontthrow -> void
   }
 }
 
-static fn start_relay_finish(substitution_relay &relay) wontthrow -> void
+static fn
+start_relay_finish(substitution_relay &relay) wontthrow -> void
 {
   relay.is_finishing = true;
 
@@ -1578,8 +1632,10 @@ static fn start_relay_finish(substitution_relay &relay) wontthrow -> void
   }
 }
 
-static fn finish_relay_connect(substitution_relay &relay, usize position,
-                               DWORD error) wontthrow -> void
+static fn
+finish_relay_connect(substitution_relay &relay,
+                     usize               position,
+                     DWORD               error) wontthrow -> void
 {
   let &client = relay.clients[position];
   if (client.state != relay_client_state::Listening) return;
@@ -1595,10 +1651,12 @@ static fn finish_relay_connect(substitution_relay &relay, usize position,
   accept_relay_client(relay, position);
 }
 
-static fn start_relay_body_write(substitution_relay &relay, usize position,
-                                 DWORD byte_count) wontthrow -> void
+static fn
+start_relay_body_write(substitution_relay &relay,
+                       usize               position,
+                       DWORD               byte_count) wontthrow -> void
 {
-  let &client = relay.clients[position];
+  let      &client     = relay.clients[position];
   let const overlapped = prepare_relay_operation(
       client.transfer, relay_operation_kind::Transfer, position);
   let const was_started =
@@ -1609,9 +1667,11 @@ static fn start_relay_body_write(substitution_relay &relay, usize position,
   close_relay_client(client);
 }
 
-static fn finish_relay_client_read(substitution_relay &relay, usize position,
-                                   DWORD byte_count, DWORD error) wontthrow
-    -> void
+static fn
+finish_relay_client_read(substitution_relay &relay,
+                         usize               position,
+                         DWORD               byte_count,
+                         DWORD               error) wontthrow -> void
 {
   let &client = relay.clients[position];
   if (client.state == relay_client_state::Closing) return;
@@ -1637,8 +1697,9 @@ static fn finish_relay_client_read(substitution_relay &relay, usize position,
   client.held_byte_count = byte_count;
 }
 
-static fn relay_input_is_blocked(const substitution_relay &relay,
-                                 u64 sequence) wontthrow -> bool
+static fn
+relay_input_is_blocked(const substitution_relay &relay, u64 sequence) wontthrow
+    -> bool
 {
   for (let const &client : relay.clients) {
     if (client.state != relay_client_state::Connected ||
@@ -1661,7 +1722,8 @@ static fn relay_input_is_blocked(const substitution_relay &relay,
   return false;
 }
 
-static fn forward_relay_input(substitution_relay &relay) wontthrow -> void
+static fn
+forward_relay_input(substitution_relay &relay) wontthrow -> void
 {
   while (!relay.is_body_finished) {
     usize oldest = SUBSTITUTION_RELAY_CLIENT_COUNT;
@@ -1688,16 +1750,16 @@ static fn forward_relay_input(substitution_relay &relay) wontthrow -> void
     let &client = relay.clients[oldest];
     if (relay_input_is_blocked(relay, client.sequence)) return;
 
-    let const byte_count = client.held_byte_count;
+    let const byte_count   = client.held_byte_count;
     client.held_byte_count = 0;
     start_relay_body_write(relay, oldest, byte_count);
   }
 }
 
-static fn start_relay_offer(substitution_relay &relay, usize position) wontthrow
-    -> void
+static fn
+start_relay_offer(substitution_relay &relay, usize position) wontthrow -> void
 {
-  let &client = relay.clients[position];
+  let      &client     = relay.clients[position];
   let const overlapped = prepare_relay_operation(
       client.transfer, relay_operation_kind::Transfer, position);
   client.offer_position = relay.head;
@@ -1705,8 +1767,8 @@ static fn start_relay_offer(substitution_relay &relay, usize position) wontthrow
       client.pipe, relay.ring + relay.head % SUBSTITUTION_RELAY_RING_BYTES, 1,
       nullptr, overlapped);
   if (note_relay_operation(client.transfer, was_started)) {
-    client.state = relay_client_state::Offering;
-    relay.offering_client = position;
+    client.state              = relay_client_state::Offering;
+    relay.offering_client     = position;
     relay.was_offer_withdrawn = false;
     relay.offer_turn_end_ms =
         GetTickCount64() + SUBSTITUTION_RELAY_OFFER_TURN_MS;
@@ -1717,8 +1779,9 @@ static fn start_relay_offer(substitution_relay &relay, usize position) wontthrow
   close_relay_client(client);
 }
 
-static fn has_other_connected_relay_client(const substitution_relay &relay,
-                                           usize position) wontthrow -> bool
+static fn
+has_other_connected_relay_client(const substitution_relay &relay,
+                                 usize position) wontthrow -> bool
 {
   for (usize other = 0; other < SUBSTITUTION_RELAY_CLIENT_COUNT; other++) {
     if (other != position &&
@@ -1731,15 +1794,16 @@ static fn has_other_connected_relay_client(const substitution_relay &relay,
   return false;
 }
 
-static fn should_withdraw_relay_offer(const substitution_relay &relay) wontthrow
-    -> bool
+static fn
+should_withdraw_relay_offer(const substitution_relay &relay) wontthrow -> bool
 {
   return relay.offering_client != SUBSTITUTION_RELAY_CLIENT_COUNT &&
          !relay.was_offer_withdrawn &&
          has_other_connected_relay_client(relay, relay.offering_client);
 }
 
-static fn rotate_relay_offer(substitution_relay &relay) wontthrow -> void
+static fn
+rotate_relay_offer(substitution_relay &relay) wontthrow -> void
 {
   if (!should_withdraw_relay_offer(relay) ||
       GetTickCount64() < relay.offer_turn_end_ms)
@@ -1747,12 +1811,13 @@ static fn rotate_relay_offer(substitution_relay &relay) wontthrow -> void
     return;
   }
 
-  let &client = relay.clients[relay.offering_client];
+  let &client               = relay.clients[relay.offering_client];
   relay.was_offer_withdrawn = true;
   CancelIoEx(client.pipe, &client.transfer.overlapped);
 }
 
-static fn start_next_relay_offer(substitution_relay &relay) wontthrow -> void
+static fn
+start_next_relay_offer(substitution_relay &relay) wontthrow -> void
 {
   for (usize step = 0; step < SUBSTITUTION_RELAY_CLIENT_COUNT; step++) {
     let const position =
@@ -1766,10 +1831,12 @@ static fn start_next_relay_offer(substitution_relay &relay) wontthrow -> void
   }
 }
 
-static fn finish_relay_offer(substitution_relay &relay, usize position,
-                             DWORD error) wontthrow -> void
+static fn
+finish_relay_offer(substitution_relay &relay,
+                   usize               position,
+                   DWORD               error) wontthrow -> void
 {
-  let &client = relay.clients[position];
+  let      &client       = relay.clients[position];
   let const was_offering = client.state == relay_client_state::Offering;
   if (was_offering) client.state = relay_client_state::Connected;
   if (relay.offering_client == position)
@@ -1791,14 +1858,16 @@ static fn finish_relay_offer(substitution_relay &relay, usize position,
   relay.posted = relay.head;
   if (!was_offering) return;
 
-  client.state = relay_client_state::Active;
-  relay.active_client = position;
-  relay.is_bulk = false;
+  client.state            = relay_client_state::Active;
+  relay.active_client     = position;
+  relay.is_bulk           = false;
   relay.has_active_failed = false;
 }
 
-static fn finish_relay_transfer(substitution_relay &relay, usize position,
-                                DWORD error) wontthrow -> void
+static fn
+finish_relay_transfer(substitution_relay &relay,
+                      usize               position,
+                      DWORD               error) wontthrow -> void
 {
   if (relay.is_command_writes) {
     finish_relay_offer(relay, position, error);
@@ -1819,7 +1888,8 @@ static fn finish_relay_transfer(substitution_relay &relay, usize position,
   start_relay_client_read(relay, position);
 }
 
-static fn retire_relay_writes(substitution_relay &relay) wontthrow -> void
+static fn
+retire_relay_writes(substitution_relay &relay) wontthrow -> void
 {
   while (relay.write_count > 0) {
     let &write = relay.writes[relay.oldest_write];
@@ -1837,11 +1907,14 @@ static fn retire_relay_writes(substitution_relay &relay) wontthrow -> void
   }
 }
 
-static fn finish_relay_write(substitution_relay &relay, usize slot,
-                             DWORD byte_count, DWORD error) wontthrow -> void
+static fn
+finish_relay_write(substitution_relay &relay,
+                   usize               slot,
+                   DWORD               byte_count,
+                   DWORD               error) wontthrow -> void
 {
-  let &write = relay.writes[slot];
-  write.is_done = true;
+  let &write        = relay.writes[slot];
+  write.is_done     = true;
   write.did_succeed = error == ERROR_SUCCESS;
   write.transferred_byte_count =
       byte_count < write.end - write.start
@@ -1856,11 +1929,11 @@ static fn finish_relay_write(substitution_relay &relay, usize slot,
   retire_relay_writes(relay);
 }
 
-static fn next_relay_write_length(const substitution_relay &relay) wontthrow
-    -> DWORD
+static fn
+next_relay_write_length(const substitution_relay &relay) wontthrow -> DWORD
 {
-  let const start = relay.posted % SUBSTITUTION_RELAY_RING_BYTES;
-  let length = relay.tail - relay.posted;
+  let const start  = relay.posted % SUBSTITUTION_RELAY_RING_BYTES;
+  let       length = relay.tail - relay.posted;
   if (length > SUBSTITUTION_RELAY_RING_BYTES - start)
     length = SUBSTITUTION_RELAY_RING_BYTES - start;
   if (length > SUBSTITUTION_RELAY_CHUNK_BYTES)
@@ -1868,14 +1941,15 @@ static fn next_relay_write_length(const substitution_relay &relay) wontthrow
   if (relay.is_bulk) return static_cast<DWORD>(length);
 
   let const line_start = relay.ring + start;
-  let const newline = static_cast<const char *>(
+  let const newline    = static_cast<const char *>(
       std::memchr(line_start, '\n', static_cast<usize>(length)));
   if (newline == nullptr) return static_cast<DWORD>(length);
 
   return static_cast<DWORD>(newline - line_start + 1);
 }
 
-static fn start_relay_writes(substitution_relay &relay) wontthrow -> void
+static fn
+start_relay_writes(substitution_relay &relay) wontthrow -> void
 {
   if (relay.active_client == SUBSTITUTION_RELAY_CLIENT_COUNT) return;
 
@@ -1886,17 +1960,17 @@ static fn start_relay_writes(substitution_relay &relay) wontthrow -> void
          relay.posted < relay.tail)
   {
     let const length = next_relay_write_length(relay);
-    let const slot = (relay.oldest_write + relay.write_count) %
+    let const slot   = (relay.oldest_write + relay.write_count) %
                      SUBSTITUTION_RELAY_WRITE_COUNT;
-    let &write = relay.writes[slot];
+    let      &write      = relay.writes[slot];
     let const overlapped = prepare_relay_operation(
         write.operation, relay_operation_kind::Write, slot);
-    write.start = relay.posted;
-    write.end = relay.posted + length;
+    write.start                  = relay.posted;
+    write.end                    = relay.posted + length;
     write.transferred_byte_count = 0;
-    write.is_done = false;
-    write.did_succeed = false;
-    let const was_started = WriteFile(
+    write.is_done                = false;
+    write.did_succeed            = false;
+    let const was_started        = WriteFile(
         client.pipe, relay.ring + relay.posted % SUBSTITUTION_RELAY_RING_BYTES,
         length, nullptr, overlapped);
     if (!note_relay_operation(write.operation, was_started)) {
@@ -1914,7 +1988,8 @@ static fn start_relay_writes(substitution_relay &relay) wontthrow -> void
   }
 }
 
-static fn start_relay_body_read(substitution_relay &relay) wontthrow -> void
+static fn
+start_relay_body_read(substitution_relay &relay) wontthrow -> void
 {
   if (relay.is_body_finished || relay.body_read.is_pending) {
     return;
@@ -1923,8 +1998,8 @@ static fn start_relay_body_read(substitution_relay &relay) wontthrow -> void
   let const used = relay.tail - relay.head;
   if (used >= SUBSTITUTION_RELAY_RING_BYTES) return;
 
-  let const start = relay.tail % SUBSTITUTION_RELAY_RING_BYTES;
-  let length = SUBSTITUTION_RELAY_RING_BYTES - used;
+  let const start  = relay.tail % SUBSTITUTION_RELAY_RING_BYTES;
+  let       length = SUBSTITUTION_RELAY_RING_BYTES - used;
   if (length > SUBSTITUTION_RELAY_RING_BYTES - start)
     length = SUBSTITUTION_RELAY_RING_BYTES - start;
   let const overlapped = prepare_relay_operation(
@@ -1937,8 +2012,10 @@ static fn start_relay_body_read(substitution_relay &relay) wontthrow -> void
   }
 }
 
-static fn finish_relay_body_read(substitution_relay &relay, DWORD byte_count,
-                                 DWORD error) wontthrow -> void
+static fn
+finish_relay_body_read(substitution_relay &relay,
+                       DWORD               byte_count,
+                       DWORD               error) wontthrow -> void
 {
   if (error != ERROR_SUCCESS) {
     relay.is_body_finished = true;
@@ -1949,9 +2026,11 @@ static fn finish_relay_body_read(substitution_relay &relay, DWORD byte_count,
   relay.tail += byte_count;
 }
 
-static fn finish_relay_operation(substitution_relay &relay,
-                                 relay_operation &operation, DWORD byte_count,
-                                 DWORD error) wontthrow -> void
+static fn
+finish_relay_operation(substitution_relay &relay,
+                       relay_operation    &operation,
+                       DWORD               byte_count,
+                       DWORD               error) wontthrow -> void
 {
   operation.is_pending = false;
   switch (operation.kind) {
@@ -1973,8 +2052,8 @@ static fn finish_relay_operation(substitution_relay &relay,
   }
 }
 
-static fn close_connected_relay_clients(substitution_relay &relay) wontthrow
-    -> void
+static fn
+close_connected_relay_clients(substitution_relay &relay) wontthrow -> void
 {
   for (let &client : relay.clients) {
     if (client.state == relay_client_state::Connected ||
@@ -1986,7 +2065,8 @@ static fn close_connected_relay_clients(substitution_relay &relay) wontthrow
   }
 }
 
-static fn advance_relay_output(substitution_relay &relay) wontthrow -> void
+static fn
+advance_relay_output(substitution_relay &relay) wontthrow -> void
 {
   start_relay_body_read(relay);
   if (relay.is_body_finished && !relay.body_read.is_pending &&
@@ -2013,7 +2093,8 @@ static fn advance_relay_output(substitution_relay &relay) wontthrow -> void
   start_next_relay_offer(relay);
 }
 
-static fn get_relay_wait_ms(const substitution_relay &relay) wontthrow -> DWORD
+static fn
+get_relay_wait_ms(const substitution_relay &relay) wontthrow -> DWORD
 {
   if (!relay.is_command_writes || !should_withdraw_relay_offer(relay)) {
     return INFINITE;
@@ -2025,7 +2106,8 @@ static fn get_relay_wait_ms(const substitution_relay &relay) wontthrow -> DWORD
   return static_cast<DWORD>(relay.offer_turn_end_ms - now_ms);
 }
 
-static fn relay_is_finished(substitution_relay &relay) wontthrow -> bool
+static fn
+relay_is_finished(substitution_relay &relay) wontthrow -> bool
 {
   if (!relay.is_finishing) return false;
 
@@ -2041,8 +2123,8 @@ static fn relay_is_finished(substitution_relay &relay) wontthrow -> bool
   return true;
 }
 
-static fn signal_relay_listeners_closed(substitution_relay &relay) wontthrow
-    -> void
+static fn
+signal_relay_listeners_closed(substitution_relay &relay) wontthrow -> void
 {
   if (relay.listeners_closed == nullptr) return;
 
@@ -2050,8 +2132,8 @@ static fn signal_relay_listeners_closed(substitution_relay &relay) wontthrow
   relay.listeners_closed = nullptr;
 }
 
-static fn note_relay_listeners_closed(substitution_relay &relay) wontthrow
-    -> void
+static fn
+note_relay_listeners_closed(substitution_relay &relay) wontthrow -> void
 {
   if (!relay.is_finishing) return;
 
@@ -2066,8 +2148,8 @@ static fn note_relay_listeners_closed(substitution_relay &relay) wontthrow
   signal_relay_listeners_closed(relay);
 }
 
-static fn advance_substitution_relay(substitution_relay &relay) wontthrow
-    -> bool
+static fn
+advance_substitution_relay(substitution_relay &relay) wontthrow -> bool
 {
   reap_relay_clients(relay);
   ensure_relay_listeners(relay);
@@ -2082,8 +2164,8 @@ static fn advance_substitution_relay(substitution_relay &relay) wontthrow
   return !relay_is_finished(relay);
 }
 
-static fn destroy_substitution_relay(substitution_relay *relay) wontthrow
-    -> void
+static fn
+destroy_substitution_relay(substitution_relay *relay) wontthrow -> void
 {
   for (let &client : relay->clients)
     if (client.pipe != INVALID_HANDLE_VALUE) CloseHandle(client.pipe);
@@ -2094,15 +2176,16 @@ static fn destroy_substitution_relay(substitution_relay *relay) wontthrow
   os::free_aligned(relay);
 }
 
-static fn run_substitution_relay(opaque *context) wontthrow -> void
+static fn
+run_substitution_relay(opaque *context) wontthrow -> void
 {
   let &relay = *static_cast<substitution_relay *>(context);
 
   while (advance_substitution_relay(relay)) {
-    DWORD byte_count = 0;
-    ULONG_PTR key = 0;
-    OVERLAPPED *overlapped = nullptr;
-    let const was_dequeued = GetQueuedCompletionStatus(
+    DWORD       byte_count   = 0;
+    ULONG_PTR   key          = 0;
+    OVERLAPPED *overlapped   = nullptr;
+    let const   was_dequeued = GetQueuedCompletionStatus(
         relay.port, &byte_count, &key, &overlapped, get_relay_wait_ms(relay));
     let const error = was_dequeued != FALSE ? ERROR_SUCCESS : GetLastError();
     if (overlapped != nullptr) {
@@ -2126,15 +2209,15 @@ static fn run_substitution_relay(opaque *context) wontthrow -> void
   destroy_substitution_relay(&relay);
 }
 
-static fn create_substitution_relay(bool is_command_writes) throws
-    -> substitution_relay *
+static fn
+create_substitution_relay(bool is_command_writes) throws -> substitution_relay *
 {
   let const storage = os::allocate_aligned(sizeof(substitution_relay),
                                            alignof(substitution_relay));
   if (storage == nullptr)
     throw Error{"Unable to allocate the process substitution relay"};
 
-  let const relay = new (storage) substitution_relay;
+  let const relay          = new (storage) substitution_relay;
   relay->is_command_writes = is_command_writes;
 
   return relay;
@@ -2145,19 +2228,21 @@ static constexpr const char *RELAY_CREATE_ERROR =
 static constexpr const char *RELAY_CONNECT_ERROR =
     "Unable to connect the process substitution pipe: ";
 
-wontreturn static fn throw_relay_error(const char *message) throws -> void
+wontreturn static fn
+throw_relay_error(const char *message) throws -> void
 {
   throw Error{message + last_system_error_message()};
 }
 
-fn launch_process_substitution(const process_substitution_options &options)
-    throws -> process_substitution_launch
+fn
+launch_process_substitution(const process_substitution_options &options) throws
+    -> process_substitution_launch
 {
   let const is_command_writes =
       options.direction == process_substitution_direction::CommandWrites;
-  let path = make_internal_pipe_path();
+  let       path      = make_internal_pipe_path();
   let const body_path = make_internal_pipe_path();
-  let relay = create_substitution_relay(is_command_writes);
+  let       relay     = create_substitution_relay(is_command_writes);
   defer
   {
     if (relay != nullptr) destroy_substitution_relay(relay);
@@ -2196,7 +2281,7 @@ fn launch_process_substitution(const process_substitution_options &options)
   }
 
   SECURITY_ATTRIBUTES attributes{};
-  attributes.nLength = sizeof(attributes);
+  attributes.nLength        = sizeof(attributes);
   attributes.bInheritHandle = FALSE;
   let const child_end =
       CreateFileW(relay->body_path,
@@ -2233,26 +2318,27 @@ fn launch_process_substitution(const process_substitution_options &options)
   }
 
   relay->worker = *worker;
-  let launch = process_substitution_launch{
-      .path = steal(path),
-      .retained_fd = KOSH_INVALID_FD,
-      .child = *child,
-      .cleanup = relay,
+  let launch    = process_substitution_launch{
+         .path        = steal(path),
+         .retained_fd = KOSH_INVALID_FD,
+         .child       = *child,
+         .cleanup     = relay,
   };
   relay = nullptr;
 
   return launch;
 }
 
-fn finish_process_substitution(opaque *cleanup) wontthrow -> void
+fn
+finish_process_substitution(opaque *cleanup) wontthrow -> void
 {
   if (cleanup == nullptr) return;
 
-  let const relay = static_cast<substitution_relay *>(cleanup);
-  let const worker = relay->worker;
+  let const relay            = static_cast<substitution_relay *>(cleanup);
+  let const worker           = relay->worker;
   let const listeners_closed = CreateEventW(nullptr, TRUE, FALSE, nullptr);
-  relay->listeners_closed = listeners_closed;
-  let const was_posted = PostQueuedCompletionStatus(
+  relay->listeners_closed    = listeners_closed;
+  let const was_posted       = PostQueuedCompletionStatus(
       relay->port, 0, SUBSTITUTION_RELAY_FINISH_KEY, nullptr);
   if (was_posted == FALSE) relay->listeners_closed = nullptr;
 
@@ -2266,23 +2352,25 @@ fn finish_process_substitution(opaque *cleanup) wontthrow -> void
   CloseHandle(worker.handle);
 }
 
-fn release_finished_process_substitution(opaque *cleanup) wontthrow -> bool
+fn
+release_finished_process_substitution(opaque *cleanup) wontthrow -> bool
 {
   finish_process_substitution(cleanup);
 
   return true;
 }
 
-static fn spawn_subshell_stage(StringView source, Maybe<descriptor> in_fd,
-                               Maybe<descriptor> out_fd,
-                               Maybe<descriptor> err_fd,
-                               bool should_trace_sources,
-                               const child_evaluator_state &evaluator,
-                               process_group_mode process_group) throws
-    -> Maybe<process>
+static fn
+spawn_subshell_stage(StringView                   source,
+                     Maybe<descriptor>            in_fd,
+                     Maybe<descriptor>            out_fd,
+                     Maybe<descriptor>            err_fd,
+                     bool                         should_trace_sources,
+                     const child_evaluator_state &evaluator,
+                     process_group_mode process_group) throws -> Maybe<process>
 {
-  let const bootstrap = evaluator.bootstrap;
-  let const mood = evaluator.mood;
+  let const bootstrap  = evaluator.bootstrap;
+  let const mood       = evaluator.mood;
   let const shell_name = evaluator.shell_name;
 
   let const module_path = current_executable_path();
@@ -2327,20 +2415,20 @@ static fn spawn_subshell_stage(StringView source, Maybe<descriptor> in_fd,
       String::from(GetCurrentProcessId(), heap_allocator()).view());
 
   STARTUPINFOW startup_info{};
-  startup_info.cb = sizeof(startup_info);
-  startup_info.dwFlags = STARTF_USESTDHANDLES;
-  startup_info.hStdInput = in_fd ? *in_fd : GetStdHandle(STD_INPUT_HANDLE);
+  startup_info.cb         = sizeof(startup_info);
+  startup_info.dwFlags    = STARTF_USESTDHANDLES;
+  startup_info.hStdInput  = in_fd ? *in_fd : GetStdHandle(STD_INPUT_HANDLE);
   startup_info.hStdOutput = out_fd ? *out_fd : GetStdHandle(STD_OUTPUT_HANDLE);
-  startup_info.hStdError = err_fd ? *err_fd : GetStdHandle(STD_ERROR_HANDLE);
-  HANDLE null_handle = INVALID_HANDLE_VALUE;
+  startup_info.hStdError  = err_fd ? *err_fd : GetStdHandle(STD_ERROR_HANDLE);
+  HANDLE null_handle      = INVALID_HANDLE_VALUE;
   defer
   {
     if (null_handle != INVALID_HANDLE_VALUE) CloseHandle(null_handle);
   };
   if (!ensure_valid_standard_handles(startup_info, null_handle)) return None;
 
-  let bootstrap_pipe_path = String{heap_allocator()};
-  let const has_bootstrap = bootstrap != nullptr;
+  let       bootstrap_pipe_path = String{heap_allocator()};
+  let const has_bootstrap       = bootstrap != nullptr;
   if (has_bootstrap) {
     bootstrap_pipe_path = make_internal_pipe_path();
     child_environment.set(internal::STATE_NAMED_PIPE,
@@ -2348,9 +2436,9 @@ static fn spawn_subshell_stage(StringView source, Maybe<descriptor> in_fd,
   }
 
   PROCESS_INFORMATION process_info{};
-  let const creation_flags = process_group == process_group_mode::Inherit
-                                 ? static_cast<DWORD>(0)
-                                 : CREATE_NEW_PROCESS_GROUP;
+  let const creation_flags   = process_group == process_group_mode::Inherit
+                                   ? static_cast<DWORD>(0)
+                                   : CREATE_NEW_PROCESS_GROUP;
   HANDLE inherited_handles[] = {startup_info.hStdInput, startup_info.hStdOutput,
                                 startup_info.hStdError};
   if (!create_process_utf8(module_path->view(), command_line.view(), {},
@@ -2383,7 +2471,8 @@ static fn spawn_subshell_stage(StringView source, Maybe<descriptor> in_fd,
   return process_info.hProcess;
 }
 
-fn try_fork_compound_stage(const fork_compound_stage_options &options)
+fn
+try_fork_compound_stage(const fork_compound_stage_options &options)
     -> Maybe<process>
 {
   unused(options);
@@ -2391,11 +2480,20 @@ fn try_fork_compound_stage(const fork_compound_stage_options &options)
   return koshka::None;
 }
 
-fn try_fork_job_process() -> Maybe<process> { return koshka::None; }
+fn
+try_fork_job_process() -> Maybe<process>
+{
+  return koshka::None;
+}
 
-fn can_fork_evaluator() wontthrow -> bool { return false; }
+fn
+can_fork_evaluator() wontthrow -> bool
+{
+  return false;
+}
 
-fn launch_compound_stage(const compound_stage_options &options) throws
+fn
+launch_compound_stage(const compound_stage_options &options) throws
     -> compound_stage_launch
 {
   unused(options.diagnostic_source);
@@ -2421,18 +2519,20 @@ fn launch_compound_stage(const compound_stage_options &options) throws
                             "Could not spawn the compound pipeline stage"};
 
   return compound_stage_launch{
-      .child = *child,
+      .child                 = *child,
       .should_evaluate_child = false,
   };
 }
 
-wontreturn fn exit_process_immediately(i32 status) wontthrow -> void
+wontreturn fn
+exit_process_immediately(i32 status) wontthrow -> void
 {
   ExitProcess(static_cast<UINT>(status));
   unreachable("ExitProcess returned while exiting immediately");
 }
 
-fn replace_process(ExecContext &&ec) -> void
+fn
+replace_process(ExecContext &&ec) -> void
 {
   LOG(Debug, "running '%s' to completion in place of an exec",
       ec.program_path().c_str());
@@ -2450,7 +2550,8 @@ fn replace_process(ExecContext &&ec) -> void
   unreachable("ExitProcess returned after process replacement");
 }
 
-fn redirect_self(const ExecContext &ec) -> void
+fn
+redirect_self(const ExecContext &ec) -> void
 {
   if (ec.in_fd) replace_descriptor(0, *ec.in_fd);
 
@@ -2474,15 +2575,16 @@ fn redirect_self(const ExecContext &ec) -> void
       [&](i32 target_fd) { close_shell_fd(target_fd); });
 }
 
-fn make_pipe() wontthrow -> Maybe<pipe_ends>
+fn
+make_pipe() wontthrow -> Maybe<pipe_ends>
 {
   SECURITY_ATTRIBUTES attributes{};
 
-  attributes.nLength = sizeof(SECURITY_ATTRIBUTES);
-  attributes.bInheritHandle = FALSE;
+  attributes.nLength              = sizeof(SECURITY_ATTRIBUTES);
+  attributes.bInheritHandle       = FALSE;
   attributes.lpSecurityDescriptor = nullptr; /* NOLINT */
 
-  HANDLE in = INVALID_HANDLE_VALUE;
+  HANDLE in  = INVALID_HANDLE_VALUE;
   HANDLE out = INVALID_HANDLE_VALUE;
 
   if (CreatePipe(&in, &out, &attributes, 0) == 0) {
@@ -2501,10 +2603,11 @@ struct thread_start_context
   opaque *context;
 };
 
-fn thread_trampoline(LPVOID raw_context) -> DWORD
+fn
+thread_trampoline(LPVOID raw_context) -> DWORD
 {
-  let const start = static_cast<thread_start_context *>(raw_context);
-  let const entry = start->entry;
+  let const start   = static_cast<thread_start_context *>(raw_context);
+  let const entry   = start->entry;
   let const context = start->context;
   os::free_aligned(start);
   entry(context);
@@ -2512,14 +2615,15 @@ fn thread_trampoline(LPVOID raw_context) -> DWORD
   return 0;
 }
 
-fn start_thread(void (*entry)(opaque *), opaque *context) wontthrow
+fn
+start_thread(void (*entry)(opaque *), opaque *context) wontthrow
     -> Maybe<thread>
 {
   let const storage = os::allocate_aligned(sizeof(thread_start_context),
                                            alignof(thread_start_context));
   if (storage == nullptr) return koshka::None;
   let const start = new (storage) thread_start_context{entry, context};
-  HANDLE handle =
+  HANDLE    handle =
       CreateThread(nullptr, 0, thread_trampoline, start, 0, nullptr);
   if (handle == nullptr) {
     os::free_aligned(start);
@@ -2530,13 +2634,15 @@ fn start_thread(void (*entry)(opaque *), opaque *context) wontthrow
   return thread{handle};
 }
 
-fn join_thread(thread t) wontthrow -> void
+fn
+join_thread(thread t) wontthrow -> void
 {
   WaitForSingleObject(t.handle, INFINITE);
   CloseHandle(t.handle);
 }
 
-fn wait_and_monitor_process(process p, bool *was_stopped) -> i32
+fn
+wait_and_monitor_process(process p, bool *was_stopped) -> i32
 {
   unused(was_stopped);
   defer { CloseHandle(p); };
@@ -2554,9 +2660,12 @@ fn wait_and_monitor_process(process p, bool *was_stopped) -> i32
   return code;
 }
 
-fn wait_for_child_state_change() wontthrow -> void {}
+fn
+wait_for_child_state_change() wontthrow -> void
+{}
 
-fn reap_process_quietly(process p) -> i32
+fn
+reap_process_quietly(process p) -> i32
 {
   defer { CloseHandle(p); };
   if (WaitForSingleObject(p, INFINITE) != WAIT_OBJECT_0)
@@ -2570,8 +2679,10 @@ fn reap_process_quietly(process p) -> i32
   return static_cast<i32>(code);
 }
 
-fn poll_process(process p, i32 &status_out,
-                process_termination *termination_out) wontthrow -> process_state
+fn
+poll_process(process              p,
+             i32                 &status_out,
+             process_termination *termination_out) wontthrow -> process_state
 {
   unused(termination_out);
   let const wait_result = WaitForSingleObject(p, 0);
@@ -2598,12 +2709,14 @@ fn poll_process(process p, i32 &status_out,
   return process_state::Exited;
 }
 
-fn process_is_running(process p) wontthrow -> bool
+fn
+process_is_running(process p) wontthrow -> bool
 {
   return signal_process(p, 0) || last_system_error_is_permission_denied();
 }
 
-fn signal_process(process p, i32 signal_number) wontthrow -> bool
+fn
+signal_process(process p, i32 signal_number) wontthrow -> bool
 {
   if (signal_number == 0) {
     if (process_is_group_reference(p)) {
@@ -2645,7 +2758,7 @@ fn signal_process(process p, i32 signal_number) wontthrow -> bool
 
   if (process_is_group_reference(p)) {
     let const process_handle = process_from_group_reference(p);
-    char job_name[64];
+    char      job_name[64];
     if (!timeout_job_name(process_handle, job_name)) return false;
     let const job = OpenJobObjectA(JOB_OBJECT_TERMINATE, FALSE, job_name);
     if (job == nullptr) return false;
@@ -2667,19 +2780,20 @@ fn signal_process(process p, i32 signal_number) wontthrow -> bool
   return did_terminate;
 }
 
-fn process_group_has_members(process group) wontthrow -> bool
+fn
+process_group_has_members(process group) wontthrow -> bool
 {
   if (!process_is_group_reference(group)) return false;
 
   let const process_handle = process_from_group_reference(group);
-  char job_name[64];
+  char      job_name[64];
   if (!timeout_job_name(process_handle, job_name)) return false;
 
   let const job = OpenJobObjectA(JOB_OBJECT_QUERY, FALSE, job_name);
   if (job == nullptr) return false;
 
   JOBOBJECT_BASIC_ACCOUNTING_INFORMATION accounting{};
-  let const did_query =
+  let const                              did_query =
       QueryInformationJobObject(job, JobObjectBasicAccountingInformation,
                                 &accounting, sizeof(accounting), nullptr);
   CloseHandle(job);
@@ -2687,12 +2801,14 @@ fn process_group_has_members(process group) wontthrow -> bool
   return did_query != FALSE && accounting.ActiveProcesses > 0;
 }
 
-fn is_process_signal_supported(i32 signal_number) wontthrow -> bool
+fn
+is_process_signal_supported(i32 signal_number) wontthrow -> bool
 {
   return signal_number == 0 || signal_number == 9 || signal_number == 15;
 }
 
-fn process_from_pid(i64 pid) wontthrow -> process
+fn
+process_from_pid(i64 pid) wontthrow -> process
 {
   if (pid <= 0 || static_cast<u64>(pid) > UINT32_MAX) {
     return nullptr;
@@ -2707,22 +2823,26 @@ static const utils::signal_pair SIGNAL_PAIRS[] = {
     {15, "TERM"},
 };
 
-fn signal_number_from_name(StringView name) -> Maybe<i32>
+fn
+signal_number_from_name(StringView name) -> Maybe<i32>
 {
   return utils::find_signal_number(SIGNAL_PAIRS, countof(SIGNAL_PAIRS), name);
 }
 
-fn signal_name_from_number(i32 number) -> Maybe<String>
+fn
+signal_name_from_number(i32 number) -> Maybe<String>
 {
   return utils::find_signal_name(SIGNAL_PAIRS, countof(SIGNAL_PAIRS), number);
 }
 
-fn signal_description_from_number(i32 number) throws -> String
+fn
+signal_description_from_number(i32 number) throws -> String
 {
   return "Unknown signal " + String::from(number, heap_allocator());
 }
 
-fn signal_names() throws -> const ArrayList<StringView> &
+fn
+signal_names() throws -> const ArrayList<StringView> &
 {
   static ArrayList<StringView> names =
       utils::collect_signal_names(SIGNAL_PAIRS, countof(SIGNAL_PAIRS));
@@ -2730,7 +2850,8 @@ fn signal_names() throws -> const ArrayList<StringView> &
   return names;
 }
 
-static fn append_windows_quoted_arg(String &out, StringView arg) -> void
+static fn
+append_windows_quoted_arg(String &out, StringView arg) -> void
 {
   bool should_quote_arg = arg.count() == 0;
 
@@ -2781,7 +2902,8 @@ static fn append_windows_quoted_arg(String &out, StringView arg) -> void
   out += '"';
 }
 
-fn make_os_args(const ArrayList<String> &args) -> os_args
+fn
+make_os_args(const ArrayList<String> &args) -> os_args
 {
   ASSERT(args.count() > 0);
 
@@ -2796,9 +2918,10 @@ fn make_os_args(const ArrayList<String> &args) -> os_args
   return command_line;
 }
 
-cold fn last_system_error_message() throws -> String
+cold fn
+last_system_error_message() throws -> String
 {
-  LPWSTR errno_text{};
+  LPWSTR    errno_text{};
   let const win_errno = GetLastError();
   if (win_errno == ERROR_FILE_NOT_FOUND || win_errno == ERROR_PATH_NOT_FOUND) {
     return String{"No such file or directory"};
@@ -2854,41 +2977,48 @@ cold fn last_system_error_message() throws -> String
   return err;
 }
 
-fn get_last_system_error_number() wontthrow -> i32
+fn
+get_last_system_error_number() wontthrow -> i32
 {
   return static_cast<i32>(GetLastError());
 }
 
-fn last_system_error_is_missing_file() wontthrow -> bool
+fn
+last_system_error_is_missing_file() wontthrow -> bool
 {
   let const error = GetLastError();
 
   return error == ERROR_FILE_NOT_FOUND || error == ERROR_PATH_NOT_FOUND;
 }
 
-fn last_system_error_is_permission_denied() wontthrow -> bool
+fn
+last_system_error_is_permission_denied() wontthrow -> bool
 {
   return GetLastError() == ERROR_ACCESS_DENIED;
 }
 
-fn last_system_error_is_descriptor_quota() wontthrow -> bool
+fn
+last_system_error_is_descriptor_quota() wontthrow -> bool
 {
   return GetLastError() == ERROR_TOO_MANY_OPEN_FILES;
 }
 
-fn set_last_system_error(i32 error_number) wontthrow -> void
+fn
+set_last_system_error(i32 error_number) wontthrow -> void
 {
   SetLastError(static_cast<DWORD>(error_number));
 }
 
-static fn handle_interrupt(int s) -> void
+static fn
+handle_interrupt(int s) -> void
 {
   unused(s);
   INTERRUPT_REQUESTED = 1;
   signal(SIGINT, handle_interrupt);
 }
 
-fn set_default_signal_handlers(signal_profile profile) -> void
+fn
+set_default_signal_handlers(signal_profile profile) -> void
 {
   let const is_interactive = profile == signal_profile::Interactive;
   if (is_interactive && signal(SIGTERM, SIG_IGN) == SIG_ERR) {
@@ -2902,7 +3032,8 @@ fn set_default_signal_handlers(signal_profile profile) -> void
   }
 }
 
-static fn handle_trapped_signal(int signal_number) -> void
+static fn
+handle_trapped_signal(int signal_number) -> void
 {
   if (is_trappable_signal(signal_number))
     PENDING_SIGNAL_FLAGS[signal_number] = 1;
@@ -2910,21 +3041,28 @@ static fn handle_trapped_signal(int signal_number) -> void
   signal(signal_number, handle_trapped_signal);
 }
 
-fn set_trap_handler(i32 signal_number) -> void
+fn
+set_trap_handler(i32 signal_number) -> void
 {
   if (!is_trappable_signal(signal_number)) return;
   signal(signal_number, handle_trapped_signal);
 }
 
-fn set_trap_ignore(i32 signal_number) -> void
+fn
+set_trap_ignore(i32 signal_number) -> void
 {
   if (!is_trappable_signal(signal_number)) return;
   signal(signal_number, SIG_IGN);
 }
 
-fn get_entry_ignored_signals() wontthrow -> u64 { return 0; }
+fn
+get_entry_ignored_signals() wontthrow -> u64
+{
+  return 0;
+}
 
-fn clear_trap_handler(i32 signal_number) -> void
+fn
+clear_trap_handler(i32 signal_number) -> void
 {
   if (!is_trappable_signal(signal_number)) return;
   if (signal_number == SIGINT)
@@ -2933,7 +3071,8 @@ fn clear_trap_handler(i32 signal_number) -> void
     signal(signal_number, SIG_DFL);
 }
 
-fn monotonic_nanos() wontthrow -> u64
+fn
+monotonic_nanos() wontthrow -> u64
 {
   static const LARGE_INTEGER frequency = [] {
     LARGE_INTEGER value{};
@@ -2945,13 +3084,14 @@ fn monotonic_nanos() wontthrow -> u64
   if (frequency.QuadPart == 0) return 0;
   if (QueryPerformanceCounter(&counter) == 0) return 0;
   const u64 whole_seconds = counter.QuadPart / frequency.QuadPart;
-  const u64 remainder = counter.QuadPart % frequency.QuadPart;
+  const u64 remainder     = counter.QuadPart % frequency.QuadPart;
 
   return whole_seconds * 1000000000ULL +
          (remainder * 1000000000ULL) / static_cast<u64>(frequency.QuadPart);
 }
 
-static fn query_parent_process_id() wontthrow -> i64
+static fn
+query_parent_process_id() wontthrow -> i64
 {
   let const snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
   if (snapshot == INVALID_HANDLE_VALUE) return 0;
@@ -2971,22 +3111,40 @@ static fn query_parent_process_id() wontthrow -> i64
   return 0;
 }
 
-fn get_parent_process_id() wontthrow -> i64
+fn
+get_parent_process_id() wontthrow -> i64
 {
   static const i64 parent_process_id = query_parent_process_id();
 
   return parent_process_id;
 }
 
-fn get_real_user_id() wontthrow -> i64 { return 0; }
+fn
+get_real_user_id() wontthrow -> i64
+{
+  return 0;
+}
 
-fn get_effective_user_id() wontthrow -> i64 { return 0; }
+fn
+get_effective_user_id() wontthrow -> i64
+{
+  return 0;
+}
 
-fn get_real_group_id() wontthrow -> i64 { return 0; }
+fn
+get_real_group_id() wontthrow -> i64
+{
+  return 0;
+}
 
-fn get_effective_group_id() wontthrow -> i64 { return 0; }
+fn
+get_effective_group_id() wontthrow -> i64
+{
+  return 0;
+}
 
-fn get_supplementary_group_ids(Allocator allocator) throws -> ArrayList<u32>
+fn
+get_supplementary_group_ids(Allocator allocator) throws -> ArrayList<u32>
 {
   let groups = ArrayList<u32>{allocator};
   groups.push(0);
@@ -2994,7 +3152,8 @@ fn get_supplementary_group_ids(Allocator allocator) throws -> ArrayList<u32>
   return groups;
 }
 
-fn machine_type() throws -> String
+fn
+machine_type() throws -> String
 {
   SYSTEM_INFO information{};
   GetNativeSystemInfo(&information);
@@ -3002,19 +3161,24 @@ fn machine_type() throws -> String
   case PROCESSOR_ARCHITECTURE_AMD64: return String{"x86_64"};
   case PROCESSOR_ARCHITECTURE_ARM64: return String{"arm64"};
   case PROCESSOR_ARCHITECTURE_INTEL: return String{"i686"};
-  case PROCESSOR_ARCHITECTURE_ARM: return String{"arm"};
-  default: return String{"unknown"};
+  case PROCESSOR_ARCHITECTURE_ARM:   return String{"arm"};
+  default:                           return String{"unknown"};
   }
 }
 
-fn executable_system_name() throws -> String { return String{"Windows"}; }
+fn
+executable_system_name() throws -> String
+{
+  return String{"Windows"};
+}
 
-static fn windows_version() wontthrow -> OSVERSIONINFOW
+static fn
+windows_version() wontthrow -> OSVERSIONINFOW
 {
   static const OSVERSIONINFOW version = [] {
     OSVERSIONINFOW information{};
     information.dwOSVersionInfoSize = sizeof(information);
-    using rtl_get_version_fn = LONG(WINAPI *)(OSVERSIONINFOW *);
+    using rtl_get_version_fn        = LONG(WINAPI *)(OSVERSIONINFOW *);
     let const address =
         GetProcAddress(GetModuleHandleW(L"ntdll.dll"), "RtlGetVersion");
     rtl_get_version_fn get_version = nullptr;
@@ -3030,7 +3194,8 @@ static fn windows_version() wontthrow -> OSVERSIONINFOW
   return version;
 }
 
-fn system_release_name() throws -> String
+fn
+system_release_name() throws -> String
 {
   let const version = windows_version();
   if (version.dwMajorVersion == 0) return String{"unknown"};
@@ -3040,7 +3205,8 @@ fn system_release_name() throws -> String
          String::from(version.dwBuildNumber, heap_allocator());
 }
 
-fn system_version_name() throws -> String
+fn
+system_version_name() throws -> String
 {
   let const version = windows_version();
   if (version.dwMajorVersion == 0) return String{"unknown"};
@@ -3048,14 +3214,20 @@ fn system_version_name() throws -> String
   return String::from(version.dwBuildNumber, heap_allocator());
 }
 
-fn machine_target_name() throws -> String
+fn
+machine_target_name() throws -> String
 {
   return machine_type() + "-pc-msys";
 }
 
-fn ostype_name() wontthrow -> StringView { return "msys"; }
+fn
+ostype_name() wontthrow -> StringView
+{
+  return "msys";
+}
 
-fn executable_machine_name() throws -> String
+fn
+executable_machine_name() throws -> String
 {
 #if defined _M_ARM64 || defined __aarch64__
 
@@ -3069,24 +3241,26 @@ fn executable_machine_name() throws -> String
 #endif
 }
 
-fn realtime_microseconds() wontthrow -> u64
+fn
+realtime_microseconds() wontthrow -> u64
 {
   FILETIME file_time;
   GetSystemTimePreciseAsFileTime(&file_time);
-  const u64 ticks = filetime_ticks(file_time);
+  const u64 ticks              = filetime_ticks(file_time);
   const u64 epoch_offset_100ns = 116444736000000000ULL;
   if (ticks < epoch_offset_100ns) return 0;
 
   return (ticks - epoch_offset_100ns) / 10ULL;
 }
 
-fn format_local_time(StringView format, i64 epoch) throws -> String
+fn
+format_local_time(StringView format, i64 epoch) throws -> String
 {
   const time_t when = static_cast<time_t>(epoch);
-  struct tm broken_down{};
+  struct tm    broken_down{};
   if (localtime_s(&broken_down, &when) != 0) return String{heap_allocator()};
   let const format_string = String{format};
-  char buffer[512];
+  char      buffer[512];
   let const written =
       strftime(buffer, sizeof(buffer), format_string.c_str(), &broken_down);
 
@@ -3095,7 +3269,8 @@ fn format_local_time(StringView format, i64 epoch) throws -> String
   };
 }
 
-fn read_child_cpu_times() wontthrow -> child_cpu_times
+fn
+read_child_cpu_times() wontthrow -> child_cpu_times
 {
   child_cpu_times result{};
   result.user_seconds = static_cast<double>(InterlockedCompareExchange64(
@@ -3108,19 +3283,21 @@ fn read_child_cpu_times() wontthrow -> child_cpu_times
   return result;
 }
 
-fn children_peak_rss_bytes() wontthrow -> u64
+fn
+children_peak_rss_bytes() wontthrow -> u64
 {
   return static_cast<u64>(
       InterlockedCompareExchange64(&CHILD_PEAK_RSS_BYTES, 0, 0));
 }
 
-fn read_process_cpu_times() wontthrow -> cpu_times
+fn
+read_process_cpu_times() wontthrow -> cpu_times
 {
   cpu_times result{};
-  FILETIME creation_time{};
-  FILETIME exit_time{};
-  FILETIME kernel_time{};
-  FILETIME user_time{};
+  FILETIME  creation_time{};
+  FILETIME  exit_time{};
+  FILETIME  kernel_time{};
+  FILETIME  user_time{};
   if (GetProcessTimes(GetCurrentProcess(), &creation_time, &exit_time,
                       &kernel_time, &user_time) != FALSE)
   {
@@ -3129,14 +3306,15 @@ fn read_process_cpu_times() wontthrow -> cpu_times
     result.self_system_seconds =
         static_cast<double>(filetime_ticks(kernel_time)) / 10000000.0;
   }
-  let const child_times = read_child_cpu_times();
-  result.child_user_seconds = child_times.user_seconds;
+  let const child_times       = read_child_cpu_times();
+  result.child_user_seconds   = child_times.user_seconds;
   result.child_system_seconds = child_times.system_seconds;
 
   return result;
 }
 
-fn read_malloc_heap_stats(malloc_heap_stats &stats) wontthrow -> bool
+fn
+read_malloc_heap_stats(malloc_heap_stats &stats) wontthrow -> bool
 {
   unused(stats);
 
@@ -3144,7 +3322,8 @@ fn read_malloc_heap_stats(malloc_heap_stats &stats) wontthrow -> bool
 }
 
 static fn
-run_measured_with_options(const ArrayList<String> &argv, measured_output output,
+run_measured_with_options(const ArrayList<String>               &argv,
+                          measured_output                        output,
                           const windows_measured_launch_options &options) throws
     -> Maybe<measured_result>
 {
@@ -3156,15 +3335,15 @@ run_measured_with_options(const ArrayList<String> &argv, measured_output output,
   let command_line = make_os_args(argv);
 
   STARTUPINFOW startup{};
-  startup.cb = sizeof(startup);
-  startup.hStdInput = options.input.value_or(GetStdHandle(STD_INPUT_HANDLE));
+  startup.cb         = sizeof(startup);
+  startup.hStdInput  = options.input.value_or(GetStdHandle(STD_INPUT_HANDLE));
   startup.hStdOutput = options.output.value_or(GetStdHandle(STD_OUTPUT_HANDLE));
-  startup.hStdError = options.error.value_or(GetStdHandle(STD_ERROR_HANDLE));
+  startup.hStdError  = options.error.value_or(GetStdHandle(STD_ERROR_HANDLE));
 
   HANDLE null_handle = INVALID_HANDLE_VALUE;
   if (should_suppress_output) {
     SECURITY_ATTRIBUTES inherit_sa{};
-    inherit_sa.nLength = sizeof(inherit_sa);
+    inherit_sa.nLength        = sizeof(inherit_sa);
     inherit_sa.bInheritHandle = TRUE;
     null_handle = CreateFileW(L"NUL", GENERIC_READ | GENERIC_WRITE,
                               FILE_SHARE_READ | FILE_SHARE_WRITE, &inherit_sa,
@@ -3176,7 +3355,7 @@ run_measured_with_options(const ArrayList<String> &argv, measured_output output,
         startup.hStdInput = null_handle;
       }
       startup.hStdOutput = null_handle;
-      startup.hStdError = null_handle;
+      startup.hStdError  = null_handle;
     }
   }
   defer
@@ -3185,7 +3364,7 @@ run_measured_with_options(const ArrayList<String> &argv, measured_output output,
   };
 
   PROCESS_INFORMATION process_info{};
-  let const is_standard_handle_set_valid =
+  let const           is_standard_handle_set_valid =
       startup.hStdInput != nullptr &&
       startup.hStdInput != INVALID_HANDLE_VALUE &&
       startup.hStdOutput != nullptr &&
@@ -3198,8 +3377,8 @@ run_measured_with_options(const ArrayList<String> &argv, measured_output output,
        options.error.has_value());
   if (should_use_standard_handles) startup.dwFlags = STARTF_USESTDHANDLES;
 
-  const u64 start_nanos = monotonic_nanos();
-  HANDLE inherited_handles[] = {
+  const u64 start_nanos         = monotonic_nanos();
+  HANDLE    inherited_handles[] = {
       should_use_standard_handles ? startup.hStdInput : INVALID_HANDLE_VALUE,
       should_use_standard_handles ? startup.hStdOutput : INVALID_HANDLE_VALUE,
       should_use_standard_handles ? startup.hStdError : INVALID_HANDLE_VALUE,
@@ -3237,18 +3416,20 @@ run_measured_with_options(const ArrayList<String> &argv, measured_output output,
   return result;
 }
 
-fn run_measured(const ArrayList<String> &argv,
-                const Maybe<descriptor> &inherited_handle,
-                measured_output output, bool should_collect_resources) throws
-    -> Maybe<measured_result>
+fn
+run_measured(const ArrayList<String> &argv,
+             const Maybe<descriptor> &inherited_handle,
+             measured_output          output,
+             bool should_collect_resources) throws -> Maybe<measured_result>
 {
   windows_measured_launch_options options{};
-  options.inherited_handle = inherited_handle;
+  options.inherited_handle         = inherited_handle;
   options.should_collect_resources = should_collect_resources;
 
   return run_measured_with_options(argv, output, options);
 }
-fn enumerate_processes(process_detail detail) throws -> ArrayList<process_entry>
+fn
+enumerate_processes(process_detail detail) throws -> ArrayList<process_entry>
 {
   unused(detail);
   ArrayList<process_entry> processes{heap_allocator()};
@@ -3267,9 +3448,9 @@ fn enumerate_processes(process_detail detail) throws -> ArrayList<process_entry>
     if (!name.has_value()) continue;
 
     process_entry process{};
-    process.pid = static_cast<i64>(entry.th32ProcessID);
-    process.parent_pid = static_cast<i64>(entry.th32ParentProcessID);
-    process.name = name.take();
+    process.pid          = static_cast<i64>(entry.th32ProcessID);
+    process.parent_pid   = static_cast<i64>(entry.th32ParentProcessID);
+    process.name         = name.take();
     process.command_line = process.name.clone();
     if (detail == process_detail::ResourceStats) {
       let const handle =
@@ -3292,7 +3473,7 @@ fn enumerate_processes(process_detail detail) throws -> ArrayList<process_entry>
         memory.cb = sizeof(memory);
         if (GetProcessMemoryInfo(handle, &memory, sizeof(memory)) != 0) {
           process.resident_kib = memory.WorkingSetSize / 1024;
-          process.virtual_kib = memory.PagefileUsage / 1024;
+          process.virtual_kib  = memory.PagefileUsage / 1024;
         }
         CloseHandle(handle);
       }
@@ -3303,7 +3484,8 @@ fn enumerate_processes(process_detail detail) throws -> ArrayList<process_entry>
   return processes;
 }
 
-fn describe_processes(const ArrayList<u32> &pids) throws
+fn
+describe_processes(const ArrayList<u32> &pids) throws
     -> ArrayList<process_entry>
 {
   ArrayList<process_entry> described{heap_allocator()};
@@ -3319,22 +3501,24 @@ fn describe_processes(const ArrayList<u32> &pids) throws
   return described;
 }
 
-fn system_uptime_seconds() wontthrow -> Maybe<u64>
+fn
+system_uptime_seconds() wontthrow -> Maybe<u64>
 {
   return static_cast<u64>(GetTickCount64() / 1000);
 }
 
-fn read_memory_status(memory_status &status) wontthrow -> bool
+fn
+read_memory_status(memory_status &status) wontthrow -> bool
 {
   MEMORYSTATUSEX memory{};
   memory.dwLength = sizeof(memory);
   if (GlobalMemoryStatusEx(&memory) == 0) return false;
 
-  status.total_kib = memory.ullTotalPhys / 1024;
-  status.free_kib = memory.ullAvailPhys / 1024;
-  status.available_kib = status.free_kib;
-  status.swap_total_kib = memory.ullTotalPageFile / 1024;
-  status.swap_free_kib = memory.ullAvailPageFile / 1024;
+  status.total_kib        = memory.ullTotalPhys / 1024;
+  status.free_kib         = memory.ullAvailPhys / 1024;
+  status.available_kib    = status.free_kib;
+  status.swap_total_kib   = memory.ullTotalPageFile / 1024;
+  status.swap_free_kib    = memory.ullAvailPageFile / 1024;
   status.available_fields = static_cast<u32>(memory_status_field::Total) |
                             static_cast<u32>(memory_status_field::Available) |
                             static_cast<u32>(memory_status_field::Free) |
@@ -3344,19 +3528,20 @@ fn read_memory_status(memory_status &status) wontthrow -> bool
   return true;
 }
 
-fn read_swap_status(swap_status &status) wontthrow -> bool
+fn
+read_swap_status(swap_status &status) wontthrow -> bool
 {
   struct page_file_context
   {
     swap_status *status;
-    u64 page_byte_count;
+    u64          page_byte_count;
   };
   SYSTEM_INFO system{};
   GetSystemInfo(&system);
   page_file_context context{&status, system.dwPageSize};
-  let const do_collect = [](LPVOID raw_context,
+  let const         do_collect = [](LPVOID                      raw_context,
                             PENUM_PAGE_FILE_INFORMATION information,
-                            LPCWSTR name) -> BOOL {
+                            LPCWSTR                     name) -> BOOL {
     unused(name);
     let *context = static_cast<page_file_context *>(raw_context);
     context->status->total_byte_count +=
@@ -3375,7 +3560,8 @@ fn read_swap_status(swap_status &status) wontthrow -> bool
   return true;
 }
 
-fn read_process_io_status(i64 pid, process_io_status &status) wontthrow -> bool
+fn
+read_process_io_status(i64 pid, process_io_status &status) wontthrow -> bool
 {
   if (pid < 0 || pid > UINT32_MAX) {
     return false;
@@ -3387,18 +3573,19 @@ fn read_process_io_status(i64 pid, process_io_status &status) wontthrow -> bool
 
   IO_COUNTERS counters{};
   if (GetProcessIoCounters(process, &counters) == FALSE) return false;
-  status.read_byte_count = counters.ReadTransferCount;
-  status.written_byte_count = counters.WriteTransferCount;
-  status.read_operation_count = counters.ReadOperationCount;
+  status.read_byte_count       = counters.ReadTransferCount;
+  status.written_byte_count    = counters.WriteTransferCount;
+  status.read_operation_count  = counters.ReadOperationCount;
   status.write_operation_count = counters.WriteOperationCount;
-  status.has_operation_counts = true;
+  status.has_operation_counts  = true;
 
   return true;
 }
 
-fn read_process_io_statuses(const ArrayList<i64> &process_ids,
-                            ArrayList<process_io_status> &statuses,
-                            ArrayList<u8> &availability) throws -> void
+fn
+read_process_io_statuses(const ArrayList<i64>         &process_ids,
+                         ArrayList<process_io_status> &statuses,
+                         ArrayList<u8> &availability) throws -> void
 {
   statuses.clear();
   availability.clear();
@@ -3407,31 +3594,33 @@ fn read_process_io_statuses(const ArrayList<i64> &process_ids,
 
   for (let const process_id : process_ids) {
     process_io_status status{};
-    let const is_available = read_process_io_status(process_id, status);
+    let const         is_available = read_process_io_status(process_id, status);
     statuses.push(status);
     availability.push(is_available ? 1 : 0);
   }
 }
 
-fn read_system_activity_status(system_activity_status &status) wontthrow -> bool
+fn
+read_system_activity_status(system_activity_status &status) wontthrow -> bool
 {
   FILETIME idle_time{};
   FILETIME kernel_time{};
   FILETIME user_time{};
   if (GetSystemTimes(&idle_time, &kernel_time, &user_time) != FALSE) {
-    status.cpu_idle_units = filetime_ticks(idle_time);
-    let const kernel_units = filetime_ticks(kernel_time);
+    status.cpu_idle_units   = filetime_ticks(idle_time);
+    let const kernel_units  = filetime_ticks(kernel_time);
     status.cpu_system_units = kernel_units > status.cpu_idle_units
                                   ? kernel_units - status.cpu_idle_units
                                   : 0;
-    status.cpu_user_units = filetime_ticks(user_time);
+    status.cpu_user_units   = filetime_ticks(user_time);
     status.available_fields |= static_cast<u32>(system_activity_field::Cpu);
   }
 
   return status.available_fields != 0;
 }
 
-static fn hundred_nanosecond_units_to_nanoseconds(i64 units) wontthrow -> u64
+static fn
+hundred_nanosecond_units_to_nanoseconds(i64 units) wontthrow -> u64
 {
   if (units <= 0) return 0;
   let const unsigned_units = static_cast<u64>(units);
@@ -3439,11 +3628,12 @@ static fn hundred_nanosecond_units_to_nanoseconds(i64 units) wontthrow -> u64
   return unsigned_units > UINT64_MAX / 100 ? UINT64_MAX : unsigned_units * 100;
 }
 
-fn read_disk_io_snapshot(Allocator allocator) throws -> disk_io_snapshot
+fn
+read_disk_io_snapshot(Allocator allocator) throws -> disk_io_snapshot
 {
   disk_io_snapshot snapshot{ArrayList<disk_io_status>{allocator},
                             monotonic_nanos()};
-  constexpr u32 AVAILABLE = static_cast<u32>(disk_io_field::ReadBytes) |
+  constexpr u32    AVAILABLE = static_cast<u32>(disk_io_field::ReadBytes) |
                             static_cast<u32>(disk_io_field::WrittenBytes) |
                             static_cast<u32>(disk_io_field::ReadOperations) |
                             static_cast<u32>(disk_io_field::WriteOperations) |
@@ -3464,7 +3654,7 @@ fn read_disk_io_snapshot(Allocator allocator) throws -> disk_io_snapshot
     defer { CloseHandle(handle); };
 
     DISK_PERFORMANCE performance{};
-    DWORD returned_byte_count = 0;
+    DWORD            returned_byte_count = 0;
     if (DeviceIoControl(handle, IOCTL_DISK_PERFORMANCE, nullptr, 0,
                         &performance, sizeof(performance), &returned_byte_count,
                         nullptr) == FALSE ||
@@ -3500,11 +3690,12 @@ fn read_disk_io_snapshot(Allocator allocator) throws -> disk_io_snapshot
   return snapshot;
 }
 
-fn processor_model_name(Allocator allocator) throws -> Maybe<String>
+fn
+processor_model_name(Allocator allocator) throws -> Maybe<String>
 {
-  wchar_t name_buffer[256]{};
-  DWORD name_byte_count = sizeof(name_buffer);
-  let const status = RegGetValueW(
+  wchar_t   name_buffer[256]{};
+  DWORD     name_byte_count = sizeof(name_buffer);
+  let const status          = RegGetValueW(
       HKEY_LOCAL_MACHINE, L"HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0",
       L"ProcessorNameString", RRF_RT_REG_SZ, nullptr, name_buffer,
       &name_byte_count);
@@ -3514,10 +3705,16 @@ fn processor_model_name(Allocator allocator) throws -> Maybe<String>
                       allocator);
 }
 
-fn has_process_open_file_listing() wontthrow -> bool { return false; }
+fn
+has_process_open_file_listing() wontthrow -> bool
+{
+  return false;
+}
 
-fn list_process_open_files(i64 pid, Allocator allocator,
-                           process_open_file_detail detail) throws
+fn
+list_process_open_files(i64                      pid,
+                        Allocator                allocator,
+                        process_open_file_detail detail) throws
     -> ArrayList<process_open_file>
 {
   unused(pid);
@@ -3526,8 +3723,8 @@ fn list_process_open_files(i64 pid, Allocator allocator,
   return ArrayList<process_open_file>{allocator};
 }
 
-static fn utf8_to_absolute_wide_path(StringView path,
-                                     Allocator allocator) throws
+static fn
+utf8_to_absolute_wide_path(StringView path, Allocator allocator) throws
     -> Maybe<ArrayList<wchar_t>>
 {
   let wide_path = path_to_wide(path, allocator);
@@ -3553,17 +3750,18 @@ static fn utf8_to_absolute_wide_path(StringView path,
   return None;
 }
 
-fn scan_process_file_users(const ArrayList<process_file_query> &queries,
-                           ArrayList<process_file_user> &users,
-                           Allocator scratch) throws -> Maybe<u32>
+fn
+scan_process_file_users(const ArrayList<process_file_query> &queries,
+                        ArrayList<process_file_user>        &users,
+                        Allocator scratch) throws -> Maybe<u32>
 {
   for (let const &query : queries) {
     let wide_path = utf8_to_absolute_wide_path(query.path, scratch);
     if (!wide_path.has_value()) return query.query_position;
 
-    DWORD session_handle = 0;
+    DWORD   session_handle = 0;
     wchar_t session_key[CCH_RM_SESSION_KEY + 1]{};
-    let result = RmStartSession(&session_handle, 0, session_key);
+    let     result = RmStartSession(&session_handle, 0, session_key);
     if (result != ERROR_SUCCESS) {
       SetLastError(result);
 
@@ -3580,8 +3778,8 @@ fn scan_process_file_users(const ArrayList<process_file_query> &queries,
       return query.query_position;
     }
 
-    UINT required_count = 0;
-    UINT process_count = 0;
+    UINT  required_count = 0;
+    UINT  process_count  = 0;
     DWORD reboot_reasons = 0;
     result = RmGetList(session_handle, &required_count, &process_count, nullptr,
                        &reboot_reasons);
@@ -3594,7 +3792,7 @@ fn scan_process_file_users(const ArrayList<process_file_query> &queries,
       return query.query_position;
     }
 
-    constexpr usize LIST_ATTEMPT_COUNT = 8;
+    constexpr usize            LIST_ATTEMPT_COUNT = 8;
     ArrayList<RM_PROCESS_INFO> process_infos{scratch};
 
     for (usize attempt_count = 0; attempt_count < LIST_ATTEMPT_COUNT;
@@ -3633,13 +3831,13 @@ fn scan_process_file_users(const ArrayList<process_file_query> &queries,
       }
 
       if (is_duplicate) continue;
-      let use_mask = static_cast<u8>(process_file_use::File);
+      let       use_mask = static_cast<u8>(process_file_use::File);
       let const process =
           OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
       if (process != nullptr) {
         defer { CloseHandle(process); };
         ArrayList<wchar_t> image_path{scratch};
-        constexpr DWORD MAXIMUM_IMAGE_PATH_LENGTH = 32768;
+        constexpr DWORD    MAXIMUM_IMAGE_PATH_LENGTH = 32768;
         image_path.reserve(MAXIMUM_IMAGE_PATH_LENGTH);
         DWORD image_path_length = MAXIMUM_IMAGE_PATH_LENGTH;
         if (QueryFullProcessImageNameW(process, 0, image_path.begin(),
@@ -3665,15 +3863,17 @@ fn scan_process_file_users(const ArrayList<process_file_query> &queries,
   return None;
 }
 
-fn process_file_query_is_supported(const file_status &status,
-                                   process_file_match_scope scope) wontthrow
+fn
+process_file_query_is_supported(const file_status       &status,
+                                process_file_match_scope scope) wontthrow
     -> bool
 {
   return scope == process_file_match_scope::File &&
          file_type_letter(status.mode) != 'd';
 }
 
-fn process_owner_name(u32 pid, u32 owner_id, Allocator allocator) throws
+fn
+process_owner_name(u32 pid, u32 owner_id, Allocator allocator) throws
     -> Maybe<String>
 {
   unused(owner_id);
@@ -3697,8 +3897,8 @@ fn process_owner_name(u32 pid, u32 owner_id, Allocator allocator) throws
   let const *token_user =
       reinterpret_cast<const TOKEN_USER *>(token_buffer.begin());
 
-  DWORD name_length = 0;
-  DWORD domain_length = 0;
+  DWORD        name_length   = 0;
+  DWORD        domain_length = 0;
   SID_NAME_USE sid_type{};
   LookupAccountSidW(nullptr, token_user->User.Sid, nullptr, &name_length,
                     nullptr, &domain_length, &sid_type);

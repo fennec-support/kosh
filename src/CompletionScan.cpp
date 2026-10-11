@@ -60,7 +60,8 @@ static constexpr StringView EVILPS_SORT_CANDIDATES[] = {
     "pid",
 };
 
-static fn previous_settled_word(StringView line, usize token_start) wontthrow
+static fn
+previous_settled_word(StringView line, usize token_start) wontthrow
     -> StringView
 {
   let end = token_start;
@@ -87,15 +88,15 @@ using sorted_target_list = SortedArrayList<String, order_comparator<String>>;
 
 struct cached_target_list
 {
-  i64 mtime{0};
+  i64                mtime{0};
   sorted_target_list targets{heap_allocator(), sort_order::ascending};
 };
 static StringMap<cached_target_list> BUILD_TARGET_CACHE{heap_allocator()};
 
-static fn settled_option_value(StringView line, StringView option) throws
-    -> Maybe<String>
+static fn
+settled_option_value(StringView line, StringView option) throws -> Maybe<String>
 {
-  usize cword = 0;
+  usize     cword = 0;
   let const words = split_completion_words(line, line.length, cword);
 
   for (usize i = 1; i < words.count(); i++) {
@@ -111,8 +112,8 @@ static fn settled_option_value(StringView line, StringView option) throws
   return None;
 }
 
-static fn make_target_is_artifact(StringView name, const Path &directory) throws
-    -> bool
+static fn
+make_target_is_artifact(StringView name, const Path &directory) throws -> bool
 {
   if (os::has_directory_separator(name)) return true;
   static constexpr PackedStringKey MAKEFILE_NAME_KEYS[] = {
@@ -130,14 +131,14 @@ static fn make_target_is_artifact(StringView name, const Path &directory) throws
   return candidate.exists();
 }
 
-static fn parse_make_database_targets(StringView database,
-                                      const Path &directory) throws
+static fn
+parse_make_database_targets(StringView database, const Path &directory) throws
     -> ArrayList<String>
 {
-  let targets = ArrayList<String>{heap_allocator()};
-  let in_files_section = false;
-  let skip_next_rule = false;
-  usize i = 0;
+  let   targets          = ArrayList<String>{heap_allocator()};
+  let   in_files_section = false;
+  let   skip_next_rule   = false;
+  usize i                = 0;
 
   while (i < database.length) {
     let const text = database.next_line(i);
@@ -174,13 +175,14 @@ static fn parse_make_database_targets(StringView database,
   return targets;
 }
 
-static fn parse_colon_led_names(StringView listing) throws -> ArrayList<String>
+static fn
+parse_colon_led_names(StringView listing) throws -> ArrayList<String>
 {
-  let names = ArrayList<String>{heap_allocator()};
-  usize i = 0;
+  let   names = ArrayList<String>{heap_allocator()};
+  usize i     = 0;
 
   while (i < listing.length) {
-    let const text = listing.next_line(i);
+    let const text  = listing.next_line(i);
     let const colon = text.find_character(':');
     if (!colon.has_value() || *colon == 0) {
       continue;
@@ -193,11 +195,12 @@ static fn parse_colon_led_names(StringView listing) throws -> ArrayList<String>
   return names;
 }
 
-static fn parse_tsh_node_names(StringView listing) throws -> ArrayList<String>
+static fn
+parse_tsh_node_names(StringView listing) throws -> ArrayList<String>
 {
-  let names = ArrayList<String>{heap_allocator()};
-  usize i = 0;
-  let has_passed_rule = false;
+  let   names           = ArrayList<String>{heap_allocator()};
+  usize i               = 0;
+  let   has_passed_rule = false;
 
   while (i < listing.length) {
     let const row = listing.next_line(i);
@@ -224,11 +227,11 @@ static fn parse_tsh_node_names(StringView listing) throws -> ArrayList<String>
   return names;
 }
 
-static fn parse_package_json_scripts(StringView text) throws
-    -> ArrayList<String>
+static fn
+parse_package_json_scripts(StringView text) throws -> ArrayList<String>
 {
-  let scripts = ArrayList<String>{heap_allocator()};
-  usize i = 0;
+  let   scripts      = ArrayList<String>{heap_allocator()};
+  usize i            = 0;
   usize object_depth = 0;
 
   while (i < text.length) {
@@ -291,8 +294,8 @@ static fn parse_package_json_scripts(StringView text) throws
     break;
   }
 
-  usize depth = 1;
-  let expecting_key = true;
+  usize depth         = 1;
+  let   expecting_key = true;
 
   while (i < text.length && depth > 0) {
     let const byte = text[i];
@@ -321,13 +324,14 @@ static fn parse_package_json_scripts(StringView text) throws
   return scripts;
 }
 
-static fn collect_ssh_hosts() throws -> ArrayList<String>
+static fn
+collect_ssh_hosts() throws -> ArrayList<String>
 {
-  let hosts = ArrayList<String>{heap_allocator()};
-  let const home = os::get_home_directory();
+  let       hosts = ArrayList<String>{heap_allocator()};
+  let const home  = os::get_home_directory();
   if (!home.has_value()) return hosts;
 
-  let seen = HashSet{heap_allocator()};
+  let       seen           = HashSet{heap_allocator()};
   let const do_push_unique = [&](StringView host) throws {
     if (host.is_empty() || !seen.add(host)) {
       return;
@@ -340,7 +344,7 @@ static fn collect_ssh_hosts() throws -> ArrayList<String>
   if (Maybe<String> config = config_path.read_entire_file(); config.has_value())
   {
     let const text = config->view();
-    usize i = 0;
+    usize     i    = 0;
 
     while (i < text.length) {
       let row = text.next_line(i);
@@ -354,19 +358,19 @@ static fn collect_ssh_hosts() throws -> ArrayList<String>
       {
         continue;
       }
-      row = row.substring(5);
+      row     = row.substring(5);
       usize k = 0;
 
       while (k < row.length) {
-        k = skip_blanks(row, k);
+        k               = skip_blanks(row, k);
         let const start = k;
 
         while (k < row.length && row[k] != ' ' && row[k] != '\t') {
           k++;
         }
 
-        let const name = row.substring_of_length(start, k - start);
-        let is_pattern_host = false;
+        let const name            = row.substring_of_length(start, k - start);
+        let       is_pattern_host = false;
 
         for (usize position = 0; position < name.length; position++) {
           let const byte = name[position];
@@ -387,7 +391,7 @@ static fn collect_ssh_hosts() throws -> ArrayList<String>
       known.has_value())
   {
     let const text = known->view();
-    usize i = 0;
+    usize     i    = 0;
 
     while (i < text.length) {
       let const row = text.next_line(i);
@@ -406,7 +410,7 @@ static fn collect_ssh_hosts() throws -> ArrayList<String>
 
       while (!field.is_empty()) {
         let const comma = field.find_character(',');
-        let host =
+        let       host =
             comma.has_value() ? field.substring_of_length(0, *comma) : field;
         field = comma.has_value() ? field.substring(*comma + 1) : StringView{};
         if (host.length > 2 && host[0] == '[') {
@@ -422,11 +426,12 @@ static fn collect_ssh_hosts() throws -> ArrayList<String>
 }
 
 template <typename Collector>
-static fn cached_targets_for(const Path &source_file, Collector collect) throws
+static fn
+cached_targets_for(const Path &source_file, Collector collect) throws
     -> Maybe<const sorted_target_list *>
 {
   let const absolute_source_file = source_file.to_absolute();
-  let const mtime = absolute_source_file.modification_time();
+  let const mtime                = absolute_source_file.modification_time();
   if (!mtime.has_value()) return None;
   let const key = absolute_source_file.view();
   if (let const cached = BUILD_TARGET_CACHE.find(key);
@@ -442,15 +447,17 @@ static fn cached_targets_for(const Path &source_file, Collector collect) throws
               ->targets;
 }
 
-fn internal::complete_from_process_arguments(StringView line, StringView token,
-                                             usize token_start,
-                                             completion_mode mode) throws
+fn
+internal::complete_from_process_arguments(StringView      line,
+                                          StringView      token,
+                                          usize           token_start,
+                                          completion_mode mode) throws
     -> Maybe<ArrayList<String>>
 {
   let const is_for_listing = mode == completion_mode::Listing;
   if (!is_for_listing) return None;
 
-  let const command = command_word_of(line);
+  let const                                  command = command_word_of(line);
   static constexpr static_string_entry<bool> PROCESS_COMMAND_ENTRIES[] = {
       {SSK("kill"),    true },
       {SSK("wait"),    true },
@@ -477,9 +484,9 @@ fn internal::complete_from_process_arguments(StringView line, StringView token,
     return None;
   }
 
-  let const processes = os::enumerate_processes();
-  let candidates = ArrayList<String>{completion_allocator()};
-  let seen = HashSet{completion_allocator()};
+  let const processes  = os::enumerate_processes();
+  let       candidates = ArrayList<String>{completion_allocator()};
+  let       seen       = HashSet{completion_allocator()};
 
   for (let const &process : processes) {
     if (is_by_name) {
@@ -500,10 +507,12 @@ fn internal::complete_from_process_arguments(StringView line, StringView token,
   return candidates;
 }
 
-fn internal::complete_from_tools_with_targets(StringView line, StringView token,
-                                              usize token_start,
-                                              EvalContext &context,
-                                              completion_mode mode) throws
+fn
+internal::complete_from_tools_with_targets(StringView      line,
+                                           StringView      token,
+                                           usize           token_start,
+                                           EvalContext    &context,
+                                           completion_mode mode) throws
     -> Maybe<ArrayList<String>>
 {
   let const is_for_listing = mode == completion_mode::Listing;
@@ -518,7 +527,7 @@ fn internal::complete_from_tools_with_targets(StringView line, StringView token,
       (command == "koshkit") ? second_word_of(line).value_or(command) : command;
 
   let const probe_timeout_nanos = 2'000'000'000ULL;
-  let const do_resolve_probe = [&](const ArrayList<String> &probe_argv)
+  let const do_resolve_probe    = [&](const ArrayList<String> &probe_argv)
                                    throws -> Maybe<ArrayList<String>> {
     if (probe_argv.is_empty()) return None;
     let const resolved = context.program_resolver().search(
@@ -550,11 +559,11 @@ fn internal::complete_from_tools_with_targets(StringView line, StringView token,
            os::program_exits_successfully(*argv, probe_timeout_nanos);
   };
 
-  let owned_targets = ArrayList<String>{heap_allocator()};
-  const ArrayList<String> *targets = &owned_targets;
+  let                      owned_targets = ArrayList<String>{heap_allocator()};
+  const ArrayList<String> *targets       = &owned_targets;
   Maybe<const sorted_target_list *> cached_targets;
-  let target_prefix = StringView{};
-  let const do_split_login = [&]() wontthrow {
+  let                               target_prefix  = StringView{};
+  let const                         do_split_login = [&]() wontthrow {
     if (let const at = token.find_character('@'); at.has_value()) {
       target_prefix = token.substring_of_length(0, *at + 1);
       token = token.substring(*at + 1);
@@ -588,7 +597,7 @@ fn internal::complete_from_tools_with_targets(StringView line, StringView token,
     makefile_path.append(makefile_name->view());
     if (!makefile_path.exists()) return None;
     let const make_directory = Path{directory.view()};
-    cached_targets = cached_targets_for(makefile_path, [&]() throws {
+    cached_targets           = cached_targets_for(makefile_path, [&]() throws {
       let probe = ArrayList<String>{heap_allocator()};
       probe.push(String{"make"});
       probe.push(String{"-C"});
@@ -603,7 +612,7 @@ fn internal::complete_from_tools_with_targets(StringView line, StringView token,
       let const intrinsic_targets =
           koshkit::collect_makefile_targets(context, makefile_path);
       let filtered = ArrayList<String>{heap_allocator()};
-      let seen = HashSet{heap_allocator()};
+      let seen     = HashSet{heap_allocator()};
 
       for (let const &name : intrinsic_targets) {
         if (make_target_is_artifact(name.view(), make_directory) ||
@@ -650,10 +659,10 @@ fn internal::complete_from_tools_with_targets(StringView line, StringView token,
       probe.push(String{build_directory->view()});
       probe.push(String{"--target"});
       probe.push(String{"help"});
-      let names = ArrayList<String>{heap_allocator()};
-      let const help = do_capture(probe);
-      let const text = help.view();
-      usize i = 0;
+      let       names = ArrayList<String>{heap_allocator()};
+      let const help  = do_capture(probe);
+      let const text  = help.view();
+      usize     i     = 0;
 
       while (i < text.length) {
         let const row = text.next_line(i);
@@ -671,11 +680,11 @@ fn internal::complete_from_tools_with_targets(StringView line, StringView token,
   case tool_with_targets_kind::node_runner: {
     if (second_word_of(line) != "run") return None;
     let const package_path = Path{StringView{"package.json"}};
-    cached_targets = cached_targets_for(package_path, [&]() throws {
+    cached_targets         = cached_targets_for(package_path, [&]() throws {
       let const contents = package_path.read_entire_file();
 
       return contents.has_value() ? parse_package_json_scripts(contents->view())
-                                  : ArrayList<String>{heap_allocator()};
+                                          : ArrayList<String>{heap_allocator()};
     });
     break;
   }
@@ -705,7 +714,7 @@ fn internal::complete_from_tools_with_targets(StringView line, StringView token,
   }
   }
 
-  let candidates = ArrayList<String>{heap_allocator()};
+  let       candidates     = ArrayList<String>{heap_allocator()};
   let const do_push_target = [&](StringView target) throws {
     let candidate = String{heap_allocator(), target_prefix};
     candidate += target;
@@ -713,7 +722,7 @@ fn internal::complete_from_tools_with_targets(StringView line, StringView token,
   };
   if (cached_targets.has_value()) {
     let const &sorted_targets = *cached_targets.value();
-    let const first = sorted_targets.lower_bound(token);
+    let const  first          = sorted_targets.lower_bound(token);
 
     for (usize i = first; i < sorted_targets.count(); i++) {
       let const &target = sorted_targets[i];
@@ -729,8 +738,10 @@ fn internal::complete_from_tools_with_targets(StringView line, StringView token,
   return candidates;
 }
 
-static fn append_flag_forms(const FlagList &flags, StringView token_filter,
-                            ArrayList<String> &out) throws -> void
+static fn
+append_flag_forms(const FlagList    &flags,
+                  StringView         token_filter,
+                  ArrayList<String> &out) throws -> void
 {
   for (let const *flag : flags) {
     if (flag->short_name() != '\0') {
@@ -750,13 +761,14 @@ static fn append_flag_forms(const FlagList &flags, StringView token_filter,
   }
 }
 
-static fn dash_candidates_for(Maybe<Builtin::Kind> builtin_kind) throws
+static fn
+dash_candidates_for(Maybe<Builtin::Kind> builtin_kind) throws
     -> const ArrayList<String> *
 {
   static Maybe<ArrayList<String>> per_kind_candidates[BUILTIN_KIND_COUNT]{};
-  static bool was_per_kind_built[BUILTIN_KIND_COUNT]{};
-  static ArrayList<String> binary_candidates{heap_allocator()};
-  static bool was_binary_built = false;
+  static bool                     was_per_kind_built[BUILTIN_KIND_COUNT]{};
+  static ArrayList<String>        binary_candidates{heap_allocator()};
+  static bool                     was_binary_built = false;
 
   if (!builtin_kind.has_value()) {
     if (!was_binary_built) {
@@ -799,11 +811,12 @@ static fn dash_candidates_for(Maybe<Builtin::Kind> builtin_kind) throws
   return &*per_kind_candidates[index];
 }
 
-static fn push_variable_name_candidates(StringView token, EvalContext &context,
-                                        ArrayList<String> &candidates) throws
-    -> void
+static fn
+push_variable_name_candidates(StringView         token,
+                              EvalContext       &context,
+                              ArrayList<String> &candidates) throws -> void
 {
-  let seen = HashSet{heap_allocator()};
+  let seen        = HashSet{heap_allocator()};
   let do_add_name = [&](StringView name) throws {
     if (!name.starts_with(token)) return;
     if (!seen.add(name)) return;
@@ -825,10 +838,11 @@ static fn push_variable_name_candidates(StringView token, EvalContext &context,
     do_add_name(name);
 }
 
-static fn declaration_flags_select_functions(StringView line,
-                                             usize token_start) throws -> bool
+static fn
+declaration_flags_select_functions(StringView line, usize token_start) throws
+    -> bool
 {
-  usize cword = 0;
+  usize     cword = 0;
   let const words = split_completion_words(
       line.substring_of_length(0, token_start), token_start, cword);
 
@@ -847,18 +861,20 @@ static fn declaration_flags_select_functions(StringView line,
   return false;
 }
 
-fn internal::complete_from_builtin_flags(StringView line, StringView token,
-                                         usize token_start,
-                                         EvalContext &context,
-                                         completion_mode mode,
-                                         bool &is_tier_ranked) throws
+fn
+internal::complete_from_builtin_flags(StringView      line,
+                                      StringView      token,
+                                      usize           token_start,
+                                      EvalContext    &context,
+                                      completion_mode mode,
+                                      bool           &is_tier_ranked) throws
     -> Maybe<ArrayList<String>>
 {
   let const command = command_word_of(line);
   if (command.is_empty()) return None;
 
-  let const builtin_kind = search_builtin(command);
-  let shell_binary_name = command;
+  let const builtin_kind      = search_builtin(command);
+  let       shell_binary_name = command;
 
   for (usize i = command.length; i > 0; i--)
     if (os::is_directory_separator(command[i - 1])) {
@@ -869,10 +885,10 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
   let const is_shell_binary_completion =
       !builtin_kind.has_value() && shell_binary_name == "kosh";
 
-  let const previous_word = previous_settled_word(line, token_start);
+  let const previous_word     = previous_settled_word(line, token_start);
   let const is_operand_wanted = token.is_empty() || token[0] != '-';
 
-  let candidates = ArrayList<String>{heap_allocator()};
+  let       candidates       = ArrayList<String>{heap_allocator()};
   let const do_push_matching = [&](StringView candidate) throws {
     if (candidate.starts_with(token)) candidates.push(String{candidate});
   };
@@ -886,7 +902,7 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
         builtin_kind.has_value() && *builtin_kind == Builtin::Kind::Koshkit &&
         !context.runtime_state().option_is_enabled(shell_option_id::Restricted);
     Maybe<koshkit::Utility::Kind> util_for_flags;
-    bool should_offer_util_names = false;
+    bool                          should_offer_util_names = false;
     if (is_koshkit_builtin) {
       if (previous_word == command) {
         if (is_operand_wanted) {
@@ -1057,20 +1073,20 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
   }
 
   if (builtin_kind.has_value() && *builtin_kind == Builtin::Kind::Koshconf) {
-    usize cword = 0;
+    usize     cword = 0;
     let const words = split_completion_words(
         line.substring_of_length(0, token_start), token_start, cword);
     let operands = ArrayList<StringView>{heap_allocator()};
 
     for (usize i = 1; i < words.count(); i++) {
-      let const word = words[i].view();
+      let const word          = words[i].view();
       let const is_value_word = operands.count() == 2 && operands[0] == "set";
       if (!word.is_empty() && (is_value_word || word[0] != '-')) {
         operands.push(word);
       }
     }
 
-    let const form = operands.is_empty() ? StringView{} : operands[0];
+    let const form         = operands.is_empty() ? StringView{} : operands[0];
     let const is_set_value = operands.count() == 2 && form == "set";
     if (!is_operand_wanted && !is_set_value) {
       do_push_matching("--help");
@@ -1099,7 +1115,7 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
         do_push_matching(preset);
       }
     } else if (operands.count() == 1 && (form == "set" || form == "get")) {
-      let names = ArrayList<StringView>{heap_allocator()};
+      let names   = ArrayList<StringView>{heap_allocator()};
       let aliases = ArrayList<String>{heap_allocator()};
 
       for (let const &option : get_option_registry()) {
@@ -1122,7 +1138,7 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
           do_push_matching(name);
         }
       } else {
-        candidates = best_tier_matches(token, names);
+        candidates     = best_tier_matches(token, names);
         is_tier_ranked = true;
       }
     } else if (is_set_value) {
@@ -1132,10 +1148,10 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
       }
 
       if (option->storage == option_storage::InitMoods) {
-        let const comma = token.find_last_character(',');
+        let const comma        = token.find_last_character(',');
         let const listed_count = comma.has_value() ? *comma + 1 : 0;
-        let const listed = token.substring_of_length(0, listed_count);
-        let const typed = token.substring(listed_count);
+        let const listed       = token.substring_of_length(0, listed_count);
+        let const typed        = token.substring(listed_count);
 
         for (let const mood_value : {"kosh", "sh", "bash", "bash-posix"}) {
           let const mood_text = StringView{mood_value};
@@ -1272,10 +1288,10 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
       *builtin_kind == Builtin::Kind::CommandBuiltin && is_operand_wanted &&
       !os::has_directory_separator(token))
   {
-    usize settled_word_count = 0;
+    usize     settled_word_count = 0;
     let const settled_words =
         split_completion_words(line, token_start, settled_word_count);
-    bool has_command_operand = false;
+    bool has_command_operand            = false;
     bool should_complete_later_operands = false;
 
     for (usize index = 1; index < settled_words.count(); index++) {
@@ -1352,12 +1368,12 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
   if (builtin_kind.has_value() && *builtin_kind == Builtin::Kind::Unset &&
       (token.is_empty() || token[0] != '-'))
   {
-    let unsets_function = false;
-    let const prefix = line.substring_of_length(0, token_start);
-    usize scan_position = 0;
+    let       unsets_function = false;
+    let const prefix          = line.substring_of_length(0, token_start);
+    usize     scan_position   = 0;
 
     while (scan_position < prefix.length) {
-      scan_position = skip_blanks(prefix, scan_position);
+      scan_position        = skip_blanks(prefix, scan_position);
       let const word_begin = scan_position;
 
       while (scan_position < prefix.length && prefix[scan_position] != ' ' &&
@@ -1405,14 +1421,17 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
   return candidates;
 }
 
-static pure fn entry_is_unrequested_dash_word(
-    StringView entry, bool should_offer_dash_entries) wontthrow -> bool
+static pure fn
+entry_is_unrequested_dash_word(StringView entry,
+                               bool should_offer_dash_entries) wontthrow -> bool
 {
   return !should_offer_dash_entries && !entry.is_empty() && entry[0] == '-';
 }
 
-static fn push_spec_candidate(StringView entry, ArrayList<String> &candidates,
-                              StringMap<String> &descriptions) throws -> void
+static fn
+push_spec_candidate(StringView         entry,
+                    ArrayList<String> &candidates,
+                    StringMap<String> &descriptions) throws -> void
 {
   while (!entry.is_empty() && entry[entry.length - 1] == ' ') {
     entry = entry.substring_of_length(0, entry.length - 1);
@@ -1442,9 +1461,10 @@ static fn push_spec_candidate(StringView entry, ArrayList<String> &candidates,
   candidates.push(String{completion_allocator(), entry});
 }
 
-static fn mark_spec_directory_candidates(ArrayList<String> &candidates,
-                                         const StringMap<String> &descriptions,
-                                         EvalContext &context) throws -> void
+static fn
+mark_spec_directory_candidates(ArrayList<String>       &candidates,
+                               const StringMap<String> &descriptions,
+                               EvalContext             &context) throws -> void
 {
   if (!context.execution_store().should_mark_completion_directories()) return;
 
@@ -1484,22 +1504,26 @@ static constexpr u32 GHOST_ACTION_MASK =
     compgen_action_bit(compgen_action::Stopped) |
     compgen_action_bit(compgen_action::Variable);
 
-static pure fn spec_has_ghost_generators(const completion_spec &spec) wontthrow
-    -> bool
+static pure fn
+spec_has_ghost_generators(const completion_spec &spec) wontthrow -> bool
 {
   return (spec.action_mask & GHOST_ACTION_MASK) != 0 ||
          !spec.word_list.is_empty();
 }
 
 static fn
-generate_spec_candidates(completion_spec &active_spec,
-                         Maybe<StringView> slot_command_name, StringView line,
-                         StringView token, usize cursor, EvalContext &context,
-                         StringMap<String> &descriptions, bool is_for_listing,
+generate_spec_candidates(completion_spec   &active_spec,
+                         Maybe<StringView>  slot_command_name,
+                         StringView         line,
+                         StringView         token,
+                         usize              cursor,
+                         EvalContext       &context,
+                         StringMap<String> &descriptions,
+                         bool               is_for_listing,
                          i32 *out_function_status) throws -> ArrayList<String>
 {
   Maybe<ArrayList<String>> completion_words = None;
-  usize completion_cword = 0;
+  usize                    completion_cword = 0;
   let const do_completion_words = [&]() throws -> const ArrayList<String> & {
     if (!completion_words.has_value()) {
       completion_words = split_completion_words(line, cursor, completion_cword);
@@ -1519,7 +1543,7 @@ generate_spec_candidates(completion_spec &active_spec,
 
   let const should_offer_dash_words = !token.is_empty() && token[0] == '-';
 
-  let const do_push_generated = [&](u32 action_mask,
+  let const do_push_generated = [&](u32               action_mask,
                                     Maybe<StringView> glob_pattern) throws {
     context.program_resolver().begin_explicit_completion(
         ProgramResolver::CompletionRefresh::Cached);
@@ -1598,14 +1622,14 @@ generate_spec_candidates(completion_spec &active_spec,
   }
 
   if (is_for_listing && !active_spec.command.is_empty()) {
-    let const &words = do_completion_words();
-    let const word = completion_cword < words.count()
-                         ? words[completion_cword].view()
-                         : StringView{};
-    let const previous_index = completion_cword > 0 ? completion_cword - 1 : 0;
-    let const previous_word = previous_index < words.count()
-                                  ? words[previous_index].view()
-                                  : StringView{};
+    let const &words          = do_completion_words();
+    let const  word           = completion_cword < words.count()
+                                    ? words[completion_cword].view()
+                                    : StringView{};
+    let const  previous_index = completion_cword > 0 ? completion_cword - 1 : 0;
+    let const  previous_word  = previous_index < words.count()
+                                    ? words[previous_index].view()
+                                    : StringView{};
     notice_slow_gather();
 
     for (let const &entry : context.run_completion_command(
@@ -1673,8 +1697,8 @@ generate_spec_candidates(completion_spec &active_spec,
   return candidates;
 }
 
-static pure fn token_reaches_bash_default_completion(StringView token) wontthrow
-    -> bool
+static pure fn
+token_reaches_bash_default_completion(StringView token) wontthrow -> bool
 {
   if (token.starts_with("$") || token.starts_with("~")) {
     return true;
@@ -1685,17 +1709,21 @@ static pure fn token_reaches_bash_default_completion(StringView token) wontthrow
     case '*':
     case '?':
     case '[': return true;
-    default: break;
+    default:  break;
     }
   }
 
   return false;
 }
 
-fn internal::complete_from_spec(StringView line, StringView token, usize cursor,
-                                EvalContext &context,
-                                StringMap<String> &descriptions,
-                                completion_mode mode, u32 &option_mask) throws
+fn
+internal::complete_from_spec(StringView         line,
+                             StringView         token,
+                             usize              cursor,
+                             EvalContext       &context,
+                             StringMap<String> &descriptions,
+                             completion_mode    mode,
+                             u32               &option_mask) throws
     -> Maybe<ArrayList<String>>
 {
   if (!context.runtime_state().is_shopt_enabled(shopt_option_id::Progcomp))
@@ -1706,7 +1734,7 @@ fn internal::complete_from_spec(StringView line, StringView token, usize cursor,
   if (command.is_empty()) return None;
 
   const completion_spec *spec = context.completion_store().lookup_spec(command);
-  String resolved_command{completion_allocator()};
+  String                 resolved_command{completion_allocator()};
   if (spec == nullptr &&
       context.runtime_state().is_shopt_enabled(shopt_option_id::ProgcompAlias))
   {
@@ -1736,7 +1764,7 @@ fn internal::complete_from_spec(StringView line, StringView token, usize cursor,
   if (spec == nullptr) return None;
 
   i32 function_status = 0;
-  let active_spec = spec->clone(completion_allocator());
+  let active_spec     = spec->clone(completion_allocator());
   let candidates =
       generate_spec_candidates(active_spec, None, line, token, cursor, context,
                                descriptions, is_for_listing, &function_status);
@@ -1745,9 +1773,9 @@ fn internal::complete_from_spec(StringView line, StringView token, usize cursor,
     if (spec == nullptr) return None;
 
     active_spec = spec->clone(completion_allocator());
-    candidates = generate_spec_candidates(active_spec, None, line, token,
-                                          cursor, context, descriptions,
-                                          is_for_listing, nullptr);
+    candidates  = generate_spec_candidates(active_spec, None, line, token,
+                                           cursor, context, descriptions,
+                                           is_for_listing, nullptr);
   }
   option_mask = active_spec.option_mask;
 
@@ -1765,16 +1793,22 @@ fn internal::complete_from_spec(StringView line, StringView token, usize cursor,
   return candidates;
 }
 
-fn internal::complete_from_initial_word_spec(
-    StringView line, StringView token, usize cursor, bool is_line_empty,
-    EvalContext &context, StringMap<String> &descriptions, completion_mode mode,
-    u32 &option_mask) throws -> Maybe<ArrayList<String>>
+fn
+internal::complete_from_initial_word_spec(StringView         line,
+                                          StringView         token,
+                                          usize              cursor,
+                                          bool               is_line_empty,
+                                          EvalContext       &context,
+                                          StringMap<String> &descriptions,
+                                          completion_mode    mode,
+                                          u32               &option_mask) throws
+    -> Maybe<ArrayList<String>>
 {
   if (!context.runtime_state().is_shopt_enabled(shopt_option_id::Progcomp))
     return None;
 
-  const completion_spec *spec = nullptr;
-  let command_name = StringView{};
+  const completion_spec *spec         = nullptr;
+  let                    command_name = StringView{};
   if (is_line_empty) {
     spec =
         context.completion_store().get_slot_spec(completion_spec_slot::Empty);
@@ -1811,9 +1845,12 @@ fn internal::complete_from_initial_word_spec(
   return candidates;
 }
 
-static fn consider_shell_lexical_frame(
-    const shell_lexical_frame &frame, usize body_end, usize depth,
-    shell_lexical_scan_target *target) wontthrow -> void
+static fn
+consider_shell_lexical_frame(const shell_lexical_frame &frame,
+                             usize                      body_end,
+                             usize                      depth,
+                             shell_lexical_scan_target *target) wontthrow
+    -> void
 {
   if (target == nullptr) return;
   if (frame.kind != shell_lexical_frame_kind::command &&
@@ -1825,19 +1862,23 @@ static fn consider_shell_lexical_frame(
     return;
   }
   if (depth < target->frame_depth) return;
-  target->range = completion_command_range{frame.body_start, body_end};
+  target->range       = completion_command_range{frame.body_start, body_end};
   target->frame_depth = depth;
 }
 
-static pure fn frame_is_at_case_pattern_level(
-    const shell_lexical_frame &frame) wontthrow -> bool
+static pure fn
+frame_is_at_case_pattern_level(const shell_lexical_frame &frame) wontthrow
+    -> bool
 {
   return frame.case_depth > 0 && frame.is_case_pattern_expected &&
          frame.group_depth <= frame.case_pattern_group_depth;
 }
 
-static fn collect_shell_heredoc(StringView source, usize &position, usize end,
-                                shell_lexical_state &state) throws -> void
+static fn
+collect_shell_heredoc(StringView           source,
+                      usize               &position,
+                      usize                end,
+                      shell_lexical_state &state) throws -> void
 {
   position += 2;
   let should_strip_tabs = false;
@@ -1852,8 +1893,8 @@ static fn collect_shell_heredoc(StringView source, usize &position, usize end,
     position++;
   }
 
-  let const word_start = position;
-  char delimiter_quote = 0;
+  let const word_start      = position;
+  char      delimiter_quote = 0;
 
   while (position < end) {
     let const delimiter_byte = source[position];
@@ -1887,9 +1928,12 @@ static fn collect_shell_heredoc(StringView source, usize &position, usize end,
         lexer::pending_heredoc{steal(delimiter), should_strip_tabs});
 }
 
-fn internal::advance_shell_lexical_state(
-    StringView source, usize end, shell_lexical_state &state,
-    shell_lexical_scan_target *target) throws -> void
+fn
+internal::advance_shell_lexical_state(StringView                 source,
+                                      usize                      end,
+                                      shell_lexical_state       &state,
+                                      shell_lexical_scan_target *target) throws
+    -> void
 {
   if (end > source.length) end = source.length;
   let i = state.source_position;
@@ -1898,7 +1942,7 @@ fn internal::advance_shell_lexical_state(
 #endif
   let const do_pop_frame = [&]() wontthrow -> shell_lexical_frame {
     let const frame_depth = state.frames.count();
-    let const frame = state.frames.back();
+    let const frame       = state.frames.back();
 
     while (!state.constructs.is_empty() &&
            state.constructs.back().frame_depth >= frame_depth)
@@ -1923,16 +1967,16 @@ fn internal::advance_shell_lexical_state(
   };
   let const do_expect_case_pattern = [](shell_lexical_frame &frame)
                                          wontthrow -> void {
-    frame.is_case_pattern_expected = true;
+    frame.is_case_pattern_expected      = true;
     frame.is_case_pattern_parenthesized = false;
     frame.case_pattern_group_depth =
         frame.group_depth < 0xFF ? static_cast<u8>(frame.group_depth) : 0xFF;
   };
   let const do_end_case_pattern = [](shell_lexical_frame &frame)
                                       wontthrow -> void {
-    frame.is_case_pattern_expected = false;
+    frame.is_case_pattern_expected      = false;
     frame.is_case_pattern_parenthesized = false;
-    frame.is_command_position = true;
+    frame.is_command_position           = true;
   };
 
   while (i < end) {
@@ -1947,7 +1991,7 @@ fn internal::advance_shell_lexical_state(
 
     if (state.is_in_heredoc) {
       let const &heredoc = state.pending_heredocs[state.active_heredoc_index];
-      let const heredoc_newline =
+      let const  heredoc_newline =
           source.substring_of_length(i, end - i).find_character('\n');
       let line_end = heredoc_newline.has_value() ? i + *heredoc_newline : end;
       if (line_end == end && end < source.length) {
@@ -1963,7 +2007,7 @@ fn internal::advance_shell_lexical_state(
         if (state.active_heredoc_index == state.pending_heredocs.count()) {
           state.pending_heredocs.clear();
           state.active_heredoc_index = 0;
-          state.is_in_heredoc = false;
+          state.is_in_heredoc        = false;
         }
       }
       i = line_end < end ? line_end + 1 : line_end;
@@ -1992,7 +2036,7 @@ fn internal::advance_shell_lexical_state(
         continue;
       }
       if (c == '\'') {
-        state.quote = 0;
+        state.quote              = 0;
         state.is_in_ansi_c_quote = false;
       }
       i++;
@@ -2023,7 +2067,7 @@ fn internal::advance_shell_lexical_state(
     }
 
     if (c == '$' && state.quote == 0 && i + 1 < end && source[i + 1] == '\'') {
-      state.quote = '\'';
+      state.quote              = '\'';
       state.is_in_ansi_c_quote = true;
       i += 2;
       continue;
@@ -2147,8 +2191,8 @@ fn internal::advance_shell_lexical_state(
       case '&':
       case '|':
       case '(':
-      case ')': return true;
-      default: return false;
+      case ')':  return true;
+      default:   return false;
       }
     };
     if (c == '#' && is_command_code && do_is_word_boundary()) {
@@ -2181,8 +2225,8 @@ fn internal::advance_shell_lexical_state(
       case '&':
       case '|':
       case '(':
-      case ')': return true;
-      default: return false;
+      case ')':  return true;
+      default:   return false;
       }
     };
     if (!frame.is_in_array_value && lexer::is_part_of_identifier(c) &&
@@ -2218,7 +2262,7 @@ fn internal::advance_shell_lexical_state(
                      highlight_construct_phase::function_name &&
                  word != "function")
       {
-        active_construct->phase = highlight_construct_phase::body;
+        active_construct->phase   = highlight_construct_phase::body;
         frame.is_command_position = false;
       } else if (is_active_construct_in_frame &&
                  active_construct->kind == highlight_construct::function &&
@@ -2233,18 +2277,18 @@ fn internal::advance_shell_lexical_state(
                      highlight_construct_phase::for_variable &&
                  word != "for")
       {
-        active_construct->phase = highlight_construct_phase::for_in;
+        active_construct->phase   = highlight_construct_phase::for_in;
         frame.is_command_position = false;
       } else if (is_active_construct_in_frame &&
                  active_construct->kind == highlight_construct::for_ &&
                  active_construct->phase == highlight_construct_phase::for_in &&
                  word == "in")
       {
-        active_construct->phase = highlight_construct_phase::for_do;
+        active_construct->phase   = highlight_construct_phase::for_do;
         frame.is_command_position = false;
       } else if (frame.is_command_position && do_word_matches("case")) {
         frame.has_seen_case_keyword = true;
-        frame.is_command_position = false;
+        frame.is_command_position   = false;
       } else if (frame.has_seen_case_keyword && do_word_matches("in")) {
         frame.has_seen_case_keyword = false;
         frame.case_depth++;
@@ -2254,9 +2298,9 @@ fn internal::advance_shell_lexical_state(
                  do_word_matches("esac"))
       {
         frame.case_depth--;
-        frame.is_case_pattern_expected = false;
+        frame.is_case_pattern_expected      = false;
         frame.is_case_pattern_parenthesized = false;
-        frame.is_command_position = false;
+        frame.is_command_position           = false;
       } else if (frame.is_command_position &&
                  lexer::word_looks_like_assignment(word))
       {
@@ -2279,7 +2323,7 @@ fn internal::advance_shell_lexical_state(
       if (!word.is_empty() && word[word.length - 1] == '=' && word_end < end &&
           source[word_end] == '(' && lexer::word_looks_like_assignment(word))
       {
-        frame.is_in_array_value = true;
+        frame.is_in_array_value       = true;
         frame.array_value_group_depth = frame.group_depth;
       }
     }
@@ -2376,16 +2420,18 @@ fn internal::advance_shell_lexical_state(
 }
 
 #if !defined NDEBUG
-pure fn debug_shell_lexical_scan_byte_count() wontthrow -> usize
+pure fn
+debug_shell_lexical_scan_byte_count() wontthrow -> usize
 {
   return DEBUG_SHELL_LEXICAL_SCAN_BYTE_COUNT;
 }
 #endif
 
-fn internal::command_substitution_range(StringView line, usize cursor) throws
+fn
+internal::command_substitution_range(StringView line, usize cursor) throws
     -> completion_command_range
 {
-  let state = shell_lexical_state{completion_allocator()};
+  let state  = shell_lexical_state{completion_allocator()};
   let target = shell_lexical_scan_target{
       cursor, completion_command_range{0, line.length}
   };
@@ -2402,9 +2448,9 @@ fn internal::command_substitution_range(StringView line, usize cursor) throws
   return target.range;
 }
 
-fn internal::collect_case_pattern_ends(StringView line,
-                                       ArrayList<usize> &positions) throws
-    -> void
+fn
+internal::collect_case_pattern_ends(StringView        line,
+                                    ArrayList<usize> &positions) throws -> void
 {
   let state = shell_lexical_state{heap_allocator()};
 
@@ -2428,13 +2474,14 @@ fn internal::collect_case_pattern_ends(StringView line,
   }
 }
 
-fn classify_typed_pair_byte(StringView line, usize cursor, char byte) throws
+fn
+classify_typed_pair_byte(StringView line, usize cursor, char byte) throws
     -> typed_pair_role
 {
   if (cursor > line.length) return typed_pair_role::none;
 
   let const scratch = ScopedCompletionScratch{};
-  let state = shell_lexical_state{completion_allocator()};
+  let       state   = shell_lexical_state{completion_allocator()};
   advance_shell_lexical_state(line, cursor, state);
   if (state.is_in_heredoc || state.is_in_comment) {
     return typed_pair_role::none;
@@ -2456,10 +2503,10 @@ fn classify_typed_pair_byte(StringView line, usize cursor, char byte) throws
   case '\'':
   case '(':
   case '[':
-  case '{': return typed_pair_role::opens;
+  case '{':  return typed_pair_role::opens;
   case ']':
-  case '}': return typed_pair_role::closes;
-  case ')': {
+  case '}':  return typed_pair_role::closes;
+  case ')':  {
     let const &frame =
         state.frames.is_empty() ? state.root_frame : state.frames.back();
     if (frame_is_at_case_pattern_level(frame) &&
@@ -2478,7 +2525,8 @@ namespace {
 
 constexpr usize SYNTAX_HINT_BYTE_LIMIT = 2048;
 
-fn append_sentence_tail(String &out, StringView sentence) throws -> void
+fn
+append_sentence_tail(String &out, StringView sentence) throws -> void
 {
   if (sentence.length > 0 && sentence[sentence.length - 1] == '.') {
     sentence = sentence.substring_of_length(0, sentence.length - 1);
@@ -2496,8 +2544,11 @@ fn append_sentence_tail(String &out, StringView sentence) throws -> void
 
 } /* namespace */
 
-fn describe_syntax_problem(StringView line, usize cursor, mimic_mood mood,
-                           String &out) throws -> bool
+fn
+describe_syntax_problem(StringView line,
+                        usize      cursor,
+                        mimic_mood mood,
+                        String    &out) throws -> bool
 {
   out.clear();
   if (line.length > SYNTAX_HINT_BYTE_LIMIT) return false;
@@ -2507,12 +2558,12 @@ fn describe_syntax_problem(StringView line, usize cursor, mimic_mood mood,
   if (is_continued_on_enter) return false;
 
   let const scratch = ScopedCompletionScratch{};
-  let parser = Parser{
+  let       parser  = Parser{
       Lexer{line, COMPLETION_ARENA, None, mood}
   };
   parser.set_substitution_validation_mode(
       substitution_validation_mode::Enabled);
-  let errors = ArrayList<ErrorWithLocationAndDetails>{heap_allocator()};
+  let errors   = ArrayList<ErrorWithLocationAndDetails>{heap_allocator()};
   let messages = ArrayList<String>{heap_allocator()};
   parser.set_error_collection(&errors);
   unused(parser.construct_ast(messages, nullptr, nullptr));
@@ -2528,14 +2579,16 @@ fn describe_syntax_problem(StringView line, usize cursor, mimic_mood mood,
   return true;
 }
 
-fn describe_analysis_finding(StringView line, EvalContext &context,
-                             String &out) throws -> bool
+fn
+describe_analysis_finding(StringView   line,
+                          EvalContext &context,
+                          String      &out) throws -> bool
 {
   out.clear();
   if (line.length > SYNTAX_HINT_BYTE_LIMIT) return false;
 
   let const &state = context.runtime_state();
-  let const is_analyzed_on_submit =
+  let const  is_analyzed_on_submit =
       (state.no_exec() ||
        !(state.is_bash_compatible() || state.is_posix_mode()) ||
        state.get_warning_level() > 0) &&
@@ -2543,15 +2596,15 @@ fn describe_analysis_finding(StringView line, EvalContext &context,
   if (!is_analyzed_on_submit) return false;
 
   let const scratch = ScopedCompletionScratch{};
-  let parser = Parser{
+  let       parser  = Parser{
       Lexer{line, COMPLETION_ARENA, None, state.get_mood()}
   };
   parser.set_analysis_metadata_collection_mode(
       analysis_metadata_collection_mode::Enabled);
   parser.set_substitution_validation_mode(
       substitution_validation_mode::Enabled);
-  let rendered_errors = ArrayList<String>{heap_allocator()};
-  let diagnostics = ArrayList<source_diagnostic>{heap_allocator()};
+  let        rendered_errors = ArrayList<String>{heap_allocator()};
+  let        diagnostics     = ArrayList<source_diagnostic>{heap_allocator()};
   let const *ast =
       parser.construct_ast(rendered_errors, &context, &diagnostics);
   if (!rendered_errors.is_empty() || ast == nullptr) {
@@ -2559,7 +2612,7 @@ fn describe_analysis_finding(StringView line, EvalContext &context,
   }
 
   let const directives = parser.take_analysis_directives();
-  let options = analysis_options::from_runtime(state);
+  let       options    = analysis_options::from_runtime(state);
   options.should_silence_unresolved_commands = true;
   analyze_ast(ast, line, context.function_store().names(),
               context.scope_store().alias_names(), &context, options,

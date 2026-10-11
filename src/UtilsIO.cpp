@@ -28,8 +28,9 @@ namespace utils {
 
 constexpr usize OSA_ROW_WIDTH = 256;
 
-pure fn bounded_osa_distance(StringView a, StringView b,
-                             usize max_distance) wontthrow -> usize
+pure fn
+bounded_osa_distance(StringView a, StringView b, usize max_distance) wontthrow
+    -> usize
 {
   const usize a_length = a.length;
   const usize b_length = b.length;
@@ -42,20 +43,20 @@ pure fn bounded_osa_distance(StringView a, StringView b,
   if (is_beyond_row_width) return max_distance + 1;
 
   usize rows[3][OSA_ROW_WIDTH];
-  let previous_previous = rows[0];
-  let previous = rows[1];
-  let current = rows[2];
+  let   previous_previous = rows[0];
+  let   previous          = rows[1];
+  let   current           = rows[2];
 
   for (usize j = 0; j <= b_length; j++)
     previous[j] = j;
 
   for (usize i = 1; i <= a_length; i++) {
-    current[0] = i;
+    current[0]     = i;
     usize row_best = current[0];
 
     for (usize j = 1; j <= b_length; j++) {
-      const usize cost = a[i - 1] == b[j - 1] ? 0 : 1;
-      usize value = previous[j] + 1;
+      const usize cost  = a[i - 1] == b[j - 1] ? 0 : 1;
+      usize       value = previous[j] + 1;
       if (current[j - 1] + 1 < value) value = current[j - 1] + 1;
       if (previous[j - 1] + cost < value) value = previous[j - 1] + cost;
       if (i > 1 && j > 1 && a[i - 1] == b[j - 2] && a[i - 2] == b[j - 1] &&
@@ -69,21 +70,24 @@ pure fn bounded_osa_distance(StringView a, StringView b,
 
     if (row_best > max_distance) return max_distance + 1;
     let old_previous_previous = previous_previous;
-    previous_previous = previous;
-    previous = current;
-    current = old_previous_previous;
+    previous_previous         = previous;
+    previous                  = current;
+    current                   = old_previous_previous;
   }
 
   return previous[b_length];
 }
 
-pure fn suggestion_distance_budget(usize name_length) wontthrow -> usize
+pure fn
+suggestion_distance_budget(usize name_length) wontthrow -> usize
 {
   return name_length <= 3 ? 1 : 2;
 }
 
-fn suggest_command(StringView name, const ArrayList<String> &local_names,
-                   const ProgramResolver *resolver) throws -> Maybe<String>
+fn
+suggest_command(StringView               name,
+                const ArrayList<String> &local_names,
+                const ProgramResolver   *resolver) throws -> Maybe<String>
 {
   if (name.is_empty()) return None;
 
@@ -103,7 +107,8 @@ fn suggest_command(StringView name, const ArrayList<String> &local_names,
   return suggestion.take_suggestion();
 }
 
-fn suggest_directory_entry(const Path &directory, StringView name) throws
+fn
+suggest_directory_entry(const Path &directory, StringView name) throws
     -> Maybe<String>
 {
   if (name.is_empty()) return None;
@@ -128,7 +133,8 @@ fn suggest_directory_entry(const Path &directory, StringView name) throws
   return suggestion.take_suggestion();
 }
 
-fn read_entire_standard_input() throws -> String
+fn
+read_entire_standard_input() throws -> String
 {
   let contents = os::read_fd_to_string(KOSH_STDIN, heap_allocator());
   if (!contents.has_value())
@@ -138,14 +144,17 @@ fn read_entire_standard_input() throws -> String
   return steal(*contents);
 }
 
-fn read_line_from_fd(os::descriptor fd, char delimiter, u64 deadline_nanos,
-                     Allocator allocator) throws -> read_line_result
+fn
+read_line_from_fd(os::descriptor fd,
+                  char           delimiter,
+                  u64            deadline_nanos,
+                  Allocator      allocator) throws -> read_line_result
 {
-  let result = read_line_result{};
-  let line = String{allocator};
-  bool has_read_any_byte = false;
+  let       result             = read_line_result{};
+  let       line               = String{allocator};
+  bool      has_read_any_byte  = false;
   let const should_read_chunks = os::descriptor_is_seekable(fd);
-  u8 buffer[65536];
+  u8        buffer[65536];
 
   loop
   {
@@ -156,7 +165,7 @@ fn read_line_from_fd(os::descriptor fd, char delimiter, u64 deadline_nanos,
         break;
       }
       let const remaining_nanos_unsigned = deadline_nanos - now_nanos;
-      let const remaining_nanos = static_cast<i64>(
+      let const remaining_nanos          = static_cast<i64>(
           remaining_nanos_unsigned > static_cast<u64>(INT64_MAX)
               ? INT64_MAX
               : remaining_nanos_unsigned);
@@ -168,7 +177,7 @@ fn read_line_from_fd(os::descriptor fd, char delimiter, u64 deadline_nanos,
     }
 
     let const requested_count = should_read_chunks ? sizeof(buffer) : 1;
-    let const read_count = os::read_fd(fd, buffer, requested_count);
+    let const read_count      = os::read_fd(fd, buffer, requested_count);
     if (!read_count.has_value()) {
       result.did_read_fail = true;
       break;
@@ -194,7 +203,7 @@ fn read_line_from_fd(os::descriptor fd, char delimiter, u64 deadline_nanos,
         return result;
       }
       result.was_delimiter_terminated = true;
-      result.line = steal(line);
+      result.line                     = steal(line);
 
       return result;
     }
@@ -208,11 +217,12 @@ fn read_line_from_fd(os::descriptor fd, char delimiter, u64 deadline_nanos,
 }
 
 BufferedLineReader::BufferedLineReader(os::descriptor descriptor,
-                                       Allocator allocator)
+                                       Allocator      allocator)
     : m_descriptor(descriptor), m_line(allocator)
 {}
 
-hot flatten fn BufferedLineReader::next() throws -> Result
+hot flatten fn
+BufferedLineReader::next() throws -> Result
 {
   m_line.clear();
 
@@ -246,20 +256,22 @@ hot flatten fn BufferedLineReader::next() throws -> Result
     if (!read_byte_count.has_value()) return Result::Error;
 
     m_buffer_position = 0;
-    m_buffer_length = *read_byte_count;
-    m_is_at_end = m_buffer_length == 0;
+    m_buffer_length   = *read_byte_count;
+    m_is_at_end       = m_buffer_length == 0;
   }
 }
 
-pure fn BufferedLineReader::get_line() const wontthrow -> StringView
+pure fn
+BufferedLineReader::get_line() const wontthrow -> StringView
 {
   return m_line.view();
 }
 
-static fn ceiling_directory_list(StringView ceiling_directories) throws
+static fn
+ceiling_directory_list(StringView ceiling_directories) throws
     -> ArrayList<String>
 {
-  let ceilings = ArrayList<String>{heap_allocator()};
+  let   ceilings    = ArrayList<String>{heap_allocator()};
   usize entry_start = 0;
 
   for (usize position = 0; position <= ceiling_directories.length; position++) {
@@ -283,13 +295,13 @@ static fn ceiling_directory_list(StringView ceiling_directories) throws
   return ceilings;
 }
 
-static pure fn is_same_directory_text(StringView left,
-                                      StringView right) wontthrow -> bool
+static pure fn
+is_same_directory_text(StringView left, StringView right) wontthrow -> bool
 {
   if (left.length != right.length) return false;
 
   for (usize index = 0; index < left.length; index++) {
-    let left_byte = left[index];
+    let left_byte  = left[index];
     let right_byte = right[index];
     if (os::is_directory_separator(left_byte) &&
         os::is_directory_separator(right_byte))
@@ -297,7 +309,7 @@ static pure fn is_same_directory_text(StringView left,
       continue;
     }
     if (!os::FILESYSTEM_IS_CASE_SENSITIVE) {
-      left_byte = ascii_to_lower(left_byte);
+      left_byte  = ascii_to_lower(left_byte);
       right_byte = ascii_to_lower(right_byte);
     }
     if (left_byte != right_byte) return false;
@@ -306,10 +318,11 @@ static pure fn is_same_directory_text(StringView left,
   return true;
 }
 
-fn resolve_git_directory(StringView ceiling_directories) throws -> Path
+fn
+resolve_git_directory(StringView ceiling_directories) throws -> Path
 {
   let const ceilings = ceiling_directory_list(ceiling_directories);
-  let dir = Path::current_directory();
+  let       dir      = Path::current_directory();
 
   loop
   {
@@ -317,7 +330,7 @@ fn resolve_git_directory(StringView ceiling_directories) throws -> Path
     head.append(".git");
     let git_dir = head.clone();
     if (let const dot_git = head.read_entire_file()) {
-      let const pointer = dot_git->view();
+      let const pointer       = dot_git->view();
       let const gitdir_prefix = StringView{"gitdir: "};
       if (pointer.starts_with(gitdir_prefix)) {
         let line = pointer.substring(gitdir_prefix.length);
@@ -365,7 +378,8 @@ fn resolve_git_directory(StringView ceiling_directories) throws -> Path
   return Path{StringView{}};
 }
 
-fn current_git_branch(StringView ceiling_directories) throws -> String
+fn
+current_git_branch(StringView ceiling_directories) throws -> String
 {
   let const git_dir = resolve_git_directory(ceiling_directories);
   if (git_dir.text().is_empty()) return String{heap_allocator()};
@@ -392,7 +406,8 @@ fn current_git_branch(StringView ceiling_directories) throws -> String
   return String{heap_allocator()};
 }
 
-fn read_git_ref_sha(const Path &git_dir, StringView ref_name) throws -> String
+fn
+read_git_ref_sha(const Path &git_dir, StringView ref_name) throws -> String
 {
   let ref_path = git_dir.clone();
   ref_path.append(ref_name);
@@ -415,9 +430,9 @@ fn read_git_ref_sha(const Path &git_dir, StringView ref_name) throws -> String
 
     while (!remainder.is_empty()) {
       let const newline_pos = remainder.find_character('\n');
-      let line = newline_pos.has_value()
-                     ? remainder.substring_of_length(0, *newline_pos)
-                     : remainder;
+      let       line        = newline_pos.has_value()
+                                  ? remainder.substring_of_length(0, *newline_pos)
+                                  : remainder;
       if (!line.is_empty() && line[line.length - 1] == '\r') {
         line = line.substring_of_length(0, line.length - 1);
       }
@@ -436,8 +451,8 @@ fn read_git_ref_sha(const Path &git_dir, StringView ref_name) throws -> String
   return String{heap_allocator()};
 }
 
-fn git_upstream_ref(const Path &git_dir, StringView branch_name) throws
-    -> String
+fn
+git_upstream_ref(const Path &git_dir, StringView branch_name) throws -> String
 {
   let config_path = git_dir.clone();
   config_path.append("config");
@@ -449,16 +464,16 @@ fn git_upstream_ref(const Path &git_dir, StringView branch_name) throws
   let const section_header =
       StringView{"[branch \""} + branch_name + StringView{"\"]"};
   let remote_name = String{heap_allocator()};
-  let merge_ref = String{heap_allocator()};
-  let in_section = false;
+  let merge_ref   = String{heap_allocator()};
+  let in_section  = false;
 
   let remainder = content->view();
 
   while (!remainder.is_empty()) {
     let const newline_pos = remainder.find_character('\n');
-    let line = newline_pos.has_value()
-                   ? remainder.substring_of_length(0, *newline_pos)
-                   : remainder;
+    let       line        = newline_pos.has_value()
+                                ? remainder.substring_of_length(0, *newline_pos)
+                                : remainder;
 
     while (!line.is_empty() && (line[0] == ' ' || line[0] == '\t')) {
       line = line.substring(1);
@@ -504,7 +519,7 @@ fn git_upstream_ref(const Path &git_dir, StringView branch_name) throws
   }
   if (remote_name == ".") return merge_ref;
 
-  let const refs_prefix = StringView{"refs/"};
+  let const refs_prefix    = StringView{"refs/"};
   let const remotes_prefix = StringView{"refs/remotes/"};
   if (merge_ref.starts_with(refs_prefix)) {
     let short_ref = merge_ref.view().substring(refs_prefix.length);
@@ -527,7 +542,8 @@ fn git_upstream_ref(const Path &git_dir, StringView branch_name) throws
   return result;
 }
 
-fn git_status(StringView ceiling_directories, Allocator allocator) throws
+fn
+git_status(StringView ceiling_directories, Allocator allocator) throws
     -> git_status_result
 {
   let result = git_status_result{allocator};
@@ -549,9 +565,9 @@ fn git_status(StringView ceiling_directories, Allocator allocator) throws
   }
 
   let const ref_prefix = StringView{"ref: refs/heads/"};
-  result.branch = head_text.starts_with(ref_prefix)
-                      ? String{head_text.substring(ref_prefix.length)}
-                      : String{head_text.substring_of_length(
+  result.branch        = head_text.starts_with(ref_prefix)
+                             ? String{head_text.substring(ref_prefix.length)}
+                             : String{head_text.substring_of_length(
                             0, head_text.length < 7 ? head_text.length : 7)};
   if (result.branch.is_empty()) return result;
 
@@ -569,7 +585,7 @@ fn git_status(StringView ceiling_directories, Allocator allocator) throws
 
   let const path_env = os::get_environment_variable("PATH");
   if (!path_env.has_value()) return result;
-  let path_resolver = ProgramResolver{*path_env};
+  let       path_resolver = ProgramResolver{*path_env};
   let const git_results =
       path_resolver.search("git", ProgramResolver::SearchMode::First,
                            ProgramResolver::Requirement::Regular,
@@ -588,9 +604,9 @@ fn git_status(StringView ceiling_directories, Allocator allocator) throws
       os::capture_program_output(count_argv, 5'000'000'000);
 
   let const do_parse_count = [](StringView text) throws -> i32 {
-    usize position = 0;
-    let const word = text.next_ascii_whitespace_word(position);
-    let const parsed = parse_decimal_u64(word);
+    usize     position = 0;
+    let const word     = text.next_ascii_whitespace_word(position);
+    let const parsed   = parse_decimal_u64(word);
     if (parsed.is_error() || parsed.value() > INT32_MAX) {
       return 0;
     }
@@ -611,14 +627,17 @@ fn git_status(StringView ceiling_directories, Allocator allocator) throws
   return result;
 }
 
-fn parse_file_mode(StringView expression, u32 current_mode, u32 creation_mask,
-                   file_kind_mode kind) wontthrow -> Maybe<u32>
+fn
+parse_file_mode(StringView     expression,
+                u32            current_mode,
+                u32            creation_mask,
+                file_kind_mode kind) wontthrow -> Maybe<u32>
 {
   if (expression.is_empty()) return None;
 
-  bool is_octal = true;
+  bool is_octal           = true;
   bool has_octal_overflow = false;
-  u32 octal_mode = 0;
+  u32  octal_mode         = 0;
 
   for (usize position = 0; position < expression.length; position++) {
     let const byte = expression[position];
@@ -629,7 +648,7 @@ fn parse_file_mode(StringView expression, u32 current_mode, u32 creation_mask,
     octal_mode = octal_mode * 8 + static_cast<u32>(byte - '0');
     if (octal_mode > 07777u) {
       has_octal_overflow = true;
-      octal_mode = 07777u;
+      octal_mode         = 07777u;
     }
   }
 
@@ -644,11 +663,11 @@ fn parse_file_mode(StringView expression, u32 current_mode, u32 creation_mask,
     return (current_mode & ~07777u) | octal_mode | kept_directory_bits;
   }
 
-  u32 mode = current_mode;
+  u32   mode     = current_mode;
   usize position = 0;
 
   while (position < expression.length) {
-    u32 selected_classes = 0;
+    u32  selected_classes   = 0;
     bool has_explicit_class = false;
 
     while (position < expression.length) {
@@ -675,7 +694,7 @@ fn parse_file_mode(StringView expression, u32 current_mode, u32 creation_mask,
       return None;
     }
 
-    u32 requested_bits = 0;
+    u32 requested_bits         = 0;
     u32 requested_special_bits = 0;
 
     while (position < expression.length && expression[position] != ',') {

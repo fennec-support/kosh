@@ -24,10 +24,13 @@ REGISTER_KOSHKIT_UTIL_FLAGS(Mv);
 
 namespace koshka::koshkit {
 
-static fn move_directory_across_devices(const ExecContext &ec, EvalContext &cxt,
-                                        StringView utility_name,
-                                        StringView source, StringView target,
-                                        Allocator allocator) throws -> void
+static fn
+move_directory_across_devices(const ExecContext &ec,
+                              EvalContext       &cxt,
+                              StringView         utility_name,
+                              StringView         source,
+                              StringView         target,
+                              Allocator          allocator) throws -> void
 {
   let const target_path = Path{target, allocator};
   let const temporary_directory =
@@ -73,12 +76,15 @@ static fn move_directory_across_devices(const ExecContext &ec, EvalContext &cxt,
     };
 }
 
-static fn move_across_devices(const ExecContext &ec, EvalContext &cxt,
-                              StringView utility_name, StringView source,
-                              StringView target, Allocator allocator) throws
-    -> bool
+static fn
+move_across_devices(const ExecContext &ec,
+                    EvalContext       &cxt,
+                    StringView         utility_name,
+                    StringView         source,
+                    StringView         target,
+                    Allocator          allocator) throws -> bool
 {
-  let const source_path = Path{source, allocator};
+  let const source_path             = Path{source, allocator};
   let const is_source_symbolic_link = source_path.is_symbolic_link();
   if (!is_source_symbolic_link && source_path.is_directory()) {
     move_directory_across_devices(ec, cxt, utility_name, source, target,
@@ -87,9 +93,9 @@ static fn move_across_devices(const ExecContext &ec, EvalContext &cxt,
     return true;
   }
 
-  let const target_path = Path{target, allocator};
-  let temporary_path = os::write_to_named_temp_file(target_path.parent(),
-                                                    ".kosh_mv", StringView{});
+  let const target_path    = Path{target, allocator};
+  let       temporary_path = os::write_to_named_temp_file(target_path.parent(),
+                                                          ".kosh_mv", StringView{});
   if (!temporary_path.has_value())
     throw Error{
         "unable to create a temporary file beside '" +
@@ -149,10 +155,11 @@ static fn move_across_devices(const ExecContext &ec, EvalContext &cxt,
   return true;
 }
 
-fn Mv::execute(const ExecContext &ec, EvalContext &cxt,
-               const ArrayList<String> &args,
-               const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+fn
+Mv::execute(const ExecContext               &ec,
+            EvalContext                     &cxt,
+            const ArrayList<String>         &args,
+            const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
@@ -180,7 +187,7 @@ fn Mv::execute(const ExecContext &ec, EvalContext &cxt,
 
   for (usize i = 0; i + 1 < operands.count(); i++) {
     let const source = operands[i].view();
-    let target = String{cxt.scratch_allocator(), destination};
+    let       target = String{cxt.scratch_allocator(), destination};
     if (is_destination_directory) {
       let target_path = Path{destination, cxt.scratch_allocator()};
       target_path.append(Path{source, cxt.scratch_allocator()}.filename());

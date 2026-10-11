@@ -20,9 +20,11 @@ REGISTER_KOSHKIT_UTIL_FLAGS(Rmdir);
 
 namespace koshka::koshkit {
 
-fn Rmdir::execute(const ExecContext &ec, EvalContext &cxt,
-                  const ArrayList<String> &args,
-                  const ArrayList<SourceLocation> &arg_locations) const throws
+fn
+Rmdir::execute(const ExecContext               &ec,
+               EvalContext                     &cxt,
+               const ArrayList<String>         &args,
+               const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
@@ -30,7 +32,7 @@ fn Rmdir::execute(const ExecContext &ec, EvalContext &cxt,
   if (operands.is_empty()) return report_usage_error(ec, cxt, args[0].view());
 
   let const allocator = cxt.scratch_allocator();
-  i32 status = 0;
+  i32       status    = 0;
 
   for (usize operand_index = 0; operand_index < operands.count();
        operand_index++)

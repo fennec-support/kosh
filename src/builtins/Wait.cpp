@@ -22,11 +22,20 @@ HELP_SYNOPSIS_DECL("[-fn] [-p var] [%job|pid ...]");
 HELP_DESCRIPTION_DECL(
     "The wait builtin blocks until the specified jobs finish.");
 
-FLAG(WAIT_NEXT, Bool, 'n', "",
+FLAG(WAIT_NEXT,
+     Bool,
+     'n',
+     "",
      "Wait until the next specified job, or any job, finishes.");
-FLAG(WAIT_FORCE, Bool, 'f', "",
+FLAG(WAIT_FORCE,
+     Bool,
+     'f',
+     "",
      "Wait for each job to terminate, even if it stops first.");
-FLAG(WAIT_PID_VARIABLE, String, 'p', "",
+FLAG(WAIT_PID_VARIABLE,
+     String,
+     'p',
+     "",
      "Store the process id whose status is returned in the variable.");
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 
@@ -36,7 +45,8 @@ namespace koshka {
 
 namespace {
 
-fn find_job_by_process(JobTable &table, i64 process_id) wontthrow -> job *
+fn
+find_job_by_process(JobTable &table, i64 process_id) wontthrow -> job *
 {
   for (job &entry : table.jobs()) {
     if (entry.process_id == process_id) return &entry;
@@ -50,9 +60,11 @@ fn find_job_by_process(JobTable &table, i64 process_id) wontthrow -> job *
 
 } /* namespace */
 
-static fn wait_for_operands(ExecContext &ec, EvalContext &cxt) throws -> i32;
+static fn
+wait_for_operands(ExecContext &ec, EvalContext &cxt) throws -> i32;
 
-fn Wait::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
+fn
+Wait::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let const status = wait_for_operands(ec, cxt);
   cxt.release_finished_coprocess();
@@ -60,7 +72,8 @@ fn Wait::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   return status;
 }
 
-static fn wait_for_operands(ExecContext &ec, EvalContext &cxt) throws -> i32
+static fn
+wait_for_operands(ExecContext &ec, EvalContext &cxt) throws -> i32
 {
   let operand_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};
   let const args = PARSE_BUILTIN_ARGS_WITH_LOCATIONS(ec, operand_locations);
@@ -69,11 +82,11 @@ static fn wait_for_operands(ExecContext &ec, EvalContext &cxt) throws -> i32
 
   ASSERT(!args.is_empty());
 
-  let &table = cxt.job_table_store();
+  let      &table                       = cxt.job_table_store();
   let const should_keep_waited_statuses = !cxt.runtime_state().is_posix_mode();
   let const should_wait_for_termination = FLAG_WAIT_FORCE.is_enabled();
-  let const has_pid_variable = FLAG_WAIT_PID_VARIABLE.is_set();
-  let const pid_variable = FLAG_WAIT_PID_VARIABLE.value();
+  let const has_pid_variable            = FLAG_WAIT_PID_VARIABLE.is_set();
+  let const pid_variable                = FLAG_WAIT_PID_VARIABLE.value();
 
   if (has_pid_variable && !name_is_valid_identifier(pid_variable)) {
     report_invalid_identifier(ec, cxt, ec.source_location(), pid_variable);
@@ -172,7 +185,7 @@ static fn wait_for_operands(ExecContext &ec, EvalContext &cxt) throws -> i32
       cxt.unset_shell_variable(pid_variable);
     }
 
-    let other_pids = ArrayList<i64>{cxt.scratch_allocator()};
+    let other_pids      = ArrayList<i64>{cxt.scratch_allocator()};
     let unknown_targets = ArrayList<usize>{cxt.scratch_allocator()};
 
     for (usize i = 1; i < args.count(); i++) {
@@ -333,7 +346,7 @@ static fn wait_for_operands(ExecContext &ec, EvalContext &cxt) throws -> i32
     LOG(Debug, "wait blocking on target '%s'", args[i].c_str());
 
     if (job *const matched = do_find_target_job(i); matched != nullptr) {
-      let const job_id = matched->id;
+      let const job_id     = matched->id;
       let const process_id = matched->process_id;
 
       status = table.wait_for_job_processes(*matched, nullptr,

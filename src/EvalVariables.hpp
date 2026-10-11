@@ -19,31 +19,33 @@ namespace koshka {
 
 enum class shell_variable_fact : u8
 {
-  Plain = 0,
-  Dynamic = 1 << 0,
-  Array = 1 << 1,
+  Plain    = 0,
+  Dynamic  = 1 << 0,
+  Array    = 1 << 1,
   ReadOnly = 1 << 2,
   Exported = 1 << 3,
   BashOnly = 1 << 4,
   NotPosix = 1 << 5,
 };
 
-constexpr fn operator|(shell_variable_fact left,
-                       shell_variable_fact right) wontthrow->shell_variable_fact
+constexpr fn
+operator|(shell_variable_fact left,
+          shell_variable_fact right) wontthrow->shell_variable_fact
 {
   return static_cast<shell_variable_fact>(static_cast<u8>(left) |
                                           static_cast<u8>(right));
 }
 
-constexpr fn has_shell_variable_fact(shell_variable_fact facts,
-                                     shell_variable_fact fact) wontthrow -> bool
+constexpr fn
+has_shell_variable_fact(shell_variable_fact facts,
+                        shell_variable_fact fact) wontthrow -> bool
 {
   return (static_cast<u8>(facts) & static_cast<u8>(fact)) != 0;
 }
 
 struct shell_variable_description
 {
-  const char *summary;
+  const char         *summary;
   shell_variable_fact facts;
 };
 
@@ -483,7 +485,8 @@ inline constexpr static_string_entry<shell_variable_description>
 };
 inline constexpr StaticStringMap SHELL_VARIABLES{SHELL_VARIABLE_ENTRIES};
 
-inline fn describe_shell_variable(StringView name) throws
+inline fn
+describe_shell_variable(StringView name) throws
     -> Maybe<shell_variable_description>
 {
   if (name.is_empty()) return None;

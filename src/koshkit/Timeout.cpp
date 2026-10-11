@@ -16,19 +16,29 @@
 KOSHKIT_UTIL_DECL("[option ...] duration command [argument ...]",
                   "The timeout utility runs a command with a time limit.");
 
-FLAG(TIMEOUT_SIGNAL, String, 's', "signal",
+FLAG(TIMEOUT_SIGNAL,
+     String,
+     's',
+     "signal",
      "Send this signal when the time limit expires.");
-FLAG(TIMEOUT_KILL_AFTER, String, 'k', "kill-after",
+FLAG(TIMEOUT_KILL_AFTER,
+     String,
+     'k',
+     "kill-after",
      "Send KILL if the command is still running after this additional "
      "duration.");
-FLAG(TIMEOUT_PRESERVE_STATUS, Bool, 'p', "preserve-status",
+FLAG(TIMEOUT_PRESERVE_STATUS,
+     Bool,
+     'p',
+     "preserve-status",
      "Return the command status after the time limit expires.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Timeout);
 
 namespace koshka::koshkit {
 
-static fn duration_to_nanos(f64 seconds) wontthrow -> u64
+static fn
+duration_to_nanos(f64 seconds) wontthrow -> u64
 {
   if (__builtin_isinf(seconds)) return UINT64_MAX;
   if (seconds == 0.0) return 0;
@@ -56,10 +66,13 @@ enum class wait_completion : u8
   ProcessGroupEmpty,
 };
 
-static fn wait_for_process_until(os::process child, os::process process_group,
-                                 u64 timeout_nanos, i32 &status,
-                                 bool &has_child_exited,
-                                 wait_completion completion) throws
+static fn
+wait_for_process_until(os::process     child,
+                       os::process     process_group,
+                       u64             timeout_nanos,
+                       i32            &status,
+                       bool           &has_child_exited,
+                       wait_completion completion) throws
     -> supervision_wait_result
 {
   let const should_wait_for_process_group =
@@ -72,7 +85,7 @@ static fn wait_for_process_until(os::process child, os::process process_group,
     if (os::INTERRUPT_REQUESTED) return supervision_wait_result::Interrupted;
 
     if (!has_child_exited) {
-      let const state = os::poll_process(child, status);
+      let const state  = os::poll_process(child, status);
       has_child_exited = state == os::process_state::Exited;
     }
     if (has_child_exited && (!should_wait_for_process_group ||
@@ -95,10 +108,11 @@ static fn wait_for_process_until(os::process child, os::process process_group,
   }
 }
 
-static fn signal_supervised_process(os::process child,
-                                    os::process process_group,
-                                    bool has_child_exited,
-                                    i32 signal_number) wontthrow -> bool
+static fn
+signal_supervised_process(os::process child,
+                          os::process process_group,
+                          bool        has_child_exited,
+                          i32         signal_number) wontthrow -> bool
 {
   if (os::signal_process(process_group, signal_number)) return true;
   if (has_child_exited) return false;
@@ -106,8 +120,9 @@ static fn signal_supervised_process(os::process child,
   return os::signal_process(child, signal_number);
 }
 
-static fn timeout_expiration_status(i32 command_status,
-                                    i32 timeout_signal) wontthrow -> i32
+static fn
+timeout_expiration_status(i32 command_status, i32 timeout_signal) wontthrow
+    -> i32
 {
   if (timeout_signal == 9) return 137;
   if (FLAG_TIMEOUT_PRESERVE_STATUS.is_enabled()) return command_status;
@@ -115,9 +130,10 @@ static fn timeout_expiration_status(i32 command_status,
   return 124;
 }
 
-static fn finish_interrupted_supervision(os::process child,
-                                         os::process process_group,
-                                         bool has_child_exited) throws -> i32
+static fn
+finish_interrupted_supervision(os::process child,
+                               os::process process_group,
+                               bool        has_child_exited) throws -> i32
 {
   os::INTERRUPT_REQUESTED = 0;
   if (let const interrupt_signal = os::signal_number_from_name("INT");
@@ -136,8 +152,9 @@ static fn finish_interrupted_supervision(os::process child,
   return 130;
 }
 
-static fn resolve_timeout_program(StringView program_name,
-                                  EvalContext &cxt) throws -> Maybe<Path>
+static fn
+resolve_timeout_program(StringView program_name, EvalContext &cxt) throws
+    -> Maybe<Path>
 {
   if (os::has_directory_separator(program_name)) {
     let const typed_program_path = Path{program_name};
@@ -160,12 +177,13 @@ static fn resolve_timeout_program(StringView program_name,
   return matches[0];
 }
 
-static fn checked_timeout_program(StringView program_name,
-                                  const SourceLocation &program_location,
-                                  EvalContext &cxt) throws -> Maybe<Path>
+static fn
+checked_timeout_program(StringView            program_name,
+                        const SourceLocation &program_location,
+                        EvalContext          &cxt) throws -> Maybe<Path>
 {
   let const typed_program_path = Path{program_name, cxt.scratch_allocator()};
-  let program_path = resolve_timeout_program(program_name, cxt);
+  let       program_path       = resolve_timeout_program(program_name, cxt);
   if (!program_path.has_value()) return None;
 
   if (typed_program_path.has_trailing_separator() &&
@@ -186,11 +204,14 @@ static fn checked_timeout_program(StringView program_name,
   return program_path;
 }
 
-fn preflight_timeout_stage(const ExecContext &ec, EvalContext &cxt,
-                           usize name_index, SourceLocation &error_location,
-                           String &error_message) throws -> Maybe<i32>
+fn
+preflight_timeout_stage(const ExecContext &ec,
+                        EvalContext       &cxt,
+                        usize              name_index,
+                        SourceLocation    &error_location,
+                        String            &error_message) throws -> Maybe<i32>
 {
-  let args = ArrayList<String>{cxt.scratch_allocator()};
+  let args          = ArrayList<String>{cxt.scratch_allocator()};
   let arg_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};
   args.reserve(ec.args().count() - name_index);
   arg_locations.reserve(ec.args().count() - name_index);
@@ -235,7 +256,7 @@ fn preflight_timeout_stage(const ExecContext &ec, EvalContext &cxt,
                                      cxt));
     } catch (const ErrorWithLocation &error) {
       error_location = error.location();
-      error_message = "koshkit timeout: " + error.message();
+      error_message  = "koshkit timeout: " + error.message();
 
       return static_cast<i32>(error.command_status());
     }
@@ -246,9 +267,11 @@ fn preflight_timeout_stage(const ExecContext &ec, EvalContext &cxt,
   return None;
 }
 
-fn Timeout::execute(const ExecContext &ec, EvalContext &cxt,
-                    const ArrayList<String> &args,
-                    const ArrayList<SourceLocation> &arg_locations) const throws
+fn
+Timeout::execute(const ExecContext               &ec,
+                 EvalContext                     &cxt,
+                 const ArrayList<String>         &args,
+                 const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(
@@ -289,7 +312,7 @@ fn Timeout::execute(const ExecContext &ec, EvalContext &cxt,
     return 127;
   }
 
-  let command_args = ArrayList<String>{cxt.scratch_allocator()};
+  let command_args      = ArrayList<String>{cxt.scratch_allocator()};
   let command_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};
   command_args.reserve(operands.count() - 1);
   command_locations.reserve(operands.count() - 1);
@@ -316,18 +339,18 @@ fn Timeout::execute(const ExecContext &ec, EvalContext &cxt,
 
   os::process child = os::execute_program(
       command, os::program_execution_options{
-                   .source = source_view,
-                   .fallback = os::script_fallback_policy::Allow,
-                   .handoff = has_controlling_terminal
-                                  ? os::terminal_handoff::BeforeStart
-                                  : os::terminal_handoff::Keep,
+                   .source        = source_view,
+                   .fallback      = os::script_fallback_policy::Allow,
+                   .handoff       = has_controlling_terminal
+                                        ? os::terminal_handoff::BeforeStart
+                                        : os::terminal_handoff::Keep,
                    .process_group = os::process_group_mode::New});
   if (child == KOSH_INVALID_PROCESS) {
     let const shell_path = os::current_executable_path();
     if (!shell_path.has_value())
       throw Error{"Could not locate the shell for script fallback"};
 
-    let fallback_args = ArrayList<String>{cxt.scratch_allocator()};
+    let fallback_args      = ArrayList<String>{cxt.scratch_allocator()};
     let fallback_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};
     fallback_args.reserve(operands.count());
     fallback_locations.reserve(operands.count());
@@ -347,11 +370,11 @@ fn Timeout::execute(const ExecContext &ec, EvalContext &cxt,
         steal(fallback_args), steal(fallback_locations));
     child = os::execute_program(
         fallback, os::program_execution_options{
-                      .source = source_view,
-                      .fallback = os::script_fallback_policy::Reject,
-                      .handoff = has_controlling_terminal
-                                     ? os::terminal_handoff::BeforeStart
-                                     : os::terminal_handoff::Keep,
+                      .source        = source_view,
+                      .fallback      = os::script_fallback_policy::Reject,
+                      .handoff       = has_controlling_terminal
+                                           ? os::terminal_handoff::BeforeStart
+                                           : os::terminal_handoff::Keep,
                       .process_group = os::process_group_mode::New});
   }
 
@@ -367,7 +390,7 @@ fn Timeout::execute(const ExecContext &ec, EvalContext &cxt,
   }
   defer { os::close_process_reference(process_group); };
 
-  i32 status = 0;
+  i32 status           = 0;
   let has_child_exited = false;
   let wait_result = wait_for_process_until(child, process_group, timeout_nanos,
                                            status, has_child_exited,

@@ -21,9 +21,11 @@ REGISTER_KOSHKIT_UTIL_FLAGS(Date);
 
 namespace koshka::koshkit {
 
-fn Date::execute(const ExecContext &ec, EvalContext &cxt,
-                 const ArrayList<String> &args,
-                 const ArrayList<SourceLocation> &arg_locations) const throws
+fn
+Date::execute(const ExecContext               &ec,
+              EvalContext                     &cxt,
+              const ArrayList<String>         &args,
+              const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
@@ -38,7 +40,7 @@ fn Date::execute(const ExecContext &ec, EvalContext &cxt,
     return 1;
   }
 
-  let const now = std::time(nullptr);
+  let const  now = std::time(nullptr);
   let const *broken_down =
       FLAG_DATE_UTC.is_enabled() ? std::gmtime(&now) : std::localtime(&now);
   if (broken_down == nullptr) {
@@ -51,7 +53,7 @@ fn Date::execute(const ExecContext &ec, EvalContext &cxt,
   let const format = operands.is_empty() ? StringView{"%a %b %e %H:%M:%S %Z %Y"}
                                          : operands[0].view().substring(1);
   let const format_text = String{cxt.scratch_allocator(), format};
-  char buffer[8192];
+  char      buffer[8192];
   let const length =
       std::strftime(buffer, sizeof(buffer), format_text.c_str(), broken_down);
   if (length == 0 && !format.is_empty()) {

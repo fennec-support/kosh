@@ -19,11 +19,13 @@
 
 namespace koshka {
 
-fn EvalContext::run_completion_command(StringView command,
-                                       StringView command_name, StringView word,
-                                       StringView previous_word,
-                                       StringView line, usize point) throws
-    -> ArrayList<String>
+fn
+EvalContext::run_completion_command(StringView command,
+                                    StringView command_name,
+                                    StringView word,
+                                    StringView previous_word,
+                                    StringView line,
+                                    usize point) throws -> ArrayList<String>
 {
   LOG(Info, "running the completion command '%.*s' for the word '%.*s'",
       static_cast<int>(command.length), command.data,
@@ -44,9 +46,9 @@ fn EvalContext::run_completion_command(StringView command,
   };
 
   char number_buffer[32];
-  let snapshot = snapshot_state();
-  let output = String{heap_allocator()};
-  let was_interrupted = false;
+  let  snapshot        = snapshot_state();
+  let  output          = String{heap_allocator()};
+  let  was_interrupted = false;
   {
     enter_subshell();
     defer { leave_subshell(); };
@@ -77,9 +79,9 @@ fn EvalContext::run_completion_command(StringView command,
     return ArrayList<String>{heap_allocator()};
   }
 
-  let candidates = ArrayList<String>{heap_allocator()};
-  let const text = output.view();
-  usize line_start = 0;
+  let       candidates = ArrayList<String>{heap_allocator()};
+  let const text       = output.view();
+  usize     line_start = 0;
 
   while (line_start < text.length) {
     usize line_end = line_start;
@@ -109,12 +111,15 @@ fn EvalContext::run_completion_command(StringView command,
   return candidates;
 }
 
-fn EvalContext::run_completion_function(StringView function_name,
-                                        StringView command_name,
-                                        const ArrayList<String> &words,
-                                        usize cword, StringView line,
-                                        usize point, i32 *out_exit_status,
-                                        bool should_mark_directories) throws
+fn
+EvalContext::run_completion_function(StringView               function_name,
+                                     StringView               command_name,
+                                     const ArrayList<String> &words,
+                                     usize                    cword,
+                                     StringView               line,
+                                     usize                    point,
+                                     i32                     *out_exit_status,
+                                     bool should_mark_directories) throws
     -> ArrayList<String>
 {
   FunctionBodyHandle body_storage{};
@@ -204,7 +209,7 @@ fn EvalContext::run_completion_function(StringView function_name,
 
   enter_function_call(SourceLocation{});
   defer { leave_function_call(); };
-  let const saved_loop_depth = execution_store().loop_depth();
+  let const saved_loop_depth     = execution_store().loop_depth();
   execution_store().loop_depth() = 0;
   defer { execution_store().loop_depth() = saved_loop_depth; };
   enter_function_scope();
@@ -222,7 +227,7 @@ fn EvalContext::run_completion_function(StringView function_name,
   try {
     body->evaluate(*this);
   } catch (const InterruptErrorWithLocation &) {
-    was_interrupted = true;
+    was_interrupted         = true;
     os::INTERRUPT_REQUESTED = 1;
     LOG(Debug, "completion function '%.*s' was interrupted",
         static_cast<int>(function_name.length), function_name.data);

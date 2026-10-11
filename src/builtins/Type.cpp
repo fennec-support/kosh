@@ -23,17 +23,32 @@ HELP_SYNOPSIS_DECL("name [name ...]");
 HELP_DESCRIPTION_DECL(
     "The type builtin reports how each name resolves as a command.");
 
-FLAG(TYPE_WORD, Bool, 't', "",
+FLAG(TYPE_WORD,
+     Bool,
+     't',
+     "",
      "Print only the word naming the type, such as builtin or file.");
-FLAG(TYPE_PATH, Bool, 'p', "",
+FLAG(TYPE_PATH,
+     Bool,
+     'p',
+     "",
      "Print the disk path, or nothing when the name is not a file.");
-FLAG(TYPE_FORCE_PATH, Bool, 'P', "",
+FLAG(TYPE_FORCE_PATH,
+     Bool,
+     'P',
+     "",
      "Search the PATH and print the disk path even for a name that is also a "
      "builtin.");
-FLAG(TYPE_ALL, Bool, 'a', "",
+FLAG(TYPE_ALL,
+     Bool,
+     'a',
+     "",
      "Print every location for each name, including its keyword, alias, "
      "function, or builtin entry and every matching file on PATH.");
-FLAG(TYPE_VERBOSE, Bool, 'V', "",
+FLAG(TYPE_VERBOSE,
+     Bool,
+     'V',
+     "",
      "Print all information the shell holds for each name, including the file "
      "and line where a function was defined, its body, and a builtin "
      "description.");
@@ -43,7 +58,8 @@ REGISTER_BUILTIN_FLAGS(Type);
 
 namespace koshka {
 
-fn Type::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
+fn
+Type::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let const args = PARSE_BUILTIN_ARGS(ec);
 
@@ -63,9 +79,9 @@ fn Type::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let const is_posix_report =
       cxt.runtime_state().get_mood() == mimic_mood::Posix;
 
-  let out = String{cxt.scratch_allocator()};
-  let missing_names = ArrayList<String>{cxt.scratch_allocator()};
-  bool did_find_all = true;
+  let  out           = String{cxt.scratch_allocator()};
+  let  missing_names = ArrayList<String>{cxt.scratch_allocator()};
+  bool did_find_all  = true;
 
   let const do_report_missing = [&](const String &name) throws {
     if (is_posix_report) {
@@ -106,16 +122,16 @@ fn Type::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       continue;
     }
 
-    StringView word{};
-    Maybe<String> alias_value;
+    StringView           word{};
+    Maybe<String>        alias_value;
     Maybe<Builtin::Kind> builtin_kind;
-    bool is_bundled_utility = false;
+    bool                 is_bundled_utility = false;
     if (name_is_keyword_in_mood(name.view(), cxt.runtime_state().get_mood())) {
       word = "keyword";
     } else if (let const alias = cxt.scope_store().get_alias(name.view());
                alias.has_value())
     {
-      word = "alias";
+      word        = "alias";
       alias_value = alias;
     } else if (cxt.function_store().has_functions() &&
                cxt.function_store().find_function(name).has_value())
@@ -125,7 +141,7 @@ fn Type::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                kind.has_value() && !builtin_is_hidden_by_mood(
                                        *kind, cxt.runtime_state().get_mood()))
     {
-      word = "builtin";
+      word         = "builtin";
       builtin_kind = kind;
     } else if (cxt.runtime_state().koshkit_utilities_are_reachable() &&
                koshkit::find_util(name.view()).has_value() &&
@@ -133,7 +149,7 @@ fn Type::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                    name, ProgramResolver::StatusLookup::Authoritative) ==
                    ProgramResolver::Status::Missing)
     {
-      word = "builtin";
+      word               = "builtin";
       is_bundled_utility = true;
     }
 
@@ -150,8 +166,8 @@ fn Type::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
           {SSK("function"), resolution_kind::Function},
       };
       static constexpr StaticStringMap RESOLUTION_KINDS{KIND_ENTRIES};
-      let const kind = RESOLUTION_KINDS.find(type_word);
-      let const is_function =
+      let const                        kind = RESOLUTION_KINDS.find(type_word);
+      let const                        is_function =
           kind.has_value() && *kind == resolution_kind::Function;
 
       out += name;

@@ -27,25 +27,43 @@ HELP_DESCRIPTION_DECL(
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 FLAG(DECLARE_INDEXED, Bool, 'a', "", "Declare an indexed array.");
 FLAG(DECLARE_ASSOCIATIVE, Bool, 'A', "", "Declare an associative array.");
-FLAG(DECLARE_FUNCTIONS, Bool, 'f', "",
+FLAG(DECLARE_FUNCTIONS,
+     Bool,
+     'f',
+     "",
      "Restrict to functions and print their recorded definitions.");
-FLAG(DECLARE_FUNCTION_NAMES, Bool, 'F', "",
+FLAG(DECLARE_FUNCTION_NAMES,
+     Bool,
+     'F',
+     "",
      "Print only the names of defined functions and report their existence "
      "through the exit status.");
 FLAG(DECLARE_GLOBAL, Bool, 'g', "", "Accepted without effect.");
-FLAG(DECLARE_INTEGER, Bool, 'i', "",
+FLAG(DECLARE_INTEGER,
+     Bool,
+     'i',
+     "",
      "Mark the variable as integer. Evaluate each assignment as arithmetic. "
      "The +i form removes the mark.");
-FLAG(DECLARE_LOWERCASE, Bool, 'l', "",
+FLAG(DECLARE_LOWERCASE,
+     Bool,
+     'l',
+     "",
      "Convert every assigned value to lowercase. The +l form removes the "
      "attribute.");
-FLAG(DECLARE_NAMEREF, Bool, 'n', "",
+FLAG(DECLARE_NAMEREF,
+     Bool,
+     'n',
+     "",
      "Make the variable a reference to the variable its value selects. The +n "
      "form removes the reference and keeps the value.");
 FLAG(DECLARE_PRINT, Bool, 'p', "", "Print the matching declarations.");
 FLAG(DECLARE_READONLY, Bool, 'r', "", "Accepted without effect.");
 FLAG(DECLARE_TRACE, Bool, 't', "", "Accepted without effect.");
-FLAG(DECLARE_UPPERCASE, Bool, 'u', "",
+FLAG(DECLARE_UPPERCASE,
+     Bool,
+     'u',
+     "",
      "Convert every assigned value to uppercase. The +u form removes the "
      "attribute.");
 FLAG(DECLARE_EXPORT, Bool, 'x', "", "Mark the variable for the environment.");
@@ -54,32 +72,33 @@ REGISTER_BUILTIN_FLAGS(Declare);
 
 namespace koshka {
 
-fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
+fn
+Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let const &args = ec.args();
   ASSERT(!args.is_empty());
 
-  let should_make_associative = false;
-  let should_make_indexed = false;
-  let should_export = false;
-  let should_unexport = false;
-  let should_print = false;
-  let should_mark_integer_attribute = false;
-  let should_unmark_integer_attribute = false;
-  let should_mark_lowercase_attribute = false;
+  let should_make_associative           = false;
+  let should_make_indexed               = false;
+  let should_export                     = false;
+  let should_unexport                   = false;
+  let should_print                      = false;
+  let should_mark_integer_attribute     = false;
+  let should_unmark_integer_attribute   = false;
+  let should_mark_lowercase_attribute   = false;
   let should_unmark_lowercase_attribute = false;
-  let should_mark_uppercase_attribute = false;
+  let should_mark_uppercase_attribute   = false;
   let should_unmark_uppercase_attribute = false;
-  let should_mark_readonly = false;
-  let should_mark_nameref = false;
-  let should_unmark_nameref = false;
-  let should_restrict_to_functions = false;
-  let should_print_function_names_only = false;
-  let should_be_global = false;
-  let has_trace_flag = false;
+  let should_mark_readonly              = false;
+  let should_mark_nameref               = false;
+  let should_unmark_nameref             = false;
+  let should_restrict_to_functions      = false;
+  let should_print_function_names_only  = false;
+  let should_be_global                  = false;
+  let has_trace_flag                    = false;
 
-  usize i = 1;
-  i32 status = 0;
+  usize i      = 1;
+  i32   status = 0;
 
   for (; i < args.count(); i++) {
     let const arg = args[i].view();
@@ -123,7 +142,7 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         break;
       case 'f': should_restrict_to_functions = true; break;
       case 'F':
-        should_restrict_to_functions = true;
+        should_restrict_to_functions     = true;
         should_print_function_names_only = true;
         break;
       case 'r':
@@ -137,7 +156,7 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
           should_mark_nameref = true;
         break;
       case 't': has_trace_flag = true; break;
-      default: {
+      default:  {
         let invalid = String{cxt.scratch_allocator()};
         invalid += arg[0];
         invalid += arg[c];
@@ -159,8 +178,8 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   }
 
   if (should_mark_lowercase_attribute && should_mark_uppercase_attribute) {
-    should_mark_lowercase_attribute = false;
-    should_mark_uppercase_attribute = false;
+    should_mark_lowercase_attribute   = false;
+    should_mark_uppercase_attribute   = false;
     should_unmark_lowercase_attribute = true;
     should_unmark_uppercase_attribute = true;
   }
@@ -325,8 +344,8 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   for (; i < args.count(); i++) {
     let const operand = args[i].view();
-    let const equals = operand.find_character('=');
-    let name =
+    let const equals  = operand.find_character('=');
+    let       name =
         equals.has_value() ? operand.substring_of_length(0, *equals) : operand;
     let const value =
         equals.has_value() ? operand.substring(*equals + 1) : StringView{};
@@ -425,7 +444,7 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       continue;
     }
 
-    let attribute_name = name;
+    let attribute_name          = name;
     let resolved_attribute_name = Maybe<String>{};
     if (!should_mark_nameref && !should_unmark_nameref &&
         cxt.variable_store().attributes().is_nameref(name) &&
@@ -434,7 +453,7 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       rarely
       {
         resolved_attribute_name = cxt.resolve_nameref_base_for_write(name);
-        attribute_name = resolved_attribute_name->view();
+        attribute_name          = resolved_attribute_name->view();
         if ((should_mark_integer_attribute || should_unmark_integer_attribute ||
              should_mark_lowercase_attribute ||
              should_unmark_lowercase_attribute ||
@@ -545,13 +564,13 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         if (let const existing = cxt.get_variable_value(name)) {
           appended.append(existing->view());
         }
-        let integer_name = name;
+        let integer_name  = name;
         let resolved_name = Maybe<String>{};
         if (cxt.variable_store().attributes().is_nameref(name)) {
           rarely
           {
             resolved_name = cxt.resolve_nameref_base_for_write(name);
-            integer_name = resolved_name->view();
+            integer_name  = resolved_name->view();
           }
         }
         if (cxt.is_integer_variable(integer_name)) {

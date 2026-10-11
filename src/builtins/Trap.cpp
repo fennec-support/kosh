@@ -31,7 +31,8 @@ namespace koshka {
 
 namespace {
 
-fn normalize_condition(StringView raw, Allocator allocator) throws -> String
+fn
+normalize_condition(StringView raw, Allocator allocator) throws -> String
 {
   let name = String{allocator};
 
@@ -55,7 +56,8 @@ fn normalize_condition(StringView raw, Allocator allocator) throws -> String
   return name;
 }
 
-fn is_valid_trap_condition(StringView condition, mimic_mood mood) throws -> bool
+fn
+is_valid_trap_condition(StringView condition, mimic_mood mood) throws -> bool
 {
   static constexpr PackedStringKey SPECIAL_CONDITION_KEYS[] = {
       SSK("EXIT"),
@@ -76,15 +78,16 @@ fn is_valid_trap_condition(StringView condition, mimic_mood mood) throws -> bool
 
 struct listed_trap
 {
-  i64 order;
+  i64        order;
   StringView condition;
   StringView action;
 };
 
 struct listed_trap_comparator
 {
-  pure fn operator()(const listed_trap &left,
-                     const listed_trap &right) const wontthrow->bool
+  pure fn
+  operator()(const listed_trap &left,
+             const listed_trap &right) const wontthrow->bool
   {
     return left.order < right.order;
   }
@@ -96,7 +99,8 @@ enum class trap_condition_format : u8
   SignalPrefixed,
 };
 
-fn trap_listing_order(StringView condition) throws -> i64
+fn
+trap_listing_order(StringView condition) throws -> i64
 {
   static constexpr i64 SPECIAL_CONDITION_BASE = 1000;
 
@@ -117,8 +121,10 @@ fn trap_listing_order(StringView condition) throws -> i64
   return SPECIAL_CONDITION_BASE + 3;
 }
 
-fn format_listed_condition(StringView condition, Allocator allocator,
-                           trap_condition_format format) throws -> String
+fn
+format_listed_condition(StringView            condition,
+                        Allocator             allocator,
+                        trap_condition_format format) throws -> String
 {
   if (format == trap_condition_format::SignalPrefixed &&
       os::signal_number_from_name(condition).has_value())
@@ -134,7 +140,8 @@ fn format_listed_condition(StringView condition, Allocator allocator,
 
 } /* namespace */
 
-fn Trap::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
+fn
+Trap::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let const &args = ec.args();
   ASSERT(!args.is_empty());
@@ -152,9 +159,9 @@ fn Trap::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     throw bad_option;
   }
 
-  usize operand_index = 1;
-  let should_print_listing = false;
-  let should_list_signals = false;
+  usize operand_index        = 1;
+  let   should_print_listing = false;
+  let   should_list_signals  = false;
 
   while (operand_index < args.count()) {
     let const &word = args[operand_index];
@@ -228,7 +235,7 @@ fn Trap::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                                      ? trap_condition_format::SignalPrefixed
                                      : trap_condition_format::Plain;
 
-    let out = String{cxt.scratch_allocator()};
+    let       out               = String{cxt.scratch_allocator()};
     let const do_append_listing = [&](StringView condition, StringView action)
                                       throws -> void {
       out += "trap -- ";
@@ -254,7 +261,7 @@ fn Trap::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
           continue;
         }
 
-        let const trap = cxt.trap_store().find(condition->view());
+        let const  trap      = cxt.trap_store().find(condition->view());
         let const &held_exit = cxt.trap_store().held_exit_action();
         if (trap.has_value()) {
           do_append_listing(condition->view(), trap->action_text.view());
@@ -284,7 +291,7 @@ fn Trap::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     let const ignored_signals = cxt.runtime_state().is_bash_compatible()
                                     ? cxt.trap_store().startup_ignored_signals()
                                     : 0;
-    let ignored_names = ArrayList<String>{cxt.scratch_allocator()};
+    let       ignored_names   = ArrayList<String>{cxt.scratch_allocator()};
     if (ignored_signals != 0) {
       ignored_names.reserve(os::ENTRY_IGNORED_SIGNAL_LIMIT);
 
@@ -328,8 +335,8 @@ fn Trap::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return 0;
   }
 
-  let const &action = args[action_index];
-  let const is_reset = action == "-";
+  let const &action   = args[action_index];
+  let const  is_reset = action == "-";
 
   i32 status = 0;
 

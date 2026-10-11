@@ -132,8 +132,9 @@ extern char **environ;
 
 namespace koshka::os {
 
-hot alwaysinline fn pack_little_endian_bytes(u64 *words, const char *bytes,
-                                             usize count) wontthrow -> void
+hot alwaysinline fn
+pack_little_endian_bytes(u64 *words, const char *bytes, usize count) wontthrow
+    -> void
 {
 #if defined __BYTE_ORDER__ && __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
   __builtin_memcpy(reinterpret_cast<char *>(words), bytes, count);
@@ -145,8 +146,8 @@ hot alwaysinline fn pack_little_endian_bytes(u64 *words, const char *bytes,
 #endif
 }
 
-hot alwaysinline fn read_native_endian_bytes(const char *bytes,
-                                             usize count) wontthrow -> u64
+hot alwaysinline fn
+read_native_endian_bytes(const char *bytes, usize count) wontthrow -> u64
 {
   u64 value = 0;
 #if defined __BYTE_ORDER__ && __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
@@ -185,13 +186,14 @@ enum class goodcore_capture_mode : u8
 
 struct goodcore_platform_tools
 {
-  StringView dependency_program;
-  StringView debugger_program;
+  StringView            dependency_program;
+  StringView            debugger_program;
   goodcore_capture_mode capture_mode;
-  bool is_library_flag_dependency;
+  bool                  is_library_flag_dependency;
 };
 
-pure fn goodcore_tools() wontthrow -> goodcore_platform_tools;
+pure fn
+goodcore_tools() wontthrow -> goodcore_platform_tools;
 
 struct evildisk_platform_tools
 {
@@ -199,7 +201,8 @@ struct evildisk_platform_tools
   StringView smart_fallback_subcommand;
 };
 
-pure fn evildisk_tools() wontthrow -> evildisk_platform_tools;
+pure fn
+evildisk_tools() wontthrow -> evildisk_platform_tools;
 
 enum class process_detail : u8
 {
@@ -247,7 +250,8 @@ enum class process_group_mode : u8
   NewLeaderOwned,
 };
 
-pure constexpr fn background_process_group_mode(i64 process_group_id) wontthrow
+pure constexpr fn
+background_process_group_mode(i64 process_group_id) wontthrow
     -> process_group_mode
 {
 #if KOSH_PLATFORM_IS KOSH_PLATFORM_WIN32
@@ -268,19 +272,19 @@ enum class terminal_handoff : u8
 };
 
 #if KOSH_PLATFORM_IS KOSH_PLATFORM_WIN32
-constexpr char PATH_DELIMITER = ';';
-constexpr char DIRECTORY_SEPARATOR = '\\';
-constexpr bool IS_BACKSLASH_A_SEPARATOR = true;
+constexpr char  PATH_DELIMITER                        = ';';
+constexpr char  DIRECTORY_SEPARATOR                   = '\\';
+constexpr bool  IS_BACKSLASH_A_SEPARATOR              = true;
 constexpr usize HISTORY_RECORD_MAX_DECODED_BYTE_COUNT = 8191;
-constexpr bool ENVIRONMENT_IS_CASE_SENSITIVE = false;
-constexpr usize ENVIRONMENT_VALUE_MAX_UNIT_COUNT = 32766;
-constexpr bool FILESYSTEM_IS_CASE_SENSITIVE = false;
-constexpr bool HAS_CHILD_STATE_CHANGE_WAIT = false;
-constexpr bool DEFAULT_LOCALE_IS_UTF8 = false;
+constexpr bool  ENVIRONMENT_IS_CASE_SENSITIVE         = false;
+constexpr usize ENVIRONMENT_VALUE_MAX_UNIT_COUNT      = 32766;
+constexpr bool  FILESYSTEM_IS_CASE_SENSITIVE          = false;
+constexpr bool  HAS_CHILD_STATE_CHANGE_WAIT           = false;
+constexpr bool  DEFAULT_LOCALE_IS_UTF8                = false;
 
-using process = HANDLE;
+using process    = HANDLE;
 using descriptor = HANDLE;
-using os_args = String;
+using os_args    = String;
 
 #define KOSH_INVALID_FD      INVALID_HANDLE_VALUE
 #define KOSH_INVALID_PROCESS INVALID_HANDLE_VALUE
@@ -290,23 +294,23 @@ using os_args = String;
 #define KOSH_STDERR GetStdHandle(STD_ERROR_HANDLE)
 
 #elif KOSH_PLATFORM_IS KOSH_PLATFORM_POSIX
-constexpr char PATH_DELIMITER = ':';
-constexpr char DIRECTORY_SEPARATOR = '/';
-constexpr bool IS_BACKSLASH_A_SEPARATOR = false;
+constexpr char  PATH_DELIMITER                        = ':';
+constexpr char  DIRECTORY_SEPARATOR                   = '/';
+constexpr bool  IS_BACKSLASH_A_SEPARATOR              = false;
 constexpr usize HISTORY_RECORD_MAX_DECODED_BYTE_COUNT = 4095;
-constexpr bool ENVIRONMENT_IS_CASE_SENSITIVE = true;
-constexpr usize ENVIRONMENT_VALUE_MAX_UNIT_COUNT = SIZE_MAX;
-constexpr bool FILESYSTEM_IS_CASE_SENSITIVE = true;
-constexpr bool HAS_CHILD_STATE_CHANGE_WAIT = true;
+constexpr bool  ENVIRONMENT_IS_CASE_SENSITIVE         = true;
+constexpr usize ENVIRONMENT_VALUE_MAX_UNIT_COUNT      = SIZE_MAX;
+constexpr bool  FILESYSTEM_IS_CASE_SENSITIVE          = true;
+constexpr bool  HAS_CHILD_STATE_CHANGE_WAIT           = true;
 #if defined __linux__ && !defined __GLIBC__
 constexpr bool DEFAULT_LOCALE_IS_UTF8 = true;
 #else
 constexpr bool DEFAULT_LOCALE_IS_UTF8 = false;
 #endif
 
-using process = pid_t;
+using process    = pid_t;
 using descriptor = int;
-using os_args = ArrayList<const char *>;
+using os_args    = ArrayList<const char *>;
 
 #define KOSH_INVALID_FD      -1
 #define KOSH_INVALID_PROCESS -1
@@ -329,9 +333,12 @@ public:
   ~TerminalEchoGuard();
 
   TerminalEchoGuard(const TerminalEchoGuard &) = delete;
-  fn operator=(const TerminalEchoGuard &)->TerminalEchoGuard & = delete;
+  fn
+  operator=(const TerminalEchoGuard &)
+      ->TerminalEchoGuard & = delete;
 
-  mustuse fn did_succeed() const wontthrow -> bool;
+  mustuse fn
+  did_succeed() const wontthrow -> bool;
 
 private:
   descriptor m_input{KOSH_INVALID_FD};
@@ -351,9 +358,12 @@ public:
   ~TerminalRawInputGuard();
 
   TerminalRawInputGuard(const TerminalRawInputGuard &) = delete;
-  fn operator=(const TerminalRawInputGuard &)->TerminalRawInputGuard & = delete;
+  fn
+  operator=(const TerminalRawInputGuard &)
+      ->TerminalRawInputGuard & = delete;
 
-  mustuse fn is_active() const wontthrow -> bool;
+  mustuse fn
+  is_active() const wontthrow -> bool;
 
 private:
   descriptor m_input{KOSH_INVALID_FD};
@@ -377,14 +387,14 @@ enum class program_extension : u8
 struct program_name_info
 {
   program_extension extension{program_extension::None};
-  usize stem_length{0};
+  usize             stem_length{0};
 };
 
 struct program_suffix
 {
   program_extension extension{program_extension::None};
-  u32 packed_name{0};
-  StringView text{};
+  u32               packed_name{0};
+  StringView        text{};
 };
 
 inline constexpr program_suffix WINDOWS_PROGRAM_SUFFIXES[] = {
@@ -415,7 +425,11 @@ public:
       : m_data(data), m_count(suffix_count)
   {}
 
-  pure constexpr fn count() const wontthrow -> usize { return m_count; }
+  pure constexpr fn
+  count() const wontthrow -> usize
+  {
+    return m_count;
+  }
 
   pure constexpr fn
   operator[](usize position) const wontthrow->const program_suffix &
@@ -423,26 +437,28 @@ public:
     return m_data[position];
   }
 
-  pure constexpr fn begin() const wontthrow -> const program_suffix *
+  pure constexpr fn
+  begin() const wontthrow -> const program_suffix *
   {
     return m_data;
   }
 
-  pure constexpr fn end() const wontthrow -> const program_suffix *
+  pure constexpr fn
+  end() const wontthrow -> const program_suffix *
   {
     return m_data + m_count;
   }
 
 private:
   const program_suffix *m_data{nullptr};
-  usize m_count{0};
+  usize                 m_count{0};
 };
 
-inline fn normalize_windows_program_name(String &program_name) throws
-    -> program_name_info
+inline fn
+normalize_windows_program_name(String &program_name) throws -> program_name_info
 {
   program_name.lowercase_ascii();
-  let const length = program_name.length();
+  let const         length    = program_name.length();
   program_extension extension = program_extension::None;
   if (length >= 4 && program_name[length - 4] == '.') {
     let const packed_suffix = static_cast<u32>(program_name[length - 3]) << 16 |
@@ -467,7 +483,8 @@ struct pipe_ends
   descriptor out{KOSH_INVALID_FD};
 };
 
-fn make_pipe() wontthrow -> Maybe<pipe_ends>;
+fn
+make_pipe() wontthrow -> Maybe<pipe_ends>;
 
 struct thread
 {
@@ -478,10 +495,12 @@ struct thread
 #endif
 };
 
-fn start_thread(void (*entry)(opaque *), opaque *context) wontthrow
+fn
+start_thread(void (*entry)(opaque *), opaque *context) wontthrow
     -> Maybe<thread>;
 
-fn join_thread(thread t) wontthrow -> void;
+fn
+join_thread(thread t) wontthrow -> void;
 
 enum class file_open_mode : u8
 {
@@ -493,37 +512,57 @@ enum class file_open_mode : u8
   ReadNonblocking,
 };
 
-fn open_file_descriptor(StringView path, file_open_mode mode) throws
+fn
+open_file_descriptor(StringView path, file_open_mode mode) throws
     -> Maybe<descriptor>;
-fn open_file_descriptor_until_signal(StringView path, file_open_mode mode,
-                                     bool &did_signal_arrive) throws
+fn
+open_file_descriptor_until_signal(StringView     path,
+                                  file_open_mode mode,
+                                  bool          &did_signal_arrive) throws
     -> Maybe<descriptor>;
-fn acquire_process_lock(StringView path) throws -> Maybe<descriptor>;
-fn release_process_lock(descriptor lock) wontthrow -> void;
+fn
+acquire_process_lock(StringView path) throws -> Maybe<descriptor>;
+fn
+release_process_lock(descriptor lock) wontthrow -> void;
 
-fn write_to_temp_file(StringView content) throws -> Maybe<descriptor>;
-fn write_to_named_temp_file(const Path &directory, StringView prefix,
-                            StringView content) throws -> Maybe<Path>;
-fn make_temp_directory(const Path &directory, StringView prefix) throws
+fn
+write_to_temp_file(StringView content) throws -> Maybe<descriptor>;
+fn
+write_to_named_temp_file(const Path &directory,
+                         StringView  prefix,
+                         StringView  content) throws -> Maybe<Path>;
+fn
+make_temp_directory(const Path &directory, StringView prefix) throws
     -> Maybe<Path>;
 
-fn get_file_creation_mask() wontthrow -> u32;
-fn set_file_creation_mask(u32 mask) wontthrow -> void;
+fn
+get_file_creation_mask() wontthrow -> u32;
+fn
+set_file_creation_mask(u32 mask) wontthrow -> void;
 
-fn make_os_args(const ArrayList<String> &args) throws -> os_args;
+fn
+make_os_args(const ArrayList<String> &args) throws -> os_args;
 
-fn last_system_error_message() throws -> String;
-fn get_last_system_error_number() wontthrow -> i32;
-fn last_system_error_is_missing_file() wontthrow -> bool;
-fn last_system_error_is_permission_denied() wontthrow -> bool;
-fn last_system_error_is_descriptor_quota() wontthrow -> bool;
-fn set_last_system_error(i32 error_number) wontthrow -> void;
+fn
+last_system_error_message() throws -> String;
+fn
+get_last_system_error_number() wontthrow -> i32;
+fn
+last_system_error_is_missing_file() wontthrow -> bool;
+fn
+last_system_error_is_permission_denied() wontthrow -> bool;
+fn
+last_system_error_is_descriptor_quota() wontthrow -> bool;
+fn
+set_last_system_error(i32 error_number) wontthrow -> void;
 
-fn wait_and_monitor_process(process p, bool *was_stopped = nullptr) throws
-    -> i32;
-fn wait_for_child_state_change() wontthrow -> void;
+fn
+wait_and_monitor_process(process p, bool *was_stopped = nullptr) throws -> i32;
+fn
+wait_for_child_state_change() wontthrow -> void;
 
-fn reap_process_quietly(process p) throws -> i32;
+fn
+reap_process_quietly(process p) throws -> i32;
 
 enum class process_state : u8
 {
@@ -535,67 +574,80 @@ enum class process_state : u8
 
 struct process_termination
 {
-  i32 signal_number{0};
+  i32  signal_number{0};
   bool did_dump_core{false};
 };
 
-fn poll_process(process p, i32 &status_out,
-                process_termination *termination_out = nullptr) wontthrow
+fn
+poll_process(process              p,
+             i32                 &status_out,
+             process_termination *termination_out = nullptr) wontthrow
     -> process_state;
 
-fn signal_process(process p, i32 signal_number) wontthrow -> bool;
-fn process_is_running(process p) wontthrow -> bool;
-fn process_group_has_members(process group) wontthrow -> bool;
-fn is_process_signal_supported(i32 signal_number) wontthrow -> bool;
+fn
+signal_process(process p, i32 signal_number) wontthrow -> bool;
+fn
+process_is_running(process p) wontthrow -> bool;
+fn
+process_group_has_members(process group) wontthrow -> bool;
+fn
+is_process_signal_supported(i32 signal_number) wontthrow -> bool;
 
-fn signal_number_from_name(StringView name) throws -> Maybe<i32>;
+fn
+signal_number_from_name(StringView name) throws -> Maybe<i32>;
 
-fn signal_name_from_number(i32 number) throws -> Maybe<String>;
+fn
+signal_name_from_number(i32 number) throws -> Maybe<String>;
 
-fn signal_description_from_number(i32 number) throws -> String;
+fn
+signal_description_from_number(i32 number) throws -> String;
 
-fn signal_names() throws -> const ArrayList<StringView> &;
+fn
+signal_names() throws -> const ArrayList<StringView> &;
 
-fn process_from_pid(i64 pid) wontthrow -> process;
+fn
+process_from_pid(i64 pid) wontthrow -> process;
 
 struct process_entry
 {
-  i64 pid{0};
-  i64 parent_pid{0};
+  i64    pid{0};
+  i64    parent_pid{0};
   String name{heap_allocator()};
   String command_line{heap_allocator()};
-  u64 virtual_kib{0};
-  u64 resident_kib{0};
-  u64 cpu_milliseconds{0};
-  u64 start_token{0};
-  u32 owner_id{0};
-  char state{'?'};
+  u64    virtual_kib{0};
+  u64    resident_kib{0};
+  u64    cpu_milliseconds{0};
+  u64    start_token{0};
+  u32    owner_id{0};
+  char   state{'?'};
 };
 
 static_assert(sizeof(usize) != 8 || sizeof(process_entry) == 168);
 
-fn enumerate_processes(process_detail detail = process_detail::Basic) throws
+fn
+enumerate_processes(process_detail detail = process_detail::Basic) throws
     -> ArrayList<process_entry>;
 
-fn describe_processes(const ArrayList<u32> &pids) throws
+fn
+describe_processes(const ArrayList<u32> &pids) throws
     -> ArrayList<process_entry>;
 
 enum class process_file_use : u8
 {
-  Cwd = 1u << 0u,
-  Root = 1u << 1u,
+  Cwd        = 1u << 0u,
+  Root       = 1u << 1u,
   Executable = 1u << 2u,
-  Mapped = 1u << 3u,
-  File = 1u << 4u,
+  Mapped     = 1u << 3u,
+  File       = 1u << 4u,
 };
 
 struct process_file_query
 {
   StringView path;
-  u64 device_id;
-  u64 file_id;
-  u32 query_position;
-  bool should_match_device;
+  u64        device_id;
+  u64        file_id;
+  u32        query_position;
+  bool       should_match_device;
 };
 
 struct process_file_user
@@ -603,27 +655,29 @@ struct process_file_user
   u32 pid;
   u32 owner_id;
   u32 query_position;
-  u8 use_mask;
+  u8  use_mask;
 };
 
-fn scan_process_file_users(const ArrayList<process_file_query> &queries,
-                           ArrayList<process_file_user> &users,
-                           Allocator scratch) throws -> Maybe<u32>;
-fn process_owner_name(u32 pid, u32 owner_id, Allocator allocator) throws
+fn
+scan_process_file_users(const ArrayList<process_file_query> &queries,
+                        ArrayList<process_file_user>        &users,
+                        Allocator scratch) throws -> Maybe<u32>;
+fn
+process_owner_name(u32 pid, u32 owner_id, Allocator allocator) throws
     -> Maybe<String>;
 
 struct process_open_file
 {
-  String path{heap_allocator()};
-  i64 descriptor_number{-1};
-  u64 size{0};
-  u64 file_id{0};
-  u64 offset{0};
-  u32 mode{0};
+  String           path{heap_allocator()};
+  i64              descriptor_number{-1};
+  u64              size{0};
+  u64              file_id{0};
+  u64              offset{0};
+  u32              mode{0};
   process_file_use use{process_file_use::File};
-  char access{'u'};
-  bool is_deleted{false};
-  bool is_inaccessible{false};
+  char             access{'u'};
+  bool             is_deleted{false};
+  bool             is_inaccessible{false};
 };
 
 enum class process_open_file_detail : u8
@@ -633,26 +687,40 @@ enum class process_open_file_detail : u8
   PathsOnly,
 };
 
-fn has_process_open_file_listing() wontthrow -> bool;
-fn list_process_open_files(
-    i64 pid, Allocator allocator,
+fn
+has_process_open_file_listing() wontthrow -> bool;
+fn
+list_process_open_files(
+    i64                      pid,
+    Allocator                allocator,
     process_open_file_detail detail = process_open_file_detail::Basic) throws
     -> ArrayList<process_open_file>;
 
-fn make_directory(StringView path, u32 mode) wontthrow -> bool;
-fn set_file_mode(StringView path, u32 mode) wontthrow -> bool;
+fn
+make_directory(StringView path, u32 mode) wontthrow -> bool;
+fn
+set_file_mode(StringView path, u32 mode) wontthrow -> bool;
 enum class symlink_follow_mode : u8
 {
   Follow,
   NoFollow,
 };
-fn set_file_owner(StringView path, i64 owner_id, i64 group_id,
-                  symlink_follow_mode follow_mode) wontthrow -> bool;
-fn create_hard_link(StringView target, StringView link_path) wontthrow -> bool;
-fn make_fifo(StringView path, u32 mode) wontthrow -> bool;
-fn make_device_node(StringView path, u32 mode, u32 major_number,
-                    u32 minor_number) wontthrow -> bool;
-fn touch_file_times(StringView path) wontthrow -> bool;
+fn
+set_file_owner(StringView          path,
+               i64                 owner_id,
+               i64                 group_id,
+               symlink_follow_mode follow_mode) wontthrow -> bool;
+fn
+create_hard_link(StringView target, StringView link_path) wontthrow -> bool;
+fn
+make_fifo(StringView path, u32 mode) wontthrow -> bool;
+fn
+make_device_node(StringView path,
+                 u32        mode,
+                 u32        major_number,
+                 u32        minor_number) wontthrow -> bool;
+fn
+touch_file_times(StringView path) wontthrow -> bool;
 struct file_time_values
 {
   i64 access_time{0};
@@ -661,10 +729,13 @@ struct file_time_values
   u32 modification_nanoseconds{0};
 };
 
-fn set_file_times(StringView path, const file_time_values &times) wontthrow
+fn
+set_file_times(StringView path, const file_time_values &times) wontthrow
     -> bool;
-fn remove_directory(StringView path) wontthrow -> bool;
-fn remove_file(StringView path) wontthrow -> bool;
+fn
+remove_directory(StringView path) wontthrow -> bool;
+fn
+remove_file(StringView path) wontthrow -> bool;
 
 struct file_status;
 
@@ -684,10 +755,10 @@ enum class tree_removal_choice : u8
 
 struct tree_removal_entry
 {
-  StringView path;
+  StringView         path;
   const file_status *status{nullptr};
-  bool is_write_protected{false};
-  bool is_empty_directory{false};
+  bool               is_write_protected{false};
+  bool               is_empty_directory{false};
 };
 
 struct tree_removal_hooks
@@ -695,34 +766,40 @@ struct tree_removal_hooks
   void *context{nullptr};
   tree_removal_choice (*should_enter_directory)(
       void *context, const tree_removal_entry &entry){nullptr};
-  tree_removal_choice (*should_remove)(void *context,
+  tree_removal_choice (*should_remove)(void                     *context,
                                        const tree_removal_entry &entry){
       nullptr};
-  void (*report_removed)(void *context,
+  void (*report_removed)(void                     *context,
                          const tree_removal_entry &entry){nullptr};
-  void (*report_failure)(void *context, tree_removal_failure failure,
-                         StringView path, StringView reason){nullptr};
+  void (*report_failure)(void                *context,
+                         tree_removal_failure failure,
+                         StringView           path,
+                         StringView           reason){nullptr};
 };
 
-fn remove_tree(StringView path, Allocator allocator,
-               const tree_removal_hooks *hooks = nullptr) throws -> bool;
-fn rename_path(StringView from, StringView to) wontthrow -> bool;
-fn create_symlink(StringView target, StringView link_path) wontthrow -> bool;
-fn read_symlink(StringView path, Allocator allocator) wontthrow
-    -> Maybe<String>;
+fn
+remove_tree(StringView                path,
+            Allocator                 allocator,
+            const tree_removal_hooks *hooks = nullptr) throws -> bool;
+fn
+rename_path(StringView from, StringView to) wontthrow -> bool;
+fn
+create_symlink(StringView target, StringView link_path) wontthrow -> bool;
+fn
+read_symlink(StringView path, Allocator allocator) wontthrow -> Maybe<String>;
 
 struct filesystem_status
 {
-  u64 block_byte_count{0};
-  u64 fundamental_block_byte_count{0};
-  u64 total_blocks{0};
-  u64 free_blocks{0};
-  u64 available_blocks{0};
-  u64 total_files{0};
-  u64 free_files{0};
-  u64 name_max{0};
-  u64 filesystem_id{0};
-  u64 type_id{0};
+  u64  block_byte_count{0};
+  u64  fundamental_block_byte_count{0};
+  u64  total_blocks{0};
+  u64  free_blocks{0};
+  u64  available_blocks{0};
+  u64  total_files{0};
+  u64  free_files{0};
+  u64  name_max{0};
+  u64  filesystem_id{0};
+  u64  type_id{0};
   char type_name[16]{};
 };
 
@@ -736,9 +813,10 @@ struct mounted_filesystem
   String volume_uuid{heap_allocator()};
 };
 
-fn stat_filesystem(StringView path, filesystem_status &status) wontthrow
-    -> bool;
-fn mounted_filesystems() throws -> ArrayList<mounted_filesystem>;
+fn
+stat_filesystem(StringView path, filesystem_status &status) wontthrow -> bool;
+fn
+mounted_filesystems() throws -> ArrayList<mounted_filesystem>;
 
 struct filesystem_error_counters
 {
@@ -760,11 +838,12 @@ struct filesystem_integrity_evidence
 {
   filesystem_integrity_kind kind;
   filesystem_error_counters counters{};
-  u64 recorded_error_count{0};
-  bool is_dirty{false};
+  u64                       recorded_error_count{0};
+  bool                      is_dirty{false};
 };
 
-fn read_filesystem_integrity_evidence(StringView path) throws
+fn
+read_filesystem_integrity_evidence(StringView path) throws
     -> Maybe<filesystem_integrity_evidence>;
 
 enum class filesystem_verification_result : u8
@@ -777,10 +856,12 @@ enum class filesystem_verification_result : u8
   Unavailable,
 };
 
-fn verify_filesystem_integrity(StringView path, u64 timeout_nanoseconds) throws
+fn
+verify_filesystem_integrity(StringView path, u64 timeout_nanoseconds) throws
     -> filesystem_verification_result;
 
-fn sync_filesystems() wontthrow -> bool;
+fn
+sync_filesystems() wontthrow -> bool;
 
 enum class sync_mode : u8
 {
@@ -788,26 +869,27 @@ enum class sync_mode : u8
   DataOnly,
 };
 
-fn sync_path(StringView path, sync_mode mode) wontthrow -> bool;
+fn
+sync_path(StringView path, sync_mode mode) wontthrow -> bool;
 
 enum class memory_status_field : u32
 {
-  Total = 1u << 0,
-  Available = 1u << 1,
-  Free = 1u << 2,
-  SwapTotal = 1u << 3,
-  SwapFree = 1u << 4,
-  Buffers = 1u << 5,
-  Cached = 1u << 6,
+  Total           = 1u << 0,
+  Available       = 1u << 1,
+  Free            = 1u << 2,
+  SwapTotal       = 1u << 3,
+  SwapFree        = 1u << 4,
+  Buffers         = 1u << 5,
+  Cached          = 1u << 6,
   ReclaimableSlab = 1u << 7,
-  Shared = 1u << 8,
-  Slab = 1u << 9,
-  Active = 1u << 10,
-  Inactive = 1u << 11,
-  CommitLimit = 1u << 12,
-  Committed = 1u << 13,
-  HugePagesTotal = 1u << 14,
-  HugePagesFree = 1u << 15,
+  Shared          = 1u << 8,
+  Slab            = 1u << 9,
+  Active          = 1u << 10,
+  Inactive        = 1u << 11,
+  CommitLimit     = 1u << 12,
+  Committed       = 1u << 13,
+  HugePagesTotal  = 1u << 14,
+  HugePagesFree   = 1u << 15,
 };
 
 struct memory_status
@@ -830,156 +912,163 @@ struct memory_status
   u64 huge_page_free_count{0};
   u32 available_fields{0};
 
-  pure fn has_field(memory_status_field field) const wontthrow -> bool
+  pure fn
+  has_field(memory_status_field field) const wontthrow -> bool
   {
     return (available_fields & static_cast<u32>(field)) != 0;
   }
 };
 
-fn read_memory_status(memory_status &status) wontthrow -> bool;
+fn
+read_memory_status(memory_status &status) wontthrow -> bool;
 
 struct swap_status
 {
-  u64 total_byte_count{0};
-  u64 used_byte_count{0};
-  u64 free_byte_count{0};
-  u64 input_byte_count{0};
-  u64 output_byte_count{0};
+  u64  total_byte_count{0};
+  u64  used_byte_count{0};
+  u64  free_byte_count{0};
+  u64  input_byte_count{0};
+  u64  output_byte_count{0};
   bool has_activity{false};
   bool has_encryption_state{false};
   bool is_encrypted{false};
 };
 
-fn read_swap_status(swap_status &status) wontthrow -> bool;
+fn
+read_swap_status(swap_status &status) wontthrow -> bool;
 
 struct process_io_status
 {
-  u64 read_byte_count{0};
-  u64 written_byte_count{0};
-  u64 read_operation_count{0};
-  u64 write_operation_count{0};
+  u64  read_byte_count{0};
+  u64  written_byte_count{0};
+  u64  read_operation_count{0};
+  u64  write_operation_count{0};
   bool has_operation_counts{false};
 };
 
-fn read_process_io_status(i64 pid, process_io_status &status) wontthrow -> bool;
-fn read_process_io_statuses(const ArrayList<i64> &process_ids,
-                            ArrayList<process_io_status> &statuses,
-                            ArrayList<u8> &availability) throws -> void;
+fn
+read_process_io_status(i64 pid, process_io_status &status) wontthrow -> bool;
+fn
+read_process_io_statuses(const ArrayList<i64>         &process_ids,
+                         ArrayList<process_io_status> &statuses,
+                         ArrayList<u8> &availability) throws -> void;
 
 enum class system_activity_field : u32
 {
-  Cpu = 1u << 0,
-  CpuWait = 1u << 1,
-  CpuStolen = 1u << 2,
-  PageInput = 1u << 3,
-  PageOutput = 1u << 4,
-  Faults = 1u << 5,
-  MajorFaults = 1u << 6,
-  Runnable = 1u << 7,
-  Blocked = 1u << 8,
-  CpuSomeStall = 1u << 9,
-  CpuFullStall = 1u << 10,
-  MemorySomeStall = 1u << 11,
-  MemoryFullStall = 1u << 12,
-  IoSomeStall = 1u << 13,
-  IoFullStall = 1u << 14,
-  PageScan = 1u << 15,
-  PageSteal = 1u << 16,
-  DirectReclaim = 1u << 17,
-  CompactionStall = 1u << 18,
-  DirtyPages = 1u << 19,
-  WritebackPages = 1u << 20,
-  OomKills = 1u << 21,
-  Interrupts = 1u << 22,
-  ContextSwitches = 1u << 23,
-  ProcessCreations = 1u << 24,
-  SoftInterrupts = 1u << 25,
-  NamespaceCount = 1u << 26,
+  Cpu                   = 1u << 0,
+  CpuWait               = 1u << 1,
+  CpuStolen             = 1u << 2,
+  PageInput             = 1u << 3,
+  PageOutput            = 1u << 4,
+  Faults                = 1u << 5,
+  MajorFaults           = 1u << 6,
+  Runnable              = 1u << 7,
+  Blocked               = 1u << 8,
+  CpuSomeStall          = 1u << 9,
+  CpuFullStall          = 1u << 10,
+  MemorySomeStall       = 1u << 11,
+  MemoryFullStall       = 1u << 12,
+  IoSomeStall           = 1u << 13,
+  IoFullStall           = 1u << 14,
+  PageScan              = 1u << 15,
+  PageSteal             = 1u << 16,
+  DirectReclaim         = 1u << 17,
+  CompactionStall       = 1u << 18,
+  DirtyPages            = 1u << 19,
+  WritebackPages        = 1u << 20,
+  OomKills              = 1u << 21,
+  Interrupts            = 1u << 22,
+  ContextSwitches       = 1u << 23,
+  ProcessCreations      = 1u << 24,
+  SoftInterrupts        = 1u << 25,
+  NamespaceCount        = 1u << 26,
   CgroupMembershipCount = 1u << 27,
 };
 
 struct system_activity_status
 {
-  u64 cpu_user_units{0};
-  u64 cpu_system_units{0};
-  u64 cpu_idle_units{0};
-  u64 cpu_wait_units{0};
-  u64 cpu_stolen_units{0};
-  u64 page_input_byte_count{0};
-  u64 page_output_byte_count{0};
-  u64 page_fault_count{0};
-  u64 major_page_fault_count{0};
-  u64 runnable_process_count{0};
-  u64 blocked_process_count{0};
-  u64 cpu_some_stall_microseconds{0};
-  u64 cpu_full_stall_microseconds{0};
-  u64 memory_some_stall_microseconds{0};
-  u64 memory_full_stall_microseconds{0};
-  u64 io_some_stall_microseconds{0};
-  u64 io_full_stall_microseconds{0};
-  u64 page_scan_count{0};
-  u64 page_steal_count{0};
-  u64 direct_reclaim_count{0};
-  u64 compaction_stall_count{0};
-  u64 dirty_page_count{0};
-  u64 writeback_page_count{0};
-  u64 oom_kill_count{0};
-  u64 interrupt_count{0};
-  u64 context_switch_count{0};
-  u64 process_creation_count{0};
-  u64 soft_interrupt_count{0};
-  u64 namespace_count{0};
-  u64 cgroup_membership_count{0};
-  u32 available_fields{0};
+  u64  cpu_user_units{0};
+  u64  cpu_system_units{0};
+  u64  cpu_idle_units{0};
+  u64  cpu_wait_units{0};
+  u64  cpu_stolen_units{0};
+  u64  page_input_byte_count{0};
+  u64  page_output_byte_count{0};
+  u64  page_fault_count{0};
+  u64  major_page_fault_count{0};
+  u64  runnable_process_count{0};
+  u64  blocked_process_count{0};
+  u64  cpu_some_stall_microseconds{0};
+  u64  cpu_full_stall_microseconds{0};
+  u64  memory_some_stall_microseconds{0};
+  u64  memory_full_stall_microseconds{0};
+  u64  io_some_stall_microseconds{0};
+  u64  io_full_stall_microseconds{0};
+  u64  page_scan_count{0};
+  u64  page_steal_count{0};
+  u64  direct_reclaim_count{0};
+  u64  compaction_stall_count{0};
+  u64  dirty_page_count{0};
+  u64  writeback_page_count{0};
+  u64  oom_kill_count{0};
+  u64  interrupt_count{0};
+  u64  context_switch_count{0};
+  u64  process_creation_count{0};
+  u64  soft_interrupt_count{0};
+  u64  namespace_count{0};
+  u64  cgroup_membership_count{0};
+  u32  available_fields{0};
   bool has_isolation_probes{false};
 
-  pure fn has_field(system_activity_field field) const wontthrow -> bool
+  pure fn
+  has_field(system_activity_field field) const wontthrow -> bool
   {
     return (available_fields & static_cast<u32>(field)) != 0;
   }
 };
 
-fn read_system_activity_status(system_activity_status &status) wontthrow
-    -> bool;
+fn
+read_system_activity_status(system_activity_status &status) wontthrow -> bool;
 
 enum class disk_io_field : u32
 {
-  ReadBytes = 1u << 0,
-  WrittenBytes = 1u << 1,
-  ReadOperations = 1u << 2,
-  WriteOperations = 1u << 3,
-  ReadTime = 1u << 4,
-  WriteTime = 1u << 5,
-  BusyTime = 1u << 6,
-  IdleTime = 1u << 7,
+  ReadBytes        = 1u << 0,
+  WrittenBytes     = 1u << 1,
+  ReadOperations   = 1u << 2,
+  WriteOperations  = 1u << 3,
+  ReadTime         = 1u << 4,
+  WriteTime        = 1u << 5,
+  BusyTime         = 1u << 6,
+  IdleTime         = 1u << 7,
   WeightedBusyTime = 1u << 8,
-  QueueDepth = 1u << 9,
-  ReadErrors = 1u << 10,
-  WriteErrors = 1u << 11,
-  ReadRetries = 1u << 12,
-  WriteRetries = 1u << 13,
+  QueueDepth       = 1u << 9,
+  ReadErrors       = 1u << 10,
+  WriteErrors      = 1u << 11,
+  ReadRetries      = 1u << 12,
+  WriteRetries     = 1u << 13,
 };
 
 struct disk_io_status
 {
   String name{heap_allocator()};
-  u64 read_byte_count{0};
-  u64 written_byte_count{0};
-  u64 read_operation_count{0};
-  u64 write_operation_count{0};
-  u64 read_time_nanoseconds{0};
-  u64 write_time_nanoseconds{0};
-  u64 busy_time_nanoseconds{0};
-  u64 idle_time_nanoseconds{0};
-  u64 weighted_busy_time_nanoseconds{0};
-  u64 queue_depth{0};
-  u64 read_error_count{0};
-  u64 write_error_count{0};
-  u64 read_retry_count{0};
-  u64 write_retry_count{0};
-  u32 available_fields{0};
+  u64    read_byte_count{0};
+  u64    written_byte_count{0};
+  u64    read_operation_count{0};
+  u64    write_operation_count{0};
+  u64    read_time_nanoseconds{0};
+  u64    write_time_nanoseconds{0};
+  u64    busy_time_nanoseconds{0};
+  u64    idle_time_nanoseconds{0};
+  u64    weighted_busy_time_nanoseconds{0};
+  u64    queue_depth{0};
+  u64    read_error_count{0};
+  u64    write_error_count{0};
+  u64    read_retry_count{0};
+  u64    write_retry_count{0};
+  u32    available_fields{0};
 
-  pure fn has_field(disk_io_field field) const wontthrow -> bool
+  pure fn
+  has_field(disk_io_field field) const wontthrow -> bool
   {
     return (available_fields & static_cast<u32>(field)) != 0;
   }
@@ -988,14 +1077,17 @@ struct disk_io_status
 struct disk_io_snapshot
 {
   ArrayList<disk_io_status> disks{heap_allocator()};
-  u64 sampled_at_nanoseconds{0};
+  u64                       sampled_at_nanoseconds{0};
 };
 
-fn read_disk_io_snapshot(Allocator allocator) throws -> disk_io_snapshot;
+fn
+read_disk_io_snapshot(Allocator allocator) throws -> disk_io_snapshot;
 
-fn system_uptime_seconds() wontthrow -> Maybe<u64>;
+fn
+system_uptime_seconds() wontthrow -> Maybe<u64>;
 
-fn processor_model_name(Allocator allocator) throws -> Maybe<String>;
+fn
+processor_model_name(Allocator allocator) throws -> Maybe<String>;
 
 struct u128_division_result
 {
@@ -1003,30 +1095,33 @@ struct u128_division_result
   u64 remainder{0};
 };
 
-fn divide_u128_by_u64(u64 high, u64 low, u64 divisor) wontthrow
+fn
+divide_u128_by_u64(u64 high, u64 low, u64 divisor) wontthrow
     -> u128_division_result;
 
-fn current_executable_path() wontthrow -> Maybe<String>;
+fn
+current_executable_path() wontthrow -> Maybe<String>;
 
-fn crc32c_update(u32 crc, const void *data, usize length) wontthrow -> u32;
+fn
+crc32c_update(u32 crc, const void *data, usize length) wontthrow -> u32;
 
 struct file_status
 {
-  u64 device_id{0};
-  u64 special_device_id{0};
-  u64 file_id{0};
-  u64 link_count{0};
-  u64 size{0};
-  i64 access_time{0};
-  i64 modification_time{0};
-  i64 change_time{0};
-  u64 blocks{0};
-  u32 mode{0};
-  u32 owner_id{0};
-  u32 group_id{0};
-  u32 access_nanoseconds{0};
-  u32 modification_nanoseconds{0};
-  u32 change_nanoseconds{0};
+  u64  device_id{0};
+  u64  special_device_id{0};
+  u64  file_id{0};
+  u64  link_count{0};
+  u64  size{0};
+  i64  access_time{0};
+  i64  modification_time{0};
+  i64  change_time{0};
+  u64  blocks{0};
+  u32  mode{0};
+  u32  owner_id{0};
+  u32  group_id{0};
+  u32  access_nanoseconds{0};
+  u32  modification_nanoseconds{0};
+  u32  change_nanoseconds{0};
   bool has_file_identity{false};
 };
 
@@ -1035,19 +1130,19 @@ static_assert(sizeof(usize) != 8 || sizeof(file_status) == 104);
 struct directory_status_entry
 {
   Path::DirectoryChild child;
-  file_status status{};
-  bool has_status{false};
+  file_status          status{};
+  bool                 has_status{false};
 };
 
 struct directory_batch_listing
 {
   Maybe<ArrayList<Path::DirectoryChild>> children;
-  Maybe<descriptor> directory;
+  Maybe<descriptor>                      directory;
 };
 
-pure constexpr fn file_status_matches(const file_status &expected,
-                                      const file_status &actual) wontthrow
-    -> bool
+pure constexpr fn
+file_status_matches(const file_status &expected,
+                    const file_status &actual) wontthrow -> bool
 {
   if (expected.has_file_identity && actual.has_file_identity &&
       (expected.device_id != actual.device_id ||
@@ -1063,9 +1158,12 @@ pure constexpr fn file_status_matches(const file_status &expected,
          expected.change_nanoseconds == actual.change_nanoseconds;
 }
 
-fn stat_path(StringView path, file_status &status) wontthrow -> bool;
-fn stat_path_following(StringView path, file_status &status) wontthrow -> bool;
-fn stat_descriptor(os::descriptor fd, file_status &status) wontthrow -> bool;
+fn
+stat_path(StringView path, file_status &status) wontthrow -> bool;
+fn
+stat_path_following(StringView path, file_status &status) wontthrow -> bool;
+fn
+stat_descriptor(os::descriptor fd, file_status &status) wontthrow -> bool;
 
 enum class process_file_match_scope : u8
 {
@@ -1073,21 +1171,30 @@ enum class process_file_match_scope : u8
   Filesystem,
 };
 
-fn process_file_query_is_supported(const file_status &status,
-                                   process_file_match_scope scope) wontthrow
+fn
+process_file_query_is_supported(const file_status       &status,
+                                process_file_match_scope scope) wontthrow
     -> bool;
 
-fn format_mode_string(u32 mode) throws -> String;
+fn
+format_mode_string(u32 mode) throws -> String;
 
-fn file_type_letter(u32 mode) wontthrow -> char;
+fn
+file_type_letter(u32 mode) wontthrow -> char;
 
-pure fn device_major(u64 device_id) wontthrow -> u32;
-pure fn device_minor(u64 device_id) wontthrow -> u32;
+pure fn
+device_major(u64 device_id) wontthrow -> u32;
+pure fn
+device_minor(u64 device_id) wontthrow -> u32;
 
-fn uid_to_username(u32 uid) throws -> Maybe<String>;
-fn gid_to_groupname(u32 gid) throws -> Maybe<String>;
-fn username_to_uid(StringView username) throws -> Maybe<u32>;
-fn groupname_to_gid(StringView groupname) throws -> Maybe<u32>;
+fn
+uid_to_username(u32 uid) throws -> Maybe<String>;
+fn
+gid_to_groupname(u32 gid) throws -> Maybe<String>;
+fn
+username_to_uid(StringView username) throws -> Maybe<u32>;
+fn
+groupname_to_gid(StringView groupname) throws -> Maybe<u32>;
 
 enum class system_configuration_key : u8
 {
@@ -1282,7 +1389,7 @@ enum class configuration_query_status : u8
 struct numeric_configuration_result
 {
   configuration_query_status status{configuration_query_status::Undefined};
-  i64 value{0};
+  i64                        value{0};
 };
 
 class StringConfigurationResult
@@ -1291,31 +1398,38 @@ public:
   explicit StringConfigurationResult(Allocator allocator) : value(allocator) {}
 
   configuration_query_status status{configuration_query_status::Undefined};
-  String value;
+  String                     value;
 };
 
-fn query_system_configuration(system_configuration_key key) wontthrow
+fn
+query_system_configuration(system_configuration_key key) wontthrow
     -> numeric_configuration_result;
-fn query_path_configuration(StringView path,
-                            path_configuration_key key) wontthrow
+fn
+query_path_configuration(StringView path, path_configuration_key key) wontthrow
     -> numeric_configuration_result;
-fn query_string_configuration(string_configuration_key key,
-                              Allocator allocator) throws
+fn
+query_string_configuration(string_configuration_key key,
+                           Allocator                allocator) throws
     -> StringConfigurationResult;
 
-fn system_configuration(system_configuration_key key) wontthrow -> Maybe<i64>;
-fn path_configuration(StringView path, path_configuration_key key) wontthrow
+fn
+system_configuration(system_configuration_key key) wontthrow -> Maybe<i64>;
+fn
+path_configuration(StringView path, path_configuration_key key) wontthrow
     -> Maybe<i64>;
-fn path_component_length(StringView component) wontthrow -> Maybe<usize>;
+fn
+path_component_length(StringView component) wontthrow -> Maybe<usize>;
 
-fn sleep_for_seconds(double seconds) wontthrow -> void;
+fn
+sleep_for_seconds(double seconds) wontthrow -> void;
 
 extern const ProgramSuffixList PROGRAM_SUFFIXES;
 
-fn write_fd(os::descriptor fd, const opaque *buf, usize size) wontthrow
+fn
+write_fd(os::descriptor fd, const opaque *buf, usize size) wontthrow
     -> Maybe<usize>;
-inline fn write_all(os::descriptor fd, const opaque *buf, usize size) wontthrow
-    -> bool
+inline fn
+write_all(os::descriptor fd, const opaque *buf, usize size) wontthrow -> bool
 {
   usize written_byte_count = 0;
 
@@ -1332,21 +1446,29 @@ inline fn write_all(os::descriptor fd, const opaque *buf, usize size) wontthrow
 
   return true;
 }
-fn write_to_numbered_fd(i64 fd_number, const opaque *buf, usize size) wontthrow
+fn
+write_to_numbered_fd(i64 fd_number, const opaque *buf, usize size) wontthrow
     -> Maybe<usize>;
-fn read_fd(os::descriptor fd, opaque *buf, usize size) wontthrow
-    -> Maybe<usize>;
-fn descriptor_is_seekable(os::descriptor fd) wontthrow -> bool;
-fn regular_descriptor_file_size(os::descriptor fd) wontthrow -> Maybe<u64>;
-fn rewind_descriptor(os::descriptor fd, usize byte_count) wontthrow -> bool;
-fn seek_descriptor_from_start(os::descriptor fd, u64 byte_offset) wontthrow
+fn
+read_fd(os::descriptor fd, opaque *buf, usize size) wontthrow -> Maybe<usize>;
+fn
+descriptor_is_seekable(os::descriptor fd) wontthrow -> bool;
+fn
+regular_descriptor_file_size(os::descriptor fd) wontthrow -> Maybe<u64>;
+fn
+rewind_descriptor(os::descriptor fd, usize byte_count) wontthrow -> bool;
+fn
+seek_descriptor_from_start(os::descriptor fd, u64 byte_offset) wontthrow
     -> bool;
-fn read_fd_to_string(os::descriptor fd, Allocator allocator) throws
+fn
+read_fd_to_string(os::descriptor fd, Allocator allocator) throws
     -> Maybe<String>;
 
-fn wait_for_fd_readable(os::descriptor fd, i64 timeout_nanos) wontthrow -> i32;
+fn
+wait_for_fd_readable(os::descriptor fd, i64 timeout_nanos) wontthrow -> i32;
 
-fn close_fd(os::descriptor fd) wontthrow -> bool;
+fn
+close_fd(os::descriptor fd) wontthrow -> bool;
 
 class DirectoryReference
 {
@@ -1355,11 +1477,13 @@ public:
   explicit DirectoryReference(descriptor descriptor) : m_descriptor(descriptor)
   {}
   DirectoryReference(const DirectoryReference &) = delete;
-  DirectoryReference &operator=(const DirectoryReference &) = delete;
+  DirectoryReference &
+  operator=(const DirectoryReference &) = delete;
   DirectoryReference(DirectoryReference &&other) wontthrow
       : m_descriptor(other.take())
   {}
-  DirectoryReference &operator=(DirectoryReference &&other) wontthrow
+  DirectoryReference &
+  operator=(DirectoryReference &&other) wontthrow
   {
     if (this == &other) return *this;
     if (is_valid()) close_fd(m_descriptor);
@@ -1372,15 +1496,21 @@ public:
     if (is_valid()) close_fd(m_descriptor);
   }
 
-  pure fn is_valid() const wontthrow -> bool
+  pure fn
+  is_valid() const wontthrow -> bool
   {
     return m_descriptor != KOSH_INVALID_FD;
   }
-  pure fn get() const wontthrow -> descriptor { return m_descriptor; }
-  fn take() wontthrow -> descriptor
+  pure fn
+  get() const wontthrow -> descriptor
+  {
+    return m_descriptor;
+  }
+  fn
+  take() wontthrow -> descriptor
   {
     let const result = m_descriptor;
-    m_descriptor = KOSH_INVALID_FD;
+    m_descriptor     = KOSH_INVALID_FD;
 
     return result;
   }
@@ -1394,58 +1524,76 @@ class FileWatcher
 public:
   FileWatcher() wontthrow;
   FileWatcher(const FileWatcher &) = delete;
-  FileWatcher &operator=(const FileWatcher &) = delete;
+  FileWatcher &
+  operator=(const FileWatcher &) = delete;
   ~FileWatcher();
 
-  fn watch(StringView path) wontthrow -> void;
-  fn wait(f64 timeout_seconds) wontthrow -> void;
+  fn
+  watch(StringView path) wontthrow -> void;
+  fn
+  wait(f64 timeout_seconds) wontthrow -> void;
 
 private:
   maybeunused descriptor m_descriptor{KOSH_INVALID_FD};
-  ArrayList<descriptor> m_watched_descriptors{heap_allocator()};
-  ArrayList<String> m_watched_paths{heap_allocator()};
+  ArrayList<descriptor>  m_watched_descriptors{heap_allocator()};
+  ArrayList<String>      m_watched_paths{heap_allocator()};
 };
 
-pure fn get_descriptor_epoch() wontthrow -> u64;
-fn note_descriptor_rebound() wontthrow -> void;
+pure fn
+get_descriptor_epoch() wontthrow -> u64;
+fn
+note_descriptor_rebound() wontthrow -> void;
 
-fn redirect_stdout(os::descriptor target) wontthrow -> os::descriptor;
-fn restore_stdout(os::descriptor saved) wontthrow -> void;
+fn
+redirect_stdout(os::descriptor target) wontthrow -> os::descriptor;
+fn
+restore_stdout(os::descriptor saved) wontthrow -> void;
 
 struct saved_descriptor
 {
-  i32 shell_fd{-1};
+  i32        shell_fd{-1};
   descriptor original{KOSH_INVALID_FD};
   descriptor saved{KOSH_INVALID_FD};
-  bool was_open{false};
-  bool is_dup2_ok{true};
+  bool       was_open{false};
+  bool       is_dup2_ok{true};
 };
 
-fn save_and_replace_descriptor(i32 shell_fd, os::descriptor target) wontthrow
+fn
+save_and_replace_descriptor(i32 shell_fd, os::descriptor target) wontthrow
     -> saved_descriptor;
-fn save_descriptor(i32 shell_fd) wontthrow -> saved_descriptor;
+fn
+save_descriptor(i32 shell_fd) wontthrow -> saved_descriptor;
 
-fn save_and_replace_descriptor_out_of_reach(i32 shell_fd,
-                                            os::descriptor target) wontthrow
+fn
+save_and_replace_descriptor_out_of_reach(i32            shell_fd,
+                                         os::descriptor target) wontthrow
     -> saved_descriptor;
-fn save_descriptor_out_of_reach(i32 shell_fd) wontthrow -> saved_descriptor;
-fn restore_descriptor(const saved_descriptor &saved) wontthrow -> void;
+fn
+save_descriptor_out_of_reach(i32 shell_fd) wontthrow -> saved_descriptor;
+fn
+restore_descriptor(const saved_descriptor &saved) wontthrow -> void;
 
-fn descriptor_for_shell_fd(i32 shell_fd) wontthrow -> os::descriptor;
+fn
+descriptor_for_shell_fd(i32 shell_fd) wontthrow -> os::descriptor;
 
-fn duplicate_shell_fd(i32 shell_fd) wontthrow -> os::descriptor;
+fn
+duplicate_shell_fd(i32 shell_fd) wontthrow -> os::descriptor;
 
-fn move_descriptor_to_free_shell_fd(os::descriptor source,
-                                    i32 floor_fd) wontthrow -> i32;
-fn descriptors_refer_to_same_file(os::descriptor first,
-                                  os::descriptor second) wontthrow -> bool;
+fn
+move_descriptor_to_free_shell_fd(os::descriptor source, i32 floor_fd) wontthrow
+    -> i32;
+fn
+descriptors_refer_to_same_file(os::descriptor first,
+                               os::descriptor second) wontthrow -> bool;
 
-fn descriptor_is_shell_fd(os::descriptor fd, i32 shell_fd) wontthrow -> bool;
+fn
+descriptor_is_shell_fd(os::descriptor fd, i32 shell_fd) wontthrow -> bool;
 
-fn collate_compare(const String &left, const String &right) wontthrow -> int;
+fn
+collate_compare(const String &left, const String &right) wontthrow -> int;
 
-fn code_point_is_in_class(StringView class_name, u32 code_point) wontthrow
-    -> bool;
+fn
+code_point_is_in_class(StringView class_name, u32 code_point) wontthrow -> bool;
 
 class RegexUtf8Scope
 {
@@ -1454,17 +1602,22 @@ public:
   ~RegexUtf8Scope();
 
   RegexUtf8Scope(const RegexUtf8Scope &) = delete;
-  fn operator=(const RegexUtf8Scope &)->RegexUtf8Scope & = delete;
+  fn
+  operator=(const RegexUtf8Scope &)
+      ->RegexUtf8Scope & = delete;
 
 private:
   maybeunused opaque *m_previous{nullptr};
-  maybeunused bool m_is_active{false};
+  maybeunused bool    m_is_active{false};
 };
 
-fn code_point_to_upper(u32 code_point) wontthrow -> u32;
-fn code_point_to_lower(u32 code_point) wontthrow -> u32;
+fn
+code_point_to_upper(u32 code_point) wontthrow -> u32;
+fn
+code_point_to_lower(u32 code_point) wontthrow -> u32;
 
-fn locale_is_available(StringView locale_name) wontthrow -> bool;
+fn
+locale_is_available(StringView locale_name) wontthrow -> bool;
 
 class NumericLocaleScope
 {
@@ -1484,16 +1637,24 @@ public:
   }
 
   NumericLocaleScope(const NumericLocaleScope &) = delete;
-  fn operator=(const NumericLocaleScope &)->NumericLocaleScope & = delete;
+  fn
+  operator=(const NumericLocaleScope &)
+      ->NumericLocaleScope & = delete;
 
-  pure fn is_active() const wontthrow -> bool { return m_is_active; }
+  pure fn
+  is_active() const wontthrow -> bool
+  {
+    return m_is_active;
+  }
 
 private:
-  fn activate(StringView locale_name, bool is_grouping) wontthrow -> void;
-  fn deactivate() wontthrow -> void;
+  fn
+  activate(StringView locale_name, bool is_grouping) wontthrow -> void;
+  fn
+  deactivate() wontthrow -> void;
 
   maybeunused opaque *m_previous{nullptr};
-  bool m_is_active{false};
+  bool                m_is_active{false};
 };
 
 struct regex_span
@@ -1524,8 +1685,8 @@ enum class regex_start_position : u8
 
 struct regex_execution_options
 {
-  StringView subject{};
-  Allocator scratch;
+  StringView           subject{};
+  Allocator            scratch;
   regex_start_position start_position{regex_start_position::Beginning};
 };
 
@@ -1535,75 +1696,118 @@ struct regex_execution_report
       : spans(allocator), error_message(allocator)
   {}
 
-  regex_match_result result{regex_match_result::NoMatch};
+  regex_match_result    result{regex_match_result::NoMatch};
   ArrayList<regex_span> spans;
-  String error_message;
+  String                error_message;
 };
 
-fn compile_regex(StringView pattern, case_sensitivity sensitivity) throws
+fn
+compile_regex(StringView pattern, case_sensitivity sensitivity) throws
     -> Maybe<compiled_regex>;
-fn compile_basic_regex(StringView pattern, case_sensitivity sensitivity) throws
+fn
+compile_basic_regex(StringView pattern, case_sensitivity sensitivity) throws
     -> Maybe<compiled_regex>;
 
-fn execute_regex(compiled_regex &compiled,
-                 const regex_execution_options &options) throws
+fn
+execute_regex(compiled_regex                &compiled,
+              const regex_execution_options &options) throws
     -> regex_execution_report;
 
-fn free_regex(compiled_regex &compiled) wontthrow -> void;
+fn
+free_regex(compiled_regex &compiled) wontthrow -> void;
 
-fn regex_matches(compiled_regex &compiled, StringView subject) throws -> bool;
-fn regex_matches_null_terminated(compiled_regex &compiled,
-                                 StringView subject) throws -> bool;
+fn
+regex_matches(compiled_regex &compiled, StringView subject) throws -> bool;
+fn
+regex_matches_null_terminated(compiled_regex &compiled,
+                              StringView      subject) throws -> bool;
 
-pure fn path_is_absolute(StringView path) wontthrow -> bool;
-pure fn path_is_drive_relative(StringView path) wontthrow -> bool;
-fn resolve_drive_relative_path(StringView path) throws -> Maybe<Path>;
-fn temp_directory_path() throws -> String;
-fn set_path_compatibility(bool should_map_dev_null,
-                          bool should_map_slash_tmp) wontthrow -> void;
+pure fn
+path_is_absolute(StringView path) wontthrow -> bool;
+pure fn
+path_is_drive_relative(StringView path) wontthrow -> bool;
+fn
+resolve_drive_relative_path(StringView path) throws -> Maybe<Path>;
+fn
+temp_directory_path() throws -> String;
+fn
+set_path_compatibility(bool should_map_dev_null,
+                       bool should_map_slash_tmp) wontthrow -> void;
 
-cold fn path_exists(StringView path) wontthrow -> bool;
-cold fn path_is_directory(StringView path) wontthrow -> bool;
-fn path_is_regular_file(StringView path) wontthrow -> bool;
-fn path_is_symbolic_link(StringView path) wontthrow -> bool;
-fn path_is_block_device(StringView path) wontthrow -> bool;
-fn path_is_character_device(StringView path) wontthrow -> bool;
-fn path_is_fifo(StringView path) wontthrow -> bool;
-fn path_is_socket(StringView path) wontthrow -> bool;
-fn path_has_setuid_bit(StringView path) wontthrow -> bool;
-fn path_has_setgid_bit(StringView path) wontthrow -> bool;
-fn path_has_sticky_bit(StringView path) wontthrow -> bool;
-fn path_is_owned_by_effective_user(StringView path) wontthrow -> bool;
-fn path_is_owned_by_effective_group(StringView path) wontthrow -> bool;
-fn path_file_size(StringView path) wontthrow -> Maybe<u64>;
-fn path_modification_time(StringView path) wontthrow -> Maybe<i64>;
-fn paths_are_same_file(StringView first, StringView second) wontthrow -> bool;
-fn paths_match_for_history(StringView first, StringView second) wontthrow
+cold fn
+path_exists(StringView path) wontthrow -> bool;
+cold fn
+path_is_directory(StringView path) wontthrow -> bool;
+fn
+path_is_regular_file(StringView path) wontthrow -> bool;
+fn
+path_is_symbolic_link(StringView path) wontthrow -> bool;
+fn
+path_is_block_device(StringView path) wontthrow -> bool;
+fn
+path_is_character_device(StringView path) wontthrow -> bool;
+fn
+path_is_fifo(StringView path) wontthrow -> bool;
+fn
+path_is_socket(StringView path) wontthrow -> bool;
+fn
+path_has_setuid_bit(StringView path) wontthrow -> bool;
+fn
+path_has_setgid_bit(StringView path) wontthrow -> bool;
+fn
+path_has_sticky_bit(StringView path) wontthrow -> bool;
+fn
+path_is_owned_by_effective_user(StringView path) wontthrow -> bool;
+fn
+path_is_owned_by_effective_group(StringView path) wontthrow -> bool;
+fn
+path_file_size(StringView path) wontthrow -> Maybe<u64>;
+fn
+path_modification_time(StringView path) wontthrow -> Maybe<i64>;
+fn
+paths_are_same_file(StringView first, StringView second) wontthrow -> bool;
+fn
+paths_match_for_history(StringView first, StringView second) wontthrow -> bool;
+fn
+path_is_newer_than(StringView first, StringView second) wontthrow -> bool;
+fn
+path_is_older_than(StringView first, StringView second) wontthrow -> bool;
+fn
+path_is_readable(StringView path) wontthrow -> bool;
+fn
+path_is_writable(StringView path) wontthrow -> bool;
+fn
+path_is_executable(const Path &path) wontthrow -> bool;
+cold fn
+read_current_directory() throws -> Path;
+fn
+change_current_directory(StringView path) throws -> ErrorOr<Ok>;
+fn
+reference_current_directory() wontthrow -> DirectoryReference;
+fn
+restore_current_directory(const DirectoryReference &reference) wontthrow
     -> bool;
-fn path_is_newer_than(StringView first, StringView second) wontthrow -> bool;
-fn path_is_older_than(StringView first, StringView second) wontthrow -> bool;
-fn path_is_readable(StringView path) wontthrow -> bool;
-fn path_is_writable(StringView path) wontthrow -> bool;
-fn path_is_executable(const Path &path) wontthrow -> bool;
-cold fn read_current_directory() throws -> Path;
-fn change_current_directory(StringView path) throws -> ErrorOr<Ok>;
-fn reference_current_directory() wontthrow -> DirectoryReference;
-fn restore_current_directory(const DirectoryReference &reference) wontthrow
-    -> bool;
-cold fn list_directory(StringView dir) throws -> Maybe<ArrayList<String>>;
-cold fn list_directory(StringView dir, Allocator allocator) throws
+cold fn
+list_directory(StringView dir) throws -> Maybe<ArrayList<String>>;
+cold fn
+list_directory(StringView dir, Allocator allocator) throws
     -> Maybe<ArrayList<String>>;
-cold fn list_directory_typed(StringView dir) throws
+cold fn
+list_directory_typed(StringView dir) throws
     -> Maybe<ArrayList<Path::DirectoryChild>>;
-cold fn list_directory_typed(StringView dir, Allocator allocator) throws
+cold fn
+list_directory_typed(StringView dir, Allocator allocator) throws
     -> Maybe<ArrayList<Path::DirectoryChild>>;
-cold fn list_directory_for_batch(StringView dir, Allocator allocator) throws
+cold fn
+list_directory_for_batch(StringView dir, Allocator allocator) throws
     -> directory_batch_listing;
 #if defined __linux__
-cold fn list_directory_typed(descriptor directory, Allocator allocator) throws
+cold fn
+list_directory_typed(descriptor directory, Allocator allocator) throws
     -> Maybe<ArrayList<Path::DirectoryChild>>;
 #endif
-cold fn list_directory_status(StringView dir, Allocator allocator) throws
+cold fn
+list_directory_status(StringView dir, Allocator allocator) throws
     -> Maybe<ArrayList<directory_status_entry>>;
 
 struct cpu_times
@@ -1614,7 +1818,8 @@ struct cpu_times
   double child_system_seconds{0};
 };
 
-fn read_process_cpu_times() wontthrow -> cpu_times;
+fn
+read_process_cpu_times() wontthrow -> cpu_times;
 
 enum class resource_kind : u8
 {
@@ -1640,25 +1845,37 @@ struct resource_limit
   u64 hard{RESOURCE_UNLIMITED};
 };
 
-fn get_resource_limit(resource_kind kind) wontthrow -> Maybe<resource_limit>;
-fn set_resource_limit(const resource_limit &limit, resource_kind kind) wontthrow
+fn
+get_resource_limit(resource_kind kind) wontthrow -> Maybe<resource_limit>;
+fn
+set_resource_limit(const resource_limit &limit, resource_kind kind) wontthrow
     -> bool;
 
-fn descriptor_from_fd_number(i64 fd_number) wontthrow -> os::descriptor;
+fn
+descriptor_from_fd_number(i64 fd_number) wontthrow -> os::descriptor;
 
-fn replace_descriptor(i32 shell_fd, os::descriptor target) wontthrow -> bool;
+fn
+replace_descriptor(i32 shell_fd, os::descriptor target) wontthrow -> bool;
 
-fn close_shell_fd(i32 shell_fd) wontthrow -> bool;
+fn
+close_shell_fd(i32 shell_fd) wontthrow -> bool;
 
-fn allocate_free_shell_fd(i32 floor_fd) wontthrow -> i32;
+fn
+allocate_free_shell_fd(i32 floor_fd) wontthrow -> i32;
 
-fn has_environment_variable(StringView key) throws -> bool;
-fn get_environment_variable(StringView key) throws -> Maybe<String>;
-fn set_environment_variable(StringView key, StringView value) throws -> void;
-fn unset_environment_variable(StringView key) throws -> void;
-pure fn get_environment_epoch() wontthrow -> u64;
+fn
+has_environment_variable(StringView key) throws -> bool;
+fn
+get_environment_variable(StringView key) throws -> Maybe<String>;
+fn
+set_environment_variable(StringView key, StringView value) throws -> void;
+fn
+unset_environment_variable(StringView key) throws -> void;
+pure fn
+get_environment_epoch() wontthrow -> u64;
 
-pure inline fn is_environment_value_storable(StringView value) wontthrow -> bool
+pure inline fn
+is_environment_value_storable(StringView value) wontthrow -> bool
 {
   if (value.length <= ENVIRONMENT_VALUE_MAX_UNIT_COUNT) return true;
 
@@ -1673,56 +1890,94 @@ pure inline fn is_environment_value_storable(StringView value) wontthrow -> bool
   return unit_count <= ENVIRONMENT_VALUE_MAX_UNIT_COUNT;
 }
 
-fn get_environment_spelling(StringView key) throws -> String;
-fn signal_internal_diagnostic() wontthrow -> void;
+fn
+get_environment_spelling(StringView key) throws -> String;
+fn
+signal_internal_diagnostic() wontthrow -> void;
 
 using environment_name_callback = void (*)(opaque *, StringView);
-fn for_each_environment_name(opaque *context,
-                             environment_name_callback callback) throws -> void;
-fn environment_names() throws -> ArrayList<String>;
+fn
+for_each_environment_name(opaque                   *context,
+                          environment_name_callback callback) throws -> void;
+fn
+environment_names() throws -> ArrayList<String>;
 
-fn is_child_process() wontthrow -> bool;
+fn
+is_child_process() wontthrow -> bool;
 
-fn get_shell_process_id() wontthrow -> i64;
-fn set_shell_process_id(i64 pid) wontthrow -> void;
-fn get_current_process_id() wontthrow -> i64;
-fn get_shell_parent_process_id() wontthrow -> i64;
-fn set_shell_parent_process_id(i64 pid) wontthrow -> void;
+fn
+get_shell_process_id() wontthrow -> i64;
+fn
+set_shell_process_id(i64 pid) wontthrow -> void;
+fn
+get_current_process_id() wontthrow -> i64;
+fn
+get_shell_parent_process_id() wontthrow -> i64;
+fn
+set_shell_parent_process_id(i64 pid) wontthrow -> void;
 
-fn get_parent_process_id() wontthrow -> i64;
-fn get_real_user_id() wontthrow -> i64;
-fn get_effective_user_id() wontthrow -> i64;
-fn get_real_group_id() wontthrow -> i64;
-fn get_effective_group_id() wontthrow -> i64;
-fn get_supplementary_group_ids(Allocator allocator) throws -> ArrayList<u32>;
+fn
+get_parent_process_id() wontthrow -> i64;
+fn
+get_real_user_id() wontthrow -> i64;
+fn
+get_effective_user_id() wontthrow -> i64;
+fn
+get_real_group_id() wontthrow -> i64;
+fn
+get_effective_group_id() wontthrow -> i64;
+fn
+get_supplementary_group_ids(Allocator allocator) throws -> ArrayList<u32>;
 
-fn machine_type() throws -> String;
-fn executable_system_name() throws -> String;
-fn executable_machine_name() throws -> String;
-fn system_release_name() throws -> String;
-fn system_version_name() throws -> String;
-fn machine_target_name() throws -> String;
-fn ostype_name() wontthrow -> StringView;
+fn
+machine_type() throws -> String;
+fn
+executable_system_name() throws -> String;
+fn
+executable_machine_name() throws -> String;
+fn
+system_release_name() throws -> String;
+fn
+system_version_name() throws -> String;
+fn
+machine_target_name() throws -> String;
+fn
+ostype_name() wontthrow -> StringView;
 
-fn is_running_setuid() wontthrow -> bool;
-fn drop_elevated_identity() wontthrow -> bool;
+fn
+is_running_setuid() wontthrow -> bool;
+fn
+drop_elevated_identity() wontthrow -> bool;
 
-fn reopen_terminal_as_stdin() wontthrow -> bool;
+fn
+reopen_terminal_as_stdin() wontthrow -> bool;
 
-fn process_id_of(process p) wontthrow -> i64;
-fn process_group_of(process p) throws -> process;
-fn close_process_reference(process p) wontthrow -> void;
-fn process_has_id(process p, i64 id) wontthrow -> bool;
+fn
+process_id_of(process p) wontthrow -> i64;
+fn
+process_group_of(process p) throws -> process;
+fn
+close_process_reference(process p) wontthrow -> void;
+fn
+process_has_id(process p, i64 id) wontthrow -> bool;
 
-fn is_stdin_a_tty() wontthrow -> bool;
-fn is_stdout_a_tty() wontthrow -> bool;
-fn is_stderr_a_tty() wontthrow -> bool;
-fn is_fd_a_tty(descriptor fd) wontthrow -> bool;
-fn terminal_name(descriptor fd) throws -> Maybe<String>;
-fn shell_fd_is_a_tty(int shell_fd) wontthrow -> bool;
+fn
+is_stdin_a_tty() wontthrow -> bool;
+fn
+is_stdout_a_tty() wontthrow -> bool;
+fn
+is_stderr_a_tty() wontthrow -> bool;
+fn
+is_fd_a_tty(descriptor fd) wontthrow -> bool;
+fn
+terminal_name(descriptor fd) throws -> Maybe<String>;
+fn
+shell_fd_is_a_tty(int shell_fd) wontthrow -> bool;
 
-pure fn is_directory_separator(char c) wontthrow -> bool;
-pure inline fn has_directory_separator(StringView path) wontthrow -> bool
+pure fn
+is_directory_separator(char c) wontthrow -> bool;
+pure inline fn
+has_directory_separator(StringView path) wontthrow -> bool
 {
 #if KOSH_PLATFORM_IS KOSH_PLATFORM_WIN32
 
@@ -1734,15 +1989,20 @@ pure inline fn has_directory_separator(StringView path) wontthrow -> bool
 #endif
 }
 
-pure fn path_root_length(StringView path) wontthrow -> usize;
+pure fn
+path_root_length(StringView path) wontthrow -> usize;
 
-fn normalize_program_name(String &program_name) throws -> program_name_info;
+fn
+normalize_program_name(String &program_name) throws -> program_name_info;
 
-fn get_current_user() throws -> Maybe<String>;
+fn
+get_current_user() throws -> Maybe<String>;
 
-fn get_login_user() throws -> Maybe<String>;
+fn
+get_login_user() throws -> Maybe<String>;
 
-fn get_hostname() throws -> Maybe<String>;
+fn
+get_hostname() throws -> Maybe<String>;
 
 enum class network_address_family : u8
 {
@@ -1752,80 +2012,84 @@ enum class network_address_family : u8
 
 struct network_interface_address
 {
-  String interface_name{heap_allocator()};
+  String                 interface_name{heap_allocator()};
   network_address_family family{network_address_family::IPv4};
-  String address{heap_allocator()};
+  String                 address{heap_allocator()};
 };
 
-fn network_interface_addresses() throws -> ArrayList<network_interface_address>;
-fn default_network_interface(Allocator allocator) throws -> Maybe<String>;
+fn
+network_interface_addresses() throws -> ArrayList<network_interface_address>;
+fn
+default_network_interface(Allocator allocator) throws -> Maybe<String>;
 
 enum class network_statistics_field : u32
 {
-  ReceiveBytes = 1u << 0,
-  TransmitBytes = 1u << 1,
-  ReceivePackets = 1u << 2,
-  TransmitPackets = 1u << 3,
-  ReceiveErrors = 1u << 4,
-  TransmitErrors = 1u << 5,
-  ReceiveDrops = 1u << 6,
-  TransmitDrops = 1u << 7,
-  ReceiveLinkSpeed = 1u << 8,
-  TransmitLinkSpeed = 1u << 9,
+  ReceiveBytes        = 1u << 0,
+  TransmitBytes       = 1u << 1,
+  ReceivePackets      = 1u << 2,
+  TransmitPackets     = 1u << 3,
+  ReceiveErrors       = 1u << 4,
+  TransmitErrors      = 1u << 5,
+  ReceiveDrops        = 1u << 6,
+  TransmitDrops       = 1u << 7,
+  ReceiveLinkSpeed    = 1u << 8,
+  TransmitLinkSpeed   = 1u << 9,
   TransmitQueueLength = 1u << 10,
-  TransmitQueueLimit = 1u << 11,
+  TransmitQueueLimit  = 1u << 11,
 };
 
 struct network_interface_statistics_entry
 {
   String interface_name{heap_allocator()};
-  u64 receive_byte_count{0};
-  u64 transmit_byte_count{0};
-  u64 receive_packet_count{0};
-  u64 transmit_packet_count{0};
-  u64 receive_error_count{0};
-  u64 transmit_error_count{0};
-  u64 receive_drop_count{0};
-  u64 transmit_drop_count{0};
-  u64 receive_link_bits_per_second{0};
-  u64 transmit_link_bits_per_second{0};
-  u64 transmit_queue_length{0};
-  u64 transmit_queue_limit{0};
-  u32 available_fields{0};
+  u64    receive_byte_count{0};
+  u64    transmit_byte_count{0};
+  u64    receive_packet_count{0};
+  u64    transmit_packet_count{0};
+  u64    receive_error_count{0};
+  u64    transmit_error_count{0};
+  u64    receive_drop_count{0};
+  u64    transmit_drop_count{0};
+  u64    receive_link_bits_per_second{0};
+  u64    transmit_link_bits_per_second{0};
+  u64    transmit_queue_length{0};
+  u64    transmit_queue_limit{0};
+  u32    available_fields{0};
 
-  pure fn has_field(network_statistics_field field) const wontthrow -> bool
+  pure fn
+  has_field(network_statistics_field field) const wontthrow -> bool
   {
     return (available_fields & static_cast<u32>(field)) != 0;
   }
 };
 
-fn read_network_interface_statistics() throws
+fn
+read_network_interface_statistics() throws
     -> ArrayList<network_interface_statistics_entry>;
 
 enum class tcp_statistics_field : u32
 {
-  ActiveOpens = 1u << 0,
-  PassiveOpens = 1u << 1,
-  ReceivedSegments = 1u << 2,
-  SentSegments = 1u << 3,
-  RetransmittedSegments = 1u << 4,
-  InputErrors = 1u << 5,
-  AttemptFailures = 1u << 6,
-  EstablishedResets = 1u << 7,
-  CurrentEstablished = 1u << 8,
-  SentResets = 1u << 9,
-  ConnectionDrops = 1u << 10,
-  ReceiveMemoryDrops = 1u << 11,
-  ListenDrops = 1u << 12,
-  RetransmitTimeouts = 1u << 13,
-  ListenOverflows = 1u << 14,
-  SynRetransmits = 1u << 15,
-  FastRetransmits = 1u << 16,
+  ActiveOpens                = 1u << 0,
+  PassiveOpens               = 1u << 1,
+  ReceivedSegments           = 1u << 2,
+  SentSegments               = 1u << 3,
+  RetransmittedSegments      = 1u << 4,
+  InputErrors                = 1u << 5,
+  AttemptFailures            = 1u << 6,
+  EstablishedResets          = 1u << 7,
+  CurrentEstablished         = 1u << 8,
+  SentResets                 = 1u << 9,
+  ConnectionDrops            = 1u << 10,
+  ReceiveMemoryDrops         = 1u << 11,
+  ListenDrops                = 1u << 12,
+  RetransmitTimeouts         = 1u << 13,
+  ListenOverflows            = 1u << 14,
+  SynRetransmits             = 1u << 15,
+  FastRetransmits            = 1u << 16,
   SpuriousRetransmitTimeouts = 1u << 17,
-  ReceiveQueueDrops = 1u << 18,
-  BacklogDrops = 1u << 19,
-  RequestQueueFullDrops = 1u << 20,
-  RetransmitFailures = 1u << 21,
+  ReceiveQueueDrops          = 1u << 18,
+  BacklogDrops               = 1u << 19,
+  RequestQueueFullDrops      = 1u << 20,
+  RetransmitFailures         = 1u << 21,
 };
 
 struct tcp_statistics
@@ -1854,13 +2118,15 @@ struct tcp_statistics
   u64 retransmit_failure_count{0};
   u32 available_fields{0};
 
-  pure fn has_field(tcp_statistics_field field) const wontthrow -> bool
+  pure fn
+  has_field(tcp_statistics_field field) const wontthrow -> bool
   {
     return (available_fields & static_cast<u32>(field)) != 0;
   }
 };
 
-fn read_tcp_statistics(tcp_statistics &statistics) wontthrow -> bool;
+fn
+read_tcp_statistics(tcp_statistics &statistics) wontthrow -> bool;
 
 enum class network_socket_protocol : u8
 {
@@ -1901,23 +2167,23 @@ enum class network_socket_state : u8
 
 struct network_socket_entry
 {
-  String local_address{heap_allocator()};
-  String peer_address{heap_allocator()};
-  u64 identity{0};
-  u64 peer_identity{0};
-  u64 receive_queue_byte_count{0};
-  u64 send_queue_byte_count{0};
-  u64 owner_start_token{0};
-  u32 process_id{0};
-  u16 local_port{0};
-  u16 peer_port{0};
-  network_socket_protocol protocol{network_socket_protocol::Tcp};
-  network_address_family family{network_address_family::IPv4};
-  network_socket_state state{network_socket_state::Unknown};
+  String                   local_address{heap_allocator()};
+  String                   peer_address{heap_allocator()};
+  u64                      identity{0};
+  u64                      peer_identity{0};
+  u64                      receive_queue_byte_count{0};
+  u64                      send_queue_byte_count{0};
+  u64                      owner_start_token{0};
+  u32                      process_id{0};
+  u16                      local_port{0};
+  u16                      peer_port{0};
+  network_socket_protocol  protocol{network_socket_protocol::Tcp};
+  network_address_family   family{network_address_family::IPv4};
+  network_socket_state     state{network_socket_state::Unknown};
   network_unix_socket_type unix_type{network_unix_socket_type::Stream};
-  u32 owner_id{0};
-  bool has_owner_start_token{false};
-  bool has_owner_id{false};
+  u32                      owner_id{0};
+  bool                     has_owner_start_token{false};
+  bool                     has_owner_id{false};
 };
 
 enum class kernel_socket_kind : u8
@@ -1928,24 +2194,28 @@ enum class kernel_socket_kind : u8
 
 struct kernel_socket_entry
 {
-  u64 identity{0};
+  u64                identity{0};
   kernel_socket_kind kind{kernel_socket_kind::Netlink};
 };
 
-fn kernel_sockets() throws -> ArrayList<kernel_socket_entry>;
+fn
+kernel_sockets() throws -> ArrayList<kernel_socket_entry>;
 
-fn has_network_socket_listing() wontthrow -> bool;
-fn network_sockets(network_socket_process_mode process_mode) throws
+fn
+has_network_socket_listing() wontthrow -> bool;
+fn
+network_sockets(network_socket_process_mode process_mode) throws
     -> ArrayList<network_socket_entry>;
 
 struct user_session
 {
   String user{heap_allocator()};
   String terminal{heap_allocator()};
-  i64 login_time{0};
+  i64    login_time{0};
 };
 
-fn logged_in_users() throws -> ArrayList<user_session>;
+fn
+logged_in_users() throws -> ArrayList<user_session>;
 
 struct processor_counts
 {
@@ -1953,28 +2223,37 @@ struct processor_counts
   usize configured_count{1};
 };
 
-fn get_processor_counts() wontthrow -> processor_counts;
+fn
+get_processor_counts() wontthrow -> processor_counts;
 
-fn get_home_directory() throws -> Maybe<Path>;
-fn get_system_koshconf_path() throws -> Maybe<Path>;
+fn
+get_home_directory() throws -> Maybe<Path>;
+fn
+get_system_koshconf_path() throws -> Maybe<Path>;
 
 struct system_file_reading
 {
   Maybe<String> contents;
-  String rejection{heap_allocator()};
+  String        rejection{heap_allocator()};
 };
 
-fn read_system_owned_file(const Path &path) throws -> system_file_reading;
+fn
+read_system_owned_file(const Path &path) throws -> system_file_reading;
 
-fn get_home_for_user(StringView username) throws -> Maybe<Path>;
+fn
+get_home_for_user(StringView username) throws -> Maybe<Path>;
 
-fn enumerate_users() throws -> ArrayList<String>;
+fn
+enumerate_users() throws -> ArrayList<String>;
 
-fn enumerate_groups() throws -> ArrayList<String>;
+fn
+enumerate_groups() throws -> ArrayList<String>;
 
-fn set_default_signal_handlers(signal_profile profile) throws -> void;
+fn
+set_default_signal_handlers(signal_profile profile) throws -> void;
 
-fn install_fatal_exit_hook(void (*hook)()) throws -> void;
+fn
+install_fatal_exit_hook(void (*hook)()) throws -> void;
 
 extern volatile sig_atomic_t INTERRUPT_REQUESTED;
 
@@ -1990,37 +2269,52 @@ enum class child_trap_arming : u8
   Armed,
 };
 
-fn set_child_trap_armed(child_trap_arming arming) wontthrow -> void;
+fn
+set_child_trap_armed(child_trap_arming arming) wontthrow -> void;
 
-fn set_trap_handler(i32 signal_number) throws -> void;
+fn
+set_trap_handler(i32 signal_number) throws -> void;
 
-fn set_trap_ignore(i32 signal_number) throws -> void;
+fn
+set_trap_ignore(i32 signal_number) throws -> void;
 
 constexpr i32 ENTRY_IGNORED_SIGNAL_LIMIT = 64;
 
-fn get_entry_ignored_signals() wontthrow -> u64;
+fn
+get_entry_ignored_signals() wontthrow -> u64;
 
-fn clear_trap_handler(i32 signal_number) throws -> void;
+fn
+clear_trap_handler(i32 signal_number) throws -> void;
 
-fn take_pending_signal() wontthrow -> i32;
+fn
+take_pending_signal() wontthrow -> i32;
 
-mustuse fn peek_pending_signal_besides_child() wontthrow -> i32;
+mustuse fn
+peek_pending_signal_besides_child() wontthrow -> i32;
 
-fn note_child_reaped() wontthrow -> void;
-mustuse fn take_reaped_child_count() wontthrow -> u32;
-mustuse fn has_reaped_child_arrival() wontthrow -> bool;
-fn clear_reaped_child_arrival() wontthrow -> void;
+fn
+note_child_reaped() wontthrow -> void;
+mustuse fn
+take_reaped_child_count() wontthrow -> u32;
+mustuse fn
+has_reaped_child_arrival() wontthrow -> bool;
+fn
+clear_reaped_child_arrival() wontthrow -> void;
 
-fn monotonic_nanos() wontthrow -> u64;
+fn
+monotonic_nanos() wontthrow -> u64;
 
-fn realtime_microseconds() wontthrow -> u64;
+fn
+realtime_microseconds() wontthrow -> u64;
 
-inline fn current_unix_seconds() wontthrow -> i64
+inline fn
+current_unix_seconds() wontthrow -> i64
 {
   return static_cast<i64>(realtime_microseconds() / 1000000);
 }
 
-fn format_local_time(StringView format, i64 epoch) throws -> String;
+fn
+format_local_time(StringView format, i64 epoch) throws -> String;
 
 struct terminal_dimensions
 {
@@ -2028,7 +2322,8 @@ struct terminal_dimensions
   u32 rows{0};
 };
 
-fn get_terminal_dimensions(descriptor output = KOSH_STDOUT) wontthrow
+fn
+get_terminal_dimensions(descriptor output = KOSH_STDOUT) wontthrow
     -> Maybe<terminal_dimensions>;
 enum class terminal_settings_output_mode : u8
 {
@@ -2037,9 +2332,10 @@ enum class terminal_settings_output_mode : u8
   All,
 };
 
-fn terminal_settings(descriptor terminal, Allocator allocator,
-                     terminal_settings_output_mode mode) throws
-    -> Maybe<String>;
+fn
+terminal_settings(descriptor                    terminal,
+                  Allocator                     allocator,
+                  terminal_settings_output_mode mode) throws -> Maybe<String>;
 
 enum class terminal_settings_apply_kind : u8
 {
@@ -2051,11 +2347,12 @@ enum class terminal_settings_apply_kind : u8
 struct terminal_settings_apply_result
 {
   terminal_settings_apply_kind kind;
-  usize setting_position;
+  usize                        setting_position;
 };
 
-fn apply_terminal_settings(descriptor terminal,
-                           const ArrayList<String> &settings) wontthrow
+fn
+apply_terminal_settings(descriptor               terminal,
+                        const ArrayList<String> &settings) wontthrow
     -> terminal_settings_apply_result;
 
 struct child_cpu_times
@@ -2064,9 +2361,11 @@ struct child_cpu_times
   double system_seconds{0};
 };
 
-fn read_child_cpu_times() wontthrow -> child_cpu_times;
+fn
+read_child_cpu_times() wontthrow -> child_cpu_times;
 
-fn children_peak_rss_bytes() wontthrow -> u64;
+fn
+children_peak_rss_bytes() wontthrow -> u64;
 
 struct malloc_heap_stats
 {
@@ -2075,7 +2374,8 @@ struct malloc_heap_stats
   usize mapped_byte_count{0};
 };
 
-fn read_malloc_heap_stats(malloc_heap_stats &stats) wontthrow -> bool;
+fn
+read_malloc_heap_stats(malloc_heap_stats &stats) wontthrow -> bool;
 
 struct perf_counts
 {
@@ -2104,7 +2404,8 @@ struct process_resource_usage
   Maybe<u64> written_byte_count{};
 };
 
-fn read_own_resource_usage() wontthrow -> process_resource_usage;
+fn
+read_own_resource_usage() wontthrow -> process_resource_usage;
 
 struct process_launch_counts
 {
@@ -2112,27 +2413,32 @@ struct process_launch_counts
   u64 exec_count{0};
 };
 
-fn get_process_launch_counts() wontthrow -> process_launch_counts;
+fn
+get_process_launch_counts() wontthrow -> process_launch_counts;
 
 struct measured_result
 {
-  u64 wall_nanos{0};
-  u64 peak_rss_byte_count{0};
-  i64 exit_status{0};
-  bool has_perf{false};
-  bool is_perf_system_wide{false};
-  perf_counts perf{};
+  u64                    wall_nanos{0};
+  u64                    peak_rss_byte_count{0};
+  i64                    exit_status{0};
+  bool                   has_perf{false};
+  bool                   is_perf_system_wide{false};
+  perf_counts            perf{};
   process_resource_usage resources{};
 };
 
-fn run_measured(const ArrayList<String> &argv,
-                const Maybe<descriptor> &inherited_handle = {},
-                measured_output output = measured_output::Inherit,
-                bool should_collect_resources = false) throws
+fn
+run_measured(const ArrayList<String> &argv,
+             const Maybe<descriptor> &inherited_handle = {},
+             measured_output          output = measured_output::Inherit,
+             bool                     should_collect_resources = false) throws
     -> Maybe<measured_result>;
-fn get_priority(i64 id, priority_target target) wontthrow -> Maybe<i32>;
-fn set_priority(i64 id, i32 priority, priority_target target) wontthrow -> bool;
-fn run_nice(const ArrayList<String> &argv, i32 increment) throws -> Maybe<i32>;
+fn
+get_priority(i64 id, priority_target target) wontthrow -> Maybe<i32>;
+fn
+set_priority(i64 id, i32 priority, priority_target target) wontthrow -> bool;
+fn
+run_nice(const ArrayList<String> &argv, i32 increment) throws -> Maybe<i32>;
 struct nohup_options
 {
   descriptor input{KOSH_INVALID_FD};
@@ -2141,7 +2447,8 @@ struct nohup_options
   StringView home{};
 };
 
-fn run_nohup(const ArrayList<String> &argv, const nohup_options &options) throws
+fn
+run_nohup(const ArrayList<String> &argv, const nohup_options &options) throws
     -> Maybe<i32>;
 
 struct system_log_options
@@ -2149,38 +2456,46 @@ struct system_log_options
   StringView tag{};
   StringView priority{};
   StringView message{};
-  bool should_include_pid{false};
-  bool should_copy_to_stderr{false};
+  bool       should_include_pid{false};
+  bool       should_copy_to_stderr{false};
 };
 
-fn write_system_log(const system_log_options &options) wontthrow -> bool;
+fn
+write_system_log(const system_log_options &options) wontthrow -> bool;
 
 struct program_execution_options
 {
-  StringView source{};
-  i64 process_group_id{0};
+  StringView             source{};
+  i64                    process_group_id{0};
   script_fallback_policy fallback{script_fallback_policy::Reject};
-  terminal_handoff handoff{terminal_handoff::Keep};
-  process_group_mode process_group{process_group_mode::Inherit};
+  terminal_handoff       handoff{terminal_handoff::Keep};
+  process_group_mode     process_group{process_group_mode::Inherit};
 };
 
-fn execute_program(ExecContext &ec,
-                   const program_execution_options &options = {}) throws
+fn
+execute_program(ExecContext                     &ec,
+                const program_execution_options &options = {}) throws
     -> process;
 
-fn shell_has_controlling_terminal() wontthrow -> bool;
+fn
+shell_has_controlling_terminal() wontthrow -> bool;
 
-fn canonical_path(const Path &path) wontthrow -> Maybe<Path>;
-fn path_from_file_id(StringView filesystem_path, u64 file_id) wontthrow
+fn
+canonical_path(const Path &path) wontthrow -> Maybe<Path>;
+fn
+path_from_file_id(StringView filesystem_path, u64 file_id) wontthrow
     -> Maybe<Path>;
 
-fn glob_matches(StringView pattern, Allocator allocator) throws
+fn
+glob_matches(StringView pattern, Allocator allocator) throws
     -> ArrayList<String>;
 
-fn directory_is_trusted_for_exec(const Path &directory) wontthrow -> bool;
+fn
+directory_is_trusted_for_exec(const Path &directory) wontthrow -> bool;
 
-fn capture_program_output(const ArrayList<String> &argv,
-                          u64 timeout_nanos) wontthrow -> Maybe<String>;
+fn
+capture_program_output(const ArrayList<String> &argv,
+                       u64 timeout_nanos) wontthrow -> Maybe<String>;
 
 class ProgramCapture
 {
@@ -2192,47 +2507,63 @@ public:
     Failed,
   };
 
-  static fn start(const ArrayList<String> &argv, u64 timeout_nanos) wontthrow
+  static fn
+  start(const ArrayList<String> &argv, u64 timeout_nanos) wontthrow
       -> Maybe<ProgramCapture>;
 
   ProgramCapture(ProgramCapture &&other) noexcept;
-  fn operator=(ProgramCapture &&other) noexcept -> ProgramCapture &;
+  fn
+  operator=(ProgramCapture &&other) noexcept -> ProgramCapture &;
   ProgramCapture(const ProgramCapture &) = delete;
-  fn operator=(const ProgramCapture &)->ProgramCapture & = delete;
+  fn
+  operator=(const ProgramCapture &)
+      ->ProgramCapture & = delete;
   ~ProgramCapture();
 
-  fn step() wontthrow -> State;
-  fn wait(u64 wait_nanos) const wontthrow -> void;
-  fn take_output() wontthrow -> String;
-  pure fn exit_status() const wontthrow -> Maybe<i32> { return m_exit_status; }
+  fn
+  step() wontthrow -> State;
+  fn
+  wait(u64 wait_nanos) const wontthrow -> void;
+  fn
+  take_output() wontthrow -> String;
+  pure fn
+  exit_status() const wontthrow -> Maybe<i32>
+  {
+    return m_exit_status;
+  }
 
 private:
   ProgramCapture() = default;
-  fn abandon() wontthrow -> void;
+  fn
+  abandon() wontthrow -> void;
 
-  process m_child{KOSH_INVALID_PROCESS};
+  process    m_child{KOSH_INVALID_PROCESS};
   descriptor m_output{KOSH_INVALID_FD};
-  u64 m_deadline_nanos{0};
-  String m_captured{heap_allocator()};
+  u64        m_deadline_nanos{0};
+  String     m_captured{heap_allocator()};
   Maybe<i32> m_exit_status{};
 };
 
-fn program_exits_successfully(const ArrayList<String> &argv,
-                              u64 timeout_nanos) wontthrow -> bool;
+fn
+program_exits_successfully(const ArrayList<String> &argv,
+                           u64 timeout_nanos) wontthrow -> bool;
 
-fn give_controlling_terminal_to(process p) wontthrow -> void;
-fn give_controlling_terminal_to_process_group(i64 process_group_id) wontthrow
+fn
+give_controlling_terminal_to(process p) wontthrow -> void;
+fn
+give_controlling_terminal_to_process_group(i64 process_group_id) wontthrow
     -> void;
-fn reclaim_controlling_terminal() wontthrow -> void;
+fn
+reclaim_controlling_terminal() wontthrow -> void;
 
 struct process_substitution_launch
 {
-  String path{heap_allocator()};
+  String            path{heap_allocator()};
   Maybe<descriptor> retained_fd{};
   Maybe<descriptor> child_close_fd{};
-  process child{KOSH_INVALID_PROCESS};
-  opaque *cleanup{nullptr};
-  bool should_evaluate_child{false};
+  process           child{KOSH_INVALID_PROCESS};
+  opaque           *cleanup{nullptr};
+  bool              should_evaluate_child{false};
 };
 
 enum class process_substitution_direction : u8
@@ -2247,38 +2578,46 @@ struct subshell_bootstrap
   subshell_bootstrap(subshell_bootstrap &&other) noexcept;
   ~subshell_bootstrap();
 
-  fn operator=(subshell_bootstrap &&other) noexcept -> subshell_bootstrap &;
+  fn
+  operator=(subshell_bootstrap &&other) noexcept -> subshell_bootstrap &;
   subshell_bootstrap(const subshell_bootstrap &) = delete;
-  fn operator=(const subshell_bootstrap &)->subshell_bootstrap & = delete;
+  fn
+  operator=(const subshell_bootstrap &)
+      ->subshell_bootstrap & = delete;
 
-  fn release_process_ownership() wontthrow -> void;
+  fn
+  release_process_ownership() wontthrow -> void;
 
-  String payload{heap_allocator()};
-  String source_origin{heap_allocator()};
-  ArrayList<process> processes{heap_allocator()};
-  u32 source_length{0};
+  String               payload{heap_allocator()};
+  String               source_origin{heap_allocator()};
+  ArrayList<process>   processes{heap_allocator()};
+  u32                  source_length{0};
   root_evaluation_mode evaluation_mode{root_evaluation_mode::Normal};
-  bool is_process_owner{false};
-  bool should_use_command_string_status{false};
+  bool                 is_process_owner{false};
+  bool                 should_use_command_string_status{false};
 
 private:
-  fn close_owned_processes() wontthrow -> void;
+  fn
+  close_owned_processes() wontthrow -> void;
 };
 
 class ScopedEnvironment
 {
 public:
-  ScopedEnvironment() = default;
+  ScopedEnvironment()                          = default;
   ScopedEnvironment(const ScopedEnvironment &) = delete;
-  fn operator=(const ScopedEnvironment &)->ScopedEnvironment & = delete;
+  fn
+  operator=(const ScopedEnvironment &)
+      ->ScopedEnvironment & = delete;
   ~ScopedEnvironment();
 
-  fn set(StringView key, StringView value) throws -> void;
+  fn
+  set(StringView key, StringView value) throws -> void;
 
 private:
   struct SavedVariable
   {
-    String key;
+    String        key;
     Maybe<String> previous;
   };
 
@@ -2287,87 +2626,103 @@ private:
 
 struct inherited_subshell_state
 {
-  i32 previous_exit_status{0};
-  i64 shell_process_id{0};
-  i64 shell_parent_process_id{0};
+  i32   previous_exit_status{0};
+  i64   shell_process_id{0};
+  i64   shell_parent_process_id{0};
   usize subshell_depth{0};
 
-  fn apply_to(ScopedEnvironment &environment) const throws -> void;
+  fn
+  apply_to(ScopedEnvironment &environment) const throws -> void;
 
-  static fn take_from_environment() throws -> Maybe<inherited_subshell_state>;
-  static fn clear_environment() throws -> void;
+  static fn
+  take_from_environment() throws -> Maybe<inherited_subshell_state>;
+  static fn
+  clear_environment() throws -> void;
 };
 
 struct child_evaluator_state
 {
   const subshell_bootstrap *bootstrap{nullptr};
-  StringView shell_name{};
-  inherited_subshell_state inherited{};
-  mimic_mood mood{static_cast<mimic_mood>(0)};
+  StringView                shell_name{};
+  inherited_subshell_state  inherited{};
+  mimic_mood                mood{static_cast<mimic_mood>(0)};
 };
 
 struct process_substitution_options
 {
-  StringView source{};
-  bool should_trace_sources{true};
-  child_evaluator_state evaluator{};
+  StringView                     source{};
+  bool                           should_trace_sources{true};
+  child_evaluator_state          evaluator{};
   process_substitution_direction direction{
       process_substitution_direction::CommandReads};
 };
 
-fn launch_process_substitution(const process_substitution_options &options)
-    throws -> process_substitution_launch;
-fn finish_process_substitution(opaque *cleanup) wontthrow -> void;
-fn release_finished_process_substitution(opaque *cleanup) wontthrow -> bool;
+fn
+launch_process_substitution(const process_substitution_options &options) throws
+    -> process_substitution_launch;
+fn
+finish_process_substitution(opaque *cleanup) wontthrow -> void;
+fn
+release_finished_process_substitution(opaque *cleanup) wontthrow -> bool;
 
 struct fork_compound_stage_options
 {
-  Maybe<descriptor> in_fd{None};
-  Maybe<descriptor> out_fd{None};
-  Maybe<descriptor> err_fd{None};
-  SourceLocation location{};
-  StringView diagnostic_source{};
-  i64 process_group_id{0};
+  Maybe<descriptor>  in_fd{None};
+  Maybe<descriptor>  out_fd{None};
+  Maybe<descriptor>  err_fd{None};
+  SourceLocation     location{};
+  StringView         diagnostic_source{};
+  i64                process_group_id{0};
   process_group_mode process_group{process_group_mode::Inherit};
 };
 
-fn try_fork_compound_stage(const fork_compound_stage_options &options) throws
+fn
+try_fork_compound_stage(const fork_compound_stage_options &options) throws
     -> Maybe<process>;
 
-fn try_fork_job_process() throws -> Maybe<process>;
-fn can_fork_evaluator() wontthrow -> bool;
+fn
+try_fork_job_process() throws -> Maybe<process>;
+fn
+can_fork_evaluator() wontthrow -> bool;
 
 struct compound_stage_launch
 {
   process child{KOSH_INVALID_PROCESS};
-  bool should_evaluate_child{false};
+  bool    should_evaluate_child{false};
 };
 
 struct compound_stage_options
 {
-  StringView source{};
-  Maybe<descriptor> in_fd{None};
-  Maybe<descriptor> out_fd{None};
-  Maybe<descriptor> err_fd{None};
-  SourceLocation location{};
-  StringView diagnostic_source{};
-  i64 process_group_id{0};
+  StringView            source{};
+  Maybe<descriptor>     in_fd{None};
+  Maybe<descriptor>     out_fd{None};
+  Maybe<descriptor>     err_fd{None};
+  SourceLocation        location{};
+  StringView            diagnostic_source{};
+  i64                   process_group_id{0};
   child_evaluator_state evaluator{};
-  process_group_mode process_group{process_group_mode::Inherit};
+  process_group_mode    process_group{process_group_mode::Inherit};
 };
 
-fn launch_compound_stage(const compound_stage_options &options) throws
+fn
+launch_compound_stage(const compound_stage_options &options) throws
     -> compound_stage_launch;
 
-fn register_platform_flags(FlagList &flags) throws -> void;
-fn initialize_platform_runtime() wontthrow -> void;
-fn take_subshell_bootstrap() wontthrow -> subshell_bootstrap;
+fn
+register_platform_flags(FlagList &flags) throws -> void;
+fn
+initialize_platform_runtime() wontthrow -> void;
+fn
+take_subshell_bootstrap() wontthrow -> subshell_bootstrap;
 
-wontreturn fn exit_process_immediately(i32 status) wontthrow -> void;
+wontreturn fn
+exit_process_immediately(i32 status) wontthrow -> void;
 
-fn replace_process(ExecContext &&ec) throws -> void;
+fn
+replace_process(ExecContext &&ec) throws -> void;
 
-fn redirect_self(const ExecContext &ec) throws -> void;
+fn
+redirect_self(const ExecContext &ec) throws -> void;
 
 } /* namespace os */
 

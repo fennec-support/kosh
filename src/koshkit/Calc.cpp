@@ -26,9 +26,15 @@ KOSHKIT_UTIL_DECL(
     "terminal, it accepts and evaluates expressions interactively. A name = "
     "value line binds a variable for a later expression.");
 
-FLAG(CALC_INTERACTIVE, Bool, 'i', "interactive",
+FLAG(CALC_INTERACTIVE,
+     Bool,
+     'i',
+     "interactive",
      "Read and evaluate expressions interactively, even off a pipe.");
-FLAG(CALC_PIPE, Bool, 'p', "pipe",
+FLAG(CALC_PIPE,
+     Bool,
+     'p',
+     "pipe",
      "Read and evaluate expressions from standard input, one per line, with no "
      "prompt.");
 
@@ -38,8 +44,11 @@ namespace koshka::koshkit {
 
 namespace {
 
-fn evaluate_one(const ExecContext &ec, EvalContext &cxt, StringView expression,
-                const SourceLocation *expression_base = nullptr) throws -> i32
+fn
+evaluate_one(const ExecContext    &ec,
+             EvalContext          &cxt,
+             StringView            expression,
+             const SourceLocation *expression_base = nullptr) throws -> i32
 {
   let render_source = expression;
   if (expression_base != nullptr &&
@@ -81,7 +90,8 @@ fn evaluate_one(const ExecContext &ec, EvalContext &cxt, StringView expression,
   }
 }
 
-fn try_define_unevaluated_assignment(EvalContext &cxt, StringView line) throws
+fn
+try_define_unevaluated_assignment(EvalContext &cxt, StringView line) throws
     -> bool
 {
   usize i = 0;
@@ -135,10 +145,12 @@ enum class calc_repl_input_mode : u8
   Pipe,
 };
 
-fn run_repl(const ExecContext &ec, EvalContext &cxt,
-            calc_repl_input_mode input_mode) throws -> i32
+fn
+run_repl(const ExecContext   &ec,
+         EvalContext         &cxt,
+         calc_repl_input_mode input_mode) throws -> i32
 {
-  let const input_fd = ec.in_fd.value_or(KOSH_STDIN);
+  let const input_fd    = ec.in_fd.value_or(KOSH_STDIN);
   let const is_terminal = input_mode == calc_repl_input_mode::DetectTerminal &&
                           os::is_fd_a_tty(input_fd);
 
@@ -224,7 +236,7 @@ fn run_repl(const ExecContext &ec, EvalContext &cxt,
     } else {
       if (is_terminal) koshka::print_error("calc> ");
       let line_result = utils::read_line_from_fd(input_fd);
-      line = steal(line_result.line);
+      line            = steal(line_result.line);
       if (!line.has_value() || os::INTERRUPT_REQUESTED) {
         break;
       }
@@ -257,9 +269,11 @@ fn run_repl(const ExecContext &ec, EvalContext &cxt,
 
 } /* namespace */
 
-fn Calc::execute(const ExecContext &ec, EvalContext &cxt,
-                 const ArrayList<String> &args,
-                 const ArrayList<SourceLocation> &arg_locations) const throws
+fn
+Calc::execute(const ExecContext               &ec,
+              EvalContext                     &cxt,
+              const ArrayList<String>         &args,
+              const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
@@ -268,7 +282,7 @@ fn Calc::execute(const ExecContext &ec, EvalContext &cxt,
   cxt.runtime_state().set_diagnostics_disabled(true);
 
   let const has_expression = !operands.is_empty();
-  let const should_pipe = FLAG_CALC_PIPE.is_enabled();
+  let const should_pipe    = FLAG_CALC_PIPE.is_enabled();
   let const is_interactive =
       !should_pipe &&
       (FLAG_CALC_INTERACTIVE.is_enabled() ||
@@ -302,7 +316,7 @@ fn Calc::execute(const ExecContext &ec, EvalContext &cxt,
       cxt.source_store().current_source() != nullptr)
   {
     let const first_location = operand_locations[0];
-    let const last_location = operand_locations[operand_locations.count() - 1];
+    let const last_location  = operand_locations[operand_locations.count() - 1];
     let const expression_end =
         static_cast<usize>(last_location.position) + last_location.length;
     let const source = cxt.source_store().current_source()->view();

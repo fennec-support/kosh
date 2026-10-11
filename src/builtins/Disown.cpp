@@ -22,7 +22,10 @@ HELP_DESCRIPTION_DECL("The disown builtin removes a job from the job table.");
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 FLAG(ALL, Bool, 'a', "all", "Remove every job.");
 FLAG(RUNNING, Bool, 'r', "running", "Remove only the running jobs.");
-FLAG(NO_HUP, Bool, 'h', "nohup",
+FLAG(NO_HUP,
+     Bool,
+     'h',
+     "nohup",
      "Mark the job to skip a hangup on shell exit and keep it in the job "
      "table.");
 
@@ -30,7 +33,8 @@ REGISTER_BUILTIN_FLAGS(Disown);
 
 namespace koshka {
 
-fn Disown::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
+fn
+Disown::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let operand_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};
   let const names = PARSE_BUILTIN_ARGS_WITH_LOCATIONS(ec, operand_locations);

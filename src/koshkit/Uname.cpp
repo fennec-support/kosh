@@ -17,20 +17,25 @@ KOSHKIT_UTIL_DECL("[-amnrsv]",
 FLAG(UNAME_ALL, Bool, 'a', "all", "Write all fields.");
 FLAG(UNAME_MACHINE, Bool, 'm', "machine", "Write the machine type.");
 FLAG(UNAME_NODE, Bool, 'n', "nodename", "Write the network node name.");
-FLAG(UNAME_RELEASE, Bool, 'r', "release",
-     "Write the operating system release.");
-FLAG(UNAME_SYSTEM, Bool, 's', "kernel-name",
-     "Write the operating system name.");
-FLAG(UNAME_VERSION, Bool, 'v', "kernel-version",
+FLAG(
+    UNAME_RELEASE, Bool, 'r', "release", "Write the operating system release.");
+FLAG(
+    UNAME_SYSTEM, Bool, 's', "kernel-name", "Write the operating system name.");
+FLAG(UNAME_VERSION,
+     Bool,
+     'v',
+     "kernel-version",
      "Write the operating system version.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Uname);
 
 namespace koshka::koshkit {
 
-fn Uname::execute(const ExecContext &ec, EvalContext &cxt,
-                  const ArrayList<String> &args,
-                  const ArrayList<SourceLocation> &arg_locations) const throws
+fn
+Uname::execute(const ExecContext               &ec,
+               EvalContext                     &cxt,
+               const ArrayList<String>         &args,
+               const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
@@ -42,9 +47,9 @@ fn Uname::execute(const ExecContext &ec, EvalContext &cxt,
     return 2;
   }
 
-  let const is_all = FLAG_UNAME_ALL.is_enabled();
-  bool should_system = is_all || FLAG_UNAME_SYSTEM.is_enabled();
-  let const should_node = is_all || FLAG_UNAME_NODE.is_enabled();
+  let const is_all         = FLAG_UNAME_ALL.is_enabled();
+  bool      should_system  = is_all || FLAG_UNAME_SYSTEM.is_enabled();
+  let const should_node    = is_all || FLAG_UNAME_NODE.is_enabled();
   let const should_release = is_all || FLAG_UNAME_RELEASE.is_enabled();
   let const should_version = is_all || FLAG_UNAME_VERSION.is_enabled();
   let const should_machine = is_all || FLAG_UNAME_MACHINE.is_enabled();
@@ -54,7 +59,7 @@ fn Uname::execute(const ExecContext &ec, EvalContext &cxt,
     should_system = true;
   }
 
-  let output = String{cxt.scratch_allocator()};
+  let       output    = String{cxt.scratch_allocator()};
   let const do_append = [&](StringView value) throws -> void {
     if (!output.is_empty()) output += ' ';
     output += value;

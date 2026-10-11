@@ -31,7 +31,8 @@ enum class bc_output_mode : u8
   Print,
 };
 
-static pure fn bc_digit_value(char byte) wontthrow -> u32
+static pure fn
+bc_digit_value(char byte) wontthrow -> u32
 {
   if (byte >= '0' && byte <= '9') {
     return static_cast<u32>(byte - '0');
@@ -43,12 +44,12 @@ static pure fn bc_digit_value(char byte) wontthrow -> u32
   return ~u32{0};
 }
 
-static fn bc_strip_comments(StringView program, Allocator allocator) throws
-    -> String
+static fn
+bc_strip_comments(StringView program, Allocator allocator) throws -> String
 {
-  let stripped = String{allocator};
+  let  stripped      = String{allocator};
   bool is_in_comment = false;
-  bool is_in_string = false;
+  bool is_in_string  = false;
 
   for (usize position = 0; position < program.length; position++) {
     if (is_in_comment) {
@@ -92,8 +93,9 @@ static fn bc_strip_comments(StringView program, Allocator allocator) throws
   return stripped;
 }
 
-static fn bc_radix_number(StringView number, u32 input_base,
-                          Allocator allocator) throws -> String
+static fn
+bc_radix_number(StringView number, u32 input_base, Allocator allocator) throws
+    -> String
 {
   if (input_base == 10) return String{allocator, number};
   let const point = number.find_character('.');
@@ -128,10 +130,14 @@ static fn bc_radix_number(StringView number, u32 input_base,
   return translated;
 }
 
-static fn bc_translate_expression(StringView expression, u32 input_base,
-                                  u32 output_base, u32 scale,
-                                  bool has_math_library, EvalContext &cxt,
-                                  Allocator allocator) throws -> String
+static fn
+bc_translate_expression(StringView   expression,
+                        u32          input_base,
+                        u32          output_base,
+                        u32          scale,
+                        bool         has_math_library,
+                        EvalContext &cxt,
+                        Allocator    allocator) throws -> String
 {
   static constexpr static_string_entry<StringView> MATH_ENTRIES[] = {
       {SSK("a"), "atan"},
@@ -163,8 +169,8 @@ static fn bc_translate_expression(StringView expression, u32 input_base,
       SSK("sqrt"),
   };
   static constexpr StaticStringSet NATIVE_FUNCTIONS{NATIVE_FUNCTION_ENTRIES};
-  let translated = String{allocator};
-  usize position = 0;
+  let                              translated = String{allocator};
+  usize                            position   = 0;
 
   while (position < expression.length) {
     let const byte = expression[position];
@@ -262,7 +268,7 @@ static fn bc_translate_expression(StringView expression, u32 input_base,
   }
 
   let scaled = String{allocator};
-  position = 0;
+  position   = 0;
 
   while (position < translated.count()) {
     usize name_end = position;
@@ -279,7 +285,7 @@ static fn bc_translate_expression(StringView expression, u32 input_base,
         SCALED_FUNCTIONS.contains(function_name))
     {
       usize inner_position = name_end + 1;
-      usize depth = 1;
+      usize depth          = 1;
 
       while (inner_position < translated.count() && depth != 0) {
         if (translated[inner_position] == '(')
@@ -305,7 +311,8 @@ static fn bc_translate_expression(StringView expression, u32 input_base,
   return scaled;
 }
 
-static pure fn bc_is_assignment(StringView statement) wontthrow -> bool
+static pure fn
+bc_is_assignment(StringView statement) wontthrow -> bool
 {
   usize position = 0;
 
@@ -359,8 +366,9 @@ static pure fn bc_is_assignment(StringView statement) wontthrow -> bool
          statement[position + 1] == '=';
 }
 
-static pure fn bc_register_value(StringView statement,
-                                 StringView name) wontthrow -> Maybe<StringView>
+static pure fn
+bc_register_value(StringView statement, StringView name) wontthrow
+    -> Maybe<StringView>
 {
   usize position = 0;
 
@@ -387,9 +395,12 @@ static pure fn bc_register_value(StringView statement,
   return statement.substring(position).trim_blanks();
 }
 
-static fn bc_parse_register(StringView value, u32 input_base, u32 output_base,
-                            EvalContext &cxt, Allocator allocator) throws
-    -> Maybe<u32>
+static fn
+bc_parse_register(StringView   value,
+                  u32          input_base,
+                  u32          output_base,
+                  EvalContext &cxt,
+                  Allocator    allocator) throws -> Maybe<u32>
 {
   if (value.length == 1) {
     let const digit = bc_digit_value(value[0]);
@@ -406,23 +417,26 @@ static fn bc_parse_register(StringView value, u32 input_base, u32 output_base,
   return static_cast<u32>(parsed.value());
 }
 
-static fn bc_base_digit(u32 digit) wontthrow -> char
+static fn
+bc_base_digit(u32 digit) wontthrow -> char
 {
   return digit < 10 ? static_cast<char>('0' + digit)
                     : static_cast<char>('A' + digit - 10);
 }
 
-static fn bc_format_in_base(StringView decimal, u32 output_base,
-                            EvalContext &cxt, Allocator allocator) throws
-    -> String
+static fn
+bc_format_in_base(StringView   decimal,
+                  u32          output_base,
+                  EvalContext &cxt,
+                  Allocator    allocator) throws -> String
 {
   if (output_base == 10) return String{allocator, decimal};
   bool is_negative = !decimal.is_empty() && decimal[0] == '-';
   if (is_negative) decimal = decimal.substring(1);
-  let const point = decimal.find_character('.');
-  let integer = String{allocator, point.has_value()
-                                      ? decimal.substring_of_length(0, *point)
-                                      : decimal};
+  let const point   = decimal.find_character('.');
+  let       integer = String{allocator, point.has_value()
+                                            ? decimal.substring_of_length(0, *point)
+                                            : decimal};
   if (integer.is_empty()) integer += '0';
   let reversed = String{allocator};
 
@@ -472,10 +486,10 @@ static fn bc_format_in_base(StringView decimal, u32 output_base,
     let const product =
         cxt.evaluate_calculator_arithmetic_text(expression.view());
     let const product_point = product.find_character('.');
-    let const whole = product_point.has_value()
-                          ? product.substring_of_length(0, *product_point)
-                          : product.view();
-    let const digit = utils::parse_decimal_u64(whole);
+    let const whole         = product_point.has_value()
+                                  ? product.substring_of_length(0, *product_point)
+                                  : product.view();
+    let const digit         = utils::parse_decimal_u64(whole);
     if (digit.is_error() || digit.value() >= output_base) {
       throw std::bad_alloc{};
     }
@@ -493,7 +507,7 @@ struct bc_function_parameter
   explicit bc_function_parameter(Allocator allocator) : name(allocator) {}
 
   String name;
-  bool is_array{false};
+  bool   is_array{false};
 };
 
 struct bc_function
@@ -502,9 +516,9 @@ struct bc_function
       : name(allocator), parameters(allocator), body(allocator)
   {}
 
-  String name;
+  String                           name;
   ArrayList<bc_function_parameter> parameters;
-  String body;
+  String                           body;
 };
 
 struct bc_function_argument
@@ -513,7 +527,7 @@ struct bc_function_argument
       : scalar(allocator), array(allocator)
   {}
 
-  String scalar;
+  String            scalar;
   ArrayList<String> array;
 };
 
@@ -523,13 +537,13 @@ struct bc_runtime
       : functions(allocator), return_value(allocator)
   {}
 
-  u32 scale{0};
-  u32 input_base{10};
-  u32 output_base{10};
-  i32 status{0};
-  bool has_math_library{false};
+  u32                    scale{0};
+  u32                    input_base{10};
+  u32                    output_base{10};
+  i32                    status{0};
+  bool                   has_math_library{false};
   ArrayList<bc_function> functions;
-  String return_value;
+  String                 return_value;
 };
 
 enum class bc_flow : u8
@@ -546,20 +560,26 @@ static constexpr static_string_entry<bc_flow> BC_CONTROL_FLOW_ENTRIES[] = {
 };
 static constexpr StaticStringMap BC_CONTROL_FLOW{BC_CONTROL_FLOW_ENTRIES};
 
-static fn bc_run_program(StringView program, const ExecContext &ec,
-                         EvalContext &cxt, bc_runtime &runtime) throws
-    -> bc_flow;
+static fn
+bc_run_program(StringView         program,
+               const ExecContext &ec,
+               EvalContext       &cxt,
+               bc_runtime        &runtime) throws -> bc_flow;
 
-static fn bc_expand_function_calls(StringView expression, const ExecContext &ec,
-                                   EvalContext &cxt, bc_runtime &runtime,
-                                   Allocator allocator) throws -> String;
+static fn
+bc_expand_function_calls(StringView         expression,
+                         const ExecContext &ec,
+                         EvalContext       &cxt,
+                         bc_runtime        &runtime,
+                         Allocator          allocator) throws -> String;
 
-static fn bc_group_nested_assignment(StringView expression,
-                                     Allocator allocator) throws -> String
+static fn
+bc_group_nested_assignment(StringView expression, Allocator allocator) throws
+    -> String
 {
-  usize depth = 0;
+  usize depth      = 0;
   usize name_start = 0;
-  usize name_end = 0;
+  usize name_end   = 0;
 
   for (usize position = 0; position < expression.length; position++) {
     if (expression[position] == '(' || expression[position] == '[') {
@@ -623,12 +643,14 @@ static fn bc_group_nested_assignment(StringView expression,
   return String{allocator, expression};
 }
 
-static fn bc_evaluate_text(StringView expression, EvalContext &cxt,
-                           bc_runtime &runtime, const ExecContext &ec) throws
-    -> String
+static fn
+bc_evaluate_text(StringView         expression,
+                 EvalContext       &cxt,
+                 bc_runtime        &runtime,
+                 const ExecContext &ec) throws -> String
 {
   let const allocator = cxt.scratch_allocator();
-  let const grouped = bc_group_nested_assignment(expression, allocator);
+  let const grouped   = bc_group_nested_assignment(expression, allocator);
   let const expanded =
       bc_expand_function_calls(grouped.view(), ec, cxt, runtime, allocator);
   let const translated = bc_translate_expression(
@@ -638,11 +660,14 @@ static fn bc_evaluate_text(StringView expression, EvalContext &cxt,
   return cxt.evaluate_bc_arithmetic_text(translated.view(), runtime.scale);
 }
 
-static fn bc_print_result(String result, const ExecContext &ec,
-                          EvalContext &cxt, bc_runtime &runtime) throws -> void
+static fn
+bc_print_result(String             result,
+                const ExecContext &ec,
+                EvalContext       &cxt,
+                bc_runtime        &runtime) throws -> void
 {
   let const allocator = cxt.scratch_allocator();
-  bool is_zero = true;
+  bool      is_zero   = true;
 
   for (usize position = 0; position < result.count(); position++) {
     if (result[position] != '0' && result[position] != '.' &&
@@ -668,8 +693,8 @@ static fn bc_print_result(String result, const ExecContext &ec,
     result = steal(formatted);
   }
   constexpr usize OUTPUT_LINE_LENGTH = 68;
-  let output = String{allocator};
-  usize position = 0;
+  let             output             = String{allocator};
+  usize           position           = 0;
 
   while (result.length() - position > OUTPUT_LINE_LENGTH) {
     output += result.view().substring_of_length(position, OUTPUT_LINE_LENGTH);
@@ -682,7 +707,8 @@ static fn bc_print_result(String result, const ExecContext &ec,
   ec.print_to_stdout(output);
 }
 
-static fn bc_find_function(bc_runtime &runtime, StringView name) wontthrow
+static fn
+bc_find_function(bc_runtime &runtime, StringView name) wontthrow
     -> bc_function *
 {
   for (let &function : runtime.functions) {
@@ -692,8 +718,10 @@ static fn bc_find_function(bc_runtime &runtime, StringView name) wontthrow
   return nullptr;
 }
 
-static fn bc_define_function(StringView statement, bc_runtime &runtime,
-                             Allocator allocator) throws -> bool
+static fn
+bc_define_function(StringView  statement,
+                   bc_runtime &runtime,
+                   Allocator   allocator) throws -> bool
 {
   if (!statement.starts_with("define")) return false;
   usize position = 6;
@@ -730,7 +758,7 @@ static fn bc_define_function(StringView statement, bc_runtime &runtime,
     return false;
   }
   let const parameter_start = ++position;
-  usize depth = 1;
+  usize     depth           = 1;
 
   while (position < statement.length && depth != 0) {
     if (statement[position] == '(')
@@ -754,8 +782,8 @@ static fn bc_define_function(StringView statement, bc_runtime &runtime,
   if (position >= statement.length || statement[position] != '{') {
     return false;
   }
-  let const body_start = ++position;
-  usize brace_depth = 1;
+  let const body_start  = ++position;
+  usize     brace_depth = 1;
 
   while (position < statement.length && brace_depth != 0) {
     if (statement[position] == '{')
@@ -772,8 +800,8 @@ static fn bc_define_function(StringView statement, bc_runtime &runtime,
   }
 
   bc_function function{allocator};
-  function.name = String{allocator, name};
-  function.body = String{allocator, statement.substring_of_length(
+  function.name    = String{allocator, name};
+  function.body    = String{allocator, statement.substring_of_length(
                                         body_start, position - body_start - 1)};
   usize part_start = 0;
 
@@ -807,8 +835,10 @@ static fn bc_define_function(StringView statement, bc_runtime &runtime,
   return true;
 }
 
-static fn bc_declare_auto(StringView statement, EvalContext &cxt,
-                          Allocator allocator) throws -> bool
+static fn
+bc_declare_auto(StringView   statement,
+                EvalContext &cxt,
+                Allocator    allocator) throws -> bool
 {
   if (!statement.starts_with("auto") ||
       (statement.length > 4 && statement[4] != ' ' && statement[4] != '\t'))
@@ -816,7 +846,7 @@ static fn bc_declare_auto(StringView statement, EvalContext &cxt,
     return false;
   }
   let const declarations = statement.substring(4);
-  usize part_start = 0;
+  usize     part_start   = 0;
 
   for (usize part_end = 0; part_end <= declarations.length; part_end++) {
     if (part_end != declarations.length && declarations[part_end] != ',') {
@@ -832,7 +862,7 @@ static fn bc_declare_auto(StringView statement, EvalContext &cxt,
         name[name.length - 1] == ']')
     {
       is_array = true;
-      name = name.substring_of_length(0, name.length - 2).trim_blanks();
+      name     = name.substring_of_length(0, name.length - 2).trim_blanks();
     }
     let translated = String{allocator, "__bc_"};
     translated += name;
@@ -847,9 +877,11 @@ static fn bc_declare_auto(StringView statement, EvalContext &cxt,
   return true;
 }
 
-static fn bc_evaluate_function_call(StringView statement, const ExecContext &ec,
-                                    EvalContext &cxt,
-                                    bc_runtime &runtime) throws -> Maybe<String>
+static fn
+bc_evaluate_function_call(StringView         statement,
+                          const ExecContext &ec,
+                          EvalContext       &cxt,
+                          bc_runtime        &runtime) throws -> Maybe<String>
 {
   usize position = 0;
   if (statement.is_empty() ||
@@ -880,7 +912,7 @@ static fn bc_evaluate_function_call(StringView statement, const ExecContext &ec,
     return {};
   }
   let const arguments_start = ++position;
-  usize depth = 1;
+  usize     depth           = 1;
 
   while (position < statement.length && depth != 0) {
     if (statement[position] == '(')
@@ -895,9 +927,9 @@ static fn bc_evaluate_function_call(StringView statement, const ExecContext &ec,
   }
   let const arguments_text = statement.substring_of_length(
       arguments_start, position - arguments_start - 1);
-  let arguments = ArrayList<StringView>{cxt.scratch_allocator()};
+  let   arguments  = ArrayList<StringView>{cxt.scratch_allocator()};
   usize part_start = 0;
-  depth = 0;
+  depth            = 0;
 
   for (usize part_end = 0; part_end <= arguments_text.length; part_end++) {
     if (part_end != arguments_text.length) {
@@ -935,7 +967,7 @@ static fn bc_evaluate_function_call(StringView statement, const ExecContext &ec,
 
   for (usize index = 0; index < function->parameters.count(); index++) {
     bc_function_argument argument{cxt.scratch_allocator()};
-    let const source =
+    let const            source =
         index < arguments.count() ? arguments[index] : StringView{"0"};
     if (function->parameters[index].is_array) {
       let source_name = source;
@@ -973,20 +1005,23 @@ static fn bc_evaluate_function_call(StringView statement, const ExecContext &ec,
 
   let saved_return = runtime.return_value.clone();
   runtime.return_value.clear();
-  let const body = function->body.clone();
-  let const flow = bc_run_program(body.view(), ec, cxt, runtime);
-  let result = flow == bc_flow::Return ? runtime.return_value.clone()
-                                       : String{cxt.scratch_allocator(), "0"};
+  let const body       = function->body.clone();
+  let const flow       = bc_run_program(body.view(), ec, cxt, runtime);
+  let       result     = flow == bc_flow::Return ? runtime.return_value.clone()
+                                                 : String{cxt.scratch_allocator(), "0"};
   runtime.return_value = steal(saved_return);
 
   return result;
 }
 
-static fn bc_expand_function_calls(StringView expression, const ExecContext &ec,
-                                   EvalContext &cxt, bc_runtime &runtime,
-                                   Allocator allocator) throws -> String
+static fn
+bc_expand_function_calls(StringView         expression,
+                         const ExecContext &ec,
+                         EvalContext       &cxt,
+                         bc_runtime        &runtime,
+                         Allocator          allocator) throws -> String
 {
-  let expanded = String{allocator};
+  let   expanded = String{allocator};
   usize position = 0;
 
   while (position < expression.length) {
@@ -1024,7 +1059,7 @@ static fn bc_expand_function_calls(StringView expression, const ExecContext &ec,
     }
 
     usize call_end = opening_position + 1;
-    usize depth = 1;
+    usize depth    = 1;
 
     while (call_end < expression.length && depth != 0) {
       if (expression[call_end] == '(')
@@ -1057,9 +1092,12 @@ static fn bc_expand_function_calls(StringView expression, const ExecContext &ec,
   return expanded;
 }
 
-static fn bc_try_function_call(StringView statement, const ExecContext &ec,
-                               EvalContext &cxt, bc_runtime &runtime,
-                               bc_output_mode output_mode) throws -> bool
+static fn
+bc_try_function_call(StringView         statement,
+                     const ExecContext &ec,
+                     EvalContext       &cxt,
+                     bc_runtime        &runtime,
+                     bc_output_mode     output_mode) throws -> bool
 {
   let result = bc_evaluate_function_call(statement, ec, cxt, runtime);
   if (!result.has_value()) return false;
@@ -1069,9 +1107,12 @@ static fn bc_try_function_call(StringView statement, const ExecContext &ec,
   return true;
 }
 
-static fn bc_execute_simple(StringView statement, const ExecContext &ec,
-                            EvalContext &cxt, bc_runtime &runtime,
-                            bc_output_mode output_mode) throws -> void
+static fn
+bc_execute_simple(StringView         statement,
+                  const ExecContext &ec,
+                  EvalContext       &cxt,
+                  bc_runtime        &runtime,
+                  bc_output_mode     output_mode) throws -> void
 {
   let const allocator = cxt.scratch_allocator();
   if (statement.length >= 2 && statement[0] == '"' &&
@@ -1146,9 +1187,11 @@ static fn bc_execute_simple(StringView statement, const ExecContext &ec,
   }
 }
 
-static fn bc_condition_is_true(StringView condition, const ExecContext &ec,
-                               EvalContext &cxt, bc_runtime &runtime) throws
-    -> bool
+static fn
+bc_condition_is_true(StringView         condition,
+                     const ExecContext &ec,
+                     EvalContext       &cxt,
+                     bc_runtime        &runtime) throws -> bool
 {
   let const allocator = cxt.scratch_allocator();
   let const expanded =
@@ -1164,9 +1207,11 @@ static fn bc_condition_is_true(StringView condition, const ExecContext &ec,
          "0";
 }
 
-static fn bc_control_parts(StringView statement, StringView keyword,
-                           StringView &header, StringView &body) wontthrow
-    -> bool
+static fn
+bc_control_parts(StringView  statement,
+                 StringView  keyword,
+                 StringView &header,
+                 StringView &body) wontthrow -> bool
 {
   if (!statement.starts_with(keyword)) return false;
   usize position = keyword.length;
@@ -1181,7 +1226,7 @@ static fn bc_control_parts(StringView statement, StringView keyword,
     return false;
   }
   let const header_start = ++position;
-  usize depth = 1;
+  usize     depth        = 1;
 
   while (position < statement.length && depth != 0) {
     if (statement[position] == '(')
@@ -1199,9 +1244,11 @@ static fn bc_control_parts(StringView statement, StringView keyword,
   return !body.is_empty();
 }
 
-static fn bc_execute_statement(StringView statement, const ExecContext &ec,
-                               EvalContext &cxt, bc_runtime &runtime) throws
-    -> bc_flow
+static fn
+bc_execute_statement(StringView         statement,
+                     const ExecContext &ec,
+                     EvalContext       &cxt,
+                     bc_runtime        &runtime) throws -> bc_flow
 {
   statement = statement.trim_blanks();
   if (statement.is_empty()) return bc_flow::Normal;
@@ -1255,9 +1302,9 @@ static fn bc_execute_statement(StringView statement, const ExecContext &ec,
   }
   if (bc_control_parts(statement, "for", header, body)) {
     StringView parts[3];
-    usize part_count = 0;
-    usize part_start = 0;
-    usize depth = 0;
+    usize      part_count = 0;
+    usize      part_start = 0;
+    usize      depth      = 0;
 
     for (usize position = 0; position <= header.length; position++) {
       if (position != header.length) {
@@ -1303,14 +1350,16 @@ static fn bc_execute_statement(StringView statement, const ExecContext &ec,
   return bc_flow::Normal;
 }
 
-static fn bc_run_program(StringView program, const ExecContext &ec,
-                         EvalContext &cxt, bc_runtime &runtime) throws
-    -> bc_flow
+static fn
+bc_run_program(StringView         program,
+               const ExecContext &ec,
+               EvalContext       &cxt,
+               bc_runtime        &runtime) throws -> bc_flow
 {
-  usize statement_start = 0;
+  usize statement_start   = 0;
   usize parenthesis_depth = 0;
-  usize brace_depth = 0;
-  bool is_in_string = false;
+  usize brace_depth       = 0;
+  bool  is_in_string      = false;
 
   for (usize position = 0; position <= program.length; position++) {
     if (position != program.length) {
@@ -1338,17 +1387,18 @@ static fn bc_run_program(StringView program, const ExecContext &ec,
         program.substring_of_length(statement_start, position - statement_start)
             .trim_blanks();
     statement_start = position + 1;
-    let const flow = bc_execute_statement(statement, ec, cxt, runtime);
+    let const flow  = bc_execute_statement(statement, ec, cxt, runtime);
     if (flow != bc_flow::Normal) return flow;
   }
 
   return bc_flow::Normal;
 }
 
-fn Bc::execute(const ExecContext &ec, EvalContext &cxt,
-               const ArrayList<String> &args,
-               const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+fn
+Bc::execute(const ExecContext               &ec,
+            EvalContext                     &cxt,
+            const ArrayList<String>         &args,
+            const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 

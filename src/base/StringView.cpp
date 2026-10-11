@@ -13,7 +13,8 @@
 
 namespace koshka {
 
-fn StringView::to_lower_ascii(Allocator allocator) const throws -> String
+fn
+StringView::to_lower_ascii(Allocator allocator) const throws -> String
 {
   let result = String{allocator, *this};
   result.lowercase_ascii();
@@ -21,7 +22,8 @@ fn StringView::to_lower_ascii(Allocator allocator) const throws -> String
   return result;
 }
 
-fn StringView::copy_to(Allocator allocator) const throws -> StringView
+fn
+StringView::copy_to(Allocator allocator) const throws -> StringView
 {
   if (length == 0) return StringView{};
 
@@ -32,17 +34,22 @@ fn StringView::copy_to(Allocator allocator) const throws -> StringView
 }
 
 namespace utils {
-fn parse_decimal_i64(StringView text, bool *out_of_range = nullptr) throws
+fn
+parse_decimal_i64(StringView text, bool *out_of_range = nullptr) throws
     -> ErrorOr<i64>;
-fn parse_decimal_u64(StringView text) throws -> ErrorOr<u64>;
-fn parse_integer_in_base(StringView text, bool *out_of_range,
-                         int_base base) throws -> ErrorOr<i64>;
-fn parse_integer_in_base_u64(StringView text, int_base base) throws
+fn
+parse_decimal_u64(StringView text) throws -> ErrorOr<u64>;
+fn
+parse_integer_in_base(StringView text, bool *out_of_range, int_base base) throws
+    -> ErrorOr<i64>;
+fn
+parse_integer_in_base_u64(StringView text, int_base base) throws
     -> ErrorOr<u64>;
 } /* namespace utils */
 
 template <class T>
-static fn narrow_integer(i64 value) throws -> ErrorOr<T>
+static fn
+narrow_integer(i64 value) throws -> ErrorOr<T>
 {
   static_assert(std::is_integral_v<T>, "narrow_integer targets an integer");
   if constexpr (std::is_same_v<T, i64>) {
@@ -67,7 +74,8 @@ static fn narrow_integer(i64 value) throws -> ErrorOr<T>
 }
 
 template <class T>
-fn StringView::to() const throws -> ErrorOr<T>
+fn
+StringView::to() const throws -> ErrorOr<T>
 {
   if constexpr (is_tagged_int_v<T>) {
     using U = typename T::underlying;
@@ -112,7 +120,8 @@ KOSH_STRINGVIEW_TO(hu32)
 KOSH_STRINGVIEW_TO(hu64)
 #undef KOSH_STRINGVIEW_TO
 
-fn StringView::find_character(char wanted) const wontthrow -> Maybe<usize>
+fn
+StringView::find_character(char wanted) const wontthrow -> Maybe<usize>
 {
   let const found =
       byte_scan::find_byte(data, length, static_cast<unsigned char>(wanted));
@@ -121,7 +130,8 @@ fn StringView::find_character(char wanted) const wontthrow -> Maybe<usize>
   return static_cast<usize>(found - data);
 }
 
-fn StringView::find_last_character(char wanted) const wontthrow -> Maybe<usize>
+fn
+StringView::find_last_character(char wanted) const wontthrow -> Maybe<usize>
 {
   let const found = byte_scan::find_last_byte(
       data, length, static_cast<unsigned char>(wanted));
@@ -130,7 +140,8 @@ fn StringView::find_last_character(char wanted) const wontthrow -> Maybe<usize>
   return static_cast<usize>(found - data);
 }
 
-fn StringView::find_substring(StringView needle, usize from) const wontthrow
+fn
+StringView::find_substring(StringView needle, usize from) const wontthrow
     -> Maybe<usize>
 {
   if (needle.length == 0) return from <= length ? Maybe<usize>{from} : None;
@@ -156,7 +167,8 @@ fn StringView::find_substring(StringView needle, usize from) const wontthrow
   return None;
 }
 
-fn StringView::substring(usize start) const wontthrow -> StringView
+fn
+StringView::substring(usize start) const wontthrow -> StringView
 {
   if (start >= length)
     return StringView{data == nullptr ? nullptr : data + length, 0};
@@ -164,7 +176,8 @@ fn StringView::substring(usize start) const wontthrow -> StringView
   return StringView{data + start, length - start};
 }
 
-fn StringView::substring_of_length(usize start, usize count) const wontthrow
+fn
+StringView::substring_of_length(usize start, usize count) const wontthrow
     -> StringView
 {
   if (start >= length)
@@ -174,19 +187,21 @@ fn StringView::substring_of_length(usize start, usize count) const wontthrow
   return StringView{data + start, count < remaining ? count : remaining};
 }
 
-fn StringView::next_line(usize &position) const wontthrow -> StringView
+fn
+StringView::next_line(usize &position) const wontthrow -> StringView
 {
-  let const remaining = substring(position);
-  let const newline = remaining.find_character('\n');
+  let const remaining   = substring(position);
+  let const newline     = remaining.find_character('\n');
   let const line_length = newline.has_value() ? *newline : remaining.length;
-  let const line = remaining.substring_of_length(0, line_length);
+  let const line        = remaining.substring_of_length(0, line_length);
   position += line_length;
   if (position < length) position++;
 
   return line;
 }
 
-fn StringView::next_ascii_whitespace_word(usize &position) const wontthrow
+fn
+StringView::next_ascii_whitespace_word(usize &position) const wontthrow
     -> StringView
 {
   while (position < length && is_ascii_whitespace(data[position])) {
@@ -202,7 +217,8 @@ fn StringView::next_ascii_whitespace_word(usize &position) const wontthrow
   return substring_of_length(start_position, position - start_position);
 }
 
-fn StringView::starts_with(StringView prefix) const wontthrow -> bool
+fn
+StringView::starts_with(StringView prefix) const wontthrow -> bool
 {
   if (prefix.length > length) return false;
 

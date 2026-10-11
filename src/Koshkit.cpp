@@ -24,13 +24,15 @@ namespace koshkit {
 
 #if !defined KOSH_NO_KOSHKIT
 
-pure fn is_koshkit_sample_duration(StringView value) wontthrow -> bool
+pure fn
+is_koshkit_sample_duration(StringView value) wontthrow -> bool
 {
   return !value.is_empty() &&
          ((value[0] >= '0' && value[0] <= '9') || value[0] == '.');
 }
 
-fn take_interrupt_request() wontthrow -> bool
+fn
+take_interrupt_request() wontthrow -> bool
 {
   if (os::INTERRUPT_REQUESTED == 0) return false;
 
@@ -39,11 +41,12 @@ fn take_interrupt_request() wontthrow -> bool
   return true;
 }
 
-fn path_error_message(StringView verb, StringView path,
-                      Allocator allocator) throws -> String
+fn
+path_error_message(StringView verb, StringView path, Allocator allocator) throws
+    -> String
 {
-  let const reason = os::last_system_error_message();
-  let message = String{allocator, "cannot "};
+  let const reason  = os::last_system_error_message();
+  let       message = String{allocator, "cannot "};
   message += verb;
   message += " '";
   message += path;
@@ -53,10 +56,14 @@ fn path_error_message(StringView verb, StringView path,
   return message;
 }
 
-fn report_unresolved_sort_key(const ExecContext &ec, EvalContext &cxt,
-                              SourceLocation location, StringView utility_name,
-                              usize match_count, StringView matches,
-                              StringView invalid_note) throws -> bool
+fn
+report_unresolved_sort_key(const ExecContext &ec,
+                           EvalContext       &cxt,
+                           SourceLocation     location,
+                           StringView         utility_name,
+                           usize              match_count,
+                           StringView         matches,
+                           StringView         invalid_note) throws -> bool
 {
   if (match_count == 1) return true;
 
@@ -76,30 +83,36 @@ fn report_unresolved_sort_key(const ExecContext &ec, EvalContext &cxt,
   return false;
 }
 
-flatten fn find_util(StringView name) throws -> Maybe<Utility::Kind>
+flatten fn
+find_util(StringView name) throws -> Maybe<Utility::Kind>
 {
   return KOSHKIT_UTILS.find(name);
 }
 
 static thread_local cli_color_mode KOSHKIT_COLOR_MODE = cli_color_mode::Auto;
 
-fn set_koshkit_color_mode(cli_color_mode mode) wontthrow -> void
+fn
+set_koshkit_color_mode(cli_color_mode mode) wontthrow -> void
 {
   KOSHKIT_COLOR_MODE = mode;
 }
 
-fn koshkit_should_color() throws -> bool
+fn
+koshkit_should_color() throws -> bool
 {
   return stdout_wants_color(KOSHKIT_COLOR_MODE);
 }
 
-pure fn is_koshkit_color_when(StringView value) wontthrow -> bool
+pure fn
+is_koshkit_color_when(StringView value) wontthrow -> bool
 {
   return parse_cli_color_mode(value).has_value();
 }
 
-fn resolve_koshkit_color_flag(bool is_enabled, bool has_value,
-                              StringView value) throws -> bool
+fn
+resolve_koshkit_color_flag(bool       is_enabled,
+                           bool       has_value,
+                           StringView value) throws -> bool
 {
   if (!is_enabled) return false;
   if (!has_value) return stdout_wants_color(cli_color_mode::Auto);
@@ -113,24 +126,29 @@ static const FlagList *KOSHKIT_UTIL_FLAG_LISTS[KOSHKIT_UTIL_COUNT] = {};
 
 static const SynopsisList *KOSHKIT_UTIL_SYNOPSES[KOSHKIT_UTIL_COUNT] = {};
 
-fn register_koshkit_util_flags(Utility::Kind chosen, const FlagList *flags,
-                               const SynopsisList *synopsis) wontthrow -> void
+fn
+register_koshkit_util_flags(Utility::Kind       chosen,
+                            const FlagList     *flags,
+                            const SynopsisList *synopsis) wontthrow -> void
 {
   KOSHKIT_UTIL_FLAG_LISTS[static_cast<usize>(chosen)] = flags;
-  KOSHKIT_UTIL_SYNOPSES[static_cast<usize>(chosen)] = synopsis;
+  KOSHKIT_UTIL_SYNOPSES[static_cast<usize>(chosen)]   = synopsis;
 }
 
-fn koshkit_util_flag_list(Utility::Kind chosen) wontthrow -> const FlagList *
+fn
+koshkit_util_flag_list(Utility::Kind chosen) wontthrow -> const FlagList *
 {
   return KOSHKIT_UTIL_FLAG_LISTS[static_cast<usize>(chosen)];
 }
 
-fn koshkit_util_synopsis(Utility::Kind chosen) wontthrow -> const SynopsisList *
+fn
+koshkit_util_synopsis(Utility::Kind chosen) wontthrow -> const SynopsisList *
 {
   return KOSHKIT_UTIL_SYNOPSES[static_cast<usize>(chosen)];
 }
 
-fn util_names() throws -> const ArrayList<String> &
+fn
+util_names() throws -> const ArrayList<String> &
 {
   static ArrayList<String> names = [] throws {
     let collected = ArrayList<String>{heap_allocator()};
@@ -147,7 +165,8 @@ fn util_names() throws -> const ArrayList<String> &
 using sorted_utility_name_list =
     SortedArrayList<String, order_comparator<String>>;
 
-fn sorted_util_names() throws -> const ArrayList<String> &
+fn
+sorted_util_names() throws -> const ArrayList<String> &
 {
   static sorted_utility_name_list names = [] throws {
     let collected = ArrayList<String>{heap_allocator()};
@@ -161,7 +180,8 @@ fn sorted_util_names() throws -> const ArrayList<String> &
   return names;
 }
 
-fn resolve_util_program(EvalContext &cxt, StringView name) throws -> Maybe<Path>
+fn
+resolve_util_program(EvalContext &cxt, StringView name) throws -> Maybe<Path>
 {
   let const matches =
       cxt.program_resolver().search(name, ProgramResolver::SearchMode::First,
@@ -172,8 +192,10 @@ fn resolve_util_program(EvalContext &cxt, StringView name) throws -> Maybe<Path>
   return matches[0];
 }
 
-fn capture_util_program_output(const Path &program, ArrayList<String> arguments,
-                               u64 timeout_nanoseconds) throws -> Maybe<String>
+fn
+capture_util_program_output(const Path       &program,
+                            ArrayList<String> arguments,
+                            u64 timeout_nanoseconds) throws -> Maybe<String>
 {
   let command = ArrayList<String>{heap_allocator()};
   command.reserve(arguments.count() + 1);
@@ -185,9 +207,11 @@ fn capture_util_program_output(const Path &program, ArrayList<String> arguments,
   return os::capture_program_output(command, timeout_nanoseconds);
 }
 
-fn capture_util_program_output(EvalContext &cxt, StringView name,
-                               ArrayList<String> arguments,
-                               u64 timeout_nanoseconds) throws -> Maybe<String>
+fn
+capture_util_program_output(EvalContext      &cxt,
+                            StringView        name,
+                            ArrayList<String> arguments,
+                            u64 timeout_nanoseconds) throws -> Maybe<String>
 {
   let const program = resolve_util_program(cxt, name);
   if (!program.has_value()) return None;
@@ -197,8 +221,8 @@ fn capture_util_program_output(EvalContext &cxt, StringView name,
 }
 
 template <typename Value>
-static fn get_exported_spelling(const Value &value,
-                                StringView environment_name) wontthrow
+static fn
+get_exported_spelling(const Value &value, StringView environment_name) wontthrow
     -> StringView
 {
   if constexpr (os::ENVIRONMENT_IS_CASE_SENSITIVE) {
@@ -210,10 +234,11 @@ static fn get_exported_spelling(const Value &value,
   }
 }
 
-fn print_environment(const ExecContext &ec, EvalContext &cxt) throws -> void
+fn
+print_environment(const ExecContext &ec, EvalContext &cxt) throws -> void
 {
   cxt.prepare_child_environment();
-  let output = String{cxt.scratch_allocator()};
+  let output        = String{cxt.scratch_allocator()};
   let printed_names = HashSet{cxt.scratch_allocator()};
 
   for (let const &name : os::environment_names()) {
@@ -241,9 +266,12 @@ fn print_environment(const ExecContext &ec, EvalContext &cxt) throws -> void
   ec.print_to_stdout(output);
 }
 
-fn run_util(Utility::Kind chosen, const ExecContext &ec, EvalContext &cxt,
-            const ArrayList<String> &args,
-            const ArrayList<SourceLocation> &arg_locations) throws -> i32
+fn
+run_util(Utility::Kind                    chosen,
+         const ExecContext               &ec,
+         EvalContext                     &cxt,
+         const ArrayList<String>         &args,
+         const ArrayList<SourceLocation> &arg_locations) throws -> i32
 {
   LOG(Debug, "dispatching koshkit utility %d with %zu arguments", ENUM(chosen),
       args.count());
@@ -253,8 +281,9 @@ fn run_util(Utility::Kind chosen, const ExecContext &ec, EvalContext &cxt,
   unreachable("unhandled koshkit utility of kind %d", ENUM(chosen));
 }
 
-wontreturn fn rethrow_with_prefix(const ErrorWithLocation &error,
-                                  StringView prefix) throws -> void
+wontreturn fn
+rethrow_with_prefix(const ErrorWithLocation &error, StringView prefix) throws
+    -> void
 {
   let const message = prefix + ": " + error.message();
   if (!error.detail_message().is_empty()) {
@@ -273,8 +302,11 @@ wontreturn fn rethrow_with_prefix(const ErrorWithLocation &error,
   throw rewrapped;
 }
 
-fn dispatch(const ExecContext &ec, EvalContext &cxt, usize name_index,
-            Maybe<Utility::Kind> chosen) throws -> i32
+fn
+dispatch(const ExecContext   &ec,
+         EvalContext         &cxt,
+         usize                name_index,
+         Maybe<Utility::Kind> chosen) throws -> i32
 {
   ASSERT(name_index < ec.args().count());
   let const name = ec.args()[name_index].view();
@@ -306,8 +338,12 @@ fn dispatch(const ExecContext &ec, EvalContext &cxt, usize name_index,
   }
 }
 
-fn print_util_help(const ExecContext &ec, StringView name, StringView synopsis,
-                   StringView description, const FlagList &flags) throws -> void
+fn
+print_util_help(const ExecContext &ec,
+                StringView         name,
+                StringView         synopsis,
+                StringView         description,
+                const FlagList    &flags) throws -> void
 {
   let help_text = String{heap_allocator()};
 
@@ -335,13 +371,16 @@ fn print_util_help(const ExecContext &ec, StringView name, StringView synopsis,
   ec.print_to_stdout(format_cli_help(help_text.view(), should_color));
 }
 
-fn read_fd_to_string(os::descriptor fd) throws -> Maybe<String>
+fn
+read_fd_to_string(os::descriptor fd) throws -> Maybe<String>
 {
   return os::read_fd_to_string(fd, heap_allocator());
 }
 
-fn copy_file_contents(StringView source, StringView destination,
-                      copy_force_mode force_mode) throws -> copy_file_result
+fn
+copy_file_contents(StringView      source,
+                   StringView      destination,
+                   copy_force_mode force_mode) throws -> copy_file_result
 {
   let const source_descriptor =
       os::open_file_descriptor(source, os::file_open_mode::Read);
@@ -374,9 +413,11 @@ fn copy_file_contents(StringView source, StringView destination,
   }
 }
 
-fn copy_file_or_throw(StringView source, StringView destination,
-                      copy_force_mode force_mode, Allocator allocator) throws
-    -> void
+fn
+copy_file_or_throw(StringView      source,
+                   StringView      destination,
+                   copy_force_mode force_mode,
+                   Allocator       allocator) throws -> void
 {
   switch (copy_file_contents(source, destination, force_mode)) {
   case copy_file_result::SourceOpenFailed:
@@ -407,23 +448,23 @@ fn copy_file_or_throw(StringView source, StringView destination,
   }
 }
 
-fn confirm_koshkit_action(const ExecContext &ec, StringView prompt) throws
-    -> bool
+fn
+confirm_koshkit_action(const ExecContext &ec, StringView prompt) throws -> bool
 {
   ec.print_to_stderr(prompt);
 
-  char first_byte = '\0';
+  char first_byte    = '\0';
   bool is_first_byte = true;
 
   loop
   {
-    char byte = '\0';
+    char      byte       = '\0';
     let const read_count = os::read_fd(ec.in_fd.value_or(KOSH_STDIN), &byte, 1);
     if (!read_count.has_value() || *read_count == 0) {
       break;
     }
     if (is_first_byte) {
-      first_byte = byte;
+      first_byte    = byte;
       is_first_byte = false;
     }
     if (byte == '\n') break;
@@ -432,7 +473,8 @@ fn confirm_koshkit_action(const ExecContext &ec, StringView prompt) throws
   return first_byte == 'y' || first_byte == 'Y';
 }
 
-fn read_named_or_stdin(const ExecContext &ec, StringView path) throws
+fn
+read_named_or_stdin(const ExecContext &ec, StringView path) throws
     -> Maybe<String>
 {
   if (path == "-") return read_fd_to_string(ec.in_fd.value_or(KOSH_STDIN));
@@ -444,9 +486,10 @@ fn read_named_or_stdin(const ExecContext &ec, StringView path) throws
   return read_fd_to_string(*fd);
 }
 
-SourceBatchReader::SourceBatchReader(const ExecContext &ec,
+SourceBatchReader::SourceBatchReader(const ExecContext           &ec,
                                      const ArrayList<StringView> &sources,
-                                     Allocator allocator, usize read_byte_count,
+                                     Allocator                    allocator,
+                                     usize          read_byte_count,
                                      SourceDashMode dash_mode,
                                      SourceKindMode kind_mode,
                                      SourceReadMode read_mode) throws
@@ -480,23 +523,25 @@ SourceBatchReader::~SourceBatchReader()
   if (m_sequential_reader.has_value()) close_reader(*m_sequential_reader);
 }
 
-fn SourceBatchReader::close_reader(Reader &reader) wontthrow -> void
+fn
+SourceBatchReader::close_reader(Reader &reader) wontthrow -> void
 {
   if (reader.descriptor_mode == ReaderDescriptorMode::Owned)
     os::close_fd(reader.descriptor);
   reader.descriptor_mode = ReaderDescriptorMode::Borrowed;
-  reader.state = ReaderState::Complete;
+  reader.state           = ReaderState::Complete;
 }
 
-fn SourceBatchReader::finish_source(usize source_index) wontthrow -> void
+fn
+SourceBatchReader::finish_source(usize source_index) wontthrow -> void
 {
   for (let &reader : m_readers) {
     if (reader.source_index != source_index) continue;
 
     close_reader(reader);
-    reader.pending_byte_count = 0;
+    reader.pending_byte_count   = 0;
     reader.pending_error_number = 0;
-    reader.chunk_state = ReaderChunkState::Empty;
+    reader.chunk_state          = ReaderChunkState::Empty;
 
     return;
   }
@@ -505,14 +550,15 @@ fn SourceBatchReader::finish_source(usize source_index) wontthrow -> void
       m_sequential_reader->source_index == source_index)
   {
     close_reader(*m_sequential_reader);
-    m_sequential_reader->pending_byte_count = 0;
+    m_sequential_reader->pending_byte_count   = 0;
     m_sequential_reader->pending_error_number = 0;
-    m_sequential_reader->chunk_state = ReaderChunkState::Empty;
+    m_sequential_reader->chunk_state          = ReaderChunkState::Empty;
   }
 }
 
-fn SourceBatchReader::set_source_read_byte_count(usize source_index,
-                                                 usize byte_count) wontthrow
+fn
+SourceBatchReader::set_source_read_byte_count(usize source_index,
+                                              usize byte_count) wontthrow
     -> void
 {
   let const bounded_count =
@@ -533,13 +579,14 @@ fn SourceBatchReader::set_source_read_byte_count(usize source_index,
   }
 }
 
-fn SourceBatchReader::retire_completed_readers() throws -> void
+fn
+SourceBatchReader::retire_completed_readers() throws -> void
 {
   for (usize remaining_count = m_readers.count(); remaining_count > 0;
        remaining_count--)
   {
-    let const reader_index = remaining_count - 1;
-    let const &reader = m_readers[reader_index];
+    let const  reader_index = remaining_count - 1;
+    let const &reader       = m_readers[reader_index];
     if (reader.state == ReaderState::Complete &&
         reader.chunk_state == ReaderChunkState::Empty)
     {
@@ -555,29 +602,30 @@ fn SourceBatchReader::retire_completed_readers() throws -> void
   }
 }
 
-fn SourceBatchReader::fill_readers() throws -> void
+fn
+SourceBatchReader::fill_readers() throws -> void
 {
   constexpr usize READER_COUNT = 16;
 
   if (m_readers.is_empty()) m_defer_mode = SourceDeferMode::Ready;
 
-  MetadataWindowMode metadata_mode = MetadataWindowMode::Unloaded;
-  usize metadata_index = 0;
-  let const reader_limit =
+  MetadataWindowMode metadata_mode  = MetadataWindowMode::Unloaded;
+  usize              metadata_index = 0;
+  let const          reader_limit =
       m_read_mode == SourceReadMode::Sequential ? usize{1} : READER_COUNT;
 
   while (!m_sequential_reader.has_value() && m_readers.count() < reader_limit &&
          m_source_index < m_sources.count())
   {
     let const source_index = m_source_index;
-    let const source = m_sources[source_index];
+    let const source       = m_sources[source_index];
     if (m_dash_mode == SourceDashMode::TreatAsStdin && source == "-") {
       Reader reader;
       reader.buffer.reserve(m_read_byte_count);
-      reader.source_index = source_index;
+      reader.source_index    = source_index;
       reader.read_byte_count = m_read_byte_count;
-      reader.descriptor = m_ec.in_fd.value_or(KOSH_STDIN);
-      m_sequential_reader = steal(reader);
+      reader.descriptor      = m_ec.in_fd.value_or(KOSH_STDIN);
+      m_sequential_reader    = steal(reader);
       m_source_index++;
       break;
     }
@@ -641,11 +689,11 @@ fn SourceBatchReader::fill_readers() throws -> void
       }
 
       Reader reader;
-      reader.source_index = source_index;
+      reader.source_index         = source_index;
       reader.pending_error_number = os::get_last_system_error_number();
-      reader.state = ReaderState::Complete;
-      reader.chunk_state = ReaderChunkState::Pending;
-      reader.open_state = source_open_state::Failed;
+      reader.state                = ReaderState::Complete;
+      reader.chunk_state          = ReaderChunkState::Pending;
+      reader.open_state           = source_open_state::Failed;
       m_readers.push(steal(reader));
       m_source_index++;
       break;
@@ -668,9 +716,9 @@ fn SourceBatchReader::fill_readers() throws -> void
 
     Reader reader;
     reader.buffer.reserve(m_read_byte_count);
-    reader.source_index = source_index;
+    reader.source_index    = source_index;
     reader.read_byte_count = m_read_byte_count;
-    reader.descriptor = *descriptor;
+    reader.descriptor      = *descriptor;
     reader.descriptor_mode = ReaderDescriptorMode::Owned;
     reader.should_end_at_short_read =
         reported_byte_count.has_value() && *reported_byte_count > 0;
@@ -690,7 +738,8 @@ fn SourceBatchReader::fill_readers() throws -> void
   }
 }
 
-fn SourceBatchReader::read_seekable() throws -> ReadResult
+fn
+SourceBatchReader::read_seekable() throws -> ReadResult
 {
   m_batch.clear();
   m_reader_positions.clear();
@@ -722,13 +771,13 @@ fn SourceBatchReader::read_seekable() throws -> ReadResult
 
   for (usize result_index = 0; result_index < m_results.count(); result_index++)
   {
-    let const reader_index = m_reader_positions[result_index];
-    let &reader = m_readers[reader_index];
-    let const &result = m_results[result_index];
+    let const  reader_index = m_reader_positions[result_index];
+    let       &reader       = m_readers[reader_index];
+    let const &result       = m_results[result_index];
     if (result.error_number != 0) {
       close_reader(reader);
       reader.pending_error_number = result.error_number;
-      reader.chunk_state = ReaderChunkState::Pending;
+      reader.chunk_state          = ReaderChunkState::Pending;
       continue;
     }
     if (result.transferred_byte_count == 0) {
@@ -738,7 +787,7 @@ fn SourceBatchReader::read_seekable() throws -> ReadResult
     }
 
     reader.pending_byte_count = result.transferred_byte_count;
-    reader.chunk_state = ReaderChunkState::Pending;
+    reader.chunk_state        = ReaderChunkState::Pending;
     reader.byte_offset += result.transferred_byte_count;
     if (reader.should_end_at_short_read &&
         result.transferred_byte_count < reader.read_byte_count)
@@ -750,7 +799,8 @@ fn SourceBatchReader::read_seekable() throws -> ReadResult
   return ReadResult::Chunks;
 }
 
-fn SourceBatchReader::read_sequential() throws -> ReadResult
+fn
+SourceBatchReader::read_sequential() throws -> ReadResult
 {
   let &reader = *m_sequential_reader;
   if (reader.chunk_state == ReaderChunkState::Pending ||
@@ -773,7 +823,7 @@ fn SourceBatchReader::read_sequential() throws -> ReadResult
     let const error_number = os::get_last_system_error_number();
     close_reader(reader);
     reader.pending_error_number = error_number;
-    reader.chunk_state = ReaderChunkState::Pending;
+    reader.chunk_state          = ReaderChunkState::Pending;
 
     return ReadResult::Chunks;
   }
@@ -785,7 +835,7 @@ fn SourceBatchReader::read_sequential() throws -> ReadResult
   }
 
   reader.pending_byte_count = *read_count;
-  reader.chunk_state = ReaderChunkState::Pending;
+  reader.chunk_state        = ReaderChunkState::Pending;
   if (reader.should_end_at_short_read && *read_count < reader.read_byte_count) {
     close_reader(reader);
   }
@@ -793,9 +843,9 @@ fn SourceBatchReader::read_sequential() throws -> ReadResult
   return ReadResult::Chunks;
 }
 
-fn SourceBatchReader::append_pending_chunks(ArrayList<Chunk> &chunks,
-                                            ChunkEmitMode emit_mode) throws
-    -> void
+fn
+SourceBatchReader::append_pending_chunks(ArrayList<Chunk> &chunks,
+                                         ChunkEmitMode emit_mode) throws -> void
 {
   let const emit_capacity =
       emit_mode == ChunkEmitMode::One
@@ -816,9 +866,9 @@ fn SourceBatchReader::append_pending_chunks(ArrayList<Chunk> &chunks,
             : source_completion_state::Pending,
         reader.open_state
     });
-    reader.pending_byte_count = 0;
+    reader.pending_byte_count   = 0;
     reader.pending_error_number = 0;
-    reader.chunk_state = ReaderChunkState::Empty;
+    reader.chunk_state          = ReaderChunkState::Empty;
 
     return true;
   };
@@ -833,8 +883,9 @@ fn SourceBatchReader::append_pending_chunks(ArrayList<Chunk> &chunks,
   }
 }
 
-fn SourceBatchReader::read_next_internal(ArrayList<Chunk> &chunks,
-                                         ChunkEmitMode emit_mode) throws
+fn
+SourceBatchReader::read_next_internal(ArrayList<Chunk> &chunks,
+                                      ChunkEmitMode     emit_mode) throws
     -> ReadResult
 {
   chunks.clear();
@@ -863,20 +914,23 @@ fn SourceBatchReader::read_next_internal(ArrayList<Chunk> &chunks,
   return ReadResult::Chunks;
 }
 
-fn SourceBatchReader::read_next(ArrayList<Chunk> &chunks) throws -> ReadResult
+fn
+SourceBatchReader::read_next(ArrayList<Chunk> &chunks) throws -> ReadResult
 {
   return read_next_internal(chunks, ChunkEmitMode::All);
 }
 
-fn SourceBatchReader::read_next_ordered(ArrayList<Chunk> &chunks) throws
+fn
+SourceBatchReader::read_next_ordered(ArrayList<Chunk> &chunks) throws
     -> ReadResult
 {
   return read_next_internal(chunks, ChunkEmitMode::One);
 }
 
-fn read_named_or_stdin_batch(const ExecContext &ec,
-                             const ArrayList<StringView> &sources,
-                             Allocator allocator) throws
+fn
+read_named_or_stdin_batch(const ExecContext           &ec,
+                          const ArrayList<StringView> &sources,
+                          Allocator                    allocator) throws
     -> ArrayList<source_read_result>
 {
   let results = ArrayList<source_read_result>{allocator};
@@ -892,13 +946,13 @@ fn read_named_or_stdin_batch(const ExecContext &ec,
   {
     let const read_result = reader.read_next(chunks);
     switch (read_result) {
-    case SourceBatchReader::ReadResult::Chunks: break;
+    case SourceBatchReader::ReadResult::Chunks:      break;
     case SourceBatchReader::ReadResult::Complete:
     case SourceBatchReader::ReadResult::Interrupted: return results;
     }
 
     for (let const &chunk : chunks) {
-      let &result = results[chunk.source_index];
+      let &result       = results[chunk.source_index];
       result.completion = chunk.completion;
       if (chunk.error_number != 0) {
         result.content.reset();
@@ -906,7 +960,7 @@ fn read_named_or_stdin_batch(const ExecContext &ec,
         continue;
       }
       if (!result.content.has_value()) {
-        result.content = String{allocator};
+        result.content   = String{allocator};
         let const source = sources[chunk.source_index];
         if (chunk.completion == source_completion_state::Pending &&
             source != "-")
@@ -924,7 +978,8 @@ fn read_named_or_stdin_batch(const ExecContext &ec,
   return results;
 }
 
-fn open_named_or_stdin(const ExecContext &ec, StringView path) wontthrow
+fn
+open_named_or_stdin(const ExecContext &ec, StringView path) wontthrow
     -> Maybe<input_descriptor>
 {
   if (path == "-")
@@ -938,9 +993,12 @@ fn open_named_or_stdin(const ExecContext &ec, StringView path) wontthrow
   return input_descriptor{*descriptor, input_descriptor_mode::Owned};
 }
 
-fn visit_source_lines_with(const ExecContext &ec, StringView source,
-                           Allocator allocator, opaque *visitor,
-                           source_line_visitor do_visit_line) throws
+fn
+visit_source_lines_with(const ExecContext  &ec,
+                        StringView          source,
+                        Allocator           allocator,
+                        opaque             *visitor,
+                        source_line_visitor do_visit_line) throws
     -> source_line_outcome
 {
   let const input = open_named_or_stdin(ec, source);
@@ -967,8 +1025,9 @@ fn visit_source_lines_with(const ExecContext &ec, StringView source,
   }
 }
 
-fn file_crc32c(const ExecContext &ec, StringView path,
-               Allocator allocator) throws -> Maybe<String>
+fn
+file_crc32c(const ExecContext &ec, StringView path, Allocator allocator) throws
+    -> Maybe<String>
 {
   let const input = open_named_or_stdin(ec, path);
   if (!input.has_value()) return None;
@@ -978,7 +1037,7 @@ fn file_crc32c(const ExecContext &ec, StringView path,
       unused(os::close_fd(input->descriptor));
   };
 
-  u32 crc = 0xffffffffu;
+  u32  crc = 0xffffffffu;
   char buffer[65536];
 
   loop
@@ -1004,9 +1063,10 @@ fn file_crc32c(const ExecContext &ec, StringView path,
   return digest;
 }
 
-fn source_list_from_operands(const ArrayList<String> &operands,
-                             Allocator allocator,
-                             usize first_operand_index) throws
+fn
+source_list_from_operands(const ArrayList<String> &operands,
+                          Allocator                allocator,
+                          usize                    first_operand_index) throws
     -> ArrayList<StringView>
 {
   let sources = ArrayList<StringView>{allocator};
@@ -1022,7 +1082,8 @@ fn source_list_from_operands(const ArrayList<String> &operands,
   return sources;
 }
 
-fn parse_strict_count(StringView text) throws -> ErrorOr<u64>
+fn
+parse_strict_count(StringView text) throws -> ErrorOr<u64>
 {
   usize start = 0;
 
@@ -1042,37 +1103,47 @@ fn parse_strict_count(StringView text) throws -> ErrorOr<u64>
 
 #else
 
-fn find_util(StringView) throws -> Maybe<Utility::Kind> { return {}; }
+fn
+find_util(StringView) throws -> Maybe<Utility::Kind>
+{
+  return {};
+}
 
-fn koshkit_util_flag_list(Utility::Kind) wontthrow -> const FlagList *
+fn
+koshkit_util_flag_list(Utility::Kind) wontthrow -> const FlagList *
 {
   return nullptr;
 }
 
-fn koshkit_util_synopsis(Utility::Kind) wontthrow -> const SynopsisList *
+fn
+koshkit_util_synopsis(Utility::Kind) wontthrow -> const SynopsisList *
 {
   return nullptr;
 }
 
-fn util_names() throws -> const ArrayList<String> &
+fn
+util_names() throws -> const ArrayList<String> &
 {
   static const ArrayList<String> names{heap_allocator()};
 
   return names;
 }
 
-fn sorted_util_names() throws -> const ArrayList<String> &
+fn
+sorted_util_names() throws -> const ArrayList<String> &
 {
   return util_names();
 }
 
-fn collect_makefile_targets(EvalContext &cxt, const Path &) throws
+fn
+collect_makefile_targets(EvalContext &cxt, const Path &) throws
     -> ArrayList<String>
 {
   return ArrayList<String>{cxt.scratch_allocator()};
 }
 
-fn parse_makefile_shell_sources(StringView, Allocator allocator) throws
+fn
+parse_makefile_shell_sources(StringView, Allocator allocator) throws
     -> SortedArrayList<make_shell_source_range,
                        order_comparator<make_shell_source_range>>
 {
@@ -1080,37 +1151,47 @@ fn parse_makefile_shell_sources(StringView, Allocator allocator) throws
       sort_order::ascending);
 }
 
-fn makefile_shell_analysis_source(StringView,
-                                  const make_shell_source_range &) throws
-    -> String
+fn
+makefile_shell_analysis_source(StringView,
+                               const make_shell_source_range &) throws -> String
 {
   return String{heap_allocator()};
 }
 
-fn dispatch(const ExecContext &, EvalContext &, usize,
-            Maybe<Utility::Kind>) throws -> i32
-{
-  return 127;
-}
-
-fn run_util(Utility::Kind, const ExecContext &, EvalContext &,
-            const ArrayList<String> &, const ArrayList<SourceLocation> &) throws
+fn
+dispatch(const ExecContext &, EvalContext &, usize, Maybe<Utility::Kind>) throws
     -> i32
 {
   return 127;
 }
 
-fn preflight_timeout_stage(const ExecContext &, EvalContext &, usize,
-                           SourceLocation &, String &) throws -> Maybe<i32>
+fn
+run_util(Utility::Kind,
+         const ExecContext &,
+         EvalContext &,
+         const ArrayList<String> &,
+         const ArrayList<SourceLocation> &) throws -> i32
+{
+  return 127;
+}
+
+fn
+preflight_timeout_stage(const ExecContext &,
+                        EvalContext &,
+                        usize,
+                        SourceLocation &,
+                        String &) throws -> Maybe<i32>
 {
   return {};
 }
 
 #endif
 
-static fn render_multicall_error(const ErrorWithLocation &error,
-                                 StringView message, StringView source,
-                                 EvalContext &context) throws -> String
+static fn
+render_multicall_error(const ErrorWithLocation &error,
+                       StringView               message,
+                       StringView               source,
+                       EvalContext             &context) throws -> String
 {
   if (!error.detail_message().is_empty()) {
     return ErrorWithLocationAndDetails{error.location(), message,
@@ -1122,8 +1203,11 @@ static fn render_multicall_error(const ErrorWithLocation &error,
                                                                 &context);
 }
 
-fn run_as_multicall(StringView util_name, Maybe<Utility::Kind> chosen,
-                    ArrayList<String> operands, EvalContext &cxt) throws -> i32
+fn
+run_as_multicall(StringView           util_name,
+                 Maybe<Utility::Kind> chosen,
+                 ArrayList<String>    operands,
+                 EvalContext         &cxt) throws -> i32
 {
   for (let const &operand : operands) {
     if (operand == "--") break;
@@ -1193,9 +1277,10 @@ fn run_as_multicall(StringView util_name, Maybe<Utility::Kind> chosen,
   }
 }
 
-fn make_directories(const Path &directory, u32 mode) wontthrow -> bool
+fn
+make_directories(const Path &directory, u32 mode) wontthrow -> bool
 {
-  let const text = directory.view();
+  let const text        = directory.view();
   let const root_length = os::path_root_length(text);
 
   for (usize position = root_length; position <= text.length; position++) {
@@ -1215,14 +1300,16 @@ fn make_directories(const Path &directory, u32 mode) wontthrow -> bool
 
 struct signal_number_comparator
 {
-  pure fn operator()(const utils::signal_pair &left,
-                     const utils::signal_pair &right) const wontthrow->bool
+  pure fn
+  operator()(const utils::signal_pair &left,
+             const utils::signal_pair &right) const wontthrow->bool
   {
     return left.number < right.number;
   }
 };
 
-fn format_signal_list() throws -> String
+fn
+format_signal_list() throws -> String
 {
   static const usize COLUMN_COUNT = 5;
   static const usize NUMBER_WIDTH = 2;
@@ -1260,34 +1347,37 @@ fn format_signal_list() throws -> String
 
 #if !defined KOSH_NO_KOSHKIT
 
-pure fn network_socket_state_name(os::network_socket_state state) wontthrow
+pure fn
+network_socket_state_name(os::network_socket_state state) wontthrow
     -> StringView
 {
   switch (state) {
   case os::network_socket_state::Unconnected: return "UNCONN";
-  case os::network_socket_state::Listen: return "LISTEN";
-  case os::network_socket_state::SynSent: return "SYN-SENT";
+  case os::network_socket_state::Listen:      return "LISTEN";
+  case os::network_socket_state::SynSent:     return "SYN-SENT";
   case os::network_socket_state::SynReceived: return "SYN-RECV";
   case os::network_socket_state::Established: return "ESTAB";
-  case os::network_socket_state::CloseWait: return "CLOSE-WAIT";
-  case os::network_socket_state::FinWait1: return "FIN-WAIT-1";
-  case os::network_socket_state::Closing: return "CLOSING";
-  case os::network_socket_state::LastAck: return "LAST-ACK";
-  case os::network_socket_state::FinWait2: return "FIN-WAIT-2";
-  case os::network_socket_state::TimeWait: return "TIME-WAIT";
-  case os::network_socket_state::Closed: return "CLOSED";
-  case os::network_socket_state::Unknown: return "UNKNOWN";
+  case os::network_socket_state::CloseWait:   return "CLOSE-WAIT";
+  case os::network_socket_state::FinWait1:    return "FIN-WAIT-1";
+  case os::network_socket_state::Closing:     return "CLOSING";
+  case os::network_socket_state::LastAck:     return "LAST-ACK";
+  case os::network_socket_state::FinWait2:    return "FIN-WAIT-2";
+  case os::network_socket_state::TimeWait:    return "TIME-WAIT";
+  case os::network_socket_state::Closed:      return "CLOSED";
+  case os::network_socket_state::Unknown:     return "UNKNOWN";
   }
 
   unreachable("unknown network socket state");
 }
 
-fn format_socket_endpoint(StringView address, u16 port,
-                          os::network_address_family family,
-                          Allocator allocator) throws -> String
+fn
+format_socket_endpoint(StringView                 address,
+                       u16                        port,
+                       os::network_address_family family,
+                       Allocator                  allocator) throws -> String
 {
   let const is_bracketed = family == os::network_address_family::IPv6;
-  let result = String{allocator};
+  let       result       = String{allocator};
   if (is_bracketed) result += "[";
   result += address.is_empty() ? StringView{"*"} : address;
   if (is_bracketed) result += "]";
@@ -1302,15 +1392,16 @@ fn format_socket_endpoint(StringView address, u16 port,
 
 #endif
 
-fn format_human_size(u64 bytes, Allocator allocator, u64 unit_step) throws
+fn
+format_human_size(u64 bytes, Allocator allocator, u64 unit_step) throws
     -> String
 {
   if (bytes < unit_step) return String::from(bytes, allocator);
 
   static const char units[] = {'K', 'M', 'G', 'T', 'P'};
-  let const step = static_cast<double>(unit_step);
-  double value = static_cast<double>(bytes);
-  usize unit = 0;
+  let const         step    = static_cast<double>(unit_step);
+  double            value   = static_cast<double>(bytes);
+  usize             unit    = 0;
 
   while (value >= step && unit < sizeof(units)) {
     value /= step;
@@ -1323,8 +1414,8 @@ fn format_human_size(u64 bytes, Allocator allocator, u64 unit_step) throws
     unit++;
   }
 
-  String out{allocator};
-  let const tenths = static_cast<u64>(value * 10.0 + 0.5);
+  String    out{allocator};
+  let const tenths                  = static_cast<u64>(value * 10.0 + 0.5);
   let const should_keep_one_decimal = value < 10.0 && tenths < 100;
   if (should_keep_one_decimal) {
     out += String::from(tenths / 10, allocator);
@@ -1340,12 +1431,14 @@ fn format_human_size(u64 bytes, Allocator allocator, u64 unit_step) throws
 
 #if !defined KOSH_NO_KOSHKIT
 
-fn scaled_filesystem_blocks(u64 block_count, u64 block_byte_count,
-                            u64 output_unit) wontthrow -> u64
+fn
+scaled_filesystem_blocks(u64 block_count,
+                         u64 block_byte_count,
+                         u64 output_unit) wontthrow -> u64
 {
   let const byte_count = static_cast<u128>(block_count) * block_byte_count;
   let const rounded_byte_count = byte_count + output_unit - 1;
-  let const high = static_cast<u64>(rounded_byte_count >> 64u);
+  let const high               = static_cast<u64>(rounded_byte_count >> 64u);
   if (high >= output_unit) return UINT64_MAX;
 
   return os::divide_u128_by_u64(high, static_cast<u64>(rounded_byte_count),
@@ -1353,7 +1446,8 @@ fn scaled_filesystem_blocks(u64 block_count, u64 block_byte_count,
       .quotient;
 }
 
-fn filesystem_usage_percent(u64 used, u64 available) wontthrow -> u64
+fn
+filesystem_usage_percent(u64 used, u64 available) wontthrow -> u64
 {
   let const capacity_base = static_cast<u128>(used) + available;
   if (capacity_base == 0) return 0;
@@ -1366,7 +1460,8 @@ fn filesystem_usage_percent(u64 used, u64 available) wontthrow -> u64
       .quotient;
 }
 
-pure fn file_type_name(const os::file_status &status) wontthrow -> StringView
+pure fn
+file_type_name(const os::file_status &status) wontthrow -> StringView
 {
   switch (os::file_type_letter(status.mode)) {
   case 'd': return "directory";
@@ -1375,14 +1470,15 @@ pure fn file_type_name(const os::file_status &status) wontthrow -> StringView
   case 'b': return "block special file";
   case 'p': return "fifo";
   case 's': return "socket";
-  default: break;
+  default:  break;
   }
 
   return status.size == 0 ? "regular empty file" : "regular file";
 }
 
-fn format_file_timestamp(i64 seconds, u32 nanoseconds,
-                         Allocator allocator) throws -> String
+fn
+format_file_timestamp(i64 seconds, u32 nanoseconds, Allocator allocator) throws
+    -> String
 {
   let text =
       String{allocator,
@@ -1401,7 +1497,8 @@ fn format_file_timestamp(i64 seconds, u32 nanoseconds,
   return text;
 }
 
-fn get_init_system_name(Allocator allocator) throws -> String
+fn
+get_init_system_name(Allocator allocator) throws -> String
 {
   constexpr static_string_entry<StringView> INIT_COMMAND_ENTRIES[] = {
       {SSK("systemd"),     "systemd"    },
@@ -1466,8 +1563,10 @@ fn get_init_system_name(Allocator allocator) throws -> String
   return String{allocator, "unknown"};
 }
 
-fn parse_koshkit_duration_seconds(StringView text, SourceLocation location,
-                                  Allocator allocator) throws -> f64
+fn
+parse_koshkit_duration_seconds(StringView     text,
+                               SourceLocation location,
+                               Allocator      allocator) throws -> f64
 {
   let const do_throw_invalid = [&]() throws -> void {
     let const invalid_value = String{allocator, text};
@@ -1477,7 +1576,7 @@ fn parse_koshkit_duration_seconds(StringView text, SourceLocation location,
         "suffix, such as `5` or `0.25s`"};
   };
 
-  f64 multiplier = 1.0;
+  f64   multiplier    = 1.0;
   usize number_length = text.length;
   if (number_length != 0) {
     switch (text[number_length - 1]) {
@@ -1485,7 +1584,7 @@ fn parse_koshkit_duration_seconds(StringView text, SourceLocation location,
     case 'm': multiplier = 60.0; break;
     case 'h': multiplier = 60.0 * 60.0; break;
     case 'd': multiplier = 60.0 * 60.0 * 24.0; break;
-    default: break;
+    default:  break;
     }
     if (multiplier != 1.0 || text[number_length - 1] == 's') {
       number_length--;
@@ -1505,9 +1604,11 @@ fn parse_koshkit_duration_seconds(StringView text, SourceLocation location,
   return value * multiplier;
 }
 
-cold static fn show_soft_koshkit_error(const ExecContext &ec, EvalContext &cxt,
-                                       SourceLocation location,
-                                       StringView message) throws -> void
+cold static fn
+show_soft_koshkit_error(const ExecContext &ec,
+                        EvalContext       &cxt,
+                        SourceLocation     location,
+                        StringView         message) throws -> void
 {
   if (os::INTERRUPT_REQUESTED) return;
 
@@ -1529,8 +1630,9 @@ cold static fn show_soft_koshkit_error(const ExecContext &ec, EvalContext &cxt,
   print_error(String{message} + "\n");
 }
 
-static fn koshkit_invocation_name(const ExecContext &ec,
-                                  Allocator allocator) throws -> String
+static fn
+koshkit_invocation_name(const ExecContext &ec, Allocator allocator) throws
+    -> String
 {
   if (ec.is_multicall && !ec.args().is_empty()) {
     return String{allocator, ec.args()[0].view()};
@@ -1544,18 +1646,21 @@ static fn koshkit_invocation_name(const ExecContext &ec,
   return String{allocator, ec.program()};
 }
 
-cold noinline fn report_soft_koshkit_error(const ExecContext &ec,
-                                           EvalContext &cxt,
-                                           StringView message) throws -> void
+cold noinline fn
+report_soft_koshkit_error(const ExecContext &ec,
+                          EvalContext       &cxt,
+                          StringView         message) throws -> void
 {
   let const prefix = koshkit_invocation_name(ec, cxt.scratch_allocator());
   show_soft_koshkit_error(ec, cxt, ec.source_location(),
                           prefix.view() + ": " + message);
 }
 
-cold noinline fn report_soft_koshkit_error(const ExecContext &ec,
-                                           EvalContext &cxt, StringView message,
-                                           StringView note) throws -> void
+cold noinline fn
+report_soft_koshkit_error(const ExecContext &ec,
+                          EvalContext       &cxt,
+                          StringView         message,
+                          StringView         note) throws -> void
 {
   report_soft_koshkit_error(ec, cxt, message);
   if (os::INTERRUPT_REQUESTED) return;
@@ -1563,21 +1668,22 @@ cold noinline fn report_soft_koshkit_error(const ExecContext &ec,
   show_message(Note{String{note}}.to_string());
 }
 
-cold noinline fn report_soft_koshkit_util_error(const ExecContext &ec,
-                                                EvalContext &cxt,
-                                                StringView utility_name,
-                                                StringView message) throws
-    -> void
+cold noinline fn
+report_soft_koshkit_util_error(const ExecContext &ec,
+                               EvalContext       &cxt,
+                               StringView         utility_name,
+                               StringView         message) throws -> void
 {
   unused(utility_name);
   report_soft_koshkit_error(ec, cxt, message);
 }
 
-cold noinline fn report_soft_koshkit_util_error(const ExecContext &ec,
-                                                EvalContext &cxt,
-                                                StringView utility_name,
-                                                StringView message,
-                                                StringView note) throws -> void
+cold noinline fn
+report_soft_koshkit_util_error(const ExecContext &ec,
+                               EvalContext       &cxt,
+                               StringView         utility_name,
+                               StringView         message,
+                               StringView         note) throws -> void
 {
   report_soft_koshkit_util_error(ec, cxt, utility_name, message);
   if (os::INTERRUPT_REQUESTED) return;
@@ -1585,9 +1691,12 @@ cold noinline fn report_soft_koshkit_util_error(const ExecContext &ec,
   show_message(Note{String{note}}.to_string());
 }
 
-cold noinline fn report_soft_koshkit_util_error(
-    const ExecContext &ec, EvalContext &cxt, SourceLocation location,
-    StringView utility_name, StringView message) throws -> void
+cold noinline fn
+report_soft_koshkit_util_error(const ExecContext &ec,
+                               EvalContext       &cxt,
+                               SourceLocation     location,
+                               StringView         utility_name,
+                               StringView         message) throws -> void
 {
   unused(utility_name);
   let const prefix = koshkit_invocation_name(ec, cxt.scratch_allocator());
@@ -1595,9 +1704,13 @@ cold noinline fn report_soft_koshkit_util_error(
                           prefix.view() + ": " + message);
 }
 
-cold noinline fn report_soft_koshkit_util_error(
-    const ExecContext &ec, EvalContext &cxt, SourceLocation location,
-    StringView utility_name, StringView message, StringView note) throws -> void
+cold noinline fn
+report_soft_koshkit_util_error(const ExecContext &ec,
+                               EvalContext       &cxt,
+                               SourceLocation     location,
+                               StringView         utility_name,
+                               StringView         message,
+                               StringView         note) throws -> void
 {
   report_soft_koshkit_util_error(ec, cxt, steal(location), utility_name,
                                  message);

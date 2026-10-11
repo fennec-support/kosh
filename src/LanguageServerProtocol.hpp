@@ -37,8 +37,9 @@ constexpr static_string_entry<mimic_mood> UNNAMED_LANGUAGE_MOOD_ENTRIES[] = {
 };
 constexpr StaticStringMap UNNAMED_LANGUAGE_MOODS{UNNAMED_LANGUAGE_MOOD_ENTRIES};
 
-pure fn code_action_kind_includes(StringView supported,
-                                  StringView offered) wontthrow -> bool
+pure fn
+code_action_kind_includes(StringView supported, StringView offered) wontthrow
+    -> bool
 {
   if (supported == offered) return true;
 
@@ -60,7 +61,7 @@ class JsonValue;
 
 struct json_member
 {
-  String name;
+  String     name;
   JsonValue *value;
 };
 
@@ -71,7 +72,8 @@ public:
       : kind(value_kind), text(allocator), array(allocator), object(allocator)
   {}
 
-  pure fn get(StringView name) const wontthrow -> const JsonValue *
+  pure fn
+  get(StringView name) const wontthrow -> const JsonValue *
   {
     for (let const &member : object)
       if (member.name == name) return member.value;
@@ -79,9 +81,9 @@ public:
     return nullptr;
   }
 
-  json_kind kind;
-  bool is_true{false};
-  String text;
+  json_kind              kind;
+  bool                   is_true{false};
+  String                 text;
   ArrayList<JsonValue *> array;
   ArrayList<json_member> object;
 };
@@ -91,7 +93,8 @@ class JsonParser
 public:
   explicit JsonParser(StringView source) : m_source(source) {}
 
-  fn parse() throws -> JsonValue *
+  fn
+  parse() throws -> JsonValue *
   {
     skip_blanks();
     let *value = parse_value();
@@ -104,12 +107,14 @@ public:
   }
 
 private:
-  fn create(json_kind kind) throws -> JsonValue *
+  fn
+  create(json_kind kind) throws -> JsonValue *
   {
     return m_arena.create<JsonValue>(kind, bump_allocator(m_arena));
   }
 
-  fn skip_blanks() wontthrow -> void
+  fn
+  skip_blanks() wontthrow -> void
   {
     while (m_position < m_source.length) {
       let const byte = m_source[m_position];
@@ -120,7 +125,8 @@ private:
     }
   }
 
-  fn parse_value() throws -> JsonValue *
+  fn
+  parse_value() throws -> JsonValue *
   {
     if (m_position >= m_source.length) return nullptr;
 
@@ -144,8 +150,10 @@ private:
     }
   }
 
-  fn parse_literal(StringView spelling, json_kind kind,
-                   bool is_true = false) throws -> JsonValue *
+  fn
+  parse_literal(StringView spelling,
+                json_kind  kind,
+                bool       is_true = false) throws -> JsonValue *
   {
     if (m_position + spelling.length > m_source.length ||
         m_source.substring_of_length(m_position, spelling.length) != spelling)
@@ -153,13 +161,14 @@ private:
       return nullptr;
     }
     m_position += spelling.length;
-    let *value = create(kind);
+    let *value     = create(kind);
     value->is_true = is_true;
 
     return value;
   }
 
-  fn parse_string() throws -> Maybe<String>
+  fn
+  parse_string() throws -> Maybe<String>
   {
     if (m_position >= m_source.length || m_source[m_position] != '"') {
       return None;
@@ -178,15 +187,15 @@ private:
       if (m_position >= m_source.length) return None;
       let const escaped = m_source[m_position++];
       switch (escaped) {
-      case '"': result.push('"'); break;
+      case '"':  result.push('"'); break;
       case '\\': result.push('\\'); break;
-      case '/': result.push('/'); break;
-      case 'b': result.push('\b'); break;
-      case 'f': result.push('\f'); break;
-      case 'n': result.push('\n'); break;
-      case 'r': result.push('\r'); break;
-      case 't': result.push('\t'); break;
-      case 'u': {
+      case '/':  result.push('/'); break;
+      case 'b':  result.push('\b'); break;
+      case 'f':  result.push('\f'); break;
+      case 'n':  result.push('\n'); break;
+      case 'r':  result.push('\r'); break;
+      case 't':  result.push('\t'); break;
+      case 'u':  {
         if (m_position + 4 > m_source.length) return None;
         u32 codepoint = 0;
 
@@ -230,17 +239,19 @@ private:
     return None;
   }
 
-  fn parse_string_value() throws -> JsonValue *
+  fn
+  parse_string_value() throws -> JsonValue *
   {
     let parsed = parse_string();
     if (!parsed.has_value()) return nullptr;
-    let *value = create(json_kind::String);
+    let *value  = create(json_kind::String);
     value->text = parsed.take();
 
     return value;
   }
 
-  fn parse_number() throws -> JsonValue *
+  fn
+  parse_number() throws -> JsonValue *
   {
     let const start = m_position;
     if (m_position < m_source.length && m_source[m_position] == '-') {
@@ -303,7 +314,8 @@ private:
     return value;
   }
 
-  fn parse_array() throws -> JsonValue *
+  fn
+  parse_array() throws -> JsonValue *
   {
     m_position++;
     let *value = create(json_kind::Array);
@@ -331,7 +343,8 @@ private:
     }
   }
 
-  fn parse_object() throws -> JsonValue *
+  fn
+  parse_object() throws -> JsonValue *
   {
     m_position++;
     let *value = create(json_kind::Object);
@@ -366,14 +379,15 @@ private:
     }
   }
 
-  StringView m_source;
-  usize m_position{0};
+  StringView             m_source;
+  usize                  m_position{0};
   static constexpr usize MAX_NESTING_DEPTH = 256;
-  usize m_nesting_depth{0};
-  BumpArena m_arena;
+  usize                  m_nesting_depth{0};
+  BumpArena              m_arena;
 };
 
-fn append_json_string(String &output, StringView value) throws -> void
+fn
+append_json_string(String &output, StringView value) throws -> void
 {
   output.push('"');
   static constexpr char HEX[] = "0123456789abcdef";
@@ -381,7 +395,7 @@ fn append_json_string(String &output, StringView value) throws -> void
   for (usize position = 0; position < value.length; position++) {
     let const byte = static_cast<u8>(value[position]);
     switch (byte) {
-    case '"': output.append("\\\""); break;
+    case '"':  output.append("\\\""); break;
     case '\\': output.append("\\\\"); break;
     case '\b': output.append("\\b"); break;
     case '\f': output.append("\\f"); break;
@@ -402,19 +416,22 @@ fn append_json_string(String &output, StringView value) throws -> void
   output.push('"');
 }
 
-fn append_json_integer(String &output, i64 value) throws -> void
+fn
+append_json_integer(String &output, i64 value) throws -> void
 {
   char buffer[21];
   output.append(utils::int_to_text_into(value, buffer, sizeof(buffer)));
 }
 
-fn append_json_integer(String &output, u64 value) throws -> void
+fn
+append_json_integer(String &output, u64 value) throws -> void
 {
   char buffer[20];
   output.append(utils::uint_to_text_into(value, buffer, sizeof(buffer)));
 }
 
-fn append_json_value(String &output, const JsonValue &value) throws -> void
+fn
+append_json_value(String &output, const JsonValue &value) throws -> void
 {
   switch (value.kind) {
   case json_kind::Null: output.append("null"); break;
@@ -448,7 +465,8 @@ fn append_json_value(String &output, const JsonValue &value) throws -> void
   }
 }
 
-fn append_request_id(String &output, const JsonValue *id) throws -> void
+fn
+append_request_id(String &output, const JsonValue *id) throws -> void
 {
   if (id == nullptr || id->kind == json_kind::Null) {
     output.append("null");
@@ -461,14 +479,15 @@ fn append_request_id(String &output, const JsonValue *id) throws -> void
   }
 }
 
-fn send_payload(StringView payload) wontthrow -> bool
+fn
+send_payload(StringView payload) wontthrow -> bool
 {
   static constexpr StringView PREFIX{"Content-Length: ", 16};
   static constexpr StringView SUFFIX{"\r\n\r\n", 4};
-  char digits[20];
-  let const length =
+  char                        digits[20];
+  let const                   length =
       utils::uint_to_text_into(payload.length, digits, sizeof(digits));
-  char header[64];
+  char  header[64];
   usize header_length = 0;
   __builtin_memcpy(header + header_length, PREFIX.data, PREFIX.length);
   header_length += PREFIX.length;
@@ -481,7 +500,8 @@ fn send_payload(StringView payload) wontthrow -> bool
          os::write_all(KOSH_STDOUT, payload.data, payload.length);
 }
 
-fn send_result(const JsonValue *id, StringView result) throws -> bool
+fn
+send_result(const JsonValue *id, StringView result) throws -> bool
 {
   let payload = String{"{\"jsonrpc\":\"2.0\",\"id\":"};
   append_request_id(payload, id);
@@ -492,7 +512,8 @@ fn send_result(const JsonValue *id, StringView result) throws -> bool
   return send_payload(payload.view());
 }
 
-fn send_error(const JsonValue *id, i64 code, StringView message) throws -> bool
+fn
+send_error(const JsonValue *id, i64 code, StringView message) throws -> bool
 {
   let payload = String{"{\"jsonrpc\":\"2.0\",\"id\":"};
   append_request_id(payload, id);
@@ -508,13 +529,14 @@ fn send_error(const JsonValue *id, i64 code, StringView message) throws -> bool
 class ProtocolReader
 {
 public:
-  fn read_message() throws -> Maybe<StringView>
+  fn
+  read_message() throws -> Maybe<StringView>
   {
     loop
     {
       compact();
       m_header_scan_position = m_offset;
-      usize header_end = 0;
+      usize header_end       = 0;
 
       loop
       {
@@ -549,10 +571,11 @@ public:
   }
 
 private:
-  static constexpr usize MAX_HEADER_LENGTH = 16 * 1024;
+  static constexpr usize MAX_HEADER_LENGTH  = 16 * 1024;
   static constexpr usize MAX_MESSAGE_LENGTH = 16 * 1024 * 1024;
 
-  fn find_header_end() wontthrow -> usize
+  fn
+  find_header_end() wontthrow -> usize
   {
     for (usize position = m_header_scan_position;
          position + 3 < m_buffer.count(); position++)
@@ -568,10 +591,11 @@ private:
     return static_cast<usize>(-1);
   }
 
-  fn parse_content_length(StringView headers) const throws -> Maybe<usize>
+  fn
+  parse_content_length(StringView headers) const throws -> Maybe<usize>
   {
     static const StringView PREFIX{"Content-Length:"};
-    usize line_start = 0;
+    usize                   line_start = 0;
 
     while (line_start <= headers.length) {
       usize line_end = line_start;
@@ -606,7 +630,8 @@ private:
     return None;
   }
 
-  fn skip_body(usize body_start, usize length) throws -> bool
+  fn
+  skip_body(usize body_start, usize length) throws -> bool
   {
     let const buffered_length = m_buffer.count() - body_start;
     if (buffered_length >= length) {
@@ -616,7 +641,7 @@ private:
     }
 
     let remaining_length = length - buffered_length;
-    m_offset = m_buffer.count();
+    m_offset             = m_buffer.count();
     char bytes[8192];
 
     while (remaining_length > 0) {
@@ -632,9 +657,10 @@ private:
     return true;
   }
 
-  fn read_more() throws -> bool
+  fn
+  read_more() throws -> bool
   {
-    char bytes[8192];
+    char      bytes[8192];
     let const count = os::read_fd(KOSH_STDIN, bytes, sizeof(bytes));
     if (!count.has_value() || *count == 0) {
       return false;
@@ -644,7 +670,8 @@ private:
     return true;
   }
 
-  fn compact() throws -> void
+  fn
+  compact() throws -> void
   {
     if (m_offset == 0) return;
     if (m_offset == m_buffer.count()) {
@@ -660,12 +687,13 @@ private:
   }
 
   String m_buffer{heap_allocator()};
-  usize m_offset{0};
-  usize m_header_scan_position{0};
+  usize  m_offset{0};
+  usize  m_header_scan_position{0};
 };
 
 template <class... Names>
-pure fn json_field_path(const JsonValue *object, Names... names) wontthrow
+pure fn
+json_field_path(const JsonValue *object, Names... names) wontthrow
     -> const JsonValue *
 {
   for (let const name : {StringView{names}...}) {
@@ -676,14 +704,15 @@ pure fn json_field_path(const JsonValue *object, Names... names) wontthrow
   return object;
 }
 
-pure fn json_field_is_true(const JsonValue *value) wontthrow -> bool
+pure fn
+json_field_is_true(const JsonValue *value) wontthrow -> bool
 {
   return value != nullptr && value->kind == json_kind::Boolean &&
          value->is_true;
 }
 
-pure fn json_array_holds(const JsonValue *value, StringView wanted) wontthrow
-    -> bool
+pure fn
+json_array_holds(const JsonValue *value, StringView wanted) wontthrow -> bool
 {
   if (value == nullptr || value->kind != json_kind::Array) {
     return false;
@@ -697,7 +726,8 @@ pure fn json_array_holds(const JsonValue *value, StringView wanted) wontthrow
   return false;
 }
 
-pure fn string_field(const JsonValue *object, StringView name) wontthrow
+pure fn
+string_field(const JsonValue *object, StringView name) wontthrow
     -> Maybe<StringView>
 {
   if (object == nullptr || object->kind != json_kind::Object) {
@@ -711,7 +741,8 @@ pure fn string_field(const JsonValue *object, StringView name) wontthrow
   return value->text.view();
 }
 
-fn integer_field(const JsonValue *object, StringView name) throws -> Maybe<i64>
+fn
+integer_field(const JsonValue *object, StringView name) throws -> Maybe<i64>
 {
   if (object == nullptr || object->kind != json_kind::Object) {
     return None;
@@ -742,17 +773,17 @@ struct protocol_position
 
 struct document_symbol
 {
-  String text;
+  String         text;
   highlight_role role;
-  usize start;
-  usize end;
+  usize          start;
+  usize          end;
 };
 
 struct rename_span
 {
   highlight_role role;
-  usize start;
-  usize end;
+  usize          start;
+  usize          end;
 };
 
 struct line_bounds
@@ -764,8 +795,10 @@ struct line_bounds
 class Document
 {
 public:
-  Document(StringView document_uri, StringView document_language,
-           StringView source, i64 document_version,
+  Document(StringView  document_uri,
+           StringView  document_language,
+           StringView  source,
+           i64         document_version,
            Maybe<Path> document_path = None) throws
       : uri(document_uri),
         language_id(document_language),
@@ -783,7 +816,8 @@ public:
     rebuild_lines();
   }
 
-  fn replace_source(StringView source, i64 document_version) throws -> bool
+  fn
+  replace_source(StringView source, i64 document_version) throws -> bool
   {
     version = document_version;
     if (source == normalized_source.view()) return false;
@@ -800,18 +834,20 @@ public:
     return true;
   }
 
-  pure fn get_line_bounds(usize line) const wontthrow -> line_bounds
+  pure fn
+  get_line_bounds(usize line) const wontthrow -> line_bounds
   {
     let const start = line_starts[line];
-    let end = normalized_source.count();
+    let       end   = normalized_source.count();
     if (line + 1 < line_starts.count()) end = line_starts[line + 1] - 1;
 
     return {start, end};
   }
 
-  pure fn byte_position(usize line, usize character,
-                        position_encoding encoding) const wontthrow
-      -> Maybe<usize>
+  pure fn
+  byte_position(usize             line,
+                usize             character,
+                position_encoding encoding) const wontthrow -> Maybe<usize>
   {
     if (line >= line_starts.count()) return None;
     let const[start, end] = get_line_bounds(line);
@@ -828,7 +864,7 @@ public:
     }
 
     usize position = start;
-    usize units = 0;
+    usize units    = 0;
 
     while (position < end && units < character) {
       let const decoded =
@@ -844,8 +880,9 @@ public:
     return position;
   }
 
-  pure fn protocol_position_at(usize byte_position,
-                               position_encoding encoding) const wontthrow
+  pure fn
+  protocol_position_at(usize             byte_position,
+                       position_encoding encoding) const wontthrow
       -> protocol_position
   {
     if (byte_position > normalized_source.count())
@@ -861,16 +898,16 @@ public:
         upper = middle;
     }
 
-    let const line = lower;
+    let const line  = lower;
     let const start = line_starts[line];
     if (encoding == position_encoding::Utf8 || normalized_source.is_ascii()) {
       return {line, byte_position - start};
     }
 
-    usize units = 0;
+    usize units    = 0;
     usize position = start;
     if (m_cached_unit_line == line && m_cached_unit_byte <= byte_position) {
-      units = m_cached_units;
+      units    = m_cached_units;
       position = m_cached_unit_byte;
     }
 
@@ -883,13 +920,15 @@ public:
 
     m_cached_unit_line = line;
     m_cached_unit_byte = position;
-    m_cached_units = units;
+    m_cached_units     = units;
 
     return {line, units};
   }
 
-  pure fn encoded_length(usize start, usize end,
-                         position_encoding encoding) const wontthrow -> usize
+  pure fn
+  encoded_length(usize             start,
+                 usize             end,
+                 position_encoding encoding) const wontthrow -> usize
   {
     if (end < start) return 0;
     if (end > normalized_source.count()) end = normalized_source.count();
@@ -908,25 +947,26 @@ public:
     return units;
   }
 
-  String uri;
-  String language_id;
-  String normalized_source;
-  i64 version;
-  parsed_format_document format;
-  String analysis_source;
-  mimic_mood mood{mimic_mood::Default};
-  u64 diagnostic_revision{0};
-  Maybe<Path> path;
-  Maybe<Path> canonical_path;
-  ArrayList<usize> line_starts;
+  String                       uri;
+  String                       language_id;
+  String                       normalized_source;
+  i64                          version;
+  parsed_format_document       format;
+  String                       analysis_source;
+  mimic_mood                   mood{mimic_mood::Default};
+  u64                          diagnostic_revision{0};
+  Maybe<Path>                  path;
+  Maybe<Path>                  canonical_path;
+  ArrayList<usize>             line_starts;
   ArrayList<source_diagnostic> diagnostics;
   ArrayList<source_diagnostic> auxiliary_diagnostics;
-  HashSet followed_paths;
-  analysis_symbol_records symbol_records;
-  ArrayList<String> completion_variable_names{heap_allocator()};
-  ArrayList<String> completion_function_names{heap_allocator()};
+  HashSet                      followed_paths;
+  analysis_symbol_records      symbol_records;
+  ArrayList<String>            completion_variable_names{heap_allocator()};
+  ArrayList<String>            completion_function_names{heap_allocator()};
 
-  fn rebuild_format() throws -> void
+  fn
+  rebuild_format() throws -> void
   {
     let path_view = Maybe<StringView>{};
     if (path.has_value()) path_view = path->text().view();
@@ -941,13 +981,15 @@ public:
         parser_format_analysis_source(format, normalized_source.view());
   }
 
-  pure fn shell_source() const wontthrow -> StringView
+  pure fn
+  shell_source() const wontthrow -> StringView
   {
     return format.is_host_format ? analysis_source.view()
                                  : normalized_source.view();
   }
 
-  pure fn fragment_at(usize position) const wontthrow -> Maybe<usize>
+  pure fn
+  fragment_at(usize position) const wontthrow -> Maybe<usize>
   {
     if (!format.is_host_format) return usize{0};
 
@@ -959,7 +1001,8 @@ private:
   mutable usize m_cached_unit_byte{0};
   mutable usize m_cached_units{0};
 
-  fn rebuild_lines() throws -> void
+  fn
+  rebuild_lines() throws -> void
   {
     m_cached_unit_line = static_cast<usize>(-1);
     line_starts.clear();
@@ -970,7 +1013,8 @@ private:
   }
 };
 
-fn decode_file_uri(StringView uri) throws -> Maybe<Path>
+fn
+decode_file_uri(StringView uri) throws -> Maybe<Path>
 {
   static const StringView PREFIX{"file://"};
   if (!uri.starts_with(PREFIX)) return None;
@@ -985,7 +1029,7 @@ fn decode_file_uri(StringView uri) throws -> Maybe<Path>
     }
     if (position + 2 >= path_text.length) return None;
     let const high = utils::hex_digit_value(path_text[position + 1]);
-    let const low = utils::hex_digit_value(path_text[position + 2]);
+    let const low  = utils::hex_digit_value(path_text[position + 2]);
     if (!high.has_value() || !low.has_value()) {
       return None;
     }
@@ -996,10 +1040,11 @@ fn decode_file_uri(StringView uri) throws -> Maybe<Path>
   return Path{decoded.view()};
 }
 
-fn file_uri_for_path(const Path &path) throws -> String
+fn
+file_uri_for_path(const Path &path) throws -> String
 {
   static constexpr char HEX[] = "0123456789ABCDEF";
-  let uri = String{"file://"};
+  let                   uri   = String{"file://"};
 
   for (usize position = 0; position < path.count(); position++) {
     let const byte = path.text()[position];
@@ -1021,7 +1066,8 @@ fn file_uri_for_path(const Path &path) throws -> String
   return uri;
 }
 
-fn append_protocol_position(String &output, protocol_position position) throws
+fn
+append_protocol_position(String &output, protocol_position position) throws
     -> void
 {
   output.append("{\"line\":");
@@ -1031,8 +1077,12 @@ fn append_protocol_position(String &output, protocol_position position) throws
   output.push('}');
 }
 
-fn append_protocol_range(String &output, const Document &document, usize start,
-                         usize end, position_encoding encoding) throws -> void
+fn
+append_protocol_range(String           &output,
+                      const Document   &document,
+                      usize             start,
+                      usize             end,
+                      position_encoding encoding) throws -> void
 {
   output.append("{\"start\":");
   append_protocol_position(output,
@@ -1043,7 +1093,8 @@ fn append_protocol_range(String &output, const Document &document, usize start,
   output.push('}');
 }
 
-fn mood_for(const Document &document) throws -> mimic_mood
+fn
+mood_for(const Document &document) throws -> mimic_mood
 {
   if (let const detected =
           detect_mimic_shell_from_source(document.normalized_source.view());
@@ -1065,10 +1116,10 @@ fn mood_for(const Document &document) throws -> mimic_mood
   return mimic_mood::Default;
 }
 
-fn document_position(const JsonValue *position) throws
-    -> Maybe<protocol_position>
+fn
+document_position(const JsonValue *position) throws -> Maybe<protocol_position>
 {
-  let const line = integer_field(position, "line");
+  let const line      = integer_field(position, "line");
   let const character = integer_field(position, "character");
   if (!line.has_value() || !character.has_value() || *line < 0 ||
       *character < 0)

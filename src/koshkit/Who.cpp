@@ -23,7 +23,10 @@ FLAG(WHO_HEADING, Bool, 'H', "heading", "Write column headings.");
 FLAG(WHO_LOGIN, Bool, 'l', "login", "Write login process records.");
 FLAG(WHO_CURRENT, Bool, 'm', "current", "Write the current terminal record.");
 FLAG(WHO_PROCESS, Bool, 'p', "process", "Write active process records.");
-FLAG(WHO_QUICK, Bool, 'q', "quick",
+FLAG(WHO_QUICK,
+     Bool,
+     'q',
+     "quick",
      "Write login names and the number of logged-in users.");
 FLAG(WHO_RUNLEVEL, Bool, 'r', "runlevel", "Write the current run level.");
 FLAG(WHO_SHORT, Bool, 's', "short", "Write names, lines, and login times.");
@@ -35,10 +38,11 @@ REGISTER_KOSHKIT_UTIL_FLAGS(Who);
 
 namespace koshka::koshkit {
 
-fn Who::execute(const ExecContext &ec, EvalContext &cxt,
-                const ArrayList<String> &args,
-                const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+fn
+Who::execute(const ExecContext               &ec,
+             EvalContext                     &cxt,
+             const ArrayList<String>         &args,
+             const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
@@ -82,7 +86,7 @@ fn Who::execute(const ExecContext &ec, EvalContext &cxt,
     if (has_nonuser_selection) return 0;
 
     let const sessions = os::logged_in_users();
-    let output = String{cxt.scratch_allocator()};
+    let       output   = String{cxt.scratch_allocator()};
     if (FLAG_WHO_QUICK.is_enabled()) {
       for (let const &session : sessions) {
         output += session.user.view();
@@ -118,7 +122,7 @@ fn Who::execute(const ExecContext &ec, EvalContext &cxt,
     return 0;
   }
 
-  let const user = os::get_current_user();
+  let const user     = os::get_current_user();
   let const terminal = os::terminal_name(ec.in_fd.value_or(KOSH_STDIN));
   if (!user.has_value() || !terminal.has_value()) {
     return 1;

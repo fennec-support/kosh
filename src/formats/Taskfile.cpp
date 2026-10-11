@@ -11,8 +11,9 @@
 
 namespace koshka {
 
-fn parse_taskfile_format(const parser_format_input &input,
-                         parsed_format_document &document) throws -> void
+fn
+parse_taskfile_format(const parser_format_input &input,
+                      parsed_format_document    &document) throws -> void
 {
   static const StringView KEYS[] = {"cmd", "cmds",   "defer",
                                     "sh",  "status", "if"};

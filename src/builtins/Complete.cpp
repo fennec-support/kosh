@@ -24,11 +24,20 @@ HELP_DESCRIPTION_DECL(
     "the default, empty line, or initial word slot.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
-FLAG(COMPLETE_WORDLIST, String, 'W', "",
+FLAG(COMPLETE_WORDLIST,
+     String,
+     'W',
+     "",
      "Register the word list as the command's candidates.");
-FLAG(COMPLETE_FUNCTION, String, 'F', "",
+FLAG(COMPLETE_FUNCTION,
+     String,
+     'F',
+     "",
      "Register the function to run on an explicit tab, COMPREPLY style.");
-FLAG(COMPLETE_OPTION, ManyStrings, 'o', "",
+FLAG(COMPLETE_OPTION,
+     ManyStrings,
+     'o',
+     "",
      "dirnames adds directory names when nothing else matched. plusdirs adds "
      "them every time. filenames gives directory candidates a trailing slash. "
      "default leaves an empty result to filename completion. bashdefault "
@@ -36,39 +45,78 @@ FLAG(COMPLETE_OPTION, ManyStrings, 'o', "",
      "every candidate. noquote leaves file names unquoted. nosort keeps the "
      "generated order. nospace adds no space after an accepted candidate. Any "
      "other name is an error.");
-FLAG(COMPLETE_PRINT, Bool, 'p', "",
+FLAG(COMPLETE_PRINT,
+     Bool,
+     'p',
+     "",
      "Print the specified specs, or every spec, in a replayable form.");
-FLAG(COMPLETE_DEFAULT, Bool, 'D', "",
+FLAG(COMPLETE_DEFAULT,
+     Bool,
+     'D',
+     "",
      "Register the default spec used for a command with no spec of its own.");
-FLAG(COMPLETE_REMOVE, Bool, 'r', "",
+FLAG(COMPLETE_REMOVE,
+     Bool,
+     'r',
+     "",
      "Remove the specified specs or the -D, -E, or -I spec. If none is given, "
      "remove every spec.");
-FLAG(COMPLETE_ACTION, ManyStrings, 'A', "",
+FLAG(COMPLETE_ACTION,
+     ManyStrings,
+     'A',
+     "",
      "Register the candidates of the specified action, as compgen -A lists "
      "them.");
-FLAG(COMPLETE_GLOB, String, 'G', "",
+FLAG(COMPLETE_GLOB,
+     String,
+     'G',
+     "",
      "Register the filenames that match the glob and start with the word.");
-FLAG(COMPLETE_COMMAND, String, 'C', "",
+FLAG(COMPLETE_COMMAND,
+     String,
+     'C',
+     "",
      "Register the command to run on an explicit tab. Each output line is one "
      "candidate.");
-FLAG(COMPLETE_FILTER, String, 'X', "",
+FLAG(COMPLETE_FILTER,
+     String,
+     'X',
+     "",
      "Remove matching candidates, with leading ! reversing the filter and "
      "unescaped & expanding to the completion word.");
-FLAG(COMPLETE_PREFIX, String, 'P', "",
+FLAG(COMPLETE_PREFIX,
+     String,
+     'P',
+     "",
      "Prepend the prefix to each candidate after the filter.");
-FLAG(COMPLETE_SUFFIX, String, 'S', "",
+FLAG(COMPLETE_SUFFIX,
+     String,
+     'S',
+     "",
      "Append the suffix to each candidate after the filter.");
-FLAG(COMPLETE_EMPTY, Bool, 'E', "",
+FLAG(COMPLETE_EMPTY,
+     Bool,
+     'E',
+     "",
      "Register the spec used on an empty command line.");
-FLAG(COMPLETE_INITIAL, Bool, 'I', "",
+FLAG(COMPLETE_INITIAL,
+     Bool,
+     'I',
+     "",
      "Register the spec used for the command word in place of command names.");
 FLAG(COMPLETE_ALIAS, Bool, 'a', "", "Register alias names.");
 FLAG(COMPLETE_BUILTIN, Bool, 'b', "", "Register builtin names.");
 FLAG(COMPLETE_COMMANDS, Bool, 'c', "", "Register command names.");
-FLAG(COMPLETE_DIRECTORY, Bool, 'd', "",
+FLAG(COMPLETE_DIRECTORY,
+     Bool,
+     'd',
+     "",
      "Register directory names, each with a trailing slash.");
 FLAG(COMPLETE_EXPORT, Bool, 'e', "", "Register exported variable names.");
-FLAG(COMPLETE_FILE, Bool, 'f', "",
+FLAG(COMPLETE_FILE,
+     Bool,
+     'f',
+     "",
      "Register filenames, with a trailing slash on each directory.");
 FLAG(COMPLETE_GROUP, Bool, 'g', "", "Register group names.");
 FLAG(COMPLETE_JOB, Bool, 'j', "", "Register job names.");
@@ -81,30 +129,32 @@ REGISTER_BUILTIN_FLAGS(Complete);
 
 namespace koshka {
 
-static pure fn action_short_flag(compgen_action action) wontthrow -> char
+static pure fn
+action_short_flag(compgen_action action) wontthrow -> char
 {
   switch (action) {
-  case compgen_action::Alias: return 'a';
-  case compgen_action::Builtin: return 'b';
-  case compgen_action::Command: return 'c';
+  case compgen_action::Alias:     return 'a';
+  case compgen_action::Builtin:   return 'b';
+  case compgen_action::Command:   return 'c';
   case compgen_action::Directory: return 'd';
-  case compgen_action::Export: return 'e';
-  case compgen_action::File: return 'f';
-  case compgen_action::Group: return 'g';
-  case compgen_action::Job: return 'j';
-  case compgen_action::Keyword: return 'k';
-  case compgen_action::Service: return 's';
-  case compgen_action::User: return 'u';
-  case compgen_action::Variable: return 'v';
-  default: return '\0';
+  case compgen_action::Export:    return 'e';
+  case compgen_action::File:      return 'f';
+  case compgen_action::Group:     return 'g';
+  case compgen_action::Job:       return 'j';
+  case compgen_action::Keyword:   return 'k';
+  case compgen_action::Service:   return 's';
+  case compgen_action::User:      return 'u';
+  case compgen_action::Variable:  return 'v';
+  default:                        return '\0';
   }
 }
 
-static fn append_quoted_spec_argument(String &output,
-                                      const completion_spec &spec,
-                                      completion_argument argument,
-                                      StringView flag, StringView value) throws
-    -> void
+static fn
+append_quoted_spec_argument(String                &output,
+                            const completion_spec &spec,
+                            completion_argument    argument,
+                            StringView             flag,
+                            StringView             value) throws -> void
 {
   if (!spec.has_argument(argument)) return;
 
@@ -115,7 +165,8 @@ static fn append_quoted_spec_argument(String &output,
 }
 
 static fn
-append_completion_specification_line(String &output, StringView command,
+append_completion_specification_line(String                &output,
+                                     StringView             command,
                                      const completion_spec &spec) throws -> void
 {
   output += "complete ";
@@ -174,8 +225,8 @@ append_completion_specification_line(String &output, StringView command,
 struct completion_slot_name
 {
   completion_spec_slot slot;
-  StringView flag;
-  StringView description;
+  StringView           flag;
+  StringView           description;
 };
 
 static constexpr completion_slot_name COMPLETION_SLOT_NAMES[] = {
@@ -184,10 +235,10 @@ static constexpr completion_slot_name COMPLETION_SLOT_NAMES[] = {
     {completion_spec_slot::Empty,   "-E", "empty line"  },
 };
 
-static fn completion_specification_reusable_lines(const EvalContext &cxt) throws
-    -> String
+static fn
+completion_specification_reusable_lines(const EvalContext &cxt) throws -> String
 {
-  let lines = String{heap_allocator()};
+  let lines           = String{heap_allocator()};
   let collected_names = ArrayList<String>{heap_allocator()};
   cxt.completion_store().specs().for_each(
       [&](StringView command, const completion_spec &) -> void {
@@ -212,7 +263,8 @@ static fn completion_specification_reusable_lines(const EvalContext &cxt) throws
   return lines;
 }
 
-static pure fn find_completion_slot_name(completion_spec_slot slot) wontthrow
+static pure fn
+find_completion_slot_name(completion_spec_slot slot) wontthrow
     -> const completion_slot_name &
 {
   for (let const &slot_name : COMPLETION_SLOT_NAMES) {
@@ -222,8 +274,10 @@ static pure fn find_completion_slot_name(completion_spec_slot slot) wontthrow
   unreachable();
 }
 
-static fn report_missing_slot_spec(const ExecContext &ec, EvalContext &cxt,
-                                   completion_spec_slot slot) throws -> void
+static fn
+report_missing_slot_spec(const ExecContext   &ec,
+                         EvalContext         &cxt,
+                         completion_spec_slot slot) throws -> void
 {
   report_soft_builtin_error(ec, cxt,
                             StringView{"The "} +
@@ -231,7 +285,8 @@ static fn report_missing_slot_spec(const ExecContext &ec, EvalContext &cxt,
                                 " completion specification was not found");
 }
 
-fn Complete::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
+fn
+Complete::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let const args = PARSE_BUILTIN_ARGS(ec);
 
@@ -248,7 +303,7 @@ fn Complete::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   u32 option_mask = 0;
 
   for (usize i = 0; i < FLAG_COMPLETE_OPTION.count(); i++) {
-    let const name = FLAG_COMPLETE_OPTION.get(i);
+    let const name   = FLAG_COMPLETE_OPTION.get(i);
     let const option = COMPLETION_OPTIONS.find(name);
     if (!option.has_value()) {
       report_soft_builtin_error(ec, cxt, FLAG_COMPLETE_OPTION.value_location(),
@@ -271,7 +326,7 @@ fn Complete::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
        FLAG_COMPLETE_VARIABLE.is_enabled()});
 
   for (usize i = 0; i < FLAG_COMPLETE_ACTION.count(); i++) {
-    let const name = FLAG_COMPLETE_ACTION.get(i);
+    let const name   = FLAG_COMPLETE_ACTION.get(i);
     let const action = COMPGEN_ACTIONS.find(name);
     if (!action.has_value()) {
       report_soft_builtin_error(ec, cxt, FLAG_COMPLETE_ACTION.value_location(),
@@ -287,11 +342,11 @@ fn Complete::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let const do_flag_text = [](const auto &flag) wontthrow -> StringView {
     return flag.is_set() ? flag.value() : StringView{};
   };
-  let const glob_pattern = do_flag_text(FLAG_COMPLETE_GLOB);
+  let const glob_pattern   = do_flag_text(FLAG_COMPLETE_GLOB);
   let const filter_pattern = do_flag_text(FLAG_COMPLETE_FILTER);
-  let const prefix = do_flag_text(FLAG_COMPLETE_PREFIX);
-  let const suffix = do_flag_text(FLAG_COMPLETE_SUFFIX);
-  let slot = Maybe<completion_spec_slot>{None};
+  let const prefix         = do_flag_text(FLAG_COMPLETE_PREFIX);
+  let const suffix         = do_flag_text(FLAG_COMPLETE_SUFFIX);
+  let       slot           = Maybe<completion_spec_slot>{None};
   if (FLAG_COMPLETE_DEFAULT.is_enabled()) {
     slot = completion_spec_slot::Default;
   } else if (FLAG_COMPLETE_EMPTY.is_enabled()) {
@@ -301,15 +356,15 @@ fn Complete::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   }
 
   let const should_print_specs = FLAG_COMPLETE_PRINT.is_enabled();
-  let commands = ArrayList<String>{cxt.scratch_allocator()};
+  let       commands           = ArrayList<String>{cxt.scratch_allocator()};
 
   for (usize i = 1; i < args.count(); i++)
     commands.push_managed(args[i].view());
 
   if (should_print_specs) {
     if (slot.has_value()) {
-      let output = String{cxt.scratch_allocator()};
-      let const *spec = cxt.completion_store().get_slot_spec(*slot);
+      let        output = String{cxt.scratch_allocator()};
+      let const *spec   = cxt.completion_store().get_slot_spec(*slot);
       if (spec == nullptr) {
         report_missing_slot_spec(ec, cxt, *slot);
 
@@ -328,7 +383,7 @@ fn Complete::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       return 0;
     }
 
-    let output = String{cxt.scratch_allocator()};
+    let output       = String{cxt.scratch_allocator()};
     i32 print_status = 0;
 
     for (let const &command : commands) {
@@ -378,7 +433,7 @@ fn Complete::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return remove_status;
   }
 
-  u32 argument_mask = 0;
+  u32       argument_mask = 0;
   let const do_add_argument_if =
       [&](const auto &flag, completion_argument argument) wontthrow -> void {
     if (flag.is_set()) argument_mask |= completion_argument_bit(argument);
@@ -392,18 +447,18 @@ fn Complete::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   do_add_argument_if(FLAG_COMPLETE_FUNCTION, completion_argument::Function);
 
   let const do_make_spec = [&]() throws -> completion_spec {
-    let spec = completion_spec{};
-    spec.function_name = String{heap_allocator(), function_name};
-    spec.word_list = String{heap_allocator(), word_list};
-    spec.glob_pattern = String{heap_allocator(), glob_pattern};
+    let spec            = completion_spec{};
+    spec.function_name  = String{heap_allocator(), function_name};
+    spec.word_list      = String{heap_allocator(), word_list};
+    spec.glob_pattern   = String{heap_allocator(), glob_pattern};
     spec.filter_pattern = String{heap_allocator(), filter_pattern};
-    spec.prefix = String{heap_allocator(), prefix};
-    spec.suffix = String{heap_allocator(), suffix};
+    spec.prefix         = String{heap_allocator(), prefix};
+    spec.suffix         = String{heap_allocator(), suffix};
     spec.command =
         String{heap_allocator(), do_flag_text(FLAG_COMPLETE_COMMAND)};
-    spec.action_mask = action_mask;
-    spec.option_mask = option_mask;
-    spec.argument_mask = argument_mask;
+    spec.action_mask    = action_mask;
+    spec.option_mask    = option_mask;
+    spec.argument_mask  = argument_mask;
     spec.defining_state = definition_state::from(cxt.runtime_state());
 
     return spec;

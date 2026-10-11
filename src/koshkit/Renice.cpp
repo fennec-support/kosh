@@ -18,19 +18,29 @@ KOSHKIT_UTIL_DECL(
     "[-g | -p | -u] -n increment id ...",
     "The renice utility adjusts scheduling priorities of running processes.");
 
-FLAG(RENICE_GROUP, Bool, 'g', "pgrp",
+FLAG(RENICE_GROUP,
+     Bool,
+     'g',
+     "pgrp",
      "Interpret identifiers as process groups.");
-FLAG(RENICE_PROCESS, Bool, 'p', "pid",
+FLAG(RENICE_PROCESS,
+     Bool,
+     'p',
+     "pid",
      "Interpret identifiers as process identifiers.");
 FLAG(RENICE_USER, Bool, 'u', "user", "Interpret identifiers as users.");
-FLAG(RENICE_INCREMENT, String, 'n', "increment",
+FLAG(RENICE_INCREMENT,
+     String,
+     'n',
+     "increment",
      "Add this value to each current priority.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Renice);
 
 namespace koshka::koshkit {
 
-static fn renice_identifier(StringView text, os::priority_target target) throws
+static fn
+renice_identifier(StringView text, os::priority_target target) throws
     -> Maybe<i64>
 {
   let const parsed = utils::parse_decimal_i64(text);
@@ -45,9 +55,11 @@ static fn renice_identifier(StringView text, os::priority_target target) throws
   return None;
 }
 
-fn Renice::execute(const ExecContext &ec, EvalContext &cxt,
-                   const ArrayList<String> &args,
-                   const ArrayList<SourceLocation> &arg_locations) const throws
+fn
+Renice::execute(const ExecContext               &ec,
+                EvalContext                     &cxt,
+                const ArrayList<String>         &args,
+                const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
@@ -82,7 +94,7 @@ fn Renice::execute(const ExecContext &ec, EvalContext &cxt,
        operand_position++)
   {
     let const &operand = operands[operand_position];
-    let const id = renice_identifier(operand.view(), target);
+    let const  id      = renice_identifier(operand.view(), target);
     if (!id.has_value()) {
       let const note = target == os::priority_target::User
                            ? "use a user name or a nonnegative decimal user id"

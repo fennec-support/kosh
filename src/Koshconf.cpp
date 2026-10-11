@@ -21,16 +21,16 @@ namespace koshka {
 
 namespace {
 
-constexpr u32 KOSHCONF_DIRECTORY_MODE = 0755;
-constexpr usize KOSHCONF_COMMENT_WIDTH = 80;
-constexpr u32 KOSHCONF_FILE_MODE = 0644;
-constexpr u32 KOSHCONF_PERMISSION_BITS = 07777;
-constexpr usize KOSHCONF_LINK_LIMIT = 40;
-constexpr u32 MAX_CODEPOINT = 0x10ffff;
-constexpr u32 INVALID_CODEPOINT = MAX_CODEPOINT + 1;
+constexpr u32        KOSHCONF_DIRECTORY_MODE  = 0755;
+constexpr usize      KOSHCONF_COMMENT_WIDTH   = 80;
+constexpr u32        KOSHCONF_FILE_MODE       = 0644;
+constexpr u32        KOSHCONF_PERMISSION_BITS = 07777;
+constexpr usize      KOSHCONF_LINK_LIMIT      = 40;
+constexpr u32        MAX_CODEPOINT            = 0x10ffff;
+constexpr u32        INVALID_CODEPOINT        = MAX_CODEPOINT + 1;
 constexpr StringView UTF8_BYTE_ORDER_MARK{"\xef\xbb\xbf"};
 constexpr StringView HISTORY_MAX_ENTRIES_NAME{"editor.history.max_entries"};
-constexpr u64 HISTORY_MAX_ENTRIES_LIMIT = 2147483647;
+constexpr u64        HISTORY_MAX_ENTRIES_LIMIT = 2147483647;
 
 enum class escape_style : u8
 {
@@ -38,11 +38,12 @@ enum class escape_style : u8
   AnsiC,
 };
 
-fn quote_for_value(StringView value) wontthrow -> Maybe<char>
+fn
+quote_for_value(StringView value) wontthrow -> Maybe<char>
 {
   if (value.is_empty()) return None;
-  let const first = value[0];
-  let const last = value[value.count() - 1];
+  let const first        = value[0];
+  let const last         = value[value.count() - 1];
   let const should_quote = first == '"' || first == '\'' || first == ' ' ||
                            first == '\t' || last == ' ' || last == '\t';
   if (!should_quote) return None;
@@ -50,10 +51,11 @@ fn quote_for_value(StringView value) wontthrow -> Maybe<char>
   return value.find_character('"').has_value() ? '\'' : '"';
 }
 
-fn decode_strict_utf8(StringView text, usize position) wontthrow
+fn
+decode_strict_utf8(StringView text, usize position) wontthrow
     -> utils::decoded_codepoint
 {
-  let const decoded = utils::decode_utf8(text, position, INVALID_CODEPOINT);
+  let const decoded     = utils::decode_utf8(text, position, INVALID_CODEPOINT);
   let const is_overlong = (decoded.length == 2 && decoded.value < 0x80) ||
                           (decoded.length == 3 && decoded.value < 0x800) ||
                           (decoded.length == 4 && decoded.value < 0x10000);
@@ -65,7 +67,8 @@ fn decode_strict_utf8(StringView text, usize position) wontthrow
   return decoded;
 }
 
-fn is_valid_utf8(StringView text) wontthrow -> bool
+fn
+is_valid_utf8(StringView text) wontthrow -> bool
 {
   for (usize position = 0; position < text.count();) {
     let const decoded = decode_strict_utf8(text, position);
@@ -76,7 +79,8 @@ fn is_valid_utf8(StringView text) wontthrow -> bool
   return true;
 }
 
-fn is_decimal_count(StringView text) wontthrow -> bool
+fn
+is_decimal_count(StringView text) wontthrow -> bool
 {
   if (text.is_empty()) return false;
   u64 value = 0;
@@ -92,13 +96,14 @@ fn is_decimal_count(StringView text) wontthrow -> bool
   return true;
 }
 
-fn append_escaped_text(String &out, StringView text, escape_style style) throws
+fn
+append_escaped_text(String &out, StringView text, escape_style style) throws
     -> void
 {
   static constexpr char HEX_DIGITS[] = "0123456789abcdef";
 
   for (usize position = 0; position < text.count();) {
-    let const byte = static_cast<u8>(text[position]);
+    let const byte    = static_cast<u8>(text[position]);
     let const decoded = decode_strict_utf8(text, position);
     if (byte >= 0x80 && decoded.value != INVALID_CODEPOINT) {
       out += text.substring_of_length(position, decoded.length);
@@ -117,7 +122,7 @@ fn append_escaped_text(String &out, StringView text, escape_style style) throws
     case '\n': out += "\\n"; continue;
     case '\r': out += "\\r"; continue;
     case '\t': out += "\\t"; continue;
-    default: break;
+    default:   break;
     }
     if (byte >= 0x20 && byte < 0x7f) {
       out.push(static_cast<char>(byte));
@@ -130,13 +135,15 @@ fn append_escaped_text(String &out, StringView text, escape_style style) throws
   }
 }
 
-fn is_crlf_carriage_return(StringView text, usize position) wontthrow -> bool
+fn
+is_crlf_carriage_return(StringView text, usize position) wontthrow -> bool
 {
   return text[position] == '\r' && position + 1 < text.count() &&
          text[position + 1] == '\n';
 }
 
-fn printable_offset(StringView text, usize offset) wontthrow -> usize
+fn
+printable_offset(StringView text, usize offset) wontthrow -> usize
 {
   usize removed_count = 0;
 
@@ -147,13 +154,14 @@ fn printable_offset(StringView text, usize offset) wontthrow -> usize
   return offset - removed_count;
 }
 
-fn make_printable_copy(StringView text) throws -> String
+fn
+make_printable_copy(StringView text) throws -> String
 {
   let copy = String{heap_allocator()};
   copy.reserve(text.count());
 
   for (usize position = 0; position < text.count();) {
-    let const byte = static_cast<u8>(text[position]);
+    let const byte    = static_cast<u8>(text[position]);
     let const decoded = decode_strict_utf8(text, position);
     let const is_control =
         (byte < 0x20 && byte != '\t' && byte != '\n') || byte == 0x7f;
@@ -172,7 +180,8 @@ fn make_printable_copy(StringView text) throws -> String
   return copy;
 }
 
-fn escape_for_message(StringView text) throws -> String
+fn
+escape_for_message(StringView text) throws -> String
 {
   let escaped = String{heap_allocator()};
   append_escaped_text(escaped, text, escape_style::Message);
@@ -180,7 +189,8 @@ fn escape_for_message(StringView text) throws -> String
   return escaped;
 }
 
-fn append_varint(String &output, u32 value) throws -> void
+fn
+append_varint(String &output, u32 value) throws -> void
 {
   while (value >= 0x80) {
     output.push(static_cast<char>((value & 0x7f) | 0x80));
@@ -190,7 +200,8 @@ fn append_varint(String &output, u32 value) throws -> void
   output.push(static_cast<char>(value));
 }
 
-fn read_varint(StringView bytes, usize &position) wontthrow -> Maybe<u32>
+fn
+read_varint(StringView bytes, usize &position) wontthrow -> Maybe<u32>
 {
   u32 value = 0;
 
@@ -210,7 +221,8 @@ fn read_varint(StringView bytes, usize &position) wontthrow -> Maybe<u32>
   return None;
 }
 
-fn encode_value(const EvalContext &cxt, const option_descriptor &option) throws
+fn
+encode_value(const EvalContext &cxt, const option_descriptor &option) throws
     -> String
 {
   let value = String{heap_allocator()};
@@ -227,7 +239,8 @@ fn encode_value(const EvalContext &cxt, const option_descriptor &option) throws
   return value;
 }
 
-fn decode_value(const option_descriptor &option, StringView bytes) throws
+fn
+decode_value(const option_descriptor &option, StringView bytes) throws
     -> Maybe<String>
 {
   switch (option.type) {
@@ -238,8 +251,8 @@ fn decode_value(const option_descriptor &option, StringView bytes) throws
 
     return format_option_number(option, static_cast<u8>(bytes[0]));
   case option_type::Enum: {
-    usize position = 0;
-    let const number = read_varint(bytes, position);
+    usize     position = 0;
+    let const number   = read_varint(bytes, position);
     if (!number.has_value() || position != bytes.count() ||
         *number >= option.enum_values.name_count)
     {
@@ -257,7 +270,8 @@ fn decode_value(const option_descriptor &option, StringView bytes) throws
   return None;
 }
 
-fn declared_name(StringView line) wontthrow -> Maybe<StringView>
+fn
+declared_name(StringView line) wontthrow -> Maybe<StringView>
 {
   let const trimmed = line.trim_blanks();
   if (trimmed.is_empty() || trimmed[0] == '#') {
@@ -269,23 +283,25 @@ fn declared_name(StringView line) wontthrow -> Maybe<StringView>
   return line.substring_of_length(0, *equals).trim_blanks();
 }
 
-fn preset_group_of(const option_descriptor &option) wontthrow -> StringView
+fn
+preset_group_of(const option_descriptor &option) wontthrow -> StringView
 {
-  let const name = StringView{option.koshconf_name};
+  let const name      = StringView{option.koshconf_name};
   let const first_dot = name.find_character('.');
   if (!first_dot.has_value()) return name;
 
-  let const rest = name.substring(*first_dot + 1);
+  let const rest       = name.substring(*first_dot + 1);
   let const second_dot = rest.find_character('.');
   if (!second_dot.has_value()) return name.substring_of_length(0, *first_dot);
 
   return name.substring_of_length(0, *first_dot + 1 + *second_dot);
 }
 
-fn get_preset_group_first_id(const option_descriptor &option) wontthrow -> u16
+fn
+get_preset_group_first_id(const option_descriptor &option) wontthrow -> u16
 {
-  let const group = preset_group_of(option);
-  let first_id = option.id;
+  let const group    = preset_group_of(option);
+  let       first_id = option.id;
 
   for (let const &other : get_option_registry()) {
     if (other.is_set_alias || other.id >= first_id) {
@@ -297,17 +313,19 @@ fn get_preset_group_first_id(const option_descriptor &option) wontthrow -> u16
   return first_id;
 }
 
-fn preset_sorts_before(const option_descriptor &left,
-                       const option_descriptor &right) wontthrow -> bool
+fn
+preset_sorts_before(const option_descriptor &left,
+                    const option_descriptor &right) wontthrow -> bool
 {
-  let const left_group_id = get_preset_group_first_id(left);
+  let const left_group_id  = get_preset_group_first_id(left);
   let const right_group_id = get_preset_group_first_id(right);
   if (left_group_id != right_group_id) return left_group_id < right_group_id;
 
   return left.id < right.id;
 }
 
-fn resolve_koshconf_target(const Path &path) throws -> Path
+fn
+resolve_koshconf_target(const Path &path) throws -> Path
 {
   if (let resolved = os::canonical_path(path); resolved.has_value()) {
     return steal(*resolved);
@@ -333,9 +351,10 @@ fn resolve_koshconf_target(const Path &path) throws -> Path
   return target;
 }
 
-fn prepare_koshconf_target(const Path &path) throws -> Path
+fn
+prepare_koshconf_target(const Path &path) throws -> Path
 {
-  let target = resolve_koshconf_target(path);
+  let       target    = resolve_koshconf_target(path);
   let const directory = target.parent_or_current();
   if (!koshkit::make_directories(directory, KOSHCONF_DIRECTORY_MODE)) {
     throw Error{"Unable to create the directory '" + directory.text() +
@@ -345,10 +364,11 @@ fn prepare_koshconf_target(const Path &path) throws -> Path
   return target;
 }
 
-fn lock_koshconf_directory(const Path &target) throws -> os::descriptor
+fn
+lock_koshconf_directory(const Path &target) throws -> os::descriptor
 {
   let const directory = target.parent_or_current();
-  let const lock = os::acquire_process_lock(directory.view());
+  let const lock      = os::acquire_process_lock(directory.view());
   if (!lock.has_value()) {
     throw Error{"Unable to lock the directory '" + directory.text() +
                 "': " + os::last_system_error_message()};
@@ -357,13 +377,13 @@ fn lock_koshconf_directory(const Path &target) throws -> os::descriptor
   return *lock;
 }
 
-fn replace_koshconf_target(const Path &target, StringView contents) throws
-    -> void
+fn
+replace_koshconf_target(const Path &target, StringView contents) throws -> void
 {
-  let status = os::file_status{};
-  let const mode = os::stat_path_following(target.view(), status)
-                       ? status.mode & KOSHCONF_PERMISSION_BITS
-                       : KOSHCONF_FILE_MODE & ~os::get_file_creation_mask();
+  let       status    = os::file_status{};
+  let const mode      = os::stat_path_following(target.view(), status)
+                            ? status.mode & KOSHCONF_PERMISSION_BITS
+                            : KOSHCONF_FILE_MODE & ~os::get_file_creation_mask();
   let const directory = target.parent_or_current();
   let const temporary =
       os::write_to_named_temp_file(directory, ".kosh.conf", contents);
@@ -392,7 +412,8 @@ fn replace_koshconf_target(const Path &target, StringView contents) throws
 
 } /* namespace */
 
-fn get_user_koshconf_path() throws -> Maybe<Path>
+fn
+get_user_koshconf_path() throws -> Maybe<Path>
 {
   let config_home = Maybe<Path>{};
   if (let const xdg = os::get_environment_variable("XDG_CONFIG_HOME");
@@ -411,7 +432,8 @@ fn get_user_koshconf_path() throws -> Maybe<Path>
   return config_home;
 }
 
-fn parse_mood_list(StringView list, ArrayList<mimic_mood> &moods) throws
+fn
+parse_mood_list(StringView list, ArrayList<mimic_mood> &moods) throws
     -> Maybe<StringView>
 {
   usize name_start = 0;
@@ -435,21 +457,22 @@ fn parse_mood_list(StringView list, ArrayList<mimic_mood> &moods) throws
   return None;
 }
 
-pure fn koshconf_option_takes_count(const option_descriptor &option) wontthrow
-    -> bool
+pure fn
+koshconf_option_takes_count(const option_descriptor &option) wontthrow -> bool
 {
   return StringView{option.koshconf_name} == HISTORY_MAX_ENTRIES_NAME;
 }
 
-fn suggest_koshconf_option_name(StringView name) throws -> Maybe<String>
+fn
+suggest_koshconf_option_name(StringView name) throws -> Maybe<String>
 {
   if (name.is_empty()) return None;
 
   constexpr usize ENDING_EDIT_COUNT = 2;
-  let suggestion = utils::NameSuggestion{name};
-  Maybe<String> topic_match{};
-  Maybe<String> ending_match{};
-  usize ending_match_length = 0;
+  let             suggestion        = utils::NameSuggestion{name};
+  Maybe<String>   topic_match{};
+  Maybe<String>   ending_match{};
+  usize           ending_match_length = 0;
 
   for (let const &option : get_option_registry()) {
     if (option.is_set_alias) continue;
@@ -477,7 +500,7 @@ fn suggest_koshconf_option_name(StringView name) throws -> Maybe<String>
     if (shared_length + ENDING_EDIT_COUNT >= name.length &&
         shared_length > topic_length + 1 && shared_length > ending_match_length)
     {
-      ending_match = String{candidate};
+      ending_match        = String{candidate};
       ending_match_length = shared_length;
     }
   }
@@ -489,7 +512,8 @@ fn suggest_koshconf_option_name(StringView name) throws -> Maybe<String>
   return ending_match;
 }
 
-fn describe_kosh_mood_hold(const option_descriptor &option) throws -> String
+fn
+describe_kosh_mood_hold(const option_descriptor &option) throws -> String
 {
   return StringView{"The kosh mood keeps '"} + option.koshconf_name + "' " +
          format_option_number(option, option.strict_value) +
@@ -497,8 +521,9 @@ fn describe_kosh_mood_hold(const option_descriptor &option) throws -> String
          "`koshconf set mood bash` to change it";
 }
 
-fn find_koshconf_value_problem(const option_descriptor &option,
-                               StringView value) throws -> Maybe<String>
+fn
+find_koshconf_value_problem(const option_descriptor &option,
+                            StringView value) throws -> Maybe<String>
 {
   let const do_describe = [&](StringView expectation) throws -> String {
     let message = String{"Invalid value '"};
@@ -542,10 +567,11 @@ fn find_koshconf_value_problem(const option_descriptor &option,
   return None;
 }
 
-fn format_koshconf_display_line(const option_descriptor &option,
-                                StringView value) throws -> String
+fn
+format_koshconf_display_line(const option_descriptor &option,
+                             StringView               value) throws -> String
 {
-  let const quote = quote_for_value(value);
+  let const quote           = quote_for_value(value);
   let const has_both_quotes = quote.has_value() && *quote == '\'' &&
                               value.find_character('\'').has_value();
   let is_plain = !has_both_quotes && is_valid_utf8(value);
@@ -567,15 +593,17 @@ fn format_koshconf_display_line(const option_descriptor &option,
   return line;
 }
 
-fn read_koshconf_text(StringView text, StringView origin_name,
-                      koshconf_reading &reading) throws -> void
+fn
+read_koshconf_text(StringView        text,
+                   StringView        origin_name,
+                   koshconf_reading &reading) throws -> void
 {
-  let source_index = Maybe<u32>{};
-  let printable_text = Maybe<String>{};
+  let       source_index      = Maybe<u32>{};
+  let       printable_text    = Maybe<String>{};
   let const do_render_warning = [&](StringView span, StringView message,
                                     StringView note = {}) throws -> String {
     if (!source_index.has_value()) {
-      source_index = intern_source_name(origin_name);
+      source_index   = intern_source_name(origin_name);
       printable_text = make_printable_copy(text);
     }
     let const offset =
@@ -589,10 +617,10 @@ fn read_koshconf_text(StringView text, StringView origin_name,
     return WarningWithLocationAndDetails{location, message, note}.to_string(
         printable_text->view());
   };
-  static constexpr usize SHOWN_WARNING_COUNT = 64;
-  usize shown_warning_count = 0;
-  usize hidden_warning_count = 0;
-  let const do_warn = [&](StringView span, StringView message,
+  static constexpr usize SHOWN_WARNING_COUNT  = 64;
+  usize                  shown_warning_count  = 0;
+  usize                  hidden_warning_count = 0;
+  let const              do_warn = [&](StringView span, StringView message,
                           StringView note = {}) throws {
     if (shown_warning_count == SHOWN_WARNING_COUNT) {
       hidden_warning_count++;
@@ -622,7 +650,7 @@ fn read_koshconf_text(StringView text, StringView origin_name,
       do_warn(trimmed, "Expected a 'name=value' line, skipping it");
       continue;
     }
-    let const name = line.substring_of_length(0, *equals).trim_blanks();
+    let const  name   = line.substring_of_length(0, *equals).trim_blanks();
     let const *option = find_option_by_koshconf_name(name);
     if (option == nullptr) {
       let const suggestion = suggest_koshconf_option_name(name);
@@ -636,7 +664,7 @@ fn read_koshconf_text(StringView text, StringView origin_name,
     }
 
     let const raw_value = line.substring(*equals + 1).trim_blanks();
-    let value = raw_value;
+    let       value     = raw_value;
     if (!raw_value.is_empty() && (raw_value[0] == '"' || raw_value[0] == '\''))
     {
       let const closing = raw_value.substring(1).find_character(raw_value[0]);
@@ -688,11 +716,11 @@ fn read_koshconf_text(StringView text, StringView origin_name,
   }
 }
 
-fn read_koshconf_file(const Path &path, koshconf_reading &reading) throws
-    -> bool
+fn
+read_koshconf_file(const Path &path, koshconf_reading &reading) throws -> bool
 {
   static constexpr u64 MAXIMUM_KOSHCONF_BYTE_COUNT = 1U << 20;
-  let status = os::file_status{};
+  let                  status                      = os::file_status{};
   if (os::stat_path_following(path.view(), status)) {
     let const type_letter = os::file_type_letter(status.mode);
     if (type_letter != '-' && type_letter != 'd') {
@@ -727,7 +755,8 @@ fn read_koshconf_file(const Path &path, koshconf_reading &reading) throws
   return true;
 }
 
-fn read_system_koshconf_file(const Path &path, koshconf_reading &reading) throws
+fn
+read_system_koshconf_file(const Path &path, koshconf_reading &reading) throws
     -> bool
 {
   let system_file = os::read_system_owned_file(path);
@@ -742,7 +771,8 @@ fn read_system_koshconf_file(const Path &path, koshconf_reading &reading) throws
   return true;
 }
 
-fn encode_koshconf_blob(const EvalContext &cxt) throws -> String
+fn
+encode_koshconf_blob(const EvalContext &cxt) throws -> String
 {
   let records = String{heap_allocator()};
 
@@ -757,7 +787,8 @@ fn encode_koshconf_blob(const EvalContext &cxt) throws -> String
   return utils::encode_base64(records.view());
 }
 
-fn read_koshconf_blob(StringView encoded, koshconf_reading &reading) throws
+fn
+read_koshconf_blob(StringView encoded, koshconf_reading &reading) throws
     -> Maybe<StringView>
 {
   let const records = utils::decode_base64(encoded);
@@ -765,9 +796,9 @@ fn read_koshconf_blob(StringView encoded, koshconf_reading &reading) throws
     return StringView{"it is not padded standard base64"};
   }
 
-  let decoded = ArrayList<koshconf_setting>{heap_allocator()};
-  let warnings = ArrayList<String>{heap_allocator()};
-  let const bytes = records->view();
+  let       decoded  = ArrayList<koshconf_setting>{heap_allocator()};
+  let       warnings = ArrayList<String>{heap_allocator()};
+  let const bytes    = records->view();
   let const do_describe_bad_varint = [&](usize start) -> StringView {
     for (usize scanned = start; scanned < bytes.count(); scanned++) {
       if ((static_cast<u8>(bytes[scanned]) & 0x80) == 0) {
@@ -777,19 +808,19 @@ fn read_koshconf_blob(StringView encoded, koshconf_reading &reading) throws
 
     return "a record is truncated";
   };
-  usize position = 0;
-  u32 previous_id = 0;
+  usize position    = 0;
+  u32   previous_id = 0;
 
   while (position < bytes.count()) {
     let const id_start = position;
-    let const id = read_varint(bytes, position);
+    let const id       = read_varint(bytes, position);
     if (!id.has_value()) return do_describe_bad_varint(id_start);
     if (*id <= previous_id)
       return StringView{"its option ids are out of order"};
 
-    previous_id = *id;
+    previous_id            = *id;
     let const length_start = position;
-    let const length = read_varint(bytes, position);
+    let const length       = read_varint(bytes, position);
     if (!length.has_value()) return do_describe_bad_varint(length_start);
     if (*length > bytes.count() - position) {
       return StringView{"a record is truncated"};
@@ -831,10 +862,11 @@ fn read_koshconf_blob(StringView encoded, koshconf_reading &reading) throws
   return None;
 }
 
-fn apply_koshconf_settings(EvalContext &cxt,
-                           const ArrayList<koshconf_setting> &settings,
-                           option_origin origin,
-                           ArrayList<String> &warnings) throws -> void
+fn
+apply_koshconf_settings(EvalContext                       &cxt,
+                        const ArrayList<koshconf_setting> &settings,
+                        option_origin                      origin,
+                        ArrayList<String> &warnings) throws -> void
 {
   for (let const &setting : settings) {
     try {
@@ -845,8 +877,9 @@ fn apply_koshconf_settings(EvalContext &cxt,
   }
 }
 
-fn format_koshconf_line(const option_descriptor &option,
-                        StringView value) throws -> String
+fn
+format_koshconf_line(const option_descriptor &option, StringView value) throws
+    -> String
 {
   if (value.find_character('\n').has_value() ||
       value.find_character('\r').has_value())
@@ -872,8 +905,10 @@ fn format_koshconf_line(const option_descriptor &option,
   return line;
 }
 
-fn compose_koshconf_text(StringView description, mimic_mood preset,
-                         const EvalContext *current) throws -> String
+fn
+compose_koshconf_text(StringView         description,
+                      mimic_mood         preset,
+                      const EvalContext *current) throws -> String
 {
   let contents = String{"# Koshka settings written by koshconf "};
   contents += description;
@@ -891,7 +926,7 @@ fn compose_koshconf_text(StringView description, mimic_mood preset,
 
   for (usize position = 1; position < ordered.count(); position++) {
     let const *moved = ordered[position];
-    usize slot = position;
+    usize      slot  = position;
 
     while (slot > 0 && preset_sorts_before(*moved, *ordered[slot - 1])) {
       ordered[slot] = ordered[slot - 1];
@@ -944,8 +979,8 @@ fn compose_koshconf_text(StringView description, mimic_mood preset,
     }
 
     constexpr usize COMMENT_TEXT_WIDTH = KOSHCONF_COMMENT_WIDTH - 2;
-    let const wrapped = wrap_text(comment.view(), 0, COMMENT_TEXT_WIDTH);
-    usize position = 0;
+    let const       wrapped  = wrap_text(comment.view(), 0, COMMENT_TEXT_WIDTH);
+    usize           position = 0;
 
     while (position < wrapped.count()) {
       let const row =
@@ -1013,7 +1048,8 @@ fn compose_koshconf_text(StringView description, mimic_mood preset,
   return contents;
 }
 
-fn make_koshconf_preset(mimic_mood preset) throws -> String
+fn
+make_koshconf_preset(mimic_mood preset) throws -> String
 {
   let description = String{"create "};
   description += mood_name(preset);
@@ -1021,26 +1057,30 @@ fn make_koshconf_preset(mimic_mood preset) throws -> String
   return compose_koshconf_text(description.view(), preset, nullptr);
 }
 
-fn make_koshconf_snapshot(const EvalContext &cxt) throws -> String
+fn
+make_koshconf_snapshot(const EvalContext &cxt) throws -> String
 {
   return compose_koshconf_text("save", mimic_mood::Default, &cxt);
 }
 
-fn write_koshconf_file(const Path &path, StringView contents) throws -> void
+fn
+write_koshconf_file(const Path &path, StringView contents) throws -> void
 {
   let const target = prepare_koshconf_target(path);
-  let const lock = lock_koshconf_directory(target);
+  let const lock   = lock_koshconf_directory(target);
   defer { os::release_process_lock(lock); };
 
   replace_koshconf_target(target, contents);
 }
 
-fn persist_koshconf_setting(const Path &path, const option_descriptor &option,
-                            StringView value) throws -> void
+fn
+persist_koshconf_setting(const Path              &path,
+                         const option_descriptor &option,
+                         StringView               value) throws -> void
 {
   let const replacement = format_koshconf_line(option, value);
-  let const target = prepare_koshconf_target(path);
-  let const lock = lock_koshconf_directory(target);
+  let const target      = prepare_koshconf_target(path);
+  let const lock        = lock_koshconf_directory(target);
   defer { os::release_process_lock(lock); };
 
   let existing = target.read_entire_file();
@@ -1053,17 +1093,17 @@ fn persist_koshconf_setting(const Path &path, const option_descriptor &option,
   }
 
   let contents = String{heap_allocator()};
-  let text = existing->view();
+  let text     = existing->view();
   if (text.starts_with(UTF8_BYTE_ORDER_MARK)) {
     contents += UTF8_BYTE_ORDER_MARK;
     text = text.substring(UTF8_BYTE_ORDER_MARK.count());
   }
   let const first_line_end = text.find_character('\n');
-  let const line_end = first_line_end.has_value() && *first_line_end > 0 &&
+  let const line_end     = first_line_end.has_value() && *first_line_end > 0 &&
                                text[*first_line_end - 1] == '\r'
-                           ? StringView{"\r\n"}
-                           : StringView{"\n"};
-  let const option_name = StringView{option.koshconf_name};
+                               ? StringView{"\r\n"}
+                               : StringView{"\n"};
+  let const option_name  = StringView{option.koshconf_name};
   let const do_find_name = [](StringView line, bool is_commented) {
     let const has_return = !line.is_empty() && line[line.count() - 1] == '\r';
     let const without_return =
@@ -1090,10 +1130,10 @@ fn persist_koshconf_setting(const Path &path, const option_descriptor &option,
   let did_replace = false;
 
   for (usize position = 0; position < text.count();) {
-    let const line = text.next_line(position);
-    let const name = did_replace && !has_setting_line
-                         ? Maybe<StringView>{}
-                         : do_find_name(line, !has_setting_line);
+    let const line            = text.next_line(position);
+    let const name            = did_replace && !has_setting_line
+                                    ? Maybe<StringView>{}
+                                    : do_find_name(line, !has_setting_line);
     let const is_setting_line = name.has_value() && *name == option_name;
     if (is_setting_line && did_replace) {
       continue;

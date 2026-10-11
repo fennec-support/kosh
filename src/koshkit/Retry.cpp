@@ -19,13 +19,25 @@ KOSHKIT_UTIL_DECL(
     "The retry utility runs a command until it succeeds or exhausts its "
     "attempts.");
 
-FLAG(RETRY_ATTEMPTS, String, 'n', "attempts",
+FLAG(RETRY_ATTEMPTS,
+     String,
+     'n',
+     "attempts",
      "Make at most this many attempts. The default is five.");
-FLAG(RETRY_DELAY, String, 'd', "delay",
+FLAG(RETRY_DELAY,
+     String,
+     'd',
+     "delay",
      "Wait this long after a failed attempt. The default is one second.");
-FLAG(RETRY_BACKOFF, String, 'b', "backoff",
+FLAG(RETRY_BACKOFF,
+     String,
+     'b',
+     "backoff",
      "Multiply the delay by this factor after every failed attempt.");
-FLAG(RETRY_MAX_DELAY, String, 'm', "max-delay",
+FLAG(RETRY_MAX_DELAY,
+     String,
+     'm',
+     "max-delay",
      "Never wait longer than this between attempts.");
 FLAG(RETRY_QUIET, Bool, 'q', "quiet", "Report no attempt lines.");
 
@@ -35,15 +47,16 @@ namespace koshka::koshkit {
 
 namespace {
 
-constexpr i64 DEFAULT_ATTEMPT_COUNT = 5;
-constexpr i64 MAXIMUM_ATTEMPT_COUNT = 1000000;
-constexpr f64 DEFAULT_DELAY_SECONDS = 1.0;
+constexpr i64 DEFAULT_ATTEMPT_COUNT  = 5;
+constexpr i64 MAXIMUM_ATTEMPT_COUNT  = 1000000;
+constexpr f64 DEFAULT_DELAY_SECONDS  = 1.0;
 constexpr f64 DEFAULT_BACKOFF_FACTOR = 1.0;
 constexpr f64 MINIMUM_BACKOFF_FACTOR = 1.0;
 constexpr f64 MAXIMUM_BACKOFF_FACTOR = 60.0;
-constexpr f64 SLEEP_SLICE_SECONDS = 0.05;
+constexpr f64 SLEEP_SLICE_SECONDS    = 0.05;
 
-fn parse_backoff_factor(StringView text, f64 &out_factor) throws -> bool
+fn
+parse_backoff_factor(StringView text, f64 &out_factor) throws -> bool
 {
   let const digits = String{heap_allocator(), text};
   let const parsed = digits.to<f64>();
@@ -60,7 +73,8 @@ fn parse_backoff_factor(StringView text, f64 &out_factor) throws -> bool
   return true;
 }
 
-fn sleep_interruptibly(f64 seconds) wontthrow -> bool
+fn
+sleep_interruptibly(f64 seconds) wontthrow -> bool
 {
   f64 remaining_seconds = seconds;
 
@@ -77,8 +91,9 @@ fn sleep_interruptibly(f64 seconds) wontthrow -> bool
   return !os::INTERRUPT_REQUESTED;
 }
 
-fn build_command_source(const ArrayList<String> &operands,
-                        Allocator allocator) throws -> String
+fn
+build_command_source(const ArrayList<String> &operands,
+                     Allocator                allocator) throws -> String
 {
   let source = String{allocator};
 
@@ -93,9 +108,11 @@ fn build_command_source(const ArrayList<String> &operands,
 
 } /* namespace */
 
-fn Retry::execute(const ExecContext &ec, EvalContext &cxt,
-                  const ArrayList<String> &args,
-                  const ArrayList<SourceLocation> &arg_locations) const throws
+fn
+Retry::execute(const ExecContext               &ec,
+               EvalContext                     &cxt,
+               const ArrayList<String>         &args,
+               const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
@@ -152,7 +169,7 @@ fn Retry::execute(const ExecContext &ec, EvalContext &cxt,
   }
 
   let const source = build_command_source(operands, allocator);
-  i32 status = 0;
+  i32       status = 0;
 
   let const saved_terminal_exec = cxt.execution_store().terminal_exec_allowed();
   cxt.execution_store().terminal_exec_allowed() = false;

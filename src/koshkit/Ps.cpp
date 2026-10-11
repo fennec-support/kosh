@@ -18,8 +18,8 @@ KOSHKIT_UTIL_DECL("[aux]", "The ps utility lists the running processes.");
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 FLAG(PS_ALL, Bool, 'a', "", "List every user's processes.");
 FLAG(PS_USER_FMT, Bool, 'u', "", "List in user-oriented format.");
-FLAG(PS_NO_TTY, Bool, 'x', "",
-     "List processes without a controlling terminal.");
+FLAG(
+    PS_NO_TTY, Bool, 'x', "", "List processes without a controlling terminal.");
 FLAG(PS_WIDE, Bool, 'w', "", "Use a wide output format.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS_WITH_OWN_HELP(Ps);
@@ -29,50 +29,54 @@ namespace koshka::koshkit {
 struct uid_name_cache_entry
 {
   uid_name_cache_entry(u32 uid, String name) : uid(uid), name(steal(name)) {}
-  u32 uid;
+  u32    uid;
   String name;
 };
 
-static fn owner_name_for_uid(u32 uid, ArrayList<uid_name_cache_entry> &cache,
-                             Allocator allocator) throws -> String
+static fn
+owner_name_for_uid(u32                              uid,
+                   ArrayList<uid_name_cache_entry> &cache,
+                   Allocator                        allocator) throws -> String
 {
   for (let const &entry : cache)
     if (entry.uid == uid) return entry.name.clone();
 
   let const looked_up = os::uid_to_username(uid);
-  let name = looked_up.has_value() ? String{allocator, looked_up->view()}
-                                   : String::from(uid, allocator);
+  let       name = looked_up.has_value() ? String{allocator, looked_up->view()}
+                                         : String::from(uid, allocator);
   cache.push(uid_name_cache_entry{uid, name.clone()});
 
   return name;
 }
 
-static fn append_left(String &output, StringView text, usize width) throws
-    -> void
+static fn
+append_left(String &output, StringView text, usize width) throws -> void
 {
   output += text;
   output.append_repeated(' ', width - text.length);
 }
 
-static fn append_right(String &output, StringView text, usize width) throws
-    -> void
+static fn
+append_right(String &output, StringView text, usize width) throws -> void
 {
   output.append_repeated(' ', width - text.length);
   output += text;
 }
 
-static fn render_aux_without_sampled_columns(
-    const ArrayList<os::process_entry> &processes, String &output,
-    Allocator allocator) throws -> void
+static fn
+render_aux_without_sampled_columns(
+    const ArrayList<os::process_entry> &processes,
+    String                             &output,
+    Allocator                           allocator) throws -> void
 {
   ArrayList<uid_name_cache_entry> uid_cache{allocator};
-  ArrayList<String> owners{allocator};
+  ArrayList<String>               owners{allocator};
   owners.reserve(processes.count());
 
   usize user_width = 4;
-  usize pid_width = 3;
-  usize vsz_width = 3;
-  usize rss_width = 3;
+  usize pid_width  = 3;
+  usize vsz_width  = 3;
+  usize rss_width  = 3;
 
   for (let const &process : processes) {
     let owner = owner_name_for_uid(process.owner_id, uid_cache, allocator);
@@ -116,10 +120,11 @@ static fn render_aux_without_sampled_columns(
   }
 }
 
-fn Ps::execute(const ExecContext &ec, EvalContext &cxt,
-               const ArrayList<String> &args,
-               const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+fn
+Ps::execute(const ExecContext               &ec,
+            EvalContext                     &cxt,
+            const ArrayList<String>         &args,
+            const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 

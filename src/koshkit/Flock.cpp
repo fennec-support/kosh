@@ -17,16 +17,21 @@ KOSHKIT_UTIL_DECL(
     "[--transaction-held-lock] directory command [argument ...]",
     "The flock utility runs a command while holding a directory lock.");
 
-FLAG(TRANSACTION_HELD_LOCK, Bool, '\0', "transaction-held-lock",
+FLAG(TRANSACTION_HELD_LOCK,
+     Bool,
+     '\0',
+     "transaction-held-lock",
      "Keep the lock after the process that launched the transaction exits.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Flock);
 
 namespace koshka::koshkit {
 
-fn Flock::execute(const ExecContext &ec, EvalContext &cxt,
-                  const ArrayList<String> &args,
-                  const ArrayList<SourceLocation> &arg_locations) const throws
+fn
+Flock::execute(const ExecContext               &ec,
+               EvalContext                     &cxt,
+               const ArrayList<String>         &args,
+               const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);

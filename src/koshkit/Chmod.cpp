@@ -17,9 +17,15 @@
 KOSHKIT_UTIL_DECL("[-R] [--one-file-system] mode file ...",
                   "The chmod utility changes file permission modes.");
 
-FLAG(CHMOD_RECURSIVE, Bool, 'R', "recursive",
+FLAG(CHMOD_RECURSIVE,
+     Bool,
+     'R',
+     "recursive",
      "Change directories and their contents recursively.");
-FLAG(CHMOD_ONE_FILE_SYSTEM, Bool, '\0', "one-file-system",
+FLAG(CHMOD_ONE_FILE_SYSTEM,
+     Bool,
+     '\0',
+     "one-file-system",
      "Skip directories on file systems other than each operand's file system.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Chmod);
@@ -32,11 +38,14 @@ enum class chmod_traversal_mode : u8
   Recursive,
 };
 
-static fn change_mode(const ExecContext &ec, EvalContext &cxt, const Path &path,
-                      StringView expression,
-                      const os::file_status *known_status,
-                      chmod_traversal_mode traversal_mode,
-                      const u64 *operand_device_id) throws -> bool
+static fn
+change_mode(const ExecContext     &ec,
+            EvalContext           &cxt,
+            const Path            &path,
+            StringView             expression,
+            const os::file_status *known_status,
+            chmod_traversal_mode   traversal_mode,
+            const u64             *operand_device_id) throws -> bool
 {
   os::file_status status{};
   if (known_status != nullptr) {
@@ -117,9 +126,11 @@ static fn change_mode(const ExecContext &ec, EvalContext &cxt, const Path &path,
   return did_succeed;
 }
 
-fn Chmod::execute(const ExecContext &ec, EvalContext &cxt,
-                  const ArrayList<String> &args,
-                  const ArrayList<SourceLocation> &arg_locations) const throws
+fn
+Chmod::execute(const ExecContext               &ec,
+               EvalContext                     &cxt,
+               const ArrayList<String>         &args,
+               const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);

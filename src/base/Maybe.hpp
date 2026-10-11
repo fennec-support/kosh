@@ -38,14 +38,16 @@ public:
     if (m_has_value) new (&m_storage) T(steal(other.reference()));
   }
 
-  mustuse fn clone() const throws -> Maybe
+  mustuse fn
+  clone() const throws -> Maybe
   {
     if (!m_has_value) return None;
 
     return Maybe{clone_value(reference())};
   }
 
-  fn operator=(const Maybe &other) throws->Maybe &
+  fn
+  operator=(const Maybe &other) throws->Maybe &
   {
     if (this != &other) {
       reset();
@@ -57,7 +59,8 @@ public:
 
     return *this;
   }
-  fn operator=(Maybe &&other) noexcept(std::is_nothrow_move_constructible_v<T>)
+  fn
+  operator=(Maybe &&other) noexcept(std::is_nothrow_move_constructible_v<T>)
       ->Maybe &
   {
     if (this != &other) {
@@ -73,39 +76,54 @@ public:
 
   ~Maybe() { reset(); }
 
-  hot mustuse pure fn has_value() const wontthrow -> bool
+  hot mustuse pure fn
+  has_value() const wontthrow -> bool
   {
     return m_has_value;
   }
-  hot mustuse pure explicit operator bool() const wontthrow
+  hot mustuse pure explicit
+  operator bool() const wontthrow
   {
     return m_has_value;
   }
 
-  hot mustuse pure fn value() wontthrow -> T &
+  hot mustuse pure fn
+  value() wontthrow -> T &
   {
     ASSERT(m_has_value);
 
     return reference();
   }
-  hot mustuse pure fn value() const wontthrow -> const T &
+  hot mustuse pure fn
+  value() const wontthrow -> const T &
   {
     ASSERT(m_has_value);
 
     return reference();
   }
-  hot flatten mustuse pure fn operator*() wontthrow->T & { return value(); }
-  hot flatten mustuse pure fn operator*() const wontthrow->const T &
+  hot flatten mustuse pure fn
+  operator*() wontthrow->T &
   {
     return value();
   }
-  hot flatten mustuse pure fn operator->() wontthrow->T * { return &value(); }
-  hot flatten mustuse pure fn operator->() const wontthrow->const T *
+  hot flatten mustuse pure fn
+  operator*() const wontthrow->const T &
+  {
+    return value();
+  }
+  hot flatten mustuse pure fn
+  operator->() wontthrow->T *
+  {
+    return &value();
+  }
+  hot flatten mustuse pure fn
+  operator->() const wontthrow->const T *
   {
     return &value();
   }
 
-  mustuse fn take() throws -> T
+  mustuse fn
+  take() throws -> T
   {
     ASSERT(m_has_value);
     let taken_value = steal(reference());
@@ -114,26 +132,31 @@ public:
     return taken_value;
   }
 
-  mustuse fn value_or(const T &fallback) const throws -> T
+  mustuse fn
+  value_or(const T &fallback) const throws -> T
   {
     return m_has_value ? value() : fallback;
   }
 
-  mustuse fn value_or(T &&fallback) const throws -> T
+  mustuse fn
+  value_or(T &&fallback) const throws -> T
   {
     return m_has_value ? value() : steal(fallback);
   }
 
-  mustuse fn operator==(const T &other) const throws->bool
+  mustuse fn
+  operator==(const T &other) const throws->bool
   {
     return m_has_value && reference() == other;
   }
-  mustuse fn operator!=(const T &other) const throws->bool
+  mustuse fn
+  operator!=(const T &other) const throws->bool
   {
     return !(*this == other);
   }
 
-  fn reset() wontthrow -> void
+  fn
+  reset() wontthrow -> void
   {
     if (m_has_value) {
       reference().~T();
@@ -142,7 +165,8 @@ public:
   }
 
 private:
-  static fn copy_of(const T &value) throws -> T
+  static fn
+  copy_of(const T &value) throws -> T
   {
     if constexpr (is_cloneable<T>)
       return value.clone();
@@ -150,8 +174,13 @@ private:
       return T(value);
   }
 
-  fn reference() wontthrow -> T & { return *reinterpret_cast<T *>(&m_storage); }
-  fn reference() const wontthrow -> const T &
+  fn
+  reference() wontthrow -> T &
+  {
+    return *reinterpret_cast<T *>(&m_storage);
+  }
+  fn
+  reference() const wontthrow -> const T &
   {
     return *reinterpret_cast<const T *>(&m_storage);
   }
@@ -168,52 +197,72 @@ public:
   Maybe(Nothing) noexcept {}
   Maybe(T *value) noexcept : m_value(value) {}
 
-  hot mustuse pure fn has_value() const wontthrow -> bool
+  hot mustuse pure fn
+  has_value() const wontthrow -> bool
   {
     return m_value != nullptr;
   }
-  hot mustuse pure explicit operator bool() const wontthrow
+  hot mustuse pure explicit
+  operator bool() const wontthrow
   {
     return has_value();
   }
 
-  hot mustuse pure fn value() wontthrow -> T *
+  hot mustuse pure fn
+  value() wontthrow -> T *
   {
     ASSERT(m_value != nullptr);
 
     return m_value;
   }
-  hot mustuse pure fn value() const wontthrow -> T *
+  hot mustuse pure fn
+  value() const wontthrow -> T *
   {
     ASSERT(m_value != nullptr);
 
     return m_value;
   }
-  hot flatten mustuse pure fn operator*() wontthrow->T *& { return m_value; }
-  hot flatten mustuse pure fn operator*() const wontthrow->T *const &
+  hot flatten mustuse pure fn
+  operator*() wontthrow->T *&
   {
     return m_value;
   }
-  hot flatten mustuse pure fn operator->() wontthrow->T * { return value(); }
-  hot flatten mustuse pure fn operator->() const wontthrow->T *
+  hot flatten mustuse pure fn
+  operator*() const wontthrow->T *const &
+  {
+    return m_value;
+  }
+  hot flatten mustuse pure fn
+  operator->() wontthrow->T *
+  {
+    return value();
+  }
+  hot flatten mustuse pure fn
+  operator->() const wontthrow->T *
   {
     return value();
   }
 
-  mustuse fn take() wontthrow -> T *
+  mustuse fn
+  take() wontthrow -> T *
   {
     let const taken_value = m_value;
-    m_value = nullptr;
+    m_value               = nullptr;
 
     return taken_value;
   }
 
-  mustuse fn value_or(T *fallback) const wontthrow -> T *
+  mustuse fn
+  value_or(T *fallback) const wontthrow -> T *
   {
     return has_value() ? m_value : fallback;
   }
 
-  fn reset() wontthrow -> void { m_value = nullptr; }
+  fn
+  reset() wontthrow -> void
+  {
+    m_value = nullptr;
+  }
 
 private:
   T *m_value{nullptr};

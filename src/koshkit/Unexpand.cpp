@@ -22,10 +22,11 @@ REGISTER_KOSHKIT_UTIL_FLAGS(Unexpand);
 
 namespace koshka::koshkit {
 
-static fn append_unexpanded_blanks(String &output, usize start_column,
-                                   usize end_column,
-                                   const ArrayList<usize> &tab_stops) throws
-    -> void
+static fn
+append_unexpanded_blanks(String                 &output,
+                         usize                   start_column,
+                         usize                   end_column,
+                         const ArrayList<usize> &tab_stops) throws -> void
 {
   usize column = start_column;
 
@@ -41,9 +42,12 @@ static fn append_unexpanded_blanks(String &output, usize start_column,
   }
 }
 
-fn Unexpand::execute(
-    const ExecContext &ec, EvalContext &cxt, const ArrayList<String> &args,
-    const ArrayList<SourceLocation> &arg_locations) const throws -> i32
+fn
+Unexpand::execute(const ExecContext               &ec,
+                  EvalContext                     &cxt,
+                  const ArrayList<String>         &args,
+                  const ArrayList<SourceLocation> &arg_locations) const throws
+    -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
@@ -68,10 +72,10 @@ fn Unexpand::execute(
   i32 status = 0;
 
   let const do_append_line = [&](StringView content) throws -> void {
-    usize column = 0;
+    usize column             = 0;
     usize blank_start_column = 0;
-    bool has_pending_blanks = false;
-    bool has_nonblank = false;
+    bool  has_pending_blanks = false;
+    bool  has_nonblank       = false;
 
     let const do_flush_blanks = [&]() throws -> void {
       if (!has_pending_blanks) return;
@@ -92,7 +96,7 @@ fn Unexpand::execute(
           column++;
         else {
           let const target = utils::get_next_tab_column(column, tab_stops);
-          column = target == column ? column + 1 : target;
+          column           = target == column ? column + 1 : target;
         }
         continue;
       }

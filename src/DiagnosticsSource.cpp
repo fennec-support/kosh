@@ -30,11 +30,11 @@ enum class source_scan_state : u8
   Comment,
 };
 
-constexpr u8 SCAN_ACTS_NORMAL = 1U << 0U;
+constexpr u8 SCAN_ACTS_NORMAL        = 1U << 0U;
 constexpr u8 SCAN_ACTS_SINGLE_QUOTED = 1U << 1U;
 constexpr u8 SCAN_ACTS_ANSI_C_QUOTED = 1U << 2U;
 constexpr u8 SCAN_ACTS_DOUBLE_QUOTED = 1U << 3U;
-constexpr u8 SCAN_ACTS_COMMENT = 1U << 4U;
+constexpr u8 SCAN_ACTS_COMMENT       = 1U << 4U;
 constexpr u8 SCAN_ACTS_EVERYWHERE = SCAN_ACTS_NORMAL | SCAN_ACTS_SINGLE_QUOTED |
                                     SCAN_ACTS_ANSI_C_QUOTED |
                                     SCAN_ACTS_DOUBLE_QUOTED | SCAN_ACTS_COMMENT;
@@ -44,7 +44,8 @@ struct source_scan_table
   u8 acting_states[256];
 };
 
-consteval fn build_source_scan_table() -> source_scan_table
+consteval fn
+build_source_scan_table() -> source_scan_table
 {
   source_scan_table table{};
 
@@ -71,8 +72,9 @@ consteval fn build_source_scan_table() -> source_scan_table
 
 constexpr source_scan_table SOURCE_SCAN = build_source_scan_table();
 
-alwaysinline pure fn skip_plain_bytes(StringView source, usize at,
-                                      u8 acting_state) wontthrow -> usize
+alwaysinline pure fn
+skip_plain_bytes(StringView source, usize at, u8 acting_state) wontthrow
+    -> usize
 {
   while (at + 1 < source.length &&
          (SOURCE_SCAN.acting_states[static_cast<u8>(source[at + 1])] &
@@ -93,25 +95,28 @@ enum class homoglyph_kind : u8
   Space,
 };
 
-constexpr u64 HIGH_BITS = 0x8080808080808080ULL;
-constexpr u64 LOW_BITS = 0x0101010101010101ULL;
+constexpr u64 HIGH_BITS        = 0x8080808080808080ULL;
+constexpr u64 LOW_BITS         = 0x0101010101010101ULL;
 constexpr u64 CARRIAGE_RETURNS = 0x0d0d0d0d0d0d0d0dULL;
-constexpr u64 BACKSLASHES = 0x5c5c5c5c5c5c5c5cULL;
+constexpr u64 BACKSLASHES      = 0x5c5c5c5c5c5c5c5cULL;
 
-alwaysinline pure fn chunk_holds_byte(u64 chunk, u64 repeated) wontthrow -> u64
+alwaysinline pure fn
+chunk_holds_byte(u64 chunk, u64 repeated) wontthrow -> u64
 {
   let const differences = chunk ^ repeated;
 
   return (differences - LOW_BITS) & ~differences & HIGH_BITS;
 }
 
-alwaysinline pure fn chunk_holds_scanned_byte(u64 chunk) wontthrow -> bool
+alwaysinline pure fn
+chunk_holds_scanned_byte(u64 chunk) wontthrow -> bool
 {
   return ((chunk & HIGH_BITS) | chunk_holds_byte(chunk, CARRIAGE_RETURNS) |
           chunk_holds_byte(chunk, BACKSLASHES)) != 0;
 }
 
-pure fn source_holds_scanned_byte(StringView source) wontthrow -> bool
+pure fn
+source_holds_scanned_byte(StringView source) wontthrow -> bool
 {
   usize at = 0;
 
@@ -132,7 +137,8 @@ pure fn source_holds_scanned_byte(StringView source) wontthrow -> bool
   return false;
 }
 
-pure fn classify_codepoint(u32 codepoint) wontthrow -> homoglyph_kind
+pure fn
+classify_codepoint(u32 codepoint) wontthrow -> homoglyph_kind
 {
   switch (codepoint) {
   case 0x2018:
@@ -183,8 +189,8 @@ pure fn classify_codepoint(u32 codepoint) wontthrow -> homoglyph_kind
   }
 }
 
-pure fn homoglyph_diagnostic(homoglyph_kind kind,
-                             source_scan_state state) wontthrow
+pure fn
+homoglyph_diagnostic(homoglyph_kind kind, source_scan_state state) wontthrow
     -> Maybe<diagnostic_id>
 {
   if (state == source_scan_state::Comment) return None;
@@ -220,7 +226,8 @@ pure fn homoglyph_diagnostic(homoglyph_kind kind,
   }
 }
 
-fn codepoint_spelling(u32 codepoint) throws -> String
+fn
+codepoint_spelling(u32 codepoint) throws -> String
 {
   constexpr char HEX_DIGITS[] = "0123456789ABCDEF";
 
@@ -232,7 +239,8 @@ fn codepoint_spelling(u32 codepoint) throws -> String
   return spelling;
 }
 
-pure fn byte_precedes_comment(char byte) wontthrow -> bool
+pure fn
+byte_precedes_comment(char byte) wontthrow -> bool
 {
   switch (byte) {
   case ' ':
@@ -243,13 +251,14 @@ pure fn byte_precedes_comment(char byte) wontthrow -> bool
   case '&':
   case '|':
   case '(':
-  case ')': return true;
+  case ')':  return true;
 
   default: return false;
   }
 }
 
-pure fn byte_ends_here_document_delimiter(char byte) wontthrow -> bool
+pure fn
+byte_ends_here_document_delimiter(char byte) wontthrow -> bool
 {
   switch (byte) {
   case ' ':
@@ -262,13 +271,14 @@ pure fn byte_ends_here_document_delimiter(char byte) wontthrow -> bool
   case '<':
   case '>':
   case '(':
-  case ')': return true;
+  case ')':  return true;
 
   default: return false;
   }
 }
 
-pure fn skip_here_document(StringView source, usize at) wontthrow -> usize
+pure fn
+skip_here_document(StringView source, usize at) wontthrow -> usize
 {
   usize cursor = at + 2;
   if (cursor < source.length && source[cursor] == '-') {
@@ -342,12 +352,14 @@ pure fn skip_here_document(StringView source, usize at) wontthrow -> usize
   return source.length;
 }
 
-pure fn byte_is_ascii_letter(char byte) wontthrow -> bool
+pure fn
+byte_is_ascii_letter(char byte) wontthrow -> bool
 {
   return (byte >= 'a' && byte <= 'z') || (byte >= 'A' && byte <= 'Z');
 }
 
-pure fn escape_names_control_byte(char byte) wontthrow -> bool
+pure fn
+escape_names_control_byte(char byte) wontthrow -> bool
 {
   switch (byte) {
   case 'n':
@@ -358,7 +370,8 @@ pure fn escape_names_control_byte(char byte) wontthrow -> bool
   }
 }
 
-fn escape_spelling(char escaped) throws -> String
+fn
+escape_spelling(char escaped) throws -> String
 {
   let spelling = String{"\\"};
   spelling.push(escaped);
@@ -366,8 +379,8 @@ fn escape_spelling(char escaped) throws -> String
   return spelling;
 }
 
-pure fn line_above_continues(StringView source, usize line_start) wontthrow
-    -> bool
+pure fn
+line_above_continues(StringView source, usize line_start) wontthrow -> bool
 {
   if (line_start < 2) return false;
   if (source[line_start - 1] != '\n') return false;
@@ -380,18 +393,19 @@ pure fn line_above_continues(StringView source, usize line_start) wontthrow
 
 } /* namespace */
 
-fn check_source_bytes(AnalysisContext &actx, StringView source) throws -> void
+fn
+check_source_bytes(AnalysisContext &actx, StringView source) throws -> void
 {
   if (!source_holds_scanned_byte(source)) return;
 
-  let state = source_scan_state::Normal;
-  let was_carriage_return_reported = false;
-  let is_command_position = true;
-  usize comment_line_start = 0;
-  usize line_start = 0;
-  usize arithmetic_paren_depth = 0;
-  let quoted_substitution_ends = ArrayList<usize>{heap_allocator()};
-  usize at = 0;
+  let   state                        = source_scan_state::Normal;
+  let   was_carriage_return_reported = false;
+  let   is_command_position          = true;
+  usize comment_line_start           = 0;
+  usize line_start                   = 0;
+  usize arithmetic_paren_depth       = 0;
+  let   quoted_substitution_ends     = ArrayList<usize>{heap_allocator()};
+  usize at                           = 0;
 
   while (at < source.length) {
     if (!quoted_substitution_ends.is_empty() &&
@@ -399,7 +413,7 @@ fn check_source_bytes(AnalysisContext &actx, StringView source) throws -> void
     {
       at = quoted_substitution_ends.back() + 1;
       quoted_substitution_ends.pop_back();
-      state = source_scan_state::DoubleQuoted;
+      state               = source_scan_state::DoubleQuoted;
       is_command_position = false;
       continue;
     }
@@ -430,7 +444,7 @@ fn check_source_bytes(AnalysisContext &actx, StringView source) throws -> void
     case source_scan_state::Normal:
       switch (byte) {
       case '\'':
-        state = source_scan_state::SingleQuoted;
+        state               = source_scan_state::SingleQuoted;
         is_command_position = false;
         break;
 
@@ -450,7 +464,7 @@ fn check_source_bytes(AnalysisContext &actx, StringView source) throws -> void
         break;
 
       case '"':
-        state = source_scan_state::DoubleQuoted;
+        state               = source_scan_state::DoubleQuoted;
         is_command_position = false;
         break;
 
@@ -486,7 +500,7 @@ fn check_source_bytes(AnalysisContext &actx, StringView source) throws -> void
 
       case '#':
         if (at == 0 || byte_precedes_comment(source[at - 1])) {
-          state = source_scan_state::Comment;
+          state              = source_scan_state::Comment;
           comment_line_start = line_start;
         }
         break;
@@ -496,7 +510,7 @@ fn check_source_bytes(AnalysisContext &actx, StringView source) throws -> void
         if (arithmetic_paren_depth == 0 && at + 2 < source.length &&
             source[at + 1] == '<' && source[at + 2] != '<')
         {
-          at = skip_here_document(source, at);
+          at         = skip_here_document(source, at);
           line_start = at;
 
           while (line_start > 0 && source[line_start - 1] != '\n') {
@@ -513,7 +527,7 @@ fn check_source_bytes(AnalysisContext &actx, StringView source) throws -> void
       case '\n':
       case ';':
       case '&':
-      case '|': is_command_position = true; break;
+      case '|':  is_command_position = true; break;
 
       case '(':
         if (arithmetic_paren_depth > 0) arithmetic_paren_depth++;
@@ -527,7 +541,7 @@ fn check_source_bytes(AnalysisContext &actx, StringView source) throws -> void
 
       default:
         is_command_position = false;
-        at = skip_plain_bytes(source, at, SCAN_ACTS_NORMAL);
+        at                  = skip_plain_bytes(source, at, SCAN_ACTS_NORMAL);
         break;
       }
       break;
@@ -567,7 +581,7 @@ fn check_source_bytes(AnalysisContext &actx, StringView source) throws -> void
 
     case source_scan_state::DoubleQuoted:
       switch (byte) {
-      case '"': state = source_scan_state::Normal; break;
+      case '"':  state = source_scan_state::Normal; break;
       case '\\': at++; break;
 
       case '$': {
@@ -582,7 +596,7 @@ fn check_source_bytes(AnalysisContext &actx, StringView source) throws -> void
         if (!body_end.has_value()) break;
 
         quoted_substitution_ends.push(*body_end - 1);
-        state = source_scan_state::Normal;
+        state               = source_scan_state::Normal;
         is_command_position = true;
         at++;
         break;
@@ -607,7 +621,7 @@ fn check_source_bytes(AnalysisContext &actx, StringView source) throws -> void
                                SourceLocation{at - 2, 2});
       }
 
-      state = source_scan_state::Normal;
+      state               = source_scan_state::Normal;
       is_command_position = true;
       break;
     }
@@ -628,7 +642,8 @@ constexpr PackedStringKey KNOWN_SHELL_KEYS[] = {
 };
 constexpr StaticStringSet KNOWN_SHELLS{KNOWN_SHELL_KEYS};
 
-pure fn path_base_name(StringView path) wontthrow -> StringView
+pure fn
+path_base_name(StringView path) wontthrow -> StringView
 {
   usize at = path.length;
 
@@ -642,10 +657,11 @@ pure fn path_base_name(StringView path) wontthrow -> StringView
 struct shebang_word_reader
 {
   StringView line;
-  usize at{0};
-  usize word_start{0};
+  usize      at{0};
+  usize      word_start{0};
 
-  fn read_next_word() wontthrow -> StringView
+  fn
+  read_next_word() wontthrow -> StringView
   {
     while (at < line.length && lexer::is_whitespace(line[at])) {
       at++;
@@ -660,14 +676,15 @@ struct shebang_word_reader
     return line.substring_of_length(word_start, at - word_start);
   }
 
-  pure fn word_location() const wontthrow -> SourceLocation
+  pure fn
+  word_location() const wontthrow -> SourceLocation
   {
     return SourceLocation{word_start, at - word_start};
   }
 };
 
-pure fn header_holds_shebang(StringView source, usize first_line_end) wontthrow
-    -> bool
+pure fn
+header_holds_shebang(StringView source, usize first_line_end) wontthrow -> bool
 {
   usize at = first_line_end;
 
@@ -704,8 +721,10 @@ pure fn header_holds_shebang(StringView source, usize first_line_end) wontthrow
 
 } /* namespace */
 
-fn check_shebang(AnalysisContext &actx, StringView source,
-                 missing_shebang_policy shebang_policy) throws -> void
+fn
+check_shebang(AnalysisContext       &actx,
+              StringView             source,
+              missing_shebang_policy shebang_policy) throws -> void
 {
   usize line_end = 0;
 
@@ -742,7 +761,7 @@ fn check_shebang(AnalysisContext &actx, StringView source,
   }
 
   let const has_hash = at < first_line.length && first_line[at] == '#';
-  usize bang_at = has_hash ? at + 1 : at;
+  usize     bang_at  = has_hash ? at + 1 : at;
 
   while (bang_at < first_line.length &&
          lexer::is_whitespace(first_line[bang_at]))
@@ -787,8 +806,8 @@ fn check_shebang(AnalysisContext &actx, StringView source,
                            SourceLocation{at + 1, bang_at - at - 1});
   }
 
-  let reader = shebang_word_reader{first_line, bang_at + 1, bang_at + 1};
-  let const interpreter = reader.read_next_word();
+  let       reader = shebang_word_reader{first_line, bang_at + 1, bang_at + 1};
+  let const interpreter          = reader.read_next_word();
   let const interpreter_location = reader.word_location();
 
   if (interpreter.is_empty()) return;
@@ -803,13 +822,13 @@ fn check_shebang(AnalysisContext &actx, StringView source,
                            {interpreter});
   }
 
-  let const interpreter_name = path_base_name(interpreter);
+  let const interpreter_name   = path_base_name(interpreter);
   let const is_env_interpreter = interpreter_name == StringView{"env"};
 
-  usize parameter_count = 0;
-  let shell_argument = StringView{};
-  let shell_argument_location = interpreter_location;
-  let has_split_string_flag = false;
+  usize parameter_count         = 0;
+  let   shell_argument          = StringView{};
+  let   shell_argument_location = interpreter_location;
+  let   has_split_string_flag   = false;
 
   loop
   {
@@ -817,7 +836,7 @@ fn check_shebang(AnalysisContext &actx, StringView source,
     if (word.is_empty()) break;
 
     if (shell_argument.is_empty() && word[0] != '-') {
-      shell_argument = word;
+      shell_argument          = word;
       shell_argument_location = reader.word_location();
     }
 
@@ -869,7 +888,8 @@ constexpr StaticStringSet CLAUSE_KEYWORDS{CLAUSE_KEYWORD_KEYS};
 
 constexpr usize DIRECTIVE_KEYWORD_LENGTH = 10;
 
-pure fn find_line_start(StringView source, usize position) wontthrow -> usize
+pure fn
+find_line_start(StringView source, usize position) wontthrow -> usize
 {
   usize at = position;
 
@@ -880,8 +900,10 @@ pure fn find_line_start(StringView source, usize position) wontthrow -> usize
   return at;
 }
 
-pure fn only_blanks_precede(StringView source, usize line_start,
-                            usize position) wontthrow -> bool
+pure fn
+only_blanks_precede(StringView source,
+                    usize      line_start,
+                    usize      position) wontthrow -> bool
 {
   for (usize at = line_start; at < position; at++) {
     if (!lexer::is_whitespace(source[at])) return false;
@@ -890,7 +912,8 @@ pure fn only_blanks_precede(StringView source, usize line_start,
   return true;
 }
 
-pure fn read_word_below_directive(StringView source, usize after) wontthrow
+pure fn
+read_word_below_directive(StringView source, usize after) wontthrow
     -> StringView
 {
   usize at = after;
@@ -923,7 +946,8 @@ pure fn read_word_below_directive(StringView source, usize after) wontthrow
   return source.substring_of_length(word_start, at - word_start);
 }
 
-pure fn read_line_above_directive(StringView source, usize line_start) wontthrow
+pure fn
+read_line_above_directive(StringView source, usize line_start) wontthrow
     -> StringView
 {
   usize end = line_start;
@@ -931,8 +955,8 @@ pure fn read_line_above_directive(StringView source, usize line_start) wontthrow
   while (end > 0) {
     end--;
 
-    let const start = find_line_start(source, end);
-    usize content_start = start;
+    let const start         = find_line_start(source, end);
+    usize     content_start = start;
 
     while (content_start < end && lexer::is_whitespace(source[content_start])) {
       content_start++;
@@ -957,7 +981,8 @@ pure fn read_line_above_directive(StringView source, usize line_start) wontthrow
   return {};
 }
 
-pure fn line_opens_case_branch(StringView line) wontthrow -> bool
+pure fn
+line_opens_case_branch(StringView line) wontthrow -> bool
 {
   if (line.length >= 2 && line[line.length - 1] == ';' &&
       line[line.length - 2] == ';')
@@ -981,7 +1006,8 @@ pure fn line_opens_case_branch(StringView line) wontthrow -> bool
   return false;
 }
 
-pure fn word_holds_case_pattern(StringView word) wontthrow -> bool
+pure fn
+word_holds_case_pattern(StringView word) wontthrow -> bool
 {
   for (usize at = 0; at < word.length; at++) {
     if (word[at] == '(') return false;
@@ -991,12 +1017,14 @@ pure fn word_holds_case_pattern(StringView word) wontthrow -> bool
   return false;
 }
 
-fn check_directive_body(AnalysisContext &actx, StringView source,
-                        shellcheck_directive_span span,
-                        usize body_position) throws -> void
+fn
+check_directive_body(AnalysisContext          &actx,
+                     StringView                source,
+                     shellcheck_directive_span span,
+                     usize                     body_position) throws -> void
 {
   let const comment_end = span.position + span.length;
-  usize at = span.position + body_position;
+  usize     at          = span.position + body_position;
 
   while (at < comment_end) {
     while (at < comment_end && lexer::is_whitespace(source[at])) {
@@ -1042,8 +1070,10 @@ fn check_directive_body(AnalysisContext &actx, StringView source,
 
 } /* namespace */
 
-fn check_shellcheck_directives(
-    AnalysisContext &actx, StringView source,
+fn
+check_shellcheck_directives(
+    AnalysisContext                            &actx,
+    StringView                                  source,
     const ArrayList<shellcheck_directive_span> &directives) throws -> void
 {
   usize previous_position = static_cast<usize>(-1);
@@ -1093,8 +1123,10 @@ fn check_shellcheck_directives(
   }
 }
 
-fn check_heredoc_terminators(
-    AnalysisContext &actx, StringView source,
+fn
+check_heredoc_terminators(
+    AnalysisContext                          &actx,
+    StringView                                source,
     const ArrayList<heredoc_terminator_miss> &misses) throws -> void
 {
   for (let const &miss : misses) {
@@ -1127,18 +1159,19 @@ namespace {
 
 struct unassigned_read
 {
-  StringView name;
+  StringView     name;
   SourceLocation location;
 };
 
 struct resembling_assignment
 {
-  StringView name;
-  SourceLocation location;
+  StringView        name;
+  SourceLocation    location;
   assignment_binder binder{assignment_binder::Assignment};
 };
 
-fn suggest_shell_maintained_variable_name(
+fn
+suggest_shell_maintained_variable_name(
     const HashSet &shell_maintained_variable_names, StringView name) throws
     -> Maybe<String>
 {
@@ -1149,8 +1182,9 @@ fn suggest_shell_maintained_variable_name(
   return suggestion.take_suggestion();
 }
 
-fn collect_shell_provided_variable_names(const AnalysisContext &actx,
-                                         HashSet &out_names) throws -> void
+fn
+collect_shell_provided_variable_names(const AnalysisContext &actx,
+                                      HashSet &out_names) throws -> void
 {
   static constexpr PackedStringKey FIXED_VARIABLE_KEYS[] = {
       SSK("KOSH"),    SSK("KOSH_VERSION"),    SSK("KOSH_COMMIT"),
@@ -1179,16 +1213,17 @@ fn collect_shell_provided_variable_names(const AnalysisContext &actx,
     out_names.add(name);
 }
 
-pure fn fold_name_byte(char byte) wontthrow -> char
+pure fn
+fold_name_byte(char byte) wontthrow -> char
 {
   return byte >= 'a' && byte <= 'z' ? static_cast<char>(byte - ('a' - 'A'))
                                     : byte;
 }
 
-pure fn names_resemble_each_other(StringView left, StringView right) wontthrow
-    -> bool
+pure fn
+names_resemble_each_other(StringView left, StringView right) wontthrow -> bool
 {
-  usize at_left = 0;
+  usize at_left  = 0;
   usize at_right = 0;
 
   loop
@@ -1214,8 +1249,8 @@ pure fn names_resemble_each_other(StringView left, StringView right) wontthrow
   return at_left == left.length && at_right == right.length;
 }
 
-pure fn names_are_near_misspellings(StringView left, StringView right) wontthrow
-    -> bool
+pure fn
+names_are_near_misspellings(StringView left, StringView right) wontthrow -> bool
 {
   let const budget = utils::suggestion_distance_budget(right.length);
 
@@ -1225,7 +1260,8 @@ pure fn names_are_near_misspellings(StringView left, StringView right) wontthrow
 
 } /* namespace */
 
-fn check_command_name_assignments(AnalysisContext &actx) throws -> void
+fn
+check_command_name_assignments(AnalysisContext &actx) throws -> void
 {
   for (let const &assignment : actx.command_name_assignments) {
     if (actx.command_position_names.contains(assignment.name.view())) continue;
@@ -1235,7 +1271,8 @@ fn check_command_name_assignments(AnalysisContext &actx) throws -> void
   }
 }
 
-fn check_unassigned_variable_reads(AnalysisContext &actx) throws -> void
+fn
+check_unassigned_variable_reads(AnalysisContext &actx) throws -> void
 {
   if (actx.reads_before_assignment.count() == 0) return;
   if (!actx.should_report(diagnostic_id::sc2154) &&
@@ -1273,10 +1310,10 @@ fn check_unassigned_variable_reads(AnalysisContext &actx) throws -> void
 
     resembling_assignment resembled{};
     resembling_assignment misspelled{};
-    let const do_match = [&read, &resembled, &misspelled](
-                             StringView assigned,
+    let const             do_match = [&read, &resembled, &misspelled](
+                             StringView            assigned,
                              const SourceLocation &location,
-                             assignment_binder binder) throws -> void {
+                             assignment_binder     binder) throws -> void {
       if (!resembled.name.is_empty()) return;
       if (assigned == read.name) return;
 
@@ -1339,12 +1376,13 @@ constexpr usize NO_DEFINITION_INDEX = ~usize{0};
 struct function_name_summary
 {
   usize first_definition_index{NO_DEFINITION_INDEX};
-  u32 first_definition_position{0};
-  bool has_call_with_arguments{false};
-  bool has_call_without_arguments{false};
+  u32   first_definition_position{0};
+  bool  has_call_with_arguments{false};
+  bool  has_call_without_arguments{false};
 };
 
-fn build_function_name_summaries(const AnalysisContext &actx) throws
+fn
+build_function_name_summaries(const AnalysisContext &actx) throws
     -> StringMap<function_name_summary>
 {
   StringMap<function_name_summary> summaries{heap_allocator()};
@@ -1352,10 +1390,10 @@ fn build_function_name_summaries(const AnalysisContext &actx) throws
 
   for (usize index = 0; index < actx.functions.records.count(); index++) {
     let const &definition = actx.functions.records[index];
-    let &summary = summaries.get_or_create(definition.name.view(), {});
+    let       &summary    = summaries.get_or_create(definition.name.view(), {});
     if (summary.first_definition_index != NO_DEFINITION_INDEX) continue;
 
-    summary.first_definition_index = index;
+    summary.first_definition_index    = index;
     summary.first_definition_position = definition.location.position;
   }
 
@@ -1373,10 +1411,10 @@ fn build_function_name_summaries(const AnalysisContext &actx) throws
   return summaries;
 }
 
-fn check_function_argument_use(AnalysisContext &actx,
-                               const function_definition_record &definition,
-                               const function_name_summary &summary) throws
-    -> void
+fn
+check_function_argument_use(AnalysisContext                  &actx,
+                            const function_definition_record &definition,
+                            const function_name_summary &summary) throws -> void
 {
   if (summary.has_call_with_arguments || !summary.has_call_without_arguments) {
     return;
@@ -1396,8 +1434,9 @@ fn check_function_argument_use(AnalysisContext &actx,
   }
 }
 
-fn check_call_before_definition(
-    AnalysisContext &actx,
+fn
+check_call_before_definition(
+    AnalysisContext                        &actx,
     const StringMap<function_name_summary> &summaries) throws -> void
 {
   for (let const &call : actx.function_calls) {
@@ -1417,7 +1456,8 @@ fn check_call_before_definition(
 
 } /* namespace */
 
-fn check_function_argument_dataflow(AnalysisContext &actx) throws -> void
+fn
+check_function_argument_dataflow(AnalysisContext &actx) throws -> void
 {
   if (actx.functions.records.is_empty()) return;
 

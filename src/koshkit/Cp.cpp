@@ -22,11 +22,17 @@ FLAG(CP_FORCE, Bool, 'f', "", "Remove a destination that cannot be opened.");
 FLAG(CP_INTERACTIVE, Bool, 'i', "", "Ask before overwriting a destination.");
 FLAG(CP_PRESERVE, Bool, 'p', "", "Preserve file mode and timestamps.");
 FLAG(CP_VERBOSE, Bool, 'v', "", "Print the name of each copy as it happens.");
-FLAG(CP_FOLLOW_ROOT, Bool, 'H', "",
+FLAG(CP_FOLLOW_ROOT,
+     Bool,
+     'H',
+     "",
      "Follow a symbolic link named on the command line.");
 FLAG(CP_FOLLOW_ALL, Bool, 'L', "", "Follow every symbolic link.");
 FLAG(CP_FOLLOW_NONE, Bool, 'P', "", "Copy symbolic links as links.");
-FLAG(CP_ONE_FILE_SYSTEM, Bool, 'x', "one-file-system",
+FLAG(CP_ONE_FILE_SYSTEM,
+     Bool,
+     'x',
+     "one-file-system",
      "Do not copy the contents of a directory on another file system.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Cp);
@@ -60,16 +66,17 @@ namespace {
 
 struct cp_options
 {
-  bool should_force;
-  bool should_preserve;
-  bool is_verbose;
+  bool              should_force;
+  bool              should_preserve;
+  bool              is_verbose;
   cp_recursive_mode recursive_mode;
-  cp_symlink_mode symlink_mode;
-  bool is_one_file_system;
-  Maybe<u64> root_device_id;
-  bool is_operand_root{true};
+  cp_symlink_mode   symlink_mode;
+  bool              is_one_file_system;
+  Maybe<u64>        root_device_id;
+  bool              is_operand_root{true};
 
-  fn for_child() const -> cp_options
+  fn
+  for_child() const -> cp_options
   {
     let child = *this;
     if (symlink_mode != cp_symlink_mode::FollowAll)
@@ -82,9 +89,11 @@ struct cp_options
 
 } /* namespace */
 
-static fn report_copy_error(const ExecContext &ec, EvalContext &cxt,
-                            StringView utility_name, const Error &error) throws
-    -> void
+static fn
+report_copy_error(const ExecContext &ec,
+                  EvalContext       &cxt,
+                  StringView         utility_name,
+                  const Error       &error) throws -> void
 {
   if (error.detail_message().is_empty()) {
     report_soft_koshkit_util_error(ec, cxt, utility_name,
@@ -97,9 +106,12 @@ static fn report_copy_error(const ExecContext &ec, EvalContext &cxt,
                                  error.detail_message());
 }
 
-static fn copy_file(const ExecContext &ec, StringView source,
-                    StringView destination, const cp_options &options,
-                    Allocator allocator) throws -> void
+static fn
+copy_file(const ExecContext &ec,
+          StringView         source,
+          StringView         destination,
+          const cp_options  &options,
+          Allocator          allocator) throws -> void
 {
   copy_file_or_throw(source, destination,
                      options.should_force ? copy_force_mode::Force
@@ -111,8 +123,10 @@ static fn copy_file(const ExecContext &ec, StringView source,
                        String{allocator, destination} + "'\n");
 }
 
-static fn join_with_operand_separator(StringView parent, StringView name,
-                                      Allocator allocator) throws -> Path
+static fn
+join_with_operand_separator(StringView parent,
+                            StringView name,
+                            Allocator  allocator) throws -> Path
 {
   let joined = Path{parent, allocator};
   if (parent.length == 0 ||
@@ -138,7 +152,8 @@ static fn join_with_operand_separator(StringView parent, StringView name,
   return joined;
 }
 
-static fn source_file_status(StringView source) throws -> Maybe<os::file_status>
+static fn
+source_file_status(StringView source) throws -> Maybe<os::file_status>
 {
   os::file_status status{};
   if (!os::stat_path_following(source, status)) return {};
@@ -146,14 +161,18 @@ static fn source_file_status(StringView source) throws -> Maybe<os::file_status>
   return status;
 }
 
-static fn copy_path(const ExecContext &ec, EvalContext &cxt,
-                    StringView utility_name, StringView source,
-                    StringView destination, const cp_options &options,
-                    Allocator allocator, const os::file_status *known_lstat,
-                    ArrayList<cp_directory_identity> &active_directories) throws
-    -> bool
+static fn
+copy_path(const ExecContext                &ec,
+          EvalContext                      &cxt,
+          StringView                        utility_name,
+          StringView                        source,
+          StringView                        destination,
+          const cp_options                 &options,
+          Allocator                         allocator,
+          const os::file_status            *known_lstat,
+          ArrayList<cp_directory_identity> &active_directories) throws -> bool
 {
-  let const source_path = Path{source, allocator};
+  let const source_path      = Path{source, allocator};
   let const destination_path = Path{destination, allocator};
   if (destination_path.exists() &&
       source_path.is_same_file_as(destination_path))
@@ -231,7 +250,7 @@ static fn copy_path(const ExecContext &ec, EvalContext &cxt,
           destination_absolute.view().starts_with(source_prefix.view());
       if (!is_destination_inside_source) {
         let const resolved_source = os::canonical_path(source_absolute);
-        let resolved_destination = os::canonical_path(destination_absolute);
+        let resolved_destination  = os::canonical_path(destination_absolute);
         if (!resolved_destination.has_value()) {
           if (let const parent =
                   os::canonical_path(destination_absolute.parent()))
@@ -286,7 +305,7 @@ static fn copy_path(const ExecContext &ec, EvalContext &cxt,
     let const directory_scratch = cxt.expansion_store().scratch_arena().mark();
     defer { cxt.expansion_store().scratch_arena().release(directory_scratch); };
 
-    let child_options = options.for_child();
+    let child_options        = options.for_child();
     let is_other_file_system = false;
     if (options.is_one_file_system && source_status.has_value()) {
       if (!options.root_device_id.has_value())
@@ -420,10 +439,11 @@ static fn copy_path(const ExecContext &ec, EvalContext &cxt,
   return true;
 }
 
-fn Cp::execute(const ExecContext &ec, EvalContext &cxt,
-               const ArrayList<String> &args,
-               const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+fn
+Cp::execute(const ExecContext               &ec,
+            EvalContext                     &cxt,
+            const ArrayList<String>         &args,
+            const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
@@ -433,16 +453,16 @@ fn Cp::execute(const ExecContext &ec, EvalContext &cxt,
       FLAG_CP_RECURSIVE_R.is_enabled() || FLAG_CP_RECURSIVE_UPPER.is_enabled()
           ? cp_recursive_mode::Recursive
           : cp_recursive_mode::SinglePath;
-  usize symlink_position = 0;
-  cp_symlink_mode symlink_mode = cp_symlink_mode::Preserve;
+  usize           symlink_position = 0;
+  cp_symlink_mode symlink_mode     = cp_symlink_mode::Preserve;
   if (FLAG_CP_FOLLOW_ROOT.is_enabled()) {
     symlink_position = FLAG_CP_FOLLOW_ROOT.position();
-    symlink_mode = cp_symlink_mode::FollowRoot;
+    symlink_mode     = cp_symlink_mode::FollowRoot;
   }
   if (FLAG_CP_FOLLOW_ALL.is_enabled()) {
     if (FLAG_CP_FOLLOW_ALL.position() > symlink_position) {
       symlink_position = FLAG_CP_FOLLOW_ALL.position();
-      symlink_mode = cp_symlink_mode::FollowAll;
+      symlink_mode     = cp_symlink_mode::FollowAll;
     }
   }
   if (FLAG_CP_FOLLOW_NONE.is_enabled()) {
@@ -479,16 +499,16 @@ fn Cp::execute(const ExecContext &ec, EvalContext &cxt,
   }
 
   ArrayList<cp_directory_identity> active_directories{cxt.scratch_allocator()};
-  i32 status = 0;
+  i32                              status = 0;
 
   for (usize i = 0; i + 1 < operands.count(); i++) {
     let const source = operands[i].view();
-    let target = String{cxt.scratch_allocator(), destination};
+    let       target = String{cxt.scratch_allocator(), destination};
     if (is_destination_directory) {
       let const source_path = Path{source, cxt.scratch_allocator()};
-      let const leaf = source_path.filename();
-      target = join_with_operand_separator(destination, leaf,
-                                           cxt.scratch_allocator())
+      let const leaf        = source_path.filename();
+      target                = join_with_operand_separator(destination, leaf,
+                                                          cxt.scratch_allocator())
                    .text();
     }
 
@@ -515,19 +535,22 @@ fn Cp::execute(const ExecContext &ec, EvalContext &cxt,
   return status;
 }
 
-fn copy_tree_for_move(const ExecContext &ec, EvalContext &cxt,
-                      StringView utility_name, StringView source,
-                      StringView destination, Allocator allocator) throws
-    -> bool
+fn
+copy_tree_for_move(const ExecContext &ec,
+                   EvalContext       &cxt,
+                   StringView         utility_name,
+                   StringView         source,
+                   StringView         destination,
+                   Allocator          allocator) throws -> bool
 {
   let const options = cp_options{
-      .should_force = false,
-      .should_preserve = true,
-      .is_verbose = false,
-      .recursive_mode = cp_recursive_mode::Recursive,
-      .symlink_mode = cp_symlink_mode::Preserve,
+      .should_force       = false,
+      .should_preserve    = true,
+      .is_verbose         = false,
+      .recursive_mode     = cp_recursive_mode::Recursive,
+      .symlink_mode       = cp_symlink_mode::Preserve,
       .is_one_file_system = false,
-      .root_device_id = None,
+      .root_device_id     = None,
   };
   let active_directories = ArrayList<cp_directory_identity>{allocator};
 

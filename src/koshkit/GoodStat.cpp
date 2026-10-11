@@ -20,7 +20,10 @@ KOSHKIT_UTIL_DECL(
 
 FLAG(GOODSTAT_DEREFERENCE, Bool, 'L', "dereference", "Follow symbolic links.");
 FLAG(GOODSTAT_CHECKSUM, Bool, 'c', "checksum", "Calculate a CRC32C checksum.");
-FLAG(GOODSTAT_FILESYSTEM, Bool, 'f', "filesystem",
+FLAG(GOODSTAT_FILESYSTEM,
+     Bool,
+     'f',
+     "filesystem",
      "Report filesystem capacity and identity.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(GoodStat);
@@ -47,7 +50,8 @@ enum class goodstat_checksum_report : u8
   Include,
 };
 
-fn id_name(u32 id, Allocator allocator, goodstat_identity_kind kind) throws
+fn
+id_name(u32 id, Allocator allocator, goodstat_identity_kind kind) throws
     -> String
 {
   let const named = kind == goodstat_identity_kind::User
@@ -63,7 +67,8 @@ fn id_name(u32 id, Allocator allocator, goodstat_identity_kind kind) throws
   return result;
 }
 
-fn permission_text(u32 mode, Allocator allocator) throws -> String
+fn
+permission_text(u32 mode, Allocator allocator) throws -> String
 {
   let result = os::format_mode_string(mode);
   result += " (";
@@ -76,7 +81,8 @@ fn permission_text(u32 mode, Allocator allocator) throws -> String
   return result;
 }
 
-fn size_text(u64 size, Allocator allocator) throws -> String
+fn
+size_text(u64 size, Allocator allocator) throws -> String
 {
   let result = format_human_size(size, allocator);
   result += " (";
@@ -86,7 +92,8 @@ fn size_text(u64 size, Allocator allocator) throws -> String
   return result;
 }
 
-fn percent_used(const os::filesystem_status &filesystem) wontthrow -> u64
+fn
+percent_used(const os::filesystem_status &filesystem) wontthrow -> u64
 {
   if (filesystem.total_blocks == 0) return 0;
   let const used = filesystem.total_blocks -
@@ -94,7 +101,7 @@ fn percent_used(const os::filesystem_status &filesystem) wontthrow -> u64
                         ? filesystem.total_blocks
                         : filesystem.free_blocks);
   let const whole_percent = used / filesystem.total_blocks;
-  let const remainder = used % filesystem.total_blocks;
+  let const remainder     = used % filesystem.total_blocks;
 
   return whole_percent * 100 +
          static_cast<u64>((static_cast<u128>(remainder) * 100 +
@@ -102,14 +109,17 @@ fn percent_used(const os::filesystem_status &filesystem) wontthrow -> u64
                           filesystem.total_blocks);
 }
 
-fn append_subject(String &output, StringView operand,
-                  const os::file_status &status, const ExecContext &ec,
-                  Allocator allocator,
-                  goodstat_filesystem_report filesystem_report,
-                  goodstat_checksum_report checksum_report,
-                  bool should_color) throws -> void
+fn
+append_subject(String                    &output,
+               StringView                 operand,
+               const os::file_status     &status,
+               const ExecContext         &ec,
+               Allocator                  allocator,
+               goodstat_filesystem_report filesystem_report,
+               goodstat_checksum_report   checksum_report,
+               bool                       should_color) throws -> void
 {
-  let table = ReportTable{allocator};
+  let       table = ReportTable{allocator};
   let const do_append_field =
       [&](StringView name, StringView value, StringView style)
           throws { table.add_field_row(name, value, style); };
@@ -222,9 +232,12 @@ fn append_subject(String &output, StringView operand,
 
 } /* namespace */
 
-fn GoodStat::execute(
-    const ExecContext &ec, EvalContext &cxt, const ArrayList<String> &args,
-    const ArrayList<SourceLocation> &arg_locations) const throws -> i32
+fn
+GoodStat::execute(const ExecContext               &ec,
+                  EvalContext                     &cxt,
+                  const ArrayList<String>         &args,
+                  const ArrayList<SourceLocation> &arg_locations) const throws
+    -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
@@ -232,20 +245,20 @@ fn GoodStat::execute(
     return report_usage_error(ec, cxt, args[0].view());
   }
 
-  let const should_color = koshkit_should_color();
+  let const should_color      = koshkit_should_color();
   let const filesystem_report = FLAG_GOODSTAT_FILESYSTEM.is_enabled()
                                     ? goodstat_filesystem_report::Include
                                     : goodstat_filesystem_report::Omit;
-  let const checksum_report = FLAG_GOODSTAT_CHECKSUM.is_enabled()
-                                  ? goodstat_checksum_report::Include
-                                  : goodstat_checksum_report::Omit;
+  let const checksum_report   = FLAG_GOODSTAT_CHECKSUM.is_enabled()
+                                    ? goodstat_checksum_report::Include
+                                    : goodstat_checksum_report::Omit;
 
-  let const allocator = cxt.scratch_allocator();
-  let output = String{allocator};
-  i32 status = 0;
-  let operand_paths = ArrayList<Path>{allocator};
-  let file_statuses = ArrayList<os::file_status>{allocator};
-  let batch = os::Batch{allocator};
+  let const allocator     = cxt.scratch_allocator();
+  let       output        = String{allocator};
+  i32       status        = 0;
+  let       operand_paths = ArrayList<Path>{allocator};
+  let       file_statuses = ArrayList<os::file_status>{allocator};
+  let       batch         = os::Batch{allocator};
   operand_paths.reserve(operands.count());
   file_statuses.reserve(operands.count());
   batch.reserve(operands.count());

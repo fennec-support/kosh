@@ -11,8 +11,8 @@
 
 namespace koshka {
 
-static pure fn skip_json_space(StringView source, usize position) wontthrow
-    -> usize
+static pure fn
+skip_json_space(StringView source, usize position) wontthrow -> usize
 {
   while (position < source.length &&
          (source[position] == ' ' || source[position] == '\t' ||
@@ -24,8 +24,8 @@ static pure fn skip_json_space(StringView source, usize position) wontthrow
   return position;
 }
 
-static pure fn json_string_end(StringView source, usize position) wontthrow
-    -> usize
+static pure fn
+json_string_end(StringView source, usize position) wontthrow -> usize
 {
   while (position < source.length && source[position] != '"') {
     if (source[position] == '\\' && position + 1 < source.length) {
@@ -37,10 +37,11 @@ static pure fn json_string_end(StringView source, usize position) wontthrow
   return position;
 }
 
-fn parse_package_json_format(const parser_format_input &input,
-                             parsed_format_document &document) throws -> void
+fn
+parse_package_json_format(const parser_format_input &input,
+                          parsed_format_document    &document) throws -> void
 {
-  usize position = 0;
+  usize position     = 0;
   usize object_depth = 0;
 
   while (position < input.source.length) {
@@ -61,7 +62,7 @@ fn parse_package_json_format(const parser_format_input &input,
       continue;
     }
     let const key_start = position + 1;
-    let const key_end = json_string_end(input.source, key_start);
+    let const key_end   = json_string_end(input.source, key_start);
     if (key_end >= input.source.length) return;
     position = skip_json_space(input.source, key_end + 1);
     if (object_depth != 1) continue;
@@ -98,7 +99,7 @@ fn parse_package_json_format(const parser_format_input &input,
         continue;
       }
       let const value_start = position + 1;
-      let const value_end = json_string_end(input.source, value_start);
+      let const value_end   = json_string_end(input.source, value_start);
       if (value_end >= input.source.length) return;
       parser_format_add_json_fragment(document, input.source, value_start,
                                       value_end, mimic_mood::Posix);

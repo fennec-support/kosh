@@ -27,16 +27,19 @@ ParserFormat::ParserFormat() = default;
     return parser_format_kind::format_kind;                                    \
   }                                                                            \
   fn parser::parse(const parser_format_input &input,                           \
-                   parsed_format_document &document) const throws -> void      \
+                   parsed_format_document    &document) const throws -> void      \
   {                                                                            \
     parse_function(input, document);                                           \
   }
 
-DEFINE_PARSER_FORMAT(GithubActionsFormat, GithubActions,
+DEFINE_PARSER_FORMAT(GithubActionsFormat,
+                     GithubActions,
                      parse_github_actions_format);
-DEFINE_PARSER_FORMAT(GiteaActionsFormat, GiteaActions,
+DEFINE_PARSER_FORMAT(GiteaActionsFormat,
+                     GiteaActions,
                      parse_gitea_actions_format);
-DEFINE_PARSER_FORMAT(ForgejoActionsFormat, ForgejoActions,
+DEFINE_PARSER_FORMAT(ForgejoActionsFormat,
+                     ForgejoActions,
                      parse_forgejo_actions_format);
 DEFINE_PARSER_FORMAT(GitlabCiFormat, GitlabCi, parse_gitlab_ci_format);
 DEFINE_PARSER_FORMAT(AnsibleFormat, Ansible, parse_ansible_format);
@@ -46,9 +49,11 @@ DEFINE_PARSER_FORMAT(MarkdownFormat, Markdown, parse_markdown_format);
 DEFINE_PARSER_FORMAT(MakefileFormat, Makefile, parse_makefile_format);
 DEFINE_PARSER_FORMAT(CloudBuildFormat, CloudBuild, parse_cloud_build_format);
 DEFINE_PARSER_FORMAT(CircleCiFormat, CircleCi, parse_circle_ci_format);
-DEFINE_PARSER_FORMAT(AzurePipelinesFormat, AzurePipelines,
+DEFINE_PARSER_FORMAT(AzurePipelinesFormat,
+                     AzurePipelines,
                      parse_azure_pipelines_format);
-DEFINE_PARSER_FORMAT(BitbucketPipelinesFormat, BitbucketPipelines,
+DEFINE_PARSER_FORMAT(BitbucketPipelinesFormat,
+                     BitbucketPipelines,
                      parse_bitbucket_pipelines_format);
 DEFINE_PARSER_FORMAT(BuildkiteFormat, Buildkite, parse_buildkite_format);
 DEFINE_PARSER_FORMAT(TravisCiFormat, TravisCi, parse_travis_ci_format);
@@ -60,16 +65,19 @@ DEFINE_PARSER_FORMAT(TaskfileFormat, Taskfile, parse_taskfile_format);
 DEFINE_PARSER_FORMAT(JustfileFormat, Justfile, parse_justfile_format);
 DEFINE_PARSER_FORMAT(RpmSpecFormat, RpmSpec, parse_rpm_spec_format);
 DEFINE_PARSER_FORMAT(VscodeTasksFormat, VscodeTasks, parse_vscode_tasks_format);
-DEFINE_PARSER_FORMAT(DevContainerFormat, DevContainer,
+DEFINE_PARSER_FORMAT(DevContainerFormat,
+                     DevContainer,
                      parse_dev_container_format);
 
-pure fn parser_format_has_substring(StringView source,
-                                    StringView wanted) wontthrow -> bool
+pure fn
+parser_format_has_substring(StringView source, StringView wanted) wontthrow
+    -> bool
 {
   return source.find_substring(wanted).has_value();
 }
 
-pure fn parser_format_filename(StringView path) wontthrow -> StringView
+pure fn
+parser_format_filename(StringView path) wontthrow -> StringView
 {
   usize start = 0;
 
@@ -81,13 +89,13 @@ pure fn parser_format_filename(StringView path) wontthrow -> StringView
   return path.substring(start);
 }
 
-pure fn parser_format_ascii_equal(StringView left, StringView right) wontthrow
-    -> bool
+pure fn
+parser_format_ascii_equal(StringView left, StringView right) wontthrow -> bool
 {
   if (left.length != right.length) return false;
 
   for (usize position = 0; position < left.length; position++) {
-    let left_byte = left[position];
+    let left_byte  = left[position];
     let right_byte = right[position];
     if (left_byte == right_byte) continue;
     if (left_byte >= 'A' && left_byte <= 'Z') {
@@ -102,23 +110,24 @@ pure fn parser_format_ascii_equal(StringView left, StringView right) wontthrow
   return true;
 }
 
-static pure fn path_ends_with(StringView path, StringView suffix) wontthrow
-    -> bool
+static pure fn
+path_ends_with(StringView path, StringView suffix) wontthrow -> bool
 {
   return suffix.length <= path.length &&
          parser_format_ascii_equal(path.substring(path.length - suffix.length),
                                    suffix);
 }
 
-static pure fn path_starts_with(StringView path, StringView prefix) wontthrow
-    -> bool
+static pure fn
+path_starts_with(StringView path, StringView prefix) wontthrow -> bool
 {
   return prefix.length <= path.length &&
          parser_format_ascii_equal(path.substring_of_length(0, prefix.length),
                                    prefix);
 }
 
-static pure fn path_holds(StringView path, StringView part) wontthrow -> bool
+static pure fn
+path_holds(StringView path, StringView part) wontthrow -> bool
 {
   if (part.length > path.length) return false;
   if (part.is_empty()) return true;
@@ -136,7 +145,8 @@ static pure fn path_holds(StringView path, StringView part) wontthrow -> bool
   return false;
 }
 
-static pure fn known_host_extension(StringView path) wontthrow -> bool
+static pure fn
+known_host_extension(StringView path) wontthrow -> bool
 {
   static const StringView EXTENSIONS[] = {
       ".json", ".jsonc", ".markdown", ".md",   ".mk",
@@ -183,10 +193,11 @@ constexpr static_string_entry<parser_format_kind> FORMAT_FILENAME_ENTRIES[] = {
 };
 constexpr StaticStringMap FORMAT_FILENAMES{FORMAT_FILENAME_ENTRIES};
 
-static fn detect_format_kind(const parser_format_input &input) throws
+static fn
+detect_format_kind(const parser_format_input &input) throws
     -> parser_format_kind
 {
-  let path = input.path.has_value() ? *input.path : StringView{};
+  let       path     = input.path.has_value() ? *input.path : StringView{};
   let const filename = parser_format_filename(path);
   let const named_kind =
       parser_format_find_ascii_folded(FORMAT_FILENAMES, filename);
@@ -336,8 +347,10 @@ static fn detect_format_kind(const parser_format_input &input) throws
   return parser_format_kind::UnknownHost;
 }
 
-static fn make_analysis_source(StringView host_source, usize host_start,
-                               usize host_end) throws -> String
+static fn
+make_analysis_source(StringView host_source,
+                     usize      host_start,
+                     usize      host_end) throws -> String
 {
   let analysis_source = String{heap_allocator()};
   analysis_source.reserve(host_end);
@@ -355,12 +368,15 @@ static fn make_analysis_source(StringView host_source, usize host_start,
   return analysis_source;
 }
 
-fn parser_format_add_fragment(parsed_format_document &document,
-                              StringView host_source, usize host_start,
-                              usize host_end, usize indent_length,
-                              Maybe<String> prepared_analysis_source,
-                              parser_format_codec codec, mimic_mood mood) throws
-    -> void
+fn
+parser_format_add_fragment(parsed_format_document &document,
+                           StringView              host_source,
+                           usize                   host_start,
+                           usize                   host_end,
+                           usize                   indent_length,
+                           Maybe<String>           prepared_analysis_source,
+                           parser_format_codec     codec,
+                           mimic_mood              mood) throws -> void
 {
   if (host_start >= host_end || host_end > host_source.length) {
     return;
@@ -373,33 +389,36 @@ fn parser_format_add_fragment(parsed_format_document &document,
           : make_analysis_source(host_source, host_start, host_end);
   fragment.shell_source = String{
       host_source.substring_of_length(host_start, host_end - host_start)};
-  fragment.mood = mood;
+  fragment.mood  = mood;
   fragment.codec = codec;
   fragment.should_silence_unresolved_commands =
       parser_format_should_silence_unresolved_commands(document.kind);
-  fragment.host_start = host_start;
-  fragment.host_end = host_end;
+  fragment.host_start    = host_start;
+  fragment.host_end      = host_end;
   fragment.indent_length = indent_length;
   document.fragments.push(steal(fragment));
 }
 
-fn parser_format_add_indented_fragment(parsed_format_document &document,
-                                       StringView host_source, usize host_start,
-                                       usize host_end, usize indent_length,
-                                       mimic_mood mood) throws -> void
+fn
+parser_format_add_indented_fragment(parsed_format_document &document,
+                                    StringView              host_source,
+                                    usize                   host_start,
+                                    usize                   host_end,
+                                    usize                   indent_length,
+                                    mimic_mood              mood) throws -> void
 {
   parser_format_add_fragment(document, host_source, host_start, host_end,
                              indent_length, None, parser_format_codec::Indented,
                              mood);
   if (document.fragments.is_empty()) return;
 
-  let &fragment = document.fragments.back();
-  let deindented = String{heap_allocator()};
-  usize position = host_start;
+  let  &fragment   = document.fragments.back();
+  let   deindented = String{heap_allocator()};
+  usize position   = host_start;
 
   while (position < host_end) {
     let const line_start = position;
-    let line = host_source.next_line(position);
+    let       line       = host_source.next_line(position);
     if (line_start + line.length > host_end)
       line = host_source.substring_of_length(line_start, host_end - line_start);
     let removed = usize{0};
@@ -419,9 +438,11 @@ fn parser_format_add_indented_fragment(parsed_format_document &document,
   fragment.shell_source = steal(deindented);
 }
 
-static fn yaml_key_match(StringView line, const StringView *keys,
-                         usize key_count, usize &content_position) wontthrow
-    -> bool
+static fn
+yaml_key_match(StringView        line,
+               const StringView *keys,
+               usize             key_count,
+               usize            &content_position) wontthrow -> bool
 {
   usize position = 0;
 
@@ -461,7 +482,8 @@ static fn yaml_key_match(StringView line, const StringView *keys,
   return false;
 }
 
-static pure fn leading_spaces(StringView line) wontthrow -> usize
+static pure fn
+leading_spaces(StringView line) wontthrow -> usize
 {
   usize count = 0;
 
@@ -472,10 +494,11 @@ static pure fn leading_spaces(StringView line) wontthrow -> usize
   return count;
 }
 
-static pure fn mood_near(StringView source, usize position,
-                         mimic_mood fallback) wontthrow -> mimic_mood
+static pure fn
+mood_near(StringView source, usize position, mimic_mood fallback) wontthrow
+    -> mimic_mood
 {
-  let const start = position > 512 ? position - 512 : 0;
+  let const start  = position > 512 ? position - 512 : 0;
   let const nearby = source.substring_of_length(start, position - start);
   if (parser_format_has_substring(nearby, "shell: bash") ||
       parser_format_has_substring(nearby, "executable: /bin/bash") ||
@@ -497,7 +520,8 @@ static pure fn mood_near(StringView source, usize position,
   return fallback;
 }
 
-static pure fn yaml_key_position(StringView line) wontthrow -> usize
+static pure fn
+yaml_key_position(StringView line) wontthrow -> usize
 {
   usize position = leading_spaces(line);
   if (position < line.length && line[position] == '-') {
@@ -511,8 +535,8 @@ static pure fn yaml_key_position(StringView line) wontthrow -> usize
   return position;
 }
 
-static pure fn yaml_line_value(StringView line, StringView key) wontthrow
-    -> Maybe<StringView>
+static pure fn
+yaml_line_value(StringView line, StringView key) wontthrow -> Maybe<StringView>
 {
   let const position = yaml_key_position(line);
   if (position + key.length >= line.length ||
@@ -525,8 +549,8 @@ static pure fn yaml_line_value(StringView line, StringView key) wontthrow
   return line.substring(position + key.length + 1).trim_blanks();
 }
 
-static fn previous_line(StringView source, usize &position) wontthrow
-    -> StringView
+static fn
+previous_line(StringView source, usize &position) wontthrow -> StringView
 {
   if (position == 0) return StringView{};
   usize end = position;
@@ -544,8 +568,8 @@ static fn previous_line(StringView source, usize &position) wontthrow
   return source.substring_of_length(start, end - start);
 }
 
-static pure fn workflow_shell_mood(StringView value) wontthrow
-    -> Maybe<mimic_mood>
+static pure fn
+workflow_shell_mood(StringView value) wontthrow -> Maybe<mimic_mood>
 {
   if (!value.is_empty() && (value[0] == '\'' || value[0] == '"')) {
     value = value.substring(1);
@@ -571,13 +595,14 @@ static pure fn workflow_shell_mood(StringView value) wontthrow
   return None;
 }
 
-static pure fn selected_workflow_mood(StringView source, usize line_start,
-                                      StringView line,
-                                      mimic_mood fallback) wontthrow
-    -> Maybe<mimic_mood>
+static pure fn
+selected_workflow_mood(StringView source,
+                       usize      line_start,
+                       StringView line,
+                       mimic_mood fallback) wontthrow -> Maybe<mimic_mood>
 {
   let const current_indent = leading_spaces(line);
-  let scan_position = line_start;
+  let       scan_position  = line_start;
 
   while (scan_position > 0) {
     let const previous = previous_line(source, scan_position);
@@ -597,7 +622,7 @@ static pure fn selected_workflow_mood(StringView source, usize line_start,
 
   while (scan_position > 0) {
     let const previous = previous_line(source, scan_position);
-    let const runner = yaml_line_value(previous, "runs-on");
+    let const runner   = yaml_line_value(previous, "runs-on");
     if (!runner.has_value()) continue;
     if (parser_format_has_substring(*runner, "windows")) return None;
     break;
@@ -606,9 +631,12 @@ static pure fn selected_workflow_mood(StringView source, usize line_start,
   return fallback;
 }
 
-static fn add_yaml_inline_fragment(parsed_format_document &document,
-                                   StringView source, usize start, usize end,
-                                   mimic_mood mood) throws -> void
+static fn
+add_yaml_inline_fragment(parsed_format_document &document,
+                         StringView              source,
+                         usize                   start,
+                         usize                   end,
+                         mimic_mood              mood) throws -> void
 {
   if (start >= end) return;
   let codec = parser_format_codec::Direct;
@@ -622,18 +650,20 @@ static fn add_yaml_inline_fragment(parsed_format_document &document,
                              mood);
 }
 
-fn parser_format_extract_yaml_keys(parsed_format_document &document,
-                                   StringView source, const StringView *keys,
-                                   usize key_count, mimic_mood default_mood,
-                                   yaml_shell_selection selection) throws
-    -> void
+fn
+parser_format_extract_yaml_keys(parsed_format_document &document,
+                                StringView              source,
+                                const StringView       *keys,
+                                usize                   key_count,
+                                mimic_mood              default_mood,
+                                yaml_shell_selection selection) throws -> void
 {
   usize position = 0;
 
   while (position < source.length) {
-    let const line_start = position;
-    let const line = source.next_line(position);
-    usize content_position = 0;
+    let const line_start       = position;
+    let const line             = source.next_line(position);
+    usize     content_position = 0;
     if (!yaml_key_match(line, keys, key_count, content_position)) continue;
     let const mood =
         selection == yaml_shell_selection::Workflow
@@ -643,15 +673,15 @@ fn parser_format_extract_yaml_keys(parsed_format_document &document,
     if (content_position < line.length &&
         (line[content_position] == '|' || line[content_position] == '>'))
     {
-      let block_position = position;
-      usize block_start = position;
-      usize block_end = position;
-      usize content_indent = 0;
-      bool has_block_start = false;
+      let   block_position  = position;
+      usize block_start     = position;
+      usize block_end       = position;
+      usize content_indent  = 0;
+      bool  has_block_start = false;
 
       while (block_position < source.length) {
         let const next_start = block_position;
-        let const next_line = source.next_line(block_position);
+        let const next_line  = source.next_line(block_position);
         if (!next_line.trim_blanks().is_empty()) {
           let const indent = leading_spaces(next_line);
           if (indent <= leading_spaces(line)) break;
@@ -659,7 +689,7 @@ fn parser_format_extract_yaml_keys(parsed_format_document &document,
         }
         block_end = block_position;
         if (!has_block_start) {
-          block_start = next_start;
+          block_start     = next_start;
           has_block_start = true;
         }
       }
@@ -680,7 +710,7 @@ fn parser_format_extract_yaml_keys(parsed_format_document &document,
 
     while (sequence_position < source.length) {
       let const item_start = sequence_position;
-      let const item_line = source.next_line(sequence_position);
+      let const item_line  = source.next_line(sequence_position);
       if (item_line.trim_blanks().is_empty()) continue;
       if (leading_spaces(item_line) <= leading_spaces(line)) break;
       let item_content = leading_spaces(item_line);
@@ -700,16 +730,19 @@ fn parser_format_extract_yaml_keys(parsed_format_document &document,
   }
 }
 
-fn parser_format_add_json_fragment(parsed_format_document &document,
-                                   StringView source, usize start, usize end,
-                                   mimic_mood mood) throws -> void
+fn
+parser_format_add_json_fragment(parsed_format_document &document,
+                                StringView              source,
+                                usize                   start,
+                                usize                   end,
+                                mimic_mood              mood) throws -> void
 {
   if (start >= end) return;
   parser_format_add_fragment(document, source, start, end, 0, None,
                              parser_format_codec::JsonString, mood);
   if (document.fragments.is_empty()) return;
-  let &fragment = document.fragments.back();
-  let decoded = String{heap_allocator()};
+  let  &fragment = document.fragments.back();
+  let   decoded  = String{heap_allocator()};
   usize position = start;
 
   while (position < end) {
@@ -720,10 +753,10 @@ fn parser_format_add_json_fragment(parsed_format_document &document,
     }
     let const escaped = source[position++];
     switch (escaped) {
-    case 'n': decoded.push('\n'); break;
-    case 'r': decoded.push('\r'); break;
-    case 't': decoded.push('\t'); break;
-    case '"': decoded.push('"'); break;
+    case 'n':  decoded.push('\n'); break;
+    case 'r':  decoded.push('\r'); break;
+    case 't':  decoded.push('\t'); break;
+    case '"':  decoded.push('"'); break;
     case '\\': decoded.push('\\'); break;
     default:
       decoded.push('\\');
@@ -733,7 +766,7 @@ fn parser_format_add_json_fragment(parsed_format_document &document,
   }
 
   fragment.shell_source = steal(decoded);
-  let masked = String{heap_allocator()};
+  let masked            = String{heap_allocator()};
   masked.reserve(end);
   let const literal_start = start < end ? start : end;
 
@@ -757,11 +790,12 @@ fn parser_format_add_json_fragment(parsed_format_document &document,
   fragment.analysis_source = steal(masked);
 }
 
-fn parser_format_extract_json_keys(parsed_format_document &document,
-                                   StringView source,
-                                   const parser_format_json_key *keys,
-                                   usize key_count,
-                                   mimic_mood default_mood) throws -> void
+fn
+parser_format_extract_json_keys(parsed_format_document       &document,
+                                StringView                    source,
+                                const parser_format_json_key *keys,
+                                usize                         key_count,
+                                mimic_mood default_mood) throws -> void
 {
   usize position = 0;
 
@@ -837,14 +871,15 @@ fn parser_format_extract_json_keys(parsed_format_document &document,
   }
 }
 
-pure fn parser_format_fragment_at(const parsed_format_document &document,
-                                  usize host_position) wontthrow -> Maybe<usize>
+pure fn
+parser_format_fragment_at(const parsed_format_document &document,
+                          usize host_position) wontthrow -> Maybe<usize>
 {
   usize lower = 0;
   usize upper = document.fragments.count();
 
   while (lower < upper) {
-    let const middle = lower + (upper - lower) / 2;
+    let const  middle   = lower + (upper - lower) / 2;
     let const &fragment = document.fragments[middle];
     if (host_position < fragment.host_start) {
       upper = middle;
@@ -875,7 +910,8 @@ constexpr PackedStringKey ARM_TERMINATOR_KEYS[] = {
 };
 constexpr StaticStringSet ARM_TERMINATORS{ARM_TERMINATOR_KEYS};
 
-pure static fn line_first_token(StringView line) wontthrow -> StringView
+pure static fn
+line_first_token(StringView line) wontthrow -> StringView
 {
   usize start = 0;
 
@@ -892,7 +928,8 @@ pure static fn line_first_token(StringView line) wontthrow -> StringView
   return line.substring_of_length(start, end - start);
 }
 
-pure static fn line_last_token(StringView line) wontthrow -> StringView
+pure static fn
+line_last_token(StringView line) wontthrow -> StringView
 {
   usize end = line.length;
 
@@ -909,7 +946,8 @@ pure static fn line_last_token(StringView line) wontthrow -> StringView
   return line.substring_of_length(start, end - start);
 }
 
-static fn trimmed_of_trailing_newlines(StringView text) wontthrow -> StringView
+static fn
+trimmed_of_trailing_newlines(StringView text) wontthrow -> StringView
 {
   usize length = text.length;
 
@@ -920,13 +958,14 @@ static fn trimmed_of_trailing_newlines(StringView text) wontthrow -> StringView
   return text.substring_of_length(0, length);
 }
 
-static fn encode_continued(const parser_format_fragment &fragment,
-                           StringView replacement, String &encoded) throws
-    -> void
+static fn
+encode_continued(const parser_format_fragment &fragment,
+                 StringView                    replacement,
+                 String                       &encoded) throws -> void
 {
-  let const body = trimmed_of_trailing_newlines(replacement);
-  let lines = ArrayList<StringView>{heap_allocator()};
-  usize position = 0;
+  let const body     = trimmed_of_trailing_newlines(replacement);
+  let       lines    = ArrayList<StringView>{heap_allocator()};
+  usize     position = 0;
 
   while (position < body.length) {
     let const line = body.next_line(position);
@@ -936,9 +975,9 @@ static fn encode_continued(const parser_format_fragment &fragment,
   bool is_expecting_case_pattern = false;
 
   for (usize index = 0; index < lines.count(); index++) {
-    let line = lines[index];
-    let const first = line_first_token(line);
-    let last = line_last_token(line);
+    let       line       = lines[index];
+    let const first      = line_first_token(line);
+    let       last       = line_last_token(line);
     let const is_wrapped = last == "\\";
     if (is_wrapped) {
       usize length = line.length;
@@ -958,7 +997,7 @@ static fn encode_continued(const parser_format_fragment &fragment,
     }
 
     let const is_case_pattern = is_expecting_case_pattern && first != "esac";
-    let const is_case_header = first == "case" && last == "in";
+    let const is_case_header  = first == "case" && last == "in";
     if (!is_wrapped) {
       is_expecting_case_pattern =
           is_case_header || ARM_TERMINATORS.contains(last);
@@ -985,8 +1024,9 @@ static fn encode_continued(const parser_format_fragment &fragment,
   }
 }
 
-fn parser_format_encode(const parser_format_fragment &fragment,
-                        StringView replacement) throws -> Maybe<String>
+fn
+parser_format_encode(const parser_format_fragment &fragment,
+                     StringView replacement) throws -> Maybe<String>
 {
   let encoded = String{heap_allocator()};
   switch (fragment.codec) {
@@ -1002,11 +1042,11 @@ fn parser_format_encode(const parser_format_fragment &fragment,
     for (usize position = 0; position < replacement.length; position++) {
       switch (replacement[position]) {
       case '\\': encoded.append("\\\\"); break;
-      case '"': encoded.append("\\\""); break;
+      case '"':  encoded.append("\\\""); break;
       case '\n': encoded.append("\\n"); break;
       case '\r': encoded.append("\\r"); break;
       case '\t': encoded.append("\\t"); break;
-      default: encoded.push(replacement[position]); break;
+      default:   encoded.push(replacement[position]); break;
       }
     }
 
@@ -1019,7 +1059,7 @@ fn parser_format_encode(const parser_format_fragment &fragment,
   while (position < replacement.length) {
     encoded.append_repeated(' ', fragment.indent_length);
     let const line_start = position;
-    let const line = replacement.next_line(position);
+    let const line       = replacement.next_line(position);
     encoded.append(line);
     if (position > line_start + line.length) encoded.push('\n');
   }
@@ -1027,7 +1067,8 @@ fn parser_format_encode(const parser_format_fragment &fragment,
   return encoded;
 }
 
-fn parser_format_apply_replacements(
+fn
+parser_format_apply_replacements(
     StringView source, ArrayList<parser_format_replacement> replacements) throws
     -> Maybe<String>
 {
@@ -1037,7 +1078,7 @@ fn parser_format_apply_replacements(
                           const parser_format_replacement &right) {
             return left.start_position < right.start_position;
           });
-  let result = String{heap_allocator()};
+  let   result   = String{heap_allocator()};
   usize position = 0;
 
   for (let const &replacement : sorted_replacements) {
@@ -1058,8 +1099,9 @@ fn parser_format_apply_replacements(
   return result;
 }
 
-fn parser_format_analysis_source(const parsed_format_document &document,
-                                 StringView host_source) throws -> String
+fn
+parser_format_analysis_source(const parsed_format_document &document,
+                              StringView host_source) throws -> String
 {
   if (!document.is_host_format) return String{host_source};
 
@@ -1086,7 +1128,8 @@ fn parser_format_analysis_source(const parsed_format_document &document,
   return result;
 }
 
-pure fn parser_format_should_silence_unresolved_commands(
+pure fn
+parser_format_should_silence_unresolved_commands(
     parser_format_kind kind) wontthrow -> bool
 {
   switch (kind) {
@@ -1096,7 +1139,7 @@ pure fn parser_format_should_silence_unresolved_commands(
   case parser_format_kind::Makefile:
   case parser_format_kind::Taskfile:
   case parser_format_kind::Justfile:
-  case parser_format_kind::VscodeTasks: return false;
+  case parser_format_kind::VscodeTasks:        return false;
   case parser_format_kind::GithubActions:
   case parser_format_kind::GiteaActions:
   case parser_format_kind::ForgejoActions:
@@ -1115,17 +1158,18 @@ pure fn parser_format_should_silence_unresolved_commands(
   case parser_format_kind::Drone:
   case parser_format_kind::Woodpecker:
   case parser_format_kind::RpmSpec:
-  case parser_format_kind::DevContainer: return true;
+  case parser_format_kind::DevContainer:       return true;
   }
 
   return false;
 }
 
-fn parse_format_document(const parser_format_input &input) throws
+fn
+parse_format_document(const parser_format_input &input) throws
     -> parsed_format_document
 {
-  let document = parsed_format_document{};
-  document.kind = detect_format_kind(input);
+  let document            = parsed_format_document{};
+  document.kind           = detect_format_kind(input);
   document.is_host_format = document.kind != parser_format_kind::Shell;
 
   switch (document.kind) {

@@ -25,7 +25,8 @@ REGISTER_BUILTIN_FLAGS(Caller);
 
 namespace koshka {
 
-fn Caller::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
+fn
+Caller::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let operand_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};
   let const args = PARSE_BUILTIN_ARGS_WITH_LOCATIONS(ec, operand_locations);
@@ -35,7 +36,7 @@ fn Caller::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   ASSERT(!args.is_empty());
 
   let const has_frame_operand = args.count() > 1;
-  let const source_count = cxt.bash_source_frame_count();
+  let const source_count      = cxt.bash_source_frame_count();
 
   if (source_count == 0) return 1;
 

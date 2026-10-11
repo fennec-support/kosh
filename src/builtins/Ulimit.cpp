@@ -22,7 +22,10 @@ HELP_DESCRIPTION_DECL(
     "The ulimit builtin prints or sets a resource limit of the shell.");
 
 FLAG(CPU_TIME, Bool, 't', "", "The most CPU time in seconds.");
-FLAG(FILE_SIZE, Bool, 'f', "",
+FLAG(FILE_SIZE,
+     Bool,
+     'f',
+     "",
      "The largest file the shell may create, in blocks.");
 FLAG(DATA_SIZE, Bool, 'd', "", "The data segment size in kbytes.");
 FLAG(STACK_SIZE, Bool, 's', "", "The stack size in kbytes.");
@@ -47,15 +50,15 @@ namespace {
 
 struct resource_entry
 {
-  const char *label;
+  const char       *label;
   os::resource_kind kind;
-  u64 units_per_value;
+  u64               units_per_value;
 };
 
 struct resource_selection
 {
   resource_entry resource;
-  bool is_pipe_pseudo;
+  bool           is_pipe_pseudo;
 };
 
 constexpr resource_entry RESOURCE_TABLE[] = {
@@ -73,7 +76,8 @@ constexpr resource_entry RESOURCE_TABLE[] = {
     {"rtprio",                os::resource_kind::RealtimePriority,    1   },
 };
 
-fn block_factor(const resource_entry &entry, mimic_mood mood) throws -> u64
+fn
+block_factor(const resource_entry &entry, mimic_mood mood) throws -> u64
 {
   if (entry.kind == os::resource_kind::FileBlocks ||
       entry.kind == os::resource_kind::CoreBlocks)
@@ -84,7 +88,8 @@ fn block_factor(const resource_entry &entry, mimic_mood mood) throws -> u64
   return entry.units_per_value;
 }
 
-fn selected_resource() throws -> resource_selection
+fn
+selected_resource() throws -> resource_selection
 {
   if (FLAG_CPU_TIME.is_enabled())
     return {
@@ -148,8 +153,10 @@ fn selected_resource() throws -> resource_selection
   };
 }
 
-fn render_limit(const os::resource_limit &limit, u64 divisor,
-                Allocator allocator) throws -> String
+fn
+render_limit(const os::resource_limit &limit,
+             u64                       divisor,
+             Allocator                 allocator) throws -> String
 {
   let const value = FLAG_HARD.is_enabled() ? limit.hard : limit.soft;
   if (value == os::RESOURCE_UNLIMITED) return String{allocator, "unlimited"};
@@ -159,7 +166,8 @@ fn render_limit(const os::resource_limit &limit, u64 divisor,
 
 } /* namespace */
 
-cold fn Ulimit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
+cold fn
+Ulimit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let const args = PARSE_BUILTIN_ARGS(ec);
 
@@ -236,8 +244,8 @@ cold fn Ulimit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   }
 
   let const &requested = args[1];
-  let const units = block_factor(resource, cxt.runtime_state().get_mood());
-  u64 value = os::RESOURCE_UNLIMITED;
+  let const  units     = block_factor(resource, cxt.runtime_state().get_mood());
+  u64        value     = os::RESOURCE_UNLIMITED;
   if (requested != "unlimited") {
     let const parsed = utils::parse_decimal_u64(requested.view());
     if (parsed.is_error()) {

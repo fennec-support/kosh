@@ -52,7 +52,8 @@ static constexpr StringView BINDER_DESCRIPTIONS[] = {
 static_assert(countof(BINDER_DESCRIPTIONS) ==
               static_cast<usize>(assignment_binder::Declaration) + 1);
 
-pure fn binder_description(assignment_binder binder) wontthrow -> StringView
+pure fn
+binder_description(assignment_binder binder) wontthrow -> StringView
 {
   let const index = static_cast<usize>(binder);
   if (index >= countof(BINDER_DESCRIPTIONS)) return StringView{};
@@ -67,7 +68,8 @@ struct assignment_index_storage
   usize allocation_count{0};
 };
 
-static fn assignment_index_storage_length(usize count) throws -> usize
+static fn
+assignment_index_storage_length(usize count) throws -> usize
 {
   if (count > (SIZE_MAX - sizeof(assignment_index_storage)) / sizeof(usize))
     throw std::bad_alloc{};
@@ -81,11 +83,12 @@ assignment_index_data(assignment_index_storage *storage) wontthrow -> usize *
   return reinterpret_cast<usize *>(storage + 1);
 }
 
-static fn allocate_assignment_index_storage(usize count) throws
+static fn
+allocate_assignment_index_storage(usize count) throws
     -> assignment_index_storage *
 {
   let const allocation_length = assignment_index_storage_length(count);
-  let *storage =
+  let      *storage =
       static_cast<assignment_index_storage *>(heap_allocator().raw_alloc(
           allocation_length, alignof(assignment_index_storage)));
   new (storage) assignment_index_storage{};
@@ -108,7 +111,8 @@ AssignmentIndexSet::AssignmentIndexSet(AssignmentIndexSet &&other) noexcept
 
 AssignmentIndexSet::~AssignmentIndexSet() { release(); }
 
-fn AssignmentIndexSet::operator=(const AssignmentIndexSet &other) wontthrow
+fn
+AssignmentIndexSet::operator=(const AssignmentIndexSet &other) wontthrow
     -> AssignmentIndexSet &
 {
   if (this == &other) return *this;
@@ -120,28 +124,31 @@ fn AssignmentIndexSet::operator=(const AssignmentIndexSet &other) wontthrow
   return *this;
 }
 
-fn AssignmentIndexSet::operator=(AssignmentIndexSet &&other) noexcept
+fn
+AssignmentIndexSet::operator=(AssignmentIndexSet &&other) noexcept
     -> AssignmentIndexSet &
 {
   if (this == &other) return *this;
 
   release();
-  m_storage = other.m_storage;
+  m_storage       = other.m_storage;
   other.m_storage = nullptr;
 
   return *this;
 }
 
-fn AssignmentIndexSet::singleton(usize index) throws -> AssignmentIndexSet
+fn
+AssignmentIndexSet::singleton(usize index) throws -> AssignmentIndexSet
 {
-  let *storage = allocate_assignment_index_storage(1);
-  storage->element_count = 1;
+  let *storage                      = allocate_assignment_index_storage(1);
+  storage->element_count            = 1;
   assignment_index_data(storage)[0] = index;
 
   return AssignmentIndexSet{storage};
 }
 
-fn AssignmentIndexSet::merge(const AssignmentIndexSet &other) throws -> void
+fn
+AssignmentIndexSet::merge(const AssignmentIndexSet &other) throws -> void
 {
   if (other.is_empty() || m_storage == other.m_storage) {
     return;
@@ -156,10 +163,10 @@ fn AssignmentIndexSet::merge(const AssignmentIndexSet &other) throws -> void
 
   let *merged_storage =
       allocate_assignment_index_storage(count() + other.count());
-  let *merged_indices = assignment_index_data(merged_storage);
-  usize left_index = 0;
-  usize right_index = 0;
-  usize merged_count = 0;
+  let  *merged_indices = assignment_index_data(merged_storage);
+  usize left_index     = 0;
+  usize right_index    = 0;
+  usize merged_count   = 0;
 
   while (left_index < count() || right_index < other.count()) {
     usize assignment_index;
@@ -188,40 +195,47 @@ fn AssignmentIndexSet::merge(const AssignmentIndexSet &other) throws -> void
   m_storage = merged_storage;
 }
 
-pure fn AssignmentIndexSet::count() const wontthrow -> usize
+pure fn
+AssignmentIndexSet::count() const wontthrow -> usize
 {
   return m_storage != nullptr ? m_storage->element_count : 0;
 }
 
-pure fn AssignmentIndexSet::is_empty() const wontthrow -> bool
+pure fn
+AssignmentIndexSet::is_empty() const wontthrow -> bool
 {
   return m_storage == nullptr || m_storage->element_count == 0;
 }
 
-pure fn AssignmentIndexSet::operator[](usize index) const wontthrow -> usize
+pure fn
+AssignmentIndexSet::operator[](usize index) const wontthrow -> usize
 {
   ASSERT(index < count());
 
   return assignment_index_data(m_storage)[index];
 }
 
-pure fn AssignmentIndexSet::begin() const wontthrow -> const usize *
+pure fn
+AssignmentIndexSet::begin() const wontthrow -> const usize *
 {
   return m_storage != nullptr ? assignment_index_data(m_storage) : nullptr;
 }
 
-pure fn AssignmentIndexSet::end() const wontthrow -> const usize *
+pure fn
+AssignmentIndexSet::end() const wontthrow -> const usize *
 {
   return m_storage != nullptr ? assignment_index_data(m_storage) + count()
                               : nullptr;
 }
 
-fn AssignmentIndexSet::retain() wontthrow -> void
+fn
+AssignmentIndexSet::retain() wontthrow -> void
 {
   if (m_storage != nullptr) m_storage->reference_count++;
 }
 
-fn AssignmentIndexSet::release() wontthrow -> void
+fn
+AssignmentIndexSet::release() wontthrow -> void
 {
   if (m_storage == nullptr) return;
 
@@ -239,27 +253,28 @@ fn AssignmentIndexSet::release() wontthrow -> void
 
 struct variable_occurrence_map_storage
 {
-  usize reference_count{1};
-  usize depth{0};
-  variable_occurrence_map_storage *parent{nullptr};
+  usize                                    reference_count{1};
+  usize                                    depth{0};
+  variable_occurrence_map_storage         *parent{nullptr};
   StringMap<variable_occurrence_map_entry> entries{heap_allocator(),
                                                    SMALL_MAP_FIRST_CAPACITY};
 };
 
-static fn create_variable_occurrence_map_storage(
-    variable_occurrence_map_storage *parent) throws
-    -> variable_occurrence_map_storage *
+static fn
+create_variable_occurrence_map_storage(variable_occurrence_map_storage *parent)
+    throws -> variable_occurrence_map_storage *
 {
   let *storage =
       heap_allocator().alloc_array<variable_occurrence_map_storage>(1);
   new (storage) variable_occurrence_map_storage{};
   storage->parent = parent;
-  storage->depth = parent != nullptr ? parent->depth + 1 : 0;
+  storage->depth  = parent != nullptr ? parent->depth + 1 : 0;
 
   return storage;
 }
 
-static fn retain_variable_occurrence_map_storage(
+static fn
+retain_variable_occurrence_map_storage(
     variable_occurrence_map_storage *storage) wontthrow -> void
 {
   if (storage == nullptr) return;
@@ -268,7 +283,8 @@ static fn retain_variable_occurrence_map_storage(
   storage->reference_count++;
 }
 
-static fn release_variable_occurrence_map_storage(
+static fn
+release_variable_occurrence_map_storage(
     variable_occurrence_map_storage *storage) wontthrow -> void
 {
   while (storage != nullptr) {
@@ -283,7 +299,8 @@ static fn release_variable_occurrence_map_storage(
   }
 }
 
-static fn find_common_variable_occurrence_storage(
+static fn
+find_common_variable_occurrence_storage(
     const variable_occurrence_map_storage *left,
     const variable_occurrence_map_storage *right) wontthrow
     -> const variable_occurrence_map_storage *
@@ -318,44 +335,47 @@ VariableOccurrenceStateMap::~VariableOccurrenceStateMap()
   release_variable_occurrence_map_storage(m_head);
 }
 
-fn VariableOccurrenceStateMap::operator=(
-    const VariableOccurrenceStateMap &other) throws
-    -> VariableOccurrenceStateMap &
+fn
+VariableOccurrenceStateMap::operator=(const VariableOccurrenceStateMap &other)
+    throws -> VariableOccurrenceStateMap &
 {
   if (this == &other) return *this;
 
   let copy = VariableOccurrenceStateMap{other};
-  *this = steal(copy);
+  *this    = steal(copy);
 
   return *this;
 }
 
-fn VariableOccurrenceStateMap::operator=(
+fn
+VariableOccurrenceStateMap::operator=(
     VariableOccurrenceStateMap &&other) noexcept -> VariableOccurrenceStateMap &
 {
   if (this == &other) return *this;
 
   release_variable_occurrence_map_storage(m_head);
-  m_head = other.m_head;
+  m_head       = other.m_head;
   other.m_head = nullptr;
 
   return *this;
 }
 
-fn VariableOccurrenceStateMap::snapshot() throws -> VariableOccurrenceStateMap
+fn
+VariableOccurrenceStateMap::snapshot() throws -> VariableOccurrenceStateMap
 {
   collapse_exclusive_layers();
 
   return VariableOccurrenceStateMap{*this};
 }
 
-pure fn VariableOccurrenceStateMap::find(StringView name) const wontthrow
+pure fn
+VariableOccurrenceStateMap::find(StringView name) const wontthrow
     -> const variable_occurrence_state *
 {
   let const hash = hash_bytes(name);
 
   for (let const *storage = m_head; storage != nullptr;
-       storage = storage->parent)
+       storage            = storage->parent)
   {
     let const entry = storage->entries.find_hashed(name, hash);
     if (entry.has_value()) return entry->is_present ? &entry->state : nullptr;
@@ -364,27 +384,30 @@ pure fn VariableOccurrenceStateMap::find(StringView name) const wontthrow
   return nullptr;
 }
 
-fn VariableOccurrenceStateMap::set(StringView name,
-                                   variable_occurrence_state state) throws
-    -> void
+fn
+VariableOccurrenceStateMap::set(StringView                name,
+                                variable_occurrence_state state) throws -> void
 {
   get_private_head()->entries.set(
       name, variable_occurrence_map_entry{steal(state), true});
 }
 
-fn VariableOccurrenceStateMap::erase(StringView name) throws -> void
+fn
+VariableOccurrenceStateMap::erase(StringView name) throws -> void
 {
   if (find(name) == nullptr) return;
   get_private_head()->entries.set(name, variable_occurrence_map_entry{});
 }
 
-fn VariableOccurrenceStateMap::clear() wontthrow -> void
+fn
+VariableOccurrenceStateMap::clear() wontthrow -> void
 {
   release_variable_occurrence_map_storage(m_head);
   m_head = nullptr;
 }
 
-fn VariableOccurrenceStateMap::get_private_head() throws
+fn
+VariableOccurrenceStateMap::get_private_head() throws
     -> variable_occurrence_map_storage *
 {
   if (m_head != nullptr && m_head->reference_count == 1) {
@@ -398,7 +421,8 @@ fn VariableOccurrenceStateMap::get_private_head() throws
   return m_head;
 }
 
-fn VariableOccurrenceStateMap::collapse_exclusive_layers() throws -> void
+fn
+VariableOccurrenceStateMap::collapse_exclusive_layers() throws -> void
 {
   while (m_head != nullptr && m_head->reference_count == 1 &&
          m_head->parent != nullptr && m_head->parent->reference_count == 1)
@@ -421,19 +445,20 @@ fn VariableOccurrenceStateMap::collapse_exclusive_layers() throws -> void
           upper->entries.insert(name, entry);
         });
     upper->parent = lower->parent;
-    upper->depth = lower->depth;
+    upper->depth  = lower->depth;
     lower->parent = nullptr;
     release_variable_occurrence_map_storage(lower);
   }
 }
 
-fn VariableOccurrenceStateMap::merge(
+fn
+VariableOccurrenceStateMap::merge(
     const VariableOccurrenceStateMap &other) throws -> void
 {
   if (this == &other) return;
 
   let do_merge_name = [&](VariableOccurrenceStateMap &result, StringView name) {
-    let const *left_state = find(name);
+    let const *left_state  = find(name);
     let const *right_state = other.find(name);
     if (left_state == nullptr && right_state == nullptr) {
       result.erase(name);
@@ -443,14 +468,14 @@ fn VariableOccurrenceStateMap::merge(
 
     let merged_state = left_state != nullptr ? *left_state : *right_state;
     if (left_state == nullptr) {
-      merged_state.is_definitely_set = false;
+      merged_state.is_definitely_set   = false;
       merged_state.is_definitely_unset = false;
-      merged_state.has_inherited_path = true;
+      merged_state.has_inherited_path  = true;
     } else if (right_state == nullptr) {
-      merged_state.is_definitely_set = false;
+      merged_state.is_definitely_set   = false;
       merged_state.is_definitely_unset = false;
-      merged_state.has_unset_path = true;
-      merged_state.has_inherited_path = true;
+      merged_state.has_unset_path      = true;
+      merged_state.has_inherited_path  = true;
     } else {
       merged_state.assignment_indices.merge(right_state->assignment_indices);
       merged_state.is_definitely_set =
@@ -467,7 +492,7 @@ fn VariableOccurrenceStateMap::merge(
 
   let const *const common_storage =
       find_common_variable_occurrence_storage(m_head, other.m_head);
-  let result = VariableOccurrenceStateMap{*this};
+  let result          = VariableOccurrenceStateMap{*this};
   let do_merge_layers = [&](const variable_occurrence_map_storage *storage) {
     for (; storage != common_storage; storage = storage->parent) {
       storage->entries.for_each(
@@ -482,7 +507,8 @@ fn VariableOccurrenceStateMap::merge(
   *this = steal(result);
 }
 
-fn expressions::internal::indent_for_layer(usize layer) throws -> String
+fn
+expressions::internal::indent_for_layer(usize layer) throws -> String
 {
   let pad = String{heap_allocator()};
 
@@ -497,28 +523,34 @@ Expression::Expression(SourceLocation location)
       m_source_end_position(m_location.position + m_location.length)
 {}
 
-pure fn Expression::source_location() const wontthrow -> SourceLocation
+pure fn
+Expression::source_location() const wontthrow -> SourceLocation
 {
   return m_location;
 }
 
-pure fn Expression::source_end_position() const wontthrow -> usize
+pure fn
+Expression::source_end_position() const wontthrow -> usize
 {
   return m_source_end_position;
 }
 
-fn Expression::set_source_end_position(usize position) wontthrow -> void
+fn
+Expression::set_source_end_position(usize position) wontthrow -> void
 {
   m_source_end_position = static_cast<u32>(position);
 }
 
-cold fn Expression::to_ast_string(usize layer) const throws -> String
+cold fn
+Expression::to_ast_string(usize layer) const throws -> String
 {
   return indent_for_layer(layer) + "[" + to_string() + "]";
 }
 
-hot flatten fn Expression::evaluate_root_status(
-    EvalContext &cxt, root_evaluation_mode mode) const throws -> status_result
+hot flatten fn
+Expression::evaluate_root_status(EvalContext         &cxt,
+                                 root_evaluation_mode mode) const throws
+    -> status_result
 {
   if (os::INTERRUPT_REQUESTED) {
     os::INTERRUPT_REQUESTED = 0;
@@ -553,17 +585,21 @@ hot flatten fn Expression::evaluate_root_status(
   }
 }
 
-fn Expression::operator delete(opaque *pointer) wontthrow -> void
+fn
+Expression::operator delete(opaque *pointer) wontthrow -> void
 {
   if (is_arena_pointer(pointer)) return;
   ::operator delete(pointer);
 }
 
-fn analysis_reporter::warn(diagnostic_id id, const SourceLocation &location,
-                           StringView message, StringView suggestion,
-                           diagnostic_tier tier,
-                           const Maybe<SourceLocation> &related_location,
-                           StringView related_message) throws -> void
+fn
+analysis_reporter::warn(diagnostic_id                id,
+                        const SourceLocation        &location,
+                        StringView                   message,
+                        StringView                   suggestion,
+                        diagnostic_tier              tier,
+                        const Maybe<SourceLocation> &related_location,
+                        StringView related_message) throws -> void
 {
   if (!should_report(tier)) return;
 
@@ -574,11 +610,12 @@ fn analysis_reporter::warn(diagnostic_id id, const SourceLocation &location,
                                         String{related_message}});
 }
 
-fn analysis_reporter::flush(const analysis_report_site &site) throws -> void
+fn
+analysis_reporter::flush(const analysis_report_site &site) throws -> void
 {
   if (pending.is_empty()) return;
 
-  let const source = site.source;
+  let const  source       = site.source;
   let *const eval_context = site.eval_context;
 
   if (eval_context != nullptr && colors::stderr_wants_color()) {
@@ -620,7 +657,7 @@ fn analysis_reporter::flush(const analysis_report_site &site) throws -> void
     report_order.push(index);
 
   report_order.sort([this](const usize &left, const usize &right) {
-    let const &left_location = pending[left].location;
+    let const &left_location  = pending[left].location;
     let const &right_location = pending[right].location;
     if (left_location.source_name_index != right_location.source_name_index)
       return left_location.source_name_index < right_location.source_name_index;
@@ -675,12 +712,13 @@ fn analysis_reporter::flush(const analysis_report_site &site) throws -> void
   pending.clear();
 }
 
-cold fn print_analysis_diagnostic_summary(
+cold fn
+print_analysis_diagnostic_summary(
     const analysis_diagnostic_totals &totals) throws -> void
 {
   if (totals.warning_count + totals.error_count < 2) return;
 
-  let const wants_color = colors::stderr_wants_color();
+  let const wants_color   = colors::stderr_wants_color();
   let const warning_color = wants_color ? colors::ansi::YELLOW : StringView{};
   let const error_color =
       wants_color ? colors::ansi::BOLD_BRIGHT_RED : StringView{};
@@ -711,12 +749,14 @@ cold fn print_analysis_diagnostic_summary(
   show_message(summary.view());
 }
 
-cold fn AnalysisContext::print_diagnostic_summary() const throws -> void
+cold fn
+AnalysisContext::print_diagnostic_summary() const throws -> void
 {
   print_analysis_diagnostic_summary(reporter.totals);
 }
 
-cold fn AnalysisContext::print_optimizer_summary() const throws -> void
+cold fn
+AnalysisContext::print_optimizer_summary() const throws -> void
 {
   if (!options.should_report_optimizer_diagnostics) return;
 
@@ -733,14 +773,14 @@ cold fn AnalysisContext::print_optimizer_summary() const throws -> void
   show_message(summary.view());
 }
 
-pure fn analysis_reporter::should_report(diagnostic_id id) const wontthrow
-    -> bool
+pure fn
+analysis_reporter::should_report(diagnostic_id id) const wontthrow -> bool
 {
   return should_report(get_diagnostic_definition(id).tier);
 }
 
-pure fn analysis_reporter::should_report(diagnostic_tier tier) const wontthrow
-    -> bool
+pure fn
+analysis_reporter::should_report(diagnostic_tier tier) const wontthrow -> bool
 {
   if (tier == diagnostic_tier::Annoying && !options.should_emit_annoying) {
     return false;
@@ -749,15 +789,16 @@ pure fn analysis_reporter::should_report(diagnostic_tier tier) const wontthrow
 
   u8 required_level = 0;
   switch (tier) {
-  case diagnostic_tier::Strict: required_level = 1; break;
-  case diagnostic_tier::Lenient: required_level = 2; break;
+  case diagnostic_tier::Strict:   required_level = 1; break;
+  case diagnostic_tier::Lenient:  required_level = 2; break;
   case diagnostic_tier::Annoying: required_level = 3; break;
   }
 
   return options.warning_level >= required_level;
 }
 
-pure fn AnalysisContext::should_silence_unresolved_command_at(
+pure fn
+AnalysisContext::should_silence_unresolved_command_at(
     usize position) const wontthrow -> bool
 {
   if (effects.should_silence_unresolved_commands) return true;
@@ -770,10 +811,13 @@ pure fn AnalysisContext::should_silence_unresolved_command_at(
       .should_silence_unresolved_commands;
 }
 
-fn analysis_reporter::report(
-    const analysis_report_site &site, diagnostic_id id,
-    const SourceLocation &location, std::initializer_list<StringView> arguments,
-    const Maybe<SourceLocation> &related_location) throws -> bool
+fn
+analysis_reporter::report(const analysis_report_site       &site,
+                          diagnostic_id                     id,
+                          const SourceLocation             &location,
+                          std::initializer_list<StringView> arguments,
+                          const Maybe<SourceLocation> &related_location) throws
+    -> bool
 {
   if (!should_report(id)) return false;
   if (is_suppressed(site, id, location)) return false;
@@ -783,11 +827,11 @@ fn analysis_reporter::report(
     named_location.source_name_index = source_name_index;
 
   let const &definition = get_diagnostic_definition(id);
-  let message =
+  let        message =
       format_diagnostic_template(definition.message_template, arguments);
   append_diagnostic_code(message, definition.shellcheck_code);
 
-  let suggestion = String{heap_allocator()};
+  let suggestion      = String{heap_allocator()};
   let related_message = String{heap_allocator()};
 
   if (definition.suggestion_template.has_value()) {
@@ -813,8 +857,8 @@ fn analysis_reporter::report(
   return true;
 }
 
-cold fn AnalysisContext::trace_optimizer_line(StringView message) const throws
-    -> void
+cold fn
+AnalysisContext::trace_optimizer_line(StringView message) const throws -> void
 {
   if (!options.should_report_optimizer_diagnostics) return;
   print_error("[optimizer] ");
@@ -822,13 +866,17 @@ cold fn AnalysisContext::trace_optimizer_line(StringView message) const throws
   print_error("\n");
 }
 
-fn analysis_reporter::fail(const analysis_report_site &site, diagnostic_id id,
-                           const SourceLocation &location, StringView message,
-                           StringView suggestion, diagnostic_tier tier,
-                           const Maybe<SourceLocation> &related_location,
-                           StringView related_message) throws -> void
+fn
+analysis_reporter::fail(const analysis_report_site  &site,
+                        diagnostic_id                id,
+                        const SourceLocation        &location,
+                        StringView                   message,
+                        StringView                   suggestion,
+                        diagnostic_tier              tier,
+                        const Maybe<SourceLocation> &related_location,
+                        StringView related_message) throws -> void
 {
-  let const source = site.source;
+  let const  source       = site.source;
   let *const eval_context = site.eval_context;
 
   if (!options.is_default_mood) {
@@ -848,8 +896,8 @@ fn analysis_reporter::fail(const analysis_report_site &site, diagnostic_id id,
 
   u8 demote_at_level = 0;
   switch (tier) {
-  case diagnostic_tier::Strict: demote_at_level = 3; break;
-  case diagnostic_tier::Lenient: demote_at_level = 2; break;
+  case diagnostic_tier::Strict:   demote_at_level = 3; break;
+  case diagnostic_tier::Lenient:  demote_at_level = 2; break;
   case diagnostic_tier::Annoying: break;
   }
 
@@ -901,9 +949,11 @@ fn analysis_reporter::fail(const analysis_report_site &site, diagnostic_id id,
   has_fatal = true;
 }
 
-pure fn analysis_reporter::is_suppressed(
-    const analysis_report_site &site, diagnostic_id id,
-    const SourceLocation &location) const wontthrow -> bool
+pure fn
+analysis_reporter::is_suppressed(const analysis_report_site &site,
+                                 diagnostic_id               id,
+                                 const SourceLocation &location) const wontthrow
+    -> bool
 {
   if (suppressions == nullptr) return false;
 
@@ -922,9 +972,11 @@ pure fn analysis_reporter::is_suppressed(
   return false;
 }
 
-fn AnalysisContext::note_variable_assignment(
-    StringView name, const SourceLocation &location,
-    bool is_proven_unconditional) throws -> void
+fn
+AnalysisContext::note_variable_assignment(StringView            name,
+                                          const SourceLocation &location,
+                                          bool is_proven_unconditional) throws
+    -> void
 {
   if (name.is_empty()) return;
 
@@ -950,9 +1002,13 @@ fn AnalysisContext::note_variable_assignment(
 
 static constexpr usize RECORDED_LITERAL_LENGTH_LIMIT = 256;
 
-fn AnalysisContext::note_variable_assignment_record(
-    StringView name, const Word *value_word, const SourceLocation &location,
-    bool is_conditional, assignment_update_mode update_mode) throws -> void
+fn
+AnalysisContext::note_variable_assignment_record(
+    StringView             name,
+    const Word            *value_word,
+    const SourceLocation  &location,
+    bool                   is_conditional,
+    assignment_update_mode update_mode) throws -> void
 {
   if (name.is_empty()) return;
 
@@ -981,10 +1037,11 @@ fn AnalysisContext::note_variable_assignment_record(
       value_word == nullptr});
 }
 
-fn AnalysisContext::note_variable_binding_record(StringView name,
-                                                 const SourceLocation &location,
-                                                 assignment_binder binder,
-                                                 bool is_conditional) throws
+fn
+AnalysisContext::note_variable_binding_record(StringView            name,
+                                              const SourceLocation &location,
+                                              assignment_binder     binder,
+                                              bool is_conditional) throws
     -> void
 {
   if (name.is_empty()) return;
@@ -998,10 +1055,13 @@ fn AnalysisContext::note_variable_binding_record(StringView name,
       is_conditional, assignment_update_mode::Replace, false});
 }
 
-fn AnalysisContext::note_variable_occurrence(
-    StringView name, const SourceLocation &location,
-    variable_occurrence_kind kind, bool is_unresolved,
-    assignment_update_mode update_mode) throws -> void
+fn
+AnalysisContext::note_variable_occurrence(
+    StringView               name,
+    const SourceLocation    &location,
+    variable_occurrence_kind kind,
+    bool                     is_unresolved,
+    assignment_update_mode   update_mode) throws -> void
 {
   if (name.is_empty() || location.length == 0) {
     return;
@@ -1024,16 +1084,16 @@ fn AnalysisContext::note_variable_occurrence(
     top_level_assigned_names.add(name);
   }
 
-  let const function_definition_index = active_function_definition_index;
+  let const  function_definition_index = active_function_definition_index;
   let const *current_state = kind == variable_occurrence_kind::Reference
                                  ? occurrences.assigned.find(name)
                                  : nullptr;
-  let const has_inherited_function_path =
+  let const  has_inherited_function_path =
       function_definition_index != NO_ACTIVE_FUNCTION_DEFINITION &&
       kind == variable_occurrence_kind::Reference &&
       (current_state == nullptr || current_state->has_inherited_path);
-  let occurrence_is_unresolved = is_unresolved;
-  let occurrence_is_unused = false;
+  let       occurrence_is_unresolved = is_unresolved;
+  let       occurrence_is_unused     = false;
   let const occurrence_index =
       symbol_records != nullptr ? symbol_records->variable_occurrences.count()
                                 : usize{0};
@@ -1054,9 +1114,9 @@ fn AnalysisContext::note_variable_occurrence(
     if (symbol_records != nullptr)
       state.assignment_indices =
           AssignmentIndexSet::singleton(occurrence_index);
-    state.is_definitely_set = true;
+    state.is_definitely_set   = true;
     state.is_definitely_unset = false;
-    state.has_inherited_path = false;
+    state.has_inherited_path  = false;
     occurrences.assigned.set(name, steal(state));
     occurrence_is_unused = true;
     if (function_definition_index != NO_ACTIVE_FUNCTION_DEFINITION)
@@ -1076,12 +1136,12 @@ fn AnalysisContext::note_variable_occurrence(
          !(eval_context != nullptr && eval_context->has_variable_name(name)) &&
          !os::get_environment_variable(name).has_value());
   } else {
-    let const *state = occurrences.find(name);
+    let const *state         = occurrences.find(name);
     occurrence_is_unresolved = state == nullptr || !state->is_definitely_set;
 
-    let unset_state = variable_occurrence_state{};
+    let unset_state                 = variable_occurrence_state{};
     unset_state.is_definitely_unset = true;
-    unset_state.has_unset_path = true;
+    unset_state.has_unset_path      = true;
     occurrences.replace(name, steal(unset_state));
     if (function_definition_index != NO_ACTIVE_FUNCTION_DEFINITION)
       functions.records[function_definition_index].affected_names.add(name);
@@ -1095,7 +1155,8 @@ fn AnalysisContext::note_variable_occurrence(
       occurrence_is_unused, false, false, has_inherited_function_path});
 }
 
-fn AnalysisContext::apply_called_function(
+fn
+AnalysisContext::apply_called_function(
     StringView name, const SourceLocation &call_location) throws -> void
 {
   if (active_function_definition_index != NO_ACTIVE_FUNCTION_DEFINITION &&
@@ -1188,7 +1249,8 @@ fn AnalysisContext::apply_called_function(
   });
 }
 
-static fn resolve_function_occurrence_states(
+static fn
+resolve_function_occurrence_states(
     analysis_symbol_records &symbol_records) wontthrow -> void
 {
   for (let &occurrence : symbol_records.variable_occurrences) {
@@ -1200,10 +1262,11 @@ static fn resolve_function_occurrence_states(
   }
 }
 
-fn AnalysisContext::note_function_body_record(StringView name,
-                                              usize name_position,
-                                              usize body_position,
-                                              usize body_end_position) throws
+fn
+AnalysisContext::note_function_body_record(StringView name,
+                                           usize      name_position,
+                                           usize      body_position,
+                                           usize      body_end_position) throws
     -> void
 {
   if (symbol_records == nullptr) return;
@@ -1213,8 +1276,8 @@ fn AnalysisContext::note_function_body_record(StringView name,
       String{name}, name_position, body_position, body_end_position});
 }
 
-static pure fn assign_form_target_name(StringView expansion_text) wontthrow
-    -> StringView
+static pure fn
+assign_form_target_name(StringView expansion_text) wontthrow -> StringView
 {
   let const name = expressions::internal::operand_target_name(expansion_text);
   if (!lexer::word_is_variable_name(name)) return StringView{};
@@ -1231,7 +1294,8 @@ static pure fn assign_form_target_name(StringView expansion_text) wontthrow
   return name;
 }
 
-fn AnalysisContext::note_variable_scope(StringView name) throws -> void
+fn
+AnalysisContext::note_variable_scope(StringView name) throws -> void
 {
   let const scope =
       active_function_definition_index == NO_ACTIVE_FUNCTION_DEFINITION
@@ -1247,16 +1311,18 @@ fn AnalysisContext::note_variable_scope(StringView name) throws -> void
   if (**first_scope != scope) shared_scope_variable_names.add(name);
 }
 
-pure fn AnalysisContext::is_posix_mood() const wontthrow -> bool
+pure fn
+AnalysisContext::is_posix_mood() const wontthrow -> bool
 {
   return is_posix_sh_shebang ||
          (eval_context != nullptr &&
           eval_context->runtime_state().get_mood() == mimic_mood::Posix);
 }
 
-fn AnalysisContext::note_variable_read(StringView name,
-                                       const SourceLocation &location,
-                                       bool is_top_level_unconditional) throws
+fn
+AnalysisContext::note_variable_read(StringView            name,
+                                    const SourceLocation &location,
+                                    bool is_top_level_unconditional) throws
     -> void
 {
   if (!is_top_level_unconditional) return;
@@ -1265,7 +1331,7 @@ fn AnalysisContext::note_variable_read(StringView name,
   if (!lexer::word_is_variable_name(name)) {
     let const assigned = assign_form_target_name(name);
     if (!assigned.is_empty()) {
-      let state = variable_occurrence_state{};
+      let state               = variable_occurrence_state{};
       state.is_definitely_set = true;
       occurrences.replace(assigned, steal(state));
       note_variable_assignment(assigned, location, true);
@@ -1294,11 +1360,12 @@ fn AnalysisContext::note_variable_read(StringView name,
   reads_before_assignment.set(name, location);
 }
 
-cold fn expressions::internal::report_command_resolution_error(
+cold fn
+expressions::internal::report_command_resolution_error(
     EvalContext &cxt, CommandResolutionErrorWithLocation &e) throws -> void
 {
   let const trace_location = e.location();
-  let const windowed = window_function_body_error(cxt, e);
+  let const windowed       = window_function_body_error(cxt, e);
   show_message(e.to_string(windowed.has_value()
                                ? *windowed
                                : cxt.source_store().current_source_view(),
@@ -1306,7 +1373,8 @@ cold fn expressions::internal::report_command_resolution_error(
   cxt.print_source_backtrace(trace_location);
 }
 
-fn expressions::internal::window_function_body_error(
+fn
+expressions::internal::window_function_body_error(
     EvalContext &cxt, ErrorWithLocation &error) wontthrow -> Maybe<StringView>
 {
   let const resolved = cxt.resolve_render_source(error.location());
@@ -1323,89 +1391,116 @@ fn expressions::internal::window_function_body_error(
   return resolved.text->view();
 }
 
-fn Expression::analyze(AnalysisContext &actx,
-                       bool is_unconditional) const throws -> void
+fn
+Expression::analyze(AnalysisContext &actx, bool is_unconditional) const throws
+    -> void
 {
   unused(actx);
   unused(is_unconditional);
 }
 
-fn Expression::append_presence_tested_command_names(
-    const AnalysisContext &actx, HashSet &names,
-    bool is_status_success) const throws -> void
+fn
+Expression::append_presence_tested_command_names(
+    const AnalysisContext &actx,
+    HashSet               &names,
+    bool                   is_status_success) const throws -> void
 {
   unused(actx);
   unused(names);
   unused(is_status_success);
 }
 
-fn Expression::is_simple_command() const wontthrow -> bool { return false; }
+fn
+Expression::is_simple_command() const wontthrow -> bool
+{
+  return false;
+}
 
-fn Expression::is_compound_command() const wontthrow -> bool { return false; }
+fn
+Expression::is_compound_command() const wontthrow -> bool
+{
+  return false;
+}
 
-fn Expression::is_dummy() const wontthrow -> bool { return false; }
+fn
+Expression::is_dummy() const wontthrow -> bool
+{
+  return false;
+}
 
-fn Expression::as_if_clause() const wontthrow -> const expressions::IfClause *
+fn
+Expression::as_if_clause() const wontthrow -> const expressions::IfClause *
 {
   return nullptr;
 }
 
-fn Expression::as_while_loop() const wontthrow -> const expressions::WhileLoop *
+fn
+Expression::as_while_loop() const wontthrow -> const expressions::WhileLoop *
 {
   return nullptr;
 }
 
-fn Expression::as_assign_command() const wontthrow
+fn
+Expression::as_assign_command() const wontthrow
     -> const expressions::AssignCommand *
 {
   return nullptr;
 }
 
-fn Expression::as_simple_command() const wontthrow
+fn
+Expression::as_simple_command() const wontthrow
     -> const expressions::SimpleCommand *
 {
   return nullptr;
 }
 
-fn Expression::as_compound_list() const wontthrow
+fn
+Expression::as_compound_list() const wontthrow
     -> const expressions::CompoundList *
 {
   return nullptr;
 }
 
-fn Expression::always_exits(const AnalysisContext &) const wontthrow -> bool
+fn
+Expression::always_exits(const AnalysisContext &) const wontthrow -> bool
 {
   return false;
 }
 
-fn Expression::as_for_loop() const wontthrow -> const expressions::ForLoop *
+fn
+Expression::as_for_loop() const wontthrow -> const expressions::ForLoop *
 {
   return nullptr;
 }
 
-fn Expression::as_cstyle_for_loop() const wontthrow
+fn
+Expression::as_cstyle_for_loop() const wontthrow
     -> const expressions::CStyleForLoop *
 {
   return nullptr;
 }
 
-fn Expression::as_subshell() const wontthrow -> const expressions::Subshell *
+fn
+Expression::as_subshell() const wontthrow -> const expressions::Subshell *
 {
   return nullptr;
 }
 
-fn Expression::as_redirected_command() const wontthrow
+fn
+Expression::as_redirected_command() const wontthrow
     -> const expressions::RedirectedCommand *
 {
   return nullptr;
 }
 
-fn Expression::error_report_location() const wontthrow -> SourceLocation
+fn
+Expression::error_report_location() const wontthrow -> SourceLocation
 {
   return source_location();
 }
 
-fn Expression::try_static_condition_verdict(
+fn
+Expression::try_static_condition_verdict(
     const AnalysisContext &actx) const wontthrow -> Maybe<bool>
 {
   unused(actx);
@@ -1413,7 +1508,8 @@ fn Expression::try_static_condition_verdict(
   return koshka::None;
 }
 
-fn Expression::can_evaluate_in_process_substitution(
+fn
+Expression::can_evaluate_in_process_substitution(
     const EvalContext &cxt, HashSet &active_functions) const throws -> bool
 {
   unused(cxt);
@@ -1422,7 +1518,8 @@ fn Expression::can_evaluate_in_process_substitution(
   return false;
 }
 
-fn expressions::internal::static_command_name(const Token *token) throws
+fn
+expressions::internal::static_command_name(const Token *token) throws
     -> Maybe<StringView>
 {
   ASSERT(token != nullptr);
@@ -1448,7 +1545,8 @@ fn expressions::internal::static_command_name(const Token *token) throws
   return word.constant_value();
 }
 
-fn expressions::internal::normalized_relative_executable_path(
+fn
+expressions::internal::normalized_relative_executable_path(
     StringView path) throws -> Maybe<String>
 {
   if (path.is_empty()) return None;
@@ -1462,9 +1560,9 @@ fn expressions::internal::normalized_relative_executable_path(
   return normalized;
 }
 
-fn expressions::internal::borrowed_token_text(const Token *token,
-                                              String &storage) throws
-    -> StringView
+fn
+expressions::internal::borrowed_token_text(const Token *token,
+                                           String &storage) throws -> StringView
 {
   ASSERT(token != nullptr);
 
@@ -1484,12 +1582,14 @@ static constexpr PackedStringKey SOURCE_LOCATION_VARIABLE_KEYS[] = {
 static constexpr StaticStringSet SOURCE_LOCATION_VARIABLES{
     SOURCE_LOCATION_VARIABLE_KEYS};
 
-pure fn is_source_location_variable(StringView name) wontthrow -> bool
+pure fn
+is_source_location_variable(StringView name) wontthrow -> bool
 {
   return SOURCE_LOCATION_VARIABLES.contains(name);
 }
 
-fn expanded_command_path(StringView name, Allocator allocator) throws -> String
+fn
+expanded_command_path(StringView name, Allocator allocator) throws -> String
 {
   if (let const expanded = utils::expand_leading_tilde_path(name);
       expanded.has_value())
@@ -1500,7 +1600,8 @@ fn expanded_command_path(StringView name, Allocator allocator) throws -> String
   return String{allocator, name};
 }
 
-fn expressions::internal::wrapped_command_index(
+fn
+expressions::internal::wrapped_command_index(
     command_name_id wrapper_id, const ArrayList<const Token *> &args) throws
     -> Maybe<usize>
 {
@@ -1541,10 +1642,12 @@ fn expressions::internal::wrapped_command_index(
   return None;
 }
 
-fn expressions::internal::apply_followed_source_effects(
-    AnalysisContext &actx, const followed_source_effects &followed,
-    bool should_merge_parent_state, bool should_merge_parent_uncertainty) throws
-    -> void
+fn
+expressions::internal::apply_followed_source_effects(
+    AnalysisContext               &actx,
+    const followed_source_effects &followed,
+    bool                           should_merge_parent_state,
+    bool should_merge_parent_uncertainty) throws -> void
 {
   if (should_merge_parent_state) {
     followed.defined_functions.for_each(
@@ -1578,9 +1681,12 @@ fn expressions::internal::apply_followed_source_effects(
   actx.reporter.has_fatal = actx.reporter.has_fatal || followed.has_fatal;
 }
 
-fn expressions::internal::analyze_followed_source(
-    AnalysisContext &actx, const ArrayList<const Token *> &args,
-    usize command_index, bool should_merge_parent_state,
+fn
+expressions::internal::analyze_followed_source(
+    AnalysisContext                &actx,
+    const ArrayList<const Token *> &args,
+    usize                           command_index,
+    bool                            should_merge_parent_state,
     bool should_merge_parent_uncertainty) throws -> bool
 {
   if (actx.followed_source_paths == nullptr ||
@@ -1592,8 +1698,8 @@ fn expressions::internal::analyze_followed_source(
     return true;
   }
 
-  let path_index = command_index + 1;
-  let const option = static_command_name(args[path_index]);
+  let       path_index = command_index + 1;
+  let const option     = static_command_name(args[path_index]);
   if (option.has_value() && *option == "--help") {
     return true;
   }
@@ -1668,9 +1774,9 @@ fn expressions::internal::analyze_followed_source(
     return should_merge_parent_state;
   }
 
-  let contents = actx.source_provider != nullptr
-                     ? actx.source_provider->read_source(*canonical_path)
-                     : Maybe<String>{None};
+  let                  contents = actx.source_provider != nullptr
+                                      ? actx.source_provider->read_source(*canonical_path)
+                                      : Maybe<String>{None};
   static constexpr u64 MAX_FOLLOWED_SOURCE_BYTES = 16 * 1024 * 1024;
   if (!contents.has_value()) {
     let const size = canonical_path->file_size();
@@ -1702,7 +1808,7 @@ fn expressions::internal::analyze_followed_source(
   parser.set_substitution_validation_mode(
       substitution_validation_mode::Enabled);
 
-  let parse_errors = ArrayList<String>{heap_allocator()};
+  let       parse_errors = ArrayList<String>{heap_allocator()};
   let const child_diagnostic_start =
       actx.reporter.sink != nullptr ? actx.reporter.sink->count() : 0;
   let const ast =
@@ -1735,7 +1841,7 @@ fn expressions::internal::analyze_followed_source(
       actx.effects.has_unknown_working_directory;
 
   followed_source_effects effects{};
-  let child_options = actx.options;
+  let                     child_options = actx.options;
   child_options.should_silence_unresolved_commands =
       actx.effects.should_silence_unresolved_commands;
   let const analyzed = analyze_ast(
@@ -1763,9 +1869,11 @@ fn expressions::internal::analyze_followed_source(
   return should_merge_parent_state;
 }
 
-fn expressions::internal::command_resolves(
-    StringView name, const SourceLocation &location,
-    const AnalysisContext &actx,
+fn
+expressions::internal::command_resolves(
+    StringView                                       name,
+    const SourceLocation                            &location,
+    const AnalysisContext                           &actx,
     Maybe<utils::unavailable_path_source_component> &unavailable) throws -> bool
 {
   if (name.is_empty()) return false;
@@ -1782,7 +1890,7 @@ fn expressions::internal::command_resolves(
       return true;
     }
 
-    let const expanded = expanded_command_path(name, heap_allocator());
+    let const expanded   = expanded_command_path(name, heap_allocator());
     let const typed_path = Path{expanded.view()};
     let const was_resolved =
         typed_path.has_trailing_separator()
@@ -1791,8 +1899,8 @@ fn expressions::internal::command_resolves(
             : Path::canonicalize(expanded.view()).has_value();
     if (was_resolved) return true;
 
-    let const target = typed_path.to_absolute_without_normalizing();
-    let raw_operand = name;
+    let const target      = typed_path.to_absolute_without_normalizing();
+    let       raw_operand = name;
     if (let source_text = location.get_source_text(actx.source))
       raw_operand = *source_text;
     unavailable = utils::locate_first_unavailable_path_component(
@@ -1801,8 +1909,8 @@ fn expressions::internal::command_resolves(
     return false;
   }
 
-  let environment_resolver = Maybe<ProgramResolver>{};
-  ProgramResolver *resolver = nullptr;
+  let              environment_resolver = Maybe<ProgramResolver>{};
+  ProgramResolver *resolver             = nullptr;
   if (actx.eval_context != nullptr) {
     resolver = &actx.eval_context->program_resolver();
   } else {
@@ -1830,7 +1938,8 @@ enum class bracket_scan_state : u8
   InsideClass,
 };
 
-pure fn expressions::internal::word_has_malformed_glob_bracket(
+pure fn
+expressions::internal::word_has_malformed_glob_bracket(
     const Word &word) wontthrow -> bool
 {
   let state = bracket_scan_state::Outside;
@@ -1866,37 +1975,41 @@ pure fn expressions::internal::word_has_malformed_glob_bracket(
   return state == bracket_scan_state::InsideClass;
 }
 
-fn analyze_ast(const Expression *root, StringView source,
-               const HashSet &known_functions, const HashSet &known_aliases,
-               EvalContext *eval_context, const analysis_options &options,
-               const analysis_directives &directives,
-               const analysis_followed_sources &followed_sources,
-               const analysis_parent_link &parent,
-               const analysis_outputs &outputs,
-               AnalysisSourceProvider *source_provider,
-               AnalysisUnitStream *unit_stream,
-               const parsed_format_document *format_document) throws -> bool
+fn
+analyze_ast(const Expression                *root,
+            StringView                       source,
+            const HashSet                   &known_functions,
+            const HashSet                   &known_aliases,
+            EvalContext                     *eval_context,
+            const analysis_options          &options,
+            const analysis_directives       &directives,
+            const analysis_followed_sources &followed_sources,
+            const analysis_parent_link      &parent,
+            const analysis_outputs          &outputs,
+            AnalysisSourceProvider          *source_provider,
+            AnalysisUnitStream              *unit_stream,
+            const parsed_format_document    *format_document) throws -> bool
 {
   ASSERT(root != nullptr || unit_stream != nullptr);
 
   let const parent_analysis_context = parent.context;
-  let const symbol_records = outputs.symbol_records;
-  let const source_effects = parent.source_effects;
+  let const symbol_records          = outputs.symbol_records;
+  let const source_effects          = parent.source_effects;
 
   AnalysisContext actx{source, options};
   actx.is_koshkit_utility_reachable =
       eval_context != nullptr
           ? eval_context->runtime_state().koshkit_utilities_are_reachable()
           : options.is_default_mood;
-  actx.reporter.suppressions = &directives.shellcheck_suppressions;
-  actx.reporter.source_name_index = directives.source_name_index;
-  actx.format_document = format_document;
-  actx.eval_context = eval_context;
-  actx.followed_source_paths = followed_sources.paths;
+  actx.reporter.suppressions         = &directives.shellcheck_suppressions;
+  actx.reporter.source_name_index    = directives.source_name_index;
+  actx.format_document               = format_document;
+  actx.eval_context                  = eval_context;
+  actx.followed_source_paths         = followed_sources.paths;
   actx.followed_source_effects_cache = followed_sources.effects_cache;
-  actx.reporter.sink = outputs.diagnostic_sink;
-  actx.source_provider = source_provider;
-  actx.symbol_records = symbol_records;
+  actx.reporter.sink                 = outputs.diagnostic_sink;
+  actx.source_provider               = source_provider;
+  actx.symbol_records                = symbol_records;
   if (parent_analysis_context != nullptr) {
     actx.effects.has_seen_runtime_definer =
         parent_analysis_context->effects.has_seen_runtime_definer;
@@ -2014,8 +2127,9 @@ namespace expressions {
 
 using namespace internal;
 
-pure fn internal::analysis_source_text(const AnalysisContext &actx,
-                                       const SourceLocation &location) wontthrow
+pure fn
+internal::analysis_source_text(const AnalysisContext &actx,
+                               const SourceLocation  &location) wontthrow
     -> StringView
 {
   if (location.position > actx.source.length ||
@@ -2027,8 +2141,8 @@ pure fn internal::analysis_source_text(const AnalysisContext &actx,
   return actx.source.substring_of_length(location.position, location.length);
 }
 
-pure fn classify_assignment_builtin(StringView name) wontthrow
-    -> assignment_builtin
+pure fn
+classify_assignment_builtin(StringView name) wontthrow -> assignment_builtin
 {
   static constexpr static_string_entry<assignment_builtin> ENTRIES[] = {
       {SSK("declare"),  assignment_builtin::Declare },
@@ -2042,8 +2156,9 @@ pure fn classify_assignment_builtin(StringView name) wontthrow
   return ASSIGNMENT_BUILTINS.find(name).value_or(assignment_builtin::None);
 }
 
-pure fn internal::expansion_location_with_sigil(
-    const AnalysisContext &actx, SourceLocation location) wontthrow
+pure fn
+internal::expansion_location_with_sigil(const AnalysisContext &actx,
+                                        SourceLocation location) wontthrow
     -> SourceLocation
 {
   if (location.length == 0) return location;
@@ -2053,7 +2168,7 @@ pure fn internal::expansion_location_with_sigil(
     return location;
   }
 
-  usize start = location.position;
+  usize start  = location.position;
   usize length = location.length;
 
   if (start >= 2 && actx.source[start - 1] == '{' &&
@@ -2077,9 +2192,10 @@ pure fn internal::expansion_location_with_sigil(
   return SourceLocation{start, length, location.source_name_index};
 }
 
-fn internal::note_variable_reference(AnalysisContext &actx,
-                                     const WordSegment &segment,
-                                     SourceLocation fallback_location) throws
+fn
+internal::note_variable_reference(AnalysisContext   &actx,
+                                  const WordSegment &segment,
+                                  SourceLocation     fallback_location) throws
     -> void
 {
   let const segment_location =
@@ -2092,7 +2208,7 @@ fn internal::note_variable_reference(AnalysisContext &actx,
   actx.note_positional_reference(segment.text.view(), expansion_location);
 }
 
-internal::AnalysisScopeGuard::AnalysisScopeGuard(AnalysisContext &actx,
+internal::AnalysisScopeGuard::AnalysisScopeGuard(AnalysisContext    &actx,
                                                  analysis_scope_mode mode)
     : m_actx{actx}, m_mode{mode},
       m_occurrences{mode == analysis_scope_mode::Substitution
@@ -2104,8 +2220,8 @@ internal::AnalysisScopeGuard::AnalysisScopeGuard(AnalysisContext &actx,
       m_was_inside_subshell_analysis{actx.walk.is_inside_subshell_analysis}
 {
   if (mode == analysis_scope_mode::Substitution) {
-    m_constants = steal(actx.constant_variables);
-    actx.constant_variables = StringMap<String>{heap_allocator()};
+    m_constants                           = steal(actx.constant_variables);
+    actx.constant_variables               = StringMap<String>{heap_allocator()};
     actx.walk.is_inside_subshell_analysis = true;
 
     return;
@@ -2118,18 +2234,18 @@ internal::AnalysisScopeGuard::AnalysisScopeGuard(AnalysisContext &actx,
   case analysis_scope_mode::Substitution: break;
 
   case analysis_scope_mode::Subshell:
-    m_constants = steal(actx.constant_variables);
+    m_constants                           = steal(actx.constant_variables);
     actx.walk.is_inside_subshell_analysis = true;
     break;
 
   case analysis_scope_mode::Function:
-    m_constants = steal(actx.constant_variables);
-    m_function_local_names = steal(actx.function_local_names);
-    actx.occurrences = variable_occurrence_pair{};
-    m_loop_body_depth = actx.loop_body_depth;
-    actx.loop_body_depth = 0;
-    m_conditional_branch_depth = actx.conditional_branch_depth;
-    actx.conditional_branch_depth = 0;
+    m_constants                        = steal(actx.constant_variables);
+    m_function_local_names             = steal(actx.function_local_names);
+    actx.occurrences                   = variable_occurrence_pair{};
+    m_loop_body_depth                  = actx.loop_body_depth;
+    actx.loop_body_depth               = 0;
+    m_conditional_branch_depth         = actx.conditional_branch_depth;
+    actx.conditional_branch_depth      = 0;
     m_active_function_definition_index = actx.active_function_definition_index;
     actx.function_scope_depth++;
     break;
@@ -2138,11 +2254,12 @@ internal::AnalysisScopeGuard::AnalysisScopeGuard(AnalysisContext &actx,
 
 internal::AnalysisScopeGuard::~AnalysisScopeGuard() { leave(); }
 
-fn internal::AnalysisScopeGuard::leave() throws -> void
+fn
+internal::AnalysisScopeGuard::leave() throws -> void
 {
   if (m_mode == analysis_scope_mode::Substitution) {
     m_actx.walk.is_inside_subshell_analysis = m_was_inside_subshell_analysis;
-    m_actx.constant_variables = steal(m_constants);
+    m_actx.constant_variables               = steal(m_constants);
 
     return;
   }
@@ -2157,24 +2274,25 @@ fn internal::AnalysisScopeGuard::leave() throws -> void
   case analysis_scope_mode::Substitution: m_actx.effects = m_effects; break;
 
   case analysis_scope_mode::Subshell:
-    m_actx.effects = m_effects;
+    m_actx.effects                          = m_effects;
     m_actx.walk.is_inside_subshell_analysis = m_was_inside_subshell_analysis;
-    m_actx.constant_variables = steal(m_constants);
+    m_actx.constant_variables               = steal(m_constants);
     break;
 
   case analysis_scope_mode::Function:
     m_actx.function_scope_depth--;
     m_actx.active_function_definition_index =
         m_active_function_definition_index;
-    m_actx.loop_body_depth = m_loop_body_depth;
+    m_actx.loop_body_depth          = m_loop_body_depth;
     m_actx.conditional_branch_depth = m_conditional_branch_depth;
-    m_actx.function_local_names = steal(m_function_local_names);
-    m_actx.constant_variables = steal(m_constants);
+    m_actx.function_local_names     = steal(m_function_local_names);
+    m_actx.constant_variables       = steal(m_constants);
     break;
   }
 }
 
-static fn body_is_bare_file_read(const Expression *ast) wontthrow -> bool
+static fn
+body_is_bare_file_read(const Expression *ast) wontthrow -> bool
 {
   let const *list = ast->as_compound_list();
   let const *command =
@@ -2190,7 +2308,8 @@ static fn body_is_bare_file_read(const Expression *ast) wontthrow -> bool
   return simple->redirections()[0].kind == Redirection::Kind::ReadInput;
 }
 
-static fn is_plain_substitution_word(const Token *token) throws -> bool
+static fn
+is_plain_substitution_word(const Token *token) throws -> bool
 {
   if (token == nullptr || token->kind() != Token::Kind::Word) {
     return false;
@@ -2216,8 +2335,9 @@ static fn is_plain_substitution_word(const Token *token) throws -> bool
   return true;
 }
 
-static fn is_trivial_substitution_body(const AnalysisContext &actx,
-                                       const Expression *ast) throws -> bool
+static fn
+is_trivial_substitution_body(const AnalysisContext &actx,
+                             const Expression      *ast) throws -> bool
 {
   let const *list = ast->as_compound_list();
   let const *command =
@@ -2293,11 +2413,12 @@ static fn is_trivial_substitution_body(const AnalysisContext &actx,
   return true;
 }
 
-static fn analyze_substitution_body(AnalysisContext &actx,
-                                    const lexer::nested_substitution &body,
-                                    const SourceLocation &location,
-                                    bool is_subshell,
-                                    bool is_unconditional) throws -> void
+static fn
+analyze_substitution_body(AnalysisContext                  &actx,
+                          const lexer::nested_substitution &body,
+                          const SourceLocation             &location,
+                          bool                              is_subshell,
+                          bool is_unconditional) throws -> void
 {
   if (!body.is_exact ||
       actx.substitution_analysis_depth >= lexer::MAX_SUBSTITUTION_NESTING_DEPTH)
@@ -2305,61 +2426,63 @@ static fn analyze_substitution_body(AnalysisContext &actx,
     return;
   }
 
-  let &arena = actx.substitution_arena;
+  let      &arena      = actx.substitution_arena;
   let const arena_mark = arena.mark();
   defer { arena.release(arena_mark); };
   actx.substitution_analysis_depth++;
   defer { actx.substitution_analysis_depth--; };
 
-  let const mood = actx.eval_context != nullptr
-                       ? actx.eval_context->runtime_state().get_mood()
-                       : mimic_mood::Default;
-  let nested_lexer = Lexer{
+  let const mood         = actx.eval_context != nullptr
+                               ? actx.eval_context->runtime_state().get_mood()
+                               : mimic_mood::Default;
+  let       nested_lexer = Lexer{
       actx.source.substring_of_length(0, body.body_position + body.body_length),
       arena, source_name_at(location.source_name_index), mood};
   nested_lexer.set_start_position(body.body_position);
-  let nested_parser = Parser{steal(nested_lexer)};
-  let parse_errors = ArrayList<String>{heap_allocator()};
+  let        nested_parser = Parser{steal(nested_lexer)};
+  let        parse_errors  = ArrayList<String>{heap_allocator()};
   let const *ast = nested_parser.construct_ast(parse_errors, nullptr, nullptr);
   if (!parse_errors.is_empty()) return;
 
-  let const was_direct_pipeline_stage = actx.walk.is_direct_pipeline_stage;
-  let const was_analyzing_condition = actx.walk.is_analyzing_condition;
+  let const was_direct_pipeline_stage  = actx.walk.is_direct_pipeline_stage;
+  let const was_analyzing_condition    = actx.walk.is_analyzing_condition;
   let const was_bare_read_substitution = actx.walk.is_bare_read_substitution;
   let const was_inside_substitution_subshell =
       actx.walk.is_inside_substitution_subshell;
-  let const saved_getopts = actx.active_getopts;
-  top_level_sibling_carry *const saved_carry = actx.stream_sibling_carry;
-  actx.walk.is_direct_pipeline_stage = false;
-  actx.walk.is_analyzing_condition = false;
-  actx.stream_sibling_carry = nullptr;
-  actx.walk.is_bare_read_substitution = body_is_bare_file_read(ast);
+  let const                      saved_getopts = actx.active_getopts;
+  top_level_sibling_carry *const saved_carry   = actx.stream_sibling_carry;
+  actx.walk.is_direct_pipeline_stage           = false;
+  actx.walk.is_analyzing_condition             = false;
+  actx.stream_sibling_carry                    = nullptr;
+  actx.walk.is_bare_read_substitution          = body_is_bare_file_read(ast);
   actx.walk.is_inside_substitution_subshell =
       is_subshell || was_inside_substitution_subshell;
 
   if (is_subshell) {
-    let const mode = is_trivial_substitution_body(actx, ast)
-                         ? analysis_scope_mode::Substitution
-                         : analysis_scope_mode::Subshell;
-    let scope = AnalysisScopeGuard{actx, mode};
+    let const mode  = is_trivial_substitution_body(actx, ast)
+                          ? analysis_scope_mode::Substitution
+                          : analysis_scope_mode::Subshell;
+    let       scope = AnalysisScopeGuard{actx, mode};
     ast->analyze(actx, is_unconditional);
   } else {
     ast->analyze(actx, is_unconditional);
   }
 
   actx.walk.is_inside_substitution_subshell = was_inside_substitution_subshell;
-  actx.walk.is_bare_read_substitution = was_bare_read_substitution;
-  actx.stream_sibling_carry = saved_carry;
-  actx.active_getopts = saved_getopts;
-  actx.walk.is_analyzing_condition = was_analyzing_condition;
-  actx.walk.is_direct_pipeline_stage = was_direct_pipeline_stage;
+  actx.walk.is_bare_read_substitution       = was_bare_read_substitution;
+  actx.stream_sibling_carry                 = saved_carry;
+  actx.active_getopts                       = saved_getopts;
+  actx.walk.is_analyzing_condition          = was_analyzing_condition;
+  actx.walk.is_direct_pipeline_stage        = was_direct_pipeline_stage;
 }
 
-fn internal::analyze_region_substitutions(AnalysisContext &actx,
-                                          const SourceLocation &location,
-                                          usize region_position,
-                                          usize region_length, bool is_heredoc,
-                                          bool is_unconditional) throws -> void
+fn
+internal::analyze_region_substitutions(AnalysisContext      &actx,
+                                       const SourceLocation &location,
+                                       usize                 region_position,
+                                       usize                 region_length,
+                                       bool                  is_heredoc,
+                                       bool is_unconditional) throws -> void
 {
   if (region_position > actx.source.length ||
       region_length > actx.source.length - region_position)
@@ -2374,9 +2497,11 @@ fn internal::analyze_region_substitutions(AnalysisContext &actx,
     analyze_substitution_body(actx, body, location, true, is_unconditional);
 }
 
-fn internal::analyze_word_substitutions(AnalysisContext &actx, const Word &word,
-                                        const SourceLocation &location,
-                                        bool is_unconditional) throws -> void
+fn
+internal::analyze_word_substitutions(AnalysisContext      &actx,
+                                     const Word           &word,
+                                     const SourceLocation &location,
+                                     bool is_unconditional) throws -> void
 {
   for (let const &segment : word.segments) {
     switch (segment.kind) {
@@ -2424,9 +2549,10 @@ fn internal::analyze_word_substitutions(AnalysisContext &actx, const Word &word,
   }
 }
 
-fn internal::analyze_token_substitutions(AnalysisContext &actx,
-                                         const Token *token,
-                                         bool is_unconditional) throws -> void
+fn
+internal::analyze_token_substitutions(AnalysisContext &actx,
+                                      const Token     *token,
+                                      bool is_unconditional) throws -> void
 {
   if (token == nullptr) return;
 
@@ -2445,17 +2571,22 @@ fn internal::analyze_token_substitutions(AnalysisContext &actx,
       token->source_location(), is_unconditional);
 }
 
-fn internal::analyze_token_list_substitutions(
-    AnalysisContext &actx, const ArrayList<const Token *> &tokens,
-    bool is_unconditional) throws -> void
+fn
+internal::analyze_token_list_substitutions(
+    AnalysisContext                &actx,
+    const ArrayList<const Token *> &tokens,
+    bool                            is_unconditional) throws -> void
 {
   for (let const *token : tokens)
     analyze_token_substitutions(actx, token, is_unconditional);
 }
 
-fn internal::analyze_redirection_substitutions(
-    AnalysisContext &actx, const Redirection &redirection,
-    const SourceLocation &node_location, bool is_unconditional) throws -> void
+fn
+internal::analyze_redirection_substitutions(AnalysisContext      &actx,
+                                            const Redirection    &redirection,
+                                            const SourceLocation &node_location,
+                                            bool is_unconditional) throws
+    -> void
 {
   analyze_token_substitutions(actx, redirection.target, is_unconditional);
   if (redirection.fd_allocation_name_token != nullptr) {
@@ -2494,8 +2625,8 @@ fn internal::analyze_redirection_substitutions(
                                true, is_unconditional);
 }
 
-pure fn internal::location_spanning(SourceLocation first,
-                                    SourceLocation last) wontthrow
+pure fn
+internal::location_spanning(SourceLocation first, SourceLocation last) wontthrow
     -> SourceLocation
 {
   if (first.length == 0) return last;
@@ -2507,8 +2638,10 @@ pure fn internal::location_spanning(SourceLocation first,
                         first.source_name_index};
 }
 
-pure fn internal::arithmetic_reads_external_input(
-    const AnalysisContext &actx, StringView expression) wontthrow -> bool
+pure fn
+internal::arithmetic_reads_external_input(const AnalysisContext &actx,
+                                          StringView expression) wontthrow
+    -> bool
 {
   for (usize position = 0; position < expression.length;) {
     if (!lexer::is_variable_name_start(expression[position])) {
@@ -2530,8 +2663,10 @@ pure fn internal::arithmetic_reads_external_input(
   return false;
 }
 
-IfStatement::IfStatement(SourceLocation location, const Expression *condition,
-                         const Expression *then, const Expression *otherwise)
+IfStatement::IfStatement(SourceLocation    location,
+                         const Expression *condition,
+                         const Expression *then,
+                         const Expression *otherwise)
     : Expression(steal(location)), m_condition(condition), m_then(then),
       m_otherwise(otherwise)
 {
@@ -2541,8 +2676,8 @@ IfStatement::IfStatement(SourceLocation location, const Expression *condition,
 
 IfStatement::~IfStatement() = default;
 
-hot fn IfStatement::evaluate_impl(EvalContext &cxt,
-                                  root_evaluation_mode) const throws
+hot fn
+IfStatement::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws
     -> status_result
 {
   ASSERT(m_condition != nullptr);
@@ -2563,14 +2698,19 @@ hot fn IfStatement::evaluate_impl(EvalContext &cxt,
   return 0;
 }
 
-cold fn IfStatement::to_string() const throws -> String { return "If"; }
+cold fn
+IfStatement::to_string() const throws -> String
+{
+  return "If";
+}
 
-cold fn IfStatement::to_ast_string(usize layer) const throws -> String
+cold fn
+IfStatement::to_ast_string(usize layer) const throws -> String
 {
   ASSERT(m_condition != nullptr);
   ASSERT(m_then != nullptr);
 
-  let s = String{heap_allocator()};
+  let       s   = String{heap_allocator()};
   let const pad = indent_for_layer(layer);
 
   s += pad + "[If]\n";
@@ -2589,33 +2729,40 @@ cold fn IfStatement::to_ast_string(usize layer) const throws -> String
 
 Command::Command(SourceLocation location) : Expression(steal(location)) {}
 
-fn Command::make_async() wontthrow -> void
+fn
+Command::make_async() wontthrow -> void
 {
   set_execution_flag(ExecutionFlag::Async);
 }
 
-pure fn Command::is_async() const wontthrow -> bool
+pure fn
+Command::is_async() const wontthrow -> bool
 {
   return has_execution_flag(ExecutionFlag::Async);
 }
 
-fn Command::append_ast_execution_flags(String &label) const throws -> void
+fn
+Command::append_ast_execution_flags(String &label) const throws -> void
 {
   if (is_async()) label += ", Async";
 }
 
-fn Command::set_negated() wontthrow -> void
+fn
+Command::set_negated() wontthrow -> void
 {
   set_execution_flag(ExecutionFlag::Negated);
 }
 
-pure fn Command::is_negated() const wontthrow -> bool
+pure fn
+Command::is_negated() const wontthrow -> bool
 {
   return has_execution_flag(ExecutionFlag::Negated);
 }
 
-fn Command::set_timed(SourceLocation location, time_format_mode format,
-                      time_rss_mode rss) wontthrow -> void
+fn
+Command::set_timed(SourceLocation   location,
+                   time_format_mode format,
+                   time_rss_mode    rss) wontthrow -> void
 {
   set_execution_flag(ExecutionFlag::Timed);
   set_execution_flag(ExecutionFlag::TimePosixFormat,
@@ -2625,12 +2772,14 @@ fn Command::set_timed(SourceLocation location, time_format_mode format,
   m_time_position = location.position;
 }
 
-pure fn Command::is_timed() const wontthrow -> bool
+pure fn
+Command::is_timed() const wontthrow -> bool
 {
   return has_execution_flag(ExecutionFlag::Timed);
 }
 
-pure fn Command::time_location() const wontthrow -> SourceLocation
+pure fn
+Command::time_location() const wontthrow -> SourceLocation
 {
   constexpr usize TIME_KEYWORD_LENGTH = 4;
 
@@ -2638,47 +2787,63 @@ pure fn Command::time_location() const wontthrow -> SourceLocation
                         source_location().source_name_index};
 }
 
-pure fn Command::get_time_format_mode() const wontthrow -> time_format_mode
+pure fn
+Command::get_time_format_mode() const wontthrow -> time_format_mode
 {
   return has_execution_flag(ExecutionFlag::TimePosixFormat)
              ? time_format_mode::Posix
              : time_format_mode::Default;
 }
 
-pure fn Command::get_time_rss_mode() const wontthrow -> time_rss_mode
+pure fn
+Command::get_time_rss_mode() const wontthrow -> time_rss_mode
 {
   return has_execution_flag(ExecutionFlag::TimeReportRss)
              ? time_rss_mode::Include
              : time_rss_mode::Omit;
 }
 
-fn Command::set_local_vars(ArrayList<PrefixAssignment> &&vars) throws -> void
+fn
+Command::set_local_vars(ArrayList<PrefixAssignment> &&vars) throws -> void
 {
   m_local_vars.fill(steal(vars));
 }
 
-pure fn Command::local_vars() const wontthrow
-    -> const SparseList<PrefixAssignment> &
+pure fn
+Command::local_vars() const wontthrow -> const SparseList<PrefixAssignment> &
 {
   return m_local_vars;
 }
 
-fn Command::is_assignment() const wontthrow -> bool { return false; }
+fn
+Command::is_assignment() const wontthrow -> bool
+{
+  return false;
+}
 
 DummyExpression::DummyExpression(SourceLocation location)
     : Expression(steal(location))
 {}
 
-fn DummyExpression::is_dummy() const wontthrow -> bool { return true; }
+fn
+DummyExpression::is_dummy() const wontthrow -> bool
+{
+  return true;
+}
 
-fn DummyExpression::evaluate_impl(EvalContext &cxt,
-                                  root_evaluation_mode) const throws
+fn
+DummyExpression::evaluate_impl(EvalContext &cxt,
+                               root_evaluation_mode) const throws
     -> status_result
 {
   SET_AND_RETURN_EXIT_STATUS(cxt, 0);
 }
 
-cold fn DummyExpression::to_string() const throws -> String { return "Dummy"; }
+cold fn
+DummyExpression::to_string() const throws -> String
+{
+  return "Dummy";
+}
 
 } /* namespace expressions */
 

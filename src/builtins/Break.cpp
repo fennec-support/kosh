@@ -22,8 +22,10 @@ REGISTER_BUILTIN_FLAGS(Break);
 
 namespace koshka {
 
-static fn report_break_out_of_range(const ExecContext &ec, EvalContext &cxt,
-                                    StringView count) throws -> void
+static fn
+report_break_out_of_range(const ExecContext &ec,
+                          EvalContext       &cxt,
+                          StringView         count) throws -> void
 {
   let message = String{cxt.scratch_allocator()};
   message += "break count '";
@@ -43,7 +45,8 @@ static fn report_break_out_of_range(const ExecContext &ec, EvalContext &cxt,
   }
 }
 
-fn Break::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
+fn
+Break::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   ASSERT(!ec.args().is_empty());
 

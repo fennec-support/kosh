@@ -27,14 +27,16 @@ enum class trap_condition_mode : u8
   Posix,
 };
 
-pure fn signal_name_is_unblockable(StringView bare) wontthrow -> bool
+pure fn
+signal_name_is_unblockable(StringView bare) wontthrow -> bool
 {
   return bare == "KILL" || bare == "STOP";
 }
 
-fn check_trap_condition_operands(AnalysisContext &actx,
-                                 const ArrayList<const Token *> &args,
-                                 trap_condition_mode mode) throws -> void
+fn
+check_trap_condition_operands(AnalysisContext                &actx,
+                              const ArrayList<const Token *> &args,
+                              trap_condition_mode mode) throws -> void
 {
   let const is_posix = mode == trap_condition_mode::Posix;
 
@@ -73,7 +75,7 @@ fn check_trap_condition_operands(AnalysisContext &actx,
       continue;
     }
 
-    let uppercase = String{heap_allocator()};
+    let uppercase     = String{heap_allocator()};
     let has_lowercase = false;
 
     for (usize position = 0; position < view.length; position++) {
@@ -115,11 +117,12 @@ fn check_trap_condition_operands(AnalysisContext &actx,
 
 } /* namespace */
 
-fn check_command_name_lints(AnalysisContext &actx,
-                            const command_lint_input &input) throws -> void
+fn
+check_command_name_lints(AnalysisContext          &actx,
+                         const command_lint_input &input) throws -> void
 {
-  let const &args = input.args;
-  let const location = input.command_location();
+  let const &args     = input.args;
+  let const  location = input.command_location();
 
   if (input.is_in_group(COMMAND_GROUP_TEST)) {
     for (usize i = 1; i < args.count(); i++) {
@@ -162,7 +165,7 @@ fn check_command_name_lints(AnalysisContext &actx,
       let const flag = static_cast<const tokens::WordToken *>(args[1])
                            ->word()
                            .to_literal_string();
-      let const view = flag.view();
+      let const                        view             = flag.view();
       static constexpr PackedStringKey ECHO_FLAG_KEYS[] = {
           SSK("-e"), SSK("-n"), SSK("-E"), SSK("-ne"), SSK("-en")};
       static constexpr StaticStringSet ECHO_FLAGS{ECHO_FLAG_KEYS};
@@ -205,7 +208,7 @@ fn check_command_name_lints(AnalysisContext &actx,
       actx.report_diagnostic(diagnostic_id::sc3030, location,
                              {input.command_literal});
 
-    let filled_name_index = args.count();
+    let filled_name_index          = args.count();
     let should_skip_option_operand = false;
 
     for (usize i = 1; i < args.count(); i++) {
@@ -265,9 +268,9 @@ fn check_command_name_lints(AnalysisContext &actx,
     if (!word_is_fully_literal(optstring_word)) break;
     if (!word_is_fully_literal(name_word)) break;
 
-    actx.active_getopts.optstring = optstring_word.segments[0].text.view();
+    actx.active_getopts.optstring     = optstring_word.segments[0].text.view();
     actx.active_getopts.variable_name = name_word.segments[0].text.view();
-    actx.active_getopts.location = args[1]->source_location();
+    actx.active_getopts.location      = args[1]->source_location();
     break;
   }
 
@@ -287,7 +290,7 @@ fn check_command_name_lints(AnalysisContext &actx,
   case command_name_id::Set:
     if (args.count() >= 2) {
       let const literal = args[1]->raw_string();
-      let const view = literal.view();
+      let const view    = literal.view();
       if (!view.is_empty() && view[0] != '-' && view[0] != '+') {
         let const target = operand_target_name(view);
         if (!target.is_empty() && target.length < view.length &&
@@ -425,8 +428,9 @@ fn check_command_name_lints(AnalysisContext &actx,
   }
 }
 
-fn check_command_value_lints(AnalysisContext &actx,
-                             const command_lint_input &input) throws -> void
+fn
+check_command_value_lints(AnalysisContext          &actx,
+                          const command_lint_input &input) throws -> void
 {
   if (input.is_command_shadowed) return;
 
@@ -434,7 +438,7 @@ fn check_command_value_lints(AnalysisContext &actx,
 
   if (input.is_in_group(COMMAND_GROUP_ASSIGNMENT_BUILTIN)) {
     let has_reported_substitution_value = false;
-    let has_array_declaration = false;
+    let has_array_declaration           = false;
 
     for (usize i = 1; i < args.count(); i++) {
       if (args[i]->kind() == Token::Kind::Assignment) {
@@ -519,8 +523,8 @@ fn check_command_value_lints(AnalysisContext &actx,
     for (usize i = 1; i < args.count(); i++) {
       if (args[i]->kind() != Token::Kind::Word) continue;
       let const &word = static_cast<const tokens::WordToken *>(args[i])->word();
-      let const literal = word.to_literal_string();
-      let const view = literal.view();
+      let const  literal = word.to_literal_string();
+      let const  view    = literal.view();
       if (view.length >= 1 && view[0] == '-') {
         if (view.find_character('F').has_value() ||
             view.starts_with(StringView{"--fixed-strings"}))
@@ -568,9 +572,9 @@ fn check_command_value_lints(AnalysisContext &actx,
       let const &operand =
           static_cast<const tokens::WordToken *>(args[1])->word();
       if (word_is_fully_literal(operand)) {
-        let const literal = operand.to_literal_string();
-        let const view = literal.view();
-        let is_in_range = view_is_integer_literal(view) && view[0] != '-';
+        let const literal     = operand.to_literal_string();
+        let const view        = literal.view();
+        let       is_in_range = view_is_integer_literal(view) && view[0] != '-';
         if (is_in_range) {
           let const parsed_code = view.to<i64>();
           is_in_range = !parsed_code.is_error() && parsed_code.value() <= 255;

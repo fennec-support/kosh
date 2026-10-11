@@ -20,7 +20,7 @@ namespace {
     SSK(name), { command_name_id::id, groups }                                 \
   }
 
-constexpr u32 NO_COMMAND_GROUP = 0;
+constexpr u32 NO_COMMAND_GROUP   = 0;
 constexpr u32 DECLARATION_GROUPS = COMMAND_GROUP_DECLARATION_BUILTIN |
                                    COMMAND_GROUP_ASSIGNMENT_BUILTIN |
                                    COMMAND_GROUP_VARIABLE_TARGET;
@@ -39,7 +39,8 @@ constexpr static_string_entry<analysis_command_info>
     ANALYSIS_COMMAND_ENTRIES[] = {
         C(".", Dot, COMMAND_GROUP_RUNTIME_DEFINER),
         C(":", Colon, COMMAND_GROUP_ENVIRONMENT_NEUTRAL),
-        C("[", SingleBracket,
+        C("[",
+          SingleBracket,
           BRACKET_GROUPS | COMMAND_GROUP_ENVIRONMENT_NEUTRAL),
         C("[[", DoubleBracket, BRACKET_GROUPS),
         C("alias", Alias, COMMAND_GROUP_RUNTIME_DEFINER),
@@ -63,7 +64,8 @@ constexpr static_string_entry<analysis_command_info>
         C("docker", Docker, COMMAND_GROUP_NAME_AS_VALUE),
         C("echo", Echo, NEUTRAL_READER_GROUPS),
         C("egrep", Egrep, COMMAND_GROUP_PATTERN_MATCHER),
-        C("eval", Eval,
+        C("eval",
+          Eval,
           COMMAND_GROUP_RUNTIME_DEFINER | COMMAND_GROUP_VARIABLE_PROBE),
         C("exec", Exec, NO_COMMAND_GROUP),
         C("exit", Exit, NO_COMMAND_GROUP),
@@ -74,7 +76,8 @@ constexpr static_string_entry<analysis_command_info>
         C("find", Find, NO_COMMAND_GROUP),
         C("getopts", Getopts, COMMAND_GROUP_VARIABLE_TARGET),
         C("git", Git, COMMAND_GROUP_NAME_AS_VALUE),
-        C("grep", Grep,
+        C("grep",
+          Grep,
           COMMAND_GROUP_PATTERN_MATCHER | COMMAND_GROUP_NAME_AS_VALUE),
         C("gt", Unknown, COMMAND_GROUP_HTML_ENTITY_TAIL),
         C("hostname", Hostname, VALUE_NAME_NEUTRAL_GROUPS),
@@ -127,7 +130,8 @@ constexpr StaticStringMap ANALYSIS_COMMANDS{ANALYSIS_COMMAND_ENTRIES};
 
 } /* namespace */
 
-fn get_analysis_command_info(StringView name) throws -> analysis_command_info
+fn
+get_analysis_command_info(StringView name) throws -> analysis_command_info
 {
   if (let const found = ANALYSIS_COMMANDS.find(name); found.has_value())
     return *found;

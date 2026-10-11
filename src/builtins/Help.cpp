@@ -18,7 +18,10 @@ HELP_SYNOPSIS_DECL("[-dms] [pattern ...]");
 HELP_DESCRIPTION_DECL(
     "The help builtin lists the builtins or displays the help for one.");
 
-FLAG(SHORT, Bool, 'd', "\0",
+FLAG(SHORT,
+     Bool,
+     'd',
+     "\0",
      "Display a short description instead of the full help.");
 FLAG(MANPAGE, Bool, 'm', "\0", "Display help in a manpage-style format.");
 FLAG(SUMMARY, Bool, 's', "\0", "Display only the usage synopsis.");
@@ -34,9 +37,11 @@ enum class help_synopsis_layout : u8
   Summary,
 };
 
-static fn append_help_synopsis(String &out, StringView name,
-                               const SynopsisList &synopsis,
-                               help_synopsis_layout layout) throws -> void
+static fn
+append_help_synopsis(String              &out,
+                     StringView           name,
+                     const SynopsisList  &synopsis,
+                     help_synopsis_layout layout) throws -> void
 {
   let const should_prefix_name = layout == help_synopsis_layout::Summary;
   if (should_prefix_name) {
@@ -56,7 +61,8 @@ static fn append_help_synopsis(String &out, StringView name,
   out.push('\n');
 }
 
-fn Help::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
+fn
+Help::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let operand_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};
   let const args = PARSE_BUILTIN_ARGS_WITH_LOCATIONS(ec, operand_locations);
@@ -79,8 +85,8 @@ fn Help::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   i32 status = 0;
 
   for (usize i = 1; i < args.count(); i++) {
-    let const &name = args[i];
-    let const resolved = search_builtin(name.view());
+    let const &name     = args[i];
+    let const  resolved = search_builtin(name.view());
     if (!resolved.has_value()) {
       report_soft_builtin_error(
           ec, cxt, get_operand_location(ec, operand_locations, i),
@@ -91,7 +97,7 @@ fn Help::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     }
 
     let const description = builtin_help_description(*resolved);
-    let const synopsis = builtin_help_synopsis(*resolved);
+    let const synopsis    = builtin_help_synopsis(*resolved);
     if (FLAG_SHORT.is_enabled()) {
       let out = String{cxt.scratch_allocator(), name.view()};
       out += " - ";
@@ -129,7 +135,7 @@ fn Help::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     forwarded.push(String{heap_allocator(), name.view()});
     forwarded.push(String{"--help"});
     let forwarded_locations = ArrayList<SourceLocation>{heap_allocator()};
-    let sub = ExecContext::make_from_resolved(
+    let sub                 = ExecContext::make_from_resolved(
         ec.source_location(), ResolvedCommand::from_builtin(*resolved),
         steal(forwarded), steal(forwarded_locations));
     execute_builtin(steal(sub), cxt);

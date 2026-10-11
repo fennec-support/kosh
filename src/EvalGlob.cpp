@@ -23,11 +23,15 @@ namespace koshka {
 
 namespace {
 
-fn name_matches_glob(StringView glob, StringView filename,
-                     const Bitset &glob_active, usize mask_offset,
-                     utils::extglob_mode mode, utils::glob_charset charset,
-                     Allocator allocator,
-                     os::case_sensitivity sensitivity) throws -> bool
+fn
+name_matches_glob(StringView           glob,
+                  StringView           filename,
+                  const Bitset        &glob_active,
+                  usize                mask_offset,
+                  utils::extglob_mode  mode,
+                  utils::glob_charset  charset,
+                  Allocator            allocator,
+                  os::case_sensitivity sensitivity) throws -> bool
 {
   if (sensitivity == os::case_sensitivity::Sensitive)
     return utils::glob_matches(glob, filename, glob_active, mask_offset, mode,
@@ -42,7 +46,8 @@ fn name_matches_glob(StringView glob, StringView filename,
 
 } /* namespace */
 
-fn EvalContext::get_glob_charset() const throws -> glob_charset
+fn
+EvalContext::get_glob_charset() const throws -> glob_charset
 {
   for (let const name : {"LC_ALL", "LC_CTYPE", "LANG"}) {
     let const value = get_variable_value(name);
@@ -57,10 +62,11 @@ fn EvalContext::get_glob_charset() const throws -> glob_charset
   return os::DEFAULT_LOCALE_IS_UTF8 ? glob_charset::Utf8 : glob_charset::Bytes;
 }
 
-hot fn EvalContext::get_glob_charset_for(StringView subject) const throws
+hot fn
+EvalContext::get_glob_charset_for(StringView subject) const throws
     -> glob_charset
 {
-  usize position = 0;
+  usize position    = 0;
   using byte_vector = u64 __attribute__((vector_size(16)));
 
   while (position + 4 * sizeof(byte_vector) <= subject.length) {
@@ -91,7 +97,8 @@ hot fn EvalContext::get_glob_charset_for(StringView subject) const throws
   return glob_charset::Bytes;
 }
 
-fn EvalContext::first_field_separator() const throws -> StringView
+fn
+EvalContext::first_field_separator() const throws -> StringView
 {
   let const separators = variable_store().field_separators();
   if (separators.is_empty()) return separators;
@@ -101,18 +108,19 @@ fn EvalContext::first_field_separator() const throws -> StringView
                                          get_glob_charset_for(separators)));
 }
 
-fn EvalContext::expand_path_once(const glob_field &field,
-                                 glob_expansion_mode expansion_mode) throws
+fn
+EvalContext::expand_path_once(const glob_field   &field,
+                              glob_expansion_mode expansion_mode) throws
     -> ArrayList<glob_field>
 {
-  let const scratch = scratch_allocator();
-  let expanded = ArrayList<glob_field>{scratch};
+  let const scratch  = scratch_allocator();
+  let       expanded = ArrayList<glob_field>{scratch};
 
   let const path = field.text.view();
   LOG(All, "scanning a directory for the glob component '%.*s'",
       static_cast<int>(path.length), path.data);
 
-  let const last_slash = field.text.find_last_character('/');
+  let const last_slash  = field.text.find_last_character('/');
   let const has_slashes = last_slash.has_value();
 
   let parent_dir = Path{};
@@ -124,8 +132,8 @@ fn EvalContext::expand_path_once(const glob_field &field,
     parent_dir = Path{StringView{"."}};
 
   let const stem_start = has_slashes ? *last_slash + 1 : 0;
-  let const has_glob = stem_start < path.length;
-  let glob = StringView{};
+  let const has_glob   = stem_start < path.length;
+  let       glob       = StringView{};
   if (has_glob) glob = path.substring(stem_start);
 
   let entries = Path::read_directory_typed(parent_dir);
@@ -160,11 +168,11 @@ fn EvalContext::expand_path_once(const glob_field &field,
         Path::DirectoryChild{String{".."}, Path::EntryKind::Directory});
   }
 
-  let const dotglob_is_on = is_shopt_enabled("dotglob");
-  let const nocaseglob_is_on = is_shopt_enabled("nocaseglob");
-  let const extglob = get_extglob_mode();
-  Maybe<glob_charset> locale_charset = None;
-  let const do_get_entry_charset = [&](StringView filename)
+  let const           dotglob_is_on        = is_shopt_enabled("dotglob");
+  let const           nocaseglob_is_on     = is_shopt_enabled("nocaseglob");
+  let const           extglob              = get_extglob_mode();
+  Maybe<glob_charset> locale_charset       = None;
+  let const           do_get_entry_charset = [&](StringView filename)
                                        throws -> glob_charset {
     if (get_glob_charset_for(filename) == glob_charset::Bytes) {
       return glob_charset::Bytes;
@@ -217,10 +225,10 @@ fn EvalContext::expand_path_once(const glob_field &field,
     return expanded;
   }
 
-  let should_include = ArrayList<bool>{scratch};
+  let should_include      = ArrayList<bool>{scratch};
   let uncertain_positions = ArrayList<usize>{scratch};
-  let uncertain_paths = ArrayList<Path>{scratch};
-  let uncertain_statuses = ArrayList<os::file_status>{scratch};
+  let uncertain_paths     = ArrayList<Path>{scratch};
+  let uncertain_statuses  = ArrayList<os::file_status>{scratch};
   should_include.reserve(entries->count());
   uncertain_positions.reserve(entries->count());
   uncertain_paths.reserve(entries->count());
@@ -268,8 +276,10 @@ fn EvalContext::expand_path_once(const glob_field &field,
   return expanded;
 }
 
-hot pure fn first_active_glob(StringView text, const Bitset &mask,
-                              extglob_mode mode) wontthrow -> Maybe<usize>
+hot pure fn
+first_active_glob(StringView    text,
+                  const Bitset &mask,
+                  extglob_mode  mode) wontthrow -> Maybe<usize>
 {
   let open_bracket = Maybe<usize>{};
 
@@ -303,13 +313,16 @@ namespace {
 
 constexpr usize GLOBSTAR_MAX_DEPTH = 256;
 
-fn collect_globstar_paths(const Path &dir, StringView relative,
-                          bool should_match_directories_only,
-                          bool should_match_dotfiles,
-                          bool should_list_symlinked_directories,
-                          bool should_include_base, usize depth,
-                          Allocator allocator, ArrayList<String> &out) throws
-    -> void
+fn
+collect_globstar_paths(const Path        &dir,
+                       StringView         relative,
+                       bool               should_match_directories_only,
+                       bool               should_match_dotfiles,
+                       bool               should_list_symlinked_directories,
+                       bool               should_include_base,
+                       usize              depth,
+                       Allocator          allocator,
+                       ArrayList<String> &out) throws -> void
 {
   LOG(All,
       "collecting globstar paths under the relative path '%.*s', depth %zu",
@@ -322,21 +335,21 @@ fn collect_globstar_paths(const Path &dir, StringView relative,
   let const entries = Path::read_directory_typed(dir);
   if (!entries.has_value()) return;
 
-  let is_directory = Bitset{allocator};
-  let is_symbolic_link = Bitset{allocator};
+  let is_directory        = Bitset{allocator};
+  let is_symbolic_link    = Bitset{allocator};
   let uncertain_positions = ArrayList<usize>{allocator};
-  let uncertain_paths = ArrayList<Path>{allocator};
-  let uncertain_statuses = ArrayList<os::file_status>{allocator};
+  let uncertain_paths     = ArrayList<Path>{allocator};
+  let uncertain_statuses  = ArrayList<os::file_status>{allocator};
   is_directory.reset(entries->count());
   is_symbolic_link.reset(entries->count());
 
   usize uncertain_count = 0;
-  usize unknown_count = 0;
+  usize unknown_count   = 0;
 
   for (usize index = 0; index < entries->count(); index++) {
     let const &entry = (*entries)[index];
-    let const name = entry.name.view();
-    let const should_skip =
+    let const  name  = entry.name.view();
+    let const  should_skip =
         !should_match_dotfiles && !name.is_empty() && name[0] == '.';
     switch (entry.kind) {
     case Path::EntryKind::Directory: is_directory.set(index); break;
@@ -351,7 +364,7 @@ fn collect_globstar_paths(const Path &dir, StringView relative,
       }
       break;
     case Path::EntryKind::Regular:
-    case Path::EntryKind::Other: break;
+    case Path::EntryKind::Other:   break;
     }
   }
 
@@ -361,16 +374,16 @@ fn collect_globstar_paths(const Path &dir, StringView relative,
 
   for (usize index = 0; index < entries->count(); index++) {
     let const &entry = (*entries)[index];
-    let const name = entry.name.view();
+    let const  name  = entry.name.view();
     if (!should_match_dotfiles && !name.is_empty() && name[0] == '.') {
       continue;
     }
     switch (entry.kind) {
     case Path::EntryKind::Symlink:
-    case Path::EntryKind::Unknown: break;
+    case Path::EntryKind::Unknown:   break;
     case Path::EntryKind::Directory:
     case Path::EntryKind::Regular:
-    case Path::EntryKind::Other: continue;
+    case Path::EntryKind::Other:     continue;
     }
 
     let child_path = dir;
@@ -390,8 +403,8 @@ fn collect_globstar_paths(const Path &dir, StringView relative,
                                                  uncertain_statuses[index]));
     }
 
-  let const lstat_results = lstat_batch.execute();
-  usize lstat_result_index = 0;
+  let const lstat_results      = lstat_batch.execute();
+  usize     lstat_result_index = 0;
 
   for (usize index = 0; index < uncertain_paths.count(); index++) {
     if ((*entries)[uncertain_positions[index]].kind != Path::EntryKind::Unknown)
@@ -423,7 +436,7 @@ fn collect_globstar_paths(const Path &dir, StringView relative,
 
   for (usize index = 0; index < entries->count(); index++) {
     let const &entry = (*entries)[index];
-    let const name = entry.name.view();
+    let const  name  = entry.name.view();
     if (!should_match_dotfiles && !name.is_empty() && name[0] == '.') {
       continue;
     }
@@ -455,11 +468,12 @@ fn collect_globstar_paths(const Path &dir, StringView relative,
 
 } /* namespace */
 
-fn EvalContext::expand_path_recurse(ArrayList<glob_field> fields) throws
+fn
+EvalContext::expand_path_recurse(ArrayList<glob_field> fields) throws
     -> ArrayList<glob_field>
 {
   let const scratch = scratch_allocator();
-  let result = ArrayList<glob_field>{scratch};
+  let       result  = ArrayList<glob_field>{scratch};
 
   let glob_indices = ArrayList<Maybe<usize>>{scratch};
   glob_indices.reserve(fields.count());
@@ -498,8 +512,8 @@ fn EvalContext::expand_path_recurse(ArrayList<glob_field> fields) throws
   }
 
   for (usize field_index = 0; field_index < fields.count(); field_index++) {
-    let &field = fields[field_index];
-    let const text = field.text.view();
+    let      &field      = fields[field_index];
+    let const text       = field.text.view();
     let const glob_index = glob_indices[field_index];
 
     if (!glob_index) {
@@ -527,7 +541,7 @@ fn EvalContext::expand_path_recurse(ArrayList<glob_field> fields) throws
         break;
       }
 
-    let const component_end = slash_after.value_or(text.length);
+    let const component_end         = slash_after.value_or(text.length);
     let const is_globstar_component = component_end - component_start == 2 &&
                                       text.data[component_start] == '*' &&
                                       text.data[component_start + 1] == '*' &&
@@ -538,7 +552,7 @@ fn EvalContext::expand_path_recurse(ArrayList<glob_field> fields) throws
     if (is_globstar_component) {
       LOG(All, "expanding a globstar component across directory levels");
       let const prefix = text.substring_of_length(0, component_start);
-      let base = Path{StringView{"."}};
+      let       base   = Path{StringView{"."}};
       if (component_start == 1)
         base = Path{StringView{"/"}};
       else if (component_start > 1)
@@ -571,8 +585,8 @@ fn EvalContext::expand_path_recurse(ArrayList<glob_field> fields) throws
         continue;
       }
 
-      let const suffix = text.substring(*slash_after + 1);
-      let rebuilt = ArrayList<glob_field>{scratch};
+      let const suffix  = text.substring(*slash_after + 1);
+      let       rebuilt = ArrayList<glob_field>{scratch};
 
       for (let const &relative : relatives) {
         let candidate = glob_field{scratch};
@@ -611,8 +625,8 @@ fn EvalContext::expand_path_recurse(ArrayList<glob_field> fields) throws
       continue;
     }
 
-    let const slash_offset = static_cast<std::ptrdiff_t>(*slash_after);
-    let directory_component = glob_field{scratch};
+    let const slash_offset        = static_cast<std::ptrdiff_t>(*slash_after);
+    let       directory_component = glob_field{scratch};
     directory_component.text.append(StringView{text.data, *slash_after});
 
     for (std::ptrdiff_t k = 0; k < slash_offset; k++)
@@ -651,9 +665,10 @@ fn EvalContext::expand_path_recurse(ArrayList<glob_field> fields) throws
   return result;
 }
 
-fn EvalContext::expand_tilde(WordSegment &leading_segment,
-                             bool is_word_continued,
-                             bool should_stop_at_colon) const throws -> void
+fn
+EvalContext::expand_tilde(WordSegment &leading_segment,
+                          bool         is_word_continued,
+                          bool should_stop_at_colon) const throws -> void
 {
   if (!leading_segment.is_tilde_candidate()) return;
 
@@ -691,8 +706,8 @@ fn EvalContext::expand_tilde(WordSegment &leading_segment,
   text.assign_copy(heap_allocator(), expanded.view());
 }
 
-fn EvalContext::resolve_tilde_prefix(StringView name) const throws
-    -> Maybe<String>
+fn
+EvalContext::resolve_tilde_prefix(StringView name) const throws -> Maybe<String>
 {
   if (name == "+" || name == "-") {
     return get_variable_value(name == "+" ? StringView{"PWD"}
@@ -708,16 +723,17 @@ fn EvalContext::resolve_tilde_prefix(StringView name) const throws
   return String{heap_allocator(), home->text().view()};
 }
 
-fn EvalContext::expand_colon_tildes(WordSegment &segment,
-                                    bool is_word_continued,
-                                    Maybe<usize> equals_position) const throws
+fn
+EvalContext::expand_colon_tildes(WordSegment &segment,
+                                 bool         is_word_continued,
+                                 Maybe<usize> equals_position) const throws
     -> void
 {
   if (!segment.is_tilde_candidate()) return;
-  let const view = segment.text.view();
-  let rewritten = String{heap_allocator()};
-  let was_changed = false;
-  usize i = 0;
+  let const view        = segment.text.view();
+  let       rewritten   = String{heap_allocator()};
+  let       was_changed = false;
+  usize     i           = 0;
 
   while (i < view.length) {
     let const is_separator = view[i] == ':' || (equals_position.has_value() &&
@@ -736,7 +752,7 @@ fn EvalContext::expand_colon_tildes(WordSegment &segment,
         if (let const directory = resolve_tilde_prefix(name)) {
           rewritten += view[i];
           rewritten.append(directory->view());
-          i = prefix_end;
+          i           = prefix_end;
           was_changed = true;
           continue;
         }
@@ -760,15 +776,17 @@ struct glob_ignore_pattern
   Bitset active;
 };
 
-fn parse_glob_ignore_patterns(StringView list, bool should_fold_case,
-                              Allocator allocator) throws
+fn
+parse_glob_ignore_patterns(StringView list,
+                           bool       should_fold_case,
+                           Allocator  allocator) throws
     -> ArrayList<glob_ignore_pattern>
 {
-  let patterns = ArrayList<glob_ignore_pattern>{allocator};
+  let   patterns    = ArrayList<glob_ignore_pattern>{allocator};
   usize entry_start = 0;
 
   while (entry_start <= list.length) {
-    let const rest = list.substring(entry_start);
+    let const rest  = list.substring(entry_start);
     let const colon = rest.find_character(':');
     let const entry =
         colon.has_value() ? rest.substring_of_length(0, *colon) : rest;
@@ -791,21 +809,23 @@ fn parse_glob_ignore_patterns(StringView list, bool should_fold_case,
   return patterns;
 }
 
-fn glob_ignore_segments_match(const glob_ignore_pattern &pattern,
-                              usize pattern_length, StringView text,
-                              extglob_mode mode, glob_charset charset) throws
-    -> bool
+fn
+glob_ignore_segments_match(const glob_ignore_pattern &pattern,
+                           usize                      pattern_length,
+                           StringView                 text,
+                           extglob_mode               mode,
+                           glob_charset               charset) throws -> bool
 {
-  let const pattern_text = pattern.text.view();
-  usize pattern_start = 0;
-  usize text_start = 0;
+  let const pattern_text  = pattern.text.view();
+  usize     pattern_start = 0;
+  usize     text_start    = 0;
 
   while (true) {
     let const pattern_rest = pattern_text.substring_of_length(
         pattern_start, pattern_length - pattern_start);
-    let const text_rest = text.substring(text_start);
+    let const text_rest     = text.substring(text_start);
     let const pattern_slash = pattern_rest.find_character('/');
-    let const text_slash = text_rest.find_character('/');
+    let const text_slash    = text_rest.find_character('/');
     let const pattern_segment =
         pattern_slash.has_value()
             ? pattern_rest.substring_of_length(0, *pattern_slash)
@@ -827,11 +847,13 @@ fn glob_ignore_segments_match(const glob_ignore_pattern &pattern,
   }
 }
 
-fn glob_ignore_pattern_matches(const glob_ignore_pattern &pattern,
-                               StringView path, extglob_mode mode,
-                               glob_charset charset) throws -> bool
+fn
+glob_ignore_pattern_matches(const glob_ignore_pattern &pattern,
+                            StringView                 path,
+                            extglob_mode               mode,
+                            glob_charset               charset) throws -> bool
 {
-  let const length = pattern.text.length();
+  let const length            = pattern.text.length();
   let const has_trailing_star = length > 0 && pattern.text[length - 1] == '*' &&
                                 pattern.active[length - 1];
   if (!has_trailing_star) {
@@ -852,8 +874,9 @@ fn glob_ignore_pattern_matches(const glob_ignore_pattern &pattern,
 
 } /* namespace */
 
-hot fn EvalContext::expand_path(glob_field field,
-                                const SourceLocation &location) throws
+hot fn
+EvalContext::expand_path(glob_field            field,
+                         const SourceLocation &location) throws
     -> SortedArrayList<String, order_comparator<String>>
 {
   let const scratch = scratch_allocator();
@@ -891,7 +914,7 @@ hot fn EvalContext::expand_path(glob_field field,
       has_glob_ignore ? parse_glob_ignore_patterns(glob_ignore_value->view(),
                                                    should_fold_case, scratch)
                       : ArrayList<glob_ignore_pattern>{scratch};
-  let const extglob = get_extglob_mode();
+  let const extglob       = get_extglob_mode();
   let const do_is_ignored = [&](StringView path) throws -> bool {
     let const last_slash = path.find_last_character('/');
     let const name =
@@ -959,11 +982,12 @@ hot fn EvalContext::expand_path(glob_field field,
   return steal(values).make_sorted(sort_order::ascending);
 }
 
-fn EvalContext::expand_glob_lenient(StringView pattern) throws
+fn
+EvalContext::expand_glob_lenient(StringView pattern) throws
     -> SortedArrayList<String, order_comparator<String>>
 {
   let const scratch = scratch_allocator();
-  let values = ArrayList<String>{scratch};
+  let       values  = ArrayList<String>{scratch};
 
   let field = glob_field{scratch};
   field.text.append(pattern);

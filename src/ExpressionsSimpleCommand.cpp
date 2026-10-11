@@ -31,8 +31,10 @@ namespace expressions {
 
 using namespace internal;
 
-static pure fn is_process_dynamic_name(StringView text, usize position,
-                                       bool is_bash_dynamic) wontthrow -> bool
+static pure fn
+is_process_dynamic_name(StringView text,
+                        usize      position,
+                        bool       is_bash_dynamic) wontthrow -> bool
 {
   if (!is_bash_dynamic) return false;
   if (position > 0 && lexer::is_variable_name(text[position - 1])) {
@@ -86,20 +88,27 @@ AssignCommand::AssignCommand(SourceLocation location, const Assignment *a)
 
 AssignCommand::~AssignCommand() = default;
 
-pure fn AssignCommand::assignment() const wontthrow -> const Assignment *
+pure fn
+AssignCommand::assignment() const wontthrow -> const Assignment *
 {
   return m_assignment;
 }
 
-fn AssignCommand::is_assignment() const wontthrow -> bool { return true; }
+fn
+AssignCommand::is_assignment() const wontthrow -> bool
+{
+  return true;
+}
 
-fn AssignCommand::as_assign_command() const wontthrow -> const AssignCommand *
+fn
+AssignCommand::as_assign_command() const wontthrow -> const AssignCommand *
 {
   return this;
 }
 
-fn AssignCommand::analyze(AnalysisContext &actx,
-                          bool is_unconditional) const throws -> void
+fn
+AssignCommand::analyze(AnalysisContext &actx,
+                       bool             is_unconditional) const throws -> void
 {
   ASSERT(m_assignment != nullptr);
 
@@ -270,9 +279,9 @@ fn AssignCommand::analyze(AnalysisContext &actx,
   }
 }
 
-hot fn AssignCommand::evaluate_impl(EvalContext &cxt,
-                                    root_evaluation_mode) const throws
-    -> status_result
+hot fn
+AssignCommand::evaluate_impl(EvalContext &cxt,
+                             root_evaluation_mode) const throws -> status_result
 {
   ASSERT(m_assignment != nullptr);
 
@@ -308,7 +317,8 @@ hot fn AssignCommand::evaluate_impl(EvalContext &cxt,
   return evaluate_assignment(cxt);
 }
 
-fn AssignCommand::evaluate_assignment(EvalContext &cxt) const throws -> i64
+fn
+AssignCommand::evaluate_assignment(EvalContext &cxt) const throws -> i64
 {
   let const scratch_mark = cxt.expansion_store().scratch_arena().mark();
   defer { cxt.expansion_store().scratch_arena().release(scratch_mark); };
@@ -331,7 +341,7 @@ fn AssignCommand::evaluate_assignment(EvalContext &cxt) const throws -> i64
     }
 
     let const key_view = m_assignment->key().view();
-    let const bracket = key_view.find_character('[');
+    let const bracket  = key_view.find_character('[');
     let const is_element_assignment =
         bracket.has_value() && key_view[key_view.length - 1] == ']';
     let assigned_name = is_element_assignment
@@ -374,7 +384,7 @@ fn AssignCommand::evaluate_assignment(EvalContext &cxt) const throws -> i64
 
     if (is_element_assignment) {
       let const array_name = key_view.substring_of_length(0, *bracket);
-      let const subscript = key_view.substring_of_length(
+      let const subscript  = key_view.substring_of_length(
           *bracket + 1, key_view.length - *bracket - 2);
       cxt.assign_array_element(array_name, subscript, value.view(),
                                m_assignment->get_update_mode());
@@ -445,7 +455,8 @@ fn AssignCommand::evaluate_assignment(EvalContext &cxt) const throws -> i64
   }
 }
 
-cold fn AssignCommand::to_string() const throws -> String
+cold fn
+AssignCommand::to_string() const throws -> String
 {
   let result = "Assign " + m_assignment->to_ast_string();
   append_ast_execution_flags(result);
@@ -453,7 +464,8 @@ cold fn AssignCommand::to_string() const throws -> String
   return result;
 }
 
-fn AssignCommand::can_evaluate_in_process_substitution(
+fn
+AssignCommand::can_evaluate_in_process_substitution(
     const EvalContext &cxt, HashSet &active_functions) const throws -> bool
 {
   unused(active_functions);
@@ -464,13 +476,13 @@ fn AssignCommand::can_evaluate_in_process_substitution(
              cxt.runtime_state().bash_dynamic_variables_enabled());
 }
 
-SimpleCommand::SimpleCommand(SourceLocation location,
+SimpleCommand::SimpleCommand(SourceLocation             location,
                              ArrayList<const Token *> &&args)
     : Command(steal(location)), m_args(steal(args))
 {
   if (!m_args.is_empty()) {
-    let const first = m_args[0]->source_location();
-    let const last = m_args.back()->source_location();
+    let const first     = m_args[0]->source_location();
+    let const last      = m_args.back()->source_location();
     m_location.position = first.position;
     m_location.length =
         static_cast<u32>(last.position + last.length - first.position);
@@ -480,12 +492,14 @@ SimpleCommand::SimpleCommand(SourceLocation location,
 
 SimpleCommand::~SimpleCommand() = default;
 
-fn SimpleCommand::set_full_source_end_position(usize position) wontthrow -> void
+fn
+SimpleCommand::set_full_source_end_position(usize position) wontthrow -> void
 {
   m_full_source_end_position = static_cast<u32>(position);
 }
 
-pure fn SimpleCommand::full_source_start_position() const wontthrow -> usize
+pure fn
+SimpleCommand::full_source_start_position() const wontthrow -> usize
 {
   let start_position = usize{m_location.position};
 
@@ -498,13 +512,13 @@ pure fn SimpleCommand::full_source_start_position() const wontthrow -> usize
   return start_position;
 }
 
-pure fn SimpleCommand::assignments_source_end_position() const wontthrow
-    -> usize
+pure fn
+SimpleCommand::assignments_source_end_position() const wontthrow -> usize
 {
   let end_position = source_end_position();
 
   for (let const &var : m_local_vars) {
-    let const location = var.get_location();
+    let const location         = var.get_location();
     let const var_end_position = usize{location.position} + location.length;
     if (var_end_position > end_position) end_position = var_end_position;
   }
@@ -518,7 +532,8 @@ pure fn SimpleCommand::assignments_source_end_position() const wontthrow
   return end_position;
 }
 
-pure fn SimpleCommand::full_source_end_position() const wontthrow -> usize
+pure fn
+SimpleCommand::full_source_end_position() const wontthrow -> usize
 {
   let const words_end_position = source_end_position();
 
@@ -527,7 +542,8 @@ pure fn SimpleCommand::full_source_end_position() const wontthrow -> usize
              : words_end_position;
 }
 
-fn SimpleCommand::can_evaluate_in_process_substitution(
+fn
+SimpleCommand::can_evaluate_in_process_substitution(
     const EvalContext &cxt, HashSet &active_functions) const throws -> bool
 {
   if (is_async() || is_timed() || !m_redirections.is_empty() ||
@@ -568,14 +584,16 @@ fn SimpleCommand::can_evaluate_in_process_substitution(
   return SAFE_BUILTINS.contains(*command_name);
 }
 
-fn SimpleCommand::set_redirections(ArrayList<Redirection> &&redirections) throws
+fn
+SimpleCommand::set_redirections(ArrayList<Redirection> &&redirections) throws
     -> void
 {
   m_redirections.fill(steal(redirections));
 }
 
-fn SimpleCommand::append_redirection(const Redirection &redirection,
-                                     Allocator allocator) throws -> void
+fn
+SimpleCommand::append_redirection(const Redirection &redirection,
+                                  Allocator          allocator) throws -> void
 {
   ArrayList<Redirection> redirections{allocator};
   redirections.reserve(m_redirections.count() + 1);
@@ -588,7 +606,8 @@ fn SimpleCommand::append_redirection(const Redirection &redirection,
   m_redirections.fill(steal(redirections));
 }
 
-fn SimpleCommand::set_array_args(
+fn
+SimpleCommand::set_array_args(
     ArrayList<array_builtin_assignment> &&array_args) throws -> void
 {
   m_array_args.fill(steal(array_args));
@@ -598,8 +617,9 @@ namespace {
 
 using expressions::Redirection;
 
-fn bind_nonstandard_fd(ArrayList<nonstandard_descriptor> &nonstandard,
-                       nonstandard_descriptor binding) throws -> void
+fn
+bind_nonstandard_fd(ArrayList<nonstandard_descriptor> &nonstandard,
+                    nonstandard_descriptor             binding) throws -> void
 {
   for (let &existing : nonstandard) {
     if (existing.target_fd != binding.target_fd) continue;
@@ -615,16 +635,18 @@ fn bind_nonstandard_fd(ArrayList<nonstandard_descriptor> &nonstandard,
   nonstandard.push(binding);
 }
 
-fn assign_redirected_fd(ExecContext &ec,
-                        ArrayList<nonstandard_descriptor> &nonstandard, i32 fd,
-                        os::descriptor file_fd,
-                        bool is_file_borrowed = false) throws -> void
+fn
+assign_redirected_fd(ExecContext                       &ec,
+                     ArrayList<nonstandard_descriptor> &nonstandard,
+                     i32                                fd,
+                     os::descriptor                     file_fd,
+                     bool is_file_borrowed = false) throws -> void
 {
   if (fd == 0) {
     if (ec.in_fd && !ec.is_in_fd_borrowed) {
       os::close_fd(*ec.in_fd);
     }
-    ec.in_fd = file_fd;
+    ec.in_fd             = file_fd;
     ec.is_in_fd_borrowed = is_file_borrowed;
 
     return;
@@ -634,7 +656,7 @@ fn assign_redirected_fd(ExecContext &ec,
     if (ec.out_fd && !ec.is_out_fd_borrowed) {
       os::close_fd(*ec.out_fd);
     }
-    ec.out_fd = file_fd;
+    ec.out_fd             = file_fd;
     ec.is_out_fd_borrowed = is_file_borrowed;
 
     return;
@@ -644,7 +666,7 @@ fn assign_redirected_fd(ExecContext &ec,
     if (ec.err_fd && !ec.is_err_fd_borrowed) {
       os::close_fd(*ec.err_fd);
     }
-    ec.err_fd = file_fd;
+    ec.err_fd             = file_fd;
     ec.is_err_fd_borrowed = is_file_borrowed;
 
     return;
@@ -656,11 +678,12 @@ fn assign_redirected_fd(ExecContext &ec,
 
 struct resolved_duplication
 {
-  i32 fd{-1};
+  i32           fd{-1};
   Maybe<String> both_streams_file{};
 };
 
-fn resolve_duplication(const Redirection &redir, EvalContext &cxt) throws
+fn
+resolve_duplication(const Redirection &redir, EvalContext &cxt) throws
     -> resolved_duplication
 {
   if (redir.target == nullptr)
@@ -696,8 +719,8 @@ fn resolve_duplication(const Redirection &redir, EvalContext &cxt) throws
 
 } /* namespace */
 
-static fn redirection_open_mode(Redirection::Kind kind,
-                                bool is_noclobber_set) wontthrow
+static fn
+redirection_open_mode(Redirection::Kind kind, bool is_noclobber_set) wontthrow
     -> os::file_open_mode
 {
   switch (kind) {
@@ -707,13 +730,14 @@ static fn redirection_open_mode(Redirection::Kind kind,
   case Redirection::Kind::TruncateOutputOverride:
     return os::file_open_mode::Truncate;
   case Redirection::Kind::AppendOutput: return os::file_open_mode::Append;
-  case Redirection::Kind::ReadWrite: return os::file_open_mode::ReadWrite;
-  case Redirection::Kind::ReadInput: return os::file_open_mode::Read;
-  default: unreachable("only a file-opening redirection has an open mode");
+  case Redirection::Kind::ReadWrite:    return os::file_open_mode::ReadWrite;
+  case Redirection::Kind::ReadInput:    return os::file_open_mode::Read;
+  default:                              unreachable("only a file-opening redirection has an open mode");
   }
 }
 
-static fn redirection_open_error(StringView path) throws -> String
+static fn
+redirection_open_error(StringView path) throws -> String
 {
   let const system_error = os::last_system_error_message();
   if (os::path_is_directory(path)) return String{"Is a directory"};
@@ -721,9 +745,10 @@ static fn redirection_open_error(StringView path) throws -> String
   return system_error;
 }
 
-wontreturn fn reject_restricted_output_redirection(
-    const Redirection &redir, const SourceLocation &fallback_location,
-    bool *open_or_stage_failed) throws -> void
+wontreturn fn
+reject_restricted_output_redirection(const Redirection    &redir,
+                                     const SourceLocation &fallback_location,
+                                     bool *open_or_stage_failed) throws -> void
 {
   if (open_or_stage_failed != nullptr) *open_or_stage_failed = true;
   throw ErrorWithLocation{
@@ -732,15 +757,16 @@ wontreturn fn reject_restricted_output_redirection(
       "Output redirection is forbidden in a restricted shell"};
 }
 
-static fn text_can_assign(StringView text) wontthrow -> bool
+static fn
+text_can_assign(StringView text) wontthrow -> bool
 {
   return text.find_character('=').has_value() ||
          view_contains(text, StringView{"++"}) ||
          view_contains(text, StringView{"--"});
 }
 
-static fn redirection_can_change_state(const Redirection &redir) wontthrow
-    -> bool
+static fn
+redirection_can_change_state(const Redirection &redir) wontthrow -> bool
 {
   if (redir.kind == Redirection::Kind::Heredoc) {
     if (!redir.should_expand_heredoc || redir.heredoc == nullptr) {
@@ -775,7 +801,8 @@ static fn redirection_can_change_state(const Redirection &redir) wontthrow
   return false;
 }
 
-pure fn internal::redirections_can_change_state(
+pure fn
+internal::redirections_can_change_state(
     const SparseList<Redirection> &redirections) wontthrow -> bool
 {
   for (let const &redir : redirections) {
@@ -785,7 +812,8 @@ pure fn internal::redirections_can_change_state(
   return false;
 }
 
-fn internal::snapshot_child_redirection_state(EvalContext &cxt) throws
+fn
+internal::snapshot_child_redirection_state(EvalContext &cxt) throws
     -> Maybe<eval_state_snapshot>
 {
   try {
@@ -795,7 +823,8 @@ fn internal::snapshot_child_redirection_state(EvalContext &cxt) throws
   }
 }
 
-fn internal::discard_child_redirection_state(
+fn
+internal::discard_child_redirection_state(
     EvalContext &cxt, Maybe<eval_state_snapshot> &snapshot) wontthrow -> void
 {
   if (!snapshot.has_value()) return;
@@ -805,10 +834,12 @@ fn internal::discard_child_redirection_state(
   } catch (const Error &) {}
 }
 
-fn internal::resolve_redirection(const Redirection &redir, EvalContext &cxt,
-                                 const SourceLocation &fallback_location,
-                                 bool *open_or_stage_failed,
-                                 bool should_memoize_fds) throws
+fn
+internal::resolve_redirection(const Redirection    &redir,
+                              EvalContext          &cxt,
+                              const SourceLocation &fallback_location,
+                              bool                 *open_or_stage_failed,
+                              bool                  should_memoize_fds) throws
     -> resolved_redirection
 {
   if (cxt.runtime_state().option_is_enabled(shell_option_id::Restricted) &&
@@ -825,12 +856,12 @@ fn internal::resolve_redirection(const Redirection &redir, EvalContext &cxt,
       redir.kind == Redirection::Kind::HereString)
   {
     let expanded_body = String{cxt.scratch_allocator()};
-    let body = StringView{};
+    let body          = StringView{};
     if (redir.kind == Redirection::Kind::Heredoc) {
       ASSERT(redir.heredoc != nullptr);
       body = redir.heredoc->text.view();
       if (redir.should_expand_heredoc) {
-        let source_location = SourceLocation{};
+        let                   source_location         = SourceLocation{};
         const SourceLocation *source_location_pointer = nullptr;
         if (redir.heredoc->source_mapping == heredoc_source_mapping::Contiguous)
         {
@@ -937,8 +968,8 @@ fn internal::resolve_redirection(const Redirection &redir, EvalContext &cxt,
   }
 
   bool did_signal_arrive = false;
-  let opened = os::open_file_descriptor_until_signal(target_path, mode,
-                                                     did_signal_arrive);
+  let  opened = os::open_file_descriptor_until_signal(target_path, mode,
+                                                      did_signal_arrive);
 
   while (!opened && did_signal_arrive) {
     cxt.run_pending_traps();
@@ -974,8 +1005,9 @@ fn internal::resolve_redirection(const Redirection &redir, EvalContext &cxt,
                               file_fd, -1, false};
 }
 
-static fn read_fd_allocation_value(EvalContext &cxt,
-                                   const fd_allocation_target &target) throws
+static fn
+read_fd_allocation_value(EvalContext                &cxt,
+                         const fd_allocation_target &target) throws
     -> Maybe<String>
 {
   if (!target.has_subscript) return cxt.get_variable_value(target.name);
@@ -987,11 +1019,14 @@ static fn read_fd_allocation_value(EvalContext &cxt,
   return value;
 }
 
-fn internal::allocate_redirection_descriptor(
-    const Redirection &redir, const resolved_redirection &resolved,
-    EvalContext &cxt, const SourceLocation &location,
-    bool *open_or_stage_failed, const Maybe<String> *known_current_value) throws
-    -> i32
+fn
+internal::allocate_redirection_descriptor(
+    const Redirection          &redir,
+    const resolved_redirection &resolved,
+    EvalContext                &cxt,
+    const SourceLocation       &location,
+    bool                       *open_or_stage_failed,
+    const Maybe<String>        *known_current_value) throws -> i32
 {
   if (redir.fd_allocation_name_token == nullptr) return redir.fd;
 
@@ -1006,9 +1041,9 @@ fn internal::allocate_redirection_descriptor(
   if (resolved.kind == redirection_outcome::Duplicate &&
       resolved.dup_from_fd == Redirection::DUP_FD_CLOSE)
   {
-    let const read_value = known_current_value != nullptr
-                               ? Maybe<String>{}
-                               : read_fd_allocation_value(cxt, *target);
+    let const  read_value = known_current_value != nullptr
+                                ? Maybe<String>{}
+                                : read_fd_allocation_value(cxt, *target);
     let const *current_value =
         known_current_value != nullptr ? known_current_value : &read_value;
 
@@ -1043,13 +1078,15 @@ fn internal::allocate_redirection_descriptor(
   return allocated_fd;
 }
 
-static pure fn is_reprint_blank(char byte) wontthrow -> bool
+static pure fn
+is_reprint_blank(char byte) wontthrow -> bool
 {
   return byte == ' ' || byte == '\t';
 }
 
-static pure fn should_reprint_source(StringView source,
-                                     bool has_bash_additions) wontthrow -> bool
+static pure fn
+should_reprint_source(StringView source, bool has_bash_additions) wontthrow
+    -> bool
 {
   for (usize position = 0; position < source.length; position++) {
     let const byte = source[position];
@@ -1082,8 +1119,9 @@ static pure fn should_reprint_source(StringView source,
   return false;
 }
 
-static pure fn scan_ansi_c_quote_end(StringView source,
-                                     usize body_start) wontthrow -> Maybe<usize>
+static pure fn
+scan_ansi_c_quote_end(StringView source, usize body_start) wontthrow
+    -> Maybe<usize>
 {
   for (usize position = body_start; position < source.length; position++) {
     if (source[position] == '\'') return position + 1;
@@ -1094,14 +1132,16 @@ static pure fn scan_ansi_c_quote_end(StringView source,
   return None;
 }
 
-static fn append_reprinted_source(String &out, StringView source,
-                                  bool should_collapse_blanks,
-                                  bool should_space_operators,
-                                  bool should_join_lines,
-                                  bool has_bash_additions) throws -> void;
+static fn
+append_reprinted_source(String    &out,
+                        StringView source,
+                        bool       should_collapse_blanks,
+                        bool       should_space_operators,
+                        bool       should_join_lines,
+                        bool       has_bash_additions) throws -> void;
 
-static fn find_double_quote_end(StringView source, usize position) throws
-    -> usize
+static fn
+find_double_quote_end(StringView source, usize position) throws -> usize
 {
   while (position < source.length) {
     let const byte = source[position];
@@ -1130,7 +1170,8 @@ static fn find_double_quote_end(StringView source, usize position) throws
   return source.length;
 }
 
-static pure fn trimmed_reprint_body(StringView body) wontthrow -> StringView
+static pure fn
+trimmed_reprint_body(StringView body) wontthrow -> StringView
 {
   while (!body.is_empty() && (is_reprint_blank(body[0]) || body[0] == '\n')) {
     body = body.substring(1);
@@ -1147,19 +1188,21 @@ static pure fn trimmed_reprint_body(StringView body) wontthrow -> StringView
 
 struct reprinted_redirection
 {
-  usize length;
+  usize      length;
   StringView spelling;
-  i32 default_fd;
-  i32 fd;
-  bool is_duplication;
+  i32        default_fd;
+  i32        fd;
+  bool       is_duplication;
 };
 
-static pure fn match_reprinted_redirection(StringView source, usize position,
-                                           bool is_token_start) wontthrow
+static pure fn
+match_reprinted_redirection(StringView source,
+                            usize      position,
+                            bool       is_token_start) wontthrow
     -> Maybe<reprinted_redirection>
 {
   usize scan = position;
-  i32 fd = -1;
+  i32   fd   = -1;
 
   if (lexer::is_number(source[scan])) {
     if (!is_token_start) return {};
@@ -1183,20 +1226,20 @@ static pure fn match_reprinted_redirection(StringView source, usize position,
     fd = static_cast<i32>(parsed_fd);
   }
 
-  let const byte = source[scan];
-  let const next_byte = scan + 1 < source.length ? source[scan + 1] : '\0';
+  let const byte       = source[scan];
+  let const next_byte  = scan + 1 < source.length ? source[scan + 1] : '\0';
   let const third_byte = scan + 2 < source.length ? source[scan + 2] : '\0';
 
   reprinted_redirection redirection{};
-  redirection.default_fd = -1;
-  redirection.fd = fd;
+  redirection.default_fd     = -1;
+  redirection.fd             = fd;
   redirection.is_duplication = false;
 
   if (byte == '>') {
     redirection.default_fd = 1;
 
     if (next_byte == '&') {
-      redirection.spelling = StringView{">&"};
+      redirection.spelling       = StringView{">&"};
       redirection.is_duplication = true;
     } else if (next_byte == '>') {
       redirection.spelling = StringView{">>"};
@@ -1209,7 +1252,7 @@ static pure fn match_reprinted_redirection(StringView source, usize position,
     redirection.default_fd = 0;
 
     if (next_byte == '&') {
-      redirection.spelling = StringView{"<&"};
+      redirection.spelling       = StringView{"<&"};
       redirection.is_duplication = true;
     } else if (next_byte == '<' && third_byte == '<') {
       redirection.spelling = StringView{"<<<"};
@@ -1234,8 +1277,8 @@ static pure fn match_reprinted_redirection(StringView source, usize position,
   return redirection;
 }
 
-static pure fn has_reprint_remainder(StringView source,
-                                     usize position) wontthrow -> bool
+static pure fn
+has_reprint_remainder(StringView source, usize position) wontthrow -> bool
 {
   while (position < source.length) {
     if (!is_reprint_blank(source[position]) && source[position] != '\n') {
@@ -1248,8 +1291,10 @@ static pure fn has_reprint_remainder(StringView source,
   return false;
 }
 
-static fn append_reprinted_subshell(String &out, StringView region,
-                                    bool has_bash_additions) throws -> void
+static fn
+append_reprinted_subshell(String    &out,
+                          StringView region,
+                          bool       has_bash_additions) throws -> void
 {
   let const body =
       trimmed_reprint_body(region.substring_of_length(1, region.length - 2));
@@ -1264,14 +1309,16 @@ static fn append_reprinted_subshell(String &out, StringView region,
   out.append(" )");
 }
 
-static fn append_reprinted_source(String &out, StringView source,
-                                  bool should_collapse_blanks,
-                                  bool should_space_operators,
-                                  bool should_join_lines,
-                                  bool has_bash_additions) throws -> void
+static fn
+append_reprinted_source(String    &out,
+                        StringView source,
+                        bool       should_collapse_blanks,
+                        bool       should_space_operators,
+                        bool       should_join_lines,
+                        bool       has_bash_additions) throws -> void
 {
   let const start_length = out.length();
-  usize position = 0;
+  usize     position     = 0;
 
   while (position < source.length) {
     let const byte = source[position];
@@ -1458,7 +1505,7 @@ static fn append_reprinted_source(String &out, StringView source,
           match_reprinted_redirection(source, position, is_token_start);
       if (matched.has_value()) {
         let const redirection = *matched;
-        i32 printed_fd = -1;
+        i32       printed_fd  = -1;
 
         if (out.length() > start_length && out.back() != ' ') {
           out.push(' ');
@@ -1559,8 +1606,9 @@ static fn append_reprinted_source(String &out, StringView source,
   }
 }
 
-fn internal::reprinted_command_text(StringView source,
-                                    bool has_bash_additions) throws -> String
+fn
+internal::reprinted_command_text(StringView source,
+                                 bool       has_bash_additions) throws -> String
 {
   let text = String{heap_allocator()};
   if (!should_reprint_source(source, has_bash_additions)) {
@@ -1575,11 +1623,12 @@ fn internal::reprinted_command_text(StringView source,
   return text;
 }
 
-fn internal::subshell_command_text(EvalContext &cxt,
-                                   const SourceLocation &location,
-                                   usize end_position) throws -> String
+fn
+internal::subshell_command_text(EvalContext          &cxt,
+                                const SourceLocation &location,
+                                usize end_position) throws -> String
 {
-  let text = String{heap_allocator()};
+  let       text   = String{heap_allocator()};
   let const source = cxt.source_text_in_span(location, end_position);
   if (source.length == 0 || source[0] != '(') {
     return text;
@@ -1602,8 +1651,10 @@ fn internal::subshell_command_text(EvalContext &cxt,
   return text;
 }
 
-fn internal::append_word_source_text(EvalContext &cxt, String &out,
-                                     const Token &word) throws -> void
+fn
+internal::append_word_source_text(EvalContext &cxt,
+                                  String      &out,
+                                  const Token &word) throws -> void
 {
   let const text = cxt.source_text_in_span(word.source_location(), 0);
   if (text.length != 0) {
@@ -1616,8 +1667,10 @@ fn internal::append_word_source_text(EvalContext &cxt, String &out,
   out += word.raw_string();
 }
 
-static fn append_redirection_descriptor(String &out, const Redirection &redir,
-                                        i32 default_fd) throws -> void
+static fn
+append_redirection_descriptor(String            &out,
+                              const Redirection &redir,
+                              i32                default_fd) throws -> void
 {
   if (redir.fd_allocation_name_token != nullptr) {
     let const name =
@@ -1638,13 +1691,15 @@ static fn append_redirection_descriptor(String &out, const Redirection &redir,
   out += String::from(static_cast<i64>(redir.fd), heap_allocator());
 }
 
-static fn append_duplication_descriptor(String &out,
-                                        const Redirection &redir) throws -> void
+static fn
+append_duplication_descriptor(String &out, const Redirection &redir) throws
+    -> void
 {
   append_redirection_descriptor(out, redir, -1);
 }
 
-static fn heredoc_terminator(const Redirection &redir) throws -> String
+static fn
+heredoc_terminator(const Redirection &redir) throws -> String
 {
   ASSERT(redir.heredoc_delimiter != nullptr);
   let terminator =
@@ -1658,8 +1713,10 @@ static fn heredoc_terminator(const Redirection &redir) throws -> String
   return terminator;
 }
 
-static fn append_one_redirection(EvalContext &cxt, String &out,
-                                 const Redirection &redir) throws -> void
+static fn
+append_one_redirection(EvalContext       &cxt,
+                       String            &out,
+                       const Redirection &redir) throws -> void
 {
   let const do_append_target = [&] throws {
     if (redir.target != nullptr)
@@ -1732,7 +1789,7 @@ static fn append_one_redirection(EvalContext &cxt, String &out,
     return;
 
   case Redirection::Kind::DuplicateOutput:
-  case Redirection::Kind::DuplicateInput: {
+  case Redirection::Kind::DuplicateInput:  {
     if (redir.dup_fd == Redirection::DUP_FD_CLOSE) {
       append_duplication_descriptor(out, redir);
       out += ">&-";
@@ -1766,12 +1823,14 @@ is_synthesized_error_duplication(const Redirection &redir) wontthrow -> bool
          redir.fd_allocation_name_token == nullptr;
 }
 
-fn internal::append_redirections_text(
-    EvalContext &cxt, String &out,
+fn
+internal::append_redirections_text(
+    EvalContext                   &cxt,
+    String                        &out,
     const SparseList<Redirection> &redirections) throws -> void
 {
   bool should_drop_error_duplication = false;
-  bool has_heredoc = false;
+  bool has_heredoc                   = false;
 
   for (let const &redir : redirections) {
     if (should_drop_error_duplication) {
@@ -1798,12 +1857,13 @@ fn internal::append_redirections_text(
   }
 }
 
-fn SimpleCommand::get_published_command_text(EvalContext &cxt) const throws
+fn
+SimpleCommand::get_published_command_text(EvalContext &cxt) const throws
     -> const CopyOnWrite<String> &
 {
   return m_published_command_text.get(
       cxt.runtime_state().bash_additions_enabled(), [&] throws {
-        let location = source_location();
+        let       location = source_location();
         let const start_position =
             static_cast<u32>(full_source_start_position());
         if (start_position < location.position) {
@@ -1820,9 +1880,10 @@ fn SimpleCommand::get_published_command_text(EvalContext &cxt) const throws
       });
 }
 
-fn internal::publish_simple_command(EvalContext &cxt,
-                                    const SimpleCommand &command,
-                                    root_evaluation_mode mode) throws -> bool
+fn
+internal::publish_simple_command(EvalContext         &cxt,
+                                 const SimpleCommand &command,
+                                 root_evaluation_mode mode) throws -> bool
 {
   return publish_command_and_run_debug_trap(
       cxt,
@@ -1835,18 +1896,19 @@ fn internal::publish_simple_command(EvalContext &cxt,
 struct stage_fd_allocation_restore
 {
   fd_allocation_target target;
-  String previous_value;
-  bool was_set;
+  String               previous_value;
+  bool                 was_set;
 };
 
-fn SimpleCommand::redirect_exec_context(ExecContext &ec,
-                                        EvalContext &cxt) const throws -> void
+fn
+SimpleCommand::redirect_exec_context(ExecContext &ec,
+                                     EvalContext &cxt) const throws -> void
 {
   LOG(Debug, "applying %zu redirections to the pipeline stage",
       m_redirections.count());
 
   ArrayList<nonstandard_descriptor> nonstandard{heap_allocator()};
-  bool was_nonstandard_handed_off = false;
+  bool                              was_nonstandard_handed_off = false;
   defer
   {
     if (was_nonstandard_handed_off) return;
@@ -1887,7 +1949,7 @@ fn SimpleCommand::redirect_exec_context(ExecContext &ec,
     let const r =
         resolve_redirection(redir, cxt, source_location(), nullptr, true);
 
-    let previous = Maybe<String>{};
+    let        previous       = Maybe<String>{};
     let const *known_previous = static_cast<const Maybe<String> *>(nullptr);
 
     if (redir.fd_allocation_name_token != nullptr) {
@@ -1897,12 +1959,12 @@ fn SimpleCommand::redirect_exec_context(ExecContext &ec,
       let const allocation_target = allocation_word.get_fd_allocation_target();
       ASSERT(allocation_target.has_value());
 
-      previous = read_fd_allocation_value(cxt, *allocation_target);
+      previous       = read_fd_allocation_value(cxt, *allocation_target);
       known_previous = &previous;
-      let record = stage_fd_allocation_restore{*allocation_target,
+      let record     = stage_fd_allocation_restore{*allocation_target,
                                                previous.has_value()
-                                                   ? String{previous->view()}
-                                                   : String{heap_allocator()},
+                                                       ? String{previous->view()}
+                                                       : String{heap_allocator()},
                                                previous.has_value()};
       allocation_restores.push(steal(record));
     }
@@ -1918,7 +1980,7 @@ fn SimpleCommand::redirect_exec_context(ExecContext &ec,
     case redirection_outcome::BothStreams:
       assign_redirected_fd(ec, nonstandard, 1, r.opened_fd, r.is_cached);
       ec.should_duplicate_error_to_output = true;
-      ec.was_output_to_error_last = false;
+      ec.was_output_to_error_last         = false;
       ec.did_output_file_follow_error_dup = false;
       break;
     case redirection_outcome::OpenedFile:
@@ -1928,10 +1990,10 @@ fn SimpleCommand::redirect_exec_context(ExecContext &ec,
             os::close_fd(*ec.err_fd);
           }
 
-          ec.err_fd = ec.out_fd;
-          ec.is_err_fd_borrowed = ec.is_out_fd_borrowed;
-          ec.out_fd = {};
-          ec.is_out_fd_borrowed = false;
+          ec.err_fd                           = ec.out_fd;
+          ec.is_err_fd_borrowed               = ec.is_out_fd_borrowed;
+          ec.out_fd                           = {};
+          ec.is_out_fd_borrowed               = false;
           ec.should_duplicate_error_to_output = false;
         } else {
           ec.did_output_file_follow_error_dup = true;
@@ -1943,10 +2005,10 @@ fn SimpleCommand::redirect_exec_context(ExecContext &ec,
             os::close_fd(*ec.out_fd);
           }
 
-          ec.out_fd = ec.err_fd;
-          ec.is_out_fd_borrowed = ec.is_err_fd_borrowed;
-          ec.err_fd = {};
-          ec.is_err_fd_borrowed = false;
+          ec.out_fd                           = ec.err_fd;
+          ec.is_out_fd_borrowed               = ec.is_err_fd_borrowed;
+          ec.err_fd                           = {};
+          ec.is_err_fd_borrowed               = false;
           ec.should_duplicate_output_to_error = false;
         } else {
           ec.did_error_file_follow_output_dup = true;
@@ -1961,11 +2023,11 @@ fn SimpleCommand::redirect_exec_context(ExecContext &ec,
 
       if (target_fd == 2 && r.dup_from_fd == 1) {
         ec.should_duplicate_error_to_output = true;
-        ec.was_output_to_error_last = false;
+        ec.was_output_to_error_last         = false;
         ec.did_output_file_follow_error_dup = false;
       } else if (target_fd == 1 && r.dup_from_fd == 2) {
         ec.should_duplicate_output_to_error = true;
-        ec.was_output_to_error_last = true;
+        ec.was_output_to_error_last         = true;
         ec.did_error_file_follow_output_dup = false;
       } else if (target_fd > 2) {
         let const dup_from_fd =
@@ -1997,27 +2059,32 @@ fn SimpleCommand::redirect_exec_context(ExecContext &ec,
   was_nonstandard_handed_off = true;
 }
 
-fn SimpleCommand::is_simple_command() const wontthrow -> bool { return true; }
+fn
+SimpleCommand::is_simple_command() const wontthrow -> bool
+{
+  return true;
+}
 
-pure fn SimpleCommand::args() const wontthrow
-    -> const ArrayList<const Token *> &
+pure fn
+SimpleCommand::args() const wontthrow -> const ArrayList<const Token *> &
 {
   return m_args;
 }
 
-pure fn SimpleCommand::redirections() const wontthrow
-    -> const SparseList<Redirection> &
+pure fn
+SimpleCommand::redirections() const wontthrow -> const SparseList<Redirection> &
 {
   return m_redirections;
 }
 
-fn SimpleCommand::as_simple_command() const wontthrow -> const SimpleCommand *
+fn
+SimpleCommand::as_simple_command() const wontthrow -> const SimpleCommand *
 {
   return this;
 }
 
-fn SimpleCommand::always_exits(const AnalysisContext &actx) const wontthrow
-    -> bool
+fn
+SimpleCommand::always_exits(const AnalysisContext &actx) const wontthrow -> bool
 {
   if (m_args.is_empty() || is_async()) {
     return false;
@@ -2031,7 +2098,8 @@ fn SimpleCommand::always_exits(const AnalysisContext &actx) const wontthrow
   return *name == StringView{"exit"} && !actx.functions.defined.contains(*name);
 }
 
-cold fn SimpleCommand::to_string() const throws -> String
+cold fn
+SimpleCommand::to_string() const throws -> String
 {
   String s = "SimpleCommand";
 

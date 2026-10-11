@@ -32,8 +32,10 @@ namespace expressions {
 
 using namespace internal;
 
-fn internal::expand_command_aliases(
-    EvalContext &cxt, ArrayList<String> &args,
+fn
+internal::expand_command_aliases(
+    EvalContext               &cxt,
+    ArrayList<String>         &args,
     ArrayList<SourceLocation> &arg_locations) throws -> void
 {
   if (!cxt.scope_store().has_aliases() ||
@@ -54,11 +56,11 @@ fn internal::expand_command_aliases(
     already_expanded.add(word.view());
     LOG(Debug, "expanding the alias '%s'", word.c_str());
 
-    let rebuilt = ArrayList<String>{heap_allocator()};
-    let rebuilt_locations = ArrayList<SourceLocation>{heap_allocator()};
-    let current = String{cxt.scratch_allocator()};
-    let const &body_value = *body;
-    let const body_location =
+    let        rebuilt           = ArrayList<String>{heap_allocator()};
+    let        rebuilt_locations = ArrayList<SourceLocation>{heap_allocator()};
+    let        current           = String{cxt.scratch_allocator()};
+    let const &body_value        = *body;
+    let const  body_location =
         !arg_locations.is_empty() ? arg_locations[0] : SourceLocation{};
 
     for (usize i = 0; i < body_value.count(); i++) {
@@ -91,14 +93,15 @@ fn internal::expand_command_aliases(
         rebuilt_locations.push(body_location);
     }
 
-    args = steal(rebuilt);
+    args          = steal(rebuilt);
     arg_locations = steal(rebuilt_locations);
   }
 }
 
 namespace {
 
-static fn command_word_is_glob(const Word &word) wontthrow -> bool
+static fn
+command_word_is_glob(const Word &word) wontthrow -> bool
 {
   bool has_open_bracket = false;
 
@@ -122,9 +125,10 @@ static fn command_word_is_glob(const Word &word) wontthrow -> bool
 
 } /* namespace */
 
-static fn command_runs_program(const ArrayList<String> &args,
-                               const Maybe<Builtin::Kind> *literal_builtin,
-                               mimic_mood mood) throws -> bool
+static fn
+command_runs_program(const ArrayList<String>    &args,
+                     const Maybe<Builtin::Kind> *literal_builtin,
+                     mimic_mood                  mood) throws -> bool
 {
   if (args.is_empty()) return true;
 
@@ -149,9 +153,9 @@ static fn command_runs_program(const ArrayList<String> &args,
   return !builtin.has_value() || builtin_is_hidden_by_mood(*builtin, mood);
 }
 
-hot fn SimpleCommand::get_literal_command_lookup(
-    const ArrayList<String> &program_args) const throws
-    -> const LiteralCommandLookup *
+hot fn
+SimpleCommand::get_literal_command_lookup(const ArrayList<String> &program_args)
+    const throws -> const LiteralCommandLookup *
 {
   if (program_args.is_empty() || m_args.is_empty() ||
       m_args[0]->kind() != Token::Kind::Word)
@@ -182,8 +186,9 @@ hot fn SimpleCommand::get_literal_command_lookup(
   return &*m_literal_command_lookup;
 }
 
-hot fn SimpleCommand::evaluate_impl(EvalContext &cxt,
-                                    root_evaluation_mode mode) const throws
+hot fn
+SimpleCommand::evaluate_impl(EvalContext         &cxt,
+                             root_evaluation_mode mode) const throws
     -> status_result
 {
   ASSERT(m_args.count() > 0 || !m_redirections.is_empty() ||
@@ -205,7 +210,7 @@ hot fn SimpleCommand::evaluate_impl(EvalContext &cxt,
           .status;
     };
 
-    let full_location = source_location();
+    let       full_location = source_location();
     let const full_start_position =
         static_cast<u32>(full_source_start_position());
     if (full_start_position < full_location.position) {
@@ -247,12 +252,12 @@ hot fn SimpleCommand::evaluate_impl(EvalContext &cxt,
   let const args_mark = cxt.expansion_store().scratch_arena().mark();
   defer { cxt.expansion_store().scratch_arena().release(args_mark); };
   let const substitution_mark = cxt.mark_process_substitutions();
-  let program_arg_locations =
+  let       program_arg_locations =
       ArrayList<SourceLocation>{cxt.scratch_allocator()};
   let keyword_assignments =
       ArrayList<const tokens::Assignment *>{cxt.scratch_allocator()};
   const ArrayList<const Token *> *argument_tokens = &m_args;
-  let filtered_argument_tokens =
+  let                             filtered_argument_tokens =
       ArrayList<const Token *>{cxt.scratch_allocator()};
   if (cxt.runtime_state().option_is_enabled(shell_option_id::Keyword)) {
     for (let const token : m_args)
@@ -318,13 +323,13 @@ hot fn SimpleCommand::evaluate_impl(EvalContext &cxt,
   }
 
   let const *const literal_lookup = get_literal_command_lookup(program_args);
-  const bool is_command_special_builtin =
+  const bool       is_command_special_builtin =
       !program_args.is_empty() && command_word_function == nullptr &&
       (literal_lookup != nullptr
            ? literal_lookup->is_special
            : is_special_builtin_name(program_args[0].view()));
 
-  Maybe<os::descriptor> redirect_in_fd;
+  Maybe<os::descriptor>           redirect_in_fd;
   ArrayList<os::saved_descriptor> dup_saved_descriptors{
       cxt.scratch_allocator()};
   defer
@@ -353,7 +358,7 @@ hot fn SimpleCommand::evaluate_impl(EvalContext &cxt,
   bool did_redirection_open_fail = false;
   try {
     for (let const &original_redir : m_redirections) {
-      let redir = original_redir;
+      let       redir = original_redir;
       let const r =
           resolve_redirection(redir, cxt, source_location(),
                               &did_redirection_open_fail, !is_bare_exec);
@@ -445,9 +450,9 @@ hot fn SimpleCommand::evaluate_impl(EvalContext &cxt,
           if (!os::replace_descriptor(redir.fd,
                                       os::descriptor_for_shell_fd(from_fd)))
           {
-            let const location = redir.target != nullptr
-                                     ? redir.target->source_location()
-                                     : source_location();
+            let const location        = redir.target != nullptr
+                                            ? redir.target->source_location()
+                                            : source_location();
             did_redirection_open_fail = true;
             throw ErrorWithLocation{location,
                                     String::from(from_fd, heap_allocator()) +
@@ -482,9 +487,9 @@ hot fn SimpleCommand::evaluate_impl(EvalContext &cxt,
             redir.fd, os::descriptor_for_shell_fd(from_fd));
         dup_saved_descriptors.push(saved);
         if (!saved.is_dup2_ok) {
-          let const location = redir.target != nullptr
-                                   ? redir.target->source_location()
-                                   : source_location();
+          let const location        = redir.target != nullptr
+                                          ? redir.target->source_location()
+                                          : source_location();
           did_redirection_open_fail = true;
           throw ErrorWithLocation{location,
                                   String::from(from_fd, heap_allocator()) +
@@ -569,7 +574,7 @@ hot fn SimpleCommand::evaluate_impl(EvalContext &cxt,
     if (cxt.variable_store().attributes().is_nameref(name)) rarely
       {
         resolved_name = cxt.resolve_nameref_base_for_write(name);
-        name = resolved_name->view();
+        name          = resolved_name->view();
       }
     if (cxt.is_integer_variable(name)) {
       cxt.append_integer_expression(appended, value_ref.view());
@@ -590,7 +595,7 @@ hot fn SimpleCommand::evaluate_impl(EvalContext &cxt,
   };
   let const do_trace_array_assignment =
       [&](const array_builtin_assignment &assignment,
-          const ArrayList<String> &values) throws -> void {
+          const ArrayList<String>        &values) throws -> void {
     if (!cxt.runtime_state().should_echo_expanded()) return;
     let trace = String{cxt.scratch_allocator(), assignment.name.view()};
     trace +=
@@ -635,13 +640,13 @@ hot fn SimpleCommand::evaluate_impl(EvalContext &cxt,
   let const do_apply_persistent_assignment =
       [&](const tokens::Assignment &assignment) throws {
         let const name = assignment.key().view();
-        let value =
+        let       value =
             cxt.expand_word_for_assignment(assignment.value_word(), true);
         if (let const bracket = name.find_character('[');
             bracket.has_value() && name[name.length - 1] == ']')
         {
           let const array_name = name.substring_of_length(0, *bracket);
-          let const subscript = name.substring_of_length(
+          let const subscript  = name.substring_of_length(
               *bracket + 1, name.length - *bracket - 2);
           do_trace_assignment(name, assignment.get_update_mode(), value.view());
           if (!cxt.is_circular_nameref(array_name))
@@ -678,12 +683,12 @@ hot fn SimpleCommand::evaluate_impl(EvalContext &cxt,
     for (let const &assignment : m_array_args) {
       if (!cxt.is_circular_nameref(assignment.name))
         do_reject_readonly_target(assignment.name);
-      let subscript_flags = Bitset{heap_allocator()};
-      ArrayList<String> values = cxt.process_args(
+      let               subscript_flags = Bitset{heap_allocator()};
+      ArrayList<String> values          = cxt.process_args(
           assignment.elements, nullptr, argument_lifetime::Persistent,
           cxt.is_associative_array(assignment.name)
-              ? argument_context::AssociativeLiteral
-              : argument_context::ArrayLiteral,
+                       ? argument_context::AssociativeLiteral
+                       : argument_context::ArrayLiteral,
           &subscript_flags);
       do_trace_array_assignment(assignment, values);
       cxt.assign_indexed_array_elements(
@@ -724,19 +729,19 @@ hot fn SimpleCommand::evaluate_impl(EvalContext &cxt,
 
   struct saved_env_var
   {
-    String name;
-    Maybe<String> previous_value;
-    Maybe<String> previous_shell_value;
+    String                name;
+    Maybe<String>         previous_value;
+    Maybe<String>         previous_shell_value;
     Maybe<SourceLocation> previous_special_definition_location;
-    bool did_overlay_shell_value;
-    bool did_clear_circular_reference;
+    bool                  did_overlay_shell_value;
+    bool                  did_clear_circular_reference;
   };
   ArrayList<saved_env_var> saved_env{cxt.scratch_allocator()};
   saved_env.reserve(m_local_vars.count() + keyword_assignments.count());
-  bool was_ifs_assigned = false;
-  String saved_ifs_separators{cxt.scratch_allocator()};
+  bool                   was_ifs_assigned = false;
+  String                 saved_ifs_separators{cxt.scratch_allocator()};
   Maybe<ProgramResolver> saved_program_resolver{};
-  Maybe<bool> previous_ignoreeof_state{};
+  Maybe<bool>            previous_ignoreeof_state{};
   defer
   {
     for (usize i = saved_env.count(); i > 0; i--) {
@@ -785,8 +790,8 @@ hot fn SimpleCommand::evaluate_impl(EvalContext &cxt,
                  cxt.runtime_state().is_posix_option_on());
   let const do_apply_environment_assignment =
       [&](const tokens::Assignment &assignment) throws {
-        let name = assignment.key().view();
-        let resolved_name = Maybe<String>{};
+        let name                         = assignment.key().view();
+        let resolved_name                = Maybe<String>{};
         let did_clear_circular_reference = false;
         if (cxt.variable_store().attributes().is_nameref(name)) rarely
           {
@@ -799,7 +804,7 @@ hot fn SimpleCommand::evaluate_impl(EvalContext &cxt,
               did_clear_circular_reference = true;
             } else {
               resolved_name = cxt.resolve_nameref_for_write(name);
-              name = resolved_name->view();
+              name          = resolved_name->view();
             }
           }
         if (cxt.is_readonly(name)) {
@@ -865,7 +870,7 @@ hot fn SimpleCommand::evaluate_impl(EvalContext &cxt,
                 name, variable_attribute::Nameref, false);
           }
 
-          Maybe<String> previous_shell_value;
+          Maybe<String>         previous_shell_value;
           Maybe<SourceLocation> previous_special_definition_location;
           let const is_locale_name = name.starts_with("LC_") || name == "LANG";
           let const did_overlay_shell_value =
@@ -911,10 +916,10 @@ hot fn SimpleCommand::evaluate_impl(EvalContext &cxt,
   cxt.write_xtrace(program_args);
 
   ASSERT(!program_args.is_empty());
-  let const &program_name = program_args[0];
-  let const last_argument = program_args.is_empty()
-                                ? String{cxt.scratch_allocator()}
-                                : program_args.back();
+  let const &program_name  = program_args[0];
+  let const  last_argument = program_args.is_empty()
+                                 ? String{cxt.scratch_allocator()}
+                                 : program_args.back();
 
   let array_command_kind = assignment_builtin::None;
   if (!m_array_args.is_empty())
@@ -957,7 +962,7 @@ hot fn SimpleCommand::evaluate_impl(EvalContext &cxt,
       cxt.enter_function_call(source_location());
       defer { cxt.leave_function_call(); };
 
-      let const saved_loop_depth = cxt.execution_store().loop_depth();
+      let const saved_loop_depth         = cxt.execution_store().loop_depth();
       cxt.execution_store().loop_depth() = 0;
       defer { cxt.execution_store().loop_depth() = saved_loop_depth; };
 
@@ -1026,7 +1031,7 @@ hot fn SimpleCommand::evaluate_impl(EvalContext &cxt,
       } catch (ErrorWithLocationAndDetails &error) {
         if (!error.was_rendered()) {
           let const trace_location = error.location();
-          let const windowed = window_function_body_error(cxt, error);
+          let const windowed       = window_function_body_error(cxt, error);
           let const rendered_source =
               windowed.has_value() ? *windowed
                                    : cxt.source_store().current_source_view();
@@ -1039,7 +1044,7 @@ hot fn SimpleCommand::evaluate_impl(EvalContext &cxt,
       } catch (ErrorWithLocation &error) {
         if (!error.was_rendered()) {
           let const trace_location = error.location();
-          let const windowed = window_function_body_error(cxt, error);
+          let const windowed       = window_function_body_error(cxt, error);
           let const rendered_source =
               windowed.has_value() ? *windowed
                                    : cxt.source_store().current_source_view();
@@ -1088,8 +1093,8 @@ hot fn SimpleCommand::evaluate_impl(EvalContext &cxt,
         expanded_child_source.view());
   }
 
-  let did_resolution_fail = false;
-  i64 resolution_failure_status = 0;
+  let       did_resolution_fail       = false;
+  i64       resolution_failure_status = 0;
   let const is_program_word_a_path =
       !program_args.is_empty() &&
       program_args[0].view().find_character('/').has_value();
@@ -1116,7 +1121,7 @@ hot fn SimpleCommand::evaluate_impl(EvalContext &cxt,
               cxt.is_shopt_enabled("autocd"));
     } catch (CommandResolutionErrorWithLocation &e) {
       report_command_resolution_error(cxt, e);
-      did_resolution_fail = true;
+      did_resolution_fail       = true;
       resolution_failure_status = e.command_status();
 
       return ExecContext::make_from_unresolved(
@@ -1188,25 +1193,25 @@ hot fn SimpleCommand::evaluate_impl(EvalContext &cxt,
   cxt.execution_store().set_last_argument(String{last_argument.view()});
 
   if (!m_array_args.is_empty()) {
-    let const is_local = array_command_kind == assignment_builtin::Local;
+    let const is_local   = array_command_kind == assignment_builtin::Local;
     let const is_declare = array_command_kind == assignment_builtin::Declare;
     let const is_function_local =
         is_declare && cxt.scope_store().local_scope_depth() > 0;
     let const is_export = array_command_kind == assignment_builtin::Export;
     let const is_readonly_kind =
         array_command_kind == assignment_builtin::Readonly;
-    let is_readonly_request = is_readonly_kind;
-    let is_export_request = is_export;
+    let is_readonly_request       = is_readonly_kind;
+    let is_export_request         = is_export;
     let did_request_readonly_flag = false;
-    let should_print_declaration = false;
-    let is_global_request = false;
-    let is_associative_request = false;
-    let should_mark_integer = false;
-    let should_unmark_integer = false;
-    let should_mark_lowercase = false;
-    let should_unmark_lowercase = false;
-    let should_mark_uppercase = false;
-    let should_unmark_uppercase = false;
+    let should_print_declaration  = false;
+    let is_global_request         = false;
+    let is_associative_request    = false;
+    let should_mark_integer       = false;
+    let should_unmark_integer     = false;
+    let should_mark_lowercase     = false;
+    let should_unmark_lowercase   = false;
+    let should_mark_uppercase     = false;
+    let should_unmark_uppercase   = false;
     if (is_declare || is_local || is_readonly_kind) {
       let text_storage = String{heap_allocator()};
 
@@ -1242,17 +1247,17 @@ hot fn SimpleCommand::evaluate_impl(EvalContext &cxt,
             break;
 
           case 'i':
-            should_mark_integer = is_set_request;
+            should_mark_integer   = is_set_request;
             should_unmark_integer = !is_set_request;
             break;
 
           case 'l':
-            should_mark_lowercase = is_set_request;
+            should_mark_lowercase   = is_set_request;
             should_unmark_lowercase = !is_set_request;
             break;
 
           case 'u':
-            should_mark_uppercase = is_set_request;
+            should_mark_uppercase   = is_set_request;
             should_unmark_uppercase = !is_set_request;
             break;
 
@@ -1266,8 +1271,8 @@ hot fn SimpleCommand::evaluate_impl(EvalContext &cxt,
       }
     }
     if (should_mark_lowercase && should_mark_uppercase) {
-      should_mark_lowercase = false;
-      should_mark_uppercase = false;
+      should_mark_lowercase   = false;
+      should_mark_uppercase   = false;
       should_unmark_lowercase = true;
       should_unmark_uppercase = true;
     }
@@ -1292,12 +1297,12 @@ hot fn SimpleCommand::evaluate_impl(EvalContext &cxt,
         cxt.variable_store().attributes().mark_lowercase(assignment.name);
       if (should_mark_uppercase)
         cxt.variable_store().attributes().mark_uppercase(assignment.name);
-      let subscript_flags = Bitset{heap_allocator()};
-      ArrayList<String> values = cxt.process_args(
+      let               subscript_flags = Bitset{heap_allocator()};
+      ArrayList<String> values          = cxt.process_args(
           assignment.elements, nullptr, argument_lifetime::Persistent,
           is_associative_request || cxt.is_associative_array(assignment.name)
-              ? argument_context::AssociativeLiteral
-              : argument_context::ArrayLiteral,
+                       ? argument_context::AssociativeLiteral
+                       : argument_context::ArrayLiteral,
           &subscript_flags);
       do_trace_array_assignment(assignment, values);
       if (is_associative_request)

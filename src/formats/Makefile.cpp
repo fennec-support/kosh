@@ -13,11 +13,12 @@
 
 namespace koshka {
 
-fn parse_makefile_format(const parser_format_input &input,
-                         parsed_format_document &document) throws -> void
+fn
+parse_makefile_format(const parser_format_input &input,
+                      parsed_format_document    &document) throws -> void
 {
-  mimic_mood mood = mimic_mood::Posix;
-  usize position = 0;
+  mimic_mood mood     = mimic_mood::Posix;
+  usize      position = 0;
 
   while (position < input.source.length) {
     let const line = input.source.next_line(position);

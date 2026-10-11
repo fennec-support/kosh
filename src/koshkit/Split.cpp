@@ -17,7 +17,10 @@ KOSHKIT_UTIL_DECL("[-a suffix-length] [-b byte-count | -l line-count] "
                   "[file [prefix]]",
                   "The split utility divides input into output files.");
 
-FLAG(SPLIT_SUFFIX_LENGTH, String, 'a', "suffix-length",
+FLAG(SPLIT_SUFFIX_LENGTH,
+     String,
+     'a',
+     "suffix-length",
      "Use this many suffix letters.");
 FLAG(SPLIT_BYTES, String, 'b', "bytes", "Write this many bytes per file.");
 FLAG(SPLIT_LINES, String, 'l', "lines", "Write this many lines per file.");
@@ -26,9 +29,12 @@ REGISTER_KOSHKIT_UTIL_FLAGS(Split);
 
 namespace koshka::koshkit {
 
-static fn split_output_name(StringView prefix, usize suffix_length,
-                            bool is_suffix_widened, u64 index,
-                            Allocator allocator) throws -> String
+static fn
+split_output_name(StringView prefix,
+                  usize      suffix_length,
+                  bool       is_suffix_widened,
+                  u64        index,
+                  Allocator  allocator) throws -> String
 {
   if (suffix_length > 64) throw Error{"suffix length is too large"};
 
@@ -77,9 +83,11 @@ static fn split_output_name(StringView prefix, usize suffix_length,
   return name;
 }
 
-fn Split::execute(const ExecContext &ec, EvalContext &cxt,
-                  const ArrayList<String> &args,
-                  const ArrayList<SourceLocation> &arg_locations) const throws
+fn
+Split::execute(const ExecContext               &ec,
+               EvalContext                     &cxt,
+               const ArrayList<String>         &args,
+               const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
@@ -119,7 +127,7 @@ fn Split::execute(const ExecContext &ec, EvalContext &cxt,
   }
 
   let const is_byte_mode = FLAG_SPLIT_BYTES.is_set();
-  u64 unit_limit = 1000;
+  u64       unit_limit   = 1000;
   if (is_byte_mode &&
       !do_parse_count(FLAG_SPLIT_BYTES, "byte count", UINT64_MAX,
                       "use a positive decimal integer", unit_limit))
@@ -149,7 +157,7 @@ fn Split::execute(const ExecContext &ec, EvalContext &cxt,
   {
     if (output_descriptor != KOSH_INVALID_FD) os::close_fd(output_descriptor);
   };
-  u64 output_index = 0;
+  u64 output_index      = 0;
   u64 output_unit_count = 0;
 
   let const do_open_output = [&]() throws -> bool {
@@ -210,7 +218,7 @@ fn Split::execute(const ExecContext &ec, EvalContext &cxt,
 
       while (position < *read_count) {
         if (!do_open_output()) return 1;
-        let const remaining = unit_limit - output_unit_count;
+        let const remaining   = unit_limit - output_unit_count;
         let const write_count = remaining < *read_count - position
                                     ? static_cast<usize>(remaining)
                                     : *read_count - position;
@@ -231,8 +239,8 @@ fn Split::execute(const ExecContext &ec, EvalContext &cxt,
         if (!do_open_output()) return 1;
 
         let const wanted_line_count = unit_limit - output_unit_count;
-        u64 line_count = 0;
-        usize segment_end = *read_count;
+        u64       line_count        = 0;
+        usize     segment_end       = *read_count;
 
         for (usize position = segment_start; position < *read_count; position++)
         {

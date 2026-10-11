@@ -27,7 +27,8 @@ REGISTER_BUILTIN_FLAGS(Newgrp);
 
 namespace koshka {
 
-fn Newgrp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
+fn
+Newgrp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let const &args = ec.args();
   ASSERT(!args.is_empty());

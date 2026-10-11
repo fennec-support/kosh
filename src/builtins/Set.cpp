@@ -29,10 +29,16 @@ HELP_DESCRIPTION_DECL(
     "Koshka setting.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
-FLAG(MOOD, String, 'M', "",
+FLAG(MOOD,
+     String,
+     'M',
+     "",
      "Set the runtime mood to kosh, bash, sh, or bash-posix, or print it with "
      "no value.");
-FLAG(INIT_MOODS, ManyStrings, 'L', "",
+FLAG(INIT_MOODS,
+     ManyStrings,
+     'L',
+     "",
      "Source the startup files for the listed moods, or print the loaded ones "
      "with no value.");
 
@@ -42,18 +48,21 @@ namespace koshka {
 
 namespace {
 
-fn is_set_option(const option_descriptor &option) wontthrow -> bool
+fn
+is_set_option(const option_descriptor &option) wontthrow -> bool
 {
   return !option.set_name.is_empty() ||
          (option.letter != '\0' && option.storage != option_storage::Mood);
 }
 
-fn is_restricted(const EvalContext &cxt) wontthrow -> bool
+fn
+is_restricted(const EvalContext &cxt) wontthrow -> bool
 {
   return cxt.runtime_state().option_is_enabled(shell_option_id::Restricted);
 }
 
-fn option_is_on(const EvalContext &cxt, const option_descriptor &option) throws
+fn
+option_is_on(const EvalContext &cxt, const option_descriptor &option) throws
     -> bool
 {
   if (!option_is_available(cxt, option)) return false;
@@ -63,9 +72,11 @@ fn option_is_on(const EvalContext &cxt, const option_descriptor &option) throws
   return read_option_number(cxt, option) != 0;
 }
 
-fn apply_or_reject_option(EvalContext &cxt, const option_descriptor &option,
-                          bool is_enabled,
-                          bool should_step_warning_level = false) throws -> void
+fn
+apply_or_reject_option(EvalContext             &cxt,
+                       const option_descriptor &option,
+                       bool                     is_enabled,
+                       bool should_step_warning_level = false) throws -> void
 {
   if (!option_is_available(cxt, option))
     throw Error{StringView{"Unknown option '"} + option.set_name + "'"};
@@ -90,11 +101,12 @@ enum class retired_option_owner : u8
 
 struct retired_option
 {
-  StringView replacement;
+  StringView           replacement;
   retired_option_owner owner;
 };
 
-fn find_retired_option_replacement(StringView name, bool is_enabled) throws
+fn
+find_retired_option_replacement(StringView name, bool is_enabled) throws
     -> Maybe<String>
 {
   using enum retired_option_owner;
@@ -160,7 +172,8 @@ fn find_retired_option_replacement(StringView name, bool is_enabled) throws
   return replacement;
 }
 
-fn list_options(const EvalContext &cxt) throws -> String
+fn
+list_options(const EvalContext &cxt) throws -> String
 {
   let out = String{heap_allocator()};
 
@@ -176,10 +189,11 @@ fn list_options(const EvalContext &cxt) throws -> String
   return out;
 }
 
-fn list_options_columnar(const EvalContext &cxt) throws -> String
+fn
+list_options_columnar(const EvalContext &cxt) throws -> String
 {
   const usize name_field_width = 15;
-  let out = String{heap_allocator()};
+  let         out              = String{heap_allocator()};
 
   for (let const &option : get_set_listing_order()) {
     if (!option.is_listed_by_set || !option_is_available(cxt, option)) {
@@ -197,9 +211,12 @@ fn list_options_columnar(const EvalContext &cxt) throws -> String
   return out;
 }
 
-fn apply_long_option_by_name(const ExecContext &ec, EvalContext &cxt,
-                             const ArrayList<String> &args, usize &i,
-                             bool is_enabled) throws -> void
+fn
+apply_long_option_by_name(const ExecContext       &ec,
+                          EvalContext             &cxt,
+                          const ArrayList<String> &args,
+                          usize                   &i,
+                          bool                     is_enabled) throws -> void
 {
   if (i + 1 >= args.count()) {
     ec.print_to_stdout(is_enabled ? list_options_columnar(cxt)
@@ -207,7 +224,7 @@ fn apply_long_option_by_name(const ExecContext &ec, EvalContext &cxt,
 
     return;
   }
-  let const &name = args[++i];
+  let const &name   = args[++i];
   let const *option = find_option_by_set_name(name);
   if (option == nullptr) {
     let const message = StringView{"Unknown -o option '"} + name + "'";
@@ -230,10 +247,11 @@ fn apply_long_option_by_name(const ExecContext &ec, EvalContext &cxt,
   apply_or_reject_option(cxt, *option, is_enabled);
 }
 
-fn format_option_table() throws -> String
+fn
+format_option_table() throws -> String
 {
   const usize name_field_width = 30;
-  let out = String{heap_allocator()};
+  let         out              = String{heap_allocator()};
 
   for (let const &option : get_option_registry()) {
     if (!is_set_option(option)) continue;
@@ -259,7 +277,8 @@ fn format_option_table() throws -> String
   return out;
 }
 
-fn format_option_switches_help() throws -> String
+fn
+format_option_switches_help() throws -> String
 {
   let section = String{"OPTION SWITCHES\n"};
   section += "  A letter after a minus enables the option and after a plus "
@@ -282,7 +301,8 @@ fn format_option_switches_help() throws -> String
 
 } /* namespace */
 
-fn query_shell_option(const EvalContext &cxt, StringView name) throws
+fn
+query_shell_option(const EvalContext &cxt, StringView name) throws
     -> Maybe<bool>
 {
   let const *option = find_option_by_set_name(name);
@@ -291,7 +311,8 @@ fn query_shell_option(const EvalContext &cxt, StringView name) throws
   return option_is_on(cxt, *option);
 }
 
-fn shell_option_names() throws -> const ArrayList<StringView> &
+fn
+shell_option_names() throws -> const ArrayList<StringView> &
 {
   static ArrayList<StringView> names = [] throws {
     let collected = ArrayList<StringView>{heap_allocator()};
@@ -305,11 +326,12 @@ fn shell_option_names() throws -> const ArrayList<StringView> &
   return names;
 }
 
-fn shell_option_letters() throws -> const String &
+fn
+shell_option_letters() throws -> const String &
 {
   static String letters = [] throws {
-    let collected = String{heap_allocator()};
-    let const order = get_shell_flag_letter_order();
+    let       collected = String{heap_allocator()};
+    let const order     = get_shell_flag_letter_order();
 
     for (usize position = 0; position < order.count(); position++) {
       let const letter = order[position];
@@ -323,7 +345,8 @@ fn shell_option_letters() throws -> const String &
   return letters;
 }
 
-fn enabled_shell_option_names(const EvalContext &cxt) throws -> String
+fn
+enabled_shell_option_names(const EvalContext &cxt) throws -> String
 {
   let joined = String{heap_allocator()};
 
@@ -339,13 +362,14 @@ fn enabled_shell_option_names(const EvalContext &cxt) throws -> String
   return joined;
 }
 
-fn enabled_shell_option_letters(const EvalContext &cxt) throws -> String
+fn
+enabled_shell_option_letters(const EvalContext &cxt) throws -> String
 {
-  let letters = String{heap_allocator()};
-  let const order = get_shell_flag_letter_order();
+  let       letters = String{heap_allocator()};
+  let const order   = get_shell_flag_letter_order();
 
   for (usize position = 0; position < order.count(); position++) {
-    let const letter = order[position];
+    let const  letter = order[position];
     let const *option = find_option_by_letter(letter);
     ASSERT(option != nullptr);
     if (letter == 'h') {
@@ -371,7 +395,8 @@ fn enabled_shell_option_letters(const EvalContext &cxt) throws -> String
   return letters;
 }
 
-fn apply_shell_option(EvalContext &cxt, StringView name, bool is_enabled) throws
+fn
+apply_shell_option(EvalContext &cxt, StringView name, bool is_enabled) throws
     -> bool
 {
   let const *option = find_option_by_set_name(name);
@@ -383,7 +408,8 @@ fn apply_shell_option(EvalContext &cxt, StringView name, bool is_enabled) throws
   return true;
 }
 
-fn Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
+fn
+Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let const &args = ec.args();
   ASSERT(!args.is_empty());
@@ -406,11 +432,11 @@ fn Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return 0;
   }
 
-  let operands = ArrayList<String>{heap_allocator()};
+  let  operands               = ArrayList<String>{heap_allocator()};
   bool is_collecting_operands = false;
-  bool should_rebind = false;
+  bool should_rebind          = false;
 
-  usize i = 1;
+  usize     i = 1;
   let const do_read_option_value =
       [&](const String &option_arg) -> Maybe<StringView> {
     if (let const eq = option_arg.view().find_character('='); eq.has_value())
@@ -432,7 +458,7 @@ fn Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
     if (arg == "--") {
       is_collecting_operands = true;
-      should_rebind = true;
+      should_rebind          = true;
       continue;
     }
 
@@ -478,7 +504,7 @@ fn Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         ec.print_to_stdout(out);
         continue;
       }
-      let moods = ArrayList<mimic_mood>{cxt.scratch_allocator()};
+      let   moods      = ArrayList<mimic_mood>{cxt.scratch_allocator()};
       usize name_start = 0;
 
       for (usize j = 0; j <= value->length; j++) {
@@ -486,7 +512,7 @@ fn Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
           continue;
         }
         let const name = value->substring_of_length(name_start, j - name_start);
-        name_start = j + 1;
+        name_start     = j + 1;
         if (name.is_empty()) continue;
         let const parsed = parse_mood_name(name);
         if (!parsed.has_value())
@@ -518,7 +544,7 @@ fn Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
     if (arg == "-" || arg == "+") {
       if (arg[0] == '-') {
-        let const *xtrace = find_option_by_letter('x');
+        let const *xtrace  = find_option_by_letter('x');
         let const *verbose = find_option_by_letter('v');
         ASSERT(xtrace != nullptr && verbose != nullptr);
         apply_or_reject_option(cxt, *xtrace, false);
@@ -526,7 +552,7 @@ fn Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       }
 
       is_collecting_operands = true;
-      should_rebind = i + 1 < args.count();
+      should_rebind          = i + 1 < args.count();
       continue;
     }
 
@@ -553,7 +579,7 @@ fn Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         }
 
         let const *option = find_option_by_letter(letter);
-        let const is_letter_flag =
+        let const  is_letter_flag =
             option != nullptr &&
             (option->type == option_type::Boolean ||
              option->storage == option_storage::WarningLevel);
@@ -583,7 +609,7 @@ fn Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     }
 
     is_collecting_operands = true;
-    should_rebind = true;
+    should_rebind          = true;
     operands.push_managed(arg);
   }
 

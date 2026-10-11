@@ -14,7 +14,8 @@
 
 namespace koshka {
 
-pure fn get_diagnostic_definition(diagnostic_id id) wontthrow
+pure fn
+get_diagnostic_definition(diagnostic_id id) wontthrow
     -> const diagnostic_definition &
 {
   let const index = static_cast<usize>(id);
@@ -23,17 +24,19 @@ pure fn get_diagnostic_definition(diagnostic_id id) wontthrow
   return DIAGNOSTIC_DEFINITIONS[index];
 }
 
-pure fn get_diagnostic_count() wontthrow -> usize
+pure fn
+get_diagnostic_count() wontthrow -> usize
 {
   return static_cast<usize>(diagnostic_id::Count);
 }
 
-fn format_diagnostic_template(
-    const char *text_template,
-    std::initializer_list<StringView> arguments) throws -> String
+fn
+format_diagnostic_template(const char                       *text_template,
+                           std::initializer_list<StringView> arguments) throws
+    -> String
 {
-  let result = String{heap_allocator()};
-  let const text = StringView{text_template};
+  let       result = String{heap_allocator()};
+  let const text   = StringView{text_template};
 
   for (usize position = 0; position < text.length; position++) {
     if (text[position] != '{' || position + 2 >= text.length ||
@@ -48,7 +51,7 @@ fn format_diagnostic_template(
     case '0': argument_index = 0; break;
     case '1': argument_index = 1; break;
     case '2': argument_index = 2; break;
-    default: result += text[position]; continue;
+    default:  result += text[position]; continue;
     }
 
     if (argument_index >= arguments.size()) return String{heap_allocator()};
@@ -59,7 +62,8 @@ fn format_diagnostic_template(
   return result;
 }
 
-fn append_diagnostic_code(String &message, Maybe<u16> shellcheck_code) throws
+fn
+append_diagnostic_code(String &message, Maybe<u16> shellcheck_code) throws
     -> void
 {
   if (!shellcheck_code.has_value()) return;
@@ -78,7 +82,8 @@ fn append_diagnostic_code(String &message, Maybe<u16> shellcheck_code) throws
   message += ')';
 }
 
-static pure fn parse_diagnostic_code(StringView text) wontthrow -> Maybe<u16>
+static pure fn
+parse_diagnostic_code(StringView text) wontthrow -> Maybe<u16>
 {
   if (text.length >= 2 && text[0] == 'S' && text[1] == 'C') {
     text = text.substring(2);
@@ -95,9 +100,10 @@ static pure fn parse_diagnostic_code(StringView text) wontthrow -> Maybe<u16>
   return static_cast<u16>(value);
 }
 
-pure fn shellcheck_selector_disables(const shellcheck_selector &selector,
-                                     StringView source,
-                                     diagnostic_id id) wontthrow -> bool
+pure fn
+shellcheck_selector_disables(const shellcheck_selector &selector,
+                             StringView                 source,
+                             diagnostic_id              id) wontthrow -> bool
 {
   let const &definition = get_diagnostic_definition(id);
 
@@ -120,7 +126,8 @@ pure fn shellcheck_selector_disables(const shellcheck_selector &selector,
 }
 
 static fn
-push_resolved_selector(StringView source, StringView text,
+push_resolved_selector(StringView                      source,
+                       StringView                      text,
                        ArrayList<shellcheck_selector> &selectors) throws -> void
 {
   if (text == StringView{"all"}) {
@@ -161,8 +168,10 @@ push_resolved_selector(StringView source, StringView text,
   });
 }
 
-static fn collect_comma_separated_selectors(
-    StringView source, StringView value,
+static fn
+collect_comma_separated_selectors(
+    StringView                      source,
+    StringView                      value,
     ArrayList<shellcheck_selector> &selectors) throws -> void
 {
   usize component_start = 0;
@@ -184,9 +193,11 @@ static fn collect_comma_separated_selectors(
   }
 }
 
-fn collect_shellcheck_selectors(
-    StringView source, shellcheck_directive_span comment_span,
-    ArrayList<shellcheck_selector> &selectors) throws -> void
+fn
+collect_shellcheck_selectors(StringView                      source,
+                             shellcheck_directive_span       comment_span,
+                             ArrayList<shellcheck_selector> &selectors) throws
+    -> void
 {
   if (comment_span.position + comment_span.length > source.length) return;
 

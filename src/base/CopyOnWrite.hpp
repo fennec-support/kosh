@@ -42,25 +42,27 @@ public:
     other.m_shared = nullptr;
   }
 
-  fn operator=(const CopyOnWrite &other) wontthrow->CopyOnWrite &
+  fn
+  operator=(const CopyOnWrite &other) wontthrow->CopyOnWrite &
   {
     if (m_shared == other.m_shared) return *this;
 
     release();
     m_allocator = other.m_allocator;
-    m_shared = other.m_shared;
+    m_shared    = other.m_shared;
     if (m_shared != nullptr) m_shared->reference_count++;
 
     return *this;
   }
 
-  fn operator=(CopyOnWrite &&other) wontthrow->CopyOnWrite &
+  fn
+  operator=(CopyOnWrite &&other) wontthrow->CopyOnWrite &
   {
     if (this == &other) return *this;
 
     release();
-    m_allocator = other.m_allocator;
-    m_shared = other.m_shared;
+    m_allocator    = other.m_allocator;
+    m_shared       = other.m_shared;
     other.m_shared = nullptr;
 
     return *this;
@@ -68,37 +70,50 @@ public:
 
   ~CopyOnWrite() { release(); }
 
-  mustuse fn clone() const throws -> CopyOnWrite
+  mustuse fn
+  clone() const throws -> CopyOnWrite
   {
     if (m_shared == nullptr) return CopyOnWrite{m_allocator};
 
     return CopyOnWrite{m_allocator, clone_value(read())};
   }
 
-  pure fn is_empty() const wontthrow -> bool { return m_shared == nullptr; }
+  pure fn
+  is_empty() const wontthrow -> bool
+  {
+    return m_shared == nullptr;
+  }
 
-  pure fn has_been_shared() const wontthrow -> bool
+  pure fn
+  has_been_shared() const wontthrow -> bool
   {
     return m_shared != nullptr && m_shared->reference_count > 1;
   }
 
-  pure fn allocator() const wontthrow -> Allocator { return m_allocator; }
+  pure fn
+  allocator() const wontthrow -> Allocator
+  {
+    return m_allocator;
+  }
 
-  pure fn read() const wontthrow -> const T &
+  pure fn
+  read() const wontthrow -> const T &
   {
     ASSERT(m_shared != nullptr);
 
     return m_shared->value;
   }
 
-  fn assign(T value) throws -> void
+  fn
+  assign(T value) throws -> void
   {
     let *const created = create(m_allocator, steal(value));
     release();
     m_shared = created;
   }
 
-  fn write() throws -> T &
+  fn
+  write() throws -> T &
   {
     ASSERT(m_shared != nullptr);
     if (m_shared->reference_count > 1) {
@@ -114,17 +129,19 @@ private:
   struct Shared
   {
     u32 reference_count;
-    T value;
+    T   value;
   };
 
-  static fn create(Allocator allocator, T value) throws -> Shared *
+  static fn
+  create(Allocator allocator, T value) throws -> Shared *
   {
     let *const storage = allocator.alloc_array<Shared>(1);
 
     return new (storage) Shared{1, steal(value)};
   }
 
-  fn release() wontthrow -> void
+  fn
+  release() wontthrow -> void
   {
     if (m_shared == nullptr) return;
 
@@ -136,7 +153,7 @@ private:
   }
 
   Allocator m_allocator;
-  Shared *m_shared;
+  Shared   *m_shared;
 };
 
 } /* namespace koshka */

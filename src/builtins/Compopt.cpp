@@ -24,22 +24,35 @@ HELP_DESCRIPTION_DECL(
     "replayable form.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
-FLAG(COMPOPT_OPTION, ManyStrings, 'o', "",
+FLAG(COMPOPT_OPTION,
+     ManyStrings,
+     'o',
+     "",
      "Turn the option on, as complete -o does. +o turns it off. If both are "
      "given, the option remains off. Any other name is an error.");
-FLAG(COMPOPT_DEFAULT, Bool, 'D', "",
+FLAG(COMPOPT_DEFAULT,
+     Bool,
+     'D',
+     "",
      "Change the default spec used for a command with no spec of its own.");
-FLAG(COMPOPT_EMPTY, Bool, 'E', "",
+FLAG(COMPOPT_EMPTY,
+     Bool,
+     'E',
+     "",
      "Change the spec used on an empty command line.");
-FLAG(COMPOPT_INITIAL, Bool, 'I', "",
+FLAG(COMPOPT_INITIAL,
+     Bool,
+     'I',
+     "",
      "Change the spec used for the command word.");
 
 REGISTER_BUILTIN_FLAGS(Compopt);
 
 namespace koshka {
 
-static fn append_option_line(String &output, u32 option_mask,
-                             StringView name) throws -> void
+static fn
+append_option_line(String &output, u32 option_mask, StringView name) throws
+    -> void
 {
   output += "compopt ";
 
@@ -55,17 +68,18 @@ static fn append_option_line(String &output, u32 option_mask,
   output += '\n';
 }
 
-fn Compopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
+fn
+Compopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let const &args = ec.args();
   ASSERT(!args.is_empty());
 
-  u32 enabled_mask = 0;
-  u32 disabled_mask = 0;
-  let has_default_slot = false;
-  let has_empty_slot = false;
-  let has_initial_slot = false;
-  usize name_index = 1;
+  u32   enabled_mask     = 0;
+  u32   disabled_mask    = 0;
+  let   has_default_slot = false;
+  let   has_empty_slot   = false;
+  let   has_initial_slot = false;
+  usize name_index       = 1;
 
   for (; name_index < args.count(); name_index++) {
     let const argument = args[name_index].view();
@@ -78,7 +92,7 @@ fn Compopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       break;
     }
 
-    let const is_enabling = argument[0] == '-';
+    let const is_enabling    = argument[0] == '-';
     let const argument_index = name_index;
 
     for (usize k = 1; k < argument.length; k++) {
@@ -87,7 +101,7 @@ fn Compopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       case 'D': has_default_slot = true; continue;
       case 'E': has_empty_slot = true; continue;
       case 'I': has_initial_slot = true; continue;
-      default: break;
+      default:  break;
       }
 
       if (letter != 'o') {
@@ -101,14 +115,14 @@ fn Compopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         return 2;
       }
 
-      let option_name = argument.substring(k + 1);
+      let option_name       = argument.substring(k + 1);
       let option_name_index = argument_index;
       if (option_name.is_empty()) {
         if (name_index + 1 >= args.count())
           return report_usage_error(ec, cxt, ec.program());
 
         name_index++;
-        option_name = args[name_index].view();
+        option_name       = args[name_index].view();
         option_name_index = name_index;
       }
 
@@ -130,25 +144,25 @@ fn Compopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   }
 
   let const should_print = enabled_mask == 0 && disabled_mask == 0;
-  let const do_apply = [&](u32 option_mask) wontthrow -> u32 {
+  let const do_apply     = [&](u32 option_mask) wontthrow -> u32 {
     return (option_mask | enabled_mask) & ~disabled_mask;
   };
   let output = String{cxt.scratch_allocator()};
 
-  let slot = Maybe<completion_spec_slot>{None};
-  let slot_flag = StringView{};
+  let slot             = Maybe<completion_spec_slot>{None};
+  let slot_flag        = StringView{};
   let slot_description = StringView{};
   if (has_default_slot) {
-    slot = completion_spec_slot::Default;
-    slot_flag = "-D";
+    slot             = completion_spec_slot::Default;
+    slot_flag        = "-D";
     slot_description = "default";
   } else if (has_empty_slot) {
-    slot = completion_spec_slot::Empty;
-    slot_flag = "-E";
+    slot             = completion_spec_slot::Empty;
+    slot_flag        = "-E";
     slot_description = "empty line";
   } else if (has_initial_slot) {
-    slot = completion_spec_slot::Initial;
-    slot_flag = "-I";
+    slot             = completion_spec_slot::Initial;
+    slot_flag        = "-I";
     slot_description = "initial word";
   }
 
@@ -209,7 +223,7 @@ fn Compopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   for (; name_index < args.count(); name_index++) {
     let const name = args[name_index].view();
-    let *spec = cxt.completion_store().lookup_spec(name);
+    let      *spec = cxt.completion_store().lookup_spec(name);
     if (spec == nullptr) {
       report_soft_builtin_error(ec, cxt, ec.arg_location_at(name_index),
                                 StringView{"The command '"} + name +

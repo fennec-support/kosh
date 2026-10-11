@@ -27,7 +27,7 @@ struct unavailable_path_component
   usize component_end;
   usize component_index;
   usize component_count;
-  bool is_not_directory;
+  bool  is_not_directory;
 };
 
 class Path
@@ -36,85 +36,136 @@ public:
   struct Component
   {
     StringView text;
-    usize start;
-    usize end;
+    usize      start;
+    usize      end;
   };
 
   Path() = default;
   explicit Path(StringView text);
   Path(StringView text, Allocator allocator);
 
-  mustuse fn clone() const throws -> Path { return Path{*this}; }
+  mustuse fn
+  clone() const throws -> Path
+  {
+    return Path{*this};
+  }
 
-  hot mustuse pure fn text() const wontthrow -> const String &;
-  hot mustuse pure fn view() const wontthrow -> StringView;
-  hot mustuse pure fn c_str() const wontthrow -> const char *;
-  hot mustuse pure fn allocator() const wontthrow -> Allocator;
-  hot mustuse pure fn count() const wontthrow -> usize;
-  hot mustuse pure fn is_empty() const wontthrow -> bool;
-  hot mustuse pure fn has_trailing_separator() const wontthrow -> bool;
+  hot mustuse pure fn
+  text() const wontthrow -> const String &;
+  hot mustuse pure fn
+  view() const wontthrow -> StringView;
+  hot mustuse pure fn
+  c_str() const wontthrow -> const char *;
+  hot mustuse pure fn
+  allocator() const wontthrow -> Allocator;
+  hot mustuse pure fn
+  count() const wontthrow -> usize;
+  hot mustuse pure fn
+  is_empty() const wontthrow -> bool;
+  hot mustuse pure fn
+  has_trailing_separator() const wontthrow -> bool;
 
-  mustuse fn parent() const throws -> Path;
-  mustuse fn parent_or_current() const throws -> Path;
-  mustuse pure fn filename() const wontthrow -> StringView;
-  mustuse pure static fn filename(StringView path) wontthrow -> StringView;
-  mustuse pure static fn invocation_filename(StringView path,
-                                             bool should_strip_marker) wontthrow
+  mustuse fn
+  parent() const throws -> Path;
+  mustuse fn
+  parent_or_current() const throws -> Path;
+  mustuse pure fn
+  filename() const wontthrow -> StringView;
+  mustuse pure static fn
+  filename(StringView path) wontthrow -> StringView;
+  mustuse pure static fn
+  invocation_filename(StringView path, bool should_strip_marker) wontthrow
       -> StringView;
-  mustuse pure fn extension() const wontthrow -> StringView;
-  mustuse fn next_component(usize &position) const wontthrow -> Component;
-  mustuse static fn next_component(StringView path, usize &position) wontthrow
-      -> Component;
+  mustuse pure fn
+  extension() const wontthrow -> StringView;
+  mustuse fn
+  next_component(usize &position) const wontthrow -> Component;
+  mustuse static fn
+  next_component(StringView path, usize &position) wontthrow -> Component;
 
-  mustuse pure fn is_absolute() const wontthrow -> bool;
-  mustuse pure fn is_relative() const wontthrow -> bool;
+  mustuse pure fn
+  is_absolute() const wontthrow -> bool;
+  mustuse pure fn
+  is_relative() const wontthrow -> bool;
 
-  cold mustuse fn normalized() const throws -> Path;
-  cold mustuse fn first_unavailable_component() const throws
+  cold mustuse fn
+  normalized() const throws -> Path;
+  cold mustuse fn
+  first_unavailable_component() const throws
       -> Maybe<unavailable_path_component>;
 
-  mustuse fn to_absolute_without_normalizing() const throws -> Path;
-  mustuse fn to_absolute() const throws -> Path;
+  mustuse fn
+  to_absolute_without_normalizing() const throws -> Path;
+  mustuse fn
+  to_absolute() const throws -> Path;
 
-  fn append(StringView component) throws -> Path &;
-  fn append_raw(StringView bytes) throws -> Path &;
+  fn
+  append(StringView component) throws -> Path &;
+  fn
+  append_raw(StringView bytes) throws -> Path &;
 
-  mustuse fn with_extension(StringView new_extension) const throws -> Path;
+  mustuse fn
+  with_extension(StringView new_extension) const throws -> Path;
 
-  cold mustuse fn exists() const wontthrow -> bool;
-  cold mustuse fn is_directory() const wontthrow -> bool;
-  mustuse fn is_regular_file() const wontthrow -> bool;
-  mustuse fn is_symbolic_link() const wontthrow -> bool;
-  mustuse fn is_block_device() const wontthrow -> bool;
-  mustuse fn is_character_device() const wontthrow -> bool;
-  mustuse fn is_fifo() const wontthrow -> bool;
-  mustuse fn is_socket() const wontthrow -> bool;
-  mustuse fn has_setuid_bit() const wontthrow -> bool;
-  mustuse fn has_setgid_bit() const wontthrow -> bool;
-  mustuse fn has_sticky_bit() const wontthrow -> bool;
-  mustuse fn is_owned_by_effective_user() const wontthrow -> bool;
-  mustuse fn is_owned_by_effective_group() const wontthrow -> bool;
-  mustuse fn file_size() const wontthrow -> Maybe<u64>;
-  mustuse fn modification_time() const wontthrow -> Maybe<i64>;
+  cold mustuse fn
+  exists() const wontthrow -> bool;
+  cold mustuse fn
+  is_directory() const wontthrow -> bool;
+  mustuse fn
+  is_regular_file() const wontthrow -> bool;
+  mustuse fn
+  is_symbolic_link() const wontthrow -> bool;
+  mustuse fn
+  is_block_device() const wontthrow -> bool;
+  mustuse fn
+  is_character_device() const wontthrow -> bool;
+  mustuse fn
+  is_fifo() const wontthrow -> bool;
+  mustuse fn
+  is_socket() const wontthrow -> bool;
+  mustuse fn
+  has_setuid_bit() const wontthrow -> bool;
+  mustuse fn
+  has_setgid_bit() const wontthrow -> bool;
+  mustuse fn
+  has_sticky_bit() const wontthrow -> bool;
+  mustuse fn
+  is_owned_by_effective_user() const wontthrow -> bool;
+  mustuse fn
+  is_owned_by_effective_group() const wontthrow -> bool;
+  mustuse fn
+  file_size() const wontthrow -> Maybe<u64>;
+  mustuse fn
+  modification_time() const wontthrow -> Maybe<i64>;
 
-  mustuse fn is_readable() const wontthrow -> bool;
-  mustuse fn is_writable() const wontthrow -> bool;
-  mustuse fn is_executable() const wontthrow -> bool;
+  mustuse fn
+  is_readable() const wontthrow -> bool;
+  mustuse fn
+  is_writable() const wontthrow -> bool;
+  mustuse fn
+  is_executable() const wontthrow -> bool;
 
-  mustuse fn is_same_file_as(const Path &other) const wontthrow -> bool;
-  mustuse fn is_newer_than(const Path &other) const wontthrow -> bool;
-  mustuse fn is_older_than(const Path &other) const wontthrow -> bool;
+  mustuse fn
+  is_same_file_as(const Path &other) const wontthrow -> bool;
+  mustuse fn
+  is_newer_than(const Path &other) const wontthrow -> bool;
+  mustuse fn
+  is_older_than(const Path &other) const wontthrow -> bool;
 
-  hot mustuse pure fn operator==(const Path &other) const wontthrow->bool;
+  hot mustuse pure fn
+  operator==(const Path &other) const wontthrow->bool;
 
-  cold mustuse static fn current_directory() throws -> Path;
-  static fn set_current_directory(const Path &path) throws -> ErrorOr<Ok>;
-  mustuse static fn temp_directory() throws -> Path;
+  cold mustuse static fn
+  current_directory() throws -> Path;
+  static fn
+  set_current_directory(const Path &path) throws -> ErrorOr<Ok>;
+  mustuse static fn
+  temp_directory() throws -> Path;
 
-  cold mustuse static fn read_directory(const Path &dir) throws
-      -> Maybe<ArrayList<String>>;
-  cold mustuse static fn read_directory(const Path &dir,
-                                        Allocator allocator) throws
+  cold mustuse static fn
+  read_directory(const Path &dir) throws -> Maybe<ArrayList<String>>;
+  cold mustuse static fn
+  read_directory(const Path &dir, Allocator allocator) throws
       -> Maybe<ArrayList<String>>;
 
   enum class EntryKind : u8
@@ -127,21 +178,26 @@ public:
   };
   struct DirectoryChild
   {
-    String name;
+    String    name;
     EntryKind kind;
   };
-  cold mustuse static fn read_directory_typed(const Path &dir) throws
+  cold mustuse static fn
+  read_directory_typed(const Path &dir) throws
       -> Maybe<ArrayList<DirectoryChild>>;
-  cold mustuse static fn read_directory_typed(const Path &dir,
-                                              Allocator allocator) throws
+  cold mustuse static fn
+  read_directory_typed(const Path &dir, Allocator allocator) throws
       -> Maybe<ArrayList<DirectoryChild>>;
 
-  mustuse fn read_entire_file() const throws -> Maybe<String>;
+  mustuse fn
+  read_entire_file() const throws -> Maybe<String>;
 
-  mustuse static fn canonicalize(StringView path) throws -> Maybe<Path>;
+  mustuse static fn
+  canonicalize(StringView path) throws -> Maybe<Path>;
 
-  mustuse fn detect_mimic_shell() const throws -> Maybe<mimic_mood>;
-  mustuse fn is_shell_source(StringView source) const throws -> bool;
+  mustuse fn
+  detect_mimic_shell() const throws -> Maybe<mimic_mood>;
+  mustuse fn
+  is_shell_source(StringView source) const throws -> bool;
 
 private:
   String m_text{heap_allocator()};

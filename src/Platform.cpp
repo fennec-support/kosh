@@ -16,7 +16,8 @@
 namespace koshka {
 namespace os {
 
-pure fn goodcore_tools() wontthrow -> goodcore_platform_tools
+pure fn
+goodcore_tools() wontthrow -> goodcore_platform_tools
 {
 #if defined __APPLE__
 
@@ -30,7 +31,8 @@ pure fn goodcore_tools() wontthrow -> goodcore_platform_tools
 #endif
 }
 
-pure fn evildisk_tools() wontthrow -> evildisk_platform_tools
+pure fn
+evildisk_tools() wontthrow -> evildisk_platform_tools
 {
 #if defined __APPLE__
 
@@ -41,7 +43,8 @@ pure fn evildisk_tools() wontthrow -> evildisk_platform_tools
 #endif
 }
 
-fn system_configuration(system_configuration_key key) wontthrow -> Maybe<i64>
+fn
+system_configuration(system_configuration_key key) wontthrow -> Maybe<i64>
 {
   let const result = query_system_configuration(key);
   if (result.status != configuration_query_status::Value) return None;
@@ -49,7 +52,8 @@ fn system_configuration(system_configuration_key key) wontthrow -> Maybe<i64>
   return result.value;
 }
 
-fn path_configuration(StringView path, path_configuration_key key) wontthrow
+fn
+path_configuration(StringView path, path_configuration_key key) wontthrow
     -> Maybe<i64>
 {
   let const result = query_path_configuration(path, key);
@@ -58,11 +62,16 @@ fn path_configuration(StringView path, path_configuration_key key) wontthrow
   return result.value;
 }
 
-static fn is_trappable_signal(i32 signal_number) wontthrow -> bool;
+static fn
+is_trappable_signal(i32 signal_number) wontthrow -> bool;
 
 static u64 ENVIRONMENT_EPOCH = 0;
 
-pure fn get_environment_epoch() wontthrow -> u64 { return ENVIRONMENT_EPOCH; }
+pure fn
+get_environment_epoch() wontthrow -> u64
+{
+  return ENVIRONMENT_EPOCH;
+}
 
 } /* namespace os */
 } /* namespace koshka */
@@ -102,30 +111,31 @@ subshell_bootstrap::subshell_bootstrap(subshell_bootstrap &&other) noexcept
       is_process_owner(other.is_process_owner),
       should_use_command_string_status(other.should_use_command_string_status)
 {
-  other.source_length = 0;
-  other.evaluation_mode = root_evaluation_mode::Normal;
-  other.is_process_owner = false;
+  other.source_length                    = 0;
+  other.evaluation_mode                  = root_evaluation_mode::Normal;
+  other.is_process_owner                 = false;
   other.should_use_command_string_status = false;
 }
 
 subshell_bootstrap::~subshell_bootstrap() { close_owned_processes(); }
 
-fn subshell_bootstrap::operator=(subshell_bootstrap &&other) noexcept
+fn
+subshell_bootstrap::operator=(subshell_bootstrap &&other) noexcept
     -> subshell_bootstrap &
 {
   if (this == &other) return *this;
 
   close_owned_processes();
-  payload = steal(other.payload);
-  source_origin = steal(other.source_origin);
-  processes = steal(other.processes);
-  source_length = other.source_length;
-  evaluation_mode = other.evaluation_mode;
-  is_process_owner = other.is_process_owner;
+  payload                          = steal(other.payload);
+  source_origin                    = steal(other.source_origin);
+  processes                        = steal(other.processes);
+  source_length                    = other.source_length;
+  evaluation_mode                  = other.evaluation_mode;
+  is_process_owner                 = other.is_process_owner;
   should_use_command_string_status = other.should_use_command_string_status;
-  other.source_length = 0;
-  other.evaluation_mode = root_evaluation_mode::Normal;
-  other.is_process_owner = false;
+  other.source_length              = 0;
+  other.evaluation_mode            = root_evaluation_mode::Normal;
+  other.is_process_owner           = false;
   other.should_use_command_string_status = false;
 
   return *this;
@@ -136,36 +146,38 @@ ProgramCapture::ProgramCapture(ProgramCapture &&other) noexcept
       m_deadline_nanos(other.m_deadline_nanos),
       m_captured(steal(other.m_captured)), m_exit_status(other.m_exit_status)
 {
-  other.m_child = KOSH_INVALID_PROCESS;
+  other.m_child  = KOSH_INVALID_PROCESS;
   other.m_output = KOSH_INVALID_FD;
 }
 
-fn ProgramCapture::operator=(ProgramCapture &&other) noexcept
-    -> ProgramCapture &
+fn
+ProgramCapture::operator=(ProgramCapture &&other) noexcept -> ProgramCapture &
 {
   if (this == &other) return *this;
 
   abandon();
-  m_child = other.m_child;
-  m_output = other.m_output;
+  m_child          = other.m_child;
+  m_output         = other.m_output;
   m_deadline_nanos = other.m_deadline_nanos;
-  m_captured = steal(other.m_captured);
-  m_exit_status = other.m_exit_status;
-  other.m_child = KOSH_INVALID_PROCESS;
-  other.m_output = KOSH_INVALID_FD;
+  m_captured       = steal(other.m_captured);
+  m_exit_status    = other.m_exit_status;
+  other.m_child    = KOSH_INVALID_PROCESS;
+  other.m_output   = KOSH_INVALID_FD;
 
   return *this;
 }
 
 ProgramCapture::~ProgramCapture() { abandon(); }
 
-fn ProgramCapture::take_output() wontthrow -> String
+fn
+ProgramCapture::take_output() wontthrow -> String
 {
   return steal(m_captured);
 }
 
-fn capture_program_output(const ArrayList<String> &argv,
-                          u64 timeout_nanos) wontthrow -> Maybe<String>
+fn
+capture_program_output(const ArrayList<String> &argv,
+                       u64 timeout_nanos) wontthrow -> Maybe<String>
 {
   let capture = ProgramCapture::start(argv, timeout_nanos);
   if (!capture.has_value()) return None;
@@ -174,14 +186,15 @@ fn capture_program_output(const ArrayList<String> &argv,
   {
     switch (capture->step()) {
     case ProgramCapture::State::Finished: return capture->take_output();
-    case ProgramCapture::State::Failed: return None;
-    case ProgramCapture::State::Running: capture->wait(timeout_nanos); break;
+    case ProgramCapture::State::Failed:   return None;
+    case ProgramCapture::State::Running:  capture->wait(timeout_nanos); break;
     }
   }
 }
 
-fn program_exits_successfully(const ArrayList<String> &argv,
-                              u64 timeout_nanos) wontthrow -> bool
+fn
+program_exits_successfully(const ArrayList<String> &argv,
+                           u64 timeout_nanos) wontthrow -> bool
 {
   let capture = ProgramCapture::start(argv, timeout_nanos);
   if (!capture.has_value()) return false;
@@ -191,13 +204,14 @@ fn program_exits_successfully(const ArrayList<String> &argv,
     switch (capture->step()) {
     case ProgramCapture::State::Finished:
       return capture->exit_status().value_or(-1) == 0;
-    case ProgramCapture::State::Failed: return false;
+    case ProgramCapture::State::Failed:  return false;
     case ProgramCapture::State::Running: capture->wait(timeout_nanos); break;
     }
   }
 }
 
-fn ScopedEnvironment::set(StringView key, StringView value) throws -> void
+fn
+ScopedEnvironment::set(StringView key, StringView value) throws -> void
 {
   m_saved.reserve(m_saved.count() + 1);
   m_saved.push(SavedVariable{
@@ -220,7 +234,8 @@ ScopedEnvironment::~ScopedEnvironment()
   }
 }
 
-static fn take_environment_variable(StringView key) throws -> Maybe<String>
+static fn
+take_environment_variable(StringView key) throws -> Maybe<String>
 {
   let text = get_environment_variable(key);
   if (text.has_value()) unset_environment_variable(key);
@@ -228,8 +243,9 @@ static fn take_environment_variable(StringView key) throws -> Maybe<String>
   return text;
 }
 
-fn inherited_subshell_state::apply_to(
-    ScopedEnvironment &environment) const throws -> void
+fn
+inherited_subshell_state::apply_to(ScopedEnvironment &environment) const throws
+    -> void
 {
   environment.set(internal::PREVIOUS_EXIT_STATUS,
                   String::from(previous_exit_status, heap_allocator()).view());
@@ -242,7 +258,8 @@ fn inherited_subshell_state::apply_to(
                   String::from(subshell_depth, heap_allocator()).view());
 }
 
-fn inherited_subshell_state::take_from_environment() throws
+fn
+inherited_subshell_state::take_from_environment() throws
     -> Maybe<inherited_subshell_state>
 {
   let const status_text =
@@ -258,10 +275,10 @@ fn inherited_subshell_state::take_from_environment() throws
     return None;
   }
 
-  let const status = status_text->view().to<i32>();
-  let const process_id = process_id_text->view().to<i64>();
+  let const status            = status_text->view().to<i32>();
+  let const process_id        = process_id_text->view().to<i64>();
   let const parent_process_id = parent_process_id_text->view().to<i64>();
-  let const depth = depth_text->view().to<u64>();
+  let const depth             = depth_text->view().to<u64>();
   if (status.is_error() || process_id.is_error() ||
       parent_process_id.is_error() || depth.is_error())
   {
@@ -272,14 +289,15 @@ fn inherited_subshell_state::take_from_environment() throws
   }
 
   return inherited_subshell_state{
-      .previous_exit_status = status.value(),
-      .shell_process_id = process_id.value(),
+      .previous_exit_status    = status.value(),
+      .shell_process_id        = process_id.value(),
       .shell_parent_process_id = parent_process_id.value(),
-      .subshell_depth = static_cast<usize>(depth.value()),
+      .subshell_depth          = static_cast<usize>(depth.value()),
   };
 }
 
-fn inherited_subshell_state::clear_environment() throws -> void
+fn
+inherited_subshell_state::clear_environment() throws -> void
 {
   unset_environment_variable(internal::PREVIOUS_EXIT_STATUS);
   unset_environment_variable(internal::SHELL_PROCESS_ID);
@@ -287,12 +305,14 @@ fn inherited_subshell_state::clear_environment() throws -> void
   unset_environment_variable(internal::SUBSHELL_DEPTH);
 }
 
-fn subshell_bootstrap::release_process_ownership() wontthrow -> void
+fn
+subshell_bootstrap::release_process_ownership() wontthrow -> void
 {
   is_process_owner = false;
 }
 
-fn subshell_bootstrap::close_owned_processes() wontthrow -> void
+fn
+subshell_bootstrap::close_owned_processes() wontthrow -> void
 {
   if (!is_process_owner) return;
 
@@ -302,18 +322,19 @@ fn subshell_bootstrap::close_owned_processes() wontthrow -> void
   is_process_owner = false;
 }
 
-fn divide_u128_by_u64(u64 high, u64 low, u64 divisor) wontthrow
+fn
+divide_u128_by_u64(u64 high, u64 low, u64 divisor) wontthrow
     -> u128_division_result
 {
   ASSERT(high < divisor);
 
 #if defined _MSC_VER && defined _M_X64 && !defined __clang__
-  u64 remainder = 0;
-  let const quotient = _udiv128(high, low, divisor, &remainder);
+  u64       remainder = 0;
+  let const quotient  = _udiv128(high, low, divisor, &remainder);
 
   return {quotient, remainder};
 #elif defined _MSC_VER
-  u64 quotient = 0;
+  u64 quotient  = 0;
   u64 remainder = high;
 
   for (u32 bit_position = 64; bit_position > 0; bit_position--) {
@@ -334,12 +355,14 @@ fn divide_u128_by_u64(u64 high, u64 low, u64 divisor) wontthrow
 #endif
 }
 
-static fn is_trappable_signal(i32 signal_number) wontthrow -> bool
+static fn
+is_trappable_signal(i32 signal_number) wontthrow -> bool
 {
   return signal_number > 0 && signal_number < SIGNAL_FLAG_COUNT;
 }
 
-fn take_pending_signal() wontthrow -> i32
+fn
+take_pending_signal() wontthrow -> i32
 {
   for (i32 number = 1; number < SIGNAL_FLAG_COUNT; number++) {
     if (PENDING_SIGNAL_FLAGS[number] != 0) {
@@ -352,7 +375,8 @@ fn take_pending_signal() wontthrow -> i32
   return 0;
 }
 
-fn peek_pending_signal_besides_child() wontthrow -> i32
+fn
+peek_pending_signal_besides_child() wontthrow -> i32
 {
   for (i32 number = 1; number < SIGNAL_FLAG_COUNT; number++) {
     if (number == CHILD_SIGNAL_NUMBER) continue;
@@ -363,64 +387,74 @@ fn peek_pending_signal_besides_child() wontthrow -> i32
   return 0;
 }
 
-static u32 REAPED_CHILD_COUNT = 0;
+static u32  REAPED_CHILD_COUNT      = 0;
 static bool DID_REAPED_CHILD_ARRIVE = false;
 
 volatile sig_atomic_t CHILD_TRAP_ARMED = 0;
 
-fn set_child_trap_armed(child_trap_arming arming) wontthrow -> void
+fn
+set_child_trap_armed(child_trap_arming arming) wontthrow -> void
 {
   CHILD_TRAP_ARMED = arming == child_trap_arming::Armed ? 1 : 0;
 }
 
-fn note_child_reaped() wontthrow -> void
+fn
+note_child_reaped() wontthrow -> void
 {
   if (CHILD_TRAP_ARMED == 0) return;
 
   REAPED_CHILD_COUNT += 1;
   DID_REAPED_CHILD_ARRIVE = true;
-  SIGNAL_PENDING = 1;
+  SIGNAL_PENDING          = 1;
 }
 
-fn take_reaped_child_count() wontthrow -> u32
+fn
+take_reaped_child_count() wontthrow -> u32
 {
   let const reaped_count = REAPED_CHILD_COUNT;
-  REAPED_CHILD_COUNT = 0;
+  REAPED_CHILD_COUNT     = 0;
 
   return reaped_count;
 }
 
-fn has_reaped_child_arrival() wontthrow -> bool
+fn
+has_reaped_child_arrival() wontthrow -> bool
 {
   return DID_REAPED_CHILD_ARRIVE;
 }
 
-fn clear_reaped_child_arrival() wontthrow -> void
+fn
+clear_reaped_child_arrival() wontthrow -> void
 {
   DID_REAPED_CHILD_ARRIVE = false;
 }
 
-fn get_shell_process_id() wontthrow -> i64
+fn
+get_shell_process_id() wontthrow -> i64
 {
   return static_cast<i64>(PARENT_SHELL_PID);
 }
 
-fn set_shell_process_id(i64 pid) wontthrow -> void
+fn
+set_shell_process_id(i64 pid) wontthrow -> void
 {
   PARENT_SHELL_PID = static_cast<decltype(PARENT_SHELL_PID)>(pid);
 }
 
-fn get_shell_parent_process_id() wontthrow -> i64
+fn
+get_shell_parent_process_id() wontthrow -> i64
 {
   return static_cast<i64>(PARENT_SHELL_PARENT_PID);
 }
 
-fn set_shell_parent_process_id(i64 pid) wontthrow -> void
+fn
+set_shell_parent_process_id(i64 pid) wontthrow -> void
 {
   PARENT_SHELL_PARENT_PID = static_cast<decltype(PARENT_SHELL_PARENT_PID)>(pid);
 }
 
-fn get_file_creation_mask() wontthrow -> u32
+fn
+get_file_creation_mask() wontthrow -> u32
 {
   let const previous_mask = KOSH_UMASK(0);
   KOSH_UMASK(previous_mask);
@@ -428,19 +462,25 @@ fn get_file_creation_mask() wontthrow -> u32
   return static_cast<u32>(previous_mask);
 }
 
-fn set_file_creation_mask(u32 mask) wontthrow -> void { KOSH_UMASK(mask); }
+fn
+set_file_creation_mask(u32 mask) wontthrow -> void
+{
+  KOSH_UMASK(mask);
+}
 
-fn descriptor_is_shell_fd(os::descriptor fd, i32 shell_fd) wontthrow -> bool
+fn
+descriptor_is_shell_fd(os::descriptor fd, i32 shell_fd) wontthrow -> bool
 {
   return fd == descriptor_for_shell_fd(shell_fd);
 }
 
-fn compile_regex(StringView pattern, case_sensitivity sensitivity) throws
+fn
+compile_regex(StringView pattern, case_sensitivity sensitivity) throws
     -> Maybe<compiled_regex>
 {
   let const is_case_insensitive = sensitivity == case_sensitivity::Insensitive;
-  let const pattern_text = String{heap_allocator(), pattern};
-  int compile_flags = REG_EXTENDED;
+  let const pattern_text        = String{heap_allocator(), pattern};
+  int       compile_flags       = REG_EXTENDED;
   if (is_case_insensitive) compile_flags |= REG_ICASE;
 
   compiled_regex compiled{};
@@ -450,12 +490,13 @@ fn compile_regex(StringView pattern, case_sensitivity sensitivity) throws
   return compiled;
 }
 
-fn compile_basic_regex(StringView pattern, case_sensitivity sensitivity) throws
+fn
+compile_basic_regex(StringView pattern, case_sensitivity sensitivity) throws
     -> Maybe<compiled_regex>
 {
   let const is_case_insensitive = sensitivity == case_sensitivity::Insensitive;
-  let const pattern_text = String{heap_allocator(), pattern};
-  int compile_flags = 0;
+  let const pattern_text        = String{heap_allocator(), pattern};
+  int       compile_flags       = 0;
 #if defined REG_ENHANCED
   compile_flags |= REG_ENHANCED;
 #endif
@@ -468,13 +509,14 @@ fn compile_basic_regex(StringView pattern, case_sensitivity sensitivity) throws
   return compiled;
 }
 
-fn execute_regex(compiled_regex &compiled,
-                 const regex_execution_options &options) throws
+fn
+execute_regex(compiled_regex                &compiled,
+              const regex_execution_options &options) throws
     -> regex_execution_report
 {
-  let report = regex_execution_report{options.scratch};
+  let       report      = regex_execution_report{options.scratch};
   let const group_count = compiled.re.re_nsub + 1;
-  let matches = ArrayList<regmatch_t>{options.scratch};
+  let       matches     = ArrayList<regmatch_t>{options.scratch};
   matches.reserve(group_count);
 
   for (usize i = 0; i < group_count; i++)
@@ -491,8 +533,8 @@ fn execute_regex(compiled_regex &compiled,
                                    group_count, matches.begin(), execute_flags);
 #elif defined REG_STARTEND
   let const subject_text = String{options.scratch, options.subject};
-  matches[0].rm_so = 0;
-  matches[0].rm_eo = static_cast<regoff_t>(options.subject.length);
+  matches[0].rm_so       = 0;
+  matches[0].rm_eo       = static_cast<regoff_t>(options.subject.length);
   execute_flags |= REG_STARTEND;
   const int match_result = regexec(&compiled.re, subject_text.c_str(),
                                    group_count, matches.begin(), execute_flags);
@@ -518,7 +560,7 @@ fn execute_regex(compiled_regex &compiled,
     char error_text[256];
     regerror(match_result, &compiled.re, error_text, sizeof(error_text));
     report.error_message = String{options.scratch, StringView{error_text}};
-    report.result = regex_match_result::Error;
+    report.result        = regex_match_result::Error;
 
     return report;
   }
@@ -535,12 +577,14 @@ fn execute_regex(compiled_regex &compiled,
   return report;
 }
 
-fn free_regex(compiled_regex &compiled) wontthrow -> void
+fn
+free_regex(compiled_regex &compiled) wontthrow -> void
 {
   regfree(&compiled.re);
 }
 
-fn regex_matches(compiled_regex &compiled, StringView subject) throws -> bool
+fn
+regex_matches(compiled_regex &compiled, StringView subject) throws -> bool
 {
 #if defined REG_STARTEND
   regmatch_t bounds[1];
@@ -568,22 +612,32 @@ fn regex_matches(compiled_regex &compiled, StringView subject) throws -> bool
 #endif
 }
 
-fn regex_matches_null_terminated(compiled_regex &compiled,
-                                 StringView subject) throws -> bool
+fn
+regex_matches_null_terminated(compiled_regex &compiled,
+                              StringView      subject) throws -> bool
 {
   return regex_matches(compiled, subject);
 }
 
 static u64 DESCRIPTOR_EPOCH = 0;
 
-pure fn get_descriptor_epoch() wontthrow -> u64 { return DESCRIPTOR_EPOCH; }
+pure fn
+get_descriptor_epoch() wontthrow -> u64
+{
+  return DESCRIPTOR_EPOCH;
+}
 
-fn note_descriptor_rebound() wontthrow -> void { DESCRIPTOR_EPOCH++; }
+fn
+note_descriptor_rebound() wontthrow -> void
+{
+  DESCRIPTOR_EPOCH++;
+}
 
-fn read_fd_to_string(os::descriptor fd, Allocator allocator) throws
+fn
+read_fd_to_string(os::descriptor fd, Allocator allocator) throws
     -> Maybe<String>
 {
-  let contents = String{allocator};
+  let  contents = String{allocator};
   char buffer[16384];
 
   loop
@@ -605,9 +659,9 @@ namespace {
 
 #if (defined __x86_64__ && !defined __COSMOPOLITAN__) ||                       \
     defined __aarch64__ || defined __arm64__ || defined _M_ARM64
-constexpr u32 CRC32C_POLYNOMIAL = 0x82f63b78u;
-constexpr usize CRC32C_LONG_BLOCK_LENGTH = 8192;
-constexpr usize CRC32C_SHORT_BLOCK_LENGTH = 256;
+constexpr u32                      CRC32C_POLYNOMIAL         = 0x82f63b78u;
+constexpr usize                    CRC32C_LONG_BLOCK_LENGTH  = 8192;
+constexpr usize                    CRC32C_SHORT_BLOCK_LENGTH = 256;
 
 struct crc32c_shift_operator
 {
@@ -619,8 +673,9 @@ struct crc32c_shift_table
   u32 entries[4][256];
 };
 
-consteval fn apply_crc32c_shift_operator(const crc32c_shift_operator &shift,
-                                         u32 value) -> u32
+consteval fn
+apply_crc32c_shift_operator(const crc32c_shift_operator &shift, u32 value)
+    -> u32
 {
   u32 result = 0;
 
@@ -631,7 +686,8 @@ consteval fn apply_crc32c_shift_operator(const crc32c_shift_operator &shift,
   return result;
 }
 
-consteval fn make_crc32c_shift_table(usize byte_length) -> crc32c_shift_table
+consteval fn
+make_crc32c_shift_table(usize byte_length) -> crc32c_shift_table
 {
   let shift = crc32c_shift_operator{};
 
@@ -672,8 +728,8 @@ constexpr crc32c_shift_table CRC32C_LONG_SHIFT_TABLE =
 constexpr crc32c_shift_table CRC32C_SHORT_SHIFT_TABLE =
     make_crc32c_shift_table(CRC32C_SHORT_BLOCK_LENGTH);
 
-pure alwaysinline fn shift_crc32c(const crc32c_shift_table &table,
-                                  u32 crc) wontthrow -> u32
+pure alwaysinline fn
+shift_crc32c(const crc32c_shift_table &table, u32 crc) wontthrow -> u32
 {
   return table.entries[0][crc & 0xff] ^ table.entries[1][(crc >> 8) & 0xff] ^
          table.entries[2][(crc >> 16) & 0xff] ^ table.entries[3][crc >> 24];
@@ -691,20 +747,21 @@ struct crc32c_x86_instructions
 {
   using accumulator = u64;
 
-  CRC32C_TARGETISA static alwaysinline fn update_word(u64 crc,
-                                                      u64 word) wontthrow -> u64
+  CRC32C_TARGETISA static alwaysinline fn
+  update_word(u64 crc, u64 word) wontthrow -> u64
   {
     return _mm_crc32_u64(crc, word);
   }
 
-  CRC32C_TARGETISA static alwaysinline fn update_byte(u32 crc,
-                                                      u8 byte) wontthrow -> u32
+  CRC32C_TARGETISA static alwaysinline fn
+  update_byte(u32 crc, u8 byte) wontthrow -> u32
   {
     return _mm_crc32_u8(crc, byte);
   }
 };
 
-fn is_x86_sse42_available() wontthrow -> bool
+fn
+is_x86_sse42_available() wontthrow -> bool
 {
   u32 eax = 1;
   u32 ebx;
@@ -725,27 +782,28 @@ struct crc32c_arm_instructions
 {
   using accumulator = u32;
 
-  CRC32C_TARGETISA static alwaysinline fn update_word(u32 crc,
-                                                      u64 word) wontthrow -> u32
+  CRC32C_TARGETISA static alwaysinline fn
+  update_word(u32 crc, u64 word) wontthrow -> u32
   {
     return __crc32cd(crc, word);
   }
 
-  CRC32C_TARGETISA static alwaysinline fn update_byte(u32 crc,
-                                                      u8 byte) wontthrow -> u32
+  CRC32C_TARGETISA static alwaysinline fn
+  update_byte(u32 crc, u8 byte) wontthrow -> u32
   {
     return __crc32cb(crc, byte);
   }
 };
 
-fn is_aarch64_crc32c_available() wontthrow -> bool
+fn
+is_aarch64_crc32c_available() wontthrow -> bool
 {
 #if defined __linux__
   let const crc32c_hardware_capability = 1UL << 7;
 
   return (getauxval(AT_HWCAP) & crc32c_hardware_capability) != 0;
 #elif defined __APPLE__
-  int is_available = 0;
+  int   is_available = 0;
   usize value_length = sizeof(is_available);
   if (sysctlbyname("hw.optional.armv8_crc32", &is_available, &value_length,
                    nullptr, 0) != 0)
@@ -765,14 +823,15 @@ fn is_aarch64_crc32c_available() wontthrow -> bool
 
 #if defined CRC32C_TARGETISA
 template <typename Instructions>
-CRC32C_TARGETISA
-    pure fn crc32c_update_streams(u32 crc, const u8 *data, usize block_length,
-                                  const crc32c_shift_table &table) wontthrow
-    -> u32
+CRC32C_TARGETISA pure fn
+crc32c_update_streams(u32                       crc,
+                      const u8                 *data,
+                      usize                     block_length,
+                      const crc32c_shift_table &table) wontthrow -> u32
 {
   typename Instructions::accumulator middle_crc = 0;
-  typename Instructions::accumulator last_crc = 0;
-  typename Instructions::accumulator first_crc = crc;
+  typename Instructions::accumulator last_crc   = 0;
+  typename Instructions::accumulator first_crc  = crc;
 
   for (usize offset = 0; offset < block_length; offset += 8) {
     u64 first_word;
@@ -781,9 +840,9 @@ CRC32C_TARGETISA
     __builtin_memcpy(&first_word, data + offset, 8);
     __builtin_memcpy(&middle_word, data + block_length + offset, 8);
     __builtin_memcpy(&last_word, data + 2 * block_length + offset, 8);
-    first_crc = Instructions::update_word(first_crc, first_word);
+    first_crc  = Instructions::update_word(first_crc, first_word);
     middle_crc = Instructions::update_word(middle_crc, middle_word);
-    last_crc = Instructions::update_word(last_crc, last_word);
+    last_crc   = Instructions::update_word(last_crc, last_word);
   }
 
   crc = shift_crc32c(table, static_cast<u32>(first_crc)) ^
@@ -793,8 +852,8 @@ CRC32C_TARGETISA
 }
 
 template <typename Instructions>
-CRC32C_TARGETISA pure fn crc32c_update_hardware(u32 crc, const u8 *data,
-                                                usize length) wontthrow -> u32
+CRC32C_TARGETISA pure fn
+crc32c_update_hardware(u32 crc, const u8 *data, usize length) wontthrow -> u32
 {
   while (length >= 3 * CRC32C_LONG_BLOCK_LENGTH) {
     crc = crc32c_update_streams<Instructions>(
@@ -825,8 +884,8 @@ CRC32C_TARGETISA pure fn crc32c_update_hardware(u32 crc, const u8 *data,
 }
 #endif
 
-pure alwaysinline fn crc32c_update_software(u32 crc, const u8 *data,
-                                            usize length) wontthrow -> u32
+pure alwaysinline fn
+crc32c_update_software(u32 crc, const u8 *data, usize length) wontthrow -> u32
 {
   for (usize position = 0; position < length; position++) {
     crc ^= data[position];
@@ -843,7 +902,8 @@ pure alwaysinline fn crc32c_update_software(u32 crc, const u8 *data,
 
 } /* namespace */
 
-fn crc32c_update(u32 crc, const void *data, usize length) wontthrow -> u32
+fn
+crc32c_update(u32 crc, const void *data, usize length) wontthrow -> u32
 {
   let const bytes = static_cast<const u8 *>(data);
 

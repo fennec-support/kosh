@@ -26,8 +26,9 @@ namespace koshka {
 
 namespace utils {
 
-fn set_foreground_program_title(const ArrayList<String> &arguments,
-                                EvalContext &cxt) throws -> void
+fn
+set_foreground_program_title(const ArrayList<String> &arguments,
+                             EvalContext             &cxt) throws -> void
 {
   if (arguments.is_empty()) return;
 
@@ -50,8 +51,9 @@ fn set_foreground_program_title(const ArrayList<String> &arguments,
   toiletline::set_title(command_title.view());
 }
 
-fn execute_context(ExecContext &&ec, EvalContext &cxt,
-                   execution_mode mode) throws -> i32
+fn
+execute_context(ExecContext &&ec, EvalContext &cxt, execution_mode mode) throws
+    -> i32
 {
   let const is_async = mode == execution_mode::Background;
   if (ec.is_builtin()) {
@@ -120,7 +122,7 @@ fn execute_context(ExecContext &&ec, EvalContext &cxt,
             os::close_fd(sync_pipe->out);
           }
 
-          let was_stopped = false;
+          let       was_stopped = false;
           const i32 status = os::wait_and_monitor_process(child, &was_stopped);
           os::reclaim_controlling_terminal();
 
@@ -201,9 +203,9 @@ fn execute_context(ExecContext &&ec, EvalContext &cxt,
   cxt.job_table_store().forget_waited_jobs();
   os::process p = os::execute_program(
       ec, os::program_execution_options{
-              .source = source_view,
-              .fallback = is_async ? os::script_fallback_policy::Reject
-                                   : os::script_fallback_policy::Allow,
+              .source        = source_view,
+              .fallback      = is_async ? os::script_fallback_policy::Reject
+                                        : os::script_fallback_policy::Allow,
               .process_group = is_async ? os::process_group_mode::NewBackground
                                : is_foreground_job
                                    ? os::process_group_mode::New
@@ -254,8 +256,9 @@ fn execute_context(ExecContext &&ec, EvalContext &cxt,
   return foreground_status;
 }
 
-fn terminate_and_reap_processes(const ArrayList<os::process> &processes,
-                                usize first_process_position) wontthrow -> void
+fn
+terminate_and_reap_processes(const ArrayList<os::process> &processes,
+                             usize first_process_position) wontthrow -> void
 {
   for (usize position = first_process_position; position < processes.count();
        position++)
@@ -270,8 +273,9 @@ fn terminate_and_reap_processes(const ArrayList<os::process> &processes,
   }
 }
 
-static fn report_unresolved_stage(EvalContext &cxt,
-                                  const ExecContext &stage) throws -> void
+static fn
+report_unresolved_stage(EvalContext &cxt, const ExecContext &stage) throws
+    -> void
 {
   let const should_error_follow_output =
       stage.should_duplicate_error_to_output &&
@@ -300,8 +304,10 @@ static fn report_unresolved_stage(EvalContext &cxt,
   cxt.print_source_backtrace(stage.source_location(), !saved.is_dup2_ok);
 }
 
-fn execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs, EvalContext &cxt,
-                               execution_mode mode) throws -> i32
+fn
+execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs,
+                            EvalContext             &cxt,
+                            execution_mode           mode) throws -> i32
 {
   let const is_async = mode == execution_mode::Background;
   ASSERT(!ecs.is_empty());
@@ -344,11 +350,11 @@ fn execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs, EvalContext &cxt,
 
   i32 ret = 0;
 
-  let children = ArrayList<os::process>{heap_allocator()};
-  os::process last_child = KOSH_INVALID_PROCESS;
-  os::descriptor last_stdin = KOSH_INVALID_FD;
-  i64 process_group_id = 0;
-  bool should_reap_children_on_unwind = true;
+  let            children         = ArrayList<os::process>{heap_allocator()};
+  os::process    last_child       = KOSH_INVALID_PROCESS;
+  os::descriptor last_stdin       = KOSH_INVALID_FD;
+  i64            process_group_id = 0;
+  bool           should_reap_children_on_unwind = true;
   defer
   {
     if (should_reap_children_on_unwind) {
@@ -360,8 +366,8 @@ fn execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs, EvalContext &cxt,
     }
   };
 
-  let const stage_count = ecs.count();
-  let stage_status = ArrayList<i32>{heap_allocator()};
+  let const stage_count  = ecs.count();
+  let       stage_status = ArrayList<i32>{heap_allocator()};
   stage_status.reserve(stage_count);
 
   for (usize i = 0; i < stage_count; i++)
@@ -371,9 +377,9 @@ fn execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs, EvalContext &cxt,
 
   let unresolved_stages = ArrayList<usize>{heap_allocator()};
 
-  bool is_first = true;
+  bool  is_first    = true;
   usize stage_index = 0;
-  let bootstrap = os::subshell_bootstrap{};
+  let   bootstrap   = os::subshell_bootstrap{};
 
   for (ExecContext &ec : ecs) {
     Maybe<os::pipe_ends> pipe;
@@ -399,13 +405,13 @@ fn execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs, EvalContext &cxt,
       bool did_stage_take_pipe = false;
 
       if (has_leading_error_dup && !ec.err_fd) {
-        ec.err_fd = pipe->out;
+        ec.err_fd                           = pipe->out;
         ec.should_duplicate_error_to_output = false;
-        did_stage_take_pipe = true;
+        did_stage_take_pipe                 = true;
       }
 
       if (!ec.out_fd && !has_leading_output_dup && !did_stage_take_pipe) {
-        ec.out_fd = pipe->out;
+        ec.out_fd           = pipe->out;
         did_stage_take_pipe = true;
       }
 
@@ -434,10 +440,10 @@ fn execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs, EvalContext &cxt,
                     : os::background_process_group_mode(process_group_id);
       let const child = os::execute_program(
           ec, os::program_execution_options{
-                  .source = cxt.source_store().current_source_view(),
+                  .source           = cxt.source_store().current_source_view(),
                   .process_group_id = process_group_id,
-                  .fallback = os::script_fallback_policy::Reject,
-                  .process_group = process_group});
+                  .fallback         = os::script_fallback_policy::Reject,
+                  .process_group    = process_group});
       if (is_async && process_group_id == 0) {
         process_group_id = os::process_id_of(child);
       }
@@ -450,19 +456,19 @@ fn execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs, EvalContext &cxt,
           !is_async ? os::process_group_mode::Inherit
                     : os::background_process_group_mode(process_group_id);
       let forked_child = os::try_fork_compound_stage(
-          os::fork_compound_stage_options{.in_fd = ec.in_fd,
-                                          .out_fd = ec.out_fd,
-                                          .err_fd = ec.err_fd,
+          os::fork_compound_stage_options{.in_fd    = ec.in_fd,
+                                          .out_fd   = ec.out_fd,
+                                          .err_fd   = ec.err_fd,
                                           .location = ec.source_location(),
                                           .diagnostic_source = source_view,
-                                          .process_group_id = process_group_id,
-                                          .process_group = process_group});
-      let preflight_status = Maybe<i32>{};
+                                          .process_group_id  = process_group_id,
+                                          .process_group     = process_group});
+      let preflight_status   = Maybe<i32>{};
       let preflight_location = SourceLocation{};
-      let preflight_message = String{cxt.scratch_allocator()};
+      let preflight_message  = String{cxt.scratch_allocator()};
       if (!forked_child.has_value()) {
         const usize utility_index = ec.program() == "koshkit" ? 1 : 0;
-        bool should_restore_environment = false;
+        bool        should_restore_environment = false;
         if (ec.builtin_kind() == Builtin::Kind::Koshkit &&
             utility_index < ec.args().count())
         {
@@ -536,14 +542,14 @@ fn execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs, EvalContext &cxt,
           try {
             let const launch =
                 os::launch_compound_stage(os::compound_stage_options{
-                    .source = stage_source.view(),
-                    .in_fd = ec.in_fd,
-                    .out_fd = stage_out,
-                    .err_fd = stage_err,
-                    .location = ec.source_location(),
+                    .source            = stage_source.view(),
+                    .in_fd             = ec.in_fd,
+                    .out_fd            = stage_out,
+                    .err_fd            = stage_err,
+                    .location          = ec.source_location(),
                     .diagnostic_source = source_view,
-                    .process_group_id = process_group_id,
-                    .evaluator = cxt.make_child_evaluator_state(bootstrap),
+                    .process_group_id  = process_group_id,
+                    .evaluator     = cxt.make_child_evaluator_state(bootstrap),
                     .process_group = process_group});
             forked_child = launch.child;
           } catch (...) {
@@ -585,12 +591,12 @@ fn execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs, EvalContext &cxt,
       } else if (!forked_child.has_value()) {
         cxt.job_table_store().set_in_pipeline_stage(true);
         defer { cxt.job_table_store().set_in_pipeline_stage(false); };
-        ret = execute_builtin(steal(ec), cxt);
+        ret                       = execute_builtin(steal(ec), cxt);
         stage_status[stage_index] = ret;
       } else {
         const os::process child = *forked_child;
         if (os::process_id_of(child) == 0) {
-          ec.in_fd = koshka::None;
+          ec.in_fd  = koshka::None;
           ec.out_fd = koshka::None;
           ec.err_fd = koshka::None;
           if (last_stdin != KOSH_INVALID_FD) {
@@ -637,7 +643,7 @@ fn execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs, EvalContext &cxt,
     } else {
       cxt.job_table_store().set_in_pipeline_stage(true);
       defer { cxt.job_table_store().set_in_pipeline_stage(false); };
-      ret = execute_builtin(steal(ec), cxt);
+      ret                       = execute_builtin(steal(ec), cxt);
       stage_status[stage_index] = ret;
     }
 
@@ -700,12 +706,14 @@ fn execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs, EvalContext &cxt,
 
 static const EvalContext *QUIT_CONTEXT = nullptr;
 
-fn set_quit_context(const EvalContext *context) wontthrow -> void
+fn
+set_quit_context(const EvalContext *context) wontthrow -> void
 {
   QUIT_CONTEXT = context;
 }
 
-cold fn print_memory_report() wontthrow -> void
+cold fn
+print_memory_report() wontthrow -> void
 {
   if (QUIT_CONTEXT != nullptr &&
       QUIT_CONTEXT->arena_store().parse_arena() != nullptr)
@@ -736,7 +744,8 @@ cold fn print_memory_report() wontthrow -> void
                  heap_stats.mapped_byte_count);
 }
 
-wontreturn fn quit(i32 code, farewell_policy farewell) throws -> void
+wontreturn fn
+quit(i32 code, farewell_policy farewell) throws -> void
 {
   let const should_goodbye = farewell == farewell_policy::Goodbye;
   LOG(Info, "quitting with code %d", code);

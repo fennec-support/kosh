@@ -20,23 +20,25 @@ REGISTER_KOSHKIT_UTIL_FLAGS(Sleep);
 
 namespace koshka::koshkit {
 
-fn Sleep::execute(const ExecContext &ec, EvalContext &cxt,
-                  const ArrayList<String> &args,
-                  const ArrayList<SourceLocation> &arg_locations) const throws
+fn
+Sleep::execute(const ExecContext               &ec,
+               EvalContext                     &cxt,
+               const ArrayList<String>         &args,
+               const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (operands.is_empty()) return report_usage_error(ec, cxt, args[0].view());
 
-  f64 total_seconds = 0.0;
+  f64  total_seconds        = 0.0;
   bool should_sleep_forever = false;
 
   for (usize operand_index = 0; operand_index < operands.count();
        operand_index++)
   {
-    let const &operand = operands[operand_index];
-    let const seconds_value = parse_koshkit_duration_seconds(
+    let const &operand       = operands[operand_index];
+    let const  seconds_value = parse_koshkit_duration_seconds(
         operand.view(), operand_locations[operand_index],
         cxt.scratch_allocator());
 

@@ -41,8 +41,8 @@ enum class highlight_role : u8
 
 struct highlight_span
 {
-  u32 start;
-  u32 end;
+  u32            start;
+  u32            end;
   highlight_role role;
 
   constexpr highlight_span() wontthrow : start(0),
@@ -50,7 +50,8 @@ struct highlight_span
                                          role(highlight_role::comment)
   {}
 
-  constexpr highlight_span(usize span_start, usize span_end,
+  constexpr highlight_span(usize          span_start,
+                           usize          span_end,
                            highlight_role span_role) wontthrow
       : start(static_cast<u32>(span_start)),
         end(static_cast<u32>(span_end)),
@@ -73,18 +74,20 @@ struct highlight_theme
   StringView reset;
   StringView styles[static_cast<usize>(highlight_role::count)];
 
-  pure fn style_for(highlight_role role) const wontthrow -> StringView
+  pure fn
+  style_for(highlight_role role) const wontthrow -> StringView
   {
     return styles[static_cast<usize>(role)];
   }
 
-  constexpr fn set_style(highlight_role role, StringView style) wontthrow
-      -> void
+  constexpr fn
+  set_style(highlight_role role, StringView style) wontthrow -> void
   {
     styles[static_cast<usize>(role)] = style;
   }
 };
 
-pure fn highlight_role_name(highlight_role role) wontthrow -> StringView;
+pure fn
+highlight_role_name(highlight_role role) wontthrow -> StringView;
 
 } /* namespace koshka */

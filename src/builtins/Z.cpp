@@ -37,20 +37,22 @@ constexpr usize Z_FRECENCY_MAX = 500;
 struct frecency_entry
 {
   String path;
-  i64 rank;
-  i64 last_access;
+  i64    rank;
+  i64    last_access;
 };
 
 struct frecency_rank_comparator
 {
-  pure fn operator()(const frecency_entry &left,
-                     const frecency_entry &right) const wontthrow->bool
+  pure fn
+  operator()(const frecency_entry &left,
+             const frecency_entry &right) const wontthrow->bool
   {
     return left.rank > right.rank;
   }
 };
 
-static fn frecency_store_path() throws -> Maybe<Path>
+static fn
+frecency_store_path() throws -> Maybe<Path>
 {
   if (let const override_path =
           os::get_environment_variable("KOSH_DIRECTORY_HISTORY");
@@ -66,12 +68,14 @@ static fn frecency_store_path() throws -> Maybe<Path>
   return path;
 }
 
-static fn now_epoch_seconds() wontthrow -> i64
+static fn
+now_epoch_seconds() wontthrow -> i64
 {
   return static_cast<i64>(std::time(nullptr));
 }
 
-static fn recency_weight(i64 age_seconds) wontthrow -> double
+static fn
+recency_weight(i64 age_seconds) wontthrow -> double
 {
   if (age_seconds < 3600) return 4.0;
   if (age_seconds < 86400) return 2.0;
@@ -80,24 +84,24 @@ static fn recency_weight(i64 age_seconds) wontthrow -> double
   return 0.25;
 }
 
-static fn read_frecency_store(Allocator allocator) throws
-    -> ArrayList<frecency_entry>
+static fn
+read_frecency_store(Allocator allocator) throws -> ArrayList<frecency_entry>
 {
   let entries = ArrayList<frecency_entry>{allocator};
-  let path = frecency_store_path();
+  let path    = frecency_store_path();
   if (!path) return entries;
   let content = path->read_entire_file();
   if (!content) return entries;
 
-  let const text = content->view();
-  usize line_start = 0;
+  let const text       = content->view();
+  usize     line_start = 0;
 
   for (usize i = 0; i <= text.length; i++) {
     if (i != text.length && text[i] != '\n') {
       continue;
     }
     let const line = text.substring_of_length(line_start, i - line_start);
-    line_start = i + 1;
+    line_start     = i + 1;
     if (line.is_empty()) continue;
 
     let const first_tab = line.find_character('\t');
@@ -109,8 +113,8 @@ static fn read_frecency_store(Allocator allocator) throws
     let const path_field = line.substring_of_length(0, *first_tab);
     let const rank_field = after_path.substring_of_length(0, *second_tab);
     let const time_field = after_path.substring(*second_tab + 1);
-    let const rank = rank_field.to<i64>();
-    let const last = time_field.to<i64>();
+    let const rank       = rank_field.to<i64>();
+    let const last       = time_field.to<i64>();
     if (rank.is_error() || last.is_error()) {
       continue;
     }
@@ -123,8 +127,9 @@ static fn read_frecency_store(Allocator allocator) throws
   return entries;
 }
 
-static fn write_frecency_store(const ArrayList<frecency_entry> &entries,
-                               Allocator allocator) throws -> void
+static fn
+write_frecency_store(const ArrayList<frecency_entry> &entries,
+                     Allocator                        allocator) throws -> void
 {
   let path = frecency_store_path();
   if (!path) return;
@@ -144,8 +149,8 @@ static fn write_frecency_store(const ArrayList<frecency_entry> &entries,
       *path, ".kosh_directory_history_write", out.view()));
 }
 
-static fn contains_ignore_case(StringView haystack, StringView needle) wontthrow
-    -> bool
+static fn
+contains_ignore_case(StringView haystack, StringView needle) wontthrow -> bool
 {
   if (needle.is_empty()) return true;
   if (needle.length > haystack.length) return false;
@@ -169,19 +174,20 @@ static fn contains_ignore_case(StringView haystack, StringView needle) wontthrow
   return false;
 }
 
-static fn equals_ignore_case(StringView text, StringView needle) wontthrow
-    -> bool
+static fn
+equals_ignore_case(StringView text, StringView needle) wontthrow -> bool
 {
   return text.length == needle.length && contains_ignore_case(text, needle);
 }
 
 } /* namespace */
 
-fn z_completion_candidates(StringView query, Allocator allocator) throws
+fn
+z_completion_candidates(StringView query, Allocator allocator) throws
     -> ArrayList<String>
 {
-  let entries = read_frecency_store(allocator);
-  let const now = now_epoch_seconds();
+  let       entries = read_frecency_store(allocator);
+  let const now     = now_epoch_seconds();
 
   entries.sort([now](const frecency_entry &left, const frecency_entry &right) {
     let const left_score =
@@ -210,14 +216,15 @@ fn z_completion_candidates(StringView query, Allocator allocator) throws
   return candidates;
 }
 
-fn record_directory_access(StringView directory, Allocator allocator) throws
+fn
+record_directory_access(StringView directory, Allocator allocator) throws
     -> void
 {
   if (directory.is_empty()) return;
 
-  let entries = read_frecency_store(allocator);
-  let const now = now_epoch_seconds();
-  let visited = Maybe<frecency_entry>{};
+  let       entries = read_frecency_store(allocator);
+  let const now     = now_epoch_seconds();
+  let       visited = Maybe<frecency_entry>{};
 
   for (usize i = 0; i < entries.count(); i++) {
     if (!os::paths_match_for_history(entries[i].path.view(), directory))
@@ -253,7 +260,8 @@ fn record_directory_access(StringView directory, Allocator allocator) throws
   write_frecency_store(entries, allocator);
 }
 
-fn Z::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
+fn
+Z::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let const operands = PARSE_BUILTIN_ARGS(ec);
 
@@ -300,8 +308,8 @@ fn Z::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   LOG(Debug, "z ranking the frecency store against query '%s'", query.c_str());
 
-  let entries = read_frecency_store(cxt.scratch_allocator());
-  let const now = now_epoch_seconds();
+  let       entries = read_frecency_store(cxt.scratch_allocator());
+  let const now     = now_epoch_seconds();
 
   let const do_match_tier = [&](StringView path) wontthrow -> i32 {
     if (equals_ignore_case(path, query.view())) return 2;
@@ -310,9 +318,9 @@ fn Z::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return 0;
   };
 
-  const frecency_entry *best = nullptr;
-  let best_score = -1.0;
-  i32 best_tier = -1;
+  const frecency_entry *best       = nullptr;
+  let                   best_score = -1.0;
+  i32                   best_tier  = -1;
 
   for (let const &entry : entries) {
     if (!query.is_empty() &&
@@ -322,13 +330,13 @@ fn Z::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     }
     if (!Path{entry.path.view()}.to_absolute().normalized().is_directory())
       continue;
-    let const tier = do_match_tier(entry.path.view());
+    let const tier  = do_match_tier(entry.path.view());
     let const score = static_cast<double>(entry.rank) *
                       recency_weight(now - entry.last_access);
     if (tier > best_tier || (tier == best_tier && score > best_score)) {
-      best_tier = tier;
+      best_tier  = tier;
       best_score = score;
-      best = &entry;
+      best       = &entry;
     }
   }
 

@@ -20,8 +20,11 @@
 FLAG_LIST_DECL();
 
 HELP_SYNOPSIS_DECL("create <bash|sh|kosh> [--force]",
-                   "set <option> <value> [--persist]", "get <option>",
-                   "list [-a|--all]", "load <base64>", "save [--persist]");
+                   "set <option> <value> [--persist]",
+                   "get <option>",
+                   "list [-a|--all]",
+                   "load <base64>",
+                   "save [--persist]");
 
 HELP_DESCRIPTION_DECL(
     "The koshconf builtin loads and changes the settings Koshka owns, writes "
@@ -31,13 +34,22 @@ HELP_DESCRIPTION_DECL(
     "file.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
-FLAG(ALL, Bool, 'a', "all",
+FLAG(ALL,
+     Bool,
+     'a',
+     "all",
      "With list, also show the legacy.posix and legacy.bash name of each "
      "option.");
-FLAG(PERSIST, Bool, '\0', "persist",
+FLAG(PERSIST,
+     Bool,
+     '\0',
+     "persist",
      "With set, also write the option to the user configuration file. With "
      "save, write every current setting to it.");
-FLAG(FORCE, Bool, '\0', "force",
+FLAG(FORCE,
+     Bool,
+     '\0',
+     "force",
      "With create, replace an existing configuration file.");
 
 REGISTER_BUILTIN_FLAGS(Koshconf);
@@ -77,12 +89,15 @@ constexpr StringView LIST_HEADING{"# name=value"};
 
 struct koshconf_operands
 {
-  const ArrayList<String> &values;
+  const ArrayList<String>         &values;
   const ArrayList<SourceLocation> &locations;
 };
 
-fn report_usage(const ExecContext &ec, EvalContext &cxt,
-                SourceLocation location, StringView message) throws -> i32
+fn
+report_usage(const ExecContext &ec,
+             EvalContext       &cxt,
+             SourceLocation     location,
+             StringView         message) throws -> i32
 {
   report_soft_builtin_error(ec, cxt, location, message,
                             "Run `koshconf --help` for the forms");
@@ -90,9 +105,11 @@ fn report_usage(const ExecContext &ec, EvalContext &cxt,
   return 2;
 }
 
-fn report_caught_error(const ExecContext &ec, EvalContext &cxt,
-                       SourceLocation location, const Error &error) throws
-    -> void
+fn
+report_caught_error(const ExecContext &ec,
+                    EvalContext       &cxt,
+                    SourceLocation     location,
+                    const Error       &error) throws -> void
 {
   if (error.detail_message().is_empty()) {
     report_soft_builtin_error(ec, cxt, location, error.message().view());
@@ -104,9 +121,11 @@ fn report_caught_error(const ExecContext &ec, EvalContext &cxt,
                             error.detail_message());
 }
 
-fn find_named_option(const ExecContext &ec, EvalContext &cxt,
-                     const koshconf_operands &operands, usize index) throws
-    -> const option_descriptor *
+fn
+find_named_option(const ExecContext       &ec,
+                  EvalContext             &cxt,
+                  const koshconf_operands &operands,
+                  usize index) throws -> const option_descriptor *
 {
   let const *option = find_option_by_koshconf_name(operands.values[index]);
   let const *bash_option =
@@ -138,8 +157,8 @@ fn find_named_option(const ExecContext &ec, EvalContext &cxt,
   return nullptr;
 }
 
-fn require_user_path(const ExecContext &ec, EvalContext &cxt) throws
-    -> Maybe<Path>
+fn
+require_user_path(const ExecContext &ec, EvalContext &cxt) throws -> Maybe<Path>
 {
   let path = get_user_koshconf_path();
   if (!path.has_value())
@@ -151,8 +170,11 @@ fn require_user_path(const ExecContext &ec, EvalContext &cxt) throws
   return path;
 }
 
-fn report_written_file(const ExecContext &ec, const EvalContext &cxt,
-                       StringView written, const Path &path) throws -> void
+fn
+report_written_file(const ExecContext &ec,
+                    const EvalContext &cxt,
+                    StringView         written,
+                    const Path        &path) throws -> void
 {
   if (!cxt.execution_store().shell_is_interactive()) return;
 
@@ -160,8 +182,10 @@ fn report_written_file(const ExecContext &ec, const EvalContext &cxt,
                      "\n");
 }
 
-fn run_create(const ExecContext &ec, EvalContext &cxt,
-              const koshconf_operands &operands) throws -> i32
+fn
+run_create(const ExecContext       &ec,
+           EvalContext             &cxt,
+           const koshconf_operands &operands) throws -> i32
 {
   if (operands.values.count() != 3)
     return report_usage(ec, cxt, ec.source_location(),
@@ -197,8 +221,10 @@ fn run_create(const ExecContext &ec, EvalContext &cxt,
   return 0;
 }
 
-fn run_set(const ExecContext &ec, EvalContext &cxt,
-           const koshconf_operands &operands) throws -> i32
+fn
+run_set(const ExecContext       &ec,
+        EvalContext             &cxt,
+        const koshconf_operands &operands) throws -> i32
 {
   if (operands.values.count() != 4)
     return report_usage(ec, cxt, ec.source_location(),
@@ -268,8 +294,10 @@ fn run_set(const ExecContext &ec, EvalContext &cxt,
   return 0;
 }
 
-fn run_get(const ExecContext &ec, EvalContext &cxt,
-           const koshconf_operands &operands) throws -> i32
+fn
+run_get(const ExecContext       &ec,
+        EvalContext             &cxt,
+        const koshconf_operands &operands) throws -> i32
 {
   if (operands.values.count() != 3)
     return report_usage(ec, cxt, ec.source_location(),
@@ -284,14 +312,16 @@ fn run_get(const ExecContext &ec, EvalContext &cxt,
   return 0;
 }
 
-fn run_list(const ExecContext &ec, EvalContext &cxt,
-            const koshconf_operands &operands) throws -> i32
+fn
+run_list(const ExecContext       &ec,
+         EvalContext             &cxt,
+         const koshconf_operands &operands) throws -> i32
 {
   if (operands.values.count() != 2)
     return report_usage(ec, cxt, operands.locations[2],
                         "The list form takes no operand");
 
-  let listed = ArrayList<const option_descriptor *>{cxt.scratch_allocator()};
+  let listed   = ArrayList<const option_descriptor *>{cxt.scratch_allocator()};
   let set_only = ArrayList<const option_descriptor *>{cxt.scratch_allocator()};
 
   for (let const &option : get_option_registry()) {
@@ -313,7 +343,7 @@ fn run_list(const ExecContext &ec, EvalContext &cxt,
 
   for (let const *option_pointer : sorted) {
     let const &option = *option_pointer;
-    let const line = format_koshconf_display_line(
+    let const  line   = format_koshconf_display_line(
         option, read_option_text(cxt, option).view());
     out += line.view();
     out += '\n';
@@ -343,8 +373,10 @@ fn run_list(const ExecContext &ec, EvalContext &cxt,
   return 0;
 }
 
-fn run_load(const ExecContext &ec, EvalContext &cxt,
-            const koshconf_operands &operands) throws -> i32
+fn
+run_load(const ExecContext       &ec,
+         EvalContext             &cxt,
+         const koshconf_operands &operands) throws -> i32
 {
   if (operands.values.count() != 3)
     return report_usage(ec, cxt, ec.source_location(),
@@ -372,8 +404,10 @@ fn run_load(const ExecContext &ec, EvalContext &cxt,
   return 0;
 }
 
-fn run_save(const ExecContext &ec, EvalContext &cxt,
-            const koshconf_operands &operands) throws -> i32
+fn
+run_save(const ExecContext       &ec,
+         EvalContext             &cxt,
+         const koshconf_operands &operands) throws -> i32
 {
   if (operands.values.count() != 2)
     return report_usage(ec, cxt, operands.locations[2],
@@ -405,10 +439,11 @@ fn run_save(const ExecContext &ec, EvalContext &cxt,
 
 } /* namespace */
 
-fn Koshconf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
+fn
+Koshconf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let operand_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};
-  let const args = PARSE_BUILTIN_ARGS_WITH_OPTIONS(
+  let const args        = PARSE_BUILTIN_ARGS_WITH_OPTIONS(
       ec, operand_locations, .should_accept_negative_number_operand = true,
       .should_allow_options_after_operands = true);
 
@@ -468,11 +503,11 @@ fn Koshconf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let const operands = koshconf_operands{args, operand_locations};
   switch (*command) {
   case koshconf_command::Create: return run_create(ec, cxt, operands);
-  case koshconf_command::Set: return run_set(ec, cxt, operands);
-  case koshconf_command::Get: return run_get(ec, cxt, operands);
-  case koshconf_command::List: return run_list(ec, cxt, operands);
-  case koshconf_command::Load: return run_load(ec, cxt, operands);
-  case koshconf_command::Save: return run_save(ec, cxt, operands);
+  case koshconf_command::Set:    return run_set(ec, cxt, operands);
+  case koshconf_command::Get:    return run_get(ec, cxt, operands);
+  case koshconf_command::List:   return run_list(ec, cxt, operands);
+  case koshconf_command::Load:   return run_load(ec, cxt, operands);
+  case koshconf_command::Save:   return run_save(ec, cxt, operands);
   }
   unreachable("Unhandled koshconf form");
 }

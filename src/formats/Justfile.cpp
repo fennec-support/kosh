@@ -11,16 +11,17 @@
 
 namespace koshka {
 
-fn parse_justfile_format(const parser_format_input &input,
-                         parsed_format_document &document) throws -> void
+fn
+parse_justfile_format(const parser_format_input &input,
+                      parsed_format_document    &document) throws -> void
 {
-  bool is_recipe = false;
-  mimic_mood mood = mimic_mood::Posix;
-  usize position = 0;
+  bool       is_recipe = false;
+  mimic_mood mood      = mimic_mood::Posix;
+  usize      position  = 0;
 
   while (position < input.source.length) {
     let const line_start = position;
-    let const line = input.source.next_line(position);
+    let const line       = input.source.next_line(position);
     if (parser_format_has_substring(line, "set shell") &&
         parser_format_has_substring(line, "bash"))
     {

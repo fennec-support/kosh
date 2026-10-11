@@ -18,18 +18,18 @@ namespace koshka::lexer {
 struct pending_heredoc
 {
   String delimiter;
-  bool should_strip_tabs{false};
+  bool   should_strip_tabs{false};
 };
 
 struct heredoc_line_match
 {
   usize content_start;
   usize content_length;
-  bool is_terminator;
+  bool  is_terminator;
 };
 
-pure fn match_heredoc_line(StringView line,
-                           const pending_heredoc &heredoc) wontthrow
+pure fn
+match_heredoc_line(StringView line, const pending_heredoc &heredoc) wontthrow
     -> heredoc_line_match;
 
 } /* namespace koshka::lexer */

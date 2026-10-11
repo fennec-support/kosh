@@ -22,7 +22,8 @@
 
 namespace koshka {
 
-static fn clone_word_segments(const Word &word, Allocator allocator) throws
+static fn
+clone_word_segments(const Word &word, Allocator allocator) throws
     -> ArrayList<WordSegment>
 {
   let segments = ArrayList<WordSegment>{allocator};
@@ -34,7 +35,8 @@ static fn clone_word_segments(const Word &word, Allocator allocator) throws
   return segments;
 }
 
-static fn is_field_sensitive_word(StringView word) wontthrow -> bool
+static fn
+is_field_sensitive_word(StringView word) wontthrow -> bool
 {
   for (usize i = 0; i < word.length; i++) {
     let const byte = word[i];
@@ -51,15 +53,16 @@ static fn is_field_sensitive_word(StringView word) wontthrow -> bool
   return false;
 }
 
-static fn get_segment_quoting(const WordSegment &segment) wontthrow
+static fn
+get_segment_quoting(const WordSegment &segment) wontthrow
     -> parameter_word_quoting
 {
   return segment.is_in_double_quotes ? parameter_word_quoting::DoubleQuoted
                                      : parameter_word_quoting::Unquoted;
 }
 
-hot fn EvalContext::expand_word(const Word &word) throws
-    -> ArrayList<glob_field>
+hot fn
+EvalContext::expand_word(const Word &word) throws -> ArrayList<glob_field>
 {
   LOG(All, "expanding a word of %zu segments into fields",
       word.segments.count());
@@ -69,7 +72,7 @@ hot fn EvalContext::expand_word(const Word &word) throws
   let const was_expanding_single_string =
       expansion_store().is_expanding_single_string();
   expansion_store().is_expanding_assignment_value() = false;
-  expansion_store().is_expanding_single_string() = false;
+  expansion_store().is_expanding_single_string()    = false;
   defer
   {
     expansion_store().is_expanding_assignment_value() =
@@ -78,8 +81,8 @@ hot fn EvalContext::expand_word(const Word &word) throws
         was_expanding_single_string;
   };
 
-  let const *segments = &word.segments;
-  let tilde_expanded_segments = ArrayList<WordSegment>{scratch};
+  let const *segments                = &word.segments;
+  let        tilde_expanded_segments = ArrayList<WordSegment>{scratch};
   if (!word.segments.is_empty() && word.segments.front().is_tilde_candidate() &&
       !word.segments.front().text.is_empty() &&
       word.segments.front().text.first_character() == '~')
@@ -95,15 +98,15 @@ hot fn EvalContext::expand_word(const Word &word) throws
              lexer::word_looks_like_assignment(
                  word.segments.front().text.view()))
   {
-    let const first_text = word.segments.front().text.view();
-    let const equals = first_text.find_character('=');
+    let const first_text                = word.segments.front().text.view();
+    let const equals                    = first_text.find_character('=');
     let const do_starts_after_separator = [&](usize index) -> bool {
       if (index == 0) {
         return false;
       }
 
       let const &previous = word.segments[index - 1].text;
-      let const &current = word.segments[index];
+      let const &current  = word.segments[index];
       if (!current.is_tilde_candidate() || current.text.is_empty() ||
           current.text.first_character() != '~' ||
           !word.segments[index - 1].is_tilde_candidate() || previous.is_empty())
@@ -145,14 +148,14 @@ hot fn EvalContext::expand_word(const Word &word) throws
     }
   }
 
-  let fields = ArrayList<glob_field>{scratch};
-  let current = glob_field{scratch};
+  let fields      = ArrayList<glob_field>{scratch};
+  let current     = glob_field{scratch};
   let has_current = false;
 
   let const do_flush = [&]() {
     if (has_current) {
       fields.push(steal(current));
-      current = glob_field{scratch};
+      current     = glob_field{scratch};
       has_current = false;
     }
   };
@@ -224,7 +227,7 @@ hot fn EvalContext::expand_word(const Word &word) throws
       }
 
       let const was_field_started = has_current;
-      usize delimiter_count = 0;
+      usize     delimiter_count   = 0;
 
       while (i < text.length) {
         let const separator_length = do_separator_length(i);
@@ -272,8 +275,8 @@ hot fn EvalContext::expand_word(const Word &word) throws
   let const do_emit_elements = [&](const ArrayList<String> &values,
                                    bool is_quoted, bool is_star) throws {
     if (is_quoted && is_star) {
-      let const ifs = variable_store().field_separators();
-      let joined = String{scratch_allocator()};
+      let const ifs       = variable_store().field_separators();
+      let       joined    = String{scratch_allocator()};
       let const separator = first_field_separator();
 
       for (usize i = 0; i < values.count(); i++) {
@@ -299,7 +302,7 @@ hot fn EvalContext::expand_word(const Word &word) throws
     }
   };
 
-  let const do_emit_modifier_word = [&](StringView word,
+  let const do_emit_modifier_word = [&](StringView            word,
                                         const SourceLocation *word_location,
                                         bool is_quoted) throws {
     if (!is_field_sensitive_word(word)) {
@@ -315,13 +318,13 @@ hot fn EvalContext::expand_word(const Word &word) throws
       return;
     }
 
-    let active = Bitset{scratch};
-    let break_offsets = ArrayList<usize>{scratch};
-    let marks = ArrayList<quoted_empty_mark>{scratch};
-    let const text = expand_modifier_word_fields(
+    let       active        = Bitset{scratch};
+    let       break_offsets = ArrayList<usize>{scratch};
+    let       marks         = ArrayList<quoted_empty_mark>{scratch};
+    let const text          = expand_modifier_word_fields(
         word, is_quoted, active, break_offsets, marks, word_location);
     usize piece_start = 0;
-    usize mark_index = 0;
+    usize mark_index  = 0;
 
     for (usize piece = 0; piece <= break_offsets.count(); piece++) {
       let const piece_end =
@@ -344,11 +347,11 @@ hot fn EvalContext::expand_word(const Word &word) throws
         let const has_mark =
             mark_index < marks.count() && marks[mark_index].piece == piece;
         let const run_limit = has_mark ? marks[mark_index].offset : piece_end;
-        usize run_start = position;
+        usize     run_start = position;
 
         while (run_start < run_limit) {
           let const is_active = active[run_start] && !is_quoted;
-          usize run_end = run_start + 1;
+          usize     run_end   = run_start + 1;
 
           while (run_end < run_limit &&
                  (active[run_end] && !is_quoted) == is_active)
@@ -373,7 +376,7 @@ hot fn EvalContext::expand_word(const Word &word) throws
   };
 
   for (let const &segment : *segments) {
-    let segment_text = StringView{segment.text.data(), segment.text.count()};
+    let segment_text  = StringView{segment.text.data(), segment.text.count()};
     let resolved_text = Maybe<String>{};
     if (segment.kind == WordSegment::Kind::VariableReference &&
         variable_store().attributes().has_namerefs())
@@ -431,7 +434,7 @@ hot fn EvalContext::expand_word(const Word &word) throws
         const StringView prefix =
             segment_text.substring_of_length(1, segment_text.length - 2);
         let const is_star = segment_text[segment_text.length - 1] == '*';
-        let const names = matching_prefix_names(prefix);
+        let const names   = matching_prefix_names(prefix);
         do_emit_elements(names, segment.is_in_double_quotes, is_star);
         break;
       }
@@ -444,7 +447,7 @@ hot fn EvalContext::expand_word(const Word &word) throws
       {
         const StringView array_name =
             segment_text.substring_of_length(1, segment_text.length - 4);
-        let const is_star = segment_text[segment_text.length - 2] == '*';
+        let const is_star    = segment_text[segment_text.length - 2] == '*';
         let const subscripts = collect_array_subscripts(array_name);
         do_emit_elements(subscripts, segment.is_in_double_quotes, is_star);
         break;
@@ -468,7 +471,7 @@ hot fn EvalContext::expand_word(const Word &word) throws
         }
 
         if (is_plain_array_name) {
-          let const is_star = segment_text[segment_text.length - 2] == '*';
+          let const is_star  = segment_text[segment_text.length - 2] == '*';
           let const elements = collect_array_elements(array_name);
           do_emit_elements(elements, segment.is_in_double_quotes, is_star);
           break;
@@ -477,7 +480,7 @@ hot fn EvalContext::expand_word(const Word &word) throws
       let const segment_source_location = segment.get_source_location(
           source_store().current_location().source_name_index);
       let const do_source_location_for =
-          [&](StringView part,
+          [&](StringView      part,
               SourceLocation &storage) -> const SourceLocation * {
         if (!segment_source_location.has_value() || resolved_text.has_value()) {
           return nullptr;
@@ -499,7 +502,7 @@ hot fn EvalContext::expand_word(const Word &word) throws
           is_colon_modifier_operator(segment_text[positional_test_op_position]))
       {
         let const is_star = segment_text[0] == '*';
-        let const op = segment_text[positional_test_op_position];
+        let const op      = segment_text[positional_test_op_position];
         let const word =
             segment_text.substring(positional_test_op_position + 1);
         let const param_count = variable_store().positional_params().count();
@@ -573,10 +576,10 @@ hot fn EvalContext::expand_word(const Word &word) throws
           (segment_text[0] == '@' || segment_text[0] == '*') &&
           segment_text.length > 1 && segment_text[1] == ':')
       {
-        let const is_star = segment_text[0] == '*';
-        let const slice = segment_text.substring(2);
+        let const is_star     = segment_text[0] == '*';
+        let const slice       = segment_text.substring(2);
         let const param_count = variable_store().positional_params().count();
-        let const total = static_cast<i64>(param_count) + 1;
+        let const total       = static_cast<i64>(param_count) + 1;
         let const do_positional_at = [&](i64 index) wontthrow -> StringView {
           return index == 0
                      ? execution_store().get_shell_name()
@@ -585,11 +588,11 @@ hot fn EvalContext::expand_word(const Word &word) throws
                            .view();
         };
 
-        let slice_location = SourceLocation{};
-        let const bounds = compute_list_slice_bounds(
+        let       slice_location = SourceLocation{};
+        let const bounds         = compute_list_slice_bounds(
             slice, total, do_source_location_for(slice, slice_location));
         let const start = bounds.start;
-        let const end = bounds.end;
+        let const end   = bounds.end;
 
         if (segment.is_in_double_quotes && is_star) {
           do_append_run(
@@ -641,9 +644,9 @@ hot fn EvalContext::expand_word(const Word &word) throws
            segment_text[1] == ',' || segment_text[1] == '~' ||
            positional_at_op != '\0'))
       {
-        let const is_star = segment_text[0] == '*';
-        let const modifier = segment_text.substring(1);
-        let modifier_location = SourceLocation{};
+        let const  is_star           = segment_text[0] == '*';
+        let const  modifier          = segment_text.substring(1);
+        let        modifier_location = SourceLocation{};
         let const *modifier_location_pointer =
             do_source_location_for(modifier, modifier_location);
         if (runtime_state().is_posix_mode() &&
@@ -679,8 +682,8 @@ hot fn EvalContext::expand_word(const Word &word) throws
                                       modifier_location_pointer);
         };
         if (segment.is_in_double_quotes && is_star) {
-          let const ifs = variable_store().field_separators();
-          let joined = String{scratch_allocator()};
+          let const ifs    = variable_store().field_separators();
+          let       joined = String{scratch_allocator()};
 
           for (usize i = 0; i < variable_store().positional_params().count();
                i++)
@@ -736,17 +739,17 @@ hot fn EvalContext::expand_word(const Word &word) throws
             !is_colon_modifier_operator(after_array_colon))
         {
           let const array_name = segment_text.substring_of_length(0, name_end);
-          let const is_star = segment_text[name_end + 1] == '*';
-          let const slice = segment_text.substring(name_end + 4);
-          let const elements = collect_array_elements(array_name);
-          let const total = static_cast<i64>(elements.count());
+          let const is_star    = segment_text[name_end + 1] == '*';
+          let const slice      = segment_text.substring(name_end + 4);
+          let const elements   = collect_array_elements(array_name);
+          let const total      = static_cast<i64>(elements.count());
 
-          let slice_location = SourceLocation{};
-          let const bounds = compute_array_slice_bounds(
+          let       slice_location = SourceLocation{};
+          let const bounds         = compute_array_slice_bounds(
               array_name, slice, total,
               do_source_location_for(slice, slice_location));
           let const start = bounds.start;
-          let const end = bounds.end;
+          let const end   = bounds.end;
 
           if (segment.is_in_double_quotes && is_star) {
             do_append_run(join_list_slice(bounds, elements, None, true), false);
@@ -786,9 +789,9 @@ hot fn EvalContext::expand_word(const Word &word) throws
             break;
           }
         }
-        let const field_modifier_op = name_end + 3 < segment_text.length
-                                          ? segment_text[name_end + 3]
-                                          : '\0';
+        let const  field_modifier_op = name_end + 3 < segment_text.length
+                                           ? segment_text[name_end + 3]
+                                           : '\0';
         const char at_transform_op =
             field_modifier_op == '@' && name_end + 4 < segment_text.length
                 ? segment_text[name_end + 4]
@@ -808,21 +811,21 @@ hot fn EvalContext::expand_word(const Word &word) throws
              field_modifier_op == ',' || field_modifier_op == '~' ||
              is_mapped_at_op))
         {
-          let const array_name = segment_text.substring_of_length(0, name_end);
-          let const modifier = segment_text.substring(name_end + 3);
-          let modifier_location = SourceLocation{};
+          let const  array_name = segment_text.substring_of_length(0, name_end);
+          let const  modifier   = segment_text.substring(name_end + 3);
+          let        modifier_location = SourceLocation{};
           let const *modifier_location_pointer =
               do_source_location_for(modifier, modifier_location);
-          let const is_star = segment_text[name_end + 1] == '*';
-          let elements = collect_array_elements(array_name);
+          let const is_star  = segment_text[name_end + 1] == '*';
+          let       elements = collect_array_elements(array_name);
           if (at_transform_op == 'a' && elements.is_empty() &&
               is_valueless_array(array_name))
           {
             elements.push(String{heap_allocator()});
           }
           if (at_transform_op == 'k') {
-            let const keys = collect_array_subscripts(array_name);
-            let pairs = ArrayList<String>{heap_allocator()};
+            let const keys  = collect_array_subscripts(array_name);
+            let       pairs = ArrayList<String>{heap_allocator()};
             pairs.reserve(keys.count() * 2);
 
             for (usize i = 0; i < keys.count() && i < elements.count(); i++) {
@@ -843,8 +846,8 @@ hot fn EvalContext::expand_word(const Word &word) throws
                                         modifier_location_pointer);
           };
           if (segment.is_in_double_quotes && is_star) {
-            let const ifs = variable_store().field_separators();
-            let joined = String{scratch_allocator()};
+            let const ifs    = variable_store().field_separators();
+            let       joined = String{scratch_allocator()};
 
             for (usize i = 0; i < elements.count(); i++) {
               if (i > 0 && !ifs.is_empty()) {
@@ -892,19 +895,19 @@ hot fn EvalContext::expand_word(const Word &word) throws
              segment_text[name_end + 1] == '*') &&
             segment_text[name_end + 2] == ']')
         {
-          let const rest = segment_text.substring(name_end + 3);
+          let const rest          = segment_text.substring(name_end + 3);
           let const is_colon_form = !rest.is_empty() && rest[0] == ':';
-          let const op_index = is_colon_form ? usize{1} : usize{0};
+          let const op_index      = is_colon_form ? usize{1} : usize{0};
           let const array_test_op =
               op_index < rest.length ? rest[op_index] : '\0';
           if (is_colon_modifier_operator(array_test_op)) {
             let const array_name =
                 segment_text.substring_of_length(0, name_end);
-            let const modifier_op = array_test_op;
+            let const modifier_op   = array_test_op;
             let const modifier_word = rest.substring(op_index + 1);
-            let const is_star = segment_text[name_end + 1] == '*';
-            let const elements = collect_array_elements(array_name);
-            let is_every_element_empty = true;
+            let const is_star       = segment_text[name_end + 1] == '*';
+            let const elements      = collect_array_elements(array_name);
+            let       is_every_element_empty = true;
 
             for (let const &element : elements) {
               if (!element.is_empty()) {
@@ -957,9 +960,9 @@ hot fn EvalContext::expand_word(const Word &word) throws
         }
       }
       if (alternate_name_end > 0 && alternate_name_end < segment_text.length) {
-        let const rest = segment_text.substring(alternate_name_end);
+        let const rest          = segment_text.substring(alternate_name_end);
         let const is_colon_form = rest[0] == ':';
-        let const op_index = is_colon_form ? usize{1} : usize{0};
+        let const op_index      = is_colon_form ? usize{1} : usize{0};
         if (op_index < rest.length &&
             (rest[op_index] == '+' || rest[op_index] == '-') &&
             is_field_sensitive_word(rest.substring(op_index + 1)))
@@ -971,8 +974,8 @@ hot fn EvalContext::expand_word(const Word &word) throws
           let const should_expand_word =
               rest[op_index] == '+' ? !is_unset : is_unset;
           if (should_expand_word) {
-            let const modifier_word = rest.substring(op_index + 1);
-            let modifier_word_location = SourceLocation{};
+            let const modifier_word          = rest.substring(op_index + 1);
+            let       modifier_word_location = SourceLocation{};
             do_emit_modifier_word(
                 modifier_word,
                 do_source_location_for(modifier_word, modifier_word_location),
@@ -1067,8 +1070,9 @@ hot fn EvalContext::expand_word(const Word &word) throws
   return fields;
 }
 
-hot fn EvalContext::expand_word_for_assignment(const Word &word,
-                                               bool is_assignment_value) throws
+hot fn
+EvalContext::expand_word_for_assignment(const Word &word,
+                                        bool        is_assignment_value) throws
     -> String
 {
   LOG(All, "expanding an assignment word of %zu segments",
@@ -1078,7 +1082,7 @@ hot fn EvalContext::expand_word_for_assignment(const Word &word,
   let const was_expanding_single_string =
       expansion_store().is_expanding_single_string();
   expansion_store().is_expanding_assignment_value() = is_assignment_value;
-  expansion_store().is_expanding_single_string() = true;
+  expansion_store().is_expanding_single_string()    = true;
   defer
   {
     expansion_store().is_expanding_assignment_value() =
@@ -1086,7 +1090,7 @@ hot fn EvalContext::expand_word_for_assignment(const Word &word,
     expansion_store().is_expanding_single_string() =
         was_expanding_single_string;
   };
-  let const *segments = &word.segments;
+  let const *segments         = &word.segments;
   let tilde_expanded_segments = ArrayList<WordSegment>{scratch_allocator()};
   let const has_leading_tilde =
       !word.segments.is_empty() && word.segments.front().is_tilde_candidate() &&
@@ -1147,10 +1151,11 @@ hot fn EvalContext::expand_word_for_assignment(const Word &word,
   return result;
 }
 
-fn EvalContext::expand_case_pattern_masked(const Word &word,
-                                           Bitset &active_out) throws -> String
+fn
+EvalContext::expand_case_pattern_masked(const Word &word,
+                                        Bitset     &active_out) throws -> String
 {
-  let const *segments = &word.segments;
+  let const *segments         = &word.segments;
   let tilde_expanded_segments = ArrayList<WordSegment>{scratch_allocator()};
   if (!word.segments.is_empty() && word.segments.front().is_tilde_candidate() &&
       !word.segments.front().text.is_empty() &&
@@ -1228,12 +1233,13 @@ fn EvalContext::expand_case_pattern_masked(const Word &word,
   return result;
 }
 
-fn EvalContext::expand_wordlist_to_fields(StringView wordlist,
-                                          bool should_allow_expansion) throws
+fn
+EvalContext::expand_wordlist_to_fields(StringView wordlist,
+                                       bool       should_allow_expansion) throws
     -> ArrayList<String>
 {
   let const do_split_plain = [&]() throws -> ArrayList<String> {
-    let words = ArrayList<String>{heap_allocator()};
+    let   words = ArrayList<String>{heap_allocator()};
     usize start = 0;
 
     for (usize i = 0; i <= wordlist.length; i++) {
@@ -1263,11 +1269,11 @@ fn EvalContext::expand_wordlist_to_fields(StringView wordlist,
   if (!has_expandable_byte) return do_split_plain();
 
   let const do_array_literal_is_safe = [&]() wontthrow -> bool {
-    char quote = 0;
-    usize paren_depth = 0;
-    usize brace_depth = 0;
-    let is_in_backtick = false;
-    let is_at_word_start = true;
+    char  quote            = 0;
+    usize paren_depth      = 0;
+    usize brace_depth      = 0;
+    let   is_in_backtick   = false;
+    let   is_at_word_start = true;
 
     for (usize i = 0; i < wordlist.length; i++) {
       let const character = wordlist[i];

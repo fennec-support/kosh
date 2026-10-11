@@ -34,8 +34,8 @@ enum class tab_selector_mode : u8
   Plain,
 };
 
-inline pure fn parse_tab_selector_name(StringView name) throws
-    -> Maybe<tab_selector_mode>
+inline pure fn
+parse_tab_selector_name(StringView name) throws -> Maybe<tab_selector_mode>
 {
   static constexpr static_string_entry<tab_selector_mode>
       TAB_SELECTOR_ENTRIES[] = {
@@ -48,13 +48,13 @@ inline pure fn parse_tab_selector_name(StringView name) throws
   return TAB_SELECTORS.find(name);
 }
 
-inline pure fn tab_selector_name(tab_selector_mode selector) wontthrow
-    -> StringView
+inline pure fn
+tab_selector_name(tab_selector_mode selector) wontthrow -> StringView
 {
   switch (selector) {
   case tab_selector_mode::Interactive: return "interactive";
-  case tab_selector_mode::External: return "external";
-  case tab_selector_mode::Plain: return "plain";
+  case tab_selector_mode::External:    return "external";
+  case tab_selector_mode::Plain:       return "plain";
   }
 
   return "interactive";
@@ -84,46 +84,59 @@ struct completion_result
 {
   ArrayList<String> candidates;
   StringMap<String> descriptions{heap_allocator()};
-  String longest_common_prefix;
-  usize candidate_count;
-  usize source_candidate_scan_count;
-  usize materialized_candidate_count;
-  usize token_start;
-  usize token_end;
-  bool is_command_position;
-  bool is_tier_ranked{false};
-  bool is_space_suppressed{false};
+  String            longest_common_prefix;
+  usize             candidate_count;
+  usize             source_candidate_scan_count;
+  usize             materialized_candidate_count;
+  usize             token_start;
+  usize             token_end;
+  bool              is_command_position;
+  bool              is_tier_ranked{false};
+  bool              is_space_suppressed{false};
 };
 
-fn complete(StringView line, usize cursor, EvalContext &context,
-            const Path &base_directory,
-            const ArrayList<StringView> *extra_command_names = nullptr,
-            bool should_complete_external_arguments_in_posix = false,
-            completion_mode mode = completion_mode::Ghost,
-            const ArrayList<StringView> *extra_variable_names = nullptr) throws
+fn
+complete(StringView                   line,
+         usize                        cursor,
+         EvalContext                 &context,
+         const Path                  &base_directory,
+         const ArrayList<StringView> *extra_command_names            = nullptr,
+         bool            should_complete_external_arguments_in_posix = false,
+         completion_mode mode = completion_mode::Ghost,
+         const ArrayList<StringView> *extra_variable_names = nullptr) throws
     -> completion_result;
 
-fn complete_command_names(StringView token, EvalContext &context,
-                          const ArrayList<StringView> *extra_command_names,
-                          command_match_mode match_mode) throws
+fn
+complete_command_names(StringView                   token,
+                       EvalContext                 &context,
+                       const ArrayList<StringView> *extra_command_names,
+                       command_match_mode           match_mode) throws
     -> ArrayList<String>;
 
-fn warm_cdpath_indexes(EvalContext &context) throws -> void;
+fn
+warm_cdpath_indexes(EvalContext &context) throws -> void;
 
-fn complete_command_names_by_prefix(StringView token,
-                                    EvalContext &context) throws
+fn
+complete_command_names_by_prefix(StringView token, EvalContext &context) throws
     -> ArrayList<String>;
-fn complete_filesystem_names_by_prefix(
-    StringView token, EvalContext &context, const Path &base_directory,
+fn
+complete_filesystem_names_by_prefix(
+    StringView                 token,
+    EvalContext               &context,
+    const Path                &base_directory,
     completion_filesystem_mode mode = completion_filesystem_mode::Files) throws
     -> ArrayList<String>;
 
-fn collect_compgen_candidates(EvalContext &context, u32 action_mask,
-                              Maybe<StringView> glob_pattern,
-                              StringView word) throws -> ArrayList<String>;
-fn remove_compgen_filtered(EvalContext &context, StringView filter_pattern,
-                           StringView word,
-                           ArrayList<String> &candidates) throws -> void;
+fn
+collect_compgen_candidates(EvalContext      &context,
+                           u32               action_mask,
+                           Maybe<StringView> glob_pattern,
+                           StringView        word) throws -> ArrayList<String>;
+fn
+remove_compgen_filtered(EvalContext       &context,
+                        StringView         filter_pattern,
+                        StringView         word,
+                        ArrayList<String> &candidates) throws -> void;
 
 class ScopedCompletionScratch
 {
@@ -132,7 +145,8 @@ public:
   ~ScopedCompletionScratch();
 
   ScopedCompletionScratch(const ScopedCompletionScratch &) = delete;
-  ScopedCompletionScratch &operator=(const ScopedCompletionScratch &) = delete;
+  ScopedCompletionScratch &
+  operator=(const ScopedCompletionScratch &) = delete;
 
 private:
   BumpArena::Mark m_saved;
@@ -169,25 +183,25 @@ enum class highlight_construct_phase : u8
 
 struct shell_lexical_construct
 {
-  usize frame_depth;
-  highlight_construct kind;
+  usize                     frame_depth;
+  highlight_construct       kind;
   highlight_construct_phase phase;
 };
 
 struct shell_lexical_frame
 {
-  usize body_start;
-  usize group_depth;
-  usize case_depth{0};
-  usize array_value_group_depth{0};
+  usize                    body_start;
+  usize                    group_depth;
+  usize                    case_depth{0};
+  usize                    array_value_group_depth{0};
   shell_lexical_frame_kind kind;
-  char parent_quote;
-  bool has_seen_case_keyword{false};
-  bool is_case_pattern_expected{false};
-  bool is_command_position{true};
-  bool is_in_array_value{false};
-  u8 case_pattern_group_depth{0};
-  bool is_case_pattern_parenthesized{false};
+  char                     parent_quote;
+  bool                     has_seen_case_keyword{false};
+  bool                     is_case_pattern_expected{false};
+  bool                     is_command_position{true};
+  bool                     is_in_array_value{false};
+  u8                       case_pattern_group_depth{0};
+  bool                     is_case_pattern_parenthesized{false};
 };
 
 static_assert(sizeof(usize) != 8 || sizeof(shell_lexical_frame) == 40);
@@ -198,17 +212,17 @@ struct shell_lexical_state
       : frames{allocator}, pending_heredocs{allocator}, constructs{allocator}
   {}
 
-  ArrayList<shell_lexical_frame> frames;
-  ArrayList<lexer::pending_heredoc> pending_heredocs;
+  ArrayList<shell_lexical_frame>     frames;
+  ArrayList<lexer::pending_heredoc>  pending_heredocs;
   ArrayList<shell_lexical_construct> constructs;
   shell_lexical_frame root_frame{0, 0, 0, 0, shell_lexical_frame_kind::command,
                                  0};
-  usize source_position{0};
-  usize active_heredoc_index{0};
-  char quote{0};
-  bool is_in_ansi_c_quote{false};
-  bool is_in_comment{false};
-  bool is_in_heredoc{false};
+  usize               source_position{0};
+  usize               active_heredoc_index{0};
+  char                quote{0};
+  bool                is_in_ansi_c_quote{false};
+  bool                is_in_comment{false};
+  bool                is_in_heredoc{false};
 };
 
 class ShellHighlightCache
@@ -220,18 +234,21 @@ public:
         m_allocator{allocator}
   {}
 
-  fn spans_for(StringView source, usize line_start, usize line_end,
-               EvalContext &context) throws
-      -> const ArrayList<highlight_span> *;
+  fn
+  spans_for(StringView   source,
+            usize        line_start,
+            usize        line_end,
+            EvalContext &context) throws -> const ArrayList<highlight_span> *;
 
 private:
-  StringView m_source{};
+  StringView                m_source{};
   ArrayList<highlight_span> m_pieces;
   ArrayList<highlight_span> m_line_spans;
-  Allocator m_allocator;
+  Allocator                 m_allocator;
 };
 
-fn highlight_line(StringView line, EvalContext &context) throws
+fn
+highlight_line(StringView line, EvalContext &context) throws
     -> ArrayList<highlight_span>;
 
 enum class typed_pair_role : u8
@@ -241,31 +258,45 @@ enum class typed_pair_role : u8
   closes,
 };
 
-fn classify_typed_pair_byte(StringView line, usize cursor, char byte) throws
+fn
+classify_typed_pair_byte(StringView line, usize cursor, char byte) throws
     -> typed_pair_role;
 
-fn find_matching_bracket(StringView line,
-                         const ArrayList<highlight_span> &spans,
-                         usize cursor) throws -> Maybe<bracket_pair>;
+fn
+find_matching_bracket(StringView                       line,
+                      const ArrayList<highlight_span> &spans,
+                      usize cursor) throws -> Maybe<bracket_pair>;
 
-fn append_highlighted_range(String &output, StringView text,
-                            const ArrayList<highlight_span> &spans,
-                            usize range_start, usize range_end,
-                            const highlight_theme &theme) throws -> void;
-fn append_highlighted_source(String &output, StringView source,
-                             EvalContext &context,
-                             const highlight_theme &theme) throws -> void;
+fn
+append_highlighted_range(String                          &output,
+                         StringView                       text,
+                         const ArrayList<highlight_span> &spans,
+                         usize                            range_start,
+                         usize                            range_end,
+                         const highlight_theme           &theme) throws -> void;
+fn
+append_highlighted_source(String                &output,
+                          StringView             source,
+                          EvalContext           &context,
+                          const highlight_theme &theme) throws -> void;
 
 #if !defined NDEBUG
-pure fn debug_highlight_input_byte_count() wontthrow -> usize;
-pure fn debug_shell_lexical_scan_byte_count() wontthrow -> usize;
-fn debug_diagnostic_cache_is_stable(EvalContext &context) throws -> bool;
+pure fn
+debug_highlight_input_byte_count() wontthrow -> usize;
+pure fn
+debug_shell_lexical_scan_byte_count() wontthrow -> usize;
+fn
+debug_diagnostic_cache_is_stable(EvalContext &context) throws -> bool;
 #endif
 
-fn command_word_resolves(StringView line, EvalContext &context) throws -> bool;
+fn
+command_word_resolves(StringView line, EvalContext &context) throws -> bool;
 
-fn compose_command_hint(StringView line, usize cursor, EvalContext &context,
-                        String &out) throws -> bool;
+fn
+compose_command_hint(StringView   line,
+                     usize        cursor,
+                     EvalContext &context,
+                     String      &out) throws -> bool;
 
 struct idle_documentation_progress
 {
@@ -273,19 +304,25 @@ struct idle_documentation_progress
   bool is_loading{false};
 };
 
-fn step_idle_documentation(StringView line, usize cursor, EvalContext &context,
-                           bool should_start_load) throws
+fn
+step_idle_documentation(StringView   line,
+                        usize        cursor,
+                        EvalContext &context,
+                        bool         should_start_load) throws
     -> idle_documentation_progress;
 
-fn abandon_idle_documentation() throws -> void;
+fn
+abandon_idle_documentation() throws -> void;
 
 struct documentation_pending
 {};
 
 using slow_gather_notice = void (*)();
 
-fn set_slow_gather_notice(slow_gather_notice notice) wontthrow -> void;
-fn notice_slow_gather() wontthrow -> void;
+fn
+set_slow_gather_notice(slow_gather_notice notice) wontthrow -> void;
+fn
+notice_slow_gather() wontthrow -> void;
 
 class ScopedDocumentationDeferral
 {
@@ -301,11 +338,16 @@ private:
   bool m_was_deferring;
 };
 
-fn describe_syntax_problem(StringView line, usize cursor, mimic_mood mood,
-                           String &out) throws -> bool;
+fn
+describe_syntax_problem(StringView line,
+                        usize      cursor,
+                        mimic_mood mood,
+                        String    &out) throws -> bool;
 
-fn describe_analysis_finding(StringView line, EvalContext &context,
-                             String &out) throws -> bool;
+fn
+describe_analysis_finding(StringView   line,
+                          EvalContext &context,
+                          String      &out) throws -> bool;
 
 } /* namespace completion */
 

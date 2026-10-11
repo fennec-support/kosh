@@ -28,21 +28,24 @@ namespace lexer {
 
 static constexpr char CEOF = static_cast<char>(EOF);
 
-hot pure fn is_whitespace(char ch) wontthrow -> bool
+hot pure fn
+is_whitespace(char ch) wontthrow -> bool
 {
   switch (ch) {
   case ' ':
   case '\t': return true;
-  default: return false;
+  default:   return false;
   }
 }
 
-hot pure fn is_number(char ch) wontthrow -> bool
+hot pure fn
+is_number(char ch) wontthrow -> bool
 {
   return ch >= '0' && ch <= '9';
 }
 
-hot pure fn is_shell_sentinel(char ch) wontthrow -> bool
+hot pure fn
+is_shell_sentinel(char ch) wontthrow -> bool
 {
   switch (ch) {
   case '\n':
@@ -52,12 +55,13 @@ hot pure fn is_shell_sentinel(char ch) wontthrow -> bool
   case '&':
   case ';':
   case '<':
-  case '>': return true;
-  default: return false;
+  case '>':  return true;
+  default:   return false;
   }
 }
 
-hot pure fn is_part_of_identifier(char ch) wontthrow -> bool
+hot pure fn
+is_part_of_identifier(char ch) wontthrow -> bool
 {
   switch (ch) {
   case ' ':
@@ -69,12 +73,13 @@ hot pure fn is_part_of_identifier(char ch) wontthrow -> bool
   case '&':
   case ';':
   case '<':
-  case '>': return false;
-  default: return true;
+  case '>':  return false;
+  default:   return true;
   }
 }
 
-hot pure static fn is_plain_unquoted_run_byte(char ch) wontthrow -> bool
+hot pure static fn
+is_plain_unquoted_run_byte(char ch) wontthrow -> bool
 {
   switch (ch) {
   case ' ':
@@ -92,45 +97,51 @@ hot pure static fn is_plain_unquoted_run_byte(char ch) wontthrow -> bool
   case '\\':
   case '"':
   case '\'': return false;
-  default: return true;
+  default:   return true;
   }
 }
 
-hot pure fn is_string_quote(char ch) wontthrow -> bool
+hot pure fn
+is_string_quote(char ch) wontthrow -> bool
 {
   switch (ch) {
   case '"':
   case '\'': return true;
-  default: return false;
+  default:   return false;
   }
 }
 
-hot pure static fn is_ascii_letter(char ch) wontthrow -> bool
+hot pure static fn
+is_ascii_letter(char ch) wontthrow -> bool
 {
   return (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z');
 }
 
-hot pure fn is_expandable_char(char ch) wontthrow -> bool
+hot pure fn
+is_expandable_char(char ch) wontthrow -> bool
 {
   switch (ch) {
   case '[':
   case '?':
   case '*': return true;
-  default: return false;
+  default:  return false;
   }
 }
 
-hot pure fn is_variable_name_start(char ch) wontthrow -> bool
+hot pure fn
+is_variable_name_start(char ch) wontthrow -> bool
 {
   return is_ascii_letter(ch) || ch == '_';
 }
 
-hot pure fn is_variable_name(char ch) wontthrow -> bool
+hot pure fn
+is_variable_name(char ch) wontthrow -> bool
 {
   return is_variable_name_start(ch) || is_number(ch);
 }
 
-pure fn word_is_variable_name(StringView word) wontthrow -> bool
+pure fn
+word_is_variable_name(StringView word) wontthrow -> bool
 {
   if (word.is_empty() || !is_variable_name_start(word[0])) {
     return false;
@@ -143,7 +154,8 @@ pure fn word_is_variable_name(StringView word) wontthrow -> bool
   return true;
 }
 
-pure fn word_looks_like_assignment(StringView word) wontthrow -> bool
+pure fn
+word_looks_like_assignment(StringView word) wontthrow -> bool
 {
   if (word.is_empty() || !is_variable_name_start(word[0])) {
     return false;
@@ -189,7 +201,8 @@ pure fn word_looks_like_assignment(StringView word) wontthrow -> bool
          word[position + 1] == '=';
 }
 
-hot pure fn is_extglob_operator(char ch) wontthrow -> bool
+hot pure fn
+is_extglob_operator(char ch) wontthrow -> bool
 {
   switch (ch) {
   case '?':
@@ -197,23 +210,25 @@ hot pure fn is_extglob_operator(char ch) wontthrow -> bool
   case '+':
   case '@':
   case '!': return true;
-  default: return false;
+  default:  return false;
   }
 }
 
-pure fn is_backtick_escape_stripped(char escaped,
-                                    bool is_in_double_quotes) wontthrow -> bool
+pure fn
+is_backtick_escape_stripped(char escaped, bool is_in_double_quotes) wontthrow
+    -> bool
 {
   switch (escaped) {
   case '`':
   case '$':
   case '\\': return true;
-  case '"': return is_in_double_quotes;
-  default: return false;
+  case '"':  return is_in_double_quotes;
+  default:   return false;
   }
 }
 
-hot pure fn is_special_parameter_char(char ch) wontthrow -> bool
+hot pure fn
+is_special_parameter_char(char ch) wontthrow -> bool
 {
   switch (ch) {
   case '?':
@@ -223,15 +238,18 @@ hot pure fn is_special_parameter_char(char ch) wontthrow -> bool
   case '*':
   case '@':
   case '-': return true;
-  default: return false;
+  default:  return false;
   }
 }
 
 } /* namespace lexer */
 
-Lexer::Lexer(StringView source, BumpArena &arena, Maybe<StringView> filename,
-             mimic_mood mood, ParseSession::AllocationKind allocation_kind,
-             debug_word_collection_mode debug_words)
+Lexer::Lexer(StringView                   source,
+             BumpArena                   &arena,
+             Maybe<StringView>            filename,
+             mimic_mood                   mood,
+             ParseSession::AllocationKind allocation_kind,
+             debug_word_collection_mode   debug_words)
     : m_source(source), m_parse_session(arena)
 {
   m_parse_session.set_arena(arena, allocation_kind);
@@ -244,13 +262,14 @@ Lexer::Lexer(StringView source, BumpArena &arena, Maybe<StringView> filename,
 
 Lexer::~Lexer() = default;
 
-fn Lexer::peek_shell_token() throws -> Token *
+fn
+Lexer::peek_shell_token() throws -> Token *
 {
   if (peek_cache_is_live()) return m_peek_cache;
 
   skip_whitespace();
   Token *const token = lex_shell_token();
-  m_peek_cache = token;
+  m_peek_cache       = token;
 #if !defined NDEBUG
   m_peek_cache_generation = m_parse_session.get_arena().reset_generation();
 #endif
@@ -258,7 +277,8 @@ fn Lexer::peek_shell_token() throws -> Token *
   return token;
 }
 
-hot fn Lexer::next_shell_token() throws -> Token *
+hot fn
+Lexer::next_shell_token() throws -> Token *
 {
   let const is_peek_cache_live = peek_cache_is_live();
   if (!is_peek_cache_live) skip_whitespace();
@@ -271,19 +291,26 @@ hot fn Lexer::next_shell_token() throws -> Token *
   return token;
 }
 
-pure fn Lexer::source() const wontthrow -> StringView { return m_source; }
+pure fn
+Lexer::source() const wontthrow -> StringView
+{
+  return m_source;
+}
 
-pure fn Lexer::source_name_index() const wontthrow -> u32
+pure fn
+Lexer::source_name_index() const wontthrow -> u32
 {
   return m_parse_session.source_name_index();
 }
 
-pure fn Lexer::cursor_position() const wontthrow -> usize
+pure fn
+Lexer::cursor_position() const wontthrow -> usize
 {
   return m_cursor_position;
 }
 
-fn Lexer::take_shellcheck_directives() throws
+fn
+Lexer::take_shellcheck_directives() throws
     -> ArrayList<shellcheck_directive_span>
 {
   let directives = steal(m_pending_shellcheck_directives);
@@ -293,7 +320,8 @@ fn Lexer::take_shellcheck_directives() throws
   return directives;
 }
 
-fn Lexer::take_shellcheck_directive_spans() throws
+fn
+Lexer::take_shellcheck_directive_spans() throws
     -> ArrayList<shellcheck_directive_span>
 {
   let spans = steal(m_shellcheck_directive_spans);
@@ -303,7 +331,8 @@ fn Lexer::take_shellcheck_directive_spans() throws
   return spans;
 }
 
-fn Lexer::take_heredoc_terminator_misses() throws
+fn
+Lexer::take_heredoc_terminator_misses() throws
     -> ArrayList<heredoc_terminator_miss>
 {
   let misses = steal(m_heredoc_terminator_misses);
@@ -313,33 +342,41 @@ fn Lexer::take_heredoc_terminator_misses() throws
   return misses;
 }
 
-pure fn Lexer::is_at_source_end() const wontthrow -> bool
+pure fn
+Lexer::is_at_source_end() const wontthrow -> bool
 {
   return m_cursor_position >= m_source.length;
 }
 
-pure fn Lexer::debug_words() const wontthrow -> const ArrayList<Word> &
+pure fn
+Lexer::debug_words() const wontthrow -> const ArrayList<Word> &
 {
   return m_debug_words;
 }
 
-pure fn Lexer::arena() const wontthrow -> BumpArena &
+pure fn
+Lexer::arena() const wontthrow -> BumpArena &
 {
   return m_parse_session.get_arena();
 }
 
-fn Lexer::set_arena(BumpArena &arena,
-                    ParseSession::AllocationKind allocation_kind) wontthrow
-    -> void
+fn
+Lexer::set_arena(BumpArena                   &arena,
+                 ParseSession::AllocationKind allocation_kind) wontthrow -> void
 {
   LOG(Debug, "switching the lexer arena and dropping the cached peek");
   m_parse_session.set_arena(arena, allocation_kind);
   drop_peek_cache();
 }
 
-fn Lexer::drop_peek_cache() wontthrow -> void { m_peek_cache = nullptr; }
+fn
+Lexer::drop_peek_cache() wontthrow -> void
+{
+  m_peek_cache = nullptr;
+}
 
-fn Lexer::peek_cache_is_live() const wontthrow -> bool
+fn
+Lexer::peek_cache_is_live() const wontthrow -> bool
 {
   if (m_peek_cache == nullptr) return false;
 
@@ -352,13 +389,14 @@ fn Lexer::peek_cache_is_live() const wontthrow -> bool
   return true;
 }
 
-hot fn Lexer::advance_past_last_peek() throws -> usize
+hot fn
+Lexer::advance_past_last_peek() throws -> usize
 {
   ASSERT(m_cursor_position + m_cached_offset <= m_source.length);
 
   let const result = advance_forward(m_cached_offset);
-  m_cached_offset = 0;
-  m_peek_cache = nullptr;
+  m_cached_offset  = 0;
+  m_peek_cache     = nullptr;
 
   if (m_was_last_shell_token_newline && !m_pending_heredocs.is_empty()) {
     m_was_last_shell_token_newline = false;
@@ -368,16 +406,16 @@ hot fn Lexer::advance_past_last_peek() throws -> usize
   return result;
 }
 
-cold fn Lexer::register_heredoc(StringView delimiter,
-                                heredoc_tab_policy tab_policy,
-                                bool should_expand) throws
-    -> const heredoc_contents *
+cold fn
+Lexer::register_heredoc(StringView         delimiter,
+                        heredoc_tab_policy tab_policy,
+                        bool should_expand) throws -> const heredoc_contents *
 {
-  let &arena = m_parse_session.get_arena();
-  let contents = arena.create<heredoc_contents>(
+  let &arena    = m_parse_session.get_arena();
+  let  contents = arena.create<heredoc_contents>(
       bump_allocator(arena), tab_policy == heredoc_tab_policy::Preserve
-                                 ? heredoc_source_mapping::Contiguous
-                                 : heredoc_source_mapping::Transformed);
+                                  ? heredoc_source_mapping::Contiguous
+                                  : heredoc_source_mapping::Transformed);
   ASSERT(contents != nullptr);
 
   LOG(Debug, "registering a pending heredoc with delimiter '%.*s'",
@@ -390,31 +428,33 @@ cold fn Lexer::register_heredoc(StringView delimiter,
 }
 
 template <class Emit>
-cold fn Lexer::walk_heredoc_body(usize start, StringView delimiter,
-                                 heredoc_tab_policy tab_policy,
-                                 Emit emit_line) throws -> usize
+cold fn
+Lexer::walk_heredoc_body(usize              start,
+                         StringView         delimiter,
+                         heredoc_tab_policy tab_policy,
+                         Emit               emit_line) throws -> usize
 {
-  usize position = start;
-  bool did_find_delimiter = false;
-  bool has_near_miss = false;
+  usize                   position           = start;
+  bool                    did_find_delimiter = false;
+  bool                    has_near_miss      = false;
   heredoc_terminator_miss near_miss{0, 0,
                                     heredoc_miss_kind::IndentedTerminator};
 
   loop
   {
     if (position >= m_source.length) break;
-    let const line_start = position;
+    let const line_start     = position;
     let const line_remaining = m_source.substring(line_start);
-    let const line_newline = line_remaining.find_character('\n');
+    let const line_newline   = line_remaining.find_character('\n');
     let const line_end_position =
         line_start + line_newline.value_or(line_remaining.length);
     let const has_newline = line_end_position < m_source.length;
     position = has_newline ? line_end_position + 1 : line_end_position;
 
-    let const line_offset = line_start;
-    let const line_length = line_end_position - line_start;
-    usize stripped_offset = line_offset;
-    usize stripped_length = line_length;
+    let const line_offset     = line_start;
+    let const line_length     = line_end_position - line_start;
+    usize     stripped_offset = line_offset;
+    usize     stripped_length = line_length;
     if (tab_policy == heredoc_tab_policy::Strip) {
       while (stripped_length > 0 && m_source[stripped_offset] == '\t') {
         stripped_offset++;
@@ -425,13 +465,13 @@ cold fn Lexer::walk_heredoc_body(usize start, StringView delimiter,
     let const stripped =
         m_source.substring_of_length(stripped_offset, stripped_length);
     let const is_delimiter = (delimiter == stripped);
-    did_find_delimiter = did_find_delimiter || is_delimiter;
+    did_find_delimiter     = did_find_delimiter || is_delimiter;
 
     if (m_parse_session.should_collect_analysis_metadata() && !is_delimiter &&
         !has_near_miss && line_length > delimiter.length)
     {
       usize content_start = line_offset;
-      usize content_end = line_offset + line_length;
+      usize content_end   = line_offset + line_length;
 
       while (content_start < content_end && (m_source[content_start] == ' ' ||
                                              m_source[content_start] == '\t'))
@@ -451,18 +491,18 @@ cold fn Lexer::walk_heredoc_body(usize start, StringView delimiter,
           m_source.substring_of_length(content_start, delimiter.length) ==
               delimiter)
       {
-        let const leading_length = content_start - line_offset;
-        let is_tab_indentation = leading_length > 0;
+        let const leading_length     = content_start - line_offset;
+        let       is_tab_indentation = leading_length > 0;
 
         for (usize at = line_offset; at < content_start; at++)
           is_tab_indentation = is_tab_indentation && m_source[at] == '\t';
 
         has_near_miss = true;
-        near_miss = heredoc_terminator_miss{
+        near_miss     = heredoc_terminator_miss{
             content_start, delimiter.length,
-            leading_length == 0  ? heredoc_miss_kind::TrailingBlankTerminator
-            : is_tab_indentation ? heredoc_miss_kind::TabIndentedTerminator
-                                 : heredoc_miss_kind::IndentedTerminator};
+            leading_length == 0 ? heredoc_miss_kind::TrailingBlankTerminator
+                : is_tab_indentation ? heredoc_miss_kind::TabIndentedTerminator
+                                     : heredoc_miss_kind::IndentedTerminator};
       }
     }
 
@@ -478,7 +518,8 @@ cold fn Lexer::walk_heredoc_body(usize start, StringView delimiter,
   return position;
 }
 
-cold fn Lexer::collect_pending_heredocs() throws -> void
+cold fn
+Lexer::collect_pending_heredocs() throws -> void
 {
   LOG(Debug, "collecting %zu pending heredoc bodies",
       m_pending_heredocs.count());
@@ -487,8 +528,8 @@ cold fn Lexer::collect_pending_heredocs() throws -> void
     let collected = String{heap_allocator()};
     ASSERT(pending.contents != nullptr);
     pending.contents->source_position = m_cursor_position;
-    let const do_append_body_line = [&](StringView line, bool,
-                                        bool is_delimiter) -> bool {
+    let const do_append_body_line     = [&](StringView line, bool,
+                                        bool       is_delimiter) -> bool {
       if (is_delimiter) return false;
       if (pending.tab_policy == heredoc_tab_policy::Strip) {
         usize offset = 0;
@@ -526,9 +567,10 @@ cold fn Lexer::collect_pending_heredocs() throws -> void
   }
 }
 
-hot flatten fn Lexer::lex_shell_token() throws -> Token *
+hot flatten fn
+Lexer::lex_shell_token() throws -> Token *
 {
-  Token *token{};
+  Token    *token{};
   let const ch = chop_character();
   if (!has_character()) {
     token = m_parse_session.get_arena().create<tokens::EndOfFile>(
@@ -548,7 +590,7 @@ hot flatten fn Lexer::lex_shell_token() throws -> Token *
   case '(':
   case ')':
   case '&':
-  case ';': token = lex_sentinel(); break;
+  case ';':  token = lex_sentinel(); break;
   case ' ':
   case '\t':
     throw ErrorWithLocationAndDetails{
@@ -564,7 +606,8 @@ hot flatten fn Lexer::lex_shell_token() throws -> Token *
   return token;
 }
 
-hot flatten alwaysinline fn Lexer::skip_whitespace() throws -> void
+hot flatten alwaysinline fn
+Lexer::skip_whitespace() throws -> void
 {
   usize i = 0;
 
@@ -583,7 +626,7 @@ hot flatten alwaysinline fn Lexer::skip_whitespace() throws -> void
       }
       break;
     case '#': {
-      let const comment_start = i;
+      let const comment_start     = i;
       let const comment_remaining = m_source.substring(m_cursor_position + i);
       i += comment_remaining.find_character('\n').value_or(
           comment_remaining.length);
@@ -623,7 +666,8 @@ hot flatten alwaysinline fn Lexer::skip_whitespace() throws -> void
   advance_forward(i);
 }
 
-hot alwaysinline fn Lexer::advance_forward(usize offset) wontthrow -> usize
+hot alwaysinline fn
+Lexer::advance_forward(usize offset) wontthrow -> usize
 {
   ASSERT(m_cursor_position + offset <= m_source.length);
   m_cursor_position += offset;
@@ -631,7 +675,8 @@ hot alwaysinline fn Lexer::advance_forward(usize offset) wontthrow -> usize
   return offset;
 }
 
-hot alwaysinline fn Lexer::chop_character(usize offset) wontthrow -> char
+hot alwaysinline fn
+Lexer::chop_character(usize offset) wontthrow -> char
 {
   if (m_cursor_position + offset < m_source.length)
     return m_source[m_cursor_position + offset];
@@ -639,17 +684,19 @@ hot alwaysinline fn Lexer::chop_character(usize offset) wontthrow -> char
   return lexer::CEOF;
 }
 
-hot alwaysinline fn Lexer::has_character(usize offset) const wontthrow -> bool
+hot alwaysinline fn
+Lexer::has_character(usize offset) const wontthrow -> bool
 {
   return m_cursor_position + offset < m_source.length;
 }
 
-flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
+flatten hot alwaysinline fn
+Lexer::lex_identifier() throws -> Token *
 {
-  let word = Word{};
+  let word      = Word{};
   word.segments = ArrayList<WordSegment>{bump_allocator(arena())};
 
-  usize byte_count = 0;
+  usize byte_count                   = 0;
   usize relative_last_quote_position = 0;
 
   bool should_escape = false;
@@ -672,7 +719,7 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
   };
 
   let const do_append_run = [&word, this](WordSegment::Kind kind,
-                                          StringView run) {
+                                          StringView        run) {
     if (!word.segments.is_empty() && word.segments.back().kind == kind &&
         kind != WordSegment::Kind::VariableReference)
     {
@@ -704,7 +751,7 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
   let const do_subscript_closes_with_assignment =
       [this](usize start) -> Maybe<usize> {
     usize offset = start + 1;
-    usize depth = 1;
+    usize depth  = 1;
 
     while (depth > 0) {
       if (!has_character(offset)) return None;
@@ -739,7 +786,7 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
   usize element_subscript_end = 0;
   if (m_is_lexing_array_literal && chop_character(0) == '[') {
     let const remaining = m_source.substring(m_cursor_position);
-    usize depth = 0;
+    usize     depth     = 0;
 
     for (usize offset = 0; offset < remaining.length; offset++) {
       let const c = remaining[offset];
@@ -761,7 +808,7 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
 
   loop
   {
-    let const ch = chop_character(byte_count);
+    let const ch        = chop_character(byte_count);
     let const is_at_end = !has_character(byte_count);
 
     let const is_inside_quote_or_escape =
@@ -806,7 +853,7 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
           close.has_value())
       {
         let const subscript_start = byte_count;
-        byte_count = *close;
+        byte_count                = *close;
         do_append_unquoted_run(m_source.substring_of_length(
             m_cursor_position + subscript_start, byte_count - subscript_start));
         if (should_validate_substitutions()) {
@@ -884,7 +931,7 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
     if (ch == '\\') {
       if (quote_char == '"') {
         did_quote_enclose_content = true;
-        let const escaped_next = chop_character(byte_count + 1);
+        let const escaped_next    = chop_character(byte_count + 1);
         switch (escaped_next) {
         case '$':
         case '`':
@@ -937,8 +984,8 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
 
     if (!quote_char.has_value() && lexer::is_string_quote(ch)) {
       relative_last_quote_position = byte_count;
-      did_quote_enclose_content = false;
-      quote_char = ch;
+      did_quote_enclose_content    = false;
+      quote_char                   = ch;
       byte_count++;
       continue;
     }
@@ -998,9 +1045,9 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
           (next == '(' && chop_character(byte_count + 1) == '('))
       {
         byte_count += is_bracket_arithmetic ? 1 : 2;
-        let arithmetic_start = byte_count;
-        let closing_length = is_bracket_arithmetic ? usize{1} : usize{2};
-        usize group_depth = 0;
+        let   arithmetic_start = byte_count;
+        let   closing_length   = is_bracket_arithmetic ? usize{1} : usize{2};
+        usize group_depth      = 0;
 
         loop
         {
@@ -1070,8 +1117,8 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
           } else if (c == '$' && chop_character(byte_count + 1) == '(') {
             byte_count++;
             byte_count++;
-            usize paren_depth = 1;
-            char nested_quote = 0;
+            usize paren_depth  = 1;
+            char  nested_quote = 0;
 
             loop
             {
@@ -1188,7 +1235,7 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
       } else if (next == '{') {
         byte_count++;
         bool is_function_substitution = false;
-        bool is_value_substitution = false;
+        bool is_value_substitution    = false;
         if (bash_additions_enabled()) {
           let probe = chop_character(byte_count);
 
@@ -1200,7 +1247,7 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
 
           if (!is_function_substitution && probe == '|') {
             is_function_substitution = true;
-            is_value_substitution = true;
+            is_value_substitution    = true;
           }
         }
         let const name_start = byte_count;
@@ -1208,7 +1255,7 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
           byte_count++;
         }
         usize brace_depth = 1;
-        char quote = 0;
+        char  quote       = 0;
 
         loop
         {
@@ -1372,9 +1419,9 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
     if (ch == '`') {
       let const relative_open_backtick_pos = byte_count;
       byte_count++;
-      let const body_start = m_cursor_position + byte_count;
-      let inner = String{heap_allocator()};
-      bool has_stripped_escape = false;
+      let const body_start          = m_cursor_position + byte_count;
+      let       inner               = String{heap_allocator()};
+      bool      has_stripped_escape = false;
 
       loop
       {
@@ -1500,7 +1547,7 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
              word.segments[0].kind == WordSegment::Kind::UnquotedText)
   {
     let const &word_text = word.segments[0].text;
-    let const keyword =
+    let const  keyword =
         KEYWORDS.find(StringView{word_text.data(), word_text.count()});
     if (keyword.has_value() &&
         !(*keyword == Token::Kind::Time && is_posix_mode()))
@@ -1522,11 +1569,12 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
   return token;
 }
 
-hot alwaysinline fn Lexer::lex_sentinel() throws -> Token *
+hot alwaysinline fn
+Lexer::lex_sentinel() throws -> Token *
 {
   ASSERT(has_character());
-  let const ch = chop_character();
-  let &arena = m_parse_session.get_arena();
+  let const ch    = chop_character();
+  let      &arena = m_parse_session.get_arena();
 
   usize extra_length = 0;
 
@@ -1658,13 +1706,12 @@ hot alwaysinline fn Lexer::lex_sentinel() throws -> Token *
   return token;
 }
 
-hot alwaysinline fn Lexer::lex_process_substitution(Word &word,
-                                                    usize offset) throws
-    -> usize
+hot alwaysinline fn
+Lexer::lex_process_substitution(Word &word, usize offset) throws -> usize
 {
   let const open_position = m_cursor_position + offset;
-  let const direction = m_source[open_position];
-  let const inner_start = open_position + 2;
+  let const direction     = m_source[open_position];
+  let const inner_start   = open_position + 2;
   let const substitution_end =
       lexer::scan_balanced_shell_region(m_source, inner_start, ')');
   if (!substitution_end.has_value()) rarely
@@ -1675,7 +1722,7 @@ hot alwaysinline fn Lexer::lex_process_substitution(Word &word,
           "expected ) here"};
     }
   let const byte_count = *substitution_end - open_position;
-  let const body = m_source.substring_of_length(
+  let const body       = m_source.substring_of_length(
       inner_start, *substitution_end - inner_start - 1);
 
   LOG(Debug, "capturing a process substitution of %zu bytes", byte_count);
@@ -1694,7 +1741,8 @@ hot alwaysinline fn Lexer::lex_process_substitution(Word &word,
   return offset + byte_count;
 }
 
-cold fn Lexer::record_substitution_error(
+cold fn
+Lexer::record_substitution_error(
     const ErrorWithLocationAndDetails &error) throws -> void
 {
   let const key = lexer::substitution_error_key{
@@ -1707,9 +1755,11 @@ cold fn Lexer::record_substitution_error(
   m_substitution_errors.push(error);
 }
 
-cold fn Lexer::validate_substitution_body(
-    usize body_position, StringView body,
-    const SourceLocation &outer_location) throws -> void
+cold fn
+Lexer::validate_substitution_body(usize                 body_position,
+                                  StringView            body,
+                                  const SourceLocation &outer_location) throws
+    -> void
 {
   if (m_substitution_nesting_depth >= lexer::MAX_SUBSTITUTION_NESTING_DEPTH) {
     record_substitution_error(ErrorWithLocationAndDetails{
@@ -1719,14 +1769,14 @@ cold fn Lexer::validate_substitution_body(
     return;
   }
 
-  let &arena = m_parse_session.get_arena();
+  let      &arena      = m_parse_session.get_arena();
   let const arena_mark = arena.mark();
   defer { arena.release(arena_mark); };
 
-  let const is_exact = body.data == m_source.data + body_position;
-  let nested_lexer = Lexer{
+  let const is_exact     = body.data == m_source.data + body_position;
+  let       nested_lexer = Lexer{
       is_exact ? m_source.substring_of_length(0, body_position + body.length)
-               : body,
+                     : body,
       arena, source_name_at(m_parse_session.source_name_index()), mood(),
       m_parse_session.get_allocation_kind()};
   if (is_exact) nested_lexer.set_start_position(body_position);
@@ -1750,9 +1800,12 @@ cold fn Lexer::validate_substitution_body(
   }
 }
 
-cold fn Lexer::validate_nested_expansions(
-    usize region_position, usize region_length, bool is_heredoc,
-    bool is_region_in_double_quotes) throws -> void
+cold fn
+Lexer::validate_nested_expansions(usize region_position,
+                                  usize region_length,
+                                  bool  is_heredoc,
+                                  bool  is_region_in_double_quotes) throws
+    -> void
 {
   let const found =
       lexer::find_nested_substitutions(m_source, region_position, region_length,
@@ -1772,13 +1825,15 @@ cold fn Lexer::validate_nested_expansions(
   }
 }
 
-cold fn lexer::find_nested_substitutions(StringView source,
-                                         usize region_position,
-                                         usize region_length, bool is_heredoc,
-                                         bool is_region_in_double_quotes) throws
+cold fn
+lexer::find_nested_substitutions(StringView source,
+                                 usize      region_position,
+                                 usize      region_length,
+                                 bool       is_heredoc,
+                                 bool       is_region_in_double_quotes) throws
     -> ArrayList<nested_substitution>
 {
-  let found = ArrayList<nested_substitution>{heap_allocator()};
+  let       found  = ArrayList<nested_substitution>{heap_allocator()};
   let const region = source.substring_of_length(region_position, region_length);
   if (!region.find_character('`').has_value() &&
       !region.find_character('$').has_value())
@@ -1786,9 +1841,9 @@ cold fn lexer::find_nested_substitutions(StringView source,
     return found;
   }
 
-  let is_in_single_quotes = false;
-  let is_in_double_quotes = is_region_in_double_quotes;
-  usize offset = 0;
+  let   is_in_single_quotes = false;
+  let   is_in_double_quotes = is_region_in_double_quotes;
+  usize offset              = 0;
 
   while (offset < region.length) {
     let const c = region[offset];
@@ -1818,10 +1873,10 @@ cold fn lexer::find_nested_substitutions(StringView source,
     }
 
     if (c == '`') {
-      let const body_start = offset + 1;
-      let end = body_start;
+      let const body_start                 = offset + 1;
+      let       end                        = body_start;
       let const is_escape_in_double_quotes = !is_heredoc && is_in_double_quotes;
-      let has_stripped_escape = false;
+      let       has_stripped_escape        = false;
 
       while (end < region.length && region[end] != '`') {
         if (region[end] == '\\') {
@@ -1839,12 +1894,12 @@ cold fn lexer::find_nested_substitutions(StringView source,
       if (end >= region.length) return found;
 
       let const body = region.substring_of_length(body_start, end - body_start);
-      let entry = nested_substitution{};
-      entry.body_position = region_position + body_start;
-      entry.body_length = body.length;
+      let       entry      = nested_substitution{};
+      entry.body_position  = region_position + body_start;
+      entry.body_length    = body.length;
       entry.outer_position = region_position + offset;
-      entry.outer_length = end + 1 - offset;
-      entry.is_exact = !has_stripped_escape;
+      entry.outer_length   = end + 1 - offset;
+      entry.is_exact       = !has_stripped_escape;
       if (has_stripped_escape) {
         for (usize index = 0; index < body.length; index++) {
           if (body[index] == '\\' && index + 1 < body.length &&
@@ -1876,11 +1931,11 @@ cold fn lexer::find_nested_substitutions(StringView source,
         lexer::scan_balanced_shell_region(source, body_start, ')');
     if (!body_end.has_value()) return found;
 
-    let entry = nested_substitution{};
-    entry.body_position = body_start;
-    entry.body_length = *body_end - body_start - 1;
+    let entry            = nested_substitution{};
+    entry.body_position  = body_start;
+    entry.body_length    = *body_end - body_start - 1;
     entry.outer_position = region_position + offset;
-    entry.outer_length = *body_end - region_position - offset;
+    entry.outer_length   = *body_end - region_position - offset;
     found.push(steal(entry));
     offset = *body_end - region_position;
   }
@@ -1888,35 +1943,36 @@ cold fn lexer::find_nested_substitutions(StringView source,
   return found;
 }
 
-cold fn lexer::find_segment_substitution(StringView source,
-                                         const WordSegment &segment) throws
+cold fn
+lexer::find_segment_substitution(StringView         source,
+                                 const WordSegment &segment) throws
     -> Maybe<nested_substitution>
 {
   let const position = static_cast<usize>(segment.source_position);
-  let const length = static_cast<usize>(segment.source_length);
+  let const length   = static_cast<usize>(segment.source_length);
   if (length == 0 || position > source.length ||
       length > source.length - position)
   {
     return None;
   }
 
-  let const text = segment.text.view();
-  let entry = nested_substitution{};
+  let const text       = segment.text.view();
+  let       entry      = nested_substitution{};
   entry.outer_position = position;
-  entry.outer_length = length;
-  let body_text = text;
+  entry.outer_length   = length;
+  let body_text        = text;
   switch (segment.kind) {
   case WordSegment::Kind::CommandSubstitution:
     if (source[position] == '`') {
       if (length < 2) return None;
 
       entry.body_position = position + 1;
-      entry.body_length = length - 2;
+      entry.body_length   = length - 2;
     } else {
       if (length < 3) return None;
 
       entry.body_position = position + 2;
-      entry.body_length = length - 3;
+      entry.body_length   = length - 3;
     }
     break;
 
@@ -1926,15 +1982,15 @@ cold fn lexer::find_segment_substitution(StringView source,
     }
 
     entry.body_position = position + 2;
-    entry.body_length = length - 3;
-    body_text = text.substring(1);
+    entry.body_length   = length - 3;
+    body_text           = text.substring(1);
     break;
 
   case WordSegment::Kind::FunctionSubstitution:
     if (text.length + 1 > length) return None;
 
     entry.body_position = position + length - 1 - text.length;
-    entry.body_length = text.length;
+    entry.body_length   = text.length;
     if (!text.is_empty() && text[0] == '|') {
       entry.body_position++;
       entry.body_length--;

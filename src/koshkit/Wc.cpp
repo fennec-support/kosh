@@ -29,10 +29,10 @@ namespace koshka::koshkit {
 
 enum class wc_count_selection : u8
 {
-  None = 0,
-  Lines = 1,
-  Words = 2,
-  Bytes = 4,
+  None       = 0,
+  Lines      = 1,
+  Words      = 2,
+  Bytes      = 4,
   Characters = 8,
 };
 
@@ -44,15 +44,17 @@ enum class wc_scan_mode : u8
   LinesWords,
 };
 
-constexpr fn operator|(wc_count_selection left,
-                       wc_count_selection right) wontthrow->wc_count_selection
+constexpr fn
+operator|(wc_count_selection left,
+          wc_count_selection right) wontthrow->wc_count_selection
 {
   return static_cast<wc_count_selection>(static_cast<u8>(left) |
                                          static_cast<u8>(right));
 }
 
-constexpr fn has_wc_count(wc_count_selection selection,
-                          wc_count_selection count) wontthrow -> bool
+constexpr fn
+has_wc_count(wc_count_selection selection, wc_count_selection count) wontthrow
+    -> bool
 {
   return (static_cast<u8>(selection) & static_cast<u8>(count)) != 0;
 }
@@ -62,12 +64,13 @@ struct word_byte_table
   u8 values[256];
 };
 
-static consteval fn make_word_byte_table() -> word_byte_table
+static consteval fn
+make_word_byte_table() -> word_byte_table
 {
   word_byte_table table{};
 
   for (u32 byte = 0; byte < 256; byte++) {
-    let const is_blank = byte == ' ' || (byte >= '\t' && byte <= '\r');
+    let const is_blank     = byte == ' ' || (byte >= '\t' && byte <= '\r');
     let const is_printable = byte > ' ' && byte < 0x7f;
 
     table.values[byte] = is_printable ? 1 : (is_blank ? 0 : 2);
@@ -85,7 +88,8 @@ struct wc_counts
   u64 character_count{0};
   u64 byte_count{0};
 
-  fn add(const wc_counts &other) wontthrow -> void
+  fn
+  add(const wc_counts &other) wontthrow -> void
   {
     line_count += other.line_count;
     word_count += other.word_count;
@@ -93,7 +97,8 @@ struct wc_counts
     byte_count += other.byte_count;
   }
 
-  fn get_maximum(wc_count_selection selection) const wontthrow -> u64
+  fn
+  get_maximum(wc_count_selection selection) const wontthrow -> u64
   {
     u64 maximum = 0;
 
@@ -125,26 +130,27 @@ struct wc_counts
 struct wc_row
 {
   StringView name;
-  wc_counts counts;
+  wc_counts  counts;
 };
 
 struct wc_source_state
 {
   wc_counts counts;
-  i32 error_number{0};
-  bool is_in_word{false};
+  i32       error_number{0};
+  bool      is_in_word{false};
 };
 
-static fn count_newlines(StringView content) wontthrow -> u64
+static fn
+count_newlines(StringView content) wontthrow -> u64
 {
-  u64 newline_count = 0;
+  u64   newline_count = 0;
   usize byte_position = 0;
 
-  typedef char byte_vector __attribute__((vector_size(16)));
-  constexpr usize LANE_COUNT = sizeof(byte_vector);
+  typedef char    byte_vector __attribute__((vector_size(16)));
+  constexpr usize LANE_COUNT          = sizeof(byte_vector);
   constexpr usize MAXIMUM_ROUND_COUNT = 255;
-  constexpr u64 PAIR_LOW_BYTES = 0x00ff00ff00ff00ffULL;
-  constexpr u64 PAIR_SUM_MULTIPLIER = 0x0001000100010001ULL;
+  constexpr u64   PAIR_LOW_BYTES      = 0x00ff00ff00ff00ffULL;
+  constexpr u64   PAIR_SUM_MULTIPLIER = 0x0001000100010001ULL;
 
   let const newlines = byte_vector{} + '\n';
 
@@ -177,8 +183,8 @@ static fn count_newlines(StringView content) wontthrow -> u64
   return newline_count;
 }
 
-static fn count_words(wc_source_state &state, StringView content) wontthrow
-    -> void
+static fn
+count_words(wc_source_state &state, StringView content) wontthrow -> void
 {
   u32 is_in_word = state.is_in_word ? 1 : 0;
   u64 word_count = 0;
@@ -196,8 +202,10 @@ static fn count_words(wc_source_state &state, StringView content) wontthrow
   state.is_in_word = is_in_word != 0;
 }
 
-static fn update_wc_source(wc_source_state &state, StringView content,
-                           wc_count_selection selection) wontthrow -> void
+static fn
+update_wc_source(wc_source_state   &state,
+                 StringView         content,
+                 wc_count_selection selection) wontthrow -> void
 {
   let const scan_mode =
       has_wc_count(selection, wc_count_selection::Lines) &&
@@ -231,7 +239,8 @@ static fn update_wc_source(wc_source_state &state, StringView content,
   }
 }
 
-static fn decimal_digit_count(u64 value) wontthrow -> usize
+static fn
+decimal_digit_count(u64 value) wontthrow -> usize
 {
   usize digit_count = 1;
 
@@ -243,9 +252,12 @@ static fn decimal_digit_count(u64 value) wontthrow -> usize
   return digit_count;
 }
 
-static fn append_counts(String &line, const wc_counts &counts, StringView name,
-                        usize field_width, wc_count_selection selection) throws
-    -> void
+static fn
+append_counts(String            &line,
+              const wc_counts   &counts,
+              StringView         name,
+              usize              field_width,
+              wc_count_selection selection) throws -> void
 {
   bool has_field = false;
 
@@ -278,10 +290,11 @@ static fn append_counts(String &line, const wc_counts &counts, StringView name,
   line += '\n';
 }
 
-fn Wc::execute(const ExecContext &ec, EvalContext &cxt,
-               const ArrayList<String> &args,
-               const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+fn
+Wc::execute(const ExecContext               &ec,
+            EvalContext                     &cxt,
+            const ArrayList<String>         &args,
+            const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
@@ -310,7 +323,7 @@ fn Wc::execute(const ExecContext &ec, EvalContext &cxt,
   for (usize source_index = 0; source_index < sources.count(); source_index++)
     source_states.push({});
 
-  let read_sources = ArrayList<StringView>{cxt.scratch_allocator()};
+  let read_sources        = ArrayList<StringView>{cxt.scratch_allocator()};
   let read_source_indices = ArrayList<usize>{cxt.scratch_allocator()};
   if (selection == wc_count_selection::Bytes) {
     read_sources.reserve(sources.count());
@@ -359,7 +372,7 @@ fn Wc::execute(const ExecContext &ec, EvalContext &cxt,
         let const source_index = selection == wc_count_selection::Bytes
                                      ? read_source_indices[chunk.source_index]
                                      : chunk.source_index;
-        let &state = source_states[source_index];
+        let      &state        = source_states[source_index];
         if (chunk.error_number != 0) {
           state.error_number = chunk.error_number;
           continue;
@@ -370,8 +383,8 @@ fn Wc::execute(const ExecContext &ec, EvalContext &cxt,
   }
 
   ArrayList<wc_row> rows{cxt.scratch_allocator()};
-  wc_counts totals;
-  i32 status = 0;
+  wc_counts         totals;
+  i32               status = 0;
 
   for (usize source_index = 0; source_index < sources.count(); source_index++) {
     let const &state = source_states[source_index];

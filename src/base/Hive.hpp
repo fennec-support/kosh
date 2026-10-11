@@ -26,7 +26,8 @@ public:
   explicit Hive(Allocator allocator) wontthrow : m_allocator{allocator} {}
 
   Hive(const Hive &) = delete;
-  Hive &operator=(const Hive &) = delete;
+  Hive &
+  operator=(const Hive &) = delete;
 
   Hive(Hive &&other) wontthrow : m_allocator{other.m_allocator},
                                  m_blocks{other.m_blocks},
@@ -34,22 +35,23 @@ public:
                                  m_count{other.m_count}
   {
     other.m_blocks = nullptr;
-    other.m_free = nullptr;
-    other.m_count = 0;
+    other.m_free   = nullptr;
+    other.m_count  = 0;
   }
 
-  fn operator=(Hive &&other) wontthrow->Hive &
+  fn
+  operator=(Hive &&other) wontthrow->Hive &
   {
     if (this == &other) return *this;
 
     destroy_all();
-    m_allocator = other.m_allocator;
-    m_blocks = other.m_blocks;
-    m_free = other.m_free;
-    m_count = other.m_count;
+    m_allocator    = other.m_allocator;
+    m_blocks       = other.m_blocks;
+    m_free         = other.m_free;
+    m_count        = other.m_count;
     other.m_blocks = nullptr;
-    other.m_free = nullptr;
-    other.m_count = 0;
+    other.m_free   = nullptr;
+    other.m_count  = 0;
 
     return *this;
   }
@@ -57,65 +59,73 @@ public:
   ~Hive() { destroy_all(); }
 
   template <class... Arguments>
-  fn emplace(Arguments &&...arguments) throws -> T *
+  fn
+  emplace(Arguments &&...arguments) throws -> T *
   {
     if (m_free == nullptr) add_block();
 
     let *const free_slot = m_free;
     let *const element =
         new (free_slot->bytes) T{static_cast<Arguments &&>(arguments)...};
-    m_free = free_slot->next_free;
+    m_free               = free_slot->next_free;
     free_slot->next_free = nullptr;
-    free_slot->is_live = true;
+    free_slot->is_live   = true;
     m_count++;
 
     return element;
   }
 
-  fn erase(T *element) wontthrow -> void
+  fn
+  erase(T *element) wontthrow -> void
   {
     ASSERT(element != nullptr);
 
     let *const erased_slot = reinterpret_cast<Slot *>(element);
     ASSERT(erased_slot->is_live);
     element->~T();
-    erased_slot->is_live = false;
+    erased_slot->is_live   = false;
     erased_slot->next_free = m_free;
-    m_free = erased_slot;
+    m_free                 = erased_slot;
     m_count--;
   }
 
-  mustuse pure fn count() const wontthrow -> usize { return m_count; }
+  mustuse pure fn
+  count() const wontthrow -> usize
+  {
+    return m_count;
+  }
 
 private:
   struct Slot
   {
     alignas(T) unsigned char bytes[sizeof(T)];
     Slot *next_free;
-    bool is_live;
+    bool  is_live;
   };
   static_assert(std::is_standard_layout_v<Slot>);
 
   struct Block
   {
-    Slot slots[BLOCK_SLOT_COUNT];
+    Slot   slots[BLOCK_SLOT_COUNT];
     Block *next;
   };
 
-  fn add_block() throws -> void
+  fn
+  add_block() throws -> void
   {
     let *const added = m_allocator.alloc_array<Block>(1);
-    added->next = m_blocks;
-    m_blocks = added;
+    added->next      = m_blocks;
+    m_blocks         = added;
 
     for (usize i = BLOCK_SLOT_COUNT; i > 0; i--) {
-      added->slots[i - 1].is_live = false;
+      added->slots[i - 1].is_live   = false;
       added->slots[i - 1].next_free = m_free;
-      m_free = &added->slots[i - 1];
+      m_free                        = &added->slots[i - 1];
     }
   }
 
-  fn destroy_all() wontthrow -> void
+  fn
+  destroy_all() wontthrow -> void
   {
     while (m_blocks != nullptr) {
       let *const next = m_blocks->next;
@@ -127,14 +137,14 @@ private:
       m_blocks = next;
     }
 
-    m_free = nullptr;
+    m_free  = nullptr;
     m_count = 0;
   }
 
   Allocator m_allocator;
-  Block *m_blocks{nullptr};
-  Slot *m_free{nullptr};
-  usize m_count{0};
+  Block    *m_blocks{nullptr};
+  Slot     *m_free{nullptr};
+  usize     m_count{0};
 };
 
 } /* namespace koshka */

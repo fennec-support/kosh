@@ -18,16 +18,31 @@ KOSHKIT_UTIL_DECL("[-tgex] [-n seconds] command [argument ...]",
                   "The watch utility runs a command at fixed intervals and "
                   "shows its output.");
 
-FLAG(WATCH_INTERVAL, String, 'n', "interval",
+FLAG(WATCH_INTERVAL,
+     String,
+     'n',
+     "interval",
      "Wait this many seconds between runs. The default is two.");
-FLAG(WATCH_NO_TITLE, Bool, 't', "no-title",
+FLAG(WATCH_NO_TITLE,
+     Bool,
+     't',
+     "no-title",
      "Omit the header and its blank "
      "line.");
-FLAG(WATCH_CHANGE_EXIT, Bool, 'g', "chgexit",
+FLAG(WATCH_CHANGE_EXIT,
+     Bool,
+     'g',
+     "chgexit",
      "Stop as soon as command output changes.");
-FLAG(WATCH_ERROR_EXIT, Bool, 'e', "errexit",
+FLAG(WATCH_ERROR_EXIT,
+     Bool,
+     'e',
+     "errexit",
      "Stop as soon as the command reports a nonzero status.");
-FLAG(WATCH_EXEC, Bool, 'x', "exec",
+FLAG(WATCH_EXEC,
+     Bool,
+     'x',
+     "exec",
      "Accepted for compatibility. All operands always run as one command.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Watch);
@@ -37,9 +52,10 @@ namespace koshka::koshkit {
 namespace {
 
 constexpr f64 DEFAULT_INTERVAL_SECONDS = 2.0;
-constexpr u32 FALLBACK_COLUMN_COUNT = 80;
+constexpr u32 FALLBACK_COLUMN_COUNT    = 80;
 
-fn append_one_decimal(String &output, f64 seconds) throws -> void
+fn
+append_one_decimal(String &output, f64 seconds) throws -> void
 {
   let const tenths = static_cast<u64>((seconds * 10.0) + 0.5);
   output += String::from(tenths / 10, output.allocator()).view();
@@ -47,16 +63,19 @@ fn append_one_decimal(String &output, f64 seconds) throws -> void
   output += String::from(tenths % 10, output.allocator()).view();
 }
 
-fn build_title(StringView command, f64 interval_seconds, u32 column_count,
-               Allocator allocator) throws -> String
+fn
+build_title(StringView command,
+            f64        interval_seconds,
+            u32        column_count,
+            Allocator  allocator) throws -> String
 {
   let left = String{allocator, "Every "};
   append_one_decimal(left, interval_seconds);
   left += "s: ";
   left += command;
 
-  let right = String{allocator};
-  let const host = os::get_hostname();
+  let       right = String{allocator};
+  let const host  = os::get_hostname();
   if (host.has_value()) {
     right += host->view();
     right += ": ";
@@ -66,7 +85,7 @@ fn build_title(StringView command, f64 interval_seconds, u32 column_count,
       os::format_local_time("%a %b %e %H:%M:%S %Y", os::current_unix_seconds())
           .view();
 
-  let title = String{allocator};
+  let       title        = String{allocator};
   let const total_length = left.length() + right.length();
   if (total_length + 1 > column_count) {
     title += left.view();
@@ -86,8 +105,9 @@ fn build_title(StringView command, f64 interval_seconds, u32 column_count,
   return title;
 }
 
-fn append_truncated_lines(String &output, StringView body,
-                          u32 column_count) throws -> void
+fn
+append_truncated_lines(String &output, StringView body, u32 column_count) throws
+    -> void
 {
   usize position = 0;
 
@@ -109,9 +129,11 @@ fn append_truncated_lines(String &output, StringView body,
 
 } /* namespace */
 
-fn Watch::execute(const ExecContext &ec, EvalContext &cxt,
-                  const ArrayList<String> &args,
-                  const ArrayList<SourceLocation> &arg_locations) const throws
+fn
+Watch::execute(const ExecContext               &ec,
+               EvalContext                     &cxt,
+               const ArrayList<String>         &args,
+               const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
@@ -120,8 +142,8 @@ fn Watch::execute(const ExecContext &ec, EvalContext &cxt,
     return report_usage_error(ec, cxt, args[0].view());
   }
 
-  let const allocator = cxt.scratch_allocator();
-  f64 interval_seconds = DEFAULT_INTERVAL_SECONDS;
+  let const allocator        = cxt.scratch_allocator();
+  f64       interval_seconds = DEFAULT_INTERVAL_SECONDS;
   if (FLAG_WATCH_INTERVAL.is_set()) {
     interval_seconds = parse_koshkit_duration_seconds(
         FLAG_WATCH_INTERVAL.value(), FLAG_WATCH_INTERVAL.value_location(),
@@ -137,11 +159,11 @@ fn Watch::execute(const ExecContext &ec, EvalContext &cxt,
     command += operand;
   }
 
-  let previous_body = String{allocator};
-  bool has_previous_body = false;
-  i32 status = 0;
-  let const is_terminal = colors::stdout_is_a_terminal();
-  let const should_color = koshkit_should_color();
+  let       previous_body     = String{allocator};
+  bool      has_previous_body = false;
+  i32       status            = 0;
+  let const is_terminal       = colors::stdout_is_a_terminal();
+  let const should_color      = koshkit_should_color();
 
   let const saved_terminal_exec = cxt.execution_store().terminal_exec_allowed();
   cxt.execution_store().terminal_exec_allowed() = false;
@@ -191,7 +213,7 @@ fn Watch::execute(const ExecContext &ec, EvalContext &cxt,
       break;
     }
 
-    previous_body = String{allocator, body.view()};
+    previous_body     = String{allocator, body.view()};
     has_previous_body = true;
 
     os::sleep_for_seconds(interval_seconds);

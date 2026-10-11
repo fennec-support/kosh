@@ -25,7 +25,8 @@ REGISTER_BUILTIN_FLAGS(Eval);
 
 namespace koshka {
 
-fn Eval::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
+fn
+Eval::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   ASSERT(!ec.args().is_empty());
 

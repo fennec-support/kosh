@@ -21,20 +21,38 @@ KOSHKIT_UTIL_DECL(
     "The xargs utility builds and invokes argument lists from standard input.");
 
 FLAG(XARGS_EOF, String, 'E', "eof", "Stop at this logical argument.");
-FLAG(XARGS_REPLACE, String, 'I', "replace",
+FLAG(XARGS_REPLACE,
+     String,
+     'I',
+     "replace",
      "Replace this string with each input line.");
-FLAG(XARGS_MAX_LINES, String, 'L', "max-lines",
+FLAG(XARGS_MAX_LINES,
+     String,
+     'L',
+     "max-lines",
      "Use at most this many input lines per invocation.");
-FLAG(XARGS_MAX_ARGUMENTS, String, 'n', "max-args",
+FLAG(XARGS_MAX_ARGUMENTS,
+     String,
+     'n',
+     "max-args",
      "Use at most this many input arguments per invocation.");
 FLAG(XARGS_PROMPT, Bool, 'p', "prompt", "Ask before each invocation.");
-FLAG(XARGS_MAX_SIZE, String, 's', "max-size",
+FLAG(XARGS_MAX_SIZE,
+     String,
+     's',
+     "max-size",
      "Limit each command to this many bytes.");
 FLAG(XARGS_TRACE, Bool, 't', "trace", "Write each command before invoking it.");
 FLAG(XARGS_EXIT, Bool, 'x', "exit", "Stop when the size limit cannot be met.");
-FLAG(XARGS_NULL, Bool, '0', "null",
+FLAG(XARGS_NULL,
+     Bool,
+     '0',
+     "null",
      "Separate input items with null bytes and keep quotes literal.");
-FLAG(XARGS_NO_RUN_IF_EMPTY, Bool, 'r', "no-run-if-empty",
+FLAG(XARGS_NO_RUN_IF_EMPTY,
+     Bool,
+     'r',
+     "no-run-if-empty",
      "Do not run the utility when the input has no items.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Xargs);
@@ -44,12 +62,16 @@ namespace koshka::koshkit {
 struct xargs_item
 {
   String value;
-  usize line_number;
+  usize  line_number;
 };
 
-static fn parse_xargs_limit(const ExecContext &ec, EvalContext &cxt,
-                            const FlagString &flag, StringView name,
-                            StringView note, usize &limit) throws -> bool
+static fn
+parse_xargs_limit(const ExecContext &ec,
+                  EvalContext       &cxt,
+                  const FlagString  &flag,
+                  StringView         name,
+                  StringView         note,
+                  usize             &limit) throws -> bool
 {
   let const parsed = utils::parse_decimal_u64(flag.value());
   if (parsed.is_error() || parsed.value() == 0 || parsed.value() > SIZE_MAX) {
@@ -75,15 +97,17 @@ enum class xargs_item_format : u8
 class XargsReader
 {
 public:
-  XargsReader(os::descriptor fd, xargs_item_format format,
-              Allocator allocator) throws : m_fd{fd},
+  XargsReader(os::descriptor    fd,
+              xargs_item_format format,
+              Allocator         allocator) throws : m_fd{fd},
                                             m_format{format},
                                             m_buffer{allocator}
   {
     m_buffer.reserve(READ_CHUNK_LENGTH);
   }
 
-  fn next(Allocator allocator) throws -> Maybe<xargs_item>
+  fn
+  next(Allocator allocator) throws -> Maybe<xargs_item>
   {
     switch (m_format) {
     case xargs_item_format::Quoted: return next_quoted(allocator);
@@ -95,17 +119,22 @@ public:
     return None;
   }
 
-  pure fn line_number() const wontthrow -> usize { return m_line_number; }
+  pure fn
+  line_number() const wontthrow -> usize
+  {
+    return m_line_number;
+  }
 
 private:
-  fn peek() throws -> Maybe<char>
+  fn
+  peek() throws -> Maybe<char>
   {
     if (m_position == m_buffer.count()) {
       if (m_is_at_end) return None;
 
       m_buffer.clear();
       m_position = 0;
-      char chunk[READ_CHUNK_LENGTH];
+      char      chunk[READ_CHUNK_LENGTH];
       let const read_count = os::read_fd(m_fd, chunk, sizeof(chunk));
       if (!read_count.has_value())
         throw Error{"read error: " + os::last_system_error_message()};
@@ -120,7 +149,8 @@ private:
     return m_buffer[m_position];
   }
 
-  fn take() throws -> Maybe<char>
+  fn
+  take() throws -> Maybe<char>
   {
     let const byte = peek();
     if (byte.has_value()) m_position++;
@@ -128,7 +158,8 @@ private:
     return byte;
   }
 
-  fn next_quoted(Allocator allocator) throws -> Maybe<xargs_item>
+  fn
+  next_quoted(Allocator allocator) throws -> Maybe<xargs_item>
   {
     loop
     {
@@ -141,9 +172,9 @@ private:
       m_position++;
     }
 
-    let value = String{allocator};
+    let       value     = String{allocator};
     let const item_line = m_line_number;
-    char quote = '\0';
+    char      quote     = '\0';
 
     loop
     {
@@ -185,7 +216,8 @@ private:
     return xargs_item{steal(value), item_line};
   }
 
-  fn next_null_separated(Allocator allocator) throws -> Maybe<xargs_item>
+  fn
+  next_null_separated(Allocator allocator) throws -> Maybe<xargs_item>
   {
     if (!peek().has_value()) return None;
 
@@ -203,13 +235,14 @@ private:
     return xargs_item{steal(value), 0};
   }
 
-  fn next_line(Allocator allocator) throws -> Maybe<xargs_item>
+  fn
+  next_line(Allocator allocator) throws -> Maybe<xargs_item>
   {
     loop
     {
       if (!peek().has_value()) return None;
 
-      let value = String{allocator};
+      let       value     = String{allocator};
       let const item_line = m_line_number;
 
       loop
@@ -232,16 +265,19 @@ private:
 
   static constexpr usize READ_CHUNK_LENGTH = 65536;
 
-  os::descriptor m_fd;
+  os::descriptor    m_fd;
   xargs_item_format m_format;
-  String m_buffer;
-  usize m_position{0};
-  usize m_line_number{0};
-  bool m_is_at_end{false};
+  String            m_buffer;
+  usize             m_position{0};
+  usize             m_line_number{0};
+  bool              m_is_at_end{false};
 };
 
-static fn append_replaced(String &output, StringView source, StringView needle,
-                          StringView replacement) throws -> void
+static fn
+append_replaced(String    &output,
+                StringView source,
+                StringView needle,
+                StringView replacement) throws -> void
 {
   if (needle.is_empty()) {
     output += source;
@@ -262,8 +298,8 @@ static fn append_replaced(String &output, StringView source, StringView needle,
   output += source.substring(position);
 }
 
-static fn xargs_command_size(const ArrayList<String> &command) wontthrow
-    -> usize
+static fn
+xargs_command_size(const ArrayList<String> &command) wontthrow -> usize
 {
   usize size = 0;
 
@@ -275,9 +311,10 @@ static fn xargs_command_size(const ArrayList<String> &command) wontthrow
   return size;
 }
 
-static fn trace_xargs_command(const ExecContext &ec,
-                              const ArrayList<String> &command,
-                              Allocator allocator) throws -> void
+static fn
+trace_xargs_command(const ExecContext       &ec,
+                    const ArrayList<String> &command,
+                    Allocator                allocator) throws -> void
 {
   let output = String{allocator};
 
@@ -290,9 +327,11 @@ static fn trace_xargs_command(const ExecContext &ec,
   ec.print_to_stderr(output);
 }
 
-fn Xargs::execute(const ExecContext &ec, EvalContext &cxt,
-                  const ArrayList<String> &args,
-                  const ArrayList<SourceLocation> &arg_locations) const throws
+fn
+Xargs::execute(const ExecContext               &ec,
+               EvalContext                     &cxt,
+               const ArrayList<String>         &args,
+               const ArrayList<SourceLocation> &arg_locations) const throws
     -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
@@ -303,10 +342,10 @@ fn Xargs::execute(const ExecContext &ec, EvalContext &cxt,
                          ? xargs_item_format::NullSeparated
                      : FLAG_XARGS_REPLACE.is_set() ? xargs_item_format::Lines
                                                    : xargs_item_format::Quoted;
-  let reader = XargsReader{ec.in_fd.value_or(KOSH_STDIN), format,
+  let       reader = XargsReader{ec.in_fd.value_or(KOSH_STDIN), format,
                            cxt.scratch_allocator()};
 
-  let base = ArrayList<String>{cxt.scratch_allocator()};
+  let base           = ArrayList<String>{cxt.scratch_allocator()};
   let base_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};
   if (operands.is_empty()) {
     base.push(String{"echo"});
@@ -318,8 +357,8 @@ fn Xargs::execute(const ExecContext &ec, EvalContext &cxt,
       base_locations.push(operand_locations[index]);
     }
   }
-  let const base_byte_count = xargs_command_size(base);
-  usize maximum_arguments = SIZE_MAX;
+  let const base_byte_count   = xargs_command_size(base);
+  usize     maximum_arguments = SIZE_MAX;
   if (FLAG_XARGS_MAX_ARGUMENTS.is_set() &&
       !parse_xargs_limit(ec, cxt, FLAG_XARGS_MAX_ARGUMENTS, "argument count",
                          "use a positive decimal integer for the maximum "
@@ -349,11 +388,11 @@ fn Xargs::execute(const ExecContext &ec, EvalContext &cxt,
     return 1;
   }
 
-  let deferred_value = String{heap_allocator()};
-  usize deferred_line_number = 0;
-  bool has_deferred_item = false;
-  bool has_reached_eof_item = false;
-  let const do_read_item = [&](Allocator allocator)
+  let       deferred_value       = String{heap_allocator()};
+  usize     deferred_line_number = 0;
+  bool      has_deferred_item    = false;
+  bool      has_reached_eof_item = false;
+  let const do_read_item         = [&](Allocator allocator)
                                throws -> Maybe<xargs_item> {
     if (has_deferred_item) {
       has_deferred_item = false;
@@ -380,19 +419,19 @@ fn Xargs::execute(const ExecContext &ec, EvalContext &cxt,
     deferred_value.clear();
     deferred_value.append(item.value.view());
     deferred_line_number = item.line_number;
-    has_deferred_item = true;
+    has_deferred_item    = true;
   };
 
-  let &scratch_arena = cxt.expansion_store().scratch_arena();
+  let &scratch_arena   = cxt.expansion_store().scratch_arena();
   bool has_run_command = false;
-  i32 status = 0;
+  i32  status          = 0;
 
   loop
   {
     let const batch_mark = scratch_arena.mark();
     defer { scratch_arena.release(batch_mark); };
 
-    let command = base.clone();
+    let command           = base.clone();
     let command_locations = base_locations.clone();
     if (FLAG_XARGS_REPLACE.is_set()) {
       let const item = do_read_item(cxt.scratch_allocator());
@@ -405,9 +444,9 @@ fn Xargs::execute(const ExecContext &ec, EvalContext &cxt,
         command[index] = steal(replaced);
       }
     } else {
-      usize first_line = 0;
-      let command_byte_count = base_byte_count;
-      usize added_count = 0;
+      usize first_line         = 0;
+      let   command_byte_count = base_byte_count;
+      usize added_count        = 0;
 
       loop
       {

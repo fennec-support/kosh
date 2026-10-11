@@ -43,46 +43,72 @@ KOSHKIT_UTIL_DECL(
     "first when standard input is a terminal, unless removal is forced. The "
     "last of the force and interaction flags decides how rm asks.");
 
-static fn is_interaction_word(koshka::StringView word) -> bool
+static fn
+is_interaction_word(koshka::StringView word) -> bool
 {
   return koshka::koshkit::INTERACTION_WORDS.find(word).has_value();
 }
 
-static fn is_preserve_root_word(koshka::StringView word) -> bool
+static fn
+is_preserve_root_word(koshka::StringView word) -> bool
 {
   return word == "all";
 }
 
-FLAG(RM_RECURSIVE_R, Bool, 'r', "recursive",
+FLAG(RM_RECURSIVE_R,
+     Bool,
+     'r',
+     "recursive",
      "Remove directories and their contents.");
-FLAG(RM_RECURSIVE_UPPER, Bool, 'R', "",
+FLAG(RM_RECURSIVE_UPPER,
+     Bool,
+     'R',
+     "",
      "Remove directories and their contents.");
 FLAG(RM_DIRECTORY, Bool, 'd', "dir", "Remove empty directories.");
 FLAG(RM_FORCE, Bool, 'f', "force", "Ignore a missing path and never prompt.");
 FLAG(RM_INTERACTIVE, Bool, 'i', "", "Ask before each removal.");
-FLAG(RM_INTERACTIVE_ONCE, Bool, 'I', "",
+FLAG(RM_INTERACTIVE_ONCE,
+     Bool,
+     'I',
+     "",
      "Ask once before removing more than three paths or a tree.");
-FLAG_OPTIONAL(RM_INTERACTIVE_WHEN, '\0', "interactive",
+FLAG_OPTIONAL(RM_INTERACTIVE_WHEN,
+              '\0',
+              "interactive",
               "Ask never, once as with -I, or always as with -i.",
-              is_interaction_word, "when");
+              is_interaction_word,
+              "when");
 FLAG(RM_VERBOSE, Bool, 'v', "verbose", "Print each removed path.");
-FLAG(RM_ONE_FILE_SYSTEM, Bool, 'x', "one-file-system",
+FLAG(RM_ONE_FILE_SYSTEM,
+     Bool,
+     'x',
+     "one-file-system",
      "Skip a directory on another file system.");
-FLAG_OPTIONAL(RM_PRESERVE_ROOT, '\0', "preserve-root",
+FLAG_OPTIONAL(RM_PRESERVE_ROOT,
+              '\0',
+              "preserve-root",
               "Refuse to remove '/' recursively; with all, also refuse an "
               "operand on another device than its parent.",
-              is_preserve_root_word, "all");
-FLAG(RM_NO_PRESERVE_ROOT, Bool, '\0', "no-preserve-root",
+              is_preserve_root_word,
+              "all");
+FLAG(RM_NO_PRESERVE_ROOT,
+     Bool,
+     '\0',
+     "no-preserve-root",
      "Allow removing '/' recursively.");
-FLAG(RM_DRY_RUN, Bool, '\0', "dry-run",
+FLAG(RM_DRY_RUN,
+     Bool,
+     '\0',
+     "dry-run",
      "Print what would be removed without removing anything.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Rm);
 
 namespace koshka::koshkit {
 
-static pure fn removal_type_name(const os::file_status &status) wontthrow
-    -> StringView
+static pure fn
+removal_type_name(const os::file_status &status) wontthrow -> StringView
 {
   switch (os::file_type_letter(status.mode)) {
   case '-': return status.size == 0 ? "regular empty file" : "regular file";
@@ -92,12 +118,13 @@ static pure fn removal_type_name(const os::file_status &status) wontthrow
   case 's': return "socket";
   case 'c': return "character special file";
   case 'b': return "block special file";
-  default: return "weird file";
+  default:  return "weird file";
   }
 }
 
-static pure fn effective_entry_kind(
-    const os::directory_status_entry &entry) wontthrow -> Path::EntryKind
+static pure fn
+effective_entry_kind(const os::directory_status_entry &entry) wontthrow
+    -> Path::EntryKind
 {
   if (entry.child.kind != Path::EntryKind::Unknown || !entry.has_status) {
     return entry.child.kind;
@@ -107,13 +134,15 @@ static pure fn effective_entry_kind(
   case 'd': return Path::EntryKind::Directory;
   case '-': return Path::EntryKind::Regular;
   case 'l': return Path::EntryKind::Symlink;
-  default: return Path::EntryKind::Other;
+  default:  return Path::EntryKind::Other;
   }
 }
 
-static fn should_descend_into(StringView path, Allocator allocator,
-                              removal_mode mode,
-                              Path::EntryKind known_kind) throws -> bool
+static fn
+should_descend_into(StringView      path,
+                    Allocator       allocator,
+                    removal_mode    mode,
+                    Path::EntryKind known_kind) throws -> bool
 {
   if (mode != removal_mode::Recursive) return false;
 
@@ -127,19 +156,20 @@ static fn should_descend_into(StringView path, Allocator allocator,
 
 struct removal_request
 {
-  const ExecContext &ec;
-  EvalContext &cxt;
-  StringView utility_name;
-  Allocator allocator;
-  removal_mode mode;
+  const ExecContext  &ec;
+  EvalContext        &cxt;
+  StringView          utility_name;
+  Allocator           allocator;
+  removal_mode        mode;
   removal_interaction interaction;
-  bool should_ignore_missing;
-  bool is_one_file_system;
-  bool is_verbose;
-  bool is_stdin_terminal;
+  bool                should_ignore_missing;
+  bool                is_one_file_system;
+  bool                is_verbose;
+  bool                is_stdin_terminal;
 
-  fn choose(const os::tree_removal_entry &entry,
-            bool is_descending) const throws -> os::tree_removal_choice
+  fn
+  choose(const os::tree_removal_entry &entry, bool is_descending) const throws
+      -> os::tree_removal_choice
   {
     if (interaction == removal_interaction::Never) {
       return os::tree_removal_choice::Proceed;
@@ -154,7 +184,7 @@ struct removal_request
       return os::tree_removal_choice::Proceed;
     }
 
-    let prompt = String{allocator, "rm: "};
+    let       prompt = String{allocator, "rm: "};
     let const protection =
         is_write_protected ? StringView{"write-protected "} : StringView{};
     if (is_descending) {
@@ -176,7 +206,8 @@ struct removal_request
                : os::tree_removal_choice::Keep;
   }
 
-  fn report_removed(const os::tree_removal_entry &entry) const throws -> void
+  fn
+  report_removed(const os::tree_removal_entry &entry) const throws -> void
   {
     if (!is_verbose) return;
 
@@ -186,10 +217,10 @@ struct removal_request
                        String{allocator, entry.path} + "'\n");
   }
 
-  fn should_skip_other_file_system(StringView path,
-                                   const os::file_status *known_status,
-                                   Maybe<u64> &root_device_id) const throws
-      -> bool
+  fn
+  should_skip_other_file_system(StringView             path,
+                                const os::file_status *known_status,
+                                Maybe<u64> &root_device_id) const throws -> bool
   {
     if (!is_one_file_system) return false;
 
@@ -215,13 +246,15 @@ struct removal_request
     return true;
   }
 
-  fn should_descend(StringView path, Path::EntryKind known_kind) const throws
+  fn
+  should_descend(StringView path, Path::EntryKind known_kind) const throws
       -> bool
   {
     return should_descend_into(path, allocator, mode, known_kind);
   }
 
-  fn choose_path(StringView path, bool is_descending) const throws
+  fn
+  choose_path(StringView path, bool is_descending) const throws
       -> os::tree_removal_choice
   {
     if (interaction == removal_interaction::Never) {
@@ -229,10 +262,10 @@ struct removal_request
     }
 
     let status = os::file_status{};
-    let entry = os::tree_removal_entry{};
+    let entry  = os::tree_removal_entry{};
     entry.path = path;
     if (os::stat_path(path, status)) {
-      entry.status = &status;
+      entry.status             = &status;
       entry.is_write_protected = os::file_type_letter(status.mode) != 'l' &&
                                  !os::path_is_writable(path);
     }
@@ -241,7 +274,8 @@ struct removal_request
   }
 };
 
-fn remove_path(StringView path, Allocator allocator, removal_mode mode) throws
+fn
+remove_path(StringView path, Allocator allocator, removal_mode mode) throws
     -> bool
 {
   if (mode == removal_mode::Recursive) return os::remove_tree(path, allocator);
@@ -252,11 +286,11 @@ fn remove_path(StringView path, Allocator allocator, removal_mode mode) throws
 struct tree_removal_state
 {
   const removal_request &request;
-  Maybe<u64> root_device_id;
+  Maybe<u64>             root_device_id;
 };
 
-static fn choose_tree_directory_entry(void *context,
-                                      const os::tree_removal_entry &entry)
+static fn
+choose_tree_directory_entry(void *context, const os::tree_removal_entry &entry)
     -> os::tree_removal_choice
 {
   let &state = *static_cast<tree_removal_state *>(context);
@@ -270,46 +304,48 @@ static fn choose_tree_directory_entry(void *context,
   return state.request.choose(entry, true);
 }
 
-static fn choose_tree_removal(void *context,
-                              const os::tree_removal_entry &entry)
+static fn
+choose_tree_removal(void *context, const os::tree_removal_entry &entry)
     -> os::tree_removal_choice
 {
   return static_cast<tree_removal_state *>(context)->request.choose(entry,
                                                                     false);
 }
 
-static fn report_tree_removed(void *context,
-                              const os::tree_removal_entry &entry) -> void
+static fn
+report_tree_removed(void *context, const os::tree_removal_entry &entry) -> void
 {
   static_cast<tree_removal_state *>(context)->request.report_removed(entry);
 }
 
-static fn report_tree_removal_failure(void *context,
-                                      os::tree_removal_failure failure,
-                                      StringView path, StringView reason)
-    -> void
+static fn
+report_tree_removal_failure(void                    *context,
+                            os::tree_removal_failure failure,
+                            StringView               path,
+                            StringView               reason) -> void
 {
   let const &request = static_cast<tree_removal_state *>(context)->request;
-  let const message =
+  let const  message =
       failure == os::tree_removal_failure::ReadDirectory
-          ? "cannot read directory '" + String{path} + "': " + reason
-      : failure == os::tree_removal_failure::Replaced
-          ? "cannot remove '" + String{path} +
+           ? "cannot read directory '" + String{path} + "': " + reason
+       : failure == os::tree_removal_failure::Replaced
+           ? "cannot remove '" + String{path} +
                 "': the directory was replaced while it was removed"
-          : "cannot remove '" + String{path} + "': " + reason;
+           : "cannot remove '" + String{path} + "': " + reason;
   report_soft_koshkit_util_error(request.ec, request.cxt, request.utility_name,
                                  message);
 }
 
-static fn remove_path_with_prompt(const removal_request &request,
-                                  StringView path,
-                                  bool is_directory_mode) throws -> bool
+static fn
+remove_path_with_prompt(const removal_request &request,
+                        StringView             path,
+                        bool                   is_directory_mode) throws -> bool
 {
   let &cxt = request.cxt;
   if (request.should_descend(path, Path::EntryKind::Unknown)) {
-    let state = tree_removal_state{request, {}};
-    let hooks = os::tree_removal_hooks{};
-    hooks.context = &state;
+    let state           = tree_removal_state{request, {}};
+    let hooks           = os::tree_removal_hooks{};
+    hooks.context       = &state;
     let const is_asking = request.interaction != removal_interaction::Never;
     if (is_asking || request.is_one_file_system) {
       hooks.should_enter_directory = choose_tree_directory_entry;
@@ -335,9 +371,9 @@ static fn remove_path_with_prompt(const removal_request &request,
   let status = os::file_status{};
   if (!os::stat_path(path, status)) return do_report_failure();
 
-  let entry = os::tree_removal_entry{};
-  entry.path = path;
-  entry.status = &status;
+  let entry              = os::tree_removal_entry{};
+  entry.path             = path;
+  entry.status           = &status;
   let const is_directory = os::file_type_letter(status.mode) == 'd';
   entry.is_write_protected =
       os::file_type_letter(status.mode) != 'l' && !os::path_is_writable(path);
@@ -364,14 +400,16 @@ static fn remove_path_with_prompt(const removal_request &request,
 }
 
 static fn
-report_dry_run_removal(const removal_request &request, StringView path,
-                       bool is_directory_mode, bool &is_kept,
-                       bool &is_left_behind,
+report_dry_run_removal(const removal_request &request,
+                       StringView             path,
+                       bool                   is_directory_mode,
+                       bool                  &is_kept,
+                       bool                  &is_left_behind,
                        Path::EntryKind known_kind = Path::EntryKind::Unknown,
                        const os::file_status *known_status = nullptr,
-                       Maybe<u64> root_device_id = {}) throws -> bool
+                       Maybe<u64> root_device_id           = {}) throws -> bool
 {
-  let &cxt = request.cxt;
+  let      &cxt              = request.cxt;
   let const do_report_reason = [&](StringView reason) throws -> bool {
     report_soft_koshkit_util_error(request.ec, cxt, request.utility_name,
                                    "cannot remove '" + String{path} +
@@ -380,7 +418,7 @@ report_dry_run_removal(const removal_request &request, StringView path,
     return false;
   };
 
-  bool did_succeed = true;
+  bool did_succeed    = true;
   bool has_kept_child = false;
   bool has_left_child = false;
   if (request.should_descend(path, known_kind)) {
@@ -460,7 +498,8 @@ report_dry_run_removal(const removal_request &request, StringView path,
   return true;
 }
 
-static fn names_dot_refused_under_force(StringView operand) wontthrow -> bool
+static fn
+names_dot_refused_under_force(StringView operand) wontthrow -> bool
 {
   usize end = operand.length;
 
@@ -479,10 +518,11 @@ static fn names_dot_refused_under_force(StringView operand) wontthrow -> bool
   return base == StringView{"."} || base == StringView{".."};
 }
 
-static fn is_same_file_as_root(StringView operand) wontthrow -> bool
+static fn
+is_same_file_as_root(StringView operand) wontthrow -> bool
 {
   let operand_status = os::file_status{};
-  let root_status = os::file_status{};
+  let root_status    = os::file_status{};
 
   return os::stat_path(operand, operand_status) &&
          os::stat_path("/", root_status) &&
@@ -490,12 +530,13 @@ static fn is_same_file_as_root(StringView operand) wontthrow -> bool
          operand_status.file_id == root_status.file_id;
 }
 
-static fn is_on_other_device_than_parent(StringView operand,
-                                         Allocator allocator) throws -> bool
+static fn
+is_on_other_device_than_parent(StringView operand, Allocator allocator) throws
+    -> bool
 {
   let operand_status = os::file_status{};
-  let parent_status = os::file_status{};
-  let parent = Path{operand, allocator};
+  let parent_status  = os::file_status{};
+  let parent         = Path{operand, allocator};
   parent.append("..");
 
   return os::stat_path(operand, operand_status) &&
@@ -504,16 +545,17 @@ static fn is_on_other_device_than_parent(StringView operand,
          operand_status.device_id != parent_status.device_id;
 }
 
-fn Rm::execute(const ExecContext &ec, EvalContext &cxt,
-               const ArrayList<String> &args,
-               const ArrayList<SourceLocation> &arg_locations) const throws
-    -> i32
+fn
+Rm::execute(const ExecContext               &ec,
+            EvalContext                     &cxt,
+            const ArrayList<String>         &args,
+            const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
-  let const allocator = cxt.scratch_allocator();
-  let interaction = removal_interaction::Never;
-  bool should_ignore_missing = false;
+  let const allocator             = cxt.scratch_allocator();
+  let       interaction           = removal_interaction::Never;
+  bool      should_ignore_missing = false;
   let const when_interaction =
       FLAG_RM_INTERACTIVE_WHEN.has_value()
           ? INTERACTION_WORDS.find(FLAG_RM_INTERACTIVE_WHEN.value())
@@ -521,9 +563,9 @@ fn Rm::execute(const ExecContext &ec, EvalContext &cxt,
           : removal_interaction::Always;
   struct interaction_setting
   {
-    usize position;
+    usize               position;
     removal_interaction interaction;
-    Maybe<bool> should_ignore_missing;
+    Maybe<bool>         should_ignore_missing;
   };
   let settings = ArrayList<interaction_setting>{allocator};
   if (FLAG_RM_FORCE.is_enabled()) {
@@ -549,8 +591,8 @@ fn Rm::execute(const ExecContext &ec, EvalContext &cxt,
          slot > 0 && settings[slot].position < settings[slot - 1].position;
          slot--)
     {
-      let const moved = settings[slot];
-      settings[slot] = settings[slot - 1];
+      let const moved    = settings[slot];
+      settings[slot]     = settings[slot - 1];
       settings[slot - 1] = moved;
     }
   }
@@ -564,7 +606,7 @@ fn Rm::execute(const ExecContext &ec, EvalContext &cxt,
 
   let const is_recursive =
       FLAG_RM_RECURSIVE_R.is_enabled() || FLAG_RM_RECURSIVE_UPPER.is_enabled();
-  let const is_dry_run = FLAG_RM_DRY_RUN.is_enabled();
+  let const is_dry_run        = FLAG_RM_DRY_RUN.is_enabled();
   let const is_directory_mode = FLAG_RM_DIRECTORY.is_enabled();
   let const should_preserve_root =
       !FLAG_RM_NO_PRESERVE_ROOT.is_enabled() ||
@@ -648,7 +690,7 @@ fn Rm::execute(const ExecContext &ec, EvalContext &cxt,
       continue;
     }
     if (is_dry_run) {
-      bool is_kept = false;
+      bool is_kept        = false;
       bool is_left_behind = false;
       if (!report_dry_run_removal(request, operand.view(), is_directory_mode,
                                   is_kept, is_left_behind))

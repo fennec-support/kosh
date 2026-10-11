@@ -19,7 +19,8 @@
 
 namespace koshka {
 
-static fn poison_arena_bytes(const u8 *start, usize size) wontthrow -> void
+static fn
+poison_arena_bytes(const u8 *start, usize size) wontthrow -> void
 {
 #if defined KOSH_HAS_ADDRESS_SANITIZER
   if (size != 0) ASAN_POISON_MEMORY_REGION(start, size);
@@ -29,7 +30,8 @@ static fn poison_arena_bytes(const u8 *start, usize size) wontthrow -> void
 #endif
 }
 
-static fn unpoison_arena_bytes(const u8 *start, usize size) wontthrow -> void
+static fn
+unpoison_arena_bytes(const u8 *start, usize size) wontthrow -> void
 {
 #if defined KOSH_HAS_ADDRESS_SANITIZER
   if (size != 0) ASAN_UNPOISON_MEMORY_REGION(start, size);
@@ -39,9 +41,9 @@ static fn unpoison_arena_bytes(const u8 *start, usize size) wontthrow -> void
 #endif
 }
 
-static u32 NEXT_ARENA_INCARNATION = 1;
-static BumpArena *LIVE_ARENAS = nullptr;
-static bool LIVE_ARENAS_LOCK = false;
+static u32        NEXT_ARENA_INCARNATION = 1;
+static BumpArena *LIVE_ARENAS            = nullptr;
+static bool       LIVE_ARENAS_LOCK       = false;
 
 class LiveArenasLock
 {
@@ -57,19 +59,21 @@ public:
   }
 };
 
-fn is_arena_pointer(const opaque *pointer) wontthrow -> bool
+fn
+is_arena_pointer(const opaque *pointer) wontthrow -> bool
 {
   return BumpArena::owns_live_pointer(pointer);
 }
 
-hot fn bump_arena_allocate(BumpArena *arena, usize length,
-                           usize alignment) throws -> opaque *
+hot fn
+bump_arena_allocate(BumpArena *arena, usize length, usize alignment) throws
+    -> opaque *
 {
   return arena->allocate(length, alignment);
 }
 
-fn bump_arena_owns(const BumpArena *arena, const opaque *pointer) wontthrow
-    -> bool
+fn
+bump_arena_owns(const BumpArena *arena, const opaque *pointer) wontthrow -> bool
 {
   return arena->owns(pointer);
 }
@@ -108,16 +112,18 @@ BumpArena::~BumpArena()
   unregister_live();
 }
 
-fn BumpArena::register_live() wontthrow -> void
+fn
+BumpArena::register_live() wontthrow -> void
 {
-  let const lock = LiveArenasLock{};
+  let const lock  = LiveArenasLock{};
   m_previous_live = nullptr;
-  m_next_live = LIVE_ARENAS;
+  m_next_live     = LIVE_ARENAS;
   if (m_next_live != nullptr) m_next_live->m_previous_live = this;
   LIVE_ARENAS = this;
 }
 
-fn BumpArena::unregister_live() wontthrow -> void
+fn
+BumpArena::unregister_live() wontthrow -> void
 {
   let const lock = LiveArenasLock{};
   if (m_previous_live != nullptr)
@@ -126,10 +132,11 @@ fn BumpArena::unregister_live() wontthrow -> void
     LIVE_ARENAS = m_next_live;
   if (m_next_live != nullptr) m_next_live->m_previous_live = m_previous_live;
   m_previous_live = nullptr;
-  m_next_live = nullptr;
+  m_next_live     = nullptr;
 }
 
-fn BumpArena::find_live_owner(const opaque *pointer) wontthrow -> BumpArena *
+fn
+BumpArena::find_live_owner(const opaque *pointer) wontthrow -> BumpArena *
 {
   if (pointer == nullptr) return nullptr;
   let const lock = LiveArenasLock{};
@@ -141,14 +148,16 @@ fn BumpArena::find_live_owner(const opaque *pointer) wontthrow -> BumpArena *
   return nullptr;
 }
 
-fn BumpArena::owns_live_pointer(const opaque *pointer) wontthrow -> bool
+fn
+BumpArena::owns_live_pointer(const opaque *pointer) wontthrow -> bool
 {
   return find_live_owner(pointer) != nullptr;
 }
 
-fn BumpArena::push_destructor(PendingDestructor pending) throws -> void
+fn
+BumpArena::push_destructor(PendingDestructor pending) throws -> void
 {
-  usize chunk_index = 0;
+  usize chunk_index       = 0;
   usize position_in_chunk = 0;
   locate_destructor(m_destructor_count, chunk_index, position_in_chunk);
 
@@ -169,11 +178,12 @@ fn BumpArena::push_destructor(PendingDestructor pending) throws -> void
   m_destructor_count++;
 }
 
-fn BumpArena::run_destructors_down_to(usize first) wontthrow -> void
+fn
+BumpArena::run_destructors_down_to(usize first) wontthrow -> void
 {
   while (m_destructor_count > first) {
     m_destructor_count--;
-    usize chunk_index = 0;
+    usize chunk_index       = 0;
     usize position_in_chunk = 0;
     locate_destructor(m_destructor_count, chunk_index, position_in_chunk);
     let const &pending = m_destructor_chunks[chunk_index][position_in_chunk];
@@ -181,8 +191,8 @@ fn BumpArena::run_destructors_down_to(usize first) wontthrow -> void
   }
 }
 
-cold fn BumpArena::release_destructor_chunks(usize kept_chunk_count) wontthrow
-    -> void
+cold fn
+BumpArena::release_destructor_chunks(usize kept_chunk_count) wontthrow -> void
 {
   while (m_destructor_chunks.count() > kept_chunk_count) {
     let const chunk_count =
@@ -192,8 +202,9 @@ cold fn BumpArena::release_destructor_chunks(usize kept_chunk_count) wontthrow
   }
 }
 
-cold fn BumpArena::add_block(usize minimum_byte_count,
-                             usize preferred_byte_count) throws -> void
+cold fn
+BumpArena::add_block(usize minimum_byte_count,
+                     usize preferred_byte_count) throws -> void
 {
   let size = preferred_byte_count;
   if (minimum_byte_count > size) size = minimum_byte_count;
@@ -218,12 +229,13 @@ cold fn BumpArena::add_block(usize minimum_byte_count,
   if (low + size > m_highest_address) m_highest_address = low + size;
 }
 
-hot fn BumpArena::allocate(usize size, usize alignment) throws -> opaque *
+hot fn
+BumpArena::allocate(usize size, usize alignment) throws -> opaque *
 {
   loop
   {
     while (m_current_index < m_blocks.count()) {
-      let &block = m_blocks[m_current_index];
+      let      &block   = m_blocks[m_current_index];
       let const aligned = (block.used + (alignment - 1)) & ~(alignment - 1);
 
       if (aligned <= block.size && size <= block.size - aligned) {
@@ -232,7 +244,7 @@ hot fn BumpArena::allocate(usize size, usize alignment) throws -> opaque *
           ASSERT(block.base != nullptr);
 
           let const pointer = block.base + aligned;
-          block.used = aligned + size;
+          block.used        = aligned + size;
           unpoison_arena_bytes(pointer, size);
 
           return pointer;
@@ -253,7 +265,8 @@ hot fn BumpArena::allocate(usize size, usize alignment) throws -> opaque *
   }
 }
 
-hot fn BumpArena::owns(const opaque *pointer) const wontthrow -> bool
+hot fn
+BumpArena::owns(const opaque *pointer) const wontthrow -> bool
 {
   let const candidate = reinterpret_cast<uintptr>(pointer);
   if (candidate < m_lowest_address || candidate >= m_highest_address) {
@@ -262,7 +275,7 @@ hot fn BumpArena::owns(const opaque *pointer) const wontthrow -> bool
 
   for (usize i = m_blocks.count(); i > 0; i--) {
     const Block &block = m_blocks[i - 1];
-    let const base = reinterpret_cast<uintptr>(block.base);
+    let const    base  = reinterpret_cast<uintptr>(block.base);
     if (candidate >= base && candidate - base < block.size) {
       return true;
     }
@@ -271,7 +284,8 @@ hot fn BumpArena::owns(const opaque *pointer) const wontthrow -> bool
   return false;
 }
 
-fn BumpArena::bytes_used() const wontthrow -> usize
+fn
+BumpArena::bytes_used() const wontthrow -> usize
 {
   usize total = 0;
 
@@ -281,7 +295,8 @@ fn BumpArena::bytes_used() const wontthrow -> usize
   return total;
 }
 
-fn BumpArena::mark() const wontthrow -> BumpArena::Mark
+fn
+BumpArena::mark() const wontthrow -> BumpArena::Mark
 {
   if (m_current_index >= m_blocks.count())
     return Mark{m_current_index, 0, m_destructor_count};
@@ -290,7 +305,8 @@ fn BumpArena::mark() const wontthrow -> BumpArena::Mark
               m_destructor_count};
 }
 
-fn BumpArena::register_lifetime() throws -> LifetimeIdentity
+fn
+BumpArena::register_lifetime() throws -> LifetimeIdentity
 {
   u32 slot_position = m_first_free_lifetime_slot;
   if (slot_position == UINT32_MAX) {
@@ -304,8 +320,8 @@ fn BumpArena::register_lifetime() throws -> LifetimeIdentity
         m_lifetime_slots[slot_position].next_free_position;
   }
 
-  let &slot = m_lifetime_slots[slot_position];
-  slot.payload_end = mark();
+  let &slot               = m_lifetime_slots[slot_position];
+  slot.payload_end        = mark();
   slot.next_free_position = slot_position;
   slot.incarnation++;
   m_active_lifetime_slots.push(slot_position);
@@ -313,8 +329,8 @@ fn BumpArena::register_lifetime() throws -> LifetimeIdentity
   return LifetimeIdentity{m_arena_incarnation, slot_position, slot.incarnation};
 }
 
-pure fn BumpArena::is_lifetime_valid(LifetimeIdentity identity) const wontthrow
-    -> bool
+pure fn
+BumpArena::is_lifetime_valid(LifetimeIdentity identity) const wontthrow -> bool
 {
   if (identity.arena_incarnation != m_arena_incarnation ||
       identity.slot_position >= m_lifetime_slots.count())
@@ -328,7 +344,8 @@ pure fn BumpArena::is_lifetime_valid(LifetimeIdentity identity) const wontthrow
          slot.incarnation == identity.slot_incarnation;
 }
 
-fn BumpArena::release(Mark saved) wontthrow -> void
+fn
+BumpArena::release(Mark saved) wontthrow -> void
 {
   ASSERT(saved.block_index <= m_current_index,
          "mark cannot refer to a block above the current one");
@@ -338,7 +355,7 @@ fn BumpArena::release(Mark saved) wontthrow -> void
 
   while (!m_active_lifetime_slots.is_empty()) {
     let const slot_position = m_active_lifetime_slots.back();
-    let &slot = m_lifetime_slots[slot_position];
+    let      &slot          = m_lifetime_slots[slot_position];
     if (slot.payload_end.block_index < saved.block_index ||
         (slot.payload_end.block_index == saved.block_index &&
          slot.payload_end.used_in_block <= saved.used_in_block))
@@ -346,7 +363,7 @@ fn BumpArena::release(Mark saved) wontthrow -> void
       break;
     }
 
-    slot.next_free_position = m_first_free_lifetime_slot;
+    slot.next_free_position    = m_first_free_lifetime_slot;
     m_first_free_lifetime_slot = slot_position;
     m_active_lifetime_slots.pop_back();
   }
@@ -368,7 +385,8 @@ fn BumpArena::release(Mark saved) wontthrow -> void
   m_current_index = saved.block_index;
 }
 
-cold fn BumpArena::reset() wontthrow -> void
+cold fn
+BumpArena::reset() wontthrow -> void
 {
   LOG(All, "resetting the arena holding %zu blocks and %zu used bytes",
       m_blocks.count(), bytes_used());
@@ -378,8 +396,8 @@ cold fn BumpArena::reset() wontthrow -> void
   m_reset_generation++;
 
   for (let const slot_position : m_active_lifetime_slots) {
-    let &slot = m_lifetime_slots[slot_position];
-    slot.next_free_position = m_first_free_lifetime_slot;
+    let &slot                  = m_lifetime_slots[slot_position];
+    slot.next_free_position    = m_first_free_lifetime_slot;
     m_first_free_lifetime_slot = slot_position;
   }
 
