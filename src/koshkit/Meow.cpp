@@ -9,7 +9,7 @@
 
 #include "../CLI.hpp"
 #include "../CLIColors.hpp"
-#include "../CliLive.hpp"
+#include "../CLILive.hpp"
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
 #include "../Platform.hpp"

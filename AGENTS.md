@@ -248,8 +248,8 @@ same encoding that every spawned process receives."
   `os::set_path_compatibility` whenever its option bits change.
 - Recheck mutable runtime state after any startup file that can change it.
 - `src/koshkit` holds only utility sources. Code shared by utilities lives in
-  `src`, such as `src/CliLive` and the file-mode parser in `src/UtilsIO.cpp`.
-- `src/CliLive` owns every Evil live view, the meow screensaver, and the
+  `src`, such as `src/CLILive` and the file-mode parser in `src/UtilsIO.cpp`.
+- `src/CLILive` owns every Evil live view, the meow screensaver, and the
   retained live rows. It holds the alternate screen, raw key input, sample and
   refresh interval, the styled header, and one write per frame. The
   screensaver turns the header off. Redirected frames carry no escape
@@ -575,7 +575,7 @@ same encoding that every spawned process receives."
 - `NO_TOILETLINE=1 make` builds the no editor configuration in a separate
   object directory and links the same `./kosh-dbg` path. Rebuild the ordinary
   configuration before the next test run.
-- `NO_KOSHKIT=1 make` leaves out `src/koshkit`, `src/CliLive.cpp`, and
+- `NO_KOSHKIT=1 make` leaves out `src/koshkit`, `src/CLILive.cpp`, and
   `src/UtilsOwnership.cpp`, defines `KOSH_NO_KOSHKIT`, and links the same
   path from its own object directory. `Koshkit.cpp` keeps signal and size
   helpers and stubs the lookup, so no utility name resolves and the `koshkit`

@@ -737,7 +737,7 @@ static constexpr u64 EXTERNAL_SOURCE_GENERATION = UINT64_MAX;
 enum class source_frame_kind : u8
 {
   Ordinary,
-  CliRoot,
+  CLIRoot,
   SourcedFile,
 };
 

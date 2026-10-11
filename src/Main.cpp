@@ -2773,7 +2773,7 @@ kosh_main(int argc, char **argv) -> int
     if (should_push_root_frame) {
       context.push_root_source_frame(&cli_invocation,
                                      *chunk.root_frame_call_site,
-                                     koshka::source_frame_kind::CliRoot);
+                                     koshka::source_frame_kind::CLIRoot);
     }
 
     defer {

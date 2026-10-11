@@ -3,13 +3,13 @@
  *    See the top-level LICENSE file for the licensing information.
  *
  * This file implements the terminal and header half of the shared live view
- * driver declared in CliLive.hpp and the live_report_options parser. It
+ * driver declared in CLILive.hpp and the live_report_options parser. It
  * manages the alternate screen, raw key input, the styled header line, and the
  * single write that delivers each frame. Redirected output receives a plain
  * header without escape sequences.
  */
 
-#include "CliLive.hpp"
+#include "CLILive.hpp"
 
 #include "CLIColors.hpp"
 #include "Koshkit.hpp"

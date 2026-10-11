@@ -18,7 +18,7 @@ SOURCES += $(wildcard */**.cpp)
 HEADERS += $(wildcard */**.hpp)
 
 ifeq ($(NO_KOSHKIT), 1)
-SOURCES := $(filter-out koshkit/% CliLive.cpp UtilsOwnership.cpp,$(SOURCES))
+SOURCES := $(filter-out koshkit/% CLILive.cpp UtilsOwnership.cpp,$(SOURCES))
 endif
 
 # The host OS, Windows_NT on Windows and the uname elsewhere.

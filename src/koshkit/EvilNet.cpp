@@ -8,7 +8,7 @@
 
 #include "../CLI.hpp"
 #include "../CLIColors.hpp"
-#include "../CliLive.hpp"
+#include "../CLILive.hpp"
 #include "../Errors.hpp"
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
