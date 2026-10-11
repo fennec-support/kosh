@@ -1617,24 +1617,17 @@ static fn collect_shell_heredoc(StringView source, usize &position, usize end,
          (source[position] == ' ' || source[position] == '\t'))
     position++;
 
-  let delimiter = String{state.pending_heredocs.allocator()};
+  let const word_start = position;
   char delimiter_quote = 0;
   while (position < end) {
     let const delimiter_byte = source[position];
-    if (delimiter_quote != 0) {
-      position++;
-      if (delimiter_byte == delimiter_quote)
-        delimiter_quote = 0;
-      else
-        delimiter.push(delimiter_byte);
+    if (delimiter_byte == '\\' && delimiter_quote != '\'') {
+      position = position + 2 < end ? position + 2 : end;
       continue;
     }
-    if (delimiter_byte == '\\') {
+    if (delimiter_quote != 0) {
+      if (delimiter_byte == delimiter_quote) delimiter_quote = 0;
       position++;
-      if (position < end) {
-        delimiter.push(source[position]);
-        position++;
-      }
       continue;
     }
     if (delimiter_byte == '\'' || delimiter_byte == '"') {
@@ -1647,10 +1640,12 @@ static fn collect_shell_heredoc(StringView source, usize &position, usize end,
     {
       break;
     }
-    delimiter.push(delimiter_byte);
     position++;
   }
 
+  let delimiter = lexer::unquote_heredoc_delimiter(
+      source.substring_of_length(word_start, position - word_start),
+      state.pending_heredocs.allocator());
   if (!delimiter.is_empty())
     state.pending_heredocs.push(
         shell_pending_heredoc{steal(delimiter), should_strip_tabs});

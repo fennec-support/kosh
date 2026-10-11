@@ -1,0 +1,6 @@
+${x:-"}"}	variable
+$HOME	variable
+echo	resolved-command
+echo	resolved-command
+esac	keyword
+function	keyword

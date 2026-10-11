@@ -211,25 +211,17 @@ static pure fn position_is_highlight_word_break(StringView line, usize position,
   }
 }
 
-static pure fn scan_dollar_expansion(StringView line, usize dollar,
-                                     usize end) wontthrow -> usize
+static fn scan_dollar_expansion(StringView line, usize dollar,
+                                usize end) throws -> usize
 {
   let i = dollar + 1;
   if (i >= end) return i;
 
   let const c = line[i];
   if (c == '{') {
-    usize depth = 0;
-    for (; i < end; i++) {
-      if (line[i] == '{')
-        depth++;
-      else if (line[i] == '}') {
-        i++;
-        depth--;
-        if (depth == 0) break;
-      }
-    }
-    return i <= line.length ? i : line.length;
+    return lexer::scan_balanced_shell_region(line.substring_of_length(0, end),
+                                             i + 1, '}')
+        .value_or(end);
   }
   if (c >= '0' && c <= '9') {
     while (i < end && line[i] >= '0' && line[i] <= '9')
@@ -1209,7 +1201,7 @@ fn internal::scan_highlight_range(
     {
       if (c == '\n') {
         do_commit_pending_assignments();
-        is_command_position = true;
+        is_command_position = !is_case_pattern_expected;
         is_time_option_pending = false;
         highlight_command_word = StringView{};
         i++;
@@ -1336,7 +1328,7 @@ fn internal::scan_highlight_range(
         is_case_pattern_expected = true;
       }
 
-      if (!is_in_array_value &&
+      if (!is_in_array_value && !is_case_pattern_expected &&
           (has_opener || (has_separator && !has_redirect)))
       {
         is_command_position = true;
@@ -1723,6 +1715,11 @@ fn internal::scan_highlight_range(
               do_command_role(decoded_command_word.text.view()));
       is_command_position = false;
       continue;
+    }
+
+    if (is_case_pattern_expected && plain && word == "esac") {
+      is_case_pattern_expected = false;
+      is_command_position = true;
     }
 
     if (is_command_position && plain && !is_assignment) {

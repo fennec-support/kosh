@@ -21,6 +21,12 @@ E
 printf '== case patterns\n'
 "$BIN" --debug-brackets-at '(case x in a) :;; (b) :;; esac)'
 
+printf '== case after a heredoc with an escaped quote in its delimiter\n'
+"$BIN" --debug-brackets-at 'cat <<"a\"b"
+x
+a"b
+(case x in a) echo;; esac)'
+
 printf '== unmatched\n'
 "$BIN" --debug-brackets-at 'echo ( ] } [ x'
 printf 'status=%s\n' "$?"
