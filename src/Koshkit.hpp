@@ -367,6 +367,10 @@ fn copy_file_contents(StringView source, StringView destination,
 fn copy_file_or_throw(StringView source, StringView destination,
                       copy_force_mode force_mode, Allocator allocator) throws
     -> void;
+fn copy_tree_for_move(const ExecContext &ec, EvalContext &cxt,
+                      StringView utility_name, StringView source,
+                      StringView destination, Allocator allocator) throws
+    -> bool;
 fn make_directories(const Path &directory, u32 mode) wontthrow -> bool;
 fn read_named_or_stdin(const ExecContext &ec, StringView path) throws
     -> Maybe<String>;

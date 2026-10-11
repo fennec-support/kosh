@@ -24,12 +24,67 @@ REGISTER_KOSHKIT_UTIL_FLAGS(Mv);
 
 namespace koshka::koshkit {
 
-static fn move_across_devices(StringView source, StringView target,
-                              Allocator allocator) throws -> bool
+static fn move_directory_across_devices(const ExecContext &ec, EvalContext &cxt,
+                                        StringView utility_name,
+                                        StringView source, StringView target,
+                                        Allocator allocator) throws -> void
+{
+  let const target_path = Path{target, allocator};
+  let const temporary_directory =
+      os::make_temp_directory(target_path.parent_or_current(), ".kosh_mv");
+  if (!temporary_directory.has_value())
+    throw Error{
+        "unable to create a temporary directory beside '" +
+        String{allocator, target}
+        + "': " + os::last_system_error_message()
+    };
+
+  bool was_published = false;
+  defer
+  {
+    if (!was_published)
+      unused(remove_path(temporary_directory->view(), allocator,
+                         removal_mode::Recursive));
+  };
+
+  if (!copy_tree_for_move(ec, cxt, utility_name, source,
+                          temporary_directory->view(), allocator))
+  {
+    throw Error{
+        "unable to copy '" + String{allocator, source}
+          +
+        "' to another file system"
+    };
+  }
+
+  if (!os::rename_path(temporary_directory->view(), target))
+    throw Error{
+        "unable to publish '" + String{allocator, target}
+          +
+        "': " + os::last_system_error_message()
+    };
+  was_published = true;
+
+  if (!remove_path(source, allocator, removal_mode::Recursive))
+    throw Error{
+        "unable to remove '" + String{allocator, source}
+          +
+        "': " + os::last_system_error_message()
+    };
+}
+
+static fn move_across_devices(const ExecContext &ec, EvalContext &cxt,
+                              StringView utility_name, StringView source,
+                              StringView target, Allocator allocator) throws
+    -> bool
 {
   let const source_path = Path{source, allocator};
   let const is_source_symbolic_link = source_path.is_symbolic_link();
-  if (!is_source_symbolic_link && source_path.is_directory()) return false;
+  if (!is_source_symbolic_link && source_path.is_directory()) {
+    move_directory_across_devices(ec, cxt, utility_name, source, target,
+                                  allocator);
+    return true;
+  }
 
   let const target_path = Path{target, allocator};
   let temporary_path = os::write_to_named_temp_file(target_path.parent(),
@@ -149,7 +204,7 @@ fn Mv::execute(const ExecContext &ec, EvalContext &cxt,
       if (!os::rename_path(source, target.view())) {
         let const rename_error_number = errno;
         if (rename_error_number != EXDEV ||
-            !move_across_devices(source, target.view(),
+            !move_across_devices(ec, cxt, args[0].view(), source, target.view(),
                                  cxt.scratch_allocator()))
         {
           report_soft_koshkit_util_error(

@@ -67,12 +67,14 @@ struct cp_options
   cp_symlink_mode symlink_mode;
   bool is_one_file_system;
   Maybe<u64> root_device_id;
+  bool is_operand_root{true};
 
   fn for_child() const -> cp_options
   {
     let child = *this;
     if (symlink_mode != cp_symlink_mode::FollowAll)
       child.symlink_mode = cp_symlink_mode::Preserve;
+    child.is_operand_root = false;
 
     return child;
   }
@@ -211,39 +213,44 @@ static fn copy_path(const ExecContext &ec, EvalContext &cxt,
           "' is a directory, pass -r to copy it"
       };
 
-    let const source_absolute =
-        Path{source, allocator}.to_absolute().normalized();
-    let const destination_absolute =
-        Path{destination, allocator}.to_absolute().normalized();
-    let source_prefix = source_absolute.text().clone();
-    source_prefix.push(os::DIRECTORY_SEPARATOR);
-    let is_destination_inside_source =
-        destination_absolute.view() == source_absolute.view() ||
-        destination_absolute.view().starts_with(source_prefix.view());
-    if (!is_destination_inside_source) {
-      let const resolved_source = os::canonical_path(source_absolute);
-      let resolved_destination = os::canonical_path(destination_absolute);
-      if (!resolved_destination.has_value()) {
-        if (let const parent = os::canonical_path(destination_absolute.parent()))
-        {
-          resolved_destination = parent->clone();
-          resolved_destination->append(destination_absolute.filename());
+    if (options.is_operand_root ||
+        options.symlink_mode == cp_symlink_mode::FollowAll)
+    {
+      let const source_absolute =
+          Path{source, allocator}.to_absolute().normalized();
+      let const destination_absolute =
+          Path{destination, allocator}.to_absolute().normalized();
+      let source_prefix = source_absolute.text().clone();
+      source_prefix.push(os::DIRECTORY_SEPARATOR);
+      let is_destination_inside_source =
+          destination_absolute.view() == source_absolute.view() ||
+          destination_absolute.view().starts_with(source_prefix.view());
+      if (!is_destination_inside_source) {
+        let const resolved_source = os::canonical_path(source_absolute);
+        let resolved_destination = os::canonical_path(destination_absolute);
+        if (!resolved_destination.has_value()) {
+          if (let const parent =
+                  os::canonical_path(destination_absolute.parent()))
+          {
+            resolved_destination = parent->clone();
+            resolved_destination->append(destination_absolute.filename());
+          }
+        }
+        if (resolved_source.has_value() && resolved_destination.has_value()) {
+          let resolved_prefix = resolved_source->text().clone();
+          resolved_prefix.push(os::DIRECTORY_SEPARATOR);
+          is_destination_inside_source =
+              resolved_destination->view() == resolved_source->view() ||
+              resolved_destination->view().starts_with(resolved_prefix.view());
         }
       }
-      if (resolved_source.has_value() && resolved_destination.has_value()) {
-        let resolved_prefix = resolved_source->text().clone();
-        resolved_prefix.push(os::DIRECTORY_SEPARATOR);
-        is_destination_inside_source =
-            resolved_destination->view() == resolved_source->view() ||
-            resolved_destination->view().starts_with(resolved_prefix.view());
+      if (is_destination_inside_source) {
+        throw ErrorWithDetails{
+            "cannot copy '" + String{allocator, source}
+              + "' into itself",
+            "The destination is inside the source directory"
+        };
       }
-    }
-    if (is_destination_inside_source) {
-      throw ErrorWithDetails{
-          "cannot copy '" + String{allocator, source}
-            + "' into itself",
-          "The destination is inside the source directory"
-      };
     }
 
     let const has_identity =
@@ -495,6 +502,26 @@ fn Cp::execute(const ExecContext &ec, EvalContext &cxt,
   }
 
   return status;
+}
+
+fn copy_tree_for_move(const ExecContext &ec, EvalContext &cxt,
+                      StringView utility_name, StringView source,
+                      StringView destination, Allocator allocator) throws
+    -> bool
+{
+  let const options = cp_options{
+      .should_force = false,
+      .should_preserve = true,
+      .is_verbose = false,
+      .recursive_mode = cp_recursive_mode::Recursive,
+      .symlink_mode = cp_symlink_mode::Preserve,
+      .is_one_file_system = false,
+      .root_device_id = None,
+  };
+  let active_directories = ArrayList<cp_directory_identity>{allocator};
+
+  return copy_path(ec, cxt, utility_name, source, destination, options,
+                   allocator, nullptr, active_directories);
 }
 
 } /* namespace koshka::koshkit */

@@ -22,3 +22,6 @@ ln-symbolic=0
 mkfifo=prw-------
 mkfifo-existing=1
 mkfifo-symbolic=pr--r--r--
+mv-directory=0
+mv-directory-source=1
+mv-directory-tree=750 moved
