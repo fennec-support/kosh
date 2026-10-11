@@ -1796,7 +1796,7 @@ public:
 
   fn entries() const throws -> StringMap<u8>
   {
-    let marked = StringMap<u8>{heap_allocator()};
+    let marked = StringMap<u8>{m_table->allocator()};
     for_each_name([&](StringView name) throws {
       marked.set(name, get_bits(name));
     });
@@ -1810,9 +1810,12 @@ private:
 class VariableStore
 {
 public:
-  VariableStore() = default;
   explicit VariableStore(ArrayList<String> positional_params)
-      : m_positional_params(steal(positional_params))
+      : m_variables{positional_params.allocator()},
+        m_exported_names{
+            positional_params.allocator(),
+            StringMap<exported_name_value>{positional_params.allocator()}},
+        m_positional_params(steal(positional_params))
   {}
 
   fn set_field_separators(StringView value) throws -> void
@@ -1927,14 +1930,14 @@ public:
   {
     return m_sparse_arrays;
   }
-  fn exported_names() wontthrow -> StringMap<exported_name_value> &
+  fn exported_names() throws -> StringMap<exported_name_value> &
   {
-    return m_exported_names;
+    return m_exported_names.write();
   }
   pure fn exported_names() const wontthrow
       -> const StringMap<exported_name_value> &
   {
-    return m_exported_names;
+    return m_exported_names.read();
   }
   fn attributes() wontthrow -> VariableAttributes
   {
@@ -2013,7 +2016,7 @@ private:
       heap_allocator()};
   CompositeKeyArrays m_associative_arrays;
   CompositeKeyArrays m_sparse_arrays;
-  StringMap<exported_name_value> m_exported_names{heap_allocator()};
+  CopyOnWrite<StringMap<exported_name_value>> m_exported_names;
   ArrayList<String> m_positional_params{heap_allocator()};
   ArrayList<String> m_directory_stack{heap_allocator()};
   mutable BashArgumentStack m_bash_arguments;
@@ -2137,39 +2140,45 @@ struct function_call_frame
 class FunctionStore
 {
 public:
+  explicit FunctionStore(Allocator allocator)
+      : m_definitions{allocator, StringMap<FunctionBodyHandle>{allocator}}
+  {}
+
   template <typename Callback>
   fn for_each_name(Callback do_callback) const throws -> void
   {
-    m_definitions.for_each([&](StringView name, const FunctionBodyHandle &)
-                               throws { do_callback(name); });
+    m_definitions.read().for_each(
+        [&](StringView name, const FunctionBodyHandle &) throws {
+          do_callback(name);
+        });
   }
   fn find_source(StringView name) const wontthrow -> const String *
   {
-    let const storage = m_definitions.find(name);
+    let const storage = m_definitions.read().find(name);
     return storage.has_value() ? storage->get_source() : nullptr;
   }
   mustuse fn sorted_names() const throws
       -> SortedArrayList<String, order_comparator<String>>
   {
     let out = ArrayList<String>{heap_allocator()};
-    out.reserve(m_definitions.count());
+    out.reserve(m_definitions.read().count());
     for_each_name([&](StringView name) { out.push_managed(name); });
     return steal(out).make_sorted(sort_order::ascending);
   }
   fn find_function(StringView name) const wontthrow -> Maybe<const Expression *>
   {
-    let const storage = m_definitions.find(name);
+    let const storage = m_definitions.read().find(name);
     return storage.has_value() ? Maybe<const Expression *>{storage->get_body()}
                                : None;
   }
   pure fn find_storage(StringView name) const wontthrow
       -> const FunctionBodyHandle *
   {
-    return m_definitions.find(name).value_or(nullptr);
+    return m_definitions.read().find(name).value_or(nullptr);
   }
   pure fn has_functions() const wontthrow -> bool
   {
-    return m_definitions.count() != 0;
+    return m_definitions.read().count() != 0;
   }
   pure fn is_readonly(StringView name) const wontthrow -> bool
   {
@@ -2191,13 +2200,13 @@ public:
     for_each_name([&](StringView name) { names.add(name); });
     return names;
   }
-  fn definitions() wontthrow -> StringMap<FunctionBodyHandle> &
+  fn definitions() throws -> StringMap<FunctionBodyHandle> &
   {
-    return m_definitions;
+    return m_definitions.write();
   }
   pure fn definitions() const wontthrow -> const StringMap<FunctionBodyHandle> &
   {
-    return m_definitions;
+    return m_definitions.read();
   }
   fn readonly() wontthrow -> HashSet & { return m_readonly; }
   pure fn readonly() const wontthrow -> const HashSet & { return m_readonly; }
@@ -2213,11 +2222,12 @@ public:
     return m_call_frames;
   }
 
-  fn snapshot() const throws -> StringMap<FunctionBodyHandle>
+  fn snapshot() const wontthrow -> CopyOnWrite<StringMap<FunctionBodyHandle>>
   {
     return m_definitions;
   }
-  fn restore(StringMap<FunctionBodyHandle> definitions) wontthrow -> void
+  fn restore(CopyOnWrite<StringMap<FunctionBodyHandle>> definitions) wontthrow
+      -> void
   {
     m_definitions = steal(definitions);
   }
@@ -2231,7 +2241,7 @@ public:
   fn apply_wire_definitions(function_wire &wire) throws -> void;
 
 private:
-  StringMap<FunctionBodyHandle> m_definitions{heap_allocator()};
+  CopyOnWrite<StringMap<FunctionBodyHandle>> m_definitions;
   HashSet m_readonly{heap_allocator()};
   usize m_call_depth{0};
   ArrayList<function_call_frame> m_call_frames{heap_allocator()};
@@ -3141,8 +3151,15 @@ class EvalContextState
 public:
   EvalContextState(ArrayList<String> positional_params,
                    bool shell_is_interactive, String shell_name)
+      : EvalContextState(positional_params.allocator(),
+                         steal(positional_params), shell_is_interactive,
+                         steal(shell_name))
+  {}
+  EvalContextState(Allocator allocator, ArrayList<String> positional_params,
+                   bool shell_is_interactive, String shell_name)
       : m_variable_store(steal(positional_params)),
-        m_execution_store(shell_is_interactive, steal(shell_name))
+        m_execution_store(shell_is_interactive, steal(shell_name)),
+        m_function_store(allocator)
   {}
 
   fn scratch_allocator() const wontthrow -> Allocator
@@ -3320,9 +3337,9 @@ protected:
   ArenaStore m_arena_store{};
   CompletionStore m_completion_store{};
   ExpansionStore m_expansion_store{};
-  VariableStore m_variable_store{};
+  VariableStore m_variable_store;
   ExecutionStore m_execution_store;
-  FunctionStore m_function_store{};
+  FunctionStore m_function_store;
   SubshellStore m_subshell_store{};
   EnvironmentStore m_environment_store{};
   DynamicRuntimeStore m_dynamic_runtime_store{};

@@ -20,6 +20,7 @@
 #include "base/Bitset.hpp"
 #include "base/Common.hpp"
 #include "base/Containers.hpp"
+#include "base/CopyOnWrite.hpp"
 #include "base/Hive.hpp"
 #include "base/Maybe.hpp"
 #include "base/Path.hpp"
@@ -182,20 +183,51 @@ enum class variable_attribute : u8
 
 struct variable_entry
 {
-  String value{heap_allocator()};
-  ArrayList<String> elements{heap_allocator()};
+  explicit variable_entry(Allocator allocator) wontthrow
+      : value{allocator},
+        elements{allocator}
+  {}
+  variable_entry(const variable_entry &) = delete;
+  variable_entry &operator=(const variable_entry &) = delete;
+  variable_entry(variable_entry &&) = default;
+  variable_entry &operator=(variable_entry &&) = default;
+
+  mustuse fn clone() const throws -> variable_entry
+  {
+    return variable_entry{value.clone(), elements.clone(), attribute_bits,
+                          has_value, is_indexed_array};
+  }
+
+  String value;
+  ArrayList<String> elements;
   u8 attribute_bits{0};
   bool has_value{false};
   bool is_indexed_array{false};
+
+private:
+  variable_entry(String cloned_value, ArrayList<String> cloned_elements,
+                 u8 cloned_attribute_bits, bool cloned_has_value,
+                 bool cloned_is_indexed_array) wontthrow
+      : value{steal(cloned_value)},
+        elements{steal(cloned_elements)},
+        attribute_bits{cloned_attribute_bits},
+        has_value{cloned_has_value},
+        is_indexed_array{cloned_is_indexed_array}
+  {}
 };
 
 class VariableTable
 {
 public:
-  VariableTable() = default;
+  explicit VariableTable(Allocator allocator) wontthrow
+      : m_index{allocator},
+        m_entries{allocator},
+        m_allocator{allocator}
+  {}
   VariableTable(VariableTable &&other) wontthrow
       : m_index{steal(other.m_index)},
         m_entries{steal(other.m_entries)},
+        m_allocator{other.m_allocator},
         m_pipestatus_entry{other.m_pipestatus_entry},
         m_value_count{other.m_value_count},
         m_indexed_array_count{other.m_indexed_array_count},
@@ -210,6 +242,7 @@ public:
 
     m_index = steal(other.m_index);
     m_entries = steal(other.m_entries);
+    m_allocator = other.m_allocator;
     m_pipestatus_entry = other.m_pipestatus_entry;
     m_value_count = other.m_value_count;
     m_indexed_array_count = other.m_indexed_array_count;
@@ -220,21 +253,21 @@ public:
     return *this;
   }
 
-  VariableTable(const VariableTable &other) throws
-      : m_index{other.m_index},
-        m_value_count{other.m_value_count},
-        m_indexed_array_count{other.m_indexed_array_count},
-        m_has_namerefs{other.m_has_namerefs},
-        m_has_declared_marks{other.m_has_declared_marks}
+  VariableTable(const VariableTable &) = delete;
+  VariableTable &operator=(const VariableTable &) = delete;
+
+  mustuse fn clone() const throws -> VariableTable
   {
-    m_index.for_each([&](StringView, variable_entry *&entry) throws {
-      entry = m_entries.emplace(*entry);
+    let copy = VariableTable{m_allocator};
+    copy.m_index = m_index.clone();
+    copy.m_value_count = m_value_count;
+    copy.m_indexed_array_count = m_indexed_array_count;
+    copy.m_has_namerefs = m_has_namerefs;
+    copy.m_has_declared_marks = m_has_declared_marks;
+    copy.m_index.for_each([&](StringView, variable_entry *&entry) throws {
+      entry = copy.m_entries.emplace(entry->clone());
     });
-  }
-  fn operator=(const VariableTable &other) throws -> VariableTable &
-  {
-    if (this != &other) *this = VariableTable{other};
-    return *this;
+    return copy;
   }
 
   hot pure fn find(StringView name) const wontthrow -> Maybe<variable_entry *>
@@ -249,7 +282,7 @@ public:
     if (let const found = m_index.find(name); found.has_value())
       return **found.value();
 
-    let *const created = m_entries.emplace();
+    let *const created = m_entries.emplace(m_allocator);
     try {
       m_index.set(name, created);
     } catch (...) {
@@ -311,7 +344,7 @@ public:
     let const is_buffer_wasteful = entry.value.count() > 256 &&
                                    value.length < entry.value.count() / 2;
     if (is_buffer_wasteful) {
-      entry.value = String{heap_allocator(), value};
+      entry.value = String{m_allocator, value};
       return &entry.value;
     }
     entry.value.clear();
@@ -352,6 +385,7 @@ public:
     });
   }
 
+  pure fn allocator() const wontthrow -> Allocator { return m_allocator; }
   pure fn value_count() const wontthrow -> usize { return m_value_count; }
   pure fn indexed_array_count() const wontthrow -> usize
   {
@@ -379,8 +413,9 @@ private:
     m_indexed_array_count = 0;
   }
 
-  StringMap<variable_entry *> m_index{heap_allocator()};
+  StringMap<variable_entry *> m_index;
   Hive<variable_entry> m_entries;
+  Allocator m_allocator;
   variable_entry *m_pipestatus_entry{nullptr};
   usize m_value_count{0};
   usize m_indexed_array_count{0};

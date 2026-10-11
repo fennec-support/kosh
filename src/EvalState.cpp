@@ -765,7 +765,7 @@ fn EvalContext::snapshot_state() throws -> eval_state_snapshot
 fn VariableStore::snapshot() const throws -> variable_snapshot
 {
   return variable_snapshot{
-      m_variables,
+      m_variables.clone(),
       m_special_variable_definition_locations,
       m_associative_arrays,
       m_sparse_arrays,
@@ -1108,8 +1108,8 @@ fn FunctionStore::append_wire(String &output) const throws -> void
     let names = ArrayList<u32>{heap_allocator()};
     let records = String{heap_allocator()};
     u32 record_count = 0;
-    m_definitions.for_each([&](StringView name,
-                               const FunctionBodyHandle &storage) throws {
+    m_definitions.read().for_each([&](StringView name,
+                                      const FunctionBodyHandle &storage) throws {
       let const *info = storage.get_definition_info();
       let const *source = storage.get_source();
       if (info == nullptr || source == nullptr || source->is_empty() ||
@@ -1760,7 +1760,7 @@ fn FunctionStore::apply_wire_definitions(function_wire &wire) throws -> void
 {
   wire.definition_origins.for_each(
       [&](StringView name, function_definition_info &origin) throws {
-        let const storage = m_definitions.find(name);
+        let const storage = m_definitions.write().find(name);
         if (!storage.has_value()) return;
 
         let const *replayed = storage->get_definition_info();

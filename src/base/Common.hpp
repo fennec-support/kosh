@@ -267,6 +267,28 @@ struct is_tagged_int<tagged_int<TagBase, T>> : std::true_type
 template <class T>
 inline constexpr bool is_tagged_int_v = is_tagged_int<T>::value;
 
+template <class T>
+concept is_cloneable =
+    requires(const T &value) { value.clone(); } &&
+    std::is_same_v<decltype(std::declval<const T &>().clone()), T>;
+
+template <class T>
+concept is_plainly_copyable =
+    std::is_trivially_copyable_v<T> && !std::is_pointer_v<T> &&
+    !std::is_member_pointer_v<T>;
+
+template <class T>
+mustuse fn clone_value(const T &value) throws -> T
+{
+  static_assert(is_cloneable<T> || is_plainly_copyable<T>,
+                "a type that owns resources or is a pointer needs a clone()");
+
+  if constexpr (is_cloneable<T>)
+    return value.clone();
+  else
+    return value;
+}
+
 using bi16 = tagged_int<int_base::binary, i16>;
 using bi32 = tagged_int<int_base::binary, i32>;
 using bi64 = tagged_int<int_base::binary, i64>;

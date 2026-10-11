@@ -23,9 +23,7 @@ public:
 
   static constexpr usize BLOCK_SLOT_COUNT = 64;
 
-  explicit Hive(Allocator allocator = heap_allocator()) wontthrow
-      : m_allocator{allocator}
-  {}
+  explicit Hive(Allocator allocator) wontthrow : m_allocator{allocator} {}
 
   Hive(const Hive &) = delete;
   Hive &operator=(const Hive &) = delete;

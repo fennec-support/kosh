@@ -1,0 +1,118 @@
+/*
+ *    This file is a part of the Koshka shell, (c) toiletbril, 2026
+ *    See the top-level LICENSE file for the licensing information.
+ *
+ * This file implements a shared value that clones itself on the first write.
+ * Copying the holder only counts another reader, so a snapshot of a value
+ * that rarely changes costs no allocation until one side changes it.
+ */
+
+#pragma once
+
+#include "Allocator.hpp"
+#include "Common.hpp"
+#include "Debug.hpp"
+
+namespace koshka {
+
+template <class T>
+class CopyOnWrite
+{
+public:
+  CopyOnWrite(Allocator allocator, T value) throws
+      : m_allocator{allocator},
+        m_shared{create(allocator, steal(value))}
+  {}
+
+  CopyOnWrite(const CopyOnWrite &other) wontthrow
+      : m_allocator{other.m_allocator},
+        m_shared{other.m_shared}
+  {
+    if (m_shared != nullptr) m_shared->reference_count++;
+  }
+
+  CopyOnWrite(CopyOnWrite &&other) wontthrow
+      : m_allocator{other.m_allocator},
+        m_shared{other.m_shared}
+  {
+    other.m_shared = nullptr;
+  }
+
+  fn operator=(const CopyOnWrite &other) wontthrow -> CopyOnWrite &
+  {
+    if (m_shared == other.m_shared) return *this;
+
+    release();
+    m_allocator = other.m_allocator;
+    m_shared = other.m_shared;
+    if (m_shared != nullptr) m_shared->reference_count++;
+
+    return *this;
+  }
+
+  fn operator=(CopyOnWrite &&other) wontthrow -> CopyOnWrite &
+  {
+    if (this == &other) return *this;
+
+    release();
+    m_allocator = other.m_allocator;
+    m_shared = other.m_shared;
+    other.m_shared = nullptr;
+
+    return *this;
+  }
+
+  ~CopyOnWrite() { release(); }
+
+  mustuse fn clone() const throws -> CopyOnWrite
+  {
+    return CopyOnWrite{m_allocator, clone_value(read())};
+  }
+
+  pure fn read() const wontthrow -> const T &
+  {
+    ASSERT(m_shared != nullptr);
+    return m_shared->value;
+  }
+
+  fn write() throws -> T &
+  {
+    ASSERT(m_shared != nullptr);
+    if (m_shared->reference_count > 1) {
+      let *const copy = create(m_allocator, clone_value(m_shared->value));
+      release();
+      m_shared = copy;
+    }
+
+    return m_shared->value;
+  }
+
+private:
+  struct shared
+  {
+    u32 reference_count;
+    T value;
+  };
+
+  static fn create(Allocator allocator, T value) throws -> shared *
+  {
+    let *const storage = allocator.alloc_array<shared>(1);
+    return new (storage) shared{1, steal(value)};
+  }
+
+  fn release() wontthrow -> void
+  {
+    if (m_shared == nullptr) return;
+
+    if (--m_shared->reference_count == 0) {
+      m_shared->~shared();
+      m_allocator.free_array(m_shared, 1);
+    }
+    m_shared = nullptr;
+  }
+
+  Allocator m_allocator;
+  shared *m_shared;
+};
+
+} /* namespace koshka */

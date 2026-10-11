@@ -30,7 +30,7 @@ public:
 
   Maybe(const Maybe &other) : m_has_value(other.m_has_value)
   {
-    if (m_has_value) new (&m_storage) T(other.reference());
+    if (m_has_value) new (&m_storage) T(copy_of(other.reference()));
   }
   Maybe(Maybe &&other) noexcept(std::is_nothrow_move_constructible_v<T>)
       : m_has_value(other.m_has_value)
@@ -38,14 +38,18 @@ public:
     if (m_has_value) new (&m_storage) T(steal(other.reference()));
   }
 
-  mustuse fn clone() const throws -> Maybe { return Maybe{*this}; }
+  mustuse fn clone() const throws -> Maybe
+  {
+    if (!m_has_value) return None;
+    return Maybe{clone_value(reference())};
+  }
 
   fn operator=(const Maybe &other) throws->Maybe &
   {
     if (this != &other) {
       reset();
       if (other.m_has_value) {
-        new (&m_storage) T(other.reference());
+        new (&m_storage) T(copy_of(other.reference()));
         m_has_value = true;
       }
     }
@@ -132,6 +136,14 @@ public:
   }
 
 private:
+  static fn copy_of(const T &value) throws -> T
+  {
+    if constexpr (is_cloneable<T>)
+      return value.clone();
+    else
+      return T(value);
+  }
+
   fn reference() wontthrow -> T & { return *reinterpret_cast<T *>(&m_storage); }
   fn reference() const wontthrow -> const T &
   {

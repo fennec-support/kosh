@@ -237,7 +237,7 @@ struct variable_snapshot
   CompositeKeyArrays sparse_arrays;
   ArrayList<String> positional_params;
   ArrayList<String> directory_stack;
-  StringMap<exported_name_value> exported_names;
+  CopyOnWrite<StringMap<exported_name_value>> exported_names;
   u32 bash_argument_value_count;
   u32 bash_argument_frame_count;
   bool had_bash_argument_arrays;
@@ -292,7 +292,7 @@ struct eval_state_snapshot
 {
   variable_snapshot variables;
   completion_snapshot completion;
-  StringMap<FunctionBodyHandle> functions;
+  CopyOnWrite<StringMap<FunctionBodyHandle>> functions;
   scope_snapshot scopes;
   execution_snapshot execution;
   trap_snapshot traps;

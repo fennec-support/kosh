@@ -512,6 +512,15 @@ same encoding that every spawned process receives."
   Project code allocates through this API. Only heap storage is freed. Ownership
   queries identify a specific arena. Raw storage is guarded until throwing
   construction succeeds.
+- Every data structure takes its `Allocator` from its owner and gives it to
+  what it creates; only the outermost owner picks one. Every data structure
+  that can be duplicated implements `clone()`, which copies everything it
+  owns with its own allocator. `clone_value` in `src/base/Common.hpp` calls
+  `clone()` and copies plainly only a trivially copyable type that is not a
+  pointer, so an owning type without `clone()` or a raw pointer fails to
+  compile. `Maybe` copies through `clone()` when the type has one.
+  `CopyOnWrite` shares one value between copies and clones it on the first
+  write.
 - `ArrayList` allocates on first growth and stores 32-bit length and capacity.
   `String` has inline storage and an exact first heap allocation. It caches
   whether its bytes are ASCII, and every mutator that can add a high byte
