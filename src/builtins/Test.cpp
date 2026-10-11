@@ -34,7 +34,9 @@ fn parse_integer(StringView text) throws -> Maybe<i64>
 {
   bool is_out_of_range = false;
   let const parsed = utils::parse_decimal_i64(text, &is_out_of_range);
-  if (parsed.is_error() || is_out_of_range) return None;
+  if (parsed.is_error() || is_out_of_range) {
+    return None;
+  }
 
   return parsed.value();
 }
@@ -209,7 +211,9 @@ public:
         SSK("-O"), SSK("-G"), SSK("-t"),
     };
     static constexpr StaticStringSet UNARY_OPS{KEYS};
-    if (has_name_reference_test && s == "-R") return true;
+    if (has_name_reference_test && s == "-R") {
+      return true;
+    }
 
     return UNARY_OPS.contains(s.view());
   }
@@ -256,8 +260,9 @@ public:
       let const result = parse_expression();
       if (at_end() || current() != ")") {
         fail("A ')' is expected");
-      } else
+      } else {
         pos++;
+      }
       return result;
     }
     if (is_unary_operator_token(pos)) {

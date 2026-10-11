@@ -127,7 +127,9 @@ fn Fuser::execute(const ExecContext &ec, EvalContext &cxt,
                                        os::last_system_error_message());
     return 1;
   }
-  if (users.is_empty() && status == 0) status = 1;
+  if (users.is_empty() && status == 0) {
+    status = 1;
+  }
   let const sorted_users =
       steal(users).make_sorted([](const os::process_file_user &left,
                                   const os::process_file_user &right) {

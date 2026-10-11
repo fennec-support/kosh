@@ -277,7 +277,9 @@ fn matches_filters(const os::process_entry &process, i64 wanted_pid,
                    bool has_wanted_pid, Maybe<u32> wanted_owner) wontthrow
     -> bool
 {
-  if (has_wanted_pid && process.pid != wanted_pid) return false;
+  if (has_wanted_pid && process.pid != wanted_pid) {
+    return false;
+  }
 
   if (wanted_owner.has_value() && process.owner_id != *wanted_owner) {
     return false;
@@ -537,7 +539,9 @@ fn EvilFiles::execute(
     if (let const dimensions =
             os::get_terminal_dimensions(ec.out_fd.value_or(KOSH_STDOUT));
         dimensions.has_value() && dimensions->columns > 8)
+    {
       line_width_limit = dimensions->columns;
+    }
   }
   let const other_columns_width =
       2 + widths.pid + 2 + widths.user + 2 + widths.descriptor + 2 +

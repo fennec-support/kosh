@@ -51,7 +51,9 @@ alwaysinline static fn retry_interrupted(Call do_call) wontthrow
   loop
   {
     let const result = do_call();
-    if (result != -1 || errno != EINTR) return result;
+    if (result != -1 || errno != EINTR) {
+      return result;
+    }
   }
 }
 
@@ -242,18 +244,22 @@ hot fn execute_program(ExecContext &ec,
 
   let const do_keep_across_exec = [](descriptor fd) {
     let const flags = fcntl(fd, F_GETFD);
-    if (flags != -1 && (flags & FD_CLOEXEC) != 0)
+    if (flags != -1 && (flags & FD_CLOEXEC) != 0) {
       fcntl(fd, F_SETFD, flags & ~FD_CLOEXEC);
+    }
   };
-  if (ec.in_fd && *ec.in_fd == STDIN_FILENO) do_keep_across_exec(STDIN_FILENO);
+  if (ec.in_fd && *ec.in_fd == STDIN_FILENO) {
+    do_keep_across_exec(STDIN_FILENO);
+  }
   if (ec.in_fd && *ec.in_fd != STDIN_FILENO) {
     posix_spawn_file_actions_adddup2(&file_actions, *ec.in_fd, STDIN_FILENO);
     posix_spawn_file_actions_addclose(&file_actions, *ec.in_fd);
   }
   ec.apply_output_routing(
       [&]() {
-        if (ec.out_fd && *ec.out_fd == STDOUT_FILENO)
+        if (ec.out_fd && *ec.out_fd == STDOUT_FILENO) {
           do_keep_across_exec(STDOUT_FILENO);
+        }
         if (ec.out_fd && *ec.out_fd != STDOUT_FILENO) {
           posix_spawn_file_actions_adddup2(&file_actions, *ec.out_fd,
                                            STDOUT_FILENO);
@@ -261,8 +267,9 @@ hot fn execute_program(ExecContext &ec,
         }
       },
       [&]() {
-        if (ec.err_fd && *ec.err_fd == STDERR_FILENO)
+        if (ec.err_fd && *ec.err_fd == STDERR_FILENO) {
           do_keep_across_exec(STDERR_FILENO);
+        }
         if (ec.err_fd && *ec.err_fd != STDERR_FILENO) {
           posix_spawn_file_actions_adddup2(&file_actions, *ec.err_fd,
                                            STDERR_FILENO);
@@ -312,8 +319,9 @@ hot fn execute_program(ExecContext &ec,
   sigemptyset(&default_signals);
   sigaddset(&default_signals, SIGINT);
   sigaddset(&default_signals, SIGCHLD);
-  if (!IS_PIPE_SIGNAL_IGNORED_BY_TRAP && !WAS_PIPE_SIGNAL_IGNORED_AT_ENTRY)
+  if (!IS_PIPE_SIGNAL_IGNORED_BY_TRAP && !WAS_PIPE_SIGNAL_IGNORED_AT_ENTRY) {
     sigaddset(&default_signals, SIGPIPE);
+  }
   posix_spawnattr_setsigdefault(&attr, &default_signals);
 
   short spawn_flags = POSIX_SPAWN_SETSIGMASK | POSIX_SPAWN_SETSIGDEF;
@@ -433,7 +441,9 @@ fn ProgramCapture::step() wontthrow -> State
     watch.events = POLLIN;
     watch.revents = 0;
     const int ready = poll(&watch, 1, 0);
-    if (ready < 0 && errno == EINTR) continue;
+    if (ready < 0 && errno == EINTR) {
+      continue;
+    }
     if (ready < 0) {
       abandon();
       return State::Failed;
@@ -442,7 +452,9 @@ fn ProgramCapture::step() wontthrow -> State
 
     char buffer[4096];
     const ssize_t read_count = read(m_output, buffer, sizeof(buffer));
-    if (read_count < 0 && errno == EINTR) continue;
+    if (read_count < 0 && errno == EINTR) {
+      continue;
+    }
     if (read_count < 0) {
       abandon();
       return State::Failed;
@@ -574,7 +586,9 @@ static fn fork_compound_stage(
 
       let const do_lift_above_standard = [](Maybe<descriptor> &fd,
                                             descriptor target) {
-        if (!fd || *fd > STDERR_FILENO || *fd == target) return;
+        if (!fd || *fd > STDERR_FILENO || *fd == target) {
+          return;
+        }
 
         let const lifted = fcntl(*fd, F_DUPFD, STDERR_FILENO + 1);
         check_syscall(lifted);
@@ -586,7 +600,9 @@ static fn fork_compound_stage(
       do_lift_above_standard(err_fd, STDERR_FILENO);
 
       let const do_install = [](Maybe<descriptor> fd, descriptor target) {
-        if (!fd || *fd == target) return;
+        if (!fd || *fd == target) {
+          return;
+        }
 
         check_syscall(dup2(*fd, target));
         check_syscall(close(*fd));
@@ -772,8 +788,9 @@ fn replace_process(ExecContext &&ec) throws -> void
     }
 
     let const flags = fcntl(fd, F_GETFD);
-    if (flags != -1 && (flags & FD_CLOEXEC) != 0)
+    if (flags != -1 && (flags & FD_CLOEXEC) != 0) {
       fcntl(fd, F_SETFD, flags & ~FD_CLOEXEC);
+    }
   };
   if (ec.in_fd) do_install_for_exec(*ec.in_fd, STDIN_FILENO);
   ec.apply_output_routing(
@@ -1163,10 +1180,14 @@ static fn is_zombie_process(pid_t process_id) wontthrow -> bool
 
 fn process_is_running(process p) wontthrow -> bool
 {
-  if (kill(p, 0) != 0 && errno != EPERM) return false;
+  if (kill(p, 0) != 0 && errno != EPERM) {
+    return false;
+  }
 
 #if defined __linux__
-  if (p > 0 && is_zombie_process(p)) return false;
+  if (p > 0 && is_zombie_process(p)) {
+    return false;
+  }
 #endif
 
   return true;
@@ -1223,7 +1244,9 @@ static fn process_group_has_running_member(pid_t group_id) wontthrow -> bool
        entry = ::readdir(proc_directory))
   {
     let const name = StringView{entry->d_name};
-    if (name.is_empty() || !name.is_all_decimal_digits()) continue;
+    if (name.is_empty() || !name.is_all_decimal_digits()) {
+      continue;
+    }
 
     let const process_id = name.to<i64>();
     if (process_id.is_error()) continue;
@@ -1261,7 +1284,9 @@ fn is_process_signal_supported(i32 signal_number) wontthrow -> bool
 
 fn process_from_pid(i64 pid) wontthrow -> process
 {
-  if (pid > INT32_MAX || pid < INT32_MIN) return static_cast<process>(INT32_MAX);
+  if (pid > INT32_MAX || pid < INT32_MIN) {
+    return static_cast<process>(INT32_MAX);
+  }
 
   return static_cast<process>(pid);
 }
@@ -1651,7 +1676,9 @@ fn spawn_measured_child(const ArrayList<String> &argv, measured_output output,
     let const should_start = transfer_barrier_byte(
         start_descriptors[0], barrier_transfer_direction::Read);
     close(start_descriptors[0]);
-    if (!is_ready || !should_start) _exit(127);
+    if (!is_ready || !should_start) {
+      _exit(127);
+    }
 
     execvp(raw_argv[0], const_cast<char *const *>(raw_argv.begin()));
     _exit(127);
@@ -1762,7 +1789,9 @@ fn wait_for_measured_child(pid_t child_pid, i64 &status_out, u64 &peak_rss_out,
       retry_interrupted([&] { return wait4(child_pid, &status, 0, &usage); });
 
   if (waited != child_pid) {
-    if (waited == -1 && errno != ECHILD) kill_and_reap(child_pid);
+    if (waited == -1 && errno != ECHILD) {
+      kill_and_reap(child_pid);
+    }
     return false;
   }
 
@@ -1861,7 +1890,9 @@ fn get_priority(i64 id, priority_target target) wontthrow -> Maybe<i32>
   errno = 0;
   let const priority =
       getpriority(native_priority_target(target), static_cast<id_t>(id));
-  if (priority == -1 && errno != 0) return None;
+  if (priority == -1 && errno != 0) {
+    return None;
+  }
   return priority;
 }
 
@@ -1937,7 +1968,9 @@ fn run_nice(const ArrayList<String> &argv, i32 increment) throws -> Maybe<i32>
   return run_through_error_pipe(raw_argv, [increment](int) {
     errno = 0;
     let current = getpriority(PRIO_PROCESS, 0);
-    if (current == -1 && errno != 0) current = 0;
+    if (current == -1 && errno != 0) {
+      current = 0;
+    }
     let target = static_cast<i64>(current) + increment;
     if (target < -20) target = -20;
     if (target > 19) target = 19;
@@ -1951,7 +1984,9 @@ fn run_nohup(const ArrayList<String> &argv, const nohup_options &options) throws
   if (argv.is_empty()) return None;
   let const raw_argv = make_os_args(argv);
   let home_output = String{heap_allocator(), options.home};
-  if (!home_output.is_empty() && home_output.back() != '/') home_output += '/';
+  if (!home_output.is_empty() && home_output.back() != '/') {
+    home_output += '/';
+  }
   home_output += "nohup.out";
 
   return run_through_error_pipe(raw_argv, [&](int error_descriptor) {
@@ -1967,9 +2002,10 @@ fn run_nohup(const ArrayList<String> &argv, const nohup_options &options) throws
     }
     if (isatty(child_output)) {
       nohup_output = open("nohup.out", O_WRONLY | O_APPEND | O_CREAT, 0600);
-      if (nohup_output == -1 && !options.home.is_empty())
+      if (nohup_output == -1 && !options.home.is_empty()) {
         nohup_output =
             open(home_output.c_str(), O_WRONLY | O_APPEND | O_CREAT, 0600);
+      }
       if (nohup_output == -1) {
         let const child_errno = errno;
         unused(

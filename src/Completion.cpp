@@ -154,7 +154,9 @@ class BorrowedStringSet
 public:
   fn add(StringView value) throws -> bool
   {
-    if (slots.is_empty() || (entry_count + 1) * 4 >= slots.count() * 3) grow();
+    if (slots.is_empty() || (entry_count + 1) * 4 >= slots.count() * 3) {
+      grow();
+    }
 
     return place(slots, value, hash_bytes(value));
   }
@@ -378,7 +380,9 @@ collect_command_names(StringView token, EvalContext &context,
     collector.note_source_candidate();
     let const tier = command_name_match(name, token, is_glob_token,
                                         is_case_sensitive, glob_active);
-    if (tier.has_value() && seen.add(name)) collector.add(name, *tier);
+    if (tier.has_value() && seen.add(name)) {
+      collector.add(name, *tier);
+    }
   };
 
   let const do_add_path = [&](StringView name) throws {
@@ -386,7 +390,9 @@ collect_command_names(StringView token, EvalContext &context,
     let const tier =
         command_name_match(name, normalized_path_token.view(), is_glob_token,
                            path_is_case_sensitive, glob_active);
-    if (tier.has_value() && seen.add(name)) collector.add(name, *tier);
+    if (tier.has_value() && seen.add(name)) {
+      collector.add(name, *tier);
+    }
   };
 
   for (let const &keyword_name : keyword_names())
@@ -567,11 +573,13 @@ check_filesystem_entry(const filesystem_listing &listing,
   }
 
   let entry_kind = entry.kind;
-  if (resolved_kind.has_value())
+  if (resolved_kind.has_value()) {
     entry_kind = *resolved_kind;
-  else if (entry_kind == Path::entry_kind::Symlink ||
-           entry_kind == Path::entry_kind::Unknown)
+  } else if (entry_kind == Path::entry_kind::Symlink ||
+             entry_kind == Path::entry_kind::Unknown)
+  {
     entry_kind = utils::directory_entry_kind(listing.directory, entry);
+  }
   let const is_directory = entry_kind == Path::entry_kind::Directory;
   if (filter == filesystem_entry_filter::DirectoriesOnly && !is_directory) {
     return None;
@@ -638,13 +646,15 @@ build_filesystem_candidate(StringView directory_part,
   let const is_variable_prefixed =
       !directory_part.is_empty() && directory_part[0] == '$';
   if (is_variable_prefixed && !inside_quote) {
-    if (path_candidate_needs_quoting(entry_name.view()))
+    if (path_candidate_needs_quoting(entry_name.view())) {
       entry_name = quote_path_candidate(entry_name.view());
+    }
     candidate += entry_name;
   } else if (decoded_word.leading.is_tilde_active && !inside_quote) {
     candidate = String{completion_allocator(), raw_directory_part};
-    if (path_candidate_needs_quoting(entry_name.view()))
+    if (path_candidate_needs_quoting(entry_name.view())) {
       entry_name = quote_path_candidate(entry_name.view());
+    }
     candidate += entry_name;
   } else {
     if (!inside_quote && path_candidate_needs_quoting(entry_name.view())) {
@@ -791,7 +801,9 @@ static fn collect_filesystem_matches(
     entry_position++;
   }
   do_add_matches(matches);
-  if (collector.has_prefix() || !collector.allows_fuzzy_fallback()) return;
+  if (collector.has_prefix() || !collector.allows_fuzzy_fallback()) {
+    return;
+  }
 
   matches.clear();
   for (usize position = 0; position < listing->entries->count(); position++) {
@@ -871,8 +883,9 @@ static fn visit_cdpath_directories(EvalContext &context,
   usize start = 0;
   while (start < entries.length) {
     usize end = start;
-    while (end < entries.length && entries.data[end] != os::PATH_DELIMITER)
+    while (end < entries.length && entries.data[end] != os::PATH_DELIMITER) {
       end++;
+    }
     let const entry = entries.substring_of_length(start, end - start);
     start = end + 1;
     if (entry.is_empty()) continue;
@@ -1158,7 +1171,9 @@ static pure fn candidate_extension_is_hinted(
 {
   if (!candidate.is_empty() &&
       os::is_directory_separator(candidate[candidate.length - 1]))
+  {
     return false;
+  }
 
   usize dot = candidate.length;
   for (usize k = candidate.length; k > 0; k--) {
@@ -1376,10 +1391,9 @@ fn complete(StringView line, usize cursor, EvalContext &context,
 
   if (token_is_variable(open_quote_content_token) && is_leading_variable_active)
   {
-    candidates = complete_variable(open_quote_content_token, context,
-                                   extra_variable_names,
-                                   whole_line.substring_of_length(
-                                       0, completion_offset + token_start));
+    candidates = complete_variable(
+        open_quote_content_token, context, extra_variable_names,
+        whole_line.substring_of_length(0, completion_offset + token_start));
     if (has_open_quote) {
       token_start += decoded_token.open_quote_content_start;
     }
@@ -1393,7 +1407,9 @@ fn complete(StringView line, usize cursor, EvalContext &context,
     if (!candidates.is_empty()) {
       let joined = String{arena};
       for (usize i = 0; i < candidates.count(); i++) {
-        if (i > 0) joined += ' ';
+        if (i > 0) {
+          joined += ' ';
+        }
         let match = candidates[i].view();
         if (!match.is_empty() &&
             os::is_directory_separator(match[match.length - 1]))
@@ -1465,25 +1481,30 @@ fn complete(StringView line, usize cursor, EvalContext &context,
                                         descriptions, mode, spec_option_mask);
         is_spec_candidates = from_stage.has_value();
       }
-      if (!from_stage.has_value())
+      if (!from_stage.has_value()) {
         from_stage = complete_from_tools_with_targets(
             line, stage_token, token_start, context, mode);
+      }
     }
     if (!from_stage.has_value() &&
         (!is_posix_completion || should_complete_external_arguments_in_posix))
     {
-      if (!from_stage.has_value())
+      if (!from_stage.has_value()) {
         from_stage = complete_from_man_subcommands(line, stage_token,
                                                    token_start, context, mode);
-      if (!from_stage.has_value())
+      }
+      if (!from_stage.has_value()) {
         from_stage = complete_from_manpage(line, stage_token, context,
                                            descriptions, mode);
-      if (!from_stage.has_value())
+      }
+      if (!from_stage.has_value()) {
         from_stage = complete_from_help_subcommands(
             line, stage_token, token_start, context, descriptions, mode);
-      if (!from_stage.has_value())
+      }
+      if (!from_stage.has_value()) {
         from_stage = complete_from_help(line, stage_token, token_start, context,
                                         descriptions, mode);
+      }
     }
     let const file_name_text_mode =
         do_has_spec_option(completion_option::NoQuote) &&

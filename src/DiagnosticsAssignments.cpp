@@ -294,8 +294,9 @@ fn check_redirection_lints(AnalysisContext &actx,
 fn check_test_operand_lints(AnalysisContext &actx,
                             const command_lint_input &input) throws -> void
 {
-  if (!input.is_in_group(COMMAND_GROUP_TEST) || input.is_command_shadowed)
+  if (!input.is_in_group(COMMAND_GROUP_TEST) || input.is_command_shadowed) {
     return;
+  }
 
   let const &args = input.args;
   let const is_posix = actx.is_posix_sh_shebang;
@@ -492,8 +493,9 @@ fn check_test_operand_lints(AnalysisContext &actx,
     previous_literal = steal(literal);
   }
 
-  if (is_bracket_form_closed && operand_end == 1)
+  if (is_bracket_form_closed && operand_end == 1) {
     actx.report_diagnostic(diagnostic_id::sc2212, input.command_location());
+  }
 
   if (is_bracket_form_closed && operand_end == 2 &&
       args[1]->kind() == Token::Kind::Word)
@@ -563,7 +565,9 @@ fn check_test_operand_lints(AnalysisContext &actx,
       for (usize side = i - 1; side <= i + 1; side += 2) {
         if (side == 0 || side >= operand_end ||
             args[side]->kind() != Token::Kind::Word)
+        {
           continue;
+        }
         check_numeric_comparison_operand(actx, view, args[side], false);
       }
     }
@@ -724,15 +728,17 @@ pure fn assignment_value_is_own_name(StringView name,
                                      StringView value) wontthrow -> bool
 {
   StringView inner = value;
-  if (inner.length >= 2 && inner[0] == '"' && inner[inner.length - 1] == '"')
+  if (inner.length >= 2 && inner[0] == '"' && inner[inner.length - 1] == '"') {
     inner = inner.substring_of_length(1, inner.length - 2);
+  }
 
   if (inner.length < 2 || inner[0] != '$') {
     return false;
   }
 
-  if (inner.length >= 4 && inner[1] == '{' && inner[inner.length - 1] == '}')
+  if (inner.length >= 4 && inner[1] == '{' && inner[inner.length - 1] == '}') {
     return inner.substring_of_length(2, inner.length - 3) == name;
+  }
 
   return inner.substring(1) == name;
 }
@@ -902,8 +908,9 @@ pure fn option_letter_index(char letter) wontthrow -> u32
   if (letter >= 'a' && letter <= 'z') {
     return static_cast<u32>(letter - 'a');
   }
-  if (letter >= 'A' && letter <= 'Z')
+  if (letter >= 'A' && letter <= 'Z') {
     return static_cast<u32>(letter - 'A') + 26;
+  }
 
   return 64;
 }
@@ -975,8 +982,9 @@ pure fn case_pattern_can_match_word(const Word &case_word,
     }
 
     usize run_end = at;
-    while (run_end < last && segment_is_literal(case_word.segments[run_end]))
+    while (run_end < last && segment_is_literal(case_word.segments[run_end])) {
       run_end++;
+    }
 
     let const run_length = literal_run_length(case_word, at, run_end);
     let is_found = false;
@@ -1038,8 +1046,9 @@ fn check_case_pattern_shape(AnalysisContext &actx, const case_lint_input &input,
     case WordSegment::Kind::LiteralText:
     case WordSegment::Kind::UnquotedText:
     case WordSegment::Kind::DoubleQuotedText:
-      if (segment.has_live_glob_chars() && segment.has_glob_metacharacter())
+      if (segment.has_live_glob_chars() && segment.has_glob_metacharacter()) {
         has_glob_metacharacter = true;
+      }
       break;
 
     case WordSegment::Kind::VariableReference:

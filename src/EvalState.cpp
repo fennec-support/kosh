@@ -121,7 +121,9 @@ fn EvalContext::set_coprocess_descriptors(i32 read_fd, i32 write_fd,
 fn EvalContext::forget_coprocess_descriptor(i32 shell_fd) throws -> void
 {
   let &coprocess = subshell_store().coprocess();
-  if (shell_fd < 0 || coprocess.process_id < 0) return;
+  if (shell_fd < 0 || coprocess.process_id < 0) {
+    return;
+  }
 
   if (coprocess.read_fd == shell_fd) {
     coprocess.read_fd = -1;
@@ -455,7 +457,9 @@ fn EvalContext::print_source_backtrace(Maybe<SourceLocation> error_location,
     do_add_site(entry, resolved);
   }
 
-  if (entries.is_empty() && deferring_frame == nullptr) return;
+  if (entries.is_empty() && deferring_frame == nullptr) {
+    return;
+  }
 
   let const do_entries_match = [&](const backtrace_entry &left,
                                    const backtrace_entry &right) {
@@ -466,7 +470,9 @@ fn EvalContext::print_source_backtrace(Maybe<SourceLocation> error_location,
       return false;
     }
     if (left.frame != nullptr && right.frame != nullptr) {
-      if (!do_frame_identity_match(*left.frame, *right.frame)) return false;
+      if (!do_frame_identity_match(*left.frame, *right.frame)) {
+        return false;
+      }
     } else if (left.frame != right.frame) {
       return false;
     }
@@ -480,7 +486,9 @@ fn EvalContext::print_source_backtrace(Maybe<SourceLocation> error_location,
     for (usize other = i + 1; other < entries.count(); other++) {
       if (entries[other].is_repeat ||
           !do_entries_match(entries[i], entries[other]))
+      {
         continue;
+      }
 
       entries[other].is_repeat = true;
       entries[i].repeat_count++;
@@ -508,7 +516,9 @@ fn EvalContext::print_source_backtrace(Maybe<SourceLocation> error_location,
   for (usize entry_index = 0; entry_index < entries.count(); entry_index++) {
     let const &entry = entries[entry_index];
     if (entry_index == deferral_index) break;
-    if (entry.is_repeat || *entry.was_printed) continue;
+    if (entry.is_repeat || *entry.was_printed) {
+      continue;
+    }
 
     let const location = entry.location;
     let mapped_location = location;
@@ -1433,7 +1443,9 @@ static fn read_subshell_bootstrap_bool(subshell_bootstrap_reader &reader,
                                        bool &value) wontthrow -> bool
 {
   let const encoded = reader.read_u8();
-  if (!reader.is_valid || encoded > 1) return false;
+  if (!reader.is_valid || encoded > 1) {
+    return false;
+  }
   value = encoded != 0;
   return true;
 }
@@ -2293,8 +2305,10 @@ fn EvalContext::make_subshell_bootstrap() const throws -> os::subshell_bootstrap
         } else {
           unused(display_name);
         }
-        if (!lexer::word_is_variable_name(name) || names.find(name).has_value())
+        if (!lexer::word_is_variable_name(name) ||
+            names.find(name).has_value()) {
           return;
+        }
 
         source += "export ";
         source.append(name);
@@ -2408,8 +2422,9 @@ fn EvalContext::make_child_evaluator_state(
   prepare_child_environment();
 
   let const should_launch_fresh_evaluator = !os::can_fork_evaluator();
-  if (should_launch_fresh_evaluator && bootstrap.payload.is_empty())
+  if (should_launch_fresh_evaluator && bootstrap.payload.is_empty()) {
     bootstrap = make_subshell_bootstrap();
+  }
 
   return os::child_evaluator_state{
       .bootstrap = should_launch_fresh_evaluator ? &bootstrap : nullptr,
@@ -2850,8 +2865,9 @@ fn EvalContext::apply_subshell_bootstrap(
     invalid_subshell_bootstrap();
   }
   let const body_length = static_cast<usize>(reader.read_u32());
-  if (!reader.is_valid || body_length != reader.get_remaining_length())
+  if (!reader.is_valid || body_length != reader.get_remaining_length()) {
     invalid_subshell_bootstrap();
+  }
 
   let execution = execution_wire{};
   let jobs = job_table_wire{};

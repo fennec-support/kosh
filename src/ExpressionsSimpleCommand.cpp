@@ -35,12 +35,16 @@ static pure fn is_process_dynamic_name(StringView text, usize position,
                                        bool is_bash_dynamic) wontthrow -> bool
 {
   if (!is_bash_dynamic) return false;
-  if (position > 0 && lexer::is_variable_name(text[position - 1])) return false;
+  if (position > 0 && lexer::is_variable_name(text[position - 1])) {
+    return false;
+  }
 
   usize end_position = position;
   while (end_position < text.length &&
          lexer::is_variable_name(text[end_position]))
+  {
     end_position++;
+  }
 
   return is_process_dynamic_variable_name(
       text.substring_of_length(position, end_position - position));
@@ -352,6 +356,7 @@ fn AssignCommand::evaluate_assignment(EvalContext &cxt) const throws -> i64
     let resolved_name = Maybe<String>{};
     if (cxt.variable_store().attributes().is_nameref(assigned_name) &&
         !(is_element_assignment && cxt.is_circular_nameref(assigned_name)))
+    {
       rarely
       {
         try {
@@ -363,6 +368,7 @@ fn AssignCommand::evaluate_assignment(EvalContext &cxt) const throws -> i64
         }
         assigned_name = resolved_name->view();
       }
+    }
     if (cxt.is_readonly(assigned_name)) {
       let error = Error{"Unable to assign '" + assigned_name +
                         "' because it is read only"};
@@ -376,8 +382,9 @@ fn AssignCommand::evaluate_assignment(EvalContext &cxt) const throws -> i64
           *bracket + 1, key_view.length - *bracket - 2);
       cxt.assign_array_element(array_name, subscript, value.view(),
                                m_assignment->get_update_mode());
-      if (!value_ran_substitution)
+      if (!value_ran_substitution) {
         cxt.execution_store().set_last_exit_status(0);
+      }
       cxt.publish_single_pipe_status(cxt.execution_store().last_exit_status());
       return cxt.execution_store().last_exit_status();
     }
@@ -391,8 +398,11 @@ fn AssignCommand::evaluate_assignment(EvalContext &cxt) const throws -> i64
         return false;
       }
 
-      for (usize i = 0; i < assigned_name.length; i++)
-        if (assigned_name[i] >= 'a' && assigned_name[i] <= 'z') return true;
+      for (usize i = 0; i < assigned_name.length; i++) {
+        if (assigned_name[i] >= 'a' && assigned_name[i] <= 'z') {
+          return true;
+        }
+      }
       return false;
     };
     if (m_assignment->get_update_mode() == assignment_update_mode::Append &&
@@ -604,7 +614,9 @@ fn assign_redirected_fd(ExecContext &ec,
                         bool is_file_borrowed = false) throws -> void
 {
   if (fd == 0) {
-    if (ec.in_fd && !ec.is_in_fd_borrowed) os::close_fd(*ec.in_fd);
+    if (ec.in_fd && !ec.is_in_fd_borrowed) {
+      os::close_fd(*ec.in_fd);
+    }
     ec.in_fd = file_fd;
     ec.is_in_fd_borrowed = is_file_borrowed;
 
@@ -612,7 +624,9 @@ fn assign_redirected_fd(ExecContext &ec,
   }
 
   if (fd == 1) {
-    if (ec.out_fd && !ec.is_out_fd_borrowed) os::close_fd(*ec.out_fd);
+    if (ec.out_fd && !ec.is_out_fd_borrowed) {
+      os::close_fd(*ec.out_fd);
+    }
     ec.out_fd = file_fd;
     ec.is_out_fd_borrowed = is_file_borrowed;
 
@@ -620,7 +634,9 @@ fn assign_redirected_fd(ExecContext &ec,
   }
 
   if (fd == 2) {
-    if (ec.err_fd && !ec.is_err_fd_borrowed) os::close_fd(*ec.err_fd);
+    if (ec.err_fd && !ec.is_err_fd_borrowed) {
+      os::close_fd(*ec.err_fd);
+    }
     ec.err_fd = file_fd;
     ec.is_err_fd_borrowed = is_file_borrowed;
 
@@ -719,15 +735,18 @@ static fn redirection_can_change_state(const Redirection &redir) wontthrow
     -> bool
 {
   if (redir.kind == Redirection::Kind::Heredoc) {
-    if (!redir.should_expand_heredoc || redir.heredoc == nullptr) return false;
+    if (!redir.should_expand_heredoc || redir.heredoc == nullptr) {
+      return false;
+    }
 
     let const body = redir.heredoc->text.view();
     return view_contains(body, StringView{"${"}) ||
            view_contains(body, StringView{"$(("});
   }
 
-  if (redir.target == nullptr || redir.target->kind() != Token::Kind::Word)
+  if (redir.target == nullptr || redir.target->kind() != Token::Kind::Word) {
     return false;
+  }
 
   for (let const &segment :
        static_cast<const tokens::WordToken *>(redir.target)->word().segments)
@@ -1100,12 +1119,15 @@ static fn find_double_quote_end(StringView source, usize position) throws
 
 static pure fn trimmed_reprint_body(StringView body) wontthrow -> StringView
 {
-  while (!body.is_empty() && (is_reprint_blank(body[0]) || body[0] == '\n'))
+  while (!body.is_empty() && (is_reprint_blank(body[0]) || body[0] == '\n')) {
     body = body.substring(1);
+  }
 
   while (!body.is_empty() && (is_reprint_blank(body[body.length - 1]) ||
                               body[body.length - 1] == '\n'))
+  {
     body = body.substring_of_length(0, body.length - 1);
+  }
 
   return body;
 }
@@ -1253,8 +1275,9 @@ static fn append_reprinted_source(String &out, StringView source,
     }
 
     if (should_collapse_blanks && is_reprint_blank(byte)) {
-      while (position < source.length && is_reprint_blank(source[position]))
+      while (position < source.length && is_reprint_blank(source[position])) {
         position++;
+      }
 
       if (out.length() != 0 && out.back() != ' ') {
         out.push(' ');
@@ -1265,8 +1288,9 @@ static fn append_reprinted_source(String &out, StringView source,
 
     if (byte == '\'' || byte == '`') {
       let const start = position++;
-      while (position < source.length && source[position] != byte)
+      while (position < source.length && source[position] != byte) {
         position++;
+      }
 
       if (position < source.length) position++;
       out.append(source.substring_of_length(start, position - start));
@@ -1370,8 +1394,9 @@ static fn append_reprinted_source(String &out, StringView source,
           position + 1 < source.length ? source[position + 1] : '\0';
 
       let do_trim_trailing_blank = [&] {
-        while (out.length() > start_length && out.back() == ' ')
+        while (out.length() > start_length && out.back() == ' ') {
           out.pop_back();
+        }
       };
 
       let do_skip_following_blanks = [&] {
@@ -1393,8 +1418,9 @@ static fn append_reprinted_source(String &out, StringView source,
       };
 
       if (byte == '#' && is_token_start) {
-        while (position < source.length && source[position] != '\n')
+        while (position < source.length && source[position] != '\n') {
           position++;
+        }
 
         do_trim_trailing_blank();
         continue;
@@ -1871,7 +1897,9 @@ fn SimpleCommand::redirect_exec_context(ExecContext &ec,
     case redirection_outcome::OpenedFile:
       if (target_fd == 1 && ec.should_duplicate_error_to_output) {
         if (ec.out_fd) {
-          if (ec.err_fd && !ec.is_err_fd_borrowed) os::close_fd(*ec.err_fd);
+          if (ec.err_fd && !ec.is_err_fd_borrowed) {
+            os::close_fd(*ec.err_fd);
+          }
 
           ec.err_fd = ec.out_fd;
           ec.is_err_fd_borrowed = ec.is_out_fd_borrowed;
@@ -1884,7 +1912,9 @@ fn SimpleCommand::redirect_exec_context(ExecContext &ec,
       }
       if (target_fd == 2 && ec.should_duplicate_output_to_error) {
         if (ec.err_fd) {
-          if (ec.out_fd && !ec.is_out_fd_borrowed) os::close_fd(*ec.out_fd);
+          if (ec.out_fd && !ec.is_out_fd_borrowed) {
+            os::close_fd(*ec.out_fd);
+          }
 
           ec.out_fd = ec.err_fd;
           ec.is_out_fd_borrowed = ec.is_err_fd_borrowed;

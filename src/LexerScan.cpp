@@ -103,8 +103,9 @@ fn unquote_heredoc_delimiter(StringView word, Allocator allocator) throws
 
 pure fn heredoc_line_content(StringView line) wontthrow -> StringView
 {
-  if (!line.is_empty() && line[line.length - 1] == '\r')
+  if (!line.is_empty() && line[line.length - 1] == '\r') {
     return line.substring_of_length(0, line.length - 1);
+  }
 
   return line;
 }
@@ -155,8 +156,9 @@ pure fn match_heredoc_line(StringView line,
 {
   usize content_start = 0;
   if (heredoc.should_strip_tabs) {
-    while (content_start < line.length && line[content_start] == '\t')
+    while (content_start < line.length && line[content_start] == '\t') {
       content_start++;
+    }
   }
   let const content = heredoc_line_content(line.substring(content_start));
 
@@ -170,8 +172,9 @@ fn skip_balanced_scan_heredoc_bodies(
   for (let const &heredoc : pending) {
     while (position < source.length) {
       let const line_start = position;
-      while (position < source.length && source[position] != '\n')
+      while (position < source.length && source[position] != '\n') {
         position++;
+      }
       let const is_terminator =
           match_heredoc_line(
               source.substring_of_length(line_start, position - line_start),
@@ -312,8 +315,9 @@ fn scan_balanced_shell_region(StringView source, usize position,
       if (closing_byte != '}' && (previous_byte == 0 || previous_byte == '\n' ||
                                   is_whitespace(previous_byte)))
       {
-        while (position < source.length && source[position] != '\n')
+        while (position < source.length && source[position] != '\n') {
           position++;
+        }
         previous_byte = '#';
         continue;
       }
@@ -347,8 +351,9 @@ fn scan_balanced_shell_region(StringView source, usize position,
           position++;
         }
 
-        while (position < source.length && is_whitespace(source[position]))
+        while (position < source.length && is_whitespace(source[position])) {
           position++;
+        }
 
         let const delimiter_start = position;
         position = balanced_scan_delimiter_end(source, position);

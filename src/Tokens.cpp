@@ -120,7 +120,9 @@ fn WordSegment::move_resources_to_arena(BumpArena &arena) throws -> void
 {
   let const allocator = bump_allocator(arena);
   text.move_to_allocator(allocator);
-  if (m_eval_cache == nullptr || allocator.owns(m_eval_cache)) return;
+  if (m_eval_cache == nullptr || allocator.owns(m_eval_cache)) {
+    return;
+  }
 
   let const cache = arena.create<segment_eval_cache>(*m_eval_cache);
   cache->substitution_ast = nullptr;
@@ -275,7 +277,9 @@ pure fn Word::get_fd_allocation_target() const wontthrow
   usize name_length = 1;
   while (name_length < inner.length &&
          lexer::is_variable_name(inner[name_length]))
+  {
     name_length++;
+  }
 
   if (name_length == inner.length) {
     return fd_allocation_target{inner, StringView{}, false};
@@ -294,7 +298,9 @@ pure fn Word::get_fd_allocation_target() const wontthrow
     position++;
   }
 
-  if (open_count != 0 || position != inner.length) return None;
+  if (open_count != 0 || position != inner.length) {
+    return None;
+  }
 
   let const subscript_length = inner.length - name_length - 2;
   if (subscript_length == 0) return None;
@@ -406,7 +412,9 @@ array_element_assignment_split(const ArrayList<WordSegment> &segments,
   usize name_end = 1;
   while (name_end < first.text.count() &&
          lexer::is_variable_name(first.text[name_end]))
+  {
     name_end++;
+  }
   if (name_end >= first.text.count() || first.text[name_end] != '[') {
     return koshka::None;
   }
@@ -535,7 +543,9 @@ hot fn Word::get_assignment_split(Allocator allocator) const throws
   usize name_cursor = 1;
   while (name_cursor < name_length &&
          lexer::is_variable_name(first.text[name_cursor]))
+  {
     name_cursor++;
+  }
   if (name_cursor < name_length && first.text[name_cursor] == '[') {
     if (first.text[name_length - 1] != ']' || name_length - name_cursor < 3) {
       return koshka::None;
@@ -610,7 +620,9 @@ cold fn Word::get_quoted_assignment_split() const throws
   usize name_cursor = 1;
   while (name_cursor < name_length &&
          lexer::is_variable_name(prefix_view[name_cursor]))
+  {
     name_cursor++;
+  }
 
   if (name_cursor < name_length && prefix_view[name_cursor] == '[') {
     if (prefix_view[name_length - 1] != ']' || name_length - name_cursor < 3) {
@@ -794,7 +806,9 @@ ExpandedWordToken::ExpandedWordToken(SourceLocation location, Word word)
 
 ExpandedWordToken::~ExpandedWordToken()
 {
-  if (m_literal_data == nullptr || is_arena_pointer(m_literal_data)) return;
+  if (m_literal_data == nullptr || is_arena_pointer(m_literal_data)) {
+    return;
+  }
 
   heap_allocator().free_array(m_literal_data, m_literal_length);
 }

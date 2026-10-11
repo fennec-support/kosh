@@ -121,7 +121,9 @@ fn CompoundList::single_unconditional_command() const wontthrow
   let const *command = node->command();
   if (command == nullptr) return nullptr;
 
-  if (command->is_async() || command->is_timed()) return nullptr;
+  if (command->is_async() || command->is_timed()) {
+    return nullptr;
+  }
 
   return command;
 }
@@ -419,7 +421,9 @@ hot fn CompoundList::evaluate_impl(EvalContext &cxt,
       utils::quit(ret.status, utils::farewell_policy::Goodbye);
     }
 
-    if (did_execute && ret.status != 0) ret.set(status_flag::ErrResolved);
+    if (did_execute && ret.status != 0) {
+      ret.set(status_flag::ErrResolved);
+    }
   }
 
   if (ret.status == NOTHING_WAS_EXECUTED) ret.status = 0;
@@ -756,8 +760,9 @@ cold fn Pipeline::evaluate_with_compound_stages(EvalContext &cxt) const throws
       pending_pipe = None;
 
       children.push(child);
-      if (is_async() && process_group_id == 0)
+      if (is_async() && process_group_id == 0) {
         process_group_id = os::process_id_of(child);
+      }
       last_child = child;
     }
   } catch (...) {

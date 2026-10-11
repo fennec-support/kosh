@@ -57,16 +57,18 @@ static pure fn arithmetic_expansion_assigns(StringView expression,
 {
   usize at = expansion_end;
 
-  while (at < expression.length && lexer::is_whitespace(expression[at]))
+  while (at < expression.length && lexer::is_whitespace(expression[at])) {
     at++;
+  }
 
   if (at >= expression.length) return false;
 
   switch (expression[at]) {
   case '<':
   case '>':
-    if (at + 1 >= expression.length || expression[at + 1] != expression[at])
+    if (at + 1 >= expression.length || expression[at + 1] != expression[at]) {
       return false;
+    }
     at += 2;
     break;
 
@@ -82,7 +84,9 @@ static pure fn arithmetic_expansion_assigns(StringView expression,
   default: break;
   }
 
-  if (at >= expression.length || expression[at] != '=') return false;
+  if (at >= expression.length || expression[at] != '=') {
+    return false;
+  }
 
   return at + 1 >= expression.length || expression[at + 1] != '=';
 }
@@ -196,12 +200,15 @@ fn check_arithmetic_expression_lints(AnalysisContext &actx,
       has_pending_division = false;
       if (has_reported_test_operator) break;
       if (position + 3 > expression.length) break;
-      if (position > 0 && !lexer::is_whitespace(expression[position - 1]))
+      if (position > 0 && !lexer::is_whitespace(expression[position - 1])) {
         break;
+      }
 
       let const after = position + 3;
       if (after < expression.length && !lexer::is_whitespace(expression[after]))
+      {
         break;
+      }
 
       let const candidate = expression.substring_of_length(position, 3);
       if (is_test_numeric_operator_word(candidate)) {
@@ -257,7 +264,9 @@ fn check_arithmetic_expression_lints(AnalysisContext &actx,
       has_pending_division = false;
       if (has_reported_xor_power ||
           (position + 1 < expression.length && expression[position + 1] == '='))
+      {
         break;
+      }
       if (obvious_power_position.has_value() &&
           *obvious_power_position == position)
       {
@@ -292,7 +301,9 @@ fn check_arithmetic_expression_lints(AnalysisContext &actx,
       usize name_end = name_start;
       while (name_end < expression.length &&
              lexer::is_variable_name(expression[name_end]))
+      {
         name_end++;
+      }
 
       if (name_end == name_start && name_end < expression.length) {
         switch (expression[name_end]) {
@@ -538,7 +549,9 @@ fn check_posix_word_portability(AnalysisContext &actx,
     usize position = 0;
     while (position < text.length &&
            (text[position] == ' ' || text[position] == '\t'))
+    {
       position++;
+    }
 
     if (position >= text.length || text[position] != '<') {
       break;
@@ -690,10 +703,12 @@ fn check_operand_lints_before_scan(AnalysisContext &actx,
 
       if (is_find_action(view)) has_action = true;
     }
-    if (has_exec && !has_exec_terminator && exec_location.has_value())
+    if (has_exec && !has_exec_terminator && exec_location.has_value()) {
       actx.report_diagnostic(diagnostic_id::sc2067, *exec_location);
-    if (has_or && has_action && !has_group && or_location.has_value())
+    }
+    if (has_or && has_action && !has_group && or_location.has_value()) {
       actx.report_diagnostic(diagnostic_id::sc2146, *or_location);
+    }
     if (!has_path_operand)
       actx.report_diagnostic(diagnostic_id::sc2185, input.command_location());
     break;
@@ -889,8 +904,9 @@ fn check_command_word_shape(AnalysisContext &actx,
   let const location = input.command_location();
   let has_explained_resolution_failure = false;
 
-  if (!command_literal.is_empty() && command_literal[0] == '-')
+  if (!command_literal.is_empty() && command_literal[0] == '-') {
     actx.report_diagnostic(diagnostic_id::sc2215, location);
+  }
 
   let const equals_position = command_literal.find_character('=');
 
@@ -913,19 +929,24 @@ fn check_command_word_shape(AnalysisContext &actx,
        command_literal != "[") ||
       (command_literal.starts_with(StringView{"[["}) &&
        command_literal != "[["))
+  {
     actx.report_diagnostic(diagnostic_id::sc1035, location);
+  }
 
   if (command_literal.starts_with(StringView{"[["}) &&
       command_literal.find_character('=').has_value())
+  {
     actx.report_diagnostic(diagnostic_id::sc2077, location);
+  }
 
   if (command_literal.starts_with(StringView{"["}) && command_literal != "[" &&
       command_literal != "[[" && args.count() > 1)
   {
     String last_storage{heap_allocator()};
     let const last_raw = borrowed_token_text(args.back(), last_storage);
-    if (!last_raw.is_empty() && last_raw[last_raw.length - 1] == ']')
+    if (!last_raw.is_empty() && last_raw[last_raw.length - 1] == ']') {
       actx.report_diagnostic(diagnostic_id::sc1014, location);
+    }
   }
 
   if (args.count() >= 2 && command_literal != "[" && command_literal != "[[" &&
@@ -959,10 +980,13 @@ fn note_formatted_target(AnalysisContext &actx, const command_lint_input &input,
                          StringView name, const SourceLocation &location) throws
     -> void
 {
-  if (name.is_empty() || input.is_command_shadowed) return;
+  if (name.is_empty() || input.is_command_shadowed) {
+    return;
+  }
 
-  if (!input.is_conditional && actx.function_scope_depth == 0)
+  if (!input.is_conditional && actx.function_scope_depth == 0) {
     actx.note_variable_assignment(name, location, true);
+  }
 
   actx.note_variable_occurrence(name, location,
                                 variable_occurrence_kind::Assignment,
@@ -1027,8 +1051,10 @@ fn check_operand_lints_after_scan(AnalysisContext &actx,
       if (literal.view().starts_with("-")) continue;
       if (word.segments.count() == 1 &&
           word.segments[0].kind == WordSegment::Kind::VariableReference)
+      {
         actx.report_diagnostic(diagnostic_id::sc2229,
                                args[i]->source_location());
+      }
 
       if (actx.walk.is_direct_pipeline_stage &&
           !literal.view().starts_with("-"))
@@ -1062,8 +1088,9 @@ fn check_operand_lints_after_scan(AnalysisContext &actx,
         continue;
       }
       if (!view.is_empty() && view[0] == '-') {
-        if (view.length >= 2 && ssh_option_takes_value(view[view.length - 1]))
+        if (view.length >= 2 && ssh_option_takes_value(view[view.length - 1])) {
           should_skip_option_value = true;
+        }
         continue;
       }
       if (!has_seen_host) {
@@ -1141,13 +1168,16 @@ fn check_operand_lints_after_scan(AnalysisContext &actx,
       let const &word = static_cast<const tokens::WordToken *>(args[i])->word();
       if (word.segments.count() != 1 ||
           word.segments[0].kind != WordSegment::Kind::VariableReference)
+      {
         continue;
+      }
 
       let const text = word.segments[0].text.view();
       let const name = operand_target_name(text);
-      if (!name.is_empty() && name.length == text.length)
+      if (!name.is_empty() && name.length == text.length) {
         actx.report_diagnostic(diagnostic_id::sc2163,
                                args[i]->source_location(), {name});
+      }
     }
     break;
   }
@@ -1200,8 +1230,10 @@ fn check_operand_lints_after_scan(AnalysisContext &actx,
           raw.view().find_character(']').has_value() &&
           (source_text.is_empty() ||
            (source_text[0] != '\'' && source_text[0] != '"')))
+      {
         actx.report_diagnostic(diagnostic_id::sc2184,
                                args[i]->source_location());
+      }
     }
     break;
   }
@@ -1215,8 +1247,10 @@ fn check_operand_lints_after_scan(AnalysisContext &actx,
         if (args[i + 1]->kind() == Token::Kind::Word &&
             word_is_bare_glob(
                 static_cast<const tokens::WordToken *>(args[i + 1])->word()))
+        {
           actx.report_diagnostic(diagnostic_id::sc2061,
                                  args[i + 1]->source_location());
+        }
       }
 
       if (predicate_view == "-exec" || predicate_view == "-execdir") {
@@ -1233,8 +1267,10 @@ fn check_operand_lints_after_scan(AnalysisContext &actx,
           if ((action.view() == "sh" || action.view() == "bash") &&
               shell_flag.view() == "-c" &&
               view_contains(script.view(), StringView{"{}"}))
+          {
             actx.report_diagnostic(diagnostic_id::sc2156,
                                    args[i + 3]->source_location());
+          }
         }
       }
     }

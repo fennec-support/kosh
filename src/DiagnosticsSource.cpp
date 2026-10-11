@@ -270,7 +270,9 @@ pure fn skip_here_document(StringView source, usize at) wontthrow -> usize
 
   while (cursor < source.length &&
          (source[cursor] == ' ' || source[cursor] == '\t'))
+  {
     cursor++;
+  }
 
   usize delimiter_start = cursor;
   usize delimiter_end;
@@ -281,13 +283,16 @@ pure fn skip_here_document(StringView source, usize at) wontthrow -> usize
     let const quote = source[cursor];
     cursor++;
     delimiter_start = cursor;
-    while (cursor < source.length && source[cursor] != quote)
+    while (cursor < source.length && source[cursor] != quote) {
       cursor++;
+    }
     delimiter_end = cursor;
   } else {
     while (cursor < source.length &&
            !byte_ends_here_document_delimiter(source[cursor]))
+    {
       cursor++;
+    }
     delimiter_end = cursor;
   }
 
@@ -296,19 +301,22 @@ pure fn skip_here_document(StringView source, usize at) wontthrow -> usize
   let const delimiter = source.substring_of_length(
       delimiter_start, delimiter_end - delimiter_start);
 
-  while (cursor < source.length && source[cursor] != '\n')
+  while (cursor < source.length && source[cursor] != '\n') {
     cursor++;
+  }
 
   while (cursor < source.length) {
     cursor++;
 
     usize line_start = cursor;
-    while (line_start < source.length && source[line_start] == '\t')
+    while (line_start < source.length && source[line_start] == '\t') {
       line_start++;
+    }
 
     usize line_end = line_start;
-    while (line_end < source.length && source[line_end] != '\n')
+    while (line_end < source.length && source[line_end] != '\n') {
       line_end++;
+    }
 
     if (line_end - line_start == delimiter.length &&
         source.substring_of_length(line_start, delimiter.length) == delimiter)
@@ -477,8 +485,9 @@ fn check_source_bytes(AnalysisContext &actx, StringView source) throws -> void
         {
           at = skip_here_document(source, at);
           line_start = at;
-          while (line_start > 0 && source[line_start - 1] != '\n')
+          while (line_start > 0 && source[line_start - 1] != '\n') {
             line_start--;
+          }
           continue;
         }
         break;
@@ -590,7 +599,9 @@ fn check_source_bytes(AnalysisContext &actx, StringView source) throws -> void
     }
 
     at++;
-    if (at <= source.length && source[at - 1] == '\n') line_start = at;
+    if (at <= source.length && source[at - 1] == '\n') {
+      line_start = at;
+    }
   }
 }
 
@@ -606,8 +617,9 @@ constexpr StaticStringSet KNOWN_SHELLS{KNOWN_SHELL_KEYS};
 pure fn path_base_name(StringView path) wontthrow -> StringView
 {
   usize at = path.length;
-  while (at > 0 && path[at - 1] != '/')
+  while (at > 0 && path[at - 1] != '/') {
     at--;
+  }
 
   return path.substring(at);
 }
@@ -620,12 +632,14 @@ struct shebang_word_reader
 
   fn read_next_word() wontthrow -> StringView
   {
-    while (at < line.length && lexer::is_whitespace(line[at]))
+    while (at < line.length && lexer::is_whitespace(line[at])) {
       at++;
+    }
 
     word_start = at;
-    while (at < line.length && !lexer::is_whitespace(line[at]))
+    while (at < line.length && !lexer::is_whitespace(line[at])) {
       at++;
+    }
 
     return line.substring_of_length(word_start, at - word_start);
   }
@@ -647,7 +661,9 @@ pure fn header_holds_shebang(StringView source, usize first_line_end) wontthrow
     usize line_start = at;
     while (line_start < source.length &&
            lexer::is_whitespace(source[line_start]))
+    {
       line_start++;
+    }
 
     if (line_start + 1 < source.length && source[line_start] == '#' &&
         source[line_start + 1] == '!')
@@ -661,8 +677,9 @@ pure fn header_holds_shebang(StringView source, usize first_line_end) wontthrow
       return false;
     }
 
-    while (at < source.length && source[at] != '\n')
+    while (at < source.length && source[at] != '\n') {
       at++;
+    }
   }
 
   return false;
@@ -674,14 +691,16 @@ fn check_shebang(AnalysisContext &actx, StringView source,
                  missing_shebang_policy shebang_policy) throws -> void
 {
   usize line_end = 0;
-  while (line_end < source.length && source[line_end] != '\n')
+  while (line_end < source.length && source[line_end] != '\n') {
     line_end++;
+  }
 
   let const first_line = source.substring_of_length(0, line_end);
 
   usize at = 0;
-  while (at < first_line.length && lexer::is_whitespace(first_line[at]))
+  while (at < first_line.length && lexer::is_whitespace(first_line[at])) {
     at++;
+  }
 
   let const indent_length = at;
 
@@ -695,8 +714,9 @@ fn check_shebang(AnalysisContext &actx, StringView source,
       return;
     }
 
-    if (at + 1 < first_line.length && first_line[at + 1] == '/')
+    if (at + 1 < first_line.length && first_line[at + 1] == '/') {
       actx.report_diagnostic(diagnostic_id::sc1104, SourceLocation{at, 1});
+    }
 
     return;
   }
@@ -705,7 +725,9 @@ fn check_shebang(AnalysisContext &actx, StringView source,
   usize bang_at = has_hash ? at + 1 : at;
   while (bang_at < first_line.length &&
          lexer::is_whitespace(first_line[bang_at]))
+  {
     bang_at++;
+  }
 
   let const has_bang =
       has_hash && bang_at < first_line.length && first_line[bang_at] == '!';
@@ -726,7 +748,9 @@ fn check_shebang(AnalysisContext &actx, StringView source,
 
     if (shebang_policy == missing_shebang_policy::Report &&
         actx.options.warning_level != 0)
+    {
       actx.report_diagnostic(diagnostic_id::sc2148, SourceLocation{0, 1});
+    }
 
     return;
   }
@@ -776,13 +800,16 @@ fn check_shebang(AnalysisContext &actx, StringView source,
 
     if (word == StringView{"-S"} ||
         word.starts_with(StringView{"--split-string"}))
+    {
       has_split_string_flag = true;
+    }
 
     parameter_count++;
   }
 
-  if (parameter_count > 1 && !(names_env && has_split_string_flag))
+  if (parameter_count > 1 && !(names_env && has_split_string_flag)) {
     actx.report_diagnostic(diagnostic_id::sc2096, interpreter_location);
+  }
 
   let const shell_name =
       names_env ? path_base_name(shell_argument) : interpreter_name;
@@ -797,8 +824,9 @@ fn check_shebang(AnalysisContext &actx, StringView source,
     return;
   }
 
-  if (shell_name == StringView{"dash"} || shell_name == StringView{"sh"})
+  if (shell_name == StringView{"dash"} || shell_name == StringView{"sh"}) {
     actx.is_posix_sh_shebang = true;
+  }
 }
 
 namespace {
@@ -820,8 +848,9 @@ constexpr usize DIRECTIVE_KEYWORD_LENGTH = 10;
 pure fn find_line_start(StringView source, usize position) wontthrow -> usize
 {
   usize at = position;
-  while (at > 0 && source[at - 1] != '\n')
+  while (at > 0 && source[at - 1] != '\n') {
     at--;
+  }
 
   return at;
 }
@@ -853,8 +882,9 @@ pure fn read_word_below_directive(StringView source, usize after) wontthrow
 
     if (source[at] != '#') break;
 
-    while (at < source.length && source[at] != '\n')
+    while (at < source.length && source[at] != '\n') {
       at++;
+    }
   }
 
   let const word_start = at;
@@ -877,17 +907,21 @@ pure fn read_line_above_directive(StringView source, usize line_start) wontthrow
 
     let const start = find_line_start(source, end);
     usize content_start = start;
-    while (content_start < end && lexer::is_whitespace(source[content_start]))
+    while (content_start < end && lexer::is_whitespace(source[content_start])) {
       content_start++;
+    }
 
     usize content_end = end;
     while (content_end > content_start &&
            lexer::is_whitespace(source[content_end - 1]))
+    {
       content_end--;
+    }
 
-    if (content_start < content_end && source[content_start] != '#')
+    if (content_start < content_end && source[content_start] != '#') {
       return source.substring_of_length(content_start,
                                         content_end - content_start);
+    }
 
     end = start;
   }
@@ -937,21 +971,25 @@ fn check_directive_body(AnalysisContext &actx, StringView source,
   usize at = span.position + body_position;
 
   while (at < comment_end) {
-    while (at < comment_end && lexer::is_whitespace(source[at]))
+    while (at < comment_end && lexer::is_whitespace(source[at])) {
       at++;
+    }
 
     if (at >= comment_end) return;
 
     let const token_start = at;
-    while (at < comment_end && !lexer::is_whitespace(source[at]))
+    while (at < comment_end && !lexer::is_whitespace(source[at])) {
       at++;
+    }
 
     let const token = source.substring_of_length(token_start, at - token_start);
 
     usize separator_position = 0;
     while (separator_position < token.length &&
            token[separator_position] != '=')
+    {
       separator_position++;
+    }
 
     if (separator_position == token.length) {
       actx.report_diagnostic(diagnostic_id::sc1125,
@@ -1118,10 +1156,12 @@ pure fn names_resemble_each_other(StringView left, StringView right) wontthrow
 
   loop
   {
-    while (at_left < left.length && left[at_left] == '_')
+    while (at_left < left.length && left[at_left] == '_') {
       at_left++;
-    while (at_right < right.length && right[at_right] == '_')
+    }
+    while (at_right < right.length && right[at_right] == '_') {
       at_right++;
+    }
 
     if (at_left == left.length || at_right == right.length) {
       break;
@@ -1349,7 +1389,9 @@ fn check_function_argument_dataflow(AnalysisContext &actx) throws -> void
       !actx.effects.should_silence_unresolved_commands &&
       actx.should_report(diagnostic_id::sc2218);
 
-  if (!should_check_argument_use && !should_check_definition_order) return;
+  if (!should_check_argument_use && !should_check_definition_order) {
+    return;
+  }
 
   let const summaries = build_function_name_summaries(actx);
 
@@ -1359,8 +1401,9 @@ fn check_function_argument_dataflow(AnalysisContext &actx) throws -> void
       if (definition.first_positional_read.is_empty()) continue;
 
       let const summary = summaries.find(definition.name.view());
-      if (!summary.has_value() || summary->first_definition_index != index)
+      if (!summary.has_value() || summary->first_definition_index != index) {
         continue;
+      }
 
       check_function_argument_use(actx, definition, *summary.value());
     }

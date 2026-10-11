@@ -357,8 +357,9 @@ fn Getconf::execute(const ExecContext &ec, EvalContext &cxt,
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (FLAG_GETCONF_ALL.is_enabled()) {
-    if (operands.count() > 1)
+    if (operands.count() > 1) {
       return report_usage_error(ec, cxt, args[0].view());
+    }
   } else if (operands.is_empty() || operands.count() > 2) {
     return report_usage_error(ec, cxt, args[0].view());
   }

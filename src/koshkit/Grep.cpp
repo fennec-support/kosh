@@ -285,7 +285,9 @@ collect_recursive_sources(const ExecContext &ec, EvalContext &cxt,
     if (has_file_status) {
       if (operand_device_id != nullptr &&
           file_status.device_id != *operand_device_id)
+      {
         return;
+      }
 
       current_device_id = file_status.device_id;
       if (operand_device_id == nullptr) operand_device_id = &current_device_id;
@@ -495,12 +497,16 @@ static fn parse_grep_colors(grep_palette &palette,
           has_value ? specification.substring_of_length(value_start,
                                                         index - value_start)
                     : StringView{});
-      if (byte == '\0') return;
+      if (byte == '\0') {
+        return;
+      }
 
       name_start = index + 1;
       has_value = false;
     } else if (byte == '=') {
-      if (index == name_start || has_value) return;
+      if (index == name_start || has_value) {
+        return;
+      }
 
       has_value = true;
       value_start = index + 1;
@@ -1132,10 +1138,11 @@ public:
       m_sources.reserve(m_recursive_storage.count() + 1);
       for (let const &source : m_recursive_storage) {
         let const view = source.view();
-        if (is_working_directory_implied && view.starts_with("./"))
+        if (is_working_directory_implied && view.starts_with("./")) {
           m_sources.push(view.substring(2));
-        else
+        } else {
           m_sources.push(view);
+        }
       }
 
       if (m_sources.is_empty() && operand_sources.count() == 1 &&

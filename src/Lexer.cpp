@@ -132,7 +132,9 @@ hot pure fn is_variable_name(char ch) wontthrow -> bool
 
 pure fn word_is_variable_name(StringView word) wontthrow -> bool
 {
-  if (word.is_empty() || !is_variable_name_start(word[0])) return false;
+  if (word.is_empty() || !is_variable_name_start(word[0])) {
+    return false;
+  }
 
   for (usize position = 1; position < word.length; position++) {
     if (!is_variable_name(word[position])) return false;
@@ -143,15 +145,24 @@ pure fn word_is_variable_name(StringView word) wontthrow -> bool
 
 pure fn word_looks_like_assignment(StringView word) wontthrow -> bool
 {
-  if (word.is_empty() || !is_variable_name_start(word[0])) return false;
+  if (word.is_empty() || !is_variable_name_start(word[0])) {
+    return false;
+  }
   usize position = 1;
-  while (position < word.length && is_variable_name(word[position]))
+  while (position < word.length && is_variable_name(word[position])) {
     position++;
-  if (position < word.length && word[position] == '=') return true;
+  }
+  if (position < word.length && word[position] == '=') {
+    return true;
+  }
   if (position + 1 < word.length && word[position] == '+' &&
       word[position + 1] == '=')
+  {
     return true;
-  if (position >= word.length || word[position] != '[') return false;
+  }
+  if (position >= word.length || word[position] != '[') {
+    return false;
+  }
 
   usize bracket_depth = 1;
   position++;
@@ -166,7 +177,9 @@ pure fn word_looks_like_assignment(StringView word) wontthrow -> bool
     }
     position++;
   }
-  if (position < word.length && word[position] == '=') return true;
+  if (position < word.length && word[position] == '=') {
+    return true;
+  }
 
   return position + 1 < word.length && word[position] == '+' &&
          word[position + 1] == '=';
@@ -448,8 +461,9 @@ cold fn Lexer::walk_heredoc_body(usize start, StringView delimiter,
     if (!has_newline) break;
   }
 
-  if (!did_find_delimiter && has_near_miss)
+  if (!did_find_delimiter && has_near_miss) {
     m_heredoc_terminator_misses.push(near_miss);
+  }
 
   return position;
 }
@@ -468,8 +482,9 @@ cold fn Lexer::collect_pending_heredocs() throws -> void
       if (is_delimiter) return false;
       if (pending.tab_policy == heredoc_tab_policy::Strip) {
         usize offset = 0;
-        while (offset < line.length && line[offset] == '\t')
+        while (offset < line.length && line[offset] == '\t') {
           offset++;
+        }
         line = line.substring_of_length(offset, line.length - offset);
       }
       collected.append(line);
@@ -683,14 +698,17 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
       } else {
         let const skipped = lexer::skip_quoted_run(
             m_source.substring(m_cursor_position), offset - 1);
-        if (skipped == offset - 1 && (c == '\'' || c == '"')) return None;
+        if (skipped == offset - 1 && (c == '\'' || c == '"')) {
+          return None;
+        }
 
         offset = skipped + 1;
       }
     }
     let const after = chop_character(offset);
-    if (after == '=' || (after == '+' && chop_character(offset + 1) == '='))
+    if (after == '=' || (after == '+' && chop_character(offset + 1) == '=')) {
       return offset;
+    }
     return None;
   };
 
@@ -744,7 +762,9 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
         continue;
       }
 
-      if (extglob_depth == 0 || is_at_end) break;
+      if (extglob_depth == 0 || is_at_end) {
+        break;
+      }
 
       if (ch == '(')
         extglob_depth++;
@@ -797,7 +817,9 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
         }
         if (lexer::is_extglob_operator(next) &&
             chop_character(byte_count + 1) == '(')
+        {
           break;
+        }
       }
       do_append_unquoted_run(m_source.substring_of_length(
           m_cursor_position + run_start, byte_count - run_start));
@@ -914,7 +936,9 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
           let const c = chop_character(byte_count);
           byte_count++;
           if (c == '\'') break;
-          if (c == '\\' && has_character(byte_count)) byte_count++;
+          if (c == '\\' && has_character(byte_count)) {
+            byte_count++;
+          }
         }
 
         let decoded = String{heap_allocator()};
@@ -976,7 +1000,9 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
             byte_count++;
             loop
             {
-              if (!has_character(byte_count)) break;
+              if (!has_character(byte_count)) {
+                break;
+              }
 
               let const q = chop_character(byte_count);
               byte_count++;
@@ -986,13 +1012,17 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
                 }
                 continue;
               }
-              if (q == quote) break;
+              if (q == quote) {
+                break;
+              }
             }
           } else if (c == '`') {
             byte_count++;
             loop
             {
-              if (!has_character(byte_count)) break;
+              if (!has_character(byte_count)) {
+                break;
+              }
 
               let const b = chop_character(byte_count);
               byte_count++;
@@ -1002,7 +1032,9 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
                 }
                 continue;
               }
-              if (b == '`') break;
+              if (b == '`') {
+                break;
+              }
             }
           } else if (c == '$' && chop_character(byte_count + 1) == '(') {
             byte_count++;
@@ -1011,7 +1043,9 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
             char nested_quote = 0;
             loop
             {
-              if (!has_character(byte_count)) break;
+              if (!has_character(byte_count)) {
+                break;
+              }
 
               let const p = chop_character(byte_count);
               byte_count++;
@@ -1022,7 +1056,9 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
                   }
                   continue;
                 }
-                if (p == nested_quote) nested_quote = 0;
+                if (p == nested_quote) {
+                  nested_quote = 0;
+                }
                 continue;
               }
               if (p == '\\') {
@@ -1037,7 +1073,9 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
                 paren_depth++;
               } else if (p == ')') {
                 paren_depth--;
-                if (paren_depth == 0) break;
+                if (paren_depth == 0) {
+                  break;
+                }
               }
             }
           } else if (is_bracket_arithmetic && c == '[') {
@@ -1045,7 +1083,9 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
             byte_count++;
           } else if (is_bracket_arithmetic && c == ']') {
             byte_count++;
-            if (group_depth == 0) break;
+            if (group_depth == 0) {
+              break;
+            }
             group_depth--;
           } else if (is_bracket_arithmetic) {
             byte_count++;
@@ -1086,13 +1126,15 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
         let const inner_start = m_cursor_position + byte_count;
         let const substitution_end =
             lexer::scan_balanced_shell_region(m_source, inner_start, ')');
-        if (!substitution_end.has_value()) rarely
+        if (!substitution_end.has_value()) {
+          rarely
           {
             throw ErrorWithLocationAndDetails{
                 here(m_cursor_position, m_source.count() - m_cursor_position),
                 "Unterminated command substitution", here(m_source.count(), 1),
                 "expected ) here"};
           }
+        }
         let inner =
             SegmentText{bump_allocator(arena()),
                         m_source.substring_of_length(
@@ -1127,24 +1169,30 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
           }
         }
         let const name_start = byte_count;
-        if (is_value_substitution) byte_count++;
+        if (is_value_substitution) {
+          byte_count++;
+        }
         usize brace_depth = 1;
         char quote = 0;
         loop
         {
-          if (!has_character(byte_count)) rarely
+          if (!has_character(byte_count)) {
+            rarely
             {
               throw ErrorWithLocationAndDetails{
                   here(m_cursor_position + byte_count, 1),
                   "Unterminated variable expansion",
                   here(m_cursor_position + byte_count, 1), "expected } here"};
             }
+          }
 
           let const c = chop_character(byte_count);
           byte_count++;
 
           if (quote == '\'') {
-            if (c == '\'') quote = 0;
+            if (c == '\'') {
+              quote = 0;
+            }
             continue;
           }
           if (c == '\\') {
@@ -1154,7 +1202,9 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
             continue;
           }
           if (quote == '"') {
-            if (c == '"') quote = 0;
+            if (c == '"') {
+              quote = 0;
+            }
             continue;
           }
           if (c == '\'' && is_in_double_quotes && is_posix_option_on()) {
@@ -1167,7 +1217,9 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
           if (c == '`') {
             loop
             {
-              if (!has_character(byte_count)) break;
+              if (!has_character(byte_count)) {
+                break;
+              }
 
               let const b = chop_character(byte_count);
               byte_count++;
@@ -1177,7 +1229,9 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
                 }
                 continue;
               }
-              if (b == '`') break;
+              if (b == '`') {
+                break;
+              }
             }
             continue;
           }
@@ -1201,7 +1255,9 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
           }
           if (c == '}') {
             brace_depth--;
-            if (brace_depth == 0) break;
+            if (brace_depth == 0) {
+              break;
+            }
             continue;
           }
         }
@@ -1214,13 +1270,14 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
             is_in_double_quotes
         });
         let &expansion_segment = word.segments.back();
-        if (is_function_substitution)
+        if (is_function_substitution) {
           expansion_segment.set_source_span(m_cursor_position + expansion_start,
                                             byte_count - expansion_start);
-        else
+        } else {
           expansion_segment.set_source_span(m_cursor_position +
                                                 expansion_start + 2,
                                             expansion_segment.text.count());
+        }
         if (should_validate_substitutions()) {
           if (is_function_substitution) {
             let const body_offset = is_value_substitution ? usize{1} : 0;
@@ -1238,8 +1295,9 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
         }
       } else if (lexer::is_variable_name_start(next)) {
         let const name_start = byte_count;
-        while (lexer::is_variable_name(chop_character(byte_count)))
+        while (lexer::is_variable_name(chop_character(byte_count))) {
           byte_count++;
+        }
         let const name = m_source.substring_of_length(
             m_cursor_position + name_start, byte_count - name_start);
         word.segments.push(WordSegment{
@@ -1817,7 +1875,9 @@ cold fn lexer::find_segment_substitution(StringView source,
     break;
 
   case WordSegment::Kind::ProcessSubstitution:
-    if (length < 3 || text.is_empty()) return None;
+    if (length < 3 || text.is_empty()) {
+      return None;
+    }
 
     entry.body_position = position + 2;
     entry.body_length = length - 3;

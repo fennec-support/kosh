@@ -50,12 +50,16 @@ static fn narrow_integer(i64 value) throws -> ErrorOr<T>
   } else if constexpr (std::is_signed_v<T>) {
     if (value < static_cast<i64>(std::numeric_limits<T>::min()) ||
         value > static_cast<i64>(std::numeric_limits<T>::max()))
+    {
       return Error{"integer value out of range"};
+    }
     return static_cast<T>(value);
   } else {
     if (value < 0 || static_cast<u64>(value) >
                          static_cast<u64>(std::numeric_limits<T>::max()))
+    {
       return Error{"integer value out of range"};
+    }
     return static_cast<T>(value);
   }
 }
@@ -181,11 +185,13 @@ fn StringView::next_line(usize &position) const wontthrow -> StringView
 fn StringView::next_ascii_whitespace_word(usize &position) const wontthrow
     -> StringView
 {
-  while (position < length && is_ascii_whitespace(data[position]))
+  while (position < length && is_ascii_whitespace(data[position])) {
     position++;
+  }
   let const start_position = position;
-  while (position < length && !is_ascii_whitespace(data[position]))
+  while (position < length && !is_ascii_whitespace(data[position])) {
     position++;
+  }
 
   return substring_of_length(start_position, position - start_position);
 }

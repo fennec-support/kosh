@@ -65,7 +65,9 @@ fn Which::execute(const ExecContext &ec, EvalContext &cxt,
     {
       if (!is_quiet) {
         output += program_name;
-        if (os::is_stdout_a_tty()) output += ": Shell builtin";
+        if (os::is_stdout_a_tty()) {
+          output += ": Shell builtin";
+        }
         output += '\n';
       }
     } else if (let const paths = cxt.program_resolver().search(

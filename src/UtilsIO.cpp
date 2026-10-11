@@ -383,12 +383,15 @@ fn read_git_ref_sha(const Path &git_dir, StringView ref_name) throws -> String
       let line = newline_pos.has_value()
                      ? remainder.substring_of_length(0, *newline_pos)
                      : remainder;
-      if (!line.is_empty() && line[line.length - 1] == '\r')
+      if (!line.is_empty() && line[line.length - 1] == '\r') {
         line = line.substring_of_length(0, line.length - 1);
+      }
       if (!line.is_empty() && line[0] != '#' && line[0] != '^') {
         if (let const separator = line.find_character(' ');
             separator.has_value() && line.substring(*separator + 1) == ref_name)
+        {
           return String{line.substring_of_length(0, *separator)};
+        }
       }
       if (!newline_pos.has_value()) break;
       remainder = remainder.substring(*newline_pos + 1);
@@ -420,8 +423,9 @@ fn git_upstream_ref(const Path &git_dir, StringView branch_name) throws
                    ? remainder.substring_of_length(0, *newline_pos)
                    : remainder;
 
-    while (!line.is_empty() && (line[0] == ' ' || line[0] == '\t'))
+    while (!line.is_empty() && (line[0] == ' ' || line[0] == '\t')) {
       line = line.substring(1);
+    }
     while (!line.is_empty() &&
            (line[line.length - 1] == ' ' || line[line.length - 1] == '\r'))
     {
@@ -438,11 +442,13 @@ fn git_upstream_ref(const Path &git_dir, StringView branch_name) throws
         continue;
       }
       let key = line.substring_of_length(0, *eq_pos);
-      while (!key.is_empty() && key[key.length - 1] == ' ')
+      while (!key.is_empty() && key[key.length - 1] == ' ') {
         key = key.substring_of_length(0, key.length - 1);
+      }
       let value = line.substring(*eq_pos + 1);
-      while (!value.is_empty() && (value[0] == ' ' || value[0] == '\t'))
+      while (!value.is_empty() && (value[0] == ' ' || value[0] == '\t')) {
         value = value.substring(1);
+      }
 
       if (key == "remote") remote_name = String{value};
       if (key == "merge") merge_ref = String{value};
@@ -540,7 +546,9 @@ fn git_status(StringView ceiling_directories, Allocator allocator) throws
     usize position = 0;
     let const word = text.next_ascii_whitespace_word(position);
     let const parsed = parse_decimal_u64(word);
-    if (parsed.is_error() || parsed.value() > INT32_MAX) return 0;
+    if (parsed.is_error() || parsed.value() > INT32_MAX) {
+      return 0;
+    }
 
     return static_cast<i32>(parsed.value());
   };
@@ -612,7 +620,9 @@ fn parse_file_mode(StringView expression, u32 current_mode, u32 creation_mask,
     if (position == expression.length) return None;
 
     let const operation = expression[position++];
-    if (operation != '+' && operation != '-' && operation != '=') return None;
+    if (operation != '+' && operation != '-' && operation != '=') {
+      return None;
+    }
 
     u32 requested_bits = 0;
     u32 requested_special_bits = 0;
@@ -623,8 +633,9 @@ fn parse_file_mode(StringView expression, u32 current_mode, u32 creation_mask,
       case 'w': requested_bits |= 0222; break;
       case 'x': requested_bits |= 0111; break;
       case 'X':
-        if (kind == file_kind_mode::Directory || (mode & 0111) != 0)
+        if (kind == file_kind_mode::Directory || (mode & 0111) != 0) {
           requested_bits |= 0111;
+        }
         break;
       case 's':
         if ((selected_classes & 0700) != 0) requested_special_bits |= 04000;

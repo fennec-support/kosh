@@ -66,7 +66,9 @@ fn Locale::execute(const ExecContext &ec, EvalContext &cxt,
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (FLAG_LOCALE_ALL_LOCALES.is_enabled() && FLAG_LOCALE_CHARMAPS.is_enabled())
+  {
     return report_usage_error(ec, cxt, args[0].view());
+  }
   if (FLAG_LOCALE_ALL_LOCALES.is_enabled()) {
     ec.print_to_stdout("C\nPOSIX\n");
     return 0;
@@ -114,10 +116,14 @@ fn Locale::execute(const ExecContext &ec, EvalContext &cxt,
     }
     if ((keyword->value_kind == locale_value_kind::CharacterMap) &&
         (active_locale == nullptr))
+    {
       active_locale = setlocale(LC_ALL, nullptr);
+    }
     if ((keyword->value_kind != locale_value_kind::CharacterMap) &&
         (locale_values == nullptr))
+    {
       locale_values = localeconv();
+    }
     if (FLAG_LOCALE_CATEGORY.is_enabled()) {
       ec.print_to_stdout(keyword->category);
       ec.print_to_stdout("\n");

@@ -167,7 +167,9 @@ static fn history_file_identity_matches(const history_file_identity &left,
                                         const history_file_identity &right)
     -> bool
 {
-  if (!left.is_set || !right.is_set) return false;
+  if (!left.is_set || !right.is_set) {
+    return false;
+  }
   if (left.has_file_identity && right.has_file_identity) {
     return left.device_id == right.device_id && left.file_id == right.file_id;
   }
@@ -326,7 +328,9 @@ static fn parse_history_selection(
 
   let const do_resolve = [&](StringView text) throws -> Maybe<usize> {
     let const parsed = utils::parse_decimal_i64(text);
-    if (parsed.is_error() || parsed.value() == 0) return None;
+    if (parsed.is_error() || parsed.value() == 0) {
+      return None;
+    }
 
     if (parsed.value() < 0) {
       let const index = static_cast<i64>(events.count()) + parsed.value();

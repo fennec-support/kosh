@@ -176,7 +176,9 @@ static fn linux_unix_socket_peers(Allocator allocator) throws
   bool is_valid = true;
   while (!is_done && is_valid) {
     let const now_nanos = monotonic_nanos();
-    if (now_nanos == 0 || now_nanos >= deadline_nanos) break;
+    if (now_nanos == 0 || now_nanos >= deadline_nanos) {
+      break;
+    }
     let const remaining_nanos = deadline_nanos - now_nanos;
     let const timeout_milliseconds =
         static_cast<int>((remaining_nanos + 999999) / 1000000);
@@ -185,7 +187,9 @@ static fn linux_unix_socket_peers(Allocator allocator) throws
     waited.events = POLLIN;
     if (::poll(&waited, 1, timeout_milliseconds) <= 0 ||
         (waited.revents & POLLIN) == 0)
+    {
       break;
+    }
 
     alignas(struct nlmsghdr) char buffer[64 * 1024]{};
     struct iovec vector{buffer, sizeof(buffer)};
@@ -253,9 +257,10 @@ static fn linux_unix_socket_peers(Allocator allocator) throws
       }
     }
   }
-  if (!is_done || !is_valid)
+  if (!is_done || !is_valid) {
     return linux_unix_socket_peer_list{allocator,
                                        linux_unix_socket_peer_comparator{}};
+  }
   return steal(peers).make_sorted(linux_unix_socket_peer_comparator{});
 }
 
@@ -294,12 +299,14 @@ static pure fn linux_unix_socket_field(StringView text, usize index) wontthrow
   usize field = 0;
   usize position = 0;
   while (position < text.length) {
-    while (position < text.length && text[position] == ' ')
+    while (position < text.length && text[position] == ' ') {
       position++;
+    }
     if (position >= text.length) break;
     let const start = position;
-    while (position < text.length && text[position] != ' ')
+    while (position < text.length && text[position] != ' ') {
       position++;
+    }
     if (field == index)
       return text.substring_of_length(start, position - start);
     field++;
@@ -311,7 +318,9 @@ template <typename Row>
 static fn for_each_proc_net_row(StringView path, Row do_row) throws -> void
 {
   let const contents = Path{path}.read_entire_file();
-  if (!contents.has_value() || contents->is_empty()) return;
+  if (!contents.has_value() || contents->is_empty()) {
+    return;
+  }
 
   let const text = contents->view();
   usize position = 0;
@@ -440,7 +449,9 @@ static fn linux_socket_owners(Allocator allocator) throws
           StringView{target, static_cast<usize>(target_length)};
       if (!target_view.starts_with("socket:[") ||
           target_view[target_view.length - 1] != ']')
+      {
         continue;
+      }
       let const inode =
           target_view.substring_of_length(8, target_view.length - 9).to<u64>();
       if (inode.is_error()) continue;
@@ -487,7 +498,9 @@ static fn linux_network_sockets_from_file(
     let const queue_separator = queues.find_character(':');
     if (!local_separator.has_value() || !peer_separator.has_value() ||
         !queue_separator.has_value())
+    {
       return;
+    }
 
     let const local_address = linux_socket_address(
         local.substring_of_length(0, *local_separator), allocator, family);
@@ -509,7 +522,9 @@ static fn linux_network_sockets_from_file(
         local_port.is_error() || peer_port.is_error() ||
         state_value.is_error() || receive_queue.is_error() ||
         send_queue.is_error() || inode.is_error())
+    {
       return;
+    }
 
     let const do_push_socket = [&](u32 process_id, u64 start_token,
                                    bool has_start_token) throws {
@@ -555,7 +570,9 @@ fn logged_in_users() throws -> ArrayList<user_session>
   const struct utmpx *entry;
 
   while ((entry = getutxent()) != nullptr) {
-    if (entry->ut_type != USER_PROCESS || entry->ut_user[0] == '\0') continue;
+    if (entry->ut_type != USER_PROCESS || entry->ut_user[0] == '\0') {
+      continue;
+    }
     let const user_length = strnlen(entry->ut_user, sizeof(entry->ut_user));
     let const line_length = strnlen(entry->ut_line, sizeof(entry->ut_line));
     result.push(user_session{
@@ -934,7 +951,9 @@ fn descriptors_refer_to_same_file(os::descriptor first,
   struct stat second_status{};
   if (::fstat(first, &first_status) != 0 ||
       ::fstat(second, &second_status) != 0)
+  {
     return false;
+  }
 
   return first_status.st_dev == second_status.st_dev &&
          first_status.st_ino == second_status.st_ino;
@@ -942,7 +961,9 @@ fn descriptors_refer_to_same_file(os::descriptor first,
 
 fn descriptor_from_fd_number(i64 fd_number) wontthrow -> os::descriptor
 {
-  if (fd_number < 0 || fd_number > INT32_MAX) return KOSH_INVALID_FD;
+  if (fd_number < 0 || fd_number > INT32_MAX) {
+    return KOSH_INVALID_FD;
+  }
 
   return static_cast<os::descriptor>(fd_number);
 }
@@ -1017,10 +1038,14 @@ fn network_interface_addresses() throws -> ArrayList<network_interface_address>
   for (let *current = interfaces; current != nullptr;
        current = current->ifa_next)
   {
-    if (current->ifa_name == nullptr || current->ifa_addr == nullptr) continue;
+    if (current->ifa_name == nullptr || current->ifa_addr == nullptr) {
+      continue;
+    }
 
     let const family = current->ifa_addr->sa_family;
-    if (family != AF_INET && family != AF_INET6) continue;
+    if (family != AF_INET && family != AF_INET6) {
+      continue;
+    }
 
     char address[NI_MAXHOST]{};
     let const address_length = family == AF_INET ? sizeof(struct sockaddr_in)
@@ -1053,7 +1078,9 @@ fn default_network_interface(Allocator allocator) throws -> Maybe<String>
   while (position < contents->length()) {
     let const line_start = position;
     while (position < contents->length() && contents->view()[position] != '\n')
+    {
       position++;
+    }
     let const line =
         contents->view().substring_of_length(line_start, position - line_start);
     if (position < contents->length()) position++;
@@ -1065,11 +1092,15 @@ fn default_network_interface(Allocator allocator) throws -> Maybe<String>
     while (word_position < line.length && word_count < countof(words)) {
       while (word_position < line.length &&
              (line[word_position] == ' ' || line[word_position] == '\t'))
+      {
         word_position++;
+      }
       let const word_start = word_position;
       while (word_position < line.length && line[word_position] != ' ' &&
              line[word_position] != '\t')
+      {
         word_position++;
+      }
       if (word_position > word_start)
         words[word_count++] =
             line.substring_of_length(word_start, word_position - word_start);
@@ -1080,8 +1111,9 @@ fn default_network_interface(Allocator allocator) throws -> Maybe<String>
          words[3][3] == '7' || words[3][3] == '9' || words[3][3] == 'b' ||
          words[3][3] == 'B' || words[3][3] == 'd' || words[3][3] == 'D' ||
          words[3][3] == 'f' || words[3][3] == 'F');
-    if (word_count >= 4 && words[1] == "00000000" && has_up_flag)
+    if (word_count >= 4 && words[1] == "00000000" && has_up_flag) {
       return String{allocator, words[0]};
+    }
   }
 #else
   unused(allocator);
@@ -1195,7 +1227,9 @@ fn network_sockets(network_socket_process_mode process_mode) throws
       }
 
       let const &info = socket.psi;
-      if (info.soi_family != AF_INET && info.soi_family != AF_INET6) continue;
+      if (info.soi_family != AF_INET && info.soi_family != AF_INET6) {
+        continue;
+      }
       if (info.soi_protocol != IPPROTO_TCP && info.soi_protocol != IPPROTO_UDP)
       {
         continue;
@@ -1308,7 +1342,9 @@ static fn passwd_field(StringView line, usize index) wontthrow -> StringView
   usize field_start_position = 0;
   usize field_index = 0;
   for (usize i = 0; i <= line.length; i++) {
-    if (i != line.length && line[i] != ':') continue;
+    if (i != line.length && line[i] != ':') {
+      continue;
+    }
     if (field_index == index)
       return line.substring_of_length(field_start_position,
                                       i - field_start_position);
@@ -1384,7 +1420,9 @@ terminal_echo_guard::terminal_echo_guard(descriptor input,
                                          terminal_echo_mode mode) wontthrow
     : m_input(input)
 {
-  if (mode != terminal_echo_mode::Disable || !is_fd_a_tty(input)) return;
+  if (mode != terminal_echo_mode::Disable || !is_fd_a_tty(input)) {
+    return;
+  }
   if (tcgetattr(input, &m_original_mode) != 0) {
     m_did_succeed = false;
     return;
@@ -1714,7 +1752,9 @@ fn get_terminal_dimensions(descriptor output) wontthrow
   LOG(Debug, "querying the terminal size");
   struct winsize window{};
   if (ioctl(output, TIOCGWINSZ, &window) != 0) return None;
-  if (window.ws_col == 0 || window.ws_row == 0) return None;
+  if (window.ws_col == 0 || window.ws_row == 0) {
+    return None;
+  }
   return terminal_dimensions{window.ws_col, window.ws_row};
 }
 
@@ -1952,8 +1992,9 @@ static fn restore_encoded_terminal_settings(termios &state,
   let do_read_field = [&](u64 &value) wontthrow -> bool {
     if (position > encoded.length) return false;
     usize end = position;
-    while (end < encoded.length && encoded[end] != ':')
+    while (end < encoded.length && encoded[end] != ':') {
       end++;
+    }
     if (end == position) return false;
     let const parsed = utils::parse_integer_in_base_u64(
         encoded.substring_of_length(position, end - position), int_base::hex);
@@ -1998,7 +2039,9 @@ static fn restore_encoded_terminal_settings(termios &state,
 
   for (usize index = 0; index < NCCS; index++) {
     u64 value = 0;
-    if (!do_read_field(value) || value > UCHAR_MAX) return false;
+    if (!do_read_field(value) || value > UCHAR_MAX) {
+      return false;
+    }
     state.c_cc[index] = static_cast<cc_t>(value);
   }
 
@@ -2398,7 +2441,9 @@ static fn capture_entry_ignored_signals() wontthrow -> void
   for (i32 signal_number = 1; signal_number <= ENTRY_IGNORED_SIGNAL_LIMIT;
        signal_number++)
   {
-    if (signal_number == SIGKILL || signal_number == SIGSTOP) continue;
+    if (signal_number == SIGKILL || signal_number == SIGSTOP) {
+      continue;
+    }
 
     struct sigaction sa = {};
     if (sigaction(signal_number, nullptr, &sa) != 0) continue;
@@ -2628,7 +2673,9 @@ fn uid_to_username(u32 uid) throws -> Maybe<String>
   if (getpwuid_r(static_cast<uid_t>(uid), &entry, buffer, sizeof(buffer),
                  &result) != 0 ||
       result == nullptr || result->pw_name == nullptr)
+  {
     return None;
+  }
   return String{result->pw_name};
 #else
   return lookup_name_by_id("/etc/passwd", uid, 2);
@@ -2644,7 +2691,9 @@ fn username_to_uid(StringView username) throws -> Maybe<u32>
 {
   if (let const current = get_current_user();
       current.has_value() && current->view() == username)
+  {
     return static_cast<u32>(get_real_user_id());
+  }
   return lookup_id_by_name("/etc/passwd", username, 2);
 }
 

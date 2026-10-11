@@ -173,10 +173,16 @@ alwaysinline pure fn detect_radix_prefix(StringView body) wontthrow
     -> radix_prefix
 {
   if (body.length >= 2 && body[0] == '0' && (body[1] == 'x' || body[1] == 'X'))
+  {
     return {16, 2};
+  }
   if (body.length >= 2 && body[0] == '0' && (body[1] == 'b' || body[1] == 'B'))
+  {
     return {2, 2};
-  if (body.length >= 1 && body[0] == '0') return {8, 0};
+  }
+  if (body.length >= 1 && body[0] == '0') {
+    return {8, 0};
+  }
   return {10, 0};
 }
 
@@ -186,7 +192,9 @@ alwaysinline fn skip_spaces(StringView source, usize &position) wontthrow
   while (position < source.length &&
          (source[position] == ' ' || source[position] == '\t' ||
           source[position] == '\n' || source[position] == '\r'))
+  {
     position++;
+  }
 }
 
 alwaysinline fn starts_with(StringView source, usize &position,

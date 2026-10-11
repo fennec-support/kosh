@@ -54,7 +54,9 @@ static fn refill_readers(buffered_byte_reader &left,
   let const do_has_bytes = [](const buffered_byte_reader &reader) -> bool {
     return reader.position != reader.length || reader.has_ended;
   };
-  if (do_has_bytes(left) && do_has_bytes(right)) return true;
+  if (do_has_bytes(left) && do_has_bytes(right)) {
+    return true;
+  }
 
   buffered_byte_reader *readers[] = {&left, &right};
   buffered_byte_reader *batched_readers[2]{};
@@ -62,7 +64,9 @@ static fn refill_readers(buffered_byte_reader &left,
   batch.clear();
 
   for (let *reader : readers) {
-    if (reader->position != reader->length || reader->has_ended) continue;
+    if (reader->position != reader->length || reader->has_ended) {
+      continue;
+    }
 
     if (!reader->is_seekable) {
       let const read_count = os::read_fd(reader->descriptor, reader->buffer,
@@ -119,7 +123,9 @@ fn Cmp::execute(const ExecContext &ec, EvalContext &cxt,
 
   if (operands.count() != 2 ||
       (FLAG_CMP_LIST.is_enabled() && FLAG_CMP_SILENT.is_enabled()))
+  {
     return report_usage_error(ec, cxt, args[0].view());
+  }
 
   let const left_input = open_named_or_stdin(ec, operands[0].view());
   if (!left_input.has_value()) {

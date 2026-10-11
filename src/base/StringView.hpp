@@ -241,7 +241,9 @@ public:
     if (length == 0) return false;
 
     for (usize i = 0; i < length; i++) {
-      if (data[i] < '0' || data[i] > '9') return false;
+      if (data[i] < '0' || data[i] > '9') {
+        return false;
+      }
     }
     return true;
   }
@@ -250,10 +252,12 @@ public:
   {
     usize start = 0;
     usize end = length;
-    while (start < end && (data[start] == ' ' || data[start] == '\t'))
+    while (start < end && (data[start] == ' ' || data[start] == '\t')) {
       start++;
-    while (end > start && (data[end - 1] == ' ' || data[end - 1] == '\t'))
+    }
+    while (end > start && (data[end - 1] == ' ' || data[end - 1] == '\t')) {
       end--;
+    }
 
     return substring_of_length(start, end - start);
   }

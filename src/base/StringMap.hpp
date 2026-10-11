@@ -292,10 +292,9 @@ private:
     loop
     {
       let const &candidate = m_slots[index];
-      if (candidate.packed == wanted && candidate.key.view() == key) usually
-        {
-          return {index, index};
-        }
+      if (candidate.packed == wanted && candidate.key.view() == key) {
+        usually { return {index, index}; }
+      }
       let const state = candidate.get_state();
       if (state == slot::Empty) {
         return {NO_INDEX,
@@ -404,7 +403,9 @@ private:
         let index = static_cast<usize>(old_slots[i].get_hash()) & mask;
         while (fresh_slots[index].packed != old_slots[i].packed ||
                fresh_slots[index].key.view() != old_slots[i].key.view())
+        {
           index = (index + 1) & mask;
+        }
 
         if constexpr (std::is_copy_assignable_v<Value>) {
           fresh_slots[index].value = old_slots[i].value;

@@ -1034,7 +1034,9 @@ static fn history_control_operator_byte_length(StringView source,
     if (next_byte == ';') return third_byte == '&' ? 3 : 2;
     return next_byte == '&' ? 2 : 1;
   case '&':
-    if (next_byte == '>' && third_byte == '>') return 3;
+    if (next_byte == '>' && third_byte == '>') {
+      return 3;
+    }
     return next_byte == '&' || next_byte == '>' ? 2 : 1;
   case '|': return next_byte == '|' || next_byte == '&' ? 2 : 1;
   case '<':
@@ -1049,9 +1051,12 @@ static fn history_control_operator_byte_length(StringView source,
 static fn next_history_word(StringView source, usize &position) throws
     -> Maybe<StringView>
 {
-  while (position < source.length && is_ascii_whitespace(source[position]))
+  while (position < source.length && is_ascii_whitespace(source[position])) {
     position++;
-  if (position >= source.length || source[position] == '#') return None;
+  }
+  if (position >= source.length || source[position] == '#') {
+    return None;
+  }
 
   let const start_position = position;
   let const first_byte = source[position];
@@ -1096,7 +1101,9 @@ static fn next_history_word(StringView source, usize &position) throws
         position = end_position.value_or(source.length);
         continue;
       }
-      if (is_ascii_whitespace(byte) || lexer::is_shell_sentinel(byte)) break;
+      if (is_ascii_whitespace(byte) || lexer::is_shell_sentinel(byte)) {
+        break;
+      }
       position++;
     }
   }
@@ -1162,11 +1169,14 @@ static fn select_history_words(StringView command, StringView designator,
     } else {
       while (separator_position < designator.length &&
              lexer::is_number(designator[separator_position]))
+      {
         separator_position++;
+      }
       let const parsed =
           designator.substring_of_length(0, separator_position).to<u64>();
-      if (parsed.is_error() || parsed.value() > static_cast<u64>(SIZE_MAX))
+      if (parsed.is_error() || parsed.value() > static_cast<u64>(SIZE_MAX)) {
         throw_bad_history_word_specifier(spelling);
+      }
       first_word_index = static_cast<usize>(parsed.value());
       end_word_index = first_word_index + 1;
     }
@@ -1185,7 +1195,9 @@ static fn select_history_words(StringView command, StringView designator,
         } else {
           let const parsed = designator.substring(separator_position).to<u64>();
           if (parsed.is_error() || parsed.value() >= static_cast<u64>(SIZE_MAX))
+          {
             throw_bad_history_word_specifier(spelling);
+          }
           end_word_index = static_cast<usize>(parsed.value()) + 1;
         }
       } else {
@@ -1194,8 +1206,9 @@ static fn select_history_words(StringView command, StringView designator,
     }
   }
 
-  if (first_word_index > end_word_index || end_word_index > word_count)
+  if (first_word_index > end_word_index || end_word_index > word_count) {
     throw_bad_history_word_specifier(spelling);
+  }
 
   scan_position = 0;
   usize word_index = 0;
@@ -1451,11 +1464,12 @@ static fn apply_history_modifiers(StringView source, usize &position,
     }
 
     let const modifier = source[position++];
-    if (has_substitution_scope && modifier != 's' && modifier != '&')
+    if (has_substitution_scope && modifier != 's' && modifier != '&') {
       throw_history_modifier_error(
           source.substring_of_length(modifier_start_position + 1,
                                      position - modifier_start_position - 1),
           "unrecognized history modifier");
+    }
     if (modifier == 'h' || modifier == 't' || modifier == 'r' ||
         modifier == 'e')
     {
@@ -1657,8 +1671,9 @@ static fn expand_interactive_history(StringView source,
                          byte == '&' || byte == '|' || byte == '(' ||
                          byte == ')' || byte == '<' || byte == '>';
     }
-    if (byte != '!' || is_single_quoted || position + 1 >= source.length)
+    if (byte != '!' || is_single_quoted || position + 1 >= source.length) {
       continue;
+    }
 
     let const next_byte = source[position + 1];
     if (is_ascii_whitespace(next_byte) || next_byte == '=' ||
@@ -1691,10 +1706,14 @@ static fn expand_interactive_history(StringView source,
         selected_event = toiletline::get_relative_history_event(
             context.scratch_allocator(), 1, accepted_event_number);
         has_implicit_word_designator = next_byte != '!';
-        if (has_implicit_word_designator) reference_end_position--;
+        if (has_implicit_word_designator) {
+          reference_end_position--;
+        }
       } else if (next_byte == '?') {
         let close_position = source.find_substring("?", reference_end_position);
-        if (!close_position.has_value()) close_position = source.length;
+        if (!close_position.has_value()) {
+          close_position = source.length;
+        }
         let const needle = source.substring_of_length(
             reference_end_position, *close_position - reference_end_position);
         reference_end_position = *close_position < source.length
@@ -1715,15 +1734,21 @@ static fn expand_interactive_history(StringView source,
         if (lexer::is_number(next_byte)) {
           while (reference_end_position < source.length &&
                  lexer::is_number(source[reference_end_position]))
+          {
             reference_end_position++;
+          }
         } else if (next_byte == '-') {
           while (reference_end_position < source.length &&
                  lexer::is_number(source[reference_end_position]))
+          {
             reference_end_position++;
+          }
         } else {
           while (reference_end_position < source.length &&
                  !do_terminate_designator(source[reference_end_position]))
+          {
             reference_end_position++;
+          }
         }
         let const designator = source.substring_of_length(
             position + 1, reference_end_position - position - 1);
@@ -1733,16 +1758,20 @@ static fn expand_interactive_history(StringView source,
           let const parsed = designator.substring(1).to<u64>();
           if (!parsed.is_error() && parsed.value() > 0 &&
               parsed.value() <= static_cast<u64>(static_cast<usize>(-1)))
+          {
             selected_event = toiletline::get_relative_history_event(
                 context.scratch_allocator(), static_cast<usize>(parsed.value()),
                 accepted_event_number);
+          }
         } else if (designator.is_all_decimal_digits()) {
           let const parsed = designator.to<u64>();
           if (!parsed.is_error() &&
               parsed.value() <= static_cast<u64>(static_cast<usize>(-1)))
+          {
             selected_event = toiletline::get_numbered_history_event(
                 context.scratch_allocator(), static_cast<usize>(parsed.value()),
                 accepted_event_number);
+          }
         } else {
           selected_event = toiletline::get_prefixed_history_event(
               context.scratch_allocator(), designator, accepted_event_number);
@@ -1755,7 +1784,9 @@ static fn expand_interactive_history(StringView source,
         usize selector_end_position = selector_start_position;
         if (selector_end_position < source.length &&
             source[selector_end_position] == ':')
+        {
           selector_end_position++;
+        }
         if (selector_end_position < source.length &&
             (lexer::is_number(source[selector_end_position]) ||
              source[selector_end_position] == '^' ||
@@ -1771,10 +1802,14 @@ static fn expand_interactive_history(StringView source,
           {
             selector_end_position++;
           } else {
-            if (source[selector_end_position] == '-') selector_end_position++;
+            if (source[selector_end_position] == '-') {
+              selector_end_position++;
+            }
             while (selector_end_position < source.length &&
                    lexer::is_number(source[selector_end_position]))
+            {
               selector_end_position++;
+            }
             if (selector_end_position < source.length &&
                 (source[selector_end_position] == '*' ||
                  source[selector_end_position] == '-'))
@@ -1782,11 +1817,15 @@ static fn expand_interactive_history(StringView source,
               selector_end_position++;
               if (selector_end_position < source.length &&
                   source[selector_end_position] == '$')
+              {
                 selector_end_position++;
-              else
+              } else {
                 while (selector_end_position < source.length &&
                        lexer::is_number(source[selector_end_position]))
+                {
                   selector_end_position++;
+                }
+              }
             }
           }
           let const designator_start_position =
@@ -1847,10 +1886,11 @@ static fn source_file(const Path &path, EvalContext &context,
   if (!contents) {
     let const is_missing = os::last_system_error_is_missing_file();
     let const reason = os::last_system_error_message();
-    if (requirement == startup_file_requirement::Explicit && !is_missing)
+    if (requirement == startup_file_requirement::Explicit && !is_missing) {
       show_message(
           Error{"Unable to read startup file '" + path.text() + "': " + reason}
               .to_string());
+    }
     LOG(Info, "skipping '%s' because the file is missing or unreadable",
         path.c_str());
     return false;
@@ -1871,7 +1911,9 @@ static pure fn selected_rcfile() wontthrow -> Maybe<StringView>
   if (!FLAG_RCFILE.is_set() ||
       (FLAG_INIT_FILE.is_set() &&
        FLAG_INIT_FILE.position() > FLAG_RCFILE.position()))
+  {
     return FLAG_INIT_FILE.value();
+  }
   return FLAG_RCFILE.value();
 }
 
@@ -2033,7 +2075,9 @@ fn source_init_moods(EvalContext &context, const ArrayList<mimic_mood> &moods,
       {
         if (Maybe<String> env = context.get_variable_value("ENV");
             env.has_value() && !env->is_empty())
+        {
           source_file(Path{env->view()}, context);
+        }
       }
       break;
     case mimic_mood::Bash:
@@ -2183,7 +2227,9 @@ static fn record_applied_fix(ArrayList<applied_fix_tally> &tallies,
     -> void
 {
   for (let &tally : tallies) {
-    if (tally.id != id || tally.severity != severity) continue;
+    if (tally.id != id || tally.severity != severity) {
+      continue;
+    }
     tally.count++;
 
     return;
@@ -2249,7 +2295,9 @@ cold static fn print_applied_fix_summary(
     summary.append(reset);
   }
 
-  if (warning_count > 0 && error_count > 0) summary.append(" and ");
+  if (warning_count > 0 && error_count > 0) {
+    summary.append(" and ");
+  }
 
   if (error_count > 0) {
     summary.append(error_color);
@@ -2290,7 +2338,9 @@ static fn run_format_operation(const ArrayList<String> &file_names,
 {
   bool did_fail = false;
   usize input_count = file_names.count();
-  if (!should_apply && input_count == 0) input_count = 1;
+  if (!should_apply && input_count == 0) {
+    input_count = 1;
+  }
 
   for (usize input_index = 0; input_index < input_count; input_index++) {
     let const is_standard_input =
@@ -2339,7 +2389,9 @@ static fn run_format_operation(const ArrayList<String> &file_names,
         if (!diagnostic.source_name.is_empty() &&
             (!source_name.has_value() ||
              diagnostic.source_name != *source_name))
+        {
           continue;
+        }
         for (let const &fix : diagnostic.fixes) {
           let edits = ArrayList<source_edit>{heap_allocator()};
           for (let const &edit : fix.edits)
@@ -2387,7 +2439,9 @@ static fn run_format_operation(const ArrayList<String> &file_names,
       ASSERT(snapshot.has_value());
       if (formatted->view() != source.view() &&
           !replace_file_contents(*snapshot, formatted->view()))
+      {
         did_fail = true;
+      }
     } else if (colors::stdout_wants_color()) {
       let highlighted = String{heap_allocator()};
       completion::append_highlighted_source(
@@ -2433,7 +2487,9 @@ static fn run_lint_apply_operation(const ArrayList<String> &file_names,
     for (let const &diagnostic : diagnostics) {
       if (!diagnostic.source_name.is_empty() &&
           diagnostic.source_name != file_name.view())
+      {
         continue;
+      }
       if (diagnostic.id.has_value()) {
         record_applied_fix(reported_severities, *diagnostic.id,
                            diagnostic.severity);

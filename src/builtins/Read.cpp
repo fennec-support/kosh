@@ -269,7 +269,9 @@ fn Read::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
           while (backslash_count < accumulated.length() &&
                  accumulated[accumulated.length() - 1 - backslash_count] ==
                      '\\')
+          {
             backslash_count++;
+          }
           return backslash_count;
         };
         while (was_newline_terminated && do_trailing_backslash_count() % 2 == 1)
@@ -320,8 +322,9 @@ fn Read::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   };
   let const do_separator_length = [&](usize i) -> usize {
     if (is_literal_byte[i]) return 0;
-    if (!is_multibyte || static_cast<u8>(line[i]) < 0x80)
+    if (!is_multibyte || static_cast<u8>(line[i]) < 0x80) {
       return field_separators.find_character(line[i]).has_value() ? 1 : 0;
+    }
 
     let const character = line.view().substring_of_length(i, do_step(i));
     let const separators = field_separators.view();
@@ -410,7 +413,9 @@ fn Read::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         end_position = line.length();
         while (end_position > field_start &&
                do_is_ifs_whitespace(end_position - 1))
+        {
           end_position--;
+        }
       }
 
       cxt.set_shell_variable(

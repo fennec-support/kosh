@@ -191,7 +191,9 @@ fn check_command_name_lints(AnalysisContext &actx,
   case command_name_id::Local:
     if (is_posix) actx.report_diagnostic(diagnostic_id::sc3043, location);
     if (actx.function_scope_depth == 0 && !actx.walk.is_command_status_observed)
+    {
       actx.report_diagnostic(diagnostic_id::sc2168, location);
+    }
     break;
 
   case command_name_id::Mapfile:
@@ -346,9 +348,10 @@ fn check_command_name_lints(AnalysisContext &actx,
                            ->word()
                            .to_literal_string();
       let const view = flag.view();
-      if (view.length >= 2 && view[0] == '-' && view != "--")
+      if (view.length >= 2 && view[0] == '-' && view != "--") {
         actx.report_diagnostic(diagnostic_id::sc3038,
                                args[1]->source_location(), {view});
+      }
     }
     break;
 
@@ -531,8 +534,9 @@ fn check_command_value_lints(AnalysisContext &actx,
   }
 
   case command_name_id::Mkdir:
-    if (args_have_short_flag(args, 'p') && args_have_short_flag(args, 'm'))
+    if (args_have_short_flag(args, 'p') && args_have_short_flag(args, 'm')) {
       actx.report_diagnostic(diagnostic_id::sc2174, input.command_location());
+    }
     break;
 
   case command_name_id::Exit:
@@ -556,10 +560,11 @@ fn check_command_value_lints(AnalysisContext &actx,
           let const parsed_code = view.to<i64>();
           is_in_range = !parsed_code.is_error() && parsed_code.value() <= 255;
         }
-        if (!is_in_range)
+        if (!is_in_range) {
           actx.report_diagnostic(diagnostic_id::sc2242,
                                  args[1]->source_location(),
                                  {view, input.command_literal});
+        }
       } else if (is_return && operand.segments.count() == 1 &&
                  operand.segments[0].kind ==
                      WordSegment::Kind::CommandSubstitution)

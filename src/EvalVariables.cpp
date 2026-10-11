@@ -709,8 +709,9 @@ static pure fn is_valid_nameref_target(StringView target) wontthrow -> bool
 {
   let base = target;
   if (let const bracket = target.find_character('['); bracket.has_value()) {
-    if (target[target.length - 1] != ']' || *bracket + 2 >= target.length)
+    if (target[target.length - 1] != ']' || *bracket + 2 >= target.length) {
       return false;
+    }
 
     base = target.substring_of_length(0, *bracket);
   }
@@ -723,16 +724,21 @@ fn EvalContext::resolve_nameref(StringView name) const throws -> Maybe<String>
   if (!variable_store().attributes().is_nameref(name)) return None;
 
   let const stored = variable_store().shell_variables().find(name);
-  if (!stored.has_value() || stored->is_empty()) return None;
+  if (!stored.has_value() || stored->is_empty()) {
+    return None;
+  }
 
   let target = String{heap_allocator(), stored->view()};
   for (u32 depth_count = 0; depth_count < NAMEREF_DEPTH_LIMIT; depth_count++) {
-    if (target.view() == name || !is_valid_nameref_target(target.view()))
+    if (target.view() == name || !is_valid_nameref_target(target.view())) {
       return String{heap_allocator()};
+    }
     if (!variable_store().attributes().is_nameref(target.view())) return target;
 
     let const next = variable_store().shell_variables().find(target.view());
-    if (!next.has_value() || next->is_empty()) return target;
+    if (!next.has_value() || next->is_empty()) {
+      return target;
+    }
 
     target = String{heap_allocator(), next->view()};
   }
@@ -889,15 +895,19 @@ fn EvalContext::resolve_nameref_parameter(StringView spec) throws
   }
 
   let name_end = prefix_length + 1;
-  while (name_end < spec.length && lexer::is_variable_name(spec[name_end]))
+  while (name_end < spec.length && lexer::is_variable_name(spec[name_end])) {
     name_end++;
-  if (spec[0] == '!' && name_end == spec.length) return None;
+  }
+  if (spec[0] == '!' && name_end == spec.length) {
+    return None;
+  }
 
   let const name =
       spec.substring_of_length(prefix_length, name_end - prefix_length);
   if (prefix_length == 0 &&
       (name_end == spec.length || spec[name_end] != '[') &&
       is_generated_nameref(name))
+  {
     rarely
     {
       let error = Error{"Unable to expand '" + name +
@@ -906,9 +916,12 @@ fn EvalContext::resolve_nameref_parameter(StringView spec) throws
       mark_expansion_error(error, expansion_error_reach::LineOrPosixScript);
       throw steal(error);
     }
+  }
 
   let const target = resolve_nameref(name);
-  if (!target.has_value() || target->is_empty()) return None;
+  if (!target.has_value() || target->is_empty()) {
+    return None;
+  }
 
   let rewritten = String{scratch_allocator()};
   rewritten.reserve(spec.length - (name_end - prefix_length) + target->count());

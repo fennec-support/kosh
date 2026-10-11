@@ -1279,7 +1279,9 @@ inline fn write_all(os::descriptor fd, const opaque *buf, usize size) wontthrow
   while (written_size < size) {
     let const result = write_fd(fd, static_cast<const u8 *>(buf) + written_size,
                                 size - written_size);
-    if (!result.has_value() || *result == 0) return false;
+    if (!result.has_value() || *result == 0) {
+      return false;
+    }
 
     written_size += *result;
   }

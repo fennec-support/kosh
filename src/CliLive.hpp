@@ -322,8 +322,9 @@ fn update_retained_rows(ArrayList<Row> &retained, Items &observed,
     if (!found.has_value()) retained.push(do_make_row(item));
 
     let &row = found.has_value() ? retained[*found] : retained.back();
-    if (found.has_value() && do_is_reset(row.history.get_newest(), value))
+    if (found.has_value() && do_is_reset(row.history.get_newest(), value)) {
       row.history.clear();
+    }
 
     row.history.push(value, now_nanoseconds);
     row.history.last_seen_nanoseconds = now_nanoseconds;

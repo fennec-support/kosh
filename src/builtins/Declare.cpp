@@ -418,6 +418,7 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     if (!should_mark_nameref && !should_unmark_nameref &&
         cxt.variable_store().attributes().is_nameref(name) &&
         !cxt.is_circular_nameref(name))
+    {
       rarely
       {
         resolved_attribute_name = cxt.resolve_nameref_base_for_write(name);
@@ -436,8 +437,10 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
           continue;
         }
       }
-    if (should_mark_integer_attribute)
+    }
+    if (should_mark_integer_attribute) {
       cxt.variable_store().attributes().mark_integer(attribute_name);
+    }
     if (should_unmark_integer_attribute)
       cxt.variable_store().attributes().unmark_integer(attribute_name);
     if (should_unmark_lowercase_attribute)
@@ -497,7 +500,9 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       LOG(All, "declare making '%.*s' an associative array",
           static_cast<int>(name.length), name.data);
       let const was_associative = cxt.is_associative_array(name);
-      if (equals.has_value()) cxt.set_shell_variable(name, value);
+      if (equals.has_value()) {
+        cxt.set_shell_variable(name, value);
+      }
       cxt.declare_associative_array(name);
       if (!equals.has_value() && !has_subscript && !was_associative) {
         cxt.variable_store().attributes().mark_declared(name);
@@ -508,32 +513,40 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
           !cxt.is_bash_argument_array(name))
       {
         let values = ArrayList<String>{heap_allocator()};
-        if (equals.has_value())
+        if (equals.has_value()) {
           values.push(String{heap_allocator(), value});
-        else if (let const scalar =
-                     cxt.variable_store().shell_variables().find(name);
-                 scalar.has_value())
+        } else if (let const scalar =
+                       cxt.variable_store().shell_variables().find(name);
+                   scalar.has_value())
+        {
           values.push(String{heap_allocator(), scalar->view()});
+        }
         let const is_valueless = values.is_empty() && !has_subscript;
         cxt.set_indexed_array(name, steal(values));
-        if (is_valueless) cxt.variable_store().attributes().mark_declared(name);
+        if (is_valueless) {
+          cxt.variable_store().attributes().mark_declared(name);
+        }
       }
     } else if (equals.has_value()) {
       if (update_mode == assignment_update_mode::Append) {
         let appended = String{cxt.scratch_allocator()};
-        if (let const existing = cxt.get_variable_value(name))
+        if (let const existing = cxt.get_variable_value(name)) {
           appended.append(existing->view());
+        }
         let integer_name = name;
         let resolved_name = Maybe<String>{};
-        if (cxt.variable_store().attributes().is_nameref(name)) rarely
+        if (cxt.variable_store().attributes().is_nameref(name)) {
+          rarely
           {
             resolved_name = cxt.resolve_nameref_base_for_write(name);
             integer_name = resolved_name->view();
           }
-        if (cxt.is_integer_variable(integer_name))
+        }
+        if (cxt.is_integer_variable(integer_name)) {
           cxt.append_integer_expression(appended, value);
-        else
+        } else {
           appended.append(value);
+        }
         cxt.set_shell_variable(name, appended.view());
       } else {
         cxt.set_shell_variable(name, value);
@@ -552,18 +565,23 @@ fn Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
           static_cast<int>(name.length), name.data);
       let exported_name = name;
       let resolved_name = Maybe<String>{};
-      if (cxt.variable_store().attributes().is_nameref(name)) rarely
+      if (cxt.variable_store().attributes().is_nameref(name)) {
+        rarely
         {
           resolved_name = cxt.resolve_nameref_for_write(name);
           exported_name = resolved_name->view();
         }
+      }
       cxt.record_environment_change(exported_name);
       cxt.mark_exported(exported_name);
-      if (let const stored = cxt.get_variable_value(exported_name))
+      if (let const stored = cxt.get_variable_value(exported_name)) {
         os::set_environment_variable(exported_name, stored->view());
+      }
     }
 
-    if (should_unexport && !has_subscript) cxt.unexport_shell_variable(name);
+    if (should_unexport && !has_subscript) {
+      cxt.unexport_shell_variable(name);
+    }
 
     if (should_mark_readonly) {
       if (cxt.variable_store().attributes().is_nameref(name)) rarely

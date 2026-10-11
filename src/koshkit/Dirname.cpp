@@ -39,8 +39,9 @@ static pure fn directory_part_of(StringView path) wontthrow -> StringView
   if (has_only_separators) return StringView{"/"};
 
   usize end_position = path.length;
-  while (end_position > 0 && is_directory_separator(path[end_position - 1]))
+  while (end_position > 0 && is_directory_separator(path[end_position - 1])) {
     end_position--;
+  }
 
   bool has_separator = false;
   usize last_separator_position = 0;
@@ -53,8 +54,9 @@ static pure fn directory_part_of(StringView path) wontthrow -> StringView
   if (!has_separator) return StringView{"."};
 
   end_position = last_separator_position;
-  while (end_position > 0 && is_directory_separator(path[end_position - 1]))
+  while (end_position > 0 && is_directory_separator(path[end_position - 1])) {
     end_position--;
+  }
 
   if (end_position == 0) return StringView{"/"};
 

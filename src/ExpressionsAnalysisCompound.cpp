@@ -44,8 +44,9 @@ pure fn find_pipe_overriding_redirection(const SimpleCommand *stage,
     let const claims_stream = is_output_wanted
                                   ? redirection.opens_output_file()
                                   : redirection.opens_input_source();
-    if (claims_stream && redirection.fd == (is_output_wanted ? 1 : 0))
+    if (claims_stream && redirection.fd == (is_output_wanted ? 1 : 0)) {
       return &redirection;
+    }
   }
 
   return nullptr;
@@ -54,8 +55,9 @@ pure fn find_pipe_overriding_redirection(const SimpleCommand *stage,
 fn Pipeline::analyze(AnalysisContext &actx, bool is_unconditional) const throws
     -> void
 {
-  if (actx.is_posix_sh_shebang && is_timed())
+  if (actx.is_posix_sh_shebang && is_timed()) {
     actx.report_diagnostic(diagnostic_id::sc2176, time_location());
+  }
 
   let const has_multiple_stages = m_commands.count() > 1;
   let const stage_is_unconditional = is_unconditional && !has_multiple_stages;
@@ -268,7 +270,9 @@ fn CompoundList::has_single_test_command() const throws -> bool
   if (m_nodes.count() != 1) return false;
 
   let const simple = m_nodes[0]->command()->as_simple_command();
-  if (simple == nullptr || simple->args().is_empty()) return false;
+  if (simple == nullptr || simple->args().is_empty()) {
+    return false;
+  }
 
   let const name_token = simple->args()[0];
   let const name = static_command_name(name_token);

@@ -223,7 +223,8 @@ hot fn BumpArena::allocate(usize size, usize alignment) throws -> opaque *
       let &block = m_blocks[m_current_index];
       let const aligned = (block.used + (alignment - 1)) & ~(alignment - 1);
 
-      if (aligned <= block.size && size <= block.size - aligned) usually
+      if (aligned <= block.size && size <= block.size - aligned) {
+        usually
         {
           ASSERT(block.base != nullptr);
 
@@ -233,6 +234,7 @@ hot fn BumpArena::allocate(usize size, usize alignment) throws -> opaque *
 
           return pointer;
         }
+      }
 
       m_current_index++;
     }
@@ -309,7 +311,9 @@ pure fn BumpArena::is_lifetime_valid(LifetimeIdentity identity) const wontthrow
 {
   if (identity.arena_incarnation != m_arena_incarnation ||
       identity.slot_position >= m_lifetime_slots.count())
+  {
     return false;
+  }
 
   let const &slot = m_lifetime_slots[identity.slot_position];
   return slot.next_free_position == identity.slot_position &&
@@ -330,7 +334,9 @@ fn BumpArena::release(Mark saved) wontthrow -> void
     if (slot.payload_end.block_index < saved.block_index ||
         (slot.payload_end.block_index == saved.block_index &&
          slot.payload_end.used_in_block <= saved.used_in_block))
+    {
       break;
+    }
 
     slot.next_free_position = m_first_free_lifetime_slot;
     m_first_free_lifetime_slot = slot_position;

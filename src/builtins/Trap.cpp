@@ -161,7 +161,9 @@ fn Trap::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
     if (cxt.runtime_state().is_posix_mode()) break;
 
-    if (word.count() < 2 || !word.starts_with("-")) break;
+    if (word.count() < 2 || !word.starts_with("-")) {
+      break;
+    }
 
     if (word == "--list") {
       should_list_signals = true;

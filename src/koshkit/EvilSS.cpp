@@ -159,8 +159,9 @@ fn append_network_socket_report(String &output,
   let owner_process_ids = ArrayList<u32>{allocator};
   if (options.should_show_processes) {
     for (let const &socket : sockets) {
-      if (socket.process_id != 0 && socket.has_owner_start_token)
+      if (socket.process_id != 0 && socket.has_owner_start_token) {
         owner_process_ids.push(socket.process_id);
+      }
     }
     owner_process_ids.sort();
 
@@ -204,12 +205,16 @@ fn append_network_socket_report(String &output,
     let const is_selected_protocol = (is_tcp && options.should_show_tcp) ||
                                      (is_udp && options.should_show_udp) ||
                                      (is_unix && options.should_show_unix);
-    if (has_protocol_filter && !is_selected_protocol) continue;
+    if (has_protocol_filter && !is_selected_protocol) {
+      continue;
+    }
 
     let const has_address_family_filter =
         options.should_show_ipv4 || options.should_show_ipv6;
     if (is_unix) {
-      if (has_address_family_filter && !options.should_show_unix) continue;
+      if (has_address_family_filter && !options.should_show_unix) {
+        continue;
+      }
     } else {
       if (options.should_show_ipv4 && !options.should_show_ipv6 &&
           socket.family != os::network_address_family::IPv4)
@@ -224,7 +229,9 @@ fn append_network_socket_report(String &output,
     }
 
     let const is_socket_listening = is_listening(socket);
-    if (options.is_listening_only && !is_socket_listening) continue;
+    if (options.is_listening_only && !is_socket_listening) {
+      continue;
+    }
     if (!options.should_include_listening && !options.is_listening_only &&
         is_socket_listening)
     {

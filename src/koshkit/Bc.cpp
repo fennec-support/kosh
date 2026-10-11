@@ -177,7 +177,9 @@ static fn bc_translate_expression(StringView expression, u32 input_base,
              ((expression[position] >= '0' && expression[position] <= '9') ||
               (expression[position] >= 'A' && expression[position] <= 'F') ||
               expression[position] == '.'))
+      {
         position++;
+      }
       let const radix_number = bc_radix_number(
           expression.substring_of_length(number_start, position - number_start),
           input_base, allocator);
@@ -192,14 +194,18 @@ static fn bc_translate_expression(StringView expression, u32 input_base,
       let const name_start = position;
       while (position < expression.length &&
              lexer::is_variable_name(expression[position]))
+      {
         position++;
+      }
       let const name =
           expression.substring_of_length(name_start, position - name_start);
       usize next_position = position;
       while (next_position < expression.length &&
              (expression[next_position] == ' ' ||
               expression[next_position] == '\t'))
+      {
         next_position++;
+      }
       let const is_function =
           next_position < expression.length && expression[next_position] == '(';
       let const state_variable =
@@ -234,7 +240,9 @@ static fn bc_translate_expression(StringView expression, u32 input_base,
                  .indexed_arrays()
                  .find(variable_name.view())
                  .has_value())
+        {
           cxt.set_shell_variable(variable_name.view(), "0");
+        }
       }
       continue;
     }
@@ -248,7 +256,9 @@ static fn bc_translate_expression(StringView expression, u32 input_base,
     usize name_end = position;
     while (name_end < translated.count() &&
            lexer::is_variable_name(translated[name_end]))
+    {
       name_end++;
+    }
     let const function_name =
         translated.view().substring_of_length(position, name_end - position);
     if (name_end < translated.count() && translated[name_end] == '(' &&
@@ -283,13 +293,19 @@ static pure fn bc_is_assignment(StringView statement) wontthrow -> bool
   usize position = 0;
   while (position < statement.length &&
          (statement[position] == ' ' || statement[position] == '\t'))
+  {
     position++;
+  }
   if (position == statement.length ||
       !lexer::is_variable_name_start(statement[position]))
+  {
     return false;
+  }
   while (position < statement.length &&
          lexer::is_variable_name(statement[position]))
+  {
     position++;
+  }
   if (position < statement.length && statement[position] == '[') {
     usize depth = 1;
     position++;
@@ -304,7 +320,9 @@ static pure fn bc_is_assignment(StringView statement) wontthrow -> bool
   }
   while (position < statement.length &&
          (statement[position] == ' ' || statement[position] == '\t'))
+  {
     position++;
+  }
   if (position >= statement.length) return false;
   if (statement[position] == '=')
     return position + 1 == statement.length || statement[position + 1] != '=';
@@ -321,12 +339,16 @@ static pure fn bc_register_value(StringView statement,
   usize position = 0;
   while (position < statement.length &&
          (statement[position] == ' ' || statement[position] == '\t'))
+  {
     position++;
+  }
   if (!statement.substring(position).starts_with(name)) return {};
   position += name.length;
   while (position < statement.length &&
          (statement[position] == ' ' || statement[position] == '\t'))
+  {
     position++;
+  }
   if (position >= statement.length || statement[position] != '=') {
     return {};
   }
@@ -346,7 +368,9 @@ static fn bc_parse_register(StringView value, u32 input_base, u32 output_base,
                                                  0, false, cxt, allocator);
   let const result = cxt.evaluate_calculator_arithmetic_text(translated.view());
   let const parsed = utils::parse_decimal_u64(result.view());
-  if (parsed.is_error() || parsed.value() > ~u32{0}) return {};
+  if (parsed.is_error() || parsed.value() > ~u32{0}) {
+    return {};
+  }
   return static_cast<u32>(parsed.value());
 }
 
@@ -377,8 +401,9 @@ static fn bc_format_in_base(StringView decimal, u32 output_base,
     let const remainder =
         cxt.evaluate_calculator_arithmetic_text(expression.view());
     let const digit = utils::parse_decimal_u64(remainder.view());
-    if (digit.is_error() || digit.value() >= output_base)
+    if (digit.is_error() || digit.value() >= output_base) {
       throw std::bad_alloc{};
+    }
     reversed.push(bc_base_digit(static_cast<u32>(digit.value())));
     expression = String{allocator, "("};
     expression += integer.view();
@@ -417,8 +442,9 @@ static fn bc_format_in_base(StringView decimal, u32 output_base,
                           ? product.substring_of_length(0, *product_point)
                           : product.view();
     let const digit = utils::parse_decimal_u64(whole);
-    if (digit.is_error() || digit.value() >= output_base)
+    if (digit.is_error() || digit.value() >= output_base) {
       throw std::bad_alloc{};
+    }
     formatted += bc_base_digit(static_cast<u32>(digit.value()));
     fraction = String{allocator, "0"};
     if (product_point.has_value())
@@ -514,7 +540,9 @@ static fn bc_group_nested_assignment(StringView expression,
       name_start = position;
       while (position < expression.length &&
              lexer::is_variable_name(expression[position]))
+      {
         position++;
+      }
       name_end = position;
       position--;
       continue;
@@ -524,16 +552,22 @@ static fn bc_group_nested_assignment(StringView expression,
         (expression[position] != '+' && expression[position] != '-' &&
          expression[position] != '*' && expression[position] != '/' &&
          expression[position] != '%' && expression[position] != '^'))
+    {
       continue;
+    }
     usize previous = position;
     while (previous > 0 && (expression[previous - 1] == ' ' ||
                             expression[previous - 1] == '\t'))
+    {
       previous--;
+    }
     if (previous != name_end) continue;
     usize prefix_end = name_start;
     while (prefix_end > 0 && (expression[prefix_end - 1] == ' ' ||
                               expression[prefix_end - 1] == '\t'))
+    {
       prefix_end--;
+    }
     if (prefix_end == 0) continue;
     let grouped =
         String{allocator, expression.substring_of_length(0, name_start)};
@@ -615,19 +649,27 @@ static fn bc_define_function(StringView statement, bc_runtime &runtime,
   usize position = 6;
   while (position < statement.length &&
          (statement[position] == ' ' || statement[position] == '\t'))
+  {
     position++;
+  }
   if (position >= statement.length ||
       !lexer::is_variable_name_start(statement[position]))
+  {
     return false;
+  }
   let const name_start = position;
   while (position < statement.length &&
          lexer::is_variable_name(statement[position]))
+  {
     position++;
+  }
   let const name =
       statement.substring_of_length(name_start, position - name_start);
   while (position < statement.length &&
          (statement[position] == ' ' || statement[position] == '\t'))
+  {
     position++;
+  }
   if (position >= statement.length || statement[position] != '(') {
     return false;
   }
@@ -646,7 +688,9 @@ static fn bc_define_function(StringView statement, bc_runtime &runtime,
   while (position < statement.length &&
          (statement[position] == ' ' || statement[position] == '\t' ||
           statement[position] == '\n'))
+  {
     position++;
+  }
   if (position >= statement.length || statement[position] != '{') {
     return false;
   }
@@ -661,7 +705,9 @@ static fn bc_define_function(StringView statement, bc_runtime &runtime,
   }
   if (brace_depth != 0 ||
       !statement.substring(position).trim_blanks().is_empty())
+  {
     return false;
+  }
 
   bc_function function{allocator};
   function.name = String{allocator, name};
@@ -702,12 +748,15 @@ static fn bc_declare_auto(StringView statement, EvalContext &cxt,
 {
   if (!statement.starts_with("auto") ||
       (statement.length > 4 && statement[4] != ' ' && statement[4] != '\t'))
+  {
     return false;
+  }
   let const declarations = statement.substring(4);
   usize part_start = 0;
   for (usize part_end = 0; part_end <= declarations.length; part_end++) {
-    if (part_end != declarations.length && declarations[part_end] != ',')
+    if (part_end != declarations.length && declarations[part_end] != ',') {
       continue;
+    }
     let name =
         declarations.substring_of_length(part_start, part_end - part_start)
             .trim_blanks();
@@ -739,18 +788,24 @@ static fn bc_evaluate_function_call(StringView statement, const ExecContext &ec,
   usize position = 0;
   if (statement.is_empty() ||
       !lexer::is_variable_name_start(statement[position]))
+  {
     return {};
+  }
   let const name_start = position;
   while (position < statement.length &&
          lexer::is_variable_name(statement[position]))
+  {
     position++;
+  }
   let const name =
       statement.substring_of_length(name_start, position - name_start);
   let *function = bc_find_function(runtime, name);
   if (function == nullptr) return {};
   while (position < statement.length &&
          (statement[position] == ' ' || statement[position] == '\t'))
+  {
     position++;
+  }
   if (position >= statement.length || statement[position] != '(') {
     return {};
   }
@@ -763,8 +818,9 @@ static fn bc_evaluate_function_call(StringView statement, const ExecContext &ec,
       depth--;
     position++;
   }
-  if (depth != 0 || !statement.substring(position).trim_blanks().is_empty())
+  if (depth != 0 || !statement.substring(position).trim_blanks().is_empty()) {
     return {};
+  }
   let const arguments_text = statement.substring_of_length(
       arguments_start, position - arguments_start - 1);
   let arguments = ArrayList<StringView>{cxt.scratch_allocator()};
@@ -772,16 +828,20 @@ static fn bc_evaluate_function_call(StringView statement, const ExecContext &ec,
   depth = 0;
   for (usize part_end = 0; part_end <= arguments_text.length; part_end++) {
     if (part_end != arguments_text.length) {
-      if (arguments_text[part_end] == '(' || arguments_text[part_end] == '[')
+      if (arguments_text[part_end] == '(' || arguments_text[part_end] == '[') {
         depth++;
-      else if ((arguments_text[part_end] == ')' ||
-                arguments_text[part_end] == ']') &&
-               depth != 0)
+      } else if ((arguments_text[part_end] == ')' ||
+                  arguments_text[part_end] == ']') &&
+                 depth != 0)
+      {
         depth--;
+      }
     }
     if (part_end != arguments_text.length &&
         (arguments_text[part_end] != ',' || depth != 0))
+    {
       continue;
+    }
     let const argument =
         arguments_text.substring_of_length(part_start, part_end - part_start)
             .trim_blanks();
@@ -808,8 +868,10 @@ static fn bc_evaluate_function_call(StringView statement, const ExecContext &ec,
       if (source_name.length >= 2 &&
           source_name[source_name.length - 2] == '[' &&
           source_name[source_name.length - 1] == ']')
+      {
         source_name = source_name.substring_of_length(0, source_name.length - 2)
                           .trim_blanks();
+      }
       let translated = String{cxt.scratch_allocator(), "__bc_"};
       translated += source_name;
       if (let const array =
@@ -859,14 +921,18 @@ static fn bc_expand_function_calls(StringView expression, const ExecContext &ec,
     let const name_start = position;
     while (position < expression.length &&
            lexer::is_variable_name(expression[position]))
+    {
       position++;
+    }
     let const name =
         expression.substring_of_length(name_start, position - name_start);
     usize opening_position = position;
     while (opening_position < expression.length &&
            (expression[opening_position] == ' ' ||
             expression[opening_position] == '\t'))
+    {
       opening_position++;
+    }
     if (bc_find_function(runtime, name) == nullptr ||
         opening_position >= expression.length ||
         expression[opening_position] != '(')
@@ -982,8 +1048,9 @@ static fn bc_execute_simple(StringView statement, const ExecContext &ec,
 
   try {
     let result = bc_evaluate_text(statement, cxt, runtime, ec);
-    if (output_mode != bc_output_mode::Print || bc_is_assignment(statement))
+    if (output_mode != bc_output_mode::Print || bc_is_assignment(statement)) {
       return;
+    }
     bc_print_result(steal(result), ec, cxt, runtime);
   } catch (const Error &error) {
     report_soft_koshkit_util_error(ec, cxt, "bc", error.to_string());
@@ -1016,7 +1083,9 @@ static fn bc_control_parts(StringView statement, StringView keyword,
   usize position = keyword.length;
   while (position < statement.length &&
          (statement[position] == ' ' || statement[position] == '\t'))
+  {
     position++;
+  }
   if (position >= statement.length || statement[position] != '(') {
     return false;
   }
@@ -1054,7 +1123,9 @@ static fn bc_execute_statement(StringView statement, const ExecContext &ec,
   {
     let value = statement.substring(6).trim_blanks();
     if (value.length >= 2 && value[0] == '(' && value[value.length - 1] == ')')
+    {
       value = value.substring_of_length(1, value.length - 2).trim_blanks();
+    }
     runtime.return_value = value.is_empty()
                                ? String{cxt.scratch_allocator(), "0"}
                                : bc_evaluate_text(value, cxt, runtime, ec);
@@ -1062,9 +1133,11 @@ static fn bc_execute_statement(StringView statement, const ExecContext &ec,
   }
   if (statement.length >= 2 && statement[0] == '{' &&
       statement[statement.length - 1] == '}')
+  {
     return bc_run_program(
         statement.substring_of_length(1, statement.length - 2), ec, cxt,
         runtime);
+  }
 
   StringView header;
   StringView body;
@@ -1090,13 +1163,16 @@ static fn bc_execute_statement(StringView statement, const ExecContext &ec,
     usize depth = 0;
     for (usize position = 0; position <= header.length; position++) {
       if (position != header.length) {
-        if (header[position] == '(')
+        if (header[position] == '(') {
           depth++;
-        else if (header[position] == ')' && depth != 0)
+        } else if (header[position] == ')' && depth != 0) {
           depth--;
+        }
       }
       if (position != header.length && (header[position] != ';' || depth != 0))
+      {
         continue;
+      }
       if (part_count >= 3) return bc_flow::Normal;
       parts[part_count++] =
           header.substring_of_length(part_start, position - part_start)
@@ -1138,18 +1214,21 @@ static fn bc_run_program(StringView program, const ExecContext &ec,
       let const byte = program[position];
       if (byte == '"') is_in_string = !is_in_string;
       if (!is_in_string) {
-        if (byte == '(')
+        if (byte == '(') {
           parenthesis_depth++;
-        else if (byte == ')' && parenthesis_depth != 0)
+        } else if (byte == ')' && parenthesis_depth != 0) {
           parenthesis_depth--;
-        else if (byte == '{')
+        } else if (byte == '{') {
           brace_depth++;
-        else if (byte == '}' && brace_depth != 0)
+        } else if (byte == '}' && brace_depth != 0) {
           brace_depth--;
+        }
       }
       if (is_in_string || parenthesis_depth != 0 || brace_depth != 0 ||
           (byte != ';' && byte != '\n'))
+      {
         continue;
+      }
     }
 
     let const statement =

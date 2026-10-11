@@ -189,7 +189,9 @@ fn read_varint(StringView bytes, usize &position) wontthrow -> Maybe<u32>
   for (u32 shift = 0; shift < 35; shift += 7) {
     if (position >= bytes.count()) return None;
     let const byte = static_cast<u8>(bytes[position++]);
-    if (shift == 28 && (byte & 0x70) != 0) return None;
+    if (shift == 28 && (byte & 0x70) != 0) {
+      return None;
+    }
     if (shift > 0 && byte == 0) {
       return None;
     }
@@ -220,7 +222,9 @@ fn decode_value(const option_descriptor &option, StringView bytes) throws
 {
   switch (option.type) {
   case option_type::Boolean:
-    if (bytes.count() != 1 || static_cast<u8>(bytes[0]) > 1) return None;
+    if (bytes.count() != 1 || static_cast<u8>(bytes[0]) > 1) {
+      return None;
+    }
     return format_option_number(option, static_cast<u8>(bytes[0]));
   case option_type::Enum: {
     usize position = 0;
@@ -242,7 +246,9 @@ fn decode_value(const option_descriptor &option, StringView bytes) throws
 fn declared_name(StringView line) wontthrow -> Maybe<StringView>
 {
   let const trimmed = line.trim_blanks();
-  if (trimmed.is_empty() || trimmed[0] == '#') return None;
+  if (trimmed.is_empty() || trimmed[0] == '#') {
+    return None;
+  }
   let const equals = line.find_character('=');
   if (!equals.has_value()) return None;
   return line.substring_of_length(0, *equals).trim_blanks();
@@ -266,7 +272,9 @@ fn get_preset_group_first_id(const option_descriptor &option) wontthrow -> u16
   let const group = preset_group_of(option);
   let first_id = option.id;
   for (let const &other : get_option_registry()) {
-    if (other.is_set_alias || other.id >= first_id) continue;
+    if (other.is_set_alias || other.id >= first_id) {
+      continue;
+    }
     if (preset_group_of(other) == group) first_id = other.id;
   }
 
@@ -390,7 +398,9 @@ fn parse_mood_list(StringView list, ArrayList<mimic_mood> &moods) throws
 {
   usize name_start = 0;
   for (usize position = 0; position <= list.count(); position++) {
-    if (position != list.count() && list[position] != ',') continue;
+    if (position != list.count() && list[position] != ',') {
+      continue;
+    }
 
     let const name =
         list.substring_of_length(name_start, position - name_start);
@@ -572,7 +582,9 @@ fn read_koshconf_text(StringView text, StringView origin_name,
       line = line.substring_of_length(0, line.count() - 1);
     }
     let const trimmed = line.trim_blanks();
-    if (trimmed.is_empty() || trimmed[0] == '#') continue;
+    if (trimmed.is_empty() || trimmed[0] == '#') {
+      continue;
+    }
 
     let const equals = line.find_character('=');
     if (!equals.has_value()) {
@@ -864,7 +876,9 @@ fn compose_koshconf_text(StringView description, mimic_mood preset,
       usize alias_count = 0;
       for (let const &alias : get_option_registry()) {
         if (!alias.is_set_alias || alias.storage != option_storage::EditorMode)
+        {
           continue;
+        }
 
         spelling += alias_count == 0 ? "(set -o " : " or set -o ";
         spelling += alias.set_name;
@@ -875,8 +889,10 @@ fn compose_koshconf_text(StringView description, mimic_mood preset,
 
     let comment = String{StringView{option->help}};
     if (preset == mimic_mood::Bash && option->is_bash_default_session_dependent)
+    {
       comment += " Left unset, it is on in an interactive shell and off in a "
                  "script.";
+    }
 
     constexpr usize COMMENT_TEXT_WIDTH = KOSHCONF_COMMENT_WIDTH - 2;
     let const wrapped = wrap_text(comment.view(), 0, COMMENT_TEXT_WIDTH);
@@ -1004,14 +1020,18 @@ fn persist_koshconf_setting(const Path &path, const option_descriptor &option,
     if (!is_commented) return declared_name(without_return);
 
     let const trimmed = without_return.trim_blanks();
-    if (trimmed.is_empty() || trimmed[0] != '#') return Maybe<StringView>{};
+    if (trimmed.is_empty() || trimmed[0] != '#') {
+      return Maybe<StringView>{};
+    }
     return declared_name(trimmed.substring(1));
   };
 
   let has_setting_line = false;
   for (usize position = 0; position < text.count();) {
     let const name = do_find_name(text.next_line(position), false);
-    if (name.has_value() && *name == option_name) has_setting_line = true;
+    if (name.has_value() && *name == option_name) {
+      has_setting_line = true;
+    }
   }
 
   let did_replace = false;
@@ -1021,7 +1041,9 @@ fn persist_koshconf_setting(const Path &path, const option_descriptor &option,
                          ? Maybe<StringView>{}
                          : do_find_name(line, !has_setting_line);
     let const is_setting_line = name.has_value() && *name == option_name;
-    if (is_setting_line && did_replace) continue;
+    if (is_setting_line && did_replace) {
+      continue;
+    }
 
     if (is_setting_line) {
       contents += replacement.view();

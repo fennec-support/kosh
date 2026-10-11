@@ -23,7 +23,9 @@ static fn basename_component(StringView path) wontthrow -> StringView
 {
   usize end_position = path.length;
   while (end_position > 0 && os::is_directory_separator(path[end_position - 1]))
+  {
     end_position--;
+  }
 
   if (end_position == 0) {
     if (path.is_empty()) return path;
@@ -33,7 +35,9 @@ static fn basename_component(StringView path) wontthrow -> StringView
   usize start_position = end_position;
   while (start_position > 0 &&
          !os::is_directory_separator(path[start_position - 1]))
+  {
     start_position--;
+  }
 
   return path.substring_of_length(start_position,
                                   end_position - start_position);

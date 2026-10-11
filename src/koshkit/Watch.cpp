@@ -89,8 +89,9 @@ fn append_truncated_lines(String &output, StringView body,
   usize position = 0;
   while (position < body.length) {
     usize line_end = position;
-    while (line_end < body.length && body[line_end] != '\n')
+    while (line_end < body.length && body[line_end] != '\n') {
       line_end++;
+    }
 
     let const line_length = line_end - position;
     let const kept_length =

@@ -45,7 +45,9 @@ fn evaluate_one(const ExecContext &ec, EvalContext &cxt, StringView expression,
   let render_source = expression;
   if (expression_base != nullptr &&
       cxt.source_store().current_source() != nullptr)
+  {
     render_source = cxt.source_store().current_source()->view();
+  }
 
   if (let const operator_position =
           obvious_xor_power_operator_position(expression))
@@ -81,19 +83,22 @@ fn try_define_unevaluated_assignment(EvalContext &cxt, StringView line) throws
     -> bool
 {
   usize i = 0;
-  while (i < line.length && (line[i] == ' ' || line[i] == '\t'))
+  while (i < line.length && (line[i] == ' ' || line[i] == '\t')) {
     i++;
+  }
   if (i >= line.length || !lexer::is_variable_name_start(line[i])) {
     return false;
   }
 
   let const name_start = i;
-  while (i < line.length && lexer::is_variable_name(line[i]))
+  while (i < line.length && lexer::is_variable_name(line[i])) {
     i++;
+  }
   let const name = line.substring_of_length(name_start, i - name_start);
 
-  while (i < line.length && (line[i] == ' ' || line[i] == '\t'))
+  while (i < line.length && (line[i] == ' ' || line[i] == '\t')) {
     i++;
+  }
 
   if (i >= line.length || line[i] != '=') {
     return false;

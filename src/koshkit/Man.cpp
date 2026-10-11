@@ -29,7 +29,9 @@ static pure fn is_manual_section(StringView value) wontthrow -> bool
   for (usize position = 0; position < value.length; position++)
     if ((value[position] < '0' || value[position] > '9') &&
         value[position] != 'p' && value[position] != 'n')
+    {
       return false;
+    }
   return true;
 }
 
@@ -55,7 +57,9 @@ static fn find_manual_page(StringView paths, StringView section,
         current_section = StringView{&section_byte, 1};
       }
       let path = String{allocator, directory};
-      if (!path.is_empty() && path.back() != '/') path += '/';
+      if (!path.is_empty() && path.back() != '/') {
+        path += '/';
+      }
       path += "man";
       path += current_section;
       path += '/';
@@ -100,8 +104,9 @@ fn Man::execute(const ExecContext &ec, EvalContext &cxt,
                                 : remaining.substring_of_length(0, path_length);
       for (u32 section_number = 1; section_number <= 9; section_number++) {
         let manual_directory = String{cxt.scratch_allocator(), directory};
-        if (!manual_directory.is_empty() && manual_directory.back() != '/')
+        if (!manual_directory.is_empty() && manual_directory.back() != '/') {
           manual_directory += '/';
+        }
         manual_directory += "man";
         manual_directory += static_cast<char>('0' + section_number);
         let entries = os::list_directory(manual_directory.view());
@@ -111,7 +116,9 @@ fn Man::execute(const ExecContext &ec, EvalContext &cxt,
           if (entry.length() < 3 || entry[entry.length() - 2] != '.' ||
               entry[entry.length() - 1] !=
                   static_cast<char>('0' + section_number))
+          {
             continue;
+          }
           let path = String{cxt.scratch_allocator(), manual_directory.view()};
           path += '/';
           path += entry.view();
@@ -125,7 +132,9 @@ fn Man::execute(const ExecContext &ec, EvalContext &cxt,
           lowered_name.lowercase_ascii();
           if (std::strstr(searchable.c_str(), keyword.c_str()) == nullptr &&
               std::strstr(lowered_name.c_str(), keyword.c_str()) == nullptr)
+          {
             continue;
+          }
           let const newline = content->view().find_character('\n');
           let const summary = content->view().substring_of_length(
               0, newline.value_or(content->length()));

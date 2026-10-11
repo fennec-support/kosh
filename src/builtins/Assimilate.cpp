@@ -408,13 +408,15 @@ fn parse_transport_command(StringView spelling, ProgramResolver &resolver,
   let arguments = ArrayList<String>{allocator};
   usize position = 0;
   while (position < spelling.count()) {
-    while (position < spelling.count() && spelling[position] == ' ')
+    while (position < spelling.count() && spelling[position] == ' ') {
       position++;
+    }
     if (position == spelling.count()) break;
 
     let const start = position;
-    while (position < spelling.count() && spelling[position] != ' ')
+    while (position < spelling.count() && spelling[position] != ' ') {
       position++;
+    }
     arguments.push(String{
         allocator, spelling.substring_of_length(start, position - start)});
   }

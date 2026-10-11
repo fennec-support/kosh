@@ -48,8 +48,9 @@ static fn change_mode(const ExecContext &ec, EvalContext &cxt, const Path &path,
     return false;
   }
 
-  if (operand_device_id != nullptr && status.device_id != *operand_device_id)
+  if (operand_device_id != nullptr && status.device_id != *operand_device_id) {
     return true;
+  }
 
   let const parsed = utils::parse_file_mode(
       expression, status.mode, os::get_file_creation_mask(),
@@ -69,7 +70,9 @@ static fn change_mode(const ExecContext &ec, EvalContext &cxt, const Path &path,
   if (os::INTERRUPT_REQUESTED) return did_succeed;
   if (traversal_mode != chmod_traversal_mode::Recursive ||
       os::file_type_letter(status.mode) != 'd')
+  {
     return did_succeed;
+  }
 
   let const directory_scratch = cxt.expansion_store().scratch_arena().mark();
   defer { cxt.expansion_store().scratch_arena().release(directory_scratch); };

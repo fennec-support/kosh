@@ -62,8 +62,9 @@ fn Logger::execute(const ExecContext &ec, EvalContext &cxt,
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
-  if (FLAG_LOGGER_FILE.is_set() && !operands.is_empty())
+  if (FLAG_LOGGER_FILE.is_set() && !operands.is_empty()) {
     return report_usage_error(ec, cxt, args[0].view());
+  }
   let message = String{cxt.scratch_allocator()};
   if (FLAG_LOGGER_FILE.is_set()) {
     let const content = read_named_or_stdin(ec, FLAG_LOGGER_FILE.value());
@@ -83,8 +84,9 @@ fn Logger::execute(const ExecContext &ec, EvalContext &cxt,
       message += operands[index].view();
     }
   }
-  while (!message.is_empty() && message.back() == '\n')
+  while (!message.is_empty() && message.back() == '\n') {
     message.pop_back();
+  }
   let const tag =
       FLAG_LOGGER_TAG.is_set() ? FLAG_LOGGER_TAG.value() : StringView{"logger"};
   let const priority = FLAG_LOGGER_PRIORITY.is_set()

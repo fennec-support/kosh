@@ -207,7 +207,9 @@ pure inline fn skip_quoted_run(StringView text, usize position) wontthrow
 {
   let const byte = text[position];
   if (byte == '\\') return position + 1;
-  if (byte != '\'' && byte != '"') return position;
+  if (byte != '\'' && byte != '"') {
+    return position;
+  }
 
   usize closing = position + 1;
   while (closing < text.length && text[closing] != byte) {

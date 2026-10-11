@@ -58,15 +58,21 @@ static fn resolve_with_missing_components(StringView operand,
   {
     let const text = remaining.view();
     while (position < text.length && os::is_directory_separator(text[position]))
+    {
       position++;
+    }
     if (position == text.length) return resolved;
 
     let const start = position;
     while (position < text.length &&
            !os::is_directory_separator(text[position]))
+    {
       position++;
+    }
     let const component = text.substring_of_length(start, position - start);
-    if (is_missing && mode != realpath_mode::Missing) return None;
+    if (is_missing && mode != realpath_mode::Missing) {
+      return None;
+    }
     if (component == ".") continue;
 
     if (component == "..") {

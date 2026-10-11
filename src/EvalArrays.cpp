@@ -353,7 +353,9 @@ fn EvalContext::set_array_element(StringView name, usize index,
     if (variable_store().sparse_arrays().has(name) &&
         !sparse_array_has_entries(variable_store().sparse_arrays().values(),
                                   name, scratch_allocator()))
+    {
       variable_store().sparse_arrays().forget(name);
+    }
     return;
   }
   LOG(All, "holding element %zu of '%.*s' sparsely past the dense run of %zu",
@@ -380,8 +382,9 @@ fn EvalContext::set_bash_directory_stack_element(usize index,
                                                  StringView value) throws
     -> void
 {
-  if (index == 0 || index >= variable_store().directory_stack().count() + 1)
+  if (index == 0 || index >= variable_store().directory_stack().count() + 1) {
     return;
+  }
 
   let &stack = variable_store().directory_stack();
   stack[stack.count() - index] = String{heap_allocator(), value};
@@ -497,7 +500,9 @@ fn EvalContext::assign_array_element(StringView name, StringView subscript,
 
     if (let const array = variable_store().indexed_arrays().find(name);
         array.has_value() && resolved_index < array->count())
+    {
       return String{array->operator[](resolved_index).view()};
+    }
 
     if (variable_store().sparse_arrays().has(name)) {
       let const key =
@@ -730,7 +735,9 @@ fn EvalContext::unset_array_element(StringView name,
       if (variable_store().sparse_arrays().has(name) &&
           !sparse_array_has_entries(variable_store().sparse_arrays().values(),
                                     name, scratch_allocator()))
+      {
         variable_store().sparse_arrays().forget(name);
+      }
     }
     return;
   }
@@ -742,7 +749,9 @@ fn EvalContext::unset_array_element(StringView name,
   {
     if (subscript == "@" || subscript == "*" ||
         evaluate_array_index(*this, subscript) != 0)
+    {
       throw Error{String{name} + ": not an array variable"};
+    }
 
     unset_shell_variable(name);
   }
@@ -765,8 +774,9 @@ fn EvalContext::declare_local(StringView name, bool should_inherit_value) throws
   let const was_bash_directory_stack_special =
       is_bash_directory_stack_special(name);
   let inherited_directory_stack = ArrayList<String>{heap_allocator()};
-  if (should_inherit_value && was_bash_directory_stack_special)
+  if (should_inherit_value && was_bash_directory_stack_special) {
     inherited_directory_stack = collect_array_elements(name);
+  }
 
   let previous_array = Maybe<ArrayList<String>>{};
   if (variable_store().indexed_arrays().count() != 0)
@@ -829,8 +839,9 @@ fn EvalContext::declare_local(StringView name, bool should_inherit_value) throws
       previous_attributes, was_previously_associative, was_previously_exported,
       false});
 
-  if (should_inherit_value && was_bash_directory_stack_special)
+  if (should_inherit_value && was_bash_directory_stack_special) {
     set_indexed_array(name, steal(inherited_directory_stack));
+  }
 
   if (!should_inherit_value) {
     force_unset_shell_variable(name);
@@ -954,8 +965,9 @@ fn EvalContext::array_element_count(StringView name) const throws -> usize
                           });
   }
 
-  if (element_count == 0 && get_variable_value(name).has_value())
+  if (element_count == 0 && get_variable_value(name).has_value()) {
     element_count = 1;
+  }
 
   return element_count;
 }
@@ -1022,7 +1034,9 @@ fn EvalContext::apply_array_subscript(
       let out = String{scratch_allocator()};
       let const current_directory = logical_working_directory(*this);
       for (usize index = 0; index < count; index++) {
-        if (index > 0 && has_separator) out.push(separator);
+        if (index > 0 && has_separator) {
+          out.push(separator);
+        }
         if (index == 0)
           out.append(current_directory.text());
         else {
@@ -1035,8 +1049,9 @@ fn EvalContext::apply_array_subscript(
 
     let index = evaluate_array_index(*this, subscript, source_location);
     if (index < 0) index += static_cast<i64>(count);
-    if (index < 0 || static_cast<usize>(index) >= count)
+    if (index < 0 || static_cast<usize>(index) >= count) {
       return String{scratch_allocator()};
+    }
 
     return get_bash_directory_stack_element(static_cast<usize>(index),
                                             scratch_allocator())
@@ -1133,7 +1148,9 @@ fn EvalContext::read_literal_array_element(StringView name,
     return lookup_associative_element(name, subscript);
 
   let const index = subscript.to<i64>();
-  if (index.is_error() || index.value() < 0) return None;
+  if (index.is_error() || index.value() < 0) {
+    return None;
+  }
 
   let const element_index = static_cast<usize>(index.value());
   let const array = variable_store().indexed_arrays().find(name);

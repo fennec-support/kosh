@@ -411,9 +411,10 @@ fn Head::execute(const ExecContext &ec, EvalContext &cxt,
       if (has_reached_limit) {
         reader.finish_source(chunk.source_index);
         let const unread_count = chunk.content.length - append_count;
-        if (sources[chunk.source_index] == "-" && unread_count != 0)
+        if (sources[chunk.source_index] == "-" && unread_count != 0) {
           unused(os::rewind_descriptor(ec.in_fd.value_or(KOSH_STDIN),
                                        unread_count));
+        }
       } else if (is_byte_mode) {
         let const remaining_count = count - byte_count;
         reader.set_source_read_byte_count(

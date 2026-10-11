@@ -84,8 +84,9 @@ fn Fold::execute(const ExecContext &ec, EvalContext &cxt,
     usize line_start = 0;
     while (line_start < content.length) {
       usize line_end = line_start;
-      while (line_end < content.length && content[line_end] != '\n')
+      while (line_end < content.length && content[line_end] != '\n') {
         line_end++;
+      }
       append_folded_line(
           output,
           content.substring_of_length(line_start, line_end - line_start), width,

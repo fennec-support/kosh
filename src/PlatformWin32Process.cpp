@@ -547,7 +547,9 @@ static fn make_handle_inheritable(HANDLE handle,
                                   inherited_handle_state &state) wontthrow
     -> bool
 {
-  if (handle == nullptr || handle == INVALID_HANDLE_VALUE) return false;
+  if (handle == nullptr || handle == INVALID_HANDLE_VALUE) {
+    return false;
+  }
 
   DWORD flags = 0;
   if (GetHandleInformation(handle, &flags) == FALSE) return false;
@@ -591,13 +593,19 @@ static fn ensure_valid_standard_handles(STARTUPINFOW &startup_info,
   if (null_handle == INVALID_HANDLE_VALUE) return false;
   if (startup_info.hStdInput == nullptr ||
       startup_info.hStdInput == INVALID_HANDLE_VALUE)
+  {
     startup_info.hStdInput = null_handle;
+  }
   if (startup_info.hStdOutput == nullptr ||
       startup_info.hStdOutput == INVALID_HANDLE_VALUE)
+  {
     startup_info.hStdOutput = null_handle;
+  }
   if (startup_info.hStdError == nullptr ||
       startup_info.hStdError == INVALID_HANDLE_VALUE)
+  {
     startup_info.hStdError = null_handle;
+  }
   return true;
 }
 
@@ -692,7 +700,9 @@ static fn create_process_utf8(StringView application_path,
 
     let const do_place_inherited_fd = [&](i32 shell_fd,
                                           HANDLE handle) wontthrow {
-      if (shell_fd < 0 || shell_fd >= inherited_fd_count) return;
+      if (shell_fd < 0 || shell_fd >= inherited_fd_count) {
+        return;
+      }
 
       let const handle_value = reinterpret_cast<intptr_t>(handle);
       __builtin_memcpy(handles + sizeof(handle_value) * shell_fd, &handle_value,
@@ -754,12 +764,17 @@ static fn create_process_utf8(StringView application_path,
   bool did_restore_inheritance = false;
   defer
   {
-    if (!did_restore_inheritance)
+    if (!did_restore_inheritance) {
       for (usize restore_position = 0;
            restore_position < inheritable_handle_count; restore_position++)
+      {
         if (!restore_handle_inheritance(inheritance_states[restore_position]) &&
             preserved_error == ERROR_SUCCESS)
+        {
           preserved_error = GetLastError();
+        }
+      }
+    }
     if (preserved_error != ERROR_SUCCESS) SetLastError(preserved_error);
   };
   for (usize handle_position = 0; handle_position < unique_handles.count();
@@ -842,7 +857,9 @@ static fn create_process_utf8(StringView application_path,
        restore_position++)
     if (!restore_handle_inheritance(inheritance_states[restore_position]) &&
         restoration_error == ERROR_SUCCESS)
+    {
       restoration_error = GetLastError();
+    }
   did_restore_inheritance = true;
   if (restoration_error == ERROR_SUCCESS) return did_create;
 
@@ -2584,7 +2601,9 @@ fn is_process_signal_supported(i32 signal_number) wontthrow -> bool
 
 fn process_from_pid(i64 pid) wontthrow -> process
 {
-  if (pid <= 0 || static_cast<u64>(pid) > UINT32_MAX) return nullptr;
+  if (pid <= 0 || static_cast<u64>(pid) > UINT32_MAX) {
+    return nullptr;
+  }
   let const encoded = (static_cast<uintptr_t>(pid) << 2u) | PID_REFERENCE_TAG;
   return reinterpret_cast<process>(encoded);
 }
@@ -3029,7 +3048,9 @@ run_measured_with_options(const ArrayList<String> &argv, measured_output output,
     if (null_handle != INVALID_HANDLE_VALUE) {
       if (startup.hStdInput == nullptr ||
           startup.hStdInput == INVALID_HANDLE_VALUE)
+      {
         startup.hStdInput = null_handle;
+      }
       startup.hStdOutput = null_handle;
       startup.hStdError = null_handle;
     }
@@ -3224,7 +3245,9 @@ fn read_swap_status(swap_status &status) wontthrow -> bool
 
 fn read_process_io_status(i64 pid, process_io_status &status) wontthrow -> bool
 {
-  if (pid < 0 || pid > UINT32_MAX) return false;
+  if (pid < 0 || pid > UINT32_MAX) {
+    return false;
+  }
   let const process = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE,
                                   static_cast<DWORD>(pid));
   if (process == nullptr) return false;

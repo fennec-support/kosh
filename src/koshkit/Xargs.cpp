@@ -129,7 +129,9 @@ private:
     {
       let const byte = peek();
       if (!byte.has_value()) return None;
-      if (*byte != ' ' && *byte != '\t' && *byte != '\n') break;
+      if (*byte != ' ' && *byte != '\t' && *byte != '\n') {
+        break;
+      }
       if (*byte == '\n') m_line_number++;
       m_position++;
     }
@@ -184,7 +186,9 @@ private:
     loop
     {
       let const byte = take();
-      if (!byte.has_value() || *byte == '\0') break;
+      if (!byte.has_value() || *byte == '\0') {
+        break;
+      }
       value += *byte;
     }
 
@@ -207,7 +211,9 @@ private:
           m_line_number++;
           break;
         }
-        if (value.is_empty() && (*byte == ' ' || *byte == '\t')) continue;
+        if (value.is_empty() && (*byte == ' ' || *byte == '\t')) {
+          continue;
+        }
         value += *byte;
       }
       if (!value.is_empty()) return xargs_item{steal(value), item_line};
@@ -423,7 +429,9 @@ fn Xargs::execute(const ExecContext &ec, EvalContext &cxt,
 
       if (added_count == 0 &&
           (has_run_command || FLAG_XARGS_NO_RUN_IF_EMPTY.is_enabled()))
+      {
         break;
+      }
     }
     has_run_command = true;
 
@@ -469,7 +477,9 @@ fn Xargs::execute(const ExecContext &ec, EvalContext &cxt,
           "a command exited with status 255; stopping");
       return 124;
     }
-    if (command_status == 126 || command_status == 127) return command_status;
+    if (command_status == 126 || command_status == 127) {
+      return command_status;
+    }
     if (command_status > 128) return 125;
     if (command_status != 0) status = 123;
   }

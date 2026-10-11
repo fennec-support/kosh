@@ -429,7 +429,9 @@ static fn sort_and_deduplicate_names(ArrayList<String> names) throws
   for (usize index = 0; index < sorted_names.count(); index++) {
     if (unique_count > 0 &&
         sorted_names[unique_count - 1].view() == sorted_names[index].view())
+    {
       continue;
+    }
 
     if (unique_count != index)
       sorted_names[unique_count] = steal(sorted_names[index]);
@@ -839,7 +841,9 @@ fn ProgramResolver::validate_path_directory_generations() throws -> bool
 {
   if (m_is_path_generation_list_valid &&
       m_path_directories_validation_epoch == DIRECTORY_VALIDATION_EPOCH)
+  {
     return false;
+  }
 
   bool did_change =
       !m_is_path_generation_list_valid ||
@@ -890,7 +894,9 @@ fn ProgramResolver::revalidate_command_prefix(StringView prefix) throws -> void
           smart_case_prefix_matches(normalized_name.view(), prefix);
       let const stem_matches = stem.length != normalized_name.length() &&
                                smart_case_prefix_matches(stem, prefix);
-      if (!full_name_matches && !stem_matches) continue;
+      if (!full_name_matches && !stem_matches) {
+        continue;
+      }
 
       let full_path = directory.clone();
       full_path.append(entry.name.view());
@@ -914,14 +920,18 @@ fn ProgramResolver::revalidate_command_prefix(StringView prefix) throws -> void
           smart_case_prefix_matches(normalized_name.view(), prefix);
       let const stem_matches = stem.length != normalized_name.length() &&
                                smart_case_prefix_matches(stem, prefix);
-      if (!full_name_matches && !stem_matches) continue;
+      if (!full_name_matches && !stem_matches) {
+        continue;
+      }
 
       Maybe<Path> full_path;
       if (entry.kind == Path::entry_kind::Symlink) {
         let const position = symlink_position++;
         if (symlink_results[position].error_number != 0 ||
             os::file_type_letter(symlink_statuses[position].mode) != '-')
+        {
           continue;
+        }
         full_path = steal(symlink_paths[position]);
       } else if (entry.kind != Path::entry_kind::Regular) {
         continue;
@@ -953,7 +963,9 @@ fn ProgramResolver::prepare_complete_path_cache(
 {
   if (!m_is_command_name_list_valid && !m_is_path_generation_list_valid &&
       m_explicit_completion_depth == 0)
+  {
     return;
+  }
 
   if (!m_is_command_name_list_valid) {
     if (validation_scope == ValidationScope::All ||
@@ -961,9 +973,11 @@ fn ProgramResolver::prepare_complete_path_cache(
     {
       if (m_is_path_generation_list_valid &&
           m_path_directories_validation_epoch == DIRECTORY_VALIDATION_EPOCH)
+      {
         rebuild_path_command_index(CompletionRefresh::Cached);
-      else
+      } else {
         initialize_path_map();
+      }
       return;
     }
 
@@ -982,7 +996,9 @@ fn ProgramResolver::prepare_complete_path_cache(
     if (!m_validated_prefix.is_empty() &&
         m_prefix_validation_epoch == DIRECTORY_VALIDATION_EPOCH &&
         validation_prefix.starts_with(m_validated_prefix.view()))
+    {
       return;
+    }
 
     revalidate_command_prefix(validation_prefix);
     return;
@@ -1058,7 +1074,9 @@ fn ProgramResolver::get_status(StringView name, StatusLookup lookup) throws
       m_command_names.find(normalized_name.view()).has_value();
   let const is_cached_regular =
       m_regular_names.find(normalized_name.view()).has_value();
-  if (!is_cached_runnable && !is_cached_regular) return Status::Missing;
+  if (!is_cached_runnable && !is_cached_regular) {
+    return Status::Missing;
+  }
 
   if (m_statuses_validation_epoch != DIRECTORY_VALIDATION_EPOCH) {
     m_command_statuses.clear();
@@ -1159,7 +1177,9 @@ fn ProgramResolver::resolve_along_path(StringView program_name,
 
       if (requirement == Requirement::Regular ||
           candidate_paths[index].is_executable())
+      {
         result.push(steal(candidate_paths[index]));
+      }
     }
 
     return result;
@@ -1199,7 +1219,9 @@ fn ProgramResolver::resolve_along_path(StringView program_name,
     for (usize index = 0; index < candidate_paths.count(); index++) {
       if (candidate_results[index].error_number != 0 ||
           os::file_type_letter(candidate_statuses[index].mode) != '-')
+      {
         continue;
+      }
 
       let const should_check_executable = requirement != Requirement::Regular ||
                                           cache_policy != CachePolicy::Bypass;
@@ -1258,8 +1280,10 @@ hot fn ProgramResolver::search(StringView program_name, SearchMode search_mode,
 
   if (search_mode == SearchMode::All || cache_policy == CachePolicy::Bypass ||
       path_override.has_value())
+  {
     return resolve_along_path(program_name, search_mode, requirement,
                               CachePolicy::Bypass, path_override);
+  }
 
   let normalized_name = String{program_name};
   let const name_info = os::normalize_program_name(normalized_name);

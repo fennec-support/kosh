@@ -48,13 +48,17 @@ fn Tsort::execute(const ExecContext &ec, EvalContext &cxt,
   while (position < content->length()) {
     while (position < content->length() &&
            std::isspace(static_cast<u8>((*content)[position])) != 0)
+    {
       position++;
+    }
     if (position == content->length()) break;
 
     let const start = position;
     while (position < content->length() &&
            std::isspace(static_cast<u8>((*content)[position])) == 0)
+    {
       position++;
+    }
     tokens.push(content->view().substring_of_length(start, position - start));
   }
 

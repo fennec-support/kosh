@@ -198,7 +198,9 @@ fn Mv::execute(const ExecContext &ec, EvalContext &cxt,
     if (should_prompt &&
         Path{target.view(), cxt.scratch_allocator()}.exists() &&
         !confirm_koshkit_action(ec, "overwrite '" + target + "'? "))
+    {
       continue;
+    }
 
     try {
       if (!os::rename_path(source, target.view())) {

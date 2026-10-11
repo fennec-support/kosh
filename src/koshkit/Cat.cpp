@@ -195,7 +195,9 @@ fn Cat::execute(const ExecContext &ec, EvalContext &cxt,
         if (!chunk.content.is_empty()) ec.print_to_stdout(chunk.content);
         if (chunk.completion != source_completion_state::Complete ||
             chunk.error_number == 0)
+        {
           continue;
+        }
 
         os::set_last_system_error(chunk.error_number);
         report_soft_koshkit_util_error(

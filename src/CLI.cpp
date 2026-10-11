@@ -425,8 +425,9 @@ static fn argument_location(
     const char *const *argv, usize argument_index, usize base_position,
     const ArrayList<SourceLocation> *arg_locations) throws -> SourceLocation
 {
-  if (arg_locations != nullptr && argument_index < arg_locations->count())
+  if (arg_locations != nullptr && argument_index < arg_locations->count()) {
     return (*arg_locations)[argument_index];
+  }
 
   usize caret_offset = 0;
   for (usize prior_index = 0; prior_index < argument_index; prior_index++)
@@ -612,14 +613,18 @@ fn parse_flags(const FlagList &flags, int argc, const char *const *argv,
         is_negative_number_operand)
     {
       let const is_program_name = i == 0;
-      if (is_program_name && parse_options.should_omit_program_name) continue;
+      if (is_program_name && parse_options.should_omit_program_name) {
+        continue;
+      }
 
       LOG(Debug, "taking '%s' as an operand", argv[i]);
       args.push_managed(StringView{argv[i]});
       do_record_operand(static_cast<usize>(i));
       if (!is_program_name &&
           !parse_options.should_allow_options_after_operands)
+      {
         should_ignore_rest = true;
+      }
       continue;
     }
 
@@ -714,7 +719,9 @@ fn parse_flags(const FlagList &flags, int argc, const char *const *argv,
                                     is_long, base_position, arg_locations));
 
           let value = StringView{value_offset};
-          if (!value.is_empty() && value[0] == '=') value = value.substring(1);
+          if (!value.is_empty() && value[0] == '=') {
+            value = value.substring(1);
+          }
           if (!value.is_empty() && optional_flag->should_accept_value(value)) {
             optional_flag->set(value);
             optional_flag->set_value_location(attached_flag_value_location(
@@ -1262,8 +1269,9 @@ static fn append_report_grid(
       let const text =
           index < row.count() ? row[index].text.view() : StringView{};
       let style = index < columns.count() ? columns[index].style : StringView{};
-      if (index < row.count() && !row[index].style.is_empty())
+      if (index < row.count() && !row[index].style.is_empty()) {
         style = row[index].style;
+      }
       let const is_right_aligned =
           index < columns.count() &&
           columns[index].alignment == report_table_alignment::Right;
@@ -1320,8 +1328,9 @@ fn append_titled_report_table(String &output, StringView title,
   if (body.is_empty()) return;
 
   if (!output.is_empty()) {
-    while (!output.is_empty() && output.back() == '\n')
+    while (!output.is_empty() && output.back() == '\n') {
       output.truncate(output.length() - 1);
+    }
     output += "\n\n";
   }
   append_report_text(output, title, colors::ansi::BOLD_BLUE, should_color);
@@ -1399,8 +1408,9 @@ fn format_cli_help(StringView text, bool should_color) throws -> String
   usize line_start = 0;
   while (line_start < text.length) {
     usize line_end = line_start;
-    while (line_end < text.length && text[line_end] != '\n')
+    while (line_end < text.length && text[line_end] != '\n') {
       line_end++;
+    }
     let const line =
         text.substring_of_length(line_start, line_end - line_start);
 
@@ -1415,12 +1425,13 @@ fn format_cli_help(StringView text, bool should_color) throws -> String
 
     if (is_heading) {
       append_report_text(output, line, colors::ansi::BOLD_BLUE, true);
-      if (line == "DESCRIPTION")
+      if (line == "DESCRIPTION") {
         section = help_section::Description;
-      else if (line == "SYNOPSIS")
+      } else if (line == "SYNOPSIS") {
         section = help_section::Synopsis;
-      else
+      } else {
         section = help_section::Other;
+      }
     } else if (!line.is_empty() && section == help_section::Description) {
       output += line;
     } else if (!line.is_empty() && section == help_section::Synopsis) {

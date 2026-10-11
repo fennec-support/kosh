@@ -590,7 +590,9 @@ fn EvalContext::run_source(StringView source, StringView origin,
       execution_store().subshell_depth() ==
       execution_store().line_discard_subshell_depth();
   let const do_pass_line_discard = [&](ErrorBase &error) wontthrow -> bool {
-    if (!error.is_line_discarding() || error.is_script_fatal()) return false;
+    if (!error.is_line_discarding() || error.is_script_fatal()) {
+      return false;
+    }
     if (should_hold_line_discard && !error.is_top_level_line_discarding()) {
       return false;
     }
@@ -751,8 +753,9 @@ fn EvalContext::resolve_source_path(
     if (let directory = resolve_tilde_prefix(prefix); directory.has_value()) {
       expanded_path = directory.take();
       if (slash.has_value()) {
-        if (expanded_path.is_empty() || expanded_path.back() != '/')
+        if (expanded_path.is_empty() || expanded_path.back() != '/') {
           expanded_path.push('/');
+        }
         expanded_path.append(path.substring(*slash + 1));
       }
       path = expanded_path.view();

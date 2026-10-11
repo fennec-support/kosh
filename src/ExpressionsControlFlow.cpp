@@ -89,7 +89,9 @@ static fn async_error_status(const EvalContext &cxt, const ErrorBase &error,
     return BASH_COMMAND_STRING_FATAL_STATUS;
   }
 
-  if (error.is_script_fatal() && cxt.runtime_state().is_posix_mode()) return 2;
+  if (error.is_script_fatal() && cxt.runtime_state().is_posix_mode()) {
+    return 2;
+  }
 
   return static_cast<i32>(error.command_status());
 }
@@ -390,8 +392,9 @@ fn IfClause::analyze(AnalysisContext &actx, bool is_unconditional) const throws
     }
   }
 
-  if (has_merged_occurrence_exit || !did_skip_exiting_branch)
+  if (has_merged_occurrence_exit || !did_skip_exiting_branch) {
     actx.occurrences = steal(merged_occurrences);
+  }
 
   actx.constant_variables.clear();
 }
@@ -928,14 +931,19 @@ fn ForLoop::analyze(AnalysisContext &actx, bool is_unconditional) const throws
         usize start = 0;
         while (start < body.length &&
                (body[start] == ' ' || body[start] == '\t'))
+        {
           start++;
+        }
         let const trimmed = body.substring(start);
-        if (trimmed.starts_with(StringView{"ls "}) || trimmed == "ls")
+        if (trimmed.starts_with(StringView{"ls "}) || trimmed == "ls") {
           actx.report_diagnostic(diagnostic_id::sc2045, t->source_location());
-        else if (trimmed.starts_with(StringView{"cat "}))
+        } else if (trimmed.starts_with(StringView{"cat "})) {
           actx.report_diagnostic(diagnostic_id::sc2013, t->source_location());
-        else if (trimmed.starts_with(StringView{"find "}) || trimmed == "find")
+        } else if (trimmed.starts_with(StringView{"find "}) ||
+                   trimmed == "find")
+        {
           actx.report_diagnostic(diagnostic_id::sc2044, t->source_location());
+        }
         break;
       }
 

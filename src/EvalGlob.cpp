@@ -183,7 +183,9 @@ fn EvalContext::expand_path_once(const glob_field &field,
     let const filename = entry.name.view();
 
     if (filename == "." || filename == "..") {
-      if (!pattern_leads_with_dot) return false;
+      if (!pattern_leads_with_dot) {
+        return false;
+      }
     } else if (!pattern_leads_with_dot && !filename.is_empty() &&
                filename[0] == '.' && !dotglob_is_on)
     {
@@ -278,7 +280,9 @@ hot pure fn first_active_glob(StringView text, const Bitset &mask,
       return i;
     }
     if (ch == '[') {
-      if (!open_bracket) open_bracket = i;
+      if (!open_bracket) {
+        open_bracket = i;
+      }
     } else if (ch == ']' && open_bracket) {
       return open_bracket;
     }
@@ -624,7 +628,9 @@ fn EvalContext::expand_tilde(WordSegment &leading_segment,
   usize name_end = 1;
   while (name_end < text.length() && text[name_end] != '/' &&
          !(should_stop_at_colon && text[name_end] == ':'))
+  {
     name_end++;
+  }
   let const name = text.view().substring_of_length(1, name_end - 1);
 
   if (name_end == text.length() && is_word_continued) {
@@ -649,9 +655,10 @@ fn EvalContext::expand_tilde(WordSegment &leading_segment,
 fn EvalContext::resolve_tilde_prefix(StringView name) const throws
     -> Maybe<String>
 {
-  if (name == "+" || name == "-")
+  if (name == "+" || name == "-") {
     return get_variable_value(name == "+" ? StringView{"PWD"}
                                           : StringView{"OLDPWD"});
+  }
   if (name.is_empty()) {
     if (let home = get_variable_value("HOME"); home.has_value()) return home;
   }
@@ -679,7 +686,9 @@ fn EvalContext::expand_colon_tildes(WordSegment &segment,
       usize prefix_end = i + 2;
       while (prefix_end < view.length && view[prefix_end] != '/' &&
              view[prefix_end] != ':')
+      {
         prefix_end++;
+      }
       if (!(prefix_end == view.length && is_word_continued)) {
         let const name = view.substring_of_length(i + 2, prefix_end - i - 2);
         if (let const directory = resolve_tilde_prefix(name)) {

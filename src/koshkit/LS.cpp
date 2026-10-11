@@ -280,7 +280,9 @@ make_entry(const Path &path, StringView name, const listing_options &options,
       entry.type = colors::file_entry_type::Symlink;
       return entry;
     }
-    if (!options.should_classify && !options.should_color) return entry;
+    if (!options.should_classify && !options.should_color) {
+      return entry;
+    }
   }
 
   if (known_entry != nullptr) {
@@ -397,7 +399,9 @@ static fn collect_directory(const Path &directory,
   }
 
   for (let const &child : *children) {
-    if (!options.is_showing_dot_names && child.name.starts_with(".")) continue;
+    if (!options.is_showing_dot_names && child.name.starts_with(".")) {
+      continue;
+    }
 
     if (options.should_load_full_status || options.should_classify ||
         options.should_color)
@@ -713,7 +717,9 @@ static fn render_directory_block(StringView directory,
 
   if (!options.is_recursive) return;
 
-  if (options.has_depth_limit && depth + 1 >= options.max_depth) return;
+  if (options.has_depth_limit && depth + 1 >= options.max_depth) {
+    return;
+  }
 
   for (let const &entry : *entries) {
     if (os::INTERRUPT_REQUESTED) return;
@@ -808,8 +814,9 @@ fn LS::execute(const ExecContext &ec, EvalContext &cxt,
       options.is_long || options.key != ls_sort_key::Name;
   options.should_load_type = options.should_color || options.should_classify ||
                              options.is_recursive || options.is_tree;
-  if (!options.is_long && !options.is_one_per_line && !options.is_tree)
+  if (!options.is_long && !options.is_one_per_line && !options.is_tree) {
     options.terminal_dimensions = os::get_terminal_dimensions();
+  }
 
   let const allocator = cxt.scratch_allocator();
   ArrayList<StringView> unsorted_targets{allocator};

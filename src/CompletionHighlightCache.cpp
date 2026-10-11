@@ -46,8 +46,9 @@ static fn highlight_line_with_lexical_state(
     if (line.is_empty()) return spans;
 
     usize line_end = 0;
-    while (line_end < line.length && line[line_end] != '\n')
+    while (line_end < line.length && line[line_end] != '\n') {
       line_end++;
+    }
 
     if (lexical_state->active_heredoc_index >=
         lexical_state->pending_heredocs.count())
@@ -454,8 +455,9 @@ fn append_highlighted_source(String &output, StringView source,
   usize line_start = 0;
   while (line_start < source.length) {
     let line_end = line_start;
-    while (line_end < source.length && source[line_end] != '\n')
+    while (line_end < source.length && source[line_end] != '\n') {
       line_end++;
+    }
     if (line_end < source.length) line_end++;
 
     let const *spans = cache.spans_for(source, line_start, line_end, context);
@@ -501,7 +503,9 @@ fn shell_highlight_cache::spans_for(StringView source, usize line_start,
   }
   if (cached_line_index < m_lines.count()) {
     let &line = m_lines[cached_line_index];
-    if (line_start == line.start && line_end == line.end) return &line.spans;
+    if (line_start == line.start && line_end == line.end) {
+      return &line.spans;
+    }
   }
 
   let const do_advance_with_checkpoints = [&](shell_lexical_state &state,
@@ -603,7 +607,9 @@ fn debug_diagnostic_cache_is_stable(EvalContext &context) throws -> bool
 
   let keyword_line_end = keyword_line_start;
   while (keyword_line_end < source.count() && source[keyword_line_end] != '\n')
+  {
     keyword_line_end++;
+  }
   let const *keyword_spans = cache.spans_for(source.view(), keyword_line_start,
                                              keyword_line_end, context);
   let has_keyword_span = false;
@@ -612,7 +618,9 @@ fn debug_diagnostic_cache_is_stable(EvalContext &context) throws -> bool
         span.start, span.end, static_cast<unsigned>(span.role));
     if (span.start == 0 && span.end == 4 &&
         span.role == highlight_role::keyword)
+    {
       has_keyword_span = true;
+    }
   }
   if (!has_keyword_span) return false;
 
@@ -648,7 +656,9 @@ fn debug_diagnostic_cache_is_stable(EvalContext &context) throws -> bool
   for (let const &span : *function_spans)
     if (span.start == 0 && span.end == 6 &&
         span.role == highlight_role::resolved_command)
+    {
       has_resolved_function_call = true;
+    }
   if (!has_resolved_function_call) return false;
 
   let const other_source = String{"echo ok"};

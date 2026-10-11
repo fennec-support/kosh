@@ -212,7 +212,9 @@ public:
     }
 
     if (m_options.should_stay_on_device && !is_on_root_device(path_text, depth))
+    {
       return;
+    }
 
     let children =
         Path::read_directory_typed(Path{path_text, m_allocator}, m_allocator);

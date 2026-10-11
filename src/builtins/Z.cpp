@@ -187,8 +187,9 @@ fn z_completion_candidates(StringView query, Allocator allocator) throws
 
   let candidates = ArrayList<String>{allocator};
   for (let const &entry : entries) {
-    if (!query.is_empty() && !contains_ignore_case(entry.path.view(), query))
+    if (!query.is_empty() && !contains_ignore_case(entry.path.view(), query)) {
       continue;
+    }
 
     let const directory = Path{entry.path.view()}.to_absolute().normalized();
     if (!directory.is_directory()) continue;
@@ -239,8 +240,9 @@ fn Z::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   let const do_change_directory = [&](StringView directory) throws -> i32 {
     let const status = run_cd_to_directory(cxt, ec, directory);
-    if (status == 0 && !cxt.execution_store().shell_is_interactive())
+    if (status == 0 && !cxt.execution_store().shell_is_interactive()) {
       record_directory_access(directory, cxt.scratch_allocator());
+    }
 
     return status;
   };

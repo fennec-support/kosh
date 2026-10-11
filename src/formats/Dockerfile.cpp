@@ -29,12 +29,16 @@ static fn docker_instruction(StringView line, usize &content_position) wontthrow
   usize position = 0;
   while (position < line.length &&
          (line[position] == ' ' || line[position] == '\t'))
+  {
     position++;
+  }
 
   let const instruction_start = position;
   while (position < line.length && line[position] != ' ' &&
          line[position] != '\t')
+  {
     position++;
+  }
   let const instruction =
       line.substring_of_length(instruction_start, position - instruction_start);
   let kind = docker_instruction_kind::None;
@@ -72,7 +76,9 @@ static fn docker_instruction(StringView line, usize &content_position) wontthrow
 
   while (position < line.length &&
          (line[position] == ' ' || line[position] == '\t'))
+  {
     position++;
+  }
   content_position = position;
 
   return kind;
@@ -167,7 +173,9 @@ fn parse_dockerfile_format(const parser_format_input &input,
     }
     if (!is_shell_instruction || content_position >= line.length ||
         line[content_position] == '[')
+    {
       continue;
+    }
 
     let const heredoc =
         instruction == docker_instruction_kind::Run

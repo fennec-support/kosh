@@ -202,8 +202,9 @@ fn find_mount_point(StringView path, Allocator allocator) throws -> String
   loop
   {
     usize slash_position = best.length();
-    while (slash_position > 0 && best.view()[slash_position - 1] != '/')
+    while (slash_position > 0 && best.view()[slash_position - 1] != '/') {
       slash_position--;
+    }
 
     if (slash_position == 0) break;
 
@@ -645,8 +646,9 @@ fn render_format(String &output, StringView format, file_subject *subject,
   usize position = 0;
   while (position < format.length) {
     let const literal_start = position;
-    while (position < format.length && format[position] != '%')
+    while (position < format.length && format[position] != '%') {
       position++;
+    }
     if (position != literal_start) {
       output +=
           format.substring_of_length(literal_start, position - literal_start);

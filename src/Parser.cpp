@@ -120,10 +120,11 @@ fn Parser::record_analysis_alias_definitions(
   for (usize i = 1; i < args.count(); i++) {
     let const text = args[i]->raw_string();
     let const equals_position = text.find_character('=');
-    if (equals_position.has_value() && *equals_position > 0)
+    if (equals_position.has_value() && *equals_position > 0) {
       record_analysis_scope_definition(
           StringView{text.data(), *equals_position},
           analysis_scope_definition_kind::Alias);
+    }
   }
 }
 
@@ -150,7 +151,9 @@ static_assert(static_cast<u8>(Token::Kind::Function) < 64);
 hot pure fn internal::get_unquoted_word_text(const Token *token) wontthrow
     -> const SegmentText *
 {
-  if (token == nullptr || token->kind() != Token::Kind::Word) return nullptr;
+  if (token == nullptr || token->kind() != Token::Kind::Word) {
+    return nullptr;
+  }
   let const &word = static_cast<const tokens::WordToken *>(token)->word();
   if (word.segments.count() != 1 ||
       word.segments[0].kind != WordSegment::Kind::UnquotedText)
@@ -326,7 +329,9 @@ fn Parser::skip_semicolons_and_newlines() throws -> void
     ASSERT(t != nullptr);
     if (t->kind() != Token::Kind::Semicolon &&
         t->kind() != Token::Kind::Newline)
+    {
       break;
+    }
     m_lexer.advance_past_last_peek();
   }
 }
@@ -530,8 +535,9 @@ cold fn Parser::construct_next_top_level_ast(
   loop
   {
     Token *token = peek_top_level_token(errors, context, diagnostic_sink);
-    if (token == nullptr || token->kind() == Token::Kind::EndOfFile)
+    if (token == nullptr || token->kind() == Token::Kind::EndOfFile) {
       return nullptr;
+    }
 
     try {
       Expression *piece = parse_command_list(0);
@@ -1375,16 +1381,19 @@ hot fn Parser::parse_simple_command(const Token *leading_token) throws
               position_word = command_position_word::BraceClose;
             break;
           case '[':
-            if (view.length == 2 && view[1] == '[')
+            if (view.length == 2 && view[1] == '[') {
               position_word = command_position_word::Conditional;
+            }
             break;
           case 's':
-            if (view.length == 6 && view == "select")
+            if (view.length == 6 && view == "select") {
               position_word = command_position_word::Select;
+            }
             break;
           case 'c':
-            if (view.length == 6 && view == "coproc")
+            if (view.length == 6 && view == "coproc") {
               position_word = command_position_word::Coproc;
+            }
             break;
           default: break;
           }

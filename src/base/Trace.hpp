@@ -111,11 +111,15 @@ fn format_named_values(StringView names, Args &&...args) -> String
     usize start = 0;
     while (start < name.length &&
            (name.data[start] == ' ' || name.data[start] == '\t'))
+    {
       start++;
+    }
     usize stop = name.length;
     while (stop > start &&
            (name.data[stop - 1] == ' ' || name.data[stop - 1] == '\t'))
+    {
       stop--;
+    }
     name = name.substring_of_length(start, stop - start);
 
     out.append(name);

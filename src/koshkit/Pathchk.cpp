@@ -71,7 +71,9 @@ fn Pathchk::execute(const ExecContext &ec, EvalContext &cxt,
         let component_length = component.text.length;
         if (!should_check_portable) {
           let const native_length = os::path_component_length(component.text);
-          if (native_length.has_value()) component_length = *native_length;
+          if (native_length.has_value()) {
+            component_length = *native_length;
+          }
         }
         if (name_limit > 0 && component_length > static_cast<usize>(name_limit))
         {
@@ -84,14 +86,19 @@ fn Pathchk::execute(const ExecContext &ec, EvalContext &cxt,
           reason = "a component begins with '-'";
           break;
         }
-        if (should_check_portable)
+        if (should_check_portable) {
           for (usize byte_position = 0; byte_position < component.text.length;
                byte_position++)
+          {
             if (!is_portable_filename_byte(component.text[byte_position])) {
               reason = "component contains non-portable characters";
               break;
             }
-        if (!reason.is_empty()) break;
+          }
+        }
+        if (!reason.is_empty()) {
+          break;
+        }
       }
     }
 

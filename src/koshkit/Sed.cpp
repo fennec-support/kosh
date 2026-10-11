@@ -221,11 +221,14 @@ static fn parse_sed_script(StringView script, Allocator allocator,
     while (position < script.length &&
            (script[position] == ';' || script[position] == '\n' ||
             script[position] == ' ' || script[position] == '\t'))
+    {
       position++;
+    }
     if (position == script.length) break;
     if (script[position] == '#') {
-      while (position < script.length && script[position] != '\n')
+      while (position < script.length && script[position] != '\n') {
         position++;
+      }
       continue;
     }
 
@@ -246,14 +249,18 @@ static fn parse_sed_script(StringView script, Allocator allocator,
 
     while (position < script.length &&
            (script[position] == ' ' || script[position] == '\t'))
+    {
       position++;
+    }
     bool is_negated = false;
     if (position < script.length && script[position] == '!') {
       position++;
       is_negated = true;
       while (position < script.length &&
              (script[position] == ' ' || script[position] == '\t'))
+      {
         position++;
+      }
     }
     if (position == script.length || script[position] == '\n') {
       throw SedParseError{position, "missing command",
@@ -289,11 +296,16 @@ static fn parse_sed_script(StringView script, Allocator allocator,
                                            : sed_command_kind::Change;
       while (position < script.length &&
              (script[position] == ' ' || script[position] == '\t'))
+      {
         position++;
-      if (position < script.length && script[position] == '\\') position++;
+      }
+      if (position < script.length && script[position] == '\\') {
+        position++;
+      }
       let const text_start = position;
-      while (position < script.length && script[position] != '\n')
+      while (position < script.length && script[position] != '\n') {
         position++;
+      }
       command.replacement =
           String{allocator,
                  script.substring_of_length(text_start, position - text_start)};
@@ -336,11 +348,11 @@ static fn parse_sed_script(StringView script, Allocator allocator,
       while (position < script.length && script[position] != ';' &&
              script[position] != '\n')
       {
-        if (script[position] == 'g')
+        if (script[position] == 'g') {
           command.is_global = true;
-        else if (script[position] == 'p')
+        } else if (script[position] == 'p') {
           command.should_print = true;
-        else if (script[position] != ' ' && script[position] != '\t')
+        } else if (script[position] != ' ' && script[position] != '\t') {
           throw SedParseError{
               position,
               "unsupported substitution flag '" +
@@ -349,6 +361,7 @@ static fn parse_sed_script(StringView script, Allocator allocator,
                   "'",
               "use g to replace every match or p to print changed lines"
           };
+        }
         position++;
       }
       break;
@@ -376,8 +389,9 @@ static fn get_sed_script_location(const ArrayList<sed_script_part> &parts,
   ASSERT(!parts.is_empty());
 
   for (let const &part : parts) {
-    if (position >= part.start_position && position < part.end_position)
+    if (position >= part.start_position && position < part.end_position) {
       return part.location;
+    }
   }
 
   return parts.back().location;
@@ -431,10 +445,11 @@ static fn append_sed_replacement(String &output, StringView replacement,
       let const escaped = replacement[++position];
       if (escaped >= '1' && escaped <= '9') {
         let const group = static_cast<usize>(escaped - '0');
-        if (group < spans.count() && spans[group].start >= 0)
+        if (group < spans.count() && spans[group].start >= 0) {
           output += subject.substring_of_length(
               static_cast<usize>(spans[group].start),
               static_cast<usize>(spans[group].end - spans[group].start));
+        }
       } else {
         output += escaped;
       }
@@ -596,8 +611,9 @@ fn Sed::execute(const ExecContext &ec, EvalContext &cxt,
   let has_written_output = false;
   let did_written_output_end_in_newline = true;
   let const do_flush_output = [&](bool should_flush_all) throws {
-    if (output.is_empty() || (!should_flush_all && output.count() < 65536))
+    if (output.is_empty() || (!should_flush_all && output.count() < 65536)) {
       return;
+    }
 
     ec.print_to_stdout(output);
     has_written_output = true;
@@ -677,7 +693,9 @@ fn Sed::execute(const ExecContext &ec, EvalContext &cxt,
         break;
       }
       }
-      if (should_delete || should_quit) break;
+      if (should_delete || should_quit) {
+        break;
+      }
     }
 
     if (!should_delete && !FLAG_SED_QUIET.is_enabled()) {
@@ -730,8 +748,9 @@ fn Sed::execute(const ExecContext &ec, EvalContext &cxt,
       has_held_line = true;
     }
   }
-  if (has_held_line && !should_quit)
+  if (has_held_line && !should_quit) {
     do_process_line(held_line.view(), was_held_line_terminated, true);
+  }
 
   do_flush_output(true);
   return status;

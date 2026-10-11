@@ -85,7 +85,9 @@ pure fn has_multi_digit_positional_expansion(StringView source) wontthrow
     if (byte == '$' && position + 2 < source.length &&
         source[position + 1] >= '1' && source[position + 1] <= '9' &&
         source[position + 2] >= '0' && source[position + 2] <= '9')
+    {
       return true;
+    }
   }
 
   return false;
@@ -107,7 +109,9 @@ fn update_generated_executable_paths(AnalysisContext &actx,
                                      bool is_command_shadowed,
                                      bool is_unconditional) throws -> void
 {
-  if (is_command_shadowed || !is_unconditional || args.is_empty()) return;
+  if (is_command_shadowed || !is_unconditional || args.is_empty()) {
+    return;
+  }
 
   let is_driver = false;
   if (command_name.has_value()) {
@@ -200,22 +204,28 @@ pure fn internal::reference_has_quoted_alternate_word(StringView spec) wontthrow
   if (!spec.is_empty() && (spec[0] == '@' || spec[0] == '*')) {
     position = 1;
   } else {
-    while (position < spec.length && lexer::is_variable_name(spec[position]))
+    while (position < spec.length && lexer::is_variable_name(spec[position])) {
       position++;
+    }
   }
 
   if (position == 0) return false;
 
   if (position < spec.length && spec[position] == '[') {
-    while (position < spec.length && spec[position] != ']')
+    while (position < spec.length && spec[position] != ']') {
       position++;
+    }
 
     if (position == spec.length) return false;
     position++;
   }
 
-  if (position < spec.length && spec[position] == ':') position++;
-  if (position >= spec.length || spec[position] != '+') return false;
+  if (position < spec.length && spec[position] == ':') {
+    position++;
+  }
+  if (position >= spec.length || spec[position] != '+') {
+    return false;
+  }
   position++;
 
   while (position < spec.length) {
@@ -365,7 +375,9 @@ cold fn bare_glob_can_start_with_dash(const Word &word) wontthrow -> bool
   for (usize position = 1; position < *close; position++)
     if (text[position] == '-' &&
         (position == 1 || position + 1 == *close || text[position - 1] == '\\'))
+    {
       return true;
+    }
   return false;
 }
 
@@ -382,7 +394,9 @@ cold pure fn internal::view_contains(StringView view,
 
     usize matched = 1;
     while (matched < needle.length && view[start + matched] == needle[matched])
+    {
       matched++;
+    }
 
     if (matched == needle.length) return true;
   }
@@ -393,12 +407,14 @@ cold pure fn internal::view_contains(StringView view,
 cold pure fn substitution_body_is_bare_echo(StringView body) wontthrow -> bool
 {
   usize start = 0;
-  while (start < body.length && (body[start] == ' ' || body[start] == '\t'))
+  while (start < body.length && (body[start] == ' ' || body[start] == '\t')) {
     start++;
+  }
 
   let const trimmed = body.substring(start);
-  if (!trimmed.starts_with(StringView{"echo "}) && trimmed != "echo")
+  if (!trimmed.starts_with(StringView{"echo "}) && trimmed != "echo") {
     return false;
+  }
 
   for (usize i = 0; i < trimmed.length; i++)
     if (trimmed[i] == '|' || trimmed[i] == ';' || trimmed[i] == '&' ||
@@ -429,8 +445,9 @@ fn internal::operand_target_name(StringView text) wontthrow -> StringView
     return StringView{};
   }
   usize end = 0;
-  while (end < text.length && lexer::is_variable_name(text[end]))
+  while (end < text.length && lexer::is_variable_name(text[end])) {
     end++;
+  }
   return text.substring_of_length(0, end);
 }
 
@@ -486,7 +503,9 @@ fn note_variable_target_operands(AnalysisContext &actx,
 
     if (should_skip_option_value) {
       should_skip_option_value = false;
-      if (!is_array_option_value) continue;
+      if (!is_array_option_value) {
+        continue;
+      }
     } else if (!value_options.is_empty() && view.length >= 2 && view[0] == '-')
     {
       let const last_letter = view[view.length - 1];
@@ -498,7 +517,9 @@ fn note_variable_target_operands(AnalysisContext &actx,
     }
 
     bare_operand_count++;
-    if (takes_one_named_operand && bare_operand_count != 2) continue;
+    if (takes_one_named_operand && bare_operand_count != 2) {
+      continue;
+    }
 
     let const target = operand_target_name(view);
     if (target.is_empty()) continue;
@@ -746,7 +767,9 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
     for (usize i = 1; i < m_args.count(); i++) {
       let flag_storage = String{heap_allocator()};
       let const flag_text = borrowed_token_text(m_args[i], flag_storage);
-      if (flag_text.length < 2 || flag_text[0] != '-') continue;
+      if (flag_text.length < 2 || flag_text[0] != '-') {
+        continue;
+      }
 
       if (flag_text == "--") break;
 
@@ -947,7 +970,9 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
           is_in_ansi_c_quote = false;
         }
       } else if (is_in_single_quote) {
-        if (byte == '\'') is_in_single_quote = false;
+        if (byte == '\'') {
+          is_in_single_quote = false;
+        }
       } else if (was_in_parameter_expansion) {
         if (byte == '\\') {
           is_quote_escape_pending = true;
@@ -1218,8 +1243,9 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
     if (has_multi_digit_positional)
       actx.report_diagnostic(diagnostic_id::sc1037, arg_location);
 
-    if (is_operand && has_double_dot && has_open_brace && has_dollar_byte)
+    if (is_operand && has_double_dot && has_open_brace && has_dollar_byte) {
       actx.report_diagnostic(diagnostic_id::sc2051, arg_location);
+    }
 
     if (word != nullptr && is_operand) {
       let const is_quoted_home = source_text == "\"~\"" ||
@@ -1497,7 +1523,9 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
         !is_unconditional || actx.effects.has_seen_runtime_definer);
   }
 
-  if (!is_top_level_unconditional || is_command_shadowed) return;
+  if (!is_top_level_unconditional || is_command_shadowed) {
+    return;
+  }
   if (command_info.is_in_group(COMMAND_GROUP_VARIABLE_TARGET) ||
       command_info.is_in_group(COMMAND_GROUP_VARIABLE_PROBE))
   {
@@ -1545,7 +1573,9 @@ fn SimpleCommand::append_presence_tested_command_names(
   let name = static_command_name(m_args[0]);
   if (!name.has_value()) {
     let const raw_name = m_args[0]->raw_view();
-    if (!raw_name.has_value() || *raw_name != "[") return;
+    if (!raw_name.has_value() || *raw_name != "[") {
+      return;
+    }
     name = *raw_name;
   }
   if (actx.functions.defined.contains(*name) ||

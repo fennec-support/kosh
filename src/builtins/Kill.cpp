@@ -107,7 +107,9 @@ fn Kill::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     if (args[1] == "--") {
       first_target = 2;
     } else if (args[1] == "-s" || args[1] == "-n") {
-      if (args.count() < 3) return report_usage_error(ec, cxt, ec.program());
+      if (args.count() < 3) {
+        return report_usage_error(ec, cxt, ec.program());
+      }
 
       signal_number = do_resolve_signal(args[2], 2);
       first_target = 3;

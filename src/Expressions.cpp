@@ -139,7 +139,9 @@ fn AssignmentIndexSet::singleton(usize index) throws -> AssignmentIndexSet
 
 fn AssignmentIndexSet::merge(const AssignmentIndexSet &other) throws -> void
 {
-  if (other.is_empty() || m_storage == other.m_storage) return;
+  if (other.is_empty() || m_storage == other.m_storage) {
+    return;
+  }
   if (is_empty()) {
     *this = other;
     return;
@@ -171,7 +173,9 @@ fn AssignmentIndexSet::merge(const AssignmentIndexSet &other) throws -> void
 
     if (merged_count == 0 ||
         merged_indices[merged_count - 1] != assignment_index)
+    {
       merged_indices[merged_count++] = assignment_index;
+    }
   }
 
   merged_storage->element_count = merged_count;
@@ -513,8 +517,9 @@ hot flatten fn Expression::evaluate_root_status(
     let const was_control_flow_pending = cxt.control_flow_store().has_pending();
     cxt.run_pending_traps();
 
-    if (!was_control_flow_pending && cxt.control_flow_store().has_pending())
+    if (!was_control_flow_pending && cxt.control_flow_store().has_pending()) {
       return cxt.execution_store().last_exit_status();
+    }
   }
 
   cxt.evaluation_metrics_store().add_evaluated_expression(
@@ -975,11 +980,17 @@ fn AnalysisContext::note_variable_occurrence(
     variable_occurrence_kind kind, bool is_unresolved,
     assignment_update_mode update_mode) throws -> void
 {
-  if (name.is_empty() || location.length == 0) return;
+  if (name.is_empty() || location.length == 0) {
+    return;
+  }
 
-  if (name.length > 1 && name[0] == '#') name = name.substring(1);
+  if (name.length > 1 && name[0] == '#') {
+    name = name.substring(1);
+  }
   if (!lexer::word_is_variable_name(name) && !reference_names_positional(name))
+  {
     name = expressions::internal::operand_target_name(name);
+  }
   if (name.is_empty()) return;
 
   note_variable_scope(name);
@@ -1183,8 +1194,9 @@ static pure fn assign_form_target_name(StringView expansion_text) wontthrow
   if (!lexer::word_is_variable_name(name)) return StringView{};
 
   let remainder = expansion_text.substring(name.length);
-  if (!remainder.is_empty() && remainder[0] == ':')
+  if (!remainder.is_empty() && remainder[0] == ':') {
     remainder = remainder.substring(1);
+  }
 
   if (remainder.is_empty() || remainder[0] != '=') {
     return StringView{};
@@ -1236,8 +1248,9 @@ fn AnalysisContext::note_variable_read(StringView name,
   }
 
   let const *assignment_state = occurrences.find(name);
-  if (assignment_state != nullptr && assignment_state->is_definitely_set)
+  if (assignment_state != nullptr && assignment_state->is_definitely_set) {
     return;
+  }
   if (inherited_assigned_names.contains(name)) return;
   if (function_local_names.find(name).has_value()) return;
   if (global_assigned_names.find(name).has_value()) return;
@@ -1464,8 +1477,9 @@ fn expressions::internal::wrapped_command_index(
 
   if (wrapper_id == command_name_id::Builtin) {
     let const first = static_command_name(args[1]);
-    if (first.has_value() && *first == "--")
+    if (first.has_value() && *first == "--") {
       return args.count() > 2 ? Maybe<usize>{2} : None;
+    }
 
     return 1;
   }
@@ -1547,8 +1561,12 @@ fn expressions::internal::analyze_followed_source(
 
   let path_index = command_index + 1;
   let const option = static_command_name(args[path_index]);
-  if (option.has_value() && *option == "--help") return true;
-  if (option.has_value() && *option == "--") path_index++;
+  if (option.has_value() && *option == "--help") {
+    return true;
+  }
+  if (option.has_value() && *option == "--") {
+    path_index++;
+  }
   if (path_index >= args.count()) return true;
 
   let const do_give_up_on_source = [&actx]() throws -> bool {
@@ -1582,7 +1600,9 @@ fn expressions::internal::analyze_followed_source(
       !source_path.is_absolute())
   {
     if (os::has_directory_separator(*literal_path)) {
-      if (actx.effects.has_unknown_working_directory) return false;
+      if (actx.effects.has_unknown_working_directory) {
+        return false;
+      }
     } else if (actx.effects.has_unknown_path ||
                actx.effects.has_unknown_working_directory)
     {
@@ -1785,8 +1805,9 @@ pure fn expressions::internal::word_has_malformed_glob_bracket(
 
       switch (state) {
       case bracket_scan_state::Outside:
-        if (is_glob_active && byte == '[')
+        if (is_glob_active && byte == '[') {
           state = bracket_scan_state::AfterOpen;
+        }
         break;
 
       case bracket_scan_state::AfterOpen:
@@ -1865,7 +1886,9 @@ fn analyze_ast(const Expression *root, StringView source,
 
   if (source.length >= 3 && static_cast<u8>(source[0]) == 0xef &&
       static_cast<u8>(source[1]) == 0xbb && static_cast<u8>(source[2]) == 0xbf)
+  {
     actx.report_diagnostic(diagnostic_id::sc1082, SourceLocation{0, 3});
+  }
 
   expressions::internal::check_source_bytes(actx, source);
 
@@ -1958,7 +1981,9 @@ pure fn internal::analysis_source_text(const AnalysisContext &actx,
 {
   if (location.position > actx.source.length ||
       location.length > actx.source.length - location.position)
+  {
     return {};
+  }
   return actx.source.substring_of_length(location.position, location.length);
 }
 
@@ -2127,7 +2152,9 @@ static fn body_is_bare_file_read(const Expression *ast) wontthrow -> bool
 
 static fn is_plain_substitution_word(const Token *token) throws -> bool
 {
-  if (token == nullptr || token->kind() != Token::Kind::Word) return false;
+  if (token == nullptr || token->kind() != Token::Kind::Word) {
+    return false;
+  }
 
   let const &word = static_cast<const tokens::WordToken *>(token)->word();
   for (let const &segment : word.segments) {
@@ -2156,7 +2183,9 @@ static fn is_trivial_substitution_body(const AnalysisContext &actx,
       list != nullptr ? list->single_unconditional_command() : nullptr;
   let const *simple =
       command != nullptr ? command->as_simple_command() : nullptr;
-  if (simple == nullptr || !simple->local_vars().is_empty()) return false;
+  if (simple == nullptr || !simple->local_vars().is_empty()) {
+    return false;
+  }
 
   let const &args = simple->args();
   if (args.is_empty()) return false;
@@ -2191,7 +2220,9 @@ static fn is_trivial_substitution_body(const AnalysisContext &actx,
 
   if (search_builtin(*name).has_value()) {
     let const is_neutral = info.is_in_group(COMMAND_GROUP_ENVIRONMENT_NEUTRAL);
-    if (!is_neutral && info.id != command_name_id::Printf) return false;
+    if (!is_neutral && info.id != command_name_id::Printf) {
+      return false;
+    }
   } else if (args.count() == 1) {
     return false;
   }
@@ -2201,7 +2232,9 @@ static fn is_trivial_substitution_body(const AnalysisContext &actx,
 
     if (info.id == command_name_id::Printf && index > 0) {
       let const operand = static_command_name(args[index]);
-      if (!operand.has_value() || operand->starts_with("-v")) return false;
+      if (!operand.has_value() || operand->starts_with("-v")) {
+        return false;
+      }
     }
   }
 
@@ -2441,7 +2474,9 @@ pure fn internal::arithmetic_reads_external_input(
     let const start = position++;
     while (position < expression.length &&
            lexer::is_variable_name(expression[position]))
+    {
       position++;
+    }
     let const name = expression.substring_of_length(start, position - start);
     if (actx.external_input_names.contains(name)) return true;
   }

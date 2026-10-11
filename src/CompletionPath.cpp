@@ -78,8 +78,12 @@ static pure fn control_sequence_length(StringView text,
                                        usize position) wontthrow -> usize
 {
   let const byte = static_cast<u8>(text[position]);
-  if (byte < 0x20 || byte == 0x7f) return 1;
-  if (byte != 0xc2 || position + 1 >= text.length) return 0;
+  if (byte < 0x20 || byte == 0x7f) {
+    return 1;
+  }
+  if (byte != 0xc2 || position + 1 >= text.length) {
+    return 0;
+  }
 
   let const next_byte = static_cast<u8>(text[position + 1]);
   return next_byte >= 0x80 && next_byte < 0xa0 ? 2 : 0;
@@ -142,7 +146,9 @@ static fn append_ansi_c_quoted(String &quoted, StringView text) throws -> void
     }
 
     let const byte = text[position];
-    if (byte == '\'' || byte == '\\') quoted.push('\\');
+    if (byte == '\'' || byte == '\\') {
+      quoted.push('\\');
+    }
     quoted.push(byte);
   }
   quoted.push('\'');
@@ -262,7 +268,9 @@ static fn append_candidate_suffix(String &candidate, StringView suffix,
   for (usize position = 0; position <= suffix.length; position++) {
     let const is_separator = position < suffix.length &&
                              os::is_directory_separator(suffix[position]);
-    if (position < suffix.length && !is_separator) continue;
+    if (position < suffix.length && !is_separator) {
+      continue;
+    }
 
     let const component =
         suffix.substring_of_length(component_start, position - component_start);
@@ -401,7 +409,9 @@ static fn expand_leading_variable_path(StringView directory_part,
 
   let name_end = expansion.length;
   if (is_braced) {
-    if (name_end <= name_start || expansion[name_end - 1] != '}') return None;
+    if (name_end <= name_start || expansion[name_end - 1] != '}') {
+      return None;
+    }
     name_end--;
   }
 

@@ -308,15 +308,18 @@ fn parse_selector_reply_stripping_descriptions(koshka::StringView reply,
   let selected = koshka::ArrayList<koshka::String>{koshka::heap_allocator()};
   usize start = 0;
   for (usize i = 0; i <= reply.length; i++) {
-    if (i != reply.length && reply[i] != '\0') continue;
+    if (i != reply.length && reply[i] != '\0') {
+      continue;
+    }
     if (i > start) {
       let record = reply.substring_of_length(start, i - start);
       if (has_descriptions) {
         if (let const tab = record.find_character('\t'); tab.has_value())
           record = record.substring_of_length(0, *tab);
       }
-      while (!record.is_empty() && record[record.length - 1] == '\n')
+      while (!record.is_empty() && record[record.length - 1] == '\n') {
         record = record.substring_of_length(0, record.length - 1);
+      }
       if (!record.is_empty()) selected.push(koshka::String{record});
     }
     start = i + 1;
@@ -554,7 +557,9 @@ fn run_selector_program(koshka::EvalContext &context, koshka::StringView input,
   if (::tl_end_external_screen() != TL_SUCCESS) return selector_outcome::NotRun;
 
   if (status != 0) {
-    if (status == 1 || status == 130) return selector_outcome::Dismissed;
+    if (status == 1 || status == 130) {
+      return selector_outcome::Dismissed;
+    }
 
     let const note = selector_failure_note_with_variable_values(context);
     report_selector_failure_above_repainted_prompt(
@@ -618,7 +623,9 @@ fn completion_session::select_history(const char *const *entries, size_t count,
 {
   if (context == nullptr) return 0;
   if (tab_selector != koshka::tab_selector_mode::External) return 0;
-  if (entries == nullptr || count == 0) return 0;
+  if (entries == nullptr || count == 0) {
+    return 0;
+  }
 
   try {
     let input = koshka::String{koshka::heap_allocator()};
@@ -658,7 +665,9 @@ fn get_line_editor_words(koshka::EvalContext &context) throws
 {
   for (let const name : LINE_EDITOR_VARIABLES) {
     let const value = context.get_variable_value(name);
-    if (!value.has_value() || value->is_empty()) continue;
+    if (!value.has_value() || value->is_empty()) {
+      continue;
+    }
 
     let words = context.expand_wordlist_to_fields(value->view(), false);
     if (!words.is_empty()) return words;
@@ -743,8 +752,9 @@ fn run_line_editor(koshka::EvalContext &context, koshka::StringView line,
   if (!edited.has_value()) return false;
 
   edited->normalize_crlf_line_endings();
-  while (!edited->is_empty() && edited->back() == '\n')
+  while (!edited->is_empty() && edited->back() == '\n') {
     edited->pop_back();
+  }
 
   out_edited = steal(*edited);
 
@@ -775,7 +785,9 @@ fn kosh_edit_callback(const char *buffer, const char **out_edited) -> int
 fn completion_session::complete(const char *buffer, size_t cursor,
                                 tl_completion *out, int is_for_listing) -> int
 {
-  if (context == nullptr || result == nullptr) return 0;
+  if (context == nullptr || result == nullptr) {
+    return 0;
+  }
 
   try {
     let const is_explicit_completion = is_for_listing != 0;
@@ -1015,7 +1027,9 @@ fn kosh_wake_callback(int phase) -> int
       if (JOB_CONTEXT == nullptr ||
           !JOB_CONTEXT->runtime_state().option_is_enabled(
               koshka::shell_option_id::Notify))
+      {
         return 0;
+      }
       WAKE_NOTIFICATION_STASH =
           JOB_CONTEXT->job_table_store().format_done_job_notifications(
               "\r\n", JOB_CONTEXT->runtime_state().is_posix_option_on());
@@ -1139,10 +1153,13 @@ fn completion_session::idle(const char *buffer, size_t cursor) -> int
       has_analyzed_line = true;
       unused(koshka::completion::describe_analysis_finding(line, *context,
                                                            analysis_finding));
-      if (had_finding || !analysis_finding.is_empty())
+      if (had_finding || !analysis_finding.is_empty()) {
         outcome |= TL_IDLE_REFRESH;
+      }
     }
-    if (!should_show_hints && !has_pending_gather) return outcome;
+    if (!should_show_hints && !has_pending_gather) {
+      return outcome;
+    }
 
     let const progress = koshka::completion::step_idle_documentation(
         line, cursor, *context, !has_pending_gather);
@@ -1232,7 +1249,9 @@ struct history_file_tracking
   fn record(const Path &path, usize expected_size) -> void
   {
     has_status = os::stat_path_following(path.view(), status);
-    if (has_status && status.size != expected_size) has_status = false;
+    if (has_status && status.size != expected_size) {
+      has_status = false;
+    }
   }
 
   fn update_after_append(const history_file_tracking &previous,
@@ -1293,7 +1312,9 @@ static String HISTORY_SEARCH_SNAPSHOT{koshka::heap_allocator()};
 static fn provide_history_search_snapshot(const char **out_contents,
                                           size_t *out_size) -> int
 {
-  if (out_contents == nullptr || out_size == nullptr) return 0;
+  if (out_contents == nullptr || out_size == nullptr) {
+    return 0;
+  }
 
   try {
     let const path = get_history_file_path();
@@ -1539,8 +1560,9 @@ static fn
 append_encoded_records_to_private_branch_as_unwritten(StringView records)
     -> bool
 {
-  if (!::itl_history_ensure_read_buffer() && ::itl_g_history_count != 0)
+  if (!::itl_history_ensure_read_buffer() && ::itl_g_history_count != 0) {
     return false;
+  }
 
   let const buffered = ::itl_g_history_read_buffer == nullptr
                            ? StringView{}
@@ -1603,8 +1625,9 @@ fn write_history() -> koshka::ErrorOr<koshka::Ok>
   if (!lock.has_value()) return koshka::Error{os::last_system_error_message()};
   defer { os::release_process_lock(lock.take()); };
   TRY(ensure_history_loaded(*path, true));
-  if (!::itl_history_ensure_read_buffer() && ::itl_g_history_count != 0)
+  if (!::itl_history_ensure_read_buffer() && ::itl_g_history_count != 0) {
     return koshka::Error{"the file contains invalid data"};
+  }
 
   let written = String{koshka::heap_allocator()};
   let durable_offsets = koshka::ArrayList<usize>{koshka::heap_allocator()};
@@ -1790,7 +1813,9 @@ fn import_history(StringView contents) -> koshka::ErrorOr<koshka::Ok>
   if (!path.has_value()) return koshka::Error{"the path is unavailable"};
 
   TRY(ensure_history_loaded(*path, true));
-  if (::itl_g_history_limit == 0 || contents.is_empty()) return koshka::Success;
+  if (::itl_g_history_limit == 0 || contents.is_empty()) {
+    return koshka::Success;
+  }
 
   let records = String{koshka::heap_allocator(), contents};
   if (contents[contents.length - 1] != '\n') records.push('\n');
@@ -1864,8 +1889,9 @@ fn append_unwritten_history() -> koshka::ErrorOr<koshka::Ok>
                                     ? os::read_fd(read_fd, &last_byte, 1)
                                     : koshka::Maybe<usize>{};
     let const was_read = read_byte_count.has_value() && *read_byte_count == 1;
-    if (!os::close_fd(read_fd) || !was_read)
+    if (!os::close_fd(read_fd) || !was_read) {
       return koshka::Error{os::last_system_error_message()};
+    }
 
     should_add_file_separator = last_byte != '\n';
   }
@@ -1973,8 +1999,9 @@ static fn find_history_event(koshka::Allocator allocator,
                              Match do_match) -> koshka::Maybe<history_event>
 {
   let const path = get_history_file_path();
-  if (!path.has_value() || ensure_history_loaded(*path, true).is_error())
+  if (!path.has_value() || ensure_history_loaded(*path, true).is_error()) {
     return koshka::None;
+  }
   if (::itl_g_history_count == 0) return koshka::None;
   if (!::itl_history_ensure_read_buffer()) return koshka::None;
 
@@ -1983,8 +2010,9 @@ static fn find_history_event(koshka::Allocator allocator,
   char decoded[ITL_STRING_MAX_LEN + 1];
   for (usize index = ::itl_g_history_count; index > 0; index--) {
     let const number = first_number + index - 1;
-    if (before_event_number.has_value() && number >= *before_event_number)
+    if (before_event_number.has_value() && number >= *before_event_number) {
       continue;
+    }
 
     usize decoded_size = 0;
     if (!::itl_history_decode_entry_buffered(
@@ -2047,7 +2075,9 @@ static fn append_private_history_event(const itl_string_t *entry,
     -> koshka::Maybe<usize>
 {
   ::itl_g_last_history_event_number = 0;
-  if (::itl_g_history_file_is_bad || entry->length <= 1) return koshka::None;
+  if (::itl_g_history_file_is_bad || entry->length <= 1) {
+    return koshka::None;
+  }
 
   if (::itl_g_history_count > 0) {
     if (!::itl_history_ensure_read_buffer()) return koshka::None;
@@ -2585,8 +2615,9 @@ static fn compact_history_file_from_locked_reread(usize entry_limit) -> bool
   if (entry_limit > retained_entry_limit) return true;
 
   let contents = String{koshka::heap_allocator()};
-  if (!::itl_history_ensure_read_buffer() && ::itl_g_history_count != 0)
+  if (!::itl_history_ensure_read_buffer() && ::itl_g_history_count != 0) {
     return false;
+  }
   char decoded[ITL_STRING_MAX_LEN + 1];
   for (usize index = 0; index < ::itl_g_history_count; index++) {
     usize decoded_size = 0;
@@ -2753,7 +2784,9 @@ static fn shorten_path_with_ellipsis(StringView path, usize max_length) throws
   usize tail_start = path.length - max_length + 3;
   while (tail_start < path.length &&
          (static_cast<unsigned char>(path[tail_start]) & 0xC0) == 0x80)
+  {
     tail_start++;
+  }
   let shortened = String{koshka::heap_allocator()};
   shortened += "...";
   shortened += StringView{path.data + tail_start, path.length - tail_start};
@@ -2849,7 +2882,9 @@ static fn append_prompt_value(String &out, StringView value,
   }
 
   for (usize i = 0; i < value.length; i++) {
-    if (value[i] == '$' || value[i] == '`' || value[i] == '\\') out.push('\\');
+    if (value[i] == '$' || value[i] == '`' || value[i] == '\\') {
+      out.push('\\');
+    }
     out.push(value[i]);
   }
 }
@@ -2929,7 +2964,9 @@ static fn prompt_history_number(EvalContext &context) throws -> usize
   if (!context.execution_store().shell_is_interactive()) return 1;
 
   let const newest = get_newest_history_event_number();
-  if (newest.is_error() || !newest.value().has_value()) return 1;
+  if (newest.is_error() || !newest.value().has_value()) {
+    return 1;
+  }
 
   return *newest.value() + 1;
 }
@@ -3011,9 +3048,13 @@ static fn expand_prompt_escapes(StringView prompt, StringView user,
     case '.': {
       const i32 status = context.execution_store().last_exit_status();
       let const should_use_color = colors::stdout_wants_color();
-      if (should_use_color && status != 0) out += colors::ansi::BOLD_BRIGHT_RED;
+      if (should_use_color && status != 0) {
+        out += colors::ansi::BOLD_BRIGHT_RED;
+      }
       out += "•";
-      if (should_use_color && status != 0) out += colors::ansi::RESET;
+      if (should_use_color && status != 0) {
+        out += colors::ansi::RESET;
+      }
     } break;
     case 'j':
       out += String::from(
@@ -3076,14 +3117,18 @@ struct prompt_cache
 
   fn matches(StringView current_template, EvalContext &context) const -> bool
   {
-    if (!is_valid || current_template != prompt_template.view()) return false;
+    if (!is_valid || current_template != prompt_template.view()) {
+      return false;
+    }
 
     for (let const &input : inputs) {
       let current = context.get_variable_value(input.name.view());
       let const both_unset = !current.has_value() && !input.value.has_value();
       let const both_equal = current.has_value() && input.value.has_value() &&
                              current->view() == input.value->view();
-      if (!both_unset && !both_equal) return false;
+      if (!both_unset && !both_equal) {
+        return false;
+      }
     }
 
     return true;
@@ -3135,13 +3180,18 @@ static fn scan_prompt_template_inputs_or_report_impure(
       {
         return false;
       }
-      if (j < text.length && (text[j] == '#' || text[j] == '!')) j++;
-      usize name_start = j;
-      while (j < text.length && do_is_name_byte(text[j]))
+      if (j < text.length && (text[j] == '#' || text[j] == '!')) {
         j++;
+      }
+      usize name_start = j;
+      while (j < text.length && do_is_name_byte(text[j])) {
+        j++;
+      }
       if (j == name_start) return false;
       do_add_name(text.substring_of_length(name_start, j - name_start));
-      if (j < text.length && text[j] == '=') return false;
+      if (j < text.length && text[j] == '=') {
+        return false;
+      }
       if (j + 1 < text.length && text[j] == ':' && text[j + 1] == '=') {
         return false;
       }
@@ -3149,8 +3199,9 @@ static fn scan_prompt_template_inputs_or_report_impure(
       continue;
     }
     usize j = i + 1;
-    while (j < text.length && do_is_name_byte(text[j]))
+    while (j < text.length && do_is_name_byte(text[j])) {
       j++;
+    }
     if (j > i + 1) {
       do_add_name(text.substring_of_length(i + 1, j - i - 1));
       i = j - 1;
@@ -3210,8 +3261,9 @@ static fn strip_sgr_color_sequences_only(StringView text) throws -> String
   while (i < text.length) {
     if (text[i] == '\x1b' && i + 1 < text.length && text[i + 1] == '[') {
       usize end = i + 2;
-      while (end < text.length && (text[end] < '@' || text[end] > '~'))
+      while (end < text.length && (text[end] < '@' || text[end] > '~')) {
         end++;
+      }
       if (end < text.length && text[end] == 'm') {
         i = end + 1;
         continue;
@@ -3307,17 +3359,20 @@ fn build_prompt(EvalContext &context) -> String
   String ps1_template{koshka::heap_allocator()};
   if (Maybe<String> ps1 = context.get_variable_value("PS1");
       ps1.has_value() && !ps1->is_empty())
+  {
     ps1_template = steal(*ps1);
-  else
+  } else {
     ps1_template = get_default_prompt_template();
+  }
 
   let const decoded = decode_prompt(ps1_template.view(), context, true);
   let scanned_inputs =
       koshka::ArrayList<prompt_cache_input>{koshka::heap_allocator()};
   let const is_cacheable = scan_prompt_template_inputs_or_report_impure(
       decoded.view(), scanned_inputs);
-  if (is_cacheable && PROMPT_CACHE.matches(decoded.view(), context))
+  if (is_cacheable && PROMPT_CACHE.matches(decoded.view(), context)) {
     return finish_prompt_dropping_width_markers(PROMPT_CACHE.expansion.view());
+  }
 
   String expanded = expand_prompt_variable(context, "PS1", ps1_template.view(),
                                            decoded.view());

@@ -137,7 +137,9 @@ static fn parse_od_byte_count(StringView text, bool has_unit_suffix) throws
   if (text.is_empty()) return {};
 
   let const parsed = utils::parse_integer_in_base_u64(text, base);
-  if (parsed.is_error() || parsed.value() > UINT64_MAX / multiplier) return {};
+  if (parsed.is_error() || parsed.value() > UINT64_MAX / multiplier) {
+    return {};
+  }
 
   return parsed.value() * multiplier;
 }

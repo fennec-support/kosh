@@ -65,11 +65,12 @@ fn parse_sequence_integer(StringView text) wontthrow -> Maybe<sequence_integer>
     magnitude = magnitude * 10 + digit;
   }
   i64 value;
-  if (text[0] == '-' && magnitude == static_cast<u64>(INT64_MAX) + 1)
+  if (text[0] == '-' && magnitude == static_cast<u64>(INT64_MAX) + 1) {
     value = INT64_MIN;
-  else
+  } else {
     value = text[0] == '-' ? -static_cast<i64>(magnitude)
                            : static_cast<i64>(magnitude);
+  }
   let const digit_width = text.length - digit_start;
   let const leading_zero = digit_width > 1 && text[digit_start] == '0';
   return sequence_integer{value, text.length, leading_zero};
@@ -188,7 +189,9 @@ fn brace_group_alternatives(StringView content, Allocator alloc) throws
     if (c == '{') {
       depth++;
     } else if (c == '}') {
-      if (depth > 0) depth--;
+      if (depth > 0) {
+        depth--;
+      }
     } else if (c == ',' && depth == 0) {
       comma_positions.push(i);
     }
@@ -365,7 +368,9 @@ fn expand_braces(const Word &word, Allocator alloc) throws -> ArrayList<Word>
       WordSegment &reference = out.segments[s];
       if (reference.kind != WordSegment::Kind::VariableReference ||
           !reference.is_greedy_name)
+      {
         continue;
+      }
 
       WordSegment &following = out.segments[s + 1];
       if (following.kind != WordSegment::Kind::UnquotedText) continue;
@@ -373,7 +378,9 @@ fn expand_braces(const Word &word, Allocator alloc) throws -> ArrayList<Word>
       usize taken = 0;
       while (taken < following.text.count() &&
              lexer::is_variable_name(following.text.view()[taken]))
+      {
         taken++;
+      }
       if (taken == 0) continue;
 
       let joined = String{alloc, reference.text.view()};
@@ -409,7 +416,9 @@ static fn word_starts_array_subscript(const Word &word) wontthrow -> bool
   const WordSegment &first = word.segments[0];
   if (!segment_is_literal(first) || first.text.is_empty() ||
       first.text.view()[0] != '[')
+  {
     return false;
+  }
 
   for (usize segment_position = 0; segment_position < word.segments.count();
        segment_position++)
@@ -815,7 +824,9 @@ fn EvalContext::write_xtrace(StringView command) throws -> void
       xtrace_fd_value.has_value())
   {
     let const parsed = xtrace_fd_value->view().to<i64>();
-    if (!parsed.is_error() && parsed.value() >= 0) xtrace_fd = parsed.value();
+    if (!parsed.is_error() && parsed.value() >= 0) {
+      xtrace_fd = parsed.value();
+    }
   }
 
   if (xtrace_fd.has_value())

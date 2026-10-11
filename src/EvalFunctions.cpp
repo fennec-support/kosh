@@ -194,7 +194,9 @@ pure fn EvalContext::resolve_render_source(
     if (info == nullptr) continue;
 
     let const *copy = storage.get_source();
-    if (copy == nullptr || copy->count() <= info->header_length) continue;
+    if (copy == nullptr || copy->count() <= info->header_length) {
+      continue;
+    }
 
     if (location.source_name_index != info->body_name_index) continue;
 
@@ -264,7 +266,9 @@ pure fn EvalContext::source_text_in_span(const SourceLocation &location,
   let const start = resolved_source.to_render_position(location.position);
   let const stop = resolved_source.to_render_position(
       end_position > location_end ? end_position : location_end);
-  if (start >= stop || stop > view.length) return {};
+  if (start >= stop || stop > view.length) {
+    return {};
+  }
 
   return view.substring_of_length(start, stop - start);
 }
@@ -521,7 +525,9 @@ pure fn EvalContext::is_signal_ignored_at_startup(
 
   let const number = os::signal_number_from_name(condition);
   if (!number.has_value()) return false;
-  if (*number < 1 || *number > os::ENTRY_IGNORED_SIGNAL_LIMIT) return false;
+  if (*number < 1 || *number > os::ENTRY_IGNORED_SIGNAL_LIMIT) {
+    return false;
+  }
 
   return (ignored & (u64{1} << (*number - 1))) != 0;
 }

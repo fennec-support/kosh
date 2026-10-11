@@ -218,7 +218,9 @@ static fn total_size(const ExecContext &ec, EvalContext &cxt, const Path &path,
       let &frame = frames[frame_index];
       if (frame.is_complete || !frame.is_enumerated ||
           frame.pending_directory_count != 0)
+      {
         return;
+      }
 
       frame.is_complete = true;
       if (frame.has_failure) {
@@ -431,7 +433,9 @@ static fn total_size(const ExecContext &ec, EvalContext &cxt, const Path &path,
   }
 
   if (os::INTERRUPT_REQUESTED) return None;
-  if (!is_root_complete || !root_result.should_emit) return None;
+  if (!is_root_complete || !root_result.should_emit) {
+    return None;
+  }
   return root_result;
 }
 
@@ -468,19 +472,25 @@ static fn build_tree_nodes(const du_tree_request &request, Allocator allocator,
       usize last_end = path.length;
       while (last_end > target.length &&
              os::is_directory_separator(path[last_end - 1]))
+      {
         last_end--;
+      }
 
       usize current_index = root_index;
       if (last_end > target.length) {
         usize last_start = last_end;
         while (last_start > target.length &&
                !os::is_directory_separator(path[last_start - 1]))
+        {
           last_start--;
+        }
 
         usize parent_end = last_start;
         while (parent_end > target.length &&
                os::is_directory_separator(path[parent_end - 1]))
+        {
           parent_end--;
+        }
 
         usize parent_index = root_index;
         if (parent_end > target.length) {
@@ -544,9 +554,10 @@ static fn order_tree_children(ArrayList<du_tree_node> &nodes,
   keys.reserve(nodes.count());
   for (usize index = 0; index < nodes.count(); index++) {
     let const &node = nodes[index];
-    if (node.parent_index != SIZE_MAX && node.is_kept)
+    if (node.parent_index != SIZE_MAX && node.is_kept) {
       keys.push(du_tree_order_key{index, node.parent_index, node.size_bytes,
                                   node.path});
+    }
   }
 
   let const sorted = steal(keys).make_sorted(
@@ -581,7 +592,9 @@ static fn keep_largest_tree_nodes(ArrayList<du_tree_node> &nodes,
 
       if (worst + 1 < heap.count() &&
           is_tree_key_before(heap[worst], heap[worst + 1]))
+      {
         worst++;
+      }
       if (!is_tree_key_before(heap[index], heap[worst])) break;
 
       let const displaced = heap[index];
@@ -712,7 +725,9 @@ static fn render_tree(const ArrayList<du_tree_node> &nodes,
       while (cursor.next_position < parent.child_count &&
              !nodes[child_order[parent.first_child + cursor.next_position]]
                   .is_kept)
+      {
         cursor.next_position++;
+      }
       if (cursor.next_position >= parent.child_count) {
         cursors.pop_back();
         continue;
@@ -860,8 +875,9 @@ fn Du::execute(const ExecContext &ec, EvalContext &cxt,
         du_tree_request{output_rows, operand_spans,
                         targets,     is_top || FLAG_DU_HUMAN.is_enabled(),
                         row_limit,   koshkit_should_color()};
-    if (was_interrupted || !print_tree_report(request, ec, allocator))
+    if (was_interrupted || !print_tree_report(request, ec, allocator)) {
       return 130;
+    }
 
     if (has_failure) status = 1;
     return status;
@@ -879,7 +895,9 @@ fn Du::execute(const ExecContext &ec, EvalContext &cxt,
       usize prefix_index = 0;
       while (prefix_index < shared_path_prefix_length &&
              first_path[prefix_index] == path[prefix_index])
+      {
         prefix_index++;
+      }
       shared_path_prefix_length = prefix_index;
       if (shared_path_prefix_length == 0) break;
     }

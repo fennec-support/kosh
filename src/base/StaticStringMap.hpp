@@ -96,7 +96,9 @@ public:
 
     if (low < Count && entries[low].key == wanted &&
         text.count() == entries[low].key.packed_length())
+    {
       return entries[low].value;
+    }
     return None;
   }
 };
@@ -147,7 +149,9 @@ public:
 
     if (low < Count && keys[low] == wanted &&
         text.count() == keys[low].packed_length())
+    {
       return low;
+    }
     return None;
   }
 

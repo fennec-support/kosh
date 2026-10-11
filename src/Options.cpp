@@ -1031,7 +1031,9 @@ consteval fn registry_is_valid() wontthrow -> bool
     {
       return false;
     }
-    if (left > 0 && OPTION_REGISTRY[left - 1].id >= entry.id) return false;
+    if (left > 0 && OPTION_REGISTRY[left - 1].id >= entry.id) {
+      return false;
+    }
     for (usize right = left + 1; right < countof(OPTION_REGISTRY); right++) {
       if (entry.letter != '\0' && entry.letter == OPTION_REGISTRY[right].letter)
       {
@@ -1042,7 +1044,9 @@ consteval fn registry_is_valid() wontthrow -> bool
       bool is_ordered = false;
       for (let const ordered : SHELL_FLAG_LETTER_ORDER)
         if (ordered == entry.letter) is_ordered = true;
-      if (!is_ordered && entry.letter != 'M') return false;
+      if (!is_ordered && entry.letter != 'M') {
+        return false;
+      }
     }
   }
   return names_are_unique(KOSHCONF_NAME_ENTRIES.entries) &&
@@ -1134,10 +1138,12 @@ static_assert(ids_fit_table());
 fn display_name(const option_descriptor &option, option_origin origin) wontthrow
     -> StringView
 {
-  if (origin == option_origin::Set && !option.set_name.is_empty())
+  if (origin == option_origin::Set && !option.set_name.is_empty()) {
     return option.set_name;
-  if (origin == option_origin::Shopt && !option.shopt_name.is_empty())
+  }
+  if (origin == option_origin::Shopt && !option.shopt_name.is_empty()) {
     return option.shopt_name;
+  }
   return option.koshconf_name;
 }
 
@@ -1182,10 +1188,11 @@ fn write_shell_option(EvalContext &cxt, const option_descriptor &option,
   }
   if (option.shell_option == shell_option_id::Ignoreeof) {
     let const value = cxt.get_variable_value("IGNOREEOF");
-    if (is_enabled && !value.has_value())
+    if (is_enabled && !value.has_value()) {
       cxt.set_shell_variable("IGNOREEOF", "10");
-    else if (!is_enabled && value.has_value())
+    } else if (!is_enabled && value.has_value()) {
       cxt.disable_ignoreeof();
+    }
   }
   cxt.runtime_control_store().option_mutations().note(option.shell_option);
   cxt.runtime_state().set_option(option.shell_option, is_enabled);
@@ -1299,8 +1306,9 @@ constexpr StringView BASH_ALIAS_PREFIX{"legacy.bash."};
 fn get_legacy_koshconf_alias(const option_descriptor &option) throws
     -> Maybe<String>
 {
-  if (option.is_set_alias && option.storage == option_storage::EditorMode)
+  if (option.is_set_alias && option.storage == option_storage::EditorMode) {
     return None;
+  }
 
   let alias = String{heap_allocator()};
   if (!option.set_name.is_empty()) {
@@ -1323,7 +1331,9 @@ fn find_option_by_koshconf_name(StringView name) wontthrow
   if (position.has_value()) return &OPTION_REGISTRY[*position];
 
   let const is_posix_alias = name.starts_with(POSIX_ALIAS_PREFIX);
-  if (!is_posix_alias && !name.starts_with(BASH_ALIAS_PREFIX)) return nullptr;
+  if (!is_posix_alias && !name.starts_with(BASH_ALIAS_PREFIX)) {
+    return nullptr;
+  }
 
   let const spelling = name.substring(
       is_posix_alias ? POSIX_ALIAS_PREFIX.count() : BASH_ALIAS_PREFIX.count());
@@ -1340,7 +1350,9 @@ fn find_option_by_koshconf_name(StringView name) wontthrow
     if (found->storage != option_storage::EditorMode) return nullptr;
 
     for (let const &entry : OPTION_REGISTRY) {
-      if (!entry.is_set_alias && entry.storage == found->storage) return &entry;
+      if (!entry.is_set_alias && entry.storage == found->storage) {
+        return &entry;
+      }
     }
 
     return nullptr;

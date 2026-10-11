@@ -97,14 +97,15 @@ hot fn EvalContext::expand_word(const Word &word) throws
     let const first_text = word.segments.front().text.view();
     let const equals = first_text.find_character('=');
     let const do_starts_after_separator = [&](usize index) -> bool {
-      if (index == 0) return false;
+      if (index == 0) {
+        return false;
+      }
 
       let const &previous = word.segments[index - 1].text;
       let const &current = word.segments[index];
       if (!current.is_tilde_candidate() || current.text.is_empty() ||
           current.text.first_character() != '~' ||
-          !word.segments[index - 1].is_tilde_candidate() ||
-          previous.is_empty())
+          !word.segments[index - 1].is_tilde_candidate() || previous.is_empty())
       {
         return false;
       }
@@ -113,21 +114,24 @@ hot fn EvalContext::expand_word(const Word &word) throws
       return last == ':' || (index == 1 && equals.has_value() &&
                              *equals + 1 == previous.view().length);
     };
-    let has_tilde_after_separator =
-        equals.has_value() && *equals + 1 < first_text.length &&
-        first_text[*equals + 1] == '~';
+    let has_tilde_after_separator = equals.has_value() &&
+                                    *equals + 1 < first_text.length &&
+                                    first_text[*equals + 1] == '~';
     for (usize i = 0; i < word.segments.count(); i++) {
       if ((word.segments[i].is_tilde_candidate() &&
            word.segments[i].text.find_substring(":~").has_value()) ||
           do_starts_after_separator(i))
+      {
         has_tilde_after_separator = true;
+      }
     }
     if (has_tilde_after_separator) {
       tilde_expanded_segments = clone_word_segments(word, scratch);
       for (usize i = 0; i < tilde_expanded_segments.count(); i++) {
         let const does_word_continue = i + 1 < tilde_expanded_segments.count();
-        if (do_starts_after_separator(i))
+        if (do_starts_after_separator(i)) {
           expand_tilde(tilde_expanded_segments[i], does_word_continue, true);
+        }
         expand_colon_tildes(tilde_expanded_segments[i], does_word_continue,
                             i == 0 ? equals : None);
       }
@@ -172,8 +176,9 @@ hot fn EvalContext::expand_word(const Word &word) throws
         get_glob_charset_for(text) == glob_charset::Utf8;
     let const do_separator_length = [&](usize at) -> usize {
       let const byte = text.data[at];
-      if (!is_multibyte || static_cast<u8>(byte) < 0x80)
+      if (!is_multibyte || static_cast<u8>(byte) < 0x80) {
         return variable_store().is_field_separator(byte) ? 1 : 0;
+      }
 
       let const length =
           utils::charset_character_length(text, at, glob_charset::Utf8);
@@ -199,8 +204,9 @@ hot fn EvalContext::expand_word(const Word &word) throws
       if (do_separator_length(i) == 0) {
         usize start = i;
 #pragma clang loop unroll_count(4)
-        while (i < text.length && do_separator_length(i) == 0)
+        while (i < text.length && do_separator_length(i) == 0) {
           i += do_step(i);
+        }
         do_append_run(StringView{text.data + start, i - start}, is_glob_active);
         continue;
       }
@@ -344,11 +350,15 @@ hot fn EvalContext::expand_word(const Word &word) throws
     let resolved_text = Maybe<String>{};
     if (segment.kind == WordSegment::Kind::VariableReference &&
         variable_store().attributes().has_namerefs())
+    {
       rarely
       {
         resolved_text = resolve_nameref_parameter(segment_text);
-        if (resolved_text.has_value()) segment_text = resolved_text->view();
+        if (resolved_text.has_value()) {
+          segment_text = resolved_text->view();
+        }
       }
+    }
     switch (segment.kind) {
     case WordSegment::Kind::LiteralText:
     case WordSegment::Kind::DoubleQuotedText:
@@ -356,13 +366,17 @@ hot fn EvalContext::expand_word(const Word &word) throws
       break;
     case WordSegment::Kind::UnquotedText:
       do_append_run(segment_text, true);
-      if (segment.has_glob_metacharacter()) current.has_literal_glob = true;
+      if (segment.has_glob_metacharacter()) {
+        current.has_literal_glob = true;
+      }
       break;
     case WordSegment::Kind::VariableReference: {
       if (segment.text == "@" && segment.is_in_double_quotes) {
         for (usize i = 0; i < variable_store().positional_params().count(); i++)
         {
-          if (i > 0) do_flush();
+          if (i > 0) {
+            do_flush();
+          }
           do_append_run(
               StringView{variable_store().positional_params()[i].data(),
                          variable_store().positional_params()[i].count()},
@@ -416,11 +430,12 @@ hot fn EvalContext::expand_word(const Word &word) throws
         let const array_name =
             segment_text.substring_of_length(0, segment_text.length - 3);
         let is_plain_array_name = true;
-        for (usize i = 0; i < array_name.length; i++)
+        for (usize i = 0; i < array_name.length; i++) {
           if (!lexer::is_variable_name(array_name[i])) {
             is_plain_array_name = false;
             break;
           }
+        }
         if (is_plain_array_name) {
           let const is_star = segment_text[segment_text.length - 2] == '*';
           let const elements = collect_array_elements(array_name);
@@ -433,8 +448,9 @@ hot fn EvalContext::expand_word(const Word &word) throws
       let const do_source_location_for =
           [&](StringView part,
               SourceLocation &storage) -> const SourceLocation * {
-        if (!segment_source_location.has_value() || resolved_text.has_value())
+        if (!segment_source_location.has_value() || resolved_text.has_value()) {
           return nullptr;
+        }
         return segment_source_location->subspan_for_view(segment_text, part,
                                                          storage);
       };
@@ -469,8 +485,9 @@ hot fn EvalContext::expand_word(const Word &word) throws
         let const is_quoted_list = is_posix && segment.is_in_double_quotes;
 
         let const do_emit_positional = [&]() throws {
-          if (is_quoted_list && param_count == 0)
+          if (is_quoted_list && param_count == 0) {
             do_append_run(StringView{}, false);
+          }
           do_emit_elements(variable_store().positional_params(),
                            segment.is_in_double_quotes, is_star);
         };
@@ -483,28 +500,32 @@ hot fn EvalContext::expand_word(const Word &word) throws
 
         switch (op) {
         case '-':
-          if (should_treat_as_unset)
+          if (should_treat_as_unset) {
             do_emit_word();
-          else
+          } else {
             do_emit_positional();
+          }
           break;
         case '+':
-          if (!should_treat_as_unset)
+          if (!should_treat_as_unset) {
             do_emit_word();
-          else if (is_quoted_list)
+          } else if (is_quoted_list) {
             do_append_run(StringView{}, false);
+          }
           break;
         case '=':
-          if (should_treat_as_unset)
+          if (should_treat_as_unset) {
             throw_script_fatal(
                 "Unable to assign to the positional parameters this way");
+          }
           do_emit_positional();
           break;
         case '?':
           if (should_treat_as_unset) {
-            if (word.is_empty())
+            if (word.is_empty()) {
               throw_script_fatal("Unable to expand the positional parameters "
                                  "because they are not set or are empty");
+            }
             let word_location = SourceLocation{};
             throw_script_fatal(String{expand_modifier_word(
                 word, true, true,
@@ -545,7 +566,9 @@ hot fn EvalContext::expand_word(const Word &word) throws
               false);
         } else if (segment.is_in_double_quotes) {
           for (i64 j = start; j < end; j++) {
-            if (j > start) do_flush();
+            if (j > start) {
+              do_flush();
+            }
             do_append_run(do_positional_at(j), false);
           }
         } else {
@@ -560,7 +583,9 @@ hot fn EvalContext::expand_word(const Word &word) throws
         let const fields = get_declaration_fields("@");
         if (fields.count() > 1) {
           for (usize i = 0; i < fields.count(); i++) {
-            if (i > 0) do_flush();
+            if (i > 0) {
+              do_flush();
+            }
             do_append_run(fields[i].view(), false);
           }
           break;
@@ -594,21 +619,26 @@ hot fn EvalContext::expand_word(const Word &word) throws
           let const trimmed =
               trim_positional_fields(is_star, segment.is_in_double_quotes,
                                      modifier, modifier_location_pointer);
-          if (segment.is_in_double_quotes && trimmed.is_empty())
+          if (segment.is_in_double_quotes && trimmed.is_empty()) {
             do_append_run(StringView{}, false);
+          }
           for (usize i = 0; i < trimmed.count(); i++) {
-            if (i > 0) do_flush();
-            if (segment.is_in_double_quotes)
+            if (i > 0) {
+              do_flush();
+            }
+            if (segment.is_in_double_quotes) {
               do_append_run(trimmed[i].view(), false);
-            else
+            } else {
               do_append_split_run(trimmed[i].view(), true);
+            }
           }
           break;
         }
         let const do_transform = [&](StringView value) -> String {
-          if (positional_at_op != '\0')
+          if (positional_at_op != '\0') {
             return apply_parameter_transform_to_value(value, positional_at_op,
                                                       StringView{});
+          }
           return apply_value_modifier(value, modifier,
                                       modifier_location_pointer);
         };
@@ -633,7 +663,9 @@ hot fn EvalContext::expand_word(const Word &word) throws
             let const modified =
                 do_transform(variable_store().positional_params()[i].view());
             if (segment.is_in_double_quotes) {
-              if (i > 0) do_flush();
+              if (i > 0) {
+                do_flush();
+              }
               do_append_run(modified.view(), false);
             } else {
               do_begin_list_element(i);
@@ -649,7 +681,9 @@ hot fn EvalContext::expand_word(const Word &word) throws
         usize name_end = 1;
         while (name_end < segment_text.length &&
                lexer::is_variable_name(segment_text[name_end]))
+        {
           name_end++;
+        }
         let const after_array_colon = name_end + 4 < segment_text.length
                                           ? segment_text[name_end + 4]
                                           : '\0';
@@ -678,7 +712,9 @@ hot fn EvalContext::expand_word(const Word &word) throws
             do_append_run(join_list_slice(bounds, elements, None, true), false);
           } else if (segment.is_in_double_quotes) {
             for (i64 j = start; j < end; j++) {
-              if (j > start) do_flush();
+              if (j > start) {
+                do_flush();
+              }
               do_append_run(elements[static_cast<usize>(j)].view(), false);
             }
           } else {
@@ -701,7 +737,9 @@ hot fn EvalContext::expand_word(const Word &word) throws
               segment_text.substring_of_length(0, name_end));
           if (fields.count() > 1) {
             for (usize i = 0; i < fields.count(); i++) {
-              if (i > 0) do_flush();
+              if (i > 0) {
+                do_flush();
+              }
               do_append_run(fields[i].view(), false);
             }
             break;
@@ -753,9 +791,10 @@ hot fn EvalContext::expand_word(const Word &word) throws
             break;
           }
           let const do_transform = [&](StringView element_value) -> String {
-            if (is_mapped_at_op)
+            if (is_mapped_at_op) {
               return apply_parameter_transform_to_value(
                   element_value, at_transform_op, array_name);
+            }
             return apply_value_modifier(element_value, modifier,
                                         modifier_location_pointer);
           };
@@ -775,15 +814,21 @@ hot fn EvalContext::expand_word(const Word &word) throws
           {
             let joined = String{scratch_allocator()};
             for (usize i = 0; i < elements.count(); i++) {
-              if (i > 0) joined.push(' ');
+              if (i > 0) {
+                joined.push(' ');
+              }
               joined.append(do_transform(elements[i].view()).view());
             }
-            if (!joined.is_empty()) do_append_run(joined, true);
+            if (!joined.is_empty()) {
+              do_append_run(joined, true);
+            }
           } else {
             for (usize i = 0; i < elements.count(); i++) {
               let const modified = do_transform(elements[i].view());
               if (segment.is_in_double_quotes) {
-                if (i > 0) do_flush();
+                if (i > 0) {
+                  do_flush();
+                }
                 do_append_run(modified.view(), false);
               } else {
                 do_begin_list_element(i);
@@ -812,11 +857,12 @@ hot fn EvalContext::expand_word(const Word &word) throws
             let const is_star = segment_text[name_end + 1] == '*';
             let const elements = collect_array_elements(array_name);
             let is_every_element_empty = true;
-            for (let const &element : elements)
+            for (let const &element : elements) {
               if (!element.is_empty()) {
                 is_every_element_empty = false;
                 break;
               }
+            }
             let const is_joined_value_empty =
                 is_every_element_empty &&
                 (elements.count() <= 1 ||
@@ -833,7 +879,9 @@ hot fn EvalContext::expand_word(const Word &word) throws
                                                  ? !should_treat_as_unset
                                                  : should_treat_as_unset;
 
-              if (!should_expand_word) break;
+              if (!should_expand_word) {
+                break;
+              }
 
               let modifier_word_location = SourceLocation{};
               do_emit_modifier_word(
@@ -880,10 +928,11 @@ hot fn EvalContext::expand_word(const Word &word) throws
                 do_source_location_for(modifier_word, modifier_word_location),
                 segment.is_in_double_quotes);
           } else if (rest[op_index] == '-') {
-            if (segment.is_in_double_quotes)
+            if (segment.is_in_double_quotes) {
               do_append_run(subject->view(), false);
-            else
+            } else {
               do_append_split_run(subject->view(), true);
+            }
           } else if (segment.is_in_double_quotes) {
             do_append_run(StringView{}, false);
           }
@@ -894,22 +943,25 @@ hot fn EvalContext::expand_word(const Word &word) throws
           lexer::is_variable_name_start(segment_text[0]))
       {
         let is_plain_name = true;
-        for (usize i = 1; i < segment_text.length; i++)
+        for (usize i = 1; i < segment_text.length; i++) {
           if (!lexer::is_variable_name(segment_text[i])) {
             is_plain_name = false;
             break;
           }
-        if (is_plain_name)
+        }
+        if (is_plain_name) {
           if (let const stored =
                   variable_store().find_plain_scalar(segment_text);
               stored.has_value())
           {
-            if (segment.is_in_double_quotes)
+            if (segment.is_in_double_quotes) {
               do_append_run(stored->view(), false);
-            else
+            } else {
               do_append_split_run(stored->view(), true);
+            }
             break;
           }
+        }
       }
       let const source_location = segment.get_source_location(
           source_store().current_location().source_name_index);
@@ -917,26 +969,29 @@ hot fn EvalContext::expand_word(const Word &word) throws
           segment.text.view(),
           source_location.has_value() ? &*source_location : nullptr, 0,
           !segment.is_in_double_quotes, get_segment_quoting(segment));
-      if (segment.is_in_double_quotes)
+      if (segment.is_in_double_quotes) {
         do_append_run(value, false);
-      else
+      } else {
         do_append_split_run(value, true);
+      }
     } break;
 
     case WordSegment::Kind::CommandSubstitution: {
       let const output = capture_command_substitution(segment);
-      if (segment.is_in_double_quotes)
+      if (segment.is_in_double_quotes) {
         do_append_run(output, false);
-      else
+      } else {
         do_append_split_run(output, true);
+      }
     } break;
 
     case WordSegment::Kind::FunctionSubstitution: {
       let const output = capture_function_substitution(segment);
-      if (segment.is_in_double_quotes)
+      if (segment.is_in_double_quotes) {
         do_append_run(output, false);
-      else
+      } else {
         do_append_split_run(output, true);
+      }
     } break;
 
     case WordSegment::Kind::ProcessSubstitution: {
@@ -946,10 +1001,11 @@ hot fn EvalContext::expand_word(const Word &word) throws
 
     case WordSegment::Kind::ArithmeticExpansion: {
       let const value = evaluate_arithmetic_cached_text(segment);
-      if (segment.is_in_double_quotes)
+      if (segment.is_in_double_quotes) {
         do_append_run(value.view(), false);
-      else
+      } else {
         do_append_split_run(value.view(), false);
+      }
     } break;
     }
   }

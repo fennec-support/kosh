@@ -509,7 +509,9 @@ struct rolling_history
     usize before = 0;
     while (before + 1 < timestamps.count() &&
            timestamps[before + 1] <= window_start_nanoseconds)
+    {
       before++;
+    }
 
     if (before + 1 == timestamps.count())
       return {before, before, timestamps[before]};

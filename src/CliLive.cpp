@@ -248,7 +248,9 @@ fn live_report_options::parse(const ExecContext &ec, EvalContext &cxt,
 {
   let options = parse_with_window(ec, cxt, utility_name, live_flag,
                                   cumulative_flag.is_enabled(), 1.0, allocator);
-  if (!options.has_value() || !cumulative_flag.has_value()) return options;
+  if (!options.has_value() || !cumulative_flag.has_value()) {
+    return options;
+  }
 
   let const window = parse_window_seconds(
       ec, cxt, utility_name, cumulative_flag.value(),

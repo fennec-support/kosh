@@ -37,8 +37,9 @@ fn read_first_line(StringView path, Allocator allocator) throws -> Maybe<String>
 
   let const view = body->view();
   usize line_end = 0;
-  while (line_end < view.length && view[line_end] != '\n')
+  while (line_end < view.length && view[line_end] != '\n') {
     line_end++;
+  }
 
   return String{allocator, view.substring_of_length(0, line_end)};
 }
@@ -155,10 +156,12 @@ fn append_anomaly_report(field_section &section, EvalContext &cxt) throws
   let executable_path = StringView{};
   bool is_mapping_evidence_available = true;
   for (let const &file : files) {
-    if (file.use == os::process_file_use::Executable && !file.is_inaccessible)
+    if (file.use == os::process_file_use::Executable && !file.is_inaccessible) {
       executable_path = file.path.view();
-    if (file.use == os::process_file_use::Mapped && file.is_inaccessible)
+    }
+    if (file.use == os::process_file_use::Mapped && file.is_inaccessible) {
       is_mapping_evidence_available = false;
+    }
   }
   if (!is_mapping_evidence_available) {
     do_append_unavailable("process mappings");
@@ -177,15 +180,21 @@ fn append_anomaly_report(field_section &section, EvalContext &cxt) throws
     let const marker = filename.find_substring(".so.");
     if (file.is_deleted && (shared_object_marker.has_value() ||
                             file.path.view() == executable_path))
+    {
       deleted_mapping_count++;
+    }
     if (!marker.has_value()) continue;
 
     let version_end = *marker + 4;
     while (version_end < filename.length && filename[version_end] >= '0' &&
            filename[version_end] <= '9')
+    {
       version_end++;
+    }
     if (version_end == *marker + 4) continue;
-    if (version_end < filename.length && filename[version_end] != '.') continue;
+    if (version_end < filename.length && filename[version_end] != '.') {
+      continue;
+    }
     let const abi_version =
         filename.substring_of_length(*marker + 4, version_end - (*marker + 4))
             .to<u64>();
@@ -195,7 +204,9 @@ fn append_anomaly_report(field_section &section, EvalContext &cxt) throws
     usize family_index = 0;
     while (family_index < families.count() &&
            families[family_index].family.view() != family)
+    {
       family_index++;
+    }
     if (family_index == families.count()) {
       families.push(mapped_library_family{
           String{allocator, family},
@@ -637,7 +648,9 @@ fn Evil::execute(const ExecContext &ec, EvalContext &cxt,
   usize interface_count = 0;
   StringView previous_interface;
   for (let const name : interface_names) {
-    if (interface_count == 0 || name != previous_interface) interface_count++;
+    if (interface_count == 0 || name != previous_interface) {
+      interface_count++;
+    }
     previous_interface = name;
   }
 

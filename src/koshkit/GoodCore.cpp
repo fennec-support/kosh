@@ -113,7 +113,9 @@ fn copy_into_root(const Path &stage, StringView source,
 fn append_unique_path(ArrayList<String> &paths, StringView path,
                       Allocator allocator) throws -> void
 {
-  if (path.is_empty() || path[0] != '/') return;
+  if (path.is_empty() || path[0] != '/') {
+    return;
+  }
   for (let const &existing : paths) {
     if (existing.view() == path) return;
   }
@@ -236,7 +238,9 @@ fn GoodCore::execute(
   {
     if (progress_mode == goodcore_progress_mode::Visible &&
         colors::stderr_is_a_terminal())
+    {
       ec.print_to_stderr("\r\x1b[2K\n");
+    }
   };
   if (!has_pid && operands.is_empty()) {
     return report_usage_error(ec, cxt, args[0].view());

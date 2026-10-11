@@ -97,7 +97,9 @@ struct client_capabilities
       -> client_capabilities
   {
     client_capabilities client{};
-    if (params == nullptr || params->kind != json_kind::Object) return client;
+    if (params == nullptr || params->kind != json_kind::Object) {
+      return client;
+    }
 
     let const *capabilities = params->get("capabilities");
     let const *code_action =
@@ -209,7 +211,9 @@ fn DocumentStore::find_by_canonical_path(const Path &canonical_path) throws
   for (let &document : m_documents) {
     if (document.canonical_path.has_value() &&
         document.canonical_path->text() == canonical_path.text())
+    {
       return &document;
+    }
   }
 
   return nullptr;
@@ -540,7 +544,9 @@ fn Server::initialize(const JsonValue *id, const JsonValue *params) throws
   if (m_client.has_quick_fixes || m_client.has_fix_all) {
     result.append("\"codeActionProvider\":{\"codeActionKinds\":[");
     if (m_client.has_quick_fixes) result.append("\"quickfix\"");
-    if (m_client.has_quick_fixes && m_client.has_fix_all) result.push(',');
+    if (m_client.has_quick_fixes && m_client.has_fix_all) {
+      result.push(',');
+    }
     if (m_client.has_fix_all) result.append("\"source.fixAll.kosh\"");
     result.append("],\"resolveProvider\":false},");
   }
@@ -566,8 +572,9 @@ fn Server::open_document(const JsonValue *params) throws -> Document *
   let const language_id = string_field(text_document, "languageId");
   let const text = string_field(text_document, "text");
   let const version = integer_field(text_document, "version");
-  if (!uri.has_value() || !language_id.has_value() || !text.has_value())
+  if (!uri.has_value() || !language_id.has_value() || !text.has_value()) {
     return nullptr;
+  }
   m_highlight_cache = completion::shell_highlight_cache{};
 
   return m_documents.open(*uri, *language_id, *text, version.value_or(0));
@@ -583,7 +590,9 @@ fn Server::change_document(const JsonValue *params) throws -> Document *
       params != nullptr ? params->get("contentChanges") : nullptr;
   if (!uri.has_value() || changes == nullptr ||
       changes->kind != json_kind::Array || changes->array.is_empty())
+  {
     return nullptr;
+  }
   let const text = string_field(changes->array.back(), "text");
   if (!text.has_value()) return nullptr;
   let *document = m_documents.change(*uri, *text, version);
@@ -625,7 +634,9 @@ fn Server::append_diagnostic(String &output, const Document &document,
 {
   if (!diagnostic.source_name.is_empty() && document.path.has_value() &&
       diagnostic.source_name != document.path->text())
+  {
     return;
+  }
   let const do_append_diagnostic =
       [&](const SourceLocation &location, u8 severity, StringView message,
           Maybe<diagnostic_id> id, bool has_fixes) throws -> void {
@@ -688,8 +699,9 @@ fn Server::append_diagnostic(String &output, const Document &document,
 
 fn Server::publish_diagnostics(Document &document) throws -> bool
 {
-  if (document.format.is_host_format && !document.format.fragments.is_empty())
+  if (document.format.is_host_format && !document.format.fragments.is_empty()) {
     document.mood = document.format.fragments[0].mood;
+  }
   select_document_mood(document);
   let const arena_mark = m_ast_arena.mark();
   defer { m_ast_arena.release(arena_mark); };
@@ -850,7 +862,9 @@ fn Server::validate_all(Document *changed_document) throws -> bool
       should_reanalyze = document.followed_paths.contains(
           changed_document->canonical_path->text().view());
     }
-    if (should_reanalyze && !publish_diagnostics(document)) return false;
+    if (should_reanalyze && !publish_diagnostics(document)) {
+      return false;
+    }
 
     m_auxiliary_diagnostics.collect(document.auxiliary_diagnostics);
   }
@@ -955,20 +969,24 @@ fn Server::complete(const JsonValue *id, const JsonValue *params) throws -> bool
 fn Server::resolve_completion(const JsonValue *id,
                               const JsonValue *params) throws -> bool
 {
-  if (params == nullptr || params->kind != json_kind::Object)
+  if (params == nullptr || params->kind != json_kind::Object) {
     return send_result(id, "{}");
+  }
   let const *data = params->get("data");
   let const *command = data != nullptr ? data->get("command") : nullptr;
 
   let information = Maybe<String>{None};
-  if (command != nullptr && command->kind == json_kind::String)
+  if (command != nullptr && command->kind == json_kind::String) {
     information = command_information(command->text.view());
+  }
 
   let response = String{"{"};
 
   for (usize index = 0; index < params->object.count(); index++) {
     let const name = params->object[index].name.view();
-    if (information.has_value() && name == "documentation") continue;
+    if (information.has_value() && name == "documentation") {
+      continue;
+    }
     if (response.count() > 1) response.push(',');
     append_json_string(response, name);
     response.push(':');
@@ -1079,13 +1097,16 @@ fn Server::code_actions(const JsonValue *id, const JsonValue *params) throws
   {
     let const start = document_position(range->get("start"));
     let const end = document_position(range->get("end"));
-    if (!start.has_value() || !end.has_value()) return send_result(id, "[]");
+    if (!start.has_value() || !end.has_value()) {
+      return send_result(id, "[]");
+    }
     let const start_byte = document->byte_position(
         start->line, start->character, m_client.encoding);
     let const end_byte =
         document->byte_position(end->line, end->character, m_client.encoding);
-    if (!start_byte.has_value() || !end_byte.has_value())
+    if (!start_byte.has_value() || !end_byte.has_value()) {
       return send_result(id, "[]");
+    }
     range_start = *start_byte;
     range_end = *end_byte;
     if (range_end < range_start) return send_result(id, "[]");
@@ -1102,10 +1123,14 @@ fn Server::code_actions(const JsonValue *id, const JsonValue *params) throws
       if (kind->kind != json_kind::String) continue;
       if (m_client.has_quick_fixes &&
           code_action_kind_includes(kind->text, "quickfix"))
+      {
         should_include_quick_fixes = true;
+      }
       if (m_client.has_fix_all &&
           code_action_kind_includes(kind->text, "source.fixAll.kosh"))
+      {
         should_include_fix_all = true;
+      }
     }
   }
 
@@ -1128,7 +1153,9 @@ fn Server::code_actions(const JsonValue *id, const JsonValue *params) throws
       let const code = string_field(candidate, "code");
       if (!code.has_value() ||
           *code != get_diagnostic_definition(*diagnostic.id).slug)
+      {
         continue;
+      }
       let const *data = candidate->get("data");
       let const kind = string_field(data, "kind");
       let const version = integer_field(data, "documentVersion");
@@ -1140,14 +1167,20 @@ fn Server::code_actions(const JsonValue *id, const JsonValue *params) throws
           static_cast<u64>(*revision) != document->diagnostic_revision ||
           !index.has_value() || *index < 0 ||
           static_cast<usize>(*index) != diagnostic_index)
+      {
         continue;
+      }
       let const *candidate_range = candidate->get("range");
       if (candidate_range == nullptr ||
           candidate_range->kind != json_kind::Object)
+      {
         continue;
+      }
       let const start = document_position(candidate_range->get("start"));
       let const end = document_position(candidate_range->get("end"));
-      if (!start.has_value() || !end.has_value()) continue;
+      if (!start.has_value() || !end.has_value()) {
+        continue;
+      }
       let const start_byte = document->byte_position(
           start->line, start->character, m_client.encoding);
       let const end_byte =
@@ -1156,7 +1189,9 @@ fn Server::code_actions(const JsonValue *id, const JsonValue *params) throws
           *start_byte != diagnostic.location.position ||
           *end_byte !=
               diagnostic.location.position + diagnostic.location.length)
+      {
         continue;
+      }
 
       return candidate;
     }
@@ -1188,8 +1223,9 @@ fn Server::code_actions(const JsonValue *id, const JsonValue *params) throws
     append_json_string(response, title);
     response.append(",\"kind\":");
     append_json_string(response, kind);
-    if (is_preferred && m_client.has_preferred_actions)
+    if (is_preferred && m_client.has_preferred_actions) {
       response.append(",\"isPreferred\":true");
+    }
     if (diagnostic != nullptr) {
       response.append(",\"diagnostics\":[");
       append_json_value(response, *diagnostic);
@@ -1210,7 +1246,9 @@ fn Server::code_actions(const JsonValue *id, const JsonValue *params) throws
           diagnostic.location.position + diagnostic.location.length;
       if (range_start == range_end) {
         if (diagnostic.location.length == 0) {
-          if (range_start != diagnostic.location.position) continue;
+          if (range_start != diagnostic.location.position) {
+            continue;
+          }
         } else if (range_start < diagnostic.location.position ||
                    range_start >= diagnostic_end)
         {
@@ -1260,7 +1298,9 @@ fn Server::symbol_at(const Document &document,
       position.line, position.character, m_client.encoding);
   if (!byte_position.has_value() ||
       position.line >= document.line_starts.count())
+  {
     return None;
+  }
   let const fragment_index = document.fragment_at(*byte_position);
   if (!fragment_index.has_value()) return None;
   if (document.format.is_host_format) {
@@ -1275,7 +1315,9 @@ fn Server::symbol_at(const Document &document,
   for (let const &span : *spans) {
     let const start = line_start + span.start;
     let const end = line_start + span.end;
-    if (*byte_position < start || *byte_position > end) continue;
+    if (*byte_position < start || *byte_position > end) {
+      continue;
+    }
 
     let symbol =
         document_symbol{String{document.normalized_source.substring_of_length(
@@ -1310,8 +1352,12 @@ pure fn role_reads_function(highlight_role role) wontthrow -> bool
 pure fn variable_name_start_of(StringView text) wontthrow -> usize
 {
   usize start = 0;
-  if (!text.is_empty() && text[0] == '$') start++;
-  if (start < text.length && text[start] == '{') start++;
+  if (!text.is_empty() && text[0] == '$') {
+    start++;
+  }
+  if (start < text.length && text[start] == '{') {
+    start++;
+  }
 
   return start;
 }
@@ -1321,8 +1367,9 @@ pure fn variable_name_of(StringView text) wontthrow -> StringView
   let const start = variable_name_start_of(text);
   let end = start;
 
-  while (end < text.length && lexer::is_variable_name(text[end]))
+  while (end < text.length && lexer::is_variable_name(text[end])) {
     end++;
+  }
 
   return text.substring_of_length(start, end - start);
 }
@@ -1332,7 +1379,9 @@ pure fn hover_variable_name_of(StringView text) wontthrow -> StringView
   let const name = variable_name_of(text);
   if (!name.is_empty()) return name;
 
-  if (text.length == 2 && text[0] == '$') return text.substring(1);
+  if (text.length == 2 && text[0] == '$') {
+    return text.substring(1);
+  }
 
   if (text.length == 4 && text[0] == '$' && text[1] == '{' && text[3] == '}') {
     return text.substring_of_length(2, 1);
@@ -1347,7 +1396,9 @@ fn Server::definition_of(const Document &document,
 {
   let const is_variable = role_reads_variable(symbol.role);
   let const is_function = role_reads_function(symbol.role);
-  if (!is_variable && !is_function) return None;
+  if (!is_variable && !is_function) {
+    return None;
+  }
   let const name =
       is_variable ? variable_name_of(symbol.text.view()) : symbol.text.view();
   if (name.is_empty()) return None;
@@ -1629,8 +1680,9 @@ fn Server::document_symbols(const JsonValue *id, const JsonValue *params) throws
   };
 
   for (let const &entry : entries) {
-    while (!scopes.is_empty() && scopes.back().end <= entry.start)
+    while (!scopes.is_empty() && scopes.back().end <= entry.start) {
       do_close_scope();
+    }
 
     if (entry.kind == OUTLINE_VARIABLE_KIND) {
       let &names =
@@ -1687,7 +1739,9 @@ fn Server::command_information(StringView command) throws -> Maybe<String>
     argv.push(String{"-c"});
     argv.push(steal(help_source));
     let output = os::capture_program_output(argv, INFORMATION_TIMEOUT_NANOS);
-    if (!output.has_value() || output->is_empty()) return None;
+    if (!output.has_value() || output->is_empty()) {
+      return None;
+    }
 
     m_shell_help_cache.set(command, output->view());
     return output;
@@ -1742,8 +1796,9 @@ pure fn source_line_span(const Document &document, usize position) wontthrow
 {
   let const source = document.normalized_source.view();
   let line_start = position;
-  while (line_start > 0 && source[line_start - 1] != '\n')
+  while (line_start > 0 && source[line_start - 1] != '\n') {
     line_start--;
+  }
 
   while (line_start < position &&
          (source[line_start] == ' ' || source[line_start] == '\t'))
@@ -1769,7 +1824,9 @@ pure fn assignment_headline_span(
 
   let const span = document.normalized_source.substring_of_length(
       record.position, record.length);
-  if (span.is_empty() || span[span.length - 1] != '=') return span;
+  if (span.is_empty() || span[span.length - 1] != '=') {
+    return span;
+  }
 
   let const rest = document.normalized_source.substring(record.position);
   let const line_end = rest.find_character('\n');
@@ -1815,8 +1872,9 @@ fn append_hover_block(String &output, StringView text, bool is_markdown,
     }
 
     let const run_start = position;
-    while (position < text.length && text[position] == '`')
+    while (position < text.length && text[position] == '`') {
       position++;
+    }
     if (position - run_start > longest_backquote_run)
       longest_backquote_run = position - run_start;
   }
@@ -1899,8 +1957,9 @@ pure fn function_body_for(const Document &document,
   for (let const &record : document.symbol_records.functions) {
     if (record.name_position > symbol.start) continue;
     if (record.name.view() != symbol.text.view()) continue;
-    if (nearest != nullptr && record.name_position < nearest->name_position)
+    if (nearest != nullptr && record.name_position < nearest->name_position) {
       continue;
+    }
 
     nearest = &record;
   }
@@ -2190,7 +2249,9 @@ fn Server::semantic_tokens(const JsonValue *id, const JsonValue *params) throws
             if (occurrence.position > absolute_start) break;
             if (occurrence.position != absolute_start ||
                 occurrence.length != absolute_end - absolute_start)
+            {
               continue;
+            }
 
             if (occurrence.kind == variable_occurrence_kind::Assignment) {
               modifiers |= SEMANTIC_DECLARATION;

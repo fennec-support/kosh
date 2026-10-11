@@ -39,8 +39,9 @@ enum class removal_prompt_mode : u8
 static pure fn effective_entry_kind(
     const os::directory_status_entry &entry) wontthrow -> Path::entry_kind
 {
-  if (entry.child.kind != Path::entry_kind::Unknown || !entry.has_status)
+  if (entry.child.kind != Path::entry_kind::Unknown || !entry.has_status) {
     return entry.child.kind;
+  }
 
   switch (os::file_type_letter(entry.status.mode)) {
   case 'd': return Path::entry_kind::Directory;
@@ -263,12 +264,14 @@ report_dry_run_removal(const removal_request &request, StringView path,
 static fn names_dot_refused_under_force(StringView operand) wontthrow -> bool
 {
   usize end = operand.length;
-  while (end > 1 && operand[end - 1] == '/')
+  while (end > 1 && operand[end - 1] == '/') {
     end--;
+  }
 
   usize start = end;
-  while (start > 0 && operand[start - 1] != '/')
+  while (start > 0 && operand[start - 1] != '/') {
     start--;
+  }
 
   let const base = operand.substring_of_length(start, end - start);
   return base == StringView{"."} || base == StringView{".."};

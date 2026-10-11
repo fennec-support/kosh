@@ -268,8 +268,9 @@ static fn report_unresolved_stage(EvalContext &cxt,
        stage.was_output_to_error_last);
   let target = does_error_follow_output ? stage.out_fd : stage.err_fd;
 
-  if (does_error_follow_output && !target.has_value())
+  if (does_error_follow_output && !target.has_value()) {
     target = os::descriptor_for_shell_fd(1);
+  }
 
   if (!target.has_value()) {
     show_message(stage.get_unresolved_diagnostic());
@@ -497,7 +498,9 @@ fn execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs, EvalContext &cxt,
           for (usize argument_index = 0; argument_index < ec.args().count();
                argument_index++)
           {
-            if (argument_index > 0) stage_source.push(' ');
+            if (argument_index > 0) {
+              stage_source.push(' ');
+            }
             append_shell_quoted_arg(stage_source, ec.args()[argument_index],
                                     true);
           }
@@ -549,7 +552,9 @@ fn execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs, EvalContext &cxt,
                            diagnostic.data(), diagnostic.count()))
         {
           let const saved_errno = errno;
-          if (saved_errno == EPIPE) throw BrokenPipeExit{};
+          if (saved_errno == EPIPE) {
+            throw BrokenPipeExit{};
+          }
           throw Error{"Unable to write to stderr: " +
                       os::last_system_error_message()};
         }
@@ -567,10 +572,13 @@ fn execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs, EvalContext &cxt,
           ec.in_fd = koshka::None;
           ec.out_fd = koshka::None;
           ec.err_fd = koshka::None;
-          if (last_stdin != KOSH_INVALID_FD) os::close_fd(last_stdin);
+          if (last_stdin != KOSH_INVALID_FD) {
+            os::close_fd(last_stdin);
+          }
 
-          for (let const unresolved_index : unresolved_stages)
+          for (let const unresolved_index : unresolved_stages) {
             ecs[unresolved_index].close_fds();
+          }
 
           cxt.job_table_store().set_in_pipeline_stage(true);
           cxt.enter_subshell();
@@ -676,6 +684,7 @@ cold fn print_memory_report() wontthrow -> void
 {
   if (QUIT_CONTEXT != nullptr &&
       QUIT_CONTEXT->arena_store().parse_arena() != nullptr)
+  {
     std::fprintf(
         stderr,
         "AST arena: used %zu, reserved %zu, blocks %zu, destructors "
@@ -685,6 +694,7 @@ cold fn print_memory_report() wontthrow -> void
         QUIT_CONTEXT->arena_store().parse_arena()->block_count(),
         QUIT_CONTEXT->arena_store().parse_arena()->destructor_count(),
         QUIT_CONTEXT->arena_store().parse_arena()->destructor_capacity());
+  }
   if (QUIT_CONTEXT != nullptr) {
     let const stats = QUIT_CONTEXT->function_storage_stats();
     std::fprintf(stderr,

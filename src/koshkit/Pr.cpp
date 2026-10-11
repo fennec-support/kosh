@@ -41,7 +41,9 @@ static fn parse_pr_number(StringView text) wontthrow -> Maybe<usize>
 {
   let const parsed = utils::parse_decimal_u64(text);
 
-  if (parsed.is_error() || parsed.value() > SIZE_MAX) return None;
+  if (parsed.is_error() || parsed.value() > SIZE_MAX) {
+    return None;
+  }
 
   return static_cast<usize>(parsed.value());
 }
@@ -379,8 +381,9 @@ fn Pr::execute(const ExecContext &ec, EvalContext &cxt,
             column_count == 1 && FLAG_PR_DOUBLE_SPACE.is_enabled()
                 ? page_line_count * 2
                 : data_line_limit;
-        while (emitted_page_lines++ < body_line_count)
+        while (emitted_page_lines++ < body_line_count) {
           output += '\n';
+        }
         output += "\n\n\n\n\n";
       }
       page_number++;

@@ -122,8 +122,9 @@ fn Mapfile::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   }
 
   let lines = ArrayList<String>{heap_allocator()};
-  if (has_callback && !has_origin)
+  if (has_callback && !has_origin) {
     cxt.set_indexed_array(array_name, ArrayList<String>{heap_allocator()});
+  }
 
   let const saved_terminal_exec = cxt.execution_store().terminal_exec_allowed();
   cxt.execution_store().terminal_exec_allowed() = false;

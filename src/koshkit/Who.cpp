@@ -113,7 +113,9 @@ fn Who::execute(const ExecContext &ec, EvalContext &cxt,
 
   let const user = os::get_current_user();
   let const terminal = os::terminal_name(ec.in_fd.value_or(KOSH_STDIN));
-  if (!user.has_value() || !terminal.has_value()) return 1;
+  if (!user.has_value() || !terminal.has_value()) {
+    return 1;
+  }
   ec.print_to_stdout(user->view());
   ec.print_to_stdout(" ");
   ec.print_to_stdout(terminal->view());

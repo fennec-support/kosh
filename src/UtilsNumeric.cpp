@@ -343,15 +343,18 @@ private:
 
     fn invalidate_for(StringView source) wontthrow -> void
     {
-      if (m_source_data == nullptr || source.data == nullptr) return;
+      if (m_source_data == nullptr || source.data == nullptr) {
+        return;
+      }
 
       let const cached_address = reinterpret_cast<usize>(m_source_data);
       let const source_address = reinterpret_cast<usize>(source.data);
       if (cached_address < source_address) return;
 
       let const offset = cached_address - source_address;
-      if (offset > source.length || m_source_length > source.length - offset)
+      if (offset > source.length || m_source_length > source.length - offset) {
         return;
+      }
 
       invalidate();
     }
@@ -446,8 +449,9 @@ fn invalidate_line_number_cache_for(StringView source) wontthrow -> void
 static fn skip_ascii_whitespace(StringView text, usize &offset) wontthrow
     -> void
 {
-  while (offset < text.length && is_ascii_whitespace(text.data[offset]))
+  while (offset < text.length && is_ascii_whitespace(text.data[offset])) {
     offset++;
+  }
 }
 
 struct parsed_integer_magnitude
@@ -594,12 +598,13 @@ static pure fn digit_value_in_base(char c, u32 radix) wontthrow -> i32
   u32 value;
   if (c >= '0' && c <= '9') {
     value = static_cast<u32>(c - '0');
-  } else if (c >= 'a' && c <= 'z')
+  } else if (c >= 'a' && c <= 'z') {
     value = static_cast<u32>(c - 'a') + 10;
-  else if (c >= 'A' && c <= 'Z')
+  } else if (c >= 'A' && c <= 'Z') {
     value = static_cast<u32>(c - 'A') + 10;
-  else
+  } else {
     return -1;
+  }
 
   return value < radix ? static_cast<i32>(value) : -1;
 }
@@ -623,12 +628,16 @@ static fn parse_magnitude_in_base(StringView text, int_base base) throws
   case int_base::hex:
     if (offset + 1 < text.length && text.data[offset] == '0' &&
         (text.data[offset + 1] == 'x' || text.data[offset + 1] == 'X'))
+    {
       offset += 2;
+    }
     break;
   case int_base::binary:
     if (offset + 1 < text.length && text.data[offset] == '0' &&
         (text.data[offset + 1] == 'b' || text.data[offset + 1] == 'B'))
+    {
       offset += 2;
+    }
     break;
   case int_base::octal:
   case int_base::decimal: break;
@@ -643,17 +652,20 @@ static fn parse_magnitude_in_base(StringView text, int_base base) throws
     if (digit < 0) break;
     has_digits = true;
     digit_count++;
-    if (base == int_base::decimal && digit_count <= 19)
+    if (base == int_base::decimal && digit_count <= 19) {
       magnitude = magnitude * radix + static_cast<u64>(digit);
-    else if (magnitude > (UINT64_MAX - static_cast<u64>(digit)) / radix)
+    } else if (magnitude > (UINT64_MAX - static_cast<u64>(digit)) / radix) {
       has_overflowed = true;
-    else
+    } else {
       magnitude = magnitude * radix + static_cast<u64>(digit);
+    }
     offset++;
   }
 
   skip_ascii_whitespace(text, offset);
-  if (!has_digits || offset != text.length) return not_an_integer_error(text);
+  if (!has_digits || offset != text.length) {
+    return not_an_integer_error(text);
+  }
 
   return parsed_integer_magnitude{magnitude, is_negative, has_overflowed};
 }
@@ -684,7 +696,9 @@ fn parse_integer_in_base_u64(StringView text, int_base base) throws
 
 fn expand_leading_tilde_path(StringView name) throws -> Maybe<String>
 {
-  if (name.is_empty() || name[0] != '~') return None;
+  if (name.is_empty() || name[0] != '~') {
+    return None;
+  }
 
   let const slash = name.find_character('/');
   let const user = slash.has_value() ? name.substring_of_length(1, *slash - 1)

@@ -197,9 +197,11 @@ static fn copy_path(const ExecContext &ec, EvalContext &cxt,
 
   let source_status = Maybe<os::file_status>{};
   if (known_lstat != nullptr && os::file_type_letter(known_lstat->mode) != 'l')
+  {
     source_status = *known_lstat;
-  else
+  } else {
     source_status = source_file_status(source);
+  }
 
   let const is_source_directory =
       source_status.has_value()
@@ -486,7 +488,9 @@ fn Cp::execute(const ExecContext &ec, EvalContext &cxt,
     if (should_prompt &&
         Path{target.view(), cxt.scratch_allocator()}.exists() &&
         !confirm_koshkit_action(ec, "overwrite '" + target + "'? "))
+    {
       continue;
+    }
 
     try {
       if (!copy_path(ec, cxt, args[0].view(), source, target.view(), options,

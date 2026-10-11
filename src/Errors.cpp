@@ -78,8 +78,9 @@ fn source_identity_kind_at(u32 source_name_index) wontthrow
     -> source_identity_kind
 {
   let const &table = get_source_name_table();
-  if (source_name_index == 0 || source_name_index > table.count())
+  if (source_name_index == 0 || source_name_index > table.count()) {
     return source_identity_kind::File;
+  }
 
   return table[source_name_index - 1].kind;
 }
@@ -157,7 +158,9 @@ cold static fn append_diagnostic_message(String &out, StringView message,
     digit_start = message.length - 1;
     while (digit_start > 0 && message[digit_start - 1] >= '0' &&
            message[digit_start - 1] <= '9')
+    {
       digit_start--;
+    }
   }
 
   let const has_code_suffix =
@@ -213,7 +216,9 @@ cold static fn get_context_pointing_to(
       line_position.line_start = byte_position - LONG_LINE_CONTEXT_BYTES;
       while (line_position.line_start < byte_position &&
              (static_cast<u8>(source[line_position.line_start]) & 0xC0) == 0x80)
+      {
         line_position.line_start++;
+      }
     }
 
     let const caret_end_position =
@@ -224,7 +229,9 @@ cold static fn get_context_pointing_to(
       line_position.line_end = caret_end_position + LONG_LINE_CONTEXT_BYTES;
       while (line_position.line_end > caret_end_position &&
              (static_cast<u8>(source[line_position.line_end]) & 0xC0) == 0x80)
+      {
         line_position.line_end--;
+      }
     }
   }
   LOG(Debug, "assembling the caret context for line %zu", line_number + 1);
@@ -548,8 +555,9 @@ cold fn resolve_rendered_site(StringView source, const SourceLocation &location,
 
   let const resolved =
       context->resolve_current_function_window(source, location);
-  if (!resolved.is_windowed || resolved.text == nullptr)
+  if (!resolved.is_windowed || resolved.text == nullptr) {
     return rendered_site{source, location, line_offset};
+  }
 
   return rendered_site{resolved.text->view(), resolved.rebase(location),
                        resolved.line_offset};
@@ -564,8 +572,9 @@ fn ErrorWithLocation::to_string(StringView source,
   usize byte_position = site.location.position;
   let const byte_count = site.location.length;
 
-  if (source.data == nullptr || byte_position > source.count())
+  if (source.data == nullptr || byte_position > source.count()) {
     return ErrorBase::to_string(source, context);
+  }
 
   LOG_VARS(Debug, byte_position, byte_count);
   let const severity = get_severity();

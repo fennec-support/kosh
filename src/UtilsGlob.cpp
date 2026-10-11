@@ -124,7 +124,9 @@ fn get_bracket_span(StringView glob, const Bitset &mask,
   {
     scan++;
   }
-  if (scan < glob.count() && do_is_close_at(scan)) scan++;
+  if (scan < glob.count() && do_is_close_at(scan)) {
+    scan++;
+  }
 
   while (scan < glob.count()) {
     if (scan + 1 < glob.count() && glob[scan] == '[' && glob[scan + 1] == ':' &&
@@ -214,10 +216,11 @@ fn extglob_full_match(StringView glob, StringView str, const Bitset &mask,
           alternatives.push({content.substring_of_length(start, i - start),
                              content_offset + start});
           start = i + 1;
-        } else if (is_active_byte && content[i] == '(')
+        } else if (is_active_byte && content[i] == '(') {
           depth++;
-        else if (is_active_byte && content[i] == ')')
+        } else if (is_active_byte && content[i] == ')') {
           depth--;
+        }
       }
 
       switch (head) {
@@ -242,7 +245,9 @@ fn extglob_full_match(StringView glob, StringView str, const Bitset &mask,
                                    alternative.mask_offset, charset) &&
                 extglob_full_match(suffix, str.substring(length), mask,
                                    suffix_offset, charset))
+            {
               return true;
+            }
           }
         }
         return head == '?' &&
@@ -348,7 +353,9 @@ fn byte_is_in_posix_class(StringView class_name, u8 byte) throws -> bool
 pure fn token_has_uppercase(StringView token) wontthrow -> bool
 {
   for (usize position = 0; position < token.length; position++)
-    if (token[position] >= 'A' && token[position] <= 'Z') return true;
+    if (token[position] >= 'A' && token[position] <= 'Z') {
+      return true;
+    }
   return false;
 }
 
@@ -418,8 +425,9 @@ static fn locale_codeset_is_utf8(StringView locale_name) wontthrow -> bool
   if (!dot.has_value()) return false;
 
   usize end = *dot + 1;
-  while (end < locale_name.length && locale_name[end] != '@')
+  while (end < locale_name.length && locale_name[end] != '@') {
     end++;
+  }
 
   let const codeset = locale_name.substring_of_length(*dot + 1, end - *dot - 1);
   if (codeset.length == 4) {
@@ -530,7 +538,9 @@ hot flatten fn glob_matches(StringView glob, StringView str,
     case '*': {
       while (g < glob.count() && glob[g] == '*' &&
              is_glob_char_active(glob_active, mask_offset + g))
+      {
         g++;
+      }
       if (g >= glob.count()) return true;
       star_glob_position = g;
       star_string_position = s;
@@ -582,10 +592,16 @@ hot flatten fn glob_matches(StringView glob, StringView str,
                                             wontthrow -> Maybe<usize> {
         if (index + 1 >= glob.count() || glob[index] != '[' ||
             glob[index + 1] != ':' || !do_is_active(index))
+        {
           return None;
+        }
         for (usize scan = index + 2; scan + 1 < glob.count(); scan++) {
-          if (glob[scan] == ':' && glob[scan + 1] == ']') return scan + 2;
-          if (glob[scan] == ']' && do_is_active(scan)) return None;
+          if (glob[scan] == ':' && glob[scan + 1] == ']') {
+            return scan + 2;
+          }
+          if (glob[scan] == ']' && do_is_active(scan)) {
+            return None;
+          }
         }
         return None;
       };
@@ -687,7 +703,9 @@ hot flatten fn glob_matches(StringView glob, StringView str,
 retry_star:
     if (star_glob_position == static_cast<usize>(-1) ||
         star_string_position >= str.count())
+    {
       return false;
+    }
     star_string_position +=
         is_utf8 ? utf8_character_length(str, star_string_position) : 1;
     s = star_string_position;

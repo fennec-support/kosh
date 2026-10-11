@@ -209,7 +209,9 @@ fn trim_matching(const EvalContext &cxt, Allocator result_allocator,
     }
 
     if (!active[index]) continue;
-    if (character != '*' && character != '?' && character != '[') continue;
+    if (character != '*' && character != '?' && character != '[') {
+      continue;
+    }
 
     if (first_glob_position == pattern.length) first_glob_position = index;
     last_glob_position = index;
@@ -225,12 +227,15 @@ fn trim_matching(const EvalContext &cxt, Allocator result_allocator,
 
   if (!has_other_glob_syntax && active_star_count == 0) {
     if (pattern.length <= value.length) {
-      if (end == trim_end::Prefix && value.starts_with(pattern))
+      if (end == trim_end::Prefix && value.starts_with(pattern)) {
         return String{result_allocator, value.substring(pattern.length)};
+      }
       if (end == trim_end::Suffix &&
           value.substring(value.length - pattern.length) == pattern)
+      {
         return String{result_allocator, value.substring_of_length(
                                             0, value.length - pattern.length)};
+      }
     }
 
     return String{result_allocator, value};
@@ -257,11 +262,13 @@ fn trim_matching(const EvalContext &cxt, Allocator result_allocator,
 
     if (suffix.length <= value.length &&
         value.substring(value.length - suffix.length) == suffix)
+    {
       return String{
           result_allocator,
           extent == pattern_match_extent::Longest
               ? StringView{}
               : value.substring_of_length(0, value.length - suffix.length)};
+    }
 
     return String{result_allocator, value};
   }
@@ -449,8 +456,9 @@ private:
   }
   fn get_nested_quoting() const wontthrow -> parameter_word_quoting
   {
-    if (!m_should_remove_quotes || m_is_here_document_word)
+    if (!m_should_remove_quotes || m_is_here_document_word) {
       return parameter_word_quoting::HereDocument;
+    }
 
     return is_quoted() ? parameter_word_quoting::DoubleQuoted
                        : parameter_word_quoting::Unquoted;
@@ -1202,8 +1210,12 @@ fn EvalContext::ModifierWordExpander::scan_arithmetic_body(
         break;
       }
 
-      if (ch == '[') depth++;
-      if (ch == ']') depth--;
+      if (ch == '[') {
+        depth++;
+      }
+      if (ch == ']') {
+        depth--;
+      }
     } else if (ch == '(') {
       depth++;
     } else if (ch == ')' && depth > 0) {
@@ -2046,7 +2058,9 @@ fn EvalContext::ParameterExpander::is_operand_quoted_null(
   let const &store = m_context.expansion_store();
   if (m_quoting != parameter_word_quoting::Unquoted) return false;
   if (!store.is_expanding_single_string()) return false;
-  if (store.is_expanding_assignment_value() || values.is_empty()) return false;
+  if (store.is_expanding_assignment_value() || values.is_empty()) {
+    return false;
+  }
 
   for (let const &value : values)
     if (!value.is_empty()) return false;
@@ -2644,14 +2658,17 @@ fn find_substring_length_separator(StringView body) wontthrow -> usize
     if (character == '(') {
       paren_depth++;
     } else if (character == ')') {
-      if (paren_depth > 0) paren_depth--;
+      if (paren_depth > 0) {
+        paren_depth--;
+      }
     } else if (character == '?' && paren_depth == 0) {
       question_depth++;
     } else if (character == ':' && paren_depth == 0) {
-      if (question_depth > 0)
+      if (question_depth > 0) {
         question_depth--;
-      else
+      } else {
         return i;
+      }
     }
   }
   return body.length;
@@ -2834,7 +2851,9 @@ fn EvalContext::join_list_slice(substring_bounds bounds,
 
   let joined = String{scratch_allocator()};
   for (i64 index = bounds.start; index < bounds.end; index++) {
-    if (index > bounds.start && has_separator) joined.append(separator);
+    if (index > bounds.start && has_separator) {
+      joined.append(separator);
+    }
     let const position = static_cast<usize>(index);
     joined.append(position < leading_count
                       ? *leading
@@ -2905,8 +2924,12 @@ pure static fn longest_possible_pattern_match(StringView pattern,
       usize close = i + 1;
       if (close < pattern.length &&
           (pattern[close] == '!' || pattern[close] == '^'))
+      {
         close++;
-      if (close < pattern.length && pattern[close] == ']') close++;
+      }
+      if (close < pattern.length && pattern[close] == ']') {
+        close++;
+      }
       while (close < pattern.length && pattern[close] != ']') {
         if (pattern[close] == '[' && close + 1 < pattern.length &&
             (pattern[close + 1] == ':' || pattern[close + 1] == '.' ||
@@ -2938,8 +2961,9 @@ longest_pattern_match_at(StringView pattern, const Bitset &pattern_active,
 {
   let const is_utf8 = charset == glob_charset::Utf8;
   let first_end = value.length;
-  if (longest_possible.has_value() && start + *longest_possible < first_end)
+  if (longest_possible.has_value() && start + *longest_possible < first_end) {
     first_end = start + *longest_possible;
+  }
   for (usize end = first_end; end >= start; end--) {
     if ((!is_utf8 || !splits_character(value, end, charset)) &&
         utils::glob_matches(pattern,
@@ -3398,8 +3422,9 @@ fn EvalContext::is_posix_positional_test_null(bool is_colon, char op,
            (params.count() == 1 && params[0].view().is_empty());
   }
 
-  if (params.count() > 1 && !variable_store().field_separators().is_empty())
+  if (params.count() > 1 && !variable_store().field_separators().is_empty()) {
     return false;
+  }
 
   for (let const &param : params)
     if (!param.view().is_empty()) return false;
@@ -3417,7 +3442,9 @@ fn EvalContext::trim_positional_fields(
   if (is_star && is_quoted) {
     let joined = String{scratch_allocator()};
     for (usize i = 0; i < params.count(); i++) {
-      if (i > 0 && !ifs.is_empty()) joined.append(first_field_separator());
+      if (i > 0 && !ifs.is_empty()) {
+        joined.append(first_field_separator());
+      }
       joined.append(params[i].view());
     }
     if (!params.is_empty()) fields.push(steal(joined));
@@ -3457,7 +3484,9 @@ fn EvalContext::trim_positional_fields(
   }
 
   let const is_empty_match = do_matches(StringView{});
-  if (!is_doubled && is_empty_match) return fields;
+  if (!is_doubled && is_empty_match) {
+    return fields;
+  }
 
   for (usize step = 0; step < fields.count(); step++) {
     let const index = is_doubled ? step : fields.count() - 1 - step;

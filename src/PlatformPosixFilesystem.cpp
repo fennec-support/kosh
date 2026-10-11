@@ -151,7 +151,9 @@ fn path_is_owned_by_effective_group(StringView path) wontthrow -> bool
 fn path_file_size(StringView path) wontthrow -> Maybe<u64>
 {
   struct stat info{};
-  if (!stat_path(path, info) || !S_ISREG(info.st_mode)) return None;
+  if (!stat_path(path, info) || !S_ISREG(info.st_mode)) {
+    return None;
+  }
   return static_cast<u64>(info.st_size);
 }
 
@@ -337,7 +339,9 @@ cold fn list_directory_for_batch(StringView dir, Allocator allocator) throws
   loop
   {
     opened = ::open(dir_string.c_str(), O_RDONLY | O_DIRECTORY | O_CLOEXEC);
-    if (opened >= 0 || errno != EINTR || INTERRUPT_REQUESTED) break;
+    if (opened >= 0 || errno != EINTR || INTERRUPT_REQUESTED) {
+      break;
+    }
   }
   if (opened < 0) return {None, None};
 
@@ -389,7 +393,9 @@ cold static fn list_directory_status_fallback(StringView dir,
     }
 
     let const name = StringView{native_entry->d_name};
-    if (name == StringView{"."} || name == StringView{".."}) continue;
+    if (name == StringView{"."} || name == StringView{".."}) {
+      continue;
+    }
 
     Path::entry_kind kind = Path::entry_kind::Unknown;
     switch (native_entry->d_type) {
@@ -445,7 +451,9 @@ fn read_system_owned_file(const Path &path) throws -> system_file_reading
   let reading = system_file_reading{};
   let const fd = ::open(path.c_str(), O_RDONLY | O_CLOEXEC);
   if (fd < 0) {
-    if (errno == ENOENT || errno == ENOTDIR) return reading;
+    if (errno == ENOENT || errno == ENOTDIR) {
+      return reading;
+    }
 
     reading.rejection =
         "Unable to read '" + path.text() + "': " + last_system_error_message();
@@ -892,7 +900,9 @@ static fn remove_tree_entry(int &parent_descriptor,
 {
   if (::unlinkat(parent_descriptor, name, 0) == 0) return true;
   let const unlink_errno = errno;
-  if (unlink_errno != EISDIR && unlink_errno != EPERM) return false;
+  if (unlink_errno != EISDIR && unlink_errno != EPERM) {
+    return false;
+  }
 
   int directory = ::openat(parent_descriptor, name,
                            O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
@@ -935,8 +945,9 @@ static fn remove_tree_entry(int &parent_descriptor,
       }
 
       let const child_name = StringView{entry->d_name};
-      if (child_name == StringView{"."} || child_name == StringView{".."})
+      if (child_name == StringView{"."} || child_name == StringView{".."}) {
         continue;
+      }
       child_names.push(String{allocator, child_name});
     }
   }

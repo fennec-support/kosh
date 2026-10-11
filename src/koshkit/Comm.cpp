@@ -114,7 +114,9 @@ fn Comm::execute(const ExecContext &ec, EvalContext &cxt,
     }
     if (left_result == utils::BufferedLineReader::Result::End &&
         right_result == utils::BufferedLineReader::Result::End)
+    {
       break;
+    }
 
     if (left_result == utils::BufferedLineReader::Result::End) {
       append_comm_line(output, 1, right_reader.get_line(), should_show);

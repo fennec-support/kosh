@@ -899,7 +899,9 @@ static fn apply_configured_init_moods(ArrayList<mimic_mood> &init_moods,
                                       bool should_source_session_files) throws
     -> void
 {
-  if (FLAG_INIT_MOODS.count() != 0 || !should_source_session_files) return;
+  if (FLAG_INIT_MOODS.count() != 0 || !should_source_session_files) {
+    return;
+  }
 
   for (let const &setting : reading.settings) {
     if (setting.option->storage != option_storage::InitMoods) continue;
@@ -929,7 +931,9 @@ static fn is_pinned_by_invocation(
     let const is_same_editor_mode =
         named.option->storage == option_storage::EditorMode &&
         option.storage == option_storage::EditorMode;
-    if (named.option == &option || is_same_editor_mode) return true;
+    if (named.option == &option || is_same_editor_mode) {
+      return true;
+    }
   }
 
   let const is_analysis_inherited = os::has_environment_variable(
@@ -1231,8 +1235,9 @@ static fn seed_session_variables(EvalContext &context,
     identity_mode = shell_identity_mode::Bash;
   }
   for (let listed : init_moods)
-    if (listed == mimic_mood::Bash || listed == mimic_mood::BashPosix)
+    if (listed == mimic_mood::Bash || listed == mimic_mood::BashPosix) {
       identity_mode = shell_identity_mode::Bash;
+    }
   context.seed_shell_identity_variables(identity_mode);
 
   if (!inherited.state.has_value()) seed_shell_level();
@@ -1609,7 +1614,9 @@ static fn start_line_editor(EvalContext &context,
 static fn emit_prompt_line_break() throws -> void
 {
   let const dimensions = os::get_terminal_dimensions();
-  if (!dimensions.has_value() || dimensions->columns == 0) return;
+  if (!dimensions.has_value() || dimensions->columns == 0) {
+    return;
+  }
 
   String eol_marker{heap_allocator()};
   eol_marker.reserve(dimensions->columns + 12);
@@ -1761,8 +1768,9 @@ struct interactive_session
                 value.has_value())
             {
               let const parsed = utils::parse_decimal_i64(value->view());
-              if (!parsed.is_error() && parsed.value() >= 0)
+              if (!parsed.is_error() && parsed.value() >= 0) {
                 ignored_eof_limit_count = parsed.value();
+              }
             }
           }
           if (ignored_eof_count < static_cast<usize>(ignored_eof_limit_count)) {
@@ -2145,8 +2153,9 @@ fn kosh_main(int argc, char **argv) -> int
   koshka::utils::set_quit_context(&context);
 
   let cli_invocation = koshka::String{koshka::heap_allocator()};
-  if (input.should_execute_commands || input.should_read_files)
+  if (input.should_execute_commands || input.should_read_files) {
     cli_invocation = koshka::join_command_line(parse_argc, parse_argv);
+  }
 
   koshka::apply_session_config(context,
                                koshka::read_session_config(identity, input));
@@ -2176,9 +2185,10 @@ fn kosh_main(int argc, char **argv) -> int
 
   if (is_language_server)
     return koshka::language_server::run(context, ast_arena);
-  if (FLAG_LINT.is_enabled() && FLAG_APPLY.is_enabled())
+  if (FLAG_LINT.is_enabled() && FLAG_APPLY.is_enabled()) {
     return koshka::run_lint_apply_operation(
         file_names, FLAG_FORMAT.is_enabled(), context, ast_arena);
+  }
   if (FLAG_FORMAT.is_enabled()) {
     try {
       return koshka::run_format_operation(

@@ -590,9 +590,13 @@ fn Tail::execute(const ExecContext &ec, EvalContext &cxt,
     } else {
       start = text.length;
       usize remaining_newline_count = wanted_count;
-      if (start > 0 && text[start - 1] == '\n') start--;
+      if (start > 0 && text[start - 1] == '\n') {
+        start--;
+      }
       while (start > 0) {
-        if (text[start - 1] == '\n' && --remaining_newline_count == 0) break;
+        if (text[start - 1] == '\n' && --remaining_newline_count == 0) {
+          break;
+        }
         start--;
       }
     }

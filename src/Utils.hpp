@@ -179,7 +179,9 @@ fn collect_signal_names(const signal_pair *pairs, usize pair_count) throws
 
 pure alwaysinline fn ascii_to_lower(char ch) wontthrow -> char
 {
-  if (ch >= 'A' && ch <= 'Z') return static_cast<char>(ch - 'A' + 'a');
+  if (ch >= 'A' && ch <= 'Z') {
+    return static_cast<char>(ch - 'A' + 'a');
+  }
   return ch;
 }
 
@@ -225,9 +227,15 @@ pure alwaysinline fn environment_name_is_path(StringView name) wontthrow -> bool
 
 pure alwaysinline fn hex_digit_value(char byte) wontthrow -> Maybe<u8>
 {
-  if (byte >= '0' && byte <= '9') return static_cast<u8>(byte - '0');
-  if (byte >= 'a' && byte <= 'f') return static_cast<u8>(byte - 'a' + 10);
-  if (byte >= 'A' && byte <= 'F') return static_cast<u8>(byte - 'A' + 10);
+  if (byte >= '0' && byte <= '9') {
+    return static_cast<u8>(byte - '0');
+  }
+  if (byte >= 'a' && byte <= 'f') {
+    return static_cast<u8>(byte - 'a' + 10);
+  }
+  if (byte >= 'A' && byte <= 'F') {
+    return static_cast<u8>(byte - 'A' + 10);
+  }
 
   return None;
 }
@@ -343,7 +351,9 @@ public:
 
   fn consider(StringView candidate) throws -> void
   {
-    if (candidate.is_empty() || candidate == m_name) return;
+    if (candidate.is_empty() || candidate == m_name) {
+      return;
+    }
 
     const usize distance =
         bounded_osa_distance(m_name, candidate, m_max_distance);

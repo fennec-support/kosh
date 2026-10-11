@@ -38,7 +38,9 @@ fn internal::expand_command_aliases(
 {
   if (!cxt.scope_store().has_aliases() ||
       !cxt.is_shopt_enabled("expand_aliases"))
+  {
     return;
+  }
 
   HashSet already_expanded{heap_allocator()};
 
@@ -125,8 +127,9 @@ static fn command_runs_program(const ArrayList<String> &args,
                                            : search_builtin(args[0].view());
   if (builtin.has_value() && *builtin == Builtin::Kind::CommandBuiltin) {
     usize operand_index = 1;
-    while (operand_index < args.count() && args[operand_index] == "-p")
+    while (operand_index < args.count() && args[operand_index] == "-p") {
       operand_index++;
+    }
 
     if (operand_index == args.count() ||
         args[operand_index].view().starts_with("-"))
@@ -762,7 +765,9 @@ hot fn SimpleCommand::evaluate_impl(EvalContext &cxt,
           {
             if (cxt.is_circular_nameref(name)) {
               cxt.warn_circular_nameref(name);
-              if (is_prefix_assignment_persistent || name == "IFS") return;
+              if (is_prefix_assignment_persistent || name == "IFS") {
+                return;
+              }
 
               did_clear_circular_reference = true;
             } else {
@@ -820,9 +825,10 @@ hot fn SimpleCommand::evaluate_impl(EvalContext &cxt,
         }
 
         let const is_path_name = utils::environment_name_is_path(name);
-        if (is_path_name && !saved_program_resolver.has_value())
+        if (is_path_name && !saved_program_resolver.has_value()) {
           saved_program_resolver =
               Maybe<ProgramResolver>{cxt.program_resolver()};
+        }
 
         if (!is_read_field_separator) {
           if (did_clear_circular_reference) {
@@ -1102,8 +1108,9 @@ hot fn SimpleCommand::evaluate_impl(EvalContext &cxt,
 
   let const was_in_pipeline_stage =
       cxt.job_table_store().is_in_pipeline_stage();
-  if (mode == root_evaluation_mode::PreparedAsyncCommand && ec.is_builtin())
+  if (mode == root_evaluation_mode::PreparedAsyncCommand && ec.is_builtin()) {
     cxt.job_table_store().set_in_pipeline_stage(true);
+  }
   defer { cxt.job_table_store().set_in_pipeline_stage(was_in_pipeline_stage); };
 
   let const is_posix_regular_builtin =
@@ -1120,8 +1127,9 @@ hot fn SimpleCommand::evaluate_impl(EvalContext &cxt,
     let const is_soft_posix_error =
         is_posix_regular_builtin && !error.is_line_discarding();
     if (error.is_script_fatal()) throw;
-    if (!cxt.runtime_state().is_bash_compatible() && !is_soft_posix_error)
+    if (!cxt.runtime_state().is_bash_compatible() && !is_soft_posix_error) {
       throw;
+    }
 
     if (!error.was_rendered()) {
       let const trace_location = error.location();
@@ -1170,7 +1178,9 @@ hot fn SimpleCommand::evaluate_impl(EvalContext &cxt,
         if (text.length < 2) continue;
 
         let const lead = text[0];
-        if (lead != '-' && lead != '+') continue;
+        if (lead != '-' && lead != '+') {
+          continue;
+        }
 
         let const is_set_request = lead == '-';
 

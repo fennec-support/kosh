@@ -145,7 +145,9 @@ static pure fn is_same_metadata_request(
   let const *left_path = batch_internal::batch_operation_access::get_path(left);
   let const *right_path =
       batch_internal::batch_operation_access::get_path(right);
-  if (left_path == nullptr || right_path == nullptr) return false;
+  if (left_path == nullptr || right_path == nullptr) {
+    return false;
+  }
 
   return left_path->text().view() == right_path->text().view();
 }

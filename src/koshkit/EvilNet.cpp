@@ -105,14 +105,16 @@ struct evilnet_statistics_comparator
       const os::network_interface_statistics_entry &left,
       const os::network_interface_statistics_entry &right) const wontthrow->bool
   {
-    if (selected == evilnet_sort_key::Name || !spec_index.has_value())
+    if (selected == evilnet_sort_key::Name || !spec_index.has_value()) {
       return left.interface_name.view() < right.interface_name.view();
+    }
     let const &spec = EVILNET_SORT_SPECS[*spec_index];
     let const left_available = left.has_field(spec.field);
     let const right_available = right.has_field(spec.field);
     if (left_available != right_available) return left_available;
-    if (left_available && left.*(spec.member) != right.*(spec.member))
+    if (left_available && left.*(spec.member) != right.*(spec.member)) {
       return left.*(spec.member) > right.*(spec.member);
+    }
     return left.interface_name.view() < right.interface_name.view();
   }
 };
@@ -301,7 +303,9 @@ fn append_network_traffic_statistics_report(
     let const do_append_nonzero =
         [&](StringView name, os::network_statistics_field field, u64 value)
             throws -> void {
-      if (!entry.has_field(field) || value == 0) return;
+      if (!entry.has_field(field) || value == 0) {
+        return;
+      }
 
       if (!warning.is_empty()) warning += ", ";
       warning += name;
@@ -599,36 +603,52 @@ fn sample_network_statistics(
       let const &previous = before[*previous_index];
       if (entry.has_field(os::network_statistics_field::ReceiveBytes) &&
           previous.has_field(os::network_statistics_field::ReceiveBytes))
+      {
         result.receive_bytes =
             network_counter_delta(previous.receive_bytes, entry.receive_bytes);
+      }
       if (entry.has_field(os::network_statistics_field::TransmitBytes) &&
           previous.has_field(os::network_statistics_field::TransmitBytes))
+      {
         result.transmit_bytes = network_counter_delta(previous.transmit_bytes,
                                                       entry.transmit_bytes);
+      }
       if (entry.has_field(os::network_statistics_field::ReceivePackets) &&
           previous.has_field(os::network_statistics_field::ReceivePackets))
+      {
         result.receive_packet_count = network_counter_delta(
             previous.receive_packet_count, entry.receive_packet_count);
+      }
       if (entry.has_field(os::network_statistics_field::TransmitPackets) &&
           previous.has_field(os::network_statistics_field::TransmitPackets))
+      {
         result.transmit_packet_count = network_counter_delta(
             previous.transmit_packet_count, entry.transmit_packet_count);
+      }
       if (entry.has_field(os::network_statistics_field::ReceiveErrors) &&
           previous.has_field(os::network_statistics_field::ReceiveErrors))
+      {
         result.receive_error_count = network_counter_delta(
             previous.receive_error_count, entry.receive_error_count);
+      }
       if (entry.has_field(os::network_statistics_field::TransmitErrors) &&
           previous.has_field(os::network_statistics_field::TransmitErrors))
+      {
         result.transmit_error_count = network_counter_delta(
             previous.transmit_error_count, entry.transmit_error_count);
+      }
       if (entry.has_field(os::network_statistics_field::ReceiveDrops) &&
           previous.has_field(os::network_statistics_field::ReceiveDrops))
+      {
         result.receive_drop_count = network_counter_delta(
             previous.receive_drop_count, entry.receive_drop_count);
+      }
       if (entry.has_field(os::network_statistics_field::TransmitDrops) &&
           previous.has_field(os::network_statistics_field::TransmitDrops))
+      {
         result.transmit_drop_count = network_counter_delta(
             previous.transmit_drop_count, entry.transmit_drop_count);
+      }
     }
     sampled.push(steal(result));
   }
@@ -837,9 +857,10 @@ fn EvilNet::execute(const ExecContext &ec, EvalContext &cxt,
                                                     sort_key, should_color);
     }
   }
-  if (should_show_all || should_show_failures)
+  if (should_show_all || should_show_failures) {
     has_tcp_statistics =
         append_tcp_report(output, warnings, allocator, should_color);
+  }
 
   ec.print_to_stdout(output);
   show_report_warnings(warnings);

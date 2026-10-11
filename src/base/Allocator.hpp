@@ -77,7 +77,9 @@ public:
     let const old_shift = class_shift_for(old_length);
     let const new_shift = class_shift_for(new_length);
 
-    if (old_shift == new_shift && new_shift <= MAX_CLASS_SHIFT) return pointer;
+    if (old_shift == new_shift && new_shift <= MAX_CLASS_SHIFT) {
+      return pointer;
+    }
 
     let const target_length =
         new_shift <= MAX_CLASS_SHIFT ? (usize{1} << new_shift) : new_length;
@@ -294,7 +296,9 @@ public:
       }
     let const result =
         static_cast<T *>(raw_alloc(count * sizeof(T), alignof(T)));
-    if (result == nullptr && count != 0) throw std::bad_alloc{};
+    if (result == nullptr && count != 0) {
+      throw std::bad_alloc{};
+    }
     return result;
   }
   template <class T>

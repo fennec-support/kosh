@@ -65,7 +65,9 @@ private:
       default: return None;
       }
     }
-    if (token.length != 2 || token[1] != '=') return None;
+    if (token.length != 2 || token[1] != '=') {
+      return None;
+    }
     switch (token[0]) {
     case '!': return ComparisonOperatorKind::NotEqual;
     case '<': return ComparisonOperatorKind::LessEqual;
@@ -104,7 +106,9 @@ private:
       m_position++;
       let right = parse_comparison();
       if (!expr_value_is_true(left.view()) || !expr_value_is_true(right.view()))
+      {
         left = String{m_allocator, "0"};
+      }
     }
     return left;
   }
@@ -121,13 +125,14 @@ private:
       let const left_number = left.view().to<i64>();
       let const right_number = right.view().to<i64>();
       int order = 0;
-      if (!left_number.is_error() && !right_number.is_error())
+      if (!left_number.is_error() && !right_number.is_error()) {
         order = (left_number.value() > right_number.value()) -
                 (left_number.value() < right_number.value());
-      else
+      } else {
         order = left.view() < right.view()   ? -1
                 : right.view() < left.view() ? 1
                                              : 0;
+      }
 
       bool matches = false;
       switch (*operation) {
@@ -176,8 +181,9 @@ private:
       switch (operator_byte) {
       case '*': result = static_cast<i128>(left_number) * right_number; break;
       case '/':
-        if (left_number == INT64_MIN && right_number == -1)
+        if (left_number == INT64_MIN && right_number == -1) {
           throw Error{"integer overflow"};
+        }
         result = left_number / right_number;
         break;
       default:
@@ -256,7 +262,9 @@ private:
 
   fn number_string(i128 value) const throws -> String
   {
-    if (value < INT64_MIN || value > INT64_MAX) throw Error{"integer overflow"};
+    if (value < INT64_MIN || value > INT64_MAX) {
+      throw Error{"integer overflow"};
+    }
     return String::from(static_cast<i64>(value), m_allocator);
   }
 

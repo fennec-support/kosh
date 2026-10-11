@@ -472,9 +472,11 @@ private:
       for (; constructed_count < m_length; constructed_count++) {
         if constexpr (std::is_nothrow_move_constructible_v<T> ||
                       !std::is_copy_constructible_v<T>)
+        {
           new (&fresh[constructed_count]) T(steal(m_data[constructed_count]));
-        else
+        } else {
           new (&fresh[constructed_count]) T(m_data[constructed_count]);
+        }
       }
     } catch (...) {
       for (usize i = 0; i < constructed_count; i++)
@@ -661,7 +663,9 @@ private:
         largest = left;
       if (right < heap_length &&
           is_less(m_data[first + largest], m_data[first + right]))
+      {
         largest = right;
+      }
       if (largest == root) return;
 
       swap_elements(first + root, first + largest);
@@ -821,8 +825,9 @@ public:
   hot mustuse pure fn find(const Wanted &wanted) const throws -> Maybe<usize>
   {
     let const index = lower_bound(wanted);
-    if (index < Base::count() && !m_compare(wanted, Base::operator[](index)))
+    if (index < Base::count() && !m_compare(wanted, Base::operator[](index))) {
       return index;
+    }
     return None;
   }
 
@@ -923,7 +928,9 @@ public:
     }
 
     let const allocator = filled.allocator();
-    if (m_list != nullptr && !(m_list->allocator() == allocator)) release();
+    if (m_list != nullptr && !(m_list->allocator() == allocator)) {
+      release();
+    }
     if (m_list == nullptr) {
       let const block = allocator.template alloc_array<ArrayList<T>>(1);
       m_list = new (block) ArrayList<T>{allocator};

@@ -66,7 +66,9 @@ fn Id::execute(const ExecContext &ec, EvalContext &cxt,
                              static_cast<usize>(FLAG_ID_GROUP.is_enabled()) +
                              static_cast<usize>(FLAG_ID_USER.is_enabled());
   if (selector_count > 1 || (FLAG_ID_NAME.is_enabled() && selector_count == 0))
+  {
     return report_usage_error(ec, cxt, args[0].view());
+  }
 
   u32 user_id =
       static_cast<u32>(FLAG_ID_REAL.is_enabled() ? os::get_real_user_id()

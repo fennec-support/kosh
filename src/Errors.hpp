@@ -88,8 +88,9 @@ struct SourceLocation
   pure fn get_source_text(StringView source) const wontthrow
       -> Maybe<StringView>
   {
-    if (position > source.length || length > source.length - position)
+    if (position > source.length || length > source.length - position) {
       return None;
+    }
     return source.substring_of_length(position, length);
   }
 
@@ -113,8 +114,9 @@ struct SourceLocation
     if (part_offset < source_offset) return nullptr;
     let const mapped_offset = part_offset - source_offset;
     if (part.length == 0) return nullptr;
-    if (mapped_offset > length || part.length > length - mapped_offset)
+    if (mapped_offset > length || part.length > length - mapped_offset) {
       return nullptr;
+    }
     storage = subspan(mapped_offset, part.length);
     return &storage;
   }

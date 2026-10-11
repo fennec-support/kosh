@@ -37,8 +37,9 @@ fn More::execute(const ExecContext &ec, EvalContext &cxt,
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
-  if (FLAG_MORE_COMMAND.is_set() && FLAG_MORE_TAG.is_set())
+  if (FLAG_MORE_COMMAND.is_set() && FLAG_MORE_TAG.is_set()) {
     return report_usage_error(ec, cxt, args[0].view());
+  }
 
   let tagged_source = String{cxt.scratch_allocator()};
   usize tagged_line_number = 1;
@@ -71,7 +72,9 @@ fn More::execute(const ExecContext &ec, EvalContext &cxt,
               utils::parse_decimal_u64(after_name.substring(*second_tab + 1));
           if (!parsed.is_error() && parsed.value() != 0 &&
               parsed.value() <= SIZE_MAX)
+          {
             tagged_line_number = static_cast<usize>(parsed.value());
+          }
           break;
         }
       }
@@ -120,8 +123,9 @@ fn More::execute(const ExecContext &ec, EvalContext &cxt,
       }
       if (FLAG_MORE_COMMAND.is_set()) {
         let command = FLAG_MORE_COMMAND.value();
-        if (!command.is_empty() && command[0] == '/')
+        if (!command.is_empty() && command[0] == '/') {
           command = command.substring(1);
+        }
         let pattern = String{cxt.scratch_allocator(), command};
         if (FLAG_MORE_CASE.is_enabled()) pattern.lowercase_ascii();
         usize search_position = output_start;

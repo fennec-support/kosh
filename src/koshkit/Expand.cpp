@@ -88,8 +88,9 @@ fn Expand::execute(const ExecContext &ec, EvalContext &cxt,
       }
 
       usize run_end = position;
-      while (run_end < text.length && !is_expand_control(text[run_end]))
+      while (run_end < text.length && !is_expand_control(text[run_end])) {
         run_end++;
+      }
 
       output.append(text.substring_of_length(position, run_end - position));
       column += run_end - position;

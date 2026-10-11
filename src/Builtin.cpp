@@ -334,7 +334,9 @@ fn report_loop_control_without_loop(const ExecContext &ec,
 {
   if (!cxt.runtime_state().is_bash_compatible() ||
       cxt.runtime_state().is_posix_option_on())
+  {
     return;
+  }
 
   report_soft_builtin_error(
       ec, cxt, "only meaningful in a `for', `while', or `until' loop");
@@ -497,7 +499,9 @@ fn quote_for_declare(StringView value) throws -> String
   let quoted = String{heap_allocator()};
   for (usize i = 0; i < value.length; i++) {
     const char c = value[i];
-    if (c == '"' || c == '\\' || c == '$' || c == '`') quoted += '\\';
+    if (c == '"' || c == '\\' || c == '$' || c == '`') {
+      quoted += '\\';
+    }
     quoted += c;
   }
   return quoted;
@@ -670,11 +674,12 @@ fn append_variable_declaration(EvalContext &cxt, StringView name,
       if (e > 0) line += ' ';
       line += '[';
       char index_text[24];
-      if (is_directory_stack || is_argument_array)
+      if (is_directory_stack || is_argument_array) {
         line.append(utils::int_to_text_into(static_cast<i64>(e), index_text,
                                             sizeof(index_text)));
-      else
+      } else {
         line.append(subscripts[e].view());
+      }
       line += "]=";
 
       let directory_stack_element = Maybe<String>{};
@@ -860,7 +865,9 @@ fn parse_directory_stack_rotation(StringView arg, usize ring_count,
                                   SourceLocation location,
                                   usize &index_out) throws -> bool
 {
-  if (arg.length < 2 || (arg[0] != '+' && arg[0] != '-')) return false;
+  if (arg.length < 2 || (arg[0] != '+' && arg[0] != '-')) {
+    return false;
+  }
   let const digits = arg.substring(1);
   if (!digits.is_all_decimal_digits()) return false;
 
@@ -921,9 +928,11 @@ fn print_directory_stack(EvalContext &cxt, const ExecContext &ec,
           abbreviate_home_directory(entry, cxt.scratch_allocator()).view());
     if (should_print_one_per_line || should_print_numbers ||
         selected_index.has_value() || i + 1 == entry_count)
+    {
       out += '\n';
-    else
+    } else {
       out += ' ';
+    }
   }
   ec.print_to_stdout(out);
 }

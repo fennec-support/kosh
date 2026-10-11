@@ -55,7 +55,9 @@ fn Seq::execute(const ExecContext &ec, EvalContext &cxt,
   if (operands.count() == 1) {
     if (!do_parse_integer(0, last)) return 1;
   } else if (operands.count() == 2) {
-    if (!do_parse_integer(0, first) || !do_parse_integer(1, last)) return 1;
+    if (!do_parse_integer(0, first) || !do_parse_integer(1, last)) {
+      return 1;
+    }
   } else if (operands.count() == 3) {
     if (!do_parse_integer(0, first) || !do_parse_integer(1, increment) ||
         !do_parse_integer(2, last))

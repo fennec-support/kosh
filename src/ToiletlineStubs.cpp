@@ -170,7 +170,9 @@ static fn next_history_record(StringView contents, usize &byte_offset,
       span.end_byte_offset = byte_offset;
       return true;
     }
-    if (byte == '\r' || byte == '\t' || byte == '\v' || byte == '\f') continue;
+    if (byte == '\r' || byte == '\t' || byte == '\v' || byte == '\f') {
+      continue;
+    }
     if (byte < 0x20 || byte == 0x7f) {
       is_valid = false;
       return false;
@@ -195,11 +197,12 @@ static fn decode_history_record(String &decoded, StringView contents,
     let byte = contents[byte_offset];
     if (is_escape_pending) {
       is_escape_pending = false;
-      if (byte == 'n')
+      if (byte == 'n') {
         byte = '\n';
-      else if (byte != '\\') {
-        if (decoded.count() == NO_EDITOR_HISTORY_DECODED_MAX_BYTE_COUNT)
+      } else if (byte != '\\') {
+        if (decoded.count() == NO_EDITOR_HISTORY_DECODED_MAX_BYTE_COUNT) {
           return false;
+        }
         decoded.push('\\');
       }
     } else if (byte == '\\') {
@@ -252,8 +255,9 @@ static fn scan_no_editor_history(const Path &path, StringView contents,
 
   state.trailing_record_start_byte_offset = span.start_byte_offset;
   if (!update_history_file_status(state, path)) {
-    if (!should_allow_missing || path.exists())
+    if (!should_allow_missing || path.exists()) {
       return history_scan_outcome::Stale;
+    }
   } else if (state.file_status.size != contents.length) {
     return history_scan_outcome::Stale;
   }
@@ -276,8 +280,9 @@ static fn load_no_editor_history(const Path &path, bool should_allow_missing)
     let const contents = path.read_entire_file();
     if (!contents.has_value()) {
       let const was_missing = os::last_system_error_is_missing_file();
-      if (!should_allow_missing || !was_missing)
+      if (!should_allow_missing || !was_missing) {
         return Error{os::last_system_error_message()};
+      }
 
       if (scan_no_editor_history(path, {}, None, true) ==
           history_scan_outcome::Loaded)
@@ -302,8 +307,9 @@ static fn ensure_no_editor_history_loaded(const Path &path,
     -> ErrorOr<Ok>
 {
   let &state = get_no_editor_history_state();
-  if (!state.is_loaded || state.loaded_path.view() != path.view())
+  if (!state.is_loaded || state.loaded_path.view() != path.view()) {
     return load_no_editor_history(path, should_allow_missing);
+  }
 
   return Success;
 }
@@ -323,8 +329,9 @@ static fn find_no_editor_history_event(Allocator allocator,
   let decoded = String{heap_allocator()};
   for (usize index = retained_record_count; index > 0; index--) {
     let const number = first_number + index - 1;
-    if (before_event_number.has_value() && number >= *before_event_number)
+    if (before_event_number.has_value() && number >= *before_event_number) {
       continue;
+    }
     let const span = get_history_record_span(state, index - 1);
     if (!decode_history_record(decoded, state.branch_contents.view(), span))
       return None;
@@ -594,7 +601,9 @@ fn import_history(StringView contents) -> koshka::ErrorOr<koshka::Ok>
 
   TRY(koshka::internal::ensure_no_editor_history_loaded(*path, true));
   let &state = koshka::internal::get_no_editor_history_state();
-  if (state.entry_limit == 0 || contents.is_empty()) return koshka::Success;
+  if (state.entry_limit == 0 || contents.is_empty()) {
+    return koshka::Success;
+  }
 
   let records = String{koshka::heap_allocator(), contents};
   if (contents[contents.length - 1] != '\n') records.push('\n');
@@ -652,8 +661,9 @@ fn append_unwritten_history() -> koshka::ErrorOr<koshka::Ok>
         was_positioned ? koshka::os::read_fd(read_fd, &last_byte, 1)
                        : koshka::Maybe<usize>{};
     let const was_read = read_byte_count.has_value() && *read_byte_count == 1;
-    if (!koshka::os::close_fd(read_fd) || !was_read)
+    if (!koshka::os::close_fd(read_fd) || !was_read) {
       return koshka::Error{koshka::os::last_system_error_message()};
+    }
 
     should_add_file_separator = last_byte != '\n';
   }

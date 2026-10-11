@@ -146,12 +146,16 @@ fn Cd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     while (component_position < raw_target.count()) {
       while (component_position < raw_target.count() &&
              os::is_directory_separator(raw_target.text()[component_position]))
+      {
         component_position++;
+      }
       if (component_position >= raw_target.count()) break;
       let const component_start = component_position;
       while (component_position < raw_target.count() &&
              !os::is_directory_separator(raw_target.text()[component_position]))
+      {
         component_position++;
+      }
       let const component = raw_target.view().substring_of_length(
           component_start, component_position - component_start);
       if (component == StringView{"."}) continue;
@@ -177,7 +181,9 @@ fn Cd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       while (start <= entries.length) {
         usize end = start;
         while (end < entries.length && entries.data[end] != os::PATH_DELIMITER)
+        {
           end++;
+        }
         let const entry = entries.substring_of_length(start, end - start);
         let candidate = entry.is_empty() ? Path{arg_path}
                                          : Path{entry}.append(arg_path.view());

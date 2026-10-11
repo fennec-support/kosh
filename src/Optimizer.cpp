@@ -157,7 +157,9 @@ pure fn may_expand_assignment_tilde(StringView text) wontthrow -> bool
   let const equals = text.find_character('=');
   if (equals.has_value() && *equals + 1 < text.length &&
       text[*equals + 1] == '~')
+  {
     return true;
+  }
 
   return text.find_substring(":~").has_value();
 }
@@ -182,7 +184,9 @@ fn literal_word_value(const Word &word) throws -> Maybe<String>
       }
       if (&segment == &word.segments.front() &&
           may_expand_assignment_tilde(segment.text.view()))
+      {
         return None;
+      }
       value.append(segment.text.view());
       break;
     default: return None;
@@ -314,8 +318,9 @@ fn try_fold_arithmetic_with_constants(StringView expression,
       }
 
       usize start_position = i;
-      while (i < expression.length && lexer::is_variable_name(expression[i]))
+      while (i < expression.length && lexer::is_variable_name(expression[i])) {
         i++;
+      }
       let const name =
           StringView{&expression.data[start_position], i - start_position};
 
@@ -426,7 +431,9 @@ pure fn word_segment_has_glob_metacharacter(
     case '+':
     case '@':
     case '!':
-      if (i + 1 < text.length && text[i + 1] == '(') return true;
+      if (i + 1 < text.length && text[i + 1] == '(') {
+        return true;
+      }
       break;
 
     default: break;

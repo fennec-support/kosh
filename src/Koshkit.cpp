@@ -401,7 +401,9 @@ fn confirm_koshkit_action(const ExecContext &ec, StringView prompt) throws
   {
     char byte = '\0';
     let const read_count = os::read_fd(ec.in_fd.value_or(KOSH_STDIN), &byte, 1);
-    if (!read_count.has_value() || *read_count == 0) break;
+    if (!read_count.has_value() || *read_count == 0) {
+      break;
+    }
     if (is_first_byte) {
       first_byte = byte;
       is_first_byte = false;
@@ -517,7 +519,9 @@ fn SourceBatchReader::retire_completed_readers() throws -> void
     let const &reader = m_readers[reader_index];
     if (reader.state == reader_state::Complete &&
         reader.chunk_state == reader_chunk_state::Empty)
+    {
       m_readers.remove(reader_index);
+    }
   }
 
   if (m_sequential_reader.has_value() &&
@@ -573,7 +577,9 @@ fn SourceBatchReader::fill_readers() throws -> void
         {
           let const candidate = m_sources[candidate_index];
           if (m_dash_mode == source_dash_mode::TreatAsStdin && candidate == "-")
+          {
             break;
+          }
 
           m_metadata_paths.push(Path{candidate});
           m_metadata_statuses.push({});
@@ -667,7 +673,9 @@ fn SourceBatchReader::read_seekable() throws -> ReadResult
     let &reader = m_readers[reader_index];
     if (reader.chunk_state == reader_chunk_state::Pending ||
         reader.state == reader_state::Complete)
+    {
       continue;
+    }
     if (reader.read_byte_count == 0) {
       close_reader(reader);
       reader.chunk_state = reader_chunk_state::Pending;
@@ -719,7 +727,9 @@ fn SourceBatchReader::read_sequential() throws -> ReadResult
   let &reader = *m_sequential_reader;
   if (reader.chunk_state == reader_chunk_state::Pending ||
       reader.state == reader_state::Complete)
+  {
     return ReadResult::Chunks;
+  }
   if (reader.read_byte_count == 0) {
     close_reader(reader);
     reader.chunk_state = reader_chunk_state::Pending;
@@ -745,8 +755,9 @@ fn SourceBatchReader::read_sequential() throws -> ReadResult
 
   reader.pending_byte_count = *read_count;
   reader.chunk_state = reader_chunk_state::Pending;
-  if (reader.should_end_at_short_read && *read_count < reader.read_byte_count)
+  if (reader.should_end_at_short_read && *read_count < reader.read_byte_count) {
     close_reader(reader);
+  }
   return ReadResult::Chunks;
 }
 
@@ -784,8 +795,9 @@ fn SourceBatchReader::append_pending_chunks(ArrayList<Chunk> &chunks,
     if (emit_mode == chunk_emit_mode::One) return;
   }
 
-  if (m_readers.is_empty() && m_sequential_reader.has_value())
+  if (m_readers.is_empty() && m_sequential_reader.has_value()) {
     unused(do_append(*m_sequential_reader));
+  }
 }
 
 fn SourceBatchReader::read_next_internal(ArrayList<Chunk> &chunks,
@@ -1135,11 +1147,14 @@ fn make_directories(const Path &directory, u32 mode) wontthrow -> bool
   let const text = directory.view();
   let const root_length = os::path_root_length(text);
   for (usize position = root_length; position <= text.length; position++) {
-    if (position < text.length && !os::is_directory_separator(text[position]))
+    if (position < text.length && !os::is_directory_separator(text[position])) {
       continue;
+    }
 
     let const prefix = text.substring_of_length(0, position);
-    if (prefix.is_empty() || Path{prefix}.is_directory()) continue;
+    if (prefix.is_empty() || Path{prefix}.is_directory()) {
+      continue;
+    }
     if (!os::make_directory(prefix, mode)) return false;
   }
 
@@ -1422,7 +1437,9 @@ fn parse_koshkit_duration_seconds(StringView text, SourceLocation location,
   if (parsed_value.is_error()) do_throw_invalid();
 
   let const value = parsed_value.value();
-  if (__builtin_isnan(value) || value < 0.0) do_throw_invalid();
+  if (__builtin_isnan(value) || value < 0.0) {
+    do_throw_invalid();
+  }
 
   return value * multiplier;
 }
@@ -1452,10 +1469,12 @@ cold static fn show_soft_koshkit_error(const ExecContext &ec, EvalContext &cxt,
 static fn koshkit_invocation_name(const ExecContext &ec,
                                   Allocator allocator) throws -> String
 {
-  if (ec.is_multicall && !ec.args().is_empty())
+  if (ec.is_multicall && !ec.args().is_empty()) {
     return String{allocator, ec.args()[0].view()};
-  if (ec.program() == "koshkit" && ec.args().count() > 1)
+  }
+  if (ec.program() == "koshkit" && ec.args().count() > 1) {
     return String{allocator, "koshkit "} + ec.args()[1].view();
+  }
   if (!ec.args().is_empty())
     return String{allocator, "koshkit "} + ec.args()[0].view();
   return String{allocator, ec.program()};

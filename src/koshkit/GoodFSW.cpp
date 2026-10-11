@@ -256,7 +256,9 @@ fn scan_path(StringView path, ArrayList<watched_entry> &entries, usize depth,
 
   if (depth != 0 && FLAG_GOODFSW_ONE_FILE_SYSTEM.is_enabled() &&
       known_status->device_id != root_device_id)
+  {
     return;
+  }
 
   watched_entry entry{
       String{allocator, path}
@@ -273,7 +275,9 @@ fn scan_path(StringView path, ArrayList<watched_entry> &entries, usize depth,
 
   if (os::file_type_letter(known_status->mode) != 'd') return;
 
-  if (depth > 0 && traversal == goodfsw_traversal_mode::SinglePath) return;
+  if (depth > 0 && traversal == goodfsw_traversal_mode::SinglePath) {
+    return;
+  }
 
   let const children = os::list_directory_status(path, allocator);
   if (!children.has_value()) return;
@@ -281,7 +285,9 @@ fn scan_path(StringView path, ArrayList<watched_entry> &entries, usize depth,
   for (let const &child_entry : *children) {
     if (os::INTERRUPT_REQUESTED) return;
     let const &child = child_entry.child;
-    if (child.name.view() == "." || child.name.view() == "..") continue;
+    if (child.name.view() == "." || child.name.view() == "..") {
+      continue;
+    }
 
     let child_path = Path{path, allocator};
     child_path.append(child.name.view());

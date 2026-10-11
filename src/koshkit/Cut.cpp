@@ -41,7 +41,9 @@ fn Cut::execute(const ExecContext &ec, EvalContext &cxt,
   if (selection_count != 1 ||
       (FLAG_CUT_DELIMITER.is_set() && !FLAG_CUT_FIELDS.is_set()) ||
       (FLAG_CUT_NO_SPLIT.is_enabled() && !FLAG_CUT_BYTES.is_set()))
+  {
     return report_usage_error(ec, cxt, args[0].view());
+  }
 
   let const list = FLAG_CUT_BYTES.is_set()        ? FLAG_CUT_BYTES.value()
                    : FLAG_CUT_CHARACTERS.is_set() ? FLAG_CUT_CHARACTERS.value()

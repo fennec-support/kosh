@@ -34,7 +34,9 @@ static fn renice_identifier(StringView text, os::priority_target target) throws
     -> Maybe<i64>
 {
   let const parsed = utils::parse_decimal_i64(text);
-  if (!parsed.is_error() && parsed.value() >= 0) return parsed.value();
+  if (!parsed.is_error() && parsed.value() >= 0) {
+    return parsed.value();
+  }
   if (target == os::priority_target::User) {
     let const user = os::username_to_uid(text);
     if (user.has_value()) return *user;
@@ -54,7 +56,9 @@ fn Renice::execute(const ExecContext &ec, EvalContext &cxt,
       FLAG_RENICE_PROCESS.is_enabled() + FLAG_RENICE_USER.is_enabled();
   if (operands.is_empty() || !FLAG_RENICE_INCREMENT.is_set() ||
       selector_count > 1)
+  {
     return report_usage_error(ec, cxt, args[0].view());
+  }
   let const parsed = utils::parse_decimal_i64(FLAG_RENICE_INCREMENT.value());
   if (parsed.is_error() || parsed.value() < INT32_MIN ||
       parsed.value() > INT32_MAX)

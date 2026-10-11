@@ -315,7 +315,9 @@ fn enabled_shell_option_names(const EvalContext &cxt) throws -> String
 {
   let joined = String{heap_allocator()};
   for (let const &option : get_set_listing_order()) {
-    if (!option.is_listed_by_set || !option_is_on(cxt, option)) continue;
+    if (!option.is_listed_by_set || !option_is_on(cxt, option)) {
+      continue;
+    }
 
     if (!joined.is_empty()) joined.push(':');
     joined.append(option.set_name);
@@ -355,7 +357,9 @@ fn apply_shell_option(EvalContext &cxt, StringView name, bool is_enabled) throws
     -> bool
 {
   let const *option = find_option_by_set_name(name);
-  if (option == nullptr || !option_is_available(cxt, *option)) return false;
+  if (option == nullptr || !option_is_available(cxt, *option)) {
+    return false;
+  }
   apply_or_reject_option(cxt, *option, is_enabled);
   return true;
 }
@@ -389,7 +393,9 @@ fn Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       [&](const String &option_arg) -> Maybe<StringView> {
     if (let const eq = option_arg.view().find_character('='); eq.has_value())
       return option_arg.view().substring(*eq + 1);
-    if (i + 1 < args.count() && args[i + 1] != "--") return args[++i].view();
+    if (i + 1 < args.count() && args[i + 1] != "--") {
+      return args[++i].view();
+    }
     return None;
   };
 

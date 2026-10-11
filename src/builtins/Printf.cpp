@@ -79,10 +79,13 @@ fn parse_printf_number(const String &arg, bool is_unsigned_conversion = false)
   }
 
   usize i = 0;
-  while (i < arg.count() && (arg[i] == ' ' || arg[i] == '\t'))
+  while (i < arg.count() && (arg[i] == ' ' || arg[i] == '\t')) {
     i++;
+  }
   let const number_start = i;
-  if (i < arg.count() && (arg[i] == '+' || arg[i] == '-')) i++;
+  if (i < arg.count() && (arg[i] == '+' || arg[i] == '-')) {
+    i++;
+  }
 
   let const is_hexadecimal = i + 1 < arg.count() && arg[i] == '0' &&
                              (arg[i + 1] == 'x' || arg[i + 1] == 'X');
@@ -92,14 +95,17 @@ fn parse_printf_number(const String &arg, bool is_unsigned_conversion = false)
   if (is_hexadecimal) {
     i += 2;
     digit_start = i;
-    while (i < arg.count() && utils::hex_digit_value(arg[i]).has_value())
+    while (i < arg.count() && utils::hex_digit_value(arg[i]).has_value()) {
       i++;
+    }
   } else if (is_octal) {
-    while (i < arg.count() && arg[i] >= '0' && arg[i] <= '7')
+    while (i < arg.count() && arg[i] >= '0' && arg[i] <= '7') {
       i++;
+    }
   } else {
-    while (i < arg.count() && arg[i] >= '0' && arg[i] <= '9')
+    while (i < arg.count() && arg[i] >= '0' && arg[i] <= '9') {
       i++;
+    }
   }
   let const number_end = i;
 
@@ -497,11 +503,12 @@ fn append_conversion(String &out, String &spec, char conv,
   case 'd':
   case 'i': {
     let const number = parse_printf_number(arg);
-    if (!number.is_valid && !is_missing_argument)
+    if (!number.is_valid && !is_missing_argument) {
       report_invalid_number(ec, cxt, arg, number.is_hex, exit_status,
                             allocator);
-    else if (number.is_out_of_range && !is_missing_argument)
+    } else if (number.is_out_of_range && !is_missing_argument) {
       report_out_of_range(ec, cxt, arg, exit_status, allocator);
+    }
     let const scope = os::numeric_locale_scope{
         has_grouping_flag ? get_numeric_locale_name(numeric_locale, cxt)
                           : StringView{},
@@ -514,11 +521,12 @@ fn append_conversion(String &out, String &spec, char conv,
   case 'o':
   case 'u': {
     let const number = parse_printf_number(arg, true);
-    if (!number.is_valid && !is_missing_argument)
+    if (!number.is_valid && !is_missing_argument) {
       report_invalid_number(ec, cxt, arg, number.is_hex, exit_status,
                             allocator);
-    else if (number.is_out_of_range && !is_missing_argument)
+    } else if (number.is_out_of_range && !is_missing_argument) {
       report_out_of_range(ec, cxt, arg, exit_status, allocator);
+    }
     let const should_group = has_grouping_flag && conv == 'u';
     let const scope = os::numeric_locale_scope{
         should_group ? get_numeric_locale_name(numeric_locale, cxt)
@@ -671,8 +679,9 @@ fn Printf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
           return;
         }
 
-        while (i < fmt.length() && fmt[i] >= '0' && fmt[i] <= '9')
+        while (i < fmt.length() && fmt[i] >= '0' && fmt[i] <= '9') {
           spec.push(fmt[i++]);
+        }
       };
       do_push_field_size();
       if (i < fmt.length() && fmt[i] == '.') {
@@ -684,8 +693,9 @@ fn Printf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
           fmt[i] == '(')
       {
         usize close = i + 1;
-        while (close < fmt.length() && fmt[close] != ')')
+        while (close < fmt.length() && fmt[close] != ')') {
           close++;
+        }
         if (close + 1 < fmt.length() && fmt[close + 1] == 'T') {
           let const date_format =
               fmt.view().substring_of_length(i + 1, close - i - 1);

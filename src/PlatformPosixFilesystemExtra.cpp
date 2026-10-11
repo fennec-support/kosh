@@ -518,7 +518,9 @@ static fn read_volume_identity(mounted_filesystem &filesystem) throws -> void
           name_length <= sizeof(name) - data_offset)
       {
         let const data = reinterpret_cast<const char *>(&name) + data_offset;
-        if (name_length > 0 && data[name_length - 1] == '\0') name_length--;
+        if (name_length > 0 && data[name_length - 1] == '\0') {
+          name_length--;
+        }
         filesystem.volume_name = String{
             StringView{data, name_length}
         };
@@ -698,7 +700,9 @@ find_mounted_filesystem(StringView path,
   Maybe<usize> selected_index;
   for (usize index = 0; index < filesystems.count(); index++) {
     let const &filesystem = filesystems[index];
-    if (!required_type.is_empty() && filesystem.type != required_type) continue;
+    if (!required_type.is_empty() && filesystem.type != required_type) {
+      continue;
+    }
 
     let const target = filesystem.target.view();
     let const subject = absolute_path.view();
@@ -707,7 +711,9 @@ find_mounted_filesystem(StringView path,
     let const is_descendant = subject.starts_with(target) &&
                               subject.length > target.length &&
                               (is_root || subject[target.length] == '/');
-    if (!is_same && !is_descendant) continue;
+    if (!is_same && !is_descendant) {
+      continue;
+    }
     if (!selected_index.has_value() ||
         target.length > filesystems[*selected_index].target.view().length)
     {
@@ -759,7 +765,9 @@ static fn read_native_filesystem_error_counters(
   let devinfo = filesystem_root.clone();
   devinfo.append("devinfo");
   let const device_ids = Path::read_directory(devinfo);
-  if (!device_ids.has_value() || device_ids->is_empty()) return false;
+  if (!device_ids.has_value() || device_ids->is_empty()) {
+    return false;
+  }
 
   struct named_counter
   {
@@ -793,7 +801,9 @@ static fn read_native_filesystem_error_counters(
       usize word_position = 0;
       let const name = line.next_ascii_whitespace_word(word_position);
       let const value_text = line.next_ascii_whitespace_word(word_position);
-      if (name.is_empty() || value_text.is_empty()) return false;
+      if (name.is_empty() || value_text.is_empty()) {
+        return false;
+      }
 
       let const parsed =
           utils::parse_integer_in_base_u64(value_text, int_base::decimal);
@@ -1170,8 +1180,9 @@ static pure fn find_directory_status_entry(
     else
       upper = middle;
   }
-  if (lower == entries.count() || entries[lower].child.name.view() != name)
+  if (lower == entries.count() || entries[lower].child.name.view() != name) {
     return nullptr;
+  }
 
   return &entries[lower];
 }
@@ -1389,12 +1400,16 @@ static fn execute_suspended_aio_batch(const batched_syscall *operations,
     usize completed_count = 0;
     let const do_interrupt_batch = [&](i32 error_number) wontthrow -> void {
       for (usize chunk_index = 0; chunk_index < chunk_count; chunk_index++) {
-        if (!is_queued[chunk_index] || is_completed[chunk_index]) continue;
+        if (!is_queued[chunk_index] || is_completed[chunk_index]) {
+          continue;
+        }
         unused(::aio_cancel(controls[chunk_index].aio_fildes,
                             &controls[chunk_index]));
       }
       for (usize chunk_index = 0; chunk_index < chunk_count; chunk_index++) {
-        if (!is_queued[chunk_index] || is_completed[chunk_index]) continue;
+        if (!is_queued[chunk_index] || is_completed[chunk_index]) {
+          continue;
+        }
 
         let &result = results[operation_start + chunk_index];
         const aiocb *pending[] = {&controls[chunk_index]};
@@ -1420,7 +1435,9 @@ static fn execute_suspended_aio_batch(const batched_syscall *operations,
       const aiocb *pending[AIO_LISTIO_MAX]{};
       usize pending_count = 0;
       for (usize chunk_index = 0; chunk_index < chunk_count; chunk_index++) {
-        if (!is_queued[chunk_index] || is_completed[chunk_index]) continue;
+        if (!is_queued[chunk_index] || is_completed[chunk_index]) {
+          continue;
+        }
         let &result = results[operation_start + chunk_index];
         if (finish_suspended_aio(controls[chunk_index], result)) {
           is_completed[chunk_index] = true;
@@ -1768,8 +1785,9 @@ static fn execute_io_uring_batch(const batched_syscall *operations,
   static thread_local io_uring_batch ring{};
   static thread_local i64 unavailable_process_id = -1;
   let const process_id = get_current_process_id();
-  if (ring.descriptor >= 0 && ring.owner_process_id != process_id)
+  if (ring.descriptor >= 0 && ring.owner_process_id != process_id) {
     close_io_uring_batch(ring);
+  }
   if (ring.descriptor < 0) {
     if (unavailable_process_id == process_id) return false;
 
@@ -1886,7 +1904,9 @@ static fn execute_io_uring_batch(const batched_syscall *operations,
     let const do_fail_unfinished = [&](i32 error_number) wontthrow -> void {
       close_io_uring_batch(ring);
       for (usize chunk_index = 0; chunk_index < chunk_count; chunk_index++) {
-        if (!was_queued[chunk_index] || was_completed[chunk_index]) continue;
+        if (!was_queued[chunk_index] || was_completed[chunk_index]) {
+          continue;
+        }
         results[operation_start + chunk_index].error_number = error_number;
       }
       for (usize remaining_index = operation_start + chunk_count;
@@ -2043,7 +2063,9 @@ fn execute_batch_operations(const batched_syscall *operations,
                             batched_syscall_result *results) wontthrow -> void
 {
   if (operation_count == 0) return;
-  if (operations == nullptr || results == nullptr) return;
+  if (operations == nullptr || results == nullptr) {
+    return;
+  }
 
   let const saved_error = errno;
   defer { errno = saved_error; };

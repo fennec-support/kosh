@@ -76,7 +76,9 @@ pure fn is_year_marker(StringView name, usize position) wontthrow -> bool
 {
   if (position + 5 > name.length) return false;
 
-  if (name[position] != '-' && name[position] != '_') return false;
+  if (name[position] != '-' && name[position] != '_') {
+    return false;
+  }
 
   for (usize offset = 1; offset <= 4; offset++) {
     if (name[position + offset] < '0' || name[position + offset] > '9') {
@@ -119,7 +121,9 @@ pure fn is_dump_entry(StringView directory, StringView name,
   switch (name[0]) {
   case 'c':
     if (name.starts_with("core.")) return true;
-    if (is_directory && name.starts_with("ccpp-")) return true;
+    if (is_directory && name.starts_with("ccpp-")) {
+      return true;
+    }
     break;
   case '_':
     if (dump_suffix(name) == StringView{".crash"}) return true;
@@ -361,8 +365,9 @@ pure fn label_of_magic(const char *bytes, usize byte_count) wontthrow
     }
     break;
   case 0x1f:
-    if (byte_count >= 2 && static_cast<unsigned char>(bytes[1]) == 0x8b)
+    if (byte_count >= 2 && static_cast<unsigned char>(bytes[1]) == 0x8b) {
       return "gzip";
+    }
     break;
   case 0xfd:
     if (byte_count >= 6 && std::memcmp(bytes,
@@ -382,7 +387,9 @@ pure fn label_of_magic(const char *bytes, usize byte_count) wontthrow
     }
     break;
   case 'B':
-    if (byte_count >= 3 && std::memcmp(bytes, "BZh", 3) == 0) return "bzip2";
+    if (byte_count >= 3 && std::memcmp(bytes, "BZh", 3) == 0) {
+      return "bzip2";
+    }
     break;
   case 0x04:
     if (byte_count >= 4 && static_cast<unsigned char>(bytes[1]) == 0x22 &&
@@ -399,7 +406,9 @@ pure fn label_of_magic(const char *bytes, usize byte_count) wontthrow
     let const byte = static_cast<unsigned char>(bytes[index]);
     if (byte == 0) return "binary";
 
-    if (byte < 0x09 || (byte > 0x0d && byte < 0x20)) return "binary";
+    if (byte < 0x09 || (byte > 0x0d && byte < 0x20)) {
+      return "binary";
+    }
   }
 
   return "text";

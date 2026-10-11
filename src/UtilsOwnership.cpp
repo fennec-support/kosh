@@ -29,7 +29,9 @@ static fn parse_numeric_id(StringView text) wontthrow -> Maybe<u32>
   u64 value = 0;
   for (usize position = 0; position < text.length; position++) {
     let const byte = text[position];
-    if (byte < '0' || byte > '9') return None;
+    if (byte < '0' || byte > '9') {
+      return None;
+    }
     value = value * 10 + static_cast<u64>(byte - '0');
     if (value > UINT32_MAX) return None;
   }
@@ -79,7 +81,9 @@ static fn change_path_ownership_recursive(
   }
 
   if (!is_recursive) return true;
-  if (is_symlink && !should_follow_symlink) return true;
+  if (is_symlink && !should_follow_symlink) {
+    return true;
+  }
 
   os::file_status followed_status{};
   if (is_symlink) {
@@ -158,7 +162,9 @@ static fn change_path_ownership_recursive(
         child_entry.child.kind == Path::entry_kind::Symlink ||
         (child_entry.has_status &&
          os::file_type_letter(child_entry.status.mode) == 'l');
-    if (!should_follow_nested_symlinks || !is_child_symlink) continue;
+    if (!should_follow_nested_symlinks || !is_child_symlink) {
+      continue;
+    }
 
     followed_child_positions.push(child_position);
     followed_child_statuses.push({});

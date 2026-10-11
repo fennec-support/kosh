@@ -98,7 +98,9 @@ fn enabled_shopt_option_names(const EvalContext &cxt) throws -> String
 {
   let joined = String{heap_allocator()};
   for (let const &option : get_option_registry()) {
-    if (option.shopt_name.is_empty() || !shopt_is_on(cxt, option)) continue;
+    if (option.shopt_name.is_empty() || !shopt_is_on(cxt, option)) {
+      continue;
+    }
     if (!joined.is_empty()) joined.push(':');
     joined.append(option.shopt_name);
   }
@@ -174,23 +176,28 @@ fn Shopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       let const &location = name_locations[n];
       if (should_enable || should_disable) {
         if (!apply_shell_option(cxt, name, should_enable)) {
-          if (is_quiet)
+          if (is_quiet) {
             status = 1;
-          else
+          } else {
             throw ErrorWithLocation{
                 location, StringView{"Unknown shopt option '"} + name + "'"};
+          }
         }
       } else if (Maybe<bool> on = query_shell_option(cxt, name); on.has_value())
       {
-        if (!*on) status = 1;
-        if (!is_quiet)
-          ec.print_to_stdout(do_format_status_line(name, *on).view());
-      } else {
-        if (is_quiet)
+        if (!*on) {
           status = 1;
-        else
+        }
+        if (!is_quiet) {
+          ec.print_to_stdout(do_format_status_line(name, *on).view());
+        }
+      } else {
+        if (is_quiet) {
+          status = 1;
+        } else {
           throw ErrorWithLocation{
               location, StringView{"Unknown shopt option '"} + name + "'"};
+        }
       }
     }
     return status;
@@ -218,7 +225,9 @@ fn Shopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
     for (usize n = 0; n < names.count(); n++) {
       let const *option = do_find_or_reject(names[n], name_locations[n]);
-      if (option == nullptr || option->is_read_only) continue;
+      if (option == nullptr || option->is_read_only) {
+        continue;
+      }
       LOG(Info, "shopt setting '%.*s' to %s", static_cast<int>(names[n].length),
           names[n].data, should_enable ? "on" : "off");
       write_option_number(cxt, *option, should_enable ? 1 : 0,

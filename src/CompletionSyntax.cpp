@@ -44,7 +44,9 @@ static pure fn is_command_separator(char c) wontthrow -> bool
 static pure fn opens_dollar_quote(StringView line, usize position) wontthrow
     -> bool
 {
-  if (position == 0 || line[position] != '\'') return false;
+  if (position == 0 || line[position] != '\'') {
+    return false;
+  }
   if (line[position - 1] != '$') return false;
 
   usize backslash_count = 0;
@@ -63,14 +65,18 @@ pure fn internal::quoted_run_end(StringView line, usize position) wontthrow
   let const opener = line[position];
   if (opener == '\\')
     return position + 1 < line.length ? position + 1 : position;
-  if (opener != '\'' && opener != '"') return position;
+  if (opener != '\'' && opener != '"') {
+    return position;
+  }
 
   let const is_escaped_body =
       opener == '"' || opens_dollar_quote(line, position);
 
   usize k = position + 1;
   while (k < line.length && line[k] != opener) {
-    if (is_escaped_body && line[k] == '\\' && k + 1 < line.length) k++;
+    if (is_escaped_body && line[k] == '\\' && k + 1 < line.length) {
+      k++;
+    }
     k++;
   }
   return k < line.length ? k : line.length - 1;
@@ -81,7 +87,9 @@ pure fn internal::token_has_glob_metacharacter(StringView token) wontthrow
 {
   for (usize i = 0; i < token.length; i++) {
     let const c = token[i];
-    if (c == '*' || c == '?' || c == '[') return true;
+    if (c == '*' || c == '?' || c == '[') {
+      return true;
+    }
   }
   return false;
 }
@@ -180,8 +188,12 @@ static fn timeout_flag_takes_value(char short_name,
   if (flags == nullptr) return false;
 
   for (let const flag : *flags) {
-    if (short_name != '\0' && flag->short_name() != short_name) continue;
-    if (!long_name.is_empty() && flag->long_name() != long_name) continue;
+    if (short_name != '\0' && flag->short_name() != short_name) {
+      continue;
+    }
+    if (!long_name.is_empty() && flag->long_name() != long_name) {
+      continue;
+    }
     return flag->kind() == Flag::Kind::String ||
            flag->kind() == Flag::Kind::ManyStrings;
   }
@@ -190,7 +202,9 @@ static fn timeout_flag_takes_value(char short_name,
 
 static fn timeout_option_takes_next_word(StringView word) wontthrow -> bool
 {
-  if (word.length < 2 || word[0] != '-') return false;
+  if (word.length < 2 || word[0] != '-') {
+    return false;
+  }
 
   if (word[1] == '-') {
     let const separator = word.find_character('=');
@@ -329,7 +343,9 @@ fn internal::is_in_command_position(StringView line,
 
     let const word = next_completion_prefix_word(line, position);
     if (!word.has_value()) return true;
-    if (is_active_option && *word == "time") return false;
+    if (is_active_option && *word == "time") {
+      return false;
+    }
     if (!is_transparent_command_prefix(*word)) return false;
   }
 }
@@ -375,10 +391,11 @@ pure fn internal::command_segment_start(StringView line, usize cursor) wontthrow
     if (c == '(') {
       open_paren_depth++;
     } else if (c == ')') {
-      if (open_paren_depth > 0)
+      if (open_paren_depth > 0) {
         open_paren_depth--;
-      else
+      } else {
         start = k + 1;
+      }
     } else if (c == ';' || c == '|' || c == '&' || c == '\n') {
       start = k + 1;
     }
@@ -397,10 +414,13 @@ fn internal::resolve_completion_alias(StringView command,
     usize i = 0;
     i = skip_blanks(expanded, i);
     let const start = i;
-    while (i < expanded.length && expanded[i] != ' ' && expanded[i] != '\t')
+    while (i < expanded.length && expanded[i] != ' ' && expanded[i] != '\t') {
       i++;
+    }
     let const first = expanded.substring_of_length(start, i - start);
-    if (first.is_empty() || first == name.view()) break;
+    if (first.is_empty() || first == name.view()) {
+      break;
+    }
     name = String{first};
   }
   return name;
@@ -437,8 +457,9 @@ fn internal::split_completion_words(StringView line, usize cursor,
     i = skip_blanks(line, i);
     if (i >= line.length) break;
     let const start = i;
-    while (i < line.length && line[i] != ' ' && line[i] != '\t')
+    while (i < line.length && line[i] != ' ' && line[i] != '\t') {
       i++;
+    }
     if (cursor >= start && cursor <= i) {
       cword = words.count();
       is_found = true;

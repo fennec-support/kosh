@@ -789,8 +789,9 @@ public:
     ASSERT(m_local_scope_depth <= m_local_scopes.count());
     for (usize frame_index = m_local_scope_depth; frame_index-- > 0;) {
       for (let const &binding : m_local_scopes[frame_index])
-        if (binding.name.view() == name && !binding.is_self_reference)
+        if (binding.name.view() == name && !binding.is_self_reference) {
           return true;
+        }
     }
     return false;
   }
@@ -1583,13 +1584,17 @@ public:
   hot pure fn find(StringView name) const wontthrow -> Maybe<const String *>
   {
     let const entry = m_table->find(name);
-    if (!entry.has_value() || !(*entry)->has_value) return None;
+    if (!entry.has_value() || !(*entry)->has_value) {
+      return None;
+    }
     return &(*entry)->value;
   }
   hot fn find(StringView name) wontthrow -> Maybe<String *>
   {
     let const entry = m_table->find(name);
-    if (!entry.has_value() || !(*entry)->has_value) return None;
+    if (!entry.has_value() || !(*entry)->has_value) {
+      return None;
+    }
     return &(*entry)->value;
   }
   fn set(StringView name, StringView value) throws -> String *
@@ -1620,13 +1625,17 @@ public:
       -> Maybe<const ArrayList<String> *>
   {
     let const entry = m_table->find(name);
-    if (!entry.has_value() || !(*entry)->is_indexed_array) return None;
+    if (!entry.has_value() || !(*entry)->is_indexed_array) {
+      return None;
+    }
     return &(*entry)->elements;
   }
   hot fn find(StringView name) wontthrow -> Maybe<ArrayList<String> *>
   {
     let const entry = m_table->find(name);
-    if (!entry.has_value() || !(*entry)->is_indexed_array) return None;
+    if (!entry.has_value() || !(*entry)->is_indexed_array) {
+      return None;
+    }
     return &(*entry)->elements;
   }
   fn set(StringView name, ArrayList<String> elements) throws
@@ -1863,7 +1872,9 @@ public:
       -> Maybe<const String *>
   {
     let const entry = m_variables.find(name);
-    if (!entry.has_value() || !(*entry)->has_value) return None;
+    if (!entry.has_value() || !(*entry)->has_value) {
+      return None;
+    }
     if (((*entry)->attribute_bits &
          static_cast<u8>(variable_attribute::Nameref)) != 0)
       rarely return None;
@@ -1896,7 +1907,9 @@ public:
     let const value = shell_variables().find(name);
     if (!value.has_value()) return fallback;
     let const parsed = value->view().to<i64>();
-    if (parsed.is_error() || parsed.value() < 0) return fallback;
+    if (parsed.is_error() || parsed.value() < 0) {
+      return fallback;
+    }
     return static_cast<usize>(parsed.value());
   }
   fn special_variable_definition_locations() wontthrow
@@ -3968,14 +3981,18 @@ public:
     let const strict = runtime_state().get_mood() == mimic_mood::Default;
     let const is_completion_running =
         execution_store().completion_function_running();
-    if (strict || !runtime_state().was_error_unset_set_explicitly())
+    if (strict || !runtime_state().was_error_unset_set_explicitly()) {
       runtime_state().set_error_unset(strict && !is_completion_running);
-    if (strict || !runtime_state().was_pipefail_set_explicitly())
+    }
+    if (strict || !runtime_state().was_pipefail_set_explicitly()) {
       runtime_state().set_pipefail(strict);
-    if (strict || !runtime_state().was_failglob_set_explicitly())
+    }
+    if (strict || !runtime_state().was_failglob_set_explicitly()) {
       runtime_state().set_failglob(strict && !is_completion_running);
-    if (strict || !runtime_state().was_extended_arithmetic_set_explicitly())
+    }
+    if (strict || !runtime_state().was_extended_arithmetic_set_explicitly()) {
       runtime_state().set_extended_arithmetic(strict);
+    }
   }
 
   friend class RuntimeState;

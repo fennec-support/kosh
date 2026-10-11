@@ -198,8 +198,9 @@ pure fn path_is_beneath(const Path &root, const Path &candidate) wontthrow
   let const root_text = root.view();
   let const candidate_text = candidate.view();
   if (candidate_text == root_text) return true;
-  if (root_text.is_empty() || !candidate_text.starts_with(root_text))
+  if (root_text.is_empty() || !candidate_text.starts_with(root_text)) {
     return false;
+  }
 
   return os::is_directory_separator(root_text[root_text.length - 1]) ||
          (candidate_text.length > root_text.length &&

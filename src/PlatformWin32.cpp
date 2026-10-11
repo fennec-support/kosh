@@ -117,7 +117,9 @@ enum class close_on_exec_mode : u8
 static fn set_shell_fd_close_on_exec(i32 shell_fd,
                                      close_on_exec_mode mode) wontthrow -> void
 {
-  if (shell_fd < 0 || shell_fd >= TRACKED_SHELL_FD_COUNT) return;
+  if (shell_fd < 0 || shell_fd >= TRACKED_SHELL_FD_COUNT) {
+    return;
+  }
 
   let const mask =
       u64{1} << static_cast<u32>(shell_fd % TRACKED_SHELL_FDS_PER_WORD);
@@ -131,7 +133,9 @@ static fn set_shell_fd_close_on_exec(i32 shell_fd,
 
 static fn is_shell_fd_close_on_exec(i32 shell_fd) wontthrow -> bool
 {
-  if (shell_fd < 0 || shell_fd >= TRACKED_SHELL_FD_COUNT) return false;
+  if (shell_fd < 0 || shell_fd >= TRACKED_SHELL_FD_COUNT) {
+    return false;
+  }
 
   let const mask =
       u64{1} << static_cast<u32>(shell_fd % TRACKED_SHELL_FDS_PER_WORD);
@@ -258,8 +262,9 @@ fn logged_in_users() throws -> ArrayList<user_session>
   let result = ArrayList<user_session>{heap_allocator()};
   let const user = get_current_user();
   let const terminal = terminal_name(KOSH_STDIN);
-  if (user.has_value() && terminal.has_value())
+  if (user.has_value() && terminal.has_value()) {
     result.push(user_session{steal(*user), steal(*terminal), 0});
+  }
   return result;
 }
 
@@ -370,7 +375,9 @@ fn regular_descriptor_file_size(os::descriptor fd) wontthrow -> Maybe<u64>
   if (GetFileType(fd) != FILE_TYPE_DISK) return None;
 
   LARGE_INTEGER size{};
-  if (GetFileSizeEx(fd, &size) == FALSE || size.QuadPart < 0) return None;
+  if (GetFileSizeEx(fd, &size) == FALSE || size.QuadPart < 0) {
+    return None;
+  }
 
   return static_cast<u64>(size.QuadPart);
 }
@@ -393,7 +400,9 @@ fn seek_descriptor_from_start(os::descriptor fd, u64 byte_offset) wontthrow
 fn wait_for_fd_readable(os::descriptor fd, i64 timeout_nanos) wontthrow -> i32
 {
   let const file_type = GetFileType(fd);
-  if (file_type == FILE_TYPE_UNKNOWN && GetLastError() != NO_ERROR) return -1;
+  if (file_type == FILE_TYPE_UNKNOWN && GetLastError() != NO_ERROR) {
+    return -1;
+  }
   if (file_type == FILE_TYPE_DISK) return 1;
 
   let const has_timeout = timeout_nanos >= 0;
@@ -417,7 +426,9 @@ fn wait_for_fd_readable(os::descriptor fd, i64 timeout_nanos) wontthrow -> i32
         if (available_byte_count != 0) return 1;
       } else {
         let const error = GetLastError();
-        if (error == ERROR_BROKEN_PIPE || error == ERROR_NO_DATA) return 1;
+        if (error == ERROR_BROKEN_PIPE || error == ERROR_NO_DATA) {
+          return 1;
+        }
         return -1;
       }
     } else if (file_type == FILE_TYPE_CHAR) {
@@ -462,7 +473,9 @@ fn wait_for_fd_readable(os::descriptor fd, i64 timeout_nanos) wontthrow -> i32
             let const &event = console_events[event_index];
             if (event.EventType != KEY_EVENT ||
                 event.Event.KeyEvent.bKeyDown == FALSE)
+            {
               continue;
+            }
 
             let const character = event.Event.KeyEvent.uChar.UnicodeChar;
             if ((!needs_complete_line && character != 0) ||
@@ -481,7 +494,9 @@ fn wait_for_fd_readable(os::descriptor fd, i64 timeout_nanos) wontthrow -> i32
       return -1;
     }
 
-    if (has_timeout && monotonic_nanos() - started_at >= timeout) return 0;
+    if (has_timeout && monotonic_nanos() - started_at >= timeout) {
+      return 0;
+    }
     Sleep(1);
   }
 }
@@ -614,7 +629,9 @@ fn restore_descriptor(const saved_descriptor &saved) wontthrow -> void
   if (replaced != nullptr && replaced != INVALID_HANDLE_VALUE &&
       !standard_handle_is_referenced(replaced) &&
       !standard_handle_is_owned_by_runtime(replaced))
+  {
     CloseHandle(replaced);
+  }
 }
 
 fn save_descriptor(i32 shell_fd) wontthrow -> saved_descriptor
@@ -626,8 +643,9 @@ fn save_descriptor(i32 shell_fd) wontthrow -> saved_descriptor
     let const original = descriptor_for_shell_fd(shell_fd);
     result.original = original;
     result.was_open = original != nullptr && original != INVALID_HANDLE_VALUE;
-    if (result.was_open && !duplicate_handle(original, result.saved, FALSE))
+    if (result.was_open && !duplicate_handle(original, result.saved, FALSE)) {
       result.is_dup2_ok = false;
+    }
     return result;
   }
   let const original = GetStdHandle(*slot);
@@ -684,8 +702,9 @@ fn descriptor_for_shell_fd(i32 shell_fd) wontthrow -> os::descriptor
 fn duplicate_shell_fd(i32 shell_fd) wontthrow -> os::descriptor
 {
   let const original = descriptor_for_shell_fd(shell_fd);
-  if (original == nullptr || original == INVALID_HANDLE_VALUE)
+  if (original == nullptr || original == INVALID_HANDLE_VALUE) {
     return KOSH_INVALID_FD;
+  }
 
   HANDLE copy = INVALID_HANDLE_VALUE;
   if (!duplicate_handle(original, copy, TRUE)) return KOSH_INVALID_FD;
@@ -711,14 +730,18 @@ fn move_descriptor_to_free_shell_fd(os::descriptor source,
 fn descriptors_refer_to_same_file(os::descriptor first,
                                   os::descriptor second) wontthrow -> bool
 {
-  if (first == KOSH_INVALID_FD || second == KOSH_INVALID_FD) return false;
+  if (first == KOSH_INVALID_FD || second == KOSH_INVALID_FD) {
+    return false;
+  }
   if (first == second) return true;
 
   BY_HANDLE_FILE_INFORMATION first_info{};
   BY_HANDLE_FILE_INFORMATION second_info{};
   if (GetFileInformationByHandle(first, &first_info) == 0 ||
       GetFileInformationByHandle(second, &second_info) == 0)
+  {
     return false;
+  }
 
   return first_info.dwVolumeSerialNumber == second_info.dwVolumeSerialNumber &&
          first_info.nFileIndexHigh == second_info.nFileIndexHigh &&
@@ -740,7 +763,9 @@ fn descriptor_from_fd_number(i64 fd_number) wontthrow -> os::descriptor
 fn replace_descriptor(i32 shell_fd, os::descriptor target) wontthrow -> bool
 {
   const Maybe<DWORD> slot = std_handle_slot_for_shell_fd(shell_fd);
-  if (target == nullptr || target == INVALID_HANDLE_VALUE) return false;
+  if (target == nullptr || target == INVALID_HANDLE_VALUE) {
+    return false;
+  }
 
   if (!slot.has_value()) {
     HANDLE duplicate = INVALID_HANDLE_VALUE;
@@ -778,7 +803,9 @@ fn replace_descriptor(i32 shell_fd, os::descriptor target) wontthrow -> bool
   if (previous != nullptr && previous != INVALID_HANDLE_VALUE &&
       !standard_handle_is_referenced(previous) &&
       !standard_handle_is_owned_by_runtime(previous))
+  {
     CloseHandle(previous);
+  }
 
   return true;
 }
@@ -795,7 +822,9 @@ fn close_shell_fd(i32 shell_fd) wontthrow -> bool
     return was_closed;
   }
   const os::descriptor handle = GetStdHandle(*slot);
-  if (handle == nullptr || handle == INVALID_HANDLE_VALUE) return false;
+  if (handle == nullptr || handle == INVALID_HANDLE_VALUE) {
+    return false;
+  }
   if (SetStdHandle(*slot, INVALID_HANDLE_VALUE) == FALSE) return false;
 
   note_descriptor_rebound();
@@ -886,7 +915,9 @@ fn network_interface_addresses() throws -> ArrayList<network_interface_address>
       if (unicast->Address.lpSockaddr == nullptr) continue;
 
       let const family = unicast->Address.lpSockaddr->sa_family;
-      if (family != AF_INET && family != AF_INET6) continue;
+      if (family != AF_INET && family != AF_INET6) {
+        continue;
+      }
 
       char address[NI_MAXHOST]{};
       if (::getnameinfo(
@@ -920,7 +951,9 @@ fn read_network_interface_statistics() throws
 {
   let result = ArrayList<network_interface_statistics_entry>{heap_allocator()};
   MIB_IF_TABLE2 *table = nullptr;
-  if (GetIfTable2(&table) != NO_ERROR || table == nullptr) return result;
+  if (GetIfTable2(&table) != NO_ERROR || table == nullptr) {
+    return result;
+  }
   defer { FreeMibTable(table); };
 
   result.reserve(table->NumEntries);
@@ -1080,7 +1113,9 @@ fn get_system_koshconf_path() throws -> Maybe<Path>
   let const result = SHGetKnownFolderPath(FOLDERID_ProgramData, KF_FLAG_DEFAULT,
                                           nullptr, &folder);
   defer { CoTaskMemFree(folder); };
-  if (FAILED(result) || folder == nullptr) return koshka::None;
+  if (FAILED(result) || folder == nullptr) {
+    return koshka::None;
+  }
 
   let const text = wide_to_utf8(folder, static_cast<usize>(lstrlenW(folder)),
                                 heap_allocator());
@@ -1097,8 +1132,9 @@ fn get_system_koshconf_path() throws -> Maybe<Path>
 fn get_home_for_user(StringView username) throws -> Maybe<Path>
 {
   let const current_user = get_current_user();
-  if (!current_user.has_value() || current_user->count() != username.length)
+  if (!current_user.has_value() || current_user->count() != username.length) {
     return koshka::None;
+  }
 
   for (usize position = 0; position < username.length; position++)
     if (utils::ascii_to_lower((*current_user)[position]) !=
@@ -1151,7 +1187,9 @@ terminal_echo_guard::terminal_echo_guard(descriptor input,
                                          terminal_echo_mode mode) wontthrow
     : m_input(input)
 {
-  if (mode != terminal_echo_mode::Disable || !is_fd_a_tty(input)) return;
+  if (mode != terminal_echo_mode::Disable || !is_fd_a_tty(input)) {
+    return;
+  }
   if (GetConsoleMode(input, &m_original_mode) == FALSE) {
     m_did_succeed = false;
     return;
@@ -1395,7 +1433,9 @@ static fn windows_path_configuration_value(StringView path,
   let const path_text = path_to_wide(path, heap_allocator());
   if (!path_text.has_value() ||
       GetFileAttributesW(path_text->begin()) == INVALID_FILE_ATTRIBUTES)
+  {
     return None;
+  }
   switch (key) {
   case path_configuration_key::AllocationSizeMin:
   case path_configuration_key::AsyncIo: return None;
@@ -1506,7 +1546,9 @@ fn get_terminal_dimensions(descriptor output) wontthrow
   if (GetConsoleScreenBufferInfo(output, &info) == 0) return None;
   const i32 width = info.srWindow.Right - info.srWindow.Left + 1;
   const i32 height = info.srWindow.Bottom - info.srWindow.Top + 1;
-  if (width <= 0 || height <= 0) return None;
+  if (width <= 0 || height <= 0) {
+    return None;
+  }
   return terminal_dimensions{static_cast<u32>(width), static_cast<u32>(height)};
 }
 
@@ -1617,7 +1659,9 @@ fn get_environment_variable(StringView key) -> Maybe<String>
   buffer.reserve(static_cast<usize>(required_size));
   let const value_length =
       GetEnvironmentVariableW(wide_key->begin(), buffer.begin(), required_size);
-  if (value_length == 0 || value_length >= required_size) return koshka::None;
+  if (value_length == 0 || value_length >= required_size) {
+    return koshka::None;
+  }
   return wide_to_utf8(buffer.begin(), static_cast<usize>(value_length),
                       heap_allocator());
 }
@@ -1636,8 +1680,9 @@ static fn find_environment_spelling(const wchar_t *wide_key) throws
       pair_length++;
 
     usize name_length = 0;
-    while (name_length < pair_length && entry[name_length] != L'=')
+    while (name_length < pair_length && entry[name_length] != L'=') {
       name_length++;
+    }
 
     if (entry[0] != L'=' &&
         CompareStringOrdinal(entry, static_cast<int>(name_length), wide_key,
@@ -1661,12 +1706,16 @@ fn set_environment_variable(StringView key, StringView value) -> void
 {
   let const wide_key = utf8_to_wide(key, heap_allocator());
   let wide_value = utf8_to_wide(value, heap_allocator());
-  if (!wide_key.has_value() || !wide_value.has_value()) return;
+  if (!wide_key.has_value() || !wide_value.has_value()) {
+    return;
+  }
 
   if (!is_environment_value_storable(value)) {
     usize kept_unit_count = ENVIRONMENT_VALUE_MAX_UNIT_COUNT;
     let const last_kept = wide_value->begin()[kept_unit_count - 1];
-    if (last_kept >= 0xD800 && last_kept <= 0xDBFF) kept_unit_count--;
+    if (last_kept >= 0xD800 && last_kept <= 0xDBFF) {
+      kept_unit_count--;
+    }
     wide_value->begin()[kept_unit_count] = L'\0';
   }
 
@@ -1734,8 +1783,9 @@ fn for_each_environment_name(opaque *context,
 
     if (entry[0] != L'=') {
       usize name_length = 0;
-      while (name_length < pair_length && entry[name_length] != L'=')
+      while (name_length < pair_length && entry[name_length] != L'=') {
         name_length++;
+      }
       let name = wide_to_utf8(entry, name_length, heap_allocator());
       if (name.has_value()) callback(context, name->view());
     }
@@ -1928,7 +1978,9 @@ static fn read_subshell_transport_exact(descriptor pipe, opaque *output,
   usize position = 0;
   while (position < length) {
     let const read_count = read_fd(pipe, bytes + position, length - position);
-    if (!read_count.has_value() || *read_count == 0) return false;
+    if (!read_count.has_value() || *read_count == 0) {
+      return false;
+    }
     position += *read_count;
   }
   return true;
@@ -2030,7 +2082,9 @@ static fn receive_subshell_bootstrap() wontthrow -> void
   wchar_t path[256]{};
   let const path_length = GetEnvironmentVariableW(
       internal::STATE_NAMED_PIPE_WIDE, path, countof(path));
-  if (path_length == 0 || path_length >= countof(path)) return;
+  if (path_length == 0 || path_length >= countof(path)) {
+    return;
+  }
   SetEnvironmentVariableW(internal::STATE_NAMED_PIPE_WIDE, nullptr);
   let const pipe = create_private_pipe(
       path, PIPE_ACCESS_INBOUND | FILE_FLAG_FIRST_PIPE_INSTANCE, 1, 65536,
@@ -2116,7 +2170,9 @@ static fn receive_subshell_bootstrap() wontthrow -> void
   char trailing_byte = 0;
   let const trailing_length = read_fd(pipe, &trailing_byte, 1);
   CloseHandle(pipe);
-  if (!trailing_length.has_value() || *trailing_length != 0) ExitProcess(1);
+  if (!trailing_length.has_value() || *trailing_length != 0) {
+    ExitProcess(1);
+  }
 }
 
 fn initialize_platform_runtime() wontthrow -> void

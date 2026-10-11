@@ -231,7 +231,9 @@ fn append_namespace_report(String &output, bool should_color,
         let const &candidate = sorted_relations[group_end];
         if (!candidate.is_available || candidate.type != first.type ||
             candidate.identifier != first.identifier)
+        {
           break;
+        }
         group_end++;
       }
       let count = String::from(group_end - relation_index, allocator);
@@ -291,7 +293,9 @@ fn append_namespace_report(String &output, bool should_color,
                                          : candidate.reason.view();
         if (candidate.is_available || candidate.type != first.type ||
             candidate_reason != reason)
+        {
           break;
+        }
         group_end++;
       }
       has_failure = true;
@@ -362,7 +366,9 @@ fn parse_cgroup_memberships(StringView text, Allocator allocator) throws
     let const hierarchy = line.substring_of_length(0, *first_separator);
     let const controller = remainder.substring_of_length(0, *second_separator);
     let const path = remainder.substring(*second_separator + 1);
-    if (hierarchy.is_empty() || path.is_empty()) continue;
+    if (hierarchy.is_empty() || path.is_empty()) {
+      continue;
+    }
     let const hierarchy_value = hierarchy.to<u64>();
     if (hierarchy_value.is_error()) continue;
     let const controller_name =
@@ -441,7 +447,9 @@ pure fn is_hexadecimal_id(StringView text) wontthrow -> bool
     let const byte = text[index];
     if (!((byte >= '0' && byte <= '9') || (byte >= 'a' && byte <= 'f') ||
           (byte >= 'A' && byte <= 'F')))
+    {
       return false;
+    }
   }
   return true;
 }
@@ -458,7 +466,9 @@ pure fn scoped_container_id(StringView component, StringView prefix) wontthrow
   constexpr StringView SUFFIX = ".scope";
   if (!component.starts_with(prefix) || !has_suffix(component, SUFFIX) ||
       component.length != prefix.length + 64 + SUFFIX.length)
+  {
     return None;
+  }
   let const identifier = component.substring_of_length(prefix.length, 64);
   return is_hexadecimal_id(identifier) ? Maybe<StringView>{identifier} : None;
 }
@@ -482,7 +492,9 @@ pure fn normalized_pod_uid(StringView component, Allocator allocator) throws
     if (component.length != form.prefix.length + 36 + form.suffix.length ||
         !component.starts_with(form.prefix) ||
         !has_suffix(component, form.suffix))
+    {
       continue;
+    }
     identifier = component.substring_of_length(form.prefix.length, 36);
     break;
   }
@@ -565,17 +577,23 @@ fn parse_cgroup_identity(StringView path, Allocator allocator) throws
     if (has_pod_uid) result.pod_uid = steal(pod_uid);
     if (component == "burstable" || component == "kubepods-burstable.slice" ||
         (has_pod_uid && component.starts_with("kubepods-burstable-pod")))
+    {
       result.qos = "burstable";
+    }
     if (component == "besteffort" || component == "kubepods-besteffort.slice" ||
         (has_pod_uid && component.starts_with("kubepods-besteffort-pod")))
+    {
       result.qos = "besteffort";
+    }
     if (component == "kubepods" || component == "kubepods.slice") {
       result.is_kubernetes = true;
       has_kubernetes_component = true;
     }
     previous = component;
   }
-  if (result.pod_uid != "-" && result.qos == "-") result.qos = "guaranteed";
+  if (result.pod_uid != "-" && result.qos == "-") {
+    result.qos = "guaranteed";
+  }
   return result;
 }
 
@@ -924,7 +942,9 @@ fn remote_table_text(StringView text, usize maximum_cells,
     while (complete_bytes > 0 &&
            (static_cast<unsigned char>(text[complete_bytes - 1]) & 0xc0) ==
                0x80)
+    {
       complete_bytes--;
+    }
     if (complete_bytes > 0) complete_bytes--;
     result.truncate(complete_bytes);
   }
@@ -1012,7 +1032,9 @@ fn append_remote_report(String &output, bool should_color,
     usize count = 0;
     u64 previous = 0;
     for (let const identity : identities) {
-      if (count == 0 || identity != previous) count++;
+      if (count == 0 || identity != previous) {
+        count++;
+      }
       previous = identity;
     }
     return count;
@@ -1193,7 +1215,9 @@ fn append_remote_report(String &output, bool should_color,
           if (process.process_id != socket.process_id) continue;
           if (process.start_token != socket.owner_start_token ||
               !process_snapshot_identity_is_valid(process.status))
+          {
             break;
+          }
           context.owner_id = process.owner_id;
           context.name = remote_table_text(process.name.view(), 48, allocator);
           context.command =
@@ -1229,12 +1253,15 @@ fn append_remote_report(String &output, bool should_color,
                 path.length < remaining_bytes ? path.length : remaining_bytes);
           }
           for (let const &evidence : process.evidence) {
-            if (context.runtime.is_empty() && evidence.runtime != "-")
+            if (context.runtime.is_empty() && evidence.runtime != "-") {
               context.runtime = evidence.runtime.clone();
-            if (context.container.is_empty() && evidence.container_id != "-")
+            }
+            if (context.container.is_empty() && evidence.container_id != "-") {
               context.container = evidence.container_id.clone();
-            if (context.orchestrator.is_empty() && evidence.is_kubernetes)
+            }
+            if (context.orchestrator.is_empty() && evidence.is_kubernetes) {
               context.orchestrator = "kubernetes";
+            }
           }
           if (context.cgroups.is_empty()) context.cgroups = "-";
           if (context.orchestrator.is_empty()) context.orchestrator = "-";
@@ -1349,8 +1376,9 @@ fn append_runtime_evidence_report(
       if (evidence.runtime == "-") continue;
       bool is_duplicate = false;
       for (let const &row : rows) {
-        if (row.runtime != evidence.runtime || row.evidence != evidence.path)
+        if (row.runtime != evidence.runtime || row.evidence != evidence.path) {
           continue;
+        }
         if (detail != eviliso_detail_mode::All ||
             row.process_id_value == process.process_id)
         {
@@ -1480,7 +1508,9 @@ fn append_container_report(String &output, bool should_color,
         for (let &row : summary_rows) {
           if (row.runtime != evidence.runtime ||
               row.identifier != evidence.container_id)
+          {
             continue;
+          }
           row.process_count++;
           is_known = true;
           break;
@@ -1582,7 +1612,9 @@ fn sanitize_kubernetes_metadata(StringView text, Allocator allocator) throws
   result.reserve(byte_count);
   for (usize index = 0; index < byte_count; index++) {
     let const byte = text[index];
-    if (byte == '\r' || byte == '\n') break;
+    if (byte == '\r' || byte == '\n') {
+      break;
+    }
     result.push(static_cast<unsigned char>(byte) < 32 || byte == 127 ? ' '
                                                                      : byte);
   }
@@ -1600,7 +1632,9 @@ fn read_kubernetes_metadata(StringView name, Allocator allocator) throws
 
   char bytes[KUBERNETES_METADATA_BYTE_LIMIT]{};
   let const read_count = os::read_fd(*descriptor, bytes, sizeof(bytes));
-  if (!read_count.has_value() || *read_count == 0) return String{allocator};
+  if (!read_count.has_value() || *read_count == 0) {
+    return String{allocator};
+  }
   return sanitize_kubernetes_metadata(StringView{bytes, *read_count},
                                       allocator);
 }
@@ -1675,7 +1709,9 @@ fn append_kubernetes_report(String &output, bool should_color,
   for (let const &process : snapshot) {
     for (usize index = 0; index < process.evidence.count(); index++) {
       let const &evidence = process.evidence[index];
-      if (!evidence.is_kubernetes || evidence.pod_uid == "-") continue;
+      if (!evidence.is_kubernetes || evidence.pod_uid == "-") {
+        continue;
+      }
       bool is_duplicate = false;
       for (usize known_index = 0; known_index < index; known_index++) {
         let const &known = process.evidence[known_index];
@@ -1693,7 +1729,9 @@ fn append_kubernetes_report(String &output, bool should_color,
         if (row.pod_uid != evidence.pod_uid || row.qos != evidence.qos ||
             row.runtime != evidence.runtime ||
             row.container_id != evidence.container_id)
+        {
           continue;
+        }
         row.process_count++;
         is_known = true;
         break;
@@ -1745,7 +1783,9 @@ fn append_kubernetes_report(String &output, bool should_color,
     for (let const &process : snapshot) {
       for (usize index = 0; index < process.evidence.count(); index++) {
         let const &evidence = process.evidence[index];
-        if (!evidence.is_kubernetes || evidence.pod_uid == "-") continue;
+        if (!evidence.is_kubernetes || evidence.pod_uid == "-") {
+          continue;
+        }
         bool is_duplicate = false;
         for (usize known_index = 0; known_index < index; known_index++) {
           let const &known = process.evidence[known_index];

@@ -82,7 +82,9 @@ static fn append_calendar_month(String &output, usize month, i64 year,
   let const first_column =
       first_day == week_start::Monday ? (first_weekday + 6) % 7 : first_weekday;
   let day_count = CAL_MONTH_LENGTHS[month - 1];
-  if (month == 2 && is_cal_leap_year(year)) day_count++;
+  if (month == 2 && is_cal_leap_year(year)) {
+    day_count++;
+  }
   for (usize position = 0; position < first_column; position++)
     output += "   ";
 
@@ -103,10 +105,11 @@ static fn append_calendar_month(String &output, usize month, i64 year,
     append_report_text(output, day_text.view(), style, should_color);
     let const column =
         first_day == week_start::Monday ? (weekday + 6) % 7 : weekday;
-    if (column == 6 || day == day_count)
+    if (column == 6 || day == day_count) {
       output += '\n';
-    else
+    } else {
       output += ' ';
+    }
   }
 }
 

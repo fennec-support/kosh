@@ -57,7 +57,9 @@ fn Local::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       let const name = equals_position.has_value()
                            ? arg.substring_of_length(0, *equals_position)
                            : arg;
-      if (name == "-" || name_is_valid_identifier(name)) continue;
+      if (name == "-" || name_is_valid_identifier(name)) {
+        continue;
+      }
 
       report_invalid_identifier(ec, cxt, ec.arg_location_at(i), arg);
       return 2;
@@ -243,7 +245,9 @@ fn Local::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     } else if (should_make_indexed) {
       if (!cxt.variable_store().indexed_arrays().find(name).has_value() &&
           !cxt.is_bash_directory_stack_special(name))
+      {
         cxt.set_indexed_array(name, ArrayList<String>{heap_allocator()});
+      }
     } else if (equals_position.has_value()) {
       let const value = arg.substring(*equals_position + 1);
       if (update_mode == assignment_update_mode::Append) {

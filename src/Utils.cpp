@@ -52,8 +52,9 @@ pure fn contains_case_insensitive_ascii(StringView value,
 static fn parse_positive_position(StringView text, usize &position) wontthrow
     -> Maybe<usize>
 {
-  if (position == text.length || text[position] < '0' || text[position] > '9')
+  if (position == text.length || text[position] < '0' || text[position] > '9') {
     return None;
+  }
 
   usize value = 0;
   while (position < text.length && text[position] >= '0' &&
@@ -80,7 +81,9 @@ fn parse_text_position_ranges(StringView text, Allocator allocator) throws
 
   while (position < text.length &&
          (text[position] == ' ' || text[position] == '\t'))
+  {
     position++;
+  }
   if (position == text.length) return None;
 
   while (position < text.length) {
@@ -102,7 +105,9 @@ fn parse_text_position_ranges(StringView text, Allocator allocator) throws
           last = SIZE_MAX;
         } else {
           let const parsed_last = parse_positive_position(text, position);
-          if (!parsed_last.has_value() || *parsed_last < first) return None;
+          if (!parsed_last.has_value() || *parsed_last < first) {
+            return None;
+          }
           last = *parsed_last;
         }
       }
@@ -117,7 +122,9 @@ fn parse_text_position_ranges(StringView text, Allocator allocator) throws
     }
     while (position < text.length &&
            (text[position] == ' ' || text[position] == '\t'))
+    {
       position++;
+    }
     if (position == text.length) break;
     if (text[position] == ',') return None;
   }
@@ -165,17 +172,23 @@ fn parse_tab_stop_list(StringView text, Allocator allocator) throws
     while (position < text.length &&
            (text[position] == ',' || text[position] == ' ' ||
             text[position] == '\t'))
+    {
       position++;
+    }
     if (position == text.length) break;
 
     let const stop = parse_positive_position(text, position);
     if (!stop.has_value()) return None;
-    if (!stops.is_empty() && *stop <= stops.back()) return None;
+    if (!stops.is_empty() && *stop <= stops.back()) {
+      return None;
+    }
     stops.push(*stop);
 
     if (position < text.length && text[position] != ',' &&
         text[position] != ' ' && text[position] != '\t')
+    {
       return None;
+    }
   }
 
   if (stops.is_empty()) return None;
@@ -231,7 +244,9 @@ static fn shell_word_expansion_end(StringView word,
         continue;
       }
       if (word[position] == '{') depth++;
-      if (word[position] == '}' && --depth == 0) return position + 1;
+      if (word[position] == '}' && --depth == 0) {
+        return position + 1;
+      }
       position++;
     }
     return word.length;
@@ -259,7 +274,9 @@ static fn shell_word_expansion_end(StringView word,
       }
       if (quote_character != 0) continue;
       if (byte == '(') depth++;
-      if (byte == ')' && --depth == 0) return position + 1;
+      if (byte == ')' && --depth == 0) {
+        return position + 1;
+      }
     }
     return word.length;
   }
@@ -274,7 +291,9 @@ static fn shell_word_expansion_end(StringView word,
         continue;
       }
       if (word[position] == '[') depth++;
-      if (word[position] == ']' && --depth == 0) return position + 1;
+      if (word[position] == ']' && --depth == 0) {
+        return position + 1;
+      }
     }
     return word.length;
   }
@@ -296,7 +315,9 @@ static fn shell_word_expansion_end(StringView word,
     return position;
   }
 
-  if (next_byte >= '0' && next_byte <= '9') return expansion_start + 2;
+  if (next_byte >= '0' && next_byte <= '9') {
+    return expansion_start + 2;
+  }
 
   switch (next_byte) {
   case '!':
@@ -435,7 +456,9 @@ hot fn decode_shell_word(StringView word, Allocator allocator,
       if (should_map_source) decoded.raw_positions.back() = position + 1;
       if (!decoded.text.is_empty() &&
           os::is_directory_separator(decoded.text.back()))
+      {
         decoded.raw_directory_end = position + 1;
+      }
       continue;
     }
     if (byte == quote_character) {
@@ -449,7 +472,9 @@ hot fn decode_shell_word(StringView word, Allocator allocator,
       decoded.open_quote_decoded_start = 0;
       if (!decoded.text.is_empty() &&
           os::is_directory_separator(decoded.text.back()))
+      {
         decoded.raw_directory_end = position + 1;
+      }
       continue;
     }
     if (byte == '\\' && quote_character != '\'' && position + 1 < word.length) {
@@ -469,7 +494,9 @@ hot fn decode_shell_word(StringView word, Allocator allocator,
           if (should_map_source) decoded.raw_positions.back() = position + 1;
           if (!decoded.text.is_empty() &&
               os::is_directory_separator(decoded.text.back()))
+          {
             decoded.raw_directory_end = position + 1;
+          }
           continue;
         }
         decoded.text.push(escaped_byte);
@@ -550,16 +577,22 @@ hot fn decode_shell_word(StringView word, Allocator allocator,
       raw_end = raw_start + 1;
     } else if ((byte == '$' && scan_quote != '\'') ||
                (byte == '`' && scan_quote == 0))
+    {
       raw_end = shell_word_expansion_end(word, raw_start);
+    }
     if (raw_end <= raw_start) continue;
 
     while (decoded_position < decoded.raw_positions.count() &&
            decoded.raw_positions[decoded_position] < raw_start)
+    {
       decoded_position++;
+    }
     let const decoded_start = decoded_position;
     while (decoded_position < decoded.raw_positions.count() &&
            decoded.raw_positions[decoded_position] < raw_end)
+    {
       decoded_position++;
+    }
     usize decoded_end = decoded_position;
     if (decoded_end > decoded.text.length())
       decoded_end = decoded.text.length();
@@ -594,7 +627,9 @@ static fn split_path_source_components(StringView path,
 {
   let components = ArrayList<path_source_component>{allocator};
   usize position = os::path_root_length(path);
-  if (position == 0 && os::path_is_drive_relative(path)) position = 2;
+  if (position == 0 && os::path_is_drive_relative(path)) {
+    position = 2;
+  }
   usize opaque_range_position = 0;
   while (position < path.length) {
     let const component = Path::next_component(path, position);
@@ -1009,9 +1044,15 @@ fn encode_base64(StringView bytes) throws -> String
 
 static pure fn decode_base64_digit(char digit) wontthrow -> i32
 {
-  if (digit >= 'A' && digit <= 'Z') return digit - 'A';
-  if (digit >= 'a' && digit <= 'z') return digit - 'a' + 26;
-  if (digit >= '0' && digit <= '9') return digit - '0' + 52;
+  if (digit >= 'A' && digit <= 'Z') {
+    return digit - 'A';
+  }
+  if (digit >= 'a' && digit <= 'z') {
+    return digit - 'a' + 26;
+  }
+  if (digit >= '0' && digit <= '9') {
+    return digit - '0' + 52;
+  }
   if (digit == '+') return 62;
   if (digit == '/') return 63;
   return -1;
@@ -1030,20 +1071,25 @@ fn decode_base64(StringView text) throws -> Maybe<String>
     for (usize offset = 0; offset < 4; offset++) {
       let const digit = text[position + offset];
       if (digit == '=') {
-        if (!is_last_group || offset < 2) return None;
+        if (!is_last_group || offset < 2) {
+          return None;
+        }
         padding_count++;
         group <<= 6;
         continue;
       }
       let const value = decode_base64_digit(digit);
-      if (value < 0 || padding_count > 0) return None;
+      if (value < 0 || padding_count > 0) {
+        return None;
+      }
       group = (group << 6) | static_cast<u32>(value);
     }
     decoded.push(static_cast<char>((group >> 16) & 0xff));
     if (padding_count < 2) decoded.push(static_cast<char>((group >> 8) & 0xff));
     if (padding_count < 1) decoded.push(static_cast<char>(group & 0xff));
-    if (padding_count > 0 && (group & ((1U << (8 * padding_count)) - 1)) != 0)
+    if (padding_count > 0 && (group & ((1U << (8 * padding_count)) - 1)) != 0) {
       return None;
+    }
   }
   return decoded;
 }

@@ -402,6 +402,7 @@ hot fn EvalContext::set_shell_variable(StringView name, StringView value) throws
 
   if (is_implicitly_integer(name) ||
       (attribute_bits & static_cast<u8>(variable_attribute::Integer)) != 0)
+  {
     rarely
     {
       let result = String{scratch_allocator(), "0"};
@@ -422,9 +423,11 @@ hot fn EvalContext::set_shell_variable(StringView name, StringView value) throws
       assign_variable(name, result.view());
       return;
     }
+  }
 
   if ((attribute_bits & (static_cast<u8>(variable_attribute::Lowercase) |
                          static_cast<u8>(variable_attribute::Uppercase))) != 0)
+  {
     rarely
     {
       let adjusted = String{scratch_allocator(), value};
@@ -432,6 +435,7 @@ hot fn EvalContext::set_shell_variable(StringView name, StringView value) throws
       assign_variable(name, adjusted.view());
       return;
     }
+  }
 
   assign_variable(name, value, entry);
 }
@@ -494,6 +498,7 @@ fn EvalContext::unset_shell_variable(StringView name) throws -> void
 {
   if (variable_store().attributes().is_nameref(name) &&
       !unbind_circular_nameref(name))
+  {
     rarely
     {
       let const target = resolve_nameref_for_write(name);
@@ -510,9 +515,11 @@ fn EvalContext::unset_shell_variable(StringView name) throws -> void
         return;
       }
     }
+  }
 
-  if (is_readonly(name))
+  if (is_readonly(name)) {
     throw Error{"Unable to unset '" + name + "' because it is read only"};
+  }
 
   if (is_bash_argument_array(name))
     throw Error{String{name} + ": cannot unset"};
@@ -556,7 +563,9 @@ fn EvalContext::peel_caller_local_binding(StringView name) throws -> bool
     ArrayList<local_binding> &frame = scope_store().local_scopes()[frame_index];
     for (usize i = frame.count(); i-- > 0;) {
       let &binding = frame[i];
-      if (binding.name.view() != name || binding.is_self_reference) continue;
+      if (binding.name.view() != name || binding.is_self_reference) {
+        continue;
+      }
       LOG(Debug, "peeling the local binding of '%.*s' from caller frame %zu",
           static_cast<int>(name.length), name.data, frame_index);
 
@@ -579,7 +588,9 @@ fn EvalContext::assign_caller_binding_of_circular_nameref(
   ArrayList<local_binding> &frame = scope_store().current_local_scope();
   for (usize i = frame.count(); i-- > 0;) {
     let &binding = frame[i];
-    if (binding.name.view() != name || binding.is_self_reference) continue;
+    if (binding.name.view() != name || binding.is_self_reference) {
+      continue;
+    }
 
     let const nameref_bit = static_cast<u8>(variable_attribute::Nameref);
     if ((binding.previous_attributes & nameref_bit) != 0 ||
@@ -606,7 +617,9 @@ fn EvalContext::assign_global_beneath_locals(StringView name, StringView value,
   {
     ArrayList<local_binding> &frame = scope_store().local_scopes()[frame_index];
     for (let &binding : frame) {
-      if (binding.name.view() != name || binding.is_self_reference) continue;
+      if (binding.name.view() != name || binding.is_self_reference) {
+        continue;
+      }
 
       if (binding.previous_attributes != 0 ||
           binding.previous_indexed_array.has_value() ||
@@ -616,8 +629,9 @@ fn EvalContext::assign_global_beneath_locals(StringView name, StringView value,
       }
 
       let next_value = String{heap_allocator()};
-      if (should_append && binding.previous_value.has_value())
+      if (should_append && binding.previous_value.has_value()) {
         next_value.append(binding.previous_value->view());
+      }
       next_value.append(value);
       binding.previous_value = steal(next_value);
 
@@ -738,7 +752,9 @@ fn EvalContext::publish_single_pipe_status(i32 status) throws -> void
   let existing = entry.has_value() && (*entry)->is_indexed_array
                      ? Maybe<ArrayList<String> *>{&(*entry)->elements}
                      : Maybe<ArrayList<String> *>{None};
-  if (!existing.has_value() && is_readonly("PIPESTATUS")) return;
+  if (!existing.has_value() && is_readonly("PIPESTATUS")) {
+    return;
+  }
 
   if (existing.has_value() && existing->count() == 1 &&
       (variable_store().sparse_arrays().names().count() == 0 ||
@@ -782,8 +798,9 @@ cold fn EvalContext::show_runtime_warning_at(
     SourceLocation location, StringView message, StringView note,
     bool should_ignore_disabled) wontthrow -> void
 {
-  if (runtime_state().is_diagnostics_disabled() && !should_ignore_disabled)
+  if (runtime_state().is_diagnostics_disabled() && !should_ignore_disabled) {
     return;
+  }
   let const trace_location = location;
   try {
     let const resolved_source = resolve_render_source(location);
@@ -1510,7 +1527,9 @@ pure fn EvalContext::merged_frame_at(
     let const has_source =
         source_index < source_store().source_frames().count();
     let const has_function = function_index < function_count;
-    if (!has_source && !has_function) break;
+    if (!has_source && !has_function) {
+      break;
+    }
 
     if (has_source &&
         source_store().source_frames()[source_index].function_call_depth <=
@@ -1702,8 +1721,9 @@ pure fn EvalContext::bash_source_frame_count(
     if (source_store().source_frames()[i].has_bash_source_row()) frame_count++;
   }
 
-  if (source_store().is_script_run() && !script_source_index.has_value())
+  if (source_store().is_script_run() && !script_source_index.has_value()) {
     frame_count++;
+  }
 
   return frame_count;
 }

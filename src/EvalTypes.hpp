@@ -295,7 +295,9 @@ public:
   fn release_if_unused(StringView name, variable_entry &entry) throws -> void
   {
     if (entry.has_value || entry.is_indexed_array || entry.attribute_bits != 0)
+    {
       return;
+    }
 
     if (&entry == m_pipestatus_entry) m_pipestatus_entry = nullptr;
     m_index.erase(name);
@@ -315,7 +317,9 @@ public:
   fn erase_elements(StringView name) throws -> void
   {
     let const found = find(name);
-    if (!found.has_value() || !(*found)->is_indexed_array) return;
+    if (!found.has_value() || !(*found)->is_indexed_array) {
+      return;
+    }
 
     (*found)->is_indexed_array = false;
     (*found)->elements.clear();
@@ -355,7 +359,9 @@ public:
   fn erase_value(StringView name) throws -> void
   {
     let const found = find(name);
-    if (!found.has_value() || !(*found)->has_value) return;
+    if (!found.has_value() || !(*found)->has_value) {
+      return;
+    }
 
     (*found)->has_value = false;
     (*found)->value.clear();

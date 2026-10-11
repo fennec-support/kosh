@@ -49,7 +49,9 @@ fn Uname::execute(const ExecContext &ec, EvalContext &cxt,
   let const should_machine = is_all || FLAG_UNAME_MACHINE.is_enabled();
   if (!should_system && !should_node && !should_release && !should_version &&
       !should_machine)
+  {
     should_system = true;
+  }
 
   let output = String{cxt.scratch_allocator()};
   let const do_append = [&](StringView value) throws -> void {

@@ -288,7 +288,9 @@ fn EvalContext::read_redirect_substitution(StringView source) throws
   usize i = 0;
   while (i < source.length &&
          (source[i] == ' ' || source[i] == '\t' || source[i] == '\n'))
+  {
     i++;
+  }
   if (i >= source.length || source[i] != '<') {
     return None;
   }

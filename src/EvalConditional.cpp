@@ -345,7 +345,9 @@ struct conditional_evaluator
 
     let const do_normalize = [&](StringView operand) throws -> StringView {
       for (usize i = 0; i < operand.length; i++) {
-        if (operand[i] != ' ' && operand[i] != '\t') return operand;
+        if (operand[i] != ' ' && operand[i] != '\t') {
+          return operand;
+        }
       }
       return "0";
     };

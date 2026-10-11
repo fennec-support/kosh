@@ -279,13 +279,16 @@ static fn manpage_section1_directories(EvalContext &context) throws
     for (usize i = 0; i <= view.length; i++) {
       if (i != view.length && view[i] != os::PATH_DELIMITER &&
           view[i] != '\n' && view[i] != '\r')
+      {
         continue;
+      }
       let const segment =
           view.substring_of_length(segment_start, i - segment_start)
               .trim_blanks();
       segment_start = i + 1;
-      if (!segment.is_empty() && Path{segment}.is_absolute())
+      if (!segment.is_empty() && Path{segment}.is_absolute()) {
         do_push_man1_of_root(segment);
+      }
     }
   };
 
@@ -299,7 +302,9 @@ static fn manpage_section1_directories(EvalContext &context) throws
   let const value = manpath->view();
   usize segment_start = 0;
   for (usize i = 0; i <= value.length; i++) {
-    if (i != value.length && value[i] != os::PATH_DELIMITER) continue;
+    if (i != value.length && value[i] != os::PATH_DELIMITER) {
+      continue;
+    }
     let const segment =
         value.substring_of_length(segment_start, i - segment_start);
     segment_start = i + 1;
@@ -411,10 +416,14 @@ fn ManpageCache::finish_subcommand_index() throws -> void
 
   page_file_paths.for_each([&](StringView name, const String &) {
     let const dash = name.find_character('-');
-    if (!dash.has_value() || *dash == 0) return;
+    if (!dash.has_value() || *dash == 0) {
+      return;
+    }
     let const head = name.substring_of_length(0, *dash);
     let const tail = name.substring(*dash + 1);
-    if (tail.is_empty() || (tail[0] >= '0' && tail[0] <= '9')) return;
+    if (tail.is_empty() || (tail[0] >= '0' && tail[0] <= '9')) {
+      return;
+    }
     if (!page_file_paths.find(head).has_value()) return;
     subcommand_index.get_or_create(head, cached_subcommand_list{})
         .values.push_managed(tail);
@@ -432,13 +441,17 @@ static fn cleaned_synopsis_of_page(StringView source) throws -> String
   let is_inside_synopsis = false;
   usize line_start = 0;
   for (usize i = 0; i <= source.length; i++) {
-    if (i != source.length && source[i] != '\n') continue;
+    if (i != source.length && source[i] != '\n') {
+      continue;
+    }
     let const line = source.substring_of_length(line_start, i - line_start);
     line_start = i + 1;
     if (line.starts_with(".SH") || line.starts_with(".Sh")) {
       let const is_synopsis_heading =
           line.find_substring(StringView{"SYNOPSIS"}).has_value();
-      if (is_inside_synopsis && !is_synopsis_heading) break;
+      if (is_inside_synopsis && !is_synopsis_heading) {
+        break;
+      }
       is_inside_synopsis = is_synopsis_heading;
       continue;
     }
@@ -463,7 +476,9 @@ static fn cleaned_synopsis_of_page(StringView source) throws -> String
       if (byte == ' ' || byte == '\t' || byte == '\r') {
         if (!synopsis.is_empty() &&
             synopsis.view()[synopsis.length() - 1] != ' ')
+        {
           synopsis.push(' ');
+        }
         continue;
       }
       synopsis.push(byte);
@@ -569,7 +584,9 @@ static fn man_subcommand_page_is_valid(StringView command,
     usize target_end = 0;
     while (target_end < rest.length && rest[target_end] != '\n' &&
            rest[target_end] != ' ')
+    {
       target_end++;
+    }
     let target = Path{file_path->view()}.parent().parent();
     target.append(rest.substring_of_length(0, target_end));
     source = target.read_entire_file();
@@ -597,7 +614,9 @@ static fn is_first_argument_token(StringView line, usize token_start) wontthrow
       static_cast<usize>(command.data - line.data) + command.length;
   if (token_start <= command_end) return false;
   for (usize i = command_end; i < token_start; i++)
-    if (line[i] != ' ' && line[i] != '\t') return false;
+    if (line[i] != ' ' && line[i] != '\t') {
+      return false;
+    }
   return true;
 }
 
@@ -610,7 +629,9 @@ fn internal::second_word_of(StringView line) wontthrow -> Maybe<StringView>
   let position = command_end;
   let const word = line.next_ascii_whitespace_word(position);
   if (position >= line.length) return None;
-  if (word.is_empty() || word[0] == '-') return None;
+  if (word.is_empty() || word[0] == '-') {
+    return None;
+  }
   return word;
 }
 
@@ -621,13 +642,19 @@ fn internal::complete_from_man_subcommands(StringView line, StringView token,
     -> Maybe<ArrayList<String>>
 {
   let const is_for_listing = mode == completion_mode::Listing;
-  if (!token.is_empty() && token[0] == '-') return None;
+  if (!token.is_empty() && token[0] == '-') {
+    return None;
+  }
   if (os::has_directory_separator(token)) return None;
-  if (!is_for_listing && token.is_empty()) return None;
+  if (!is_for_listing && token.is_empty()) {
+    return None;
+  }
   let const surface_command = command_word_of(line);
   if (surface_command.is_empty() ||
       os::has_directory_separator(surface_command))
+  {
     return None;
+  }
 
   let const second_word = second_word_of(line);
   let const is_koshkit_man = surface_command == "koshkit" &&
@@ -639,12 +666,13 @@ fn internal::complete_from_man_subcommands(StringView line, StringView token,
         static_cast<usize>(second_word->data - line.data) + second_word->length;
     is_koshkit_man_argument = token_start > second_word_end;
     for (usize position = second_word_end; position < token_start; position++)
-      if (line[position] != ' ' && line[position] != '\t')
+      if (line[position] != ' ' && line[position] != '\t') {
         is_koshkit_man_argument = false;
+      }
   }
-  if (!is_first_argument_token(line, token_start) &&
-      !is_koshkit_man_argument)
+  if (!is_first_argument_token(line, token_start) && !is_koshkit_man_argument) {
     return None;
+  }
 
   let const command_name = is_koshkit_man ? StringView{"man"} : surface_command;
 
@@ -686,7 +714,9 @@ fn internal::complete_from_man_subcommands(StringView line, StringView token,
   }
 
   let const subcommands = MANPAGE_CACHE.subcommand_index.find(command);
-  if (!subcommands.has_value() || subcommands->values.is_empty()) return None;
+  if (!subcommands.has_value() || subcommands->values.is_empty()) {
+    return None;
+  }
 
   let matches = ArrayList<String>{heap_allocator()};
   let const &sorted_subcommands = subcommands->values;
@@ -713,15 +743,21 @@ static fn extract_dash_flags(StringView option_part) throws -> ArrayList<String>
     while (k < option_part.length &&
            (option_part[k] == ' ' || option_part[k] == ',' ||
             option_part[k] == '\t'))
+    {
       k++;
+    }
     let const token_start = k;
     while (k < option_part.length && option_part[k] != ' ' &&
            option_part[k] != ',' && option_part[k] != '\t')
+    {
       k++;
+    }
     let flag = option_part.substring_of_length(token_start, k - token_start);
     if (let const equals = flag.find_character('='); equals.has_value())
       flag = flag.substring_of_length(0, *equals);
-    if (flag.length >= 2 && flag[0] == '-') flags.push(String{flag});
+    if (flag.length >= 2 && flag[0] == '-') {
+      flags.push(String{flag});
+    }
   }
   return flags;
 }
@@ -803,11 +839,15 @@ static fn parse_manpage_option_entries(StringView text) throws
     let const at_word_start = j == 0 || view[j - 1] == ' ' ||
                               view[j - 1] == '\t' || view[j - 1] == '\n' ||
                               view[j - 1] == '(' || view[j - 1] == '[';
-    if (view[j] != '-' || !at_word_start) continue;
+    if (view[j] != '-' || !at_word_start) {
+      continue;
+    }
     let end = j;
     while (end < view.length &&
            (view[end] == '-' || lexer::is_variable_name(view[end])))
+    {
       end++;
+    }
     let const flag = view.substring_of_length(j, end - j);
     let has_letter = false;
     for (usize k = 0; k < flag.length; k++)
@@ -970,11 +1010,15 @@ fn internal::complete_from_manpage(StringView line, StringView token,
 {
   let const is_for_listing = mode == completion_mode::Listing;
   if (!is_for_listing) return None;
-  if (token.is_empty() || token[0] != '-') return None;
+  if (token.is_empty() || token[0] != '-') {
+    return None;
+  }
   let const surface_command = command_word_of(line);
   if (surface_command.is_empty() ||
       os::has_directory_separator(surface_command))
+  {
     return None;
+  }
 
   let const resolved_name =
       resolve_completion_command(surface_command, context);
@@ -1103,7 +1147,9 @@ static fn parse_help_option_entries(StringView text) throws
     let const raw = text.next_line(i);
 
     let const start = skip_blanks(raw, 0);
-    if (start >= raw.length || raw[start] != '-') continue;
+    if (start >= raw.length || raw[start] != '-') {
+      continue;
+    }
 
     let const gap = double_space_gap(raw, start);
     let const option_part = raw.substring_of_length(start, gap - start);
@@ -1155,8 +1201,9 @@ fn HelpOutputCache::store(StringView command, StringView key,
   option_entries.set(key, parse_help_option_entries(parsed));
   subcommand_entries.set(key, parse_help_subcommands(parsed, command));
   usages.set(key, usage_line_of_help(parsed));
-  if (text.has_value() || !should_retry_killed_fork("help", key))
+  if (text.has_value() || !should_retry_killed_fork("help", key)) {
     parsed_keys.add(key);
+  }
 }
 
 static fn help_entries_for(StringMap<ArrayList<help_entry>> &cache,
@@ -1202,8 +1249,12 @@ static fn line_opens_subcommand_section(StringView trimmed) wontthrow -> bool
     for (usize i = 0; i < suffix.length; i++) {
       let a = trimmed[offset + i];
       let b = suffix[i];
-      if (a >= 'A' && a <= 'Z') a = static_cast<char>(a - 'A' + 'a');
-      if (b >= 'A' && b <= 'Z') b = static_cast<char>(b - 'A' + 'a');
+      if (a >= 'A' && a <= 'Z') {
+        a = static_cast<char>(a - 'A' + 'a');
+      }
+      if (b >= 'A' && b <= 'Z') {
+        b = static_cast<char>(b - 'A' + 'a');
+      }
       if (a != b) return false;
     }
     return true;
@@ -1213,24 +1264,34 @@ static fn line_opens_subcommand_section(StringView trimmed) wontthrow -> bool
         do_ends_with_ignoring_case(StringView{"subcommands:"}) ||
         do_ends_with_ignoring_case(StringView{"commands are:"}) ||
         do_ends_with_ignoring_case(StringView{"example usage:"}))
+    {
       return true;
+    }
     let const do_contains_word_ignoring_case = [&](StringView needle) {
       if (needle.length > trimmed.length) return false;
       let const do_is_alpha = [](char c) {
         return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
       };
       for (usize i = 0; i + needle.length <= trimmed.length; i++) {
-        if (i > 0 && do_is_alpha(trimmed[i - 1])) continue;
+        if (i > 0 && do_is_alpha(trimmed[i - 1])) {
+          continue;
+        }
         if (i + needle.length < trimmed.length &&
             do_is_alpha(trimmed[i + needle.length]))
+        {
           continue;
+        }
         let const candidate = trimmed.substring_of_length(i, needle.length);
         let const is_equal = [&]() {
           for (usize j = 0; j < needle.length; j++) {
             let a = candidate[j];
             let b = needle[j];
-            if (a >= 'A' && a <= 'Z') a = static_cast<char>(a - 'A' + 'a');
-            if (b >= 'A' && b <= 'Z') b = static_cast<char>(b - 'A' + 'a');
+            if (a >= 'A' && a <= 'Z') {
+              a = static_cast<char>(a - 'A' + 'a');
+            }
+            if (b >= 'A' && b <= 'Z') {
+              b = static_cast<char>(b - 'A' + 'a');
+            }
             if (a != b) return false;
           }
           return true;
@@ -1244,7 +1305,9 @@ static fn line_opens_subcommand_section(StringView trimmed) wontthrow -> bool
 
   let const do_is_all_uppercase = [&]() {
     for (usize i = 0; i < trimmed.length; i++)
-      if (trimmed[i] >= 'a' && trimmed[i] <= 'z') return false;
+      if (trimmed[i] >= 'a' && trimmed[i] <= 'z') {
+        return false;
+      }
     return true;
   };
   let const do_equal_ignoring_case = [&](StringView word) {
@@ -1308,8 +1371,10 @@ static fn parse_help_subcommands(StringView text, StringView command) throws
     if (!command.is_empty() && entry_text.length > command.length + 1 &&
         entry_text.substring_of_length(0, command.length) == command &&
         entry_text[command.length] == ' ')
+    {
       entry_text = entry_text.substring_of_length(
           command.length + 1, entry_text.length - command.length - 1);
+    }
 
     let column_end = double_space_gap(entry_text, 0);
 
@@ -1317,7 +1382,9 @@ static fn parse_help_subcommands(StringView text, StringView command) throws
       usize single_space = 0;
       while (single_space < entry_text.length &&
              entry_text[single_space] != ' ')
+      {
         single_space++;
+      }
       column_end = single_space;
     }
 
@@ -1332,8 +1399,9 @@ static fn parse_help_subcommands(StringView text, StringView command) throws
     usize alias_start = 0;
     while (alias_start < column.length) {
       let alias_end = alias_start;
-      while (alias_end < column.length && column[alias_end] != ',')
+      while (alias_end < column.length && column[alias_end] != ',') {
         alias_end++;
+      }
       let const alias =
           column.substring_of_length(alias_start, alias_end - alias_start)
               .trim_blanks();
@@ -1412,11 +1480,15 @@ fn internal::complete_from_help(StringView line, StringView token,
 {
   let const is_for_listing = mode == completion_mode::Listing;
   if (!is_for_listing) return None;
-  if (token.is_empty() || token[0] != '-') return None;
+  if (token.is_empty() || token[0] != '-') {
+    return None;
+  }
   let const surface_command = command_word_of(line);
   if (surface_command.is_empty() ||
       os::has_directory_separator(surface_command))
+  {
     return None;
+  }
 
   let const resolved_name = resolve_completion_alias(surface_command, context);
 
@@ -1443,7 +1515,9 @@ fn internal::complete_from_help_subcommands(StringView line, StringView token,
   LOG(Debug, "help subcommands entry token '%.*s' listing %d",
       static_cast<int>(token.length), token.data, is_for_listing ? 1 : 0);
   if (!is_for_listing) return None;
-  if (!token.is_empty() && token[0] == '-') return None;
+  if (!token.is_empty() && token[0] == '-') {
+    return None;
+  }
   if (os::has_directory_separator(token)) return None;
   let const command_name = command_word_of(line);
   if (command_name.is_empty() || os::has_directory_separator(command_name)) {
@@ -1964,8 +2038,9 @@ static fn finish_idle_load(idle_load &load,
   let const page = load.capture.take_output();
   let const &options = store_manpage_options(load.key.view(), page.view());
   let const synopsis = MANPAGE_CACHE.synopses.find(load.key.view());
-  if (!options.is_empty() || (synopsis.has_value() && !synopsis->is_empty()))
+  if (!options.is_empty() || (synopsis.has_value() && !synopsis->is_empty())) {
     MANPAGE_CACHE.hint_pages.set(load.hint_key.view(), String{load.key.view()});
+  }
 }
 
 static fn start_idle_load(idle_load_kind kind, StringView key,
@@ -2030,7 +2105,9 @@ static fn defer_idle_load(idle_load_kind kind, StringView key,
 
   IDLE_LOAD = None;
   if (argv.has_value() && start_idle_load(kind, key, command, hint_key, *argv))
+  {
     throw documentation_pending{};
+  }
 }
 
 ScopedDocumentationDeferral::ScopedDocumentationDeferral(

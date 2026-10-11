@@ -40,7 +40,9 @@ static fn split_output_name(StringView prefix, usize suffix_length,
       for (usize position = 1; position < suffix_length && block_count != 0;
            position++)
         block_count = block_count > UINT64_MAX / 26 ? 0 : block_count * 26;
-      if (block_count == 0 || index < block_count) break;
+      if (block_count == 0 || index < block_count) {
+        break;
+      }
 
       index -= block_count;
       widened_count++;
@@ -76,7 +78,9 @@ fn Split::execute(const ExecContext &ec, EvalContext &cxt,
 
   if (operands.count() > 2 ||
       (FLAG_SPLIT_BYTES.is_set() && FLAG_SPLIT_LINES.is_set()))
+  {
     return report_usage_error(ec, cxt, args[0].view());
+  }
 
   let const source = operands.is_empty() ? StringView{"-"} : operands[0].view();
   let const prefix =

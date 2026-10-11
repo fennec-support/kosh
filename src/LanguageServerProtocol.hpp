@@ -96,7 +96,9 @@ public:
     skip_blanks();
     let *value = parse_value();
     skip_blanks();
-    if (value == nullptr || m_position != m_source.length) return nullptr;
+    if (value == nullptr || m_position != m_source.length) {
+      return nullptr;
+    }
 
     return value;
   }
@@ -111,7 +113,9 @@ private:
   {
     while (m_position < m_source.length) {
       let const byte = m_source[m_position];
-      if (byte != ' ' && byte != '\t' && byte != '\r' && byte != '\n') break;
+      if (byte != ' ' && byte != '\t' && byte != '\r' && byte != '\n') {
+        break;
+      }
       m_position++;
     }
   }
@@ -157,8 +161,9 @@ private:
 
   fn parse_string() throws -> Maybe<String>
   {
-    if (m_position >= m_source.length || m_source[m_position] != '"')
+    if (m_position >= m_source.length || m_source[m_position] != '"') {
       return None;
+    }
     m_position++;
     let result = String{bump_allocator(m_arena)};
 
@@ -199,10 +204,14 @@ private:
           u32 low = 0;
           for (usize digit_index = 0; digit_index < 4; digit_index++) {
             let const digit = utils::hex_digit_value(m_source[m_position++]);
-            if (!digit.has_value()) return None;
+            if (!digit.has_value()) {
+              return None;
+            }
             low = (low << 4) | *digit;
           }
-          if (low < 0xdc00 || low > 0xdfff) return None;
+          if (low < 0xdc00 || low > 0xdfff) {
+            return None;
+          }
           codepoint = 0x10000 + ((codepoint - 0xd800) << 10) + (low - 0xdc00);
         } else if (codepoint >= 0xdc00 && codepoint <= 0xdfff) {
           return None;
@@ -230,26 +239,34 @@ private:
   fn parse_number() throws -> JsonValue *
   {
     let const start = m_position;
-    if (m_position < m_source.length && m_source[m_position] == '-')
+    if (m_position < m_source.length && m_source[m_position] == '-') {
       m_position++;
+    }
     if (m_position >= m_source.length) return nullptr;
     if (m_source[m_position] == '0') {
       m_position++;
     } else {
-      if (m_source[m_position] < '1' || m_source[m_position] > '9')
+      if (m_source[m_position] < '1' || m_source[m_position] > '9') {
         return nullptr;
+      }
       while (m_position < m_source.length && m_source[m_position] >= '0' &&
              m_source[m_position] <= '9')
+      {
         m_position++;
+      }
     }
     if (m_position < m_source.length && m_source[m_position] == '.') {
       m_position++;
       if (m_position >= m_source.length || m_source[m_position] < '0' ||
           m_source[m_position] > '9')
+      {
         return nullptr;
+      }
       while (m_position < m_source.length && m_source[m_position] >= '0' &&
              m_source[m_position] <= '9')
+      {
         m_position++;
+      }
     }
     if (m_position < m_source.length &&
         (m_source[m_position] == 'e' || m_source[m_position] == 'E'))
@@ -257,13 +274,19 @@ private:
       m_position++;
       if (m_position < m_source.length &&
           (m_source[m_position] == '+' || m_source[m_position] == '-'))
+      {
         m_position++;
+      }
       if (m_position >= m_source.length || m_source[m_position] < '0' ||
           m_source[m_position] > '9')
+      {
         return nullptr;
+      }
       while (m_position < m_source.length && m_source[m_position] >= '0' &&
              m_source[m_position] <= '9')
+      {
         m_position++;
+      }
     }
     let *value = create(json_kind::Number);
     value->text =
@@ -315,8 +338,9 @@ private:
       let name = parse_string();
       if (!name.has_value()) return nullptr;
       skip_blanks();
-      if (m_position >= m_source.length || m_source[m_position++] != ':')
+      if (m_position >= m_source.length || m_source[m_position++] != ':') {
         return nullptr;
+      }
       skip_blanks();
       let *member_value = parse_value();
       if (member_value == nullptr) return nullptr;
@@ -518,7 +542,9 @@ private:
          position + 3 < m_buffer.count(); position++)
       if (m_buffer[position] == '\r' && m_buffer[position + 1] == '\n' &&
           m_buffer[position + 2] == '\r' && m_buffer[position + 3] == '\n')
+      {
         return position;
+      }
 
     m_header_scan_position =
         m_buffer.count() > 3 ? m_buffer.count() - 3 : m_offset;
@@ -533,18 +559,23 @@ private:
 
     while (line_start <= headers.length) {
       usize line_end = line_start;
-      while (line_end < headers.length && headers[line_end] != '\r')
+      while (line_end < headers.length && headers[line_end] != '\r') {
         line_end++;
+      }
       let const line =
           headers.substring_of_length(line_start, line_end - line_start);
       if (line.starts_with(PREFIX)) {
         usize position = PREFIX.length;
         while (position < line.length &&
                (line[position] == ' ' || line[position] == '\t'))
+        {
           position++;
+        }
         if (position == line.length) return None;
         let const parsed = utils::parse_decimal_u64(line.substring(position));
-        if (parsed.is_error() || parsed.value() > SIZE_MAX) return None;
+        if (parsed.is_error() || parsed.value() > SIZE_MAX) {
+          return None;
+        }
 
         return static_cast<usize>(parsed.value());
       }
@@ -570,7 +601,9 @@ private:
       let const wanted_length =
           remaining_length < sizeof(bytes) ? remaining_length : sizeof(bytes);
       let const count = os::read_fd(KOSH_STDIN, bytes, wanted_length);
-      if (!count.has_value() || *count == 0) return false;
+      if (!count.has_value() || *count == 0) {
+        return false;
+      }
       remaining_length -= *count;
     }
 
@@ -581,7 +614,9 @@ private:
   {
     char bytes[8192];
     let const count = os::read_fd(KOSH_STDIN, bytes, sizeof(bytes));
-    if (!count.has_value() || *count == 0) return false;
+    if (!count.has_value() || *count == 0) {
+      return false;
+    }
     m_buffer.append(StringView{bytes, *count});
 
     return true;
@@ -627,10 +662,13 @@ pure fn json_field_is_true(const JsonValue *value) wontthrow -> bool
 pure fn json_array_holds(const JsonValue *value, StringView wanted) wontthrow
     -> bool
 {
-  if (value == nullptr || value->kind != json_kind::Array) return false;
+  if (value == nullptr || value->kind != json_kind::Array) {
+    return false;
+  }
   for (let const *element : value->array)
-    if (element->kind == json_kind::String && element->text == wanted)
+    if (element->kind == json_kind::String && element->text == wanted) {
       return true;
+    }
 
   return false;
 }
@@ -638,20 +676,28 @@ pure fn json_array_holds(const JsonValue *value, StringView wanted) wontthrow
 pure fn string_field(const JsonValue *object, StringView name) wontthrow
     -> Maybe<StringView>
 {
-  if (object == nullptr || object->kind != json_kind::Object) return None;
+  if (object == nullptr || object->kind != json_kind::Object) {
+    return None;
+  }
   let const *value = object->get(name);
-  if (value == nullptr || value->kind != json_kind::String) return None;
+  if (value == nullptr || value->kind != json_kind::String) {
+    return None;
+  }
 
   return value->text.view();
 }
 
 fn integer_field(const JsonValue *object, StringView name) throws -> Maybe<i64>
 {
-  if (object == nullptr || object->kind != json_kind::Object) return None;
+  if (object == nullptr || object->kind != json_kind::Object) {
+    return None;
+  }
   let const *value = object->get(name);
   if (value == nullptr || value->kind != json_kind::Number ||
       value->text.is_empty())
+  {
     return None;
+  }
   let const parsed = utils::parse_decimal_i64(value->text.view());
   if (parsed.is_error()) return None;
 
@@ -750,7 +796,9 @@ public:
       let const position = start + character;
       if (position < end &&
           (static_cast<u8>(normalized_source[position]) & 0xc0) == 0x80)
+      {
         return None;
+      }
       return position;
     }
 
@@ -786,8 +834,9 @@ public:
     }
     let const line = lower;
     let const start = line_starts[line];
-    if (encoding == position_encoding::Utf8 || normalized_source.is_ascii())
+    if (encoding == position_encoding::Utf8 || normalized_source.is_ascii()) {
       return {line, byte_position - start};
+    }
 
     usize units = 0;
     usize position = start;
@@ -813,8 +862,9 @@ public:
   {
     if (end < start) return 0;
     if (end > normalized_source.count()) end = normalized_source.count();
-    if (encoding == position_encoding::Utf8 || normalized_source.is_ascii())
+    if (encoding == position_encoding::Utf8 || normalized_source.is_ascii()) {
       return end - start;
+    }
     usize units = 0;
 
     while (start < end) {
@@ -903,7 +953,9 @@ fn decode_file_uri(StringView uri) throws -> Maybe<Path>
     if (position + 2 >= path_text.length) return None;
     let const high = utils::hex_digit_value(path_text[position + 1]);
     let const low = utils::hex_digit_value(path_text[position + 2]);
-    if (!high.has_value() || !low.has_value()) return None;
+    if (!high.has_value() || !low.has_value()) {
+      return None;
+    }
     decoded.push(static_cast<char>((*high << 4) | *low));
     position += 2;
   }
@@ -987,7 +1039,9 @@ fn document_position(const JsonValue *position) throws
   let const character = integer_field(position, "character");
   if (!line.has_value() || !character.has_value() || *line < 0 ||
       *character < 0)
+  {
     return None;
+  }
 
   return protocol_position{static_cast<usize>(*line),
                            static_cast<usize>(*character)};

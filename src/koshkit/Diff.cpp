@@ -80,8 +80,9 @@ static fn split_diff_lines(StringView contents, Allocator allocator) throws
     scan_position += *newline + 1;
     end_positions.push(static_cast<u32>(scan_position));
   }
-  if (!contents.is_empty() && contents[contents.length - 1] != '\n')
+  if (!contents.is_empty() && contents[contents.length - 1] != '\n') {
     end_positions.push(static_cast<u32>(contents.length));
+  }
 
   return {contents, steal(end_positions)};
 }
@@ -98,13 +99,18 @@ static fn diff_lines_equal(StringView left, StringView right,
   {
     while (left_position < left.length &&
            is_ascii_whitespace(left[left_position]))
+    {
       left_position++;
+    }
     while (right_position < right.length &&
            is_ascii_whitespace(right[right_position]))
+    {
       right_position++;
+    }
 
-    if (left_position == left.length || right_position == right.length)
+    if (left_position == left.length || right_position == right.length) {
       return left_position == left.length && right_position == right.length;
+    }
     if (left[left_position] != right[right_position]) return false;
 
     left_position++;
@@ -402,7 +408,9 @@ static fn append_normal_diff(const ExecContext &ec, String &output,
         append_diff_line(ec, output, palette.removed, "< ",
                          left_lines.get(block_left++));
     }
-    if (left_count != 0 && right_count != 0) output += "---\n";
+    if (left_count != 0 && right_count != 0) {
+      output += "---\n";
+    }
     usize block_right = right_start;
     for (usize index = block_start; index < edit_position; index++) {
       if (os::INTERRUPT_REQUESTED) return false;
@@ -476,7 +484,9 @@ static fn append_unified_diff(const ExecContext &ec, String &output,
 
     while (next_search < edits.count() &&
            edits[next_search] == diff_edit::Equal)
+    {
       next_search++;
+    }
     if (next_search == edits.count()) break;
 
     let const first_change = next_search;
@@ -547,10 +557,13 @@ fn Diff::execute(const ExecContext &ec, EvalContext &cxt,
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
-  if (operands.count() != 2 || FLAG_DIFF_LABEL.count() > 2)
+  if (operands.count() != 2 || FLAG_DIFF_LABEL.count() > 2) {
     return report_usage_error(ec, cxt, args[0].view());
+  }
 
-  if (operands[0] == "-" && operands[1] == "-") return 0;
+  if (operands[0] == "-" && operands[1] == "-") {
+    return 0;
+  }
 
   let const sources =
       source_list_from_operands(operands, cxt.scratch_allocator());

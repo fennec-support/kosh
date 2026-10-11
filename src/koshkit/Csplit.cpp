@@ -106,7 +106,9 @@ static fn write_csplit_part(const ExecContext &ec, EvalContext &cxt,
     os::close_fd(*descriptor);
     if (!is_output_tracked &&
         !has_csplit_policy(policy, csplit_write_policy::KeepFiles))
+    {
       unused(os::remove_file(name.view()));
+    }
   };
   output_paths.push(name.clone());
   is_output_tracked = true;
@@ -224,7 +226,9 @@ fn Csplit::execute(const ExecContext &ec, EvalContext &cxt,
       u64 numeric_target = numeric.value() - 1;
       if (repeat_mode == csplit_repeat_mode::Repeat) {
         if (numeric.value() > lines.count() - current_line) {
-          if (exhaustion_mode == csplit_exhaustion_mode::Allow) return false;
+          if (exhaustion_mode == csplit_exhaustion_mode::Allow) {
+            return false;
+          }
 
           throw ErrorWithLocationAndDetails{
               pattern_location, "line number is outside the input",
@@ -234,7 +238,9 @@ fn Csplit::execute(const ExecContext &ec, EvalContext &cxt,
         numeric_target = static_cast<u64>(current_line) + numeric.value();
       }
       if (numeric_target > lines.count()) {
-        if (exhaustion_mode == csplit_exhaustion_mode::Allow) return false;
+        if (exhaustion_mode == csplit_exhaustion_mode::Allow) {
+          return false;
+        }
 
         throw ErrorWithLocationAndDetails{
             pattern_location, "line number is outside the input",
@@ -257,7 +263,9 @@ fn Csplit::execute(const ExecContext &ec, EvalContext &cxt,
           continue;
         }
 
-        if (byte == delimiter) break;
+        if (byte == delimiter) {
+          break;
+        }
         expression += byte;
         delimiter_position++;
       }
@@ -311,7 +319,9 @@ fn Csplit::execute(const ExecContext &ec, EvalContext &cxt,
         }
       }
       if (matched_line == SIZE_MAX) {
-        if (exhaustion_mode == csplit_exhaustion_mode::Allow) return false;
+        if (exhaustion_mode == csplit_exhaustion_mode::Allow) {
+          return false;
+        }
 
         throw ErrorWithLocationAndDetails{
             pattern_location, "regular expression did not match",
@@ -319,7 +329,9 @@ fn Csplit::execute(const ExecContext &ec, EvalContext &cxt,
       }
       let const adjusted_line = static_cast<i128>(matched_line) + offset;
       if (adjusted_line < 0 || adjusted_line > lines.count()) {
-        if (exhaustion_mode == csplit_exhaustion_mode::Allow) return false;
+        if (exhaustion_mode == csplit_exhaustion_mode::Allow) {
+          return false;
+        }
 
         throw ErrorWithLocationAndDetails{
             pattern_location, "regular expression offset is outside the input",
@@ -342,7 +354,9 @@ fn Csplit::execute(const ExecContext &ec, EvalContext &cxt,
     }
     if (exhaustion_mode == csplit_exhaustion_mode::Allow &&
         target_line == current_line)
+    {
       return false;
+    }
 
     if (should_write_part) {
       let const width_location = FLAG_CSPLIT_DIGITS.is_set()

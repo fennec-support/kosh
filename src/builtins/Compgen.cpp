@@ -213,12 +213,14 @@ static fn push_table_file_names(compgen_emitter &emitter, StringView path,
     usize position = 0;
     usize field_index = 0;
     while (position < body.length) {
-      while (position < body.length && lexer::is_whitespace(body[position]))
+      while (position < body.length && lexer::is_whitespace(body[position])) {
         position++;
+      }
 
       let const field_start = position;
-      while (position < body.length && !lexer::is_whitespace(body[position]))
+      while (position < body.length && !lexer::is_whitespace(body[position])) {
         position++;
+      }
 
       if (position == field_start) break;
 

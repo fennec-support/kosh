@@ -239,7 +239,9 @@ public:
     kperfdata_library = dlopen(
         "/System/Library/PrivateFrameworks/kperfdata.framework/kperfdata",
         RTLD_LAZY);
-    if (kperf_library == nullptr || kperfdata_library == nullptr) return false;
+    if (kperf_library == nullptr || kperfdata_library == nullptr) {
+      return false;
+    }
 
     force_get = load_platform_symbol<force_get_fn>(kperf_library,
                                                    "kpc_force_all_ctrs_get");
@@ -307,7 +309,9 @@ public:
 
     kpep_db *database = nullptr;
     kpep_config *config = nullptr;
-    if (db_create(nullptr, &database) != 0 || database == nullptr) return false;
+    if (db_create(nullptr, &database) != 0 || database == nullptr) {
+      return false;
+    }
 
     let const do_cleanup = [&]() wontthrow {
       if (config != nullptr) config_free(config);
@@ -361,7 +365,9 @@ public:
     if (!create_configuration(configuration)) return false;
 
     int previous_force = 0;
-    if (force_get(&previous_force) != 0 || previous_force != 0) return false;
+    if (force_get(&previous_force) != 0 || previous_force != 0) {
+      return false;
+    }
 
     previous_counting_classes = get_counting();
     if (previous_counting_classes != 0) return false;
@@ -398,7 +404,9 @@ public:
         start_counter_count * sizeof(u64), alignof(u64)));
     end_counters = static_cast<u64 *>(uncached_heap_allocator().raw_alloc(
         start_counter_count * sizeof(u64), alignof(u64)));
-    if (start_counters == nullptr || end_counters == nullptr) return false;
+    if (start_counters == nullptr || end_counters == nullptr) {
+      return false;
+    }
     std::memset(start_counters, 0, start_counter_count * sizeof(u64));
     std::memset(end_counters, 0, start_counter_count * sizeof(u64));
 
@@ -656,13 +664,17 @@ static donteliminate fn nth_space_field(StringView text, usize index) wontthrow
   while (position < text.length) {
     while (position < text.length &&
            (text[position] == ' ' || text[position] == '\n'))
+    {
       position++;
+    }
     if (position >= text.length) break;
 
     let const start_position = position;
     while (position < text.length && text[position] != ' ' &&
            text[position] != '\n')
+    {
       position++;
+    }
     if (field == index)
       return text.substring_of_length(start_position,
                                       position - start_position);
@@ -675,12 +687,16 @@ static donteliminate fn nth_space_field(StringView text, usize index) wontthrow
 static fn leading_digits(StringView line, usize offset) wontthrow -> StringView
 {
   while (offset < line.length && (line[offset] == ' ' || line[offset] == '\t'))
+  {
     offset++;
+  }
 
   usize digit_end_position = offset;
   while (digit_end_position < line.length && line[digit_end_position] >= '0' &&
          line[digit_end_position] <= '9')
+  {
     digit_end_position++;
+  }
 
   return line.substring_of_length(offset, digit_end_position - offset);
 }
@@ -695,7 +711,9 @@ static fn linux_process_real_uid(StringView process_directory,
   let const text = status->view();
   usize line_start_position = 0;
   for (usize position = 0; position <= text.length; position++) {
-    if (position != text.length && text[position] != '\n') continue;
+    if (position != text.length && text[position] != '\n') {
+      continue;
+    }
     let const line = text.substring_of_length(line_start_position,
                                               position - line_start_position);
     line_start_position = position + 1;
@@ -711,7 +729,9 @@ static fn linux_process_real_uid(StringView process_directory,
 
     if (line.length < 5 ||
         line.substring_of_length(0, 5) != StringView{"Uid:\t"})
+    {
       continue;
+    }
 
     let const uid = leading_digits(line, 4).to<u32>();
     return uid.is_error() ? Maybe<u32>{None} : Maybe<u32>{uid.value()};
@@ -732,7 +752,9 @@ fn enumerate_processes(process_detail detail) throws -> ArrayList<process_entry>
        entry = ::readdir(proc_directory))
   {
     StringView name{entry->d_name};
-    if (name.is_empty() || !name.is_all_decimal_digits()) continue;
+    if (name.is_empty() || !name.is_all_decimal_digits()) {
+      continue;
+    }
 
     let const parsed_pid = name.to<i64>();
     if (parsed_pid.is_error()) continue;
@@ -746,8 +768,9 @@ fn enumerate_processes(process_detail detail) throws -> ArrayList<process_entry>
     }
     let command_name = Path{process_file}.read_entire_file();
     if (!command_name.has_value()) continue;
-    while (!command_name->is_empty() && command_name->back() == '\n')
+    while (!command_name->is_empty() && command_name->back() == '\n') {
       command_name->pop_back();
+    }
 
     process_entry process{};
     process.pid = parsed_pid.value();
@@ -798,7 +821,9 @@ fn enumerate_processes(process_detail detail) throws -> ArrayList<process_entry>
             cpu_tick_count += static_cast<u64>(system_ticks.value());
           if (let const start_ticks = nth_space_field(fields, 19).to<i64>();
               !start_ticks.is_error() && start_ticks.value() >= 0)
+          {
             process.start_token = static_cast<u64>(start_ticks.value());
+          }
           let const ticks_per_second = ::sysconf(_SC_CLK_TCK);
           if (ticks_per_second > 0)
             process.cpu_milliseconds =
@@ -851,8 +876,9 @@ fn describe_processes(const ArrayList<u32> &pids) throws
     }
     let command_name = Path{process_file}.read_entire_file();
     if (!command_name.has_value()) continue;
-    while (!command_name->is_empty() && command_name->back() == '\n')
+    while (!command_name->is_empty() && command_name->back() == '\n') {
       command_name->pop_back();
+    }
 
     process_entry process{};
     process.pid = static_cast<i64>(pid);
@@ -978,7 +1004,9 @@ fn scan_process_file_users(const ArrayList<process_file_query> &queries,
         struct stat executable_status{};
         if (::stat(executable_path, &executable_status) == 0 &&
             do_matches_status(query, executable_status))
+        {
           use_mask |= static_cast<u8>(process_file_use::Executable);
+        }
       }
 
       let descriptor_bytes =
@@ -1065,7 +1093,9 @@ fn scan_process_file_users(const ArrayList<process_file_query> &queries,
        entry = ::readdir(proc_directory))
   {
     let const name = StringView{entry->d_name};
-    if (name.is_empty() || !name.is_all_decimal_digits()) continue;
+    if (name.is_empty() || !name.is_all_decimal_digits()) {
+      continue;
+    }
     let const parsed_pid = name.to<u32>();
     if (parsed_pid.is_error()) continue;
 
@@ -1074,7 +1104,9 @@ fn scan_process_file_users(const ArrayList<process_file_query> &queries,
         process_path, sizeof(process_path), "/proc/%s", entry->d_name);
     if (process_path_length <= 0 ||
         static_cast<usize>(process_path_length) >= sizeof(process_path))
+    {
       continue;
+    }
     let const process_user_id = linux_process_real_uid(process_path);
     if (!process_user_id.has_value()) continue;
 
@@ -1095,8 +1127,9 @@ fn scan_process_file_users(const ArrayList<process_file_query> &queries,
       let const length = std::snprintf(
           reference_path, sizeof(reference_path), "%s/%.*s", process_path,
           static_cast<int>(reference.name.length), reference.name.data);
-      if (length <= 0 || static_cast<usize>(length) >= sizeof(reference_path))
+      if (length <= 0 || static_cast<usize>(length) >= sizeof(reference_path)) {
         continue;
+      }
       struct stat reference_status{};
       if (::stat(reference_path, &reference_status) == 0)
         do_apply_status(use_masks, reference_status, reference.use);
@@ -1139,22 +1172,29 @@ fn scan_process_file_users(const ArrayList<process_file_query> &queries,
         while (std::fgets(line, sizeof(line), maps) != nullptr) {
           char *field = line;
           for (usize field_position = 0; field_position < 3; field_position++) {
-            while (*field != '\0' && *field != ' ')
+            while (*field != '\0' && *field != ' ') {
               field++;
+            }
             while (*field == ' ')
               field++;
           }
           char *end = nullptr;
           let const major_id = std::strtoull(field, &end, 16);
-          if (end == field || *end != ':') continue;
+          if (end == field || *end != ':') {
+            continue;
+          }
           field = end + 1;
           let const minor_id = std::strtoull(field, &end, 16);
-          if (end == field || *end != ' ') continue;
+          if (end == field || *end != ' ') {
+            continue;
+          }
           field = end;
           while (*field == ' ')
             field++;
           let const file_id = std::strtoull(field, &end, 10);
-          if (end == field || file_id == 0) continue;
+          if (end == field || file_id == 0) {
+            continue;
+          }
 
           struct stat mapped_status{};
           mapped_status.st_dev = makedev(major_id, minor_id);
@@ -1267,8 +1307,9 @@ static fn read_small_file(const char *path, char *buffer,
 static fn each_line(StringView text, usize &position) wontthrow -> StringView
 {
   let const start_position = position;
-  while (position < text.length && text[position] != '\n')
+  while (position < text.length && text[position] != '\n') {
     position++;
+  }
 
   let const line =
       text.substring_of_length(start_position, position - start_position);
@@ -1722,7 +1763,9 @@ fn read_network_interface_statistics() throws
     let const *header =
         reinterpret_cast<const if_msghdr *>(storage.begin() + position);
     if (header->ifm_msglen == 0 || position + header->ifm_msglen > byte_length)
+    {
       break;
+    }
     if (header->ifm_type == RTM_IFINFO2 &&
         header->ifm_msglen >= sizeof(if_msghdr2))
     {
@@ -1833,8 +1876,9 @@ append_kernel_socket_table(StringView table_path, kernel_socket_kind kind,
   usize position = *header_end + 1;
   while (position < text.length) {
     let line = text.next_line(position);
-    while (!line.is_empty() && line[line.length - 1] == ' ')
+    while (!line.is_empty() && line[line.length - 1] == ' ') {
       line = line.substring_of_length(0, line.length - 1);
+    }
     let const separator = line.find_last_character(' ');
     if (!separator.has_value()) continue;
 
@@ -1985,7 +2029,9 @@ fn read_disk_io_snapshot(Allocator allocator) throws -> disk_io_snapshot
     if (key_text == nullptr) return false;
     defer { CFRelease(key_text); };
     let const raw = CFDictionaryGetValue(dictionary, key_text);
-    if (raw == nullptr || CFGetTypeID(raw) != CFNumberGetTypeID()) return false;
+    if (raw == nullptr || CFGetTypeID(raw) != CFNumberGetTypeID()) {
+      return false;
+    }
     i64 signed_value = 0;
     if (!CFNumberGetValue(static_cast<CFNumberRef>(raw), kCFNumberSInt64Type,
                           &signed_value) ||
@@ -2271,7 +2317,9 @@ fn read_memory_status(memory_status &status) wontthrow -> bool
 
   if (!status.has_field(memory_status_field::Available) &&
       status.has_field(memory_status_field::Free))
+  {
     status.available_kib = status.free_kib;
+  }
   return status.has_field(memory_status_field::Total);
 #else
   unused(status);
@@ -2313,7 +2361,9 @@ fn read_swap_status(swap_status &status) wontthrow -> bool
   if (!read_memory_status(memory)) return false;
   if (!memory.has_field(memory_status_field::SwapTotal) ||
       !memory.has_field(memory_status_field::SwapFree))
+  {
     return false;
+  }
   status.total_bytes = memory.swap_total_kib * 1024;
   status.free_bytes = memory.swap_free_kib * 1024;
   status.used_bytes = status.total_bytes > status.free_bytes
@@ -2529,7 +2579,9 @@ fn processor_model_name(Allocator allocator) throws -> Maybe<String>
     let name = line.substring_of_length(0, *colon_position);
     while (!name.is_empty() &&
            (name[name.length - 1] == ' ' || name[name.length - 1] == '\t'))
+    {
       name = name.substring_of_length(0, name.length - 1);
+    }
 
     bool is_known = false;
     for (let const &known : KNOWN_KEYS) {
@@ -2541,8 +2593,9 @@ fn processor_model_name(Allocator allocator) throws -> Maybe<String>
     if (!is_known) continue;
 
     let value = line.substring(*colon_position + 1);
-    while (!value.is_empty() && (value[0] == ' ' || value[0] == '\t'))
+    while (!value.is_empty() && (value[0] == ' ' || value[0] == '\t')) {
       value = value.substring(1);
+    }
     if (value.is_empty()) continue;
 
     return String{allocator, value};
@@ -2734,11 +2787,15 @@ fn list_process_open_files(i64 pid, Allocator allocator,
             while (
                 field_position < line.length &&
                 (line[field_position] == ' ' || line[field_position] == '\t'))
+            {
               field_position++;
+            }
             let const field_start = field_position;
             while (field_position < line.length &&
                    line[field_position] != ' ' && line[field_position] != '\t')
+            {
               field_position++;
+            }
             if (field_start == field_position) {
               is_valid = false;
               break;
@@ -2758,7 +2815,9 @@ fn list_process_open_files(i64 pid, Allocator allocator,
           if (!is_valid) continue;
           while (field_position < line.length &&
                  (line[field_position] == ' ' || line[field_position] == '\t'))
+          {
             field_position++;
+          }
           if (field_position == line.length) continue;
 
           let path = line.substring(field_position);
@@ -2817,7 +2876,9 @@ fn list_process_open_files(i64 pid, Allocator allocator,
        entry = ::readdir(descriptor_directory))
   {
     let const name = StringView{entry->d_name};
-    if (name.is_empty() || !name.is_all_decimal_digits()) continue;
+    if (name.is_empty() || !name.is_all_decimal_digits()) {
+      continue;
+    }
 
     let const parsed_number = name.to<i64>();
     if (parsed_number.is_error()) continue;
@@ -2859,7 +2920,9 @@ fn list_process_open_files(i64 pid, Allocator allocator,
         }
         if (line.length < 6 ||
             line.substring_of_length(0, 6) != StringView{"flags:"})
+        {
           continue;
+        }
 
         let const flags = std::strtol(line.data + 6, nullptr, 8);
         switch (flags & O_ACCMODE) {

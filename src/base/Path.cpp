@@ -76,8 +76,9 @@ fn Path::invocation_filename(StringView path,
                              bool should_strip_marker) wontthrow -> StringView
 {
   let name = filename(path);
-  if (should_strip_marker && !name.is_empty() && name[0] == '-')
+  if (should_strip_marker && !name.is_empty() && name[0] == '-') {
     return name.substring(1);
+  }
 
   return name;
 }
@@ -140,11 +141,14 @@ fn Path::next_component(usize &position) const wontthrow -> component
 
 fn Path::next_component(StringView path, usize &position) wontthrow -> component
 {
-  while (position < path.length && os::is_directory_separator(path[position]))
+  while (position < path.length && os::is_directory_separator(path[position])) {
     position++;
+  }
   let const start = position;
   while (position < path.length && !os::is_directory_separator(path[position]))
+  {
     position++;
+  }
 
   return component{path.substring_of_length(start, position - start), start,
                    position};
@@ -271,7 +275,9 @@ fn Path::to_absolute_without_normalizing() const throws -> Path
     let relative = m_text.view();
     while (relative.length >= 2 && relative[0] == '.' &&
            os::is_directory_separator(relative[1]))
+    {
       relative = relative.substring(2);
+    }
     if (!relative.is_empty()) result.append(relative);
   }
   result.m_text.move_to_allocator(allocator());
@@ -279,7 +285,9 @@ fn Path::to_absolute_without_normalizing() const throws -> Path
   let const root_length = os::path_root_length(result.m_text.view());
   while (result.m_text.count() > root_length &&
          os::is_directory_separator(result.m_text.back()))
+  {
     result.m_text.pop_back();
+  }
   return result;
 }
 
@@ -486,7 +494,9 @@ fn Path::detect_mimic_shell() const throws -> Maybe<mimic_mood>
   char buffer[256];
   let const read_count = os::read_fd(*file, buffer, sizeof(buffer));
   os::close_fd(*file);
-  if (!read_count || *read_count < 3) return None;
+  if (!read_count || *read_count < 3) {
+    return None;
+  }
 
   return detect_mimic_shell_from_source(StringView{buffer, *read_count});
 }

@@ -33,7 +33,9 @@ pure fn fold_leading_digits(StringView text, u32 radix) wontthrow -> u64
 
   for (usize length = 0; length < text.length; length++) {
     let const digit = utils::hex_digit_value(text[length]);
-    if (!digit.has_value() || *digit >= radix) break;
+    if (!digit.has_value() || *digit >= radix) {
+      break;
+    }
 
     magnitude = magnitude * radix + *digit;
   }
@@ -317,8 +319,9 @@ public:
       return StringView{};
     }
     let const name_start = pos;
-    while (pos < source.length && lexer::is_variable_name(source[pos]))
+    while (pos < source.length && lexer::is_variable_name(source[pos])) {
       pos++;
+    }
     return source.substring_of_length(name_start, pos - name_start);
   }
 
@@ -354,10 +357,11 @@ public:
     let const inner_start = pos;
     usize depth = 1;
     while (pos < source.length && depth > 0) {
-      if (source[pos] == '[')
+      if (source[pos] == '[') {
         depth++;
-      else if (source[pos] == ']' && --depth == 0)
+      } else if (source[pos] == ']' && --depth == 0) {
         break;
+      }
       pos++;
     }
     if (depth != 0)
@@ -459,8 +463,9 @@ public:
     skip_spaces();
     if (pos < source.length && lexer::is_variable_name_start(source[pos])) {
       let const name_start = pos;
-      while (pos < source.length && lexer::is_variable_name(source[pos]))
+      while (pos < source.length && lexer::is_variable_name(source[pos])) {
         pos++;
+      }
       let const name = source.substring_of_length(name_start, pos - name_start);
       const lvalue target{name, read_optional_subscript(), name_start};
 
@@ -765,7 +770,9 @@ public:
   {
     if (arguments.count() >= minimum_count &&
         arguments.count() <= maximum_count)
+    {
       return;
+    }
     let const allocator = bump_allocator(arena);
     let detail = String{allocator, "The function accepts "};
     if (maximum_count == ~usize{0}) {
@@ -849,10 +856,11 @@ public:
     u32 requested_scale = 20;
     if (arguments.count() == 2) {
       let const parsed = require_integer_argument(name, arguments[1]);
-      if (parsed < 0 || parsed > 100000)
+      if (parsed < 0 || parsed > 100000) {
         fail_span(arguments[1].start, arguments[1].end,
                   "Invalid scale for '" + String{name} + "'",
                   "The scale must be between 0 and 100000");
+      }
       requested_scale = static_cast<u32>(parsed);
     }
     return requested_scale;
@@ -1315,15 +1323,18 @@ public:
       let const body_start = text[0] == '-' ? usize{1} : usize{0};
       if (text.count() > body_start + 1 && text[body_start] == '0' &&
           text[body_start + 1] == '.')
+      {
         digit_count--;
+      }
       return ArithmeticValue{static_cast<i64>(digit_count)};
     }
     case calculator_function::Ln:
       require_argument_count(name, arguments, 1, 2);
-      if (arguments[0].is_zero() || arguments[0].is_negative())
+      if (arguments[0].is_zero() || arguments[0].is_negative()) {
         fail_span(arguments[0].start, arguments[0].end,
                   "Logarithm operand is not positive",
                   "ln requires a value greater than 0");
+      }
       return calculator_ln(arguments[0],
                            calculator_requested_scale(name, arguments));
     case calculator_function::Max:
@@ -1335,7 +1346,9 @@ public:
             result.compare(arguments[index], bump_allocator(arena));
         if ((*function == calculator_function::Max && ordering < 0) ||
             (*function == calculator_function::Min && ordering > 0))
+        {
           result = arguments[index];
+        }
       }
       return result;
     }
@@ -1363,10 +1376,11 @@ public:
       if (arguments.count() == 2) {
         let const requested_scale =
             require_integer_argument(name, arguments[1]);
-        if (requested_scale < 0 || requested_scale > 100000)
+        if (requested_scale < 0 || requested_scale > 100000) {
           fail_span(arguments[1].start, arguments[1].end,
                     "Invalid scale for 'sqrt'",
                     "The scale must be between 0 and 100000");
+        }
         decimal_scale = static_cast<u32>(requested_scale);
       }
       return ArithmeticValue::square_root(arguments[0], decimal_scale, arena);
@@ -1377,7 +1391,9 @@ public:
 
   fn reject_invalid_digit(usize number_start) throws -> void
   {
-    if (pos >= source.length || !is_number_continuation(source[pos])) return;
+    if (pos >= source.length || !is_number_continuation(source[pos])) {
+      return;
+    }
 
     let const token = source.substring(number_start);
     usize base = arithmetic_internal::detect_radix_prefix(token).radix;
@@ -1387,8 +1403,9 @@ public:
     }
 
     usize end = pos;
-    while (end < source.length && is_number_continuation(source[end]))
+    while (end < source.length && is_number_continuation(source[end])) {
       end++;
+    }
     fail_span(number_start, end,
               "Invalid digit '" + String{source.substring_of_length(pos, 1)} +
                   "' in the number '" +
@@ -1432,8 +1449,9 @@ public:
     }
     if (pos < source.length && lexer::is_variable_name_start(source[pos])) {
       const lvalue target = read_lvalue();
-      if (should_error_unset && !target.subscript.has_value() && consume("("))
+      if (should_error_unset && !target.subscript.has_value() && consume("(")) {
         return apply_calculator_function(target.name, target.name_position);
+      }
       if (consume("++")) return postfix_step(target, 1);
       if (consume("--")) return postfix_step(target, -1);
       return read_lvalue_value(target);
@@ -1532,7 +1550,9 @@ static fn lex_exact_arith_number(StringView from, ArithmeticValue *out_value,
   let const detected = arithmetic_internal::detect_radix_prefix(from);
   let digit_count = arithmetic_internal::count_leading_digits(
       from.substring(detected.prefix_length), detected.radix);
-  if (digit_count == 0 && detected.prefix_length == 0) digit_count = 1;
+  if (digit_count == 0 && detected.prefix_length == 0) {
+    digit_count = 1;
+  }
   let const consumed = detected.prefix_length + digit_count;
   *out_value = ArithmeticValue::parse(
       from.substring_of_length(detected.prefix_length, digit_count),
@@ -1587,8 +1607,9 @@ static fn tokenize_arithmetic(StringView src,
     if (lexer::is_variable_name_start(current_byte)) {
       let const name_start = i;
       i++;
-      while (i < src.length && lexer::is_variable_name(src[i]))
+      while (i < src.length && lexer::is_variable_name(src[i])) {
         i++;
+      }
       out.push(
           arith_token{arith_token::kind::name, 0,
                       src.substring_of_length(name_start, i - name_start)});
@@ -1597,10 +1618,11 @@ static fn tokenize_arithmetic(StringView src,
         let const inner_start = i;
         usize depth = 1;
         while (i < src.length && depth > 0) {
-          if (src[i] == '[')
+          if (src[i] == '[') {
             depth++;
-          else if (src[i] == ']' && --depth == 0)
+          } else if (src[i] == ']' && --depth == 0) {
             break;
+          }
           i++;
         }
         if (depth != 0) {
@@ -1652,7 +1674,9 @@ arith_tokens_are_simple(const ArrayList<arith_token> &toks) wontthrow -> bool
     if (t.k == arith_token::kind::subscript) return false;
     if (t.k == arith_token::kind::number &&
         t.text.find_character('.').has_value())
+    {
       return false;
+    }
     if (t.k == arith_token::kind::op && arith_op_is_complex(t.text)) {
       return false;
     }

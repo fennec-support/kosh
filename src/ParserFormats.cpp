@@ -74,7 +74,9 @@ pure fn parser_format_filename(StringView path) wontthrow -> StringView
 {
   usize start = 0;
   for (usize position = 0; position < path.length; position++)
-    if (path[position] == '/' || path[position] == '\\') start = position + 1;
+    if (path[position] == '/' || path[position] == '\\') {
+      start = position + 1;
+    }
 
   return path.substring(start);
 }
@@ -88,8 +90,12 @@ pure fn parser_format_ascii_equal(StringView left, StringView right) wontthrow
     let left_byte = left[position];
     let right_byte = right[position];
     if (left_byte == right_byte) continue;
-    if (left_byte >= 'A' && left_byte <= 'Z') left_byte += 'a' - 'A';
-    if (right_byte >= 'A' && right_byte <= 'Z') right_byte += 'a' - 'A';
+    if (left_byte >= 'A' && left_byte <= 'Z') {
+      left_byte += 'a' - 'A';
+    }
+    if (right_byte >= 'A' && right_byte <= 'Z') {
+      right_byte += 'a' - 'A';
+    }
     if (left_byte != right_byte) return false;
   }
 
@@ -155,7 +161,9 @@ static fn detect_format_kind(const parser_format_input &input) throws
   if (path_holds(path, "/.github/workflows/") ||
       parser_format_ascii_equal(filename, "action.yml") ||
       parser_format_ascii_equal(filename, "action.yaml"))
+  {
     return parser_format_kind::GithubActions;
+  }
   if (path_holds(path, "/.gitea/workflows/"))
     return parser_format_kind::GiteaActions;
   if (path_holds(path, "/.forgejo/workflows/"))
@@ -167,48 +175,70 @@ static fn detect_format_kind(const parser_format_input &input) throws
   if (path_holds(path, "/.woodpecker/") ||
       parser_format_ascii_equal(filename, ".woodpecker.yml") ||
       parser_format_ascii_equal(filename, ".woodpecker.yaml"))
+  {
     return parser_format_kind::Woodpecker;
+  }
   if (path_holds(path, "/.circleci/") &&
       (path_ends_with(path, ".yml") || path_ends_with(path, ".yaml")))
+  {
     return parser_format_kind::CircleCi;
+  }
   if (parser_format_ascii_equal(filename, "azure-pipelines.yml") ||
       parser_format_ascii_equal(filename, "azure-pipelines.yaml"))
+  {
     return parser_format_kind::AzurePipelines;
+  }
   if (parser_format_ascii_equal(filename, "bitbucket-pipelines.yml") ||
       parser_format_ascii_equal(filename, "bitbucket-pipelines.yaml"))
+  {
     return parser_format_kind::BitbucketPipelines;
+  }
   if (path_holds(path, "/.buildkite/") &&
       (path_ends_with(path, ".yml") || path_ends_with(path, ".yaml")))
+  {
     return parser_format_kind::Buildkite;
+  }
   if (parser_format_ascii_equal(filename, ".travis.yml"))
     return parser_format_kind::TravisCi;
   if (parser_format_ascii_equal(filename, "cloudbuild.yml") ||
       parser_format_ascii_equal(filename, "cloudbuild.yaml"))
+  {
     return parser_format_kind::CloudBuild;
+  }
   if (parser_format_ascii_equal(filename, "compose.yml") ||
       parser_format_ascii_equal(filename, "compose.yaml") ||
       parser_format_ascii_equal(filename, "docker-compose.yml") ||
       parser_format_ascii_equal(filename, "docker-compose.yaml"))
+  {
     return parser_format_kind::Compose;
+  }
   if (parser_format_ascii_equal(filename, "taskfile.yml") ||
       parser_format_ascii_equal(filename, "taskfile.yaml") ||
       parser_format_ascii_equal(filename, "taskfile.dist.yml") ||
       parser_format_ascii_equal(filename, "taskfile.dist.yaml"))
+  {
     return parser_format_kind::Taskfile;
+  }
   if (parser_format_ascii_equal(filename, "dockerfile") ||
       parser_format_ascii_equal(filename, "containerfile") ||
       path_ends_with(filename, ".dockerfile") ||
       path_ends_with(filename, ".containerfile") ||
       path_starts_with(filename, "dockerfile.") ||
       path_starts_with(filename, "containerfile."))
+  {
     return parser_format_kind::Dockerfile;
+  }
   if (parser_format_ascii_equal(filename, "makefile") ||
       parser_format_ascii_equal(filename, "gnumakefile") ||
       path_ends_with(filename, ".mk"))
+  {
     return parser_format_kind::Makefile;
+  }
   if (parser_format_ascii_equal(filename, "justfile") ||
       parser_format_ascii_equal(filename, ".justfile"))
+  {
     return parser_format_kind::Justfile;
+  }
   if (parser_format_ascii_equal(filename, "package.json"))
     return parser_format_kind::PackageJson;
   if (path_ends_with(path, "/.vscode/tasks.json"))
@@ -216,12 +246,16 @@ static fn detect_format_kind(const parser_format_input &input) throws
   if (parser_format_ascii_equal(filename, "devcontainer.json") &&
       (path_holds(path, "/.devcontainer/") ||
        path_ends_with(path, "/.devcontainer.json")))
+  {
     return parser_format_kind::DevContainer;
+  }
   if (path_ends_with(path, ".spec")) return parser_format_kind::RpmSpec;
   if (path_ends_with(path, ".md") || path_ends_with(path, ".markdown") ||
       parser_format_ascii_equal(filename, "readme") ||
       parser_format_ascii_equal(language_id, "markdown"))
+  {
     return parser_format_kind::Markdown;
+  }
   if (parser_format_ascii_equal(language_id, "dockercompose"))
     return parser_format_kind::Compose;
 
@@ -230,26 +264,40 @@ static fn detect_format_kind(const parser_format_input &input) throws
   {
     if (parser_format_has_substring(source, "apiVersion:") &&
         parser_format_has_substring(source, "kind:"))
+    {
       return parser_format_kind::Kubernetes;
+    }
     if (parser_format_has_substring(source, "runs-on:") &&
         parser_format_has_substring(source, "steps:"))
+    {
       return parser_format_kind::GithubActions;
+    }
     if (parser_format_has_substring(source, "tasks:") &&
         parser_format_has_substring(source, "version:"))
+    {
       return parser_format_kind::Taskfile;
+    }
     if (parser_format_has_substring(source, "hosts:") &&
         parser_format_has_substring(source, "tasks:"))
+    {
       return parser_format_kind::Ansible;
+    }
     if (parser_format_has_substring(source, "services:") &&
         (parser_format_has_substring(source, "image:") ||
          parser_format_has_substring(source, "build:")))
+    {
       return parser_format_kind::Compose;
+    }
     if (parser_format_has_substring(source, "pipelines:") &&
         parser_format_has_substring(source, "script:"))
+    {
       return parser_format_kind::BitbucketPipelines;
+    }
     if (parser_format_has_substring(source, "jobs:") &&
         parser_format_has_substring(source, "script:"))
+    {
       return parser_format_kind::GitlabCi;
+    }
 
     return parser_format_kind::UnknownHost;
   }
@@ -260,11 +308,15 @@ static fn detect_format_kind(const parser_format_input &input) throws
     return parser_format_kind::Makefile;
   if (parser_format_ascii_equal(language_id, "json") ||
       parser_format_ascii_equal(language_id, "jsonc"))
+  {
     return parser_format_kind::UnknownHost;
+  }
 
   if (known_host_extension(path) ||
       parser_format_ascii_equal(filename, "jenkinsfile"))
+  {
     return parser_format_kind::UnknownHost;
+  }
 
   if (path.is_empty() || !language_id.is_empty() ||
       Path{path}.is_shell_source(source))
@@ -301,7 +353,9 @@ fn parser_format_add_fragment(parsed_format_document &document,
                               parser_format_codec codec, mimic_mood mood) throws
     -> void
 {
-  if (host_start >= host_end || host_end > host_source.length) return;
+  if (host_start >= host_end || host_end > host_source.length) {
+    return;
+  }
 
   let fragment = parser_format_fragment{};
   fragment.analysis_source =
@@ -342,10 +396,13 @@ fn parser_format_add_indented_fragment(parsed_format_document &document,
     let removed = usize{0};
     while (removed < line.length && removed < indent_length &&
            line[removed] == ' ')
+    {
       removed++;
+    }
     deindented.append(line.substring(removed));
-    if (position <= host_end && position > line_start + line.length)
+    if (position <= host_end && position > line_start + line.length) {
       deindented.push('\n');
+    }
   }
   fragment.shell_source = steal(deindented);
 }
@@ -357,11 +414,14 @@ static fn yaml_key_match(StringView line, const StringView *keys,
   usize position = 0;
   while (position < line.length &&
          (line[position] == ' ' || line[position] == '\t'))
+  {
     position++;
+  }
   if (position < line.length && line[position] == '-') {
     position++;
-    while (position < line.length && line[position] == ' ')
+    while (position < line.length && line[position] == ' ') {
       position++;
+    }
   }
   if (position >= line.length) return false;
 
@@ -375,7 +435,9 @@ static fn yaml_key_match(StringView line, const StringView *keys,
     content_position = position + key.length + 1;
     while (content_position < line.length &&
            (line[content_position] == ' ' || line[content_position] == '\t'))
+    {
       content_position++;
+    }
     return true;
   }
 
@@ -385,8 +447,9 @@ static fn yaml_key_match(StringView line, const StringView *keys,
 static pure fn leading_spaces(StringView line) wontthrow -> usize
 {
   usize count = 0;
-  while (count < line.length && line[count] == ' ')
+  while (count < line.length && line[count] == ' ') {
     count++;
+  }
   return count;
 }
 
@@ -398,13 +461,19 @@ static pure fn mood_near(StringView source, usize position,
   if (parser_format_has_substring(nearby, "shell: bash") ||
       parser_format_has_substring(nearby, "executable: /bin/bash") ||
       parser_format_has_substring(nearby, "interpreter: bash"))
+  {
     return mimic_mood::Bash;
+  }
   if (parser_format_has_substring(nearby, "shell: kosh") ||
       parser_format_has_substring(nearby, "executable: kosh"))
+  {
     return mimic_mood::Default;
+  }
   if (parser_format_has_substring(nearby, "shell: sh") ||
       parser_format_has_substring(nearby, "executable: /bin/sh"))
+  {
     return mimic_mood::Posix;
+  }
 
   return fallback;
 }
@@ -414,8 +483,9 @@ static pure fn yaml_key_position(StringView line) wontthrow -> usize
   usize position = leading_spaces(line);
   if (position < line.length && line[position] == '-') {
     position++;
-    while (position < line.length && line[position] == ' ')
+    while (position < line.length && line[position] == ' ') {
       position++;
+    }
   }
 
   return position;
@@ -428,7 +498,9 @@ static pure fn yaml_line_value(StringView line, StringView key) wontthrow
   if (position + key.length >= line.length ||
       line.substring_of_length(position, key.length) != key ||
       line[position + key.length] != ':')
+  {
     return None;
+  }
 
   return line.substring(position + key.length + 1).trim_blanks();
 }
@@ -438,10 +510,13 @@ static fn previous_line(StringView source, usize &position) wontthrow
 {
   if (position == 0) return StringView{};
   usize end = position;
-  if (end > 0 && source[end - 1] == '\n') end--;
+  if (end > 0 && source[end - 1] == '\n') {
+    end--;
+  }
   let start = end;
-  while (start > 0 && source[start - 1] != '\n')
+  while (start > 0 && source[start - 1] != '\n') {
     start--;
+  }
   position = start;
 
   return source.substring_of_length(start, end - start);
@@ -450,8 +525,9 @@ static fn previous_line(StringView source, usize &position) wontthrow
 static pure fn workflow_shell_mood(StringView value) wontthrow
     -> Maybe<mimic_mood>
 {
-  if (!value.is_empty() && (value[0] == '\'' || value[0] == '"'))
+  if (!value.is_empty() && (value[0] == '\'' || value[0] == '"')) {
     value = value.substring(1);
+  }
   if (value.is_empty()) return None;
 
   switch (value[0]) {
@@ -486,7 +562,9 @@ static pure fn selected_workflow_mood(StringView source, usize line_start,
     let const previous_indent = leading_spaces(previous);
     if (previous_indent == current_indent &&
         previous_indent < previous.length && previous[previous_indent] == '-')
+    {
       break;
+    }
     if (let const shell = yaml_line_value(previous, "shell"); shell.has_value())
       return workflow_shell_mood(*shell);
     if (previous_indent < current_indent) break;
@@ -578,11 +656,14 @@ fn parser_format_extract_yaml_keys(parsed_format_document &document,
       if (item_line.trim_blanks().is_empty()) continue;
       if (leading_spaces(item_line) <= leading_spaces(line)) break;
       let item_content = leading_spaces(item_line);
-      if (item_content >= item_line.length || item_line[item_content] != '-')
+      if (item_content >= item_line.length || item_line[item_content] != '-') {
         continue;
+      }
       item_content++;
       while (item_content < item_line.length && item_line[item_content] == ' ')
+      {
         item_content++;
+      }
       add_yaml_inline_fragment(document, source, item_start + item_content,
                                item_start + item_line.length, *mood);
     }
@@ -657,7 +738,9 @@ fn parser_format_extract_json_keys(parsed_format_document &document,
     }
     let const key_start = ++position;
     while (position < source.length && source[position] != '"') {
-      if (source[position] == '\\' && position + 1 < source.length) position++;
+      if (source[position] == '\\' && position + 1 < source.length) {
+        position++;
+      }
       position++;
     }
     if (position >= source.length) break;
@@ -667,8 +750,12 @@ fn parser_format_extract_json_keys(parsed_format_document &document,
     while (position < source.length &&
            (source[position] == ' ' || source[position] == '\t' ||
             source[position] == '\n' || source[position] == '\r'))
+    {
       position++;
-    if (position >= source.length || source[position] != ':') continue;
+    }
+    if (position >= source.length || source[position] != ':') {
+      continue;
+    }
     position++;
 
     const parser_format_json_key *matched_key = nullptr;
@@ -683,11 +770,17 @@ fn parser_format_extract_json_keys(parsed_format_document &document,
     while (position < source.length &&
            (source[position] == ' ' || source[position] == '\t' ||
             source[position] == '\n' || source[position] == '\r'))
+    {
       position++;
-    if (position >= source.length || source[position] != '"') continue;
+    }
+    if (position >= source.length || source[position] != '"') {
+      continue;
+    }
     let const value_start = ++position;
     while (position < source.length && source[position] != '"') {
-      if (source[position] == '\\' && position + 1 < source.length) position++;
+      if (source[position] == '\\' && position + 1 < source.length) {
+        position++;
+      }
       position++;
     }
     let const fragment_count = document.fragments.count();
@@ -740,12 +833,14 @@ constexpr StaticStringSet ARM_TERMINATORS{ARM_TERMINATOR_KEYS};
 pure static fn line_first_token(StringView line) wontthrow -> StringView
 {
   usize start = 0;
-  while (start < line.length && (line[start] == ' ' || line[start] == '\t'))
+  while (start < line.length && (line[start] == ' ' || line[start] == '\t')) {
     start++;
+  }
 
   usize end = start;
-  while (end < line.length && line[end] != ' ' && line[end] != '\t')
+  while (end < line.length && line[end] != ' ' && line[end] != '\t') {
     end++;
+  }
 
   return line.substring_of_length(start, end - start);
 }
@@ -753,12 +848,14 @@ pure static fn line_first_token(StringView line) wontthrow -> StringView
 pure static fn line_last_token(StringView line) wontthrow -> StringView
 {
   usize end = line.length;
-  while (end > 0 && (line[end - 1] == ' ' || line[end - 1] == '\t'))
+  while (end > 0 && (line[end - 1] == ' ' || line[end - 1] == '\t')) {
     end--;
+  }
 
   usize start = end;
-  while (start > 0 && line[start - 1] != ' ' && line[start - 1] != '\t')
+  while (start > 0 && line[start - 1] != ' ' && line[start - 1] != '\t') {
     start--;
+  }
 
   return line.substring_of_length(start, end - start);
 }
@@ -766,8 +863,9 @@ pure static fn line_last_token(StringView line) wontthrow -> StringView
 static fn trimmed_of_trailing_newlines(StringView text) wontthrow -> StringView
 {
   usize length = text.length;
-  while (length > 0 && text[length - 1] == '\n')
+  while (length > 0 && text[length - 1] == '\n') {
     length--;
+  }
 
   return text.substring_of_length(0, length);
 }
@@ -794,11 +892,14 @@ static fn encode_continued(const parser_format_fragment &fragment,
     let const is_wrapped = last == "\\";
     if (is_wrapped) {
       usize length = line.length;
-      while (length > 0 && line[length - 1] == '\\')
+      while (length > 0 && line[length - 1] == '\\') {
         length--;
+      }
       while (length > 0 &&
              (line[length - 1] == ' ' || line[length - 1] == '\t'))
+      {
         length--;
+      }
       line = line.substring_of_length(0, length);
       last = line_last_token(line);
     }
@@ -887,7 +988,9 @@ fn parser_format_apply_replacements(
     if (replacement.start_position < position ||
         replacement.end_position < replacement.start_position ||
         replacement.end_position > source.length)
+    {
       return None;
+    }
     result.append(source.substring_of_length(
         position, replacement.start_position - position));
     result.append(replacement.replacement.view());
@@ -909,12 +1012,16 @@ fn parser_format_analysis_source(const parsed_format_document &document,
   for (usize position = 0; position < host_source.length; position++) {
     while (fragment_index < document.fragments.count() &&
            position >= document.fragments[fragment_index].host_end)
+    {
       fragment_index++;
+    }
     if (fragment_index < document.fragments.count() &&
         document.fragments[fragment_index].contains(position))
+    {
       result.push(document.fragments[fragment_index].analysis_source[position]);
-    else
+    } else {
       result.push(host_source[position] == '\n' ? '\n' : ' ');
+    }
   }
 
   return result;

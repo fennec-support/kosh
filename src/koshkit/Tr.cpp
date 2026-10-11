@@ -101,8 +101,9 @@ static fn expand_posix_class(StringView set, usize position,
   }
 
   usize scan = position + 2;
-  while (scan + 1 < set.length && !(set[scan] == ':' && set[scan + 1] == ']'))
+  while (scan + 1 < set.length && !(set[scan] == ':' && set[scan + 1] == ']')) {
     scan++;
+  }
 
   if (scan + 1 >= set.length || set[scan] != ':' || set[scan + 1] != ']') {
     return 0;
@@ -143,8 +144,9 @@ static fn expand_set(StringView set, Allocator allocator,
       let star = i + 1 + repeated.width_count;
       if (star < set.length && set[star] == '*') {
         usize close = star + 1;
-        while (close < set.length && set[close] >= '0' && set[close] <= '9')
+        while (close < set.length && set[close] >= '0' && set[close] <= '9') {
           close++;
+        }
         if (close < set.length && set[close] == ']') {
           let const digits = set.substring_of_length(star + 1, close - star - 1);
           let const base = !digits.is_empty() && digits[0] == '0'

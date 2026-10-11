@@ -72,8 +72,9 @@ fn report_value(StringView report, const StringView *names, usize name_count,
       if (!line.starts_with(names[index])) continue;
 
       let value = line.substring(names[index].length).trim_blanks();
-      if (!value.is_empty() && value[0] == ':')
+      if (!value.is_empty() && value[0] == ':') {
         value = value.substring(1).trim_blanks();
+      }
       if (!value.is_empty()) return String{allocator, value};
     }
   }
@@ -442,7 +443,9 @@ fn EvilDisk::execute(
     for (let const &filesystem : filesystems) {
       if (filesystem.volume_name.is_empty() &&
           filesystem.volume_uuid.is_empty())
+      {
         continue;
+      }
       identity_rows.push(identity_row{
           filesystem.target.view(),
           filesystem.volume_name.is_empty() ? StringView{"-"}

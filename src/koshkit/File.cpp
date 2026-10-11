@@ -184,11 +184,15 @@ static fn next_magic_field(StringView line, usize &position) wontthrow
 {
   while (position < line.length &&
          (line[position] == ' ' || line[position] == '\t'))
+  {
     position++;
+  }
   let const start = position;
   while (position < line.length && line[position] != ' ' &&
          line[position] != '\t')
+  {
     position++;
+  }
   return line.substring_of_length(start, position - start);
 }
 
@@ -256,7 +260,9 @@ static fn parse_magic_type(StringView text, file_magic_rule &rule) throws
         let const size_start = position;
         while (position < text.length && text[position] >= '0' &&
                text[position] <= '9')
+        {
           position++;
+        }
         if (size_start == position) return false;
         let const byte_count = parse_magic_number(
             text.substring_of_length(size_start, position - size_start));
@@ -288,7 +294,9 @@ static fn parse_magic_rule(StringView line, Allocator allocator,
                            file_magic_rule &rule) throws -> bool
 {
   line = line.trim_blanks();
-  if (line.is_empty() || line[0] == '#') return false;
+  if (line.is_empty() || line[0] == '#') {
+    return false;
+  }
 
   usize position = 0;
   let offset = next_magic_field(line, position);
@@ -296,11 +304,15 @@ static fn parse_magic_rule(StringView line, Allocator allocator,
   let value = next_magic_field(line, position);
   while (position < line.length &&
          (line[position] == ' ' || line[position] == '\t'))
+  {
     position++;
+  }
   let const message = line.substring(position);
   if (offset.is_empty() || type.is_empty() || value.is_empty() ||
       message.is_empty())
+  {
     return false;
+  }
 
   if (offset[0] == '>') {
     rule.is_continuation = true;
@@ -361,7 +373,9 @@ static fn read_magic_number(const file_magic_rule &rule, StringView bytes,
   if (rule.byte_count == 0 || rule.byte_count > 8 ||
       rule.offset > bytes.length ||
       rule.byte_count > bytes.length - rule.offset)
+  {
     return false;
+  }
 
   value =
       os::read_native_endian_bytes(bytes.data + rule.offset, rule.byte_count);
@@ -398,7 +412,9 @@ static fn magic_rule_matches(const file_magic_rule &rule, StringView bytes,
     return read_magic_number(rule, bytes, number);
   if (rule.offset > bytes.length ||
       rule.expected_text.count() > bytes.length - rule.offset)
+  {
     return false;
+  }
   return __builtin_memcmp(bytes.data + rule.offset, rule.expected_text.data(),
                           rule.expected_text.count()) == 0;
 }
@@ -508,7 +524,9 @@ static pure fn matches_builtin_file_signature(
 {
   if (signature.offset > bytes.length ||
       signature.bytes.length > bytes.length - signature.offset)
+  {
     return false;
+  }
 
   if (signature.bytes.is_empty()) return true;
 
@@ -533,7 +551,9 @@ static pure fn file_content_description(StringView bytes) wontthrow
         static_cast<usize>(static_cast<u8>(bytes[0x3f])) << 24;
     if (pe_offset <= bytes.length && 4 <= bytes.length - pe_offset &&
         bytes.substring_of_length(pe_offset, 4) == StringView{"PE\0\0", 4})
+    {
       return "PE executable";
+    }
   }
 
   if (bytes.length >= 8 &&
@@ -555,21 +575,28 @@ static pure fn file_content_description(StringView bytes) wontthrow
 
   if (bytes.length >= 12 && bytes.substring_of_length(0, 4) == "FORM") {
     let const kind = bytes.substring_of_length(8, 4);
-    if (kind == "AIFF" || kind == "AIFC") return "AIFF audio";
+    if (kind == "AIFF" || kind == "AIFC") {
+      return "AIFF audio";
+    }
   }
 
   if (bytes.length >= 16 && bytes.substring_of_length(0, 8) == "AT&TFORM") {
     let const kind = bytes.substring_of_length(12, 4);
-    if (kind == "DJVU" || kind == "DJVM" || kind == "DJVI" || kind == "THUM")
+    if (kind == "DJVU" || kind == "DJVM" || kind == "DJVI" || kind == "THUM") {
       return "DjVu document";
+    }
   }
 
   if (bytes.length >= 12 && bytes.substring_of_length(4, 4) == "ftyp") {
     let const brand = bytes.substring_of_length(8, 4);
-    if (brand == "avif" || brand == "avis") return "AVIF image";
+    if (brand == "avif" || brand == "avis") {
+      return "AVIF image";
+    }
     if (brand == "heic" || brand == "heix" || brand == "hevc" ||
         brand == "hevx" || brand == "mif1" || brand == "msf1")
+    {
       return "HEIF image";
+    }
   }
 
   if (bytes.length >= 4 &&
@@ -583,7 +610,9 @@ static pure fn file_content_description(StringView bytes) wontthrow
 
   if (bytes.length > 376 && bytes[0] == 'G' && bytes[188] == 'G' &&
       bytes[376] == 'G')
+  {
     return "MPEG transport stream";
+  }
 
   constexpr builtin_file_signature SIGNATURES[] = {
       make_builtin_file_signature(0, "\x89PNG\r\n\x1a\n", "PNG image"),
@@ -1117,7 +1146,9 @@ fn File::execute(const ExecContext &ec, EvalContext &cxt,
         result.content.reset();
       }
 
-      if (is_reader_complete || was_custom_sampling_interrupted) break;
+      if (is_reader_complete || was_custom_sampling_interrupted) {
+        break;
+      }
     }
   }
 

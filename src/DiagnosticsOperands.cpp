@@ -169,8 +169,9 @@ cold fn view_has_decimal_fraction(StringView view) wontthrow -> bool
   }
 
   let const integer_start = position;
-  while (position < view.length && lexer::is_number(view[position]))
+  while (position < view.length && lexer::is_number(view[position])) {
     position++;
+  }
 
   if (position == integer_start) return false;
 
@@ -181,8 +182,9 @@ cold fn view_has_decimal_fraction(StringView view) wontthrow -> bool
   position++;
 
   let const fraction_start = position;
-  while (position < view.length && lexer::is_number(view[position]))
+  while (position < view.length && lexer::is_number(view[position])) {
     position++;
+  }
 
   return position > fraction_start && position == view.length;
 }
@@ -229,11 +231,15 @@ cold fn view_repeats_a_letter(StringView view) wontthrow -> bool
     let const byte = view[position];
     if (byte >= 'a' && byte <= 'z') {
       let const letter_bit = 1u << static_cast<u32>(byte - 'a');
-      if ((seen_lowercase & letter_bit) != 0) return true;
+      if ((seen_lowercase & letter_bit) != 0) {
+        return true;
+      }
       seen_lowercase |= letter_bit;
     } else if (byte >= 'A' && byte <= 'Z') {
       let const letter_bit = 1u << static_cast<u32>(byte - 'A');
-      if ((seen_uppercase & letter_bit) != 0) return true;
+      if ((seen_uppercase & letter_bit) != 0) {
+        return true;
+      }
       seen_uppercase |= letter_bit;
     }
   }
@@ -363,7 +369,9 @@ cold fn find_echo_escape_sequence_outside_substitutions(
 
     let const start = segment.source_position - base;
     let const end = start + segment.source_length;
-    if (start < cursor || end > operand_text.length) continue;
+    if (start < cursor || end > operand_text.length) {
+      continue;
+    }
 
     let const found = find_echo_escape_sequence(
         operand_text.substring_of_length(cursor, start - cursor));
@@ -456,30 +464,39 @@ cold fn printf_consumed_argument_count(StringView format,
     while (i < format.length &&
            (format[i] == '-' || format[i] == '+' || format[i] == ' ' ||
             format[i] == '#' || format[i] == '0' || format[i] == '\''))
+    {
       i++;
+    }
     if (i >= format.length) break;
     if (format[i] == '*') {
       count++;
       i++;
-    } else
-      while (i < format.length && (format[i] >= '0' && format[i] <= '9'))
+    } else {
+      while (i < format.length && (format[i] >= '0' && format[i] <= '9')) {
         i++;
+      }
+    }
     if (i < format.length && format[i] == '.') {
       i++;
       if (i < format.length && format[i] == '*') {
         count++;
         i++;
-      } else
-        while (i < format.length && (format[i] >= '0' && format[i] <= '9'))
+      } else {
+        while (i < format.length && (format[i] >= '0' && format[i] <= '9')) {
           i++;
+        }
+      }
     }
     while (i < format.length &&
            (format[i] == 'h' || format[i] == 'l' || format[i] == 'L' ||
             format[i] == 'j' || format[i] == 'z' || format[i] == 't'))
+    {
       i++;
+    }
     if (i < format.length && format[i] == '(') {
-      while (i < format.length && format[i] != ')')
+      while (i < format.length && format[i] != ')') {
         i++;
+      }
       if (i + 1 < format.length) i++;
     }
     if (i < format.length && format[i] == 'q') {
@@ -764,8 +781,9 @@ fn check_posix_parameter_expansion(AnalysisContext &actx,
 
   const usize name_start = text[0] == '#' ? 1 : 0;
   usize position = name_start;
-  while (position < text.length && lexer::is_variable_name(text[position]))
+  while (position < text.length && lexer::is_variable_name(text[position])) {
     position++;
+  }
 
   if (position == name_start) return;
 
@@ -840,12 +858,14 @@ pure fn arithmetic_assignment_target(StringView expression,
   default: break;
   }
 
-  while (at > 0 && lexer::is_whitespace(expression[at - 1]))
+  while (at > 0 && lexer::is_whitespace(expression[at - 1])) {
     at--;
+  }
 
   let const end = at;
-  while (at > 0 && lexer::is_variable_name(expression[at - 1]))
+  while (at > 0 && lexer::is_variable_name(expression[at - 1])) {
     at--;
+  }
 
   if (at == end) return {};
   if (!lexer::is_variable_name_start(expression[at])) return {};

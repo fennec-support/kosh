@@ -89,7 +89,9 @@ static fn path_attributes(StringView path) wontthrow -> DWORD
 
 static fn is_trusted_owner_sid(PSID sid) wontthrow -> bool
 {
-  if (sid == nullptr || IsValidSid(sid) == FALSE) return false;
+  if (sid == nullptr || IsValidSid(sid) == FALSE) {
+    return false;
+  }
   if (IsWellKnownSid(sid, WinLocalSystemSid) != FALSE) return true;
   if (IsWellKnownSid(sid, WinBuiltinAdministratorsSid) != FALSE) return true;
 
@@ -263,7 +265,9 @@ fn canonical_path(const Path &path) wontthrow -> Maybe<Path>
     buffer.reserve(required);
     let const length = GetFinalPathNameByHandleW(handle, buffer.begin(),
                                                  required, path_format);
-    if (length == 0 || length >= required) return koshka::None;
+    if (length == 0 || length >= required) {
+      return koshka::None;
+    }
     let const resolved_text = wide_to_utf8(
         buffer.begin(), static_cast<usize>(length), heap_allocator());
     if (!resolved_text.has_value()) return koshka::None;
@@ -285,11 +289,15 @@ fn canonical_path(const Path &path) wontthrow -> Maybe<Path>
   while (scan_position < text.length) {
     while (scan_position < text.length &&
            is_directory_separator(text[scan_position]))
+    {
       scan_position++;
+    }
     let const component_start = scan_position;
     while (scan_position < text.length &&
            !is_directory_separator(text[scan_position]))
+    {
       scan_position++;
+    }
     let const component_length = scan_position - component_start;
     if ((component_length == 1 && text[component_start] == '.') ||
         (component_length == 2 && text[component_start] == '.' &&
@@ -349,7 +357,9 @@ fn canonical_path(const Path &path) wontthrow -> Maybe<Path>
         should_read_current_directory
             ? GetCurrentDirectoryW(0, nullptr)
             : GetFullPathNameW(initial_input, 0, nullptr, nullptr);
-    if (required == 0) return koshka::None;
+    if (required == 0) {
+      return koshka::None;
+    }
     let initial_path = ArrayList<wchar_t>{heap_allocator()};
     initial_path.reserve(required);
     let const initial_length =
@@ -357,11 +367,15 @@ fn canonical_path(const Path &path) wontthrow -> Maybe<Path>
             ? GetCurrentDirectoryW(required, initial_path.begin())
             : GetFullPathNameW(initial_input, required, initial_path.begin(),
                                nullptr);
-    if (initial_length == 0 || initial_length >= required) return koshka::None;
+    if (initial_length == 0 || initial_length >= required) {
+      return koshka::None;
+    }
     let const initial_text =
         wide_to_utf8(initial_path.begin(), static_cast<usize>(initial_length),
                      heap_allocator());
-    if (!initial_text.has_value()) return koshka::None;
+    if (!initial_text.has_value()) {
+      return koshka::None;
+    }
     resolved = Path{initial_text->view()};
   }
 
@@ -370,13 +384,15 @@ fn canonical_path(const Path &path) wontthrow -> Maybe<Path>
   resolved = initial_resolved.take();
 
   while (position < text.length) {
-    while (position < text.length && is_directory_separator(text[position]))
+    while (position < text.length && is_directory_separator(text[position])) {
       position++;
+    }
     if (position >= text.length) break;
 
     let const component_start = position;
-    while (position < text.length && !is_directory_separator(text[position]))
+    while (position < text.length && !is_directory_separator(text[position])) {
       position++;
+    }
 
     let candidate = resolved.clone();
     candidate.append(
@@ -412,7 +428,9 @@ fn glob_matches(StringView pattern, Allocator allocator) throws
      the path. */
   usize prefix_length = 0;
   for (usize i = 0; i < pattern.length; i++)
-    if (pattern[i] == '/' || pattern[i] == '\\') prefix_length = i + 1;
+    if (pattern[i] == '/' || pattern[i] == '\\') {
+      prefix_length = i + 1;
+    }
   const StringView prefix = pattern.substring_of_length(0, prefix_length);
 
   do {
@@ -467,7 +485,9 @@ fn resolve_drive_relative_path(StringView path) throws -> Maybe<Path>
   buffer.reserve(static_cast<usize>(required));
   let const length = GetFullPathNameW(drive_current_directory, required,
                                       buffer.begin(), nullptr);
-  if (length == 0 || length >= required) return None;
+  if (length == 0 || length >= required) {
+    return None;
+  }
   let const text = wide_to_utf8(buffer.begin(), static_cast<usize>(length),
                                 heap_allocator());
   if (!text.has_value()) return None;
@@ -502,7 +522,9 @@ pure fn path_root_length(StringView path) wontthrow -> usize
   if (path.length >= 3 && path[1] == ':' && is_directory_separator(path[2])) {
     return 3;
   }
-  if (path.length >= 1 && is_directory_separator(path[0])) return 1;
+  if (path.length >= 1 && is_directory_separator(path[0])) {
+    return 1;
+  }
   return 0;
 }
 
@@ -701,7 +723,9 @@ cold fn read_current_directory() throws -> Path
   let buffer = ArrayList<wchar_t>{heap_allocator()};
   buffer.reserve(required);
   let const length = GetCurrentDirectoryW(required, buffer.begin());
-  if (length == 0 || length >= required) return Path{};
+  if (length == 0 || length >= required) {
+    return Path{};
+  }
   let const path = wide_to_utf8(buffer.begin(), static_cast<usize>(length),
                                 heap_allocator());
   if (!path.has_value()) return Path{};
@@ -713,9 +737,10 @@ fn change_current_directory(StringView path) throws -> ErrorOr<Ok>
 {
   const String path_string{path};
   let const wide_path = path_to_wide(path, heap_allocator());
-  if (!wide_path.has_value() || SetCurrentDirectoryW(wide_path->begin()) == 0)
+  if (!wide_path.has_value() || SetCurrentDirectoryW(wide_path->begin()) == 0) {
     return Error{"Could not change directory to '" + path_string +
                  "': " + os::last_system_error_message()};
+  }
 
   return Success;
 }
@@ -739,7 +764,9 @@ fn restore_current_directory(const DirectoryReference &reference) wontthrow
   path.reserve(required);
   let const length = GetFinalPathNameByHandleW(reference.get(), path.begin(),
                                                required, path_format);
-  if (length == 0 || length >= required) return false;
+  if (length == 0 || length >= required) {
+    return false;
+  }
   if (length >= 8 &&
       std::memcmp(path.begin(), L"\\\\?\\UNC\\", 8 * sizeof(wchar_t)) == 0)
   {
@@ -809,8 +836,9 @@ cold fn list_directory_typed(StringView dir, Allocator allocator) throws
         wide_to_utf8(data.cFileName,
                      static_cast<usize>(lstrlenW(data.cFileName)), allocator);
     if (!name.has_value()) return None;
-    if (name->view() == StringView{"."} || name->view() == StringView{".."})
+    if (name->view() == StringView{"."} || name->view() == StringView{".."}) {
       continue;
+    }
 
     Path::entry_kind kind = Path::entry_kind::Regular;
     if ((data.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) != 0)
@@ -933,7 +961,9 @@ fn acquire_process_lock(StringView path) throws -> Maybe<descriptor>
   absolute_path.reserve(static_cast<usize>(required) + LOCK_NAME_LENGTH + 1);
   let length = GetFullPathNameW(wide_path->begin(), required,
                                 absolute_path.begin(), nullptr);
-  if (length == 0 || length >= required) return None;
+  if (length == 0 || length >= required) {
+    return None;
+  }
   if (absolute_path.begin()[length - 1] != L'\\' &&
       absolute_path.begin()[length - 1] != L'/')
   {
@@ -1215,8 +1245,9 @@ fn remove_directory(StringView path) wontthrow -> bool
 fn remove_tree(StringView path, Allocator allocator) throws -> bool
 {
   let const target = Path{path, allocator};
-  if (target.is_symbolic_link() || !target.is_directory())
+  if (target.is_symbolic_link() || !target.is_directory()) {
     return remove_file(path);
+  }
 
   let const entries = list_directory_status(path, allocator);
   if (!entries.has_value()) return false;
@@ -1243,8 +1274,9 @@ fn remove_file(StringView path) wontthrow -> bool
       attributes != INVALID_FILE_ATTRIBUTES &&
       (attributes & FILE_ATTRIBUTE_DIRECTORY) != 0 &&
       (attributes & FILE_ATTRIBUTE_REPARSE_POINT) != 0;
-  if (is_directory_link && RemoveDirectoryW(wide_path->begin()) != 0)
+  if (is_directory_link && RemoveDirectoryW(wide_path->begin()) != 0) {
     return true;
+  }
 
   SetLastError(error);
   return false;
@@ -1307,7 +1339,9 @@ fn create_symlink(StringView target, StringView link_path) wontthrow -> bool
   }
   if (attributes != INVALID_FILE_ATTRIBUTES &&
       (attributes & FILE_ATTRIBUTE_DIRECTORY) != 0)
+  {
     flags |= SYMBOLIC_LINK_FLAG_DIRECTORY;
+  }
   return CreateSymbolicLinkW(wide_link_path->begin(), wide_target->begin(),
                              flags) != 0;
 }
@@ -1454,7 +1488,9 @@ fn read_symlink(StringView path, Allocator allocator) wontthrow -> Maybe<String>
     wide_target_length -= 4;
   }
   let target = wide_to_utf8(wide_target, wide_target_length, allocator);
-  if (!target.has_value() || !is_unc_target) return target;
+  if (!target.has_value() || !is_unc_target) {
+    return target;
+  }
   let unc_target = String{allocator, "\\\\"};
   unc_target += target->view();
   return unc_target;
@@ -1541,7 +1577,9 @@ fn mounted_filesystems() throws -> ArrayList<mounted_filesystem>
   let result = ArrayList<mounted_filesystem>{heap_allocator()};
   wchar_t drives[512];
   let const length = GetLogicalDriveStringsW(countof(drives), drives);
-  if (length == 0 || length >= countof(drives)) return result;
+  if (length == 0 || length >= countof(drives)) {
+    return result;
+  }
   usize position = 0;
 
   while (position < length && drives[position] != L'\0') {
@@ -1634,8 +1672,9 @@ fn read_filesystem_integrity_evidence(StringView path) throws
     return None;
   }
   let volume_path_length = static_cast<usize>(lstrlenW(volume_path));
-  if (volume_path_length > 0 && volume_path[volume_path_length - 1] == L'\\')
+  if (volume_path_length > 0 && volume_path[volume_path_length - 1] == L'\\') {
     volume_path[volume_path_length - 1] = L'\0';
+  }
 
   let const volume = open_path_for_query(volume_path, 0, 0);
   if (volume == INVALID_HANDLE_VALUE) return None;
@@ -1666,7 +1705,9 @@ fn sync_filesystems() wontthrow -> bool
 {
   wchar_t drives[512];
   let const length = GetLogicalDriveStringsW(countof(drives), drives);
-  if (length == 0 || length >= countof(drives)) return false;
+  if (length == 0 || length >= countof(drives)) {
+    return false;
+  }
 
   bool was_any_flushed = false;
   usize position = 0;
@@ -1859,8 +1900,9 @@ static fn execute_shared_positioned_file_operation(
     let const was_restored =
         SetFilePointerEx(batch_operation_access::get_descriptor(operation),
                          saved_position, nullptr, FILE_BEGIN);
-    if (was_restored == FALSE && result.error_number == 0)
+    if (was_restored == FALSE && result.error_number == 0) {
       result.error_number = static_cast<i32>(GetLastError());
+    }
   };
 
   LARGE_INTEGER requested_position{};
@@ -2019,7 +2061,9 @@ fn execute_batch_operations(const batched_syscall *operations,
                             batched_syscall_result *results) wontthrow -> void
 {
   if (operation_count == 0) return;
-  if (operations == nullptr || results == nullptr) return;
+  if (operations == nullptr || results == nullptr) {
+    return;
+  }
 
   constexpr usize REQUEST_COUNT = 64;
   let const do_mark_remaining = [&](usize first_index) wontthrow -> void {
@@ -2246,7 +2290,9 @@ fn gid_to_groupname(u32) throws -> Maybe<String> { return koshka::None; }
 fn username_to_uid(StringView username) throws -> Maybe<u32>
 {
   let const current = get_current_user();
-  if (current.has_value() && current->view() == username) return 0;
+  if (current.has_value() && current->view() == username) {
+    return 0;
+  }
   return None;
 }
 

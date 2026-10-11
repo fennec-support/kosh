@@ -129,7 +129,9 @@ append_completion_specification_line(String &output, StringView command,
 
   for (let const &entry : COMPGEN_ACTION_ENTRIES) {
     let const short_flag = action_short_flag(entry.value);
-    if (short_flag == '\0' || !spec.has_action(entry.value)) continue;
+    if (short_flag == '\0' || !spec.has_action(entry.value)) {
+      continue;
+    }
 
     output += '-';
     output += short_flag;

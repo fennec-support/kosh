@@ -251,7 +251,9 @@ pure fn process_io_counter_reset(const os::process_io_status &before,
 {
   if (after.read_bytes < before.read_bytes ||
       after.written_bytes < before.written_bytes)
+  {
     return true;
+  }
   return before.has_operation_counts && after.has_operation_counts &&
          (after.read_operation_count < before.read_operation_count ||
           after.write_operation_count < before.write_operation_count);
@@ -261,7 +263,9 @@ pure fn counter_rate(u64 before, u64 after, u64 elapsed_nanoseconds) wontthrow
     -> Maybe<u64>
 {
   let const delta = counter_delta(before, after);
-  if (!delta.has_value() || elapsed_nanoseconds == 0) return None;
+  if (!delta.has_value() || elapsed_nanoseconds == 0) {
+    return None;
+  }
 
   return static_cast<u64>(static_cast<u128>(*delta) * 1000000000ULL /
                           elapsed_nanoseconds);
@@ -290,7 +294,9 @@ fn read_process_io_rows(Allocator allocator, Maybe<i64> selected_pid,
   {
     let const &process = processes[process_position];
     if (process.pid <= 0) continue;
-    if (selected_pid.has_value() && process.pid != *selected_pid) continue;
+    if (selected_pid.has_value() && process.pid != *selected_pid) {
+      continue;
+    }
 
     process_ids.push(process.pid);
     process_positions.push(process_position);
@@ -346,7 +352,9 @@ fn sample_process_io_rows(const ArrayList<io_row> &before_rows,
         counter_delta(before.status.read_bytes, after.status.read_bytes);
     let const write_delta =
         counter_delta(before.status.written_bytes, after.status.written_bytes);
-    if (!read_delta.has_value() || !write_delta.has_value()) continue;
+    if (!read_delta.has_value() || !write_delta.has_value()) {
+      continue;
+    }
 
     os::process_io_status status{*read_delta, *write_delta, 0, 0, false};
     if (before.status.has_operation_counts && after.status.has_operation_counts)
@@ -778,7 +786,9 @@ fn append_disk_io_report(String &output, const ArrayList<disk_io_row> &rows,
                          report_sampling_mode sampling,
                          bool should_color) throws -> void
 {
-  if (rows.is_empty() && sampling == report_sampling_mode::Instant) return;
+  if (rows.is_empty() && sampling == report_sampling_mode::Instant) {
+    return;
+  }
 
   let table = ReportTable{allocator};
   table.add_heading("DEVICE");
@@ -904,7 +914,9 @@ fn run_live_process_io(const ExecContext &ec, Maybe<i64> selected_pid,
   let baseline_rows =
       read_process_io_rows(allocator, selected_pid, evilio_idle_mode::Include);
   if (take_interrupt_request()) return 130;
-  if (selected_pid.has_value() && baseline_rows.is_empty()) return 1;
+  if (selected_pid.has_value() && baseline_rows.is_empty()) {
+    return 1;
+  }
   update_retained_rows(retained, baseline_rows, last_sample_nanoseconds,
                        window_nanoseconds, allocator, do_get_key, do_get_value,
                        process_io_counter_reset, do_make_row);
@@ -968,7 +980,9 @@ fn make_disk_window_row(const live_disk_row &row, u64 window_start_nanoseconds,
   before.available_fields = lower.available_fields & upper.available_fields;
   let const do_interpolate = [&](os::disk_io_field field,
                                  u64 os::disk_io_status::*member) {
-    if (!lower.has_field(field) || !upper.has_field(field)) return;
+    if (!lower.has_field(field) || !upper.has_field(field)) {
+      return;
+    }
     if (let const value =
             row.history.interpolate(boundary, lower.*member, upper.*member);
         value.has_value())
@@ -1283,10 +1297,11 @@ fn EvilIO::execute(const ExecContext &ec, EvalContext &cxt,
   if (!report_options.has_value()) return 1;
 
   String sample_duration_label{allocator, "/S"};
-  if (report_options->is_cumulative || report_options->is_live)
+  if (report_options->is_cumulative || report_options->is_live) {
     sample_duration_label =
         String{allocator, "/"} +
         format_live_duration(report_options->window_seconds, allocator).view();
+  }
   let const should_show_processes =
       FLAG_EVILIO_PS.is_enabled() || FLAG_EVILIO_COUNT.is_set() ||
       selected_pid.has_value() || process_limit_operand.has_value();
@@ -1624,8 +1639,9 @@ fn EvilIO::execute(const ExecContext &ec, EvalContext &cxt,
           allocator);
     }
   }
-  if (has_memory_status || (has_activity_before && has_activity_after))
+  if (has_memory_status || (has_activity_before && has_activity_after)) {
     append_titled_report_table(output, "Memory", memory_table, should_color);
+  }
 
   let paging_table = make_metric_table(allocator);
   if (has_activity_before && has_activity_after) {
@@ -1672,8 +1688,9 @@ fn EvilIO::execute(const ExecContext &ec, EvalContext &cxt,
                    "/s", allocator);
     }
   }
-  if (has_activity_before && has_activity_after)
+  if (has_activity_before && has_activity_after) {
     append_titled_report_table(output, "Paging", paging_table, should_color);
+  }
 
   let scheduler_table = make_metric_table(allocator);
   if (has_activity_after) {
@@ -1756,9 +1773,10 @@ fn EvilIO::execute(const ExecContext &ec, EvalContext &cxt,
                     allocator);
     }
   }
-  if (has_activity_before && has_activity_after)
+  if (has_activity_before && has_activity_after) {
     append_titled_report_table(output, "Pressure stalls", stalls_table,
                                should_color);
+  }
 
   if (!disk_after.disks.is_empty() || FLAG_EVILIO_CUMULATIVE.is_enabled()) {
     let disk_rows = make_disk_io_rows(

@@ -84,7 +84,9 @@ static fn codepoint_is_in(u32 codepoint, const codepoint_interval *intervals,
 static fn codepoint_display_width(u32 codepoint) -> usize
 {
   if (codepoint == '\t') return 1;
-  if (codepoint < 0x20 || (codepoint >= 0x7f && codepoint < 0xa0)) return 0;
+  if (codepoint < 0x20 || (codepoint >= 0x7f && codepoint < 0xa0)) {
+    return 0;
+  }
 
   if (codepoint < NARROW_CODEPOINT_LIMIT) return 1;
 
@@ -122,8 +124,9 @@ flatten static fn display_width_walk(StringView text, usize stop_after,
         {
           byte_offset++;
         }
-        if (byte_offset < text.length && text[byte_offset] != '\0')
+        if (byte_offset < text.length && text[byte_offset] != '\0') {
           byte_offset++;
+        }
       } else if (text[byte_offset] == ']') {
         byte_offset++;
         while (byte_offset < text.length && text[byte_offset] != '\0' &&
@@ -150,7 +153,9 @@ flatten static fn display_width_walk(StringView text, usize stop_after,
 
     let const decoded = koshka::utils::decode_utf8(text, byte_offset, 0xfffd);
     let const character_width = codepoint_display_width(decoded.value);
-    if (character_width > 0 && width >= stop_after) break;
+    if (character_width > 0 && width >= stop_after) {
+      break;
+    }
     width += character_width;
     byte_offset += decoded.length;
   }
@@ -181,13 +186,17 @@ fn is_history_contents_valid(StringView contents) -> bool
     case '\v':
     case '\f': break;
     default:
-      if (byte < 0x20 || byte == 0x7f) return false;
+      if (byte < 0x20 || byte == 0x7f) {
+        return false;
+      }
     }
 
     usize escaped_byte_count = 0;
     if (is_escape_pending) {
       is_escape_pending = false;
-      if (byte != 'n' && byte != '\\') escaped_byte_count = 1;
+      if (byte != 'n' && byte != '\\') {
+        escaped_byte_count = 1;
+      }
     } else if (byte == '\\') {
       is_escape_pending = true;
       byte_offset++;
@@ -340,7 +349,9 @@ fn get_codepoint_byte_offset(const char *bytes, usize byte_length,
   }
   while (byte_offset < byte_length &&
          (static_cast<unsigned char>(bytes[byte_offset]) & 0xC0) == 0x80)
+  {
     byte_offset += 1;
+  }
   return byte_offset;
 }
 

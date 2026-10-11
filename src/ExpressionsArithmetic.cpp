@@ -62,7 +62,9 @@ cold static fn conditional_word_is_literal(const Token *token) wontthrow -> bool
     if (segment.kind != WordSegment::Kind::LiteralText &&
         segment.kind != WordSegment::Kind::UnquotedText &&
         segment.kind != WordSegment::Kind::DoubleQuotedText)
+    {
       return false;
+    }
   return true;
 }
 
@@ -73,8 +75,9 @@ cold static fn conditional_word_has_glob(const Token *token) wontthrow -> bool
   }
   let const &word = static_cast<const tokens::WordToken *>(token)->word();
   for (let const &segment : word.segments)
-    if (segment.has_live_glob_chars() && segment.has_glob_metacharacter())
+    if (segment.has_live_glob_chars() && segment.has_glob_metacharacter()) {
       return true;
+    }
   return false;
 }
 
@@ -84,8 +87,9 @@ cold static fn conditional_word_is_numeric_literal(const Token *token) throws
   if (!conditional_word_is_literal(token)) return false;
   let const literal = token->raw_string();
   let view = literal.view();
-  if (!view.is_empty() && (view[0] == '-' || view[0] == '+'))
+  if (!view.is_empty() && (view[0] == '-' || view[0] == '+')) {
     view = view.substring(1);
+  }
   return !view.is_empty() && view.is_all_decimal_digits();
 }
 
@@ -114,7 +118,9 @@ conditional_operator_view(const conditional_element &element) wontthrow
   default: return None;
   }
 
-  if (!element.is_bare_unquoted || element.word == nullptr) return None;
+  if (!element.is_bare_unquoted || element.word == nullptr) {
+    return None;
+  }
 
   let view = element.word->raw_view();
   if (!view.has_value() || !is_conditional_binary_operator(*view)) {
@@ -129,8 +135,9 @@ cold static fn conditional_inequality_left_operand(
     usize operator_index) wontthrow -> Maybe<StringView>
 {
   using Kind = conditional_element::Kind;
-  if (operator_index == 0 || operator_index + 1 >= elements.count())
+  if (operator_index == 0 || operator_index + 1 >= elements.count()) {
     return None;
+  }
 
   let const op_view = conditional_operator_view(elements[operator_index]);
   if (!op_view.has_value() || *op_view != StringView{"!="}) {
@@ -214,7 +221,9 @@ fn ConditionalCommand::analyze(AnalysisContext &actx,
            conditional_word_is_numeric_literal(m_elements[i - 1].word)) ||
           (i + 1 < m_elements.count() &&
            conditional_word_is_numeric_literal(m_elements[i + 1].word)))
+      {
         actx.report_diagnostic(diagnostic_id::sc2071, element.location, {op});
+      }
       if (i > 0 && i + 1 < m_elements.count() &&
           conditional_word_is_literal(m_elements[i - 1].word) &&
           conditional_word_is_literal(m_elements[i + 1].word))
@@ -378,20 +387,26 @@ fn ConditionalCommand::analyze(AnalysisContext &actx,
         (operand.view() == "-n" || operand.view() == "-z") &&
         i + 1 < m_elements.count() &&
         conditional_word_is_literal(m_elements[i + 1].word))
+    {
       actx.report_diagnostic(diagnostic_id::sc2157_string,
                              m_elements[i + 1].word->source_location());
+    }
 
     if (element.is_bare_unquoted &&
         CONDITIONAL_PATH_TESTS.contains(operand.view()) &&
         i + 1 < m_elements.count() &&
         conditional_word_has_glob(m_elements[i + 1].word))
+    {
       actx.report_diagnostic(diagnostic_id::sc2144,
                              m_elements[i + 1].word->source_location());
+    }
 
     if (!element.is_bare_unquoted ||
         !is_conditional_binary_operator(operand.view()) || i == 0 ||
         i + 1 >= m_elements.count())
+    {
       continue;
+    }
 
     let const left = m_elements[i - 1].word;
     let const right = m_elements[i + 1].word;
@@ -932,7 +947,9 @@ fn Subshell::collapsed_body() const wontthrow -> const Expression *
       if (wrapper == nullptr) break;
 
       let const *wrapped = wrapper->child();
-      if (wrapped == nullptr || wrapped->as_subshell() == nullptr) break;
+      if (wrapped == nullptr || wrapped->as_subshell() == nullptr) {
+        break;
+      }
 
       return sole;
     }
@@ -1096,7 +1113,9 @@ fn Subshell::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws
       return evaluate_subshell_in_process(body, cxt,
                                           should_allow_terminal_exec);
     } catch (ErrorWithLocation &error) {
-      if (error.is_script_fatal() || error.was_rendered()) throw;
+      if (error.is_script_fatal() || error.was_rendered()) {
+        throw;
+      }
 
       let const trace_location = error.location();
       show_message(
@@ -1209,11 +1228,15 @@ fn Subshell::analyze(AnalysisContext &actx, bool is_unconditional) const throws
         end_position - source_location().position - 2);
     while (!body.is_empty() &&
            (body[0] == ' ' || body[0] == '\t' || body[0] == '\n'))
+    {
       body = body.substring(1);
+    }
     while (!body.is_empty() &&
            (body[body.length - 1] == ' ' || body[body.length - 1] == '\t' ||
             body[body.length - 1] == '\n'))
+    {
       body = body.substring_of_length(0, body.length - 1);
+    }
 
     let is_unary_test_prefix = false;
     if (body.length >= 3 && body[0] == '-') {

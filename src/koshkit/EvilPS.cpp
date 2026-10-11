@@ -365,7 +365,9 @@ fn append_label(String &output, const tree_node &node, Allocator allocator,
       output += " ";
       append_cpu_value(output, node, allocator, options.sampling);
     }
-    if (should_show_cpu && should_show_memory) output += "  ";
+    if (should_show_cpu && should_show_memory) {
+      output += "  ";
+    }
     if (should_show_memory) {
       append_report_text(output, "MEM", colors::ansi::BOLD_CYAN, should_color);
       output += " ";
@@ -392,7 +394,9 @@ fn render_process_relatives(String &output, ArrayList<tree_node> &nodes,
 {
   let const should_color = options.should_color;
   let const output_limit = options.output_limit;
-  if (depth > MAXIMUM_TREE_DEPTH || rendered_count >= output_limit) return;
+  if (depth > MAXIMUM_TREE_DEPTH || rendered_count >= output_limit) {
+    return;
+  }
 
   ArrayList<usize> relative_positions{allocator};
   let const parent_pid = nodes[parent_position].pid;
@@ -637,7 +641,9 @@ fn render_process_snapshot(const ExecContext &ec, EvalContext &cxt,
       if (candidate.pid != nodes[position].parent_pid) continue;
 
       if (candidate.pid == nodes[position].pid || !candidate.is_search_visible)
+      {
         continue;
+      }
 
       has_visible_parent = true;
       break;
@@ -861,7 +867,9 @@ fn EvilPS::execute(const ExecContext &ec, EvalContext &cxt,
     if (let const dimensions =
             os::get_terminal_dimensions(ec.out_fd.value_or(KOSH_STDOUT));
         dimensions.has_value() && dimensions->columns > 8)
+    {
       line_width_limit = dimensions->columns;
+    }
   }
 
   if (report_options->is_live) {

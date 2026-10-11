@@ -64,11 +64,13 @@ static fn previous_settled_word(StringView line, usize token_start) wontthrow
     -> StringView
 {
   let end = token_start;
-  while (end > 0 && (line[end - 1] == ' ' || line[end - 1] == '\t'))
+  while (end > 0 && (line[end - 1] == ' ' || line[end - 1] == '\t')) {
     end--;
+  }
   let start = end;
-  while (start > 0 && line[start - 1] != ' ' && line[start - 1] != '\t')
+  while (start > 0 && line[start - 1] != ' ' && line[start - 1] != '\t') {
     start--;
+  }
 
   let const word = line.substring_of_length(start, end - start);
   if (word.length > 1 && word[0] == '-' && word[word.length - 1] == '=') {
@@ -143,14 +145,20 @@ static fn parse_make_database_targets(StringView database,
       skip_next_rule = true;
       continue;
     }
-    if (text.is_empty() || text[0] == '#') continue;
+    if (text.is_empty() || text[0] == '#') {
+      continue;
+    }
     if (skip_next_rule) {
       skip_next_rule = false;
       continue;
     }
-    if (text[0] == '.' || text[0] == '\t') continue;
+    if (text[0] == '.' || text[0] == '\t') {
+      continue;
+    }
     let const colon = text.find_character(':');
-    if (!colon.has_value() || *colon == 0) continue;
+    if (!colon.has_value() || *colon == 0) {
+      continue;
+    }
     let const name = text.substring_of_length(0, *colon);
     if (make_target_is_artifact(name, directory)) continue;
     targets.push(String{name});
@@ -165,7 +173,9 @@ static fn parse_colon_led_names(StringView listing) throws -> ArrayList<String>
   while (i < listing.length) {
     let const text = listing.next_line(i);
     let const colon = text.find_character(':');
-    if (!colon.has_value() || *colon == 0) continue;
+    if (!colon.has_value() || *colon == 0) {
+      continue;
+    }
     let const name = text.substring_of_length(0, *colon);
     if (name.find_character(' ').has_value()) continue;
     names.push(String{name});
@@ -182,14 +192,18 @@ static fn parse_tsh_node_names(StringView listing) throws -> ArrayList<String>
     let const row = listing.next_line(i);
 
     if (!has_passed_rule) {
-      if (!row.is_empty() && row[0] == '-') has_passed_rule = true;
+      if (!row.is_empty() && row[0] == '-') {
+        has_passed_rule = true;
+      }
       continue;
     }
 
     usize field_end = 0;
     while (field_end < row.length && row[field_end] != ' ' &&
            row[field_end] != '\t')
+    {
       field_end++;
+    }
 
     if (field_end > 0)
       names.push(String{row.substring_of_length(0, field_end)});
@@ -221,7 +235,9 @@ static fn parse_package_json_scripts(StringView text) throws
 
     let const key_start = ++i;
     while (i < text.length && text[i] != '"') {
-      if (text[i] == '\\' && i + 1 < text.length) i++;
+      if (text[i] == '\\' && i + 1 < text.length) {
+        i++;
+      }
       i++;
     }
     if (i >= text.length) return scripts;
@@ -229,18 +245,28 @@ static fn parse_package_json_scripts(StringView text) throws
     let const key_end = i++;
     if (object_depth != 1 ||
         text.substring_of_length(key_start, key_end - key_start) != "scripts")
+    {
       continue;
+    }
 
     while (i < text.length && (text[i] == ' ' || text[i] == '\t' ||
                                text[i] == '\n' || text[i] == '\r'))
+    {
       i++;
-    if (i >= text.length || text[i] != ':') continue;
+    }
+    if (i >= text.length || text[i] != ':') {
+      continue;
+    }
 
     i++;
     while (i < text.length && (text[i] == ' ' || text[i] == '\t' ||
                                text[i] == '\n' || text[i] == '\r'))
+    {
       i++;
-    if (i >= text.length || text[i] != '{') continue;
+    }
+    if (i >= text.length || text[i] != '{') {
+      continue;
+    }
 
     i++;
     break;
@@ -280,7 +306,9 @@ static fn collect_ssh_hosts() throws -> ArrayList<String>
 
   let seen = HashSet{heap_allocator()};
   let const do_push_unique = [&](StringView host) throws {
-    if (host.is_empty() || !seen.add(host)) return;
+    if (host.is_empty() || !seen.add(host)) {
+      return;
+    }
     hosts.push(String{host});
   };
 
@@ -292,18 +320,22 @@ static fn collect_ssh_hosts() throws -> ArrayList<String>
     usize i = 0;
     while (i < text.length) {
       let row = text.next_line(i);
-      while (!row.is_empty() && (row[0] == ' ' || row[0] == '\t'))
+      while (!row.is_empty() && (row[0] == ' ' || row[0] == '\t')) {
         row = row.substring(1);
+      }
       if (!(row.starts_with(StringView{"Host "}) ||
             row.starts_with(StringView{"Host\t"})))
+      {
         continue;
+      }
       row = row.substring(5);
       usize k = 0;
       while (k < row.length) {
         k = skip_blanks(row, k);
         let const start = k;
-        while (k < row.length && row[k] != ' ' && row[k] != '\t')
+        while (k < row.length && row[k] != ' ' && row[k] != '\t') {
           k++;
+        }
         let const name = row.substring_of_length(start, k - start);
         let is_pattern_host = false;
         for (usize position = 0; position < name.length; position++) {
@@ -328,11 +360,15 @@ static fn collect_ssh_hosts() throws -> ArrayList<String>
     usize i = 0;
     while (i < text.length) {
       let const row = text.next_line(i);
-      if (row.is_empty() || row[0] == '#' || row[0] == '|') continue;
+      if (row.is_empty() || row[0] == '#' || row[0] == '|') {
+        continue;
+      }
       usize field_end = 0;
       while (field_end < row.length && row[field_end] != ' ' &&
              row[field_end] != '\t')
+      {
         field_end++;
+      }
       let field = row.substring_of_length(0, field_end);
       while (!field.is_empty()) {
         let const comma = field.find_character(',');
@@ -360,7 +396,9 @@ static fn cached_targets_for(const Path &source_file, Collector collect) throws
   let const key = absolute_source_file.view();
   if (let const cached = BUILD_TARGET_CACHE.find(key);
       cached.has_value() && cached->mtime == *mtime)
+  {
     return &cached->targets;
+  }
   let targets = collect();
   return &BUILD_TARGET_CACHE
               .set(key, cached_target_list{*mtime, steal(targets).make_sorted(
@@ -432,7 +470,9 @@ fn internal::complete_from_tools_with_targets(StringView line, StringView token,
 {
   let const is_for_listing = mode == completion_mode::Listing;
   if (!is_for_listing) return None;
-  if (!token.is_empty() && token[0] == '-') return None;
+  if (!token.is_empty() && token[0] == '-') {
+    return None;
+  }
   let const command = command_word_of(line);
   if (command.is_empty()) return None;
 
@@ -505,7 +545,9 @@ fn internal::complete_from_tools_with_targets(StringView line, StringView token,
       for (let const &name : intrinsic_targets) {
         if (make_target_is_artifact(name.view(), make_directory) ||
             !seen.add(name.view()))
+        {
           continue;
+        }
         filtered.push(name.clone());
       }
       return filtered;
@@ -704,7 +746,9 @@ static fn declaration_flags_select_functions(StringView line,
       line.substring_of_length(0, token_start), token_start, cword);
   for (usize i = 1; i < words.count(); i++) {
     let const word = words[i].view();
-    if (word.length < 2 || word[0] != '-' || word[1] == '-') continue;
+    if (word.length < 2 || word[0] != '-' || word[1] == '-') {
+      continue;
+    }
     if (word.find_character('f').has_value() ||
         word.find_character('F').has_value())
     {
@@ -755,7 +799,9 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
     bool should_offer_util_names = false;
     if (is_koshkit_builtin) {
       if (previous_word == command) {
-        if (wants_operand) should_offer_util_names = true;
+        if (wants_operand) {
+          should_offer_util_names = true;
+        }
       } else if (let const second = second_word_of(line); second.has_value()) {
         util_for_flags = koshkit::find_util(*second);
       }
@@ -766,7 +812,9 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
       if (util_for_flags.has_value() &&
           context.program_resolver().get_status(command) !=
               ProgramResolver::Status::Missing)
+      {
         util_for_flags = None;
+      }
     }
 
     if (should_offer_util_names) {
@@ -781,7 +829,9 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
       if (*util_for_flags == koshkit::Utility::Kind::Which && wants_operand &&
           !os::has_directory_separator(token))
       {
-        if (token.is_empty() && mode != completion_mode::Listing) return None;
+        if (token.is_empty() && mode != completion_mode::Listing) {
+          return None;
+        }
 
         let names = complete_command_names(token, context, nullptr,
                                            command_match_mode::Prefix);
@@ -845,7 +895,9 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
     }
   }
 
-  if (!builtin_kind.has_value() && !completes_shell_binary) return None;
+  if (!builtin_kind.has_value() && !completes_shell_binary) {
+    return None;
+  }
 
   let const completes_set_builtin =
       builtin_kind.has_value() && *builtin_kind == Builtin::Kind::Set;
@@ -913,10 +965,15 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
     let const is_set_value = operands.count() == 2 && form == "set";
     if (!wants_operand && !is_set_value) {
       do_push_matching("--help");
-      if (form.is_empty() || form == "create") do_push_matching("--force");
-      if (form.is_empty() || form == "list") do_push_matching("--all");
-      if (form.is_empty() || form == "set" || form == "save")
+      if (form.is_empty() || form == "create") {
+        do_push_matching("--force");
+      }
+      if (form.is_empty() || form == "list") {
+        do_push_matching("--all");
+      }
+      if (form.is_empty() || form == "set" || form == "save") {
         do_push_matching("--persist");
+      }
       if (!candidates.is_empty()) return candidates;
       return None;
     }
@@ -924,33 +981,43 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
     if (operands.is_empty()) {
       for (let const form_name :
            {"create", "get", "list", "load", "save", "set"})
+      {
         do_push_matching(form_name);
+      }
     } else if (operands.count() == 1 && form == "create") {
-      for (let const preset : {"bash", "kosh", "sh"})
+      for (let const preset : {"bash", "kosh", "sh"}) {
         do_push_matching(preset);
+      }
     } else if (operands.count() == 1 && (form == "set" || form == "get")) {
       let names = ArrayList<StringView>{heap_allocator()};
       let aliases = ArrayList<String>{heap_allocator()};
       for (let const &option : get_option_registry()) {
-        if (option.is_set_alias) continue;
+        if (option.is_set_alias) {
+          continue;
+        }
 
         names.push(option.koshconf_name);
-        if (let alias = get_legacy_koshconf_alias(option); alias.has_value())
+        if (let alias = get_legacy_koshconf_alias(option); alias.has_value()) {
           aliases.push(steal(*alias));
+        }
       }
-      for (let const &alias : aliases)
+      for (let const &alias : aliases) {
         names.push(alias.view());
+      }
 
       if (mode != completion_mode::Listing) {
-        for (let const name : names)
+        for (let const name : names) {
           do_push_matching(name);
+        }
       } else {
         candidates = best_tier_matches(token, names);
         is_tier_ranked = true;
       }
     } else if (is_set_value) {
       let const *option = find_option_by_koshconf_name(operands[1]);
-      if (option == nullptr) return None;
+      if (option == nullptr) {
+        return None;
+      }
 
       if (option->storage == option_storage::InitMoods) {
         let const comma = token.find_last_character(',');
@@ -959,15 +1026,18 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
         let const typed = token.substring(listed_count);
         for (let const mood_value : {"kosh", "sh", "bash", "bash-posix"}) {
           let const mood_text = StringView{mood_value};
-          if (!mood_text.starts_with(typed)) continue;
+          if (!mood_text.starts_with(typed)) {
+            continue;
+          }
 
           let candidate = String{listed};
           candidate.append(mood_text);
           candidates.push(steal(candidate));
         }
       } else {
-        for (u8 value = 0; value < option->enum_values.name_count; value++)
+        for (u8 value = 0; value < option->enum_values.name_count; value++) {
           do_push_matching(option->enum_values.names[value]);
+        }
       }
 
       if (option->type != option_type::String ||
@@ -1056,7 +1126,9 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
   if (builtin_kind.has_value() && *builtin_kind == Builtin::Kind::Type &&
       wants_operand)
   {
-    if (token.is_empty() && mode != completion_mode::Listing) return None;
+    if (token.is_empty() && mode != completion_mode::Listing) {
+      return None;
+    }
 
     let names = complete_command_names(token, context, nullptr,
                                        command_match_mode::Prefix);
@@ -1104,7 +1176,9 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
     }
 
     if (!has_command_operand || should_complete_later_operands) {
-      if (token.is_empty() && mode != completion_mode::Listing) return None;
+      if (token.is_empty() && mode != completion_mode::Listing) {
+        return None;
+      }
 
       let names = complete_command_names(token, context, nullptr,
                                          command_match_mode::Prefix);
@@ -1155,13 +1229,17 @@ fn internal::complete_from_builtin_flags(StringView line, StringView token,
       let const word_begin = scan_position;
       while (scan_position < prefix.length && prefix[scan_position] != ' ' &&
              prefix[scan_position] != '\t')
+      {
         scan_position++;
+      }
 
       let const arg =
           prefix.substring_of_length(word_begin, scan_position - word_begin);
       if (arg.length >= 2 && arg[0] == '-' && arg[1] != '-' &&
           arg.find_character('f').has_value())
+      {
         unsets_function = true;
+      }
     }
 
     if (unsets_function) {
@@ -1199,8 +1277,9 @@ static pure fn entry_is_unrequested_dash_word(
 static fn push_spec_candidate(StringView entry, ArrayList<String> &candidates,
                               StringMap<String> &descriptions) throws -> void
 {
-  while (!entry.is_empty() && entry[entry.length - 1] == ' ')
+  while (!entry.is_empty() && entry[entry.length - 1] == ' ') {
     entry = entry.substring_of_length(0, entry.length - 1);
+  }
 
   if (entry.is_empty()) return;
 
@@ -1209,8 +1288,9 @@ static fn push_spec_candidate(StringView entry, ArrayList<String> &candidates,
       entry[entry.length - 1] == ')')
   {
     let name = entry.substring_of_length(0, *paren);
-    while (!name.is_empty() && name[name.length - 1] == ' ')
+    while (!name.is_empty() && name[name.length - 1] == ' ') {
       name = name.substring_of_length(0, name.length - 1);
+    }
     let const description =
         entry.substring_of_length(*paren + 1, entry.length - *paren - 2);
     if (!name.is_empty()) {
@@ -1452,7 +1532,9 @@ generate_spec_candidates(completion_spec &active_spec,
 static pure fn token_reaches_bash_default_completion(StringView token) wontthrow
     -> bool
 {
-  if (token.starts_with("$") || token.starts_with("~")) return true;
+  if (token.starts_with("$") || token.starts_with("~")) {
+    return true;
+  }
 
   for (usize position = 0; position < token.length; position++) {
     switch (token[position]) {
@@ -1563,7 +1645,9 @@ fn internal::complete_from_initial_word_spec(
   if (spec == nullptr) return None;
 
   let const is_for_listing = mode == completion_mode::Listing;
-  if (!is_for_listing && !spec_has_ghost_generators(*spec)) return None;
+  if (!is_for_listing && !spec_has_ghost_generators(*spec)) {
+    return None;
+  }
 
   LOG(Debug, "completing the command word from the %.*s spec",
       static_cast<int>(command_name.length), command_name.data);
@@ -1592,7 +1676,9 @@ static fn consider_shell_lexical_frame(
   {
     return;
   }
-  if (target->cursor < frame.body_start || target->cursor > body_end) return;
+  if (target->cursor < frame.body_start || target->cursor > body_end) {
+    return;
+  }
   if (depth < target->frame_depth) return;
   target->range = completion_command_range{frame.body_start, body_end};
   target->frame_depth = depth;
@@ -1616,7 +1702,9 @@ static fn collect_shell_heredoc(StringView source, usize &position, usize end,
   }
   while (position < end &&
          (source[position] == ' ' || source[position] == '\t'))
+  {
     position++;
+  }
 
   let const word_start = position;
   char delimiter_quote = 0;
@@ -1977,7 +2065,9 @@ fn internal::advance_shell_lexical_state(
                      highlight_construct_phase::function_name &&
                  word != "function")
       {
-        if (word_is_function_name(word)) state.known_function_names.add(word);
+        if (word_is_function_name(word)) {
+          state.known_function_names.add(word);
+        }
         active_construct->phase = highlight_construct_phase::body;
         frame.is_command_position = false;
       } else if (is_active_construct_in_frame &&
@@ -2030,9 +2120,11 @@ fn internal::advance_shell_lexical_state(
         if (let const is_next_command =
                 advance_shell_keyword_state(word, state.frames.count(), state);
             is_next_command.has_value())
+        {
           frame.is_command_position = *is_next_command;
-        else if (!lexer::is_shell_sentinel(c))
+        } else if (!lexer::is_shell_sentinel(c)) {
           frame.is_command_position = false;
+        }
       }
 
       if (!word.is_empty() && word[word.length - 1] == '=' && word_end < end &&
@@ -2076,12 +2168,13 @@ fn internal::advance_shell_lexical_state(
     }
 
     if (state.frames.is_empty()) {
-      if (c == '(')
+      if (c == '(') {
         frame.group_depth++;
-      else if (c == ')' && is_case_pattern_level)
+      } else if (c == ')' && is_case_pattern_level) {
         do_end_case_pattern(frame);
-      else if (c == ')' && frame.group_depth > 0)
+      } else if (c == ')' && frame.group_depth > 0) {
         do_close_group(frame);
+      }
       i++;
       continue;
     }
@@ -2192,7 +2285,9 @@ fn classify_typed_pair_byte(StringView line, usize cursor, char byte) throws
   let const scratch = ScopedCompletionScratch{};
   let state = shell_lexical_state{completion_allocator()};
   advance_shell_lexical_state(line, cursor, state);
-  if (state.is_in_heredoc || state.is_in_comment) return typed_pair_role::none;
+  if (state.is_in_heredoc || state.is_in_comment) {
+    return typed_pair_role::none;
+  }
 
   if (state.quote != 0) {
     if (byte == state.quote) return typed_pair_role::closes;
@@ -2233,8 +2328,9 @@ constexpr usize SYNTAX_HINT_BYTE_LIMIT = 2048;
 
 fn append_sentence_tail(String &out, StringView sentence) throws -> void
 {
-  if (sentence.length > 0 && sentence[sentence.length - 1] == '.')
+  if (sentence.length > 0 && sentence[sentence.length - 1] == '.') {
     sentence = sentence.substring_of_length(0, sentence.length - 1);
+  }
   if (sentence.is_empty()) return;
 
   out.append(StringView{", "});
@@ -2305,7 +2401,9 @@ fn describe_analysis_finding(StringView line, EvalContext &context,
   let diagnostics = ArrayList<source_diagnostic>{heap_allocator()};
   let const *ast =
       parser.construct_ast(rendered_errors, &context, &diagnostics);
-  if (!rendered_errors.is_empty() || ast == nullptr) return false;
+  if (!rendered_errors.is_empty() || ast == nullptr) {
+    return false;
+  }
 
   let const directives = parser.take_analysis_directives();
   let options = analysis_options::from_runtime(state);

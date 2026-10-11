@@ -396,7 +396,9 @@ static fn automatic_path_part(StringView text, bool is_filename,
   while (word_position < text.length) {
     while (word_position < text.length &&
            (text[word_position] == ' ' || text[word_position] == '\t'))
+    {
       word_position++;
+    }
     let const word_start = word_position;
     usize separator_position = word_start;
     bool has_separator = false;
@@ -466,8 +468,9 @@ static fn substitute_automatic(StringView text, StringView target,
       if ((next == '(' || next == '{') && i + 3 < text.length) {
         let const close = next == '(' ? ')' : '}';
         usize close_position = i + 2;
-        while (close_position < text.length && text[close_position] != close)
+        while (close_position < text.length && text[close_position] != close) {
           close_position++;
+        }
         if (close_position < text.length) {
           let const contents =
               text.substring_of_length(i + 2, close_position - (i + 2));
@@ -528,10 +531,12 @@ static fn trim(StringView text) wontthrow -> StringView
 {
   usize start = 0;
   usize end = text.length;
-  while (start < end && is_blank(text[start]))
+  while (start < end && is_blank(text[start])) {
     start++;
-  while (end > start && is_blank(text[end - 1]))
+  }
+  while (end > start && is_blank(text[end - 1])) {
     end--;
+  }
   return text.substring_of_length(start, end - start);
 }
 
@@ -554,14 +559,16 @@ static fn split_makeflags_words(StringView text, Allocator allocator) throws
   usize text_position = 0;
 
   while (text_position < text.length) {
-    while (text_position < text.length && is_blank(text[text_position]))
+    while (text_position < text.length && is_blank(text[text_position])) {
       text_position++;
+    }
     if (text_position == text.length) break;
 
     String word{allocator};
     while (text_position < text.length && !is_blank(text[text_position])) {
-      if (text[text_position] == '\\' && text_position + 1 < text.length)
+      if (text[text_position] == '\\' && text_position + 1 < text.length) {
         text_position++;
+      }
       word.push(text[text_position++]);
     }
     words.push(steal(word));
@@ -590,11 +597,15 @@ static fn apply_makeflags(StringView text, make_runtime_flags &flags,
                           Allocator allocator) throws -> void
 {
   for (let const &word : split_makeflags_words(text, allocator)) {
-    if (word.is_empty() || is_command_line_assignment(word.view())) continue;
+    if (word.is_empty() || is_command_line_assignment(word.view())) {
+      continue;
+    }
     let letters = word.view();
     if (letters == "--") break;
     if (letters[0] == '-') letters = letters.substring(1);
-    if (letters.is_empty() || letters[0] == '-') continue;
+    if (letters.is_empty() || letters[0] == '-') {
+      continue;
+    }
 
     for (usize letter_position = 0; letter_position < letters.length;
          letter_position++)
@@ -638,7 +649,9 @@ static fn archive_member_modification_time(const Path &archive,
   let const contents = archive.read_entire_file();
   if (!contents.has_value() || contents->view().length < 8 ||
       contents->view().substring_of_length(0, 8) != StringView{"!<arch>\n"})
+  {
     return None;
+  }
 
   usize header_position = 8;
   StringView long_names;
@@ -656,7 +669,9 @@ static fn archive_member_modification_time(const Path &archive,
         header.substring_of_length(16, 12).trim_blanks());
     let const member_size = utils::parse_decimal_u64(
         header.substring_of_length(48, 10).trim_blanks());
-    if (timestamp.is_error() || member_size.is_error()) return None;
+    if (timestamp.is_error() || member_size.is_error()) {
+      return None;
+    }
 
     let const content_position = header_position + 60;
     if (member_size.value() > contents->view().length - content_position)
@@ -668,7 +683,9 @@ static fn archive_member_modification_time(const Path &archive,
           utils::parse_decimal_u64(member_name.substring(3));
       if (parsed_name_length.is_error() ||
           parsed_name_length.value() > member_size.value())
+      {
         return None;
+      }
       extended_name_length = parsed_name_length.value();
       member_name = contents->view().substring_of_length(
           content_position, static_cast<usize>(extended_name_length));
@@ -686,16 +703,21 @@ static fn archive_member_modification_time(const Path &archive,
           utils::parse_decimal_u64(member_name.substring(1));
       if (parsed_offset.is_error() ||
           parsed_offset.value() >= long_names.length)
+      {
         return None;
+      }
       let const name_start = static_cast<usize>(parsed_offset.value());
       usize name_end = name_start;
-      while (name_end < long_names.length && long_names[name_end] != '\n')
+      while (name_end < long_names.length && long_names[name_end] != '\n') {
         name_end++;
+      }
       member_name =
           long_names.substring_of_length(name_start, name_end - name_start);
       if (!member_name.is_empty() && member_name[member_name.length - 1] == '/')
+      {
         member_name =
             member_name.substring_of_length(0, member_name.length - 1);
+      }
     } else if (!member_name.is_empty() &&
                member_name[member_name.length - 1] == '/')
     {
@@ -929,8 +951,9 @@ static fn decode_make_percent_text(StringView source,
     }
 
     let const backslash_start = source_position;
-    while (source_position < source.length && source[source_position] == '\\')
+    while (source_position < source.length && source[source_position] == '\\') {
       source_position++;
+    }
     let const backslash_count = source_position - backslash_start;
     if (source_position == source.length || source[source_position] != '%') {
       for (usize backslash_position = 0; backslash_position < backslash_count;
@@ -1016,9 +1039,11 @@ static fn substitute_make_words(StringView source, StringView pattern_text,
     if (has_word) result += ' ';
     if (pattern.has_wildcard) {
       if (let const stem = match_make_pattern(pattern, word); stem.has_value())
+      {
         append_make_replacement(result, replacement, *stem, true);
-      else
+      } else {
         result += word;
+      }
     } else if (is_suffix_without_wildcard &&
                word.length >= pattern.prefix.count() &&
                word.substring(word.length - pattern.prefix.count()) ==
@@ -1147,7 +1172,9 @@ static fn run_make_shell_function(EvalContext &cxt, makefile &mk,
     if (captured[byte_position] == '\r' &&
         byte_position + 1 < captured.count() &&
         captured[byte_position + 1] == '\n')
+    {
       continue;
+    }
     folded.push(captured[byte_position] == '\n' ? ' '
                                                 : captured[byte_position]);
   }
@@ -1226,7 +1253,9 @@ static fn require_make_function_arguments(
 {
   if (arguments.count() >= spec.minimum_argument_count &&
       arguments.count() <= spec.maximum_argument_count)
+  {
     return;
+  }
   throw Error{"The make function '" + String{function_name} +
               "' received an invalid number of arguments"};
 }
@@ -1237,8 +1266,10 @@ static fn make_word_number(StringView text, StringView function_name) throws
   let const parsed = utils::parse_decimal_u64(trim(text));
   if (parsed.is_error() || parsed.value() == 0 ||
       static_cast<u64>(static_cast<usize>(parsed.value())) != parsed.value())
+  {
     throw Error{"The make function '" + String{function_name} +
                 "' requires a positive word index"};
+  }
   return static_cast<usize>(parsed.value());
 }
 
@@ -1362,8 +1393,9 @@ evaluate_make_function(EvalContext &cxt, makefile &mk, StringView function_name,
     let result = String{allocator};
     bool has_word = false;
     for (usize word_index = 0; word_index < words.count(); word_index++) {
-      if (word_index > 0 && words[word_index] == words[word_index - 1])
+      if (word_index > 0 && words[word_index] == words[word_index - 1]) {
         continue;
+      }
       append_make_word(result, words[word_index], has_word);
     }
     return result;
@@ -1396,7 +1428,9 @@ evaluate_make_function(EvalContext &cxt, makefile &mk, StringView function_name,
         make_word_number(do_expand(1).view(), function_name);
     if (first_word_number > last_word_number ||
         first_word_number > words.count())
+    {
       return String{allocator};
+    }
     let result = String{allocator};
     bool has_word = false;
     let const last_index =
@@ -1643,8 +1677,9 @@ static fn expand(EvalContext &cxt, makefile &mk, StringView text,
     {
       let const expansion_end =
           make_expansion_end(text, text_position, close_stack);
-      if (!expansion_end.has_value())
+      if (!expansion_end.has_value()) {
         throw Error{"The make variable reference is unterminated"};
+      }
       let const close_position = *expansion_end;
 
       let const expression = text.substring_of_length(
@@ -1653,7 +1688,9 @@ static fn expand(EvalContext &cxt, makefile &mk, StringView text,
       while (function_name_length < expression.length &&
              !is_blank(expression[function_name_length]) &&
              expression[function_name_length] != ',')
+      {
         function_name_length++;
+      }
       let const function_name =
           expression.substring_of_length(0, function_name_length);
       let const function_spec = MAKE_FUNCTIONS.find(function_name);
@@ -1662,7 +1699,9 @@ static fn expand(EvalContext &cxt, makefile &mk, StringView text,
         usize arguments_position = function_name_length;
         while (arguments_position < expression.length &&
                is_blank(expression[arguments_position]))
+        {
           arguments_position++;
+        }
         let const arguments = split_make_function_arguments(
             expression.substring(arguments_position),
             function_spec->maximum_argument_count, cxt.scratch_allocator());
@@ -1713,9 +1752,12 @@ static fn first_colon_not_followed_by_equals(StringView line) wontthrow
         ((line[token_start] >= 'a' && line[token_start] <= 'z') ||
          (line[token_start] >= 'A' && line[token_start] <= 'Z')) &&
         (line[i + 1] == '/' || line[i + 1] == '\\'))
+    {
       continue;
-    if (line[i] == ':' && !(i + 1 < line.length && line[i + 1] == '='))
+    }
+    if (line[i] == ':' && !(i + 1 < line.length && line[i + 1] == '=')) {
       return i;
+    }
   }
   return None;
 }
@@ -1738,7 +1780,9 @@ static fn assignment_variable_name(StringView assignment) wontthrow
 static fn is_command_line_assignment(StringView operand) wontthrow -> bool
 {
   let const equals = operand.find_character('=');
-  if (!equals.has_value() || *equals == 0) return false;
+  if (!equals.has_value() || *equals == 0) {
+    return false;
+  }
   let const name = operand.substring_of_length(0, *equals);
   for (usize i = 0; i < name.length; i++)
     if (is_blank(name[i])) return false;
@@ -1752,7 +1796,9 @@ static fn is_target_variable_assignment(StringView after_colon) wontthrow
   let const name = assignment_variable_name(after_colon);
   if (name.is_empty()) return false;
   for (usize i = 0; i < name.length; i++)
-    if (name[i] == ' ' || name[i] == '\t') return false;
+    if (name[i] == ' ' || name[i] == '\t') {
+      return false;
+    }
   return true;
 }
 
@@ -1772,8 +1818,9 @@ static fn apply_assignment(EvalContext &cxt, makefile &mk, StringView name_part,
 
   let const name = trim(name_part);
   let const trimmed_value = trim(value);
-  if (!is_command_line && mk.command_variable_names.find(name).has_value())
+  if (!is_command_line && mk.command_variable_names.find(name).has_value()) {
     return;
+  }
   if (is_command_line) mk.command_variable_names.set(name, true);
 
   if (let const index = mk.variable_index.find(name); index.has_value()) {
@@ -1854,7 +1901,9 @@ static fn join_continuations(StringView source, u32 source_name_index,
         i++;
         let next = physical[i].without_trailing_newline();
         source_end = static_cast<usize>(next.data - source.data) + next.length;
-        if (!next.is_empty() && next[0] == '\t') next = next.substring(1);
+        if (!next.is_empty() && next[0] == '\t') {
+          next = next.substring(1);
+        }
         line += next;
       }
     } else {
@@ -1887,7 +1936,9 @@ static fn make_expansion_end(StringView text, usize start_position,
 {
   if (start_position + 1 >= text.length || text[start_position] != '$' ||
       (text[start_position + 1] != '(' && text[start_position + 1] != '{'))
+  {
     return None;
+  }
 
   close_stack.clear();
   close_stack.push(text[start_position + 1] == '(' ? ')' : '}');
@@ -1904,7 +1955,9 @@ static fn make_expansion_end(StringView text, usize start_position,
     let const current_closer = close_stack.back();
     if (text[position] == current_closer) {
       close_stack.pop_back();
-      if (close_stack.is_empty()) return position;
+      if (close_stack.is_empty()) {
+        return position;
+      }
     } else if ((current_closer == ')' && text[position] == '(') ||
                (current_closer == '}' && text[position] == '{'))
     {
@@ -1920,11 +1973,13 @@ static fn make_expansion_end(StringView text, usize start_position,
 static fn leading_word(StringView text) wontthrow -> StringView
 {
   usize start = 0;
-  while (start < text.length && is_blank(text[start]))
+  while (start < text.length && is_blank(text[start])) {
     start++;
+  }
   usize end = start;
-  while (end < text.length && !is_blank(text[end]))
+  while (end < text.length && !is_blank(text[end])) {
     end++;
+  }
   return text.substring_of_length(start, end - start);
 }
 
@@ -1952,22 +2007,25 @@ static fn split_conditional_arguments_at_top_level_comma(
     StringView rest, StringView &first, StringView &second) wontthrow -> bool
 {
   rest = trim(rest);
-  if (rest.is_empty() || rest[0] != '(') return false;
+  if (rest.is_empty() || rest[0] != '(') {
+    return false;
+  }
 
   usize close = rest.length;
-  while (close > 0 && rest[close - 1] != ')')
+  while (close > 0 && rest[close - 1] != ')') {
     close--;
+  }
   if (close <= 1) return false;
 
   let const content = rest.substring_of_length(1, close - 2);
   usize depth = 0;
   Maybe<usize> comma = None;
   for (usize k = 0; k < content.length; k++) {
-    if (content[k] == '(')
+    if (content[k] == '(') {
       depth++;
-    else if (content[k] == ')' && depth > 0)
+    } else if (content[k] == ')' && depth > 0) {
       depth--;
-    else if (content[k] == ',' && depth == 0) {
+    } else if (content[k] == ',' && depth == 0) {
       comma = k;
       break;
     }
@@ -1988,10 +2046,14 @@ static fn evaluate_conditional(EvalContext &cxt, makefile &mk,
     bool is_defined = false;
     if (const String *stored = mk.find_variable(name.view());
         stored != nullptr && !stored->is_empty())
+    {
       is_defined = true;
-    else if (Maybe<String> from_env = os::get_environment_variable(name.view());
-             from_env.has_value() && !from_env->is_empty())
+    } else if (Maybe<String> from_env =
+                   os::get_environment_variable(name.view());
+               from_env.has_value() && !from_env->is_empty())
+    {
       is_defined = true;
+    }
     return directive == "ifdef" ? is_defined : !is_defined;
   }
 
@@ -2393,7 +2455,9 @@ static fn parse_makefile_into(EvalContext &cxt, makefile &mk,
               !parsed_target.has_wildcard &&
               !SPECIAL_TARGETS.find(normalized_target.view()).has_value() &&
               !is_inference_rule)
+          {
             mk.default_goal = normalized_target.clone();
+          }
           if (!parsed_target.has_wildcard)
             if (make_rule *existing =
                     mk.find_mutable_rule(normalized_target.view());
@@ -2496,7 +2560,9 @@ static fn parse_makefile(EvalContext &cxt,
       if (!later.recipe_lines.is_empty() ||
           later.target.view() != pattern.target.view() ||
           later.prerequisites.count() != pattern.prerequisites.count())
+      {
         continue;
+      }
 
       is_canceled = true;
       for (usize prerequisite_position = 0;
@@ -2525,17 +2591,23 @@ static fn parse_makefile(EvalContext &cxt,
                     cxt.scratch_allocator());
   }
   if (should_use_builtin_rules && !makefile_flags.should_disable_builtin_rules)
+  {
     for (let const &entry : BUILTIN_RULE_ENTRIES) {
-      if (mk.find_rule(entry.target) != nullptr) continue;
+      if (mk.find_rule(entry.target) != nullptr) {
+        continue;
+      }
 
       make_rule rule{cxt.scratch_allocator()};
       rule.target = entry.target;
       for (let const *recipe_line : entry.recipe_lines) {
-        if (recipe_line == nullptr) break;
+        if (recipe_line == nullptr) {
+          break;
+        }
         rule.recipe_lines.push(String{cxt.scratch_allocator(), recipe_line});
       }
       mk.add_rule(steal(rule));
     }
+  }
   return mk;
 }
 
@@ -2712,7 +2784,9 @@ static fn build_target(const ExecContext &ec, EvalContext &cxt, makefile &mk,
       let const &pattern = pattern_rule.rule;
       if (pattern.recipe_lines.is_empty()) continue;
       let const stem = match_make_pattern(pattern_rule.pattern, goal);
-      if (!stem.has_value() || stem->length >= best_stem_length) continue;
+      if (!stem.has_value() || stem->length >= best_stem_length) {
+        continue;
+      }
 
       ArrayList<String> candidate{cxt.scratch_allocator()};
       bool is_every_prerequisite_supplyable = true;
@@ -2838,7 +2912,9 @@ static fn build_target(const ExecContext &ec, EvalContext &cxt, makefile &mk,
       if (stem_source.length <= suffix_text.length ||
           stem_source.substring(stem_source.length - suffix_text.length) !=
               suffix_text)
+      {
         continue;
+      }
       target_stem = String{cxt.scratch_allocator(),
                            stem_source.substring_of_length(
                                0, stem_source.length - suffix_text.length)};
@@ -3052,8 +3128,9 @@ static fn build_target(const ExecContext &ec, EvalContext &cxt, makefile &mk,
     }
     should_force_run |= recipe_references_make_variable(body);
 
-    if ((options.is_query || options.should_touch) && !should_force_run)
+    if ((options.is_query || options.should_touch) && !should_force_run) {
       continue;
+    }
 
     let const with_autos = substitute_automatic(
         body, automatic_target.view(), archive_member.view(), first_prereq,
@@ -3061,9 +3138,12 @@ static fn build_target(const ExecContext &ec, EvalContext &cxt, makefile &mk,
         target_stem.view(), cxt.scratch_allocator());
     let const command = expand(cxt, mk, with_autos.view(), 0);
     if (command.is_empty()) continue;
-    if ((!is_silent && !is_target_silent) || options.is_dry_run)
+    if ((!is_silent && !is_target_silent) || options.is_dry_run) {
       ec.print_to_stdout(command + "\n");
-    if (options.is_dry_run && !should_force_run) continue;
+    }
+    if (options.is_dry_run && !should_force_run) {
+      continue;
+    }
 
     let const strict_toggles_off_scope = RuntimeStateScope{cxt};
     cxt.runtime_state().set_mood(mimic_mood::Posix);
@@ -3112,7 +3192,9 @@ static fn build_target(const ExecContext &ec, EvalContext &cxt, makefile &mk,
           !options.is_query && target_path.exists() &&
           !target_path.is_directory() && !mk.is_every_target_precious &&
           !mk.precious_targets.find(goal).has_value())
+      {
         unused(os::remove_file(automatic_target.view()));
+      }
       interrupt_error.set_command_status(130);
       throw;
     }
@@ -3120,7 +3202,9 @@ static fn build_target(const ExecContext &ec, EvalContext &cxt, makefile &mk,
       if (!was_target_existing && target_path.exists() &&
           !mk.is_every_target_precious &&
           !mk.precious_targets.find(goal).has_value())
+      {
         unused(os::remove_file(automatic_target.view()));
+      }
 
       throw Error{
           "The recipe for the target '" +
@@ -3167,7 +3251,9 @@ fn parse_makefile_shell_sources(StringView source, Allocator allocator) throws
         while (start_position < end_position &&
                (source[start_position] == '@' ||
                 source[start_position] == '-' || source[start_position] == '+'))
+        {
           start_position++;
+        }
         if (start_position < end_position)
           ranges.push(make_shell_source_range{start_position, end_position,
                                               make_shell_source_kind::Recipe});
@@ -3218,7 +3304,9 @@ fn parse_makefile_shell_sources(StringView source, Allocator allocator) throws
                                                   logical.source_span.length);
       while (start_position < end_position &&
              (source[start_position] == ' ' || source[start_position] == '\t'))
+      {
         start_position++;
+      }
       if (start_position < end_position)
         ranges.push(make_shell_source_range{start_position, end_position,
                                             make_shell_source_kind::Recipe});
@@ -3286,17 +3374,21 @@ fn parse_makefile_shell_sources(StringView source, Allocator allocator) throws
     usize name_end = expression_start;
     while (name_end < *expansion_end && !is_blank(source[name_end]) &&
            source[name_end] != ',')
+    {
       name_end++;
+    }
     if (source.substring_of_length(expression_start,
                                    name_end - expression_start) == "shell" &&
         name_end < *expansion_end && is_blank(source[name_end]))
     {
       usize body_start = name_end;
-      while (body_start < *expansion_end && is_blank(source[body_start]))
+      while (body_start < *expansion_end && is_blank(source[body_start])) {
         body_start++;
-      if (!do_is_inside_recipe(body_start) && body_start < *expansion_end)
+      }
+      if (!do_is_inside_recipe(body_start) && body_start < *expansion_end) {
         ranges.push(make_shell_source_range{
             body_start, *expansion_end, make_shell_source_kind::ShellFunction});
+      }
       position = *expansion_end + 1;
       continue;
     }
@@ -3595,7 +3687,9 @@ fn Make::execute(const ExecContext &ec, EvalContext &cxt,
          byte_position++)
     {
       let const byte = assignment.view()[byte_position];
-      if (byte == '\\' || is_blank(byte)) makeflags += '\\';
+      if (byte == '\\' || is_blank(byte)) {
+        makeflags += '\\';
+      }
       makeflags += byte;
     }
   }
@@ -3681,10 +3775,14 @@ fn Make::execute(const ExecContext &ec, EvalContext &cxt,
         mk.exported_variable_names.find(variable.name.view()).has_value();
     if (!is_command_line_variable && !is_exported_variable &&
         !old_value.has_value())
+    {
       continue;
+    }
     if (!is_command_variable && old_value.has_value() &&
         runtime_flags.is_environment_overriding)
+    {
       continue;
+    }
 
     saved_recipe_environment_values.push(saved_recipe_environment{
         variable.name.clone(), old_value.has_value()
@@ -3726,7 +3824,9 @@ fn Make::execute(const ExecContext &ec, EvalContext &cxt,
   }
 
   if (goals.is_empty()) {
-    if (mk.default_goal.is_empty() && runtime_flags.is_print_database) return 0;
+    if (mk.default_goal.is_empty() && runtime_flags.is_print_database) {
+      return 0;
+    }
     if (mk.default_goal.is_empty())
       throw ErrorWithDetails{
           "The makefile defines no targets and no default goal",
@@ -3774,8 +3874,9 @@ fn Make::execute(const ExecContext &ec, EvalContext &cxt,
   }
 
   if (did_fail) return 2;
-  if (!options.is_query && !has_outdated_goal)
+  if (!options.is_query && !has_outdated_goal) {
     ec.print_to_stdout("make: No action was needed.\n");
+  }
 
   return options.is_query && has_outdated_goal ? 1 : 0;
 }
@@ -3798,7 +3899,9 @@ fn collect_makefile_targets(EvalContext &cxt, const Path &makefile) throws
   let const mk = parse_makefile(cxt, sources, command_assignments, false, true);
   for (let const &rule : mk.rules) {
     let const name = rule.target.view();
-    if (name.is_empty() || name[0] == '.') continue;
+    if (name.is_empty() || name[0] == '.') {
+      continue;
+    }
     targets.push(rule.target.clone());
   }
   return targets;
