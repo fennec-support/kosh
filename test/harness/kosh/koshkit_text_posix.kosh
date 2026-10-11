@@ -69,13 +69,13 @@ koshkit split -l 2 lines part
 koshkit cat partaa partab
 
 koshkit pr -t lines
-koshkit pr -t -w 20 -s : -2 lines
-koshkit pr -t -a -w 20 -s : -2 lines
+koshkit pr -t -w 20 -s: -2 lines
+koshkit pr -t -a -w 20 -s: -2 lines
 printf 'wide-one\nwide-two\n' |
   koshkit pr -t -l 1 -18446744073709551615
 printf 'left-one\nleft-two\n' > left
 printf 'right-one\nright-two\n' > right
-koshkit pr -t -m -w 30 -s : left right
+koshkit pr -t -m -w 30 -s: left right
 printf 'x\0y\nplain\n' > nul-subject
 echo "regex-across-nul=$(koshkit grep '[y]$' nul-subject | koshkit wc -l)"
 printf 'a\303\251b\n\303\251\naxb\n\346\227\245\346\234\254\n\303\211\n' > wide

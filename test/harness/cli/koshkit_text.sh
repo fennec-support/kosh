@@ -141,11 +141,11 @@ echo "--- paste repeated standard input ---"
 printf 'left\nright\n' | "$BIN" -c 'koshkit paste -d , - -'
 echo "--- pr merge with a missing operand ---"
 "$BIN" -c \
-  'koshkit pr -t -m -s , sort-a.txt missing.txt sort-b.txt; printf "status=%s\n" "$?"' \
+  'koshkit pr -t -m -s, sort-a.txt missing.txt sort-b.txt; printf "status=%s\n" "$?"' \
   2>&1
 echo "--- pr merge suppresses a missing warning ---"
 "$BIN" -c \
-  'koshkit pr -r -t -m -s , sort-a.txt missing.txt sort-b.txt; printf "status=%s\n" "$?"' \
+  'koshkit pr -r -t -m -s, sort-a.txt missing.txt sort-b.txt; printf "status=%s\n" "$?"' \
   2>&1
 echo "--- pr batches normal source windows ---"
 "$BIN" -c 'koshkit pr -t batch-source-*.txt | koshkit cksum'
@@ -421,12 +421,33 @@ printf 'ab\r        c\n' | "$BIN" -c 'koshkit unexpand -a' | tr '\r\t' RT
 echo "--- pr pages carry no separator lines ---"
 "$BIN" -c 'koshkit seq 7 | koshkit pr -t -l 3' | tr '\n' ' '
 echo
-"$BIN" -c 'koshkit seq 3 | koshkit pr -F -l 12 -h T' | tr '\f\n' 'F|'
+"$BIN" -c 'koshkit seq 3 | koshkit pr -F -l 12 -D D -h T' | tr '\f\n' 'F|'
 echo
-"$BIN" -c 'koshkit seq 30 | koshkit pr +3 -d -l 16 -h T' | tr '\n' '|'
+"$BIN" -c 'koshkit seq 30 | koshkit pr +3 -d -l 16 -D D -h T' | tr '\n' '|'
 echo
-"$BIN" -c 'koshkit seq 3 | koshkit pr -d -l 13 -h T' | tr '\n' '|'
+"$BIN" -c 'koshkit seq 3 | koshkit pr -d -l 13 -D D -h T' | tr '\n' '|'
 echo
+echo "--- pr lays out equal columns as GNU does ---"
+printf 'alpha\nbe\tta\ngamma line long enough to be cut at the column edge\n\tlead\n' \
+  > pr-columns.txt
+"$BIN" -c 'koshkit pr -t -2 pr-columns.txt' | tr '\t' T
+"$BIN" -c 'koshkit pr -t -3 -w 30 pr-columns.txt' | tr '\t' T
+"$BIN" -c 'koshkit seq 7 | koshkit pr -t -3 -n' | tr '\t' T
+"$BIN" -c 'koshkit seq 5 | koshkit pr -t -a -2 -o 3' | tr '\t' T
+"$BIN" -c 'koshkit seq 7 | koshkit pr -t -d -2 -l 4' | tr '\t\n' 'T|'
+echo
+"$BIN" -c 'koshkit seq 6 | koshkit pr -t -3 -s,'
+"$BIN" -c 'koshkit seq 6 | koshkit pr -t -3 -s'
+"$BIN" -c 'koshkit seq 4 | koshkit pr -2 -l 12 -D D -h T' | tr '\t\n' 'T|'
+echo
+echo "--- pr merges files with a separator and line numbers ---"
+printf 'a\nb\nc\n' > pr-merge-long.txt
+printf 'x\n' > pr-merge-short.txt
+"$BIN" -c 'koshkit pr -m -t -s, pr-merge-short.txt pr-merge-long.txt'
+"$BIN" -c 'koshkit pr -m -t -n pr-merge-short.txt pr-merge-long.txt' | tr '\t' T
+"$BIN" -c 'koshkit pr -m -t -w 30 -s, pr-merge-long.txt pr-merge-short.txt' | tr '\t' T
+echo "--- pr selects a page range ---"
+"$BIN" -c 'koshkit seq 9 | koshkit pr -t -l 2 +2:3 --columns=2' | tr '\t' T
 echo "--- od skips with a zero count ---"
 printf 'abcdefghij' | "$BIN" -c 'koshkit od -N0 -j5; printf "status=%s\n" "$?"'
 echo "--- realpath follows a dangling link and rejects a file with a slash ---"

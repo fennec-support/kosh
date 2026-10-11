@@ -201,45 +201,40 @@ note: use 1, 2, 4, 8, C, S, I, or L.
        |                      ^~~~~~~
 note: use c, d, o, u, or x with an optional width of 1, 2, 4, 8, C, S, I, or L.
 === pr page number location ===
--c:1:12: error: koshkit pr: invalid page number '+0'.
+-c:1:1: error: koshkit pr: cannot read '+0': No such file or directory.
      1 |  koshkit pr +0
-       |             ^~
-note: use + followed by a positive decimal integer within the platform size limit.
+       |  ^~~~~~~~~~~~~
 === pr column count location ===
 -c:1:12: error: koshkit pr: invalid column count '-2x'.
      1 |  koshkit pr -2x
        |             ^~~
-note: use - followed by a positive decimal integer within the platform size limit.
+note: use a positive decimal integer within the platform size limit.
 === pr page length location ===
 -c:1:15: error: koshkit pr: invalid page length 'invalid'.
      1 |  koshkit pr -l invalid
        |                ^~~~~~~
-note: use a nonnegative decimal integer within the platform size limit.
+note: use a positive decimal integer within the platform size limit.
 === pr page width location ===
 -c:1:15: error: koshkit pr: invalid page width 'invalid'.
      1 |  koshkit pr -w invalid
        |                ^~~~~~~
-note: use a nonnegative decimal integer within the platform size limit.
+note: use a positive decimal integer within the platform size limit.
 === pr indentation location ===
 -c:1:15: error: koshkit pr: invalid indentation 'invalid'.
      1 |  koshkit pr -o invalid
        |                ^~~~~~~
 note: use a nonnegative decimal integer within the platform size limit.
 === pr header capacity location ===
--c:1:15: error: koshkit pr: the page length leaves no room for headers.
-     1 |  koshkit pr -l 9
-       |                ^
-note: use a length of at least 10 or omit headers with -t.
 === pr output capacity location ===
--c:1:18: error: koshkit pr: the page length leaves no room for output.
+-c:1:18: error: koshkit pr: invalid page length '0'.
      1 |  koshkit pr -t -l 0
        |                   ^
-note: use a positive page length when headers are omitted.
+note: use a positive decimal integer within the platform size limit.
 === pr column capacity location ===
--c:1:20: error: koshkit pr: the column count exceeds the page capacity.
+-c:1:1: error: koshkit pr: the page width is too narrow for the columns.
      1 |  koshkit pr -t -l 2 -18446744073709551615
-       |                     ^~~~~~~~~~~~~~~~~~~~~
-note: reduce the column count.
+       |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+note: use a larger width with -w or fewer columns.
 === grep pattern location ===
 -c:1:14: error: koshkit grep: the pattern '[' is not a valid regex.
      1 |  koshkit grep '['

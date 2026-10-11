@@ -445,7 +445,7 @@ _koshkit_util_flags ()
     ;;
     pr)
       echo \
-        "-a --across -d --double-space -F --form-feed -f --form-feed-alias -h --header -l --length -m --merge -n --number-lines -o --indent -r --no-file-warnings -t --omit-header -s --separator -w --width"
+        "-a --across -d --double-space -D --date-format -F --form-feed -f --form-feed-alias -h --header -l --length -m --merge -n --number-lines -o --indent -r --no-file-warnings -t --omit-header -s --separator -w --width --columns --pages"
     ;;
     stty)
       echo "-a --all -g --save"
