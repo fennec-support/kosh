@@ -301,7 +301,8 @@ fn parse_flags_vec(const FlagList &flags, const ArrayList<String> &args,
                    ArrayList<SourceLocation> *operand_locations = nullptr,
                    StringView program_name = StringView{},
                    flag_parse_options parse_options = {},
-                   Allocator allocator = heap_allocator()) throws
+                   Allocator allocator = heap_allocator(),
+                   ArrayList<usize> *operand_indices = nullptr) throws
     -> ArrayList<String>;
 fn parse_flags(const FlagList &flags, int argc, const char *const *argv,
                usize base_position = 0,
@@ -310,7 +311,8 @@ fn parse_flags(const FlagList &flags, int argc, const char *const *argv,
                ArrayList<SourceLocation> *operand_locations = nullptr,
                StringView program_name = StringView{},
                flag_parse_options parse_options = {},
-               Allocator allocator = heap_allocator()) throws
+               Allocator allocator = heap_allocator(),
+               ArrayList<usize> *operand_indices = nullptr) throws
     -> ArrayList<String>;
 struct util_operands_result
 {

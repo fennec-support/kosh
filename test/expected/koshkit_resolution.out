@@ -60,3 +60,9 @@ rc=1
      1 |  koshkit nope
        |          ^~~~
 rc=1
+=== a utility named by one expanded word ===
+2
+3
+rc=0
+4
+rc=0

@@ -339,7 +339,9 @@ fn parse_flags_vec(const FlagList &flags, const ArrayList<String> &args,
                    const ArrayList<SourceLocation> *arg_locations,
                    ArrayList<SourceLocation> *operand_locations,
                    StringView program_name, flag_parse_options parse_options,
-                   Allocator allocator) throws -> ArrayList<String>
+                   Allocator allocator,
+                   ArrayList<usize> *operand_indices) throws
+    -> ArrayList<String>
 {
   reset_flags(flags);
 
@@ -364,7 +366,7 @@ fn parse_flags_vec(const FlagList &flags, const ArrayList<String> &args,
     return parse_flags(flags, static_cast<int>(args.count()), argument_data,
                        base_position, operand_value_flag, arg_locations,
                        operand_locations, program_name, parse_options,
-                       allocator);
+                       allocator, operand_indices);
   } catch (...) {
     reset_flags(flags);
     throw;
@@ -468,7 +470,8 @@ fn parse_flags(const FlagList &flags, int argc, const char *const *argv,
                const ArrayList<SourceLocation> *arg_locations,
                ArrayList<SourceLocation> *operand_locations,
                StringView program_name, flag_parse_options parse_options,
-               Allocator allocator) throws -> ArrayList<String>
+               Allocator allocator, ArrayList<usize> *operand_indices) throws
+    -> ArrayList<String>
 {
   ASSERT(argc >= 0);
 
@@ -482,8 +485,9 @@ fn parse_flags(const FlagList &flags, int argc, const char *const *argv,
   let args = ArrayList<String>{allocator};
 
   let const do_record_operand =
-      [argv, base_position, arg_locations, operand_locations](usize arg_index)
-          throws -> void {
+      [argv, base_position, arg_locations, operand_locations,
+       operand_indices](usize arg_index) throws -> void {
+    if (operand_indices != nullptr) operand_indices->push(arg_index);
     if (operand_locations == nullptr) return;
 
     operand_locations->push(
@@ -906,30 +910,13 @@ fn parse_until_subcommand(const FlagList &flags, const ArrayList<String> &args,
                           ArrayList<SourceLocation> *operand_locations,
                           StringView program_name) throws -> usize
 {
-  let local_operand_locations = ArrayList<SourceLocation>{heap_allocator()};
-  let operands =
-      parse_flags_vec(flags, args, 0, nullptr, arg_locations,
-                      operand_locations != nullptr ? operand_locations
-                                                   : &local_operand_locations,
-                      program_name);
+  let operand_indices = ArrayList<usize>{heap_allocator()};
+  let const operands =
+      parse_flags_vec(flags, args, 0, nullptr, arg_locations, operand_locations,
+                      program_name, {}, heap_allocator(), &operand_indices);
   if (operands.count() <= 1) return args.count();
 
-  let const &locations = operand_locations != nullptr ? *operand_locations
-                                                      : local_operand_locations;
-  let const subcommand_operand = operands[1].view();
-  let const subcommand_location = locations[1];
-  if (arg_locations != nullptr) {
-    for (usize index = 0; index < arg_locations->count(); index++) {
-      if ((*arg_locations)[index].position == subcommand_location.position &&
-          (*arg_locations)[index].length == subcommand_location.length)
-        return index;
-    }
-  }
-
-  for (usize index = 0; index < args.count(); index++)
-    if (args[index].view() == subcommand_operand) return index;
-
-  return args.count();
+  return operand_indices[1];
 }
 
 pure fn arg_needs_shell_quoting(StringView arg) wontthrow -> bool

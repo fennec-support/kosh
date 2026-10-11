@@ -86,3 +86,9 @@ echo "rc=$?"
 echo "=== unknown utility errors ==="
 "$BIN" -c 'koshkit nope' 2>&1
 echo "rc=$?"
+
+echo "=== a utility named by one expanded word ==="
+"$BIN" -c 'set -- koshkit seq 2 3; "$@"' 2>&1
+echo "rc=$?"
+"$BIN" -c 'set -- koshkit --color never seq 4 4; "$@"' 2>&1
+echo "rc=$?"
