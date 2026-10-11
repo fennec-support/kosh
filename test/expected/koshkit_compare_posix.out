@@ -16,6 +16,9 @@ a
 		c
 c
 1
+29:58: error: koshkit comm: file 1 is not in sorted order.
+    29 |  printf '1\n\t2\n\t\t3\n4\n\t5\n\t\t6\n7\n\t8\n\t\t9\n' | koshkit comm - -
+       |                                                           ^~~~~~~~~~~~~~~~
 	2
 		3
 4
@@ -24,6 +27,9 @@ c
 7
 	8
 		9
+29:58: error: koshkit comm: input is not in sorted order.
+    29 |  printf '1\n\t2\n\t\t3\n4\n\t5\n\t\t6\n7\n\t8\n\t\t9\n' | koshkit comm - -
+       |                                                           ^~~~~~~~~~~~~~~~
 a
 b
 c

@@ -13,8 +13,8 @@
 #include "../Koshkit.hpp"
 #include "../base/Path.hpp"
 
-KOSHKIT_UTIL_DECL("path",
-                  "The dirname utility prints the directory part of a path.");
+KOSHKIT_UTIL_DECL(
+    "path ...", "The dirname utility prints the directory part of each path.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Dirname);
 
@@ -72,8 +72,12 @@ cold fn Dirname::execute(
     return 1;
   }
 
-  let const text = directory_part_of(operands[0].view());
-  ec.print_to_stdout(String{cxt.scratch_allocator(), text} + "\n");
+  let output = String{cxt.scratch_allocator()};
+  for (let const &operand : operands) {
+    output.append(directory_part_of(operand.view()));
+    output.push('\n');
+  }
+  ec.print_to_stdout(output);
 
   return 0;
 }

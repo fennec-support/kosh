@@ -563,7 +563,8 @@ fn parse_file_mode(StringView expression, u32 current_mode, u32 creation_mask,
 {
   if (expression.is_empty()) return None;
 
-  bool is_octal = expression.length <= 4;
+  bool is_octal = true;
+  bool has_octal_overflow = false;
   u32 octal_mode = 0;
   for (usize position = 0; position < expression.length; position++) {
     let const byte = expression[position];
@@ -572,8 +573,20 @@ fn parse_file_mode(StringView expression, u32 current_mode, u32 creation_mask,
       break;
     }
     octal_mode = octal_mode * 8 + static_cast<u32>(byte - '0');
+    if (octal_mode > 07777u) {
+      has_octal_overflow = true;
+      octal_mode = 07777u;
+    }
   }
-  if (is_octal) return (current_mode & ~07777u) | octal_mode;
+  if (is_octal) {
+    if (has_octal_overflow) return None;
+
+    let const kept_directory_bits =
+        kind == file_kind_mode::Directory && expression.length < 5
+            ? current_mode & 06000u
+            : 0u;
+    return (current_mode & ~07777u) | octal_mode | kept_directory_bits;
+  }
 
   u32 mode = current_mode;
   usize position = 0;

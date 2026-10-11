@@ -690,9 +690,14 @@ fn Printf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
           let const date_format =
               fmt.view().substring_of_length(i + 1, close - i - 1);
           let const has_operand = operand_index < operand_count;
-          let const epoch =
-              has_operand ? parse_printf_integer(do_operand_at(operand_index))
+          let epoch = has_operand
+                          ? parse_printf_integer(do_operand_at(operand_index))
                           : -1;
+          if (epoch == -1) {
+            epoch = os::current_unix_seconds();
+          } else if (epoch == -2) {
+            epoch = cxt.dynamic_runtime_store().shell_start_time();
+          }
           let const formatted = os::format_local_time(date_format, epoch);
           if (spec == "%")
             out += formatted;

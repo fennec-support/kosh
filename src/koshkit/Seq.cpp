@@ -36,8 +36,10 @@ fn Seq::execute(const ExecContext &ec, EvalContext &cxt,
   i64 last = 0;
   let const do_parse_integer = [&](usize operand_position, i64 &value)
                                    throws -> bool {
-    let const parsed = operands[operand_position].view().to<i64>();
-    if (parsed.is_error()) {
+    bool is_out_of_range = false;
+    let const parsed = utils::parse_decimal_i64(
+        operands[operand_position].view(), &is_out_of_range);
+    if (parsed.is_error() || is_out_of_range) {
       KOSHKIT_REPORT_ERROR_AT(
           operand_locations[operand_position],
           "invalid integer argument '" + operands[operand_position] + "'",

@@ -402,3 +402,13 @@ echo "malformed-rows=$?"
 echo "malformed-si-rows=$?"
 "$BIN" -c 'koshkit df -H . | koshkit tail -n 1' | grep -Eq '[0-9]K '
 echo "uppercase-si-kilo=$?"
+echo "--- chmod accepts leading zeros up to 7777 ---"
+: > chmod-zeros.txt
+"$BIN" -c 'koshkit chmod 00640 chmod-zeros.txt && koshkit stat -c %a chmod-zeros.txt'
+"$BIN" -c 'koshkit chmod 017777 chmod-zeros.txt 2>/dev/null; printf "status=%s\n" "$?"'
+echo "--- stat prints times before 1970 ---"
+TZ=UTC0 "$BIN" -c 'koshkit touch -t 196001010000 old-stamp && koshkit stat -c %Y old-stamp'
+echo "--- comm reports unsorted input ---"
+printf 'b\na\n' > comm-unsorted-1.txt
+printf 'a\nb\n' > comm-unsorted-2.txt
+"$BIN" -c 'koshkit comm comm-unsorted-1.txt comm-unsorted-2.txt 2>/dev/null; printf "status=%s\n" "$?"'

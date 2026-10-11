@@ -429,10 +429,8 @@ fn render_file_directive(String &output, const directive_spec &spec,
     return;
 
   case 'X':
-    append_padded(
-        output,
-        decimal_of(static_cast<u64>(status.access_time), allocator).view(),
-        spec, stat_value_kind::Numeric);
+    append_padded(output, String::from(status.access_time, allocator).view(),
+                  spec, stat_value_kind::Numeric);
     return;
 
   case 'y':
@@ -445,11 +443,9 @@ fn render_file_directive(String &output, const directive_spec &spec,
     return;
 
   case 'Y':
-    append_padded(
-        output,
-        decimal_of(static_cast<u64>(status.modification_time), allocator)
-            .view(),
-        spec, stat_value_kind::Numeric);
+    append_padded(output,
+                  String::from(status.modification_time, allocator).view(),
+                  spec, stat_value_kind::Numeric);
     return;
 
   case 'z':
@@ -461,10 +457,8 @@ fn render_file_directive(String &output, const directive_spec &spec,
     return;
 
   case 'Z':
-    append_padded(
-        output,
-        decimal_of(static_cast<u64>(status.change_time), allocator).view(),
-        spec, stat_value_kind::Numeric);
+    append_padded(output, String::from(status.change_time, allocator).view(),
+                  spec, stat_value_kind::Numeric);
     return;
 
   default: break;

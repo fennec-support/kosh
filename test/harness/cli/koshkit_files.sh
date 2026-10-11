@@ -253,8 +253,14 @@ echo "--- basename ---"
 "$BIN" -c 'koshkit basename /usr/local/libfoo.so .so'
 echo "--- dirname ---"
 "$BIN" -c 'koshkit dirname /usr/local/libfoo.so'
+"$BIN" -c 'koshkit dirname /a/b c/d e'
 echo "--- realpath lexical basename ---"
 "$BIN" -c 'koshkit mkdir -p usr/lib; resolved=$(koshkit realpath ./usr/../usr/lib) || exit; koshkit basename "$resolved"'
+echo "--- realpath with missing components ---"
+"$BIN" -c 'resolved=$(koshkit realpath usr/absent) || exit; koshkit basename "$resolved"'
+"$BIN" -c 'koshkit realpath usr/absent/deeper 2>/dev/null; printf "status=%s\n" "$?"'
+"$BIN" -c 'koshkit realpath -e usr/absent 2>/dev/null; printf "status=%s\n" "$?"'
+"$BIN" -c 'resolved=$(koshkit realpath -m usr/absent/a/../b) || exit; koshkit basename "$resolved"'
 "$BIN" -c 'koshkit rmdir a/b'
 echo "--- ls a after rmdir ---"
 "$BIN" -c 'koshkit ls a'

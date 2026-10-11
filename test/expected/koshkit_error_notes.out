@@ -557,7 +557,7 @@ note: use a group name or an unsigned decimal group id.
 -c:1:15: error: koshkit chmod: invalid mode 'u=rz'.
      1 |  koshkit chmod u=rz LICENSE
        |                ^~~~
-note: use one to four octal digits or symbolic clauses such as u+x,g-w.
+note: use an octal mode up to 7777 or symbolic clauses such as u+x,g-w.
 === chown owner location ===
 -c:1:15: error: koshkit chown: invalid owner 'KOSH_MISSING_USER'.
      1 |  koshkit chown KOSH_MISSING_USER LICENSE
@@ -737,9 +737,9 @@ note: pass a pattern, e.g. `pkill ssh`.
      1 |  koshkit link KOSH_MISSING_SOURCE KOSH_MISSING_DESTINATION
        |                                   ^~~~~~~~~~~~~~~~~~~~~~~~
 === realpath operand location ===
--c:1:18: error: koshkit realpath: 'KOSH_MISSING_PATH': No such file or directory.
-     1 |  koshkit realpath KOSH_MISSING_PATH
-       |                   ^~~~~~~~~~~~~~~~~
+-c:1:18: error: koshkit realpath: 'KOSH_MISSING_PATH/child': No such file or directory.
+     1 |  koshkit realpath KOSH_MISSING_PATH/child
+       |                   ^~~~~~~~~~~~~~~~~~~~~~~
 === rmdir operand location ===
 -c:1:15: error: koshkit rmdir: failed to remove 'KOSH_MISSING_DIRECTORY': No such file or directory.
      1 |  koshkit rmdir KOSH_MISSING_DIRECTORY

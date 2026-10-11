@@ -62,7 +62,9 @@ fn build_title(StringView command, f64 interval_seconds, u32 column_count,
     right += ": ";
   }
 
-  right += os::format_local_time("%a %b %e %H:%M:%S %Y", -1).view();
+  right +=
+      os::format_local_time("%a %b %e %H:%M:%S %Y", os::current_unix_seconds())
+          .view();
 
   let title = String{allocator};
   let const total_length = left.length() + right.length();

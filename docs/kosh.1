@@ -2941,7 +2941,8 @@ option stops a recursion from descending into a directory on a file system
 other than the one of its operand. The directory itself is still changed.
 .TP
 .B chmod
-Symbolic or octal modes are applied to each file. The
+Symbolic or octal modes are applied to each file. An octal mode of fewer than
+five digits keeps the set-user-ID and set-group-ID bits of a directory. The
 .BR \-R ", " \-\-recursive
 option changes directories and their contents without following symbolic
 links. The
@@ -3010,7 +3011,7 @@ header includes the file modification time. Equal files return zero, different
 files return one, and usage or input errors return two.
 .TP
 .B dirname
-The directory portion of one path is printed.
+The directory portion of each path is printed.
 .TP
 .B du
 Every file and directory below each path is printed in descending size order.
@@ -3454,7 +3455,11 @@ option suppresses the trailing newline of a single file and is ignored for
 several.
 .TP
 .B realpath
-The canonical absolute form of each path is printed.
+The canonical absolute form of each path is printed. Every component but the
+last must exist, every component must exist with
+.BR \-e ,
+and none needs to exist with
+.BR \-m .
 .TP
 .B rm
 Paths are removed with

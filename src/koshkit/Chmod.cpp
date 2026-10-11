@@ -125,7 +125,7 @@ fn Chmod::execute(const ExecContext &ec, EvalContext &cxt,
   {
     KOSHKIT_REPORT_ERROR_AT(
         operand_locations[0], "invalid mode '" + operands[0] + "'",
-        "use one to four octal digits or symbolic clauses such as u+x,g-w");
+        "use an octal mode up to 7777 or symbolic clauses such as u+x,g-w");
     return 1;
   }
 

@@ -75,6 +75,33 @@ fn Comm::execute(const ExecContext &ec, EvalContext &cxt,
                                !FLAG_COMM_HIDE_COMMON.is_enabled()};
   let output = String{cxt.scratch_allocator()};
 
+  String previous_lines[2] = {String{cxt.scratch_allocator()},
+                              String{cxt.scratch_allocator()}};
+  bool has_previous_line[2] = {false, false};
+  bool was_disorder_reported[2] = {false, false};
+  bool has_seen_unpairable_line = false;
+  let const do_advance = [&](usize side, utils::BufferedLineReader &reader,
+                             utils::BufferedLineReader::Result &result)
+                             throws -> void {
+    previous_lines[side].clear();
+    previous_lines[side].append(reader.get_line());
+    has_previous_line[side] = true;
+    result = reader.next();
+    if (result != utils::BufferedLineReader::Result::Line ||
+        !has_seen_unpairable_line || was_disorder_reported[side] ||
+        !(reader.get_line() < previous_lines[side].view()))
+    {
+      return;
+    }
+
+    ec.print_to_stdout(output);
+    output.clear();
+    report_soft_koshkit_util_error(ec, cxt, args[0].view(),
+                                   side == 0 ? "file 1 is not in sorted order"
+                                             : "file 2 is not in sorted order");
+    was_disorder_reported[side] = true;
+  };
+
   loop
   {
     if (left_result == utils::BufferedLineReader::Result::Error ||
@@ -91,23 +118,27 @@ fn Comm::execute(const ExecContext &ec, EvalContext &cxt,
 
     if (left_result == utils::BufferedLineReader::Result::End) {
       append_comm_line(output, 1, right_reader.get_line(), should_show);
-      right_result = right_reader.next();
+      has_seen_unpairable_line = true;
+      do_advance(1, right_reader, right_result);
     } else if (right_result == utils::BufferedLineReader::Result::End) {
       append_comm_line(output, 0, left_reader.get_line(), should_show);
-      left_result = left_reader.next();
+      has_seen_unpairable_line = true;
+      do_advance(0, left_reader, left_result);
     } else {
       let const left_line = left_reader.get_line();
       let const right_line = right_reader.get_line();
       if (left_line == right_line) {
         append_comm_line(output, 2, left_line, should_show);
-        left_result = left_reader.next();
-        right_result = right_reader.next();
+        do_advance(0, left_reader, left_result);
+        do_advance(1, right_reader, right_result);
       } else if (left_line < right_line) {
         append_comm_line(output, 0, left_line, should_show);
-        left_result = left_reader.next();
+        has_seen_unpairable_line = true;
+        do_advance(0, left_reader, left_result);
       } else {
         append_comm_line(output, 1, right_line, should_show);
-        right_result = right_reader.next();
+        has_seen_unpairable_line = true;
+        do_advance(1, right_reader, right_result);
       }
     }
 
@@ -118,6 +149,12 @@ fn Comm::execute(const ExecContext &ec, EvalContext &cxt,
   }
 
   ec.print_to_stdout(output);
+  if (was_disorder_reported[0] || was_disorder_reported[1]) {
+    report_soft_koshkit_util_error(ec, cxt, args[0].view(),
+                                   "input is not in sorted order");
+    return 1;
+  }
+
   return 0;
 }
 

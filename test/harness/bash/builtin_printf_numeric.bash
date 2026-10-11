@@ -169,6 +169,7 @@ printf '%(%Y-%m-%d)T\n' 1700000000
 printf '[%(%H:%M:%S)T]\n' 0
 printf '%(%Y)T\n' 1000000000
 printf 'year=%(%Y)T month=%(%m)T\n' 1700000000 1700000000
+printf '%(%Y)T\n' -100000000
 
 # The printf format is recycled over the extra arguments. A numeric conversion
 # with no remaining argument substitutes zero and the status stays zero, the

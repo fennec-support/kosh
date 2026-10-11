@@ -419,11 +419,9 @@ fn Evil::execute(const ExecContext &ec, EvalContext &cxt,
   }
   identity.add("Directory", os::read_current_directory().view());
   if (FLAG_EVIL_ALL.is_enabled()) {
-    session.add("Time",
-                os::format_local_time(
-                    "%Y-%m-%d %H:%M:%S %z",
-                    static_cast<i64>(os::realtime_microseconds() / 1000000))
-                    .view());
+    session.add("Time", os::format_local_time("%Y-%m-%d %H:%M:%S %z",
+                                              os::current_unix_seconds())
+                            .view());
     session.add("Process",
                 String::from(os::get_current_process_id(), allocator).view());
     session.add("Parent process",

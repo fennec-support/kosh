@@ -67,8 +67,16 @@ du-unreadable=ok
 libfoo
 --- dirname ---
 /usr/local
+/a
+c
+.
 --- realpath lexical basename ---
 lib
+--- realpath with missing components ---
+absent
+status=1
+status=1
+b
 --- ls a after rmdir ---
 rmdir-parents=missing
 --- unlink removes a single file ---

@@ -711,3 +711,13 @@ Filesystem Size Used Avail Use% Mounted on
 malformed-rows=1
 malformed-si-rows=1
 uppercase-si-kilo=1
+--- chmod accepts leading zeros up to 7777 ---
+640
+status=1
+--- stat prints times before 1970 ---
+-315619200
+--- comm reports unsorted input ---
+	a
+		b
+a
+status=1

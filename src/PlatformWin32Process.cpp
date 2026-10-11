@@ -2942,9 +2942,9 @@ fn realtime_microseconds() wontthrow -> u64
 
 fn format_local_time(StringView format, i64 epoch) throws -> String
 {
-  const time_t when = epoch < 0 ? time(nullptr) : static_cast<time_t>(epoch);
+  const time_t when = static_cast<time_t>(epoch);
   struct tm broken_down{};
-  localtime_s(&broken_down, &when);
+  if (localtime_s(&broken_down, &when) != 0) return String{heap_allocator()};
   let const format_string = String{format};
   char buffer[512];
   let const written =

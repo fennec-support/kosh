@@ -1963,6 +1963,11 @@ fn monotonic_nanos() wontthrow -> u64;
 
 fn realtime_microseconds() wontthrow -> u64;
 
+inline fn current_unix_seconds() wontthrow -> i64
+{
+  return static_cast<i64>(realtime_microseconds() / 1000000);
+}
+
 fn format_local_time(StringView format, i64 epoch) throws -> String;
 
 struct terminal_dimensions

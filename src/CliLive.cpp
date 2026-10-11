@@ -375,7 +375,8 @@ fn LiveView::append_frame_start(String &frame,
   if (m_is_terminal) frame += "\x1b[H\x1b[2J";
 
   let const should_style = m_is_terminal && m_options.should_color;
-  let const clock = os::format_local_time("%H:%M:%S", -1);
+  let const clock =
+      os::format_local_time("%H:%M:%S", os::current_unix_seconds());
   let labels = String{allocator};
   if (m_options.window_seconds > 0.0) {
     labels += "window ";
