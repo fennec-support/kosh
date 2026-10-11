@@ -425,6 +425,16 @@ echo
 echo
 "$BIN" -c 'koshkit seq 30 | koshkit pr +3 -d -l 16 -h T' | tr '\n' '|'
 echo
+"$BIN" -c 'koshkit seq 3 | koshkit pr -d -l 13 -h T' | tr '\n' '|'
+echo
+echo "--- od skips with a zero count ---"
+printf 'abcdefghij' | "$BIN" -c 'koshkit od -N0 -j5; printf "status=%s\n" "$?"'
+echo "--- realpath follows a dangling link and rejects a file with a slash ---"
+mkdir -p realpath-links && : > realpath-links/file
+ln -s nowhere realpath-links/dangling
+"$BIN" -c 'resolved=$(koshkit realpath realpath-links/dangling) && koshkit basename "$resolved"'
+"$BIN" -c 'koshkit realpath realpath-links/file/ 2>/dev/null; printf "status=%s\n" "$?"'
+"$BIN" -c "koshkit realpath '' 2>/dev/null; printf 'status=%s\n' \"\$?\""
 echo "--- split widens its suffixes past yz ---"
 mkdir split-widen
 (cd split-widen && "$BIN" -c 'koshkit seq 652 | koshkit split -l 1' && ls | tail -n 3)

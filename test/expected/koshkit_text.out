@@ -738,6 +738,14 @@ abRT   c
 1 2 3 4 5 6 7 
 ||T  Page 1|||1|2|F||T  Page 2|||3|F
 ||T  Page 3|||7||8||9|||||||||T  Page 4|||10||11||12|||||||||T  Page 5|||13||14||15|||||||||T  Page 6|||16||17||18|||||||||T  Page 7|||19||20||21|||||||||T  Page 8|||22||23||24|||||||||T  Page 9|||25||26||27|||||||||T  Page 10|||28||29||30|||||||
+||T  Page 1|||1|||||||||T  Page 2|||2|||||||||T  Page 3|||3|||||||
+--- od skips with a zero count ---
+0000005
+status=0
+--- realpath follows a dangling link and rejects a file with a slash ---
+nowhere
+status=1
+status=1
 --- split widens its suffixes past yz ---
 xyz
 xzaaa

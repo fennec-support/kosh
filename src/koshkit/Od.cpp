@@ -470,8 +470,11 @@ fn Od::execute(const ExecContext &ec, EvalContext &cxt,
   u64 skipped_count = 0;
   u64 dumped_count = 0;
   char chunk[65536];
+  let const do_need_bytes = [&]() wontthrow -> bool {
+    return skipped_count < skip_count || dumped_count < byte_limit;
+  };
   for (let const source : sources) {
-    if (dumped_count == byte_limit) break;
+    if (!do_need_bytes()) break;
 
     let const input = open_named_or_stdin(ec, source);
     if (!input.has_value()) {
@@ -485,7 +488,7 @@ fn Od::execute(const ExecContext &ec, EvalContext &cxt,
         os::close_fd(input->descriptor);
     };
 
-    while (dumped_count < byte_limit) {
+    while (do_need_bytes()) {
       let const read_count =
           os::read_fd(input->descriptor, chunk, sizeof(chunk));
       if (!read_count.has_value()) {

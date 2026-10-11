@@ -258,9 +258,10 @@ fn Pr::execute(const ExecContext &ec, EvalContext &cxt,
   let const page_capacity = data_line_limit * column_count;
 
   let const page_line_count = column_count > 1 ? page_capacity
-                              : FLAG_PR_DOUBLE_SPACE.is_enabled()
-                                  ? (data_line_limit + 1) / 2
-                                  : data_line_limit;
+                              : !FLAG_PR_DOUBLE_SPACE.is_enabled()
+                                  ? data_line_limit
+                              : data_line_limit < 2 ? 1
+                                                    : data_line_limit / 2;
 
   BumpArena page_arena{};
   let const do_append_source =
@@ -344,9 +345,7 @@ fn Pr::execute(const ExecContext &ec, EvalContext &cxt,
         line_index += page_item_count;
         source_line_number += page_item_count;
       } else {
-        while (line_index < lines.count() &&
-               emitted_page_lines < data_line_limit)
-        {
+        while (line_index < lines.count()) {
           append_pr_indent(output, offset);
           if (FLAG_PR_NUMBER.is_enabled()) {
             let const digits =
@@ -363,9 +362,7 @@ fn Pr::execute(const ExecContext &ec, EvalContext &cxt,
               0, line.length < available_width ? line.length : available_width);
           output += '\n';
           emitted_page_lines++;
-          if (FLAG_PR_DOUBLE_SPACE.is_enabled() &&
-              emitted_page_lines < data_line_limit)
-          {
+          if (FLAG_PR_DOUBLE_SPACE.is_enabled()) {
             output += '\n';
             emitted_page_lines++;
           }
@@ -378,7 +375,11 @@ fn Pr::execute(const ExecContext &ec, EvalContext &cxt,
       if (has_page_frame && is_form_feed_page) {
         output += '\f';
       } else if (has_page_frame) {
-        while (emitted_page_lines++ < data_line_limit)
+        let const body_line_count =
+            column_count == 1 && FLAG_PR_DOUBLE_SPACE.is_enabled()
+                ? page_line_count * 2
+                : data_line_limit;
+        while (emitted_page_lines++ < body_line_count)
           output += '\n';
         output += "\n\n\n\n\n";
       }

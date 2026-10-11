@@ -45,13 +45,18 @@ static fn resolve_with_missing_components(StringView operand,
     absolute.append(operand);
   }
 
-  let const text = absolute.text().view();
-  let const root_length = os::path_root_length(text);
-  let resolved = Path{text.substring_of_length(0, root_length), allocator};
+  static constexpr usize MAXIMUM_LINK_COUNT = 40;
+  let const absolute_text = absolute.text().view();
+  let root_length = os::path_root_length(absolute_text);
+  let resolved =
+      Path{absolute_text.substring_of_length(0, root_length), allocator};
+  let remaining = String{allocator, absolute_text.substring(root_length)};
   bool is_missing = false;
-  usize position = root_length;
+  usize link_count = 0;
+  usize position = 0;
   loop
   {
+    let const text = remaining.view();
     while (position < text.length && os::is_directory_separator(text[position]))
       position++;
     if (position == text.length) return resolved;
@@ -75,6 +80,27 @@ static fn resolve_with_missing_components(StringView operand,
       if (let canonical = os::canonical_path(candidate); canonical.has_value())
       {
         resolved = steal(*canonical);
+        continue;
+      }
+
+      let const link_target =
+          link_count < MAXIMUM_LINK_COUNT && candidate.is_symbolic_link()
+              ? os::read_symlink(candidate.view(), allocator)
+              : Maybe<String>{};
+      if (link_target.has_value()) {
+        link_count++;
+        let const target = link_target->view();
+        let const target_root_length = os::path_root_length(target);
+        let spliced = String{allocator, target.substring(target_root_length)};
+        spliced.push(os::DIRECTORY_SEPARATOR);
+        spliced.append(text.substring(position));
+        if (target_root_length > 0) {
+          resolved = Path{target.substring_of_length(0, target_root_length),
+                          allocator};
+          root_length = target_root_length;
+        }
+        remaining = steal(spliced);
+        position = 0;
         continue;
       }
 
@@ -110,10 +136,21 @@ cold fn Realpath::execute(
        operand_index++)
   {
     let const &operand = operands[operand_index];
+    if (operand.is_empty()) {
+      KOSHKIT_REPORT_ERROR_AT(operand_locations[operand_index],
+                              "'': No such file or directory");
+      status = 1;
+      continue;
+    }
+
     let resolved = os::canonical_path(Path{operand.view(), allocator});
-    if (!resolved.has_value() && mode != realpath_mode::Existing)
+    if (!resolved.has_value() && (mode == realpath_mode::Missing ||
+                                  (mode == realpath_mode::AllButLast &&
+                                   os::last_system_error_is_missing_file())))
+    {
       resolved =
           resolve_with_missing_components(operand.view(), mode, allocator);
+    }
     if (!resolved) {
       KOSHKIT_REPORT_ERROR_AT(operand_locations[operand_index],
                               "'" + operand +

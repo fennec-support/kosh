@@ -884,49 +884,90 @@ fn remove_file(StringView path) wontthrow -> bool
   return did_succeed;
 }
 
-static fn remove_tree_entry(int parent_descriptor, const char *name,
-                            Allocator allocator) throws -> bool
+static constexpr usize REMOVE_TREE_HELD_DESCRIPTOR_DEPTH = 64;
+
+static fn remove_tree_entry(int &parent_descriptor,
+                            const struct stat &parent_status, const char *name,
+                            usize depth, Allocator allocator) throws -> bool
 {
   if (::unlinkat(parent_descriptor, name, 0) == 0) return true;
   let const unlink_errno = errno;
   if (unlink_errno != EISDIR && unlink_errno != EPERM) return false;
 
-  let const directory = ::openat(
-      parent_descriptor, name, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
+  int directory = ::openat(parent_descriptor, name,
+                           O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
   if (directory < 0) {
     if (errno == ENOTDIR) errno = unlink_errno;
     return false;
   }
+  defer
+  {
+    if (directory >= 0) {
+      let const saved_errno = errno;
+      ::close(directory);
+      errno = saved_errno;
+    }
+  };
 
-  let const handle = ::fdopendir(directory);
-  if (handle == nullptr) {
-    let const saved_errno = errno;
-    ::close(directory);
-    errno = saved_errno;
-    return false;
-  }
-  defer { ::closedir(handle); };
+  struct stat directory_status{};
+  if (::fstat(directory, &directory_status) != 0) return false;
 
   let child_names = ArrayList<String>{allocator};
-  loop
   {
-    errno = 0;
-    let const entry = ::readdir(handle);
-    if (entry == nullptr) {
-      if (errno != 0) return false;
-      break;
+    let const listing = ::dup(directory);
+    if (listing < 0) return false;
+    let const handle = ::fdopendir(listing);
+    if (handle == nullptr) {
+      let const saved_errno = errno;
+      ::close(listing);
+      errno = saved_errno;
+      return false;
     }
+    defer { ::closedir(handle); };
 
-    let const child_name = StringView{entry->d_name};
-    if (child_name == StringView{"."} || child_name == StringView{".."})
-      continue;
-    child_names.push(String{allocator, child_name});
+    loop
+    {
+      errno = 0;
+      let const entry = ::readdir(handle);
+      if (entry == nullptr) {
+        if (errno != 0) return false;
+        break;
+      }
+
+      let const child_name = StringView{entry->d_name};
+      if (child_name == StringView{"."} || child_name == StringView{".."})
+        continue;
+      child_names.push(String{allocator, child_name});
+    }
+  }
+
+  let const should_release_parent =
+      depth >= REMOVE_TREE_HELD_DESCRIPTOR_DEPTH && parent_descriptor >= 0;
+  if (should_release_parent) {
+    ::close(parent_descriptor);
+    parent_descriptor = -1;
   }
 
   for (let const &child_name : child_names) {
     if (INTERRUPT_REQUESTED) return false;
-    if (!remove_tree_entry(::dirfd(handle), child_name.c_str(), allocator))
+    if (!remove_tree_entry(directory, directory_status, child_name.c_str(),
+                           depth + 1, allocator))
       return false;
+  }
+
+  if (should_release_parent) {
+    parent_descriptor =
+        ::openat(directory, "..", O_RDONLY | O_DIRECTORY | O_CLOEXEC);
+    if (parent_descriptor < 0) return false;
+
+    struct stat reopened_status{};
+    if (::fstat(parent_descriptor, &reopened_status) != 0) return false;
+    if (reopened_status.st_dev != parent_status.st_dev ||
+        reopened_status.st_ino != parent_status.st_ino)
+    {
+      errno = ESTALE;
+      return false;
+    }
   }
 
   return ::unlinkat(parent_descriptor, name, AT_REMOVEDIR) == 0;
@@ -935,7 +976,10 @@ static fn remove_tree_entry(int parent_descriptor, const char *name,
 fn remove_tree(StringView path, Allocator allocator) throws -> bool
 {
   let const path_string = String{allocator, path};
-  return remove_tree_entry(AT_FDCWD, path_string.c_str(), allocator);
+  int working_directory = AT_FDCWD;
+  struct stat working_status{};
+  return remove_tree_entry(working_directory, working_status,
+                           path_string.c_str(), 0, allocator);
 }
 
 fn rename_path(StringView from, StringView to) wontthrow -> bool

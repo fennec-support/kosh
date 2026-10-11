@@ -93,6 +93,11 @@ koshkit mkdir -p "$root/movable/inner"
 echo moved > "$root/movable/inner/file"
 koshkit chmod 750 "$root/movable/inner"
 koshkit ln -s inner/file "$root/movable/link"
+deep_chain="$root/movable/deep"
+for (( level = 0; level < 70; level++ )); do
+  deep_chain+=/d
+done
+koshkit mkdir -p "$deep_chain"
 moved_tree="$TEST_MKTEMP_DIRECTORY/koshkit-filesystem-posix-moved"
 koshkit mv "$root/movable" "$moved_tree"
 echo "mv-directory=$?"
