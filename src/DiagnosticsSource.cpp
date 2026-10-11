@@ -380,6 +380,7 @@ fn check_source_bytes(AnalysisContext &actx, StringView source) throws -> void
       at = quoted_substitution_ends.back() + 1;
       quoted_substitution_ends.pop_back();
       state = source_scan_state::DoubleQuoted;
+      is_command_position = false;
       continue;
     }
 

@@ -107,6 +107,7 @@ else
     "  formatted-command) printf 'B\\bBO\\bOL\\bLD\\bD\\n' ;;" \
     '  manprobe) printf "%s\\n" "OPTIONS" "  --alpha  root option" ;;' \
     '  manprobe-sync) printf "%s\\n" "OPTIONS" "  --force  force from manual" ;;' \
+    '  *) printf "man: No entry for %s in the manual.\\n" "$1" >&2; exit 16 ;;' \
     'esac' > "$man_program"
 fi
 chmod +x "$act_program" "$man_program" \

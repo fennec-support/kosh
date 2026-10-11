@@ -201,6 +201,10 @@ escapes.sh:4:20: warning: The escape `\t` is read by the shell as a plain 't'. (
      4 |  echo "$(printf %s a\tb)"
        |                     ^~
 note: Build the byte with `printf`, or write it inside `$'...'`.
+escapes.sh:5:16: warning: The escape `\q` is read by the shell as a plain 'q'. (SC1001)
+     5 |  echo "$(true;)"\q
+       |                 ^~
+note: Quote the backslash, or build the byte with `printf`.
 escapes.sh:2:1: error: An `echo` of a command substitution prints what the command already prints. (SC2005)
      2 |  echo "$(printf "%s\n" a)"
        |  ^~~~
@@ -213,5 +217,5 @@ escapes.sh:4:1: error: An `echo` of a command substitution prints what the comma
      4 |  echo "$(printf %s a\tb)"
        |  ^~~~
 note: Run the command on its own.
-Encountered 2 warnings and 2 errors.
+Encountered 3 warnings and 2 errors.
 status=1

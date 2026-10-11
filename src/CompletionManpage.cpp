@@ -918,6 +918,19 @@ fn internal::manpage_text_for(StringView page_name, EvalContext &context) throws
   if (!argv.has_value())
     return MANPAGE_CACHE.text.set(page_name, steal(text))->view();
 
+  let locate_argv = ArrayList<String>{heap_allocator()};
+  locate_argv.push((*argv)[0].clone());
+  locate_argv.push(String{"-w"});
+  locate_argv.push(String{page_name});
+  let const location = capture_completion_program_output(context, locate_argv);
+  if (!location.has_value()) {
+    if (should_retry_killed_fork("man-text", page_name)) return StringView{};
+
+    return MANPAGE_CACHE.text.set(page_name, steal(text))->view();
+  }
+  if (!location->view().find_character('/').has_value())
+    return MANPAGE_CACHE.text.set(page_name, steal(text))->view();
+
   Maybe<String> page = capture_completion_program_output(context, *argv);
   if (!page.has_value()) {
     LOG(Debug,
