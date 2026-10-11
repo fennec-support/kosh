@@ -791,7 +791,7 @@ fn VariableStore::restore(variable_snapshot snapshot) throws -> void
   m_associative_arrays = steal(snapshot.associative_arrays);
   m_sparse_arrays = steal(snapshot.sparse_arrays);
   m_positional_params = steal(snapshot.positional_params);
-  if (!snapshot.had_bash_argument_arrays) {
+  if (!snapshot.has_bash_argument_arrays) {
     m_bash_arguments.reset();
   } else {
     m_bash_arguments.truncate_to(snapshot.bash_argument_value_count,
@@ -1153,9 +1153,9 @@ fn ScopeStore::append_wire(String &output) const throws -> void
           flags |= static_cast<u8>(local_binding_wire_flag::HasValue);
         if (binding.previous_indexed_array.has_value())
           flags |= static_cast<u8>(local_binding_wire_flag::HasIndexedArray);
-        if (binding.previous_was_associative)
+        if (binding.was_previously_associative)
           flags |= static_cast<u8>(local_binding_wire_flag::WasAssociative);
-        if (binding.previous_was_exported)
+        if (binding.was_previously_exported)
           flags |= static_cast<u8>(local_binding_wire_flag::WasExported);
         if (binding.is_self_reference)
           flags |= static_cast<u8>(local_binding_wire_flag::IsSelfReference);
@@ -1173,7 +1173,7 @@ fn ScopeStore::append_wire(String &output) const throws -> void
           for (let const &element : *binding.previous_indexed_array)
             append_subshell_bootstrap_text(payload, element.view());
         }
-        if (binding.previous_was_associative) {
+        if (binding.was_previously_associative) {
           ASSERT(binding.previous_associative_keys.count() ==
                  binding.previous_associative_values.count());
           append_subshell_bootstrap_u32(
@@ -1831,8 +1831,8 @@ fn ScopeStore::from_wire(
           .previous_sparse_indices = ArrayList<usize>{heap_allocator()},
           .previous_sparse_values = ArrayList<String>{heap_allocator()},
           .previous_attributes = 0,
-          .previous_was_associative = false,
-          .previous_was_exported = false,
+          .was_previously_associative = false,
+          .was_previously_exported = false,
           .is_self_reference = false,
       };
       let const flags = payload.read_u8();
@@ -1847,9 +1847,9 @@ fn ScopeStore::from_wire(
       let const do_has_flag = [&](local_binding_wire_flag flag) {
         return (flags & static_cast<u8>(flag)) != 0;
       };
-      binding.previous_was_associative =
+      binding.was_previously_associative =
           do_has_flag(local_binding_wire_flag::WasAssociative);
-      binding.previous_was_exported =
+      binding.was_previously_exported =
           do_has_flag(local_binding_wire_flag::WasExported);
       binding.is_self_reference =
           do_has_flag(local_binding_wire_flag::IsSelfReference);
@@ -1869,7 +1869,7 @@ fn ScopeStore::from_wire(
         binding.previous_indexed_array = steal(elements);
       }
 
-      if (binding.previous_was_associative) {
+      if (binding.was_previously_associative) {
         let const pair_count = static_cast<usize>(payload.read_u32());
         if (!payload.is_valid ||
             pair_count > payload.get_remaining_length() / (2 * sizeof(u32)))

@@ -620,10 +620,10 @@ fn internal::complete_from_man_subcommands(StringView line, StringView token,
                                            completion_mode mode) throws
     -> Maybe<ArrayList<String>>
 {
-  let const for_listing = mode == completion_mode::Listing;
+  let const is_for_listing = mode == completion_mode::Listing;
   if (!token.is_empty() && token[0] == '-') return None;
   if (os::has_directory_separator(token)) return None;
-  if (!for_listing && token.is_empty()) return None;
+  if (!is_for_listing && token.is_empty()) return None;
   let const surface_command = command_word_of(line);
   if (surface_command.is_empty() ||
       os::has_directory_separator(surface_command))
@@ -649,7 +649,7 @@ fn internal::complete_from_man_subcommands(StringView line, StringView token,
   let const command_name = is_koshkit_man ? StringView{"man"} : surface_command;
 
   if (!MANPAGE_CACHE.is_subcommand_index_built) {
-    if (!for_listing) return None;
+    if (!is_for_listing) return None;
     if (!IS_DEFERRING_DOCUMENTATION) {
       MANPAGE_CACHE.build_subcommand_index(context);
     } else {
@@ -666,8 +666,8 @@ fn internal::complete_from_man_subcommands(StringView line, StringView token,
   }
 
   let const resolved_name =
-      for_listing ? resolve_completion_command(command_name, context)
-                  : resolve_completion_alias(command_name, context);
+      is_for_listing ? resolve_completion_command(command_name, context)
+                     : resolve_completion_alias(command_name, context);
   let const command = resolved_name.view();
 
   if (is_koshkit_man || command == "man" || command == "mandoc") {
@@ -694,7 +694,8 @@ fn internal::complete_from_man_subcommands(StringView line, StringView token,
   for (usize i = first; i < sorted_subcommands.count(); i++) {
     let const &subcommand = sorted_subcommands[i];
     if (!subcommand.view().starts_with(token)) break;
-    if (man_subcommand_page_is_valid(command, subcommand.view(), for_listing))
+    if (man_subcommand_page_is_valid(command, subcommand.view(),
+                                     is_for_listing))
       matches.push(String{subcommand.view()});
   }
   LOG(Debug, "%zu subcommands of '%.*s' match token '%.*s'", matches.count(),
@@ -967,8 +968,8 @@ fn internal::complete_from_manpage(StringView line, StringView token,
                                    completion_mode mode) throws
     -> Maybe<ArrayList<String>>
 {
-  let const for_listing = mode == completion_mode::Listing;
-  if (!for_listing) return None;
+  let const is_for_listing = mode == completion_mode::Listing;
+  if (!is_for_listing) return None;
   if (token.is_empty() || token[0] != '-') return None;
   let const surface_command = command_word_of(line);
   if (surface_command.is_empty() ||
@@ -1409,8 +1410,8 @@ fn internal::complete_from_help(StringView line, StringView token,
                                 completion_mode mode) throws
     -> Maybe<ArrayList<String>>
 {
-  let const for_listing = mode == completion_mode::Listing;
-  if (!for_listing) return None;
+  let const is_for_listing = mode == completion_mode::Listing;
+  if (!is_for_listing) return None;
   if (token.is_empty() || token[0] != '-') return None;
   let const surface_command = command_word_of(line);
   if (surface_command.is_empty() ||
@@ -1438,10 +1439,10 @@ fn internal::complete_from_help_subcommands(StringView line, StringView token,
                                             completion_mode mode) throws
     -> Maybe<ArrayList<String>>
 {
-  let const for_listing = mode == completion_mode::Listing;
+  let const is_for_listing = mode == completion_mode::Listing;
   LOG(Debug, "help subcommands entry token '%.*s' listing %d",
-      static_cast<int>(token.length), token.data, for_listing ? 1 : 0);
-  if (!for_listing) return None;
+      static_cast<int>(token.length), token.data, is_for_listing ? 1 : 0);
+  if (!is_for_listing) return None;
   if (!token.is_empty() && token[0] == '-') return None;
   if (os::has_directory_separator(token)) return None;
   let const command_name = command_word_of(line);

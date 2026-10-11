@@ -291,15 +291,17 @@ namespace {
 constexpr usize GLOBSTAR_MAX_DEPTH = 256;
 
 fn collect_globstar_paths(const Path &dir, StringView relative,
-                          bool directories_only, bool should_match_dotfiles,
+                          bool should_match_directories_only,
+                          bool should_match_dotfiles,
                           bool should_list_symlinked_directories,
-                          bool include_base, usize depth, Allocator allocator,
-                          ArrayList<String> &out) throws -> void
+                          bool should_include_base, usize depth,
+                          Allocator allocator, ArrayList<String> &out) throws
+    -> void
 {
   LOG(All,
       "collecting globstar paths under the relative path '%.*s', depth %zu",
       static_cast<int>(relative.length), relative.data, depth);
-  if (directories_only && include_base) {
+  if (should_match_directories_only && should_include_base) {
     out.push(String{allocator, relative});
   }
   if (depth >= GLOBSTAR_MAX_DEPTH) return;
@@ -420,15 +422,15 @@ fn collect_globstar_paths(const Path &dir, StringView relative,
     child_relative.append(name);
 
     let const is_listed =
-        !directories_only ||
+        !should_match_directories_only ||
         (is_directory[index] &&
          (should_list_symlinked_directories || !is_symbolic_link[index]));
     if (is_listed) out.push(String{allocator, child_relative.view()});
     if (is_directory[index] && !is_symbolic_link[index]) {
-      collect_globstar_paths(child_dir, child_relative.view(), directories_only,
-                             should_match_dotfiles,
-                             should_list_symlinked_directories, false,
-                             depth + 1, allocator, out);
+      collect_globstar_paths(
+          child_dir, child_relative.view(), should_match_directories_only,
+          should_match_dotfiles, should_list_symlinked_directories, false,
+          depth + 1, allocator, out);
     }
   }
 }
@@ -608,8 +610,9 @@ fn EvalContext::expand_path_recurse(ArrayList<glob_field> fields) throws
   return result;
 }
 
-fn EvalContext::expand_tilde(WordSegment &leading_segment, bool word_continues,
-                             bool stop_at_colon) const throws -> void
+fn EvalContext::expand_tilde(WordSegment &leading_segment,
+                             bool is_word_continued,
+                             bool should_stop_at_colon) const throws -> void
 {
   if (!leading_segment.is_tilde_candidate()) return;
 
@@ -620,11 +623,11 @@ fn EvalContext::expand_tilde(WordSegment &leading_segment, bool word_continues,
 
   usize name_end = 1;
   while (name_end < text.length() && text[name_end] != '/' &&
-         !(stop_at_colon && text[name_end] == ':'))
+         !(should_stop_at_colon && text[name_end] == ':'))
     name_end++;
   let const name = text.view().substring_of_length(1, name_end - 1);
 
-  if (name_end == text.length() && word_continues) {
+  if (name_end == text.length() && is_word_continued) {
     return;
   }
 
@@ -658,7 +661,8 @@ fn EvalContext::resolve_tilde_prefix(StringView name) const throws
   return String{heap_allocator(), home->text().view()};
 }
 
-fn EvalContext::expand_colon_tildes(WordSegment &segment, bool word_continues,
+fn EvalContext::expand_colon_tildes(WordSegment &segment,
+                                    bool is_word_continued,
                                     Maybe<usize> equals_position) const throws
     -> void
 {
@@ -676,7 +680,7 @@ fn EvalContext::expand_colon_tildes(WordSegment &segment, bool word_continues,
       while (prefix_end < view.length && view[prefix_end] != '/' &&
              view[prefix_end] != ':')
         prefix_end++;
-      if (!(prefix_end == view.length && word_continues)) {
+      if (!(prefix_end == view.length && is_word_continued)) {
         let const name = view.substring_of_length(i + 2, prefix_end - i - 2);
         if (let const directory = resolve_tilde_prefix(name)) {
           rewritten += view[i];

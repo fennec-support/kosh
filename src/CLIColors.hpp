@@ -54,7 +54,7 @@ fn stdout_wants_color() throws -> bool;
 fn stderr_wants_color() throws -> bool;
 fn stdout_is_a_terminal() wontthrow -> bool;
 fn stderr_is_a_terminal() wontthrow -> bool;
-fn terminal_wants_color(bool output_is_terminal) throws -> bool;
+fn terminal_wants_color(bool is_output_terminal) throws -> bool;
 fn terminal_supports_styled_underlines() throws -> bool;
 
 enum class file_entry_type : u8

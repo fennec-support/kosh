@@ -373,8 +373,8 @@ fn internal::complete_from_process_arguments(StringView line, StringView token,
                                              completion_mode mode) throws
     -> Maybe<ArrayList<String>>
 {
-  let const for_listing = mode == completion_mode::Listing;
-  if (!for_listing) return None;
+  let const is_for_listing = mode == completion_mode::Listing;
+  if (!is_for_listing) return None;
 
   let const command = command_word_of(line);
   static constexpr static_string_entry<bool> PROCESS_COMMAND_ENTRIES[] = {
@@ -430,8 +430,8 @@ fn internal::complete_from_tools_with_targets(StringView line, StringView token,
                                               completion_mode mode) throws
     -> Maybe<ArrayList<String>>
 {
-  let const for_listing = mode == completion_mode::Listing;
-  if (!for_listing) return None;
+  let const is_for_listing = mode == completion_mode::Listing;
+  if (!is_for_listing) return None;
   if (!token.is_empty() && token[0] == '-') return None;
   let const command = command_word_of(line);
   if (command.is_empty()) return None;
@@ -1275,7 +1275,7 @@ static fn
 generate_spec_candidates(completion_spec &active_spec,
                          Maybe<StringView> slot_command_name, StringView line,
                          StringView token, usize cursor, EvalContext &context,
-                         StringMap<String> &descriptions, bool for_listing,
+                         StringMap<String> &descriptions, bool is_for_listing,
                          i32 *out_function_status) throws -> ArrayList<String>
 {
   Maybe<ArrayList<String>> completion_words = None;
@@ -1314,10 +1314,10 @@ generate_spec_candidates(completion_spec &active_spec,
   };
 
   let const glob_pattern =
-      !for_listing || active_spec.glob_pattern.is_empty()
+      !is_for_listing || active_spec.glob_pattern.is_empty()
           ? Maybe<StringView>{None}
           : Maybe<StringView>{active_spec.glob_pattern.view()};
-  let const action_mask = for_listing
+  let const action_mask = is_for_listing
                               ? active_spec.action_mask
                               : active_spec.action_mask & GHOST_ACTION_MASK;
   if (action_mask != 0 || glob_pattern.has_value()) {
@@ -1329,7 +1329,7 @@ generate_spec_candidates(completion_spec &active_spec,
         DefinitionStateScope{context, active_spec.defining_state,
                              definition_state_exit::RestoreCaller};
     for (let const &word : context.expand_wordlist_to_fields(
-             active_spec.word_list.view(), for_listing))
+             active_spec.word_list.view(), is_for_listing))
     {
       if (entry_is_unrequested_dash_word(word.view(), should_offer_dash_words))
         continue;
@@ -1346,7 +1346,7 @@ generate_spec_candidates(completion_spec &active_spec,
       active_spec.has_action(compgen_action::File);
   context.execution_store().should_mark_completion_directories() =
       should_mark_file_names;
-  if (for_listing && !active_spec.function_name.is_empty()) {
+  if (is_for_listing && !active_spec.function_name.is_empty()) {
     let const saved_columns = context.get_variable_value("COLUMNS");
     context.set_shell_variable("COLUMNS", "100000");
     defer
@@ -1374,7 +1374,7 @@ generate_spec_candidates(completion_spec &active_spec,
     }
   }
 
-  if (for_listing && !active_spec.command.is_empty()) {
+  if (is_for_listing && !active_spec.command.is_empty()) {
     let const &words = do_completion_words();
     let const word = completion_cword < words.count()
                          ? words[completion_cword].view()
@@ -1428,7 +1428,7 @@ generate_spec_candidates(completion_spec &active_spec,
         completion_option_bit(completion_option::FileNames);
   }
 
-  if (!for_listing) return candidates;
+  if (!is_for_listing) return candidates;
 
   let const should_add_directories =
       (active_spec.has_option(completion_option::DirNames) &&
@@ -1475,7 +1475,7 @@ fn internal::complete_from_spec(StringView line, StringView token, usize cursor,
   if (!context.runtime_state().is_shopt_enabled(shopt_option_id::Progcomp))
     return None;
 
-  let const for_listing = mode == completion_mode::Listing;
+  let const is_for_listing = mode == completion_mode::Listing;
   let const command = command_word_of(line.substring_of_length(0, cursor));
   if (command.is_empty()) return None;
 
@@ -1484,7 +1484,7 @@ fn internal::complete_from_spec(StringView line, StringView token, usize cursor,
   if (spec == nullptr &&
       context.runtime_state().is_shopt_enabled(shopt_option_id::ProgcompAlias))
   {
-    resolved_command = for_listing
+    resolved_command = is_for_listing
                            ? resolve_completion_command(command, context)
                            : resolve_completion_alias(command, context);
     if (resolved_command.view() != command)
@@ -1504,7 +1504,8 @@ fn internal::complete_from_spec(StringView line, StringView token, usize cursor,
       spec == nullptr   ? "missed"
       : is_default_spec ? "fell to the default"
                         : "hit",
-      for_listing ? 1 : 0, spec != nullptr ? spec->function_name.c_str() : "",
+      is_for_listing ? 1 : 0,
+      spec != nullptr ? spec->function_name.c_str() : "",
       spec != nullptr ? spec->word_list.length() : 0);
   if (spec == nullptr) return None;
 
@@ -1512,15 +1513,15 @@ fn internal::complete_from_spec(StringView line, StringView token, usize cursor,
   let active_spec = spec->clone(completion_allocator());
   let candidates =
       generate_spec_candidates(active_spec, None, line, token, cursor, context,
-                               descriptions, for_listing, &function_status);
+                               descriptions, is_for_listing, &function_status);
   if (is_default_spec && function_status == 124) {
     spec = context.completion_store().lookup_spec(command);
     if (spec == nullptr) return None;
 
     active_spec = spec->clone(completion_allocator());
-    candidates =
-        generate_spec_candidates(active_spec, None, line, token, cursor,
-                                 context, descriptions, for_listing, nullptr);
+    candidates = generate_spec_candidates(active_spec, None, line, token,
+                                          cursor, context, descriptions,
+                                          is_for_listing, nullptr);
   }
   option_mask = active_spec.option_mask;
 
@@ -1561,15 +1562,15 @@ fn internal::complete_from_initial_word_spec(
 
   if (spec == nullptr) return None;
 
-  let const for_listing = mode == completion_mode::Listing;
-  if (!for_listing && !spec_has_ghost_generators(*spec)) return None;
+  let const is_for_listing = mode == completion_mode::Listing;
+  if (!is_for_listing && !spec_has_ghost_generators(*spec)) return None;
 
   LOG(Debug, "completing the command word from the %.*s spec",
       static_cast<int>(command_name.length), command_name.data);
   let active_spec = spec->clone(completion_allocator());
   let candidates =
       generate_spec_candidates(active_spec, command_name, line, token, cursor,
-                               context, descriptions, for_listing, nullptr);
+                               context, descriptions, is_for_listing, nullptr);
   option_mask = active_spec.option_mask;
   if (candidates.is_empty() &&
       (active_spec.has_option(completion_option::BashDefault) ||

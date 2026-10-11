@@ -207,11 +207,11 @@ private:
 };
 
 static fn command_name_match(StringView name, StringView token,
-                             bool token_is_glob, bool is_case_sensitive,
+                             bool is_glob_token, bool is_case_sensitive,
                              const Bitset &glob_active) throws
     -> Maybe<match_tier>
 {
-  if (token_is_glob) {
+  if (is_glob_token) {
     if (utils::glob_matches(token, name, glob_active, 0, extglob_mode::Disabled,
                             glob_charset::Utf8))
       return match_tier::exact_prefix;
@@ -364,9 +364,9 @@ collect_command_names(StringView token, EvalContext &context,
                       const ArrayList<StringView> *extra_command_names,
                       command_match_mode match_mode) throws -> void
 {
-  let const token_is_glob = match_mode == command_match_mode::Glob;
+  let const is_glob_token = match_mode == command_match_mode::Glob;
   let const is_case_sensitive = utils::token_has_uppercase(token);
-  let const glob_active = token_is_glob ? all_active_glob_mask(token.length)
+  let const glob_active = is_glob_token ? all_active_glob_mask(token.length)
                                         : Bitset{completion_allocator()};
   let normalized_path_token = String{completion_allocator(), token};
   unused(os::normalize_program_name(normalized_path_token));
@@ -376,7 +376,7 @@ collect_command_names(StringView token, EvalContext &context,
 
   let const do_add = [&](StringView name) throws {
     collector.note_source_candidate();
-    let const tier = command_name_match(name, token, token_is_glob,
+    let const tier = command_name_match(name, token, is_glob_token,
                                         is_case_sensitive, glob_active);
     if (tier.has_value() && seen.add(name)) collector.add(name, *tier);
   };
@@ -384,7 +384,7 @@ collect_command_names(StringView token, EvalContext &context,
   let const do_add_path = [&](StringView name) throws {
     collector.note_source_candidate();
     let const tier =
-        command_name_match(name, normalized_path_token.view(), token_is_glob,
+        command_name_match(name, normalized_path_token.view(), is_glob_token,
                            path_is_case_sensitive, glob_active);
     if (tier.has_value() && seen.add(name)) collector.add(name, *tier);
   };
@@ -397,7 +397,7 @@ collect_command_names(StringView token, EvalContext &context,
 
   if (context.runtime_state().koshkit_utilities_are_reachable()) {
     for (let const &util_name : koshkit::util_names()) {
-      if (!token_is_glob && !collector.allows_fuzzy_fallback() &&
+      if (!is_glob_token && !collector.allows_fuzzy_fallback() &&
           !utils::smart_case_prefix_matches(util_name.view(), token,
                                             is_case_sensitive))
       {
@@ -417,11 +417,11 @@ collect_command_names(StringView token, EvalContext &context,
   context.scope_store().for_each_alias_name(do_add);
 
   let const &path_names = context.program_resolver().get_command_names(
-      token_is_glob ? StringView{} : normalized_path_token.view(),
-      token_is_glob || token.is_empty()
+      is_glob_token ? StringView{} : normalized_path_token.view(),
+      is_glob_token || token.is_empty()
           ? ProgramResolver::ValidationScope::All
           : ProgramResolver::ValidationScope::Prefix);
-  if (!token_is_glob &&
+  if (!is_glob_token &&
       (!token.is_empty() || collector.wants_empty_token_listing()))
   {
     for (let const &path_name : path_names)
@@ -1251,7 +1251,7 @@ fn complete(StringView line, usize cursor, EvalContext &context,
             const ArrayList<StringView> *extra_variable_names) throws
     -> completion_result
 {
-  let const for_listing = mode == completion_mode::Listing;
+  let const is_for_listing = mode == completion_mode::Listing;
   COMPLETION_ARENA.reset();
   let const arena = completion_allocator();
 
@@ -1325,7 +1325,7 @@ fn complete(StringView line, usize cursor, EvalContext &context,
                      : decoded_token.text.view();
   let const stage_token =
       decoded_token.has_shell_syntax ? decoded_token.text.view() : token;
-  let const token_is_glob = !has_open_quote && decoded_token.glob_active.any();
+  let const is_glob_token = !has_open_quote && decoded_token.glob_active.any();
   let const is_leading_variable_active =
       has_open_quote ? decoded_token.quote_character == '"' &&
                            !open_quote_content_token.is_empty() &&
@@ -1341,7 +1341,7 @@ fn complete(StringView line, usize cursor, EvalContext &context,
       static_cast<int>(stage_token.length), stage_token.data,
       is_command ? 1 : 0);
 
-  let const inline_glob = token_is_glob && cursor == token_end;
+  let const inline_glob = is_glob_token && cursor == token_end;
 
   let const command_word =
       is_command ? StringView{}
@@ -1407,13 +1407,13 @@ fn complete(StringView line, usize cursor, EvalContext &context,
     } else if (is_command && !token_has_path_separator) {
       candidates =
           complete_command_names(stage_token, context, extra_command_names,
-                                 token_is_glob ? command_match_mode::Glob
+                                 is_glob_token ? command_match_mode::Glob
                                                : command_match_mode::Prefix);
       should_rebuild_shell_syntax_candidates = true;
     }
   } else if (is_command && !token_has_path_separator) {
     let from_initial_word = Maybe<ArrayList<String>>{None};
-    if (!is_posix_completion && (!stage_token.is_empty() || for_listing)) {
+    if (!is_posix_completion && (!stage_token.is_empty() || is_for_listing)) {
       from_initial_word = complete_from_initial_word_spec(
           line, stage_token, cursor, is_line_empty, context, descriptions, mode,
           spec_option_mask);
@@ -1424,20 +1424,20 @@ fn complete(StringView line, usize cursor, EvalContext &context,
       is_spec_candidates = true;
       replacement_token_end = cursor;
       should_rebuild_shell_syntax_candidates = true;
-    } else if (!stage_token.is_empty() || for_listing) {
-      if (for_listing) {
+    } else if (!stage_token.is_empty() || is_for_listing) {
+      if (is_for_listing) {
         should_ignore_common_prefix_case =
-            !stage_token.is_empty() && !token_is_glob &&
+            !stage_token.is_empty() && !is_glob_token &&
             !utils::token_has_uppercase(stage_token);
-        is_tier_ranked = !token_is_glob;
+        is_tier_ranked = !is_glob_token;
         candidates =
             complete_command_names(stage_token, context, extra_command_names,
-                                   token_is_glob ? command_match_mode::Glob
+                                   is_glob_token ? command_match_mode::Glob
                                                  : command_match_mode::Prefix);
       } else {
         let collector = complete_command_name_prefix(
             stage_token, context, extra_command_names,
-            token_is_glob ? command_match_mode::Glob
+            is_glob_token ? command_match_mode::Glob
                           : command_match_mode::Prefix);
         ghost_candidate_count = collector.count();
         source_candidate_scan_count = collector.source_scans();
@@ -1446,7 +1446,7 @@ fn complete(StringView line, usize cursor, EvalContext &context,
       }
       should_rebuild_shell_syntax_candidates = true;
     }
-  } else if (token_is_glob) {
+  } else if (is_glob_token) {
     candidates = complete_glob(token, base_directory, context, decoded_token,
                                filesystem_filter);
   } else {
@@ -1493,7 +1493,7 @@ fn complete(StringView line, usize cursor, EvalContext &context,
     if (from_stage.has_value()) {
       candidates = steal(*from_stage);
       should_rebuild_shell_syntax_candidates = true;
-    } else if (for_listing) {
+    } else if (is_for_listing) {
       let const basename =
           split_path_token(decoded_token.text.view()).basename_part;
       should_ignore_common_prefix_case =
@@ -1533,7 +1533,7 @@ fn complete(StringView line, usize cursor, EvalContext &context,
                                                     ghost_prefix.view());
     longest_common_prefix = steal(ghost_prefix);
   } else if (!candidates.is_empty()) {
-    if (for_listing) {
+    if (is_for_listing) {
       let const do_drop_repeats = [](auto &listed) throws -> void {
         usize kept_count = 0;
         for (usize i = 0; i < listed.count(); i++) {
@@ -1652,7 +1652,8 @@ fn complete(StringView line, usize cursor, EvalContext &context,
       longest_common_prefix = String{arena, candidates[0].view()};
     }
 
-    if (for_listing && extension_hint.has_value() && !stage_token.is_empty() &&
+    if (is_for_listing && extension_hint.has_value() &&
+        !stage_token.is_empty() &&
         !do_has_spec_option(completion_option::NoSort))
     {
       candidates = partition_by_extension(steal(candidates), *extension_hint);

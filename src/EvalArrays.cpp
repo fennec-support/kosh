@@ -780,10 +780,10 @@ fn EvalContext::declare_local(StringView name, bool should_inherit_value) throws
       previous_array = steal(copy);
     }
 
-  let const previous_was_associative = is_associative_array(name);
+  let const was_previously_associative = is_associative_array(name);
   let previous_keys = ArrayList<String>{heap_allocator()};
   let previous_values = ArrayList<String>{heap_allocator()};
-  if (previous_was_associative) {
+  if (was_previously_associative) {
     previous_keys = associative_keys(name);
     previous_values = associative_values(name);
   }
@@ -805,7 +805,7 @@ fn EvalContext::declare_local(StringView name, bool should_inherit_value) throws
   if (!should_inherit_value) variable_store().attributes().erase(name);
   variable_store().attributes().unmark_readonly(name);
 
-  let const previous_was_exported = is_exported(name);
+  let const was_previously_exported = is_exported(name);
 
   let previous_value = Maybe<String>{};
   if (let const scalar = variable_store().shell_variables().find(name);
@@ -815,7 +815,7 @@ fn EvalContext::declare_local(StringView name, bool should_inherit_value) throws
   } else if (previous_array.has_value() && !previous_array->is_empty()) {
     previous_value = previous_array->front();
   } else if (!is_dynamic_write_owner(name) &&
-             (previous_was_exported ||
+             (was_previously_exported ||
               (variable_requires_dynamic_lookup(name) &&
                !was_bash_directory_stack_special)))
   {
@@ -826,7 +826,7 @@ fn EvalContext::declare_local(StringView name, bool should_inherit_value) throws
       String{name}, steal(previous_value), previous_special_definition_location,
       steal(previous_array), steal(previous_keys), steal(previous_values),
       steal(previous_sparse_indices), steal(previous_sparse_values),
-      previous_attributes, previous_was_associative, previous_was_exported,
+      previous_attributes, was_previously_associative, was_previously_exported,
       false});
 
   if (should_inherit_value && was_bash_directory_stack_special)
@@ -834,7 +834,7 @@ fn EvalContext::declare_local(StringView name, bool should_inherit_value) throws
 
   if (!should_inherit_value) {
     force_unset_shell_variable(name);
-    if (previous_was_exported) mark_exported(name);
+    if (was_previously_exported) mark_exported(name);
   }
 
   if (!should_inherit_value) {
@@ -857,8 +857,8 @@ fn EvalContext::declare_self_reference(StringView name) throws -> void
       .previous_sparse_indices = ArrayList<usize>{heap_allocator()},
       .previous_sparse_values = ArrayList<String>{heap_allocator()},
       .previous_attributes = 0,
-      .previous_was_associative = false,
-      .previous_was_exported = false,
+      .was_previously_associative = false,
+      .was_previously_exported = false,
       .is_self_reference = true,
   };
 

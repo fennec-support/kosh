@@ -45,13 +45,13 @@ public:
     return *this;
   }
 
-  hot fn push(bool value) throws -> void
+  hot fn push(bool is_set) throws -> void
   {
     let const bit_position = m_length;
     let const word_index = bit_position / BITS_PER_WORD;
     if (word_index >= m_words.count()) m_words.push(0);
     m_length++;
-    if (value) m_words[word_index] |= u64{1} << (bit_position % BITS_PER_WORD);
+    if (is_set) m_words[word_index] |= u64{1} << (bit_position % BITS_PER_WORD);
   }
 
   hot mustuse pure fn operator[](usize index) const wontthrow->bool
@@ -61,12 +61,12 @@ public:
            0;
   }
 
-  hot fn set(usize index, bool value = true) wontthrow -> void
+  hot fn set(usize index, bool is_set = true) wontthrow -> void
   {
     ASSERT(index < m_length, "bit index is past the end");
     let const mask = u64{1} << (index % BITS_PER_WORD);
     let &word = m_words[index / BITS_PER_WORD];
-    if (value)
+    if (is_set)
       word |= mask;
     else
       word &= ~mask;

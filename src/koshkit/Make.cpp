@@ -323,7 +323,7 @@ struct makefile
   StringMap<bool> precious_targets;
   StringMap<bool> ignored_targets;
   StringMap<bool> silent_targets;
-  bool does_environment_override{false};
+  bool is_environment_overriding{false};
   bool should_ignore_errors{false};
   bool is_silent{false};
   bool is_every_target_precious{false};
@@ -575,7 +575,7 @@ static fn is_command_line_assignment(StringView operand) wontthrow -> bool;
 struct make_runtime_flags
 {
   bool should_always_make{false};
-  bool does_environment_override{false};
+  bool is_environment_overriding{false};
   bool should_ignore_errors{false};
   bool should_keep_going{false};
   bool is_dry_run{false};
@@ -602,7 +602,7 @@ static fn apply_makeflags(StringView text, make_runtime_flags &flags,
       let const letter = letters[letter_position];
       switch (letter) {
       case 'B': flags.should_always_make = true; break;
-      case 'e': flags.does_environment_override = true; break;
+      case 'e': flags.is_environment_overriding = true; break;
       case 'i': flags.should_ignore_errors = true; break;
       case 'k': flags.should_keep_going = true; break;
       case 'S': flags.should_keep_going = false; break;
@@ -798,7 +798,7 @@ static fn lookup_make_variable(EvalContext &cxt, const makefile &mk,
     return lookup;
   }
 
-  if (mk.does_environment_override)
+  if (mk.is_environment_overriding)
     if (Maybe<String> from_environment = os::get_environment_variable(name);
         from_environment.has_value())
     {
@@ -1264,13 +1264,13 @@ static fn
 evaluate_make_function(EvalContext &cxt, makefile &mk, StringView function_name,
                        const make_function_spec &spec,
                        const ArrayList<StringView> &arguments, usize depth,
-                       bool are_arguments_expanded = false) throws -> String
+                       bool has_expanded_arguments = false) throws -> String
 {
   require_make_function_arguments(function_name, spec, arguments);
   let const allocator = cxt.scratch_allocator();
   let const do_expand = [&](usize argument_index) -> String {
     if (argument_index >= arguments.count()) return String{allocator};
-    if (are_arguments_expanded)
+    if (has_expanded_arguments)
       return String{allocator, arguments[argument_index]};
     return expand(cxt, mk, arguments[argument_index], depth + 1);
   };
@@ -2453,13 +2453,13 @@ static fn parse_makefile_into(EvalContext &cxt, makefile &mk,
 static fn parse_makefile(EvalContext &cxt,
                          ArrayList<make_source_document> &sources,
                          const ArrayList<String> &command_assignments,
-                         bool does_environment_override,
+                         bool is_environment_overriding,
                          bool should_use_builtin_rules,
                          StringView initial_makeflags = {}) throws -> makefile
 {
   makefile mk{cxt.scratch_allocator()};
   mk.source_documents = &sources;
-  mk.does_environment_override = does_environment_override;
+  mk.is_environment_overriding = is_environment_overriding;
   if (!initial_makeflags.is_empty()) {
     mk.variable_index.set("MAKEFLAGS", mk.variables.count());
     mk.variables.push(make_variable{
@@ -2581,7 +2581,7 @@ static fn is_make_target_supplyable(EvalContext &cxt, makefile &mk,
     let const stem = match_make_pattern(pattern_rule.pattern, goal);
     if (!stem.has_value()) continue;
 
-    bool are_prerequisites_supplyable = true;
+    bool has_supplyable_prerequisites = true;
     for (let const &prerequisite : pattern.prerequisites) {
       let substituted = String{cxt.scratch_allocator()};
       append_make_replacement(substituted, prerequisite.view(), *stem, true);
@@ -2591,12 +2591,12 @@ static fn is_make_target_supplyable(EvalContext &cxt, makefile &mk,
         if (!is_make_target_supplyable(cxt, mk, word.view(), active_targets,
                                        supplyability_cache))
         {
-          are_prerequisites_supplyable = false;
+          has_supplyable_prerequisites = false;
           break;
         }
-      if (!are_prerequisites_supplyable) break;
+      if (!has_supplyable_prerequisites) break;
     }
-    if (are_prerequisites_supplyable) {
+    if (has_supplyable_prerequisites) {
       supplyability_cache.set(goal, true);
       return true;
     }
@@ -3570,7 +3570,7 @@ fn Make::execute(const ExecContext &ec, EvalContext &cxt,
 
   String makeflags{cxt.scratch_allocator()};
   if (runtime_flags.should_always_make) makeflags += 'B';
-  if (runtime_flags.does_environment_override) makeflags += 'e';
+  if (runtime_flags.is_environment_overriding) makeflags += 'e';
   if (runtime_flags.should_ignore_errors) makeflags += 'i';
   if (FLAG_MAKE_JOBS.is_enabled()) {
     makeflags += 'j';
@@ -3614,7 +3614,7 @@ fn Make::execute(const ExecContext &ec, EvalContext &cxt,
   try {
     parsed_makefile = parse_makefile(
         cxt, make_sources, command_assignments,
-        runtime_flags.does_environment_override,
+        runtime_flags.is_environment_overriding,
         !runtime_flags.should_disable_builtin_rules, makeflags.view());
   } catch (const ErrorWithLocation &error) {
     for (let const &document : make_sources) {
@@ -3683,7 +3683,7 @@ fn Make::execute(const ExecContext &ec, EvalContext &cxt,
         !old_value.has_value())
       continue;
     if (!is_command_variable && old_value.has_value() &&
-        runtime_flags.does_environment_override)
+        runtime_flags.is_environment_overriding)
       continue;
 
     saved_recipe_environment_values.push(saved_recipe_environment{

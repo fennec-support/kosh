@@ -54,9 +54,9 @@ inline fn value_to_log_string(const char *value) -> String
   return value != nullptr ? String{value} : String{"(null)"};
 }
 
-inline fn value_to_log_string(bool value) -> String
+inline fn value_to_log_string(bool is_true) -> String
 {
-  return value ? String{"true"} : String{"false"};
+  return is_true ? String{"true"} : String{"false"};
 }
 
 inline fn value_to_log_string(char value) -> String

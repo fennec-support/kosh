@@ -673,12 +673,13 @@ fn resolve_duplication(const Redirection &redir, EvalContext &cxt) throws
 } /* namespace */
 
 static fn redirection_open_mode(Redirection::Kind kind,
-                                bool no_clobber) wontthrow -> os::file_open_mode
+                                bool is_noclobber_set) wontthrow
+    -> os::file_open_mode
 {
   switch (kind) {
   case Redirection::Kind::TruncateOutput:
-    return no_clobber ? os::file_open_mode::TruncateNoClobber
-                      : os::file_open_mode::Truncate;
+    return is_noclobber_set ? os::file_open_mode::TruncateNoClobber
+                            : os::file_open_mode::Truncate;
   case Redirection::Kind::TruncateOutputOverride:
     return os::file_open_mode::Truncate;
   case Redirection::Kind::AppendOutput: return os::file_open_mode::Append;
@@ -779,7 +780,7 @@ fn internal::discard_child_redirection_state(
 fn internal::resolve_redirection(const Redirection &redir, EvalContext &cxt,
                                  const SourceLocation &fallback_location,
                                  bool *open_or_stage_failed,
-                                 bool allow_fd_memoization) throws
+                                 bool should_memoize_fds) throws
     -> resolved_redirection
 {
   if (cxt.runtime_state().option_is_enabled(shell_option_id::Restricted) &&
@@ -893,7 +894,7 @@ fn internal::resolve_redirection(const Redirection &redir, EvalContext &cxt,
 
   const String &target_path = target[0];
 
-  const bool should_memoize_append = allow_fd_memoization &&
+  const bool should_memoize_append = should_memoize_fds &&
                                      mode == os::file_open_mode::Append &&
                                      cxt.execution_store().loop_depth() > 0 &&
                                      redir.fd_allocation_name_token == nullptr;
@@ -1016,8 +1017,7 @@ static pure fn is_reprint_blank(char byte) wontthrow -> bool
 }
 
 static pure fn should_reprint_source(StringView source,
-                                     bool are_bash_additions_enabled) wontthrow
-    -> bool
+                                     bool has_bash_additions) wontthrow -> bool
 {
   for (usize position = 0; position < source.length; position++) {
     let const byte = source[position];
@@ -1038,7 +1038,7 @@ static pure fn should_reprint_source(StringView source,
       return true;
     }
 
-    if (byte == '\'' && previous_byte == '$' && are_bash_additions_enabled) {
+    if (byte == '\'' && previous_byte == '$' && has_bash_additions) {
       return true;
     }
 
@@ -1066,8 +1066,7 @@ static fn append_reprinted_source(String &out, StringView source,
                                   bool should_collapse_blanks,
                                   bool should_space_operators,
                                   bool should_join_lines,
-                                  bool are_bash_additions_enabled) throws
-    -> void;
+                                  bool has_bash_additions) throws -> void;
 
 static fn find_double_quote_end(StringView source, usize position) throws
     -> usize
@@ -1214,8 +1213,7 @@ static pure fn has_reprint_remainder(StringView source,
 }
 
 static fn append_reprinted_subshell(String &out, StringView region,
-                                    bool are_bash_additions_enabled) throws
-    -> void
+                                    bool has_bash_additions) throws -> void
 {
   let const body =
       trimmed_reprint_body(region.substring_of_length(1, region.length - 2));
@@ -1226,8 +1224,7 @@ static fn append_reprinted_subshell(String &out, StringView region,
   }
 
   out.append("( ");
-  append_reprinted_source(out, body, true, true, true,
-                          are_bash_additions_enabled);
+  append_reprinted_source(out, body, true, true, true, has_bash_additions);
   out.append(" )");
 }
 
@@ -1235,8 +1232,7 @@ static fn append_reprinted_source(String &out, StringView source,
                                   bool should_collapse_blanks,
                                   bool should_space_operators,
                                   bool should_join_lines,
-                                  bool are_bash_additions_enabled) throws
-    -> void
+                                  bool has_bash_additions) throws -> void
 {
   let const start_length = out.length();
   usize position = 0;
@@ -1282,7 +1278,7 @@ static fn append_reprinted_source(String &out, StringView source,
       out.push('"');
       append_reprinted_source(
           out, source.substring_of_length(position + 1, end - position - 1),
-          false, false, false, are_bash_additions_enabled);
+          false, false, false, has_bash_additions);
 
       if (end < source.length) {
         out.push('"');
@@ -1297,9 +1293,7 @@ static fn append_reprinted_source(String &out, StringView source,
     if (byte == '$' && position + 1 < source.length) {
       let const next_byte = source[position + 1];
 
-      if (next_byte == '\'' && should_collapse_blanks &&
-          are_bash_additions_enabled)
-      {
+      if (next_byte == '\'' && should_collapse_blanks && has_bash_additions) {
         let const end = scan_ansi_c_quote_end(source, position + 2);
 
         if (end.has_value()) {
@@ -1337,7 +1331,7 @@ static fn append_reprinted_source(String &out, StringView source,
 
         out.append(!body.is_empty() && body[0] == '(' ? "$( " : "$(");
         append_reprinted_source(out, body, true, true, false,
-                                are_bash_additions_enabled);
+                                has_bash_additions);
         out.push(')');
         position = *end;
         continue;
@@ -1362,7 +1356,7 @@ static fn append_reprinted_source(String &out, StringView source,
         append_reprinted_source(out,
                                 trimmed_reprint_body(source.substring_of_length(
                                     position + 2, *end - position - 3)),
-                                true, true, true, are_bash_additions_enabled);
+                                true, true, true, has_bash_additions);
         out.push(')');
         position = *end;
         continue;
@@ -1413,7 +1407,7 @@ static fn append_reprinted_source(String &out, StringView source,
         if (end.has_value()) {
           append_reprinted_subshell(
               out, source.substring_of_length(position, *end - position),
-              are_bash_additions_enabled);
+              has_bash_additions);
           position = *end;
           continue;
         }
@@ -1525,19 +1519,17 @@ static fn append_reprinted_source(String &out, StringView source,
 }
 
 fn internal::reprinted_command_text(StringView source,
-                                    bool are_bash_additions_enabled) throws
-    -> String
+                                    bool has_bash_additions) throws -> String
 {
   let text = String{heap_allocator()};
-  if (!should_reprint_source(source, are_bash_additions_enabled)) {
+  if (!should_reprint_source(source, has_bash_additions)) {
     text.append(source);
 
     return text;
   }
 
   text.reserve(source.length);
-  append_reprinted_source(text, source, true, false, false,
-                          are_bash_additions_enabled);
+  append_reprinted_source(text, source, true, false, false, has_bash_additions);
 
   return text;
 }
@@ -1555,16 +1547,15 @@ fn internal::subshell_command_text(EvalContext &cxt,
   let const body_end = lexer::scan_balanced_shell_region(source, 1, ')');
   if (!body_end.has_value()) return text;
 
-  let const are_bash_additions_enabled =
-      cxt.runtime_state().bash_additions_enabled();
+  let const has_bash_additions = cxt.runtime_state().bash_additions_enabled();
 
   text.reserve(source.length + 2);
   append_reprinted_subshell(text, source.substring_of_length(0, *body_end),
-                            are_bash_additions_enabled);
+                            has_bash_additions);
 
   if (*body_end < source.length) {
     append_reprinted_source(text, source.substring(*body_end), true, true,
-                            false, are_bash_additions_enabled);
+                            false, has_bash_additions);
   }
 
   return text;

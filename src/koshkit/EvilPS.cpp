@@ -123,7 +123,7 @@ struct tree_node
   String command_line{heap_allocator()};
   bool has_cpu_percentage{false};
   bool was_rendered{false};
-  bool search_visible{true};
+  bool is_search_visible{true};
 };
 
 struct live_process_cpu_row
@@ -403,7 +403,7 @@ fn render_process_relatives(String &output, ArrayList<tree_node> &nodes,
   {
     for (usize position = 0; position < nodes.count(); position++) {
       if (nodes[position].pid != ancestor_pid ||
-          !nodes[position].search_visible || nodes[position].was_rendered)
+          !nodes[position].is_search_visible || nodes[position].was_rendered)
       {
         continue;
       }
@@ -417,7 +417,7 @@ fn render_process_relatives(String &output, ArrayList<tree_node> &nodes,
   for (usize position = 0; position < nodes.count(); position++) {
     if (nodes[position].parent_pid != parent_pid) continue;
 
-    if (!nodes[position].search_visible) continue;
+    if (!nodes[position].is_search_visible) continue;
 
     if (nodes[position].pid == parent_pid) continue;
 
@@ -487,7 +487,7 @@ fn mark_search_visibility(ArrayList<tree_node> &nodes, StringView search) throws
       utils::parse_integer_in_base(search, nullptr, int_base::decimal);
   let const is_exact_pid = !parsed_pid.is_error() && parsed_pid.value() > 0;
   for (let &node : nodes) {
-    node.search_visible =
+    node.is_search_visible =
         is_exact_pid
             ? static_cast<u64>(node.pid) == static_cast<u64>(parsed_pid.value())
             : node.name.view().find_substring(search).has_value() ||
@@ -495,18 +495,18 @@ fn mark_search_visibility(ArrayList<tree_node> &nodes, StringView search) throws
   }
 
   for (usize index = 0; index < nodes.count(); index++) {
-    if (!nodes[index].search_visible) continue;
+    if (!nodes[index].is_search_visible) continue;
     let parent_pid = nodes[index].parent_pid;
     while (parent_pid > 0) {
-      bool found_parent = false;
+      bool did_find_parent = false;
       for (let &candidate : nodes) {
         if (candidate.pid != parent_pid) continue;
-        candidate.search_visible = true;
+        candidate.is_search_visible = true;
         parent_pid = candidate.parent_pid;
-        found_parent = true;
+        did_find_parent = true;
         break;
       }
-      if (!found_parent) break;
+      if (!did_find_parent) break;
     }
   }
 }
@@ -592,9 +592,9 @@ fn render_process_snapshot(const ExecContext &ec, EvalContext &cxt,
 
   if (root_position < nodes.count() &&
       (!sort_key.has_value() || !operands.is_empty()) &&
-      (search.is_empty() || nodes[root_position].search_visible))
+      (search.is_empty() || nodes[root_position].is_search_visible))
   {
-    if (nodes[root_position].search_visible) {
+    if (nodes[root_position].is_search_visible) {
       nodes[root_position].was_rendered = true;
       output += root_indentation;
       append_label(output, nodes[root_position], allocator, hide_options);
@@ -619,7 +619,7 @@ fn render_process_snapshot(const ExecContext &ec, EvalContext &cxt,
     if (rendered_count >= output_limit) break;
 
     if (nodes[position].was_rendered) continue;
-    if (!nodes[position].search_visible) continue;
+    if (!nodes[position].is_search_visible) continue;
 
     if (sort_key.has_value()) {
       nodes[position].was_rendered = true;
@@ -636,7 +636,7 @@ fn render_process_snapshot(const ExecContext &ec, EvalContext &cxt,
     for (let const &candidate : nodes) {
       if (candidate.pid != nodes[position].parent_pid) continue;
 
-      if (candidate.pid == nodes[position].pid || !candidate.search_visible)
+      if (candidate.pid == nodes[position].pid || !candidate.is_search_visible)
         continue;
 
       has_visible_parent = true;

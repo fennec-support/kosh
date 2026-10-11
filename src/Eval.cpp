@@ -584,7 +584,7 @@ fn EvalContext::assign_caller_binding_of_circular_nameref(
     let const nameref_bit = static_cast<u8>(variable_attribute::Nameref);
     if ((binding.previous_attributes & nameref_bit) != 0 ||
         binding.previous_indexed_array.has_value() ||
-        binding.previous_was_associative)
+        binding.was_previously_associative)
     {
       return false;
     }
@@ -610,7 +610,7 @@ fn EvalContext::assign_global_beneath_locals(StringView name, StringView value,
 
       if (binding.previous_attributes != 0 ||
           binding.previous_indexed_array.has_value() ||
-          binding.previous_was_associative)
+          binding.was_previously_associative)
       {
         return false;
       }
@@ -665,12 +665,12 @@ fn EvalContext::restore_local_binding(local_binding &binding) throws -> void
     set_array_element(binding.name.view(), binding.previous_sparse_indices[i],
                       binding.previous_sparse_values[i].view());
   clear_associative_array(binding.name.view());
-  if (binding.previous_was_associative)
+  if (binding.was_previously_associative)
     for (usize k = 0; k < binding.previous_associative_keys.count(); k++)
       set_associative_element(binding.name.view(),
                               binding.previous_associative_keys[k].view(),
                               binding.previous_associative_values[k].view());
-  if (binding.previous_was_exported) {
+  if (binding.was_previously_exported) {
     mark_exported(binding.name.view());
     if (binding.previous_value.has_value())
       os::set_environment_variable(binding.name, *binding.previous_value);
@@ -975,18 +975,19 @@ fn EvalContext::report_unset_reference(StringView name) throws -> void
   }
 }
 
-fn EvalContext::warn_or_throw(bool fatal, bool explicitly_requested,
+fn EvalContext::warn_or_throw(bool is_fatal, bool was_explicitly_requested,
                               const SourceLocation &location,
                               StringView message, StringView note) throws
     -> void
 {
   let const should_demote = strict_diagnostics_are_warnings();
-  if (fatal && (explicitly_requested || !should_demote)) {
+  if (is_fatal && (was_explicitly_requested || !should_demote)) {
     if (note.is_empty()) throw ErrorWithLocation{location, message};
     throw ErrorWithLocationAndDetails{location, message, note};
   }
   if (execution_store().completion_function_running()) return;
-  if ((fatal || should_demote) && !runtime_state().is_diagnostics_disabled() &&
+  if ((is_fatal || should_demote) &&
+      !runtime_state().is_diagnostics_disabled() &&
       source_store().current_source() != nullptr)
   {
     try {

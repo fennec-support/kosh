@@ -92,12 +92,12 @@ subshell_bootstrap::subshell_bootstrap(subshell_bootstrap &&other) noexcept
     : payload(steal(other.payload)), source_origin(steal(other.source_origin)),
       processes(steal(other.processes)), source_length(other.source_length),
       evaluation_mode(other.evaluation_mode),
-      owns_processes(other.owns_processes),
+      is_process_owner(other.is_process_owner),
       should_use_command_string_status(other.should_use_command_string_status)
 {
   other.source_length = 0;
   other.evaluation_mode = root_evaluation_mode::Normal;
-  other.owns_processes = false;
+  other.is_process_owner = false;
   other.should_use_command_string_status = false;
 }
 
@@ -114,11 +114,11 @@ fn subshell_bootstrap::operator=(subshell_bootstrap &&other) noexcept
   processes = steal(other.processes);
   source_length = other.source_length;
   evaluation_mode = other.evaluation_mode;
-  owns_processes = other.owns_processes;
+  is_process_owner = other.is_process_owner;
   should_use_command_string_status = other.should_use_command_string_status;
   other.source_length = 0;
   other.evaluation_mode = root_evaluation_mode::Normal;
-  other.owns_processes = false;
+  other.is_process_owner = false;
   other.should_use_command_string_status = false;
   return *this;
 }
@@ -261,16 +261,16 @@ fn inherited_subshell_state::clear_environment() throws -> void
 
 fn subshell_bootstrap::release_process_ownership() wontthrow -> void
 {
-  owns_processes = false;
+  is_process_owner = false;
 }
 
 fn subshell_bootstrap::close_owned_processes() wontthrow -> void
 {
-  if (!owns_processes) return;
+  if (!is_process_owner) return;
 
   for (let const process : processes)
     close_process_reference(process);
-  owns_processes = false;
+  is_process_owner = false;
 }
 
 fn divide_u128_by_u64(u64 high, u64 low, u64 divisor) wontthrow

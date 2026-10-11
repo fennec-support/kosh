@@ -2107,7 +2107,7 @@ static fn receive_subshell_bootstrap() wontthrow -> void
         static_cast<root_evaluation_mode>(evaluation_mode);
     SUBSHELL_BOOTSTRAP.should_use_command_string_status =
         header->should_use_command_string_status == 1U;
-    SUBSHELL_BOOTSTRAP.owns_processes = true;
+    SUBSHELL_BOOTSTRAP.is_process_owner = true;
   } catch (...) {
     CloseHandle(pipe);
     ExitProcess(1);

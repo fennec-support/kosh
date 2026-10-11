@@ -206,13 +206,13 @@ struct variable_entry
 
 private:
   variable_entry(String cloned_value, ArrayList<String> cloned_elements,
-                 u8 cloned_attribute_bits, bool cloned_has_value,
-                 bool cloned_is_indexed_array) wontthrow
+                 u8 cloned_attribute_bits, bool has_cloned_value,
+                 bool is_cloned_indexed_array) wontthrow
       : value{steal(cloned_value)},
         elements{steal(cloned_elements)},
         attribute_bits{cloned_attribute_bits},
-        has_value{cloned_has_value},
-        is_indexed_array{cloned_is_indexed_array}
+        has_value{has_cloned_value},
+        is_indexed_array{is_cloned_indexed_array}
   {}
 };
 
@@ -639,8 +639,8 @@ struct local_binding
   ArrayList<usize> previous_sparse_indices{heap_allocator()};
   ArrayList<String> previous_sparse_values{heap_allocator()};
   u8 previous_attributes{0};
-  bool previous_was_associative{false};
-  bool previous_was_exported{false};
+  bool was_previously_associative{false};
+  bool was_previously_exported{false};
   bool is_self_reference{false};
 };
 
@@ -802,17 +802,17 @@ public:
   {
     return m_foreground_program_title_buffer;
   }
-  fn set_in_pipeline_stage(bool in_stage) wontthrow -> void
+  fn set_in_pipeline_stage(bool is_in_stage) wontthrow -> void
   {
-    m_is_in_pipeline_stage = in_stage;
+    m_is_in_pipeline_stage = is_in_stage;
   }
   pure fn is_in_pipeline_stage() const wontthrow -> bool
   {
     return m_is_in_pipeline_stage;
   }
-  fn set_stage_boundary_published(bool published) wontthrow -> void
+  fn set_stage_boundary_published(bool was_published) wontthrow -> void
   {
-    m_was_stage_boundary_published = published;
+    m_was_stage_boundary_published = was_published;
   }
   pure fn was_stage_boundary_published() const wontthrow -> bool
   {

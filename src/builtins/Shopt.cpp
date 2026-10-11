@@ -36,14 +36,14 @@ namespace koshka {
 
 namespace {
 
-fn shopt_status_line(StringView name, bool on, Allocator allocator) throws
+fn shopt_status_line(StringView name, bool is_on, Allocator allocator) throws
     -> String
 {
   constexpr usize NAME_FIELD_WIDTH = 20;
   let line = String{allocator, name};
   while (line.count() < NAME_FIELD_WIDTH)
     line += ' ';
-  line += on ? "\ton\n" : "\toff\n";
+  line += is_on ? "\ton\n" : "\toff\n";
   return line;
 }
 
@@ -62,14 +62,14 @@ enum class shopt_reusable_form : u8
   SetOption,
 };
 
-fn shopt_reusable_line(StringView name, bool on, Allocator allocator,
+fn shopt_reusable_line(StringView name, bool is_on, Allocator allocator,
                        shopt_reusable_form form) throws -> String
 {
   let line = String{allocator};
   if (form == shopt_reusable_form::SetOption)
-    line += on ? "set -o " : "set +o ";
+    line += is_on ? "set -o " : "set +o ";
   else
-    line += on ? "shopt -s " : "shopt -u ";
+    line += is_on ? "shopt -s " : "shopt -u ";
   line += name;
   line += '\n';
   return line;
@@ -129,11 +129,11 @@ fn Shopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     name_locations.push(operand_locations[i]);
   }
 
-  let const do_format_status_line = [&](StringView name, bool on) throws {
+  let const do_format_status_line = [&](StringView name, bool is_on) throws {
     return should_print_reusable
-               ? shopt_reusable_line(name, on, cxt.scratch_allocator(),
+               ? shopt_reusable_line(name, is_on, cxt.scratch_allocator(),
                                      reusable_form)
-               : shopt_status_line(name, on, cxt.scratch_allocator());
+               : shopt_status_line(name, is_on, cxt.scratch_allocator());
   };
 
   i32 status = 0;

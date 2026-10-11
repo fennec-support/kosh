@@ -206,8 +206,7 @@ fn collect_core_libraries(EvalContext &cxt, StringView core, StringView binary,
           resolve_util_program(cxt, platform_tools.dependency_program))
   {
     let arguments = ArrayList<String>{heap_allocator()};
-    if (platform_tools.dependency_uses_library_flag)
-      arguments.push(String{"-L"});
+    if (platform_tools.is_library_flag_dependency) arguments.push(String{"-L"});
     arguments.push(String{binary});
     if (let const output = capture_util_program_output(
             *dependency_tool, steal(arguments), 30'000'000'000))

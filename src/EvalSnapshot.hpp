@@ -240,7 +240,7 @@ struct variable_snapshot
   CopyOnWrite<StringMap<exported_name_value>> exported_names;
   u32 bash_argument_value_count;
   u32 bash_argument_frame_count;
-  bool had_bash_argument_arrays;
+  bool has_bash_argument_arrays;
   u8 bash_argument_frame_context_flags;
   u8 disabled_bash_special_arrays;
   u8 unset_dynamic_readers;

@@ -1927,11 +1927,11 @@ fn select_nonconflicting_source_edits(
 
   let const do_starts_conflict_group =
       [](const source_edit &candidate, usize group_start_position,
-         usize group_end_position, bool group_starts_with_insertion)
+         usize group_end_position, bool is_group_led_by_insertion)
           wontthrow -> bool {
     if (candidate.start_position < group_end_position) return true;
     if (candidate.start_position != group_start_position) return false;
-    return group_starts_with_insertion ||
+    return is_group_led_by_insertion ||
            candidate.start_position == candidate.end_position;
   };
 
@@ -1939,12 +1939,12 @@ fn select_nonconflicting_source_edits(
     usize group_end_position = candidate_index + 1;
     let const group_start_position = unique[candidate_index]->start_position;
     usize overlap_end_position = unique[candidate_index]->end_position;
-    let const group_starts_with_insertion =
+    let const is_group_led_by_insertion =
         group_start_position == unique[candidate_index]->end_position;
     while (group_end_position < unique.count() &&
            do_starts_conflict_group(*unique[group_end_position],
                                     group_start_position, overlap_end_position,
-                                    group_starts_with_insertion))
+                                    is_group_led_by_insertion))
     {
       if (unique[group_end_position]->end_position > overlap_end_position)
         overlap_end_position = unique[group_end_position]->end_position;

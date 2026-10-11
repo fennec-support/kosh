@@ -183,7 +183,7 @@ public:
   fn reset() throws -> void;
 
 private:
-  bool m_value{false};
+  bool m_is_enabled{false};
 };
 
 class FlagRepeatedBool : public Flag
@@ -541,7 +541,7 @@ fn show_warning(StringView warning) throws -> void;
 fn show_report_warning(StringView warning) throws -> void;
 fn show_report_warnings(const ArrayList<String> &warnings) throws -> void;
 
-fn arm_message_leading_newline(bool armed) wontthrow -> void;
+fn arm_message_leading_newline(bool is_armed) wontthrow -> void;
 
 fn print(StringView text) throws -> void;
 fn print_error(StringView text) throws -> void;

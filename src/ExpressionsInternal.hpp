@@ -282,8 +282,8 @@ enum class loop_disposition : u8
 
 fn resolve_loop_control(EvalContext &cxt) throws -> loop_disposition;
 
-fn reprinted_command_text(StringView source,
-                          bool are_bash_additions_enabled) throws -> String;
+fn reprinted_command_text(StringView source, bool has_bash_additions) throws
+    -> String;
 
 template <typename CommandTextBuilder>
 fn source_command_text(EvalContext &cxt, const SourceLocation &location,

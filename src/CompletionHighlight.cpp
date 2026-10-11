@@ -612,7 +612,7 @@ static fn word_has_erased_directory_separator(StringView word) wontthrow -> bool
 }
 
 static fn color_path_argument(usize word_start, StringView word,
-                              bool word_is_terminated,
+                              bool is_word_terminated,
                               bool should_only_include_directories,
                               bool is_leading_tilde_active,
                               ArrayList<highlight_span> &spans) throws -> bool
@@ -753,13 +753,13 @@ static fn color_path_argument(usize word_start, StringView word,
 
   let const partial =
       word.substring_of_length(existing_end, segment_end - existing_end);
-  let const tail_could_complete =
-      !word_is_terminated &&
+  let const is_tail_completable =
+      !is_word_terminated &&
       path_partial_prefixes_entry(word, existing_end, partial, has_tilde,
                                   should_only_include_directories,
                                   expanded_tilde_prefix.view(),
                                   tilde_prefix_length);
-  let const tail_role = tail_could_complete ? highlight_role::partial_path
+  let const tail_role = is_tail_completable ? highlight_role::partial_path
                                             : highlight_role::invalid_path;
   spans.push(highlight_span{word_start + existing_end, word_start + segment_end,
                             tail_role});

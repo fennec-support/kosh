@@ -163,7 +163,7 @@ struct completion_session
   fn select_history(const char *const *entries, size_t count,
                     const char **out_selected) -> int;
   fn complete(const char *buffer, size_t cursor, tl_completion *out,
-              int for_listing) -> int;
+              int is_for_listing) -> int;
   fn highlight(const char *buffer, tl_highlight *out) -> int;
   fn validate_ghost(const char *entry) const -> int;
   fn hint(const char *buffer, size_t cursor) -> const char *;
@@ -773,12 +773,12 @@ fn kosh_edit_callback(const char *buffer, const char **out_edited) -> int
 }
 
 fn completion_session::complete(const char *buffer, size_t cursor,
-                                tl_completion *out, int for_listing) -> int
+                                tl_completion *out, int is_for_listing) -> int
 {
   if (context == nullptr || result == nullptr) return 0;
 
   try {
-    let const is_explicit_completion = for_listing != 0;
+    let const is_explicit_completion = is_for_listing != 0;
     has_pending_gather = false;
     let const deferral =
         koshka::completion::ScopedDocumentationDeferral{is_explicit_completion};
@@ -813,8 +813,8 @@ fn completion_session::complete(const char *buffer, size_t cursor,
     result->longest_common_prefix.clear();
     *result = koshka::completion::complete(
         line, byte_cursor, *context, *base_directory, nullptr, false,
-        for_listing != 0 ? koshka::completion::completion_mode::Listing
-                         : koshka::completion::completion_mode::Ghost);
+        is_for_listing != 0 ? koshka::completion::completion_mode::Listing
+                            : koshka::completion::completion_mode::Ghost);
     let const &completions = *result;
     koshka::arm_message_leading_newline(false);
 
@@ -834,7 +834,7 @@ fn completion_session::complete(const char *buffer, size_t cursor,
     if (completions.candidate_count == 0) return 0;
 
     candidate_pointers.clear();
-    if (for_listing != 0) {
+    if (is_for_listing != 0) {
       candidate_pointers.reserve(completions.candidates.count());
       for (let const &candidate : completions.candidates)
         candidate_pointers.push(candidate.c_str());
@@ -842,7 +842,7 @@ fn completion_session::complete(const char *buffer, size_t cursor,
 
     description_pointers.clear();
     out->descriptions = nullptr;
-    if (for_listing != 0 && completions.descriptions.count() > 0) {
+    if (is_for_listing != 0 && completions.descriptions.count() > 0) {
       description_pointers.reserve(completions.candidates.count());
       for (let const &candidate : completions.candidates) {
         if (let const found_description =
@@ -855,7 +855,8 @@ fn completion_session::complete(const char *buffer, size_t cursor,
       out->descriptions = description_pointers.begin();
     }
 
-    out->candidates = for_listing != 0 ? candidate_pointers.begin() : nullptr;
+    out->candidates =
+        is_for_listing != 0 ? candidate_pointers.begin() : nullptr;
     out->count = completions.candidate_count;
     out->longest_common_prefix = completions.longest_common_prefix.c_str();
     out->token_start = ::tl_utf8_strnlen(buffer, completions.token_start);
@@ -879,9 +880,9 @@ fn completion_session::complete(const char *buffer, size_t cursor,
 }
 
 fn kosh_completion_callback(const char *buffer, size_t cursor,
-                            tl_completion *out, int for_listing) -> int
+                            tl_completion *out, int is_for_listing) -> int
 {
-  return COMPLETION_SESSION.complete(buffer, cursor, out, for_listing);
+  return COMPLETION_SESSION.complete(buffer, cursor, out, is_for_listing);
 }
 
 fn completion_session::highlight(const char *buffer, tl_highlight *out) -> int
@@ -1208,22 +1209,22 @@ struct history_file_tracking
 {
   os::file_status status{};
   bool has_status{false};
-  bool can_rewrite{false};
+  bool is_rewritable{false};
 
   fn invalidate() -> void
   {
     has_status = false;
-    can_rewrite = false;
+    is_rewritable = false;
   }
 
-  fn refresh_can_rewrite() -> void
+  fn refresh_is_rewritable() -> void
   {
-    can_rewrite = has_status && status.has_file_identity;
+    is_rewritable = has_status && status.has_file_identity;
   }
 
   fn matches_identity(const os::file_status &current) const -> bool
   {
-    return can_rewrite && has_status && status.has_file_identity &&
+    return is_rewritable && has_status && status.has_file_identity &&
            current.has_file_identity && status.device_id == current.device_id &&
            status.file_id == current.file_id;
   }
@@ -1239,13 +1240,13 @@ struct history_file_tracking
       -> void
   {
     if (!appended.has_file_identity) {
-      can_rewrite = false;
+      is_rewritable = false;
     } else if (previous.has_status && previous.status.has_file_identity) {
-      can_rewrite = can_rewrite &&
-                    previous.status.device_id == appended.device_id &&
-                    previous.status.file_id == appended.file_id;
+      is_rewritable = is_rewritable &&
+                      previous.status.device_id == appended.device_id &&
+                      previous.status.file_id == appended.file_id;
     } else {
-      can_rewrite = was_empty;
+      is_rewritable = was_empty;
     }
   }
 
@@ -1347,7 +1348,7 @@ struct history_snapshot
   usize buffer_start_byte_offset{0};
   bool is_enabled{true};
   bool is_file_bad{false};
-  bool does_file_end_with_newline{true};
+  bool has_trailing_newline{true};
   bool has_buffer{false};
   bool is_buffer_loaded{false};
   bool is_valid{false};
@@ -1384,7 +1385,7 @@ static fn capture_history_snapshot(history_snapshot &snapshot) -> void
   snapshot.buffer_start_byte_offset = ::itl_g_history_read_buffer_start;
   snapshot.is_enabled = ::itl_g_history_enabled;
   snapshot.is_file_bad = ::itl_g_history_file_is_bad;
-  snapshot.does_file_end_with_newline = ::itl_g_history_ends_with_newline;
+  snapshot.has_trailing_newline = ::itl_g_history_ends_with_newline;
   snapshot.is_buffer_loaded = ::itl_g_history_read_buffer_loaded;
   snapshot.is_valid = true;
 }
@@ -1413,7 +1414,7 @@ static fn restore_history_snapshot(const history_snapshot &snapshot) -> void
   ::itl_g_history_limit = snapshot.entry_limit;
   ::itl_g_history_enabled = snapshot.is_enabled;
   ::itl_g_history_file_is_bad = snapshot.is_file_bad;
-  ::itl_g_history_ends_with_newline = snapshot.does_file_end_with_newline;
+  ::itl_g_history_ends_with_newline = snapshot.has_trailing_newline;
 
   if (snapshot.has_buffer) {
     ::itl_g_history_read_buffer = ::itl_char_buf_alloc();
@@ -1652,7 +1653,7 @@ fn write_history() -> koshka::ErrorOr<koshka::Ok>
   ::itl_g_history_file_size = written.count();
   ::itl_g_history_file_is_bad = false;
   HISTORY_FILE.record(*path, ::itl_g_history_file_size);
-  HISTORY_FILE.refresh_can_rewrite();
+  HISTORY_FILE.refresh_is_rewritable();
   return koshka::Success;
 }
 
@@ -1684,7 +1685,7 @@ static fn load_history(const Path &path, bool should_allow_missing)
           ::itl_g_history_file_size = 0;
           ::itl_g_history_ends_with_newline = true;
           ::itl_g_history_file_is_bad = false;
-          HISTORY_FILE.can_rewrite = false;
+          HISTORY_FILE.is_rewritable = false;
           ::itl_g_history_read_buffer = ::itl_char_buf_alloc();
           ::itl_g_history_read_buffer_loaded = true;
           ::itl_g_history_read_buffer_offset = 0;
@@ -1707,7 +1708,7 @@ static fn load_history(const Path &path, bool should_allow_missing)
 
     HISTORY_FILE.status = status_after;
     HISTORY_FILE.has_status = true;
-    HISTORY_FILE.refresh_can_rewrite();
+    HISTORY_FILE.refresh_is_rewritable();
     return koshka::Success;
   }
 
@@ -1848,7 +1849,7 @@ fn append_unwritten_history() -> koshka::ErrorOr<koshka::Ok>
 
   let const file_byte_count =
       os::path_file_size(path->text().view()).value_or(0);
-  bool does_file_need_separator = false;
+  bool should_add_file_separator = false;
   if (file_byte_count > 0) {
     let const readable =
         os::open_file_descriptor(path->view(), os::file_open_mode::Read);
@@ -1866,11 +1867,11 @@ fn append_unwritten_history() -> koshka::ErrorOr<koshka::Ok>
     if (!os::close_fd(read_fd) || !was_read)
       return koshka::Error{os::last_system_error_message()};
 
-    does_file_need_separator = last_byte != '\n';
+    should_add_file_separator = last_byte != '\n';
   }
 
   let written = String{koshka::heap_allocator()};
-  if (does_file_need_separator) written.push('\n');
+  if (should_add_file_separator) written.push('\n');
   written.append(payload.view());
   let const opened =
       os::open_file_descriptor(path->view(), os::file_open_mode::Append);
@@ -1887,7 +1888,7 @@ fn append_unwritten_history() -> koshka::ErrorOr<koshka::Ok>
   if (!os::close_fd(fd)) return koshka::Error{os::last_system_error_message()};
 
   let const first_byte_offset =
-      static_cast<usize>(file_byte_count) + (does_file_need_separator ? 1 : 0);
+      static_cast<usize>(file_byte_count) + (should_add_file_separator ? 1 : 0);
   for (usize index = 0; index < unwritten_slots.count(); index++) {
     ::itl_g_history_durable_offsets[unwritten_slots[index]] =
         first_byte_offset + unwritten_byte_offsets[index];
@@ -2310,8 +2311,8 @@ fn rewrite_history_event(usize number, StringView expected,
   if (!should_rewrite_file) return true;
 
   HISTORY_FILE.record(*path, ::itl_g_history_file_size);
-  HISTORY_FILE.refresh_can_rewrite();
-  return HISTORY_FILE.can_rewrite;
+  HISTORY_FILE.refresh_is_rewritable();
+  return HISTORY_FILE.is_rewritable;
 }
 
 static fn strip_sgr_color_sequences_only(StringView text) throws -> String;

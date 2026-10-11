@@ -87,8 +87,8 @@ struct listing_options
   bool is_tree{false};
   bool is_showing_dot_names{false};
   bool is_listing_dot_and_dotdot{false};
-  bool needs_full_status{false};
-  bool needs_type{false};
+  bool should_load_full_status{false};
+  bool should_load_type{false};
 };
 
 struct listing_entry
@@ -269,8 +269,8 @@ make_entry(const Path &path, StringView name, const listing_options &options,
   listing_entry entry{allocator};
   entry.name = String{allocator, name};
 
-  if (!options.needs_full_status) {
-    if (!options.needs_type) return entry;
+  if (!options.should_load_full_status) {
+    if (!options.should_load_type) return entry;
 
     if (kind == Path::entry_kind::Directory) {
       entry.type = colors::file_entry_type::Directory;
@@ -299,10 +299,10 @@ make_entry(const Path &path, StringView name, const listing_options &options,
 static fn prepare_entries(ArrayList<listing_entry> entries,
                           const listing_options &options, StringView directory,
                           bool is_name_path, Allocator allocator,
-                          bool are_symlink_targets_known = false) throws
+                          bool has_known_symlink_targets = false) throws
     -> SortedArrayList<listing_entry, listing_entry_comparator>
 {
-  if (options.should_color && !are_symlink_targets_known) {
+  if (options.should_color && !has_known_symlink_targets) {
     let symlink_paths = ArrayList<Path>{allocator};
     let symlink_statuses = ArrayList<os::file_status>{allocator};
     for (let const &entry : entries) {
@@ -352,8 +352,9 @@ static fn collect_directory(const Path &directory,
   let entries = ArrayList<listing_entry>{allocator};
   let const directory_text = directory.view();
   let const should_collect_status =
-      options.needs_full_status ||
-      (options.needs_type && (options.should_color || options.should_classify));
+      options.should_load_full_status ||
+      (options.should_load_type &&
+       (options.should_color || options.should_classify));
   if (should_collect_status) {
     let const children = os::list_directory_status(directory_text, allocator);
     if (!children.has_value()) return None;
@@ -398,7 +399,7 @@ static fn collect_directory(const Path &directory,
   for (let const &child : *children) {
     if (!options.is_showing_dot_names && child.name.starts_with(".")) continue;
 
-    if (options.needs_full_status || options.should_classify ||
+    if (options.should_load_full_status || options.should_classify ||
         options.should_color)
     {
       let child_path = Path{directory_text, allocator};
@@ -803,10 +804,10 @@ fn LS::execute(const ExecContext &ec, EvalContext &cxt,
   options.is_showing_dot_names =
       is_showing_all || FLAG_LS_ALMOST_ALL.is_enabled();
   options.is_listing_dot_and_dotdot = is_showing_all && !options.is_tree;
-  options.needs_full_status =
+  options.should_load_full_status =
       options.is_long || options.key != ls_sort_key::Name;
-  options.needs_type = options.should_color || options.should_classify ||
-                       options.is_recursive || options.is_tree;
+  options.should_load_type = options.should_color || options.should_classify ||
+                             options.is_recursive || options.is_tree;
   if (!options.is_long && !options.is_one_per_line && !options.is_tree)
     options.terminal_dimensions = os::get_terminal_dimensions();
 

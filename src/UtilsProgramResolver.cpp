@@ -454,7 +454,7 @@ fn ProgramResolver::mark_command_name_indexes_stale() wontthrow -> void
 {
   m_validated_prefix.clear();
   m_command_statuses.clear();
-  m_command_names_are_valid = false;
+  m_is_command_name_list_valid = false;
   m_command_names_validation_epoch = 0;
   m_prefix_validation_epoch = 0;
 }
@@ -470,7 +470,7 @@ fn ProgramResolver::mark_derived_indexes_stale() wontthrow -> void
 {
   mark_command_name_indexes_stale();
   m_path_directory_generations.clear();
-  m_path_directory_generations_are_valid = false;
+  m_is_path_generation_list_valid = false;
   m_path_directories_validation_epoch = 0;
 }
 
@@ -497,7 +497,7 @@ fn ProgramResolver::assign_path(Maybe<String> path) throws -> void
   m_path = steal(path);
   m_path_dirs = steal(path_dirs);
   m_index_path_dirs = steal(index_path_dirs);
-  m_path_dirs_are_valid = true;
+  m_is_path_directory_list_valid = true;
   m_execution_cache.clear();
   if (!path_search_changed) return;
 
@@ -563,12 +563,12 @@ fn ProgramResolver::deduplicate_path_dirs(
 
 fn ProgramResolver::get_path_dirs() throws -> const ArrayList<String> &
 {
-  if (m_path_dirs_are_valid) return m_path_dirs;
+  if (m_is_path_directory_list_valid) return m_path_dirs;
 
   m_path_dirs =
       split_path_dirs(m_path.has_value() ? m_path->view() : StringView{});
   m_index_path_dirs = deduplicate_path_dirs(m_path_dirs);
-  m_path_dirs_are_valid = true;
+  m_is_path_directory_list_valid = true;
 
   return m_path_dirs;
 }
@@ -637,7 +637,7 @@ fn ProgramResolver::refresh_path_directory_generations() throws -> void
 {
   m_path_directory_generations =
       collect_directory_generations(get_index_path_dirs());
-  m_path_directory_generations_are_valid = true;
+  m_is_path_generation_list_valid = true;
   m_path_directories_validation_epoch = DIRECTORY_VALIDATION_EPOCH;
 }
 
@@ -706,7 +706,7 @@ fn ProgramResolver::rebuild_path_command_index(CompletionRefresh refresh) throws
   if (refresh == CompletionRefresh::Fresh) {
     clear_derived_indexes();
   } else {
-    ASSERT(m_path_directory_generations_are_valid);
+    ASSERT(m_is_path_generation_list_valid);
     clear_command_name_indexes();
   }
 
@@ -772,7 +772,7 @@ fn ProgramResolver::rebuild_path_command_index(CompletionRefresh refresh) throws
 
   m_command_names = sort_and_deduplicate_names(steal(command_names));
   m_regular_names = sort_and_deduplicate_names(steal(regular_names));
-  m_command_names_are_valid = true;
+  m_is_command_name_list_valid = true;
   m_command_names_validation_epoch = DIRECTORY_VALIDATION_EPOCH;
   m_path_directories_validation_epoch = DIRECTORY_VALIDATION_EPOCH;
   m_prefix_validation_epoch = 0;
@@ -790,7 +790,7 @@ fn ProgramResolver::revalidate_for_prompt() throws -> void
 {
   begin_directory_validation_epoch();
   let const did_change = validate_path_directory_generations();
-  if (!did_change && m_command_names_are_valid) {
+  if (!did_change && m_is_command_name_list_valid) {
     return;
   }
 
@@ -837,12 +837,12 @@ pure fn debug_directory_read_count() wontthrow -> usize
 
 fn ProgramResolver::validate_path_directory_generations() throws -> bool
 {
-  if (m_path_directory_generations_are_valid &&
+  if (m_is_path_generation_list_valid &&
       m_path_directories_validation_epoch == DIRECTORY_VALIDATION_EPOCH)
     return false;
 
   bool did_change =
-      !m_path_directory_generations_are_valid ||
+      !m_is_path_generation_list_valid ||
       m_path_directory_generations.count() != get_index_path_dirs().count();
   let observed_generations =
       collect_directory_generations(get_index_path_dirs());
@@ -857,7 +857,7 @@ fn ProgramResolver::validate_path_directory_generations() throws -> bool
     }
   }
   m_path_directory_generations = steal(observed_generations);
-  m_path_directory_generations_are_valid = true;
+  m_is_path_generation_list_valid = true;
   m_path_directories_validation_epoch = DIRECTORY_VALIDATION_EPOCH;
 
   return did_change;
@@ -951,15 +951,15 @@ fn ProgramResolver::prepare_complete_path_cache(
     StringView validation_prefix, ValidationScope validation_scope) throws
     -> void
 {
-  if (!m_command_names_are_valid && !m_path_directory_generations_are_valid &&
+  if (!m_is_command_name_list_valid && !m_is_path_generation_list_valid &&
       m_explicit_completion_depth == 0)
     return;
 
-  if (!m_command_names_are_valid) {
+  if (!m_is_command_name_list_valid) {
     if (validation_scope == ValidationScope::All ||
         validation_prefix.is_empty())
     {
-      if (m_path_directory_generations_are_valid &&
+      if (m_is_path_generation_list_valid &&
           m_path_directories_validation_epoch == DIRECTORY_VALIDATION_EPOCH)
         rebuild_path_command_index(CompletionRefresh::Cached);
       else
@@ -967,7 +967,7 @@ fn ProgramResolver::prepare_complete_path_cache(
       return;
     }
 
-    if (!m_path_directory_generations_are_valid) {
+    if (!m_is_path_generation_list_valid) {
       refresh_path_directory_generations();
       m_execution_cache.clear();
     } else if (m_path_directories_validation_epoch !=
@@ -994,7 +994,7 @@ fn ProgramResolver::prepare_complete_path_cache(
   if (validation_scope == ValidationScope::Prefix &&
       !validation_prefix.is_empty())
   {
-    m_command_names_are_valid = false;
+    m_is_command_name_list_valid = false;
     revalidate_command_prefix(validation_prefix);
     return;
   }
@@ -1033,7 +1033,7 @@ fn ProgramResolver::command_name_has_prefix(StringView prefix) throws -> bool
 
 pure fn ProgramResolver::has_valid_command_names() const wontthrow -> bool
 {
-  return m_command_names_are_valid;
+  return m_is_command_name_list_valid;
 }
 
 fn ProgramResolver::get_status(StringView name, StatusLookup lookup) throws
@@ -1049,7 +1049,7 @@ fn ProgramResolver::get_status(StringView name, StatusLookup lookup) throws
 
   let normalized_name = String{name};
   unused(os::normalize_program_name(normalized_name));
-  if (!m_command_names_are_valid && !normalized_name.is_empty()) {
+  if (!m_is_command_name_list_valid && !normalized_name.is_empty()) {
     prepare_complete_path_cache(normalized_name.substring_of_length(0, 1),
                                 ValidationScope::Prefix);
   }

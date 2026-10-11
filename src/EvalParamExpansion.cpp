@@ -375,28 +375,28 @@ static fn trim_value_with_modifier(EvalContext &cxt, StringView value,
 } /* namespace */
 
 fn EvalContext::expand_modifier_word_masked(
-    StringView word, Bitset &active_out, bool remove_quotes,
+    StringView word, Bitset &active_out, bool should_remove_quotes,
     const SourceLocation *source_location) throws -> String
 {
-  return expand_modifier_word_worker(word, &active_out, remove_quotes, true,
-                                     false, source_location);
+  return expand_modifier_word_worker(word, &active_out, should_remove_quotes,
+                                     true, false, source_location);
 }
 
 class EvalContext::ModifierWordExpander
 {
 public:
   ModifierWordExpander(EvalContext &context, StringView word,
-                       Bitset *active_out, bool remove_quotes,
-                       bool is_pattern_word, bool strip_escaped_literals,
+                       Bitset *active_out, bool should_remove_quotes,
+                       bool is_pattern_word, bool should_strip_escaped_literals,
                        const SourceLocation *source_location) throws
       : m_context(context),
         m_word(word),
         m_active_out(active_out),
         m_out(context.scratch_allocator()),
         m_source_location(source_location),
-        m_remove_quotes(remove_quotes),
+        m_should_remove_quotes(should_remove_quotes),
         m_is_pattern_word(is_pattern_word),
-        m_strip_escaped_literals(strip_escaped_literals)
+        m_should_strip_escaped_literals(should_strip_escaped_literals)
   {}
 
   fn expand() throws -> String;
@@ -430,9 +430,9 @@ private:
   ArrayList<usize> *m_break_out = nullptr;
   ArrayList<quoted_empty_mark> *m_mark_out = nullptr;
   usize m_index = 0;
-  bool m_remove_quotes;
+  bool m_should_remove_quotes;
   bool m_is_pattern_word;
-  bool m_strip_escaped_literals;
+  bool m_should_strip_escaped_literals;
   bool m_is_in_single_quote = false;
   bool m_is_in_double_quote = false;
   bool m_is_outer_quoted = false;
@@ -449,7 +449,7 @@ private:
   }
   fn get_nested_quoting() const wontthrow -> parameter_word_quoting
   {
-    if (!m_remove_quotes || m_is_here_document_word)
+    if (!m_should_remove_quotes || m_is_here_document_word)
       return parameter_word_quoting::HereDocument;
 
     return is_quoted() ? parameter_word_quoting::DoubleQuoted
@@ -858,7 +858,8 @@ fn EvalContext::ModifierWordExpander::emit_run(StringView bytes,
 
 fn EvalContext::ModifierWordExpander::toggle_quote_state() throws -> bool
 {
-  if (m_remove_quotes && !m_is_in_single_quote && m_word[m_index] == '"') {
+  if (m_should_remove_quotes && !m_is_in_single_quote && m_word[m_index] == '"')
+  {
     m_is_in_double_quote = !m_is_in_double_quote;
     if (m_is_in_double_quote) {
       m_did_quoted_emit = false;
@@ -870,7 +871,7 @@ fn EvalContext::ModifierWordExpander::toggle_quote_state() throws -> bool
 
     return true;
   }
-  if (m_remove_quotes && !is_quoted() && m_word[m_index] == '\'') {
+  if (m_should_remove_quotes && !is_quoted() && m_word[m_index] == '\'') {
     m_is_in_single_quote = !m_is_in_single_quote;
     return true;
   }
@@ -891,20 +892,23 @@ fn EvalContext::ModifierWordExpander::expand_backslash() throws -> void
       m_index++;
       return;
     }
-    if (m_strip_escaped_literals && m_remove_quotes && !is_quoted()) {
+    if (m_should_strip_escaped_literals && m_should_remove_quotes &&
+        !is_quoted())
+    {
       emit_byte(next, false);
       m_index++;
       return;
     }
-    if (m_strip_escaped_literals && m_remove_quotes && m_is_outer_quoted &&
-        m_is_in_double_quote && !m_context.runtime_state().is_posix_mode())
+    if (m_should_strip_escaped_literals && m_should_remove_quotes &&
+        m_is_outer_quoted && m_is_in_double_quote &&
+        !m_context.runtime_state().is_posix_mode())
     {
       emit_byte(next, false);
       m_index++;
       return;
     }
     if (next == '$' || next == '`' || next == '\\' ||
-        (m_remove_quotes && next == '"') || (is_quoted() && next == '}'))
+        (m_should_remove_quotes && next == '"') || (is_quoted() && next == '}'))
     {
       emit_byte(next, false);
       m_index++;
@@ -1312,14 +1316,14 @@ fn EvalContext::ModifierWordExpander::expand_dollar() throws -> void
 {
   let const next = m_word[m_index + 1];
   let const &state = m_context.runtime_state();
-  if (next == '\'' && m_remove_quotes && !m_is_in_double_quote &&
+  if (next == '\'' && m_should_remove_quotes && !m_is_in_double_quote &&
       !m_is_here_document_word && !state.is_posix_mode() &&
       !(m_is_outer_quoted && state.is_posix_option_on()))
   {
     expand_ansi_c_quote();
     return;
   }
-  if (next == '"' && m_remove_quotes && !m_is_in_double_quote) {
+  if (next == '"' && m_should_remove_quotes && !m_is_in_double_quote) {
     return;
   }
 
@@ -1349,7 +1353,7 @@ fn EvalContext::ModifierWordExpander::expand_dollar() throws -> void
 
 fn EvalContext::ModifierWordExpander::expand_leading_tilde() throws -> bool
 {
-  if (!m_remove_quotes || is_quoted() || m_is_here_document_word) {
+  if (!m_should_remove_quotes || is_quoted() || m_is_here_document_word) {
     return false;
   }
 
@@ -1417,29 +1421,31 @@ fn EvalContext::ModifierWordExpander::expand() throws -> String
 }
 
 fn EvalContext::expand_modifier_word_worker(
-    StringView word, Bitset *active_out, bool remove_quotes,
-    bool is_pattern_word, bool strip_escaped_literals,
+    StringView word, Bitset *active_out, bool should_remove_quotes,
+    bool is_pattern_word, bool should_strip_escaped_literals,
     const SourceLocation *source_location) throws -> String
 {
   LOG(All, "expanding a modifier word of %zu bytes", word.length);
-  let expander = ModifierWordExpander{*this,           word,
-                                      active_out,      remove_quotes,
-                                      is_pattern_word, strip_escaped_literals,
-                                      source_location};
+  let expander =
+      ModifierWordExpander{*this,           word,
+                           active_out,      should_remove_quotes,
+                           is_pattern_word, should_strip_escaped_literals,
+                           source_location};
 
   return expander.expand();
 }
 
-fn EvalContext::expand_modifier_word(StringView word, bool remove_quotes,
-                                     bool strip_escaped_literals,
+fn EvalContext::expand_modifier_word(StringView word, bool should_remove_quotes,
+                                     bool should_strip_escaped_literals,
                                      const SourceLocation *source_location,
                                      bool should_expand_process_substitution,
                                      parameter_word_quoting quoting) throws
     -> String
 {
   let expander =
-      ModifierWordExpander{*this,          word,  nullptr,
-                           remove_quotes,  false, strip_escaped_literals,
+      ModifierWordExpander{*this,          word,
+                           nullptr,        should_remove_quotes,
+                           false,          should_strip_escaped_literals,
                            source_location};
   if (should_expand_process_substitution)
     expander.enable_process_substitution();
@@ -1544,7 +1550,7 @@ private:
   raise_unknown_transformation(StringView transformation) const throws -> void;
   wontreturn fn raise_invalid_name_start() const throws -> void;
   fn expand_test_operator(char op, StringView word, Maybe<String> &current,
-                          bool treat_as_unset) throws -> String;
+                          bool should_treat_as_unset) throws -> String;
   fn expand_trim_operator(char op, StringView word, bool is_doubled,
                           const Maybe<String> &current) throws -> String;
 };
@@ -1761,24 +1767,25 @@ fn EvalContext::ParameterExpander::expand_element_test(
   let value = element_is_set ? m_context.apply_array_subscript(
                                    m_name, subscript, subscript_location)
                              : String{m_context.scratch_allocator()};
-  let const treat_as_unset = is_colon ? value.is_empty() : !element_is_set;
+  let const should_treat_as_unset =
+      is_colon ? value.is_empty() : !element_is_set;
   let const word = modifier.substring(is_colon ? 2 : 1);
   switch (after) {
   case '-':
-    if (treat_as_unset) return expand_word(word, m_quoting);
+    if (should_treat_as_unset) return expand_word(word, m_quoting);
     return value;
   case '+':
-    if (treat_as_unset) return String{m_context.scratch_allocator()};
+    if (should_treat_as_unset) return String{m_context.scratch_allocator()};
     return expand_word(word, m_quoting);
   case '=': {
-    if (!treat_as_unset) return value;
+    if (!should_treat_as_unset) return value;
     let assigned = expand_word(word, m_quoting);
     m_context.assign_array_element(m_name, subscript, assigned.view(),
                                    assignment_update_mode::Replace);
     return assigned;
   }
   case '?':
-    if (treat_as_unset) {
+    if (should_treat_as_unset) {
       if (word.is_empty())
         throw_script_fatal("Unable to expand '" + m_name + "[" + subscript +
                            "]' because the element is not set or is empty");
@@ -2065,14 +2072,14 @@ fn EvalContext::ParameterExpander::expand_list_test(
       m_context.expansion_store().is_expanding_assignment_value();
   let const is_posix_positional = m_context.runtime_state().is_posix_mode() &&
                                   (m_name == "@" || m_name == "*");
-  let const treat_as_unset =
+  let const should_treat_as_unset =
       is_posix_positional
           ? m_context.is_posix_positional_test_null(is_colon, op, true)
       : is_colon && !is_quoted_null_list &&
               !is_operand_quoted_null(values, is_star)
           ? joined.is_empty()
           : values.is_empty();
-  if (!treat_as_unset) {
+  if (!should_treat_as_unset) {
     if (op == '+') return expand_word(word, m_quoting);
 
     return joined;
@@ -2264,20 +2271,20 @@ fn EvalContext::ParameterExpander::expand_leading_form() throws -> Maybe<String>
 
 fn EvalContext::ParameterExpander::expand_test_operator(
     char op, StringView word, Maybe<String> &current,
-    bool treat_as_unset) throws -> String
+    bool should_treat_as_unset) throws -> String
 {
   switch (op) {
   case '-':
-    if (treat_as_unset) return expand_word(word, m_quoting);
+    if (should_treat_as_unset) return expand_word(word, m_quoting);
     return take_value(current);
   case '=':
-    if (treat_as_unset) return assign_word(word);
+    if (should_treat_as_unset) return assign_word(word);
     return take_value(current);
   case '+':
-    if (treat_as_unset) return String{m_context.scratch_allocator()};
+    if (should_treat_as_unset) return String{m_context.scratch_allocator()};
     return expand_word(word, m_quoting);
   default:
-    if (treat_as_unset) raise_unset_error(word);
+    if (should_treat_as_unset) raise_unset_error(word);
     return take_value(current);
   }
 }
@@ -2515,13 +2522,14 @@ fn EvalContext::ParameterExpander::expand_operator() throws -> String
   let current = m_context.get_variable_value(m_name);
   let const is_set = current.has_value();
   let const is_empty = !is_set || current->is_empty();
-  let const treat_as_unset = is_colon_form ? is_empty : !is_set;
+  let const should_treat_as_unset = is_colon_form ? is_empty : !is_set;
 
   switch (op) {
   case '-':
   case '=':
   case '+':
-  case '?': return expand_test_operator(op, word, current, treat_as_unset);
+  case '?':
+    return expand_test_operator(op, word, current, should_treat_as_unset);
   case '#':
   case '%': return expand_trim_operator(op, word, is_doubled, current);
   default: raise_unknown_operator(m_rest);

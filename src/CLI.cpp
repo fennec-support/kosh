@@ -69,19 +69,19 @@ FlagBool::FlagBool(FlagList &flags, char short_name, StringView long_name,
   flags.push(this);
 }
 
-fn FlagBool::toggle() throws -> void { m_value = !m_value; }
+fn FlagBool::toggle() throws -> void { m_is_enabled = !m_is_enabled; }
 
-fn FlagBool::enable() wontthrow -> void { m_value = true; }
+fn FlagBool::enable() wontthrow -> void { m_is_enabled = true; }
 
-fn FlagBool::disable() wontthrow -> void { m_value = false; }
+fn FlagBool::disable() wontthrow -> void { m_is_enabled = false; }
 
-pure fn FlagBool::is_enabled() const wontthrow -> bool { return m_value; }
+pure fn FlagBool::is_enabled() const wontthrow -> bool { return m_is_enabled; }
 
 fn FlagBool::reset() throws -> void
 {
   m_position = 0;
   m_value_location = {};
-  m_value = false;
+  m_is_enabled = false;
 }
 
 FlagRepeatedBool::FlagRepeatedBool(char short_name, StringView long_name,
@@ -1639,9 +1639,9 @@ fn flush() throws -> void
 
 static thread_local bool ONE_SHOT_MESSAGE_LEADING_NEWLINE_ARMED = false;
 
-fn arm_message_leading_newline(bool armed) wontthrow -> void
+fn arm_message_leading_newline(bool is_armed) wontthrow -> void
 {
-  ONE_SHOT_MESSAGE_LEADING_NEWLINE_ARMED = armed;
+  ONE_SHOT_MESSAGE_LEADING_NEWLINE_ARMED = is_armed;
 }
 
 cold fn show_message(StringView err) throws -> void

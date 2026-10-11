@@ -207,9 +207,9 @@ private:
   ArrayList<String> m_index_path_dirs{heap_allocator()};
   ArrayList<u64> m_path_directory_generations{heap_allocator()};
   String m_validated_prefix{heap_allocator()};
-  bool m_path_dirs_are_valid{false};
-  bool m_path_directory_generations_are_valid{false};
-  bool m_command_names_are_valid{false};
+  bool m_is_path_directory_list_valid{false};
+  bool m_is_path_generation_list_valid{false};
+  bool m_is_command_name_list_valid{false};
   u64 m_path_directories_validation_epoch{0};
   u64 m_command_names_validation_epoch{0};
   u64 m_prefix_validation_epoch{0};

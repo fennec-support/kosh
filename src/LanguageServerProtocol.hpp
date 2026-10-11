@@ -80,7 +80,7 @@ public:
   }
 
   json_kind kind;
-  bool boolean{false};
+  bool is_true{false};
   String text;
   ArrayList<JsonValue *> array;
   ArrayList<json_member> object;
@@ -141,7 +141,7 @@ private:
   }
 
   fn parse_literal(StringView spelling, json_kind kind,
-                   bool boolean = false) throws -> JsonValue *
+                   bool is_true = false) throws -> JsonValue *
   {
     if (m_position + spelling.length > m_source.length ||
         m_source.substring_of_length(m_position, spelling.length) != spelling)
@@ -150,7 +150,7 @@ private:
     }
     m_position += spelling.length;
     let *value = create(kind);
-    value->boolean = boolean;
+    value->is_true = is_true;
 
     return value;
   }
@@ -383,7 +383,7 @@ fn append_json_value(String &output, const JsonValue &value) throws -> void
   switch (value.kind) {
   case json_kind::Null: output.append("null"); break;
   case json_kind::Boolean:
-    output.append(value.boolean ? "true" : "false");
+    output.append(value.is_true ? "true" : "false");
     break;
   case json_kind::Number: output.append(value.text.view()); break;
   case json_kind::String: append_json_string(output, value.text.view()); break;
@@ -621,7 +621,7 @@ pure fn json_field_path(const JsonValue *object, Names... names) wontthrow
 pure fn json_field_is_true(const JsonValue *value) wontthrow -> bool
 {
   return value != nullptr && value->kind == json_kind::Boolean &&
-         value->boolean;
+         value->is_true;
 }
 
 pure fn json_array_holds(const JsonValue *value, StringView wanted) wontthrow

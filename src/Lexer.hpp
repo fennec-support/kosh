@@ -402,7 +402,7 @@ protected:
   ArrayList<Word> m_debug_words{heap_allocator()};
   usize m_last_collected_word_position{static_cast<usize>(-1)};
 
-  bool m_last_shell_token_was_newline{false};
+  bool m_was_last_shell_token_newline{false};
   bool m_is_lexing_array_literal{false};
   ArrayList<shellcheck_directive_span> m_pending_shellcheck_directives{
       heap_allocator()};

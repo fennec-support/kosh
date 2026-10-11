@@ -1017,10 +1017,10 @@ fn execute_program(ExecContext &ec, const program_execution_options &options)
       [&]() { startup_info.hStdError = startup_info.hStdOutput; },
       [&]() { startup_info.hStdOutput = startup_info.hStdError; });
 
-  bool were_handles_handed_to_fallback = false;
+  bool did_hand_handles_to_fallback = false;
   defer
   {
-    if (!were_handles_handed_to_fallback) ec.close_fds();
+    if (!did_hand_handles_to_fallback) ec.close_fds();
   };
 
   let const has_command_redirection =
@@ -1068,7 +1068,7 @@ fn execute_program(ExecContext &ec, const program_execution_options &options)
     if (allow_script_fallback && GetLastError() == ERROR_BAD_EXE_FORMAT) {
       if (!resolved_program_path_storage.is_empty())
         ec.set_program_path(Path{resolved_program_path_storage.view()});
-      were_handles_handed_to_fallback = true;
+      did_hand_handles_to_fallback = true;
       return KOSH_INVALID_PROCESS;
     }
     throw ErrorWithLocation{ec.source_location(), last_system_error_message()};

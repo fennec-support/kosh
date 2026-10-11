@@ -146,9 +146,9 @@ fn stderr_is_a_terminal() wontthrow -> bool
   return STDERR_TERMINAL_ANSWER.get(os::is_stderr_a_tty);
 }
 
-fn terminal_wants_color(bool output_is_terminal) throws -> bool
+fn terminal_wants_color(bool is_output_terminal) throws -> bool
 {
-  return output_is_terminal && !color_is_suppressed_by_environment();
+  return is_output_terminal && !color_is_suppressed_by_environment();
 }
 
 fn terminal_supports_styled_underlines() throws -> bool { return false; }

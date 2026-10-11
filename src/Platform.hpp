@@ -186,7 +186,7 @@ struct goodcore_platform_tools
   StringView dependency_program;
   StringView debugger_program;
   goodcore_capture_mode capture_mode;
-  bool dependency_uses_library_flag;
+  bool is_library_flag_dependency;
 };
 
 pure fn goodcore_tools() wontthrow -> goodcore_platform_tools;
@@ -2202,7 +2202,7 @@ struct subshell_bootstrap
   ArrayList<process> processes{heap_allocator()};
   u32 source_length{0};
   root_evaluation_mode evaluation_mode{root_evaluation_mode::Normal};
-  bool owns_processes{false};
+  bool is_process_owner{false};
   bool should_use_command_string_status{false};
 
 private:

@@ -42,7 +42,7 @@ struct no_editor_history_state
   bool is_loaded{false};
   bool is_file_bad{false};
   bool has_file_status{false};
-  bool can_rewrite{false};
+  bool is_rewritable{false};
 };
 
 struct history_record_span
@@ -238,7 +238,7 @@ static fn scan_no_editor_history(const Path &path, StringView contents,
           : extend_history_contents_hash(HISTORY_HASH_OFFSET_BASIS, contents);
   state.is_loaded = false;
   state.has_file_status = false;
-  state.can_rewrite = false;
+  state.is_rewritable = false;
 
   usize byte_offset = 0;
   bool is_valid = true;
@@ -257,7 +257,7 @@ static fn scan_no_editor_history(const Path &path, StringView contents,
   } else if (state.file_status.size != contents.length) {
     return history_scan_outcome::Stale;
   }
-  state.can_rewrite =
+  state.is_rewritable =
       state.has_file_status && state.file_status.has_file_identity;
   state.is_file_bad = false;
   state.is_loaded = true;
@@ -545,9 +545,9 @@ fn write_history() -> koshka::ErrorOr<koshka::Ok>
   state.is_file_bad = false;
   state.has_file_status =
       koshka::internal::update_history_file_status(state, *path);
-  state.can_rewrite =
+  state.is_rewritable =
       state.has_file_status && state.file_status.has_file_identity;
-  if (!state.can_rewrite)
+  if (!state.is_rewritable)
     return koshka::Error{"the file contains invalid data"};
   return koshka::Success;
 }
@@ -637,7 +637,7 @@ fn append_unwritten_history() -> koshka::ErrorOr<koshka::Ok>
 
   let const file_byte_count =
       koshka::os::path_file_size(path->text().view()).value_or(0);
-  bool does_file_need_separator = false;
+  bool should_add_file_separator = false;
   if (file_byte_count > 0) {
     let readable = koshka::os::open_file_descriptor(
         path->text().view(), koshka::os::file_open_mode::Read);
@@ -655,11 +655,11 @@ fn append_unwritten_history() -> koshka::ErrorOr<koshka::Ok>
     if (!koshka::os::close_fd(read_fd) || !was_read)
       return koshka::Error{koshka::os::last_system_error_message()};
 
-    does_file_need_separator = last_byte != '\n';
+    should_add_file_separator = last_byte != '\n';
   }
 
   let written = String{koshka::heap_allocator()};
-  if (does_file_need_separator) written.push('\n');
+  if (should_add_file_separator) written.push('\n');
   written.append(payload.view());
   let const opened = koshka::os::open_file_descriptor(
       path->text().view(), koshka::os::file_open_mode::Append);
@@ -677,7 +677,7 @@ fn append_unwritten_history() -> koshka::ErrorOr<koshka::Ok>
     return koshka::Error{koshka::os::last_system_error_message()};
 
   let const first_byte_offset =
-      static_cast<usize>(file_byte_count) + (does_file_need_separator ? 1 : 0);
+      static_cast<usize>(file_byte_count) + (should_add_file_separator ? 1 : 0);
   for (usize index = 0; index < unwritten_indexes.count(); index++) {
     let const slot = (state.first_record_index + unwritten_indexes[index]) %
                      state.durable_record_byte_offsets.count();

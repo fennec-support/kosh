@@ -340,8 +340,8 @@ hot fn Lexer::advance_past_last_peek() throws -> usize
   m_cached_offset = 0;
   m_peek_cache = nullptr;
 
-  if (m_last_shell_token_was_newline && !m_pending_heredocs.is_empty()) {
-    m_last_shell_token_was_newline = false;
+  if (m_was_last_shell_token_newline && !m_pending_heredocs.is_empty()) {
+    m_was_last_shell_token_newline = false;
     collect_pending_heredocs();
   }
 
@@ -505,7 +505,7 @@ hot flatten fn Lexer::lex_shell_token() throws -> Token *
   if (!has_character()) {
     token = m_parse_session.get_arena().create<tokens::EndOfFile>(
         here(m_cursor_position, 1));
-    m_last_shell_token_was_newline = false;
+    m_was_last_shell_token_newline = false;
 
     return token;
   }
@@ -531,7 +531,7 @@ hot flatten fn Lexer::lex_shell_token() throws -> Token *
 
   ASSERT(token != nullptr);
 
-  m_last_shell_token_was_newline = token->kind() == Token::Kind::Newline;
+  m_was_last_shell_token_newline = token->kind() == Token::Kind::Newline;
 
   return token;
 }

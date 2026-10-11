@@ -604,10 +604,10 @@ class shell_highlight_cache;
 class RuntimeControlStore
 {
 public:
-  fn set_init_mood_sourcing(mimic_mood mood, bool active) wontthrow -> void
+  fn set_init_mood_sourcing(mimic_mood mood, bool is_active) wontthrow -> void
   {
     let const bit = static_cast<u8>(1U << static_cast<u8>(mood));
-    if (active)
+    if (is_active)
       m_init_moods_sourcing |= bit;
     else
       m_init_moods_sourcing &= static_cast<u8>(~bit);
@@ -988,13 +988,13 @@ public:
     m_execution_string = steal(wire.execution_string);
     m_last_argument = steal(wire.last_argument);
   }
-  fn set_make_shell_suppressed(bool suppressed) wontthrow -> void
+  fn set_make_shell_suppressed(bool is_suppressed) wontthrow -> void
   {
-    m_make_shell_suppressed = suppressed;
+    m_is_make_shell_suppressed = is_suppressed;
   }
   pure fn make_shell_suppressed() const wontthrow -> bool
   {
-    return m_make_shell_suppressed;
+    return m_is_make_shell_suppressed;
   }
 
   fn last_exit_status() wontthrow -> i32 & { return m_last_exit_status; }
@@ -1147,7 +1147,7 @@ private:
   i32 m_last_exit_status{0};
   u32 m_pending_subshell_end_position{0};
   u32 m_completion_option_mask{0};
-  bool m_make_shell_suppressed{false};
+  bool m_is_make_shell_suppressed{false};
   bool m_should_elide_pending_subshell_fork{false};
   bool m_terminal_exec_allowed{false};
   bool m_is_completion_function_running{false};
@@ -2399,8 +2399,11 @@ public:
   {
     return m_is_replaying_inherited_state;
   }
-  fn exit_trap_ran() wontthrow -> bool & { return m_exit_trap_ran; }
-  pure fn exit_trap_ran() const wontthrow -> bool { return m_exit_trap_ran; }
+  fn exit_trap_ran() wontthrow -> bool & { return m_did_exit_trap_run; }
+  pure fn exit_trap_ran() const wontthrow -> bool
+  {
+    return m_did_exit_trap_run;
+  }
   fn did_reset_inherited_signal_traps() wontthrow -> bool &
   {
     return m_install_state.did_reset_inherited_signal_traps;
@@ -2514,7 +2517,7 @@ private:
   bool m_has_err_trap{false};
   trap_install_state m_install_state{};
   bool m_is_replaying_inherited_state{false};
-  bool m_exit_trap_ran{false};
+  bool m_did_exit_trap_run{false};
   u64 m_startup_ignored_signals{0};
   u32 m_pending_child_trap_count{0};
   trap_action_frame m_action_frame{};
@@ -3042,9 +3045,9 @@ public:
   }
   pure fn startup_finished() const wontthrow -> bool
   {
-    return m_startup_finished;
+    return m_is_startup_finished;
   }
-  fn mark_startup_finished() wontthrow -> void { m_startup_finished = true; }
+  fn mark_startup_finished() wontthrow -> void { m_is_startup_finished = true; }
   pure fn is_restricted_shell() const wontthrow -> bool
   {
     return m_is_restricted_shell;
@@ -3074,7 +3077,7 @@ private:
   bool m_is_login_shell{false};
   bool m_has_custom_rcfile{false};
   bool m_is_restricted_shell{false};
-  bool m_startup_finished{false};
+  bool m_is_startup_finished{false};
 };
 
 class DiagnosticsStore
@@ -3164,15 +3167,15 @@ class EvalContextState
 {
 public:
   EvalContextState(ArrayList<String> positional_params,
-                   bool shell_is_interactive, String shell_name)
+                   bool is_shell_interactive, String shell_name)
       : EvalContextState(positional_params.allocator(),
-                         steal(positional_params), shell_is_interactive,
+                         steal(positional_params), is_shell_interactive,
                          steal(shell_name))
   {}
   EvalContextState(Allocator allocator, ArrayList<String> positional_params,
-                   bool shell_is_interactive, String shell_name)
+                   bool is_shell_interactive, String shell_name)
       : m_variable_store(steal(positional_params)),
-        m_execution_store(shell_is_interactive, steal(shell_name)),
+        m_execution_store(is_shell_interactive, steal(shell_name)),
         m_function_store(allocator)
   {}
 
@@ -3698,7 +3701,7 @@ public:
                             StringView line, usize point) throws
       -> ArrayList<String>;
   fn expand_wordlist_to_fields(StringView wordlist,
-                               bool allow_expansion = true) throws
+                               bool should_allow_expansion = true) throws
       -> ArrayList<String>;
 
   fn variable_names(Allocator result_allocator = heap_allocator()) const throws
@@ -3927,7 +3930,7 @@ public:
     return runtime_state().get_warning_level() >= 1;
   }
   fn report_unset_reference(StringView name) throws -> void;
-  fn warn_or_throw(bool fatal, bool explicitly_requested,
+  fn warn_or_throw(bool is_fatal, bool was_explicitly_requested,
                    const SourceLocation &location, StringView message,
                    StringView note = {}) throws -> void;
   cold fn show_runtime_warning_at(SourceLocation location, StringView message,
@@ -4227,15 +4230,15 @@ public:
       -> String;
 
   fn expand_modifier_word(
-      StringView word, bool remove_quotes = true,
-      bool strip_escaped_literals = true,
+      StringView word, bool should_remove_quotes = true,
+      bool should_strip_escaped_literals = true,
       const SourceLocation *source_location = nullptr,
       bool should_expand_process_substitution = false,
       parameter_word_quoting quoting = parameter_word_quoting::Unquoted) throws
       -> String;
 
   fn expand_modifier_word_masked(
-      StringView word, Bitset &active_out, bool remove_quotes = true,
+      StringView word, Bitset &active_out, bool should_remove_quotes = true,
       const SourceLocation *source_location = nullptr) throws -> String;
 
   fn expand_modifier_word_fields(StringView word, bool is_outer_quoted,
@@ -4249,8 +4252,9 @@ public:
   class ParameterExpander;
 
   fn expand_modifier_word_worker(StringView word, Bitset *active_out,
-                                 bool remove_quotes, bool is_pattern_word,
-                                 bool strip_escaped_literals,
+                                 bool should_remove_quotes,
+                                 bool is_pattern_word,
+                                 bool should_strip_escaped_literals,
                                  const SourceLocation *source_location) throws
       -> String;
 
@@ -4360,10 +4364,10 @@ protected:
   fn expand_path(glob_field field, const SourceLocation &location) throws
       -> SortedArrayList<String, order_comparator<String>>;
 
-  fn expand_tilde(WordSegment &leading_segment, bool word_continues,
-                  bool stop_at_colon) const throws -> void;
+  fn expand_tilde(WordSegment &leading_segment, bool is_word_continued,
+                  bool should_stop_at_colon) const throws -> void;
   fn resolve_tilde_prefix(StringView name) const throws -> Maybe<String>;
-  fn expand_colon_tildes(WordSegment &segment, bool word_continues,
+  fn expand_colon_tildes(WordSegment &segment, bool is_word_continued,
                          Maybe<usize> equals_position = None) const throws
       -> void;
 };

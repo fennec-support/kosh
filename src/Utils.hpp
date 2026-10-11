@@ -352,10 +352,10 @@ public:
 
     const bool is_candidate_anagram = is_anagram(m_name, candidate);
     if (distance < m_best_distance ||
-        (is_candidate_anagram && !m_best_is_anagram))
+        (is_candidate_anagram && !m_is_best_anagram))
     {
       m_best_distance = distance;
-      m_best_is_anagram = is_candidate_anagram;
+      m_is_best_anagram = is_candidate_anagram;
       m_best = String{candidate};
     }
   }
@@ -387,7 +387,7 @@ private:
   StringView m_name;
   usize m_max_distance;
   usize m_best_distance;
-  bool m_best_is_anagram{false};
+  bool m_is_best_anagram{false};
   String m_best{heap_allocator()};
 };
 

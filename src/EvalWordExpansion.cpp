@@ -147,16 +147,16 @@ hot fn EvalContext::expand_word(const Word &word) throws
     }
   };
 
-  let const do_append_run = [&](StringView text, bool glob_active) {
+  let const do_append_run = [&](StringView text, bool is_glob_active) {
     let const text_count_before = current.text.count();
     current.text.append(text);
 
-    if (glob_active || !current.glob_active.is_empty()) {
+    if (is_glob_active || !current.glob_active.is_empty()) {
       current.glob_active.reserve(current.text.count());
       while (current.glob_active.count() < text_count_before)
         current.glob_active.push(false);
       for (usize k = 0; k < text.length; k++)
-        current.glob_active.push(glob_active);
+        current.glob_active.push(is_glob_active);
     }
 
     has_current = true;
@@ -164,7 +164,7 @@ hot fn EvalContext::expand_word(const Word &word) throws
 
   let const do_emit_empty_field = [&]() { fields.push(glob_field{scratch}); };
 
-  let const do_append_split_run = [&](StringView text, bool glob_active) {
+  let const do_append_split_run = [&](StringView text, bool is_glob_active) {
     let const separators = variable_store().field_separators();
     let const is_multibyte =
         variable_store().has_non_ascii_field_separators() &&
@@ -201,7 +201,7 @@ hot fn EvalContext::expand_word(const Word &word) throws
 #pragma clang loop unroll_count(4)
         while (i < text.length && do_separator_length(i) == 0)
           i += do_step(i);
-        do_append_run(StringView{text.data + start, i - start}, glob_active);
+        do_append_run(StringView{text.data + start, i - start}, is_glob_active);
         continue;
       }
 
@@ -248,9 +248,9 @@ hot fn EvalContext::expand_word(const Word &word) throws
         true);
   };
 
-  let const do_emit_elements = [&](const ArrayList<String> &values, bool quoted,
-                                   bool star) throws {
-    if (quoted && star) {
+  let const do_emit_elements = [&](const ArrayList<String> &values,
+                                   bool is_quoted, bool is_star) throws {
+    if (is_quoted && is_star) {
       let const ifs = variable_store().field_separators();
       let joined = String{scratch_allocator()};
       let const separator = first_field_separator();
@@ -264,7 +264,7 @@ hot fn EvalContext::expand_word(const Word &word) throws
       return;
     }
     for (usize i = 0; i < values.count(); i++) {
-      if (quoted) {
+      if (is_quoted) {
         if (i > 0) do_flush();
         do_append_run(values[i].view(), false);
       } else {
@@ -460,7 +460,7 @@ hot fn EvalContext::expand_word(const Word &word) throws
             (param_count == 1 &&
              variable_store().positional_params()[0].view().is_empty());
         let const is_posix = runtime_state().is_posix_mode();
-        let const treat_as_unset =
+        let const should_treat_as_unset =
             is_posix ? is_posix_positional_test_null(
                            positional_test_has_colon, op,
                            segment.is_in_double_quotes && is_star)
@@ -483,25 +483,25 @@ hot fn EvalContext::expand_word(const Word &word) throws
 
         switch (op) {
         case '-':
-          if (treat_as_unset)
+          if (should_treat_as_unset)
             do_emit_word();
           else
             do_emit_positional();
           break;
         case '+':
-          if (!treat_as_unset)
+          if (!should_treat_as_unset)
             do_emit_word();
           else if (is_quoted_list)
             do_append_run(StringView{}, false);
           break;
         case '=':
-          if (treat_as_unset)
+          if (should_treat_as_unset)
             throw_script_fatal(
                 "Unable to assign to the positional parameters this way");
           do_emit_positional();
           break;
         case '?':
-          if (treat_as_unset) {
+          if (should_treat_as_unset) {
             if (word.is_empty())
               throw_script_fatal("Unable to expand the positional parameters "
                                  "because they are not set or are empty");
@@ -822,15 +822,16 @@ hot fn EvalContext::expand_word(const Word &word) throws
                 (elements.count() <= 1 ||
                  (is_star && segment.is_in_double_quotes &&
                   variable_store().field_separators().is_empty()));
-            let const treat_as_unset =
+            let const should_treat_as_unset =
                 is_colon_form ? is_joined_value_empty : elements.is_empty();
-            if (!treat_as_unset && modifier_op != '+') {
+            if (!should_treat_as_unset && modifier_op != '+') {
               do_emit_elements(elements, segment.is_in_double_quotes, is_star);
               break;
             }
             if (modifier_op == '+' || modifier_op == '-') {
-              let const should_expand_word =
-                  modifier_op == '+' ? !treat_as_unset : treat_as_unset;
+              let const should_expand_word = modifier_op == '+'
+                                                 ? !should_treat_as_unset
+                                                 : should_treat_as_unset;
 
               if (!should_expand_word) break;
 
@@ -1112,7 +1113,7 @@ fn EvalContext::expand_case_pattern_masked(const Word &word,
 }
 
 fn EvalContext::expand_wordlist_to_fields(StringView wordlist,
-                                          bool allow_expansion) throws
+                                          bool should_allow_expansion) throws
     -> ArrayList<String>
 {
   let const do_split_plain = [&]() throws -> ArrayList<String> {
@@ -1129,7 +1130,7 @@ fn EvalContext::expand_wordlist_to_fields(StringView wordlist,
     return words;
   };
 
-  if (!allow_expansion) return do_split_plain();
+  if (!should_allow_expansion) return do_split_plain();
 
   let has_expandable_byte = false;
   for (usize i = 0; i < wordlist.length && !has_expandable_byte; i++) {
