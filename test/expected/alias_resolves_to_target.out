@@ -2,3 +2,17 @@
 check-ref-format
 == aliased options:
 --version
+== an alias of koshkit completes utility names:
+mkdir
+mkfifo
+mknod
+== an alias of koshkit completes the flags of its utility:
+--top-largest
+--tree
+== an alias naming a utility completes its flags after a separator:
+--top-largest
+--tree
+== a koshkit utility offers no flag of another utility:
+0
+== an alias of a builtin completes the builtin flags:
+13

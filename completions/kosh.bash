@@ -414,7 +414,7 @@ _koshkit_util_flags ()
       echo "-k --keyword"
     ;;
     meow)
-      echo "-f --fps"
+      echo "-f --fps -s --speed -n --cats"
     ;;
     more)
       echo \

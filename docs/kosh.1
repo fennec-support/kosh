@@ -2085,7 +2085,13 @@ one exists. An interactive shell reports the file that
 .BR "set \-\-persist" ,
 or
 .B save \-\-persist
-wrote on standard error; a script stays silent. Only
+wrote on standard error, with a home directory shortened to a tilde: set writes
+the option line and the file, such as
+.BR "interpreter.resolve_koshkit_applets_as_commands=on ~/.config/kosh/kosh.conf" ,
+create writes
+.B preset=
+and the preset name before the file, and save writes the file alone. A script
+stays silent. Only
 .B set
 and
 .B save
@@ -3407,14 +3413,28 @@ and
 .BR wildcard .
 .TP
 .B meow
-A screensaver: a walking cat bounces across a twinkling starfield and meows at
-the walls until any key is pressed. The
+A screensaver: pixel-art cats drawn with half blocks walk over a parallax
+starfield with shooting stars and a moon, leave rainbow trails, stalk and
+pounce on a ball of yarn, groom, purr, and nap, hiss at or nuzzle each other,
+and explode in a fireball, shockwave, and smoke when they hit a wall. The
 .B \-f
 or
 .B \-\-fps
 option sets the frames drawn per second, from 1 to 240, with 60 by default; the
-cat keeps the same speed at every rate. Redirected output receives one still
-cat and no terminal escape sequences.
+scene keeps the same pace at every rate. The
+.B \-s
+or
+.B \-\-speed
+option runs the scene faster or slower, from 0.1 to 10, and the
+.B \-n
+or
+.B \-\-cats
+option shows from 1 to 8 cats. Space pauses,
+.B +
+and
+.B \-
+change the speed, and any other key ends the screensaver. Redirected output
+receives one still cat and no terminal escape sequences.
 .TP
 .B mkdir
 Directories are created with

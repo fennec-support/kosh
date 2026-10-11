@@ -969,6 +969,15 @@ declaration_flags_select_functions(StringView line,
   return false;
 }
 
+static fn
+complete_from_flags_in_line(StringView      line,
+                            StringView      token,
+                            usize           token_start,
+                            EvalContext    &context,
+                            completion_mode mode,
+                            bool           &is_tier_ranked) throws
+    -> Maybe<ArrayList<String>>;
+
 fn
 internal::complete_from_builtin_flags(StringView      line,
                                       StringView      token,
@@ -976,6 +985,45 @@ internal::complete_from_builtin_flags(StringView      line,
                                       EvalContext    &context,
                                       completion_mode mode,
                                       bool           &is_tier_ranked) throws
+    -> Maybe<ArrayList<String>>
+{
+  let expanded_line = String{completion_allocator(), line};
+
+  for (usize depth = 0; depth < 8; depth++) {
+    let const view    = expanded_line.view();
+    let const command = command_word_of(view);
+
+    if (command.is_empty() || search_builtin(command).has_value()) break;
+
+    let const expansion = context.scope_store().find_alias(command);
+
+    if (!expansion.has_value()) break;
+
+    let const expansion_command = command_word_of(*expansion);
+
+    if (expansion_command.is_empty() || expansion_command == command) break;
+
+    let const command_start = static_cast<usize>(command.data - view.data);
+    let       rewritten     = String{completion_allocator(),
+                           view.substring_of_length(0, command_start)};
+
+    rewritten += *expansion;
+    rewritten += view.substring(command_start + command.length);
+    token_start   = token_start + rewritten.length() - view.length;
+    expanded_line = steal(rewritten);
+  }
+
+  return complete_from_flags_in_line(expanded_line.view(), token, token_start,
+                                     context, mode, is_tier_ranked);
+}
+
+static fn
+complete_from_flags_in_line(StringView      line,
+                            StringView      token,
+                            usize           token_start,
+                            EvalContext    &context,
+                            completion_mode mode,
+                            bool           &is_tier_ranked) throws
     -> Maybe<ArrayList<String>>
 {
   let const command = command_word_of(line);
@@ -1118,13 +1166,11 @@ internal::complete_from_builtin_flags(StringView      line,
       if (is_operand_wanted) return None;
 
       let const flags = koshkit::koshkit_util_flag_list(*util_for_flags);
+      let       forms = ArrayList<String>{heap_allocator()};
 
-      if (flags == nullptr) return None;
+      if (flags != nullptr) append_flag_forms(*flags, token, forms);
 
-      let forms = ArrayList<String>{heap_allocator()};
-
-      append_flag_forms(*flags, token, forms);
-      if (forms.is_empty()) return None;
+      if (forms.is_empty() && !is_koshkit_builtin) return None;
 
       return forms;
     }

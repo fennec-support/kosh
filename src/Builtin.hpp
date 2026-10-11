@@ -264,6 +264,10 @@ show_builtin_help_impl(const ExecContext  &ec,
                        StringView          extra_sections = {}) throws -> void;
 
 fn
+abbreviate_home_directory(StringView path, Allocator allocator) throws
+    -> String;
+
+fn
 builtin_error_context(StringView program) throws -> String;
 fn
 builtin_error_message(StringView program, StringView message) throws

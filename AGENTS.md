@@ -337,6 +337,12 @@ same encoding that every spawned process receives."
   aliases, and PATH. `KEYWORD_ENTRIES` is the sole keyword catalog. A `type`
   operand uses the same catalog. Only the listing mode accepts an empty
   operand.
+- Builtin and koshkit flag completion replaces an aliased command word with
+  its whole expansion, up to eight levels, before it looks the command up, so
+  `alias kit=koshkit` completes utility names and `alias kls='koshkit ls'`
+  completes ls flags. A `koshkit` utility, named directly or through an alias,
+  completes only its own registered flags and never falls through to the man
+  page, which lists the flags of every utility.
 - The inline hint rows show a syntax problem before the synopsis.
   `describe_syntax_problem` parses the line with the real parser in
   substitution validation mode, in the session mood, inside a completion

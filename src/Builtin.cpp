@@ -962,7 +962,7 @@ run_cd_to_directory(EvalContext       &cxt,
   return execute_builtin(steal(routed), cxt);
 }
 
-static fn
+fn
 abbreviate_home_directory(StringView path, Allocator allocator) throws
     -> String
 {

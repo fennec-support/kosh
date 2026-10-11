@@ -184,8 +184,14 @@ report_written_file(const ExecContext &ec,
 {
   if (!cxt.execution_store().shell_is_interactive()) return;
 
-  ec.print_to_stderr(StringView{"Wrote "} + written + " to " + path.text() +
-                     "\n");
+  let line = String{cxt.scratch_allocator(), written};
+
+  if (!line.is_empty()) line.push(' ');
+
+  line += abbreviate_home_directory(path.text().view(), cxt.scratch_allocator())
+              .view();
+  line.push('\n');
+  ec.print_to_stderr(line.view());
 }
 
 fn
@@ -224,8 +230,8 @@ run_create(const ExecContext       &ec,
     return 1;
   }
 
-  report_written_file(
-      ec, cxt, StringView{"the "} + mood_name(*preset) + " preset", *path);
+  report_written_file(ec, cxt, StringView{"preset="} + mood_name(*preset),
+                      *path);
 
   return 0;
 }
@@ -459,7 +465,7 @@ run_save(const ExecContext       &ec,
     return 1;
   }
 
-  report_written_file(ec, cxt, "the current settings", *path);
+  report_written_file(ec, cxt, StringView{}, *path);
 
   return 0;
 }
