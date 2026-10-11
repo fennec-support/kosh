@@ -12,7 +12,7 @@ tagged-two
 tabs=0
 tabs-list=0
 tabs-template=0
-        1b 5b 48 1b 5b 32 4a
+ 1b 5b 48 1b 5b 32 4a
 tput-type=0
 xterm terminal
 28:1: error: koshkit stty: standard input is not a terminal.

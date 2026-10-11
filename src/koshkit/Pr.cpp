@@ -161,51 +161,76 @@ fn Pr::execute(const ExecContext &ec, EvalContext &cxt,
       source_list_from_operands(operands, cxt.scratch_allocator());
   let output = String{cxt.scratch_allocator()};
   i32 status = 0;
+  static constexpr usize OUTPUT_FLUSH_LENGTH = 64 * 1024;
+  let const do_flush_output = [&]() throws -> void {
+    if (output.length() < OUTPUT_FLUSH_LENGTH) return;
+    ec.print_to_stdout(output);
+    output.clear();
+  };
+  let const do_report_read_error = [&](StringView source) throws -> void {
+    if (!FLAG_PR_NO_ERRORS.is_enabled())
+      KOSHKIT_REPORT_PATH_ERROR("read", source);
+    status = 1;
+  };
+
+  let &scratch_arena = cxt.expansion_store().scratch_arena();
+  let owned_inputs = ArrayList<os::descriptor>{cxt.scratch_allocator()};
+  defer
+  {
+    for (let const descriptor : owned_inputs)
+      os::close_fd(descriptor);
+  };
+  let const do_open_reader = [&](StringView source)
+                                 throws -> utils::BufferedLineReader * {
+    let const input = open_named_or_stdin(ec, source);
+    if (!input.has_value()) {
+      do_report_read_error(source);
+      return nullptr;
+    }
+
+    if (input->mode == input_descriptor_mode::Owned)
+      owned_inputs.push(input->descriptor);
+    return scratch_arena.create<utils::BufferedLineReader>(input->descriptor);
+  };
 
   if (FLAG_PR_MERGE.is_enabled()) {
-    let contents = ArrayList<String>{cxt.scratch_allocator()};
-    contents.reserve(sources.count());
-    let source_results =
-        read_named_or_stdin_batch(ec, sources, cxt.scratch_allocator());
-    if (os::INTERRUPT_REQUESTED) return 130;
+    let readers =
+        ArrayList<utils::BufferedLineReader *>{cxt.scratch_allocator()};
+    readers.reserve(sources.count());
+    for (let const source : sources)
+      readers.push(do_open_reader(source));
 
-    for (usize source_index = 0; source_index < sources.count(); source_index++)
-    {
-      let &source_result = source_results[source_index];
-      if (!source_result.content.has_value()) {
-        if (!FLAG_PR_NO_ERRORS.is_enabled()) {
-          os::set_last_system_error(source_result.error_number);
-          KOSHKIT_REPORT_PATH_ERROR("read", sources[source_index]);
-        }
-        status = 1;
-        contents.push(String{cxt.scratch_allocator()});
-      } else {
-        contents.push(source_result.content.take());
-      }
-    }
-    let columns = ArrayList<ArrayList<StringView>>{cxt.scratch_allocator()};
-    columns.reserve(contents.count());
-    usize row_count = 0;
-    for (let &content : contents) {
-      let lines = utils::split_lines(content.view(), cxt.scratch_allocator(),
-                                     utils::line_terminator_mode::Preserve);
-      for (let &line : lines)
-        line = line.without_trailing_newline();
-      if (lines.count() > row_count) row_count = lines.count();
-      columns.push(steal(lines));
-    }
     let const separator = FLAG_PR_SEPARATOR.is_set() ? FLAG_PR_SEPARATOR.value()
                                                      : StringView{"\t"};
-    for (usize row = 0; row < row_count; row++) {
+    loop
+    {
+      let const row_start = output.length();
       append_pr_indent(output, offset);
       bool has_output_column = false;
-      for (let const &column : columns) {
-        if (row >= column.count()) continue;
+      for (usize column = 0; column < readers.count(); column++) {
+        if (readers[column] == nullptr) continue;
+
+        let const result = readers[column]->next();
+        if (result != utils::BufferedLineReader::Result::Line) {
+          if (result == utils::BufferedLineReader::Result::Error) {
+            if (os::INTERRUPT_REQUESTED) return 130;
+            do_report_read_error(sources[column]);
+          }
+          readers[column] = nullptr;
+          continue;
+        }
+
         if (has_output_column) output += separator;
-        output += column[row];
+        output += readers[column]->get_line();
         has_output_column = true;
       }
+      if (!has_output_column) {
+        output.truncate(row_start);
+        break;
+      }
+
       output += '\n';
+      do_flush_output();
     }
     ec.print_to_stdout(output);
     return status;
@@ -232,26 +257,45 @@ fn Pr::execute(const ExecContext &ec, EvalContext &cxt,
 
   let const page_capacity = data_line_limit * column_count;
 
-  let const do_append_source = [&](StringView source, StringView content)
-                                   throws -> void {
-    let lines = utils::split_lines(content, cxt.scratch_allocator(),
-                                   utils::line_terminator_mode::Preserve);
-    for (let &line : lines)
-      line = line.without_trailing_newline();
-    usize line_index = 0;
+  let const page_line_count = column_count > 1 ? page_capacity
+                              : FLAG_PR_DOUBLE_SPACE.is_enabled()
+                                  ? (data_line_limit + 1) / 2
+                                  : data_line_limit;
+
+  BumpArena page_arena{};
+  let const do_append_source =
+      [&](StringView source, utils::BufferedLineReader &reader) throws -> bool {
     usize page_number = 1;
     u64 source_line_number = 1;
+    bool has_ended = false;
+    loop
+    {
+      let const page_mark = page_arena.mark();
+      defer { page_arena.release(page_mark); };
+      let lines = ArrayList<String>{bump_allocator(page_arena)};
+      while (!has_ended && lines.count() < page_line_count) {
+        let const result = reader.next();
+        if (result == utils::BufferedLineReader::Result::Line) {
+          lines.push(String{bump_allocator(page_arena), reader.get_line()});
+          continue;
+        }
 
-    while (line_index < lines.count()) {
-      let const remaining_count = lines.count() - line_index;
-      let const page_item_count =
-          remaining_count < page_capacity ? remaining_count : page_capacity;
+        if (result == utils::BufferedLineReader::Result::Error) {
+          if (os::INTERRUPT_REQUESTED) return false;
+          do_report_read_error(source);
+        }
+        has_ended = true;
+      }
+      if (lines.is_empty()) return true;
+
+      usize line_index = 0;
+      let const page_item_count = lines.count();
       if (page_number < first_page) {
-        line_index += page_item_count;
         source_line_number += page_item_count;
         page_number++;
         continue;
       }
+
       if (!FLAG_PR_NO_HEADER.is_enabled()) {
         output += "\n\n";
         append_pr_indent(output, offset);
@@ -260,7 +304,7 @@ fn Pr::execute(const ExecContext &ec, EvalContext &cxt,
                                                   : source;
         output += title;
         output += "  Page ";
-        output += String::from(page_number, cxt.scratch_allocator());
+        output += String::from(page_number, bump_allocator(page_arena));
         output += "\n\n\n";
       }
 
@@ -280,7 +324,7 @@ fn Pr::execute(const ExecContext &ec, EvalContext &cxt,
                                            : column * row_count + row;
             if (relative_index >= page_item_count) break;
             if (has_output_column) output += separator;
-            let const line = lines[line_index + relative_index];
+            let const line = lines[line_index + relative_index].view();
             let const available_width =
                 page_width > offset ? page_width - offset : 0;
             output += line.substring_of_length(0, line.length < available_width
@@ -306,13 +350,13 @@ fn Pr::execute(const ExecContext &ec, EvalContext &cxt,
           append_pr_indent(output, offset);
           if (FLAG_PR_NUMBER.is_enabled()) {
             let const digits =
-                String::from(source_line_number++, cxt.scratch_allocator());
+                String::from(source_line_number++, bump_allocator(page_arena));
             for (usize position = digits.length(); position < 5; position++)
               output += ' ';
             output += digits.view();
             output += '\t';
           }
-          let const line = lines[line_index++];
+          let const line = lines[line_index++].view();
           let const available_width =
               page_width > offset ? page_width - offset : 0;
           output += line.substring_of_length(
@@ -328,32 +372,26 @@ fn Pr::execute(const ExecContext &ec, EvalContext &cxt,
         }
       }
 
-      if (!FLAG_PR_NO_HEADER.is_enabled()) {
+      let const has_page_frame = !FLAG_PR_NO_HEADER.is_enabled();
+      let const is_form_feed_page = FLAG_PR_FORM_FEED.is_enabled() ||
+                                    FLAG_PR_FORM_FEED_ALIAS.is_enabled();
+      if (has_page_frame && is_form_feed_page) {
+        output += '\f';
+      } else if (has_page_frame) {
         while (emitted_page_lines++ < data_line_limit)
           output += '\n';
         output += "\n\n\n\n\n";
       }
-      if (line_index < lines.count())
-        output += FLAG_PR_FORM_FEED.is_enabled() ||
-                          FLAG_PR_FORM_FEED_ALIAS.is_enabled()
-                      ? '\f'
-                      : '\n';
       page_number++;
+      do_flush_output();
     }
   };
 
-  let const visit = visit_ordered_sources(
-      ec, sources, cxt.scratch_allocator(),
-      [&](usize source_index, const Maybe<String> &content) throws {
-        let const source = sources[source_index];
-        if (content.has_value())
-          return do_append_source(source, content->view());
-
-        if (!FLAG_PR_NO_ERRORS.is_enabled())
-          KOSHKIT_REPORT_PATH_ERROR("read", source);
-        status = 1;
-      });
-  if (visit == source_visit_result::Interrupted) return 130;
+  for (let const source : sources) {
+    let *const reader = do_open_reader(source);
+    if (reader == nullptr) continue;
+    if (!do_append_source(source, *reader)) return 130;
+  }
 
   ec.print_to_stdout(output);
   return status;

@@ -52,7 +52,7 @@ abcdef
 531297043 180
 4268480856 306
 --- od and bc batch source windows ---
-4065386139 816
+2868944703 732
 229785650 36
 --- cat reads standard input between files ---
 first
@@ -73,8 +73,8 @@ status=1
 --- cut preserves a line across chunks ---
 tail
 --- cut preserves split UTF-8 at final line ---
-        c3 a9 7a 0a
-        c3 a9 0a
+ c3 a9 7a 0a
+ c3 a9 0a
 --- cut reads later files after a missing operand ---
 -c:1:1: error: koshkit cut: cannot read 'missing.txt': No such file or directory.
      1 |  koshkit cut -c 1-5 cat-first.txt missing.txt cat-last.txt; printf "status=%s\n" "$?"
@@ -536,8 +536,18 @@ héllo wor
 0000000  25185     10
         061141 000012
          25185     10
-        6261 000a
+          6261   000a
 0000003
+0000000   25185   25699   26213   26727   27241   27755   28269   28783
+          a   b   c   d   e   f   g   h   i   j   k   l   m   n   o   p
+0000020   29297     115
+          q   r   s
+0000023
+  61  62  0a
+   a   b  \n
+0000000   y  \n   y  \n   y  \n   y  \n   y  \n   y  \n   y  \n   y  \n
+0000020   y  \n   y  \n
+0000024
 --- xargs null items and empty input ---
 [a b][c d][][e]
 status=0
@@ -724,6 +734,10 @@ a       b
 --- expand and unexpand count a carriage return as a column ---
 abR     c
 abRT   c
+--- pr pages carry no separator lines ---
+1 2 3 4 5 6 7 
+||T  Page 1|||1|2|F||T  Page 2|||3|F
+||T  Page 3|||7||8||9|||||||||T  Page 4|||10||11||12|||||||||T  Page 5|||13||14||15|||||||||T  Page 6|||16||17||18|||||||||T  Page 7|||19||20||21|||||||||T  Page 8|||22||23||24|||||||||T  Page 9|||25||26||27|||||||||T  Page 10|||28||29||30|||||||
 --- split widens its suffixes past yz ---
 xyz
 xzaaa

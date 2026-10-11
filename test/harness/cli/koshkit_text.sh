@@ -261,6 +261,9 @@ echo "--- od type shorthands ---"
 printf 'ab\n' | "$BIN" -c 'koshkit od -b -c'
 printf 'ab\n' | "$BIN" -c 'koshkit od -c -b'
 printf 'ab\n' | "$BIN" -c 'koshkit od -d -o -s -x'
+printf 'abcdefghijklmnopqrs' | "$BIN" -c 'koshkit od -t u2 -t c'
+printf 'ab\n' | "$BIN" -c 'koshkit od -A n -t x1 -t c'
+"$BIN" -c 'koshkit yes | koshkit od -c -N 20'
 echo "--- xargs null items and empty input ---"
 printf 'a b\0c d\0\0e' | "$BIN" -c 'koshkit xargs -0 printf "[%s]"'
 echo
@@ -415,6 +418,13 @@ echo "--- paste and expand stream an endless input ---"
 echo "--- expand and unexpand count a carriage return as a column ---"
 printf 'ab\r\tc\n' | "$BIN" -c 'koshkit expand' | tr '\r' R
 printf 'ab\r        c\n' | "$BIN" -c 'koshkit unexpand -a' | tr '\r\t' RT
+echo "--- pr pages carry no separator lines ---"
+"$BIN" -c 'koshkit seq 7 | koshkit pr -t -l 3' | tr '\n' ' '
+echo
+"$BIN" -c 'koshkit seq 3 | koshkit pr -F -l 12 -h T' | tr '\f\n' 'F|'
+echo
+"$BIN" -c 'koshkit seq 30 | koshkit pr +3 -d -l 16 -h T' | tr '\n' '|'
+echo
 echo "--- split widens its suffixes past yz ---"
 mkdir split-widen
 (cd split-widen && "$BIN" -c 'koshkit seq 652 | koshkit split -l 1' && ls | tail -n 3)

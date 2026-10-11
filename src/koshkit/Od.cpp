@@ -57,20 +57,11 @@ static fn append_od_padded(String &output, u64 magnitude, bool is_negative,
 
 static fn append_od_character(String &output, u8 byte) throws -> void
 {
-  static constexpr StringView NAMES[8] = {"nul", "soh", "stx", "etx",
-                                          "eot", "enq", "ack", "bel"};
-
   switch (byte) {
-  case 0:
-  case 1:
-  case 2:
-  case 3:
-  case 4:
-  case 5:
-  case 6:
-  case 7: output += NAMES[byte]; return;
-
+  case '\0': output += " \\0"; return;
+  case '\a': output += " \\a"; return;
   case '\b': output += " \\b"; return;
+  case '\v': output += " \\v"; return;
   case '\t': output += " \\t"; return;
   case '\n': output += " \\n"; return;
   case '\f': output += " \\f"; return;
@@ -104,6 +95,7 @@ struct od_format
   usize width_columns;
   bool is_character;
   bool is_signed;
+  usize pad_columns{0};
 };
 
 static fn parse_od_byte_count(StringView text, bool has_unit_suffix) throws
@@ -274,36 +266,9 @@ fn Od::execute(const ExecContext &ec, EvalContext &cxt,
   for (usize index = 0; index < operand_count; index++)
     input_operands.push(operands[index].clone());
 
-  let input_bytes = String{cxt.scratch_allocator()};
   let const sources =
       source_list_from_operands(input_operands, cxt.scratch_allocator());
   i32 status = 0;
-
-  let const visit = visit_ordered_sources(
-      ec, sources, cxt.scratch_allocator(),
-      [&](usize source_index, const Maybe<String> &content) throws {
-        if (content.has_value()) {
-          input_bytes += content->view();
-          return;
-        }
-
-        KOSHKIT_REPORT_PATH_ERROR("read", sources[source_index]);
-        status = 1;
-      });
-  if (visit == source_visit_result::Interrupted) return 130;
-
-  if (skip_count > input_bytes.length()) {
-    report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                   "cannot skip past end of combined input");
-    return 1;
-  }
-
-  let const first = skip_count < input_bytes.length()
-                        ? static_cast<usize>(skip_count)
-                        : input_bytes.length();
-  let available = input_bytes.length() - first;
-  if (byte_limit < available) available = static_cast<usize>(byte_limit);
-  let const bytes = input_bytes.view().substring_of_length(first, available);
   let output = String{cxt.scratch_allocator()};
   let const type_count = type_requests.count();
   let const format_count = type_count == 0 ? 1 : type_count;
@@ -314,7 +279,7 @@ fn Od::execute(const ExecContext &ec, EvalContext &cxt,
     let const format =
         type_count == 0 ? StringView{"o2"} : type_requests[format_index].format;
     if (format == "c") {
-      formats.push(od_format{int_base::octal, 1, 0, true, false});
+      formats.push(od_format{int_base::octal, 1, 3, true, false});
       continue;
     }
 
@@ -376,7 +341,15 @@ fn Od::execute(const ExecContext &ec, EvalContext &cxt,
       }
       break;
 
-    case 'u': break;
+    case 'u':
+      switch (unit_size_bytes) {
+      case 1: width_columns = 3; break;
+      case 2: width_columns = 5; break;
+      case 4: width_columns = 10; break;
+      case 8: width_columns = 20; break;
+      default: break;
+      }
+      break;
 
     default: {
       KOSHKIT_REPORT_ERROR_AT(
@@ -391,39 +364,63 @@ fn Od::execute(const ExecContext &ec, EvalContext &cxt,
         od_format{base, unit_size_bytes, width_columns, false, is_signed});
   }
 
+  static constexpr usize OD_ROW_LENGTH = 16;
+  usize row_width_columns = 0;
+  for (let const &format : formats) {
+    let const field_count = OD_ROW_LENGTH / format.unit_size_bytes;
+    let const format_row_width = (format.width_columns + 1) * field_count;
+    if (format_row_width > row_width_columns)
+      row_width_columns = format_row_width;
+  }
+  for (let &format : formats) {
+    let const field_count = OD_ROW_LENGTH / format.unit_size_bytes;
+    format.pad_columns = row_width_columns - format.width_columns * field_count;
+  }
+
   let const address_base = od_base(address_radix);
   let const should_print_address = address_radix != 'n';
   let const is_verbose = FLAG_OD_VERBOSE.is_enabled();
-  StringView previous_row;
+  static constexpr usize OUTPUT_FLUSH_LENGTH = 64 * 1024;
+  char previous_row_bytes[OD_ROW_LENGTH];
+  usize previous_row_length = 0;
+  bool has_previous_row = false;
   bool did_suppress = false;
 
-  for (usize row_start = 0; row_start < bytes.length; row_start += 16) {
-    let const row_length =
-        bytes.length - row_start < 16 ? bytes.length - row_start : 16;
-    let const row = bytes.substring_of_length(row_start, row_length);
-    if (!is_verbose && row == previous_row) {
+  let const do_emit_row = [&](StringView row, u64 row_offset) throws -> void {
+    let const row_length = row.length;
+    if (!is_verbose && has_previous_row &&
+        row == StringView{previous_row_bytes, previous_row_length})
+    {
       if (!did_suppress) output += "*\n";
       did_suppress = true;
-      continue;
+      return;
     }
 
-    previous_row = row;
+    std::memcpy(previous_row_bytes, row.data, row_length);
+    previous_row_length = row_length;
+    has_previous_row = true;
     did_suppress = false;
 
     for (usize format_index = 0; format_index < format_count; format_index++) {
-      if (should_print_address && format_index == 0) {
-        append_od_padded(output, first + row_start, false, 7, '0',
-                         address_base);
-      } else {
-        output += "       ";
+      if (should_print_address) {
+        if (format_index == 0)
+          append_od_padded(output, row_offset, false, 7, '0', address_base);
+        else
+          output += "       ";
       }
 
       let const &format = formats[format_index];
+      let const field_count = OD_ROW_LENGTH / format.unit_size_bytes;
+      let const do_append_field_pad = [&](usize field_index) throws -> void {
+        let const pad = format.pad_columns;
+        let const remaining = field_count - field_index;
+        output.append_repeated(' ', pad * remaining / field_count -
+                                        pad * (remaining - 1) / field_count);
+      };
       if (format.is_character) {
         for (usize position = 0; position < row_length; position++) {
-          output += ' ';
-          append_od_character(output,
-                              static_cast<u8>(bytes[row_start + position]));
+          do_append_field_pad(position);
+          append_od_character(output, static_cast<u8>(row[position]));
         }
       } else {
         for (usize position = 0; position < row_length;
@@ -436,9 +433,9 @@ fn Od::execute(const ExecContext &ec, EvalContext &cxt,
                   : format.unit_size_bytes;
 
           for (usize byte_index = 0; byte_index < current_size; byte_index++)
-            value |= static_cast<u64>(static_cast<u8>(
-                         bytes[row_start + position + byte_index]))
-                     << (byte_index * 8);
+            value |=
+                static_cast<u64>(static_cast<u8>(row[position + byte_index]))
+                << (byte_index * 8);
 
           bool is_negative = false;
           if (format.is_signed) {
@@ -452,7 +449,7 @@ fn Od::execute(const ExecContext &ec, EvalContext &cxt,
             }
           }
 
-          output += ' ';
+          do_append_field_pad(position / format.unit_size_bytes);
           append_od_padded(output, value, is_negative, format.width_columns,
                            format.base == int_base::decimal ? ' ' : '0',
                            format.base);
@@ -461,10 +458,87 @@ fn Od::execute(const ExecContext &ec, EvalContext &cxt,
 
       output += '\n';
     }
+
+    if (output.length() >= OUTPUT_FLUSH_LENGTH) {
+      ec.print_to_stdout(output);
+      output.clear();
+    }
+  };
+
+  char row_bytes[OD_ROW_LENGTH];
+  usize row_length = 0;
+  u64 skipped_count = 0;
+  u64 dumped_count = 0;
+  char chunk[65536];
+  for (let const source : sources) {
+    if (dumped_count == byte_limit) break;
+
+    let const input = open_named_or_stdin(ec, source);
+    if (!input.has_value()) {
+      KOSHKIT_REPORT_PATH_ERROR("read", source);
+      status = 1;
+      continue;
+    }
+    defer
+    {
+      if (input->mode == input_descriptor_mode::Owned)
+        os::close_fd(input->descriptor);
+    };
+
+    while (dumped_count < byte_limit) {
+      let const read_count =
+          os::read_fd(input->descriptor, chunk, sizeof(chunk));
+      if (!read_count.has_value()) {
+        if (os::INTERRUPT_REQUESTED) return 130;
+        KOSHKIT_REPORT_PATH_ERROR("read", source);
+        status = 1;
+        break;
+      }
+      if (*read_count == 0) break;
+
+      usize position = 0;
+      if (skipped_count < skip_count) {
+        let const skipped_here =
+            skip_count - skipped_count < *read_count
+                ? static_cast<usize>(skip_count - skipped_count)
+                : *read_count;
+        skipped_count += skipped_here;
+        position = skipped_here;
+      }
+
+      while (position < *read_count && dumped_count < byte_limit) {
+        let available = *read_count - position;
+        if (byte_limit - dumped_count < available)
+          available = static_cast<usize>(byte_limit - dumped_count);
+        let const taken = OD_ROW_LENGTH - row_length < available
+                              ? OD_ROW_LENGTH - row_length
+                              : available;
+        std::memcpy(row_bytes + row_length, chunk + position, taken);
+        row_length += taken;
+        position += taken;
+        dumped_count += taken;
+        if (row_length == OD_ROW_LENGTH) {
+          do_emit_row(StringView{row_bytes, row_length},
+                      skip_count + dumped_count - row_length);
+          row_length = 0;
+        }
+      }
+    }
   }
 
+  if (skipped_count < skip_count) {
+    ec.print_to_stdout(output);
+    report_soft_koshkit_util_error(ec, cxt, args[0].view(),
+                                   "cannot skip past end of combined input");
+    return 1;
+  }
+
+  if (row_length > 0)
+    do_emit_row(StringView{row_bytes, row_length},
+                skip_count + dumped_count - row_length);
   if (should_print_address) {
-    append_od_padded(output, first + bytes.length, false, 7, '0', address_base);
+    append_od_padded(output, skip_count + dumped_count, false, 7, '0',
+                     address_base);
     output += '\n';
   }
   ec.print_to_stdout(output);
