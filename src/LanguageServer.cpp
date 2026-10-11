@@ -420,7 +420,7 @@ private:
   BumpArena &m_ast_arena;
   DocumentStore m_documents;
   AuxiliaryDiagnostics m_auxiliary_diagnostics;
-  StringMap<String> m_builtin_information_cache{heap_allocator()};
+  StringMap<String> m_shell_help_cache{heap_allocator()};
   completion::shell_highlight_cache m_highlight_cache;
   Path m_workspace_root;
   client_capabilities m_client{};
@@ -1678,29 +1678,26 @@ fn Server::command_information(StringView command) throws -> Maybe<String>
   static constexpr u64 INFORMATION_TIMEOUT_NANOS = 5'000'000'000;
   let const do_run_shell_help = [&](String help_source)
                                     throws -> Maybe<String> {
+    if (let const cached = m_shell_help_cache.find(command); cached.has_value())
+      return String{cached->view()};
+
     let argv = ArrayList<String>{heap_allocator()};
     argv.push(String{m_context.execution_store().get_shell_executable_path()});
     argv.push(String{"--no-init-files"});
     argv.push(String{"-c"});
     argv.push(steal(help_source));
     let output = os::capture_program_output(argv, INFORMATION_TIMEOUT_NANOS);
-    if (output.has_value() && !output->is_empty()) return output;
+    if (!output.has_value() || output->is_empty()) return None;
 
-    return None;
+    m_shell_help_cache.set(command, output->view());
+    return output;
   };
 
   if (search_builtin(command).has_value()) {
-    if (let const cached = m_builtin_information_cache.find(command);
-        cached.has_value())
-      return String{cached->view()};
-
     let source = String{"help "};
     source.append(command);
-    let information = do_run_shell_help(steal(source));
-    if (!information.has_value()) return None;
-    m_builtin_information_cache.set(command, information->view());
 
-    return information;
+    return do_run_shell_help(steal(source));
   }
 
   let const paths = m_context.program_resolver().search(
