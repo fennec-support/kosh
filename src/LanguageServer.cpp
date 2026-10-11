@@ -376,6 +376,24 @@ private:
   fn definition_of(const Document &document,
                    const document_symbol &symbol) throws
       -> Maybe<document_symbol>;
+
+  template <class Visitor>
+  fn visit_document_spans(const Document &document, Visitor &&do_visit) throws
+      -> void
+  {
+    for (usize line = 0; line < document.line_starts.count(); line++) {
+      let const[line_start, line_end] = document.get_line_bounds(line);
+      let const *spans = m_highlight_cache.spans_for(
+          document.shell_source(), line_start, line_end, m_context);
+
+      for (let const &span : *spans) {
+        let const absolute_span = highlight_span{
+            line_start + span.start, line_start + span.end, span.role};
+        if (!do_visit(line, line_start, absolute_span)) return;
+      }
+    }
+  }
+
   fn command_information(StringView command) throws -> Maybe<String>;
   fn variable_hover_text(
       const Document &document,
@@ -1333,28 +1351,21 @@ fn Server::definition_of(const Document &document,
   let const name =
       is_variable ? variable_name_of(symbol.text.view()) : symbol.text.view();
   if (name.is_empty()) return None;
+  let const wanted_role = is_variable ? highlight_role::assignment_name
+                                      : highlight_role::function_name;
   let result = Maybe<document_symbol>{};
+  visit_document_spans(
+      document, [&](usize, usize, const highlight_span &span) throws -> bool {
+        if (span.role != wanted_role) return true;
+        let const candidate = document.normalized_source.substring_of_length(
+            span.start, span.end - span.start);
+        if (candidate != name) return true;
+        if (span.start > symbol.start) return false;
 
-  for (usize line = 0; line < document.line_starts.count(); line++) {
-    let const[line_start, line_end] = document.get_line_bounds(line);
-    let const *spans = m_highlight_cache.spans_for(
-        document.shell_source(), line_start, line_end, m_context);
-
-    for (let const &span : *spans) {
-      let const role_matches =
-          is_variable ? span.role == highlight_role::assignment_name
-                      : span.role == highlight_role::function_name;
-      if (!role_matches) continue;
-      let const start = line_start + span.start;
-      let const end = line_start + span.end;
-      let const candidate =
-          document.normalized_source.substring_of_length(start, end - start);
-      if (candidate != name) continue;
-      if (start > symbol.start) return result;
-
-      result = document_symbol{String{candidate}, span.role, start, end};
-    }
-  }
+        result =
+            document_symbol{String{candidate}, span.role, span.start, span.end};
+        return true;
+      });
 
   return result;
 }
@@ -1427,33 +1438,27 @@ fn Server::collect_rename_spans(const Document &document, rename_kind kind,
                                 ArrayList<rename_span> &out_spans) throws
     -> void
 {
-  for (usize line = 0; line < document.line_starts.count(); line++) {
-    let const[line_start, line_end] = document.get_line_bounds(line);
-    let const *spans = m_highlight_cache.spans_for(
-        document.shell_source(), line_start, line_end, m_context);
+  visit_document_spans(
+      document, [&](usize, usize, const highlight_span &span) throws -> bool {
+        let const is_wanted = kind == rename_kind::variable
+                                  ? role_reads_variable(span.role)
+                                  : role_names_command(span.role);
+        if (!is_wanted) return true;
+        let const text = document.normalized_source.substring_of_length(
+            span.start, span.end - span.start);
 
-    for (let const &span : *spans) {
-      let const is_wanted = kind == rename_kind::variable
-                                ? role_reads_variable(span.role)
-                                : role_names_command(span.role);
-      if (!is_wanted) continue;
-      let const start = line_start + span.start;
-      let const end = line_start + span.end;
-      let const text =
-          document.normalized_source.substring_of_length(start, end - start);
+        if (kind == rename_kind::command) {
+          if (text == name)
+            out_spans.push(rename_span{span.role, span.start, span.end});
+          return true;
+        }
 
-      if (kind == rename_kind::command) {
-        if (text != name) continue;
-        out_spans.push(rename_span{span.role, start, end});
-        continue;
-      }
-
-      if (variable_name_of(text) != name) continue;
-      let const name_start = start + variable_name_start_of(text);
-      out_spans.push(
-          rename_span{span.role, name_start, name_start + name.length});
-    }
-  }
+        if (variable_name_of(text) != name) return true;
+        let const name_start = span.start + variable_name_start_of(text);
+        out_spans.push(
+            rename_span{span.role, name_start, name_start + name.length});
+        return true;
+      });
 }
 
 fn Server::prepare_rename(const JsonValue *id, const JsonValue *params) throws
@@ -2146,81 +2151,80 @@ fn Server::semantic_tokens(const JsonValue *id, const JsonValue *params) throws
   bool is_first = true;
   usize occurrence_index = 0;
 
-  for (usize line = 0; line < document->line_starts.count(); line++) {
-    let const[line_start, line_end] = document->get_line_bounds(line);
-    let const *spans = m_highlight_cache.spans_for(
-        document->shell_source(), line_start, line_end, m_context);
-    for (let const &span : *spans) {
-      let const absolute_start = line_start + span.start;
-      let const absolute_end = line_start + span.end;
-      let const start_character = document->encoded_length(
-          line_start, absolute_start, m_client.encoding);
-      let const delta_line = line - previous_line;
-      let const delta_character = delta_line == 0
-                                      ? start_character - previous_character
-                                      : start_character;
-      let const length = document->encoded_length(absolute_start, absolute_end,
-                                                  m_client.encoding);
-      if (length == 0) continue;
-      let const[type, base_modifiers] = semantic_style(span.role);
-      let modifiers = base_modifiers;
-      while (occurrence_index <
-                 document->symbol_records.variable_occurrences.count() &&
-             document->symbol_records.variable_occurrences[occurrence_index]
-                         .position +
-                     document->symbol_records
-                         .variable_occurrences[occurrence_index]
-                         .length <=
-                 absolute_start)
-      {
-        occurrence_index++;
-      }
-
-      if (span.role == highlight_role::variable ||
-          span.role == highlight_role::assignment_name ||
-          span.role == highlight_role::unset_variable)
-      {
-        for (usize index = occurrence_index;
-             index < document->symbol_records.variable_occurrences.count();
-             index++)
+  visit_document_spans(
+      *document,
+      [&](usize line, usize line_start,
+          const highlight_span &span) throws -> bool {
+        let const absolute_start = span.start;
+        let const absolute_end = span.end;
+        let const start_character = document->encoded_length(
+            line_start, absolute_start, m_client.encoding);
+        let const delta_line = line - previous_line;
+        let const delta_character = delta_line == 0
+                                        ? start_character - previous_character
+                                        : start_character;
+        let const length = document->encoded_length(
+            absolute_start, absolute_end, m_client.encoding);
+        if (length == 0) return true;
+        let const[type, base_modifiers] = semantic_style(span.role);
+        let modifiers = base_modifiers;
+        while (occurrence_index <
+                   document->symbol_records.variable_occurrences.count() &&
+               document->symbol_records.variable_occurrences[occurrence_index]
+                           .position +
+                       document->symbol_records
+                           .variable_occurrences[occurrence_index]
+                           .length <=
+                   absolute_start)
         {
-          let const &occurrence =
-              document->symbol_records.variable_occurrences[index];
-          if (occurrence.position > absolute_start) break;
-          if (occurrence.position != absolute_start ||
-              occurrence.length != absolute_end - absolute_start)
-            continue;
+          occurrence_index++;
+        }
 
-          if (occurrence.kind == variable_occurrence_kind::Assignment) {
-            modifiers |= SEMANTIC_DECLARATION;
-            if (occurrence.is_unused) modifiers |= SEMANTIC_UNUSED;
-          } else {
-            if (occurrence.is_unresolved) {
-              modifiers |= SEMANTIC_UNRESOLVED;
-              modifiers &= ~SEMANTIC_SET;
+        if (span.role == highlight_role::variable ||
+            span.role == highlight_role::assignment_name ||
+            span.role == highlight_role::unset_variable)
+        {
+          for (usize index = occurrence_index;
+               index < document->symbol_records.variable_occurrences.count();
+               index++)
+          {
+            let const &occurrence =
+                document->symbol_records.variable_occurrences[index];
+            if (occurrence.position > absolute_start) break;
+            if (occurrence.position != absolute_start ||
+                occurrence.length != absolute_end - absolute_start)
+              continue;
+
+            if (occurrence.kind == variable_occurrence_kind::Assignment) {
+              modifiers |= SEMANTIC_DECLARATION;
+              if (occurrence.is_unused) modifiers |= SEMANTIC_UNUSED;
             } else {
-              modifiers |= SEMANTIC_SET;
-              modifiers &= ~SEMANTIC_UNRESOLVED;
+              if (occurrence.is_unresolved) {
+                modifiers |= SEMANTIC_UNRESOLVED;
+                modifiers &= ~SEMANTIC_SET;
+              } else {
+                modifiers |= SEMANTIC_SET;
+                modifiers &= ~SEMANTIC_UNRESOLVED;
+              }
             }
           }
         }
-      }
 
-      if (!is_first) response.push(',');
-      is_first = false;
-      append_json_integer(response, static_cast<u64>(delta_line));
-      response.push(',');
-      append_json_integer(response, static_cast<u64>(delta_character));
-      response.push(',');
-      append_json_integer(response, static_cast<u64>(length));
-      response.push(',');
-      append_json_integer(response, static_cast<u64>(type));
-      response.push(',');
-      append_json_integer(response, static_cast<u64>(modifiers));
-      previous_line = line;
-      previous_character = start_character;
-    }
-  }
+        if (!is_first) response.push(',');
+        is_first = false;
+        append_json_integer(response, static_cast<u64>(delta_line));
+        response.push(',');
+        append_json_integer(response, static_cast<u64>(delta_character));
+        response.push(',');
+        append_json_integer(response, static_cast<u64>(length));
+        response.push(',');
+        append_json_integer(response, static_cast<u64>(type));
+        response.push(',');
+        append_json_integer(response, static_cast<u64>(modifiers));
+        previous_line = line;
+        previous_character = start_character;
+        return true;
+      });
   response.append("]}");
 
   return send_result(id, response.view());
