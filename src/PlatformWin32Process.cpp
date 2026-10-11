@@ -444,6 +444,10 @@ fn ProgramCapture::step() wontthrow -> State
       return State::Running;
     }
     if (m_output != KOSH_INVALID_FD) do_close_output();
+    DWORD child_exit_code = 0;
+    if (GetExitCodeProcess(m_child, &child_exit_code) != FALSE) {
+      m_exit_status = static_cast<i32>(child_exit_code);
+    }
     record_child_process_usage(m_child);
     CloseHandle(m_child);
     m_child = KOSH_INVALID_PROCESS;

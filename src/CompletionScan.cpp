@@ -518,27 +518,48 @@ fn internal::complete_from_tools_with_targets(StringView line, StringView token,
       (command == "koshkit") ? second_word_of(line).value_or(command) : command;
 
   let const probe_timeout_nanos = 2'000'000'000ULL;
-  let const do_capture = [&](const ArrayList<String> &probe_argv)
-                             throws -> String {
-    if (probe_argv.is_empty()) return String{heap_allocator()};
+  let const do_resolve_probe = [&](const ArrayList<String> &probe_argv)
+                                   throws -> Maybe<ArrayList<String>> {
+    if (probe_argv.is_empty()) return None;
     let const resolved = context.program_resolver().search(
         probe_argv[0].view(), ProgramResolver::SearchMode::First,
         ProgramResolver::Requirement::Runnable,
         ProgramResolver::CachePolicy::Bypass);
-    if (resolved.is_empty()) return String{heap_allocator()};
+    if (resolved.is_empty()) return None;
     let argv = ArrayList<String>{heap_allocator()};
     argv.push(String{resolved[0].view()});
 
     for (usize i = 1; i < probe_argv.count(); i++)
       argv.push(String{probe_argv[i].view()});
 
-    return os::capture_program_output(argv, probe_timeout_nanos)
+    return argv;
+  };
+  let const do_capture = [&](const ArrayList<String> &probe_argv)
+                             throws -> String {
+    let const argv = do_resolve_probe(probe_argv);
+    if (!argv.has_value()) return String{heap_allocator()};
+
+    return os::capture_program_output(*argv, probe_timeout_nanos)
         .value_or(String{heap_allocator()});
+  };
+  let const do_probe_succeeds = [&](const ArrayList<String> &probe_argv)
+                                    throws -> bool {
+    let const argv = do_resolve_probe(probe_argv);
+
+    return argv.has_value() &&
+           os::program_exits_successfully(*argv, probe_timeout_nanos);
   };
 
   let owned_targets = ArrayList<String>{heap_allocator()};
   const ArrayList<String> *targets = &owned_targets;
   Maybe<const sorted_target_list *> cached_targets;
+  let target_prefix = StringView{};
+  let const do_split_login = [&]() wontthrow {
+    if (let const at = token.find_character('@'); at.has_value()) {
+      target_prefix = token.substring_of_length(0, *at + 1);
+      token = token.substring(*at + 1);
+    }
+  };
 
   Maybe<tool_with_targets_kind> tool_kind = TOOLS_WITH_TARGETS.find(tool);
   if (!tool_kind.has_value()) return None;
@@ -664,11 +685,18 @@ fn internal::complete_from_tools_with_targets(StringView line, StringView token,
     {
       return None;
     }
+    do_split_login();
     owned_targets = collect_ssh_hosts();
     break;
   }
   case tool_with_targets_kind::teleport: {
     if (second_word_of(line) != "ssh") return None;
+    do_split_login();
+    let status_probe = ArrayList<String>{heap_allocator()};
+    status_probe.push(String{"tsh"});
+    status_probe.push(String{"status"});
+    if (!do_probe_succeeds(status_probe)) return None;
+
     let probe = ArrayList<String>{heap_allocator()};
     probe.push(String{"tsh"});
     probe.push(String{"ls"});
@@ -678,6 +706,11 @@ fn internal::complete_from_tools_with_targets(StringView line, StringView token,
   }
 
   let candidates = ArrayList<String>{heap_allocator()};
+  let const do_push_target = [&](StringView target) throws {
+    let candidate = String{heap_allocator(), target_prefix};
+    candidate += target;
+    candidates.push(steal(candidate));
+  };
   if (cached_targets.has_value()) {
     let const &sorted_targets = *cached_targets.value();
     let const first = sorted_targets.lower_bound(token);
@@ -685,12 +718,11 @@ fn internal::complete_from_tools_with_targets(StringView line, StringView token,
     for (usize i = first; i < sorted_targets.count(); i++) {
       let const &target = sorted_targets[i];
       if (!target.view().starts_with(token)) break;
-      candidates.push(String{target.view()});
+      do_push_target(target.view());
     }
   } else {
     for (let const &target : *targets)
-      if (target.view().starts_with(token))
-        candidates.push(String{target.view()});
+      if (target.view().starts_with(token)) do_push_target(target.view());
   }
   if (candidates.is_empty()) return None;
 

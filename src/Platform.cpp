@@ -134,7 +134,7 @@ fn subshell_bootstrap::operator=(subshell_bootstrap &&other) noexcept
 ProgramCapture::ProgramCapture(ProgramCapture &&other) noexcept
     : m_child(other.m_child), m_output(other.m_output),
       m_deadline_nanos(other.m_deadline_nanos),
-      m_captured(steal(other.m_captured))
+      m_captured(steal(other.m_captured)), m_exit_status(other.m_exit_status)
 {
   other.m_child = KOSH_INVALID_PROCESS;
   other.m_output = KOSH_INVALID_FD;
@@ -150,6 +150,7 @@ fn ProgramCapture::operator=(ProgramCapture &&other) noexcept
   m_output = other.m_output;
   m_deadline_nanos = other.m_deadline_nanos;
   m_captured = steal(other.m_captured);
+  m_exit_status = other.m_exit_status;
   other.m_child = KOSH_INVALID_PROCESS;
   other.m_output = KOSH_INVALID_FD;
 
@@ -174,6 +175,23 @@ fn capture_program_output(const ArrayList<String> &argv,
     switch (capture->step()) {
     case ProgramCapture::State::Finished: return capture->take_output();
     case ProgramCapture::State::Failed: return None;
+    case ProgramCapture::State::Running: capture->wait(timeout_nanos); break;
+    }
+  }
+}
+
+fn program_exits_successfully(const ArrayList<String> &argv,
+                              u64 timeout_nanos) wontthrow -> bool
+{
+  let capture = ProgramCapture::start(argv, timeout_nanos);
+  if (!capture.has_value()) return false;
+
+  loop
+  {
+    switch (capture->step()) {
+    case ProgramCapture::State::Finished:
+      return capture->exit_status().value_or(-1) == 0;
+    case ProgramCapture::State::Failed: return false;
     case ProgramCapture::State::Running: capture->wait(timeout_nanos); break;
     }
   }

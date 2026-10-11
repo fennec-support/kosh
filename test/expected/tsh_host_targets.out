@@ -2,3 +2,13 @@
 == tsh ssh does not complete an ssh host either:
 == ssh still completes its host by prefix:
 bravo
+== an expired Teleport session never reaches tsh ls, which would log in:
+tsh ls skipped
+== a valid session lists the nodes:
+node-bravo
+node-brick
+tsh ls ran
+== a login before the node is kept:
+root@node-brick
+== ssh keeps a login before the host too:
+admin@bravo

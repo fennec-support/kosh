@@ -2204,6 +2204,7 @@ public:
   fn step() wontthrow -> State;
   fn wait(u64 wait_nanos) const wontthrow -> void;
   fn take_output() wontthrow -> String;
+  pure fn exit_status() const wontthrow -> Maybe<i32> { return m_exit_status; }
 
 private:
   ProgramCapture() = default;
@@ -2213,7 +2214,11 @@ private:
   descriptor m_output{KOSH_INVALID_FD};
   u64 m_deadline_nanos{0};
   String m_captured{heap_allocator()};
+  Maybe<i32> m_exit_status{};
 };
+
+fn program_exits_successfully(const ArrayList<String> &argv,
+                              u64 timeout_nanos) wontthrow -> bool;
 
 fn give_controlling_terminal_to(process p) wontthrow -> void;
 fn give_controlling_terminal_to_process_group(i64 process_group_id) wontthrow

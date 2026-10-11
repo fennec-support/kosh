@@ -482,6 +482,7 @@ fn ProgramCapture::step() wontthrow -> State
         [&] { return waitpid(m_child, &wait_status, WNOHANG); });
     if (waited_pid == m_child) {
       m_child = KOSH_INVALID_PROCESS;
+      if (WIFEXITED(wait_status)) m_exit_status = WEXITSTATUS(wait_status);
 
       return State::Finished;
     }
