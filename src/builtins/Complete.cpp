@@ -2,10 +2,10 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file implements and is responsible for the complete builtin. The
- * complete builtin registers and removes the completion specs of commands and
- * of the default, empty-line, and initial-word slots, and prints the registered
- * specs back in the option order bash uses.
+ * This file implements the complete builtin, which registers and removes the
+ * completion specs of commands and of the default, empty-line, and
+ * initial-word slots, and prints the registered specs back in the option order
+ * bash uses.
  */
 
 #include "../Builtin.hpp"

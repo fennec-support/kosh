@@ -2,11 +2,11 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file implements and is responsible for the dirs builtin. The dirs
- * builtin prints the directory stack, the current directory first, then the
- * saved directories from the top down. A +N operand selects the Nth entry from
- * the top, while -N selects from the bottom. The builtin owns selection so it
- * can share path abbreviation and numbering with pushd and popd output.
+ * This file implements the dirs builtin, which prints the directory stack: the
+ * current directory first, then the saved directories from the top down. A +N
+ * operand selects the Nth entry from the top, and -N selects from the bottom.
+ * The builtin owns selection so it shares path abbreviation and numbering with
+ * pushd and popd output.
  */
 
 #include "../Builtin.hpp"

@@ -4,14 +4,12 @@
  *
  * This file implements UTF-8 validation, length, position, terminal
  * display-width conversion, history record encoding, and atomic history file
- * replacement shared by the interactive editor and noninteractive stubs. It
- * remains outside either implementation so both build configurations use the
- * same text measurement and history format behavior without initializing
- * terminal state.
- *
- * is_history_contents_valid applies the same rejection rules as the vendored
- * itl_string_from_bytes in src/toiletline/toiletline.h. Both sides of the
- * vendor boundary must stay in agreement.
+ * replacement for both the interactive editor and the noninteractive stubs. It
+ * sits outside both so the two build configurations share text measurement
+ * and the history format without initializing terminal state.
+ * is_history_contents_valid applies the rejection rules of the vendored
+ * itl_string_from_bytes in src/toiletline/toiletline.h, and the two must
+ * agree.
  */
 
 #include "Toiletline.hpp"

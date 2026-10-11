@@ -2,8 +2,8 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file implements and is responsible for the alias builtin. The alias
- * builtin defines and prints command aliases.
+ * This file implements the alias builtin, which defines and prints command
+ * aliases.
  */
 
 #include "../Builtin.hpp"

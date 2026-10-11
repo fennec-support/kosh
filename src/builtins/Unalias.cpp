@@ -2,8 +2,7 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file implements and is responsible for the unalias builtin. The
- * unalias builtin removes each named alias.
+ * This file implements the unalias builtin, which removes each named alias.
  */
 
 #include "../Builtin.hpp"

@@ -2,11 +2,10 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file implements and is responsible for the popd builtin. The popd
- * builtin removes the top directory from the stack and changes to the new
- * top. With +N or -N it removes the Nth entry, counting from the top for +N
- * and from the bottom for -N, and changes directory only when the current
- * entry is removed.
+ * This file implements the popd builtin, which removes the top directory from
+ * the stack and changes to the new top. With +N or -N it removes the Nth
+ * entry, counting from the top for +N and from the bottom for -N, and changes
+ * directory only when the current entry is removed.
  */
 
 #include "../Builtin.hpp"

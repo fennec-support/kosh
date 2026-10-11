@@ -2,8 +2,8 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file implements and is responsible for the suspend builtin. The
- * suspend builtin stops the shell until a SIGCONT is received.
+ * This file implements the suspend builtin, which stops the shell until a
+ * SIGCONT is received.
  */
 
 #include "../Builtin.hpp"

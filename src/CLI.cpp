@@ -1262,7 +1262,8 @@ static fn append_report_grid(
     }
   }
 
-  let const append_row = [&](const ArrayList<report_table_cell> &row) throws {
+  let const do_append_row = [&](const ArrayList<report_table_cell>
+                                    &row) throws {
     usize pending_space_count = 0;
     bool did_write_indentation = false;
     for (usize index = 0; index < column_count; index++) {
@@ -1301,10 +1302,10 @@ static fn append_report_grid(
           String{header.allocator(), column.heading.view()},
           {}
       });
-    append_row(header);
+    do_append_row(header);
   }
   for (let const &row : rows)
-    append_row(row);
+    do_append_row(row);
 }
 
 fn ReportTable::to_string(bool should_color,

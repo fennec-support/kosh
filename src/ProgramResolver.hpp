@@ -2,10 +2,10 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file defines command resolution and PATH caches. It tracks executable
+ * This file defines command resolution and the PATH caches: executable
  * directory indexes, remembered commands and their bootstrap section,
- * invalidation, and forced cache rebuilding. EvalContext and ExecContext store
- * this type directly. The standalone header gives them the complete type
+ * invalidation, and forced rebuilding. EvalContext and ExecContext store this
+ * type directly, and the standalone header gives them the complete type
  * through a narrow dependency.
  */
 

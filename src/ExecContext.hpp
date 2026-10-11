@@ -2,11 +2,11 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file defines per-command execution context. It carries arguments,
- * source locations, descriptors, and command metadata into builtins and
- * koshkit utilities. This short-lived command state is separate from the
- * long-lived EvalContext state. The descriptor routing template requires the
- * complete definition at its call sites.
+ * This file defines the per-command execution context, which carries
+ * arguments, source locations, descriptors, and command metadata into builtins
+ * and koshkit utilities, apart from the long-lived EvalContext state. It has
+ * its own header because the descriptor routing template needs the complete
+ * definition at its call sites.
  */
 
 #pragma once

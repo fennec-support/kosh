@@ -3017,7 +3017,8 @@ cold fn EvalContext::make_stats_string() const throws -> String
   let const allocator = heap_allocator();
   let stats_text = String{allocator};
 
-  let const append_line = [&](StringView name, StringView value) throws {
+  let const do_append_stat_line = [&](StringView name,
+                                      StringView value) throws {
     stats_text += EXPRESSION_DOUBLE_AST_INDENT;
     stats_text += name;
     stats_text += ": ";
@@ -3025,13 +3026,13 @@ cold fn EvalContext::make_stats_string() const throws -> String
     stats_text += '\n';
   };
 
-  let const append_count_line = [&](StringView name, usize value) throws {
-    append_line(name, String::from(value, allocator).view());
+  let const do_append_count_line = [&](StringView name, usize value) throws {
+    do_append_stat_line(name, String::from(value, allocator).view());
   };
 
-  let const append_size_line = [&](StringView name, usize bytes) throws {
+  let const do_append_size_line = [&](StringView name, usize bytes) throws {
     let const value = koshkit::format_human_size(bytes, allocator);
-    append_line(name, value.view());
+    do_append_stat_line(name, value.view());
   };
 
   const usize live_ast_arena_bytes =
@@ -3045,61 +3046,65 @@ cold fn EvalContext::make_stats_string() const throws -> String
 
   stats_text += "[Stats\n";
 
-  append_count_line("Commands evaluated",
-                    evaluation_metrics_store().commands_evaluated() + 1);
-  append_line("Last command duration",
-              utils::format_duration_nanoseconds(
-                  execution_store().last_command_duration_nanos(), allocator)
-                  .view());
-  append_count_line("Expansions",
-                    evaluation_metrics_store().last_expansion_count());
-  append_count_line("Nodes evaluated",
-                    evaluation_metrics_store().last_expressions_executed());
-  append_count_line("Total expansions",
-                    evaluation_metrics_store().total_expansion_count());
-  append_count_line("Total nodes evaluated",
-                    evaluation_metrics_store().total_expressions_executed());
-  append_size_line("AST arena used", live_ast_arena_bytes);
-  append_size_line("AST arena peak", peak_ast_arena_bytes);
+  do_append_count_line("Commands evaluated",
+                       evaluation_metrics_store().commands_evaluated() + 1);
+  do_append_stat_line(
+      "Last command duration",
+      utils::format_duration_nanoseconds(
+          execution_store().last_command_duration_nanos(), allocator)
+          .view());
+  do_append_count_line("Expansions",
+                       evaluation_metrics_store().last_expansion_count());
+  do_append_count_line("Nodes evaluated",
+                       evaluation_metrics_store().last_expressions_executed());
+  do_append_count_line("Total expansions",
+                       evaluation_metrics_store().total_expansion_count());
+  do_append_count_line("Total nodes evaluated",
+                       evaluation_metrics_store().total_expressions_executed());
+  do_append_size_line("AST arena used", live_ast_arena_bytes);
+  do_append_size_line("AST arena peak", peak_ast_arena_bytes);
   if (arena_store().parse_arena() != nullptr)
-    append_size_line("AST arena capacity",
-                     arena_store().parse_arena()->bytes_capacity());
+    do_append_size_line("AST arena capacity",
+                        arena_store().parse_arena()->bytes_capacity());
 
   let const function_stats = function_storage_stats();
-  append_size_line("Function arenas used", function_stats.bytes_used);
-  append_size_line("Function arenas capacity", function_stats.bytes_capacity);
-  append_count_line("Function arena blocks", function_stats.block_count);
-  append_count_line("Function destructors", function_stats.destructor_count);
-  append_count_line("Shell variables",
-                    variable_store().shell_variables().count());
-  append_count_line("Functions", function_store().definitions().count());
-  append_count_line("Function call depth", function_store().call_depth());
-  append_count_line("Source frames", bash_source_frame_count());
-  append_count_line("Builtins run",
-                    evaluation_metrics_store().get_builtins_run());
-  append_count_line("Functions run",
-                    evaluation_metrics_store().get_functions_run());
-  append_count_line("External commands run",
-                    evaluation_metrics_store().get_external_commands_run());
+  do_append_size_line("Function arenas used", function_stats.bytes_used);
+  do_append_size_line("Function arenas capacity",
+                      function_stats.bytes_capacity);
+  do_append_count_line("Function arena blocks", function_stats.block_count);
+  do_append_count_line("Function destructors", function_stats.destructor_count);
+  do_append_count_line("Shell variables",
+                       variable_store().shell_variables().count());
+  do_append_count_line("Functions", function_store().definitions().count());
+  do_append_count_line("Function call depth", function_store().call_depth());
+  do_append_count_line("Source frames", bash_source_frame_count());
+  do_append_count_line("Builtins run",
+                       evaluation_metrics_store().get_builtins_run());
+  do_append_count_line("Functions run",
+                       evaluation_metrics_store().get_functions_run());
+  do_append_count_line("External commands run",
+                       evaluation_metrics_store().get_external_commands_run());
 
   let const launch_counts = os::get_process_launch_counts();
-  append_count_line("Forks", static_cast<usize>(launch_counts.fork_count));
-  append_count_line("Execs", static_cast<usize>(launch_counts.exec_count));
+  do_append_count_line("Forks", static_cast<usize>(launch_counts.fork_count));
+  do_append_count_line("Execs", static_cast<usize>(launch_counts.exec_count));
 
   let const usage = os::read_own_resource_usage();
   let const do_append_optional_count = [&](StringView name,
                                            const Maybe<u64> &value) throws {
-    if (value.has_value()) append_count_line(name, static_cast<usize>(*value));
+    if (value.has_value())
+      do_append_count_line(name, static_cast<usize>(*value));
   };
   let const do_append_optional_size = [&](StringView name,
                                           const Maybe<u64> &value) throws {
-    if (value.has_value()) append_size_line(name, static_cast<usize>(*value));
+    if (value.has_value())
+      do_append_size_line(name, static_cast<usize>(*value));
   };
   let const do_append_optional_duration = [&](StringView name,
                                               const Maybe<u64> &value) throws {
     if (value.has_value())
-      append_line(name,
-                  utils::format_duration_nanoseconds(*value, allocator).view());
+      do_append_stat_line(
+          name, utils::format_duration_nanoseconds(*value, allocator).view());
   };
   do_append_optional_size("Bytes read", usage.read_byte_count);
   do_append_optional_size("Bytes written", usage.written_byte_count);
@@ -3118,9 +3123,9 @@ cold fn EvalContext::make_stats_string() const throws -> String
 
   os::malloc_heap_stats heap_stats{};
   if (os::read_malloc_heap_stats(heap_stats)) {
-    append_size_line("Malloc heap in use", heap_stats.bytes_in_use);
-    append_size_line("Malloc heap arena", heap_stats.arena_bytes);
-    append_size_line("Malloc heap mapped", heap_stats.mapped_bytes);
+    do_append_size_line("Malloc heap in use", heap_stats.bytes_in_use);
+    do_append_size_line("Malloc heap arena", heap_stats.arena_bytes);
+    do_append_size_line("Malloc heap mapped", heap_stats.mapped_bytes);
   }
 
   stats_text += "]";

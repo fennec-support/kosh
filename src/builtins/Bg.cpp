@@ -2,8 +2,8 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file implements and is responsible for the bg builtin. The bg builtin
- * resumes a stopped job in the background.
+ * This file implements the bg builtin, which resumes a stopped job in the
+ * background.
  */
 
 #include "../Builtin.hpp"

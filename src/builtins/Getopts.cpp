@@ -2,8 +2,8 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file implements and is responsible for the getopts builtin. The
- * getopts builtin parses the option arguments against optstring.
+ * This file implements the getopts builtin, which parses the option arguments
+ * against optstring.
  */
 
 #include "../Builtin.hpp"

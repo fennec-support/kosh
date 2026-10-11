@@ -2,8 +2,8 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file implements and is responsible for the z builtin. The z builtin
- * changes to a frequently visited directory ranked by frecency.
+ * This file implements the z builtin, which changes to a frequently visited
+ * directory ranked by frecency.
  */
 
 #include "../Builtin.hpp"

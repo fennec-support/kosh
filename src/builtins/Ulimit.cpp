@@ -2,8 +2,8 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file implements and is responsible for the ulimit builtin. The ulimit
- * builtin reads or sets a resource limit of the shell.
+ * This file implements the ulimit builtin, which prints or sets a resource
+ * limit of the shell.
  */
 
 #include "../Builtin.hpp"

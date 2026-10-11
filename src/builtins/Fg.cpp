@@ -2,8 +2,8 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file implements and is responsible for the fg builtin. The fg builtin
- * brings a job to the foreground and waits for it.
+ * This file implements the fg builtin, which brings a job to the foreground
+ * and waits for it.
  */
 
 #include "../Builtin.hpp"

@@ -404,11 +404,11 @@ fn get_process_window_status(const live_process_row &row,
   let const &newest = row.history.get_newest();
   os::process_io_status status{0, 0, 0, 0, false};
 
-  let const get_baseline = [&](u64 before_value, u64 after_value) {
+  let const do_get_baseline = [&](u64 before_value, u64 after_value) {
     return row.history.interpolate(boundary, before_value, after_value);
   };
   if (let const baseline =
-          get_baseline(before.read_bytes, after_boundary.read_bytes);
+          do_get_baseline(before.read_bytes, after_boundary.read_bytes);
       baseline.has_value())
   {
     if (let const delta = counter_delta(*baseline, newest.read_bytes);
@@ -416,7 +416,7 @@ fn get_process_window_status(const live_process_row &row,
       status.read_bytes = *delta;
   }
   if (let const baseline =
-          get_baseline(before.written_bytes, after_boundary.written_bytes);
+          do_get_baseline(before.written_bytes, after_boundary.written_bytes);
       baseline.has_value())
   {
     if (let const delta = counter_delta(*baseline, newest.written_bytes);
@@ -426,9 +426,9 @@ fn get_process_window_status(const live_process_row &row,
   if (before.has_operation_counts && after_boundary.has_operation_counts &&
       newest.has_operation_counts)
   {
-    let const read_baseline = get_baseline(before.read_operation_count,
-                                           after_boundary.read_operation_count);
-    let const write_baseline = get_baseline(
+    let const read_baseline = do_get_baseline(
+        before.read_operation_count, after_boundary.read_operation_count);
+    let const write_baseline = do_get_baseline(
         before.write_operation_count, after_boundary.write_operation_count);
     if (read_baseline.has_value() && write_baseline.has_value()) {
       let const read_delta =
@@ -1799,11 +1799,12 @@ fn EvilIO::execute(const ExecContext &ec, EvalContext &cxt,
   }
 
   let swap_table = make_metric_table(allocator);
-  let add_swap_row = [&](StringView section, StringView status) throws -> void {
+  let do_add_swap_row = [&](StringView section, StringView status)
+                            throws -> void {
     add_metric_row(swap_table, section, status, allocator);
   };
   if (!has_swap_after) {
-    add_swap_row("Status", "Unavailable");
+    do_add_swap_row("Status", "Unavailable");
   } else {
     let utilization = String::from(
         swap_after.total_bytes == 0
@@ -1820,7 +1821,7 @@ fn EvilIO::execute(const ExecContext &ec, EvalContext &cxt,
     status += "), ";
     status += format_human_size(swap_after.free_bytes, allocator).view();
     status += " free";
-    add_swap_row("Usage", status.view());
+    do_add_swap_row("Usage", status.view());
     if (FLAG_EVILIO_ALL.is_enabled() && swap_after.has_activity) {
       let activity = String{allocator};
       if (FLAG_EVILIO_ALL.is_enabled() && has_swap_before &&
@@ -1846,11 +1847,11 @@ fn EvilIO::execute(const ExecContext &ec, EvalContext &cxt,
             format_human_size(swap_after.output_bytes, allocator).view();
         activity += " out";
       }
-      add_swap_row("Input/output activity", activity.view());
+      do_add_swap_row("Input/output activity", activity.view());
     }
     if (swap_after.has_encryption_state) {
-      add_swap_row("Encryption status",
-                   swap_after.is_encrypted ? "enabled" : "disabled");
+      do_add_swap_row("Encryption status",
+                      swap_after.is_encrypted ? "enabled" : "disabled");
     }
   }
   append_titled_report_table(output, "Swap", swap_table, should_color);

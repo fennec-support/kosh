@@ -2,8 +2,8 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file implements and is responsible for the disown builtin. The disown
- * builtin removes a job from the job table.
+ * This file implements the disown builtin, which removes a job from the job
+ * table.
  */
 
 #include "../Builtin.hpp"

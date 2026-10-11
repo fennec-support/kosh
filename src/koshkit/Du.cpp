@@ -267,7 +267,7 @@ static fn total_size(const ExecContext &ec, EvalContext &cxt, const Path &path,
   let const do_process_stat_work = [&](du_stat_work &work, i32 error_number)
                                        throws -> void {
     let const parent_index = work.parent_index;
-    let const make_child_path = [&]() throws -> Path {
+    let const do_make_child_path = [&]() throws -> Path {
       let child_path = Path{frames[parent_index].path.view(), wave_allocator};
       child_path.append(StringView{work.name});
       return child_path;
@@ -275,7 +275,7 @@ static fn total_size(const ExecContext &ec, EvalContext &cxt, const Path &path,
 
     if (error_number != 0) {
       os::set_last_system_error(error_number);
-      let child_path = make_child_path();
+      let child_path = do_make_child_path();
       report_soft_koshkit_util_error(
           ec, cxt, "du",
           "cannot read '" + child_path.text() +
@@ -299,7 +299,7 @@ static fn total_size(const ExecContext &ec, EvalContext &cxt, const Path &path,
       if (!seen_links.add(key)) return;
     }
     if (status.blocks > UINT64_MAX / 512) {
-      let child_path = make_child_path();
+      let child_path = do_make_child_path();
       report_soft_koshkit_util_error(ec, cxt, "du",
                                      "cannot read '" + child_path.text() +
                                          "': the total size is too large");
@@ -333,7 +333,7 @@ static fn total_size(const ExecContext &ec, EvalContext &cxt, const Path &path,
     }
 
     if (allocated_size_bytes > UINT64_MAX - frames[parent_index].total_bytes) {
-      let child_path = make_child_path();
+      let child_path = do_make_child_path();
       report_soft_koshkit_util_error(ec, cxt, "du",
                                      "cannot read '" + child_path.text() +
                                          "': the total size is too large");
@@ -344,7 +344,7 @@ static fn total_size(const ExecContext &ec, EvalContext &cxt, const Path &path,
 
     frames[parent_index].total_bytes += allocated_size_bytes;
     if (output_rows != nullptr) {
-      let child_path = make_child_path();
+      let child_path = do_make_child_path();
       append_output_row(*output_rows, allocated_size_bytes, child_path.view(),
                         colors::file_entry_type_of_mode(status.mode),
                         allocator);

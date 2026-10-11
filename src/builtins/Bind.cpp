@@ -2,9 +2,9 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file implements and is responsible for the bind builtin. The bind
- * builtin accepts readline key bindings without effect. The line editor is
- * the vendored toiletline, so key binding is not wired through this builtin.
+ * This file implements the bind builtin, which accepts readline key bindings
+ * without effect. The line editor is the vendored toiletline, so key binding
+ * is not wired through this builtin.
  */
 
 #include "../Builtin.hpp"

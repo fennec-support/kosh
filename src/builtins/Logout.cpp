@@ -2,8 +2,8 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file implements and is responsible for the logout builtin. The logout
- * builtin ends a login shell with a status.
+ * This file implements the logout builtin, which ends a login shell with a
+ * status.
  */
 
 #include "../Builtin.hpp"

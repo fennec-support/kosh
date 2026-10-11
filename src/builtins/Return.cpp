@@ -2,8 +2,8 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file implements and is responsible for the return builtin. The return
- * builtin stops the current function or sourced file and returns a status.
+ * This file implements the return builtin, which stops the current function or
+ * sourced file and returns a status.
  */
 
 #include "../Builtin.hpp"
