@@ -185,7 +185,8 @@ fn Uniq::execute(const ExecContext &ec, EvalContext &cxt,
     if (output.count() >= 65536) do_write_output();
   };
 
-  let reader = utils::BufferedLineReader{input->descriptor};
+  let reader =
+      utils::BufferedLineReader{input->descriptor, cxt.scratch_allocator()};
   loop
   {
     let const result = reader.next();

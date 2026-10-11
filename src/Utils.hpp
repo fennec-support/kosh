@@ -454,7 +454,7 @@ public:
     Error,
   };
 
-  explicit BufferedLineReader(os::descriptor descriptor);
+  BufferedLineReader(os::descriptor descriptor, Allocator allocator);
 
   fn next() throws -> Result;
   pure fn get_line() const wontthrow -> StringView;
@@ -465,7 +465,7 @@ public:
 
 private:
   os::descriptor m_descriptor;
-  String m_line{heap_allocator()};
+  String m_line;
   usize m_buffer_position{0};
   usize m_buffer_length{0};
   bool m_is_at_end{false};

@@ -224,7 +224,8 @@ fn Nl::execute(const ExecContext &ec, EvalContext &cxt,
       os::close_fd(input->descriptor);
   };
 
-  let reader = utils::BufferedLineReader{input->descriptor};
+  let reader =
+      utils::BufferedLineReader{input->descriptor, cxt.scratch_allocator()};
   let output = String{cxt.scratch_allocator()};
   nl_style section_style = *body_style;
   i64 number = static_cast<i64>(start_value);

@@ -502,7 +502,8 @@ fn Pr::execute(const ExecContext &ec, EvalContext &cxt,
       opened_modification_time = input_status.modification_time;
     if (input->mode == input_descriptor_mode::Owned)
       owned_inputs.push(input->descriptor);
-    return scratch_arena.create<utils::BufferedLineReader>(input->descriptor);
+    return scratch_arena.create<utils::BufferedLineReader>(
+        input->descriptor, bump_allocator(scratch_arena));
   };
 
   let const has_page_frame =

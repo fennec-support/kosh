@@ -903,7 +903,7 @@ fn open_named_or_stdin(const ExecContext &ec, StringView path) wontthrow
 }
 
 fn visit_source_lines_with(const ExecContext &ec, StringView source,
-                           opaque *visitor,
+                           Allocator allocator, opaque *visitor,
                            source_line_visitor do_visit_line) throws
     -> source_line_outcome
 {
@@ -915,7 +915,7 @@ fn visit_source_lines_with(const ExecContext &ec, StringView source,
       unused(os::close_fd(input->descriptor));
   };
 
-  let reader = utils::BufferedLineReader{input->descriptor};
+  let reader = utils::BufferedLineReader{input->descriptor, allocator};
   loop
   {
     let const result = reader.next();

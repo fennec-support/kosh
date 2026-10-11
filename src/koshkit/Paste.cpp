@@ -106,8 +106,8 @@ fn Paste::execute(const ExecContext &ec, EvalContext &cxt,
 
     if (input->mode == input_descriptor_mode::Owned)
       owned_inputs.push(input->descriptor);
-    let *const reader =
-        scratch_arena.create<utils::BufferedLineReader>(input->descriptor);
+    let *const reader = scratch_arena.create<utils::BufferedLineReader>(
+        input->descriptor, bump_allocator(scratch_arena));
     if (source == "-") stdin_reader = reader;
     columns.push(paste_column{reader, false});
   }

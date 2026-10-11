@@ -730,7 +730,7 @@ fn Sed::execute(const ExecContext &ec, EvalContext &cxt,
         os::close_fd(input->descriptor);
     };
 
-    let reader = utils::BufferedLineReader{input->descriptor};
+    let reader = utils::BufferedLineReader{input->descriptor, heap_allocator()};
     while (!should_quit) {
       let const result = reader.next();
       if (result == utils::BufferedLineReader::Result::End) break;

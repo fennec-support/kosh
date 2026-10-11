@@ -120,7 +120,8 @@ fn Unexpand::execute(
   };
 
   for (let const source : sources) {
-    let const outcome = visit_source_lines(ec, source, do_visit_line);
+    let const outcome =
+        visit_source_lines(ec, source, heap_allocator(), do_visit_line);
     if (outcome == source_line_outcome::Interrupted) return 130;
     if (outcome == source_line_outcome::Failed) {
       KOSHKIT_REPORT_PATH_ERROR("read", source);

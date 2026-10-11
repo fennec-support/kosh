@@ -636,16 +636,17 @@ using source_line_visitor = void (*)(opaque *visitor, StringView line,
                                      bool is_terminated);
 
 fn visit_source_lines_with(const ExecContext &ec, StringView source,
-                           opaque *visitor,
+                           Allocator allocator, opaque *visitor,
                            source_line_visitor do_visit_line) throws
     -> source_line_outcome;
 
 template <class Visit>
 fn visit_source_lines(const ExecContext &ec, StringView source,
-                      Visit &do_visit_line) throws -> source_line_outcome
+                      Allocator allocator, Visit &do_visit_line) throws
+    -> source_line_outcome
 {
   return visit_source_lines_with(
-      ec, source, &do_visit_line,
+      ec, source, allocator, &do_visit_line,
       [](opaque *visitor, StringView line, bool is_terminated)
           throws { (*static_cast<Visit *>(visitor))(line, is_terminated); });
 }

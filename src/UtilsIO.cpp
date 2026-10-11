@@ -190,8 +190,9 @@ fn read_line_from_fd(os::descriptor fd, char delimiter, u64 deadline_nanos,
   return result;
 }
 
-BufferedLineReader::BufferedLineReader(os::descriptor descriptor)
-    : m_descriptor(descriptor)
+BufferedLineReader::BufferedLineReader(os::descriptor descriptor,
+                                       Allocator allocator)
+    : m_descriptor(descriptor), m_line(allocator)
 {}
 
 hot flatten fn BufferedLineReader::next() throws -> Result

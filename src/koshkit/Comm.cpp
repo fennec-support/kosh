@@ -66,8 +66,10 @@ fn Comm::execute(const ExecContext &ec, EvalContext &cxt,
       os::close_fd(right_input->descriptor);
   };
 
-  let left_reader = utils::BufferedLineReader{left_input->descriptor};
-  let right_reader = utils::BufferedLineReader{right_input->descriptor};
+  let left_reader = utils::BufferedLineReader{left_input->descriptor,
+                                              cxt.scratch_allocator()};
+  let right_reader = utils::BufferedLineReader{right_input->descriptor,
+                                               cxt.scratch_allocator()};
   let left_result = left_reader.next();
   let right_result = right_reader.next();
   bool const should_show[3] = {!FLAG_COMM_HIDE_FIRST.is_enabled(),
