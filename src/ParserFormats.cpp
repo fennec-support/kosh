@@ -148,18 +148,67 @@ static pure fn known_host_extension(StringView path) wontthrow -> bool
   return false;
 }
 
+constexpr static_string_entry<parser_format_kind> FORMAT_FILENAME_ENTRIES[] = {
+    {SSK("action.yml"),               parser_format_kind::GithubActions     },
+    {SSK("action.yaml"),              parser_format_kind::GithubActions     },
+    {SSK(".gitlab-ci.yml"),           parser_format_kind::GitlabCi          },
+    {SSK(".drone.yml"),               parser_format_kind::Drone             },
+    {SSK(".woodpecker.yml"),          parser_format_kind::Woodpecker        },
+    {SSK(".woodpecker.yaml"),         parser_format_kind::Woodpecker        },
+    {SSK("azure-pipelines.yml"),      parser_format_kind::AzurePipelines    },
+    {SSK("azure-pipelines.yaml"),     parser_format_kind::AzurePipelines    },
+    {SSK("bitbucket-pipelines.yml"),  parser_format_kind::BitbucketPipelines},
+    {SSK("bitbucket-pipelines.yaml"), parser_format_kind::BitbucketPipelines},
+    {SSK(".travis.yml"),              parser_format_kind::TravisCi          },
+    {SSK("cloudbuild.yml"),           parser_format_kind::CloudBuild        },
+    {SSK("cloudbuild.yaml"),          parser_format_kind::CloudBuild        },
+    {SSK("compose.yml"),              parser_format_kind::Compose           },
+    {SSK("compose.yaml"),             parser_format_kind::Compose           },
+    {SSK("docker-compose.yml"),       parser_format_kind::Compose           },
+    {SSK("docker-compose.yaml"),      parser_format_kind::Compose           },
+    {SSK("taskfile.yml"),             parser_format_kind::Taskfile          },
+    {SSK("taskfile.yaml"),            parser_format_kind::Taskfile          },
+    {SSK("taskfile.dist.yml"),        parser_format_kind::Taskfile          },
+    {SSK("taskfile.dist.yaml"),       parser_format_kind::Taskfile          },
+    {SSK("dockerfile"),               parser_format_kind::Dockerfile        },
+    {SSK("containerfile"),            parser_format_kind::Dockerfile        },
+    {SSK("makefile"),                 parser_format_kind::Makefile          },
+    {SSK("gnumakefile"),              parser_format_kind::Makefile          },
+    {SSK("justfile"),                 parser_format_kind::Justfile          },
+    {SSK(".justfile"),                parser_format_kind::Justfile          },
+    {SSK("package.json"),             parser_format_kind::PackageJson       },
+    {SSK("devcontainer.json"),        parser_format_kind::DevContainer      },
+    {SSK("readme"),                   parser_format_kind::Markdown          },
+};
+constexpr StaticStringMap FORMAT_FILENAMES{FORMAT_FILENAME_ENTRIES};
+
+static fn format_kind_of_filename(StringView filename) throws
+    -> Maybe<parser_format_kind>
+{
+  char folded[32];
+  if (filename.length > sizeof(folded)) return None;
+
+  for (usize position = 0; position < filename.length; position++) {
+    let const byte = filename[position];
+    folded[position] = byte >= 'A' && byte <= 'Z'
+                           ? static_cast<char>(byte + ('a' - 'A'))
+                           : byte;
+  }
+  return FORMAT_FILENAMES.find(StringView{folded, filename.length});
+}
+
 static fn detect_format_kind(const parser_format_input &input) throws
     -> parser_format_kind
 {
   let path = input.path.has_value() ? *input.path : StringView{};
   let const filename = parser_format_filename(path);
+  let const named_kind = format_kind_of_filename(filename);
   let const source = input.source;
   let const language_id =
       input.language_id.has_value() ? *input.language_id : StringView{};
 
   if (path_holds(path, "/.github/workflows/") ||
-      parser_format_ascii_equal(filename, "action.yml") ||
-      parser_format_ascii_equal(filename, "action.yaml"))
+      named_kind == parser_format_kind::GithubActions)
   {
     return parser_format_kind::GithubActions;
   }
@@ -167,13 +216,11 @@ static fn detect_format_kind(const parser_format_input &input) throws
     return parser_format_kind::GiteaActions;
   if (path_holds(path, "/.forgejo/workflows/"))
     return parser_format_kind::ForgejoActions;
-  if (parser_format_ascii_equal(filename, ".gitlab-ci.yml"))
+  if (named_kind == parser_format_kind::GitlabCi)
     return parser_format_kind::GitlabCi;
-  if (parser_format_ascii_equal(filename, ".drone.yml"))
-    return parser_format_kind::Drone;
+  if (named_kind == parser_format_kind::Drone) return parser_format_kind::Drone;
   if (path_holds(path, "/.woodpecker/") ||
-      parser_format_ascii_equal(filename, ".woodpecker.yml") ||
-      parser_format_ascii_equal(filename, ".woodpecker.yaml"))
+      named_kind == parser_format_kind::Woodpecker)
   {
     return parser_format_kind::Woodpecker;
   }
@@ -182,44 +229,24 @@ static fn detect_format_kind(const parser_format_input &input) throws
   {
     return parser_format_kind::CircleCi;
   }
-  if (parser_format_ascii_equal(filename, "azure-pipelines.yml") ||
-      parser_format_ascii_equal(filename, "azure-pipelines.yaml"))
-  {
+  if (named_kind == parser_format_kind::AzurePipelines)
     return parser_format_kind::AzurePipelines;
-  }
-  if (parser_format_ascii_equal(filename, "bitbucket-pipelines.yml") ||
-      parser_format_ascii_equal(filename, "bitbucket-pipelines.yaml"))
-  {
+  if (named_kind == parser_format_kind::BitbucketPipelines)
     return parser_format_kind::BitbucketPipelines;
-  }
   if (path_holds(path, "/.buildkite/") &&
       (path_ends_with(path, ".yml") || path_ends_with(path, ".yaml")))
   {
     return parser_format_kind::Buildkite;
   }
-  if (parser_format_ascii_equal(filename, ".travis.yml"))
+  if (named_kind == parser_format_kind::TravisCi)
     return parser_format_kind::TravisCi;
-  if (parser_format_ascii_equal(filename, "cloudbuild.yml") ||
-      parser_format_ascii_equal(filename, "cloudbuild.yaml"))
-  {
+  if (named_kind == parser_format_kind::CloudBuild)
     return parser_format_kind::CloudBuild;
-  }
-  if (parser_format_ascii_equal(filename, "compose.yml") ||
-      parser_format_ascii_equal(filename, "compose.yaml") ||
-      parser_format_ascii_equal(filename, "docker-compose.yml") ||
-      parser_format_ascii_equal(filename, "docker-compose.yaml"))
-  {
+  if (named_kind == parser_format_kind::Compose)
     return parser_format_kind::Compose;
-  }
-  if (parser_format_ascii_equal(filename, "taskfile.yml") ||
-      parser_format_ascii_equal(filename, "taskfile.yaml") ||
-      parser_format_ascii_equal(filename, "taskfile.dist.yml") ||
-      parser_format_ascii_equal(filename, "taskfile.dist.yaml"))
-  {
+  if (named_kind == parser_format_kind::Taskfile)
     return parser_format_kind::Taskfile;
-  }
-  if (parser_format_ascii_equal(filename, "dockerfile") ||
-      parser_format_ascii_equal(filename, "containerfile") ||
+  if (named_kind == parser_format_kind::Dockerfile ||
       path_ends_with(filename, ".dockerfile") ||
       path_ends_with(filename, ".containerfile") ||
       path_starts_with(filename, "dockerfile.") ||
@@ -227,22 +254,18 @@ static fn detect_format_kind(const parser_format_input &input) throws
   {
     return parser_format_kind::Dockerfile;
   }
-  if (parser_format_ascii_equal(filename, "makefile") ||
-      parser_format_ascii_equal(filename, "gnumakefile") ||
+  if (named_kind == parser_format_kind::Makefile ||
       path_ends_with(filename, ".mk"))
   {
     return parser_format_kind::Makefile;
   }
-  if (parser_format_ascii_equal(filename, "justfile") ||
-      parser_format_ascii_equal(filename, ".justfile"))
-  {
+  if (named_kind == parser_format_kind::Justfile)
     return parser_format_kind::Justfile;
-  }
-  if (parser_format_ascii_equal(filename, "package.json"))
+  if (named_kind == parser_format_kind::PackageJson)
     return parser_format_kind::PackageJson;
   if (path_ends_with(path, "/.vscode/tasks.json"))
     return parser_format_kind::VscodeTasks;
-  if (parser_format_ascii_equal(filename, "devcontainer.json") &&
+  if (named_kind == parser_format_kind::DevContainer &&
       (path_holds(path, "/.devcontainer/") ||
        path_ends_with(path, "/.devcontainer.json")))
   {
@@ -250,7 +273,7 @@ static fn detect_format_kind(const parser_format_input &input) throws
   }
   if (path_ends_with(path, ".spec")) return parser_format_kind::RpmSpec;
   if (path_ends_with(path, ".md") || path_ends_with(path, ".markdown") ||
-      parser_format_ascii_equal(filename, "readme") ||
+      named_kind == parser_format_kind::Markdown ||
       parser_format_ascii_equal(language_id, "markdown"))
   {
     return parser_format_kind::Markdown;
