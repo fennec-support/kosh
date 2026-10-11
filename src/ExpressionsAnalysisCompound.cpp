@@ -37,13 +37,14 @@ namespace expressions {
 using namespace internal;
 
 pure fn find_pipe_overriding_redirection(const SimpleCommand *stage,
-                                         bool wants_output) wontthrow
+                                         bool is_output_wanted) wontthrow
     -> const Redirection *
 {
   for (let const &redirection : stage->redirections()) {
-    let const claims_stream = wants_output ? redirection.opens_output_file()
-                                           : redirection.opens_input_source();
-    if (claims_stream && redirection.fd == (wants_output ? 1 : 0))
+    let const claims_stream = is_output_wanted
+                                  ? redirection.opens_output_file()
+                                  : redirection.opens_input_source();
+    if (claims_stream && redirection.fd == (is_output_wanted ? 1 : 0))
       return &redirection;
   }
 
@@ -247,12 +248,12 @@ fn Pipeline::analyze(AnalysisContext &actx, bool is_unconditional) const throws
 
 fn Pipeline::append_presence_tested_command_names(
     const AnalysisContext &actx, HashSet &names,
-    bool status_is_success) const throws -> void
+    bool is_status_success) const throws -> void
 {
   if (m_commands.count() != 1) return;
 
   m_commands[0]->append_presence_tested_command_names(
-      actx, names, status_is_success != is_negated());
+      actx, names, is_status_success != is_negated());
 }
 
 fn Pipeline::as_simple_command() const wontthrow -> const SimpleCommand *
@@ -327,10 +328,10 @@ fn CompoundListCondition::analyze(AnalysisContext &actx,
 
 fn CompoundListCondition::append_presence_tested_command_names(
     const AnalysisContext &actx, HashSet &names,
-    bool status_is_success) const throws -> void
+    bool is_status_success) const throws -> void
 {
   ASSERT(m_cmd != nullptr);
-  m_cmd->append_presence_tested_command_names(actx, names, status_is_success);
+  m_cmd->append_presence_tested_command_names(actx, names, is_status_success);
 }
 
 cold fn CompoundListCondition::try_static_condition_verdict(
@@ -656,13 +657,13 @@ fn CompoundList::analyze(AnalysisContext &actx,
 
 fn CompoundList::append_presence_tested_command_names(
     const AnalysisContext &actx, HashSet &names,
-    bool status_is_success) const throws -> void
+    bool is_status_success) const throws -> void
 {
   if (m_nodes.count() != 1 || m_nodes[0] == nullptr) {
     return;
   }
   m_nodes[0]->append_presence_tested_command_names(actx, names,
-                                                   status_is_success);
+                                                   is_status_success);
 }
 
 cold fn CompoundList::try_static_condition_verdict(

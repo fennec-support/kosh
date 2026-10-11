@@ -561,21 +561,21 @@ public:
 
   mustuse pure fn has_line_text() const wontthrow -> bool
   {
-    return m_line_has_text;
+    return m_has_line_text;
   }
 
   fn append_token(StringView token) throws -> void
   {
     start_line();
-    let const separator_length = m_line_has_text ? 1u : 0u;
+    let const separator_length = m_has_line_text ? 1u : 0u;
     let const token_width = toiletline::get_display_width(token);
     if (m_should_wrap &&
         m_column + separator_length + token_width > MAX_LINE_WIDTH &&
-        m_line_has_text)
+        m_has_line_text)
     {
       break_with_continuation(m_indent + 2);
     }
-    if (m_line_has_text) {
+    if (m_has_line_text) {
       m_output.push(' ');
       m_column++;
     }
@@ -591,14 +591,14 @@ public:
           toiletline::get_display_width(token.substring(*last_newline + 1));
     else
       m_column += token_width;
-    m_line_has_text = true;
+    m_has_line_text = true;
   }
 
   fn break_with_continuation(usize continuation_indent) throws -> void
   {
-    if (!m_line_has_text) return;
+    if (!m_has_line_text) return;
     m_output.append(" \\\n");
-    m_line_has_text = false;
+    m_has_line_text = false;
     m_column = 0;
     for (usize position = 0; position < continuation_indent; position++)
       m_output.push(' ');
@@ -610,7 +610,7 @@ public:
     start_line();
     m_output.append(token);
     m_column += toiletline::get_display_width(token);
-    m_line_has_text = true;
+    m_has_line_text = true;
   }
 
   fn append_comment(StringView comment, bool is_at_line_start) throws -> void
@@ -624,15 +624,15 @@ public:
       let const text = comment.substring(text_position);
       start_line();
       m_output.append(text);
-      m_line_has_text = !text.is_empty();
+      m_has_line_text = !text.is_empty();
       m_column += toiletline::get_display_width(text);
       return;
     }
-    if (m_line_has_text) m_output.push(' ');
+    if (m_has_line_text) m_output.push(' ');
     m_output.append(comment);
     m_column +=
-        toiletline::get_display_width(comment) + (m_line_has_text ? 1 : 0);
-    m_line_has_text = true;
+        toiletline::get_display_width(comment) + (m_has_line_text ? 1 : 0);
+    m_has_line_text = true;
   }
 
   fn append_raw(StringView raw) throws -> void
@@ -640,7 +640,7 @@ public:
     finish_line();
     m_has_trailing_blank_line = false;
     m_output.append(raw);
-    m_line_has_text = !raw.is_empty() && raw[raw.length - 1] != '\n';
+    m_has_line_text = !raw.is_empty() && raw[raw.length - 1] != '\n';
     m_column = 0;
   }
 
@@ -650,7 +650,7 @@ public:
       m_output.push('\n');
     }
 
-    m_line_has_text = false;
+    m_has_line_text = false;
     m_column = 0;
   }
 
@@ -660,7 +660,7 @@ public:
       m_output.append(" \n");
     }
 
-    m_line_has_text = false;
+    m_has_line_text = false;
     m_column = 0;
   }
 
@@ -691,7 +691,7 @@ private:
   fn start_line() throws -> void
   {
     m_has_trailing_blank_line = false;
-    if (m_line_has_text || m_column != 0) return;
+    if (m_has_line_text || m_column != 0) return;
     for (usize position = 0; position < m_indent; position++)
       m_output.push(' ');
     m_column = m_indent;
@@ -700,7 +700,7 @@ private:
   String m_output{heap_allocator()};
   usize m_indent{0};
   usize m_column{0};
-  bool m_line_has_text{false};
+  bool m_has_line_text{false};
   bool m_should_wrap{true};
   bool m_has_trailing_blank_line{false};
 };

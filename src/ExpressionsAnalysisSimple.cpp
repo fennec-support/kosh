@@ -1536,9 +1536,9 @@ fn SimpleCommand::analyze(AnalysisContext &actx,
 
 fn SimpleCommand::append_presence_tested_command_names(
     const AnalysisContext &actx, HashSet &names,
-    bool status_is_success) const throws -> void
+    bool is_status_success) const throws -> void
 {
-  if (status_is_success == is_negated() || m_args.is_empty()) {
+  if (is_status_success == is_negated() || m_args.is_empty()) {
     return;
   }
 

@@ -1291,11 +1291,11 @@ fn Expression::analyze(AnalysisContext &actx,
 
 fn Expression::append_presence_tested_command_names(
     const AnalysisContext &actx, HashSet &names,
-    bool status_is_success) const throws -> void
+    bool is_status_success) const throws -> void
 {
   unused(actx);
   unused(names);
-  unused(status_is_success);
+  unused(is_status_success);
 }
 
 fn Expression::is_simple_command() const wontthrow -> bool { return false; }
@@ -1714,8 +1714,7 @@ fn expressions::internal::command_resolves(
 {
   if (name.is_empty()) return false;
   if (search_builtin(name).has_value()) return true;
-  if (actx.are_koshkit_utilities_reachable &&
-      koshkit::find_util(name).has_value())
+  if (actx.is_koshkit_utility_reachable && koshkit::find_util(name).has_value())
   {
     return true;
   }
@@ -1826,7 +1825,7 @@ fn analyze_ast(const Expression *root, StringView source,
   let const source_effects = parent.source_effects;
 
   AnalysisContext actx{source, options};
-  actx.are_koshkit_utilities_reachable =
+  actx.is_koshkit_utility_reachable =
       eval_context != nullptr
           ? eval_context->runtime_state().koshkit_utilities_are_reachable()
           : options.is_default_mood;

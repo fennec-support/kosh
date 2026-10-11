@@ -39,8 +39,8 @@ class ExecContext
 public:
   static fn make_from(const SourceLocation &location, StringView source,
                       ArrayList<String> &&args,
-                      bool are_koshkit_utilities_reachable,
-                      bool should_check_hash, ProgramResolver &program_resolver,
+                      bool is_koshkit_utility_reachable, bool should_check_hash,
+                      ProgramResolver &program_resolver,
                       ArrayList<SourceLocation> &&arg_locations,
                       mimic_mood mood, bool should_autocd = false) throws
       -> ExecContext;

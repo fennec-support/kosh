@@ -578,7 +578,7 @@ public:
   StringView source;
   const analysis_options options;
   analysis_reporter reporter;
-  bool are_koshkit_utilities_reachable{true};
+  bool is_koshkit_utility_reachable{true};
   analysis_function_table functions;
   StringMap<String> constant_variables{heap_allocator(),
                                        SMALL_MAP_FIRST_CAPACITY};
@@ -919,7 +919,7 @@ public:
 
   virtual fn append_presence_tested_command_names(
       const AnalysisContext &actx, HashSet &names,
-      bool status_is_success) const throws -> void;
+      bool is_status_success) const throws -> void;
 
   virtual fn can_evaluate_in_process_substitution(
       const EvalContext &cxt, HashSet &active_functions) const throws -> bool;
@@ -1223,7 +1223,7 @@ public:
 
   fn append_presence_tested_command_names(const AnalysisContext &actx,
                                           HashSet &names,
-                                          bool status_is_success) const throws
+                                          bool is_status_success) const throws
       -> void override;
 
   fn try_static_condition_verdict(const AnalysisContext &actx) const wontthrow
@@ -1290,7 +1290,7 @@ public:
 
   fn append_presence_tested_command_names(const AnalysisContext &actx,
                                           HashSet &names,
-                                          bool status_is_success) const throws
+                                          bool is_status_success) const throws
       -> void override;
   fn try_static_condition_verdict(const AnalysisContext &actx) const wontthrow
       -> Maybe<bool> override;
@@ -1330,7 +1330,7 @@ public:
       -> void override;
   fn append_presence_tested_command_names(const AnalysisContext &actx,
                                           HashSet &names,
-                                          bool status_is_success) const throws
+                                          bool is_status_success) const throws
       -> void override;
   fn try_static_condition_verdict(const AnalysisContext &actx) const wontthrow
       -> Maybe<bool> override;
@@ -1366,7 +1366,7 @@ public:
 
   fn append_presence_tested_command_names(const AnalysisContext &actx,
                                           HashSet &names,
-                                          bool status_is_success) const throws
+                                          bool is_status_success) const throws
       -> void override;
 
   fn as_simple_command() const wontthrow -> const SimpleCommand * override;
