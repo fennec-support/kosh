@@ -744,11 +744,13 @@ hot fn SimpleCommand::evaluate_impl(EvalContext &cxt,
   };
   let const has_prefix_assignments =
       !m_local_vars.is_empty() || !keyword_assignments.is_empty();
+  let const do_is_source_evaluating_name = [&]() throws -> bool {
+    let const kind = search_builtin(program_args[0].view());
+    return kind == Builtin::Kind::Eval || kind == Builtin::Kind::Source;
+  };
   let const is_source_evaluating_builtin =
       has_prefix_assignments && !program_args.is_empty() &&
-      command_word_function == nullptr &&
-      (program_args[0] == "eval" || program_args[0] == "." ||
-       program_args[0] == "source");
+      command_word_function == nullptr && do_is_source_evaluating_name();
   let const is_prefix_assignment_persistent =
       has_prefix_assignments &&
       (is_command_special_builtin

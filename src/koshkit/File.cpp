@@ -581,10 +581,11 @@ static pure fn file_content_description(StringView bytes) wontthrow
   }
 
   if (bytes.length >= 16 && bytes.substring_of_length(0, 8) == "AT&TFORM") {
-    let const kind = bytes.substring_of_length(12, 4);
-    if (kind == "DJVU" || kind == "DJVM" || kind == "DJVI" || kind == "THUM") {
+    static constexpr PackedStringKey DJVU_FORM_KEYS[] = {
+        SSK("DJVU"), SSK("DJVM"), SSK("DJVI"), SSK("THUM")};
+    static constexpr StaticStringSet DJVU_FORMS{DJVU_FORM_KEYS};
+    if (DJVU_FORMS.contains(bytes.substring_of_length(12, 4)))
       return "DjVu document";
-    }
   }
 
   if (bytes.length >= 12 && bytes.substring_of_length(4, 4) == "ftyp") {
@@ -592,11 +593,11 @@ static pure fn file_content_description(StringView bytes) wontthrow
     if (brand == "avif" || brand == "avis") {
       return "AVIF image";
     }
-    if (brand == "heic" || brand == "heix" || brand == "hevc" ||
-        brand == "hevx" || brand == "mif1" || brand == "msf1")
-    {
-      return "HEIF image";
-    }
+    static constexpr PackedStringKey HEIF_BRAND_KEYS[] = {
+        SSK("heic"), SSK("heix"), SSK("hevc"),
+        SSK("hevx"), SSK("mif1"), SSK("msf1")};
+    static constexpr StaticStringSet HEIF_BRANDS{HEIF_BRAND_KEYS};
+    if (HEIF_BRANDS.contains(brand)) return "HEIF image";
   }
 
   if (bytes.length >= 4 &&
