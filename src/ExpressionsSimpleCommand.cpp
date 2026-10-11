@@ -279,8 +279,8 @@ hot fn AssignCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode)
 
   cxt.source_store().set_current_location(source_location());
 
-  let const should_run_assignment =
-      publish_command_and_run_debug_trap(cxt, [&] throws -> StringView {
+  let const should_run_assignment = publish_command_and_run_debug_trap(
+      cxt, [&] throws -> const CopyOnWrite<String> & {
         return m_published_command_text.get(
             cxt.runtime_state().bash_additions_enabled(), [&] {
               return source_command_text(
@@ -1798,7 +1798,7 @@ fn internal::append_redirections_text(
 }
 
 fn SimpleCommand::get_published_command_text(EvalContext &cxt) const throws
-    -> StringView
+    -> const CopyOnWrite<String> &
 {
   return m_published_command_text.get(
       cxt.runtime_state().bash_additions_enabled(), [&] throws {
@@ -1824,7 +1824,10 @@ fn internal::publish_simple_command(EvalContext &cxt,
                                     root_evaluation_mode mode) throws -> bool
 {
   return publish_command_and_run_debug_trap(
-      cxt, [&] throws { return command.get_published_command_text(cxt); },
+      cxt,
+      [&] throws -> const CopyOnWrite<String> & {
+        return command.get_published_command_text(cxt);
+      },
       mode);
 }
 

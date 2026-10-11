@@ -65,6 +65,9 @@ fn Eval::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   LOG(Debug, "eval running %zu joined bytes in the current shell",
       joined.length());
 
+  let const saved_command = cxt.execution_store().save_current_command();
+  defer { cxt.execution_store().restore_current_command(saved_command); };
+
   return cxt.run_source(
       joined, "eval", ec.source_location(), StringView{"eval"}, nullptr,
       nullptr, return_handling::Propagate, history_recording::Disabled, nullptr,

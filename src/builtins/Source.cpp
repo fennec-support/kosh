@@ -77,8 +77,7 @@ fn Source::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let const untraced_debug_scope =
       UntracedTrapScope{cxt, UntracedTrapScope::Kind::Debug};
 
-  let saved_current_command =
-      String{heap_allocator(), cxt.execution_store().get_current_command()};
+  let const saved_command = cxt.execution_store().save_current_command();
 
   i32 status = 0;
   let status_before_return = Maybe<i32>{None};
@@ -102,7 +101,7 @@ fn Source::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                                      : syntax_error_reach::PosixScript);
   }
 
-  cxt.execution_store().set_current_command(steal(saved_current_command));
+  cxt.execution_store().restore_current_command(saved_command);
 
   let const is_exit_pending =
       cxt.control_flow_store().has_pending() &&

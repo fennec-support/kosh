@@ -1098,20 +1098,21 @@ protected:
 
 struct published_command_text
 {
-  Maybe<String> text{};
+  CopyOnWrite<String> text{heap_allocator()};
   bool was_rendered_with_bash_additions{false};
 
   template <typename Render>
-  fn get(bool has_bash_additions, Render do_render) throws -> StringView
+  fn get(bool has_bash_additions, Render do_render) throws
+      -> const CopyOnWrite<String> &
   {
-    if (!text.has_value() ||
+    if (text.is_empty() ||
         was_rendered_with_bash_additions != has_bash_additions)
     {
-      text = String{heap_allocator(), do_render().view()};
+      text.assign(String{heap_allocator(), do_render().view()});
       was_rendered_with_bash_additions = has_bash_additions;
     }
 
-    return text->view();
+    return text;
   }
 };
 
@@ -1232,7 +1233,8 @@ public:
   pure fn args() const wontthrow -> const ArrayList<const Token *> &;
   pure fn redirections() const wontthrow -> const SparseList<Redirection> &;
 
-  fn get_published_command_text(EvalContext &cxt) const throws -> StringView;
+  fn get_published_command_text(EvalContext &cxt) const throws
+      -> const CopyOnWrite<String> &;
 
   fn to_string() const throws -> String override;
 

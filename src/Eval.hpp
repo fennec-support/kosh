@@ -978,18 +978,43 @@ public:
     return m_command_number;
   }
   fn advance_command_number() wontthrow -> void { m_command_number++; }
-  fn set_current_command(String command) wontthrow -> void
+  fn set_current_command(const CopyOnWrite<String> &command) wontthrow -> void
   {
-    m_current_command = steal(command);
+    m_current_command = command;
+  }
+  fn set_current_command(String command) throws -> void
+  {
+    if (m_current_command.is_empty() || m_current_command.has_been_shared()) {
+      m_current_command.assign(steal(command));
+      return;
+    }
+
+    m_current_command.write() = steal(command);
   }
   fn set_current_command(StringView command) throws -> void
   {
-    m_current_command.clear();
-    m_current_command += command;
+    if (m_current_command.is_empty() || m_current_command.has_been_shared()) {
+      m_current_command.assign(String{heap_allocator(), command});
+      return;
+    }
+
+    let &text = m_current_command.write();
+    text.clear();
+    text += command;
+  }
+  pure fn save_current_command() const wontthrow -> CopyOnWrite<String>
+  {
+    return m_current_command;
+  }
+  fn restore_current_command(const CopyOnWrite<String> &saved) wontthrow -> void
+  {
+    m_current_command = saved;
   }
   pure fn get_current_command() const wontthrow -> StringView
   {
-    return m_current_command.view();
+    if (m_current_command.is_empty()) return StringView{};
+
+    return m_current_command.read().view();
   }
   fn snapshot() const throws -> execution_snapshot
   {
@@ -1153,7 +1178,7 @@ private:
   String m_shell_executable_path{heap_allocator()};
   String m_last_argument{heap_allocator()};
   Maybe<String> m_execution_string{None};
-  String m_current_command{heap_allocator()};
+  CopyOnWrite<String> m_current_command{heap_allocator()};
   usize m_command_number{1};
   String m_completion_command_name{heap_allocator()};
   const Expression *m_line_discard_root{nullptr};

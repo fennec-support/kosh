@@ -78,6 +78,11 @@ public:
 
   pure fn is_empty() const wontthrow -> bool { return m_shared == nullptr; }
 
+  pure fn has_been_shared() const wontthrow -> bool
+  {
+    return m_shared != nullptr && m_shared->reference_count > 1;
+  }
+
   pure fn allocator() const wontthrow -> Allocator { return m_allocator; }
 
   pure fn read() const wontthrow -> const T &

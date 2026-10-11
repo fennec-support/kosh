@@ -503,7 +503,10 @@ same encoding that every spawned process receives."
   through `find_for_write`, `get_or_create`, or a setter, and a check that
   can skip its write reads first. An entry keeps its address until the
   name loses both its value and its attributes or a write clones a shared
-  body, so a write pointer never outlives the next snapshot.
+  body, so a write pointer never outlives the next snapshot. A debug
+  build stamps each shared snapshot with a checksum and asserts it when
+  the snapshot is restored, so a write through a stale pointer fails the
+  debug suite.
   `shell_variables()` and `attributes()` are views of it. A hot path finds
   the entry once and passes it on instead of looking the name up again.
 - `CompositeKeyArrays` stamps each associative element with an insertion

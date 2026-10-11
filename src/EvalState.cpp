@@ -807,6 +807,7 @@ fn VariableStore::snapshot() const throws -> variable_snapshot
 
 fn VariableStore::restore(variable_snapshot snapshot) throws -> void
 {
+  ASSERT(snapshot.variables.is_unchanged_since_share());
   m_variables = steal(snapshot.variables);
   m_is_pipestatus_scalar_possible = true;
   m_special_variable_definition_locations =

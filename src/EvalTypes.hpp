@@ -289,8 +289,21 @@ public:
   {
     let copy = VariableTable{m_body.allocator()};
     copy.m_body = m_body;
+#if !defined NDEBUG
+    copy.m_debug_shared_checksum = debug_checksum();
+#endif
 
     return copy;
+  }
+
+  pure fn is_unchanged_since_share() const wontthrow -> bool
+  {
+#if !defined NDEBUG
+    return !m_debug_shared_checksum.has_value() ||
+           *m_debug_shared_checksum == debug_checksum();
+#else
+    return true;
+#endif
   }
 
   hot pure fn find(StringView name) const wontthrow
@@ -499,6 +512,41 @@ private:
   }
 
   CopyOnWrite<variable_table_body> m_body;
+
+#if !defined NDEBUG
+  pure fn debug_checksum() const wontthrow -> u64
+  {
+    u64 checksum = 14695981039346656037ULL;
+    let const do_mix = [&](StringView bytes) wontthrow {
+      for (usize index = 0; index < bytes.length; index++) {
+        checksum ^= static_cast<u8>(bytes[index]);
+        checksum *= 1099511628211ULL;
+      }
+
+      checksum ^= bytes.length;
+      checksum *= 1099511628211ULL;
+    };
+
+    if (m_body.is_empty()) return checksum;
+
+    m_body.read().index.for_each(
+        [&](StringView name, variable_entry *const &entry) {
+          do_mix(name);
+          do_mix(entry->value.view());
+          for (let const &element : entry->elements)
+            do_mix(element.view());
+
+          checksum ^= entry->attribute_bits |
+                      (static_cast<u64>(entry->has_value) << 8) |
+                      (static_cast<u64>(entry->is_indexed_array) << 9);
+          checksum *= 1099511628211ULL;
+        });
+
+    return checksum;
+  }
+
+  Maybe<u64> m_debug_shared_checksum{};
+#endif
 };
 
 struct glob_field
