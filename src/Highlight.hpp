@@ -41,10 +41,24 @@ enum class highlight_role : u8
 
 struct highlight_span
 {
-  usize start;
-  usize end;
+  u32 start;
+  u32 end;
   highlight_role role;
+
+  constexpr highlight_span() wontthrow : start(0),
+                                         end(0),
+                                         role(highlight_role::comment)
+  {}
+
+  constexpr highlight_span(usize span_start, usize span_end,
+                           highlight_role span_role) wontthrow
+      : start(static_cast<u32>(span_start)),
+        end(static_cast<u32>(span_end)),
+        role(span_role)
+  {}
 };
+
+static_assert(sizeof(highlight_span) == 12);
 
 struct bracket_pair
 {

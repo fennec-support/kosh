@@ -33,6 +33,8 @@ using namespace internal;
 static fn scan_highlight_source(StringView source, EvalContext &context,
                                 ArrayList<highlight_span> &spans) throws -> void
 {
+  if (source.length > UINT32_MAX) return;
+
 #if !defined NDEBUG
   DEBUG_HIGHLIGHT_INPUT_BYTE_COUNT += source.length;
 #endif
