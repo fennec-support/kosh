@@ -312,8 +312,7 @@ fn EvalContext::guard_restricted_path(StringView path,
     -> void
 {
   if (!runtime_state().option_is_enabled(shell_option_id::Restricted)) return;
-  if (use != restricted_path_use::History &&
-      !os::has_directory_separator(path))
+  if (use != restricted_path_use::History && !os::has_directory_separator(path))
   {
     return;
   }
@@ -399,9 +398,8 @@ hot fn EvalContext::set_shell_variable(StringView name, StringView value) throws
   }
   if (is_bash_directory_stack_special(name)) return;
 
-  if (!has_scalar &&
-      ((entry.has_value() && (*entry)->is_indexed_array) ||
-       variable_store().associative_arrays().has(name)))
+  if (!has_scalar && ((entry.has_value() && (*entry)->is_indexed_array) ||
+                      variable_store().associative_arrays().has(name)))
   {
     assign_array_element(name, "0", value, assignment_update_mode::Replace);
 
@@ -628,7 +626,7 @@ fn EvalContext::assign_caller_binding_of_circular_nameref(
 }
 
 fn EvalContext::assign_global_beneath_locals(StringView name, StringView value,
-                                              bool should_append) throws -> bool
+                                             bool should_append) throws -> bool
 {
   for (usize frame_index = 0; frame_index < scope_store().local_scope_depth();
        frame_index++)
@@ -1495,9 +1493,8 @@ fn EvalContext::leave_function_scope() throws -> void
     let const restricted_mask =
         RuntimeState::option_mask(shell_option_id::Restricted);
     let const current_options = runtime_state().get_shell_options();
-    runtime_state().set_shell_options(
-        (*saved_options & ~restricted_mask) |
-        (current_options & restricted_mask));
+    runtime_state().set_shell_options((*saved_options & ~restricted_mask) |
+                                      (current_options & restricted_mask));
     saved_options = None;
   }
   scope_store().local_scope_depth()--;

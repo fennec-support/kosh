@@ -614,8 +614,7 @@ fn enumerate_processes(process_detail detail) throws -> ArrayList<process_entry>
     let const record_count = byte_length / sizeof(struct kinfo_proc);
     records.reserve(record_count + record_count / 2 + 16);
     byte_length = records.capacity() * sizeof(struct kinfo_proc);
-    if (::sysctl(name_mib, 4, records.begin(), &byte_length, nullptr, 0) == 0)
-    {
+    if (::sysctl(name_mib, 4, records.begin(), &byte_length, nullptr, 0) == 0) {
       did_list = true;
       break;
     }

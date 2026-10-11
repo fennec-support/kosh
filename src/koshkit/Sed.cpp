@@ -655,8 +655,8 @@ fn Sed::execute(const ExecContext &ec, EvalContext &cxt,
     line_number++;
 
     for (let &command : commands) {
-      let is_match = sed_command_matches(command, line.view(), line_number,
-                                         is_last_line);
+      let is_match =
+          sed_command_matches(command, line.view(), line_number, is_last_line);
       if (command.is_negated) is_match = !is_match;
       if (!is_match) continue;
 
@@ -740,8 +740,8 @@ fn Sed::execute(const ExecContext &ec, EvalContext &cxt,
   let has_held_line = false;
   let was_held_line_terminated = false;
 
-  for (usize source_index = 0;
-       source_index < sources.count() && !should_quit; source_index++)
+  for (usize source_index = 0; source_index < sources.count() && !should_quit;
+       source_index++)
   {
     let const input = open_named_or_stdin(ec, sources[source_index]);
     if (!input.has_value()) {

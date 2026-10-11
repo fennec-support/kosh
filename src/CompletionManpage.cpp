@@ -699,8 +699,7 @@ fn internal::complete_from_man_subcommands(StringView line, StringView token,
 
   let const second_word = second_word_of(line);
   let const is_koshkit_man = surface_command == "koshkit" &&
-                             second_word.has_value() &&
-                             *second_word == "man";
+                             second_word.has_value() && *second_word == "man";
   let is_koshkit_man_argument = false;
   if (is_koshkit_man) {
     let const second_word_end =

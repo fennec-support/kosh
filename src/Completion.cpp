@@ -1161,9 +1161,10 @@ static fn complete_variable(StringView token, EvalContext &context,
     assigned_names.for_each([&](StringView name) { do_add_name(name); });
   }
 
-  os::for_each_environment_name(&do_add_name, [](opaque *adder, StringView name) {
-    (*static_cast<decltype(do_add_name) *>(adder))(name);
-  });
+  os::for_each_environment_name(
+      &do_add_name, [](opaque *adder, StringView name) {
+        (*static_cast<decltype(do_add_name) *>(adder))(name);
+      });
 
   let dynamic_names = ArrayList<StringView>{completion_allocator()};
   context.append_dynamic_variable_names(dynamic_names);
@@ -1696,9 +1697,8 @@ fn complete(StringView line, usize cursor, EvalContext &context,
       let is_every_candidate_unchanged = true;
 
       for (let const &candidate : candidates)
-        if (!shell_syntax_candidate_is_unchanged(token, decoded_token,
-                                                 candidate.view(),
-                                                 should_quote_words))
+        if (!shell_syntax_candidate_is_unchanged(
+                token, decoded_token, candidate.view(), should_quote_words))
         {
           is_every_candidate_unchanged = false;
           break;

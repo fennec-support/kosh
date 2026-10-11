@@ -302,8 +302,8 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
                      "Ask the terminal to report modified keys such as "
                      "Ctrl-Shift-Z separately while a line is read."},
          true),
-    flag(8, "editor.history.arrow_keys_search_by_typed_prefix",
-         INTERACTIVE, shell_option_id::HistoryPrefixSearch,
+    flag(8, "editor.history.arrow_keys_search_by_typed_prefix", INTERACTIVE,
+         shell_option_id::HistoryPrefixSearch,
          entry_shape{{},
                      {},
                      {},
@@ -352,8 +352,7 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
                          0, 0),
               enum_values(WARNING_LEVEL_VALUE_NAMES)),
     special(
-        flag(13, "optimizer.show_annoying_tier", INTERACTIVE,
-             NO_SHELL_OPTION,
+        flag(13, "optimizer.show_annoying_tier", INTERACTIVE, NO_SHELL_OPTION,
              entry_shape{{}, {}, {}, "Report the annoying diagnostic tier."},
              true),
         option_storage::AnnoyingDiagnostics),
@@ -384,8 +383,7 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
                    1, 0),
         1),
     flag(
-        17, "interpreter.mimic_shebang", SEMANTIC,
-        shell_option_id::Mimicry,
+        17, "interpreter.mimic_shebang", SEMANTIC, shell_option_id::Mimicry,
         entry_shape{
             {}, {}, {}, "Mimic the shell selected by a script's shebang.", 'I'},
         false),
@@ -433,8 +431,7 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
         shell_option_id::ShowMemory,
         entry_shape{{}, {}, {}, "Print a detailed memory report at exit.", 'G'},
         false)),
-    flag(24, "completion.on_tab", INTERACTIVE,
-         shell_option_id::TabCompletion,
+    flag(24, "completion.on_tab", INTERACTIVE, shell_option_id::TabCompletion,
          entry_shape{{},
                      {},
                      {},
@@ -462,13 +459,14 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
             option_storage::SourceTraces),
     make_entry(27, "init_moods", option_type::String, SEMANTIC,
                option_storage::InitMoods, NO_SHELL_OPTION,
-               entry_shape{{},
-                           {},
-                           {},
-                           "Source the startup files of each listed mood, "
-                           "comma separated, when the shell is interactive "
-                           "or a login shell. Empty selects the session "
-                           "mood."},
+               entry_shape{
+                   {},
+                   {},
+                   {},
+                   "Source the startup files of each listed mood, "
+                   "comma separated, when the shell is interactive "
+                   "or a login shell. Empty selects the session "
+                   "mood."},
                0, 0),
 
     posix_flag(64, "interpreter.posix.export_every_assigned_variable", SEMANTIC,
@@ -497,7 +495,8 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
                            'e'},
                false),
     posix_flag(
-        67, "interpreter.posix.glob_disabled", SEMANTIC, shell_option_id::Noglob,
+        67, "interpreter.posix.glob_disabled", SEMANTIC,
+        shell_option_id::Noglob,
         entry_shape{"noglob", {}, {}, "Disable pathname expansion.", 'f'},
         false),
     flag(69, "interpreter.bash.assignments_anywhere_in_command", SEMANTIC,
@@ -621,8 +620,8 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
                      'T'},
          false),
     fixed_in_kosh(
-        posix_flag(83, "interpreter.posix.pipeline_fails_on_any_stage", SEMANTIC,
-                   shell_option_id::Pipefail,
+        posix_flag(83, "interpreter.posix.pipeline_fails_on_any_stage",
+                   SEMANTIC, shell_option_id::Pipefail,
                    entry_shape{"pipefail",
                                {},
                                {},
@@ -643,9 +642,8 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
                            "Require repeated end-of-file input before an "
                            "interactive shell exits."},
                false),
-    with_enum(make_entry(87, "editor.base_mode", option_type::Enum,
-                         INTERACTIVE, option_storage::EditorMode,
-                         NO_SHELL_OPTION,
+    with_enum(make_entry(87, "editor.base_mode", option_type::Enum, INTERACTIVE,
+                         option_storage::EditorMode, NO_SHELL_OPTION,
                          entry_shape{.help = "Edit the command line with "
                                              "emacs or vi key bindings."},
                          0, 0),
@@ -864,22 +862,21 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
                "Let echo expand backslash escapes by default.", false, false),
     flag(174, "compatibility.dev_null", SEMANTIC,
          shell_option_id::DevNullCompatibility,
-         entry_shape{{},
-                     {},
-                     {},
-                     "On Windows, open /dev/null as the NUL device."},
+         entry_shape{
+             {}, {}, {}, "On Windows, open /dev/null as the NUL device."},
          true),
     flag(175, "compatibility.slash_tmp", SEMANTIC,
          shell_option_id::SlashTmpCompatibility,
-         entry_shape{{},
-                     {},
-                     {},
-                     "On Windows, resolve /tmp and every path under it in "
-                     "the TEMP directory."},
+         entry_shape{
+             {},
+             {},
+             {},
+             "On Windows, resolve /tmp and every path under it in "
+             "the TEMP directory."},
          true),
 
-    set_only(posix_flag(68, "interpreter.posix.remember_command_paths", SEMANTIC,
-                        shell_option_id::Hashall,
+    set_only(posix_flag(68, "interpreter.posix.remember_command_paths",
+                        SEMANTIC, shell_option_id::Hashall,
                         entry_shape{"hashall",
                                     {},
                                     {},

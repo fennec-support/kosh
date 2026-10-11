@@ -268,9 +268,9 @@ template <class T>
 inline constexpr bool is_tagged_int_v = is_tagged_int<T>::value;
 
 template <class T>
-concept is_cloneable =
-    requires(const T &value) { value.clone(); } &&
-    std::is_same_v<decltype(std::declval<const T &>().clone()), T>;
+concept is_cloneable = requires(const T &value) {
+  value.clone();
+} && std::is_same_v<decltype(std::declval<const T &>().clone()), T>;
 
 template <class T>
 concept is_plainly_copyable =

@@ -487,9 +487,8 @@ fn execute_regex(compiled_regex &compiled,
   matches[0].rm_so = 0;
   matches[0].rm_eo = static_cast<regoff_t>(options.subject.length);
   execute_flags |= REG_STARTEND;
-  const int match_result =
-      regexec(&compiled.re, options.subject.data, group_count, matches.begin(),
-              execute_flags);
+  const int match_result = regexec(&compiled.re, options.subject.data,
+                                   group_count, matches.begin(), execute_flags);
 #elif defined REG_STARTEND
   let const subject_text = String{options.scratch, options.subject};
   matches[0].rm_so = 0;

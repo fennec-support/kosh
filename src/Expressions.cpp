@@ -2541,8 +2541,9 @@ IfStatement::IfStatement(SourceLocation location, const Expression *condition,
 
 IfStatement::~IfStatement() = default;
 
-hot fn IfStatement::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const
-    throws -> status_result
+hot fn IfStatement::evaluate_impl(EvalContext &cxt,
+                                  root_evaluation_mode) const throws
+    -> status_result
 {
   ASSERT(m_condition != nullptr);
   ASSERT(m_then != nullptr);
@@ -2670,8 +2671,9 @@ DummyExpression::DummyExpression(SourceLocation location)
 
 fn DummyExpression::is_dummy() const wontthrow -> bool { return true; }
 
-fn DummyExpression::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const
-    throws -> status_result
+fn DummyExpression::evaluate_impl(EvalContext &cxt,
+                                  root_evaluation_mode) const throws
+    -> status_result
 {
   SET_AND_RETURN_EXIT_STATUS(cxt, 0);
 }

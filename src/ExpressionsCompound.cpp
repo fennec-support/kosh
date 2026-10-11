@@ -492,9 +492,8 @@ cold fn CompoundListCondition::to_ast_string(usize layer) const throws -> String
   return s;
 }
 
-hot fn CompoundListCondition::evaluate_impl(EvalContext &cxt,
-                                            root_evaluation_mode mode) const
-    throws -> status_result
+hot fn CompoundListCondition::evaluate_impl(
+    EvalContext &cxt, root_evaluation_mode mode) const throws -> status_result
 {
   ASSERT(m_cmd != nullptr);
   cxt.evaluation_metrics_store().begin_command_evaluation();
@@ -855,8 +854,9 @@ cold fn Pipeline::evaluate_with_compound_stages(EvalContext &cxt) const throws
   SET_AND_RETURN_EXIT_STATUS(cxt, ret);
 }
 
-hot fn Pipeline::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const
-    throws -> status_result
+hot fn Pipeline::evaluate_impl(EvalContext &cxt,
+                               root_evaluation_mode) const throws
+    -> status_result
 {
   ASSERT(m_commands.count() > 1);
 

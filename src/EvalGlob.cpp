@@ -550,10 +550,9 @@ fn EvalContext::expand_path_recurse(ArrayList<glob_field> fields) throws
       let const should_list_symlinked_directories =
           !has_pattern_after || component_start != 0;
       let relatives = ArrayList<String>{scratch};
-      collect_globstar_paths(base, StringView{""}, directory_position,
-                             is_shopt_enabled("dotglob"),
-                             should_list_symlinked_directories, true, 0,
-                             scratch, relatives);
+      collect_globstar_paths(
+          base, StringView{""}, directory_position, is_shopt_enabled("dotglob"),
+          should_list_symlinked_directories, true, 0, scratch, relatives);
 
       if (!directory_position) {
         if (!prefix.is_empty()) {
@@ -721,9 +720,8 @@ fn EvalContext::expand_colon_tildes(WordSegment &segment,
   usize i = 0;
 
   while (i < view.length) {
-    let const is_separator =
-        view[i] == ':' ||
-        (equals_position.has_value() && *equals_position == i);
+    let const is_separator = view[i] == ':' || (equals_position.has_value() &&
+                                                *equals_position == i);
     if (is_separator && i + 1 < view.length && view[i + 1] == '~') {
       usize prefix_end = i + 2;
 

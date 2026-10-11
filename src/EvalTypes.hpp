@@ -184,9 +184,8 @@ enum class variable_attribute : u8
 
 struct variable_entry
 {
-  explicit variable_entry(Allocator allocator) wontthrow
-      : value{allocator},
-        elements{allocator}
+  explicit variable_entry(Allocator allocator) wontthrow : value{allocator},
+                                                           elements{allocator}
   {}
   variable_entry(const variable_entry &) = delete;
   variable_entry &operator=(const variable_entry &) = delete;
@@ -417,8 +416,8 @@ public:
     let &table = body();
     if (!entry.has_value) table.value_count++;
     entry.has_value = true;
-    let const is_buffer_wasteful = entry.value.count() > 256 &&
-                                   value.length < entry.value.count() / 2;
+    let const is_buffer_wasteful =
+        entry.value.count() > 256 && value.length < entry.value.count() / 2;
     if (is_buffer_wasteful) {
       entry.value = String{table.allocator, value};
 
@@ -884,8 +883,7 @@ public:
   fn forget_done_jobs() throws -> void;
   fn forget_done_job(i32 id) throws -> void;
   fn mark_job_waited(i32 id, bool should_remember_status) wontthrow -> void;
-  fn mark_job_waited(job &entry, bool should_remember_status) wontthrow
-      -> void;
+  fn mark_job_waited(job &entry, bool should_remember_status) wontthrow -> void;
   fn forget_waited_jobs() throws -> void
   {
     if (m_has_waited_jobs) forget_marked_waited_jobs();

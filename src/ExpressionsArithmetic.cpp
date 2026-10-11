@@ -497,8 +497,9 @@ conditional_command_text(const ArrayList<conditional_element> &elements) throws
   return command_text;
 }
 
-fn ConditionalCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode)
-    const throws -> status_result
+fn ConditionalCommand::evaluate_impl(EvalContext &cxt,
+                                     root_evaluation_mode) const throws
+    -> status_result
 {
   cxt.source_store().set_current_location(source_location());
 
@@ -603,8 +604,9 @@ static fn arithmetic_clause_command_text(StringView clause) throws -> String
   return command_text;
 }
 
-fn ArithmeticCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode)
-    const throws -> status_result
+fn ArithmeticCommand::evaluate_impl(EvalContext &cxt,
+                                    root_evaluation_mode) const throws
+    -> status_result
 {
   LOG(Debug, "evaluating the arithmetic command '%.*s'",
       static_cast<int>(m_expression.length), m_expression.data);
@@ -760,8 +762,9 @@ cold fn CStyleForLoop::to_ast_string(usize layer) const throws -> String
          m_body->to_ast_string(layer + 1);
 }
 
-fn CStyleForLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const
-    throws -> status_result
+fn CStyleForLoop::evaluate_impl(EvalContext &cxt,
+                                root_evaluation_mode) const throws
+    -> status_result
 {
   ASSERT(m_body != nullptr);
 
@@ -1380,8 +1383,9 @@ cold fn FunctionDefinition::to_ast_string(usize layer) const throws -> String
          m_body->to_ast_string(layer + 1);
 }
 
-fn FunctionDefinition::evaluate_impl(EvalContext &cxt, root_evaluation_mode)
-    const throws -> status_result
+fn FunctionDefinition::evaluate_impl(EvalContext &cxt,
+                                     root_evaluation_mode) const throws
+    -> status_result
 {
   ASSERT(m_body != nullptr);
 
@@ -1556,8 +1560,9 @@ fn RedirectedCommand::redirections() const wontthrow
   return m_redirections;
 }
 
-fn RedirectedCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode)
-    const throws -> status_result
+fn RedirectedCommand::evaluate_impl(EvalContext &cxt,
+                                    root_evaluation_mode) const throws
+    -> status_result
 {
   if (is_async()) return {static_cast<i32>(evaluate_async(cxt)), 0};
 

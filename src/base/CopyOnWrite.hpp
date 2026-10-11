@@ -36,14 +36,13 @@ public:
     if (m_shared != nullptr) m_shared->reference_count++;
   }
 
-  CopyOnWrite(CopyOnWrite &&other) wontthrow
-      : m_allocator{other.m_allocator},
-        m_shared{other.m_shared}
+  CopyOnWrite(CopyOnWrite &&other) wontthrow : m_allocator{other.m_allocator},
+                                               m_shared{other.m_shared}
   {
     other.m_shared = nullptr;
   }
 
-  fn operator=(const CopyOnWrite &other) wontthrow -> CopyOnWrite &
+  fn operator=(const CopyOnWrite &other) wontthrow->CopyOnWrite &
   {
     if (m_shared == other.m_shared) return *this;
 
@@ -55,7 +54,7 @@ public:
     return *this;
   }
 
-  fn operator=(CopyOnWrite &&other) wontthrow -> CopyOnWrite &
+  fn operator=(CopyOnWrite &&other) wontthrow->CopyOnWrite &
   {
     if (this == &other) return *this;
 

@@ -335,7 +335,8 @@ fn get_utf8_length(const char *bytes, usize byte_count) -> usize
     if (((word - LOW_BITS) & ~word & HIGH_BITS) != 0) break;
     let const continuation_bits = word & ~(word << 1) & HIGH_BITS;
     codepoint_count +=
-        sizeof(u64) - static_cast<usize>(__builtin_popcountll(continuation_bits));
+        sizeof(u64) -
+        static_cast<usize>(__builtin_popcountll(continuation_bits));
     byte_offset += sizeof(u64);
   }
 

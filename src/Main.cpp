@@ -2241,9 +2241,9 @@ fn kosh_main(int argc, char **argv) -> int
   }
   if (FLAG_FORMAT.is_enabled()) {
     try {
-      return koshka::run_format_operation(
-          file_names, FLAG_APPLY.is_enabled(), FLAG_LINT.is_enabled(),
-          ast_arena, context, identity.session_mood);
+      return koshka::run_format_operation(file_names, FLAG_APPLY.is_enabled(),
+                                          FLAG_LINT.is_enabled(), ast_arena,
+                                          context, identity.session_mood);
     } catch (const koshka::Error &error) {
       koshka::show_message(error.to_string());
 

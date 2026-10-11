@@ -1412,9 +1412,8 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
       let const body = has_stripped_escape
                            ? inner.view()
                            : m_source.substring_of_length(
-                                 body_start,
-                                 m_cursor_position + byte_count - 1 -
-                                     body_start);
+                                 body_start, m_cursor_position + byte_count -
+                                                 1 - body_start);
       word.segments.push(WordSegment{
           WordSegment::Kind::CommandSubstitution,
           SegmentText{bump_allocator(arena()), body},
@@ -1429,8 +1428,7 @@ flatten hot alwaysinline fn Lexer::lex_identifier() throws -> Token *
         let const raw_body = m_source.substring_of_length(
             raw_body_position, byte_count - relative_open_backtick_pos - 2);
         validate_substitution_body(
-            raw_body_position,
-            raw_body.length == body.length ? raw_body : body,
+            raw_body_position, raw_body.length == body.length ? raw_body : body,
             here(m_cursor_position + relative_open_backtick_pos,
                  byte_count - relative_open_backtick_pos));
       }

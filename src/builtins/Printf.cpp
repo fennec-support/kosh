@@ -70,8 +70,9 @@ fn decode_utf8_code_point(const String &arg, usize start) throws -> i64
   return code_point;
 }
 
-fn parse_printf_number(const String &arg, bool is_unsigned_conversion = false)
-    throws -> printf_number
+fn parse_printf_number(const String &arg,
+                       bool is_unsigned_conversion = false) throws
+    -> printf_number
 {
   if (!arg.is_empty() && (arg[0] == '\'' || arg[0] == '"')) {
     return {arg.count() > 1 ? decode_utf8_code_point(arg, 1) : 0, true, false,
@@ -128,9 +129,8 @@ fn parse_printf_number(const String &arg, bool is_unsigned_conversion = false)
         arg.view().substring_of_length(digit_start, number_end - digit_start);
     let const unsigned_value =
         is_hexadecimal ? utils::parse_integer_in_base_u64(digits, int_base::hex)
-        : is_octal
-            ? utils::parse_integer_in_base_u64(digits, int_base::octal)
-            : utils::parse_decimal_u64(digits);
+        : is_octal ? utils::parse_integer_in_base_u64(digits, int_base::octal)
+                   : utils::parse_decimal_u64(digits);
     if (!unsigned_value.is_error()) {
       value = static_cast<i64>(unsigned_value.value());
       is_out_of_range = false;

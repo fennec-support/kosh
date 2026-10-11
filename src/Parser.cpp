@@ -1121,8 +1121,7 @@ fn Parser::build_heredoc_redirection(
       delimiter_token->source_location().position ==
           op_location.position + op_location.length)
   {
-    let const &word =
-        static_cast<tokens::WordToken *>(delimiter_token)->word();
+    let const &word = static_cast<tokens::WordToken *>(delimiter_token)->word();
     if (word.segments.count() == 1 &&
         word.segments[0].kind == WordSegment::Kind::UnquotedText &&
         word.segments[0].text.view() == "-")
@@ -1152,8 +1151,7 @@ fn Parser::build_heredoc_redirection(
                                       ? heredoc_tab_policy::Strip
                                       : heredoc_tab_policy::Preserve;
   let const has_unquoted_leading_dash =
-      !is_separated_strip_operator &&
-      !delimiter_word.segments.is_empty() &&
+      !is_separated_strip_operator && !delimiter_word.segments.is_empty() &&
       delimiter_word.segments[0].kind == WordSegment::Kind::UnquotedText &&
       !delimiter_word.segments[0].text.is_empty() &&
       delimiter_word.segments[0].text.view()[0] == '-';
@@ -1725,9 +1723,8 @@ fn Parser::consume_bash_array_assignment() throws -> ArrayList<const Token *>
   return elements;
 }
 
-fn Parser::consume_bash_array_elements(const Token *open,
-                                       ArrayList<const Token *> &elements)
-    throws -> void
+fn Parser::consume_bash_array_elements(
+    const Token *open, ArrayList<const Token *> &elements) throws -> void
 {
   loop
   {

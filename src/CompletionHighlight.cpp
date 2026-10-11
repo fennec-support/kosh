@@ -228,8 +228,8 @@ static pure fn position_is_highlight_word_break(StringView line, usize position,
   }
 }
 
-static fn scan_dollar_expansion(StringView line, usize dollar,
-                                usize end) throws -> usize
+static fn scan_dollar_expansion(StringView line, usize dollar, usize end) throws
+    -> usize
 {
   let i = dollar + 1;
   if (i >= end) return i;
@@ -1023,10 +1023,9 @@ color_arithmetic(StringView line, usize begin, usize end, EvalContext &context,
   return i;
 }
 
-static fn
-scan_heredoc_bodies(StringView line, usize position, usize end,
-                    const ArrayList<lexer::pending_heredoc> &pending,
-                    ArrayList<highlight_span> &spans) throws -> usize
+static fn scan_heredoc_bodies(StringView line, usize position, usize end,
+                              const ArrayList<lexer::pending_heredoc> &pending,
+                              ArrayList<highlight_span> &spans) throws -> usize
 {
   let i = position;
 

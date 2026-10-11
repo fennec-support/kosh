@@ -958,8 +958,7 @@ fn open_file_descriptor(StringView path, file_open_mode mode)
   att.bInheritHandle = FALSE;
   att.lpSecurityDescriptor = nullptr; /* NOLINT */
 
-  let const path_text =
-      is_mapped_dev_null(path) ? StringView{"NUL"} : path;
+  let const path_text = is_mapped_dev_null(path) ? StringView{"NUL"} : path;
   let const wide_path = path_to_wide(path_text, heap_allocator());
   if (!wide_path.has_value()) return koshka::None;
   let const deadline_milliseconds = GetTickCount64() + 2000;

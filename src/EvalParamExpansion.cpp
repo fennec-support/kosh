@@ -3051,12 +3051,10 @@ pure static fn longest_possible_pattern_match(StringView pattern,
   return length;
 }
 
-alwaysinline static fn
-longest_pattern_match_at(StringView pattern, const Bitset &pattern_active,
-                         StringView value, usize start, extglob_mode mode,
-                         glob_charset charset,
-                         Maybe<usize> longest_possible = None) throws
-    -> Maybe<usize>
+alwaysinline static fn longest_pattern_match_at(
+    StringView pattern, const Bitset &pattern_active, StringView value,
+    usize start, extglob_mode mode, glob_charset charset,
+    Maybe<usize> longest_possible = None) throws -> Maybe<usize>
 {
   let const is_utf8 = charset == glob_charset::Utf8;
   let first_end = value.length;

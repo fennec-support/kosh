@@ -88,9 +88,9 @@ fn Kill::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   let const do_resolve_signal = [&ec](StringView spec, usize index)
                                     throws -> i32 {
-    if (let const parsed = spec.to<i64>();
-        !parsed.is_error() && spec[0] >= '0' && spec[0] <= '9' &&
-        parsed.value() <= INT32_MAX)
+    if (let const parsed = spec.to<i64>(); !parsed.is_error() &&
+                                           spec[0] >= '0' && spec[0] <= '9' &&
+                                           parsed.value() <= INT32_MAX)
     {
       return static_cast<i32>(parsed.value());
     }

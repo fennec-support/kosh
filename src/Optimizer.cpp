@@ -44,9 +44,8 @@ pure fn is_constant_arithmetic_text(StringView text) wontthrow -> bool
     if (!CONSTANT_BYTES.is_member[static_cast<u8>(text[i])]) return false;
 
     let const is_growing_operator =
-        i + 1 < text.length &&
-        ((text[i] == '*' && text[i + 1] == '*') ||
-         (text[i] == '<' && text[i + 1] == '<'));
+        i + 1 < text.length && ((text[i] == '*' && text[i + 1] == '*') ||
+                                (text[i] == '<' && text[i + 1] == '<'));
     if (!is_growing_operator) continue;
 
     growing_operator_count++;

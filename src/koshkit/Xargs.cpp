@@ -76,10 +76,9 @@ class XargsReader
 {
 public:
   XargsReader(os::descriptor fd, xargs_item_format format,
-              Allocator allocator) throws
-      : m_fd{fd},
-        m_format{format},
-        m_buffer{allocator}
+              Allocator allocator) throws : m_fd{fd},
+                                            m_format{format},
+                                            m_buffer{allocator}
   {
     m_buffer.reserve(READ_CHUNK_LENGTH);
   }
@@ -88,7 +87,8 @@ public:
   {
     switch (m_format) {
     case xargs_item_format::Quoted: return next_quoted(allocator);
-    case xargs_item_format::NullSeparated: return next_null_separated(allocator);
+    case xargs_item_format::NullSeparated:
+      return next_null_separated(allocator);
     case xargs_item_format::Lines: return next_line(allocator);
     }
 
@@ -299,7 +299,8 @@ fn Xargs::execute(const ExecContext &ec, EvalContext &cxt,
 
   if (FLAG_XARGS_PROMPT.is_enabled()) FLAG_XARGS_TRACE.enable();
 
-  let const format = FLAG_XARGS_NULL.is_enabled() ? xargs_item_format::NullSeparated
+  let const format = FLAG_XARGS_NULL.is_enabled()
+                         ? xargs_item_format::NullSeparated
                      : FLAG_XARGS_REPLACE.is_set() ? xargs_item_format::Lines
                                                    : xargs_item_format::Quoted;
   let reader = XargsReader{ec.in_fd.value_or(KOSH_STDIN), format,
@@ -352,12 +353,15 @@ fn Xargs::execute(const ExecContext &ec, EvalContext &cxt,
   usize deferred_line_number = 0;
   bool has_deferred_item = false;
   bool has_reached_eof_item = false;
-  let const do_read_item = [&](Allocator allocator) throws -> Maybe<xargs_item> {
+  let const do_read_item = [&](Allocator allocator)
+                               throws -> Maybe<xargs_item> {
     if (has_deferred_item) {
       has_deferred_item = false;
 
-      return xargs_item{String{allocator, deferred_value.view()},
-                        deferred_line_number};
+      return xargs_item{
+          String{allocator, deferred_value.view()},
+          deferred_line_number
+      };
     }
     if (has_reached_eof_item) return None;
 

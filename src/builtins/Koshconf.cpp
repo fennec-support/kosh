@@ -301,9 +301,8 @@ fn run_list(const ExecContext &ec, EvalContext &cxt,
       listed.push(&option);
   }
 
-  let const sorted =
-      steal(listed).make_sorted([](const option_descriptor *left,
-                                   const option_descriptor *right) {
+  let const sorted = steal(listed).make_sorted(
+      [](const option_descriptor *left, const option_descriptor *right) {
         return StringView{left->koshconf_name} <
                StringView{right->koshconf_name};
       });

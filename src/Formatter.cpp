@@ -1312,7 +1312,8 @@ fn render_format_pieces(const ArrayList<format_piece> &pieces,
           writer.append_attached(text);
         else
           writer.append_token(text);
-        regex_previous_end = piece.source_position + static_cast<u32>(text.length);
+        regex_previous_end =
+            piece.source_position + static_cast<u32>(text.length);
         continue;
       }
       is_in_regex_operand = false;
@@ -1320,7 +1321,8 @@ fn render_format_pieces(const ArrayList<format_piece> &pieces,
     if (conditional_depth > 0 && text == "=~") {
       is_in_regex_operand = true;
       regex_paren_depth = 0;
-      regex_previous_end = piece.source_position + static_cast<u32>(text.length);
+      regex_previous_end =
+          piece.source_position + static_cast<u32>(text.length);
     }
 
     if (piece.kind == format_piece_kind::Raw) {

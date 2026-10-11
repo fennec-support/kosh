@@ -813,9 +813,10 @@ static fn push_variable_name_candidates(StringView token, EvalContext &context,
   context.variable_names().for_each(
       [&](StringView name) { do_add_name(name); });
 
-  os::for_each_environment_name(&do_add_name, [](opaque *adder, StringView name) {
-    (*static_cast<decltype(do_add_name) *>(adder))(name);
-  });
+  os::for_each_environment_name(
+      &do_add_name, [](opaque *adder, StringView name) {
+        (*static_cast<decltype(do_add_name) *>(adder))(name);
+      });
 
   let dynamic_names = ArrayList<StringView>{heap_allocator()};
   context.append_dynamic_variable_names(dynamic_names);
@@ -1954,8 +1955,8 @@ fn internal::advance_shell_lexical_state(
         break;
       }
 
-      if (lexer::match_heredoc_line(
-              source.substring_of_length(i, line_end - i), heredoc)
+      if (lexer::match_heredoc_line(source.substring_of_length(i, line_end - i),
+                                    heredoc)
               .is_terminator)
       {
         state.active_heredoc_index++;

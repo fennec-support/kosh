@@ -1185,9 +1185,8 @@ public:
       m_sources = steal(operand_sources);
     }
 
-    m_should_print_names =
-        !m_options.should_suppress_names &&
-        (m_sources.count() > 1 || has_directory_operand);
+    m_should_print_names = !m_options.should_suppress_names &&
+                           (m_sources.count() > 1 || has_directory_operand);
     if (m_options.should_print_line_numbers) {
       m_source_line_numbers.reserve(m_sources.count());
 

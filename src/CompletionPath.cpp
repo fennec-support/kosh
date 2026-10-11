@@ -403,10 +403,9 @@ fn internal::rebuild_shell_syntax_candidate(
     append_candidate_suffix(candidate, candidate_prefix, should_quote_words);
     candidate.push(decoded_word.last_quote_character);
   }
-  append_open_quote_candidate(candidate,
-                              decoded_candidate.substring(candidate_boundary),
-                              decoded_word.last_quote_character,
-                              is_ansi_c_quote);
+  append_open_quote_candidate(
+      candidate, decoded_candidate.substring(candidate_boundary),
+      decoded_word.last_quote_character, is_ansi_c_quote);
   if (decoded_word.quote_character == 0)
     candidate.push(decoded_word.last_quote_character);
 

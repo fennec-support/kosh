@@ -141,8 +141,7 @@ static fn expand_set(StringView set, Allocator allocator,
       continue;
     }
 
-    if (repeat_target_length.has_value() && set[i] == '[' &&
-        i + 1 < set.length)
+    if (repeat_target_length.has_value() && set[i] == '[' && i + 1 < set.length)
     {
       let const repeated = decode_escaped_char(set, i + 1);
       let star = i + 1 + repeated.width_count;
@@ -154,7 +153,8 @@ static fn expand_set(StringView set, Allocator allocator,
         }
 
         if (close < set.length && set[close] == ']') {
-          let const digits = set.substring_of_length(star + 1, close - star - 1);
+          let const digits =
+              set.substring_of_length(star + 1, close - star - 1);
           let const base = !digits.is_empty() && digits[0] == '0'
                                ? int_base::octal
                                : int_base::decimal;
@@ -170,9 +170,8 @@ static fn expand_set(StringView set, Allocator allocator,
             fill_position = expanded.count();
             fill_byte = static_cast<char>(repeated.byte);
           } else {
-            let const capped = count < *repeat_target_length
-                                   ? count
-                                   : *repeat_target_length;
+            let const capped =
+                count < *repeat_target_length ? count : *repeat_target_length;
 
             for (usize n = 0; n < capped; n++)
               expanded.push(static_cast<char>(repeated.byte));

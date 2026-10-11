@@ -76,10 +76,9 @@ fn WordSegment::get_eval_cache(BumpArena *cache_arena) const throws
     -> segment_eval_cache &
 {
   if (m_eval_cache == nullptr) {
-    let *const record_arena =
-        cache_arena == nullptr || cache_arena->owns(this)
-            ? cache_arena
-            : BumpArena::find_live_owner(this);
+    let *const record_arena = cache_arena == nullptr || cache_arena->owns(this)
+                                  ? cache_arena
+                                  : BumpArena::find_live_owner(this);
     if (record_arena != nullptr) {
       m_eval_cache = record_arena->create<segment_eval_cache>();
       is_eval_cache_in_arena = true;

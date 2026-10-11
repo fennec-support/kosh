@@ -1287,39 +1287,40 @@ static fn append_report_grid(
     }
   }
 
-  let const do_append_row = [&](const ArrayList<report_table_cell>
-                                    &row) throws {
-    usize pending_space_count = 0;
-    bool did_write_indentation = false;
+  let const do_append_row =
+      [&](const ArrayList<report_table_cell> &row) throws {
+        usize pending_space_count = 0;
+        bool did_write_indentation = false;
 
-    for (usize index = 0; index < column_count; index++) {
-      let const text =
-          index < row.count() ? row[index].text.view() : StringView{};
-      let style = index < columns.count() ? columns[index].style : StringView{};
-      if (index < row.count() && !row[index].style.is_empty()) {
-        style = row[index].style;
-      }
-      let const is_right_aligned =
-          index < columns.count() &&
-          columns[index].alignment == report_table_alignment::Right;
-      let const text_width = toiletline::get_display_width(text);
-      let const padding_length =
-          text_width < widths[index] ? widths[index] - text_width : 0;
+        for (usize index = 0; index < column_count; index++) {
+          let const text =
+              index < row.count() ? row[index].text.view() : StringView{};
+          let style =
+              index < columns.count() ? columns[index].style : StringView{};
+          if (index < row.count() && !row[index].style.is_empty()) {
+            style = row[index].style;
+          }
+          let const is_right_aligned =
+              index < columns.count() &&
+              columns[index].alignment == report_table_alignment::Right;
+          let const text_width = toiletline::get_display_width(text);
+          let const padding_length =
+              text_width < widths[index] ? widths[index] - text_width : 0;
 
-      if (is_right_aligned) pending_space_count += padding_length;
-      if (!text.is_empty()) {
-        if (!did_write_indentation) output += indentation;
-        did_write_indentation = true;
-        output.append_repeated(' ', pending_space_count);
-        pending_space_count = 0;
-        append_report_text(output, text, style, should_color);
-      }
-      if (!is_right_aligned) pending_space_count += padding_length;
-      pending_space_count += column_gap_space_count;
-    }
+          if (is_right_aligned) pending_space_count += padding_length;
+          if (!text.is_empty()) {
+            if (!did_write_indentation) output += indentation;
+            did_write_indentation = true;
+            output.append_repeated(' ', pending_space_count);
+            pending_space_count = 0;
+            append_report_text(output, text, style, should_color);
+          }
+          if (!is_right_aligned) pending_space_count += padding_length;
+          pending_space_count += column_gap_space_count;
+        }
 
-    output += '\n';
-  };
+        output += '\n';
+      };
 
   if (should_show_header && !columns.is_empty()) {
     let header = ArrayList<report_table_cell>{columns.allocator()};

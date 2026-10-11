@@ -60,9 +60,9 @@ fn Read::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   if (cxt.runtime_state().is_posix_mode() &&
       (FLAG_READ_ARRAY.is_set() || FLAG_READ_TIMEOUT.is_set() ||
        FLAG_READ_NCHARS.is_set() || FLAG_READ_EXACT_NCHARS.is_set() ||
-       FLAG_READ_QUERY.is_enabled() ||
-       FLAG_READ_SILENT.is_enabled() || FLAG_READ_DELIM.is_set() ||
-       FLAG_READ_FD.is_set() || FLAG_READ_EDIT.is_enabled()))
+       FLAG_READ_QUERY.is_enabled() || FLAG_READ_SILENT.is_enabled() ||
+       FLAG_READ_DELIM.is_set() || FLAG_READ_FD.is_set() ||
+       FLAG_READ_EDIT.is_enabled()))
   {
     report_soft_builtin_error(ec, cxt, "Illegal option",
                               "Run `read --help` for the accepted options");
@@ -80,9 +80,7 @@ fn Read::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let read_fd = ec.in_fd.value_or(KOSH_STDIN);
   if (FLAG_READ_FD.is_set()) {
     let const parsed = FLAG_READ_FD.value().to<i64>();
-    if (parsed.is_error() || parsed.value() < 0 ||
-        parsed.value() > INT32_MAX)
-    {
+    if (parsed.is_error() || parsed.value() < 0 || parsed.value() > INT32_MAX) {
       report_soft_builtin_error(ec, cxt, FLAG_READ_FD.value_location(),
                                 FLAG_READ_FD.value() +
                                     ": invalid file descriptor");
@@ -433,7 +431,8 @@ fn Read::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
       let has_trailing_content = false;
       if (cursor < line.length()) {
-        if (!do_is_ifs_whitespace(cursor)) cursor += do_separator_length(cursor);
+        if (!do_is_ifs_whitespace(cursor))
+          cursor += do_separator_length(cursor);
         do_skip_ifs_whitespace();
         has_trailing_content = cursor < line.length();
       }

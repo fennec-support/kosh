@@ -231,7 +231,10 @@ fn record_directory_access(StringView directory, Allocator allocator) throws
   }
 
   if (!visited.has_value())
-    visited = frecency_entry{String{allocator, directory}, 1, now};
+    visited = frecency_entry{
+        String{allocator, directory},
+        1, now
+    };
 
   if (entries.count() >= Z_FRECENCY_MAX) {
     let const strongest =
@@ -240,8 +243,11 @@ fn record_directory_access(StringView directory, Allocator allocator) throws
     entries.reserve(Z_FRECENCY_MAX);
 
     for (usize i = 0; i + 1 < Z_FRECENCY_MAX; i++)
-      entries.push(frecency_entry{String{allocator, strongest[i].path.view()},
-                                  strongest[i].rank, strongest[i].last_access});
+      entries.push(frecency_entry{
+          String{allocator, strongest[i].path.view()},
+          strongest[i].rank,
+          strongest[i].last_access
+      });
   }
   entries.push(steal(*visited));
   write_frecency_store(entries, allocator);

@@ -277,8 +277,8 @@ fn Trap::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     if (let const &held_exit = cxt.trap_store().held_exit_action();
         held_exit.has_value())
     {
-      collected.push(listed_trap{trap_listing_order("EXIT"), "EXIT",
-                                 held_exit->view()});
+      collected.push(
+          listed_trap{trap_listing_order("EXIT"), "EXIT", held_exit->view()});
     }
 
     let const ignored_signals = cxt.runtime_state().is_bash_compatible()

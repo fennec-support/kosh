@@ -1870,9 +1870,8 @@ public:
   fn entries() const throws -> StringMap<u8>
   {
     let marked = StringMap<u8>{m_table->allocator()};
-    for_each_name([&](StringView name) throws {
-      marked.set(name, get_bits(name));
-    });
+    for_each_name([&](StringView name)
+                      throws { marked.set(name, get_bits(name)); });
 
     return marked;
   }
@@ -2239,9 +2238,8 @@ public:
   fn for_each_name(Callback do_callback) const throws -> void
   {
     m_definitions.read().for_each(
-        [&](StringView name, const FunctionBodyHandle &) throws {
-          do_callback(name);
-        });
+        [&](StringView name, const FunctionBodyHandle &)
+            throws { do_callback(name); });
   }
   fn find_source(StringView name) const wontthrow -> const String *
   {

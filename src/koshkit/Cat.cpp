@@ -177,9 +177,9 @@ fn Cat::execute(const ExecContext &ec, EvalContext &cxt,
     if (output_byte_count.has_value() && *output_byte_count > 0 &&
         do_is_output(source))
     {
-      report_soft_koshkit_util_error(
-          ec, cxt, args[0].view(),
-          String{cxt.scratch_allocator(), source} + ": input file is output file");
+      report_soft_koshkit_util_error(ec, cxt, args[0].view(),
+                                     String{cxt.scratch_allocator(), source} +
+                                         ": input file is output file");
       input_status = 1;
       continue;
     }

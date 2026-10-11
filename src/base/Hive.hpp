@@ -28,18 +28,17 @@ public:
   Hive(const Hive &) = delete;
   Hive &operator=(const Hive &) = delete;
 
-  Hive(Hive &&other) wontthrow
-      : m_allocator{other.m_allocator},
-        m_blocks{other.m_blocks},
-        m_free{other.m_free},
-        m_count{other.m_count}
+  Hive(Hive &&other) wontthrow : m_allocator{other.m_allocator},
+                                 m_blocks{other.m_blocks},
+                                 m_free{other.m_free},
+                                 m_count{other.m_count}
   {
     other.m_blocks = nullptr;
     other.m_free = nullptr;
     other.m_count = 0;
   }
 
-  fn operator=(Hive &&other) wontthrow -> Hive &
+  fn operator=(Hive &&other) wontthrow->Hive &
   {
     if (this == &other) return *this;
 
@@ -63,8 +62,8 @@ public:
     if (m_free == nullptr) add_block();
 
     let *const free_slot = m_free;
-    let *const element = new (free_slot->bytes)
-        T{static_cast<Arguments &&>(arguments)...};
+    let *const element =
+        new (free_slot->bytes) T{static_cast<Arguments &&>(arguments)...};
     m_free = free_slot->next_free;
     free_slot->next_free = nullptr;
     free_slot->is_live = true;

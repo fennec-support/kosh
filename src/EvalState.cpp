@@ -1138,31 +1138,31 @@ fn FunctionStore::append_wire(String &output) const throws -> void
     let names = ArrayList<u32>{heap_allocator()};
     let records = String{heap_allocator()};
     u32 record_count = 0;
-    m_definitions.read().for_each([&](StringView name,
-                                      const FunctionBodyHandle &storage) throws {
-      let const *info = storage.get_definition_info();
-      let const *source = storage.get_source();
-      if (info == nullptr || source == nullptr || source->is_empty() ||
-          info->line_offset < 0 || info->line_offset > INT32_MAX ||
-          info->enclosing_line_count > INT32_MAX ||
-          info->definition_line > UINT32_MAX)
-      {
-        return;
-      }
+    m_definitions.read().for_each(
+        [&](StringView name, const FunctionBodyHandle &storage) throws {
+          let const *info = storage.get_definition_info();
+          let const *source = storage.get_source();
+          if (info == nullptr || source == nullptr || source->is_empty() ||
+              info->line_offset < 0 || info->line_offset > INT32_MAX ||
+              info->enclosing_line_count > INT32_MAX ||
+              info->definition_line > UINT32_MAX)
+          {
+            return;
+          }
 
-      append_subshell_bootstrap_text(records, name);
-      append_subshell_bootstrap_u32(
-          records, find_wire_source_name(names, info->source_name_index));
-      append_subshell_bootstrap_u32(records,
-                                    static_cast<u32>(info->line_offset));
-      append_subshell_bootstrap_u32(
-          records, static_cast<u32>(info->enclosing_line_count));
-      append_subshell_bootstrap_u32(records,
-                                    static_cast<u32>(info->definition_line));
-      append_subshell_bootstrap_text(records, info->line_prefix.view());
-      append_subshell_bootstrap_text(records, info->line_suffix.view());
-      record_count++;
-    });
+          append_subshell_bootstrap_text(records, name);
+          append_subshell_bootstrap_u32(
+              records, find_wire_source_name(names, info->source_name_index));
+          append_subshell_bootstrap_u32(records,
+                                        static_cast<u32>(info->line_offset));
+          append_subshell_bootstrap_u32(
+              records, static_cast<u32>(info->enclosing_line_count));
+          append_subshell_bootstrap_u32(
+              records, static_cast<u32>(info->definition_line));
+          append_subshell_bootstrap_text(records, info->line_prefix.view());
+          append_subshell_bootstrap_text(records, info->line_suffix.view());
+          record_count++;
+        });
     append_wire_source_names(payload, names);
     append_subshell_bootstrap_u32(payload, record_count);
     payload.append(records.view());

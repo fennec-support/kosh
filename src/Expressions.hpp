@@ -929,8 +929,9 @@ public:
       -> Maybe<bool>;
 
 protected:
-  virtual fn evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
-      throws -> status_result = 0;
+  virtual fn evaluate_impl(EvalContext &cxt,
+                           root_evaluation_mode mode) const throws
+      -> status_result = 0;
 
   SourceLocation m_location;
   u32 m_source_end_position;
