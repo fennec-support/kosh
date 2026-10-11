@@ -487,7 +487,7 @@ fn is_completion_enabled() -> bool { return false; }
 
 fn set_space_after_completion(u8 mode) -> void { unused(mode); }
 
-fn set_history_prefix_search(bool enabled) -> void { unused(enabled); }
+fn set_history_prefix_search(bool is_enabled) -> void { unused(is_enabled); }
 
 fn set_hint_row(bool should_show_hints, bool should_show_diagnostics) -> void
 {
@@ -495,9 +495,9 @@ fn set_hint_row(bool should_show_hints, bool should_show_diagnostics) -> void
   unused(should_show_diagnostics);
 }
 
-fn set_auto_pair(bool enabled) -> void { unused(enabled); }
+fn set_auto_pair(bool is_enabled) -> void { unused(is_enabled); }
 
-fn set_extended_keys(bool enabled) -> void { unused(enabled); }
+fn set_extended_keys(bool is_enabled) -> void { unused(is_enabled); }
 
 fn enter_calc_history() -> void {}
 
@@ -881,11 +881,11 @@ fn enable_job_notifications(koshka::EvalContext &context) -> void
   unused(context);
 }
 
-fn set_ghost_enabled(bool enabled) -> void { unused(enabled); }
+fn set_ghost_enabled(bool is_enabled) -> void { unused(is_enabled); }
 
-fn set_highlight_enabled(bool enabled) -> void { unused(enabled); }
+fn set_highlight_enabled(bool is_enabled) -> void { unused(is_enabled); }
 
-fn set_colors_enabled(bool enabled) -> void { unused(enabled); }
+fn set_colors_enabled(bool is_enabled) -> void { unused(is_enabled); }
 
 fn set_edit_mode(edit_mode mode) -> void { unused(mode); }
 

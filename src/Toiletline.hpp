@@ -101,21 +101,21 @@ bool rewrite_history_event(usize number, StringView expected,
 
 void enable_job_notifications(koshka::EvalContext &context);
 
-void set_ghost_enabled(bool enabled);
+void set_ghost_enabled(bool is_enabled);
 
 void set_space_after_completion(u8 mode);
 
-void set_history_prefix_search(bool enabled);
+void set_history_prefix_search(bool is_enabled);
 
 void set_hint_row(bool should_show_hints, bool should_show_diagnostics);
 
-void set_auto_pair(bool enabled);
+void set_auto_pair(bool is_enabled);
 
-void set_extended_keys(bool enabled);
+void set_extended_keys(bool is_enabled);
 
-void set_highlight_enabled(bool enabled);
+void set_highlight_enabled(bool is_enabled);
 
-void set_colors_enabled(bool enabled);
+void set_colors_enabled(bool is_enabled);
 
 enum class edit_mode : u8
 {

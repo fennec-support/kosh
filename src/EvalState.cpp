@@ -1092,7 +1092,7 @@ fn StartupStore::append_wire(String &output) const throws -> void
 fn DiagnosticsStore::append_wire(String &output) const throws -> void
 {
   append_wire_section(output, wire_section::Diagnostics, [&](String &payload) {
-    payload.push(static_cast<char>(m_source_traces_enabled));
+    payload.push(static_cast<char>(m_is_source_traces_enabled));
   });
 }
 

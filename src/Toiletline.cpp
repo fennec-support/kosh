@@ -2481,9 +2481,9 @@ fn enable_job_notifications(koshka::EvalContext &context) -> void
   ::tl_set_wake_callback(kosh_wake_callback);
 }
 
-fn set_ghost_enabled(bool enabled) -> void
+fn set_ghost_enabled(bool is_enabled) -> void
 {
-  ::tl_set_ghost_enabled(enabled ? 1 : 0);
+  ::tl_set_ghost_enabled(is_enabled ? 1 : 0);
 }
 
 fn set_space_after_completion(u8 mode) -> void
@@ -2491,9 +2491,9 @@ fn set_space_after_completion(u8 mode) -> void
   ::tl_set_space_after_completion(static_cast<tl_space_after_completion>(mode));
 }
 
-fn set_history_prefix_search(bool enabled) -> void
+fn set_history_prefix_search(bool is_enabled) -> void
 {
-  ::tl_set_history_prefix_search(enabled ? 1 : 0);
+  ::tl_set_history_prefix_search(is_enabled ? 1 : 0);
 }
 
 fn set_hint_row(bool should_show_hints, bool should_show_diagnostics) -> void
@@ -2506,21 +2506,24 @@ fn set_hint_row(bool should_show_hints, bool should_show_diagnostics) -> void
   koshka::completion::set_slow_gather_notice(::tl_show_completion_loading);
 }
 
-fn set_auto_pair(bool enabled) -> void { ::tl_set_auto_pair(enabled ? 1 : 0); }
-
-fn set_extended_keys(bool enabled) -> void
+fn set_auto_pair(bool is_enabled) -> void
 {
-  ::tl_set_extended_keys(enabled ? 1 : 0);
+  ::tl_set_auto_pair(is_enabled ? 1 : 0);
 }
 
-fn set_highlight_enabled(bool enabled) -> void
+fn set_extended_keys(bool is_enabled) -> void
 {
-  ::tl_set_highlight_callback(enabled ? kosh_highlight_callback : nullptr);
+  ::tl_set_extended_keys(is_enabled ? 1 : 0);
 }
 
-fn set_colors_enabled(bool enabled) -> void
+fn set_highlight_enabled(bool is_enabled) -> void
 {
-  ::tl_set_colors_enabled(enabled ? 1 : 0);
+  ::tl_set_highlight_callback(is_enabled ? kosh_highlight_callback : nullptr);
+}
+
+fn set_colors_enabled(bool is_enabled) -> void
+{
+  ::tl_set_colors_enabled(is_enabled ? 1 : 0);
 }
 
 fn set_edit_mode(edit_mode mode) -> void

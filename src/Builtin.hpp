@@ -288,7 +288,7 @@ i32 execute_builtin(ExecContext &&ec, EvalContext &cxt) throws;
 
 fn query_shell_option(const EvalContext &cxt, StringView name) throws
     -> Maybe<bool>;
-fn apply_shell_option(EvalContext &cxt, StringView name, bool enable) throws
+fn apply_shell_option(EvalContext &cxt, StringView name, bool is_enabled) throws
     -> bool;
 
 fn shell_option_names() throws -> const ArrayList<StringView> &;

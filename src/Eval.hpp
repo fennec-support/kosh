@@ -227,12 +227,15 @@ public:
                       RuntimeState &runtime) wontthrow -> bool;
 
   pure fn is_diagnostics_disabled() const wontthrow -> bool;
-  fn set_diagnostics_disabled(bool enabled) wontthrow -> void;
+  fn set_diagnostics_disabled(bool is_disabled) wontthrow -> void;
   pure fn is_annoying_diagnostics_enabled() const wontthrow -> bool;
-  fn set_annoying_diagnostics_enabled(bool enabled) wontthrow -> void;
+  fn set_annoying_diagnostics_enabled(bool is_enabled) wontthrow -> void;
 #define KOSH_RUNTIME_FLAG(getter, setter, flag)                                \
   pure fn getter() const wontthrow -> bool { return has_flag(Flag::flag); }    \
-  fn setter(bool enabled) wontthrow -> void { set_flag(Flag::flag, enabled); }
+  fn setter(bool is_enabled) wontthrow -> void                                 \
+  {                                                                            \
+    set_flag(Flag::flag, is_enabled);                                          \
+  }
 
   KOSH_RUNTIME_FLAG(was_error_unset_set_explicitly,
                     set_error_unset_set_explicitly, ErrorUnsetExplicit)
@@ -315,9 +318,9 @@ public:
     return m_tab_selector;
   }
 
-  fn set_mimicry(bool enabled) wontthrow -> void
+  fn set_mimicry(bool is_enabled) wontthrow -> void
   {
-    set_option(shell_option_id::Mimicry, enabled);
+    set_option(shell_option_id::Mimicry, is_enabled);
   }
   pure fn is_mimicry_enabled() const wontthrow -> bool
   {
@@ -352,19 +355,19 @@ public:
   {
     m_reporting = state;
   }
-  fn set_warnings_enabled(bool enabled) wontthrow -> void
+  fn set_warnings_enabled(bool is_enabled) wontthrow -> void
   {
-    if (!enabled)
+    if (!is_enabled)
       m_reporting.warning_level = 0;
     else if (m_reporting.warning_level < 3)
       m_reporting.warning_level++;
   }
 
-  fn set_option(shell_option_id option, bool enabled) wontthrow -> void
+  fn set_option(shell_option_id option, bool is_enabled) wontthrow -> void
   {
     LOG(Info, "option %u flips to %s", static_cast<unsigned>(option),
-        enabled ? "on" : "off");
-    if (enabled)
+        is_enabled ? "on" : "off");
+    if (is_enabled)
       m_shell_options |= option_mask(option);
     else
       m_shell_options &= ~option_mask(option);
@@ -376,11 +379,11 @@ public:
     }
   }
 
-  fn set_shopt_option(u8 index, bool enabled) wontthrow -> void
+  fn set_shopt_option(u8 index, bool is_enabled) wontthrow -> void
   {
     let const mask = u64{1} << index;
     m_shopt.overrides |= mask;
-    if (enabled)
+    if (is_enabled)
       m_shopt.values |= mask;
     else
       m_shopt.values &= ~mask;
@@ -399,9 +402,9 @@ public:
   pure fn is_shopt_enabled(shopt_option_id option) const wontthrow -> bool;
 
 #define KOSH_RUNTIME_OPTION(setter, getter, option)                            \
-  fn setter(bool enabled) wontthrow -> void                                    \
+  fn setter(bool is_enabled) wontthrow -> void                                 \
   {                                                                            \
-    set_option(shell_option_id::option, enabled);                              \
+    set_option(shell_option_id::option, is_enabled);                           \
   }                                                                            \
   pure fn getter() const wontthrow -> bool                                     \
   {                                                                            \
@@ -431,9 +434,9 @@ public:
 
 #undef KOSH_RUNTIME_OPTION
 
-  fn set_show_exit_code(bool enabled) wontthrow -> void
+  fn set_show_exit_code(bool is_enabled) wontthrow -> void
   {
-    set_option(shell_option_id::ShowExitCode, enabled);
+    set_option(shell_option_id::ShowExitCode, is_enabled);
   }
   pure fn show_exit_code() const wontthrow -> bool
   {
@@ -490,9 +493,9 @@ private:
   {
     return (m_flags & static_cast<u8>(flag)) != 0;
   }
-  fn set_flag(Flag flag, bool enabled) wontthrow -> void
+  fn set_flag(Flag flag, bool is_enabled) wontthrow -> void
   {
-    if (enabled)
+    if (is_enabled)
       m_flags |= static_cast<u8>(flag);
     else
       m_flags &= static_cast<u8>(~static_cast<u8>(flag));
@@ -563,9 +566,10 @@ inline pure fn RuntimeState::is_diagnostics_disabled() const wontthrow -> bool
   return m_reporting.is_diagnostics_disabled;
 }
 
-inline fn RuntimeState::set_diagnostics_disabled(bool enabled) wontthrow -> void
+inline fn RuntimeState::set_diagnostics_disabled(bool is_disabled) wontthrow
+    -> void
 {
-  m_reporting.is_diagnostics_disabled = enabled;
+  m_reporting.is_diagnostics_disabled = is_disabled;
 }
 
 inline pure fn RuntimeState::is_annoying_diagnostics_enabled() const wontthrow
@@ -574,10 +578,11 @@ inline pure fn RuntimeState::is_annoying_diagnostics_enabled() const wontthrow
   return !m_reporting.is_annoying_disabled;
 }
 
-inline fn RuntimeState::set_annoying_diagnostics_enabled(bool enabled) wontthrow
+inline fn
+RuntimeState::set_annoying_diagnostics_enabled(bool is_enabled) wontthrow
     -> void
 {
-  m_reporting.is_annoying_disabled = !enabled;
+  m_reporting.is_annoying_disabled = !is_enabled;
 }
 
 } /* namespace koshka */
@@ -654,11 +659,11 @@ public:
     m_mutations.reporting.annoying++;
   }
 
-  fn set_warning_suppressed(suppressible_warning which, bool enabled) wontthrow
-      -> void
+  fn set_warning_suppressed(suppressible_warning which,
+                            bool is_suppressed) wontthrow -> void
   {
     let const bit = u32{1} << static_cast<u32>(which);
-    if (enabled)
+    if (is_suppressed)
       m_suppressed_warnings |= bit;
     else
       m_suppressed_warnings &= ~bit;
@@ -903,10 +908,10 @@ private:
 class ExecutionStore
 {
 public:
-  explicit ExecutionStore(bool shell_is_interactive,
+  explicit ExecutionStore(bool is_shell_interactive,
                           String shell_name) wontthrow
       : m_shell_name(steal(shell_name)),
-        m_shell_is_interactive(shell_is_interactive)
+        m_is_shell_interactive(is_shell_interactive)
   {}
 
   pure fn get_shell_name() const wontthrow -> StringView
@@ -1114,11 +1119,11 @@ public:
   }
   pure fn shell_is_interactive() const wontthrow -> bool
   {
-    return m_shell_is_interactive;
+    return m_is_shell_interactive;
   }
-  fn set_shell_is_interactive(bool enabled) wontthrow -> void
+  fn set_shell_is_interactive(bool is_interactive) wontthrow -> void
   {
-    m_shell_is_interactive = enabled;
+    m_is_shell_interactive = is_interactive;
   }
 
 private:
@@ -1149,20 +1154,20 @@ private:
   bool m_should_mark_completion_directories{false};
   bool m_is_prompt_command_running{false};
   bool m_is_child_environment_fixed{false};
-  bool m_shell_is_interactive{false};
+  bool m_is_shell_interactive{false};
 };
 
 class EvaluationMetricsStore
 {
 public:
-  fn add_evaluated_expression(bool enabled) wontthrow -> void
+  fn add_evaluated_expression(bool is_enabled) wontthrow -> void
   {
-    if (enabled) m_expressions_executed_last++;
+    if (is_enabled) m_expressions_executed_last++;
   }
 
-  fn add_expansion(bool enabled) wontthrow -> void
+  fn add_expansion(bool is_enabled) wontthrow -> void
   {
-    if (enabled) m_expansions_last++;
+    if (is_enabled) m_expansions_last++;
   }
 
   fn add_builtin_run(bool is_enabled) wontthrow -> void
@@ -2588,13 +2593,13 @@ public:
   {
     return m_parameter_expansion_depth;
   }
-  fn set_glob_exempt_for_test(bool enabled) wontthrow
+  fn set_glob_exempt_for_test(bool is_exempt) wontthrow
   {
-    m_glob_exempt_for_test = enabled;
+    m_is_glob_exempt_for_test = is_exempt;
   }
   pure fn glob_exempt_for_test() const wontthrow -> bool
   {
-    return m_glob_exempt_for_test;
+    return m_is_glob_exempt_for_test;
   }
   fn is_expanding_here_document() wontthrow -> bool &
   {
@@ -2674,7 +2679,7 @@ private:
   usize m_substitution_depth{0};
   usize m_parameter_expansion_depth{0};
   getopts_cursor m_getopts_cursor{};
-  bool m_glob_exempt_for_test{false};
+  bool m_is_glob_exempt_for_test{false};
   bool m_is_expanding_here_document{false};
   bool m_is_expanding_assignment_value{false};
   bool m_is_expanding_single_string{false};
@@ -3023,17 +3028,17 @@ class StartupStore
 {
 public:
   pure fn is_login_shell() const wontthrow -> bool { return m_is_login_shell; }
-  fn set_login_shell(bool enabled) wontthrow -> void
+  fn set_login_shell(bool is_login_shell) wontthrow -> void
   {
-    m_is_login_shell = enabled;
+    m_is_login_shell = is_login_shell;
   }
   pure fn has_custom_rcfile() const wontthrow -> bool
   {
     return m_has_custom_rcfile;
   }
-  fn set_custom_rcfile(bool enabled) wontthrow -> void
+  fn set_custom_rcfile(bool has_custom_rcfile) wontthrow -> void
   {
-    m_has_custom_rcfile = enabled;
+    m_has_custom_rcfile = has_custom_rcfile;
   }
   pure fn startup_finished() const wontthrow -> bool
   {
@@ -3048,9 +3053,9 @@ public:
   {
     m_is_restricted_shell = true;
   }
-  fn set_restricted_shell(bool enabled) wontthrow -> void
+  fn set_restricted_shell(bool is_restricted) wontthrow -> void
   {
-    m_is_restricted_shell = enabled;
+    m_is_restricted_shell = is_restricted;
   }
   pure fn get_init_moods() const wontthrow -> StringView
   {
@@ -3083,11 +3088,11 @@ public:
   fn reset_runtime_highlight_cache() wontthrow -> void;
   fn source_traces_enabled() const wontthrow -> bool
   {
-    return m_source_traces_enabled;
+    return m_is_source_traces_enabled;
   }
-  fn set_source_traces_enabled(bool enabled) wontthrow -> void
+  fn set_source_traces_enabled(bool is_enabled) wontthrow -> void
   {
-    m_source_traces_enabled = enabled;
+    m_is_source_traces_enabled = is_enabled;
   }
   fn append_wire(String &output) const throws -> void;
   static fn from_wire(subshell_bootstrap_reader &reader,
@@ -3104,7 +3109,7 @@ public:
   }
 
 private:
-  bool m_source_traces_enabled{true};
+  bool m_is_source_traces_enabled{true};
   completion::shell_highlight_cache *m_diagnostic_highlight_cache{nullptr};
   completion::shell_highlight_cache *m_runtime_diagnostic_highlight_cache{
       nullptr};
@@ -3937,9 +3942,9 @@ public:
   fn expand_glob_lenient(StringView pattern) throws
       -> SortedArrayList<String, order_comparator<String>>;
 
-  fn set_posix_mode_via_option(bool enable) wontthrow -> void
+  fn set_posix_mode_via_option(bool is_enabled) wontthrow -> void
   {
-    if (enable) {
+    if (is_enabled) {
       runtime_control_store().note_explicit_mood();
       select_mood(mimic_mood::BashPosix);
       return;

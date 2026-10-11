@@ -1082,10 +1082,10 @@ protected:
   {
     return (m_execution_flags & static_cast<u8>(flag)) != 0;
   }
-  fn set_execution_flag(ExecutionFlag flag, bool enabled = true) const wontthrow
+  fn set_execution_flag(ExecutionFlag flag, bool is_set = true) const wontthrow
       -> void
   {
-    if (enabled)
+    if (is_set)
       m_execution_flags |= static_cast<u8>(flag);
     else
       m_execution_flags &= static_cast<u8>(~static_cast<u8>(flag));

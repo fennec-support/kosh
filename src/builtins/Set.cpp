@@ -63,19 +63,19 @@ fn option_is_on(const EvalContext &cxt, const option_descriptor &option) throws
 }
 
 fn apply_or_reject_option(EvalContext &cxt, const option_descriptor &option,
-                          bool enable,
+                          bool is_enabled,
                           bool should_step_warning_level = false) throws -> void
 {
   if (!option_is_available(cxt, option))
     throw Error{StringView{"Unknown option '"} + option.set_name + "'"};
   if (option.storage == option_storage::WarningLevel) {
     if (should_step_warning_level)
-      step_warning_level(cxt, enable);
+      step_warning_level(cxt, is_enabled);
     else
-      write_option_number(cxt, option, enable ? 1 : 0, option_origin::Set);
+      write_option_number(cxt, option, is_enabled ? 1 : 0, option_origin::Set);
     return;
   }
-  write_option_number(cxt, option, enable ? 1 : 0, option_origin::Set);
+  write_option_number(cxt, option, is_enabled ? 1 : 0, option_origin::Set);
 }
 
 enum class retired_option_owner : u8
@@ -92,7 +92,7 @@ struct retired_option
   retired_option_owner owner;
 };
 
-fn find_retired_option_replacement(StringView name, bool enable) throws
+fn find_retired_option_replacement(StringView name, bool is_enabled) throws
     -> Maybe<String>
 {
   using enum retired_option_owner;
@@ -147,17 +147,17 @@ fn find_retired_option_replacement(StringView name, bool enable) throws
   switch (retired->owner) {
   case Koshconf:
   case KoshconfInverted: {
-    let const is_on = enable == (retired->owner == Koshconf);
+    let const is_on = is_enabled == (retired->owner == Koshconf);
     replacement += "koshconf set ";
     replacement += retired->replacement;
     replacement += is_on ? " on" : " off";
   } break;
   case Set:
-    replacement += enable ? "set -o " : "set +o ";
+    replacement += is_enabled ? "set -o " : "set +o ";
     replacement += retired->replacement;
     break;
   case Shopt:
-    replacement += enable ? "shopt -s " : "shopt -u ";
+    replacement += is_enabled ? "shopt -s " : "shopt -u ";
     replacement += retired->replacement;
     break;
   }
@@ -200,10 +200,11 @@ fn list_options_columnar(const EvalContext &cxt) throws -> String
 
 fn apply_long_option_by_name(const ExecContext &ec, EvalContext &cxt,
                              const ArrayList<String> &args, usize &i,
-                             bool enable) throws -> void
+                             bool is_enabled) throws -> void
 {
   if (i + 1 >= args.count()) {
-    ec.print_to_stdout(enable ? list_options_columnar(cxt) : list_options(cxt));
+    ec.print_to_stdout(is_enabled ? list_options_columnar(cxt)
+                                  : list_options(cxt));
     return;
   }
   let const &name = args[++i];
@@ -211,7 +212,7 @@ fn apply_long_option_by_name(const ExecContext &ec, EvalContext &cxt,
   if (option == nullptr) {
     let const message = StringView{"Unknown -o option '"} + name + "'";
     if (let const replacement =
-            find_retired_option_replacement(name.view(), enable);
+            find_retired_option_replacement(name.view(), is_enabled);
         replacement.has_value())
     {
       throw make_error_for_arg(ec, i, message.view(),
@@ -226,7 +227,7 @@ fn apply_long_option_by_name(const ExecContext &ec, EvalContext &cxt,
     error.set_command_status(2);
     throw error;
   }
-  apply_or_reject_option(cxt, *option, enable);
+  apply_or_reject_option(cxt, *option, is_enabled);
 }
 
 fn format_option_table() throws -> String
@@ -350,12 +351,12 @@ fn enabled_shell_option_letters(const EvalContext &cxt) throws -> String
   return letters;
 }
 
-fn apply_shell_option(EvalContext &cxt, StringView name, bool enable) throws
+fn apply_shell_option(EvalContext &cxt, StringView name, bool is_enabled) throws
     -> bool
 {
   let const *option = find_option_by_set_name(name);
   if (option == nullptr || !option_is_available(cxt, *option)) return false;
-  apply_or_reject_option(cxt, *option, enable);
+  apply_or_reject_option(cxt, *option, is_enabled);
   return true;
 }
 
@@ -497,22 +498,22 @@ fn Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     }
 
     if (arg.length() > 1 && (arg[0] == '-' || arg[0] == '+')) {
-      let const enable = arg[0] == '-';
+      let const is_enabled = arg[0] == '-';
       for (usize c = 1; c < arg.length(); c++) {
         let const letter = arg[c];
 
         if (letter == 'o') {
-          apply_long_option_by_name(ec, cxt, args, i, enable);
+          apply_long_option_by_name(ec, cxt, args, i, is_enabled);
           break;
         }
         if (letter == 'r') {
-          if (!enable && cxt.runtime_state().option_is_enabled(
-                             shell_option_id::Restricted))
+          if (!is_enabled && cxt.runtime_state().option_is_enabled(
+                                 shell_option_id::Restricted))
           {
             throw make_error_for_arg(ec, i,
                                      "Restricted mode cannot be disabled");
           }
-          if (enable)
+          if (is_enabled)
             cxt.runtime_state().set_option(shell_option_id::Restricted, true);
           continue;
         }
@@ -541,7 +542,7 @@ fn Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
           throw make_error_for_arg(
               ec, i, "Changing mimicry is forbidden in a restricted shell");
         }
-        apply_or_reject_option(cxt, *option, enable, true);
+        apply_or_reject_option(cxt, *option, is_enabled, true);
       }
       continue;
     }
