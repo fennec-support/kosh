@@ -125,84 +125,55 @@ fn remove_path(StringView path, Allocator allocator, removal_mode mode) throws
   return os::remove_file(path);
 }
 
-static fn
-remove_path_with_prompt(const removal_request &request, StringView path,
-                        Path::entry_kind known_kind = Path::entry_kind::Unknown,
-                        const os::file_status *known_status = nullptr,
-                        Maybe<u64> root_device_id = {}) throws -> bool
+struct tree_removal_state
+{
+  const removal_request &request;
+  Maybe<u64> root_device_id;
+};
+
+static fn should_enter_removed_directory(void *context, StringView path,
+                                         const os::file_status &status) -> bool
+{
+  let &state = *static_cast<tree_removal_state *>(context);
+  return !state.request.should_skip_other_file_system(path, &status,
+                                                      state.root_device_id);
+}
+
+static fn should_remove_tree_entry(void *context, StringView path) -> bool
+{
+  return !static_cast<tree_removal_state *>(context)->request.should_decline(
+      path);
+}
+
+static fn report_tree_removal_failure(void *context,
+                                      os::tree_removal_failure failure,
+                                      StringView path, StringView reason)
+    -> void
+{
+  let const &request = static_cast<tree_removal_state *>(context)->request;
+  let const message =
+      failure == os::tree_removal_failure::ReadDirectory
+          ? "cannot read directory '" + String{path} + "': " + reason
+      : failure == os::tree_removal_failure::Replaced
+          ? "cannot remove '" + String{path} +
+                "': the directory was replaced while it was removed"
+          : "cannot remove '" + String{path} + "': " + reason;
+  report_soft_koshkit_util_error(request.ec, request.cxt, request.utility_name,
+                                 message);
+}
+
+static fn remove_path_with_prompt(const removal_request &request,
+                                  StringView path) throws -> bool
 {
   let &cxt = request.cxt;
-  if (request.should_descend(path, known_kind)) {
-    if (request.should_skip_other_file_system(path, known_status,
-                                              root_device_id))
-      return false;
-
-    let directory_identity = os::file_status{};
-    if (known_status != nullptr) {
-      directory_identity = *known_status;
-    } else if (!os::stat_path(path, directory_identity)) {
-      report_soft_koshkit_util_error(request.ec, cxt, request.utility_name,
-                                     "cannot remove '" + String{path} + "': " +
-                                         os::last_system_error_message());
-      return false;
-    }
-    let const do_is_same_directory = [&]() wontthrow -> bool {
-      let current = os::file_status{};
-      return os::stat_path(path, current) &&
-             os::file_type_letter(current.mode) == 'd' &&
-             current.device_id == directory_identity.device_id &&
-             current.file_id == directory_identity.file_id;
-    };
-    let const do_report_replaced_directory = [&]() throws {
-      report_soft_koshkit_util_error(
-          request.ec, cxt, request.utility_name,
-          "cannot remove '" + String{path} +
-              "': the directory was replaced while it was removed");
-    };
-
-    if (!do_is_same_directory()) {
-      do_report_replaced_directory();
-      return false;
-    }
-
-    bool did_succeed = true;
-    let const directory_scratch = cxt.expansion_store().scratch_arena().mark();
-    defer { cxt.expansion_store().scratch_arena().release(directory_scratch); };
-    let names = os::list_directory_status(path, request.allocator);
-    if (names.has_value()) {
-      for (let const &entry : *names) {
-        if (os::INTERRUPT_REQUESTED) return false;
-        if (!do_is_same_directory()) {
-          do_report_replaced_directory();
-          return false;
-        }
-        let const child_scratch = cxt.expansion_store().scratch_arena().mark();
-        defer { cxt.expansion_store().scratch_arena().release(child_scratch); };
-        let child = Path{path, request.allocator};
-        child.append(entry.child.name.view());
-        if (!remove_path_with_prompt(
-                request, child.view(), effective_entry_kind(entry),
-                entry.has_status ? &entry.status : nullptr, root_device_id))
-          did_succeed = false;
-      }
-    } else {
-      report_soft_koshkit_util_error(
-          request.ec, cxt, request.utility_name,
-          "cannot read directory '" + String{path} +
-              "': " + os::last_system_error_message());
-      did_succeed = false;
-    }
-
-    if (!did_succeed) return false;
-    if (request.should_decline(path)) return true;
-    if (!os::remove_directory(path)) {
-      report_soft_koshkit_util_error(request.ec, cxt, request.utility_name,
-                                     "cannot remove '" + String{path} + "': " +
-                                         os::last_system_error_message());
-      return false;
-    }
-
-    return true;
+  if (request.should_descend(path, Path::entry_kind::Unknown)) {
+    let state = tree_removal_state{request, {}};
+    let hooks = os::tree_removal_hooks{};
+    hooks.context = &state;
+    hooks.should_enter_directory = should_enter_removed_directory;
+    hooks.should_remove = should_remove_tree_entry;
+    hooks.report_failure = report_tree_removal_failure;
+    return os::remove_tree(path, request.allocator, &hooks);
   }
   if (request.should_decline(path)) return true;
   if (os::remove_file(path)) return true;

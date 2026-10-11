@@ -894,20 +894,105 @@ fn remove_file(StringView path) wontthrow -> bool
 
 static constexpr usize REMOVE_TREE_HELD_DESCRIPTOR_DEPTH = 64;
 
-static fn remove_tree_entry(int &parent_descriptor,
-                            const struct stat &parent_status, const char *name,
-                            usize depth, Allocator allocator) throws -> bool
+struct tree_removal_child
 {
-  if (::unlinkat(parent_descriptor, name, 0) == 0) return true;
-  let const unlink_errno = errno;
-  if (unlink_errno != EISDIR && unlink_errno != EPERM) {
+  String name;
+  bool is_known_non_directory;
+};
+
+class TreeRemovalWalk
+{
+public:
+  TreeRemovalWalk(const tree_removal_hooks *hooks) wontthrow : m_hooks(hooks) {}
+
+  pure fn should_continue_after_failure() const wontthrow -> bool
+  {
+    return m_hooks != nullptr;
+  }
+
+  fn report(tree_removal_failure failure, StringView path,
+            StringView reason) const throws -> void
+  {
+    if (m_hooks == nullptr || m_hooks->report_failure == nullptr) return;
+
+    let const saved_errno = errno;
+    m_hooks->report_failure(m_hooks->context, failure, path, reason);
+    errno = saved_errno;
+  }
+
+  fn report_system_error(tree_removal_failure failure,
+                         StringView path) const throws -> void
+  {
+    if (m_hooks == nullptr) return;
+
+    report(failure, path, last_system_error_message().view());
+  }
+
+  fn should_enter(StringView path, const struct stat &info) const throws -> bool
+  {
+    if (m_hooks == nullptr || m_hooks->should_enter_directory == nullptr) {
+      return true;
+    }
+
+    let status = file_status{};
+    fill_file_status(info, status);
+    return m_hooks->should_enter_directory(m_hooks->context, path, status);
+  }
+
+  fn should_remove(StringView path) const throws -> bool
+  {
+    return m_hooks == nullptr || m_hooks->should_remove == nullptr ||
+           m_hooks->should_remove(m_hooks->context, path);
+  }
+
+  fn arena() wontthrow -> BumpArena & { return m_arena; }
+
+private:
+  const tree_removal_hooks *m_hooks;
+  BumpArena m_arena{};
+};
+
+static fn remove_tree_entry(TreeRemovalWalk &walk, int &parent_descriptor,
+                            const struct stat &parent_status, const char *name,
+                            StringView path, bool is_known_non_directory,
+                            usize depth, bool &is_kept) throws -> bool
+{
+  if (is_known_non_directory) {
+    if (!walk.should_remove(path)) {
+      is_kept = true;
+      return true;
+    }
+    if (::unlinkat(parent_descriptor, name, 0) == 0) return true;
+    if (errno != EISDIR && errno != EPERM) {
+      walk.report_system_error(tree_removal_failure::Remove, path);
+      return false;
+    }
+  }
+
+  struct stat entry_status{};
+  if (::fstatat(parent_descriptor, name, &entry_status, AT_SYMLINK_NOFOLLOW) !=
+      0)
+  {
+    walk.report_system_error(tree_removal_failure::Remove, path);
     return false;
   }
+
+  if (!S_ISDIR(entry_status.st_mode)) {
+    if (!is_known_non_directory && !walk.should_remove(path)) {
+      is_kept = true;
+      return true;
+    }
+    if (::unlinkat(parent_descriptor, name, 0) == 0) return true;
+    walk.report_system_error(tree_removal_failure::Remove, path);
+    return false;
+  }
+
+  if (!walk.should_enter(path, entry_status)) return false;
 
   int directory = ::openat(parent_descriptor, name,
                            O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
   if (directory < 0) {
-    if (errno == ENOTDIR) errno = unlink_errno;
+    walk.report_system_error(tree_removal_failure::Remove, path);
     return false;
   }
   defer
@@ -920,17 +1005,34 @@ static fn remove_tree_entry(int &parent_descriptor,
   };
 
   struct stat directory_status{};
-  if (::fstat(directory, &directory_status) != 0) return false;
+  if (::fstat(directory, &directory_status) != 0) {
+    walk.report_system_error(tree_removal_failure::Remove, path);
+    return false;
+  }
+  let const do_is_same_directory = [&](const struct stat &other) wontthrow {
+    return other.st_dev == directory_status.st_dev &&
+           other.st_ino == directory_status.st_ino;
+  };
+  if (!do_is_same_directory(entry_status)) {
+    errno = ESTALE;
+    walk.report(tree_removal_failure::Replaced, path, {});
+    return false;
+  }
 
-  let child_names = ArrayList<String>{allocator};
+  let &arena = walk.arena();
+  let const level_mark = arena.mark();
+  defer { arena.release(level_mark); };
+  let const allocator = bump_allocator(arena);
+  let children = ArrayList<tree_removal_child>{allocator};
+  bool did_succeed = true;
   {
     let const listing = ::dup(directory);
-    if (listing < 0) return false;
-    let const handle = ::fdopendir(listing);
+    let const handle = listing < 0 ? nullptr : ::fdopendir(listing);
     if (handle == nullptr) {
       let const saved_errno = errno;
-      ::close(listing);
+      if (listing >= 0) ::close(listing);
       errno = saved_errno;
+      walk.report_system_error(tree_removal_failure::ReadDirectory, path);
       return false;
     }
     defer { ::closedir(handle); };
@@ -940,7 +1042,11 @@ static fn remove_tree_entry(int &parent_descriptor,
       errno = 0;
       let const entry = ::readdir(handle);
       if (entry == nullptr) {
-        if (errno != 0) return false;
+        if (errno != 0) {
+          walk.report_system_error(tree_removal_failure::ReadDirectory, path);
+          if (!walk.should_continue_after_failure()) return false;
+          did_succeed = false;
+        }
         break;
       }
 
@@ -948,7 +1054,10 @@ static fn remove_tree_entry(int &parent_descriptor,
       if (child_name == StringView{"."} || child_name == StringView{".."}) {
         continue;
       }
-      child_names.push(String{allocator, child_name});
+      children.push(tree_removal_child{
+          String{allocator, child_name},
+          entry->d_type != DT_DIR && entry->d_type != DT_UNKNOWN
+      });
     }
   }
 
@@ -959,38 +1068,75 @@ static fn remove_tree_entry(int &parent_descriptor,
     parent_descriptor = -1;
   }
 
-  for (let const &child_name : child_names) {
+  for (let const &child : children) {
     if (INTERRUPT_REQUESTED) return false;
-    if (!remove_tree_entry(directory, directory_status, child_name.c_str(),
-                           depth + 1, allocator))
-      return false;
+    let const child_mark = arena.mark();
+    defer { arena.release(child_mark); };
+    let child_path = Path{path, allocator};
+    child_path.append(child.name.view());
+    bool is_child_kept = false;
+    if (!remove_tree_entry(walk, directory, directory_status,
+                           child.name.c_str(), child_path.view(),
+                           child.is_known_non_directory, depth + 1,
+                           is_child_kept))
+    {
+      if (!walk.should_continue_after_failure()) return false;
+      did_succeed = false;
+    }
+    if (is_child_kept) is_kept = true;
   }
 
   if (should_release_parent) {
     parent_descriptor =
         ::openat(directory, "..", O_RDONLY | O_DIRECTORY | O_CLOEXEC);
-    if (parent_descriptor < 0) return false;
-
     struct stat reopened_status{};
-    if (::fstat(parent_descriptor, &reopened_status) != 0) return false;
+    if (parent_descriptor < 0 ||
+        ::fstat(parent_descriptor, &reopened_status) != 0)
+    {
+      walk.report_system_error(tree_removal_failure::Remove, path);
+      return false;
+    }
     if (reopened_status.st_dev != parent_status.st_dev ||
         reopened_status.st_ino != parent_status.st_ino)
     {
       errno = ESTALE;
+      walk.report(tree_removal_failure::Replaced, path, {});
       return false;
     }
   }
 
-  return ::unlinkat(parent_descriptor, name, AT_REMOVEDIR) == 0;
+  if (!did_succeed) return false;
+  if (is_kept) return true;
+  if (!walk.should_remove(path)) {
+    is_kept = true;
+    return true;
+  }
+
+  struct stat current_status{};
+  if (::fstatat(parent_descriptor, name, &current_status,
+                AT_SYMLINK_NOFOLLOW) != 0 ||
+      !do_is_same_directory(current_status))
+  {
+    errno = ESTALE;
+    walk.report(tree_removal_failure::Replaced, path, {});
+    return false;
+  }
+  if (::unlinkat(parent_descriptor, name, AT_REMOVEDIR) == 0) return true;
+
+  walk.report_system_error(tree_removal_failure::Remove, path);
+  return false;
 }
 
-fn remove_tree(StringView path, Allocator allocator) throws -> bool
+fn remove_tree(StringView path, Allocator allocator,
+               const tree_removal_hooks *hooks) throws -> bool
 {
   let const path_string = String{allocator, path};
+  let walk = TreeRemovalWalk{hooks};
   int working_directory = AT_FDCWD;
   struct stat working_status{};
-  return remove_tree_entry(working_directory, working_status,
-                           path_string.c_str(), 0, allocator);
+  bool is_kept = false;
+  return remove_tree_entry(walk, working_directory, working_status,
+                           path_string.c_str(), path, false, 0, is_kept);
 }
 
 fn rename_path(StringView from, StringView to) wontthrow -> bool

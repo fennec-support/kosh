@@ -1242,24 +1242,93 @@ fn remove_directory(StringView path) wontthrow -> bool
   return wide_path.has_value() && RemoveDirectoryW(wide_path->begin()) != 0;
 }
 
-fn remove_tree(StringView path, Allocator allocator) throws -> bool
+static fn report_tree_removal_failure(const tree_removal_hooks *hooks,
+                                      tree_removal_failure failure,
+                                      StringView path) throws -> void
 {
+  if (hooks == nullptr || hooks->report_failure == nullptr) return;
+
+  let const error = GetLastError();
+  hooks->report_failure(hooks->context, failure, path,
+                        last_system_error_message().view());
+  SetLastError(error);
+}
+
+static fn remove_tree_entry(StringView path, BumpArena &arena,
+                            const tree_removal_hooks *hooks,
+                            bool &is_kept) throws -> bool
+{
+  let const level_mark = arena.mark();
+  defer { arena.release(level_mark); };
+  let const allocator = bump_allocator(arena);
+  let const do_should_remove = [&]() throws -> bool {
+    return hooks == nullptr || hooks->should_remove == nullptr ||
+           hooks->should_remove(hooks->context, path);
+  };
+
   let const target = Path{path, allocator};
   if (target.is_symbolic_link() || !target.is_directory()) {
-    return remove_file(path);
+    if (!do_should_remove()) {
+      is_kept = true;
+      return true;
+    }
+    if (remove_file(path)) return true;
+    report_tree_removal_failure(hooks, tree_removal_failure::Remove, path);
+    return false;
+  }
+
+  if (hooks != nullptr && hooks->should_enter_directory != nullptr) {
+    let status = file_status{};
+    if (!stat_path(path, status)) {
+      report_tree_removal_failure(hooks, tree_removal_failure::Remove, path);
+      return false;
+    }
+    if (!hooks->should_enter_directory(hooks->context, path, status)) {
+      return false;
+    }
   }
 
   let const entries = list_directory_status(path, allocator);
-  if (!entries.has_value()) return false;
-
-  for (let const &entry : *entries) {
-    if (INTERRUPT_REQUESTED) return false;
-    let child = Path{path, allocator};
-    child.append(entry.child.name.view());
-    if (!remove_tree(child.view(), allocator)) return false;
+  if (!entries.has_value()) {
+    report_tree_removal_failure(hooks, tree_removal_failure::ReadDirectory,
+                                path);
+    return false;
   }
 
-  return remove_directory(path);
+  bool did_succeed = true;
+  for (let const &entry : *entries) {
+    if (INTERRUPT_REQUESTED) return false;
+    let const child_mark = arena.mark();
+    defer { arena.release(child_mark); };
+    let child = Path{path, allocator};
+    child.append(entry.child.name.view());
+    bool is_child_kept = false;
+    if (!remove_tree_entry(child.view(), arena, hooks, is_child_kept)) {
+      if (hooks == nullptr) return false;
+      did_succeed = false;
+    }
+    if (is_child_kept) is_kept = true;
+  }
+
+  if (!did_succeed) return false;
+  if (is_kept) return true;
+  if (!do_should_remove()) {
+    is_kept = true;
+    return true;
+  }
+  if (remove_directory(path)) return true;
+
+  report_tree_removal_failure(hooks, tree_removal_failure::Remove, path);
+  return false;
+}
+
+fn remove_tree(StringView path, Allocator allocator,
+               const tree_removal_hooks *hooks) throws -> bool
+{
+  unused(allocator);
+  BumpArena arena{};
+  bool is_kept = false;
+  return remove_tree_entry(path, arena, hooks, is_kept);
 }
 
 fn remove_file(StringView path) wontthrow -> bool

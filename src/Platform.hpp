@@ -661,7 +661,28 @@ fn set_file_times(StringView path, const file_time_values &times) wontthrow
     -> bool;
 fn remove_directory(StringView path) wontthrow -> bool;
 fn remove_file(StringView path) wontthrow -> bool;
-fn remove_tree(StringView path, Allocator allocator) throws -> bool;
+
+struct file_status;
+
+enum class tree_removal_failure : u8
+{
+  Remove,
+  ReadDirectory,
+  Replaced,
+};
+
+struct tree_removal_hooks
+{
+  void *context{nullptr};
+  bool (*should_enter_directory)(void *context, StringView path,
+                                 const file_status &status){nullptr};
+  bool (*should_remove)(void *context, StringView path){nullptr};
+  void (*report_failure)(void *context, tree_removal_failure failure,
+                         StringView path, StringView reason){nullptr};
+};
+
+fn remove_tree(StringView path, Allocator allocator,
+               const tree_removal_hooks *hooks = nullptr) throws -> bool;
 fn rename_path(StringView from, StringView to) wontthrow -> bool;
 fn create_symlink(StringView target, StringView link_path) wontthrow -> bool;
 fn read_symlink(StringView path, Allocator allocator) wontthrow
