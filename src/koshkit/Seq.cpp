@@ -97,6 +97,7 @@ Seq::execute(const ExecContext               &ec,
       output += utils::int_to_text_into(value, value_text, sizeof(value_text));
       output += '\n';
       if (output.count() >= OUTPUT_BUFFER_LENGTH) {
+        if (os::INTERRUPT_REQUESTED) return 130;
         ec.print_to_stdout(output);
         output.clear();
       }
@@ -110,6 +111,7 @@ Seq::execute(const ExecContext               &ec,
       output += utils::int_to_text_into(value, value_text, sizeof(value_text));
       output += '\n';
       if (output.count() >= OUTPUT_BUFFER_LENGTH) {
+        if (os::INTERRUPT_REQUESTED) return 130;
         ec.print_to_stdout(output);
         output.clear();
       }
