@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# BASH_LINENO holds the call-site line of each frame BASH_SOURCE names, so a
+# BASH_LINENO holds the call-site line of each frame BASH_SOURCE lists, so a
 # script with no function call still holds one zero.
 echo "top-count=${#BASH_LINENO[@]}"
 echo "top-all=[${BASH_LINENO[*]}]"

@@ -1,7 +1,7 @@
 # shellcheck disable=unassigned-variable-read
 unset KOSH_FLAGS
 # A script operand under mimicry reads its own shebang. `kosh -I script.sh`
-# analyzes and runs the file under the mood its interpreter names, the same
+# analyzes and runs the file under the mood its interpreter gives, the same
 # mood the dispatch path picks for the script run as a command.
 directory=$(mktemp -d)
 trap '[ -n "$directory" ] && "$BIN_DIR/invoke-koshkit" rm -rf "$directory"' EXIT

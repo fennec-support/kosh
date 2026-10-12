@@ -6,7 +6,7 @@
  * fragments for analysis and formatting. It maps positions between host and
  * shell source, handles indentation and JSON string codecs, and applies
  * formatted replacements to the host document. Each source under formats
- * implements one host format, and the code every format shares stays here.
+ * implements one host format. Shared format code stays here.
  */
 
 #include "ParserFormats.hpp"

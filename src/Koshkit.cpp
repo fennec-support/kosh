@@ -333,7 +333,7 @@ dispatch(const ExecContext   &ec,
 
   if (!chosen.has_value())
     throw ErrorWithLocation{ec.arg_location_at(name_index),
-                            "koshkit has no utility named '" + String{name} +
+                            "koshkit has no utility called '" + String{name} +
                                 "'"};
 
   ArrayList<String> shifted{cxt.scratch_allocator()};

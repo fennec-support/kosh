@@ -3,8 +3,8 @@
  *    See the top-level LICENSE file for the licensing information.
  *
  * This file implements the tput utility. It maps supported terminal
- * capabilities to control strings, reports terminal dimensions and names, and
- * formats cursor positions.
+ * capabilities to control strings, reports terminal dimensions and the long
+ * name, and formats cursor positions.
  */
 
 #include "../CLI.hpp"

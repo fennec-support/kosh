@@ -36,8 +36,8 @@ FLAG(DECLARE_FUNCTION_NAMES,
      Bool,
      'F',
      "",
-     "Print only the names of defined functions and report their existence "
-     "through the exit status.");
+     "Print only the identifiers of defined functions and report their "
+     "existence through the exit status.");
 FLAG(DECLARE_GLOBAL, Bool, 'g', "", "Accepted without effect.");
 FLAG(DECLARE_INTEGER,
      Bool,

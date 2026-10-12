@@ -41,12 +41,12 @@ HELP_SYNOPSIS_DECL("[-OPTIONS] [--] <file> [argument ...]",
                    "[-OPTIONS] --as-language-server");
 /* clang-format on */
 
-FLAG(VERSION, Bool, '\0', "version", "Display program version and notices.");
+FLAG(VERSION, Bool, '\0', "version", "Display the program version and notices.");
 FLAG(SHORT_VERSION,
      Bool,
      'V',
      "short-version",
-     "Display version in a short form.");
+     "Display the version in short form.");
 FLAG(HELP, Bool, '\0', "help", "Display help message.");
 
 FLAG(INTERACTIVE,
@@ -61,8 +61,8 @@ FLAG(COMMAND,
      'c',
      "command",
      Posix,
-     "Execute specified command and exit. Can be used multiple times.");
-FLAG(ERROR_EXIT, Bool, 'e', "error-exit", Posix, "Die on first error.");
+     "Execute the specified command and exit. This option can be used multiple times.");
+FLAG(ERROR_EXIT, Bool, 'e', "error-exit", Posix, "Exit on the first error.");
 FLAG(DISABLE_EXPANSION, Bool, 'f', "no-glob", Posix, "Disable path expansion.");
 FLAG(ONE_COMMAND,
      Bool,
@@ -112,8 +112,8 @@ FLAG(LOGIN,
      "login",
      Posix,
      "Act as a login shell and source the profiles.");
-FLAG(IGNORED1, Bool, 'h', "\0", Posix, "Ignored, left for compatibility.");
-FLAG(IGNORED2, Bool, 'm', "\0", Posix, "Ignored, left for compatibility.");
+FLAG(IGNORED1, Bool, 'h', "\0", Posix, "Ignore this option for compatibility.");
+FLAG(IGNORED2, Bool, 'm', "\0", Posix, "Ignore this option for compatibility.");
 FLAG(SET_OPTION,
      ManyStrings,
      'o',
@@ -228,7 +228,7 @@ FLAG(APPLY,
      '\0',
      "apply",
      Auxiliary,
-     "Apply lint fixes or formatted output to named files.");
+     "Apply lint fixes or formatted output to the given files.");
 FLAG(LANGUAGE_SERVER,
      Bool,
      '\0',
@@ -301,7 +301,7 @@ FLAG(ENABLE_KOSHKIT,
      '\0',
      "enable-koshkit",
      Kosh,
-     "Resolve the bundled koshkit utility names such as ls and mkdir directly "
+     "Resolve the bundled koshkit utilities such as ls and mkdir directly "
      "as commands, the same as koshconf set "
      "interpreter.resolve_koshkit_applets_as_commands on.");
 FLAG(EXTENDED_ARITHMETIC,
@@ -371,7 +371,7 @@ FLAG(
     '\0',
     "debug-logging-file",
     Debug,
-    "Append the debug log to the named file, created when missing. The default "
+    "Append the debug log to the given file, created when missing. The default "
     "is stderr.");
 FLAG(DEBUG_COMPLETE_AT,
      String,
@@ -821,7 +821,7 @@ validate_invocation(const ArrayList<String> &operands,
 
   if (FLAG_APPLY.is_enabled()) {
     if (operands.is_empty()) {
-      show_message("The '--apply' option requires named files.");
+      show_message("The '--apply' option requires file operands.");
 
       return 2;
     }
@@ -865,7 +865,7 @@ select_input_source(const ArrayList<String> &operands) throws
     if (FLAG_LINT.is_enabled() && !operands.is_empty()) {
       show_message("The '-s' option was given along with file operands, "
                    "so '--lint' takes standard input and analyzes no "
-                   "named file.");
+                   "file.");
     }
 
     plan.should_read_stdin = true;
@@ -936,7 +936,7 @@ resolve_input_plan(const ArrayList<String> &operands) throws
   LOG(Info, "the input source is %s",
       plan.should_read_stdin         ? "standard input"
       : plan.should_execute_commands ? "the -c command strings"
-      : plan.should_read_files       ? "the named script file"
+      : plan.should_read_files       ? "the given script file"
                                      : "the interactive prompt");
 
   return plan;

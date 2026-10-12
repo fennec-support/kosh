@@ -2,7 +2,7 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file implements the readonly builtin, which marks each named variable
+ * This file implements the readonly builtin, which marks each given variable
  * read-only.
  */
 
@@ -16,7 +16,7 @@ FLAG_LIST_DECL();
 HELP_SYNOPSIS_DECL("[-aAf] [-p] [name[=value] ...]");
 
 HELP_DESCRIPTION_DECL(
-    "The readonly builtin marks each named variable read-only.");
+    "The readonly builtin marks each given variable read-only.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 FLAG(READONLY_PRINT,

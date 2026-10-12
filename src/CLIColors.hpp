@@ -2,7 +2,7 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file declares terminal color constants, highlight role names, and
+ * This file declares terminal color constants, highlight roles, and
  * descriptor-sensitive color policy queries used by diagnostics and
  * interactive output. CLIColors.cpp owns environment and terminal probing
  * together with the decision caches.

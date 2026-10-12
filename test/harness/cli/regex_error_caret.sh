@@ -1,5 +1,5 @@
 unset KOSH_FLAGS
-# A malformed [[ =~ ]] regex points its caret at the regex operand and names the
+# A malformed [[ =~ ]] regex points its caret at the regex operand and shows the
 # offending pattern, rather than pointing the bare [[.
 "$BIN" -c '[[ abc =~ ( ]]' 2>&1
 "$BIN" -c '[[ aa =~ (a|aa) ]]; printf "longest=%s\n" "${BASH_REMATCH[1]}"'

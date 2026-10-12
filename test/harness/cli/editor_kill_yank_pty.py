@@ -15,7 +15,7 @@
 # control bytes leaves them drawn in caret notation and out of the history
 # file. A trailing backslash continues the line unless it is itself escaped,
 # the shell joins it only
-# outside quotes, and history keeps both physical lines. A lone Ctrl-X names
+# outside quotes, and history keeps both physical lines. A lone Ctrl-X lists
 # its chords on the hint rows until the next key resolves it, and Ctrl-X before
 # an arrow keeps the arrow. Ctrl-Z undoes at the prompt and still stops a
 # running program, Ctrl-Shift-Z in its kitty and xterm encodings redoes, and

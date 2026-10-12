@@ -2,10 +2,10 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file declares the compact ArithmeticValue and the radix helpers of
- * extended arithmetic. Small values stay inline, while promoted integers and
- * fixed-scale decimals keep their limbs in arena storage. The header is
- * separate so Eval.hpp stays independent of the backend.
+ * This file declares the compact ArithmeticValue and radix helpers used by
+ * extended arithmetic. Small values remain inline, while promoted integers and
+ * fixed-scale decimals use arena-owned limb storage. The separate header
+ * exposes this shared contract and keeps Eval.hpp independent of backend details.
  */
 
 #pragma once

@@ -1,5 +1,5 @@
-# ssh, scp, sftp, and rsync complete host names from ~/.ssh/config, known_hosts,
-# and /etc/hosts, dropping wildcard patterns. kill completes the signal names for
+# ssh, scp, sftp, and rsync complete hostnames from ~/.ssh/config, known_hosts,
+# and /etc/hosts, dropping wildcard patterns. kill completes the signals for
 # a dashed token. HOME is pointed at a temp config and the prefixes are chosen so
 # the /etc/hosts and process lists (which vary per machine) never join the stable
 # candidates.

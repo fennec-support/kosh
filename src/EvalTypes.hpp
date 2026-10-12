@@ -4,7 +4,7 @@
  *
  * This file defines lightweight evaluator enums and value records for
  * argument lifetimes, execution modes, status propagation, restrictions, and
- * glob fields. It also names the value the exported set stores beside each
+ * glob fields. It also defines the value the exported set stores beside each
  * name and owns the grouped job state and the composite-key array storage kept
  * by EvalContext. It prevents common evaluator types from depending on
  * Eval.hpp.

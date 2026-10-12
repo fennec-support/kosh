@@ -37,7 +37,7 @@ rc=1
        |                  ^~~~~~~~~~~~~~~~~~~~~~~
 rc=1
 --- kill is a builtin, not a koshkit utility ---
--c:1:9: error: koshkit has no utility named 'kill'.
+-c:1:9: error: koshkit has no utility called 'kill'.
      1 |  koshkit kill
        |          ^~~~
 rc=1

@@ -1,7 +1,7 @@
 # Option completion from a command's --help text passes two gates. The command
 # is on kosh's allowlist of commands safe to fork, and it resolves into a
 # directory the current user or root owns that is not writable by group or
-# other. A fake binary named for an allowlisted command (act) drives the
+# other. A fake binary called an allowlisted command (act) drives the
 # probe deterministically. The same binary under a name kosh does not recognize,
 # or in a world-writable directory, is never forked.
 workspace=$(mktemp -d) || exit 1

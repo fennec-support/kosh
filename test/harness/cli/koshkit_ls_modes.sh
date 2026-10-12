@@ -1,4 +1,4 @@
-# The ls listing modes run inside a fresh temporary directory so the output names
+# The ls listing modes run inside a fresh temporary directory so the output has
 # no absolute path and stays the same on every machine. The binary path is
 # resolved to an absolute one first, since the working directory changes.
 unset KOSH_FLAGS

@@ -1,7 +1,7 @@
 unset KOSH_FLAGS
 # SHELL is owned by login, getty, or the display manager, so kosh leaves an
 # inherited value untouched the way bash never reassigns it, and seeds its own
-# invocation path only when SHELL is unset. BASH names the invocation path on
+# invocation path only when SHELL is unset. BASH holds the invocation path on
 # its own, the symlink spelling such as a bash symlink to kosh. The output is
 # filtered to the markers so a sourced profile cannot perturb it.
 echo "== an inherited SHELL is preserved, not clobbered:"

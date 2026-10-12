@@ -23,7 +23,7 @@ FLAG(PKILL_SIGNAL,
      's',
      "signal",
      "The signal to send, a name such as TERM or a number such as 15.");
-FLAG(PKILL_LIST, Bool, 'l', "list", "List the signal names and exit.");
+FLAG(PKILL_LIST, Bool, 'l', "list", "List the signals and exit.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Pkill);
 

@@ -21,7 +21,7 @@ note: Use `.` under a `sh` shebang.
 13:7: warning: The `<(...)` process substitution is a bash extension absent from POSIX sh. (SC3001)
     13 |    cat <(echo substituted)
        |        ^~~~~~~~~~~~~~~~~~~
-note: Use a named pipe or a temporary file under a `sh` shebang.
+note: Use a FIFO or a temporary file under a `sh` shebang.
 14:8: warning: The extended glob `!(excluded)` is a bash extension absent from POSIX sh. (SC3002)
     14 |    echo !(excluded)
        |         ^~~~~~~~~~~
@@ -89,7 +89,7 @@ note: Use the positional parameters under a `sh` shebang.
 27:9: warning: The name prefix expansion of `!prefix*` is a bash extension absent from POSIX sh. (SC3056)
     27 |    echo "${!prefix*}"
        |          ^~~~~~~~~~~
-note: List the names explicitly under a `sh` shebang.
+note: List the variables explicitly under a `sh` shebang.
 28:9: warning: The substring expansion of `text:1:2` is a bash extension absent from POSIX sh. (SC3057)
     28 |    echo "${text:1:2}"
        |          ^~~~~~~~~~~
@@ -182,7 +182,7 @@ note: Write the file redirect and `2>&1` separately under a `sh` shebang.
     52 |    echo dup >&outfile
        |               ^~~~~~~
 note: Write the file redirect and `2>&1` separately under a `sh` shebang.
-53:8: warning: The named file descriptor '{logfd}' is a bash extension absent from POSIX sh. (SC3022)
+53:8: warning: The variable-held file descriptor '{logfd}' is a bash extension absent from POSIX sh. (SC3022)
     53 |    exec {logfd}>trace.log
        |         ^~~~~~~
 note: Use a fixed descriptor number under a `sh` shebang.
@@ -209,7 +209,7 @@ note: Use `printf` to produce the escapes under a `sh` shebang.
 60:9: warning: The `<(...)` process substitution is a bash extension absent from POSIX sh. (SC3001)
     60 |    cat < <(echo substituted)
        |          ^~~~~~~~~~~~~~~~~~~
-note: Use a named pipe or a temporary file under a `sh` shebang.
+note: Use a FIFO or a temporary file under a `sh` shebang.
 61:9: warning: The `$"..."` quoting form is a bash extension absent from POSIX sh. (SC3004)
     61 |    cat <<$"DELIMITER"
        |          ^~~~~~~~~~~~
@@ -332,7 +332,7 @@ note: Set the values as variables before the file is read.
 103:3: warning: The `$0` parameter cannot be assigned in POSIX sh, and '$0=zero' runs as a command. (SC2279)
    103 |    $0=zero
        |    ^~~~~~~
-note: Assign the program name to a named variable.
+note: Assign the program name to a variable.
 106:3: warning: 'mapfile' is a bash array builtin absent from POSIX sh. (SC3030)
    106 |    mapfile -t lines < roster
        |    ^~~~~~~

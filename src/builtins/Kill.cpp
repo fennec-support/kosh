@@ -20,7 +20,7 @@ FLAG_LIST_DECL();
 HELP_SYNOPSIS_DECL("[-l] [-signal] %job|pid [...]");
 HELP_DESCRIPTION_DECL("The kill builtin sends a signal to a job or process.");
 
-FLAG(KILL_LIST, Bool, 'l', "list", "List the signal names and exit.");
+FLAG(KILL_LIST, Bool, 'l', "list", "List the signals and exit.");
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_BUILTIN_FLAGS(Kill);

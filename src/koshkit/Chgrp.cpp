@@ -30,7 +30,7 @@ FLAG(CHGRP_COMMAND_LINE_FOLLOW,
      Bool,
      'H',
      "dereference-arguments",
-     "Follow symbolic links named on the command line during recursion.");
+     "Follow symbolic links given on the command line during recursion.");
 FLAG(CHGRP_FOLLOW,
      Bool,
      'L',

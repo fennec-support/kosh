@@ -1,7 +1,7 @@
 #!/bin/env kosh
 
-# A process substitution path names a pipe: it exists, it is readable, it is a
-# FIFO, and it is not a regular file. Windows names it as a named pipe, which
+# A process substitution path is a pipe: it exists, it is readable, it is a
+# FIFO, and it is not a regular file. Windows serves it through a pipe, which
 # the probe must not connect to.
 set -M bash
 probe() {

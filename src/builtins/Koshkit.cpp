@@ -24,7 +24,7 @@ HELP_SYNOPSIS_DECL("[--color when] [utility] [arg ...]");
 HELP_DESCRIPTION_DECL("The koshkit builtin runs a bundled utility.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help and list the utilities.");
-FLAG(KOSHKIT_LIST, Bool, '\0', "list", "List the utility names, one per line.");
+FLAG(KOSHKIT_LIST, Bool, '\0', "list", "List the utilities, one per line.");
 FLAG(KOSHKIT_ASSIMILATE,
      String,
      '\0',

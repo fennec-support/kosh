@@ -1,4 +1,4 @@
-# koshconf completes its forms, the preset names, the registry option names
+# koshconf completes its forms, the presets, the registry options
 # by prefix and then by subsequence, the values of an enumeration, a boolean,
 # and the mood list, no file for a count, and only the flags of the form.
 echo "== koshconf form:"

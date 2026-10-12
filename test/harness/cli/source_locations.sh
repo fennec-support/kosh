@@ -2,7 +2,7 @@ unset KOSH_FLAGS
 # Runtime errors report the file, line, column, source line, and caret of the
 # code that failed, and each level of indirection between the top level and the
 # failing command adds one trace frame at the construct that entered it. The
-# fixtures use relative names so the printed paths are the typed ones.
+# test files use relative filenames so the printed paths are the typed ones.
 d=$(mktemp -d)
 trap '[ -n "$d" ] && "$BIN_DIR/invoke-koshkit" rm -rf "$d"' EXIT
 cd "$d" || exit 1

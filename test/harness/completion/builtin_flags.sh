@@ -1,5 +1,5 @@
 # The builtin flag stage reads the registered FLAG lists, the set option
-# table, the shopt names, kill's signal names, and the shell binary's own
+# table, the shopt options, kill's signals, and the shell binary's own
 # flags, all without a manpage.
 echo "== set switches:"
 "$BIN" --debug-complete-at 'set -' </dev/null

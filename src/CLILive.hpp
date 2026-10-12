@@ -2,13 +2,12 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file declares the shared live view driver of the evil utilities, where
- * a utility supplies its options plus sampler, renderer, and key callbacks.
- * The driver owns terminal handling, sample and refresh timing, interrupts, and
+ * This file declares the shared live view driver for the Evil utilities. Each
+ * utility supplies its options, sampler, renderer, and key callbacks. The
+ * driver owns terminal handling, sample and refresh timing, interrupts, and
  * one write per frame. It also declares update_retained_rows, which folds each
- * fresh sample into the retained rows of a live utility, and
- * live_report_options, which owns the --live and --cumulative parsing, the
- * window, and the view options.
+ * fresh sample into the retained rows of a live utility, and live_report_options,
+ * which parses --live and --cumulative and stores the window and view options.
  */
 
 #pragma once

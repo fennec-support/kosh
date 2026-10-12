@@ -124,7 +124,7 @@ printf '%s' $'\c!\c~\c}\c@' | od -An -tx1 | tr -s ' '
 printf '%s' $'\c?' | od -An -tx1 | tr -s ' '
 
 # Bash $'...' ANSI-C quoting, checked byte-for-byte against bash. Covers the
-# named escapes, hex and octal bytes, a unicode escape, quote and backslash
+# symbolic escapes, hex and octal bytes, a unicode escape, quote and backslash
 # escapes, and concatenation with surrounding text.
 echo $'hello\nworld'
 echo $'tab\there'

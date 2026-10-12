@@ -79,7 +79,7 @@ test "$newer" -nt "$older" && echo "newer_nt_older"
 test "$older" -ot "$newer" && echo "older_ot_newer"
 test "$older" -nt "$newer" || echo "older_not_nt_newer"
 
-# A file is the same file as itself, and a hard link names the same file.
+# A file is the same file as itself, and a hard link points to the same file.
 test "$older" -ef "$older" && echo "self_ef"
 ln "$older" "$base.link"
 test "$older" -ef "$base.link" && echo "hardlink_ef"

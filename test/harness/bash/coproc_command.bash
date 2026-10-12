@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# The named form binds NAME[0], NAME[1], and NAME_PID. Raw descriptor numbers
+# The NAME form binds NAME[0], NAME[1], and NAME_PID. Raw descriptor numbers
 # are never printed, because the numbers a shell picks are its own business.
 echo "== named compound =="
 coproc UPPER { while read -r line; do printf '%s\n' "${line}!"; done; }
@@ -34,7 +34,7 @@ eval "exec ${COPROC[1]}>&-"
 wait "$unnamed_pid"
 printf '%s\n' "unnamed wait status:$?"
 
-# A word names the coprocess only when a compound command follows it. Here the
+# A word labels the coprocess only when a compound command follows it. Here the
 # word is the command, and the coprocess takes the default name.
 echo "== word that is not a name =="
 NOTANAME() {
@@ -65,7 +65,7 @@ wait "$last_pid"
 printf '%s\n' "body status:$?"
 
 # A forked subshell loses both descriptors. The diagnostic of a failed
-# redirection names the script, so it is dropped here.
+# redirection cites the script, so it is dropped here.
 echo "== descriptors in a subshell =="
 coproc HOLD { while read -r line; do printf '%s\n' "got:$line"; done; }
 hold_pid=$HOLD_PID

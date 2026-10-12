@@ -1,6 +1,6 @@
 unset KOSH_FLAGS
 BIN=$(CDPATH= cd -- "$(dirname -- "$BIN")" && pwd)/$(basename -- "$BIN")
-# An open of a named pipe blocks until its peer arrives. An untrapped interrupt
+# An open of a FIFO blocks until its peer arrives. An untrapped interrupt
 # ends the open, and the shell reports the interrupt against the redirection
 # that owns it. An ignored interrupt leaves the open blocked, and the file is
 # still opened once the peer arrives.

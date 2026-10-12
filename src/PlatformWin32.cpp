@@ -3,7 +3,7 @@
  *    See the top-level LICENSE file for the licensing information.
  *
  * This routed Win32 source fragment implements text conversion, descriptor and
- * shell-fd mapping, named pipes, terminal settings, signals, users, clocks,
+ * shell-fd mapping, pipes, terminal settings, signals, users, clocks,
  * the polling file watcher, resource and configuration queries, environment
  * access, program-name normalization, regex allocation, evaluator bootstrap
  * reception, platform initialization, and the native entry point. Dedicated

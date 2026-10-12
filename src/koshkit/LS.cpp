@@ -3,8 +3,9 @@
  *    See the top-level LICENSE file for the licensing information.
  *
  * This file implements the ls utility. It reads and sorts directory entries,
- * filters hidden names, resolves owner and group labels, classifies and colors
- * names by file type, and renders compact, long, recursive, or tree listings.
+ * filters hidden entries, resolves owner and group labels, classifies and
+ * colors entries by file type, and renders compact, long, recursive, or tree
+ * listings.
  */
 
 #include "../CLI.hpp"
@@ -20,7 +21,7 @@
 
 KOSHKIT_UTIL_DECL("[-aA1dgFhklnoprRSt] [-L level] [--tree] "
                   "[--one-file-system] [path ...]",
-                  "The ls utility lists the names in each directory.");
+                  "The ls utility lists the entries in each directory.");
 
 FLAG(LS_ALL, Bool, 'a', "", "List entries whose name starts with a dot.");
 FLAG(LS_ALMOST_ALL,

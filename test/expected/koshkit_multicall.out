@@ -37,7 +37,7 @@ rc=0
 1
 rc=1
 --- the builtin form skips the startup and names koshkit in an error ---
-1:9: error: koshkit has no utility named 'no-such-utility'.
+1:9: error: koshkit has no utility called 'no-such-utility'.
      1 |  koshkit no-such-utility
        |          ^~~~~~~~~~~~~~~
 rc=1

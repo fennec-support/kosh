@@ -1,6 +1,6 @@
 #!/bin/bash
 # An asynchronous command forks before it expands its words, so an expansion
-# error fails the job rather than the shell, $! names the job, and wait
+# error fails the job rather than the shell, $! identifies the job, and wait
 # reports its status. An expansion side effect stays in the job.
 x=abc
 echo ${x!y} &

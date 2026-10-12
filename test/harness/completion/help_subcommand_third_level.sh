@@ -2,7 +2,7 @@
 # --help lists subcommands, the second level lists its own sub-subcommands, and
 # the third level lists that sub-subcommand's options. Completion forks each
 # level when the settled words name a parsed subcommand chain, capped at the
-# depth limit. A fake binary named for an allowlisted command keeps the
+# depth limit. A fake binary called an allowlisted command keeps the
 # candidates stable across machines.
 dir=$(mktemp -d) || exit 1
 trap 'test -n "$dir" && rm -rf "$dir"' EXIT

@@ -1,7 +1,7 @@
 # An allowlisted command in a trusted directory that lists subcommands under a
 # bare SUBCOMMANDS header with no colon, the shape tailscale uses without a
 # manpage, completes those subcommands in subcommand position. A fake binary
-# named for an allowlisted command keeps the candidates stable across machines.
+# called an allowlisted command keeps the candidates stable across machines.
 dir=$(mktemp -d) || exit 1
 trap '[ -n "$dir" ] && rm -rf "$dir"' EXIT
 mkdir -p "$dir"

@@ -1,5 +1,5 @@
-# A bare unset operand completes shell and environment variable names with no
-# leading dollar, while unset -f completes the defined function names instead, so
+# A bare unset operand completes shell and environment variables with no
+# leading dollar, while unset -f completes the defined functions instead, so
 # the operand matches the kind of name the flag removes.
 echo "== unset completes a variable name:"
 "$BIN" -c 'completion_probe_var=1' --debug-complete-at 'unset completion_probe' </dev/null

@@ -2,9 +2,9 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file declares the pending heredoc and the test for the line that ends
- * one. The lexer, the highlighter, and the completion scanner share them so
- * every reader of shell source ends a heredoc on the same line.
+ * This file declares pending heredoc state and the test for its terminating
+ * line. The lexer, highlighter, and completion scanner share them, so every
+ * reader of shell source recognizes the same terminating line.
  */
 
 #pragma once

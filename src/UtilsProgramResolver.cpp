@@ -916,7 +916,7 @@ ProgramResolver::revalidate_for_prompt() throws -> void
     return;
   }
 
-  LOG(Info, "rebuilding the command names before the prompt");
+  LOG(Info, "rebuilding the command index before the prompt");
   rebuild_path_command_index(CompletionRefresh::Cached);
 }
 

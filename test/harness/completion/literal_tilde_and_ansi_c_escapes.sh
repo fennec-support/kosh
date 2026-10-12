@@ -1,4 +1,4 @@
-# A name that starts with a tilde completes escaped, so accepting it names the
+# A name that starts with a tilde completes escaped, so accepting it gives the
 # file instead of a home directory, and a name inside an open $'...' quote
 # escapes its backslash and single quote, so accepting it does not name a
 # file holding a backspace instead.

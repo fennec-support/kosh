@@ -55,7 +55,7 @@ rc=0
 -c:1:19: error: Builtin `trap`: RETURN: invalid signal specification.
      1 |  trap "echo R-src" RETURN; . "$1"; echo "after=$?"
        |                    ^~~~~~
-note: List the signal names with `trap -l`.
+note: List the signals with `trap -l`.
 inner-body
 after=0
 rc=0

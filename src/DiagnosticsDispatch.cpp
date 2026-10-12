@@ -2,7 +2,7 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file maps command names to compact command identifiers and diagnostic
+ * This file maps command words to compact command identifiers and diagnostic
  * behavior groups. Its static table lets checks dispatch by identifiers and
  * flags without repeating command-name comparisons.
  */

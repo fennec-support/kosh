@@ -110,7 +110,7 @@ cat <<< ""
 wc -l <<< "no newline added beyond one" | tr -d ' '
 
 # The csh both-streams spelling cmd >&file redirects stdout and stderr to the
-# file when the word names no descriptor, while a numeric word keeps the
+# file when the word denotes no descriptor, while a numeric word keeps the
 # descriptor duplication and an explicit fd keeps the strict reading.
 out=$(mktemp)
 echo visible >&"$out"
@@ -240,7 +240,7 @@ echo ordered_done
 
 # A stage redirection whose target is a descriptor above two keeps its own
 # number. The pipe stays on the standard output of the stage, and the file, the
-# duplication, and the close each reach the descriptor the source names.
+# duplication, and the close each reach the descriptor the source gives.
 nonstd=/tmp/kosh_bashdiff_nonstd_$$
 nonstd_in=/tmp/kosh_bashdiff_nonstd_in_$$
 /bin/sh -c 'echo deep >&3' 3>"$nonstd" | cat
@@ -279,7 +279,7 @@ echo nonstandard_done
 
 # A pipeline stage whose redirection cannot be applied fails that stage alone.
 # The stage keeps the redirections written ahead of the failing one. Its
-# diagnostic reaches the destination those redirections named, and the pipeline
+# diagnostic reaches the destination those redirections set, and the pipeline
 # still takes the status of its last stage. The message text differs between the
 # shells, the checks assert the statuses, the PIPESTATUS entries, and the
 # routing.

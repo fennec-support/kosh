@@ -18,7 +18,7 @@ FLAG_LIST_DECL();
 
 HELP_SYNOPSIS_DECL("[-aAilnprux] name[=value] ...");
 HELP_DESCRIPTION_DECL(
-    "The local builtin declares each named variable local to the current "
+    "The local builtin declares each given variable local to the current "
     "function.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
@@ -43,7 +43,7 @@ FLAG(LOCAL_PRINT,
      Bool,
      'p',
      "",
-     "Print the reusable declaration of each named local.");
+     "Print the reusable declaration of each given local.");
 FLAG(LOCAL_READONLY,
      Bool,
      'r',

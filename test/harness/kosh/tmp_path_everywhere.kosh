@@ -1,6 +1,6 @@
 #!/bin/env kosh
-# A literal /tmp names the temporary directory on every platform, as
-# /dev/null names the null device, so a script can create, read, list, and
+# A literal /tmp is the temporary directory on every platform, as
+# /dev/null is the null device, so a script can create, read, list, and
 # remove files under it, and change into it. Only /tmp itself and paths
 # under it are mapped.
 probe=/tmp/kosh-tmp-everywhere-$$

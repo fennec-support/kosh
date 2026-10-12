@@ -1,4 +1,4 @@
-# A completion spec registered with -o filenames gives every reply that names a
+# A completion spec registered with -o filenames gives every reply that is a
 # directory a trailing slash, for a -F function and a -W word list alike, the
 # way bash does. Without the option a reply stays as the spec gave it, and
 # compopt +o filenames inside the function turns the slash off again, also for

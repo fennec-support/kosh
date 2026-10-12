@@ -27,7 +27,7 @@
 # menu, only a second Tab lists a directory, and one Ctrl-Z undoes a
 # completion with its space. It also covers word-wise ghost
 # acceptance through Ctrl-Right and Alt-F, and prefix history search on Up and
-# Down with its option switched off, a Ctrl-R menu that names a miss and cuts
+# Down with its option switched off, a Ctrl-R menu that flags a miss and cuts
 # a long entry with an ellipsis, and the inline hint rows for a command and
 # a flag, the builtin form that a typed subcommand opens, a koshconf option
 # that Tab finds by subsequence, their header naming the kind and the
@@ -46,7 +46,7 @@
 # row shows an alias expansion before its target synopsis, a function
 # definition, the first analysis finding of a paused line, and the command of
 # the pipeline segment or command substitution under the caret. The same row
-# names an unterminated quote or substitution, an open subshell, conditional,
+# flags an unterminated quote or substitution, an open subshell, conditional,
 # if, loop or function, a misplaced closing keyword, and a bad for variable,
 # and it stays on the synopsis for closed text, a comment, and a trailing
 # backslash. Caret moves onto matched brackets keep the line and the caret,

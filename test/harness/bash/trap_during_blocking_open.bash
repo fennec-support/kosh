@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# An open of a named pipe blocks until a writer arrives. A trapped signal that
+# An open of a FIFO blocks until a writer arrives. A trapped signal that
 # lands while the open blocks runs its action and the open resumes, so the
 # redirection still reaches the file and the read succeeds. A trapped interrupt
-# behaves the same way. The whole file is skipped where named pipes are
+# behaves the same way. The whole file is skipped where FIFOs are
 # unavailable, and both shells take that branch together.
 #
 # The writer of a signalled case waits for the notifier to leave a marker after

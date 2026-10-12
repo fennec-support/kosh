@@ -1,6 +1,6 @@
 unset KOSH_FLAGS
 # enable is accepted as a no-op since every builtin is always enabled in kosh.
-# -a lists every builtin, named args return 0 for known builtins and 1 for
+# -a lists every builtin, given args return 0 for known builtins and 1 for
 # unknown, and the flags -n, -f, -s are accepted without effect.
 "$BIN" -c '
 printf "== enable with no args returns 0:\n"

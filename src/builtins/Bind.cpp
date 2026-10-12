@@ -3,7 +3,7 @@
  *    See the top-level LICENSE file for the licensing information.
  *
  * This file implements the bind builtin, which accepts readline key bindings
- * without effect. The line editor is the vendored toiletline, so key binding
+ * but has no effect. The line editor is the vendored toiletline, so key binding
  * is not wired through this builtin.
  */
 
@@ -18,7 +18,7 @@ HELP_SYNOPSIS_DECL("[-lmrvpPsSq] [-f filename] [-q function] [-u function] "
                    "[keyseq: function ...]");
 
 HELP_DESCRIPTION_DECL(
-    "The bind builtin accepts readline key bindings without effect. The "
+    "The bind builtin accepts readline key bindings but has no effect. The "
     "line editor is the vendored toiletline, so key binding is not wired "
     "through this builtin.");
 

@@ -49,7 +49,7 @@ REGEX_SOURCES := regcomp regerror regexec tre-mem
 endif
 
 # A Linux target is cross-compiled with Zig and musl from another host, from a
-# Linux host when ARCH names a different processor, or whenever LINUX_ZIG=1.
+# Linux host when ARCH selects a different processor, or whenever LINUX_ZIG=1.
 LINUX_ZIG ?= 0
 ifeq ($(TARGET), Linux)
 HOST_MACHINE := $(shell uname -m)

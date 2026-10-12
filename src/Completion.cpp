@@ -1384,7 +1384,7 @@ complete_variable(StringView                   token,
     unused(scan_highlight_range(text_before_token, 0, text_before_token.length,
                                 context, spans, assigned_names,
                                 function_names));
-    LOG(Debug, "the text before the variable assigns %zu names",
+    LOG(Debug, "the text before the variable assigns %zu variables",
         assigned_names.count());
     assigned_names.for_each([&](StringView name) { do_add_name(name); });
   }
@@ -1401,7 +1401,7 @@ complete_variable(StringView                   token,
   for (let const &name : dynamic_names)
     do_add_name(name);
 
-  LOG(All, "%zu variable names match prefix '%.*s'", candidates.count(),
+  LOG(All, "%zu variables match prefix '%.*s'", candidates.count(),
       static_cast<int>(prefix.length), prefix.data);
 
   return candidates;
@@ -1431,7 +1431,7 @@ complete_tilde_user(StringView token) throws -> ArrayList<String>
     candidates.push(steal(candidate));
   }
 
-  LOG(All, "%zu user names match tilde prefix '%.*s'", candidates.count(),
+  LOG(All, "%zu users match tilde prefix '%.*s'", candidates.count(),
       static_cast<int>(prefix.length), prefix.data);
 
   return candidates;

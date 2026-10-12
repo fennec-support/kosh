@@ -502,8 +502,8 @@ glob_matches(StringView pattern, Allocator allocator) throws
     SetLastError(error);
   };
 
-  /* FindFirstFile yields bare names, so the directory prefix is kept to rebuild
-     the path. */
+  /* FindFirstFile yields bare filenames, so the directory prefix is kept to
+     rebuild the path. */
   usize prefix_length = 0;
 
   for (usize i = 0; i < pattern.length; i++)

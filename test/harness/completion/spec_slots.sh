@@ -1,10 +1,10 @@
 # complete -E serves a tab on an empty line, and complete -I serves the
-# command word in place of the command names, with -E first on an empty line.
+# command word in place of the commands, with -E first on an empty line.
 # Like bash, a slot spec with no match offers nothing unless it has -o default
-# or -o bashdefault, which fall back to the command names.
+# or -o bashdefault, which fall back to the commands.
 # A -D default spec lists its actions and word list like a command spec, and a
 # loader that returns 124 restarts with the spec it registered. complete -r
-# removes the named specs, a slot, or every spec, and complete -p prints the
+# removes the given specs, a slot, or every spec, and complete -p prints the
 # -I, -D, and -E lines and round-trips them. The probe runs in a temp
 # directory holding one directory and one file.
 dir=$(mktemp -d)

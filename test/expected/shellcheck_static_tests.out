@@ -189,7 +189,7 @@ note: Write it with `-n`.
     49 |    [ "$left" < "$right" ]
        |                ^~~~~~~~
 note: Escape it as `\<`, or use the `[[ ]]` form.
-50:18: warning: The redirect writes to the file named '2'. (SC2210)
+50:18: warning: The redirect writes to the file called '2'. (SC2210)
     50 |    echo written > 2
        |                   ^
 note: Write `>&2` to reach the descriptor, or compare the numbers in a test.
@@ -288,7 +288,7 @@ note: Use `find -print0` with `xargs -0`, or `find -exec`.
 74:3: warning: The `ls` listing mangles a name with a space or a newline. (SC2012)
     74 |    ls | wc -l
        |    ^~
-note: Use `find`, or match the names with a glob.
+note: Use `find`, or match the files with a glob.
 75:3: warning: Some `find` implementations have no default path. (SC2185)
     75 |    find -name '*.txt'
        |    ^~~~
@@ -343,7 +343,7 @@ note: Use `sed` to replace a word.
 89:8: warning: The star in the regular expression 'file*' repeats the preceding character. (SC2022)
     89 |    grep 'file*' list
        |         ^~~~~~~
-note: Write `.*` for any text, or match the names with a glob.
+note: Write `.*` for any text, or match the files with a glob.
 90:8: warning: The `echo` operand `\n` is printed as written. (SC2028)
     90 |    echo 'line\n'
        |         ^~~~~~~~

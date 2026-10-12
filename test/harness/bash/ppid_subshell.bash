@@ -1,5 +1,5 @@
 #!/bin/bash
-# PPID names the parent of the original shell in every substitution, subshell,
+# PPID holds the parent of the original shell in every substitution, subshell,
 # and pipeline stage, while BASHPID differs in each of them.
 parent=$PPID
 [ "$parent" -gt 0 ] && echo "ppid positive"

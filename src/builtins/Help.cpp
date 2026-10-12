@@ -2,7 +2,7 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file lists builtin names and renders full, descriptive, synopsis, or
+ * This file lists builtins and renders full, descriptive, synopsis, or
  * manpage-style help for the help builtin. It reads immutable help metadata
  * from the builtin registry and delegates full help to the selected builtin.
  */

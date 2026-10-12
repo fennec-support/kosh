@@ -1,6 +1,6 @@
 #!/bin/env kosh
 
-# A diagnostic in eval text names eval and the line of that text, and its excerpt
+# A diagnostic in eval text cites eval and the line of that text, and its excerpt
 # shows that text. A function defined by an eval keeps that numbering when it is
 # called later, also from a background job or a pipeline stage that runs in a
 # fresh evaluator on Windows. LINENO and BASH_LINENO count from the file.

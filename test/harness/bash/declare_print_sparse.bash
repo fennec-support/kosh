@@ -1,7 +1,7 @@
 #!/bin/bash
 # declare -p prints every set element of a sparse indexed array under its own
 # index, checked byte-for-byte against bash. The listing forms with -p or an
-# attribute letter and no names print the same declarations.
+# attribute letter and no operands print the same declarations.
 a=(x [3]=y)
 declare -p a
 b=(x)

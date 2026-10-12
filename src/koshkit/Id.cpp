@@ -3,8 +3,8 @@
  *    See the top-level LICENSE file for the licensing information.
  *
  * This file implements the id utility. It selects real or effective user and
- * group identifiers, resolves names, and renders primary or supplementary group
- * results.
+ * group identifiers, resolves labels, and renders primary or supplementary
+ * group results.
  */
 
 #include "../CLI.hpp"
@@ -18,7 +18,11 @@ KOSHKIT_UTIL_DECL("[-Ggu] [-nr] [user]",
 
 FLAG(ID_GROUPS, Bool, 'G', "groups", "Write all group identities.");
 FLAG(ID_GROUP, Bool, 'g', "group", "Write the group identity.");
-FLAG(ID_NAME, Bool, 'n', "name", "Write names instead of numbers.");
+FLAG(ID_NAME,
+     Bool,
+     'n',
+     "name",
+     "Write each user or group as a name, not a number.");
 FLAG(ID_REAL, Bool, 'r', "real", "Use real identities.");
 FLAG(ID_USER, Bool, 'u', "user", "Write the user identity.");
 

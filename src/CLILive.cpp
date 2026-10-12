@@ -2,8 +2,8 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file implements the terminal and header half of the shared live view
- * driver declared in CLILive.hpp and the live_report_options parser. It
+ * This file implements the terminal and header parts of the shared live view
+ * driver declared in CLILive.hpp and parses live_report_options. It
  * manages the alternate screen, raw key input, the styled header line, and the
  * single write that delivers each frame. Redirected output receives a plain
  * header without escape sequences.

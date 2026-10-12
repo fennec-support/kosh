@@ -2,7 +2,7 @@
 # Every transformation operator, @Q, @A, @K, @k, @E, @P, @U, @u, @L, and @a,
 # on scalars, indexed and associative arrays, and the positional parameters,
 # in each word context of a script, checked against bash. The values cover
-# unset and empty names, spaces, quotes, escapes, newlines, and control
+# unset and empty words, spaces, quotes, escapes, newlines, and control
 # bytes. The escape values avoid the prompt time escapes, whose output
 # changes every second.
 export LC_ALL=C

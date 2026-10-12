@@ -4,7 +4,7 @@
  *
  * This file implements the sync utility. It flushes every mounted filesystem
  * when it receives no operand, and it flushes the data or the data and the
- * metadata of each named file when it receives one.
+ * metadata of each given file when it receives one.
  */
 
 #include "../CLI.hpp"

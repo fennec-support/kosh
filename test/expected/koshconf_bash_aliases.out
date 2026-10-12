@@ -22,10 +22,10 @@ extglob             	on
 1
 == an unknown alias and the retired names are errors:
 -c:1:14: error: Builtin `koshconf`: Unknown option 'legacy.bash.foo'.
-note: Run `koshconf list` for the option names.
+note: Run `koshconf list` for the option spellings.
 -c:1:14: error: Builtin `koshconf`: Unknown option 'legacy.bash.errexit'.
-note: Run `koshconf list` for the option names.
+note: Run `koshconf list` for the option spellings.
 -c:1:14: error: Builtin `koshconf`: Unknown option 'legacy.posix.extglob'.
-note: Run `koshconf list` for the option names.
+note: Run `koshconf list` for the option spellings.
 retired status=1
 retired status=1

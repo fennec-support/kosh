@@ -10,8 +10,8 @@ Every utility declares its synopsis and description with `KOSHKIT_UTIL_DECL`
 and its flags with `FLAG` and the shared flag types.
 `REGISTER_KOSHKIT_UTIL_FLAGS` adds the `--help` flag last and publishes the
 list for execution, help, and completion. `KOSHKIT_PARSE_OPERANDS_OR_HELP`
-calls `parse_util_operands`, which handles flags, `--`, and operand
-locations, resets the flags at scope exit, and returns after help.
+calls `parse_util_operands`, which handles flags, `--`, and operand locations,
+resets the flags at scope exit, and returns after help.
 
 Do not write a local option scanner for ordinary short flags, long flags,
 bundled flags, flag arguments, `--`, or operand locations. Extend
@@ -19,11 +19,10 @@ bundled flags, flag arguments, `--`, or operand locations. Extend
 use a specialized parser only when its documented operand grammar cannot be
 represented by the shared parser.
 
-Use `report_soft_koshkit_error` for recoverable utility diagnostics, and
+Use `report_soft_koshkit_error` for recoverable diagnostics, and
 `KOSHKIT_REPORT_PATH_ERROR` when a path operation fails with a system error.
 `visit_ordered_sources` hands each whole source over in operand order. Use
-`ExecContext` for standard streams and output. File operations accept `Path`.
-Platform operations pass through the `os` wrappers.
+`ExecContext` for standard streams and output.
 
 ## Register one utility
 

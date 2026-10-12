@@ -1,6 +1,6 @@
 unset KOSH_FLAGS
 BIN=$(CDPATH= cd -- "$(dirname -- "$BIN")" && pwd)/$(basename -- "$BIN")
-# exec exits 127 when the named command is not found, whether the name carries a
+# exec exits 127 when the given command is not found, whether the name carries a
 # slash or is searched on the PATH, exits 126 when the file is present but not
 # executable, replaces the shell with a found command, and runs as a contained
 # child inside a command substitution rather than killing the session.

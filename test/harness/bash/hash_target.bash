@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # hash -t prints the remembered location of each name, with the name and a
-# tab ahead of it when several names are given, and fails for a name that is
+# tab ahead of it when several operands are given, and fails for a name that is
 # not remembered.
 
 hash -r

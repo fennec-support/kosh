@@ -38,11 +38,11 @@ FLAG(COMPLETE_OPTION,
      ManyStrings,
      'o',
      "",
-     "dirnames adds directory names when nothing else matched. plusdirs adds "
+     "dirnames adds directories when nothing else matched. plusdirs adds "
      "them every time. filenames gives directory candidates a trailing slash. "
      "default leaves an empty result to filename completion. bashdefault "
      "alone completes a variable, a user name, or a glob. fullquote quotes "
-     "every candidate. noquote leaves file names unquoted. nosort keeps the "
+     "every candidate. noquote leaves filenames unquoted. nosort keeps the "
      "generated order. nospace adds no space after an accepted candidate. Any "
      "other name is an error.");
 FLAG(COMPLETE_PRINT,
@@ -103,27 +103,27 @@ FLAG(COMPLETE_INITIAL,
      Bool,
      'I',
      "",
-     "Register the spec used for the command word in place of command names.");
-FLAG(COMPLETE_ALIAS, Bool, 'a', "", "Register alias names.");
-FLAG(COMPLETE_BUILTIN, Bool, 'b', "", "Register builtin names.");
-FLAG(COMPLETE_COMMANDS, Bool, 'c', "", "Register command names.");
+     "Register the spec used for the command word in place of commands.");
+FLAG(COMPLETE_ALIAS, Bool, 'a', "", "Register aliases.");
+FLAG(COMPLETE_BUILTIN, Bool, 'b', "", "Register builtins.");
+FLAG(COMPLETE_COMMANDS, Bool, 'c', "", "Register commands.");
 FLAG(COMPLETE_DIRECTORY,
      Bool,
      'd',
      "",
-     "Register directory names, each with a trailing slash.");
-FLAG(COMPLETE_EXPORT, Bool, 'e', "", "Register exported variable names.");
+     "Register directories, each with a trailing slash.");
+FLAG(COMPLETE_EXPORT, Bool, 'e', "", "Register exported variables.");
 FLAG(COMPLETE_FILE,
      Bool,
      'f',
      "",
      "Register filenames, with a trailing slash on each directory.");
-FLAG(COMPLETE_GROUP, Bool, 'g', "", "Register group names.");
-FLAG(COMPLETE_JOB, Bool, 'j', "", "Register job names.");
+FLAG(COMPLETE_GROUP, Bool, 'g', "", "Register groups.");
+FLAG(COMPLETE_JOB, Bool, 'j', "", "Register jobs.");
 FLAG(COMPLETE_KEYWORD, Bool, 'k', "", "Register shell keywords.");
-FLAG(COMPLETE_SERVICE, Bool, 's', "", "Register service names.");
-FLAG(COMPLETE_USER, Bool, 'u', "", "Register user names.");
-FLAG(COMPLETE_VARIABLE, Bool, 'v', "", "Register shell variable names.");
+FLAG(COMPLETE_SERVICE, Bool, 's', "", "Register services.");
+FLAG(COMPLETE_USER, Bool, 'u', "", "Register users.");
+FLAG(COMPLETE_VARIABLE, Bool, 'v', "", "Register shell variables.");
 
 REGISTER_BUILTIN_FLAGS(Complete);
 

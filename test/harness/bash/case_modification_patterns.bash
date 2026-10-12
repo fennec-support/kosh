@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# A single ^ or , changes at most the first character, and only when it
-# matches the pattern; a doubled operator tests every character. The tail
-# after the first character is copied unchanged whatever it holds.
+# A single ^ or , changes at most the first character when it matches the pattern.
+# A doubled operator tests every character. The tail after the first character is
+# copied unchanged whatever it holds.
 
 v=hello
 echo "${v^} ${v^^} ${v^[a-h]} ${v^[i-z]} ${v^^[lo]} ${v^h} ${v^e}"

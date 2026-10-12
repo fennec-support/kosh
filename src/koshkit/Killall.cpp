@@ -2,7 +2,7 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file implements the killall utility. It resolves signal names or
+ * This file implements the killall utility. It resolves signal spellings or
  * numbers, enumerates processes by exact name, and signals every matching
  * process.
  */
@@ -21,7 +21,7 @@ FLAG(KILLALL_SIGNAL,
      's',
      "signal",
      "The signal to send, a name such as TERM or a number such as 15.");
-FLAG(KILLALL_LIST, Bool, 'l', "list", "List the signal names and exit.");
+FLAG(KILLALL_LIST, Bool, 'l', "list", "List the signals and exit.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Killall);
 

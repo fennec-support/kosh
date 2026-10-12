@@ -1,6 +1,6 @@
 #!/bin/bash
-# A multibyte character in IFS splits and joins as one character in a UTF-8
-# locale, in word splitting, read, and "$*", as in bash.
+# A multibyte character in IFS is one character in a UTF-8 locale. This applies
+# to word splitting, read, and "$*", as in bash.
 export LC_ALL=C.UTF-8
 IFS=é
 x='aébéé'

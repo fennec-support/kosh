@@ -41,7 +41,7 @@ run_editor()
     elif [ -n "$expect_command" ]; then
         TRANSCRIPT="$transcript" COLUMNS="$columns" "$expect_command" -c '
             # A sanitized editor on a machine running the whole suite answers a
-            # key far more slowly than one running alone. Both bounds are named
+            # key far more slowly than one running alone. Both bounds are set
             # once and reported by name.
             set idle_seconds 45
             set wall_seconds 180

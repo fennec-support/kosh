@@ -8,7 +8,7 @@ helper should own shared behavior.
 
 Every builtin declares its flags with `FLAG_LIST_DECL`, `FLAG`, and the shared
 flag types. `REGISTER_BUILTIN_FLAGS` publishes that list for execution, help,
-and completion. `PARSE_BUILTIN_ARGS` parses ordinary operands.
+and completion. `PARSE_BUILTIN_ARGS` parses ordinary operands, and
 `PARSE_BUILTIN_ARGS_WITH_LOCATIONS` also retains operand spans.
 
 Do not write a local option scanner for ordinary short flags, long flags,
@@ -17,9 +17,8 @@ flag parser when a missing grammar applies to more than one command. A builtin
 may use a specialized parser only when its documented operand grammar cannot be
 represented by the shared parser.
 
-Use `SHOW_BUILTIN_HELP_AND_RETURN` or
-`SHOW_BUILTIN_HELP_EXTRA_AND_RETURN` for help. Use
-`report_soft_builtin_error` for recoverable builtin diagnostics. Source spans
+Use `SHOW_BUILTIN_HELP_AND_RETURN` or `SHOW_BUILTIN_HELP_EXTRA_AND_RETURN` for
+help, and `report_soft_builtin_error` for recoverable diagnostics. Source spans
 come from `ExecContext` and the parsed operand locations.
 
 ## Register one builtin
@@ -34,8 +33,7 @@ Makefile discovers it automatically.
 
 Do not add a builtin to special, declaration, optimizer, or fresh-process
 tables unless its semantics require that classification. Runtime state belongs
-on `EvalContext` or an existing state owner. Platform operations pass through
-the `os` wrappers.
+on `EvalContext` or an existing state owner.
 
 ## Preserve one behavior owner
 

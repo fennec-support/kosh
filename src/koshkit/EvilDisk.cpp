@@ -3,7 +3,7 @@
  *    See the top-level LICENSE file for the licensing information.
  *
  * This file implements evildisk. It reports filesystem capacity, disk failure
- * counters, and available SMART data for mounted filesystems or named paths.
+ * counters, and available SMART data for mounted filesystems or given paths.
  */
 
 #include "../CLI.hpp"

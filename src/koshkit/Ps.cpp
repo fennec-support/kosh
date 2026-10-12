@@ -3,7 +3,7 @@
  *    See the top-level LICENSE file for the licensing information.
  *
  * This file implements the ps utility. It enumerates platform processes,
- * filters terminal and ownership records, resolves user names, and renders
+ * filters terminal and ownership records, resolves user labels, and renders
  * standard or user-oriented columns.
  */
 

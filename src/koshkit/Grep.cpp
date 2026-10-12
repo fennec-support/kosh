@@ -44,7 +44,7 @@ FLAG(GREP_LIST,
      Bool,
      'l',
      "files-with-matches",
-     "Print the names of files containing a selected line.");
+     "Print the filename of each file containing a selected line.");
 FLAG(GREP_QUIET,
      Bool,
      'q',
@@ -78,8 +78,8 @@ FLAG(
 FLAG_OPTIONAL(GREP_COLOR,
               '\0',
               "color",
-              "Color matches, names, numbers, and separators; the default is "
-              "auto.",
+              "Color matches, filenames, numbers, and separators; the default "
+              "is auto.",
               koshka::koshkit::is_koshkit_color_when,
               "auto|always|never");
 

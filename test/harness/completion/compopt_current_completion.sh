@@ -2,12 +2,12 @@
 # options of the current completion only: -o plusdirs and -o dirnames add the
 # directories after the function, +o turns an option of the spec off for this
 # completion, and the registered spec keeps its options. With no option it
-# prints the current options under the command name. A named compopt inside
-# the function changes the registered spec. nosort keeps the order of the
-# reply, and the reply is quoted the way Bash quotes it: as file names, with
+# prints the current options under the command name. A compopt with a name
+# inside the function changes the registered spec. nosort keeps the order of the
+# reply, and the reply is quoted the way Bash quotes it: as filenames, with
 # fullquote, and never with noquote alone. An empty reply under bashdefault
 # without default completes only a variable, a user name, or a glob, as Bash
-# does, while default falls back to file names. The probe runs in a temp directory
+# does, while default falls back to filenames. The probe runs in a temp directory
 # holding one directory and two files.
 dir=$(mktemp -d)
 mkdir "$dir/probe_dir"

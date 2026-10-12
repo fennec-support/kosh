@@ -2,7 +2,7 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file implements structured runtime tracing. It formats named values
+ * This file implements structured runtime tracing. It formats labeled values
  * and routes compile-time filtered log records without affecting disabled
  * hot paths.
  */

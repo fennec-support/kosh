@@ -1,6 +1,6 @@
 unset KOSH_FLAGS KOSHCONF
 # The shell accepts bash's invocation forms -o NAME, +o NAME, -O NAME,
-# +O NAME, and +letter. Each named option keeps its command-line value over
+# +O NAME, and +letter. Each given option keeps its command-line value over
 # the settings files, and --no-config reads no settings file at all.
 work=$(mktemp -d)
 trap '[ -n "$work" ] && "$BIN_DIR/invoke-koshkit" rm -rf -- "$work"' EXIT

@@ -147,7 +147,7 @@ case_local
   2>/dev/null
 echo "local_readonly_status=$?"
 
-# declare -F answers function existence by status and prints bare names, the
+# declare -F answers function existence by status and prints bare functions, the
 # bare form lists declare -f lines, and a cloned definition evals back.
 f() { echo body; }
 function g/h:i { echo colon; }
@@ -238,7 +238,7 @@ echo "${top[@]}"
 
 # export and readonly list their variables in the declare form bash reloads, and
 # export -n removes the export attribute while keeping the variable in the shell.
-# The listing is filtered to the test's own names so the inherited environment
+# The listing is filtered to the test's own entries so the inherited environment
 # cannot perturb the comparison.
 export EV=one
 echo "export_p=$(export -p | grep '^declare -x EV=')"

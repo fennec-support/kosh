@@ -2,14 +2,13 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file implements UTF-8 validation, length, position, terminal
- * display-width conversion, history record encoding, and atomic history file
- * replacement for both the interactive editor and the noninteractive stubs. It
- * sits outside both so the two build configurations share text measurement
- * and the history format without initializing terminal state.
- * is_history_contents_valid applies the rejection rules of the vendored
- * itl_string_from_bytes in src/toiletline/toiletline.h, and the two must
- * agree.
+ * This file implements UTF-8 validation, length, position, terminal display
+ * width conversion, history record encoding, and atomic history file
+ * replacement for the interactive editor and noninteractive stubs. Shared code
+ * stays here so both builds use the same text measurement and history format
+ * without initializing terminal state. is_history_contents_valid applies the
+ * rejection rules of the vendored itl_string_from_bytes in
+ * src/toiletline/toiletline.h. The two functions must agree.
  */
 
 #include "Toiletline.hpp"

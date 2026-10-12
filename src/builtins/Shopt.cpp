@@ -3,8 +3,8 @@
  *    See the top-level LICENSE file for the licensing information.
  *
  * This file implements the shopt builtin, its status and reusable output, and
- * the BASHOPTS listing. The option names, their order, and their storage come
- * from the option registry.
+ * the BASHOPTS listing. The option spellings, their order, and their storage
+ * come from the option registry.
  */
 
 #include "../Builtin.hpp"
@@ -21,8 +21,8 @@ HELP_DESCRIPTION_DECL(
     "The shopt builtin sets, unsets, and queries the bash shell options.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
-FLAG(SHOPT_SET, Bool, 's', "", "Enable each named option.");
-FLAG(SHOPT_UNSET, Bool, 'u', "", "Disable each named option.");
+FLAG(SHOPT_SET, Bool, 's', "", "Enable each given option.");
+FLAG(SHOPT_UNSET, Bool, 'u', "", "Disable each given option.");
 FLAG(SHOPT_QUIET,
      Bool,
      'q',
@@ -34,7 +34,7 @@ FLAG(SHOPT_PRINT,
      "",
      "Print one shopt -s or -u command per line. With -o, print set -o or "
      "+o commands.");
-FLAG(SHOPT_SET_OPTIONS, Bool, 'o', "", "Operate on the set -o option names.");
+FLAG(SHOPT_SET_OPTIONS, Bool, 'o', "", "Operate on the set -o options.");
 
 REGISTER_BUILTIN_FLAGS(Shopt);
 
@@ -61,7 +61,7 @@ shopt_status_line(StringView name,
 fn
 format_option_names_help(Allocator allocator) throws -> String
 {
-  let        section = String{allocator, "OPTION NAMES\n"};
+  let        section = String{allocator, "OPTION SPELLINGS\n"};
   let const &names   = shopt_option_name_list();
 
   utils::append_name_columns(section, names.count(),

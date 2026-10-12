@@ -230,7 +230,7 @@ interpreter.bash.cd_to_variable_value=off
 # Check that a remembered command path still exists before running it.
 # (shopt checkhash)
 interpreter.bash.verify_remembered_command_paths=off
-# Let a glob match names that begin with a dot. (shopt dotglob)
+# Let a glob match filenames that begin with a dot. (shopt dotglob)
 interpreter.bash.glob_includes_dotfiles=off
 # Keep a non-interactive shell running when exec cannot run its command.
 # (shopt execfail)
@@ -318,7 +318,7 @@ completion.bash.fix_directory_typos=off
 # Drop FIGNORE suffixes from completions even when that leaves none.
 # (shopt force_fignore)
 completion.bash.always_apply_fignore=on
-# Complete host names after an @ in a word. (shopt hostcomplete)
+# Complete hostnames after an @ in a word. (shopt hostcomplete)
 completion.bash.hostnames_after_at=on
 # Offer no command completion on an empty line. (shopt no_empty_cmd_completion)
 completion.bash.skip_empty_line=off
@@ -356,7 +356,7 @@ shopt -u expand_aliases
 == create writes every file option with its help and Bash name:
 9
 interpreter.bash.verify_remembered_command_paths=off
-# Let a glob match names that begin with a dot. (shopt dotglob)
+# Let a glob match filenames that begin with a dot. (shopt dotglob)
 interpreter.bash.glob_includes_dotfiles=off
 1
 0
@@ -452,7 +452,7 @@ rc=2
 -c:1:14: error: Builtin `koshconf`: Unknown option 'nope'.
      1 |  koshconf get nope
        |               ^~~~
-note: Run `koshconf list` for the option names.
+note: Run `koshconf list` for the option spellings.
 rc=1
 -c:1:19: error: Builtin `koshconf`: Invalid value 'weird' for 'mood', expected 'kosh', 'sh', 'bash', or 'bash-posix'.
      1 |  koshconf set mood weird

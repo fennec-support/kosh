@@ -302,7 +302,7 @@ format_option_switches_help() throws -> String
              "disables it.\n  -o NAME and +o NAME do the same by Bash "
              "name. A Koshka letter is shown with its koshconf name.\n\n";
   section += format_option_table();
-  section += "\n  The -o long names:\n";
+  section += "\n  The -o long spellings:\n";
 
   let listed_names = String{heap_allocator()};
 

@@ -1,5 +1,5 @@
 unset KOSH_FLAGS
-# A break or a continue a DEBUG action requests names the innermost enclosing
+# A break or a continue a DEBUG action requests selects the innermost enclosing
 # loop. The traced command still runs, and every later command in the body is
 # skipped until the loop takes the jump.
 echo "== a break on a word loop header ends the loop with its variable bound:"

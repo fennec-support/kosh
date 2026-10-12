@@ -2,17 +2,17 @@
 TMPDIR/sh-script:2:20: error: Builtin `trap`: ERR: invalid signal specification.
      2 |  trap "echo action" ERR
        |                     ^~~
-note: List the signal names with `trap -l`.
+note: List the signals with `trap -l`.
 err-rc=1
 TMPDIR/sh-script:4:20: error: Builtin `trap`: RETURN: invalid signal specification.
      4 |  trap "echo action" RETURN
        |                     ^~~~~~
-note: List the signal names with `trap -l`.
+note: List the signals with `trap -l`.
 return-rc=1
 TMPDIR/sh-script:6:20: error: Builtin `trap`: DEBUG: invalid signal specification.
      6 |  trap "echo action" DEBUG
        |                     ^~~~~
-note: List the signal names with `trap -l`.
+note: List the signals with `trap -l`.
 debug-rc=1
 body
 rc=0
@@ -42,39 +42,39 @@ rc=0
 TMPDIR/bash-script:2:20: error: Builtin `trap`: ERR: invalid signal specification.
      2 |  trap "echo action" ERR
        |                     ^~~
-note: List the signal names with `trap -l`.
+note: List the signals with `trap -l`.
 err-rc=1
 TMPDIR/bash-script:4:20: error: Builtin `trap`: RETURN: invalid signal specification.
      4 |  trap "echo action" RETURN
        |                     ^~~~~~
-note: List the signal names with `trap -l`.
+note: List the signals with `trap -l`.
 return-rc=1
 TMPDIR/bash-script:6:20: error: Builtin `trap`: DEBUG: invalid signal specification.
      6 |  trap "echo action" DEBUG
        |                     ^~~~~
-note: List the signal names with `trap -l`.
+note: List the signals with `trap -l`.
 debug-rc=1
 TMPDIR/bash-script:8:8: error: Builtin `trap`: DEBUG: invalid signal specification.
      8 |  trap - DEBUG
        |         ^~~~~
-note: List the signal names with `trap -l`.
+note: List the signals with `trap -l`.
 body
 rc=0
 == a mimicked script run as a command reads the same shebang:
 TMPDIR/sh-script:2:20: error: Builtin `trap`: ERR: invalid signal specification.
      2 |  trap "echo action" ERR
        |                     ^~~
-note: List the signal names with `trap -l`.
+note: List the signals with `trap -l`.
 err-rc=1
 TMPDIR/sh-script:4:20: error: Builtin `trap`: RETURN: invalid signal specification.
      4 |  trap "echo action" RETURN
        |                     ^~~~~~
-note: List the signal names with `trap -l`.
+note: List the signals with `trap -l`.
 return-rc=1
 TMPDIR/sh-script:6:20: error: Builtin `trap`: DEBUG: invalid signal specification.
      6 |  trap "echo action" DEBUG
        |                     ^~~~~
-note: List the signal names with `trap -l`.
+note: List the signals with `trap -l`.
 debug-rc=1
 body
 rc=0

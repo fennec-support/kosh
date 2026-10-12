@@ -1,5 +1,5 @@
 unset KOSH_FLAGS
-# The koshkit which utility names a builtin or prints the PATH location of a
+# The koshkit which utility reports a builtin or prints the PATH location of a
 # program, and exits non-zero when nothing resolves. It is invoked through the
 # koshkit builtin so it runs the shell's own implementation rather than a system
 # which on PATH. The PATH lookups run against a temp directory the test makes, so

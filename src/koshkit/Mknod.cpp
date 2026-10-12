@@ -3,7 +3,7 @@
  *    See the top-level LICENSE file for the licensing information.
  *
  * This file implements mknod. It accepts POSIX positional node types and
- * modern named type and device-number options, while keeping node creation
+ * modern type and device-number options, while keeping node creation
  * behind the platform filesystem boundary.
  */
 

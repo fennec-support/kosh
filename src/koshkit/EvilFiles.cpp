@@ -42,7 +42,7 @@ FLAG(EVILFILES_WIDE,
      Bool,
      'w',
      "wide",
-     "Do not truncate names to the terminal width.");
+     "Do not truncate filenames to the terminal width.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(EvilFiles);
 

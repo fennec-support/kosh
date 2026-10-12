@@ -2,13 +2,13 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file implements indexed, sparse, and associative shell arrays: their
+ * This file implements indexed, sparse, and associative shell arrays. It owns
  * assignment, lookup, removal, subscripting, key collection, local bindings,
  * and scalar or array expansion through the common variable interface. It
- * projects call-stack variables, flattened Bash call arguments, and DIRSTACK
- * through the same code, while EvalContext keeps the frame and directory
- * storage. The file is separate because aggregate subscripting and list
- * expansion apply even to an array without ordinary indexed-array storage.
+ * projects call stack variables, flattened Bash call arguments, and DIRSTACK
+ * through the same array paths. EvalContext retains the frame and directory
+ * storage. The split exists because aggregate subscripting and list expansion
+ * are shared even when an array has no ordinary indexed array allocation.
  */
 
 #include "Builtin.hpp"
@@ -1473,7 +1473,7 @@ fn
 EvalContext::matching_prefix_names(StringView prefix) const throws
     -> SortedArrayList<String, order_comparator<String>>
 {
-  LOG(All, "listing variable names with the prefix '%.*s'",
+  LOG(All, "listing variables with the prefix '%.*s'",
       static_cast<int>(prefix.length), prefix.data);
 
   let names = ArrayList<String>{heap_allocator()};

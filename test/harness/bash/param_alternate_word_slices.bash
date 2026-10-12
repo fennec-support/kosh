@@ -2,7 +2,7 @@
 # The word of an alternate operator expands a quoted positional or array slice
 # into one field per element, and the # and ? parameters take an operator the
 # way a name does, checked byte-for-byte against bash. An operator word that
-# names a missing positional parameter stays silent without nounset, and an
+# targets a missing positional parameter stays silent without nounset, and an
 # unused word is never evaluated.
 show() {
   printf '%s:' "$#"

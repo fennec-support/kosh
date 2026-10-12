@@ -19,11 +19,11 @@ FLAG_LIST_DECL();
 HELP_SYNOPSIS_DECL("[-lp] [--] [action condition ...]");
 
 HELP_DESCRIPTION_DECL(
-    "The trap builtin sets the action to run for each named condition.");
+    "The trap builtin sets the action to run for each given condition.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 FLAG(TRAP_PRINT, Bool, 'p', "", "Print the set traps in a reusable form.");
-FLAG(TRAP_LIST, Bool, 'l', "list", "Print the table of signal names.");
+FLAG(TRAP_LIST, Bool, 'l', "list", "Print the table of signals.");
 
 REGISTER_BUILTIN_FLAGS(Trap);
 
@@ -234,7 +234,7 @@ Trap::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
     report_soft_builtin_error(ec, cxt, ec.arg_location_at(index),
                               args[index] + ": invalid signal specification",
-                              "List the signal names with `trap -l`");
+                              "List the signals with `trap -l`");
 
     return None;
   };

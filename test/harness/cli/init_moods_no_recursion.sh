@@ -1,5 +1,5 @@
 unset KOSH_FLAGS
-# A set -L inside the bash rc names the moods already sourcing, so the rc runs
+# A set -L inside the bash rc lists the moods already sourcing, so the rc runs
 # once under the bash grammar instead of recursing.
 home=$(mktemp -d)
 trap '[ -n "$home" ] && "$BIN_DIR/invoke-koshkit" rm -rf "$home"' EXIT

@@ -3,7 +3,7 @@
  *    See the top-level LICENSE file for the licensing information.
  *
  * This file implements the mkfifo utility. It parses the requested creation
- * mode, applies the file creation mask, and creates each named FIFO through the
+ * mode, applies the file creation mask, and creates each FIFO through the
  * platform interface.
  */
 

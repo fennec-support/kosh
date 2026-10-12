@@ -27,9 +27,9 @@ FLAG(WHO_QUICK,
      Bool,
      'q',
      "quick",
-     "Write login names and the number of logged-in users.");
+     "Write the logged-in users and their count.");
 FLAG(WHO_RUNLEVEL, Bool, 'r', "runlevel", "Write the current run level.");
-FLAG(WHO_SHORT, Bool, 's', "short", "Write names, lines, and login times.");
+FLAG(WHO_SHORT, Bool, 's', "short", "Write users, lines, and login times.");
 FLAG(WHO_TIME, Bool, 't', "time", "Write the last system clock change.");
 FLAG(WHO_STATE, Bool, 'T', "terminal-state", "Write terminal write states.");
 FLAG(WHO_IDLE, Bool, 'u', "idle", "Write idle times.");

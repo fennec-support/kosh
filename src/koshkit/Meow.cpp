@@ -2,9 +2,9 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file implements the meow utility, a terminal screensaver. Shaded
- * pixel-art cats drawn with half blocks float and paddle through space, chase
- * a ball of yarn, loaf or curl up to nap, and explode against the walls.
+ * This file implements the meow utility, a terminal screensaver. Shaded pixel
+ * art cats drawn with half blocks move through space, chase a ball of yarn,
+ * loaf, nap, and collide with walls.
  */
 
 #include "../CLI.hpp"
@@ -18,7 +18,7 @@
 
 KOSHKIT_UTIL_DECL("[-f fps] [-s speed] [-n cats]",
                   "The meow utility shows cats floating in a night sky until a "
-                  "key other than a control key is pressed.");
+                  "key that is not a control key is pressed.");
 
 FLAG(MEOW_FPS,
      String,
@@ -29,7 +29,7 @@ FLAG(MEOW_SPEED,
      String,
      's',
      "speed",
-     "Run the scene this many times faster, from 0.1 to 10. The default is 1.");
+     "Set the scene speed from 0.1 to 10 times the default. The default is 1.");
 FLAG(MEOW_CATS,
      String,
      'n',

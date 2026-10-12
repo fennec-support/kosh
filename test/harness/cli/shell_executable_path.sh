@@ -1,6 +1,6 @@
 unset KOSH_FLAGS
 BIN=$(CDPATH= cd -- "$(dirname -- "$BIN")" && pwd)/$(basename -- "$BIN")
-# KOSH names the file that started the shell. A name with a slash is made
+# KOSH holds the file that started the shell. A name with a slash is made
 # absolute, and a bare name is found on the PATH instead of being joined to the
 # working directory.
 d=$(mktemp -d)

@@ -1,5 +1,5 @@
 unset KOSH_FLAGS
-# A command string and a file share the spelling -c, and BASH_SOURCE names them
+# A command string and a file share the spelling -c, and BASH_SOURCE lists them
 # differently. A function defined in a command string reports the shell name, as
 # Bash does, and a function defined in a file called -c reports that file.
 d=$(mktemp -d)

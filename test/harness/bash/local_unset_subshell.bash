@@ -1,7 +1,7 @@
 #!/bin/bash
 # A subshell that unsets a local of a calling function reveals the value the
 # local shadowed, while a local of the running function stays unset. Scalars,
-# indexed and associative arrays, and exported names each come back intact.
+# indexed and associative arrays, and exported variables each come back intact.
 
 x=global
 inner() {

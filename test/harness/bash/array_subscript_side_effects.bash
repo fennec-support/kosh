@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# An indexed subscript with a side effect runs once when a modifier follows
-# the element, whether the modifier tests, substitutes, or transforms it.
+# An indexed subscript with a side effect is evaluated once when a modifier follows the element.
+# This applies when the modifier tests, substitutes, or transforms the element.
 
 a=(x y z)
 i=0; echo "${a[i++]:-d} $i"

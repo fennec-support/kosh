@@ -110,7 +110,7 @@ run_debug_highlight_driver(StringView   driver_line,
     listing += '\n';
   }
 
-  LOG(All, "highlighting visited %zu variable names",
+  LOG(All, "highlighting visited %zu variables",
       context.dynamic_runtime_store().debug_variable_name_enumeration_count() -
           variable_name_visit_count_before);
   LOG(All, "highlighting read %zu directories",

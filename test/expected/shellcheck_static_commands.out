@@ -132,7 +132,7 @@ note: Write `pager=$(cat)` to store its output, or quote the name.
 43:3: warning: A positional parameter cannot be assigned, and '$1=first' runs as a command. (SC2270)
     43 |    $1=first
        |    ^~~~~~~~
-note: Assign to a named variable, or compare with `[ x = y ]`.
+note: Assign to a variable, or compare with `[ x = y ]`.
 44:3: warning: The `$0` parameter cannot be assigned, and '$0=zero' runs as a command. (SC2277)
     44 |    $0=zero
        |    ^~~~~~~
@@ -177,7 +177,7 @@ note: Attach the redirection to its command, or write `: > file`.
     57 |    < file.txt | grep foo
        |      ^~~~~~~~
 note: Attach the redirection to the command that receives it.
-58:14: warning: The redirect opens a file named 'tr', and the command never runs. (SC2238)
+58:14: warning: The redirect opens a file called 'tr', and the command never runs. (SC2238)
     58 |    cat file > tr
        |               ^~
 note: Feed `tr` through a pipe, or quote the name to write the file.

@@ -2,7 +2,7 @@
 # $'...' form with escapes, so the line never holds those bytes raw. Inside an
 # open quote each control run closes the quote, is written as $'...', and
 # reopens it. A noquote file name and a spec word keep their other bytes raw
-# but splice each control run the same way, while compgen lists names raw as
+# but splice each control run the same way, while compgen lists entries raw as
 # bash does. A hermetic temp directory keeps the candidates stable.
 dir=$(mktemp -d)
 trap '[ -n "$dir" ] && "$BIN_DIR/invoke-koshkit" rm -rf "$dir"' EXIT

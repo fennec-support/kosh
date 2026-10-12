@@ -1,5 +1,5 @@
 #!/bin/bash
-# A bare declare or local operand names a variable that has no value. The name
+# A bare declare or local operand selects a variable that has no value. The name
 # stays visible to declare -p and to the bare listing until it is unset.
 declare plainy
 declare -i inty

@@ -3,7 +3,7 @@
  *    See the top-level LICENSE file for the licensing information.
  *
  * This file implements the compopt builtin. It turns
- * the options of named completion specs or of the -D, -E, or -I spec on and
+ * the options of given completion specs or of the -D, -E, or -I spec on and
  * off, or those of the current completion inside a running completion
  * function, and prints them when no option is given.
  */
@@ -18,7 +18,7 @@ FLAG_LIST_DECL();
 
 HELP_SYNOPSIS_DECL("[-o|+o option] [-DEI] [name ...]");
 HELP_DESCRIPTION_DECL(
-    "The compopt builtin changes options for completion specs named by its "
+    "The compopt builtin changes options for completion specs selected by its "
     "operands, the -D, -E, or -I spec, or, inside a completion function with "
     "no name operand, the current completion. With no option, it prints a "
     "replayable form.");

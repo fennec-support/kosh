@@ -40,8 +40,8 @@ FLAG(READ_EXACT_NCHARS,
      String,
      'N',
      "\0",
-     "Read exactly the given number of bytes, ignoring the delimiter, into "
-     "the first name without splitting.");
+     "Read exactly the given number of bytes, ignore the delimiter, and store "
+     "them in the first name without splitting.");
 FLAG(READ_SILENT, Bool, 's', "\0", "Do not echo the input from a terminal.");
 FLAG(READ_DELIM,
      String,

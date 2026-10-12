@@ -132,7 +132,7 @@ echo separator-reset
 echo after-separator-reset=$?
 
 # A single operand resets the condition. An unknown name reports 2 in that
-# form and 1 in every form that names more than one condition.
+# form and 1 in every form that lists more than one condition.
 echo reset-valid-single
 ( trap 'echo H' HUP; trap HUP; echo reset-valid-single-status=$?; trap -p HUP )
 echo after-reset-valid-single=$?
@@ -182,7 +182,7 @@ esac
 echo "kill-list-agrees=$([ "$(kill -l)" = "$signal_table" ] && echo yes || echo no)"
 echo after-signal-list=$?
 
-# The real-time names are generated from the range the system reports, so the
+# The real-time signals are generated from the range the system reports, so the
 # counts are taken out of the same listing and a system without the range
 # agrees at zero. The install round trip runs only where the range exists, and
 # each listing is filtered to the one name it installs.
@@ -213,7 +213,7 @@ fi
 echo after-realtime-signals=$?
 
 # A condition name is folded to upper case, a SIG prefix on input is dropped,
-# and a number names the condition it belongs to.
+# and a number selects the condition it belongs to.
 echo lower-case-condition
 ( trap 'echo H' hup; trap -p HUP )
 echo after-lower-case-condition=$?
@@ -234,7 +234,7 @@ echo numeric-exit-reset
 ( trap 'echo X' 0; trap - 0; trap -p EXIT; echo numeric-exit-reset-status=$? )
 echo after-numeric-exit-reset=$?
 
-# A number past the end of the signal table names no condition in any form.
+# A number past the end of the signal table selects no condition in any form.
 echo out-of-range-set
 ( trap 'echo N' 9999; echo out-of-range-set-status=$? ) 2>/dev/null
 echo after-out-of-range-set=$?

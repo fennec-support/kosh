@@ -57,16 +57,16 @@ FLAG(COMPGEN_FUNCTION, String, 'F', "", "Accepted without effect.");
 FLAG(COMPGEN_COMMAND, String, 'C', "", "Accepted without effect.");
 FLAG(COMPGEN_OPTION, String, 'o', "", "Accept the completion option.");
 FLAG(COMPGEN_COMMANDS, Bool, 'c', "", "List matching commands.");
-FLAG(COMPGEN_ALIAS, Bool, 'a', "", "List matching alias names.");
-FLAG(COMPGEN_BUILTIN, Bool, 'b', "", "List matching builtin names.");
-FLAG(COMPGEN_DIRECTORY, Bool, 'd', "", "List matching directory names.");
-FLAG(COMPGEN_EXPORT, Bool, 'e', "", "List matching exported variable names.");
-FLAG(COMPGEN_GROUP, Bool, 'g', "", "List matching group names.");
-FLAG(COMPGEN_JOB, Bool, 'j', "", "List matching job names.");
+FLAG(COMPGEN_ALIAS, Bool, 'a', "", "List matching aliases.");
+FLAG(COMPGEN_BUILTIN, Bool, 'b', "", "List matching builtins.");
+FLAG(COMPGEN_DIRECTORY, Bool, 'd', "", "List matching directories.");
+FLAG(COMPGEN_EXPORT, Bool, 'e', "", "List matching exported variables.");
+FLAG(COMPGEN_GROUP, Bool, 'g', "", "List matching groups.");
+FLAG(COMPGEN_JOB, Bool, 'j', "", "List matching jobs.");
 FLAG(COMPGEN_KEYWORD, Bool, 'k', "", "List matching shell keywords.");
-FLAG(COMPGEN_SERVICE, Bool, 's', "", "List matching service names.");
-FLAG(COMPGEN_USER, Bool, 'u', "", "List matching user names.");
-FLAG(COMPGEN_VARIABLE, Bool, 'v', "", "List matching shell variable names.");
+FLAG(COMPGEN_SERVICE, Bool, 's', "", "List matching services.");
+FLAG(COMPGEN_USER, Bool, 'u', "", "List matching users.");
+FLAG(COMPGEN_VARIABLE, Bool, 'v', "", "List matching shell variables.");
 
 REGISTER_BUILTIN_FLAGS(Compgen);
 

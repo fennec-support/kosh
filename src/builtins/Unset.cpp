@@ -2,7 +2,7 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file implements the unset builtin, which removes each named shell
+ * This file implements the unset builtin, which removes each given shell
  * variable or function.
  */
 
@@ -16,9 +16,9 @@ FLAG_LIST_DECL();
 HELP_SYNOPSIS_DECL("[-f] [-v] [-n] name ...");
 
 HELP_DESCRIPTION_DECL(
-    "The unset builtin removes each named shell variable or function.");
+    "The unset builtin removes each given shell variable or function.");
 
-FLAG(UNSET_FUNCTION, Bool, 'f', "", "Remove each named shell function.");
+FLAG(UNSET_FUNCTION, Bool, 'f', "", "Remove each given shell function.");
 FLAG(UNSET_VARIABLE, Bool, 'v', "", "Remove variables, the default.");
 FLAG(UNSET_NAMEREF,
      Bool,

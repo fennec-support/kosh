@@ -3,8 +3,8 @@
  *    See the top-level LICENSE file for the licensing information.
  *
  * This file implements the enable builtin, which lists and toggles shell
- * builtins. In Koshka every builtin is always enabled, so toggling is accepted
- * without effect and the listing is the only observable output.
+ * builtins. Every builtin is always enabled in Koshka. Toggle requests have no
+ * effect, and listing is the only observable output.
  */
 
 #include "../Builtin.hpp"
@@ -17,9 +17,9 @@ FLAG_LIST_DECL();
 
 HELP_SYNOPSIS_DECL("[-a] [-d] [-n] [-f filename] [-s] [name ...]");
 HELP_DESCRIPTION_DECL(
-    "The enable builtin lists and toggles shell builtins. In Koshka every "
-    "builtin is always enabled, so toggling is accepted without effect and "
-    "the listing is the only observable output.");
+    "The enable builtin lists and toggles shell builtins. Every builtin is "
+    "always enabled in Koshka. Toggle requests have no effect, and listing is "
+    "the only observable output.");
 
 FLAG(ALL, Bool, 'a', "", "List every builtin.");
 FLAG(DISABLE, Bool, 'n', "", "Accepted without effect.");

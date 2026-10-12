@@ -53,7 +53,7 @@ string_length() {
 }
 
 # The first character of a string, by removing all but the first. POSIX sh has
-# no local variables, so every function uses uniquely named working variables to
+# no local variables, so every function uses unique working variables to
 # avoid clobbering a caller's loop counters.
 first_char() {
     fc_rest=${1#?}

@@ -288,7 +288,7 @@ trap - RETURN
 set +T
 echo return-traced-replacement-done
 
-# A break or a continue the action requests names a loop the frame of the action
+# A break or a continue the action requests picks a loop the frame of the action
 # holds. The loop the call runs in is out of its reach, so neither jump finds
 # one and the loop runs to its end.
 returns_plain() { return 0; }

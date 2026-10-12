@@ -1,5 +1,5 @@
 unset KOSH_FLAGS
-# z jumps to a directory ranked by the frecency store named by
+# z jumps to a directory ranked by the frecency store given by
 # KOSH_DIRECTORY_HISTORY, prints the path it picks, errors when nothing matches,
 # records each successful change once, and skips a stale entry whose directory
 # was removed. The store is seeded by hand, path then rank then last-access tab

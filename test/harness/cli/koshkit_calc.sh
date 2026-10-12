@@ -114,7 +114,7 @@ echo "rc=$?"
 
 unset KOSH_FLAGS
 # The calc REPL binds a name=value line as a deferred formula, the right side
-# stored unevaluated so it recomputes from the variables it names on each read. A
+# stored unevaluated so it recomputes from the variables it uses on each read. A
 # standalone assignment prints nothing, an unset variable is an error rather than
 # a silent zero, a == comparison stays an expression, and an assignment used
 # mid-line is an expression that returns its value.

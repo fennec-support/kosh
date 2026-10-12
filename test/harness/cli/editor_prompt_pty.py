@@ -14,7 +14,7 @@
 # no rows of a multi-row PS1, and Ctrl-C must redraw the interrupted line the
 # same way before its ^C. A prompt that leaves too few columns beside it
 # continues the input two columns from the left edge instead of in a narrow
-# strip under the prompt. A working directory named with control bytes
+# strip under the prompt. A working directory spelled with control bytes
 # reaches the prompt through \w in caret notation and never as raw bytes. A
 # backslash that PS1 takes from a parameter stays literal, also when the
 # prompt is drawn again from its cached expansion. Raw 001 and 002 bytes
@@ -23,7 +23,7 @@
 # reports on its own row below the echoed ^Z, and Ctrl-C on a job that fg
 # resumed ends its row before the next prompt. A background job that a signal
 # ended reports the signal description at the next prompt.
-# koshconf set --persist names the file it wrote at an interactive prompt. The
+# koshconf set --persist shows the file it wrote at an interactive prompt. The
 # terminal model and session come from the
 # ghost and menu probe. Each check prints one stable PASS line for the golden
 # output.

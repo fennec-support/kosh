@@ -37,7 +37,7 @@ CDPATH=$base
 out=$(cd other)
 test -n "$out" && echo announce_nonempty
 
-# An empty entry names the current directory and stays silent.
+# An empty entry means the current directory and stays silent.
 cd "$base" >/dev/null 2>&1
 CDPATH="$TEST_PATH_SEPARATOR$base"
 out=$(cd sub)
@@ -52,7 +52,7 @@ cd / >/dev/null 2>&1
 rm -rf "$base"
 echo done
 
-# Tilde expansion of a named user, compared byte-for-byte against dash. Both
+# Tilde expansion of a given user, compared byte-for-byte against dash. Both
 # shells resolve the same system users, so the output is machine-independent for
 # users present in the local database such as root.
 echo ~root

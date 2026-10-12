@@ -1,4 +1,4 @@
-# The koshkit catalog supplies utility names and registered utility flags.
+# The koshkit catalog supplies utilities and registered utility flags.
 # Bare utility flags are completed when the koshkit option resolves the command.
 DIRECTORY=$(mktemp -d) || exit 1
 trap '[ -n "$DIRECTORY" ] && "$BIN_DIR/invoke-koshkit" rm -rf "$DIRECTORY"' EXIT

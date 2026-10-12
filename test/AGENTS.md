@@ -8,11 +8,11 @@ launches Kosh or a reference shell and asserts its output, status, diagnostics,
 side effects, or terminal interaction. A new regression normally extends an
 existing owner. A new test file is the last choice.
 
-For every test, identify why the test exists, what behavior it protects, and
-why each expected output line is correct. Recheck that contract before adding,
-changing, or refilling the test.
+For every test, identify why it exists, what behavior it protects, and why each
+expected output line is correct. Recheck that contract before adding, changing,
+or refilling the test.
 
-The debug test step should finish within 180 seconds. It must finish within 300
+The debug test step should finish within 180 seconds and must finish within 300
 seconds. A change that adds measurable runtime should remove equivalent cost or
 explain why the process boundary is required.
 
@@ -29,39 +29,29 @@ Place a test in the cheapest harness that expresses its contract.
 - `harness/bash` compares one test case with Bash 5.3 or newer.
 - `bench` owns performance workloads.
 
-There are no native unit tests, and none are written.
-
 Make discovers each harness with a wildcard and creates one direct target for
 each source path. A pattern recipe passes that path to `test/bin/run-test`.
 The runner prints the status, invokes the process model runner, and appends
 diagnostics to `failed.diff`.
 
-`run-harness-kosh` launches the built executable with `-WWW`, captures the
-complete output, compares it with `expected/<name>.out`, and removes the
-temporary output. It does not suppress annoying diagnostics.
+`run-harness-kosh` launches the built executable with `-WWW`, compares the
+complete output with `expected/<name>.out`, and removes the temporary output.
 
 `run-harness-script` serves CLI, completion, and highlight tests. The
 compatibility runners launch the reference shell and Kosh, compare output and
 status, and compare stderr presence unless the source requests exact stderr.
 
 The final `test` recipe fails when `failed.diff` is nonempty. Test preparation
-creates that file and clears the temporary directory. Koshkit owns timeout,
-file, and cleanup commands used by the runners.
+creates that file and clears the temporary directory. Koshkit provides the
+timeout, file, and cleanup commands used by the runners.
 
 ## Refill
 
-`make -C test refill` runs `test/bin/run-refill`. The refill runner visits Kosh,
-CLI, completion, and highlight sources. `REFILL` limits the visit to named
-stems. Any captured Kosh output replaces the matching golden. A timeout removes
-its temporary output and leaves the existing golden unchanged.
-
-Refill records process output. It does not validate behavior. Every changed
-golden requires absolute validation against its test case. Inspect the complete
-output and verify statuses, diagnostics, side effects, and active platform
-branches before accepting the golden.
-
-POSIX and Bash tests do not use refill or repository goldens. Their runners
-compare each reference shell result with the Kosh result directly.
+`make -C test refill` runs `test/bin/run-refill`, which visits Kosh, CLI,
+completion, and highlight sources. `REFILL` limits the visit to the given
+stems. Any captured Kosh output will replace the matching golden. When a case
+times out, refill removes its temporary output and leaves the existing golden
+unchanged.
 
 ## Focused validation
 
@@ -74,10 +64,7 @@ make -C test harness/completion/name.sh
 make -C test harness/highlight/name.sh
 ```
 
-Pass `MODE`, `BIN`, and `TARGET` when the test case must use a specific root
-build. Run `make test` from the repository root for the complete suite. Read
-every changed golden and inspect `failed.diff` before treating a suite as
-successful.
+Inspect `failed.diff` before treating a suite as successful.
 
 ## Ownership
 
@@ -92,7 +79,6 @@ them, the pending test case runs only them, and `SKIPPED_TESTS` lists every
 pending test case. A fix removes its keys, and an empty pending test case leaves
 the skip list.
 
-Every golden backed source has one matching file directly under `expected`.
-Compatibility sources have no repository golden. Keep output deterministic and
-use the shared test environment variables for temporary paths and platform
-values.
+Every golden-backed source has one matching file directly under `expected`.
+Keep output deterministic and use the shared test environment variables for
+temporary paths and platform values.

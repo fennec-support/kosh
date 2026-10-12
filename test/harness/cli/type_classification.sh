@@ -2,7 +2,7 @@ unset KOSH_FLAGS
 # type reports how a name resolves in the shell's own order, a keyword, an alias,
 # a function, then a builtin. The -t form prints the class word, the default form
 # spells it out, -a lists every location, and -p and -t stay silent for a name
-# that is not a file. The names are kept off the PATH so the output is stable.
+# that is not a file. These are kept off the PATH so the output is stable.
 echo "== -t keyword:"; "$BIN" -c 'type -t for'
 echo "== -t builtin:"; "$BIN" -c 'type -t echo'
 echo "== -t alias:"; "$BIN" -c 'alias g=git; type -t g'
@@ -75,7 +75,7 @@ echo "== a terse flag ignores -V:"
 "$BIN" -c 'f(){ :; }; type -V -t f'
 "$BIN" -c 'type -V -p echo'; echo "rc=$?"
 echo "== -V applies to every -a resolution:"; PATH= "$BIN" -c 'type -V -a tsort'
-# Bash names a function without the shell word and prints its body from the
+# Bash calls a function without the shell word and prints its body from the
 # plain form. The terse flags keep the shape they have in every other mood.
 echo "== the bash mood names a function and prints its body:"
 "$BIN" --mood bash -c 'f(){ echo hi; }; type f'

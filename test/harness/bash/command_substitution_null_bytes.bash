@@ -1,6 +1,6 @@
 #!/bin/bash
-# A command substitution drops null bytes from its output before removing
-# trailing newlines, so the value compares, counts, and matches as in bash.
+# A command substitution drops null bytes before it removes trailing newlines.
+# The resulting value compares, counts, and matches as in bash.
 work=$(mktemp -d)
 cd "$work" || exit 1
 x=$(printf 'a\0b' 2> /dev/null)

@@ -3,7 +3,7 @@
  *    See the top-level LICENSE file for the licensing information.
  *
  * This file implements the exec builtin, which replaces the shell with the
- * named command.
+ * given command.
  */
 
 #include "../Builtin.hpp"

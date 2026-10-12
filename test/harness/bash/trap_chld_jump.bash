@@ -1,7 +1,7 @@
 #!/bin/bash
 # A CHLD action that jumps out of the frame it fired inside, checked against
 # bash. The arrivals the jump left behind stay queued, and an exit the action
-# runs ends the shell with the status it names.
+# runs ends the shell with the status it gives.
 fire_count=0
 
 echo "--- a break leaves the loop the action fired inside"

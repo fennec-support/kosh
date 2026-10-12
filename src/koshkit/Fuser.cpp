@@ -4,7 +4,7 @@
  *
  * This file implements the fuser utility. It maps files to platform process-use
  * records and reports process identifiers, access kinds, and optional owner
- * names.
+ * labels.
  */
 
 #include "../CLI.hpp"

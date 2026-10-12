@@ -23,7 +23,7 @@ parse -b
 parse -a foo
 
 
-# kill -s names the signal by name and -n by number, apart from the -SIGNAL
+# kill -s selects the signal by name and -n by number, apart from the -SIGNAL
 # shorthand, while signal 0 only checks the target exists. A trapped self-signal
 # proves the name resolves without any process dying.
 trap 'echo caught-usr1' USR1
@@ -58,8 +58,8 @@ set -- keep1 keep2
 echo "out=$1 $2"
 rm -f "$file"
 
-# trap -p prints the trap for a named condition with the SIG prefix bash uses, so
-# the line reloads. The conditions are named so bash's own default job-control
+# trap -p prints the trap for a given condition with the SIG prefix bash uses, so
+# the line reloads. The conditions are chosen so bash's own default job-control
 # traps stay out of the comparison.
 trap 'echo caught' INT
 echo "p=$(trap -p INT)"

@@ -26,7 +26,7 @@ FLAG(CP_FOLLOW_ROOT,
      Bool,
      'H',
      "",
-     "Follow a symbolic link named on the command line.");
+     "Follow a symbolic link given on the command line.");
 FLAG(CP_FOLLOW_ALL, Bool, 'L', "", "Follow every symbolic link.");
 FLAG(CP_FOLLOW_NONE, Bool, 'P', "", "Copy symbolic links as links.");
 FLAG(CP_ONE_FILE_SYSTEM,

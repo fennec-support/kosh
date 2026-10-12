@@ -2,13 +2,13 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file implements the parameter expansion operators for default values,
- * assignments, errors, lengths, substrings, trimming, replacement, quoting, and
- * case changes, on scalar and array values alike. It is separate so parameter
- * syntax and transformations stay outside the word-expansion coordinator.
- * ParameterExpander holds the state of one ${...} expansion and dispatches to
- * the operator families, and ModifierWordExpander scans and expands the word
- * after an operator.
+ * This file implements parameter expansion operators for default values,
+ * assignments, errors, lengths, substrings, trimming, replacement, quoting,
+ * and case changes. The same operators apply to scalar and array values. The
+ * split keeps parameter syntax and transformations outside the word-expansion
+ * coordinator. ParameterExpander holds one ${...} expansion and dispatches to
+ * operator families. ModifierWordExpander scans and expands the word that
+ * follows an operator.
  */
 
 #include "Builtin.hpp"

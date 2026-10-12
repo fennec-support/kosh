@@ -3,7 +3,7 @@
  *    See the top-level LICENSE file for the licensing information.
  *
  * This file implements the unlink utility. It validates one operand, rejects
- * real directories, and removes the named file or symbolic link without
+ * real directories, and removes the given file or symbolic link without
  * traversal.
  */
 

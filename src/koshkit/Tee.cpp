@@ -3,7 +3,7 @@
  *    See the top-level LICENSE file for the licensing information.
  *
  * This file implements the tee utility in koshkit, which copies standard input
- * to standard output and to each named file. It truncates the files unless -a
+ * to standard output and to each given file. It truncates the files unless -a
  * makes it append.
  */
 
@@ -15,7 +15,6 @@
 KOSHKIT_UTIL_DECL(
     "[-a] [file ...]",
     "The tee utility copies standard input to standard output and to each "
-    "named "
     "file. With -a it appends to the files. The default truncates them.");
 
 FLAG(TEE_APPEND, Bool, 'a', "", "Append to the files.");

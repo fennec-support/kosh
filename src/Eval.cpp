@@ -352,7 +352,7 @@ EvalContext::guard_restricted_path(StringView            path,
   case restricted_path_use::Command:
     throw ErrorWithLocation{
         location,
-        "Command names containing a directory separator are forbidden in a "
+        "Command words containing a directory separator are forbidden in a "
         "restricted shell"};
   case restricted_path_use::Source:
     throw ErrorWithLocation{

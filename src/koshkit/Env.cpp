@@ -3,7 +3,7 @@
  *    See the top-level LICENSE file for the licensing information.
  *
  * This file implements the env utility. It installs temporary environment
- * assignments, clears or removes named variables, prints the resulting
+ * assignments, clears or removes given variables, prints the resulting
  * environment, or resolves and executes a command before restoring prior
  * values.
  */

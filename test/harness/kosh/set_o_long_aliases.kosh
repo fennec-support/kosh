@@ -1,5 +1,5 @@
 #!/bin/env kosh
-# set -o accepts only the Bash names. The former Koshka spellings and the
+# set -o accepts only the Bash spellings. The former Koshka spellings and the
 # shopt-only failglob are unknown, and koshconf owns the Koshka settings.
 set -o noglob
 set -o | grep noglob

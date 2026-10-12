@@ -1,6 +1,6 @@
 #!/bin/bash
 # exec reads -a, -l, and the -- terminator before the command word, the way bash
-# does. -a names the zeroth argument the program reads, -l prefixes that argument
+# does. -a sets the zeroth argument the program reads, -l prefixes that argument
 # with a dash so the program reads itself as a login shell, and the two combine
 # in a cluster. Each exec runs inside a command substitution, so it replaces the
 # contained child rather than the script, and the script survives to print every

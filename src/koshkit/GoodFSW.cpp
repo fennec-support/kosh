@@ -26,7 +26,7 @@ FLAG(GOODFSW_HUMAN,
      Bool,
      'h',
      "human-readable",
-     "Use human-readable timestamps and descriptive event names.");
+     "Use human-readable timestamps and descriptive event labels.");
 FLAG(GOODFSW_MACHINE,
      Bool,
      'm',
@@ -41,7 +41,7 @@ FLAG(GOODFSW_EVENT_FLAGS,
      Bool,
      '\0',
      "event-flags",
-     "Append the event names to every record.");
+     "Append the event labels to every record.");
 FLAG(GOODFSW_ONE_EVENT,
      Bool,
      '1',

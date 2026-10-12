@@ -46,17 +46,17 @@ seq is a built-in utility
 === which reports the enabled fallback ===
 seq
 === a builtin name is not a koshkit utility ===
--c:1:9: error: koshkit has no utility named 'echo'.
+-c:1:9: error: koshkit has no utility called 'echo'.
      1 |  koshkit echo routed via koshkit
        |          ^~~~
 rc=1
 === the koshkit name does not recurse ===
--c:1:9: error: koshkit has no utility named 'koshkit'.
+-c:1:9: error: koshkit has no utility called 'koshkit'.
      1 |  koshkit koshkit
        |          ^~~~~~~
 rc=1
 === unknown utility errors ===
--c:1:9: error: koshkit has no utility named 'nope'.
+-c:1:9: error: koshkit has no utility called 'nope'.
      1 |  koshkit nope
        |          ^~~~
 rc=1

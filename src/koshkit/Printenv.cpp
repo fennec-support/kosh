@@ -3,7 +3,7 @@
  *    See the top-level LICENSE file for the licensing information.
  *
  * This file implements the printenv utility in koshkit. It writes the whole
- * process environment or the values of named variables in operand order.
+ * process environment or the values of the operand variables in operand order.
  */
 
 #include "../CLI.hpp"

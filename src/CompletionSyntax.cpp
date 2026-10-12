@@ -4,7 +4,7 @@
  *
  * This file interprets command and argument structure around the completion
  * cursor. It unwraps transparent commands and options, resolves aliases and
- * command names, and builds words for programmable completion. The split keeps
+ * command words, and builds words for programmable completion. The split keeps
  * command-context rules shared without coupling them to candidate collection
  * or filesystem access.
  */

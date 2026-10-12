@@ -69,7 +69,7 @@ note: Use `grep -q` and test its exit status.
 24:16: warning: Grepping the `ls` listing mangles a name with a space or a newline. (SC2010)
     24 |    [ -n "$(ls | grep x)" ] && echo d
        |                 ^~~~
-note: Match the names with a glob or with `find`.
+note: Match the files with a glob or with `find`.
 28:6: warning: The `case` word 'a' is constant. (SC2194)
     28 |  case a in a) ;; esac
        |       ^
@@ -108,7 +108,7 @@ note: Use `pgrep` to match a process by name.
 40:8: warning: Grepping the `ls` listing mangles a name with a space or a newline. (SC2010)
     40 |    ls | grep conf
        |         ^~~~
-note: Match the names with a glob or with `find`.
+note: Match the files with a glob or with `find`.
 41:3: warning: The `grep` output is piped into `wc -l` for a count `grep` performs on its own. (SC2126)
     41 |    grep needle file | wc -l
        |    ^~~~

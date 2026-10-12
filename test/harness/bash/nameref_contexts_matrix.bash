@@ -1,6 +1,6 @@
 #!/bin/bash
 # Name references read in each word context and written by every binding
-# command, checked against bash. A reference names a scalar, an unset name,
+# command, checked against bash. A reference targets a scalar, an unset name,
 # an array element, an indexed array, an associative array, another
 # reference, or a function local. A step or a let through a reference to an
 # associative array with no key 0 makes Kosh warn that the unset element

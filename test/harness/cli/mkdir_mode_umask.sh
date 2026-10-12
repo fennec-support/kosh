@@ -1,5 +1,5 @@
 unset KOSH_FLAGS
-# mkdir -m sets the named directory to the exact mode the way POSIX requires,
+# mkdir -m sets the given directory to the exact mode the way POSIX requires,
 # so a bit the umask would clear is still set. A hermetic temp directory keeps
 # it stable, and it is left in place so the test never runs rm.
 # GNU stat reads the octal mode with -c, BSD stat with -f, so the helper tries

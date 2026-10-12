@@ -3,7 +3,8 @@
  *    See the top-level LICENSE file for the licensing information.
  *
  * This file implements the getconf utility. It resolves supported system and
- * pathname configuration names through the platform configuration interfaces.
+ * pathname configuration variables through the platform configuration
+ * interfaces.
  */
 
 #include "../CLI.hpp"

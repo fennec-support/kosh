@@ -988,7 +988,7 @@ ordinary:
 EOF
 "$BIN" -c 'koshkit make'
 
-# The barebones make resolves a pattern rule when no explicit rule names the
+# The barebones make resolves a pattern rule when no explicit rule targets the
 # goal, deriving the stem from the % and filling the automatic variables $@, $<,
 # and $^ in the recipe.
 unset KOSH_FLAGS

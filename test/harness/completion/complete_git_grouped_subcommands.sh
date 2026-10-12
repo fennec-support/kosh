@@ -3,7 +3,7 @@
 # name<spaces>description lines. The section scanner closed the section at the
 # grouped header because it sits at the left margin and is not a recognized
 # section opener, so the indented entries were skipped. A grouped header now
-# keeps an open section intact. A fake binary named go in a trusted directory
+# keeps an open section intact. A fake binary called go in a trusted directory
 # reuses the allowlisted help-fork path, and a git-shaped help body keeps the
 # candidates stable across machines.
 dir=$(pwd)/harness/completion/complete_git_grouped_subcommands

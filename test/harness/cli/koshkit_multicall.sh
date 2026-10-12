@@ -61,7 +61,7 @@ XDG_CONFIG_HOME="$d/conf" KOSH_FLAGS=-x ./koshkit --list 2>&1 | grep -c '^seq$'
 echo "rc=$?"
 
 unset KOSH_FLAGS
-# koshkit --assimilate installs a symlink to the binary named for each utility
+# koshkit --assimilate installs a symlink to the binary called for each utility
 # into a directory, the busybox-style install. A symlinked invocation routes its
 # own flags to the utility rather than the shell CLI. A hermetic temp directory
 # keeps it stable, and it is left in place so the test never runs rm.

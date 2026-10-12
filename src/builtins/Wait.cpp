@@ -2,7 +2,7 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file waits for every tracked job, for named job and process targets, or
+ * This file waits for every tracked job, for job and process operands, or
  * for the next job to finish, and propagates the waited status. It reports
  * invalid targets, stores the waited process id, and marks waited jobs for the
  * job table to forget while their statuses stay known.

@@ -2,7 +2,7 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file implements the mkdir utility. It creates named directories or
+ * This file implements the mkdir utility. It creates the given directories or
  * missing parent chains and applies an optional parsed creation mode.
  */
 

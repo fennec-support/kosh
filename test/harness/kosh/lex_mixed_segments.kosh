@@ -1,5 +1,5 @@
 #!/bin/env kosh
-# The names below stand in for word segments and are never assigned on purpose.
+# The tokens below stand in for word segments and are never assigned on purpose.
 # shellcheck disable=unassigned-variable-read
 : pre"dq"'sq'$x${y}post
 : "a$b"'c'$(:)"d$(( 1 + 1 ))e"

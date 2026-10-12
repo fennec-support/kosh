@@ -1,6 +1,6 @@
 unset KOSH_FLAGS
 # A braced variable path keeps its source spelling, and a bare reference still
-# completes variable names.
+# completes variables.
 DIRECTORY=$(mktemp -d)
 trap 'rm -rf "$DIRECTORY"' EXIT
 mkdir -p "$DIRECTORY/Downloads" "$DIRECTORY/Documents"

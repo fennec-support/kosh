@@ -2,11 +2,10 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file converts semantic scans into highlight spans and caches one scan
- * of a whole source split at its lines. It also renders ranges, pairs the code
- * bracket at the caret with its partner, and validates cached diagnostics
- * after source changes. The split confines mutable cache state and rendering
- * above the semantic classifier.
+ * This file converts semantic scans into highlight spans and caches a source
+ * by line. It renders ranges, pairs the bracket at the caret with its match,
+ * and validates cached diagnostics after source changes. The split keeps
+ * mutable cache state and rendering separate from semantic classification.
  */
 
 #include "Builtin.hpp"

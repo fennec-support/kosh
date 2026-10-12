@@ -33,8 +33,8 @@ command -v case
 command -v no_such_command_zzz
 echo "rc=$?"
 
-# Bash builtin keyword forcing the builtin past a same-named function, checked
-# byte-for-byte against bash.
+# Bash builtin keyword forcing the builtin past a function of the same name,
+# checked byte-for-byte against bash.
 echo() { command echo "wrapped: $*"; }
 builtin echo direct call
 echo via function

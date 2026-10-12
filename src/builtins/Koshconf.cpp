@@ -154,7 +154,7 @@ find_named_option(const ExecContext       &ec,
       StringView{"Unknown option '"} + operands.values[index] + "'",
       suggestion.has_value()
           ? StringView{"Did you mean '"} + *suggestion + "'?"
-          : String{"Run `koshconf list` for the option names"});
+          : String{"Run `koshconf list` for the option spellings"});
 
   return nullptr;
 }

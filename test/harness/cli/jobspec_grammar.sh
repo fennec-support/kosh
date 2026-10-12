@@ -1,6 +1,6 @@
 unset KOSH_FLAGS
 # kill, fg, disown, bg, and wait accept the full job spec grammar, not only
-# %number. A leading name matches a job by its command prefix, %+ names the
+# %number. A leading name matches a job by its command prefix, %+ selects the
 # current job.
 echo "== kill resolves a job by its command name:"
 "$BIN" --mood bash -c 'sleep 3 & kill %sleep 2>&1; wait 2>/dev/null; echo ok' 2>&1 | grep -c ok
