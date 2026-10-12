@@ -1,6 +1,6 @@
 unset KOSH_FLAGS KOSHCONF
 # koshconf documents save and $KOSHCONF in its help, lists name=value lines
-# without a class column, shows the legacy.posix and legacy.bash alias of
+# without a class column, shows the posix.legacy and bash.legacy alias of
 # each option with list --all, refuses --all outside list, prints a blob that
 # load and a child kosh adopt, writes the current settings with save
 # --persist, and keeps save --persist out of a restricted shell.
@@ -16,8 +16,8 @@ echo "== list has no class column:"
 "$BIN" -c 'koshconf list' | grep -c -E ' +(interactive|semantic|class)$'
 "$BIN" -c 'koshconf list' | head -4
 echo "== list -a adds the alias after each canonical line:"
-"$BIN" -c 'koshconf list -a' | grep -A1 -E '^interpreter.(posix.exit_on_command_failure|bash.glob_extended_patterns)='
-"$BIN" -c 'koshconf list --all' | grep -c '^legacy\.'
+"$BIN" -c 'koshconf list -a' | grep -A1 -E '^(posix\.interpreter\.exit_on_command_failure|bash\.interpreter\.glob_extended_patterns)='
+"$BIN" -c 'koshconf list --all' | grep -c -E '^(bash|posix)\.legacy\.'
 echo "== every alias reads the value of its option:"
 "$BIN" -c 'koshconf list -a' >"$config/all.txt"
 canonical=
@@ -25,8 +25,8 @@ while IFS='=' read -r name value
 do
   case $name in
     '#'*) continue ;;
-    legacy.posix.hashall | legacy.posix.nolog) ;;
-    legacy.*)
+    posix.legacy.hashall | posix.legacy.nolog) ;;
+    bash.legacy.* | posix.legacy.*)
       alias_value=$("$BIN" -c "koshconf get $name" 2>&1)
       [ "$alias_value" = "$canonical" ] || echo "mismatch: $name"
       [ "$value" = "$canonical" ] || echo "line mismatch: $name"
@@ -35,9 +35,9 @@ do
   esac
 done <"$config/all.txt"
 echo "== set-only options appear as posix aliases:"
-grep -E '^legacy\.posix\.(hashall|nolog)=' "$config/all.txt"
+grep -E '^posix\.legacy\.(hashall|nolog)=' "$config/all.txt"
 echo "== the editor mode lists no emacs or vi alias:"
-grep -c -E '^legacy\.[a-z]+\.(emacs|vi)=' "$config/all.txt"
+grep -c -E '^(bash|posix)\.legacy\.(emacs|vi)=' "$config/all.txt"
 echo "== --all belongs to list:"
 "$BIN" -c 'koshconf set mood bash --all' 2>&1 | grep -E 'error|rc='
 "$BIN" -c 'koshconf save --all' 2>&1 | grep error

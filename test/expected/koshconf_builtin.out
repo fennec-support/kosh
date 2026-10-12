@@ -1,21 +1,66 @@
 == list prints every option as name=value:
 # name=value
+bash.completion.always_apply_fignore=on
+bash.completion.expand_directory_names=off
+bash.completion.fix_directory_typos=off
+bash.completion.hostnames_after_at=on
+bash.completion.programmable=on
+bash.completion.programmable_follows_aliases=off
+bash.completion.quote_all_special_characters=on
+bash.completion.skip_empty_line=off
+bash.debug.debugger_support=off
+bash.editor.cd_by_typing_directory_name=on
+bash.editor.cd_fix_typos=off
+bash.editor.history.bang_expansion=off
+bash.editor.history.records_commands=off
+bash.editor.history.reedit_failed_substitution=off
+bash.editor.history.verify_expansion_before_running=off
+bash.editor.interactive_comments=on
+bash.editor.jobs_check_before_exit=off
+bash.editor.jobs_hangup_on_exit=off
+bash.editor.mail_warn_when_read=off
+bash.editor.prompt_expands_parameters=on
+bash.editor.update_columns_and_lines=on
+bash.interpreter.aliases_expand=on
+bash.interpreter.array_subscripts_expand_once=off
+bash.interpreter.assignments_anywhere_in_command=off
+bash.interpreter.brace_expansion=on
+bash.interpreter.cd_resolves_symlinks=off
+bash.interpreter.cd_to_variable_value=off
+bash.interpreter.command_substitution_inherits_exit_on_failure=off
+bash.interpreter.echo_interprets_backslash_escapes=off
+bash.interpreter.exec_failure_keeps_shell=off
+bash.interpreter.exit_after_one_command=off
+bash.interpreter.glob_double_star_recurses=off
+bash.interpreter.glob_extended_patterns=on
+bash.interpreter.glob_ignores_case=off
+bash.interpreter.glob_includes_dotfiles=off
+bash.interpreter.glob_never_matches_dot_and_dotdot=on
+bash.interpreter.glob_no_match_expands_to_nothing=off
+bash.interpreter.glob_no_match_is_error=on
+bash.interpreter.glob_ranges_use_ascii_order=on
+bash.interpreter.local_inherits_outer_value=off
+bash.interpreter.local_unset_hides_outer=off
+bash.interpreter.login_shell=off
+bash.interpreter.match_ignores_case=off
+bash.interpreter.pattern_substitution_ampersand_is_match=on
+bash.interpreter.pipeline_last_stage_runs_in_shell=off
+bash.interpreter.posixly_correct=off
+bash.interpreter.privileged_mode=off
+bash.interpreter.quote_dollar_strings_in_parameter_expansion=on
+bash.interpreter.redirect_variable_fd_closed_after_command=off
+bash.interpreter.restricted_shell=off
+bash.interpreter.shift_reports_overflow=off
+bash.interpreter.source_searches_path=on
+bash.interpreter.trap_debug_and_return_inherited_by_functions=off
+bash.interpreter.trap_err_inherited_by_functions=off
+bash.interpreter.verify_remembered_command_paths=off
+bash.optimizer.errors_use_gnu_format=off
 compatibility.dev_null=on
 compatibility.slash_tmp=on
 completion.add_space_after_completed_word=off
-completion.bash.always_apply_fignore=on
-completion.bash.expand_directory_names=off
-completion.bash.fix_directory_typos=off
-completion.bash.hostnames_after_at=on
-completion.bash.programmable=on
-completion.bash.programmable_follows_aliases=off
-completion.bash.quote_all_special_characters=on
-completion.bash.skip_empty_line=off
 completion.menu_style=interactive
 completion.on_tab=on
-debug.bash.debugger_support=off
-debug.posix.trace_expanded_commands=off
-debug.posix.trace_input_lines=off
 debug.print_evaluation_statistics=off
 debug.print_lexed_word_escapes=off
 debug.print_memory_report_at_exit=off
@@ -24,80 +69,35 @@ debug.report_every_exit_code=off
 debug.report_nonzero_exit_codes=off
 editor.auto_close_brackets_and_quotes=off
 editor.base_mode=emacs
-editor.bash.cd_by_typing_directory_name=on
-editor.bash.cd_fix_typos=off
-editor.bash.interactive_comments=on
-editor.bash.jobs_check_before_exit=off
-editor.bash.jobs_hangup_on_exit=off
-editor.bash.mail_warn_when_read=off
-editor.bash.prompt_expands_parameters=on
-editor.bash.update_columns_and_lines=on
 editor.highlight_syntax_and_show_ghost_text=on
 editor.hints.show_command_synopsis=on
 editor.hints.show_live_diagnostics=on
 editor.history.arrow_keys_search_by_typed_prefix=on
-editor.history.bash.bang_expansion=off
-editor.history.bash.records_commands=off
-editor.history.bash.reedit_failed_substitution=off
-editor.history.bash.verify_expansion_before_running=off
 editor.history.file_path=/history
 editor.history.max_entries=4096
-editor.posix.ctrl_d_does_not_exit=off
-editor.posix.jobs_report_status_immediately=off
 editor.request_extended_key_reports=on
 editor.transient_prompt_after_submit=off
 init_moods=
 interpreter.arithmetic_uses_big_numbers=on
-interpreter.bash.aliases_expand=on
-interpreter.bash.array_subscripts_expand_once=off
-interpreter.bash.assignments_anywhere_in_command=off
-interpreter.bash.brace_expansion=on
-interpreter.bash.cd_resolves_symlinks=off
-interpreter.bash.cd_to_variable_value=off
-interpreter.bash.command_substitution_inherits_exit_on_failure=off
-interpreter.bash.echo_interprets_backslash_escapes=off
-interpreter.bash.exec_failure_keeps_shell=off
-interpreter.bash.exit_after_one_command=off
-interpreter.bash.glob_double_star_recurses=off
-interpreter.bash.glob_extended_patterns=on
-interpreter.bash.glob_ignores_case=off
-interpreter.bash.glob_includes_dotfiles=off
-interpreter.bash.glob_never_matches_dot_and_dotdot=on
-interpreter.bash.glob_no_match_expands_to_nothing=off
-interpreter.bash.glob_no_match_is_error=on
-interpreter.bash.glob_ranges_use_ascii_order=on
-interpreter.bash.local_inherits_outer_value=off
-interpreter.bash.local_unset_hides_outer=off
-interpreter.bash.login_shell=off
-interpreter.bash.match_ignores_case=off
-interpreter.bash.pattern_substitution_ampersand_is_match=on
-interpreter.bash.pipeline_last_stage_runs_in_shell=off
-interpreter.bash.posixly_correct=off
-interpreter.bash.privileged_mode=off
-interpreter.bash.quote_dollar_strings_in_parameter_expansion=on
-interpreter.bash.redirect_variable_fd_closed_after_command=off
-interpreter.bash.restricted_shell=off
-interpreter.bash.shift_reports_overflow=off
-interpreter.bash.source_searches_path=on
-interpreter.bash.trap_debug_and_return_inherited_by_functions=off
-interpreter.bash.trap_err_inherited_by_functions=off
-interpreter.bash.verify_remembered_command_paths=off
 interpreter.mimic_shebang=off
-interpreter.posix.exit_on_command_failure=off
-interpreter.posix.export_every_assigned_variable=off
-interpreter.posix.glob_disabled=off
-interpreter.posix.job_control=off
-interpreter.posix.parse_without_executing=off
-interpreter.posix.pipeline_fails_on_any_stage=on
-interpreter.posix.redirect_refuses_to_overwrite_files=off
-interpreter.posix.unset_variable_is_error=on
 interpreter.resolve_koshkit_applets_as_commands=off
 mood=kosh
 optimizer.analyze_before_running=on
-optimizer.bash.errors_use_gnu_format=off
 optimizer.show_annoying_tier=on
 optimizer.show_source_traces=on
 optimizer.warning_level=0
+posix.debug.trace_expanded_commands=off
+posix.debug.trace_input_lines=off
+posix.editor.ctrl_d_does_not_exit=off
+posix.editor.jobs_report_status_immediately=off
+posix.interpreter.exit_on_command_failure=off
+posix.interpreter.export_every_assigned_variable=off
+posix.interpreter.glob_disabled=off
+posix.interpreter.job_control=off
+posix.interpreter.parse_without_executing=off
+posix.interpreter.pipeline_fails_on_any_stage=on
+posix.interpreter.redirect_refuses_to_overwrite_files=off
+posix.interpreter.unset_variable_is_error=on
 == the kosh preset matches a fresh kosh session:
 rc=0
 # Koshka settings written by koshconf create kosh.
@@ -144,11 +144,6 @@ editor.history.arrow_keys_search_by_typed_prefix=on
 # Keep at most this many history entries. KOSH_HISTORY_SIZE supplies the value,
 # and 0 keeps none.
 editor.history.max_entries=4096
-# Return a failed history substitution to the editor. (shopt histreedit)
-editor.history.bash.reedit_failed_substitution=off
-# Load an expanded history reference into the editor. The shell runs it after
-# the user accepts it. (shopt histverify)
-editor.history.bash.verify_expansion_before_running=off
 
 # Set the diagnostic level from 0 to 3: 0 keeps the mood's default, and 1, 2,
 # and 3 act as -W, -WW, and -WWW.
@@ -188,151 +183,156 @@ debug.print_memory_report_at_exit=off
 # init_moods=
 
 # Mark every assigned variable for the environment. (set -o allexport)
-interpreter.posix.export_every_assigned_variable=off
+posix.interpreter.export_every_assigned_variable=off
 # Exit on the first command that fails. (set -o errexit)
-interpreter.posix.exit_on_command_failure=off
+posix.interpreter.exit_on_command_failure=off
 # Disable pathname expansion. (set -o noglob)
-interpreter.posix.glob_disabled=off
+posix.interpreter.glob_disabled=off
 # Treat an unset variable as an error. (set -o nounset)
-interpreter.posix.unset_variable_is_error=on
+posix.interpreter.unset_variable_is_error=on
 # Refuse to overwrite an existing file through '>'. (set -o noclobber)
-interpreter.posix.redirect_refuses_to_overwrite_files=off
+posix.interpreter.redirect_refuses_to_overwrite_files=off
 # Report a pipeline's status as the rightmost stage that failed.
 # (set -o pipefail)
-interpreter.posix.pipeline_fails_on_any_stage=on
+posix.interpreter.pipeline_fails_on_any_stage=on
 
 # Report a background job's completion immediately when it finishes.
 # (set -o notify)
-editor.posix.jobs_report_status_immediately=off
+posix.editor.jobs_report_status_immediately=off
 # Require repeated end-of-file input before an interactive shell exits.
 # (set -o ignoreeof)
-editor.posix.ctrl_d_does_not_exit=off
+posix.editor.ctrl_d_does_not_exit=off
 
 # Place assignment arguments anywhere in a command into its environment.
 # (set -o keyword)
-interpreter.bash.assignments_anywhere_in_command=off
+bash.interpreter.assignments_anywhere_in_command=off
 # Enable brace expansion. (set -o braceexpand)
-interpreter.bash.brace_expansion=on
+bash.interpreter.brace_expansion=on
 # Let shell functions, command substitutions, and subshells inherit the ERR
 # trap. (set -o errtrace)
-interpreter.bash.trap_err_inherited_by_functions=off
+bash.interpreter.trap_err_inherited_by_functions=off
 # Resolve symbolic links while changing directories. (set -o physical)
-interpreter.bash.cd_resolves_symlinks=off
+bash.interpreter.cd_resolves_symlinks=off
 # Let shell functions, command substitutions, and subshells inherit the DEBUG
 # and RETURN traps. (set -o functrace)
-interpreter.bash.trap_debug_and_return_inherited_by_functions=off
+bash.interpreter.trap_debug_and_return_inherited_by_functions=off
 # Expand an array subscript once in assignments and arithmetic.
 # (shopt assoc_expand_once)
-interpreter.bash.array_subscripts_expand_once=off
+bash.interpreter.array_subscripts_expand_once=off
 # Treat a cd operand that is not a directory as a variable naming one.
 # (shopt cdable_vars)
-interpreter.bash.cd_to_variable_value=off
+bash.interpreter.cd_to_variable_value=off
 # Check that a remembered command path still exists before running it.
 # (shopt checkhash)
-interpreter.bash.verify_remembered_command_paths=off
+bash.interpreter.verify_remembered_command_paths=off
 # Let a glob match filenames that begin with a dot. (shopt dotglob)
-interpreter.bash.glob_includes_dotfiles=off
+bash.interpreter.glob_includes_dotfiles=off
 # Keep a non-interactive shell running when exec cannot run its command.
 # (shopt execfail)
-interpreter.bash.exec_failure_keeps_shell=off
+bash.interpreter.exec_failure_keeps_shell=off
 # Expand aliases in commands. (shopt expand_aliases)
-interpreter.bash.aliases_expand=on
+bash.interpreter.aliases_expand=on
 # Accept the extended patterns ?(), *(), +(), @(), and !(). (shopt extglob)
-interpreter.bash.glob_extended_patterns=on
+bash.interpreter.glob_extended_patterns=on
 # Process $'...' and $"..." quoting inside a quoted ${...} expansion.
 # (shopt extquote)
-interpreter.bash.quote_dollar_strings_in_parameter_expansion=on
+bash.interpreter.quote_dollar_strings_in_parameter_expansion=on
 # Fail a command whose glob matches nothing. (shopt failglob)
-interpreter.bash.glob_no_match_is_error=on
+bash.interpreter.glob_no_match_is_error=on
 # Order bracket ranges in globs and patterns by byte value.
 # (shopt globasciiranges)
-interpreter.bash.glob_ranges_use_ascii_order=on
+bash.interpreter.glob_ranges_use_ascii_order=on
 # Never let a glob match . or .. (shopt globskipdots)
-interpreter.bash.glob_never_matches_dot_and_dotdot=on
+bash.interpreter.glob_never_matches_dot_and_dotdot=on
 # Let ** in a glob match directories at any depth. (shopt globstar)
-interpreter.bash.glob_double_star_recurses=off
+bash.interpreter.glob_double_star_recurses=off
 # Let a command substitution inherit set -e. (shopt inherit_errexit)
-interpreter.bash.command_substitution_inherits_exit_on_failure=off
+bash.interpreter.command_substitution_inherits_exit_on_failure=off
 # Run the last stage of a pipeline in the current shell. (shopt lastpipe)
-interpreter.bash.pipeline_last_stage_runs_in_shell=off
+bash.interpreter.pipeline_last_stage_runs_in_shell=off
 # Give a new local variable the value of the variable it shadows.
 # (shopt localvar_inherit)
-interpreter.bash.local_inherits_outer_value=off
+bash.interpreter.local_inherits_outer_value=off
 # Keep a local variable unset by unset from exposing the outer one.
 # (shopt localvar_unset)
-interpreter.bash.local_unset_hides_outer=off
+bash.interpreter.local_unset_hides_outer=off
 # Match globs without regard to case. (shopt nocaseglob)
-interpreter.bash.glob_ignores_case=off
+bash.interpreter.glob_ignores_case=off
 # Match case, [[, and pattern operators without regard to case.
 # (shopt nocasematch)
-interpreter.bash.match_ignores_case=off
+bash.interpreter.match_ignores_case=off
 # Remove a glob that matches nothing. With this option off, the unmatched glob
 # remains unchanged. (shopt nullglob)
-interpreter.bash.glob_no_match_expands_to_nothing=off
+bash.interpreter.glob_no_match_expands_to_nothing=off
 # Replace an unquoted & in ${name/pattern/string} with the match.
 # (shopt patsub_replacement)
-interpreter.bash.pattern_substitution_ampersand_is_match=on
+bash.interpreter.pattern_substitution_ampersand_is_match=on
 # Report a shift count larger than the positional parameters.
 # (shopt shift_verbose)
-interpreter.bash.shift_reports_overflow=off
+bash.interpreter.shift_reports_overflow=off
 # Search PATH for a source operand without a slash. (shopt sourcepath)
-interpreter.bash.source_searches_path=on
+bash.interpreter.source_searches_path=on
 # Close a {name}> descriptor when its command finishes. (shopt varredir_close)
-interpreter.bash.redirect_variable_fd_closed_after_command=off
+bash.interpreter.redirect_variable_fd_closed_after_command=off
 # Let echo expand backslash escapes by default. (shopt xpg_echo)
-interpreter.bash.echo_interprets_backslash_escapes=off
+bash.interpreter.echo_interprets_backslash_escapes=off
 
 # Write input to standard error as it is read. (set -o verbose)
-debug.posix.trace_input_lines=off
+posix.debug.trace_input_lines=off
 # Print each command after expansion before it runs. (set -o xtrace)
-debug.posix.trace_expanded_commands=off
+posix.debug.trace_expanded_commands=off
 
 # Change to a directory typed as a command name. (shopt autocd)
-editor.bash.cd_by_typing_directory_name=on
+bash.editor.cd_by_typing_directory_name=on
 # Correct minor spelling errors in a cd operand. (shopt cdspell)
-editor.bash.cd_fix_typos=off
+bash.editor.cd_fix_typos=off
 # List running and stopped jobs before an interactive shell exits.
 # (shopt checkjobs)
-editor.bash.jobs_check_before_exit=off
+bash.editor.jobs_check_before_exit=off
 # Update COLUMNS and LINES after each command from the terminal size.
 # (shopt checkwinsize)
-editor.bash.update_columns_and_lines=on
+bash.editor.update_columns_and_lines=on
+# Return a failed history substitution to the editor. (shopt histreedit)
+bash.editor.history.reedit_failed_substitution=off
+# Load an expanded history reference into the editor. The shell runs it after
+# the user accepts it. (shopt histverify)
+bash.editor.history.verify_expansion_before_running=off
 # Send SIGHUP to every job when an interactive login shell exits.
 # (shopt huponexit)
-editor.bash.jobs_hangup_on_exit=off
+bash.editor.jobs_hangup_on_exit=off
 # Allow comments in interactive shell input. (set -o interactive-comments)
-editor.bash.interactive_comments=on
+bash.editor.interactive_comments=on
 # Warn when a checked mail file was read since the last check. (shopt mailwarn)
-editor.bash.mail_warn_when_read=off
+bash.editor.mail_warn_when_read=off
 # Expand parameters and substitutions in prompt strings. (shopt promptvars)
-editor.bash.prompt_expands_parameters=on
+bash.editor.prompt_expands_parameters=on
 
 # Quote every shell metacharacter in a completed file name.
 # (shopt complete_fullquote)
-completion.bash.quote_all_special_characters=on
+bash.completion.quote_all_special_characters=on
 # Replace a directory name with its expansion during completion.
 # (shopt direxpand)
-completion.bash.expand_directory_names=off
+bash.completion.expand_directory_names=off
 # Correct a misspelled directory name during completion. (shopt dirspell)
-completion.bash.fix_directory_typos=off
+bash.completion.fix_directory_typos=off
 # Drop FIGNORE suffixes from completions even when that leaves none.
 # (shopt force_fignore)
-completion.bash.always_apply_fignore=on
+bash.completion.always_apply_fignore=on
 # Complete hostnames after an @ in a word. (shopt hostcomplete)
-completion.bash.hostnames_after_at=on
+bash.completion.hostnames_after_at=on
 # Offer no command completion on an empty line. (shopt no_empty_cmd_completion)
-completion.bash.skip_empty_line=off
+bash.completion.skip_empty_line=off
 # Use the completion specifications defined by complete. (shopt progcomp)
-completion.bash.programmable=on
+bash.completion.programmable=on
 # Complete an alias with the specification of the command it expands to.
 # (shopt progcomp_alias)
-completion.bash.programmable_follows_aliases=off
+bash.completion.programmable_follows_aliases=off
 
 # Enable the behavior Bash provides for debuggers. (shopt extdebug)
-debug.bash.debugger_support=off
+bash.debug.debugger_support=off
 
 # Write error messages in the GNU file:line format. (shopt gnu_errfmt)
-optimizer.bash.errors_use_gnu_format=off
+bash.optimizer.errors_use_gnu_format=off
 
 # On Windows, open /dev/null as the NUL device.
 compatibility.dev_null=on
@@ -350,21 +350,21 @@ mood=bash
 == the bash preset leaves the alias default to the session:
 # Expand aliases in commands. Left unset, it is on in an interactive shell and
 # off in a script. (shopt expand_aliases)
-# interpreter.bash.aliases_expand=
+# bash.interpreter.aliases_expand=
 shopt -u expand_aliases
 == the sh preset matches a fresh sh session:
 == create writes every file option with its help and Bash name:
 9
-interpreter.bash.verify_remembered_command_paths=off
+bash.interpreter.verify_remembered_command_paths=off
 # Let a glob match filenames that begin with a dot. (shopt dotglob)
-interpreter.bash.glob_includes_dotfiles=off
+bash.interpreter.glob_includes_dotfiles=off
 1
 0
 == a Bash spelling stays on one comment line:
 0
 0
 # (set -o keyword)
-interpreter.bash.assignments_anywhere_in_command=off
+bash.interpreter.assignments_anywhere_in_command=off
 == set changes the session, and --persist rewrites one line:
 on
 editor.auto_close_brackets_and_quotes=on
@@ -377,10 +377,10 @@ editor.history.file_path=" padded "
 completion.add_space_after_completed_word=on
 == --persist writes an option that changes evaluation:
 rc=0
-interpreter.bash.glob_includes_dotfiles=on
+bash.interpreter.glob_includes_dotfiles=on
 == --persist rejects an option fixed by how the shell started:
--c:1:14: error: Builtin `koshconf`: The 'interpreter.bash.privileged_mode' option cannot be written with --persist.
-     1 |  koshconf set interpreter.bash.privileged_mode off --persist
+-c:1:14: error: Builtin `koshconf`: The 'bash.interpreter.privileged_mode' option cannot be written with --persist.
+     1 |  koshconf set bash.interpreter.privileged_mode off --persist
        |               ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 note: Read-only, invocation-only, and session-dependent options are not written to the file.
 rc=1

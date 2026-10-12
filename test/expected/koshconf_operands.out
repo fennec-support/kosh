@@ -12,31 +12,17 @@ sh
 == koshconf get option prefix:
 editor.auto_close_brackets_and_quotes
 editor.base_mode
-editor.bash.cd_by_typing_directory_name
-editor.bash.cd_fix_typos
-editor.bash.interactive_comments
-editor.bash.jobs_check_before_exit
-editor.bash.jobs_hangup_on_exit
-editor.bash.mail_warn_when_read
-editor.bash.prompt_expands_parameters
-editor.bash.update_columns_and_lines
 editor.highlight_syntax_and_show_ghost_text
 editor.hints.show_command_synopsis
 editor.hints.show_live_diagnostics
 editor.history.arrow_keys_search_by_typed_prefix
-editor.history.bash.bang_expansion
-editor.history.bash.records_commands
-editor.history.bash.reedit_failed_substitution
-editor.history.bash.verify_expansion_before_running
 editor.history.file_path
 editor.history.max_entries
-editor.posix.ctrl_d_does_not_exit
-editor.posix.jobs_report_status_immediately
 editor.request_extended_key_reports
 editor.transient_prompt_after_submit
 == koshconf set option prefix after a flag:
-interpreter.bash.glob_no_match_expands_to_nothing
-interpreter.bash.glob_no_match_is_error
+bash.interpreter.glob_no_match_expands_to_nothing
+bash.interpreter.glob_no_match_is_error
 == koshconf set editor mode value:
 emacs
 vi
@@ -72,6 +58,6 @@ editor.history.max_entries
 == koshconf option name prefix wins over subsequence:
 mood
 == koshconf get offers the legacy Bash alias:
-legacy.bash.extglob
+bash.legacy.extglob
 == koshconf set offers the legacy POSIX alias:
-legacy.posix.errexit
+posix.legacy.errexit

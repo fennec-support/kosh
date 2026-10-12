@@ -154,17 +154,17 @@ such a value, and any value with a control byte or invalid UTF-8, in the shell
 form.
 .PP
 A file may set every option except those fixed by how the shell started,
-such as interpreter.bash.login_shell, interpreter.bash.restricted_shell, interpreter.bash.privileged_mode,
-interpreter.posix.parse_without_executing, and interpreter.bash.exit_after_one_command, and those
-following the session, interpreter.posix.job_control, editor.history.bash.records_commands,
-editor.history.bash.bang_expansion, and interpreter.bash.posixly_correct. The OPTION REGISTRY
+such as bash.interpreter.login_shell, bash.interpreter.restricted_shell, bash.interpreter.privileged_mode,
+posix.interpreter.parse_without_executing, and bash.interpreter.exit_after_one_command, and those
+following the session, posix.interpreter.job_control, bash.editor.history.records_commands,
+bash.editor.history.bang_expansion, and bash.interpreter.posixly_correct. The OPTION REGISTRY
 section of
 .BR kosh (1)
 lists them.
 .PP
 .B A semantic option in a file changes every shell that loads it, scripts included.
-For example, interpreter.posix.exit_on_command_failure=on makes every script exit on its
-first failing command, and interpreter.bash.glob_includes_dotfiles=on changes what every
+For example, posix.interpreter.exit_on_command_failure=on makes every script exit on its
+first failing command, and bash.interpreter.glob_includes_dotfiles=on changes what every
 glob matches. Put such a setting in a file only when every script should use it. Otherwise set
 it for a session with
 .BR set ,
@@ -175,9 +175,9 @@ or
 The mood is applied first, wherever it appears in the file, so the other lines
 are read under it. In the
 .B kosh
-mood, interpreter.posix.unset_variable_is_error, interpreter.posix.pipeline_fails_on_any_stage,
-interpreter.bash.glob_no_match_is_error, and interpreter.arithmetic_uses_big_numbers stay
-on and interpreter.bash.glob_no_match_expands_to_nothing stays off. A line
+mood, posix.interpreter.unset_variable_is_error, posix.interpreter.pipeline_fails_on_any_stage,
+bash.interpreter.glob_no_match_is_error, and interpreter.arithmetic_uses_big_numbers stay
+on and bash.interpreter.glob_no_match_expands_to_nothing stays off. A line
 setting another value is skipped with a warning giving the file, line, option,
 and
 .BR "koshconf set mood bash" .
@@ -192,24 +192,24 @@ user file and KOSHCONF replace the system file.
 .PP
 The canonical name of an option inherited from POSIX
 .B set \-o
-carries a posix segment before its last part, and one inherited from any other
+starts with posix, and one inherited from any other
 Bash
 .B set \-o
 or
 .B shopt
-option carries a bash segment there, as in
-interpreter.posix.exit_on_command_failure for errexit and
-interpreter.bash.glob_extended_patterns for extglob. A name with neither
-segment belongs to kosh alone.
+option starts with bash, as in
+posix.interpreter.exit_on_command_failure for errexit and
+bash.interpreter.glob_extended_patterns for extglob. A name with neither
+prefix belongs to kosh alone.
 .PP
 Every option with a Bash spelling is also accepted under an alias. The
-alias is legacy.posix.NAME when POSIX
+alias is posix.legacy.NAME when POSIX
 .B set \-o
-accepts NAME, and otherwise legacy.bash.NAME when
+accepts NAME, and otherwise bash.legacy.NAME when
 .B set \-o
 or
 .B shopt
-accepts NAME, as in legacy.bash.extglob and legacy.bash.posix. An alias resolves at lookup to
+accepts NAME, as in bash.legacy.extglob and bash.legacy.posix. An alias resolves at lookup to
 the same option entry as the canonical name, with the same id and storage, so
 setting either spelling changes the value shown by the other,
 .BR "set \-o" ,
@@ -237,7 +237,7 @@ or
 spelling. A string option without a default, such as editor.history.file_path,
 is written commented out. The
 .B bash
-preset also writes interpreter.bash.aliases_expand commented out, because bash expands
+preset also writes bash.interpreter.aliases_expand commented out, because bash expands
 aliases only in an interactive shell and a written value would apply to both. The
 .B kosh
 preset writes the values held by the
@@ -325,7 +325,7 @@ and never change meaning. Only the mood and the interactive options are
 written. An interactive option affects only the interactive editor, the
 history, or the presentation of diagnostics, never how a script runs. A child
 shell loads the settings files itself, so semantic options such as
-interpreter.posix.exit_on_command_failure, interpreter.mimic_shebang, and the debug
+posix.interpreter.exit_on_command_failure, interpreter.mimic_shebang, and the debug
 reports never pass through the environment. Bash exports SHELLOPTS only on
 request.
 .PP
@@ -381,7 +381,7 @@ editor.history.max_entries=20000
 
 editor.base_mode=vi
 
-interpreter.bash.glob_includes_dotfiles=on
+bash.interpreter.glob_includes_dotfiles=on
 .EE
 .RE
 .PP

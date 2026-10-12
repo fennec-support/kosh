@@ -8,7 +8,7 @@ echo "== koshconf create preset:"
 echo "== koshconf get option prefix:"
 "$BIN" --debug-complete-at 'koshconf get editor.' </dev/null
 echo "== koshconf set option prefix after a flag:"
-"$BIN" --debug-complete-at 'koshconf --persist set interpreter.bash.glob_no_' \
+"$BIN" --debug-complete-at 'koshconf --persist set bash.interpreter.glob_no_' \
   </dev/null
 echo "== koshconf set editor mode value:"
 "$BIN" --debug-complete-at 'koshconf set editor.base_mode ' \
@@ -44,8 +44,8 @@ echo "== koshconf option name by subsequence:"
 echo "== koshconf option name prefix wins over subsequence:"
 "$BIN" --debug-complete-at 'koshconf get mood' </dev/null
 echo "== koshconf get offers the legacy Bash alias:"
-"$BIN" --debug-complete-at 'koshconf get legacy.bash.extg' \
+"$BIN" --debug-complete-at 'koshconf get bash.legacy.extg' \
   </dev/null
 echo "== koshconf set offers the legacy POSIX alias:"
-"$BIN" --debug-complete-at 'koshconf set legacy.posix.errex' \
+"$BIN" --debug-complete-at 'koshconf set posix.legacy.errex' \
   </dev/null

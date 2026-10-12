@@ -15,8 +15,8 @@ SYNOPSIS
 
 OPTIONS
       --help                            Display help.
-  -a, --all                             With list, also show the legacy.posix
-                                        and legacy.bash name of each option.
+  -a, --all                             With list, also show the posix.legacy
+                                        and bash.legacy spelling of each option.
       --persist                         With set, also write the option to the
                                         user configuration file. With save,
                                         write every current setting to it.
@@ -25,20 +25,20 @@ OPTIONS
 == list has no class column:
 0
 # name=value
-compatibility.dev_null=on
-compatibility.slash_tmp=on
-completion.add_space_after_completed_word=off
+bash.completion.always_apply_fignore=on
+bash.completion.expand_directory_names=off
+bash.completion.fix_directory_typos=off
 == list -a adds the alias after each canonical line:
-interpreter.bash.glob_extended_patterns=on
-legacy.bash.extglob=on
+bash.interpreter.glob_extended_patterns=on
+bash.legacy.extglob=on
 --
-interpreter.posix.exit_on_command_failure=off
-legacy.posix.errexit=off
+posix.interpreter.exit_on_command_failure=off
+posix.legacy.errexit=off
 70
 == every alias reads the value of its option:
 == set-only options appear as posix aliases:
-legacy.posix.hashall=on
-legacy.posix.nolog=off
+posix.legacy.hashall=on
+posix.legacy.nolog=off
 == the editor mode lists no emacs or vi alias:
 0
 == --all belongs to list:

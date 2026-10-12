@@ -38,8 +38,8 @@ FLAG(ALL,
      Bool,
      'a',
      "all",
-     "With list, also show the legacy.posix and legacy.bash name of each "
-     "option.");
+     "With list, also show the posix.legacy and bash.legacy spelling of "
+     "each option.");
 FLAG(PERSIST,
      Bool,
      '\0',
