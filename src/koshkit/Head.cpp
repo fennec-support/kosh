@@ -283,8 +283,9 @@ Head::execute(const ExecContext               &ec,
   u64  count           = 10;
   bool is_all_but_last = false;
 
-  if (is_byte_mode) {
-    let const raw = FLAG_HEAD_BYTES.value();
+  if (is_byte_mode || has_lines_flag) {
+    let const raw =
+        is_byte_mode ? FLAG_HEAD_BYTES.value() : FLAG_HEAD_LINES.value();
 
     is_all_but_last = raw.length > 0 && raw[0] == '-';
 
@@ -293,25 +294,11 @@ Head::execute(const ExecContext               &ec,
 
     if (parsed_value.is_error()) {
       throw ErrorWithDetails{
-          "invalid byte count '" + String{cxt.scratch_allocator(), raw}
-            + "'",
-          "The count must be an integer"
-      };
-    }
-
-    count = parsed_value.value();
-  } else if (has_lines_flag) {
-    let const raw = FLAG_HEAD_LINES.value();
-
-    is_all_but_last = raw.length > 0 && raw[0] == '-';
-
-    let const magnitude    = is_all_but_last ? raw.substring(1) : raw;
-    let const parsed_value = parse_strict_count(magnitude);
-
-    if (parsed_value.is_error()) {
-      throw ErrorWithDetails{
-          "invalid line count '" + String{cxt.scratch_allocator(), raw}
-            + "'",
+          String{cxt.scratch_allocator(), is_byte_mode
+                                              ? "invalid byte count '"
+                                              : "invalid line count '"}
+          +
+              raw + "'",
           "The count must be an integer"
       };
     }
@@ -486,14 +473,15 @@ Head::execute(const ExecContext               &ec,
         if (remaining_count < append_count)
           append_count = static_cast<usize>(remaining_count);
       } else {
-        for (usize byte_index = 0; byte_index < chunk.content.length;
-             byte_index++)
-        {
-          if (chunk.content[byte_index] != '\n') continue;
+        usize byte_index = 0;
 
+        while (let const newline =
+                   chunk.content.substring(byte_index).find_character('\n'))
+        {
+          byte_index += *newline + 1;
           line_count++;
           if (line_count == count) {
-            append_count = byte_index + 1;
+            append_count = byte_index;
             break;
           }
         }

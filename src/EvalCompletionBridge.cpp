@@ -127,12 +127,10 @@ EvalContext::run_completion_function(
 {
   FunctionBodyHandle body_storage{};
 
-  if (function_store().has_functions()) {
-    if (let const *storage = function_store().find_storage(function_name);
-        storage != nullptr)
-    {
-      body_storage = *storage;
-    }
+  if (let const *storage = function_store().find_storage(function_name);
+      storage != nullptr)
+  {
+    body_storage = *storage;
   }
 
   const Expression *body =

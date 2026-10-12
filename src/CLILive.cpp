@@ -79,23 +79,8 @@ get_hint_entry_count(StringView hints) wontthrow -> usize
 pure fn
 get_hints_length(StringView hints) wontthrow -> usize
 {
-  usize length      = 0;
-  usize entry_count = 0;
-  usize position    = 0;
-
-  while (position <= hints.length) {
-    let const rest         = hints.substring(position);
-    let const separator    = rest.find_character('|');
-    let const entry_length = separator.has_value() ? *separator : rest.length;
-
-    length += entry_length;
-    entry_count++;
-    if (!separator.has_value()) break;
-
-    position += entry_length + 1;
-  }
-
-  return length + (entry_count - 1) * SEGMENT_GAP.length;
+  return hints.length +
+         (get_hint_entry_count(hints) - 1) * (SEGMENT_GAP.length - 1);
 }
 
 pure fn

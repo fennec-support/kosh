@@ -130,8 +130,6 @@ Mkdir::execute(const ExecContext               &ec,
 
         let const prefix = text.substring_of_length(0, i);
 
-        if (prefix.is_empty()) continue;
-
         let const is_named_directory = (i == text.length);
         let const mode = is_named_directory ? named_mode : intermediate_mode;
         let const should_set_exact_mode =

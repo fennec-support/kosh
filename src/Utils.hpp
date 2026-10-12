@@ -327,10 +327,6 @@ encode_base64(StringView bytes) throws -> String;
 fn
 decode_base64(StringView text) throws -> Maybe<String>;
 
-fn
-format_unix_timestamp(i64 unix_time, const char *format) throws
-    -> String;
-
 pure fn
 is_posix_reserved_word(StringView word) wontthrow -> bool;
 

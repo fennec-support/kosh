@@ -94,11 +94,10 @@ Fold::execute(const ExecContext               &ec,
     usize line_start = 0;
 
     while (line_start < content.length) {
-      usize line_end = line_start;
-
-      while (line_end < content.length && content[line_end] != '\n') {
-        line_end++;
-      }
+      let const line_end =
+          line_start + content.substring(line_start)
+                           .find_character('\n')
+                           .value_or(content.length - line_start);
 
       append_folded_line(
           output,

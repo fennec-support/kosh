@@ -146,23 +146,18 @@ struct tail_options
         parsed_tail_count{count_origin::FromEnd, 10}
     };
 
-    if (options.unit == tail_unit::Bytes) {
-      parsed_count = parse_tail_count(FLAG_TAIL_BYTES.value());
+    if (is_bytes_overriding_lines || FLAG_TAIL_LINES.is_set()) {
+      let const spec = is_bytes_overriding_lines ? FLAG_TAIL_BYTES.value()
+                                                 : FLAG_TAIL_LINES.value();
+
+      parsed_count = parse_tail_count(spec);
       if (!parsed_count.has_value()) {
         throw ErrorWithDetails{
-            "invalid byte count '" +
-                String{allocator, FLAG_TAIL_BYTES.value()}
-                + "'",
-            "The count must be a non-negative integer"
-        };
-      }
-    } else if (FLAG_TAIL_LINES.is_set()) {
-      parsed_count = parse_tail_count(FLAG_TAIL_LINES.value());
-      if (!parsed_count.has_value()) {
-        throw ErrorWithDetails{
-            "invalid line count '" +
-                String{allocator, FLAG_TAIL_LINES.value()}
-                + "'",
+            String{allocator, is_bytes_overriding_lines
+                                  ? "invalid byte count '"
+                                  : "invalid line count '"}
+            +
+                spec + "'",
             "The count must be a non-negative integer"
         };
       }

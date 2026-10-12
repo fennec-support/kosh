@@ -279,51 +279,47 @@ byte_ends_here_document_delimiter(char byte) wontthrow -> bool
   }
 }
 
-pure fn
-skip_here_document(StringView source, usize at) wontthrow -> usize
+fn
+skip_here_document(StringView source, usize at) throws -> usize
 {
-  usize cursor = at + 2;
+  usize     cursor            = at + 2;
+  let const should_strip_tabs = cursor < source.length && source[cursor] == '-';
 
-  if (cursor < source.length && source[cursor] == '-') {
+  if (should_strip_tabs) cursor++;
+
+  while (cursor < source.length && lexer::is_whitespace(source[cursor]))
     cursor++;
-  }
 
-  while (cursor < source.length &&
-         (source[cursor] == ' ' || source[cursor] == '\t'))
-  {
-    cursor++;
-  }
+  let const delimiter_start = cursor;
+  char      quote           = 0;
 
-  usize delimiter_start = cursor;
-  usize delimiter_end;
+  while (cursor < source.length) {
+    let const byte = source[cursor];
 
-  if (cursor < source.length &&
-      (source[cursor] == '\'' || source[cursor] == '"'))
-  {
-    let const quote = source[cursor];
-
-    cursor++;
-    delimiter_start = cursor;
-
-    while (cursor < source.length && source[cursor] != quote) {
+    if (quote != 0) {
+      if (byte == quote) quote = 0;
       cursor++;
+      continue;
     }
 
-    delimiter_end = cursor;
-  } else {
-    while (cursor < source.length &&
-           !byte_ends_here_document_delimiter(source[cursor]))
-    {
+    if (byte == '\'' || byte == '"') {
+      quote = byte;
+    } else if (byte == '\\' && cursor + 1 < source.length) {
       cursor++;
+    } else if (byte_ends_here_document_delimiter(byte)) {
+      break;
     }
 
-    delimiter_end = cursor;
+    cursor++;
   }
 
-  if (delimiter_end == delimiter_start) return at + 2;
+  if (cursor == delimiter_start) return at + 2;
 
-  let const delimiter = source.substring_of_length(
-      delimiter_start, delimiter_end - delimiter_start);
+  let const heredoc = lexer::pending_heredoc{
+      lexer::unquote_heredoc_delimiter(
+          source.substring_of_length(delimiter_start, cursor - delimiter_start),
+          heap_allocator()),
+      should_strip_tabs};
 
   while (cursor < source.length && source[cursor] != '\n') {
     cursor++;
@@ -332,20 +328,15 @@ skip_here_document(StringView source, usize at) wontthrow -> usize
   while (cursor < source.length) {
     cursor++;
 
-    usize line_start = cursor;
-
-    while (line_start < source.length && source[line_start] == '\t') {
-      line_start++;
-    }
-
-    usize line_end = line_start;
+    usize line_end = cursor;
 
     while (line_end < source.length && source[line_end] != '\n') {
       line_end++;
     }
 
-    if (line_end - line_start == delimiter.length &&
-        source.substring_of_length(line_start, delimiter.length) == delimiter)
+    if (lexer::match_heredoc_line(
+            source.substring_of_length(cursor, line_end - cursor), heredoc)
+            .is_terminator)
     {
       return line_end;
     }
@@ -1238,13 +1229,6 @@ collect_shell_provided_variable_names(const AnalysisContext &actx,
 }
 
 pure fn
-fold_name_byte(char byte) wontthrow -> char
-{
-  return byte >= 'a' && byte <= 'z' ? static_cast<char>(byte - ('a' - 'A'))
-                                    : byte;
-}
-
-pure fn
 names_resemble_each_other(StringView left, StringView right) wontthrow -> bool
 {
   usize at_left  = 0;
@@ -1263,7 +1247,8 @@ names_resemble_each_other(StringView left, StringView right) wontthrow -> bool
       break;
     }
 
-    if (fold_name_byte(left[at_left]) != fold_name_byte(right[at_right]))
+    if (utils::ascii_to_lower(left[at_left]) !=
+        utils::ascii_to_lower(right[at_right]))
       return false;
 
     at_left++;
@@ -1409,7 +1394,6 @@ constexpr usize NO_DEFINITION_INDEX = ~usize{0};
 struct function_name_summary
 {
   usize first_definition_index{NO_DEFINITION_INDEX};
-  u32   first_definition_position{0};
   bool  has_call_with_arguments{false};
   bool  has_call_without_arguments{false};
 };
@@ -1428,8 +1412,7 @@ build_function_name_summaries(const AnalysisContext &actx) throws
 
     if (summary.first_definition_index != NO_DEFINITION_INDEX) continue;
 
-    summary.first_definition_index    = index;
-    summary.first_definition_position = definition.location.position;
+    summary.first_definition_index = index;
   }
 
   for (let const &call : actx.function_calls) {
@@ -1484,11 +1467,14 @@ check_call_before_definition(
     let const summary = summaries.find(call.name.view());
 
     if (!summary.has_value()) continue;
-    if (call.location.position >= summary->first_definition_position) continue;
 
-    actx.report_diagnostic(
-        diagnostic_id::sc2218, call.location, {call.name.view()},
-        actx.functions.records[summary->first_definition_index].location);
+    let const &first_definition =
+        actx.functions.records[summary->first_definition_index];
+
+    if (call.location.position >= first_definition.location.position) continue;
+
+    actx.report_diagnostic(diagnostic_id::sc2218, call.location,
+                           {call.name.view()}, first_definition.location);
   }
 }
 

@@ -1096,32 +1096,25 @@ Du::execute(const ExecContext               &ec,
   let       rendered_sizes = ArrayList<String>{allocator};
   usize     size_width     = 0;
 
-  if (is_human) {
-    rendered_sizes.reserve(output_order.count());
+  rendered_sizes.reserve(output_order.count());
 
-    for (let const &sort_key : output_order) {
-      let rendered_size = format_human_size(sort_key.byte_count, allocator);
+  for (let const &sort_key : output_order) {
+    let rendered_size = is_human
+                            ? format_human_size(sort_key.byte_count, allocator)
+                            : String::from(sort_key.byte_count, allocator);
 
-      if (rendered_size.length() > size_width)
-        size_width = rendered_size.length();
-      rendered_sizes.push(steal(rendered_size));
-    }
-  } else if (!output_order.is_empty()) {
-    size_width = String::from(output_order[0].byte_count, allocator).length();
+    if (rendered_size.length() > size_width)
+      size_width = rendered_size.length();
+    rendered_sizes.push(steal(rendered_size));
   }
 
   let const should_color = koshkit_should_color();
   let       output       = String{allocator};
 
   for (usize index = 0; index < output_order.count(); index++) {
-    let const &sort_key      = output_order[index];
-    let const &row           = output_rows[sort_key.row_index];
-    let        rendered_size = String{allocator};
-
-    if (!is_human) rendered_size = String::from(sort_key.byte_count, allocator);
-
-    let const size_text =
-        is_human ? rendered_sizes[index].view() : rendered_size.view();
+    let const &sort_key  = output_order[index];
+    let const &row       = output_rows[sort_key.row_index];
+    let const  size_text = rendered_sizes[index].view();
 
     output.append_repeated(' ', size_width - size_text.length);
     append_report_text(output, size_text, colors::ansi::BOLD_GREEN,

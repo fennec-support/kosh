@@ -462,10 +462,18 @@ directory_entry_kind(const Path                 &directory,
   let full_path = directory.clone();
 
   full_path.append(entry.name.view());
-  if (full_path.is_directory()) return Path::EntryKind::Directory;
-  if (full_path.is_regular_file()) return Path::EntryKind::Regular;
 
-  return Path::EntryKind::Other;
+  let status = os::file_status{};
+
+  if (!os::stat_path_following(full_path.view(), status)) {
+    return Path::EntryKind::Other;
+  }
+
+  switch (os::file_type_letter(status.mode)) {
+  case 'd': return Path::EntryKind::Directory;
+  case '-': return Path::EntryKind::Regular;
+  default:  return Path::EntryKind::Other;
+  }
 }
 
 fn
@@ -1199,7 +1207,7 @@ ProgramResolver::command_name_has_prefix(StringView prefix) throws
   }
 
   for (let const &name : m_command_names)
-    if (smart_case_prefix_matches(name.view(), normalized_prefix_view))
+    if (smart_case_prefix_matches(name.view(), normalized_prefix_view, false))
       return true;
 
   return false;

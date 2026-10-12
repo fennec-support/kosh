@@ -1262,6 +1262,13 @@ CaseClause::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -
         const Word &pattern_word =
             static_cast<const tokens::WordToken *>(pattern_token)->word();
 
+        if (pattern_word.segments.count() == 1 &&
+            pattern_word.segments[0].kind == WordSegment::Kind::UnquotedText &&
+            pattern_word.segments[0].text.view() == "*")
+        {
+          return true;
+        }
+
         if (!is_case_insensitive &&
             pattern_word.plain_literal_kind() != Word::PlainLiteral::NotPlain)
         {

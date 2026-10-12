@@ -124,8 +124,7 @@ Batch::add(batch_operation operation) throws -> void
   case batch_operation::Kind::Lstat:
   case batch_operation::Kind::Stat:
   case batch_operation::Kind::Exists:
-  case batch_operation::Kind::LstatAt:
-  case batch_operation::Kind::StatAt:  m_has_metadata_operations = true; break;
+  case batch_operation::Kind::LstatAt: m_has_metadata_operations = true; break;
 
   case batch_operation::Kind::Read:
   case batch_operation::Kind::Write:
@@ -158,8 +157,7 @@ is_same_metadata_request(const batch_internal::batched_syscall &left,
   case batch_operation::Kind::Stat:
   case batch_operation::Kind::Exists: break;
 
-  case batch_operation::Kind::LstatAt:
-  case batch_operation::Kind::StatAt:  {
+  case batch_operation::Kind::LstatAt: {
     let const left_directory =
         batch_internal::batch_operation_access::get_directory_descriptor(left);
     let const right_directory =
@@ -201,7 +199,6 @@ is_metadata_request(const batch_internal::batched_syscall &operation) wontthrow
   case batch_operation::Kind::Stat:
   case batch_operation::Kind::Exists: return true;
   case batch_operation::Kind::LstatAt:
-  case batch_operation::Kind::StatAt:
     return batch_internal::batch_operation_access::get_relative_name(
                operation) != nullptr;
   case batch_operation::Kind::Read:

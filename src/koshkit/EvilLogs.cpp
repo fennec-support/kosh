@@ -364,8 +364,8 @@ append_core_dump_report(String   &output,
     for (usize index = 0; index < shown_count; index++) {
       let const &dump     = dumps[index];
       let const  size     = format_human_size(dump.size, allocator);
-      let const  modified = utils::format_unix_timestamp(dump.modification_time,
-                                                         "%Y-%m-%d %H:%M");
+      let const  modified =
+          os::format_local_time("%Y-%m-%d %H:%M", dump.modification_time);
       let        cells    = ArrayList<report_table_cell_view>{allocator};
 
       cells.push({size.view(), colors::ansi::GREEN});
@@ -616,8 +616,8 @@ append_log_report(String   &output,
     for (usize index = 0; index < shown_count; index++) {
       let const &entry   = entries[index];
       let const  size    = format_human_size(entry.size, allocator);
-      let const modified = utils::format_unix_timestamp(entry.modification_time,
-                                                        "%Y-%m-%d %H:%M");
+      let const  modified =
+          os::format_local_time("%Y-%m-%d %H:%M", entry.modification_time);
       let       cells    = ArrayList<report_table_cell_view>{allocator};
 
       cells.push({size.view(), colors::ansi::GREEN});

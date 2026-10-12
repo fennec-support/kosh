@@ -1072,8 +1072,8 @@ append_session_report(String             &output,
       login_time =
           session.login_time == 0
               ? String{allocator, "unavailable"}
-              : String{allocator, utils::format_unix_timestamp(
-                                      session.login_time, "%Y-%m-%d %H:%M:%S")};
+              : String{allocator, os::format_local_time("%Y-%m-%d %H:%M:%S",
+                                                        session.login_time)};
     }
 
     let row = session_report_row{allocator};

@@ -300,12 +300,6 @@ make_metric_row(StringView          name,
 }
 
 fn
-append_padding(String &out, usize count) throws -> void
-{
-  out.append_repeated(' ', count);
-}
-
-fn
 append_metric_line(String          &out,
                    const MetricRow &row,
                    usize            mean_width,
@@ -317,18 +311,18 @@ append_metric_line(String          &out,
 
   let const name_padding = row.name.length < 22 ? 22 - row.name.length : 1;
 
-  append_padding(out, name_padding);
+  out.append_repeated(' ', name_padding);
 
   out.append(colored(colors::ansi::BOLD_GREEN, should_color));
   out.append(row.mean.view());
   out.append(colored(colors::ansi::RESET, should_color));
-  append_padding(out, mean_width - row.mean.length());
+  out.append_repeated(' ', mean_width - row.mean.length());
 
   out += " +/- ";
   out.append(colored(colors::ansi::BOLD_GREEN, should_color));
   out.append(row.std_dev.view());
   out.append(colored(colors::ansi::RESET, should_color));
-  append_padding(out, std_dev_width - row.std_dev.length());
+  out.append_repeated(' ', std_dev_width - row.std_dev.length());
 
   out += "  (";
   out.append(colored(colors::ansi::BOLD_CYAN, should_color));

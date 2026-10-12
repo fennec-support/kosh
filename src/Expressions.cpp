@@ -698,7 +698,7 @@ analysis_reporter::flush(const analysis_report_site &site) throws
   });
 
   for (let const report_index : report_order) {
-    let const &warning = pending[report_index];
+    let &warning = pending[report_index];
 
     if (sink != nullptr) {
       let source_name = String{heap_allocator()};
@@ -718,9 +718,9 @@ analysis_reporter::flush(const analysis_report_site &site) throws
 
       sink->push(source_diagnostic{
           warning.id, error_severity::warning, warning.location,
-          steal(source_name), warning.message.clone(),
-          warning.suggestion.clone(), warning.related_location,
-          steal(related_source_name), warning.related_message.clone(),
+          steal(source_name), steal(warning.message), steal(warning.suggestion),
+          warning.related_location, steal(related_source_name),
+          steal(warning.related_message),
           source_fixes_for_diagnostic(warning.id, source, warning.location)});
       continue;
     }
@@ -1201,7 +1201,7 @@ AnalysisContext::note_variable_occurrence(
         (state == nullptr &&
          !expressions::internal::is_shell_maintained_variable(name) &&
          !(eval_context != nullptr && eval_context->has_variable_name(name)) &&
-         !os::get_environment_variable(name).has_value());
+         !os::has_environment_variable(name));
   } else {
     let const *state = occurrences.find(name);
 
@@ -1238,18 +1238,14 @@ AnalysisContext::apply_called_function(
 
   if (!selected_definition_index.has_value()) return;
 
-  let const &selected_definition =
-      functions.records[*selected_definition_index.value()];
+  let &definition = functions.records[*selected_definition_index.value()];
 
-  if (!selected_definition.is_analysis_complete ||
-      selected_definition.location.position > call_location.position)
+  if (!definition.is_analysis_complete ||
+      definition.location.position > call_location.position)
   {
     return;
   }
 
-  let &definition = functions.records[*selected_definition_index.value()];
-
-  definition.has_been_called = true;
   if (active_function_definition_index != NO_ACTIVE_FUNCTION_DEFINITION) {
     let &active_definition =
         functions.records[active_function_definition_index];
@@ -2827,70 +2823,6 @@ internal::arithmetic_reads_external_input(const AnalysisContext &actx,
   }
 
   return false;
-}
-
-IfStatement::IfStatement(SourceLocation    location,
-                         const Expression *condition,
-                         const Expression *then,
-                         const Expression *otherwise)
-    : Expression(steal(location)), m_condition(condition), m_then(then),
-      m_otherwise(otherwise)
-{
-  ASSERT(condition != nullptr);
-  ASSERT(then != nullptr);
-}
-
-IfStatement::~IfStatement() = default;
-
-hot fn
-IfStatement::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> status_result
-{
-  ASSERT(m_condition != nullptr);
-  ASSERT(m_then != nullptr);
-
-  let const condition = m_condition->evaluate(cxt);
-
-  if (cxt.control_flow_store().has_pending()) return condition;
-
-  LOG(Debug, "the if condition yielded %lld, running the %s branch",
-      static_cast<long long>(condition),
-      condition ? "then" : (m_otherwise != nullptr ? "else" : "no"));
-
-  if (condition)
-    return m_then->evaluate(cxt);
-  else if (m_otherwise != nullptr)
-    return m_otherwise->evaluate(cxt);
-
-  return 0;
-}
-
-cold fn
-IfStatement::to_string() const throws -> String
-{
-  return "If";
-}
-
-cold fn
-IfStatement::to_ast_string(usize layer) const throws -> String
-{
-  ASSERT(m_condition != nullptr);
-  ASSERT(m_then != nullptr);
-
-  let       s   = String{heap_allocator()};
-  let const pad = indent_for_layer(layer);
-
-  s += pad + "[If]\n";
-  s += pad + EXPRESSION_AST_INDENT + m_condition->to_ast_string(layer + 1) +
-       "\n";
-  s += pad + EXPRESSION_AST_INDENT + m_then->to_ast_string(layer + 1);
-
-  if (m_otherwise != nullptr) {
-    s += '\n';
-    s += pad + pad + "[Else]\n";
-    s += pad + EXPRESSION_AST_INDENT + m_otherwise->to_ast_string(layer + 1);
-  }
-
-  return s;
 }
 
 Command::Command(SourceLocation location) : Expression(steal(location)) {}

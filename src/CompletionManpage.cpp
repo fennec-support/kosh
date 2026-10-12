@@ -204,10 +204,6 @@ capture_completion_program_output(EvalContext             &context,
 }
 
 static fn
-manpage_section1_directories(EvalContext &context) throws
-    -> ArrayList<Path>;
-
-static fn
 manpath_argv_for(EvalContext &context) throws
     -> Maybe<ArrayList<String>>
 {

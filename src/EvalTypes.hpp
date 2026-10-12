@@ -365,29 +365,32 @@ public:
   hot fn
   find_for_write(StringView name) throws -> Maybe<variable_entry *>
   {
-    if (!find(name).has_value()) return None;
+    if (m_body.is_empty()) return None;
+    if (m_body.has_been_shared() && !find(name).has_value()) return None;
 
-    return *body().index.find(name).value();
+    let const found = body().index.find(name);
+
+    if (!found.has_value()) return None;
+
+    return *found.value();
   }
 
   fn
   get_or_create(StringView name) throws -> variable_entry &
   {
     let &table = body();
+    let &slot  = table.index.get_or_create(name, nullptr);
 
-    if (let const found = table.index.find(name); found.has_value())
-      return **found.value();
-
-    let *const created = table.entries.emplace(table.allocator);
+    if (slot != nullptr) return *slot;
 
     try {
-      table.index.set(name, created);
+      slot = table.entries.emplace(table.allocator);
     } catch (...) {
-      table.entries.erase(created);
+      table.index.erase(name);
       throw;
     }
 
-    return *created;
+    return *slot;
   }
 
   fn

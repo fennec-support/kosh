@@ -704,7 +704,7 @@ public:
                         : *m_regex;
 
     if (!m_options.is_whole_line)
-      return os::regex_matches_null_terminated(*selected.get(), value);
+      return os::regex_matches(*selected.get(), value);
 
     let const report = os::execute_regex(
         *selected.get(), os::regex_execution_options{value, m_allocator});
@@ -1375,6 +1375,13 @@ public:
         process_chunk(chunk);
         if (is_quiet && m_has_any_match) {
           return 0;
+        }
+        if (m_options.output_mode == grep_output_mode::List &&
+            chunk.completion != source_completion_state::Complete &&
+            m_source_match_counts[chunk.source_index] != 0)
+        {
+          m_line.clear();
+          reader.finish_source(chunk.source_index);
         }
       }
     }

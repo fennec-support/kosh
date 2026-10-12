@@ -103,3 +103,10 @@ compound_redirection_diagnostics() {
   while true; do echo looped; done < same.txt > same.txt
   if true; then echo branched; fi > "file$((index++))"
 }
+
+escaped_heredoc_delimiter_diagnostics() {
+  cat <<\EOF
+body
+EOF
+  echo “after heredoc”
+}

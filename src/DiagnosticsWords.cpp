@@ -1144,23 +1144,17 @@ check_operand_lints_after_scan(AnalysisContext          &actx,
                                args[i]->source_location());
       }
 
-      if (actx.walk.is_direct_pipeline_stage &&
-          !literal.view().starts_with("-"))
-      {
-        let const target = operand_target_name(literal.view());
+      let const target = operand_target_name(literal.view());
 
-        if (!target.is_empty()) {
-          actx.report_diagnostic(diagnostic_id::sc2030_read,
-                                 args[i]->source_location());
-          actx.pipeline_lost_names.add(target);
-        }
+      if (target.is_empty()) continue;
+
+      if (actx.walk.is_direct_pipeline_stage) {
+        actx.report_diagnostic(diagnostic_id::sc2030_read,
+                               args[i]->source_location());
+        actx.pipeline_lost_names.add(target);
       }
 
-      if (!literal.view().starts_with("-")) {
-        let const target = operand_target_name(literal.view());
-
-        if (!target.is_empty()) actx.external_input_names.add(target);
-      }
+      actx.external_input_names.add(target);
     }
 
     break;

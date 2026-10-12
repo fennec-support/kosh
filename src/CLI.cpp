@@ -1512,9 +1512,6 @@ append_report_grid(String                                        &output,
 
     if (index < columns.count())
       width = toiletline::get_display_width(columns[index].heading.view());
-    if (index < columns.count() && width < columns[index].min_width) {
-      width = columns[index].min_width;
-    }
 
     widths.push(width);
   }
@@ -1697,16 +1694,9 @@ format_cli_help(StringView text, bool should_color) throws -> String
 {
   if (!should_color) return String{text};
 
-  enum class help_section : u8
-  {
-    Other,
-    Description,
-    Synopsis,
-  };
-
-  let          output     = String{heap_allocator()};
-  help_section section    = help_section::Other;
-  usize        line_start = 0;
+  let   output      = String{heap_allocator()};
+  bool  is_synopsis = false;
+  usize line_start  = 0;
 
   while (line_start < text.length) {
     usize line_end = line_start;
@@ -1732,16 +1722,8 @@ format_cli_help(StringView text, bool should_color) throws -> String
 
     if (is_heading) {
       append_report_text(output, line, colors::ansi::BOLD_BLUE, true);
-      if (line == "DESCRIPTION") {
-        section = help_section::Description;
-      } else if (line == "SYNOPSIS") {
-        section = help_section::Synopsis;
-      } else {
-        section = help_section::Other;
-      }
-    } else if (!line.is_empty() && section == help_section::Description) {
-      output += line;
-    } else if (!line.is_empty() && section == help_section::Synopsis) {
+      is_synopsis = line == "SYNOPSIS";
+    } else if (is_synopsis) {
       append_report_text(output, line, colors::ansi::GREEN, true);
     } else {
       output += line;
@@ -1891,12 +1873,9 @@ make_flag_help(const FlagList &flags, bool should_color) throws
 
     if (flag_width + 2 > DESCRIPTION_COLUMN) {
       s += '\n';
-
-      for (usize i = 0; i < DESCRIPTION_COLUMN; i++)
-        s += ' ';
+      s.append_repeated(' ', DESCRIPTION_COLUMN);
     } else {
-      for (usize i = flag_width; i < DESCRIPTION_COLUMN; i++)
-        s += ' ';
+      s.append_repeated(' ', DESCRIPTION_COLUMN - flag_width);
     }
 
     let       description_text = String{heap_allocator()};
@@ -1916,9 +1895,7 @@ make_flag_help(const FlagList &flags, bool should_color) throws
       if (word_length > 0) {
         if (line_used > 0 && line_used + 1 + word_length > TEXT_WIDTH) {
           description_text += '\n';
-
-          for (usize j = 0; j < DESCRIPTION_COLUMN; j++)
-            description_text += ' ';
+          description_text.append_repeated(' ', DESCRIPTION_COLUMN);
 
           line_used = 0;
         }
@@ -1974,18 +1951,7 @@ print(StringView text) throws -> void
 fn
 print_error(StringView text) throws -> void
 {
-  usize written_count = 0;
-
-  while (written_count < text.count()) {
-    let const written = os::write_fd(KOSH_STDERR, text.data + written_count,
-                                     text.count() - written_count);
-
-    if (!written.has_value() || *written == 0) {
-      return;
-    }
-
-    written_count += *written;
-  }
+  unused(os::write_all(KOSH_STDERR, text.data, text.count()));
 }
 
 fn

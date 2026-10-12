@@ -320,7 +320,6 @@ struct function_definition_record
   SourceLocation first_positional_read_location{};
   SourceLocation first_recursive_call_location{};
 
-  bool has_been_called{false};
   bool is_analysis_complete{false};
 };
 
@@ -1078,34 +1077,6 @@ protected:
 };
 
 namespace expressions {
-
-class IfStatement : public Expression
-{
-public:
-  IfStatement(SourceLocation    location,
-              const Expression *condition,
-              const Expression *then,
-              const Expression *otherwise);
-
-  ~IfStatement() override;
-
-  fn
-  to_string() const throws -> String override;
-  fn
-  to_ast_string(usize layer = 0) const throws -> String override;
-
-  fn
-  analyze(AnalysisContext &actx, bool is_unconditional) const throws
-      -> void override;
-
-protected:
-  fn
-  evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws -> status_result override;
-
-  const Expression *m_condition;
-  const Expression *m_then;
-  const Expression *m_otherwise;
-};
 
 class DummyExpression : public Expression
 {

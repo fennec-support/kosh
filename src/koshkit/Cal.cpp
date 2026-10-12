@@ -164,40 +164,33 @@ Cal::execute(const ExecContext               &ec,
   if (operands.is_empty()) {
     month = static_cast<usize>(current_date.tm_mon + 1);
     year  = current_date.tm_year + 1900;
-  } else if (operands.count() == 2) {
-    let const parsed_month = utils::parse_decimal_u64(operands[0].view());
-    let const parsed_year  = utils::parse_decimal_u64(operands[1].view());
-
-    if (parsed_month.is_error() || parsed_month.value() < 1 ||
-        parsed_month.value() > 12)
-    {
-      KOSHKIT_REPORT_ERROR_AT(operand_locations[0],
-                              "invalid month '" + operands[0] + "'",
-                              "use a month from 1 through 12");
-
-      return 1;
-    }
-
-    if (parsed_year.is_error() || parsed_year.value() < 1 ||
-        parsed_year.value() > INT64_MAX)
-    {
-      KOSHKIT_REPORT_ERROR_AT(
-          operand_locations[1], "invalid year '" + operands[1] + "'",
-          "use a positive decimal year no greater than 9223372036854775807");
-
-      return 1;
-    }
-
-    month = static_cast<usize>(parsed_month.value());
-    year  = static_cast<i64>(parsed_year.value());
   } else {
-    let const parsed_year = utils::parse_decimal_u64(operands[0].view());
+    if (operands.count() == 2) {
+      let const parsed_month = utils::parse_decimal_u64(operands[0].view());
+
+      if (parsed_month.is_error() || parsed_month.value() < 1 ||
+          parsed_month.value() > 12)
+      {
+        KOSHKIT_REPORT_ERROR_AT(operand_locations[0],
+                                "invalid month '" + operands[0] + "'",
+                                "use a month from 1 through 12");
+
+        return 1;
+      }
+
+      month = static_cast<usize>(parsed_month.value());
+    }
+
+    let const year_index = operands.count() - 1;
+    let const parsed_year =
+        utils::parse_decimal_u64(operands[year_index].view());
 
     if (parsed_year.is_error() || parsed_year.value() < 1 ||
         parsed_year.value() > INT64_MAX)
     {
       KOSHKIT_REPORT_ERROR_AT(
-          operand_locations[0], "invalid year '" + operands[0] + "'",
+          operand_locations[year_index],
+          "invalid year '" + operands[year_index] + "'",
           "use a positive decimal year no greater than 9223372036854775807");
 
       return 1;

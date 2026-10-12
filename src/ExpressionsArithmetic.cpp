@@ -1583,7 +1583,6 @@ FunctionDefinition::analyze(AnalysisContext &actx, bool is_unconditional) const 
         Maybe<usize>{},
         0, 0, source_location(), SourceLocation{},
         SourceLocation{},
-        false,
         false
     });
     actx.functions.records[function_definition_index].occurrence_start =

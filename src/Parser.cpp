@@ -1741,29 +1741,12 @@ Parser::parse_simple_command(const Token *leading_token) throws
           next->source_location().position ==
               a->source_location().position + a->source_location().length;
 
-      if (!args_accumulator.is_empty()) {
-        if (is_array_assignment) {
-          let const command_name = args_accumulator[0]->raw_string();
-
-          if (classify_assignment_builtin(command_name.view()) !=
-              assignment_builtin::None)
-          {
-            ArrayList<const Token *> elements = consume_bash_array_assignment();
-            let const                assignment_end_position =
-                static_cast<u32>(m_lexer.cursor_position());
-
-            array_args.push(array_builtin_assignment{
-                a->key().clone(), steal(elements), a->source_location(),
-                assignment_end_position, a->get_update_mode()});
-            break;
-          }
-        }
-
-        args_accumulator.push(token);
-        break;
-      }
-
-      if (is_array_assignment) {
+      if (is_array_assignment &&
+          (args_accumulator.is_empty() ||
+           classify_assignment_builtin(
+               args_accumulator[0]->raw_string().view()) !=
+               assignment_builtin::None))
+      {
         ArrayList<const Token *> elements = consume_bash_array_assignment();
         let const                assignment_end_position =
             static_cast<u32>(m_lexer.cursor_position());
@@ -1771,6 +1754,11 @@ Parser::parse_simple_command(const Token *leading_token) throws
         array_args.push(array_builtin_assignment{
             a->key().clone(), steal(elements), a->source_location(),
             assignment_end_position, a->get_update_mode()});
+        break;
+      }
+
+      if (!args_accumulator.is_empty()) {
+        args_accumulator.push(token);
         break;
       }
 

@@ -21,38 +21,24 @@ REGISTER_KOSHKIT_UTIL_FLAGS(Dirname);
 namespace koshka::koshkit {
 
 static pure fn
-is_directory_separator(char c) wontthrow -> bool
-{
-  return os::is_directory_separator(c);
-}
-
-static pure fn
 directory_part_of(StringView path) wontthrow -> StringView
 {
   if (path.is_empty()) return StringView{"."};
 
-  bool has_only_separators = true;
-
-  for (usize i = 0; i < path.length; i++) {
-    if (!is_directory_separator(path[i])) {
-      has_only_separators = false;
-      break;
-    }
-  }
-
-  if (has_only_separators) return StringView{"/"};
-
   usize end_position = path.length;
 
-  while (end_position > 0 && is_directory_separator(path[end_position - 1])) {
+  while (end_position > 0 && os::is_directory_separator(path[end_position - 1]))
+  {
     end_position--;
   }
+
+  if (end_position == 0) return StringView{"/"};
 
   bool  has_separator           = false;
   usize last_separator_position = 0;
 
   for (usize i = 0; i < end_position; i++) {
-    if (is_directory_separator(path[i])) {
+    if (os::is_directory_separator(path[i])) {
       has_separator           = true;
       last_separator_position = i;
     }
@@ -62,7 +48,8 @@ directory_part_of(StringView path) wontthrow -> StringView
 
   end_position = last_separator_position;
 
-  while (end_position > 0 && is_directory_separator(path[end_position - 1])) {
+  while (end_position > 0 && os::is_directory_separator(path[end_position - 1]))
+  {
     end_position--;
   }
 

@@ -375,7 +375,6 @@ static fn
 prepare_entries(ArrayList<listing_entry> entries,
                 const listing_options   &options,
                 StringView               directory,
-                bool                     is_name_path,
                 Allocator                allocator,
                 bool                     has_known_symlink_targets = false) throws
     -> SortedArrayList<listing_entry, listing_entry_comparator>
@@ -387,14 +386,10 @@ prepare_entries(ArrayList<listing_entry> entries,
     for (let const &entry : entries) {
       if (entry.type != colors::file_entry_type::Symlink) continue;
 
-      if (is_name_path) {
-        symlink_paths.push(Path{entry.name.view(), allocator});
-      } else {
-        let path = Path{directory, allocator};
-        path.append(entry.name.view());
-        symlink_paths.push(steal(path));
-      }
+      let path = Path{directory, allocator};
 
+      path.append(entry.name.view());
+      symlink_paths.push(steal(path));
       symlink_statuses.push({});
     }
 
@@ -467,8 +462,7 @@ collect_directory(const Path            &directory,
                               child.child.kind, allocator, &child));
     }
 
-    return prepare_entries(steal(entries), options, directory_text, false,
-                           allocator);
+    return prepare_entries(steal(entries), options, directory_text, allocator);
   }
 
   let const children = Path::read_directory_typed(directory, allocator);
@@ -507,8 +501,7 @@ collect_directory(const Path            &directory,
     }
   }
 
-  return prepare_entries(steal(entries), options, directory_text, false,
-                         allocator);
+  return prepare_entries(steal(entries), options, directory_text, allocator);
 }
 
 static fn
@@ -549,8 +542,7 @@ build_long_entry_or_sparse_row(const listing_entry   &entry,
   row.size = FLAG_LS_HUMAN.is_enabled()
                  ? format_human_size(status.size, allocator)
                  : String::from(status.size, allocator);
-  row.time =
-      utils::format_unix_timestamp(status.modification_time, "%b %e %H:%M");
+  row.time   = os::format_local_time("%b %e %H:%M", status.modification_time);
   row.blocks = status.blocks;
 
   return row;
@@ -893,18 +885,6 @@ render_directory_block(StringView             directory,
 }
 
 static fn
-resolve_color_mode(const ExecContext &ec,
-                   EvalContext       &cxt,
-                   bool              &out_should_color) throws -> bool
-{
-  unused(ec);
-  unused(cxt);
-  out_should_color = koshkit_should_color();
-
-  return true;
-}
-
-static fn
 resolve_depth_limit(const ExecContext &ec,
                     EvalContext       &cxt,
                     StringView         utility_name,
@@ -942,7 +922,7 @@ LS::execute(const ExecContext               &ec,
 
   listing_options options{};
 
-  if (!resolve_color_mode(ec, cxt, options.should_color)) return 2;
+  options.should_color = koshkit_should_color();
 
   if (!resolve_depth_limit(ec, cxt, args[0].view(), options)) return 2;
 
@@ -1108,7 +1088,7 @@ LS::execute(const ExecContext               &ec,
 
   if (!file_entries.is_empty()) {
     let const sorted_file_entries = prepare_entries(
-        steal(file_entries), options, StringView{}, true, allocator, true);
+        steal(file_entries), options, StringView{}, allocator, true);
 
     render_entries(sorted_file_entries, options, false, run.id_names,
                    run.output, allocator);

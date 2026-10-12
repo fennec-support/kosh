@@ -436,4 +436,17 @@ get_byte_offset_at_or_before_display_cell(StringView text,
   return previous_byte_offset;
 }
 
+fn
+rewrite_history_event(usize number, StringView expected, StringView replacement)
+    -> bool
+{
+  let replacements =
+      koshka::ArrayList<koshka::String>{koshka::heap_allocator()};
+
+  if (!replacement.is_empty())
+    replacements.push(koshka::String{koshka::heap_allocator(), replacement});
+
+  return rewrite_history_event(number, expected, replacements);
+}
+
 } /* namespace toiletline */

@@ -232,15 +232,8 @@ run_debug_ghost_driver(StringView   driver_line,
 pure static fn
 resolve_session_mood(mimic_mood invocation_mood) wontthrow -> mimic_mood
 {
-  if (FLAG_MOOD.is_set()) {
-    if (Maybe<mimic_mood> parsed_mood = parse_mood_name(FLAG_MOOD.value());
-        parsed_mood.has_value())
-    {
-      return *parsed_mood;
-    }
-
-    return mimic_mood::Default;
-  }
+  if (FLAG_MOOD.is_set())
+    return parse_mood_name(FLAG_MOOD.value()).value_or(mimic_mood::Default);
 
   if (FLAG_DUMB.is_enabled()) return mimic_mood::Posix;
   if (FLAG_POSIX_COMPAT.is_enabled()) return mimic_mood::BashPosix;
@@ -252,14 +245,8 @@ pure static fn
 resolve_session_tab_selector() wontthrow -> tab_selector_mode
 {
   if (FLAG_TAB_SELECTOR.is_set()) {
-    if (Maybe<tab_selector_mode> parsed_selector =
-            parse_tab_selector_name(FLAG_TAB_SELECTOR.value());
-        parsed_selector.has_value())
-    {
-      return *parsed_selector;
-    }
-
-    return tab_selector_mode::Interactive;
+    return parse_tab_selector_name(FLAG_TAB_SELECTOR.value())
+        .value_or(tab_selector_mode::Interactive);
   }
 
   if (FLAG_DUMB.is_enabled()) return tab_selector_mode::Plain;
@@ -1170,7 +1157,7 @@ run_prompt_command(EvalContext &context, BumpArena &ast_arena) -> void
           definition.has_value())
         context.print_source_backtrace(definition);
 
-    execution.set_last_argument(saved_last_argument.clone());
+    execution.set_last_argument(saved_last_argument.view());
   }
 
   execution.set_last_exit_status(saved_exit_status);
@@ -2228,13 +2215,10 @@ static fn
 source_custom_rcfile(StringView name, EvalContext &context) throws
     -> void
 {
-  let path = String{context.scratch_allocator(), name};
+  let const home_expanded = utils::expand_leading_tilde_path(name);
 
-  if (let home_expanded = utils::expand_leading_tilde_path(path.view());
-      home_expanded.has_value())
-    path = home_expanded.take();
-
-  source_file(Path{path.view()}, context, startup_file_requirement::Explicit);
+  source_file(Path{home_expanded.has_value() ? home_expanded->view() : name},
+              context, startup_file_requirement::Explicit);
 }
 
 static fn
@@ -2247,15 +2231,11 @@ source_environment_file(StringView   variable_name,
     return;
   }
 
-  let expanded = context.expand_modifier_word(value->view(), false);
+  let const expanded = context.expand_modifier_word(value->view(), false);
 
   if (expanded.is_empty()) return;
-  if (let home_expanded = utils::expand_leading_tilde_path(expanded.view());
-      home_expanded.has_value())
-    expanded = home_expanded.take();
 
-  source_file(Path{expanded.view()}, context,
-              startup_file_requirement::Explicit);
+  source_custom_rcfile(expanded.view(), context);
 }
 
 static fn

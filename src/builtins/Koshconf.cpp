@@ -128,13 +128,13 @@ find_named_option(const ExecContext       &ec,
                   usize                    index) throws -> const option_descriptor *
 {
   let const *option = find_option_by_koshconf_name(operands.values[index]);
-  let const *bash_option =
-      option != nullptr ? nullptr
-                        : find_option_by_set_name(operands.values[index]);
 
-  if (bash_option == nullptr && option == nullptr) {
+  if (option != nullptr) return option;
+
+  let const *bash_option = find_option_by_set_name(operands.values[index]);
+
+  if (bash_option == nullptr)
     bash_option = find_option_by_shopt_name(operands.values[index]);
-  }
 
   if (bash_option != nullptr && !bash_option->koshconf_name.is_empty()) {
     report_soft_builtin_error(
@@ -145,8 +145,6 @@ find_named_option(const ExecContext       &ec,
 
     return nullptr;
   }
-
-  if (option != nullptr) return option;
 
   let const suggestion =
       suggest_koshconf_option_name(operands.values[index].view());

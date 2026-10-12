@@ -1477,7 +1477,7 @@ apply_session_config(EvalContext          &context,
   context.startup_store().set_login_shell(config.is_login_shell);
   context.startup_store().set_custom_rcfile(config.has_custom_rcfile);
   if (config.is_restricted_shell) {
-    context.startup_store().request_restricted_shell();
+    context.startup_store().set_restricted_shell(true);
   }
 
   state.set_mood(config.mood);

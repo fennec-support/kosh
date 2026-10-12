@@ -118,9 +118,7 @@ internal::is_active_token_boundary(StringView line, usize position) wontthrow
 
   if (!is_token_boundary(c)) return false;
 
-  if ((c == '(' || c == ')') && position > 0 &&
-      !is_token_boundary(line[position - 1]))
-  {
+  if (c == '(' && position > 0 && !is_token_boundary(line[position - 1])) {
     return false;
   }
 

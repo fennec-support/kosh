@@ -1145,9 +1145,10 @@ public:
   }
 
   fn
-  set_last_argument(String argument) wontthrow -> void
+  set_last_argument(StringView argument) throws -> void
   {
-    m_last_argument = steal(argument);
+    m_last_argument.clear();
+    m_last_argument.append(argument);
   }
 
   pure fn
@@ -2019,8 +2020,7 @@ public:
       for (let const &argument : arguments)
         m_values.push_managed(argument.view());
     } catch (...) {
-      while (m_values.count() > previous_value_count)
-        m_values.pop_back();
+      m_values.truncate(previous_value_count);
 
       throw;
     }
@@ -2046,8 +2046,7 @@ public:
     m_frame_counts.pop_back();
     ASSERT(argument_count <= m_values.count());
 
-    for (u32 index = 0; index < argument_count; index++)
-      m_values.pop_back();
+    m_values.truncate(m_values.count() - argument_count);
   }
 
   fn
@@ -2057,11 +2056,8 @@ public:
     ASSERT(m_values.count() >= value_count);
     ASSERT(m_frame_counts.count() >= frame_count);
 
-    while (m_values.count() > value_count)
-      m_values.pop_back();
-
-    while (m_frame_counts.count() > frame_count)
-      m_frame_counts.pop_back();
+    m_values.truncate(value_count);
+    m_frame_counts.truncate(frame_count);
   }
 
 private:
@@ -4169,12 +4165,6 @@ public:
   }
 
   fn
-  request_restricted_shell() wontthrow -> void
-  {
-    m_is_restricted_shell = true;
-  }
-
-  fn
   set_restricted_shell(bool is_restricted) wontthrow -> void
   {
     m_is_restricted_shell = is_restricted;
@@ -4953,10 +4943,6 @@ public:
   unexport_shell_variable(StringView name) throws -> void;
   fn
   is_exported(StringView name) const throws -> bool;
-
-  fn
-  sync_exported_after_restore(StringView name, bool has_value) throws
-      -> void;
 
   fn
   get_variable_value(StringView name) const throws -> Maybe<String>;

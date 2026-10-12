@@ -26,13 +26,6 @@ REGISTER_KOSHKIT_UTIL_FLAGS(Csplit);
 
 namespace koshka::koshkit {
 
-enum class csplit_write_policy : u8
-{
-  None      = 0,
-  Silent    = 1,
-  KeepFiles = 2,
-};
-
 enum class csplit_repeat_mode : u8
 {
   Single,
@@ -44,22 +37,6 @@ enum class csplit_exhaustion_mode : u8
   Error,
   Allow,
 };
-
-constexpr fn
-operator|(csplit_write_policy left, csplit_write_policy right) wontthrow
-    -> csplit_write_policy
-{
-  return static_cast<csplit_write_policy>(static_cast<u8>(left) |
-                                          static_cast<u8>(right));
-}
-
-constexpr fn
-has_csplit_policy(csplit_write_policy policy, csplit_write_policy value)
-    wontthrow
-    -> bool
-{
-  return (static_cast<u8>(policy) & static_cast<u8>(value)) != 0;
-}
 
 struct csplit_name_format
 {
@@ -100,8 +77,7 @@ write_csplit_part(const ExecContext           &ec,
                   const ArrayList<StringView> &lines,
                   usize                        first,
                   usize                        last,
-                  ArrayList<String>           &output_paths,
-                  csplit_write_policy          policy) throws -> bool
+                  ArrayList<String>           &output_paths) throws -> bool
 {
   let const name =
       csplit_output_name(name_format, output_index, cxt.scratch_allocator());
@@ -120,9 +96,7 @@ write_csplit_part(const ExecContext           &ec,
 
   defer {
     os::close_fd(*descriptor);
-    if (!is_output_tracked &&
-        !has_csplit_policy(policy, csplit_write_policy::KeepFiles))
-    {
+    if (!is_output_tracked && !FLAG_CSPLIT_KEEP.is_enabled()) {
       unused(os::remove_file(name.view()));
     }
   };
@@ -130,23 +104,24 @@ write_csplit_part(const ExecContext           &ec,
   output_paths.push(name.clone());
   is_output_tracked = true;
 
-  u64 byte_count = 0;
+  usize byte_count = 0;
 
-  for (usize line_index = first; line_index < last; line_index++) {
-    if (!os::write_all(*descriptor, lines[line_index].data,
-                       lines[line_index].length))
-    {
+  if (first < last) {
+    let const *part_start = lines[first].data;
+
+    byte_count = static_cast<usize>(lines[last - 1].data +
+                                    lines[last - 1].length - part_start);
+
+    if (!os::write_all(*descriptor, part_start, byte_count)) {
       report_soft_koshkit_util_error(
           ec, cxt, "csplit",
           "cannot write '" + name + "': " + os::last_system_error_message());
 
       return false;
     }
-
-    byte_count += lines[line_index].length;
   }
 
-  if (!has_csplit_policy(policy, csplit_write_policy::Silent))
+  if (!FLAG_CSPLIT_SILENT.is_enabled())
     ec.print_to_stdout(String::from(byte_count, cxt.scratch_allocator()) +
                        "\n");
 
@@ -227,14 +202,9 @@ Csplit::execute(const ExecContext               &ec,
   usize     current_line = 0;
   u64       output_index = 0;
   let       output_paths = ArrayList<String>{cxt.scratch_allocator()};
-  let const write_policy =
-      (FLAG_CSPLIT_SILENT.is_enabled() ? csplit_write_policy::Silent
-                                       : csplit_write_policy::None) |
-      (FLAG_CSPLIT_KEEP.is_enabled() ? csplit_write_policy::KeepFiles
-                                     : csplit_write_policy::None);
 
   defer {
-    if (!has_csplit_policy(write_policy, csplit_write_policy::KeepFiles))
+    if (!FLAG_CSPLIT_KEEP.is_enabled())
       for (let const &path : output_paths)
         unused(os::remove_file(path.view()));
   };
@@ -419,8 +389,7 @@ Csplit::execute(const ExecContext               &ec,
 
       if (!write_csplit_part(
               ec, cxt, csplit_name_format{prefix, digit_count, width_location},
-              output_index++, lines, current_line, target_line, output_paths,
-              write_policy))
+              output_index++, lines, current_line, target_line, output_paths))
         throw Error{"cannot write output"};
     }
 
@@ -487,8 +456,7 @@ Csplit::execute(const ExecContext               &ec,
 
   if (!write_csplit_part(
           ec, cxt, csplit_name_format{prefix, digit_count, width_location},
-          output_index, lines, current_line, lines.count(), output_paths,
-          write_policy))
+          output_index, lines, current_line, lines.count(), output_paths))
     return 1;
   output_paths.clear();
 

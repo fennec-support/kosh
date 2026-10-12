@@ -87,7 +87,7 @@ Logger::execute(const ExecContext               &ec,
 
     message = content->clone();
   } else if (operands.is_empty()) {
-    let const content = read_fd_to_string(ec.in_fd.value_or(KOSH_STDIN));
+    let const content = read_named_or_stdin(ec, "-");
 
     if (!content.has_value()) return 1;
     message = content->clone();

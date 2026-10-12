@@ -1232,7 +1232,9 @@ completion_session::hint(const char *buffer, size_t cursor) -> const char *
 
     if (should_show_diagnostics) {
       let const mood                  = context->runtime_state().get_mood();
-      let const is_cursor_at_line_end = cursor == byte_length;
+      let const is_cursor_at_line_end = cursor == byte_length &&
+                                        byte_length > 0 &&
+                                        buffer[byte_length - 1] == '\\';
 
       if (!has_syntax_checked_line || syntax_checked_line.view() != line ||
           syntax_checked_mood != mood ||
@@ -1483,13 +1485,6 @@ load_history(const Path &path, bool should_allow_missing)
 static fn
 ensure_history_loaded(const Path &path, bool should_allow_missing)
     -> koshka::ErrorOr<koshka::Ok>;
-static fn
-sync_history(const Path &path, bool should_allow_missing)
-    -> koshka::ErrorOr<koshka::Ok>;
-static fn
-replace_history_file(const Path &path,
-                     StringView  name_prefix,
-                     StringView  contents) -> history_replacement;
 
 static fn
 get_history_file_path() -> koshka::Maybe<koshka::Path>
@@ -2470,25 +2465,6 @@ fn
 rewrite_history_event(usize                                    number,
                       StringView                               expected,
                       const koshka::ArrayList<koshka::String> &replacements)
-    -> bool;
-
-fn
-rewrite_history_event(usize number, StringView expected, StringView replacement)
-    -> bool
-{
-  let replacements =
-      koshka::ArrayList<koshka::String>{koshka::heap_allocator()};
-
-  if (!replacement.is_empty())
-    replacements.push(koshka::String{koshka::heap_allocator(), replacement});
-
-  return rewrite_history_event(number, expected, replacements);
-}
-
-fn
-rewrite_history_event(usize                                    number,
-                      StringView                               expected,
-                      const koshka::ArrayList<koshka::String> &replacements)
     -> bool
 {
   let const path = get_history_file_path();
@@ -2708,9 +2684,6 @@ rewrite_history_event(usize                                    number,
 
   return HISTORY_FILE.is_rewritable;
 }
-
-static fn
-strip_sgr_color_sequences_only(StringView text) throws -> String;
 
 fn
 set_title(StringView title) -> void
@@ -3224,8 +3197,9 @@ static fn
 shorten_path_with_ellipsis(StringView path, usize max_length) throws
     -> String
 {
-  if (path.length <= max_length) return String{path};
-  if (max_length < 3) return String{path};
+  if (path.length <= max_length || max_length < 3) {
+    return String{path};
+  }
 
   usize tail_start = path.length - max_length + 3;
 

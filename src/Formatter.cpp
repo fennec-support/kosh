@@ -126,12 +126,6 @@ constexpr static_string_entry<format_operator> FORMAT_OPERATOR_ENTRIES[] = {
 constexpr StaticStringMap FORMAT_OPERATORS{FORMAT_OPERATOR_ENTRIES};
 
 pure fn
-is_format_blank(char byte) wontthrow -> bool
-{
-  return lexer::is_whitespace(byte);
-}
-
-pure fn
 is_format_operator_start(char byte) wontthrow -> bool
 {
   switch (byte) {
@@ -158,11 +152,12 @@ is_format_operator_at(StringView source, usize position) wontthrow -> bool
   }
 
   let const is_previous_boundary =
-      position == 0 || is_format_blank(source[position - 1]) ||
+      position == 0 || lexer::is_whitespace(source[position - 1]) ||
       source[position - 1] == '\n' || source[position - 1] == ';' ||
       source[position - 1] == ')';
   let const is_next_boundary =
-      position + 1 == source.length || is_format_blank(source[position + 1]) ||
+      position + 1 == source.length ||
+      lexer::is_whitespace(source[position + 1]) ||
       source[position + 1] == '\n' || source[position + 1] == ';' ||
       source[position + 1] == '<' || source[position + 1] == '>';
 
@@ -227,7 +222,7 @@ scan_format_word_end(StringView source, usize position) throws -> usize
     }
 
     if ((byte == '@' || byte == '!' || byte == '?' || byte == '+' ||
-         byte == '*') &&
+         byte == '*' || byte == '<' || byte == '>') &&
         position + 1 < source.length && source[position + 1] == '(')
     {
       position += 2;
@@ -235,23 +230,7 @@ scan_format_word_end(StringView source, usize position) throws -> usize
       continue;
     }
 
-    if (byte == '<' && position + 1 < source.length &&
-        source[position + 1] == '(')
-    {
-      position += 2;
-      scan_balanced_region(source, position, ')');
-      continue;
-    }
-
-    if (byte == '>' && position + 1 < source.length &&
-        source[position + 1] == '(')
-    {
-      position += 2;
-      scan_balanced_region(source, position, ')');
-      continue;
-    }
-
-    if (is_format_blank(byte) || byte == '\n' ||
+    if (lexer::is_whitespace(byte) || byte == '\n' ||
         is_format_operator_at(source, position))
     {
       break;
@@ -359,14 +338,15 @@ scan_format_pieces(StringView source) throws -> ArrayList<format_piece>
     {
       position += 2;
 
-      while (position < source.length && is_format_blank(source[position])) {
+      while (position < source.length && lexer::is_whitespace(source[position]))
+      {
         position++;
       }
 
       continue;
     }
 
-    if (is_format_blank(byte)) {
+    if (lexer::is_whitespace(byte)) {
       position++;
       continue;
     }
@@ -864,7 +844,7 @@ measure_word_layout(StringView word) throws -> word_layout
       measure.display_length++;
       position += 2;
 
-      while (position < word.length && is_format_blank(word[position])) {
+      while (position < word.length && lexer::is_whitespace(word[position])) {
         position++;
       }
 
@@ -947,7 +927,7 @@ word_is_unbreakable(StringView word) wontthrow -> bool
   }
 
   for (usize position = 0; position < word.length; position++)
-    if (is_format_blank(word[position])) return false;
+    if (lexer::is_whitespace(word[position])) return false;
 
   return true;
 }
@@ -1072,7 +1052,7 @@ format_word_substitutions(StringView word,
           word[position] == '>') &&
          word[position + 1] == '(') ||
         (position + 2 < word.length && word[position] == '$' &&
-         word[position + 1] == '{' && is_format_blank(word[position + 2])))
+         word[position + 1] == '{' && lexer::is_whitespace(word[position + 2])))
     {
       has_formattable_substitution = true;
       break;
@@ -1097,7 +1077,8 @@ format_word_substitutions(StringView word,
       is_substitution = true;
       opener_length   = 2;
     } else if (position + 2 < word.length && word[position] == '$' &&
-               word[position + 1] == '{' && is_format_blank(word[position + 2]))
+               word[position + 1] == '{' &&
+               lexer::is_whitespace(word[position + 2]))
     {
       is_substitution          = true;
       is_function_substitution = true;
@@ -1130,11 +1111,14 @@ format_word_substitutions(StringView word,
     let inner_end   = end - 1;
 
     if (is_function_substitution) {
-      while (inner_start < inner_end && is_format_blank(word[inner_start])) {
+      while (inner_start < inner_end && lexer::is_whitespace(word[inner_start]))
+      {
         inner_start++;
       }
 
-      while (inner_end > inner_start && is_format_blank(word[inner_end - 1])) {
+      while (inner_end > inner_start &&
+             lexer::is_whitespace(word[inner_end - 1]))
+      {
         inner_end--;
       }
 

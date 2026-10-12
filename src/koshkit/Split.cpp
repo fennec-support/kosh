@@ -36,8 +36,6 @@ split_output_name(StringView prefix,
                   u64        index,
                   Allocator  allocator) throws -> String
 {
-  if (suffix_length > 64) throw Error{"suffix length is too large"};
-
   usize widened_count = 0;
 
   if (is_suffix_widened) {

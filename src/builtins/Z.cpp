@@ -166,35 +166,10 @@ write_frecency_store(const ArrayList<frecency_entry> &entries,
 }
 
 static fn
-contains_ignore_case(StringView haystack, StringView needle) wontthrow -> bool
+equals_ignore_case(StringView text, StringView folded_needle) wontthrow -> bool
 {
-  if (needle.is_empty()) return true;
-  if (needle.length > haystack.length) return false;
-
-  let const do_lower = [](char c) wontthrow -> char {
-    return c >= 'A' && c <= 'Z' ? static_cast<char>(c + 32) : c;
-  };
-
-  for (usize i = 0; i + needle.length <= haystack.length; i++) {
-    let is_matched = true;
-
-    for (usize j = 0; j < needle.length; j++) {
-      if (do_lower(haystack[i + j]) != do_lower(needle[j])) {
-        is_matched = false;
-        break;
-      }
-    }
-
-    if (is_matched) return true;
-  }
-
-  return false;
-}
-
-static fn
-equals_ignore_case(StringView text, StringView needle) wontthrow -> bool
-{
-  return text.length == needle.length && contains_ignore_case(text, needle);
+  return text.length == folded_needle.length &&
+         utils::contains_case_insensitive_ascii(text, folded_needle);
 }
 
 } /* namespace */
@@ -219,10 +194,13 @@ z_completion_candidates(StringView query, Allocator allocator) throws
     return left.path.view() < right.path.view();
   });
 
-  let candidates = ArrayList<String>{allocator};
+  let       candidates   = ArrayList<String>{allocator};
+  let const folded_query = query.to_lower_ascii(allocator);
 
   for (let const &entry : entries) {
-    if (!query.is_empty() && !contains_ignore_case(entry.path.view(), query)) {
+    if (!utils::contains_case_insensitive_ascii(entry.path.view(),
+                                                folded_query.view()))
+    {
       continue;
     }
 
@@ -337,9 +315,11 @@ Z::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let       entries = read_frecency_store(cxt.scratch_allocator());
   let const now     = now_epoch_seconds();
 
+  let const folded_query = query.view().to_lower_ascii(cxt.scratch_allocator());
+
   let const do_match_tier = [&](StringView path) wontthrow -> i32 {
-    if (equals_ignore_case(path, query.view())) return 2;
-    if (equals_ignore_case(Path::filename(path), query.view())) return 1;
+    if (equals_ignore_case(path, folded_query.view())) return 2;
+    if (equals_ignore_case(Path::filename(path), folded_query.view())) return 1;
 
     return 0;
   };
@@ -349,8 +329,8 @@ Z::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   i32                   best_tier  = -1;
 
   for (let const &entry : entries) {
-    if (!query.is_empty() &&
-        !contains_ignore_case(entry.path.view(), query.view()))
+    if (!utils::contains_case_insensitive_ascii(entry.path.view(),
+                                                folded_query.view()))
     {
       continue;
     }

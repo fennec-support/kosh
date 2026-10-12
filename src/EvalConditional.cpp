@@ -247,11 +247,6 @@ struct conditional_evaluator
               StringView    pattern,
               const Bitset &active) throws -> bool
   {
-    if (!os::HAS_REGEX_ENGINE) {
-      fail_conditional("Unable to use =~ in the [[ ]]",
-                       "It is not supported on this platform");
-    }
-
     let escaped_pattern = String{cxt.scratch_allocator()};
 
     for (usize i = 0; i < pattern.length; i++) {

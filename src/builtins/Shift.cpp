@@ -72,14 +72,13 @@ Shift::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   LOG(All, "shift dropping %lld of %zu positional parameters",
       static_cast<long long>(shift_count), params.count());
 
-  let shifted = ArrayList<String>{heap_allocator()};
+  let      &shifted_params = cxt.variable_store().positional_params();
+  let const dropped_count  = static_cast<usize>(shift_count);
 
-  shifted.reserve(params.count() - static_cast<usize>(shift_count));
+  for (usize i = dropped_count; i < shifted_params.count(); i++)
+    shifted_params[i - dropped_count] = steal(shifted_params[i]);
 
-  for (usize i = static_cast<usize>(shift_count); i < params.count(); i++)
-    shifted.push_managed(params[i]);
-
-  cxt.variable_store().positional_params() = steal(shifted);
+  shifted_params.truncate(shifted_params.count() - dropped_count);
 
   return 0;
 }

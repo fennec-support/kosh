@@ -1675,16 +1675,6 @@ Lexer::lex_sentinel() throws -> Token *
 #define TOKEN_CASE_ONE(byte, t)                                                \
   case byte: token = arena.create<tokens::t>(here(m_cursor_position, 1)); break;
 
-#define TOKEN_CASE_TWO(byte, t, ch, t2)                                        \
-  case byte: {                                                                 \
-    if (chop_character(1) == ch) {                                             \
-      token = arena.create<tokens::t2>(here(m_cursor_position, 2));            \
-      extra_length++;                                                          \
-    } else {                                                                   \
-      token = arena.create<tokens::t>(here(m_cursor_position, 1));             \
-    }                                                                          \
-  } break;
-
 #define TOKEN_CASE_THREE(byte, t, ch2, t2, ch3, t3)                            \
   case byte: {                                                                 \
     if (chop_character(1) == ch2) {                                            \
@@ -1720,17 +1710,7 @@ Lexer::lex_sentinel() throws -> Token *
       token = arena.create<tokens::Semicolon>(here(m_cursor_position, 1));
     }
   } break;
-    TOKEN_CASE_ONE('.', Dot);
     TOKEN_CASE_ONE('\n', Newline);
-    TOKEN_CASE_ONE('+', Plus);
-    TOKEN_CASE_ONE('-', Minus);
-    TOKEN_CASE_ONE('*', Asterisk);
-    TOKEN_CASE_ONE('/', Slash);
-    TOKEN_CASE_ONE('%', Percent);
-    TOKEN_CASE_ONE('~', Tilde);
-    TOKEN_CASE_ONE('^', Cap);
-
-    TOKEN_CASE_TWO('!', ExclamationMark, '=', ExclamationEquals);
   case '&': {
     if (bash_additions_enabled() && chop_character(1) == '>') {
       if (chop_character(2) == '>') {
@@ -1761,7 +1741,6 @@ Lexer::lex_sentinel() throws -> Token *
       token = arena.create<tokens::Pipe>(here(m_cursor_position, 1));
     }
   } break;
-    TOKEN_CASE_TWO('=', Equals, '=', DoubleEquals);
 
     TOKEN_CASE_THREE('>', Greater, '>', DoubleGreater, '=', GreaterEquals);
 

@@ -50,7 +50,8 @@ Let::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       let const raw_expression =
           expression_base.get_source_text(source->view());
 
-      if (raw_expression.has_value()) {
+      if (raw_expression.has_value() && *raw_expression != ec.args()[i].view())
+      {
         let const decoded_expression =
             utils::decode_shell_word(*raw_expression, cxt.scratch_allocator(),
                                      utils::shell_word_source_mapping::Record);

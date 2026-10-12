@@ -708,17 +708,10 @@ public:
     DoubleSemicolon,
     SemicolonAmpersand,
     DoubleSemicolonAmpersand,
-    Dot,
 
     Word,
     Assignment,
 
-    Plus,
-    Minus,
-    Asterisk,
-    Slash,
-    Percent,
-    Tilde,
     Ampersand,
     DoubleAmpersand,
     AmpersandGreater,
@@ -733,11 +726,6 @@ public:
     LessEquals,
     Pipe,
     DoublePipe,
-    Cap,
-    Equals,
-    DoubleEquals,
-    ExclamationMark,
-    ExclamationEquals,
 
     If,
     Then,
@@ -865,6 +853,8 @@ namespace tokens {
   class t : public Token                                                       \
   {                                                                            \
   public:                                                                      \
+    static constexpr bool is_arena_destructor_noop = true;                     \
+                                                                               \
     t(SourceLocation location);                                                \
                                                                                \
     String                                                                     \
@@ -901,7 +891,6 @@ TOKEN_STRUCT(AmpersandDoubleGreater);
 TOKEN_STRUCT(PipeAmpersand);
 TOKEN_STRUCT(TripleLess);
 
-TOKEN_STRUCT(Dot);
 TOKEN_STRUCT(LeftParen);
 TOKEN_STRUCT(RightParen);
 TOKEN_STRUCT(RightBracket);
@@ -980,16 +969,9 @@ create_word_token(BumpArena     &arena,
                   SourceLocation location,
                   Word           word) throws -> WordToken *;
 
-TOKEN_STRUCT(Plus);
-TOKEN_STRUCT(Minus);
-TOKEN_STRUCT(Tilde);
-TOKEN_STRUCT(ExclamationMark);
 TOKEN_STRUCT(Ampersand);
 TOKEN_STRUCT(DoubleAmpersand);
 TOKEN_STRUCT(DoublePipe);
-TOKEN_STRUCT(Slash);
-TOKEN_STRUCT(Percent);
-TOKEN_STRUCT(Asterisk);
 TOKEN_STRUCT(Greater);
 TOKEN_STRUCT(DoubleGreater);
 TOKEN_STRUCT(GreaterEquals);
@@ -997,10 +979,6 @@ TOKEN_STRUCT(Less);
 TOKEN_STRUCT(DoubleLess);
 TOKEN_STRUCT(LessEquals);
 TOKEN_STRUCT(Pipe);
-TOKEN_STRUCT(Cap);
-TOKEN_STRUCT(Equals);
-TOKEN_STRUCT(DoubleEquals);
-TOKEN_STRUCT(ExclamationEquals);
 
 } /* namespace tokens */
 

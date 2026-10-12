@@ -455,9 +455,7 @@ Timeout::execute(const ExecContext               &ec,
   }
 
   wait_result = wait_for_process_until(
-      child, process_group,
-      kill_after_nanos == 0 ? UINT64_MAX : kill_after_nanos, status,
-      has_child_exited,
+      child, process_group, kill_after_nanos, status, has_child_exited,
       kill_after_nanos != 0 ? wait_completion::ProcessGroupEmpty
                             : wait_completion::ChildExited);
   if (wait_result == supervision_wait_result::Interrupted)

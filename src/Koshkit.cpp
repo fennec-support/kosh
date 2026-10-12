@@ -401,12 +401,6 @@ print_util_help(const ExecContext &ec,
 }
 
 fn
-read_fd_to_string(os::descriptor fd) throws -> Maybe<String>
-{
-  return os::read_fd_to_string(fd, heap_allocator());
-}
-
-fn
 copy_file_contents(StringView      source,
                    StringView      destination,
                    copy_force_mode force_mode) throws
@@ -513,14 +507,17 @@ fn
 read_named_or_stdin(const ExecContext &ec, StringView path) throws
     -> Maybe<String>
 {
-  if (path == "-") return read_fd_to_string(ec.in_fd.value_or(KOSH_STDIN));
+  if (path == "-") {
+    return os::read_fd_to_string(ec.in_fd.value_or(KOSH_STDIN),
+                                 heap_allocator());
+  }
 
   let const fd = os::open_file_descriptor(path, os::file_open_mode::Read);
 
   if (!fd.has_value()) return None;
   defer { os::close_fd(*fd); };
 
-  return read_fd_to_string(*fd);
+  return os::read_fd_to_string(*fd, heap_allocator());
 }
 
 SourceBatchReader::SourceBatchReader(const ExecContext           &ec,
@@ -1567,9 +1564,8 @@ format_file_timestamp(i64       seconds,
                       u32       nanoseconds,
                       Allocator allocator) throws -> String
 {
-  let text =
-      String{allocator,
-             utils::format_unix_timestamp(seconds, "%Y-%m-%d %H:%M:%S").view()};
+  let text = String{allocator,
+                    os::format_local_time("%Y-%m-%d %H:%M:%S", seconds).view()};
 
   text += ".";
 
@@ -1580,7 +1576,7 @@ format_file_timestamp(i64       seconds,
 
   text += digits.view();
   text += " ";
-  text += utils::format_unix_timestamp(seconds, "%z").view();
+  text += os::format_local_time("%z", seconds).view();
 
   return text;
 }

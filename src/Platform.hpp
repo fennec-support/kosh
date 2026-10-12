@@ -1684,8 +1684,6 @@ enum class regex_match_result : u8
   Error,
 };
 
-constexpr bool HAS_REGEX_ENGINE = true;
-
 enum class regex_start_position : u8
 {
   Beginning,
@@ -1729,9 +1727,6 @@ free_regex(compiled_regex &compiled) wontthrow -> void;
 fn
 regex_matches(compiled_regex &compiled, StringView subject) throws
     -> bool;
-fn
-regex_matches_null_terminated(compiled_regex &compiled,
-                              StringView      subject) throws -> bool;
 
 pure fn
 path_is_absolute(StringView path) wontthrow -> bool;

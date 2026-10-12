@@ -70,9 +70,7 @@ refill_readers(buffered_byte_reader        &left,
   batch.clear();
 
   for (let *reader : readers) {
-    if (reader->position != reader->length || reader->has_ended) {
-      continue;
-    }
+    if (do_has_bytes(*reader)) continue;
 
     if (!reader->is_seekable) {
       let const read_count = os::read_fd(reader->descriptor, reader->buffer,

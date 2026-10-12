@@ -12,6 +12,7 @@
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
 #include "../Platform.hpp"
+#include "../Utils.hpp"
 #include "../base/Bitset.hpp"
 #include "../base/Path.hpp"
 
@@ -72,24 +73,6 @@ struct file_magic_path
   SourceLocation location;
 };
 
-static pure fn
-magic_digit(char byte) wontthrow -> u8
-{
-  if (byte >= '0' && byte <= '9') {
-    return static_cast<u8>(byte - '0');
-  }
-
-  if (byte >= 'a' && byte <= 'f') {
-    return static_cast<u8>(byte - 'a' + 10);
-  }
-
-  if (byte >= 'A' && byte <= 'F') {
-    return static_cast<u8>(byte - 'A' + 10);
-  }
-
-  return 0xff;
-}
-
 static fn
 parse_magic_number(StringView text) wontthrow -> Maybe<u64>
 {
@@ -121,7 +104,7 @@ parse_magic_number(StringView text) wontthrow -> Maybe<u64>
   u64 parsed = 0;
 
   for (; position < text.length; position++) {
-    let const digit = magic_digit(text[position]);
+    let const digit = utils::hex_digit_value(text[position]).value_or(0xff);
 
     if (digit >= base || parsed > (UINT64_MAX - digit) / base) {
       return None;
@@ -180,7 +163,8 @@ decode_magic_text(StringView encoded, String &decoded) throws -> void
       usize digit_count = 0;
 
       while (position + 1 < encoded.length && digit_count < 2) {
-        let const digit = magic_digit(encoded[position + 1]);
+        let const digit =
+            utils::hex_digit_value(encoded[position + 1]).value_or(0xff);
 
         if (digit >= 16) break;
         value = static_cast<u8>(value * 16 + digit);

@@ -1273,13 +1273,6 @@ decode_base64(StringView text) throws -> Maybe<String>
   return decoded;
 }
 
-fn
-format_unix_timestamp(i64 unix_time, const char *format) throws
-    -> String
-{
-  return os::format_local_time(format, unix_time);
-}
-
 hot pure fn
 is_posix_reserved_word(StringView word) wontthrow -> bool
 {

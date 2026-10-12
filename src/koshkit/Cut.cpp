@@ -113,9 +113,15 @@ Cut::execute(const ExecContext               &ec,
             byte_position += decoded.length;
           }
         } else {
-          for (usize position = 0; position < line_view.length; position++)
-            if (utils::text_position_is_selected(position + 1, *ranges))
-              output += line_view[position];
+          for (let const range : *ranges) {
+            if (range.first > line_view.length) break;
+
+            let const last =
+                range.last < line_view.length ? range.last : line_view.length;
+
+            output += line_view.substring_of_length(range.first - 1,
+                                                    last - range.first + 1);
+          }
         }
       } else {
         usize byte_position      = 0;
@@ -186,13 +192,10 @@ Cut::execute(const ExecContext               &ec,
       usize position = 0;
 
       while (position < chunk.content.length) {
-        usize delimiter_position = position;
-
-        while (delimiter_position < chunk.content.length &&
-               chunk.content[delimiter_position] != '\n')
-        {
-          delimiter_position++;
-        }
+        let const delimiter_position =
+            position +
+            chunk.content.substring(position).find_character('\n').value_or(
+                chunk.content.length - position);
 
         line.append(chunk.content.substring_of_length(
             position, delimiter_position - position));

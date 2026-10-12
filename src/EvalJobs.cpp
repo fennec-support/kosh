@@ -671,9 +671,7 @@ JobTable::remove_job(i32 id) throws -> bool
   let      &removed        = m_jobs[*removed_index];
   let const detached_count = removed.earlier_pipeline_processes.count() +
                              (removed.is_primary_process_active ? 1 : 0);
-  let kept = ArrayList<job>{m_jobs.allocator()};
 
-  kept.reserve(m_jobs.count() - 1);
   m_detached_job_processes.reserve(m_detached_job_processes.count() +
                                    detached_count);
 
@@ -683,10 +681,7 @@ JobTable::remove_job(i32 id) throws -> bool
   for (let const process : removed.earlier_pipeline_processes)
     m_detached_job_processes.push(process);
 
-  for (usize position = 0; position < m_jobs.count(); position++)
-    if (position != *removed_index) kept.push(steal(m_jobs[position]));
-
-  m_jobs = steal(kept);
+  m_jobs.remove(*removed_index);
 
   return true;
 }

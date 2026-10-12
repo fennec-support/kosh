@@ -749,30 +749,6 @@ CompoundList::try_static_condition_verdict(
   return m_nodes[0]->try_static_condition_verdict(actx);
 }
 
-fn
-IfStatement::analyze(AnalysisContext &actx, bool is_unconditional) const throws -> void
-{
-  ASSERT(m_condition != nullptr);
-  ASSERT(m_then != nullptr);
-
-  m_condition->analyze(actx, is_unconditional);
-
-  let before_then = actx.occurrences.snapshot();
-
-  actx.conditional_branch_depth++;
-  m_then->analyze(actx, false);
-
-  let const after_then = actx.occurrences.snapshot();
-
-  actx.occurrences = steal(before_then);
-  if (m_otherwise != nullptr) m_otherwise->analyze(actx, false);
-  actx.conditional_branch_depth--;
-
-  actx.occurrences.merge(after_then);
-
-  actx.constant_variables.clear();
-}
-
 } /* namespace expressions */
 
 } /* namespace koshka */

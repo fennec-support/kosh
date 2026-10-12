@@ -2277,9 +2277,7 @@ join_continuations(StringView source,
       while (ends_with_odd_backslash_run(line.view()) &&
              i + 1 < physical.count())
       {
-        line =
-            String{allocator,
-                   line.view().substring_of_length(0, line.view().length - 1)};
+        line.truncate(line.length() - 1);
         i++;
 
         let const next = physical[i].without_trailing_newline();
@@ -3285,8 +3283,17 @@ build_target(const ExecContext        &ec,
     for (usize pattern_rule_position = 0;
          pattern_rule_position < pattern_rule_count; pattern_rule_position++)
     {
-      make_pattern_rule pattern_rule{cxt.scratch_allocator()};
       let const &stored_pattern_rule = mk.pattern_rules[pattern_rule_position];
+
+      if (stored_pattern_rule.rule.recipe_lines.is_empty()) continue;
+
+      let const stem = match_make_pattern(stored_pattern_rule.pattern, goal);
+
+      if (!stem.has_value() || stem->length >= best_stem_length) {
+        continue;
+      }
+
+      make_pattern_rule pattern_rule{cxt.scratch_allocator()};
 
       pattern_rule.pattern.prefix = stored_pattern_rule.pattern.prefix.clone();
       pattern_rule.pattern.suffix = stored_pattern_rule.pattern.suffix.clone();
@@ -3304,13 +3311,6 @@ build_target(const ExecContext        &ec,
         pattern_rule.rule.variable_assignments.push(assignment.clone());
 
       let const &pattern = pattern_rule.rule;
-
-      if (pattern.recipe_lines.is_empty()) continue;
-      let const stem = match_make_pattern(pattern_rule.pattern, goal);
-
-      if (!stem.has_value() || stem->length >= best_stem_length) {
-        continue;
-      }
 
       ArrayList<String> candidate{cxt.scratch_allocator()};
       bool              is_every_prerequisite_supplyable = true;

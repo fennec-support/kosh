@@ -876,8 +876,6 @@ OptimizationRule *const OPTIMIZATION_RULES[] = {
     rule_eliminate_empty_for,      rule_fold_cstyle_for,
 };
 
-constexpr usize MAX_OPTIMIZATION_PASSES = 8;
-
 } /* namespace */
 
 fn
@@ -886,22 +884,8 @@ optimize_node(const Expression *node, AnalysisContext &actx) throws
 {
   ASSERT(node != nullptr);
 
-  for (usize pass = 0; pass < MAX_OPTIMIZATION_PASSES; pass++) {
-    bool did_any_rule_fire = false;
-
-    for (let rule : OPTIMIZATION_RULES) {
-      if (rule(node, actx)) did_any_rule_fire = true;
-    }
-
-    if (!did_any_rule_fire) return;
-    LOG(All,
-        "optimization pass %zu fired a rule, running another "
-        "pass over the node",
-        pass);
-  }
-
-  LOG(All, "the optimizer hit the pass cap of %zu on one node",
-      MAX_OPTIMIZATION_PASSES);
+  for (let rule : OPTIMIZATION_RULES)
+    unused(rule(node, actx));
 }
 
 } /* namespace optimizer */

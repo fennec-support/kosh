@@ -164,7 +164,7 @@ read_line_from_fd(os::descriptor fd,
   let       line               = String{allocator};
   bool      has_read_any_byte  = false;
   let const should_read_chunks = os::descriptor_is_seekable(fd);
-  u8        buffer[65536];
+  u8        buffer[4096];
 
   loop {
     if (deadline_nanos != 0) {
@@ -199,16 +199,12 @@ read_line_from_fd(os::descriptor fd,
     if (*read_count == 0) break;
     has_read_any_byte = true;
 
-    usize delimiter_position = 0;
+    let const chunk =
+        StringView{reinterpret_cast<const char *>(buffer), *read_count};
+    let const delimiter_position =
+        chunk.find_character(delimiter).value_or(*read_count);
 
-    while (delimiter_position < *read_count &&
-           buffer[delimiter_position] != static_cast<u8>(delimiter))
-    {
-      delimiter_position++;
-    }
-
-    line.append(
-        StringView{reinterpret_cast<const char *>(buffer), delimiter_position});
+    line.append(chunk.substring_of_length(0, delimiter_position));
     if (delimiter_position < *read_count) {
       let const unread_count = *read_count - delimiter_position - 1;
 
@@ -243,17 +239,13 @@ BufferedLineReader::next() throws -> Result
   m_line.clear();
 
   loop {
-    usize delimiter_position = m_buffer_position;
+    let const pending = StringView{m_buffer + m_buffer_position,
+                                   m_buffer_length - m_buffer_position};
+    let const line_length =
+        pending.find_character('\n').value_or(pending.length);
 
-    while (delimiter_position < m_buffer_length &&
-           m_buffer[delimiter_position] != '\n')
-    {
-      delimiter_position++;
-    }
-
-    m_line.append(StringView{m_buffer + m_buffer_position,
-                             delimiter_position - m_buffer_position});
-    m_buffer_position = delimiter_position;
+    m_line.append(pending.substring_of_length(0, line_length));
+    m_buffer_position += line_length;
     if (m_buffer_position < m_buffer_length) {
       m_buffer_position++;
       m_was_line_terminated = true;

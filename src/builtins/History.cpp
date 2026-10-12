@@ -304,12 +304,8 @@ write_history_to_file(EvalContext            &cxt,
   if (!history_file_identity_matches(append_state.identity, target_identity))
     append_state.event_number = 0;
 
-  usize     newest_number  = 0;
   let const current_number = TRY(toiletline::get_newest_history_event_number());
-
-  if (current_number.has_value()) {
-    newest_number = *current_number;
-  }
+  let const newest_number  = current_number.value_or(0);
 
   if (append_state.event_number > newest_number) append_state.event_number = 0;
 
@@ -466,11 +462,10 @@ History::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   if (FLAG_HISTORY_READ.is_enabled() || FLAG_HISTORY_READ_NEW.is_enabled()) {
     LOG(Debug, "history reading the file into the list");
 
-    if (args.count() > 1)
+    if (args.count() > 1) {
       cxt.guard_restricted_path(args[1].view(), ec.arg_location_at(1),
                                 restricted_path_use::History);
 
-    if (args.count() > 1) {
       let const source      = Path{args[1].view()};
       let const source_text = source.read_entire_file();
 

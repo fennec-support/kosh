@@ -538,7 +538,7 @@ EvalContext::prepare_child_environment() const throws -> void
 {
   if (execution_store().is_child_environment_fixed()) return;
 
-  unused(materialize_kosh_identity());
+  unused(utils::kosh_identity(execution_store().get_shell_executable_path()));
   if (!is_exported(KOSHCONF_VARIABLE_NAME)) return;
 
   os::set_environment_variable(KOSHCONF_VARIABLE_NAME,
@@ -1467,16 +1467,6 @@ EvalContext::is_exported(StringView name) const throws -> bool
       .exported_names()
       .find(fold_exported_name(name, folded, spill))
       .has_value();
-}
-
-fn
-EvalContext::sync_exported_after_restore(StringView name,
-                                         bool       has_value) throws -> void
-{
-  if (has_value)
-    mark_exported(name);
-  else
-    unmark_exported(name);
 }
 
 pure fn

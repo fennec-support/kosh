@@ -3718,6 +3718,44 @@ EvalContext::pattern_replace_value(
     return out;
   }
 
+  bool is_literal_pattern =
+      charset == glob_charset::Bytes || static_cast<u8>(pattern[0]) < 0x80;
+
+  for (usize index = 0; index < pattern.count() && is_literal_pattern; index++)
+  {
+    if (!pattern_active[index]) continue;
+
+    switch (pattern[index]) {
+    case '*':
+    case '?':
+    case '[':
+    case '\\': is_literal_pattern = false; break;
+    case '+':
+    case '@':
+    case '!':
+      is_literal_pattern = extglob == extglob_mode::Disabled ||
+                           index + 1 == pattern.count() ||
+                           pattern[index + 1] != '(';
+      break;
+    default: break;
+    }
+  }
+
+  if (is_literal_pattern) {
+    usize position = 0;
+
+    while (let const found = value.find_substring(pattern.view(), position)) {
+      out.append(value.substring_of_length(position, *found - position));
+      do_append_replacement(value.substring_of_length(*found, pattern.count()));
+      position = *found + pattern.count();
+      if (!should_replace_all) break;
+    }
+
+    out.append(value.substring(position));
+
+    return out;
+  }
+
   let const longest_possible = longest_possible_pattern_match(
       pattern.view(), pattern_active, extglob, charset);
   bool  has_replaced = false;

@@ -525,7 +525,6 @@ struct report_table_column
   String                 heading;
   report_table_alignment alignment;
   StringView             style;
-  usize                  min_width{0};
 };
 
 struct report_table_cell_view

@@ -274,15 +274,10 @@ public:
   }
 
   pure fn
-  has_exact() const wontthrow -> bool
-  {
-    return candidates.has(match_tier::exact_prefix);
-  }
-
-  pure fn
   has_prefix() const wontthrow -> bool
   {
-    return has_exact() || candidates.has(match_tier::prefix);
+    return candidates.has(match_tier::exact_prefix) ||
+           candidates.has(match_tier::prefix);
   }
 
   pure fn
@@ -343,12 +338,6 @@ public:
   fn
   note_source_candidate() wontthrow -> void
   {}
-
-  pure fn
-  has_exact() const wontthrow -> bool
-  {
-    return !names.is_empty();
-  }
 
   pure fn
   has_prefix() const wontthrow -> bool
@@ -451,12 +440,6 @@ public:
   note_source_candidate() wontthrow -> void
   {
     source_scan_count++;
-  }
-
-  pure fn
-  has_exact() const wontthrow -> bool
-  {
-    return best_tier == 0;
   }
 
   pure fn

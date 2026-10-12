@@ -385,7 +385,6 @@ path_error_message(StringView verb,
 
 KOSHKIT_UTILITY_LIST(UTILITY_STRUCT)
 
-fn read_fd_to_string(os::descriptor fd) throws -> Maybe<String>;
 fn
 confirm_koshkit_action(const ExecContext &ec, StringView prompt) throws
     -> bool;

@@ -89,8 +89,7 @@ EvalContext::leave_subshell() wontthrow -> void
         subshell_store().saved_descriptors().back().saved.shell_fd,
         execution_store().subshell_depth());
     os::restore_descriptor(subshell_store().saved_descriptors().back().saved);
-    subshell_store().saved_descriptors().remove(
-        subshell_store().saved_descriptors().count() - 1);
+    subshell_store().saved_descriptors().pop_back();
   }
 
   execution_store().subshell_depth()--;
@@ -3367,7 +3366,7 @@ EvalContext::apply_subshell_bootstrap(os::subshell_bootstrap bootstrap)
   }
 
   function_store().apply_wire_definitions(functions);
-  if (startup.is_restricted_shell) startup_store().request_restricted_shell();
+  if (startup.is_restricted_shell) startup_store().set_restricted_shell(true);
   startup_store().set_login_shell(startup.is_login_shell);
   startup_store().set_init_moods(startup.init_moods.view());
   diagnostics_store().set_source_traces_enabled(is_source_traces_enabled);

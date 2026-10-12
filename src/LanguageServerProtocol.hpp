@@ -519,11 +519,9 @@ append_json_value(String &output, const JsonValue &value) throws -> void
 fn
 append_request_id(String &output, const JsonValue *id) throws -> void
 {
-  if (id == nullptr || id->kind == json_kind::Null) {
-    output.append("null");
-  } else if (id->kind == json_kind::String) {
+  if (id != nullptr && id->kind == json_kind::String) {
     append_json_string(output, id->text.view());
-  } else if (id->kind == json_kind::Number) {
+  } else if (id != nullptr && id->kind == json_kind::Number) {
     output.append(id->text.view());
   } else {
     output.append("null");

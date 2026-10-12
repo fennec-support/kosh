@@ -55,7 +55,6 @@ struct batch_operation
     Stat         = 4,
     Exists       = 5,
     LstatAt      = 6,
-    StatAt       = 7,
     Invalid      = 127,
   };
 
@@ -166,7 +165,6 @@ struct batch_operation_access
     case batch_operation::Kind::Stat:
     case batch_operation::Kind::Exists:       return operation.m_primary.path;
     case batch_operation::Kind::LstatAt:
-    case batch_operation::Kind::StatAt:
     case batch_operation::Kind::Read:
     case batch_operation::Kind::Write:
     case batch_operation::Kind::WriteCurrent:
@@ -188,7 +186,6 @@ struct batch_operation_access
     case batch_operation::Kind::Stat:
     case batch_operation::Kind::Exists:
     case batch_operation::Kind::LstatAt:
-    case batch_operation::Kind::StatAt:
     case batch_operation::Kind::Invalid: return nullptr;
     }
 
@@ -209,8 +206,7 @@ struct batch_operation_access
     switch (operation.syscall_id) {
     case batch_operation::Kind::Lstat:
     case batch_operation::Kind::Stat:
-    case batch_operation::Kind::LstatAt:
-    case batch_operation::Kind::StatAt:       return operation.m_secondary.status;
+    case batch_operation::Kind::LstatAt:      return operation.m_secondary.status;
     case batch_operation::Kind::Read:
     case batch_operation::Kind::Write:
     case batch_operation::Kind::WriteCurrent:
@@ -232,7 +228,6 @@ struct batch_operation_access
     case batch_operation::Kind::Stat:
     case batch_operation::Kind::Exists:
     case batch_operation::Kind::LstatAt:
-    case batch_operation::Kind::StatAt:
     case batch_operation::Kind::Invalid:      return KOSH_INVALID_FD;
     }
 
@@ -244,7 +239,7 @@ struct batch_operation_access
   {
     switch (operation.syscall_id) {
     case batch_operation::Kind::LstatAt:
-    case batch_operation::Kind::StatAt:       return operation.m_primary.input_buffer;
+      return operation.m_primary.input_buffer;
     case batch_operation::Kind::Read:
     case batch_operation::Kind::Write:
     case batch_operation::Kind::WriteCurrent:
@@ -263,7 +258,6 @@ struct batch_operation_access
   {
     switch (operation.syscall_id) {
     case batch_operation::Kind::LstatAt:
-    case batch_operation::Kind::StatAt:
       return decode_directory_descriptor(operation.byte_offset);
     case batch_operation::Kind::Read:
     case batch_operation::Kind::Write:

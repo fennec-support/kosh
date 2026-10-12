@@ -18,57 +18,6 @@
 
 namespace koshka {
 
-ParserFormat::ParserFormat() = default;
-
-#define DEFINE_PARSER_FORMAT(parser, format_kind, parse_function)              \
-  parser::parser() = default;                                                  \
-  pure fn parser::kind() const wontthrow -> parser_format_kind                 \
-  {                                                                            \
-    return parser_format_kind::format_kind;                                    \
-  }                                                                            \
-  fn parser::parse(const parser_format_input &input,                           \
-                   parsed_format_document    &document) const throws -> void      \
-  {                                                                            \
-    parse_function(input, document);                                           \
-  }
-
-DEFINE_PARSER_FORMAT(GithubActionsFormat,
-                     GithubActions,
-                     parse_github_actions_format);
-DEFINE_PARSER_FORMAT(GiteaActionsFormat,
-                     GiteaActions,
-                     parse_gitea_actions_format);
-DEFINE_PARSER_FORMAT(ForgejoActionsFormat,
-                     ForgejoActions,
-                     parse_forgejo_actions_format);
-DEFINE_PARSER_FORMAT(GitlabCiFormat, GitlabCi, parse_gitlab_ci_format);
-DEFINE_PARSER_FORMAT(AnsibleFormat, Ansible, parse_ansible_format);
-DEFINE_PARSER_FORMAT(DockerfileFormat, Dockerfile, parse_dockerfile_format);
-DEFINE_PARSER_FORMAT(ComposeFormat, Compose, parse_compose_format);
-DEFINE_PARSER_FORMAT(MarkdownFormat, Markdown, parse_markdown_format);
-DEFINE_PARSER_FORMAT(MakefileFormat, Makefile, parse_makefile_format);
-DEFINE_PARSER_FORMAT(CloudBuildFormat, CloudBuild, parse_cloud_build_format);
-DEFINE_PARSER_FORMAT(CircleCiFormat, CircleCi, parse_circle_ci_format);
-DEFINE_PARSER_FORMAT(AzurePipelinesFormat,
-                     AzurePipelines,
-                     parse_azure_pipelines_format);
-DEFINE_PARSER_FORMAT(BitbucketPipelinesFormat,
-                     BitbucketPipelines,
-                     parse_bitbucket_pipelines_format);
-DEFINE_PARSER_FORMAT(BuildkiteFormat, Buildkite, parse_buildkite_format);
-DEFINE_PARSER_FORMAT(TravisCiFormat, TravisCi, parse_travis_ci_format);
-DEFINE_PARSER_FORMAT(KubernetesFormat, Kubernetes, parse_kubernetes_format);
-DEFINE_PARSER_FORMAT(PackageJsonFormat, PackageJson, parse_package_json_format);
-DEFINE_PARSER_FORMAT(DroneFormat, Drone, parse_drone_format);
-DEFINE_PARSER_FORMAT(WoodpeckerFormat, Woodpecker, parse_woodpecker_format);
-DEFINE_PARSER_FORMAT(TaskfileFormat, Taskfile, parse_taskfile_format);
-DEFINE_PARSER_FORMAT(JustfileFormat, Justfile, parse_justfile_format);
-DEFINE_PARSER_FORMAT(RpmSpecFormat, RpmSpec, parse_rpm_spec_format);
-DEFINE_PARSER_FORMAT(VscodeTasksFormat, VscodeTasks, parse_vscode_tasks_format);
-DEFINE_PARSER_FORMAT(DevContainerFormat,
-                     DevContainer,
-                     parse_dev_container_format);
-
 pure fn
 parser_format_has_substring(StringView source, StringView wanted) wontthrow
     -> bool
@@ -127,25 +76,6 @@ path_starts_with(StringView path, StringView prefix) wontthrow -> bool
   return prefix.length <= path.length &&
          parser_format_ascii_equal(path.substring_of_length(0, prefix.length),
                                    prefix);
-}
-
-static pure fn
-path_holds(StringView path, StringView part) wontthrow -> bool
-{
-  if (part.length > path.length) return false;
-  if (part.is_empty()) return true;
-
-  let const wanted_leading_byte = utils::ascii_to_lower(part[0]);
-
-  for (usize position = 0; position + part.length <= path.length; position++) {
-    if (utils::ascii_to_lower(path[position]) != wanted_leading_byte) continue;
-
-    if (parser_format_ascii_equal(
-            path.substring_of_length(position, part.length), part))
-      return true;
-  }
-
-  return false;
 }
 
 static pure fn
@@ -208,26 +138,26 @@ detect_format_kind(const parser_format_input &input) throws
   let const language_id =
       input.language_id.has_value() ? *input.language_id : StringView{};
 
-  if (path_holds(path, "/.github/workflows/") ||
+  if (utils::contains_case_insensitive_ascii(path, "/.github/workflows/") ||
       named_kind == parser_format_kind::GithubActions)
   {
     return parser_format_kind::GithubActions;
   }
 
-  if (path_holds(path, "/.gitea/workflows/"))
+  if (utils::contains_case_insensitive_ascii(path, "/.gitea/workflows/"))
     return parser_format_kind::GiteaActions;
-  if (path_holds(path, "/.forgejo/workflows/"))
+  if (utils::contains_case_insensitive_ascii(path, "/.forgejo/workflows/"))
     return parser_format_kind::ForgejoActions;
   if (named_kind == parser_format_kind::GitlabCi)
     return parser_format_kind::GitlabCi;
   if (named_kind == parser_format_kind::Drone) return parser_format_kind::Drone;
-  if (path_holds(path, "/.woodpecker/") ||
+  if (utils::contains_case_insensitive_ascii(path, "/.woodpecker/") ||
       named_kind == parser_format_kind::Woodpecker)
   {
     return parser_format_kind::Woodpecker;
   }
 
-  if (path_holds(path, "/.circleci/") &&
+  if (utils::contains_case_insensitive_ascii(path, "/.circleci/") &&
       (path_ends_with(path, ".yml") || path_ends_with(path, ".yaml")))
   {
     return parser_format_kind::CircleCi;
@@ -237,7 +167,7 @@ detect_format_kind(const parser_format_input &input) throws
     return parser_format_kind::AzurePipelines;
   if (named_kind == parser_format_kind::BitbucketPipelines)
     return parser_format_kind::BitbucketPipelines;
-  if (path_holds(path, "/.buildkite/") &&
+  if (utils::contains_case_insensitive_ascii(path, "/.buildkite/") &&
       (path_ends_with(path, ".yml") || path_ends_with(path, ".yaml")))
   {
     return parser_format_kind::Buildkite;
@@ -273,7 +203,7 @@ detect_format_kind(const parser_format_input &input) throws
   if (path_ends_with(path, "/.vscode/tasks.json"))
     return parser_format_kind::VscodeTasks;
   if (named_kind == parser_format_kind::DevContainer &&
-      (path_holds(path, "/.devcontainer/") ||
+      (utils::contains_case_insensitive_ascii(path, "/.devcontainer/") ||
        path_ends_with(path, "/.devcontainer.json")))
   {
     return parser_format_kind::DevContainer;
@@ -1258,7 +1188,77 @@ parse_format_document(const parser_format_input &input) throws
 
   switch (document.kind) {
   case parser_format_kind::Shell:
-  case parser_format_kind::UnknownHost: break; PARSER_FORMAT_SWITCH_CASES();
+  case parser_format_kind::UnknownHost: break;
+  case parser_format_kind::GithubActions:
+    parse_github_actions_format(input, document);
+    break;
+  case parser_format_kind::GiteaActions:
+    parse_gitea_actions_format(input, document);
+    break;
+  case parser_format_kind::ForgejoActions:
+    parse_forgejo_actions_format(input, document);
+    break;
+  case parser_format_kind::GitlabCi:
+    parse_gitlab_ci_format(input, document);
+    break;
+  case parser_format_kind::Ansible:
+    parse_ansible_format(input, document);
+    break;
+  case parser_format_kind::Dockerfile:
+    parse_dockerfile_format(input, document);
+    break;
+  case parser_format_kind::Compose:
+    parse_compose_format(input, document);
+    break;
+  case parser_format_kind::Markdown:
+    parse_markdown_format(input, document);
+    break;
+  case parser_format_kind::Makefile:
+    parse_makefile_format(input, document);
+    break;
+  case parser_format_kind::CloudBuild:
+    parse_cloud_build_format(input, document);
+    break;
+  case parser_format_kind::CircleCi:
+    parse_circle_ci_format(input, document);
+    break;
+  case parser_format_kind::AzurePipelines:
+    parse_azure_pipelines_format(input, document);
+    break;
+  case parser_format_kind::BitbucketPipelines:
+    parse_bitbucket_pipelines_format(input, document);
+    break;
+  case parser_format_kind::Buildkite:
+    parse_buildkite_format(input, document);
+    break;
+  case parser_format_kind::TravisCi:
+    parse_travis_ci_format(input, document);
+    break;
+  case parser_format_kind::Kubernetes:
+    parse_kubernetes_format(input, document);
+    break;
+  case parser_format_kind::PackageJson:
+    parse_package_json_format(input, document);
+    break;
+  case parser_format_kind::Drone: parse_drone_format(input, document); break;
+  case parser_format_kind::Woodpecker:
+    parse_woodpecker_format(input, document);
+    break;
+  case parser_format_kind::Taskfile:
+    parse_taskfile_format(input, document);
+    break;
+  case parser_format_kind::Justfile:
+    parse_justfile_format(input, document);
+    break;
+  case parser_format_kind::RpmSpec:
+    parse_rpm_spec_format(input, document);
+    break;
+  case parser_format_kind::VscodeTasks:
+    parse_vscode_tasks_format(input, document);
+    break;
+  case parser_format_kind::DevContainer:
+    parse_dev_container_format(input, document);
+    break;
   }
 
   return document;

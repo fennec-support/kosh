@@ -829,13 +829,14 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const 
         cxt.restore_temporary_shell_variable(
             restore.name.view(), restore.previous_shell_value,
             restore.previous_special_definition_location);
-      if (restore.previous_value)
+      if (restore.previous_value) {
         os::set_environment_variable(restore.name.view(),
-                                                restore.previous_value->view());
-      else
+                                     restore.previous_value->view());
+        cxt.mark_exported(restore.name.view());
+      } else {
         os::unset_environment_variable(restore.name.view());
-      cxt.sync_exported_after_restore(restore.name.view(),
-                                                 restore.previous_value.has_value());
+        cxt.unmark_exported(restore.name.view());
+      }
       if (restore.did_clear_circular_reference) {
         cxt.variable_store().attributes().set(
             restore.name.view(), variable_attribute::Nameref, true);
@@ -1184,7 +1185,7 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const 
         }
       }
 
-      cxt.execution_store().set_last_argument(String{last_argument.view()});
+      cxt.execution_store().set_last_argument(last_argument.view());
       cxt.publish_single_pipe_status(static_cast<i32>(function_ret));
       SET_AND_RETURN_EXIT_STATUS(cxt, function_ret);
     };
@@ -1321,7 +1322,7 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const 
     ret = 2;
   }
 
-  cxt.execution_store().set_last_argument(String{last_argument.view()});
+  cxt.execution_store().set_last_argument(last_argument.view());
 
   if (!m_array_args.is_empty()) {
     let const is_local   = array_command_kind == assignment_builtin::Local;

@@ -114,8 +114,7 @@ Who::execute(const ExecContext               &ec,
       output += session.terminal.view();
       if (session.login_time != 0) {
         output += ' ';
-        output +=
-            utils::format_unix_timestamp(session.login_time, "%b %e %H:%M");
+        output += os::format_local_time("%b %e %H:%M", session.login_time);
       }
 
       if (FLAG_WHO_IDLE.is_enabled()) output += " .";

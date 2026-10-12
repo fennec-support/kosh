@@ -263,8 +263,8 @@ Cd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     }
   }
 
-  if (!is_to_previous && operand_count > 0 && !target.is_directory() &&
-      cxt.is_shopt_enabled("cdable_vars"))
+  if (!is_to_previous && operand_count > 0 &&
+      cxt.is_shopt_enabled("cdable_vars") && !target.is_directory())
   {
     if (let const directory_variable = cxt.get_variable_value(arg_path)) {
       arg_path.clear();

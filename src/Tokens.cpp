@@ -668,7 +668,7 @@ Word::get_assignment_split(Allocator allocator) const throws
   });
 
   for (usize i = 1; i < segments.count(); i++)
-    value.segments.push(segments[i]);
+    value.segments.push(segments[i].clone(allocator));
 
   return word_assignment_split{steal(name), steal(value), update_mode};
 }
@@ -845,7 +845,6 @@ TOKEN_DECLS(AmpersandGreater, "&>");
 TOKEN_DECLS(AmpersandDoubleGreater, "&>>");
 TOKEN_DECLS(PipeAmpersand, "|&");
 TOKEN_DECLS(TripleLess, "<<<");
-TOKEN_DECLS(Dot, ".");
 TOKEN_DECLS(LeftParen, "(");
 TOKEN_DECLS(RightParen, ")");
 TOKEN_DECLS(RightBracket, "}");
@@ -1004,14 +1003,9 @@ create_word_token(BumpArena     &arena,
   return arena.create<ExpandedWordToken>(steal(location), steal(word));
 }
 
-TOKEN_DECLS(Plus, "+");
-TOKEN_DECLS(Minus, "-");
 TOKEN_DECLS(DoublePipe, "||");
 TOKEN_DECLS(Ampersand, "&");
 TOKEN_DECLS(DoubleAmpersand, "&&");
-TOKEN_DECLS(Slash, "/");
-TOKEN_DECLS(Asterisk, "*");
-TOKEN_DECLS(Percent, "%");
 TOKEN_DECLS(Greater, ">");
 TOKEN_DECLS(DoubleGreater, ">>");
 TOKEN_DECLS(GreaterEquals, ">=");
@@ -1019,12 +1013,6 @@ TOKEN_DECLS(Less, "<");
 TOKEN_DECLS(DoubleLess, "<<");
 TOKEN_DECLS(LessEquals, "<=");
 TOKEN_DECLS(Pipe, "|");
-TOKEN_DECLS(Cap, "^");
-TOKEN_DECLS(Equals, "=");
-TOKEN_DECLS(DoubleEquals, "==");
-TOKEN_DECLS(ExclamationEquals, "!=");
-TOKEN_DECLS(ExclamationMark, "!");
-TOKEN_DECLS(Tilde, "~");
 
 } /* namespace tokens */
 

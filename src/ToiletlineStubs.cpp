@@ -1073,18 +1073,6 @@ append_history_event(StringView command) -> koshka::Maybe<usize>
 }
 
 fn
-rewrite_history_event(usize number, StringView expected, StringView replacement)
-    -> bool
-{
-  let replacements = koshka::ArrayList<String>{koshka::heap_allocator()};
-
-  if (!replacement.is_empty())
-    replacements.push(String{koshka::heap_allocator(), replacement});
-
-  return rewrite_history_event(number, expected, replacements);
-}
-
-fn
 rewrite_history_event(usize                                    number,
                       StringView                               expected,
                       const koshka::ArrayList<koshka::String> &replacements)

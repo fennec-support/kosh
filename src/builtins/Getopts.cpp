@@ -54,16 +54,11 @@ Getopts::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     }
   }
 
-  let explicit_operands = ArrayList<String>{cxt.scratch_allocator()};
-
-  if (args.count() > 3) {
-    for (usize i = 3; i < args.count(); i++)
-      explicit_operands.push(args[i]);
-  }
-
-  const ArrayList<String> &operands =
-      args.count() > 3 ? explicit_operands
-                       : cxt.variable_store().positional_params();
+  let const                has_explicit_operands = args.count() > 3;
+  let const                operand_base = has_explicit_operands ? usize{3} : 0;
+  const ArrayList<String> &operand_list =
+      has_explicit_operands ? args : cxt.variable_store().positional_params();
+  let const operand_count = operand_list.count() - operand_base;
 
   i64 optind = 1;
 
@@ -74,7 +69,7 @@ Getopts::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   }
 
   LOG(Debug, "getopts parsing into '%s' at OPTIND %lld of %zu operands",
-      name.c_str(), static_cast<long long>(optind), operands.count());
+      name.c_str(), static_cast<long long>(optind), operand_count);
 
   let &cursor = cxt.expansion_store().get_getopts_cursor();
 
@@ -91,15 +86,16 @@ Getopts::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return code;
   };
 
-  if (optind < 1 || static_cast<usize>(optind) > operands.count()) {
+  if (optind < 1 || static_cast<usize>(optind) > operand_count) {
     cxt.set_shell_variable(name, "?");
 
     return do_finish(1);
   }
 
-  ASSERT(static_cast<usize>(optind) - 1 < operands.count());
+  ASSERT(static_cast<usize>(optind) - 1 < operand_count);
 
-  let const &current = operands[static_cast<usize>(optind) - 1];
+  let const &current =
+      operand_list[operand_base + static_cast<usize>(optind) - 1];
 
   if (current.length() < 2 || current[0] != '-' || current == "--") {
     if (current == "--") optind++;
@@ -162,8 +158,9 @@ Getopts::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       cxt.set_shell_variable("OPTARG", optarg);
       optind++;
       char_index = 1;
-    } else if (static_cast<usize>(optind) < operands.count()) {
-      let const &optarg = operands[static_cast<usize>(optind)];
+    } else if (static_cast<usize>(optind) < operand_count) {
+      let const &optarg =
+          operand_list[operand_base + static_cast<usize>(optind)];
 
       cxt.set_shell_variable("OPTARG", optarg);
       optind += 2;

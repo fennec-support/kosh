@@ -537,12 +537,17 @@ pure fn
 EvalContext::shopt_default_is_on(StringView name) wontthrow -> bool
 {
   static constexpr PackedStringKey KEYS[] = {
-      SSK("progcomp"),           SSK("promptvars"),
-      SSK("sourcepath"),         SSK("extquote"),
-      SSK("complete_fullquote"), SSK("hostcomplete"),
-      SSK("checkwinsize"),       SSK("force_fignore"),
-      SSK("globasciiranges"),    SSK("globskipdots"),
-      SSK("expand_aliases"),     SSK("interactive_comments"),
+      SSK("progcomp"),
+      SSK("promptvars"),
+      SSK("sourcepath"),
+      SSK("extquote"),
+      SSK("complete_fullquote"),
+      SSK("hostcomplete"),
+      SSK("checkwinsize"),
+      SSK("force_fignore"),
+      SSK("globasciiranges"),
+      SSK("globskipdots"),
+      SSK("interactive_comments"),
       SSK("patsub_replacement"),
   };
   static constexpr StaticStringSet DEFAULT_ON_SHOPT_NAMES{KEYS};

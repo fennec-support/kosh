@@ -747,9 +747,6 @@ namespace koshka {
 
 namespace os {
 
-static fn
-fork_job_process() throws -> process;
-
 hot fn
 write_fd(os::descriptor fd, const opaque *buf, usize size) wontthrow
     -> Maybe<usize>

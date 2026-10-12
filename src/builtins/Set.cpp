@@ -11,6 +11,7 @@
 #include "../CLI.hpp"
 #include "../Errors.hpp"
 #include "../Eval.hpp"
+#include "../Koshconf.hpp"
 #include "../Options.hpp"
 #include "../Platform.hpp"
 #include "../Utils.hpp"
@@ -81,11 +82,10 @@ apply_or_reject_option(EvalContext             &cxt,
 {
   if (!option_is_available(cxt, option))
     throw Error{StringView{"Unknown option '"} + option.set_name + "'"};
-  if (option.storage == option_storage::WarningLevel) {
-    if (should_step_warning_level)
-      step_warning_level(cxt, is_enabled);
-    else
-      write_option_number(cxt, option, is_enabled ? 1 : 0, option_origin::Set);
+  if (option.storage == option_storage::WarningLevel &&
+      should_step_warning_level)
+  {
+    step_warning_level(cxt, is_enabled);
 
     return;
   }
@@ -539,27 +539,15 @@ Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         continue;
       }
 
-      let   moods      = ArrayList<mimic_mood>{cxt.scratch_allocator()};
-      usize name_start = 0;
+      let moods = ArrayList<mimic_mood>{cxt.scratch_allocator()};
 
-      for (usize j = 0; j <= value->length; j++) {
-        if (j != value->length && (*value)[j] != ',') {
-          continue;
-        }
-
-        let const name = value->substring_of_length(name_start, j - name_start);
-
-        name_start = j + 1;
-        if (name.is_empty()) continue;
-
-        let const parsed = parse_mood_name(name);
-
-        if (!parsed.has_value())
-          throw make_error_for_arg(
-              ec, i,
-              String{cxt.scratch_allocator(), "Unknown -L value '"} + name +
-                  "', expected 'kosh', 'bash', 'sh', or 'bash-posix'");
-        moods.push(*parsed);
+      if (let const bad_name = parse_mood_list(*value, moods);
+          bad_name.has_value())
+      {
+        throw make_error_for_arg(
+            ec, i,
+            String{cxt.scratch_allocator(), "Unknown -L value '"} + *bad_name +
+                "', expected 'kosh', 'bash', 'sh', or 'bash-posix'");
       }
 
       let const previous_mood = cxt.runtime_state().get_mood();

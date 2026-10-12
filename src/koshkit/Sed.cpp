@@ -566,7 +566,7 @@ apply_sed_substitution(sed_command &command,
     if (match.result == os::regex_match_result::Error)
       throw Error{"" + match.error_message};
     if (match.result == os::regex_match_result::NoMatch) {
-      result += subject;
+      if (did_replace) result += subject;
       break;
     }
 

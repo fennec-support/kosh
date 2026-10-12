@@ -1214,7 +1214,6 @@ validate_batched_syscall(const batched_syscall &operation) wontthrow -> i32
                ? EINVAL
                : 0;
   case batched_syscall_id::LstatAt:
-  case batched_syscall_id::StatAt:
     return batch_operation_access::get_directory_descriptor(operation) ==
                        KOSH_INVALID_FD ||
                    batch_operation_access::get_relative_name(operation) ==
@@ -1301,19 +1300,14 @@ execute_batched_syscall_direct(const batched_syscall  &operation,
 
     return;
   case batched_syscall_id::LstatAt:
-  case batched_syscall_id::StatAt:
 #if defined __linux__
   {
-    let const   stat_flags = batch_operation_access::get_kind(operation) ==
-                                   batched_syscall_id::LstatAt
-                                 ? AT_SYMLINK_NOFOLLOW
-                                 : 0;
     struct stat info{};
 
     loop {
       if (::fstatat(batch_operation_access::get_directory_descriptor(operation),
                     batch_operation_access::get_relative_name(operation), &info,
-                    stat_flags) == 0)
+                    AT_SYMLINK_NOFOLLOW) == 0)
       {
         fill_file_status(info, *batch_operation_access::get_status(operation));
 
@@ -1529,7 +1523,6 @@ execute_suspended_aio_batch(const batched_syscall  *operations,
     case batched_syscall_id::Lstat:
     case batched_syscall_id::Stat:
     case batched_syscall_id::LstatAt:
-    case batched_syscall_id::StatAt:
     case batched_syscall_id::Exists:       break;
     case batched_syscall_id::Invalid:      return false;
     }
@@ -1563,7 +1556,6 @@ execute_suspended_aio_batch(const batched_syscall  *operations,
       case batched_syscall_id::Lstat:
       case batched_syscall_id::Stat:
       case batched_syscall_id::LstatAt:
-      case batched_syscall_id::StatAt:
       case batched_syscall_id::Exists:
         execute_batched_syscall_direct(operation, result);
         continue;
@@ -1993,8 +1985,7 @@ io_uring_batch_supports_operations(const io_uring_batch  &ring,
       if (!ring.has_stat) return false;
       break;
 
-    case batched_syscall_id::LstatAt:
-    case batched_syscall_id::StatAt:  return false;
+    case batched_syscall_id::LstatAt: return false;
     case batched_syscall_id::Invalid: return false;
     }
   }
@@ -2024,7 +2015,6 @@ execute_io_uring_batch(const batched_syscall  *operations,
     case batched_syscall_id::Stat:
     case batched_syscall_id::Exists:
     case batched_syscall_id::LstatAt:
-    case batched_syscall_id::StatAt:
     case batched_syscall_id::Invalid: break;
     }
   }
@@ -2069,7 +2059,7 @@ execute_io_uring_batch(const batched_syscall  *operations,
     let const chunk_count = operation_count - operation_start > available_count
                                 ? available_count
                                 : operation_count - operation_start;
-    struct statx status_records[IO_URING_ENTRY_COUNT]{};
+    struct statx status_records[IO_URING_ENTRY_COUNT];
     bool         was_queued[IO_URING_ENTRY_COUNT]{};
     bool         was_completed[IO_URING_ENTRY_COUNT]{};
     let const    initial_tail =
@@ -2134,16 +2124,12 @@ execute_io_uring_batch(const batched_syscall  *operations,
         break;
 
       case batched_syscall_id::LstatAt:
-      case batched_syscall_id::StatAt:
         entry.opcode = IORING_OP_STATX;
         entry.fd = batch_operation_access::get_directory_descriptor(operation);
         entry.addr = reinterpret_cast<u64>(
             batch_operation_access::get_relative_name(operation));
         entry.len         = STATX_BASIC_STATS;
-        entry.statx_flags = batch_operation_access::get_kind(operation) ==
-                                    batched_syscall_id::LstatAt
-                                ? AT_SYMLINK_NOFOLLOW
-                                : 0;
+        entry.statx_flags = AT_SYMLINK_NOFOLLOW;
         entry.addr2       = reinterpret_cast<u64>(&status_records[chunk_index]);
         break;
 
@@ -2273,7 +2259,6 @@ execute_io_uring_batch(const batched_syscall  *operations,
           case batched_syscall_id::Lstat:
           case batched_syscall_id::Stat:
           case batched_syscall_id::LstatAt:
-          case batched_syscall_id::StatAt:
             if (error_number == EOPNOTSUPP || error_number == EINVAL) {
               execute_batched_syscall_direct(operations[operation_index],
                                              result);
@@ -2293,7 +2278,6 @@ execute_io_uring_batch(const batched_syscall  *operations,
           case batched_syscall_id::Lstat:
           case batched_syscall_id::Stat:
           case batched_syscall_id::LstatAt:
-          case batched_syscall_id::StatAt:
             fill_file_status(status_records[chunk_index],
                              *batch_operation_access::get_status(
                                  operations[operation_index]));

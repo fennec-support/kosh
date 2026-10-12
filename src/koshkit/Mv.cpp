@@ -83,7 +83,7 @@ move_across_devices(const ExecContext &ec,
                     StringView         utility_name,
                     StringView         source,
                     StringView         target,
-                    Allocator          allocator) throws -> bool
+                    Allocator          allocator) throws -> void
 {
   let const source_path             = Path{source, allocator};
   let const is_source_symbolic_link = source_path.is_symbolic_link();
@@ -92,7 +92,7 @@ move_across_devices(const ExecContext &ec,
     move_directory_across_devices(ec, cxt, utility_name, source, target,
                                   allocator);
 
-    return true;
+    return;
   }
 
   let const target_path    = Path{target, allocator};
@@ -158,8 +158,6 @@ move_across_devices(const ExecContext &ec,
           +
         "': " + os::last_system_error_message()
     };
-
-  return true;
 }
 
 fn
@@ -224,12 +222,7 @@ Mv::execute(const ExecContext               &ec,
 
     try {
       if (!os::rename_path(source, target.view())) {
-        let const rename_error_number = errno;
-
-        if (rename_error_number != EXDEV ||
-            !move_across_devices(ec, cxt, args[0].view(), source, target.view(),
-                                 cxt.scratch_allocator()))
-        {
+        if (errno != EXDEV) {
           report_soft_koshkit_util_error(
               ec, cxt, operand_locations[i], args[0].view(),
               "unable to move '" + String{cxt.scratch_allocator(), source} +
@@ -238,6 +231,9 @@ Mv::execute(const ExecContext               &ec,
           status = 1;
           continue;
         }
+
+        move_across_devices(ec, cxt, args[0].view(), source, target.view(),
+                            cxt.scratch_allocator());
       }
     } catch (Error &error) {
       report_soft_koshkit_util_error(ec, cxt, operand_locations[i],

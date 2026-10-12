@@ -36,14 +36,6 @@ enum class wc_count_selection : u8
   Characters = 8,
 };
 
-enum class wc_scan_mode : u8
-{
-  None,
-  Lines,
-  Words,
-  LinesWords,
-};
-
 constexpr fn
 operator|(wc_count_selection left, wc_count_selection right) wontthrow
     -> wc_count_selection
@@ -211,14 +203,6 @@ update_wc_source(wc_source_state   &state,
                  StringView         content,
                  wc_count_selection selection) wontthrow -> void
 {
-  let const scan_mode =
-      has_wc_count(selection, wc_count_selection::Lines) &&
-              has_wc_count(selection, wc_count_selection::Words)
-          ? wc_scan_mode::LinesWords
-      : has_wc_count(selection, wc_count_selection::Lines) ? wc_scan_mode::Lines
-      : has_wc_count(selection, wc_count_selection::Words) ? wc_scan_mode::Words
-                                                           : wc_scan_mode::None;
-
   if (has_wc_count(selection, wc_count_selection::Bytes))
     state.counts.byte_count += content.length;
 
@@ -231,20 +215,10 @@ update_wc_source(wc_source_state   &state,
     }
   }
 
-  switch (scan_mode) {
-  case wc_scan_mode::None: break;
-
-  case wc_scan_mode::Lines:
+  if (has_wc_count(selection, wc_count_selection::Lines))
     state.counts.line_count += count_newlines(content);
-    break;
-
-  case wc_scan_mode::Words: count_words(state, content); break;
-
-  case wc_scan_mode::LinesWords:
-    state.counts.line_count += count_newlines(content);
+  if (has_wc_count(selection, wc_count_selection::Words))
     count_words(state, content);
-    break;
-  }
 }
 
 static fn

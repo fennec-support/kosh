@@ -510,8 +510,7 @@ make_diff_header_name(StringView        operand,
   if (operand != "-")
     if (let const modification_time = os::path_modification_time(operand)) {
       result += '\t';
-      result +=
-          utils::format_unix_timestamp(*modification_time, "%Y-%m-%d %H:%M:%S");
+      result += os::format_local_time("%Y-%m-%d %H:%M:%S", *modification_time);
     }
 
   return result;

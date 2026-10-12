@@ -638,13 +638,6 @@ regex_matches(compiled_regex &compiled, StringView subject) throws
 #endif
 }
 
-fn
-regex_matches_null_terminated(compiled_regex &compiled,
-                              StringView      subject) throws -> bool
-{
-  return regex_matches(compiled, subject);
-}
-
 static u64 DESCRIPTOR_EPOCH = 0;
 
 pure fn

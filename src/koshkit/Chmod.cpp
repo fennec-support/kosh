@@ -32,19 +32,13 @@ REGISTER_KOSHKIT_UTIL_FLAGS(Chmod);
 
 namespace koshka::koshkit {
 
-enum class chmod_traversal_mode : u8
-{
-  SinglePath,
-  Recursive,
-};
-
 static fn
 change_mode(const ExecContext     &ec,
             EvalContext           &cxt,
             const Path            &path,
             StringView             expression,
             const os::file_status *known_status,
-            chmod_traversal_mode   traversal_mode,
+            u32                    creation_mask,
             const u64             *operand_device_id) throws -> bool
 {
   os::file_status status{};
@@ -63,11 +57,11 @@ change_mode(const ExecContext     &ec,
     return true;
   }
 
-  let const parsed = utils::parse_file_mode(
-      expression, status.mode, os::get_file_creation_mask(),
-      os::file_type_letter(status.mode) == 'd'
-          ? utils::file_kind_mode::Directory
-          : utils::file_kind_mode::Regular);
+  let const parsed =
+      utils::parse_file_mode(expression, status.mode, creation_mask,
+                             os::file_type_letter(status.mode) == 'd'
+                                 ? utils::file_kind_mode::Directory
+                                 : utils::file_kind_mode::Regular);
 
   ASSERT(parsed.has_value());
 
@@ -81,7 +75,7 @@ change_mode(const ExecContext     &ec,
   }
 
   if (os::INTERRUPT_REQUESTED) return did_succeed;
-  if (traversal_mode != chmod_traversal_mode::Recursive ||
+  if (!FLAG_CHMOD_RECURSIVE.is_enabled() ||
       os::file_type_letter(status.mode) != 'd')
   {
     return did_succeed;
@@ -128,13 +122,10 @@ change_mode(const ExecContext     &ec,
     child.append(child_entry.child.name.view());
 
     let const child_status =
-        child_entry.has_status &&
-                os::file_type_letter(child_entry.status.mode) != 'l'
-            ? &child_entry.status
-            : nullptr;
+        child_entry.has_status ? &child_entry.status : nullptr;
 
-    if (!change_mode(ec, cxt, child, expression, child_status,
-                     chmod_traversal_mode::Recursive, children_device_id))
+    if (!change_mode(ec, cxt, child, expression, child_status, creation_mask,
+                     children_device_id))
       did_succeed = false;
   }
 
@@ -163,17 +154,14 @@ Chmod::execute(const ExecContext               &ec,
     return 1;
   }
 
-  i32 status = 0;
+  i32       status        = 0;
+  let const creation_mask = os::get_file_creation_mask();
 
   for (usize index = 1; index < operands.count(); index++) {
     if (os::INTERRUPT_REQUESTED) return 130;
     if (!change_mode(ec, cxt,
                      Path{operands[index].view(), cxt.scratch_allocator()},
-                     expression, nullptr,
-                     FLAG_CHMOD_RECURSIVE.is_enabled()
-                         ? chmod_traversal_mode::Recursive
-                         : chmod_traversal_mode::SinglePath,
-                     nullptr))
+                     expression, nullptr, creation_mask, nullptr))
       status = 1;
     if (os::INTERRUPT_REQUESTED) return 130;
   }

@@ -142,49 +142,6 @@ struct client_capabilities
   }
 };
 
-enum class server_lifecycle : u8
-{
-  Uninitialized,
-  Serving,
-  ShutDown,
-  ShutDownUninitialized,
-};
-
-pure fn
-lifecycle_is_initialized(server_lifecycle lifecycle) wontthrow -> bool
-{
-  return lifecycle == server_lifecycle::Serving ||
-         lifecycle == server_lifecycle::ShutDown;
-}
-
-pure fn
-lifecycle_has_shut_down(server_lifecycle lifecycle) wontthrow -> bool
-{
-  return lifecycle == server_lifecycle::ShutDown ||
-         lifecycle == server_lifecycle::ShutDownUninitialized;
-}
-
-pure fn
-lifecycle_after_initialize(server_lifecycle lifecycle) wontthrow
-    -> server_lifecycle
-{
-  if (lifecycle == server_lifecycle::Uninitialized)
-    return server_lifecycle::Serving;
-  if (lifecycle == server_lifecycle::ShutDownUninitialized)
-    return server_lifecycle::ShutDown;
-
-  return lifecycle;
-}
-
-pure fn
-lifecycle_after_shutdown(server_lifecycle lifecycle)
-    wontthrow -> server_lifecycle
-{
-  return lifecycle_is_initialized(lifecycle)
-             ? server_lifecycle::ShutDown
-             : server_lifecycle::ShutDownUninitialized;
-}
-
 class DocumentStore
 {
 public:
@@ -537,7 +494,8 @@ private:
   completion::ShellHighlightCache m_highlight_cache{heap_allocator()};
   Path                            m_workspace_root;
   client_capabilities             m_client{};
-  server_lifecycle                m_lifecycle{server_lifecycle::Uninitialized};
+  bool                            m_is_initialized{false};
+  bool                            m_has_shut_down{false};
 };
 
 static constexpr u32 SEMANTIC_DECLARATION = 1u << 0;
@@ -648,8 +606,8 @@ Server::initialize(const JsonValue *id, const JsonValue *params) throws
     }
   }
 
-  m_client    = client_capabilities::from_initialize_params(params);
-  m_lifecycle = lifecycle_after_initialize(m_lifecycle);
+  m_client         = client_capabilities::from_initialize_params(params);
+  m_is_initialized = true;
 
   let const encoding =
       m_client.encoding == position_encoding::Utf8 ? "utf-8" : "utf-16";
@@ -771,12 +729,6 @@ Server::append_diagnostic(String                  &output,
                           usize                    diagnostic_index,
                           bool                    &is_first) throws -> void
 {
-  if (!diagnostic.source_name.is_empty() && document.path.has_value() &&
-      diagnostic.source_name != document.path->text())
-  {
-    return;
-  }
-
   let const do_append_diagnostic =
       [&](const SourceLocation &location, u8 severity, StringView message,
           Maybe<diagnostic_id> id, bool has_fixes) throws -> void {
@@ -916,16 +868,12 @@ Server::publish_diagnostics(Document &document) throws -> bool
 
   let root_diagnostics      = ArrayList<source_diagnostic>{heap_allocator()};
   let auxiliary_diagnostics = ArrayList<source_diagnostic>{heap_allocator()};
-  let const root_name = document.path.has_value() ? document.path->text().view()
-                                                  : document.uri.view();
-
-  for (let const &diagnostic : diagnostics) {
-    if (diagnostic.source_name.is_empty() ||
-        diagnostic.source_name == root_name)
+  for (let &diagnostic : diagnostics) {
+    if (diagnostic.source_name.is_empty() || diagnostic.source_name == filename)
     {
-      root_diagnostics.push(diagnostic);
+      root_diagnostics.push(steal(diagnostic));
     } else {
-      auxiliary_diagnostics.push(diagnostic);
+      auxiliary_diagnostics.push(steal(diagnostic));
     }
   }
 
@@ -1043,9 +991,7 @@ Server::validate_all(Document *changed_document) throws -> bool
     let should_reanalyze =
         changed_document == nullptr || &document == changed_document;
 
-    if (!should_reanalyze && changed_document != nullptr &&
-        changed_document->canonical_path.has_value())
-    {
+    if (!should_reanalyze && changed_document->canonical_path.has_value()) {
       should_reanalyze = document.followed_paths.contains(
           changed_document->canonical_path->text().view());
     }
@@ -2652,10 +2598,7 @@ Server::semantic_tokens(const JsonValue *id,
           occurrence_index++;
         }
 
-        if (span.role == highlight_role::variable ||
-            span.role == highlight_role::assignment_name ||
-            span.role == highlight_role::unset_variable)
-        {
+        if (role_reads_variable(span.role)) {
           for (usize index = occurrence_index;
                index < document->symbol_records.variable_occurrences.count();
                index++)
@@ -2733,19 +2676,19 @@ Server::dispatch(const JsonValue &message) throws -> bool
   if (*request == request_method::Initialize) return initialize(id, params);
   if (*request == request_method::Initialized) return true;
   if (*request == request_method::Shutdown) {
-    m_lifecycle = lifecycle_after_shutdown(m_lifecycle);
+    m_has_shut_down = true;
 
     return send_result(id, "null");
   }
 
   if (*request == request_method::Exit) return false;
-  if (!lifecycle_is_initialized(m_lifecycle)) {
+  if (!m_is_initialized) {
     if (id != nullptr) return send_error(id, -32002, "Server not initialized");
 
     return true;
   }
 
-  if (lifecycle_has_shut_down(m_lifecycle)) {
+  if (m_has_shut_down) {
     if (id != nullptr) return send_error(id, -32600, "Server has shut down");
 
     return true;
@@ -2793,8 +2736,7 @@ Server::run() throws -> int
   loop {
     let message = reader.read_message();
 
-    if (!message.has_value())
-      return lifecycle_has_shut_down(m_lifecycle) ? 0 : 1;
+    if (!message.has_value()) return m_has_shut_down ? 0 : 1;
 
     let  parser = JsonParser{*message};
     let *root   = parser.parse();
@@ -2804,7 +2746,7 @@ Server::run() throws -> int
       continue;
     }
 
-    if (!dispatch(*root)) return lifecycle_has_shut_down(m_lifecycle) ? 0 : 1;
+    if (!dispatch(*root)) return m_has_shut_down ? 0 : 1;
   }
 }
 
