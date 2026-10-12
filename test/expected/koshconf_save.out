@@ -1,9 +1,9 @@
 == the help documents the forms and $KOSHCONF:
 DESCRIPTION
-  The koshconf builtin loads and changes the settings Koshka owns, writes the
-  configuration file, and loads the binary form of KOSHCONF. save prints the
-  current settings as the value of $KOSHCONF, which a child kosh adopts, and
-  with --persist writes them to the user configuration file.
+  The koshconf builtin reads and writes Koshka settings and their binary
+  KOSHCONF form. The save form prints the current settings as KOSHCONF for a
+  child kosh; with --persist, it also writes them to the user configuration
+  file.
 
 SYNOPSIS
   koshconf create <bash|sh|kosh> [--force]
@@ -15,13 +15,15 @@ SYNOPSIS
 
 OPTIONS
       --help                            Display help.
-  -a, --all                             With list, also show the posix.legacy
-                                        and bash.legacy spelling of each option.
-      --persist                         With set, also write the option to the
-                                        user configuration file. With save,
-                                        write every current setting to it.
-      --force                           With create, replace an existing
-                                        configuration file.
+  -a, --all                             When used with list, also show the
+                                        posix.legacy and bash.legacy spelling of
+                                        each option.
+      --persist                         When used with set, also write the
+                                        option to the user configuration file.
+                                        When used with save, write every current
+                                        setting to it.
+      --force                           When used with create, replace an
+                                        existing configuration file.
 == list has no class column:
 0
 # name=value

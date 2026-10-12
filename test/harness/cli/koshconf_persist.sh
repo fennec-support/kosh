@@ -26,6 +26,9 @@ echo "== create --force also writes through the link:"
 echo "rc=$?"
 [ -L "$conf" ] && echo link-kept
 grep '^mood=' "$dotfiles/kosh.conf"
+echo "== an override keeps the previous file in .bak:"
+[ -f "$dotfiles/kosh.conf.bak" ] && echo backup-created
+grep '^mood=' "$dotfiles/kosh.conf.bak"
 echo "== a dangling link gets its target created:"
 "$BIN_DIR/invoke-koshkit" rm -f -- "$dotfiles/kosh.conf"
 "$BIN" -c 'koshconf set editor.hints.show_command_synopsis off --persist'

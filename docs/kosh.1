@@ -1917,7 +1917,10 @@ changes the option in the current session. With
 .BR \-\-persist ,
 it also rewrites that option's line in the user configuration file through a
 temporary file and a rename, leaving every other line in place. Every option a
-file may hold can be persisted. The value is checked before the session
+file may hold can be persisted. When the target exists, its previous contents
+are saved as
+.I kosh.conf.bak
+before replacement. The value is checked before the session
 changes, so a value the file cannot hold changes nothing.
 .B get
 prints the current value.
@@ -1965,8 +1968,10 @@ accepts the value. With
 .B save
 instead writes every setting a file may hold, with its current value, to the
 user configuration file through the same temporary file and rename as
-.BR create ,
-and prints nothing. A restricted shell refuses
+.BR create .
+When the target exists, its previous contents are saved as
+.I kosh.conf.bak
+before replacement. The command prints nothing. A restricted shell refuses
 .B save \-\-persist
 and allows a plain
 .BR save .

@@ -443,6 +443,38 @@ replace_koshconf_target(const Path &target, StringView contents) throws
     do_discard("flush the replacement of");
   }
 
+  if (os::path_exists(target.view())) {
+    let const backup_path = Path{String{target.text()} + ".bak"};
+    let const existing = target.read_entire_file();
+
+    if (!existing.has_value()) {
+      do_discard("read the configuration before replacing");
+    }
+
+    let const backup_temporary =
+        os::write_to_named_temp_file(directory, ".kosh.conf.bak",
+                                     existing->view());
+
+    if (!backup_temporary.has_value()) {
+      do_discard("write the configuration backup");
+    }
+
+    let const do_discard_backup = [&](StringView action) throws {
+      let const message = os::last_system_error_message();
+
+      unused(os::remove_file(backup_temporary->view()));
+      do_discard(action);
+      throw Error{message};
+    };
+
+    if (!os::set_file_mode(backup_temporary->view(), mode))
+      do_discard_backup("set the backup mode of");
+    if (!os::sync_path(backup_temporary->view(), os::sync_mode::All))
+      do_discard_backup("flush the configuration backup");
+    if (!os::rename_path(backup_temporary->view(), backup_path.view()))
+      do_discard_backup("replace the configuration backup");
+  }
+
   if (!os::rename_path(temporary->view(), target.view())) {
     do_discard("replace");
   }

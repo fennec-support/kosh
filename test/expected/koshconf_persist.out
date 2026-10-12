@@ -7,6 +7,9 @@ editor.auto_close_brackets_and_quotes=on
 rc=0
 link-kept
 mood=sh
+== an override keeps the previous file in .bak:
+backup-created
+mood=kosh
 == a dangling link gets its target created:
 rc=0
 link-kept
@@ -14,6 +17,7 @@ editor.hints.show_command_synopsis=off
 == no temporary file is left in either directory:
 kosh.conf
 kosh.conf
+kosh.conf.bak
 == an existing mode is kept:
 600
 640
