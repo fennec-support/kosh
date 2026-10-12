@@ -141,7 +141,6 @@ struct completion_session
   koshka::ArrayList<const char *> description_pointers{
       koshka::heap_allocator()};
   bool                      is_highlight_color_enabled{false};
-  bool                      is_highlight_styled_underlines_enabled{false};
   bool                      should_show_hints{true};
   bool                      should_show_diagnostics{true};
   bool                      has_pending_gather{false};
@@ -1049,9 +1048,7 @@ completion_session::highlight(const char *buffer, tl_highlight *out) -> int
       has_highlighted_spans = true;
     }
 
-    let const &theme = is_highlight_styled_underlines_enabled
-                           ? koshka::colors::SHELL_HIGHLIGHT_THEME
-                           : koshka::colors::NONINTERACTIVE_HIGHLIGHT_THEME;
+    let const &theme = koshka::colors::NONINTERACTIVE_HIGHLIGHT_THEME;
     let const  emphasis =
         theme.style_for(koshka::highlight_role::matching_bracket);
     let const bracket = koshka::completion::find_matching_bracket(
@@ -3077,8 +3074,6 @@ get_input(const String &prompt,
   if (is_completion_enabled()) {
     COMPLETION_SESSION.is_highlight_color_enabled =
         colors::stdout_wants_color();
-    COMPLETION_SESSION.is_highlight_styled_underlines_enabled =
-        colors::terminal_supports_styled_underlines();
     completion_base_directory = Path::current_directory();
     completion_storage        = koshka::completion::completion_result{
         koshka::ArrayList<koshka::String>{koshka::heap_allocator()},

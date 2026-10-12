@@ -4135,18 +4135,6 @@ public:
   }
 
   pure fn
-  has_custom_rcfile() const wontthrow -> bool
-  {
-    return m_has_custom_rcfile;
-  }
-
-  fn
-  set_custom_rcfile(bool has_custom_rcfile) wontthrow -> void
-  {
-    m_has_custom_rcfile = has_custom_rcfile;
-  }
-
-  pure fn
   startup_finished() const wontthrow -> bool
   {
     return m_is_startup_finished;
@@ -4191,7 +4179,6 @@ public:
 private:
   String m_init_moods{heap_allocator()};
   bool   m_is_login_shell{false};
-  bool   m_has_custom_rcfile{false};
   bool   m_is_restricted_shell{false};
   bool   m_is_startup_finished{false};
 };

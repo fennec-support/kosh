@@ -261,7 +261,6 @@ unexpected_command_token_message(const Token *token) throws -> String
   case Token::Kind::DoubleSemicolon:
     return "';;' is only valid between the arms of a 'case'";
   case Token::Kind::RightParen:   return "')' has no matching '('";
-  case Token::Kind::RightBracket: return "'}' has no matching '{'";
   case Token::Kind::Pipe:         return "'|' has no command before it to pipe from";
   default:                        {
     let const ast = token->to_ast_string();
@@ -276,7 +275,6 @@ is_compound_terminator(Token::Kind kind) wontthrow -> bool
 {
   switch (kind) {
   case Token::Kind::RightParen:
-  case Token::Kind::RightBracket:
   case Token::Kind::DoubleSemicolon:
   case Token::Kind::Then:
   case Token::Kind::Do:

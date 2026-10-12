@@ -61,9 +61,6 @@ stderr_is_a_terminal() wontthrow -> bool;
 fn
 terminal_wants_color(bool is_output_terminal) throws -> bool;
 
-fn
-terminal_supports_styled_underlines() throws -> bool;
-
 enum class file_entry_type : u8
 {
   Regular,
@@ -81,7 +78,6 @@ file_entry_type_of_mode(u32 mode) wontthrow -> file_entry_type;
 pure fn
 file_entry_color(file_entry_type type) wontthrow -> StringView;
 
-extern const highlight_theme SHELL_HIGHLIGHT_THEME;
 extern const highlight_theme NONINTERACTIVE_HIGHLIGHT_THEME;
 extern const highlight_theme PRINTED_SOURCE_HIGHLIGHT_THEME;
 extern const highlight_theme DIAGNOSTIC_HIGHLIGHT_THEME;

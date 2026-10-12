@@ -1014,9 +1014,7 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const 
   ASSERT(!program_args.is_empty());
 
   let const &program_name  = program_args[0];
-  let const  last_argument = program_args.is_empty()
-                                 ? String{cxt.scratch_allocator()}
-                                 : program_args.back();
+  let const  last_argument = program_args.back();
 
   let array_command_kind = assignment_builtin::None;
 
@@ -1215,7 +1213,6 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const 
   let       did_resolution_fail       = false;
   i64       resolution_failure_status = 0;
   let const is_program_word_a_path =
-      !program_args.is_empty() &&
       program_args[0].view().find_character('/').has_value();
 
   let const do_resolve_context = [&]() throws -> ExecContext {

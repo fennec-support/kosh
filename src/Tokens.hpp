@@ -893,7 +893,6 @@ TOKEN_STRUCT(TripleLess);
 
 TOKEN_STRUCT(LeftParen);
 TOKEN_STRUCT(RightParen);
-TOKEN_STRUCT(RightBracket);
 
 class Assignment : public Token
 {

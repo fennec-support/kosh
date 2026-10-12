@@ -1577,16 +1577,17 @@ EvalContext::ModifierWordExpander::expand_special_parameter(char name)
     throws -> void
 {
   let const special_name = StringView{&name, 1};
+  let const value        = m_context.get_variable_value(special_name);
 
-  if (!m_context.get_variable_value(special_name).has_value())
-    m_context.report_unset_reference(special_name);
+  if (!value.has_value()) m_context.report_unset_reference(special_name);
   if ((name == '@' || name == '*') && expand_field_reference(special_name)) {
     m_index++;
 
     return;
   }
 
-  emit_run(m_context.expand_variable(special_name), !m_is_in_double_quote);
+  emit_run(value.has_value() ? value->view() : StringView{},
+           !m_is_in_double_quote);
   m_index++;
 }
 
@@ -2297,7 +2298,7 @@ EvalContext::ParameterExpander::expand_subscripted() throws
 
   if (!close.has_value()) return None;
 
-  let const  subscript          = m_rest.substring_of_length(1, *close - 1);
+  let        subscript          = m_rest.substring_of_length(1, *close - 1);
   let        subscript_location = SourceLocation{};
   let const *subscript_location_pointer =
       get_location_for(subscript, subscript_location);
@@ -2317,6 +2318,23 @@ EvalContext::ParameterExpander::expand_subscripted() throws
   };
 
   if (*close + 1 == m_rest.length) return do_read_element();
+
+  char evaluated_index_text[24];
+
+  if (subscript != "@" && subscript != "*" &&
+      !m_context.is_associative_array(m_name) &&
+      (subscript.find_character('=').has_value() ||
+       subscript.find_substring("$(").has_value() ||
+       subscript.find_substring("${").has_value() ||
+       subscript.find_character('`').has_value() ||
+       subscript.find_substring("++").has_value() ||
+       subscript.find_substring("--").has_value()))
+  {
+    subscript = utils::int_to_text_into(
+        m_context.evaluate_arithmetic(subscript, subscript_location_pointer,
+                                      true),
+        evaluated_index_text, sizeof(evaluated_index_text));
+  }
 
   let const  modifier          = m_rest.substring(*close + 1);
   let        modifier_location = SourceLocation{};
@@ -4016,8 +4034,12 @@ EvalContext::apply_case_modification_to_value(
   out.reserve(value.length);
 
   for (usize i = 0; i < value.length;) {
-    let const step        = utils::charset_character_length(value, i, charset);
-    let const is_affected = should_modify_all || i == 0;
+    if (!should_modify_all && i != 0) {
+      out.append(value.substring(i));
+      break;
+    }
+
+    let const step = utils::charset_character_length(value, i, charset);
     let const is_pattern_match =
         pattern_matches_any ||
         (is_single_literal_pattern && step == 1 && value[i] == pattern[0]) ||
@@ -4025,7 +4047,7 @@ EvalContext::apply_case_modification_to_value(
          utils::glob_matches(pattern.view(), value.substring_of_length(i, step),
                              pattern_active, 0, extglob, charset));
 
-    if (!is_affected || !is_pattern_match) {
+    if (!is_pattern_match) {
       out.append(value.substring_of_length(i, step));
       i += step;
       continue;

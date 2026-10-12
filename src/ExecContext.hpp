@@ -116,9 +116,6 @@ public:
   fn
   print_to_stderr(StringView s) const throws -> void;
 
-  fn
-  execute(execution_mode mode) throws -> i32;
-
   pure fn
   program_path() const wontthrow -> const Path &;
   fn

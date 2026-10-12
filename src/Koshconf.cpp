@@ -816,6 +816,8 @@ read_koshconf_file(const Path &path, koshconf_reading &reading) throws
 
       return false;
     }
+  } else if (os::last_system_error_is_missing_file()) {
+    return false;
   }
 
   let const contents = path.read_entire_file();

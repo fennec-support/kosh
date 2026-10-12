@@ -100,8 +100,7 @@ has_multi_digit_positional_expansion(StringView source) wontthrow -> bool
 }
 
 fn
-literal_generated_path(const Token *token,
-                       const AnalysisContext &) throws -> Maybe<String>
+literal_generated_path(const Token *token) throws -> Maybe<String>
 {
   let literal = optimizer::literal_word_value(token);
 
@@ -145,7 +144,7 @@ update_generated_executable_paths(AnalysisContext                &actx,
       let output = Maybe<String>{};
 
       if (*literal == "-o" && i + 1 < args.count()) {
-        output = literal_generated_path(args[i + 1], actx);
+        output = literal_generated_path(args[i + 1]);
       } else if (literal->view().starts_with("-o") && literal->count() > 2) {
         output =
             normalized_relative_executable_path(literal->view().substring(2));
@@ -164,13 +163,13 @@ update_generated_executable_paths(AnalysisContext                &actx,
        command_id == command_name_id::Mv) &&
       args.count() == 3)
   {
-    let destination = literal_generated_path(args[2], actx);
+    let destination = literal_generated_path(args[2]);
 
     if (destination.has_value())
       actx.generated_relative_executable_paths.add(destination->view());
 
     if (command_id == command_name_id::Mv) {
-      let source = literal_generated_path(args[1], actx);
+      let source = literal_generated_path(args[1]);
 
       if (source.has_value())
         actx.generated_relative_executable_paths.remove(source->view());
@@ -189,7 +188,7 @@ update_generated_executable_paths(AnalysisContext                &actx,
       return;
     }
 
-    let target = literal_generated_path(args[1], actx);
+    let target = literal_generated_path(args[1]);
 
     if (target.has_value()) {
       actx.generated_relative_executable_paths.remove(target->view());
@@ -425,26 +424,7 @@ bare_glob_can_start_with_dash(const Word &word) wontthrow -> bool
 cold pure fn
 internal::view_contains(StringView view, StringView needle) wontthrow -> bool
 {
-  if (needle.length == 0 || needle.length > view.length) {
-    return false;
-  }
-
-  let const last_start = view.length - needle.length;
-
-  for (usize start = 0; start <= last_start; start++) {
-    if (view[start] != needle[0]) continue;
-
-    usize matched = 1;
-
-    while (matched < needle.length && view[start + matched] == needle[matched])
-    {
-      matched++;
-    }
-
-    if (matched == needle.length) return true;
-  }
-
-  return false;
+  return needle.length != 0 && view.find_substring(needle).has_value();
 }
 
 cold pure fn
@@ -938,15 +918,14 @@ SimpleCommand::analyze(AnalysisContext &actx, bool is_unconditional) const throw
     }
   }
 
-  usize source_command_index = m_args.count();
+  let const wrapped_index        = wrapped_command_index(command_id, m_args);
+  usize     source_command_index = m_args.count();
 
   if (!is_command_shadowed && (command_id == command_name_id::Dot ||
                                command_id == command_name_id::Source))
   {
     source_command_index = 0;
   } else if (!is_command_shadowed) {
-    let const wrapped_index = wrapped_command_index(command_id, m_args);
-
     if (wrapped_index.has_value()) {
       let       command_storage = String{heap_allocator()};
       let const wrapped_command =
@@ -1487,19 +1466,15 @@ SimpleCommand::analyze(AnalysisContext &actx, bool is_unconditional) const throw
   bool is_runtime_definer =
       command_info.is_in_group(COMMAND_GROUP_RUNTIME_DEFINER);
 
-  if (let const wrapped_index = wrapped_command_index(command_id, m_args);
-      wrapped_index.has_value())
-  {
-    if (*wrapped_index < m_args.count()) {
-      runtime_definer_name = m_args[*wrapped_index]->raw_string();
+  if (wrapped_index.has_value()) {
+    runtime_definer_name = m_args[*wrapped_index]->raw_string();
 
-      let const runtime_definer_info =
-          get_analysis_command_info(runtime_definer_name.view());
+    let const runtime_definer_info =
+        get_analysis_command_info(runtime_definer_name.view());
 
-      runtime_definer_id = runtime_definer_info.id;
-      is_runtime_definer =
-          runtime_definer_info.is_in_group(COMMAND_GROUP_RUNTIME_DEFINER);
-    }
+    runtime_definer_id = runtime_definer_info.id;
+    is_runtime_definer =
+        runtime_definer_info.is_in_group(COMMAND_GROUP_RUNTIME_DEFINER);
   }
 
   if (did_analyze_source && (runtime_definer_id == command_name_id::Dot ||

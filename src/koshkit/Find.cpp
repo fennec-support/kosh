@@ -295,7 +295,7 @@ public:
         continue;
       }
 
-      emit_child(display, child_entry.name.view());
+      report_match(display, child_entry.name.view());
     }
   }
 
@@ -350,56 +350,45 @@ private:
   }
 
   fn
-  emit_child(StringView display, StringView child_name) throws -> void
-  {
-    report_match(display, child_name);
-  }
-
-  fn
   report_match(StringView display, StringView child_name) throws -> void
   {
-    if (m_actions == nullptr) {
-      m_output += display;
-      if (!child_name.is_empty()) {
-        if (!display.is_empty() && display[display.length - 1] != '/') {
-          m_output += '/';
-        }
-
-        m_output += child_name;
+    let const do_append_path = [&](String &target) throws -> void {
+      target += display;
+      if (child_name.is_empty()) return;
+      if (!display.is_empty() && display[display.length - 1] != '/') {
+        target += '/';
       }
 
+      target += child_name;
+    };
+
+    if (m_actions == nullptr) {
+      do_append_path(m_output);
       m_output += '\n';
       flush_full_output();
 
       return;
     }
 
-    String path{m_allocator, display};
-
-    if (!child_name.is_empty()) {
-      if (!display.is_empty() && display[display.length - 1] != '/') {
-        path += '/';
-      }
-
-      path += child_name;
-    }
-
     for (let &action : *m_actions) {
       switch (action.kind) {
       case find_action_kind::Print:
-        m_output += path.view();
+        do_append_path(m_output);
         m_output += '\n';
         flush_full_output();
         break;
 
       case find_action_kind::PrintNull:
-        m_output += path.view();
+        do_append_path(m_output);
         m_output += '\0';
         flush_full_output();
         break;
 
       case find_action_kind::Execute: {
+        let path    = String{m_allocator};
         let command = ArrayList<String>{m_allocator};
+
+        do_append_path(path);
 
         for (let const &part : action.command)
           command.push(
@@ -410,11 +399,15 @@ private:
         if (run_command(steal(command), action.command_locations) != 0) return;
         break;
       }
-      case find_action_kind::ExecuteBatch:
+      case find_action_kind::ExecuteBatch: {
+        let path = String{m_allocator};
+
+        do_append_path(path);
         action.batch_byte_count += path.count() + 1;
         action.batch_paths.push(steal(path));
         if (action.batch_byte_count >= FIND_BATCH_BYTE_LIMIT) run_batch(action);
         break;
+      }
       }
     }
   }

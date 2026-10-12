@@ -597,13 +597,11 @@ fn
 Server::initialize(const JsonValue *id, const JsonValue *params) throws
     -> bool
 {
-  if (params != nullptr && params->kind == json_kind::Object) {
-    if (let const root_uri = string_field(params, "rootUri");
-        root_uri.has_value())
-    {
-      if (let path = decode_file_uri(*root_uri); path.has_value())
-        m_workspace_root = path.take();
-    }
+  if (let const root_uri = string_field(params, "rootUri");
+      root_uri.has_value())
+  {
+    if (let path = decode_file_uri(*root_uri); path.has_value())
+      m_workspace_root = path.take();
   }
 
   m_client         = client_capabilities::from_initialize_params(params);

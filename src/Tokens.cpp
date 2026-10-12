@@ -846,7 +846,6 @@ TOKEN_DECLS(PipeAmpersand, "|&");
 TOKEN_DECLS(TripleLess, "<<<");
 TOKEN_DECLS(LeftParen, "(");
 TOKEN_DECLS(RightParen, ")");
-TOKEN_DECLS(RightBracket, "}");
 
 Assignment::Assignment(SourceLocation         location,
                        String                 key,

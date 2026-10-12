@@ -463,17 +463,10 @@ directory_entry_kind(const Path                 &directory,
 
   full_path.append(entry.name.view());
 
-  let status = os::file_status{};
+  if (full_path.is_directory()) return Path::EntryKind::Directory;
+  if (full_path.is_regular_file()) return Path::EntryKind::Regular;
 
-  if (!os::stat_path_following(full_path.view(), status)) {
-    return Path::EntryKind::Other;
-  }
-
-  switch (os::file_type_letter(status.mode)) {
-  case 'd': return Path::EntryKind::Directory;
-  case '-': return Path::EntryKind::Regular;
-  default:  return Path::EntryKind::Other;
-  }
+  return Path::EntryKind::Other;
 }
 
 fn

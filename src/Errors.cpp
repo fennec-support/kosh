@@ -136,14 +136,12 @@ diagnostic_colors_for(error_severity severity) throws
   case error_severity::warning:
     return diagnostic_color{colors::ansi::YELLOW, {}, {}, colors::ansi::YELLOW};
   case error_severity::note:
+  case error_severity::trace:
     return diagnostic_color{
         colors::ansi::CYAN, {}, colors::ansi::CYAN, colors::ansi::CYAN};
   case error_severity::details:
     return diagnostic_color{
         colors::ansi::BLUE, {}, colors::ansi::BLUE, colors::ansi::BLUE};
-  case error_severity::trace:
-    return diagnostic_color{
-        colors::ansi::CYAN, {}, colors::ansi::CYAN, colors::ansi::CYAN};
   }
 
   unreachable("invalid diagnostic color severity %d", ENUM(severity));

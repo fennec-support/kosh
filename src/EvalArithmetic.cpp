@@ -2441,7 +2441,9 @@ public:
     if (ti < toks.count() && toks[ti].k == arith_token::kind::number) {
       let value = ArithmeticValue{toks[ti].value};
 
-      if (is_exact) lex_exact_arith_number(toks[ti].text, &value, arena);
+      if (is_exact && !is_plain_decimal_operand(toks[ti].text)) {
+        lex_exact_arith_number(toks[ti].text, &value, arena);
+      }
       ti++;
 
       return value;

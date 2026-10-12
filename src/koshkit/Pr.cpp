@@ -62,13 +62,6 @@ parse_pr_number(StringView text) wontthrow -> Maybe<usize>
   return static_cast<usize>(parsed.value());
 }
 
-static fn
-append_pr_indent(String &output, usize offset) throws -> void
-{
-  for (usize position = 0; position < offset; position++)
-    output += ' ';
-}
-
 static constexpr usize PR_FRAME_LINE_COUNT   = 10;
 static constexpr usize PR_TAB_WIDTH          = 8;
 static constexpr usize PR_NUMBER_DIGIT_COUNT = 5;
@@ -77,7 +70,6 @@ static constexpr usize PR_NUMBER_FIELD_WIDTH = 8;
 struct pr_layout
 {
   usize      offset{0};
-  usize      column_count{1};
   usize      column_width{0};
   usize      number_width{0};
   StringView separator{};
@@ -129,9 +121,9 @@ public:
       return;
     }
 
-    while (m_position < target) {
-      m_output += ' ';
-      m_position++;
+    if (target > m_position) {
+      m_output.append_repeated(' ', target - m_position);
+      m_position = target;
     }
   }
 
@@ -194,11 +186,8 @@ public:
       m_position = next_stop;
     }
 
-    while (m_position < goal) {
-      m_output += ' ';
-      m_position++;
-    }
-
+    m_output.append_repeated(' ', goal - m_position);
+    m_position            = goal;
     m_pending_space_count = 0;
   }
 
@@ -651,7 +640,6 @@ Pr::execute(const ExecContext               &ec,
   let layout = pr_layout{};
 
   layout.offset             = offset;
-  layout.column_count       = effective_column_count;
   layout.separator          = separator;
   layout.is_multicolumn     = is_multicolumn;
   layout.is_aligned         = is_aligned;
@@ -694,7 +682,7 @@ Pr::execute(const ExecContext               &ec,
     writer.pad_to(offset);
     writer.flush_spaces();
     output += "\n\n";
-    append_pr_indent(output, offset);
+    output.append_repeated(' ', offset);
 
     let const page_text =
         StringView{"Page "} + String::from(page_number, page_allocator);
@@ -706,12 +694,12 @@ Pr::execute(const ExecContext               &ec,
     let const left_space_count = available_width / 2;
 
     output += date_text;
-    append_pr_indent(output, left_space_count < 1 ? 1 : left_space_count);
+    output.append_repeated(' ', left_space_count < 1 ? 1 : left_space_count);
     output += title;
 
     let const right_space_count = available_width - left_space_count;
 
-    append_pr_indent(output, right_space_count < 1 ? 1 : right_space_count);
+    output.append_repeated(' ', right_space_count < 1 ? 1 : right_space_count);
     output += page_text;
     output += "\n\n\n";
   };
@@ -877,18 +865,17 @@ Pr::execute(const ExecContext               &ec,
         do_append_header(date_text.view(), title, page_number);
 
       let const entry_count          = lines.count();
-      let const column_count_on_page = effective_column_count;
       let       column_starts        = ArrayList<usize>{page_allocator};
       let       column_lengths       = ArrayList<usize>{page_allocator};
       usize     row_count            = 0;
 
-      if (column_count_on_page > 1 && !FLAG_PR_ACROSS.is_enabled()) {
+      if (effective_column_count > 1 && !FLAG_PR_ACROSS.is_enabled()) {
         usize next_start = 0;
 
-        for (usize column = 0; column < column_count_on_page; column++) {
+        for (usize column = 0; column < effective_column_count; column++) {
           let const length =
-              entry_count / column_count_on_page +
-              (column < entry_count % column_count_on_page ? 1 : 0);
+              entry_count / effective_column_count +
+              (column < entry_count % effective_column_count ? 1 : 0);
 
           column_starts.push(next_start);
           column_lengths.push(length);
@@ -898,7 +885,7 @@ Pr::execute(const ExecContext               &ec,
         row_count = column_lengths[0];
       } else {
         row_count =
-            (entry_count + column_count_on_page - 1) / column_count_on_page;
+            (entry_count + effective_column_count - 1) / effective_column_count;
       }
 
       usize emitted_line_count = 0;
@@ -909,13 +896,13 @@ Pr::execute(const ExecContext               &ec,
 
         usize present_count = 0;
 
-        for (usize column = 0; column < column_count_on_page; column++) {
+        for (usize column = 0; column < effective_column_count; column++) {
           let entry       = pr_row_entry{};
           let entry_index = usize{0};
           let is_present  = false;
 
           if (column_starts.is_empty()) {
-            entry_index = row_index * column_count_on_page + column;
+            entry_index = row_index * effective_column_count + column;
             is_present  = entry_index < entry_count;
           } else {
             entry_index = column_starts[column] + row_index;
@@ -933,9 +920,10 @@ Pr::execute(const ExecContext               &ec,
         }
 
         let const is_last_row = row_index + 1 == row_count;
-        let const is_input_exhausted =
-            is_last_row && has_ended && column_count_on_page > 1 &&
-            (!column_starts.is_empty() || present_count < column_count_on_page);
+        let const is_input_exhausted = is_last_row && has_ended &&
+                                       effective_column_count > 1 &&
+                                       (!column_starts.is_empty() ||
+                                        present_count < effective_column_count);
 
         do_append_row(row, is_input_exhausted, emitted_line_count);
       }

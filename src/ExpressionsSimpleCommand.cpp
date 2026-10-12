@@ -1035,15 +1035,12 @@ internal::resolve_redirection(const Redirection    &redir,
 
   let const file_fd = opened.take();
 
-  if (should_memoize_append &&
-      cxt.retain_loop_redirect_fd(redir.fd, target_path, mode, file_fd))
-  {
-    return resolved_redirection{redirection_outcome::OpenedFile, redir.fd,
-                                file_fd, -1, true};
-  }
+  let const is_retained =
+      should_memoize_append &&
+      cxt.retain_loop_redirect_fd(redir.fd, target_path, mode, file_fd);
 
   return resolved_redirection{redirection_outcome::OpenedFile, redir.fd,
-                              file_fd, -1, false};
+                              file_fd, -1, is_retained};
 }
 
 static fn
@@ -2090,16 +2087,13 @@ SimpleCommand::redirect_exec_context(ExecContext &ec, EvalContext &cxt) const th
         ec.should_duplicate_output_to_error = true;
         ec.was_output_to_error_last         = true;
         ec.did_error_file_follow_output_dup = false;
-      } else if (target_fd > 2) {
+      } else if (target_fd > 2 || r.dup_from_fd == Redirection::DUP_FD_CLOSE) {
         let const dup_from_fd =
             r.dup_from_fd == Redirection::DUP_FD_CLOSE ? -1 : r.dup_from_fd;
 
         bind_nonstandard_fd(
             nonstandard,
             nonstandard_descriptor{KOSH_INVALID_FD, target_fd, dup_from_fd});
-      } else if (r.dup_from_fd == Redirection::DUP_FD_CLOSE) {
-        bind_nonstandard_fd(nonstandard, nonstandard_descriptor{KOSH_INVALID_FD,
-                                                                target_fd, -1});
       } else {
         let const copied = os::duplicate_shell_fd(r.dup_from_fd);
 

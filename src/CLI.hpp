@@ -562,12 +562,6 @@ public:
   }
 
   fn
-  clear_rows() wontthrow -> void
-  {
-    m_grid_rows.clear();
-  }
-
-  fn
   set_column_gap(usize space_count) wontthrow -> void
   {
     m_column_gap_space_count = space_count;

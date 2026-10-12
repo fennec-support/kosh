@@ -392,6 +392,8 @@ EvalContext::set_array_element(StringView name,
   if (index == dense_count) {
     dense->push(String{heap_allocator(), value});
 
+    if (!variable_store().sparse_arrays().has(name)) return;
+
     loop {
       let const key =
           sparse_array_key(name, dense->count(), scratch_allocator());
@@ -403,8 +405,7 @@ EvalContext::set_array_element(StringView name,
       variable_store().sparse_arrays().values().erase(key.view());
     }
 
-    if (variable_store().sparse_arrays().has(name) &&
-        !sparse_array_has_entries(variable_store().sparse_arrays().values(),
+    if (!sparse_array_has_entries(variable_store().sparse_arrays().values(),
                                   name, scratch_allocator()))
     {
       variable_store().sparse_arrays().forget(name);
@@ -980,9 +981,6 @@ EvalContext::declare_local(StringView name,
   if (!should_inherit_value) {
     force_unset_shell_variable(name);
     if (was_previously_exported) mark_exported(name);
-  }
-
-  if (!should_inherit_value) {
     variable_store().indexed_arrays().erase(name);
     clear_sparse_array(name);
     clear_associative_array(name);

@@ -1366,7 +1366,6 @@ struct session_config
   bool                       is_interactive;
   bool                       is_login_shell;
   bool                       is_restricted_shell;
-  bool                       has_custom_rcfile;
   bool                       has_execution_string;
   bool                       is_stats_enabled;
   bool                       should_show_ast;
@@ -1426,7 +1425,6 @@ read_session_config(const invocation_identity &identity,
                         input.should_be_interactive,
                         identity.is_login_shell,
                         identity.is_restricted_shell,
-                        selected_rcfile().has_value(),
                         input.should_execute_commands,
                         FLAG_STATS.is_enabled(),
                         FLAG_AST.is_enabled(),
@@ -1475,7 +1473,6 @@ apply_session_config(EvalContext          &context,
   }
 
   context.startup_store().set_login_shell(config.is_login_shell);
-  context.startup_store().set_custom_rcfile(config.has_custom_rcfile);
   if (config.is_restricted_shell) {
     context.startup_store().set_restricted_shell(true);
   }
@@ -1841,8 +1838,11 @@ struct script_cursor
 
     LOG(Info, "taking the next -c command string, %zu bytes",
         chunk.contents.count());
-    chunk.root_frame_call_site =
-        find_command_call_site(line, FLAG_COMMAND.value_position());
+    if (FLAG_COMMAND.count() > 1) {
+      chunk.root_frame_call_site =
+          find_command_call_site(line, FLAG_COMMAND.value_position());
+    }
+
     if (FLAG_COMMAND.at_end() &&
         (!FLAG_LINT.is_enabled() || !input.should_read_files))
     {

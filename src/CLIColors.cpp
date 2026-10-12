@@ -90,7 +90,6 @@ make_diagnostic_highlight_theme() wontthrow -> highlight_theme
   return theme;
 }
 
-const highlight_theme SHELL_HIGHLIGHT_THEME = make_shell_highlight_theme();
 const highlight_theme NONINTERACTIVE_HIGHLIGHT_THEME =
     make_noninteractive_highlight_theme();
 const highlight_theme PRINTED_SOURCE_HIGHLIGHT_THEME =
@@ -171,12 +170,6 @@ fn
 terminal_wants_color(bool is_output_terminal) throws -> bool
 {
   return is_output_terminal && !color_is_suppressed_by_environment();
-}
-
-fn
-terminal_supports_styled_underlines() throws -> bool
-{
-  return false;
 }
 
 pure fn

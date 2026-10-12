@@ -190,10 +190,7 @@ execute_context(ExecContext  &&ec,
     ec.err_fd.reset();
     const mimic_mood mode = cxt.runtime_state().get_mood();
 
-    quit(cxt.run_program_fallback(ec, mode,
-                                  should_replace_shell
-                                      ? script_isolation::Shared
-                                      : script_isolation::Isolated),
+    quit(cxt.run_program_fallback(ec, mode, script_isolation::Shared),
          farewell_policy::Silent);
   }
 
