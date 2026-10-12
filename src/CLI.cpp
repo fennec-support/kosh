@@ -1766,6 +1766,35 @@ leave_alternate_screen(const ExecContext &ec) wontthrow -> void
 }
 
 fn
+write_screen_frame(const ExecContext &ec,
+                   StringView         frame,
+                   u32                row_count,
+                   Allocator          allocator) throws -> void
+{
+  let const kept_line_count = row_count > 1 ? usize{row_count} - 1 : SIZE_MAX;
+  let       screen          = String{allocator};
+  usize     position        = 0;
+  usize     line_count      = 0;
+
+  screen.reserve(frame.length + 64);
+  screen += "\x1b[?2026h\x1b[H";
+
+  while (position < frame.length && line_count < kept_line_count) {
+    let const newline = frame.substring(position).find_character('\n');
+    let const line_end =
+        newline.has_value() ? position + *newline + 1 : frame.length;
+
+    screen += "\x1b[K";
+    screen += frame.substring_of_length(position, line_end - position);
+    position = line_end;
+    line_count++;
+  }
+
+  screen += "\x1b[J\x1b[?2026l";
+  ec.print_to_stdout(screen.view());
+}
+
+fn
 hide_cursor(const ExecContext &ec) wontthrow -> bool
 {
   return write_alternate_screen_sequence(ec, "\x1b[?25l");

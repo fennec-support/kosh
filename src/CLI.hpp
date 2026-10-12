@@ -615,6 +615,11 @@ enter_alternate_screen(const ExecContext &ec) wontthrow -> bool;
 fn
 leave_alternate_screen(const ExecContext &ec) wontthrow -> void;
 fn
+write_screen_frame(const ExecContext &ec,
+                   StringView         frame,
+                   u32                row_count,
+                   Allocator          allocator) throws -> void;
+fn
 hide_cursor(const ExecContext &ec) wontthrow -> bool;
 fn
 show_cursor(const ExecContext &ec) wontthrow -> void;

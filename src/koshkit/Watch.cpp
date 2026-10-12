@@ -187,9 +187,12 @@ Watch::execute(const ExecContext               &ec,
 
   loop {
     u32 column_count = FALLBACK_COLUMN_COUNT;
+    u32 row_count    = 0;
 
-    if (let const dimensions = os::get_terminal_dimensions())
+    if (let const dimensions = os::get_terminal_dimensions()) {
       column_count = dimensions->columns;
+      row_count    = dimensions->rows;
+    }
 
     let const body =
         cxt.capture_command_substitution(command, StringView{"watch"});
@@ -197,7 +200,6 @@ Watch::execute(const ExecContext               &ec,
 
     let screen = String{allocator};
 
-    if (is_terminal) screen += "\x1b[H\x1b[2J";
     if (!FLAG_WATCH_NO_TITLE.is_enabled()) {
       let const title = build_title(command.view(), interval_seconds,
                                     column_count, allocator);
@@ -208,7 +210,11 @@ Watch::execute(const ExecContext               &ec,
     }
 
     append_truncated_lines(screen, body.view(), column_count);
-    ec.print_to_stdout(screen);
+    if (is_terminal) {
+      write_screen_frame(ec, screen.view(), row_count, allocator);
+    } else {
+      ec.print_to_stdout(screen);
+    }
 
     if (FLAG_WATCH_ERROR_EXIT.is_enabled() && command_status != 0) {
       status = command_status;

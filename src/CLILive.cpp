@@ -418,7 +418,6 @@ LiveView::append_frame_start(String                     &frame,
                              const live_view_dimensions &dimensions,
                              Allocator allocator) const throws -> void
 {
-  if (m_is_terminal) frame += "\x1b[H\x1b[2J";
   if (!m_options.should_show_header) return;
 
   let const should_style = m_is_terminal && m_options.should_color;
@@ -534,27 +533,16 @@ LiveView::append_frame_start(String                     &frame,
 }
 
 fn
-LiveView::write_frame(String                     &frame,
+LiveView::write_frame(const String               &frame,
                       const live_view_dimensions &dimensions) const throws -> void
 {
-  if (m_is_terminal && dimensions.rows > 1) {
-    usize line_count  = 0;
-    usize clip_length = frame.length();
+  if (!m_is_terminal) {
+    m_ec.print_to_stdout(frame.view());
 
-    for (usize index = 0; index < frame.length(); index++) {
-      if (frame[index] != '\n') continue;
-
-      line_count++;
-      if (line_count == dimensions.rows - 1) {
-        clip_length = index + 1;
-        break;
-      }
-    }
-
-    frame.truncate(clip_length);
+    return;
   }
 
-  m_ec.print_to_stdout(frame.view());
+  write_screen_frame(m_ec, frame.view(), dimensions.rows, frame.allocator());
 }
 
 } /* namespace koshka::koshkit */

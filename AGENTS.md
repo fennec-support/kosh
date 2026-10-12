@@ -251,9 +251,11 @@ same encoding that every spawned process receives."
   `src`, such as `src/CLILive` and the file-mode parser in `src/UtilsIO.cpp`.
 - `src/CLILive` owns every Evil live view, the meow screensaver, and the
   retained live rows. It holds the alternate screen, raw key input, sample and
-  refresh interval, the styled header, and one write per frame. The
-  screensaver turns the header off. Redirected frames carry no escape
-  sequences.
+  refresh interval, the styled header, and one write per frame. A terminal
+  frame and every `watch` screen go through `write_screen_frame`, which
+  redraws the rows in place inside one synchronized update and never clears
+  the screen first. The screensaver turns the header off. Redirected frames
+  carry no escape sequences.
 
 ## Platform
 

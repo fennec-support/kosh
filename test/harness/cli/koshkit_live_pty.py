@@ -15,6 +15,9 @@ import time
 
 
 FRAME_MARKER = b"  LIVE"
+LINE_ERASE = b"\x1b[K"
+SYNC_START = b"\x1b[?2026h"
+SYNC_END = b"\x1b[?2026l"
 HEADER_BAR_STYLE = b"\x1b[0;48;5;236;38;5;252m"
 
 
@@ -84,7 +87,8 @@ def run_pty(binary, command, keys=()):
             break
         output.extend(chunk)
     _, status = os.waitpid(pid, 0)
-    all_parts = bytes(output).split(FRAME_MARKER)
+    # Each frame row starts with an erase to the end of the line.
+    all_parts = bytes(output).replace(LINE_ERASE, b"").split(FRAME_MARKER)
     # The final part contains terminal cleanup after the last frame, not a frame.
     frame_parts = all_parts[1:-1]
     blank_counts = [part.count(b"\r\n\r\n") for part in frame_parts]
@@ -102,6 +106,9 @@ def run_pty(binary, command, keys=()):
         "alternate_leave": b"\x1b[?1049l" in output,
         "cursor_hide": b"\x1b[?25l" in output,
         "cursor_show": b"\x1b[?25h" in output,
+        "synchronized_frames": output.count(SYNC_START)
+        == output.count(SYNC_END) == output.count(FRAME_MARKER)
+        and b"\x1b[2J" not in output,
         "blank_separator": bool(frame_parts) and all(
             count == 1 for count in blank_counts
         ),
@@ -196,6 +203,7 @@ def main():
                         "alternate_leave": True,
                         "cursor_hide": True,
                         "cursor_show": True,
+                        "synchronized_frames": True,
                         "blank_separator": True}
         if keys:
             requirements["sort_cycle"] = True

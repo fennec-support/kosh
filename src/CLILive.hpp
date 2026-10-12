@@ -111,7 +111,7 @@ public:
                      const live_view_dimensions &dimensions,
                      Allocator                   allocator) const throws -> void;
   fn
-  write_frame(String &frame, const live_view_dimensions &dimensions) const throws -> void;
+  write_frame(const String &frame, const live_view_dimensions &dimensions) const throws -> void;
 
 private:
   const ExecContext        &m_ec;
