@@ -58,8 +58,8 @@
 #define KOSH_COMPILER KOSH_COMPILER_COMMAND " (" __VERSION__ ", " KOSH_LIBC ")"
 
 #define KOSH_VER_MAJOR  0
-#define KOSH_VER_MINOR  3
-#define KOSH_VER_PATCH  1
+#define KOSH_VER_MINOR  4
+#define KOSH_VER_PATCH  0
 #define KOSH_VER_SUFFIX "/dev"
 
 #define KOSH_STRINGIFY_INNER(x) #x
