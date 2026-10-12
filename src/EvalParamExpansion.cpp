@@ -1829,17 +1829,20 @@ private:
   expand_subscripted() throws -> Maybe<String>;
   fn
   expand_element_operator(StringView            subscript,
+                          StringView            subscript_text,
                           const SourceLocation *subscript_location,
                           StringView            modifier,
                           char                  modifier_op) throws -> Maybe<String>;
   fn
   expand_element_test(StringView            subscript,
+                      StringView            subscript_text,
                       const SourceLocation *subscript_location,
                       StringView            modifier,
                       bool                  is_colon,
                       char                  after) throws -> Maybe<String>;
   fn
   expand_element_transform(StringView            subscript,
+                           StringView            subscript_text,
                            const SourceLocation *subscript_location,
                            char                  op) throws -> String;
   fn
@@ -2148,6 +2151,7 @@ EvalContext::ParameterExpander::split_name() wontthrow -> void
 fn
 EvalContext::ParameterExpander::expand_element_test(
     StringView            subscript,
+    StringView            subscript_text,
     const SourceLocation *subscript_location,
     StringView            modifier,
     bool                  is_colon,
@@ -2183,9 +2187,10 @@ EvalContext::ParameterExpander::expand_element_test(
   case '?':
     if (should_treat_as_unset) {
       if (word.is_empty())
-        throw_script_fatal("Unable to expand '" + m_name + "[" + subscript +
+        throw_script_fatal("Unable to expand '" + m_name + "[" +
+                           subscript_text +
                            "]' because the element is not set or is empty");
-      throw_script_fatal(m_name + "[" + subscript + "]: " +
+      throw_script_fatal(m_name + "[" + subscript_text + "]: " +
                          expand_word(word, parameter_word_quoting::Unquoted));
     }
 
@@ -2199,6 +2204,7 @@ EvalContext::ParameterExpander::expand_element_test(
 fn
 EvalContext::ParameterExpander::expand_element_operator(
     StringView            subscript,
+    StringView            subscript_text,
     const SourceLocation *subscript_location,
     StringView            modifier,
     char                  modifier_op) throws -> Maybe<String>
@@ -2218,14 +2224,15 @@ EvalContext::ParameterExpander::expand_element_operator(
   }
 
   if (is_test_form) {
-    return expand_element_test(subscript, subscript_location, modifier,
-                               is_colon, after);
+    return expand_element_test(subscript, subscript_text, subscript_location,
+                               modifier, is_colon, after);
   }
 
   if (modifier_op == '@' && modifier.length == 2 &&
       is_transform_operator(modifier[1]))
   {
-    return expand_element_transform(subscript, subscript_location, modifier[1]);
+    return expand_element_transform(subscript, subscript_text,
+                                    subscript_location, modifier[1]);
   }
 
   return None;
@@ -2234,6 +2241,7 @@ EvalContext::ParameterExpander::expand_element_operator(
 fn
 EvalContext::ParameterExpander::expand_element_transform(
     StringView            subscript,
+    StringView            subscript_text,
     const SourceLocation *subscript_location,
     char                  op) throws -> String
 {
@@ -2244,7 +2252,7 @@ EvalContext::ParameterExpander::expand_element_transform(
   let const is_set = m_context.array_element_is_set(m_name, subscript);
 
   if (!is_set && m_context.runtime_state().error_unset()) {
-    m_context.report_unset_reference(m_name + "[" + subscript + "]");
+    m_context.report_unset_reference(m_name + "[" + subscript_text + "]");
   }
 
   if (op == 'a') {
@@ -2298,18 +2306,19 @@ EvalContext::ParameterExpander::expand_subscripted() throws
 
   if (!close.has_value()) return None;
 
-  let        subscript          = m_rest.substring_of_length(1, *close - 1);
+  let const  subscript          = m_rest.substring_of_length(1, *close - 1);
   let        subscript_location = SourceLocation{};
   let const *subscript_location_pointer =
       get_location_for(subscript, subscript_location);
+  let element_subscript = subscript;
 
   let const do_read_element = [&]() throws -> String {
-    let element = m_context.apply_array_subscript(m_name, subscript,
+    let element = m_context.apply_array_subscript(m_name, element_subscript,
                                                   subscript_location_pointer);
 
     if (element.is_empty() && subscript != "@" && subscript != "*" &&
         m_context.runtime_state().error_unset() &&
-        !m_context.array_element_is_set(m_name, subscript))
+        !m_context.array_element_is_set(m_name, element_subscript))
     {
       m_context.report_unset_reference(m_name + "[" + subscript + "]");
     }
@@ -2318,23 +2327,6 @@ EvalContext::ParameterExpander::expand_subscripted() throws
   };
 
   if (*close + 1 == m_rest.length) return do_read_element();
-
-  char evaluated_index_text[24];
-
-  if (subscript != "@" && subscript != "*" &&
-      !m_context.is_associative_array(m_name) &&
-      (subscript.find_character('=').has_value() ||
-       subscript.find_substring("$(").has_value() ||
-       subscript.find_substring("${").has_value() ||
-       subscript.find_character('`').has_value() ||
-       subscript.find_substring("++").has_value() ||
-       subscript.find_substring("--").has_value()))
-  {
-    subscript = utils::int_to_text_into(
-        m_context.evaluate_arithmetic(subscript, subscript_location_pointer,
-                                      true),
-        evaluated_index_text, sizeof(evaluated_index_text));
-  }
 
   let const  modifier          = m_rest.substring(*close + 1);
   let        modifier_location = SourceLocation{};
@@ -2346,11 +2338,23 @@ EvalContext::ParameterExpander::expand_subscripted() throws
     return String{m_context.scratch_allocator()};
   }
 
+  char evaluated_index_text[24];
+
+  if (subscript != "@" && subscript != "*" &&
+      !subscript.is_all_decimal_digits() &&
+      !m_context.is_associative_array(m_name))
+  {
+    element_subscript = utils::int_to_text_into(
+        m_context.evaluate_arithmetic(subscript, subscript_location_pointer,
+                                      true),
+        evaluated_index_text, sizeof(evaluated_index_text));
+  }
+
   if (modifier_op == '@' &&
       m_context.runtime_state().get_mood() != mimic_mood::Posix &&
       (modifier.length != 2 || !is_transform_operator(modifier[1])))
   {
-    if (!m_context.array_element_is_set(m_name, subscript))
+    if (!m_context.array_element_is_set(m_name, element_subscript))
       return String{m_context.scratch_allocator()};
 
     raise_unknown_transformation(modifier);
@@ -2365,8 +2369,9 @@ EvalContext::ParameterExpander::expand_subscripted() throws
   }
 
   if (subscript != "@" && subscript != "*") {
-    if (let element = expand_element_operator(
-            subscript, subscript_location_pointer, modifier, modifier_op);
+    if (let element = expand_element_operator(element_subscript, subscript,
+                                              subscript_location_pointer,
+                                              modifier, modifier_op);
         element.has_value())
     {
       return element;

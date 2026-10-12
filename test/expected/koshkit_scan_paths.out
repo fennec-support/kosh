@@ -1,0 +1,55 @@
+--- cksum lengths ---
+4294967295 0 len-0
+433426081 1 len-1
+4219530715 2 len-2
+2925012687 3 len-3
+1864731933 4 len-4
+275291717 5 len-5
+2611926154 7 len-7
+705197099 8 len-8
+23393632 9 len-9
+2162985709 4096 len-4096
+1429035699 65537 len-65537
+--- cksum stdin ---
+682271793 13893
+--- diff separated edits ---
+7d6
+< 7
+19c18
+< 19
+---
+> nineteen
+40a40
+> inserted
+55,56d54
+< 55
+< 56
+status=1
+--- find print and exec per match ---
+tree/sub/leaf|tree/sub/leaf
+exec tree/sub/leaf
+
+tree/sub/leaf
+tree/top
+--- pr columns ---
+1	  4	    7
+2	  5	    8
+3	  6	    9
+   1	     3
+   2	     4
+--- cut past the last range ---
+bcdf
+y
+
+1235
+abc
+xy
+
+012
+a:c
+e
+--- grep -l across files ---
+big.txt
+small.txt
+status=0
+status=1

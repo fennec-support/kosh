@@ -99,22 +99,19 @@ Id::execute(const ExecContext               &ec,
     user_id = *resolved;
   }
 
+  let const name_mode =
+      FLAG_ID_NAME.is_enabled() ? id_name_mode::Name : id_name_mode::Numeric;
+
   if (FLAG_ID_USER.is_enabled()) {
-    ec.print_to_stdout(id_user_text(user_id, cxt.scratch_allocator(),
-                                    FLAG_ID_NAME.is_enabled()
-                                        ? id_name_mode::Name
-                                        : id_name_mode::Numeric) +
-                       "\n");
+    ec.print_to_stdout(
+        id_user_text(user_id, cxt.scratch_allocator(), name_mode) + "\n");
 
     return 0;
   }
 
   if (FLAG_ID_GROUP.is_enabled()) {
-    ec.print_to_stdout(id_group_text(group_id, cxt.scratch_allocator(),
-                                     FLAG_ID_NAME.is_enabled()
-                                         ? id_name_mode::Name
-                                         : id_name_mode::Numeric) +
-                       "\n");
+    ec.print_to_stdout(
+        id_group_text(group_id, cxt.scratch_allocator(), name_mode) + "\n");
 
     return 0;
   }
@@ -127,9 +124,7 @@ Id::execute(const ExecContext               &ec,
     for (usize index = 0; index < groups.count(); index++) {
       if (index != 0) output += ' ';
       output +=
-          id_group_text(groups[index], cxt.scratch_allocator(),
-                        FLAG_ID_NAME.is_enabled() ? id_name_mode::Name
-                                                  : id_name_mode::Numeric);
+          id_group_text(groups[index], cxt.scratch_allocator(), name_mode);
     }
 
     output += '\n';

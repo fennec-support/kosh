@@ -20,3 +20,8 @@ i=0; echo "${a[${i:=1}]:-d} $i"
 k=2; echo "${a[$k]:-d} ${a[$k]@Q}"
 declare -A m=([k]=v)
 echo "${m[k]:-d} ${m[none]:-d}"
+x='k++'; k=0; echo "${a[x]:-d} $k"
+k=0; echo "${a[x]@Q} $k"
+s=scalar; i=0; echo "${s[i++]:-d} $i"
+i=0; echo "${s[i+1]-unset} $i"
+(set -u; k=7; echo "${a[$k]@Q}") 2>/dev/null; echo "unset status $?"

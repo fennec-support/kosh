@@ -466,9 +466,9 @@ associative_composite_key(StringView name,
 
 struct associative_entry
 {
-  u64    sequence;
-  String key;
-  String value;
+  u64        sequence;
+  StringView key;
+  StringView value;
 };
 
 static fn
@@ -482,12 +482,9 @@ collect_associative_entries(const CompositeKeyArrays &arrays,
   arrays.values().for_each([&](StringView composite, const String &value) {
     if (!composite.starts_with(prefix)) return;
 
-    let entry = associative_entry{arrays.sequence_of(composite),
-                                  String{allocator}, String{allocator}};
-
-    entry.key.append(composite.substring(prefix.length));
-    entry.value.append(value.view());
-    entries.push(steal(entry));
+    entries.push(associative_entry{arrays.sequence_of(composite),
+                                   composite.substring(prefix.length),
+                                   value.view()});
   });
 
   entries.sort(
@@ -736,7 +733,7 @@ EvalContext::associative_keys(StringView name) const throws
   for (let const &entry :
        collect_associative_entries(variable_store().associative_arrays(),
                                    prefix.view(), scratch_allocator()))
-    keys.push_managed(entry.key.view());
+    keys.push_managed(entry.key);
 
   return keys;
 }
@@ -763,7 +760,7 @@ EvalContext::associative_values(StringView name) const throws
   for (let const &entry :
        collect_associative_entries(variable_store().associative_arrays(),
                                    prefix.view(), scratch_allocator()))
-    values.push_managed(entry.value.view());
+    values.push_managed(entry.value);
 
   return values;
 }

@@ -811,26 +811,10 @@ public:
     return m_mutations;
   }
 
-  pure fn
-  init_moods_sourcing_mask() const wontthrow -> u8
-  {
-    return m_init_moods_sourcing;
-  }
-
-  pure fn
-  initialized_moods_mask() const wontthrow -> u8
-  {
-    return m_initialized_moods;
-  }
-
   fn
-  restore_snapshot_state(u8                       init_moods_sourcing,
-                         u8                       initialized_moods,
-                         const control_mutations &mutations) wontthrow -> void
+  set_mutations(const control_mutations &mutations) wontthrow -> void
   {
-    m_init_moods_sourcing = init_moods_sourcing;
-    m_initialized_moods   = initialized_moods;
-    m_mutations           = mutations;
+    m_mutations = mutations;
   }
 
   pure fn
@@ -843,8 +827,9 @@ public:
   fn
   restore(const runtime_control_snapshot &snapshot) wontthrow -> void
   {
-    restore_snapshot_state(snapshot.init_moods_sourcing,
-                           snapshot.initialized_moods, snapshot.mutations);
+    m_init_moods_sourcing = snapshot.init_moods_sourcing;
+    m_initialized_moods   = snapshot.initialized_moods;
+    m_mutations           = snapshot.mutations;
   }
 
   fn
@@ -5529,10 +5514,7 @@ public:
   {
     if (exit == definition_state_exit::RestoreCaller) {
       state.previous.restore(*this);
-      runtime_control_store().restore_snapshot_state(
-          runtime_control_store().init_moods_sourcing_mask(),
-          runtime_control_store().initialized_moods_mask(),
-          state.entry_mutations);
+      runtime_control_store().set_mutations(state.entry_mutations);
 
       return;
     }
