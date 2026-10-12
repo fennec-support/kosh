@@ -364,6 +364,23 @@ note: Use ordinary double quotes under a `sh` shebang.
 117:3: warning: 'shared_result' is set in this function and used outside it.
    117 |    shared_result=1
        |    ^~~~~~~~~~~~~~~
+122:9: details:
+   122 |    echo "$shared_result"
+       |          ^~~~~~~~~~~~~~ this is the first use of 'shared_result' outside the function.
 note: Assign it before the function to show the variable is shared.
-Encountered 92 warnings.
+116:1: trace: 'set_shared_and_private' sets 'shared_result'.
+   116 |  set_shared_and_private() {
+       |  ^~~~~~~~~~~~~~~~~~~~~~
+131:3: warning: 'read_before' is set in this function and used outside it.
+   131 |    read_before=4
+       |    ^~~~~~~~~~~~~
+129:7: details:
+   129 |  echo "${read_before:-unset}"
+       |        ^~~~~~~~~~~~~~~~~~~~~ this is the first use of 'read_before' outside the function.
+note: Assign it before the function to show the variable is shared.
+130:1: trace: 'set_read_before' sets 'read_before'.
+   130 |  set_read_before() {
+       |  ^~~~~~~~~~~~~~~
+Encountered 93 warnings.
 done
+unset

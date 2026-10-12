@@ -629,9 +629,28 @@ analysis_reporter::warn(diagnostic_id                id,
 
   totals.warning_count++;
 
-  pending.push(pending_analysis_warning{id, location, String{message},
-                                        String{suggestion}, related_location,
-                                        String{related_message}});
+  pending.push(pending_analysis_warning{
+      id, location, String{message}, String{suggestion}, related_location,
+      String{related_message}, None, String{heap_allocator()}});
+}
+
+fn
+analysis_reporter::set_last_trace(diagnostic_id         id,
+                                  const SourceLocation &location,
+                                  const SourceLocation &trace_location,
+                                  StringView            trace_message) throws
+    -> void
+{
+  if (pending.is_empty()) return;
+
+  let &warning = pending.back();
+
+  if (warning.id != id || warning.location.position != location.position) {
+    return;
+  }
+
+  warning.trace_location = trace_location;
+  warning.trace_message  = String{trace_message};
 }
 
 fn
@@ -743,6 +762,13 @@ analysis_reporter::flush(const analysis_report_site &site) throws
           warning.location, warning.message, warning.suggestion};
 
       show_message(located.to_string(source, eval_context));
+    }
+
+    if (warning.trace_location.has_value()) {
+      let const trace =
+          TraceWithLocation{*warning.trace_location, warning.trace_message};
+
+      show_message(trace.to_string(source, eval_context));
     }
 
     if (eval_context != nullptr)
@@ -1140,7 +1166,7 @@ AnalysisContext::note_variable_occurrence(
 
   if (name.is_empty()) return;
 
-  note_variable_scope(name);
+  note_variable_scope(name, location);
 
   if (kind == variable_occurrence_kind::Assignment &&
       active_function_definition_index == NO_ACTIVE_FUNCTION_DEFINITION)
@@ -1372,21 +1398,31 @@ assign_form_target_name(StringView expansion_text) wontthrow -> StringView
 }
 
 fn
-AnalysisContext::note_variable_scope(StringView name) throws -> void
+AnalysisContext::get_current_variable_scope() const wontthrow -> usize
 {
-  let const scope =
-      active_function_definition_index == NO_ACTIVE_FUNCTION_DEFINITION
-          ? usize{0}
-          : active_function_definition_index + 1;
-  let const first_scope = variable_first_scopes.find(name);
+  return active_function_definition_index == NO_ACTIVE_FUNCTION_DEFINITION
+             ? usize{0}
+             : active_function_definition_index + 1;
+}
 
-  if (!first_scope.has_value()) {
-    variable_first_scopes.set(name, scope);
+fn
+AnalysisContext::note_variable_scope(
+    StringView name, const SourceLocation &location) throws -> void
+{
+  let const scope  = get_current_variable_scope();
+  let const record = variable_scopes.find(name);
+
+  if (!record.has_value()) {
+    variable_scopes.set(name, variable_scope_record{scope, location, None});
 
     return;
   }
 
-  if (**first_scope != scope) shared_scope_variable_names.add(name);
+  if ((*record)->first_scope != scope &&
+      !(*record)->first_other_scope_location.has_value())
+  {
+    (*record)->first_other_scope_location = location;
+  }
 }
 
 pure fn
@@ -2225,10 +2261,33 @@ analyze_ast(const Expression                *root,
   expressions::internal::check_function_argument_dataflow(actx);
 
   for (let const &assignment : actx.function_global_assignments) {
-    if (actx.shared_scope_variable_names.contains(assignment.name.view())) {
-      actx.report_diagnostic(diagnostic_id::function_global_assignment,
-                             assignment.location, {assignment.name.view()});
+    let const record = actx.variable_scopes.find(assignment.name.view());
+
+    if (!record.has_value() ||
+        !(*record)->first_other_scope_location.has_value())
+    {
+      continue;
     }
+
+    let const &outside_location = (*record)->first_scope != assignment.scope
+                                      ? (*record)->first_location
+                                      : *(*record)->first_other_scope_location;
+
+    if (!actx.report_diagnostic(diagnostic_id::function_global_assignment,
+                                assignment.location, {assignment.name.view()},
+                                outside_location))
+    {
+      continue;
+    }
+
+    ASSERT(assignment.scope != 0);
+
+    let const &function = actx.functions.records[assignment.scope - 1];
+
+    actx.reporter.set_last_trace(diagnostic_id::function_global_assignment,
+                                 assignment.location, function.location,
+                                 "'" + function.name + "' sets '" +
+                                     assignment.name + "'");
   }
 
   if (symbol_records != nullptr)

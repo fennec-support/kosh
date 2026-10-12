@@ -2639,7 +2639,7 @@ const diagnostic_definition DIAGNOSTIC_DEFINITIONS[] = {
       "a POSIX function sets a shared variable first assigned inside it",
       "'{0}' is set in this function and used outside it",
       "Assign it before the function to show the variable is shared",
-      None,
+      "this is the first use of '{0}' outside the function",
       Annoying,
       Policy),
     D(None,

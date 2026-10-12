@@ -32,6 +32,8 @@ struct pending_analysis_warning
   String                suggestion;
   Maybe<SourceLocation> related_location;
   String                related_message;
+  Maybe<SourceLocation> trace_location;
+  String                trace_message;
 };
 
 struct source_diagnostic
@@ -299,6 +301,14 @@ struct function_global_assignment
 {
   String         name;
   SourceLocation location;
+  usize          scope;
+};
+
+struct variable_scope_record
+{
+  usize                 first_scope;
+  SourceLocation        first_location;
+  Maybe<SourceLocation> first_other_scope_location;
 };
 
 struct function_definition_record
@@ -584,6 +594,11 @@ struct analysis_reporter
          std::initializer_list<StringView> arguments,
          const Maybe<SourceLocation>      &related_location) throws -> bool;
   fn
+  set_last_trace(diagnostic_id         id,
+                 const SourceLocation &location,
+                 const SourceLocation &trace_location,
+                 StringView            trace_message) throws -> void;
+  fn
   flush(const analysis_report_site &site) throws -> void;
 
   pure fn
@@ -693,9 +708,8 @@ public:
 
   ArrayList<function_global_assignment> function_global_assignments{
       heap_allocator()};
-  StringMap<usize> variable_first_scopes{heap_allocator()};
-  HashSet          shared_scope_variable_names{heap_allocator()};
-  HashSet          top_level_assigned_names{heap_allocator()};
+  StringMap<variable_scope_record> variable_scopes{heap_allocator()};
+  HashSet                          top_level_assigned_names{heap_allocator()};
 
   analysis_effects              effects;
   const parsed_format_document *format_document{nullptr};
@@ -922,7 +936,10 @@ public:
                      const SourceLocation &location,
                      bool                  is_top_level_unconditional) throws -> void;
   fn
-  note_variable_scope(StringView name) throws -> void;
+  note_variable_scope(StringView            name,
+                      const SourceLocation &location) throws -> void;
+  pure fn
+  get_current_variable_scope() const wontthrow -> usize;
   pure fn
   is_posix_mood() const wontthrow -> bool;
   fn

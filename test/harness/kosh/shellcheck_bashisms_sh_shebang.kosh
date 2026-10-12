@@ -126,3 +126,7 @@ set_declared_early() {
   declared_early=3
 }
 echo done
+echo "${read_before:-unset}"
+set_read_before() {
+  read_before=4
+}
