@@ -14,7 +14,7 @@
 #include "../base/Path.hpp"
 
 KOSHKIT_UTIL_DECL("[-n count] [-c count] [file ...]",
-                  "The head utility writes the first lines of each file.");
+                  "The head utility can write the first lines of each file.");
 
 FLAG(HEAD_LINES, String, 'n', "", "Write the first count lines.");
 FLAG(HEAD_BYTES, String, 'c', "", "Write the first count bytes.");

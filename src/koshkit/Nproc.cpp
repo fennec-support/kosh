@@ -14,7 +14,7 @@
 
 KOSHKIT_UTIL_DECL(
     "[--all] [--ignore=count]",
-    "The nproc utility prints the number of available logical processors.");
+    "Print the number of available logical processors.");
 
 FLAG(NPROC_ALL, Bool, '\0', "all", "Print the configured processor count.");
 FLAG(NPROC_IGNORE,

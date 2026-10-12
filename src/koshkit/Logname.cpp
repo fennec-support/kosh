@@ -11,7 +11,7 @@
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
 
-KOSHKIT_UTIL_DECL("", "The logname utility writes the login name.");
+KOSHKIT_UTIL_DECL("", "The logname utility can write the login name.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Logname);
 

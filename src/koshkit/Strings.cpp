@@ -14,7 +14,7 @@
 #include "../Utils.hpp"
 
 KOSHKIT_UTIL_DECL("[-a] [-n number] [-t format] [file ...]",
-                  "The strings utility writes printable byte sequences.");
+                  "Write printable byte sequences.");
 
 FLAG(STRINGS_ALL, Bool, 'a', "all", "Scan the complete file.");
 FLAG(STRINGS_MINIMUM, String, 'n', "bytes", "Use this minimum length.");

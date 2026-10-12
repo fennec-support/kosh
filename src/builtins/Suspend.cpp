@@ -18,7 +18,7 @@ FLAG_LIST_DECL();
 HELP_SYNOPSIS_DECL("[-f]");
 
 HELP_DESCRIPTION_DECL(
-    "The suspend builtin stops the shell until a SIGCONT is received.");
+    "The shell can be stopped until it receives SIGCONT with this builtin.");
 
 FLAG(FORCE,
      Bool,

@@ -13,7 +13,7 @@
 #include "../base/Path.hpp"
 
 KOSHKIT_UTIL_DECL("path [suffix]",
-                  "The basename utility prints the final component of a path.");
+                  "The basename utility can print the final component of a path.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Basename);
 

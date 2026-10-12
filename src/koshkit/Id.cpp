@@ -14,7 +14,7 @@
 #include "../UtilsOwnership.hpp"
 
 KOSHKIT_UTIL_DECL("[-Ggu] [-nr] [user]",
-                  "The id utility writes user and group identities.");
+                  "The id utility can write user and group identities.");
 
 FLAG(ID_GROUPS, Bool, 'G', "groups", "Write all group identities.");
 FLAG(ID_GROUP, Bool, 'g', "group", "Write the group identity.");

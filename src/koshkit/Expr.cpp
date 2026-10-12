@@ -13,7 +13,7 @@
 #include "../Koshkit.hpp"
 
 KOSHKIT_UTIL_DECL("expression",
-                  "The expr utility evaluates an operand expression.");
+                  "The expr utility can evaluate an operand expression.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Expr);
 

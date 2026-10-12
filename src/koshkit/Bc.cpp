@@ -16,7 +16,7 @@
 #include "../base/StaticStringMap.hpp"
 
 KOSHKIT_UTIL_DECL("[-lq] [file ...]",
-                  "The bc utility evaluates decimal arithmetic statements.");
+                  "The bc utility can evaluate decimal arithmetic statements.");
 
 FLAG(BC_MATH_LIBRARY, Bool, 'l', "mathlib", "Enable common math functions.");
 FLAG(BC_QUIET, Bool, 'q', "quiet", "Suppress an interactive banner.");

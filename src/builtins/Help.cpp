@@ -16,7 +16,7 @@ FLAG_LIST_DECL();
 HELP_SYNOPSIS_DECL("[-dms] [pattern ...]");
 
 HELP_DESCRIPTION_DECL(
-    "The help builtin lists the builtins or displays the help for one.");
+    "Builtins can be listed, or help for one builtin can be displayed.");
 
 FLAG(SHORT,
      Bool,

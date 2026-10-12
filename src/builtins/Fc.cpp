@@ -22,7 +22,7 @@ HELP_SYNOPSIS_DECL("[-e editor] [-lnr] [first [last]]",
                    "-s [old=new ...] [command]");
 
 HELP_DESCRIPTION_DECL(
-    "The fc builtin lists, edits, and executes commands from history.");
+    "Commands from history can be listed, edited, or executed with this builtin.");
 
 FLAG(FC_EDITOR, String, 'e', "", "Use editor to edit the selected commands.");
 FLAG(FC_LIST, Bool, 'l', "", "List the selected commands.");

@@ -22,7 +22,7 @@
 
 KOSHKIT_UTIL_DECL("[-NUMBER] [-pAncUMcw] [--sort key] [--live [seconds]] "
                   "[--cumulative [seconds]] [pid]",
-                  "The evilps utility shows running processes as a tree.");
+                  "The evilps utility can show running processes as a tree.");
 
 FLAG(EVILPS_PIDS,
      Bool,

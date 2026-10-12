@@ -17,7 +17,7 @@
 #include "../Platform.hpp"
 
 KOSHKIT_UTIL_DECL("[-46aHlnptux] [--live [seconds]]",
-                  "The evilss utility reports visible network sockets.");
+                  "The evilss utility can report visible network sockets.");
 
 FLAG(EVILSS_LISTENING, Bool, 'l', "listening", "Show only listening sockets.");
 FLAG(EVILSS_ALL, Bool, 'a', "all", "Show listening and connected sockets.");

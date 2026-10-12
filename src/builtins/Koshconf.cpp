@@ -27,29 +27,28 @@ HELP_SYNOPSIS_DECL("create <bash|sh|kosh> [--force]",
                    "save [--persist]");
 
 HELP_DESCRIPTION_DECL(
-    "The koshconf builtin reads and writes Koshka settings and their binary "
-    "KOSHCONF form. The save form prints the current settings as KOSHCONF for "
-    "a child kosh; with --persist, it also writes them to the user "
-    "configuration file.");
+    "Koshka settings and their binary KOSHCONF form can be read and written "
+    "here. The save form can print the current settings for a child kosh. "
+    "With --persist, it also writes them to the user configuration file.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 FLAG(ALL,
      Bool,
      'a',
      "all",
-     "When used with list, also show the posix.legacy and bash.legacy "
-     "spelling of each option.");
+     "When list is used, also show the posix.legacy and bash.legacy spelling "
+     "of each option.");
 FLAG(PERSIST,
      Bool,
      '\0',
      "persist",
-     "When used with set, also write the option to the user configuration "
-     "file. When used with save, write every current setting to it.");
+     "When set is used, also write the option to the user configuration file. "
+     "When save is used, write every current setting to that file.");
 FLAG(FORCE,
      Bool,
      '\0',
      "force",
-     "When used with create, replace an existing configuration file.");
+     "When create is used, replace an existing configuration file.");
 
 REGISTER_BUILTIN_FLAGS(Koshconf);
 

@@ -19,7 +19,7 @@
 FLAG_LIST_DECL();
 
 HELP_SYNOPSIS_DECL("[group]");
-HELP_DESCRIPTION_DECL("The newgrp builtin changes the group of the shell.");
+HELP_DESCRIPTION_DECL("The shell can change its group with this builtin.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 

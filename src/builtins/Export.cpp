@@ -18,7 +18,7 @@ FLAG_LIST_DECL();
 
 HELP_SYNOPSIS_DECL("[NAME[=VALUE] ...]");
 HELP_DESCRIPTION_DECL(
-    "The export builtin moves a variable into the environment.");
+    "A variable can be placed in the environment with this builtin.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 FLAG(EXPORT_PRINT,

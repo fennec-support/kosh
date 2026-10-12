@@ -17,7 +17,7 @@ FLAG_LIST_DECL();
 HELP_SYNOPSIS_DECL("[-neE] [arg ...]");
 
 HELP_DESCRIPTION_DECL(
-    "The echo builtin prints its arguments followed by a newline.");
+    "This builtin prints its arguments followed by a newline.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 FLAG(ECHO_NO_NEWLINE, Bool, 'n', "", "Do not print the trailing newline.");

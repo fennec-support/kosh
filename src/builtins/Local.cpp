@@ -18,8 +18,7 @@ FLAG_LIST_DECL();
 
 HELP_SYNOPSIS_DECL("[-aAilnprux] name[=value] ...");
 HELP_DESCRIPTION_DECL(
-    "The local builtin declares each given variable local to the current "
-    "function.");
+    "Each named variable can be declared local to the current function.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 FLAG(LOCAL_INDEXED, Bool, 'a', "", "Declare an indexed array.");

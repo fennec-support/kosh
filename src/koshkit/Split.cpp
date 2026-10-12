@@ -15,7 +15,7 @@
 
 KOSHKIT_UTIL_DECL("[-a suffix-length] [-b byte-count | -l line-count] "
                   "[file [prefix]]",
-                  "The split utility divides input into output files.");
+                  "Divide input into output files.");
 
 FLAG(SPLIT_SUFFIX_LENGTH,
      String,

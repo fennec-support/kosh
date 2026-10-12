@@ -18,7 +18,7 @@
 KOSHKIT_UTIL_DECL(
     "[-0prtx] [-E eof] [-I replace] [-L lines] [-n count] [-s "
     "bytes] [utility [argument ...]]",
-    "The xargs utility builds and invokes argument lists from standard input.");
+    "Build and invoke argument lists from standard input.");
 
 FLAG(XARGS_EOF, String, 'E', "eof", "Stop at this logical argument.");
 FLAG(XARGS_REPLACE,

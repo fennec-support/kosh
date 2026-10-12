@@ -15,7 +15,7 @@
 
 KOSHKIT_UTIL_DECL(
     "[--transaction-held-lock] directory command [argument ...]",
-    "The flock utility runs a command while holding a directory lock.");
+    "The flock utility can run a command while holding a directory lock.");
 
 FLAG(TRANSACTION_HELD_LOCK,
      Bool,

@@ -22,15 +22,16 @@ HELP_SYNOPSIS_DECL("[-c] [-d offset] [-r|-n|-a|-w] [-p arg ...] [count]",
                    "-s [arg ...]",
                    "-S|--sync");
 HELP_DESCRIPTION_DECL(
-    "The history builtin lists and maintains the interactive command history.");
+    "The interactive command history can be listed and maintained with this "
+    "builtin.");
 
 FLAG(HISTORY_CLEAR, Bool, 'c', "", "Clear the history list.");
 FLAG(HISTORY_DELETE, String, 'd', "", "Delete an event or event range.");
-FLAG(HISTORY_APPEND, Bool, 'a', "", "Write the history list to the file.");
-FLAG(HISTORY_READ_NEW, Bool, 'n', "", "Read the history file into the list.");
+FLAG(HISTORY_APPEND, Bool, 'a', "", "Append the history list to the file.");
+FLAG(HISTORY_READ_NEW, Bool, 'n', "", "Read new entries from the history file.");
 FLAG(HISTORY_READ, Bool, 'r', "", "Read the history file into the list.");
 FLAG(HISTORY_WRITE, Bool, 'w', "", "Write the history list to the file.");
-FLAG(HISTORY_PRINT, Bool, 'p', "", "Print the operands, storing nothing.");
+FLAG(HISTORY_PRINT, Bool, 'p', "", "Print the operands without storing them.");
 FLAG(HISTORY_STORE, Bool, 's', "", "Store the operands as a history event.");
 FLAG(HISTORY_SYNC, Bool, 'S', "sync", "Reload the shared history explicitly.");
 FLAG(HELP, Bool, '\0', "help", "Display help.");

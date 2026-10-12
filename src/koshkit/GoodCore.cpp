@@ -19,7 +19,7 @@
 
 KOSHKIT_UTIL_DECL("[-q] [-b executable] [-o archive] [--no-compress] "
                   "(-p pid | core)",
-                  "The goodcore utility captures or packages a core dump with "
+                  "The goodcore utility can capture or package a core dump with "
                   "its executable, mapped libraries, and host metadata.");
 
 FLAG(GOODCORE_PID, String, 'p', "pid", "Capture this running process.");

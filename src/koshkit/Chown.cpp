@@ -14,7 +14,7 @@
 #include "../UtilsOwnership.hpp"
 
 KOSHKIT_UTIL_DECL("[-hRx] [-H|-L|-P] owner[:group] file ...",
-                  "The chown utility changes file owner and group.");
+                  "The chown utility can change file owner and group.");
 
 FLAG(CHOWN_NO_DEREFERENCE,
      Bool,

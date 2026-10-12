@@ -21,7 +21,7 @@
 KOSHKIT_UTIL_DECL(
     "[-a] [-n] [-c] [-s] [-r] [-k] [--kubernetes] [--container] "
     "[--containers]",
-    "The eviliso utility reports namespaces, cgroups, sessions, remote "
+    "The eviliso utility can report namespaces, cgroups, sessions, remote "
     "connections, container runtimes, containers, and Kubernetes.");
 
 FLAG(EVILISO_ALL,

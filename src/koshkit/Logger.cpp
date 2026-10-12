@@ -15,7 +15,7 @@
 #include "../base/StaticStringMap.hpp"
 
 KOSHKIT_UTIL_DECL("[-is] [-f file] [-p priority] [-t tag] [message ...]",
-                  "The logger utility writes a message to the system log.");
+                  "The logger utility can write a message to the system log.");
 
 FLAG(LOGGER_PID, Bool, 'i', "id", "Include the process identifier.");
 FLAG(LOGGER_FILE, String, 'f', "file", "Read the message from this file.");

@@ -13,7 +13,7 @@
 #include "../Utils.hpp"
 
 KOSHKIT_UTIL_DECL("[-s] [-d list] [file ...]",
-                  "The paste utility merges corresponding or serial lines.");
+                  "Merge corresponding or serial lines.");
 
 FLAG(PASTE_DELIMITERS,
      String,

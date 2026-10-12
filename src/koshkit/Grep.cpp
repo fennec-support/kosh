@@ -21,7 +21,7 @@
 KOSHKIT_UTIL_DECL(
     "[-EFivrnhcqslx] [--color[=when]] [--one-file-system] "
     "[-e pattern] [-f file] [pattern] [file ...]",
-    "The grep utility prints the lines of each file that match a pattern.");
+    "The grep utility can print the lines of each file that match a pattern.");
 
 FLAG(GREP_EXTENDED,
      Bool,

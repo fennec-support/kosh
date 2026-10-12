@@ -17,7 +17,8 @@ FLAG_LIST_DECL();
 HELP_SYNOPSIS_DECL("[arg ...]");
 
 HELP_DESCRIPTION_DECL(
-    "The eval builtin runs its arguments as a command in the current shell.");
+    "The arguments can be run as a command in the current shell with this "
+    "builtin.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 

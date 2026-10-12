@@ -12,7 +12,7 @@
 #include "../Koshkit.hpp"
 #include "../base/StringMap.hpp"
 
-KOSHKIT_UTIL_DECL("[file]", "The tsort utility writes a topological ordering.");
+KOSHKIT_UTIL_DECL("[file]", "Write a topological ordering.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Tsort);
 

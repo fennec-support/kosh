@@ -15,7 +15,7 @@
 
 KOSHKIT_UTIL_DECL(
     "[-lwcm] [file ...]",
-    "The wc utility counts the lines, words, characters, and bytes of each "
+    "Count the lines, words, characters, and bytes of each "
     "file.");
 
 FLAG(WC_LINES, Bool, 'l', "", "Print the newline count.");

@@ -16,8 +16,8 @@ FLAG_LIST_DECL();
 HELP_SYNOPSIS_DECL("[expr]");
 
 HELP_DESCRIPTION_DECL(
-    "The caller builtin prints the calling context of a function or a "
-    "sourced file, and returns zero in a call and one at the top level.");
+    "This builtin prints the calling context of a function or sourced file. It "
+    "returns zero in a call and one at the top level.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 

@@ -19,9 +19,8 @@ FLAG_LIST_DECL();
 HELP_SYNOPSIS_DECL("[-ers] [-a name] [-d delim] [-n count] [-N count] "
                    "[-p prompt] "
                    "[-t timeout] [-u fd] [-q] [name ...]");
-HELP_DESCRIPTION_DECL("The read builtin accepts one line from standard input "
-                      "and stores it in the "
-                      "specified variables.");
+HELP_DESCRIPTION_DECL("One line from standard input can be stored in the "
+                      "specified variables with this builtin.");
 
 FLAG(READ_RAW, Bool, 'r', "\0", "Do not treat a backslash as an escape.");
 FLAG(READ_ARRAY,

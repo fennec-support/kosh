@@ -14,7 +14,7 @@
 
 KOSHKIT_UTIL_DECL(
     "[-cfu] file ...",
-    "The fuser utility lists the process IDs that use each file.");
+    "The fuser utility can list the process IDs that use each file.");
 
 FLAG(FUSER_FILESYSTEM, Bool, 'c', "", "Match every file on the filesystem.");
 FLAG(FUSER_FILE, Bool, 'f', "", "Match only the specified file.");

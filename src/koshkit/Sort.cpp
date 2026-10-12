@@ -18,7 +18,7 @@
 KOSHKIT_UTIL_DECL(
     "[-bcCdfimnrsu] [-o output] [-t separator] [-k keydef]... "
     "[file ...]",
-    "The sort utility writes the lines of its input in byte order or in the "
+    "Write input lines in byte order or in the "
     "order selected by its keys and ordering options.");
 
 FLAG(SORT_REVERSE, Bool, 'r', "", "Reverse the order of the output.");

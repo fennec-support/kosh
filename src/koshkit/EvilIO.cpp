@@ -21,7 +21,7 @@ KOSHKIT_UTIL_DECL(
     "[-ah] [-C [seconds]] [--live [seconds]] [--cumulative "
     "[seconds]] [--sort key] "
     "[--ps | -NUMBER | -n count | -p pid]",
-    "The evilio utility reports system and process I/O activity.");
+    "The evilio utility can report system and process I/O activity.");
 
 FLAG(EVILIO_ALL, Bool, 'a', "all", "Include sampled system activity.");
 FLAG(EVILIO_HUMAN,

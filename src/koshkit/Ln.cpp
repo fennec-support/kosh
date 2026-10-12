@@ -15,7 +15,7 @@
 #include "../base/Trace.hpp"
 
 KOSHKIT_UTIL_DECL("[-fLPs] target ... link",
-                  "The ln utility creates links to files.");
+                  "The ln utility can create links to files.");
 
 FLAG(LN_SYMBOLIC, Bool, 's', "", "Create a symbolic link.");
 FLAG(LN_FORCE, Bool, 'f', "", "Remove an existing destination first.");

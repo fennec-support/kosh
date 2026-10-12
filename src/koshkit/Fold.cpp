@@ -13,7 +13,7 @@
 #include "../Utils.hpp"
 
 KOSHKIT_UTIL_DECL("[-bs] [-w width] [file ...]",
-                  "The fold utility wraps input lines.");
+                  "The fold utility can wrap input lines.");
 
 FLAG(FOLD_BYTES, Bool, 'b', "bytes", "Count bytes instead of columns.");
 FLAG(FOLD_SPACES, Bool, 's', "spaces", "Break at blanks when possible.");

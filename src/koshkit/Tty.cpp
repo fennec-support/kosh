@@ -11,7 +11,7 @@
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
 
-KOSHKIT_UTIL_DECL("[-s]", "The tty utility writes the terminal name.");
+KOSHKIT_UTIL_DECL("[-s]", "Write the terminal name.");
 
 FLAG(TTY_SILENT, Bool, 's', "silent", "Write no output.");
 

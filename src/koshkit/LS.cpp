@@ -21,7 +21,7 @@
 
 KOSHKIT_UTIL_DECL("[-aA1dgFhklnoprRSt] [-L level] [--tree] "
                   "[--one-file-system] [path ...]",
-                  "The ls utility lists the entries in each directory.");
+                  "The ls utility can list the entries in each directory.");
 
 FLAG(LS_ALL, Bool, 'a', "", "List entries whose name starts with a dot.");
 FLAG(LS_ALMOST_ALL,

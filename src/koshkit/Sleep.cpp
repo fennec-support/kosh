@@ -14,7 +14,7 @@
 
 KOSHKIT_UTIL_DECL(
     "duration ...",
-    "The sleep utility pauses for the sum of the given durations.");
+    "Pause for the sum of the given durations.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Sleep);
 

@@ -14,7 +14,7 @@
 #include "../Platform.hpp"
 
 KOSHKIT_UTIL_DECL("[-a | -g] [operand ...]",
-                  "The stty utility reports or changes terminal attributes.");
+                  "Report or change terminal attributes.");
 
 FLAG(STTY_ALL, Bool, 'a', "all", "Write all current settings.");
 FLAG(STTY_ENCODE, Bool, 'g', "save", "Write settings in a reusable form.");

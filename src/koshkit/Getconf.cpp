@@ -14,7 +14,7 @@
 
 KOSHKIT_UTIL_DECL(
     "[-v specification] system-variable | path-variable path | -a [path]",
-    "The getconf utility writes configuration values.");
+    "The getconf utility can write configuration values.");
 
 FLAG(GETCONF_SPECIFICATION,
      String,

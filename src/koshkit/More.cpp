@@ -15,7 +15,7 @@
 #include "../Utils.hpp"
 
 KOSHKIT_UTIL_DECL("[-ceisu] [-n lines] [-p command] [-t tag] [file ...]",
-                  "The more utility displays text one screen at a time.");
+                  "Display text one screen at a time.");
 
 FLAG(MORE_CLEAR, Bool, 'c', "clear", "Clear each screen before displaying it.");
 FLAG(MORE_EXIT, Bool, 'e', "exit", "Exit at end of input.");

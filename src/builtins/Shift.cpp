@@ -17,8 +17,8 @@ FLAG_LIST_DECL();
 HELP_SYNOPSIS_DECL("[n]");
 
 HELP_DESCRIPTION_DECL(
-    "The shift builtin drops the leading positional parameters and renumbers "
-    "the rest.");
+    "Leading positional parameters can be dropped and the rest renumbered with "
+    "this builtin.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 

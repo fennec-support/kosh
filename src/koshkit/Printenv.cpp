@@ -12,7 +12,7 @@
 #include "../Platform.hpp"
 
 KOSHKIT_UTIL_DECL("[name ...]",
-                  "The printenv utility writes environment variables.");
+                  "Write environment variables.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Printenv);
 

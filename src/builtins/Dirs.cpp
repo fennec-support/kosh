@@ -18,9 +18,9 @@ FLAG_LIST_DECL();
 
 HELP_SYNOPSIS_DECL("[-clpv] [+N | -N]");
 HELP_DESCRIPTION_DECL(
-    "The dirs builtin prints the directory stack, the current directory first, "
-    "then the saved directories from the top down. A +N operand selects from "
-    "the top, and a -N operand selects from the bottom.");
+    "This builtin prints the directory stack with the current directory first "
+    "and saved directories from the top down. A +N operand selects from the "
+    "top, and a -N operand selects from the bottom.");
 
 FLAG(DIRS_CLEAR, Bool, 'c', "", "Clear the directory stack.");
 FLAG(DIRS_LONG,

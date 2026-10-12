@@ -18,16 +18,16 @@ FLAG_LIST_DECL();
 
 HELP_SYNOPSIS_DECL("[-n] [dir | +N | -N]");
 HELP_DESCRIPTION_DECL(
-    "The pushd builtin saves the current directory on the stack and changes to "
-    "dir. With no argument it swaps the top two directories. With +N it "
-    "rotates the stack, making the Nth entry from the top current. With "
-    "with -N it counts from the bottom.");
+    "The current directory can be saved on the stack before changing to "
+    "dir. With no argument, it swaps the top two directories. With +N, it "
+    "rotates the stack and makes the Nth entry from the top current. With -N, "
+    "it counts from the bottom.");
 
 FLAG(NO_CHANGE,
      Bool,
      'n',
      "",
-     "Add dir below the current directory without changing to it.");
+     "Add dir below the current directory and keep the current directory.");
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_BUILTIN_FLAGS(Pushd);

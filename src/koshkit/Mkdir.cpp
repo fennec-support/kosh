@@ -15,7 +15,7 @@
 #include "../base/Trace.hpp"
 
 KOSHKIT_UTIL_DECL("[-p] [-m mode] directory ...",
-                  "The mkdir utility creates each specified directory.");
+                  "Create each specified directory.");
 
 FLAG(MKDIR_PARENTS,
      Bool,

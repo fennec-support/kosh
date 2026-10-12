@@ -19,11 +19,11 @@ FLAG_LIST_DECL();
 HELP_SYNOPSIS_DECL("[-p|--posix] [-R] command [argument ...]");
 
 HELP_DESCRIPTION_DECL(
-    "The time builtin runs a command and reports how long it took.");
+    "A command can be run and its elapsed time reported with this builtin.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 FLAG(TIME_POSIX, Bool, 'p', "posix", "Use the POSIX time report.");
-FLAG(TIME_RSS, Bool, 'R', "", "Always add the peak resident set size.");
+FLAG(TIME_RSS, Bool, 'R', "", "Always include the peak resident set size.");
 
 REGISTER_BUILTIN_FLAGS(Time);
 

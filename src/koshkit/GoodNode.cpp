@@ -19,7 +19,7 @@
 
 KOSHKIT_UTIL_DECL(
     "[-i inode] [-r root] [--verify] [path ...]",
-    "The goodnode utility reports inode metadata and a CRC32C checksum.");
+    "The goodnode utility can report inode metadata and a CRC32C checksum.");
 
 FLAG(GOODNODE_INODE, String, 'i', "inode", "Locate this inode.");
 FLAG(GOODNODE_ROOT, String, 'r', "root", "Search beneath this path.");

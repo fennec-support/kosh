@@ -15,7 +15,7 @@
 #include "../base/Path.hpp"
 
 KOSHKIT_UTIL_DECL("[-ks] [-f prefix] [-n digits] file pattern ...",
-                  "The csplit utility divides a file at selected lines.");
+                  "The csplit utility can divide a file at selected lines.");
 
 FLAG(CSPLIT_KEEP, Bool, 'k', "keep-files", "Keep output files after an error.");
 FLAG(CSPLIT_PREFIX, String, 'f', "prefix", "Use this output prefix.");

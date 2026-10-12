@@ -13,7 +13,7 @@
 #include "../Koshkit.hpp"
 
 KOSHKIT_UTIL_DECL("[-l|-s] file1 file2",
-                  "The cmp utility compares two files byte by byte.");
+                  "The cmp utility can compare two files byte by byte.");
 
 FLAG(CMP_LIST, Bool, 'l', "verbose", "List every differing byte.");
 FLAG(CMP_SILENT, Bool, 's', "silent", "Write no output.");

@@ -12,7 +12,7 @@
 #include "../Koshkit.hpp"
 
 KOSHKIT_UTIL_DECL("[file ...]",
-                  "The cksum utility writes a CRC and byte count.");
+                  "The cksum utility can write a CRC and byte count.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Cksum);
 

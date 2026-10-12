@@ -16,7 +16,7 @@
 #include "../base/Path.hpp"
 
 KOSHKIT_UTIL_DECL("[-nu] [--syntax-highlighting] [file ...]",
-                  "The cat utility writes each file to standard output.");
+                  "The cat utility can write each file to standard output.");
 
 FLAG(CAT_NUMBER, Bool, 'n', "", "Number every output line, starting at one.");
 FLAG(CAT_UNBUFFERED,

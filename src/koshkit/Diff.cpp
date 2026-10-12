@@ -15,7 +15,7 @@
 #include "../Utils.hpp"
 
 KOSHKIT_UTIL_DECL("[-uwa] [--color[=when]] [-L label] file1 file2",
-                  "The diff utility compares two files line by line.");
+                  "The diff utility can compare two files line by line.");
 
 FLAG(DIFF_UNIFIED, Bool, 'u', "unified", "Write unified differences.");
 FLAG(DIFF_IGNORE_SPACE,

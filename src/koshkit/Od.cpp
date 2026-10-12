@@ -16,7 +16,7 @@
 
 KOSHKIT_UTIL_DECL("[-bcdosvx] [-A base] [-j skip] [-N count] [-t type]... "
                   "[file ...]",
-                  "The od utility writes formatted file bytes.");
+                  "Write formatted file bytes.");
 
 FLAG(OD_ADDRESS, String, 'A', "address-radix", "Use d, o, x, or n addresses.");
 FLAG(OD_SKIP, String, 'j', "skip-bytes", "Skip this many input bytes.");

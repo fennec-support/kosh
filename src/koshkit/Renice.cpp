@@ -16,7 +16,7 @@
 
 KOSHKIT_UTIL_DECL(
     "[-g | -p | -u] -n increment id ...",
-    "The renice utility adjusts scheduling priorities of running processes.");
+    "Adjust scheduling priorities of running processes.");
 
 FLAG(RENICE_GROUP,
      Bool,

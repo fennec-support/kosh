@@ -20,8 +20,7 @@ FLAG_LIST_DECL();
 HELP_SYNOPSIS_DECL("[--list] [name [argument ...]]");
 
 HELP_DESCRIPTION_DECL(
-    "The builtin builtin runs the builtin even when a function has the same "
-    "name.");
+    "A builtin can be run even when a function has the same name.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 FLAG(BUILTIN_LIST, Bool, '\0', "list", "List every builtin one per line.");

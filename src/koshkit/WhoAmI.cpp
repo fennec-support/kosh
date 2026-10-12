@@ -14,7 +14,7 @@
 #include "../base/Trace.hpp"
 
 KOSHKIT_UTIL_DECL("",
-                  "The whoami utility prints the name of the effective user.");
+                  "Print the name of the effective user.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(WhoAmI);
 

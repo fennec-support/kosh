@@ -17,7 +17,7 @@
 
 KOSHKIT_UTIL_DECL(
     "[-aq] program [program ...]",
-    "The which utility prints where each specified program resolves.");
+    "Print where each specified program resolves.");
 
 FLAG(ALL, Bool, 'a', "all", "Show all matches.");
 FLAG(QUIET, Bool, 'q', "quiet", "Print nothing, only set the status.");

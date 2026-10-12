@@ -16,7 +16,7 @@
 
 KOSHKIT_UTIL_DECL(
     "[-L] [-c] [-f] file ...",
-    "The goodstat utility presents file metadata as a readable report.");
+    "The goodstat utility can present file metadata as a readable report.");
 
 FLAG(GOODSTAT_DEREFERENCE, Bool, 'L', "dereference", "Follow symbolic links.");
 FLAG(GOODSTAT_CHECKSUM, Bool, 'c', "checksum", "Calculate a CRC32C checksum.");

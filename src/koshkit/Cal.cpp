@@ -15,7 +15,7 @@
 #include "../Utils.hpp"
 
 KOSHKIT_UTIL_DECL("[-a] [[month] year]",
-                  "The cal utility writes a Gregorian calendar.");
+                  "The cal utility can write a Gregorian calendar.");
 
 FLAG(CAL_TODAY,
      Bool,

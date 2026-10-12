@@ -15,7 +15,7 @@
 
 KOSHKIT_UTIL_DECL("[-En] [-e script]... [-f script-file]... [script] "
                   "[file ...]",
-                  "The sed utility edits text streams.");
+                  "Edit text streams.");
 
 FLAG(SED_EXTENDED,
      Bool,

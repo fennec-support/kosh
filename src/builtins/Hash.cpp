@@ -17,7 +17,7 @@ FLAG_LIST_DECL();
 
 HELP_SYNOPSIS_DECL("[-rRt] [-p pathname] [name ...]");
 HELP_DESCRIPTION_DECL(
-    "The hash builtin manages the cache of resolved command locations.");
+    "This builtin manages the cache of resolved command locations.");
 
 FLAG(RESET, Bool, 'r', "", "Forget remembered command locations.");
 FLAG(REHASH, Bool, 'R', "", "Rebuild the PATH command cache.");

@@ -16,17 +16,16 @@ FLAG_LIST_DECL();
 
 HELP_SYNOPSIS_DECL("[-n] [+N | -N]");
 HELP_DESCRIPTION_DECL(
-    "The popd builtin removes the top directory from the stack and changes to "
-    "the new top. With +N or -N it removes the Nth entry, counting from the "
-    "top "
-    "for +N and from the bottom for -N, and changes directory only when the "
-    "current entry is removed.");
+    "The top directory can be removed from the stack before changing to "
+    "the new top. With +N or -N, it removes the Nth entry, counting from the "
+    "top for +N and from the bottom for -N. It changes directory if the "
+    "removed entry is current.");
 
 FLAG(NO_CHANGE,
      Bool,
      'n',
      "",
-     "Remove the entry below the current directory without changing "
+     "Remove the entry below the current directory and keep the current "
      "directory.");
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 

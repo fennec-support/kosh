@@ -16,7 +16,7 @@
 
 KOSHKIT_UTIL_DECL(
     "[-T type] operand [argument ...]",
-    "The tput utility writes terminal capability values and control strings.");
+    "Write terminal capability values and control strings.");
 
 FLAG(TPUT_TERMINAL, String, 'T', "terminal", "Use this terminal type.");
 

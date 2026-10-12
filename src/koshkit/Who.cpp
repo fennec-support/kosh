@@ -14,7 +14,7 @@
 #include "../Utils.hpp"
 
 KOSHKIT_UTIL_DECL("[-abdHlmpqrstTu] [am i]",
-                  "The who utility writes records for logged-in users.");
+                  "Write records for logged-in users.");
 
 FLAG(WHO_ALL, Bool, 'a', "all", "Write all available records.");
 FLAG(WHO_BOOT, Bool, 'b', "boot", "Write the last system boot record.");

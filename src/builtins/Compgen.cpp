@@ -27,7 +27,7 @@ HELP_SYNOPSIS_DECL("[-abcdefgjksuv] [-V varname] [-W wordlist] [-G glob] "
                    "[-A action] [-P prefix] [-S suffix] [-X filterpat] "
                    "[-F function] [-C command] [word]");
 HELP_DESCRIPTION_DECL(
-    "The compgen builtin writes the completion candidates for a word.");
+    "Completion candidates for a word can be written with this builtin.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 FLAG(COMPGEN_WORDLIST,

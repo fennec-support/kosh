@@ -25,9 +25,8 @@ HELP_SYNOPSIS_DECL("[-abefhkmnruvxBCEPTARWISG] [+abefhkmnuvxBCEPTARWISG] "
                    "[arg ...]");
 
 HELP_DESCRIPTION_DECL(
-    "The set builtin sets the Bash shell options, the Koshka options that "
-    "have a letter, and the positional parameters. koshconf owns every other "
-    "Koshka setting.");
+    "This builtin sets Bash shell options, Koshka options that have a letter, "
+    "and positional parameters. koshconf owns every other Koshka setting.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 FLAG(MOOD,

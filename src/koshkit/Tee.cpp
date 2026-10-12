@@ -14,7 +14,7 @@
 
 KOSHKIT_UTIL_DECL(
     "[-a] [file ...]",
-    "The tee utility copies standard input to standard output and to each "
+    "Copy standard input to standard output and to each "
     "file. With -a it appends to the files. The default truncates them.");
 
 FLAG(TEE_APPEND, Bool, 'a', "", "Append to the files.");

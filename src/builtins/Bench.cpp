@@ -55,7 +55,7 @@ HELP_SYNOPSIS_DECL("[--runs n] [--duration ms] [--ignore-exit-code] "
                    "command [command ...]");
 
 HELP_DESCRIPTION_DECL(
-    "The bench builtin measures and compares the runtime of each command.");
+    "This builtin measures and compares the runtime of each command.");
 
 REGISTER_BUILTIN_FLAGS(Bench);
 

@@ -13,7 +13,7 @@
 #include "../Platform.hpp"
 #include "../Utils.hpp"
 
-KOSHKIT_UTIL_DECL("[aux]", "The ps utility lists the running processes.");
+KOSHKIT_UTIL_DECL("[aux]", "List the running processes.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 FLAG(PS_ALL, Bool, 'a', "", "List every user's processes.");

@@ -18,18 +18,18 @@ FLAG_LIST_DECL();
 
 HELP_SYNOPSIS_DECL("[-o|+o option] [-DEI] [name ...]");
 HELP_DESCRIPTION_DECL(
-    "The compopt builtin changes options for completion specs selected by its "
-    "operands, the -D, -E, or -I spec, or, inside a completion function with "
-    "no name operand, the current completion. With no option, it prints a "
-    "replayable form.");
+    "Options can be changed for completion specs selected by its "
+    "operands, by -D, -E, or -I, or, inside a completion function with no name "
+    "operand, by the current completion. With no option, it prints a form that "
+    "can be replayed.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 FLAG(COMPOPT_OPTION,
      ManyStrings,
      'o',
      "",
-     "Turn the option on, as complete -o does. +o turns it off. If both are "
-     "given, the option remains off. Any other name is an error.");
+     "Turn the option on, as complete -o does. +o turns it off. If both forms "
+     "are given, the option remains off. Any other name is an error.");
 FLAG(COMPOPT_DEFAULT,
      Bool,
      'D',

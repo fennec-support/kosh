@@ -19,7 +19,7 @@
 KOSHKIT_UTIL_DECL(
     "[-aCtlf] [--live [seconds]] [--cumulative [seconds]] "
     "[--sort key]",
-    "The evilnet utility reports the addresses assigned to each interface.");
+    "The evilnet utility can report the addresses assigned to each interface.");
 
 FLAG(EVILNET_ALL, Bool, 'a', "all", "Include interface traffic and TCP data.");
 FLAG(EVILNET_TRAFFIC, Bool, 't', "traffic", "Show interface traffic only.");

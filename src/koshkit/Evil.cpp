@@ -17,7 +17,7 @@
 
 KOSHKIT_UTIL_DECL(
     "[-asu]",
-    "The evil utility reports what the machine is and how it is running.");
+    "The evil utility can report the machine identity and current state.");
 
 FLAG(EVIL_ALL, Bool, 'a', "all", "Print additional system details.");
 FLAG(EVIL_SHORT,

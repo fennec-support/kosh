@@ -18,7 +18,8 @@ FLAG_LIST_DECL();
 HELP_SYNOPSIS_DECL("optstring name [argument ...]");
 
 HELP_DESCRIPTION_DECL(
-    "The getopts builtin parses the option arguments against optstring.");
+    "Positional arguments can be parsed according to "
+    "optstring and stores the result in name.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 

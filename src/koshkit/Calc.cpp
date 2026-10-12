@@ -21,10 +21,10 @@
 
 KOSHKIT_UTIL_DECL(
     "[-i] [-p] [expression ...]",
-    "The calc utility joins its command-line operands into one arithmetic "
-    "expression and prints the result. When no expression is given on a "
-    "terminal, it accepts and evaluates expressions interactively. A name = "
-    "value line binds a variable for a later expression.");
+    "The calc utility can join its command-line operands into one arithmetic "
+    "expression and print the result. When no expression is given on a "
+    "terminal, expressions can be evaluated interactively. A name = value "
+    "line can bind a variable for a later expression.");
 
 FLAG(CALC_INTERACTIVE,
      Bool,

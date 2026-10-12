@@ -15,7 +15,7 @@
 
 KOSHKIT_UTIL_DECL(
     "[-cCds] set1 [set2]",
-    "The tr utility translates the bytes in set1 to the matching bytes in "
+    "Translate the bytes in set1 to the matching bytes in "
     "set2.");
 
 FLAG(TR_DELETE, Bool, 'd', "", "Delete the bytes in set1.");

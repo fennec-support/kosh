@@ -19,7 +19,7 @@
 
 KOSHKIT_UTIL_DECL(
     "[-itw] [-p pid] [-u user] [-c command] [path ...]",
-    "The evilfiles utility lists the files that running processes hold open.");
+    "The evilfiles utility can list files held open by running processes.");
 
 FLAG(EVILFILES_TERSE,
      Bool,

@@ -19,7 +19,7 @@ FLAG_LIST_DECL();
 
 HELP_SYNOPSIS_DECL("[%job]");
 HELP_DESCRIPTION_DECL(
-    "The fg builtin brings a job to the foreground and waits for it.");
+    "A job can be brought to the foreground and awaited with this builtin.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 

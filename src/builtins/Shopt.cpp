@@ -18,7 +18,7 @@ FLAG_LIST_DECL();
 HELP_SYNOPSIS_DECL("[-supqo] [optname ...]");
 
 HELP_DESCRIPTION_DECL(
-    "The shopt builtin sets, unsets, and queries the bash shell options.");
+    "Bash shell options can be set, unset, or queried with this builtin.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 FLAG(SHOPT_SET, Bool, 's', "", "Enable each given option.");

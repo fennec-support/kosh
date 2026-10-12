@@ -23,8 +23,7 @@ FLAG_LIST_DECL();
 HELP_SYNOPSIS_DECL("[-v] [-V] name [argument ...]");
 
 HELP_DESCRIPTION_DECL(
-    "The command builtin runs a command without calling a function with the "
-    "same name.");
+    "A command can be run without calling a function with the same name.");
 
 FLAG(SHOW, Bool, 'v', "", "Print the resolution of the name in a terse form.");
 FLAG(

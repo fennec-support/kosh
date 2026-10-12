@@ -14,7 +14,7 @@
 #include "../Utils.hpp"
 
 KOSHKIT_UTIL_DECL("[option ...] duration command [argument ...]",
-                  "The timeout utility runs a command with a time limit.");
+                  "Run a command with a time limit.");
 
 FLAG(TIMEOUT_SIGNAL,
      String,

@@ -15,7 +15,7 @@
 #include "../Utils.hpp"
 
 KOSHKIT_UTIL_DECL("[-i] [-u name]... [NAME=value ...] [command [argument ...]]",
-                  "The env utility runs a command in a modified environment.");
+                  "The env utility can run a command in a modified environment.");
 
 FLAG(ENV_IGNORE,
      Bool,

@@ -20,8 +20,8 @@ HELP_SYNOPSIS_DECL("[-abcdefgjksuv] [-o option] [-A action] [-G globpat] "
                    "[-W wordlist] [-F function] [-C command] [-X filterpat] "
                    "[-P prefix] [-S suffix] [-DEIpr] [name ...]");
 HELP_DESCRIPTION_DECL(
-    "The complete builtin registers a completion spec for a command or for "
-    "the default, empty line, or initial word slot.");
+    "A completion spec can be registered for a command, the default, an empty "
+    "line, or the initial word slot with this builtin.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 FLAG(COMPLETE_WORDLIST,

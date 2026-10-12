@@ -19,7 +19,7 @@ FLAG_LIST_DECL();
 HELP_SYNOPSIS_DECL("[-lp] [--] [action condition ...]");
 
 HELP_DESCRIPTION_DECL(
-    "The trap builtin sets the action to run for each given condition.");
+    "An action can be set for each named condition with this builtin.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 FLAG(TRAP_PRINT, Bool, 'p', "", "Print the set traps in a reusable form.");

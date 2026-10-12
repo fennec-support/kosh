@@ -14,7 +14,7 @@
 #include "../Utils.hpp"
 
 KOSHKIT_UTIL_DECL("[-n | tabstop-list]",
-                  "The tabs utility sets terminal tab stops.");
+                  "Set terminal tab stops.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Tabs);
 

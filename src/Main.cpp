@@ -47,7 +47,7 @@ FLAG(SHORT_VERSION,
      'V',
      "short-version",
      "Display the version in short form.");
-FLAG(HELP, Bool, '\0', "help", "Display help message.");
+FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 FLAG(INTERACTIVE,
      Bool,
@@ -61,7 +61,7 @@ FLAG(COMMAND,
      'c',
      "command",
      Posix,
-     "Execute the specified command and exit. This option can be used multiple times.");
+     "Execute the specified command and exit. The option can be repeated.");
 FLAG(ERROR_EXIT, Bool, 'e', "error-exit", Posix, "Exit on the first error.");
 FLAG(DISABLE_EXPANSION, Bool, 'f', "no-glob", Posix, "Disable path expansion.");
 FLAG(ONE_COMMAND,
@@ -151,7 +151,7 @@ FLAG(PRIVILEGED,
      'p',
      "privileged",
      Bash,
-     "Run privileged, suppressing BASH_ENV. Unequal ids skip startup files.");
+     "Run with privileges and suppress BASH_ENV. Unequal ids skip startup files.");
 FLAG(SHOPT_OPTION,
      ManyStrings,
      'O',
@@ -169,8 +169,8 @@ FLAG(NO_CONFIG,
      '\0',
      "no-config",
      Kosh,
-     "Read no kosh.conf file and ignore KOSHCONF, keeping PATH and the shell "
-     "startup files.");
+     "Read no kosh.conf file and ignore KOSHCONF. PATH and shell startup files "
+     "remain enabled.");
 FLAG(POSIX_COMPAT,
      Bool,
      '\0',
@@ -183,25 +183,24 @@ FLAG(MOOD,
      'M',
      "mood",
      Compat,
-     "Select the runtime mood, 'kosh' is strict with the analysis stage on, "
-     "'bash' runs the extensions with it off, 'sh' behaves like dash, and "
-     "'bash-posix' is bash with the posix identity reached by --posix.");
+     "Select the runtime mood. 'kosh' enables strict analysis, 'bash' enables "
+     "the extensions without strict analysis, 'sh' behaves like dash, and "
+     "'bash-posix' uses the Bash POSIX identity selected by --posix.");
 FLAG(INIT_MOODS,
      ManyStrings,
      'L',
      "init-moods",
      Compat,
-     "Source the startup files for each listed mood, in order, comma separated "
-     "or by repeating the flag. Defaults to init_moods in an "
-     "interactive or login shell, then to --mood.");
+     "Source startup files for each listed mood in order. Separate moods with "
+     "commas or repeat the flag. An interactive or login shell uses init_moods "
+     "by default, followed by --mood.");
 FLAG(MIMICRY,
      Bool,
      'I',
      "enable-mimicry",
      Compat,
-     "Mimic the shell specified by a script's shebang, running a known shell "
-     "shebang "
-     "in-process in the matching mode.");
+     "Mimic the shell specified by a script's shebang. A known shell shebang "
+     "runs in process in the matching mode.");
 FLAG(DUMB,
      Bool,
      '\0',
@@ -215,8 +214,8 @@ FLAG(LINT,
      '\0',
      "lint",
      Auxiliary,
-     "Analyze shell inputs without running them and enable every diagnostic "
-     "tier at its normal severity.");
+     "Analyze shell input without running it. Every diagnostic tier uses its "
+     "normal severity.");
 FLAG(FORMAT,
      Bool,
      '\0',
@@ -247,7 +246,7 @@ FLAG(LIST_CHECKS,
      '\0',
      "list-diagnostics",
      Kosh,
-     "List the shellcheck-style checks the analysis stage reports, then exit.");
+     "List the shellcheck-style checks reported by analysis, then exit.");
 FLAG(SUPPRESS_DIAGNOSTICS,
      Bool,
      '\0',

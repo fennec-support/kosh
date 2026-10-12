@@ -19,7 +19,7 @@
 
 KOSHKIT_UTIL_DECL(
     "[-hmrtx1] [-l latency] [-e substring] path ...",
-    "The goodfsw utility reports changes under the paths it watches.");
+    "The goodfsw utility can report changes under watched paths.");
 
 FLAG(GOODFSW_RECURSIVE, Bool, 'r', "recursive", "Watch every subdirectory.");
 FLAG(GOODFSW_HUMAN,

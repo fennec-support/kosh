@@ -19,7 +19,7 @@
 
 KOSHKIT_UTIL_DECL("[-fFqv] [-n count] [-c count] [-s seconds] [--pid pid] "
                   "[file ...]",
-                  "The tail utility writes the last lines of each file.");
+                  "Write the last lines of each file.");
 
 static pure fn
 is_tail_follow_mode(koshka::StringView value) wontthrow -> bool

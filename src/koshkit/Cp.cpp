@@ -14,7 +14,7 @@
 #include "../base/Path.hpp"
 
 KOSHKIT_UTIL_DECL("[-fHiLPpRrvx] source ... destination",
-                  "The cp utility copies each source to the destination.");
+                  "The cp utility can copy each source to the destination.");
 
 FLAG(CP_RECURSIVE_R, Bool, 'r', "", "Copy directories and their contents.");
 FLAG(CP_RECURSIVE_UPPER, Bool, 'R', "", "Copy directories and their contents.");

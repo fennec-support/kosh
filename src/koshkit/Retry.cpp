@@ -16,7 +16,7 @@
 
 KOSHKIT_UTIL_DECL(
     "[-q] [-n attempts] [-d delay] [-b backoff] [-m max-delay] command ...",
-    "The retry utility runs a command until it succeeds or exhausts its "
+    "Run a command until it succeeds or exhausts its "
     "attempts.");
 
 FLAG(RETRY_ATTEMPTS,

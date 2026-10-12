@@ -22,7 +22,7 @@ KOSHKIT_UTIL_DECL(
     "[-maxdepth n] [-mindepth n] [-xdev] [-mount] [-print] "
     "[-print0] "
     "[-exec command [argument ...] {} ;|+]",
-    "The find utility walks each path and prints every entry under it.");
+    "The find utility can walk each path and print every entry under it.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Find);
 

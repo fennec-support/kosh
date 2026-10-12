@@ -18,7 +18,7 @@ FLAG_LIST_DECL();
 
 HELP_SYNOPSIS_DECL("[option ...] target");
 HELP_DESCRIPTION_DECL(
-    "The assimilate builtin installs this shell on a remote SSH target.");
+    "This builtin installs the shell on a remote SSH target.");
 
 FLAG(TRACE, Bool, 'x', "trace", "Trace the remote installation commands.");
 FLAG(SSH_COMMAND,

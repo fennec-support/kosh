@@ -12,7 +12,7 @@
 #include "../Koshkit.hpp"
 
 KOSHKIT_UTIL_DECL("[-p] directory ...",
-                  "The rmdir utility removes each empty directory.");
+                  "Remove each empty directory.");
 
 FLAG(RMDIR_PARENTS, Bool, 'p', "", "Remove empty parent directories.");
 

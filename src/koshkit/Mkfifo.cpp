@@ -15,7 +15,7 @@
 #include "../Utils.hpp"
 
 KOSHKIT_UTIL_DECL("[-m mode] file ...",
-                  "The mkfifo utility creates FIFO special files.");
+                  "Create FIFO special files.");
 
 FLAG(MKFIFO_MODE, String, 'm', "mode", "Set the FIFO permission mode.");
 

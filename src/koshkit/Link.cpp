@@ -13,7 +13,7 @@
 #include "../Platform.hpp"
 
 KOSHKIT_UTIL_DECL("file1 file2",
-                  "The link utility creates a hard link to a file.");
+                  "The link utility can create a hard link to a file.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Link);
 

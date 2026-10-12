@@ -12,7 +12,7 @@
 
 KOSHKIT_UTIL_DECL(
     "[string ...]",
-    "The yes utility writes the given string on its own line repeatedly.");
+    "Write the given string on its own line repeatedly.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Yes);
 

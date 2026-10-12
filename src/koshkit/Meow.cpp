@@ -17,8 +17,8 @@
 #include <cmath>
 
 KOSHKIT_UTIL_DECL("[-f fps] [-s speed] [-n cats]",
-                  "The meow utility shows cats floating in a night sky until a "
-                  "key that is not a control key is pressed.");
+                  "Show cats floating in a night sky until a key that is not a "
+                  "control key is pressed.");
 
 FLAG(MEOW_FPS,
      String,

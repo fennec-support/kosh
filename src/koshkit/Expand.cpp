@@ -13,7 +13,7 @@
 #include "../Utils.hpp"
 
 KOSHKIT_UTIL_DECL("[-t tablist] [file ...]",
-                  "The expand utility converts tabs to spaces.");
+                  "The expand utility can convert tabs to spaces.");
 
 FLAG(EXPAND_TABS, String, 't', "tabs", "Use these tab stops.");
 

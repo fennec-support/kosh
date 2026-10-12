@@ -15,7 +15,7 @@
 #include "../base/Path.hpp"
 
 KOSHKIT_UTIL_DECL("[-R] [--one-file-system] mode file ...",
-                  "The chmod utility changes file permission modes.");
+                  "The chmod utility can change file permission modes.");
 
 FLAG(CHMOD_RECURSIVE,
      Bool,

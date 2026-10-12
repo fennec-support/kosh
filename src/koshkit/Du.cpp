@@ -20,7 +20,7 @@
 #include "../base/Trace.hpp"
 
 KOSHKIT_UTIL_DECL("[-shxT] [--tree] [path ...]",
-                  "The du utility prints the disk usage of each path.");
+                  "The du utility can print the disk usage of each path.");
 
 FLAG(DU_SUMMARY, Bool, 's', "", "Print only the total for each path.");
 FLAG(DU_HUMAN,

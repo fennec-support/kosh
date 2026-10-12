@@ -16,7 +16,7 @@
 
 KOSHKIT_UTIL_DECL(
     "[-n increment] utility [argument ...]",
-    "The nice utility invokes a command with an adjusted scheduling priority.");
+    "Run a command with an adjusted scheduling priority.");
 
 FLAG(NICE_INCREMENT,
      String,

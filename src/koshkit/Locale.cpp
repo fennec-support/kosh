@@ -14,7 +14,7 @@
 #include "../base/StaticStringMap.hpp"
 
 KOSHKIT_UTIL_DECL("[-a|-m] | [-ck] [name ...]",
-                  "The locale utility writes locale information.");
+                  "The locale utility can write locale information.");
 
 FLAG(LOCALE_ALL_LOCALES, Bool, 'a', "all-locales", "List available locales.");
 FLAG(LOCALE_CHARMAPS, Bool, 'm', "charmaps", "List available charmaps.");

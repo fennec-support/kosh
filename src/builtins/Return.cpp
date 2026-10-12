@@ -16,8 +16,7 @@ FLAG_LIST_DECL();
 HELP_SYNOPSIS_DECL("[n]");
 
 HELP_DESCRIPTION_DECL(
-    "The return builtin stops the current function or sourced file and returns "
-    "a status.");
+    "The current function or sourced file can be stopped with a returned status.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 

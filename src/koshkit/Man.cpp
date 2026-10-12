@@ -15,7 +15,7 @@
 
 KOSHKIT_UTIL_DECL(
     "[-k keyword] | [section] name ...",
-    "The man utility displays manual pages found through MANPATH.");
+    "Display manual pages found through MANPATH.");
 
 FLAG(MAN_KEYWORD, String, 'k', "keyword", "Search manual page descriptions.");
 

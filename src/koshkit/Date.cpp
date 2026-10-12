@@ -13,7 +13,7 @@
 #include "../Utils.hpp"
 
 KOSHKIT_UTIL_DECL("[-u] [+format]",
-                  "The date utility writes the date and time.");
+                  "The date utility can write the date and time.");
 
 FLAG(DATE_UTC, Bool, 'u', "utc", "Use Coordinated Universal Time.");
 

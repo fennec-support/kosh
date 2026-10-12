@@ -19,7 +19,7 @@ FLAG_LIST_DECL();
 HELP_SYNOPSIS_DECL("file");
 
 HELP_DESCRIPTION_DECL(
-    "The source builtin runs the specified file in the current shell.");
+    "The specified file can be run in the current shell with this builtin.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 

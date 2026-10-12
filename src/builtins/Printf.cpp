@@ -16,8 +16,7 @@ FLAG_LIST_DECL();
 HELP_SYNOPSIS_DECL("[-v var] format [argument ...]");
 
 HELP_DESCRIPTION_DECL(
-    "The printf builtin writes its arguments under the control of a format "
-    "string.");
+    "This builtin writes its arguments under the control of a format string.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 

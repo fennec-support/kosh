@@ -18,7 +18,7 @@ FLAG_LIST_DECL();
 
 HELP_SYNOPSIS_DECL("[-L|-P] [dir]");
 
-HELP_DESCRIPTION_DECL("The cd builtin changes the working directory.");
+HELP_DESCRIPTION_DECL("The working directory can be changed with this builtin.");
 
 FLAG(LOGICAL,
      Bool,

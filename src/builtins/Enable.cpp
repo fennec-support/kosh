@@ -17,15 +17,26 @@ FLAG_LIST_DECL();
 
 HELP_SYNOPSIS_DECL("[-a] [-d] [-n] [-f filename] [-s] [name ...]");
 HELP_DESCRIPTION_DECL(
-    "The enable builtin lists and toggles shell builtins. Every builtin is "
-    "always enabled in Koshka. Toggle requests have no effect, and listing is "
-    "the only observable output.");
+    "Shell builtins can be listed. Every builtin remains enabled in "
+    "Koshka, so the toggle forms have no effect. Listing is the only output.");
 
 FLAG(ALL, Bool, 'a', "", "List every builtin.");
-FLAG(DISABLE, Bool, 'n', "", "Accepted without effect.");
-FLAG(LOAD_FILE, String, 'f', "", "Accepted without effect.");
-FLAG(DELETE_FILE, Bool, 'd', "", "Accepted without effect.");
-FLAG(SILENT, Bool, 's', "", "Accepted without effect.");
+FLAG(DISABLE,
+     Bool,
+     'n',
+     "",
+     "Leave the named builtins disabled, with no effect.");
+FLAG(LOAD_FILE,
+     String,
+     'f',
+     "",
+     "Load builtins from filename, with no effect.");
+FLAG(DELETE_FILE,
+     Bool,
+     'd',
+     "",
+     "Delete loaded builtins, with no effect.");
+FLAG(SILENT, Bool, 's', "", "Suppress output from a toggle operation.");
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_BUILTIN_FLAGS(Enable);

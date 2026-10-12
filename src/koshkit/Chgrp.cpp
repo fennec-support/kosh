@@ -14,7 +14,7 @@
 #include "../UtilsOwnership.hpp"
 
 KOSHKIT_UTIL_DECL("[-hRx] [-H|-L|-P] group file ...",
-                  "The chgrp utility changes file group ownership.");
+                  "The chgrp utility can change file group ownership.");
 
 FLAG(CHGRP_NO_DEREFERENCE,
      Bool,

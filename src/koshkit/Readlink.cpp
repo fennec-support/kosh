@@ -12,7 +12,7 @@
 #include "../Platform.hpp"
 
 KOSHKIT_UTIL_DECL("[-n] file ...",
-                  "The readlink utility prints the target of a symbolic link.");
+                  "Print the target of a symbolic link.");
 
 FLAG(READLINK_NO_NEWLINE,
      Bool,

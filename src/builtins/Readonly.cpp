@@ -16,7 +16,7 @@ FLAG_LIST_DECL();
 HELP_SYNOPSIS_DECL("[-aAf] [-p] [name[=value] ...]");
 
 HELP_DESCRIPTION_DECL(
-    "The readonly builtin marks each given variable read-only.");
+    "Each named variable can be marked read-only with this builtin.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 FLAG(READONLY_PRINT,

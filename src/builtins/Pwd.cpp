@@ -16,8 +16,7 @@ FLAG_LIST_DECL();
 
 HELP_SYNOPSIS_DECL("");
 HELP_DESCRIPTION_DECL(
-    "The pwd builtin prints the absolute path of the current working "
-    "directory.");
+    "This builtin prints the absolute path of the current working directory.");
 
 FLAG(PWD_LOGICAL,
      Bool,

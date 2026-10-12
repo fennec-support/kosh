@@ -15,7 +15,7 @@
 
 KOSHKIT_UTIL_DECL(
     "[first [increment]] last",
-    "The seq utility prints a sequence of integers from first to last.");
+    "Print a sequence of integers from first to last.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Seq);
 

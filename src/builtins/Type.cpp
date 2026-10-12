@@ -21,7 +21,7 @@ FLAG_LIST_DECL();
 HELP_SYNOPSIS_DECL("name [name ...]");
 
 HELP_DESCRIPTION_DECL(
-    "The type builtin reports how each name resolves as a command.");
+    "This builtin reports how each name resolves as a command.");
 
 FLAG(TYPE_WORD,
      Bool,

@@ -17,7 +17,7 @@
 #include "../base/Path.hpp"
 
 KOSHKIT_UTIL_DECL("[-dhiL] [-m file] [-M file] [file ...]",
-                  "The file utility classifies file operands.");
+                  "The file utility can classify file operands.");
 
 FLAG(FILE_DEFAULT_TESTS, Bool, 'd', "default-tests", "Apply default tests.");
 FLAG(FILE_NO_FOLLOW, Bool, 'h', "no-dereference", "Classify symbolic links.");

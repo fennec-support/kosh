@@ -14,7 +14,7 @@
 #include "../Platform.hpp"
 
 KOSHKIT_UTIL_DECL("[-hHkP] [file ...]",
-                  "The df utility reports available filesystem space.");
+                  "The df utility can report available filesystem space.");
 
 FLAG(DF_KIBIBYTES, Bool, 'k', "kilobytes", "Use 1024-byte units.");
 FLAG(DF_PORTABLE, Bool, 'P', "portability", "Use the POSIX output format.");

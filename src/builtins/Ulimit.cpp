@@ -19,24 +19,24 @@ FLAG_LIST_DECL();
 HELP_SYNOPSIS_DECL("[-HSacdflmnpstuvw] [limit]");
 
 HELP_DESCRIPTION_DECL(
-    "The ulimit builtin prints or sets a resource limit of the shell.");
+    "A resource limit for the shell can be printed or set with this builtin.");
 
-FLAG(CPU_TIME, Bool, 't', "", "The most CPU time in seconds.");
+FLAG(CPU_TIME, Bool, 't', "", "The maximum CPU time in seconds.");
 FLAG(FILE_SIZE,
      Bool,
      'f',
      "",
      "The largest file the shell may create, in blocks.");
-FLAG(DATA_SIZE, Bool, 'd', "", "The data segment size in kbytes.");
-FLAG(STACK_SIZE, Bool, 's', "", "The stack size in kbytes.");
-FLAG(CORE_SIZE, Bool, 'c', "", "The core dump size in blocks.");
-FLAG(RSS_SIZE, Bool, 'm', "", "The resident set size in kbytes.");
-FLAG(LOCKED_MEMORY, Bool, 'l', "", "The locked-in-memory size in kbytes.");
+FLAG(DATA_SIZE, Bool, 'd', "", "The data segment limit in kilobytes.");
+FLAG(STACK_SIZE, Bool, 's', "", "The stack limit in kilobytes.");
+FLAG(CORE_SIZE, Bool, 'c', "", "The core dump limit in blocks.");
+FLAG(RSS_SIZE, Bool, 'm', "", "The resident set limit in kilobytes.");
+FLAG(LOCKED_MEMORY, Bool, 'l', "", "The locked memory limit in kilobytes.");
 FLAG(PROCESSES_P, Bool, 'p', "", "The pipe buffer size in 512-byte blocks.");
 FLAG(OPEN_FILES, Bool, 'n', "", "The largest number of open file descriptors.");
-FLAG(VIRTUAL_MEMORY, Bool, 'v', "", "The virtual memory size in kbytes.");
-FLAG(FILE_LOCKS, Bool, 'w', "", "The most file locks.");
-FLAG(PROCESSES, Bool, 'u', "", "The most processes for the user.");
+FLAG(VIRTUAL_MEMORY, Bool, 'v', "", "The virtual memory limit in kilobytes.");
+FLAG(FILE_LOCKS, Bool, 'w', "", "The maximum number of file locks.");
+FLAG(PROCESSES, Bool, 'u', "", "The maximum number of processes for the user.");
 FLAG(ALL, Bool, 'a', "", "Report every limit.");
 FLAG(HARD, Bool, 'H', "", "Read or set the hard limit.");
 FLAG(SOFT, Bool, 'S', "", "Read or set the soft limit.");

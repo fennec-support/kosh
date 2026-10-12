@@ -16,7 +16,7 @@ FLAG_LIST_DECL();
 HELP_SYNOPSIS_DECL("[n]");
 
 HELP_DESCRIPTION_DECL(
-    "The continue builtin skips to the next iteration of an enclosing loop.");
+    "An enclosing loop can be advanced to its next iteration with this builtin.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 

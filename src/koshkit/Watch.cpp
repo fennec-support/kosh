@@ -15,7 +15,7 @@
 #include "../Platform.hpp"
 
 KOSHKIT_UTIL_DECL("[-tgex] [-n seconds] command [argument ...]",
-                  "The watch utility runs a command at fixed intervals and "
+                  "Run a command at fixed intervals and "
                   "shows its output.");
 
 FLAG(WATCH_INTERVAL,

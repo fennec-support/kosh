@@ -17,7 +17,7 @@
 #include "../base/StaticStringMap.hpp"
 
 KOSHKIT_UTIL_DECL("[--cores] [--logs]",
-                  "The evillogs utility reports core dumps and system logs.");
+                  "The evillogs utility can report core dumps and system logs.");
 
 FLAG(EVILLOGS_CORES, Bool, '\0', "cores", "Print only the core dump report.");
 FLAG(EVILLOGS_LOGS, Bool, '\0', "logs", "Print only the log report.");

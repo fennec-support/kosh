@@ -14,7 +14,7 @@
 #include "../Utils.hpp"
 
 KOSHKIT_UTIL_DECL("-b list [-n] | -c list | -f list [-d delim] [-s] [file ...]",
-                  "The cut utility selects bytes, characters, or fields.");
+                  "The cut utility can select bytes, characters, or fields.");
 
 FLAG(CUT_BYTES, String, 'b', "bytes", "Select byte positions.");
 FLAG(CUT_CHARACTERS, String, 'c', "characters", "Select character positions.");

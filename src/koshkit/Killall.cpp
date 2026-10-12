@@ -14,7 +14,7 @@
 
 KOSHKIT_UTIL_DECL(
     "[-l] [-s signal] name",
-    "The killall utility sends a signal to each process by exact name.");
+    "The killall utility can send a signal to each process by exact name.");
 
 FLAG(KILLALL_SIGNAL,
      String,

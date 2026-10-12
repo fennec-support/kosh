@@ -15,7 +15,7 @@
 
 KOSHKIT_UTIL_DECL(
     "utility [argument ...]",
-    "The nohup utility invokes a command that ignores terminal hangups.");
+    "Run a command that ignores terminal hangups.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Nohup);
 

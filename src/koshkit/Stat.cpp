@@ -17,7 +17,7 @@
 
 KOSHKIT_UTIL_DECL(
     "[-Lft] [-c format] [--printf=format] file ...",
-    "The stat utility displays the status of a file or a filesystem.");
+    "Display the status of a file or a filesystem.");
 
 FLAG(STAT_DEREFERENCE, Bool, 'L', "dereference", "Follow symbolic links.");
 FLAG(STAT_FILESYSTEM,

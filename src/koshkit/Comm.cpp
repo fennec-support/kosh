@@ -13,7 +13,7 @@
 #include "../Utils.hpp"
 
 KOSHKIT_UTIL_DECL("[-123] file1 file2",
-                  "The comm utility compares two sorted files.");
+                  "The comm utility can compare two sorted files.");
 
 FLAG(COMM_HIDE_FIRST, Bool, '1', "hide-first", "Suppress the first column.");
 FLAG(COMM_HIDE_SECOND, Bool, '2', "hide-second", "Suppress the second column.");

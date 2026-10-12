@@ -18,8 +18,8 @@ FLAG_LIST_DECL();
 HELP_SYNOPSIS_DECL("");
 
 HELP_DESCRIPTION_DECL(
-    "The times builtin prints the user and system time the shell and its "
-    "children have used.");
+    "This builtin prints the user and system time used by the shell and its "
+    "children.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 
