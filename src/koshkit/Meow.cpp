@@ -2,9 +2,9 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file implements the meow utility, a terminal screensaver. Round
+ * This file implements the meow utility, a terminal screensaver. Shaded
  * pixel-art cats drawn with half blocks float and paddle through space, chase
- * a ball of yarn, curl up to nap, and explode against the walls of the sky.
+ * a ball of yarn, loaf or curl up to nap, and explode against the walls.
  */
 
 #include "../CLI.hpp"
@@ -89,6 +89,15 @@ constexpr f64 YARN_DRIFT_PER_SECOND      = 5.0;
 constexpr f64 YARN_KICK_MINIMUM          = 45.0;
 constexpr f64 YARN_KICK_MAXIMUM          = 70.0;
 constexpr f64 CURL_RATE_PER_SECOND       = 0.05;
+constexpr f64 CURL_MINIMUM_SECONDS       = 12.0;
+constexpr f64 CURL_MAXIMUM_SECONDS       = 24.0;
+constexpr f64 LOAF_RATE_PER_SECOND       = 0.07;
+constexpr f64 LOAF_MINIMUM_SECONDS       = 10.0;
+constexpr f64 LOAF_MAXIMUM_SECONDS       = 22.0;
+constexpr f64 LOAF_TO_CURL_CHANCE        = 0.4;
+constexpr f64 LOAF_PURR_RATE_PER_SECOND  = 0.12;
+constexpr f64 SLOW_BLINK_PERIOD_SECONDS  = 4.2;
+constexpr f64 SLOW_BLINK_SECONDS         = 0.7;
 constexpr f64 CHASE_RATE_PER_SECOND      = 0.2;
 constexpr f64 GROOM_SECONDS              = 1.8;
 constexpr f64 DOZE_AFTER_SECONDS         = 4.0;
@@ -132,6 +141,8 @@ struct cat_breed_art
   const StringView  *dash;
   const StringView  *curled;
   usize              curled_row_count;
+  const StringView  *loaf;
+  usize              loaf_row_count;
   StringView         spike;
   usize              spike_row;
   const cat_palette *palettes;
@@ -139,11 +150,11 @@ struct cat_breed_art
 };
 
 constexpr StringView DOMESTIC_BODY[] = {
-    "..B....B....................", ".BIB..BIB.....DDDDD.........",
-    ".BBBBBBBB..BBBBDBBBBBB......", "BBEBBBBEBBBBBBBDBBBBBBB.....",
-    "BBBBNNBBBBBBBBBBDBBBBBBB....", ".BLLLLLLBBBBBBBBDBBBBBBB....",
-    "..CCGCCBBBBBLLLLLLBBBBB.....", "...BBBBBBBBLLLLLLLLBBBB.....",
-    "....BBBBB..LLLLLLL.BBB......",
+    "..B....B....................", ".BIB..BIB.....DHDHD.........",
+    ".BHBDBHBB..HHHHDHHHHBB......", "SBEBBBBEBBBBBBBDBBBBBDS.....",
+    "SBBBNNBBBSBBBBBBDBBBBBDS....", ".SLLLLLLSBBBBBBBDBBBBBDS....",
+    "..CCGCCSBBBBLLLLLLBBBBS.....", "...SBBBBBBSLLLLLLLLUBBS.....",
+    "....SSSSS..ULLLLLU.SSS......",
 };
 
 constexpr StringView DOMESTIC_TAIL[] = {
@@ -173,9 +184,17 @@ constexpr StringView DOMESTIC_DASH[] = {
 };
 
 constexpr StringView DOMESTIC_CURLED[] = {
-    "....BB..BB......", "...BIBBBIB......", "..BBBBBBBBBB....",
-    ".BBEBBBBEBBBBB..", ".BBBBNNBBBBBBBB.", ".BLLLLLLBBBDBBB.",
-    "..BBBBBBBBBBBDD.", "....BBBBBBBDD...",
+    "....BB..BB......", "...BIBBBIB......", "..BHBDBHBHHH....",
+    ".BBEBBBBEBBDBB..", ".SBBBNNBBBBBDBS.", ".SLLLLLLSBBDBBS.",
+    "..SBBBBBBBBBSDD.", "....SSSSSSSDD...",
+};
+
+constexpr StringView DOMESTIC_LOAF[] = {
+    "..B....B................", ".BIB..BIB...............",
+    ".BHBDBHBB..HHHHHHH......", "SBEBBBBEBSHBBBDBBBHB....",
+    "SBBBNNBBBBBBBBBDBBBBB...", ".SLLLLLLSBBBBBBBDBBBBS..",
+    "..CCGCCLLSBBBBBBBDBBBBS.", ".DDLLLLLLLBBBBBBBBBBBBS.",
+    "..DDDSSSSSSSSSSSSSSSSS..",
 };
 
 constexpr cat_palette DOMESTIC_PALETTES[] = {
@@ -190,11 +209,11 @@ constexpr cat_palette DOMESTIC_PALETTES[] = {
 };
 
 constexpr StringView BRITISH_BODY[] = {
-    "..B.....B...................", ".BIB...BIB....BBBBBB........",
-    ".BBBBBBBBB..BBBBBBBBBBB.....", "BBEEBBBEEBBBBBBBBBBBBBBB....",
-    "BBBBBNNBBBBBBBBBBBBBBBBBB...", "BBLLLLLLLBBBBBBBBBBBBBBBBB..",
-    ".BLLLLLLLBBBBBLLLLLLBBBBBB..", "..BBCCGCCBBBLLLLLLLLLBBBBB..",
-    "...BBBBBBBBLLLLLLLLLLBBBB...", "....BBBBBBBBBBBBBBBBBBB.....",
+    "..B.....B...................", ".BIB...BIB....HHHHHH........",
+    ".BHHBBBHHB..HHBHHBHHBHB.....", "BBEEBBBEEBBBHBBBSBBBHBBS....",
+    "SBBBBNNBBBBSBBBHBBBSBBBBS...", "SBLLLLLLLBSBBBBSBBBBHBBBBS..",
+    ".SLLLLLLLSBBBBLLLLLLBBSBBS..", "..SBCCGCCBSBLLLLLLLLLUBBBS..",
+    "...SBBBBBBSULLLLLLLLUSBBS...", "....SSSSSSSSSSSSSSSSSSS.....",
 };
 
 constexpr StringView BRITISH_TAIL[] = {
@@ -220,9 +239,17 @@ constexpr StringView BRITISH_DASH[] = {
 };
 
 constexpr StringView BRITISH_CURLED[] = {
-    "...B......B.....", "..BIB....BIB....", ".BBBBBBBBBBBBB..",
-    "BBEEBBBEEBBBBBB.", "BBBBBNNBBBBBBBBB", "BLLLLLLLBBBBBBBB",
-    ".BBBBBBBBBBBBBDD", "..BBBBBBBBBBBDD.",
+    "...B......B.....", "..BIB....BIB....", ".BHHBBBHHBHHHB..",
+    "BBEEBBBEEBBSBBB.", "SBBBBNNBBBHBBBBS", "SLLLLLLLSBBBSBBS",
+    ".SBBBBBBBBSBBBDD", "..SSSSSSSSSSSDD.",
+};
+
+constexpr StringView BRITISH_LOAF[] = {
+    "..B.....B.................", ".BIB...BIB................",
+    ".BHHBBBHHB...HHHHHHH......", "BBEEBBBEEBBHHBBBBBBHBB....",
+    "SBBBBNNBBBBSBBBHBBBBBBS...", "SBLLLLLLLBSBBBBBBBSBBBBS..",
+    ".SLLLLLLLSBBBBHBBBBBBBBBS.", "..SBCCGCCBLLBBBBBBSBBBBBS.",
+    ".DDLLLLLLLLLBBBBBBBBBBBBS.", "..DDDSSSSSSSSSSSSSSSSSSS..",
 };
 
 constexpr cat_palette BRITISH_PALETTES[] = {
@@ -233,10 +260,10 @@ constexpr cat_palette BRITISH_PALETTES[] = {
 };
 
 constexpr StringView ORIENTAL_BODY[] = {
-    ".B.....B....................", ".BB...BB....................",
-    ".BIB.BIB....................", "..BBBBB.....................",
-    ".BEBBBEB.......BBBB.........", "..BBNBB..BBBBBBBBBBBBB......",
-    "...LLL.BBBBBBBBBBBBBBBB.....", "...CGCBBBLLLLLLLLBBBBB......",
+    ".K.....K....................", ".DD...DD....................",
+    ".DID.DID....................", "..BDDDB.....................",
+    ".BEDDDEB.......HHHH.........", "..SDNDS..BHHHHHHHHHHBB......",
+    "...LLL.SBBBBBBBBBBBBBBS.....", "...CGCSBBULLLLLLUBBBSS......",
 };
 
 constexpr StringView ORIENTAL_TAIL[] = {
@@ -270,9 +297,17 @@ constexpr StringView ORIENTAL_DASH[] = {
 };
 
 constexpr StringView ORIENTAL_CURLED[] = {
-    ".B....B.........", ".BB..BB.........", ".BIBBIB.........",
-    "..BBBBB.........", ".BEBBBEBBBBB....", "..BBNBBBBBBBBB..",
-    "...LLLBBBBBBDDD.", ".....BBBBBDD....",
+    ".K....K.........", ".DD..DD.........", ".DIDDID.........",
+    "..BDDDB.........", ".BEDDDEBHHHH....", "..SDNDSBBBBBBS..",
+    "...LLLSBBBBSDDD.", ".....SSSSSDD....",
+};
+
+constexpr StringView ORIENTAL_LOAF[] = {
+    ".K.....K..............", ".DD...DD..............",
+    ".DID.DID..............", "..BDDDB...HHHHH.......",
+    ".BEDDDEB.HBBBBBHH.....", "..SDNDSBBBBBBBBBBBS...",
+    "...LLLLSBBBBBBBBBBBS..", "..DDLLLLLBBBBBBBBBBBS.",
+    "...DDDSSSSSSSSSSSSSS..",
 };
 
 constexpr cat_palette ORIENTAL_PALETTES[] = {
@@ -297,6 +332,8 @@ constexpr cat_breed_art DOMESTIC_ART = {
     DOMESTIC_DASH,
     DOMESTIC_CURLED,
     countof(DOMESTIC_CURLED),
+    DOMESTIC_LOAF,
+    countof(DOMESTIC_LOAF),
     "...........D.D.D.D.D.D......",
     0,
     DOMESTIC_PALETTES,
@@ -317,6 +354,8 @@ constexpr cat_breed_art BRITISH_ART = {
     BRITISH_DASH,
     BRITISH_CURLED,
     countof(BRITISH_CURLED),
+    BRITISH_LOAF,
+    countof(BRITISH_LOAF),
     "............D.D.D.D.D.D.....",
     1,
     BRITISH_PALETTES,
@@ -337,6 +376,8 @@ constexpr cat_breed_art ORIENTAL_ART = {
     ORIENTAL_DASH,
     ORIENTAL_CURLED,
     countof(ORIENTAL_CURLED),
+    ORIENTAL_LOAF,
+    countof(ORIENTAL_LOAF),
     "...............D.D.D........",
     4,
     ORIENTAL_PALETTES,
@@ -386,6 +427,7 @@ enum class cat_activity : u8
   Bracing,
   Dashing,
   Curling,
+  Loafing,
   Dizzy,
   Hissing,
 };
@@ -853,8 +895,13 @@ advance_cat(scene_state &scene, cat_state &cat, f64 step_seconds) wontthrow
                              DRIFT_ROWS_PER_SECOND * cat.cruise_factor;
 
     if (scene.noise.next_unit() < CURL_RATE_PER_SECOND * step_seconds) {
-      set_activity(cat, cat_activity::Curling,
-                   scene.noise.next_between(3.0, 8.0));
+      set_activity(
+          cat, cat_activity::Curling,
+          scene.noise.next_between(CURL_MINIMUM_SECONDS, CURL_MAXIMUM_SECONDS));
+    } else if (scene.noise.next_unit() < LOAF_RATE_PER_SECOND * step_seconds) {
+      set_activity(
+          cat, cat_activity::Loafing,
+          scene.noise.next_between(LOAF_MINIMUM_SECONDS, LOAF_MAXIMUM_SECONDS));
     } else if (scene.noise.next_unit() < CHASE_RATE_PER_SECOND * step_seconds) {
       set_activity(cat, cat_activity::Chasing, 6.0);
     }
@@ -927,6 +974,27 @@ advance_cat(scene_state &scene, cat_state &cat, f64 step_seconds) wontthrow
     if (cat.activity_seconds > cat.activity_limit_seconds) {
       cat.wander_radians = scene.noise.next_between(0.0, 2.0 * PI);
       set_activity(cat, cat_activity::Floating, 0.0);
+    }
+    break;
+
+  case cat_activity::Loafing:
+    steering = 1.0;
+
+    if (cat.bubble_seconds <= 0.0 &&
+        scene.noise.next_unit() < LOAF_PURR_RATE_PER_SECOND * step_seconds)
+    {
+      say(cat, "prrr");
+    }
+
+    if (cat.activity_seconds > cat.activity_limit_seconds) {
+      if (scene.noise.next_unit() < LOAF_TO_CURL_CHANCE) {
+        set_activity(cat, cat_activity::Curling,
+                     scene.noise.next_between(CURL_MINIMUM_SECONDS,
+                                              CURL_MAXIMUM_SECONDS));
+      } else {
+        cat.wander_radians = scene.noise.next_between(0.0, 2.0 * PI);
+        set_activity(cat, cat_activity::Floating, 0.0);
+      }
     }
     break;
 
@@ -1298,6 +1366,32 @@ draw_yarn(scene_canvas &canvas, const scene_state &scene) wontthrow -> void
   }
 }
 
+pure fn
+shade_color(u8 color, i32 step_count) wontthrow -> u8
+{
+  if (color >= 232) {
+    let const level = static_cast<i32>(color) + (step_count * 3);
+
+    if (level > 255) return 231;
+    if (level < 232) return 16;
+
+    return static_cast<u8>(level);
+  }
+
+  if (color < 16) return color;
+
+  let const cube_index = static_cast<i32>(color) - 16;
+  let const do_shade   = [step_count](i32 channel) {
+    let const shaded = channel + step_count;
+
+    return shaded < 0 ? 0 : shaded > 5 ? 5 : shaded;
+  };
+
+  return static_cast<u8>(16 + (36 * do_shade(cube_index / 36)) +
+                         (6 * do_shade((cube_index / 6) % 6)) +
+                         do_shade(cube_index % 6));
+}
+
 fn
 cat_pixel_color(char letter, const cat_palette &palette, u8 eye_color) wontthrow
     -> u8
@@ -1306,6 +1400,10 @@ cat_pixel_color(char letter, const cat_palette &palette, u8 eye_color) wontthrow
   case 'B': return palette.body;
   case 'D': return palette.dark;
   case 'L': return palette.light;
+  case 'H': return shade_color(palette.body, 1);
+  case 'S': return shade_color(palette.body, -1);
+  case 'U': return shade_color(palette.light, -1);
+  case 'K': return shade_color(palette.dark, -1);
   case 'E': return eye_color;
   case 'N': return NOSE_COLOR;
   case 'I': return INNER_EAR_COLOR;
@@ -1329,6 +1427,14 @@ cat_eye_color(const cat_state &cat) wontthrow -> u8
   case cat_activity::Curling:
     if (cat.activity_seconds > DOZE_AFTER_SECONDS ||
         cat.activity_seconds < GROOM_SECONDS)
+    {
+      return palette.dark;
+    }
+    break;
+
+  case cat_activity::Loafing:
+    if (std::fmod(cat.activity_seconds, SLOW_BLINK_PERIOD_SECONDS) >
+        SLOW_BLINK_PERIOD_SECONDS - SLOW_BLINK_SECONDS)
     {
       return palette.dark;
     }
@@ -1388,16 +1494,22 @@ draw_cat(scene_canvas &canvas, const cat_state &cat) wontthrow -> void
       std::lround(std::sin(cat.phase_seconds * BOB_RADIANS_PER_SECOND) * 1.2));
   let const pixel_row = static_cast<isize>(cat.row * 2.0) + bob_pixels;
 
-  if (cat.activity == cat_activity::Curling) {
-    let const curled_width = art.curled[0].length;
-    let const curled_column =
-        column + static_cast<isize>((CAT_PIXEL_WIDTH - curled_width) / 2);
-    let const curled_row =
-        pixel_row + static_cast<isize>(CAT_PIXEL_HEIGHT - art.curled_row_count);
+  if (cat.activity == cat_activity::Curling ||
+      cat.activity == cat_activity::Loafing)
+  {
+    let const  is_curled   = cat.activity == cat_activity::Curling;
+    let const *rest_pixels = is_curled ? art.curled : art.loaf;
+    let const  rest_row_count =
+        is_curled ? art.curled_row_count : art.loaf_row_count;
+    let const rest_width = rest_pixels[0].length;
+    let const rest_column =
+        column + static_cast<isize>((CAT_PIXEL_WIDTH - rest_width) / 2);
+    let const rest_row =
+        pixel_row + static_cast<isize>(CAT_PIXEL_HEIGHT - rest_row_count);
 
-    for (usize index = 0; index < art.curled_row_count; index++)
-      draw_pixels(canvas, curled_row + static_cast<isize>(index), curled_column,
-                  curled_width, 0, art.curled[index], is_mirrored, palette,
+    for (usize index = 0; index < rest_row_count; index++)
+      draw_pixels(canvas, rest_row + static_cast<isize>(index), rest_column,
+                  rest_width, 0, rest_pixels[index], is_mirrored, palette,
                   eye_color);
   } else {
     for (usize index = 0; index < art.body_row_count; index++)
