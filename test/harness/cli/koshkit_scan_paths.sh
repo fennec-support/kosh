@@ -10,7 +10,7 @@ cd "$d" || exit 1
 
 echo "--- cksum lengths ---"
 for n in 0 1 2 3 4 5 7 8 9 4096 65537; do
-  "$BIN" -c 'koshkit seq 100000' | head -c "$n" > "len-$n"
+  "$BIN" -c 'koshkit seq 100000 | koshkit head -c "$1"' head "$n" > "len-$n"
   "$BIN" -c 'koshkit cksum "$1"' cksum "len-$n"
 done
 echo "--- cksum stdin ---"
