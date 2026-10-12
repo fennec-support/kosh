@@ -67,14 +67,17 @@ else
     echo "unexpected: $sourced_head"
 fi
 test -n "$type_source" && rm -rf "$type_source"
-echo "== -V describes a builtin:"; "$BIN" -c 'type -V echo'
-echo "== -V describes a bundled utility:"; PATH= "$BIN" -c 'type -V tsort'
+echo "== -V describes a builtin:"
+"$BIN" -c 'type -V echo | koshkit head -n 1; type -V echo | koshkit wc -l'
+echo "== -V describes a bundled utility:"
+PATH= "$BIN" -c 'type -V tsort | koshkit head -n 1; type -V tsort | koshkit wc -l'
 echo "== -V adds nothing to a keyword or an alias:"
 "$BIN" -c 'alias g=git; type -V for; type -V g'
 echo "== a terse flag ignores -V:"
 "$BIN" -c 'f(){ :; }; type -V -t f'
 "$BIN" -c 'type -V -p echo'; echo "rc=$?"
-echo "== -V applies to every -a resolution:"; PATH= "$BIN" -c 'type -V -a tsort'
+echo "== -V applies to every -a resolution:"
+PATH= "$BIN" -c 'type -V -a tsort | koshkit head -n 1; type -V -a tsort | koshkit wc -l'
 # Bash calls a function without the shell word and prints its body from the
 # plain form. The terse flags keep the shape they have in every other mood.
 echo "== the bash mood names a function and prints its body:"

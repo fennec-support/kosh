@@ -85,33 +85,3 @@ BASH
 Koshka
   assimilate  bench       koshconf    koshkit     z
 
-DESCRIPTION
-  The koshkit builtin runs a bundled utility.
-
-SYNOPSIS
-  koshkit [utility] [arg ...]
-  koshkit --color when [utility] [arg ...]
-  koshkit --list
-  koshkit --assimilate DIR
-
-UTILITIES
-
-  POSIX
-    basename  bc        cal       calc      cat       chgrp     chmod
-    chown     cksum     cmp       comm      cp        csplit    cut
-    date      df        diff      dirname   du        env       expand
-    expr      file      find      flock     fold      fuser     getconf
-    grep      head      id        killall   link      ln        locale
-    logger    logname   ls        make      man       mkdir     mkfifo
-    mknod     more      mv        nice      nl        nohup     nproc
-    od        paste     pathchk   pkill     pr        printenv  ps
-    readlink  realpath  renice    retry     rm        rmdir     sed
-    seq       sleep     sort      split     stat      strings   stty
-    sync      tabs      tail      tee       timeout   touch     tput
-    tr        tsort     tty       uname     unexpand  uniq      unlink
-    watch     wc        which     who       whoami    xargs     yes
-
-  Koshka
-    evil       evildisk   evilfiles  evilfs     evilio     eviliso
-    evillogs   evilnet    evilps     evilss     goodcore   goodfsw
-    goodnode   goodstat   meow

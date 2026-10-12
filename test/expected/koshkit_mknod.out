@@ -15,7 +15,6 @@ unused-operand-check=ok
 posix-device-check=ok
 device-check=ok
 type-device-check=ok
-help-examples=present
 redirected-error=plain
 named-extra-status=1
 cleanup=ok

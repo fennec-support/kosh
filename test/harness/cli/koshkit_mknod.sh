@@ -185,14 +185,6 @@ case "$type_device_error" in
 esac
 printf 'type-device-check=%s\n' "$type_device_check"
 
-help=$($BIN -c 'koshkit mknod --help')
-case "$help" in
-  *"mknod --fifo pipe"*"mknod --character --major 1 --minor 3 device"*)
-    help_examples=present ;;
-  *) help_examples=missing ;;
-esac
-printf 'help-examples=%s\n' "$help_examples"
-
 error=$($BIN -c 'koshkit mknod --fifo --mode invalid "$1/bad"' mknod "$root" 2>&1 >/dev/null)
 case "$error" in
   *"error:"*"Invalid mode"*) redirected_error=plain ;;

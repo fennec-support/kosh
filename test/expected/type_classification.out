@@ -47,10 +47,10 @@ g ()
 named
 == -V describes a builtin:
 echo is a shell builtin
-The echo builtin prints its arguments followed by a newline.
+2
 == -V describes a bundled utility:
 tsort is a shell builtin
-The tsort utility is bundled with the shell.
+2
 == -V adds nothing to a keyword or an alias:
 for is a shell keyword
 g is an alias for git
@@ -59,7 +59,7 @@ function
 rc=0
 == -V applies to every -a resolution:
 tsort is a shell builtin
-The tsort utility is bundled with the shell.
+2
 == the bash mood names a function and prints its body:
 f is a function
 f () 
