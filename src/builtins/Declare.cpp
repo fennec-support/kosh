@@ -203,25 +203,24 @@ Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   }
 
   if (should_restrict_to_functions) {
-    i32 status = 0;
-
     if (i >= args.count()) {
-      for (let const &name : cxt.function_store().sorted_names()) {
-        let line = String{cxt.scratch_allocator()};
+      let listing = String{cxt.scratch_allocator()};
 
+      for (let const &name : cxt.function_store().sorted_names()) {
         if (should_print_function_names_only) {
-          line += "declare -f ";
-          line.append(name.view());
+          listing += "declare -f ";
+          listing.append(name.view());
         } else if (const String *source =
                        cxt.function_store().find_source(name.view());
                    source != nullptr)
         {
-          line.append(format_bash_function_source(source->view()).view());
+          listing.append(format_bash_function_source(source->view()).view());
         }
 
-        line += '\n';
-        ec.print_to_stdout(line.view());
+        listing += '\n';
       }
+
+      ec.print_to_stdout(listing.view());
 
       return 0;
     }
@@ -356,17 +355,19 @@ Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     let const sorted_names =
         steal(collected_names).make_sorted(sort_order::ascending);
 
+    let listing = String{cxt.scratch_allocator()};
+
     for (let const &name : sorted_names) {
       if (do_matches_attribute_filter(name.view()))
-        do_print_declaration(name.view());
+        unused(append_variable_declaration(cxt, name.view(), listing));
     }
+
+    ec.print_to_stdout(listing.view());
 
     return 0;
   }
 
   if (should_print) {
-    i32 status = 0;
-
     for (; i < args.count(); i++) {
       let const name = args[i].view();
 

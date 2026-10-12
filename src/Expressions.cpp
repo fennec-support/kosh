@@ -2195,9 +2195,9 @@ analyze_ast(const Expression                *root,
       actx.is_posix_sh_shebang ? "armed" : "off");
 
   known_functions.for_each(
-      [&actx](StringView name) { actx.add_defined_function(name); });
+      [&actx](StringView name) { actx.functions.defined.add(name); });
   known_aliases.for_each(
-      [&actx](StringView name) { actx.add_known_alias(name); });
+      [&actx](StringView name) { actx.functions.aliases.add(name); });
   actx.current_source_effects = source_effects;
   actx.apply_scope_definitions(directives.scope_definitions);
 

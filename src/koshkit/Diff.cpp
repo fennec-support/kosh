@@ -193,10 +193,6 @@ make_diff_edits(const diff_lines    &left_lines,
 
   constexpr usize MAXIMUM_TRACE_ELEMENT_COUNT = 262144;
   let             trace                       = ArrayList<u32>{allocator};
-  let             first_frontier              = ArrayList<u32>{allocator};
-  let             second_frontier             = ArrayList<u32>{allocator};
-  let             frontier                    = &first_frontier;
-  let             next_frontier               = &second_frontier;
   let const       maximum_distance = left_middle_count + right_middle_count;
   usize           found_distance   = maximum_distance + 1;
 
@@ -210,10 +206,8 @@ make_diff_edits(const diff_lines    &left_lines,
       return {steal(edits), false};
     }
 
-    next_frontier->clear();
-    next_frontier->reserve(distance + 1);
-
     let const signed_distance = static_cast<i64>(distance);
+    let const previous_row = distance == 0 ? 0 : (distance - 1) * distance / 2;
 
     for (usize step = 0; step <= distance; step++) {
       let const diagonal      = -signed_distance + static_cast<i64>(step) * 2;
@@ -221,13 +215,15 @@ make_diff_edits(const diff_lines    &left_lines,
 
       if (distance != 0) {
         if (step == 0)
-          left_position = (*frontier)[step];
+          left_position = trace[previous_row];
         else if (step == distance)
-          left_position = static_cast<usize>((*frontier)[step - 1]) + 1;
+          left_position =
+              static_cast<usize>(trace[previous_row + step - 1]) + 1;
         else
-          left_position = (*frontier)[step - 1] < (*frontier)[step]
-                              ? (*frontier)[step]
-                              : static_cast<usize>((*frontier)[step - 1]) + 1;
+          left_position =
+              trace[previous_row + step - 1] < trace[previous_row + step]
+                  ? trace[previous_row + step]
+                  : static_cast<usize>(trace[previous_row + step - 1]) + 1;
       }
 
       let const right_signed = static_cast<i64>(left_position) - diagonal;
@@ -249,7 +245,6 @@ make_diff_edits(const diff_lines    &left_lines,
       }
 
       ASSERT(left_position <= UINT32_MAX);
-      next_frontier->push(static_cast<u32>(left_position));
       trace.push(static_cast<u32>(left_position));
       if (left_position == left_middle_count &&
           right_position == right_middle_count)
@@ -258,11 +253,6 @@ make_diff_edits(const diff_lines    &left_lines,
         break;
       }
     }
-
-    let saved_frontier = frontier;
-
-    frontier      = next_frontier;
-    next_frontier = saved_frontier;
 
     if (found_distance != maximum_distance + 1) break;
   }

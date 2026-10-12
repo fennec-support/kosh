@@ -446,17 +446,13 @@ EvalContext::run_named_trap(
   if (has_saved_pipe_statuses)
     saved_pipe_statuses = current_pipe_statuses->clone();
 
-  let was_pipe_status_restored = false;
-
   defer {
     trap_store().last_trap_action_status() =
         execution_store().last_exit_status();
     execution_store().last_exit_status() = saved_exit_status;
 
-    if (!was_pipe_status_restored) {
-      restore_trap_pipe_statuses(has_saved_pipe_statuses,
-                                 steal(saved_pipe_statuses));
-    }
+    restore_trap_pipe_statuses(has_saved_pipe_statuses,
+                               steal(saved_pipe_statuses));
   };
 
   let const cached_action = cached_trap_body(condition, action);
@@ -468,10 +464,6 @@ EvalContext::run_named_trap(
              cached_action.has_value() ? &cached_action : nullptr,
              return_handling::Reject, history_recording::Disabled,
              definition.has_value() ? &*definition : nullptr);
-
-  restore_trap_pipe_statuses(has_saved_pipe_statuses,
-                             steal(saved_pipe_statuses));
-  was_pipe_status_restored = true;
 }
 
 fn
@@ -876,15 +868,11 @@ EvalContext::run_pending_traps() throws -> void
   if (has_saved_pipe_statuses)
     saved_pipe_statuses = current_pipe_statuses->clone();
 
-  let was_pipe_status_restored = false;
-
   defer {
     execution_store().last_exit_status() = saved_exit_status;
 
-    if (!was_pipe_status_restored) {
-      restore_trap_pipe_statuses(has_saved_pipe_statuses,
-                                 steal(saved_pipe_statuses));
-    }
+    restore_trap_pipe_statuses(has_saved_pipe_statuses,
+                               steal(saved_pipe_statuses));
   };
 
   for (i32 number = os::take_pending_signal(); number != 0;
@@ -962,10 +950,6 @@ EvalContext::run_pending_traps() throws -> void
       }
     }
   }
-
-  restore_trap_pipe_statuses(has_saved_pipe_statuses,
-                             steal(saved_pipe_statuses));
-  was_pipe_status_restored = true;
 }
 
 cold fn
@@ -991,15 +975,11 @@ EvalContext::run_exit_trap(Maybe<i32> final_status) throws -> void
   if (has_saved_pipe_statuses)
     saved_pipe_statuses = current_pipe_statuses->clone();
 
-  let was_pipe_status_restored = false;
-
   defer {
     execution_store().last_exit_status() = saved_exit_status;
 
-    if (!was_pipe_status_restored) {
-      restore_trap_pipe_statuses(has_saved_pipe_statuses,
-                                 steal(saved_pipe_statuses));
-    }
+    restore_trap_pipe_statuses(has_saved_pipe_statuses,
+                               steal(saved_pipe_statuses));
   };
 
   if (let const trap = trap_store().find_active(StringView{"EXIT", 4});
@@ -1013,10 +993,6 @@ EvalContext::run_exit_trap(Maybe<i32> final_status) throws -> void
                history_recording::Disabled,
                definition.has_value() ? &*definition : nullptr);
   }
-
-  restore_trap_pipe_statuses(has_saved_pipe_statuses,
-                             steal(saved_pipe_statuses));
-  was_pipe_status_restored = true;
 }
 
 fn
@@ -1052,17 +1028,14 @@ EvalContext::run_subshell_exit_trap() throws -> Maybe<i32>
   if (has_saved_pipe_statuses)
     saved_pipe_statuses = current_pipe_statuses->clone();
 
-  let requested_status         = Maybe<i32>{None};
-  let was_pipe_status_restored = false;
+  let requested_status = Maybe<i32>{None};
 
   defer {
     execution_store().last_exit_status() =
         requested_status.has_value() ? *requested_status : saved_exit_status;
 
-    if (!was_pipe_status_restored) {
-      restore_trap_pipe_statuses(has_saved_pipe_statuses,
-                                 steal(saved_pipe_statuses));
-    }
+    restore_trap_pipe_statuses(has_saved_pipe_statuses,
+                               steal(saved_pipe_statuses));
   };
 
   if (let const trap = trap_store().find_active(StringView{"EXIT", 4});
@@ -1083,10 +1056,6 @@ EvalContext::run_subshell_exit_trap() throws -> Maybe<i32>
       control_flow_store().clear();
     }
   }
-
-  restore_trap_pipe_statuses(has_saved_pipe_statuses,
-                             steal(saved_pipe_statuses));
-  was_pipe_status_restored = true;
 
   return requested_status;
 }

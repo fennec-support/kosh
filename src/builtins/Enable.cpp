@@ -64,8 +64,6 @@ Enable::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return 0;
   }
 
-  if (args.count() == 1) return 0;
-
   i32 status = 0;
 
   for (usize i = 1; i < args.count(); i++) {

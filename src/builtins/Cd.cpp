@@ -320,10 +320,12 @@ Cd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                                          : steal(logical_candidate);
   }
 
-  if (is_logical_target_available && is_physical_target_available &&
-      target.exists())
-  {
-    if (!target.is_directory())
+  let const is_target_available =
+      is_logical_target_available && is_physical_target_available;
+  let const is_target_directory = is_target_available && target.is_directory();
+
+  if (is_target_directory || (is_target_available && target.exists())) {
+    if (!is_target_directory)
       throw ErrorWithLocation{ec.arg_location_at(operand_index),
                               StringView{"The path '"} + arg_path +
                                   "' is not a directory"};

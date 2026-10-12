@@ -2233,10 +2233,11 @@ advance_substitution_relay(substitution_relay &relay) wontthrow -> bool
 {
   reap_relay_clients(relay);
   ensure_relay_listeners(relay);
-  if (relay.is_command_writes) advance_relay_output(relay);
-  if (!relay.is_command_writes) forward_relay_input(relay);
-  if (!relay.is_command_writes && relay.is_body_finished) {
-    close_connected_relay_clients(relay);
+  if (relay.is_command_writes) {
+    advance_relay_output(relay);
+  } else {
+    forward_relay_input(relay);
+    if (relay.is_body_finished) close_connected_relay_clients(relay);
   }
   reap_relay_clients(relay);
   note_relay_listeners_closed(relay);

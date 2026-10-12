@@ -624,13 +624,13 @@ Assimilate::execute(ExecContext &ec, EvalContext &cxt) const throws
     return 127;
   }
 
-  constexpr static_string_entry<bool> LINK_MOOD_ENTRIES[] = {
-      {SSK("bash"), true},
-      {SSK("dash"), true},
-      {SSK("sh"),   true},
-      {SSK("kosh"), true},
+  constexpr PackedStringKey LINK_MOOD_KEYS[] = {
+      SSK("bash"),
+      SSK("dash"),
+      SSK("sh"),
+      SSK("kosh"),
   };
-  constexpr StaticStringMap LINK_MOODS{LINK_MOOD_ENTRIES};
+  constexpr StaticStringSet LINK_MOODS{LINK_MOOD_KEYS};
   let                       link_moods = String{allocator};
 
   for (usize flag_position = 0; flag_position < FLAG_LINK_MOOD.count();
@@ -645,7 +645,7 @@ Assimilate::execute(ExecContext &ec, EvalContext &cxt) const throws
           comma.has_value() ? *comma : spelling.count() - mood_start;
       let const mood = spelling.substring_of_length(mood_start, mood_length);
 
-      if (mood.is_empty() || !LINK_MOODS.find(mood).has_value()) {
+      if (mood.is_empty() || !LINK_MOODS.contains(mood)) {
         return report_usage_error(ec, cxt, ec.program());
       }
 

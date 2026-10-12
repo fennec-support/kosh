@@ -124,20 +124,8 @@ find_entry_matches(char                type_letter,
     return false;
   }
 
-  switch (options.type_filter) {
-  case 'f':
-    if (type_letter != '-') return false;
-    break;
-
-  case 'd':
-    if (type_letter != 'd') return false;
-    break;
-
-  case 'l':
-    if (type_letter != 'l') return false;
-    break;
-
-  default: break;
+  if (options.type_filter != 0 && type_letter != options.type_filter) {
+    return false;
   }
 
   let const original_filename = filename;
@@ -809,7 +797,7 @@ Find::execute(const ExecContext               &ec,
         return 1;
       }
 
-      options.type_filter = type[0];
+      options.type_filter = type[0] == 'f' ? '-' : type[0];
       index++;
       break;
     }

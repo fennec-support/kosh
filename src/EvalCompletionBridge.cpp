@@ -266,7 +266,7 @@ EvalContext::run_completion_function(
 
   if (out_exit_status != nullptr)
     *out_exit_status = execution_store().last_exit_status();
-  if (control_flow_store().has_pending()) control_flow_store().clear();
+  control_flow_store().clear();
 
   let result = ArrayList<String>{heap_allocator()};
 

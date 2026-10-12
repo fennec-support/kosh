@@ -326,8 +326,7 @@ Calc::execute(const ExecContext               &ec,
 
   Maybe<SourceLocation> expression_base;
 
-  if (!operand_locations.is_empty() &&
-      operand_locations.count() == operands.count() &&
+  if (operand_locations.count() == operands.count() &&
       cxt.source_store().current_source() != nullptr)
   {
     let const first_location = operand_locations[0];

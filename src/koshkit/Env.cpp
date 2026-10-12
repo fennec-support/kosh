@@ -37,24 +37,8 @@ is_assignment(StringView text) wontthrow -> bool
 {
   let const equals = text.find_character('=');
 
-  if (!equals.has_value() || *equals == 0) {
-    return false;
-  }
-
-  for (usize i = 0; i < *equals; i++) {
-    let const character = text[i];
-    let const is_name   = (character >= 'a' && character <= 'z') ||
-                        (character >= 'A' && character <= 'Z') ||
-                        (character >= '0' && character <= '9') ||
-                        character == '_';
-
-    if (!is_name) return false;
-    if (i == 0 && character >= '0' && character <= '9') {
-      return false;
-    }
-  }
-
-  return true;
+  return equals.has_value() &&
+         name_is_valid_identifier(text.substring_of_length(0, *equals));
 }
 
 fn

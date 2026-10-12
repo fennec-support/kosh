@@ -76,24 +76,6 @@ public:
   debug_words() const wontthrow -> const ArrayList<Word> &;
 
   fn
-  take_shellcheck_suppressions() throws
-      -> ArrayList<shellcheck_suppression>;
-
-  fn
-  take_shellcheck_directive_spans() throws
-      -> ArrayList<shellcheck_directive_span>
-  {
-    return m_lexer.take_shellcheck_directive_spans();
-  }
-
-  fn
-  take_heredoc_terminator_misses() throws
-      -> ArrayList<heredoc_terminator_miss>
-  {
-    return m_lexer.take_heredoc_terminator_misses();
-  }
-
-  fn
   set_analysis_metadata_collection_mode(
       analysis_metadata_collection_mode mode) wontthrow -> void
   {
@@ -123,9 +105,6 @@ public:
     m_analysis_scope_collection_mode = mode;
   }
 
-  fn
-  take_analysis_scope_definitions() throws
-      -> ArrayList<analysis_scope_definition>;
   fn
   take_analysis_directives() throws -> analysis_directives;
 

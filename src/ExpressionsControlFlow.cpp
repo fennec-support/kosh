@@ -942,13 +942,17 @@ ForLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> s
 
   defer { cxt.cleanup_loop_redirect_fds(redirect_fd_mark); };
 
+  let           loop_header_text = published_command_text{};
   status_result result{};
 
   for (let const &value : values) {
     cxt.source_store().set_current_location(source_location());
 
     let const should_run_iteration = publish_command_and_run_debug_trap(
-        cxt, [&] { return String{heap_allocator(), loop_trace.view()}; });
+        cxt, [&]() throws -> const CopyOnWrite<String> & {
+          return loop_header_text.get(
+              false, [&]() -> const String & { return loop_trace; });
+        });
 
     if (!should_run_iteration) {
       if (cxt.control_flow_store().has_pending()) break;

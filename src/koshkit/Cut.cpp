@@ -70,6 +70,9 @@ Cut::execute(const ExecContext               &ec,
     return 1;
   }
 
+  let const last_selected_position =
+      ranges->is_empty() ? usize{0} : (*ranges)[ranges->count() - 1].last;
+
   char delimiter = '\t';
 
   if (FLAG_CUT_DELIMITER.is_set()) {
@@ -127,7 +130,9 @@ Cut::execute(const ExecContext               &ec,
         usize byte_position      = 0;
         usize character_position = 1;
 
-        while (byte_position < line_view.length) {
+        while (byte_position < line_view.length &&
+               character_position <= last_selected_position)
+        {
           let const decoded = utils::decode_utf8(line_view, byte_position, 0);
 
           if (utils::text_position_is_selected(character_position, *ranges))
@@ -152,7 +157,9 @@ Cut::execute(const ExecContext               &ec,
         usize field_number     = 1;
         bool  has_output_field = false;
 
-        for (usize position = *first_delimiter; position <= line_view.length;
+        for (usize position = *first_delimiter;
+             position <= line_view.length &&
+             field_number <= last_selected_position;
              position++)
         {
           if (position != line_view.length && line_view[position] != delimiter)

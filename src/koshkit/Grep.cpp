@@ -1642,6 +1642,17 @@ private:
       return;
     }
 
+    if (!m_options.should_invert) {
+      usize newline_count = 0;
+
+      for (usize index = 0; index < lines.length; index++)
+        newline_count += lines[index] == '\n' ? 1 : 0;
+
+      m_source_line_numbers[source_index] += newline_count;
+
+      return;
+    }
+
     usize position = 0;
 
     while (position < lines.length) {

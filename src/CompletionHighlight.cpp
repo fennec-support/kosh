@@ -132,21 +132,9 @@ command_word_resolves(StringView line, EvalContext &context) throws
 }
 
 static pure fn
-is_highlight_name_start(char c) wontthrow -> bool
-{
-  return lexer::is_variable_name_start(c);
-}
-
-static pure fn
-is_highlight_name_char(char c) wontthrow -> bool
-{
-  return lexer::is_variable_name(c);
-}
-
-static pure fn
 is_highlight_function_name_char(char c) wontthrow -> bool
 {
-  if (is_highlight_name_char(c)) return true;
+  if (lexer::is_variable_name(c)) return true;
 
   switch (c) {
   case '/':
@@ -167,7 +155,7 @@ is_highlight_function_name_char(char c) wontthrow -> bool
 pure fn
 internal::word_is_function_name(StringView word) wontthrow -> bool
 {
-  if (word.is_empty() || !is_highlight_name_start(word[0])) {
+  if (word.is_empty() || !lexer::is_variable_name_start(word[0])) {
     return false;
   }
 
@@ -271,8 +259,8 @@ scan_dollar_expansion(StringView line, usize dollar, usize end) throws
   }
 
   if (lexer::is_special_parameter_char(c)) return i + 1;
-  if (is_highlight_name_start(c)) {
-    while (i < end && is_highlight_name_char(line[i])) {
+  if (lexer::is_variable_name_start(c)) {
+    while (i < end && lexer::is_variable_name(line[i])) {
       i++;
     }
 
@@ -921,7 +909,7 @@ simple_dollar_name(StringView line, usize i, usize expansion_end) wontthrow
     if (inner.is_empty()) return koshka::None;
 
     for (usize k = 0; k < inner.length; k++)
-      if (!is_highlight_name_char(inner[k])) return koshka::None;
+      if (!lexer::is_variable_name(inner[k])) return koshka::None;
 
     return inner;
   }
@@ -935,7 +923,7 @@ dollar_name_is_set(StringView     name,
                    EvalContext   &context) throws -> bool
 {
   if (name.is_empty()) return true;
-  if (name.length == 1 && !is_highlight_name_start(name[0])) {
+  if (name.length == 1 && !lexer::is_variable_name_start(name[0])) {
     return true;
   }
 
@@ -1065,10 +1053,10 @@ color_arithmetic(StringView                 line,
       continue;
     }
 
-    if (is_highlight_name_start(c)) {
+    if (lexer::is_variable_name_start(c)) {
       let const name_start = i;
 
-      while (i < end && is_highlight_name_char(line[i])) {
+      while (i < end && lexer::is_variable_name(line[i])) {
         i++;
       }
 
@@ -1083,7 +1071,7 @@ color_arithmetic(StringView                 line,
     }
 
     if (c >= '0' && c <= '9') {
-      while (i < end && (is_highlight_name_char(line[i]) || line[i] == '.')) {
+      while (i < end && (lexer::is_variable_name(line[i]) || line[i] == '.')) {
         i++;
       }
 
@@ -1097,9 +1085,9 @@ color_arithmetic(StringView                 line,
 
     let const operator_start = i;
 
-    while (i < end && line[i] != '$' && !is_highlight_name_start(line[i]) &&
-           line[i] != '(' && line[i] != ')' &&
-           !(line[i] >= '0' && line[i] <= '9') &&
+    while (i < end && line[i] != '$' &&
+           !lexer::is_variable_name_start(line[i]) && line[i] != '(' &&
+           line[i] != ')' && !(line[i] >= '0' && line[i] <= '9') &&
            !lexer::is_whitespace(line[i]) &&
            !(is_bracket_form && (line[i] == '[' || line[i] == ']')))
     {

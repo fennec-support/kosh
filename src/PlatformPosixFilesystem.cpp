@@ -469,50 +469,16 @@ list_directory_status_fallback(StringView dir,
                                Allocator  allocator) throws
     -> Maybe<ArrayList<directory_status_entry>>
 {
-  const String dir_string{dir};
-  let const    handle = ::opendir(dir_string.c_str());
+  let children = list_directory_typed(dir, allocator);
 
-  if (handle == nullptr) return None;
-  defer { ::closedir(handle); };
+  if (!children.has_value()) return None;
 
   let entries = ArrayList<directory_status_entry>{allocator};
 
-  loop {
-    errno = 0;
+  entries.reserve(children->count());
 
-    let const native_entry = ::readdir(handle);
-
-    if (native_entry == nullptr) {
-      if (errno != 0) return None;
-      break;
-    }
-
-    let const name = StringView{native_entry->d_name};
-
-    if (name == StringView{"."} || name == StringView{".."}) {
-      continue;
-    }
-
-    Path::EntryKind kind = Path::EntryKind::Unknown;
-
-    switch (native_entry->d_type) {
-    case DT_DIR: kind = Path::EntryKind::Directory; break;
-
-    case DT_REG: kind = Path::EntryKind::Regular; break;
-
-    case DT_LNK: kind = Path::EntryKind::Symlink; break;
-
-    case DT_UNKNOWN: kind = Path::EntryKind::Unknown; break;
-
-    default: kind = Path::EntryKind::Other; break;
-    }
-
-    directory_status_entry entry{
-        Path::DirectoryChild{String{allocator, name}, kind}
-    };
-
-    entries.push(steal(entry));
-  }
+  for (let &child : *children)
+    entries.push(directory_status_entry{steal(child)});
 
   let paths = ArrayList<Path>{allocator};
   let batch = Batch{allocator};

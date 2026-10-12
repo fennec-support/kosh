@@ -364,11 +364,14 @@ find_tail_starts_from_start(ArrayList<positioned_tail_state> &states,
 
       let const transferred = result.transferred_byte_count;
 
-      for (usize position = 0; position < transferred; position++) {
-        if (state.buffer.begin()[position] != '\n') continue;
+      let const block    = StringView{state.buffer.begin(), transferred};
+      usize     position = 0;
 
+      while (let const newline = block.substring(position).find_character('\n'))
+      {
+        position += *newline + 1;
         if (--state.remaining_newline_count == 0) {
-          state.start_offset = state.scan_offset + position + 1;
+          state.start_offset = state.scan_offset + position;
           state.is_done      = true;
           break;
         }

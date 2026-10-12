@@ -307,8 +307,9 @@ drain_command_substitution_pipe(opaque *raw_context) wontthrow -> void
       drain->capacity = grown_capacity;
     }
 
-    let const bytes_read = os::read_fd(
-        drain->read_fd, drain->data + drain->length, DRAIN_CHUNK_LENGTH);
+    let const bytes_read =
+        os::read_fd(drain->read_fd, drain->data + drain->length,
+                    drain->capacity - drain->length);
 
     if (!bytes_read.has_value() || *bytes_read == 0) {
       break;

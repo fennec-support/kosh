@@ -806,7 +806,6 @@ render_format(String                      &output,
 fn
 resolve_format(String     &format,
                bool       &should_append_newline,
-               Allocator   allocator,
                stat_target target) throws -> void
 {
   if (FLAG_STAT_PRINTF.is_set()) {
@@ -823,7 +822,6 @@ resolve_format(String     &format,
     return;
   }
 
-  unused(allocator);
   should_append_newline = false;
   if (FLAG_STAT_TERSE.is_enabled()) {
     format += target == stat_target::Filesystem ? TERSE_FILESYSTEM_FORMAT
@@ -860,7 +858,7 @@ Stat::execute(const ExecContext               &ec,
   let  selected_format       = String{allocator};
   bool should_append_newline = false;
 
-  resolve_format(selected_format, should_append_newline, allocator, target);
+  resolve_format(selected_format, should_append_newline, target);
 
   let operand_paths = ArrayList<Path>{allocator};
   let file_statuses = ArrayList<os::file_status>{allocator};

@@ -38,40 +38,12 @@ struct printf_number
 fn
 decode_utf8_code_point(const String &arg, usize start) throws -> i64
 {
-  let const first = static_cast<unsigned char>(arg[start]);
+  constexpr u32 INVALID_CODEPOINT = UINT32_MAX;
+  let const decoded = utils::decode_utf8(arg.view(), start, INVALID_CODEPOINT);
 
-  if (first < 0x80) return first;
-
-  usize continuation_count;
-  i64   code_point;
-
-  if ((first & 0xE0) == 0xC0) {
-    continuation_count = 1;
-    code_point         = first & 0x1F;
-  } else if ((first & 0xF0) == 0xE0) {
-    continuation_count = 2;
-    code_point         = first & 0x0F;
-  } else if ((first & 0xF8) == 0xF0) {
-    continuation_count = 3;
-    code_point         = first & 0x07;
-  } else {
-    return first;
-  }
-
-  for (usize continuation_index = 1; continuation_index <= continuation_count;
-       continuation_index++)
-  {
-    if (start + continuation_index >= arg.count()) return first;
-
-    let const continuation_byte =
-        static_cast<unsigned char>(arg[start + continuation_index]);
-
-    if ((continuation_byte & 0xC0) != 0x80) return first;
-
-    code_point = (code_point << 6) | (continuation_byte & 0x3F);
-  }
-
-  return code_point;
+  return decoded.value == INVALID_CODEPOINT
+             ? static_cast<unsigned char>(arg[start])
+             : decoded.value;
 }
 
 fn

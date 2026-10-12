@@ -432,17 +432,7 @@ EvalContext::expand_word(const Word &word) throws
 
     case WordSegment::Kind::VariableReference: {
       if (segment.text == "@" && segment.is_in_double_quotes) {
-        for (usize i = 0; i < variable_store().positional_params().count(); i++)
-        {
-          if (i > 0) {
-            do_flush();
-          }
-
-          do_append_run(
-              StringView{variable_store().positional_params()[i].data(),
-                         variable_store().positional_params()[i].count()},
-              false);
-        }
+        do_emit_elements(variable_store().positional_params(), true, false);
 
         break;
       }
@@ -450,12 +440,7 @@ EvalContext::expand_word(const Word &word) throws
       if ((segment.text == "@" || segment.text == "*") &&
           !segment.is_in_double_quotes)
       {
-        for (usize i = 0; i < variable_store().positional_params().count(); i++)
-        {
-          do_begin_list_element(i);
-          do_append_split_run(variable_store().positional_params()[i].view(),
-                              true);
-        }
+        do_emit_elements(variable_store().positional_params(), false, false);
 
         break;
       }
@@ -629,10 +614,7 @@ EvalContext::expand_word(const Word &word) throws
         break;
       }
 
-      if (!segment_text.is_empty() &&
-          (segment_text[0] == '@' || segment_text[0] == '*') &&
-          segment_text.length > 1 && segment_text[1] == ':')
-      {
+      if (has_positional_test_colon) {
         let const is_star     = segment_text[0] == '*';
         let const slice       = segment_text.substring(2);
         let const param_count = variable_store().positional_params().count();

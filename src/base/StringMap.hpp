@@ -489,37 +489,37 @@ private:
     let const mask        = new_capacity - 1;
 
     try {
-      for (usize i = 0; i < old_capacity; i++) {
-        if (old_slots[i].get_state() != Slot::Occupied) continue;
+      if constexpr (std::is_nothrow_move_assignable_v<Value>) {
+        for (usize i = 0; i < old_capacity; i++) {
+          if (old_slots[i].get_state() != Slot::Occupied) continue;
 
-        let index = static_cast<usize>(old_slots[i].get_hash()) & mask;
+          let index = static_cast<usize>(old_slots[i].get_hash()) & mask;
 
-        while (fresh_slots[index].get_state() == Slot::Occupied)
-          index = (index + 1) & mask;
+          while (fresh_slots[index].get_state() == Slot::Occupied)
+            index = (index + 1) & mask;
 
-        let &destination = fresh_slots[index];
+          let &destination = fresh_slots[index];
 
-        destination.key    = old_slots[i].key;
-        destination.packed = old_slots[i].packed;
-        fresh_count++;
-      }
-
-      for (usize i = 0; i < old_capacity; i++) {
-        if (old_slots[i].get_state() != Slot::Occupied) continue;
-
-        let index = static_cast<usize>(old_slots[i].get_hash()) & mask;
-
-        while (fresh_slots[index].packed != old_slots[i].packed ||
-               fresh_slots[index].key.view() != old_slots[i].key.view())
-        {
-          index = (index + 1) & mask;
+          destination.key    = steal(old_slots[i].key);
+          destination.value  = steal(old_slots[i].value);
+          destination.packed = old_slots[i].packed;
+          fresh_count++;
         }
+      } else {
+        for (usize i = 0; i < old_capacity; i++) {
+          if (old_slots[i].get_state() != Slot::Occupied) continue;
 
-        if constexpr (std::is_copy_assignable_v<Value>) {
-          fresh_slots[index].value = old_slots[i].value;
-        } else {
-          static_assert(std::is_nothrow_move_assignable_v<Value>);
-          fresh_slots[index].value = steal(old_slots[i].value);
+          let index = static_cast<usize>(old_slots[i].get_hash()) & mask;
+
+          while (fresh_slots[index].get_state() == Slot::Occupied)
+            index = (index + 1) & mask;
+
+          let &destination = fresh_slots[index];
+
+          destination.key    = old_slots[i].key;
+          destination.value  = old_slots[i].value;
+          destination.packed = old_slots[i].packed;
+          fresh_count++;
         }
       }
     } catch (...) {

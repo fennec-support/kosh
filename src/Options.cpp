@@ -1547,12 +1547,11 @@ read_boolean(const EvalContext       &cxt,
 
   switch (option.storage) {
   case option_storage::ShellOption:
+  case option_storage::EditorMode:
     return state.option_is_enabled(option.shell_option);
   case option_storage::Shopt:    return cxt.is_shopt_enabled(option.shopt_name);
   case option_storage::Failglob: return state.failglob();
   case option_storage::Posix:    return state.is_posix_option_on();
-  case option_storage::EditorMode:
-    return state.option_is_enabled(option.shell_option);
   case option_storage::AnnoyingDiagnostics:
     return state.is_annoying_diagnostics_enabled();
   case option_storage::Analysis: return !state.is_diagnostics_disabled();

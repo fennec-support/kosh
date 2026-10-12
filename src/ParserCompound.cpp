@@ -560,8 +560,7 @@ Parser::parse_case() throws -> Command *
     }
   }
 
-  while (m_lexer.peek_shell_token()->kind() == Token::Kind::Newline)
-    m_lexer.advance_past_last_peek();
+  skip_newlines_after_pipe();
 
   Token *in_token = m_lexer.next_shell_token();
   ASSERT(in_token != nullptr);

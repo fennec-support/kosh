@@ -285,7 +285,8 @@ check_arithmetic_expression_lints(AnalysisContext      &actx,
     case '&':
     case '<':
     case '>':
-    case '%': has_pending_division = false; break;
+    case '%':
+    case '=': has_pending_division = false; break;
 
     case '^': {
       has_pending_division = false;
@@ -313,8 +314,6 @@ check_arithmetic_expression_lints(AnalysisContext      &actx,
 
       break;
     }
-
-    case '=': has_pending_division = false; break;
 
     case '$': {
       has_pending_division = false;
@@ -486,9 +485,7 @@ check_arithmetic_expression_lints(AnalysisContext      &actx,
         }
 
         if (is_assignment_target) {
-          if (is_prefix_step_target) {
-            operator_end = after_name;
-          } else {
+          if (!is_prefix_step_target) {
             operator_end = after_name + 1;
             if (is_compound_assignment) {
               operator_end++;
@@ -746,7 +743,7 @@ check_operand_lints_before_scan(AnalysisContext          &actx,
             (!view.is_empty() && leading != '-' && view != "(" && view != "!");
       }
 
-      if (leading == '-' && (view == "-exec" || view == "-execdir")) {
+      if (view == "-exec" || view == "-execdir") {
         has_exec              = true;
         is_inside_exec_action = true;
         exec_location         = args[i]->source_location();
@@ -760,7 +757,7 @@ check_operand_lints_before_scan(AnalysisContext          &actx,
       {
         actx.report_diagnostic(diagnostic_id::sc2014,
                                args[i]->source_location());
-      } else if (leading == '-' && view == "-o") {
+      } else if (view == "-o") {
         has_or      = true;
         or_location = args[i]->source_location();
       } else if (view.length == 1 && (leading == '(' || leading == ')')) {
@@ -1004,16 +1001,12 @@ check_command_word_shape(AnalysisContext          &actx,
     }
   }
 
-  if ((command_literal.starts_with(StringView{"["}) &&
-       command_literal != "[") ||
-      (command_literal.starts_with(StringView{"[["}) &&
-       command_literal != "[["))
-  {
+  if (command_literal.starts_with(StringView{"["}) && command_literal != "[") {
     actx.report_diagnostic(diagnostic_id::sc1035, location);
   }
 
   if (command_literal.starts_with(StringView{"[["}) &&
-      command_literal.find_character('=').has_value())
+      equals_position.has_value())
   {
     actx.report_diagnostic(diagnostic_id::sc2077, location);
   }

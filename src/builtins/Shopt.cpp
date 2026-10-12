@@ -189,6 +189,8 @@ Shopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   if (should_operate_on_set_options) {
     if (names.is_empty()) {
       if (!is_quiet) {
+        let listing = String{cxt.scratch_allocator()};
+
         for (let const &name : shell_option_names()) {
           let on = query_shell_option(cxt, name);
 
@@ -202,8 +204,10 @@ Shopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
             continue;
           }
 
-          ec.print_to_stdout(do_format_status_line(name, *on).view());
+          listing.append(do_format_status_line(name, *on).view());
         }
+
+        ec.print_to_stdout(listing.view());
       }
 
       return 0;
@@ -247,6 +251,8 @@ Shopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   if (should_enable || should_disable) {
     if (names.is_empty()) {
       if (!is_quiet) {
+        let listing = String{cxt.scratch_allocator()};
+
         for (let const &option : get_option_registry()) {
           if (option.shopt_name.is_empty()) continue;
 
@@ -260,9 +266,11 @@ Shopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
             continue;
           }
 
-          ec.print_to_stdout(
+          listing.append(
               do_format_status_line(option.shopt_name, is_on).view());
         }
+
+        ec.print_to_stdout(listing.view());
       }
 
       return 0;
@@ -286,11 +294,15 @@ Shopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   if (names.is_empty()) {
     if (!is_quiet) {
+      let listing = String{cxt.scratch_allocator()};
+
       for (let const &option : get_option_registry())
         if (!option.shopt_name.is_empty())
-          ec.print_to_stdout(
+          listing.append(
               do_format_status_line(option.shopt_name, shopt_is_on(cxt, option))
                   .view());
+
+      ec.print_to_stdout(listing.view());
     }
 
     return 0;

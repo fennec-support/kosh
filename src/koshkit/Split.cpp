@@ -259,12 +259,16 @@ Split::execute(const ExecContext               &ec,
         u64       line_count        = 0;
         usize     segment_end       = *read_count;
 
-        for (usize position = segment_start; position < *read_count; position++)
+        usize position = segment_start;
+
+        while (let const newline =
+                   StringView{buffer + position, *read_count - position}
+                       .find_character('\n'))
         {
-          if (buffer[position] != '\n') continue;
+          position += *newline + 1;
           line_count++;
           if (line_count == wanted_line_count) {
-            segment_end = position + 1;
+            segment_end = position;
             break;
           }
         }

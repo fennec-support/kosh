@@ -20,7 +20,7 @@ namespace koshka::koshkit {
 
 struct checksum_table
 {
-  u32 values[256];
+  u32 values[4][256];
 };
 
 static consteval fn
@@ -35,7 +35,16 @@ make_checksum_table() -> checksum_table
       value =
           (value & 0x80000000u) != 0 ? (value << 1) ^ 0x04c11db7u : value << 1;
 
-    table.values[byte] = value;
+    table.values[0][byte] = value;
+  }
+
+  for (usize slice = 1; slice < 4; slice++) {
+    for (u32 byte = 0; byte < 256; byte++) {
+      let const previous = table.values[slice - 1][byte];
+
+      table.values[slice][byte] =
+          (previous << 8) ^ table.values[0][previous >> 24];
+    }
   }
 
   return table;
@@ -47,10 +56,24 @@ static t__forceinline fn
 update_checksum(u32 checksum, const char *bytes, usize byte_count) wontthrow
     -> u32
 {
-  for (usize position = 0; position < byte_count; position++) {
+  usize position = 0;
+
+  for (; position + 4 <= byte_count; position += 4) {
+    checksum ^= static_cast<u32>(static_cast<u8>(bytes[position])) << 24 |
+                static_cast<u32>(static_cast<u8>(bytes[position + 1])) << 16 |
+                static_cast<u32>(static_cast<u8>(bytes[position + 2])) << 8 |
+                static_cast<u32>(static_cast<u8>(bytes[position + 3]));
+    checksum = CHECKSUM_TABLE.values[3][checksum >> 24] ^
+               CHECKSUM_TABLE.values[2][(checksum >> 16) & 0xff] ^
+               CHECKSUM_TABLE.values[1][(checksum >> 8) & 0xff] ^
+               CHECKSUM_TABLE.values[0][checksum & 0xff];
+  }
+
+  for (; position < byte_count; position++) {
     let const byte = static_cast<u8>(bytes[position]);
 
-    checksum = (checksum << 8) ^ CHECKSUM_TABLE.values[(checksum >> 24) ^ byte];
+    checksum =
+        (checksum << 8) ^ CHECKSUM_TABLE.values[0][(checksum >> 24) ^ byte];
   }
 
   return checksum;
@@ -70,7 +93,8 @@ finish_checksum(u32 checksum, u64 byte_count) wontthrow -> u32
   for (u64 length = byte_count; length != 0; length >>= 8) {
     let const byte = static_cast<u8>(length);
 
-    checksum = (checksum << 8) ^ CHECKSUM_TABLE.values[(checksum >> 24) ^ byte];
+    checksum =
+        (checksum << 8) ^ CHECKSUM_TABLE.values[0][(checksum >> 24) ^ byte];
   }
 
   return ~checksum;

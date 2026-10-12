@@ -179,8 +179,9 @@ copy_path(const ExecContext                &ec,
   let const source_path      = Path{source, allocator};
   let const destination_path = Path{destination, allocator};
 
-  if (destination_path.exists() &&
-      source_path.is_same_file_as(destination_path))
+  let const was_destination_present = destination_path.exists();
+
+  if (was_destination_present && source_path.is_same_file_as(destination_path))
   {
     throw Error{
         "'" + String{allocator, source     }
@@ -447,7 +448,8 @@ copy_path(const ExecContext                &ec,
     };
   }
 
-  let const did_destination_exist = Path{destination, allocator}.exists();
+  let const did_destination_exist =
+      was_destination_present && !is_destination_link_to_unlink_before_copy;
 
   copy_file(ec, source, destination, options, allocator);
 

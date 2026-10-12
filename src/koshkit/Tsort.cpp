@@ -45,28 +45,10 @@ Tsort::execute(const ExecContext               &ec,
     return 1;
   }
 
-  let   tokens   = ArrayList<StringView>{cxt.scratch_allocator()};
-  usize position = 0;
+  let tokens = ArrayList<StringView>{cxt.scratch_allocator()};
 
-  while (position < content->length()) {
-    while (position < content->length() &&
-           std::isspace(static_cast<u8>((*content)[position])) != 0)
-    {
-      position++;
-    }
-
-    if (position == content->length()) break;
-
-    let const start = position;
-
-    while (position < content->length() &&
-           std::isspace(static_cast<u8>((*content)[position])) == 0)
-    {
-      position++;
-    }
-
-    tokens.push(content->view().substring_of_length(start, position - start));
-  }
+  content->view().for_each_ascii_whitespace_word(
+      [&](StringView word) throws -> void { tokens.push(word); });
 
   if ((tokens.count() & 1u) != 0) {
     report_soft_koshkit_util_error(ec, cxt, args[0].view(),

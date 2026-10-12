@@ -484,7 +484,7 @@ Xargs::execute(const ExecContext               &ec,
           break;
         }
 
-        let const item = do_read_item(cxt.scratch_allocator());
+        let item = do_read_item(cxt.scratch_allocator());
 
         if (!item.has_value()) break;
 
@@ -511,13 +511,13 @@ Xargs::execute(const ExecContext               &ec,
 
           if (FLAG_XARGS_EXIT.is_enabled())
             throw Error{"one argument exceeds the size limit"};
-          command.push(item->value.clone());
+          command.push(steal(item->value));
           command_locations.push(ec.source_location());
           added_count++;
           break;
         }
 
-        command.push(item->value.clone());
+        command.push(steal(item->value));
         command_locations.push(ec.source_location());
         command_byte_count = candidate_byte_count;
         added_count++;

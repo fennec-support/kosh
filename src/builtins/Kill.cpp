@@ -134,8 +134,6 @@ Kill::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   for (usize i = first_target; i < args.count(); i++) {
     const String &target = args[i];
 
-    let pid = os::process{};
-
     if (!target.is_empty() && target[0] == '%') {
       const job *const job = cxt.job_table_store().find_job_by_spec(target);
 
@@ -179,21 +177,21 @@ Kill::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       }
 
       continue;
-    } else {
-      const ErrorOr<i64> parsed_value = target.to<i64>();
-
-      if (parsed_value.is_error() || parsed_value.value() > INT32_MAX ||
-          parsed_value.value() < INT32_MIN)
-      {
-        report_soft_builtin_error(ec, cxt, ec.arg_location_at(i),
-                                  StringView{"'"} + target +
-                                      "' is not a valid job or process id");
-        status = 1;
-        continue;
-      }
-
-      pid = os::process_from_pid(parsed_value.value());
     }
+
+    const ErrorOr<i64> parsed_value = target.to<i64>();
+
+    if (parsed_value.is_error() || parsed_value.value() > INT32_MAX ||
+        parsed_value.value() < INT32_MIN)
+    {
+      report_soft_builtin_error(ec, cxt, ec.arg_location_at(i),
+                                StringView{"'"} + target +
+                                    "' is not a valid job or process id");
+      status = 1;
+      continue;
+    }
+
+    let const pid = os::process_from_pid(parsed_value.value());
 
     LOG(Debug, "kill sending signal %d to target '%s'", signal_number,
         target.c_str());

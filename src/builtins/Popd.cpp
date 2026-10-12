@@ -61,15 +61,13 @@ Popd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return 0;
   };
 
-  if (args.count() <= 1 && FLAG_NO_CHANGE.is_enabled()) {
-    stack.pop_back();
-    print_directory_stack(cxt, ec, false, false, false);
-
-    return 0;
-  }
-
   if (args.count() <= 1) {
-    if (let const status = do_pop_top(); status != 0) return status;
+    if (FLAG_NO_CHANGE.is_enabled()) {
+      stack.pop_back();
+    } else if (let const status = do_pop_top(); status != 0) {
+      return status;
+    }
+
     print_directory_stack(cxt, ec, false, false, false);
 
     return 0;

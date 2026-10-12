@@ -571,9 +571,8 @@ find_assignment_equals(StringView text) wontthrow -> Maybe<usize>
     cursor++;
   }
 
-  if (cursor >= text.length || text[cursor] != '[') {
-    return text.find_character('=');
-  }
+  if (cursor >= text.length) return koshka::None;
+  if (text[cursor] != '[') return text.find_character('=');
 
   usize depth = 0;
 

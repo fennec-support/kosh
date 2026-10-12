@@ -775,9 +775,7 @@ path_modification_time(StringView path) wontthrow -> Maybe<i64>
       0)
     return None;
 
-  let const windows_ticks =
-      (static_cast<u64>(data.ftLastWriteTime.dwHighDateTime) << 32) |
-      data.ftLastWriteTime.dwLowDateTime;
+  let const     windows_ticks = filetime_ticks(data.ftLastWriteTime);
   constexpr u64 WINDOWS_TO_UNIX_EPOCH_TICKS = 116444736000000000ULL;
 
   if (windows_ticks < WINDOWS_TO_UNIX_EPOCH_TICKS) return i64{0};

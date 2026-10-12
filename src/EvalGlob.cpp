@@ -955,19 +955,6 @@ EvalContext::expand_path(glob_field            field,
 {
   let const scratch = scratch_allocator();
 
-  let const has_glob = !runtime_state().no_glob() &&
-                       first_active_glob(field.text.view(), field.glob_active,
-                                         get_extglob_mode())
-                           .has_value();
-
-  if (!has_glob) {
-    let single_result = ArrayList<String>{scratch};
-
-    single_result.push(steal(field.text));
-
-    return steal(single_result).make_sorted(sort_order::ascending);
-  }
-
   let pattern = String{scratch};
 
   pattern.append(field.text.view());

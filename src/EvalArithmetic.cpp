@@ -573,14 +573,11 @@ public:
     let const save = pos;
 
     skip_spaces();
-    if (pos < source.length && lexer::is_variable_name_start(source[pos])) {
-      let const name_start = pos;
 
-      while (pos < source.length && lexer::is_variable_name(source[pos])) {
-        pos++;
-      }
+    let const name_start = pos;
+    let const name       = read_lvalue_name();
 
-      let const name = source.substring_of_length(name_start, pos - name_start);
+    if (!name.is_empty()) {
       const Lvalue target{name, read_optional_subscript(), name_start};
 
       struct compound_operator

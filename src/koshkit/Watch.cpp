@@ -225,10 +225,7 @@ Watch::execute(const ExecContext               &ec,
     has_previous_body = true;
 
     os::sleep_for_seconds(interval_seconds);
-    if (os::INTERRUPT_REQUESTED != 0) {
-      os::INTERRUPT_REQUESTED = 0;
-      break;
-    }
+    if (take_interrupt_request()) break;
   }
 
   return status;

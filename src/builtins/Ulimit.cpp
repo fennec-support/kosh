@@ -91,66 +91,24 @@ block_factor(const resource_entry &entry, mimic_mood mood) throws -> u64
 fn
 selected_resource() throws -> resource_selection
 {
-  if (FLAG_CPU_TIME.is_enabled())
-    return {
-        {"time(seconds)", os::resource_kind::CpuSeconds, 1},
-        false
-    };
-  if (FLAG_DATA_SIZE.is_enabled())
-    return {
-        {"data(kbytes)", os::resource_kind::DataKbytes, 1024},
-        false
-    };
-  if (FLAG_STACK_SIZE.is_enabled())
-    return {
-        {"stack(kbytes)", os::resource_kind::StackKbytes, 1024},
-        false
-    };
-  if (FLAG_CORE_SIZE.is_enabled())
-    return {
-        {"coredump(blocks)", os::resource_kind::CoreBlocks, 512},
-        false
-    };
-  if (FLAG_OPEN_FILES.is_enabled())
-    return {
-        {"nofiles", os::resource_kind::OpenFiles, 1},
-        false
-    };
-  if (FLAG_RSS_SIZE.is_enabled())
-    return {
-        {"memory(kbytes)", os::resource_kind::ResidentKbytes, 1024},
-        false
-    };
-  if (FLAG_LOCKED_MEMORY.is_enabled())
-    return {
-        {"locked memory(kbytes)", os::resource_kind::LockedMemoryKbytes, 1024},
-        false
-    };
-  if (FLAG_PROCESSES_P.is_enabled())
+  if (FLAG_CPU_TIME.is_enabled()) return {RESOURCE_TABLE[0], false};
+  if (FLAG_DATA_SIZE.is_enabled()) return {RESOURCE_TABLE[2], false};
+  if (FLAG_STACK_SIZE.is_enabled()) return {RESOURCE_TABLE[3], false};
+  if (FLAG_CORE_SIZE.is_enabled()) return {RESOURCE_TABLE[4], false};
+  if (FLAG_OPEN_FILES.is_enabled()) return {RESOURCE_TABLE[8], false};
+  if (FLAG_RSS_SIZE.is_enabled()) return {RESOURCE_TABLE[5], false};
+  if (FLAG_LOCKED_MEMORY.is_enabled()) return {RESOURCE_TABLE[6], false};
+  if (FLAG_PROCESSES_P.is_enabled()) {
     return {
         {"pipe size", os::resource_kind::OpenFiles, 512},
         true
     };
-  if (FLAG_PROCESSES.is_enabled())
-    return {
-        {"process", os::resource_kind::Processes, 1},
-        false
-    };
-  if (FLAG_VIRTUAL_MEMORY.is_enabled())
-    return {
-        {"vmemory(kbytes)", os::resource_kind::VirtualMemoryKbytes, 1024},
-        false
-    };
-  if (FLAG_FILE_LOCKS.is_enabled())
-    return {
-        {"locks", os::resource_kind::FileLocks, 1},
-        false
-    };
+  }
+  if (FLAG_PROCESSES.is_enabled()) return {RESOURCE_TABLE[7], false};
+  if (FLAG_VIRTUAL_MEMORY.is_enabled()) return {RESOURCE_TABLE[9], false};
+  if (FLAG_FILE_LOCKS.is_enabled()) return {RESOURCE_TABLE[10], false};
 
-  return {
-      {"file(blocks)", os::resource_kind::FileBlocks, 512},
-      false
-  };
+  return {RESOURCE_TABLE[1], false};
 }
 
 fn

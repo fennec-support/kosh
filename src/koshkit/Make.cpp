@@ -2062,8 +2062,13 @@ expand(EvalContext &cxt,
                     .view();
       text_position += 2;
     } else {
-      result.push(text[text_position]);
-      text_position++;
+      let const rest        = text.substring(text_position);
+      let const next_dollar = rest.substring(1).find_character('$');
+      let const run_length =
+          next_dollar.has_value() ? *next_dollar + 1 : rest.length;
+
+      result += rest.substring_of_length(0, run_length);
+      text_position += run_length;
     }
   }
 
@@ -2189,12 +2194,11 @@ apply_assignment(EvalContext &cxt,
       variable.value += " ";
       variable.value += appended_value.view();
     } else {
-      let const value_to_store =
-          operator_character == ':'
-              ? expand(cxt, mk, trimmed_value, 0)
-              : String{cxt.scratch_allocator(), trimmed_value};
+      let value_to_store = operator_character == ':'
+                               ? expand(cxt, mk, trimmed_value, 0)
+                               : String{cxt.scratch_allocator(), trimmed_value};
 
-      variable.value  = String{cxt.scratch_allocator(), value_to_store.view()};
+      variable.value  = steal(value_to_store);
       variable.origin = is_command_line ? make_variable_origin::CommandLine
                                         : make_variable_origin::File;
       variable.flavor = operator_character == ':'
@@ -2205,15 +2209,14 @@ apply_assignment(EvalContext &cxt,
     return;
   }
 
-  let const value_to_store =
-      operator_character == ':'
-          ? expand(cxt, mk, trimmed_value, 0)
-          : String{cxt.scratch_allocator(), trimmed_value};
+  let value_to_store = operator_character == ':'
+                           ? expand(cxt, mk, trimmed_value, 0)
+                           : String{cxt.scratch_allocator(), trimmed_value};
 
   mk.variable_index.set(name, mk.variables.count());
   mk.variables.push(make_variable{
-      String{cxt.scratch_allocator(), name                 },
-      String{cxt.scratch_allocator(), value_to_store.view()},
+      String{cxt.scratch_allocator(), name},
+      steal(value_to_store),
       is_command_line ? make_variable_origin::CommandLine
                       : make_variable_origin::File,
       operator_character == ':' ? make_variable_flavor::Simple

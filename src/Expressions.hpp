@@ -1081,6 +1081,8 @@ namespace expressions {
 class DummyExpression : public Expression
 {
 public:
+  static constexpr bool is_arena_destructor_noop = true;
+
   DummyExpression(SourceLocation location);
 
   fn
@@ -1461,6 +1463,8 @@ protected:
 class CompoundListCondition : public Expression
 {
 public:
+  static constexpr bool is_arena_destructor_noop = true;
+
   enum class Kind : u8
   {
     None,
@@ -1680,6 +1684,8 @@ enum class loop_kind : u8
 class WhileLoop : public CompoundCommand
 {
 public:
+  static constexpr bool is_arena_destructor_noop = true;
+
   WhileLoop(SourceLocation    location,
             const Expression *condition,
             const Expression *body,
@@ -1793,6 +1799,8 @@ protected:
 class BraceGroup : public CompoundCommand
 {
 public:
+  static constexpr bool is_arena_destructor_noop = true;
+
   BraceGroup(SourceLocation location, const Expression *body);
   ~BraceGroup() override;
 
@@ -1819,6 +1827,8 @@ protected:
 class CoprocCommand : public CompoundCommand
 {
 public:
+  static constexpr bool is_arena_destructor_noop = true;
+
   CoprocCommand(SourceLocation    location,
                 StringView        name,
                 const Expression *body);

@@ -130,16 +130,6 @@ constexpr StaticStringMap KOSH_ANSI_COLORS{KOSH_ANSI_COLOR_ENTRIES};
 
 #undef ANSI_COLOR_VARIABLE
 
-static fn
-ansi_escape_for_color(StringView name) throws -> Maybe<StringView>
-{
-  let const found = KOSH_ANSI_COLORS.find(name);
-
-  if (!found.has_value()) return None;
-
-  return found->escape;
-}
-
 enum class dynamic_var : u8
 {
   IFS,
@@ -599,21 +589,12 @@ EvalContext::get_variable_value(StringView name) const throws
                                                 : StringView{});
         }
 
-        switch (info->kind) {
-        case dynamic_var::KOSH_GIT_AHEAD:
-          return git_status_cache().get_ahead_count() > 0
-                     ? String::from(git_status_cache().get_ahead_count(),
-                                    heap_allocator())
-                     : String{heap_allocator()};
-        case dynamic_var::KOSH_GIT_BEHIND:
-          return git_status_cache().get_behind_count() > 0
-                     ? String::from(git_status_cache().get_behind_count(),
-                                    heap_allocator())
-                     : String{heap_allocator()};
-        default:
-          unreachable("the git count variable must be KOSH_GIT_AHEAD or "
-                      "KOSH_GIT_BEHIND");
-        }
+        let const count = info->kind == dynamic_var::KOSH_GIT_AHEAD
+                              ? git_status_cache().get_ahead_count()
+                              : git_status_cache().get_behind_count();
+
+        return count > 0 ? String::from(count, heap_allocator())
+                         : String{heap_allocator()};
       }
       case dynamic_var::KOSH_IDENTITY: return materialize_kosh_identity();
       case dynamic_var::KOSHCONF:      return encode_koshconf_blob(*this);
@@ -622,10 +603,10 @@ EvalContext::get_variable_value(StringView name) const throws
     }
 
     if (first_byte == 'K' && name.starts_with("KOSH_ANSI_")) {
-      if (let const escape = ansi_escape_for_color(name)) {
+      if (let const color = KOSH_ANSI_COLORS.find(name)) {
         if (!colors::stdout_wants_color()) return String{heap_allocator()};
 
-        return String{heap_allocator(), *escape};
+        return String{heap_allocator(), color->escape};
       }
     }
 
@@ -849,11 +830,7 @@ EvalContext::is_circular_nameref(StringView name) const throws -> bool
 fn
 EvalContext::unbind_circular_nameref(StringView name) throws -> bool
 {
-  if (!variable_store().attributes().is_nameref(name) ||
-      !is_circular_nameref(name))
-  {
-    return false;
-  }
+  if (!is_circular_nameref(name)) return false;
 
   variable_store().attributes().set(name, variable_attribute::Nameref, false);
   variable_store().shell_variables().erase(name);

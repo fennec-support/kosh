@@ -738,15 +738,15 @@ Lexer::lex_identifier() throws -> Token *
 
   bool did_quote_enclose_content = false;
 
-  let const do_append_char = [&word](WordSegment::Kind kind, char ch) {
+  let const do_append_char = [&word, this](WordSegment::Kind kind, char ch) {
     if (!word.segments.is_empty() && word.segments.back().kind == kind &&
         kind != WordSegment::Kind::VariableReference)
     {
       word.segments.back().text.push(ch);
     } else {
       word.segments.push(WordSegment{
-          kind, SegmentText{heap_allocator(), StringView{&ch, 1}},
-           false
+          kind, SegmentText{bump_allocator(arena()), StringView{&ch, 1}},
+          false
       });
     }
   };

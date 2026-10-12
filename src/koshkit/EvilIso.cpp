@@ -546,11 +546,7 @@ is_hexadecimal_id(StringView text) wontthrow -> bool
   for (usize index = 0; index < text.length; index++) {
     let const byte = text[index];
 
-    if (!((byte >= '0' && byte <= '9') || (byte >= 'a' && byte <= 'f') ||
-          (byte >= 'A' && byte <= 'F')))
-    {
-      return false;
-    }
+    if (!utils::hex_digit_value(byte).has_value()) return false;
   }
 
   return true;
@@ -625,9 +621,7 @@ normalized_pod_uid(StringView component, Allocator allocator) throws
         index == 8 || index == 13 || index == 18 || index == 23;
     let const is_valid = should_be_separator
                              ? byte == '-'
-                             : (byte >= '0' && byte <= '9') ||
-                                   (byte >= 'a' && byte <= 'f') ||
-                                   (byte >= 'A' && byte <= 'F');
+                             : utils::hex_digit_value(byte).has_value();
 
     if (!is_valid) return String{allocator, "-"};
     result.push(byte >= 'A' && byte <= 'F' ? byte - 'A' + 'a' : byte);

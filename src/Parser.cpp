@@ -70,28 +70,14 @@ Parser::debug_words() const wontthrow -> const ArrayList<Word> &
 }
 
 fn
-Parser::take_shellcheck_suppressions() throws
-    -> ArrayList<shellcheck_suppression>
-{
-  return steal(m_shellcheck_suppressions);
-}
-
-fn
-Parser::take_analysis_scope_definitions() throws
-    -> ArrayList<analysis_scope_definition>
-{
-  return steal(m_analysis_scope_definitions);
-}
-
-fn
 Parser::take_analysis_directives() throws -> analysis_directives
 {
   analysis_directives directives{};
 
-  directives.shellcheck_suppressions = take_shellcheck_suppressions();
-  directives.scope_definitions       = take_analysis_scope_definitions();
-  directives.directive_spans         = take_shellcheck_directive_spans();
-  directives.heredoc_misses          = take_heredoc_terminator_misses();
+  directives.shellcheck_suppressions = steal(m_shellcheck_suppressions);
+  directives.scope_definitions       = steal(m_analysis_scope_definitions);
+  directives.directive_spans = m_lexer.take_shellcheck_directive_spans();
+  directives.heredoc_misses  = m_lexer.take_heredoc_terminator_misses();
   directives.source_name_index       = m_lexer.source_name_index();
 
   return directives;

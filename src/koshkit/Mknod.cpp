@@ -65,12 +65,6 @@ parse_device_number(StringView text) throws -> Maybe<u64>
   return parsed.value();
 }
 
-pure fn
-node_type(StringView text) wontthrow -> Maybe<u32>
-{
-  return NODE_TYPES.find(text);
-}
-
 } /* namespace */
 
 fn
@@ -127,7 +121,7 @@ Mknod::execute(const ExecContext               &ec,
     return 1;
   }
 
-  let const type = node_type(type_text);
+  let const type = NODE_TYPES.find(type_text);
 
   if (!type.has_value()) {
     KOSHKIT_REPORT_ERROR_AT(type_location,
