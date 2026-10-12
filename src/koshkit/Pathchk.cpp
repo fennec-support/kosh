@@ -12,8 +12,7 @@
 #include "../Koshkit.hpp"
 #include "../base/Path.hpp"
 
-KOSHKIT_UTIL_DECL("[-pP] pathname ...",
-                  "Check pathname portability.");
+KOSHKIT_UTIL_DECL("[-pP] pathname ...", "Check pathname portability.");
 
 FLAG(PATHCHK_PORTABLE,
      Bool,

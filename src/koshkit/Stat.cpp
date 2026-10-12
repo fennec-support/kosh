@@ -15,9 +15,8 @@
 #include "../Utils.hpp"
 #include "../base/Path.hpp"
 
-KOSHKIT_UTIL_DECL(
-    "[-Lft] [-c format] [--printf=format] file ...",
-    "Display the status of a file or a filesystem.");
+KOSHKIT_UTIL_DECL("[-Lft] [-c format] [--printf=format] file ...",
+                  "Display the status of a file or a filesystem.");
 
 FLAG(STAT_DEREFERENCE, Bool, 'L', "dereference", "Follow symbolic links.");
 FLAG(STAT_FILESYSTEM,

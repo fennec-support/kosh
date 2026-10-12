@@ -18,7 +18,8 @@ FLAG_LIST_DECL();
 
 HELP_SYNOPSIS_DECL("[-L|-P] [dir]");
 
-HELP_DESCRIPTION_DECL("The working directory can be changed with this builtin.");
+HELP_DESCRIPTION_DECL(
+    "The working directory can be changed with this builtin.");
 
 FLAG(LOGICAL,
      Bool,

@@ -14,9 +14,8 @@
 #include "../Koshkit.hpp"
 #include "../Utils.hpp"
 
-KOSHKIT_UTIL_DECL(
-    "[-c | -d | -u] [-f fields] [-s chars] [input [output]]",
-    "Collapse each run of adjacent equal lines into one.");
+KOSHKIT_UTIL_DECL("[-c | -d | -u] [-f fields] [-s chars] [input [output]]",
+                  "Collapse each run of adjacent equal lines into one.");
 
 FLAG(UNIQ_COUNT, Bool, 'c', "", "Prefix each line with the count of its run.");
 FLAG(UNIQ_REPEATED,

@@ -11,8 +11,7 @@
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
 
-KOSHKIT_UTIL_DECL("[-p] directory ...",
-                  "Remove each empty directory.");
+KOSHKIT_UTIL_DECL("[-p] directory ...", "Remove each empty directory.");
 
 FLAG(RMDIR_PARENTS, Bool, 'p', "", "Remove empty parent directories.");
 

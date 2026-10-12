@@ -12,8 +12,7 @@
 #include "../Koshkit.hpp"
 #include "../Utils.hpp"
 
-KOSHKIT_UTIL_DECL("[-a] [-t tablist] [file ...]",
-                  "Convert spaces to tabs.");
+KOSHKIT_UTIL_DECL("[-a] [-t tablist] [file ...]", "Convert spaces to tabs.");
 
 FLAG(UNEXPAND_ALL, Bool, 'a', "all", "Convert blanks beyond line prefixes.");
 FLAG(UNEXPAND_TABS, String, 't', "tabs", "Use these tab stops.");

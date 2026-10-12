@@ -12,9 +12,8 @@
 #include "../Koshkit.hpp"
 #include "../Platform.hpp"
 
-KOSHKIT_UTIL_DECL(
-    "[--all] [--ignore=count]",
-    "Print the number of available logical processors.");
+KOSHKIT_UTIL_DECL("[--all] [--ignore=count]",
+                  "Print the number of available logical processors.");
 
 FLAG(NPROC_ALL, Bool, '\0', "all", "Print the configured processor count.");
 FLAG(NPROC_IGNORE,

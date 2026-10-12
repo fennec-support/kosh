@@ -10,9 +10,8 @@
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
 
-KOSHKIT_UTIL_DECL(
-    "[string ...]",
-    "Write the given string on its own line repeatedly.");
+KOSHKIT_UTIL_DECL("[string ...]",
+                  "Write the given string on its own line repeatedly.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Yes);
 

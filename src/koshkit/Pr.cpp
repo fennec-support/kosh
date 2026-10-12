@@ -864,10 +864,10 @@ Pr::execute(const ExecContext               &ec,
       if (has_page_frame)
         do_append_header(date_text.view(), title, page_number);
 
-      let const entry_count          = lines.count();
-      let       column_starts        = ArrayList<usize>{page_allocator};
-      let       column_lengths       = ArrayList<usize>{page_allocator};
-      usize     row_count            = 0;
+      let const entry_count    = lines.count();
+      let       column_starts  = ArrayList<usize>{page_allocator};
+      let       column_lengths = ArrayList<usize>{page_allocator};
+      usize     row_count      = 0;
 
       if (effective_column_count > 1 && !FLAG_PR_ACROSS.is_enabled()) {
         usize next_start = 0;
@@ -919,7 +919,7 @@ Pr::execute(const ExecContext               &ec,
           row.push(steal(entry));
         }
 
-        let const is_last_row = row_index + 1 == row_count;
+        let const is_last_row        = row_index + 1 == row_count;
         let const is_input_exhausted = is_last_row && has_ended &&
                                        effective_column_count > 1 &&
                                        (!column_starts.is_empty() ||

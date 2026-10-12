@@ -20,8 +20,8 @@ FLAG_LIST_DECL();
 
 HELP_SYNOPSIS_DECL("[query ...]");
 
-HELP_DESCRIPTION_DECL(
-    "This builtin changes to a frequently visited directory ranked by frecency.");
+HELP_DESCRIPTION_DECL("This builtin changes to a frequently visited directory "
+                      "ranked by frecency.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 

@@ -13,9 +13,8 @@
 #include "../Koshkit.hpp"
 #include "../Platform.hpp"
 
-KOSHKIT_UTIL_DECL(
-    "[-df] [file ...]",
-    "Flush pending writes to permanent storage.");
+KOSHKIT_UTIL_DECL("[-df] [file ...]",
+                  "Flush pending writes to permanent storage.");
 
 FLAG(SYNC_DATA, Bool, 'd', "data", "Flush only the data of each operand.");
 FLAG(SYNC_FILESYSTEM,

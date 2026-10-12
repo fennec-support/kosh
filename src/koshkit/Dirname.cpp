@@ -14,7 +14,8 @@
 #include "../base/Path.hpp"
 
 KOSHKIT_UTIL_DECL(
-    "path ...", "The dirname utility can print the directory part of each path.");
+    "path ...",
+    "The dirname utility can print the directory part of each path.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Dirname);
 

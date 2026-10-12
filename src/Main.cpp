@@ -41,7 +41,8 @@ HELP_SYNOPSIS_DECL("[-OPTIONS] [--] <file> [argument ...]",
                    "[-OPTIONS] --as-language-server");
 /* clang-format on */
 
-FLAG(VERSION, Bool, '\0', "version", "Display the program version and notices.");
+FLAG(
+    VERSION, Bool, '\0', "version", "Display the program version and notices.");
 FLAG(SHORT_VERSION,
      Bool,
      'V',
@@ -151,7 +152,8 @@ FLAG(PRIVILEGED,
      'p',
      "privileged",
      Bash,
-     "Run with privileges and suppress BASH_ENV. Unequal ids skip startup files.");
+     "Run with privileges and suppress BASH_ENV. Unequal ids skip startup "
+     "files.");
 FLAG(SHOPT_OPTION,
      ManyStrings,
      'O',

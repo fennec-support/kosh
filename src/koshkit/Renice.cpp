@@ -14,9 +14,8 @@
 #include "../Platform.hpp"
 #include "../Utils.hpp"
 
-KOSHKIT_UTIL_DECL(
-    "[-g | -p | -u] -n increment id ...",
-    "Adjust scheduling priorities of running processes.");
+KOSHKIT_UTIL_DECL("[-g | -p | -u] -n increment id ...",
+                  "Adjust scheduling priorities of running processes.");
 
 FLAG(RENICE_GROUP,
      Bool,

@@ -18,10 +18,11 @@
 
 #include <cstdio>
 
-KOSHKIT_UTIL_DECL("[-BeiknpqrSst] [-j[jobs]] [-C directory] [-f makefile]... "
-                  "[macro=value ...] "
-                  "[target ...]",
-                  "The make utility can run the recipe of each requested target.");
+KOSHKIT_UTIL_DECL(
+    "[-BeiknpqrSst] [-j[jobs]] [-C directory] [-f makefile]... "
+    "[macro=value ...] "
+    "[target ...]",
+    "The make utility can run the recipe of each requested target.");
 
 FLAG(MAKE_FILE,
      ManyStrings,

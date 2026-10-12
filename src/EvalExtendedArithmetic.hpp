@@ -5,7 +5,8 @@
  * This file declares the compact ArithmeticValue and radix helpers used by
  * extended arithmetic. Small values remain inline, while promoted integers and
  * fixed-scale decimals use arena-owned limb storage. The separate header
- * exposes this shared contract and keeps Eval.hpp independent of backend details.
+ * exposes this shared contract and keeps Eval.hpp independent of backend
+ * details.
  */
 
 #pragma once

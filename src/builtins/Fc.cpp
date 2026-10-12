@@ -21,8 +21,8 @@ FLAG_LIST_DECL();
 HELP_SYNOPSIS_DECL("[-e editor] [-lnr] [first [last]]",
                    "-s [old=new ...] [command]");
 
-HELP_DESCRIPTION_DECL(
-    "Commands from history can be listed, edited, or executed with this builtin.");
+HELP_DESCRIPTION_DECL("Commands from history can be listed, edited, or "
+                      "executed with this builtin.");
 
 FLAG(FC_EDITOR, String, 'e', "", "Use editor to edit the selected commands.");
 FLAG(FC_LIST, Bool, 'l', "", "List the selected commands.");

@@ -14,7 +14,8 @@
 #include "../Platform.hpp"
 
 KOSHKIT_UTIL_DECL(
-    "[-a]", "The evilfs utility can report the filesystems mounted on the host.");
+    "[-a]",
+    "The evilfs utility can report the filesystems mounted on the host.");
 
 FLAG(EVILFS_ALL,
      Bool,

@@ -13,10 +13,9 @@
 #include "../Koshkit.hpp"
 #include "../Utils.hpp"
 
-KOSHKIT_UTIL_DECL(
-    "[-lwcm] [file ...]",
-    "Count the lines, words, characters, and bytes of each "
-    "file.");
+KOSHKIT_UTIL_DECL("[-lwcm] [file ...]",
+                  "Count the lines, words, characters, and bytes of each "
+                  "file.");
 
 FLAG(WC_LINES, Bool, 'l', "", "Print the newline count.");
 FLAG(WC_WORDS, Bool, 'w', "", "Print the word count.");

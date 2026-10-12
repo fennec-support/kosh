@@ -13,10 +13,9 @@
 #include "../Koshkit.hpp"
 #include "../Utils.hpp"
 
-KOSHKIT_UTIL_DECL(
-    "[-cCds] set1 [set2]",
-    "Translate the bytes in set1 to the matching bytes in "
-    "set2.");
+KOSHKIT_UTIL_DECL("[-cCds] set1 [set2]",
+                  "Translate the bytes in set1 to the matching bytes in "
+                  "set2.");
 
 FLAG(TR_DELETE, Bool, 'd', "", "Delete the bytes in set1.");
 FLAG(TR_COMPLEMENT,

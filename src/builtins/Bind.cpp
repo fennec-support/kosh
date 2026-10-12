@@ -33,21 +33,14 @@ FLAG(PRINT, Bool, 'p', "\0", "Print a key binding, with no effect.");
 FLAG(PRINT_ALL, Bool, 'P', "\0", "Print all key bindings, with no effect.");
 FLAG(QUERY, Bool, 'q', "\0", "Query a key binding, with no effect.");
 FLAG(SHOW_HELP, Bool, 's', "\0", "Show key binding help, with no effect.");
-FLAG(VARIABLE,
-     Bool,
-     'v',
-     "\0",
-     "Use a key binding variable, with no effect.");
+FLAG(VARIABLE, Bool, 'v', "\0", "Use a key binding variable, with no effect.");
 FLAG(FILENAME,
      String,
      'f',
      "\0",
      "Read key bindings from filename, with no effect.");
-FLAG(UNBIND,
-     String,
-     'u',
-     "\0",
-     "Remove the named key binding, with no effect.");
+FLAG(
+    UNBIND, String, 'u', "\0", "Remove the named key binding, with no effect.");
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_BUILTIN_FLAGS(Bind);

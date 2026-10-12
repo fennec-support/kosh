@@ -17,10 +17,11 @@
 #include "../Utils.hpp"
 #include "../base/Path.hpp"
 
-KOSHKIT_UTIL_DECL("[-q] [-b executable] [-o archive] [--no-compress] "
-                  "(-p pid | core)",
-                  "The goodcore utility can capture or package a core dump with "
-                  "its executable, mapped libraries, and host metadata.");
+KOSHKIT_UTIL_DECL(
+    "[-q] [-b executable] [-o archive] [--no-compress] "
+    "(-p pid | core)",
+    "The goodcore utility can capture or package a core dump with "
+    "its executable, mapped libraries, and host metadata.");
 
 FLAG(GOODCORE_PID, String, 'p', "pid", "Capture this running process.");
 FLAG(GOODCORE_BINARY,

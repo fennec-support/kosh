@@ -14,9 +14,8 @@
 #include "../Platform.hpp"
 #include "../Utils.hpp"
 
-KOSHKIT_UTIL_DECL(
-    "[-T type] operand [argument ...]",
-    "Write terminal capability values and control strings.");
+KOSHKIT_UTIL_DECL("[-T type] operand [argument ...]",
+                  "Write terminal capability values and control strings.");
 
 FLAG(TPUT_TERMINAL, String, 'T', "terminal", "Use this terminal type.");
 

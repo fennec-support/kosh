@@ -16,8 +16,9 @@
 #include "../base/Path.hpp"
 #include "../base/StaticStringMap.hpp"
 
-KOSHKIT_UTIL_DECL("[--cores] [--logs]",
-                  "The evillogs utility can report core dumps and system logs.");
+KOSHKIT_UTIL_DECL(
+    "[--cores] [--logs]",
+    "The evillogs utility can report core dumps and system logs.");
 
 FLAG(EVILLOGS_CORES, Bool, '\0', "cores", "Print only the core dump report.");
 FLAG(EVILLOGS_LOGS, Bool, '\0', "logs", "Print only the log report.");
@@ -362,11 +363,11 @@ append_core_dump_report(String   &output,
                                 : static_cast<usize>(DEFAULT_DUMP_COUNT);
 
     for (usize index = 0; index < shown_count; index++) {
-      let const &dump     = dumps[index];
-      let const  size     = format_human_size(dump.size, allocator);
+      let const &dump = dumps[index];
+      let const  size = format_human_size(dump.size, allocator);
       let const  modified =
           os::format_local_time("%Y-%m-%d %H:%M", dump.modification_time);
-      let        cells    = ArrayList<report_table_cell_view>{allocator};
+      let cells = ArrayList<report_table_cell_view>{allocator};
 
       cells.push({size.view(), colors::ansi::GREEN});
       cells.push({modified.view(), colors::ansi::DIM});
@@ -614,11 +615,11 @@ append_log_report(String   &output,
                                 : static_cast<usize>(DEFAULT_LOG_ENTRY_COUNT);
 
     for (usize index = 0; index < shown_count; index++) {
-      let const &entry   = entries[index];
-      let const  size    = format_human_size(entry.size, allocator);
+      let const &entry = entries[index];
+      let const  size  = format_human_size(entry.size, allocator);
       let const  modified =
           os::format_local_time("%Y-%m-%d %H:%M", entry.modification_time);
-      let       cells    = ArrayList<report_table_cell_view>{allocator};
+      let cells = ArrayList<report_table_cell_view>{allocator};
 
       cells.push({size.view(), colors::ansi::GREEN});
       cells.push({entry.format_label, colors::ansi::BOLD_MAGENTA});

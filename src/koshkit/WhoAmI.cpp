@@ -13,8 +13,7 @@
 #include "../Platform.hpp"
 #include "../base/Trace.hpp"
 
-KOSHKIT_UTIL_DECL("",
-                  "Print the name of the effective user.");
+KOSHKIT_UTIL_DECL("", "Print the name of the effective user.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(WhoAmI);
 

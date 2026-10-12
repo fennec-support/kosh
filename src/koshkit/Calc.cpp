@@ -5,7 +5,8 @@
  * This file implements the calc utility in koshkit, which joins its
  * command-line operands into one arithmetic expression and prints the result.
  * With no expression on a terminal it reads and evaluates expressions
- * interactively, and a name = value line binds a variable for a later expression.
+ * interactively, and a name = value line binds a variable for a later
+ * expression.
  */
 
 #include "../CLI.hpp"

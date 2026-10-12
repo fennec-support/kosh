@@ -11,8 +11,7 @@
 #include "../Koshkit.hpp"
 #include "../Platform.hpp"
 
-KOSHKIT_UTIL_DECL("[name ...]",
-                  "Write environment variables.");
+KOSHKIT_UTIL_DECL("[name ...]", "Write environment variables.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Printenv);
 

@@ -831,7 +831,7 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const 
             restore.previous_special_definition_location);
       if (restore.previous_value) {
         os::set_environment_variable(restore.name.view(),
-                                     restore.previous_value->view());
+                                                restore.previous_value->view());
         cxt.mark_exported(restore.name.view());
       } else {
         os::unset_environment_variable(restore.name.view());

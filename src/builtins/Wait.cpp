@@ -19,8 +19,7 @@ FLAG_LIST_DECL();
 
 HELP_SYNOPSIS_DECL("[-fn] [-p var] [%job|pid ...]");
 
-HELP_DESCRIPTION_DECL(
-    "This builtin waits until the specified jobs finish.");
+HELP_DESCRIPTION_DECL("This builtin waits until the specified jobs finish.");
 
 FLAG(WAIT_NEXT,
      Bool,

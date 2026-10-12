@@ -540,9 +540,9 @@ build_long_entry_or_sparse_row(const listing_entry   &entry,
                                allocator);
   }
 
-  row.size = FLAG_LS_HUMAN.is_enabled()
-                 ? format_human_size(status.size, allocator)
-                 : String::from(status.size, allocator);
+  row.size   = FLAG_LS_HUMAN.is_enabled()
+                   ? format_human_size(status.size, allocator)
+                   : String::from(status.size, allocator);
   row.time   = os::format_local_time("%b %e %H:%M", status.modification_time);
   row.blocks = status.blocks;
 

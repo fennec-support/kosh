@@ -11,8 +11,7 @@
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
 
-KOSHKIT_UTIL_DECL("[-amnrsv]",
-                  "Write system identification fields.");
+KOSHKIT_UTIL_DECL("[-amnrsv]", "Write system identification fields.");
 
 FLAG(UNAME_ALL, Bool, 'a', "all", "Write all fields.");
 FLAG(UNAME_MACHINE, Bool, 'm', "machine", "Write the machine type.");

@@ -14,8 +14,7 @@
 #include "../Platform.hpp"
 #include "../Utils.hpp"
 
-KOSHKIT_UTIL_DECL("[-m mode] file ...",
-                  "Create FIFO special files.");
+KOSHKIT_UTIL_DECL("[-m mode] file ...", "Create FIFO special files.");
 
 FLAG(MKFIFO_MODE, String, 'm', "mode", "Set the FIFO permission mode.");
 

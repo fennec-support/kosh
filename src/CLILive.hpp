@@ -6,8 +6,9 @@
  * utility supplies its options, sampler, renderer, and key callbacks. The
  * driver owns terminal handling, sample and refresh timing, interrupts, and
  * one write per frame. It also declares update_retained_rows, which folds each
- * fresh sample into the retained rows of a live utility, and live_report_options,
- * which parses --live and --cumulative and stores the window and view options.
+ * fresh sample into the retained rows of a live utility, and
+ * live_report_options, which parses --live and --cumulative and stores the
+ * window and view options.
  */
 
 #pragma once

@@ -13,9 +13,8 @@
 #include "../Koshkit.hpp"
 #include "../Platform.hpp"
 
-KOSHKIT_UTIL_DECL(
-    "utility [argument ...]",
-    "Run a command that ignores terminal hangups.");
+KOSHKIT_UTIL_DECL("utility [argument ...]",
+                  "Run a command that ignores terminal hangups.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Nohup);
 

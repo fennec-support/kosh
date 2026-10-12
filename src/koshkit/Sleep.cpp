@@ -12,9 +12,7 @@
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
 
-KOSHKIT_UTIL_DECL(
-    "duration ...",
-    "Pause for the sum of the given durations.");
+KOSHKIT_UTIL_DECL("duration ...", "Pause for the sum of the given durations.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Sleep);
 

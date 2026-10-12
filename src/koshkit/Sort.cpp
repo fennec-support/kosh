@@ -15,11 +15,10 @@
 #include "../Lexer.hpp"
 #include "../Utils.hpp"
 
-KOSHKIT_UTIL_DECL(
-    "[-bcCdfimnrsu] [-o output] [-t separator] [-k keydef]... "
-    "[file ...]",
-    "Write input lines in byte order or in the "
-    "order selected by its keys and ordering options.");
+KOSHKIT_UTIL_DECL("[-bcCdfimnrsu] [-o output] [-t separator] [-k keydef]... "
+                  "[file ...]",
+                  "Write input lines in byte order or in the "
+                  "order selected by its keys and ordering options.");
 
 FLAG(SORT_REVERSE, Bool, 'r', "", "Reverse the order of the output.");
 FLAG(SORT_NUMERIC, Bool, 'n', "", "Compare leading numbers by value.");

@@ -13,9 +13,8 @@
 #include "../Koshkit.hpp"
 #include "../Platform.hpp"
 
-KOSHKIT_UTIL_DECL(
-    "[-k keyword] | [section] name ...",
-    "Display manual pages found through MANPATH.");
+KOSHKIT_UTIL_DECL("[-k keyword] | [section] name ...",
+                  "Display manual pages found through MANPATH.");
 
 FLAG(MAN_KEYWORD, String, 'k', "keyword", "Search manual page descriptions.");
 

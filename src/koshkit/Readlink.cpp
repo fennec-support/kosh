@@ -11,8 +11,7 @@
 #include "../Koshkit.hpp"
 #include "../Platform.hpp"
 
-KOSHKIT_UTIL_DECL("[-n] file ...",
-                  "Print the target of a symbolic link.");
+KOSHKIT_UTIL_DECL("[-n] file ...", "Print the target of a symbolic link.");
 
 FLAG(READLINK_NO_NEWLINE,
      Bool,

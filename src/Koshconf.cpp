@@ -445,15 +445,14 @@ replace_koshconf_target(const Path &target, StringView contents) throws
 
   if (os::path_exists(target.view())) {
     let const backup_path = Path{String{target.text()} + ".bak"};
-    let const existing = target.read_entire_file();
+    let const existing    = target.read_entire_file();
 
     if (!existing.has_value()) {
       do_discard("read the configuration before replacing");
     }
 
-    let const backup_temporary =
-        os::write_to_named_temp_file(directory, ".kosh.conf.bak",
-                                     existing->view());
+    let const backup_temporary = os::write_to_named_temp_file(
+        directory, ".kosh.conf.bak", existing->view());
 
     if (!backup_temporary.has_value()) {
       do_discard("write the configuration backup");

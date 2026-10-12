@@ -14,9 +14,9 @@
 #include "../Platform.hpp"
 #include "../base/StaticStringMap.hpp"
 
-KOSHKIT_UTIL_DECL(
-    "[-a] [file ...]",
-    "The evildisk utility can report filesystem capacity and disk health data.");
+KOSHKIT_UTIL_DECL("[-a] [file ...]",
+                  "The evildisk utility can report filesystem capacity and "
+                  "disk health data.");
 
 FLAG(EVILDISK_ALL, Bool, 'a', "all", "Show available SMART data.");
 

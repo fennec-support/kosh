@@ -26,16 +26,9 @@ FLAG(DISABLE,
      'n',
      "",
      "Leave the named builtins disabled, with no effect.");
-FLAG(LOAD_FILE,
-     String,
-     'f',
-     "",
-     "Load builtins from filename, with no effect.");
-FLAG(DELETE_FILE,
-     Bool,
-     'd',
-     "",
-     "Delete loaded builtins, with no effect.");
+FLAG(
+    LOAD_FILE, String, 'f', "", "Load builtins from filename, with no effect.");
+FLAG(DELETE_FILE, Bool, 'd', "", "Delete loaded builtins, with no effect.");
 FLAG(SILENT, Bool, 's', "", "Suppress output from a toggle operation.");
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 

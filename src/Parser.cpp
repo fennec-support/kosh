@@ -76,9 +76,9 @@ Parser::take_analysis_directives() throws -> analysis_directives
 
   directives.shellcheck_suppressions = steal(m_shellcheck_suppressions);
   directives.scope_definitions       = steal(m_analysis_scope_definitions);
-  directives.directive_spans = m_lexer.take_shellcheck_directive_spans();
-  directives.heredoc_misses  = m_lexer.take_heredoc_terminator_misses();
-  directives.source_name_index       = m_lexer.source_name_index();
+  directives.directive_spans   = m_lexer.take_shellcheck_directive_spans();
+  directives.heredoc_misses    = m_lexer.take_heredoc_terminator_misses();
+  directives.source_name_index = m_lexer.source_name_index();
 
   return directives;
 }
@@ -260,9 +260,9 @@ unexpected_command_token_message(const Token *token) throws -> String
   case Token::Kind::Esac: return "'esac' has no matching 'case'";
   case Token::Kind::DoubleSemicolon:
     return "';;' is only valid between the arms of a 'case'";
-  case Token::Kind::RightParen:   return "')' has no matching '('";
-  case Token::Kind::Pipe:         return "'|' has no command before it to pipe from";
-  default:                        {
+  case Token::Kind::RightParen: return "')' has no matching '('";
+  case Token::Kind::Pipe:       return "'|' has no command before it to pipe from";
+  default:                      {
     let const ast = token->to_ast_string();
 
     return "Expected a command, found '" + ast.view() + "'";

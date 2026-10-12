@@ -28,7 +28,8 @@ HELP_DESCRIPTION_DECL(
 FLAG(HISTORY_CLEAR, Bool, 'c', "", "Clear the history list.");
 FLAG(HISTORY_DELETE, String, 'd', "", "Delete an event or event range.");
 FLAG(HISTORY_APPEND, Bool, 'a', "", "Append the history list to the file.");
-FLAG(HISTORY_READ_NEW, Bool, 'n', "", "Read new entries from the history file.");
+FLAG(
+    HISTORY_READ_NEW, Bool, 'n', "", "Read new entries from the history file.");
 FLAG(HISTORY_READ, Bool, 'r', "", "Read the history file into the list.");
 FLAG(HISTORY_WRITE, Bool, 'w', "", "Write the history list to the file.");
 FLAG(HISTORY_PRINT, Bool, 'p', "", "Print the operands without storing them.");

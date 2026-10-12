@@ -14,7 +14,8 @@ FLAG_LIST_DECL();
 
 HELP_SYNOPSIS_DECL("[n]");
 
-HELP_DESCRIPTION_DECL("A login shell can be ended with a status by this builtin.");
+HELP_DESCRIPTION_DECL(
+    "A login shell can be ended with a status by this builtin.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 
