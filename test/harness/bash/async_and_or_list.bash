@@ -64,7 +64,7 @@ sleep 0.5
 if true; then sleep 0.2 && echo "in-if" & fi
 echo "after-if"
 wait
-for i in 1 2; do sleep "0.${i}5" && echo "loop-$i" & done
+for i in 1 2; do sleep "$((i - 1)).2" && echo "loop-$i" & done
 echo "after-loop"
 wait
 true &&

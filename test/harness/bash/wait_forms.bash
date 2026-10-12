@@ -71,7 +71,7 @@ echo "next-remembered=$?"
 echo next-of-named
 (read -r _ < "$dir/gate"; exit 11) &
 held=$!
-(exit 12) &
+(/bin/sleep 0.3; exit 12) &
 free=$!
 (read -r _ < "$dir/second"; exit 13) &
 other=$!

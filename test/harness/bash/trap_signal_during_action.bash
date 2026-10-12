@@ -51,11 +51,13 @@ pipestatus_target() {
 }
 trap 'echo pipe-usr1; true | true; return 6' USR1
 trap 'echo pipe-usr2' USR2
-pipestatus_target 2> /dev/null
+exec 3>&2 2> /dev/null
+pipestatus_target
 echo "pipestatus-broken=${PIPESTATUS[*]}"
 trap - USR1
 trap - USR2
 echo pipestatus-across-broken-drain-done
+exec 2>&3 3>&-
 
 echo drain-breaks-on-exit
 ( trap 'echo exit-usr1; exit 4' USR1

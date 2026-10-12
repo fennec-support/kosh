@@ -50,14 +50,17 @@ cat <(echo beside-redirection) 3</dev/null
 # Bash may prune the status of an older one depending on when it reaps it,
 # so process_substitution_wait.kosh covers that case.
 cat <(exit 3)
-wait "$!"
+wait "$!" 2> /dev/null
 case $? in
   3 | 127) echo "input=kept-or-pruned" ;;
   *) echo "input=unexpected" ;;
 esac
 : > >(exit 4)
-wait "$!"
-echo "output=$?"
+wait "$!" 2> /dev/null
+case $? in
+  4 | 127) echo "output=kept-or-pruned" ;;
+  *) echo "output=unexpected" ;;
+esac
 cat <(exit 6) <(exit 7)
 wait "$!"
 echo "last=$?"
@@ -67,8 +70,11 @@ assigned=<(exit 8)
 wait "$!"
 echo "assigned=$?"
 for code in 1 2 9; do cat <(exit "$code"); done
-wait "$!"
-echo "loop=$?"
+wait "$!" 2> /dev/null
+case $? in
+  9 | 127) echo "loop=kept-or-pruned" ;;
+  *) echo "loop=unexpected" ;;
+esac
 [[ -e <(exit 10) ]]
 wait "$!"
 echo "conditional=$?"
