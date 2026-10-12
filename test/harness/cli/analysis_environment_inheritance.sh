@@ -6,8 +6,9 @@ dir=$(mktemp -d)
 trap 'rm -rf "$dir"' EXIT
 mkdir "$dir/bin"
 ln -s "$BIN" "$dir/bin/bash"
+ln -s "$BIN" "$dir/bin/kosh"
 printf '%s\n' '#!/usr/bin/env bash' 'x=$1' 'echo $x' 'echo `echo ok`' > "$dir/lint.bash"
-printf '%s\n' "#!$BIN" 'x=$1' 'echo $x' 'echo "kosh-shebang-ran"' > "$dir/lint.kosh"
+printf '%s\n' "#!$dir/bin/kosh" 'x=$1' 'echo $x' 'echo "kosh-shebang-ran"' > "$dir/lint.kosh"
 chmod +x "$dir/lint.bash" "$dir/lint.kosh"
 PATH="$dir/bin:$PATH"
 export PATH

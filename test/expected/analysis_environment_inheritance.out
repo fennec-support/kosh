@@ -1,6 +1,6 @@
 plain: 0
 bash shebang: 7
-kosh shebang: 4
+kosh shebang: 2
 operand: 7
 nested -c: warnings=3
 explicit -W: 5
