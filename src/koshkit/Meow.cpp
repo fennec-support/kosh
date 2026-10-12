@@ -107,52 +107,6 @@ constexpr f64 SHOOTING_STAR_ROW_SPEED    = 14.0;
 constexpr f64 SPEED_NOTICE_SECONDS       = 1.2;
 constexpr f64 LONGEST_STEP_SECONDS       = 0.1;
 
-constexpr StringView CAT_BODY_PIXELS[] = {
-    "..B....B....................", ".BIB..BIB.....DDDDD.........",
-    ".BBBBBBBB..BBBBDBBBBBB......", "BBEBBBBEBBBBBBBDBBBBBBB.....",
-    "BBBBNNBBBBBBBBBBDBBBBBBB....", ".BLLLLLLBBBBBBBBDBBBBBBB....",
-    "..CCGCCBBBBBLLLLLLBBBBB.....", "...BBBBBBBBLLLLLLLLBBBB.....",
-    "....BBBBB..LLLLLLL.BBB......",
-};
-
-constexpr StringView CAT_SPIKE_PIXELS = "...........D.D.D.D.D.D......";
-
-constexpr usize CAT_TAIL_COLUMN = 22;
-
-constexpr StringView CAT_TAIL_PIXELS[][6] = {
-    {"...DD.", "....BD", "....DB", "...BD.", "..DB..", "BB...."},
-    {".DD...", "BD....", "DB....", ".BD...", "..DB..", "BB...."},
-};
-
-constexpr StringView CAT_PADDLE_PIXELS[][3] = {
-    {"..BB.................BB.....", ".DB...................BD....",
-     "............................"},
-    {"...BB...............BB......", "...DB...............BD......",
-     "............................"},
-    {"....BB.BB.........BB.BB.....", "....DD.DD.........DD.DD.....",
-     "............................"},
-    {"...BB...............BB......", "...DB...............BD......",
-     "............................"},
-};
-
-constexpr StringView CAT_TUCKED_PIXELS[3] = {
-    ".....BBBB.........BBBB......",
-    ".....DDDD.........DDDD......",
-    "............................",
-};
-
-constexpr StringView CAT_DASH_PIXELS[3] = {
-    "BB......................BB..",
-    "D........................BD.",
-    "............................",
-};
-
-constexpr StringView CAT_CURLED_PIXELS[] = {
-    "....BB..BB......", "...BIBBBIB......", "..BBBBBBBBBB....",
-    ".BBEBBBBEBBBBB..", ".BBBBNNBBBBBBBB.", ".BLLLLLLBBBDBBB.",
-    "..BBBBBBBBBBBDD.", "....BBBBBBBDD...",
-};
-
 constexpr usize CAT_HEAD_CENTER = 4;
 
 struct cat_palette
@@ -163,7 +117,68 @@ struct cat_palette
   u8 eye;
 };
 
-constexpr cat_palette CAT_PALETTES[MAXIMUM_CAT_COUNT] = {
+struct cat_breed_art
+{
+  const StringView  *body;
+  usize              body_row_count;
+  const StringView  *tail;
+  usize              tail_row_count;
+  usize              tail_row;
+  usize              tail_column;
+  const StringView  *paddle;
+  usize              paddle_frame_count;
+  usize              leg_row_count;
+  const StringView  *tucked;
+  const StringView  *dash;
+  const StringView  *curled;
+  usize              curled_row_count;
+  StringView         spike;
+  usize              spike_row;
+  const cat_palette *palettes;
+  usize              palette_count;
+};
+
+constexpr StringView DOMESTIC_BODY[] = {
+    "..B....B....................", ".BIB..BIB.....DDDDD.........",
+    ".BBBBBBBB..BBBBDBBBBBB......", "BBEBBBBEBBBBBBBDBBBBBBB.....",
+    "BBBBNNBBBBBBBBBBDBBBBBBB....", ".BLLLLLLBBBBBBBBDBBBBBBB....",
+    "..CCGCCBBBBBLLLLLLBBBBB.....", "...BBBBBBBBLLLLLLLLBBBB.....",
+    "....BBBBB..LLLLLLL.BBB......",
+};
+
+constexpr StringView DOMESTIC_TAIL[] = {
+    "...DD.", "....BD", "....DB", "...BD.", "..DB..", "BB....",
+    ".DD...", "BD....", "DB....", ".BD...", "..DB..", "BB....",
+};
+
+constexpr StringView DOMESTIC_PADDLE[] = {
+    "..BB.................BB.....", ".DB...................BD....",
+    "............................", "...BB...............BB......",
+    "...DB...............BD......", "............................",
+    "....BB.BB.........BB.BB.....", "....DD.DD.........DD.DD.....",
+    "............................", "...BB...............BB......",
+    "...DB...............BD......", "............................",
+};
+
+constexpr StringView DOMESTIC_TUCKED[] = {
+    ".....BBBB.........BBBB......",
+    ".....DDDD.........DDDD......",
+    "............................",
+};
+
+constexpr StringView DOMESTIC_DASH[] = {
+    "BB......................BB..",
+    "D........................BD.",
+    "............................",
+};
+
+constexpr StringView DOMESTIC_CURLED[] = {
+    "....BB..BB......", "...BIBBBIB......", "..BBBBBBBBBB....",
+    ".BBEBBBBEBBBBB..", ".BBBBNNBBBBBBBB.", ".BLLLLLLBBBDBBB.",
+    "..BBBBBBBBBBBDD.", "....BBBBBBBDD...",
+};
+
+constexpr cat_palette DOMESTIC_PALETTES[] = {
     {208, 166, 223, 46 },
     {245, 240, 252, 39 },
     {236, 233, 240, 226},
@@ -172,6 +187,167 @@ constexpr cat_palette CAT_PALETTES[MAXIMUM_CAT_COUNT] = {
     {230, 94,  255, 33 },
     {234, 232, 255, 118},
     {137, 94,  180, 214},
+};
+
+constexpr StringView BRITISH_BODY[] = {
+    "..B.....B...................", ".BIB...BIB....BBBBBB........",
+    ".BBBBBBBBB..BBBBBBBBBBB.....", "BBEEBBBEEBBBBBBBBBBBBBBB....",
+    "BBBBBNNBBBBBBBBBBBBBBBBBB...", "BBLLLLLLLBBBBBBBBBBBBBBBBB..",
+    ".BLLLLLLLBBBBBLLLLLLBBBBBB..", "..BBCCGCCBBBLLLLLLLLLBBBBB..",
+    "...BBBBBBBBLLLLLLLLLLBBBB...", "....BBBBBBBBBBBBBBBBBBB.....",
+};
+
+constexpr StringView BRITISH_TAIL[] = {
+    "..DD", "..BD", ".BB.", "BB..", "B...",
+    ".DD.", ".DB.", "..BB", ".BB.", "B...",
+};
+
+constexpr StringView BRITISH_PADDLE[] = {
+    "...BB..BB.......BB..BB......", "...DD..DD.......DD..DD......",
+    "..BB....BB.....BB....BB.....", "..DD....DD.....DD....DD.....",
+    "...BB..BB.......BB..BB......", "...DD..DD.......DD..DD......",
+    "....BB.BB.......BB.BB.......", "....DD.DD.......DD.DD.......",
+};
+
+constexpr StringView BRITISH_TUCKED[] = {
+    "....BBBB........BBBB........",
+    "............................",
+};
+
+constexpr StringView BRITISH_DASH[] = {
+    ".BB.....................BB..",
+    "DD........................DD",
+};
+
+constexpr StringView BRITISH_CURLED[] = {
+    "...B......B.....", "..BIB....BIB....", ".BBBBBBBBBBBBB..",
+    "BBEEBBBEEBBBBBB.", "BBBBBNNBBBBBBBBB", "BLLLLLLLBBBBBBBB",
+    ".BBBBBBBBBBBBBDD", "..BBBBBBBBBBBDD.",
+};
+
+constexpr cat_palette BRITISH_PALETTES[] = {
+    {245, 240, 250, 214},
+    {223, 180, 230, 214},
+    {250, 246, 255, 208},
+    {240, 237, 246, 172},
+};
+
+constexpr StringView ORIENTAL_BODY[] = {
+    ".B.....B....................", ".BB...BB....................",
+    ".BIB.BIB....................", "..BBBBB.....................",
+    ".BEBBBEB.......BBBB.........", "..BBNBB..BBBBBBBBBBBBB......",
+    "...LLL.BBBBBBBBBBBBBBBB.....", "...CGCBBBLLLLLLLLBBBBB......",
+};
+
+constexpr StringView ORIENTAL_TAIL[] = {
+    "......D", ".....D.", "....B..", "...B...", "..B....", "BB.....",
+    "...DD..", "..D....", "...B...", "....B..", "...B...", "BB.....",
+};
+
+constexpr StringView ORIENTAL_PADDLE[] = {
+    "......BB............BB......", ".....BB..............BB.....",
+    "....BB................BB....", "...DD..................DD...",
+    "......BB............BB......", "......BB............BB......",
+    "......BB............BB......", "......DD............DD......",
+    ".......BB..........BB.......", "........BB........BB........",
+    ".........BB......BB.........", ".........DD......DD.........",
+    "......BB............BB......", "......BB............BB......",
+    "......BB............BB......", "......DD............DD......",
+};
+
+constexpr StringView ORIENTAL_TUCKED[] = {
+    "........BBBB.....BBBB.......",
+    "........DDDD.....DDDD.......",
+    "............................",
+    "............................",
+};
+
+constexpr StringView ORIENTAL_DASH[] = {
+    "....BB..............BB......",
+    "..BB..................BB....",
+    "DD......................DD..",
+    "............................",
+};
+
+constexpr StringView ORIENTAL_CURLED[] = {
+    ".B....B.........", ".BB..BB.........", ".BIBBIB.........",
+    "..BBBBB.........", ".BEBBBEBBBBB....", "..BBNBBBBBBBBB..",
+    "...LLLBBBBBBDDD.", ".....BBBBBDD....",
+};
+
+constexpr cat_palette ORIENTAL_PALETTES[] = {
+    {235, 233, 239, 46 },
+    {137, 94,  180, 118},
+    {255, 250, 231, 33 },
+    {223, 180, 230, 46 },
+    {245, 240, 252, 40 },
+};
+
+constexpr cat_breed_art DOMESTIC_ART = {
+    DOMESTIC_BODY,
+    countof(DOMESTIC_BODY),
+    DOMESTIC_TAIL,
+    countof(DOMESTIC_TAIL) / 2,
+    0,
+    22,
+    DOMESTIC_PADDLE,
+    4,
+    countof(DOMESTIC_TUCKED),
+    DOMESTIC_TUCKED,
+    DOMESTIC_DASH,
+    DOMESTIC_CURLED,
+    countof(DOMESTIC_CURLED),
+    "...........D.D.D.D.D.D......",
+    0,
+    DOMESTIC_PALETTES,
+    countof(DOMESTIC_PALETTES),
+};
+
+constexpr cat_breed_art BRITISH_ART = {
+    BRITISH_BODY,
+    countof(BRITISH_BODY),
+    BRITISH_TAIL,
+    countof(BRITISH_TAIL) / 2,
+    1,
+    24,
+    BRITISH_PADDLE,
+    4,
+    countof(BRITISH_TUCKED),
+    BRITISH_TUCKED,
+    BRITISH_DASH,
+    BRITISH_CURLED,
+    countof(BRITISH_CURLED),
+    "............D.D.D.D.D.D.....",
+    1,
+    BRITISH_PALETTES,
+    countof(BRITISH_PALETTES),
+};
+
+constexpr cat_breed_art ORIENTAL_ART = {
+    ORIENTAL_BODY,
+    countof(ORIENTAL_BODY),
+    ORIENTAL_TAIL,
+    countof(ORIENTAL_TAIL) / 2,
+    0,
+    21,
+    ORIENTAL_PADDLE,
+    4,
+    countof(ORIENTAL_TUCKED),
+    ORIENTAL_TUCKED,
+    ORIENTAL_DASH,
+    ORIENTAL_CURLED,
+    countof(ORIENTAL_CURLED),
+    "...............D.D.D........",
+    4,
+    ORIENTAL_PALETTES,
+    countof(ORIENTAL_PALETTES),
+};
+
+constexpr const cat_breed_art *CAT_BREEDS[] = {
+    &DOMESTIC_ART,
+    &DOMESTIC_ART,
+    &BRITISH_ART,
+    &ORIENTAL_ART,
 };
 
 constexpr u8 NOSE_COLOR      = 211;
@@ -265,22 +441,23 @@ struct thread_point
 
 struct cat_state
 {
-  f64          column{0.0};
-  f64          row{1.0};
-  f64          columns_per_second{0.0};
-  f64          rows_per_second{0.0};
-  f64          wander_radians{0.0};
-  f64          cruise_factor{1.0};
-  bool         is_facing_right{true};
-  cat_activity activity{cat_activity::Floating};
-  f64          activity_seconds{0.0};
-  f64          activity_limit_seconds{0.0};
-  f64          phase_seconds{0.0};
-  f64          happy_seconds{0.0};
-  f64          wall_cooldown_seconds{0.0};
-  f64          bubble_seconds{0.0};
-  StringView   bubble_text{};
-  usize        palette{0};
+  f64                  column{0.0};
+  f64                  row{1.0};
+  f64                  columns_per_second{0.0};
+  f64                  rows_per_second{0.0};
+  f64                  wander_radians{0.0};
+  f64                  cruise_factor{1.0};
+  bool                 is_facing_right{true};
+  cat_activity         activity{cat_activity::Floating};
+  f64                  activity_seconds{0.0};
+  f64                  activity_limit_seconds{0.0};
+  f64                  phase_seconds{0.0};
+  f64                  happy_seconds{0.0};
+  f64                  wall_cooldown_seconds{0.0};
+  f64                  bubble_seconds{0.0};
+  StringView           bubble_text{};
+  cat_palette          palette{DOMESTIC_PALETTES[0]};
+  const cat_breed_art *art{&DOMESTIC_ART};
 };
 
 struct particle
@@ -527,7 +704,24 @@ place_cats(scene_state &scene) wontthrow -> void
   for (usize index = 0; index < scene.cat_count; index++) {
     let &cat = scene.cats[index];
 
-    cat.palette = index;
+    for (usize attempt = 0; attempt < 8; attempt++) {
+      cat.art = CAT_BREEDS[scene.noise.next_index(countof(CAT_BREEDS))];
+      cat.palette =
+          cat.art->palettes[scene.noise.next_index(cat.art->palette_count)];
+
+      bool is_duplicate = false;
+
+      for (usize other = 0; other < index; other++) {
+        if (scene.cats[other].art == cat.art &&
+            scene.cats[other].palette.body == cat.palette.body)
+        {
+          is_duplicate = true;
+        }
+      }
+
+      if (!is_duplicate) break;
+    }
+
     cat.column =
         scene.noise.next_between(0.0, cat_last_column(scene.column_count));
     cat.row = scene.noise.next_between(1.0, cat_last_row(scene.row_count));
@@ -1124,7 +1318,7 @@ cat_pixel_color(char letter, const cat_palette &palette, u8 eye_color) wontthrow
 fn
 cat_eye_color(const cat_state &cat) wontthrow -> u8
 {
-  let const &palette = CAT_PALETTES[cat.palette];
+  let const &palette = cat.palette;
 
   switch (cat.activity) {
   case cat_activity::Dizzy:
@@ -1182,7 +1376,8 @@ draw_pixels(scene_canvas      &canvas,
 fn
 draw_cat(scene_canvas &canvas, const cat_state &cat) wontthrow -> void
 {
-  let const &palette   = CAT_PALETTES[cat.palette];
+  let const &palette   = cat.palette;
+  let const &art       = *cat.art;
   let const  eye_color = cat_eye_color(cat);
   let const  is_tumbling =
       cat.activity == cat_activity::Dizzy &&
@@ -1194,19 +1389,21 @@ draw_cat(scene_canvas &canvas, const cat_state &cat) wontthrow -> void
   let const pixel_row = static_cast<isize>(cat.row * 2.0) + bob_pixels;
 
   if (cat.activity == cat_activity::Curling) {
-    let const curled_width = CAT_CURLED_PIXELS[0].length;
+    let const curled_width = art.curled[0].length;
     let const curled_column =
         column + static_cast<isize>((CAT_PIXEL_WIDTH - curled_width) / 2);
+    let const curled_row =
+        pixel_row + static_cast<isize>(CAT_PIXEL_HEIGHT - art.curled_row_count);
 
-    for (usize index = 0; index < countof(CAT_CURLED_PIXELS); index++)
-      draw_pixels(canvas, pixel_row + 2 + static_cast<isize>(index),
-                  curled_column, curled_width, 0, CAT_CURLED_PIXELS[index],
-                  is_mirrored, palette, eye_color);
+    for (usize index = 0; index < art.curled_row_count; index++)
+      draw_pixels(canvas, curled_row + static_cast<isize>(index), curled_column,
+                  curled_width, 0, art.curled[index], is_mirrored, palette,
+                  eye_color);
   } else {
-    for (usize index = 0; index < countof(CAT_BODY_PIXELS); index++)
+    for (usize index = 0; index < art.body_row_count; index++)
       draw_pixels(canvas, pixel_row + static_cast<isize>(index), column,
-                  CAT_PIXEL_WIDTH, 0, CAT_BODY_PIXELS[index], is_mirrored,
-                  palette, eye_color);
+                  CAT_PIXEL_WIDTH, 0, art.body[index], is_mirrored, palette,
+                  eye_color);
 
     let const tail_speed = cat.activity == cat_activity::Bracing
                                ? TAIL_SWISH_SECONDS / 4.0
@@ -1214,29 +1411,32 @@ draw_cat(scene_canvas &canvas, const cat_state &cat) wontthrow -> void
     let const tail_frame =
         static_cast<usize>(cat.phase_seconds / tail_speed) % 2;
 
-    for (usize index = 0; index < 6; index++)
-      draw_pixels(canvas, pixel_row + static_cast<isize>(index), column,
-                  CAT_PIXEL_WIDTH, CAT_TAIL_COLUMN,
-                  CAT_TAIL_PIXELS[tail_frame][index], is_mirrored, palette,
-                  eye_color);
+    for (usize index = 0; index < art.tail_row_count; index++)
+      draw_pixels(canvas, pixel_row + static_cast<isize>(art.tail_row + index),
+                  column, CAT_PIXEL_WIDTH, art.tail_column,
+                  art.tail[(tail_frame * art.tail_row_count) + index],
+                  is_mirrored, palette, eye_color);
 
     if (cat.activity == cat_activity::Hissing) {
-      draw_pixels(canvas, pixel_row, column, CAT_PIXEL_WIDTH, 0,
-                  CAT_SPIKE_PIXELS, is_mirrored, palette, eye_color);
+      draw_pixels(canvas, pixel_row + static_cast<isize>(art.spike_row), column,
+                  CAT_PIXEL_WIDTH, 0, art.spike, is_mirrored, palette,
+                  eye_color);
     }
 
+    let const paddle_frame =
+        static_cast<usize>(cat.phase_seconds / PADDLE_SECONDS) %
+        art.paddle_frame_count;
     let const *leg_pixels =
-        cat.activity == cat_activity::Dashing ? CAT_DASH_PIXELS
+        cat.activity == cat_activity::Dashing ? art.dash
         : cat.activity == cat_activity::Bracing
-            ? CAT_TUCKED_PIXELS
-            : CAT_PADDLE_PIXELS[static_cast<usize>(cat.phase_seconds /
-                                                   PADDLE_SECONDS) %
-                                countof(CAT_PADDLE_PIXELS)];
+            ? art.tucked
+            : art.paddle + (paddle_frame * art.leg_row_count);
 
-    for (usize index = 0; index < 3; index++)
-      draw_pixels(canvas, pixel_row + 9 + static_cast<isize>(index), column,
-                  CAT_PIXEL_WIDTH, 0, leg_pixels[index], is_mirrored, palette,
-                  eye_color);
+    for (usize index = 0; index < art.leg_row_count; index++)
+      draw_pixels(canvas,
+                  pixel_row + static_cast<isize>(art.body_row_count + index),
+                  column, CAT_PIXEL_WIDTH, 0, leg_pixels[index], is_mirrored,
+                  palette, eye_color);
   }
 
   let const row = pixel_row / 2;
@@ -1519,8 +1719,9 @@ render_scene(String      &frame,
 }
 
 fn
-print_still_cat(const ExecContext &ec, Allocator allocator) throws
-    -> void
+print_still_cat(const ExecContext   &ec,
+                const cat_breed_art &art,
+                Allocator            allocator) throws -> void
 {
   bool is_filled[CAT_PIXEL_HEIGHT][CAT_PIXEL_WIDTH]{};
 
@@ -1533,14 +1734,14 @@ print_still_cat(const ExecContext &ec, Allocator allocator) throws
     }
   };
 
-  for (usize index = 0; index < countof(CAT_BODY_PIXELS); index++)
-    do_stamp(index, 0, CAT_BODY_PIXELS[index]);
+  for (usize index = 0; index < art.body_row_count; index++)
+    do_stamp(index, 0, art.body[index]);
 
-  for (usize index = 0; index < countof(CAT_TAIL_PIXELS[0]); index++)
-    do_stamp(index, CAT_TAIL_COLUMN, CAT_TAIL_PIXELS[0][index]);
+  for (usize index = 0; index < art.tail_row_count; index++)
+    do_stamp(art.tail_row + index, art.tail_column, art.tail[index]);
 
-  for (usize index = 0; index < countof(CAT_PADDLE_PIXELS[0]); index++)
-    do_stamp(countof(CAT_BODY_PIXELS) + index, 0, CAT_PADDLE_PIXELS[0][index]);
+  for (usize index = 0; index < art.leg_row_count; index++)
+    do_stamp(art.body_row_count + index, 0, art.paddle[index]);
 
   let text = String{allocator};
 
@@ -1644,8 +1845,18 @@ Meow::execute(const ExecContext               &ec,
     cat_count = parsed.value();
   }
 
+  let const started_at_nanoseconds = os::monotonic_nanos();
+  let       seed_noise             = noise_source{};
+
+  seed_noise.state =
+      mix_bits(started_at_nanoseconds ^
+               (static_cast<u64>(os::current_unix_seconds()) << 32) ^
+               static_cast<u64>(reinterpret_cast<uintptr_t>(&seed_noise))) |
+      1;
+
   if (!os::is_fd_a_tty(ec.out_fd.value_or(KOSH_STDOUT))) {
-    print_still_cat(ec, allocator);
+    print_still_cat(ec, *CAT_BREEDS[seed_noise.next_index(countof(CAT_BREEDS))],
+                    allocator);
 
     return 0;
   }
@@ -1658,14 +1869,13 @@ Meow::execute(const ExecContext               &ec,
   options.should_show_header                    = false;
 
   let const should_color           = koshkit_should_color();
-  let const started_at_nanoseconds = os::monotonic_nanos();
   u64       last_frame_nanoseconds = started_at_nanoseconds;
   let       scene                  = scene_state{};
   bool      are_cats_placed        = false;
 
-  scene.noise.state = mix_bits(started_at_nanoseconds) | 1;
-  scene.cat_count   = cat_count;
-  scene.speed       = speed;
+  scene.noise     = seed_noise;
+  scene.cat_count = cat_count;
+  scene.speed     = speed;
 
   let const do_sample = [](u64, Allocator) wontthrow -> Maybe<i32> {
     return None;
