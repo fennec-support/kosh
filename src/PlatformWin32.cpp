@@ -516,6 +516,12 @@ read_recent_system_log_records(StringView log_name,
         inserted_text += text_length + 1;
       }
 
+      while (!log_record.message.is_empty() &&
+             log_record.message.view()[log_record.message.count() - 1] == ' ')
+      {
+        log_record.message.pop_back();
+      }
+
       records.push(steal(log_record));
       offset += record->Length;
     }
