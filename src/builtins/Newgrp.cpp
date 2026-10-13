@@ -34,6 +34,13 @@ Newgrp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   ASSERT(!args.is_empty());
 
+  if (cxt.runtime_state().option_is_enabled(shell_option_id::Restricted)) {
+    report_soft_builtin_error(ec, cxt,
+                              "newgrp is forbidden in a restricted shell");
+
+    return 1;
+  }
+
   let const found = cxt.program_resolver().search(
       "newgrp", ProgramResolver::SearchMode::First,
       ProgramResolver::Requirement::Runnable,

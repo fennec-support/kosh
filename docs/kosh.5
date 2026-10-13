@@ -61,7 +61,8 @@ command that would make the file trusted.
 .TP
 .IR $XDG_CONFIG_HOME/kosh/kosh.conf " or " ~/.config/kosh/kosh.conf
 The user settings file, read second. XDG_CONFIG_HOME is used when it is set to
-an absolute path.
+an absolute path. On POSIX systems, a shell whose effective user is root
+neither reads nor writes this file.
 .BR "koshconf create" ,
 .BR "koshconf set \-\-persist" ,
 and

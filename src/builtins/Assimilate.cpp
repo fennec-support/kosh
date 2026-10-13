@@ -613,6 +613,32 @@ run_captured_program(const ArrayList<String> &arguments,
 }
 
 fn
+append_printable_text(String &out, StringView text) throws -> bool
+{
+  constexpr u32 INVALID_CODEPOINT = 0x7f;
+
+  bool  did_replace_control = false;
+  usize position            = 0;
+
+  while (position < text.count()) {
+    let const decoded = utils::decode_utf8(text, position, INVALID_CODEPOINT);
+    let const is_control = (decoded.value < 0x20 && decoded.value != '\t') ||
+                           (decoded.value >= 0x7f && decoded.value < 0xa0);
+
+    if (is_control) {
+      out += '?';
+      did_replace_control = true;
+    } else {
+      out.append(text.substring_of_length(position, decoded.length));
+    }
+
+    position += decoded.length;
+  }
+
+  return did_replace_control;
+}
+
+fn
 take_install_directory(const ExecContext &ec,
                        StringView         preflight_output,
                        Allocator          allocator) throws -> Maybe<String>
@@ -628,13 +654,26 @@ take_install_directory(const ExecContext &ec,
     let const text = line.without_trailing_newline();
 
     if (text.starts_with(INSTALL_DIRECTORY_MARKER)) {
-      install_directory =
-          String{allocator, text.substring(INSTALL_DIRECTORY_MARKER.count())};
+      let const directory = text.substring(INSTALL_DIRECTORY_MARKER.count());
+      let       printable_directory = String{allocator};
+      let const did_replace_control =
+          append_printable_text(printable_directory, directory);
+
+      if (directory.is_empty() || directory[0] != '/' || did_replace_control) {
+        LOG(Info, "ignoring a malformed remote install directory report");
+        install_directory = None;
+      } else {
+        install_directory = steal(printable_directory);
+      }
+
       continue;
     }
 
-    ec.print_to_stderr(text);
-    ec.print_to_stderr("\n");
+    let printable = String{allocator};
+
+    append_printable_text(printable, text);
+    printable += '\n';
+    ec.print_to_stderr(printable.view());
   }
 
   return install_directory;
@@ -649,6 +688,13 @@ Assimilate::execute(ExecContext &ec, EvalContext &cxt) const throws
   let const arguments = PARSE_BUILTIN_ARGS(ec);
 
   if (FLAG_HELP.is_enabled()) SHOW_BUILTIN_HELP_AND_RETURN(ec);
+
+  if (cxt.runtime_state().option_is_enabled(shell_option_id::Restricted)) {
+    report_soft_builtin_error(ec, cxt,
+                              "assimilate is forbidden in a restricted shell");
+
+    return 1;
+  }
 
   bool  has_invalid_target_character = false;
   bool  is_inside_host_literal       = false;

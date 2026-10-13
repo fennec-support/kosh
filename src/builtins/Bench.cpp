@@ -731,6 +731,13 @@ Bench::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   if (FLAG_HELP.is_enabled()) SHOW_BUILTIN_HELP_AND_RETURN(ec);
 
+  if (cxt.runtime_state().option_is_enabled(shell_option_id::Restricted)) {
+    report_soft_builtin_error(ec, cxt,
+                              "bench is forbidden in a restricted shell");
+
+    return 1;
+  }
+
   if (arguments.count() < 2) {
     throw Error{StringView{"No command given"}};
   }

@@ -18,6 +18,10 @@
 #include "base/Debug.hpp"
 #include "base/Trace.hpp"
 
+#if defined __linux__
+#include <sys/auxv.h>
+#endif
+
 namespace koshka {
 
 namespace os {
@@ -93,13 +97,33 @@ is_running_setuid() wontthrow -> bool
 }
 
 fn
+is_running_secure() wontthrow -> bool
+{
+#if defined __linux__
+  return is_running_setuid() || getauxval(AT_SECURE) != 0;
+#elif defined __APPLE__ || defined __FreeBSD__ || defined __OpenBSD__ ||       \
+    defined __NetBSD__
+  return is_running_setuid() || issetugid() != 0;
+#else
+  return is_running_setuid();
+#endif
+}
+
+fn
 drop_elevated_identity() wontthrow -> bool
 {
   let const real_group_id = getgid();
   let const real_user_id  = getuid();
+
+#if defined __linux__ || defined __FreeBSD__ || defined __OpenBSD__
+  if (setresgid(real_group_id, real_group_id, real_group_id) != 0) return false;
+
+  return setresuid(real_user_id, real_user_id, real_user_id) == 0;
+#else
   if (setregid(real_group_id, real_group_id) != 0) return false;
 
   return setreuid(real_user_id, real_user_id) == 0;
+#endif
 }
 
 fn

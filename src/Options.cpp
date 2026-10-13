@@ -1577,7 +1577,7 @@ write_shell_option(EvalContext             &cxt,
                    bool                     is_enabled) throws -> void
 {
   if (option.shell_option == shell_option_id::Privileged && !is_enabled &&
-      os::is_running_setuid() && !os::drop_elevated_identity())
+      os::is_running_secure() && !os::drop_elevated_identity())
   {
     throw Error{"Unable to drop elevated ids: " +
                 os::last_system_error_message()};

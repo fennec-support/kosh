@@ -139,11 +139,13 @@ The options
 .BR \-\-apply ,
 and
 .B \-\-as\-language\-server
-are ignored there.
+are ignored there. A secure invocation ignores and removes
+.BR KOSH_FLAGS .
 .PP
 The shell enters rescue mode when argument zero begins with a dash, its options
 cannot be parsed, and standard input is a terminal. Rescue mode clears the
-options and skips startup files. The
+options and skips startup files. An option word that requests restricted mode
+still makes the rescue shell restricted. The
 .B \-l
 option alone does not enable it. Any other invalid invocation exits with
 status 2.
@@ -279,11 +281,11 @@ accepted without effect. An unknown name exits with status 2.
 The shell becomes restricted after the startup files finish.
 .TP
 .BR \-p ", " \-\-privileged
-Privileged mode is enabled. BASH_ENV is not sourced, and KOSHCONF from the
-environment is ignored and removed. The settings files are still read, unless
-the real and effective ids differ, which skips every startup file and settings
-file. Elevated ids are retained only with this option. The state is exposed
-through
+Privileged mode is enabled. BASH_ENV is not sourced, KOSHCONF from the
+environment is ignored and removed, and the settings files are not read. A
+secure execution, such as a setuid or setgid invocation, always drops the
+elevated ids and skips every startup file and settings file. The state is
+exposed through
 .BR $\- ,
 .BR SHELLOPTS ,
 and
@@ -1251,8 +1253,12 @@ The history files keep the paths derived from HOME at startup, so a later HOME
 assignment does not move them.
 .PP
 It also rejects the redirections >, >|, <>, >>, &>, &>>, and >&, the
-.B exec
-builtin,
+.BR exec ,
+.BR newgrp ,
+.BR bench ,
+and
+.B assimilate
+builtins,
 .BR "command \-p" ,
 .BR "enable \-f" ,
 .BR "enable \-d" ,

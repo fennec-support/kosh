@@ -1968,6 +1968,8 @@ ostype_name() wontthrow -> StringView;
 fn
 is_running_setuid() wontthrow -> bool;
 fn
+is_running_secure() wontthrow -> bool;
+fn
 drop_elevated_identity() wontthrow -> bool;
 
 fn

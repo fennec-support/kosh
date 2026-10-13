@@ -168,8 +168,9 @@ require_user_path(const ExecContext &ec, EvalContext &cxt) throws
   if (!path.has_value())
     report_soft_builtin_error(
         ec, cxt,
-        "Neither XDG_CONFIG_HOME nor HOME specifies a directory, so the user "
-        "configuration file cannot be located");
+        "The user configuration file cannot be located, because the shell "
+        "runs as the superuser or neither XDG_CONFIG_HOME nor HOME specifies "
+        "a directory");
 
   return path;
 }

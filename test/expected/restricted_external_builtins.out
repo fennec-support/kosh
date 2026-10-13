@@ -1,0 +1,24 @@
+== newgrp is blocked:
+-c:1:1: error: Builtin `newgrp`: newgrp is forbidden in a restricted shell.
+     1 |  newgrp; echo "status=$?"
+       |  ^~~~~~
+status=1
+== bench is blocked:
+-c:1:1: error: Builtin `bench`: bench is forbidden in a restricted shell.
+     1 |  bench --no-shell /bin/echo; echo "status=$?"
+       |  ^~~~~~~~~~~~~~~~~~~~~~~~~~
+status=1
+== assimilate is blocked:
+-c:1:1: error: Builtin `assimilate`: assimilate is forbidden in a restricted shell.
+     1 |  assimilate root@example.com; echo "status=$?"
+       |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+status=1
+== source without a slash searches PATH:
+sourced
+status=0
+== dot with a slash is blocked:
+-c:1:3: error: Source paths containing a directory separator are forbidden in a restricted shell.
+     1 |  . ./payload; echo "status=$?"
+       |    ^~~~~~~~~
+== rescue keeps a restricted request:
+1

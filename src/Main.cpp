@@ -152,8 +152,8 @@ FLAG(PRIVILEGED,
      'p',
      "privileged",
      Bash,
-     "Run with privileges and suppress BASH_ENV. Unequal ids skip startup "
-     "files.");
+     "Use privileged startup semantics and suppress startup configuration. "
+     "Secure executions still drop elevated identity.");
 FLAG(SHOPT_OPTION,
      ManyStrings,
      'O',
@@ -532,8 +532,33 @@ struct command_line
 };
 
 static fn
+has_restricted_flag_word(int argc, const char *const *argv) wontthrow -> bool
+{
+  for (int i = 1; i < argc; i++) {
+    let const argument = StringView{argv[i]};
+
+    if (argument == "--") break;
+    if (argument == "--restricted") return true;
+
+    if (argument.length > 1 && argument[0] == '-' && argument[1] != '-' &&
+        argument.find_character('r').has_value())
+    {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+static fn
 splice_environment_flags(command_line &line) throws -> void
 {
+  if (os::is_running_secure()) {
+    os::unset_environment_variable("KOSH_FLAGS");
+
+    return;
+  }
+
   if (Maybe<String> kosh_flags = os::get_environment_variable("KOSH_FLAGS");
       kosh_flags.has_value() && !kosh_flags->is_empty())
   {
@@ -590,6 +615,11 @@ enter_rescue_mode(command_line &line) throws -> void
     reset_flags(FLAG_LIST);
     line.operands = ArrayList<String>{heap_allocator()};
     if (line.argc > 0) line.operands.push_managed(line.argv[0]);
+
+    if (has_restricted_flag_word(line.argc, line.argv)) {
+      LOG(Info, "keeping the restricted request through rescue");
+      FLAG_RESTRICTED.enable();
+    }
   }
 }
 
@@ -1146,7 +1176,8 @@ read_startup_configuration(const command_line        &line,
   }
 
   let const should_skip =
-      has_elevated_identity || line.is_rescue_mode || FLAG_CLEAN.is_enabled() ||
+      has_elevated_identity || FLAG_PRIVILEGED.is_enabled() ||
+      line.is_rescue_mode || FLAG_CLEAN.is_enabled() ||
       FLAG_NO_CONFIG.is_enabled() || FLAG_LINT.is_enabled() ||
       FLAG_FORMAT.is_enabled() || FLAG_LANGUAGE_SERVER.is_enabled() ||
       is_debug_driver_run();
@@ -2460,7 +2491,7 @@ kosh_main(int argc, char **argv) -> int
     }
 
     if (chosen_utility.has_value() || is_koshkit_invocation) {
-      if (koshka::os::is_running_setuid() &&
+      if (koshka::os::is_running_secure() &&
           !koshka::os::drop_elevated_identity())
       {
         koshka::show_message("Unable to drop elevated ids: " +
@@ -2518,11 +2549,9 @@ kosh_main(int argc, char **argv) -> int
   let const parse_argc = line.get_parse_argc();
   let const parse_argv = line.get_parse_argv();
 
-  let const has_elevated_identity = koshka::os::is_running_setuid();
+  let const has_elevated_identity = koshka::os::is_running_secure();
 
-  if (has_elevated_identity && !FLAG_PRIVILEGED.is_enabled() &&
-      !koshka::os::drop_elevated_identity())
-  {
+  if (has_elevated_identity && !koshka::os::drop_elevated_identity()) {
     koshka::show_message("Unable to drop elevated ids: " +
                          koshka::os::last_system_error_message());
 

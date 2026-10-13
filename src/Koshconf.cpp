@@ -486,6 +486,14 @@ replace_koshconf_target(const Path &target, StringView contents) throws
 fn
 get_user_koshconf_path() throws -> Maybe<Path>
 {
+#if !defined _WIN32
+  if (os::get_effective_user_id() == 0) {
+    LOG(Info, "the superuser has no user configuration file");
+
+    return None;
+  }
+#endif
+
   let config_home = Maybe<Path>{};
 
   if (let const xdg = os::get_environment_variable("XDG_CONFIG_HOME");

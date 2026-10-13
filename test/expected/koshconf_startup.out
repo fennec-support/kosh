@@ -79,8 +79,8 @@ KOSH_HISTORY_SIZE=5
 replaced
 0
 unset-in-a-child-shell
-== privileged mode ignores and removes KOSHCONF and still reads the file:
-on
+== privileged mode ignores KOSHCONF and startup configuration:
+off
 0
 off
 == semantic options from the file apply to scripts, after the mood:

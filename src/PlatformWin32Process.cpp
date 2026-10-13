@@ -332,6 +332,12 @@ static pure fn
 is_batch_program(StringView path) wontthrow -> bool;
 
 static fn
+append_batch_quoted_arg(String &out, StringView arg) throws -> bool;
+
+static fn
+get_command_processor_path() throws -> Maybe<String>;
+
+static fn
 create_process_utf8(StringView           application_path,
                     StringView           command_line,
                     StringView           working_directory,
@@ -386,33 +392,42 @@ ProgramCapture::start(const ArrayList<String> &argv, u64 timeout_nanos)
   let application_path_storage = String{heap_allocator()};
   let command_line             = make_os_args(argv);
 
-  if (is_batch_program(argv[0].view())) {
+  if (is_batch_program(argv[0].view()) ||
+      is_batch_program(resolved_program_path_storage.view()))
+  {
     let batch_command = String{heap_allocator()};
 
-    append_windows_quoted_arg(batch_command,
-                              resolved_program_path_storage.is_empty()
-                                  ? argv[0].view()
-                                  : resolved_program_path_storage.view());
+    if (!append_batch_quoted_arg(batch_command,
+                                 resolved_program_path_storage.is_empty()
+                                     ? argv[0].view()
+                                     : resolved_program_path_storage.view()))
+    {
+      return None;
+    }
 
     for (usize argument_position = 1; argument_position < argv.count();
          argument_position++)
     {
       batch_command += ' ';
-      append_windows_quoted_arg(batch_command, argv[argument_position].view());
+      if (!append_batch_quoted_arg(batch_command,
+                                   argv[argument_position].view()))
+      {
+        return None;
+      }
     }
 
-    let command_processor = get_environment_variable("COMSPEC");
+    let command_processor = get_command_processor_path();
 
-    application_path_storage = command_processor.has_value()
-                                   ? command_processor.take()
-                                   : String{heap_allocator(), "cmd.exe"};
+    if (!command_processor.has_value()) return None;
+
+    application_path_storage = command_processor.take();
     application_path         = application_path_storage.c_str();
 
     let processor_command_line = String{heap_allocator()};
 
     append_windows_quoted_arg(processor_command_line,
                               application_path_storage.view());
-    processor_command_line += " /d /s /c \"";
+    processor_command_line += " /e:ON /v:OFF /d /s /c \"";
     processor_command_line += batch_command;
     processor_command_line += '"';
     command_line = steal(processor_command_line);
@@ -1095,12 +1110,103 @@ attach_timeout_job(const PROCESS_INFORMATION &process_info,
 static pure fn
 is_batch_program(StringView path) wontthrow -> bool
 {
-  if (path.length < 4) return false;
-  let const suffix = path.substring_of_length(path.length - 4, 4);
+  usize name_length = path.length;
 
-  return suffix[0] == '.' && utils::ascii_to_lower(suffix[1]) == 'b' &&
-         utils::ascii_to_lower(suffix[2]) == 'a' &&
-         utils::ascii_to_lower(suffix[3]) == 't';
+  while (name_length > 0 &&
+         (path[name_length - 1] == '.' || path[name_length - 1] == ' '))
+  {
+    name_length--;
+  }
+
+  if (name_length < 4) return false;
+  let const suffix = path.substring_of_length(name_length - 4, 4);
+  let const first  = utils::ascii_to_lower(suffix[1]);
+  let const second = utils::ascii_to_lower(suffix[2]);
+  let const third  = utils::ascii_to_lower(suffix[3]);
+
+  if (suffix[0] != '.') return false;
+
+  return (first == 'b' && second == 'a' && third == 't') ||
+         (first == 'c' && second == 'm' && third == 'd');
+}
+
+static fn
+append_batch_quoted_arg(String &out, StringView arg) throws -> bool
+{
+  constexpr StringView UNQUOTED_SYMBOLS{"#$*+-./:?@\\_"};
+
+  bool should_quote_arg = arg.is_empty() || arg[arg.count() - 1] == '\\';
+
+  for (usize i = 0; i < arg.count(); i++) {
+    let const c = static_cast<unsigned char>(arg[i]);
+
+    if (c == '\0' || c == '\n') return false;
+
+    let const is_safe_character =
+        c >= 0x80 || (c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') ||
+        (c >= 'A' && c <= 'Z') ||
+        UNQUOTED_SYMBOLS.find_character(static_cast<char>(c)).has_value();
+
+    if (!is_safe_character) should_quote_arg = true;
+  }
+
+  if (should_quote_arg) out += '"';
+
+  usize backslash_count = 0;
+
+  for (usize i = 0; i < arg.count(); i++) {
+    let const c = arg[i];
+
+    if (c == '\\') {
+      backslash_count++;
+    } else {
+      if (c == '"') {
+        for (usize k = 0; k < backslash_count; k++)
+          out += '\\';
+
+        out += '"';
+      } else if (c == '%' || c == '\r') {
+        out.append(StringView{"%%cd:~,"});
+      }
+
+      backslash_count = 0;
+    }
+
+    out += c;
+  }
+
+  if (should_quote_arg) {
+    for (usize k = 0; k < backslash_count; k++)
+      out += '\\';
+
+    out += '"';
+  }
+
+  return true;
+}
+
+static fn
+get_command_processor_path() throws -> Maybe<String>
+{
+  wchar_t   directory[MAX_PATH];
+  let const directory_length = GetSystemDirectoryW(directory, MAX_PATH);
+
+  if (directory_length == 0) return None;
+
+  if (directory_length >= MAX_PATH) {
+    SetLastError(ERROR_FILENAME_EXCED_RANGE);
+
+    return None;
+  }
+
+  let path = wide_to_utf8(directory, static_cast<usize>(directory_length),
+                          heap_allocator());
+
+  if (!path.has_value()) return None;
+
+  path->append(StringView{"\\cmd.exe"});
+
+  return path;
 }
 
 fn
@@ -1128,6 +1234,11 @@ execute_program(ExecContext &ec, const program_execution_options &options)
   LOG(Debug, "spawning '%s' with %zu arguments", ec.program_path().c_str(),
       ec.args().count());
 
+  bool did_hand_handles_to_fallback = false;
+  defer {
+    if (!did_hand_handles_to_fallback) ec.close_fds();
+  };
+
   let    application_path = ec.program_path().c_str();
   String resolved_program_path_storage{heap_allocator()};
   if (let resolved_program_path = canonical_path(ec.program_path())) {
@@ -1139,30 +1250,41 @@ execute_program(ExecContext &ec, const program_execution_options &options)
   String      working_directory_storage{heap_allocator()};
   const char *working_directory = nullptr;
   String      command_line      = make_os_args(ec.args());
-  if (is_batch_program(ec.program_path().view())) {
+  if (is_batch_program(ec.program_path().view()) ||
+      is_batch_program(resolved_program_path_storage.view()))
+  {
     let batch_command = String{heap_allocator()};
-    append_windows_quoted_arg(batch_command,
-                              resolved_program_path_storage.is_empty()
-                                  ? ec.program_path().view()
-                                  : resolved_program_path_storage.view());
+
+    if (!append_batch_quoted_arg(batch_command,
+                                 resolved_program_path_storage.is_empty()
+                                     ? ec.program_path().view()
+                                     : resolved_program_path_storage.view()))
+    {
+      throw Error{"A batch file path cannot contain a newline or NUL"};
+    }
 
     for (usize argument_index = 1; argument_index < ec.args().count();
          argument_index++)
     {
       batch_command += ' ';
-      append_windows_quoted_arg(batch_command,
-                                ec.args()[argument_index].view());
+      if (!append_batch_quoted_arg(batch_command,
+                                   ec.args()[argument_index].view()))
+      {
+        throw Error{"A batch file argument cannot contain a newline or NUL"};
+      }
     }
 
-    let command_processor      = get_environment_variable("COMSPEC");
-    application_path_storage   = command_processor.has_value()
-                                     ? command_processor.take()
-                                     : String{heap_allocator(), "cmd.exe"};
+    let command_processor = get_command_processor_path();
+
+    if (!command_processor.has_value())
+      throw Error{"Unable to locate cmd.exe: " + last_system_error_message()};
+
+    application_path_storage   = command_processor.take();
     application_path           = application_path_storage.c_str();
     let processor_command_line = String{heap_allocator()};
     append_windows_quoted_arg(processor_command_line,
                               application_path_storage.view());
-    processor_command_line += " /d /s /c \"";
+    processor_command_line += " /e:ON /v:OFF /d /s /c \"";
     processor_command_line += batch_command;
     processor_command_line += '"';
     command_line = steal(processor_command_line);
@@ -1197,11 +1319,6 @@ execute_program(ExecContext &ec, const program_execution_options &options)
       },
       [&]() { startup_info.hStdError = startup_info.hStdOutput; },
       [&]() { startup_info.hStdOutput = startup_info.hStdError; });
-
-  bool did_hand_handles_to_fallback = false;
-  defer {
-    if (!did_hand_handles_to_fallback) ec.close_fds();
-  };
 
   let const has_command_redirection =
       ec.in_fd.has_value() || ec.out_fd.has_value() || ec.err_fd.has_value() ||
@@ -3210,6 +3327,12 @@ fn
 get_effective_user_id() wontthrow -> i64
 {
   return 0;
+}
+
+fn
+is_running_secure() wontthrow -> bool
+{
+  return false;
 }
 
 fn
