@@ -280,6 +280,28 @@ is_mapped_dev_null(StringView path) wontthrow -> bool
   return SHOULD_MAP_DEV_NULL && path == StringView{"/dev/null"};
 }
 
+fn
+get_polyfilled_path_kind(StringView path) wontthrow -> polyfilled_path_kind
+{
+  usize path_length = path.length;
+
+  while (path_length > 1 && is_directory_separator(path[path_length - 1])) {
+    path_length--;
+  }
+
+  let const trimmed_path = path.substring_of_length(0, path_length);
+
+  if (is_mapped_dev_null(trimmed_path)) return polyfilled_path_kind::Device;
+  if (SHOULD_MAP_DEV_NULL && trimmed_path == StringView{"/dev"}) {
+    return polyfilled_path_kind::Directory;
+  }
+  if (SHOULD_MAP_SLASH_TMP && trimmed_path == StringView{"/tmp"}) {
+    return polyfilled_path_kind::Directory;
+  }
+
+  return polyfilled_path_kind::None;
+}
+
 static fn
 path_to_wide(StringView path, Allocator allocator) throws
     -> Maybe<ArrayList<wchar_t>>
@@ -1886,6 +1908,17 @@ get_terminal_dimensions(descriptor output)
   }
 
   return terminal_dimensions{static_cast<u32>(width), static_cast<u32>(height)};
+}
+
+fn
+get_terminal_cursor_column(descriptor output) wontthrow -> Maybe<u32>
+{
+  CONSOLE_SCREEN_BUFFER_INFO info;
+
+  if (GetConsoleScreenBufferInfo(output, &info) == 0) return None;
+  if (info.dwCursorPosition.X < 0) return None;
+
+  return static_cast<u32>(info.dwCursorPosition.X);
 }
 
 fn

@@ -1021,6 +1021,28 @@ EOF
 : > b
 : > c
 "$BIN" -c 'koshkit make'
+echo "--- wildcard and prerequisite globs expand directory components ---"
+mkdir -p globbed/one globbed/two
+: > globbed/one/x.c
+: > globbed/one/.hidden.c
+: > globbed/two/y.c
+cat > Makefile <<'EOF'
+DIRS := $(wildcard globbed/*/.)
+report: globbed/*/*.c
+	echo dirs are $(DIRS) and sources are $^
+EOF
+"$BIN" -c 'shopt -s dotglob; koshkit make'
+echo "--- a missing prerequisite names the rule line that needs it ---"
+: > present-input
+cat > Makefile <<'EOF'
+all: needs
+
+needs: present-input
+needs: missing-input
+	echo never
+EOF
+"$BIN" -c 'koshkit make' 2>&1
+echo "status=$?"
 
 unset KOSH_FLAGS
 dir=$TEST_MKTEMP_DIRECTORY/koshkit-make-error

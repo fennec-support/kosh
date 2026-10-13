@@ -372,7 +372,7 @@ const diagnostic_definition DIAGNOSTIC_DEFINITIONS[] = {
       "prints",
       "Run the command on its own",
       None,
-      Strict,
+      Annoying,
       Policy),
     D(2006,
       "backticks",

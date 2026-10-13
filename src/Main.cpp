@@ -2008,6 +2008,13 @@ emit_prompt_line_break() throws -> void
     return;
   }
 
+  let const cursor_column = os::get_terminal_cursor_column();
+
+  if (cursor_column.has_value() && *cursor_column == 0) {
+    LOG(Debug, "the cursor is at the start of a line, no marker is needed");
+    return;
+  }
+
   String eol_marker{heap_allocator()};
 
   eol_marker.reserve(dimensions->columns + 12);
@@ -2017,6 +2024,16 @@ emit_prompt_line_break() throws -> void
     eol_marker += colors::ansi::RESET;
   } else {
     eol_marker += "\\n";
+  }
+
+  if (cursor_column.has_value()) {
+    LOG(Debug, "the cursor is at column %u, the marker ends the line",
+        *cursor_column);
+    eol_marker += "\r\n";
+    print(eol_marker);
+    flush();
+
+    return;
   }
 
   constexpr u32 EOL_GLYPH_COLUMN_COUNT = 2;

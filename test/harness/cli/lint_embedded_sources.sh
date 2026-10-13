@@ -330,3 +330,14 @@ printf 'target container=%s dev-lifecycle=%s dev-wait=%s dev-host=%s\n' \
   "$container_target_missing" "$dev_target_missing" "$dev_wait_missing" \
   "$dev_host_missing"
 printf 'json-value-key=%s\n' "$vscode_value_missing"
+
+cat > "$root/.github/workflows/template.yml" <<'EOF'
+jobs:
+  tag:
+    steps:
+      - run: |
+          docker tag ${{ needs.build.outputs.image }} target
+EOF
+template_underline_count=$("$BIN" --lint --no-traces \
+  "$root/.github/workflows/template.yml" 2>&1 | grep -c '\^~\{31\}$')
+printf 'template-underline=%s\n' "$template_underline_count"

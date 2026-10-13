@@ -98,6 +98,8 @@ ties-lines=26
 --- top-largest with an unreadable directory ---
 --- one file system ---
 one-fs-local=same
+--- an unreadable directory is a warning ---
+permission-severity=warning status=1
 --- help ---
   du [-shxT] [--tree] [path ...]
       --tree                            Print the entries as a tree, largest

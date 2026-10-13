@@ -482,57 +482,6 @@ path_from_file_id(StringView, u64) wontthrow -> Maybe<Path>
 }
 
 fn
-glob_matches(StringView pattern, Allocator allocator) throws
-    -> ArrayList<String>
-{
-  let matches = ArrayList<String>{allocator};
-
-  let const wide_pattern = path_to_wide(pattern, heap_allocator());
-
-  if (!wide_pattern.has_value()) return matches;
-
-  WIN32_FIND_DATAW find_data;
-  const HANDLE     handle = FindFirstFileW(wide_pattern->begin(), &find_data);
-
-  if (handle == INVALID_HANDLE_VALUE) return matches;
-  defer {
-    let const error = GetLastError();
-
-    FindClose(handle);
-    SetLastError(error);
-  };
-
-  /* FindFirstFile yields bare filenames, so the directory prefix is kept to
-     rebuild the path. */
-  usize prefix_length = 0;
-
-  for (usize i = 0; i < pattern.length; i++)
-    if (pattern[i] == '/' || pattern[i] == '\\') {
-      prefix_length = i + 1;
-    }
-
-  const StringView prefix = pattern.substring_of_length(0, prefix_length);
-
-  do {
-    let const name = wide_to_utf8(
-        find_data.cFileName, static_cast<usize>(lstrlenW(find_data.cFileName)),
-        allocator);
-
-    if (!name.has_value()) return matches;
-    if (name->view() == "." || name->view() == "..") {
-      continue;
-    }
-
-    let entry = String{allocator, prefix};
-
-    entry += name->view();
-    matches.push(steal(entry));
-  } while (FindNextFileW(handle, &find_data) != 0);
-
-  return matches;
-}
-
-fn
 directory_is_trusted_for_exec(const Path &directory) wontthrow -> bool
 {
   /* PATH already grants programs in this directory execution authority. The

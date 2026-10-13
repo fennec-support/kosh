@@ -44,8 +44,11 @@ load_partial_word(const char *bytes, usize byte_count) wontthrow -> u64
     u32 head;
     u32 tail;
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Warray-bounds"
     __builtin_memcpy(&head, bytes, 4);
     __builtin_memcpy(&tail, bytes + byte_count - 4, 4);
+#pragma GCC diagnostic pop
 
     return static_cast<u64>(head) |
            (static_cast<u64>(tail) << ((byte_count - 4) * 8));

@@ -1773,7 +1773,9 @@ With no operand,
 .B builtin
 groups the builtins under colored POSIX, BASH, and Koshka headings, colored only
 when standard output is a color terminal. The Koshka section holds assimilate,
-bench, koshconf, koshkit, and z.
+bench, koshconf, koshkit, and z. The output of
+.B builtin \-\-help
+ends with the same groups.
 .PP
 .BR : ,
 .BR . ,
@@ -1832,6 +1834,11 @@ bench, koshconf, koshkit, and z.
 .BR unset ,
 and
 .BR wait .
+.PP
+.B pwd \-W
+prints the physical working directory in the Windows form with forward slashes,
+as MSYS does. On other systems, it is the same as
+.BR "pwd \-P" .
 .SS Shell-specific builtins
 .TP
 .BI "assimilate " TARGET
@@ -1842,7 +1849,17 @@ and /usr/local/bin and $HOME/.local/bin are preferred when in PATH. The
 .BI \-\-link\-mood= MOOD
 option requests a relative bash, dash, sh, or kosh link. It may be repeated and
 accepts comma-separated values. A candidate directory is skipped when a
-requested link path already exists.
+requested link path already exists. The
+.BI \-\-install\-directory= DIR
+option installs into DIR instead, and DIR is used even when it contains sbin.
+.PP
+The remote host reports the chosen directory before the upload, and the shell
+asks for confirmation with the target and the full path of the new binary. Only
+an answer that begins with y or Y continues, and any other answer exits with
+status 1. The
+.BR \-y " or " \-\-yes
+option skips the question. A binary built for macOS or Windows also prints a
+warning, because servers rarely run those systems.
 .PP
 The
 .BR \-x " or " \-\-trace
@@ -1966,9 +1983,12 @@ adopts them, and
 accepts the value. With
 .BR \-\-persist ,
 .B save
-instead writes every setting a file may hold, with its current value, to the
-user configuration file through the same temporary file and rename as
+instead writes the user configuration file through the same temporary file and
+rename as
 .BR create .
+The file holds the mood when it differs from kosh and every other setting whose
+current value differs from the default of the current mood. Settings that match
+those defaults are left out.
 When the target exists, its previous contents are saved as
 .I kosh.conf.bak
 before replacement. The command prints nothing. A restricted shell refuses
@@ -2803,7 +2823,9 @@ mood, and the
 .B interpreter.arithmetic_uses_big_numbers
 option does not narrow a calc result. The abs, atan, ceil, cmp, cos, exp,
 fact, fib, floor, frac, gcd, int, iseven, isint, isodd, length, lcm, ln, max,
-min, scale, sgn, sin, and sqrt functions are available.
+min, scale, sgn, sin, and sqrt functions are available. An interrupt stops a
+long calculation, and the interactive prompt then reads the next expression.
+Ctrl-R in the interactive prompt searches the calc history.
 .TP
 .B bc
 Expressions, assignments, functions, arrays, control flow, input and output
@@ -2861,7 +2883,8 @@ Two files are compared line by line. The
 .BR \-\-color [= \fIWHEN\fR ]
 option colors removed lines red, added lines green, hunk headers cyan, and the
 unified file headers bold. WHEN is auto, always, or never, and a bare option
-means auto. Output is never colored without the option. The \fB\-u\fR,
+means auto. Without the option, the color mode of koshkit decides, and it is
+auto by default. The \fB\-u\fR,
 \fB\-w\fR, \fB\-a\fR, and repeated \fB\-L\fR
 options select unified output, ignore whitespace, force text input, and set up
 to two unified header labels. An unlabeled filesystem header includes the file
@@ -2886,7 +2909,9 @@ printed. The \fB\-T\fR, \fB\-\-top\-largest\fR
 option prints a human-readable tree of only the largest entries and every
 ancestor of one up to its operand. The tree takes at most 36 lines, or the
 terminal height minus four (at least ten) when that is smaller. Entries are
-colored by file type as in \fBls\fR.
+colored by file type as in \fBls\fR. A file or directory that cannot be read
+because permission is denied is reported as a warning, and other read failures
+are errors. Either kind makes the status 1.
 .TP
 .B env
 Temporary assignments are applied before a command, or the environment is
@@ -2912,6 +2937,15 @@ fails, 124 when one exits with 255, 125 when a signal ends one, and 126 or
 Input bytes are written in the formats selected by \fB\-t\fR. The \fB\-b\fR,
 \fB\-c\fR, \fB\-d\fR, \fB\-o\fR, \fB\-s\fR, and \fB\-x\fR options select the o1,
 c, u2, o2, d2, and x2 formats in command line order.
+.TP
+.B pathchk
+Each pathname is checked against the component and pathname limits of the file
+system. The \fB\-p\fR option uses the POSIX portable limits and filename
+characters, and \fB\-P\fR rejects an empty pathname and a component that begins
+with a hyphen. The \fB\-\-windows\fR option rejects a component that holds a
+control character or one of < > : " | ? *, ends with a dot or a space, or names
+a reserved device such as CON, NUL, COM1, or LPT1, with or without an extension.
+Windows builds always apply these rules.
 .TP
 .B printenv
 The whole environment is printed when no name is given. Values are printed
@@ -2970,7 +3004,8 @@ Regular-expression matches are printed. The
 .BR \-\-color [= \fIWHEN\fR ]
 option colors matches bold red, filenames magenta, line numbers green, and
 separators cyan. WHEN is auto, always, or never, and a bare option means auto.
-Output is never colored without the option, and matches are not highlighted with
+Without the option, the color mode of koshkit decides, and it is auto by default.
+Matches are not highlighted with
 \fB\-v\fR, \fB\-c\fR, \fB\-l\fR, or \fB\-q\fR. When color is on, GREP_COLORS
 holds colon-separated GNU capabilities such as
 .BR ms=01;31 ,
@@ -3098,7 +3133,10 @@ continues independent goals after an error. The \fB\-e\fR, \fB\-i\fR,
 \fB\-S\fR, \fB\-n\fR, \fB\-p\fR, \fB\-q\fR, \fB\-r\fR, \fB\-s\fR, and \fB\-t\fR
 options provide the POSIX make execution modes. The \fB\-j\fR
 extension takes an optional decimal job count, propagated through MAKEFLAGS. Common variable functions include call, eval, filter, filter-out,
-foreach, patsubst, shell, sort, and wildcard.
+foreach, patsubst, shell, sort, and wildcard. The wildcard function and a
+prerequisite that holds *, ?, or [ expand through the pathname expansion of the
+shell, and a prerequisite pattern without a match stays as written. A missing
+prerequisite is reported at the rule line of the target that needs it.
 .TP
 .B meow
 A screensaver of pixel-art cats drawn with half blocks and shaded fur. Each run

@@ -2075,6 +2075,15 @@ get_terminal_dimensions(descriptor output)
   return terminal_dimensions{window.ws_col, window.ws_row};
 }
 
+fn
+get_terminal_cursor_column(descriptor output) wontthrow -> Maybe<u32>
+{
+  unused(output);
+  LOG(Debug, "the cursor column is unknown without a terminal query");
+
+  return None;
+}
+
 static pure fn
 terminal_speed_number(speed_t speed) wontthrow -> u32
 {

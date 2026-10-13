@@ -150,6 +150,24 @@ append_output_row(ArrayList<du_output_row> &rows,
 }
 
 static fn
+report_unreadable_path(const ExecContext &ec,
+                       EvalContext       &cxt,
+                       const Path        &path) throws -> void
+{
+  let const is_permission_denied = os::last_system_error_is_permission_denied();
+  let const message =
+      "cannot read '" + path.text() + "': " + os::last_system_error_message();
+
+  if (is_permission_denied) {
+    report_soft_koshkit_warning(ec, cxt, message);
+
+    return;
+  }
+
+  report_soft_koshkit_util_error(ec, cxt, "du", message);
+}
+
+static fn
 total_size(const ExecContext        &ec,
            EvalContext              &cxt,
            const Path               &path,
@@ -164,9 +182,7 @@ total_size(const ExecContext        &ec,
 
   if (known_status == nullptr) {
     if (!os::stat_path(path.view(), queried_status)) {
-      report_soft_koshkit_util_error(ec, cxt, "du",
-                                     "cannot read '" + path.text() + "': " +
-                                         os::last_system_error_message());
+      report_unreadable_path(ec, cxt, path);
       has_failure = true;
 
       return None;
@@ -313,11 +329,8 @@ total_size(const ExecContext        &ec,
 
     if (error_number != 0) {
       os::set_last_system_error(error_number);
-      let child_path = do_make_child_path();
-      report_soft_koshkit_util_error(
-          ec, cxt, "du",
-          "cannot read '" + child_path.text() +
-              "': " + os::last_system_error_message());
+      let const child_path = do_make_child_path();
+      report_unreadable_path(ec, cxt, child_path);
       frames[parent_index].has_failure = true;
       has_failure                      = true;
 
@@ -477,10 +490,7 @@ total_size(const ExecContext        &ec,
       let const &children = listing.children;
 
       if (!children.has_value()) {
-        report_soft_koshkit_util_error(
-            ec, cxt, "du",
-            "cannot read '" + frames[frame_index].path.text() +
-                "': " + os::last_system_error_message());
+        report_unreadable_path(ec, cxt, frames[frame_index].path);
         frames[frame_index].has_failure   = true;
         frames[frame_index].is_enumerated = true;
         has_failure                       = true;

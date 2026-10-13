@@ -10,6 +10,7 @@
 #include "../CLI.hpp"
 #include "../Errors.hpp"
 #include "../Eval.hpp"
+#include "../Koshkit.hpp"
 #include "../Platform.hpp"
 #include "../Utils.hpp"
 #include "../base/StaticStringMap.hpp"
@@ -36,6 +37,13 @@ FLAG(LINK_MOOD,
      '\0',
      "link-mood",
      "Link this binary as bash, dash, sh, or kosh. Commas are accepted.");
+FLAG(INSTALL_DIRECTORY,
+     String,
+     '\0',
+     "install-directory",
+     "Install into this remote directory instead of the first writable PATH "
+     "directory.");
+FLAG(YES, Bool, 'y', "yes", "Install without asking for confirmation.");
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_BUILTIN_FLAGS(Assimilate);
@@ -49,6 +57,33 @@ enum class trace_output : u8
   Disabled,
   Enabled,
 };
+
+constexpr char REMOTE_DIRECTORY_FUNCTIONS_TEXT[] =
+    R"SH(directory_is_install_candidate() {
+  proposed_directory=$1
+  [ -n "$proposed_directory" ] && [ -d "$proposed_directory" ] &&
+    [ -w "$proposed_directory" ] && [ -x "$proposed_directory" ] || return 1
+  install_dir=$(cd "$proposed_directory" && pwd -P) || return 1
+  target=$install_dir/kosh
+}
+directory_accepts_links() {
+  remaining_moods=$link_moods
+  while [ -n "$remaining_moods" ]; do
+    case $remaining_moods in
+      *,*) link_name=${remaining_moods%%,*}; remaining_moods=${remaining_moods#*,} ;;
+      *) link_name=$remaining_moods; remaining_moods= ;;
+    esac
+    [ "$link_name" = kosh ] && continue
+    link_path=$install_dir/$link_name
+    if [ -e "$link_path" ] || [ -L "$link_path" ]; then
+      [ -L "$link_path" ] && [ "$link_path" -ef "$target" ] || return 1
+    fi
+  done
+}
+)SH";
+constexpr StringView REMOTE_DIRECTORY_FUNCTIONS{
+    REMOTE_DIRECTORY_FUNCTIONS_TEXT,
+    sizeof(REMOTE_DIRECTORY_FUNCTIONS_TEXT) - 1};
 
 constexpr char       REMOTE_TRANSACTION_TEXT[] = R"SH(set -eu
 [ "${5-0}" -eq 0 ] || set -x
@@ -198,40 +233,8 @@ recover_all_stale_locks() {
   fi
   recover_orphan_locks
 }
-path_contains_directory() {
-  wanted_directory=$1
-  remaining_path=${PATH-}
-  while :; do
-    case $remaining_path in
-      *:*) path_entry=${remaining_path%%:*}; remaining_path=${remaining_path#*:}; has_more=1 ;;
-      *) path_entry=$remaining_path; has_more=0 ;;
-    esac
-    [ -n "$path_entry" ] || path_entry=.
-    [ "$path_entry" != "$wanted_directory" ] || return 0
-    [ "$has_more" -eq 1 ] || return 1
-  done
-}
-directory_accepts_links() {
-  remaining_moods=$link_moods
-  while [ -n "$remaining_moods" ]; do
-    case $remaining_moods in
-      *,*) link_name=${remaining_moods%%,*}; remaining_moods=${remaining_moods#*,} ;;
-      *) link_name=$remaining_moods; remaining_moods= ;;
-    esac
-    [ "$link_name" = kosh ] && continue
-    link_path=$install_dir/$link_name
-    if [ -e "$link_path" ] || [ -L "$link_path" ]; then
-      [ -L "$link_path" ] && [ "$link_path" -ef "$target" ] || return 1
-    fi
-  done
-}
 try_install_directory() {
-  proposed_directory=$1
-  case $proposed_directory in *sbin*) return 1 ;; esac
-  [ -d "$proposed_directory" ] && [ -w "$proposed_directory" ] &&
-    [ -x "$proposed_directory" ] || return 1
-  install_dir=$(cd "$proposed_directory" && pwd -P) || return 1
-  target=$install_dir/kosh
+  directory_is_install_candidate "$1" || return 1
   lock_path=$install_dir/.kosh-assimilate.lock
   recover_all_stale_locks || return 1
   directory_accepts_links || return 1
@@ -241,31 +244,12 @@ trap 'exit 129' 1
 trap 'exit 130' 2
 trap 'exit 143' 15
 install_dir=
-if path_contains_directory /usr/local/bin; then
-  try_install_directory /usr/local/bin || install_dir=
+try_install_directory "${6-}" || install_dir=
+if [ -z "$install_dir" ]; then
+  printf 'assimilate: Cannot install into %s, which changed after it was chosen or holds a lock that cannot be recovered.\n' \
+    "${6-}" >&2
+  exit 1
 fi
-if [ -z "$install_dir" ] && [ -n "${HOME-}" ] &&
-   path_contains_directory "$HOME/.local/bin"; then
-  try_install_directory "$HOME/.local/bin" || install_dir=
-fi
-remaining_path=${PATH-}
-while [ -z "$install_dir" ]; do
-  case $remaining_path in
-    *:*) path_entry=${remaining_path%%:*}; remaining_path=${remaining_path#*:}; has_more=1 ;;
-    *) path_entry=$remaining_path; has_more=0 ;;
-  esac
-  [ -n "$path_entry" ] || path_entry=.
-  case $path_entry in
-    /usr/local/bin) ;;
-    "${HOME-}/.local/bin") ;;
-    *) try_install_directory "$path_entry" || install_dir= ;;
-  esac
-  if [ -n "$install_dir" ]; then
-    break
-  fi
-  [ "$has_more" -eq 1 ] || break
-done
-[ -n "$install_dir" ] || exit 1
 candidate=$install_dir/.kosh-assimilate-$2.candidate
 [ ! -d "$target" ] || exit 1
 recover_all_stale_locks
@@ -373,6 +357,58 @@ if [ "$system_matches" -ne 0 ] || [ "$machine_matches" -ne 0 ]; then
     "$expected_system" "$expected_machine" "$remote_system" "$remote_machine" >&2
   exit 126
 fi
+requested_directory=${4-}
+link_moods=${5-}
+path_contains_directory() {
+  wanted_directory=$1
+  remaining_path=${PATH-}
+  while :; do
+    case $remaining_path in
+      *:*) path_entry=${remaining_path%%:*}; remaining_path=${remaining_path#*:}; has_more=1 ;;
+      *) path_entry=$remaining_path; has_more=0 ;;
+    esac
+    [ -n "$path_entry" ] || path_entry=.
+    [ "$path_entry" != "$wanted_directory" ] || return 0
+    [ "$has_more" -eq 1 ] || return 1
+  done
+}
+directory_is_usable() {
+  directory_is_install_candidate "$1" && directory_accepts_links
+}
+select_install_directory() {
+  if [ -n "$requested_directory" ]; then
+    directory_is_usable "$requested_directory" && return 0
+    printf 'assimilate: Cannot install into %s, which is not a writable directory or already holds a requested link.\n' \
+      "$requested_directory" >&2
+    return 1
+  fi
+  if path_contains_directory /usr/local/bin &&
+     directory_is_usable /usr/local/bin; then
+    return 0
+  fi
+  if [ -n "${HOME-}" ] && path_contains_directory "$HOME/.local/bin" &&
+     directory_is_usable "$HOME/.local/bin"; then
+    return 0
+  fi
+  remaining_path=${PATH-}
+  while :; do
+    case $remaining_path in
+      *:*) path_entry=${remaining_path%%:*}; remaining_path=${remaining_path#*:}; has_more=1 ;;
+      *) path_entry=$remaining_path; has_more=0 ;;
+    esac
+    [ -n "$path_entry" ] || path_entry=.
+    case $path_entry in
+      /usr/local/bin|*sbin*) ;;
+      "${HOME-}/.local/bin") ;;
+      *) directory_is_usable "$path_entry" && return 0 ;;
+    esac
+    [ "$has_more" -eq 1 ] || break
+  done
+  printf '%s\n' 'assimilate: The remote PATH has no writable directory for kosh.' >&2
+  return 1
+}
+select_install_directory || exit 1
+printf 'assimilate-install-directory=%s\n' "$install_dir"
 )SH";
 constexpr StringView REMOTE_PREFLIGHT{REMOTE_PREFLIGHT_TEXT,
                                       sizeof(REMOTE_PREFLIGHT_TEXT) - 1};
@@ -470,6 +506,7 @@ remote_command(StringView   upload_name,
                StringView   transaction_id,
                StringView   expected_identity,
                StringView   link_moods,
+               StringView   install_directory,
                trace_output trace,
                Allocator    allocator) throws -> String
 {
@@ -498,13 +535,18 @@ remote_command(StringView   upload_name,
   do_append_argument("--mood");
   do_append_argument("sh");
   do_append_argument("-c");
-  do_append_argument(REMOTE_TRANSACTION);
+
+  let transaction_script = String{allocator, REMOTE_DIRECTORY_FUNCTIONS};
+
+  transaction_script += REMOTE_TRANSACTION;
+  do_append_argument(transaction_script.view());
   do_append_argument("kosh");
   do_append_argument(upload_name);
   do_append_argument(transaction_id);
   do_append_argument(expected_identity);
   do_append_argument(link_moods);
   do_append_argument(should_trace ? StringView{"1"} : StringView{"0"});
+  do_append_argument(install_directory);
   command.pop_back();
 
   return command;
@@ -513,6 +555,8 @@ remote_command(StringView   upload_name,
 fn
 preflight_command(StringView   executable_system,
                   StringView   executable_machine,
+                  StringView   requested_directory,
+                  StringView   link_moods,
                   trace_output trace,
                   Allocator    allocator) throws -> String
 {
@@ -525,10 +569,81 @@ preflight_command(StringView   executable_system,
   append_shell_quoted_arg(command, executable_system);
   command += ' ';
   append_shell_quoted_arg(command, executable_machine);
+  command += ' ';
+  append_shell_quoted_arg(command, requested_directory);
+  command += ' ';
+  append_shell_quoted_arg(command, link_moods);
   command += "; ";
+  command += REMOTE_DIRECTORY_FUNCTIONS;
   command += REMOTE_PREFLIGHT;
 
   return command;
+}
+
+struct captured_program_result
+{
+  i32    status;
+  String output;
+  bool   has_finished;
+};
+
+fn
+run_captured_program(const ArrayList<String> &arguments,
+                     const ExecContext       &ec,
+                     trace_output             trace,
+                     StringView               stage) throws -> captured_program_result
+{
+  constexpr u64 CAPTURE_TIMEOUT_NANOS = 600'000'000'000;
+
+  trace_stage(ec, trace, stage);
+
+  let capture = os::ProgramCapture::start(arguments, CAPTURE_TIMEOUT_NANOS);
+
+  if (!capture.has_value()) return {126, String{heap_allocator()}, false};
+
+  loop {
+    switch (capture->step()) {
+    case os::ProgramCapture::State::Finished: {
+      let const exit_status = capture->exit_status();
+
+      return {exit_status.value_or(126), capture->take_output(),
+              exit_status.has_value()};
+    }
+    case os::ProgramCapture::State::Failed:
+      return {126, capture->take_output(), false};
+    case os::ProgramCapture::State::Running:
+      capture->wait(CAPTURE_TIMEOUT_NANOS);
+      break;
+    }
+  }
+}
+
+fn
+take_install_directory(const ExecContext &ec,
+                       StringView         preflight_output,
+                       Allocator          allocator) throws -> Maybe<String>
+{
+  constexpr StringView INSTALL_DIRECTORY_MARKER{
+      "assimilate-install-directory="};
+
+  let   install_directory = Maybe<String>{};
+  usize position          = 0;
+
+  while (position < preflight_output.count()) {
+    let const line = preflight_output.next_line(position);
+    let const text = line.without_trailing_newline();
+
+    if (text.starts_with(INSTALL_DIRECTORY_MARKER)) {
+      install_directory =
+          String{allocator, text.substring(INSTALL_DIRECTORY_MARKER.count())};
+      continue;
+    }
+
+    ec.print_to_stderr(text);
+    ec.print_to_stderr("\n");
+  }
+
+  return install_directory;
 }
 
 } /* namespace */
@@ -665,19 +780,86 @@ Assimilate::execute(ExecContext &ec, EvalContext &cxt) const throws
     return 1;
   }
 
-  let const executable_system   = os::executable_system_name();
-  let const executable_machine  = os::executable_machine_name();
-  let       preflight_arguments = ArrayList<String>{allocator};
+  let const requested_directory = FLAG_INSTALL_DIRECTORY.is_set()
+                                      ? FLAG_INSTALL_DIRECTORY.value()
+                                      : StringView{};
+
+  if (FLAG_INSTALL_DIRECTORY.is_set() &&
+      (requested_directory.is_empty() ||
+       requested_directory.find_character('\n').has_value()))
+  {
+    report_soft_builtin_error(
+        ec, cxt, "The install directory must be one nonempty line");
+
+    return 2;
+  }
+
+  let const executable_system  = os::executable_system_name();
+  let const executable_machine = os::executable_machine_name();
+
+  if (executable_system.view() == "Darwin" ||
+      executable_system.view() == "Windows")
+  {
+    let warning =
+        String{allocator, "assimilate: This kosh binary is built for "};
+
+    warning += executable_system.view() == "Darwin" ? StringView{"macOS"}
+                                                    : StringView{"Windows"};
+    warning += ", which servers rarely run. A Linux build of kosh suits most "
+               "servers.";
+    show_warning(warning.view());
+  }
+
+  let preflight_arguments = ArrayList<String>{allocator};
 
   append_arguments(preflight_arguments, *ssh_command);
   preflight_arguments.push(String{"--"});
   preflight_arguments.push(arguments[1].clone());
   preflight_arguments.push(preflight_command(
-      executable_system.view(), executable_machine.view(), trace, allocator));
+      executable_system.view(), executable_machine.view(), requested_directory,
+      link_moods.view(), trace, allocator));
 
-  let status = run_program(preflight_arguments, ec, trace, "preflight");
+  let const preflight =
+      run_captured_program(preflight_arguments, ec, trace, "preflight");
+  let const install_directory =
+      take_install_directory(ec, preflight.output.view(), allocator);
 
-  if (status != 0) return status;
+  if (!preflight.has_finished) {
+    report_soft_builtin_error(ec, cxt,
+                              "The remote check did not finish or could not "
+                              "start the ssh command");
+
+    return preflight.status;
+  }
+
+  if (preflight.status != 0) return preflight.status;
+
+  if (!install_directory.has_value()) {
+    report_soft_builtin_error(
+        ec, cxt, "The remote host did not report an install directory");
+
+    return 1;
+  }
+
+  LOG(Info, "assimilate chose the remote directory '%s'",
+      install_directory->c_str());
+
+  if (!FLAG_YES.is_enabled()) {
+    let prompt = String{allocator, "Install kosh to "};
+
+    prompt += arguments[1].view();
+    prompt += ':';
+    prompt += install_directory->view();
+    prompt += "/kosh? [y/N] ";
+
+    if (!koshkit::confirm_koshkit_action(ec, prompt.view())) {
+      ec.print_to_stderr("assimilate: The installation was cancelled.\n");
+
+      return 1;
+    }
+  }
+
+  i32 status = 0;
 
   let const transaction_id =
       String::from(static_cast<u64>(os::get_shell_process_id()), allocator) +
@@ -701,9 +883,9 @@ Assimilate::execute(ExecContext &ec, EvalContext &cxt) const throws
   append_arguments(ssh_arguments, *ssh_command);
   ssh_arguments.push(String{"--"});
   ssh_arguments.push(arguments[1].clone());
-  ssh_arguments.push(remote_command(upload_name.view(), transaction_id.view(),
-                                    expected_identity->view(),
-                                    link_moods.view(), trace, allocator));
+  ssh_arguments.push(remote_command(
+      upload_name.view(), transaction_id.view(), expected_identity->view(),
+      link_moods.view(), install_directory->view(), trace, allocator));
 
   status = run_program(ssh_arguments, ec, trace, "install");
 

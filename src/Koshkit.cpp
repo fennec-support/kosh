@@ -117,7 +117,7 @@ resolve_koshkit_color_flag(bool       is_enabled,
                            bool       has_value,
                            StringView value) throws -> bool
 {
-  if (!is_enabled) return false;
+  if (!is_enabled) return koshkit_should_color();
   if (!has_value) return stdout_wants_color(cli_color_mode::Auto);
 
   let const mode = parse_cli_color_mode(value);
@@ -473,34 +473,6 @@ copy_file_or_throw(StringView      source,
     };
   case copy_file_result::Success: break;
   }
-}
-
-fn
-confirm_koshkit_action(const ExecContext &ec, StringView prompt) throws
-    -> bool
-{
-  ec.print_to_stderr(prompt);
-
-  char first_byte    = '\0';
-  bool is_first_byte = true;
-
-  loop {
-    char      byte       = '\0';
-    let const read_count = os::read_fd(ec.in_fd.value_or(KOSH_STDIN), &byte, 1);
-
-    if (!read_count.has_value() || *read_count == 0) {
-      break;
-    }
-
-    if (is_first_byte) {
-      first_byte    = byte;
-      is_first_byte = false;
-    }
-
-    if (byte == '\n') break;
-  }
-
-  return first_byte == 'y' || first_byte == 'Y';
 }
 
 fn
@@ -1254,6 +1226,34 @@ preflight_timeout_stage(const ExecContext &,
 
 #endif
 
+fn
+confirm_koshkit_action(const ExecContext &ec, StringView prompt) throws
+    -> bool
+{
+  ec.print_to_stderr(prompt);
+
+  char first_byte    = '\0';
+  bool is_first_byte = true;
+
+  loop {
+    char      byte       = '\0';
+    let const read_count = os::read_fd(ec.in_fd.value_or(KOSH_STDIN), &byte, 1);
+
+    if (!read_count.has_value() || *read_count == 0) {
+      break;
+    }
+
+    if (is_first_byte) {
+      first_byte    = byte;
+      is_first_byte = false;
+    }
+
+    if (byte == '\n') break;
+  }
+
+  return first_byte == 'y' || first_byte == 'Y';
+}
+
 static fn
 render_multicall_error(const ErrorWithLocation &error,
                        StringView               message,
@@ -1700,20 +1700,42 @@ parse_koshkit_duration_seconds(StringView     text,
   return value * multiplier;
 }
 
-cold static fn
-show_soft_koshkit_error(const ExecContext &ec,
-                        EvalContext       &cxt,
-                        SourceLocation     location,
-                        StringView         message) throws -> void
+enum class soft_report_severity : u8
+{
+  Error,
+  Warning,
+};
+
+static fn
+show_soft_koshkit_note(StringView note) throws -> void
 {
   if (os::INTERRUPT_REQUESTED) return;
 
-  const ErrorWithLocation located{steal(location), message};
+  show_message(Note{String{note}}.to_string());
+}
+
+cold static fn
+show_soft_koshkit_error(const ExecContext   &ec,
+                        EvalContext         &cxt,
+                        SourceLocation       location,
+                        StringView           message,
+                        soft_report_severity severity =
+                            soft_report_severity::Error) throws -> void
+{
+  if (os::INTERRUPT_REQUESTED) return;
+
+  let const do_render = [&](StringView source) throws -> String {
+    if (severity == soft_report_severity::Warning) {
+      return WarningWithLocation{location, message}.to_string(source, &cxt);
+    }
+
+    return ErrorWithLocation{location, message}.to_string(source, &cxt);
+  };
 
   if (const String *source = cxt.source_store().current_source();
       source != nullptr)
   {
-    show_message(located.to_string(source->view(), &cxt));
+    show_message(do_render(source->view()));
 
     return;
   }
@@ -1721,7 +1743,13 @@ show_soft_koshkit_error(const ExecContext &ec,
   if (ec.is_multicall) {
     let const source = utils::merge_args_to_string(ec.args());
 
-    show_message(located.to_string(source.view(), &cxt));
+    show_message(do_render(source.view()));
+
+    return;
+  }
+
+  if (severity == soft_report_severity::Warning) {
+    print_error(String{"warning: "} + message + "\n");
 
     return;
   }
@@ -1747,15 +1775,23 @@ koshkit_invocation_name(const ExecContext &ec,
   return String{allocator, ec.program()};
 }
 
+static fn
+make_koshkit_report_text(const ExecContext &ec,
+                         EvalContext       &cxt,
+                         StringView         message) throws -> String
+{
+  let const prefix = koshkit_invocation_name(ec, cxt.scratch_allocator());
+
+  return prefix.view() + ": " + message;
+}
+
 cold noinline fn
 report_soft_koshkit_error(const ExecContext &ec,
                           EvalContext       &cxt,
                           StringView         message) throws -> void
 {
-  let const prefix = koshkit_invocation_name(ec, cxt.scratch_allocator());
-
   show_soft_koshkit_error(ec, cxt, ec.source_location(),
-                          prefix.view() + ": " + message);
+                          make_koshkit_report_text(ec, cxt, message));
 }
 
 cold noinline fn
@@ -1765,9 +1801,17 @@ report_soft_koshkit_error(const ExecContext &ec,
                           StringView         note) throws -> void
 {
   report_soft_koshkit_error(ec, cxt, message);
-  if (os::INTERRUPT_REQUESTED) return;
+  show_soft_koshkit_note(note);
+}
 
-  show_message(Note{String{note}}.to_string());
+cold noinline fn
+report_soft_koshkit_warning(const ExecContext &ec,
+                            EvalContext       &cxt,
+                            StringView         message) throws -> void
+{
+  show_soft_koshkit_error(ec, cxt, ec.source_location(),
+                          make_koshkit_report_text(ec, cxt, message),
+                          soft_report_severity::Warning);
 }
 
 cold noinline fn
@@ -1788,9 +1832,7 @@ report_soft_koshkit_util_error(const ExecContext &ec,
                                StringView         note) throws -> void
 {
   report_soft_koshkit_util_error(ec, cxt, utility_name, message);
-  if (os::INTERRUPT_REQUESTED) return;
-
-  show_message(Note{String{note}}.to_string());
+  show_soft_koshkit_note(note);
 }
 
 cold noinline fn
@@ -1802,10 +1844,8 @@ report_soft_koshkit_util_error(const ExecContext &ec,
 {
   unused(utility_name);
 
-  let const prefix = koshkit_invocation_name(ec, cxt.scratch_allocator());
-
   show_soft_koshkit_error(ec, cxt, steal(location),
-                          prefix.view() + ": " + message);
+                          make_koshkit_report_text(ec, cxt, message));
 }
 
 cold noinline fn
@@ -1818,9 +1858,7 @@ report_soft_koshkit_util_error(const ExecContext &ec,
 {
   report_soft_koshkit_util_error(ec, cxt, steal(location), utility_name,
                                  message);
-  if (os::INTERRUPT_REQUESTED) return;
-
-  show_message(Note{String{note}}.to_string());
+  show_soft_koshkit_note(note);
 }
 
 #endif

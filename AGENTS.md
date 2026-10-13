@@ -196,6 +196,9 @@ external artifacts.
 
 ## Failure prevention
 
+Recorded mistakes are in [MISTAKES.md](MISTAKES.md). Review the matching entry
+before repeating a similar action.
+
 Resolve file paths and executables before invoking them. Read scoped guidance
 before changing tests. Search callers and failure contracts before changing a
 shared interface. Wait for a build to finish before testing its binary. Use rmdir

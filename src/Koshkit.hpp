@@ -819,6 +819,11 @@ report_soft_koshkit_error(const ExecContext &ec,
                           StringView         note) throws -> void;
 
 cold noinline fn
+report_soft_koshkit_warning(const ExecContext &ec,
+                            EvalContext       &cxt,
+                            StringView         message) throws -> void;
+
+cold noinline fn
 report_soft_koshkit_util_error(const ExecContext &ec,
                                EvalContext       &cxt,
                                StringView         utility_name,

@@ -3,7 +3,7 @@ bash shebang: 7
 kosh shebang: 2
 operand: 7
 nested -c: warnings=3
-explicit -W: 5
+explicit -W: 4
 reset: 0
 unset: []
 mimicry: mimicry warnings=3

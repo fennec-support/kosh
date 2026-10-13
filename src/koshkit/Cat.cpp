@@ -212,7 +212,7 @@ Cat::execute(const ExecContext               &ec,
   }
 
   let const should_highlight_output =
-      FLAG_CAT_SYNTAX_HIGHLIGHTING.is_enabled() && colors::stdout_wants_color();
+      FLAG_CAT_SYNTAX_HIGHLIGHTING.is_enabled() && koshkit_should_color();
 
   if (!FLAG_CAT_NUMBER.is_enabled() && !should_highlight_output) {
     let reader = SourceBatchReader{ec, sources, cxt.scratch_allocator()};

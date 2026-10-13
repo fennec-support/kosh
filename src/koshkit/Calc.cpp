@@ -204,6 +204,24 @@ run_repl(const ExecContext   &ec,
     }
   };
 
+  let did_terminal_fail = false;
+
+  let const do_set_raw_mode = [](bool should_enter) throws -> bool {
+    try {
+      if (should_enter) {
+        toiletline::enter_raw_mode();
+      } else {
+        toiletline::exit_raw_mode();
+      }
+    } catch (const Error &error) {
+      show_message(error.to_string());
+
+      return false;
+    }
+
+    return true;
+  };
+
   loop {
     Maybe<String> line;
 
@@ -271,14 +289,28 @@ run_repl(const ExecContext   &ec,
       continue;
     }
 
+    if (should_use_editor && !do_set_raw_mode(false)) {
+      did_terminal_fail = true;
+      break;
+    }
+
+    if (is_terminal) os::INTERRUPT_REQUESTED = 0;
+
     evaluate_one(ec, cxt, line->view());
+
+    if (is_terminal) os::INTERRUPT_REQUESTED = 0;
+
+    if (should_use_editor && !do_set_raw_mode(true)) {
+      did_terminal_fail = true;
+      break;
+    }
   }
 
   if (!should_use_editor && is_terminal) {
     koshka::print_error("\n");
   }
 
-  return 0;
+  return did_terminal_fail ? 1 : 0;
 }
 
 } /* namespace */

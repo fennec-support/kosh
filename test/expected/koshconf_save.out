@@ -19,8 +19,9 @@ OPTIONS
                                         each option.
       --persist                         When set is used, also write the option
                                         to the user configuration file. When
-                                        save is used, write every current
-                                        setting to that file.
+                                        save is used, write the settings that
+                                        differ from the defaults of the current
+                                        mood to that file.
       --force                           When create is used, replace an existing
                                         configuration file.
 == list has no class column:
@@ -56,9 +57,10 @@ bash
 on
 == save refuses an operand:
 -c:1:15: error: Builtin `koshconf`: The save form takes no operand.
-== save --persist writes the current settings:
+== save --persist writes only the settings that differ from the defaults:
 rc=0
-COUNT
+mood=bash
+editor.auto_close_brackets_and_quotes=on
 # Koshka settings written by koshconf save.
 == the saved file loads back:
 bash

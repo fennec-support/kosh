@@ -43,7 +43,8 @@ FLAG(PERSIST,
      '\0',
      "persist",
      "When set is used, also write the option to the user configuration file. "
-     "When save is used, write every current setting to that file.");
+     "When save is used, write the settings that differ from the defaults of "
+     "the current mood to that file.");
 FLAG(FORCE,
      Bool,
      '\0',

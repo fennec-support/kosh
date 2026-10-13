@@ -36,6 +36,14 @@ koshkit pathchk -p abcdefghijklmno 2> "$TEST_NULL_DEVICE"
 echo "pathchk-name-length=$?"
 koshkit pathchk -P '' 2> "$TEST_NULL_DEVICE"
 echo "pathchk-empty=$?"
+koshkit pathchk --windows dir/name.txt
+echo "pathchk-windows-plain=$?"
+koshkit pathchk --windows 'dir/CON.txt' 2> "$TEST_NULL_DEVICE"
+echo "pathchk-windows-reserved=$?"
+koshkit pathchk --windows 'a<b' 2> "$TEST_NULL_DEVICE"
+echo "pathchk-windows-forbidden=$?"
+koshkit pathchk --windows 'name.' 2> "$TEST_NULL_DEVICE"
+echo "pathchk-windows-trailing-dot=$?"
 
 if [[ -n "$root" ]]; then
   "$BIN_DIR/invoke-koshkit" rm -rf -- "$root"

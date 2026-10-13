@@ -1564,9 +1564,11 @@ public:
 
       let result = ArithmeticValue{1};
 
-      for (i64 factor = 2; factor <= count; factor++)
+      for (i64 factor = 2; factor <= count; factor++) {
+        arithmetic_internal::throw_if_arithmetic_interrupted();
         result =
             ArithmeticValue::multiply(result, ArithmeticValue{factor}, arena);
+      }
 
       return result;
     }

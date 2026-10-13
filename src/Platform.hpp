@@ -21,7 +21,6 @@
 #include <arpa/inet.h>
 #include <dirent.h>
 #include <fcntl.h>
-#include <glob.h>
 #include <ifaddrs.h>
 #include <netdb.h>
 #include <netinet/in.h>
@@ -275,6 +274,7 @@ enum class terminal_handoff : u8
 constexpr char  PATH_DELIMITER                        = ';';
 constexpr char  DIRECTORY_SEPARATOR                   = '\\';
 constexpr bool  IS_BACKSLASH_A_SEPARATOR              = true;
+constexpr bool  HAS_WINDOWS_FILENAME_RULES            = true;
 constexpr usize HISTORY_RECORD_MAX_DECODED_BYTE_COUNT = 8191;
 constexpr bool  ENVIRONMENT_IS_CASE_SENSITIVE         = false;
 constexpr usize ENVIRONMENT_VALUE_MAX_UNIT_COUNT      = 32766;
@@ -297,6 +297,7 @@ using os_args    = String;
 constexpr char  PATH_DELIMITER                        = ':';
 constexpr char  DIRECTORY_SEPARATOR                   = '/';
 constexpr bool  IS_BACKSLASH_A_SEPARATOR              = false;
+constexpr bool  HAS_WINDOWS_FILENAME_RULES            = false;
 constexpr usize HISTORY_RECORD_MAX_DECODED_BYTE_COUNT = 4095;
 constexpr bool  ENVIRONMENT_IS_CASE_SENSITIVE         = true;
 constexpr usize ENVIRONMENT_VALUE_MAX_UNIT_COUNT      = SIZE_MAX;
@@ -1740,6 +1741,16 @@ fn
 set_path_compatibility(bool should_map_dev_null,
                        bool should_map_slash_tmp) wontthrow -> void;
 
+enum class polyfilled_path_kind : u8
+{
+  None,
+  Directory,
+  Device,
+};
+
+fn
+get_polyfilled_path_kind(StringView path) wontthrow -> polyfilled_path_kind;
+
 cold fn
 path_exists(StringView path) wontthrow -> bool;
 cold fn
@@ -2338,6 +2349,10 @@ fn
 get_terminal_dimensions(descriptor output = KOSH_STDOUT) wontthrow
     -> Maybe<terminal_dimensions>;
 
+fn
+get_terminal_cursor_column(descriptor output = KOSH_STDOUT) wontthrow
+    -> Maybe<u32>;
+
 enum class terminal_settings_output_mode : u8
 {
   Normal,
@@ -2501,10 +2516,6 @@ canonical_path(const Path &path) wontthrow -> Maybe<Path>;
 fn
 path_from_file_id(StringView filesystem_path, u64 file_id) wontthrow
     -> Maybe<Path>;
-
-fn
-glob_matches(StringView pattern, Allocator allocator) throws
-    -> ArrayList<String>;
 
 fn
 directory_is_trusted_for_exec(const Path &directory) wontthrow -> bool;

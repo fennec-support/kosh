@@ -59,7 +59,7 @@ enum class builtin_section : u8
   X(Exec, Posix, true)                                                         \
   X(Type, Posix, false)                                                        \
   X(CommandBuiltin, Posix, false)                                              \
-  X(BuiltinBuiltin, Bash, true)                                                \
+  X(BuiltinBuiltin, Bash, false)                                               \
   X(Readonly, Posix, false)                                                    \
   X(Local, Bash, true)                                                         \
   X(Declare, Bash, true)                                                       \

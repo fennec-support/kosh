@@ -1424,6 +1424,14 @@ Lexer::lex_identifier() throws -> Token *
           }
         }
 
+        let const is_template_expression =
+            !is_function_substitution && chop_character(name_start) == '{' &&
+            has_character(byte_count) && chop_character(byte_count) == '}';
+
+        if (is_template_expression) {
+          byte_count++;
+        }
+
         let const name = m_source.substring_of_length(
             m_cursor_position + name_start, byte_count - name_start - 1);
 

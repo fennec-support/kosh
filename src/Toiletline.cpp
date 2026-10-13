@@ -1498,6 +1498,9 @@ get_calc_history_file_path() -> koshka::Maybe<koshka::Path>
 static String HISTORY_SEARCH_SNAPSHOT{koshka::heap_allocator()};
 
 static fn
+get_active_history_file_path() -> koshka::Maybe<koshka::Path>;
+
+static fn
 provide_history_search_snapshot(const char **out_contents, size_t *out_size)
     -> int
 {
@@ -1506,7 +1509,7 @@ provide_history_search_snapshot(const char **out_contents, size_t *out_size)
   }
 
   try {
-    let const path = get_history_file_path();
+    let const path = get_active_history_file_path();
 
     if (!path.has_value()) return 0;
 

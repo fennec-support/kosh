@@ -56,40 +56,86 @@ get_builtin_section(Builtin::Kind kind, StringView name) wontthrow
   return BUILTIN_SECTIONS[static_cast<usize>(kind)];
 }
 
-static fn
-print_builtin_columns(ExecContext &ec, Allocator allocator) throws
-    -> void
+struct builtin_name_sections
 {
-  let const &sorted       = sorted_builtin_names();
-  let        posix_names  = ArrayList<StringView>{allocator};
-  let        bash_names   = ArrayList<StringView>{allocator};
-  let        koshka_names = ArrayList<StringView>{allocator};
+  explicit builtin_name_sections(Allocator allocator)
+      : posix_names(allocator), bash_names(allocator), koshka_names(allocator)
+  {}
 
-  for (let const &name : sorted) {
+  ArrayList<StringView> posix_names;
+  ArrayList<StringView> bash_names;
+  ArrayList<StringView> koshka_names;
+};
+
+static fn
+collect_builtin_name_sections(Allocator allocator) throws
+    -> builtin_name_sections
+{
+  let sections = builtin_name_sections{allocator};
+
+  for (let const &name : sorted_builtin_names()) {
     let const kind = search_builtin(name.view());
 
     ASSERT(kind.has_value());
     switch (get_builtin_section(*kind, name.view())) {
-    case builtin_section::Posix: posix_names.push(name.view()); break;
+    case builtin_section::Posix: sections.posix_names.push(name.view()); break;
 
-    case builtin_section::Bash: bash_names.push(name.view()); break;
+    case builtin_section::Bash: sections.bash_names.push(name.view()); break;
 
-    case builtin_section::Koshka: koshka_names.push(name.view()); break;
+    case builtin_section::Koshka:
+      sections.koshka_names.push(name.view());
+      break;
     }
   }
 
-  let out = String{allocator};
+  return sections;
+}
+
+static fn
+print_builtin_columns(ExecContext &ec, Allocator allocator) throws
+    -> void
+{
+  let const sections = collect_builtin_name_sections(allocator);
+  let       out      = String{allocator};
 
   out += "Koshka has ";
-  out += String::from(static_cast<i64>(sorted.count()), allocator);
+  out +=
+      String::from(static_cast<i64>(sorted_builtin_names().count()), allocator);
   out += " builtins:\n\n";
 
   let const should_color = colors::stdout_wants_color();
 
-  append_report_name_section(out, "POSIX", posix_names, should_color);
-  append_report_name_section(out, "BASH", bash_names, should_color);
-  append_report_name_section(out, "Koshka", koshka_names, should_color);
+  append_report_name_section(out, "POSIX", sections.posix_names, should_color);
+  append_report_name_section(out, "BASH", sections.bash_names, should_color);
+  append_report_name_section(out, "Koshka", sections.koshka_names,
+                             should_color);
   ec.print_to_stdout(out.view());
+}
+
+static fn
+append_builtin_help_section(String                      &out,
+                            StringView                   title,
+                            const ArrayList<StringView> &names) throws
+    -> void
+{
+  if (!out.is_empty()) out += '\n';
+  out += title;
+  out += '\n';
+  utils::append_name_columns(out, names.count(),
+                             [&](usize index) { return names[index]; });
+}
+
+static fn
+format_builtin_help_sections(Allocator allocator) throws -> String
+{
+  let const sections = collect_builtin_name_sections(allocator);
+  let       out      = String{allocator};
+
+  append_builtin_help_section(out, "POSIX BUILTINS", sections.posix_names);
+  append_builtin_help_section(out, "BASH BUILTINS", sections.bash_names);
+  append_builtin_help_section(out, "KOSHKA BUILTINS", sections.koshka_names);
+
+  return out;
 }
 
 fn
@@ -104,6 +150,11 @@ BuiltinBuiltin::execute(ExecContext &ec, EvalContext &cxt) const throws
   }
 
   let const &name = ec.args()[1];
+
+  if (name == "--help") {
+    SHOW_BUILTIN_HELP_EXTRA_AND_RETURN(
+        ec, format_builtin_help_sections(cxt.scratch_allocator()).view());
+  }
 
   if (name == "--list") {
     let const &sorted = sorted_builtin_names();

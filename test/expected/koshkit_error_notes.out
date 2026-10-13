@@ -364,20 +364,20 @@ note: this utility takes no operand.
        |                 ^~~~~
 note: this utility accepts no operands.
 === evillogs operand location ===
--c:1:18: error: koshkit evillogs: unexpected operand.
+-c:1:18: error: koshkit evillogs: Unexpected operand.
      1 |  koshkit evillogs extra
        |                   ^~~~~
-note: this utility takes no operand.
+note: This utility takes no operand.
 === evilnet operand location ===
 -c:1:17: error: koshkit evilnet: unexpected operand.
      1 |  koshkit evilnet extra
        |                  ^~~~~
 note: this utility accepts no operands.
 === evilss operand location ===
--c:1:16: error: koshkit evilss: unexpected operand.
+-c:1:16: error: koshkit evilss: Unexpected operand.
      1 |  koshkit evilss extra
        |                 ^~~~~
-note: this utility accepts no operands.
+note: This utility accepts no operands.
 === evilps limit location ===
 -c:1:16: error: koshkit evilps: invalid process limit.
      1 |  koshkit evilps -0

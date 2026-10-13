@@ -67,6 +67,12 @@ fn
 set_path_compatibility(bool, bool) wontthrow -> void
 {}
 
+fn
+get_polyfilled_path_kind(StringView) wontthrow -> polyfilled_path_kind
+{
+  return polyfilled_path_kind::None;
+}
+
 cold fn
 path_exists(StringView path) wontthrow -> bool
 {
@@ -612,25 +618,6 @@ canonical_path(const Path &path) wontthrow -> Maybe<Path>
   }
 
   return Path{StringView{resolved_path}};
-}
-
-fn
-glob_matches(StringView pattern, Allocator allocator) throws
-    -> ArrayList<String>
-{
-  let matches = ArrayList<String>{allocator};
-
-  const String pattern_string{allocator, pattern};
-  glob_t       glob_result{};
-
-  defer { globfree(&glob_result); };
-
-  if (glob(pattern_string.c_str(), 0, nullptr, &glob_result) == 0) {
-    for (usize i = 0; i < glob_result.gl_pathc; i++)
-      matches.push(String{allocator, StringView{glob_result.gl_pathv[i]}});
-  }
-
-  return matches;
 }
 
 fn

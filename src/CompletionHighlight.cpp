@@ -749,6 +749,15 @@ color_path_argument(usize                      word_start,
           0, expanded_tilde_prefix.count() + prefix_end - tilde_prefix_length);
     }
 
+    let const polyfilled_kind = os::get_polyfilled_path_kind(target);
+
+    if (polyfilled_kind != os::polyfilled_path_kind::None) {
+      is_prefix_non_directory =
+          polyfilled_kind == os::polyfilled_path_kind::Device;
+
+      return !should_be_directory || !is_prefix_non_directory;
+    }
+
     let const root_length = os::path_root_length(target);
     usize     name_end    = target.length;
 

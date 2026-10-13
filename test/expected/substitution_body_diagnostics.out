@@ -1,18 +1,18 @@
 == command.sh
+command.sh:2:1: warning: An `echo` of a command substitution prints what the command already prints. (SC2005)
+     2 |  echo "$(cat f | grep a)"
+       |  ^~~~
+note: Run the command on its own.
 command.sh:2:9: warning: The `cat` writes its file unchanged into the pipe. (SC2002)
      2 |  echo "$(cat f | grep a)"
        |          ^~~
 note: Give the file to the next command directly.
-command.sh:2:1: error: An `echo` of a command substitution prints what the command already prints. (SC2005)
-     2 |  echo "$(cat f | grep a)"
-       |  ^~~~
-note: Run the command on its own.
 command.sh:3:8: warning: A bare glob can expand to a filename that begins with `-`. (SC2035)
      3 |  x=$(ls *.txt)
        |         ^~~~~
 note: Prefix the glob with a directory or place `--` before it.
-Encountered 2 warnings and 1 error.
-status=1
+Encountered 3 warnings.
+status=0
 == backtick.sh
 backtick.sh:2:4: warning: The `cat` writes its file unchanged into the pipe. (SC2002)
      2 |  y=`cat f | grep a`
@@ -94,20 +94,20 @@ note: Read the lines with `while IFS= read -r line`.
 Encountered 1 warning and 1 error.
 status=1
 == nested.sh
+nested.sh:2:1: warning: An `echo` of a command substitution prints what the command already prints. (SC2005)
+     2 |  echo "$(echo "$(cat f | grep a)")"
+       |  ^~~~
+note: Run the command on its own.
+nested.sh:2:9: warning: An `echo` of a command substitution prints what the command already prints. (SC2005)
+     2 |  echo "$(echo "$(cat f | grep a)")"
+       |          ^~~~
+note: Run the command on its own.
 nested.sh:2:17: warning: The `cat` writes its file unchanged into the pipe. (SC2002)
      2 |  echo "$(echo "$(cat f | grep a)")"
        |                  ^~~
 note: Give the file to the next command directly.
-nested.sh:2:9: error: An `echo` of a command substitution prints what the command already prints. (SC2005)
-     2 |  echo "$(echo "$(cat f | grep a)")"
-       |          ^~~~
-note: Run the command on its own.
-nested.sh:2:1: error: An `echo` of a command substitution prints what the command already prints. (SC2005)
-     2 |  echo "$(echo "$(cat f | grep a)")"
-       |  ^~~~
-note: Run the command on its own.
-Encountered 1 warning and 2 errors.
-status=1
+Encountered 3 warnings.
+status=0
 == redirect.sh
 redirect.sh:2:14: warning: The `cat` writes its file unchanged into the pipe. (SC2002)
      2 |  echo hi > "$(cat f | head -1)"
@@ -115,11 +115,11 @@ redirect.sh:2:14: warning: The `cat` writes its file unchanged into the pipe. (S
 note: Give the file to the next command directly.
 status=0
 == disabled_file.sh
-disabled_file.sh:3:1: error: An `echo` of a command substitution prints what the command already prints. (SC2005)
+disabled_file.sh:3:1: warning: An `echo` of a command substitution prints what the command already prints. (SC2005)
      3 |  echo "$(cat f | grep a)"
        |  ^~~~
 note: Run the command on its own.
-status=1
+status=0
 == disabled_next.sh
 disabled_next.sh:5:5: warning: The `cat` writes its file unchanged into the pipe. (SC2002)
      5 |  y=$(cat f | grep a)
@@ -166,7 +166,7 @@ note: Use `mapfile` or `readarray` to preserve output records.
 Encountered 5 warnings and 4 errors.
 status=1
 == scope.sh
-scope.sh:3:1: error: An `echo` of a command substitution prints what the command already prints. (SC2005)
+scope.sh:3:1: warning: An `echo` of a command substitution prints what the command already prints. (SC2005)
      3 |  echo "$(echo "$parent")"
        |  ^~~~
 note: Run the command on its own.
@@ -174,7 +174,7 @@ scope.sh:3:6: warning: The `echo` operand is passed through the substitution unc
      3 |  echo "$(echo "$parent")"
        |       ^~~~~~~~~~~~~~~~~~~
 note: Use the text directly without the command substitution.
-scope.sh:4:1: error: An `echo` of a command substitution prints what the command already prints. (SC2005)
+scope.sh:4:1: warning: An `echo` of a command substitution prints what the command already prints. (SC2005)
      4 |  echo "$(echo "$missing")"
        |  ^~~~
 note: Run the command on its own.
@@ -190,13 +190,17 @@ scope.sh:6:7: error: The variable 'inner' is read before any assignment gives it
      6 |  echo "$inner"
        |        ^~~~~~
 note: Assign 'inner' before it is read, or set it in the environment.
-Encountered 2 warnings and 4 errors.
+Encountered 4 warnings and 2 errors.
 status=1
 == function_call.sh
 status=0
 == bare_read.sh
 status=0
 == escapes.sh
+escapes.sh:2:1: warning: An `echo` of a command substitution prints what the command already prints. (SC2005)
+     2 |  echo "$(printf "%s\n" a)"
+       |  ^~~~
+note: Run the command on its own.
 escapes.sh:4:20: warning: The escape `\t` is read by the shell as a plain 't'. (SC1012)
      4 |  echo "$(printf %s a\tb)"
        |                     ^~
@@ -205,17 +209,13 @@ escapes.sh:5:16: warning: The escape `\q` is read by the shell as a plain 'q'. (
      5 |  echo "$(true;)"\q
        |                 ^~
 note: Quote the backslash, or build the byte with `printf`.
-escapes.sh:2:1: error: An `echo` of a command substitution prints what the command already prints. (SC2005)
-     2 |  echo "$(printf "%s\n" a)"
-       |  ^~~~
-note: Run the command on its own.
 escapes.sh:3:26: warning: The `echo` operand is passed through the substitution unchanged. (SC2116)
      3 |  echo "$(printf %s "x" )" "$(echo y)"
        |                           ^~~~~~~~~~~
 note: Use the text directly without the command substitution.
-escapes.sh:4:1: error: An `echo` of a command substitution prints what the command already prints. (SC2005)
+escapes.sh:4:1: warning: An `echo` of a command substitution prints what the command already prints. (SC2005)
      4 |  echo "$(printf %s a\tb)"
        |  ^~~~
 note: Run the command on its own.
-Encountered 3 warnings and 2 errors.
-status=1
+Encountered 5 warnings.
+status=0

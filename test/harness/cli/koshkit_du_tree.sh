@@ -138,6 +138,22 @@ if [ "${TARGET:-$(uname -s)}" = Linux ] && [ -d /dev/pts ] &&
   fi
 fi
 
+echo "--- an unreadable directory is a warning ---"
+mkdir -p locked/inner
+chmod 000 locked
+if [ -r locked ]; then
+  echo "permission-severity=warning status=1"
+else
+  locked_output=$("$BIN" -c 'koshkit du -s locked' 2>&1)
+  locked_status=$?
+  case $locked_output in
+    *"warning: koshkit du: cannot read"*) severity=warning ;;
+    *) severity=other ;;
+  esac
+  echo "permission-severity=$severity status=$locked_status"
+fi
+chmod 755 locked
+
 echo "--- help ---"
 "$BIN" -c 'koshkit du --help' | grep -e '--tree' -e '--top-largest' -e 'Usage'
 

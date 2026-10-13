@@ -29,6 +29,12 @@ FLAG(PWD_PHYSICAL,
      'P',
      "",
      "Print the physical directory, with every symlink resolved.");
+FLAG(PWD_WINDOWS,
+     Bool,
+     'W',
+     "",
+     "Print the physical directory in the Windows form with forward slashes. "
+     "On other systems, it is the same as -P.");
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_BUILTIN_FLAGS(Pwd);
@@ -42,12 +48,23 @@ Pwd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   if (FLAG_HELP.is_enabled()) SHOW_BUILTIN_HELP_AND_RETURN(ec);
 
-  let       output              = String{cxt.scratch_allocator()};
-  let const should_use_physical = FLAG_PWD_PHYSICAL.is_enabled();
+  let       output                  = String{cxt.scratch_allocator()};
+  let const should_use_windows_form = FLAG_PWD_WINDOWS.is_enabled();
+  let const should_use_physical =
+      FLAG_PWD_PHYSICAL.is_enabled() || should_use_windows_form;
   let const directory = should_use_physical ? Path::current_directory()
                                             : logical_working_directory(cxt);
 
-  output.append(directory.text());
+  if (should_use_windows_form && os::IS_BACKSLASH_A_SEPARATOR) {
+    let const text = directory.text().view();
+
+    for (usize position = 0; position < text.length; position++) {
+      output.push(text[position] == '\\' ? '/' : text[position]);
+    }
+  } else {
+    output.append(directory.text());
+  }
+
   output += '\n';
   ec.print_to_stdout(output);
 

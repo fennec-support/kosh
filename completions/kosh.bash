@@ -90,11 +90,16 @@ _kosh_assimilate_complete ()
 {
   local current_word=${COMP_WORDS[COMP_CWORD]}
   local previous_word=${COMP_WORDS[COMP_CWORD - 1]}
-  local flags="-x --trace --ssh-command --scp-command --link-mood --help"
+  local flags="-x --trace --ssh-command --scp-command --link-mood --install-directory -y --yes --help"
 
   if [[ $previous_word == --link-mood ]]
   then
     _kosh_compgen -W "bash dash sh kosh" -- "$current_word"
+    return
+  fi
+
+  if [[ $previous_word == --install-directory ]]
+  then
     return
   fi
 
@@ -565,7 +570,7 @@ _koshkit_util_flags ()
       echo "-d --delimiters -s --serial"
     ;;
     pathchk)
-      echo "-P --leading-hyphen -p --portable"
+      echo "-P --leading-hyphen -p --portable --windows"
     ;;
     renice)
       echo "-g --pgrp -n --increment -p --pid -u --user"

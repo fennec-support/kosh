@@ -24,16 +24,16 @@ struct alignas(u64) ArithmeticValue::Storage
   u32 decimal_scale{0};
 };
 
-namespace {
-
-constexpr u64 DECIMAL_CHUNK_BASE = 10000000000000000000ULL;
-
-alwaysinline fn
+fn
 throw_if_arithmetic_interrupted() throws -> void
 {
   if (os::INTERRUPT_REQUESTED)
     throw InterruptErrorWithLocation{SourceLocation{}};
 }
+
+namespace {
+
+constexpr u64 DECIMAL_CHUNK_BASE = 10000000000000000000ULL;
 
 fn
 make_zero_limbs(usize count, Allocator allocator) throws

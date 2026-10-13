@@ -36,6 +36,53 @@ constexpr StringView CORE_DUMP_DIRECTORIES[] = {
     "/var/cache/abrt-di",        "/cores",     "/var/tmp/cores",
 };
 
+struct environment_directory
+{
+  StringView variable_name;
+  StringView relative_path;
+};
+
+constexpr environment_directory ENVIRONMENT_DUMP_DIRECTORIES[] = {
+    {"HOME",         "Library/Logs/DiagnosticReports"     },
+    {"LOCALAPPDATA", "CrashDumps"                         },
+    {"SystemRoot",   "Minidump"                           },
+    {"ProgramData",  "Microsoft/Windows/WER/ReportArchive"},
+    {"ProgramData",  "Microsoft/Windows/WER/ReportQueue"  },
+};
+
+constexpr environment_directory ENVIRONMENT_LOG_DIRECTORIES[] = {
+    {"SystemRoot", "System32/winevt/Logs"},
+    {"SystemRoot", "Logs"                },
+};
+
+fn
+collect_report_directories(const StringView            *fixed_directories,
+                           usize                        fixed_directory_count,
+                           const environment_directory *environment_directories,
+                           usize     environment_directory_count,
+                           Allocator allocator) throws
+    -> ArrayList<String>
+{
+  let directories = ArrayList<String>{allocator};
+
+  for (usize index = 0; index < fixed_directory_count; index++)
+    directories.push(String{allocator, fixed_directories[index]});
+
+  for (usize index = 0; index < environment_directory_count; index++) {
+    let const &entry = environment_directories[index];
+    let const  root  = os::get_environment_variable(entry.variable_name);
+
+    if (!root.has_value() || root->is_empty()) continue;
+
+    let directory = Path{root->view(), allocator};
+
+    directory.append(entry.relative_path);
+    directories.push(String{allocator, directory.view()});
+  }
+
+  return directories;
+}
+
 constexpr StringView KERNEL_SETTINGS[] = {
     "/proc/sys/kernel/core_pattern",
     "/proc/sys/kernel/core_uses_pid",
@@ -147,7 +194,9 @@ is_dump_entry(StringView      directory,
   if (!is_directory) return false;
 
   return directory.find_substring("WER/ReportArchive").has_value() ||
-         directory.find_substring("WER/ReportQueue").has_value();
+         directory.find_substring("WER/ReportQueue").has_value() ||
+         directory.find_substring("WER\\ReportArchive").has_value() ||
+         directory.find_substring("WER\\ReportQueue").has_value();
 }
 
 fn
@@ -312,19 +361,10 @@ append_core_dump_report(String   &output,
 {
   append_kernel_settings(output, allocator, should_color);
 
-  let directories = ArrayList<String>{allocator};
-
-  for (let const candidate : CORE_DUMP_DIRECTORIES)
-    directories.push(String{allocator, candidate});
-
-  let const home = os::get_environment_variable("HOME");
-
-  if (home.has_value()) {
-    let directory = Path{home->view(), allocator};
-
-    directory.append("Library/Logs/DiagnosticReports");
-    directories.push(String{allocator, directory.view()});
-  }
+  let const directories = collect_report_directories(
+      CORE_DUMP_DIRECTORIES, countof(CORE_DUMP_DIRECTORIES),
+      ENVIRONMENT_DUMP_DIRECTORIES, countof(ENVIRONMENT_DUMP_DIRECTORIES),
+      allocator);
 
   usize total_dump_count = 0;
 
@@ -409,6 +449,13 @@ label_of_magic(const char *bytes, usize byte_count) wontthrow -> StringView
   if (byte_count == 0) return "empty";
 
   switch (static_cast<unsigned char>(bytes[0])) {
+  case 'E':
+    if (byte_count >= 8 && std::memcmp(bytes, "ElfFile\0", 8) == 0) {
+      return "evtx";
+    }
+
+    break;
+
   case 'L':
     if (byte_count >= 8 && std::memcmp(bytes, "LPKSHHRH", 8) == 0) {
       return "journal";
@@ -580,9 +627,14 @@ append_log_report(String   &output,
                   Allocator allocator,
                   bool      should_color) throws -> void
 {
-  usize directory_count = 0;
+  usize     directory_count = 0;
+  let const directories     = collect_report_directories(
+      LOG_DIRECTORIES, countof(LOG_DIRECTORIES), ENVIRONMENT_LOG_DIRECTORIES,
+      countof(ENVIRONMENT_LOG_DIRECTORIES), allocator);
 
-  for (let const directory : LOG_DIRECTORIES) {
+  for (let const &owned_directory : directories) {
+    let const directory = owned_directory.view();
+
     if (!os::path_is_directory(directory)) continue;
 
     let const entries = collect_log_entries(directory, allocator);
@@ -649,8 +701,8 @@ EvilLogs::execute(const ExecContext               &ec,
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (!operands.is_empty()) {
-    KOSHKIT_REPORT_ERROR_AT(operand_locations[0], "unexpected operand",
-                            "this utility takes no operand");
+    KOSHKIT_REPORT_ERROR_AT(operand_locations[0], "Unexpected operand",
+                            "This utility takes no operand");
 
     return 1;
   }

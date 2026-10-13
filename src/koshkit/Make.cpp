@@ -320,13 +320,20 @@ struct make_rule
 {
   explicit make_rule(Allocator allocator)
       : target(allocator), prerequisites(allocator), recipe_lines(allocator),
-        variable_assignments(allocator)
+        variable_assignments(allocator), prerequisite_line_locations(allocator)
   {}
 
-  String            target;
-  ArrayList<String> prerequisites;
-  ArrayList<String> recipe_lines;
-  ArrayList<String> variable_assignments;
+  String                    target;
+  ArrayList<String>         prerequisites;
+  ArrayList<String>         recipe_lines;
+  ArrayList<String>         variable_assignments;
+  ArrayList<SourceLocation> prerequisite_line_locations;
+};
+
+struct make_dependent
+{
+  StringView   goal;
+  Maybe<usize> rule_index;
 };
 
 struct make_pattern_rule
@@ -1331,15 +1338,51 @@ restore_make_variable(makefile                     &mk,
   variable.flavor = snapshot.flavor;
 }
 
+static pure fn
+has_make_glob_character(StringView word) wontthrow -> bool
+{
+  return word.find_character('*').has_value() ||
+         word.find_character('?').has_value() ||
+         word.find_character('[').has_value();
+}
+
+static fn
+expand_make_glob(EvalContext &cxt, StringView pattern) throws
+    -> ArrayList<String>
+{
+  let matches = ArrayList<String>{cxt.scratch_allocator()};
+
+  if (!has_make_glob_character(pattern)) {
+    if (Path{pattern, cxt.scratch_allocator()}.exists() ||
+        os::path_is_symbolic_link(pattern))
+    {
+      matches.push(String{cxt.scratch_allocator(), pattern});
+    }
+
+    return matches;
+  }
+
+  let const runtime_scope = RuntimeStateScope{cxt};
+
+  for (let const option_name : {"dotglob", "globstar", "nocaseglob", "extglob"})
+    cxt.set_shopt_option(StringView{option_name}, false);
+
+  for (let const &match : cxt.expand_glob_lenient(pattern))
+    matches.push(match.clone());
+
+  LOG(Debug, "the make glob '%.*s' matched %zu paths",
+      static_cast<int>(pattern.length), pattern.data, matches.count());
+
+  return matches;
+}
+
 static fn
 make_wildcard(EvalContext &cxt, StringView patterns) throws -> String
 {
   let result = String{cxt.scratch_allocator()};
 
   for (let const &pattern : split_words(patterns, cxt.scratch_allocator())) {
-    for (let const &match :
-         os::glob_matches(pattern.view(), cxt.scratch_allocator()))
-    {
+    for (let const &match : expand_make_glob(cxt, pattern.view())) {
       if (!result.is_empty()) result += ' ';
       result += match.view();
     }
@@ -2932,11 +2975,14 @@ parse_makefile_into(EvalContext                     &cxt,
                 existing != nullptr)
             {
               if (is_inference_rule) {
-                existing->prerequisites = steal(new_prerequisites);
+                existing->prerequisites.clear();
+                existing->prerequisite_line_locations.clear();
                 existing->recipe_lines.clear();
-              } else {
-                for (String &prerequisite : new_prerequisites)
-                  existing->prerequisites.push(steal(prerequisite));
+              }
+
+              for (String &prerequisite : new_prerequisites) {
+                existing->prerequisites.push(steal(prerequisite));
+                existing->prerequisite_line_locations.push(active_source_span);
               }
 
               current_rule_indices.push(
@@ -2955,8 +3001,13 @@ parse_makefile_into(EvalContext                     &cxt,
           } else {
             make_rule rule{cxt.scratch_allocator()};
 
-            rule.target        = steal(normalized_target);
-            rule.prerequisites = steal(new_prerequisites);
+            rule.target = steal(normalized_target);
+
+            for (String &prerequisite : new_prerequisites) {
+              rule.prerequisites.push(steal(prerequisite));
+              rule.prerequisite_line_locations.push(active_source_span);
+            }
+
             current_rule_indices.push(mk.add_rule(steal(rule)));
           }
         }
@@ -3215,10 +3266,55 @@ is_make_target_supplyable(EvalContext     &cxt,
 }
 
 static fn
+find_prerequisite_line_location(const makefile       &mk,
+                                const make_dependent &dependent,
+                                StringView            goal) wontthrow -> SourceLocation
+{
+  if (!dependent.rule_index.has_value()) return SourceLocation{};
+
+  let const &rule = mk.rules[*dependent.rule_index];
+  let const  location_count =
+      rule.prerequisite_line_locations.count() < rule.prerequisites.count()
+           ? rule.prerequisite_line_locations.count()
+           : rule.prerequisites.count();
+  let fallback_location = SourceLocation{};
+
+  for (usize index = 0; index < location_count; index++) {
+    let const &location = rule.prerequisite_line_locations[index];
+
+    if (fallback_location.length == 0) fallback_location = location;
+    if (rule.prerequisites[index].view() == goal) return location;
+  }
+
+  return fallback_location;
+}
+
+static fn
+show_located_make_error(EvalContext             &cxt,
+                        const makefile          &mk,
+                        const ErrorWithLocation &error) throws -> bool
+{
+  if (mk.source_documents == nullptr) return false;
+
+  for (let const &document : *mk.source_documents) {
+    if (document.source_name_index != error.location().source_name_index) {
+      continue;
+    }
+
+    show_message(error.to_string(document.source.view(), &cxt));
+
+    return true;
+  }
+
+  return false;
+}
+
+static fn
 build_target(const ExecContext        &ec,
              EvalContext              &cxt,
              makefile                 &mk,
              StringView                goal,
+             const make_dependent     &dependent,
              StringMap<bool>          &active_targets,
              StringMap<bool>          &completed_target_results,
              const make_build_options &options) throws -> bool
@@ -3256,7 +3352,11 @@ build_target(const ExecContext        &ec,
                goal.substring_of_length(*open + 1, goal.length - *open - 2)};
   }
 
+  let explicit_rule_index = Maybe<usize>{};
+
   if (explicit_rule != nullptr) {
+    explicit_rule_index = static_cast<usize>(explicit_rule - mk.rules.begin());
+
     for (let const &prerequisite : explicit_rule->prerequisites)
       explicit_prerequisites.push(prerequisite.clone());
 
@@ -3273,7 +3373,22 @@ build_target(const ExecContext        &ec,
 
       for (let const &word :
            split_words(expanded.view(), cxt.scratch_allocator()))
-        prerequisites.push(word.clone());
+      {
+        if (!has_make_glob_character(word.view())) {
+          prerequisites.push(word.clone());
+          continue;
+        }
+
+        let const matches = expand_make_glob(cxt, word.view());
+
+        if (matches.is_empty()) {
+          prerequisites.push(word.clone());
+          continue;
+        }
+
+        for (let const &match : matches)
+          prerequisites.push(match.clone());
+      }
     }
   }
 
@@ -3449,11 +3564,31 @@ build_target(const ExecContext        &ec,
           return false;
         }
 
-        throw Error{
-            "There is no rule to make the target '" +
-            String{cxt.scratch_allocator(), goal}
-            + "'"
-        };
+        let message = String{cxt.scratch_allocator(),
+                             "There is no rule to make the target '"};
+
+        message += goal;
+        message += '\'';
+
+        if (dependent.goal.is_empty()) throw Error{message};
+
+        message += ", which '";
+        message += dependent.goal;
+        message += "' needs";
+        LOG(Info, "the target '%.*s' needs the missing target '%.*s'",
+            static_cast<int>(dependent.goal.length), dependent.goal.data,
+            static_cast<int>(goal.length), goal.data);
+
+        let const dependent_location =
+            find_prerequisite_line_location(mk, dependent, goal);
+
+        if (dependent_location.length == 0) throw Error{message};
+
+        let located = ErrorWithLocation{dependent_location, message.view()};
+
+        located.set_command_status(2);
+
+        throw located;
       }
     }
   }
@@ -3520,28 +3655,35 @@ build_target(const ExecContext        &ec,
   let has_outdated_prerequisite = false;
   let did_prerequisite_fail     = false;
 
-  for (let const &prerequisite : normal_prerequisites) {
-    try {
-      has_outdated_prerequisite |=
-          build_target(ec, cxt, mk, prerequisite.view(), active_targets,
-                       completed_target_results, options);
-    } catch (Error &error) {
-      if (!options.should_keep_going) throw;
-      did_prerequisite_fail = true;
-      report_soft_koshkit_error(ec, cxt, error.message().view());
-    }
-  }
+  let const prerequisite_dependent = make_dependent{goal, explicit_rule_index};
 
-  for (let const &prerequisite : order_only_prerequisites) {
+  let const do_build_prerequisite =
+      [&](StringView prerequisite) throws -> bool {
     try {
-      build_target(ec, cxt, mk, prerequisite.view(), active_targets,
-                   completed_target_results, options);
+      return build_target(ec, cxt, mk, prerequisite, prerequisite_dependent,
+                          active_targets, completed_target_results, options);
+    } catch (const InterruptErrorWithLocation &) {
+      throw;
+    } catch (const ErrorWithLocation &error) {
+      if (!options.should_keep_going) throw;
+      did_prerequisite_fail = true;
+      if (!show_located_make_error(cxt, mk, error)) {
+        report_soft_koshkit_error(ec, cxt, error.message().view());
+      }
     } catch (Error &error) {
       if (!options.should_keep_going) throw;
       did_prerequisite_fail = true;
       report_soft_koshkit_error(ec, cxt, error.message().view());
     }
-  }
+
+    return false;
+  };
+
+  for (let const &prerequisite : normal_prerequisites)
+    has_outdated_prerequisite |= do_build_prerequisite(prerequisite.view());
+
+  for (let const &prerequisite : order_only_prerequisites)
+    unused(do_build_prerequisite(prerequisite.view()));
 
   if (did_prerequisite_fail)
     throw Error{
@@ -4547,10 +4689,15 @@ Make::execute(const ExecContext               &ec,
 
       try {
         has_outdated_goal |=
-            build_target(ec, cxt, mk, goal.view(), active_targets,
-                         completed_target_results, options);
-      } catch (const ErrorWithLocation &) {
+            build_target(ec, cxt, mk, goal.view(), make_dependent{},
+                         active_targets, completed_target_results, options);
+      } catch (const InterruptErrorWithLocation &) {
         throw;
+      } catch (const ErrorWithLocation &error) {
+        if (!show_located_make_error(cxt, mk, error)) throw;
+
+        did_fail = true;
+        if (!runtime_flags.should_keep_going) return 2;
       } catch (Error &error) {
         did_fail = true;
         report_soft_koshkit_util_error(ec, cxt, goal_locations[goal_position],

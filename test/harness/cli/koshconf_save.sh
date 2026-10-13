@@ -54,11 +54,10 @@ KOSHCONF=$blob "$BIN" -c 'koshconf get mood'
 echo "== save refuses an operand:"
 "$BIN" -c 'koshconf save now' 2>&1 | grep error
 
-echo "== save --persist writes the current settings:"
+echo "== save --persist writes only the settings that differ from the defaults:"
 "$BIN" --mood bash -c 'koshconf set editor.auto_close_brackets_and_quotes on; koshconf save --persist'
 echo "rc=$?"
-grep -c . "$conf" | sed 's/^[0-9][0-9]*$/COUNT/'
-grep -E '^kosh\.(mood|editor\.auto_close_brackets_and_quotes|editor\.history\.file_path)=' "$conf"
+grep -v '^#' "$conf" | grep .
 head -1 "$conf"
 echo "== the saved file loads back:"
 "$BIN" -c 'koshconf get mood; koshconf get editor.auto_close_brackets_and_quotes'

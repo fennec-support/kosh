@@ -86,7 +86,9 @@ shift
 command=$1
 case $command in
     "set -- "*"expected_system="*)
-        PATH=$ASSIMILATE_TRANSPORT /bin/sh -c "$command"
+        HOME=$ASSIMILATE_REMOTE_HOME \
+            PATH="$ASSIMILATE_REMOTE_PATH:$ASSIMILATE_TRANSPORT" \
+            /bin/sh -c "$command"
         exit
         ;;
     *'/bin/'*) exit 43 ;;
@@ -117,7 +119,7 @@ file_mode()
 run_assimilate()
 {
     PATH="$transport${TEST_PATH_SEPARATOR}$TEST_SYSTEM_PATH" \
-        "$BIN" -c 'assimilate "$@"' kosh \
+        "$BIN" -c 'assimilate --yes "$@"' kosh \
         "$@" 'user@[2001:db8::1]' \
         >/dev/null 2>&1
 }
@@ -146,7 +148,7 @@ export ASSIMILATE_REMOTE_SYSTEM="MismatchOS;:>$ASSIMILATE_REMOTE/injected"
 export ASSIMILATE_REMOTE_MACHINE=mismatch-arch
 architecture_output=$root/architecture.out
 PATH="$transport${TEST_PATH_SEPARATOR}$TEST_SYSTEM_PATH" \
-    "$BIN" -c 'assimilate --trace "$@"' kosh \
+    "$BIN" -c 'assimilate --yes --trace "$@"' kosh \
     'user@[2001:db8::1]' >"$architecture_output" 2>&1
 architecture_status=$?
 if [ "$architecture_status" -ne 0 ] &&
@@ -210,7 +212,7 @@ export ASSIMILATE_REMOTE_PATH="$remote/sbin:$install:$ASSIMILATE_REMOTE_HOME/.lo
 trace_output=$root/trace.out
 PATH="$transport${TEST_PATH_SEPARATOR}$TEST_SYSTEM_PATH" \
     "$BIN" -c 'assimilate "$@"' kosh \
-    -x --ssh-command 'ssh ssh-prefix' --scp-command 'scp scp-prefix' \
+    -y -x --ssh-command 'ssh ssh-prefix' --scp-command 'scp scp-prefix' \
     --link-mood bash,dash --link-mood sh 'user@[2001:db8::1]' \
     >"$trace_output" 2>&1
 option_status=$?
@@ -248,3 +250,33 @@ fi
 printf 'options=%s links=%s commands=%s trace=%s sbin=%s collision=%s leftovers=%s\n' \
     "$option_status" "$link_status" "$command_status" "$trace_status" \
     "$sbin_status" "$collision_status" "$(leftovers)"
+
+printf 'declined-old\n' > "$install/kosh"
+: > "$ASSIMILATE_TRANSPORT_LOG"
+decline_output=$root/decline.out
+printf 'n\n' | PATH="$transport${TEST_PATH_SEPARATOR}$TEST_SYSTEM_PATH" \
+    "$BIN" -c 'assimilate "$@"' kosh 'user@[2001:db8::1]' \
+    >"$decline_output" 2>&1
+decline_status=$?
+if grep -q '^Install kosh to user@\[2001:db8::1\]:/.*/kosh? \[y/N\] ' \
+        "$decline_output" &&
+    ! grep -q '^scp-run$' "$ASSIMILATE_TRANSPORT_LOG" &&
+    [ "$(cat "$install/kosh")" = declined-old ]; then
+    decline_result=0
+else
+    decline_result=1
+fi
+printf 'decline-status=%s result=%s leftovers=%s\n' "$decline_status" \
+    "$decline_result" "$(leftovers)"
+
+chosen=$remote/chosen
+/bin/mkdir -p "$chosen"
+run_assimilate --install-directory "$chosen"
+chosen_status=$?
+if cmp "$BIN" "$chosen/kosh" >/dev/null && [ -x "$chosen/kosh" ]; then
+    chosen_result=0
+else
+    chosen_result=1
+fi
+printf 'install-directory-status=%s result=%s leftovers=%s\n' "$chosen_status" \
+    "$chosen_result" "$(leftovers)"

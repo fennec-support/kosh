@@ -8,7 +8,7 @@ mkdir "$work/empty" "$work/run"
 cd "$work/run" || exit 1
 
 do_restricted() {
-  env -i PATH="$work/empty" HOME="$work" XDG_CONFIG_HOME="$work/config" \
+  env -i ASAN_OPTIONS="${ASAN_OPTIONS-}" PATH="$work/empty" HOME="$work" XDG_CONFIG_HOME="$work/config" \
     "$BIN" -r "$@" 2>&1 | grep -v '^ '
 }
 
@@ -27,7 +27,7 @@ do_restricted --mood bash -c 'env sh -c "echo x > escaped.txt"; echo "env status
 koshkit tee tee.txt </dev/null; echo "koshkit status=$?"'
 
 echo "== set -r refuses a utility resolved before it:"
-env -i PATH="$work/empty" HOME="$work" XDG_CONFIG_HOME="$work/config" \
+env -i ASAN_OPTIONS="${ASAN_OPTIONS-}" PATH="$work/empty" HOME="$work" XDG_CONFIG_HOME="$work/config" \
   "$BIN" -c 'do_run() { basename a/before; }; do_run; set -r; do_run
 echo "status=$?"' 2>&1 | grep -v '^ '
 
@@ -37,7 +37,7 @@ command -v env; echo "command status=$?"
 hash env; echo "hash status=$?"'
 
 echo "== an unrestricted shell still runs them:"
-env -i PATH="$work/empty" HOME="$work" XDG_CONFIG_HOME="$work/config" \
+env -i ASAN_OPTIONS="${ASAN_OPTIONS-}" PATH="$work/empty" HOME="$work" XDG_CONFIG_HOME="$work/config" \
   "$BIN" -c 'command -v env; koshkit basename a/b; echo "status=$?"'
 
 echo "== nothing was written:"

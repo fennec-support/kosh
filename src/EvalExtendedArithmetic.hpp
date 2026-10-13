@@ -281,4 +281,7 @@ consume(StringView source, usize &position, StringView operation) wontthrow
   return true;
 }
 
+fn
+throw_if_arithmetic_interrupted() throws -> void;
+
 } /* namespace koshka::arithmetic_internal */

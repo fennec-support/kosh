@@ -1039,6 +1039,46 @@ format_koshconf_line(const option_descriptor &option,
   return line;
 }
 
+static pure fn
+get_preset_default_number(const option_descriptor &option,
+                          mimic_mood               preset) wontthrow -> u32
+{
+  if (option.storage == option_storage::Mood) return static_cast<u32>(preset);
+  if (preset == mimic_mood::Posix) return option.posix_default_value;
+  if (preset != mimic_mood::Default) return option.bash_default_value;
+  if (option.is_fixed_in_kosh_mood) return option.strict_value;
+
+  return option.default_value;
+}
+
+static fn
+has_default_koshconf_value(const EvalContext       &cxt,
+                           const option_descriptor &option) throws
+    -> bool
+{
+  let const current_value = read_option_text(cxt, option);
+
+  if (option.type == option_type::String) {
+    return current_value.view() == StringView{option.default_text};
+  }
+
+  let const mood = cxt.runtime_state().get_mood();
+  let const baseline_mood =
+      option.storage == option_storage::Mood ? mimic_mood::Default : mood;
+
+  let const is_session_dependent = baseline_mood != mimic_mood::Default &&
+                                   baseline_mood != mimic_mood::Posix &&
+                                   option.is_bash_default_session_dependent;
+  let const session_default_number =
+      cxt.execution_store().shell_is_interactive() ? u32{1} : u32{0};
+  let const baseline_number =
+      is_session_dependent ? session_default_number
+                           : get_preset_default_number(option, baseline_mood);
+  let const baseline_text = format_option_number(option, baseline_number);
+
+  return current_value.view() == baseline_text.view();
+}
+
 fn
 compose_koshconf_text(StringView         description,
                       mimic_mood         preset,
@@ -1051,10 +1091,27 @@ compose_koshconf_text(StringView         description,
               "# Every shell loads this file, including the ones that run "
               "scripts.\n";
 
+  if (current != nullptr) {
+    contents += "# Settings that match the defaults of the saved mood are "
+                "left out.\n";
+  }
+
   let ordered = ArrayList<const option_descriptor *>{heap_allocator()};
 
   for (let const &option : get_option_registry()) {
     if (!option.is_configurable()) continue;
+    if (current != nullptr &&
+        (option.is_kept_out_of_koshconf ||
+         has_default_koshconf_value(*current, option) ||
+         find_koshconf_value_problem(option,
+                                     read_option_text(*current, option).view())
+             .has_value()))
+    {
+      LOG(Debug, "koshconf save leaves out '%.*s' at its default",
+          static_cast<int>(option.koshconf_name.length),
+          option.koshconf_name.data);
+      continue;
+    }
 
     ordered.push(&option);
   }
@@ -1145,13 +1202,6 @@ compose_koshconf_text(StringView         description,
     if (current != nullptr) {
       let const current_value = read_option_text(*current, *option);
 
-      if (current_value.is_empty()) {
-        contents += "# ";
-        contents += option->koshconf_name;
-        contents += "=\n";
-        continue;
-      }
-
       contents += format_koshconf_line(*option, current_value.view());
       contents += '\n';
       continue;
@@ -1178,12 +1228,7 @@ compose_koshconf_text(StringView         description,
       continue;
     }
 
-    let const value =
-        option->storage == option_storage::Mood ? static_cast<u32>(preset)
-        : preset == mimic_mood::Posix           ? option->posix_default_value
-        : preset != mimic_mood::Default         ? option->bash_default_value
-        : option->is_fixed_in_kosh_mood         ? option->strict_value
-                                                : option->default_value;
+    let const value = get_preset_default_number(*option, preset);
 
     contents += format_koshconf_line(
         *option, format_option_number(*option, value).view());
