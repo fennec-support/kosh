@@ -301,6 +301,9 @@ public:
   hot fn
   push(T value) throws -> void
   {
+    if constexpr (requires { value.move_to_allocator(m_allocator); })
+      value.move_to_allocator(m_allocator);
+
     if (m_length == m_capacity) rarely
       reserve(m_length + 1);
     new (&m_data[m_length]) T(steal(value));
@@ -1047,6 +1050,9 @@ public:
   hot fn
   push(T value) throws -> void
   {
+    if constexpr (requires { value.move_to_allocator(Base::allocator()); })
+      value.move_to_allocator(Base::allocator());
+
     Base::insert_at(lower_bound(value), steal(value));
   }
 
