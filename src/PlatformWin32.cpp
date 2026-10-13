@@ -412,25 +412,29 @@ append_event_text(String        &message,
                   const wchar_t *text,
                   usize          length) throws -> void
 {
-  let const utf8 = wide_to_utf8(text, length, heap_allocator());
+  let printable = ArrayList<wchar_t>{heap_allocator()};
 
-  if (!utf8.has_value()) return;
+  printable.reserve(length);
 
-  let const view = utf8->view();
+  for (usize position = 0; position < length; position++) {
+    let const unit          = text[position];
+    let const is_control    = unit < 0x20 || (unit >= 0x7f && unit <= 0x9f);
+    let const was_space     = !printable.is_empty() && printable.back() == L' ';
+    let const is_text_start = printable.is_empty() && message.is_empty();
 
-  for (usize position = 0; position < view.length; position++) {
-    let const byte = view[position];
-
-    if (byte == '\r' || byte == '\n' || byte == '\t') {
-      if (!message.is_empty() && message.view()[message.count() - 1] != ' ') {
-        message.push(' ');
-      }
+    if (is_control) {
+      if (!was_space && !is_text_start) printable.push(L' ');
 
       continue;
     }
 
-    message.push(byte);
+    printable.push(unit);
   }
+
+  let const utf8 =
+      wide_to_utf8(printable.begin(), printable.count(), heap_allocator());
+
+  if (utf8.has_value()) message += utf8->view();
 }
 
 fn
