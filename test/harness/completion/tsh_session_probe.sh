@@ -3,6 +3,11 @@ trap 'rm -rf "$home"' EXIT
 mkdir -p "$home/bin"
 cat > "$home/bin/tsh" <<'EOF'
 #!/bin/sh
+if [ "$1" != --browser-login=none ]; then
+  echo "ERROR: this probe could open a login browser." >&2
+  exit 1
+fi
+shift
 case $1 in
 status)
   [ -n "$FAKE_TSH_LOGGED_IN" ] && exit 0

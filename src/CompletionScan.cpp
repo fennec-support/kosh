@@ -791,14 +791,16 @@ internal::complete_from_tools_with_targets(StringView      line,
 
     let status_probe = ArrayList<String>{heap_allocator()};
 
-    status_probe.push(String{"tsh"});
-    status_probe.push(String{"status"});
+    status_probe.push_managed("tsh");
+    status_probe.push_managed("--browser-login=none");
+    status_probe.push_managed("status");
     if (!do_probe_succeeds(status_probe)) return None;
 
     let probe = ArrayList<String>{heap_allocator()};
 
-    probe.push(String{"tsh"});
-    probe.push(String{"ls"});
+    probe.push_managed("tsh");
+    probe.push_managed("--browser-login=none");
+    probe.push_managed("ls");
     owned_targets = parse_tsh_node_names(do_capture(probe).view());
     break;
   }
