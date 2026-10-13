@@ -2494,6 +2494,20 @@ struct system_log_options
 fn
 write_system_log(const system_log_options &options) wontthrow -> bool;
 
+struct system_log_record
+{
+  i64        generated_time{0};
+  StringView level;
+  String     source{heap_allocator()};
+  String     message{heap_allocator()};
+};
+
+fn
+read_recent_system_log_records(StringView log_name,
+                               usize      max_record_count,
+                               Allocator  allocator) throws
+    -> Maybe<ArrayList<system_log_record>>;
+
 struct program_execution_options
 {
   StringView             source{};

@@ -723,6 +723,20 @@ write_system_log(const system_log_options &options) wontthrow -> bool
   return true;
 }
 
+fn
+read_recent_system_log_records(StringView log_name,
+                               usize      max_record_count,
+                               Allocator  allocator) throws
+    -> Maybe<ArrayList<system_log_record>>
+{
+  unused(log_name);
+  unused(max_record_count);
+  unused(allocator);
+  LOG(Debug, "the POSIX build has no event log reader");
+
+  return None;
+}
+
 volatile sig_atomic_t INTERRUPT_REQUESTED = 0;
 volatile sig_atomic_t CHILD_STATE_CHANGED = 0;
 volatile sig_atomic_t SIGNAL_PENDING      = 0;

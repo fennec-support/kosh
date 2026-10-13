@@ -622,6 +622,59 @@ collect_log_entries(StringView directory, Allocator allocator) throws
   return steal(entries).make_sorted(newest_named_entry_comparator{});
 }
 
+constexpr StringView EVENT_LOG_NAMES[]            = {"System", "Application"};
+constexpr usize      EVENT_MESSAGE_MAX_BYTE_COUNT = 96;
+
+fn
+append_event_log_report(String   &output,
+                        Allocator allocator,
+                        bool      should_color) throws -> void
+{
+  for (let const log_name : EVENT_LOG_NAMES) {
+    let const records = os::read_recent_system_log_records(
+        log_name, static_cast<usize>(DEFAULT_LOG_ENTRY_COUNT), allocator);
+
+    if (!records.has_value() || records->is_empty()) continue;
+
+    let title = String{allocator, "Event log "};
+
+    title += log_name;
+    title += ": newest ";
+    title += String::from(records->count(), allocator).view();
+    title += " records";
+
+    let table = ReportTable{allocator};
+
+    table.add_heading("TIME");
+    table.add_heading("LEVEL");
+    table.add_heading("SOURCE");
+    table.add_heading("MESSAGE");
+
+    for (let const &record : *records) {
+      let const generated =
+          os::format_local_time("%Y-%m-%d %H:%M", record.generated_time);
+      let const is_message_long =
+          record.message.count() > EVENT_MESSAGE_MAX_BYTE_COUNT;
+      let message = String{allocator};
+
+      message += is_message_long ? record.message.view().substring_of_length(
+                                       0, EVENT_MESSAGE_MAX_BYTE_COUNT)
+                                 : record.message.view();
+      if (is_message_long) message += "...";
+
+      let cells = ArrayList<report_table_cell_view>{allocator};
+
+      cells.push({generated.view(), colors::ansi::DIM});
+      cells.push({record.level, colors::ansi::BOLD_MAGENTA});
+      cells.push({record.source.view(), colors::ansi::GREEN});
+      cells.push({message.view(), {}});
+      table.add_row(cells);
+    }
+
+    append_titled_report_table(output, title.view(), table, should_color);
+  }
+}
+
 fn
 append_log_report(String   &output,
                   Allocator allocator,
@@ -719,6 +772,7 @@ EvilLogs::execute(const ExecContext               &ec,
 
   if (!has_filter || FLAG_EVILLOGS_LOGS.is_enabled()) {
     append_log_report(output, allocator, should_color);
+    append_event_log_report(output, allocator, should_color);
   }
 
   ec.print_to_stdout(output);

@@ -394,6 +394,135 @@ write_system_log(const system_log_options &options) wontthrow -> bool
   return was_reported;
 }
 
+static pure fn
+event_type_level(WORD event_type) wontthrow -> StringView
+{
+  switch (event_type) {
+  case EVENTLOG_ERROR_TYPE:       return "error";
+  case EVENTLOG_WARNING_TYPE:     return "warning";
+  case EVENTLOG_AUDIT_SUCCESS:    return "audit";
+  case EVENTLOG_AUDIT_FAILURE:    return "audit failure";
+  case EVENTLOG_INFORMATION_TYPE:
+  default:                        return "info";
+  }
+}
+
+static fn
+append_event_text(String        &message,
+                  const wchar_t *text,
+                  usize          length) throws -> void
+{
+  let const utf8 = wide_to_utf8(text, length, heap_allocator());
+
+  if (!utf8.has_value()) return;
+
+  let const view = utf8->view();
+
+  for (usize position = 0; position < view.length; position++) {
+    let const byte = view[position];
+
+    if (byte == '\r' || byte == '\n' || byte == '\t') {
+      if (!message.is_empty() && message.view()[message.count() - 1] != ' ') {
+        message.push(' ');
+      }
+
+      continue;
+    }
+
+    message.push(byte);
+  }
+}
+
+fn
+read_recent_system_log_records(StringView log_name,
+                               usize      max_record_count,
+                               Allocator  allocator) throws
+    -> Maybe<ArrayList<system_log_record>>
+{
+  let const wide_name = utf8_to_wide(log_name, heap_allocator());
+
+  if (!wide_name.has_value()) return None;
+
+  let const event_log = OpenEventLogW(nullptr, wide_name->begin());
+
+  if (event_log == nullptr) {
+    LOG(Info, "cannot open the event log '%.*s'",
+        static_cast<int>(log_name.length), log_name.data);
+
+    return None;
+  }
+
+  defer { CloseEventLog(event_log); };
+
+  constexpr DWORD EVENT_BUFFER_BYTE_COUNT = 64 * 1024;
+
+  let records = ArrayList<system_log_record>{allocator};
+  let buffer  = ArrayList<BYTE>{heap_allocator()};
+
+  buffer.reserve(EVENT_BUFFER_BYTE_COUNT);
+
+  while (records.count() < max_record_count) {
+    DWORD read_byte_count   = 0;
+    DWORD needed_byte_count = 0;
+
+    if (ReadEventLogW(event_log,
+                      EVENTLOG_BACKWARDS_READ | EVENTLOG_SEQUENTIAL_READ, 0,
+                      buffer.begin(), EVENT_BUFFER_BYTE_COUNT, &read_byte_count,
+                      &needed_byte_count) == FALSE)
+    {
+      LOG(Debug, "the event log read stopped with error %lu",
+          static_cast<unsigned long>(GetLastError()));
+      break;
+    }
+
+    DWORD offset = 0;
+
+    while (offset + sizeof(EVENTLOGRECORD) <= read_byte_count &&
+           records.count() < max_record_count)
+    {
+      let const *record =
+          reinterpret_cast<const EVENTLOGRECORD *>(buffer.begin() + offset);
+
+      if (record->Length == 0 || offset + record->Length > read_byte_count) {
+        break;
+      }
+
+      let const *record_bytes = buffer.begin() + offset;
+      let const *source_name  = reinterpret_cast<const wchar_t *>(
+          record_bytes + sizeof(EVENTLOGRECORD));
+      let log_record = system_log_record{};
+
+      log_record.generated_time = static_cast<i64>(record->TimeGenerated);
+      log_record.level          = event_type_level(record->EventType);
+      log_record.source         = String{allocator};
+      log_record.message        = String{allocator};
+      append_event_text(log_record.source, source_name,
+                        static_cast<usize>(lstrlenW(source_name)));
+
+      let const *inserted_text = reinterpret_cast<const wchar_t *>(
+          record_bytes + record->StringOffset);
+
+      for (WORD string_index = 0; string_index < record->NumStrings;
+           string_index++)
+      {
+        let const text_length = static_cast<usize>(lstrlenW(inserted_text));
+
+        if (!log_record.message.is_empty()) log_record.message += "; ";
+        append_event_text(log_record.message, inserted_text, text_length);
+        inserted_text += text_length + 1;
+      }
+
+      records.push(steal(log_record));
+      offset += record->Length;
+    }
+  }
+
+  LOG(Info, "read %zu records from the event log '%.*s'", records.count(),
+      static_cast<int>(log_name.length), log_name.data);
+
+  return records;
+}
+
 fn
 write_fd(os::descriptor fd, const opaque *buf, usize size) wontthrow
     -> Maybe<usize>

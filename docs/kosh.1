@@ -3559,7 +3559,11 @@ report. Live reports sort the values from the displayed window.
 Core dump settings, recognized dump reports, and known log directories are
 printed. Each core dump directory and each log directory is a titled table
 with its name, entry count, and total size in the title and its rows indented
-two spaces beneath it. The
+two spaces beneath it. On Windows, the dump directories also include
+%LOCALAPPDATA%\\CrashDumps, %SystemRoot%\\Minidump, and the WER report
+folders, and the log directories include %SystemRoot%\\System32\\winevt\\Logs
+and %SystemRoot%\\Logs. The newest records of the System and Application event
+logs follow, with their time, level, source, and inserted text. The
 .B \-\-cores
 and
 .B \-\-logs
