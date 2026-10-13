@@ -362,7 +362,7 @@ Xargs::execute(const ExecContext               &ec,
   let base_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};
 
   if (operands.is_empty()) {
-    base.push(String{heap_allocator(), "echo"});
+    base.push_managed("echo");
     base_locations.push(ec.source_location());
   } else {
     for (usize index = 0; index < operands.count(); index++) {

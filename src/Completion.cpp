@@ -326,7 +326,7 @@ public:
   {
     if (tier != match_tier::exact_prefix) return;
 
-    names.push(String{completion_allocator(), name});
+    names.push_managed(name);
   }
 
   pure fn

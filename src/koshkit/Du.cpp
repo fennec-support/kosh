@@ -791,7 +791,7 @@ render_tree(const ArrayList<du_tree_node> &nodes,
 
   for (let const &node : nodes) {
     if (!node.is_kept) {
-      rendered_sizes.push(String{allocator});
+      rendered_sizes.push_managed();
       continue;
     }
 

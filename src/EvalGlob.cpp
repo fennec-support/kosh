@@ -351,7 +351,7 @@ collect_globstar_paths(const Path        &dir,
       "collecting globstar paths under the relative path '%.*s', depth %zu",
       static_cast<int>(relative.length), relative.data, depth);
   if (should_match_directories_only && should_include_base) {
-    out.push(String{allocator, relative});
+    out.push_managed(relative);
   }
 
   if (depth >= GLOBSTAR_MAX_DEPTH) return;
@@ -497,7 +497,7 @@ collect_globstar_paths(const Path        &dir,
         !should_match_directories_only ||
         (is_directory[index] &&
          (should_list_symlinked_directories || !is_symbolic_link[index]));
-    if (is_listed) out.push(String{allocator, child_relative.view()});
+    if (is_listed) out.push_managed(child_relative.view());
     if (is_directory[index] && !is_symbolic_link[index]) {
       collect_globstar_paths(
           child_dir, child_relative.view(), should_match_directories_only,
@@ -1073,7 +1073,7 @@ EvalContext::expand_glob_lenient(StringView pattern) throws
   {
     LOG(Debug, "compgen -G probe of '%.*s' has no glob, checking existence",
         static_cast<int>(pattern.length), pattern.data);
-    if (Path{pattern, scratch}.exists()) values.push(String{scratch, pattern});
+    if (Path{pattern, scratch}.exists()) values.push_managed(pattern);
 
     return steal(values).make_sorted(sort_order::ascending);
   }

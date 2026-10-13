@@ -533,13 +533,12 @@ internal::split_completion_words(StringView line,
       is_found = true;
     }
 
-    words.push(String{completion_allocator(),
-                      line.substring_of_length(start, i - start)});
+    words.push_managed(line.substring_of_length(start, i - start));
   }
 
   if (!is_found) {
     cword = words.count();
-    words.push(String{completion_allocator()});
+    words.push_managed();
   }
 
   return words;

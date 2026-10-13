@@ -125,7 +125,7 @@ Export::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     if (is_declare_form) {
       cxt.variable_store().exported_names().for_each(
           [&](StringView name, const auto &) throws -> void {
-            if (do_is_array(name)) listed_names.push(String{heap_allocator(), name});
+            if (do_is_array(name)) listed_names.push_managed(name);
           });
     }
 

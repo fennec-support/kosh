@@ -100,9 +100,8 @@ EvalContext::run_completion_command(StringView command,
     }
 
     if (line_end > line_start) {
-      candidates.push(
-          String{heap_allocator(),
-                 text.substring_of_length(line_start, line_end - line_start)});
+      candidates.push_managed(
+          text.substring_of_length(line_start, line_end - line_start));
     }
 
     line_start = line_end + 1;
@@ -202,16 +201,18 @@ EvalContext::run_completion_function(
   let call_params = ArrayList<String>{heap_allocator()};
 
   call_params.reserve(3);
-  call_params.push(String{heap_allocator(), command_name});
-  call_params.push(cword < words.count()
-                       ? String{heap_allocator(), words[cword].view()}
-                       : String{heap_allocator()});
+  call_params.push_managed(command_name);
+  if (cword < words.count())
+    call_params.push_managed(words[cword].view());
+  else
+    call_params.push_managed();
 
   let const previous_index = cword > 0 ? cword - 1 : 0;
 
-  call_params.push(previous_index < words.count()
-                       ? String{heap_allocator(), words[previous_index].view()}
-                       : String{heap_allocator()});
+  if (previous_index < words.count())
+    call_params.push_managed(words[previous_index].view());
+  else
+    call_params.push_managed();
 
   let bash_argument_frame_context = BashArgumentFrameContext{};
 

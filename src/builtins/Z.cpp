@@ -206,7 +206,7 @@ z_completion_candidates(StringView query, Allocator allocator) throws
     let const directory = Path{entry.path.view()}.to_absolute().normalized();
 
     if (!directory.is_directory()) continue;
-    candidates.push(String{allocator, directory.c_str()});
+    candidates.push_managed(directory.c_str());
   }
 
   return candidates;

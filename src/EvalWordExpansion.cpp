@@ -886,7 +886,7 @@ EvalContext::expand_word(const Word &word) throws
           if (at_transform_op == 'a' && elements.is_empty() &&
               is_valueless_array(array_name))
           {
-            elements.push(String{heap_allocator()});
+            elements.push_managed();
           }
 
           if (at_transform_op == 'k') {
@@ -896,8 +896,8 @@ EvalContext::expand_word(const Word &word) throws
             pairs.reserve(keys.count() * 2);
 
             for (usize i = 0; i < keys.count() && i < elements.count(); i++) {
-              pairs.push(String{heap_allocator(), keys[i].view()});
-              pairs.push(String{heap_allocator(), elements[i].view()});
+              pairs.push_managed(keys[i].view());
+              pairs.push_managed(elements[i].view());
             }
 
             do_emit_elements(pairs, segment.is_in_double_quotes, is_star);

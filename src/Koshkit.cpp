@@ -345,7 +345,7 @@ dispatch(const ExecContext   &ec,
   shifted_locations.reserve(ec.args().count() - name_index);
 
   for (usize i = name_index; i < ec.args().count(); i++) {
-    shifted.push(String{cxt.scratch_allocator(), ec.args()[i].view()});
+    shifted.push_managed(ec.args()[i].view());
     shifted_locations.push(ec.arg_location_at(i));
   }
 

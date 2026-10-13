@@ -2380,8 +2380,7 @@ environment_names() -> ArrayList<String>
   ArrayList<String> names{heap_allocator()};
 
   for_each_environment_name(&names, [](opaque *context, StringView name) {
-    static_cast<ArrayList<String> *>(context)->push(
-        String{heap_allocator(), name});
+    static_cast<ArrayList<String> *>(context)->push_managed(name);
   });
 
   return names;

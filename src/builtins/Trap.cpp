@@ -320,7 +320,7 @@ Trap::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         if (!name.has_value()) continue;
         if (cxt.trap_store().find(name->view()).has_value()) continue;
 
-        ignored_names.push(String{cxt.scratch_allocator(), name->view()});
+        ignored_names.push_managed(name->view());
         collected.push(listed_trap{static_cast<i64>(number),
                                    ignored_names.back().view(), ""});
       }

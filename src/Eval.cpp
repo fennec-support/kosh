@@ -2315,7 +2315,7 @@ ExecContext::make_from(const SourceLocation       &location,
 
     if (should_rewrite_to_cd) {
       args[0] = String{args[0].allocator(), "cd"};
-      args.push(String{heap_allocator(), "--"});
+      args.push_managed("--");
       args.push(steal(directory_operand));
       arg_locations.push(resolution_location);
       arg_locations.push(resolution_location);
@@ -2392,7 +2392,7 @@ ExecContext::make_from_unresolved(const SourceLocation &location,
 {
   let args = ArrayList<String>{heap_allocator()};
 
-  args.push(String{heap_allocator()});
+  args.push_managed();
 
   let arg_locations = ArrayList<SourceLocation>{heap_allocator()};
 

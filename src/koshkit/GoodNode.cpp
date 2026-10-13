@@ -258,7 +258,7 @@ GoodNode::execute(const ExecContext               &ec,
   let       paths     = ArrayList<String>{allocator};
 
   for (let const &operand : operands)
-    paths.push(String{allocator, operand.view()});
+    paths.push_managed(operand.view());
 
   if (FLAG_GOODNODE_ROOT.is_set() && !FLAG_GOODNODE_INODE.is_set()) {
     KOSHKIT_REPORT_ERROR_AT(FLAG_GOODNODE_ROOT.value_location(),

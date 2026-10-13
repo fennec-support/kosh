@@ -66,7 +66,7 @@ collect_report_directories(const StringView            *fixed_directories,
   let directories = ArrayList<String>{allocator};
 
   for (usize index = 0; index < fixed_directory_count; index++)
-    directories.push(String{allocator, fixed_directories[index]});
+    directories.push_managed(fixed_directories[index]);
 
   for (usize index = 0; index < environment_directory_count; index++) {
     let const &entry = environment_directories[index];
@@ -77,7 +77,7 @@ collect_report_directories(const StringView            *fixed_directories,
     let directory = Path{root->view(), allocator};
 
     directory.append(entry.relative_path);
-    directories.push(String{allocator, directory.view()});
+    directories.push_managed(directory.view());
   }
 
   return directories;

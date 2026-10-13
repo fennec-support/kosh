@@ -678,10 +678,9 @@ EvalContext::ModifierWordExpander::emit_field_slice(
     for (i64 index = bounds.start; index < bounds.end; index++) {
       let const position = static_cast<usize>(index);
 
-      slice.push(String{m_context.scratch_allocator(),
-                        position < leading_count
-                            ? *leading
-                            : values[position - leading_count].view()});
+      slice.push_managed(position < leading_count
+                             ? *leading
+                             : values[position - leading_count].view());
     }
 
     emit_unquoted_list(slice, is_star, false, true);
@@ -966,8 +965,8 @@ EvalContext::ModifierWordExpander::emit_modified_elements(
     let const keys = m_context.collect_array_subscripts(name);
 
     for (usize i = 0; i < keys.count() && i < values.count(); i++) {
-      modified.push(String{m_context.scratch_allocator(), keys[i].view()});
-      modified.push(String{m_context.scratch_allocator(), values[i].view()});
+      modified.push_managed(keys[i].view());
+      modified.push_managed(values[i].view());
     }
   } else if (modifier == "@a" && values.is_empty() && !name.is_empty() &&
              m_context.is_valueless_array(name))
@@ -2670,8 +2669,8 @@ EvalContext::ParameterExpander::expand_list_transform(
     transformed.reserve(pair_count * 2);
 
     for (usize i = 0; i < pair_count; i++) {
-      transformed.push(String{heap_allocator(), keys[i].view()});
-      transformed.push(String{heap_allocator(), values[i].view()});
+      transformed.push_managed(keys[i].view());
+      transformed.push_managed(values[i].view());
     }
   } else {
     transformed.reserve(values.count());
@@ -3861,8 +3860,8 @@ EvalContext::get_declaration_fields(StringView name) throws
   if (name == "@") {
     if (variable_store().positional_params().is_empty()) return fields;
 
-    fields.push(String{heap_allocator(), "set"});
-    fields.push(String{heap_allocator(), "--"});
+    fields.push_managed("set");
+    fields.push_managed("--");
 
     for (let const &value : variable_store().positional_params()) {
       let quoted = String{heap_allocator()};
@@ -3880,8 +3879,7 @@ EvalContext::get_declaration_fields(StringView name) throws
       !variable_store().sparse_arrays().has(name) &&
       !is_associative_array(name) && get_variable_value(name).has_value())
   {
-    fields.push(
-        String{heap_allocator(), apply_parameter_transform(name, 'A').view()});
+    fields.push_managed(apply_parameter_transform(name, 'A').view());
 
     return fields;
   }
@@ -3904,12 +3902,11 @@ EvalContext::get_declaration_fields(StringView name) throws
       break;
     }
 
-    fields.push(
-        String{heap_allocator(), view.substring_of_length(cursor, *space)});
+    fields.push_managed(view.substring_of_length(cursor, *space));
     cursor += *space + 1;
   }
 
-  fields.push(String{heap_allocator(), view.substring(cursor)});
+  fields.push_managed(view.substring(cursor));
 
   return fields;
 }
@@ -4178,7 +4175,7 @@ EvalContext::trim_positional_fields(
     if (!params.is_empty()) fields.push(steal(joined));
   } else {
     for (let const &param : params)
-      fields.push(String{scratch_allocator(), param.view()});
+      fields.push_managed(param.view());
   }
 
   if (fields.is_empty()) return fields;

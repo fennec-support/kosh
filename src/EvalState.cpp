@@ -1900,8 +1900,7 @@ VariableStore::from_wire(subshell_bootstrap_reader &reader,
   wire.bash_argument_values.reserve(value_count);
 
   for (usize index = 0; index < value_count; index++)
-    wire.bash_argument_values.push(
-        String{heap_allocator(), payload.read_text()});
+    wire.bash_argument_values.push_managed(payload.read_text());
 
   if (!wire.has_bash_argument_arrays &&
       (!wire.bash_argument_frame_counts.is_empty() ||
@@ -1987,7 +1986,7 @@ FunctionStore::from_wire(subshell_bootstrap_reader &reader,
   wire.call_names.reserve(call_name_count);
 
   for (usize index = 0; index < call_name_count; index++)
-    wire.call_names.push(String{heap_allocator(), payload.read_text()});
+    wire.call_names.push_managed(payload.read_text());
 
   let names = ArrayList<u32>{heap_allocator()};
 
@@ -2091,7 +2090,7 @@ ScopeStore::from_wire(
     texts.reserve(text_count);
 
     for (usize index = 0; index < text_count; index++)
-      texts.push(String{heap_allocator(), payload.read_text()});
+      texts.push_managed(payload.read_text());
   };
 
   local_scopes.reserve(depth);
@@ -2177,10 +2176,8 @@ ScopeStore::from_wire(
         binding.previous_associative_values.reserve(pair_count);
 
         for (usize index = 0; index < pair_count; index++) {
-          binding.previous_associative_keys.push(
-              String{heap_allocator(), payload.read_text()});
-          binding.previous_associative_values.push(
-              String{heap_allocator(), payload.read_text()});
+          binding.previous_associative_keys.push_managed(payload.read_text());
+          binding.previous_associative_values.push_managed(payload.read_text());
         }
       }
 
@@ -2199,8 +2196,7 @@ ScopeStore::from_wire(
         let const sparse_index = payload.read_u64();
         if (sparse_index > SIZE_MAX) return false;
         binding.previous_sparse_indices.push(static_cast<usize>(sparse_index));
-        binding.previous_sparse_values.push(
-            String{heap_allocator(), payload.read_text()});
+        binding.previous_sparse_values.push_managed(payload.read_text());
       }
 
       if (!payload.is_valid) return false;
@@ -3123,7 +3119,7 @@ EvalContext::register_inherited_source_origin(
 
   ASSERT(windows.is_empty());
   windows.reserve(call_count + source_frame_count + 2);
-  windows.push(String{heap_allocator()});
+  windows.push_managed();
 
   let &extra_lines = windows.back();
 
@@ -3164,7 +3160,7 @@ EvalContext::register_inherited_source_origin(
       invalid_subshell_bootstrap();
     }
 
-    windows.push(String{heap_allocator(), line_text});
+    windows.push_managed(line_text);
 
     let &window = windows.back();
 
@@ -3253,7 +3249,7 @@ EvalContext::register_inherited_source_origin(
   if (window_length > UINT32_MAX) invalid_subshell_bootstrap();
 
   source_name = source_name_at(origin_name_index);
-  windows.push(String{heap_allocator()});
+  windows.push_managed();
 
   let &window = windows.back();
 

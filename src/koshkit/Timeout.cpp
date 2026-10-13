@@ -380,7 +380,7 @@ Timeout::execute(const ExecContext               &ec,
 
     fallback_args.reserve(operands.count());
     fallback_locations.reserve(operands.count());
-    fallback_args.push(String{cxt.scratch_allocator(), shell_path->view()});
+    fallback_args.push_managed(shell_path->view());
     fallback_locations.push(ec.source_location());
 
     for (usize operand_index = 1; operand_index < operands.count();

@@ -390,7 +390,7 @@ EvalContext::set_array_element(StringView name,
   }
 
   if (index == dense_count) {
-    dense->push(String{heap_allocator(), value});
+    dense->push_managed(value);
 
     if (!variable_store().sparse_arrays().has(name)) return;
 
@@ -401,7 +401,7 @@ EvalContext::set_array_element(StringView name,
           variable_store().sparse_arrays().values().find(key.view());
 
       if (!migrated.has_value()) break;
-      dense->push(String{heap_allocator(), migrated->view()});
+      dense->push_managed(migrated->view());
       variable_store().sparse_arrays().values().erase(key.view());
     }
 
@@ -1565,7 +1565,7 @@ EvalContext::collect_array_subscripts(StringView name) const throws
   }
 
   if (get_variable_value(name).has_value())
-    out.push(String{heap_allocator(), "0"});
+    out.push_managed("0");
 
   return out;
 }

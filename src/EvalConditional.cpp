@@ -284,15 +284,14 @@ struct conditional_evaluator
 
     for (usize i = 0; i < match.spans.count(); i++) {
       if (match.spans[i].start < 0) {
-        rematch.push(String{heap_allocator()});
+        rematch.push_managed();
         continue;
       }
 
       let const start = static_cast<usize>(match.spans[i].start);
       let const end   = static_cast<usize>(match.spans[i].end);
 
-      rematch.push(String{heap_allocator(),
-                          value.substring_of_length(start, end - start)});
+      rematch.push_managed(value.substring_of_length(start, end - start));
     }
 
     cxt.set_indexed_array("BASH_REMATCH", steal(rematch));

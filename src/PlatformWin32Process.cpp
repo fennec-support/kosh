@@ -2476,19 +2476,19 @@ spawn_subshell_stage(StringView                   source,
   }
 
   let arguments = ArrayList<String>{heap_allocator()};
-  arguments.push(String{heap_allocator(), module_path->view()});
-  arguments.push(String{heap_allocator(), StringView{"--privileged"}});
+  arguments.push_managed(module_path->view());
+  arguments.push_managed(StringView{"--privileged"});
   if (mood != mimic_mood::Default) {
-    arguments.push(String{heap_allocator(), StringView{"--mood"}});
-    arguments.push(String{heap_allocator(), mood_name(mood)});
+    arguments.push_managed(StringView{"--mood"});
+    arguments.push_managed(mood_name(mood));
   }
-  arguments.push(String{heap_allocator(), StringView{"--no-diagnostics"}});
+  arguments.push_managed(StringView{"--no-diagnostics"});
   if (!should_trace_sources)
-    arguments.push(String{heap_allocator(), StringView{"--no-traces"}});
-  arguments.push(String{heap_allocator(), StringView{"-c"}});
-  arguments.push(String{heap_allocator(), source});
+    arguments.push_managed(StringView{"--no-traces"});
+  arguments.push_managed(StringView{"-c"});
+  arguments.push_managed(source);
   if (!shell_name.is_empty())
-    arguments.push(String{heap_allocator(), shell_name});
+    arguments.push_managed(shell_name);
   let command_line = make_os_args(arguments);
 
   ScopedEnvironment child_environment;

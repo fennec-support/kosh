@@ -395,8 +395,6 @@ expand_obsolete_line_count(
     ArrayList<String>               &expanded_args,
     ArrayList<SourceLocation>       &expanded_locations) throws -> void
 {
-  let const allocator = expanded_args.allocator();
-
   for (usize index = 0; index < args.count(); index++) {
     let const argument = args[index].view();
     let const location =
@@ -412,14 +410,14 @@ expand_obsolete_line_count(
     }
 
     if (is_obsolete_count) {
-      expanded_args.push(String{allocator, "-n"});
+      expanded_args.push_managed("-n");
       expanded_locations.push(location);
-      expanded_args.push(String{allocator, argument.substring(1)});
+      expanded_args.push_managed(argument.substring(1));
       expanded_locations.push(location);
       continue;
     }
 
-    expanded_args.push(String{allocator, argument});
+    expanded_args.push_managed(argument);
     expanded_locations.push(location);
   }
 }

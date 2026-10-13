@@ -3539,7 +3539,7 @@ FileWatcher::watch(StringView path) wontthrow -> void
   }
 
   if (slot == m_watched_paths.count()) {
-    m_watched_paths.push(String{heap_allocator(), path});
+    m_watched_paths.push_managed(path);
     m_watched_descriptors.push(KOSH_INVALID_FD);
     m_watched_descriptors.push(KOSH_INVALID_FD);
   }

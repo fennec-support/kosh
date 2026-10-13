@@ -655,7 +655,7 @@ split_words(StringView text, Allocator allocator) throws
 
   while (text_position < text.length) {
     let const word = text.next_ascii_whitespace_word(text_position);
-    if (!word.is_empty()) words.push(String{allocator, word});
+    if (!word.is_empty()) words.push_managed(word);
   }
 
   return words;
@@ -1356,7 +1356,7 @@ expand_make_glob(EvalContext &cxt, StringView pattern) throws
     if (Path{pattern, cxt.scratch_allocator()}.exists() ||
         os::path_is_symbolic_link(pattern))
     {
-      matches.push(String{cxt.scratch_allocator(), pattern});
+      matches.push_managed(pattern);
     }
 
     return matches;
@@ -1885,7 +1885,7 @@ evaluate_make_function(EvalContext                 &cxt,
     let       expanded_arguments = ArrayList<String>{allocator};
 
     expanded_arguments.reserve(arguments.count());
-    expanded_arguments.push(String{allocator, called_name});
+    expanded_arguments.push_managed(called_name);
 
     for (usize argument_index = 1; argument_index < arguments.count();
          argument_index++)
@@ -2578,12 +2578,10 @@ parse_makefile_into(EvalContext                     &cxt,
       if (!line.is_empty() && line[0] == '\t') {
         if (do_is_active()) {
           for (usize index : current_rule_indices)
-            mk.rules[index].recipe_lines.push(
-                String{cxt.scratch_allocator(), line.substring(1)});
+            mk.rules[index].recipe_lines.push_managed(line.substring(1));
 
           for (usize index : current_pattern_indices)
-            mk.pattern_rules[index].rule.recipe_lines.push(
-                String{cxt.scratch_allocator(), line.substring(1)});
+            mk.pattern_rules[index].rule.recipe_lines.push_managed(line.substring(1));
         }
 
         continue;
@@ -2846,8 +2844,7 @@ parse_makefile_into(EvalContext                     &cxt,
               rule         = &mk.rules[mk.add_rule(steal(fresh))];
             }
 
-            rule->variable_assignments.push(
-                String{cxt.scratch_allocator(), trim(after_colon)});
+      rule->variable_assignments.push_managed(trim(after_colon));
           }
 
           continue;
@@ -3014,12 +3011,10 @@ parse_makefile_into(EvalContext                     &cxt,
 
         if (!inline_recipe.is_empty()) {
           for (usize index : current_rule_indices)
-            mk.rules[index].recipe_lines.push(
-                String{cxt.scratch_allocator(), inline_recipe});
+      mk.rules[index].recipe_lines.push_managed(inline_recipe);
 
           for (usize index : current_pattern_indices)
-            mk.pattern_rules[index].rule.recipe_lines.push(
-                String{cxt.scratch_allocator(), inline_recipe});
+      mk.pattern_rules[index].rule.recipe_lines.push_managed(inline_recipe);
         }
 
         continue;
@@ -3064,7 +3059,7 @@ parse_makefile(EvalContext                     &cxt,
   if (should_use_builtin_rules)
     for (let const *suffix : {".o", ".c", ".y", ".l", ".a", ".sh", ".f", ".c~",
                               ".y~", ".l~", ".sh~", ".f~"})
-      mk.suffixes.push(String{cxt.scratch_allocator(), suffix});
+      mk.suffixes.push_managed(suffix);
 
   for (let const &assignment : command_assignments) {
     let const equals = assignment.view().find_character('=');
@@ -3143,7 +3138,7 @@ parse_makefile(EvalContext                     &cxt,
           break;
         }
 
-        rule.recipe_lines.push(String{cxt.scratch_allocator(), recipe_line});
+        rule.recipe_lines.push_managed(recipe_line);
       }
 
       mk.add_rule(steal(rule));
@@ -4261,7 +4256,7 @@ Make::execute(const ExecContext               &ec,
   let const do_push_inherited_option = [&](String option) -> bool {
     ArrayList<String> probe{cxt.scratch_allocator()};
 
-    probe.push(String{cxt.scratch_allocator(), StringView{"make"}});
+    probe.push_managed(StringView{"make"});
     probe.push(option.clone());
     defer { reset_flags(FLAG_LIST); };
 
@@ -4336,8 +4331,7 @@ Make::execute(const ExecContext               &ec,
   for (usize makefile_position = 0; makefile_position < FLAG_MAKE_FILE.count();
        makefile_position++)
   {
-    requested_makefiles.push(
-        String{cxt.scratch_allocator(), FLAG_MAKE_FILE.get(makefile_position)});
+    requested_makefiles.push_managed(FLAG_MAKE_FILE.get(makefile_position));
     requested_makefile_locations.push(
         FLAG_MAKE_FILE.get_location(makefile_position));
   }
@@ -4382,10 +4376,10 @@ Make::execute(const ExecContext               &ec,
 
   if (requested_makefiles.is_empty()) {
     if (Path{"Makefile", cxt.scratch_allocator()}.exists()) {
-      requested_makefiles.push(String{cxt.scratch_allocator(), "Makefile"});
+      requested_makefiles.push_managed("Makefile");
       requested_makefile_locations.push(ec.source_location());
     } else if (Path{"makefile", cxt.scratch_allocator()}.exists()) {
-      requested_makefiles.push(String{cxt.scratch_allocator(), "makefile"});
+      requested_makefiles.push_managed("makefile");
       requested_makefile_locations.push(ec.source_location());
     }
   }

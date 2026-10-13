@@ -478,8 +478,8 @@ parse_transport_command(StringView       spelling,
       position++;
     }
 
-    arguments.push(String{
-        allocator, spelling.substring_of_length(start, position - start)});
+    arguments.push_managed(
+        spelling.substring_of_length(start, position - start));
   }
 
   if (arguments.is_empty()) return None;
@@ -807,7 +807,7 @@ Assimilate::execute(ExecContext &ec, EvalContext &cxt) const throws
   let preflight_arguments = ArrayList<String>{allocator};
 
   append_arguments(preflight_arguments, *ssh_command);
-  preflight_arguments.push(String{heap_allocator(), "--"});
+  preflight_arguments.push_managed("--");
   preflight_arguments.push(arguments[1].clone());
   preflight_arguments.push(preflight_command(
       executable_system.view(), executable_machine.view(), requested_directory,
@@ -865,17 +865,17 @@ Assimilate::execute(ExecContext &ec, EvalContext &cxt) const throws
   let scp_arguments = ArrayList<String>{allocator};
 
   append_arguments(scp_arguments, *scp_command);
-  scp_arguments.push(String{heap_allocator(), "-p"});
-  scp_arguments.push(String{heap_allocator(), "--"});
-  scp_arguments.push(String{*executable});
-  scp_arguments.push(String{heap_allocator(), destination.view()});
+  scp_arguments.push_managed("-p");
+  scp_arguments.push_managed("--");
+  scp_arguments.push_managed(executable->view());
+  scp_arguments.push_managed(destination.view());
   status = run_program(scp_arguments, ec, trace, "upload");
   if (status != 0) return status;
 
   let ssh_arguments = ArrayList<String>{allocator};
 
   append_arguments(ssh_arguments, *ssh_command);
-  ssh_arguments.push(String{heap_allocator(), "--"});
+  ssh_arguments.push_managed("--");
   ssh_arguments.push(arguments[1].clone());
   ssh_arguments.push(remote_command(
       upload_name.view(), transaction_id.view(), expected_identity->view(),

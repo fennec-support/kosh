@@ -3106,7 +3106,7 @@ public:
     m_traps.for_each([&](StringView condition, const trap_definition &trap) {
       unused(trap);
       if (!os::signal_number_from_name(condition).has_value()) return;
-      discarded.push(String{heap_allocator(), condition});
+      discarded.push_managed(condition);
     });
 
     for (let const &condition : discarded)
@@ -3651,7 +3651,7 @@ public:
   append_to_transaction(StringView command) throws -> void
   {
     ASSERT(!m_transaction_stack.is_empty());
-    m_transaction_stack.back()->push(String{heap_allocator(), command});
+    m_transaction_stack.back()->push_managed(command);
   }
 
   pure fn

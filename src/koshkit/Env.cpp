@@ -59,7 +59,7 @@ Env::execute(const ExecContext               &ec,
   let const do_save_and_unset = [&](StringView name) throws -> void {
     let const previous = os::get_environment_variable(name);
 
-    saved_names.push(String{cxt.scratch_allocator(), name});
+    saved_names.push_managed(name);
     saved_values.push(previous.has_value() ? previous->clone()
                                            : String{cxt.scratch_allocator()});
     was_present.push(previous.has_value());
@@ -99,7 +99,7 @@ Env::execute(const ExecContext               &ec,
 
     let const previous = os::get_environment_variable(name);
 
-    saved_names.push(String{cxt.scratch_allocator(), name});
+    saved_names.push_managed(name);
     saved_values.push(previous.has_value() ? previous->clone()
                                            : String{cxt.scratch_allocator()});
     was_present.push(previous.has_value());

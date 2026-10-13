@@ -1026,7 +1026,7 @@ File::execute(const ExecContext               &ec,
     for (usize operand_position = 0; operand_position < operands.count();
          operand_position++)
     {
-      default_samples.push(String{allocator});
+      default_samples.push_managed();
     }
 
     default_sample_errors.reset(operands.count());
@@ -1120,7 +1120,7 @@ File::execute(const ExecContext               &ec,
     for (usize operand_position = 0; operand_position < operands.count();
          operand_position++)
     {
-      custom_sample_descriptions.push(String{allocator});
+      custom_sample_descriptions.push_managed();
       custom_sample_error_numbers.push(0);
     }
 

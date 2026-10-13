@@ -839,7 +839,7 @@ Pr::execute(const ExecContext               &ec,
         let const result = reader.next();
 
         if (result == utils::BufferedLineReader::Result::Line) {
-          lines.push(String{page_allocator, reader.get_line()});
+          lines.push_managed(reader.get_line());
           continue;
         }
 

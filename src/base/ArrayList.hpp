@@ -317,7 +317,11 @@ public:
   hot fn
   push_managed(Args &&...args) throws -> void
   {
-    push(T{m_allocator, static_cast<Args &&>(args)...});
+    if (m_length == m_capacity) rarely
+      reserve(m_length + 1);
+
+    new (&m_data[m_length]) T{m_allocator, static_cast<Args &&>(args)...};
+    m_length++;
   }
 
   fn

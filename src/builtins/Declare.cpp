@@ -596,12 +596,12 @@ Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         let values = ArrayList<String>{heap_allocator()};
 
         if (equals.has_value()) {
-          values.push(String{heap_allocator(), value});
+          values.push_managed(value);
         } else if (let const scalar =
                        cxt.variable_store().shell_variables().find(name);
                    scalar.has_value())
         {
-          values.push(String{heap_allocator(), scalar->view()});
+          values.push_managed(scalar->view());
         }
 
         let const is_valueless = values.is_empty() && !has_subscript;

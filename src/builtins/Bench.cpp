@@ -450,9 +450,9 @@ sample_command(StringView shell_binary,
   let child_argv = ArrayList<String>{allocator};
 
   if (should_use_shell) {
-    child_argv.push(String{allocator, shell_binary});
-    child_argv.push(String{allocator, "-c"});
-    child_argv.push(String{allocator, command});
+    child_argv.push_managed(shell_binary);
+    child_argv.push_managed("-c");
+    child_argv.push_managed(command);
   } else {
     usize start = 0;
 
@@ -461,8 +461,8 @@ sample_command(StringView shell_binary,
 
       if (is_at_end || command[i] == ' ' || command[i] == '\t') {
         if (i > start)
-          child_argv.push(
-              String{allocator, command.substring_of_length(start, i - start)});
+          child_argv.push_managed(
+              command.substring_of_length(start, i - start));
         start = i + 1;
       }
     }

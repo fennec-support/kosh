@@ -246,8 +246,8 @@ brace_group_alternatives(StringView content, Allocator alloc) throws
     usize start = 0;
 
     for (let const comma : comma_positions) {
-      alternatives.push(
-          String{alloc, content.substring_of_length(start, comma - start)});
+      alternatives.push_managed(
+          content.substring_of_length(start, comma - start));
       start = comma + 1;
     }
 
@@ -767,8 +767,7 @@ EvalContext::process_args(const ArrayList<const Token *> &args,
           (is_associative_literal ||
            (is_array_literal && word_starts_array_subscript(*word))))
       {
-        expanded_args.push(String{expanded_args.allocator(),
-                                  expand_word_for_assignment(*word).view()});
+        expanded_args.push_managed(expand_word_for_assignment(*word).view());
         do_record_location(location);
         if (subscript_flags != nullptr) subscript_flags->push(true);
         continue;
@@ -780,8 +779,7 @@ EvalContext::process_args(const ArrayList<const Token *> &args,
         let       did_take_fast_path = false;
 
         if (plain_kind == Word::PlainLiteral::PlainNoSplit) {
-          expanded_args.push(
-              String{expanded_args.allocator(), expandable.constant_value()});
+          expanded_args.push_managed(expandable.constant_value());
           do_record_location(location);
           did_take_fast_path = true;
         } else if (plain_kind == Word::PlainLiteral::PlainUnquotedOneSegment) {
@@ -810,8 +808,7 @@ EvalContext::process_args(const ArrayList<const Token *> &args,
               only.is_in_double_quotes && only.text.view() == "@")
           {
             for (let const &param : variable_store().positional_params()) {
-              expanded_args.push(
-                  String{expanded_args.allocator(), param.view()});
+              expanded_args.push_managed(param.view());
               do_record_location(location);
             }
 

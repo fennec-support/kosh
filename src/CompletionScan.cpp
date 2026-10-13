@@ -540,7 +540,7 @@ internal::complete_from_process_arguments(StringView      line,
         continue;
       }
 
-      candidates.push(String{completion_allocator(), name});
+      candidates.push_managed(name);
     } else {
       let pid_text = String::from(process.pid, completion_allocator());
 
@@ -928,7 +928,7 @@ push_variable_name_candidates(StringView         token,
   let do_add_name = [&](StringView name) throws {
     if (!name.starts_with(token)) return;
     if (!seen.add(name)) return;
-    candidates.push(String{heap_allocator(), name});
+    candidates.push_managed(name);
   };
 
   context.variable_names().for_each(
@@ -1642,14 +1642,14 @@ push_spec_candidate(StringView         entry,
         entry.substring_of_length(*paren + 1, entry.length - *paren - 2);
 
     if (!name.is_empty()) {
-      candidates.push(String{completion_allocator(), name});
+      candidates.push_managed(name);
       if (!description.is_empty()) descriptions.set(name, description);
 
       return;
     }
   }
 
-  candidates.push(String{completion_allocator(), entry});
+  candidates.push_managed(entry);
 }
 
 static fn
@@ -1752,7 +1752,7 @@ generate_spec_candidates(completion_spec   &active_spec,
           if (entry_is_unrequested_dash_word(entry.view(),
                                              should_offer_dash_words))
             continue;
-          candidates.push(String{completion_allocator(), entry.view()});
+          candidates.push_managed(entry.view());
         }
       };
 
@@ -1779,7 +1779,7 @@ generate_spec_candidates(completion_spec   &active_spec,
       if (entry_is_unrequested_dash_word(word.view(), should_offer_dash_words))
         continue;
       if (word.view().starts_with(token)) {
-        candidates.push(String{completion_allocator(), word.view()});
+        candidates.push_managed(word.view());
       }
     }
   }
@@ -1841,7 +1841,7 @@ generate_spec_candidates(completion_spec   &active_spec,
     {
       if (entry_is_unrequested_dash_word(entry.view(), should_offer_dash_words))
         continue;
-      candidates.push(String{completion_allocator(), entry.view()});
+      candidates.push_managed(entry.view());
     }
   }
 

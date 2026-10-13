@@ -300,7 +300,7 @@ ceiling_directory_list(StringView ceiling_directories) throws
 
     if (!ceiling.is_absolute()) continue;
 
-    ceilings.push(String{ceiling.normalized().text()});
+    ceilings.push_managed(ceiling.normalized().text());
   }
 
   return ceilings;
@@ -657,10 +657,10 @@ git_status(StringView ceiling_directories, Allocator allocator) throws
 
   let count_argv = ArrayList<String>{heap_allocator()};
 
-  count_argv.push(String{heap_allocator(), git_path.view()});
-  count_argv.push(String{heap_allocator(), "rev-list"});
-  count_argv.push(String{heap_allocator(), "--left-right"});
-  count_argv.push(String{heap_allocator(), "--count"});
+  count_argv.push_managed(git_path.view());
+  count_argv.push_managed("rev-list");
+  count_argv.push_managed("--left-right");
+  count_argv.push_managed("--count");
   count_argv.push(local_sha.view() + "..." + upstream_sha.view());
 
   let const count_output =

@@ -158,7 +158,7 @@ append_unique_path(ArrayList<String> &paths,
   }
 
   if (Path{path, allocator}.is_regular_file())
-    paths.push(String{allocator, path});
+    paths.push_managed(path);
 }
 
 fn

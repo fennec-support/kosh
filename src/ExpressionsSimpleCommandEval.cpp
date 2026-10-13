@@ -69,9 +69,7 @@ internal::expand_command_aliases(
 
       if (c == ' ' || c == '\t') {
         if (!current.is_empty()) {
-          rebuilt.push(String{
-              heap_allocator(), StringView{current.data(), current.count()}
-          });
+          rebuilt.push_managed(StringView{current.data(), current.count()});
           rebuilt_locations.push(body_location);
           current.clear();
         }
@@ -81,9 +79,7 @@ internal::expand_command_aliases(
     }
 
     if (!current.is_empty()) {
-      rebuilt.push(String{
-          heap_allocator(), StringView{current.data(), current.count()}
-      });
+      rebuilt.push_managed(StringView{current.data(), current.count()});
       rebuilt_locations.push(body_location);
     }
 
