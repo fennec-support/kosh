@@ -713,10 +713,10 @@ enumerate_processes(process_detail detail) throws
 
     process.pid        = static_cast<i64>(record.kp_proc.p_pid);
     process.parent_pid = static_cast<i64>(record.kp_eproc.e_ppid);
-    process.name = String{process.name.allocator(),
-                          StringView{record.kp_proc.p_comm}};
-    process.owner_id   = static_cast<u32>(record.kp_eproc.e_ucred.cr_uid);
-    process.state      = process_state_letter(record.kp_proc.p_stat);
+    process.name =
+        String{process.name.allocator(), StringView{record.kp_proc.p_comm}};
+    process.owner_id = static_cast<u32>(record.kp_eproc.e_ucred.cr_uid);
+    process.state    = process_state_letter(record.kp_proc.p_stat);
     process.start_token =
         static_cast<u64>(record.kp_proc.p_starttime.tv_sec) * 1000000 +
         static_cast<u64>(record.kp_proc.p_starttime.tv_usec);
@@ -3231,9 +3231,8 @@ list_process_open_files(i64                      pid,
   };
 
   for (let const &reference : REFERENCES) {
-    let const reference_path =
-        String{heap_allocator(), process_path} + "/" +
-        String{heap_allocator(), reference.name};
+    let const reference_path = String{heap_allocator(), process_path} + "/" +
+                               String{heap_allocator(), reference.name};
     let const target = read_symlink(reference_path.view(), allocator);
 
     if (!target.has_value()) continue;
@@ -3359,8 +3358,7 @@ list_process_open_files(i64                      pid,
     }
   }
 
-  let const descriptor_root =
-      String{heap_allocator(), process_path} + "/fd";
+  let const descriptor_root = String{heap_allocator(), process_path} + "/fd";
   DIR      *descriptor_directory = ::opendir(descriptor_root.c_str());
 
   if (descriptor_directory == nullptr) {
@@ -3394,7 +3392,7 @@ list_process_open_files(i64                      pid,
 
     let const link_path =
         descriptor_root + "/" + String{heap_allocator(), name};
-    let const target    = read_symlink(link_path.view(), allocator);
+    let const target = read_symlink(link_path.view(), allocator);
 
     if (!target.has_value()) continue;
 

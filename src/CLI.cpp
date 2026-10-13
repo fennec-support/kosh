@@ -907,8 +907,9 @@ parse_flags(const FlagList                  &flags,
                 argument_location(argv, static_cast<usize>(i), base_position,
                                   arg_locations),
                 prefixed_message(program_name,
-                                 "Invalid value '" + String{heap_allocator(), value} + "' for '" +
-                                     flag_name(flag, true) + "'")};
+                                 "Invalid value '" +
+                                     String{heap_allocator(), value} +
+                                     "' for '" + flag_name(flag, true) + "'")};
 
             error.set_command_status(2);
             throw error;

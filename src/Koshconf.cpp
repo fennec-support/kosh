@@ -808,7 +808,9 @@ read_koshconf_text(StringView        text,
       continue;
     }
 
-    let setting = koshconf_setting{option, String{heap_allocator(), value}};
+    let setting = koshconf_setting{
+        option, String{heap_allocator(), value}
+    };
 
     if (option->is_fixed_in_kosh_mood && option->type != option_type::String) {
       if (let const number = parse_option_number(*option, value);

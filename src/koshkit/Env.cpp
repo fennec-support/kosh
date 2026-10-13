@@ -122,11 +122,12 @@ Env::execute(const ExecContext               &ec,
     env_arg_locations.push(operand_locations[i]);
   }
 
-  let environment_path = os::get_environment_variable("PATH");
-  let environment_resolver =
-      ProgramResolver{environment_path.has_value()
-                          ? steal(*environment_path)
-                          : String{heap_allocator(), utils::DEFAULT_COMMAND_SEARCH_PATH}};
+  let environment_path     = os::get_environment_variable("PATH");
+  let environment_resolver = ProgramResolver{
+      environment_path.has_value()
+          ? steal(*environment_path)
+          : String{heap_allocator(), utils::DEFAULT_COMMAND_SEARCH_PATH}
+  };
   Maybe<ExecContext> sub;
 
   try {

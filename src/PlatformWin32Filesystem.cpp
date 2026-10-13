@@ -2182,9 +2182,8 @@ mounted_filesystems() throws -> ArrayList<mounted_filesystem>
       }
     }
 
-    let const options =
-        String{heap_allocator(),
-               drive_type_name(GetDriveTypeW(drives + position))};
+    let const options = String{
+        heap_allocator(), drive_type_name(GetDriveTypeW(drives + position))};
 
     result.push(mounted_filesystem{target.clone(), steal(target),
                                    steal(filesystem_type), steal(options),

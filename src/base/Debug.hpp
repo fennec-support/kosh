@@ -153,14 +153,14 @@ t__string_from_struct(const T &value, AllocatorT allocator) throws
       x, ::koshka::heap_allocator())
 #endif
 #else
-#define STRUCT_STRING(...) \
+#define STRUCT_STRING(...)                                                     \
   ::koshka::String{::koshka::heap_allocator(), "<optimized out>"}
 #define TRACE(...)
 #define TRACELN(...)
 #endif
 
 #if !defined STRUCT_STRING
-#define STRUCT_STRING(...) \
+#define STRUCT_STRING(...)                                                     \
   ::koshka::String{::koshka::heap_allocator(), "<not supported>"}
 #endif
 

@@ -66,9 +66,9 @@ CommandBuiltin::execute(ExecContext &ec, EvalContext &cxt) const throws
   ProgramResolver *resolver         = &cxt.program_resolver();
 
   if (FLAG_COMMAND_DEFAULT_PATH.is_enabled()) {
-    default_resolver =
-        ProgramResolver{
-            String{heap_allocator(), utils::DEFAULT_COMMAND_SEARCH_PATH}};
+    default_resolver = ProgramResolver{
+        String{heap_allocator(), utils::DEFAULT_COMMAND_SEARCH_PATH}
+    };
     resolver = &*default_resolver;
   }
 

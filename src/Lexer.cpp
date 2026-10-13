@@ -437,8 +437,11 @@ Lexer::register_heredoc(StringView         delimiter,
   LOG(Debug, "registering a pending heredoc with delimiter '%.*s'",
       static_cast<int>(delimiter.length), delimiter.data);
 
-  m_pending_heredocs.push(
-      {String{heap_allocator(), delimiter}, contents, tab_policy, should_expand});
+  m_pending_heredocs.push({
+      String{heap_allocator(), delimiter},
+      contents, tab_policy,
+      should_expand
+  });
 
   return contents;
 }
@@ -2103,7 +2106,8 @@ lexer::find_segment_substitution(StringView         source,
   entry.is_exact = entry.body_length == body_text.length &&
                    source.substring_of_length(entry.body_position,
                                               entry.body_length) == body_text;
-  if (!entry.is_exact) entry.unescaped_body = String{heap_allocator(), body_text};
+  if (!entry.is_exact)
+    entry.unescaped_body = String{heap_allocator(), body_text};
 
   return entry;
 }

@@ -1549,11 +1549,11 @@ Server::symbol_at(const Document   &document,
       continue;
     }
 
-    let symbol =
-        document_symbol{String{heap_allocator(),
-                               document.normalized_source.substring_of_length(
-                                   start, end - start)},
-                        span.role, start, end};
+    let symbol = document_symbol{
+        String{heap_allocator(), document.normalized_source.substring_of_length(
+                                     start, end - start)},
+        span.role, start, end
+    };
 
     if (*byte_position == end) {
       if (!touching.has_value()) touching = steal(symbol);
@@ -1661,9 +1661,11 @@ Server::definition_of(const Document        &document,
         if (candidate != name) return true;
         if (span.start > symbol.start) return false;
 
-        result =
-            document_symbol{String{heap_allocator(), candidate}, span.role,
-                            span.start, span.end};
+        result = document_symbol{
+            String{heap_allocator(), candidate},
+            span.role, span.start,
+            span.end
+        };
 
         return true;
       });
@@ -2075,14 +2077,14 @@ Server::command_information(StringView command) throws -> Maybe<String>
     return do_run_shell_help(steal(source));
   }
 
-  let information = String{
-      heap_allocator(),
-      completion::internal::manpage_text_for(command, m_context)};
+  let information =
+      String{heap_allocator(),
+             completion::internal::manpage_text_for(command, m_context)};
 
   if (information.is_empty())
-    information = String{
-        information.allocator(),
-        completion::internal::help_text_of(command, m_context)};
+    information =
+        String{information.allocator(),
+               completion::internal::help_text_of(command, m_context)};
   if (!information.is_empty()) {
     if (information.view()[information.length() - 1] != '\n')
       information.push('\n');

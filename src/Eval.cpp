@@ -207,19 +207,22 @@ EvalContext::assign_variable(StringView              name,
   if (environment_store().confined_write_depth() > 0) rarely {
     let const previous = variable_store().shell_variables().find(name);
     let       saved    = Maybe<String>{};
-    if (previous.has_value()) saved = String{heap_allocator(), previous->view()};
+    if (previous.has_value())
+      saved = String{heap_allocator(), previous->view()};
 
     let const saved_definition = special_variable_definition_location(name);
 
-    environment_store().confined_write_log().push(
-        environment_undo_entry{String{heap_allocator(), name}, steal(saved),
-                               saved_definition});
+    environment_store().confined_write_log().push(environment_undo_entry{
+        String{heap_allocator(), name},
+        steal(saved), saved_definition
+    });
   }
 
   if (is_field_separator_name) variable_store().set_field_separators(value);
   if (write_dynamic_variable(name, value)) return;
 
-  if (is_path_name) program_resolver().assign_path(String{heap_allocator(), value});
+  if (is_path_name)
+    program_resolver().assign_path(String{heap_allocator(), value});
   if (is_ignoreeof_name) {
     runtime_state().set_option(shell_option_id::Ignoreeof, true);
   }
@@ -241,8 +244,10 @@ EvalContext::assign_variable(StringView              name,
   if (is_exported(name)) {
     if (execution_store().subshell_depth() > 0)
       environment_store().environment_undo_log().push(environment_undo_entry{
-          String{heap_allocator(), name}, os::get_environment_variable(name),
-          None});
+          String{heap_allocator(), name},
+          os::get_environment_variable(name),
+          None
+      });
     os::set_environment_variable(name, value);
   }
 }
@@ -577,8 +582,7 @@ EvalContext::unset_shell_variable(StringView name) throws -> void
     throw Error{"Unable to unset '" + name + "' because it is read only"};
   }
 
-  if (is_bash_argument_array(name))
-    throw Error{name + ": cannot unset"};
+  if (is_bash_argument_array(name)) throw Error{name + ": cannot unset"};
 
   if (!runtime_state().is_shopt_enabled(shopt_option_id::LocalvarUnset) &&
       peel_caller_local_binding(name))
@@ -1105,8 +1109,8 @@ EvalContext::report_unset_reference(StringView name) throws -> void
       !runtime_control_store().is_warning_suppressed(
           suppressible_warning::UnsetTestOperand))
   {
-    let const message = "Unable to expand '" + name +
-                        "' because the parameter is not set";
+    let const message =
+        "Unable to expand '" + name + "' because the parameter is not set";
 
     let const reference = locate_variable_reference(name);
 
@@ -1223,8 +1227,10 @@ EvalContext::record_environment_change(StringView name) throws -> void
 {
   if (execution_store().subshell_depth() == 0) return;
   environment_store().environment_undo_log().push(environment_undo_entry{
-      String{heap_allocator(), name}, os::get_environment_variable(name),
-      None});
+      String{heap_allocator(), name},
+      os::get_environment_variable(name),
+      None
+  });
 }
 
 static constexpr usize EXPORTED_NAME_FOLD_BYTES = 64;
@@ -2305,8 +2311,8 @@ ExecContext::make_from(const SourceLocation       &location,
                                                  directory_message.view()};
       }
 
-      directory_operand = String{directory_operand.allocator(),
-                                 directory_path.view()};
+      directory_operand =
+          String{directory_operand.allocator(), directory_path.view()};
       should_rewrite_to_cd = true;
     } else if (Path{program.view()}.is_directory()) {
       directory_operand    = steal(args[0]);
@@ -2412,7 +2418,7 @@ fn
 ExecContext::set_unresolved(i32        resolution_status,
                             StringView diagnostic) throws -> void
 {
-  m_kind                  = ResolvedCommand::from_unresolved(resolution_status);
+  m_kind = ResolvedCommand::from_unresolved(resolution_status);
   m_unresolved_diagnostic =
       String{m_unresolved_diagnostic.allocator(), diagnostic};
 }

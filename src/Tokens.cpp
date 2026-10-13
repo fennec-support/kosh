@@ -536,8 +536,8 @@ array_element_assignment_split(const ArrayList<WordSegment> &segments,
       return koshka::None;
     }
 
-    let key = String{heap_allocator(),
-                     first.text.substring_of_length(0, name_end)};
+    let key =
+        String{heap_allocator(), first.text.substring_of_length(0, name_end)};
 
     key.push('[');
     key.append(subscript.view());
@@ -758,8 +758,8 @@ Word::get_quoted_assignment_split() const throws
 
   return word_assignment_split{
       String{heap_allocator(), prefix_view.substring_of_length(0, name_length)},
-      steal(value),
-      update_mode};
+      steal(value), update_mode
+  };
 }
 
 cold fn

@@ -403,14 +403,21 @@ report_usage_error(EvalContext   &cxt,
 {
   const ErrorWithLocation located{
       steal(location),
-      String{heap_allocator(), program_name} + ": Not enough arguments"};
+      String{heap_allocator(), program_name}
+      + ": Not enough arguments"
+  };
 
   if (const String *source = cxt.source_store().current_source();
       source != nullptr)
     show_message(located.to_string(source->view(), &cxt));
   else
-    print_error(String{heap_allocator(), program_name} + ": Not enough arguments.\n");
-  show_message(Note{String{heap_allocator(), "Try `"} + program_name + " --help` for more info"}
+    print_error(String{heap_allocator(), program_name} +
+                ": Not enough arguments.\n");
+  show_message(Note{
+      String{heap_allocator(), "Try `"}
+      + program_name +
+      " --help` for more info"
+  }
                    .to_string());
 
   return 2;

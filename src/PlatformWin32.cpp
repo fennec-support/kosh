@@ -1319,7 +1319,7 @@ network_interface_addresses() throws
           String{heap_allocator(), interface_name->view()},
           family == AF_INET ? network_address_family::IPv4
                             : network_address_family::IPv6,
-          String{heap_allocator(), address},
+          String{heap_allocator(), address               },
       });
     }
   }

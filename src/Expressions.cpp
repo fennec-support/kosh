@@ -631,9 +631,12 @@ analysis_reporter::warn(diagnostic_id                id,
 
   pending.push(pending_analysis_warning{
       id, location, String{heap_allocator(), message},
-      String{heap_allocator(), suggestion}, related_location,
-      String{heap_allocator(), related_message}, None,
-      String{heap_allocator()}});
+      String{heap_allocator(), suggestion},
+        related_location,
+      String{heap_allocator(), related_message},
+        None,
+      String{heap_allocator()}
+  });
 }
 
 fn
@@ -652,7 +655,8 @@ analysis_reporter::set_last_trace(diagnostic_id         id,
   }
 
   warning.trace_location = trace_location;
-  warning.trace_message  = String{warning.trace_message.allocator(), trace_message};
+  warning.trace_message =
+      String{warning.trace_message.allocator(), trace_message};
 }
 
 fn
@@ -1008,10 +1012,12 @@ analysis_reporter::fail(const analysis_report_site  &site,
 
     sink->push(source_diagnostic{
         id, error_severity::error, location, steal(source_name),
-        String{heap_allocator(), message}, String{heap_allocator(), suggestion},
+        String{heap_allocator(), message        },
+        String{heap_allocator(), suggestion     },
         related_location, steal(related_source_name),
         String{heap_allocator(), related_message},
-        source_fixes_for_diagnostic(id, source, location)});
+        source_fixes_for_diagnostic(id, source, location)
+    });
     has_fatal = true;
 
     return;
@@ -1117,18 +1123,20 @@ AnalysisContext::note_variable_assignment_record(
     let folded = optimizer::literal_word_value(*value_word);
 
     if (folded.has_value()) {
-      literal_value = folded->count() > RECORDED_LITERAL_LENGTH_LIMIT
-                          ? String{heap_allocator(),
-                                   folded->view().substring_of_length(
-                                       0, RECORDED_LITERAL_LENGTH_LIMIT)}
-                          : steal(*folded);
+      literal_value =
+          folded->count() > RECORDED_LITERAL_LENGTH_LIMIT
+              ? String{heap_allocator(), folded->view().substring_of_length(
+                                             0, RECORDED_LITERAL_LENGTH_LIMIT)}
+              : steal(*folded);
     }
   }
 
   symbol_records->assignments.push(variable_assignment_record{
-      String{heap_allocator(), name}, steal(literal_value), location.position, location.length,
-      assignment_binder::Assignment, is_conditional, update_mode,
-      value_word == nullptr});
+      String{heap_allocator(), name},
+      steal(literal_value), location.position,
+      location.length, assignment_binder::Assignment, is_conditional,
+      update_mode, value_word == nullptr
+  });
 }
 
 fn
@@ -1145,8 +1153,10 @@ AnalysisContext::note_variable_binding_record(
   if (symbol_records == nullptr) return;
 
   symbol_records->assignments.push(variable_assignment_record{
-      String{heap_allocator(), name}, None, location.position, location.length, binder,
-      is_conditional, assignment_update_mode::Replace, false});
+      String{heap_allocator(), name},
+      None, location.position, location.length,
+      binder, is_conditional, assignment_update_mode::Replace, false
+  });
 }
 
 fn
@@ -1251,9 +1261,11 @@ AnalysisContext::note_variable_occurrence(
   if (symbol_records == nullptr) return;
 
   symbol_records->variable_occurrences.push(variable_occurrence_record{
-      String{heap_allocator(), name}, location.position, location.length,
+      String{heap_allocator(), name},
+      location.position, location.length,
       function_definition_index, kind, occurrence_is_unresolved,
-      occurrence_is_unused, false, false, has_inherited_function_path});
+      occurrence_is_unused, false, false, has_inherited_function_path
+  });
 }
 
 fn
@@ -1380,7 +1392,10 @@ AnalysisContext::note_function_body_record(
   if (name.is_empty()) return;
 
   symbol_records->functions.push(function_body_record{
-      String{heap_allocator(), name}, name_position, body_position, body_end_position});
+      String{heap_allocator(), name},
+      name_position, body_position,
+      body_end_position
+  });
 }
 
 static pure fn

@@ -635,10 +635,11 @@ parse_command_line(command_line &line) throws -> Maybe<int>
   try {
     line.operands = parse_invocation_flags(parse_argc, parse_argv);
   } catch (const ErrorWithLocation &e) {
-    let const source = join_command_line(parse_argc, parse_argv);
-    let       highlight_context =
-        EvalContext{startup_options{},
-                    String{heap_allocator(), parse_argv[0]}};
+    let const source            = join_command_line(parse_argc, parse_argv);
+    let       highlight_context = EvalContext{
+        startup_options{},
+        String{heap_allocator(), parse_argv[0]}
+    };
 
     show_message(e.to_string(source, &highlight_context));
     if (!line.is_login_invocation) {
@@ -1945,8 +1946,8 @@ struct script_cursor
       let hint = String{heap_allocator()};
 
       if (is_command_like)
-        hint = String{hint.allocator(),
-                      "Pass -c to run this as a command string"};
+        hint =
+            String{hint.allocator(), "Pass -c to run this as a command string"};
 
       let const message = "Could not open '" + file_name.view() +
                           "': " + os::last_system_error_message();
@@ -1990,8 +1991,7 @@ struct script_cursor
         detect_mimic_shell_from_source(chunk.contents.view());
 
     LOG(Info, "the script operand '%s' %s a shell to mimic",
-        String{heap_allocator(), chunk.filename.value_or(StringView{})}
-            .c_str(),
+        String{heap_allocator(), chunk.filename.value_or(StringView{})}.c_str(),
         detected_mood.has_value() ? "selects" : "does not select");
     context.select_mood(detected_mood.value_or(identity.session_mood));
 
@@ -2467,8 +2467,7 @@ kosh_main(int argc, char **argv) -> int
   if (argc > 0) {
     koshka::StringView invocation =
         koshka::Path::invocation_filename(koshka::StringView{argv[0]}, true);
-    let       invocation_name =
-        koshka::String{koshka::heap_allocator(), invocation};
+    let invocation_name = koshka::String{koshka::heap_allocator(), invocation};
     let const invocation_info =
         koshka::os::normalize_program_name(invocation_name);
 
@@ -2508,9 +2507,10 @@ kosh_main(int argc, char **argv) -> int
       let ast_arena      = koshka::BumpArena{};
       let function_arena = koshka::BumpArena{};
 
-      let context = koshka::EvalContext{koshka::startup_options{},
-                                        koshka::String{koshka::heap_allocator(),
-                                                       invocation}};
+      let context = koshka::EvalContext{
+          koshka::startup_options{},
+          koshka::String{koshka::heap_allocator(), invocation}
+      };
 
       context.arena_store().set_parse_arena(&ast_arena);
       context.arena_store().set_function_arena(&function_arena);
@@ -2592,11 +2592,11 @@ kosh_main(int argc, char **argv) -> int
       }
 
     if (!is_known_level) {
-      koshka::show_message(
-          koshka::ErrorWithDetails{"Unknown debug logging level '" +
-                                       koshka::StringView{FLAG_LOG.value()} + "'",
-                                   "Pass `info`, `debug`, or `all` to `-X`"}
-              .to_string());
+      koshka::show_message(koshka::ErrorWithDetails{
+          "Unknown debug logging level '" +
+              koshka::StringView{FLAG_LOG.value()} + "'",
+          "Pass `info`, `debug`, or `all` to `-X`"}
+                               .to_string());
 
       return 2;
     }
@@ -2622,8 +2622,7 @@ kosh_main(int argc, char **argv) -> int
     program_path = steal(file_names[0]);
     file_names.remove(0);
   } else {
-    program_path =
-        koshka::String{program_path.allocator(), "<unknown>"};
+    program_path = koshka::String{program_path.allocator(), "<unknown>"};
   }
 
   try {

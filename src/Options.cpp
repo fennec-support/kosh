@@ -1961,7 +1961,8 @@ fn
 describe_option_values(const option_descriptor &option) throws -> String
 {
   if (option.type == option_type::Boolean)
-    return String{heap_allocator(), "'on', 'off', 'true', 'false', '1', or '0'"};
+    return String{heap_allocator(),
+                  "'on', 'off', 'true', 'false', '1', or '0'"};
 
   let description = String{heap_allocator()};
 

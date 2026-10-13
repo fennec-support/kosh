@@ -798,7 +798,8 @@ SelectLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -
       should_reprint_menu = false;
     }
 
-    koshka::print_error(cxt.get_variable_value("PS3").value_or(String{heap_allocator(), "#? "}));
+    koshka::print_error(cxt.get_variable_value("PS3").value_or(
+        String{heap_allocator(), "#? "}));
 
     let const input = utils::read_line_from_fd(KOSH_STDIN);
 

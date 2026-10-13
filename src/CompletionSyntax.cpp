@@ -496,12 +496,11 @@ internal::resolve_completion_command(StringView   command,
     if (let const canonical = os::canonical_path(located.front());
         canonical.has_value())
     {
-      let resolved_name = String{heap_allocator(), canonical->filename()};
-      let const name_info = os::normalize_program_name(resolved_name);
+      let       resolved_name = String{heap_allocator(), canonical->filename()};
+      let const name_info     = os::normalize_program_name(resolved_name);
 
-      return String{
-          heap_allocator(),
-          resolved_name.substring_of_length(0, name_info.stem_length)};
+      return String{heap_allocator(), resolved_name.substring_of_length(
+                                          0, name_info.stem_length)};
     }
   }
 

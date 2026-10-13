@@ -1042,14 +1042,14 @@ parse_manpage_option_entries(StringView text) throws
       let const description = descriptions.find(flag);
       let const flag_forms  = forms.find(flag);
 
-      entries.push(
-          help_entry{String{heap_allocator(), flag},
-                     description.has_value()
-                         ? String{heap_allocator(), description->view()}
-                         : String{heap_allocator()},
-                     flag_forms.has_value()
-                         ? String{heap_allocator(), flag_forms->view()}
-                         : String{heap_allocator()}});
+      entries.push(help_entry{
+          String{heap_allocator(), flag},
+          description.has_value()
+              ? String{heap_allocator(), description->view()}
+              : String{heap_allocator()},
+          flag_forms.has_value() ? String{heap_allocator(), flag_forms->view()}
+                                 : String{heap_allocator()}
+      });
     }
 
     j = end;
@@ -1417,9 +1417,10 @@ parse_help_option_entries(StringView text) throws
     for (let const &flag : extract_dash_flags(option_part))
       if (seen.add(flag.view())) {
         entries.push(help_entry{
-            String{heap_allocator(), flag.view()},
-            String{heap_allocator(), description},
-            String{heap_allocator(), option_part.trim_blanks()}});
+            String{heap_allocator(), flag.view()              },
+            String{heap_allocator(), description              },
+            String{heap_allocator(), option_part.trim_blanks()}
+        });
       }
   }
 
@@ -1729,8 +1730,10 @@ parse_help_subcommands(StringView text, StringView command) throws
 
       if (!is_plausible_subcommand_name(alias)) continue;
       if (!seen.add(alias)) continue;
-      subcommands.push(help_entry{String{heap_allocator(), alias},
-                                      String{heap_allocator(), description}});
+      subcommands.push(help_entry{
+          String{heap_allocator(), alias      },
+          String{heap_allocator(), description}
+      });
       saw_entry_in_section = true;
     }
   }
@@ -2080,9 +2083,9 @@ flag_under_caret(StringView token,
 {
   let const equals = token.find_character('=');
 
-  whole = String{whole.allocator(),
-                 equals.has_value() ? token.substring_of_length(0, *equals)
-                                    : token};
+  whole = String{whole.allocator(), equals.has_value()
+                                        ? token.substring_of_length(0, *equals)
+                                        : token};
   if (token.length > 2 && token[1] != '-' && cursor_in_token >= 2 &&
       cursor_in_token <= token.length)
   {
@@ -2503,11 +2506,12 @@ start_idle_load(idle_load_kind           kind,
 
   LOG(Debug, "idle documentation load of '%.*s' started",
       static_cast<int>(key.length), key.data);
-  IDLE_LOAD = idle_load{kind,
-                        String{heap_allocator(), key},
-                        String{heap_allocator(), command},
-                        String{heap_allocator(), hint_key},
-                        steal(*capture)};
+  IDLE_LOAD = idle_load{
+      kind, String{heap_allocator(), key     },
+       String{heap_allocator(), command },
+      String{heap_allocator(), hint_key},
+       steal(*capture)
+  };
 
   return true;
 }

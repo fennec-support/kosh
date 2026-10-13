@@ -238,9 +238,11 @@ AssignCommand::analyze(AnalysisContext &actx, bool is_unconditional) const throw
   {
     if (actx.is_posix_mood()) {
       if (!actx.top_level_assigned_names.contains(name.view())) {
-        actx.function_global_assignments.push(
-            {String{heap_allocator(), name.view()}, source_location(),
-             actx.get_current_variable_scope()});
+        actx.function_global_assignments.push({
+            String{heap_allocator(), name.view()},
+            source_location(),
+            actx.get_current_variable_scope()
+        });
       }
     } else {
       actx.report_diagnostic(diagnostic_id::no_local, source_location(),
@@ -275,8 +277,9 @@ AssignCommand::analyze(AnalysisContext &actx, bool is_unconditional) const throw
     actx.constant_variables.set(name.view(), literal->view());
     actx.optimizer_eliminated_count++;
     if (actx.options.should_report_optimizer_diagnostics)
-      actx.trace_optimizer_line(String{heap_allocator(), "recorded constant: "} + name + " = " +
-                                *literal);
+      actx.trace_optimizer_line(
+          String{heap_allocator(), "recorded constant: "} + name + " = " +
+          *literal);
   } else {
     LOG(All,
         "forgetting the constant for '%s', its value is only known at run "
@@ -445,10 +448,9 @@ AssignCommand::evaluate_assignment(EvalContext &cxt) const throws -> i64
 
     if (m_assignment->get_update_mode() == assignment_update_mode::Append) {
       let appended =
-          String{heap_allocator(),
-                 cxt.get_variable_value(m_assignment->key())
-                     .value_or(String{heap_allocator()})
-                     .view()};
+          String{heap_allocator(), cxt.get_variable_value(m_assignment->key())
+                                       .value_or(String{heap_allocator()})
+                                       .view()};
 
       if (cxt.is_integer_variable(assigned_name))
         cxt.append_integer_expression(appended, value.view());
@@ -772,7 +774,8 @@ redirection_open_error(StringView path) throws -> String
 {
   let const system_error = os::last_system_error_message();
 
-  if (os::path_is_directory(path)) return String{heap_allocator(), "Is a directory"};
+  if (os::path_is_directory(path))
+    return String{heap_allocator(), "Is a directory"};
 
   return system_error;
 }
@@ -1097,9 +1100,11 @@ internal::allocate_redirection_descriptor(
     }
 
     if (open_or_stage_failed != nullptr) *open_or_stage_failed = true;
-    throw ErrorWithLocation{location,
-                            "'" + String{heap_allocator(), *allocation_name} +
-                                "' is not associated with any descriptor"};
+    throw ErrorWithLocation{
+        location, "'" + String{heap_allocator(), *allocation_name}
+           +
+                      "' is not associated with any descriptor"
+    };
   }
 
   let const allocated_fd = os::allocate_free_shell_fd(10);
@@ -2019,11 +2024,12 @@ SimpleCommand::redirect_exec_context(ExecContext &ec, EvalContext &cxt) const th
 
       previous       = read_fd_allocation_value(cxt, *allocation_target);
       known_previous = &previous;
-      let record     = stage_fd_allocation_restore{*allocation_target,
-                                               previous.has_value()
-                                                       ? String{heap_allocator(), previous->view()}
-                                                       : String{heap_allocator()},
-                                               previous.has_value()};
+      let record     = stage_fd_allocation_restore{
+          *allocation_target,
+          previous.has_value() ? String{heap_allocator(), previous->view()}
+                                   : String{heap_allocator()},
+          previous.has_value()
+      };
       allocation_restores.push(steal(record));
     }
 

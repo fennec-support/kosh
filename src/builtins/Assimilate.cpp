@@ -904,8 +904,8 @@ Assimilate::execute(ExecContext &ec, EvalContext &cxt) const throws
   let const transaction_id =
       String::from(static_cast<u64>(os::get_shell_process_id()), allocator) +
       "-" + String::from(os::realtime_microseconds(), allocator);
-  let const upload_name =
-      String{heap_allocator(), ".kosh-assimilate-"} + transaction_id + ".upload";
+  let const upload_name = String{heap_allocator(), ".kosh-assimilate-"} +
+                          transaction_id + ".upload";
   let const destination = arguments[1].view() + ":" + upload_name;
 
   let scp_arguments = ArrayList<String>{allocator};

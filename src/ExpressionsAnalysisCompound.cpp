@@ -563,9 +563,10 @@ CompoundList::analyze(AnalysisContext &actx, bool is_unconditional) const throws
 
   defer {
     if (carry != nullptr) {
-      carry->repeated_append_count    = repeated_append_count;
-      carry->repeated_append_target   = String{carry->repeated_append_target.allocator(),
-                                                   repeated_append_target.view()};
+      carry->repeated_append_count = repeated_append_count;
+      carry->repeated_append_target =
+          String{carry->repeated_append_target.allocator(),
+                 repeated_append_target.view()};
       carry->repeated_append_location = repeated_append_location;
     }
   };

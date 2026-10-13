@@ -502,8 +502,7 @@ debug_diagnostic_cache_is_stable(EvalContext &context) throws -> bool
 
   let keyword_line_end = keyword_line_start;
 
-  while (keyword_line_end < source.count() &&
-         source[keyword_line_end] != '\n')
+  while (keyword_line_end < source.count() && source[keyword_line_end] != '\n')
   {
     keyword_line_end++;
   }

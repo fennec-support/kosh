@@ -97,9 +97,10 @@ EvalContext::run_program_fallback(ExecContext     &ec,
 
     for (let const &name : environment_names) {
       if (let value = os::get_environment_variable(name.view())) {
-        saved_environment.push(
-            saved_environment_variable{String{heap_allocator(), name.view()},
-                                       value.take()});
+        saved_environment.push(saved_environment_variable{
+            String{heap_allocator(), name.view()},
+            value.take()
+        });
       }
 
       os::unset_environment_variable(name.view());
@@ -124,8 +125,7 @@ EvalContext::run_program_fallback(ExecContext     &ec,
   fallback_context.source_retention().set_generation(
       source_retention().get_generation());
   fallback_context.execution_store().set_shell_executable_path(
-      String{heap_allocator(),
-             execution_store().get_shell_executable_path()});
+      String{heap_allocator(), execution_store().get_shell_executable_path()});
   fallback_context.runtime_state().set_koshkit(runtime_state().koshkit());
   fallback_context.runtime_state().set_inheritable_analysis_state(
       runtime_state().get_inheritable_analysis_state());
@@ -135,12 +135,13 @@ EvalContext::run_program_fallback(ExecContext     &ec,
       source_store().source_frames().count());
 
   for (let const &frame : source_store().source_frames()) {
-    fallback_context.source_store().source_frames().push(
-        source_frame{String{heap_allocator(), frame.origin.view()},
-                     frame.call_site, frame.parent_source,
-                     frame.parent_source_generation,
-                     String{heap_allocator(), frame.source_path.view()},
-                     frame.kind});
+    fallback_context.source_store().source_frames().push(source_frame{
+        String{heap_allocator(), frame.origin.view()     },
+        frame.call_site,
+        frame.parent_source, frame.parent_source_generation,
+        String{heap_allocator(), frame.source_path.view()},
+        frame.kind
+    });
     fallback_context.source_store().source_frames().back().function_call_depth =
         frame.function_call_depth;
     fallback_context.source_store().source_frames().back().was_printed =
@@ -260,11 +261,11 @@ EvalContext::run_mimicked_script(ExecContext     &ec,
   let const previous_runtime     = runtime_state();
   let const was_restricted_shell = startup_store().is_restricted_shell();
   let const previous_script_run  = source_store().is_script_run();
-  let       previous_shell_name  = String{heap_allocator(),
-                                         execution_store().get_shell_name()};
-  let       source_scope         = capture_source_scope();
-  let const previous_location    = source_scope.get_location();
-  let       isolated_snapshot    = Maybe<eval_state_snapshot>{};
+  let       previous_shell_name =
+      String{heap_allocator(), execution_store().get_shell_name()};
+  let       source_scope      = capture_source_scope();
+  let const previous_location = source_scope.get_location();
+  let       isolated_snapshot = Maybe<eval_state_snapshot>{};
 
   if (is_isolated) isolated_snapshot = snapshot_state();
 
@@ -304,13 +305,14 @@ EvalContext::run_mimicked_script(ExecContext     &ec,
 
   let const script_filename = ec.program_path().view();
 
-  source_store().source_frames().push(
-      source_frame{String{heap_allocator(), ec.program().view()},
-                   ec.source_location(),
-                   source_store().current_source(),
-                   source_generation_for(source_store().current_source()),
-                   String{heap_allocator(), script_filename},
-                   source_frame_kind::SourcedFile});
+  source_store().source_frames().push(source_frame{
+      String{heap_allocator(), ec.program().view()},
+      ec.source_location(),
+      source_store().current_source(),
+      source_generation_for(source_store().current_source()),
+      String{heap_allocator(), script_filename    },
+      source_frame_kind::SourcedFile
+  });
   source_store().source_frames().back().should_defer_trace = true;
   source_store().source_frames().back().function_call_depth =
       function_store().call_frames().count();
@@ -636,9 +638,10 @@ EvalContext::run_source(StringView                source,
   source_store().source_frames().push(source_frame{
       String{heap_allocator(), origin},
       call_site ? *call_site : SourceLocation{0, 0},
-      parent_source, source_generation_for(parent_source),
+      parent_source,
+      source_generation_for(parent_source),
       filename.has_value() ? String{heap_allocator(), *filename}
-      : String{heap_allocator()},
+                           : String{heap_allocator()},
       is_sourced_file_frame ? source_frame_kind::SourcedFile
                             : source_frame_kind::Ordinary
   });

@@ -636,8 +636,8 @@ internal::complete_from_tools_with_targets(StringView      line,
 
   switch (tool_kind.value()) {
   case tool_with_targets_kind::make: {
-    let const directory =
-        settled_option_value(line, "-C").value_or(String{heap_allocator(), "."});
+    let const directory = settled_option_value(line, "-C")
+                              .value_or(String{heap_allocator(), "."});
     let makefile_name = settled_option_value(line, "-f");
 
     if (!makefile_name.has_value()) {
@@ -701,14 +701,13 @@ internal::complete_from_tools_with_targets(StringView      line,
     break;
   }
   case tool_with_targets_kind::ninja: {
-    let const directory =
-        settled_option_value(line, "-C").value_or(String{heap_allocator(), "."});
+    let const directory = settled_option_value(line, "-C")
+                              .value_or(String{heap_allocator(), "."});
     let build_file = Path{directory.view()};
 
-    build_file.append(
-        settled_option_value(line, "-f")
-            .value_or(String{heap_allocator(), "build.ninja"})
-            .view());
+    build_file.append(settled_option_value(line, "-f")
+                          .value_or(String{heap_allocator(), "build.ninja"})
+                          .view());
     cached_targets = cached_targets_for(build_file, [&]() throws {
       let probe = ArrayList<String>{heap_allocator()};
 

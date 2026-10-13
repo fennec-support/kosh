@@ -2600,12 +2600,10 @@ spawn_subshell_stage(StringView                   source,
     arguments.push_managed(mood_name(mood));
   }
   arguments.push_managed(StringView{"--no-diagnostics"});
-  if (!should_trace_sources)
-    arguments.push_managed(StringView{"--no-traces"});
+  if (!should_trace_sources) arguments.push_managed(StringView{"--no-traces"});
   arguments.push_managed(StringView{"-c"});
   arguments.push_managed(source);
-  if (!shell_name.is_empty())
-    arguments.push_managed(shell_name);
+  if (!shell_name.is_empty()) arguments.push_managed(shell_name);
   let command_line = make_os_args(arguments);
 
   ScopedEnvironment child_environment;
@@ -3367,7 +3365,7 @@ machine_type() throws -> String
   case PROCESSOR_ARCHITECTURE_ARM64: return String{heap_allocator(), "arm64"};
   case PROCESSOR_ARCHITECTURE_INTEL: return String{heap_allocator(), "i686"};
   case PROCESSOR_ARCHITECTURE_ARM:   return String{heap_allocator(), "arm"};
-  default: return String{heap_allocator(), "unknown"};
+  default:                           return String{heap_allocator(), "unknown"};
   }
 }
 
@@ -3403,8 +3401,7 @@ fn
 system_release_name() throws -> String
 {
   let const version = windows_version();
-  if (version.dwMajorVersion == 0)
-    return String{heap_allocator(), "unknown"};
+  if (version.dwMajorVersion == 0) return String{heap_allocator(), "unknown"};
 
   return String::from(version.dwMajorVersion, heap_allocator()) + "." +
          String::from(version.dwMinorVersion, heap_allocator()) + "." +
@@ -3415,8 +3412,7 @@ fn
 system_version_name() throws -> String
 {
   let const version = windows_version();
-  if (version.dwMajorVersion == 0)
-    return String{heap_allocator(), "unknown"};
+  if (version.dwMajorVersion == 0) return String{heap_allocator(), "unknown"};
 
   return String::from(version.dwBuildNumber, heap_allocator());
 }
@@ -3471,7 +3467,9 @@ format_local_time(StringView format, i64 epoch) throws -> String
   let const written =
       strftime(buffer, sizeof(buffer), format_string.c_str(), &broken_down);
 
-  return String{heap_allocator(), StringView{buffer, written}};
+  return String{
+      heap_allocator(), StringView{buffer, written}
+  };
 }
 
 fn
@@ -3850,9 +3848,8 @@ read_disk_io_snapshot(Allocator allocator) throws -> disk_io_snapshot
                             static_cast<u32>(disk_io_field::QueueDepth);
 
   for (u32 disk_index = 0; disk_index < 64; disk_index++) {
-    let path =
-      String{allocator, "\\\\.\\PhysicalDrive"} +
-      String::from(disk_index, allocator);
+    let path = String{allocator, "\\\\.\\PhysicalDrive"} +
+               String::from(disk_index, allocator);
     let const wide_path = utf8_to_wide(path.view(), allocator);
     if (!wide_path.has_value()) continue;
     let const handle =
@@ -3872,7 +3869,9 @@ read_disk_io_snapshot(Allocator allocator) throws -> disk_io_snapshot
     }
 
     snapshot.disks.push(disk_io_status{
-        String{allocator, "PhysicalDrive"} + String::from(disk_index, allocator),
+        String{allocator, "PhysicalDrive"}
+        +
+            String::from(disk_index, allocator),
         performance.BytesRead.QuadPart < 0
             ? 0
             : static_cast<u64>(performance.BytesRead.QuadPart),

@@ -2411,7 +2411,8 @@ source_fixes_for_original_line_endings(
           start, end,
           String{heap_allocator(),
                  source.substring_of_length(start, end - start)},
-          edit.replacement.clone()});
+          edit.replacement.clone()
+      });
     }
 
     if (!is_valid) continue;
@@ -2559,16 +2560,20 @@ x_prefix_test_fix(StringView            source,
 
   let edits = ArrayList<source_edit>{heap_allocator()};
 
-  edits.push(source_edit{location.position, location.position + location.length,
-                         String{heap_allocator(), left},
-                         left_replacement.take()});
-  edits.push(source_edit{right_start, right_end,
-                         String{heap_allocator(), right},
-                         right_replacement.take()});
+  edits.push(source_edit{
+      location.position, location.position + location.length,
+      String{heap_allocator(), left},
+      left_replacement.take()
+  });
+  edits.push(source_edit{
+      right_start, right_end, String{heap_allocator(), right},
+      right_replacement.take()
+  });
 
   return source_fix{
       String{heap_allocator(), "Drop the 'x' prefix from both operands"},
-      steal(edits), true, true, diagnostic_id::sc2268};
+      steal(edits), true, true, diagnostic_id::sc2268
+  };
 }
 
 static fn
@@ -2600,16 +2605,17 @@ negated_test_operator_fix(diagnostic_id         diagnostic,
 
   let edits = ArrayList<source_edit>{heap_allocator()};
 
-  edits.push(
-      source_edit{location.position, operator_start,
-                  String{heap_allocator(),
-                         source.substring_of_length(
-                             location.position,
-                             operator_start - location.position)},
-                  String{heap_allocator()}});
-  edits.push(source_edit{operator_start, operator_end,
-                         String{heap_allocator(), written_operator},
-                         String{heap_allocator(), replacement_operator}});
+  edits.push(source_edit{
+      location.position, operator_start,
+      String{heap_allocator(),
+             source.substring_of_length(location.position,
+             operator_start - location.position)},
+      String{heap_allocator()}
+  });
+  edits.push(source_edit{
+      operator_start, operator_end, String{heap_allocator(), written_operator    },
+      String{heap_allocator(), replacement_operator}
+  });
 
   let title = String{heap_allocator(), "Replace the negation with `"};
 
@@ -2811,11 +2817,15 @@ source_fixes_for_diagnostic(diagnostic_id         diagnostic,
   let       edits    = ArrayList<source_edit>{heap_allocator()};
   let const edit_end = location.position + location.length;
 
-  edits.push(source_edit{location.position, edit_end,
-                         String{heap_allocator(), written},
-                         steal(replacement)});
-  fixes.push(source_fix{String{heap_allocator(), title}, steal(edits), true, is_safe_for_fix_all,
-                        diagnostic});
+  edits.push(source_edit{
+      location.position, edit_end, String{heap_allocator(), written},
+      steal(replacement)
+  });
+  fixes.push(source_fix{
+      String{heap_allocator(), title},
+      steal(edits), true, is_safe_for_fix_all,
+      diagnostic
+  });
 
   return fixes;
 }

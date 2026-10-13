@@ -584,8 +584,9 @@ read_volume_identity(mounted_filesystem &filesystem) throws -> void
           name_length--;
         }
 
-        filesystem.volume_name = String{filesystem.volume_name.allocator(),
-                                        StringView{data, name_length}};
+        filesystem.volume_name = String{
+            filesystem.volume_name.allocator(), StringView{data, name_length}
+        };
       }
     }
   }
@@ -720,11 +721,12 @@ append_mounted_filesystems(ArrayList<mounted_filesystem> &result) throws
   char   buffer[8192];
 
   while (getmntent_r(mount_file, &entry, buffer, sizeof(buffer)) != nullptr) {
-    let filesystem =
-        mounted_filesystem{String{heap_allocator(), entry.mnt_fsname},
-                           String{heap_allocator(), entry.mnt_dir},
-                           String{heap_allocator(), entry.mnt_type},
-                           String{heap_allocator(), entry.mnt_opts}};
+    let filesystem = mounted_filesystem{
+        String{heap_allocator(), entry.mnt_fsname},
+        String{heap_allocator(), entry.mnt_dir   },
+        String{heap_allocator(), entry.mnt_type  },
+        String{heap_allocator(), entry.mnt_opts  }
+    };
     let const source = filesystem.source.view();
 
     if (source.starts_with("UUID="))
@@ -759,18 +761,21 @@ append_mounted_filesystems(ArrayList<mounted_filesystem> &result) throws
   for (int index = 0; index < entry_count; index++) {
     let filesystem = mounted_filesystem{
         String{heap_allocator(), entries[index].f_mntfromname},
-        String{heap_allocator(), entries[index].f_mntonname},
-        String{heap_allocator(), entries[index].f_fstypename},
-        describe_mount_flags(static_cast<u64>(entries[index].f_flags))};
+        String{heap_allocator(), entries[index].f_mntonname  },
+        String{heap_allocator(), entries[index].f_fstypename },
+        describe_mount_flags(static_cast<u64>(entries[index].f_flags))
+    };
 
     read_volume_identity(filesystem);
     result.push(steal(filesystem));
   }
 #else
-  result.push(mounted_filesystem{String{heap_allocator(), "."},
-                                 String{heap_allocator(), "."},
-                                 String{heap_allocator()},
-                                 String{heap_allocator()}});
+  result.push(mounted_filesystem{
+      String{heap_allocator(), "."},
+      String{heap_allocator(), "."},
+      String{heap_allocator()},
+      String{heap_allocator()}
+  });
 #endif
 }
 

@@ -546,8 +546,7 @@ public:
     skip_spaces();
     if (pos != source.length)
       fail_at(pos, should_error_unset ? source.length - pos : 1,
-              "Unexpected '" + source.substring(pos) +
-                  "' after the expression",
+              "Unexpected '" + source.substring(pos) + "' after the expression",
               "An operator is missing between two values");
 
     return result;

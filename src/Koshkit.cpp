@@ -332,9 +332,12 @@ dispatch(const ExecContext   &ec,
   let const name = ec.args()[name_index].view();
 
   if (!chosen.has_value())
-    throw ErrorWithLocation{ec.arg_location_at(name_index),
-                            "koshkit has no utility called '" + String{heap_allocator(), name} +
-                                "'"};
+    throw ErrorWithLocation{
+        ec.arg_location_at(name_index), "koshkit has no utility called '" +
+                                            String{heap_allocator(), name}
+                                            +
+                                            "'"
+    };
 
   ArrayList<String> shifted{cxt.scratch_allocator()};
 
@@ -354,8 +357,9 @@ dispatch(const ExecContext   &ec,
   } catch (const BrokenPipeExit &) {
     throw;
   } catch (const ErrorWithLocation &e) {
-    let const invocation_name = ec.is_multicall ? String{heap_allocator(), name}
-                                                : String{heap_allocator(), "koshkit "} + name;
+    let const invocation_name =
+        ec.is_multicall ? String{heap_allocator(), name}
+                        : String{heap_allocator(), "koshkit "} + name;
 
     rethrow_with_prefix(e, invocation_name);
   } catch (const Error &error) {

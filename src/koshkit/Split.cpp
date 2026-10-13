@@ -106,9 +106,9 @@ Split::execute(const ExecContext               &ec,
     let const parsed = utils::parse_decimal_u64(flag.value());
 
     if (parsed.is_error() || parsed.value() == 0 || parsed.value() > maximum) {
-      KOSHKIT_REPORT_ERROR_AT(
-          flag.value_location(),
-          "invalid " + name + " '" + flag.value() + "'", note);
+      KOSHKIT_REPORT_ERROR_AT(flag.value_location(),
+                              "invalid " + name + " '" + flag.value() + "'",
+                              note);
 
       return false;
     }

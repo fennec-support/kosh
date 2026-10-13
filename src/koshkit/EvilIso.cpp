@@ -1518,7 +1518,8 @@ append_remote_report(String                                   &output,
             context.cgroups = String{context.cgroups.allocator(), "-"};
           }
           if (context.orchestrator.is_empty()) {
-            context.orchestrator = String{context.orchestrator.allocator(), "-"};
+            context.orchestrator =
+                String{context.orchestrator.allocator(), "-"};
           }
           if (context.runtime.is_empty()) {
             context.runtime = String{context.runtime.allocator(), "-"};
@@ -1674,9 +1675,9 @@ append_runtime_evidence_report(
       row.process_id_value = process.process_id;
       row.process_id       = String::from(process.process_id, allocator);
       row.name             = process.name.clone();
-      row.role = String{row.role.allocator(),
-                        process.process_id == self_process_id ? "self"
-                                                              : "other"};
+      row.role =
+          String{row.role.allocator(),
+                 process.process_id == self_process_id ? "self" : "other"};
       row.evidence = evidence.path.clone();
       rows.push(steal(row));
     }
@@ -1856,9 +1857,9 @@ append_container_report(String                                   &output,
       row.process_id_value = process.process_id;
       row.process_id       = String::from(process.process_id, allocator);
       row.name             = process.name.clone();
-      row.role = String{row.role.allocator(),
-                        process.process_id == self_process_id ? "self"
-                                                              : "other"};
+      row.role =
+          String{row.role.allocator(),
+                 process.process_id == self_process_id ? "self" : "other"};
       row.cgroup = evidence.path.clone();
       detail_rows.push(steal(row));
     }

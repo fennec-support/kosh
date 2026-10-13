@@ -774,7 +774,8 @@ public:
     if (!names.add(name)) return;
 
     scoped_name_insertions.push(analysis_name_insertion{
-        &names, String{scoped_name_insertions.allocator(), name}});
+        &names, String{scoped_name_insertions.allocator(), name}
+    });
   }
 
   pure fn

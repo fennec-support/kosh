@@ -948,7 +948,8 @@ EvalContext::write_xtrace(StringView command) throws -> void
   if (!runtime_state().should_echo_expanded()) return;
 
   let       trace = String{scratch_allocator()};
-  let const ps4   = get_variable_value("PS4").value_or(String{heap_allocator(), "+ "});
+  let const ps4 =
+      get_variable_value("PS4").value_or(String{heap_allocator(), "+ "});
 
   if (!ps4.is_empty()) {
     for (usize i = 0; i < execution_store().subshell_depth(); i++)

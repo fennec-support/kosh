@@ -1728,7 +1728,10 @@ public:
     if (static_cast<usize>(level) > loop_depth)
       level = static_cast<i64>(loop_depth);
     if (level < 1) level = 1;
-    set(control_flow{level, source, String{heap_allocator(), origin}, location, kind});
+    set(control_flow{
+        level, source, String{heap_allocator(), origin},
+          location, kind
+    });
   }
 
   fn
@@ -1737,8 +1740,11 @@ public:
                  const String  *source,
                  StringView     origin) throws -> void
   {
-    set(control_flow{status, source, String{heap_allocator(), origin}, location,
-                     control_flow::Kind::Return});
+    set(control_flow{
+        status, source, String{heap_allocator(), origin},
+          location,
+        control_flow::Kind::Return
+    });
   }
 
   fn
@@ -1747,8 +1753,11 @@ public:
                const String  *source,
                StringView     origin) throws -> void
   {
-    set(control_flow{status, source, String{heap_allocator(), origin}, location,
-                     control_flow::Kind::Exit});
+    set(control_flow{
+        status, source, String{heap_allocator(), origin},
+          location,
+        control_flow::Kind::Exit
+    });
   }
 
   fn

@@ -501,8 +501,9 @@ ErrorBase::trailing_details_to_string() const throws -> String
 
   let const note_period = text_ends_a_sentence(note) ? "" : ".";
 
-  return String{heap_allocator(), "\n"} + color.severity + severity_word + color.get_reset() +
-         ": " + color.message + note + note_period + color.get_reset();
+  return String{heap_allocator(), "\n"} + color.severity + severity_word +
+         color.get_reset() + ": " + color.message + note + note_period +
+         color.get_reset();
 }
 
 cold fn

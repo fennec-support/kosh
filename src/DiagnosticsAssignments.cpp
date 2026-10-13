@@ -928,7 +928,9 @@ check_assignment_value_shape(AnalysisContext             &actx,
   {
     actx.command_name_assignments.push(command_name_assignment_record{
         String{heap_allocator(), input.name},
-        String{heap_allocator(), value}, input.location});
+        String{heap_allocator(), value     },
+        input.location
+    });
   }
 
   let const first_bracket = input.name.find_character('[');

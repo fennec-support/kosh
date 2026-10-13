@@ -387,8 +387,8 @@ Getconf::execute(const ExecContext               &ec,
   {
     report_soft_koshkit_util_error(
         ec, cxt, FLAG_GETCONF_SPECIFICATION.value_location(), args[0].view(),
-        "Unsupported specification '" +
-            FLAG_GETCONF_SPECIFICATION.value() + "'");
+        "Unsupported specification '" + FLAG_GETCONF_SPECIFICATION.value() +
+            "'");
 
     return 2;
   }

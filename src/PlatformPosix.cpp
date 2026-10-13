@@ -320,7 +320,10 @@ linux_process_start_token(StringView process_directory) throws
     -> Maybe<u64>
 {
   let const stat =
-      Path{String{heap_allocator(), process_directory} + "/stat"}
+      Path{
+          String{heap_allocator(), process_directory}
+          + "/stat"
+  }
           .read_entire_file();
 
   if (!stat.has_value()) return None;
@@ -1253,7 +1256,7 @@ network_interface_addresses() throws
         String{heap_allocator(), current->ifa_name},
         family == AF_INET ? network_address_family::IPv4
                           : network_address_family::IPv6,
-        String{heap_allocator(), address},
+        String{heap_allocator(), address          },
     });
   }
 

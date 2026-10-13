@@ -367,8 +367,9 @@ editor_name(EvalContext &cxt, const fc_options &options) throws
     return String{cxt.scratch_allocator(), value->view()};
   }
 
-  return cxt.runtime_state().is_posix_option_on() ? String{heap_allocator(), "ed"}
-                                                         : String{heap_allocator(), "vi"};
+  return cxt.runtime_state().is_posix_option_on()
+             ? String{heap_allocator(), "ed"}
+             : String{heap_allocator(), "vi"};
 }
 
 static fn

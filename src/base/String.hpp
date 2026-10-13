@@ -24,7 +24,8 @@ public:
       : m_data(cstr), m_length(__builtin_strlen(cstr))
   {}
 
-  constexpr operator StringView() const wontthrow
+  constexpr
+  operator StringView() const wontthrow
   {
     return StringView{m_data, m_length};
   }

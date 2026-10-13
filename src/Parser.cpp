@@ -91,8 +91,10 @@ Parser::record_analysis_scope_definition(
       analysis_metadata_collection_mode::Enabled)
     return;
 
-  m_analysis_scope_definitions.push(
-      analysis_scope_definition{String{heap_allocator(), name}, kind});
+  m_analysis_scope_definitions.push(analysis_scope_definition{
+      String{heap_allocator(), name},
+      kind
+  });
 }
 
 fn
@@ -268,7 +270,7 @@ unexpected_command_token_message(const Token *token) throws -> String
   case Token::Kind::Pipe:
     return String{heap_allocator(),
                   "'|' has no command before it to pipe from"};
-  default:                      {
+  default: {
     let const ast = token->to_ast_string();
 
     return "Expected a command, found '" + ast.view() + "'";
@@ -431,7 +433,8 @@ Parser::record_detailed_parse_error(
       error.message().clone(), String{heap_allocator(), error.detail_message()},
       related_location, get_location_filename(details_location),
       String{heap_allocator(), error.details_message()},
-      ArrayList<source_fix>{heap_allocator()}});
+      ArrayList<source_fix>{heap_allocator()}
+  });
 }
 
 cold fn
@@ -458,9 +461,10 @@ Parser::record_parse_error(
   diagnostic_sink->push(source_diagnostic{
       None, error_severity::error, location, get_location_filename(location),
       error.message().clone(), String{heap_allocator(), error.detail_message()},
-      None,
-      String{heap_allocator()}, String{heap_allocator()},
-      ArrayList<source_fix>{heap_allocator()}});
+      None, String{heap_allocator()},
+       String{heap_allocator()},
+      ArrayList<source_fix>{heap_allocator()}
+  });
 }
 
 cold fn

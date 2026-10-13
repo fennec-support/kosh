@@ -374,8 +374,7 @@ remove_path_with_prompt(const removal_request &request,
 
   let const do_report_reason = [&](StringView reason) throws -> bool {
     report_soft_koshkit_util_error(request.ec, cxt, request.utility_name,
-                                   "cannot remove '" + path +
-                                       "': " + reason);
+                                   "cannot remove '" + path + "': " + reason);
 
     return false;
   };
@@ -437,8 +436,7 @@ report_dry_run_removal(const removal_request &request,
 
   let const do_report_reason = [&](StringView reason) throws -> bool {
     report_soft_koshkit_util_error(request.ec, cxt, request.utility_name,
-                                   "cannot remove '" + path +
-                                       "': " + reason);
+                                   "cannot remove '" + path + "': " + reason);
 
     return false;
   };
@@ -461,10 +459,9 @@ report_dry_run_removal(const removal_request &request,
     let names = os::list_directory_status(path, request.allocator);
 
     if (!names.has_value()) {
-      report_soft_koshkit_util_error(
-          request.ec, cxt, request.utility_name,
-          "cannot read directory '" + path +
-              "': " + os::last_system_error_message());
+      report_soft_koshkit_util_error(request.ec, cxt, request.utility_name,
+                                     "cannot read directory '" + path + "': " +
+                                         os::last_system_error_message());
 
       return false;
     }

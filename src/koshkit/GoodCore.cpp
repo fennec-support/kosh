@@ -157,8 +157,7 @@ append_unique_path(ArrayList<String> &paths,
     if (existing.view() == path) return;
   }
 
-  if (Path{path, allocator}.is_regular_file())
-    paths.push_managed(path);
+  if (Path{path, allocator}.is_regular_file()) paths.push_managed(path);
 }
 
 fn

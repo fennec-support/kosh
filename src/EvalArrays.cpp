@@ -582,8 +582,7 @@ EvalContext::assign_array_element(
     if (let const array = variable_store().indexed_arrays().find(name);
         array.has_value() && resolved_index < array->count())
     {
-      return String{heap_allocator(),
-                    array->operator[](resolved_index).view()};
+      return String{heap_allocator(), array->operator[](resolved_index).view()};
     }
 
     if (variable_store().sparse_arrays().has(name)) {
@@ -805,8 +804,7 @@ EvalContext::unset_array_element(StringView name,
   if (is_readonly(name))
     throw Error{"Unable to unset '" + name + "' because it is read only"};
 
-  if (is_bash_argument_array(name))
-    throw Error{name + ": cannot unset"};
+  if (is_bash_argument_array(name)) throw Error{name + ": cannot unset"};
 
   if (is_bash_directory_stack_special(name)) {
     unused(evaluate_array_index(*this, subscript));
@@ -966,12 +964,14 @@ EvalContext::declare_local(StringView name,
   }
 
   scope_store().current_local_scope().push(local_binding{
-      String{heap_allocator(), name}, steal(previous_value),
-      previous_special_definition_location,
-      steal(previous_array), steal(previous_keys), steal(previous_values),
+      String{heap_allocator(), name},
+      steal(previous_value),
+      previous_special_definition_location, steal(previous_array),
+      steal(previous_keys), steal(previous_values),
       steal(previous_sparse_indices), steal(previous_sparse_values),
       previous_attributes, was_previously_associative, was_previously_exported,
-      false});
+      false
+  });
 
   if (should_inherit_value && was_bash_directory_stack_special) {
     set_indexed_array(name, steal(inherited_directory_stack));
@@ -1564,8 +1564,7 @@ EvalContext::collect_array_subscripts(StringView name) const throws
     return out;
   }
 
-  if (get_variable_value(name).has_value())
-    out.push_managed("0");
+  if (get_variable_value(name).has_value()) out.push_managed("0");
 
   return out;
 }

@@ -1246,11 +1246,11 @@ wait_and_monitor_process(process pid, bool *was_stopped) throws -> i32
   }
 
   if (WIFSIGNALED(status)) {
-    const i32    sig     = WTERMSIG(status);
-    const char  *sig_str = strsignal(sig);
-    const String sig_desc =
-        (sig_str != nullptr) ? String{heap_allocator(), sig_str}
-                             : String{heap_allocator(), "Unknown"};
+    const i32    sig      = WTERMSIG(status);
+    const char  *sig_str  = strsignal(sig);
+    const String sig_desc = (sig_str != nullptr)
+                                ? String{heap_allocator(), sig_str}
+                                : String{heap_allocator(), "Unknown"};
 
     if (sig == SIGPIPE) {
     } else if (sig != SIGINT) {
@@ -1899,7 +1899,9 @@ format_local_time(StringView format, i64 epoch) throws -> String
   let const written =
       strftime(buffer, sizeof(buffer), format_string.c_str(), &broken_down);
 
-  return String{heap_allocator(), StringView{buffer, written}};
+  return String{
+      heap_allocator(), StringView{buffer, written}
+  };
 }
 
 fn

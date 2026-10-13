@@ -362,8 +362,7 @@ Od::execute(const ExecContext               &ec,
 
       default:
         KOSHKIT_REPORT_ERROR_AT(format_location,
-                                "unsupported integer width in '" +
-                                    format + "'",
+                                "unsupported integer width in '" + format + "'",
                                 "use 1, 2, 4, 8, C, S, I, or L");
 
         return 1;

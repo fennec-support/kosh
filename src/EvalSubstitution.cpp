@@ -1382,8 +1382,8 @@ EvalContext::run_function_substitution(
 {
   LOG(Debug, "running a function substitution body of %zu bytes",
       source.count());
-  let const source_scope =
-      enter_source_scope(&source, String{heap_allocator(), "function substitution"});
+  let const source_scope = enter_source_scope(
+      &source, String{heap_allocator(), "function substitution"});
 
   let const do_evaluate_body = [&]() throws -> std::exception_ptr {
     let const was_interactive = execution_store().shell_is_interactive();

@@ -1417,9 +1417,8 @@ run_make_shell_function(EvalContext &cxt,
       active_name.has_value())
     source_name = *active_name;
 
-  let const captured =
-      cxt.capture_command_substitution(source, source_name);
-  let folded = String{cxt.scratch_allocator()};
+  let const captured = cxt.capture_command_substitution(source, source_name);
+  let       folded   = String{cxt.scratch_allocator()};
 
   for (usize byte_position = 0; byte_position < captured.count();
        byte_position++)
@@ -2581,7 +2580,8 @@ parse_makefile_into(EvalContext                     &cxt,
             mk.rules[index].recipe_lines.push_managed(line.substring(1));
 
           for (usize index : current_pattern_indices)
-            mk.pattern_rules[index].rule.recipe_lines.push_managed(line.substring(1));
+            mk.pattern_rules[index].rule.recipe_lines.push_managed(
+                line.substring(1));
         }
 
         continue;
@@ -2844,7 +2844,7 @@ parse_makefile_into(EvalContext                     &cxt,
               rule         = &mk.rules[mk.add_rule(steal(fresh))];
             }
 
-      rule->variable_assignments.push_managed(trim(after_colon));
+            rule->variable_assignments.push_managed(trim(after_colon));
           }
 
           continue;
@@ -3011,10 +3011,11 @@ parse_makefile_into(EvalContext                     &cxt,
 
         if (!inline_recipe.is_empty()) {
           for (usize index : current_rule_indices)
-      mk.rules[index].recipe_lines.push_managed(inline_recipe);
+            mk.rules[index].recipe_lines.push_managed(inline_recipe);
 
           for (usize index : current_pattern_indices)
-      mk.pattern_rules[index].rule.recipe_lines.push_managed(inline_recipe);
+            mk.pattern_rules[index].rule.recipe_lines.push_managed(
+                inline_recipe);
         }
 
         continue;

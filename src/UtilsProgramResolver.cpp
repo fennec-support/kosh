@@ -849,7 +849,8 @@ ProgramResolver::rebuild_path_command_index(CompletionRefresh refresh)
 
     let probe = DirectoryProbe{};
 
-    probe.directory  = String{probe.directory.allocator(), directory_text.view()};
+    probe.directory =
+        String{probe.directory.allocator(), directory_text.view()};
     probe.generation = generation;
 
     let was_reused = false;

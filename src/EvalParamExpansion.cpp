@@ -1131,10 +1131,9 @@ EvalContext::ModifierWordExpander::emit_command_substitution(
     call_site_pointer = &call_site;
   }
 
-  emit_run(
-      m_context.capture_command_substitution(String{heap_allocator(), body},
-                                             None, call_site_pointer),
-      !m_is_in_double_quote);
+  emit_run(m_context.capture_command_substitution(
+               String{heap_allocator(), body}, None, call_site_pointer),
+           !m_is_in_double_quote);
   m_index = end_index;
 }
 

@@ -174,11 +174,11 @@ compile_sed_expression(StringView     expression,
                                     os::case_sensitivity::Sensitive);
 
   if (!result.has_value()) {
-    throw SedParseError{
-        position, "invalid regular expression '" + expression + "'",
-        regex_mode == sed_regex_mode::Extended
-            ? "use a valid extended regular expression"
-            : "use a valid basic regular expression"};
+    throw SedParseError{position,
+                        "invalid regular expression '" + expression + "'",
+                        regex_mode == sed_regex_mode::Extended
+                            ? "use a valid extended regular expression"
+                            : "use a valid basic regular expression"};
   }
 
   return *result;

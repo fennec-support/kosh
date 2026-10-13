@@ -425,9 +425,8 @@ current_git_branch(StringView ceiling_directories) throws -> String
     if (text.starts_with(ref_prefix))
       return String{heap_allocator(), text.substring(ref_prefix.length)};
 
-    return String{
-        heap_allocator(),
-        text.substring_of_length(0, text.length < 7 ? text.length : 7)};
+    return String{heap_allocator(), text.substring_of_length(
+                                        0, text.length < 7 ? text.length : 7)};
   }
 
   return String{heap_allocator()};
@@ -617,13 +616,13 @@ git_status(StringView ceiling_directories, Allocator allocator) throws
 
   let const ref_prefix = StringView{"ref: refs/heads/"};
 
-  result.branch = head_text.starts_with(ref_prefix)
-                      ? String{result.branch.allocator(),
-                               head_text.substring(ref_prefix.length)}
-                      : String{result.branch.allocator(),
-                               head_text.substring_of_length(
-                                   0, head_text.length < 7 ? head_text.length
-                                                           : 7)};
+  result.branch =
+      head_text.starts_with(ref_prefix)
+          ? String{result.branch.allocator(),
+                   head_text.substring(ref_prefix.length)}
+          : String{result.branch.allocator(),
+                   head_text.substring_of_length(
+                       0, head_text.length < 7 ? head_text.length : 7)};
   if (result.branch.is_empty()) return result;
 
   let local_ref = String{allocator, "refs/heads/"};

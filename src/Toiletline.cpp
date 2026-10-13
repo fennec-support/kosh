@@ -2820,9 +2820,10 @@ set_title(StringView title) -> void
 fn
 set_idle_title() -> void
 {
-  static const String user      = os::get_current_user().value_or(String{koshka::heap_allocator(), "???"});
-  let const           directory = Path::current_directory().text();
-  let                 title     = String{koshka::heap_allocator()};
+  static const String user =
+      os::get_current_user().value_or(String{koshka::heap_allocator(), "???"});
+  let const directory = Path::current_directory().text();
+  let       title     = String{koshka::heap_allocator()};
 
   title.reserve(user.count() + directory.count() + 3);
   title += user;
@@ -3133,8 +3134,10 @@ get_input(const String &prompt,
           ? koshka::Maybe<usize>{koshka::None}
           : koshka::Maybe<usize>{::itl_g_last_history_event_number};
 
-  return input_result{code, String{koshka::heap_allocator(), TL_BUFFER},
-                      history_event_number};
+  return input_result{
+      code, String{koshka::heap_allocator(), TL_BUFFER},
+       history_event_number
+  };
 }
 
 fn
@@ -3276,8 +3279,8 @@ prompt_hostname(bool should_use_full_hostname) throws -> String
 
   let const dot = host.view().find_character('.');
 
-  return String{
-      koshka::heap_allocator(), host.view().substring_of_length(0, dot.value_or(host.length()))};
+  return String{koshka::heap_allocator(), host.view().substring_of_length(
+                                              0, dot.value_or(host.length()))};
 }
 
 static fn
@@ -3403,7 +3406,8 @@ prompt_version(EvalContext &context, bool is_full) throws -> String
   if (versinfo.has_value() && versinfo->count() >= 3 &&
       context.get_variable_value("BASH_VERSION").has_value())
   {
-    let version = String{koshka::heap_allocator(),(*versinfo.value())[0].view()};
+    let version =
+        String{koshka::heap_allocator(), (*versinfo.value())[0].view()};
 
     version += '.';
     version.append((*versinfo.value())[1].view());
@@ -3840,8 +3844,8 @@ get_cached_user() throws -> const String &
   static bool   was_user_resolved = false;
 
   if (!was_user_resolved) {
-    CACHED_USER       = os::get_current_user().value_or(
-        String{CACHED_USER.allocator(), "???"});
+    CACHED_USER =
+        os::get_current_user().value_or(String{CACHED_USER.allocator(), "???"});
     was_user_resolved = true;
   }
 
@@ -3876,9 +3880,9 @@ expand_decoded_prompt(EvalContext &context,
     let const source_location =
         koshka::SourceLocation{0, decoded.length, source_name};
 
-    expanded = String{
-        koshka::heap_allocator(),
-        context.expand_heredoc_body(decoded, &source_location).view()};
+    expanded =
+        String{koshka::heap_allocator(),
+               context.expand_heredoc_body(decoded, &source_location).view()};
   } catch (const koshka::ErrorBase &error) {
     koshka::show_message(error.to_string(decoded, &context));
     if (let const definition =
@@ -4140,7 +4144,8 @@ emit_prompt_start_marks(EvalContext &context) -> void
   if (!is_shell_integration_enabled(context)) return;
 
   let const directory = Path::current_directory().text();
-  let const host      = os::get_hostname().value_or(String{koshka::heap_allocator(), ""});
+  let const host =
+      os::get_hostname().value_or(String{koshka::heap_allocator(), ""});
 
   let sequence = String{koshka::heap_allocator()};
 
