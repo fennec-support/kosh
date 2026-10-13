@@ -191,6 +191,24 @@ public:
     return m_allocator;
   }
 
+  cold fn
+  move_to_allocator(Allocator allocator) throws -> void
+  {
+    if (m_allocator == allocator) return;
+
+    StringMap moved{allocator, m_first_capacity};
+    moved.reserve(m_count);
+
+    for_each([&](StringView key, Value &value) throws {
+      if constexpr (requires { value.move_to_allocator(allocator); })
+        value.move_to_allocator(allocator);
+
+      moved.set_value(key, steal(value));
+    });
+
+    *this = steal(moved);
+  }
+
   hot fn
   set(StringView key, Value value) throws -> Value *
   {

@@ -111,6 +111,12 @@ public:
   {
     Path                  path;
     os::program_extension extension{os::program_extension::None};
+
+    cold fn
+    move_to_allocator(Allocator allocator) throws -> void
+    {
+      path.move_to_allocator(allocator);
+    }
   };
 
   struct CacheEntry

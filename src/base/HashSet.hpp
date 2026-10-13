@@ -30,6 +30,12 @@ public:
     return m_map.allocator();
   }
 
+  cold fn
+  move_to_allocator(Allocator allocator) throws -> void
+  {
+    m_map.move_to_allocator(allocator);
+  }
+
   hot fn
   add(StringView key) throws -> bool
   {

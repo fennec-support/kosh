@@ -94,6 +94,24 @@ public:
     return m_allocator;
   }
 
+  cold fn
+  move_to_allocator(Allocator allocator) throws -> void
+  {
+    if (m_allocator == allocator) return;
+
+    if (m_shared == nullptr) {
+      m_allocator = allocator;
+
+      return;
+    }
+
+    let *const copy = create(allocator, clone_value(read()));
+
+    release();
+    m_allocator = allocator;
+    m_shared    = copy;
+  }
+
   pure fn
   read() const wontthrow -> const T &
   {

@@ -228,6 +228,13 @@ struct variable_entry
   variable_entry &
   operator=(variable_entry &&) = default;
 
+  cold fn
+  move_to_allocator(Allocator allocator) throws -> void
+  {
+    value.move_to_allocator(allocator);
+    elements.move_to_allocator(allocator);
+  }
+
   mustuse fn
   clone() const throws -> variable_entry
   {
@@ -651,6 +658,13 @@ struct glob_field
   String text;
   Bitset glob_active;
   bool   has_literal_glob{false};
+
+  cold fn
+  move_to_allocator(Allocator allocator) throws -> void
+  {
+    text.move_to_allocator(allocator);
+    glob_active.move_to_allocator(allocator);
+  }
 };
 
 enum class glob_expansion_mode : u8
@@ -912,6 +926,13 @@ struct job
   bool                    has_unreported_state_change{false};
   bool                    is_inherited{false};
   bool                    was_waited{false};
+
+  cold fn
+  move_to_allocator(Allocator allocator) throws -> void
+  {
+    earlier_pipeline_processes.move_to_allocator(allocator);
+    command.move_to_allocator(allocator);
+  }
 };
 
 struct job_line_format

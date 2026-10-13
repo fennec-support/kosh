@@ -61,6 +61,15 @@ struct decoded_shell_word
       : text(allocator), glob_active(allocator), raw_positions(allocator),
         opaque_ranges(allocator)
   {}
+
+  cold fn
+  move_to_allocator(Allocator allocator) throws -> void
+  {
+    text.move_to_allocator(allocator);
+    glob_active.move_to_allocator(allocator);
+    raw_positions.move_to_allocator(allocator);
+    opaque_ranges.move_to_allocator(allocator);
+  }
 };
 
 enum class shell_word_source_mapping : u8
@@ -511,6 +520,12 @@ git_upstream_ref(const Path &git_dir, StringView branch_name) throws
 struct git_status_result
 {
   explicit git_status_result(Allocator allocator) : branch(allocator) {}
+
+  cold fn
+  move_to_allocator(Allocator allocator) throws -> void
+  {
+    branch.move_to_allocator(allocator);
+  }
 
   String branch;
   i32    ahead_count{0};

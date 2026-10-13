@@ -693,7 +693,7 @@ internal::complete_from_tools_with_targets(StringView      line,
           continue;
         }
 
-        filtered.push(name.clone());
+        filtered.push_managed(name.view());
       }
 
       return filtered;

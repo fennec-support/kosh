@@ -626,7 +626,10 @@ git_status(StringView ceiling_directories, Allocator allocator) throws
                                                            : 7)};
   if (result.branch.is_empty()) return result;
 
-  let const local_ref = StringView{"refs/heads/"} + result.branch.view();
+  let local_ref = String{allocator, "refs/heads/"};
+
+  local_ref.append(result.branch.view());
+
   let const local_sha = read_git_ref_sha(git_dir, local_ref.view());
 
   if (local_sha.is_empty()) return result;
@@ -653,9 +656,9 @@ git_status(StringView ceiling_directories, Allocator allocator) throws
 
   if (git_results.is_empty()) return result;
 
-  let const git_path = String{heap_allocator(), git_results[0].view()};
+  let const git_path = String{allocator, git_results[0].view()};
 
-  let count_argv = ArrayList<String>{heap_allocator()};
+  let count_argv = ArrayList<String>{allocator};
 
   count_argv.push_managed(git_path.view());
   count_argv.push_managed("rev-list");

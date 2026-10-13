@@ -19,6 +19,12 @@ struct pending_heredoc
 {
   String delimiter;
   bool   should_strip_tabs{false};
+
+  cold fn
+  move_to_allocator(Allocator allocator) throws -> void
+  {
+    delimiter.move_to_allocator(allocator);
+  }
 };
 
 struct heredoc_line_match

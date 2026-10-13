@@ -58,6 +58,12 @@ public:
   c_str() const wontthrow -> const char *;
   hot mustuse pure fn
   allocator() const wontthrow -> Allocator;
+
+  cold fn
+  move_to_allocator(Allocator allocator) throws -> void
+  {
+    m_text.move_to_allocator(allocator);
+  }
   hot mustuse pure fn
   count() const wontthrow -> usize;
   hot mustuse pure fn
@@ -181,6 +187,12 @@ public:
   {
     String    name;
     EntryKind kind;
+
+    cold fn
+    move_to_allocator(Allocator allocator) throws -> void
+    {
+      name.move_to_allocator(allocator);
+    }
   };
 
   cold mustuse static fn

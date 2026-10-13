@@ -136,6 +136,12 @@ public:
     return m_words.allocator();
   }
 
+  cold fn
+  move_to_allocator(Allocator allocator) throws -> void
+  {
+    m_words.move_to_allocator(allocator);
+  }
+
   hot mustuse pure fn
   any() const wontthrow -> bool
   {

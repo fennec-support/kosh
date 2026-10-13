@@ -49,6 +49,13 @@ struct arith_token_cache
   bool                   is_tokenized{false};
   bool                   is_simple{false};
   bool                   has_exact_constant_text{false};
+
+  cold fn
+  move_to_allocator(Allocator allocator) throws -> void
+  {
+    tokens.move_to_allocator(allocator);
+    exact_constant_text.move_to_allocator(allocator);
+  }
 };
 
 struct segment_eval_cache
