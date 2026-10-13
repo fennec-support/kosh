@@ -57,6 +57,21 @@ PATH="$untrusted${TEST_PATH_SEPARATOR}$TEST_SYSTEM_PATH" "$BIN" --debug-complete
 echo "== and was never forked:"
 if [ -f "$marker" ]; then echo "forked"; else echo "not forked"; fi
 
+cat > "$trusted/git" <<'SH'
+#!/bin/sh
+echo "$*" >> "$KOSH_HELP_MARKER"
+case "$1" in
+--help) printf 'usage: git <command>\n\nThese are common Git commands:\n   commit     Record changes\n' ;;
+*) echo "    --marker-option   a probe option" ;;
+esac
+SH
+chmod +x "$trusted/git"
+rm -f "$marker"
+echo "== a git subcommand is probed with -h, which opens no help viewer:"
+PATH="$trusted${TEST_PATH_SEPARATOR}$TEST_SYSTEM_PATH" "$BIN" --debug-complete-at 'git commit --mark' </dev/null
+echo "== git received:"
+cat "$marker"
+
 cat > "$trusted/act" <<'SH'
 #!/bin/sh
 echo attempted >> "$KOSH_HELP_MARKER"

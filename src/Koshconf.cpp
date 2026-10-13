@@ -1100,14 +1100,22 @@ compose_koshconf_text(StringView         description,
 
   for (let const &option : get_option_registry()) {
     if (!option.is_configurable()) continue;
-    if (current != nullptr &&
-        (option.is_kept_out_of_koshconf ||
-         has_default_koshconf_value(*current, option) ||
-         find_koshconf_value_problem(option,
-                                     read_option_text(*current, option).view())
-             .has_value()))
+    if (current != nullptr && (option.is_kept_out_of_koshconf ||
+                               has_default_koshconf_value(*current, option)))
     {
       LOG(Debug, "koshconf save leaves out '%.*s' at its default",
+          static_cast<int>(option.koshconf_name.length),
+          option.koshconf_name.data);
+      continue;
+    }
+
+    if (current != nullptr &&
+        find_koshconf_value_problem(option,
+                                    read_option_text(*current, option).view())
+            .has_value())
+    {
+      LOG(Info,
+          "koshconf save leaves out '%.*s', a file would reject its value",
           static_cast<int>(option.koshconf_name.length),
           option.koshconf_name.data);
       continue;

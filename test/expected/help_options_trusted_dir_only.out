@@ -14,5 +14,10 @@ not forked
 == an allowlisted command in a world-writable directory is never forked:
 == and was never forked:
 not forked
+== a git subcommand is probed with -h, which opens no help viewer:
+--marker-option
+== git received:
+--help
+commit -h
 == a timed out help command is attempted once:
 attempted once

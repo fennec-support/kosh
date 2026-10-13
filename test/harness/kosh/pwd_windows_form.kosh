@@ -1,0 +1,9 @@
+#!/bin/env kosh
+physical=$(pwd -P)
+windows_form=$(pwd -W)
+expected_form=$(printf '%s\n' "$physical" | koshkit tr "\\\\" "/")
+if [[ "$windows_form" == "$expected_form" ]]; then
+  echo "pwd-windows-form=matches"
+else
+  echo "pwd-windows-form=differs"
+fi

@@ -653,13 +653,21 @@ append_event_log_report(String   &output,
     for (let const &record : *records) {
       let const generated =
           os::format_local_time("%Y-%m-%d %H:%M", record.generated_time);
+      let const full_message = record.message.view();
       let const is_message_long =
-          record.message.count() > EVENT_MESSAGE_MAX_BYTE_COUNT;
+          full_message.length > EVENT_MESSAGE_MAX_BYTE_COUNT;
+      let shown_byte_count =
+          is_message_long ? EVENT_MESSAGE_MAX_BYTE_COUNT : full_message.length;
+
+      while (is_message_long && shown_byte_count > 0 &&
+             (static_cast<u8>(full_message[shown_byte_count]) & 0xC0) == 0x80)
+      {
+        shown_byte_count--;
+      }
+
       let message = String{allocator};
 
-      message += is_message_long ? record.message.view().substring_of_length(
-                                       0, EVENT_MESSAGE_MAX_BYTE_COUNT)
-                                 : record.message.view();
+      message += full_message.substring_of_length(0, shown_byte_count);
       if (is_message_long) message += "...";
 
       let cells = ArrayList<report_table_cell_view>{allocator};

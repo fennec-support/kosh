@@ -474,8 +474,13 @@ read_recent_system_log_records(StringView log_name,
                       buffer.begin(), EVENT_BUFFER_BYTE_COUNT, &read_byte_count,
                       &needed_byte_count) == FALSE)
     {
+      let const error = GetLastError();
+
       LOG(Debug, "the event log read stopped with error %lu",
-          static_cast<unsigned long>(GetLastError()));
+          static_cast<unsigned long>(error));
+
+      if (records.is_empty() && error != ERROR_HANDLE_EOF) return None;
+
       break;
     }
 

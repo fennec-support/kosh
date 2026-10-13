@@ -204,8 +204,6 @@ run_repl(const ExecContext   &ec,
     }
   };
 
-  let did_terminal_fail = false;
-
   let const do_set_raw_mode = [](bool should_enter) throws -> bool {
     try {
       if (should_enter) {
@@ -289,10 +287,7 @@ run_repl(const ExecContext   &ec,
       continue;
     }
 
-    if (should_use_editor && !do_set_raw_mode(false)) {
-      did_terminal_fail = true;
-      break;
-    }
+    if (should_use_editor && !do_set_raw_mode(false)) return 1;
 
     if (is_terminal) os::INTERRUPT_REQUESTED = 0;
 
@@ -300,17 +295,14 @@ run_repl(const ExecContext   &ec,
 
     if (is_terminal) os::INTERRUPT_REQUESTED = 0;
 
-    if (should_use_editor && !do_set_raw_mode(true)) {
-      did_terminal_fail = true;
-      break;
-    }
+    if (should_use_editor && !do_set_raw_mode(true)) return 1;
   }
 
   if (!should_use_editor && is_terminal) {
     koshka::print_error("\n");
   }
 
-  return did_terminal_fail ? 1 : 0;
+  return 0;
 }
 
 } /* namespace */

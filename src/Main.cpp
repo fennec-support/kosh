@@ -2012,6 +2012,7 @@ emit_prompt_line_break() throws -> void
 
   if (cursor_column.has_value() && *cursor_column == 0) {
     LOG(Debug, "the cursor is at the start of a line, no marker is needed");
+
     return;
   }
 
@@ -2026,23 +2027,20 @@ emit_prompt_line_break() throws -> void
     eol_marker += "\\n";
   }
 
+  constexpr u32 EOL_GLYPH_COLUMN_COUNT = 2;
+
   if (cursor_column.has_value()) {
     LOG(Debug, "the cursor is at column %u, the marker ends the line",
         *cursor_column);
     eol_marker += "\r\n";
-    print(eol_marker);
-    flush();
+  } else {
+    for (u32 column = EOL_GLYPH_COLUMN_COUNT; column < dimensions->columns;
+         column++)
+      eol_marker.push(' ');
 
-    return;
+    eol_marker.push('\r');
   }
 
-  constexpr u32 EOL_GLYPH_COLUMN_COUNT = 2;
-
-  for (u32 column = EOL_GLYPH_COLUMN_COUNT; column < dimensions->columns;
-       column++)
-    eol_marker.push(' ');
-
-  eol_marker.push('\r');
   print(eol_marker);
   flush();
 }

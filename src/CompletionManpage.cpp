@@ -1298,12 +1298,24 @@ help_argv_for(EvalContext &context,
         "preparing the --help fork",
         static_cast<int>(command.length), command.data);
 
+    let const subcommand_help_argument =
+        subcommand.is_empty() ? Maybe<const char *>{}
+                              : SUBCOMMAND_HELP_ARGUMENTS.find(command);
+    let const help_words =
+        StringView{subcommand_help_argument.value_or(*help_argument)};
     let argv = ArrayList<String>{heap_allocator()};
+
+    if (subcommand_help_argument.has_value()) {
+      LOG(Debug,
+          "'%.*s' opens a viewer for subcommand --help, the probe uses '%s'",
+          static_cast<int>(command.length), command.data,
+          *subcommand_help_argument);
+    }
 
     argv.push(String{paths[0].view()});
     subcommand.for_each_ascii_whitespace_word(
         [&](StringView word) throws { argv.push(String{word}); });
-    StringView{*help_argument}.for_each_ascii_whitespace_word(
+    help_words.for_each_ascii_whitespace_word(
         [&](StringView word) throws { argv.push(String{word}); });
 
     return argv;

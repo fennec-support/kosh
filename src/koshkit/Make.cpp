@@ -3273,20 +3273,14 @@ find_prerequisite_line_location(const makefile       &mk,
   if (!dependent.rule_index.has_value()) return SourceLocation{};
 
   let const &rule = mk.rules[*dependent.rule_index];
-  let const  location_count =
-      rule.prerequisite_line_locations.count() < rule.prerequisites.count()
-           ? rule.prerequisite_line_locations.count()
-           : rule.prerequisites.count();
-  let fallback_location = SourceLocation{};
 
-  for (usize index = 0; index < location_count; index++) {
-    let const &location = rule.prerequisite_line_locations[index];
-
-    if (fallback_location.length == 0) fallback_location = location;
-    if (rule.prerequisites[index].view() == goal) return location;
+  for (usize index = 0; index < rule.prerequisites.count(); index++) {
+    if (rule.prerequisites[index].view() == goal) {
+      return rule.prerequisite_line_locations[index];
+    }
   }
 
-  return fallback_location;
+  return SourceLocation{};
 }
 
 static fn
@@ -3374,12 +3368,9 @@ build_target(const ExecContext        &ec,
       for (let const &word :
            split_words(expanded.view(), cxt.scratch_allocator()))
       {
-        if (!has_make_glob_character(word.view())) {
-          prerequisites.push(word.clone());
-          continue;
-        }
-
-        let const matches = expand_make_glob(cxt, word.view());
+        let const matches = has_make_glob_character(word.view())
+                                ? expand_make_glob(cxt, word.view())
+                                : ArrayList<String>{cxt.scratch_allocator()};
 
         if (matches.is_empty()) {
           prerequisites.push(word.clone());

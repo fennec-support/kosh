@@ -244,8 +244,7 @@ trap 'exit 129' 1
 trap 'exit 130' 2
 trap 'exit 143' 15
 install_dir=
-try_install_directory "${6-}" || install_dir=
-if [ -z "$install_dir" ]; then
+if ! try_install_directory "${6-}"; then
   printf 'assimilate: Cannot install into %s, which changed after it was chosen or holds a lock that cannot be recovered.\n' \
     "${6-}" >&2
   exit 1
@@ -582,9 +581,8 @@ preflight_command(StringView   executable_system,
 
 struct captured_program_result
 {
-  i32    status;
-  String output;
-  bool   has_finished;
+  Maybe<i32> status;
+  String     output;
 };
 
 fn
@@ -599,18 +597,14 @@ run_captured_program(const ArrayList<String> &arguments,
 
   let capture = os::ProgramCapture::start(arguments, CAPTURE_TIMEOUT_NANOS);
 
-  if (!capture.has_value()) return {126, String{heap_allocator()}, false};
+  if (!capture.has_value()) return {None, String{heap_allocator()}};
 
   loop {
     switch (capture->step()) {
-    case os::ProgramCapture::State::Finished: {
-      let const exit_status = capture->exit_status();
-
-      return {exit_status.value_or(126), capture->take_output(),
-              exit_status.has_value()};
-    }
+    case os::ProgramCapture::State::Finished:
+      return {capture->exit_status(), capture->take_output()};
     case os::ProgramCapture::State::Failed:
-      return {126, capture->take_output(), false};
+      return {None, capture->take_output()};
     case os::ProgramCapture::State::Running:
       capture->wait(CAPTURE_TIMEOUT_NANOS);
       break;
@@ -824,15 +818,15 @@ Assimilate::execute(ExecContext &ec, EvalContext &cxt) const throws
   let const install_directory =
       take_install_directory(ec, preflight.output.view(), allocator);
 
-  if (!preflight.has_finished) {
+  if (!preflight.status.has_value()) {
     report_soft_builtin_error(ec, cxt,
                               "The remote check did not finish or could not "
                               "start the ssh command");
 
-    return preflight.status;
+    return 126;
   }
 
-  if (preflight.status != 0) return preflight.status;
+  if (*preflight.status != 0) return *preflight.status;
 
   if (!install_directory.has_value()) {
     report_soft_builtin_error(
