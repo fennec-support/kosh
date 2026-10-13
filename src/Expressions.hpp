@@ -360,7 +360,7 @@ struct analysis_function_table
   {
     if (!defined.add(name)) return;
 
-    function_insertions.push(String{name});
+    function_insertions.push_managed(name);
   }
 
   fn
@@ -368,7 +368,7 @@ struct analysis_function_table
   {
     if (!aliases.add(name)) return;
 
-    alias_insertions.push(String{name});
+    alias_insertions.push_managed(name);
   }
 
   pure fn
@@ -773,7 +773,8 @@ public:
   {
     if (!names.add(name)) return;
 
-    scoped_name_insertions.push(analysis_name_insertion{&names, String{name}});
+    scoped_name_insertions.push(analysis_name_insertion{
+        &names, String{scoped_name_insertions.allocator(), name}});
   }
 
   pure fn
@@ -927,7 +928,8 @@ public:
 
     let spelling = location.get_source_text(source).value_or(name);
 
-    definition.first_positional_read          = String{spelling};
+    definition.first_positional_read =
+        String{definition.first_positional_read.allocator(), spelling};
     definition.first_positional_read_location = location;
   }
 

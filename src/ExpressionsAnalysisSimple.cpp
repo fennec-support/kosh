@@ -1461,7 +1461,7 @@ SimpleCommand::analyze(AnalysisContext &actx, bool is_unconditional) const throw
 
   check_operand_lints_after_scan(actx, lint_input);
 
-  let  runtime_definer_name = String{command_literal};
+  let  runtime_definer_name = String{heap_allocator(), command_literal};
   let  runtime_definer_id   = command_id;
   bool is_runtime_definer =
       command_info.is_in_group(COMMAND_GROUP_RUNTIME_DEFINER);
@@ -1566,9 +1566,9 @@ SimpleCommand::analyze(AnalysisContext &actx, bool is_unconditional) const throw
       let local_names = ArrayList<String>{heap_allocator()};
 
       actx.functions.defined.for_each(
-          [&](StringView n) throws { local_names.push(String{n}); });
+          [&](StringView n) throws { local_names.push_managed(n); });
       actx.functions.aliases.for_each(
-          [&](StringView n) throws { local_names.push(String{n}); });
+          [&](StringView n) throws { local_names.push_managed(n); });
       suggestion = utils::suggest_command(*name, local_names);
     }
 

@@ -62,7 +62,7 @@ append_option_line(String    &output,
         (option_mask & completion_option_bit(entry.value)) != 0;
 
     output += is_enabled ? "-o " : "+o ";
-    output += entry.key.to_string();
+    output += entry.key.to_string(heap_allocator());
     output += ' ';
   }
 

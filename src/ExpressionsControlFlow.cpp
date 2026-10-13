@@ -267,7 +267,7 @@ IfClause::can_evaluate_in_process_substitution(const EvalContext &cxt,
 cold fn
 IfClause::to_string() const throws -> String
 {
-  let result = String{"IfClause"};
+  let result = String{heap_allocator(), "IfClause"};
 
   append_ast_execution_flags(result);
 
@@ -496,7 +496,7 @@ WhileLoop::~WhileLoop() = default;
 cold fn
 WhileLoop::to_string() const throws -> String
 {
-  let result = String{is_until() ? "UntilLoop" : "WhileLoop"};
+  let result = String{heap_allocator(), is_until() ? "UntilLoop" : "WhileLoop"};
 
   append_ast_execution_flags(result);
 
@@ -798,7 +798,7 @@ SelectLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -
       should_reprint_menu = false;
     }
 
-    koshka::print_error(cxt.get_variable_value("PS3").value_or(String{"#? "}));
+    koshka::print_error(cxt.get_variable_value("PS3").value_or(String{heap_allocator(), "#? "}));
 
     let const input = utils::read_line_from_fd(KOSH_STDIN);
 
@@ -863,7 +863,7 @@ ForLoop::~ForLoop() = default;
 cold fn
 ForLoop::to_string() const throws -> String
 {
-  let result = String{"ForLoop \""};
+  let result = String{heap_allocator(), "ForLoop \""};
 
   result += m_variable_name;
   result += "\"";
@@ -1174,7 +1174,7 @@ CaseClause::~CaseClause() = default;
 cold fn
 CaseClause::to_string() const throws -> String
 {
-  let result = String{"CaseClause"};
+  let result = String{heap_allocator(), "CaseClause"};
 
   append_ast_execution_flags(result);
 
@@ -1538,8 +1538,8 @@ CaseClause::analyze(AnalysisContext &actx, bool is_unconditional) const throws -
           pattern_word.segments[0].kind == WordSegment::Kind::UnquotedText &&
           !literal.is_empty() && literal[literal.count() - 1] == '*')
       {
-        earlier_shadow_prefixes.push(
-            String{literal.view().substring_of_length(0, literal.count() - 1)});
+        earlier_shadow_prefixes.push_managed(
+            literal.view().substring_of_length(0, literal.count() - 1));
         earlier_shadow_locations.push(pattern->source_location());
       }
 
@@ -1581,7 +1581,7 @@ BraceGroup::can_evaluate_in_process_substitution(
 cold fn
 BraceGroup::to_string() const throws -> String
 {
-  let result = String{"BraceGroup"};
+  let result = String{heap_allocator(), "BraceGroup"};
   append_ast_execution_flags(result);
 
   return result;
@@ -1633,7 +1633,7 @@ CoprocCommand::~CoprocCommand() = default;
 cold fn
 CoprocCommand::to_string() const throws -> String
 {
-  let result = String{"Coproc "};
+  let result = String{heap_allocator(), "Coproc "};
   result += m_name;
   append_ast_execution_flags(result);
 
@@ -1774,7 +1774,7 @@ CoprocCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throw
   descriptors.push(String::from(write_fd, heap_allocator()));
   cxt.set_indexed_array(m_name, steal(descriptors));
 
-  let pid_name = String{m_name};
+  let pid_name = String{heap_allocator(), m_name};
 
   pid_name += "_PID";
   cxt.set_shell_variable(

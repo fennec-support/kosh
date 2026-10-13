@@ -92,7 +92,7 @@ Parser::record_analysis_scope_definition(
     return;
 
   m_analysis_scope_definitions.push(
-      analysis_scope_definition{String{name}, kind});
+      analysis_scope_definition{String{heap_allocator(), name}, kind});
 }
 
 fn
@@ -241,7 +241,8 @@ cold static fn
 unexpected_command_token_message(const Token *token) throws -> String
 {
   ASSERT(token != nullptr);
-  if (is_unquoted_word(token, "}")) return "'}' has no matching '{'";
+  if (is_unquoted_word(token, "}"))
+    return String{heap_allocator(), "'}' has no matching '{'"};
   switch (token->kind()) {
   case Token::Kind::Then:
   case Token::Kind::Else:
@@ -257,11 +258,16 @@ unexpected_command_token_message(const Token *token) throws -> String
 
     return "'" + ast.view() + "' has no matching 'while', 'until', or 'for'";
   }
-  case Token::Kind::Esac: return "'esac' has no matching 'case'";
+  case Token::Kind::Esac:
+    return String{heap_allocator(), "'esac' has no matching 'case'"};
   case Token::Kind::DoubleSemicolon:
-    return "';;' is only valid between the arms of a 'case'";
-  case Token::Kind::RightParen: return "')' has no matching '('";
-  case Token::Kind::Pipe:       return "'|' has no command before it to pipe from";
+    return String{heap_allocator(),
+                  "';;' is only valid between the arms of a 'case'"};
+  case Token::Kind::RightParen:
+    return String{heap_allocator(), "')' has no matching '('"};
+  case Token::Kind::Pipe:
+    return String{heap_allocator(),
+                  "'|' has no command before it to pipe from"};
   default:                      {
     let const ast = token->to_ast_string();
 
@@ -391,7 +397,8 @@ get_location_filename(const SourceLocation &location) throws -> String
 {
   let const name = location.get_filename();
 
-  return name.has_value() ? String{*name} : String{heap_allocator()};
+  return name.has_value() ? String{heap_allocator(), *name}
+                          : String{heap_allocator()};
 }
 
 cold fn
@@ -421,8 +428,9 @@ Parser::record_detailed_parse_error(
 
   diagnostic_sink->push(source_diagnostic{
       None, error_severity::error, location, get_location_filename(location),
-      error.message().clone(), String{error.detail_message()}, related_location,
-      get_location_filename(details_location), String{error.details_message()},
+      error.message().clone(), String{heap_allocator(), error.detail_message()},
+      related_location, get_location_filename(details_location),
+      String{heap_allocator(), error.details_message()},
       ArrayList<source_fix>{heap_allocator()}});
 }
 
@@ -449,7 +457,8 @@ Parser::record_parse_error(
 
   diagnostic_sink->push(source_diagnostic{
       None, error_severity::error, location, get_location_filename(location),
-      error.message().clone(), String{error.detail_message()}, None,
+      error.message().clone(), String{heap_allocator(), error.detail_message()},
+      None,
       String{heap_allocator()}, String{heap_allocator()},
       ArrayList<source_fix>{heap_allocator()}});
 }
@@ -858,7 +867,7 @@ Parser::parse_command_list(u64 terminator_mask) throws -> Expression *
     case Token::Kind::DoubleAmpersand:
       if (lhs == nullptr) {
         let const ast = token->to_ast_string();
-        String    msg = "Expected a command ";
+        String    msg{heap_allocator(), "Expected a command "};
 
         msg += compound_list->is_empty() ? "before" : "after";
         msg += " operator, found '";

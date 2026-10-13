@@ -98,7 +98,8 @@ EvilFS::execute(const ExecContext               &ec,
       if (!is_metadata_available) {
         if (os::last_system_error_is_permission_denied()) {
           skipped_permission_count++;
-          metadata_status = "Permission denied";
+          metadata_status =
+              String{metadata_status.allocator(), "Permission denied"};
         } else {
           metadata_status = os::last_system_error_message();
         }
@@ -159,7 +160,7 @@ EvilFS::execute(const ExecContext               &ec,
 
     append_titled_report_table(output, "Filesystems", table, should_color);
     if (skipped_permission_count != 0) {
-      skipped_warning = "Skipped ";
+      skipped_warning = String{skipped_warning.allocator(), "Skipped "};
       skipped_warning +=
           String::from(skipped_permission_count, allocator).view();
       skipped_warning +=

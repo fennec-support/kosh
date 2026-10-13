@@ -227,7 +227,7 @@ run_repl(const ExecContext   &ec,
       toiletline::input_result result{};
 
       try {
-        result = toiletline::get_input(String{"calc> "});
+        result = toiletline::get_input(String{heap_allocator(), "calc> "});
       } catch (const Error &error) {
         show_message(error.to_string());
         break;

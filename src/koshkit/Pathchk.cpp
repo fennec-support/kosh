@@ -249,16 +249,16 @@ Pathchk::execute(const ExecContext               &ec,
     String reason{cxt.scratch_allocator()};
 
     if (path.is_empty() && should_check_hyphen) {
-      reason = "empty pathname";
+      reason = String{reason.allocator(), "empty pathname"};
     } else if (path_limit > 0 && path.length >= static_cast<usize>(path_limit))
     {
-      reason = "pathname too long";
+      reason = String{reason.allocator(), "pathname too long"};
     } else if (let const windows_problem = should_check_windows
                                                ? find_windows_path_problem(path)
                                                : Maybe<StringView>{};
                windows_problem.has_value())
     {
-      reason = *windows_problem;
+      reason = String{reason.allocator(), *windows_problem};
     } else {
       usize position = 0;
 
@@ -276,14 +276,14 @@ Pathchk::execute(const ExecContext               &ec,
 
         if (name_limit > 0 && component_length > static_cast<usize>(name_limit))
         {
-          reason = "component too long";
+          reason = String{reason.allocator(), "component too long"};
           break;
         }
 
         if (should_check_hyphen && !component.text.is_empty() &&
             component.text[0] == '-')
         {
-          reason = "a component begins with '-'";
+          reason = String{reason.allocator(), "a component begins with '-'"};
           break;
         }
 
@@ -292,7 +292,8 @@ Pathchk::execute(const ExecContext               &ec,
                byte_position++)
           {
             if (!is_portable_filename_byte(component.text[byte_position])) {
-              reason = "component contains non-portable characters";
+              reason = String{reason.allocator(),
+                              "component contains non-portable characters"};
               break;
             }
           }

@@ -447,7 +447,7 @@ public:
     {
       m_best_distance   = distance;
       m_is_best_anagram = is_candidate_anagram;
-      m_best            = String{candidate};
+      m_best            = String{m_best.allocator(), candidate};
     }
   }
 

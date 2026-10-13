@@ -1901,7 +1901,8 @@ format_option_number(const option_descriptor &option, u32 value) throws
     -> String
 {
   if (value < option.enum_values.name_count)
-    return String{StringView{option.enum_values.names[value]}};
+    return String{heap_allocator(),
+                  StringView{option.enum_values.names[value]}};
 
   return String::from(static_cast<i64>(value), heap_allocator());
 }
@@ -1917,7 +1918,7 @@ read_option_text(const EvalContext       &cxt,
   }
 
   if (option.storage == option_storage::InitMoods)
-    return String{cxt.startup_store().get_init_moods()};
+    return String{heap_allocator(), cxt.startup_store().get_init_moods()};
 
   return format_option_number(option, read_option_number(cxt, option));
 }
@@ -1960,7 +1961,7 @@ fn
 describe_option_values(const option_descriptor &option) throws -> String
 {
   if (option.type == option_type::Boolean)
-    return String{"'on', 'off', 'true', 'false', '1', or '0'"};
+    return String{heap_allocator(), "'on', 'off', 'true', 'false', '1', or '0'"};
 
   let description = String{heap_allocator()};
 

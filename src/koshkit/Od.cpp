@@ -332,7 +332,7 @@ Od::execute(const ExecContext               &ec,
 
     if (format.is_empty() || format.length > 2) {
       KOSHKIT_REPORT_ERROR_AT(
-          format_location, "unsupported output type '" + String{format} + "'",
+          format_location, "unsupported output type '" + format + "'",
           "use c, d, o, u, or x with an optional width of 1, 2, 4, 8, C, S, "
           "I, or L");
 
@@ -363,7 +363,7 @@ Od::execute(const ExecContext               &ec,
       default:
         KOSHKIT_REPORT_ERROR_AT(format_location,
                                 "unsupported integer width in '" +
-                                    String{format} + "'",
+                                    format + "'",
                                 "use 1, 2, 4, 8, C, S, I, or L");
 
         return 1;
@@ -418,7 +418,7 @@ Od::execute(const ExecContext               &ec,
 
     default: {
       KOSHKIT_REPORT_ERROR_AT(
-          format_location, "unsupported output type '" + String{format} + "'",
+          format_location, "unsupported output type '" + format + "'",
           "use c, d, o, u, or x with an optional width of 1, 2, 4, 8, C, S, "
           "I, or L");
 

@@ -1098,7 +1098,7 @@ EvalContext::readonly_names() const throws
       [&](StringView name) { out.push_managed(name); });
 
   let const do_push_implicit = [&](const PackedStringKey &key) throws {
-    let name = key.to_string();
+    let name = key.to_string(heap_allocator());
     if (!variable_store().attributes().is_readonly(name.view()))
       out.push(steal(name));
   };

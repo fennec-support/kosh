@@ -118,7 +118,7 @@ Koshkit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       let error =
           ErrorWithLocation{FLAG_KOSHKIT_COLOR.value_location(),
                             "koshkit: invalid color mode '" +
-                                String{FLAG_KOSHKIT_COLOR.value()} + "'"};
+                                String{heap_allocator(), FLAG_KOSHKIT_COLOR.value()} + "'"};
 
       error.set_command_status(2);
       throw error;

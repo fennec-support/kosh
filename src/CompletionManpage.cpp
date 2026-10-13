@@ -49,9 +49,10 @@ matches_from_help_entries(const ArrayList<help_entry> &entries,
 
   for (let const &entry : entries)
     if (entry.name.view().starts_with(token)) {
-      matches.push(String{entry.name.view()});
+      matches.push_managed(entry.name.view());
       if (!entry.description.is_empty())
-        descriptions.set(entry.name.view(), String{entry.description.view()});
+        descriptions.set(entry.name.view(),
+                         String{heap_allocator(), entry.description.view()});
     }
 
   return matches;
@@ -64,9 +65,9 @@ manpage_name_for(StringView command) throws -> String
 {
   if (Maybe<const char *> alias = MANPAGE_ALIASES.find(command);
       alias.has_value())
-    return String{alias.value()};
+    return String{heap_allocator(), alias.value()};
 
-  return String{command};
+  return String{heap_allocator(), command};
 }
 
 using sorted_subcommand_array =
@@ -162,7 +163,7 @@ static fn
 should_retry_killed_fork(StringView kind, StringView name) throws
     -> bool
 {
-  let key = String{kind};
+  let key = String{heap_allocator(), kind};
 
   key += " ";
   key += name;
@@ -230,10 +231,10 @@ manpath_argv_for(EvalContext &context) throws
   let argv = ArrayList<String>{heap_allocator()};
 
   if (is_manpath_present) {
-    argv.push(String{man_paths[0].view()});
+    argv.push_managed(man_paths[0].view());
   } else {
-    argv.push(String{manbin_paths[0].view()});
-    argv.push(String{"-w"});
+    argv.push_managed(manbin_paths[0].view());
+    argv.push_managed("-w");
   }
 
   return argv;
@@ -458,7 +459,8 @@ ManpageCache::scan_next_subcommand_directory(EvalContext &context)
         let file_path = directory.clone();
 
         file_path.append(entry.view());
-        page_file_paths.set(*stripped, String{file_path.view()});
+        page_file_paths.set(*stripped,
+                            String{heap_allocator(), file_path.view()});
       }
     }
   }
@@ -477,7 +479,7 @@ ManpageCache::finish_subcommand_index() throws -> void
 
   page_names.reserve(page_file_paths.count());
   page_file_paths.for_each(
-      [&](StringView name, const String &) { page_names.push(String{name}); });
+      [&](StringView name, const String &) { page_names.push_managed(name); });
   sorted_page_names = steal(page_names).make_sorted(sort_order::ascending);
 
   page_file_paths.for_each([&](StringView name, const String &) {
@@ -661,7 +663,7 @@ man_subcommand_page_is_valid(StringView command,
                              StringView subcommand,
                              bool       is_read_allowed) throws -> bool
 {
-  let page_name = String{command};
+  let page_name = String{heap_allocator(), command};
 
   page_name.push('-');
   page_name.append(subcommand);
@@ -717,7 +719,7 @@ man_subcommand_page_is_valid(StringView command,
   }
 
   let const synopsis = cleaned_synopsis_of_page(source->view());
-  let       needle   = String{command};
+  let       needle   = String{heap_allocator(), command};
 
   needle.push(' ');
   needle.append(subcommand);
@@ -851,7 +853,7 @@ internal::complete_from_man_subcommands(StringView      line,
     for (usize i = page_names.lower_bound(token); i < page_names.count(); i++) {
       if (!page_names[i].view().starts_with(token)) break;
 
-      matches.push(String{page_names[i].view()});
+      matches.push_managed(page_names[i].view());
     }
 
     LOG(Debug, "%zu man pages match token '%.*s'", matches.count(),
@@ -877,7 +879,7 @@ internal::complete_from_man_subcommands(StringView      line,
     if (!subcommand.view().starts_with(token)) break;
     if (man_subcommand_page_is_valid(command, subcommand.view(),
                                      is_for_listing))
-      matches.push(String{subcommand.view()});
+      matches.push_managed(subcommand.view());
   }
 
   LOG(Debug, "%zu subcommands of '%.*s' match token '%.*s'", matches.count(),
@@ -915,7 +917,7 @@ extract_dash_flags(StringView option_part) throws -> ArrayList<String>
     if (let const equals = flag.find_character('='); equals.has_value())
       flag = flag.substring_of_length(0, *equals);
     if (flag.length >= 2 && flag[0] == '-') {
-      flags.push(String{flag});
+      flags.push_managed(flag);
     }
   }
 
@@ -956,8 +958,8 @@ parse_manpage_option_entries(StringView text) throws
 
     for (let const &flag : pending_flags)
       if (!desc.is_empty() && !descriptions.find(flag.view()).has_value()) {
-        descriptions.set(flag.view(), String{desc});
-        forms.set(flag.view(), String{pending_forms});
+        descriptions.set(flag.view(), String{heap_allocator(), desc});
+        forms.set(flag.view(), String{heap_allocator(), pending_forms});
       }
 
     pending_flags.clear();
@@ -1041,11 +1043,13 @@ parse_manpage_option_entries(StringView text) throws
       let const flag_forms  = forms.find(flag);
 
       entries.push(
-          help_entry{String{flag},
-                     description.has_value() ? String{description->view()}
-                                             : String{heap_allocator()},
-                     flag_forms.has_value() ? String{flag_forms->view()}
-                                            : String{heap_allocator()}});
+          help_entry{String{heap_allocator(), flag},
+                     description.has_value()
+                         ? String{heap_allocator(), description->view()}
+                         : String{heap_allocator()},
+                     flag_forms.has_value()
+                         ? String{heap_allocator(), flag_forms->view()}
+                         : String{heap_allocator()}});
     }
 
     j = end;
@@ -1089,8 +1093,8 @@ manpage_argv_for(StringView page_name, EvalContext &context) throws
 
   let argv = ArrayList<String>{heap_allocator()};
 
-  argv.push(String{man_paths[0].view()});
-  argv.push(String{page_name});
+  argv.push_managed(man_paths[0].view());
+  argv.push_managed(page_name);
 
   return argv;
 }
@@ -1163,8 +1167,8 @@ internal::manpage_text_for(StringView   page_name,
   let locate_argv = ArrayList<String>{heap_allocator()};
 
   locate_argv.push((*argv)[0].clone());
-  locate_argv.push(String{"-w"});
-  locate_argv.push(String{page_name});
+  locate_argv.push_managed("-w");
+  locate_argv.push_managed(page_name);
 
   let const location = capture_completion_program_output(context, locate_argv);
 
@@ -1249,7 +1253,7 @@ internal::complete_from_manpage(StringView         line,
     if (!MANPAGE_CACHE.is_subcommand_index_built)
       MANPAGE_CACHE.build_subcommand_index(context);
 
-    let combined = String{command};
+    let combined = String{heap_allocator(), command};
 
     combined.push('-');
     combined.append(*subcommand_word);
@@ -1263,7 +1267,8 @@ internal::complete_from_manpage(StringView         line,
   let const &options = manpage_options_for(page_name.view(), context);
 
   if (options.is_empty()) return None;
-  MANPAGE_CACHE.hint_pages.set(hint_key.view(), String{page_name.view()});
+  MANPAGE_CACHE.hint_pages.set(hint_key.view(),
+                               String{heap_allocator(), page_name.view()});
 
   let matches = matches_from_help_entries(options, token, descriptions);
 
@@ -1312,11 +1317,11 @@ help_argv_for(EvalContext &context,
           *subcommand_help_argument);
     }
 
-    argv.push(String{paths[0].view()});
+    argv.push_managed(paths[0].view());
     subcommand.for_each_ascii_whitespace_word(
-        [&](StringView word) throws { argv.push(String{word}); });
+        [&](StringView word) throws { argv.push_managed(word); });
     help_words.for_each_ascii_whitespace_word(
-        [&](StringView word) throws { argv.push(String{word}); });
+        [&](StringView word) throws { argv.push_managed(word); });
 
     return argv;
   }
@@ -1411,8 +1416,10 @@ parse_help_option_entries(StringView text) throws
 
     for (let const &flag : extract_dash_flags(option_part))
       if (seen.add(flag.view())) {
-        entries.push(help_entry{String{flag.view()}, String{description},
-                                String{option_part.trim_blanks()}});
+        entries.push(help_entry{
+            String{heap_allocator(), flag.view()},
+            String{heap_allocator(), description},
+            String{heap_allocator(), option_part.trim_blanks()}});
       }
   }
 
@@ -1427,9 +1434,9 @@ static fn
 help_cache_key(StringView command, StringView subcommand) throws
     -> String
 {
-  if (subcommand.is_empty()) return String{command};
+  if (subcommand.is_empty()) return String{heap_allocator(), command};
 
-  let key = String{command};
+  let key = String{heap_allocator(), command};
 
   key += " ";
   key += subcommand;
@@ -1722,7 +1729,8 @@ parse_help_subcommands(StringView text, StringView command) throws
 
       if (!is_plausible_subcommand_name(alias)) continue;
       if (!seen.add(alias)) continue;
-      subcommands.push(help_entry{String{alias}, String{description}});
+      subcommands.push(help_entry{String{heap_allocator(), alias},
+                                      String{heap_allocator(), description}});
       saw_entry_in_section = true;
     }
   }
@@ -1956,7 +1964,7 @@ synopsis_row_of(StringView          key,
     }
   }
 
-  let row = String{display_name};
+  let row = String{heap_allocator(), display_name};
 
   row += ' ';
   row.append(form);
@@ -2072,7 +2080,8 @@ flag_under_caret(StringView token,
 {
   let const equals = token.find_character('=');
 
-  whole = String{equals.has_value() ? token.substring_of_length(0, *equals)
+  whole = String{whole.allocator(),
+                 equals.has_value() ? token.substring_of_length(0, *equals)
                                     : token};
   if (token.length > 2 && token[1] != '-' && cursor_in_token >= 2 &&
       cursor_in_token <= token.length)
@@ -2243,7 +2252,7 @@ compose_command_hint(StringView   line,
                                             : Maybe<koshkit::Utility::Kind>{};
 
     if (bundled.has_value()) {
-      let key = String{"k:"};
+      let key = String{heap_allocator(), "k:"};
 
       key.append(first_word);
       source.header   = UTILITY_HINT_HEADER;
@@ -2257,7 +2266,7 @@ compose_command_hint(StringView   line,
                   !find_synopsis_form(*synopsis, first_word).is_empty()
                ? first_word
                : StringView{};
-      let key = String{"b:"};
+      let key = String{heap_allocator(), "b:"};
 
       key.append(name.view());
       if (!subcommand_word.is_empty()) {
@@ -2271,12 +2280,12 @@ compose_command_hint(StringView   line,
       source.flags = builtin_flag_list(*builtin_kind);
     }
   } else {
-    let page_key           = String{name.view()};
+    let page_key           = String{heap_allocator(), name.view()};
     let has_manpage        = false;
     let is_subcommand_page = false;
 
     if (has_subcommand_word) {
-      let subcommand_key = String{name.view()};
+      let subcommand_key = String{heap_allocator(), name.view()};
 
       subcommand_key.push(' ');
       subcommand_key.append(first_word);
@@ -2316,7 +2325,7 @@ compose_command_hint(StringView   line,
         break;
       }
 
-      let extended = String{chain.view()};
+      let extended = String{heap_allocator(), chain.view()};
 
       if (!extended.is_empty()) extended += ' ';
       extended.append(word);
@@ -2357,7 +2366,7 @@ compose_command_hint(StringView   line,
       if (let const bundled = koshkit::find_util(name.view());
           bundled.has_value())
       {
-        let key = String{"k:"};
+        let key = String{heap_allocator(), "k:"};
 
         key.append(name.view());
         source.header   = UTILITY_HINT_HEADER;
@@ -2476,7 +2485,8 @@ finish_idle_load(idle_load                &load,
   let const  synopsis = MANPAGE_CACHE.synopses.find(load.key.view());
 
   if (!options.is_empty() || (synopsis.has_value() && !synopsis->is_empty())) {
-    MANPAGE_CACHE.hint_pages.set(load.hint_key.view(), String{load.key.view()});
+    MANPAGE_CACHE.hint_pages.set(load.hint_key.view(),
+                                 String{heap_allocator(), load.key.view()});
   }
 }
 
@@ -2493,7 +2503,10 @@ start_idle_load(idle_load_kind           kind,
 
   LOG(Debug, "idle documentation load of '%.*s' started",
       static_cast<int>(key.length), key.data);
-  IDLE_LOAD = idle_load{kind, String{key}, String{command}, String{hint_key},
+  IDLE_LOAD = idle_load{kind,
+                        String{heap_allocator(), key},
+                        String{heap_allocator(), command},
+                        String{heap_allocator(), hint_key},
                         steal(*capture)};
 
   return true;
@@ -2636,7 +2649,7 @@ start_next_idle_load(StringView   line,
                                      ArrayList<help_entry>{heap_allocator()});
   }
 
-  let subcommand_key = String{name.view()};
+  let subcommand_key = String{heap_allocator(), name.view()};
 
   subcommand_key.push(' ');
   subcommand_key.append(first_word);
@@ -2661,7 +2674,7 @@ start_next_idle_load(StringView   line,
       return true;
     }
 
-    let combined = String{command.view()};
+    let combined = String{heap_allocator(), command.view()};
 
     combined.push('-');
     combined.append(first_word);

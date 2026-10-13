@@ -453,7 +453,7 @@ Head::execute(const ExecContext               &ec,
         os::set_last_system_error(chunk.error_number);
         report_soft_koshkit_util_error(
             ec, cxt, args[0].view(),
-            String{has_failed_open ? "cannot open '" : "cannot read '"} +
+            StringView{has_failed_open ? "cannot open '" : "cannot read '"} +
                 sources[chunk.source_index] +
                 "': " + os::last_system_error_message());
         status = 1;

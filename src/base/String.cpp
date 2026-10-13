@@ -21,19 +21,6 @@ String::String(Allocator allocator, StringView initial) throws
   append(initial);
 }
 
-String::String(const char *cstr) throws : m_allocator(heap_allocator())
-{
-  reset_to_inline();
-  append(StringView{cstr});
-}
-
-String::String(StringView initial) throws
-    : m_allocator(heap_allocator())
-{
-  reset_to_inline();
-  append(initial);
-}
-
 cold
 String::String(const String &other) throws
     : m_allocator(other.m_allocator)

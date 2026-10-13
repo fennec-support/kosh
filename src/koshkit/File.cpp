@@ -1369,9 +1369,9 @@ File::execute(const ExecContext               &ec,
             custom_sample_error_numbers[operand_position]);
         report_soft_koshkit_util_error(
             ec, cxt, operand_locations[operand_position], args[0].view(),
-            String{custom_sample_open_errors[operand_position]
-                       ? "cannot open '"
-                       : "cannot read '"} +
+            StringView{custom_sample_open_errors[operand_position]
+                           ? "cannot open '"
+                           : "cannot read '"} +
                 operand + "': " + os::last_system_error_message());
         status = 1;
         continue;

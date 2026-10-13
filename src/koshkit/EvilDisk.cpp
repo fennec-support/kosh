@@ -270,7 +270,7 @@ read_smart_rows(EvalContext                             &cxt,
     if (smartctl.has_value() && filesystem.source.starts_with("/dev/")) {
       let arguments = ArrayList<String>{allocator};
 
-      arguments.push(String{"-a"});
+      arguments.push(String{heap_allocator(), "-a"});
       arguments.push(filesystem.source.clone());
 
       let const report = capture_util_program_output(
@@ -284,7 +284,8 @@ read_smart_rows(EvalContext                             &cxt,
     if (!has_row && smart_fallback.has_value()) {
       let arguments = ArrayList<String>{allocator};
 
-      arguments.push(String{platform_tools.smart_fallback_subcommand});
+      arguments.push(
+          String{heap_allocator(), platform_tools.smart_fallback_subcommand});
       arguments.push(filesystem.target.clone());
 
       let const report = capture_util_program_output(

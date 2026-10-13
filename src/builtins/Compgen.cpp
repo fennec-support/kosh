@@ -409,7 +409,7 @@ run_compgen_actions(EvalContext     &cxt,
 
     if (cxt.runtime_state().get_mood() != mimic_mood::Posix) {
       for (let const &key : BASH_KEYWORD_KEYS)
-        emitter.push_prefixed(key.to_string().view());
+        emitter.push_prefixed(key.to_string(heap_allocator()).view());
     }
   }
 

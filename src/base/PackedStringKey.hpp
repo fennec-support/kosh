@@ -98,7 +98,7 @@ public:
   }
 
   cold mustuse fn
-  to_string() const throws -> String
+  to_string(Allocator allocator) const throws -> String
   {
     char  buffer[BYTE_CAPACITY];
     usize length = 0;
@@ -112,7 +112,7 @@ public:
     }
 
     return String{
-        StringView{buffer, length}
+        allocator, StringView{buffer, length}
     };
   }
 };

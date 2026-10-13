@@ -2159,7 +2159,7 @@ format_shell_source(StringView         source,
   let source_view = source;
 
   if (source.find_character('\r').has_value()) {
-    normalized = String{source};
+    normalized = String{normalized.allocator(), source};
     normalized.normalize_crlf_line_endings();
     source_view = normalized.view();
   }
@@ -2193,7 +2193,7 @@ format_bash_function_source(StringView source) throws -> String
   let source_view = source;
 
   if (source.find_character('\r').has_value()) {
-    normalized = String{source};
+    normalized = String{normalized.allocator(), source};
     normalized.normalize_crlf_line_endings();
     source_view = normalized.view();
   }
@@ -2408,7 +2408,9 @@ source_fixes_for_original_line_endings(
       let const end   = original_positions[edit.end_position];
 
       edits.push(source_edit{
-          start, end, String{source.substring_of_length(start, end - start)},
+          start, end,
+          String{heap_allocator(),
+                 source.substring_of_length(start, end - start)},
           edit.replacement.clone()});
     }
 
@@ -2497,7 +2499,7 @@ test_operand_without_x_prefix(StringView operand) throws
   if (operand[0] == '"' && operand[operand.length - 1] == '"' &&
       operand.length >= 3 && operand[1] == 'x')
   {
-    let stripped = String{"\""};
+    let stripped = String{heap_allocator(), "\""};
 
     stripped.append(operand.substring(2));
 
@@ -2507,11 +2509,11 @@ test_operand_without_x_prefix(StringView operand) throws
   if (operand[0] == 'x' && operand[1] == '"' &&
       operand[operand.length - 1] == '"')
   {
-    return String{operand.substring(1)};
+    return String{heap_allocator(), operand.substring(1)};
   }
 
   if (operand[0] == 'x' && is_plain_test_literal(operand.substring(1))) {
-    return String{operand.substring(1)};
+    return String{heap_allocator(), operand.substring(1)};
   }
 
   return None;
@@ -2558,12 +2560,15 @@ x_prefix_test_fix(StringView            source,
   let edits = ArrayList<source_edit>{heap_allocator()};
 
   edits.push(source_edit{location.position, location.position + location.length,
-                         String{left}, left_replacement.take()});
-  edits.push(source_edit{right_start, right_end, String{right},
+                         String{heap_allocator(), left},
+                         left_replacement.take()});
+  edits.push(source_edit{right_start, right_end,
+                         String{heap_allocator(), right},
                          right_replacement.take()});
 
-  return source_fix{String{"Drop the 'x' prefix from both operands"},
-                    steal(edits), true, true, diagnostic_id::sc2268};
+  return source_fix{
+      String{heap_allocator(), "Drop the 'x' prefix from both operands"},
+      steal(edits), true, true, diagnostic_id::sc2268};
 }
 
 static fn
@@ -2597,13 +2602,16 @@ negated_test_operator_fix(diagnostic_id         diagnostic,
 
   edits.push(
       source_edit{location.position, operator_start,
-                  String{source.substring_of_length(
-                      location.position, operator_start - location.position)},
+                  String{heap_allocator(),
+                         source.substring_of_length(
+                             location.position,
+                             operator_start - location.position)},
                   String{heap_allocator()}});
-  edits.push(source_edit{operator_start, operator_end, String{written_operator},
-                         String{replacement_operator}});
+  edits.push(source_edit{operator_start, operator_end,
+                         String{heap_allocator(), written_operator},
+                         String{heap_allocator(), replacement_operator}});
 
-  let title = String{"Replace the negation with `"};
+  let title = String{heap_allocator(), "Replace the negation with `"};
 
   title.append(replacement_operator);
   title.push('`');
@@ -2640,36 +2648,36 @@ source_fixes_for_diagnostic(diagnostic_id         diagnostic,
 
   case diagnostic_id::sc1018:
     title               = "Replace the separator with a space";
-    replacement         = " ";
+    replacement         = String{replacement.allocator(), " "};
     is_safe_for_fix_all = true;
     break;
 
   case diagnostic_id::sc1100:
     title               = "Replace the dash with '-'";
-    replacement         = "-";
+    replacement         = String{replacement.allocator(), "-"};
     is_safe_for_fix_all = true;
     break;
 
   case diagnostic_id::sc1101:
     title       = "Remove whitespace after the continuation";
-    replacement = "\\";
+    replacement = String{replacement.allocator(), "\\"};
     break;
 
   case diagnostic_id::sc1084:
     title               = "Put '#' before '!'";
-    replacement         = "#!";
+    replacement         = String{replacement.allocator(), "#!"};
     is_safe_for_fix_all = true;
     break;
 
   case diagnostic_id::sc1104:
     title               = "Add '#' before '!'";
-    replacement         = "#!";
+    replacement         = String{replacement.allocator(), "#!"};
     is_safe_for_fix_all = true;
     break;
 
   case diagnostic_id::sc1113:
     title               = "Add '!' after '#'";
-    replacement         = "#!";
+    replacement         = String{replacement.allocator(), "#!"};
     is_safe_for_fix_all = true;
     break;
 
@@ -2686,37 +2694,37 @@ source_fixes_for_diagnostic(diagnostic_id         diagnostic,
     }
 
     title               = "Remove the unnecessary escape";
-    replacement         = written.substring(1);
+    replacement         = String{replacement.allocator(), written.substring(1)};
     is_safe_for_fix_all = true;
     break;
   }
   case diagnostic_id::sc2108:
     title               = "Replace '-a' with '&&'";
-    replacement         = "&&";
+    replacement         = String{replacement.allocator(), "&&"};
     is_safe_for_fix_all = true;
     break;
 
   case diagnostic_id::sc2110:
     title               = "Replace '-o' with '||'";
-    replacement         = "||";
+    replacement         = String{replacement.allocator(), "||"};
     is_safe_for_fix_all = true;
     break;
 
   case diagnostic_id::sc3014:
     title               = "Replace '==' with '='";
-    replacement         = "=";
+    replacement         = String{replacement.allocator(), "="};
     is_safe_for_fix_all = true;
     break;
 
   case diagnostic_id::sc2196:
     title               = "Replace 'egrep' with 'grep -E'";
-    replacement         = "grep -E";
+    replacement         = String{replacement.allocator(), "grep -E"};
     is_safe_for_fix_all = true;
     break;
 
   case diagnostic_id::sc2197:
     title               = "Replace 'fgrep' with 'grep -F'";
-    replacement         = "grep -F";
+    replacement         = String{replacement.allocator(), "grep -F"};
     is_safe_for_fix_all = true;
     break;
 
@@ -2738,7 +2746,7 @@ source_fixes_for_diagnostic(diagnostic_id         diagnostic,
     }
 
     title       = "Replace '$[...]' with '$((...))'";
-    replacement = "$((";
+    replacement = String{replacement.allocator(), "$(("};
     replacement.append(inner);
     replacement.append("))");
     is_safe_for_fix_all = true;
@@ -2766,16 +2774,16 @@ source_fixes_for_diagnostic(diagnostic_id         diagnostic,
     }
 
     title       = "Quote '$@'";
-    replacement = "\"$@\"";
+    replacement = String{replacement.allocator(), "\"$@\""};
     break;
 
   case diagnostic_id::sc2071:
     if (written == ">") {
       title       = "Replace '>' with '-gt'";
-      replacement = "-gt";
+      replacement = String{replacement.allocator(), "-gt"};
     } else if (written == "<") {
       title       = "Replace '<' with '-lt'";
-      replacement = "-lt";
+      replacement = String{replacement.allocator(), "-lt"};
     } else {
       is_fixable = false;
     }
@@ -2803,9 +2811,10 @@ source_fixes_for_diagnostic(diagnostic_id         diagnostic,
   let       edits    = ArrayList<source_edit>{heap_allocator()};
   let const edit_end = location.position + location.length;
 
-  edits.push(source_edit{location.position, edit_end, String{written},
+  edits.push(source_edit{location.position, edit_end,
+                         String{heap_allocator(), written},
                          steal(replacement)});
-  fixes.push(source_fix{String{title}, steal(edits), true, is_safe_for_fix_all,
+  fixes.push(source_fix{String{heap_allocator(), title}, steal(edits), true, is_safe_for_fix_all,
                         diagnostic});
 
   return fixes;

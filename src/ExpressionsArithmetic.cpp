@@ -43,7 +43,7 @@ ConditionalCommand::~ConditionalCommand() = default;
 cold fn
 ConditionalCommand::to_string() const throws -> String
 {
-  let result = String{"ConditionalCommand"};
+  let result = String{heap_allocator(), "ConditionalCommand"};
 
   append_ast_execution_flags(result);
 
@@ -610,7 +610,7 @@ ArithmeticCommand::can_evaluate_in_process_substitution(
 cold fn
 ArithmeticCommand::to_string() const throws -> String
 {
-  return "ArithmeticCommand";
+  return String{heap_allocator(), "ArithmeticCommand"};
 }
 
 cold fn
@@ -817,7 +817,7 @@ CStyleForLoop::get_clause_cache(arith_token_cache *&slot) throws
 cold fn
 CStyleForLoop::to_string() const throws -> String
 {
-  return "CStyleForLoop";
+  return String{heap_allocator(), "CStyleForLoop"};
 }
 
 cold fn
@@ -1107,7 +1107,7 @@ Subshell::collapsed_body() const wontthrow -> const Expression *
 cold fn
 Subshell::to_string() const throws -> String
 {
-  let result = String{"Subshell"};
+  let result = String{heap_allocator(), "Subshell"};
 
   append_ast_execution_flags(result);
 
@@ -1478,7 +1478,7 @@ Subshell::analyze(AnalysisContext &actx, bool is_unconditional) const throws -> 
 FunctionDefinition::FunctionDefinition(SourceLocation     location,
                                        StringView         name,
                                        FunctionBodyHandle body)
-    : CompoundCommand(steal(location)), m_name(name),
+    : CompoundCommand(steal(location)), m_name(heap_allocator(), name),
       m_body_storage(steal(body)), m_body(m_body_storage.get_body())
 {}
 
@@ -1499,7 +1499,7 @@ FunctionDefinition::body() const wontthrow -> const Expression *
 cold fn
 FunctionDefinition::to_string() const throws -> String
 {
-  let result = String{"FunctionDefinition \""};
+  let result = String{heap_allocator(), "FunctionDefinition \""};
 
   result += StringView{m_name};
   result += "\"";
@@ -1645,7 +1645,7 @@ RedirectedCommand::~RedirectedCommand() = default;
 cold fn
 RedirectedCommand::to_string() const throws -> String
 {
-  let result = String{"RedirectedCommand"};
+  let result = String{heap_allocator(), "RedirectedCommand"};
 
   append_ast_execution_flags(result);
 

@@ -77,7 +77,7 @@ parse_xargs_limit(const ExecContext &ec,
   if (parsed.is_error() || parsed.value() == 0 || parsed.value() > SIZE_MAX) {
     report_soft_koshkit_util_error(
         ec, cxt, flag.value_location(), "xargs",
-        "invalid " + String{name} + " '" + String{flag.value()} + "'", note);
+        "invalid " + name + " '" + flag.value() + "'", note);
 
     return false;
   }
@@ -362,7 +362,7 @@ Xargs::execute(const ExecContext               &ec,
   let base_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};
 
   if (operands.is_empty()) {
-    base.push(String{"echo"});
+    base.push(String{heap_allocator(), "echo"});
     base_locations.push(ec.source_location());
   } else {
     for (usize index = 0; index < operands.count(); index++) {

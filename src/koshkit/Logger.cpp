@@ -111,7 +111,7 @@ Logger::execute(const ExecContext               &ec,
   if (!logger_priority_is_valid(priority)) {
     report_soft_koshkit_util_error(
         ec, cxt, FLAG_LOGGER_PRIORITY.value_location(), args[0].view(),
-        "invalid priority '" + String{priority} + "'");
+        "invalid priority '" + priority + "'");
 
     return 1;
   }

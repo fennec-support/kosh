@@ -13,6 +13,7 @@
 #include "Common.hpp"
 #include "Debug.hpp"
 #include "Maybe.hpp"
+#include "StringView.hpp"
 
 namespace koshka {
 
@@ -33,6 +34,20 @@ struct order_comparator
   operator()(const T &left, const T &right) const wontthrow -> bool
   {
     return order == sort_order::ascending ? left < right : right < left;
+  }
+
+  template <class Left, class Right>
+    requires(!std::is_same_v<Left, Right> &&
+             std::is_convertible_v<const Left &, StringView> &&
+             std::is_convertible_v<const Right &, StringView>)
+  mustuse pure fn
+  operator()(const Left &left, const Right &right) const wontthrow -> bool
+  {
+    let const left_view  = static_cast<StringView>(left);
+    let const right_view = static_cast<StringView>(right);
+
+    return order == sort_order::ascending ? left_view < right_view
+                                          : right_view < left_view;
   }
 };
 

@@ -320,7 +320,7 @@ private:
     let const parsed = value.to<i64>();
 
     if (parsed.is_error())
-      throw Error{"expected integer, got '" + String{value} + "'"};
+      throw Error{"expected integer, got '" + value + "'"};
 
     return parsed.value();
   }

@@ -239,7 +239,7 @@ AssignCommand::analyze(AnalysisContext &actx, bool is_unconditional) const throw
     if (actx.is_posix_mood()) {
       if (!actx.top_level_assigned_names.contains(name.view())) {
         actx.function_global_assignments.push(
-            {String{name.view()}, source_location(),
+            {String{heap_allocator(), name.view()}, source_location(),
              actx.get_current_variable_scope()});
       }
     } else {
@@ -275,7 +275,7 @@ AssignCommand::analyze(AnalysisContext &actx, bool is_unconditional) const throw
     actx.constant_variables.set(name.view(), literal->view());
     actx.optimizer_eliminated_count++;
     if (actx.options.should_report_optimizer_diagnostics)
-      actx.trace_optimizer_line(String{"recorded constant: "} + name + " = " +
+      actx.trace_optimizer_line(String{heap_allocator(), "recorded constant: "} + name + " = " +
                                 *literal);
   } else {
     LOG(All,
@@ -445,7 +445,10 @@ AssignCommand::evaluate_assignment(EvalContext &cxt) const throws -> i64
 
     if (m_assignment->get_update_mode() == assignment_update_mode::Append) {
       let appended =
-          String{cxt.get_variable_value(m_assignment->key()).value_or("")};
+          String{heap_allocator(),
+                 cxt.get_variable_value(m_assignment->key())
+                     .value_or(String{heap_allocator()})
+                     .view()};
 
       if (cxt.is_integer_variable(assigned_name))
         cxt.append_integer_expression(appended, value.view());
@@ -769,7 +772,7 @@ redirection_open_error(StringView path) throws -> String
 {
   let const system_error = os::last_system_error_message();
 
-  if (os::path_is_directory(path)) return String{"Is a directory"};
+  if (os::path_is_directory(path)) return String{heap_allocator(), "Is a directory"};
 
   return system_error;
 }
@@ -1095,7 +1098,7 @@ internal::allocate_redirection_descriptor(
 
     if (open_or_stage_failed != nullptr) *open_or_stage_failed = true;
     throw ErrorWithLocation{location,
-                            "'" + String{*allocation_name} +
+                            "'" + String{heap_allocator(), *allocation_name} +
                                 "' is not associated with any descriptor"};
   }
 
@@ -2018,7 +2021,7 @@ SimpleCommand::redirect_exec_context(ExecContext &ec, EvalContext &cxt) const th
       known_previous = &previous;
       let record     = stage_fd_allocation_restore{*allocation_target,
                                                previous.has_value()
-                                                       ? String{previous->view()}
+                                                       ? String{heap_allocator(), previous->view()}
                                                        : String{heap_allocator()},
                                                previous.has_value()};
       allocation_restores.push(steal(record));
@@ -2161,7 +2164,7 @@ SimpleCommand::always_exits(const AnalysisContext &actx) const wontthrow -> bool
 cold fn
 SimpleCommand::to_string() const throws -> String
 {
-  String s = "SimpleCommand";
+  String s{heap_allocator(), "SimpleCommand"};
 
   if (!m_args.is_empty()) {
     s += " \"" + m_args[0]->raw_string() + "\"";

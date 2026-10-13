@@ -196,7 +196,7 @@ FlagString::FlagString(FlagList    &flags,
 fn
 FlagString::set(StringView v) throws -> void
 {
-  m_value  = v;
+  m_value  = String{m_value.allocator(), v};
   m_is_set = true;
 }
 
@@ -362,7 +362,7 @@ FlagOptionalValue::enable() wontthrow -> void
 fn
 FlagOptionalValue::set(StringView value) throws -> void
 {
-  m_value      = value;
+  m_value      = String{m_value.allocator(), value};
   m_has_value  = true;
   m_is_enabled = true;
 }
@@ -544,7 +544,7 @@ suggest_long_flag(const FlagList &flags, StringView typed_name) throws
         candidate[candidate.length - typed_name.length - 1] == '-' &&
         !qualified_match.has_value())
     {
-      qualified_match = String{candidate};
+      qualified_match = String{heap_allocator(), candidate};
     }
   }
 
@@ -722,7 +722,7 @@ parse_flags(const FlagList                  &flags,
             find_flag(flags, letter, false, &plus_flag, &plus_value);
 
         if (!is_known) {
-          let message = String{"The flag '+"};
+          let message = String{heap_allocator(), "The flag '+"};
 
           message.push(*letter);
           message += "' cannot be turned off";
@@ -907,7 +907,7 @@ parse_flags(const FlagList                  &flags,
                 argument_location(argv, static_cast<usize>(i), base_position,
                                   arg_locations),
                 prefixed_message(program_name,
-                                 "Invalid value '" + String{value} + "' for '" +
+                                 "Invalid value '" + String{heap_allocator(), value} + "' for '" +
                                      flag_name(flag, true) + "'")};
 
             error.set_command_status(2);
@@ -1023,7 +1023,8 @@ parse_flags(const FlagList                  &flags,
         } else {
           let error_message = String{heap_allocator()};
           let details =
-              String{"Use `--` before an operand that begins with a dash"};
+              String{heap_allocator(),
+                     "Use `--` before an operand that begins with a dash"};
 
           error_message += "Unknown flag '-";
 
@@ -1692,7 +1693,7 @@ append_report_name_section(String                      &output,
 fn
 format_cli_help(StringView text, bool should_color) throws -> String
 {
-  if (!should_color) return String{text};
+  if (!should_color) return String{heap_allocator(), text};
 
   let   output      = String{heap_allocator()};
   bool  is_synopsis = false;

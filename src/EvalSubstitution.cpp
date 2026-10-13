@@ -549,8 +549,8 @@ EvalContext::setup_process_substitution(
     job_table_store().inherit_parent_jobs(false);
 
     i32       status       = 0;
-    let const source_scope = enter_source_scope(&substitution_source,
-                                                String{"process substitution"});
+    let const source_scope = enter_source_scope(
+        &substitution_source, String{heap_allocator(), "process substitution"});
 
     try {
       ast->evaluate(*this);
@@ -1383,7 +1383,7 @@ EvalContext::run_function_substitution(
   LOG(Debug, "running a function substitution body of %zu bytes",
       source.count());
   let const source_scope =
-      enter_source_scope(&source, String{"function substitution"});
+      enter_source_scope(&source, String{heap_allocator(), "function substitution"});
 
   let const do_evaluate_body = [&]() throws -> std::exception_ptr {
     let const was_interactive = execution_store().shell_is_interactive();

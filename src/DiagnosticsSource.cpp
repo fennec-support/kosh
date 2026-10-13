@@ -233,7 +233,7 @@ codepoint_spelling(u32 codepoint) throws -> String
 {
   constexpr char HEX_DIGITS[] = "0123456789ABCDEF";
 
-  let spelling = String{"U+"};
+  let spelling = String{heap_allocator(), "U+"};
 
   for (let shift = codepoint > 0xffff ? 20 : 12; shift >= 0; shift -= 4)
     spelling.push(HEX_DIGITS[(codepoint >> shift) & 0xf]);
@@ -368,7 +368,7 @@ escape_names_control_byte(char byte) wontthrow -> bool
 fn
 escape_spelling(char escaped) throws -> String
 {
-  let spelling = String{"\\"};
+  let spelling = String{heap_allocator(), "\\"};
 
   spelling.push(escaped);
 
@@ -1203,7 +1203,7 @@ collect_shell_provided_variable_names(const AnalysisContext &actx,
       SSK("KOSH_OS"), SSK("KOSH_BUILD_MODE"), SSK("OPTIND")};
 
   for (let const &key : FIXED_VARIABLE_KEYS) {
-    let name = key.to_string();
+    let name = key.to_string(heap_allocator());
 
     out_names.add(name.view());
   }
@@ -1214,7 +1214,7 @@ collect_shell_provided_variable_names(const AnalysisContext &actx,
         SSK("BASH"), SSK("BASH_VERSION"), SSK("BASH_VERSINFO")};
 
     for (let const &key : BASH_IDENTITY_KEYS) {
-      let name = key.to_string();
+      let name = key.to_string(heap_allocator());
 
       out_names.add(name.view());
     }

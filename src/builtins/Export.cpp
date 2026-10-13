@@ -125,7 +125,7 @@ Export::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     if (is_declare_form) {
       cxt.variable_store().exported_names().for_each(
           [&](StringView name, const auto &) throws -> void {
-            if (do_is_array(name)) listed_names.push(String{name});
+            if (do_is_array(name)) listed_names.push(String{heap_allocator(), name});
           });
     }
 
@@ -244,7 +244,7 @@ Export::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       os::set_environment_variable(name, value);
       cxt.mark_exported(name);
       if (utils::environment_name_is_path(name.view()))
-        cxt.program_resolver().assign_path(String{value.view()});
+        cxt.program_resolver().assign_path(String{heap_allocator(), value.view()});
       continue;
     }
 
@@ -289,7 +289,7 @@ Export::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     os::set_environment_variable(environment_name.view(), value);
     cxt.mark_exported(environment_name.view());
     if (utils::environment_name_is_path(name.view()))
-      cxt.program_resolver().assign_path(String{value.view()});
+      cxt.program_resolver().assign_path(String{heap_allocator(), value.view()});
   }
 
   if (has_assignment_error) return declaration_assignment_failure_status(cxt);

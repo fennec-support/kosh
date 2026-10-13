@@ -18,7 +18,8 @@ namespace koshka {
 static fn
 unrecognized_format_message(Maybe<StringView> filename) throws -> String
 {
-  let message = String{filename.has_value() ? *filename : StringView{"input"}};
+  let message = String{heap_allocator(),
+                       filename.has_value() ? *filename : StringView{"input"}};
 
   message.append(": error: The file format is not recognized.\n");
   message.append("note: Recognized formats include ");
@@ -329,7 +330,7 @@ print_help_or_version_status(const String &program_path) -> Maybe<int>
   }
 
   if (FLAG_LIST_CHECKS.is_enabled()) {
-    let l = String{"SHELLCHECK DIAGNOSTICS\n"};
+    let l = String{heap_allocator(), "SHELLCHECK DIAGNOSTICS\n"};
 
     for (usize index = 0; index < get_diagnostic_count(); index++) {
       let const &definition = DIAGNOSTIC_DEFINITIONS[index];
@@ -380,11 +381,11 @@ report_escaped_control_flow(EvalContext &context, const String &fallback_source)
 
   switch (control.kind) {
   case control_flow::Kind::Break:
-    what = "'break' used outside of a loop";
+    what = String{what.allocator(), "'break' used outside of a loop"};
     break;
 
   case control_flow::Kind::Continue:
-    what = "'continue' used outside of a loop";
+    what = String{what.allocator(), "'continue' used outside of a loop"};
     break;
 
   case control_flow::Kind::Return: {
@@ -396,7 +397,8 @@ report_escaped_control_flow(EvalContext &context, const String &fallback_source)
       utils::quit(return_status, utils::farewell_policy::Goodbye);
     }
 
-    what = "'return' used outside of a function or a sourced script";
+    what = String{what.allocator(),
+                  "'return' used outside of a function or a sourced script"};
     break;
   }
   case control_flow::Kind::Exit:
@@ -747,7 +749,8 @@ evaluate_script(const script_run_input &input,
         steal(previous_history_event_number));
   };
 
-  context.set_current_source(&input.contents, "the script");
+  context.set_current_source(&input.contents,
+                             String{heap_allocator(), "the script"});
 
   let const previous_line_discard_root =
       context.execution_store().line_discard_root();
@@ -820,7 +823,8 @@ evaluate_script(const script_run_input &input,
 
       defer {
         context.clear_retained_sources();
-        context.set_current_source(&input.contents, "the script");
+        context.set_current_source(&input.contents,
+                                   String{heap_allocator(), "the script"});
         execution_parser.drop_lexer_peek_cache();
         input.arena.release(unit_mark);
       };
@@ -848,7 +852,7 @@ evaluate_script(const script_run_input &input,
   LOG(Debug, "the chunk finished with exit code %d", exit_code);
   if (koshka::os::SIGNAL_PENDING) context.run_pending_traps();
   report_escaped_control_flow(context, input.contents);
-  context.set_current_source(nullptr, "");
+  context.set_current_source(nullptr, String{heap_allocator()});
 
   return exit_code;
 }
@@ -975,7 +979,7 @@ run_script_contents(
         "Uncaught exception while executing the AST. Aborting the command.");
     show_message("Last system message: '" + os::last_system_error_message() +
                  "'.");
-    show_message("Context: '" + String{e.what()} + "'.");
+    show_message("Context: '" + StringView{e.what()} + "'.");
   } catch (...) {
     show_message(
         "Unexpected system explosion while executing the AST. Exiting.");
@@ -1290,7 +1294,7 @@ find_history_search_word(StringView command, StringView needle) throws
 cold wontreturn static fn
 throw_bad_history_word_specifier(StringView spelling) throws -> void
 {
-  let message = String{spelling};
+  let message = String{heap_allocator(), spelling};
 
   message += ": bad word specifier";
   throw Error{message.view()};
@@ -1460,7 +1464,7 @@ cold wontreturn static fn
 throw_history_modifier_error(StringView spelling,
                              StringView reason) throws -> void
 {
-  let message = String{spelling};
+  let message = String{heap_allocator(), spelling};
 
   message += ": ";
   message += reason;
@@ -2133,8 +2137,9 @@ expand_interactive_history(StringView               source,
             context.scratch_allocator(), first_modifier_buffer,
             second_modifier_buffer, should_execute);
       } else {
-        let message = String{source.substring_of_length(
-            position, reference_end_position - position)};
+        let message = String{heap_allocator(),
+                             source.substring_of_length(
+                                 position, reference_end_position - position)};
 
         message += ": event not found";
         throw Error{steal(message)};
@@ -2646,7 +2651,7 @@ print_applied_fix_summary(
       wants_color ? colors::ansi::BOLD_BRIGHT_RED : StringView{};
   let const reset = wants_color ? colors::ansi::RESET : StringView{};
 
-  let summary = String{"Fixed "};
+  let summary = String{heap_allocator(), "Fixed "};
 
   if (warning_count > 0) {
     summary.append(warning_color);
@@ -2673,7 +2678,7 @@ print_applied_fix_summary(
     let const &tally      = tallies[tally_index];
     let const  is_warning = tally.severity == error_severity::warning;
 
-    let line = String{"  "};
+    let line = String{heap_allocator(), "  "};
 
     line.append(labels[tally_index].view());
 

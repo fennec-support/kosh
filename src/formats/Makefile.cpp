@@ -48,8 +48,10 @@ parse_makefile_format(const parser_format_input &input,
                                parser_format_codec::Continued, mood);
     if (document.fragments.count() != fragment_count) {
       document.fragments.back().shell_source =
-          String{input.source.substring_of_length(
-              range.start_position, range.end_position - range.start_position)};
+          String{heap_allocator(),
+                 input.source.substring_of_length(
+                     range.start_position,
+                     range.end_position - range.start_position)};
       document.fragments.back().should_select_end =
           range.kind == koshkit::make_shell_source_kind::ShellFunction;
       document.fragments.back().continuation_byte = '\t';

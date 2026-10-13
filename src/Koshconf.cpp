@@ -287,7 +287,7 @@ decode_value(const option_descriptor &option, StringView bytes) throws
   case option_type::String:
     if (find_koshconf_value_problem(option, bytes).has_value()) return None;
 
-    return String{bytes};
+    return String{heap_allocator(), bytes};
   }
 
   return None;
@@ -562,7 +562,7 @@ suggest_koshconf_option_name(StringView name) throws -> Maybe<String>
       if (candidate[position] == '.' &&
           candidate.substring(position + 1) == name && !topic_match.has_value())
       {
-        topic_match = String{candidate};
+        topic_match = String{heap_allocator(), candidate};
       }
     }
 
@@ -577,7 +577,7 @@ suggest_koshconf_option_name(StringView name) throws -> Maybe<String>
     if (shared_length + ENDING_EDIT_COUNT >= name.length &&
         shared_length > topic_length + 1 && shared_length > ending_match_length)
     {
-      ending_match        = String{candidate};
+      ending_match        = String{heap_allocator(), candidate};
       ending_match_length = shared_length;
     }
   }
@@ -604,7 +604,7 @@ find_koshconf_value_problem(const option_descriptor &option,
                             StringView               value) throws -> Maybe<String>
 {
   let const do_describe = [&](StringView expectation) throws -> String {
-    let message = String{"Invalid value '"};
+    let message = String{heap_allocator(), "Invalid value '"};
     append_escaped_text(message, value, escape_style::Message);
     message += "' for '";
     message += option.koshconf_name;
@@ -635,7 +635,7 @@ find_koshconf_value_problem(const option_descriptor &option,
     if (let const bad_name = parse_mood_list(value, moods);
         bad_name.has_value())
     {
-      let message = String{"Unknown mood '"};
+      let message = String{heap_allocator(), "Unknown mood '"};
 
       append_escaped_text(message, *bad_name, escape_style::Message);
       message += "' in the value of '";
@@ -669,7 +669,7 @@ format_koshconf_display_line(const option_descriptor &option,
 
   if (is_plain) return format_koshconf_line(option, value);
 
-  let line = String{StringView{option.koshconf_name}};
+  let line = String{heap_allocator(), StringView{option.koshconf_name}};
 
   line += "=$'";
   append_escaped_text(line, value, escape_style::AnsiC);
@@ -800,7 +800,7 @@ read_koshconf_text(StringView        text,
       continue;
     }
 
-    let setting = koshconf_setting{option, String{value}};
+    let setting = koshconf_setting{option, String{heap_allocator(), value}};
 
     if (option->is_fixed_in_kosh_mood && option->type != option_type::String) {
       if (let const number = parse_option_number(*option, value);
@@ -1029,7 +1029,7 @@ format_koshconf_line(const option_descriptor &option,
                 "file"};
   }
 
-  let line = String{StringView{option.koshconf_name}};
+  let line = String{heap_allocator(), StringView{option.koshconf_name}};
 
   line += '=';
   if (quote.has_value()) line += *quote;
@@ -1084,7 +1084,8 @@ compose_koshconf_text(StringView         description,
                       mimic_mood         preset,
                       const EvalContext *current) throws -> String
 {
-  let contents = String{"# Koshka settings written by koshconf "};
+  let contents =
+      String{heap_allocator(), "# Koshka settings written by koshconf "};
 
   contents += description;
   contents += ".\n# Each line is name=value. kosh(5) describes the format.\n"
@@ -1173,7 +1174,7 @@ compose_koshconf_text(StringView         description,
       if (alias_count != 0) spelling += ')';
     }
 
-    let comment = String{StringView{option->help}};
+    let comment = String{heap_allocator(), StringView{option->help}};
 
     if (preset == mimic_mood::Bash && option->is_bash_default_session_dependent)
     {
@@ -1249,7 +1250,7 @@ compose_koshconf_text(StringView         description,
 fn
 make_koshconf_preset(mimic_mood preset) throws -> String
 {
-  let description = String{"create "};
+  let description = String{heap_allocator(), "create "};
 
   description += mood_name(preset);
 

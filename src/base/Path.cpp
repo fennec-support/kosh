@@ -17,7 +17,7 @@
 
 namespace koshka {
 
-Path::Path(StringView text) : m_text(text) {}
+Path::Path(StringView text) : m_text(heap_allocator(), text) {}
 
 Path::Path(StringView text, Allocator allocator) : m_text(allocator, text) {}
 

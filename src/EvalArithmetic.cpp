@@ -276,7 +276,7 @@ public:
       throw ErrorWithLocationAndDetails{location, message, note};
     }
 
-    if (note.is_empty()) throw Error{String{message}};
+    if (note.is_empty()) throw Error{message};
     throw ErrorWithDetails{message, note};
   }
 
@@ -344,7 +344,7 @@ public:
     if (!value.has_value()) {
       if (should_error_unset)
         fail_at(name_position, name.length,
-                "The variable '" + String{name} + "' is not set");
+                "The variable '" + name + "' is not set");
       context->report_unset_reference(name);
 
       return ArithmeticValue{};
@@ -546,7 +546,7 @@ public:
     skip_spaces();
     if (pos != source.length)
       fail_at(pos, should_error_unset ? source.length - pos : 1,
-              "Unexpected '" + String{source.substring(pos)} +
+              "Unexpected '" + source.substring(pos) +
                   "' after the expression",
               "An operator is missing between two values");
 
@@ -935,7 +935,7 @@ public:
       if (consume(")")) return arguments;
       if (!consume(","))
         fail("Expected ',' or ')' after an argument",
-             "The call to '" + String{name} + "' is unfinished");
+             "The call to '" + name + "' is unfinished");
     }
   }
 
@@ -969,7 +969,7 @@ public:
 
     fail_span(calculator_function_position,
               calculator_function_position + name.length,
-              "Wrong number of arguments for '" + String{name} + "'", detail);
+              "Wrong number of arguments for '" + name + "'", detail);
   }
 
   fn
@@ -979,7 +979,7 @@ public:
   {
     if (!argument.has_integer_value(arena))
       fail_span(argument.start, argument.end,
-                "The argument to '" + String{name} + "' is not an integer",
+                "The argument to '" + name + "' is not an integer",
                 "This function requires an integer value");
     try {
       return ArithmeticValue::integer_part(argument, arena).checked_i64();
@@ -1053,7 +1053,7 @@ public:
 
       if (parsed < 0 || parsed > 100000) {
         fail_span(arguments[1].start, arguments[1].end,
-                  "Invalid scale for '" + String{name} + "'",
+                  "Invalid scale for '" + name + "'",
                   "The scale must be between 0 and 100000");
       }
 
@@ -1499,7 +1499,7 @@ public:
 
     if (!function.has_value())
       fail_span(name_position, name_position + name.length,
-                "Unknown calculator function '" + String{name} + "'",
+                "Unknown calculator function '" + name + "'",
                 "Use a supported numeric function name");
 
     let const arguments = calculator_function_arguments(name);
@@ -1589,7 +1589,7 @@ public:
       require_argument_count(name, arguments, 1, ~usize{0});
       if (!arguments[0].has_integer_value(arena))
         fail_span(arguments[0].start, arguments[0].end,
-                  "An argument to '" + String{name} + "' is not an integer",
+                  "An argument to '" + name + "' is not an integer",
                   "This function requires integer values");
 
       let result = ArithmeticValue::absolute(
@@ -1598,7 +1598,7 @@ public:
       for (usize index = 1; index < arguments.count(); index++) {
         if (!arguments[index].has_integer_value(arena))
           fail_span(arguments[index].start, arguments[index].end,
-                    "An argument to '" + String{name} + "' is not an integer",
+                    "An argument to '" + name + "' is not an integer",
                     "This function requires integer values");
 
         let const argument =
@@ -1757,10 +1757,9 @@ public:
     }
 
     fail_span(number_start, end,
-              "Invalid digit '" + String{source.substring_of_length(pos, 1)} +
+              "Invalid digit '" + source.substring_of_length(pos, 1) +
                   "' in the number '" +
-                  String{source.substring_of_length(number_start,
-                                                    end - number_start)} +
+                  source.substring_of_length(number_start, end - number_start) +
                   "'",
               "The digit is not valid in base " +
                   String::from(base, bump_allocator(arena)));
@@ -1982,7 +1981,7 @@ tokenize_arithmetic(StringView src, ArrayList<arith_token> &out) throws
         if (i + consumed < src.length &&
             is_number_continuation(src[i + consumed]))
         {
-          throw Error{String{"Invalid digit in the number"}};
+          throw Error{"Invalid digit in the number"};
         }
 
         if (i + consumed < src.length && src[i + consumed] == '.') {
@@ -2523,7 +2522,7 @@ public:
     let const result = parse_binary(1);
 
     if (ti != toks.count()) {
-      throw ErrorWithDetails{"Unexpected '" + String{toks[ti].text} +
+      throw ErrorWithDetails{"Unexpected '" + toks[ti].text +
                                  "' after the expression",
                              "An operator is missing between two values"};
     }

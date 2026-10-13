@@ -751,6 +751,13 @@ struct trap_definition
   SourceLocation location;
   isize          line_offset{0};
   bool           has_location{false};
+
+  static fn
+  empty(Allocator allocator) throws -> trap_definition
+  {
+    return trap_definition{String{allocator}, String{allocator},
+                           SourceLocation{}, 0, false};
+  }
 };
 
 struct trap_action_frame

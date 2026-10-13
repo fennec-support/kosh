@@ -417,7 +417,7 @@ Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         cxt.is_bash_argument_array(name))
     {
       report_soft_builtin_error(ec, cxt, ec.arg_location_at(i),
-                                String{name} +
+                                String{heap_allocator(), name} +
                                     ": variable may not be assigned value");
       status = 1;
       continue;

@@ -699,13 +699,13 @@ parse_cgroup_identity(StringView path, Allocator allocator) throws
     if (component == "burstable" || component == "kubepods-burstable.slice" ||
         (has_pod_uid && component.starts_with("kubepods-burstable-pod")))
     {
-      result.qos = "burstable";
+      result.qos = String{result.qos.allocator(), "burstable"};
     }
 
     if (component == "besteffort" || component == "kubepods-besteffort.slice" ||
         (has_pod_uid && component.starts_with("kubepods-besteffort-pod")))
     {
-      result.qos = "besteffort";
+      result.qos = String{result.qos.allocator(), "besteffort"};
     }
 
     if (component == "kubepods" || component == "kubepods.slice") {
@@ -717,7 +717,7 @@ parse_cgroup_identity(StringView path, Allocator allocator) throws
   }
 
   if (result.pod_uid != "-" && result.qos == "-") {
-    result.qos = "guaranteed";
+    result.qos = String{result.qos.allocator(), "guaranteed"};
   }
 
   return result;
@@ -1410,16 +1410,16 @@ append_remote_report(String                                   &output,
       row.owner_id      = socket.has_owner_id
                               ? String::from(socket.owner_id, allocator)
                               : String{allocator, "-"};
-      row.user          = "-";
-      row.name          = "-";
-      row.command       = "-";
+      row.user          = String{row.user.allocator(), "-"};
+      row.name          = String{row.name.allocator(), "-"};
+      row.command       = String{row.command.allocator(), "-"};
       row.net_namespace = self_net_namespace.has_value()
                               ? String{allocator, self_net_namespace->view()}
                               : String{allocator, "-"};
-      row.orchestrator  = "-";
-      row.runtime       = "-";
-      row.container     = "-";
-      row.cgroup        = "-";
+      row.orchestrator  = String{row.orchestrator.allocator(), "-"};
+      row.runtime       = String{row.runtime.allocator(), "-"};
+      row.container     = String{row.container.allocator(), "-"};
+      row.cgroup        = String{row.cgroup.allocator(), "-"};
       if (socket.has_owner_id) {
         row.user = do_get_user(socket.process_id, socket.owner_id);
       }
@@ -1509,14 +1509,23 @@ append_remote_report(String                                   &output,
             }
 
             if (context.orchestrator.is_empty() && evidence.is_kubernetes) {
-              context.orchestrator = "kubernetes";
+              context.orchestrator =
+                  String{context.orchestrator.allocator(), "kubernetes"};
             }
           }
 
-          if (context.cgroups.is_empty()) context.cgroups = "-";
-          if (context.orchestrator.is_empty()) context.orchestrator = "-";
-          if (context.runtime.is_empty()) context.runtime = "-";
-          if (context.container.is_empty()) context.container = "-";
+          if (context.cgroups.is_empty()) {
+            context.cgroups = String{context.cgroups.allocator(), "-"};
+          }
+          if (context.orchestrator.is_empty()) {
+            context.orchestrator = String{context.orchestrator.allocator(), "-"};
+          }
+          if (context.runtime.is_empty()) {
+            context.runtime = String{context.runtime.allocator(), "-"};
+          }
+          if (context.container.is_empty()) {
+            context.container = String{context.container.allocator(), "-"};
+          }
           context.cgroups =
               remote_table_text(context.cgroups.view(), 120, allocator);
           context.is_available = true;
@@ -1661,11 +1670,13 @@ append_runtime_evidence_report(
       let row = runtime_report_row{allocator};
 
       row.runtime          = evidence.runtime.clone();
-      row.source           = "cgroup";
+      row.source           = String{row.source.allocator(), "cgroup"};
       row.process_id_value = process.process_id;
       row.process_id       = String::from(process.process_id, allocator);
       row.name             = process.name.clone();
-      row.role     = process.process_id == self_process_id ? "self" : "other";
+      row.role = String{row.role.allocator(),
+                        process.process_id == self_process_id ? "self"
+                                                              : "other"};
       row.evidence = evidence.path.clone();
       rows.push(steal(row));
     }
@@ -1689,12 +1700,12 @@ append_runtime_evidence_report(
 
     let row = runtime_report_row{allocator};
 
-    row.runtime    = marker.runtime;
-    row.source     = "marker";
-    row.process_id = "-";
-    row.name       = "-";
-    row.role       = "host";
-    row.evidence   = path.view();
+    row.runtime    = String{row.runtime.allocator(), marker.runtime};
+    row.source     = String{row.source.allocator(), "marker"};
+    row.process_id = String{row.process_id.allocator(), "-"};
+    row.name       = String{row.name.allocator(), "-"};
+    row.role       = String{row.role.allocator(), "host"};
+    row.evidence   = String{row.evidence.allocator(), path.view()};
     rows.push(steal(row));
   }
 
@@ -1845,7 +1856,9 @@ append_container_report(String                                   &output,
       row.process_id_value = process.process_id;
       row.process_id       = String::from(process.process_id, allocator);
       row.name             = process.name.clone();
-      row.role   = process.process_id == self_process_id ? "self" : "other";
+      row.role = String{row.role.allocator(),
+                        process.process_id == self_process_id ? "self"
+                                                              : "other"};
       row.cgroup = evidence.path.clone();
       detail_rows.push(steal(row));
     }

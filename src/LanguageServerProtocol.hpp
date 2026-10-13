@@ -553,7 +553,7 @@ send_payload(StringView payload) wontthrow -> bool
 fn
 send_result(const JsonValue *id, StringView result) throws -> bool
 {
-  let payload = String{"{\"jsonrpc\":\"2.0\",\"id\":"};
+  let payload = String{heap_allocator(), "{\"jsonrpc\":\"2.0\",\"id\":"};
 
   append_request_id(payload, id);
   payload.append(",\"result\":");
@@ -567,7 +567,7 @@ fn
 send_error(const JsonValue *id, i64 code, StringView message) throws
     -> bool
 {
-  let payload = String{"{\"jsonrpc\":\"2.0\",\"id\":"};
+  let payload = String{heap_allocator(), "{\"jsonrpc\":\"2.0\",\"id\":"};
 
   append_request_id(payload, id);
   payload.append(",\"error\":{\"code\":");
@@ -748,6 +748,7 @@ private:
 
     if (m_offset < 64 * 1024) return;
     m_buffer = String{
+        m_buffer.allocator(),
         m_buffer.substring_of_length(m_offset, m_buffer.count() - m_offset)};
     m_offset = 0;
   }
@@ -873,8 +874,9 @@ public:
            StringView  source,
            i64         document_version,
            Maybe<Path> document_path = None) throws
-      : uri(document_uri), language_id(document_language),
-        normalized_source(source), version(document_version),
+      : uri(heap_allocator(), document_uri),
+        language_id(heap_allocator(), document_language),
+        normalized_source(heap_allocator(), source), version(document_version),
         analysis_source(heap_allocator()), path(steal(document_path)),
         line_starts(heap_allocator()), diagnostics(heap_allocator()),
         auxiliary_diagnostics(heap_allocator()),
@@ -891,7 +893,7 @@ public:
     version = document_version;
     if (source == normalized_source.view()) return false;
 
-    let replacement = String{source};
+    let replacement = String{normalized_source.allocator(), source};
 
     replacement.normalize_crlf_line_endings();
     if (replacement.view() == normalized_source.view()) return false;
@@ -1141,7 +1143,7 @@ fn
 file_uri_for_path(const Path &path) throws -> String
 {
   static constexpr char HEX[] = "0123456789ABCDEF";
-  let                   uri   = String{"file://"};
+  let                   uri   = String{heap_allocator(), "file://"};
 
   for (usize position = 0; position < path.count(); position++) {
     let const byte = path.text()[position];

@@ -45,13 +45,13 @@ Flock::execute(const ExecContext               &ec,
     let keeper = ArrayList<String>{cxt.scratch_allocator()};
 
     keeper.reserve(operands.count() + 7);
-    keeper.push(String{executable->view()});
-    keeper.push(String{"-p"});
-    keeper.push(String{"--mood"});
-    keeper.push(String{"sh"});
-    keeper.push(String{"-c"});
-    keeper.push(String{"koshkit flock \"$@\""});
-    keeper.push(String{"kosh"});
+    keeper.push(String{heap_allocator(), executable->view()});
+    keeper.push(String{heap_allocator(), "-p"});
+    keeper.push(String{heap_allocator(), "--mood"});
+    keeper.push(String{heap_allocator(), "sh"});
+    keeper.push(String{heap_allocator(), "-c"});
+    keeper.push(String{heap_allocator(), "koshkit flock \"$@\""});
+    keeper.push(String{heap_allocator(), "kosh"});
 
     for (let const &operand : operands)
       keeper.push(operand.clone());

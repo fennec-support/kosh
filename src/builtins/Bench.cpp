@@ -445,7 +445,7 @@ sample_command(StringView shell_binary,
 
   let result = CommandResult{allocator};
 
-  result.label = command;
+  result.label = String{result.label.allocator(), command};
 
   let child_argv = ArrayList<String>{allocator};
 

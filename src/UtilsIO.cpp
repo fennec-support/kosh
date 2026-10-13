@@ -423,9 +423,10 @@ current_git_branch(StringView ceiling_directories) throws -> String
     let const ref_prefix = StringView{"ref: refs/heads/"};
 
     if (text.starts_with(ref_prefix))
-      return String{text.substring(ref_prefix.length)};
+      return String{heap_allocator(), text.substring(ref_prefix.length)};
 
     return String{
+        heap_allocator(),
         text.substring_of_length(0, text.length < 7 ? text.length : 7)};
   }
 
@@ -448,7 +449,7 @@ read_git_ref_sha(const Path &git_dir, StringView ref_name) throws
       text = text.substring_of_length(0, text.length - 1);
     }
 
-    if (!text.is_empty()) return String{text};
+    if (!text.is_empty()) return String{heap_allocator(), text};
   }
 
   let packed_path = git_dir.clone();
@@ -471,7 +472,8 @@ read_git_ref_sha(const Path &git_dir, StringView ref_name) throws
         if (let const separator = line.find_character(' ');
             separator.has_value() && line.substring(*separator + 1) == ref_name)
         {
-          return String{line.substring_of_length(0, *separator)};
+          return String{heap_allocator(),
+                        line.substring_of_length(0, *separator)};
         }
       }
 
@@ -543,8 +545,10 @@ git_upstream_ref(const Path &git_dir, StringView branch_name) throws
         value = value.substring(1);
       }
 
-      if (key == "remote") remote_name = String{value};
-      if (key == "merge") merge_ref = String{value};
+      if (key == "remote") {
+        remote_name = String{remote_name.allocator(), value};
+      }
+      if (key == "merge") merge_ref = String{merge_ref.allocator(), value};
     }
 
     if (!newline_pos.has_value()) break;
@@ -614,9 +618,12 @@ git_status(StringView ceiling_directories, Allocator allocator) throws
   let const ref_prefix = StringView{"ref: refs/heads/"};
 
   result.branch = head_text.starts_with(ref_prefix)
-                      ? String{head_text.substring(ref_prefix.length)}
-                      : String{head_text.substring_of_length(
-                            0, head_text.length < 7 ? head_text.length : 7)};
+                      ? String{result.branch.allocator(),
+                               head_text.substring(ref_prefix.length)}
+                      : String{result.branch.allocator(),
+                               head_text.substring_of_length(
+                                   0, head_text.length < 7 ? head_text.length
+                                                           : 7)};
   if (result.branch.is_empty()) return result;
 
   let const local_ref = StringView{"refs/heads/"} + result.branch.view();

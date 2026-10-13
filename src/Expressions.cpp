@@ -630,8 +630,10 @@ analysis_reporter::warn(diagnostic_id                id,
   totals.warning_count++;
 
   pending.push(pending_analysis_warning{
-      id, location, String{message}, String{suggestion}, related_location,
-      String{related_message}, None, String{heap_allocator()}});
+      id, location, String{heap_allocator(), message},
+      String{heap_allocator(), suggestion}, related_location,
+      String{heap_allocator(), related_message}, None,
+      String{heap_allocator()}});
 }
 
 fn
@@ -650,7 +652,7 @@ analysis_reporter::set_last_trace(diagnostic_id         id,
   }
 
   warning.trace_location = trace_location;
-  warning.trace_message  = String{trace_message};
+  warning.trace_message  = String{warning.trace_message.allocator(), trace_message};
 }
 
 fn
@@ -723,7 +725,7 @@ analysis_reporter::flush(const analysis_report_site &site) throws
       let source_name = String{heap_allocator()};
 
       if (let const name = warning.location.get_filename(); name.has_value())
-        source_name = String{*name};
+        source_name = String{source_name.allocator(), *name};
 
       let related_source_name = String{heap_allocator()};
 
@@ -731,7 +733,8 @@ analysis_reporter::flush(const analysis_report_site &site) throws
         if (let const related_name = warning.related_location->get_filename();
             related_name.has_value())
         {
-          related_source_name = String{*related_name};
+          related_source_name =
+              String{related_source_name.allocator(), *related_name};
         }
       }
 
@@ -790,7 +793,7 @@ print_analysis_diagnostic_summary(
       wants_color ? colors::ansi::BOLD_BRIGHT_RED : StringView{};
   let const reset = wants_color ? colors::ansi::RESET : StringView{};
 
-  let summary = String{"Encountered "};
+  let summary = String{heap_allocator(), "Encountered "};
 
   if (totals.warning_count > 0) {
     summary.append(warning_color);
@@ -828,7 +831,7 @@ AnalysisContext::print_optimizer_summary() const throws -> void
 
   let const wants_color = colors::stderr_wants_color();
 
-  let summary = String{"Eliminated "};
+  let summary = String{heap_allocator(), "Eliminated "};
 
   if (wants_color) summary.append(colors::ansi::BLUE);
   summary.append(String::from(optimizer_eliminated_count, heap_allocator()));
@@ -990,7 +993,7 @@ analysis_reporter::fail(const analysis_report_site  &site,
     let source_name = String{heap_allocator()};
 
     if (let const name = location.get_filename(); name.has_value())
-      source_name = String{*name};
+      source_name = String{source_name.allocator(), *name};
 
     let related_source_name = String{heap_allocator()};
 
@@ -998,14 +1001,16 @@ analysis_reporter::fail(const analysis_report_site  &site,
       if (let const related_name = related_location->get_filename();
           related_name.has_value())
       {
-        related_source_name = String{*related_name};
+        related_source_name =
+            String{related_source_name.allocator(), *related_name};
       }
     }
 
     sink->push(source_diagnostic{
         id, error_severity::error, location, steal(source_name),
-        String{message}, String{suggestion}, related_location,
-        steal(related_source_name), String{related_message},
+        String{heap_allocator(), message}, String{heap_allocator(), suggestion},
+        related_location, steal(related_source_name),
+        String{heap_allocator(), related_message},
         source_fixes_for_diagnostic(id, source, location)});
     has_fatal = true;
 
@@ -1113,14 +1118,15 @@ AnalysisContext::note_variable_assignment_record(
 
     if (folded.has_value()) {
       literal_value = folded->count() > RECORDED_LITERAL_LENGTH_LIMIT
-                          ? String{folded->view().substring_of_length(
-                                0, RECORDED_LITERAL_LENGTH_LIMIT)}
+                          ? String{heap_allocator(),
+                                   folded->view().substring_of_length(
+                                       0, RECORDED_LITERAL_LENGTH_LIMIT)}
                           : steal(*folded);
     }
   }
 
   symbol_records->assignments.push(variable_assignment_record{
-      String{name}, steal(literal_value), location.position, location.length,
+      String{heap_allocator(), name}, steal(literal_value), location.position, location.length,
       assignment_binder::Assignment, is_conditional, update_mode,
       value_word == nullptr});
 }
@@ -1139,7 +1145,7 @@ AnalysisContext::note_variable_binding_record(
   if (symbol_records == nullptr) return;
 
   symbol_records->assignments.push(variable_assignment_record{
-      String{name}, None, location.position, location.length, binder,
+      String{heap_allocator(), name}, None, location.position, location.length, binder,
       is_conditional, assignment_update_mode::Replace, false});
 }
 
@@ -1245,7 +1251,7 @@ AnalysisContext::note_variable_occurrence(
   if (symbol_records == nullptr) return;
 
   symbol_records->variable_occurrences.push(variable_occurrence_record{
-      String{name}, location.position, location.length,
+      String{heap_allocator(), name}, location.position, location.length,
       function_definition_index, kind, occurrence_is_unresolved,
       occurrence_is_unused, false, false, has_inherited_function_path});
 }
@@ -1374,7 +1380,7 @@ AnalysisContext::note_function_body_record(
   if (name.is_empty()) return;
 
   symbol_records->functions.push(function_body_record{
-      String{name}, name_position, body_position, body_end_position});
+      String{heap_allocator(), name}, name_position, body_position, body_end_position});
 }
 
 static pure fn
@@ -2998,7 +3004,7 @@ DummyExpression::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const thr
 cold fn
 DummyExpression::to_string() const throws -> String
 {
-  return "Dummy";
+  return String{heap_allocator(), "Dummy"};
 }
 
 } /* namespace expressions */

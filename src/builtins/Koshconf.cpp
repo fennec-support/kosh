@@ -153,7 +153,8 @@ find_named_option(const ExecContext       &ec,
       StringView{"Unknown option '"} + operands.values[index] + "'",
       suggestion.has_value()
           ? StringView{"Did you mean '"} + *suggestion + "'?"
-          : String{"Run `koshconf list` for the option spellings"});
+          : String{heap_allocator(),
+                   "Run `koshconf list` for the option spellings"});
 
   return nullptr;
 }
@@ -272,7 +273,7 @@ run_set(const ExecContext       &ec,
 
   if (should_persist) {
     persisted_value = option->type == option_type::String
-                          ? String{value}
+                          ? String{heap_allocator(), value}
                           : format_option_number(
                                 *option, *parse_option_number(*option, value));
     try {
@@ -489,7 +490,7 @@ Koshconf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     let suggestion = utils::NameSuggestion{args[1].view()};
 
     for (let const &entry : KOSHCONF_COMMAND_ENTRIES)
-      suggestion.consider(entry.key.to_string().view());
+      suggestion.consider(entry.key.to_string(heap_allocator()).view());
 
     let const close_match = suggestion.take_suggestion();
 
@@ -499,7 +500,7 @@ Koshconf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
             "', expected 'create', 'set', 'get', 'list', 'load', or 'save'",
         close_match.has_value()
             ? StringView{"Did you mean '"} + *close_match + "'?"
-            : String{"Run `koshconf --help` for the forms"});
+            : String{heap_allocator(), "Run `koshconf --help` for the forms"});
 
     return 2;
   }

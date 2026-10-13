@@ -1061,7 +1061,7 @@ find_signal_name(const signal_pair *pairs,
                  i32                number) throws -> Maybe<String>
 {
   for (usize i = 0; i < pair_count; i++)
-    if (pairs[i].number == number) return String{pairs[i].name};
+    if (pairs[i].number == number) return String{heap_allocator(), pairs[i].name};
 
   return None;
 }

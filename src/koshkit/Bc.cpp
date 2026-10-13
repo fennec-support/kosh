@@ -1046,7 +1046,7 @@ bc_evaluate_function_call(StringView         statement,
   }
 
   if (arguments.count() != function->parameters.count()) {
-    throw ErrorWithDetails{"Wrong number of arguments for '" + String{name} +
+    throw ErrorWithDetails{"Wrong number of arguments for '" + name +
                                "'",
                            "The function requires " +
                                String::from(function->parameters.count(),

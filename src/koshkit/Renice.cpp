@@ -82,7 +82,7 @@ Renice::execute(const ExecContext               &ec,
   {
     KOSHKIT_REPORT_ERROR_AT(
         FLAG_RENICE_INCREMENT.value_location(),
-        "invalid increment '" + String{FLAG_RENICE_INCREMENT.value()} + "'",
+        "invalid increment '" + FLAG_RENICE_INCREMENT.value() + "'",
         "use a decimal integer from -2147483648 through 2147483647");
 
     return 2;

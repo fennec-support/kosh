@@ -297,8 +297,8 @@ append_network_socket_report(String                              &output,
     row.process_id   = socket.process_id == 0
                            ? String{allocator, "-"}
                            : String::from(socket.process_id, allocator);
-    row.process_name = "-";
-    row.owner        = "-";
+    row.process_name = String{row.process_name.allocator(), "-"};
+    row.owner        = String{row.owner.allocator(), "-"};
     if (options.should_show_processes) {
       if (socket.has_owner_id) row.owner = do_get_owner_text(socket.owner_id);
 

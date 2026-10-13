@@ -337,6 +337,7 @@ parser_format_add_fragment(parsed_format_document &document,
           ? prepared_analysis_source.take()
           : make_analysis_source(host_source, host_start, host_end);
   fragment.shell_source = String{
+      heap_allocator(),
       host_source.substring_of_length(host_start, host_end - host_start)};
   fragment.mood  = mood;
   fragment.codec = codec;
@@ -1114,7 +1115,7 @@ fn
 parser_format_analysis_source(const parsed_format_document &document,
                               StringView host_source) throws -> String
 {
-  if (!document.is_host_format) return String{host_source};
+  if (!document.is_host_format) return String{heap_allocator(), host_source};
 
   let result = String{heap_allocator()};
 

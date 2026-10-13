@@ -50,19 +50,19 @@ namespace log_detail {
 inline fn
 value_to_log_string(StringView value) -> String
 {
-  return String{value};
+  return String{heap_allocator(), value};
 }
 
 inline fn
 value_to_log_string(const char *value) -> String
 {
-  return value != nullptr ? String{value} : String{"(null)"};
+  return String{heap_allocator(), value != nullptr ? value : "(null)"};
 }
 
 inline fn
 value_to_log_string(bool is_true) -> String
 {
-  return is_true ? String{"true"} : String{"false"};
+  return String{heap_allocator(), is_true ? "true" : "false"};
 }
 
 inline fn
@@ -92,7 +92,7 @@ value_to_log_string(T value) -> String
 
   std::snprintf(buffer, sizeof(buffer), "%g", static_cast<double>(value));
 
-  return String{buffer};
+  return String{heap_allocator(), buffer};
 }
 
 template <class T>
@@ -105,7 +105,7 @@ value_to_log_string(T value) -> String
   std::snprintf(buffer, sizeof(buffer), "%p",
                 static_cast<const opaque *>(value));
 
-  return String{buffer};
+  return String{heap_allocator(), buffer};
 }
 
 template <class... Args>

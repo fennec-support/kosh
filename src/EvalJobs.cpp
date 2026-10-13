@@ -234,13 +234,13 @@ describe_job_state(const job             &entry,
                    const job_line_format &format) throws -> String
 {
   switch (entry.state) {
-  case job::State::Running: return String{"Running"};
+  case job::State::Running: return String{heap_allocator(), "Running"};
   case job::State::Stopped:
     if (format.should_show_process_id && entry.stopped_status > 128) {
       return os::signal_description_from_number(entry.stopped_status - 128);
     }
 
-    return String{"Stopped"};
+    return String{heap_allocator(), "Stopped"};
   case job::State::Done: break;
   }
 
@@ -248,7 +248,7 @@ describe_job_state(const job             &entry,
     return os::signal_description_from_number(entry.termination.signal_number);
   }
 
-  if (entry.last_status == 0) return String{"Done"};
+  if (entry.last_status == 0) return String{heap_allocator(), "Done"};
 
   let const status = String::from(entry.last_status, heap_allocator());
 

@@ -405,7 +405,7 @@ ProgramCapture::start(const ArrayList<String> &argv, u64 timeout_nanos)
 
     application_path_storage = command_processor.has_value()
                                    ? command_processor.take()
-                                   : String{"cmd.exe"};
+                                   : String{heap_allocator(), "cmd.exe"};
     application_path         = application_path_storage.c_str();
 
     let processor_command_line = String{heap_allocator()};
@@ -1157,7 +1157,7 @@ execute_program(ExecContext &ec, const program_execution_options &options)
     let command_processor      = get_environment_variable("COMSPEC");
     application_path_storage   = command_processor.has_value()
                                      ? command_processor.take()
-                                     : String{"cmd.exe"};
+                                     : String{heap_allocator(), "cmd.exe"};
     application_path           = application_path_storage.c_str();
     let processor_command_line = String{heap_allocator()};
     append_windows_quoted_arg(processor_command_line,
@@ -1305,7 +1305,7 @@ make_internal_pipe_path() throws -> String
     throw Error{"Unable to build the name of an internal pipe: " +
                 last_system_error_message()};
 
-  let path = String{"\\\\.\\pipe\\kosh-"};
+  let path = String{heap_allocator(), "\\\\.\\pipe\\kosh-"};
   path += String::from(GetCurrentProcessId(), heap_allocator()) + "-" +
           String::from(InterlockedIncrement(&INTERNAL_PIPE_SEQUENCE),
                        heap_allocator()) +
@@ -3005,7 +3005,7 @@ last_system_error_message() throws -> String
   LPWSTR    errno_text{};
   let const win_errno = GetLastError();
   if (win_errno == ERROR_FILE_NOT_FOUND || win_errno == ERROR_PATH_NOT_FOUND) {
-    return String{"No such file or directory"};
+    return String{heap_allocator(), "No such file or directory"};
   }
 
   let const ret = FormatMessageW(
@@ -3240,18 +3240,18 @@ machine_type() throws -> String
   SYSTEM_INFO information{};
   GetNativeSystemInfo(&information);
   switch (information.wProcessorArchitecture) {
-  case PROCESSOR_ARCHITECTURE_AMD64: return String{"x86_64"};
-  case PROCESSOR_ARCHITECTURE_ARM64: return String{"arm64"};
-  case PROCESSOR_ARCHITECTURE_INTEL: return String{"i686"};
-  case PROCESSOR_ARCHITECTURE_ARM:   return String{"arm"};
-  default:                           return String{"unknown"};
+  case PROCESSOR_ARCHITECTURE_AMD64: return String{heap_allocator(), "x86_64"};
+  case PROCESSOR_ARCHITECTURE_ARM64: return String{heap_allocator(), "arm64"};
+  case PROCESSOR_ARCHITECTURE_INTEL: return String{heap_allocator(), "i686"};
+  case PROCESSOR_ARCHITECTURE_ARM:   return String{heap_allocator(), "arm"};
+  default: return String{heap_allocator(), "unknown"};
   }
 }
 
 fn
 executable_system_name() throws -> String
 {
-  return String{"Windows"};
+  return String{heap_allocator(), "Windows"};
 }
 
 static fn
@@ -3280,7 +3280,8 @@ fn
 system_release_name() throws -> String
 {
   let const version = windows_version();
-  if (version.dwMajorVersion == 0) return String{"unknown"};
+  if (version.dwMajorVersion == 0)
+    return String{heap_allocator(), "unknown"};
 
   return String::from(version.dwMajorVersion, heap_allocator()) + "." +
          String::from(version.dwMinorVersion, heap_allocator()) + "." +
@@ -3291,7 +3292,8 @@ fn
 system_version_name() throws -> String
 {
   let const version = windows_version();
-  if (version.dwMajorVersion == 0) return String{"unknown"};
+  if (version.dwMajorVersion == 0)
+    return String{heap_allocator(), "unknown"};
 
   return String::from(version.dwBuildNumber, heap_allocator());
 }
@@ -3313,10 +3315,10 @@ executable_machine_name() throws -> String
 {
 #if defined _M_ARM64 || defined __aarch64__
 
-  return String{"arm64"};
+  return String{heap_allocator(), "arm64"};
 #elif defined _M_X64 || defined __x86_64__
 
-  return String{"x86_64"};
+  return String{heap_allocator(), "x86_64"};
 #else
 
   return machine_type();
@@ -3341,14 +3343,12 @@ format_local_time(StringView format, i64 epoch) throws -> String
   const time_t when = static_cast<time_t>(epoch);
   struct tm    broken_down{};
   if (localtime_s(&broken_down, &when) != 0) return String{heap_allocator()};
-  let const format_string = String{format};
+  let const format_string = String{heap_allocator(), format};
   char      buffer[512];
   let const written =
       strftime(buffer, sizeof(buffer), format_string.c_str(), &broken_down);
 
-  return String{
-      StringView{buffer, written}
-  };
+  return String{heap_allocator(), StringView{buffer, written}};
 }
 
 fn
@@ -3728,7 +3728,8 @@ read_disk_io_snapshot(Allocator allocator) throws -> disk_io_snapshot
 
   for (u32 disk_index = 0; disk_index < 64; disk_index++) {
     let path =
-        String{"\\\\.\\PhysicalDrive"} + String::from(disk_index, allocator);
+      String{allocator, "\\\\.\\PhysicalDrive"} +
+      String::from(disk_index, allocator);
     let const wide_path = utf8_to_wide(path.view(), allocator);
     if (!wide_path.has_value()) continue;
     let const handle =
@@ -3748,7 +3749,7 @@ read_disk_io_snapshot(Allocator allocator) throws -> disk_io_snapshot
     }
 
     snapshot.disks.push(disk_io_status{
-        String{"PhysicalDrive"} + String::from(disk_index, allocator),
+        String{allocator, "PhysicalDrive"} + String::from(disk_index, allocator),
         performance.BytesRead.QuadPart < 0
             ? 0
             : static_cast<u64>(performance.BytesRead.QuadPart),

@@ -259,7 +259,7 @@ public:
     let &slot = m_slots[found];
 
     slot.key   = String{m_allocator};
-    slot.value = Value{};
+    slot.value = make_empty_value();
     slot.set_state(Slot::Tombstone);
     m_count--;
     m_tombstones++;
@@ -305,8 +305,8 @@ private:
     static constexpr u64 HASH_MASK   = (u64{1} << STATE_SHIFT) - 1;
 
     u64             packed{0};
-    String          key{};
-    notunique Value value{};
+    String          key;
+    notunique Value value;
 
     static constexpr fn
     pack(State state, u64 hash) wontthrow -> u64
@@ -462,6 +462,18 @@ private:
     return &slot.value;
   }
 
+  mustuse fn
+  make_empty_value() const throws -> Value
+  {
+    if constexpr (std::is_constructible_v<Value, Allocator>) {
+      return Value{m_allocator};
+    } else if constexpr (requires { Value::empty(m_allocator); }) {
+      return Value::empty(m_allocator);
+    } else {
+      return Value{};
+    }
+  }
+
   cold fn
   rehash(usize new_capacity) throws -> void
   {
@@ -473,7 +485,8 @@ private:
 
     try {
       for (; constructed_count < new_capacity; constructed_count++)
-        new (&fresh_slots[constructed_count]) Slot{};
+        new (&fresh_slots[constructed_count])
+            Slot{0, String{m_allocator}, make_empty_value()};
     } catch (...) {
       for (usize i = 0; i < constructed_count; i++)
         fresh_slots[i].~Slot();

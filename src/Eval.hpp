@@ -1728,7 +1728,7 @@ public:
     if (static_cast<usize>(level) > loop_depth)
       level = static_cast<i64>(loop_depth);
     if (level < 1) level = 1;
-    set(control_flow{level, source, String{origin}, location, kind});
+    set(control_flow{level, source, String{heap_allocator(), origin}, location, kind});
   }
 
   fn
@@ -1737,7 +1737,7 @@ public:
                  const String  *source,
                  StringView     origin) throws -> void
   {
-    set(control_flow{status, source, String{origin}, location,
+    set(control_flow{status, source, String{heap_allocator(), origin}, location,
                      control_flow::Kind::Return});
   }
 
@@ -1747,7 +1747,7 @@ public:
                const String  *source,
                StringView     origin) throws -> void
   {
-    set(control_flow{status, source, String{origin}, location,
+    set(control_flow{status, source, String{heap_allocator(), origin}, location,
                      control_flow::Kind::Exit});
   }
 
@@ -2678,7 +2678,7 @@ public:
   }
 
 private:
-  String        m_field_separators{" \t\n"};
+  String        m_field_separators{heap_allocator(), " \t\n"};
   u64           m_field_separator_bits[4]{(u64{1} << ' ') | (u64{1} << '\t') |
                                           (u64{1} << '\n')};
   VariableTable m_variables;
@@ -4152,7 +4152,7 @@ public:
   fn
   set_init_moods(StringView moods) throws -> void
   {
-    m_init_moods = String{moods};
+    m_init_moods = String{heap_allocator(), moods};
   }
 
   fn

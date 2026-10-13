@@ -518,13 +518,11 @@ append_process_io_rate_report(String                  &output,
   let table = ReportTable{allocator};
 
   table.add_heading("PID", report_table_alignment::Right);
-  table.add_heading(String{"READ"} + duration_suffix,
+  table.add_heading("READ" + duration_suffix, report_table_alignment::Right);
+  table.add_heading("WRITE" + duration_suffix, report_table_alignment::Right);
+  table.add_heading("READ OPS" + duration_suffix,
                     report_table_alignment::Right);
-  table.add_heading(String{"WRITE"} + duration_suffix,
-                    report_table_alignment::Right);
-  table.add_heading(String{"READ OPS"} + duration_suffix,
-                    report_table_alignment::Right);
-  table.add_heading(String{"WRITE OPS"} + duration_suffix,
+  table.add_heading("WRITE OPS" + duration_suffix,
                     report_table_alignment::Right);
   table.add_heading("COMMAND");
 
@@ -910,20 +908,20 @@ append_disk_io_report(String                       &output,
 
   table.add_heading("DEVICE");
   table.add_heading(sampling == report_sampling_mode::Rolling
-                        ? String{"READ"} + duration_suffix
-                        : "READ",
+                        ? "READ" + duration_suffix
+                        : String{heap_allocator(), "READ"},
                     report_table_alignment::Right);
   table.add_heading(sampling == report_sampling_mode::Rolling
-                        ? String{"WRITE"} + duration_suffix
-                        : "WRITTEN",
+                        ? "WRITE" + duration_suffix
+                        : String{heap_allocator(), "WRITTEN"},
                     report_table_alignment::Right);
   table.add_heading(sampling == report_sampling_mode::Rolling
-                        ? String{"READ OPS"} + duration_suffix
-                        : "READ OPS",
+                        ? "READ OPS" + duration_suffix
+                        : String{heap_allocator(), "READ OPS"},
                     report_table_alignment::Right);
   table.add_heading(sampling == report_sampling_mode::Rolling
-                        ? String{"WRITE OPS"} + duration_suffix
-                        : "WRITE OPS",
+                        ? "WRITE OPS" + duration_suffix
+                        : String{heap_allocator(), "WRITE OPS"},
                     report_table_alignment::Right);
   if (sampling == report_sampling_mode::Rolling) {
     table.add_heading("BUSY", report_table_alignment::Right);

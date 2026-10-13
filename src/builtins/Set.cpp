@@ -295,7 +295,7 @@ format_option_table() throws -> String
 fn
 format_option_switches_help() throws -> String
 {
-  let section = String{"OPTION SWITCHES\n"};
+  let section = String{heap_allocator(), "OPTION SWITCHES\n"};
 
   section += "  A letter after a minus enables the option and after a plus "
              "disables it.\n  -o NAME and +o NAME do the same by Bash "

@@ -126,7 +126,7 @@ Env::execute(const ExecContext               &ec,
   let environment_resolver =
       ProgramResolver{environment_path.has_value()
                           ? steal(*environment_path)
-                          : String{utils::DEFAULT_COMMAND_SEARCH_PATH}};
+                          : String{heap_allocator(), utils::DEFAULT_COMMAND_SEARCH_PATH}};
   Maybe<ExecContext> sub;
 
   try {

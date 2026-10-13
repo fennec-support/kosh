@@ -1242,7 +1242,7 @@ expand_prompt_template(StringView prompt, koshka::EvalContext &context)
 {
   unused(context);
 
-  return String{prompt};
+  return String{koshka::heap_allocator(), prompt};
 }
 
 fn

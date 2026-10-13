@@ -224,7 +224,7 @@ Read::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   const usize  first_operand = 1;
   let const    operand_count = has_operands ? names.count() - first_operand : 1;
-  const String reply_name    = "REPLY";
+  const String reply_name{heap_allocator(), "REPLY"};
 
   let const do_operand_name = [&](usize index) -> const String & {
     if (!has_operands) return reply_name;
@@ -465,7 +465,7 @@ Read::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     while (cursor < line.length()) {
       let const start = do_skip_field();
 
-      words.push(String{line.substring_of_length(start, cursor - start)});
+      words.push_managed(line.substring_of_length(start, cursor - start));
       do_skip_delimiter();
     }
 

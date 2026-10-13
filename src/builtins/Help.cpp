@@ -142,7 +142,7 @@ Help::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     let forwarded = ArrayList<String>{heap_allocator()};
 
     forwarded.push(String{heap_allocator(), name.view()});
-    forwarded.push(String{"--help"});
+    forwarded.push_managed("--help");
 
     let forwarded_locations = ArrayList<SourceLocation>{heap_allocator()};
     let sub                 = ExecContext::make_from_resolved(

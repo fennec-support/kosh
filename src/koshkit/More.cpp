@@ -96,7 +96,7 @@ More::execute(const ExecContext               &ec,
     if (tagged_source.is_empty()) {
       report_soft_koshkit_util_error(ec, cxt, args[0].view(),
                                      "tag not found '" +
-                                         String{FLAG_MORE_TAG.value()} + "'");
+                                         FLAG_MORE_TAG.value() + "'");
 
       return 1;
     }

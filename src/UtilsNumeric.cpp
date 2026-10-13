@@ -100,7 +100,7 @@ format_minutes_seconds(double seconds, i32 decimal_count) throws
   std::snprintf(buffer, sizeof(buffer), "%ldm%.*fs", static_cast<long>(minutes),
                 static_cast<int>(decimal_count), remainder);
 
-  return String{buffer};
+  return String{heap_allocator(), buffer};
 }
 
 fn
@@ -833,7 +833,7 @@ expand_leading_tilde_path(StringView name) throws -> Maybe<String>
 
   if (slash.has_value()) expanded.append(name.substring(*slash + 1));
 
-  return String{expanded.view()};
+  return String{heap_allocator(), expanded.view()};
 }
 
 fn

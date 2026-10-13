@@ -487,7 +487,7 @@ fn
 debug_diagnostic_cache_is_stable(EvalContext &context) throws -> bool
 {
   let       cache  = ShellHighlightCache{heap_allocator()};
-  let const source = String{
+  let const source = ConstString{
       "value=\"$(printf value\n) tail\"\nif true\nthen value='start\nend'; fi"};
   usize keyword_line_start = 0;
   usize string_line_start  = 0;
@@ -502,7 +502,8 @@ debug_diagnostic_cache_is_stable(EvalContext &context) throws -> bool
 
   let keyword_line_end = keyword_line_start;
 
-  while (keyword_line_end < source.count() && source[keyword_line_end] != '\n')
+  while (keyword_line_end < source.count() &&
+         source[keyword_line_end] != '\n')
   {
     keyword_line_end++;
   }
@@ -550,7 +551,7 @@ debug_diagnostic_cache_is_stable(EvalContext &context) throws -> bool
   }
 
   let       function_cache      = ShellHighlightCache{heap_allocator()};
-  let const function_source     = String{"finish() { :; }\nfinish"};
+  let const function_source     = ConstString{"finish() { :; }\nfinish"};
   let const function_call_start = function_source.view().find_character('\n');
 
   if (!function_call_start.has_value()) return false;
@@ -569,7 +570,7 @@ debug_diagnostic_cache_is_stable(EvalContext &context) throws -> bool
 
   if (!has_resolved_function_call) return false;
 
-  let const  other_source = String{"echo ok"};
+  let const  other_source = ConstString{"echo ok"};
   let const *invalidated =
       cache.spans_for(other_source.view(), 0, other_source.count(), context);
 

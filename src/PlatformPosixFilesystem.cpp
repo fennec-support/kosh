@@ -58,9 +58,9 @@ fn
 temp_directory_path() throws -> String
 {
   if (const char *from_env = std::getenv("TMPDIR"); from_env != nullptr)
-    return String{from_env};
+    return String{heap_allocator(), from_env};
 
-  return String{"/tmp"};
+  return String{heap_allocator(), "/tmp"};
 }
 
 fn
@@ -76,7 +76,7 @@ get_polyfilled_path_kind(StringView) wontthrow -> polyfilled_path_kind
 cold fn
 path_exists(StringView path) wontthrow -> bool
 {
-  const String path_string{path};
+  const String path_string{heap_allocator(), path};
 
   LOG(Debug, "probing whether '%s' exists", path_string.c_str());
 
@@ -88,7 +88,7 @@ path_exists(StringView path) wontthrow -> bool
 static fn
 stat_path(StringView path, struct stat &info) wontthrow -> bool
 {
-  const String path_string{path};
+  const String path_string{heap_allocator(), path};
 
   return ::stat(path_string.c_str(), &info) == 0;
 }
@@ -116,7 +116,7 @@ path_is_regular_file(StringView path) wontthrow -> bool
 fn
 path_is_symbolic_link(StringView path) wontthrow -> bool
 {
-  const String path_string{path};
+  const String path_string{heap_allocator(), path};
   struct stat  info{};
 
   if (::lstat(path_string.c_str(), &info) != 0) return false;
@@ -252,7 +252,7 @@ path_is_older_than(StringView first, StringView second) wontthrow -> bool
 fn
 path_is_readable(StringView path) wontthrow -> bool
 {
-  const String path_string{path};
+  const String path_string{heap_allocator(), path};
 
   return ::access(path_string.c_str(), R_OK) == 0;
 }
@@ -260,7 +260,7 @@ path_is_readable(StringView path) wontthrow -> bool
 fn
 path_is_writable(StringView path) wontthrow -> bool
 {
-  const String path_string{path};
+  const String path_string{heap_allocator(), path};
 
   return ::access(path_string.c_str(), W_OK) == 0;
 }
@@ -299,7 +299,7 @@ read_current_directory() throws -> Path
 fn
 change_current_directory(StringView path) throws -> ErrorOr<Ok>
 {
-  const String path_string{path};
+  const String path_string{heap_allocator(), path};
 
   LOG(Info, "changing the current directory to '%s'", path_string.c_str());
   if (::chdir(path_string.c_str()) != 0)
@@ -683,7 +683,7 @@ open_with_flags(StringView     path,
   case file_open_mode::ReadWrite: flags = O_RDWR | O_CREAT; break;
   }
 
-  const String path_string{path};
+  const String path_string{heap_allocator(), path};
 
   loop {
     const int fd = ::open(path_string.c_str(), flags, 0666);
@@ -765,7 +765,7 @@ open_file_descriptor_until_signal(StringView     path,
 fn
 acquire_process_lock(StringView path) throws -> Maybe<descriptor>
 {
-  const String path_string{path};
+  const String path_string{heap_allocator(), path};
   let const    lock = ::open(path_string.c_str(), O_RDONLY | O_DIRECTORY);
 
   if (lock < 0) return None;
@@ -903,7 +903,7 @@ make_directory(StringView path, u32 mode) wontthrow -> bool
   int  saved_errno;
 
   {
-    const String path_string{path};
+    const String path_string{heap_allocator(), path};
 
     did_succeed = ::mkdir(path_string.c_str(), mode) == 0;
     saved_errno = errno;
@@ -921,7 +921,7 @@ set_file_mode(StringView path, u32 mode) wontthrow -> bool
   int  saved_errno;
 
   {
-    const String path_string{path};
+    const String path_string{heap_allocator(), path};
 
     did_succeed = ::chmod(path_string.c_str(), mode) == 0;
     saved_errno = errno;
@@ -942,7 +942,7 @@ set_file_owner(StringView          path,
   int  saved_errno;
 
   {
-    const String path_string{path};
+    const String path_string{heap_allocator(), path};
     let const    owner =
         owner_id < 0 ? static_cast<uid_t>(-1) : static_cast<uid_t>(owner_id);
     let const group =
@@ -966,8 +966,8 @@ create_hard_link(StringView target, StringView link_path) wontthrow -> bool
   int  saved_errno;
 
   {
-    const String target_string{target};
-    const String link_string{link_path};
+    const String target_string{heap_allocator(), target};
+    const String link_string{heap_allocator(), link_path};
 
     did_succeed = ::link(target_string.c_str(), link_string.c_str()) == 0;
     saved_errno = errno;
@@ -985,7 +985,7 @@ make_fifo(StringView path, u32 mode) wontthrow -> bool
   int  saved_errno;
 
   {
-    const String path_string{path};
+    const String path_string{heap_allocator(), path};
 
     did_succeed = ::mkfifo(path_string.c_str(), static_cast<mode_t>(mode)) == 0;
     saved_errno = errno;
@@ -1006,7 +1006,7 @@ make_device_node(StringView path,
   int  saved_errno;
 
   {
-    const String path_string{path};
+    const String path_string{heap_allocator(), path};
 
 #if defined __linux__
     did_succeed = ::mknod(path_string.c_str(), static_cast<mode_t>(mode),
@@ -1033,7 +1033,7 @@ touch_file_times(StringView path) wontthrow -> bool
   int  saved_errno;
 
   {
-    const String path_string{path};
+    const String path_string{heap_allocator(), path};
 
     did_succeed = ::utimensat(AT_FDCWD, path_string.c_str(), nullptr, 0) == 0;
     saved_errno = errno;
@@ -1051,7 +1051,7 @@ set_file_times(StringView path, const file_time_values &times) wontthrow -> bool
   int  saved_errno;
 
   {
-    const String          path_string{path};
+    const String          path_string{heap_allocator(), path};
     const struct timespec native_times[2] = {
         {static_cast<time_t>(times.access_time),
          static_cast<long>(times.access_nanoseconds)      },
@@ -1076,7 +1076,7 @@ remove_directory(StringView path) wontthrow -> bool
   int  saved_errno;
 
   {
-    const String path_string{path};
+    const String path_string{heap_allocator(), path};
 
     did_succeed = ::rmdir(path_string.c_str()) == 0;
     saved_errno = errno;
@@ -1094,7 +1094,7 @@ remove_file(StringView path) wontthrow -> bool
   int  saved_errno;
 
   {
-    const String path_string{path};
+    const String path_string{heap_allocator(), path};
 
     did_succeed = ::unlink(path_string.c_str()) == 0;
     saved_errno = errno;
@@ -1480,8 +1480,8 @@ rename_path(StringView from, StringView to) wontthrow -> bool
   int  saved_errno;
 
   {
-    const String from_string{from};
-    const String to_string{to};
+    const String from_string{heap_allocator(), from};
+    const String to_string{heap_allocator(), to};
 
     did_succeed = ::rename(from_string.c_str(), to_string.c_str()) == 0;
     saved_errno = errno;
@@ -1499,8 +1499,8 @@ create_symlink(StringView target, StringView link_path) wontthrow -> bool
   int  saved_errno;
 
   {
-    const String target_string{target};
-    const String link_string{link_path};
+    const String target_string{heap_allocator(), target};
+    const String link_string{heap_allocator(), link_path};
 
     did_succeed = ::symlink(target_string.c_str(), link_string.c_str()) == 0;
     saved_errno = errno;
@@ -1514,7 +1514,7 @@ create_symlink(StringView target, StringView link_path) wontthrow -> bool
 fn
 read_symlink(StringView path, Allocator allocator) wontthrow -> Maybe<String>
 {
-  const String path_string{path};
+  const String path_string{heap_allocator(), path};
   char         inline_buffer[256];
   let          length =
       ::readlink(path_string.c_str(), inline_buffer, sizeof(inline_buffer));
@@ -1591,7 +1591,7 @@ fill_file_status(const struct stat &info, file_status &status) wontthrow -> void
 fn
 stat_path(StringView path, file_status &status) wontthrow -> bool
 {
-  const String path_string{path};
+  const String path_string{heap_allocator(), path};
   struct stat  info{};
 
   if (::lstat(path_string.c_str(), &info) != 0) return false;
@@ -1603,7 +1603,7 @@ stat_path(StringView path, file_status &status) wontthrow -> bool
 fn
 stat_path_following(StringView path, file_status &status) wontthrow -> bool
 {
-  const String path_string{path};
+  const String path_string{heap_allocator(), path};
   struct stat  info{};
 
   if (::stat(path_string.c_str(), &info) != 0) return false;

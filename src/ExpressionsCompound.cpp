@@ -144,7 +144,7 @@ CompoundList::single_unconditional_command() const wontthrow -> const Command *
 cold fn
 CompoundList::to_string() const throws -> String
 {
-  return "CompoundList";
+  return String{heap_allocator(), "CompoundList"};
 }
 
 cold fn
@@ -509,9 +509,9 @@ CompoundListCondition::to_string() const throws -> String
   String k{heap_allocator()};
 
   switch (kind()) {
-  case Kind::None: k = "None"; break;
-  case Kind::And:  k = "&&"; break;
-  case Kind::Or:   k = "||"; break;
+  case Kind::None: k = String{k.allocator(), "None"}; break;
+  case Kind::And:  k = String{k.allocator(), "&&"}; break;
+  case Kind::Or:   k = String{k.allocator(), "||"}; break;
   default:         unreachable("invalid compound-list condition kind %d", ENUM(kind()));
   }
 
@@ -646,7 +646,7 @@ Pipeline::error_report_location() const wontthrow -> SourceLocation
 cold fn
 Pipeline::to_string() const throws -> String
 {
-  let s = String{"Pipeline"};
+  let s = String{heap_allocator(), "Pipeline"};
 
   append_ast_execution_flags(s);
 

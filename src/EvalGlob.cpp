@@ -172,10 +172,10 @@ EvalContext::expand_path_once(const glob_field   &field,
   let const is_dot_pattern = glob[0] == '.';
 
   if (is_dot_pattern && !is_shopt_enabled("globskipdots")) {
-    entries->push(
-        Path::DirectoryChild{String{"."}, Path::EntryKind::Directory});
-    entries->push(
-        Path::DirectoryChild{String{".."}, Path::EntryKind::Directory});
+    entries->push(Path::DirectoryChild{String{heap_allocator(), "."},
+                                       Path::EntryKind::Directory});
+    entries->push(Path::DirectoryChild{String{heap_allocator(), ".."},
+                                       Path::EntryKind::Directory});
   }
 
   let const           dotglob_is_on    = is_shopt_enabled("dotglob");

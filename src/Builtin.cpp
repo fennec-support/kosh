@@ -154,7 +154,7 @@ builtin_names() throws -> const ArrayList<String> &
     let collected = ArrayList<String>{heap_allocator()};
 
     for (let const &entry : BUILTIN_ENTRIES)
-      collected.push(entry.key.to_string());
+      collected.push(entry.key.to_string(collected.allocator()));
 
     return collected;
   }();
@@ -337,7 +337,7 @@ report_soft_builtin_error(const ExecContext &ec,
                           StringView         note) throws -> void
 {
   report_soft_builtin_error(ec, cxt, message);
-  show_message(Note{String{note}}.to_string());
+  show_message(Note{note}.to_string());
 }
 
 fn
@@ -371,7 +371,7 @@ report_soft_builtin_error(const ExecContext &ec,
                           StringView         note) throws -> void
 {
   report_soft_builtin_error(ec, cxt, steal(location), message);
-  show_message(Note{String{note}}.to_string());
+  show_message(Note{note}.to_string());
 }
 
 fn
@@ -402,14 +402,15 @@ report_usage_error(EvalContext   &cxt,
                    StringView     program_name) throws -> i32
 {
   const ErrorWithLocation located{
-      steal(location), String{program_name} + ": Not enough arguments"};
+      steal(location),
+      String{heap_allocator(), program_name} + ": Not enough arguments"};
 
   if (const String *source = cxt.source_store().current_source();
       source != nullptr)
     show_message(located.to_string(source->view(), &cxt));
   else
-    print_error(String{program_name} + ": Not enough arguments.\n");
-  show_message(Note{String{"Try `"} + program_name + " --help` for more info"}
+    print_error(String{heap_allocator(), program_name} + ": Not enough arguments.\n");
+  show_message(Note{String{heap_allocator(), "Try `"} + program_name + " --help` for more info"}
                    .to_string());
 
   return 2;
@@ -951,8 +952,8 @@ run_cd_to_directory(EvalContext       &cxt,
 {
   ArrayList<String> cd_args{heap_allocator()};
 
-  cd_args.push(String{"cd"});
-  cd_args.push(String{target});
+  cd_args.push_managed("cd");
+  cd_args.push_managed(target);
 
   let cd_arg_locations = ArrayList<SourceLocation>{heap_allocator()};
   let routed           = ExecContext::make_from_resolved(

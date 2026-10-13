@@ -715,7 +715,8 @@ EvalContext::process_args(const ArrayList<const Token *> &args,
           continue;
         }
 
-        let key_literal = String{assignment_token->key().view()};
+        let key_literal =
+            String{heap_allocator(), assignment_token->key().view()};
 
         if (assignment_token->get_update_mode() ==
             assignment_update_mode::Append)
@@ -950,7 +951,7 @@ EvalContext::write_xtrace(StringView command) throws -> void
   if (!runtime_state().should_echo_expanded()) return;
 
   let       trace = String{scratch_allocator()};
-  let const ps4   = get_variable_value("PS4").value_or(String{"+ "});
+  let const ps4   = get_variable_value("PS4").value_or(String{heap_allocator(), "+ "});
 
   if (!ps4.is_empty()) {
     for (usize i = 0; i < execution_store().subshell_depth(); i++)

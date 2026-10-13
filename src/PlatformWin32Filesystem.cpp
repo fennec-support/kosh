@@ -320,7 +320,7 @@ canonical_path(const Path &path) wontthrow -> Maybe<Path>
 
     if (has_extended_prefix) return Path{resolved};
     if (resolved.starts_with(StringView{"\\\\?\\UNC\\"})) {
-      let unc_path = String{"\\\\"};
+      let unc_path = String{heap_allocator(), "\\\\"};
 
       unc_path += resolved.substring(8);
 
@@ -587,7 +587,7 @@ temp_directory_path() throws -> String
       from_environment.has_value())
     return from_environment.take();
 
-  return String{"C:\\Windows\\Temp"};
+  return String{heap_allocator(), "C:\\Windows\\Temp"};
 }
 
 static fn
@@ -871,7 +871,7 @@ read_current_directory() throws -> Path
 fn
 change_current_directory(StringView path) throws -> ErrorOr<Ok>
 {
-  const String path_string{path};
+  const String path_string{heap_allocator(), path};
   let const    wide_path = path_to_wide(path, heap_allocator());
 
   if (!wide_path.has_value() || SetCurrentDirectoryW(wide_path->begin()) == 0) {
@@ -2183,7 +2183,8 @@ mounted_filesystems() throws -> ArrayList<mounted_filesystem>
     }
 
     let const options =
-        String{drive_type_name(GetDriveTypeW(drives + position))};
+        String{heap_allocator(),
+               drive_type_name(GetDriveTypeW(drives + position))};
 
     result.push(mounted_filesystem{target.clone(), steal(target),
                                    steal(filesystem_type), steal(options),

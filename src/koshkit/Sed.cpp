@@ -175,7 +175,7 @@ compile_sed_expression(StringView     expression,
 
   if (!result.has_value()) {
     throw SedParseError{
-        position, "invalid regular expression '" + String{expression} + "'",
+        position, "invalid regular expression '" + expression + "'",
         regex_mode == sed_regex_mode::Extended
             ? "use a valid extended regular expression"
             : "use a valid basic regular expression"};
@@ -660,7 +660,7 @@ Sed::execute(const ExecContext               &ec,
     if (!file_script.has_value()) {
       KOSHKIT_REPORT_ERROR_AT(FLAG_SED_FILE.get_location(file_index),
                               "cannot read script file '" +
-                                  String{FLAG_SED_FILE.get(file_index)} +
+                                  FLAG_SED_FILE.get(file_index) +
                                   "': " + os::last_system_error_message(),
                               "pass a readable sed script file after -f");
 

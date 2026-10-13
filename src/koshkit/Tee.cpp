@@ -132,7 +132,7 @@ Tee::execute(const ExecContext               &ec,
           os::set_last_system_error(result.error_number);
           reason = os::last_system_error_message();
         } else {
-          reason = "write made no progress";
+          reason = String{reason.allocator(), "write made no progress"};
         }
 
         report_soft_koshkit_util_error(

@@ -363,7 +363,7 @@ Csplit::execute(const ExecContext               &ec,
       target_line = static_cast<usize>(adjusted_line);
     } else {
       throw ErrorWithLocationAndDetails{
-          pattern_location, "invalid pattern '" + String{pattern} + "'",
+          pattern_location, "invalid pattern '" + pattern + "'",
           "use a positive line number, /BRE/[offset], %BRE%[offset], or "
           "{count}"};
     }
@@ -427,7 +427,7 @@ Csplit::execute(const ExecContext               &ec,
         if (repeat_count.is_error()) {
           throw ErrorWithLocationAndDetails{
               operand_locations[pattern_index],
-              "invalid repeat count '" + String{repeat} + "'",
+              "invalid repeat count '" + repeat + "'",
               "use a nonnegative decimal repeat count or *"};
         }
 

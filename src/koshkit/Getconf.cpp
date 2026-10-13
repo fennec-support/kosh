@@ -388,7 +388,7 @@ Getconf::execute(const ExecContext               &ec,
     report_soft_koshkit_util_error(
         ec, cxt, FLAG_GETCONF_SPECIFICATION.value_location(), args[0].view(),
         "Unsupported specification '" +
-            String{FLAG_GETCONF_SPECIFICATION.value()} + "'");
+            FLAG_GETCONF_SPECIFICATION.value() + "'");
 
     return 2;
   }
@@ -398,7 +398,7 @@ Getconf::execute(const ExecContext               &ec,
     let const error_location = FLAG_GETCONF_ALL.value_location();
 
     for (let const &entry : SYSTEM_CONFIGURATION_ENTRIES) {
-      let const name   = entry.key.to_string();
+      let const name   = entry.key.to_string(heap_allocator());
       let const result = os::query_system_configuration(entry.value);
 
       if (result.status == os::configuration_query_status::Error) {
@@ -413,7 +413,7 @@ Getconf::execute(const ExecContext               &ec,
     }
 
     for (let const &entry : STRING_CONFIGURATION_ENTRIES) {
-      let const name = entry.key.to_string();
+      let const name = entry.key.to_string(heap_allocator());
       let       result =
           os::query_string_configuration(entry.value, cxt.scratch_allocator());
 
@@ -434,7 +434,7 @@ Getconf::execute(const ExecContext               &ec,
     let const path = operands.is_empty() ? StringView{"."} : operands[0].view();
 
     for (let const &entry : PATH_CONFIGURATION_ENTRIES) {
-      let const name   = entry.key.to_string();
+      let const name   = entry.key.to_string(heap_allocator());
       let const result = os::query_path_configuration(path, entry.value);
 
       if (result.status == os::configuration_query_status::Error) {

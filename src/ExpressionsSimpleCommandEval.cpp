@@ -945,7 +945,7 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const 
         if (name == "IFS" && !was_ifs_assigned) {
           was_ifs_assigned = true;
           saved_ifs_separators =
-              cxt.get_variable_value("IFS").value_or(String{" \t\n"});
+              cxt.get_variable_value("IFS").value_or(String{heap_allocator(), " \t\n"});
         }
 
         let const is_path_name = utils::environment_name_is_path(name);
@@ -998,7 +998,7 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const 
         }
 
         if (is_path_name)
-          cxt.program_resolver().assign_path(String{expanded_value.view()});
+          cxt.program_resolver().assign_path(String{heap_allocator(), expanded_value.view()});
         if (name == "IFS")
           cxt.variable_store().set_field_separators(expanded_value.view());
       };

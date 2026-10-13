@@ -319,7 +319,9 @@ static fn
 linux_process_start_token(StringView process_directory) throws
     -> Maybe<u64>
 {
-  let const stat = Path{String{process_directory} + "/stat"}.read_entire_file();
+  let const stat =
+      Path{String{heap_allocator(), process_directory} + "/stat"}
+          .read_entire_file();
 
   if (!stat.has_value()) return None;
 
@@ -677,8 +679,8 @@ logged_in_users() throws -> ArrayList<user_session>
     let const line_length = strnlen(entry->ut_line, sizeof(entry->ut_line));
 
     result.push(user_session{
-        String{StringView{entry->ut_user, user_length}},
-        String{StringView{entry->ut_line, line_length}},
+        String{heap_allocator(), StringView{entry->ut_user, user_length}},
+        String{heap_allocator(), StringView{entry->ut_line, line_length}},
         static_cast<i64>(entry->ut_tv.tv_sec),
     });
   }
@@ -1181,9 +1183,9 @@ fn
 get_current_user() throws -> Maybe<String>
 {
   if (const char *name = std::getenv("LOGNAME"); name != nullptr)
-    return String{name};
+    return String{heap_allocator(), name};
   if (const char *name = std::getenv("USER"); name != nullptr)
-    return String{name};
+    return String{heap_allocator(), name};
 
   return uid_to_username(static_cast<u32>(getuid()));
 }
@@ -1193,7 +1195,9 @@ get_login_user() throws -> Maybe<String>
 {
   char name[256];
 
-  if (getlogin_r(name, sizeof(name)) == 0) return String{name};
+  if (getlogin_r(name, sizeof(name)) == 0) {
+    return String{heap_allocator(), name};
+  }
 
   return uid_to_username(static_cast<u32>(getuid()));
 }
@@ -1207,7 +1211,7 @@ get_hostname() throws -> Maybe<String>
 
   buffer[sizeof(buffer) - 1] = '\0';
 
-  return String{buffer};
+  return String{heap_allocator(), buffer};
 }
 
 fn
@@ -1246,10 +1250,10 @@ network_interface_addresses() throws
     }
 
     result.push(network_interface_address{
-        String{current->ifa_name},
+        String{heap_allocator(), current->ifa_name},
         family == AF_INET ? network_address_family::IPv4
                           : network_address_family::IPv6,
-        String{address},
+        String{heap_allocator(), address},
     });
   }
 
@@ -1382,10 +1386,10 @@ socket_address(const struct in_sockinfo &info,
   }
 
   if (::inet_ntop(native_family, address, buffer, sizeof(buffer)) == nullptr) {
-    return String{"*"};
+    return String{heap_allocator(), "*"};
   }
 
-  return String{buffer};
+  return String{heap_allocator(), buffer};
 }
 
 #endif
@@ -1629,7 +1633,7 @@ enumerate_first_fields(const Path &database) throws -> ArrayList<String>
     let const name = passwd_field(line, 0);
 
     if (!name.is_empty() && line.find_character(':').has_value()) {
-      names.push(String{name});
+      names.push_managed(name);
     }
   }
 
@@ -1681,7 +1685,7 @@ terminal_name(descriptor fd) throws -> Maybe<String>
 
   if (ttyname_r(fd, buffer, sizeof(buffer)) != 0) return None;
 
-  return String{buffer};
+  return String{heap_allocator(), buffer};
 }
 
 TerminalEchoGuard::TerminalEchoGuard(descriptor         input,
@@ -2639,7 +2643,7 @@ normalize_program_name(String &program_name) throws -> program_name_info
 fn
 has_environment_variable(StringView key) throws -> bool
 {
-  const String key_string{key};
+  const String key_string{heap_allocator(), key};
 
   return std::getenv(key_string.c_str()) != nullptr;
 }
@@ -2650,10 +2654,10 @@ get_environment_variable(StringView key) throws -> Maybe<String>
   LOG(All, "reading the environment variable '%.*s'",
       static_cast<int>(key.length), key.data);
 
-  const String key_string{key};
+  const String key_string{heap_allocator(), key};
   const char  *e = std::getenv(key_string.c_str());
 
-  if (e != nullptr) return String{e};
+  if (e != nullptr) return String{heap_allocator(), e};
 
   return koshka::None;
 }
@@ -2665,8 +2669,8 @@ set_environment_variable(StringView key, StringView value) throws
   LOG(All, "setting the environment variable '%.*s'",
       static_cast<int>(key.length), key.data);
 
-  const String key_string{key};
-  const String value_string{value};
+  const String key_string{heap_allocator(), key};
+  const String value_string{heap_allocator(), value};
 
   setenv(key_string.c_str(), value_string.c_str(), 1);
   ENVIRONMENT_EPOCH++;
@@ -2678,7 +2682,7 @@ unset_environment_variable(StringView key) throws -> void
   LOG(All, "unsetting the environment variable '%.*s'",
       static_cast<int>(key.length), key.data);
 
-  const String key_string{key};
+  const String key_string{heap_allocator(), key};
 
   unsetenv(key_string.c_str());
   ENVIRONMENT_EPOCH++;
@@ -2687,7 +2691,7 @@ unset_environment_variable(StringView key) throws -> void
 fn
 get_environment_spelling(StringView key) throws -> String
 {
-  return String{key};
+  return String{heap_allocator(), key};
 }
 
 fn
@@ -2717,7 +2721,7 @@ environment_names() throws -> ArrayList<String>
   ArrayList<String> names{heap_allocator()};
 
   for_each_environment_name(&names, [](opaque *context, StringView name) {
-    static_cast<ArrayList<String> *>(context)->push(String{name});
+    static_cast<ArrayList<String> *>(context)->push_managed(name);
   });
 
   return names;
@@ -2739,7 +2743,7 @@ check_syscall_impl(i32 status, StringView invocation) throws -> i32
 cold fn
 last_system_error_message() throws -> String
 {
-  return String{strerror(errno)};
+  return String{heap_allocator(), strerror(errno)};
 }
 
 fn
@@ -3113,7 +3117,7 @@ lookup_name_by_id(StringView database_path,
 
     let const name = passwd_field(line, 0);
 
-    if (!name.is_empty()) return String{name};
+    if (!name.is_empty()) return String{heap_allocator(), name};
   }
 
   return koshka::None;
@@ -3156,7 +3160,7 @@ uid_to_username(u32 uid) throws -> Maybe<String>
     return None;
   }
 
-  return String{result->pw_name};
+  return String{heap_allocator(), result->pw_name};
 #else
 
   return lookup_name_by_id("/etc/passwd", uid, 2);

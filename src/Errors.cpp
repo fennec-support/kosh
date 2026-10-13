@@ -501,7 +501,7 @@ ErrorBase::trailing_details_to_string() const throws -> String
 
   let const note_period = text_ends_a_sentence(note) ? "" : ".";
 
-  return String{"\n"} + color.severity + severity_word + color.get_reset() +
+  return String{heap_allocator(), "\n"} + color.severity + severity_word + color.get_reset() +
          ": " + color.message + note + note_period + color.get_reset();
 }
 
@@ -518,7 +518,7 @@ Error::Error(StringView message) : m_message(heap_allocator(), message)
 }
 
 ErrorWithDetails::ErrorWithDetails(StringView message, StringView note)
-    : Error(message), m_note(note)
+    : Error(message), m_note(heap_allocator(), note)
 {}
 
 cold fn
@@ -551,7 +551,7 @@ Error::to_string() const throws -> String
 Warning::Warning(StringView message) : Error(message) {}
 
 WarningWithDetails::WarningWithDetails(StringView message, StringView note)
-    : Warning(message), m_note(note)
+    : Warning(message), m_note(heap_allocator(), note)
 {}
 
 InterruptErrorWithLocation::InterruptErrorWithLocation(SourceLocation location)
@@ -727,7 +727,7 @@ CommandResolutionErrorWithLocationAndDetails::
                                                  i64            command_status)
     : CommandResolutionErrorWithLocation(
           steal(location), message, command_status),
-      m_note(note)
+      m_note(heap_allocator(), note)
 {}
 
 WarningWithLocation::WarningWithLocation(SourceLocation location,
@@ -737,7 +737,8 @@ WarningWithLocation::WarningWithLocation(SourceLocation location,
 
 WarningWithLocationAndDetails::WarningWithLocationAndDetails(
     SourceLocation location, StringView message, StringView note)
-    : WarningWithLocation(steal(location), message), m_note(note)
+    : WarningWithLocation(steal(location), message),
+      m_note(heap_allocator(), note)
 {}
 
 cold fn
@@ -776,13 +777,14 @@ ErrorWithLocationAndDetails::ErrorWithLocationAndDetails(
     StringView     note)
     : ErrorWithLocation(steal(location), message),
       m_details_location(steal(details_location)),
-      m_details_message(details_message), m_note(note)
+      m_details_message(heap_allocator(), details_message),
+      m_note(heap_allocator(), note)
 {}
 
 ErrorWithLocationAndDetails::ErrorWithLocationAndDetails(
     SourceLocation location, StringView message, StringView note)
     : ErrorWithLocation(steal(location), message),
-      m_details_message(heap_allocator()), m_note(note)
+      m_details_message(heap_allocator()), m_note(heap_allocator(), note)
 {}
 
 cold fn

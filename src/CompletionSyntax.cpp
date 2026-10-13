@@ -453,7 +453,7 @@ internal::resolve_completion_alias(StringView   command,
                                    EvalContext &context) throws
     -> String
 {
-  let name = String{command};
+  let name = String{heap_allocator(), command};
 
   for (usize depth = 0; depth < 8; depth++) {
     let const expansion = context.scope_store().find_alias(name.view());
@@ -475,7 +475,7 @@ internal::resolve_completion_alias(StringView   command,
       break;
     }
 
-    name = String{first};
+    name = String{name.allocator(), first};
   }
 
   return name;
@@ -496,10 +496,11 @@ internal::resolve_completion_command(StringView   command,
     if (let const canonical = os::canonical_path(located.front());
         canonical.has_value())
     {
-      let       resolved_name = String{canonical->filename()};
-      let const name_info     = os::normalize_program_name(resolved_name);
+      let resolved_name = String{heap_allocator(), canonical->filename()};
+      let const name_info = os::normalize_program_name(resolved_name);
 
       return String{
+          heap_allocator(),
           resolved_name.substring_of_length(0, name_info.stem_length)};
     }
   }

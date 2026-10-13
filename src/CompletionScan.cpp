@@ -105,11 +105,11 @@ settled_option_value(StringView line, StringView option) throws
     let const word = words[i].view();
 
     if (word == option && i + 1 < words.count() && i + 1 != cword) {
-      return String{words[i + 1].view()};
+      return String{heap_allocator(), words[i + 1].view()};
     }
 
     if (word.length > option.length && word.starts_with(option)) {
-      return String{word.substring(option.length)};
+      return String{heap_allocator(), word.substring(option.length)};
     }
   }
 
@@ -184,7 +184,7 @@ parse_make_database_targets(StringView  database,
     let const name = text.substring_of_length(0, *colon);
 
     if (make_target_is_artifact(name, directory)) continue;
-    targets.push(String{name});
+    targets.push_managed(name);
   }
 
   return targets;
@@ -207,7 +207,7 @@ parse_colon_led_names(StringView listing) throws -> ArrayList<String>
     let const name = text.substring_of_length(0, *colon);
 
     if (name.find_character(' ').has_value()) continue;
-    names.push(String{name});
+    names.push_managed(name);
   }
 
   return names;
@@ -240,7 +240,7 @@ parse_tsh_node_names(StringView listing) throws -> ArrayList<String>
     }
 
     if (field_end > 0)
-      names.push(String{row.substring_of_length(0, field_end)});
+      names.push_managed(row.substring_of_length(0, field_end));
   }
 
   return names;
@@ -331,7 +331,7 @@ parse_package_json_scripts(StringView text) throws -> ArrayList<String>
       }
 
       if (expecting_key && depth == 1) {
-        scripts.push(String{text.substring_of_length(start, i - start)});
+        scripts.push_managed(text.substring_of_length(start, i - start));
       }
       expecting_key = false;
       i++;
@@ -362,7 +362,7 @@ collect_ssh_hosts() throws -> ArrayList<String>
     if (host.is_empty() || !seen.add(host)) {
       return;
     }
-    hosts.push(String{host});
+    hosts.push_managed(host);
   };
 
   let config_path = home->clone();
@@ -592,10 +592,10 @@ internal::complete_from_tools_with_targets(StringView      line,
 
     let argv = ArrayList<String>{heap_allocator()};
 
-    argv.push(String{resolved[0].view()});
+    argv.push_managed(resolved[0].view());
 
     for (usize i = 1; i < probe_argv.count(); i++)
-      argv.push(String{probe_argv[i].view()});
+      argv.push_managed(probe_argv[i].view());
 
     return argv;
   };
@@ -637,7 +637,7 @@ internal::complete_from_tools_with_targets(StringView      line,
   switch (tool_kind.value()) {
   case tool_with_targets_kind::make: {
     let const directory =
-        settled_option_value(line, "-C").value_or(String{"."});
+        settled_option_value(line, "-C").value_or(String{heap_allocator(), "."});
     let makefile_name = settled_option_value(line, "-f");
 
     if (!makefile_name.has_value()) {
@@ -649,7 +649,7 @@ internal::complete_from_tools_with_targets(StringView      line,
 
         probe.append(candidate);
         if (probe.exists()) {
-          makefile_name = String{candidate};
+          makefile_name = String{heap_allocator(), candidate};
           break;
         }
       }
@@ -668,13 +668,13 @@ internal::complete_from_tools_with_targets(StringView      line,
     cached_targets = cached_targets_for(makefile_path, [&]() throws {
       let probe = ArrayList<String>{heap_allocator()};
 
-      probe.push(String{"make"});
-      probe.push(String{"-C"});
-      probe.push(String{directory.view()});
-      probe.push(String{"-f"});
-      probe.push(String{makefile_name->view()});
-      probe.push(String{"-pRrq"});
-      probe.push(String{":"});
+      probe.push_managed("make");
+      probe.push_managed("-C");
+      probe.push_managed(directory.view());
+      probe.push_managed("-f");
+      probe.push_managed(makefile_name->view());
+      probe.push_managed("-pRrq");
+      probe.push_managed(":");
 
       let database_targets =
           parse_make_database_targets(do_capture(probe).view(), make_directory);
@@ -702,20 +702,21 @@ internal::complete_from_tools_with_targets(StringView      line,
   }
   case tool_with_targets_kind::ninja: {
     let const directory =
-        settled_option_value(line, "-C").value_or(String{"."});
+        settled_option_value(line, "-C").value_or(String{heap_allocator(), "."});
     let build_file = Path{directory.view()};
 
-    build_file.append(settled_option_value(line, "-f")
-                          .value_or(String{"build.ninja"})
-                          .view());
+    build_file.append(
+        settled_option_value(line, "-f")
+            .value_or(String{heap_allocator(), "build.ninja"})
+            .view());
     cached_targets = cached_targets_for(build_file, [&]() throws {
       let probe = ArrayList<String>{heap_allocator()};
 
-      probe.push(String{"ninja"});
-      probe.push(String{"-C"});
-      probe.push(String{directory.view()});
-      probe.push(String{"-t"});
-      probe.push(String{"targets"});
+      probe.push_managed("ninja");
+      probe.push_managed("-C");
+      probe.push_managed(directory.view());
+      probe.push_managed("-t");
+      probe.push_managed("targets");
 
       return parse_colon_led_names(do_capture(probe).view());
     });
@@ -734,11 +735,11 @@ internal::complete_from_tools_with_targets(StringView      line,
     cached_targets = cached_targets_for(cache_file, [&]() throws {
       let probe = ArrayList<String>{heap_allocator()};
 
-      probe.push(String{"cmake"});
-      probe.push(String{"--build"});
-      probe.push(String{build_directory->view()});
-      probe.push(String{"--target"});
-      probe.push(String{"help"});
+      probe.push_managed("cmake");
+      probe.push_managed("--build");
+      probe.push_managed(build_directory->view());
+      probe.push_managed("--target");
+      probe.push_managed("help");
 
       let       names = ArrayList<String>{heap_allocator()};
       let const help  = do_capture(probe);
@@ -753,7 +754,7 @@ internal::complete_from_tools_with_targets(StringView      line,
 
         if (let const space = name.find_character(' '); space.has_value())
           name = name.substring_of_length(0, *space);
-        if (!name.is_empty()) names.push(String{name});
+        if (!name.is_empty()) names.push_managed(name);
       }
 
       return names;
@@ -842,7 +843,7 @@ append_flag_forms(const FlagList    &flags,
 {
   for (let const *flag : flags) {
     if (flag->short_name() != '\0') {
-      let form = String{"-"};
+      let form = String{heap_allocator(), "-"};
 
       form.push(flag->short_name());
       if (token_filter.is_empty() || form.view().starts_with(token_filter)) {
@@ -851,7 +852,7 @@ append_flag_forms(const FlagList    &flags,
     }
 
     if (!flag->long_name().is_empty()) {
-      let form = String{"--"};
+      let form = String{heap_allocator(), "--"};
 
       form += flag->long_name();
       if (token_filter.is_empty() || form.view().starts_with(token_filter)) {
@@ -886,7 +887,7 @@ dash_candidates_for(Maybe<Builtin::Kind> builtin_kind) throws
     per_kind_candidates[index] = ArrayList<String>{heap_allocator()};
     if (*builtin_kind == Builtin::Kind::Kill) {
       for (let const name : os::signal_names()) {
-        let with_dash = String{"-"};
+        let with_dash = String{heap_allocator(), "-"};
 
         with_dash += name;
         per_kind_candidates[index]->push(steal(with_dash));
@@ -900,13 +901,13 @@ dash_candidates_for(Maybe<Builtin::Kind> builtin_kind) throws
         const String &letters = shell_option_letters();
 
         for (usize i = 0; i < letters.count(); i++) {
-          let switch_form = String{"-"};
+          let switch_form = String{heap_allocator(), "-"};
 
           switch_form.push(letters[i]);
           per_kind_candidates[index]->push(steal(switch_form));
         }
 
-        per_kind_candidates[index]->push(String{"-o"});
+        per_kind_candidates[index]->push_managed("-o");
       }
     }
 
@@ -927,7 +928,7 @@ push_variable_name_candidates(StringView         token,
   let do_add_name = [&](StringView name) throws {
     if (!name.starts_with(token)) return;
     if (!seen.add(name)) return;
-    candidates.push(String{name});
+    candidates.push(String{heap_allocator(), name});
   };
 
   context.variable_names().for_each(
@@ -1050,7 +1051,7 @@ complete_from_flags_in_line(StringView      line,
   let candidates = ArrayList<String>{heap_allocator()};
 
   let const do_push_matching = [&](StringView candidate) throws {
-    if (candidate.starts_with(token)) candidates.push(String{candidate});
+    if (candidate.starts_with(token)) candidates.push_managed(candidate);
   };
 
   let const do_push_signal_names = [&]() throws {
@@ -1089,7 +1090,7 @@ complete_from_flags_in_line(StringView      line,
       let names = ArrayList<String>{heap_allocator()};
 
       for (let const &name : koshkit::util_names())
-        if (name.view().starts_with(token)) names.push(String{name.view()});
+        if (name.view().starts_with(token)) names.push_managed(name.view());
 
       if (!names.is_empty()) return names;
 
@@ -1334,7 +1335,7 @@ complete_from_flags_in_line(StringView      line,
             continue;
           }
 
-          let candidate = String{listed};
+          let candidate = String{heap_allocator(), listed};
 
           candidate.append(mood_text);
           candidates.push(steal(candidate));
@@ -1405,7 +1406,7 @@ complete_from_flags_in_line(StringView      line,
 
     if (is_operand_wanted) {
       for (let const &background_job : context.job_table_store().jobs()) {
-        let job_id = String{"%"};
+        let job_id = String{heap_allocator(), "%"};
 
         job_id += String::from(background_job.id, heap_allocator());
         do_push_matching(job_id.view());
@@ -1522,7 +1523,7 @@ complete_from_flags_in_line(StringView      line,
 
   if (is_option_name_word) {
     for (let const &entry : COMPLETION_OPTION_ENTRIES)
-      do_push_matching(entry.key.to_string().view());
+      do_push_matching(entry.key.to_string(heap_allocator()).view());
 
     if (!candidates.is_empty()) return candidates;
 
@@ -1582,7 +1583,7 @@ complete_from_flags_in_line(StringView      line,
           [&](StringView name) throws {
             if (!name.starts_with(token)) return;
             if (!seen.add(name)) return;
-            candidates.push(String{name});
+            candidates.push_managed(name);
           });
     } else {
       push_variable_name_candidates(token, context, candidates);

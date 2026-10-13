@@ -54,7 +54,7 @@ keyword_names() throws -> const ArrayList<String> &
     let collected = ArrayList<String>{heap_allocator()};
 
     for (let const &entry : KEYWORD_ENTRIES)
-      collected.push(entry.key.to_string());
+      collected.push(entry.key.to_string(collected.allocator()));
 
     return collected;
   }();
@@ -399,7 +399,7 @@ Word::runs_substitution() const wontthrow -> bool
 cold fn
 Word::to_pretty_string() const throws -> String
 {
-  let result = String{"[Word"};
+  let result = String{heap_allocator(), "[Word"};
 
   for (let const &segment : segments) {
     result += "\n  ";
@@ -536,7 +536,8 @@ array_element_assignment_split(const ArrayList<WordSegment> &segments,
       return koshka::None;
     }
 
-    let key = String{first.text.substring_of_length(0, name_end)};
+    let key = String{heap_allocator(),
+                     first.text.substring_of_length(0, name_end)};
 
     key.push('[');
     key.append(subscript.view());
@@ -756,7 +757,8 @@ Word::get_quoted_assignment_split() const throws
     value.segments.push(segments[i]);
 
   return word_assignment_split{
-      String{prefix_view.substring_of_length(0, name_length)}, steal(value),
+      String{heap_allocator(), prefix_view.substring_of_length(0, name_length)},
+      steal(value),
       update_mode};
 }
 
@@ -816,7 +818,7 @@ namespace tokens {
 
 #define TOKEN_DECLS(t, s)                                                      \
   t::t(SourceLocation location) : Token(steal(location), Token::Kind::t) {}    \
-  String t::raw_string() const throws { return s; }                            \
+  String t::raw_string() const throws { return String{heap_allocator(), s}; }  \
   Maybe<StringView> t::raw_view() const wontthrow { return StringView{s}; }
 
 TOKEN_DECLS(If, "if");
@@ -984,7 +986,7 @@ ExpandedWordToken::raw_string() const throws -> String
   if (m_literal_data == nullptr) return String{heap_allocator()};
 
   return String{
-      StringView{m_literal_data, m_literal_length}
+      heap_allocator(), StringView{m_literal_data, m_literal_length}
   };
 }
 

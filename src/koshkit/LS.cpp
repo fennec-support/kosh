@@ -516,12 +516,12 @@ build_long_entry_or_sparse_row(const listing_entry   &entry,
   append_decorated_name(row.name, entry, options);
 
   if (!entry.has_status) {
-    row.mode_string = "??????????";
-    row.link_count  = "?";
-    row.owner       = "?";
-    row.group       = "?";
-    row.size        = "?";
-    row.time        = "?";
+    row.mode_string = String{row.mode_string.allocator(), "??????????"};
+    row.link_count  = String{row.link_count.allocator(), "?"};
+    row.owner       = String{row.owner.allocator(), "?"};
+    row.group       = String{row.group.allocator(), "?"};
+    row.size        = String{row.size.allocator(), "?"};
+    row.time        = String{row.time.allocator(), "?"};
 
     return row;
   }
@@ -534,10 +534,12 @@ build_long_entry_or_sparse_row(const listing_entry   &entry,
     row.owner = String::from(status.owner_id, allocator);
     row.group = String::from(status.group_id, allocator);
   } else {
-    row.owner = cached_id_name(status.owner_id, id_name_kind::Owner, id_names,
-                               allocator);
-    row.group = cached_id_name(status.group_id, id_name_kind::Group, id_names,
-                               allocator);
+    row.owner = String{row.owner.allocator(),
+                       cached_id_name(status.owner_id, id_name_kind::Owner,
+                                      id_names, allocator)};
+    row.group = String{row.group.allocator(),
+                       cached_id_name(status.group_id, id_name_kind::Group,
+                                      id_names, allocator)};
   }
 
   row.size   = FLAG_LS_HUMAN.is_enabled()

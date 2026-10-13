@@ -108,7 +108,7 @@ Split::execute(const ExecContext               &ec,
     if (parsed.is_error() || parsed.value() == 0 || parsed.value() > maximum) {
       KOSHKIT_REPORT_ERROR_AT(
           flag.value_location(),
-          "invalid " + String{name} + " '" + String{flag.value()} + "'", note);
+          "invalid " + name + " '" + flag.value() + "'", note);
 
       return false;
     }

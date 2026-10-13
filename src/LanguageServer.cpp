@@ -205,7 +205,8 @@ DocumentStore::open(StringView uri,
                     i64        version) throws -> Document *
 {
   if (let *existing = find(uri); existing != nullptr) {
-    existing->language_id = String{language_id};
+    existing->language_id =
+        String{existing->language_id.allocator(), language_id};
     existing->replace_source(text, version);
     existing->mood = mood_for(*existing);
 
@@ -609,7 +610,8 @@ Server::initialize(const JsonValue *id, const JsonValue *params) throws
 
   let const encoding =
       m_client.encoding == position_encoding::Utf8 ? "utf-8" : "utf-16";
-  let result = String{"{\"capabilities\":{\"positionEncoding\":"};
+  let result =
+      String{heap_allocator(), "{\"capabilities\":{\"positionEncoding\":"};
 
   append_json_string(result, encoding);
   result.append(",\"textDocumentSync\":{\"openClose\":true,\"change\":1},"
@@ -695,7 +697,8 @@ Server::change_document(const JsonValue *params) throws -> Document *
 fn
 Server::send_empty_diagnostics(StringView uri) throws -> bool
 {
-  let payload = String{"{\"jsonrpc\":\"2.0\",\"method\":"
+  let payload = String{heap_allocator(),
+                       "{\"jsonrpc\":\"2.0\",\"method\":"
                        "\"textDocument/publishDiagnostics\",\"params\":{"
                        "\"uri\":"};
 
@@ -886,21 +889,21 @@ Server::publish_diagnostics(Document &document) throws -> bool
     document.completion_variable_names.clear();
 
     for (let const &assignment : symbol_records.assignments)
-      document.completion_variable_names.push(String{assignment.name.view()});
+      document.completion_variable_names.push_managed(assignment.name.view());
 
     document.completion_function_names.clear();
 
     for (let const &function : symbol_records.functions)
-      document.completion_function_names.push(String{function.name.view()});
+      document.completion_function_names.push_managed(function.name.view());
 
     source_effects.for_each(
         [&](StringView, const followed_source_effects &effects) throws {
           effects.assigned_names.for_each([&](StringView name) {
-            document.completion_variable_names.push(String{name});
+            document.completion_variable_names.push_managed(name);
           });
 
           effects.defined_functions.for_each([&](StringView name) {
-            document.completion_function_names.push(String{name});
+            document.completion_function_names.push_managed(name);
           });
         });
   }
@@ -915,7 +918,8 @@ Server::send_diagnostics(
     const Document                     &document,
     const ArrayList<source_diagnostic> &diagnostics) throws -> bool
 {
-  let payload = String{"{\"jsonrpc\":\"2.0\",\"method\":"
+  let payload = String{heap_allocator(),
+                       "{\"jsonrpc\":\"2.0\",\"method\":"
                        "\"textDocument/publishDiagnostics\",\"params\":{"
                        "\"uri\":"};
 
@@ -1063,7 +1067,7 @@ Server::complete(const JsonValue *id, const JsonValue *params) throws
       &document_variable_names);
   let sorted_function_names =
       steal(document_function_names).make_sorted(sort_order::ascending);
-  let response         = String{"["};
+  let response         = String{heap_allocator(), "["};
   let text_edit_prefix = String{heap_allocator()};
 
   for (usize index = 0; index < result.candidates.count(); index++) {
@@ -1140,7 +1144,7 @@ Server::resolve_completion(const JsonValue *id,
     information = command_information(command->text.view());
   }
 
-  let response = String{"{"};
+  let response = String{heap_allocator(), "{"};
 
   for (usize index = 0; index < params->object.count(); index++) {
     let const name = params->object[index].name.view();
@@ -1233,7 +1237,7 @@ Server::format_document(const JsonValue *id,
   if (formatted->view() == document->normalized_source.view())
     return send_result(id, "[]");
 
-  let response = String{"["};
+  let response = String{heap_allocator(), "["};
 
   append_text_edit(response, *document, 0, document->normalized_source.count(),
                    formatted->view());
@@ -1329,7 +1333,7 @@ Server::code_actions(const JsonValue *id,
     }
   }
 
-  let        response        = String{"["};
+  let        response        = String{heap_allocator(), "["};
   bool       is_first_action = true;
   let const *context_diagnostics =
       context != nullptr ? context->get("diagnostics") : nullptr;
@@ -1546,8 +1550,9 @@ Server::symbol_at(const Document   &document,
     }
 
     let symbol =
-        document_symbol{String{document.normalized_source.substring_of_length(
-                            start, end - start)},
+        document_symbol{String{heap_allocator(),
+                               document.normalized_source.substring_of_length(
+                                   start, end - start)},
                         span.role, start, end};
 
     if (*byte_position == end) {
@@ -1657,7 +1662,8 @@ Server::definition_of(const Document        &document,
         if (span.start > symbol.start) return false;
 
         result =
-            document_symbol{String{candidate}, span.role, span.start, span.end};
+            document_symbol{String{heap_allocator(), candidate}, span.role,
+                            span.start, span.end};
 
         return true;
       });
@@ -1695,7 +1701,7 @@ Server::definition(const JsonValue *id, const JsonValue *params) throws
 
   if (!target.has_value()) return send_result(id, "null");
 
-  let response = String{"{\"uri\":"};
+  let response = String{heap_allocator(), "{\"uri\":"};
 
   append_json_string(response, document->uri.view());
   response.append(",\"range\":");
@@ -1804,7 +1810,7 @@ Server::prepare_rename(const JsonValue *id,
   let const name_start =
       symbol->start +
       (is_variable ? variable_name_start_of(symbol->text.view()) : 0);
-  let response = String{"{\"range\":"};
+  let response = String{heap_allocator(), "{\"range\":"};
 
   append_protocol_range(response, *document, name_start,
                         name_start + name.length, m_client.encoding);
@@ -1861,7 +1867,7 @@ Server::rename(const JsonValue *id, const JsonValue *params) throws
                       "This command is not defined in this document.");
   }
 
-  let response = String{"{"};
+  let response = String{heap_allocator(), "{"};
 
   open_workspace_edit(response, *document);
 
@@ -1959,7 +1965,7 @@ Server::document_symbols(const JsonValue *id,
   let       scopes          = ArrayList<outline_scope>{heap_allocator()};
   let       top_level_count = usize{0};
   let       top_level_names = HashSet{heap_allocator()};
-  let       response        = String{"["};
+  let       response        = String{heap_allocator(), "["};
 
   let const do_close_scope = [&]() throws -> void {
     if (scopes.back().child_count > 0) response.push(']');
@@ -2023,13 +2029,13 @@ Server::command_information(StringView command) throws -> Maybe<String>
   let const do_run_shell_help =
       [&](String help_source) throws -> Maybe<String> {
     if (let const cached = m_shell_help_cache.find(command); cached.has_value())
-      return String{cached->view()};
+      return String{heap_allocator(), cached->view()};
 
     let argv = ArrayList<String>{heap_allocator()};
 
-    argv.push(String{m_context.execution_store().get_shell_executable_path()});
-    argv.push(String{"--no-init-files"});
-    argv.push(String{"-c"});
+    argv.push_managed(m_context.execution_store().get_shell_executable_path());
+    argv.push_managed("--no-init-files");
+    argv.push_managed("-c");
     argv.push(steal(help_source));
 
     let output = os::capture_program_output(argv, INFORMATION_TIMEOUT_NANOS);
@@ -2044,7 +2050,7 @@ Server::command_information(StringView command) throws -> Maybe<String>
   };
 
   if (search_builtin(command).has_value()) {
-    let source = String{"help "};
+    let source = String{heap_allocator(), "help "};
 
     source.append(command);
 
@@ -2061,7 +2067,7 @@ Server::command_information(StringView command) throws -> Maybe<String>
       return None;
     if (!koshkit::find_util(command).has_value()) return None;
 
-    let source = String{"koshkit "};
+    let source = String{heap_allocator(), "koshkit "};
 
     source.append(command);
     source.append(" --help");
@@ -2069,12 +2075,14 @@ Server::command_information(StringView command) throws -> Maybe<String>
     return do_run_shell_help(steal(source));
   }
 
-  let information =
-      String{completion::internal::manpage_text_for(command, m_context)};
+  let information = String{
+      heap_allocator(),
+      completion::internal::manpage_text_for(command, m_context)};
 
   if (information.is_empty())
-    information =
-        String{completion::internal::help_text_of(command, m_context)};
+    information = String{
+        information.allocator(),
+        completion::internal::help_text_of(command, m_context)};
   if (!information.is_empty()) {
     if (information.view()[information.length() - 1] != '\n')
       information.push('\n');
@@ -2462,7 +2470,7 @@ Server::send_hover(const JsonValue       *id,
                    const document_symbol &symbol,
                    StringView             value) throws -> bool
 {
-  let response = String{"{\"contents\":{\"kind\":"};
+  let response = String{heap_allocator(), "{\"contents\":{\"kind\":"};
 
   response.append(m_client.has_markdown_hover ? "\"markdown\""
                                               : "\"plaintext\"");
@@ -2558,7 +2566,7 @@ Server::semantic_tokens(const JsonValue *id,
   if (document == nullptr) return send_result(id, "{\"data\":[]}");
   select_document_mood(*document);
 
-  let   response           = String{"{\"data\":["};
+  let   response           = String{heap_allocator(), "{\"data\":["};
   usize previous_line      = 0;
   usize previous_character = 0;
   bool  is_first           = true;

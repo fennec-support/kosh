@@ -869,7 +869,7 @@ launch_process_substitution(
 
   make_fd_inheritable(retained_fd);
 
-  let path = String{"/dev/fd/"};
+  let path = String{heap_allocator(), "/dev/fd/"};
 
   path += String::from(static_cast<i64>(retained_fd), heap_allocator());
 
@@ -1225,7 +1225,8 @@ wait_and_monitor_process(process pid, bool *was_stopped) throws -> i32
     const i32    sig     = WTERMSIG(status);
     const char  *sig_str = strsignal(sig);
     const String sig_desc =
-        (sig_str != nullptr) ? String{sig_str} : String{"Unknown"};
+        (sig_str != nullptr) ? String{heap_allocator(), sig_str}
+                             : String{heap_allocator(), "Unknown"};
 
     if (sig == SIGPIPE) {
     } else if (sig != SIGINT) {
@@ -1642,7 +1643,7 @@ signal_description_from_number(i32 number) throws -> String
     return "Unknown signal " + String::from(number, heap_allocator());
   }
 
-  return String{description};
+  return String{heap_allocator(), description};
 }
 
 fn
@@ -1749,13 +1750,13 @@ machine_type() throws -> String
   static const String cached = []() -> String {
     struct utsname info{};
 
-    if (uname(&info) != 0) return String{"unknown"};
+    if (uname(&info) != 0) return String{heap_allocator(), "unknown"};
     let const machine = StringView{info.machine, std::strlen(info.machine)};
 #if defined __APPLE__
-    if (machine == "arm64") return String{"aarch64"};
+    if (machine == "arm64") return String{heap_allocator(), "aarch64"};
 #endif
 
-    return String{machine};
+    return String{heap_allocator(), machine};
   }();
 
   return cached;
@@ -1766,17 +1767,17 @@ executable_system_name() throws -> String
 {
 #if KOSH_PLATFORM_IS KOSH_PLATFORM_COSMO
 
-  return String{"any"};
+  return String{heap_allocator(), "any"};
 #elif defined __APPLE__
 
-  return String{"Darwin"};
+  return String{heap_allocator(), "Darwin"};
 #elif defined __linux__
 
-  return String{"Linux"};
+  return String{heap_allocator(), "Linux"};
 #else
   struct utsname info{};
 
-  if (uname(&info) != 0) return String{"unknown"};
+  if (uname(&info) != 0) return String{heap_allocator(), "unknown"};
 
   return String{
       StringView{info.sysname, std::strlen(info.sysname)}
@@ -1789,9 +1790,9 @@ system_release_name() throws -> String
 {
   struct utsname info{};
 
-  if (uname(&info) != 0) return String{"unknown"};
+  if (uname(&info) != 0) return String{heap_allocator(), "unknown"};
 
-  return String{info.release};
+  return String{heap_allocator(), info.release};
 }
 
 fn
@@ -1799,9 +1800,9 @@ system_version_name() throws -> String
 {
   struct utsname info{};
 
-  if (uname(&info) != 0) return String{"unknown"};
+  if (uname(&info) != 0) return String{heap_allocator(), "unknown"};
 
-  return String{info.version};
+  return String{heap_allocator(), info.version};
 }
 
 fn
@@ -1836,13 +1837,13 @@ executable_machine_name() throws -> String
 {
 #if KOSH_PLATFORM_IS KOSH_PLATFORM_COSMO
 
-  return String{"any"};
+  return String{heap_allocator(), "any"};
 #elif defined __aarch64__ || defined __arm64__
 
-  return String{"arm64"};
+  return String{heap_allocator(), "arm64"};
 #elif defined __x86_64__ || defined __amd64__
 
-  return String{"x86_64"};
+  return String{heap_allocator(), "x86_64"};
 #else
 
   return machine_type();
@@ -1869,14 +1870,12 @@ format_local_time(StringView format, i64 epoch) throws -> String
   if (localtime_r(&when, &broken_down) == nullptr)
     return String{heap_allocator()};
 
-  let const format_string = String{format};
+  let const format_string = String{heap_allocator(), format};
   char      buffer[512];
   let const written =
       strftime(buffer, sizeof(buffer), format_string.c_str(), &broken_down);
 
-  return String{
-      StringView{buffer, written}
-  };
+  return String{heap_allocator(), StringView{buffer, written}};
 }
 
 fn

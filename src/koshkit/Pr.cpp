@@ -439,8 +439,8 @@ Pr::execute(const ExecContext               &ec,
       if (is_invalid) {
         KOSHKIT_REPORT_ERROR_AT(
             arg_locations[index],
-            String{is_page ? "invalid page range '"
-                           : "invalid column count '"} +
+            StringView{is_page ? "invalid page range '"
+                               : "invalid column count '"} +
                 (argument.starts_with("--") ? numeric : argument) + "'",
             is_page ? "use a positive first page, optionally followed by a "
                       "colon and a last page that is not smaller"

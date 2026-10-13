@@ -176,7 +176,7 @@ append_completion_specification_line(String                &output,
     if (!spec.has_option(entry.value)) continue;
 
     output += "-o ";
-    output += entry.key.to_string();
+    output += entry.key.to_string(heap_allocator());
     output += ' ';
   }
 
@@ -199,7 +199,7 @@ append_completion_specification_line(String                &output,
     }
 
     output += "-A ";
-    output += entry.key.to_string();
+    output += entry.key.to_string(heap_allocator());
     output += ' ';
   }
 

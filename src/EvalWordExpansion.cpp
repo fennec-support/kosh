@@ -1364,7 +1364,7 @@ EvalContext::expand_wordlist_to_fields(
 
       if (character == ' ' || character == '\t' || character == '\n') {
         if (i > start)
-          words.push(String{wordlist.substring_of_length(start, i - start)});
+          words.push_managed(wordlist.substring_of_length(start, i - start));
         start = i + 1;
       }
     }
@@ -1466,7 +1466,8 @@ EvalContext::expand_wordlist_to_fields(
   let fields = ArrayList<String>{heap_allocator()};
 
   try {
-    let expansion_source = String{"t__wordlist_fields=("};
+    let expansion_source =
+        String{heap_allocator(), "t__wordlist_fields=("};
 
     expansion_source.append(wordlist);
     expansion_source.push(')');

@@ -150,7 +150,7 @@ static fn
 list_directory_status_bulk(StringView dir, Allocator allocator) throws
     -> Maybe<ArrayList<directory_status_entry>>
 {
-  const String dir_string{dir};
+  const String dir_string{heap_allocator(), dir};
   let const    directory_descriptor = ::open(dir_string.c_str(), O_RDONLY);
 
   if (directory_descriptor < 0) return None;
@@ -336,7 +336,7 @@ static fn
 find_path_from_file_id(StringView filesystem_path, u64 file_id) wontthrow
     -> Maybe<Path>
 {
-  const String  filesystem_path_string{filesystem_path};
+  const String  filesystem_path_string{heap_allocator(), filesystem_path};
   struct statfs filesystem{};
 
   if (::statfs(filesystem_path_string.c_str(), &filesystem) != 0) return None;
@@ -487,7 +487,7 @@ fill_native_filesystem_identity(const String &, filesystem_status &) wontthrow
 fn
 stat_filesystem(StringView path, filesystem_status &status) wontthrow -> bool
 {
-  const String   path_string{path};
+  const String   path_string{heap_allocator(), path};
   struct statvfs info{};
 
   if (::statvfs(path_string.c_str(), &info) != 0) return false;
@@ -533,7 +533,8 @@ describe_mount_flags(u64 flags) throws -> String
       {MNT_JOURNALED,   "journaled"  },
   };
 
-  let options = String{(flags & MNT_RDONLY) != 0 ? "ro" : "rw"};
+  let options =
+      String{heap_allocator(), (flags & MNT_RDONLY) != 0 ? "ro" : "rw"};
 
   for (let const &named : NAMED_FLAGS) {
     if ((flags & named.bit) == 0) continue;
@@ -550,7 +551,7 @@ describe_mount_flags(u64 flags) throws -> String
 static fn
 read_volume_identity(mounted_filesystem &filesystem) throws -> void
 {
-  const String    target{filesystem.target.view()};
+  const String    target{heap_allocator(), filesystem.target.view()};
   struct attrlist attributes{};
 
   attributes.bitmapcount = ATTR_BIT_MAP_COUNT;
@@ -583,9 +584,8 @@ read_volume_identity(mounted_filesystem &filesystem) throws -> void
           name_length--;
         }
 
-        filesystem.volume_name = String{
-            StringView{data, name_length}
-        };
+        filesystem.volume_name = String{filesystem.volume_name.allocator(),
+                                        StringView{data, name_length}};
       }
     }
   }
@@ -602,7 +602,7 @@ read_volume_identity(mounted_filesystem &filesystem) throws -> void
     uuid_string_t text{};
 
     uuid_unparse_lower(uuid.value, text);
-    filesystem.volume_uuid = String{text};
+    filesystem.volume_uuid = String{filesystem.volume_uuid.allocator(), text};
   }
 }
 
@@ -721,14 +721,18 @@ append_mounted_filesystems(ArrayList<mounted_filesystem> &result) throws
 
   while (getmntent_r(mount_file, &entry, buffer, sizeof(buffer)) != nullptr) {
     let filesystem =
-        mounted_filesystem{String{entry.mnt_fsname}, String{entry.mnt_dir},
-                           String{entry.mnt_type}, String{entry.mnt_opts}};
+        mounted_filesystem{String{heap_allocator(), entry.mnt_fsname},
+                           String{heap_allocator(), entry.mnt_dir},
+                           String{heap_allocator(), entry.mnt_type},
+                           String{heap_allocator(), entry.mnt_opts}};
     let const source = filesystem.source.view();
 
     if (source.starts_with("UUID="))
-      filesystem.volume_uuid = String{source.substring(5)};
+      filesystem.volume_uuid =
+          String{filesystem.volume_uuid.allocator(), source.substring(5)};
     else if (source.starts_with("LABEL="))
-      filesystem.volume_name = String{source.substring(6)};
+      filesystem.volume_name =
+          String{filesystem.volume_name.allocator(), source.substring(6)};
     result.push(steal(filesystem));
   }
 
@@ -754,15 +758,17 @@ append_mounted_filesystems(ArrayList<mounted_filesystem> &result) throws
 
   for (int index = 0; index < entry_count; index++) {
     let filesystem = mounted_filesystem{
-        String{entries[index].f_mntfromname},
-        String{entries[index].f_mntonname}, String{entries[index].f_fstypename},
+        String{heap_allocator(), entries[index].f_mntfromname},
+        String{heap_allocator(), entries[index].f_mntonname},
+        String{heap_allocator(), entries[index].f_fstypename},
         describe_mount_flags(static_cast<u64>(entries[index].f_flags))};
 
     read_volume_identity(filesystem);
     result.push(steal(filesystem));
   }
 #else
-  result.push(mounted_filesystem{String{"."}, String{"."},
+  result.push(mounted_filesystem{String{heap_allocator(), "."},
+                                 String{heap_allocator(), "."},
                                  String{heap_allocator()},
                                  String{heap_allocator()}});
 #endif
@@ -1167,7 +1173,7 @@ sync_native_descriptor(descriptor fd, sync_mode mode) wontthrow -> bool
 fn
 sync_path(StringView path, sync_mode mode) wontthrow -> bool
 {
-  const String path_string{path};
+  const String path_string{heap_allocator(), path};
   let const    path_fd = ::open(path_string.c_str(), O_RDONLY | O_CLOEXEC);
 
   if (path_fd < 0) return false;

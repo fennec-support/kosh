@@ -1316,10 +1316,10 @@ network_interface_addresses() throws
       }
 
       result.push(network_interface_address{
-          String{interface_name->view()},
+          String{heap_allocator(), interface_name->view()},
           family == AF_INET ? network_address_family::IPv4
                             : network_address_family::IPv6,
-          String{address},
+          String{heap_allocator(), address},
       });
     }
   }
@@ -1627,7 +1627,7 @@ terminal_name(descriptor fd) throws -> Maybe<String>
 {
   if (!is_fd_a_tty(fd)) return None;
 
-  return String{"console"};
+  return String{heap_allocator(), "console"};
 }
 
 TerminalEchoGuard::TerminalEchoGuard(descriptor         input,
@@ -2293,17 +2293,18 @@ get_environment_spelling(StringView key) -> String
 {
   let const wide_key = utf8_to_wide(key, heap_allocator());
 
-  if (!wide_key.has_value()) return String{key};
+  if (!wide_key.has_value()) return String{heap_allocator(), key};
 
   let const existing_spelling = find_environment_spelling(wide_key->begin());
 
-  if (!existing_spelling.has_value()) return String{key};
+  if (!existing_spelling.has_value()) return String{heap_allocator(), key};
 
   let const spelling =
       wide_to_utf8(existing_spelling->begin(), existing_spelling->count() - 1,
                    heap_allocator());
 
-  return spelling.has_value() ? String{spelling->view()} : String{key};
+  return spelling.has_value() ? String{heap_allocator(), spelling->view()}
+                              : String{heap_allocator(), key};
 }
 
 fn
@@ -2379,7 +2380,8 @@ environment_names() -> ArrayList<String>
   ArrayList<String> names{heap_allocator()};
 
   for_each_environment_name(&names, [](opaque *context, StringView name) {
-    static_cast<ArrayList<String> *>(context)->push(String{name});
+    static_cast<ArrayList<String> *>(context)->push(
+        String{heap_allocator(), name});
   });
 
   return names;

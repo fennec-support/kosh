@@ -1418,7 +1418,7 @@ run_make_shell_function(EvalContext &cxt,
     source_name = *active_name;
 
   let const captured =
-      cxt.capture_command_substitution(source.view(), source_name);
+      cxt.capture_command_substitution(source, source_name);
   let folded = String{cxt.scratch_allocator()};
 
   for (usize byte_position = 0; byte_position < captured.count();
@@ -1528,7 +1528,7 @@ require_make_function_arguments(
     return;
   }
 
-  throw Error{"The make function '" + String{function_name} +
+  throw Error{"The make function '" + function_name +
               "' received an invalid number of arguments"};
 }
 
@@ -1541,7 +1541,7 @@ make_word_number(StringView text, StringView function_name) throws
   if (parsed.is_error() || parsed.value() == 0 ||
       static_cast<u64>(static_cast<usize>(parsed.value())) != parsed.value())
   {
-    throw Error{"The make function '" + String{function_name} +
+    throw Error{"The make function '" + function_name +
                 "' requires a positive word index"};
   }
 
@@ -3136,7 +3136,7 @@ parse_makefile(EvalContext                     &cxt,
       }
 
       make_rule rule{cxt.scratch_allocator()};
-      rule.target = entry.target;
+      rule.target = String{rule.target.allocator(), entry.target};
 
       for (let const *recipe_line : entry.recipe_lines) {
         if (recipe_line == nullptr) {
@@ -4612,7 +4612,8 @@ Make::execute(const ExecContext               &ec,
     ec.print_to_stdout(suffix_description);
 
     for (let const &entry : LOWEST_PRECEDENCE_BUILTIN_VARIABLE_ENTRIES)
-      ec.print_to_stdout(entry.key.to_string() + " = " + entry.value + "\n");
+      ec.print_to_stdout(entry.key.to_string(heap_allocator()) + " = " +
+                         entry.value + "\n");
 
     for (let const &variable : mk.variables)
       ec.print_to_stdout(variable.name + " = " + variable.value + "\n");

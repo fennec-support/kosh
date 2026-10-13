@@ -610,15 +610,16 @@ ProgramResolver::split_path_dirs(StringView path) throws
     let const byte = path[position];
 
     if (byte == os::PATH_DELIMITER) {
-      directories.push(current.is_empty() ? String{"."}
-                                          : String{current.view()});
+      directories.push_managed(current.is_empty() ? StringView{"."}
+                                                  : current.view());
       current.clear();
     } else {
       current.push(byte);
     }
   }
 
-  directories.push(current.is_empty() ? String{"."} : String{current.view()});
+  directories.push_managed(current.is_empty() ? StringView{"."}
+                                              : current.view());
 
   return directories;
 }
@@ -635,7 +636,7 @@ ProgramResolver::deduplicate_path_dirs(
 
   for (let const &directory : directories)
     if (seen.add(directory.view()))
-      unique_directories.push(String{directory.view()});
+      unique_directories.push_managed(directory.view());
 
   return unique_directories;
 }
@@ -848,7 +849,7 @@ ProgramResolver::rebuild_path_command_index(CompletionRefresh refresh)
 
     let probe = DirectoryProbe{};
 
-    probe.directory  = String{directory_text.view()};
+    probe.directory  = String{probe.directory.allocator(), directory_text.view()};
     probe.generation = generation;
 
     let was_reused = false;
@@ -877,12 +878,12 @@ ProgramResolver::rebuild_path_command_index(CompletionRefresh refresh)
       let const  stem =
           normalized_name.substring_of_length(0, name_info.stem_length);
 
-      regular_names.push(String{normalized_name.view()});
+      regular_names.push_managed(normalized_name.view());
       if (stem.length != normalized_name.length())
-        regular_names.push(String{stem});
+        regular_names.push_managed(stem);
 
       if (!probe.executable_entries[position]) continue;
-      if (stem.length != entry.name.length()) command_names.push(String{stem});
+      if (stem.length != entry.name.length()) command_names.push_managed(stem);
       command_names.push(steal(normalized_name));
     }
 
@@ -1086,18 +1087,18 @@ ProgramResolver::revalidate_command_prefix(StringView prefix) throws
         full_path->append(entry.name.view());
       }
 
-      if (is_stem_match) regular_names.push(String{stem});
-      if (full_name_matches) regular_names.push(String{normalized_name.view()});
+      if (is_stem_match) regular_names.push_managed(stem);
+      if (full_name_matches) regular_names.push_managed(normalized_name.view());
 
       if (!full_path->is_executable()) continue;
-      if (is_stem_match) command_names.push(String{stem});
+      if (is_stem_match) command_names.push_managed(stem);
       if (full_name_matches) command_names.push(steal(normalized_name));
     }
   }
 
   m_command_names           = sort_and_deduplicate_names(steal(command_names));
   m_regular_names           = sort_and_deduplicate_names(steal(regular_names));
-  m_validated_prefix        = String{prefix};
+  m_validated_prefix        = String{m_validated_prefix.allocator(), prefix};
   m_prefix_validation_epoch = DIRECTORY_VALIDATION_EPOCH;
 }
 
@@ -1182,7 +1183,7 @@ fn
 ProgramResolver::command_name_has_prefix(StringView prefix) throws
     -> bool
 {
-  let normalized_prefix = String{prefix};
+  let normalized_prefix = String{heap_allocator(), prefix};
 
   unused(os::normalize_program_name(normalized_prefix));
   prepare_complete_path_cache(normalized_prefix.view(),
@@ -1226,7 +1227,7 @@ ProgramResolver::get_status(StringView name, StatusLookup lookup) throws
     return Status::Blocked;
   }
 
-  let normalized_name = String{name};
+  let normalized_name = String{heap_allocator(), name};
 
   unused(os::normalize_program_name(normalized_name));
   if (!m_is_command_name_list_valid && !normalized_name.is_empty()) {
@@ -1285,7 +1286,7 @@ ProgramResolver::resolve_along_path(
 
   let result = ArrayList<Path>{heap_allocator()};
 
-  let       normalized_name = String{program_name};
+  let       normalized_name = String{heap_allocator(), program_name};
   let const name_info       = os::normalize_program_name(normalized_name);
   let const key = normalized_name.substring_of_length(0, name_info.stem_length);
   let       blocked              = Maybe<CachedPath>{};
@@ -1474,7 +1475,7 @@ ProgramResolver::search(StringView               program_name,
                               CachePolicy::Bypass, path_override);
   }
 
-  let       normalized_name = String{program_name};
+  let       normalized_name = String{heap_allocator(), program_name};
   let const name_info       = os::normalize_program_name(normalized_name);
   let const stem =
       normalized_name.substring_of_length(0, name_info.stem_length);

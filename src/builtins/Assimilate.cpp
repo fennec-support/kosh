@@ -807,7 +807,7 @@ Assimilate::execute(ExecContext &ec, EvalContext &cxt) const throws
   let preflight_arguments = ArrayList<String>{allocator};
 
   append_arguments(preflight_arguments, *ssh_command);
-  preflight_arguments.push(String{"--"});
+  preflight_arguments.push(String{heap_allocator(), "--"});
   preflight_arguments.push(arguments[1].clone());
   preflight_arguments.push(preflight_command(
       executable_system.view(), executable_machine.view(), requested_directory,
@@ -859,23 +859,23 @@ Assimilate::execute(ExecContext &ec, EvalContext &cxt) const throws
       String::from(static_cast<u64>(os::get_shell_process_id()), allocator) +
       "-" + String::from(os::realtime_microseconds(), allocator);
   let const upload_name =
-      String{".kosh-assimilate-"} + transaction_id + ".upload";
+      String{heap_allocator(), ".kosh-assimilate-"} + transaction_id + ".upload";
   let const destination = arguments[1].view() + ":" + upload_name;
 
   let scp_arguments = ArrayList<String>{allocator};
 
   append_arguments(scp_arguments, *scp_command);
-  scp_arguments.push(String{"-p"});
-  scp_arguments.push(String{"--"});
+  scp_arguments.push(String{heap_allocator(), "-p"});
+  scp_arguments.push(String{heap_allocator(), "--"});
   scp_arguments.push(String{*executable});
-  scp_arguments.push(String{destination.view()});
+  scp_arguments.push(String{heap_allocator(), destination.view()});
   status = run_program(scp_arguments, ec, trace, "upload");
   if (status != 0) return status;
 
   let ssh_arguments = ArrayList<String>{allocator};
 
   append_arguments(ssh_arguments, *ssh_command);
-  ssh_arguments.push(String{"--"});
+  ssh_arguments.push(String{heap_allocator(), "--"});
   ssh_arguments.push(arguments[1].clone());
   ssh_arguments.push(remote_command(
       upload_name.view(), transaction_id.view(), expected_identity->view(),

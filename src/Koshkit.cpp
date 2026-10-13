@@ -157,7 +157,7 @@ util_names() throws -> const ArrayList<String> &
     let collected = ArrayList<String>{heap_allocator()};
 
     for (let const &entry : KOSHKIT_ENTRIES)
-      collected.push(entry.key.to_string());
+      collected.push(entry.key.to_string(collected.allocator()));
 
     return collected;
   }();
@@ -333,7 +333,7 @@ dispatch(const ExecContext   &ec,
 
   if (!chosen.has_value())
     throw ErrorWithLocation{ec.arg_location_at(name_index),
-                            "koshkit has no utility called '" + String{name} +
+                            "koshkit has no utility called '" + String{heap_allocator(), name} +
                                 "'"};
 
   ArrayList<String> shifted{cxt.scratch_allocator()};
@@ -355,7 +355,7 @@ dispatch(const ExecContext   &ec,
     throw;
   } catch (const ErrorWithLocation &e) {
     let const invocation_name = ec.is_multicall ? String{heap_allocator(), name}
-                                                : String{"koshkit "} + name;
+                                                : String{heap_allocator(), "koshkit "} + name;
 
     rethrow_with_prefix(e, invocation_name);
   } catch (const Error &error) {
@@ -1295,7 +1295,7 @@ run_as_multicall(StringView           util_name,
 
   usize source_length = util_name.length;
 
-  args.push(String{util_name});
+  args.push_managed(util_name);
   arg_locations.push(SourceLocation{0, util_name.length});
 
   for (String &operand : operands) {
@@ -1342,11 +1342,11 @@ run_as_multicall(StringView           util_name,
 
     return 1;
   } catch (const std::exception &e) {
-    show_message(String{util_name} + ": " + e.what());
+    show_message(String{heap_allocator(), util_name} + ": " + e.what());
 
     return 1;
   } catch (...) {
-    show_message(String{util_name} + ": unexpected error");
+    show_message(String{heap_allocator(), util_name} + ": unexpected error");
 
     return 1;
   }
@@ -1711,7 +1711,7 @@ show_soft_koshkit_note(StringView note) throws -> void
 {
   if (os::INTERRUPT_REQUESTED) return;
 
-  show_message(Note{String{note}}.to_string());
+  show_message(Note{note}.to_string());
 }
 
 cold static fn
@@ -1749,12 +1749,12 @@ show_soft_koshkit_error(const ExecContext   &ec,
   }
 
   if (severity == soft_report_severity::Warning) {
-    print_error(String{"warning: "} + message + "\n");
+    print_error(String{heap_allocator(), "warning: "} + message + "\n");
 
     return;
   }
 
-  print_error(String{message} + "\n");
+  print_error(String{heap_allocator(), message} + "\n");
 }
 
 static fn

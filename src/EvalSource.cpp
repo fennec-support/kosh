@@ -98,7 +98,8 @@ EvalContext::run_program_fallback(ExecContext     &ec,
     for (let const &name : environment_names) {
       if (let value = os::get_environment_variable(name.view())) {
         saved_environment.push(
-            saved_environment_variable{String{name.view()}, value.take()});
+            saved_environment_variable{String{heap_allocator(), name.view()},
+                                       value.take()});
       }
 
       os::unset_environment_variable(name.view());
@@ -123,7 +124,8 @@ EvalContext::run_program_fallback(ExecContext     &ec,
   fallback_context.source_retention().set_generation(
       source_retention().get_generation());
   fallback_context.execution_store().set_shell_executable_path(
-      String{execution_store().get_shell_executable_path()});
+      String{heap_allocator(),
+             execution_store().get_shell_executable_path()});
   fallback_context.runtime_state().set_koshkit(runtime_state().koshkit());
   fallback_context.runtime_state().set_inheritable_analysis_state(
       runtime_state().get_inheritable_analysis_state());
@@ -134,9 +136,11 @@ EvalContext::run_program_fallback(ExecContext     &ec,
 
   for (let const &frame : source_store().source_frames()) {
     fallback_context.source_store().source_frames().push(
-        source_frame{String{frame.origin.view()}, frame.call_site,
-                     frame.parent_source, frame.parent_source_generation,
-                     String{frame.source_path.view()}, frame.kind});
+        source_frame{String{heap_allocator(), frame.origin.view()},
+                     frame.call_site, frame.parent_source,
+                     frame.parent_source_generation,
+                     String{heap_allocator(), frame.source_path.view()},
+                     frame.kind});
     fallback_context.source_store().source_frames().back().function_call_depth =
         frame.function_call_depth;
     fallback_context.source_store().source_frames().back().was_printed =
@@ -231,12 +235,13 @@ EvalContext::run_mimicked_script(ExecContext     &ec,
         "a NUL byte before the first line break marks '%s' as a binary file",
         ec.program().c_str());
 
-    let file_command = String{"file "};
+    let file_command = String{heap_allocator(), "file "};
 
     append_shell_quoted_arg(file_command, ec.program().view());
 
     let details =
-        String{"The file is binary and the system has refused execution. "};
+        String{heap_allocator(),
+               "The file is binary and the system has refused execution. "};
 
     details += "Use `";
     details += file_command;
@@ -255,7 +260,8 @@ EvalContext::run_mimicked_script(ExecContext     &ec,
   let const previous_runtime     = runtime_state();
   let const was_restricted_shell = startup_store().is_restricted_shell();
   let const previous_script_run  = source_store().is_script_run();
-  let       previous_shell_name  = String{execution_store().get_shell_name()};
+  let       previous_shell_name  = String{heap_allocator(),
+                                         execution_store().get_shell_name()};
   let       source_scope         = capture_source_scope();
   let const previous_location    = source_scope.get_location();
   let       isolated_snapshot    = Maybe<eval_state_snapshot>{};
@@ -299,10 +305,12 @@ EvalContext::run_mimicked_script(ExecContext     &ec,
   let const script_filename = ec.program_path().view();
 
   source_store().source_frames().push(
-      source_frame{String{ec.program().view()}, ec.source_location(),
+      source_frame{String{heap_allocator(), ec.program().view()},
+                   ec.source_location(),
                    source_store().current_source(),
                    source_generation_for(source_store().current_source()),
-                   String{script_filename}, source_frame_kind::SourcedFile});
+                   String{heap_allocator(), script_filename},
+                   source_frame_kind::SourcedFile});
   source_store().source_frames().back().should_defer_trace = true;
   source_store().source_frames().back().function_call_depth =
       function_store().call_frames().count();
@@ -432,7 +440,7 @@ EvalContext::run_mimicked_script(ExecContext     &ec,
       String{heap_allocator(), ec.should_use_fallback_argv0
                                    ? ec.args()[0].view()
                                    : ec.program_path().view()});
-  set_fresh_source(&*contents, String{ec.program().view()});
+  set_fresh_source(&*contents, String{heap_allocator(), ec.program().view()});
   source_store().mimicry_depth()++;
 
   bool should_leave_mimicry = true;
@@ -576,7 +584,7 @@ EvalContext::run_source(StringView                source,
   let normalized_source = String{heap_allocator()};
 
   if (cached_body == nullptr) {
-    normalized_source = String{source};
+    normalized_source = String{normalized_source.allocator(), source};
     normalized_source.normalize_crlf_line_endings();
     source = normalized_source.view();
   } else {
@@ -626,10 +634,10 @@ EvalContext::run_source(StringView                source,
       *this, UntracedTrapScope::Kind::Debug, is_sourced_file_frame};
 
   source_store().source_frames().push(source_frame{
-      String{origin},
+      String{heap_allocator(), origin},
       call_site ? *call_site : SourceLocation{0, 0},
       parent_source, source_generation_for(parent_source),
-      filename.has_value() ? String{*filename}
+      filename.has_value() ? String{heap_allocator(), *filename}
       : String{heap_allocator()},
       is_sourced_file_frame ? source_frame_kind::SourcedFile
                             : source_frame_kind::Ordinary
@@ -750,7 +758,7 @@ EvalContext::run_source(StringView                source,
       if (did_register_line_base) unregister_embedded_source();
     };
 
-    set_fresh_source(retained_source, String{origin});
+    set_fresh_source(retained_source, String{heap_allocator(), origin});
 
     let const previous_line_discard_root =
         execution_store().line_discard_root();

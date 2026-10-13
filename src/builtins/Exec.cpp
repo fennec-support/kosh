@@ -102,7 +102,7 @@ Exec::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         } else if (option == 'a') {
           if (k + 1 < arg.length) {
             has_custom_argv0 = true;
-            custom_argv0     = arg.substring(k + 1);
+            custom_argv0 = String{custom_argv0.allocator(), arg.substring(k + 1)};
           } else if (command_index + 1 < args.count()) {
             has_custom_argv0       = true;
             custom_argv0           = args[command_index + 1];

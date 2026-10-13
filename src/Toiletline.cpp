@@ -319,10 +319,10 @@ build_selector_args(koshka::EvalContext &context,
 {
   let args = koshka::ArrayList<koshka::String>{koshka::heap_allocator()};
 
-  args.push(koshka::String{program.view()});
+  args.push_managed(program.view());
 
-  args.push(koshka::String{"--read0"});
-  args.push(koshka::String{"--print0"});
+  args.push_managed("--read0");
+  args.push_managed("--print0");
 
   let const options     = context.get_variable_value(SELECTOR_OPTIONS_VARIABLE);
   let const option_text = options.has_value()
@@ -331,7 +331,7 @@ build_selector_args(koshka::EvalContext &context,
 
   for (let const &option :
        context.expand_wordlist_to_fields(option_text, false))
-    args.push(koshka::String{option.view()});
+    args.push_managed(option.view());
 
   return args;
 }
@@ -361,7 +361,7 @@ parse_selector_reply_stripping_descriptions(
         record = record.substring_of_length(0, record.length - 1);
       }
 
-      if (!record.is_empty()) selected.push(koshka::String{record});
+      if (!record.is_empty()) selected.push_managed(record);
     }
 
     start = i + 1;
@@ -767,7 +767,7 @@ get_line_editor_words(koshka::EvalContext &context) throws
 
   let words = koshka::ArrayList<koshka::String>{koshka::heap_allocator()};
 
-  words.push(koshka::String{"vi"});
+  words.push_managed("vi");
 
   return words;
 }
@@ -805,8 +805,9 @@ run_line_editor(koshka::EvalContext &context,
 
   let const program = koshka::Path{resolved[0].text()};
 
-  words[0] = koshka::String{program.view()};
-  words.push(koshka::String{temp_path->text().view()});
+  words[0] = koshka::String{words[0].allocator(), program.view()};
+  words.push(
+      koshka::String{koshka::heap_allocator(), temp_path->text().view()});
 
   let arg_locations =
       koshka::ArrayList<koshka::SourceLocation>{koshka::heap_allocator()};
@@ -1317,7 +1318,7 @@ completion_session::idle(const char *buffer, size_t cursor) -> int
     if (should_analyze) {
       let const has_previous_finding = !analysis_finding.is_empty();
 
-      analyzed_line     = koshka::String{line};
+      analyzed_line     = koshka::String{analyzed_line.allocator(), line};
       has_analyzed_line = true;
       unused(koshka::completion::describe_analysis_finding(line, *context,
                                                            analysis_finding));
@@ -2819,7 +2820,7 @@ set_title(StringView title) -> void
 fn
 set_idle_title() -> void
 {
-  static const String user      = os::get_current_user().value_or("???");
+  static const String user      = os::get_current_user().value_or(String{koshka::heap_allocator(), "???"});
   let const           directory = Path::current_directory().text();
   let                 title     = String{koshka::heap_allocator()};
 
@@ -3132,7 +3133,8 @@ get_input(const String &prompt,
           ? koshka::Maybe<usize>{koshka::None}
           : koshka::Maybe<usize>{::itl_g_last_history_event_number};
 
-  return input_result{code, String{TL_BUFFER}, history_event_number};
+  return input_result{code, String{koshka::heap_allocator(), TL_BUFFER},
+                      history_event_number};
 }
 
 fn
@@ -3196,7 +3198,7 @@ shorten_path_with_ellipsis(StringView path, usize max_length) throws
     -> String
 {
   if (path.length <= max_length || max_length < 3) {
-    return String{path};
+    return String{koshka::heap_allocator(), path};
   }
 
   usize tail_start = path.length - max_length + 3;
@@ -3260,7 +3262,7 @@ prompt_strftime(const char *format) throws -> String
   usize written = std::strftime(buffer, sizeof(buffer), format, local);
 
   return String{
-      StringView{buffer, written}
+      koshka::heap_allocator(), StringView{buffer, written}
   };
 }
 
@@ -3268,19 +3270,20 @@ static fn
 prompt_hostname(bool should_use_full_hostname) throws -> String
 {
   String host = os::get_hostname().value_or(
-      os::get_environment_variable("HOSTNAME").value_or("localhost"));
+      os::get_environment_variable("HOSTNAME")
+          .value_or(String{koshka::heap_allocator(), "localhost"}));
   if (should_use_full_hostname) return host;
 
   let const dot = host.view().find_character('.');
 
   return String{
-      host.view().substring_of_length(0, dot.value_or(host.length()))};
+      koshka::heap_allocator(), host.view().substring_of_length(0, dot.value_or(host.length()))};
 }
 
 static fn
 collapse_home_prefix(StringView path) throws -> String
 {
-  let         shown = String{path};
+  let         shown = String{koshka::heap_allocator(), path};
   Maybe<Path> home  = os::get_home_directory();
 
   if (!home.has_value()) return shown;
@@ -3374,19 +3377,21 @@ static fn
 prompt_shell_name(EvalContext &context) throws -> String
 {
   let name = String{
+      koshka::heap_allocator(),
       Path{context.execution_store().get_shell_executable_path()}.filename()};
   let const info = koshka::os::normalize_program_name(name);
 
-  return String{name.view().substring_of_length(0, info.stem_length)};
+  return String{koshka::heap_allocator(),
+                name.view().substring_of_length(0, info.stem_length)};
 }
 
 static fn
 prompt_terminal_name() throws -> String
 {
   let const terminal = koshka::os::terminal_name(KOSH_STDIN);
-  if (!terminal.has_value()) return String{"tty"};
+  if (!terminal.has_value()) return String{koshka::heap_allocator(), "tty"};
 
-  return String{Path{terminal->view()}.filename()};
+  return String{koshka::heap_allocator(), Path{terminal->view()}.filename()};
 }
 
 static fn
@@ -3398,7 +3403,7 @@ prompt_version(EvalContext &context, bool is_full) throws -> String
   if (versinfo.has_value() && versinfo->count() >= 3 &&
       context.get_variable_value("BASH_VERSION").has_value())
   {
-    let version = String{(*versinfo.value())[0].view()};
+    let version = String{koshka::heap_allocator(),(*versinfo.value())[0].view()};
 
     version += '.';
     version.append((*versinfo.value())[1].view());
@@ -3410,9 +3415,10 @@ prompt_version(EvalContext &context, bool is_full) throws -> String
     return version;
   }
 
-  if (is_full) return String{KOSH_VERSION_STRING};
+  if (is_full) return String{koshka::heap_allocator(), KOSH_VERSION_STRING};
 
   return String{
+      koshka::heap_allocator(),
       KOSH_STRINGIFY(KOSH_VER_MAJOR) "." KOSH_STRINGIFY(KOSH_VER_MINOR)};
 }
 
@@ -3570,8 +3576,9 @@ expand_prompt_escapes(StringView   prompt,
           format_end.value_or(prompt.length - format_start);
       let const format =
           format_length == 0
-              ? String{"%X"}
-              : String{prompt.substring_of_length(format_start, format_length)};
+              ? String{koshka::heap_allocator(), "%X"}
+              : String{koshka::heap_allocator(),
+                       prompt.substring_of_length(format_start, format_length)};
 
       do_append_value(prompt_strftime(format.c_str()).view());
       i = format_start + format_length;
@@ -3674,7 +3681,7 @@ scan_prompt_template_inputs_or_report_impure(
 
     let input = prompt_cache_input{};
 
-    input.name = String{name};
+    input.name = String{koshka::heap_allocator(), name};
     names.push(steal(input));
   };
 
@@ -3833,7 +3840,8 @@ get_cached_user() throws -> const String &
   static bool   was_user_resolved = false;
 
   if (!was_user_resolved) {
-    CACHED_USER       = os::get_current_user().value_or("???");
+    CACHED_USER       = os::get_current_user().value_or(
+        String{CACHED_USER.allocator(), "???"});
     was_user_resolved = true;
   }
 
@@ -3860,7 +3868,7 @@ expand_decoded_prompt(EvalContext &context,
   Maybe<String> expanded     = koshka::None;
 
   try {
-    let source_text = String{"$"};
+    let source_text = String{koshka::heap_allocator(), "$"};
 
     source_text.append(name);
 
@@ -3868,8 +3876,9 @@ expand_decoded_prompt(EvalContext &context,
     let const source_location =
         koshka::SourceLocation{0, decoded.length, source_name};
 
-    expanded =
-        String{context.expand_heredoc_body(decoded, &source_location).view()};
+    expanded = String{
+        koshka::heap_allocator(),
+        context.expand_heredoc_body(decoded, &source_location).view()};
   } catch (const koshka::ErrorBase &error) {
     koshka::show_message(error.to_string(decoded, &context));
     if (let const definition =
@@ -3902,7 +3911,8 @@ expand_prompt_template(StringView prompt, EvalContext &context) throws
 {
   let const decoded = decode_prompt(prompt, context, true);
 
-  return String{context.expand_heredoc_body(decoded.view(), nullptr).view()};
+  return String{koshka::heap_allocator(),
+                context.expand_heredoc_body(decoded.view(), nullptr).view()};
 }
 
 fn
@@ -4130,7 +4140,7 @@ emit_prompt_start_marks(EvalContext &context) -> void
   if (!is_shell_integration_enabled(context)) return;
 
   let const directory = Path::current_directory().text();
-  let const host      = os::get_hostname().value_or(String{""});
+  let const host      = os::get_hostname().value_or(String{koshka::heap_allocator(), ""});
 
   let sequence = String{koshka::heap_allocator()};
 

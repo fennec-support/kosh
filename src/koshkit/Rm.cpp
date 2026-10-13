@@ -246,7 +246,7 @@ struct removal_request
     if (known_status->device_id == *root_device_id) return false;
 
     report_soft_koshkit_util_error(ec, cxt, utility_name,
-                                   "skipping '" + String{path} +
+                                   "skipping '" + path +
                                        "', since it's on a different device");
 
     return true;
@@ -336,11 +336,11 @@ report_tree_removal_failure(void                    *context,
   let const &request = static_cast<tree_removal_state *>(context)->request;
   let const  message =
       failure == os::tree_removal_failure::ReadDirectory
-           ? "cannot read directory '" + String{path} + "': " + reason
+           ? "cannot read directory '" + path + "': " + reason
        : failure == os::tree_removal_failure::Replaced
-           ? "cannot remove '" + String{path} +
+           ? "cannot remove '" + path +
                 "': the directory was replaced while it was removed"
-           : "cannot remove '" + String{path} + "': " + reason;
+           : "cannot remove '" + path + "': " + reason;
 
   report_soft_koshkit_util_error(request.ec, request.cxt, request.utility_name,
                                  message);
@@ -374,7 +374,7 @@ remove_path_with_prompt(const removal_request &request,
 
   let const do_report_reason = [&](StringView reason) throws -> bool {
     report_soft_koshkit_util_error(request.ec, cxt, request.utility_name,
-                                   "cannot remove '" + String{path} +
+                                   "cannot remove '" + path +
                                        "': " + reason);
 
     return false;
@@ -437,7 +437,7 @@ report_dry_run_removal(const removal_request &request,
 
   let const do_report_reason = [&](StringView reason) throws -> bool {
     report_soft_koshkit_util_error(request.ec, cxt, request.utility_name,
-                                   "cannot remove '" + String{path} +
+                                   "cannot remove '" + path +
                                        "': " + reason);
 
     return false;
@@ -463,7 +463,7 @@ report_dry_run_removal(const removal_request &request,
     if (!names.has_value()) {
       report_soft_koshkit_util_error(
           request.ec, cxt, request.utility_name,
-          "cannot read directory '" + String{path} +
+          "cannot read directory '" + path +
               "': " + os::last_system_error_message());
 
       return false;

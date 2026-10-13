@@ -582,7 +582,8 @@ EvalContext::assign_array_element(
     if (let const array = variable_store().indexed_arrays().find(name);
         array.has_value() && resolved_index < array->count())
     {
-      return String{array->operator[](resolved_index).view()};
+      return String{heap_allocator(),
+                    array->operator[](resolved_index).view()};
     }
 
     if (variable_store().sparse_arrays().has(name)) {
@@ -592,13 +593,13 @@ EvalContext::assign_array_element(
       if (let const sparse =
               variable_store().sparse_arrays().values().find(key.view());
           sparse.has_value())
-        return String{sparse->view()};
+        return String{heap_allocator(), sparse->view()};
     }
 
     if (resolved_index == 0)
       if (let const scalar = variable_store().shell_variables().find(name);
           scalar.has_value())
-        return String{scalar->view()};
+        return String{heap_allocator(), scalar->view()};
 
     return None;
   };
@@ -620,7 +621,7 @@ EvalContext::assign_array_element(
     let combined = String{scratch_allocator()};
 
     if (let const existing = do_lookup_existing_element(); existing.has_value())
-      combined = String{existing->view()};
+      combined = String{combined.allocator(), existing->view()};
     combined += value;
     element = steal(combined);
   }
@@ -805,7 +806,7 @@ EvalContext::unset_array_element(StringView name,
     throw Error{"Unable to unset '" + name + "' because it is read only"};
 
   if (is_bash_argument_array(name))
-    throw Error{String{name} + ": cannot unset"};
+    throw Error{name + ": cannot unset"};
 
   if (is_bash_directory_stack_special(name)) {
     unused(evaluate_array_index(*this, subscript));
@@ -871,7 +872,7 @@ EvalContext::unset_array_element(StringView name,
     if (subscript == "@" || subscript == "*" ||
         evaluate_array_index(*this, subscript) != 0)
     {
-      throw Error{String{name} + ": not an array variable"};
+      throw Error{name + ": not an array variable"};
     }
 
     unset_shell_variable(name);
@@ -965,7 +966,8 @@ EvalContext::declare_local(StringView name,
   }
 
   scope_store().current_local_scope().push(local_binding{
-      String{name}, steal(previous_value), previous_special_definition_location,
+      String{heap_allocator(), name}, steal(previous_value),
+      previous_special_definition_location,
       steal(previous_array), steal(previous_keys), steal(previous_values),
       steal(previous_sparse_indices), steal(previous_sparse_values),
       previous_attributes, was_previously_associative, was_previously_exported,
@@ -990,7 +992,7 @@ EvalContext::declare_self_reference(StringView name) throws -> void
   ASSERT(scope_store().local_scope_depth() != 0);
 
   let self_reference = local_binding{
-      .name                                 = String{name},
+      .name                                 = String{heap_allocator(), name},
       .previous_value                       = None,
       .previous_special_definition_location = None,
       .previous_indexed_array               = None,

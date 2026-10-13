@@ -642,9 +642,9 @@ current_executable_path() wontthrow -> Maybe<String>
   let const raw_path = StringView{buffer.begin()};
 
   if (let const canonical = canonical_path(Path{raw_path}); canonical)
-    return String{canonical->text()};
+    return String{heap_allocator(), canonical->text()};
 
-  return String{raw_path};
+  return String{heap_allocator(), raw_path};
 #else
   let const raw_path = read_symlink("/proc/self/exe", heap_allocator());
 
@@ -713,7 +713,8 @@ enumerate_processes(process_detail detail) throws
 
     process.pid        = static_cast<i64>(record.kp_proc.p_pid);
     process.parent_pid = static_cast<i64>(record.kp_eproc.e_ppid);
-    process.name       = String{StringView{record.kp_proc.p_comm}};
+    process.name = String{process.name.allocator(),
+                          StringView{record.kp_proc.p_comm}};
     process.owner_id   = static_cast<u32>(record.kp_eproc.e_ucred.cr_uid);
     process.state      = process_state_letter(record.kp_proc.p_stat);
     process.start_token =
@@ -725,7 +726,8 @@ enumerate_processes(process_detail detail) throws
 
       if (::proc_pidpath(record.kp_proc.p_pid, path_buffer,
                          sizeof(path_buffer)) > 0)
-        process.command_line = String{StringView{path_buffer}};
+        process.command_line =
+            String{process.command_line.allocator(), StringView{path_buffer}};
 
       struct proc_taskinfo task_info{};
 
@@ -824,7 +826,8 @@ linux_process_real_uid(StringView process_directory,
     -> Maybe<u32>
 {
   let const status =
-      Path{(String{process_directory} + "/status").view()}.read_entire_file();
+      Path{(String{heap_allocator(), process_directory} + "/status").view()}
+          .read_entire_file();
 
   if (!status.has_value()) return None;
 
@@ -1118,7 +1121,7 @@ scan_process_file_users(const ArrayList<process_file_query> &queries,
   let const filesystems = mounted_filesystems();
 
   for (let const &query : queries) {
-    let path = String{query.path};
+    let path = String{heap_allocator(), query.path};
 
     if (query.should_match_device)
       for (let const &filesystem : filesystems) {
@@ -2120,7 +2123,7 @@ read_network_interface_statistics() throws
         }
 
         result.push(network_interface_statistics_entry{
-            String{data.ifmd_name},
+            String{heap_allocator(), data.ifmd_name},
             data.ifmd_data.ifi_ibytes,
             data.ifmd_data.ifi_obytes,
             data.ifmd_data.ifi_ipackets,
@@ -2175,7 +2178,8 @@ read_network_interface_statistics() throws
         static_cast<u32>(network_statistics_field::TransmitDrops);
 
     result.push(network_interface_statistics_entry{
-        String{line.substring_of_length(0, *colon_position).trim_blanks()},
+        String{heap_allocator(),
+               line.substring_of_length(0, *colon_position).trim_blanks()},
         values[0],
         values[8],
         values[1],
@@ -3228,7 +3232,8 @@ list_process_open_files(i64                      pid,
 
   for (let const &reference : REFERENCES) {
     let const reference_path =
-        String{process_path} + "/" + String{reference.name};
+        String{heap_allocator(), process_path} + "/" +
+        String{heap_allocator(), reference.name};
     let const target = read_symlink(reference_path.view(), allocator);
 
     if (!target.has_value()) continue;
@@ -3354,7 +3359,8 @@ list_process_open_files(i64                      pid,
     }
   }
 
-  let const descriptor_root      = String{process_path} + "/fd";
+  let const descriptor_root =
+      String{heap_allocator(), process_path} + "/fd";
   DIR      *descriptor_directory = ::opendir(descriptor_root.c_str());
 
   if (descriptor_directory == nullptr) {
@@ -3386,7 +3392,8 @@ list_process_open_files(i64                      pid,
 
     if (parsed_number.is_error()) continue;
 
-    let const link_path = descriptor_root + "/" + String{name};
+    let const link_path =
+        descriptor_root + "/" + String{heap_allocator(), name};
     let const target    = read_symlink(link_path.view(), allocator);
 
     if (!target.has_value()) continue;
@@ -3408,7 +3415,8 @@ list_process_open_files(i64                      pid,
     usize info_length = 0;
 
     if (detail != process_open_file_detail::PathsOnly) {
-      let const info_path = String{process_path} + "/fdinfo/" + String{name};
+      let const info_path = String{heap_allocator(), process_path} +
+                            "/fdinfo/" + String{heap_allocator(), name};
 
       info_length =
           read_small_file(info_path.c_str(), info_buffer, sizeof(info_buffer));

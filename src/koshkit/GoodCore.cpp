@@ -201,7 +201,7 @@ infer_binary(EvalContext &cxt,
 
   let arguments = ArrayList<String>{heap_allocator()};
 
-  arguments.push(String{core});
+  arguments.push_managed(core);
 
   let const output =
       capture_util_program_output(*file, steal(arguments), 30'000'000'000);
@@ -249,12 +249,12 @@ collect_core_libraries(EvalContext       &cxt,
   if (let const gdb = resolve_util_program(cxt, "gdb")) {
     let arguments = ArrayList<String>{heap_allocator()};
 
-    arguments.push(String{"--batch"});
-    arguments.push(String{"--nx"});
-    arguments.push(String{"--eval-command=info sharedlibrary"});
-    arguments.push(String{"-c"});
-    arguments.push(String{core});
-    arguments.push(String{binary});
+    arguments.push_managed("--batch");
+    arguments.push_managed("--nx");
+    arguments.push_managed("--eval-command=info sharedlibrary");
+    arguments.push_managed("-c");
+    arguments.push_managed(core);
+    arguments.push_managed(binary);
     if (let const output =
             capture_util_program_output(*gdb, steal(arguments), 30'000'000'000))
       collect_paths_from_output(output->view(), paths, allocator);
@@ -267,8 +267,8 @@ collect_core_libraries(EvalContext       &cxt,
   {
     let arguments = ArrayList<String>{heap_allocator()};
 
-    if (platform_tools.is_library_flag_dependency) arguments.push(String{"-L"});
-    arguments.push(String{binary});
+    if (platform_tools.is_library_flag_dependency) arguments.push_managed("-L");
+    arguments.push_managed(binary);
     if (let const output = capture_util_program_output(
             *dependency_tool, steal(arguments), 30'000'000'000))
       collect_paths_from_output(output->view(), paths, allocator);
@@ -441,17 +441,18 @@ GoodCore::execute(const ExecContext               &ec,
 
     switch (platform_tools.capture_mode) {
     case os::goodcore_capture_mode::Lldb:
-      capture_arguments.push(String{"--batch"});
-      capture_arguments.push(String{"-p"});
+      capture_arguments.push_managed("--batch");
+      capture_arguments.push_managed("-p");
       capture_arguments.push(String::from(process_id, heap_allocator()));
-      capture_arguments.push(String{"-o"});
-      capture_arguments.push(String{"process save-core "} + core.text());
-      capture_arguments.push(String{"-o"});
-      capture_arguments.push(String{"process detach"});
+      capture_arguments.push_managed("-o");
+      capture_arguments.push_managed(
+          StringView{"process save-core " + core.text()});
+      capture_arguments.push_managed("-o");
+      capture_arguments.push_managed("process detach");
       break;
 
     case os::goodcore_capture_mode::Gcore:
-      capture_arguments.push(String{"-o"});
+      capture_arguments.push_managed("-o");
       capture_arguments.push(core.text().clone());
       capture_arguments.push(String::from(process_id, heap_allocator()));
       break;
@@ -516,7 +517,7 @@ GoodCore::execute(const ExecContext               &ec,
   print_progress(ec, "collecting executable and libraries", progress_mode);
   collect_core_libraries(cxt, core.view(), binary->view(), paths, allocator);
   print_progress(ec,
-                 String{"collected "} + String::from(paths.count(), allocator) +
+                 "collected " + String::from(paths.count(), allocator) +
                      " candidate files",
                  progress_mode);
 
@@ -525,7 +526,7 @@ GoodCore::execute(const ExecContext               &ec,
   usize copied_path_count = 0;
 
   for (let const &path : paths) {
-    print_progress(ec, String{"copying "} + path.view(), progress_mode);
+    print_progress(ec, "copying " + path.view(), progress_mode);
     if (!copy_into_root(stage, path.view(), allocator)) {
       do_report_failure("cannot copy required file", path.view());
 
@@ -546,7 +547,7 @@ GoodCore::execute(const ExecContext               &ec,
   if (let const uname = resolve_util_program(cxt, "uname")) {
     let uname_arguments = ArrayList<String>{heap_allocator()};
 
-    uname_arguments.push(String{"-a"});
+    uname_arguments.push_managed("-a");
     if (let const output = capture_util_program_output(
             *uname, steal(uname_arguments), 30'000'000'000))
     {
@@ -573,7 +574,7 @@ GoodCore::execute(const ExecContext               &ec,
   let       output =
       FLAG_GOODCORE_OUTPUT.is_set()
                 ? Path{FLAG_GOODCORE_OUTPUT.value(), allocator}.to_absolute()
-                : Path{String{"goodcore-"} + core.filename() +
+                : Path{"goodcore-" + core.filename() +
                  (FLAG_GOODCORE_NO_COMPRESS.is_enabled() ? StringView{".tar"}
                         : zstd.has_value() ? StringView{".tar.zst"}
                                            : StringView{".tar.gz"})}
@@ -612,11 +613,11 @@ GoodCore::execute(const ExecContext               &ec,
 
   let archive_arguments = ArrayList<String>{heap_allocator()};
 
-  archive_arguments.push(String{"-cf"});
+  archive_arguments.push_managed("-cf");
   archive_arguments.push(temporary_output->text().clone());
-  archive_arguments.push(String{"-C"});
+  archive_arguments.push_managed("-C");
   archive_arguments.push(stage.text().clone());
-  archive_arguments.push(String{"."});
+  archive_arguments.push_managed(".");
 
   bool did_archive = false;
 
@@ -648,10 +649,10 @@ GoodCore::execute(const ExecContext               &ec,
     if (did_archive) {
       let compression_arguments = ArrayList<String>{heap_allocator()};
 
-      compression_arguments.push(String{"-q"});
-      compression_arguments.push(String{"-f"});
+      compression_arguments.push_managed("-q");
+      compression_arguments.push_managed("-f");
       compression_arguments.push(temporary_tar->text().clone());
-      compression_arguments.push(String{"-o"});
+      compression_arguments.push_managed("-o");
       compression_arguments.push(temporary_output->text().clone());
       did_archive = run_tool(*zstd, steal(compression_arguments),
                              os::measured_output::Suppress);
@@ -659,7 +660,7 @@ GoodCore::execute(const ExecContext               &ec,
   } else {
     print_progress(ec, "creating tar archive and compressing with gzip",
                    progress_mode);
-    archive_arguments[0] = String{"-czf"};
+    archive_arguments[0] = String{archive_arguments[0].allocator(), "-czf"};
     did_archive =
         run_tool(*tar, steal(archive_arguments), os::measured_output::Suppress);
   }
