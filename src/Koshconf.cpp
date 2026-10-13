@@ -488,7 +488,7 @@ get_user_koshconf_path() throws -> Maybe<Path>
 {
 #if !defined _WIN32
   if (os::get_effective_user_id() == 0) {
-    LOG(Info, "the superuser has no user configuration file");
+    LOG(Info, "skipping the user configuration file for the superuser");
 
     return None;
   }

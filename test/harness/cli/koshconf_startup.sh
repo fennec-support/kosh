@@ -103,7 +103,7 @@ echo "== an inherited KOSH is replaced and no longer exported:"
 KOSH=/elsewhere KOSH_VERSION=0 "$BIN" -c '[ "$KOSH" != /elsewhere ] && echo replaced
 env | grep -c -e "^KOSH=" -e "^KOSH_VERSION=" || :
 sh -c "test -z \"\$KOSH\" && echo unset-in-a-child-shell"'
-echo "== privileged mode ignores KOSHCONF and startup configuration:"
+echo "== privileged mode ignores KOSHCONF and the settings files:"
 printf 'editor.auto_close_brackets_and_quotes=on\n' >"$conf"
 KOSHCONF=BQEA "$BIN" -p -c 'koshconf get editor.auto_close_brackets_and_quotes
 env | grep -c "^KOSHCONF="'

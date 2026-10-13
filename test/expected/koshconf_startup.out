@@ -79,7 +79,7 @@ KOSH_HISTORY_SIZE=5
 replaced
 0
 unset-in-a-child-shell
-== privileged mode ignores KOSHCONF and startup configuration:
+== privileged mode ignores KOSHCONF and the settings files:
 off
 0
 off

@@ -152,8 +152,8 @@ FLAG(PRIVILEGED,
      'p',
      "privileged",
      Bash,
-     "Use privileged startup semantics and suppress startup configuration. "
-     "Secure executions still drop elevated identity.");
+     "Skip BASH_ENV, KOSHCONF, and the settings files. A secure execution "
+     "still drops its elevated ids.");
 FLAG(SHOPT_OPTION,
      ManyStrings,
      'O',
@@ -617,7 +617,7 @@ enter_rescue_mode(command_line &line) throws -> void
     if (line.argc > 0) line.operands.push_managed(line.argv[0]);
 
     if (has_restricted_flag_word(line.argc, line.argv)) {
-      LOG(Info, "keeping the restricted request through rescue");
+      LOG(Info, "keeping the rescue shell restricted");
       FLAG_RESTRICTED.enable();
     }
   }

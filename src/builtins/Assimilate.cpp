@@ -660,7 +660,8 @@ take_install_directory(const ExecContext &ec,
           append_printable_text(printable_directory, directory);
 
       if (directory.is_empty() || directory[0] != '/' || did_replace_control) {
-        LOG(Info, "ignoring a malformed remote install directory report");
+        LOG(Info, "ignoring a remote install directory that is relative or "
+                  "contains control characters");
         install_directory = None;
       } else {
         install_directory = steal(printable_directory);

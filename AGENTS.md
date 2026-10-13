@@ -30,10 +30,21 @@ _count. Byte counts end with _byte_count. Measurements name their units. Lambdas
 start with do_. Accessors start with get_ or set_.
 
 Free structs and enums use lower snake case. Classes and nested types use camel
-case. File operations accept Path. Conditions containing && or || use braces.
-Separate declarations, logical blocks, loops, and returns with blank lines.
-Project-owned C and C++ files carry the license notice and a description of at
-most three sentences. Vendored files do not receive the notice.
+case. File operations accept Path. Project-owned C and C++ files carry the
+license notice and a description of at most three sentences. Vendored files do
+not receive the notice.
+
+.clang-format defines the layout, and make fmt applies it. Lines hold at most
+80 columns and indent by two spaces. fn stands on its own line above the
+function name. An opening brace takes its own line after a function, class,
+struct, union, or enum, and after a control condition that spans several lines.
+Consecutive assignments, declarations, macros, and short case labels are
+aligned. Wrapped parameters go one per line, and pointer and reference markers
+attach to the name. A short if without an else may stay on one line, and a loop
+body never does. clang-format adds no braces and collapses consecutive blank
+lines into one. The body of an if whose condition contains && or || is braced
+by hand. Blank lines between declarations, logical blocks, loops, and returns
+are also added by hand.
 
 Search for an existing owner, helper, parser, container, dependency, and every
 caller before changing an interface. New abstractions, file splits, file merges,

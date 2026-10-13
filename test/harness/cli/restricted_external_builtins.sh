@@ -19,6 +19,6 @@ PATH="$work:/usr/bin:/bin" "$BIN" -r -c 'source payload; echo "status=$?"' 2>&1
 echo "== dot with a slash is blocked:"
 (cd "$work" && PATH=/usr/bin:/bin "$BIN" -r -c '. ./payload; echo "status=$?"' 2>&1)
 
-echo "== rescue keeps a restricted request:"
+echo "== rescue mode keeps the shell restricted:"
 printf 'cd /\n' | (exec -a -kosh "$BIN" -r --bogus) 2>&1 |
   grep -c 'cd is forbidden in a restricted shell'

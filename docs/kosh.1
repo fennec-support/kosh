@@ -139,12 +139,14 @@ The options
 .BR \-\-apply ,
 and
 .B \-\-as\-language\-server
-are ignored there. A secure invocation ignores and removes
+are ignored there. A secure execution ignores and removes
 .BR KOSH_FLAGS .
 .PP
 The shell enters rescue mode when argument zero begins with a dash, its options
 cannot be parsed, and standard input is a terminal. Rescue mode clears the
-options and skips startup files. An option word that requests restricted mode
+options and skips startup files. An option that requests restricted mode, such
+as
+.BR \-r ,
 still makes the rescue shell restricted. The
 .B \-l
 option alone does not enable it. Any other invalid invocation exits with
