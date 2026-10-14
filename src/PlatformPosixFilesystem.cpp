@@ -1304,7 +1304,6 @@ reopen_parent_descriptor(int                directory,
 
   parent_descriptor = open_expected_directory(directory, "..", O_NOFOLLOW,
                                               parent_status, reopened_status);
-  if (parent_descriptor < 0) errno = ESTALE;
 
   return parent_descriptor >= 0;
 }

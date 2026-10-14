@@ -113,7 +113,8 @@ Chmod::execute(const ExecContext               &ec,
 
   i32 status = 0;
   let state  = chmod_state{ec, cxt, expression, os::get_file_creation_mask()};
-  let hooks  = os::tree_walk_hooks{&state, change_mode, report_walk_failure};
+  let const hooks =
+      os::tree_walk_hooks{&state, change_mode, report_walk_failure};
   let const options = os::tree_walk_options{
       FLAG_CHMOD_RECURSIVE.is_enabled(),
       FLAG_CHMOD_ONE_FILE_SYSTEM.is_enabled(), true, false, true};

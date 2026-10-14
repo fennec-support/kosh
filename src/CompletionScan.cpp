@@ -531,22 +531,14 @@ internal::complete_from_tools_with_targets(StringView      line,
                                    throws -> Maybe<ArrayList<String>> {
     if (probe_argv.is_empty()) return None;
 
-    let const resolved = context.program_resolver().search(
-        probe_argv[0].view(), ProgramResolver::SearchMode::First,
-        ProgramResolver::Requirement::Runnable,
-        ProgramResolver::CachePolicy::Bypass);
+    let const program =
+        find_trusted_program(context.program_resolver(), probe_argv[0].view());
 
-    /* A probe runs only a program from a trusted absolute directory. A tool
-       planted in the current directory is never run. */
-    if (resolved.is_empty() ||
-        !os::directory_is_trusted_for_exec(Path{resolved[0].view()}.parent()))
-    {
-      return None;
-    }
+    if (!program.has_value()) return None;
 
     let argv = ArrayList<String>{heap_allocator()};
 
-    argv.push_managed(resolved[0].view());
+    argv.push_managed(program->view());
 
     for (usize i = 1; i < probe_argv.count(); i++)
       argv.push_managed(probe_argv[i].view());

@@ -417,12 +417,12 @@ EvalContext::set_shell_variable(StringView name,
     if (let const bracket = target.view().find_character('[');
         bracket.has_value())
     {
-      guard_expanded_subscript(target.view().substring_of_length(
-          *bracket + 1, target.count() - *bracket - 2));
+      let const subscript = target.view().substring_of_length(
+          *bracket + 1, target.count() - *bracket - 2);
+
+      guard_expanded_subscript(subscript);
       assign_array_element(target.view().substring_of_length(0, *bracket),
-                           target.view().substring_of_length(
-                               *bracket + 1, target.count() - *bracket - 2),
-                           value, assignment_update_mode::Replace);
+                           subscript, value, assignment_update_mode::Replace);
 
       return;
     }
@@ -573,11 +573,12 @@ EvalContext::unset_shell_variable(StringView name) throws -> void
       if (let const bracket = target.view().find_character('[');
           bracket.has_value())
       {
-        guard_expanded_subscript(target.view().substring_of_length(
-            *bracket + 1, target.count() - *bracket - 2));
+        let const subscript = target.view().substring_of_length(
+            *bracket + 1, target.count() - *bracket - 2);
+
+        guard_expanded_subscript(subscript);
         unset_array_element(target.view().substring_of_length(0, *bracket),
-                            target.view().substring_of_length(
-                                *bracket + 1, target.count() - *bracket - 2));
+                            subscript);
 
         return;
       }

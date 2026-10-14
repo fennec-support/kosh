@@ -25,6 +25,12 @@ namespace koshka {
 
 namespace {
 
+/* Right operands of '**' and the branches of a conditional recurse, so both
+   parsers stop such a chain at this depth. */
+static constexpr usize  MAX_OPERATOR_CHAIN_DEPTH = 1024;
+static const StringView OPERATOR_CHAIN_HINT =
+    "An operator chain this long needs parentheses or a loop";
+
 /* True when an arithmetic subscript still holds a '$' or '`' after the whole
    expression has been expanded. Such a character can only come from data. */
 pure static fn
@@ -271,11 +277,7 @@ public:
 
   usize                  depth{0};
   static constexpr usize MAX_DEPTH = 128;
-  /* Right operands of '**' recurse through parse_binary, and the branches of
-     a conditional recurse through parse_ternary. Both chains are bounded by
-     this depth. */
   usize                  binary_depth{0};
-  static constexpr usize MAX_BINARY_DEPTH = 1024;
   usize                  chain_depth{0};
   static constexpr usize MAX_CHAIN_DEPTH = 4096;
 
@@ -287,6 +289,15 @@ public:
       chain_depth = 0;
       fail("Expression nested too deeply",
            "Split a long chain of unary operators or assignments");
+    }
+  }
+
+  fn
+  enter_binary_chain() throws -> void
+  {
+    binary_depth++;
+    if (binary_depth > MAX_OPERATOR_CHAIN_DEPTH) {
+      fail("Expression nested too deeply", OPERATOR_CHAIN_HINT);
     }
   }
 
@@ -721,13 +732,8 @@ public:
   fn
   parse_ternary() throws -> ArithmeticValue
   {
-    binary_depth++;
     defer { binary_depth--; };
-
-    if (binary_depth > MAX_BINARY_DEPTH) {
-      fail("Expression nested too deeply",
-           "An operator chain this long needs parentheses or a loop");
-    }
+    enter_binary_chain();
 
     let const condition = parse_binary(1);
 
@@ -832,13 +838,8 @@ public:
   fn
   parse_binary(u8 min_precedence) throws -> ArithmeticValue
   {
-    binary_depth++;
     defer { binary_depth--; };
-
-    if (binary_depth > MAX_BINARY_DEPTH) {
-      fail("Expression nested too deeply",
-           "An operator chain this long needs parentheses or a loop");
-    }
+    enter_binary_chain();
 
     skip_spaces();
 
@@ -2452,7 +2453,6 @@ public:
   BumpArena                    &arena;
   static constexpr usize        MAX_DEPTH = 128;
   usize                         binary_depth{0};
-  static constexpr usize        MAX_BINARY_DEPTH = 1024;
 
   pure fn
   at_op(StringView s) wontthrow -> bool
@@ -2545,10 +2545,9 @@ public:
     binary_depth++;
     defer { binary_depth--; };
 
-    if (binary_depth > MAX_BINARY_DEPTH) {
-      throw ErrorWithDetails{
-          "Expression nested too deeply",
-          "An operator chain this long needs parentheses or a loop"};
+    if (binary_depth > MAX_OPERATOR_CHAIN_DEPTH) {
+      throw ErrorWithDetails{"Expression nested too deeply",
+                             OPERATOR_CHAIN_HINT};
     }
 
     let lhs = parse_operand();

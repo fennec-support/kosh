@@ -208,34 +208,23 @@ static fn
 manpath_argv_for(EvalContext &context) throws
     -> Maybe<ArrayList<String>>
 {
-  let      &resolver = context.program_resolver();
-  let const man_paths =
-      resolver.search("manpath", ProgramResolver::SearchMode::First,
-                      ProgramResolver::Requirement::Runnable,
-                      ProgramResolver::CachePolicy::Bypass);
-  let const manbin_paths =
-      resolver.search("man", ProgramResolver::SearchMode::First,
-                      ProgramResolver::Requirement::Runnable,
-                      ProgramResolver::CachePolicy::Bypass);
-  let const is_manpath_present =
-      !man_paths.is_empty() &&
-      os::directory_is_trusted_for_exec(man_paths[0].parent());
-  let const is_man_present =
-      !manbin_paths.is_empty() &&
-      os::directory_is_trusted_for_exec(manbin_paths[0].parent());
+  let &resolver = context.program_resolver();
+  let  argv     = ArrayList<String>{heap_allocator()};
 
-  if (!is_manpath_present && !is_man_present) {
-    return None;
+  if (let const manpath = find_trusted_program(resolver, "manpath");
+      manpath.has_value())
+  {
+    argv.push_managed(manpath->view());
+
+    return argv;
   }
 
-  let argv = ArrayList<String>{heap_allocator()};
+  let const man = find_trusted_program(resolver, "man");
 
-  if (is_manpath_present) {
-    argv.push_managed(man_paths[0].view());
-  } else {
-    argv.push_managed(manbin_paths[0].view());
-    argv.push_managed("-w");
-  }
+  if (!man.has_value()) return None;
+
+  argv.push_managed(man->view());
+  argv.push_managed("-w");
 
   return argv;
 }
@@ -1070,20 +1059,12 @@ command_prefers_help_over_manpage(StringView command) throws -> bool
 }
 
 static fn
-command_directory_is_trusted(StringView absolute_path) throws -> bool;
-
-static fn
 manpage_argv_for(StringView page_name, EvalContext &context) throws
     -> Maybe<ArrayList<String>>
 {
-  let const man_paths = context.program_resolver().search(
-      "man", ProgramResolver::SearchMode::First,
-      ProgramResolver::Requirement::Runnable,
-      ProgramResolver::CachePolicy::Bypass);
+  let const man = find_trusted_program(context.program_resolver(), "man");
 
-  if (man_paths.is_empty() ||
-      !command_directory_is_trusted(man_paths[0].view()))
-  {
+  if (!man.has_value()) {
     LOG(Debug,
         "skipping the man fork for '%.*s' because man is absent or untrusted",
         static_cast<int>(page_name.length), page_name.data);
@@ -1093,7 +1074,7 @@ manpage_argv_for(StringView page_name, EvalContext &context) throws
 
   let argv = ArrayList<String>{heap_allocator()};
 
-  argv.push_managed(man_paths[0].view());
+  argv.push_managed(man->view());
   argv.push_managed(page_name);
 
   return argv;
@@ -1277,10 +1258,29 @@ internal::complete_from_manpage(StringView         line,
   return matches;
 }
 
-static fn
-command_directory_is_trusted(StringView absolute_path) throws -> bool
+fn
+internal::find_trusted_program(ProgramResolver &resolver,
+                               StringView       name) throws -> Maybe<Path>
 {
-  return os::directory_is_trusted_for_exec(Path{absolute_path}.parent());
+  let paths = resolver.search(name, ProgramResolver::SearchMode::First,
+                              ProgramResolver::Requirement::Runnable,
+                              ProgramResolver::CachePolicy::Bypass);
+
+  if (paths.is_empty()) {
+    LOG(Debug, "skipping the probe '%.*s' because it is not on the path",
+        static_cast<int>(name.length), name.data);
+
+    return None;
+  }
+
+  if (!os::directory_is_trusted_for_exec(paths[0].parent())) {
+    LOG(Debug, "skipping the probe '%s' because its directory is not trusted",
+        paths[0].c_str());
+
+    return None;
+  }
+
+  return steal(paths[0]);
 }
 
 static fn
@@ -1292,12 +1292,9 @@ help_argv_for(EvalContext &context,
 
   if (!help_argument.has_value()) return None;
 
-  let const paths = context.program_resolver().search(
-      command, ProgramResolver::SearchMode::First,
-      ProgramResolver::Requirement::Runnable,
-      ProgramResolver::CachePolicy::Bypass);
+  let const program = find_trusted_program(context.program_resolver(), command);
 
-  if (!paths.is_empty() && command_directory_is_trusted(paths[0].view())) {
+  if (program.has_value()) {
     LOG(Debug,
         "the help allowlist lists '%.*s' and the directory is trusted, "
         "preparing the --help fork",
@@ -1317,7 +1314,7 @@ help_argv_for(EvalContext &context,
           *subcommand_help_argument);
     }
 
-    argv.push_managed(paths[0].view());
+    argv.push_managed(program->view());
     subcommand.for_each_ascii_whitespace_word(
         [&](StringView word) throws { argv.push_managed(word); });
     help_words.for_each_ascii_whitespace_word(
@@ -1326,18 +1323,10 @@ help_argv_for(EvalContext &context,
     return argv;
   }
 
-  if (paths.is_empty()) {
-    LOG(Debug,
-        "the help allowlist lists '%.*s' but the program is not on the "
-        "path, skipping the --help fork",
-        static_cast<int>(command.length), command.data);
-  } else {
-    LOG(Debug,
-        "the help allowlist lists '%.*s' but the directory '%.*s' is "
-        "not trusted, skipping the --help fork",
-        static_cast<int>(command.length), command.data,
-        static_cast<int>(paths[0].view().length), paths[0].view().data);
-  }
+  LOG(Debug,
+      "the help allowlist lists '%.*s' but the program is absent or "
+      "untrusted, skipping the --help fork",
+      static_cast<int>(command.length), command.data);
 
   return None;
 }

@@ -108,6 +108,12 @@ resolve_listing_directory(
 
 fn
 command_word_of(StringView line) wontthrow -> StringView;
+
+/* A completion probe runs a program only from a trusted absolute directory, so
+   a tool planted in the current directory is never run. */
+fn
+find_trusted_program(ProgramResolver &resolver, StringView name) throws
+    -> Maybe<Path>;
 pure fn
 token_has_glob_metacharacter(StringView token) wontthrow -> bool;
 fn

@@ -106,7 +106,9 @@ share a line index.
 src/Platform.cpp selects POSIX or Windows code. Platform calls and types stay
 behind src/Platform.hpp and os wrappers. Routed platform fragments compile
 through Platform.o. Windows path conversion and named-pipe behavior stay behind
-the platform wrappers.
+the platform wrappers. Recursive chmod, chown, and chgrp walk through
+os::walk_tree, which addresses each entry through its parent directory
+descriptor.
 
 src/Completion.cpp owns completion scanning and the completion sources.
 Completion, highlighting, diagnostics, and koshkit cat share the tolerant
