@@ -2633,6 +2633,16 @@ const diagnostic_definition DIAGNOSTIC_DEFINITIONS[] = {
       Lenient,
       Policy),
     D(None,
+      "conditional-missing-operand",
+      "a `[[ ]]` operator has no operand",
+      "The operator '{0}' has no operand after it, and bash rejects the "
+      "`[[ ]]` as a syntax error",
+      "Write the operand after '{0}', or quote the operator to test it as "
+      "text",
+      None,
+      Strict,
+      Policy),
+    D(None,
       "exported-cdpath",
       "an exported `CDPATH` can redirect child scripts",
       "An exported `CDPATH` can redirect `cd` commands in child scripts",

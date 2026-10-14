@@ -108,7 +108,9 @@ Parser::parse_if() throws -> Command *
 
       if (fi_token->kind() != Token::Kind::Fi) {
         throw_unterminated(location, "This 'if' has no closing 'fi'",
-                           m_lexer.source(), "fi", fi_token->source_location());
+                           get_swallowed_closer(Token::Kind::Fi, location,
+                                                fi_token->source_location()),
+                           "fi", fi_token->source_location());
       }
 
       do_reject_empty(otherwise, fi_token, "The body after 'else' is empty",
@@ -124,7 +126,9 @@ Parser::parse_if() throws -> Command *
 
     default:
       throw_unterminated(location, "This 'if' has no closing 'fi'",
-                         m_lexer.source(), "fi", after->source_location());
+                         get_swallowed_closer(Token::Kind::Fi, location,
+                                              after->source_location()),
+                         "fi", after->source_location());
     }
 
     break;
@@ -643,6 +647,24 @@ Parser::parse_case() throws -> Command *
       break;
     }
 
+    let const is_arm_terminator =
+        t->kind() == Token::Kind::DoubleSemicolon ||
+        t->kind() == Token::Kind::SemicolonAmpersand ||
+        t->kind() == Token::Kind::DoubleSemicolonAmpersand;
+
+    if (is_arm_terminator) {
+      let const ast = t->to_ast_string();
+
+      m_lexer.advance_past_last_peek();
+      report_soft_error(ErrorWithLocationAndDetails{
+          t->source_location(),
+          "Expected a pattern before '" + ast.view() + "'",
+          "Remove the extra '" + ast.view() +
+              "', or write a pattern and a command before it, as in "
+              "`b) command ;;`"});
+      continue;
+    }
+
     if (is_list_terminator(t, m_enclosing_terminator_mask)) {
       throw ErrorWithLocationAndDetails{
           location, "This 'case' has no closing 'esac'", t->source_location(),
@@ -750,9 +772,11 @@ Parser::parse_brace_group() throws -> Command *
   ASSERT(close != nullptr);
 
   if (!is_unquoted_word(close, "}")) {
-    throw_unterminated(open->source_location(),
-                       "This brace group has no closing '}'", m_lexer.source(),
-                       "}", close->source_location());
+    throw_unterminated(
+        open->source_location(), "This brace group has no closing '}'",
+        get_swallowed_closer(Token::Kind::RightBracket, open->source_location(),
+                             close->source_location()),
+        "}", close->source_location());
   }
 
   if (body->is_dummy()) {
@@ -985,8 +1009,10 @@ Parser::parse_loop_body(const SourceLocation &location,
   ASSERT(done_token != nullptr);
 
   if (done_token->kind() != Token::Kind::Done) {
-    throw_unterminated(location, unterminated_message, m_lexer.source(), "done",
-                       done_token->source_location());
+    throw_unterminated(location, unterminated_message,
+                       get_swallowed_closer(Token::Kind::Done, location,
+                                            done_token->source_location()),
+                       "done", done_token->source_location());
   }
 
   reject_empty_loop_body(body);

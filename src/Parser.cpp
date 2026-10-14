@@ -190,60 +190,75 @@ internal::is_list_terminator(const Token *token, u64 terminator_mask) wontthrow
           is_unquoted_word(token, "}"));
 }
 
-cold pure static fn
-find_standalone_keyword(StringView source, StringView keyword) wontthrow
-    -> Maybe<SourceLocation>
-{
-  let const do_is_boundary = [](char c) {
-    return std::isspace(static_cast<unsigned char>(c)) != 0 || c == ';' ||
-           c == '&' || c == '|';
-  };
-
-  if (keyword.length == 0 || keyword.length > source.length) {
-    return koshka::None;
-  }
-
-  for (usize pos = 0; pos + keyword.length <= source.length; pos++) {
-    if (source.substring_of_length(pos, keyword.length) != keyword) continue;
-
-    let const end_position     = pos + keyword.length;
-    let const is_left_boundary = pos == 0 || do_is_boundary(source[pos - 1]);
-    let const is_right_boundary =
-        end_position == source.length || do_is_boundary(source[end_position]);
-
-    if (is_left_boundary && is_right_boundary) {
-      return SourceLocation{pos, keyword.length};
-    }
-  }
-
-  return koshka::None;
-}
-
 cold wontreturn fn
-internal::throw_unterminated(const SourceLocation &opener,
-                             StringView            what,
-                             StringView            source,
-                             StringView            keyword,
-                             SourceLocation        fallback) throws -> void
+internal::throw_unterminated(const SourceLocation        &opener,
+                             StringView                   what,
+                             const Maybe<SourceLocation> &swallowed,
+                             StringView                   keyword,
+                             SourceLocation               end) throws -> void
 {
-  /* A keyword swallowed as an argument leaves the construct open to the end
-     of the input, and only then does a search for it help. */
-  let const             is_at_end = fallback.position >= source.length;
-  Maybe<SourceLocation> found =
-      is_at_end ? find_standalone_keyword(source, keyword) : None;
+  if (swallowed.has_value()) {
+    let found = *swallowed;
 
-  if (found.has_value()) {
-    found->source_name_index = opener.source_name_index;
+    found.source_name_index = opener.source_name_index;
     throw ErrorWithLocationAndDetails{
-        opener, what, *found,
+        opener, what, found,
         "this '" + keyword +
             "' was taken as an argument of the previous command, so put a ';' "
             "or a newline before it"};
   }
 
-  fallback.source_name_index = opener.source_name_index;
+  end.source_name_index = opener.source_name_index;
   throw ErrorWithLocationAndDetails{
-      opener, what, fallback, "expected '" + keyword + "' here to close it"};
+      opener, what, end, "expected '" + keyword + "' here to close it"};
+}
+
+/* The slot of a closer that the parser records when a command takes it as an
+   argument. */
+pure static fn
+get_swallowed_closer_slot(Token::Kind closer) wontthrow -> usize
+{
+  switch (closer) {
+  case Token::Kind::Fi:   return 0;
+  case Token::Kind::Done: return 1;
+  case Token::Kind::Esac: return 2;
+  default:                return 3;
+  }
+}
+
+fn
+Parser::record_swallowed_closer(const Token *token) wontthrow -> void
+{
+  switch (token->kind()) {
+  case Token::Kind::Fi:
+  case Token::Kind::Done:
+  case Token::Kind::Esac: break;
+  default:
+    if (!is_unquoted_word(token, "}")) return;
+    break;
+  }
+
+  m_swallowed_closers[get_swallowed_closer_slot(token->kind())] =
+      token->source_location();
+}
+
+fn
+Parser::get_swallowed_closer(Token::Kind           closer,
+                             const SourceLocation &opener,
+                             const SourceLocation &end) const wontthrow
+    -> Maybe<SourceLocation>
+{
+  /* A closer taken as an argument leaves the construct open to the end of
+     the input, and only then does it explain the error. */
+  if (end.position < m_lexer.source().length) return None;
+
+  let const &swallowed = m_swallowed_closers[get_swallowed_closer_slot(closer)];
+
+  if (!swallowed.has_value() || swallowed->position < opener.position) {
+    return None;
+  }
+
+  return swallowed;
 }
 
 cold static fn
@@ -609,6 +624,14 @@ Parser::recover_failed_statement(const ErrorWithLocation &error,
   record_caught_error(error);
   if (m_recorded_error_count >= MAX_RECOVERED_ERROR_COUNT) {
     m_is_input_exhausted = true;
+    record_parse_error(
+        ErrorWithLocation{
+            error.location(),
+            "Parsing stopped after " +
+                String::from(static_cast<i64>(MAX_RECOVERED_ERROR_COUNT),
+                             heap_allocator()) +
+                " syntax errors, so the rest of the input is not checked"},
+        *m_collected_errors, m_collected_context, m_collected_sink);
     throw;
   }
 
@@ -2010,6 +2033,7 @@ Parser::parse_simple_command(const Token *leading_token) throws
 
       m_lexer.advance_past_last_peek();
       if (!source_location) source_location = token->source_location();
+      if (!args_accumulator.is_empty()) record_swallowed_closer(token);
       args_accumulator.push(token);
     } break;
 

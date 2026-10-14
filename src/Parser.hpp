@@ -123,6 +123,7 @@ private:
   usize                         m_last_recorded_error_position{SIZE_MAX};
   usize                         m_last_recorded_details_position{SIZE_MAX};
   bool                          m_is_input_exhausted{false};
+  Maybe<SourceLocation>         m_swallowed_closers[4]{};
   ArrayList<String>            *m_collected_errors{nullptr};
   EvalContext                  *m_collected_context{nullptr};
   ArrayList<source_diagnostic> *m_collected_sink{nullptr};
@@ -156,6 +157,13 @@ private:
   parse_simple_command(const Token *leading_token = nullptr) throws
       -> Command *;
 
+  fn
+  record_swallowed_closer(const Token *token) wontthrow -> void;
+  pure fn
+  get_swallowed_closer(Token::Kind           closer,
+                       const SourceLocation &opener,
+                       const SourceLocation &end) const wontthrow
+      -> Maybe<SourceLocation>;
   cold fn
   skip_failed_statement(ArrayList<Token::Kind> &open_closers,
                         u64                     mask) throws -> void;

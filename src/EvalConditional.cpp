@@ -669,6 +669,18 @@ struct conditional_evaluator
 
 } /* namespace */
 
+pure fn
+is_conditional_unary_operator(StringView text) wontthrow -> bool
+{
+  return conditional_evaluator::unary_operator(text).has_value();
+}
+
+pure fn
+is_conditional_binary_operator(StringView text) wontthrow -> bool
+{
+  return conditional_evaluator::binary_operator(text).has_value();
+}
+
 static constexpr usize REGEX_CACHE_CAP = 128;
 
 fn

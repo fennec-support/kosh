@@ -34,11 +34,11 @@ hot pure fn
 is_list_terminator(const Token *token, u64 terminator_mask) wontthrow -> bool;
 
 cold wontreturn fn
-throw_unterminated(const SourceLocation &opener,
-                   StringView            what,
-                   StringView            source,
-                   StringView            keyword,
-                   SourceLocation        fallback) throws -> void;
+throw_unterminated(const SourceLocation        &opener,
+                   StringView                   what,
+                   const Maybe<SourceLocation> &swallowed,
+                   StringView                   keyword,
+                   SourceLocation               end) throws -> void;
 
 } /* namespace internal */
 

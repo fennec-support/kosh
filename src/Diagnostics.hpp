@@ -346,6 +346,7 @@ enum class diagnostic_id : u16
   sc3060,
   arithmetic_xor_power,
   assignment_prefix_read,
+  conditional_missing_operand,
   exported_cdpath,
   external_arithmetic_input,
   external_array_subscript,

@@ -107,18 +107,81 @@ conditional_word_is_numeric_literal(const Token *token) throws -> bool
   return !view.is_empty() && view.is_all_decimal_digits();
 }
 
-constexpr PackedStringKey CONDITIONAL_BINARY_OPERATOR_KEYS[] = {
-    SSK("="),   SSK("=="),  SSK("!="),  SSK("=~"),  SSK("-eq"),
-    SSK("-ne"), SSK("-lt"), SSK("-le"), SSK("-gt"), SSK("-ge"),
-    SSK("-ef"), SSK("-nt"), SSK("-ot"),
-};
-constexpr StaticStringSet CONDITIONAL_BINARY_OPERATORS{
-    CONDITIONAL_BINARY_OPERATOR_KEYS};
-
+/* Reports an operator in a [[ ]] that has no operand where it needs one.
+   Each primary starts with an optional unary operator, or with a left operand
+   and an optional binary operator. */
 cold static fn
-is_conditional_binary_operator(StringView op) wontthrow -> bool
+report_conditional_missing_operands(
+    AnalysisContext                      &actx,
+    const ArrayList<conditional_element> &elements) throws -> void
 {
-  return CONDITIONAL_BINARY_OPERATORS.contains(op);
+  using Kind = conditional_element::Kind;
+
+  if (!actx.should_report(diagnostic_id::conditional_missing_operand)) return;
+
+  let const do_get_operator = [&](usize index) -> StringView {
+    let const &element = elements[index];
+
+    if (element.kind != Kind::Operand || !element.is_bare_unquoted ||
+        element.word == nullptr)
+    {
+      return {};
+    }
+
+    let const view = element.word->raw_view();
+
+    return view.has_value() ? *view : StringView{};
+  };
+  let const do_has_operand = [&](usize index) -> bool {
+    return index < elements.count() && elements[index].kind == Kind::Operand;
+  };
+  let const do_report = [&](SourceLocation location,
+                            StringView     op) throws {
+    actx.report_diagnostic(diagnostic_id::conditional_missing_operand, location,
+                           {op});
+  };
+
+  usize index = 0;
+
+  while (index < elements.count()) {
+    if (elements[index].kind != Kind::Operand) {
+      index++;
+      continue;
+    }
+
+    let const leading = do_get_operator(index);
+
+    if (!leading.is_empty() && is_conditional_unary_operator(leading)) {
+      if (!do_has_operand(index + 1))
+        do_report(elements[index].word->source_location(), leading);
+      index += 2;
+      continue;
+    }
+
+    let const has_next  = index + 1 < elements.count();
+    let const next_kind = has_next ? elements[index + 1].kind : Kind::Operand;
+
+    if (has_next && (next_kind == Kind::Less || next_kind == Kind::Greater)) {
+      if (!do_has_operand(index + 2)) {
+        do_report(elements[index + 1].location,
+                  next_kind == Kind::Less ? "<" : ">");
+      }
+
+      index += 3;
+      continue;
+    }
+
+    let const binary = has_next ? do_get_operator(index + 1) : StringView{};
+
+    if (!binary.is_empty() && is_conditional_binary_operator(binary)) {
+      if (!do_has_operand(index + 2))
+        do_report(elements[index + 1].word->source_location(), binary);
+      index += 3;
+      continue;
+    }
+
+    index++;
+  }
 }
 
 cold static fn
@@ -231,6 +294,8 @@ ConditionalCommand::analyze(AnalysisContext &actx, bool is_unconditional) const 
 {
   for (let const &element : m_elements)
     analyze_token_substitutions(actx, element.word, is_unconditional);
+
+  report_conditional_missing_operands(actx, m_elements);
 
   using Kind = conditional_element::Kind;
 

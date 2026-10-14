@@ -725,6 +725,11 @@ struct conditional_element
 static_assert(sizeof(usize) != 8 || sizeof(conditional_element) == 24);
 
 pure fn
+is_conditional_unary_operator(StringView text) wontthrow -> bool;
+pure fn
+is_conditional_binary_operator(StringView text) wontthrow -> bool;
+
+pure fn
 is_runtime_dynamic_variable_name(StringView name) wontthrow -> bool;
 pure fn
 is_bash_only_dynamic_variable_name(StringView name) wontthrow -> bool;

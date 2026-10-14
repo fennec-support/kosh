@@ -92,3 +92,27 @@
 -c:2:7: error: The for loop variable '1x' is not a valid identifier.
 -c:3:10: error: Expected a command after the pipe to receive the output.
 -c:6:1: error: 'done' has no matching 'while', 'until', or 'for'.
+== lint reports [[ ]] operators without an operand
+[[ a == ]] => 1
+[[ -f ]] => 1
+[[ a < ]] => 1
+[[ a == b && -z ]] => 1
+[[ a =~ ]] => 1
+[[ 1 -lt (2) ]] => 1
+[[ == ]] => 0
+[[ ! -d x ]] => 0
+[[ ( a == b ) ]] => 0
+== recovery stops after 100 errors and says so
+101
+1
+== a stray arm terminator in a case is reported
+-c:1:22: error: Expected a pattern before ';;'.
+-c:2:1: error: 'fi' has no matching 'if'.
+== a closer inside a heredoc or quotes is not taken for a swallowed one
+-c:4:1: error: This 'if' has no closing 'fi'.
+-c:4:21: details:
+       |                      ^ expected 'fi' here to close it.
+== a closer taken as an argument is pointed out
+-c:1:1: error: This brace group has no closing '}'.
+-c:1:8: details:
+       |         ^ this '}' was taken as an argument of the previous command, so put a ';' or a newline before it.

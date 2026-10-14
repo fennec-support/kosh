@@ -195,3 +195,35 @@ echo "== the bash mood keeps parsing after a bad loop variable"
   done
 }
 done' 2>&1 | grep -E '^-c:[0-9]+:[0-9]+: error'
+
+echo "== lint reports [[ ]] operators without an operand"
+for test_text in '[[ a == ]]' '[[ -f ]]' '[[ a < ]]' '[[ a == b && -z ]]' \
+  '[[ a =~ ]]' '[[ 1 -lt (2) ]]' '[[ == ]]' '[[ ! -d x ]]' '[[ ( a == b ) ]]'
+do
+  printf '#!/bin/bash\n%s\n' "$test_text" >"$dir/conditional.sh"
+  printf '%s => ' "$test_text"
+  "$BIN" --no-config --lint "$dir/conditional.sh" 2>&1 |
+    grep -c 'conditional-missing-operand\|has no operand after it'
+done
+
+echo "== recovery stops after 100 errors and says so"
+line_index=0
+while [ "$line_index" -lt 120 ]; do
+  echo 'echo |;'
+  line_index=$((line_index + 1))
+done >"$dir/many.sh"
+"$BIN" --no-config --lint "$dir/many.sh" 2>&1 | grep -c ': error: '
+"$BIN" --no-config --lint "$dir/many.sh" 2>&1 | grep -c 'Parsing stopped'
+
+do_check "a stray arm terminator in a case is reported" 'case x in a) echo ;; ;; esac
+fi'
+
+echo "== a closer inside a heredoc or quotes is not taken for a swallowed one"
+"$BIN" --mood bash --no-config -n -c 'cat <<EOF
+fi ) }
+EOF
+if x; then echo "fi"' 2>&1 | grep -E '^-c:[0-9]+:[0-9]+: (error|details)|taken|expected'
+
+echo "== a closer taken as an argument is pointed out"
+"$BIN" --mood bash --no-config -n -c '{ echo }' 2>&1 |
+  grep -E '^-c:[0-9]+:[0-9]+: (error|details)|taken|expected'
