@@ -4,6 +4,8 @@ clean
 == --command injected_command: clean
 == --command=injected_command: clean
 == -- injected_script: clean
+== -s: clean
+== --stdin: clean
 == benign flag in KOSH_FLAGS survives:
 sh
 flagged

@@ -564,7 +564,7 @@ splice_environment_flags(command_line &line) throws -> void
   {
     static constexpr PackedStringKey IGNORED_KOSH_FLAG_KEYS[] = {
         SSK("--apply"), SSK("--format"), SSK("--as-language-server"),
-        SSK("--command")};
+        SSK("--command"), SSK("--stdin")};
     static constexpr StaticStringSet IGNORED_KOSH_FLAGS{IGNORED_KOSH_FLAG_KEYS};
     let const                        view              = kosh_flags->view();
     bool                             is_value_next     = false;
@@ -576,7 +576,7 @@ splice_environment_flags(command_line &line) throws -> void
     };
 
     /* KOSH_FLAGS can set options but cannot choose what runs. Option words
-       and their values are kept, and -c, --, and operands are dropped. */
+       and their values are kept, and -c, -s, --, and operands are dropped. */
     view.for_each_ascii_whitespace_word([&](StringView token) throws {
       if (is_value_next) {
         is_value_next = false;
@@ -626,6 +626,8 @@ splice_environment_flags(command_line &line) throws -> void
 
           return;
         }
+
+        if (found_flag == &FLAG_STDIN) return;
 
         if (do_takes_separate_value(found_flag)) {
           is_value_next     = i + 1 == token.length;
