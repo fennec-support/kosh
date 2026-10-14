@@ -245,3 +245,13 @@ case x in ; esac'
 echo "== an esac taken as an argument is pointed out"
 "$BIN" --mood bash --no-config -n -c 'case x in a) echo esac' 2>&1 |
   grep -E '^-c:[0-9]+:[0-9]+: (error|details)|taken|expected'
+
+do_check "bodies of a command whose header failed still report errors" 'case x
+a) echo |;;
+b) while echo |; do :; done;;
+esac
+for ((i = 0; i < 3)); do
+  echo |;
+  if true; then echo ;; fi
+done
+done'

@@ -129,3 +129,12 @@ cat <<< fi => 0
 -c:1:1: error: This 'case' has no closing 'esac'.
 -c:1:19: details:
        |                    ^~~~ this 'esac' was taken as an argument of the previous command, so put a ';' or a newline before it.
+== bodies of a command whose header failed still report errors
+-c:2:1: error: Expected an unquoted 'in' after the case word.
+-c:2:9: error: Expected a command after the pipe to receive the output.
+-c:3:15: error: Expected a command after the pipe to receive the output.
+-c:5:5: error: The C-style for ((...)) loop is a bash extension.
+-c:5:1: error: Expected two ';' separators in the C-style for header.
+-c:6:8: error: Expected a command after the pipe to receive the output.
+-c:7:22: error: ';;' is only valid between the arms of a 'case'.
+-c:9:1: error: 'done' has no matching 'while', 'until', or 'for'.

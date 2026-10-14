@@ -484,6 +484,57 @@ starts_command_position(Token::Kind kind) wontthrow -> bool
   }
 }
 
+/* The terminators of the condition list that a skipped opener starts, or
+   zero when the opener has no condition list. */
+pure static fn
+get_skipped_condition_mask(Token::Kind opener) wontthrow -> u64
+{
+  switch (opener) {
+  case Token::Kind::If:
+    return token_kind_mask(Token::Kind::Then, Token::Kind::Fi,
+                           Token::Kind::Else, Token::Kind::Elif);
+  case Token::Kind::While:
+  case Token::Kind::Until:
+    return token_kind_mask(Token::Kind::Do, Token::Kind::Done);
+  default: return 0;
+  }
+}
+
+/* The terminators of the body list that a token starts inside a skipped
+   construct whose closer is expected_closer, or zero. */
+pure static fn
+get_skipped_body_mask(Token::Kind expected_closer,
+                      Token::Kind kind,
+                      bool        is_command_position) wontthrow -> u64
+{
+  switch (expected_closer) {
+  case Token::Kind::Done:
+    if (is_command_position && kind == Token::Kind::Do)
+      return token_kind_mask(Token::Kind::Done);
+    return 0;
+  case Token::Kind::Fi:
+    if (!is_command_position) return 0;
+    if (kind == Token::Kind::Then || kind == Token::Kind::Else ||
+        kind == Token::Kind::Elif)
+    {
+      return token_kind_mask(Token::Kind::Then, Token::Kind::Fi,
+                             Token::Kind::Else, Token::Kind::Elif);
+    }
+
+    return 0;
+  case Token::Kind::Esac:
+    /* Bodies parse as lists, so a ')' the skip reaches ends a pattern. */
+    if (kind == Token::Kind::RightParen) {
+      return token_kind_mask(
+          Token::Kind::DoubleSemicolon, Token::Kind::SemicolonAmpersand,
+          Token::Kind::DoubleSemicolonAmpersand, Token::Kind::Esac);
+    }
+
+    return 0;
+  default: return 0;
+  }
+}
+
 /* Skips the rest of a failed statement. open_closers holds the closers the
    failed statement still expects. Skipping stops after the statement's
    separator, or before a terminator of this list or an enclosing list that
@@ -538,11 +589,29 @@ Parser::skip_failed_statement(ArrayList<Token::Kind> &open_closers,
       let const opened = get_opened_closer(token);
 
       if (opened.has_value()) {
+        let const condition_mask = get_skipped_condition_mask(token->kind());
+
         open_closers.push(*opened);
         is_command_position = true;
         m_lexer.advance_past_last_peek();
+        if (condition_mask != 0) unused(parse_command_list(condition_mask));
         continue;
       }
+    }
+
+    /* A body inside the skipped construct still parses, so its errors are
+       reported. The list stops before the closer, which the skip consumes. */
+    let const body_mask =
+        open_closers.is_empty()
+                 ? u64{0}
+                 : get_skipped_body_mask(open_closers.back(), token->kind(),
+                                         was_command_position);
+
+    if (body_mask != 0) {
+      m_lexer.advance_past_last_peek();
+      unused(parse_command_list(body_mask));
+      is_command_position = true;
+      continue;
     }
 
     let const is_separator = token->kind() == Token::Kind::Newline ||
