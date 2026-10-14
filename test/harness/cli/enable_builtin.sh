@@ -44,6 +44,11 @@ echo "== loadable builtins are not supported:"
 do_kosh --mood bash -c 'enable -d echo nosuch; printf "delete status=%s\n" "$?"
 enable -f "$HOME/missing.so" x; printf "load status=%s\n" "$?"'
 
+echo "== a disabled builtin expands redirections as a program:"
+do_kosh --mood bash -c 'echo hi >${a:=/dev/null}; printf "builtin a=%s\n" "$a"
+enable -n echo; echo hi >${b:=/dev/null}; printf "program b=%s\n" "$b"
+command echo hi >${c:=/dev/null}; printf "command c=%s\n" "$c"'
+
 echo "== a disabled special builtin is an ordinary command:"
 do_kosh --mood sh -c 'enable -n export; export 1x; echo "the shell continues"'
 

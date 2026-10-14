@@ -34,6 +34,10 @@ enable .
 delete status=1
 -c:2:11: error: Builtin `enable`: Loadable builtins are not supported.
 load status=1
+== a disabled builtin expands redirections as a program:
+builtin a=/dev/null
+program b=
+command c=
 == a disabled special builtin is an ordinary command:
 -c:1:19: error: The command 'export' was not found.
 the shell continues
