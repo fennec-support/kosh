@@ -1101,8 +1101,7 @@ Server::complete(const JsonValue *id, const JsonValue *params) throws
                      .find_function(candidate.view())
                      .has_value() ||
                  sorted_function_names.find(candidate.view()).has_value() ||
-                 (m_context.runtime_state().koshkit_utilities_are_reachable() &&
-                  koshkit::find_util(candidate.view()).has_value() &&
+                 (m_context.is_koshkit_utility_reachable(candidate.view()) &&
                   resolver.get_status(candidate.view()) !=
                       ProgramResolver::Status::Runnable))
       {
@@ -2065,9 +2064,7 @@ Server::command_information(StringView command) throws -> Maybe<String>
       ProgramResolver::CachePolicy::Bypass);
 
   if (paths.is_empty()) {
-    if (!m_context.runtime_state().koshkit_utilities_are_reachable())
-      return None;
-    if (!koshkit::find_util(command).has_value()) return None;
+    if (!m_context.is_koshkit_utility_reachable(command)) return None;
 
     let source = String{heap_allocator(), "koshkit "};
 

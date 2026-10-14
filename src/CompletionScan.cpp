@@ -1032,7 +1032,7 @@ complete_from_flags_in_line(StringView      line,
 
   if (command.is_empty()) return None;
 
-  let const builtin_kind      = search_builtin(command);
+  let const builtin_kind      = context.find_enabled_builtin(command);
   let       shell_binary_name = command;
 
   for (usize i = command.length; i > 0; i--)
@@ -1074,7 +1074,7 @@ complete_from_flags_in_line(StringView      line,
         util_for_flags = koshkit::find_util(*second);
       }
     } else if (!is_shell_binary_completion &&
-               context.runtime_state().koshkit_utilities_are_reachable())
+               context.is_koshkit_utility_reachable(command))
     {
       util_for_flags = koshkit::find_util(command);
       if (util_for_flags.has_value() &&

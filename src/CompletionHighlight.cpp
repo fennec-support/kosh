@@ -63,7 +63,8 @@ first_word_resolves(StringView word, EvalContext &context) throws
     return false;
   }
 
-  if (search_builtin(word).has_value()) return true;
+  if (context.find_enabled_builtin(word).has_value()) return true;
+
   if (context.function_store().find_function(word).has_value()) return true;
   if (context.scope_store().find_alias(word).has_value()) return true;
 
@@ -74,8 +75,7 @@ first_word_resolves(StringView word, EvalContext &context) throws
       static_cast<int>(word.length), word.data, is_runnable ? "yes" : "no");
   if (path_status != ProgramResolver::Status::Missing) return is_runnable;
 
-  return context.runtime_state().koshkit_utilities_are_reachable() &&
-         koshkit::find_util(word).has_value();
+  return context.is_koshkit_utility_reachable(word);
 }
 
 static fn
@@ -91,8 +91,15 @@ command_word_prefixes_any(StringView word, EvalContext &context) throws
     return utils::smart_case_prefix_matches(name, word, is_case_sensitive);
   };
 
-  for (let const &builtin_name : builtin_names())
-    if (do_has_prefix(builtin_name.view())) return true;
+  let const &builtin_name_list = builtin_names();
+
+  for (usize i = 0; i < builtin_name_list.count(); i++) {
+    if (context.is_builtin_entry_enabled(static_cast<u8>(i)) &&
+        do_has_prefix(builtin_name_list[i].view()))
+    {
+      return true;
+    }
+  }
 
   bool was_found = false;
 
@@ -113,9 +120,14 @@ command_word_prefixes_any(StringView word, EvalContext &context) throws
 
   if (context.program_resolver().command_name_has_prefix(word)) return true;
 
-  if (context.runtime_state().koshkit_utilities_are_reachable()) {
-    for (let const &util_name : koshkit::util_names())
-      if (do_has_prefix(util_name.view())) return true;
+  let const &util_names = koshkit::util_names();
+
+  for (usize i = 0; i < util_names.count(); i++) {
+    if (context.is_koshkit_utility_index_reachable(static_cast<u8>(i)) &&
+        do_has_prefix(util_names[i].view()))
+    {
+      return true;
+    }
   }
 
   return false;

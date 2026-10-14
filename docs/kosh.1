@@ -1270,12 +1270,15 @@ builtins,
 .BR "set +r" ,
 and every form of the
 .B koshkit
-builtin. Numeric descriptor duplication remains available. A command word never
-falls back to a bundled utility, so a restricted shell runs only the builtins
-and the programs its PATH provides.
+builtin. Numeric descriptor duplication remains available. A command word falls
+back only to a bundled utility that a startup file enabled with
+.BR enable .
 .BR type ,
 .BR "command \-v" ,
-and completion do not offer the bundled utilities.
+and completion offer only those utilities. After startup,
+.B enable
+can disable a builtin but cannot enable a disabled builtin, and it cannot enable
+or disable a bundled utility.
 .B set \-o posix
 remains available, as in bash. Changes to the restricted_shell shopt value are
 accepted without effect.
@@ -1712,8 +1715,10 @@ function, a command group, and
 .B exec
 expand in the shell itself, and so do those of every command in the kosh mood.
 .SH COMMAND EXECUTION
-Command lookup checks functions, builtins, cached program paths, PATH, and
-bundled koshkit commands when the active mood and options enable them. Running a
+Command lookup checks functions, enabled builtins, cached program paths, PATH,
+and bundled koshkit commands when the active mood, the options, or the
+.B enable
+builtin allow them. Running a
 command or using the
 .B hash
 builtin caches its resolved program path. A change to the contents of any PATH
@@ -2252,16 +2257,51 @@ or empty report. Under the
 .B sh
 mood the name is not a keyword and is resolved on the command search path.
 .TP
+.B "enable [\-a] [\-d] [\-n] [\-p] [\-s] [\-f filename] [name ...]"
+Each operand is enabled, or disabled with
+.BR \-n .
+An operand can be a builtin or a bundled utility. Each builtin word is a
+separate entry, so disabling
+.B test
+leaves
+.B [
+enabled. Command lookup skips a disabled builtin and searches PATH and the
+bundled utilities.
+.BR type ,
+.BR "command \-v" ,
+completion, and highlighting follow the same lookup, and
+.B builtin
+rejects a disabled builtin. An enabled bundled utility resolves as a command
+after PATH even when bundled utilities are otherwise unreachable, and a disabled
+one never resolves as a command. The
+.B koshkit
+builtin still runs a disabled utility. A subshell inherits the state, and the
+changes made in a subshell do not reach its parent.
+.IP
+Without an operand, the enabled builtins and the reachable bundled utilities
+are listed as
 .B enable
-Every builtin remains enabled. The
-.BR \-d ,
-.BR \-n ,
-.BR \-f ,
-and
-.B \-s
-flags are accepted without effect. The
+commands, with the builtins first and each group in sorted order. The
+.B \-n
+option lists the disabled builtins and utilities as
+.B "enable \-n"
+commands, and
 .B \-a
-option lists every builtin.
+lists both groups. The
+.B \-s
+option limits a listing to the special builtins, which include
+.B source
+in the bash moods. With
+.BR \-p ,
+a listing is printed even when operands are given, and the operands are
+ignored. A builtin that the mood hides, such as
+.B let
+in the sh mood, is neither listed nor accepted as an operand. A disabled special
+builtin loses its special properties. Koshka has no loadable builtins, so
+.B \-f
+with an operand fails, and
+.B \-d
+fails for each operand. Without an operand, both options list the builtins.
 .TP
 .B hash
 Resolved command locations are remembered or listed. The

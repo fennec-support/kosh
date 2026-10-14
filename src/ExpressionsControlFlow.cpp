@@ -1249,9 +1249,10 @@ CaseClause::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -
 
   LOG(Debug, "the case subject expanded to '%s'", subject.c_str());
 
-  let const extglob             = cxt.get_extglob_mode();
-  let const charset             = cxt.get_glob_charset_for(subject.view());
-  let const is_case_insensitive = cxt.is_shopt_enabled("nocasematch");
+  let const extglob = cxt.get_extglob_mode();
+  let const charset = cxt.get_glob_charset_for(subject.view());
+  let const is_case_insensitive =
+      cxt.is_shopt_enabled(shopt_option_id::Nocasematch);
   let const folded_subject =
       is_case_insensitive
           ? utils::lowercase_for_glob(subject.view(), charset, heap_allocator())

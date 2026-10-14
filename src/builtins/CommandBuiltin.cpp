@@ -140,10 +140,7 @@ CommandBuiltin::execute(ExecContext &ec, EvalContext &cxt) const throws
         continue;
       }
 
-      if (let const kind = search_builtin(name.view());
-          kind.has_value() &&
-          !builtin_is_hidden_by_mood(*kind, cxt.runtime_state().get_mood()))
-      {
+      if (cxt.find_enabled_builtin(name.view()).has_value()) {
         ec.print_to_stdout(is_verbose ? name + " is a shell builtin\n"
                                       : name + "\n");
         did_find_any = true;
@@ -170,9 +167,7 @@ CommandBuiltin::execute(ExecContext &ec, EvalContext &cxt) const throws
         continue;
       }
 
-      if (cxt.runtime_state().koshkit_utilities_are_reachable() &&
-          koshkit::find_util(name.view()).has_value())
-      {
+      if (cxt.is_koshkit_utility_reachable(name.view())) {
         ec.print_to_stdout(is_verbose ? name + " is a built-in utility\n"
                                       : name + "\n");
         did_find_any = true;
@@ -208,9 +203,9 @@ CommandBuiltin::execute(ExecContext &ec, EvalContext &cxt) const throws
   try {
     sub = ExecContext::make_from(
         ec.source_location(), cxt.source_store().current_source_view(),
-        steal(operand_args), cxt.runtime_state().koshkit(),
-        cxt.is_shopt_enabled("checkhash"), *resolver,
-        steal(operand_arg_locations), cxt.runtime_state().get_mood());
+        steal(operand_args), cxt,
+        cxt.is_shopt_enabled(shopt_option_id::Checkhash), *resolver,
+        steal(operand_arg_locations));
   } catch (const CommandResolutionErrorWithLocation &resolution_error) {
     LOG(Debug, "command handled a resolution error: %s",
         resolution_error.message().c_str());

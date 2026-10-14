@@ -26,6 +26,8 @@
 
 namespace koshka {
 
+class EvalContextState;
+
 struct nonstandard_descriptor
 {
   os::descriptor file_fd{KOSH_INVALID_FD};
@@ -41,11 +43,10 @@ public:
   make_from(const SourceLocation       &location,
             StringView                  source,
             ArrayList<String>         &&args,
-            bool                        is_koshkit_utility_reachable,
+            const EvalContextState     &command_lookup,
             bool                        should_check_hash,
             ProgramResolver            &program_resolver,
             ArrayList<SourceLocation> &&arg_locations,
-            mimic_mood                  mood,
             bool                        should_autocd = false) throws -> ExecContext;
 
   static fn

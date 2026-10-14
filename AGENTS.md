@@ -75,6 +75,11 @@ the completed file over it, and locks the directory. Restricted shells reject
 forms that change settings. Every spawn prepares the child environment and
 rewrites an exported KOSHCONF.
 
+EnabledCommandStore holds the builtin words and bundled utilities that enable
+has turned on or off. Command lookup, completion, highlighting, hints, and
+analysis read it through find_enabled_builtin, is_builtin_name_disabled, and
+is_koshkit_utility_reachable on EvalContextState.
+
 Each store owns its state and operations. Scope guards restore saved state.
 Snapshots carry shell options, directories, the working directory, and the
 creation mask. Fresh evaluators receive replayable source and framed store

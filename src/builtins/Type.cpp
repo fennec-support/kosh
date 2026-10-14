@@ -140,14 +140,12 @@ Type::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                cxt.function_store().find_function(name).has_value())
     {
       word = "function";
-    } else if (let const kind = search_builtin(name.view());
-               kind.has_value() && !builtin_is_hidden_by_mood(
-                                       *kind, cxt.runtime_state().get_mood()))
+    } else if (let const kind = cxt.find_enabled_builtin(name.view());
+               kind.has_value())
     {
       word         = "builtin";
       builtin_kind = kind;
-    } else if (cxt.runtime_state().koshkit_utilities_are_reachable() &&
-               koshkit::find_util(name.view()).has_value() &&
+    } else if (cxt.is_koshkit_utility_reachable(name.view()) &&
                cxt.program_resolver().get_status(
                    name, ProgramResolver::StatusLookup::Authoritative) ==
                    ProgramResolver::Status::Missing)

@@ -1364,8 +1364,10 @@ expand_make_glob(EvalContext &cxt, StringView pattern) throws
 
   let const runtime_scope = RuntimeStateScope{cxt};
 
-  for (let const option_name : {"dotglob", "globstar", "nocaseglob", "extglob"})
-    cxt.set_shopt_option(StringView{option_name}, false);
+  for (let const option :
+       {shopt_option_id::Dotglob, shopt_option_id::Globstar,
+        shopt_option_id::Nocaseglob, shopt_option_id::Extglob})
+    cxt.set_shopt_option(option, false);
 
   for (let const &match : cxt.expand_glob_lenient(pattern))
     matches.push(match.clone());

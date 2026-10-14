@@ -311,11 +311,34 @@ run_compgen_actions(EvalContext     &cxt,
     });
   }
 
-  if (do_wants(compgen_action::Builtin) || do_wants(compgen_action::Enabled) ||
-      do_wants(compgen_action::HelpTopic))
-  {
-    for (let const &name : builtin_names())
-      emitter.push_prefixed(name.view());
+  let const should_list_every_builtin =
+      do_wants(compgen_action::Builtin) || do_wants(compgen_action::HelpTopic);
+  let const should_list_enabled =
+      should_list_every_builtin || do_wants(compgen_action::Enabled);
+  let const should_list_disabled =
+      should_list_every_builtin || do_wants(compgen_action::Disabled);
+
+  if (should_list_enabled || should_list_disabled) {
+    let const &builtin_name_list = builtin_names();
+    let        listed_names = ArrayList<StringView>{cxt.scratch_allocator()};
+
+    for (usize i = 0; i < builtin_name_list.count(); i++) {
+      let const is_hidden_by_mood = builtin_is_hidden_by_mood(
+          BUILTIN_ENTRIES[i].value, cxt.runtime_state().get_mood());
+      let const is_disabled =
+          cxt.enabled_command_store().is_builtin_entry_disabled(
+              static_cast<u8>(i));
+      let const is_listed =
+          should_list_every_builtin ||
+          (!is_hidden_by_mood &&
+           (is_disabled ? should_list_disabled : should_list_enabled));
+
+      if (is_listed) listed_names.push(builtin_name_list[i].view());
+    }
+
+    listed_names.sort();
+    for (let const name : listed_names)
+      emitter.push_prefixed(name);
   }
 
   if (do_wants(compgen_action::Command)) {

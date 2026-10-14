@@ -1,21 +1,54 @@
-== enable with no args returns 0:
-rc=0
-== enable compgen unset returns 0:
-rc=0
-== enable -n echo returns 0:
-rc=0
-== enable -a lists builtins:
-enable echo
-enable exit
-enable cd
-== enable -f file echo returns 0:
-rc=0
-== enable -s returns 0:
-rc=0
-== enable nosuchbuiltin reports and exits 1:
+== a disabled builtin yields to PATH:
+program echo hi
+file
+-c:2:9: error: Builtin `builtin`: 'echo' is not a shell builtin.
+builtin status=1
+enable -n echo
+echo
+file
+builtin
+file
+back
+builtin
+== each builtin word is a separate entry:
+[ stays
+-c:2:1: error: The command 'test' was not found.
+test status=127
+test
+test
+== -s lists only special builtins:
+export listed
+trap listed
+source listed
+echo omitted
+cd omitted
+== listings are sorted and -a marks disabled entries:
+enable .|enable :|enable [
+enable -n test
+cd
+test
+enable .
+== loadable builtins are not supported:
+-c:1:11: error: Builtin `enable`: 'echo' is not dynamically loaded.
+-c:1:16: error: Builtin `enable`: 'nosuch' is not a shell builtin.
+delete status=1
+-c:2:11: error: Builtin `enable`: Loadable builtins are not supported.
+load status=1
+== a disabled special builtin is an ordinary command:
+-c:1:19: error: The command 'export' was not found.
+the shell continues
+== a bundled utility is enabled and disabled by name:
+-c:1:1: error: The command 'basename' was not found.
+status=127
+b
+builtin
+basename
+-c:3:21: error: The command 'basename' was not found.
+enable -n basename
+b
+== the kosh mood disables a reachable utility:
+b
+status=1
+== an unknown name fails:
 -c:1:8: error: Builtin `enable`: 'nosuchbuiltin' is not a shell builtin.
-     1 |  enable nosuchbuiltin
-       |         ^~~~~~~~~~~~~
-rc=1
-== builtin enable compgen unset forwards through enable:
-ok
+status=1

@@ -31,18 +31,13 @@
 namespace koshka {
 
 fn
-EvalContext::set_shopt_option(StringView name, bool is_enabled) throws
-    -> void
+EvalContext::set_shopt_index(u8 index, bool is_enabled) throws -> void
 {
-  let const index = shopt_option_index(name);
+  let const was_enabled = is_shopt_index_enabled(index);
 
-  ASSERT(index.has_value(), "unknown shopt option");
+  runtime_state().set_shopt_option(index, is_enabled);
 
-  let const was_enabled = is_shopt_enabled(name);
-
-  runtime_state().set_shopt_option(*index, is_enabled);
-
-  if (*index == shopt_option_index(shopt_option_id::Extdebug) && is_enabled &&
+  if (index == shopt_option_index(shopt_option_id::Extdebug) && is_enabled &&
       !was_enabled && runtime_state().bash_dynamic_variables_enabled())
   {
     let const context = variable_store().bash_arguments().get_context();
@@ -878,6 +873,7 @@ EvalContext::snapshot_state() throws -> eval_state_snapshot
                              subshell_store().coprocess(),
                              environment_store().snapshot(),
                              RuntimeState::capture(*this),
+                             enabled_command_store(),
                              program_resolver(),
                              steal(working_directory),
                              os::get_file_creation_mask()};
@@ -962,7 +958,8 @@ EvalContext::restore_state(eval_state_snapshot snapshot) throws -> void
   scope_store().restore(steal(snapshot.scopes));
   execution_store().restore(steal(snapshot.execution));
   snapshot.runtime.restore(*this);
-  program_resolver() = steal(snapshot.program_resolver);
+  enabled_command_store() = snapshot.enabled_commands;
+  program_resolver()      = steal(snapshot.program_resolver);
   runtime_control_store().restore(snapshot.control);
   dynamic_runtime_store().set_clock(snapshot.clock);
   job_table_store().restore_snapshot(steal(snapshot.jobs));
@@ -995,7 +992,7 @@ EvalContext::restore_state(eval_state_snapshot snapshot) throws -> void
 }
 
 static constexpr u32 SUBSHELL_BOOTSTRAP_MAGIC   = 0x4b534842U;
-static constexpr u32 SUBSHELL_BOOTSTRAP_VERSION = 21U;
+static constexpr u32 SUBSHELL_BOOTSTRAP_VERSION = 22U;
 static constexpr u32 NO_BOOTSTRAP_PROCESS       = UINT32_MAX;
 static constexpr u32 NO_BARE_PROGRAM_PATH       = UINT32_MAX;
 
@@ -1057,6 +1054,7 @@ enum class wire_section : u8
   Programs,
   Origin,
   Diagnostics,
+  EnabledCommands,
 };
 
 enum class local_binding_wire_flag : u8
@@ -1247,6 +1245,19 @@ DiagnosticsStore::append_wire(String &output) const throws -> void
   append_wire_section(output, wire_section::Diagnostics, [&](String &payload) {
     payload.push(static_cast<char>(m_is_source_traces_enabled));
   });
+}
+
+fn
+EnabledCommandStore::append_wire(String &output) const throws -> void
+{
+  append_wire_section(
+      output, wire_section::EnabledCommands, [&](String &payload) {
+        for (usize i = 0; i < WORD_COUNT; i++) {
+          append_subshell_bootstrap_u64(payload, m_disabled_builtins[i]);
+          append_subshell_bootstrap_u64(payload, m_enabled_utilities[i]);
+          append_subshell_bootstrap_u64(payload, m_disabled_utilities[i]);
+        }
+      });
 }
 
 fn
@@ -1962,6 +1973,24 @@ DiagnosticsStore::from_wire(subshell_bootstrap_reader &reader,
 
   return read_subshell_bootstrap_bool(payload, is_source_traces_enabled) &&
          payload.is_fully_read();
+}
+
+fn
+EnabledCommandStore::from_wire(subshell_bootstrap_reader &reader,
+                               EnabledCommandStore       &store) wontthrow -> bool
+{
+  subshell_bootstrap_reader payload;
+
+  if (!reader.read_section(wire_section::EnabledCommands, payload))
+    return false;
+
+  for (usize i = 0; i < WORD_COUNT; i++) {
+    store.m_disabled_builtins[i]  = payload.read_u64();
+    store.m_enabled_utilities[i]  = payload.read_u64();
+    store.m_disabled_utilities[i] = payload.read_u64();
+  }
+
+  return payload.is_fully_read();
 }
 
 fn
@@ -2777,6 +2806,7 @@ EvalContext::make_subshell_bootstrap() const throws
   runtime_control_store().append_wire(body);
   program_resolver().append_wire(body);
   diagnostics_store().append_wire(body);
+  enabled_command_store().append_wire(body);
 
   if (body.count() > UINT32_MAX) throw std::bad_alloc{};
   append_subshell_bootstrap_u32(source, SUBSHELL_BOOTSTRAP_MAGIC);
@@ -3308,6 +3338,7 @@ EvalContext::apply_subshell_bootstrap(os::subshell_bootstrap bootstrap)
   let  variables                = variable_wire{};
   let  startup                  = startup_wire{};
   bool is_source_traces_enabled = true;
+  let  enabled_commands         = EnabledCommandStore{};
   let  functions                = function_wire{};
   let  local_scopes = ArrayList<ArrayList<local_binding>>{heap_allocator()};
   let  completion   = completion_snapshot{
@@ -3330,7 +3361,8 @@ EvalContext::apply_subshell_bootstrap(os::subshell_bootstrap bootstrap)
       !TrapStore::from_wire(reader, startup_ignored_signals) ||
       !RuntimeControlStore::from_wire(reader, control) ||
       !ProgramResolver::from_wire(reader, execution_cache) ||
-      !DiagnosticsStore::from_wire(reader, is_source_traces_enabled))
+      !DiagnosticsStore::from_wire(reader, is_source_traces_enabled) ||
+      !EnabledCommandStore::from_wire(reader, enabled_commands))
   {
     invalid_subshell_bootstrap();
   }
@@ -3366,6 +3398,7 @@ EvalContext::apply_subshell_bootstrap(os::subshell_bootstrap bootstrap)
   startup_store().set_login_shell(startup.is_login_shell);
   startup_store().set_init_moods(startup.init_moods.view());
   diagnostics_store().set_source_traces_enabled(is_source_traces_enabled);
+  enabled_command_store() = enabled_commands;
   runtime.restore(*this);
 
   execution_store().apply_wire(steal(execution));

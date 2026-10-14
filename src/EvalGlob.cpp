@@ -171,7 +171,7 @@ EvalContext::expand_path_once(const glob_field   &field,
 
   let const is_dot_pattern = glob[0] == '.';
 
-  if (is_dot_pattern && !is_shopt_enabled("globskipdots")) {
+  if (is_dot_pattern && !is_shopt_enabled(shopt_option_id::Globskipdots)) {
     entries->push(Path::DirectoryChild{
         String{heap_allocator(), "."},
         Path::EntryKind::Directory
@@ -182,10 +182,10 @@ EvalContext::expand_path_once(const glob_field   &field,
     });
   }
 
-  let const           dotglob_is_on    = is_shopt_enabled("dotglob");
-  let const           nocaseglob_is_on = is_shopt_enabled("nocaseglob");
-  let const           extglob          = get_extglob_mode();
-  Maybe<glob_charset> locale_charset   = None;
+  let const dotglob_is_on    = is_shopt_enabled(shopt_option_id::Dotglob);
+  let const nocaseglob_is_on = is_shopt_enabled(shopt_option_id::Nocaseglob);
+  let const extglob          = get_extglob_mode();
+  Maybe<glob_charset> locale_charset = None;
 
   let const do_get_entry_charset =
       [&](StringView filename) throws -> glob_charset {
@@ -591,13 +591,14 @@ EvalContext::expand_path_recurse(ArrayList<glob_field> fields) throws
         break;
       }
 
-    let const component_end         = slash_after.value_or(text.length);
-    let const is_globstar_component = component_end - component_start == 2 &&
-                                      text.data[component_start] == '*' &&
-                                      text.data[component_start + 1] == '*' &&
-                                      field.glob_active[component_start] &&
-                                      field.glob_active[component_start + 1] &&
-                                      is_shopt_enabled("globstar");
+    let const component_end = slash_after.value_or(text.length);
+    let const is_globstar_component =
+        component_end - component_start == 2 &&
+        text.data[component_start] == '*' &&
+        text.data[component_start + 1] == '*' &&
+        field.glob_active[component_start] &&
+        field.glob_active[component_start + 1] &&
+        is_shopt_enabled(shopt_option_id::Globstar);
 
     if (is_globstar_component) {
       LOG(All, "expanding a globstar component across directory levels");
@@ -617,9 +618,10 @@ EvalContext::expand_path_recurse(ArrayList<glob_field> fields) throws
           !has_pattern_after || component_start != 0;
       let relatives = ArrayList<String>{scratch};
 
-      collect_globstar_paths(
-          base, StringView{""}, directory_position, is_shopt_enabled("dotglob"),
-          should_list_symlinked_directories, true, 0, scratch, relatives);
+      collect_globstar_paths(base, StringView{""}, directory_position,
+                             is_shopt_enabled(shopt_option_id::Dotglob),
+                             should_list_symlinked_directories, true, 0,
+                             scratch, relatives);
 
       if (!directory_position) {
         if (!prefix.is_empty()) {
@@ -980,7 +982,7 @@ EvalContext::expand_path(glob_field            field,
                                     : Maybe<String>{};
   let const has_glob_ignore =
       glob_ignore_value.has_value() && !glob_ignore_value->is_empty();
-  let const should_fold_case = is_shopt_enabled("nocaseglob");
+  let const should_fold_case = is_shopt_enabled(shopt_option_id::Nocaseglob);
   let const ignored_patterns =
       has_glob_ignore ? parse_glob_ignore_patterns(glob_ignore_value->view(),
                                                    should_fold_case, scratch)
@@ -1047,7 +1049,7 @@ EvalContext::expand_path(glob_field            field,
     }
 
     if (expansion_store().glob_exempt_for_test() ||
-        !is_shopt_enabled("nullglob"))
+        !is_shopt_enabled(shopt_option_id::Nullglob))
     {
       values.push(steal(pattern));
     }

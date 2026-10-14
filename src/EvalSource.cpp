@@ -543,28 +543,6 @@ EvalContext::run_mimicked_script(ExecContext     &ec,
   return status;
 }
 
-pure fn
-EvalContext::shopt_default_is_on(StringView name) wontthrow -> bool
-{
-  static constexpr PackedStringKey KEYS[] = {
-      SSK("progcomp"),
-      SSK("promptvars"),
-      SSK("sourcepath"),
-      SSK("extquote"),
-      SSK("complete_fullquote"),
-      SSK("hostcomplete"),
-      SSK("checkwinsize"),
-      SSK("force_fignore"),
-      SSK("globasciiranges"),
-      SSK("globskipdots"),
-      SSK("interactive_comments"),
-      SSK("patsub_replacement"),
-  };
-  static constexpr StaticStringSet DEFAULT_ON_SHOPT_NAMES{KEYS};
-
-  return DEFAULT_ON_SHOPT_NAMES.contains(name);
-}
-
 fn
 EvalContext::run_source(StringView                source,
                         StringView                origin,

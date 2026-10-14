@@ -1,7 +1,8 @@
 unset KOSH_FLAGS KOSHCONF
-# A restricted shell refuses the koshkit builtin and never falls back to a
-# bundled utility for a bare name, so no bundled utility runs a program or
-# writes a file, and type, command -v, and hash do not offer one.
+# A restricted shell refuses the koshkit builtin and falls back to a bundled
+# utility for a bare word only after a startup file enabled it. No other
+# bundled utility runs a program or writes a file, and type, command -v, and
+# hash do not offer one.
 work=$(mktemp -d)
 trap 'cd / && [ -n "$work" ] && "$BIN_DIR/invoke-koshkit" rm -rf -- "$work"' EXIT
 mkdir "$work/empty" "$work/run"
@@ -35,6 +36,16 @@ echo "== type, command -v, and hash do not offer a bundled utility:"
 do_restricted -c 'type env; echo "type status=$?"
 command -v env; echo "command status=$?"
 hash env; echo "hash status=$?"'
+
+echo "== a startup file enables a utility and disables a builtin:"
+printf 'enable basename\nenable -n echo\n' >"$work/startup"
+env -i ASAN_OPTIONS="${ASAN_OPTIONS-}" PATH="$work/empty" HOME="$work" XDG_CONFIG_HOME="$work/config" \
+  BASH_ENV="$work/startup" "$BIN" -r --mood bash -c 'basename a/b; type -t basename
+enable echo; printf "enable status=%s\n" "$?"
+enable -n basename; printf "disable status=%s\n" "$?"
+koshkit basename a/b; printf "koshkit status=%s\n" "$?"
+enable -n type; printf "disable builtin status=%s\n" "$?"
+type basename' 2>&1 | grep -v -e '^ ' -e '^note:'
 
 echo "== an unrestricted shell still runs them:"
 env -i ASAN_OPTIONS="${ASAN_OPTIONS-}" PATH="$work/empty" HOME="$work" XDG_CONFIG_HOME="$work/config" \

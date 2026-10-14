@@ -1134,13 +1134,11 @@ Pipeline::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> 
     try {
       stage_ec = ExecContext::make_from(
           e->source_location(), cxt.source_store().current_source_view(),
-          steal(stage_args),
-          cxt.runtime_state().koshkit_utilities_are_reachable(),
+          steal(stage_args), cxt,
           cxt.runtime_state().is_shopt_enabled(shopt_option_id::Checkhash),
           cxt.program_resolver(), steal(stage_arg_locations),
-          cxt.runtime_state().get_mood(),
           cxt.execution_store().shell_is_interactive() &&
-              cxt.is_shopt_enabled("autocd"));
+              cxt.is_shopt_enabled(shopt_option_id::Autocd));
     } catch (CommandResolutionErrorWithLocation &resolution_error) {
       let const windowed = window_function_body_error(cxt, resolution_error);
       let const rendered = resolution_error.to_string(

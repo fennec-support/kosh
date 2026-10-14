@@ -188,6 +188,29 @@ inline constexpr static_string_entry<Builtin::Kind> BUILTIN_ENTRIES[] = {
 
 inline constexpr StaticStringMap BUILTINS{BUILTIN_ENTRIES};
 
+inline constexpr usize BUILTIN_ENTRY_COUNT = countof(BUILTIN_ENTRIES);
+
+struct builtin_entry_position_table
+{
+  static_string_entry<u8> entries[BUILTIN_ENTRY_COUNT]{};
+};
+
+consteval fn
+make_builtin_entry_positions() wontthrow -> builtin_entry_position_table
+{
+  builtin_entry_position_table table{};
+
+  for (usize i = 0; i < BUILTIN_ENTRY_COUNT; i++)
+    table.entries[i] = {BUILTIN_ENTRIES[i].key, static_cast<u8>(i)};
+
+  return table;
+}
+
+inline constexpr auto BUILTIN_ENTRY_POSITION_TABLE =
+    make_builtin_entry_positions();
+inline constexpr StaticStringMap BUILTIN_ENTRY_POSITIONS{
+    BUILTIN_ENTRY_POSITION_TABLE.entries};
+
 #define T__BUILTIN_CASE(kind, section, should_dispatch_help)                   \
   case Builtin::Kind::kind: {                                                  \
     kind builtin;                                                              \

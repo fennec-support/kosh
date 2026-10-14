@@ -58,7 +58,7 @@ Shift::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   }
 
   if (static_cast<usize>(shift_count) > params.count()) {
-    if (cxt.is_shopt_enabled("shift_verbose") ||
+    if (cxt.is_shopt_enabled(shopt_option_id::ShiftVerbose) ||
         cxt.runtime_state().is_posix_mode())
     {
       report_soft_builtin_error(ec, cxt, ec.arg_location_at(1),

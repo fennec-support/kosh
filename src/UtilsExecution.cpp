@@ -421,7 +421,7 @@ execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs,
         is_last && !is_async &&
         (!unresolved_stages.is_empty() ||
          (cxt.runtime_state().is_bash_compatible() &&
-          (!cxt.is_shopt_enabled("lastpipe") ||
+          (!cxt.is_shopt_enabled(shopt_option_id::Lastpipe) ||
            cxt.runtime_state().option_is_enabled(shell_option_id::Monitor))));
 
     if (!is_last) {
@@ -561,7 +561,9 @@ execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs,
           }
 
           if (ec.builtin_kind() == Builtin::Kind::Koshkit &&
-              ec.program() != "koshkit")
+              ec.program() != "koshkit" &&
+              !cxt.runtime_state().option_is_enabled(
+                  shell_option_id::Restricted))
           {
             stage_source.append("koshkit ");
           }

@@ -538,20 +538,27 @@ collect_command_names(StringView                   token,
   for (let const &keyword_name : keyword_names())
     do_add(keyword_name.view());
 
-  for (let const &builtin_name : builtin_names())
-    do_add(builtin_name.view());
+  let const &builtin_name_list = builtin_names();
 
-  if (context.runtime_state().koshkit_utilities_are_reachable()) {
-    for (let const &util_name : koshkit::util_names()) {
-      if (!is_glob_token && !collector.allows_fuzzy_fallback() &&
-          !utils::smart_case_prefix_matches(util_name.view(), token,
-                                            is_case_sensitive))
-      {
-        continue;
-      }
+  for (usize i = 0; i < builtin_name_list.count(); i++) {
+    if (!context.is_builtin_entry_enabled(static_cast<u8>(i))) continue;
+    do_add(builtin_name_list[i].view());
+  }
 
-      do_add(util_name.view());
+  let const &util_names = koshkit::util_names();
+
+  for (usize i = 0; i < util_names.count(); i++) {
+    let const utility_index = static_cast<u8>(i);
+
+    if (!context.is_koshkit_utility_index_reachable(utility_index)) continue;
+    if (!is_glob_token && !collector.allows_fuzzy_fallback() &&
+        !utils::smart_case_prefix_matches(util_names[i].view(), token,
+                                          is_case_sensitive))
+    {
+      continue;
     }
+
+    do_add(util_names[i].view());
   }
 
   if (extra_command_names != nullptr) {

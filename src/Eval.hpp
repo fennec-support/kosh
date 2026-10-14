@@ -691,6 +691,92 @@ RuntimeState::set_annoying_diagnostics_enabled(bool is_enabled)
   m_reporting.is_annoying_disabled = !is_enabled;
 }
 
+enum class utility_toggle : u8
+{
+  Default,
+  Enabled,
+  Disabled,
+};
+
+class EnabledCommandStore
+{
+public:
+  static constexpr usize WORD_COUNT = 2;
+
+  pure fn
+  has_disabled_builtins() const wontthrow -> bool
+  {
+    return (m_disabled_builtins[0] | m_disabled_builtins[1]) != 0;
+  }
+
+  pure fn
+  is_builtin_entry_disabled(u8 entry_position) const wontthrow -> bool
+  {
+    return has_bit(m_disabled_builtins, entry_position);
+  }
+
+  fn
+  set_builtin_entry_disabled(u8 entry_position, bool is_disabled) wontthrow
+      -> void
+  {
+    set_bit(m_disabled_builtins, entry_position, is_disabled);
+  }
+
+  pure fn
+  get_utility_toggle(u8 utility_index) const wontthrow -> utility_toggle
+  {
+    if (has_bit(m_enabled_utilities, utility_index))
+      return utility_toggle::Enabled;
+    if (has_bit(m_disabled_utilities, utility_index))
+      return utility_toggle::Disabled;
+
+    return utility_toggle::Default;
+  }
+
+  fn
+  set_utility_toggle(u8 utility_index, utility_toggle toggle) wontthrow -> void
+  {
+    set_bit(m_enabled_utilities, utility_index,
+            toggle == utility_toggle::Enabled);
+    set_bit(m_disabled_utilities, utility_index,
+            toggle == utility_toggle::Disabled);
+  }
+
+  fn
+  append_wire(String &output) const throws -> void;
+  static fn
+  from_wire(subshell_bootstrap_reader &reader,
+            EnabledCommandStore       &store) wontthrow -> bool;
+
+private:
+  static_assert(BUILTIN_ENTRY_COUNT <= WORD_COUNT * 64);
+
+  static pure fn
+  has_bit(const u64 (&words)[WORD_COUNT], u8 index) wontthrow -> bool
+  {
+    ASSERT(index / 64U < WORD_COUNT);
+
+    return (words[index / 64U] & (u64{1} << (index % 64U))) != 0;
+  }
+
+  static fn
+  set_bit(u64 (&words)[WORD_COUNT], u8 index, bool is_set) wontthrow -> void
+  {
+    ASSERT(index / 64U < WORD_COUNT);
+
+    let const mask = u64{1} << (index % 64U);
+
+    if (is_set)
+      words[index / 64U] |= mask;
+    else
+      words[index / 64U] &= ~mask;
+  }
+
+  u64 m_disabled_builtins[WORD_COUNT]{};
+  u64 m_enabled_utilities[WORD_COUNT]{};
+  u64 m_disabled_utilities[WORD_COUNT]{};
+};
+
 } /* namespace koshka */
 
 #include "EvalOperations.hpp"
@@ -1885,22 +1971,32 @@ shopt_option_index(StringView name) wontthrow -> Maybe<u8>;
 enum class shopt_option_id : u8
 {
   Autocd,
+  CdableVars,
   Checkhash,
+  Dotglob,
   ExpandAliases,
   Extdebug,
   Extglob,
+  Globskipdots,
+  Globstar,
   InheritErrexit,
   Lastpipe,
   LocalvarInherit,
   LocalvarUnset,
+  Nocaseglob,
+  Nocasematch,
   Nullglob,
   PatsubReplacement,
   Progcomp,
   ProgcompAlias,
+  ShiftVerbose,
   Sourcepath,
+  XpgEcho,
 };
 pure fn
 shopt_option_index(shopt_option_id option) wontthrow -> u8;
+pure fn
+shopt_default_is_on(u8 index) wontthrow -> bool;
 
 inline pure fn
 RuntimeState::is_shopt_enabled(shopt_option_id option) const wontthrow -> bool
@@ -4492,6 +4588,47 @@ public:
   }
 
   fn
+  enabled_command_store() wontthrow -> EnabledCommandStore &
+  {
+    return m_enabled_command_store;
+  }
+
+  pure fn
+  enabled_command_store() const wontthrow -> const EnabledCommandStore &
+  {
+    return m_enabled_command_store;
+  }
+
+  pure fn
+  is_builtin_entry_enabled(u8 entry_position) const wontthrow -> bool
+  {
+    return !builtin_is_hidden_by_mood(BUILTIN_ENTRIES[entry_position].value,
+                                      m_runtime.get_mood()) &&
+           !m_enabled_command_store.is_builtin_entry_disabled(entry_position);
+  }
+
+  fn
+  is_builtin_name_disabled(StringView name) const throws -> bool;
+
+  pure fn
+  is_koshkit_utility_index_reachable(u8 utility_index) const wontthrow -> bool
+  {
+    switch (m_enabled_command_store.get_utility_toggle(utility_index)) {
+    case utility_toggle::Enabled:  return true;
+    case utility_toggle::Disabled: return false;
+    case utility_toggle::Default:  break;
+    }
+
+    return m_runtime.koshkit_utilities_are_reachable();
+  }
+
+  fn
+  find_enabled_builtin(StringView name) const throws
+      -> Maybe<Builtin::Kind>;
+  fn
+  is_koshkit_utility_reachable(StringView name) const throws -> bool;
+
+  fn
   scope_store() wontthrow -> ScopeStore &
   {
     return m_scope_store;
@@ -4630,6 +4767,7 @@ protected:
   HistoryRecorder        m_history_recorder{};
   SourceRetention        m_source_retention{};
   RuntimeState           m_runtime{};
+  EnabledCommandStore    m_enabled_command_store{};
   RuntimeControlStore    m_runtime_control_store{};
   ProgramResolver        m_program_resolver{};
   TrapStore              m_trap_store{};
@@ -5602,7 +5740,8 @@ public:
   pure fn
   get_extglob_mode() const wontthrow -> extglob_mode
   {
-    return !runtime_state().is_posix_mode() && is_shopt_enabled("extglob")
+    return !runtime_state().is_posix_mode() &&
+                   is_shopt_enabled(shopt_option_id::Extglob)
                ? extglob_mode::Enabled
                : extglob_mode::Disabled;
   }
@@ -5621,31 +5760,40 @@ public:
   }
 
   fn
-  set_shopt_option(StringView name, bool is_enabled) throws -> void;
-  pure fn
-  is_shopt_enabled(StringView name) const wontthrow -> bool
+  set_shopt_index(u8 index, bool is_enabled) throws -> void;
+  fn
+  set_shopt_option(shopt_option_id option, bool is_enabled) throws
+      -> void
   {
-    let const index = shopt_option_index(name);
-    if (!index.has_value()) return false;
-    if (*index == shopt_option_index(shopt_option_id::Nullglob) &&
+    set_shopt_index(shopt_option_index(option), is_enabled);
+  }
+
+  pure fn
+  is_shopt_enabled(shopt_option_id option) const wontthrow -> bool
+  {
+    return is_shopt_index_enabled(shopt_option_index(option));
+  }
+
+  pure fn
+  is_shopt_index_enabled(u8 index) const wontthrow -> bool
+  {
+    if (index == shopt_option_index(shopt_option_id::Nullglob) &&
         runtime_state().get_mood() == mimic_mood::Default)
     {
       return false;
     }
 
-    if (runtime_state().is_shopt_option_overridden(*index))
-      return runtime_state().is_shopt_option_enabled(*index);
-    if (*index == shopt_option_index(shopt_option_id::Extglob))
+    if (runtime_state().is_shopt_option_overridden(index))
+      return runtime_state().is_shopt_option_enabled(index);
+    if (index == shopt_option_index(shopt_option_id::Extglob))
       return runtime_state().get_mood() == mimic_mood::Default;
-    if (*index == shopt_option_index(shopt_option_id::Autocd)) return true;
-    if (*index == shopt_option_index(shopt_option_id::ExpandAliases))
+    if (index == shopt_option_index(shopt_option_id::Autocd)) return true;
+    if (index == shopt_option_index(shopt_option_id::ExpandAliases))
       return runtime_state().get_mood() != mimic_mood::Bash ||
              execution_store().shell_is_interactive();
 
-    return shopt_default_is_on(name);
+    return shopt_default_is_on(index);
   }
-  static pure fn
-  shopt_default_is_on(StringView name) wontthrow -> bool;
 
   fn
   enter_loop() wontthrow -> void;

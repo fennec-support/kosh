@@ -1549,7 +1549,13 @@ read_boolean(const EvalContext       &cxt,
   case option_storage::ShellOption:
   case option_storage::EditorMode:
     return state.option_is_enabled(option.shell_option);
-  case option_storage::Shopt:    return cxt.is_shopt_enabled(option.shopt_name);
+  case option_storage::Shopt: {
+    let const index = shopt_option_index(option.shopt_name);
+
+    ASSERT(index.has_value());
+
+    return cxt.is_shopt_index_enabled(*index);
+  }
   case option_storage::Failglob: return state.failglob();
   case option_storage::Posix:    return state.is_posix_option_on();
   case option_storage::AnnoyingDiagnostics:
@@ -1624,10 +1630,14 @@ write_boolean(EvalContext             &cxt,
     write_shell_option(cxt, option, is_enabled);
 
     return;
-  case option_storage::Shopt:
-    cxt.set_shopt_option(option.shopt_name, is_enabled);
+  case option_storage::Shopt: {
+    let const index = shopt_option_index(option.shopt_name);
+
+    ASSERT(index.has_value());
+    cxt.set_shopt_index(*index, is_enabled);
 
     return;
+  }
   case option_storage::Failglob:
     cxt.runtime_control_store().option_mutations().note(
         shell_option_id::Failglob);
@@ -1827,14 +1837,22 @@ shopt_option_index(shopt_option_id option) wontthrow -> u8
   switch (option) {
   case shopt_option_id::Autocd:
     return compact_shopt_option_index(SSK("autocd"));
+  case shopt_option_id::CdableVars:
+    return compact_shopt_option_index(SSK("cdable_vars"));
   case shopt_option_id::Checkhash:
     return compact_shopt_option_index(SSK("checkhash"));
+  case shopt_option_id::Dotglob:
+    return compact_shopt_option_index(SSK("dotglob"));
   case shopt_option_id::ExpandAliases:
     return compact_shopt_option_index(SSK("expand_aliases"));
   case shopt_option_id::Extdebug:
     return compact_shopt_option_index(SSK("extdebug"));
   case shopt_option_id::Extglob:
     return compact_shopt_option_index(SSK("extglob"));
+  case shopt_option_id::Globskipdots:
+    return compact_shopt_option_index(SSK("globskipdots"));
+  case shopt_option_id::Globstar:
+    return compact_shopt_option_index(SSK("globstar"));
   case shopt_option_id::InheritErrexit:
     return compact_shopt_option_index(SSK("inherit_errexit"));
   case shopt_option_id::Lastpipe:
@@ -1843,6 +1861,10 @@ shopt_option_index(shopt_option_id option) wontthrow -> u8
     return compact_shopt_option_index(SSK("localvar_inherit"));
   case shopt_option_id::LocalvarUnset:
     return compact_shopt_option_index(SSK("localvar_unset"));
+  case shopt_option_id::Nocaseglob:
+    return compact_shopt_option_index(SSK("nocaseglob"));
+  case shopt_option_id::Nocasematch:
+    return compact_shopt_option_index(SSK("nocasematch"));
   case shopt_option_id::Nullglob:
     return compact_shopt_option_index(SSK("nullglob"));
   case shopt_option_id::PatsubReplacement:
@@ -1851,11 +1873,48 @@ shopt_option_index(shopt_option_id option) wontthrow -> u8
     return compact_shopt_option_index(SSK("progcomp"));
   case shopt_option_id::ProgcompAlias:
     return compact_shopt_option_index(SSK("progcomp_alias"));
+  case shopt_option_id::ShiftVerbose:
+    return compact_shopt_option_index(SSK("shift_verbose"));
   case shopt_option_id::Sourcepath:
     return compact_shopt_option_index(SSK("sourcepath"));
+  case shopt_option_id::XpgEcho:
+    return compact_shopt_option_index(SSK("xpg_echo"));
   }
 
   return 0xff;
+}
+
+consteval fn
+make_default_on_shopt_mask() wontthrow -> u64
+{
+  constexpr PackedStringKey DEFAULT_ON_KEYS[] = {
+      SSK("progcomp"),
+      SSK("promptvars"),
+      SSK("sourcepath"),
+      SSK("extquote"),
+      SSK("complete_fullquote"),
+      SSK("hostcomplete"),
+      SSK("checkwinsize"),
+      SSK("force_fignore"),
+      SSK("globasciiranges"),
+      SSK("globskipdots"),
+      SSK("interactive_comments"),
+      SSK("patsub_replacement"),
+  };
+  u64 mask = 0;
+
+  for (let const key : DEFAULT_ON_KEYS)
+    mask |= u64{1} << compact_shopt_option_index(key);
+
+  return mask;
+}
+
+pure fn
+shopt_default_is_on(u8 index) wontthrow -> bool
+{
+  static constexpr u64 DEFAULT_ON_MASK = make_default_on_shopt_mask();
+
+  return index < 64 && (DEFAULT_ON_MASK & (u64{1} << index)) != 0;
 }
 
 fn

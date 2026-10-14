@@ -2246,7 +2246,7 @@ compose_command_hint(StringView   line,
 
   let source = hint_source{};
 
-  if (let const builtin_kind = search_builtin(name.view());
+  if (let const builtin_kind = context.find_enabled_builtin(name.view());
       builtin_kind.has_value())
   {
     let const is_koshkit_dispatch =
@@ -2362,7 +2362,7 @@ compose_command_hint(StringView   line,
 
     if (source.synopsis.is_empty() && source.manpage_entries == nullptr &&
         source.help_entries == nullptr &&
-        context.runtime_state().koshkit_utilities_are_reachable() &&
+        context.is_koshkit_utility_reachable(name.view()) &&
         context.program_resolver().get_status(name.view()) ==
             ProgramResolver::Status::Missing)
     {

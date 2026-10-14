@@ -175,7 +175,7 @@ BuiltinBuiltin::execute(ExecContext &ec, EvalContext &cxt) const throws
 
   let const target = search_builtin(name.view());
 
-  if (!target.has_value()) {
+  if (!target.has_value() || cxt.is_builtin_name_disabled(name.view())) {
     report_soft_builtin_error(ec, cxt, ec.arg_location_at(1),
                               StringView{"'"} + name +
                                   "' is not a shell builtin");

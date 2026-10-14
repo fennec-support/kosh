@@ -59,10 +59,7 @@ Which::execute(const ExecContext               &ec,
         output += program_name;
         output += '\n';
       }
-    } else if (let const kind = search_builtin(program_name.view());
-               kind.has_value() && !builtin_is_hidden_by_mood(
-                                       *kind, cxt.runtime_state().get_mood()))
-    {
+    } else if (cxt.find_enabled_builtin(program_name.view()).has_value()) {
       if (!is_quiet) {
         output += program_name;
         if (os::is_stdout_a_tty()) {
@@ -84,10 +81,7 @@ Which::execute(const ExecContext               &ec,
           output += '\n';
         }
       }
-    } else if ((cxt.runtime_state().koshkit() ||
-                cxt.runtime_state().get_mood() == mimic_mood::Default) &&
-               find_util(program_name.view()).has_value())
-    {
+    } else if (cxt.is_koshkit_utility_reachable(program_name.view())) {
       if (!is_quiet) {
         output += program_name;
         output += '\n';

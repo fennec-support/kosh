@@ -235,7 +235,7 @@ EvalContext::assign_variable(StringView              name,
   if (is_pipestatus_name) variable_store().set_pipestatus_scalar_possible(true);
   if (is_glob_ignore_name) {
     runtime_state().set_glob_ignore_assigned(true);
-    if (!value.is_empty()) set_shopt_option("dotglob", true);
+    if (!value.is_empty()) set_shopt_option(shopt_option_id::Dotglob, true);
   }
 
   if (is_prompt_special_variable(name))
@@ -1195,7 +1195,7 @@ EvalContext::force_unset_shell_variable(StringView name) throws -> void
   case 'G':
     if (name == "GLOBIGNORE") {
       runtime_state().set_glob_ignore_assigned(false);
-      set_shopt_option("dotglob", false);
+      set_shopt_option(shopt_option_id::Dotglob, false);
     }
 
     break;
@@ -2202,14 +2202,50 @@ dot_parent_steps(StringView word) wontthrow -> Maybe<usize>
 }
 
 fn
+EvalContextState::find_enabled_builtin(StringView name) const throws
+    -> Maybe<Builtin::Kind>
+{
+  let const kind = search_builtin(name);
+
+  if (!kind.has_value() ||
+      builtin_is_hidden_by_mood(*kind, m_runtime.get_mood()) ||
+      is_builtin_name_disabled(name))
+  {
+    return None;
+  }
+
+  return kind;
+}
+
+fn
+EvalContextState::is_builtin_name_disabled(StringView name) const throws
+    -> bool
+{
+  if (!m_enabled_command_store.has_disabled_builtins()) return false;
+
+  let const position = BUILTIN_ENTRY_POSITIONS.find(name);
+
+  return position.has_value() &&
+         m_enabled_command_store.is_builtin_entry_disabled(*position);
+}
+
+fn
+EvalContextState::is_koshkit_utility_reachable(StringView name) const throws -> bool
+{
+  let const utility = koshkit::find_util(name);
+
+  return utility.has_value() &&
+         is_koshkit_utility_index_reachable(static_cast<u8>(*utility));
+}
+
+fn
 ExecContext::make_from(const SourceLocation       &location,
                        StringView                  source,
                        ArrayList<String>         &&args,
-                       bool                        is_koshkit_utility_reachable,
+                       const EvalContextState     &command_lookup,
                        bool                        should_check_hash,
                        ProgramResolver            &program_resolver,
                        ArrayList<SourceLocation> &&arg_locations,
-                       mimic_mood                  mood,
                        bool                        should_autocd) throws -> ExecContext
 {
   ASSERT(args.count() > 0);
@@ -2225,13 +2261,7 @@ ExecContext::make_from(const SourceLocation       &location,
   Maybe<utils::unavailable_path_source_component> unavailable_component;
 
   if (!os::has_directory_separator(program.view())) {
-    resolved_builtin = search_builtin(program.view());
-
-    if (resolved_builtin.has_value() &&
-        builtin_is_hidden_by_mood(*resolved_builtin, mood))
-    {
-      resolved_builtin = None;
-    }
+    resolved_builtin = command_lookup.find_enabled_builtin(program.view());
 
     if (!resolved_builtin.has_value()) {
       let program_search_paths = program_resolver.search(
@@ -2289,8 +2319,7 @@ ExecContext::make_from(const SourceLocation       &location,
   if (should_autocd && args.count() == 1 && !resolved_builtin.has_value() &&
       (!resolved_program_path.has_value() ||
        resolved_program_path->is_directory()) &&
-      (!is_koshkit_utility_reachable ||
-       !koshkit::find_util(program.view()).has_value()))
+      !command_lookup.is_koshkit_utility_reachable(program.view()))
   {
     String directory_operand{heap_allocator()};
     bool   should_rewrite_to_cd = false;
@@ -2338,9 +2367,7 @@ ExecContext::make_from(const SourceLocation       &location,
       LOG(Debug, "resolved '%s' to the program '%s'", program.c_str(),
           resolved_program_path->text().c_str());
       kind = ResolvedCommand::from_program(steal(*resolved_program_path));
-    } else if (is_koshkit_utility_reachable &&
-               koshkit::find_util(program.view()).has_value())
-    {
+    } else if (command_lookup.is_koshkit_utility_reachable(program.view())) {
       LOG(Debug, "no program matches '%s', using the koshkit utility",
           program.c_str());
       kind = ResolvedCommand::from_builtin(Builtin::Kind::Koshkit);

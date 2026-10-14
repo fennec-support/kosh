@@ -42,6 +42,17 @@ type status=1
 command status=1
 -c:3:1: error: Builtin `hash`: The command 'env' was not found.
 hash status=1
+== a startup file enables a utility and disables a builtin:
+b
+builtin
+-c:2:8: error: Builtin `enable`: The builtin 'echo' cannot be enabled in a restricted shell.
+enable status=1
+-c:3:11: error: Builtin `enable`: The bundled utility 'basename' cannot be changed in a restricted shell.
+disable status=1
+-c:4:1: error: Builtin `koshkit`: The bundled utilities are forbidden in a restricted shell.
+koshkit status=1
+disable builtin status=0
+-c:6:1: error: The command 'type' was not found.
 == an unrestricted shell still runs them:
 env
 b

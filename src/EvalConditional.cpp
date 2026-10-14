@@ -533,10 +533,11 @@ struct conditional_evaluator
             let       active = Bitset{cxt.scratch_allocator()};
             let const pattern =
                 operand_pattern_masked(elements[pos - 1], active);
-            let const is_case_insensitive = cxt.is_shopt_enabled("nocasematch");
-            let const pattern_extglob     = cxt.runtime_state().is_posix_mode()
-                                                ? extglob_mode::Disabled
-                                                : extglob_mode::Enabled;
+            let const is_case_insensitive =
+                cxt.is_shopt_enabled(shopt_option_id::Nocasematch);
+            let const pattern_extglob = cxt.runtime_state().is_posix_mode()
+                                            ? extglob_mode::Disabled
+                                            : extglob_mode::Enabled;
 
             if (!is_case_insensitive) {
               let const is_matched = utils::glob_matches(
@@ -674,8 +675,9 @@ fn
 EvalContext::cached_compiled_regex(StringView pattern) throws
     -> os::compiled_regex *
 {
-  let const is_case_insensitive = is_shopt_enabled("nocasematch");
-  let       key                 = String{scratch_allocator()};
+  let const is_case_insensitive =
+      is_shopt_enabled(shopt_option_id::Nocasematch);
+  let key = String{scratch_allocator()};
 
   key.reserve(pattern.length + 1);
   key += is_case_insensitive ? 'i' : 's';

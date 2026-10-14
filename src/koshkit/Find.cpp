@@ -453,9 +453,9 @@ private:
     try {
       sub = ExecContext::make_from(
           m_ec.source_location(), m_cxt.source_store().current_source_view(),
-          steal(command), m_cxt.runtime_state().koshkit(),
-          m_cxt.is_shopt_enabled("checkhash"), m_cxt.program_resolver(),
-          steal(command_locations), m_cxt.runtime_state().get_mood());
+          steal(command), m_cxt,
+          m_cxt.is_shopt_enabled(shopt_option_id::Checkhash),
+          m_cxt.program_resolver(), steal(command_locations));
     } catch (const CommandResolutionErrorWithLocation &resolution_error) {
       show_message(resolution_error.to_string(
           m_cxt.source_store().current_source_view(), &m_cxt));

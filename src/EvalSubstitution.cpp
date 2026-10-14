@@ -1011,7 +1011,7 @@ EvalContext::run_captured_substitution(
         hide_coprocess_descriptors();
         job_table_store().inherit_parent_jobs(!runtime_state().is_posix_mode());
         if (runtime_state().get_mood() == mimic_mood::Bash &&
-            !is_shopt_enabled("inherit_errexit"))
+            !is_shopt_enabled(shopt_option_id::InheritErrexit))
         {
           runtime_state().set_error_exit(false);
         }
@@ -1193,7 +1193,7 @@ EvalContext::run_captured_substitution(
     did_enter_subshell = true;
     hide_coprocess_descriptors();
     if (runtime_state().get_mood() == mimic_mood::Bash &&
-        !is_shopt_enabled("inherit_errexit"))
+        !is_shopt_enabled(shopt_option_id::InheritErrexit))
     {
       runtime_state().set_error_exit(false);
     }

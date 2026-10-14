@@ -313,6 +313,7 @@ struct eval_state_snapshot
   coprocess_descriptors                      coprocess;
   usize                                      environment_undo_mark;
   RuntimeState                               runtime;
+  EnabledCommandStore                        enabled_commands;
   ProgramResolver                            program_resolver;
   os::DirectoryReference                     working_directory;
   u32                                        file_creation_mask;

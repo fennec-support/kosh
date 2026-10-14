@@ -2059,8 +2059,19 @@ expressions::internal::command_resolves(
     -> bool
 {
   if (name.is_empty()) return false;
-  if (search_builtin(name).has_value()) return true;
-  if (actx.is_koshkit_utility_reachable && koshkit::find_util(name).has_value())
+
+  let const *const eval_context = actx.eval_context;
+
+  if (search_builtin(name).has_value() &&
+      (eval_context == nullptr ||
+       !eval_context->is_builtin_name_disabled(name)))
+  {
+    return true;
+  }
+
+  if (eval_context != nullptr ? eval_context->is_koshkit_utility_reachable(name)
+                              : actx.is_koshkit_utility_reachable &&
+                                    koshkit::find_util(name).has_value())
   {
     return true;
   }
@@ -2190,10 +2201,7 @@ analyze_ast(const Expression                *root,
 
   AnalysisContext actx{source, options};
 
-  actx.is_koshkit_utility_reachable =
-      eval_context != nullptr
-          ? eval_context->runtime_state().koshkit_utilities_are_reachable()
-          : options.is_default_mood;
+  actx.is_koshkit_utility_reachable  = options.is_default_mood;
   actx.reporter.suppressions         = &directives.shellcheck_suppressions;
   actx.reporter.source_name_index    = directives.source_name_index;
   actx.format_document               = format_document;

@@ -39,7 +39,7 @@ internal::expand_command_aliases(
     ArrayList<SourceLocation> &arg_locations) throws -> void
 {
   if (!cxt.scope_store().has_aliases() ||
-      !cxt.is_shopt_enabled("expand_aliases"))
+      !cxt.is_shopt_enabled(shopt_option_id::ExpandAliases))
   {
     return;
   }
@@ -128,30 +128,36 @@ command_word_is_glob(const Word &word) wontthrow -> bool
 static fn
 command_runs_program(const ArrayList<String>    &args,
                      const Maybe<Builtin::Kind> *literal_builtin,
-                     mimic_mood                  mood) throws -> bool
+                     const EvalContext          &cxt) throws -> bool
 {
   if (args.is_empty()) return true;
 
-  let builtin = literal_builtin != nullptr ? *literal_builtin
-                                           : search_builtin(args[0].view());
+  let const builtin = literal_builtin != nullptr
+                          ? *literal_builtin
+                          : search_builtin(args[0].view());
 
-  if (builtin.has_value() && *builtin == Builtin::Kind::CommandBuiltin) {
-    usize operand_index = 1;
-
-    while (operand_index < args.count() && args[operand_index] == "-p") {
-      operand_index++;
-    }
-
-    if (operand_index == args.count() ||
-        args[operand_index].view().starts_with("-"))
-    {
-      return false;
-    }
-
-    builtin = search_builtin(args[operand_index].view());
+  if (!builtin.has_value() ||
+      builtin_is_hidden_by_mood(*builtin, cxt.runtime_state().get_mood()) ||
+      cxt.is_builtin_name_disabled(args[0].view()))
+  {
+    return true;
   }
 
-  return !builtin.has_value() || builtin_is_hidden_by_mood(*builtin, mood);
+  if (*builtin != Builtin::Kind::CommandBuiltin) return false;
+
+  usize operand_index = 1;
+
+  while (operand_index < args.count() && args[operand_index] == "-p") {
+    operand_index++;
+  }
+
+  if (operand_index == args.count() ||
+      args[operand_index].view().starts_with("-"))
+  {
+    return false;
+  }
+
+  return !cxt.find_enabled_builtin(args[operand_index].view()).has_value();
 }
 
 hot fn
@@ -325,9 +331,9 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const 
       command_function_storage.has_value() ? command_function_storage.get_body()
                                            : nullptr;
 
-  let const is_bare_exec = program_args.count() == 1 &&
-                           program_args[0] == "exec" &&
-                           command_word_function == nullptr;
+  let const is_bare_exec =
+      program_args.count() == 1 && program_args[0] == "exec" &&
+      command_word_function == nullptr && !cxt.is_builtin_name_disabled("exec");
 
   if (is_bare_exec) {
     for (let const &redir : m_redirections) {
@@ -342,7 +348,8 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const 
       !program_args.is_empty() && command_word_function == nullptr &&
       (literal_lookup != nullptr
            ? literal_lookup->is_special
-           : is_special_builtin_name(program_args[0].view()));
+           : is_special_builtin_name(program_args[0].view())) &&
+      !cxt.is_builtin_name_disabled(program_args[0].view());
 
   Maybe<os::descriptor>           redirect_in_fd;
   ArrayList<os::saved_descriptor> dup_saved_descriptors{
@@ -366,7 +373,7 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const 
     if (command_runs_program(
             program_args,
             literal_lookup != nullptr ? &literal_lookup->builtin : nullptr,
-            cxt.runtime_state().get_mood()))
+            cxt))
       redirection_snapshot = snapshot_child_redirection_state(cxt);
   }
 
@@ -852,7 +859,7 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const 
       !m_local_vars.is_empty() || !keyword_assignments.is_empty();
 
   let const do_is_source_evaluating_name = [&]() throws -> bool {
-    let const kind = search_builtin(program_args[0].view());
+    let const kind = cxt.find_enabled_builtin(program_args[0].view());
 
     return kind == Builtin::Kind::Eval || kind == Builtin::Kind::Source;
   };
@@ -1015,8 +1022,11 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const 
 
   let array_command_kind = assignment_builtin::None;
 
-  if (!m_array_args.is_empty())
+  if (!m_array_args.is_empty() &&
+      !cxt.is_builtin_name_disabled(program_args[0].view()))
+  {
     array_command_kind = classify_assignment_builtin(program_args[0].view());
+  }
 
   if (const Expression *function_body = command_word_function;
       function_body != nullptr)
@@ -1215,7 +1225,8 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const 
   let const do_resolve_context = [&]() throws -> ExecContext {
     if (literal_lookup != nullptr && literal_lookup->builtin.has_value() &&
         !builtin_is_hidden_by_mood(*literal_lookup->builtin,
-                                   cxt.runtime_state().get_mood()))
+                                   cxt.runtime_state().get_mood()) &&
+        !cxt.is_builtin_name_disabled(program_args[0].view()))
     {
       return ExecContext::make_from_resolved(
           source_location(),
@@ -1226,13 +1237,11 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const 
     try {
       return ExecContext::make_from(
           source_location(), cxt.source_store().current_source_view(),
-          steal(program_args),
-          cxt.runtime_state().koshkit_utilities_are_reachable(),
+          steal(program_args), cxt,
           cxt.runtime_state().is_shopt_enabled(shopt_option_id::Checkhash),
           cxt.program_resolver(), steal(program_arg_locations),
-          cxt.runtime_state().get_mood(),
           cxt.execution_store().shell_is_interactive() &&
-              cxt.is_shopt_enabled("autocd"));
+              cxt.is_shopt_enabled(shopt_option_id::Autocd));
     } catch (CommandResolutionErrorWithLocation &e) {
       report_command_resolution_error(cxt, e);
       did_resolution_fail       = true;
