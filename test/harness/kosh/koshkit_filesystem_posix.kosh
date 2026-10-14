@@ -17,11 +17,15 @@ echo "chmod-octal=${mode_fields%% *}"
 koshkit chmod u+x,g=u,o-r "$root/mode"
 mode_fields=$(koshkit ls -l "$root/mode")
 echo "chmod-symbolic=${mode_fields%% *}"
+koshkit chmod 000 "$root/tree/plain"
+koshkit ln -s "$root/mode" "$root/tree/outside"
 koshkit chmod -R a+rX "$root/tree"
 [[ -x "$root/tree/child" ]]
 directory_status=$?
 plain_fields=$(koshkit ls -l "$root/tree/plain")
 echo "chmod-recursive=$directory_status ${plain_fields%% *}"
+mode_fields=$(koshkit ls -l "$root/mode")
+echo "chmod-recursive-link-target=${mode_fields%% *}"
 : > "$root/omitted-who"
 koshkit chmod 444 "$root/omitted-who"
 koshkit chmod +w "$root/omitted-who"

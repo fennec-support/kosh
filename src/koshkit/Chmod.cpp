@@ -65,9 +65,15 @@ change_mode(const ExecContext     &ec,
 
   ASSERT(parsed.has_value());
 
+  /* A command-line operand is changed through its path and follows a
+     symlink. An entry reached by recursion is changed without following, and
+     a symlink swapped in after the listing cannot redirect the change. */
   bool did_succeed = true;
 
-  if (!os::set_file_mode(path.view(), *parsed)) {
+  if (!(known_status != nullptr
+            ? os::set_file_mode_no_follow(path.view(), *parsed)
+            : os::set_file_mode(path.view(), *parsed)))
+  {
     report_soft_koshkit_util_error(ec, cxt, "chmod",
                                    "cannot change mode of '" + path.text() +
                                        "': " + os::last_system_error_message());

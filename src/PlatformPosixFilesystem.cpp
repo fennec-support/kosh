@@ -686,7 +686,10 @@ open_with_flags(StringView     path,
     flags = O_WRONLY | O_CREAT | O_EXCL;
     break;
 
-  case file_open_mode::Append: flags = O_WRONLY | O_CREAT | O_APPEND; break;
+  case file_open_mode::Append:
+  case file_open_mode::AppendPrivate:
+    flags = O_WRONLY | O_CREAT | O_APPEND;
+    break;
 
   case file_open_mode::Read: flags = O_RDONLY; break;
 
@@ -696,9 +699,11 @@ open_with_flags(StringView     path,
   }
 
   const String path_string{heap_allocator(), path};
+  let const    create_mode =
+      mode == file_open_mode::AppendPrivate ? mode_t{0600} : mode_t{0666};
 
   loop {
-    const int fd = ::open(path_string.c_str(), flags, 0666);
+    const int fd = ::open(path_string.c_str(), flags, create_mode);
 
     if (fd < 0 && errno == EINTR) {
       if (INTERRUPT_REQUESTED) return koshka::None;
@@ -937,6 +942,46 @@ set_file_mode(StringView path, u32 mode) wontthrow -> bool
 
     did_succeed = ::chmod(path_string.c_str(), mode) == 0;
     saved_errno = errno;
+  }
+
+  errno = saved_errno;
+
+  return did_succeed;
+}
+
+fn
+set_file_mode_no_follow(StringView path, u32 mode) wontthrow -> bool
+{
+  bool did_succeed;
+  int  saved_errno;
+
+  {
+    const String path_string{heap_allocator(), path};
+
+    did_succeed = ::fchmodat(AT_FDCWD, path_string.c_str(), mode,
+                             AT_SYMLINK_NOFOLLOW) == 0;
+    saved_errno = errno;
+
+    /* glibc before 2.32 and a system without /proc reject the flag for every
+       file. The fallback changes the mode through a descriptor opened without
+       following a symlink, and an entry it cannot open stays unchanged. */
+    if (!did_succeed && (saved_errno == EOPNOTSUPP || saved_errno == ENOSYS)) {
+      LOG(Debug, "changing the mode of '%s' through a no-follow descriptor "
+                 "after fchmodat rejected the no-follow flag",
+          path_string.c_str());
+
+      const int fd = ::open(path_string.c_str(), O_RDONLY | O_NOFOLLOW |
+                                                     O_NONBLOCK | O_NOCTTY |
+                                                     O_CLOEXEC);
+
+      if (fd < 0) {
+        saved_errno = errno;
+      } else {
+        did_succeed = ::fchmod(fd, mode) == 0;
+        saved_errno = errno;
+        ::close(fd);
+      }
+    }
   }
 
   errno = saved_errno;

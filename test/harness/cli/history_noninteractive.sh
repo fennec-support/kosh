@@ -63,6 +63,14 @@ echo "== an explicit append writes only the events the file lacks =="
 KOSH_HISTORY_FILE="$dir/untouched" "$BIN" --no-init-files -c \
   'history -s appended; history -a; echo "rc=$?"; history -a; echo "rc=$?"'
 cat "$dir/untouched"
+echo "== an explicit append creates a missing file readable only by its owner =="
+KOSH_HISTORY_FILE="$dir/created" "$BIN" --no-init-files -c \
+  'history -s created; history -a'
+if [ -n "$(find "$dir/created" -perm 600)" ]; then
+  echo "private"
+else
+  echo "readable by others"
+fi
 echo "== an explicit write replaces the file with the private branch =="
 KOSH_HISTORY_FILE="$dir/untouched" "$BIN" --no-init-files -c \
   'history -c; history -s written; history -w; echo "rc=$?"'

@@ -1075,7 +1075,8 @@ open_file_descriptor(StringView path, file_open_mode mode) -> Maybe<descriptor>
           : GENERIC_WRITE;
 
   if (mode == file_open_mode::ReadWrite) access = GENERIC_READ | GENERIC_WRITE;
-  if (mode == file_open_mode::Append) access = FILE_APPEND_DATA;
+  if (mode == file_open_mode::Append || mode == file_open_mode::AppendPrivate)
+    access = FILE_APPEND_DATA;
 
   DWORD disposition = OPEN_EXISTING;
 
@@ -1084,7 +1085,8 @@ open_file_descriptor(StringView path, file_open_mode mode) -> Maybe<descriptor>
 
   case file_open_mode::TruncateNoClobber: disposition = CREATE_NEW; break;
 
-  case file_open_mode::Append: disposition = OPEN_ALWAYS; break;
+  case file_open_mode::Append:
+  case file_open_mode::AppendPrivate: disposition = OPEN_ALWAYS; break;
 
   case file_open_mode::Read: disposition = OPEN_EXISTING; break;
 
@@ -1375,6 +1377,14 @@ make_directory(StringView path, u32 mode) wontthrow -> bool
 
   return wide_path.has_value() &&
          CreateDirectoryW(wide_path->begin(), nullptr) != 0;
+}
+
+fn
+set_file_mode_no_follow(StringView path, u32 mode) wontthrow -> bool
+{
+  /* A Windows mode change only toggles the read-only attribute, and the
+     ordinary setter serves both cases. */
+  return set_file_mode(path, mode);
 }
 
 fn

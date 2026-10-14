@@ -509,6 +509,9 @@ enum class file_open_mode : u8
   Truncate,
   TruncateNoClobber,
   Append,
+  /* Append, and on POSIX create a missing file with mode 0600. Windows opens
+     it as Append. */
+  AppendPrivate,
   Read,
   ReadWrite,
   ReadNonblocking,
@@ -703,6 +706,10 @@ fn
 make_directory(StringView path, u32 mode) wontthrow -> bool;
 fn
 set_file_mode(StringView path, u32 mode) wontthrow -> bool;
+/* Sets the mode without following a final symlink. A recursive walk cannot
+   be redirected onto a file outside the tree. */
+fn
+set_file_mode_no_follow(StringView path, u32 mode) wontthrow -> bool;
 enum class symlink_follow_mode : u8
 {
   Follow,

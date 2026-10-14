@@ -81,8 +81,12 @@ change_path_ownership_recursive(
     return false;
   }
 
-  let const is_symlink  = os::file_type_letter(path_status.mode) == 'l';
-  let const follow_mode = !is_symlink || should_follow_symlink
+  let const is_symlink = os::file_type_letter(path_status.mode) == 'l';
+
+  /* A symlink is followed only when the mode asks for it. Recursion in the
+     default mode uses lchown. On a regular file lchown has the effect of
+     chown, and a symlink swapped in after the listing cannot redirect it. */
+  let const follow_mode = should_follow_symlink
                               ? os::symlink_follow_mode::Follow
                               : os::symlink_follow_mode::NoFollow;
 

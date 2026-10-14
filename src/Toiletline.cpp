@@ -2184,7 +2184,7 @@ append_unwritten_history() -> koshka::ErrorOr<koshka::Ok>
   written.append(payload.view());
 
   let const opened =
-      os::open_file_descriptor(path->view(), os::file_open_mode::Append);
+      os::open_file_descriptor(path->view(), os::file_open_mode::AppendPrivate);
 
   if (!opened.has_value())
     return koshka::Error{os::last_system_error_message()};

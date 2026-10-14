@@ -29,6 +29,8 @@ kept one
 kept two
 kept three
 appended
+== an explicit append creates a missing file readable only by its owner ==
+private
 == an explicit write replaces the file with the private branch ==
 rc=0
 written
