@@ -340,6 +340,35 @@ report_soft_builtin_error(const ExecContext &ec,
   show_message(Note{note}.to_string());
 }
 
+/* A located diagnostic is drawn against the current source. Without one, the
+   caller prints the plain message. */
+static fn
+show_with_current_source(EvalContext             &cxt,
+                         const ErrorWithLocation &located) throws
+    -> bool
+{
+  let const *source = cxt.source_store().current_source();
+
+  if (source == nullptr) return false;
+  show_message(located.to_string(source->view(), &cxt));
+
+  return true;
+}
+
+fn
+report_soft_builtin_warning(const ExecContext &ec,
+                            EvalContext       &cxt,
+                            StringView         message) throws -> void
+{
+  let const text = builtin_error_message(ec.program(), message);
+
+  if (!show_with_current_source(
+          cxt, WarningWithLocation{ec.source_location(), text.view()}))
+  {
+    show_warning(text.view());
+  }
+}
+
 fn
 report_soft_builtin_error(const ExecContext &ec,
                           EvalContext       &cxt,
@@ -354,13 +383,11 @@ report_soft_builtin_error(const ExecContext &ec,
     throw located;
   }
 
-  if (const String *source = cxt.source_store().current_source();
-      source != nullptr)
-  {
-    show_message(located.to_string(source->view(), &cxt));
+  if (show_with_current_source(cxt, located)) {
     cxt.print_source_backtrace(location, false);
-  } else
+  } else {
     print_error(builtin_error_message(ec.program(), message) + "\n");
+  }
 }
 
 fn

@@ -368,6 +368,11 @@ report_soft_builtin_error(const ExecContext &ec,
                           StringView         note) throws -> void;
 
 fn
+report_soft_builtin_warning(const ExecContext &ec,
+                            EvalContext       &cxt,
+                            StringView         message) throws -> void;
+
+fn
 declaration_assignment_failure_status(const EvalContext &cxt) wontthrow -> i32;
 
 fn

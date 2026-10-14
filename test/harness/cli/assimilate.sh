@@ -156,6 +156,7 @@ if [ "$architecture_status" -ne 0 ] &&
     grep -q '^+ assimilate: preflight$' "$architecture_output" &&
     grep -Fq "on $ASSIMILATE_REMOTE_SYSTEM/mismatch-arch" \
         "$architecture_output" &&
+    grep -q '^-c:1:1: error: .*Cannot install a ' "$architecture_output" &&
     [ ! -e "$ASSIMILATE_REMOTE/injected" ] &&
     ! grep -q '^scp-run$' "$ASSIMILATE_TRANSPORT_LOG"; then
     architecture_result=0

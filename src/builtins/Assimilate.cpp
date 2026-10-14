@@ -332,11 +332,11 @@ constexpr char       REMOTE_PREFLIGHT_TEXT[] = R"SH(set -eu
 expected_system=$2
 expected_machine=$3
 if ! remote_system=$(uname -s 2>/dev/null); then
-  printf '%s\n' 'assimilate: Cannot determine the remote operating system.' >&2
+  printf '%s\n' 'assimilate-error=Cannot determine the remote operating system'
   exit 125
 fi
 if ! remote_machine=$(uname -m 2>/dev/null); then
-  printf '%s\n' 'assimilate: Cannot determine the remote architecture.' >&2
+  printf '%s\n' 'assimilate-error=Cannot determine the remote architecture'
   exit 125
 fi
 case $expected_machine in
@@ -352,8 +352,8 @@ machine_matches=0
 [ "$expected_system" = any ] || [ "$expected_system" = "$remote_system" ] || system_matches=1
 [ "$expected_machine" = any ] || [ "$expected_machine" = "$remote_machine" ] || machine_matches=1
 if [ "$system_matches" -ne 0 ] || [ "$machine_matches" -ne 0 ]; then
-  printf 'assimilate: Cannot install a %s/%s binary on %s/%s.\n' \
-    "$expected_system" "$expected_machine" "$remote_system" "$remote_machine" >&2
+  printf 'assimilate-error=Cannot install a %s/%s binary on %s/%s\n' \
+    "$expected_system" "$expected_machine" "$remote_system" "$remote_machine"
   exit 126
 fi
 requested_directory=${4-}
@@ -377,8 +377,8 @@ directory_is_usable() {
 select_install_directory() {
   if [ -n "$requested_directory" ]; then
     directory_is_usable "$requested_directory" && return 0
-    printf 'assimilate: Cannot install into %s, which is not a writable directory or already holds a requested link.\n' \
-      "$requested_directory" >&2
+    printf 'assimilate-error=Cannot install into %s, which is not a writable directory or already holds a requested link\n' \
+      "$requested_directory"
     return 1
   fi
   if path_contains_directory /usr/local/bin &&
@@ -403,7 +403,7 @@ select_install_directory() {
     esac
     [ "$has_more" -eq 1 ] || break
   done
-  printf '%s\n' 'assimilate: The remote PATH has no writable directory for kosh.' >&2
+  printf '%s\n' 'assimilate-error=The remote PATH has no writable directory for kosh'
   return 1
 }
 select_install_directory || exit 1
@@ -640,11 +640,13 @@ append_printable_text(String &out, StringView text) throws -> bool
 
 fn
 take_install_directory(const ExecContext &ec,
+                       EvalContext       &cxt,
                        StringView         preflight_output,
                        Allocator          allocator) throws -> Maybe<String>
 {
   constexpr StringView INSTALL_DIRECTORY_MARKER{
       "assimilate-install-directory="};
+  constexpr StringView ERROR_MARKER{"assimilate-error="};
 
   let   install_directory = Maybe<String>{};
   usize position          = 0;
@@ -652,6 +654,15 @@ take_install_directory(const ExecContext &ec,
   while (position < preflight_output.count()) {
     let const line = preflight_output.next_line(position);
     let const text = line.without_trailing_newline();
+
+    if (text.starts_with(ERROR_MARKER)) {
+      let message = String{allocator};
+
+      append_printable_text(message, text.substring(ERROR_MARKER.count()));
+      report_soft_builtin_error(ec, cxt, message.view());
+
+      continue;
+    }
 
     if (text.starts_with(INSTALL_DIRECTORY_MARKER)) {
       let const directory = text.substring(INSTALL_DIRECTORY_MARKER.count());
@@ -841,14 +852,13 @@ Assimilate::execute(ExecContext &ec, EvalContext &cxt) const throws
   if (executable_system.view() == "Darwin" ||
       executable_system.view() == "Windows")
   {
-    let warning =
-        String{allocator, "assimilate: This kosh binary is built for "};
+    let warning = String{allocator, "This kosh binary is built for "};
 
     warning += executable_system.view() == "Darwin" ? StringView{"macOS"}
                                                     : StringView{"Windows"};
     warning += ", which servers rarely run. A Linux build of kosh suits most "
-               "servers.";
-    show_warning(warning.view());
+               "servers";
+    report_soft_builtin_warning(ec, cxt, warning.view());
   }
 
   let preflight_arguments = ArrayList<String>{allocator};
@@ -863,7 +873,7 @@ Assimilate::execute(ExecContext &ec, EvalContext &cxt) const throws
   let const preflight =
       run_captured_program(preflight_arguments, ec, trace, "preflight");
   let const install_directory =
-      take_install_directory(ec, preflight.output.view(), allocator);
+      take_install_directory(ec, cxt, preflight.output.view(), allocator);
 
   if (!preflight.status.has_value()) {
     report_soft_builtin_error(ec, cxt,
