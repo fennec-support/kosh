@@ -43,15 +43,18 @@ deep="$root/deep"
 for level in {1..200}; do
   deep="$deep/d"
 done
-koshkit mkdir -p "$deep"
+koshkit mkdir -p "$deep" "$root/deep-target"
 : > "$deep/file"
 koshkit chmod 600 "$deep/file"
+koshkit ln -s "$root/deep-target" "$deep/link"
 (
   ulimit -n 100
   koshkit chmod -R g+r "$root/deep"
   echo "chmod-deep=$?"
   koshkit chgrp -R "${GROUPS[0]}" "$root/deep"
   echo "chgrp-deep=$?"
+  koshkit chgrp -RL "${GROUPS[0]}" "$root/deep"
+  echo "chgrp-deep-followed=$?"
 )
 deep_fields=$(koshkit ls -l "$deep/file")
 echo "chmod-deep-entry=${deep_fields%% *}"

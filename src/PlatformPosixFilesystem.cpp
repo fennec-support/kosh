@@ -1548,8 +1548,10 @@ struct tree_walk_state
   {
     let const saved_errno = errno;
 
-    hooks.report_failure(hooks.context, failure, path,
-                         last_system_error_message().view());
+    hooks.report_failure(hooks.context,
+                         describe_tree_walk_failure(
+                             failure, path, last_system_error_message().view())
+                             .view());
     errno = saved_errno;
   }
 };
@@ -1588,8 +1590,13 @@ walk_tree_entry(tree_walk_state   &walk,
                           entry_status.device_id != walk.root_device_id};
   bool did_succeed = walk.hooks.visit(walk.hooks.context, entry);
 
-  if (INTERRUPT_REQUESTED || !options.is_recursive) return did_succeed;
-  if (!did_succeed && !options.should_descend_after_failure) return false;
+  if (INTERRUPT_REQUESTED || !options.is_recursive) {
+    return did_succeed;
+  }
+
+  if (!did_succeed && !options.should_descend_after_failure) {
+    return false;
+  }
 
   let const is_symlink = S_ISLNK(link_status.st_mode);
 
@@ -1669,8 +1676,10 @@ walk_tree_entry(tree_walk_state   &walk,
     did_succeed = false;
   }
 
+  /* The ".." of a followed symlink target is not the traversal parent, so
+     that level keeps its parent descriptor open. */
   let const should_release_parent =
-      release_parent_descriptor(parent_descriptor, depth);
+      !is_symlink && release_parent_descriptor(parent_descriptor, depth);
 
   for (let const &child : children) {
     if (INTERRUPT_REQUESTED) return did_succeed;

@@ -821,11 +821,24 @@ struct tree_walk_hooks
 {
   void *context{nullptr};
   bool (*visit)(void *context, const tree_walk_entry &entry){nullptr};
-  void (*report_failure)(void             *context,
-                         tree_walk_failure failure,
-                         StringView        path,
-                         StringView        reason){nullptr};
+  void (*report_failure)(void *context, StringView message){nullptr};
 };
+
+inline fn
+describe_tree_walk_failure(tree_walk_failure failure,
+                           StringView        path,
+                           StringView        reason) throws -> String
+{
+  switch (failure) {
+  case tree_walk_failure::ReadDirectory:
+    return "cannot read directory '" + path + "': " + reason;
+  case tree_walk_failure::Loop:
+    return "recursive directory loop at '" + path + "'";
+  case tree_walk_failure::Access: break;
+  }
+
+  return "cannot access '" + path + "': " + reason;
+}
 
 fn
 walk_tree(StringView               path,

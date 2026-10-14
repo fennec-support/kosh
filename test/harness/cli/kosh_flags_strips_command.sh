@@ -5,7 +5,7 @@ unset KOSH_FLAGS
 echo "== -c in KOSH_FLAGS does not run its command:"
 KOSH_FLAGS='-c injected_command' "$BIN" -c 'echo clean' 2>&1
 # A clustered -c, the long --command forms, a -- that turns the real
-# arguments into a script operand, and -s, which reads commands from standard
+# arguments into a script operand, and -s, which takes commands from standard
 # input, are dropped the same way.
 for form in '-xc injected_command' '--command injected_command' \
   '--command=injected_command' '-- injected_script' '-s' '--stdin'; do

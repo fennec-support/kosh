@@ -6,6 +6,7 @@ chmod-nested=-rw-r----- outside=-rw-------
 chmod-operand-link=-rw----r--
 chmod-deep=0
 chgrp-deep=0
+chgrp-deep-followed=0
 chmod-deep-entry=-rw-r-----
 chmod-umask=-rw-r--r--
 chown=0

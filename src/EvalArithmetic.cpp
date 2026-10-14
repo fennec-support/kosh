@@ -34,25 +34,27 @@ is_expanded_subscript(StringView subscript) wontthrow -> bool
          subscript.find_character('`').has_value();
 }
 
-/* An array reached through a nameref is checked under its target name. */
+/* An expanded subscript is a literal key, so only an associative array,
+   reached directly or through a nameref, accepts it. */
 static fn
-resolve_subscripted_array_name(const EvalContext &context,
-                               StringView         name) throws -> String
+associative_array_for_expanded_subscript(const EvalContext &context,
+                                         StringView         name,
+                                         StringView         subscript) throws
+    -> String
 {
-  let resolved = context.resolve_nameref(name);
+  let resolved   = context.resolve_nameref(name);
+  let array_name = resolved.has_value() && !resolved->is_empty()
+                       ? steal(*resolved)
+                       : String{heap_allocator(), name};
 
-  if (resolved.has_value() && !resolved->is_empty()) return steal(*resolved);
+  if (!context.is_associative_array(array_name.view())) {
+    throw ErrorWithDetails{"Unexpected '$' in the array subscript '" +
+                               subscript + "'",
+                           "A subscript taken from a variable's value is data "
+                           "and cannot run a command substitution"};
+  }
 
-  return String{heap_allocator(), name};
-}
-
-cold wontreturn static fn
-reject_expanded_subscript(StringView subscript) throws -> void
-{
-  throw ErrorWithDetails{"Unexpected '$' in the array subscript '" + subscript +
-                             "'",
-                         "A subscript taken from a variable's value is data "
-                         "and cannot run a command substitution"};
+  return array_name;
 }
 
 using arithmetic_internal::ArithmeticValue;
@@ -511,13 +513,8 @@ public:
       ASSERT(context != nullptr);
 
       if (is_expanded_subscript(*target.subscript)) {
-        let const array_name =
-            resolve_subscripted_array_name(*context, target.name);
-
-        if (!context->is_associative_array(array_name.view())) {
-          reject_expanded_subscript(*target.subscript);
-        }
-
+        let const array_name = associative_array_for_expanded_subscript(
+            *context, target.name, *target.subscript);
         let const value = context->lookup_associative_element(
             array_name.view(), *target.subscript);
 
@@ -544,12 +541,8 @@ public:
       let const text = value.to_string(context->scratch_allocator());
 
       if (is_expanded_subscript(*target.subscript)) {
-        let const array_name =
-            resolve_subscripted_array_name(*context, target.name);
-
-        if (!context->is_associative_array(array_name.view())) {
-          reject_expanded_subscript(*target.subscript);
-        }
+        let const array_name = associative_array_for_expanded_subscript(
+            *context, target.name, *target.subscript);
 
         context->set_associative_element(array_name.view(), *target.subscript,
                                          text.view());
@@ -731,9 +724,10 @@ public:
     binary_depth++;
     defer { binary_depth--; };
 
-    if (binary_depth > MAX_BINARY_DEPTH)
+    if (binary_depth > MAX_BINARY_DEPTH) {
       fail("Expression nested too deeply",
            "An operator chain this long needs parentheses or a loop");
+    }
 
     let const condition = parse_binary(1);
 
@@ -841,9 +835,10 @@ public:
     binary_depth++;
     defer { binary_depth--; };
 
-    if (binary_depth > MAX_BINARY_DEPTH)
+    if (binary_depth > MAX_BINARY_DEPTH) {
       fail("Expression nested too deeply",
            "An operator chain this long needs parentheses or a loop");
+    }
 
     skip_spaces();
 

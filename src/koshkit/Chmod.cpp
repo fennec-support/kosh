@@ -82,20 +82,11 @@ change_mode(void *context, const os::tree_walk_entry &entry) throws
 }
 
 static fn
-report_walk_failure(void                 *context,
-                    os::tree_walk_failure failure,
-                    StringView            path,
-                    StringView            reason) throws -> void
+report_walk_failure(void *context, StringView message) throws -> void
 {
   let const &state = *static_cast<chmod_state *>(context);
 
-  report_soft_koshkit_util_error(
-      state.ec, state.cxt, "chmod",
-      failure == os::tree_walk_failure::ReadDirectory
-          ? "cannot read directory '" + path + "': " + reason
-      : failure == os::tree_walk_failure::Loop
-          ? "recursive directory loop at '" + path + "'"
-          : "cannot access '" + path + "': " + reason);
+  report_soft_koshkit_util_error(state.ec, state.cxt, "chmod", message);
 }
 
 fn

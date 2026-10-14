@@ -19,13 +19,12 @@ namespace {
 
 struct ownership_state
 {
-  const ExecContext &ec;
-  EvalContext       &cxt;
-  StringView         utility_name;
-  i64                owner_id;
-  i64                group_id;
-  bool               should_follow_operands;
-  bool               should_follow_nested;
+  const ExecContext           &ec;
+  EvalContext                 &cxt;
+  StringView                   utility_name;
+  i64                          owner_id;
+  i64                          group_id;
+  const os::tree_walk_options &options;
 };
 
 static fn
@@ -58,10 +57,11 @@ change_entry_ownership(void                      *context,
   /* A symlink is followed only when the mode asks for it. A nested entry
      keeps a swapped-in symlink from redirecting the change outside the
      tree. */
-  let const follow_mode = (entry.is_operand ? state.should_follow_operands
-                                            : state.should_follow_nested)
-                              ? os::symlink_follow_mode::Follow
-                              : os::symlink_follow_mode::NoFollow;
+  let const follow_mode =
+      (entry.is_operand ? state.options.should_follow_operands
+                        : state.options.should_follow_nested)
+          ? os::symlink_follow_mode::Follow
+          : os::symlink_follow_mode::NoFollow;
 
   if (os::set_tree_entry_owner(entry, state.owner_id, state.group_id,
                                follow_mode))
@@ -78,21 +78,13 @@ change_entry_ownership(void                      *context,
 }
 
 static fn
-report_ownership_walk_failure(void                 *context,
-                              os::tree_walk_failure failure,
-                              StringView            path,
-                              StringView            reason) throws -> void
+report_ownership_walk_failure(void *context, StringView message) throws
+    -> void
 {
   let const &state = *static_cast<ownership_state *>(context);
 
-  koshkit::report_soft_koshkit_error(
-      state.ec, state.cxt,
-      state.utility_name + ": " +
-          (failure == os::tree_walk_failure::ReadDirectory
-               ? "cannot read directory '" + path + "': " + reason
-           : failure == os::tree_walk_failure::Loop
-               ? "recursive directory loop at '" + path + "'"
-               : "cannot access '" + path + "': " + reason));
+  koshkit::report_soft_koshkit_error(state.ec, state.cxt,
+                                     state.utility_name + ": " + message);
 }
 
 } /* namespace */
@@ -139,19 +131,14 @@ change_operands_ownership(const ExecContext       &ec,
   let const should_follow_argument =
       !request.should_change_symlink &&
       (!request.is_recursive || should_follow_command_line);
-  let       state   = ownership_state{ec,
-                              cxt,
-                              utility_name,
-                              request.owner_id,
-                              request.group_id,
-                              should_follow_argument,
-                              should_follow_nested};
-  let const hooks   = os::tree_walk_hooks{&state, change_entry_ownership,
-                                        report_ownership_walk_failure};
   let const options = os::tree_walk_options{
       request.is_recursive, request.is_one_file_system, should_follow_argument,
       should_follow_nested, false};
-  i32 status = 0;
+  let state = ownership_state{
+      ec, cxt, utility_name, request.owner_id, request.group_id, options};
+  let const hooks  = os::tree_walk_hooks{&state, change_entry_ownership,
+                                        report_ownership_walk_failure};
+  i32       status = 0;
 
   for (usize index = 1; index < operands.count(); index++) {
     if (os::INTERRUPT_REQUESTED) return 130;

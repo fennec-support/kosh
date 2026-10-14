@@ -1075,8 +1075,9 @@ open_file_descriptor(StringView path, file_open_mode mode) -> Maybe<descriptor>
           : GENERIC_WRITE;
 
   if (mode == file_open_mode::ReadWrite) access = GENERIC_READ | GENERIC_WRITE;
-  if (mode == file_open_mode::Append || mode == file_open_mode::AppendPrivate)
+  if (mode == file_open_mode::Append || mode == file_open_mode::AppendPrivate) {
     access = FILE_APPEND_DATA;
+  }
 
   DWORD disposition = OPEN_EXISTING;
 
@@ -1742,8 +1743,11 @@ walk_tree_entry(tree_walk_state &walk,
   let        entry_status = file_status{};
 
   if (!stat_path(path, entry_status)) {
-    walk.hooks.report_failure(walk.hooks.context, tree_walk_failure::Access,
-                              path, last_system_error_message().view());
+    walk.hooks.report_failure(
+        walk.hooks.context,
+        describe_tree_walk_failure(tree_walk_failure::Access, path,
+                                   last_system_error_message().view())
+            .view());
 
     return false;
   }
@@ -1758,8 +1762,13 @@ walk_tree_entry(tree_walk_state &walk,
                           entry_status.device_id != walk.root_device_id};
   bool did_succeed = walk.hooks.visit(walk.hooks.context, entry);
 
-  if (INTERRUPT_REQUESTED || !options.is_recursive) return did_succeed;
-  if (!did_succeed && !options.should_descend_after_failure) return false;
+  if (INTERRUPT_REQUESTED || !options.is_recursive) {
+    return did_succeed;
+  }
+
+  if (!did_succeed && !options.should_descend_after_failure) {
+    return false;
+  }
 
   let target_status = entry_status;
 
@@ -1789,9 +1798,11 @@ walk_tree_entry(tree_walk_state &walk,
   let const children  = list_directory_status(path, allocator);
 
   if (!children.has_value()) {
-    walk.hooks.report_failure(walk.hooks.context,
-                              tree_walk_failure::ReadDirectory, path,
-                              last_system_error_message().view());
+    walk.hooks.report_failure(
+        walk.hooks.context,
+        describe_tree_walk_failure(tree_walk_failure::ReadDirectory, path,
+                                   last_system_error_message().view())
+            .view());
 
     return false;
   }

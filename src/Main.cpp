@@ -581,7 +581,9 @@ splice_environment_flags(command_line &line) throws -> void
         return;
       }
 
-      if (token.length < 2 || (token[0] != '-' && token[0] != '+')) return;
+      if (token.length < 2 || (token[0] != '-' && token[0] != '+')) {
+        return;
+      }
 
       bool is_command_word = false;
       bool is_stdin_word   = false;
@@ -595,7 +597,9 @@ splice_environment_flags(command_line &line) throws -> void
           });
       should_keep_value = !is_command_word;
 
-      if (is_command_word || is_stdin_word) return;
+      if (is_command_word || is_stdin_word) {
+        return;
+      }
 
       line.flag_tokens.push_managed(token);
     });

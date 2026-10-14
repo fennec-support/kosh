@@ -472,7 +472,7 @@ find_short_flag(const FlagList &flags, char letter) wontthrow -> Flag *;
 pure fn
 find_long_flag(const FlagList &flags, StringView name) wontthrow -> Flag *;
 
-/* A String or ManyStrings flag reads its value from the next word when the
+/* A String or ManyStrings flag takes its value from the next word when the
    value is not attached. */
 pure fn
 takes_separate_value(const Flag &flag) wontthrow -> bool;
