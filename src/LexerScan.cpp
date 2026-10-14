@@ -209,11 +209,17 @@ fn
 scan_balanced_shell_region(StringView source,
                            usize      position,
                            char       closing_byte,
-                           usize      nesting_depth) throws -> Maybe<usize>
+                           usize      nesting_depth,
+                           bool      *was_nesting_too_deep) throws
+    -> Maybe<usize>
 {
   /* A quoted substitution recurses here. The recursion stops at the
      substitution nesting limit of the lexer. */
-  if (nesting_depth > MAX_SUBSTITUTION_NESTING_DEPTH) return None;
+  if (nesting_depth > MAX_SUBSTITUTION_NESTING_DEPTH) {
+    if (was_nesting_too_deep != nullptr) *was_nesting_too_deep = true;
+
+    return None;
+  }
 
   let       pending_heredocs    = ArrayList<pending_heredoc>{heap_allocator()};
   let       case_pattern_depths = ArrayList<usize>{heap_allocator()};
@@ -241,8 +247,8 @@ scan_balanced_shell_region(StringView source,
       if (byte == '$' && quote == '"' && position < source.length &&
           source[position] == '(')
       {
-        let const nested = scan_balanced_shell_region(source, position + 1, ')',
-                                                      nesting_depth + 1);
+        let const nested = scan_balanced_shell_region(
+            source, position + 1, ')', nesting_depth + 1, was_nesting_too_deep);
 
         if (!nested.has_value()) return None;
         position      = *nested;
@@ -254,8 +260,8 @@ scan_balanced_shell_region(StringView source,
           source[position] == '{' &&
           (is_whitespace(source[position + 1]) || source[position + 1] == '|'))
       {
-        let const nested = scan_balanced_shell_region(source, position + 1, '}',
-                                                      nesting_depth + 1);
+        let const nested = scan_balanced_shell_region(
+            source, position + 1, '}', nesting_depth + 1, was_nesting_too_deep);
 
         if (!nested.has_value()) return None;
         position      = *nested;

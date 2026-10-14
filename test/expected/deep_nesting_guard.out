@@ -24,4 +24,5 @@ ok
 == a long conditional chain is guarded, not crashing:
 1
 == deep quoted substitution nesting is a syntax error:
+1
 status=2

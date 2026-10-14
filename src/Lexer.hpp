@@ -264,7 +264,8 @@ fn
 scan_balanced_shell_region(StringView source,
                            usize      position,
                            char       closing_byte,
-                           usize      nesting_depth = 0) throws
+                           usize      nesting_depth        = 0,
+                           bool      *was_nesting_too_deep = nullptr) throws
     -> Maybe<usize>;
 
 struct nested_substitution

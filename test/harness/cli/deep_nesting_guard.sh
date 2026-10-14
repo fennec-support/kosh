@@ -80,5 +80,7 @@ echo "== a long conditional chain is guarded, not crashing:"
 quoted=$(printf '"$(%.0s' $(seq 1 20000))
 printf 'echo %s\n' "$quoted" > "$TEST_TEMP_DIRECTORY/deep-quoted-substitution.sh"
 echo "== deep quoted substitution nesting is a syntax error:"
+"$BIN" -n "$TEST_TEMP_DIRECTORY/deep-quoted-substitution.sh" 2>&1 |
+  grep -c "nested too deeply"
 "$BIN" -n "$TEST_TEMP_DIRECTORY/deep-quoted-substitution.sh" >/dev/null 2>&1
 echo "status=$?"

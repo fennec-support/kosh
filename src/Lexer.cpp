@@ -28,6 +28,21 @@ namespace lexer {
 
 static constexpr char CEOF = static_cast<char>(EOF);
 
+/* The message lives in its own frame, and the recursive lexing frames stay
+   small enough for the substitution nesting limit. */
+cold wontreturn static fn
+throw_substitution_too_deep(const SourceLocation &location,
+                            StringView            kind) throws -> void
+{
+  throw ErrorWithLocationAndDetails{
+      location,
+      kind + " is nested too deeply, past " +
+          String::from(static_cast<i64>(MAX_SUBSTITUTION_NESTING_DEPTH),
+                       heap_allocator()) +
+          " levels",
+      "Move the inner commands into a function"};
+}
+
 hot pure fn
 is_whitespace(char ch) wontthrow -> bool
 {
@@ -1266,11 +1281,17 @@ Lexer::lex_identifier() throws -> Token *
       if (next == '(') {
         byte_count++;
 
-        let const inner_start = m_cursor_position + byte_count;
-        let const substitution_end =
-            lexer::scan_balanced_shell_region(m_source, inner_start, ')');
+        let const inner_start          = m_cursor_position + byte_count;
+        bool      was_nesting_too_deep = false;
+        let const substitution_end     = lexer::scan_balanced_shell_region(
+            m_source, inner_start, ')', 0, &was_nesting_too_deep);
 
         if (!substitution_end.has_value()) {
+          if (was_nesting_too_deep) {
+            lexer::throw_substitution_too_deep(here(m_cursor_position, 2),
+                                               "Command substitution");
+          }
+
           rarely {
             throw ErrorWithLocationAndDetails{
                 here(m_cursor_position, m_source.count() - m_cursor_position),
@@ -1794,11 +1815,17 @@ hot alwaysinline fn
 Lexer::lex_process_substitution(Word &word, usize offset) throws
     -> usize
 {
-  let const open_position = m_cursor_position + offset;
-  let const direction     = m_source[open_position];
-  let const inner_start   = open_position + 2;
-  let const substitution_end =
-      lexer::scan_balanced_shell_region(m_source, inner_start, ')');
+  let const open_position        = m_cursor_position + offset;
+  let const direction            = m_source[open_position];
+  let const inner_start          = open_position + 2;
+  bool      was_nesting_too_deep = false;
+  let const substitution_end     = lexer::scan_balanced_shell_region(
+      m_source, inner_start, ')', 0, &was_nesting_too_deep);
+
+  if (!substitution_end.has_value() && was_nesting_too_deep) {
+    lexer::throw_substitution_too_deep(here(open_position, 2),
+                                       "Process substitution");
+  }
 
   if (!substitution_end.has_value()) rarely {
     throw ErrorWithLocationAndDetails{
