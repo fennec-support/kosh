@@ -140,14 +140,22 @@ ifeq ($(IS_LINUX_CROSS_COMPILATION), 1)
 CXX := zig c++ -target $(LINUX_TARGET_ARCHITECTURE)-linux-musl
 endif
 
+# A Darwin cross build uses osxcross for arm64. An environment CXX serves host
+# builds, so only a command-line CXX replaces oa64-clang++, and the compiler
+# must target apple-darwin before any object is built.
 ifeq ($(TARGET), Darwin)
 ifneq ($(HOST_OPERATING_SYSTEM), Darwin)
-ifeq ($(CXX_VARIABLE_ORIGIN), default)
-ifeq ($(ARCH), x86_64)
-$(error x86_64 Darwin build is not supported)
-else
+ifeq ($(filter arm64 aarch64,$(ARCH)),)
+$(error A Darwin cross build supports only arm64, so run make TARGET=Darwin ARCH=arm64 with osxcross)
+endif
+ifneq ($(CXX_VARIABLE_ORIGIN), command line)
 CXX := oa64-clang++
 endif
+DARWIN_COMPILER_TARGET := $(shell $(CXX) -dumpmachine 2>/dev/null)
+ifeq ($(DARWIN_COMPILER_TARGET),)
+$(error TARGET=Darwin needs osxcross, but '$(CXX)' was not found, so add the osxcross bin directory to PATH or pass CXX=)
+else ifeq ($(findstring apple-darwin,$(DARWIN_COMPILER_TARGET)),)
+$(error TARGET=Darwin needs an apple-darwin compiler such as osxcross oa64-clang++, but '$(CXX)' targets '$(DARWIN_COMPILER_TARGET)')
 endif
 endif
 endif
