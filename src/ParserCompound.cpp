@@ -561,41 +561,92 @@ word_token_from_assignment(BumpArena &arena, const Assignment *a) throws
   return tokens::create_word_token(arena, a->source_location(), steal(word));
 }
 
-/* True when the token starts a case pattern: a ')' follows it, or a '|' that
-   continues the pattern up to a ')' before the end of the command. A closer
-   word such as 'fi' is then a pattern instead of the end of an enclosing
-   command. */
-pure static fn
-is_followed_by_pattern_end(StringView            source,
-                           const SourceLocation &location) wontthrow -> bool
+/* The end of one case pattern word at position, skipping quotes, escapes,
+   backticks, and $(...), or None when the input ends inside the word. */
+static fn
+scan_pattern_word_end(StringView source, usize position) throws
+    -> Maybe<usize>
 {
-  usize position = location.position + location.length;
+  while (position < source.length) {
+    let const byte = source[position];
 
-  while (position < source.length &&
-         (source[position] == ' ' || source[position] == '\t'))
-  {
-    position++;
-  }
-
-  if (position >= source.length) return false;
-  if (source[position] == ')') return true;
-  if (source[position] != '|') return false;
-  if (position + 1 < source.length && source[position + 1] == '|') {
-    return false;
-  }
-
-  for (position++; position < source.length; position++) {
-    switch (source[position]) {
-    case ')':  return true;
+    switch (byte) {
+    case ' ':
+    case '\t':
     case '\n':
+    case '|':
+    case ')':
+    case '(':
     case ';':
     case '&':
-    case '(':  return false;
-    default:   break;
+    case '<':
+    case '>':  return position;
+    case '\\': position += 2; break;
+    case '\'':
+    case '`':
+    case '"':  {
+      position++;
+      while (position < source.length && source[position] != byte) {
+        if (byte != '\'' && source[position] == '\\') position++;
+        position++;
+      }
+
+      if (position >= source.length) return None;
+      position++;
+    } break;
+    case '$':
+      if (position + 1 < source.length && source[position + 1] == '(') {
+        let const end =
+            lexer::scan_balanced_shell_region(source, position + 2, ')');
+
+        if (!end.has_value()) return None;
+        position = *end;
+        break;
+      }
+
+      position++;
+      break;
+    default: position++; break;
     }
   }
 
-  return false;
+  return position;
+}
+
+/* True when the token starts a case pattern: a ')' follows it, or '|' and
+   further pattern words up to a ')'. A closer word such as 'fi' is then a
+   pattern instead of the end of an enclosing command. */
+static fn
+is_followed_by_pattern_end(StringView            source,
+                           const SourceLocation &location) throws
+    -> bool
+{
+  let const do_skip_blanks = [&](usize from) -> usize {
+    while (from < source.length &&
+           (source[from] == ' ' || source[from] == '\t'))
+    {
+      from++;
+    }
+
+    return from;
+  };
+
+  usize position = do_skip_blanks(location.position + location.length);
+
+  loop {
+    if (position >= source.length) return false;
+    if (source[position] == ')') return true;
+    if (source[position] != '|') return false;
+    if (position + 1 < source.length && source[position + 1] == '|') {
+      return false;
+    }
+
+    let const word_start = do_skip_blanks(position + 1);
+    let const word_end   = scan_pattern_word_end(source, word_start);
+
+    if (!word_end.has_value() || *word_end == word_start) return false;
+    position = do_skip_blanks(*word_end);
+  }
 }
 
 fn

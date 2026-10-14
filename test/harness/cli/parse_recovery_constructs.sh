@@ -262,3 +262,20 @@ for i in 1; do case x in a) :;; done|cat'
 do_check "an orphan list keyword keeps the errors after it" 'if :; then :; else :; else echo |; fi
 if x; then a; else b; elif c |; then d; fi
 then echo ;;'
+
+echo "== quoted and substituted pattern words keep a closer word a pattern"
+for test_text in \
+  'x=fi; if true; then case $x in fi|"a;b") echo hit;; esac; fi' \
+  'if true; then case $x in fi|a\;b) ;; esac; fi' \
+  'if true; then case $x in fi|$(echo a)) ;; esac; fi' \
+  'if true; then case $x in fi|a$(echo ;)) ;; esac; fi' \
+  'if true; then case $x in fi|`echo a`) ;; esac; fi' \
+  "if true; then case \$x in fi|'a)b') ;; esac; fi" \
+  'if true; then case $x in fi | a | b) ;; esac; fi'
+do
+  printf '%s => ' "$test_text"
+  "$BIN" --mood bash --no-config -n -c "$test_text" 2>&1 |
+    grep -c -E '^-c:[0-9]+:[0-9]+: error'
+done
+"$BIN" --mood bash --no-config -c \
+  'x=fi; if true; then case $x in fi|"a;b") echo hit;; esac; fi'
