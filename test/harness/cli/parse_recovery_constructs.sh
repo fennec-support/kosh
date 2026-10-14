@@ -255,3 +255,10 @@ for ((i = 0; i < 3)); do
   if true; then echo ;; fi
 done
 done'
+
+do_check "a pipe after a closer does not make it a case pattern" '{ case x in a) :;; } | cat
+for i in 1; do case x in a) :;; done|cat'
+
+do_check "an orphan list keyword keeps the errors after it" 'if :; then :; else :; else echo |; fi
+if x; then a; else b; elif c |; then d; fi
+then echo ;;'

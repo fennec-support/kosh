@@ -561,8 +561,10 @@ word_token_from_assignment(BumpArena &arena, const Assignment *a) throws
   return tokens::create_word_token(arena, a->source_location(), steal(word));
 }
 
-/* True when a ')' or '|' follows the token, which makes a closer word such as
-   'fi' a case pattern instead of the end of an enclosing command. */
+/* True when the token starts a case pattern: a ')' follows it, or a '|' that
+   continues the pattern up to a ')' before the end of the command. A closer
+   word such as 'fi' is then a pattern instead of the end of an enclosing
+   command. */
 pure static fn
 is_followed_by_pattern_end(StringView            source,
                            const SourceLocation &location) wontthrow -> bool
@@ -575,8 +577,25 @@ is_followed_by_pattern_end(StringView            source,
     position++;
   }
 
-  return position < source.length &&
-         (source[position] == ')' || source[position] == '|');
+  if (position >= source.length) return false;
+  if (source[position] == ')') return true;
+  if (source[position] != '|') return false;
+  if (position + 1 < source.length && source[position + 1] == '|') {
+    return false;
+  }
+
+  for (position++; position < source.length; position++) {
+    switch (source[position]) {
+    case ')':  return true;
+    case '\n':
+    case ';':
+    case '&':
+    case '(':  return false;
+    default:   break;
+    }
+  }
+
+  return false;
 }
 
 fn

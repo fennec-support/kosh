@@ -617,6 +617,23 @@ Parser::skip_failed_statement(ArrayList<Token::Kind> &open_closers,
     let const is_separator = token->kind() == Token::Kind::Newline ||
                              token->kind() == Token::Kind::Semicolon;
 
+    /* An orphan keyword that starts a list ends the skip after itself, and an
+       orphan elif also takes its condition and then. */
+    if (open_closers.is_empty()) {
+      switch (token->kind()) {
+      case Token::Kind::Then:
+      case Token::Kind::Do:
+      case Token::Kind::Else: m_lexer.advance_past_last_peek(); return;
+      case Token::Kind::Elif:
+        m_lexer.advance_past_last_peek();
+        unused(parse_command_list(get_skipped_condition_mask(Token::Kind::If)));
+        if (m_lexer.peek_shell_token()->kind() == Token::Kind::Then)
+          m_lexer.advance_past_last_peek();
+        return;
+      default: break;
+      }
+    }
+
     if (open_closers.is_empty()) {
       if (is_list_terminator(token, mask)) return;
       if (is_separator) {
