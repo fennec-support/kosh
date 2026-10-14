@@ -8,3 +8,6 @@ value substitution blocked
 8
 9
 key substitution blocked
+operand substitution blocked
+r=new
+declare -a a=([0]="x" [1]="new")

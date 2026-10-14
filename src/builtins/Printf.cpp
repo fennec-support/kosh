@@ -869,6 +869,7 @@ Printf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       let const subscript  = target.substring_of_length(
           *open_bracket + 1, target.length - *open_bracket - 2);
 
+      cxt.guard_expanded_subscript(subscript);
       cxt.assign_array_element(array_name, subscript, out.view(),
                                assignment_update_mode::Replace);
 

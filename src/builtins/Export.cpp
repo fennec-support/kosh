@@ -264,6 +264,8 @@ Export::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
           StringView{"'"} + name +
               "' is an array element and stays unexported");
       if (has_new_value) {
+        cxt.guard_expanded_subscript(name.view().substring_of_length(
+            *bracket + 1, name.count() - *bracket - 2));
         cxt.assign_array_element(name.view().substring_of_length(0, *bracket),
                                  name.view().substring_of_length(
                                      *bracket + 1, name.count() - *bracket - 2),

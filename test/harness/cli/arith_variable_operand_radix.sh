@@ -24,3 +24,22 @@ if [ -f "$marker" ]; then echo "value substitution ran"; else echo "value substi
    declare -n r=m; (( r[$k] += 2 )); echo "${m[$k]}"' \
   shell "$marker" 2>&1
 if [ -f "$marker" ]; then echo "key substitution ran"; else echo "key substitution blocked"; fi
+
+# A builtin operand or a name reference target expands its subscript again.
+# Parameter and arithmetic expansion still work there, and the kosh mood
+# rejects a command substitution taken from a value.
+rm -f "$marker"
+for form in 'unset "a[$k]"' 'printf -v "a[$k]" x' '[[ -v a[$k] ]]' \
+  'declare "a[$k]=1"' 'export "a[$k]=1"' 'declare -n r="a[$k]"; echo $r' \
+  'declare -n r="a[$k]"; r=5'; do
+  "$BIN" --mood kosh -c "a=(x y); k='\$(: > \$1)'; $form" shell "$marker" \
+    >/dev/null 2>&1
+done
+if [ -f "$marker" ]; then echo "operand substitution ran"; else echo "operand substitution blocked"; fi
+"$BIN" --mood kosh -c '
+a=(x y z); i=1
+unset "a[\$i]"
+printf -v "a[\$i]" %s new
+unset "a[\$((1+1))]"
+declare -n r="a[\$i]"; echo "r=$r"
+declare -p a' 2>&1

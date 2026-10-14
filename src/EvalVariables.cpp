@@ -985,6 +985,12 @@ EvalContext::resolve_nameref_parameter(StringView spec) throws
     return None;
   }
 
+  if (let const bracket = target->view().find_character('[');
+      bracket.has_value())
+  {
+    guard_expanded_subscript(target->view().substring(*bracket + 1));
+  }
+
   let rewritten = String{scratch_allocator()};
 
   rewritten.reserve(spec.length - (name_end - prefix_length) + target->count());

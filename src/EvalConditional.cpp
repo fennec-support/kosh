@@ -313,6 +313,8 @@ struct conditional_evaluator
         let const subscript = operand.substring_of_length(
             *bracket + 1, operand.length - *bracket - 2);
 
+        cxt.guard_expanded_subscript(subscript);
+
         return cxt.array_element_is_set(name, subscript);
       }
 

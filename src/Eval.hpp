@@ -6030,6 +6030,11 @@ public:
   guard_restricted_path(StringView            path,
                         const SourceLocation &location,
                         restricted_path_use   use) const throws -> void;
+  /* A subscript from an expanded operand or a name reference target is
+     expanded again, and the kosh mood rejects a command substitution in
+     it. */
+  fn
+  guard_expanded_subscript(StringView subscript) const throws -> void;
 
   fn
   make_stats_string() const throws -> String;

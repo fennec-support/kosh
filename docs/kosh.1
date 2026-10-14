@@ -1500,10 +1500,11 @@ re-evaluated as an arithmetic expression without further expansion, so a $ or a
 backquote in it is an error. A subscript taken from a variable value is used as
 a literal key of an associative array, and with an indexed array a $ or a
 backquote in it is an error. Bash runs a command substitution in such a
-subscript. A subscript in an operand of unset, printf \-v, declare, or the
-[[ \-v ]] test is expanded again, as in Bash, so unset 'a[$i]' uses the value of
-i, and a subscript built from untrusted data can run a command substitution
-there. Nested subscripts such as a[b[c]] are
+subscript. A subscript in an operand of unset, printf \-v, declare, export, or
+the [[ \-v ]] test, and in the target of a name reference, is expanded again, as
+in Bash, so unset 'a[$i]' uses the value of i. In the kosh mood a command
+substitution in such a subscript is an error. The bash and sh moods run it, as
+Bash does. Nested subscripts such as a[b[c]] are
 resolved inside out. An empty (( )) command returns one.
 An empty $(( )) expansion produces zero. Outside the sh mood, double quotes in
 the text of $(( )), (( )), a C-style for header, a subscript, or a substring
