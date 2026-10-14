@@ -2069,12 +2069,12 @@ expressions::internal::command_resolves(
     return true;
   }
 
-  if (eval_context != nullptr ? eval_context->is_koshkit_utility_reachable(name)
+  let const is_utility_reachable =
+      eval_context != nullptr ? eval_context->is_koshkit_utility_reachable(name)
                               : actx.is_koshkit_utility_reachable &&
-                                    koshkit::find_util(name).has_value())
-  {
-    return true;
-  }
+                                    koshkit::find_util(name).has_value();
+
+  if (is_utility_reachable) return true;
 
   if (os::has_directory_separator(name)) {
     if (let normalized = normalized_relative_executable_path(name);

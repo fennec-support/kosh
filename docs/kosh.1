@@ -1278,7 +1278,17 @@ back only to a bundled utility that a startup file enabled with
 and completion offer only those utilities. After startup,
 .B enable
 can disable a builtin but cannot enable a disabled builtin, and it cannot enable
-or disable a bundled utility.
+or disable a bundled utility. As with a program on the PATH of a restricted Bash,
+an enabled utility that starts other programs, such as
+.BR env ,
+.BR xargs ,
+.BR find ,
+.BR nohup ,
+.BR timeout ,
+or
+.BR watch ,
+runs any program its arguments give, including another shell, so a startup
+file for a restricted shell should enable only utilities that start no program.
 .B set \-o posix
 remains available, as in bash. Changes to the restricted_shell shopt value are
 accepted without effect.

@@ -1319,11 +1319,49 @@ make_synopsis(StringView program_name, const SynopsisList &lines) throws
 
   s += "SYNOPSIS\n";
 
+  static constexpr usize MAX_CONTINUATION_COLUMN = 24;
+
+  let const aligned_column = 2 + program_name.length + 1;
+  let const continuation_column =
+      aligned_column <= MAX_CONTINUATION_COLUMN ? aligned_column : usize{6};
+
   for (let const line : lines) {
     s += "  ";
     s += program_name;
-    s += ' ';
-    s += line;
+
+    usize line_used         = aligned_column - 1;
+    usize group_start       = 0;
+    usize bracket_depth     = 0;
+    bool  has_group_on_line = false;
+
+    for (usize i = 0; i <= line.length; i++) {
+      let const is_at_end = i == line.length;
+
+      if (!is_at_end) {
+        if (line[i] == '[' || line[i] == '{') bracket_depth++;
+        if ((line[i] == ']' || line[i] == '}') && bracket_depth > 0) {
+          bracket_depth--;
+        }
+
+        if (line[i] != ' ' || bracket_depth > 0) continue;
+      }
+
+      let const group = line.substring_of_length(group_start, i - group_start);
+
+      group_start = i + 1;
+      if (group.is_empty()) continue;
+      if (has_group_on_line && line_used + 1 + group.length > HELP_WRAP_WIDTH) {
+        s += '\n';
+        s.append_repeated(' ', continuation_column - 1);
+        line_used = continuation_column - 1;
+      }
+
+      s += ' ';
+      s += group;
+      line_used += 1 + group.length;
+      has_group_on_line = true;
+    }
+
     s += '\n';
   }
 

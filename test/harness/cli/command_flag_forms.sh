@@ -105,3 +105,23 @@ runtime_memory_output=$("$BIN" --no-diagnostics -c 'koshconf set debug.print_mem
 [ "$?" -eq 0 ] || exit 1
 printf '%s\n' "$runtime_memory_output" | grep -F 'AST arena:' >/dev/null || exit 1
 echo "runtime reports survive the terminal command"
+
+help_file=$(mktemp) || exit 1
+trap '"$BIN_DIR/invoke-koshkit" rm -f -- "$help_file"' EXIT
+for help_command in builtin set shopt; do
+  "$BIN" --no-diagnostics -c "$help_command --help" >"$help_file" 2>&1 || exit 1
+  previous_line=
+  section=
+  while IFS= read -r line; do
+    case $line in
+      [A-Z]*[A-Z])
+        [ -z "$previous_line" ] || [ -z "$section" ] || { echo "$help_command: '$line' follows text"; exit 1; }
+        section=$line
+        ;;
+    esac
+    [ "${#line}" -le 80 ] || { echo "$help_command: a line is wider than 80 columns"; exit 1; }
+    previous_line=$line
+  done <"$help_file"
+  [ -n "$previous_line" ] || { echo "$help_command: help ends with an empty line"; exit 1; }
+done
+echo "builtin, set, and shopt help separate sections and fit 80 columns"

@@ -141,7 +141,7 @@ echo "=== pr indentation location ==="
 "$BIN" -c 'koshkit pr -o invalid' 2>&1
 
 echo "=== pr header capacity location ==="
-"$BIN" -c 'koshkit pr -l 9' 2>&1
+"$BIN" -c 'koshkit pr -l 9' 2>&1 </dev/null
 
 echo "=== pr output capacity location ==="
 "$BIN" -c 'koshkit pr -t -l 0' 2>&1

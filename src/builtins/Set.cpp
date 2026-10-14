@@ -304,9 +304,12 @@ format_option_switches_help() throws -> String
 {
   let section = String{heap_allocator(), "OPTION SWITCHES\n"};
 
-  section += "  A letter after a minus enables the option and after a plus "
-             "disables it.\n  -o NAME and +o NAME do the same by Bash "
-             "name. A Koshka letter is shown with its koshconf name.\n\n";
+  section += wrap_text("A letter after a minus enables the option and after a "
+                       "plus disables it. -o NAME and +o NAME do the same by "
+                       "Bash name. A Koshka letter is shown with its koshconf "
+                       "name.",
+                       2, HELP_WRAP_WIDTH);
+  section += "\n\n";
   section += format_option_table();
   section += "\n  The -o long spellings:\n";
 

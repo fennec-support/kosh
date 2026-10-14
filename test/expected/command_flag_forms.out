@@ -23,3 +23,4 @@ set -N and set +N toggle the exit code diagnostic
 set +E leaves the exit code diagnostic alone
 stats report counts, transfers, and resource usage
 runtime reports survive the terminal command
+builtin, set, and shopt help separate sections and fit 80 columns
