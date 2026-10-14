@@ -1,8 +1,8 @@
 == -d offers only directories:
 real_dir/
 == -f offers files and marks directories:
-readme.txt
 real_dir/
+readme.txt
 == -A directory descends into a directory:
 real_dir/sub/
 == -k offers keywords:

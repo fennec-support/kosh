@@ -9,10 +9,10 @@ file(1).txt
 checkout
 clean
 == compopt -o filenames marks directories:
-Makefile
 harness/
+Makefile
 == the -D loader marks directories after compopt -o filenames:
-Makefile
 harness/
+Makefile
 == a directory is left bare without compopt -o filenames:
 harness

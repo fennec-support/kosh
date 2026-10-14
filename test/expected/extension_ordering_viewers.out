@@ -1,11 +1,11 @@
 == mupdf with an empty argument shows only the pdf and directories:
-book.pdf
 sub/
+book.pdf
 == evince with an empty argument shows only the pdf and directories:
+sub/
 book.pdf
-sub/
 == feh with an empty argument shows only the image and directories:
-photo.png
 sub/
+photo.png
 == a typed prefix keeps a non-matching file too:
 notes.txt

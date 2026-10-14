@@ -2,9 +2,9 @@
 ls
 lsblk
 zcat
-../up
 ./assets/
 ./docs/
+../up
 /abs
 ~/home
 == a name with a slash stays among the names:

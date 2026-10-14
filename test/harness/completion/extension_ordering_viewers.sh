@@ -1,7 +1,7 @@
 # The document and media viewers gathered in the completion policy header limit
 # an empty argument to the file types they open plus directories. A pdf viewer
-# shows a .pdf, an image viewer an image. A typed prefix keeps every match and
-# only floats the opened type first.
+# shows a .pdf, an image viewer an image. A typed prefix keeps every match, and
+# the opened type floats ahead of the other files after the directories.
 dir=$(mktemp -d)
 trap 'cd / && "$BIN_DIR/invoke-koshkit" rm -rf "$dir"' EXIT
 : > "$dir/book.pdf"

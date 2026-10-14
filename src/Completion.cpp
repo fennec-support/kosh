@@ -1536,6 +1536,30 @@ partition_by_extension(ArrayList<String> candidates,
 }
 
 static fn
+partition_directories_first(ArrayList<String> candidates) throws
+    -> ArrayList<String>
+{
+  let ordered = ArrayList<String>{candidates.allocator()};
+  let files   = ArrayList<String>{candidates.allocator()};
+
+  ordered.reserve(candidates.count());
+
+  for (let &candidate : candidates) {
+    let const view = candidate.view();
+
+    if (!view.is_empty() && os::is_directory_separator(view[view.length - 1]))
+      ordered.push(steal(candidate));
+    else
+      files.push(steal(candidate));
+  }
+
+  for (let &file : files)
+    ordered.push(steal(file));
+
+  return ordered;
+}
+
+static fn
 keep_hinted_extension(ArrayList<String> candidates,
                       StringView        hint_list) throws -> ArrayList<String>
 {
@@ -1948,6 +1972,8 @@ complete(StringView                   line,
           }
 
           candidates.truncate(kept_count);
+          candidates = partition_directories_first(steal(candidates));
+          paths      = partition_directories_first(steal(paths));
 
           for (let &path : paths)
             candidates.push(steal(path));
@@ -2032,6 +2058,12 @@ complete(StringView                   line,
         !do_has_spec_option(completion_option::NoSort))
     {
       candidates = partition_by_extension(steal(candidates), *extension_hint);
+    }
+
+    if (is_for_listing && !is_spec_candidates &&
+        !do_has_spec_option(completion_option::NoSort))
+    {
+      candidates = partition_directories_first(steal(candidates));
     }
   }
 

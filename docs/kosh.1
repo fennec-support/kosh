@@ -4181,7 +4181,9 @@ completion menu starts under the token being completed and moves to the left
 edge when its widest row, including the description column, does not fit to the
 right of that column, when an item of its first row would be cut there, or
 when its first row would wrap onto more rows there than at the left edge. A
-path list shows every path whole. The history menu always starts at the left
+path list shows every path whole, lists directories before files, and draws a
+directory in blue. A completion function keeps its words ahead of its paths and
+lists directories first within each group. The history menu always starts at the left
 edge. The down arrow moves to the next row, the up arrow moves back, and Tab
 accepts the highlighted row. In the completion menu, Escape closes the menu with
 the current edit, Ctrl\-G restores the line that opened it, and Enter closes
