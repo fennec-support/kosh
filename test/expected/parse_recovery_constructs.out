@@ -1,87 +1,94 @@
-== a failed if inside a function reports once
+== a dialect error inside a function reports once
 -c:2:6: error: The [[ conditional is a bash extension.
-== nested C-style loops report the outer loop once
+== each dialect use is reported
 -c:2:7: error: The C-style for ((...)) loop is a bash extension.
-== an orphan after the failed command is reported
+-c:3:9: error: The C-style for ((...)) loop is a bash extension.
+-c:7:9: error: The <<< here-string is a bash extension.
+== an orphan after a closed command is reported
 -c:1:4: error: The [[ conditional is a bash extension.
 -c:4:1: error: 'fi' has no matching 'if'.
 == an error outside any command keeps every later error
 -c:1:1: error: The [[ conditional is a bash extension.
 -c:2:1: error: 'fi' has no matching 'if'.
 -c:3:1: error: 'done' has no matching 'while', 'until', or 'for'.
+== every error inside one body is reported
+-c:2:10: error: Expected a command after the pipe to receive the output.
+-c:3:10: error: ';;' is only valid between the arms of a 'case'.
+-c:5:1: error: Expected a command after '&&'.
+-c:6:1: error: 'fi' has no matching 'if'.
+== an unindented body recovers the same way
+-c:3:8: error: Expected a command after the pipe to receive the output.
+-c:5:8: error: ';;' is only valid between the arms of a 'case'.
+-c:7:1: error: '}' has no matching '{'.
+== a closer of the enclosing command ends an unclosed if
+-c:2:3: error: This 'if' has no closing 'fi'.
+-c:7:3: error: ')' has no matching '('.
+== a mismatched closer ends an unclosed loop
+-c:2:3: error: This loop has no closing 'done'.
+-c:5:1: error: 'done' has no matching 'while', 'until', or 'for'.
+== an unclosed case ends at the closing brace
+-c:2:3: error: This 'case' has no closing 'esac'.
+-c:5:1: error: '}' has no matching '{'.
+== a header error skips its command by matched closers
+-c:2:1: error: Expected an unquoted 'in' after the case word.
+-c:4:1: error: 'esac' has no matching 'case'.
 == keywords and braces as arguments do not close a command
--c:1:4: error: The [[ conditional is a bash extension.
+-c:2:32: error: Expected a command after the pipe to receive the output.
 -c:4:1: error: 'done' has no matching 'while', 'until', or 'for'.
-== case patterns inside a failed command do not close it
--c:1:4: error: The [[ conditional is a bash extension.
--c:4:1: error: 'fi' has no matching 'if'.
-== a one-line failed command closes on its own keywords
--c:1:4: error: The [[ conditional is a bash extension.
--c:2:1: error: 'fi' has no matching 'if'.
-== a heredoc body inside a failed command is skipped
--c:1:4: error: The [[ conditional is a bash extension.
+== case patterns inside a skipped command do not close it
+-c:2:3: error: Expected an unquoted 'in' after the case word.
+-c:3:1: error: 'fi' has no matching 'if'.
+== a heredoc body inside a failed statement is skipped
+-c:2:13: error: Expected a command after the pipe to receive the output.
 -c:7:1: error: 'fi' has no matching 'if'.
-== an unterminated failed command reports once at the end
--c:2:6: error: The [[ conditional is a bash extension.
-== elif and else branches stay inside the failed command
--c:1:4: error: The [[ conditional is a bash extension.
+== a quoted heredoc delimiter and a multi-line string
+-c:6:5: error: Expected a command after the pipe to receive the output.
+-c:8:1: error: '}' has no matching '{'.
+== an unterminated command at the end reports once
+-c:2:3: error: This 'if' has no closing 'fi'.
+== elif and else branches recover inside the if
+-c:3:11: error: Expected a command after the pipe to receive the output.
+-c:6:8: error: ';;' is only valid between the arms of a 'case'.
 -c:8:1: error: 'done' has no matching 'while', 'until', or 'for'.
 == each failed function reports its own error
--c:2:6: error: The [[ conditional is a bash extension.
--c:5:7: error: The C-style for ((...)) loop is a bash extension.
-== a subshell and a brace group inside a failed command
--c:1:7: error: The [[ conditional is a bash extension.
+-c:2:23: error: Expected a command after the pipe to receive the output.
+-c:5:23: error: Expected a command after the pipe to receive the output.
+== a subshell and a brace group inside a body
+-c:2:20: error: Expected a command after the pipe to receive the output.
 -c:4:1: error: '}' has no matching '{'.
-== an unclosed failed command stops hiding errors at the next outer line
--c:2:6: error: The [[ conditional is a bash extension.
--c:7:3: error: ')' has no matching '('.
-== a heredoc terminator at the left margin does not end the skip
--c:2:6: error: The [[ conditional is a bash extension.
--c:10:1: error: 'fi' has no matching 'if'.
-== an unindented body reports its closer instead of hiding errors
--c:1:4: error: The [[ conditional is a bash extension.
--c:3:1: error: 'fi' has no matching 'if'.
-== comments and blank lines at the margin keep the skip
--c:2:6: error: The [[ conditional is a bash extension.
--c:8:1: error: 'fi' has no matching 'if'.
-== tab indentation ends the skip at the next outer line
--c:2:5: error: The [[ conditional is a bash extension.
--c:6:2: error: ')' has no matching '('.
-== a real error right after the failed command closes is reported
--c:1:4: error: The [[ conditional is a bash extension.
--c:3:5: error: 'done' has no matching 'while', 'until', or 'for'.
-== a failed command on one line leaves the next line alone
--c:1:4: error: The [[ conditional is a bash extension.
--c:2:9: error: 'esac' has no matching 'case'.
-== deeply nested constructs report once
--c:6:16: error: The [[ conditional is a bash extension.
+== deeply nested constructs report only the real error
+-c:6:32: error: Expected a command after the pipe to receive the output.
 -c:12:1: error: '}' has no matching '{'.
-== case arms at the case indent stay inside the failed command
--c:2:4: error: The [[ conditional is a bash extension.
--c:6:1: error: 'esac' has no matching 'case'.
-== a multi-line string at the margin stays inside the failed command
--c:1:4: error: The [[ conditional is a bash extension.
--c:5:1: error: 'fi' has no matching 'if'.
-== a backslash continuation at the margin stays inside the failed command
--c:1:4: error: The [[ conditional is a bash extension.
--c:5:1: error: 'fi' has no matching 'if'.
-== an arithmetic shift and a quoted heredoc delimiter keep the skip
--c:2:3: error: The [[ conditional is a bash extension.
--c:7:1: error: 'fi' has no matching 'if'.
 == a missing then reports the if instead of its fi
 -c:1:1: error: This 'if' has no 'then'.
 -c:2:1: error: This loop has no 'do'.
-== independent errors after the failed command closes are reported
+== independent errors after a failed command are reported
 -c:2:6: error: The condition before 'then' is empty.
 -c:4:6: error: The condition before 'then' is empty.
 -c:6:8: error: ';;' is only valid between the arms of a 'case'.
 -c:8:1: error: '}' has no matching '{'.
+== a missing do inside a function ends at the brace
+-c:2:3: error: This loop has no 'do'.
+-c:4:6: error: Expected a command after the pipe to receive the output.
+== an empty body keeps the errors after it
+-c:1:15: error: The body after 'then' is empty.
+-c:3:1: error: 'done' has no matching 'while', 'until', or 'for'.
+-c:4:7: error: The brace group between '{' and '}' is empty.
+-c:5:1: error: 'esac' has no matching 'case'.
+== nested commands ended by one foreign closer report the innermost
+-c:1:21: error: This loop has no closing 'done'.
+-c:2:1: error: 'fi' has no matching 'if'.
+== a keyword taken as an argument is pointed out at the end
+-c:1:1: error: This 'if' has no closing 'fi'.
+-c:1:20: details:
 == a script file recovers the same way
-2:6: error: The [[ conditional is a bash extension.
+3:10: error: Expected a command after the pipe to receive the output.
 7:1: error: 'fi' has no matching 'if'.
-== the bash mood recovers from its own errors
+== lint reports every error in a file
+2:10: error: Expected a command after the pipe to receive the output.
+3:10: error: ';;' is only valid between the arms of a 'case'.
+6:3: error: This 'if' has no closing 'fi'.
+== the bash mood keeps parsing after a bad loop variable
 -c:2:7: error: The for loop variable '1x' is not a valid identifier.
+-c:3:10: error: Expected a command after the pipe to receive the output.
 -c:6:1: error: 'done' has no matching 'while', 'until', or 'for'.
-== a while and an until inside a failed command
--c:2:6: error: The [[ conditional is a bash extension.
--c:7:1: error: 'esac' has no matching 'case'.

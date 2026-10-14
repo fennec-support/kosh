@@ -109,20 +109,25 @@ public:
   take_analysis_directives() throws -> analysis_directives;
 
 private:
-  static constexpr usize MAX_COMMAND_DEPTH             = 512;
-  static constexpr usize MAX_RECOVERED_STATEMENT_COUNT = 100;
+  static constexpr usize MAX_COMMAND_DEPTH = 512;
+  /* The cap spans every collecting call on one parser, so a streamed script
+     stops recovering after this many errors in total. */
+  static constexpr usize MAX_RECOVERED_ERROR_COUNT = 100;
 
   Lexer m_lexer;
 
-  u16   m_command_depth{0};
-  usize m_open_construct_count{0};
-  usize m_unclosed_construct_count{0};
-  usize m_outermost_construct_position{0};
-  usize m_suppression_end_position{0};
-  usize m_statement_start_position{0};
-  usize m_failed_construct_floor_count{0};
-  bool  m_should_stop_after_top_level_unit{false};
-  bool  m_has_parsed_source_command{false};
+  u16                           m_command_depth{0};
+  ArrayList<Token::Kind>        m_open_closers{heap_allocator()};
+  u64                           m_enclosing_terminator_mask{0};
+  usize                         m_recorded_error_count{0};
+  usize                         m_last_recorded_error_position{SIZE_MAX};
+  usize                         m_last_recorded_details_position{SIZE_MAX};
+  bool                          m_is_input_exhausted{false};
+  ArrayList<String>            *m_collected_errors{nullptr};
+  EvalContext                  *m_collected_context{nullptr};
+  ArrayList<source_diagnostic> *m_collected_sink{nullptr};
+  bool                          m_should_stop_after_top_level_unit{false};
+  bool                          m_has_parsed_source_command{false};
   ArrayList<ErrorWithLocationAndDetails> *m_error_collection{nullptr};
   analysis_metadata_collection_mode       m_analysis_metadata_collection_mode{
       analysis_metadata_collection_mode::Disabled};
@@ -151,34 +156,47 @@ private:
   parse_simple_command(const Token *leading_token = nullptr) throws
       -> Command *;
 
+  cold fn
+  skip_failed_statement(ArrayList<Token::Kind> &open_closers,
+                        u64                     mask) throws -> void;
+
+  /* Takes the next token unless it is a closer that an enclosing list owns
+     and that expected_mask does not hold, so the owner can still close. */
   fn
-  recover_to_next_statement() throws -> void;
-  fn
-  count_skipped_token(const Token *token, bool &is_command_position) wontthrow
+  next_token_or_foreign_closer(u64 expected_mask) throws -> Token *;
+  cold fn
+  record_caught_error(const ErrorWithLocation &error) throws -> void;
+  cold fn
+  recover_failed_statement(const ErrorWithLocation &error,
+                           usize                    statement_depth,
+                           u64                      mask,
+                           usize                   &last_recovery_position) throws
+      -> void;
+  cold fn
+  report_soft_error(const ErrorWithLocationAndDetails &error) throws
       -> void;
   fn
-  find_next_outer_line(usize opener, usize error) const throws -> usize;
-  cold fn
-  record_statement_error(
-      usize                         error_position,
-      ArrayList<String>            &errors,
-      EvalContext                  *context,
-      ArrayList<source_diagnostic> *diagnostic_sink) throws -> void;
+  begin_error_collection(ArrayList<String>            &errors,
+                         EvalContext                  *context,
+                         ArrayList<source_diagnostic> *diagnostic_sink)
+      wontthrow
+      -> void;
+  fn
+  end_error_collection() wontthrow -> void;
 
-  /* The count stays raised when do_parse throws, so record_statement_error
-     sees the constructs that were open at the error. */
+  /* The closer stays on the stack when do_parse throws, so
+     recover_failed_statement sees the constructs that the failed statement
+     left open. */
   template <class ParseFn>
   fn
-  parse_nesting_construct(const Token *opener, ParseFn do_parse) throws
+  parse_nesting_construct(Token::Kind closer, ParseFn do_parse) throws
       -> Command *
   {
-    if (m_open_construct_count == 0)
-      m_outermost_construct_position = opener->source_location().position;
-    m_open_construct_count++;
+    m_open_closers.push(closer);
 
     Command *command = do_parse();
 
-    m_open_construct_count--;
+    m_open_closers.pop_back();
 
     return command;
   }

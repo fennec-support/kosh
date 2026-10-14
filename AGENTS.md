@@ -57,6 +57,12 @@ src/Main.cpp owns flags, startup, scripts, and the interactive loop.
 src/Lexer.cpp creates tokens. src/Parser.cpp creates the syntax tree.
 src/Optimizer.cpp folds constants and dead branches.
 
+A parser that collects errors recovers inside every command list. It records
+the error, skips the failed statement by tokens with a stack of expected
+closers, and continues the list. A closer that an enclosing list owns ends the
+inner list. Dialect errors go through report_soft_error and do not stop the
+parse. The execution parser still stops at the first error.
+
 Evaluation is split across src/Eval.cpp and the Eval sources. Expression families
 live in the Expressions sources. Shared helpers live in
 src/ExpressionsInternal.hpp. Internal declarations use the owning namespace

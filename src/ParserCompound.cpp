@@ -23,6 +23,7 @@ namespace koshka {
 using namespace tokens;
 using namespace expressions;
 using internal::get_unquoted_word_text;
+using internal::is_list_terminator;
 using internal::is_unquoted_word;
 using internal::throw_unterminated;
 using internal::token_kind_mask;
@@ -41,10 +42,13 @@ Parser::parse_if() throws -> Command *
   const Expression *otherwise    = nullptr;
   usize             end_position = 0;
 
-  let const do_reject_empty = [](const Expression *part, const Token *next,
-                                 const char *message,
-                                 const char *note) throws -> void {
+  let const do_reject_empty = [this](const Expression *part, const Token *next,
+                                     const char *message,
+                                     const char *note) throws -> void {
     if (!part->is_dummy()) return;
+
+    /* A consumed 'fi' closes this if, so recovery must not expect it. */
+    if (next->kind() == Token::Kind::Fi) m_open_closers.pop_back();
 
     throw ErrorWithLocationAndDetails{next->source_location(), message, note};
   };
@@ -53,12 +57,13 @@ Parser::parse_if() throws -> Command *
     Expression *condition = parse_command_list(
         token_kind_mask(Token::Kind::Then, Token::Kind::Fi, Token::Kind::Else,
                         Token::Kind::Elif));
-    Token *then_token = m_lexer.next_shell_token();
+    Token *then_token = next_token_or_foreign_closer(
+        token_kind_mask(Token::Kind::Then, Token::Kind::Fi));
     ASSERT(then_token != nullptr);
 
     if (then_token->kind() != Token::Kind::Then) {
       /* A 'fi' in place of 'then' closes this if. */
-      if (then_token->kind() == Token::Kind::Fi) m_open_construct_count--;
+      if (then_token->kind() == Token::Kind::Fi) m_open_closers.pop_back();
       let const is_condition_empty = condition->is_dummy();
       let const message = is_condition_empty ? "This 'if' has no condition"
                                              : "This 'if' has no 'then'";
@@ -79,7 +84,8 @@ Parser::parse_if() throws -> Command *
 
     branches.push(if_branch{condition, body});
 
-    Token *after = m_lexer.next_shell_token();
+    Token *after = next_token_or_foreign_closer(
+        token_kind_mask(Token::Kind::Elif, Token::Kind::Else, Token::Kind::Fi));
     ASSERT(after != nullptr);
 
     let const is_body_closed = after->kind() == Token::Kind::Elif ||
@@ -96,7 +102,8 @@ Parser::parse_if() throws -> Command *
     case Token::Kind::Else: {
       otherwise = parse_command_list(token_kind_mask(Token::Kind::Fi));
 
-      Token *fi_token = m_lexer.next_shell_token();
+      Token *fi_token =
+          next_token_or_foreign_closer(token_kind_mask(Token::Kind::Fi));
       ASSERT(fi_token != nullptr);
 
       if (fi_token->kind() != Token::Kind::Fi) {
@@ -143,12 +150,13 @@ Parser::parse_while_or_until(loop_kind kind) throws -> Command *
 
   Expression *condition =
       parse_command_list(token_kind_mask(Token::Kind::Do, Token::Kind::Done));
-  Token *do_token = m_lexer.next_shell_token();
+  Token *do_token = next_token_or_foreign_closer(
+      token_kind_mask(Token::Kind::Do, Token::Kind::Done));
   ASSERT(do_token != nullptr);
 
   if (do_token->kind() != Token::Kind::Do) {
     /* A 'done' in place of 'do' closes this loop. */
-    if (do_token->kind() == Token::Kind::Done) m_open_construct_count--;
+    if (do_token->kind() == Token::Kind::Done) m_open_closers.pop_back();
 
     let const is_condition_empty = condition->is_dummy();
     let const message = is_condition_empty ? "This loop has no condition"
@@ -305,21 +313,6 @@ Parser::parse_loop_header(
   }
 
   if (name_token->kind() != Token::Kind::Word) {
-    if (keyword == "for" && m_lexer.is_posix_mode() &&
-        name_token->kind() == Token::Kind::LeftParen)
-    {
-      let       location = name_token->source_location();
-      let const source   = m_lexer.source();
-      let const end =
-          lexer::scan_balanced_shell_region(source, location.position + 1, ')');
-
-      if (end.has_value()) location.length = *end - location.position;
-
-      throw ErrorWithLocationAndDetails{
-          location, "The C-style for ((...)) loop is a bash extension",
-          "Count with a while loop, such as `i=1; while [ \"$i\" -le N ]; "
-          "do ...; i=$((i + 1)); done`"};
-    }
     throw ErrorWithLocationAndDetails{
         name_token->source_location(),
         StringView{"Expected a variable after '"} + keyword + "'",
@@ -337,13 +330,21 @@ Parser::parse_loop_header(
         lexer::word_is_variable_name(name_word.segments[0].text.view());
   }
 
+  let variable_name = name_word.segments.is_empty()
+                          ? StringView{}
+                          : name_word.segments[0].text.view();
+
   if (!is_name_plain) {
-    throw ErrorWithLocationAndDetails{
-        name_token->source_location(),
+    let const name_location = name_token->source_location();
+
+    report_soft_error(ErrorWithLocationAndDetails{
+        name_location,
         StringView{"The "} + keyword + " loop variable '" +
             name_token->raw_string() + "' is not a valid identifier",
         StringView{"Write a bare identifier, as in `"} + keyword +
-            " i in a b c`, without '$' or quotes"};
+            " i in a b c`, without '$' or quotes"});
+    variable_name = m_lexer.source().substring_of_length(name_location.position,
+                                                         name_location.length);
   }
 
   ArrayList<const Token *> words{heap_allocator()};
@@ -351,18 +352,20 @@ Parser::parse_loop_header(
 
   skip_semicolons_and_newlines();
 
-  Token *do_token = m_lexer.next_shell_token();
+  Token *do_token = next_token_or_foreign_closer(
+      token_kind_mask(Token::Kind::Do, Token::Kind::Done));
   ASSERT(do_token != nullptr);
 
   if (do_token->kind() != Token::Kind::Do) {
+    if (do_token->kind() == Token::Kind::Done) m_open_closers.pop_back();
     throw ErrorWithLocationAndDetails{
         location, StringView{"This "} + keyword + " loop has no 'do'",
         do_token->source_location(),
         has_in_clause ? missing_do_detail : missing_do_without_in_detail};
   }
 
-  return parsed_loop_header{name_token, name_word.segments[0].text.view(),
-                            steal(words), has_in_clause,
+  return parsed_loop_header{name_token, variable_name, steal(words),
+                            has_in_clause,
                             parse_loop_body(location, unterminated_message)};
 }
 
@@ -375,27 +378,37 @@ Parser::parse_for() throws -> Command *
 
   LOG(Debug, "parsing a for loop at byte %u", location.position);
 
-  if (!m_lexer.is_posix_mode()) {
-    Token *peeked = m_lexer.peek_shell_token();
-    ASSERT(peeked != nullptr);
+  Token *peeked = m_lexer.peek_shell_token();
+  ASSERT(peeked != nullptr);
 
-    if (peeked->kind() == Token::Kind::LeftParen) {
-      Token *first_paren = m_lexer.next_shell_token();
-      Token *second      = m_lexer.peek_shell_token();
-      ASSERT(second != nullptr);
+  if (peeked->kind() == Token::Kind::LeftParen) {
+    Token *first_paren = m_lexer.next_shell_token();
+    Token *second      = m_lexer.peek_shell_token();
+    ASSERT(second != nullptr);
 
-      if (second->kind() == Token::Kind::LeftParen &&
-          second->source_location().position ==
-              first_paren->source_location().position + 1)
-      {
-        return parse_c_style_for(location, first_paren);
+    if (second->kind() == Token::Kind::LeftParen &&
+        second->source_location().position ==
+            first_paren->source_location().position + 1)
+    {
+      if (m_lexer.is_posix_mode()) {
+        let       header = first_paren->source_location();
+        let const end    = lexer::scan_balanced_shell_region(
+            m_lexer.source(), header.position + 1, ')');
+
+        if (end.has_value()) header.length = *end - header.position;
+        report_soft_error(ErrorWithLocationAndDetails{
+            header, "The C-style for ((...)) loop is a bash extension",
+            "Count with a while loop, such as `i=1; while [ \"$i\" -le N ]; "
+            "do ...; i=$((i + 1)); done`"});
       }
 
-      throw ErrorWithLocationAndDetails{
-          first_paren->source_location(),
-          "Expected '((' or a variable after 'for'",
-          "Write `for ((i = 0; i < 3; i++))` or `for i in a b c`"};
+      return parse_c_style_for(location, first_paren);
     }
+
+    throw ErrorWithLocationAndDetails{
+        first_paren->source_location(),
+        "Expected '((' or a variable after 'for'",
+        "Write `for ((i = 0; i < 3; i++))` or `for i in a b c`"};
   }
 
   let header = parse_loop_header(
@@ -630,6 +643,12 @@ Parser::parse_case() throws -> Command *
       break;
     }
 
+    if (is_list_terminator(t, m_enclosing_terminator_mask)) {
+      throw ErrorWithLocationAndDetails{
+          location, "This 'case' has no closing 'esac'", t->source_location(),
+          "expected 'esac' here to close it"};
+    }
+
     if (t->kind() == Token::Kind::LeftParen) m_lexer.advance_past_last_peek();
 
     ArrayList<const Token *> patterns{heap_allocator()};
@@ -726,7 +745,8 @@ Parser::parse_brace_group() throws -> Command *
   Expression *body =
       parse_command_list(token_kind_mask(Token::Kind::RightBracket));
 
-  Token *close = m_lexer.next_shell_token();
+  Token *close =
+      next_token_or_foreign_closer(token_kind_mask(Token::Kind::RightBracket));
   ASSERT(close != nullptr);
 
   if (!is_unquoted_word(close, "}")) {
@@ -736,6 +756,7 @@ Parser::parse_brace_group() throws -> Command *
   }
 
   if (body->is_dummy()) {
+    m_open_closers.pop_back();
     throw ErrorWithLocationAndDetails{
         close->source_location(),
         "The brace group between '{' and '}' is empty",
@@ -786,7 +807,8 @@ Parser::parse_subshell(Token *open) throws -> Command *
   Expression *body =
       parse_command_list(token_kind_mask(Token::Kind::RightParen));
 
-  Token *close = m_lexer.next_shell_token();
+  Token *close =
+      next_token_or_foreign_closer(token_kind_mask(Token::Kind::RightParen));
   ASSERT(close != nullptr);
 
   if (close->kind() != Token::Kind::RightParen) {
@@ -929,10 +951,12 @@ Parser::parse_c_style_for(const SourceLocation &location,
 
   skip_semicolons_and_newlines();
 
-  Token *do_token = m_lexer.next_shell_token();
+  Token *do_token = next_token_or_foreign_closer(
+      token_kind_mask(Token::Kind::Do, Token::Kind::Done));
   ASSERT(do_token != nullptr);
 
   if (do_token->kind() != Token::Kind::Do) {
+    if (do_token->kind() == Token::Kind::Done) m_open_closers.pop_back();
     throw ErrorWithLocationAndDetails{
         location, "This for loop has no 'do'", do_token->source_location(),
         "expected 'do' here, after the '(( ... ))' header"};

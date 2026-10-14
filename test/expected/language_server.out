@@ -29,6 +29,7 @@ process-substitution-syntax=ok
 substitution-scope-tokens=ok
 several-substitution-syntax=ok
 heredoc-substitution-syntax=ok
+several-body-syntax=ok
 unchanged-change-skips-analysis=ok
 rename-capability=ok
 prepare-rename=ok

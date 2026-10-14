@@ -30,6 +30,8 @@ hot pure fn
 get_unquoted_word_text(const Token *token) wontthrow -> const SegmentText *;
 hot pure fn
 is_unquoted_word(const Token *token, StringView expected) wontthrow -> bool;
+hot pure fn
+is_list_terminator(const Token *token, u64 terminator_mask) wontthrow -> bool;
 
 cold wontreturn fn
 throw_unterminated(const SourceLocation &opener,
