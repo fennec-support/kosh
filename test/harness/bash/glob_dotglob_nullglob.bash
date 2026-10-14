@@ -148,10 +148,14 @@ rm -rf "$d"
 d=$(mktemp -d)
 touch "$d/a.c" "$d/b.o" "$d/.h"
 cd "$d" || exit 1
-shell=${KOSH-$BASH}
-GLOBIGNORE='*.o' "$shell" -c 'echo "imported: [$GLOBIGNORE]" *; shopt dotglob'
-GLOBIGNORE='*.o' "$shell" -c 'GLOBIGNORE="*.o"; echo "assigned:" *; shopt dotglob'
-GLOBIGNORE='*.o' "$shell" -c 'unset GLOBIGNORE; GLOBIGNORE=; echo "reset:" *'
+if [ -n "${KOSH-}" ]; then
+  set -- "$KOSH" --mood bash
+else
+  set -- "$BASH"
+fi
+GLOBIGNORE='*.o' "$@" -c 'echo "imported: [$GLOBIGNORE]" *; shopt dotglob'
+GLOBIGNORE='*.o' "$@" -c 'GLOBIGNORE="*.o"; echo "assigned:" *; shopt dotglob'
+GLOBIGNORE='*.o' "$@" -c 'unset GLOBIGNORE; GLOBIGNORE=; echo "reset:" *'
 cd "$initial_directory" || exit 1
 rm -rf "$d"
 

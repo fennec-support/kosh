@@ -954,10 +954,27 @@ glob_ignore_pattern_matches(const glob_ignore_pattern &pattern,
 
 } /* namespace */
 
+fn
+EvalContext::sort_glob_matches(ArrayList<String> &matches) const throws
+    -> void
+{
+  if (!runtime_state().is_bash_compatible()) {
+    matches.sort();
+
+    return;
+  }
+
+  matches.sort([](const String &left, const String &right) {
+    let const order = os::collate_compare(left, right);
+
+    return order != 0 ? order < 0 : left < right;
+  });
+}
+
 hot fn
 EvalContext::expand_path(glob_field            field,
                          const SourceLocation &location) throws
-    -> SortedArrayList<String, order_comparator<String>>
+    -> ArrayList<String>
 {
   let const scratch = scratch_allocator();
 
@@ -1055,12 +1072,14 @@ EvalContext::expand_path(glob_field            field,
     }
   }
 
-  return steal(values).make_sorted(sort_order::ascending);
+  sort_glob_matches(values);
+
+  return values;
 }
 
 fn
 EvalContext::expand_glob_lenient(StringView pattern) throws
-    -> SortedArrayList<String, order_comparator<String>>
+    -> ArrayList<String>
 {
   let const scratch = scratch_allocator();
   let       values  = ArrayList<String>{scratch};
@@ -1081,7 +1100,7 @@ EvalContext::expand_glob_lenient(StringView pattern) throws
         static_cast<int>(pattern.length), pattern.data);
     if (Path{pattern, scratch}.exists()) values.push_managed(pattern);
 
-    return steal(values).make_sorted(sort_order::ascending);
+    return values;
   }
 
   let input = ArrayList<glob_field>{scratch};
@@ -1093,7 +1112,9 @@ EvalContext::expand_glob_lenient(StringView pattern) throws
 
   LOG(Debug, "compgen -G probe matched %zu paths", values.count());
 
-  return steal(values).make_sorted(sort_order::ascending);
+  sort_glob_matches(values);
+
+  return values;
 }
 
 } /* namespace koshka */

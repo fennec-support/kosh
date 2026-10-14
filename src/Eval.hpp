@@ -5590,8 +5590,7 @@ public:
   locate_variable_reference(StringView name) const wontthrow -> SourceLocation;
 
   fn
-  expand_glob_lenient(StringView pattern) throws
-      -> SortedArrayList<String, order_comparator<String>>;
+  expand_glob_lenient(StringView pattern) throws -> ArrayList<String>;
 
   fn
   set_posix_mode_via_option(bool is_enabled) wontthrow -> void
@@ -6174,7 +6173,9 @@ protected:
       -> ArrayList<glob_field>;
   fn
   expand_path(glob_field field, const SourceLocation &location) throws
-      -> SortedArrayList<String, order_comparator<String>>;
+      -> ArrayList<String>;
+  fn
+  sort_glob_matches(ArrayList<String> &matches) const throws -> void;
 
   fn
   expand_tilde(WordSegment &leading_segment,

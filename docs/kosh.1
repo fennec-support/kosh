@@ -1625,6 +1625,9 @@ Braces nest. A lone {a} remains literal.
 IFS controls field splitting. A run of an IFS whitespace byte collapses. A run
 of a non-whitespace IFS byte produces an empty field where applicable.
 .SS Pathname expansion
+The bash moods sort the matches of a pattern by the collation order of the
+locale, as Bash does. The kosh and sh moods sort them by byte value.
+.PP
 The
 .B extglob
 option enables ?(), *(), +(), @(), and !() matching. The shell parses these
