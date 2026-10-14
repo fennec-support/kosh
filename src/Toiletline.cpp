@@ -3284,6 +3284,26 @@ prompt_hostname(bool should_use_full_hostname) throws -> String
 }
 
 static fn
+prompt_hostname_color() throws -> StringView
+{
+  static const StringView HOSTNAME_COLORS[] = {
+      colors::ansi::YELLOW,      colors::ansi::BLUE,
+      colors::ansi::MAGENTA,     colors::ansi::CYAN,
+      colors::ansi::BRIGHT_BLUE, colors::ansi::BRIGHT_MAGENTA,
+      colors::ansi::BRIGHT_CYAN,
+  };
+  static const usize color_index = [] throws -> usize {
+    let const host = prompt_hostname(true);
+    let const checksum =
+        ~os::crc32c_update(0xFFFFFFFF, host.view().data, host.length());
+
+    return checksum % countof(HOSTNAME_COLORS);
+  }();
+
+  return HOSTNAME_COLORS[color_index];
+}
+
+static fn
 collapse_home_prefix(StringView path) throws -> String
 {
   let         shown = String{koshka::heap_allocator(), path};
@@ -3488,6 +3508,15 @@ expand_prompt_escapes(StringView   prompt,
     case 'h': do_append_data(prompt_hostname(false).view()); break;
 
     case 'H': do_append_data(prompt_hostname(true).view()); break;
+
+    case 'k':
+    case 'K': {
+      let const should_use_color = colors::stdout_wants_color();
+
+      if (should_use_color) out += prompt_hostname_color();
+      do_append_data(prompt_hostname(escaped == 'K').view());
+      if (should_use_color) out += colors::ansi::RESET;
+    } break;
 
     case 'w':
       do_append_data(collapse_home_prefix(working_directory).view());
@@ -3772,7 +3801,7 @@ get_default_prompt_template() -> String
     template_string += R"($KOSH_GIT_BEHIND)";
     template_string += colors::ansi::RESET;
     template_string += R"(})";
-    template_string += R"(${KOSH_GIT_BRANCH:+ at }\u@\h )";
+    template_string += R"(${KOSH_GIT_BRANCH:+ at }\u@\k )";
     template_string += colors::ansi::GREEN;
     template_string += R"(\P)";
     template_string += colors::ansi::RESET;

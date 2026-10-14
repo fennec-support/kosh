@@ -2,3 +2,6 @@ fast='[\L]'
 echo "${fast@P}"
 strftime='a\D{%%}b\D'
 echo "${strftime@P}"
+colored='\k \K'
+plain='\h \H'
+[[ "${colored@P}" == "${plain@P}" ]] && echo "the colored host is plain without a terminal"

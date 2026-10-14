@@ -5046,10 +5046,14 @@ These variables provide the pre-execution, primary, continuation, select, and
 xtrace prompts. PS0 defaults to empty. PS2 defaults to "> ". PS3 defaults to
 "#? ". PS4 defaults to "+ ". The first byte of PS4 is repeated once per
 enclosing subshell. The default PS1 shows the git branch, ahead and behind
-counts, user, host, and working directory, and it ends with a bullet. The
-backslash escapes \\u,
-\\h, \\H, \\w, \\W, \\P, \\g, \\$, \\?, \\j, \\L, \\., \\t, \\T, \\@, \\A,
+counts, user, colored host, and working directory, and it ends with a bullet.
+The backslash escapes \\u,
+\\h, \\H, \\k, \\K, \\w, \\W, \\P, \\g, \\$, \\?, \\j, \\L, \\., \\t, \\T, \\@, \\A,
 \\d, \\s, \\v, \\V, \\!, \\#, \\l, \\n, \\r, \\e, \\a, \\[, and \\] are expanded.
+The \\k and \\K escapes insert the hostname as \\h and \\H do, colored when
+standard output is a color terminal. The color is one of seven terminal colors
+and is chosen once from the CRC-32C checksum of the full hostname. Every
+session on a host draws the hostname in the same color.
 The \\s escape inserts the last component of the path the shell was started
 with, without a leading login dash or an .exe suffix, so it is the shell and
 never the script in $0. The \\v escape inserts the major and minor version and
@@ -5080,7 +5084,8 @@ region the way \\[ and \\] do. It is not drawn, and the escape sequences
 inside the region take no columns.
 The \\. escape emits a bullet, plain when the last exit status is zero and
 bold red when it is not. The user, host, directory, branch, shell name, and
-version inserted by \\u, \\h, \\H, \\w, \\W, \\P, \\g, \\s, \\v, and \\V draw a
+version inserted by \\u, \\h, \\H, \\k, \\K, \\w, \\W, \\P, \\g, \\s, \\v, and
+\\V draw a
 C0 control byte or DEL in caret notation, such as ^[ for escape, and a C1
 control or a byte that is not UTF-8 as \\xHH, so a directory name cannot write
 escape sequences to the terminal.
