@@ -5122,9 +5122,11 @@ The backslash escapes \\u,
 \\h, \\H, \\k, \\K, \\w, \\W, \\P, \\g, \\$, \\?, \\j, \\L, \\., \\t, \\T, \\@, \\A,
 \\d, \\s, \\v, \\V, \\!, \\#, \\l, \\n, \\r, \\e, \\a, \\[, and \\] are expanded.
 The \\k and \\K escapes insert the hostname as \\h and \\H do, colored when
-standard output is a color terminal. The color is one of seven terminal colors
-and is chosen once from the CRC-32C checksum of the full hostname. Every
-session on a host draws the hostname in the same color.
+standard output is a color terminal. The color changes every two letters, and
+each color is chosen from the CRC-32C checksum of the full hostname mixed with
+the position of the letters. A terminal with the 256-color palette draws from 60
+pastel colors, and another terminal draws from seven terminal colors. Every
+session on a host draws the hostname in the same colors.
 The \\s escape inserts the last component of the path the shell was started
 with, without a leading login dash or an .exe suffix, so it is the shell and
 never the script in $0. The \\v escape inserts the major and minor version and
@@ -5177,10 +5179,13 @@ option is on. It expands like PS1. When it is unset or empty, the prompt is
 The value selects the xtrace descriptor. Standard error is used when it is unset
 or invalid.
 .TP
-.BR TERM ", " NO_COLOR
-TERM selects terminal capabilities on POSIX systems. A nonempty NO_COLOR
-disables prompt, diagnostic, koshkit cat, and editor color. Reverse video
-carries no color. The reversed row of the interactive selector stays visible.
+.BR TERM ", " COLORTERM ", " NO_COLOR
+TERM selects terminal capabilities on POSIX systems. When COLORTERM contains
+truecolor or 24bit, or TERM contains 256color or direct, the prompt, syntax,
+file, and diagnostic colors become pastel 256-color shades, and the selected
+completion row is drawn as white text on blue. A nonempty NO_COLOR disables
+prompt, diagnostic, koshkit cat, and editor color. Reverse video carries no
+color. The reversed row of the interactive selector stays visible.
 .TP
 .B MANPATH
 Completion searches these manual paths for subcommands and options.

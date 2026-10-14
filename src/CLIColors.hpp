@@ -61,6 +61,15 @@ stderr_is_a_terminal() wontthrow -> bool;
 fn
 terminal_wants_color(bool is_output_terminal) throws -> bool;
 
+/* A terminal draws the 256-color palette when COLORTERM contains truecolor or
+   24bit, or when TERM contains 256color or direct. */
+fn
+terminal_supports_256_color() wontthrow -> bool;
+/* An ordinary color becomes its pastel 256-color form on a terminal that
+   draws the 256-color palette. Any other style is returned unchanged. */
+fn
+soft(StringView style) wontthrow -> StringView;
+
 enum class file_entry_type : u8
 {
   Regular,
@@ -75,12 +84,17 @@ enum class file_entry_type : u8
 
 pure fn
 file_entry_type_of_mode(u32 mode) wontthrow -> file_entry_type;
-pure fn
+fn
 file_entry_color(file_entry_type type) wontthrow -> StringView;
 
-extern const highlight_theme NONINTERACTIVE_HIGHLIGHT_THEME;
-extern const highlight_theme PRINTED_SOURCE_HIGHLIGHT_THEME;
-extern const highlight_theme DIAGNOSTIC_HIGHLIGHT_THEME;
+/* Each theme uses pastel colors on a terminal that draws the 256-color
+   palette. */
+fn
+noninteractive_highlight_theme() wontthrow -> const highlight_theme &;
+fn
+printed_source_highlight_theme() wontthrow -> const highlight_theme &;
+fn
+diagnostic_highlight_theme() wontthrow -> const highlight_theme &;
 
 } /* namespace colors */
 

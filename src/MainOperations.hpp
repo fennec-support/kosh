@@ -2838,7 +2838,7 @@ run_format_operation(const ArrayList<String> &file_names,
 
       completion::append_highlighted_source(
           highlighted, formatted->view(), context,
-          colors::PRINTED_SOURCE_HIGHLIGHT_THEME);
+          colors::printed_source_highlight_theme());
       print(highlighted);
     } else {
       print(formatted->view());

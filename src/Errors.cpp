@@ -448,7 +448,7 @@ get_context_pointing_to(StringView                         source,
   if (has_left_ellipsis) msg += "...";
   completion::append_highlighted_range(msg, display_line, *line_highlights,
                                        window_start_byte, window_end_byte,
-                                       colors::DIAGNOSTIC_HIGHLIGHT_THEME);
+                                       colors::diagnostic_highlight_theme());
   if (has_right_ellipsis) msg += "...";
 
   const usize caret_pad =

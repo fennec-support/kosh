@@ -90,12 +90,106 @@ make_diagnostic_highlight_theme() wontthrow -> highlight_theme
   return theme;
 }
 
-const highlight_theme NONINTERACTIVE_HIGHLIGHT_THEME =
-    make_noninteractive_highlight_theme();
-const highlight_theme PRINTED_SOURCE_HIGHLIGHT_THEME =
-    make_printed_source_highlight_theme();
-const highlight_theme DIAGNOSTIC_HIGHLIGHT_THEME =
-    make_diagnostic_highlight_theme();
+struct pastel_color
+{
+  StringView basic;
+  StringView pastel;
+};
+
+static const pastel_color PASTEL_COLORS[] = {
+    {ansi::RED,               "\x1b[38;5;174m"  },
+    {ansi::GREEN,             "\x1b[38;5;108m"  },
+    {ansi::YELLOW,            "\x1b[38;5;186m"  },
+    {ansi::BLUE,              "\x1b[38;5;110m"  },
+    {ansi::MAGENTA,           "\x1b[38;5;176m"  },
+    {ansi::CYAN,              "\x1b[38;5;116m"  },
+    {ansi::BRIGHT_RED,        "\x1b[38;5;210m"  },
+    {ansi::BRIGHT_GREEN,      "\x1b[38;5;151m"  },
+    {ansi::BRIGHT_BLUE,       "\x1b[38;5;111m"  },
+    {ansi::BRIGHT_MAGENTA,    "\x1b[38;5;183m"  },
+    {ansi::BRIGHT_CYAN,       "\x1b[38;5;152m"  },
+    {ansi::BOLD_RED,          "\x1b[1;38;5;174m"},
+    {ansi::BOLD_BRIGHT_RED,   "\x1b[1;38;5;210m"},
+    {ansi::BOLD_GREEN,        "\x1b[1;38;5;108m"},
+    {ansi::BOLD_BRIGHT_GREEN, "\x1b[1;38;5;151m"},
+    {ansi::BOLD_YELLOW,       "\x1b[1;38;5;186m"},
+    {ansi::BOLD_BLUE,         "\x1b[1;38;5;110m"},
+    {ansi::BOLD_MAGENTA,      "\x1b[1;38;5;176m"},
+    {ansi::BOLD_CYAN,         "\x1b[1;38;5;116m"},
+};
+
+static fn
+pastel_of(StringView style) wontthrow -> StringView
+{
+  for (let const &color : PASTEL_COLORS) {
+    if (color.basic == style) return color.pastel;
+  }
+
+  return style;
+}
+
+static fn
+make_pastel_theme(highlight_theme theme) wontthrow -> highlight_theme
+{
+  for (let &style : theme.styles)
+    style = pastel_of(style);
+
+  return theme;
+}
+
+static const highlight_theme NONINTERACTIVE_HIGHLIGHT_THEMES[] = {
+    make_noninteractive_highlight_theme(),
+    make_pastel_theme(make_noninteractive_highlight_theme())};
+static const highlight_theme PRINTED_SOURCE_HIGHLIGHT_THEMES[] = {
+    make_printed_source_highlight_theme(),
+    make_pastel_theme(make_printed_source_highlight_theme())};
+static const highlight_theme DIAGNOSTIC_HIGHLIGHT_THEMES[] = {
+    make_diagnostic_highlight_theme(),
+    make_pastel_theme(make_diagnostic_highlight_theme())};
+
+fn
+terminal_supports_256_color() wontthrow -> bool
+{
+  static const bool is_supported = [] wontthrow {
+    let const colorterm = os::get_environment_variable("COLORTERM");
+    let const term      = os::get_environment_variable("TERM");
+    let const is_true_color =
+        colorterm.has_value() &&
+        (colorterm->view().find_substring("truecolor").has_value() ||
+         colorterm->view().find_substring("24bit").has_value());
+
+    return is_true_color ||
+           (term.has_value() &&
+            (term->view().find_substring("256color").has_value() ||
+             term->view().find_substring("direct").has_value()));
+  }();
+
+  return is_supported;
+}
+
+fn
+soft(StringView style) wontthrow -> StringView
+{
+  return terminal_supports_256_color() ? pastel_of(style) : style;
+}
+
+fn
+noninteractive_highlight_theme() wontthrow -> const highlight_theme &
+{
+  return NONINTERACTIVE_HIGHLIGHT_THEMES[terminal_supports_256_color()];
+}
+
+fn
+printed_source_highlight_theme() wontthrow -> const highlight_theme &
+{
+  return PRINTED_SOURCE_HIGHLIGHT_THEMES[terminal_supports_256_color()];
+}
+
+fn
+diagnostic_highlight_theme() wontthrow -> const highlight_theme &
+{
+  return DIAGNOSTIC_HIGHLIGHT_THEMES[terminal_supports_256_color()];
+}
 
 static fn
 color_is_suppressed_by_environment() throws -> bool
@@ -194,23 +288,23 @@ file_entry_type_of_mode(u32 mode) wontthrow -> file_entry_type
                              : file_entry_type::Regular;
 }
 
-pure fn
+fn
 file_entry_color(file_entry_type type) wontthrow -> StringView
 {
   switch (type) {
-  case file_entry_type::Directory: return ansi::BOLD_BLUE;
+  case file_entry_type::Directory: return soft(ansi::BOLD_BLUE);
 
-  case file_entry_type::Symlink: return ansi::BOLD_CYAN;
+  case file_entry_type::Symlink: return soft(ansi::BOLD_CYAN);
 
-  case file_entry_type::BrokenSymlink: return ansi::BOLD_RED;
+  case file_entry_type::BrokenSymlink: return soft(ansi::BOLD_RED);
 
-  case file_entry_type::Executable: return ansi::BOLD_GREEN;
+  case file_entry_type::Executable: return soft(ansi::BOLD_GREEN);
 
-  case file_entry_type::Fifo: return ansi::YELLOW;
+  case file_entry_type::Fifo: return soft(ansi::YELLOW);
 
-  case file_entry_type::Socket: return ansi::BOLD_MAGENTA;
+  case file_entry_type::Socket: return soft(ansi::BOLD_MAGENTA);
 
-  case file_entry_type::Device: return ansi::BOLD_YELLOW;
+  case file_entry_type::Device: return soft(ansi::BOLD_YELLOW);
 
   case file_entry_type::Regular: break;
   }

@@ -120,7 +120,7 @@ append_cat_source(String            &output,
 
   if (!should_number) {
     completion::append_highlighted_source(
-        output, source, context, colors::PRINTED_SOURCE_HIGHLIGHT_THEME);
+        output, source, context, colors::printed_source_highlight_theme());
     is_at_output_line_start =
         !source.is_empty() && source[source.length - 1] == '\n';
 
@@ -151,7 +151,7 @@ append_cat_source(String            &output,
 
       completion::append_highlighted_range(
           output, line, *spans, 0, line.length,
-          colors::PRINTED_SOURCE_HIGHLIGHT_THEME);
+          colors::printed_source_highlight_theme());
     } else {
       output += line;
     }

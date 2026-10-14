@@ -613,7 +613,7 @@ append_command_label(String      &out,
   out += '`';
   if (should_color) {
     completion::append_highlighted_source(
-        out, label, context, colors::PRINTED_SOURCE_HIGHLIGHT_THEME);
+        out, label, context, colors::printed_source_highlight_theme());
   } else {
     out += label;
   }

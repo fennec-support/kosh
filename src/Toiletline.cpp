@@ -1049,7 +1049,7 @@ completion_session::highlight(const char *buffer, tl_highlight *out) -> int
       has_highlighted_spans = true;
     }
 
-    let const &theme = koshka::colors::NONINTERACTIVE_HIGHLIGHT_THEME;
+    let const &theme = koshka::colors::noninteractive_highlight_theme();
     let const  emphasis =
         theme.style_for(koshka::highlight_role::matching_bracket);
     let const bracket = koshka::completion::find_matching_bracket(
@@ -3284,23 +3284,80 @@ prompt_hostname(bool should_use_full_hostname) throws -> String
 }
 
 static fn
-prompt_hostname_color() throws -> StringView
+append_prompt_data(String    &out,
+                   StringView data,
+                   bool       should_quote) throws -> void;
+
+/* The hostname changes color every two letters. Each pair takes its color from
+   the checksum of the full hostname mixed with the pair index, so a host keeps
+   its colors in every session and two pairs in a row never share one. A
+   256-color terminal draws from the 60 pastel colors of the color cube, and
+   another terminal draws from seven colors that exclude the status reds and
+   greens. */
+static fn
+append_colored_hostname(String    &out,
+                        StringView host,
+                        bool       should_quote) throws -> void
 {
-  static const StringView HOSTNAME_COLORS[] = {
+  static const StringView BASIC_COLORS[] = {
       colors::ansi::YELLOW,      colors::ansi::BLUE,
       colors::ansi::MAGENTA,     colors::ansi::CYAN,
       colors::ansi::BRIGHT_BLUE, colors::ansi::BRIGHT_MAGENTA,
       colors::ansi::BRIGHT_CYAN,
   };
-  static const usize color_index = [] throws -> usize {
-    let const host = prompt_hostname(true);
-    let const checksum =
-        ~os::crc32c_update(0xFFFFFFFF, host.view().data, host.length());
+  static constexpr u32 PASTEL_CUBE_COLOR_COUNT = 4 * 4 * 4 - 4;
 
-    return checksum % countof(HOSTNAME_COLORS);
-  }();
+  let const full_host = prompt_hostname(true);
+  let const seed =
+      ~os::crc32c_update(0xFFFFFFFF, full_host.view().data, full_host.length());
+  let const is_256_color = colors::terminal_supports_256_color();
+  let const color_count =
+      is_256_color ? PASTEL_CUBE_COLOR_COUNT : u32{countof(BASIC_COLORS)};
+  u32 previous_choice = color_count;
 
-  return HOSTNAME_COLORS[color_index];
+  for (usize start = 0; start < host.length; start += 2) {
+    u32 mixed = seed ^ static_cast<u32>(start / 2 + 1) * 0x9E3779B9u;
+
+    mixed ^= mixed >> 16;
+    mixed *= 0x85EBCA6Bu;
+    mixed ^= mixed >> 13;
+    mixed *= 0xC2B2AE35u;
+    mixed ^= mixed >> 16;
+
+    u32 choice = mixed % color_count;
+
+    if (choice == previous_choice) choice = (choice + 1) % color_count;
+    previous_choice = choice;
+
+    if (is_256_color) {
+      u32 cube_index = 0;
+
+      for (u32 remaining = choice;; cube_index++) {
+        let const red       = cube_index / 36;
+        let const green     = cube_index / 6 % 6;
+        let const blue      = cube_index % 6;
+        let const is_pastel = red >= 2 && green >= 2 && blue >= 2 &&
+                              !(red == green && green == blue);
+
+        if (!is_pastel) continue;
+        if (remaining == 0) break;
+        remaining--;
+      }
+
+      out += "\x1b[38;5;";
+      out += String::from(static_cast<i64>(16 + cube_index),
+                          koshka::heap_allocator());
+      out += "m";
+    } else {
+      out += BASIC_COLORS[choice];
+    }
+
+    append_prompt_data(
+        out, host.substring_of_length(start, host.length - start < 2 ? 1 : 2),
+        should_quote);
+  }
+
+  out += colors::ansi::RESET;
 }
 
 static fn
@@ -3511,11 +3568,13 @@ expand_prompt_escapes(StringView   prompt,
 
     case 'k':
     case 'K': {
-      let const should_use_color = colors::stdout_wants_color();
+      let const host = prompt_hostname(escaped == 'K');
 
-      if (should_use_color) out += prompt_hostname_color();
-      do_append_data(prompt_hostname(escaped == 'K').view());
-      if (should_use_color) out += colors::ansi::RESET;
+      if (colors::stdout_wants_color()) {
+        append_colored_hostname(out, host.view(), should_quote);
+      } else {
+        do_append_data(host.view());
+      }
     } break;
 
     case 'w':
@@ -3569,7 +3628,8 @@ expand_prompt_escapes(StringView   prompt,
       const i32 status           = context.execution_store().last_exit_status();
       let const should_use_color = colors::stdout_wants_color();
       if (should_use_color)
-        out += status == 0 ? colors::ansi::GREEN : colors::ansi::RED;
+        out +=
+            colors::soft(status == 0 ? colors::ansi::GREEN : colors::ansi::RED);
       out += String::from(status, koshka::heap_allocator());
       if (should_use_color) out += colors::ansi::RESET;
     } break;
@@ -3578,7 +3638,7 @@ expand_prompt_escapes(StringView   prompt,
       const i32 status           = context.execution_store().last_exit_status();
       let const should_use_color = colors::stdout_wants_color();
       if (should_use_color && status != 0) {
-        out += colors::ansi::BOLD_BRIGHT_RED;
+        out += colors::soft(colors::ansi::BOLD_BRIGHT_RED);
       }
       out += "•";
       if (should_use_color && status != 0) {
@@ -3785,24 +3845,24 @@ get_default_prompt_template() -> String
 
   if (should_use_color) {
     template_string += R"(${KOSH_GIT_BRANCH:+)";
-    template_string += colors::ansi::CYAN;
+    template_string += colors::soft(colors::ansi::CYAN);
     template_string += R"($KOSH_GIT_BRANCH)";
     template_string += colors::ansi::RESET;
     template_string += R"(})";
     template_string += R"(${KOSH_GIT_AHEAD:+ )";
-    template_string += colors::ansi::BOLD_YELLOW;
+    template_string += colors::soft(colors::ansi::BOLD_YELLOW);
     template_string += "\xe2\x86\x91";
     template_string += R"($KOSH_GIT_AHEAD)";
     template_string += colors::ansi::RESET;
     template_string += R"(})";
     template_string += R"(${KOSH_GIT_BEHIND:+ )";
-    template_string += colors::ansi::BOLD_YELLOW;
+    template_string += colors::soft(colors::ansi::BOLD_YELLOW);
     template_string += "\xe2\x86\x93";
     template_string += R"($KOSH_GIT_BEHIND)";
     template_string += colors::ansi::RESET;
     template_string += R"(})";
     template_string += R"(${KOSH_GIT_BRANCH:+ at }\u@\k )";
-    template_string += colors::ansi::GREEN;
+    template_string += colors::soft(colors::ansi::GREEN);
     template_string += R"(\P)";
     template_string += colors::ansi::RESET;
   } else {
