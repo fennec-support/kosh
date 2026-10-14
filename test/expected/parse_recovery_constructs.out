@@ -56,6 +56,26 @@
 == deeply nested constructs report once
 -c:6:16: error: The [[ conditional is a bash extension.
 -c:12:1: error: '}' has no matching '{'.
+== case arms at the case indent stay inside the failed command
+-c:2:4: error: The [[ conditional is a bash extension.
+-c:6:1: error: 'esac' has no matching 'case'.
+== a multi-line string at the margin stays inside the failed command
+-c:1:4: error: The [[ conditional is a bash extension.
+-c:5:1: error: 'fi' has no matching 'if'.
+== a backslash continuation at the margin stays inside the failed command
+-c:1:4: error: The [[ conditional is a bash extension.
+-c:5:1: error: 'fi' has no matching 'if'.
+== an arithmetic shift and a quoted heredoc delimiter keep the skip
+-c:2:3: error: The [[ conditional is a bash extension.
+-c:7:1: error: 'fi' has no matching 'if'.
+== a missing then reports the if instead of its fi
+-c:1:1: error: This 'if' has no 'then'.
+-c:2:1: error: This loop has no 'do'.
+== independent errors after the failed command closes are reported
+-c:2:6: error: The condition before 'then' is empty.
+-c:4:6: error: The condition before 'then' is empty.
+-c:6:8: error: ';;' is only valid between the arms of a 'case'.
+-c:8:1: error: '}' has no matching '{'.
 == a script file recovers the same way
 2:6: error: The [[ conditional is a bash extension.
 7:1: error: 'fi' has no matching 'if'.

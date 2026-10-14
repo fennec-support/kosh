@@ -1,4 +1,6 @@
-2:13: error: 'done' has no matching 'while', 'until', or 'for'.
+2:1: error: This loop has no 'do'.
      2 |  while true; done
-       |              ^~~~
-note: A loop above may be missing, or another 'done' may have closed it early.
+       |  ^~~~~
+2:13: details:
+     2 |  while true; done
+       |              ^~~~ expected 'do' here, after the loop condition.

@@ -417,7 +417,13 @@ Parser::recover_to_next_statement() throws -> void
     let const is_boundary = token->kind() == Token::Kind::Newline ||
                             token->kind() == Token::Kind::Semicolon;
 
-    if (is_boundary && has_consumed_token) {
+    /* The failed parse can stop at a boundary after consuming its tokens,
+       and that boundary already ends the statement. */
+    let const has_progressed =
+        has_consumed_token ||
+        token->source_location().position > m_statement_start_position;
+
+    if (is_boundary && has_progressed) {
       m_lexer.advance_past_last_peek();
 
       return;
@@ -491,28 +497,58 @@ constexpr PackedStringKey OUTER_LINE_CLOSER_KEYS[] = {
 };
 constexpr StaticStringSet OUTER_LINE_CLOSERS{OUTER_LINE_CLOSER_KEYS};
 
+struct skipped_line_state
+{
+  ArrayList<lexer::pending_heredoc> pending;
+  usize                             next_heredoc{0};
+  char                              quote{0};
+  bool                              is_continued{false};
+};
+
 cold static fn
-collect_line_heredocs(StringView                         line,
-                      ArrayList<lexer::pending_heredoc> &pending) throws
+scan_skipped_line(StringView line, skipped_line_state &state) throws
     -> void
 {
-  char quote = 0;
+  usize arithmetic_depth = 0;
 
-  for (usize i = 0; i + 1 < line.length; i++) {
-    let const byte = line[i];
+  state.is_continued = false;
+  for (usize i = 0; i < line.length; i++) {
+    let const byte     = line[i];
+    let const has_next = i + 1 < line.length;
+    let const next     = has_next ? line[i + 1] : '\0';
+    let const is_last_byte =
+        !has_next || (i + 2 == line.length && line[i + 1] == '\r');
 
-    if (quote != 0) {
-      if (byte == quote) quote = 0;
+    if (byte == '\\' && state.quote != '\'') {
+      if (is_last_byte) state.is_continued = true;
+      i++;
+      continue;
+    }
+
+    if (state.quote != 0) {
+      if (byte == state.quote) state.quote = 0;
       continue;
     }
 
     if (byte == '\'' || byte == '"') {
-      quote = byte;
+      state.quote = byte;
       continue;
     }
 
     if (byte == '#' && (i == 0 || lexer::is_whitespace(line[i - 1]))) return;
-    if (byte != '<' || line[i + 1] != '<') continue;
+    if (byte == '(' && next == '(') {
+      arithmetic_depth++;
+      i++;
+      continue;
+    }
+
+    if (byte == ')' && next == ')' && arithmetic_depth > 0) {
+      arithmetic_depth--;
+      i++;
+      continue;
+    }
+
+    if (arithmetic_depth > 0 || byte != '<' || next != '<') continue;
 
     usize cursor = i + 2;
 
@@ -521,30 +557,19 @@ collect_line_heredocs(StringView                         line,
       continue;
     }
 
-    bool should_strip_tabs = false;
+    let const should_strip_tabs = cursor < line.length && line[cursor] == '-';
 
-    if (cursor < line.length && line[cursor] == '-') {
-      should_strip_tabs = true;
-      cursor++;
-    }
-
+    if (should_strip_tabs) cursor++;
     while (cursor < line.length &&
            (line[cursor] == ' ' || line[cursor] == '\t'))
     {
       cursor++;
     }
 
-    usize end = cursor;
-
-    while (end < line.length && !lexer::is_whitespace(line[end]) &&
-           line[end] != ';' && line[end] != '|' && line[end] != '&' &&
-           line[end] != '<' && line[end] != '>' && line[end] != ')')
-    {
-      end++;
-    }
+    let const end = lexer::balanced_scan_delimiter_end(line, cursor);
 
     if (end > cursor) {
-      pending.push(lexer::pending_heredoc{
+      state.pending.push(lexer::pending_heredoc{
           lexer::unquote_heredoc_delimiter(
               line.substring_of_length(cursor, end - cursor), heap_allocator()),
           should_strip_tabs});
@@ -554,12 +579,46 @@ collect_line_heredocs(StringView                         line,
   }
 }
 
+/* True when the first word of the line holds a ')' that does not close a
+   '()' pair, as in a case arm such as `a|b)`. */
+pure static fn
+is_case_arm_line(StringView text, usize first) wontthrow -> bool
+{
+  for (usize i = first; i < text.length && !lexer::is_whitespace(text[i]); i++)
+  {
+    if (text[i] == ')') return i == first || text[i - 1] != '(';
+  }
+
+  return false;
+}
+
+/* True when the word at the position can close a compound command, as an
+   orphan 'fi' or '}' left behind by a failed command does. */
+pure static fn
+is_closer_at(StringView source, usize position) wontthrow -> bool
+{
+  usize end = position;
+
+  while (end < source.length && !lexer::is_whitespace(source[end]) &&
+         source[end] != '\n' && source[end] != ';' && source[end] != '&' &&
+         source[end] != '|')
+  {
+    end++;
+  }
+
+  let const word = source.substring_of_length(position, end - position);
+
+  return OUTER_LINE_CLOSERS.contains(word) ||
+         (position < source.length &&
+          (source[position] == '}' || source[position] == ')' ||
+           source[position] == ';'));
+}
+
 cold fn
 Parser::find_next_outer_line(usize opener_position, usize error_position) const throws -> usize
 {
   let const source     = m_lexer.source();
-  let       line_start = opener_position;
-  let const position   = error_position;
+  usize     line_start = opener_position;
 
   while (line_start > 0 && source[line_start - 1] != '\n') {
     line_start--;
@@ -567,54 +626,44 @@ Parser::find_next_outer_line(usize opener_position, usize error_position) const 
 
   usize indent_end = line_start;
 
-  while (indent_end < position &&
+  while (indent_end < opener_position &&
          (source[indent_end] == ' ' || source[indent_end] == '\t'))
   {
     indent_end++;
   }
 
   let const outer_indent = indent_end - line_start;
-  let       pending      = ArrayList<lexer::pending_heredoc>{heap_allocator()};
-  usize     next_heredoc = 0;
-
-  let const do_find_line_end = [&](usize from) -> usize {
-    while (from < source.length && source[from] != '\n') {
-      from++;
-    }
-
-    return from;
-  };
-
-  usize line     = position;
-  usize line_end = do_find_line_end(line);
-
-  while (line > 0 && source[line - 1] != '\n') {
-    line--;
-  }
-
-  collect_line_heredocs(source.substring_of_length(line, line_end - line),
-                        pending);
-  line = line_end;
+  let       state =
+      skipped_line_state{ArrayList<lexer::pending_heredoc>{heap_allocator()}};
+  usize line = line_start;
 
   while (line < source.length) {
-    line++;
-    line_end = do_find_line_end(line);
+    usize line_end = line;
+
+    while (line_end < source.length && source[line_end] != '\n') {
+      line_end++;
+    }
 
     let const text = source.substring_of_length(line, line_end - line);
 
-    if (next_heredoc < pending.count()) {
-      if (lexer::match_heredoc_line(text, pending[next_heredoc]).is_terminator)
-        next_heredoc++;
-      if (next_heredoc == pending.count()) {
-        pending.clear();
-        next_heredoc = 0;
+    if (state.next_heredoc < state.pending.count()) {
+      if (lexer::match_heredoc_line(text, state.pending[state.next_heredoc])
+              .is_terminator)
+      {
+        state.next_heredoc++;
       }
 
-      line = line_end;
+      if (state.next_heredoc == state.pending.count()) {
+        state.pending.clear();
+        state.next_heredoc = 0;
+      }
+
+      line = line_end + 1;
       continue;
     }
 
-    usize first = 0;
+    let const is_continuation = state.quote != 0 || state.is_continued;
+    usize     first           = 0;
 
     while (first < text.length && (text[first] == ' ' || text[first] == '\t')) {
       first++;
@@ -630,46 +679,50 @@ Parser::find_next_outer_line(usize opener_position, usize error_position) const 
     }
 
     let const word = text.substring_of_length(first, word_end - first);
-
-    if (!word.is_empty() && word[0] != '#' && first <= outer_indent &&
+    let const is_outer_command =
+        line > error_position && !is_continuation && !word.is_empty() &&
+        word[0] != '#' && first <= outer_indent &&
         !OUTER_LINE_CLOSERS.contains(word) && word[0] != '}' &&
-        word[0] != ')' && word[0] != ';')
-    {
-      return line;
-    }
+        word[0] != ')' && word[0] != ';' && !is_case_arm_line(text, first);
 
-    collect_line_heredocs(text, pending);
-    line = line_end;
+    if (is_outer_command) return line;
+
+    scan_skipped_line(text, state);
+    line = line_end + 1;
   }
 
   return SIZE_MAX;
 }
 
-cold static fn
-rethrown_error_location() throws -> SourceLocation
-{
-  try {
-    throw;
-  } catch (const ErrorWithLocation &error) {
-    return error.location();
-  }
-}
-
 cold fn
 Parser::record_statement_error(
+    usize                         error_position,
     ArrayList<String>            &errors,
     EvalContext                  *context,
     ArrayList<source_diagnostic> *diagnostic_sink) throws -> void
 {
-  let const error_position =
-      static_cast<usize>(rethrown_error_location().position);
+  let const is_inside_failed_command =
+      m_unclosed_construct_count > 0 &&
+      error_position < m_suppression_end_position;
 
-  if (m_unclosed_construct_count > 0 &&
-      error_position < m_suppression_end_position)
-  {
+  if (is_inside_failed_command) {
+    let const is_cascade =
+        m_unclosed_construct_count > m_failed_construct_floor_count ||
+        (error_position == m_statement_start_position &&
+         is_closer_at(m_lexer.source(), error_position));
+
     m_unclosed_construct_count += m_open_construct_count;
-    LOG(Debug, "dropping a parse error inside %zu unclosed constructs",
-        m_unclosed_construct_count);
+    if (is_cascade) {
+      LOG(Debug, "dropping a parse error inside %zu unclosed constructs",
+          m_unclosed_construct_count);
+
+      return;
+    }
+
+    record_error(errors, context, diagnostic_sink);
+    if (m_open_construct_count > 0) {
+      m_failed_construct_floor_count = m_unclosed_construct_count - 1;
+    }
 
     return;
   }
@@ -677,6 +730,7 @@ Parser::record_statement_error(
   record_error(errors, context, diagnostic_sink);
   m_unclosed_construct_count = m_open_construct_count;
   if (m_unclosed_construct_count > 0) {
+    m_failed_construct_floor_count = m_unclosed_construct_count - 1;
     m_suppression_end_position =
         find_next_outer_line(m_outermost_construct_position, error_position);
     LOG(Debug, "dropping later errors before byte %zu",
@@ -844,15 +898,18 @@ Parser::construct_ast(
 
     let did_parse_fail = false;
 
-    m_open_construct_count = 0;
+    m_open_construct_count     = 0;
+    m_statement_start_position = token->source_location().position;
+
     try {
       Expression *piece = parse_command_list(0);
 
       ASSERT(piece != nullptr);
       if (first_piece == nullptr) first_piece = piece;
       record_substitution_errors(errors, context, diagnostic_sink);
-    } catch (const ErrorWithLocation &) {
-      record_statement_error(errors, context, diagnostic_sink);
+    } catch (const ErrorWithLocation &error) {
+      record_statement_error(error.location().position, errors, context,
+                                   diagnostic_sink);
       did_parse_fail = true;
     }
 
@@ -896,7 +953,9 @@ Parser::construct_next_top_level_ast(
       return nullptr;
     }
 
-    m_open_construct_count = 0;
+    m_open_construct_count     = 0;
+    m_statement_start_position = token->source_location().position;
+
     try {
       Expression *piece = parse_command_list(0);
 
@@ -904,8 +963,9 @@ Parser::construct_next_top_level_ast(
       record_substitution_errors(errors, context, diagnostic_sink);
 
       return piece;
-    } catch (const ErrorWithLocation &) {
-      record_statement_error(errors, context, diagnostic_sink);
+    } catch (const ErrorWithLocation &error) {
+      record_statement_error(error.location().position, errors, context,
+                             diagnostic_sink);
     }
 
     let did_recovery_fail = false;
@@ -933,6 +993,19 @@ Parser::reject_empty_loop_body(const Expression *body) throws -> void
       terminator->source_location(),
       "The loop body between 'do' and 'done' is empty",
       "Put a command in the body, such as `:` to do nothing"};
+}
+
+cold wontreturn static fn
+throw_missing_operand(const SourceLocation       &location,
+                      CompoundListCondition::Kind condition) throws
+    -> void
+{
+  let const op = condition == CompoundListCondition::Kind::And ? "&&" : "||";
+
+  throw koshka::ErrorWithLocationAndDetails{
+      location, StringView{"Expected a command after '"} + op + "'",
+      StringView{"Add the missing command, as in `a "} + op +
+          " b`, or remove the operator"};
 }
 
 hot fn
@@ -1118,16 +1191,7 @@ Parser::parse_command_list(u64 terminator_mask) throws -> Expression *
       if (lhs != nullptr) {
         do_finish_pending(lhs, token);
       } else if (next_cond != CompoundListCondition::Kind::None) {
-        throw koshka::ErrorWithLocationAndDetails{
-            token->source_location(),
-            next_cond == CompoundListCondition::Kind::And
-                ? "Expected a command after '&&'"
-                : "Expected a command after '||'",
-            next_cond == CompoundListCondition::Kind::And
-                ? "Add the missing command, as in `a && b`, or remove the "
-                  "operator"
-                : "Add the missing command, as in `a || b`, or remove the "
-                  "operator"};
+        throw_missing_operand(token->source_location(), next_cond);
       }
 
       if (compound_list->is_empty()) {
@@ -1222,16 +1286,7 @@ Parser::parse_command_list(u64 terminator_mask) throws -> Expression *
 
       if (token->kind() == Token::Kind::EndOfFile) {
         if (next_cond != CompoundListCondition::Kind::None) {
-          throw koshka::ErrorWithLocationAndDetails{
-              token->source_location(),
-              next_cond == CompoundListCondition::Kind::And
-                  ? "Expected a command after '&&'"
-                  : "Expected a command after '||'",
-              next_cond == CompoundListCondition::Kind::And
-                  ? "Add the missing command, as in `a && b`, or remove the "
-                    "operator"
-                  : "Add the missing command, as in `a || b`, or remove the "
-                    "operator"};
+          throw_missing_operand(token->source_location(), next_cond);
         }
 
         if (compound_list->is_empty()) {

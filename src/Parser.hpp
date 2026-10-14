@@ -119,6 +119,8 @@ private:
   usize m_unclosed_construct_count{0};
   usize m_outermost_construct_position{0};
   usize m_suppression_end_position{0};
+  usize m_statement_start_position{0};
+  usize m_failed_construct_floor_count{0};
   bool  m_should_stop_after_top_level_unit{false};
   bool  m_has_parsed_source_command{false};
   ArrayList<ErrorWithLocationAndDetails> *m_error_collection{nullptr};
@@ -158,10 +160,13 @@ private:
   find_next_outer_line(usize opener_position, usize error_position) const throws -> usize;
   cold fn
   record_statement_error(
+      usize                         error_position,
       ArrayList<String>            &errors,
       EvalContext                  *context,
       ArrayList<source_diagnostic> *diagnostic_sink) throws -> void;
 
+  /* The count stays raised when do_parse throws, so record_statement_error
+     sees the constructs that were open at the error. */
   template <class ParseFn>
   fn
   parse_nesting_construct(const Token *opener, ParseFn do_parse) throws

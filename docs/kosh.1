@@ -4851,10 +4851,11 @@ rest of that command, and its
 .BR fi ,
 .BR done ,
 .BR esac ,
-and closing brace produce no further errors. The skip will end when the failed
-command closes, or at the first later line that starts at or left of the
-indentation of that command, so an unclosed command cannot hide the errors in
-the rest of the script.
+and closing brace produce no further errors. After the failed command closes,
+only the orphan closers of the commands around it stay quiet, and other errors
+are reported. Every error is reported again from the first later line that
+starts at or left of the indentation of the failed command, so an unclosed
+command cannot hide the errors in the rest of the script.
 .PP
 The analysis stage follows readable static source operands recursively and
 skips dynamic and unavailable ones.

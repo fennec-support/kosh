@@ -246,7 +246,7 @@ EvalContext::run_mimicked_script(ExecContext     &ec,
 
     details += "Use `";
     details += file_command;
-    details += "` to check the file type.";
+    details += "` to check the file type";
     show_message(ErrorWithLocationAndDetails{
         ec.source_location(),
         "Cannot execute `" + ec.program_path().text() + "` as a shell script",

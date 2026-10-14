@@ -308,6 +308,10 @@ pure fn
 heredoc_line_content(StringView line) wontthrow -> StringView;
 
 pure fn
+balanced_scan_delimiter_end(StringView source, usize position)
+    wontthrow -> usize;
+
+pure fn
 is_special_parameter_char(char ch) wontthrow -> bool;
 
 } /* namespace lexer */

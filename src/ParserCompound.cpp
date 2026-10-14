@@ -50,12 +50,15 @@ Parser::parse_if() throws -> Command *
   };
 
   loop {
-    Expression *condition =
-        parse_command_list(token_kind_mask(Token::Kind::Then));
+    Expression *condition = parse_command_list(
+        token_kind_mask(Token::Kind::Then, Token::Kind::Fi, Token::Kind::Else,
+                        Token::Kind::Elif));
     Token *then_token = m_lexer.next_shell_token();
     ASSERT(then_token != nullptr);
 
     if (then_token->kind() != Token::Kind::Then) {
+      /* A 'fi' in place of 'then' closes this if. */
+      if (then_token->kind() == Token::Kind::Fi) m_open_construct_count--;
       let const is_condition_empty = condition->is_dummy();
       let const message = is_condition_empty ? "This 'if' has no condition"
                                              : "This 'if' has no 'then'";
@@ -138,11 +141,15 @@ Parser::parse_while_or_until(loop_kind kind) throws -> Command *
   LOG(Debug, "parsing a %s loop at byte %u",
       kind == loop_kind::Until ? "until" : "while", location.position);
 
-  Expression *condition = parse_command_list(token_kind_mask(Token::Kind::Do));
-  Token      *do_token  = m_lexer.next_shell_token();
+  Expression *condition =
+      parse_command_list(token_kind_mask(Token::Kind::Do, Token::Kind::Done));
+  Token *do_token = m_lexer.next_shell_token();
   ASSERT(do_token != nullptr);
 
   if (do_token->kind() != Token::Kind::Do) {
+    /* A 'done' in place of 'do' closes this loop. */
+    if (do_token->kind() == Token::Kind::Done) m_open_construct_count--;
+
     let const is_condition_empty = condition->is_dummy();
     let const message = is_condition_empty ? "This loop has no condition"
                                            : "This loop has no 'do'";

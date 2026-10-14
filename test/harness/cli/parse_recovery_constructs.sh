@@ -2,8 +2,9 @@ unset KOSH_FLAGS KOSHCONF
 # A parse error inside a compound command skips the rest of that command, so
 # its then, fi, done, and closing brace report nothing. Recovery counts only
 # keywords and braces in command position and ignores case patterns and heredoc
-# bodies. A later error is reported once the failed command closes, or once a
-# line starts at or left of the indentation of the failed command.
+# bodies. Once the failed command closes, only orphan closers of its enclosing
+# commands stay quiet. Every error is reported again from the first line that
+# starts at or left of the indentation of the failed command.
 
 do_check() {
   echo "== $1"
@@ -133,6 +134,45 @@ do_check "deeply nested constructs report once" 'f() {
         ;;
     esac
   done
+}
+}'
+
+do_check "case arms at the case indent stay inside the failed command" 'case $x in
+a) [[ x ]]
+   ;;
+b|c) echo ;;
+esac
+esac'
+
+do_check "a multi-line string at the margin stays inside the failed command" 'if [[ x ]]; then
+  echo "multi
+line"
+fi
+fi'
+
+do_check "a backslash continuation at the margin stays inside the failed command" 'if [[ x ]]; then
+  echo a \
+fi
+fi
+fi'
+
+do_check "an arithmetic shift and a quoted heredoc delimiter keep the skip" 'f() {
+  [[ x ]] && echo $((1 << 2))
+  cat <<"E F"
+fi
+E F
+}
+fi'
+
+do_check "a missing then reports the if instead of its fi" 'if true; echo; fi
+while true; echo; done'
+
+do_check "independent errors after the failed command closes are reported" 'f() {
+  if then
+  fi
+  if then
+  fi
+  echo ;;
 }
 }'
 
