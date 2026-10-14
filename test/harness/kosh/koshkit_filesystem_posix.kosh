@@ -26,6 +26,19 @@ plain_fields=$(koshkit ls -l "$root/tree/plain")
 echo "chmod-recursive=$directory_status ${plain_fields%% *}"
 mode_fields=$(koshkit ls -l "$root/mode")
 echo "chmod-recursive-link-target=${mode_fields%% *}"
+koshkit mkdir -p "$root/walk/outside" "$root/walk/tree/a/b"
+: > "$root/walk/outside/file"
+: > "$root/walk/tree/a/b/file"
+koshkit chmod 600 "$root/walk/outside/file" "$root/walk/tree/a/b/file"
+koshkit ln -s "$root/walk/outside" "$root/walk/tree/a/link"
+koshkit chmod -R u+rwX,g+r "$root/walk/tree"
+nested_fields=$(koshkit ls -l "$root/walk/tree/a/b/file")
+outside_fields=$(koshkit ls -l "$root/walk/outside/file")
+echo "chmod-nested=${nested_fields%% *} outside=${outside_fields%% *}"
+koshkit ln -s "$root/walk/outside" "$root/walk/operand"
+koshkit chmod -R o+rX "$root/walk/operand"
+outside_fields=$(koshkit ls -l "$root/walk/outside/file")
+echo "chmod-operand-link=${outside_fields%% *}"
 : > "$root/omitted-who"
 koshkit chmod 444 "$root/omitted-who"
 koshkit chmod +w "$root/omitted-who"

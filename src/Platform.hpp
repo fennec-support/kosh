@@ -708,20 +708,11 @@ fn
 make_directory(StringView path, u32 mode) wontthrow -> bool;
 fn
 set_file_mode(StringView path, u32 mode) wontthrow -> bool;
-/* Sets the mode without following a final symlink. A recursive walk cannot
-   be redirected onto a file outside the tree. */
-fn
-set_file_mode_no_follow(StringView path, u32 mode) wontthrow -> bool;
 enum class symlink_follow_mode : u8
 {
   Follow,
   NoFollow,
 };
-fn
-set_file_owner(StringView          path,
-               i64                 owner_id,
-               i64                 group_id,
-               symlink_follow_mode follow_mode) wontthrow -> bool;
 fn
 create_hard_link(StringView target, StringView link_path) wontthrow -> bool;
 fn
@@ -794,6 +785,61 @@ fn
 remove_tree(StringView                path,
             Allocator                 allocator,
             const tree_removal_hooks *hooks = nullptr) throws -> bool;
+enum class tree_walk_failure : u8
+{
+  Access,
+  ReadDirectory,
+  Loop,
+};
+
+/* An entry is addressed through its parent directory descriptor and its name
+   in that directory, so a parent replaced by a symlink during the walk cannot
+   redirect a change. A command-line operand has the working directory as its
+   parent. Windows has no descriptors and addresses the entry by path. */
+struct tree_walk_entry
+{
+  int                parent_descriptor{-1};
+  const char        *name{nullptr};
+  StringView         path;
+  const file_status *status{nullptr};
+  bool               is_operand{false};
+  bool               is_other_file_system{false};
+};
+
+struct tree_walk_options
+{
+  bool is_recursive{false};
+  bool is_one_file_system{false};
+  bool should_follow_operands{false};
+  bool should_follow_nested{false};
+  bool should_descend_after_failure{false};
+};
+
+/* The walk visits each entry before its children. The entry status does not
+   follow a symlink, and a visit that returns false makes the walk fail. */
+struct tree_walk_hooks
+{
+  void *context{nullptr};
+  bool (*visit)(void *context, const tree_walk_entry &entry){nullptr};
+  void (*report_failure)(void             *context,
+                         tree_walk_failure failure,
+                         StringView        path,
+                         StringView        reason){nullptr};
+};
+
+fn
+walk_tree(StringView               path,
+          Allocator                allocator,
+          const tree_walk_options &options,
+          const tree_walk_hooks   &hooks) throws -> bool;
+/* An operand follows a symlink. Any other entry does not. */
+fn
+set_tree_entry_mode(const tree_walk_entry &entry, u32 mode) wontthrow -> bool;
+fn
+set_tree_entry_owner(const tree_walk_entry &entry,
+                     i64                    owner_id,
+                     i64                    group_id,
+                     symlink_follow_mode    follow_mode) wontthrow -> bool;
 fn
 rename_path(StringView from, StringView to) wontthrow -> bool;
 fn

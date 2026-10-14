@@ -20,19 +20,6 @@ class ExecContext;
 
 namespace utils {
 
-enum class ownership_traversal_mode : u8
-{
-  SinglePath,
-  Recursive,
-  RecursiveOneFileSystem,
-};
-
-enum class ownership_symlink_mode : u8
-{
-  Follow,
-  NoFollow,
-};
-
 fn
 resolve_user_id(StringView text) throws -> Maybe<u32>;
 fn

@@ -2,6 +2,8 @@ chmod-octal=-rw-r-----
 chmod-symbolic=-rwxrwx---
 chmod-recursive=0 -r--r--r--
 chmod-recursive-link-target=-rwxrwx---
+chmod-nested=-rw-r----- outside=-rw-------
+chmod-operand-link=-rw----r--
 chmod-umask=-rw-r--r--
 chown=0
 chown-name=0

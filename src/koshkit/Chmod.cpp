@@ -32,110 +32,70 @@ REGISTER_KOSHKIT_UTIL_FLAGS(Chmod);
 
 namespace koshka::koshkit {
 
-static fn
-change_mode(const ExecContext     &ec,
-            EvalContext           &cxt,
-            const Path            &path,
-            StringView             expression,
-            const os::file_status *known_status,
-            u32                    creation_mask,
-            const u64             *operand_device_id) throws -> bool
+struct chmod_state
 {
-  os::file_status status{};
+  const ExecContext &ec;
+  EvalContext       &cxt;
+  StringView         expression;
+  u32                creation_mask;
+};
 
-  if (known_status != nullptr) {
-    status = *known_status;
-  } else if (!os::stat_path_following(path.view(), status)) {
-    report_soft_koshkit_util_error(ec, cxt, "chmod",
-                                   "cannot access '" + path.text() +
-                                       "': " + os::last_system_error_message());
+static fn
+change_mode(void *context, const os::tree_walk_entry &entry) throws
+    -> bool
+{
+  let const &state = *static_cast<chmod_state *>(context);
 
-    return false;
-  }
+  if (entry.is_other_file_system) return true;
 
-  if (operand_device_id != nullptr && status.device_id != *operand_device_id) {
-    return true;
+  os::file_status status = *entry.status;
+
+  /* A symlink operand is changed through its target. A nested symlink is
+     skipped. */
+  if (os::file_type_letter(status.mode) == 'l') {
+    if (!entry.is_operand) return true;
+
+    if (!os::stat_path_following(entry.path, status)) {
+      report_soft_koshkit_util_error(state.ec, state.cxt, "chmod",
+                                     "cannot access '" + entry.path + "': " +
+                                         os::last_system_error_message());
+
+      return false;
+    }
   }
 
   let const parsed =
-      utils::parse_file_mode(expression, status.mode, creation_mask,
+      utils::parse_file_mode(state.expression, status.mode, state.creation_mask,
                              os::file_type_letter(status.mode) == 'd'
                                  ? utils::file_kind_mode::Directory
                                  : utils::file_kind_mode::Regular);
 
   ASSERT(parsed.has_value());
 
-  /* A command-line operand is changed through its path and follows a
-     symlink. An entry reached by recursion is changed without following, and
-     a symlink swapped in after the listing cannot redirect the change. */
-  bool did_succeed = true;
+  if (os::set_tree_entry_mode(entry, *parsed)) return true;
 
-  if (!(known_status != nullptr
-            ? os::set_file_mode_no_follow(path.view(), *parsed)
-            : os::set_file_mode(path.view(), *parsed)))
-  {
-    report_soft_koshkit_util_error(ec, cxt, "chmod",
-                                   "cannot change mode of '" + path.text() +
-                                       "': " + os::last_system_error_message());
-    did_succeed = false;
-  }
+  report_soft_koshkit_util_error(state.ec, state.cxt, "chmod",
+                                 "cannot change mode of '" + entry.path +
+                                     "': " + os::last_system_error_message());
 
-  if (os::INTERRUPT_REQUESTED) return did_succeed;
-  if (!FLAG_CHMOD_RECURSIVE.is_enabled() ||
-      os::file_type_letter(status.mode) != 'd')
-  {
-    return did_succeed;
-  }
+  return false;
+}
 
-  let const directory_scratch = cxt.expansion_store().scratch_arena().mark();
-  defer {
-    cxt.expansion_store().scratch_arena().release(directory_scratch);
-  };
+static fn
+report_walk_failure(void                 *context,
+                    os::tree_walk_failure failure,
+                    StringView            path,
+                    StringView            reason) throws -> void
+{
+  let const &state = *static_cast<chmod_state *>(context);
 
-  let children =
-      os::list_directory_status(path.view(), cxt.scratch_allocator());
-
-  if (!children.has_value()) {
-    report_soft_koshkit_util_error(ec, cxt, "chmod",
-                                   "cannot read directory '" + path.text() +
-                                       "': " + os::last_system_error_message());
-
-    return false;
-  }
-
-  let const root_device_id =
-      operand_device_id != nullptr ? *operand_device_id : status.device_id;
-  let const *children_device_id =
-      FLAG_CHMOD_ONE_FILE_SYSTEM.is_enabled() ? &root_device_id : nullptr;
-
-  for (let const &child_entry : *children) {
-    if (os::INTERRUPT_REQUESTED) return did_succeed;
-
-    let const child_scratch = cxt.expansion_store().scratch_arena().mark();
-    defer {
-      cxt.expansion_store().scratch_arena().release(child_scratch);
-    };
-
-    let const is_child_symlink =
-        child_entry.child.kind == Path::EntryKind::Symlink ||
-        (child_entry.has_status &&
-         os::file_type_letter(child_entry.status.mode) == 'l');
-
-    if (is_child_symlink) continue;
-
-    let child = Path{path.view(), cxt.scratch_allocator()};
-
-    child.append(child_entry.child.name.view());
-
-    let const child_status =
-        child_entry.has_status ? &child_entry.status : nullptr;
-
-    if (!change_mode(ec, cxt, child, expression, child_status, creation_mask,
-                     children_device_id))
-      did_succeed = false;
-  }
-
-  return did_succeed;
+  report_soft_koshkit_util_error(
+      state.ec, state.cxt, "chmod",
+      failure == os::tree_walk_failure::ReadDirectory
+          ? "cannot read directory '" + path + "': " + reason
+      : failure == os::tree_walk_failure::Loop
+          ? "recursive directory loop at '" + path + "'"
+          : "cannot access '" + path + "': " + reason);
 }
 
 fn
@@ -160,14 +120,23 @@ Chmod::execute(const ExecContext               &ec,
     return 1;
   }
 
-  i32       status        = 0;
-  let const creation_mask = os::get_file_creation_mask();
+  i32 status = 0;
+  let state  = chmod_state{ec, cxt, expression, os::get_file_creation_mask()};
+  let hooks  = os::tree_walk_hooks{&state, change_mode, report_walk_failure};
+  let const options = os::tree_walk_options{
+      FLAG_CHMOD_RECURSIVE.is_enabled(),
+      FLAG_CHMOD_ONE_FILE_SYSTEM.is_enabled(), true, false, true};
 
   for (usize index = 1; index < operands.count(); index++) {
     if (os::INTERRUPT_REQUESTED) return 130;
-    if (!change_mode(ec, cxt,
-                     Path{operands[index].view(), cxt.scratch_allocator()},
-                     expression, nullptr, creation_mask, nullptr))
+
+    let const operand_scratch = cxt.expansion_store().scratch_arena().mark();
+    defer {
+      cxt.expansion_store().scratch_arena().release(operand_scratch);
+    };
+
+    if (!os::walk_tree(operands[index].view(), cxt.scratch_allocator(), options,
+                       hooks))
       status = 1;
     if (os::INTERRUPT_REQUESTED) return 130;
   }
