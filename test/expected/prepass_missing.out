@@ -1,30 +1,31 @@
 2:1: warning: The command 'nosuchcmd_xyz' was not found.
      2 |  nosuchcmd_xyz
        |  ^~~~~~~~~~~~~
-3:1: warning: An assignment name must not start with a dollar sign. (SC2281)
+3:1: warning: The variable in an assignment must not start with a dollar sign. (SC2281)
      3 |  $name=value
        |  ^~~~~~~~~~~
-note: Remove the dollar sign from the assignment name.
-4:6: warning: An assignment with spaces around equals is read as a command and its arguments. (SC2283)
+note: Remove the dollar sign, as in `VAR=1` in place of `$VAR=1`.
+4:6: warning: An assignment with spaces around equals runs as a command with arguments. (SC2283)
      4 |  name = value
        |       ^
 note: Write `NAME=value` without spaces.
 5:1: warning: The glob pattern has an unterminated `[`.
      5 |  [grep needle file]
        |  ^~~~~
-5:1: warning: The bracket and the operand next to it are read as one word. (SC1035)
+note: Close the bracket with `]`, or escape it as `\[`.
+5:1: warning: The bracket and the operand next to it form one word. (SC1035)
      5 |  [grep needle file]
        |  ^~~~~
-note: Add spaces after the opening bracket and before the close.
+note: Add spaces after the opening bracket and before the closing bracket.
 5:1: warning: Test brackets do not run the command written inside them. (SC1014)
      5 |  [grep needle file]
        |  ^~~~~
 note: Run the command directly as the `if` condition.
-6:1: warning: The bracket and the operand next to it are read as one word. (SC1035)
+6:1: warning: The bracket and the operand next to it form one word. (SC1035)
      6 |  [[left=right]]
        |  ^~~~~~~~~~~~~~
-note: Add spaces after the opening bracket and before the close.
-6:1: warning: A conditional operator without surrounding spaces is read as part of one word. (SC2077)
+note: Add spaces after the opening bracket and before the closing bracket.
+6:1: warning: A conditional operator without surrounding spaces becomes part of one word, so the test sees a single nonempty string. (SC2077)
      6 |  [[left=right]]
        |  ^~~~~~~~~~~~~~
 note: Place spaces around the comparison operator.
@@ -32,14 +33,14 @@ note: Place spaces around the comparison operator.
      7 |  ( -f file )
        |  ^
 note: Use `[[ ... ]]` or `[ ... ]` for the condition.
-7:3: warning: An option-shaped word in command position is looked up as a command name. (SC2215)
+7:3: warning: A word that starts with a dash is in command position and will be looked up as a command. (SC2215)
      7 |  ( -f file )
        |    ^~
 note: Place the option after its command.
 7:3: warning: The command '-f' was not found.
      7 |  ( -f file )
        |    ^~
-8:1: warning: An option-shaped word in command position is looked up as a command name. (SC2215)
+8:1: warning: A word that starts with a dash is in command position and will be looked up as a command. (SC2215)
      8 |  -n
        |  ^~
 note: Place the option after its command.
@@ -50,7 +51,7 @@ Encountered 13 warnings.
 2:1: error: The command 'nosuchcmd_xyz' was not found.
      2 |  nosuchcmd_xyz
        |  ^~~~~~~~~~~~~
-3:1: warning: The variable 'name' is not set, it expands to empty.
+3:1: warning: The variable 'name' is not set and expands to an empty string.
      3 |  $name=value
        |  ^~~~~
 note: Replace it with ${name-} if empty expansion is desired.
@@ -64,7 +65,7 @@ note: Did you mean 'time'?
 5:1: error: The command '[grep' was not found.
      5 |  [grep needle file]
        |  ^~~~~
-6:1: error: A glob pattern in command position is rarely intended as a command name.
+6:1: error: A glob pattern in command position is rarely intended as a command.
      6 |  [[left=right]]
        |  ^~~~~~~~~~~~~~
-note: Quote it to run a literal name, or list the matches with compgen -G.
+note: Quote it to run a literal command, or list the matches with `compgen -G`.

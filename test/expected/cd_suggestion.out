@@ -65,6 +65,7 @@ note: Did you mean `logical/nested`?
 -c:1:11: error: The directory './project/miss' does not exist.
      1 |  ./project/miss/tail
        |            ^~~~
+note: Create the directory, or correct the path.
 == runtime command path first missing component:
 -c:1:11: error: The directory './project/miss' does not exist.
      1 |  ./project/miss/tail
@@ -77,6 +78,7 @@ note: Did you mean `logical/nested`?
 -c:1:3: error: The directory './missing' does not exist.
      1 |  ./missing/../other
        |    ^~~~~~~
+note: Create the directory, or correct the path.
 == runtime command path preserves missing dot-dot component:
 -c:1:3: error: The directory './missing' does not exist.
      1 |  ./missing/../other
@@ -96,6 +98,7 @@ note: Check the spelling or create it with `mkdir -p`.
 -c:1:3: error: The directory './missing' does not exist.
      1 |  ./missing/../existing/
        |    ^~~~~~~
+note: Create the directory, or correct the path.
 == runtime trailing separator preserves missing dot-dot component:
 -c:1:3: error: The directory './missing' does not exist.
      1 |  ./missing/../existing/

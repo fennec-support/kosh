@@ -1,6 +1,6 @@
-2:1: error: Unterminated subshell.
+2:1: error: This subshell has no closing ')'.
      2 |  (echo hi
        |  ^
 2:9: details:
      2 |  (echo hi
-       |          ^ expected ')'.
+       |          ^ expected ')' here.

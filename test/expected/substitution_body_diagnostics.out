@@ -7,7 +7,7 @@ command.sh:2:9: warning: The `cat` writes its file unchanged into the pipe. (SC2
      2 |  echo "$(cat f | grep a)"
        |          ^~~
 note: Give the file to the next command directly.
-command.sh:3:8: warning: A bare glob can expand to a filename that begins with `-`. (SC2035)
+command.sh:3:8: warning: A bare glob can expand to a filename that begins with `-`, and the command can treat it as an option. (SC2035)
      3 |  x=$(ls *.txt)
        |         ^~~~~
 note: Prefix the glob with a directory or place `--` before it.
@@ -70,6 +70,7 @@ status=0
 case.sh:2:6: warning: This `case` has no default `*)` branch. (SC2249)
      2 |  case "$(cat f | head -1)" in a) : ;; esac
        |       ^~~~~~~~~~~~~~~~~~~~
+note: Add a `*)` branch, or write `*) ;;` to ignore other input.
 case.sh:2:9: warning: The `cat` writes its file unchanged into the pipe. (SC2002)
      2 |  case "$(cat f | head -1)" in a) : ;; esac
        |          ^~~
@@ -90,7 +91,7 @@ note: Give the file to the next command directly.
 for_words.sh:2:10: error: A `for` loop over the `cat` output iterates IFS-split words. (SC2013)
      2 |  for i in $(cat f | head -1); do : "$i"; done
        |           ^~~~~~~~~~~~~~~~~~
-note: Read the lines with `while IFS= read -r line`.
+note: Loop over the lines with `while IFS= read -r line`.
 Encountered 1 warning and 1 error.
 status=1
 == nested.sh
@@ -159,7 +160,7 @@ declaration.sh:7:10: warning: The `cat` writes its file unchanged into the pipe.
      7 |    arr=($(cat f | grep e))
        |           ^~~
 note: Give the file to the next command directly.
-declaration.sh:7:8: error: An array built from command output splits words and expands globs. (SC2207)
+declaration.sh:7:8: error: An array built from unquoted command output will be split on whitespace, and its globs will be expanded. (SC2207)
      7 |    arr=($(cat f | grep e))
        |         ^~~~~~~~~~~~~~~~~
 note: Use `mapfile` or `readarray` to preserve output records.
@@ -170,7 +171,7 @@ scope.sh:3:1: warning: An `echo` of a command substitution prints what the comma
      3 |  echo "$(echo "$parent")"
        |  ^~~~
 note: Run the command on its own.
-scope.sh:3:6: warning: The `echo` operand is passed through the substitution unchanged. (SC2116)
+scope.sh:3:6: warning: The command substitution runs only `echo`, so it returns its operand unchanged. (SC2116)
      3 |  echo "$(echo "$parent")"
        |       ^~~~~~~~~~~~~~~~~~~
 note: Use the text directly without the command substitution.
@@ -178,18 +179,18 @@ scope.sh:4:1: warning: An `echo` of a command substitution prints what the comma
      4 |  echo "$(echo "$missing")"
        |  ^~~~
 note: Run the command on its own.
-scope.sh:4:6: warning: The `echo` operand is passed through the substitution unchanged. (SC2116)
+scope.sh:4:6: warning: The command substitution runs only `echo`, so it returns its operand unchanged. (SC2116)
      4 |  echo "$(echo "$missing")"
        |       ^~~~~~~~~~~~~~~~~~~~
 note: Use the text directly without the command substitution.
-scope.sh:4:15: error: The variable 'missing' is read before any assignment gives it a value. (SC2154)
+scope.sh:4:15: error: The variable 'missing' is used before any assignment gives it a value. (SC2154)
      4 |  echo "$(echo "$missing")"
        |                ^~~~~~~~
-note: Assign 'missing' before it is read, or set it in the environment.
-scope.sh:6:7: error: The variable 'inner' is read before any assignment gives it a value. (SC2154)
+note: Assign 'missing' before this use, or set it in the environment.
+scope.sh:6:7: error: The variable 'inner' is used before any assignment gives it a value. (SC2154)
      6 |  echo "$inner"
        |        ^~~~~~
-note: Assign 'inner' before it is read, or set it in the environment.
+note: Assign 'inner' before this use, or set it in the environment.
 Encountered 4 warnings and 2 errors.
 status=1
 == function_call.sh
@@ -201,15 +202,15 @@ escapes.sh:2:1: warning: An `echo` of a command substitution prints what the com
      2 |  echo "$(printf "%s\n" a)"
        |  ^~~~
 note: Run the command on its own.
-escapes.sh:4:20: warning: The escape `\t` is read by the shell as a plain 't'. (SC1012)
+escapes.sh:4:20: warning: The shell treats the escape `\t` as a plain 't' and drops the backslash. (SC1012)
      4 |  echo "$(printf %s a\tb)"
        |                     ^~
 note: Build the byte with `printf`, or write it inside `$'...'`.
-escapes.sh:5:16: warning: The escape `\q` is read by the shell as a plain 'q'. (SC1001)
+escapes.sh:5:16: warning: The shell treats the escape `\q` as a plain 'q' and drops the backslash. (SC1001)
      5 |  echo "$(true;)"\q
        |                 ^~
 note: Quote the backslash, or build the byte with `printf`.
-escapes.sh:3:26: warning: The `echo` operand is passed through the substitution unchanged. (SC2116)
+escapes.sh:3:26: warning: The command substitution runs only `echo`, so it returns its operand unchanged. (SC2116)
      3 |  echo "$(printf %s "x" )" "$(echo y)"
        |                           ^~~~~~~~~~~
 note: Use the text directly without the command substitution.

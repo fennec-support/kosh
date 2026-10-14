@@ -1,4 +1,4 @@
-2:16: error: Unable to parse the loop.
+2:16: error: The loop body between 'do' and 'done' is empty.
      2 |  while true; do done
        |                 ^~~~
-note: The body between 'do' and 'done' is empty, a command is required.
+note: Put a command in the body, such as `:` to do nothing.

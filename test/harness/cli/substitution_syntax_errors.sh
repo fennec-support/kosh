@@ -87,7 +87,7 @@ printf '%s\n' '== depth_limit.sh'
 printf '%s\n' '== depth_over.sh'
 "$BIN" --lint depth_over.sh 2>&1 | grep -c 'nested too deeply'
 printf '%s\n' '== valid.sh'
-"$BIN" --lint valid.sh 2>&1 | grep -c 'Expected a filename'
+"$BIN" --lint valid.sh 2>&1 | grep -c 'Expected a file after'
 printf '%s\n' '== escaped.sh'
 "$BIN" --lint escaped.sh 2>&1 | grep -c 'Unterminated string literal'
 

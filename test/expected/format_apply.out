@@ -222,10 +222,10 @@ test "$value" = yes && echo one
 [ -n "$value" ] && echo three
 [ -z "$value" ] || echo four
 skipped-fixes-status=1 contents=#!/bin/sh|grep -E pattern /dev/null|grep -F pattern /dev/null|echo $((1+2))|[ x$1 = xbare ] && echo unquoted|echo $[v[0]+1]|
-.test-work/format-apply/skipped-fixes.sh:5:3: warning: The x-prefix test workaround is obsolete. (SC2268)
+.test-work/format-apply/skipped-fixes.sh:5:3: warning: This test prefixes both operands with a character such as `x`, a workaround for empty values that modern shells do not need. (SC2268)
      5 |  [ x$1 = xbare ] && echo unquoted
        |    ^~~
-note: Quote the variable directly.
+note: Quote the variable directly, as in `[ "$var" = value ]`.
 .test-work/format-apply/skipped-fixes.sh:5:4: error: The unquoted test operand vanishes when the value is empty. (SC2086)
      5 |  [ x$1 = xbare ] && echo unquoted
        |     ^~

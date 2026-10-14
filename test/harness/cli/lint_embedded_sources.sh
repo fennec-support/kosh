@@ -258,7 +258,7 @@ make_shell=$(printf '%s' "$make_output" | \
 make_shell_missing=$(printf '%s' "$make_output" | \
   grep -c "The command 'missing_make_shell_executable' was not found")
 make_host=$(printf '%s' "$make_output" | \
-  grep -Ec "MAKE_ONLY|MAKE_CONTINUATION|missing_make_comment_executable|missing_make_define_executable|positional parameter|Unterminated for")
+  grep -Ec "MAKE_ONLY|MAKE_CONTINUATION|missing_make_comment_executable|missing_make_define_executable|positional parameter|for loop has no")
 set -- $(count_variable_and_missing_executable PACKAGE_EMBEDDED \
   missing_package_executable "$root/package.json")
 package=$1

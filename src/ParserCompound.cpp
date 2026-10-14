@@ -42,11 +42,11 @@ Parser::parse_if() throws -> Command *
   usize             end_position = 0;
 
   let const do_reject_empty = [](const Expression *part, const Token *next,
-                                 const char *details) throws -> void {
+                                 const char *message,
+                                 const char *note) throws -> void {
     if (!part->is_dummy()) return;
 
-    throw ErrorWithLocationAndDetails{next->source_location(),
-                                      "Unable to parse the if", details};
+    throw ErrorWithLocationAndDetails{next->source_location(), message, note};
   };
 
   loop {
@@ -56,17 +56,20 @@ Parser::parse_if() throws -> Command *
     ASSERT(then_token != nullptr);
 
     if (then_token->kind() != Token::Kind::Then) {
-      let const detail = condition->is_dummy()
-                             ? "Expected a command for the condition"
-                             : "Expected 'then' after the condition";
+      let const is_condition_empty = condition->is_dummy();
+      let const message = is_condition_empty ? "This 'if' has no condition"
+                                             : "This 'if' has no 'then'";
+      let const detail  = is_condition_empty
+                              ? "expected a command for the condition here"
+                              : "expected 'then' here, after the condition";
 
-      throw ErrorWithLocationAndDetails{location, "Unterminated if",
+      throw ErrorWithLocationAndDetails{location, message,
                                         then_token->source_location(), detail};
     }
 
     do_reject_empty(condition, then_token,
-                    "The condition before 'then' is empty, a command is "
-                    "required");
+                    "The condition before 'then' is empty",
+                    "Put a command before 'then', as in `if true; then`");
 
     Expression *body = parse_command_list(
         token_kind_mask(Token::Kind::Elif, Token::Kind::Else, Token::Kind::Fi));
@@ -81,8 +84,8 @@ Parser::parse_if() throws -> Command *
                                after->kind() == Token::Kind::Fi;
 
     if (is_body_closed) {
-      do_reject_empty(body, after,
-                      "The body after 'then' is empty, a command is required");
+      do_reject_empty(body, after, "The body after 'then' is empty",
+                      "Put a command after 'then', such as `:` to do nothing");
     }
 
     switch (after->kind()) {
@@ -94,12 +97,12 @@ Parser::parse_if() throws -> Command *
       ASSERT(fi_token != nullptr);
 
       if (fi_token->kind() != Token::Kind::Fi) {
-        throw_unterminated(location, "Unterminated if", m_lexer.source(), "fi",
-                           fi_token->source_location());
+        throw_unterminated(location, "This 'if' has no closing 'fi'",
+                           m_lexer.source(), "fi", fi_token->source_location());
       }
 
-      do_reject_empty(otherwise, fi_token,
-                      "The body after 'else' is empty, a command is required");
+      do_reject_empty(otherwise, fi_token, "The body after 'else' is empty",
+                      "Put a command after 'else', such as `:` to do nothing");
       end_position = fi_token->source_location().position +
                      fi_token->source_location().length;
       break;
@@ -110,8 +113,8 @@ Parser::parse_if() throws -> Command *
       break;
 
     default:
-      throw_unterminated(location, "Unterminated if", m_lexer.source(), "fi",
-                         after->source_location());
+      throw_unterminated(location, "This 'if' has no closing 'fi'",
+                         m_lexer.source(), "fi", after->source_location());
     }
 
     break;
@@ -140,15 +143,19 @@ Parser::parse_while_or_until(loop_kind kind) throws -> Command *
   ASSERT(do_token != nullptr);
 
   if (do_token->kind() != Token::Kind::Do) {
-    let const detail = condition->is_dummy()
-                           ? "Expected a command for the loop condition"
-                           : "Expected 'do'";
+    let const is_condition_empty = condition->is_dummy();
+    let const message = is_condition_empty ? "This loop has no condition"
+                                           : "This loop has no 'do'";
+    let const detail  = is_condition_empty
+                            ? "expected a command for the loop condition here"
+                            : "expected 'do' here, after the loop condition";
 
-    throw ErrorWithLocationAndDetails{location, "Unterminated loop",
+    throw ErrorWithLocationAndDetails{location, message,
                                       do_token->source_location(), detail};
   }
 
-  let const parsed_body = parse_loop_body(location, "Unterminated loop");
+  let const parsed_body =
+      parse_loop_body(location, "This loop has no closing 'done'");
 
   let loop_node = m_lexer.arena().create<WhileLoop>(location, condition,
                                                     parsed_body.body, kind);
@@ -226,8 +233,10 @@ Parser::parse_optional_in_clause_words(ArrayList<const Token *> &words)
 
   if (!is_unquoted_word(peeked, "in")) {
     if (peeked->kind() == Token::Kind::Word && peeked->raw_string() == "in") {
-      ErrorWithLocation error{peeked->source_location(),
-                              "Expected an unquoted 'in'"};
+      ErrorWithLocationAndDetails error{
+          peeked->source_location(),
+          "The 'in' is quoted, and the loop requires an unquoted 'in'",
+          "Remove the quotes or the backslash around `in`"};
 
       error.set_command_status(2);
       throw error;
@@ -292,15 +301,22 @@ Parser::parse_loop_header(
     if (keyword == "for" && m_lexer.is_posix_mode() &&
         name_token->kind() == Token::Kind::LeftParen)
     {
+      let       location = name_token->source_location();
+      let const source   = m_lexer.source();
+      let const end =
+          lexer::scan_balanced_shell_region(source, location.position + 1, ')');
+
+      if (end.has_value()) location.length = *end - location.position;
+
       throw ErrorWithLocationAndDetails{
-          name_token->source_location(),
-          "Expected a variable name after 'for'. The for ((...)) C-style "
-          "loop is a bashism that POSIX mode does not read",
-          "Use a while loop instead"};
+          location, "The C-style for ((...)) loop is a bash extension",
+          "Count with a while loop, such as `i=1; while [ \"$i\" -le N ]; "
+          "do ...; i=$((i + 1)); done`"};
     }
-    throw ErrorWithLocation{name_token->source_location(),
-                            StringView{"Expected a variable name after '"} +
-                                keyword + "'"};
+    throw ErrorWithLocationAndDetails{
+        name_token->source_location(),
+        StringView{"Expected a variable after '"} + keyword + "'",
+        StringView{"Write `"} + keyword + " i in a b c; do ...; done`"};
   }
 
   let const &name_word =
@@ -317,9 +333,10 @@ Parser::parse_loop_header(
   if (!is_name_plain) {
     throw ErrorWithLocationAndDetails{
         name_token->source_location(),
-        StringView{"Bad "} + keyword + " loop variable, '" +
-            name_token->raw_string() + "' is not a plain name",
-        "Drop the '$' and any quotes"};
+        StringView{"The "} + keyword + " loop variable '" +
+            name_token->raw_string() + "' is not a valid identifier",
+        StringView{"Write a bare identifier, as in `"} + keyword +
+            " i in a b c`, without '$' or quotes"};
   }
 
   ArrayList<const Token *> words{heap_allocator()};
@@ -332,7 +349,8 @@ Parser::parse_loop_header(
 
   if (do_token->kind() != Token::Kind::Do) {
     throw ErrorWithLocationAndDetails{
-        location, unterminated_message, do_token->source_location(),
+        location, StringView{"This "} + keyword + " loop has no 'do'",
+        do_token->source_location(),
         has_in_clause ? missing_do_detail : missing_do_without_in_detail};
   }
 
@@ -366,15 +384,18 @@ Parser::parse_for() throws -> Command *
         return parse_c_style_for(location, first_paren);
       }
 
-      throw ErrorWithLocation{first_paren->source_location(),
-                              "Expected '((' or a variable name after 'for'"};
+      throw ErrorWithLocationAndDetails{
+          first_paren->source_location(),
+          "Expected '((' or a variable after 'for'",
+          "Write `for ((i = 0; i < 3; i++))` or `for i in a b c`"};
     }
   }
 
   let header = parse_loop_header(
-      location, "for", "Unterminated for loop", "Expected 'do'",
-      "Expected 'do', or 'in WORDS' before it; without 'in' the loop "
-      "walks the positional parameters");
+      location, "for", "This for loop has no closing 'done'",
+      "expected 'do' here, after the list of words",
+      "expected 'do' or 'in WORDS' here, and a loop without 'in' iterates "
+      "over the positional parameters");
   let loop_node = m_lexer.arena().create<ForLoop>(
       location, header.name_token->source_location(), header.variable_name,
       steal(header.words), header.has_in_clause, header.body.body);
@@ -395,8 +416,10 @@ Parser::parse_select() throws -> Command *
 
   LOG(Debug, "parsing a select loop at byte %u", location.position);
 
-  let header = parse_loop_header(location, "select", "Unterminated select loop",
-                                 "expected 'do'", "expected 'do'");
+  let header    = parse_loop_header(location, "select",
+                                    "This select loop has no closing 'done'",
+                                    "expected 'do' here, after the list of words",
+                                    "expected 'do' or 'in WORDS' here");
   let loop_node = m_lexer.arena().create<SelectLoop>(
       location, header.name_token->source_location(), header.variable_name,
       steal(header.words), header.has_in_clause, header.body.body);
@@ -478,7 +501,9 @@ Parser::parse_coproc() throws -> Command *
   Command *body = parse_simple_command(leading_token);
 
   if (body == nullptr) {
-    throw ErrorWithLocation{location, "Expected a command after 'coproc'"};
+    throw ErrorWithLocationAndDetails{
+        location, "Expected a command after 'coproc'",
+        "Put a command after the keyword, as in `coproc cat`"};
   }
 
   let       end_position         = body->source_end_position();
@@ -555,8 +580,10 @@ Parser::parse_case() throws -> Command *
       word = word_token_from_raw(m_lexer.arena(), raw.view(),
                                  word->source_location());
     } else {
-      throw ErrorWithLocation{word->source_location(),
-                              "Expected a word to match on after 'case'"};
+      throw ErrorWithLocationAndDetails{
+          word->source_location(),
+          "Expected a word after 'case' to match against the patterns",
+          "Write `case $var in pattern) command ;; esac`"};
     }
   }
 
@@ -566,8 +593,10 @@ Parser::parse_case() throws -> Command *
   ASSERT(in_token != nullptr);
 
   if (!is_unquoted_word(in_token, "in")) {
-    ErrorWithLocation error{in_token->source_location(),
-                            "Expected an unquoted 'in' after the case word"};
+    ErrorWithLocationAndDetails error{
+        in_token->source_location(),
+        "Expected an unquoted 'in' after the case word",
+        "Write `case $var in pattern) command ;; esac`"};
 
     error.set_command_status(2);
     throw error;
@@ -615,7 +644,7 @@ Parser::parse_case() throws -> Command *
               word_token_from_raw(m_lexer.arena(), text, pattern_location);
         } else {
           throw ErrorWithLocationAndDetails{
-              location, "Unterminated case", pattern_location,
+              location, "This 'case' has no closing 'esac'", pattern_location,
               "expected a pattern to start an arm, or 'esac' to end the case"};
         }
       }
@@ -628,8 +657,10 @@ Parser::parse_case() throws -> Command *
       if (separator->kind() == Token::Kind::Pipe) continue;
       if (separator->kind() == Token::Kind::RightParen) break;
 
-      throw ErrorWithLocation{separator->source_location(),
-                              "Expected '|' or ')' in a case pattern"};
+      throw ErrorWithLocationAndDetails{
+          separator->source_location(),
+          "Expected '|' or ')' after the case pattern",
+          "Close the pattern with ')', as in `a|b) command ;;`"};
     }
 
     Expression *body = parse_command_list(token_kind_mask(
@@ -692,14 +723,16 @@ Parser::parse_brace_group() throws -> Command *
   ASSERT(close != nullptr);
 
   if (!is_unquoted_word(close, "}")) {
-    throw_unterminated(open->source_location(), "Unterminated brace group",
-                       m_lexer.source(), "}", close->source_location());
+    throw_unterminated(open->source_location(),
+                       "This brace group has no closing '}'", m_lexer.source(),
+                       "}", close->source_location());
   }
 
   if (body->is_dummy()) {
     throw ErrorWithLocationAndDetails{
-        close->source_location(), "Unable to parse the brace group",
-        "The body between '{' and '}' is empty, a command is required"};
+        close->source_location(),
+        "The brace group between '{' and '}' is empty",
+        "Put a command in the group, as in `{ :; }`"};
   }
 
   BraceGroup *group =
@@ -750,15 +783,15 @@ Parser::parse_subshell(Token *open) throws -> Command *
   ASSERT(close != nullptr);
 
   if (close->kind() != Token::Kind::RightParen) {
-    throw ErrorWithLocationAndDetails{open->source_location(),
-                                      "Unterminated subshell",
-                                      close->source_location(), "expected ')'"};
+    throw ErrorWithLocationAndDetails{
+        open->source_location(), "This subshell has no closing ')'",
+        close->source_location(), "expected ')' here"};
   }
 
   if (body->is_dummy()) {
     throw ErrorWithLocationAndDetails{
-        close->source_location(), "Unable to parse the subshell",
-        "The body between '(' and ')' is empty, a command is required"};
+        close->source_location(), "The subshell between '(' and ')' is empty",
+        "Put a command in the subshell, as in `( : )`"};
   }
 
   let subshell =
@@ -791,9 +824,9 @@ Parser::capture_double_paren_body(Token *open) throws -> StringView
 
     switch (t->kind()) {
     case Token::Kind::EndOfFile:
-      throw ErrorWithLocationAndDetails{open->source_location(),
-                                        "Unterminated '(('",
-                                        t->source_location(), "expected '))'"};
+      throw ErrorWithLocationAndDetails{
+          open->source_location(), "This '((' has no closing '))'",
+          t->source_location(), "expected '))' here"};
     case Token::Kind::LeftParen:  depth++; continue;
     case Token::Kind::RightParen: {
       if (depth > 0) {
@@ -815,9 +848,9 @@ Parser::capture_double_paren_body(Token *open) throws -> StringView
             t->source_location().position - body_start_position);
       }
 
-      throw ErrorWithLocationAndDetails{open->source_location(),
-                                        "Unterminated '(('",
-                                        t->source_location(), "expected '))'"};
+      throw ErrorWithLocationAndDetails{
+          open->source_location(), "This '((' has no closing '))'",
+          t->source_location(), "expected '))' here"};
     }
     default: continue;
     }
@@ -872,8 +905,9 @@ Parser::parse_c_style_for(const SourceLocation &location,
   }
 
   if (separator_count != 2) {
-    throw ErrorWithLocation{
-        location, "Expected '(( init; condition; step ))' in a C-style for"};
+    throw ErrorWithLocationAndDetails{
+        location, "Expected two ';' separators in the C-style for header",
+        "Write the header as `for ((i = 0; i < 3; i++))`"};
   }
 
   let const allocator = bump_allocator(m_lexer.arena());
@@ -892,12 +926,13 @@ Parser::parse_c_style_for(const SourceLocation &location,
   ASSERT(do_token != nullptr);
 
   if (do_token->kind() != Token::Kind::Do) {
-    throw ErrorWithLocationAndDetails{location, "Unterminated for loop",
-                                      do_token->source_location(),
-                                      "expected 'do'"};
+    throw ErrorWithLocationAndDetails{
+        location, "This for loop has no 'do'", do_token->source_location(),
+        "expected 'do' here, after the '(( ... ))' header"};
   }
 
-  let const parsed_body = parse_loop_body(location, "Unterminated for loop");
+  let const parsed_body =
+      parse_loop_body(location, "This for loop has no closing 'done'");
 
   let loop_node = m_lexer.arena().create<expressions::CStyleForLoop>(
       location, open->source_location().position + 2, init, condition, step,
@@ -953,9 +988,9 @@ Parser::parse_conditional_command() throws -> Command *
     }
 
     if (t->kind() == Token::Kind::EndOfFile) {
-      throw ErrorWithLocationAndDetails{open->source_location(),
-                                        "Unterminated '[['",
-                                        t->source_location(), "expected ']]'"};
+      throw ErrorWithLocationAndDetails{
+          open->source_location(), "This '[[' has no closing ']]'",
+          t->source_location(), "expected ']]' here"};
     }
 
     using Kind = conditional_element::Kind;

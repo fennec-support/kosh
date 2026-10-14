@@ -1,4 +1,4 @@
-3:1: error: A glob pattern in command position is rarely intended as a command name.
+3:1: error: A glob pattern in command position is rarely intended as a command.
      3 |  doesnotexist_xyz*
        |  ^~~~~~~~~~~~~~~~~
-note: Quote it to run a literal name, or list the matches with compgen -G.
+note: Quote it to run a literal command, or list the matches with `compgen -G`.

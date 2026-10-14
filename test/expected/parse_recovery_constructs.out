@@ -1,0 +1,67 @@
+== a failed if inside a function reports once
+-c:2:6: error: The [[ conditional is a bash extension.
+== nested C-style loops report the outer loop once
+-c:2:7: error: The C-style for ((...)) loop is a bash extension.
+== an orphan after the failed command is reported
+-c:1:4: error: The [[ conditional is a bash extension.
+-c:4:1: error: 'fi' has no matching 'if'.
+== an error outside any command keeps every later error
+-c:1:1: error: The [[ conditional is a bash extension.
+-c:2:1: error: 'fi' has no matching 'if'.
+-c:3:1: error: 'done' has no matching 'while', 'until', or 'for'.
+== keywords and braces as arguments do not close a command
+-c:1:4: error: The [[ conditional is a bash extension.
+-c:4:1: error: 'done' has no matching 'while', 'until', or 'for'.
+== case patterns inside a failed command do not close it
+-c:1:4: error: The [[ conditional is a bash extension.
+-c:4:1: error: 'fi' has no matching 'if'.
+== a one-line failed command closes on its own keywords
+-c:1:4: error: The [[ conditional is a bash extension.
+-c:2:1: error: 'fi' has no matching 'if'.
+== a heredoc body inside a failed command is skipped
+-c:1:4: error: The [[ conditional is a bash extension.
+-c:7:1: error: 'fi' has no matching 'if'.
+== an unterminated failed command reports once at the end
+-c:2:6: error: The [[ conditional is a bash extension.
+== elif and else branches stay inside the failed command
+-c:1:4: error: The [[ conditional is a bash extension.
+-c:8:1: error: 'done' has no matching 'while', 'until', or 'for'.
+== each failed function reports its own error
+-c:2:6: error: The [[ conditional is a bash extension.
+-c:5:7: error: The C-style for ((...)) loop is a bash extension.
+== a subshell and a brace group inside a failed command
+-c:1:7: error: The [[ conditional is a bash extension.
+-c:4:1: error: '}' has no matching '{'.
+== an unclosed failed command stops hiding errors at the next outer line
+-c:2:6: error: The [[ conditional is a bash extension.
+-c:7:3: error: ')' has no matching '('.
+== a heredoc terminator at the left margin does not end the skip
+-c:2:6: error: The [[ conditional is a bash extension.
+-c:10:1: error: 'fi' has no matching 'if'.
+== an unindented body reports its closer instead of hiding errors
+-c:1:4: error: The [[ conditional is a bash extension.
+-c:3:1: error: 'fi' has no matching 'if'.
+== comments and blank lines at the margin keep the skip
+-c:2:6: error: The [[ conditional is a bash extension.
+-c:8:1: error: 'fi' has no matching 'if'.
+== tab indentation ends the skip at the next outer line
+-c:2:5: error: The [[ conditional is a bash extension.
+-c:6:2: error: ')' has no matching '('.
+== a real error right after the failed command closes is reported
+-c:1:4: error: The [[ conditional is a bash extension.
+-c:3:5: error: 'done' has no matching 'while', 'until', or 'for'.
+== a failed command on one line leaves the next line alone
+-c:1:4: error: The [[ conditional is a bash extension.
+-c:2:9: error: 'esac' has no matching 'case'.
+== deeply nested constructs report once
+-c:6:16: error: The [[ conditional is a bash extension.
+-c:12:1: error: '}' has no matching '{'.
+== a script file recovers the same way
+2:6: error: The [[ conditional is a bash extension.
+7:1: error: 'fi' has no matching 'if'.
+== the bash mood recovers from its own errors
+-c:2:7: error: The for loop variable '1x' is not a valid identifier.
+-c:6:1: error: 'done' has no matching 'while', 'until', or 'for'.
+== a while and an until inside a failed command
+-c:2:6: error: The [[ conditional is a bash extension.
+-c:7:1: error: 'esac' has no matching 'case'.

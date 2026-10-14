@@ -1,7 +1,7 @@
 -c:1:18: error: Unable to expand '${}' because the braces hold no parameter.
      1 |  x=1; a=(1); echo "${}"
        |                   ^~~~~
-note: Write a name between the braces, as in ${name}.
+note: Write a parameter between the braces, as in ${var}.
 status=1
 -c:1:21: error: Unable to expand '${%}' because '%' is not a parameter name.
      1 |  x=1; a=(1); echo "${%}"

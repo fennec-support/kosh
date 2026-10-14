@@ -639,8 +639,8 @@ guard_located_depth(usize                   current_depth,
 {
   if (current_depth >= cap) {
     LOG(Debug, "%s depth %zu exceeds cap %zu", what, current_depth, cap);
-    throw ErrorWithLocation{location,
-                            "Maximum source/recursion depth exceeded"};
+    throw ErrorWithLocation{
+        location, "Sourced files and function calls are nested too deeply"};
   }
 }
 
@@ -2576,7 +2576,7 @@ JobTable::apply_wire(job_table_wire wire) wontthrow -> void
 wontreturn static fn
 invalid_subshell_bootstrap() throws -> void
 {
-  throw Error{"Invalid inherited shell state"};
+  throw Error{"The shell state inherited from the parent process is invalid"};
 }
 
 fn

@@ -50,12 +50,12 @@ echo "annoying-suppressed=$?"
 runtime_annoying_output=$("$BIN" -W \
   -c 'koshconf set optimizer.show_annoying_tier off' -c "$annoying_source" 2>&1)
 echo "annoying-runtime-suppressed=$(printf '%s\n' "$runtime_annoying_output" |
-  grep -c 'This .cd. is unchecked')"
+  grep -c 'This .cd. is not checked')"
 runtime_annoying_output=$("$BIN" -W \
   -c 'koshconf set optimizer.show_annoying_tier off; koshconf set optimizer.show_annoying_tier on' \
   -c "$annoying_source" 2>&1)
 echo "annoying-runtime-restored=$(printf '%s\n' "$runtime_annoying_output" |
-  grep -c 'This .cd. is unchecked')"
+  grep -c 'This .cd. is not checked')"
 
 lenient_source='diagnostic_levels_missing_command; echo survived'
 "$BIN" -W -c "$lenient_source" >/dev/null 2>&1
@@ -74,21 +74,21 @@ two_async_recursive_source='two_async(){ two_async & two_async & }'
 one_async_recursive_output=$("$BIN" -M bash -WWW -c "$one_async_recursive_source" 2>&1)
 two_async_recursive_output=$("$BIN" -M bash -WWW -c "$two_async_recursive_source" 2>&1)
 echo "compat-level-one-lenient=$(printf '%s\n' "$compat_lenient_level_one" |
-  grep -c 'read before it is assigned')"
+  grep -c 'used before it is assigned')"
 echo "compat-level-two-lenient=$(printf '%s\n' "$compat_lenient_level_two" |
-  grep -c 'read before it is assigned')"
+  grep -c 'used before it is assigned')"
 echo "compat-level-two-annoying=$(printf '%s\n' "$compat_level_two" |
-  grep -c 'This .cd. is unchecked')"
+  grep -c 'This .cd. is not checked')"
 echo "compat-level-three-annoying=$(printf '%s\n' "$compat_level_three" |
-  grep -c 'This .cd. is unchecked')"
+  grep -c 'This .cd. is not checked')"
 echo "compat-level-two-obsolete=$(printf '%s\n' "$compat_level_two" |
   grep -c 'SC2007')"
 echo "compat-level-three-obsolete=$(printf '%s\n' "$compat_level_three" |
   grep -c 'SC2007')"
 echo "compat-level-two-recursion=$(printf '%s\n' "$compat_level_two" |
-  grep -c 'SC2264')"
+  grep -c '(SC2264)')"
 echo "compat-level-three-recursion=$(printf '%s\n' "$compat_level_three" |
-  grep -c 'SC2264')"
+  grep -c '(SC2264)')"
 echo "compat-recursion-warning=$(printf '%s\n' "$compat_level_two" |
   grep -c "The 'wrapper' function calls itself")"
 echo "one-async-fork-bomb=$(printf '%s\n' "$one_async_recursive_output" |
@@ -108,7 +108,7 @@ file_directive_output=$(
 )
 echo "$file_directive_output"
 echo "file-directive-errors=$(printf '%s\n' "$file_directive_output" |
-  grep -c 'This .cd. is unchecked')"
+  grep -c 'This .cd. is not checked')"
 
 cat > "$temporary_directory/local-directive.sh" <<'EOF'
 f() {
@@ -218,5 +218,5 @@ else
     >/dev/null 2>&1
 fi
 runtime_warning_count=$(strings "$temporary_directory/typescript" |
-  grep -c "is read before it is assigned")
+  grep -c "is used before it is assigned")
 echo "runtime-level-two-warnings=$runtime_warning_count"

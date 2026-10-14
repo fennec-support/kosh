@@ -249,7 +249,7 @@ EvalContext::run_mimicked_script(ExecContext     &ec,
     details += "` to check the file type.";
     show_message(ErrorWithLocationAndDetails{
         ec.source_location(),
-        "Cannot execute `" + ec.program_path().text() + "` as a shell script.",
+        "Cannot execute `" + ec.program_path().text() + "` as a shell script",
         steal(details)}
                      .to_string(source_store().current_source_view(), this));
 

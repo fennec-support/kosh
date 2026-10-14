@@ -1,3 +1,3 @@
-2:7: error: Expected a filename after the redir.
+2:7: error: Expected a file after the redirection operator.
      2 |  echo >
        |        ^

@@ -1103,9 +1103,12 @@ Pipeline::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> 
 
     if (stage_args.is_empty()) {
       if (cxt.runtime_state().get_mood() == mimic_mood::Default) {
-        throw ErrorWithLocation{
+        throw ErrorWithLocationAndDetails{
             e->source_location(),
-            "A pipeline stage expanded to no command to run"};
+            "A pipeline stage expanded to no words, so it has no command to "
+            "run",
+            "An unset or empty variable as the whole stage expands to nothing, "
+            "as in `$cmd | cat` with `cmd` empty"};
       }
 
       let empty_stage =

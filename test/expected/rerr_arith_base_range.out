@@ -1,11 +1,11 @@
-2:10: warning: The literal '010' begins with a zero and is read in base eight. (SC2080)
+2:10: warning: The literal '010' begins with a zero, so the shell will evaluate it in base eight. (SC2080)
      2 |  (echo $((010 + 09)))
-       |           ^~~~~~~~
-note: Drop the leading zero, or write `10#010` for base ten.
-14:9: warning: The literal '010' begins with a zero and is read in base eight. (SC2080)
+       |           ^~~
+note: Write `8#010` if octal is intended, or write `10#010` or drop the leading zero if base ten is intended.
+14:14: warning: The literal '010' begins with a zero, so the shell will evaluate it in base eight. (SC2080)
     14 |  echo $((0x + 010 + 16#ff + 2#101))
-       |          ^~~~~~~~~~~~~~~~~~~~~~~~
-note: Drop the leading zero, or write `10#010` for base ten.
+       |               ^~~
+note: Write `8#010` if octal is intended, or write `10#010` or drop the leading zero if base ten is intended.
 Encountered 2 warnings.
 2:16: error: Invalid digit '9' in the number '09'.
      2 |  (echo $((010 + 09)))

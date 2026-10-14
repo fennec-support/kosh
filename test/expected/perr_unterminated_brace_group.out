@@ -1,6 +1,6 @@
-2:1: error: Unterminated brace group.
+2:1: error: This brace group has no closing '}'.
      2 |  { echo hi
        |  ^
 2:10: details:
      2 |  { echo hi
-       |           ^ expected '}'.
+       |           ^ expected '}' here to close it.

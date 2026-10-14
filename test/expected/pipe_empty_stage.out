@@ -1,3 +1,4 @@
-3:1: error: A pipeline stage expanded to no command to run.
+3:1: error: A pipeline stage expanded to no words, so it has no command to run.
      3 |  x=1 | cat
        |  ^~~
+note: An unset or empty variable as the whole stage expands to nothing, as in `$cmd | cat` with `cmd` empty.

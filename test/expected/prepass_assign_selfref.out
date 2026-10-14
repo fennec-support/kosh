@@ -2,11 +2,12 @@
      2 |  VAR=1 echo $VAR
        |             ^~~~
 note: Quote the expansion to keep one argument.
-2:12: warning: The variable 'VAR' is read before the assignment prefix takes effect.
+2:12: warning: The variable 'VAR' is expanded before the assignment prefix takes effect.
      2 |  VAR=1 echo $VAR
        |             ^~~~
+note: Assign the variable on its own line before the command, as in `A=1; cmd "$A"`.
 Encountered 2 warnings.
-2:12: warning: The variable 'VAR' is not set, it expands to empty.
+2:12: warning: The variable 'VAR' is not set and expands to an empty string.
      2 |  VAR=1 echo $VAR
        |             ^~~~
 note: Replace it with ${VAR-} if empty expansion is desired.

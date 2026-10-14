@@ -1,3 +1,4 @@
 2:1: error: 'esac' has no matching 'case'.
      2 |  esac
        |  ^~~~
+note: A 'case' above may be missing, or another 'esac' may have closed it early.

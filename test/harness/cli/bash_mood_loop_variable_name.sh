@@ -1,5 +1,5 @@
 unset KOSH_FLAGS
-echo "== a select menu variable must be a plain name =="
+echo "== a select menu variable must be a valid identifier =="
 "$BIN" --mood bash -c 'select $menu in a b c; do break; done' 2>&1
 echo "rc=$?"
 echo "== a quoted select menu variable is rejected the same way =="

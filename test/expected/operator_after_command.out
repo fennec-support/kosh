@@ -1,3 +1,4 @@
-2:8: error: Expected a command after an operator.
+2:8: error: Expected a command after '||'.
      2 |  true ||
        |         ^
+note: Add the missing command, as in `a || b`, or remove the operator.

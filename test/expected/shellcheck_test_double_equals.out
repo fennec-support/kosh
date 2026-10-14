@@ -6,7 +6,7 @@ note: Remove the constant condition or compare runtime data.
      2 |  [ a == b ]
        |      ^~
 note: Use `=` for string equality.
-2:5: warning: The literals 'a' and 'b' differ. (SC2193)
+2:5: warning: The literals 'a' and 'b' differ, so they can never be equal. (SC2193)
      2 |  [ a == b ]
        |      ^~
 note: Compare a variable, or correct the operand spelling.

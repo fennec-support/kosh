@@ -1,27 +1,27 @@
-TMPDIR/unterminated:1:1: error: Unterminated brace group.
+TMPDIR/unterminated:1:1: error: This brace group has no closing '}'.
      1 |  {
        |  ^
 TMPDIR/unterminated:2:10: details:
      2 |    echo hi
-       |           ^ expected '}'.
+       |           ^ expected '}' here to close it.
 rc=0
 incremental reached
 incremental rc=0
-TMPDIR/incremental:3:1: error: Unterminated subshell.
+TMPDIR/incremental:3:1: error: This subshell has no closing ')'.
      3 |  (
        |  ^
 TMPDIR/incremental:3:2: details:
      3 |  (
-       |   ^ expected ')'.
+       |   ^ expected ')' here.
 direct rc=2
 complete first
 complete second
-TMPDIR/error-state:3:1: error: Unterminated subshell.
+TMPDIR/error-state:3:1: error: This subshell has no closing ')'.
      3 |  (
        |  ^
 TMPDIR/error-state:3:2: details:
      3 |  (
-       |   ^ expected ')'.
+       |   ^ expected ')' here.
 trap-status=1
 error-state rc=1
 -c:1:1: error: Cannot execute `TMPDIR/binary` as a shell script.

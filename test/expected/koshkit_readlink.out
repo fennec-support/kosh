@@ -1,7 +1,7 @@
-4:1: warning: This `cd` is unchecked. (SC2164)
+4:1: warning: This `cd` is not checked for failure, so later commands can run in the wrong directory. (SC2164)
      4 |  cd "$TEST_TEMP_DIRECTORY/koshkit-readlink"
        |  ^~
-note: Stop or return when `cd` fails.
+note: Write `cd dir || exit`, or `cd dir || return` in a function.
 default=[relative-target
 ]
 no-newline=[relative-target]

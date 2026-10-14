@@ -10,7 +10,7 @@ note: Use `$(...)` for command substitution.
      2 |  echo `echo hi`
        |       ^~~~~~~~~
 note: Quote it to keep one argument.
-2:6: warning: The `echo` operand is passed through the substitution unchanged. (SC2116)
+2:6: warning: The command substitution runs only `echo`, so it returns its operand unchanged. (SC2116)
      2 |  echo `echo hi`
        |       ^~~~~~~~~
 note: Use the text directly without the command substitution.
@@ -18,13 +18,14 @@ note: Use the text directly without the command substitution.
      4 |  echo "`echo q`"
        |  ^~~~
 note: Run the command on its own.
-4:6: warning: The `echo` operand is passed through the substitution unchanged. (SC2116)
+4:6: warning: The command substitution runs only `echo`, so it returns its operand unchanged. (SC2116)
      4 |  echo "`echo q`"
        |       ^~~~~~~~~~
 note: Use the text directly without the command substitution.
 5:6: warning: This `case` has no default `*)` branch. (SC2249)
      5 |  case `echo x` in x) echo matched;; esac
        |       ^~~~~~~~
+note: Add a `*)` branch, or write `*) ;;` to ignore other input.
 6:1: warning: An `echo` of a command substitution prints what the command already prints. (SC2005)
      6 |  echo `(echo y) 2>/dev/null`
        |  ^~~~
@@ -49,7 +50,7 @@ note: Use `$(...)` for command substitution.
      7 |  echo `echo "a b"`
        |       ^~~~~~~~~~~~
 note: Quote it to keep one argument.
-7:6: warning: The `echo` operand is passed through the substitution unchanged. (SC2116)
+7:6: warning: The command substitution runs only `echo`, so it returns its operand unchanged. (SC2116)
      7 |  echo `echo "a b"`
        |       ^~~~~~~~~~~~
 note: Use the text directly without the command substitution.
@@ -65,7 +66,7 @@ note: Use `$(...)` for command substitution.
      9 |  foo=bar; echo `echo \$foo`
        |                ^~~~~~~~~~~~
 note: Quote it to keep one argument.
-9:15: warning: The `echo` operand is passed through the substitution unchanged. (SC2116)
+9:15: warning: The command substitution runs only `echo`, so it returns its operand unchanged. (SC2116)
      9 |  foo=bar; echo `echo \$foo`
        |                ^~~~~~~~~~~~
 note: Use the text directly without the command substitution.

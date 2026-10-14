@@ -637,7 +637,7 @@ glob_matches(StringView    glob,
 #define GLOB_GROUP_ERR()                                                       \
   throw ErrorWithLocationAndDetails{                                           \
       {0, 0},                               \
-      "Unclosed '[' group",                                                    \
+      "The '[' group in the glob pattern has no closing ']'",                                                    \
       {0, 1},                                                \
       "expected ] here"                                                        \
   };

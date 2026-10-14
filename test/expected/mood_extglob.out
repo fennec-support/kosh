@@ -1,9 +1,11 @@
 9:6: warning: This `case` has no default `*)` branch. (SC2249)
      9 |  case foo in
        |       ^~~
+note: Add a `*)` branch, or write `*) ;;` to ignore other input.
 12:6: warning: This `case` has no default `*)` branch. (SC2249)
     12 |  case readme in
        |       ^~~~~~
+note: Add a `*)` branch, or write `*) ;;` to ignore other input.
 Encountered 2 warnings.
 plus
 star

@@ -1,6 +1,6 @@
-2:1: error: Unterminated if.
+2:1: error: This 'if' has no closing 'fi'.
      2 |  if true; then
        |  ^~
 2:14: details:
      2 |  if true; then
-       |               ^ expected 'fi'.
+       |               ^ expected 'fi' here to close it.

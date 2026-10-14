@@ -2,7 +2,7 @@
      2 |  echo a $(echo b) c
        |         ^~~~~~~~~
 note: Quote it to keep one argument.
-2:8: warning: The `echo` operand is passed through the substitution unchanged. (SC2116)
+2:8: warning: The command substitution runs only `echo`, so it returns its operand unchanged. (SC2116)
      2 |  echo a $(echo b) c
        |         ^~~~~~~~~
 note: Use the text directly without the command substitution.
@@ -14,11 +14,11 @@ note: Run the command on its own.
     14 |  nested=$(echo $(echo inner # ) cmt
        |                ^~~~~~~~~~~~~~~~~~~~
 note: Quote it to keep one argument.
-14:15: warning: The `echo` operand is passed through the substitution unchanged. (SC2116)
+14:15: warning: The command substitution runs only `echo`, so it returns its operand unchanged. (SC2116)
     14 |  nested=$(echo $(echo inner # ) cmt
        |                ^~~~~~~~~~~~~~~~~~~~
 note: Use the text directly without the command substitution.
-23:11: warning: The `echo` operand is passed through the substitution unchanged. (SC2116)
+23:11: warning: The command substitution runs only `echo`, so it returns its operand unchanged. (SC2116)
     23 |  z=$( echo "$( echo nested )" -- "$x" )
        |            ^~~~~~~~~~~~~~~~~~
 note: Use the text directly without the command substitution.
@@ -34,7 +34,7 @@ note: Pass the file as an operand, or merge the inputs into one stream.
     31 |  f(){ echo "$(echo hi)"; }
        |       ^~~~
 note: Run the command on its own.
-31:11: warning: The `echo` operand is passed through the substitution unchanged. (SC2116)
+31:11: warning: The command substitution runs only `echo`, so it returns its operand unchanged. (SC2116)
     31 |  f(){ echo "$(echo hi)"; }
        |            ^~~~~~~~~~~~
 note: Use the text directly without the command substitution.
@@ -46,7 +46,7 @@ note: Run the command on its own.
     38 |  echo $(echo $(echo deep))
        |       ^~~~~~~~~~~~~~~~~~~~
 note: Quote it to keep one argument.
-38:6: warning: The `echo` operand is passed through the substitution unchanged. (SC2116)
+38:6: warning: The command substitution runs only `echo`, so it returns its operand unchanged. (SC2116)
     38 |  echo $(echo $(echo deep))
        |       ^~~~~~~~~~~~~~~~~~~~
 note: Use the text directly without the command substitution.
@@ -58,7 +58,7 @@ note: Run the command on its own.
     38 |  echo $(echo $(echo deep))
        |              ^~~~~~~~~~~~
 note: Quote it to keep one argument.
-38:13: warning: The `echo` operand is passed through the substitution unchanged. (SC2116)
+38:13: warning: The command substitution runs only `echo`, so it returns its operand unchanged. (SC2116)
     38 |  echo $(echo $(echo deep))
        |              ^~~~~~~~~~~~
 note: Use the text directly without the command substitution.

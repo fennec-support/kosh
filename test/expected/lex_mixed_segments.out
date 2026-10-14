@@ -15,15 +15,15 @@ note: Quote it to keep one argument.
        |    ^~~~~~~~
 note: Quote it to keep one argument.
 Encountered 4 warnings.
-4:14: warning: The variable 'x' is not set, it expands to empty.
+4:14: warning: The variable 'x' is not set and expands to an empty string.
      4 |  : pre"dq"'sq'$x${y}post
        |               ^~
 note: Replace it with ${x-} if empty expansion is desired.
-4:16: warning: The variable 'y' is not set, it expands to empty.
+4:16: warning: The variable 'y' is not set and expands to an empty string.
      4 |  : pre"dq"'sq'$x${y}post
        |                 ^~~~
 note: Replace it with ${y-} if empty expansion is desired.
-5:5: warning: The variable 'b' is not set, it expands to empty.
+5:5: warning: The variable 'b' is not set and expands to an empty string.
      5 |  : "a$b"'c'$(:)"d$(( 1 + 1 ))e"
        |      ^~
 note: Replace it with ${b-} if empty expansion is desired.

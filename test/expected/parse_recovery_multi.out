@@ -1,6 +1,8 @@
 2:1: error: 'fi' has no matching 'if'.
      2 |  fi
        |  ^~
+note: An 'if' above may be missing, or another 'fi' may have closed it early.
 4:1: error: 'done' has no matching 'while', 'until', or 'for'.
      4 |  done
        |  ^~~~
+note: A loop above may be missing, or another 'done' may have closed it early.

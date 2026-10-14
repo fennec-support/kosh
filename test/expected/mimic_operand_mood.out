@@ -24,10 +24,10 @@ TMPDIR/unset-script:2:8: error: Unable to expand 'undefined_name' because the pa
 note: Replace it with ${undefined_name-} if empty expansion is desired.
 rc=1
 == the strict default still reports the unset read:
-TMPDIR/unset-script:2:8: error: The variable 'undefined_name' is read before any assignment gives it a value. (SC2154)
+TMPDIR/unset-script:2:8: error: The variable 'undefined_name' is used before any assignment gives it a value. (SC2154)
      2 |  echo "[${undefined_name}]"
        |         ^~~~~~~~~~~~~~~~~
-note: Assign 'undefined_name' before it is read, or set it in the environment.
+note: Assign 'undefined_name' before this use, or set it in the environment.
 rc=1
 == a bash shebang runs bash syntax without -I:
 ok
@@ -38,6 +38,6 @@ rc=0
 split
 rc=0
 == an sh shebang rejects the bash conditional:
-TMPDIR/sh-syntax:2:1: error: The [[ conditional is a bash extension that the sh mood does not provide.
+TMPDIR/sh-syntax:2:1: error: The [[ conditional is a bash extension.
 == -M kosh keeps the strict analysis on a bash shebang:
 rc=1

@@ -1,38 +1,20 @@
-== a select menu variable must be a plain name ==
--c:1:8: error: Bad select loop variable, '$menu' is not a plain name.
+== a select menu variable must be a valid identifier ==
+-c:1:8: error: The select loop variable '$menu' is not a valid identifier.
      1 |  select $menu in a b c; do break; done
        |         ^~~~~
-note: Drop the '$' and any quotes.
--c:1:24: error: 'do' has no matching 'while', 'until', or 'for'.
-     1 |  select $menu in a b c; do break; done
-       |                         ^~
--c:1:34: error: 'done' has no matching 'while', 'until', or 'for'.
-     1 |  select $menu in a b c; do break; done
-       |                                   ^~~~
+note: Write a bare identifier, as in `select i in a b c`, without '$' or quotes.
 rc=2
 == a quoted select menu variable is rejected the same way ==
--c:1:8: error: Bad select loop variable, 'menu' is not a plain name.
+-c:1:8: error: The select loop variable 'menu' is not a valid identifier.
      1 |  select "menu" in a b c; do break; done
        |         ^~~~~~
-note: Drop the '$' and any quotes.
--c:1:25: error: 'do' has no matching 'while', 'until', or 'for'.
-     1 |  select "menu" in a b c; do break; done
-       |                          ^~
--c:1:35: error: 'done' has no matching 'while', 'until', or 'for'.
-     1 |  select "menu" in a b c; do break; done
-       |                                    ^~~~
+note: Write a bare identifier, as in `select i in a b c`, without '$' or quotes.
 rc=2
 == a select menu variable that is not an identifier is rejected ==
--c:1:8: error: Bad select loop variable, '9bad' is not a plain name.
+-c:1:8: error: The select loop variable '9bad' is not a valid identifier.
      1 |  select 9bad in a b c; do break; done
        |         ^~~~
-note: Drop the '$' and any quotes.
--c:1:23: error: 'do' has no matching 'while', 'until', or 'for'.
-     1 |  select 9bad in a b c; do break; done
-       |                        ^~
--c:1:33: error: 'done' has no matching 'while', 'until', or 'for'.
-     1 |  select 9bad in a b c; do break; done
-       |                                  ^~~~
+note: Write a bare identifier, as in `select i in a b c`, without '$' or quotes.
 rc=2
 == a plain select menu variable is accepted ==
 1) a
@@ -43,12 +25,14 @@ rc=0
 -c:1:24: error: 'do' has no matching 'while', 'until', or 'for'.
      1 |  select $menu in a b c; do break; done
        |                         ^~
+note: A loop above may be missing, or another 'done' may have closed it early.
 -c:1:34: error: 'done' has no matching 'while', 'until', or 'for'.
      1 |  select $menu in a b c; do break; done
        |                                   ^~~~
+note: A loop above may be missing, or another 'done' may have closed it early.
 rc=2
 == a select menu word is checked against the sh shebang ==
--c:2:16: warning: The `$"..."` quoting form is a bash extension absent from POSIX sh. (SC3004)
+-c:2:16: warning: The `$"..."` quoting form is a bash extension. (SC3004)
      2 |  select menu in item=$"select locale"; do break; done
        |                 ^~~~~~~~~~~~~~~~~~~~~
 note: Use ordinary double quotes under a `sh` shebang.

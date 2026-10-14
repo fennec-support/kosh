@@ -1,3 +1,4 @@
-2:19: error: Expected '|' or ')' in a case pattern.
+2:19: error: Expected '|' or ')' after the case pattern.
      2 |  case x in a) y;; b
        |                    ^
+note: Close the pattern with ')', as in `a|b) command ;;`.

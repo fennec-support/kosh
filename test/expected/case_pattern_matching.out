@@ -1,10 +1,12 @@
 6:6: warning: This `case` has no default `*)` branch. (SC2249)
      6 |  case b in
        |       ^
+note: Add a `*)` branch, or write `*) ;;` to ignore other input.
 11:6: warning: This `case` has no default `*)` branch. (SC2249)
     11 |  case hi in
        |       ^~
-14:3: warning: An earlier `case` pattern is broader. (SC2222)
+note: Add a `*)` branch, or write `*) ;;` to ignore other input.
+14:3: warning: An earlier `case` pattern is broader than this pattern and matches first. (SC2222)
     14 |    hi) echo exact ;;
        |    ^~
 12:3: details:
@@ -14,25 +16,32 @@ note: Move the specific pattern before the broader pattern.
 17:6: warning: This `case` has no default `*)` branch. (SC2249)
     17 |  case x in #comment
        |       ^
+note: Add a `*)` branch, or write `*) ;;` to ignore other input.
 23:6: warning: This `case` has no default `*)` branch. (SC2249)
     23 |  case b in
        |       ^
+note: Add a `*)` branch, or write `*) ;;` to ignore other input.
 31:6: warning: This `case` has no default `*)` branch. (SC2249)
     31 |  case a in a) ;; esac
        |       ^
+note: Add a `*)` branch, or write `*) ;;` to ignore other input.
 34:6: warning: This `case` has no default `*)` branch. (SC2249)
     34 |  case a in (a) echo match;; esac
        |       ^
+note: Add a `*)` branch, or write `*) ;;` to ignore other input.
 37:6: warning: This `case` has no default `*)` branch. (SC2249)
     37 |  case a in a|b) echo match;; esac
        |       ^
+note: Add a `*)` branch, or write `*) ;;` to ignore other input.
 38:6: warning: This `case` has no default `*)` branch. (SC2249)
     38 |  case b in a|b) echo match;; esac
        |       ^
+note: Add a `*)` branch, or write `*) ;;` to ignore other input.
 41:6: warning: This `case` has no default `*)` branch. (SC2249)
     41 |  case x in a) echo hi;; esac
        |       ^
-57:1: warning: An earlier `case` pattern is broader. (SC2222)
+note: Add a `*)` branch, or write `*) ;;` to ignore other input.
+57:1: warning: An earlier `case` pattern is broader than this pattern and matches first. (SC2222)
     57 |  hello) marks+="3" ;;
        |  ^~~~~
 55:1: details:

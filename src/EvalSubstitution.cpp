@@ -393,7 +393,8 @@ EvalContext::capture_command_substitution(
     return steal(*file);
 
   if (arena_store().parse_arena() == nullptr)
-    throw Error{"Command substitution outside of a parse"};
+    throw Error{"Unable to run the command substitution because no script is "
+                "being parsed"};
 
   let const ast_mark = arena_store().parse_arena()->mark();
 
@@ -460,7 +461,8 @@ EvalContext::setup_process_substitution(
     -> String
 {
   if (arena_store().parse_arena() == nullptr)
-    throw Error{"Process substitution outside of a parse"};
+    throw Error{"Unable to run the process substitution because no script is "
+                "being parsed"};
   ASSERT(!text.is_empty());
 
   let const direction              = text[0];
@@ -804,7 +806,8 @@ EvalContext::capture_command_substitution(const WordSegment &segment)
     return steal(*file);
 
   if (arena_store().parse_arena() == nullptr)
-    throw Error{"Command substitution outside of a parse"};
+    throw Error{"Unable to run the command substitution because no script is "
+                "being parsed"};
 
   release_finished_coprocess();
   enter_substitution();
@@ -1274,7 +1277,8 @@ EvalContext::capture_function_substitution(const WordSegment &segment)
     throws -> String
 {
   if (arena_store().parse_arena() == nullptr)
-    throw Error{"Function substitution outside of a parse"};
+    throw Error{"Unable to run the function substitution because no script is "
+                "being parsed"};
 
   let cache_arena = segment.is_substitution_cache_in_function_arena
                         ? arena_store().function_arena()
@@ -1327,7 +1331,8 @@ EvalContext::capture_function_substitution(
     StringView text, const SourceLocation *call_site) throws -> String
 {
   if (arena_store().parse_arena() == nullptr)
-    throw Error{"Function substitution outside of a parse"};
+    throw Error{"Unable to run the function substitution because no script is "
+                "being parsed"};
 
   let const ast_mark = arena_store().parse_arena()->mark();
 

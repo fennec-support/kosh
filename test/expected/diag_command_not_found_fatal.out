@@ -10,10 +10,10 @@
 24:3: warning: The command './removed_generated_4242' was not found.
     24 |  ./removed_generated_4242
        |    ^~~~~~~~~~~~~~~~~~~~~~
-26:1: warning: This `cd` is unchecked. (SC2164)
+26:1: warning: This `cd` is not checked for failure, so later commands can run in the wrong directory. (SC2164)
     26 |  cd .
        |  ^~
-note: Stop or return when `cd` fails.
+note: Write `cd dir || exit`, or `cd dir || return` in a function.
 27:3: warning: The command './cwd_generated_4242' was not found.
     27 |  ./cwd_generated_4242
        |    ^~~~~~~~~~~~~~~~~~

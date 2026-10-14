@@ -2,18 +2,18 @@
      2 |  ech hi
        |  ^~~
 note: Did you mean 'echo'?
-3:1: warning: This `cd` is unchecked. (SC2164)
+3:1: warning: This `cd` is not checked for failure, so later commands can run in the wrong directory. (SC2164)
      3 |  cd ..
        |  ^~
-note: Stop or return when `cd` fails.
+note: Write `cd dir || exit`, or `cd dir || return` in a function.
 4:6: warning: An unquoted variable can split into words and expand globs. (SC2086)
      4 |  echo $x
        |       ^~
 note: Quote the expansion to keep one argument.
-4:6: warning: The variable 'x' is read before any assignment gives it a value. (SC2154)
+4:6: warning: The variable 'x' is used before any assignment gives it a value. (SC2154)
      4 |  echo $x
        |       ^~
-note: Assign 'x' before it is read, or set it in the environment.
+note: Assign 'x' before this use, or set it in the environment.
 5:1: warning: The command 'ech2' was not found.
      5 |  ech2 ho
        |  ^~~~
@@ -23,7 +23,7 @@ Encountered 5 warnings.
      2 |  ech hi
        |  ^~~
 note: Did you mean 'echo'?
-4:6: warning: The variable 'x' is not set, it expands to empty.
+4:6: warning: The variable 'x' is not set and expands to an empty string.
      4 |  echo $x
        |       ^~
 note: Replace it with ${x-} if empty expansion is desired.

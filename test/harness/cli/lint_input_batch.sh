@@ -124,7 +124,7 @@ command_continued=$(printf '%s\n' "$output" |
   grep -c "The variable 'LINT_AFTER_COMMAND_PARSE'")
 file_continued=$(printf '%s\n' "$output" |
   grep -c "The variable 'LINT_AFTER_FILE_PARSE'")
-parse_error_count=$(printf '%s\n' "$output" | grep -c 'Unterminated if')
+parse_error_count=$(printf '%s\n' "$output" | grep -c "This 'if' has no")
 printf 'parse-command=%s parse-file=%s errors=%s rc=%s\n' \
   "$command_continued" "$file_continued" "$parse_error_count" "$rc"
 
@@ -149,7 +149,7 @@ printf 'unknown-formats-status=%s\n' "$rc"
 output=$("$BIN" -n -WWW --no-traces first.bash parse.bash 2>&1)
 rc=$?
 first_count=$(printf '%s\n' "$output" | grep -c "The variable 'LINT_FILE_ONE'")
-second_count=$(printf '%s\n' "$output" | grep -c 'Unterminated if')
+second_count=$(printf '%s\n' "$output" | grep -c "This 'if' has no")
 printf 'noexec-first=%s noexec-second=%s rc=%s\n' \
   "$first_count" "$second_count" "$rc"
 
@@ -162,7 +162,7 @@ output=$(
 rc=$?
 command_count=$(printf '%s\n' "$output" |
   grep -c "The variable 'NOEXEC_COMMAND_")
-file_count=$(printf '%s\n' "$output" | grep -c 'Unterminated if')
+file_count=$(printf '%s\n' "$output" | grep -c "This 'if' has no")
 printf 'noexec-commands=%s noexec-files=%s rc=%s\n' \
   "$command_count" "$file_count" "$rc"
 
@@ -186,7 +186,7 @@ rc=$?
 stdin_count=$(printf '%s\n' "$output" | grep -c "The variable 'LINT_STDIN'")
 command_count=$(printf '%s\n' "$output" |
   grep -c "The variable 'LINT_IGNORED_COMMAND'")
-file_count=$(printf '%s\n' "$output" | grep -c 'Unterminated if')
+file_count=$(printf '%s\n' "$output" | grep -c "This 'if' has no")
 printf 'stdin-precedence=%s command=%s file=%s rc=%s\n' \
   "$stdin_count" "$command_count" "$file_count" "$rc"
 

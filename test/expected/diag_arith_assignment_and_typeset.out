@@ -1,6 +1,6 @@
 4:1: warning: The `typeset` builtin is the ksh spelling of `declare`.
      4 |  typeset name=value
        |  ^~~~~~~
-note: Write `declare` for the bash name.
+note: Write `declare` in place of `typeset`.
 42
 value

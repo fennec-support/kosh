@@ -1,5 +1,5 @@
 == process.sh
-process.sh:3:55: error: Expected a filename after the redir.
+process.sh:3:55: error: Expected a file after the redirection operator.
      3 |  diff <(echo one) <(echo two; produce-two --now <S-D-.><><>)
        |                                                        ^
 status=1
@@ -44,12 +44,12 @@ funsub.sh:1:13: error: Expected a filename after '<>'.
        |              ^
 status=1
 == unterminated_if.sh
-unterminated_if.sh:1:8: error: Unterminated if.
+unterminated_if.sh:1:8: error: This 'if' has no closing 'fi'.
      1 |  echo $(if true; then echo; )
        |         ^~
 unterminated_if.sh:1:28: details:
      1 |  echo $(if true; then echo; )
-       |                             ^ expected 'fi'.
+       |                             ^ expected 'fi' here to close it.
 status=1
 == subscript.sh
 subscript.sh:2:17: error: Expected a filename after '<>'.
@@ -81,12 +81,12 @@ several_commands.sh:1:12: error: Expected a filename after '<>'.
 several_commands.sh:3:11: error: Expected a filename after '<>'.
      3 |  y=`echo <><>`
        |            ^
-several_commands.sh:5:7: error: Unterminated if.
+several_commands.sh:5:7: error: This 'if' has no condition.
      5 |    z=$(if)
        |        ^~
 several_commands.sh:5:9: details:
      5 |    z=$(if)
-       |          ^ Expected a command for the condition.
+       |          ^ expected a command for the condition here.
 status=1
 == several_words.sh
 several_words.sh:1:15: error: Expected a filename after '<>'.
@@ -132,7 +132,7 @@ command.sh:1:12: error: Expected a filename after '<>'.
        |             ^
 status=2
 == run process.sh
-process.sh:3:55: error: Expected a filename after the redir.
+process.sh:3:55: error: Expected a file after the redirection operator.
      3 |  diff <(echo one) <(echo two; produce-two --now <S-D-.><><>)
        |                                                        ^
 status=2

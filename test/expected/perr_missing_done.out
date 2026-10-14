@@ -1,3 +1,4 @@
 2:13: error: 'done' has no matching 'while', 'until', or 'for'.
      2 |  while true; done
        |              ^~~~
+note: A loop above may be missing, or another 'done' may have closed it early.

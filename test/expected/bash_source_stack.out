@@ -1,11 +1,11 @@
-4:1: warning: This `cd` is unchecked. (SC2164)
+4:1: warning: This `cd` is not checked for failure, so later commands can run in the wrong directory. (SC2164)
      4 |  cd "$d"
        |  ^~
-note: Stop or return when `cd` fails.
-34:1: warning: This `cd` is unchecked. (SC2164)
+note: Write `cd dir || exit`, or `cd dir || return` in a function.
+34:1: warning: This `cd` is not checked for failure, so later commands can run in the wrong directory. (SC2164)
     34 |  cd /
        |  ^~
-note: Stop or return when `cd` fails.
+note: Write `cd dir || exit`, or `cd dir || return` in a function.
 Encountered 2 warnings.
 main-scalar=./main.sh
 main[0]=./main.sh depth=1

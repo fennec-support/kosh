@@ -148,7 +148,7 @@ printf 'noexec-grandchild=%s child=%s rc=%s\n' \
   "$grandchild_count" "$child_count" "$rc"
 test ! -e should-not-exist || exit 1
 run_and_capture "$BIN" --mood bash -n parse-root.bash
-parse_count=$(printf '%s\n' "$output" | grep -c 'Unterminated if')
+parse_count=$(printf '%s\n' "$output" | grep -c "This 'if' has no")
 printf 'noexec-bash-parse=%s rc=%s\n' "$parse_count" "$rc"
 run_and_capture "$BIN" --lint state-root.bash
 inner_count=$(printf '%s\n' "$output" |
@@ -196,7 +196,7 @@ path_count=$(printf '%s\n' "$output" |
   grep -c "The variable 'PATH_SOURCE_UNSET'")
 printf 'path-source=%s rc=%s\n' "$path_count" "$rc"
 run_and_capture "$BIN" --lint parse-root.bash
-parse_count=$(printf '%s\n' "$output" | grep -c 'Unterminated if')
+parse_count=$(printf '%s\n' "$output" | grep -c "This 'if' has no")
 printf 'parse-source=%s rc=%s\n' "$parse_count" "$rc"
 
 if [ "${OS-}" != Windows_NT ] && mkfifo "$root/pipe"; then

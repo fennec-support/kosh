@@ -1,12 +1,15 @@
 2:9: warning: The 'true' command never uses the upstream output. (SC2216)
      2 |  false | true
        |          ^~~~
+note: Remove the pipe and run the upstream command on its own.
 8:9: warning: The 'true' command never uses the upstream output. (SC2216)
      8 |  false | true
        |          ^~~~
+note: Remove the pipe and run the upstream command on its own.
 11:9: warning: The 'true' command never uses the upstream output. (SC2216)
     11 |  false | true
        |          ^~~~
+note: Remove the pipe and run the upstream command on its own.
 Encountered 3 warnings.
 strict=1
 4:2: error: Builtin `set`: The kosh mood keeps 'pipefail' on.

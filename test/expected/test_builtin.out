@@ -9,6 +9,7 @@ note: Remove the constant condition or compare runtime data.
 5:8: warning: The numeric comparison `-eq` compares 'abc', which is not a number. (SC2170)
      5 |  ( test abc -eq 5 ); echo "invalid_number=$?"
        |         ^~~
+note: Use a numeric operand, or compare the text with `=` or `!=`.
 8:10: warning: The `-a` and `-o` operators are marked obsolescent by POSIX. (SC2166)
      8 |  ( test a -a b c ); echo "invalid_arity=$?"
        |           ^~
@@ -25,11 +26,11 @@ note: Remove the constant condition or compare runtime data.
     17 |  [ abc = abc ]; echo "streq=$?"
        |    ^~~~~~~~~
 note: Remove the constant condition or compare runtime data.
-18:6: warning: The `-z` test has a literal operand. (SC2157)
+18:6: warning: The `-z` test has a literal operand, so its result never changes. (SC2157)
     18 |  [ -z "" ]; echo "empty=$?"
        |       ^~
 note: Test a variable or drop the check.
-19:6: warning: The `-n` test has a literal operand. (SC2157)
+19:6: warning: The `-n` test has a literal operand, so its result never changes. (SC2157)
     19 |  [ -n "x" ]; echo "nonempty=$?"
        |       ^~~
 note: Test a variable or drop the check.
@@ -81,7 +82,7 @@ note: Remove the constant condition or compare runtime data.
     41 |  [ \( a = a \) -a -n x ]; echo "group_and=$?"
        |                ^~
 note: Join two tests with `&&` or `||`.
-41:21: warning: The `-n` test has a literal operand. (SC2157)
+41:21: warning: The `-n` test has a literal operand, so its result never changes. (SC2157)
     41 |  [ \( a = a \) -a -n x ]; echo "group_and=$?"
        |                      ^
 note: Test a variable or drop the check.

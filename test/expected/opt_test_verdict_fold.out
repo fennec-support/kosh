@@ -1,8 +1,8 @@
-3:9: warning: The `-n` test has a literal operand. (SC2157)
+3:9: warning: The `-n` test has a literal operand, so its result never changes. (SC2157)
      3 |  if [ -n abc ]; then echo n_true; fi
        |          ^~~
 note: Test a variable or drop the check.
-4:9: warning: The `-z` test has a literal operand. (SC2157)
+4:9: warning: The `-z` test has a literal operand, so its result never changes. (SC2157)
      4 |  if [ -z "" ]; then echo z_true; fi
        |          ^~
 note: Test a variable or drop the check.

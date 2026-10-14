@@ -6,7 +6,7 @@ note: Use an `if` statement when C is the else branch.
      6 |  true && echo a || echo b && false || true
        |                                    ^~
 note: Use an `if` statement when C is the else branch.
-12:7: warning: The string test has a literal operand. (SC2157)
+12:7: warning: The string test has a literal operand, so its result never changes. (SC2157)
     12 |  [[ -n x && abc == a* ]] && echo yes
        |        ^
 note: Test a variable or drop the check.

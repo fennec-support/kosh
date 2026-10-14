@@ -6,51 +6,51 @@ note: Use `printf` under a `sh` shebang.
      7 |    echo -n nonewline
        |         ^~
 note: Use `printf` under a `sh` shebang.
-8:3: warning: The `declare` builtin is not in POSIX. (SC3044)
+8:3: warning: The `declare` builtin is a bash extension. (SC3044)
      8 |    declare -A assoc
        |    ^~~~~~~
 note: Assign the variable plainly under a `sh` shebang, or switch the shebang to bash.
-9:3: warning: The `typeset` builtin is not in POSIX. (SC3044)
+9:3: warning: The `typeset` builtin is a bash extension. (SC3044)
      9 |    typeset scoped
        |    ^~~~~~~
 note: Assign the variable plainly under a `sh` shebang, or switch the shebang to bash.
-10:3: warning: The name `source` is the bash spelling of the POSIX `.` command. (SC3046)
+10:3: warning: The `source` command is the bash spelling of the POSIX `.` command. (SC3046)
     10 |    source library.sh
        |    ^~~~~~
 note: Use `.` under a `sh` shebang.
-13:7: warning: The `<(...)` process substitution is a bash extension absent from POSIX sh. (SC3001)
+13:7: warning: The `<(...)` process substitution is a bash extension. (SC3001)
     13 |    cat <(echo substituted)
        |        ^~~~~~~~~~~~~~~~~~~
 note: Use a FIFO or a temporary file under a `sh` shebang.
-14:8: warning: The extended glob `!(excluded)` is a bash extension absent from POSIX sh. (SC3002)
+14:8: warning: The extended glob `!(excluded)` is a bash extension. (SC3002)
     14 |    echo !(excluded)
        |         ^~~~~~~~~~~
 note: Use a `case` statement or a plain glob under a `sh` shebang.
-15:8: warning: The `$'...'` quoting form is a bash extension absent from POSIX sh. (SC3003)
+15:8: warning: The `$'...'` quoting form is a bash extension. (SC3003)
     15 |    echo $'a\tb'
        |         ^~~~~~~
 note: Use `printf` to produce the escapes under a `sh` shebang.
-16:8: warning: The `$"..."` quoting form is a bash extension absent from POSIX sh. (SC3004)
+16:8: warning: The `$"..."` quoting form is a bash extension. (SC3004)
     16 |    echo $"localized $HOME"
        |         ^~~~~~~~~~~~~~~~~~
 note: Use ordinary double quotes under a `sh` shebang.
-17:10: warning: The `$"..."` quoting form is a bash extension absent from POSIX sh. (SC3004)
+17:10: warning: The `$"..."` quoting form is a bash extension. (SC3004)
     17 |    export locale_assignment=$"localized assignment"
        |           ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 note: Use ordinary double quotes under a `sh` shebang.
-18:8: warning: The `$"..."` quoting form is a bash extension absent from POSIX sh. (SC3004)
+18:8: warning: The `$"..."` quoting form is a bash extension. (SC3004)
     18 |    echo operand=$"localized operand"
        |         ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
 note: Use ordinary double quotes under a `sh` shebang.
-19:3: warning: The `$"..."` quoting form is a bash extension absent from POSIX sh. (SC3004)
+19:3: warning: The `$"..."` quoting form is a bash extension. (SC3004)
     19 |    bare_assignment=$"localized bare"
        |    ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 note: Use ordinary double quotes under a `sh` shebang.
-20:8: warning: The `$"..."` quoting form is a bash extension absent from POSIX sh. (SC3004)
+20:8: warning: The `$"..."` quoting form is a bash extension. (SC3004)
     20 |    echo $'\''$"escaped ansi quote"
        |         ^~~~~~~~~~~~~~~~~~~~~~~~~~
 note: Use ordinary double quotes under a `sh` shebang.
-20:8: warning: The `$'...'` quoting form is a bash extension absent from POSIX sh. (SC3003)
+20:8: warning: The `$'...'` quoting form is a bash extension. (SC3003)
     20 |    echo $'\''$"escaped ansi quote"
        |         ^~~~~~~~~~~~~~~~~~~~~~~~~~
 note: Use `printf` to produce the escapes under a `sh` shebang.
@@ -62,7 +62,7 @@ note: Use `[! ...]` under a `sh` shebang.
     22 |    echo "$(<file)"
        |    ^~~~
 note: Run the command on its own.
-22:9: warning: The `$(<file)` form is a bash shorthand absent from POSIX sh. (SC3034)
+22:9: warning: The `$(<file)` form is a bash shorthand. (SC3034)
     22 |    echo "$(<file)"
        |          ^~~~~~~~
 note: Use `$(cat file)` under a `sh` shebang.
@@ -70,31 +70,31 @@ note: Use `$(cat file)` under a `sh` shebang.
     23 |    echo "`<file`"
        |    ^~~~
 note: Run the command on its own.
-23:9: warning: The `` `<file` `` form is a bash shorthand absent from POSIX sh. (SC3035)
+23:9: warning: The `` `<file` `` form is a bash shorthand. (SC3035)
     23 |    echo "`<file`"
        |          ^~~~~~~
 note: Use `$(cat file)` under a `sh` shebang.
-24:9: warning: The indirect expansion of `!indirect` is a bash extension absent from POSIX sh. (SC3053)
+24:9: warning: The indirect expansion of `!indirect` is a bash extension. (SC3053)
     24 |    echo "${!indirect}"
        |          ^~~~~~~~~~~~
 note: Use `eval` or a `case` dispatch under a `sh` shebang.
-25:9: warning: The array reference `array[0]` is a bash extension absent from POSIX sh. (SC3054)
+25:9: warning: The array reference `array[0]` is a bash extension. (SC3054)
     25 |    echo "${array[0]}"
        |          ^~~~~~~~~~~
 note: Use the positional parameters under a `sh` shebang.
-26:9: warning: The array key expansion of `!array[@]` is a bash extension absent from POSIX sh. (SC3055)
+26:9: warning: The array key expansion of `!array[@]` is a bash extension. (SC3055)
     26 |    echo "${!array[@]}"
        |          ^~~~~~~~~~~~
 note: Use the positional parameters under a `sh` shebang.
-27:9: warning: The name prefix expansion of `!prefix*` is a bash extension absent from POSIX sh. (SC3056)
+27:9: warning: The variable prefix expansion of `!prefix*` is a bash extension. (SC3056)
     27 |    echo "${!prefix*}"
        |          ^~~~~~~~~~~
 note: List the variables explicitly under a `sh` shebang.
-28:9: warning: The substring expansion of `text:1:2` is a bash extension absent from POSIX sh. (SC3057)
+28:9: warning: The substring expansion of `text:1:2` is a bash extension. (SC3057)
     28 |    echo "${text:1:2}"
        |          ^~~~~~~~~~~
 note: Use `expr` or `cut` under a `sh` shebang.
-29:9: warning: The string replacement in `text/from/to` is a bash extension absent from POSIX sh. (SC3060)
+29:9: warning: The string replacement in `text/from/to` is a bash extension. (SC3060)
     29 |    echo "${text/from/to}"
        |          ^~~~~~~~~~~~~~~
 note: Use `sed` or a `case` dispatch under a `sh` shebang.
@@ -118,7 +118,7 @@ note: Compute the value another way under a `sh` shebang.
     34 |    echo "$PPID"
        |          ^~~~~
 note: Compute the value another way under a `sh` shebang.
-39:16: warning: The `$"..."` quoting form is a bash extension absent from POSIX sh. (SC3004)
+39:16: warning: The `$"..."` quoting form is a bash extension. (SC3004)
     39 |    for value in item=$"for locale"; do :; done
        |                 ^~~~~~~~~~~~~~~~~~
 note: Use ordinary double quotes under a `sh` shebang.
@@ -126,29 +126,30 @@ note: Use ordinary double quotes under a `sh` shebang.
     39 |    for value in item=$"for locale"; do :; done
        |                 ^~~~~~~~~~~~~~~~~~
 note: Loop over a glob, a variable, or a command substitution.
-40:8: warning: The `$"..."` quoting form is a bash extension absent from POSIX sh. (SC3004)
+40:8: warning: The `$"..."` quoting form is a bash extension. (SC3004)
     40 |    case item=$"case subject" in
        |         ^~~~~~~~~~~~~~~~~~~~
 note: Use ordinary double quotes under a `sh` shebang.
-40:8: warning: The `case` word 'item=$"case subject"' is constant. (SC2194)
+40:8: warning: The `case` word 'item=$"case subject"' is constant, so the same branch will always run. (SC2194)
     40 |    case item=$"case subject" in
        |         ^~~~~~~~~~~~~~~~~~~~
 note: Add the missing `$`, or drop the `case`.
 40:8: warning: This `case` has no default `*)` branch. (SC2249)
     40 |    case item=$"case subject" in
        |         ^~~~~~~~~~~~~~~~~~~~
-41:5: warning: The `$"..."` quoting form is a bash extension absent from POSIX sh. (SC3004)
+note: Add a `*)` branch, or write `*) ;;` to ignore other input.
+41:5: warning: The `$"..."` quoting form is a bash extension. (SC3004)
     41 |      item=$"case pattern") : ;;
        |      ^~~~~~~~~~~~~~~~~~~~
 note: Use ordinary double quotes under a `sh` shebang.
 41:5: warning: The pattern 'item=$"case pattern"' cannot match the `case` word 'item=$"case subject"'. (SC2195)
     41 |      item=$"case pattern") : ;;
        |      ^~~~~~~~~~~~~~~~~~~~
-43:15: warning: The `$"..."` quoting form is a bash extension absent from POSIX sh. (SC3004)
+43:15: warning: The `$"..."` quoting form is a bash extension. (SC3004)
     43 |    [[ value =~ prefix$"regex locale" ]]
        |                ^~~~~~~~~~~~~~~~~~~~~
 note: Use ordinary double quotes under a `sh` shebang.
-44:16: warning: The `$'...'` quoting form is a bash extension absent from POSIX sh. (SC3003)
+44:16: warning: The `$'...'` quoting form is a bash extension. (SC3003)
     44 |    for value in item=$'for ansi'; do :; done
        |                 ^~~~~~~~~~~~~~~~
 note: Use `printf` to produce the escapes under a `sh` shebang.
@@ -156,33 +157,34 @@ note: Use `printf` to produce the escapes under a `sh` shebang.
     44 |    for value in item=$'for ansi'; do :; done
        |                 ^~~~~~~~~~~~~~~~
 note: Loop over a glob, a variable, or a command substitution.
-45:8: warning: The `case` word 'value' is constant. (SC2194)
+45:8: warning: The `case` word 'value' is constant, so the same branch will always run. (SC2194)
     45 |    case value in
        |         ^~~~~
 note: Add the missing `$`, or drop the `case`.
 45:8: warning: This `case` has no default `*)` branch. (SC2249)
     45 |    case value in
        |         ^~~~~
-46:5: warning: The `$'...'` quoting form is a bash extension absent from POSIX sh. (SC3003)
+note: Add a `*)` branch, or write `*) ;;` to ignore other input.
+46:5: warning: The `$'...'` quoting form is a bash extension. (SC3003)
     46 |      item=$'case ansi') : ;;
        |      ^~~~~~~~~~~~~~~~~
 note: Use `printf` to produce the escapes under a `sh` shebang.
 46:5: warning: The pattern 'item=$'case ansi'' cannot match the `case` word 'value'. (SC2195)
     46 |      item=$'case ansi') : ;;
        |      ^~~~~~~~~~~~~~~~~
-50:15: warning: The `&>` redirection is a bash extension absent from POSIX sh. (SC3020)
+50:15: warning: The `&>` redirection is a bash extension. (SC3020)
     50 |    echo both &>out.log
        |                ^~~~~~~
 note: Write the file redirect and `2>&1` separately under a `sh` shebang.
-51:18: warning: The `&>` redirection is a bash extension absent from POSIX sh. (SC3020)
+51:18: warning: The `&>` redirection is a bash extension. (SC3020)
     51 |    echo append &>>out.log
        |                   ^~~~~~~
 note: Write the file redirect and `2>&1` separately under a `sh` shebang.
-52:14: warning: The `>&` redirection to 'outfile' is a bash extension absent from POSIX sh. (SC3021)
+52:14: warning: The `>&` redirection to 'outfile' is a bash extension. (SC3021)
     52 |    echo dup >&outfile
        |               ^~~~~~~
 note: Write the file redirect and `2>&1` separately under a `sh` shebang.
-53:8: warning: The variable-held file descriptor '{logfd}' is a bash extension absent from POSIX sh. (SC3022)
+53:8: warning: The variable-held file descriptor '{logfd}' is a bash extension. (SC3022)
     53 |    exec {logfd}>trace.log
        |         ^~~~~~~
 note: Use a fixed descriptor number under a `sh` shebang.
@@ -198,27 +200,27 @@ note: Open the connection with a network client under a `sh` shebang.
     56 |    echo glob >prefix*.log
        |               ^~~~~~~~~~~
 note: Write the file explicitly under a `sh` shebang.
-58:17: warning: The `$"..."` quoting form is a bash extension absent from POSIX sh. (SC3004)
+58:17: warning: The `$"..."` quoting form is a bash extension. (SC3004)
     58 |    echo locale >>$"locale.log"
        |                  ^~~~~~~~~~~~~
 note: Use ordinary double quotes under a `sh` shebang.
-59:8: warning: The `$'...'` quoting form is a bash extension absent from POSIX sh. (SC3003)
+59:8: warning: The `$'...'` quoting form is a bash extension. (SC3003)
     59 |    cat <$'ansi.log'
        |         ^~~~~~~~~~~
 note: Use `printf` to produce the escapes under a `sh` shebang.
-60:9: warning: The `<(...)` process substitution is a bash extension absent from POSIX sh. (SC3001)
+60:9: warning: The `<(...)` process substitution is a bash extension. (SC3001)
     60 |    cat < <(echo substituted)
        |          ^~~~~~~~~~~~~~~~~~~
 note: Use a FIFO or a temporary file under a `sh` shebang.
-61:9: warning: The `$"..."` quoting form is a bash extension absent from POSIX sh. (SC3004)
+61:9: warning: The `$"..."` quoting form is a bash extension. (SC3004)
     61 |    cat <<$"DELIMITER"
        |          ^~~~~~~~~~~~
 note: Use ordinary double quotes under a `sh` shebang.
-64:9: warning: The `$'...'` quoting form is a bash extension absent from POSIX sh. (SC3003)
+64:9: warning: The `$'...'` quoting form is a bash extension. (SC3003)
     64 |    cat <<$'ANSIDELIMITER'
        |          ^~~~~~~~~~~~~~~~
 note: Use `printf` to produce the escapes under a `sh` shebang.
-69:3: warning: The standalone `((...))` command is a bash extension absent from POSIX sh. (SC3006)
+69:3: warning: The standalone `((...))` command is a bash extension. (SC3006)
     69 |    ((counter + 1))
        |    ^~~~~~~~~~~~~~~
 note: Use the `: $((...))` form under a `sh` shebang.
@@ -266,7 +268,7 @@ note: Use `-e` for the file test.
     78 |    [ alpha = beta ]
        |      ^~~~~~~~~~~~
 note: Remove the constant condition or compare runtime data.
-78:11: warning: The literals 'alpha' and 'beta' differ. (SC2193)
+78:11: warning: The literals 'alpha' and 'beta' differ, so they can never be equal. (SC2193)
     78 |    [ alpha = beta ]
        |            ^
 note: Compare a variable, or correct the operand spelling.
@@ -282,26 +284,26 @@ note: Run the compound command through `sh -c` and time that.
     84 |    time ( printf 'subshell\n' )
        |    ^~~~
 note: Run the compound command through `sh -c` and time that.
-88:3: warning: The `+=` assignment to 'LIST' is a bash extension absent from POSIX sh. (SC3024)
+88:3: warning: The `+=` assignment to 'LIST' is a bash extension. (SC3024)
     88 |    LIST+=extra
        |    ^~~~~~~~~~~
 note: Write `NAME="$NAME"value` under a `sh` shebang.
-89:3: warning: The `+=` assignment to 'PREFIX' is a bash extension absent from POSIX sh. (SC3024)
+89:3: warning: The `+=` assignment to 'PREFIX' is a bash extension. (SC3024)
     89 |    PREFIX+=extra env
        |    ^~~~~~~~~~~~~
 note: Write `NAME="$NAME"value` under a `sh` shebang.
-90:3: warning: The `exec` replaces the shell process. (SC2093)
+90:3: warning: The `exec` replaces the shell process, so the commands after it will not run. (SC2093)
     90 |    exec -c env
        |    ^~~~
 91:3: details:
     91 |    let value=1
        |    ^~~~~~~~~~~ this is the first command skipped after `exec`.
 note: Remove the `exec`, or remove the unreachable commands.
-90:8: warning: The `exec` `-c` flag is a bash extension absent from POSIX sh. (SC3038)
+90:8: warning: The `exec` `-c` flag is a bash extension. (SC3038)
     90 |    exec -c env
        |         ^~
 note: Drop the flag under a `sh` shebang.
-91:3: warning: The `let` builtin is a bash extension absent from POSIX sh. (SC3039)
+91:3: warning: The `let` builtin is a bash extension. (SC3039)
     91 |    let value=1
        |    ^~~
 note: Use the `: $((...))` form under a `sh` shebang.
@@ -309,7 +311,7 @@ note: Use the `: $((...))` form under a `sh` shebang.
     91 |    let value=1
        |    ^~~
 note: Write `(( ... ))` for the arithmetic.
-92:18: warning: The `ERR` condition is a bash extension absent from POSIX sh. (SC3047)
+92:18: warning: The `ERR` condition is a bash extension. (SC3047)
     92 |    trap 'cleanup' ERR
        |                   ^~~
 note: Check the status after each command under a `sh` shebang.
@@ -317,30 +319,30 @@ note: Check the status after each command under a `sh` shebang.
     93 |    trap 'cleanup' SIGINT
        |                   ^~~~~~
 note: Write the signal without the `SIG` prefix under a `sh` shebang.
-94:18: warning: The signal name 'int' is not uppercase, and POSIX sh leaves it undefined. (SC3049)
+94:18: warning: The signal 'int' is not uppercase, and POSIX sh leaves it undefined. (SC3049)
     94 |    trap 'cleanup' int
        |                   ^~~
 note: Write the signal in uppercase under a `sh` shebang.
-97:10: warning: The `printf` `%q` directive is a bash extension absent from POSIX sh. (SC3050)
+97:10: warning: The `printf` `%q` directive is a bash extension. (SC3050)
     97 |    printf '%q\n' "$value"
        |           ^~~~~~
 note: Quote the value another way under a `sh` shebang.
 99:16: warning: The POSIX `.` command takes no argument, and 'extra' never reaches it. (SC2240)
     99 |    . library.sh extra
        |                 ^~~~~
-note: Set the values as variables before the file is read.
+note: Set the values as variables before the file is sourced.
 103:3: warning: The `$0` parameter cannot be assigned in POSIX sh, and '$0=zero' runs as a command. (SC2279)
    103 |    $0=zero
        |    ^~~~~~~
-note: Assign the program name to a variable.
-106:3: warning: 'mapfile' is a bash array builtin absent from POSIX sh. (SC3030)
+note: Assign the value to an ordinary variable, such as `prog=value`.
+106:3: warning: 'mapfile' is a bash array builtin. (SC3030)
    106 |    mapfile -t lines < roster
        |    ^~~~~~~
-note: Read the input with a `while read` loop, or switch the shebang to bash.
-107:3: warning: 'readarray' is a bash array builtin absent from POSIX sh. (SC3030)
+note: Loop over the input with `while IFS= read -r line`, or switch the shebang to bash.
+107:3: warning: 'readarray' is a bash array builtin. (SC3030)
    107 |    readarray -t rows < roster
        |    ^~~~~~~~~
-note: Read the input with a `while read` loop, or switch the shebang to bash.
+note: Loop over the input with `while IFS= read -r line`, or switch the shebang to bash.
 108:10: warning: The `printf -v` form is a bash extension, and the POSIX `printf` has no `-v`. (SC3045)
    108 |    printf -v buffer '%s' text
        |           ^~
@@ -349,7 +351,7 @@ note: Capture the output with a command substitution under a `sh` shebang.
    109 |    local scoped=value
        |    ^~~~~
 note: Rework the function, or switch the shebang to bash.
-112:23: warning: The `&>` redirection is a bash extension absent from POSIX sh. (SC3020)
+112:23: warning: The `&>` redirection is a bash extension. (SC3020)
    112 |    { echo grouped; } &>both.log
        |                        ^~~~~~~~
 note: Write the file redirect and `2>&1` separately under a `sh` shebang.
@@ -357,7 +359,7 @@ note: Write the file redirect and `2>&1` separately under a `sh` shebang.
    113 |    { echo globbed; } >prefix*.log
        |                       ^~~~~~~~~~~
 note: Write the file explicitly under a `sh` shebang.
-114:24: warning: The `$"..."` quoting form is a bash extension absent from POSIX sh. (SC3004)
+114:24: warning: The `$"..."` quoting form is a bash extension. (SC3004)
    114 |    { echo localized; } >$"compound.log"
        |                         ^~~~~~~~~~~~~~~
 note: Use ordinary double quotes under a `sh` shebang.

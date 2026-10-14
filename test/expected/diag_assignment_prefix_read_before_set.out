@@ -1,7 +1,8 @@
-2:14: warning: The variable 'foo' is read before the assignment prefix takes effect.
+2:14: warning: The variable 'foo' is expanded before the assignment prefix takes effect.
      2 |  foo=bar echo "$foo"
        |               ^~~~~~
-2:15: warning: The variable 'foo' is not set, it expands to empty.
+note: Assign the variable on its own line before the command, as in `A=1; cmd "$A"`.
+2:15: warning: The variable 'foo' is not set and expands to an empty string.
      2 |  foo=bar echo "$foo"
        |                ^~~~
 note: Replace it with ${foo-} if empty expansion is desired.

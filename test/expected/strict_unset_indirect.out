@@ -1,4 +1,4 @@
-3:2: warning: The variable 'missing_target' is not set, it expands to empty.
+3:2: warning: The variable 'missing_target' is not set and expands to an empty string.
      3 |  (echo "${!ref}")
        |   ^~~~~~~~~~~~~~
 note: Replace it with ${missing_target-} if empty expansion is desired.

@@ -1,3 +1,4 @@
-2:1: error: Expected a command before operator, found '||'.
+2:1: error: Expected a command before the operator, found '||'.
      2 |  || true
        |  ^~
+note: Put a command on each side of the operator, as in `a && b`, or remove the operator.

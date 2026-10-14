@@ -1,7 +1,7 @@
-4:1: warning: This `cd` is unchecked. (SC2164)
+4:1: warning: This `cd` is not checked for failure, so later commands can run in the wrong directory. (SC2164)
      4 |  cd "$d"
        |  ^~
-note: Stop or return when `cd` fails.
+note: Write `cd dir || exit`, or `cd dir || return` in a function.
 5:37: warning: The `C` command runs whenever `A` or `B` fails. (SC2015)
      5 |  [ -e *.zzz ] && echo bracket-exists || echo bracket-no-match
        |                                      ^~
@@ -18,10 +18,10 @@ note: Use an `if` statement when C is the else branch.
      9 |  test -e *.zzz && echo test-exists || echo test-no-match
        |                                    ^~
 note: Use an `if` statement when C is the else branch.
-10:1: warning: This `cd` is unchecked. (SC2164)
+10:1: warning: This `cd` is not checked for failure, so later commands can run in the wrong directory. (SC2164)
     10 |  cd /
        |  ^~
-note: Stop or return when `cd` fails.
+note: Write `cd dir || exit`, or `cd dir || return` in a function.
 Encountered 6 warnings.
 bracket-no-match
 test-no-match

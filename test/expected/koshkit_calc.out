@@ -104,7 +104,7 @@ note: This is not a valid operator or operand.
 -c:7:15: error: Unknown calculator function 'unknown'.
      7 |  koshkit calc "unknown(1)"
        |                ^~~~~~~
-note: Use a supported numeric function name.
+note: Check the spelling, or use a function that the calculator supports.
 === located parse error ===
 -c:1:18: error: Unfinished expression.
      1 |  koshkit calc "1 +"

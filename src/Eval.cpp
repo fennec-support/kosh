@@ -1097,9 +1097,8 @@ EvalContext::report_unset_reference(StringView name) throws -> void
       resembled.has_value())
   {
     empty_expansion_note = "The variable '" + *resembled +
-                           "' is set, correct the spelling, or replace this "
-                           "with ${" +
-                           name + "-} if empty expansion is desired";
+                           "' is set. Correct the spelling, or write ${" +
+                           name + "-} if an empty expansion is intended";
   }
 
   let const should_demote = strict_diagnostics_are_warnings();
@@ -1135,7 +1134,7 @@ EvalContext::report_unset_reference(StringView name) throws -> void
   if (runtime_state().error_unset() || should_demote) {
     show_runtime_warning_at(locate_variable_reference(name),
                             "The variable '" + name +
-                                "' is not set, it expands to empty",
+                                "' is not set and expands to an empty string",
                             empty_expansion_note.view());
   }
 }

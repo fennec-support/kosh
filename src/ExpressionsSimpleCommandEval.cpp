@@ -244,10 +244,10 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const 
       let const location = m_args[0]->source_location();
       let const message =
           StringView{"A glob pattern in command position is rarely intended as "
-                     "a command name"};
-      let const note =
-          StringView{"Quote it to run a literal name, or list the matches with "
-                     "compgen -G"};
+                     "a command"};
+      let const note = StringView{
+          "Quote it to run a literal command, or list the matches with "
+          "`compgen -G`"};
 
       if (cxt.runtime_state().get_mood() == mimic_mood::Default)
         throw ErrorWithLocationAndDetails{location, message, note};

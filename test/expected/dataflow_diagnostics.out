@@ -1,8 +1,8 @@
 == a name that is never assigned:
--c:1:7: warning: The variable 'undefined_name' is read before any assignment gives it a value. (SC2154)
+-c:1:7: warning: The variable 'undefined_name' is used before any assignment gives it a value. (SC2154)
      1 |  echo "$undefined_name"
        |        ^~~~~~~~~~~~~~~
-note: Assign 'undefined_name' before it is read, or set it in the environment.
+note: Assign 'undefined_name' before this use, or set it in the environment.
 == a name that resembles an assigned name:
 -c:2:7: warning: The variable 'myvalue' is never assigned, and 'my_value' is assigned. (SC2153)
      2 |  echo "$myvalue"
@@ -44,17 +44,17 @@ note: Correct the spelling or assign 'destinaton_path'.
        |  ^~~~~~~~~~~~~~~~~~ The value is assigned here.
 note: Correct the spelling or assign 'configuratoin_rot'.
 == a name too far from every assigned name stays unresolved:
--c:2:7: warning: The variable 'temporary_buffer' is read before any assignment gives it a value. (SC2154)
+-c:2:7: warning: The variable 'temporary_buffer' is used before any assignment gives it a value. (SC2154)
      2 |  echo "$temporary_buffer"
        |        ^~~~~~~~~~~~~~~~~
-note: Assign 'temporary_buffer' before it is read, or set it in the environment.
+note: Assign 'temporary_buffer' before this use, or set it in the environment.
 == an assignment before the read stays quiet:
 rc=0
 == an if-only assignment remains conditional:
--c:2:7: warning: The variable 'if_value' is read before any assignment gives it a value. (SC2154)
+-c:2:7: warning: The variable 'if_value' is used before any assignment gives it a value. (SC2154)
      2 |  echo "$if_value"
        |        ^~~~~~~~~
-note: Assign 'if_value' before it is read, or set it in the environment.
+note: Assign 'if_value' before this use, or set it in the environment.
 == an assignment on every if exit stays quiet:
 rc=0
 == a case arm that exits leaves the assigning arm alone:
@@ -64,44 +64,44 @@ rc=0
 == a function that always exits ends its branch:
 rc=0
 == a function that can return does not end its branch:
--c:3:7: warning: The variable 'maybe_value' is read before any assignment gives it a value. (SC2154)
+-c:3:7: warning: The variable 'maybe_value' is used before any assignment gives it a value. (SC2154)
      3 |  echo "$maybe_value"
        |        ^~~~~~~~~~~~
-note: Assign 'maybe_value' before it is read, or set it in the environment.
+note: Assign 'maybe_value' before this use, or set it in the environment.
 == an exit joined by a connector does not end its branch:
--c:2:7: warning: The variable 'connector_value' is read before any assignment gives it a value. (SC2154)
+-c:2:7: warning: The variable 'connector_value' is used before any assignment gives it a value. (SC2154)
      2 |  echo "$connector_value"
        |        ^~~~~~~~~~~~~~~~
-note: Assign 'connector_value' before it is read, or set it in the environment.
+note: Assign 'connector_value' before this use, or set it in the environment.
 == compacted divergent branches preserve uncertainty:
--c:39:33: warning: The variable 'branch_special' is read before any assignment gives it a value. (SC2154)
+-c:39:33: warning: The variable 'branch_special' is used before any assignment gives it a value. (SC2154)
     39 |  echo "$removed_marker $seed_128 $branch_special $nested_value"
        |                                  ^~~~~~~~~~~~~~~
-note: Assign 'branch_special' before it is read, or set it in the environment.
--c:39:49: warning: The variable 'nested_value' is read before any assignment gives it a value. (SC2154)
+note: Assign 'branch_special' before this use, or set it in the environment.
+-c:39:49: warning: The variable 'nested_value' is used before any assignment gives it a value. (SC2154)
     39 |  echo "$removed_marker $seed_128 $branch_special $nested_value"
        |                                                  ^~~~~~~~~~~~~
-note: Assign 'nested_value' before it is read, or set it in the environment.
+note: Assign 'nested_value' before this use, or set it in the environment.
 Encountered 2 warnings.
 == loop-only assignments remain conditional:
--c:3:7: warning: The variable 'for_value' is read before any assignment gives it a value. (SC2154)
+-c:3:7: warning: The variable 'for_value' is used before any assignment gives it a value. (SC2154)
      3 |  echo "$for_value $while_value"
        |        ^~~~~~~~~~
-note: Assign 'for_value' before it is read, or set it in the environment.
--c:3:18: warning: The variable 'while_value' is read before any assignment gives it a value. (SC2154)
+note: Assign 'for_value' before this use, or set it in the environment.
+-c:3:18: warning: The variable 'while_value' is used before any assignment gives it a value. (SC2154)
      3 |  echo "$for_value $while_value"
        |                   ^~~~~~~~~~~~
-note: Assign 'while_value' before it is read, or set it in the environment.
+note: Assign 'while_value' before this use, or set it in the environment.
 Encountered 2 warnings.
 == short-circuit assignments remain conditional:
--c:3:7: warning: The variable 'and_value' is read before any assignment gives it a value. (SC2154)
+-c:3:7: warning: The variable 'and_value' is used before any assignment gives it a value. (SC2154)
      3 |  echo "$and_value $or_value"
        |        ^~~~~~~~~~
-note: Assign 'and_value' before it is read, or set it in the environment.
--c:3:18: warning: The variable 'or_value' is read before any assignment gives it a value. (SC2154)
+note: Assign 'and_value' before this use, or set it in the environment.
+-c:3:18: warning: The variable 'or_value' is used before any assignment gives it a value. (SC2154)
      3 |  echo "$and_value $or_value"
        |                   ^~~~~~~~~
-note: Assign 'or_value' before it is read, or set it in the environment.
+note: Assign 'or_value' before this use, or set it in the environment.
 Encountered 2 warnings.
 == a prefix assignment counts as an assignment:
 rc=0
@@ -110,10 +110,10 @@ rc=0
 == an exact environment value stays quiet:
 rc=0
 == an environment typo remains unresolved:
--c:1:7: warning: The variable 'DATAFLOW_EXPORTED_VLAUE' is read before any assignment gives it a value. (SC2154)
+-c:1:7: warning: The variable 'DATAFLOW_EXPORTED_VLAUE' is used before any assignment gives it a value. (SC2154)
      1 |  echo "$DATAFLOW_EXPORTED_VLAUE"
        |        ^~~~~~~~~~~~~~~~~~~~~~~~
-note: Assign 'DATAFLOW_EXPORTED_VLAUE' before it is read, or set it in the environment.
+note: Assign 'DATAFLOW_EXPORTED_VLAUE' before this use, or set it in the environment.
 == a KOSH_ name is maintained by the shell:
 rc=0
 == misspelled KOSH and ANSI names are unresolved:
@@ -135,19 +135,19 @@ note: Correct the spelling or assign 'KOSH_VERSOIN'.
 note: Correct the spelling or assign 'OPTNID'.
 Encountered 4 warnings.
 == sh mood does not suggest a Bash-only variable:
--c:1:7: warning: The variable 'BASH_VERSOIN' is read before any assignment gives it a value. (SC2154)
+-c:1:7: warning: The variable 'BASH_VERSOIN' is used before any assignment gives it a value. (SC2154)
      1 |  echo "$BASH_VERSOIN"
        |        ^~~~~~~~~~~~~
-note: Assign 'BASH_VERSOIN' before it is read, or set it in the environment.
+note: Assign 'BASH_VERSOIN' before this use, or set it in the environment.
 == unavailable catalog names are not suggested:
 -c:1:7: warning: The variable 'BASHOPTZ' is never assigned, and the shell provides 'BASHOPTS'. (SC2153)
      1 |  echo "$BASHOPTZ"
        |        ^~~~~~~~~
 note: Correct the spelling or assign 'BASHOPTZ'.
--c:1:7: warning: The variable 'GLOBIGNROE' is read before any assignment gives it a value. (SC2154)
+-c:1:7: warning: The variable 'GLOBIGNROE' is used before any assignment gives it a value. (SC2154)
      1 |  echo "$GLOBIGNROE"
        |        ^~~~~~~~~~~
-note: Assign 'GLOBIGNROE' before it is read, or set it in the environment.
+note: Assign 'GLOBIGNROE' before this use, or set it in the environment.
 == every assignment binder describes its target:
 -c:11:7: warning: The variable 'loop_entyr' is never assigned, and 'loop_entry' is assigned. (SC2153)
     11 |  echo "$loop_entyr"
@@ -225,20 +225,20 @@ rc=0
 == a compound arithmetic assignment assigns its target:
 rc=0
 == an arithmetic comparison assigns nothing:
--c:1:25: warning: The variable 'q' is read before any assignment gives it a value. (SC2154)
+-c:1:25: warning: The variable 'q' is used before any assignment gives it a value. (SC2154)
      1 |  echo $((q <= 1)); echo "$q"
        |                          ^~
-note: Assign 'q' before it is read, or set it in the environment.
+note: Assign 'q' before this use, or set it in the environment.
 == a C-style for init clause assigns its target:
 rc=0
 == the default mood rejects an unassigned read:
--c:1:7: error: The variable 'rejected_name' is read before any assignment gives it a value. (SC2154)
+-c:1:7: error: The variable 'rejected_name' is used before any assignment gives it a value. (SC2154)
      1 |  echo "$rejected_name"
        |        ^~~~~~~~~~~~~~
-note: Assign 'rejected_name' before it is read, or set it in the environment.
+note: Assign 'rejected_name' before this use, or set it in the environment.
 rc=1
 == a read before a later assignment names that assignment:
--c:1:7: warning: The variable 'greeting_text' is read before it is assigned.
+-c:1:7: warning: The variable 'greeting_text' is used before it is assigned.
      1 |  echo "$greeting_text"
        |        ^~~~~~~~~~~~~~
 -c:2:1: details:
@@ -249,22 +249,22 @@ rc=0
 == an assign form parameter expansion assigns its target:
 rc=0
 == a default form parameter expansion assigns nothing:
--c:2:7: warning: The variable 'default_target' is read before any assignment gives it a value. (SC2154)
+-c:2:7: warning: The variable 'default_target' is used before any assignment gives it a value. (SC2154)
      2 |  echo "$default_target"
        |        ^~~~~~~~~~~~~~~
-note: Assign 'default_target' before it is read, or set it in the environment.
+note: Assign 'default_target' before this use, or set it in the environment.
 == a read before a runtime definer is still reported:
--c:1:7: warning: The variable 'before_eval' is read before any assignment gives it a value. (SC2154)
+-c:1:7: warning: The variable 'before_eval' is used before any assignment gives it a value. (SC2154)
      1 |  echo "$before_eval"
        |        ^~~~~~~~~~~~
-note: Assign 'before_eval' before it is read, or set it in the environment.
+note: Assign 'before_eval' before this use, or set it in the environment.
 == a read after a runtime definer stays quiet:
 rc=0
 == a prefix on an ordinary command does not outlive it:
--c:2:7: warning: The variable 'temporary_name' is read before any assignment gives it a value. (SC2154)
+-c:2:7: warning: The variable 'temporary_name' is used before any assignment gives it a value. (SC2154)
      2 |  echo "$temporary_name"
        |        ^~~~~~~~~~~~~~~
-note: Assign 'temporary_name' before it is read, or set it in the environment.
+note: Assign 'temporary_name' before this use, or set it in the environment.
 == a prefix on a special builtin outlives it:
 rc=0
 == a prefix repeating its own value is not a self assignment:
@@ -272,15 +272,15 @@ rc=0
 == a command valued prefix keeps its command name:
 rc=0
 == a conditional assignment beside a similar name is not unassigned:
--c:3:7: warning: The variable 'pm' is read before any assignment gives it a value. (SC2154)
+-c:3:7: warning: The variable 'pm' is used before any assignment gives it a value. (SC2154)
      3 |  echo "$pm"
        |        ^~~
-note: Assign 'pm' before it is read, or set it in the environment.
+note: Assign 'pm' before this use, or set it in the environment.
 == a loop assignment beside a similar name is not unassigned:
--c:3:7: warning: The variable 'pm' is read before any assignment gives it a value. (SC2154)
+-c:3:7: warning: The variable 'pm' is used before any assignment gives it a value. (SC2154)
      3 |  echo "$pm"
        |        ^~~
-note: Assign 'pm' before it is read, or set it in the environment.
+note: Assign 'pm' before this use, or set it in the environment.
 == a chained loop assignment beside a similar name is not unassigned:
 -c:2:46: warning: An unquoted variable can split into words and expand globs. (SC2086)
      2 |  for i in "${pms[@]}"; do [[ -x "$(command -v ${i})" ]] && pm="${i}" || true; done
@@ -290,8 +290,8 @@ note: Quote the expansion to keep one argument.
      2 |  for i in "${pms[@]}"; do [[ -x "$(command -v ${i})" ]] && pm="${i}" || true; done
        |                                                                      ^~
 note: Use an `if` statement when C is the else branch.
--c:4:10: warning: The variable 'pm' is read before any assignment gives it a value. (SC2154)
+-c:4:10: warning: The variable 'pm' is used before any assignment gives it a value. (SC2154)
      4 |  echo "pm=$pm"
        |           ^~~
-note: Assign 'pm' before it is read, or set it in the environment.
+note: Assign 'pm' before this use, or set it in the environment.
 Encountered 3 warnings.

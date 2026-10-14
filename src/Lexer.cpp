@@ -1610,8 +1610,10 @@ Lexer::lex_identifier() throws -> Token *
 
   if (should_escape) rarely {
     throw ErrorWithLocationAndDetails{
-        here(m_cursor_position + byte_count - 1, 1), "Nothing to escape",
-        here(m_cursor_position + byte_count, 1), "expected a character here"};
+        here(m_cursor_position + byte_count - 1, 1),
+        "The backslash at the end of the input has nothing to escape",
+        here(m_cursor_position + byte_count, 1),
+        "expected a character after the backslash here"};
   }
 
   let const actual_cursor_position = m_cursor_position;
@@ -1848,8 +1850,13 @@ Lexer::validate_substitution_body(
 {
   if (m_substitution_nesting_depth >= lexer::MAX_SUBSTITUTION_NESTING_DEPTH) {
     record_substitution_error(ErrorWithLocationAndDetails{
-        outer_location, "Command substitution nested too deeply",
-        StringView{}});
+        outer_location,
+        "Command substitution is nested too deeply, past " +
+            String::from(
+                static_cast<i64>(lexer::MAX_SUBSTITUTION_NESTING_DEPTH),
+                heap_allocator()) +
+            " levels",
+        "Move the inner commands into a function"});
 
     return;
   }

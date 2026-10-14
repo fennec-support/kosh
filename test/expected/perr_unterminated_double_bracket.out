@@ -1,6 +1,6 @@
-2:1: error: Unterminated '[['.
+2:1: error: This '[[' has no closing ']]'.
      2 |  [[ a == b
        |  ^~
 2:10: details:
      2 |  [[ a == b
-       |           ^ expected ']]'.
+       |           ^ expected ']]' here.

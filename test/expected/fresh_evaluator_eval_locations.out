@@ -36,7 +36,7 @@
        |    ^~~~~~~~~~~~~~
 Encountered 12 warnings.
 top=19
-eval:2:7: warning: The variable 'unset_in_top_eval' is not set, it expands to empty.
+eval:2:7: warning: The variable 'unset_in_top_eval' is not set and expands to an empty string.
      2 |  echo "$unset_in_top_eval"
        |        ^~~~~~~~~~~~~~~~~~
 note: Replace it with ${unset_in_top_eval-} if empty expansion is desired.
@@ -49,7 +49,7 @@ eval:3:13: error: koshkit cat: Unknown flag '--unknown-in-top-eval'.
        |              ^~~~~~~~~~~~~~~~~~~~~
 note: Use `--` before an operand that begins with a dash.
 nested=23
-eval:2:7: warning: The variable 'unset_in_nested_eval' is not set, it expands to empty.
+eval:2:7: warning: The variable 'unset_in_nested_eval' is not set and expands to an empty string.
      2 |  echo "$unset_in_nested_eval"
        |        ^~~~~~~~~~~~~~~~~~~~~
 note: Replace it with ${unset_in_nested_eval-} if empty expansion is desired.
@@ -61,7 +61,7 @@ eval:1:1: trace:
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 library=2
-eval:2:7: warning: The variable 'unset_in_library_eval' is not set, it expands to empty.
+eval:2:7: warning: The variable 'unset_in_library_eval' is not set and expands to an empty string.
      2 |  echo "$unset_in_library_eval"
        |        ^~~~~~~~~~~~~~~~~~~~~~
 note: Replace it with ${unset_in_library_eval-} if empty expansion is desired.
@@ -84,7 +84,7 @@ note: Use `--` before an operand that begins with a dash.
     27 |  ( library_defined )
        |  ^
 wrapped=30
-eval:2:9: warning: The variable 'unset_in_wrapped_eval' is not set, it expands to empty.
+eval:2:9: warning: The variable 'unset_in_wrapped_eval' is not set and expands to an empty string.
      2 |    echo "$unset_in_wrapped_eval"
        |          ^~~~~~~~~~~~~~~~~~~~~~
 note: Replace it with ${unset_in_wrapped_eval-} if empty expansion is desired.
@@ -96,7 +96,7 @@ note: Replace it with ${unset_in_wrapped_eval-} if empty expansion is desired.
        |  ^~~~~~~
 
 evaluated=37 46 evaluated
-eval:4:9: warning: The variable 'unset_in_evaluated' is not set, it expands to empty.
+eval:4:9: warning: The variable 'unset_in_evaluated' is not set and expands to an empty string.
      4 |    echo "$unset_in_evaluated"
        |          ^~~~~~~~~~~~~~~~~~~
 note: Replace it with ${unset_in_evaluated-} if empty expansion is desired.
@@ -105,7 +105,7 @@ note: Replace it with ${unset_in_evaluated-} if empty expansion is desired.
        |  ^~~~~~~~~
 
 evaluated=37 41 47 evaluated evaluated_caller
-eval:4:9: warning: The variable 'unset_in_evaluated' is not set, it expands to empty.
+eval:4:9: warning: The variable 'unset_in_evaluated' is not set and expands to an empty string.
      4 |    echo "$unset_in_evaluated"
        |          ^~~~~~~~~~~~~~~~~~~
 note: Replace it with ${unset_in_evaluated-} if empty expansion is desired.
@@ -117,7 +117,7 @@ eval:7:3: trace:
        |  ^~~~~~~~~~~~~~~~
 
 evaluated=37 48 evaluated
-eval:4:9: warning: The variable 'unset_in_evaluated' is not set, it expands to empty.
+eval:4:9: warning: The variable 'unset_in_evaluated' is not set and expands to an empty string.
      4 |    echo "$unset_in_evaluated"
        |          ^~~~~~~~~~~~~~~~~~~
 note: Replace it with ${unset_in_evaluated-} if empty expansion is desired.
@@ -129,7 +129,7 @@ note: Replace it with ${unset_in_evaluated-} if empty expansion is desired.
        |  ^
 
 evaluated=37 41 50 evaluated evaluated_caller
-eval:4:9: warning: The variable 'unset_in_evaluated' is not set, it expands to empty.
+eval:4:9: warning: The variable 'unset_in_evaluated' is not set and expands to an empty string.
      4 |    echo "$unset_in_evaluated"
        |          ^~~~~~~~~~~~~~~~~~~
 note: Replace it with ${unset_in_evaluated-} if empty expansion is desired.
@@ -161,7 +161,7 @@ note: Use `--` before an operand that begins with a dash.
     52 |  ( evaluated_failing ) &
        |  ^
 quoted=59
-eval:2:32: warning: The variable 'unset_in_quoted' is not set, it expands to empty.
+eval:2:32: warning: The variable 'unset_in_quoted' is not set and expands to an empty string.
      2 |    echo "quoted=$LINENO"; echo "$unset_in_quoted"
        |                                 ^~~~~~~~~~~~~~~~
 note: Replace it with ${unset_in_quoted-} if empty expansion is desired.
@@ -170,7 +170,7 @@ note: Replace it with ${unset_in_quoted-} if empty expansion is desired.
        |  ^~~~~~
 
 quoted=59
-eval:2:32: warning: The variable 'unset_in_quoted' is not set, it expands to empty.
+eval:2:32: warning: The variable 'unset_in_quoted' is not set and expands to an empty string.
      2 |    echo "quoted=$LINENO"; echo "$unset_in_quoted"
        |                                 ^~~~~~~~~~~~~~~~
 note: Replace it with ${unset_in_quoted-} if empty expansion is desired.
@@ -182,7 +182,7 @@ note: Replace it with ${unset_in_quoted-} if empty expansion is desired.
        |  ^
 
 inside=65
-eval:2:34: warning: The variable 'unset_in_inside' is not set, it expands to empty.
+eval:2:34: warning: The variable 'unset_in_inside' is not set and expands to an empty string.
      2 |      echo "inside=$LINENO"; echo "$unset_in_inside"
        |                                   ^~~~~~~~~~~~~~~~
 note: Replace it with ${unset_in_inside-} if empty expansion is desired.
@@ -191,7 +191,7 @@ note: Replace it with ${unset_in_inside-} if empty expansion is desired.
        |  ^~~~~~
 
 nested_defined=72
-eval:2:40: warning: The variable 'unset_in_nested_defined' is not set, it expands to empty.
+eval:2:40: warning: The variable 'unset_in_nested_defined' is not set and expands to an empty string.
      2 |    echo "nested_defined=$LINENO"; echo "$unset_in_nested_defined"
        |                                         ^~~~~~~~~~~~~~~~~~~~~~~~
 note: Replace it with ${unset_in_nested_defined-} if empty expansion is desired.
@@ -200,7 +200,7 @@ note: Replace it with ${unset_in_nested_defined-} if empty expansion is desired.
        |  ^~~~~~~~~~~~~~
 
 nested_defined=72
-eval:2:40: warning: The variable 'unset_in_nested_defined' is not set, it expands to empty.
+eval:2:40: warning: The variable 'unset_in_nested_defined' is not set and expands to an empty string.
      2 |    echo "nested_defined=$LINENO"; echo "$unset_in_nested_defined"
        |                                         ^~~~~~~~~~~~~~~~~~~~~~~~
 note: Replace it with ${unset_in_nested_defined-} if empty expansion is desired.

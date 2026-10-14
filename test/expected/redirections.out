@@ -1,4 +1,4 @@
-4:14: warning: `2>&1` before the file redirect duplicates the current standard output. (SC2069)
+4:14: warning: `2>&1` before the file redirect duplicates the current standard output, so standard error will not go to the file. (SC2069)
      4 |  echo x 2>&1 >"$TEST_NULL_DEVICE"; echo "dup=done"
        |               ^~~~~~~~~~~~~~~~~~~
 note: Put the file redirect first as in `>file 2>&1`.

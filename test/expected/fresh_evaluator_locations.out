@@ -1,19 +1,19 @@
-6:40: warning: The variable 'unset_in_background' is read before any assignment gives it a value. (SC2154)
+6:40: warning: The variable 'unset_in_background' is used before any assignment gives it a value. (SC2154)
      6 |  echo start; ( echo "background"; echo "$unset_in_background" ) &
        |                                         ^~~~~~~~~~~~~~~~~~~~
-note: Assign 'unset_in_background' before it is read, or set it in the environment.
-40:11: warning: The variable 'unset_in_inner' is read before any assignment gives it a value. (SC2154)
+note: Assign 'unset_in_background' before this use, or set it in the environment.
+40:11: warning: The variable 'unset_in_inner' is used before any assignment gives it a value. (SC2154)
     40 |  ( ( echo "$unset_in_inner" ) & wait )
        |            ^~~~~~~~~~~~~~~
-note: Assign 'unset_in_inner' before it is read, or set it in the environment.
-42:21: warning: The variable 'unset_in_input' is read before any assignment gives it a value. (SC2154)
+note: Assign 'unset_in_inner' before this use, or set it in the environment.
+42:21: warning: The variable 'unset_in_input' is used before any assignment gives it a value. (SC2154)
     42 |  koshkit cat <(echo "$unset_in_input")
        |                      ^~~~~~~~~~~~~~~
-note: Assign 'unset_in_input' before it is read, or set it in the environment.
+note: Assign 'unset_in_input' before this use, or set it in the environment.
 Encountered 3 warnings.
 start
 background
-6:40: warning: The variable 'unset_in_background' is not set, it expands to empty.
+6:40: warning: The variable 'unset_in_background' is not set and expands to an empty string.
      6 |  echo start; ( echo "background"; echo "$unset_in_background" ) &
        |                                         ^~~~~~~~~~~~~~~~~~~~
 note: Replace it with ${unset_in_background-} if empty expansion is desired.
@@ -24,13 +24,13 @@ note: Replace it with ${unset_in_background-} if empty expansion is desired.
 first=9
 second=10
 piped 13
-13:60: warning: The variable 'unset_in_stage' is not set, it expands to empty.
+13:60: warning: The variable 'unset_in_stage' is not set and expands to an empty string.
     13 |  echo piped | { read -r value; echo "$value $LINENO"; echo "$unset_in_stage"; }
        |                                                             ^~~~~~~~~~~~~~~
 note: Replace it with ${unset_in_stage-} if empty expansion is desired.
 
 nested=15
-15:48: warning: The variable 'unset_in_nested' is not set, it expands to empty.
+15:48: warning: The variable 'unset_in_nested' is not set and expands to an empty string.
     15 |  echo nested | { ( echo "nested=$LINENO"; echo "$unset_in_nested" ) & wait; }
        |                                                 ^~~~~~~~~~~~~~~~
 note: Replace it with ${unset_in_nested-} if empty expansion is desired.
@@ -43,7 +43,7 @@ input=23
 multi=25
 after=26
 output=28
-34:11: warning: The variable 'unset_in_report' is not set, it expands to empty.
+34:11: warning: The variable 'unset_in_report' is not set and expands to an empty string.
     34 |    ( echo "$unset_in_report" ) &
        |            ^~~~~~~~~~~~~~~~
 note: Replace it with ${unset_in_report-} if empty expansion is desired.
@@ -57,7 +57,7 @@ note: Replace it with ${unset_in_report-} if empty expansion is desired.
     38 |  outer_report
        |  ^~~~~~~~~~~~
 
-40:11: warning: The variable 'unset_in_inner' is not set, it expands to empty.
+40:11: warning: The variable 'unset_in_inner' is not set and expands to an empty string.
     40 |  ( ( echo "$unset_in_inner" ) & wait )
        |            ^~~~~~~~~~~~~~~
 note: Replace it with ${unset_in_inner-} if empty expansion is desired.
@@ -68,7 +68,7 @@ note: Replace it with ${unset_in_inner-} if empty expansion is desired.
     40 |  ( ( echo "$unset_in_inner" ) & wait )
        |  ^
 
-42:21: warning: The variable 'unset_in_input' is not set, it expands to empty.
+42:21: warning: The variable 'unset_in_input' is not set and expands to an empty string.
     42 |  koshkit cat <(echo "$unset_in_input")
        |                      ^~~~~~~~~~~~~~~
 note: Replace it with ${unset_in_input-} if empty expansion is desired.
@@ -77,7 +77,7 @@ note: Replace it with ${unset_in_input-} if empty expansion is desired.
        |              ^~~~~~~~~~~~~~~~~~~~~~~~~
 
 eval=44
-48:55: warning: The variable 'unset_in_show' is not set, it expands to empty.
+48:55: warning: The variable 'unset_in_show' is not set and expands to an empty string.
     48 |    echo "show=$LINENO ${BASH_LINENO[*]} ${FUNCNAME[*]} $unset_in_show"
        |                                                        ^~~~~~~~~~~~~~
 note: Replace it with ${unset_in_show-} if empty expansion is desired.
@@ -88,7 +88,7 @@ note: Replace it with ${unset_in_show-} if empty expansion is desired.
     50 |  koshkit cat <(show_frames)
        |              ^~~~~~~~~~~~~~
 show=48 50 show_frames 
-48:55: warning: The variable 'unset_in_show' is not set, it expands to empty.
+48:55: warning: The variable 'unset_in_show' is not set and expands to an empty string.
     48 |    echo "show=$LINENO ${BASH_LINENO[*]} ${FUNCNAME[*]} $unset_in_show"
        |                                                        ^~~~~~~~~~~~~~
 note: Replace it with ${unset_in_show-} if empty expansion is desired.
@@ -103,7 +103,7 @@ note: Replace it with ${unset_in_show-} if empty expansion is desired.
        |  ^~~~~~~~~
 show=48 51 52 show_frames call_show 
 inside=58 61
-59:11: warning: The variable 'unset_in_defined_inside' is not set, it expands to empty.
+59:11: warning: The variable 'unset_in_defined_inside' is not set and expands to an empty string.
     59 |      echo "$unset_in_defined_inside" >&2
        |            ^~~~~~~~~~~~~~~~~~~~~~~~
 note: Replace it with ${unset_in_defined_inside-} if empty expansion is desired.
@@ -116,7 +116,7 @@ note: Replace it with ${unset_in_defined_inside-} if empty expansion is desired.
 
 defined_inside is a shell function on line 57
 captured=66
-75:11: warning: The variable 'unset_collide' is not set, it expands to empty.
+75:11: warning: The variable 'unset_collide' is not set and expands to an empty string.
     75 |    ( echo "$unset_collide" ) &
        |            ^~~~~~~~~~~~~~
 note: Replace it with ${unset_collide-} if empty expansion is desired.

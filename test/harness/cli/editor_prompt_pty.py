@@ -211,6 +211,17 @@ def has_no_partial_line_marker(screen):
     return not any("\\n" in line for line in screen.get_lines())
 
 
+def wait_for_terminal_job(session):
+    for _ in range(500):
+        attributes = termios.tcgetattr(session.fd)
+        is_cooked = (attributes[3] & termios.ICANON) != 0 and (
+            attributes[3] & termios.ECHO) != 0
+        if os.tcgetpgrp(session.fd) != session.pid and is_cooked:
+            return True
+        session.pump(0.02)
+    return False
+
+
 def run_job_notice_checks(binary, directory, report):
     sleep_path = shutil.which("sleep")
     if sleep_path is None:
@@ -225,7 +236,7 @@ def run_job_notice_checks(binary, directory, report):
         mark = len(session.raw)
         session.send(b"sleep 30\r")
         session.wait_until(lambda screen: SLEEP_TITLE in session.raw[mark:])
-        session.pump(0.3)
+        wait_for_terminal_job(session)
         session.send(CTRL_Z)
         report.record("stopped-job-notice-starts-a-row", session,
                       lambda screen: has_rows([
@@ -236,7 +247,7 @@ def run_job_notice_checks(binary, directory, report):
         mark = len(session.raw)
         session.send(b"fg\r")
         session.wait_until(lambda screen: SLEEP_TITLE in session.raw[mark:])
-        session.pump(0.3)
+        wait_for_terminal_job(session)
         session.send(CTRL_C)
         report.record("fg-interrupt-ends-its-row", session,
                       lambda screen: has_rows(["sleep 30", "^C", BULLET])(

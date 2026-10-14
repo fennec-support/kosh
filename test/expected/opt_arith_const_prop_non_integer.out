@@ -1,5 +1,5 @@
 13
-5:1: warning: The variable 'hello' is not set, it expands to empty.
+5:1: warning: The variable 'hello' is not set and expands to an empty string.
      5 |  echo $((y+1))
        |  ^~~~~~~~~~~~~
 note: Replace it with ${hello-} if empty expansion is desired.

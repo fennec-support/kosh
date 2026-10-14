@@ -525,7 +525,13 @@ check_arithmetic_expression_lints(AnalysisContext      &actx,
       if (word[0] == '0' && word.length > 1 && word.is_all_decimal_digits() &&
           !has_reported_octal)
       {
-        actx.report_diagnostic(diagnostic_id::sc2080, location, {word});
+        let const literal_location =
+            expression_base_position.has_value()
+                ? SourceLocation{*expression_base_position + start, word.length,
+                                 location.source_name_index}
+                : location;
+
+        actx.report_diagnostic(diagnostic_id::sc2080, literal_location, {word});
         has_reported_octal = true;
       }
 

@@ -511,7 +511,7 @@ public:
     if (target.name.is_empty())
       fail_span(operator_position, operator_position + 2,
                 "Expected a variable after '++' or '--'",
-                "'++' and '--' step a variable, not a value");
+                "'++' and '--' apply only to a variable");
 
     let const updated =
         arith_apply_binop('+', read_lvalue_value(target),
@@ -1497,9 +1497,10 @@ public:
     let const function = FUNCTIONS.find(name);
 
     if (!function.has_value())
-      fail_span(name_position, name_position + name.length,
-                "Unknown calculator function '" + name + "'",
-                "Use a supported numeric function name");
+      fail_span(
+          name_position, name_position + name.length,
+          "Unknown calculator function '" + name + "'",
+          "Check the spelling, or use a function that the calculator supports");
 
     let const arguments = calculator_function_arguments(name);
 

@@ -1,7 +1,7 @@
-2:1: warning: This `cd` is unchecked. (SC2164)
+2:1: warning: This `cd` is not checked for failure, so later commands can run in the wrong directory. (SC2164)
      2 |  cd "$root"
        |  ^~
-note: Stop or return when `cd` fails.
+note: Write `cd dir || exit`, or `cd dir || return` in a function.
 1112837078 4 first
 4294967295 0 empty
 cksum-status=0

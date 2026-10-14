@@ -1,3 +1,4 @@
-2:8: error: Expected a heredoc delimiter.
+2:8: error: Expected a delimiter word after the heredoc operator.
      2 |  cat << >foo
        |         ^
+note: Write `cat <<EOF`, then the text, then a line that holds only `EOF`.

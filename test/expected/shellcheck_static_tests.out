@@ -4,7 +4,7 @@
 4:1: details:
      4 |  recursive_wrapper() { recursive_wrapper "$@"; }
        |  ^~~~~~~~~~~~~~~~~ 'recursive_wrapper' is defined here.
-note: Use `command` before the wrapped command name.
+note: Avoid recursion by rewriting the call as a loop, or suppress this check with `# shellcheck disable=SC2264`. A wrapper around the `recursive_wrapper` command should call it as `command recursive_wrapper`.
 7:3: warning: The `let` builtin evaluates its argument as arithmetic. (SC2219)
      7 |    let "counter -lt limit"
        |    ^~~
@@ -73,7 +73,7 @@ note: Drop the brackets and write `true`.
     27 |    [ 1 ]
        |      ^
 note: Write `true` for a succeeding condition.
-28:5: warning: The 'literal' operand is a literal. (SC2078)
+28:5: warning: The 'literal' operand is a literal, so the test result never changes. (SC2078)
     28 |    [ literal ]
        |      ^~~~~~~
 note: Add the `$` when a variable was meant.
@@ -89,7 +89,7 @@ note: Write it with `-n`.
     32 |    [ a = b ]
        |      ^~~~~
 note: Remove the constant condition or compare runtime data.
-32:7: warning: The literals 'a' and 'b' differ. (SC2193)
+32:7: warning: The literals 'a' and 'b' differ, so they can never be equal. (SC2193)
     32 |    [ a = b ]
        |        ^
 note: Compare a variable, or correct the operand spelling.
@@ -117,7 +117,7 @@ note: Give the operator its operand before the comparison.
     37 |    [[ -z == foo ]]
        |       ^~~~~~~~~
 note: Remove the constant condition or compare runtime data.
-37:9: warning: The string test has a literal operand. (SC2157)
+37:9: warning: The string test has a literal operand, so its result never changes. (SC2157)
     37 |    [[ -z == foo ]]
        |          ^~
 note: Test a variable or drop the check.
@@ -125,7 +125,7 @@ note: Test a variable or drop the check.
     41 |    [ "$left" = a && "$right" = b ]
        |    ^
 note: Write `[ a ] && [ b ]`.
-41:29: warning: An assignment with spaces around equals is read as a command and its arguments. (SC2283)
+41:29: warning: An assignment with spaces around equals runs as a command with arguments. (SC2283)
     41 |    [ "$left" = a && "$right" = b ]
        |                              ^
 note: Write `NAME=value` without spaces.
@@ -137,7 +137,7 @@ note: Add the opening `[`, or quote the bracket when it is data.
     42 |    [ "$left" = a || "$right" = b ]
        |    ^
 note: Write `[ a ] || [ b ]`.
-42:29: warning: An assignment with spaces around equals is read as a command and its arguments. (SC2283)
+42:29: warning: An assignment with spaces around equals runs as a command with arguments. (SC2283)
     42 |    [ "$left" = a || "$right" = b ]
        |                              ^
 note: Write `NAME=value` without spaces.
@@ -177,7 +177,7 @@ note: Group the expression with `( )`.
     48 |    [ "$left" > "$right" ]
        |      ^~~~~~~
 note: Write it with `-n`.
-48:15: warning: The `>` is a file redirection. (SC2065)
+48:15: warning: The `>` in this test is a file redirection. (SC2065)
     48 |    [ "$left" > "$right" ]
        |                ^~~~~~~~
 note: Escape it as `\>`, or use the `[[ ]]` form.
@@ -197,7 +197,7 @@ note: Write `>&2` to reach the descriptor, or compare the numbers in a test.
     51 |    if ( -f "$left" ); then echo found; fi
        |       ^
 note: Write the condition as `[ ... ]`.
-51:8: warning: An option-shaped word in command position is looked up as a command name. (SC2215)
+51:8: warning: A word that starts with a dash is in command position and will be looked up as a command. (SC2215)
     51 |    if ( -f "$left" ); then echo found; fi
        |         ^~
 note: Place the option after its command.
@@ -221,7 +221,7 @@ note: Loop over the elements, or join them with `*`.
     59 |    [ {a,b} = one ]
        |      ^~~~~
 note: Loop over the expanded words.
-59:11: warning: The literals '{a,b}' and 'one' differ. (SC2193)
+59:11: warning: The literals '{a,b}' and 'one' differ, so they can never be equal. (SC2193)
     59 |    [ {a,b} = one ]
        |            ^
 note: Compare a variable, or correct the operand spelling.
@@ -229,7 +229,7 @@ note: Compare a variable, or correct the operand spelling.
     60 |    [ *.txt = one ]
        |      ^~~~~
 note: Loop over the matches.
-60:11: warning: The literals '*.txt' and 'one' differ. (SC2193)
+60:11: warning: The literals '*.txt' and 'one' differ, so they can never be equal. (SC2193)
     60 |    [ *.txt = one ]
        |            ^
 note: Compare a variable, or correct the operand spelling.
@@ -240,7 +240,7 @@ note: Loop over the matches to test each one.
 62:8: warning: The `-v` operand 'arr[i]' carries glob characters. (SC2208)
     62 |    [ -v arr[i] ]
        |         ^~~~~~
-note: Quote the name, or use the `[[ ]]` form.
+note: Quote the operand, or use the `[[ ]]` form.
 63:8: warning: The unquoted test operand vanishes when the value is empty. (SC2086)
     63 |    [ -n $value ]
        |         ^~~~~~
@@ -281,15 +281,15 @@ note: Quote '$right' so the comparison stays literal.
     69 |    [[ "$left" =~ *.txt ]]
        |                  ^~~~~
 note: Compare with `=` for a glob, or write the pattern as a regex.
-73:8: warning: The `ls` listing splits a name with a space or a newline before `xargs` receives it. (SC2011)
+73:8: warning: The `ls` listing splits a filename that holds a space or a newline before `xargs` receives it. (SC2011)
     73 |    ls | xargs rm
        |         ^~~~~
 note: Use `find -print0` with `xargs -0`, or `find -exec`.
-74:3: warning: The `ls` listing mangles a name with a space or a newline. (SC2012)
+74:3: warning: The `ls` listing mangles a filename that holds a space or a newline. (SC2012)
     74 |    ls | wc -l
        |    ^~
 note: Use `find`, or match the files with a glob.
-75:3: warning: Some `find` implementations have no default path. (SC2185)
+75:3: warning: This `find` has no path operand, and some `find` implementations have no default path. (SC2185)
     75 |    find -name '*.txt'
        |    ^~~~
 note: Write `.` as the path before the expression.
@@ -304,11 +304,11 @@ note: Add the destination path.
 78:9: warning: The `ln` command is given 'target' alone. (SC2226)
     78 |    ln -s target
        |          ^~~~~~
-note: Add the link name, or write `.` explicitly.
+note: Add the link path, or write `.` explicitly.
 79:3: warning: The `xargs -i` flag is deprecated. (SC2267)
     79 |    xargs -i echo replaced < list
        |    ^~~~~
-note: Use `-I` with an explicit replacement string.
+note: Use `-I` with an explicit replacement string, as in `xargs -I{{}} cmd {{}}`.
 83:3: warning: The `echo` output is counted by `wc` for a length the shell already knows. (SC2000)
     83 |    echo "$value" | wc -c
        |    ^~~~
@@ -320,6 +320,7 @@ note: Use `${variable//search/replace}`.
 85:10: warning: The 'ls' command never uses the upstream output. (SC2216)
     85 |    true | ls
        |           ^~
+note: Remove the pipe and run the upstream command on its own.
 86:21: warning: The substitution in the `find` action expands once before `find` runs. (SC2014)
     86 |    find . -exec echo $(basename x) \;
        |                      ^~~~~~~~~~~~~
@@ -375,7 +376,7 @@ note: Move the body into its own script, or pass it with `sh -c`.
 103:15: warning: The operand 'whoami' is handed to `su` as a command without `-c`. (SC2117)
    103 |    su operator whoami
        |                ^~~~~~
-note: Write `su -c`, or use `sudo`.
+note: Write `su -c 'command'`, or use `sudo command`.
 104:16: warning: The function 'helper_function' is not visible to an external command. (SC2033)
    104 |    find . -exec helper_function {} \;
        |                 ^~~~~~~~~~~~~~~
@@ -384,7 +385,7 @@ note: Wrap the call in `sh -c`, or move the body into its own script.
    105 |    find . -execdir helper_function {} \;
        |                    ^~~~~~~~~~~~~~~
 note: Wrap the call in `sh -c`, or move the body into its own script.
-106:8: warning: The `ls` listing splits a name with a space or a newline before `xargs` receives it. (SC2011)
+106:8: warning: The `ls` listing splits a filename that holds a space or a newline before `xargs` receives it. (SC2011)
    106 |    ls | xargs helper_function
        |         ^~~~~
 note: Use `find -print0` with `xargs -0`, or `find -exec`.
@@ -392,10 +393,10 @@ note: Use `find -print0` with `xargs -0`, or `find -exec`.
    106 |    ls | xargs helper_function
        |               ^~~~~~~~~~~~~~~
 note: Wrap the call in `sh -c`, or move the body into its own script.
-107:3: warning: This `cd` is unchecked. (SC2164)
+107:3: warning: This `cd` is not checked for failure, so later commands can run in the wrong directory. (SC2164)
    107 |    cd /tmp
        |    ^~
-note: Stop or return when `cd` fails.
+note: Write `cd dir || exit`, or `cd dir || return` in a function.
 107:3: warning: A later `cd -` undoes this directory change. (SC2103)
    107 |    cd /tmp
        |    ^~
@@ -403,11 +404,11 @@ note: Stop or return when `cd` fails.
    108 |    cd -
        |    ^~ the working directory is restored here.
 note: Run the commands inside `( )`.
-108:3: warning: This `cd` is unchecked. (SC2164)
+108:3: warning: This `cd` is not checked for failure, so later commands can run in the wrong directory. (SC2164)
    108 |    cd -
        |    ^~
-note: Stop or return when `cd` fails.
-109:3: warning: The `break` command stands in a function outside any loop. (SC2104)
+note: Write `cd dir || exit`, or `cd dir || return` in a function.
+109:3: warning: The `break` command is used in a function outside any loop. (SC2104)
    109 |    break
        |    ^~~~~
 note: Use `return` to leave the function.
@@ -418,14 +419,16 @@ note: Write `assigned=value` on its own.
 111:10: warning: The code 'one' is not a number from 0 to 255, and `return` either rejects it or wraps it modulo 256. (SC2242)
    111 |    return one two
        |           ^~~
-111:14: warning: The `return` builtin takes one number from 0 to 255. (SC2151)
+note: Use a number from 0 to 255.
+111:14: warning: This `return` has extra operands, and the builtin takes one number from 0 to 255. (SC2151)
    111 |    return one two
        |               ^~~
 note: Write the other data to standard output.
 112:8: warning: The code 'one' is not a number from 0 to 255, and `exit` either rejects it or wraps it modulo 256. (SC2242)
    112 |    exit one two
        |         ^~~
-112:12: warning: The `exit` builtin takes one number from 0 to 255. (SC2241)
+note: Use a number from 0 to 255.
+112:12: warning: This `exit` has extra operands, and the builtin takes one number from 0 to 255. (SC2241)
    112 |    exit one two
        |             ^~~
 note: Write the other data to standard output.
@@ -433,11 +436,11 @@ note: Write the other data to standard output.
    113 |    return $(echo 5)
        |           ^~~~~~~~~
 note: Quote it to keep one argument.
-113:10: warning: The `echo` operand is passed through the substitution unchanged. (SC2116)
+113:10: warning: The command substitution runs only `echo`, so it returns its operand unchanged. (SC2116)
    113 |    return $(echo 5)
        |           ^~~~~~~~~
 note: Use the text directly without the command substitution.
-113:10: warning: The `return` operand is command output. (SC2152)
+113:10: warning: The `return` operand is the output of a command, and `return` takes a status number from 0 to 255. (SC2152)
    113 |    return $(echo 5)
        |           ^~~~~~~~~
 note: Print the value and return a status separately.
@@ -456,7 +459,7 @@ note: Wrap the builtin in `sudo sh -c`.
 120:26: warning: The trap condition '9' is a signal number. (SC2172)
    120 |    trap 'helper_function' 9
        |                           ^
-note: Write the signal as a name, such as `INT` or `TERM`.
+note: Write the signal by its symbolic form, such as `INT` or `TERM`.
 120:26: warning: The signal '9' cannot be trapped. (SC2173)
    120 |    trap 'helper_function' 9
        |                           ^
@@ -464,7 +467,7 @@ note: Remove the condition.
 121:26: warning: The trap condition '15' is a signal number. (SC2172)
    121 |    trap 'helper_function' 15
        |                           ^~
-note: Write the signal as a name, such as `INT` or `TERM`.
+note: Write the signal by its symbolic form, such as `INT` or `TERM`.
 122:26: warning: The signal 'KILL' cannot be trapped. (SC2173)
    122 |    trap 'helper_function' KILL
        |                           ^~~~
@@ -479,12 +482,12 @@ note: Remove the condition.
 132:1: details:
    132 |  spin_while() { while spin_while; do :; done; }
        |  ^~~~~~~~~~ 'spin_while' is defined here.
-note: Use `command` before the wrapped command name.
+note: Avoid recursion by rewriting the call as a loop, or suppress this check with `# shellcheck disable=SC2264`. A wrapper around the `spin_while` command should call it as `command spin_while`.
 133:22: warning: The 'spin_until' function calls itself. (SC2264)
    133 |  spin_until() { until spin_until; do :; done; }
        |                       ^~~~~~~~~~
 133:1: details:
    133 |  spin_until() { until spin_until; do :; done; }
        |  ^~~~~~~~~~ 'spin_until' is defined here.
-note: Use `command` before the wrapped command name.
+note: Avoid recursion by rewriting the call as a loop, or suppress this check with `# shellcheck disable=SC2264`. A wrapper around the `spin_until` command should call it as `command spin_until`.
 Encountered 120 warnings.

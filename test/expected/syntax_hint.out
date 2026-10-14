@@ -6,56 +6,56 @@ echo `ls => [syntax error] Unterminated command substitution, expected ` here
 echo ${x => [syntax error] Unterminated variable expansion, expected } here
 echo $((1 + => [syntax error] Unterminated arithmetic expansion, expected )) here
 cat <(ls => [syntax error] Unterminated process substitution, expected ) here
-a=(1 2 => [syntax error] Unterminated array assignment, expected ')'
-(echo hi => [syntax error] Unterminated subshell, expected ')'
-{ echo hi => [syntax error] Unterminated brace group, expected '}'
-f() { => [syntax error] Unterminated brace group, expected '}'
-[[ a == b => [syntax error] Unterminated '[[', expected ']]'
-if true => [syntax error] Unterminated if, expected 'then' after the condition
-if (true) => [syntax error] Unterminated if, expected 'then' after the condition
-if true; then => [syntax error] Unterminated if, expected 'fi'
-while true => [syntax error] Unterminated loop, expected 'do'
-for x in a b => [syntax error] Unterminated for loop, expected 'do'
-for x in a; do  => [syntax error] Unterminated for loop, expected 'done'
-case x in => [syntax error] Unterminated case, expected a pattern to start an arm, or 'esac' to end the case
+a=(1 2 => [syntax error] This array assignment has no closing ')', close the list with ')', as in `arr=(a b c)`
+(echo hi => [syntax error] This subshell has no closing ')', expected ')' here
+{ echo hi => [syntax error] This brace group has no closing '}', expected '}' here to close it
+f() { => [syntax error] This brace group has no closing '}', expected '}' here to close it
+[[ a == b => [syntax error] This '[[' has no closing ']]', expected ']]' here
+if true => [syntax error] This 'if' has no 'then', expected 'then' here, after the condition
+if (true) => [syntax error] This 'if' has no 'then', expected 'then' here, after the condition
+if true; then => [syntax error] This 'if' has no closing 'fi', expected 'fi' here to close it
+while true => [syntax error] This loop has no 'do', expected 'do' here, after the loop condition
+for x in a b => [syntax error] This for loop has no 'do', expected 'do' here, after the list of words
+for x in a; do  => [syntax error] This for loop has no closing 'done', expected 'done' here to close it
+case x in => [syntax error] This 'case' has no closing 'esac', expected a pattern to start an arm, or 'esac' to end the case
 echo $(if true; then => [syntax error] Unterminated command substitution, expected ) here
 == operators and redirections
-ls | => [syntax error] Unable to build the pipeline because no command follows the pipe to receive the output
-ls |& => [syntax error] Unable to build the pipeline because no command follows the pipe to receive the output
-ls && => [syntax error] Expected a command after an operator
-ls || => [syntax error] Expected a command after an operator
-| ls => [syntax error] Expected a command before the pipe
-&& ls => [syntax error] Expected a command before operator, found '&&'
-echo a; ; echo b => [syntax error] Expected a command before ';'
-{ :; ; } => [syntax error] Expected a command before ';'
-echo > => [syntax error] Expected a filename after the redir
-cat < => [syntax error] Expected a filename after the redir
-cat << => [syntax error] Expected a heredoc delimiter
+ls | => [syntax error] Expected a command after the pipe to receive the output, put a command after the '|', as in `cmd | sort`, or remove the pipe
+ls |& => [syntax error] Expected a command after the pipe to receive the output, put a command after the '|', as in `cmd | sort`, or remove the pipe
+ls && => [syntax error] Expected a command after '&&', add the missing command, as in `a && b`, or remove the operator
+ls || => [syntax error] Expected a command after '||', add the missing command, as in `a || b`, or remove the operator
+| ls => [syntax error] Expected a command before the pipe, put the command that produces the output before the '|', as in `cmd | sort`
+&& ls => [syntax error] Expected a command before the operator, found '&&', put a command on each side of the operator, as in `a && b`, or remove the operator
+echo a; ; echo b => [syntax error] Expected a command before ';', remove the extra ';', or put a command before it
+{ :; ; } => [syntax error] Expected a command before ';', remove the extra ';', or put a command before it
+echo > => [syntax error] Expected a file after the redirection operator
+cat < => [syntax error] Expected a file after the redirection operator
+cat << => [syntax error] Expected a delimiter word after the heredoc operator, write `cat <<EOF`, then the text, then a line that holds only `EOF`
 == stray and misplaced words
-echo ) => [syntax error] ')' has no matching '('
+echo ) => [syntax error] ')' has no matching '(', a '(' above may be missing, or another ')' may have closed the subshell early
 echo ;; => [syntax error] ';;' is only valid between the arms of a 'case'
-fi  => [syntax error] 'fi' has no matching 'if'
-echo; done  => [syntax error] 'done' has no matching 'while', 'until', or 'for'
-case x  => [syntax error] Expected an unquoted 'in' after the case word
-function  => [syntax error] Expected a name after the 'function' keyword
-for 1x in a; do => [syntax error] Bad for loop variable, '1x' is not a plain name, drop the '$' and any quotes
-if true; then echo fi => [syntax error] Unterminated if, this 'fi' was read as an argument, so put a ';' or a newline before it
+fi  => [syntax error] 'fi' has no matching 'if', an 'if' above may be missing, or another 'fi' may have closed it early
+echo; done  => [syntax error] 'done' has no matching 'while', 'until', or 'for', a loop above may be missing, or another 'done' may have closed it early
+case x  => [syntax error] Expected an unquoted 'in' after the case word, write `case $var in pattern) command ;; esac`
+function  => [syntax error] Expected an identifier after the 'function' keyword, as in `function greet { echo hi; }`
+for 1x in a; do => [syntax error] The for loop variable '1x' is not a valid identifier, write a bare identifier, as in `for i in a b c`, without '$' or quotes
+if true; then echo fi => [syntax error] This 'if' has no closing 'fi', this 'fi' was taken as an argument of the previous command, so put a ';' or a newline before it
 == empty bodies
-( ) => [syntax error] Unable to parse the subshell, the body between '(' and ')' is empty, a command is required
-{ } => [syntax error] Unable to parse the brace group, the body between '{' and '}' is empty, a command is required
-if ( ) => [syntax error] Unable to parse the subshell, the body between '(' and ')' is empty, a command is required
-f() ( ) => [syntax error] Unable to parse the subshell, the body between '(' and ')' is empty, a command is required
-f() { } => [syntax error] Unable to parse the brace group, the body between '{' and '}' is empty, a command is required
-while true; do done  => [syntax error] Unable to parse the loop, the body between 'do' and 'done' is empty, a command is required
-if true; then fi => [syntax error] Unable to parse the if, the body after 'then' is empty, a command is required
-if :; then :; else fi => [syntax error] Unable to parse the if, the body after 'else' is empty, a command is required
+( ) => [syntax error] The subshell between '(' and ')' is empty, put a command in the subshell, as in `( : )`
+{ } => [syntax error] The brace group between '{' and '}' is empty, put a command in the group, as in `{ :; }`
+if ( ) => [syntax error] The subshell between '(' and ')' is empty, put a command in the subshell, as in `( : )`
+f() ( ) => [syntax error] The subshell between '(' and ')' is empty, put a command in the subshell, as in `( : )`
+f() { } => [syntax error] The brace group between '{' and '}' is empty, put a command in the group, as in `{ :; }`
+while true; do done  => [syntax error] The loop body between 'do' and 'done' is empty, put a command in the body, such as `:` to do nothing
+if true; then fi => [syntax error] The body after 'then' is empty, put a command after 'then', such as `:` to do nothing
+if :; then :; else fi => [syntax error] The body after 'else' is empty, put a command after 'else', such as `:` to do nothing
 == caret at the end of the erroneous word
-fi => [syntax error] 'fi' has no matching 'if'
-echo; esac => [syntax error] 'esac' has no matching 'case'
-case x => [syntax error] Expected an unquoted 'in' after the case word
-function => [syntax error] Expected a name after the 'function' keyword
-if => [syntax error] Unterminated if, expected a command for the condition
-while :; do done => [syntax error] Unable to parse the loop, the body between 'do' and 'done' is empty, a command is required
+fi => [syntax error] 'fi' has no matching 'if', an 'if' above may be missing, or another 'fi' may have closed it early
+echo; esac => [syntax error] 'esac' has no matching 'case', a 'case' above may be missing, or another 'esac' may have closed it early
+case x => [syntax error] Expected an unquoted 'in' after the case word, write `case $var in pattern) command ;; esac`
+function => [syntax error] Expected an identifier after the 'function' keyword, as in `function greet { echo hi; }`
+if => [syntax error] This 'if' has no condition, expected a command for the condition here
+while :; do done => [syntax error] The loop body between 'do' and 'done' is empty, put a command in the body, such as `:` to do nothing
 == continued on enter
 echo \ => [builtin synopsis] echo [-neE] [arg ...]
 echo "abc\ => [builtin synopsis] echo [-neE] [arg ...]
@@ -69,7 +69,7 @@ f() { :; } =>
 == analysis findings of a paused line
 echo $x => [error] An unquoted variable can split into words and expand globs. (SC2086)
 cat file | grep x => [warning] The `cat` writes its file unchanged into the pipe. (SC2002)
-x = 1 => [error] An assignment with spaces around equals is read as a command and its arguments. (SC2283)
+x = 1 => [error] An assignment with spaces around equals runs as a command with arguments. (SC2283)
 zzunknown-command arg => 
 source ./zz-missing-file.sh => [builtin synopsis] source file
 == alias, function, and segment under the caret

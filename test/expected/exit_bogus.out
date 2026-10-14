@@ -1,7 +1,8 @@
 2:6: warning: The code 'hello world' is not a number from 0 to 255, and `exit` either rejects it or wraps it modulo 256. (SC2242)
      2 |  exit "hello world" "hello world"
        |       ^~~~~~~~~~~~~
-2:20: warning: The `exit` builtin takes one number from 0 to 255. (SC2241)
+note: Use a number from 0 to 255.
+2:20: warning: This `exit` has extra operands, and the builtin takes one number from 0 to 255. (SC2241)
      2 |  exit "hello world" "hello world"
        |                     ^~~~~~~~~~~~~
 note: Write the other data to standard output.

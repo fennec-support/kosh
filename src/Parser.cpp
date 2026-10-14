@@ -231,12 +231,45 @@ internal::throw_unterminated(const SourceLocation &opener,
     throw ErrorWithLocationAndDetails{
         opener, what, *found,
         "this '" + keyword +
-            "' was read as an argument, so put a ';' or a newline before it"};
+            "' was taken as an argument of the previous command, so put a ';' "
+            "or a newline before it"};
   }
 
   fallback.source_name_index = opener.source_name_index;
-  throw ErrorWithLocationAndDetails{opener, what, fallback,
-                                    "expected '" + keyword + "'"};
+  throw ErrorWithLocationAndDetails{
+      opener, what, fallback, "expected '" + keyword + "' here to close it"};
+}
+
+cold static fn
+unexpected_command_token_note(const Token *token) wontthrow -> StringView
+{
+  if (is_unquoted_word(token, "}")) {
+    return "A '{' above may be missing, or another '}' may have closed the "
+           "group early";
+  }
+
+  switch (token->kind()) {
+  case Token::Kind::Then:
+  case Token::Kind::Else:
+  case Token::Kind::Elif:
+  case Token::Kind::Fi:
+    return "An 'if' above may be missing, or another 'fi' may have closed "
+           "it early";
+  case Token::Kind::Do:
+  case Token::Kind::Done:
+    return "A loop above may be missing, or another 'done' may have closed "
+           "it early";
+  case Token::Kind::Esac:
+    return "A 'case' above may be missing, or another 'esac' may have "
+           "closed it early";
+  case Token::Kind::RightParen:
+    return "A '(' above may be missing, or another ')' may have closed the "
+           "subshell early";
+  case Token::Kind::Pipe:
+    return "Put the command that produces the output before the '|', as in "
+           "`cmd | sort`";
+  default: return {};
+  }
 }
 
 cold static fn
@@ -371,7 +404,8 @@ Parser::recover_to_next_statement() throws -> void
 {
   LOG(Debug, "skipping tokens to the next statement boundary");
 
-  bool has_consumed_token = false;
+  bool has_consumed_token  = false;
+  bool is_command_position = true;
 
   loop {
     Token *token = m_lexer.peek_shell_token();
@@ -389,8 +423,264 @@ Parser::recover_to_next_statement() throws -> void
       return;
     }
 
+    if (m_unclosed_construct_count > 0)
+      count_skipped_construct_token(token, is_command_position);
     m_lexer.advance_past_last_peek();
     has_consumed_token = true;
+  }
+}
+
+fn
+Parser::count_skipped_construct_token(const Token *token,
+                                      bool        &is_command_position)
+    wontthrow -> void
+{
+  let const was_command_position = is_command_position;
+
+  is_command_position = false;
+
+  switch (token->kind()) {
+  case Token::Kind::If:
+  case Token::Kind::While:
+  case Token::Kind::Until:
+  case Token::Kind::For:
+  case Token::Kind::Case:
+    if (was_command_position) m_unclosed_construct_count++;
+    is_command_position = true;
+    break;
+
+  case Token::Kind::Fi:
+  case Token::Kind::Done:
+  case Token::Kind::Esac:
+    if (was_command_position) m_unclosed_construct_count--;
+    break;
+
+  case Token::Kind::Then:
+  case Token::Kind::Do:
+  case Token::Kind::Else:
+  case Token::Kind::Elif:
+  case Token::Kind::Newline:
+  case Token::Kind::Semicolon:
+  case Token::Kind::DoubleSemicolon:
+  case Token::Kind::DoubleAmpersand:
+  case Token::Kind::DoublePipe:
+  case Token::Kind::Pipe:
+  case Token::Kind::Ampersand:
+  case Token::Kind::LeftParen:
+  case Token::Kind::RightParen:      is_command_position = true; break;
+
+  default:
+    if (!was_command_position) break;
+    if (is_unquoted_word(token, "{") || is_unquoted_word(token, "select")) {
+      m_unclosed_construct_count++;
+      is_command_position = true;
+    } else if (is_unquoted_word(token, "}")) {
+      m_unclosed_construct_count--;
+    }
+
+    break;
+  }
+
+  LOG(Debug, "%zu constructs stay unclosed after a skipped token",
+      m_unclosed_construct_count);
+}
+
+constexpr PackedStringKey OUTER_LINE_CLOSER_KEYS[] = {
+    SSK("fi"),   SSK("done"), SSK("esac"), SSK("then"),
+    SSK("else"), SSK("elif"), SSK("do"),
+};
+constexpr StaticStringSet OUTER_LINE_CLOSERS{OUTER_LINE_CLOSER_KEYS};
+
+cold static fn
+collect_line_heredocs(StringView                         line,
+                      ArrayList<lexer::pending_heredoc> &pending) throws
+    -> void
+{
+  char quote = 0;
+
+  for (usize i = 0; i + 1 < line.length; i++) {
+    let const byte = line[i];
+
+    if (quote != 0) {
+      if (byte == quote) quote = 0;
+      continue;
+    }
+
+    if (byte == '\'' || byte == '"') {
+      quote = byte;
+      continue;
+    }
+
+    if (byte == '#' && (i == 0 || lexer::is_whitespace(line[i - 1]))) return;
+    if (byte != '<' || line[i + 1] != '<') continue;
+
+    usize cursor = i + 2;
+
+    if (cursor < line.length && line[cursor] == '<') {
+      i = cursor;
+      continue;
+    }
+
+    bool should_strip_tabs = false;
+
+    if (cursor < line.length && line[cursor] == '-') {
+      should_strip_tabs = true;
+      cursor++;
+    }
+
+    while (cursor < line.length &&
+           (line[cursor] == ' ' || line[cursor] == '\t'))
+    {
+      cursor++;
+    }
+
+    usize end = cursor;
+
+    while (end < line.length && !lexer::is_whitespace(line[end]) &&
+           line[end] != ';' && line[end] != '|' && line[end] != '&' &&
+           line[end] != '<' && line[end] != '>' && line[end] != ')')
+    {
+      end++;
+    }
+
+    if (end > cursor) {
+      pending.push(lexer::pending_heredoc{
+          lexer::unquote_heredoc_delimiter(
+              line.substring_of_length(cursor, end - cursor), heap_allocator()),
+          should_strip_tabs});
+    }
+
+    i = end - 1;
+  }
+}
+
+cold fn
+Parser::find_next_outer_line(usize opener_position, usize error_position) const throws -> usize
+{
+  let const source     = m_lexer.source();
+  let       line_start = opener_position;
+  let const position   = error_position;
+
+  while (line_start > 0 && source[line_start - 1] != '\n') {
+    line_start--;
+  }
+
+  usize indent_end = line_start;
+
+  while (indent_end < position &&
+         (source[indent_end] == ' ' || source[indent_end] == '\t'))
+  {
+    indent_end++;
+  }
+
+  let const outer_indent = indent_end - line_start;
+  let       pending      = ArrayList<lexer::pending_heredoc>{heap_allocator()};
+  usize     next_heredoc = 0;
+
+  let const do_find_line_end = [&](usize from) -> usize {
+    while (from < source.length && source[from] != '\n') {
+      from++;
+    }
+
+    return from;
+  };
+
+  usize line     = position;
+  usize line_end = do_find_line_end(line);
+
+  while (line > 0 && source[line - 1] != '\n') {
+    line--;
+  }
+
+  collect_line_heredocs(source.substring_of_length(line, line_end - line),
+                        pending);
+  line = line_end;
+
+  while (line < source.length) {
+    line++;
+    line_end = do_find_line_end(line);
+
+    let const text = source.substring_of_length(line, line_end - line);
+
+    if (next_heredoc < pending.count()) {
+      if (lexer::match_heredoc_line(text, pending[next_heredoc]).is_terminator)
+        next_heredoc++;
+      if (next_heredoc == pending.count()) {
+        pending.clear();
+        next_heredoc = 0;
+      }
+
+      line = line_end;
+      continue;
+    }
+
+    usize first = 0;
+
+    while (first < text.length && (text[first] == ' ' || text[first] == '\t')) {
+      first++;
+    }
+
+    usize word_end = first;
+
+    while (word_end < text.length && !lexer::is_whitespace(text[word_end]) &&
+           text[word_end] != ';' && text[word_end] != '&' &&
+           text[word_end] != '|')
+    {
+      word_end++;
+    }
+
+    let const word = text.substring_of_length(first, word_end - first);
+
+    if (!word.is_empty() && word[0] != '#' && first <= outer_indent &&
+        !OUTER_LINE_CLOSERS.contains(word) && word[0] != '}' &&
+        word[0] != ')' && word[0] != ';')
+    {
+      return line;
+    }
+
+    collect_line_heredocs(text, pending);
+    line = line_end;
+  }
+
+  return SIZE_MAX;
+}
+
+cold static fn
+rethrown_error_location() throws -> SourceLocation
+{
+  try {
+    throw;
+  } catch (const ErrorWithLocation &error) {
+    return error.location();
+  }
+}
+
+cold fn
+Parser::record_statement_error(
+    ArrayList<String>            &errors,
+    EvalContext                  *context,
+    ArrayList<source_diagnostic> *diagnostic_sink) throws -> void
+{
+  let const error_position =
+      static_cast<usize>(rethrown_error_location().position);
+
+  if (m_unclosed_construct_count > 0 &&
+      error_position < m_suppression_end_position)
+  {
+    m_unclosed_construct_count += m_open_construct_count;
+    LOG(Debug, "dropping a parse error inside %zu unclosed constructs",
+        m_unclosed_construct_count);
+
+    return;
+  }
+
+  record_error(errors, context, diagnostic_sink);
+  m_unclosed_construct_count = m_open_construct_count;
+  if (m_unclosed_construct_count > 0) {
+    m_suppression_end_position =
+        find_next_outer_line(m_outermost_construct_position, error_position);
+    LOG(Debug, "dropping later errors before byte %zu",
+        m_suppression_end_position);
   }
 }
 
@@ -554,6 +844,7 @@ Parser::construct_ast(
 
     let did_parse_fail = false;
 
+    m_open_construct_count = 0;
     try {
       Expression *piece = parse_command_list(0);
 
@@ -561,7 +852,7 @@ Parser::construct_ast(
       if (first_piece == nullptr) first_piece = piece;
       record_substitution_errors(errors, context, diagnostic_sink);
     } catch (const ErrorWithLocation &) {
-      record_error(errors, context, diagnostic_sink);
+      record_statement_error(errors, context, diagnostic_sink);
       did_parse_fail = true;
     }
 
@@ -605,6 +896,7 @@ Parser::construct_next_top_level_ast(
       return nullptr;
     }
 
+    m_open_construct_count = 0;
     try {
       Expression *piece = parse_command_list(0);
 
@@ -613,7 +905,7 @@ Parser::construct_next_top_level_ast(
 
       return piece;
     } catch (const ErrorWithLocation &) {
-      record_error(errors, context, diagnostic_sink);
+      record_statement_error(errors, context, diagnostic_sink);
     }
 
     let did_recovery_fail = false;
@@ -638,8 +930,9 @@ Parser::reject_empty_loop_body(const Expression *body) throws -> void
 
   ASSERT(terminator != nullptr);
   throw koshka::ErrorWithLocationAndDetails{
-      terminator->source_location(), "Unable to parse the loop",
-      "The body between 'do' and 'done' is empty, a command is required"};
+      terminator->source_location(),
+      "The loop body between 'do' and 'done' is empty",
+      "Put a command in the body, such as `:` to do nothing"};
 }
 
 hot fn
@@ -651,11 +944,13 @@ Parser::parse_command_list(u64 terminator_mask) throws -> Expression *
     Token *token = m_lexer.peek_shell_token();
 
     ASSERT(token != nullptr);
-    throw koshka::ErrorWithLocation{
+    throw koshka::ErrorWithLocationAndDetails{
         token->source_location(),
-        "Compound command nested deeper than " +
+        "Compound commands are nested more than " +
             String::from(static_cast<i64>(MAX_COMMAND_DEPTH),
-                         heap_allocator())};
+                         heap_allocator()) +
+            " levels deep",
+        "Move the inner commands into a function"};
   }
 
   Command *lhs = nullptr;
@@ -823,8 +1118,16 @@ Parser::parse_command_list(u64 terminator_mask) throws -> Expression *
       if (lhs != nullptr) {
         do_finish_pending(lhs, token);
       } else if (next_cond != CompoundListCondition::Kind::None) {
-        throw koshka::ErrorWithLocation{token->source_location(),
-                                        "Expected a command after an operator"};
+        throw koshka::ErrorWithLocationAndDetails{
+            token->source_location(),
+            next_cond == CompoundListCondition::Kind::And
+                ? "Expected a command after '&&'"
+                : "Expected a command after '||'",
+            next_cond == CompoundListCondition::Kind::And
+                ? "Add the missing command, as in `a && b`, or remove the "
+                  "operator"
+                : "Add the missing command, as in `a || b`, or remove the "
+                  "operator"};
       }
 
       if (compound_list->is_empty()) {
@@ -874,10 +1177,13 @@ Parser::parse_command_list(u64 terminator_mask) throws -> Expression *
         String    msg{heap_allocator(), "Expected a command "};
 
         msg += compound_list->is_empty() ? "before" : "after";
-        msg += " operator, found '";
+        msg += " the operator, found '";
         msg += ast.view();
         msg += "'";
-        throw koshka::ErrorWithLocation{token->source_location(), msg};
+        throw koshka::ErrorWithLocationAndDetails{
+            token->source_location(), msg,
+            "Put a command on each side of the operator, as in `a && b`, or "
+            "remove the operator"};
       }
 
       fallthru;
@@ -888,8 +1194,9 @@ Parser::parse_command_list(u64 terminator_mask) throws -> Expression *
                                      lhs == nullptr && !should_time_pending;
 
       if (is_stray_semicolon) {
-        throw koshka::ErrorWithLocation{token->source_location(),
-                                        "Expected a command before ';'"};
+        throw koshka::ErrorWithLocationAndDetails{
+            token->source_location(), "Expected a command before ';'",
+            "Remove the extra ';', or put a command before it"};
       }
 
       if (token->kind() != Token::Kind::DoublePipe &&
@@ -915,8 +1222,16 @@ Parser::parse_command_list(u64 terminator_mask) throws -> Expression *
 
       if (token->kind() == Token::Kind::EndOfFile) {
         if (next_cond != CompoundListCondition::Kind::None) {
-          throw koshka::ErrorWithLocation{
-              token->source_location(), "Expected a command after an operator"};
+          throw koshka::ErrorWithLocationAndDetails{
+              token->source_location(),
+              next_cond == CompoundListCondition::Kind::And
+                  ? "Expected a command after '&&'"
+                  : "Expected a command after '||'",
+              next_cond == CompoundListCondition::Kind::And
+                  ? "Add the missing command, as in `a && b`, or remove the "
+                    "operator"
+                  : "Add the missing command, as in `a || b`, or remove the "
+                    "operator"};
         }
 
         if (compound_list->is_empty()) {
@@ -931,8 +1246,10 @@ Parser::parse_command_list(u64 terminator_mask) throws -> Expression *
     case Token::Kind::Pipe:
     case Token::Kind::PipeAmpersand: {
       if (lhs == nullptr) {
-        throw koshka::ErrorWithLocation{token->source_location(),
-                                        "Expected a command before the pipe"};
+        throw koshka::ErrorWithLocationAndDetails{
+            token->source_location(), "Expected a command before the pipe",
+            "Put the command that produces the output before the '|', as in "
+            "`cmd | sort`"};
       }
 
       let const has_left_stderr_pipe =
@@ -962,16 +1279,15 @@ Parser::parse_command_list(u64 terminator_mask) throws -> Expression *
           {
             throw koshka::ErrorWithLocationAndDetails{
                 last_pipe_token->source_location(),
-                "Unable to build the pipeline because no command follows "
-                "the pipe. The |& stderr pipe is a bashism that POSIX mode "
-                "does not read",
-                "Use 2>&1 | instead"};
+                "The |& stderr pipe is a bash extension",
+                "Use `2>&1 |` instead"};
           }
 
-          throw koshka::ErrorWithLocation{
+          throw koshka::ErrorWithLocationAndDetails{
               last_pipe_token->source_location(),
-              "Unable to build the pipeline because no command follows the "
-              "pipe to receive the output"};
+              "Expected a command after the pipe to receive the output",
+              "Put a command after the '|', as in `cmd | sort`, or remove the "
+              "pipe"};
         }
 
         last_pipe_token = m_lexer.peek_shell_token();
@@ -1000,9 +1316,18 @@ Parser::parse_command_list(u64 terminator_mask) throws -> Expression *
       should_parse_command = false;
     } break;
 
-    default:
-      throw ErrorWithLocation{token->source_location(),
-                              unexpected_command_token_message(token)};
+    default: {
+      let const note = unexpected_command_token_note(token);
+
+      if (note.is_empty()) {
+        throw ErrorWithLocation{token->source_location(),
+                                unexpected_command_token_message(token)};
+      }
+
+      throw ErrorWithLocationAndDetails{token->source_location(),
+                                        unexpected_command_token_message(token),
+                                        note};
+    }
     }
   }
 
@@ -1142,7 +1467,8 @@ Parser::build_file_or_dup_redirection(
   }
 
   Token *target = next_token_of_kind(Token::Kind::Word,
-                                     "Expected a filename after the redir");
+                                     "Expected a file after the redirection "
+                                     "operator");
 
   switch (op_kind) {
   case Token::Kind::Greater:
@@ -1265,13 +1591,15 @@ Parser::build_heredoc_redirection(
     if (delimiter_token->kind() == Token::Kind::Less) {
       throw ErrorWithLocationAndDetails{
           delimiter_token->source_location(),
-          "Expected a heredoc delimiter. The <<< here-string is a bashism "
-          "that POSIX mode does not read",
-          "Use a heredoc instead"};
+          "The <<< here-string is a bash extension",
+          "Use a heredoc, or pipe the string with `printf '%s\\n' \"$var\" | "
+          "command`"};
     }
 
-    throw ErrorWithLocation{delimiter_token->source_location(),
-                            "Expected a heredoc delimiter"};
+    throw ErrorWithLocationAndDetails{
+        delimiter_token->source_location(),
+        "Expected a delimiter word after the heredoc operator",
+        "Write `cat <<EOF`, then the text, then a line that holds only `EOF`"};
   }
 
   const Word &delimiter_word =
@@ -1481,7 +1809,8 @@ Parser::try_parse_trailing_redirection(
 
   throw ErrorWithLocationAndDetails{
       word_location, "Unexpected word after a compound command",
-      "A compound command takes no extra words before its terminator"};
+      "A compound command can be followed only by redirections, so put a ';' "
+      "or a newline before the next command"};
 }
 
 mustuse fn
@@ -1605,20 +1934,24 @@ Parser::parse_simple_command(const Token *leading_token) throws
 
       switch (position_word) {
       case command_position_word::BraceOpen:
-        return attach_trailing_redirections(parse_brace_group());
+        return attach_trailing_redirections(parse_nesting_construct(
+            token, [&]() throws { return parse_brace_group(); }));
       case command_position_word::BraceClose: return nullptr;
       case command_position_word::Conditional:
         if (m_lexer.is_posix_mode()) {
-          throw ErrorWithLocation{token->source_location(),
-                                  "The [[ conditional is a bash extension that "
-                                  "the sh mood does not "
-                                  "provide"};
+          throw ErrorWithLocationAndDetails{
+              token->source_location(),
+              "The [[ conditional is a bash extension",
+              "Use the POSIX test command, `[ ... ]`, and join tests with "
+              "`&&` or `||` outside the brackets"};
         }
 
         return attach_trailing_redirections(parse_conditional_command());
       case command_position_word::Select:
-        if (m_lexer.is_bash_compatible())
-          return attach_trailing_redirections(parse_select());
+        if (m_lexer.is_bash_compatible()) {
+          return attach_trailing_redirections(parse_nesting_construct(
+              token, [&]() throws { return parse_select(); }));
+        }
         break;
 
       case command_position_word::Coproc:
@@ -1630,15 +1963,25 @@ Parser::parse_simple_command(const Token *leading_token) throws
       }
 
       switch (token->kind()) {
-      case Token::Kind::If: return attach_trailing_redirections(parse_if());
+      case Token::Kind::If:
+        return attach_trailing_redirections(parse_nesting_construct(
+            token, [&]() throws { return parse_if(); }));
       case Token::Kind::While:
         return attach_trailing_redirections(
-            parse_while_or_until(loop_kind::While));
+            parse_nesting_construct(token, [&]() throws {
+              return parse_while_or_until(loop_kind::While);
+            }));
       case Token::Kind::Until:
         return attach_trailing_redirections(
-            parse_while_or_until(loop_kind::Until));
-      case Token::Kind::For:  return attach_trailing_redirections(parse_for());
-      case Token::Kind::Case: return attach_trailing_redirections(parse_case());
+            parse_nesting_construct(token, [&]() throws {
+              return parse_while_or_until(loop_kind::Until);
+            }));
+      case Token::Kind::For:
+        return attach_trailing_redirections(parse_nesting_construct(
+            token, [&]() throws { return parse_for(); }));
+      case Token::Kind::Case:
+        return attach_trailing_redirections(parse_nesting_construct(
+            token, [&]() throws { return parse_case(); }));
       case Token::Kind::LeftParen:
         return attach_trailing_redirections(parse_paren_command());
 
@@ -1828,8 +2171,9 @@ Parser::finish_function_body(const SourceLocation &location,
   }
 
   if (body == nullptr) {
-    throw ErrorWithLocation{location,
-                            "Expected a compound command as the function body"};
+    throw ErrorWithLocationAndDetails{
+        location, "Expected a compound command as the function body",
+        "Write the body as a brace group, as in `greet() { echo hi; }`"};
   }
 
   body_storage.set_body(body);
@@ -1865,7 +2209,8 @@ fn
 Parser::parse_keyword_function_definition() throws -> Command *
 {
   Token *name_token = next_token_of_kind(
-      Token::Kind::Word, "Expected a name after the 'function' keyword");
+      Token::Kind::Word, "Expected an identifier after the 'function' keyword, "
+                         "as in `function greet { echo hi; }`");
   let const location = name_token->source_location();
   let const name     = name_token->raw_string();
 
@@ -1918,8 +2263,9 @@ Parser::consume_bash_array_elements(
     ASSERT(t != nullptr);
     switch (t->kind()) {
     case Token::Kind::EndOfFile:
-      throw ErrorWithLocation{open->source_location(),
-                              "Unterminated array assignment, expected ')'"};
+      throw ErrorWithLocationAndDetails{
+          open->source_location(), "This array assignment has no closing ')'",
+          "Close the list with ')', as in `arr=(a b c)`"};
     case Token::Kind::RightParen: return;
     case Token::Kind::Newline:    break;
 
@@ -1950,10 +2296,13 @@ Parser::consume_bash_array_elements(
       if (is_arithmetic_shape) {
         throw ErrorWithLocationAndDetails{
             t->source_location(), message.view(),
-            "Write `(( name = expression ))` to assign arithmetic"};
+            "Write `(( var = expression ))` to assign arithmetic"};
       }
 
-      throw ErrorWithLocation{t->source_location(), message.view()};
+      throw ErrorWithLocationAndDetails{
+          t->source_location(), message.view(),
+          "Quote the character if it belongs to an element, as in "
+          "`arr=(a 'b|c')`"};
     }
     default: elements.push(t); break;
     }

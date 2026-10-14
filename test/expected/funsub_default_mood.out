@@ -6,7 +6,7 @@ note: Run the command on its own.
      7 |  echo "nested=${ echo $(echo inner); }"
        |                       ^~~~~~~~~~~~~
 note: Quote it to keep one argument.
-7:22: warning: The `echo` operand is passed through the substitution unchanged. (SC2116)
+7:22: warning: The command substitution runs only `echo`, so it returns its operand unchanged. (SC2116)
      7 |  echo "nested=${ echo $(echo inner); }"
        |                       ^~~~~~~~~~~~~
 note: Use the text directly without the command substitution.

@@ -3112,8 +3112,9 @@ fn
 EvalContext::ParameterExpander::expand() throws -> String
 {
   if (m_spec.is_empty()) {
-    raise_bad_substitution(m_spec, "the braces hold no parameter",
-                           "Write a name between the braces, as in ${name}.");
+    raise_bad_substitution(
+        m_spec, "the braces hold no parameter",
+        "Write a parameter between the braces, as in ${var}.");
   }
 
   if (m_spec.length > 1 && m_spec[0] == '!' &&

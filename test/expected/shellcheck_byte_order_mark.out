@@ -5,6 +5,7 @@ note: Save the script as UTF-8 without a byte-order mark.
 1:1: warning: The directory '﻿#!' does not exist.
      1 |  ﻿#!/bin/env kosh
        |  ^~~
+note: Create the directory, or correct the path.
 Encountered 2 warnings.
 1:1: error: The directory '﻿#!' does not exist.
      1 |  ﻿#!/bin/env kosh

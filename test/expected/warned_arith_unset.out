@@ -1,4 +1,4 @@
-3:9: warning: The variable 'never_counted' is not set, it expands to empty.
+3:9: warning: The variable 'never_counted' is not set and expands to an empty string.
      3 |  echo $((never_counted + 1))
        |          ^~~~~~~~~~~~~
 note: Replace it with ${never_counted-} if empty expansion is desired.
@@ -10,7 +10,7 @@ continued
 note: Probe for matches with compgen -G '*.zzz_nomatch_downgrade' or relax it with shopt -u failglob outside the kosh mood.
 *.zzz_nomatch_downgrade
 continued
-12:13: warning: The variable 'never_piped' is not set, it expands to empty.
+12:13: warning: The variable 'never_piped' is not set and expands to an empty string.
     12 |  echo "value=$never_piped" | cat
        |              ^~~~~~~~~~~~
 note: Replace it with ${never_piped-} if empty expansion is desired.

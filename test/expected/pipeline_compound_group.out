@@ -9,6 +9,7 @@ note: Add `-r` to read the line literally.
 9:10: warning: The 'false' command never uses the upstream output. (SC2216)
      9 |  echo 4 | false || echo 4;
        |           ^~~~~
+note: Remove the pipe and run the upstream command on its own.
 15:28: warning: A `read` without `-r` treats a backslash in the input as an escape. (SC2162)
     15 |  printf 'a\nb\nc\n' | while read l; do echo "got $l"; done
        |                             ^~~~~~
@@ -16,26 +17,31 @@ note: Add `-r` to read the line literally.
 30:30: warning: This `case` has no default `*)` branch. (SC2249)
     30 |  printf 'case-value\n' | case "$(cat)" in
        |                               ^~~~~~~~
+note: Add a `*)` branch, or write `*) ;;` to ignore other input.
 37:8: warning: The 'false' command never uses the upstream output. (SC2216)
     37 |  true | false
        |         ^~~~~
+note: Remove the pipe and run the upstream command on its own.
 39:9: warning: The 'true' command never uses the upstream output. (SC2216)
     39 |  false | true
        |          ^~~~
-41:17: warning: The `read` runs in the pipeline subshell. (SC2030)
+note: Remove the pipe and run the upstream command on its own.
+41:17: warning: The `read` runs in a pipeline subshell, so the variables it sets are lost when the stage exits. (SC2030)
     41 |  false | read -r x
        |                  ^
 note: Feed the loop with a redirection or process substitution.
-43:19: warning: The `read` runs in the pipeline subshell. (SC2030)
+43:19: warning: The `read` runs in a pipeline subshell, so the variables it sets are lost when the stage exits. (SC2030)
     43 |  echo hi | read -r y
        |                    ^
 note: Feed the loop with a redirection or process substitution.
 45:8: warning: The 'true' command never uses the upstream output. (SC2216)
     45 |  true | true
        |         ^~~~
+note: Remove the pipe and run the upstream command on its own.
 47:10: warning: The 'false' command never uses the upstream output. (SC2216)
     47 |  ! true | false
        |           ^~~~~
+note: Remove the pipe and run the upstream command on its own.
 Encountered 11 warnings.
 x
 1-2

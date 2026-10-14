@@ -1,4 +1,4 @@
-2:1: error: Unterminated case.
+2:1: error: This 'case' has no closing 'esac'.
      2 |  case x in
        |  ^~~~
 2:10: details:
