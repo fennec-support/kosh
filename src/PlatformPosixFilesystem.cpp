@@ -966,13 +966,14 @@ set_file_mode_no_follow(StringView path, u32 mode) wontthrow -> bool
        file. The fallback changes the mode through a descriptor opened without
        following a symlink, and an entry it cannot open stays unchanged. */
     if (!did_succeed && (saved_errno == EOPNOTSUPP || saved_errno == ENOSYS)) {
-      LOG(Debug, "changing the mode of '%s' through a no-follow descriptor "
-                 "after fchmodat rejected the no-follow flag",
+      LOG(Debug,
+          "changing the mode of '%s' through a no-follow descriptor "
+          "after fchmodat rejected the no-follow flag",
           path_string.c_str());
 
-      const int fd = ::open(path_string.c_str(), O_RDONLY | O_NOFOLLOW |
-                                                     O_NONBLOCK | O_NOCTTY |
-                                                     O_CLOEXEC);
+      const int fd =
+          ::open(path_string.c_str(),
+                 O_RDONLY | O_NOFOLLOW | O_NONBLOCK | O_NOCTTY | O_CLOEXEC);
 
       if (fd < 0) {
         saved_errno = errno;
