@@ -265,6 +265,7 @@ fn
 format_option_table() throws -> String
 {
   const usize name_field_width = 30;
+  const usize help_column      = 6 + name_field_width;
   let         out              = String{heap_allocator()};
 
   for (let const &option : get_option_registry()) {
@@ -282,10 +283,16 @@ format_option_table() throws -> String
                               : StringView{option.set_name};
 
     out += name_cell;
-    out.append_repeated(' ', name_cell.count() < name_field_width
-                                 ? name_field_width - name_cell.count()
-                                 : 0);
-    out += option.help;
+    if (name_cell.count() < name_field_width) {
+      out.append_repeated(' ', name_field_width - name_cell.count());
+    } else {
+      out.push('\n');
+      out.append_repeated(' ', help_column);
+    }
+
+    let const help = wrap_text(option.help, help_column, HELP_WRAP_WIDTH);
+
+    out += help.view().substring(help_column);
     out.push('\n');
   }
 

@@ -61,8 +61,8 @@ show_builtin_help_impl(const ExecContext  &ec,
   help_text += make_flag_help(flags, should_color);
   help_text += '\n';
   if (!extra_sections.is_empty()) {
-    help_text += extra_sections;
     help_text += '\n';
+    help_text += extra_sections;
   }
 
   ec.print_to_stdout(format_cli_help(help_text.view(), should_color));
