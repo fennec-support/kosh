@@ -116,3 +116,16 @@
 -c:1:1: error: This brace group has no closing '}'.
 -c:1:8: details:
        |         ^ this '}' was taken as an argument of the previous command, so put a ';' or a newline before it.
+== closer words stay valid case patterns and here-string words
+if true; then case x in fi) :;; esac; fi => 0
+while true; do case x in done) break;; esac; done => 0
+f() { case x in }) :;; esac; } => 0
+f() { case x in a|fi) :;; esac; } => 0
+cat <<< fi => 0
+== a semicolon between case arms is reported
+-c:1:21: error: Unexpected ';' between case arms.
+-c:2:11: error: Unexpected ';' between case arms.
+== an esac taken as an argument is pointed out
+-c:1:1: error: This 'case' has no closing 'esac'.
+-c:1:19: details:
+       |                    ^~~~ this 'esac' was taken as an argument of the previous command, so put a ';' or a newline before it.

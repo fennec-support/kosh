@@ -32,6 +32,11 @@ hot pure fn
 is_unquoted_word(const Token *token, StringView expected) wontthrow -> bool;
 hot pure fn
 is_list_terminator(const Token *token, u64 terminator_mask) wontthrow -> bool;
+fn
+word_token_from_raw(BumpArena     &arena,
+                    StringView     text,
+                    SourceLocation location) throws
+    -> tokens::WordToken *;
 
 cold wontreturn fn
 throw_unterminated(const SourceLocation        &opener,

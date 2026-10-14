@@ -27,6 +27,7 @@ using internal::is_list_terminator;
 using internal::is_unquoted_word;
 using internal::throw_unterminated;
 using internal::token_kind_mask;
+using internal::word_token_from_raw;
 
 hot fn
 Parser::parse_if() throws -> Command *
@@ -236,12 +237,6 @@ double_paren_closes_adjacent(StringView source,
 
   return false;
 }
-
-static fn
-word_token_from_raw(BumpArena     &arena,
-                    StringView     text,
-                    SourceLocation location) throws
-    -> tokens::WordToken *;
 
 fn
 Parser::parse_optional_in_clause_words(ArrayList<const Token *> &words)
@@ -566,10 +561,28 @@ word_token_from_assignment(BumpArena &arena, const Assignment *a) throws
   return tokens::create_word_token(arena, a->source_location(), steal(word));
 }
 
-static fn
-word_token_from_raw(BumpArena     &arena,
-                    StringView     text,
-                    SourceLocation location) throws
+/* True when a ')' or '|' follows the token, which makes a closer word such as
+   'fi' a case pattern instead of the end of an enclosing command. */
+pure static fn
+is_followed_by_pattern_end(StringView            source,
+                           const SourceLocation &location) wontthrow -> bool
+{
+  usize position = location.position + location.length;
+
+  while (position < source.length &&
+         (source[position] == ' ' || source[position] == '\t'))
+  {
+    position++;
+  }
+
+  return position < source.length &&
+         (source[position] == ')' || source[position] == '|');
+}
+
+fn
+internal::word_token_from_raw(BumpArena     &arena,
+                              StringView     text,
+                              SourceLocation location) throws
     -> tokens::WordToken *
 {
   let word = Word{};
@@ -633,10 +646,16 @@ Parser::parse_case() throws -> Command *
     Token *t = m_lexer.peek_shell_token();
     ASSERT(t != nullptr);
 
-    if (t->kind() == Token::Kind::Newline ||
-        t->kind() == Token::Kind::Semicolon)
-    {
+    if (t->kind() == Token::Kind::Newline) {
       m_lexer.advance_past_last_peek();
+      continue;
+    }
+
+    if (t->kind() == Token::Kind::Semicolon) {
+      m_lexer.advance_past_last_peek();
+      report_soft_error(ErrorWithLocationAndDetails{
+          t->source_location(), "Unexpected ';' between case arms",
+          "Remove the ';', since ';;' already ends the arm before it"});
       continue;
     }
 
@@ -665,7 +684,9 @@ Parser::parse_case() throws -> Command *
       continue;
     }
 
-    if (is_list_terminator(t, m_enclosing_terminator_mask)) {
+    if (is_list_terminator(t, m_enclosing_terminator_mask) &&
+        !is_followed_by_pattern_end(m_lexer.source(), t->source_location()))
+    {
       throw ErrorWithLocationAndDetails{
           location, "This 'case' has no closing 'esac'", t->source_location(),
           "expected 'esac' here to close it"};
@@ -691,6 +712,16 @@ Parser::parse_case() throws -> Command *
           pattern =
               word_token_from_raw(m_lexer.arena(), text, pattern_location);
         } else {
+          if (pattern->kind() == Token::Kind::EndOfFile) {
+            let const swallowed = get_swallowed_closer(
+                Token::Kind::Esac, location, pattern_location);
+
+            if (swallowed.has_value()) {
+              throw_unterminated(location, "This 'case' has no closing 'esac'",
+                                 swallowed, "esac", pattern_location);
+            }
+          }
+
           throw ErrorWithLocationAndDetails{
               location, "This 'case' has no closing 'esac'", pattern_location,
               "expected a pattern to start an arm, or 'esac' to end the case"};

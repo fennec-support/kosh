@@ -29,6 +29,7 @@ using internal::is_list_terminator;
 using internal::is_unquoted_word;
 using internal::throw_unterminated;
 using internal::token_kind_mask;
+using internal::word_token_from_raw;
 
 hot pure static fn
 get_sequence_kind(Token::Kind tk) wontthrow -> CompoundListCondition::Kind
@@ -1509,10 +1510,20 @@ Parser::build_here_string_redirection(
 
   expressions::Redirection redir{};
 
-  redir.fd   = fd;
-  redir.kind = expressions::Redirection::Kind::HereString;
-  redir.target =
-      next_token_of_kind(Token::Kind::Word, "Expected a word after '<<<'");
+  redir.fd      = fd;
+  redir.kind    = expressions::Redirection::Kind::HereString;
+  Token *target = m_lexer.peek_shell_token();
+
+  /* A keyword after <<< is the word itself, as in `cat <<< fi`. */
+  if (token_kind_is_keyword(target->kind())) {
+    m_lexer.advance_past_last_peek();
+    redir.target =
+        word_token_from_raw(m_lexer.arena(), target->raw_string().view(),
+                            target->source_location());
+  } else {
+    redir.target =
+        next_token_of_kind(Token::Kind::Word, "Expected a word after '<<<'");
+  }
   redir.dup_fd                = -1;
   redir.heredoc               = nullptr;
   redir.should_expand_heredoc = false;

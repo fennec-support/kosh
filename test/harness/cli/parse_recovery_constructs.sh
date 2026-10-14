@@ -227,3 +227,21 @@ if x; then echo "fi"' 2>&1 | grep -E '^-c:[0-9]+:[0-9]+: (error|details)|taken|e
 echo "== a closer taken as an argument is pointed out"
 "$BIN" --mood bash --no-config -n -c '{ echo }' 2>&1 |
   grep -E '^-c:[0-9]+:[0-9]+: (error|details)|taken|expected'
+
+echo "== closer words stay valid case patterns and here-string words"
+for test_text in 'if true; then case x in fi) :;; esac; fi' \
+  'while true; do case x in done) break;; esac; done' \
+  'f() { case x in }) :;; esac; }' 'f() { case x in a|fi) :;; esac; }' \
+  'cat <<< fi'
+do
+  printf '%s => ' "$test_text"
+  "$BIN" --mood bash --no-config -n -c "$test_text" 2>&1 |
+    grep -c -E '^-c:[0-9]+:[0-9]+: error'
+done
+
+do_check "a semicolon between case arms is reported" 'case x in a) echo ;;; esac
+case x in ; esac'
+
+echo "== an esac taken as an argument is pointed out"
+"$BIN" --mood bash --no-config -n -c 'case x in a) echo esac' 2>&1 |
+  grep -E '^-c:[0-9]+:[0-9]+: (error|details)|taken|expected'
